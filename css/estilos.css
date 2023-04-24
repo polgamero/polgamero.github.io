@@ -1,0 +1,112 @@
+* {
+    margin: 0;
+    padding: 0;
+    font-family: 'Press Start 2P';
+    color: #008F11;
+}
+body {
+    background-color: black;
+}
+nav ul {
+    list-style:none;
+    display:inline-flex
+}
+nav a {
+    font-size: 18px;
+    text-decoration: none;
+}
+header p {
+    font-size: 20px;
+}
+.barraSuperior {
+    position: absolute;
+    width: 100%;
+    height: 112px;
+    left: 0px;
+    top: 0px;
+    background-color: #2F1B26;
+    display:inline-flex;
+    align-items: center;
+}
+.subtitulo {
+    color: #00FF41;
+    margin-right: 50px;
+    font-size: 16px;
+}
+.mainContainer {
+    position: absolute;
+    width: 100%;
+    height: 90vh;
+    left: 0px;
+    top: 112px;
+    text-align: center;
+}
+.footerContainer {
+    position: absolute;
+    bottom: 5px;
+    width: 100%;
+    text-align: center;
+}
+.pageUrl {
+    text-align: left;
+    margin-bottom: 50px;
+    margin-top: 15px;
+    margin-left: 110px;
+    font-style: italic;
+}
+fieldset {
+    background-color: white;
+    height:250px;
+    width: 400px;
+    padding:30px;
+    font-family: 'Press Start 2P';
+    color: #008F11;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    -webkit-border-radius: 28;
+    -moz-border-radius: 28;
+    border-radius: 28px;
+    margin: auto;
+    margin-top: 50px;
+    margin-bottom: 50px;
+}
+fieldset div {
+    display: flex;
+    justify-content: space-between;
+}
+.botonEnviar{
+    font-family: 'Press Start 2P';
+    color: #008F11;
+    background-color: black;
+    padding: 15px;
+    cursor: pointer;
+    -webkit-border-radius: 28;
+    -moz-border-radius: 28;
+    border-radius: 28px;
+}
+.botonEnviar:hover {
+    background: #005316;
+}
+.botonBorrar{
+    font-family: 'Press Start 2P';
+    color: #c40000d7;
+    background-color: black;
+    padding: 15px;
+    cursor: pointer;
+    -webkit-border-radius: 28;
+    -moz-border-radius: 28;
+    border-radius: 28px;
+}
+.botonBorrar:hover {
+    background: #510000;
+}
+::placeholder {
+    font-family:Arial, Helvetica, sans-serif;
+    font-style: italic;
+    color: rgba(0, 0, 0, 0.2);
+}
+.cajaTexto {
+    width: 220px;
+    padding: 10px;
+}
