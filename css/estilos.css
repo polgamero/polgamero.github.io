@@ -1,12 +1,12 @@
 /* importo fuentes de google */
-@import url('https://fonts.googleapis.com/css2?family=Castoro+Titling&family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Castoro+Titling&display=swap');
 
 
 /* css reset */
 * {
     margin: 0;
     padding: 0;
-    font-family: 'Press Start 2P', cursive, 'Castoro Titling', cursive;
+    font-family: 'Press Start 2P', 'Castoro Titling';
     color: #008F11;
     box-sizing: border-box;
 }
