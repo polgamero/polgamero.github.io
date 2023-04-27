@@ -1,52 +1,138 @@
+/* importo fuentes de google */
+@import url('https://fonts.googleapis.com/css2?family=Castoro+Titling&family=Press+Start+2P&display=swap');
+
+
+/* css reset */
 * {
     margin: 0;
     padding: 0;
-    font-family: 'Press Start 2P';
+    font-family: 'Press Start 2P', cursive, 'Castoro Titling', cursive;
     color: #008F11;
+    box-sizing: border-box;
 }
+
+/* personalizo la barra lateral */
+::-webkit-scrollbar {
+    width: 10px;
+}
+::-webkit-scrollbar-track {
+    background: #282828; 
+}
+::-webkit-scrollbar-thumb {
+    background: #008F11; 
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #2eff47; 
+}
+
+/* estilos de mi página web */
 body {
     background-color: black;
+    position: relative;
+    min-height: 100vh;
+    padding-bottom: 100px;
 }
+
+.fotoPerfil {
+width: 650px;
+}
+
 nav ul {
     list-style:none;
-    display:inline-flex
+    display:inline-flex;
 }
+
+nav ul li.first {
+    margin-left: 180px;
+}
+
+nav ul li {
+    margin-left: 55px;
+}
+
 nav a {
     font-size: 18px;
     text-decoration: none;
 }
+
 header p {
     font-size: 20px;
+    width: 300px;
+    margin-left: 10px;
 }
+
 .barraSuperior {
-    position: absolute;
     width: 100%;
     height: 112px;
     left: 0px;
     top: 0px;
+    padding-left: 10px;
     background-color: #2F1B26;
     display:inline-flex;
+    box-sizing: border-box;
     align-items: center;
 }
+
 .subtitulo {
     color: #00FF41;
-    margin-right: 50px;
     font-size: 16px;
+    margin-top: 10px;
 }
+
 .mainContainer {
-    position: absolute;
-    width: 100%;
-    height: 90vh;
-    left: 0px;
-    top: 112px;
     text-align: center;
 }
+
+.mainContainer.contacto {
+    text-align: left;
+    background-image: url(../img/fondoContacto.png);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size:cover;
+}
+
+.formulario {
+    text-align: left;
+    padding-left: 300px;
+}
+
+.formulario .mail {
+    text-align: center;
+    width: 600px;
+    box-sizing: border-box;
+    /* border: 2px solid white; */
+    /* padding: 10px 0px; */
+}
+
+.mail p {
+    padding-bottom: 20px;
+}
+
+div.textoPrincipal p {
+    display: inline-block;
+    margin-top: 20px;
+}
+
+p.parrafoIzquierdo {
+    text-align: left;
+    width: 550px;
+    
+}
+
+p.parrafoDerecho {
+    text-align: left;
+    width: 550px;
+}
+
 .footerContainer {
     position: absolute;
-    bottom: 5px;
-    width: 100%;
+    padding: 10px 0px;
     text-align: center;
+    background-color: #1d0d16;
+    width: 100%;
+    bottom: 0px;
 }
+
 .pageUrl {
     text-align: left;
     margin-bottom: 50px;
@@ -54,59 +140,87 @@ header p {
     margin-left: 110px;
     font-style: italic;
 }
+
 fieldset {
-    background-color: white;
-    height:250px;
-    width: 400px;
-    padding:30px;
+    background-color: black;
+    height:350px;
+    width: 440px;
+    padding: 30px;
     font-family: 'Press Start 2P';
     color: #008F11;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    -webkit-border-radius: 28;
-    -moz-border-radius: 28;
-    border-radius: 28px;
-    margin: auto;
-    margin-top: 50px;
-    margin-bottom: 50px;
+    margin-left: 75px;
+    margin-bottom: 10px;
 }
+
 fieldset div {
     display: flex;
     justify-content: space-between;
+
 }
 .botonEnviar{
     font-family: 'Press Start 2P';
     color: #008F11;
-    background-color: black;
+    background-color: rgb(245, 245, 245);
     padding: 15px;
     cursor: pointer;
     -webkit-border-radius: 28;
     -moz-border-radius: 28;
     border-radius: 28px;
+
 }
 .botonEnviar:hover {
     background: #005316;
+
 }
 .botonBorrar{
     font-family: 'Press Start 2P';
     color: #c40000d7;
-    background-color: black;
+    background-color: rgb(245, 245, 245);
     padding: 15px;
     cursor: pointer;
     -webkit-border-radius: 28;
     -moz-border-radius: 28;
     border-radius: 28px;
+
 }
 .botonBorrar:hover {
     background: #510000;
+
 }
 ::placeholder {
     font-family:Arial, Helvetica, sans-serif;
     font-style: italic;
     color: rgba(0, 0, 0, 0.2);
+
 }
 .cajaTexto {
     width: 220px;
     padding: 10px;
+}
+
+@media (max-width: 1350px) {
+.barraSuperior nav ul {
+    list-style:none;
+    display:block;
+    text-align: right;
+    position: absolute;
+    right: 20px;
+    top: 12px;
+}
+.formulario {
+    text-align: left;
+    padding-left: 30px;
+}
+}
+
+@media (max-width: 1680px) {
+nav ul li.first {
+    margin-left: 0px;
+}
+nav ul li {
+    margin-left: 15px;
+}
 }
