@@ -1,12 +1,11 @@
 /* importo fuentes de google */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Castoro+Titling&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Castoro+Titling&family=Press+Start+2P&display=swap');
 
 /* css reset */
 * {
     margin: 0;
     padding: 0;
-    font-family: 'Press Start 2P', 'Castoro Titling';
+    font-family: 'Press Start 2P', cursive, 'Castoro Titling', cursive;
     color: #008F11;
     box-sizing: border-box;
 }
@@ -35,6 +34,7 @@ body {
 
 .fotoPerfil {
 width: 650px;
+margin-bottom: 30px;
 }
 
 nav ul {
@@ -108,15 +108,21 @@ header p {
     padding-bottom: 20px;
 }
 
-div.textoPrincipal p {
-    display: inline-block;
-    margin-top: 20px;
+div.textoPrincipal div {
+    display: inline-flex;
+    /* margin-top: 20px; */
+}
+
+.numerosDeLinea {
+    width: 40px;
+    text-align: right;
+    color: #00FF41;
+    margin-right: 15px;
 }
 
 p.parrafoIzquierdo {
     text-align: left;
     width: 550px;
-    
 }
 
 p.parrafoDerecho {
@@ -135,7 +141,7 @@ p.parrafoDerecho {
 
 .pageUrl {
     text-align: left;
-    margin-bottom: 50px;
+    margin-bottom: 40px;
     margin-top: 15px;
     margin-left: 110px;
     font-style: italic;
@@ -193,7 +199,7 @@ fieldset div {
 ::placeholder {
     font-family:Arial, Helvetica, sans-serif;
     font-style: italic;
-    color: rgba(0, 0, 0, 0.2);
+    color: rgba(0, 0, 0, 0.4);
 
 }
 .cajaTexto {
