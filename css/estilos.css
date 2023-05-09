@@ -1,12 +1,12 @@
 /* importo fuentes de google */
-@import url('https://fonts.googleapis.com/css2?family=Castoro+Titling&family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Castoro&family=Libre+Barcode+39+Text&family=Press+Start+2P&family=VT323&display=swap');
 
 
 /* css reset */
 * {
     margin: 0;
     padding: 0;
-    font-family: 'Press Start 2P', cursive, 'Castoro Titling', cursive;
+    font-family: 'Press Start 2P', cursive, 'VT323', monospace, 'Castoro', serif;
     color: #008F11;
     box-sizing: border-box;
 }
@@ -34,8 +34,12 @@ body {
 }
 
 .fotoPerfil {
-width: 650px;
-margin-bottom: 30px;
+    width: 400px;
+    margin-bottom: 30px;
+}
+
+.banderas {
+    width: 50px;
 }
 
 nav ul {
