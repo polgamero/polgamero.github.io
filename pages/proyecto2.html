@@ -3,51 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
     <title>_Proyecto2</title>
 
-    <!-- vínculo con mi archivo de estilos css -->
-    <link rel="stylesheet" href="/css/estilos.css">
+    <!-- vínculo con mi archivos de estilos css -->
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/styleProyecto1.css">
 
     <!-- seteo del favicon -->
-    <link rel="icon" type="image/x-icon" href="/img/logo.png">
+    <link rel="icon" type="image/x-icon" href="../img/logo.png">
 
 </head>
 <body>
-    <header>
-        <div class="barraSuperior">
+
+    <div id="grid">
+        <header>
             <div>
-                <img src="/img/logo.png">
+                <img src="../img/logo.png">
             </div>
             <div>
                 <p>_PABLO GAMERO</p>
                 <p class="subtitulo">_WEB DEVELOPER</p>
             </div>
-            <nav>
+        </header>
+
+        <nav>
+            <div class="barraSuperior">
                 <ul>
-                    <li class="first"><a href="/index.html">_Inicio</a></li>
-                    <li><a href="/pages/proyecto1.html">_Proyecto1</a></li>
-                    <li><a href="/pages/proyecto2.html">_Proyecto2</a></li>
-                    <li><a href="/pages/proyecto3.html">_Proyecto3</a></li>
-                    <li><a href="/pages/contacto.html">_Contacto</a></li>
+                    <li class="first"><a href="../index.html">_Inicio</a></li>
+                    <li><a href="../pages/proyecto1.html">_Proyecto1</a></li>
+                    <li><a href="../pages/proyecto2.html">_Proyecto2</a></li>
+                    <li><a href="../pages/proyecto3.html">_Proyecto3</a></li>
+                    <li><a href="../pages/contacto.html">_Contacto</a></li>
                 </ul>
-            </nav>
-        </div>
-    </header>
-    <main>
-        <section>
-            <div class="mainContainer">
-                <p class="pageUrl">C:\Users\Web\proyecto2.html</p>
-                <iframe width="1060" height="815" src="https://www.youtube.com/embed/EuOO-FHpe7M" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
             </div>
-        </section>
-    </main>
-    <footer>
-        <div class="footerContainer">
-        <a href="https://www.instagram.com/polgamero/" target="_blank"><img src="/img/instagram.png"></a>
-        <a href="https://www.linkedin.com/in/pablo-gamero-it/" target="_blank"><img src="/img/linkedin.png"></a>
-        <a href="https://github.com/polgamero?tab=repositories" target="_blank"><img src="/img/github.png"></a>
-        </div>
-    </footer>
+        </nav>
+
+        <main id="main">
+            <div class="mainContainer">
+                <p class="pageUrl">C:\Users\Web\imagenesExpandibles.html</p>
+                <div class="bodyProyecto1">
+                <div class="container">
+                    <div class="panel active" style="background-image: url('https://images.unsplash.com/photo-1558979158-65a1eaa08691?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1350&q=80')">
+                        <h3>_Explorar el mundo</h3>
+                    </div>
+                    <div class="panel" style="background-image: url('https://images.unsplash.com/photo-1572276596237-5db2c3e16c5d?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1350&q=80')">
+                        <h3>_Pasear por el bosque</h3>
+                    </div>
+                    <div class="panel" style="background-image: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1353&q=80')">
+                        <h3>_Disfrutar de la playa</h3>
+                    </div>
+                    <div class="panel" style="background-image: url('https://images.unsplash.com/photo-1551009175-8a68da93d5f9?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1351&q=80')">
+                        <h3>_Invierno en la ciudad</h3>
+                    </div>
+                    <div class="panel" style="background-image: url('https://images.unsplash.com/photo-1549880338-65ddcdfd017b?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=1350&q=80')">
+                        <h3>_Día en las montañas</h3>
+                    </div>
+                </div>
+                </div>
+                <script src="../script/scriptProyecto1.js"></script>
+                <p class="pageUrl">_Todos los proyectos fueron trabajados durante el curso <a href="https://www.udemy.com/course/50-projects-50-days/" target="_blank">50 Projects In 50 Days (HTML, CSS & JavaScript)</a>, realizado en <a href="https://www.udemy.com/" target="_blank">Udemy</a> durante abril 2023.</p>
+            </div>
+        </main>
+
+        <footer>
+            <div class="footerContainer">
+                <a href="https://www.instagram.com/polgamero/" target="_blank"><img src="../img/instagram.png"></a>
+                <a href="https://www.linkedin.com/in/pablo-gamero-it/" target="_blank"><img src="../img/linkedin.png"></a>
+                <a href="https://github.com/polgamero?tab=repositories" target="_blank"><img src="../img/github.png"></a>
+            </div>
+        </footer>
+    </div>
+
 </body>
 </html>

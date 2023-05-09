@@ -7,7 +7,6 @@
     margin: 0;
     padding: 0;
     font-family: 'Press Start 2P', cursive, 'Castoro Titling', cursive;
-    color: #008F11;
     box-sizing: border-box;
 }
 
@@ -26,11 +25,32 @@
 }
 
 /* estilos de mi página web */
+
+#grid {
+    display: grid;
+    grid-template-areas:
+        "header nav"
+        "main main"
+        "footer footer";
+    grid-template-rows: 80px 1fr 60px;
+    grid-template-columns: 40% 60%;
+}
+header {
+    grid-area: header;
+}
+footer {
+    grid-area: footer;
+}
+main#main {
+    grid-area: main;     
+}
+nav {
+    grid-area: nav;
+}
+
 body {
     background-color: black;
-    position: relative;
-    min-height: 100vh;
-    padding-bottom: 100px;
+    color: #008F11;
 }
 
 .fotoPerfil {
@@ -43,27 +63,7 @@ nav ul {
     display:inline-flex;
 }
 
-nav ul li.first {
-    margin-left: 180px;
-}
-
-nav ul li {
-    margin-left: 55px;
-}
-
-nav a {
-    font-size: 18px;
-    text-decoration: none;
-}
-
-header p {
-    font-size: 20px;
-    width: 300px;
-    margin-left: 10px;
-}
-
-.barraSuperior {
-    width: 100%;
+nav, header {
     height: 112px;
     left: 0px;
     top: 0px;
@@ -73,6 +73,24 @@ header p {
     box-sizing: border-box;
     align-items: center;
 }
+/* nav ul li.first {
+    margin-left: 180px;
+} */
+
+nav ul li {
+    margin-left: 55px;
+}
+
+nav a {
+    font-size: 18px;
+    color: #008F11;
+    text-decoration: none;
+}
+
+header {
+    font-size: 20px;
+    margin-left: 10px;
+}
 
 .subtitulo {
     color: #00FF41;
@@ -80,9 +98,9 @@ header p {
     margin-top: 10px;
 }
 
-.mainContainer {
+/* .mainContainer {
     text-align: center;
-}
+} */
 
 .mainContainer.contacto {
     text-align: left;
@@ -132,20 +150,19 @@ p.parrafoDerecho {
 }
 
 .footerContainer {
-    position: absolute;
     padding: 10px 0px;
     text-align: center;
     background-color: #1d0d16;
-    width: 100%;
-    bottom: 0px;
+    margin-top: 20px;
 }
 
 .pageUrl {
     text-align: left;
-    margin-bottom: 40px;
-    margin-top: 15px;
-    margin-left: 110px;
-    font-style: italic;
+    margin: 40px 110px;
+}
+
+.pageUrl a {
+    color: #008F11;
 }
 
 fieldset {
@@ -208,8 +225,17 @@ fieldset div {
     padding: 10px;
 }
 
-@media (max-width: 1350px) {
-.barraSuperior nav ul {
+@media (max-width: 1900px) {
+    nav ul li.first {
+        margin-left: 0px;
+    }
+    nav ul li {
+        margin-left: 25px;
+    }
+    }
+
+@media (max-width: 1580px) {
+nav ul {
     list-style:none;
     display:block;
     text-align: right;
@@ -221,13 +247,23 @@ fieldset div {
     text-align: left;
     padding-left: 30px;
 }
+#grid {
+    grid-template-columns: 60% 40%;
+}
 }
 
-@media (max-width: 1680px) {
-nav ul li.first {
-    margin-left: 0px;
-}
-nav ul li {
-    margin-left: 15px;
-}
+@media (max-width: 750px) {
+    nav ul a {
+        font-size:10px;
+    }
+    .pageUrl {
+        font-size: 10px;
+        margin: 50px 40px;
+    }
+    header {
+        font-size: 12px;
+    }
+    .subtitulo {
+        font-size: 10px;
+    }
 }
