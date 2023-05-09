@@ -111,7 +111,7 @@ header p {
 
 div.textoPrincipal div {
     display: inline-flex;
-    /* margin-top: 20px; */
+    margin: 20px 0px;
 }
 
 .numerosDeLinea {
