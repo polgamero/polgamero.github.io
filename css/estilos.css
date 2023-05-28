@@ -88,7 +88,7 @@ body {
 header p {
     font-size: 20px;
     width: 300px;
-    margin-left: 10px;
+    margin-left: 15px;
 }
 
 .barraSuperior {
@@ -156,7 +156,7 @@ div.textoPrincipal div {
     width: 40px;
     text-align: right;
     color: var(--texto-color-claro);
-    margin-right: 15px;
+    padding-right: 15px;
 }
 
 p.parrafoIzquierdo {
