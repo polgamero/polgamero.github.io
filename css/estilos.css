@@ -249,6 +249,7 @@ header p {
 }
 .fotoPerfil {
     width: 350px;
+    margin: 15px 0;
 }
 .numerosDeLinea {
     display: none;
@@ -268,8 +269,11 @@ p.parrafoDerecho {
     background-position: center;
     background-size: cover;
 }
+.formulario {
+    padding-top: 15px;
+}
 .formulario .mail {
-    width: 350px;
+    width: 330px;
 }
 .formulario iframe {
     width: 330px;
@@ -280,4 +284,6 @@ fieldset {
     padding: 10px;
     margin-left: 0;
 }
+.contenedorIframe {
+    margin: 25px 5px;
 }
