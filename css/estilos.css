@@ -240,14 +240,25 @@ fieldset div {
 }
 
 @media (max-width: 670px) {
-body {
- font-size: 11px;
+body, .dropdown-item {
+ font-size: 9px;
+}
+header p {
+    font-size: 18px;
+    width: 270px;
+}
+.fotoPerfil {
+    width: 350px;
+}
+.numerosDeLinea {
+    display: none;
 }
 p.parrafoIzquierdo {
-    width: 380px;
+    width: 350px;
+    padding-left: 15px;
 }
-
 p.parrafoDerecho {
-    width: 380px;
+    width: 350px;
+    padding-left: 15px;
 }
 }
