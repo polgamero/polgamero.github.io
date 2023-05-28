@@ -238,3 +238,16 @@ fieldset div {
     width: 220px;
     padding: 10px;
 }
+
+@media (max-width: 670px) {
+body {
+ font-size: 11px;
+}
+p.parrafoIzquierdo {
+    width: 380px;
+}
+
+p.parrafoDerecho {
+    width: 380px;
+}
+}
