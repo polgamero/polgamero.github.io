@@ -1,16 +1,27 @@
 /* importo fuentes de google */
 @import url('https://fonts.googleapis.com/css2?family=Castoro&family=Libre+Barcode+39+Text&family=Press+Start+2P&family=VT323&display=swap');
 
+/* defino variables para los colores */
+:root {
+    --barra-y-footer: #181818; /* Colores del header y footer */
+    --texto-color-oscuro:  #008F11; /* Color del texto oscuro */
+    --texto-color-claro: #2eff47; /* Color del texto claro */
+    --color-contenedor: #1f1f1f; /* Color del fondo de la ventana */
+    --color-body: #060606; /* Color del resto de la pantalla */
+}
 
 /* css reset */
 * {
     margin: 0;
     padding: 0;
     font-family: 'Press Start 2P', cursive, 'VT323', monospace, 'Castoro', serif;
-    color: #008F11;
+    color: var(--texto-color-oscuro);
     box-sizing: border-box;
 }
 
+p {
+    margin-bottom: 0;
+}
 /* personalizo la barra lateral */
 ::-webkit-scrollbar {
     width: 10px;
@@ -19,18 +30,50 @@
     background: #282828; 
 }
 ::-webkit-scrollbar-thumb {
-    background: #008F11; 
+    background: var(--texto-color-oscuro);
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #2eff47; 
+    background: var(--texto-color-claro);
 }
 
 /* estilos de mi página web */
 body {
-    background-color: black;
+    background-color: var(--color-body);
     position: relative;
     min-height: 100vh;
-    padding-bottom: 100px;
+}
+
+.container-fluid {
+    max-width: 1500px;
+}
+
+.custom-toggler .navbar-toggler-icon {
+    background-image: url(
+"data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba(0, 128, 0, 0.8)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 8h24M4 16h24M4 24h24'/%3E%3C/svg%3E");
+}
+
+.custom-toggler.navbar-toggler {
+    border-color: var(--texto-color-oscuro);
+}
+
+.navbar {
+    height: 100%;
+}
+
+.nav-link {
+    margin-left: 40px;
+}
+
+.dropdown-menu {
+    background-color: var(--color-contenedor);
+}
+
+.nav-link, .navbar-nav .nav-link.show, .nav-link:focus, .dropdown-item {
+    color: var(--texto-color-oscuro);
+}
+
+.nav-link:hover, .nav-link.active, .nav-link:focus:hover {
+    color: var(--texto-color-claro);
 }
 
 .fotoPerfil {
@@ -42,24 +85,6 @@ body {
     width: 50px;
 }
 
-nav ul {
-    list-style:none;
-    display:inline-flex;
-}
-
-nav ul li.first {
-    margin-left: 180px;
-}
-
-nav ul li {
-    margin-left: 55px;
-}
-
-nav a {
-    font-size: 18px;
-    text-decoration: none;
-}
-
 header p {
     font-size: 20px;
     width: 300px;
@@ -67,25 +92,35 @@ header p {
 }
 
 .barraSuperior {
-    width: 100%;
-    height: 112px;
-    left: 0px;
-    top: 0px;
-    padding-left: 10px;
-    background-color: #2F1B26;
-    display:inline-flex;
-    box-sizing: border-box;
-    align-items: center;
+    background-color: var(--barra-y-footer);
 }
 
 .subtitulo {
-    color: #00FF41;
+    color: var(--texto-color-claro);
     font-size: 16px;
-    margin-top: 10px;
 }
 
 .mainContainer {
     text-align: center;
+    background-color: var(--color-contenedor);
+}
+
+.contenedorIframe {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    margin: 50px 50px;
+    padding-top: 56.25%; /* 16:9 Aspect Ratio (divide 9 by 16 = 0.5625) */
+}
+
+.responsiveIframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .mainContainer.contacto {
@@ -98,7 +133,6 @@ header p {
 
 .formulario {
     text-align: left;
-    padding-left: 300px;
 }
 
 .formulario .mail {
@@ -121,7 +155,7 @@ div.textoPrincipal div {
 .numerosDeLinea {
     width: 40px;
     text-align: right;
-    color: #00FF41;
+    color: var(--texto-color-claro);
     margin-right: 15px;
 }
 
@@ -136,29 +170,22 @@ p.parrafoDerecho {
 }
 
 .footerContainer {
-    position: absolute;
-    padding: 10px 0px;
     text-align: center;
-    background-color: #1d0d16;
-    width: 100%;
-    bottom: 0px;
+    background-color: var(--barra-y-footer);
 }
 
 .pageUrl {
     text-align: left;
-    margin-bottom: 40px;
-    margin-top: 15px;
-    margin-left: 110px;
     font-style: italic;
 }
 
 fieldset {
-    background-color: black;
-    height:350px;
+    background-color: var(--barra-y-footer);
+    height:380px;
     width: 440px;
     padding: 30px;
     font-family: 'Press Start 2P';
-    color: #008F11;
+    color: var(--texto-color-oscuro);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -173,7 +200,7 @@ fieldset div {
 }
 .botonEnviar{
     font-family: 'Press Start 2P';
-    color: #008F11;
+    color: var(--texto-color-oscuro);
     background-color: rgb(245, 245, 245);
     padding: 15px;
     cursor: pointer;
@@ -210,28 +237,4 @@ fieldset div {
 .cajaTexto {
     width: 220px;
     padding: 10px;
-}
-
-@media (max-width: 1350px) {
-.barraSuperior nav ul {
-    list-style:none;
-    display:block;
-    text-align: right;
-    position: absolute;
-    right: 20px;
-    top: 12px;
-}
-.formulario {
-    text-align: left;
-    padding-left: 30px;
-}
-}
-
-@media (max-width: 1680px) {
-nav ul li.first {
-    margin-left: 0px;
-}
-nav ul li {
-    margin-left: 15px;
-}
 }
