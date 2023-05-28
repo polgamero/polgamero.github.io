@@ -196,8 +196,8 @@ fieldset {
 fieldset div {
     display: flex;
     justify-content: space-between;
-
 }
+
 .botonEnviar{
     font-family: 'Press Start 2P';
     color: var(--texto-color-oscuro);
@@ -232,8 +232,8 @@ fieldset div {
     font-family:Arial, Helvetica, sans-serif;
     font-style: italic;
     color: rgba(0, 0, 0, 0.4);
-
 }
+
 .cajaTexto {
     width: 220px;
     padding: 10px;
@@ -245,7 +245,7 @@ body, .dropdown-item {
 }
 header p {
     font-size: 18px;
-    width: 270px;
+    width: 250px;
 }
 .fotoPerfil {
     width: 350px;
@@ -254,11 +254,30 @@ header p {
     display: none;
 }
 p.parrafoIzquierdo {
-    width: 350px;
+    width: 300px;
     padding-left: 15px;
 }
 p.parrafoDerecho {
-    width: 350px;
+    width: 300px;
     padding-left: 15px;
+}
+.mainContainer.contacto {
+    text-align: left;
+    background-image: url(../img/fondoContacto.png);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+}
+.formulario .mail {
+    width: 350px;
+}
+.formulario iframe {
+    width: 330px;
+    padding-bottom: 10px;
+}
+fieldset {
+    width: 330px;
+    padding: 10px;
+    margin-left: 0;
 }
 }
