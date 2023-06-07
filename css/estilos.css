@@ -77,12 +77,28 @@ body {
 }
 
 .fotoPerfil {
+    transition: all 1.2s;
+    transform: scale(1.0);
     width: 400px;
     margin-bottom: 30px;
 }
 
+.fotoPerfil:hover {
+    transition: all 0.2s;
+    transform: scale(1.1);
+    filter:brightness(1.15);
+}
+
 .banderas {
     width: 50px;
+    border: solid var(--color-body) 5px;
+    border-radius: 50%;
+}
+
+.banderas:hover {
+    transition: all 0.2s;
+    transform: scale(1.15);
+    filter:brightness(1.15);
 }
 
 header p {
@@ -139,8 +155,6 @@ header p {
     text-align: center;
     width: 600px;
     box-sizing: border-box;
-    /* border: 2px solid white; */
-    /* padding: 10px 0px; */
 }
 
 .mail p {
@@ -149,24 +163,21 @@ header p {
 
 div.textoPrincipal div {
     display: inline-flex;
-    margin: 20px 0px;
 }
 
 .numerosDeLinea {
-    width: 40px;
+    width: 60px;
     text-align: right;
     color: var(--texto-color-claro);
-    padding-right: 15px;
+    padding-right: 25px;
 }
 
 p.parrafoIzquierdo {
     text-align: left;
-    width: 550px;
 }
 
 p.parrafoDerecho {
     text-align: left;
-    width: 550px;
 }
 
 .footerContainer {
@@ -239,6 +250,79 @@ fieldset div {
     padding: 10px;
 }
 
+/* Estilos para tarjeta de idiomas que gira en eje Y */
+
+button {
+    background-color: rgba(213, 43, 23, 0);
+    height: 60px;
+    margin-right: 10px;
+    border:none;
+}
+
+.container1 {
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.card {
+    height: 450px;
+    width: 800px;
+    position: relative;
+    background-color: var(--color-contenedor);
+    border: none;
+}
+
+.cardFront,
+.cardBack {
+    /* height: 100%; */
+    padding: 1rem;
+    width: 100%;
+    position: absolute;
+    transition: transform 1.5s ease;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    background-color: var(--barra-y-footer);
+}
+.cardBack {
+    transform: perspective(1000px) rotateY(180deg);
+}
+
+.cardBack.flipped {
+    transform: perspective(1000px) rotateY(0deg);
+}
+
+.cardFront {
+    transform: perspective(1000px) rotateY(0deg);
+}
+
+.cardFront.flipped {
+    transform: perspective(1000px) rotateY(-180deg);
+}  
+
+.hidden {
+    display: none;
+}
+
+/* Comienzo de los media queries para ajustes específicos */
+
+@media (max-width: 836px) {
+body {
+    font-size: 12px;
+}
+.numerosDeLinea {
+    display: none;
+}
+p.parrafoIzquierdo {
+    width: 90%;
+    padding-left: 15px;
+}
+p.parrafoDerecho {
+    width: 90%;
+    padding-left: 15px;
+}
+}
+
 @media (max-width: 670px) {
 body, .dropdown-item {
     font-size: 9px;
@@ -251,15 +335,10 @@ header p {
     width: 350px;
     margin: 15px 0;
 }
-.numerosDeLinea {
-    display: none;
-}
 p.parrafoIzquierdo {
-    width: 300px;
     padding-left: 15px;
 }
 p.parrafoDerecho {
-    width: 300px;
     padding-left: 15px;
 }
 .mainContainer.contacto {
@@ -286,5 +365,16 @@ fieldset {
 }
 .contenedorIframe {
     margin: 25px 5px;
+}
+}
+
+@media (max-width: 440px) {
+p.parrafoIzquierdo {
+    width: 100%;
+    padding-left: 15px;
+}
+p.parrafoDerecho {
+    width: 100%;
+    padding-left: 15px;
 }
 }
