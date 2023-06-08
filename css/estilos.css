@@ -306,7 +306,7 @@ button {
 
 /* Comienzo de los media queries para ajustes específicos */
 
-@media (max-width: 836px) {
+@media (max-width: 900px) {
 body {
     font-size: 12px;
 }

@@ -1,0 +1,385 @@
+/* importo fuentes de google */
+@import url('https://fonts.googleapis.com/css2?family=Castoro&family=Libre+Barcode+39+Text&family=Press+Start+2P&family=VT323&display=swap');
+
+/* defino variables SASS para los colores */
+
+ /* Colores del header y footer */
+$barra-y-footer: #181818;
+ /* Color del texto oscuro */
+$texto-color-oscuro:  #008F11;
+ /* Color del texto claro */
+$texto-color-claro: #2eff47;
+ /* Color del fondo de la ventana */
+$color-contenedor: #1f1f1f;
+/* Color del resto de la pantalla */
+$color-body: #060606;
+
+
+/* css reset */
+* {
+    margin: 0;
+    padding: 0;
+    font-family: 'Press Start 2P', cursive, 'VT323', monospace, 'Castoro', serif;
+    color: $texto-color-oscuro;
+    box-sizing: border-box;
+}
+
+p {
+    margin-bottom: 0;
+}
+/* personalizo la barra lateral */
+::-webkit-scrollbar {
+    width: 10px;
+}
+::-webkit-scrollbar-track {
+    background: #282828; 
+}
+::-webkit-scrollbar-thumb {
+    background: $texto-color-oscuro;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: $texto-color-claro;
+}
+
+/* estilos de mi página web */
+body {
+    background-color: $color-body;
+    position: relative;
+    min-height: 100vh;
+}
+
+.container-fluid {
+    max-width: 1500px;
+}
+
+.custom-toggler .navbar-toggler-icon {
+    background-image: url(
+"data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba(0, 128, 0, 0.8)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 8h24M4 16h24M4 24h24'/%3E%3C/svg%3E");
+}
+
+.custom-toggler.navbar-toggler {
+    border-color: $texto-color-oscuro;
+}
+
+.navbar {
+    height: 100%;
+}
+
+.nav-link {
+    margin-left: 40px;
+}
+
+.dropdown-menu {
+    background-color: $color-contenedor;
+}
+
+.nav-link, .navbar-nav .nav-link.show, .nav-link:focus, .dropdown-item {
+    color: $texto-color-oscuro;
+}
+
+.nav-link:hover, .nav-link.active, .nav-link:focus:hover {
+    color: $texto-color-claro;
+}
+
+.fotoPerfil {
+    transition: all 1.2s;
+    transform: scale(1.0);
+    width: 400px;
+    margin-bottom: 30px;
+}
+
+.fotoPerfil:hover {
+    transition: all 0.2s;
+    transform: scale(1.1);
+    filter:brightness(1.15);
+}
+
+.banderas {
+    width: 50px;
+    border: solid $color-body 5px;
+    border-radius: 50%;
+}
+
+.banderas:hover {
+    transition: all 0.2s;
+    transform: scale(1.15);
+    filter:brightness(1.15);
+}
+
+header p {
+    font-size: 20px;
+    width: 300px;
+    margin-left: 15px;
+}
+
+.barraSuperior {
+    background-color: $barra-y-footer;
+}
+
+.subtitulo {
+    color: $texto-color-claro;
+    font-size: 16px;
+}
+
+.mainContainer {
+    text-align: center;
+    background-color: $color-contenedor;
+}
+
+.contenedorIframe {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    margin: 50px 50px;
+    padding-top: 56.25%; /* 16:9 Aspect Ratio (divide 9 by 16 = 0.5625) */
+}
+
+.responsiveIframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.mainContainer.contacto {
+    text-align: left;
+    background-image: url(../img/fondoContacto.png);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size:cover;
+}
+
+.formulario {
+    text-align: left;
+}
+
+.formulario .mail {
+    text-align: center;
+    width: 600px;
+    box-sizing: border-box;
+}
+
+.mail p {
+    padding-bottom: 20px;
+}
+
+div.textoPrincipal div {
+    display: inline-flex;
+}
+
+.numerosDeLinea {
+    width: 60px;
+    text-align: right;
+    color: $texto-color-claro;
+    padding-right: 25px;
+}
+
+p.parrafoIzquierdo {
+    text-align: left;
+}
+
+p.parrafoDerecho {
+    text-align: left;
+}
+
+.footerContainer {
+    text-align: center;
+    background-color: $barra-y-footer;
+}
+
+.pageUrl {
+    text-align: left;
+    font-style: italic;
+}
+
+fieldset {
+    background-color: var(--barra-y-footer);
+    height:380px;
+    width: 440px;
+    padding: 30px;
+    font-family: 'Press Start 2P';
+    color: $texto-color-oscuro;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin-left: 75px;
+    margin-bottom: 10px;
+}
+
+fieldset div {
+    display: flex;
+    justify-content: space-between;
+}
+
+.botonEnviar{
+    font-family: 'Press Start 2P';
+    color: $texto-color-oscuro;
+    background-color: rgb(245, 245, 245);
+    padding: 15px;
+    cursor: pointer;
+    -webkit-border-radius: 28;
+    -moz-border-radius: 28;
+    border-radius: 28px;
+
+}
+.botonEnviar:hover {
+    background: #005316;
+
+}
+.botonBorrar{
+    font-family: 'Press Start 2P';
+    color: #c40000d7;
+    background-color: rgb(245, 245, 245);
+    padding: 15px;
+    cursor: pointer;
+    -webkit-border-radius: 28;
+    -moz-border-radius: 28;
+    border-radius: 28px;
+
+}
+.botonBorrar:hover {
+    background: #510000;
+
+}
+::placeholder {
+    font-family:Arial, Helvetica, sans-serif;
+    font-style: italic;
+    color: rgba(0, 0, 0, 0.4);
+}
+
+.cajaTexto {
+    width: 220px;
+    padding: 10px;
+}
+
+/* Estilos para tarjeta de idiomas que gira en eje Y */
+
+button {
+    background-color: rgba(213, 43, 23, 0);
+    height: 60px;
+    margin-right: 10px;
+    border:none;
+}
+
+.container1 {
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.card {
+    height: 450px;
+    width: 800px;
+    position: relative;
+    background-color: $color-contenedor;
+    border: none;
+}
+
+.cardFront,
+.cardBack {
+    /* height: 100%; */
+    padding: 1rem;
+    width: 100%;
+    position: absolute;
+    transition: transform 1.5s ease;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    background-color: $barra-y-footer;
+}
+.cardBack {
+    transform: perspective(1000px) rotateY(180deg);
+}
+
+.cardBack.flipped {
+    transform: perspective(1000px) rotateY(0deg);
+}
+
+.cardFront {
+    transform: perspective(1000px) rotateY(0deg);
+}
+
+.cardFront.flipped {
+    transform: perspective(1000px) rotateY(-180deg);
+}  
+
+.hidden {
+    display: none;
+}
+
+/* Comienzo de los media queries para ajustes específicos */
+
+@media (max-width: 915px) {
+body {
+    font-size: 12px;
+}
+.numerosDeLinea {
+    display: none;
+}
+p.parrafoIzquierdo {
+    width: 90%;
+    padding-left: 15px;
+}
+p.parrafoDerecho {
+    width: 90%;
+    padding-left: 15px;
+}
+}
+
+@media (max-width: 670px) {
+body, .dropdown-item {
+    font-size: 9px;
+}
+header p {
+    font-size: 18px;
+    width: 250px;
+}
+.fotoPerfil {
+    width: 350px;
+    margin: 15px 0;
+}
+p.parrafoIzquierdo {
+    padding-left: 15px;
+}
+p.parrafoDerecho {
+    padding-left: 15px;
+}
+.mainContainer.contacto {
+    text-align: left;
+    background-image: url(../img/fondoContacto.png);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+}
+.formulario {
+    padding-top: 15px;
+}
+.formulario .mail {
+    width: 330px;
+}
+.formulario iframe {
+    width: 330px;
+    padding-bottom: 10px;
+}
+fieldset {
+    width: 330px;
+    padding: 10px;
+    margin-left: 0;
+}
+.contenedorIframe {
+    margin: 25px 5px;
+}
+}
+
+@media (max-width: 440px) {
+p.parrafoIzquierdo {
+    width: 100%;
+    padding-left: 15px;
+}
+p.parrafoDerecho {
+    width: 100%;
+    padding-left: 15px;
+}
+}
