@@ -157,7 +157,7 @@ p.parrafoDerecho {
   font-style: italic; }
 
 fieldset {
-  background-color: var(--barra-y-footer);
+  background-color: #181818;
   height: 380px;
   width: 440px;
   padding: 30px;
