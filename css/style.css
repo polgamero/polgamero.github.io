@@ -1,17 +1,13 @@
 @charset "UTF-8";
 /* importo fuentes de google */
 @import url("https://fonts.googleapis.com/css2?family=Castoro&family=Libre+Barcode+39+Text&family=Press+Start+2P&family=VT323&display=swap");
-/* defino variables SASS para los colores */
-/* Colores del header y footer */
-/* Color del texto oscuro */
-/* Color del texto claro */
-/* Color del fondo de la ventana */
-/* Color del resto de la pantalla */
+/* defino una variable de SASS con todas las fuentes a utilizar */
+/* defino un map de SASS con todos los colores a utilizar */
 /* css reset */
 * {
   margin: 0;
   padding: 0;
-  font-family: 'Press Start 2P', cursive, 'VT323', monospace, 'Castoro', serif;
+  font-family: "Press Start 2P", cursive, "VT323", monospace, "Castoro", serif;
   color: #008F11;
   box-sizing: border-box; }
 
@@ -40,6 +36,7 @@ p {
 .container-fluid {
   max-width: 1500px; }
 
+/* Estilo personalizado del navbar implementado de bootstrap */
 .custom-toggler .navbar-toggler-icon {
   background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba(0, 128, 0, 0.8)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 8h24M4 16h24M4 24h24'/%3E%3C/svg%3E"); }
 
@@ -61,25 +58,29 @@ p {
 .nav-link:hover, .nav-link.active, .nav-link:focus:hover {
   color: #2eff47; }
 
+/* Utilizo un mixin de sass para el escalado de todos los elementos con animación */
 .fotoPerfil {
   transition: all 1.2s;
   transform: scale(1);
   width: 400px;
   margin-bottom: 30px; }
-
-.fotoPerfil:hover {
-  transition: all 0.2s;
-  transform: scale(1.1);
-  filter: brightness(1.15); }
+  .fotoPerfil:hover {
+    transition: all 0.2s;
+    transform: scale(1.1);
+    filter: brightness(1.15); }
 
 .banderas {
   width: 50px;
   border: solid #060606 5px;
   border-radius: 50%; }
+  .banderas:hover {
+    transition: all 0.2s;
+    transform: scale(1.1);
+    filter: brightness(1.15); }
 
-.banderas:hover {
+.logos:hover, .redes:hover {
   transition: all 0.2s;
-  transform: scale(1.15);
+  transform: scale(1.1);
   filter: brightness(1.15); }
 
 header p {
@@ -97,6 +98,12 @@ header p {
 .mainContainer {
   text-align: center;
   background-color: #1f1f1f; }
+  .mainContainer .contacto {
+    text-align: left;
+    background-image: url(../img/fondoContacto.png);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover; }
 
 .contenedorIframe {
   position: relative;
@@ -115,23 +122,14 @@ header p {
   width: 100%;
   height: 100%; }
 
-.mainContainer.contacto {
-  text-align: left;
-  background-image: url(../img/fondoContacto.png);
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: cover; }
-
 .formulario {
   text-align: left; }
-
-.formulario .mail {
-  text-align: center;
-  width: 600px;
-  box-sizing: border-box; }
-
-.mail p {
-  padding-bottom: 20px; }
+  .formulario .mail {
+    text-align: center;
+    width: 600px;
+    box-sizing: border-box; }
+    .formulario .mail p {
+      padding-bottom: 20px; }
 
 div.textoPrincipal div {
   display: inline-flex; }
@@ -142,10 +140,7 @@ div.textoPrincipal div {
   color: #2eff47;
   padding-right: 25px; }
 
-p.parrafoIzquierdo {
-  text-align: left; }
-
-p.parrafoDerecho {
+p.parrafoIzquierdo, p.parrafoDerecho {
   text-align: left; }
 
 .footerContainer {
@@ -168,10 +163,9 @@ fieldset {
   justify-content: space-between;
   margin-left: 75px;
   margin-bottom: 10px; }
-
-fieldset div {
-  display: flex;
-  justify-content: space-between; }
+  fieldset div {
+    display: flex;
+    justify-content: space-between; }
 
 ::placeholder {
   font-family: Arial, Helvetica, sans-serif;
@@ -214,37 +208,24 @@ button {
 
 .cardBack {
   transform: perspective(1000px) rotateY(180deg); }
-
-.cardBack.flipped {
-  transform: perspective(1000px) rotateY(0deg); }
+  .cardBack.flipped {
+    transform: perspective(1000px) rotateY(0deg); }
 
 .cardFront {
   transform: perspective(1000px) rotateY(0deg); }
-
-.cardFront.flipped {
-  transform: perspective(1000px) rotateY(-180deg); }
+  .cardFront.flipped {
+    transform: perspective(1000px) rotateY(-180deg); }
 
 .hidden {
   display: none; }
 
-.logos:hover {
-  transition: all 0.2s;
-  transform: scale(1.1);
-  filter: brightness(1.15); }
-
-.redes:hover {
-  transition: all 0.2s;
-  transform: scale(1.1);
-  filter: brightness(1.15); }
-
-/* Resaltado de los proyectos y aparición del título */
+/* Resaltado de los proyectos y aparición del título en hover */
 .clearfix::after {
   content: "";
   clear: both;
   display: table; }
 
 .wrapper {
-  padding-right: 20px;
   max-width: 600px;
   text-align: center;
   margin-left: auto;
@@ -273,8 +254,8 @@ button {
   transition: all .5s; }
 
 .marco {
+  margin-bottom: 10px;
   width: 100%;
-  margin: 10px;
   height: 400px;
   border: 3px solid #181818;
   overflow: hidden;
@@ -361,9 +342,7 @@ button {
   .fotoPerfil {
     width: 280px;
     margin: 15px 0; }
-  p.parrafoIzquierdo {
-    padding-left: 15px; }
-  p.parrafoDerecho {
+  p.parrafoIzquierdo, p.parrafoDerecho {
     padding-left: 15px; }
   .mainContainer.contacto {
     text-align: left;
@@ -373,15 +352,15 @@ button {
     background-size: cover; }
   .formulario {
     padding-top: 15px; }
-  .formulario .mail {
-    width: 330px; }
-  .formulario iframe {
-    width: 330px;
-    padding-bottom: 10px; }
-  fieldset {
-    width: 330px;
-    padding: 10px;
-    margin-left: 0; }
+    .formulario .mail {
+      width: 330px; }
+    .formulario iframe {
+      width: 330px;
+      padding-bottom: 10px; }
+    .formulario fieldset {
+      width: 330px;
+      padding: 10px;
+      margin-left: 0; }
   .contenedorIframe {
     margin: 25px 5px; }
   .redes {
@@ -392,10 +371,7 @@ button {
 @media (max-width: 440px) {
   body {
     padding: 0px; }
-  p.parrafoIzquierdo {
-    width: 100%;
-    padding-left: 15px; }
-  p.parrafoDerecho {
+  p.parrafoIzquierdo, p.parrafoDerecho {
     width: 100%;
     padding-left: 15px; }
   .logos {
