@@ -24,9 +24,6 @@ $color-body: #060606;
     box-sizing: border-box;
 }
 
-p {
-    margin-bottom: 0;
-}
 /* personalizo la barra lateral */
 ::-webkit-scrollbar {
     width: 10px;
@@ -46,6 +43,10 @@ body {
     background-color: $color-body;
     position: relative;
     min-height: 100vh;
+}
+
+p {
+    margin-bottom: 0;
 }
 
 .container-fluid {
@@ -214,36 +215,6 @@ fieldset div {
     justify-content: space-between;
 }
 
-.botonEnviar{
-    font-family: 'Press Start 2P';
-    color: $texto-color-oscuro;
-    background-color: rgb(245, 245, 245);
-    padding: 15px;
-    cursor: pointer;
-    -webkit-border-radius: 28;
-    -moz-border-radius: 28;
-    border-radius: 28px;
-
-}
-.botonEnviar:hover {
-    background: #005316;
-
-}
-.botonBorrar{
-    font-family: 'Press Start 2P';
-    color: #c40000d7;
-    background-color: rgb(245, 245, 245);
-    padding: 15px;
-    cursor: pointer;
-    -webkit-border-radius: 28;
-    -moz-border-radius: 28;
-    border-radius: 28px;
-
-}
-.botonBorrar:hover {
-    background: #510000;
-
-}
 ::placeholder {
     font-family:Arial, Helvetica, sans-serif;
     font-style: italic;
@@ -309,9 +280,124 @@ button {
     display: none;
 }
 
+.logos:hover {
+    transition: all 0.2s;
+    transform: scale(1.1);
+    filter:brightness(1.15);
+}
+
+.redes:hover {
+    transition: all 0.2s;
+    transform: scale(1.1);
+    filter:brightness(1.15);
+}
+
+/* Resaltado de los proyectos y aparición del título */
+
+.clearfix::after {
+    content: ""; 
+    clear: both;
+    display: table;
+}
+.wrapper {
+    padding-right: 20px;
+    max-width: 600px;
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+  }
+.proy-1 {
+    background-image: url(../img/proyecto1.png);
+}
+.proy-2 {
+    background-image: url(../img/proyecto2.png);
+}
+.proy-3 {
+    background-image: url(../img/proyecto3.png);
+}
+.child {
+    height: 100%;
+    width: 100%;
+    background-size: cover;
+    background-repeat: no-repeat;
+    -webkit-transition: all .5s;
+    -moz-transition: all .5s;
+    -o-transition: all .5s;
+    transition: all .5s;
+  }
+.marco {
+    width: 100%;
+    margin: 10px;
+    height: 400px;
+    border: 2px solid #eee;
+    overflow: hidden;
+    position: relative;
+    
+    display: inline-block;
+    cursor: pointer;
+}
+.fondo {
+    display: none;
+    font-size: 35px;
+    color: #ffffff !important;
+    font-family: sans-serif;
+    text-align: center;
+    margin: auto;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    height: 50px;
+    cursor: pointer;
+    text-decoration: none;
+}
+.marco:hover .child,
+.marco:focus .child {
+    -ms-transform: scale(1.2);
+    -moz-transform: scale(1.2);
+    -webkit-transform: scale(1.2);
+    -o-transform: scale(1.2);
+    transform: scale(1.2);
+}
+.marco:hover .child:before,
+.marco:focus .child:before {
+    display: block;
+}
+.marco:hover .fondo,
+.marco:focus .fondo {
+    display: block;
+}
+.child:before {
+    content: "";
+    display: none;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: rgba(52, 73, 94, 0.75);
+}
+
+/* */
+
 /* Comienzo de los media queries para ajustes específicos */
 
-@media (max-width: 915px) {
+@media (max-width: 1300px) {
+body {
+    padding-left: 40px;
+    padding-right: 40px;
+}
+.fotoPerfil {
+    width: 300px;
+    margin: 15px 0;
+}
+.logos{
+    width: 180px;
+}
+}
+
+@media (max-width: 982px) {
 body {
     font-size: 12px;
 }
@@ -326,10 +412,18 @@ p.parrafoDerecho {
     width: 90%;
     padding-left: 15px;
 }
+.logos{
+    width: 150px;
+}
 }
 
 @media (max-width: 670px) {
-body, .dropdown-item {
+body {
+    font-size: 9px;
+    padding-left: 20px;
+    padding-right: 20px;
+}
+.dropdown-item {
     font-size: 9px;
 }
 header p {
@@ -337,7 +431,7 @@ header p {
     width: 250px;
 }
 .fotoPerfil {
-    width: 350px;
+    width: 280px;
     margin: 15px 0;
 }
 p.parrafoIzquierdo {
@@ -371,9 +465,18 @@ fieldset {
 .contenedorIframe {
     margin: 25px 5px;
 }
+.redes{
+    width: 50px;
+}
+h3 {
+    font-size: 14px;
+}
 }
 
 @media (max-width: 440px) {
+body {
+    padding: 0px;
+}
 p.parrafoIzquierdo {
     width: 100%;
     padding-left: 15px;
@@ -381,5 +484,14 @@ p.parrafoIzquierdo {
 p.parrafoDerecho {
     width: 100%;
     padding-left: 15px;
+}
+.logos{
+    width: 60px;
+}
+.redes{
+    width: 40px;
+}
+h3 {
+    font-size: 10px;
 }
 }
