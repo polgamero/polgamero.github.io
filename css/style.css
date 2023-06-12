@@ -251,13 +251,16 @@ button {
   margin-right: auto; }
 
 .proy-1 {
-  background-image: url(../img/proyecto1.png); }
+  background-image: url(../img/proyecto1.png);
+  background-position: center; }
 
 .proy-2 {
-  background-image: url(../img/proyecto2.png); }
+  background-image: url(../img/proyecto2.png);
+  background-position: center; }
 
 .proy-3 {
-  background-image: url(../img/proyecto3.png); }
+  background-image: url(../img/proyecto3.png);
+  background-position: center; }
 
 .child {
   height: 100%;
@@ -273,7 +276,7 @@ button {
   width: 100%;
   margin: 10px;
   height: 400px;
-  border: 2px solid #eee;
+  border: 3px solid #181818;
   overflow: hidden;
   position: relative;
   display: inline-block;
@@ -281,9 +284,7 @@ button {
 
 .fondo {
   display: none;
-  font-size: 35px;
-  color: #ffffff !important;
-  font-family: sans-serif;
+  font-size: 20px;
   text-align: center;
   margin: auto;
   position: absolute;
@@ -319,7 +320,7 @@ button {
   position: absolute;
   top: 0;
   left: 0;
-  background-color: rgba(52, 73, 94, 0.75); }
+  background-color: rgba(10, 33, 0, 0.886); }
 
 /* */
 /* Comienzo de los media queries para ajustes específicos */
