@@ -366,7 +366,10 @@ button {
   .redes {
     width: 50px; }
   h3 {
-    font-size: 14px; } }
+    font-size: 14px; } 
+  .error {
+    width: 350px; }
+}
 
 @media (max-width: 440px) {
   body {
