@@ -1,0 +1,11 @@
+body {
+    background-color: black;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    color: azure;
+    font-size: 24px;
+    text-align: center;
+}
