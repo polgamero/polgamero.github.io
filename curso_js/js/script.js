@@ -1,14 +1,30 @@
 alert("Bienvenidos a la 1ra pre-entrega");
 alert("Planificador de gastos viaje a Europa");
 
-console.log("Inicio del Script");
-console.log("");
-let viajeros = Number(prompt ("Ingrese la cantidad de personas que viajan"));
+let viajeros = parseInt(prompt ("Ingrese la cantidad de personas que viajan"));
 
-while (viajeros <= 0 || viajeros > 5) {
-    alert("Elija una cantidad de viajeros de 1 a 5");
-    viajeros = parseInt(prompt ("Ingrese la cantidad de personas que viajan"));
-};
+while (isNaN(viajeros) || viajeros <= 0 || viajeros > 5) {
+    switch (viajeros) {
+        case 1:
+            viajeros = 1;
+            break;
+        case 2:
+            viajeros = 2;
+            break;
+        case 3:
+            viajeros = 3;
+            break;
+        case 4:
+            viajeros = 4;
+            break;
+        case 5:
+            viajeros = 5;
+            break;
+        default:
+        alert("Elija un número de viajeros entre 1 y 5");
+        viajeros = parseInt(prompt ("Ingrese la cantidad de personas que viajan"));
+    }
+}
 
 console.log("Número de viajeros", viajeros);
 
@@ -36,6 +52,8 @@ let dias = parseInt(prompt("Ingrese los días de duración del viaje"));
 let gastosPorDia = parseFloat(prompt("Ingrese una estimación de gastos diarios totales (en u$s)"));
 valorDolarBlue = parseFloat(prompt("Ingrese el valor actual del dólar blue"));
 
+imprimirPantalla = () => {return confirm("¿Desea imprimir los resultados en pantalla?")};
+
 planificador (dias, gastosPorDia,viajeros,valorDolarBlue);
 
 console.log("");
@@ -47,16 +65,11 @@ let date = new Date().toLocaleDateString("es-AR");
 console.log("Con un valor actual del dólar blue de ARS $" + valorDolarBlue + " a la fecha de hoy: " + date);
 console.log("");
 
-/*
-let numero1 = Number(prompt ("Ingrese un número"));
-let numero2 = Number(prompt ("Ingrese un número"));
-
-function sumar(x,y) {
-    return x + y;
-};
-
-console.log("Has ingresado los números " + numero1 + " y " + numero2);
-console.log("");
-console.log("El resultado de la suma de " + numero1 + " y " + numero2 + " es: " + sumar(numero1,numero2));
-console.log("");
-*/
+if (imprimirPantalla()) {
+document.write ('<br><div class="fin centrado"><u>Planificación de gastos del viaje</u></div><br>');
+document.write ('<div class="fin">Para un viaje a Europa de ' + dias + ' días y ' + viajeros + ' viajero/s, se estima un gasto total de: u$s ' + gastosTotales.toFixed(2) + ' y un gasto total por viajero de: u$s ' + gastosPorViajero.toFixed(2) + '.</div><br>');
+document.write ('<div class="fin">Dichos gastos en pesos argentinos son: ARS $ ' + gastoPesos.toFixed(2) + ' total y: ARS $ ' + gastosPorViajeroPesos.toFixed(2) + ' por viajero.' + '</div><br>');
+document.write ('<div class="fin">Con un valor actual del dólar blue de ARS $ ' + valorDolarBlue + ' a la fecha de hoy: ' + date + '.</div><br>');
+} else {
+    document.write ('<br><div class="fin">Podrá visualizar todos los resultados en la consola. Muchas gracias.</div><br>');
+}
