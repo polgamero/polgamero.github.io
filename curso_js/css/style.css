@@ -27,6 +27,11 @@ body {
     font-size: 20px;
 }
 
+.lista {
+    color: azure;
+    font-size: 20px;
+}
+
 .centrado {
     align-items: center;
     font-size: 24px;
