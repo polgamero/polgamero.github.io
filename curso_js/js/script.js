@@ -1,50 +1,81 @@
-alert("Bienvenidos a la 2da pre-entrega\nSe agregan objetos, arrays, métodos (join, push) y un constructor");
-alert("Planificador de gastos viaje a Europa");
+// Nuevo script
 
-let viajeros = parseInt(prompt ("Ingrese la cantidad de personas que viajan"));
+document.addEventListener("DOMContentLoaded", agregarViajero);
+const botonAgregar = document.getElementById("nuevoViajero");
+const formularioAgregar = document.getElementById("nuevoViajeroForm");
+const botonAceptar = document.getElementById("aceptar");
+const botonCancelar = document.getElementById("cancelar");
 
-while (isNaN(viajeros) || viajeros <= 0 || viajeros > 5) {
-    switch (viajeros) {
-        case 1:
-            viajeros = 1;
-            break;
-        case 2:
-            viajeros = 2;
-            break;
-        case 3:
-            viajeros = 3;
-            break;
-        case 4:
-            viajeros = 4;
-            break;
-        case 5:
-            viajeros = 5;
-            break;
-        default:
-        alert("Elija un número de viajeros entre 1 y 5");
-        viajeros = parseInt(prompt ("Ingrese la cantidad de personas que viajan"));
+let numeroViajeros = 0;
+let datosViajeros = [];
+
+class Viajeros {
+    constructor(nombre, apellido, telefono, mail) {
+        this.nombre = nombre;
+        this.apellido = apellido;
+        this.telefono = telefono;
+        this.mail = mail;
     }
 }
 
-console.log("Número de viajeros", viajeros);
+function abrirMenu() {
+    formularioAgregar.classList.remove("d-none");
+    botonAgregar.classList.add("d-none");
+
+    botonAceptar.addEventListener("click",aceptarViajero);
+    botonCancelar.addEventListener("click",cerrarMenu);
+};
+
+function cerrarMenu() {
+    formularioAgregar.classList.add("d-none");
+    botonAgregar.classList.remove("d-none");
+    document.getElementById("formularioViajero").reset();
+};
+
+function agregarViajero() {
+    let viajeros = document.getElementById("numeroViajeros");
+    viajeros.textContent = numeroViajeros;
+
+    botonAgregar.addEventListener("click",abrirMenu);
+};
+
+function aceptarViajero() {
+    formularioAgregar.classList.add("d-none");
+    botonAgregar.classList.remove("d-none");
+
+    let nombre = document.getElementById("nombre").value;
+    let apellido = document.getElementById("apellido").value;
+    let telefono = document.getElementById("telefono").value;
+    let mail = document.getElementById("email").value;
+    datosViajeros[numeroViajeros] = new Viajeros (nombre,apellido,telefono,mail);
+
+    numeroViajeros += 1;
+    let viajeros = document.getElementById("numeroViajeros");
+    viajeros.textContent = numeroViajeros;
+    document.getElementById("formularioViajero").reset();
+};
+
+/*
+let viajeros = parseInt(("Ingrese la cantidad de personas que viajan"));
 
 let viajero = [];
 
-/*
+
 for (let i = 0; i < (viajeros); i++) {
     viajeroNum = i + 1;
     viajero[i] = prompt ("Ingrese el nombre del viajero " + viajeroNum);
     console.log("El nombre del viajero " + viajeroNum + " es " + viajero[i]);
-}*/
+}
 
-/* Se mejora el anterior "for" para darle nombres a los viajeros, utilizando un do-while a continuación: */
+/* Se mejora el anterior "for" para darle nombres a los viajeros, utilizando un do-while a continuación: 
 
 let i = 0;
 do {
     i += 1
-    let unViajero = prompt ("Ingrese el nombre del viajero " + i);
+    let unViajero = ("Ingrese el nombre del viajero " + i);
     viajero.push(unViajero);
 } while (viajero.length != viajeros)
+
 
 let gastosTotales = 0;
 let gastosPorViajero = 0;
@@ -59,11 +90,11 @@ function planificador(dias,gastosPorDia,viajeros,valorDolarBlue) {
     gastosPorViajeroPesos = gastosPorViajero * valorDolarBlue;
 };
 
-let dias = parseInt(prompt("Ingrese los días de duración del viaje"));
-let gastosPorDia = parseFloat(prompt("Ingrese una estimación de gastos diarios totales (en u$s)"));
-valorDolarBlue = parseFloat(prompt("Ingrese el valor actual del dólar blue"));
+let dias = parseInt(("Ingrese los días de duración del viaje"));
+let gastosPorDia = parseFloat(("Ingrese una estimación de gastos diarios totales (en u$s)"));
+valorDolarBlue = parseFloat(("Ingrese el valor actual del dólar blue"));
 
-imprimirPantalla = () => {return confirm("¿Desea imprimir los resultados en pantalla?")};
+imprimirPantalla = () => {return ("¿Desea imprimir los resultados en pantalla?")};
 
 planificador (dias, gastosPorDia,viajeros,valorDolarBlue);
 
@@ -90,7 +121,7 @@ class Personas {
 }
 
 for (let i = 0; i < (viajeros); i++) {
-    persona[i] = new Personas(viajero[i],prompt("Ingresar edad de " + viajero[i]),prompt("Ingresar el teléfono de " + viajero[i]));
+    persona[i] = new Personas(viajero[i],("Ingresar edad de " + viajero[i]),("Ingresar el teléfono de " + viajero[i]));
     console.log(persona[i].nombre, persona[i].edad, persona[i].telefono);
 }
 
@@ -107,3 +138,4 @@ document.write ('<div class="lista">Viajero ' + viajeroNum + '- <u>Nombre:</u> '
 } else {
     document.write ('<br><div class="fin">Podrá visualizar todos los resultados en la consola. Muchas gracias.</div><br>');
 }
+*/
