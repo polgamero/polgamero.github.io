@@ -9,17 +9,33 @@ let idViajerosGuardado = [];
 let viajeros = document.getElementById("numeroViajeros");
 viajeros.textContent = numeroViajeros;
 
+const formulario = document.getElementById("formularioViajero");
+const ulDeViajeros = document.getElementById("listaViajeros");
+const divDeViajeros = document.getElementById("opcionesViajeros");
+
+// Botones formulario Viajeros
 const formularioAgregar = document.getElementById("nuevoViajeroForm");
 const botonAgregar = document.getElementById("agregar");
 const botonAceptar = document.getElementById("aceptar");
 const botonCancelar = document.getElementById("cancelar");
 const botonEliminar = document.getElementById("eliminar");
-const formulario = document.getElementById("formularioViajero");
-const errorNombre = document.getElementById("errorNombre");
-const errorApellido = document.getElementById("errorApellido");
-const errorTelefono = document.getElementById("errorTelefono");
-const errorMail = document.getElementById("errorMail");
-const ulDeViajeros = document.getElementById("listaViajeros");
+
+    // Errores formulario Viajeros
+    const errorNombre = document.getElementById("errorNombre");
+    const errorApellido = document.getElementById("errorApellido");
+    const errorTelefono = document.getElementById("errorTelefono");
+    const errorMail = document.getElementById("errorMail");
+
+// Botones formulario Gastos
+const formularioAgregarGasto = document.getElementById("nuevoGastoForm");
+const botonAgregarGasto = document.getElementById("agregarGasto");
+const botonAceptarGasto = document.getElementById("aceptar");
+const botonCancelarGasto = document.getElementById("cancelar");
+const botonEliminarGasto = document.getElementById("eliminar");
+
+    // Errores formulario Gastos
+    //
+    //
 
 // Carga del DOM y recuperación de localStorage
 document.addEventListener('DOMContentLoaded', function() {
@@ -59,17 +75,38 @@ switch (botonPresionado) {
             botonAgregar.innerText="Nuevo viajero";
             }, 1500);
         } else {
-            abrirMenu();
+            abrirMenu("viajero");
         };
         break;
     case "aceptar":
         aceptarViajero();
         break;
     case "cancelar":
-        cerrarMenu();
+        cerrarMenu("viajero");
         break;
     case "eliminar":
         eliminarViajero(event.target.attributes[1].nodeValue);
+        break;
+    case "agregarGasto":
+        if (numeroViajeros === 0) {
+            botonAgregarGasto.classList.add("btn-danger");
+            botonAgregarGasto.innerText="Agregue viajero";
+            setTimeout(function() {
+            botonAgregarGasto.classList.remove("btn-danger");
+            botonAgregarGasto.innerText="Nuevo Gasto";
+            }, 1500);
+        } else {
+            abrirMenu("gasto");
+        };
+        break;
+    case "aceptarGasto":
+        //
+        break;
+    case "cancelarGasto":
+        cerrarMenu("gasto");
+        break;
+    case "eliminarGasto":
+        //
         break;
     default:
         break;
@@ -86,19 +123,59 @@ class Viajeros {
     }
 }
 
-function abrirMenu() {
-    formularioAgregar.classList.remove("d-none");
-    botonAgregar.classList.add("d-none");
+function abrirMenu(menu) {
+    if (menu == "viajero") {
+        formularioAgregar.classList.remove("d-none");
+        botonAgregar.classList.add("d-none");
+        botonAgregarGasto.classList.add("d-none");
+    }
+    if (menu == "gasto") {
+        formularioAgregarGasto.classList.remove("d-none");
+        botonAgregarGasto.classList.add("d-none");
+        botonAgregar.classList.add("d-none");
+
+        divDeViajeros.innerHTML = "";
+
+        for (i=0; i < numeroViajeros; i++) {
+            const input = document.createElement("input");
+            const label = document.createElement("label");
+            const enter = document.createElement("br");
+            input.setAttribute("type","radio");
+            input.setAttribute("id",i);
+            input.setAttribute("name","Viajero");
+            input.setAttribute("value",i);
+            label.setAttribute("for",i);
+            label.classList.add("mx-2");
+            label.innerHTML = String(" " + datosViajeros[i].nombre + " " + datosViajeros[i].apellido);
+            divDeViajeros.appendChild(input);
+            divDeViajeros.appendChild(label);
+            divDeViajeros.appendChild(enter);
+            /*
+            <input type="radio" id="html" name="fav_language" value="HTML">
+            <label for="html">datosViajeros[i].nombre + "" + datosViajeros[i].apellido </label>
+            */
+        }
+    }
 };
 
-function cerrarMenu() {
-    formularioAgregar.classList.add("d-none");
-    botonAgregar.classList.remove("d-none");
-    errorNombre.classList.remove("d-block");
-    errorApellido.classList.remove("d-block");
-    errorTelefono.classList.remove("d-block");
-    errorMail.classList.remove("d-block");
-    formulario.reset();
+function cerrarMenu(menu) {
+    if (menu == "viajero") {
+        formularioAgregar.classList.add("d-none");
+        botonAgregar.classList.remove("d-none");
+        botonAgregarGasto.classList.remove("d-none");
+        errorNombre.classList.remove("d-block");
+        errorApellido.classList.remove("d-block");
+        errorTelefono.classList.remove("d-block");
+        errorMail.classList.remove("d-block");
+        formulario.reset();
+    }
+    if (menu == "gasto") {
+        formularioAgregarGasto.classList.add("d-none");
+        botonAgregarGasto.classList.remove("d-none");
+        botonAgregar.classList.remove("d-none");
+        // Ocultar errores
+        formulario.reset();
+    }
 };
 
 document.getElementById("email").onkeydown = function(e) {
@@ -108,6 +185,8 @@ document.getElementById("email").onkeydown = function(e) {
 }
 
 function aceptarViajero() {
+
+    botonAgregarGasto.classList.remove("d-none");
 
     let nombre = document.getElementById("nombre").value;
     let apellido = document.getElementById("apellido").value;
@@ -138,7 +217,7 @@ function aceptarViajero() {
         localStorage.setItem("idViajerosGuardado",JSON.stringify(idViajerosGuardado));
         localStorage.setItem("viajerosGuardados",numeroViajeros);
         localStorage.setItem("datosViajerosGuardados",JSON.stringify(datosViajeros));
-        cerrarMenu();
+        cerrarMenu("viajero");
     }
 };
 

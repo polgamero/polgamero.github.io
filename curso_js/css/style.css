@@ -53,3 +53,7 @@ body {
 .pointer {
     cursor: pointer;
 }
+
+::placeholder {
+    font-style: italic;
+}
