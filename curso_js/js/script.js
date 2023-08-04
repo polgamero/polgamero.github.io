@@ -158,7 +158,7 @@ function agregarViajeroALista(viajero,idViajero) {
     span.classList.add("text-success", "pointer");
     span.setAttribute("name",idViajero);
     span.setAttribute("id","eliminar");
-    span.innerText="x";
+    span.innerText="❌";
 
     li.appendChild(div);
     div.appendChild(h6);
