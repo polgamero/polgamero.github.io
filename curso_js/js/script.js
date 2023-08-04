@@ -1,16 +1,84 @@
 // Nuevo script
 
-document.addEventListener("DOMContentLoaded", agregarViajero);
-const botonAgregar = document.getElementById("nuevoViajero");
-const formularioAgregar = document.getElementById("nuevoViajeroForm");
-const botonAceptar = document.getElementById("aceptar");
-const botonCancelar = document.getElementById("cancelar");
+document.body.addEventListener("click", manejarBotones);
 
 let numeroViajeros = 0;
+let idViajeros = 0;
 let datosViajeros = [];
+let idViajerosGuardado = [];
+let viajeros = document.getElementById("numeroViajeros");
+viajeros.textContent = numeroViajeros;
+
+const formularioAgregar = document.getElementById("nuevoViajeroForm");
+const botonAgregar = document.getElementById("agregar");
+const botonAceptar = document.getElementById("aceptar");
+const botonCancelar = document.getElementById("cancelar");
+const botonEliminar = document.getElementById("eliminar");
+const formulario = document.getElementById("formularioViajero");
+const errorNombre = document.getElementById("errorNombre");
+const errorApellido = document.getElementById("errorApellido");
+const errorTelefono = document.getElementById("errorTelefono");
+const errorMail = document.getElementById("errorMail");
+const ulDeViajeros = document.getElementById("listaViajeros");
+
+// Carga del DOM y recuperación de localStorage
+document.addEventListener('DOMContentLoaded', function() {
+    if (localStorage.getItem("viajerosGuardados") != null) {
+    numeroViajeros = Number(localStorage.getItem("viajerosGuardados"));
+    viajeros.textContent = numeroViajeros;
+    }
+
+    if (localStorage.getItem("idViajeros") != null) {
+        idViajeros = Number(localStorage.getItem("idViajeros"));
+    }
+
+    if (localStorage.getItem("idViajerosGuardado") != null) {
+        idViajerosGuardado = JSON.parse(localStorage.getItem("idViajerosGuardado"));
+    }
+
+    if (localStorage.getItem("datosViajerosGuardados") != null) {
+    datosViajeros = JSON.parse(localStorage.getItem("datosViajerosGuardados"));
+    }
+    
+    for (var i=0 ; i < numeroViajeros; i++) {
+    agregarViajeroALista(datosViajeros[i],idViajerosGuardado[i]);
+    }
+});
+
+// Función que maneja todos los botones
+function manejarBotones(event) {
+const botonPresionado = event.target.id;
+
+switch (botonPresionado) {
+    case "agregar":
+        if (numeroViajeros === 5) {
+            botonAgregar.classList.add("btn-danger");
+            botonAgregar.innerText="Máximo alcanzado";
+            setTimeout(function() {
+            botonAgregar.classList.remove("btn-danger");
+            botonAgregar.innerText="Nuevo viajero";
+            }, 1500);
+        } else {
+            abrirMenu();
+        };
+        break;
+    case "aceptar":
+        aceptarViajero();
+        break;
+    case "cancelar":
+        cerrarMenu();
+        break;
+    case "eliminar":
+        eliminarViajero(event.target.attributes[1].nodeValue);
+        break;
+    default:
+        break;
+}
+}
 
 class Viajeros {
-    constructor(nombre, apellido, telefono, mail) {
+    constructor(Id, nombre, apellido, telefono, mail) {
+        this.Id = Id;
         this.nombre = nombre;
         this.apellido = apellido;
         this.telefono = telefono;
@@ -21,61 +89,118 @@ class Viajeros {
 function abrirMenu() {
     formularioAgregar.classList.remove("d-none");
     botonAgregar.classList.add("d-none");
-
-    botonAceptar.addEventListener("click",aceptarViajero);
-    botonCancelar.addEventListener("click",cerrarMenu);
 };
 
 function cerrarMenu() {
     formularioAgregar.classList.add("d-none");
     botonAgregar.classList.remove("d-none");
-    document.getElementById("formularioViajero").reset();
-};
-
-function agregarViajero() {
-    let viajeros = document.getElementById("numeroViajeros");
-    viajeros.textContent = numeroViajeros;
-
-    botonAgregar.addEventListener("click",abrirMenu);
+    errorNombre.classList.remove("d-block");
+    errorApellido.classList.remove("d-block");
+    errorTelefono.classList.remove("d-block");
+    errorMail.classList.remove("d-block");
+    formulario.reset();
 };
 
 function aceptarViajero() {
-    formularioAgregar.classList.add("d-none");
-    botonAgregar.classList.remove("d-none");
 
     let nombre = document.getElementById("nombre").value;
     let apellido = document.getElementById("apellido").value;
     let telefono = document.getElementById("telefono").value;
     let mail = document.getElementById("email").value;
-    datosViajeros[numeroViajeros] = new Viajeros (nombre,apellido,telefono,mail);
 
-    numeroViajeros += 1;
-    let viajeros = document.getElementById("numeroViajeros");
-    viajeros.textContent = numeroViajeros;
-    document.getElementById("formularioViajero").reset();
+    if (nombre == "" || apellido == "" || telefono == "" || mail == "") {
+        if (nombre == ""){
+            errorNombre.classList.add("d-block");
+        }
+        if (apellido == ""){
+            errorApellido.classList.add("d-block");
+        }
+        if (telefono == ""){
+            errorTelefono.classList.add("d-block");
+        }
+        if (mail == ""){
+            errorMail.classList.add("d-block");
+        }
+    } else {
+        datosViajeros[numeroViajeros] = new Viajeros (idViajeros,nombre,apellido,telefono,mail);
+        agregarViajeroALista(datosViajeros[numeroViajeros],datosViajeros[numeroViajeros].Id);
+        idViajerosGuardado.push(datosViajeros[numeroViajeros].Id);
+        idViajeros += 1;
+        numeroViajeros += 1;
+        viajeros.textContent = numeroViajeros;
+        localStorage.setItem("idViajeros",idViajeros);
+        localStorage.setItem("idViajerosGuardado",JSON.stringify(idViajerosGuardado));
+        localStorage.setItem("viajerosGuardados",numeroViajeros);
+        localStorage.setItem("datosViajerosGuardados",JSON.stringify(datosViajeros));
+        cerrarMenu();
+    }
+};
+
+function agregarViajeroALista(viajero,idViajero) {
+    const li = document.createElement("li");
+    li.classList.add("list-group-item","d-flex","justify-content-between","1h-sm");
+    li.setAttribute("id",idViajero);
+
+    const div = document.createElement("div");
+    div.classList.add("text-success");
+
+    const h6 = document.createElement("h6");
+    h6.classList.add("my-0");
+    h6.innerText=viajero.nombre + " " + viajero.apellido;
+
+    const small = document.createElement("small");
+    small.innerText=viajero.mail;
+
+    const small1 = document.createElement("small");
+    small1.innerText="+54 " + viajero.telefono;
+
+    const span = document.createElement("span");
+    span.classList.add("text-success", "pointer");
+    span.setAttribute("name",idViajero);
+    span.setAttribute("id","eliminar");
+    span.innerText="x";
+
+    li.appendChild(div);
+    div.appendChild(h6);
+    div.appendChild(small);
+    li.appendChild(small1);
+    li.appendChild(span);
+    ulDeViajeros.appendChild(li);
+}
+
+/*
+<li class="list-group-item d-flex justify-content-between 1h-sm">
+<div class="text-success">
+<h6 class="my-0">Jorge Luis García</h6>
+<small>mail@ejemplo.com</small>    
+</div>
+<small>+54 11 1564 7894</small>
+<span class="" id="eliminar">x</span>
+</li>
+*/
+
+function eliminarViajero(id) {
+console.log("Se elimina el viajero " + id);
+
+const idRemover = datosViajeros.findIndex(i => {
+    return i.Id == id;
+})
+
+datosViajeros.splice(idRemover,1);
+
+const li = document.getElementById(id);
+ulDeViajeros.removeChild(li);
+numeroViajeros -= 1;
+viajeros.textContent = numeroViajeros;
+
+idViajerosGuardado.splice(idRemover,1);
+
+localStorage.setItem("idViajerosGuardado",JSON.stringify(idViajerosGuardado));
+localStorage.setItem("viajerosGuardados",numeroViajeros);
+localStorage.setItem("datosViajerosGuardados",JSON.stringify(datosViajeros));
 };
 
 /*
-let viajeros = parseInt(("Ingrese la cantidad de personas que viajan"));
-
-let viajero = [];
-
-
-for (let i = 0; i < (viajeros); i++) {
-    viajeroNum = i + 1;
-    viajero[i] = prompt ("Ingrese el nombre del viajero " + viajeroNum);
-    console.log("El nombre del viajero " + viajeroNum + " es " + viajero[i]);
-}
-
-/* Se mejora el anterior "for" para darle nombres a los viajeros, utilizando un do-while a continuación: 
-
-let i = 0;
-do {
-    i += 1
-    let unViajero = ("Ingrese el nombre del viajero " + i);
-    viajero.push(unViajero);
-} while (viajero.length != viajeros)
-
 
 let gastosTotales = 0;
 let gastosPorViajero = 0;
@@ -101,41 +226,4 @@ planificador (dias, gastosPorDia,viajeros,valorDolarBlue);
 enPesos = gastoPesos.toLocaleString('es-AR');
 enPesosPorViajero = gastosPorViajeroPesos.toLocaleString('es-AR');
 
-console.log("");
-console.log("Para un viaje a Europa de " + dias + " días y " + viajeros + " viajero/s (" + viajero.join(", ") + "), se estima un gasto total de: $" + gastosTotales.toFixed(2) + " y un gasto total por viajero de: $" + gastosPorViajero.toFixed(2))
-console.log("");
-console.log("Dichos gastos en pesos argentinos son: ARS $" + enPesos + " total y: ARS $" + enPesosPorViajero + " por viajero.")
-console.log("");
-let date = new Date().toLocaleDateString("es-AR");
-console.log("Con un valor actual del dólar blue de ARS $" + valorDolarBlue + " a la fecha de hoy: " + date);
-console.log("");
-
-let persona = []
-
-class Personas {
-    constructor(nombre, edad, telefono) {
-        this.nombre = nombre;
-        this.edad = edad;
-        this.telefono = telefono;
-    }
-}
-
-for (let i = 0; i < (viajeros); i++) {
-    persona[i] = new Personas(viajero[i],("Ingresar edad de " + viajero[i]),("Ingresar el teléfono de " + viajero[i]));
-    console.log(persona[i].nombre, persona[i].edad, persona[i].telefono);
-}
-
-if (imprimirPantalla()) {
-document.write ('<br><div class="fin centrado"><u>Planificación de gastos del viaje</u></div><br>');
-document.write ('<div class="fin">Para un viaje a Europa de ' + dias + ' días y ' + viajeros + ' viajero/s (' + viajero.join(", ") + '), se estima un gasto total de: u$s ' + gastosTotales.toFixed(2) + ' y un gasto total por viajero de: u$s ' + gastosPorViajero.toFixed(2) + '.</div><br>');
-document.write ('<div class="fin">Dichos gastos en pesos argentinos son: ARS $ ' + enPesos + ' total y: ARS $ ' + enPesosPorViajero + ' por viajero.' + '</div><br>');
-document.write ('<div class="fin">Con un valor actual del dólar blue de ARS $ ' + valorDolarBlue + ' a la fecha de hoy: ' + date + '.</div><br>');
-document.write ('<br><div class="fin">Detalle de los viajeros:</div><br>');
-for (let i = 0; i < (viajeros); i++) {
-let viajeroNum = i + 1;
-document.write ('<div class="lista">Viajero ' + viajeroNum + '- <u>Nombre:</u> ' + persona[i].nombre + '. <u>Edad:</u> ' + persona[i].edad + '. <u>Teléfono:</u> ' + persona[i].telefono + '</div><br>');
-}
-} else {
-    document.write ('<br><div class="fin">Podrá visualizar todos los resultados en la consola. Muchas gracias.</div><br>');
-}
 */

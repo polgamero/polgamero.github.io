@@ -48,40 +48,32 @@
             </div>
         
             <div class="row g-5">
-            <div class="col-md-5 col-lg-4 order-md-last">
+            <div class="col-md-6 col-lg-5 order-md-last">
                 <h4 class="d-flex justify-content-between align-items-center mb-3">
                 <span class="text-primary">Viajeros</span>
-                <span class="badge bg-primary rounded-pill" id="numeroViajeros">3</span>
+                <span class="badge bg-primary rounded-pill" id="numeroViajeros"></span>
                 </h4>
-                <ul class="list-group mb-3">
-                <li class="list-group-item d-flex justify-content-between 1h-sm">
-                    <div class="text-success">
-                    <h6 class="my-0">Jorge Luis García</h6>
-                    <small>mail@ejemplo.com</small>    
-                    </div>
-                    <small>+54 11 1564 7894</small>
-                    <span class="text-success pointer">x</span>
-                </li>
+                <ul class="list-group mb-3" id="listaViajeros">
                 </ul>
             </div>
-            <div class="col-md-7 col-lg-8">
-                <h4 class="mb-3">Agregar viajero</h4>
+            <div class="col-md-6 col-lg-7">
+                <h4 class="mb-3">Viajeros</h4>
                 <form class="needs-validation" novalidate="" id="formularioViajero">
-                    <button class="btn btn-success rounded-pill px-3" type="button" id="nuevoViajero">Nuevo viajero</button>
+                    <button class="btn btn-success rounded-pill px-3" type="button" id="agregar">Nuevo viajero</button>
                     <div class="row g-3 d-none" id="nuevoViajeroForm">
 
                         <div class="col-sm-6">
                             <label for="firstName" class="form-label">Nombre</label>
-                            <input type="text" class="form-control" id="nombre" placeholder="" value="" required="" maxlength="15">
-                            <div class="invalid-feedback">
+                            <input type="text" class="form-control" id="nombre" placeholder="" value="" required="" maxlength="14">
+                            <div class="invalid-feedback" id="errorNombre">
                                 El nombre es un campo requerido.
                             </div>
                         </div>
             
                         <div class="col-sm-6">
                             <label for="lastName" class="form-label">Apellido</label>
-                            <input type="text" class="form-control" id="apellido" placeholder="" value="" required="" maxlength="15">
-                            <div class="invalid-feedback">
+                            <input type="text" class="form-control" id="apellido" placeholder="" value="" required="" maxlength="14">
+                            <div class="invalid-feedback" id="errorApellido">
                                 El apellido es un campo requerido.
                             </div>
                         </div>
@@ -91,7 +83,7 @@
                             <div class="input-group has-validation">
                                 <span class="input-group-text">+54</span>
                                 <input type="text" class="form-control" id="telefono" placeholder="11 1234 4567" required="" maxlength="12">
-                            <div class="invalid-feedback">
+                            <div class="invalid-feedback" id="errorTelefono">
                                 El teléfono es un campo requerido.
                             </div>
                             </div>
@@ -99,8 +91,8 @@
             
                         <div class="col-12">
                             <label for="email" class="form-label">Email <span class="text-body-secondary">(Optional)</span></label>
-                            <input type="email" class="form-control" id="email" placeholder="mail@ejemplo.com" maxlength="30">
-                            <div class="invalid-feedback">
+                            <input type="email" class="form-control" id="email" placeholder="mail@ejemplo.com" maxlength="26">
+                            <div class="invalid-feedback" id="errorMail">
                                 Por favor, ingresar un email válido.
                             </div>
                         </div>
