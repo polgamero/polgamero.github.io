@@ -101,6 +101,12 @@ function cerrarMenu() {
     formulario.reset();
 };
 
+document.getElementById("email").onkeydown = function(e) {
+    if (e.key === "Enter") {
+        aceptarViajero();
+    };
+}
+
 function aceptarViajero() {
 
     let nombre = document.getElementById("nombre").value;
@@ -180,7 +186,6 @@ function agregarViajeroALista(viajero,idViajero) {
 */
 
 function eliminarViajero(id) {
-console.log("Se elimina el viajero " + id);
 
 const idRemover = datosViajeros.findIndex(i => {
     return i.Id == id;
