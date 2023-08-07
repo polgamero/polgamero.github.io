@@ -75,3 +75,9 @@ body {
     border-radius: 10px;
     text-align: center;
 }
+
+.aviso {
+    color: red;
+    font-size: small;
+    text-align: center;
+}

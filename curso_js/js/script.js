@@ -46,7 +46,7 @@ const botonEliminarGasto = document.getElementById("eliminarGasto");
     const errorViajero = document.getElementById("errorViajero");
     const errorMonto = document.getElementById("errorMonto");
     const errorComentario = document.getElementById("errorComentario");
-
+    const aviso = document.getElementById("aviso");
 
 /* MÓDULO DE CARGA DEL DOM Y RECUPERACIÓN DE LOCALSTORAGE */
 
@@ -105,15 +105,24 @@ const botonPresionado = event.target.id;
 
 switch (botonPresionado) {
     case "agregar":
-        if (numeroViajeros === 5) {
+        if (datosGastos != "") {
             botonAgregar.classList.add("btn-danger");
-            botonAgregar.innerText="Máximo alcanzado";
+            botonAgregar.innerText="Eliminar Gastos";
             setTimeout(function() {
             botonAgregar.classList.remove("btn-danger");
             botonAgregar.innerText="Nuevo viajero";
             }, 1500);
         } else {
-            abrirMenu("viajero");
+            if (numeroViajeros === 5) {
+                botonAgregar.classList.add("btn-danger");
+                botonAgregar.innerText="Máximo alcanzado";
+                setTimeout(function() {
+                botonAgregar.classList.remove("btn-danger");
+                botonAgregar.innerText="Nuevo viajero";
+                }, 1500);
+            } else {
+                abrirMenu("viajero");
+            };
         };
         break;
     case "aceptar":
@@ -189,6 +198,13 @@ function abrirMenu(menu) {
         botonAgregarGasto.classList.add("d-none");
     }
     if (menu == "gasto") {
+
+        if (datosGastos == "") {
+            aviso.classList.remove("d-none");
+        } else {
+            aviso.classList.add("d-none");
+        }
+
         formularioAgregarGasto.classList.remove("d-none");
         botonAgregarGasto.classList.add("d-none");
         botonAgregar.classList.add("d-none");
@@ -228,7 +244,9 @@ function cerrarMenu(menu) {
         formularioAgregarGasto.classList.add("d-none");
         botonAgregarGasto.classList.remove("d-none");
         botonAgregar.classList.remove("d-none");
-        // Ocultar errores
+        errorViajero.classList.remove("d-block");
+        errorMonto.classList.remove("d-block");
+        errorComentario.classList.remove("d-block");
         formulario.reset();
     }
 };
