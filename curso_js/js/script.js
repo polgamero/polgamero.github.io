@@ -1,4 +1,4 @@
-// Nuevo script
+/* INICIO SCRIPT 3ra ENTREGA CODERHOUSE - PABLO GAMERO -*/
 
 document.body.addEventListener("click", manejarBotones);
 
@@ -6,12 +6,20 @@ let numeroViajeros = 0;
 let idViajeros = 0;
 let datosViajeros = [];
 let idViajerosGuardado = [];
+
+let numeroGastos = 0;
+let idGastos = 0;
+let datosGastos = [];
+let idGastosGuardado = [];
+
 let viajeros = document.getElementById("numeroViajeros");
 viajeros.textContent = numeroViajeros;
 
 const formulario = document.getElementById("formularioViajero");
 const ulDeViajeros = document.getElementById("listaViajeros");
 const divDeViajeros = document.getElementById("opcionesViajeros");
+
+const ulDeGastos = document.getElementById("listaGastos");
 
 // Botones formulario Viajeros
 const formularioAgregar = document.getElementById("nuevoViajeroForm");
@@ -25,20 +33,27 @@ const botonEliminar = document.getElementById("eliminar");
     const errorApellido = document.getElementById("errorApellido");
     const errorTelefono = document.getElementById("errorTelefono");
     const errorMail = document.getElementById("errorMail");
+    const errorEliminar = document.getElementById("errorEliminar");
 
 // Botones formulario Gastos
 const formularioAgregarGasto = document.getElementById("nuevoGastoForm");
 const botonAgregarGasto = document.getElementById("agregarGasto");
-const botonAceptarGasto = document.getElementById("aceptar");
-const botonCancelarGasto = document.getElementById("cancelar");
-const botonEliminarGasto = document.getElementById("eliminar");
+const botonAceptarGasto = document.getElementById("aceptarGasto");
+const botonCancelarGasto = document.getElementById("cancelarGasto");
+const botonEliminarGasto = document.getElementById("eliminarGasto");
 
     // Errores formulario Gastos
-    //
-    //
+    const errorViajero = document.getElementById("errorViajero");
+    const errorMonto = document.getElementById("errorMonto");
+    const errorComentario = document.getElementById("errorComentario");
 
-// Carga del DOM y recuperación de localStorage
+
+/* MÓDULO DE CARGA DEL DOM Y RECUPERACIÓN DE LOCALSTORAGE */
+
 document.addEventListener('DOMContentLoaded', function() {
+
+    // VIAJEROS //
+
     if (localStorage.getItem("viajerosGuardados") != null) {
     numeroViajeros = Number(localStorage.getItem("viajerosGuardados"));
     viajeros.textContent = numeroViajeros;
@@ -55,13 +70,36 @@ document.addEventListener('DOMContentLoaded', function() {
     if (localStorage.getItem("datosViajerosGuardados") != null) {
     datosViajeros = JSON.parse(localStorage.getItem("datosViajerosGuardados"));
     }
-    
+
     for (var i=0 ; i < numeroViajeros; i++) {
     agregarViajeroALista(datosViajeros[i],idViajerosGuardado[i]);
     }
+
+    // GASTOS //
+
+    if (localStorage.getItem("gastosGuardados") != null) {
+        numeroGastos = Number(localStorage.getItem("gastosGuardados"));
+    }
+
+    if (localStorage.getItem("idGastos") != null) {
+        idGastos = Number(localStorage.getItem("idGastos"));
+    }
+
+    if (localStorage.getItem("idGastosGuardado") != null) {
+        idGastosGuardado = JSON.parse(localStorage.getItem("idGastosGuardado"));
+    }
+
+    if (localStorage.getItem("datosGastosGuardados") != null) {
+        datosGastos = JSON.parse(localStorage.getItem("datosGastosGuardados"));
+    }
+
+    for (var i=0 ; i < numeroGastos; i++) {
+        agregarGasto(datosGastos[i],idGastosGuardado[i]);
+    }
 });
 
-// Función que maneja todos los botones
+/* MÓDULO DE MANEJO DE BOTONES */
+
 function manejarBotones(event) {
 const botonPresionado = event.target.id;
 
@@ -85,7 +123,14 @@ switch (botonPresionado) {
         cerrarMenu("viajero");
         break;
     case "eliminar":
+        if (datosGastos == "") {
         eliminarViajero(event.target.attributes[1].nodeValue);
+        } else {
+            errorEliminar.classList.add("d-block");
+            setTimeout(function() {
+            errorEliminar.classList.remove("d-block");
+            }, 2500);
+        }
         break;
     case "agregarGasto":
         if (numeroViajeros === 0) {
@@ -100,18 +145,20 @@ switch (botonPresionado) {
         };
         break;
     case "aceptarGasto":
-        //
+        aceptarGasto();
         break;
     case "cancelarGasto":
         cerrarMenu("gasto");
         break;
     case "eliminarGasto":
-        //
+        eliminarGasto(event.target.attributes[1].nodeValue);
         break;
     default:
         break;
 }
 }
+
+/* CONSTRUCTOR DE DATOS VIAJEROS Y GASTOS */
 
 class Viajeros {
     constructor(Id, nombre, apellido, telefono, mail) {
@@ -122,6 +169,18 @@ class Viajeros {
         this.mail = mail;
     }
 }
+
+class Gastos {
+    constructor(Id, IdViajero, viajero, monto, comentario) {
+        this.Id = Id;
+        this.IdViajero = IdViajero;
+        this.viajero = viajero;
+        this.monto = monto;
+        this.comentario = comentario;
+    }
+}
+
+/* MÓDULO DE MANEJO DE LA INTERFAZ */
 
 function abrirMenu(menu) {
     if (menu == "viajero") {
@@ -143,17 +202,13 @@ function abrirMenu(menu) {
             input.setAttribute("type","radio");
             input.setAttribute("id",i);
             input.setAttribute("name","Viajero");
-            input.setAttribute("value",i);
+            input.setAttribute("value",String(datosViajeros[i].nombre + " " + datosViajeros[i].apellido));
             label.setAttribute("for",i);
             label.classList.add("mx-2");
             label.innerHTML = String(" " + datosViajeros[i].nombre + " " + datosViajeros[i].apellido);
             divDeViajeros.appendChild(input);
             divDeViajeros.appendChild(label);
             divDeViajeros.appendChild(enter);
-            /*
-            <input type="radio" id="html" name="fav_language" value="HTML">
-            <label for="html">datosViajeros[i].nombre + "" + datosViajeros[i].apellido </label>
-            */
         }
     }
 };
@@ -184,9 +239,9 @@ document.getElementById("email").onkeydown = function(e) {
     };
 }
 
-function aceptarViajero() {
+/* MÓDULO DE MANEJO DE VIAJEROS */
 
-    botonAgregarGasto.classList.remove("d-none");
+function aceptarViajero() {
 
     let nombre = document.getElementById("nombre").value;
     let apellido = document.getElementById("apellido").value;
@@ -223,20 +278,18 @@ function aceptarViajero() {
 
 function agregarViajeroALista(viajero,idViajero) {
     const li = document.createElement("li");
-    li.classList.add("list-group-item","d-flex","justify-content-between","1h-sm");
+    li.classList.add("list-group-item", "1h-sm");
     li.setAttribute("id",idViajero);
 
     const div = document.createElement("div");
-    div.classList.add("text-success");
+    div.classList.add("text-success", "d-flex", "justify-content-between", "align-items-center", "mb-1");
 
     const h6 = document.createElement("h6");
     h6.classList.add("my-0");
-    h6.innerText=viajero.nombre + " " + viajero.apellido;
-
-    const small = document.createElement("small");
-    small.innerText=viajero.mail;
+    h6.innerText = viajero.nombre + " " + viajero.apellido;
 
     const small1 = document.createElement("small");
+    small1.classList.add("flex-grow-1", "px-3", "estiloMonto");
     small1.innerText="+54 " + viajero.telefono;
 
     const span = document.createElement("span");
@@ -245,44 +298,151 @@ function agregarViajeroALista(viajero,idViajero) {
     span.setAttribute("id","eliminar");
     span.innerText="❌";
 
+    const small = document.createElement("small");
+    small.classList.add("estiloComentario");
+    small.innerText = viajero.mail;
+
     li.appendChild(div);
     div.appendChild(h6);
-    div.appendChild(small);
-    li.appendChild(small1);
-    li.appendChild(span);
+    div.appendChild(small1);
+    div.appendChild(span);
+    li.appendChild(small);
     ulDeViajeros.appendChild(li);
 }
 
-/*
-<li class="list-group-item d-flex justify-content-between 1h-sm">
-<div class="text-success">
-<h6 class="my-0">Jorge Luis García</h6>
-<small>mail@ejemplo.com</small>    
-</div>
-<small>+54 11 1564 7894</small>
-<span class="" id="eliminar">x</span>
+/*              
+<li class="list-group-item 1h-sm">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+    <h6 class="my-0">Jorge Luis García</h6>
+    <small class="flex-grow-1 mx-3 estiloMonto">+54 11 2456 9887</small>
+    <span id="eliminar">❌</span>
+    </div>
+    <small class="estiloComentario">mail@mail.com</small>    
 </li>
 */
 
 function eliminarViajero(id) {
+    const idRemover = datosViajeros.findIndex(i => {
+        return i.Id == id;
+    })
 
-const idRemover = datosViajeros.findIndex(i => {
-    return i.Id == id;
-})
+    datosViajeros.splice(idRemover,1);
 
-datosViajeros.splice(idRemover,1);
+    const li = document.getElementById(id);
+    ulDeViajeros.removeChild(li);
+    numeroViajeros -= 1;
+    viajeros.textContent = numeroViajeros;
 
-const li = document.getElementById(id);
-ulDeViajeros.removeChild(li);
-numeroViajeros -= 1;
-viajeros.textContent = numeroViajeros;
+    idViajerosGuardado.splice(idRemover,1);
 
-idViajerosGuardado.splice(idRemover,1);
-
-localStorage.setItem("idViajerosGuardado",JSON.stringify(idViajerosGuardado));
-localStorage.setItem("viajerosGuardados",numeroViajeros);
-localStorage.setItem("datosViajerosGuardados",JSON.stringify(datosViajeros));
+    localStorage.setItem("idViajerosGuardado",JSON.stringify(idViajerosGuardado));
+    localStorage.setItem("viajerosGuardados",numeroViajeros);
+    localStorage.setItem("datosViajerosGuardados",JSON.stringify(datosViajeros));
 };
+
+/* MÓDULO DE MANEJO DE GASTOS */
+
+function aceptarGasto() {
+
+    let viajeros = document.getElementsByName('Viajero');
+    let viajero;
+    let idViajeroGasto;
+    let monto = document.getElementById("monto").value;
+    let comentario = document.getElementById("comentario").value;
+
+    for(var i = 0; i < viajeros.length; i++){
+        if(viajeros[i].checked){
+            viajero = viajeros[i].value;
+            idViajeroGasto = viajeros[i].id;
+        }
+    }
+
+    if (viajero == undefined || monto == "" || comentario == "") {
+        if (viajero == undefined){
+            errorViajero.classList.add("d-block");
+        }
+        if (monto == ""){
+            errorMonto.classList.add("d-block");
+        }
+        if (comentario == ""){
+            errorComentario.classList.add("d-block");
+        }
+    } else {
+        datosGastos[numeroGastos] = new Gastos (idGastos,idViajeroGasto,viajero,monto,comentario);
+        agregarGasto(datosGastos[numeroGastos],datosGastos[numeroGastos].Id);
+        idGastosGuardado.push(datosGastos[numeroGastos].Id);
+        idGastos += 1;
+        numeroGastos += 1;
+        localStorage.setItem("idGastos",idGastos);
+        localStorage.setItem("idGastosGuardado",JSON.stringify(idGastosGuardado));
+        localStorage.setItem("gastosGuardados",numeroGastos);
+        localStorage.setItem("datosGastosGuardados",JSON.stringify(datosGastos));
+        cerrarMenu("gasto");
+    }
+};
+
+function agregarGasto(gasto,idGasto) {
+    const li = document.createElement("li");
+    li.classList.add("list-group-item", "1h-sm");
+    li.setAttribute("id","Gasto" + idGasto);
+
+    const div = document.createElement("div");
+    div.classList.add("d-flex", "justify-content-between", "align-items-center", "mb-1");
+
+    const h6 = document.createElement("h6");
+    h6.classList.add("my-0");
+    h6.innerText = gasto.viajero;
+
+    const small1 = document.createElement("small");
+    small1.classList.add("flex-grow-1", "px-3", "estiloMonto");
+    small1.innerText="$ " + gasto.monto;
+
+    const span = document.createElement("span");
+    span.classList.add("text-success", "pointer");
+    span.setAttribute("name",idGasto);
+    span.setAttribute("id","eliminarGasto");
+    span.innerText="❌";
+
+    const small = document.createElement("small");
+    small.classList.add("estiloComentario");
+    small.innerText = gasto.comentario;
+
+    li.appendChild(div);
+    div.appendChild(h6);
+    div.appendChild(small1);
+    div.appendChild(span);
+    li.appendChild(small);
+    ulDeGastos.appendChild(li);
+}
+
+/*              
+    <li class="list-group-item 1h-sm">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+        <h6 class="my-0">Jorge Luis García</h6>
+        <small class="flex-grow-1 mx-3 estiloMonto">$ 1.238.495,25</small>
+        <span id="eliminarGasto">❌</span>
+        </div>
+        <small class="estiloComentario">Compras.</small>    
+    </li>
+*/
+
+function eliminarGasto(id) {
+    const idRemover = datosGastos.findIndex(i => {
+        return i.Id == id;
+    })
+
+    datosGastos.splice(idRemover,1);
+
+    const li = document.getElementById("Gasto" + id);
+    ulDeGastos.removeChild(li);
+    numeroGastos -= 1;
+
+    idGastosGuardado.splice(idRemover,1);
+
+    localStorage.setItem("idGastosGuardado",JSON.stringify(idGastosGuardado));
+    localStorage.setItem("gastosGuardados",numeroGastos);
+    localStorage.setItem("datosGastosGuardados",JSON.stringify(datosGastos));
+}
 
 /*
 

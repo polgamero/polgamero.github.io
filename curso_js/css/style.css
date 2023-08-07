@@ -57,3 +57,21 @@ body {
 ::placeholder {
     font-style: italic;
 }
+
+.estiloMonto {
+    text-align: end;
+    min-width: 90px;
+    font-size: small;
+}
+
+.estiloComentario {
+    font-style: italic;
+}
+
+.errorEliminar {
+    color: red;
+    padding: 3px;
+    font-size: large;
+    border-radius: 10px;
+    text-align: center;
+}
