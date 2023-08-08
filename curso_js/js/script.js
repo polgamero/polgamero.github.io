@@ -20,6 +20,7 @@ const ulDeViajeros = document.getElementById("listaViajeros");
 const divDeViajeros = document.getElementById("opcionesViajeros");
 
 const ulDeGastos = document.getElementById("listaGastos");
+const ulResultados = document.getElementById("listaResultados");
 
 // Botones formulario Viajeros
 const formularioAgregar = document.getElementById("nuevoViajeroForm");
@@ -142,9 +143,9 @@ switch (botonPresionado) {
         }
         break;
     case "agregarGasto":
-        if (numeroViajeros === 0) {
+        if (numeroViajeros <= 1) {
             botonAgregarGasto.classList.add("btn-danger");
-            botonAgregarGasto.innerText="Agregue viajero";
+            botonAgregarGasto.innerText="Agregue al menos 2 viajeros";
             setTimeout(function() {
             botonAgregarGasto.classList.remove("btn-danger");
             botonAgregarGasto.innerText="Nuevo Gasto";
@@ -251,9 +252,17 @@ function cerrarMenu(menu) {
     }
 };
 
+/* MANEJO DEL ENTER PARA SUBMITEAR */
+
 document.getElementById("email").onkeydown = function(e) {
     if (e.key === "Enter") {
         aceptarViajero();
+    };
+}
+
+document.getElementById("comentario").onkeydown = function(e) {
+    if (e.key === "Enter") {
+        aceptarGasto();
     };
 }
 
@@ -328,17 +337,6 @@ function agregarViajeroALista(viajero,idViajero) {
     ulDeViajeros.appendChild(li);
 }
 
-/*              
-<li class="list-group-item 1h-sm">
-    <div class="d-flex justify-content-between align-items-center mb-1">
-    <h6 class="my-0">Jorge Luis García</h6>
-    <small class="flex-grow-1 mx-3 estiloMonto">+54 11 2456 9887</small>
-    <span id="eliminar">❌</span>
-    </div>
-    <small class="estiloComentario">mail@mail.com</small>    
-</li>
-*/
-
 function eliminarViajero(id) {
     const idRemover = datosViajeros.findIndex(i => {
         return i.Id == id;
@@ -396,6 +394,8 @@ function aceptarGasto() {
         localStorage.setItem("gastosGuardados",numeroGastos);
         localStorage.setItem("datosGastosGuardados",JSON.stringify(datosGastos));
         cerrarMenu("gasto");
+
+        actualizarGasto();
     }
 };
 
@@ -433,17 +433,6 @@ function agregarGasto(gasto,idGasto) {
     ulDeGastos.appendChild(li);
 }
 
-/*              
-    <li class="list-group-item 1h-sm">
-        <div class="d-flex justify-content-between align-items-center mb-1">
-        <h6 class="my-0">Jorge Luis García</h6>
-        <small class="flex-grow-1 mx-3 estiloMonto">$ 1.238.495,25</small>
-        <span id="eliminarGasto">❌</span>
-        </div>
-        <small class="estiloComentario">Compras.</small>    
-    </li>
-*/
-
 function eliminarGasto(id) {
     const idRemover = datosGastos.findIndex(i => {
         return i.Id == id;
@@ -460,7 +449,90 @@ function eliminarGasto(id) {
     localStorage.setItem("idGastosGuardado",JSON.stringify(idGastosGuardado));
     localStorage.setItem("gastosGuardados",numeroGastos);
     localStorage.setItem("datosGastosGuardados",JSON.stringify(datosGastos));
+
+    actualizarGasto();
 }
+
+function repartirGastos(cantidad) {
+
+    let gasto = [0,0,0,0,0];
+
+    console.log("La cantidad de viajeros es: " + datosViajeros.length);
+    console.log("La cantidad de gastos es: " + datosGastos.length);
+
+    for (i=0 ; i < (cantidad) ; i++) {
+        console.log("Hice " + i + " ciclos.")
+        for (j=0 ; j < datosGastos.length ; j++) {
+            if (datosGastos[j].IdViajero == i) {
+                console.log("Los gastos del viajero " + datosGastos[i].viajero + " son: " + datosGastos[j].monto)
+                gasto[i] = gasto[i] + Number(datosGastos[j].monto);
+            }
+        }
+    }
+
+    console.log("La cantidad es: " + cantidad);
+    console.log("El array de gastos acumulados es: " + gasto);
+}
+
+function actualizarGasto() {
+
+    repartirGastos(datosViajeros.length);
+
+    /*
+    const li = document.createElement("li");
+    li.classList.add("list-group-item", "1h-sm");
+    //li.setAttribute("id","Gasto" + idGasto);
+
+    const div = document.createElement("div");
+    div.classList.add("d-flex", "justify-content-between", "align-items-center", "mb-1");
+
+    const h6 = document.createElement("h6");
+    h6.classList.add("my-0");
+    h6.innerText = gasto.viajero;
+
+    const small1 = document.createElement("small");
+    small1.classList.add("flex-grow-1", "px-3", "estiloMonto");
+    small1.innerText="$ " + gasto.monto;
+
+    const span = document.createElement("span");
+    span.classList.add("text-success", "pointer");
+    span.setAttribute("name",idGasto);
+    span.setAttribute("id","eliminarGasto");
+    span.innerText="❌";
+
+    const small = document.createElement("small");
+    small.classList.add("estiloComentario");
+    small.innerText = gasto.comentario;
+
+    li.appendChild(div);
+    div.appendChild(h6);
+    div.appendChild(small1);
+    div.appendChild(span);
+    li.appendChild(small);
+    ulDeGastos.appendChild(li);
+    */
+
+}
+
+/*
+
+<li class="list-group-item 1h-sm" id="Gasto19">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <h6 class="my-0">Brian Lopez</h6>
+        <small class="flex-grow-1 px-3 estiloMonto">Gasto total $ 13.456</small>
+    </div>
+    <small class="recibe">Recibe $ 1.203 de Lucas</small>
+</li>
+<li class="list-group-item 1h-sm" id="Gasto19">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+        <h6 class="my-0">Lucas Luiselli</h6>
+        <small class="flex-grow-1 px-3 estiloMonto">Gasto total $ 1.456</small>
+    </div>
+    <small class="debe">Debe $ 12.203 a Brian</small>
+</li>
+
+*/
+
 
 /*
 

@@ -81,3 +81,11 @@ body {
     font-size: small;
     text-align: center;
 }
+
+.recibe {
+    color: green;
+}
+
+.debe {
+    color: red;
+}
