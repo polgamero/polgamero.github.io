@@ -15,6 +15,10 @@ let idGastosGuardado = [];
 let viajeros = document.getElementById("numeroViajeros");
 viajeros.textContent = numeroViajeros;
 
+let gasto = [0,0,0,0,0];
+let gastoTotal = 0;
+let gastoRepartido = [0,0,0,0,0];
+
 const formulario = document.getElementById("formularioViajero");
 const ulDeViajeros = document.getElementById("listaViajeros");
 const divDeViajeros = document.getElementById("opcionesViajeros");
@@ -97,6 +101,21 @@ document.addEventListener('DOMContentLoaded', function() {
     for (var i=0 ; i < numeroGastos; i++) {
         agregarGasto(datosGastos[i],idGastosGuardado[i]);
     }
+
+    if (localStorage.getItem("gastoTotal") != null) {
+        gastoTotal = JSON.parse(localStorage.getItem("gastoTotal"));
+    }
+
+    if (localStorage.getItem("gasto") != null) {
+        gasto = JSON.parse(localStorage.getItem("gasto"));
+    }
+
+    if (localStorage.getItem("gastoRepartido") != null) {
+        gastoRepartido = JSON.parse(localStorage.getItem("gastoRepartido"));
+    }
+
+    actualizarGasto();
+
 });
 
 /* MÓDULO DE MANEJO DE BOTONES */
@@ -107,20 +126,26 @@ const botonPresionado = event.target.id;
 switch (botonPresionado) {
     case "agregar":
         if (datosGastos != "") {
+            error("Elimine los gastos para modificar la lista de viajeros.");
+            /*
             botonAgregar.classList.add("btn-danger");
             botonAgregar.innerText="Eliminar Gastos";
             setTimeout(function() {
             botonAgregar.classList.remove("btn-danger");
             botonAgregar.innerText="Nuevo viajero";
             }, 1500);
+            */
         } else {
             if (numeroViajeros === 5) {
+                error("Máximo de viajeros alcanzado.");
+                /*
                 botonAgregar.classList.add("btn-danger");
                 botonAgregar.innerText="Máximo alcanzado";
                 setTimeout(function() {
                 botonAgregar.classList.remove("btn-danger");
                 botonAgregar.innerText="Nuevo viajero";
                 }, 1500);
+                */
             } else {
                 abrirMenu("viajero");
             };
@@ -136,20 +161,26 @@ switch (botonPresionado) {
         if (datosGastos == "") {
         eliminarViajero(event.target.attributes[1].nodeValue);
         } else {
+            error("Elimine los gastos para modificar la lista de viajeros.");
+            /*
             errorEliminar.classList.add("d-block");
             setTimeout(function() {
             errorEliminar.classList.remove("d-block");
             }, 2500);
+            */
         }
         break;
     case "agregarGasto":
         if (numeroViajeros <= 1) {
+            error("Agregue al menos 2 viajeros.");
+            /*
             botonAgregarGasto.classList.add("btn-danger");
             botonAgregarGasto.innerText="Agregue al menos 2 viajeros";
             setTimeout(function() {
             botonAgregarGasto.classList.remove("btn-danger");
             botonAgregarGasto.innerText="Nuevo Gasto";
             }, 1500);
+            */
         } else {
             abrirMenu("gasto");
         };
@@ -264,6 +295,16 @@ document.getElementById("comentario").onkeydown = function(e) {
     if (e.key === "Enter") {
         aceptarGasto();
     };
+}
+
+/* ERRORES DE SWEET ALERT */
+
+function error(parametro) {
+    Swal.fire({
+        icon: 'error',
+        title: 'Oops...',
+        text: parametro,
+    })
 }
 
 /* MÓDULO DE MANEJO DE VIAJEROS */
@@ -455,63 +496,93 @@ function eliminarGasto(id) {
 
 function repartirGastos(cantidad) {
 
-    let gasto = [0,0,0,0,0];
+    gastoTotal = 0;
+    gasto = [0,0,0,0,0];
+    gastoRepartido = [0,0,0,0,0];
 
-    console.log("La cantidad de viajeros es: " + datosViajeros.length);
-    console.log("La cantidad de gastos es: " + datosGastos.length);
+//    console.log("La cantidad de viajeros es: " + datosViajeros.length);
+//    console.log("La cantidad de gastos es: " + datosGastos.length);
 
     for (i=0 ; i < (cantidad) ; i++) {
-        console.log("Hice " + i + " ciclos.")
         for (j=0 ; j < datosGastos.length ; j++) {
             if (datosGastos[j].IdViajero == i) {
-                console.log("Los gastos del viajero " + datosGastos[i].viajero + " son: " + datosGastos[j].monto)
+//                console.log("Los gastos del viajero " + datosGastos[i].viajero + " son: " + datosGastos[j].monto)
                 gasto[i] = gasto[i] + Number(datosGastos[j].monto);
             }
         }
+        gastoTotal = gastoTotal + gasto[i];
     }
 
-    console.log("La cantidad es: " + cantidad);
-    console.log("El array de gastos acumulados es: " + gasto);
+    for (i=0 ; i < (cantidad) ; i++) {
+    gastoRepartido[i] = gasto[i] - (gastoTotal/cantidad);
+    }
+
+    localStorage.setItem("gastoTotal",gastoTotal);
+    localStorage.setItem("gasto",JSON.stringify(gasto));
+    localStorage.setItem("gastoRepartido",JSON.stringify(gastoRepartido));
+
+//    console.log("La cantidad es: " + cantidad);
+//    console.log("El gasto total es: " + gastoTotal);
+//    console.log("El array de gastos acumulados es: " + gasto);
+//    console.log("El array de gastos repartidos es: " + gastoRepartido);
 }
 
 function actualizarGasto() {
 
     repartirGastos(datosViajeros.length);
 
-    /*
     const li = document.createElement("li");
     li.classList.add("list-group-item", "1h-sm");
-    //li.setAttribute("id","Gasto" + idGasto);
-
     const div = document.createElement("div");
     div.classList.add("d-flex", "justify-content-between", "align-items-center", "mb-1");
-
     const h6 = document.createElement("h6");
     h6.classList.add("my-0");
-    h6.innerText = gasto.viajero;
-
     const small1 = document.createElement("small");
     small1.classList.add("flex-grow-1", "px-3", "estiloMonto");
-    small1.innerText="$ " + gasto.monto;
-
     const span = document.createElement("span");
     span.classList.add("text-success", "pointer");
-    span.setAttribute("name",idGasto);
-    span.setAttribute("id","eliminarGasto");
-    span.innerText="❌";
-
     const small = document.createElement("small");
-    small.classList.add("estiloComentario");
-    small.innerText = gasto.comentario;
 
-    li.appendChild(div);
-    div.appendChild(h6);
-    div.appendChild(small1);
-    div.appendChild(span);
-    li.appendChild(small);
-    ulDeGastos.appendChild(li);
-    */
+    const mostrarGastoTotal = document.getElementById("gastoFinal");
+    mostrarGastoTotal.innerText = "Gasto total del viaje: $" + gastoTotal;
+    ulResultados.innerHTML = "";
+/*
+    if (numeroGastos > 0) {
+        for (i=0 ; i < datosViajeros.length ; i++) {
 
+            h6.innerText = datosGastos[i].viajero;
+            small1.innerText="Gasto total $ " + gasto[i];
+            if (gastoRepartido[i] < 0) {
+                small.classList.add("estiloComentario", "debe");
+                small.innerText = datosGastos[i].viajero + " Debe: $" + -gastoRepartido[i] + " a " + datosGastos[i].viajero;
+            } else {
+                small.classList.add("estiloComentario", "recibe");
+                small.innerText = datosGastos[i].viajero + " recibe: $" + gastoRepartido[i] + " de " + datosGastos[i].viajero;
+            }
+
+            li.appendChild(div);
+            div.appendChild(h6);
+            div.appendChild(small1);
+            div.appendChild(span);
+            li.appendChild(small);
+            ulResultados.appendChild(li);
+        };
+    } else {
+        for (i=0 ; i < datosViajeros.length ; i++) {
+
+            h6.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido;
+            small1.innerText="Gasto total $ 0";
+            small.innerText = "Aún no hay gastos";
+
+            li.appendChild(div);
+            div.appendChild(h6);
+            div.appendChild(small1);
+            div.appendChild(span);
+            li.appendChild(small);
+            ulResultados.appendChild(li);
+        };
+    };
+*/
 }
 
 /*

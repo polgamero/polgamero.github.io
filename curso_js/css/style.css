@@ -89,3 +89,12 @@ body {
 .debe {
     color: red;
 }
+
+.gastoTotal {
+    font-size: larger;
+    font-weight: 600;
+    color:antiquewhite;
+    background-color: blue;
+    padding: 20px 30px;
+    border-radius: 20px;
+}
