@@ -126,7 +126,7 @@ const botonPresionado = event.target.id;
 switch (botonPresionado) {
     case "agregar":
         if (datosGastos != "") {
-            error("Elimine los gastos para modificar la lista de viajeros.");
+            error("Elimine los gastos para modificar la lista de viajeros.",'error','Ooops...');
             /*
             botonAgregar.classList.add("btn-danger");
             botonAgregar.innerText="Eliminar Gastos";
@@ -137,7 +137,7 @@ switch (botonPresionado) {
             */
         } else {
             if (numeroViajeros === 5) {
-                error("Máximo de viajeros alcanzado.");
+                error("Máximo de viajeros alcanzado.",'error','Ooops...');
                 /*
                 botonAgregar.classList.add("btn-danger");
                 botonAgregar.innerText="Máximo alcanzado";
@@ -161,7 +161,7 @@ switch (botonPresionado) {
         if (datosGastos == "") {
         eliminarViajero(event.target.attributes[1].nodeValue);
         } else {
-            error("Elimine los gastos para modificar la lista de viajeros.");
+            error("Elimine los gastos para modificar la lista de viajeros.",'error','Ooops...');
             /*
             errorEliminar.classList.add("d-block");
             setTimeout(function() {
@@ -172,7 +172,7 @@ switch (botonPresionado) {
         break;
     case "agregarGasto":
         if (numeroViajeros <= 1) {
-            error("Agregue al menos 2 viajeros.");
+            error("Agregue al menos 2 viajeros.",'info','Imposible repartir');
             /*
             botonAgregarGasto.classList.add("btn-danger");
             botonAgregarGasto.innerText="Agregue al menos 2 viajeros";
@@ -232,7 +232,8 @@ function abrirMenu(menu) {
     if (menu == "gasto") {
 
         if (datosGastos == "") {
-            aviso.classList.remove("d-none");
+            error("Tenga en cuenta que al agregar un gasto, ya no podrá modificar la lista de viajeros.",'warning','Atención');
+            //aviso.classList.remove("d-none");
         } else {
             aviso.classList.add("d-none");
         }
@@ -248,12 +249,12 @@ function abrirMenu(menu) {
             const label = document.createElement("label");
             const enter = document.createElement("br");
             input.setAttribute("type","radio");
-            input.setAttribute("id",i);
+            input.setAttribute("id","radio" + i);
             input.setAttribute("name","Viajero");
             input.setAttribute("value",String(datosViajeros[i].nombre + " " + datosViajeros[i].apellido));
-            label.setAttribute("for",i);
+            label.setAttribute("for","radio" + i);
             label.classList.add("mx-2");
-            label.innerHTML = String(" " + datosViajeros[i].nombre + " " + datosViajeros[i].apellido);
+            label.innerText = String(datosViajeros[i].nombre + " " + datosViajeros[i].apellido);
             divDeViajeros.appendChild(input);
             divDeViajeros.appendChild(label);
             divDeViajeros.appendChild(enter);
@@ -299,10 +300,10 @@ document.getElementById("comentario").onkeydown = function(e) {
 
 /* ERRORES DE SWEET ALERT */
 
-function error(parametro) {
+function error(parametro,icono,titulo) {
     Swal.fire({
-        icon: 'error',
-        title: 'Oops...',
+        icon: icono,
+        title: titulo,
         text: parametro,
     })
 }
@@ -347,7 +348,7 @@ function aceptarViajero() {
 function agregarViajeroALista(viajero,idViajero) {
     const li = document.createElement("li");
     li.classList.add("list-group-item", "1h-sm");
-    li.setAttribute("id",idViajero);
+    li.setAttribute("id","Viajero" + idViajero);
 
     const div = document.createElement("div");
     div.classList.add("text-success", "d-flex", "justify-content-between", "align-items-center", "mb-1");
@@ -385,7 +386,7 @@ function eliminarViajero(id) {
 
     datosViajeros.splice(idRemover,1);
 
-    const li = document.getElementById(id);
+    const li = document.getElementById("Viajero" + id);
     ulDeViajeros.removeChild(li);
     numeroViajeros -= 1;
     viajeros.textContent = numeroViajeros;
@@ -404,13 +405,15 @@ function aceptarGasto() {
     let viajeros = document.getElementsByName('Viajero');
     let viajero;
     let idViajeroGasto;
+    let id;
     let monto = document.getElementById("monto").value;
     let comentario = document.getElementById("comentario").value;
 
     for(var i = 0; i < viajeros.length; i++){
         if(viajeros[i].checked){
             viajero = viajeros[i].value;
-            idViajeroGasto = viajeros[i].id;
+            id = viajeros[i].id.charAt(5);
+            idViajeroGasto = Number(id);
         }
     }
 
@@ -500,13 +503,13 @@ function repartirGastos(cantidad) {
     gasto = [0,0,0,0,0];
     gastoRepartido = [0,0,0,0,0];
 
-//    console.log("La cantidad de viajeros es: " + datosViajeros.length);
-//    console.log("La cantidad de gastos es: " + datosGastos.length);
+    console.log("La cantidad de viajeros es: " + datosViajeros.length);
+    console.log("La cantidad de gastos es: " + datosGastos.length);
 
     for (i=0 ; i < (cantidad) ; i++) {
         for (j=0 ; j < datosGastos.length ; j++) {
             if (datosGastos[j].IdViajero == i) {
-//                console.log("Los gastos del viajero " + datosGastos[i].viajero + " son: " + datosGastos[j].monto)
+                console.log("Los gastos del viajero " + datosGastos[j].viajero + " son: " + datosGastos[j].monto)
                 gasto[i] = gasto[i] + Number(datosGastos[j].monto);
             }
         }
@@ -521,10 +524,10 @@ function repartirGastos(cantidad) {
     localStorage.setItem("gasto",JSON.stringify(gasto));
     localStorage.setItem("gastoRepartido",JSON.stringify(gastoRepartido));
 
-//    console.log("La cantidad es: " + cantidad);
-//    console.log("El gasto total es: " + gastoTotal);
-//    console.log("El array de gastos acumulados es: " + gasto);
-//    console.log("El array de gastos repartidos es: " + gastoRepartido);
+    console.log("La cantidad es: " + cantidad);
+    console.log("El gasto total es: " + gastoTotal);
+    console.log("El array de gastos acumulados es: " + gasto);
+    console.log("El array de gastos repartidos es: " + gastoRepartido);
 }
 
 function actualizarGasto() {
@@ -586,7 +589,6 @@ function actualizarGasto() {
 }
 
 /*
-
 <li class="list-group-item 1h-sm" id="Gasto19">
     <div class="d-flex justify-content-between align-items-center mb-1">
         <h6 class="my-0">Brian Lopez</h6>
@@ -601,34 +603,4 @@ function actualizarGasto() {
     </div>
     <small class="debe">Debe $ 12.203 a Brian</small>
 </li>
-
-*/
-
-
-/*
-
-let gastosTotales = 0;
-let gastosPorViajero = 0;
-let valorDolarBlue = 0;
-let gastoPesos = 0;
-let gastosPorViajeroPesos = 0;
-
-function planificador(dias,gastosPorDia,viajeros,valorDolarBlue) {
-    gastosTotales = gastosPorDia * dias;
-    gastosPorViajero = gastosTotales / viajeros;
-    gastoPesos = gastosTotales * valorDolarBlue;
-    gastosPorViajeroPesos = gastosPorViajero * valorDolarBlue;
-};
-
-let dias = parseInt(("Ingrese los días de duración del viaje"));
-let gastosPorDia = parseFloat(("Ingrese una estimación de gastos diarios totales (en u$s)"));
-valorDolarBlue = parseFloat(("Ingrese el valor actual del dólar blue"));
-
-imprimirPantalla = () => {return ("¿Desea imprimir los resultados en pantalla?")};
-
-planificador (dias, gastosPorDia,viajeros,valorDolarBlue);
-
-enPesos = gastoPesos.toLocaleString('es-AR');
-enPesosPorViajero = gastosPorViajeroPesos.toLocaleString('es-AR');
-
 */
