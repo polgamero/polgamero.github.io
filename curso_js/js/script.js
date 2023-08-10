@@ -342,6 +342,7 @@ function aceptarViajero() {
         localStorage.setItem("viajerosGuardados",numeroViajeros);
         localStorage.setItem("datosViajerosGuardados",JSON.stringify(datosViajeros));
         cerrarMenu("viajero");
+        actualizarGasto();
     }
 };
 
@@ -396,6 +397,8 @@ function eliminarViajero(id) {
     localStorage.setItem("idViajerosGuardado",JSON.stringify(idViajerosGuardado));
     localStorage.setItem("viajerosGuardados",numeroViajeros);
     localStorage.setItem("datosViajerosGuardados",JSON.stringify(datosViajeros));
+
+    actualizarGasto();
 };
 
 /* MÓDULO DE MANEJO DE GASTOS */
@@ -534,33 +537,33 @@ function actualizarGasto() {
 
     repartirGastos(datosViajeros.length);
 
-    const li = document.createElement("li");
-    li.classList.add("list-group-item", "1h-sm");
-    const div = document.createElement("div");
-    div.classList.add("d-flex", "justify-content-between", "align-items-center", "mb-1");
-    const h6 = document.createElement("h6");
-    h6.classList.add("my-0");
-    const small1 = document.createElement("small");
-    small1.classList.add("flex-grow-1", "px-3", "estiloMonto");
-    const span = document.createElement("span");
-    span.classList.add("text-success", "pointer");
-    const small = document.createElement("small");
-
     const mostrarGastoTotal = document.getElementById("gastoFinal");
     mostrarGastoTotal.innerText = "Gasto total del viaje: $" + gastoTotal;
     ulResultados.innerHTML = "";
-/*
+
     if (numeroGastos > 0) {
         for (i=0 ; i < datosViajeros.length ; i++) {
+        
+            const li = document.createElement("li");
+            li.classList.add("list-group-item", "1h-sm");
+            const div = document.createElement("div");
+            div.classList.add("d-flex", "justify-content-between", "align-items-center", "mb-1");
+            const h6 = document.createElement("h6");
+            h6.classList.add("my-0");
+            const small1 = document.createElement("small");
+            small1.classList.add("flex-grow-1", "px-3", "estiloMonto");
+            const span = document.createElement("span");
+            span.classList.add("text-success", "pointer");
+            const small = document.createElement("small");
 
-            h6.innerText = datosGastos[i].viajero;
+            h6.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido;
             small1.innerText="Gasto total $ " + gasto[i];
             if (gastoRepartido[i] < 0) {
                 small.classList.add("estiloComentario", "debe");
-                small.innerText = datosGastos[i].viajero + " Debe: $" + -gastoRepartido[i] + " a " + datosGastos[i].viajero;
+                small.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido + " Debe: $ " + -gastoRepartido[i];
             } else {
                 small.classList.add("estiloComentario", "recibe");
-                small.innerText = datosGastos[i].viajero + " recibe: $" + gastoRepartido[i] + " de " + datosGastos[i].viajero;
+                small.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido + " recibe: $ " + gastoRepartido[i];
             }
 
             li.appendChild(div);
@@ -572,6 +575,18 @@ function actualizarGasto() {
         };
     } else {
         for (i=0 ; i < datosViajeros.length ; i++) {
+
+            const li = document.createElement("li");
+            li.classList.add("list-group-item", "1h-sm");
+            const div = document.createElement("div");
+            div.classList.add("d-flex", "justify-content-between", "align-items-center", "mb-1");
+            const h6 = document.createElement("h6");
+            h6.classList.add("my-0");
+            const small1 = document.createElement("small");
+            small1.classList.add("flex-grow-1", "px-3", "estiloMonto");
+            const span = document.createElement("span");
+            span.classList.add("text-success", "pointer");
+            const small = document.createElement("small");
 
             h6.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido;
             small1.innerText="Gasto total $ 0";
@@ -585,22 +600,5 @@ function actualizarGasto() {
             ulResultados.appendChild(li);
         };
     };
-*/
-}
 
-/*
-<li class="list-group-item 1h-sm" id="Gasto19">
-    <div class="d-flex justify-content-between align-items-center mb-1">
-        <h6 class="my-0">Brian Lopez</h6>
-        <small class="flex-grow-1 px-3 estiloMonto">Gasto total $ 13.456</small>
-    </div>
-    <small class="recibe">Recibe $ 1.203 de Lucas</small>
-</li>
-<li class="list-group-item 1h-sm" id="Gasto19">
-    <div class="d-flex justify-content-between align-items-center mb-1">
-        <h6 class="my-0">Lucas Luiselli</h6>
-        <small class="flex-grow-1 px-3 estiloMonto">Gasto total $ 1.456</small>
-    </div>
-    <small class="debe">Debe $ 12.203 a Brian</small>
-</li>
-*/
+}
