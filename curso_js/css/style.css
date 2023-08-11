@@ -106,7 +106,7 @@ body {
         transform: rotateY(0deg) translateX(0);
     }
     100% {
-        transform: rotateY(30deg) translateX(25px);
+        transform: rotateY(30deg) translateX(-25px);
     }
 }
 
@@ -156,4 +156,19 @@ body {
     color:rgb(24, 24, 24);
     padding: 20px 30px;
     border-radius: 20px;
+}
+
+@media (max-width: 480px) {
+    .monstruoViajero {
+        width: 65px;
+    }
+    
+    .monstruoGastos {
+        width: 55px;
+    }
+    
+    .monstruoResultado {
+        width: 90px;
+    }
+    
 }
