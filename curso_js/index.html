@@ -35,12 +35,12 @@
     </div>
     <div class="container">
         <main>
-            <div class="py-3 text-center">
+            <div class="row pb-4 text-center">
                 <div class="imagen">
-                    <img src="img/plane.png" class="avion" alt="Avión">
+                    <img src="img/monstruoTitulo.png" class="monstruoTitulo" alt="Monstruo del título">
                 </div>
-            <h2>Gastos fáciles</h2>
-            <p class="lead">Dividí los gastos de tu viaje con amigos, dedicá más tiempo a disfrutar y menos tiempo a sacar cuentas.</p>
+                <h2>Gastos Monstruosos</h2>
+                <p class="lead">Dividí los gastos de tu viaje con amigos, dedicá más tiempo a disfrutar y menos tiempo a sacar cuentas.</p>
             </div>
         
             <div class="row g-5">
@@ -57,7 +57,11 @@
             </div>
             <div class="col-md-6 col-lg-7">
                 <form class="needs-validation" novalidate="" id="formularioViajero">
-                    <h4 class="mb-3">Viajeros</h4>
+                    <div class="imagen">
+                        <h4 class="mb-1">Viajeros</h4>
+                        <img src="img/monstruoViajero.png" class="monstruoViajero" alt="Monstruo Viajero">
+                    </div>
+                    <hr class="my-2">
                     <button class="btn btn-success rounded-pill px-3" type="button" id="agregar">Nuevo viajero</button>
                     
                     <div class="row g-3 d-none" id="nuevoViajeroForm">
@@ -102,10 +106,12 @@
                         </div>
                     </div>
                 
-                <hr class="my-4">
-                
-                    <h4 class="mb-3">Gastos</h4>
-                    <button class="btn btn-success rounded-pill px-3" type="button" id="agregarGasto">Nuevo gasto</button>
+                <div class="imagen">
+                    <h4 class="mb-1">Gastos</h4>
+                    <img src="img/monstruoGastos.png" class="monstruoGastos" alt="Monstruo Gastos">
+                </div>
+                <hr class="my-2">
+                <button class="btn btn-success rounded-pill px-3" type="button" id="agregarGasto">Nuevo gasto</button>
 
                     <div class="row g-3 d-none" id="nuevoGastoForm">
                         <span class="aviso d-none" id="aviso">TENGA EN CUENTA QUE AL AGREGAR UN GASTO NO PODRÁ MODIFICAR LA LISTA DE VIAJEROS.</span>
@@ -145,10 +151,11 @@
 
                     </ul>
 
-                <hr class="my-4">
-
-                <h4 class="mb-3">Resultado</h4>
-
+                <div class="imagen">
+                    <h4 class="mb-1">Resultado</h4>
+                    <img src="img/monstruoResultados.png" class="monstruoResultado" alt="Monstruo Resultados">
+                </div>
+                    <hr class="my-2">
                     <ul class="list-group my-3" id="listaResultados">
 
                     </ul>

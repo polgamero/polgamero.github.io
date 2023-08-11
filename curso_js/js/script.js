@@ -162,25 +162,11 @@ switch (botonPresionado) {
         eliminarViajero(event.target.attributes[1].nodeValue);
         } else {
             error("Elimine los gastos para modificar la lista de viajeros.",'error','Ooops...');
-            /*
-            errorEliminar.classList.add("d-block");
-            setTimeout(function() {
-            errorEliminar.classList.remove("d-block");
-            }, 2500);
-            */
         }
         break;
     case "agregarGasto":
         if (numeroViajeros <= 1) {
             error("Agregue al menos 2 viajeros.",'info','Imposible repartir');
-            /*
-            botonAgregarGasto.classList.add("btn-danger");
-            botonAgregarGasto.innerText="Agregue al menos 2 viajeros";
-            setTimeout(function() {
-            botonAgregarGasto.classList.remove("btn-danger");
-            botonAgregarGasto.innerText="Nuevo Gasto";
-            }, 1500);
-            */
         } else {
             abrirMenu("gasto");
         };
@@ -233,7 +219,6 @@ function abrirMenu(menu) {
 
         if (datosGastos == "") {
             error("Tenga en cuenta que al agregar un gasto, ya no podrá modificar la lista de viajeros.",'warning','Atención');
-            //aviso.classList.remove("d-none");
         } else {
             aviso.classList.add("d-none");
         }
