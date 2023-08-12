@@ -97,17 +97,21 @@ body {
     width: 240px;
     display: block;
     margin-left: auto;
-    animation: rotar 7s infinite;
+    animation: rotar 2s infinite;
     animation-direction: alternate;
 }
 
 @keyframes rotar {
     0% {
-        transform: rotateY(0deg) translateX(0);
+        transform: rotateZ(-3deg) translateX(5px);
     }
     100% {
-        transform: rotateY(30deg) translateX(-25px);
+        transform: rotateZ(3deg) translateX(5px);
     }
+}
+
+.monstruoRepartir {
+    width: 70px;
 }
 
 .pointer {
@@ -170,5 +174,7 @@ body {
     .monstruoResultado {
         width: 90px;
     }
-    
+    .monstruoRepartir {
+        width: 50px;
+    }
 }

@@ -1,5 +1,7 @@
 /* INICIO SCRIPT 3ra ENTREGA CODERHOUSE - PABLO GAMERO -*/
 
+/* NINGUNA DE LAS IMÁGENES UTILIZADAS TIENE DERECHO DE AUTOR, YA QUE FUERON CREADAS CON IA: https://neural.love/ */
+
 document.body.addEventListener("click", manejarBotones);
 
 let numeroViajeros = 0;
@@ -127,25 +129,9 @@ switch (botonPresionado) {
     case "agregar":
         if (datosGastos != "") {
             error("Elimine los gastos para modificar la lista de viajeros.",'error','Ooops...');
-            /*
-            botonAgregar.classList.add("btn-danger");
-            botonAgregar.innerText="Eliminar Gastos";
-            setTimeout(function() {
-            botonAgregar.classList.remove("btn-danger");
-            botonAgregar.innerText="Nuevo viajero";
-            }, 1500);
-            */
         } else {
             if (numeroViajeros === 5) {
                 error("Máximo de viajeros alcanzado.",'error','Ooops...');
-                /*
-                botonAgregar.classList.add("btn-danger");
-                botonAgregar.innerText="Máximo alcanzado";
-                setTimeout(function() {
-                botonAgregar.classList.remove("btn-danger");
-                botonAgregar.innerText="Nuevo viajero";
-                }, 1500);
-                */
             } else {
                 abrirMenu("viajero");
             };
@@ -530,33 +516,44 @@ function actualizarGasto() {
         for (i=0 ; i < datosViajeros.length ; i++) {
         
             const li = document.createElement("li");
-            li.classList.add("list-group-item", "1h-sm");
-            const div = document.createElement("div");
-            div.classList.add("d-flex", "justify-content-between", "align-items-center", "mb-1");
+            li.classList.add("list-group-item", "1h-sm", "d-flex", "align-items-center");
+            const div1 = document.createElement("div");
+            const div2 = document.createElement("div");
+            div2.classList.add("flex-grow-1");
+            const div3 = document.createElement("div");
+            div3.classList.add("d-flex","justify-content-between","align-items-center","mb-1");
             const h6 = document.createElement("h6");
             h6.classList.add("my-0");
-            const small1 = document.createElement("small");
-            small1.classList.add("flex-grow-1", "px-3", "estiloMonto");
-            const span = document.createElement("span");
-            span.classList.add("text-success", "pointer");
             const small = document.createElement("small");
+            small.classList.add("flex-grow-1", "px-3", "estiloMonto");
+            const small1 = document.createElement("small");
+            const img = document.createElement("img");
 
             h6.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido;
-            small1.innerText="Gasto total $ " + gasto[i];
+            small.innerText="Gasto total $ " + gasto[i];
             if (gastoRepartido[i] < 0) {
-                small.classList.add("estiloComentario", "debe");
-                small.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido + " Debe: $ " + -gastoRepartido[i];
+                small1.classList.add("estiloComentario", "debe");
+                img.classList.add("monstruoRepartir");
+                img.setAttribute("src","img/monstruoDebe.png");
+                img.setAttribute("alt","Mounstruo Debe");
+                small1.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido + " Debe: $ " + -gastoRepartido[i];
             } else {
-                small.classList.add("estiloComentario", "recibe");
-                small.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido + " recibe: $ " + gastoRepartido[i];
+                small1.classList.add("estiloComentario", "recibe");
+                img.classList.add("monstruoRepartir");
+                img.setAttribute("src","img/monstruoRecibe.png");
+                img.setAttribute("alt","Mounstruo Recibe");
+                small1.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido + " recibe: $ " + gastoRepartido[i];
             }
 
-            li.appendChild(div);
-            div.appendChild(h6);
-            div.appendChild(small1);
-            div.appendChild(span);
-            li.appendChild(small);
             ulResultados.appendChild(li);
+            li.appendChild(div1);
+            div1.appendChild(img);
+            li.appendChild(div2);
+            div2.appendChild(div3);
+            div3.appendChild(h6);
+            div3.appendChild(small);
+            div2.appendChild(small1);
+
         };
     } else {
         for (i=0 ; i < datosViajeros.length ; i++) {
