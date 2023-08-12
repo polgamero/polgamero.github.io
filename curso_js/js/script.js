@@ -4,6 +4,8 @@
 
 document.body.addEventListener("click", manejarBotones);
 
+/* DECLARACIÓN DE VARIABLES GLOBALES */
+
 let numeroViajeros = 0;
 let idViajeros = 0;
 let datosViajeros = [];
@@ -193,7 +195,7 @@ class Gastos {
     }
 }
 
-/* MÓDULO DE MANEJO DE LA INTERFAZ */
+/* MÓDULO DE MANEJO DE LA INTERFAZ DE CARGA DE DATOS */
 
 function abrirMenu(menu) {
     if (menu == "viajero") {
@@ -269,7 +271,7 @@ document.getElementById("comentario").onkeydown = function(e) {
     };
 }
 
-/* ERRORES DE SWEET ALERT */
+/* ERRORES DE LIBRERÍA SWEET ALERT */
 
 function error(parametro,icono,titulo) {
     Swal.fire({
@@ -283,23 +285,43 @@ function error(parametro,icono,titulo) {
 
 function aceptarViajero() {
 
+    const regexNomApe = /^[A-Za-zÁÉÍÓÚáéíóúÜüÑñ\s'-]+$/;
+    const regexTel = /^(11|221|223|261|264|266|280|290|291|297|298|299)[0-9]{8}$/;
+    const regexMail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     let nombre = document.getElementById("nombre").value;
     let apellido = document.getElementById("apellido").value;
     let telefono = document.getElementById("telefono").value;
     let mail = document.getElementById("email").value;
 
-    if (nombre == "" || apellido == "" || telefono == "" || mail == "") {
-        if (nombre == ""){
+    if (nombre == "" || apellido == "" || telefono == "" || mail == "" || !regexNomApe.test(nombre) || !regexNomApe.test(apellido) || !regexTel.test(telefono) || !regexMail.test(mail)) {
+        if (nombre == "" || !regexNomApe.test(nombre)){
             errorNombre.classList.add("d-block");
+            errorNombre.classList.remove("d-none");
+        } else {
+            errorNombre.classList.remove("d-block");
+            errorNombre.classList.add("d-none");
         }
-        if (apellido == ""){
+        if (apellido == "" || !regexNomApe.test(apellido)){
             errorApellido.classList.add("d-block");
+            errorApellido.classList.remove("d-none");
+        } else {
+            errorApellido.classList.remove("d-block");
+            errorApellido.classList.add("d-none");
         }
-        if (telefono == ""){
+        if (telefono == "" || !regexTel.test(telefono)){
             errorTelefono.classList.add("d-block");
+            errorTelefono.classList.remove("d-none");
+        } else {
+            errorTelefono.classList.remove("d-block");
+            errorTelefono.classList.add("d-none");
         }
-        if (mail == ""){
+        if (mail == "" || !regexMail.test(mail)){
             errorMail.classList.add("d-block");
+            errorMail.classList.remove("d-none");
+        } else {
+            errorMail.classList.remove("d-block");
+            errorMail.classList.add("d-none");
         }
     } else {
         datosViajeros[numeroViajeros] = new Viajeros (idViajeros,nombre,apellido,telefono,mail);
@@ -374,15 +396,20 @@ function eliminarViajero(id) {
 
 /* MÓDULO DE MANEJO DE GASTOS */
 
+function formatear(num) {
+    return num.toLocaleString("es-AR", {style:"currency", currency:"ARS"});
+}
+
 function aceptarGasto() {
 
+    const regexMonto = /^[0-9]{1,7}(?:\.\d{1,2})?$/;
     let viajeros = document.getElementsByName('Viajero');
     let viajero;
     let idViajeroGasto;
     let id;
     let monto = document.getElementById("monto").value;
     let comentario = document.getElementById("comentario").value;
-
+    
     for(var i = 0; i < viajeros.length; i++){
         if(viajeros[i].checked){
             viajero = viajeros[i].value;
@@ -391,11 +418,11 @@ function aceptarGasto() {
         }
     }
 
-    if (viajero == undefined || monto == "" || comentario == "") {
+    if (viajero == undefined || monto == "" || comentario == "" || !regexMonto.test(monto)) {
         if (viajero == undefined){
             errorViajero.classList.add("d-block");
         }
-        if (monto == ""){
+        if (monto == "" || !regexMonto.test(monto)){
             errorMonto.classList.add("d-block");
         }
         if (comentario == ""){
@@ -431,7 +458,7 @@ function agregarGasto(gasto,idGasto) {
 
     const small1 = document.createElement("small");
     small1.classList.add("flex-grow-1", "px-3", "estiloMonto");
-    small1.innerText="$ " + gasto.monto;
+    small1.innerText= formatear(Number(gasto.monto));
 
     const span = document.createElement("span");
     span.classList.add("text-success", "pointer");
@@ -471,19 +498,17 @@ function eliminarGasto(id) {
     actualizarGasto();
 }
 
+/* MÓDULO DE MANEJO DE RESULTADOS */
+
 function repartirGastos(cantidad) {
 
     gastoTotal = 0;
     gasto = [0,0,0,0,0];
     gastoRepartido = [0,0,0,0,0];
 
-    console.log("La cantidad de viajeros es: " + datosViajeros.length);
-    console.log("La cantidad de gastos es: " + datosGastos.length);
-
     for (i=0 ; i < (cantidad) ; i++) {
         for (j=0 ; j < datosGastos.length ; j++) {
             if (datosGastos[j].IdViajero == i) {
-                console.log("Los gastos del viajero " + datosGastos[j].viajero + " son: " + datosGastos[j].monto)
                 gasto[i] = gasto[i] + Number(datosGastos[j].monto);
             }
         }
@@ -497,11 +522,6 @@ function repartirGastos(cantidad) {
     localStorage.setItem("gastoTotal",gastoTotal);
     localStorage.setItem("gasto",JSON.stringify(gasto));
     localStorage.setItem("gastoRepartido",JSON.stringify(gastoRepartido));
-
-    console.log("La cantidad es: " + cantidad);
-    console.log("El gasto total es: " + gastoTotal);
-    console.log("El array de gastos acumulados es: " + gasto);
-    console.log("El array de gastos repartidos es: " + gastoRepartido);
 }
 
 function actualizarGasto() {
@@ -509,7 +529,7 @@ function actualizarGasto() {
     repartirGastos(datosViajeros.length);
 
     const mostrarGastoTotal = document.getElementById("gastoFinal");
-    mostrarGastoTotal.innerText = "Gasto total del viaje: $" + gastoTotal;
+    mostrarGastoTotal.innerText = "Gasto total del viaje: " + formatear(gastoTotal);
     ulResultados.innerHTML = "";
 
     if (numeroGastos > 0) {
@@ -530,19 +550,19 @@ function actualizarGasto() {
             const img = document.createElement("img");
 
             h6.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido;
-            small.innerText="Gasto total $ " + gasto[i];
+            small.innerText="Gasto total " + formatear(gasto[i]);
             if (gastoRepartido[i] < 0) {
                 small1.classList.add("estiloComentario", "debe");
                 img.classList.add("monstruoRepartir");
                 img.setAttribute("src","img/monstruoDebe.png");
                 img.setAttribute("alt","Mounstruo Debe");
-                small1.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido + " Debe: $ " + -gastoRepartido[i];
+                small1.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido + " Debe: " + formatear(-gastoRepartido[i]);
             } else {
                 small1.classList.add("estiloComentario", "recibe");
                 img.classList.add("monstruoRepartir");
                 img.setAttribute("src","img/monstruoRecibe.png");
                 img.setAttribute("alt","Mounstruo Recibe");
-                small1.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido + " recibe: $ " + gastoRepartido[i];
+                small1.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido + " recibe: " + formatear(gastoRepartido[i]);
             }
 
             ulResultados.appendChild(li);

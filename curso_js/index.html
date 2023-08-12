@@ -67,17 +67,17 @@
                     <div class="row g-3 d-none" id="nuevoViajeroForm">
                         <div class="col-sm-6">
                             <label for="nombre" class="form-label">Nombre</label>
-                            <input type="text" class="form-control" id="nombre" placeholder="" value="" required="" maxlength="14">
+                            <input type="text" class="form-control" id="nombre" placeholder="" value="" required="" maxlength="16">
                             <div class="invalid-feedback" id="errorNombre">
-                                El nombre es un campo requerido.
+                                Por favor, ingresar un nombre válido.
                             </div>
                         </div>
             
                         <div class="col-sm-6">
                             <label for="apellido" class="form-label">Apellido</label>
-                            <input type="text" class="form-control" id="apellido" placeholder="" value="" required="" maxlength="14">
+                            <input type="text" class="form-control" id="apellido" placeholder="" value="" required="" maxlength="16">
                             <div class="invalid-feedback" id="errorApellido">
-                                El apellido es un campo requerido.
+                                Por favor, ingresar un apellido válido.
                             </div>
                         </div>
             
@@ -85,16 +85,16 @@
                             <label for="telefono" class="form-label">Teléfono</label>
                             <div class="input-group has-validation">
                                 <span class="input-group-text">+54</span>
-                                <input type="tel" class="form-control" id="telefono" placeholder="11 1234 4567" required="" maxlength="12">
+                                <input type="tel" class="form-control" id="telefono" placeholder="1155550000" required="" maxlength="12">
                             <div class="invalid-feedback" id="errorTelefono">
-                                El teléfono es un campo requerido.
+                                Por favor, ingresar un teléfono válido: [Cod.área]55555555 (sin espacios ni guiones)
                             </div>
                             </div>
                         </div>
             
                         <div class="col-12">
                             <label for="email" class="form-label">Email <span class="text-body-secondary"></span></label>
-                            <input type="email" class="form-control" id="email" placeholder="mail@ejemplo.com" maxlength="26">
+                            <input type="email" class="form-control" id="email" placeholder="mail@ejemplo.com" maxlength="35">
                             <div class="invalid-feedback" id="errorMail">
                                 Por favor, ingresar un email válido.
                             </div>
@@ -127,9 +127,9 @@
             
                         <div class="col-sm-5">
                             <label for="monto" class="form-label">Monto</label>
-                            <input type="number" class="form-control" id="monto" placeholder="" value="" required="" maxlength="14">
+                            <input type="number" class="form-control" id="monto" placeholder="9999999,99" value="" required="" maxlength="10">
                             <div class="invalid-feedback" id="errorMonto">
-                                Por favor, ingresar un monto válido.
+                                Por favor, ingresar un monto válido. Ejemplo: 9999999,99 (Usar un máximo de 2 decimales)
                             </div>
                         </div>
             
