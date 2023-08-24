@@ -80,9 +80,9 @@ document.addEventListener('DOMContentLoaded', function() {
     datosViajeros = JSON.parse(localStorage.getItem("datosViajerosGuardados"));
     }
 
-    for (let i=0 ; i < numeroViajeros; i++) {
-    agregarViajeroALista(datosViajeros[i],idViajerosGuardado[i]);
-    }
+    datosViajeros.forEach((viajero, index) => {
+        agregarViajeroALista(viajero, idViajerosGuardado[index]);
+    });
 
     // GASTOS //
 
@@ -102,9 +102,9 @@ document.addEventListener('DOMContentLoaded', function() {
         datosGastos = JSON.parse(localStorage.getItem("datosGastosGuardados"));
     }
 
-    for (let i=0 ; i < numeroGastos; i++) {
-        agregarGasto(datosGastos[i],idGastosGuardado[i]);
-    }
+    datosGastos.forEach((gasto, index) => {
+        agregarGasto(gasto, idGastosGuardado[index]);
+    });
 
     if (localStorage.getItem("gastoTotal") != null) {
         gastoTotal = JSON.parse(localStorage.getItem("gastoTotal"));
@@ -217,21 +217,21 @@ function abrirMenu(menu) {
 
         divDeViajeros.innerHTML = "";
 
-        for (i=0; i < numeroViajeros; i++) {
+        datosViajeros.forEach((viajero, i) => {
             const input = document.createElement("input");
             const label = document.createElement("label");
             const enter = document.createElement("br");
-            input.setAttribute("type","radio");
-            input.setAttribute("id","radio" + i);
-            input.setAttribute("name","Viajero");
-            input.setAttribute("value",String(datosViajeros[i].nombre + " " + datosViajeros[i].apellido));
-            label.setAttribute("for","radio" + i);
+            input.setAttribute("type", "radio");
+            input.setAttribute("id", "radio" + i);
+            input.setAttribute("name", "Viajero");
+            input.setAttribute("value", String(viajero.nombre + " " + viajero.apellido));
+            label.setAttribute("for", "radio" + i);
             label.classList.add("mx-2");
-            label.innerText = String(datosViajeros[i].nombre + " " + datosViajeros[i].apellido);
+            label.innerText = String(viajero.nombre + " " + viajero.apellido);
             divDeViajeros.appendChild(input);
             divDeViajeros.appendChild(label);
             divDeViajeros.appendChild(enter);
-        }
+        });
     }
 };
 
@@ -410,13 +410,13 @@ function aceptarGasto() {
     let monto = document.getElementById("monto").value;
     let comentario = document.getElementById("comentario").value;
     
-    for(let i = 0; i < viajeros.length; i++){
-        if(viajeros[i].checked){
-            viajero = viajeros[i].value;
-            id = viajeros[i].id.charAt(5);
+    viajeros.forEach(viajeroElement => {
+        if (viajeroElement.checked) {
+            viajero = viajeroElement.value;
+            id = viajeroElement.id.charAt(5);
             idViajeroGasto = Number(id);
         }
-    }
+    });
 
     if (viajero == undefined || monto == "" || comentario == "" || !regexMonto.test(monto)) {
         if (viajero == undefined){
@@ -501,27 +501,22 @@ function eliminarGasto(id) {
 /* MÓDULO DE MANEJO DE RESULTADOS */
 
 function repartirGastos(cantidad) {
-
     gastoTotal = 0;
-    gasto = [0,0,0,0,0];
-    gastoRepartido = [0,0,0,0,0];
+    gasto = [0, 0, 0, 0, 0];
+    gastoRepartido = [0, 0, 0, 0, 0];
 
-    for (i=0 ; i < (cantidad) ; i++) {
-        for (j=0 ; j < datosGastos.length ; j++) {
-            if (datosGastos[j].IdViajero == i) {
-                gasto[i] = gasto[i] + Number(datosGastos[j].monto);
-            }
-        }
-        gastoTotal = gastoTotal + gasto[i];
-    }
+    datosGastos.forEach((gastoItem) => {
+        const viajeroId = gastoItem.IdViajero;
+        const monto = Number(gastoItem.monto);
+        gasto[viajeroId] += monto;
+        gastoTotal += monto;
+    });
 
-    for (i=0 ; i < (cantidad) ; i++) {
-    gastoRepartido[i] = gasto[i] - (gastoTotal/cantidad);
-    }
+    gastoRepartido = gasto.map((montoViajero) => montoViajero - (gastoTotal / cantidad));
 
-    localStorage.setItem("gastoTotal",gastoTotal);
-    localStorage.setItem("gasto",JSON.stringify(gasto));
-    localStorage.setItem("gastoRepartido",JSON.stringify(gastoRepartido));
+    localStorage.setItem("gastoTotal", gastoTotal);
+    localStorage.setItem("gasto", JSON.stringify(gasto));
+    localStorage.setItem("gastoRepartido", JSON.stringify(gastoRepartido));
 }
 
 function actualizarGasto() {
@@ -533,38 +528,38 @@ function actualizarGasto() {
     ulResultados.innerHTML = "";
 
     if (numeroGastos > 0) {
-        for (i=0 ; i < datosViajeros.length ; i++) {
-        
+        datosViajeros.forEach((viajero, i) => {
             const li = document.createElement("li");
             li.classList.add("list-group-item", "1h-sm", "d-flex", "align-items-center");
             const div1 = document.createElement("div");
             const div2 = document.createElement("div");
             div2.classList.add("flex-grow-1");
             const div3 = document.createElement("div");
-            div3.classList.add("d-flex","justify-content-between","align-items-center","mb-1");
+            div3.classList.add("d-flex", "justify-content-between", "align-items-center", "mb-1");
             const h6 = document.createElement("h6");
             h6.classList.add("my-0");
             const small = document.createElement("small");
             small.classList.add("flex-grow-1", "px-3", "estiloMonto");
             const small1 = document.createElement("small");
             const img = document.createElement("img");
-
-            h6.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido;
-            small.innerText="Gasto total " + formatear(gasto[i]);
+        
+            h6.innerText = `${viajero.nombre} ${viajero.apellido}`;
+            small.innerText = `Gasto total ${formatear(gasto[i])}`;
+            
             if (gastoRepartido[i] < 0) {
                 small1.classList.add("estiloComentario", "debe");
                 img.classList.add("monstruoRepartir");
-                img.setAttribute("src","img/monstruoDebe.png");
-                img.setAttribute("alt","Mounstruo Debe");
-                small1.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido + " Debe: " + formatear(-gastoRepartido[i]);
+                img.setAttribute("src", "img/monstruoDebe.png");
+                img.setAttribute("alt", "Mounstruo Debe");
+                small1.innerText = `${viajero.nombre} ${viajero.apellido} Debe: ${formatear(-gastoRepartido[i])}`;
             } else {
                 small1.classList.add("estiloComentario", "recibe");
                 img.classList.add("monstruoRepartir");
-                img.setAttribute("src","img/monstruoRecibe.png");
-                img.setAttribute("alt","Mounstruo Recibe");
-                small1.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido + " recibe: " + formatear(gastoRepartido[i]);
+                img.setAttribute("src", "img/monstruoRecibe.png");
+                img.setAttribute("alt", "Mounstruo Recibe");
+                small1.innerText = `${viajero.nombre} ${viajero.apellido} recibe: ${formatear(gastoRepartido[i])}`;
             }
-
+        
             ulResultados.appendChild(li);
             li.appendChild(div1);
             div1.appendChild(img);
@@ -573,11 +568,9 @@ function actualizarGasto() {
             div3.appendChild(h6);
             div3.appendChild(small);
             div2.appendChild(small1);
-
-        };
+        });
     } else {
-        for (i=0 ; i < datosViajeros.length ; i++) {
-
+        datosViajeros.forEach((viajero) => {
             const li = document.createElement("li");
             li.classList.add("list-group-item", "1h-sm");
             const div = document.createElement("div");
@@ -589,31 +582,48 @@ function actualizarGasto() {
             const span = document.createElement("span");
             span.classList.add("text-success", "pointer");
             const small = document.createElement("small");
-
-            h6.innerText = datosViajeros[i].nombre + " " + datosViajeros[i].apellido;
-            small1.innerText="Gasto total $ 0";
+        
+            h6.innerText = `${viajero.nombre} ${viajero.apellido}`;
+            small1.innerText = "Gasto total $ 0";
             small.innerText = "Aún no hay gastos";
-
+        
             li.appendChild(div);
             div.appendChild(h6);
             div.appendChild(small1);
             div.appendChild(span);
             li.appendChild(small);
             ulResultados.appendChild(li);
-        };
+        });
     };
 
 }
 
 /* MÓDULO DE FETCH API PARA EL CLIMA DE LA CIUDAD DESTINO */
 
-const ciudadElegida = document.getElementById('ciudad');
+const ciudadElegida = document.getElementById("ciudad");
+const divClima = document.getElementById("temperatura");
+const loader = document.getElementById("loading");
+
+function mostrarLoading() {
+    loader.classList.add("display");
+    divClima.classList.add("d-none");
+
+    setTimeout(() => {
+        loader.classList.remove("display");
+    }, 5000);
+}
+
+function esconderLoading() {
+    loader.classList.remove("display");
+}
 
 ciudadElegida.onchange = (event) => {
+    const loader = document.getElementById("loading");
     const ciudad = event.target.value;
     const key = "969de0f6ebd36d04b40136010664f449";
     let url = `https://api.openweathermap.org/data/2.5/weather?q=${ciudad}&appid=${key}`;
-    
+    mostrarLoading();
+
     fetch(url)
         .then((res) => {
             return res.json();
@@ -621,7 +631,8 @@ ciudadElegida.onchange = (event) => {
         .then((clima) => {
             let temp = clima.main.temp;
             let tempC = temp - 273.15;
-            let divClima = document.getElementById('temperatura');
+            esconderLoading();
+            divClima.classList.remove("d-hidden");
             divClima.innerHTML = tempC.toFixed(0) + "°C";
 
             if (tempC < 10) {
@@ -632,6 +643,7 @@ ciudadElegida.onchange = (event) => {
         })
         .catch((err) => {
             let divClima = document.getElementById('temperatura');
+            esconderLoading();
             divClima.innerHTML = "Ciudad inexistente";
         });
 }
