@@ -162,6 +162,14 @@ body {
     border-radius: 20px;
 }
 
+.frio {
+    color: blue;
+}
+
+.calido {
+    color: red;
+}
+
 @media (max-width: 480px) {
     .monstruoViajero {
         width: 65px;
@@ -176,5 +184,8 @@ body {
     }
     .monstruoRepartir {
         width: 50px;
+    }
+    .tituloCompartido {
+        font-size: 18px;
     }
 }

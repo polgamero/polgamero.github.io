@@ -42,127 +42,188 @@
                 <h2>Gastos Monstruosos</h2>
                 <p class="lead">Dividí los gastos de tu viaje con amigos, dedicá más tiempo a disfrutar y menos tiempo a sacar cuentas.</p>
             </div>
-        
+            <div class="row g-5 mb-3">
+                <div class="col-md-4 col-7 mb-3">
+                    <h4>
+                        <span class="text-primary tituloCompartido">Ciudad de destino</span>
+                    </h4>
+                    <select name="ciudad" id="ciudad">
+                        <option value="Paris">París</option>
+                        <option value="New York">Nueva York</option>
+                        <option value="London">Londres</option>
+                        <option value="Tokyo">Tokio</option>
+                        <option value="Rome">Roma</option>
+                        <option value="Barcelona">Barcelona</option>
+                        <option value="Vienna">Viena</option>
+                        <option value="Sydney">Sídney</option>
+                        <option value="Berlin">Berlín</option>
+                        <option value="Bangkok">Bangkok</option>
+                        <option value="Amsterdam">Ámsterdam</option>
+                        <option value="Prague">Praga</option>
+                        <option value="Istanbul">Estambul</option>
+                        <option value="San Francisco">San Francisco</option>
+                        <option value="Beijing">Pekín</option>
+                        <option value="Seoul">Seúl</option>
+                        <option value="Dubai">Dubái</option>
+                        <option value="Moscow">Moscú</option>
+                        <option value="Los Angeles">Los Ángeles</option>
+                        <option value="Madrid">Madrid</option>
+                        <option value="Florence">Florencia</option>
+                        <option value="Venice">Venecia</option>
+                        <option value="Copenhagen">Copenhague</option>
+                        <option value="Toronto">Toronto</option>
+                        <option value="Hong Kong">Hong Kong</option>
+                        <option value="Athens">Atenas</option>
+                        <option value="Singapore">Singapur</option>
+                        <option value="Jerusalem">Jerusalén</option>
+                        <option value="Buenos Aires">Buenos Aires</option>
+                        <option value="Ushuaia">Ushuaia</option>
+                        <option value="Sao Paulo">Sao Paulo</option>
+                        <option value="Stockholm">Estocolmo</option>
+                        <option value="Cairo">Cairo</option>
+                        <option value="Mumbai">Mumbai</option>
+                        <option value="Rio De Janeiro">Río de Janeiro</option>
+                        <option value="Cape Town">Ciudad del Cabo</option>
+                        <option value="Dublin">Dublín</option>
+                        <option value="Kyoto">Kioto</option>
+                        <option value="Munich">Munich</option>
+                        <option value="Lisbon">Lisboa</option>
+                        <option value="St Petersburg">San Petersburgo</option>
+                        <option value="Hanoi">Hanoi</option>
+                        <option value="Dubrovnik">Dubrovnik</option>
+                        <option value="Edinburgh">Edimburgo</option>
+                        <option value="Osaka">Osaka</option>
+                        <option value="Budapest">Budapest</option>
+                        <option value="Havana">La Habana</option>
+                        <option value="Warsaw">Varsovia</option>
+                        <option value="Bangalore">Bangalore</option>
+                    </select>
+                </div>
+                <div class="col-md-8 col-5 mb-3">
+                    <h4>
+                        <span class="text-primary tituloCompartido">Temperatura</span>
+                        <div id="temperatura"></div>
+                    </h4>
+                </div>
+            </div>        
             <div class="row g-5">
-            <div class="col-md-6 col-lg-5 order-md-last">
-                <h4 class="d-flex justify-content-between align-items-center mb-3">
-                <span class="text-primary">Listado de viajeros</span>
-                <span class="badge bg-primary rounded-pill" id="numeroViajeros"></span>
-                </h4>
-                <ul class="list-group mb-3" id="listaViajeros">
-                </ul>
-                <div class="invalid-feedback errorEliminar" id="errorEliminar">
-                    ELIMINAR GASTOS ANTES DE MODIFICAR VIAJEROS.
+                <div class="col-md-6 col-lg-5 order-md-last">
+                    <h4 class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-primary">Listado de viajeros</span>
+                    <span class="badge bg-primary rounded-pill" id="numeroViajeros"></span>
+                    </h4>
+                    <ul class="list-group mb-3" id="listaViajeros">
+                    </ul>
                 </div>
-            </div>
-            <div class="col-md-6 col-lg-7">
-                <form class="needs-validation" novalidate="" id="formularioViajero">
-                    <div class="imagen">
-                        <h4 class="mb-1">Viajeros</h4>
-                        <img src="img/monstruoViajero.png" class="monstruoViajero" alt="Monstruo Viajero">
-                    </div>
-                    <hr class="my-2">
-                    <button class="btn btn-success rounded-pill px-3" type="button" id="agregar">Nuevo viajero</button>
-                    
-                    <div class="row g-3 d-none" id="nuevoViajeroForm">
-                        <div class="col-sm-6">
-                            <label for="nombre" class="form-label">Nombre</label>
-                            <input type="text" class="form-control" id="nombre" placeholder="" value="" required="" maxlength="16">
-                            <div class="invalid-feedback" id="errorNombre">
-                                Por favor, ingresar un nombre válido.
-                            </div>
+                <div class="col-md-6 col-lg-7">
+                    <form class="needs-validation" novalidate="" id="formularioViajero">
+                        <div class="imagen">
+                            <h4 class="mb-1">Viajeros</h4>
+                            <img src="img/monstruoViajero.png" class="monstruoViajero" alt="Monstruo Viajero">
                         </div>
-            
-                        <div class="col-sm-6">
-                            <label for="apellido" class="form-label">Apellido</label>
-                            <input type="text" class="form-control" id="apellido" placeholder="" value="" required="" maxlength="16">
-                            <div class="invalid-feedback" id="errorApellido">
-                                Por favor, ingresar un apellido válido.
+                        <hr class="my-2">
+                        <button class="btn btn-success rounded-pill px-3" type="button" id="agregar">Nuevo viajero</button>
+                        
+                        <div class="row g-3 d-none" id="nuevoViajeroForm">
+                            <div class="col-sm-6">
+                                <label for="nombre" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="nombre" placeholder="" value="" required="" maxlength="16">
+                                <div class="invalid-feedback" id="errorNombre">
+                                    Por favor, ingresar un nombre válido.
+                                </div>
                             </div>
-                        </div>
-            
-                        <div class="col-12">
-                            <label for="telefono" class="form-label">Teléfono</label>
-                            <div class="input-group has-validation">
-                                <span class="input-group-text">+54</span>
-                                <input type="tel" class="form-control" id="telefono" placeholder="1155550000" required="" maxlength="12">
-                            <div class="invalid-feedback" id="errorTelefono">
-                                Por favor, ingresar un teléfono válido: [Cod.área]55555555 (sin espacios ni guiones)
-                            </div>
-                            </div>
-                        </div>
-            
-                        <div class="col-12">
-                            <label for="email" class="form-label">Email <span class="text-body-secondary"></span></label>
-                            <input type="email" class="form-control" id="email" placeholder="mail@ejemplo.com" maxlength="35">
-                            <div class="invalid-feedback" id="errorMail">
-                                Por favor, ingresar un email válido.
-                            </div>
-                        </div>
-
-                        <div class="col-12 d-flex justify-content-end">
-                            <button class="btn btn-primary rounded-pill mx-1 px-3" type="button" id="aceptar">Aceptar</button>
-                            <button class="btn btn-danger rounded-pill mx-1 px-3" type="button" id="cancelar">Cancelar</button>
-                        </div>
-                    </div>
                 
-                <div class="imagen">
-                    <h4 class="mb-1">Gastos</h4>
-                    <img src="img/monstruoGastos.png" class="monstruoGastos" alt="Monstruo Gastos">
-                </div>
-                <hr class="my-2">
-                <button class="btn btn-success rounded-pill px-3" type="button" id="agregarGasto">Nuevo gasto</button>
+                            <div class="col-sm-6">
+                                <label for="apellido" class="form-label">Apellido</label>
+                                <input type="text" class="form-control" id="apellido" placeholder="" value="" required="" maxlength="16">
+                                <div class="invalid-feedback" id="errorApellido">
+                                    Por favor, ingresar un apellido válido.
+                                </div>
+                            </div>
+                
+                            <div class="col-12">
+                                <label for="telefono" class="form-label">Teléfono</label>
+                                <div class="input-group has-validation">
+                                    <span class="input-group-text">+54</span>
+                                    <input type="tel" class="form-control" id="telefono" placeholder="1155550000" required="" maxlength="12">
+                                <div class="invalid-feedback" id="errorTelefono">
+                                    Por favor, ingresar un teléfono válido: [Cod.área]55555555 (sin espacios ni guiones)
+                                </div>
+                                </div>
+                            </div>
+                
+                            <div class="col-12">
+                                <label for="email" class="form-label">Email <span class="text-body-secondary"></span></label>
+                                <input type="email" class="form-control" id="email" placeholder="mail@ejemplo.com" maxlength="35">
+                                <div class="invalid-feedback" id="errorMail">
+                                    Por favor, ingresar un email válido.
+                                </div>
+                            </div>
 
-                    <div class="row g-3 d-none" id="nuevoGastoForm">
-                        <span class="aviso d-none" id="aviso">TENGA EN CUENTA QUE AL AGREGAR UN GASTO NO PODRÁ MODIFICAR LA LISTA DE VIAJEROS.</span>
-                        <div class="col-sm-7">
-                            <label class="form-label">¿Quién Pago?</label>
-                            <div id="opcionesViajeros">
-
-                            </div>
-                            <div class="invalid-feedback" id="errorViajero">
-                                Por favor, seleccione quién realizó el gasto.
-                            </div>
-                        </div>
-            
-                        <div class="col-sm-5">
-                            <label for="monto" class="form-label">Monto</label>
-                            <input type="number" class="form-control" id="monto" placeholder="9999999,99" value="" required="" maxlength="10">
-                            <div class="invalid-feedback" id="errorMonto">
-                                Por favor, ingresar un monto válido. Ejemplo: 9999999,99 (Usar un máximo de 2 decimales)
-                            </div>
-                        </div>
-            
-                        <div class="col-12">
-                            <label for="comentario" class="form-label">Comentarios <span class="text-body-secondary"></span></label>
-                            <input type="text" class="form-control" id="comentario" placeholder="desayuno en la confitería" maxlength="26">
-                            <div class="invalid-feedback" id="errorComentario">
-                                Por favor, ingresar un comentario válido.
+                            <div class="col-12 d-flex justify-content-end">
+                                <button class="btn btn-primary rounded-pill mx-1 px-3" type="button" id="aceptar">Aceptar</button>
+                                <button class="btn btn-danger rounded-pill mx-1 px-3" type="button" id="cancelar">Cancelar</button>
                             </div>
                         </div>
-
-                        <div class="col-12 d-flex justify-content-end">
-                            <button class="btn btn-primary rounded-pill mx-1 px-3" type="button" id="aceptarGasto">Aceptar</button>
-                            <button class="btn btn-danger rounded-pill mx-1 px-3" type="button" id="cancelarGasto">Cancelar</button>
-                        </div>
-                    </div>
-
-                    <ul class="list-group my-3" id="listaGastos">
-
-                    </ul>
-
-                <div class="imagen">
-                    <h4 class="mb-1">Resultado</h4>
-                    <img src="img/monstruoResultados.png" class="monstruoResultado" alt="Monstruo Resultados">
-                </div>
-                    <hr class="my-2">
-                    <ul class="list-group my-3" id="listaResultados">
                     
-                    </ul>
-                    <div class="col-12 d-flex justify-content-center">
-                        <span class="w-80 btn-primary btn-lg gastoTotal" id="gastoFinal">Gasto total del viaje: $ 125.234,32 </span>
+                    <div class="imagen">
+                        <h4 class="mb-1">Gastos</h4>
+                        <img src="img/monstruoGastos.png" class="monstruoGastos" alt="Monstruo Gastos">
                     </div>
-                </form>
+                    <hr class="my-2">
+                    <button class="btn btn-success rounded-pill px-3" type="button" id="agregarGasto">Nuevo gasto</button>
+
+                        <div class="row g-3 d-none" id="nuevoGastoForm">
+                            <span class="aviso d-none" id="aviso">TENGA EN CUENTA QUE AL AGREGAR UN GASTO NO PODRÁ MODIFICAR LA LISTA DE VIAJEROS.</span>
+                            <div class="col-sm-7">
+                                <label class="form-label">¿Quién Pagó?</label>
+                                <div id="opcionesViajeros">
+
+                                </div>
+                                <div class="invalid-feedback" id="errorViajero">
+                                    Por favor, seleccione quién realizó el gasto.
+                                </div>
+                            </div>
+                
+                            <div class="col-sm-5">
+                                <label for="monto" class="form-label">Monto</label>
+                                <input type="number" class="form-control" id="monto" placeholder="9999999,99" value="" required="" maxlength="10">
+                                <div class="invalid-feedback" id="errorMonto">
+                                    Por favor, ingresar un monto válido. Ejemplo: 9999999,99 (Usar un máximo de 2 decimales)
+                                </div>
+                            </div>
+                
+                            <div class="col-12">
+                                <label for="comentario" class="form-label">Comentarios <span class="text-body-secondary"></span></label>
+                                <input type="text" class="form-control" id="comentario" placeholder="desayuno en la confitería" maxlength="26">
+                                <div class="invalid-feedback" id="errorComentario">
+                                    Por favor, ingresar un comentario válido.
+                                </div>
+                            </div>
+
+                            <div class="col-12 d-flex justify-content-end">
+                                <button class="btn btn-primary rounded-pill mx-1 px-3" type="button" id="aceptarGasto">Aceptar</button>
+                                <button class="btn btn-danger rounded-pill mx-1 px-3" type="button" id="cancelarGasto">Cancelar</button>
+                            </div>
+                        </div>
+
+                        <ul class="list-group my-3" id="listaGastos">
+
+                        </ul>
+
+                    <div class="imagen">
+                        <h4 class="mb-1">Resultado</h4>
+                        <img src="img/monstruoResultados.png" class="monstruoResultado" alt="Monstruo Resultados">
+                    </div>
+                        <hr class="my-2">
+                        <ul class="list-group my-3" id="listaResultados">
+                        
+                        </ul>
+                        <div class="col-12 d-flex justify-content-center">
+                            <span class="w-80 btn-primary btn-lg gastoTotal" id="gastoFinal">Gasto total del viaje: $ 125.234,32 </span>
+                        </div>
+                    </form>
+                </div>
             </div>
         </main>
         

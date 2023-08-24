@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
     datosViajeros = JSON.parse(localStorage.getItem("datosViajerosGuardados"));
     }
 
-    for (var i=0 ; i < numeroViajeros; i++) {
+    for (let i=0 ; i < numeroViajeros; i++) {
     agregarViajeroALista(datosViajeros[i],idViajerosGuardado[i]);
     }
 
@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
         datosGastos = JSON.parse(localStorage.getItem("datosGastosGuardados"));
     }
 
-    for (var i=0 ; i < numeroGastos; i++) {
+    for (let i=0 ; i < numeroGastos; i++) {
         agregarGasto(datosGastos[i],idGastosGuardado[i]);
     }
 
@@ -410,7 +410,7 @@ function aceptarGasto() {
     let monto = document.getElementById("monto").value;
     let comentario = document.getElementById("comentario").value;
     
-    for(var i = 0; i < viajeros.length; i++){
+    for(let i = 0; i < viajeros.length; i++){
         if(viajeros[i].checked){
             viajero = viajeros[i].value;
             id = viajeros[i].id.charAt(5);
@@ -603,4 +603,35 @@ function actualizarGasto() {
         };
     };
 
+}
+
+/* MÓDULO DE FETCH API PARA EL CLIMA DE LA CIUDAD DESTINO */
+
+const ciudadElegida = document.getElementById('ciudad');
+
+ciudadElegida.onchange = (event) => {
+    const ciudad = event.target.value;
+    const key = "969de0f6ebd36d04b40136010664f449";
+    let url = `http://api.openweathermap.org/data/2.5/weather?q=${ciudad}&appid=${key}`;
+    
+    fetch(url)
+        .then((res) => {
+            return res.json();
+        })
+        .then((clima) => {
+            let temp = clima.main.temp;
+            let tempC = temp - 273.15;
+            let divClima = document.getElementById('temperatura');
+            divClima.innerHTML = tempC.toFixed(0) + "°C";
+
+            if (tempC < 10) {
+                divClima.className = 'frio';
+            } else {
+                divClima.className = 'calido';
+            }
+        })
+        .catch((err) => {
+            let divClima = document.getElementById('temperatura');
+            divClima.innerHTML = "Ciudad inexistente";
+        });
 }
