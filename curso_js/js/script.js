@@ -612,7 +612,7 @@ const ciudadElegida = document.getElementById('ciudad');
 ciudadElegida.onchange = (event) => {
     const ciudad = event.target.value;
     const key = "969de0f6ebd36d04b40136010664f449";
-    let url = `http://api.openweathermap.org/data/2.5/weather?q=${ciudad}&appid=${key}`;
+    let url = `https://api.openweathermap.org/data/2.5/weather?q=${ciudad}&appid=${key}`;
     
     fetch(url)
         .then((res) => {
