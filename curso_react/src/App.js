@@ -1,13 +1,24 @@
 import './App.css';
-import NavBar from './Components/NavBar/NavBar';
-import ItemListContainer from './Components/ItemListContainer/ItemListContainer';
+import Home from './Pages/Home/Home';
+import Products from './Pages/Products/Products';
+import Cart from './Pages/Cart/Cart';
+import Navbar from './Components/Navbar/Navbar';
+import Item from './Components/Item/Item';
+import { BrowserRouter, Routes, Route} from 'react-router-dom';
+import MyNavbar from './Components/Navbar/BootstrapNavbar';
 
 function App() {
+  
   return (
-    <div className="App">
-      <NavBar />
-      <ItemListContainer bienvenida={'¡Bienvenidos a mi Shop Online!'}/>
-    </div>
+    <BrowserRouter className="App">
+      <Navbar />
+      <Routes>
+        <Route path='/' element={<Home />}/>
+        <Route path='/cart' element={<Cart />}/>
+        <Route path='/products' element={<Products/>}/>
+        <Route path='/products/:itemId' element={<Item/>}/>
+      </Routes>
+    </BrowserRouter>
   );
 }
 
