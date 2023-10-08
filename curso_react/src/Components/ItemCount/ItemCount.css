@@ -1,0 +1,25 @@
+.Counter {
+    font-size: large;
+    padding: 10px 0px;
+}
+
+.Controls {
+    font-size: large;
+    display: flex;
+    padding-bottom: 20px;
+} 
+
+.Button {
+    padding: 0px 10px;
+    border: solid 1px blue;
+    border-radius: 20px;
+    background-color: black;
+    font-size: large;
+    color: white;
+}
+
+.Number {
+    color:black;
+    font-size: 32px;
+    padding: 0px 40px;
+}
