@@ -1,25 +1,60 @@
-.Counter {
-    font-size: large;
-    padding: 10px 0px;
+.item-count-container {
+    text-align: center;
 }
 
-.Controls {
-    font-size: large;
+.counter-container {
+    margin: 10px 0;
     display: flex;
-    padding-bottom: 20px;
-} 
-
-.Button {
-    padding: 0px 10px;
-    border: solid 1px blue;
-    border-radius: 20px;
-    background-color: black;
-    font-size: large;
-    color: white;
+    align-items: center;
+    justify-content: center;
 }
 
-.Number {
-    color:black;
-    font-size: 32px;
-    padding: 0px 40px;
+.counter-button {
+    cursor: pointer;
+    background-color: #3993DD;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    margin: 0 5px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+    text-decoration: none;
 }
+
+.counter-button:hover {
+    background-color: #0b7fdf;
+}
+
+.counter-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.counter-quantity {
+    margin: 0 10px;
+    font-size: 1.5rem;
+}
+
+.add-container {
+    margin-top: 10px;
+}
+
+.add-button {
+    padding: 10px;
+    cursor: pointer;
+    background-color: #3993DD;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.add-button:hover {
+    background-color: #0b7fdf;
+}
+
+.add-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+

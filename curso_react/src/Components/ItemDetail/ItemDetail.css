@@ -1,23 +1,56 @@
-.CardItem {
-
+.item-article {
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    width: 300px;
+    margin: 5px;
+    overflow: hidden;
+    display: inline-block;
 }
 
-.Header {
-
+.item-header {
+    background-color: #e0e0e0;
+    padding: 10px;
+    text-align: center;
 }
 
-.ItemHeader {
-
+.item-title {
+    margin: 0;
+    font-size: 20px;
+    color: #333;
 }
 
-.ItemImg {
-
+.item-picture {
+    display: block;
+    text-align: center;
+    padding: 10px;
 }
 
-.Info {
-
+.item-image {
+    display: block;
+    max-width: 50%;
+    margin: 0 auto;
+    height: 200px;
+    filter: brightness(1.1);
+    mix-blend-mode: multiply;
 }
 
-.ItemFooter {
+.item-section {
+    padding: 10px;
+}
 
+.item-categoria,.item-descripcion,.item-precio {
+    margin: 8px 0;
+    color: #333;
+    font-size: 16px;
+}
+
+.item-footer {
+    background-color: #e0e0e0;
+    padding: 10px;
+    text-align: center;
+}
+
+.item-count {
+    display: inline-block;
 }
