@@ -9,7 +9,7 @@
 }
 
 .item-header {
-    background-color: #e0e0e0;
+    background-color: #218f00;
     padding: 10px;
     text-align: center;
 }
@@ -17,7 +17,7 @@
 .item-title {
     margin: 0;
     font-size: 20px;
-    color: #333;
+    color: #ffffff;
 }
 
 .item-picture {
@@ -46,7 +46,7 @@
 }
 
 .item-footer {
-    background-color: #e0e0e0;
+    background-color: #009018;
     padding: 10px;
     text-align: center;
 }

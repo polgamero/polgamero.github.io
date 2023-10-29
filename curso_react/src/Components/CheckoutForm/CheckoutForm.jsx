@@ -43,7 +43,7 @@ const CheckoutForm = ({onConfirm}) => {
         />
       </div>
       <div className="input-group">
-        <label className="input-label">Telefono</label>
+        <label className="input-label">Teléfono</label>
         <input 
           type="tel" 
           id="phone" 
@@ -54,7 +54,7 @@ const CheckoutForm = ({onConfirm}) => {
           className="input-field"
         />
       </div>
-      <button type="submit" className="submit-button">Submit</button>
+      <button type="submit" className="submit-button">Comprar</button>
     </form>
     )
 
