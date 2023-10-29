@@ -14,7 +14,7 @@ const Item = ({id, name, img, precio, stock}) => {
                 <p style={{fontWeight: 'bold'}}>Stock Disponible: {stock}</p>
             </section>
             <footer className="item-footer">
-                <Link to={`/item/${id}`} className="counter-button">Detalles</Link>
+                <Link to={`/item/${id}`} className="counter-button">Detalle del producto</Link>
             </footer>
         </article>
     )

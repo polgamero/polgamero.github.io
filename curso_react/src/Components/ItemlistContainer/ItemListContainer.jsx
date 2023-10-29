@@ -36,7 +36,7 @@ const ItemListContainer = ({greeting}) => {
     return(
         <div>
             { 
-            loading ? <p>cargando...</p> 
+            loading ? <p>Cargando...</p> 
             : <div><h1 className="greeting">{greeting}</h1>
                 <h1 className="greeting">{categoriaId}</h1>
                 <ItemList products={products} />

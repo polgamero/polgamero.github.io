@@ -11,8 +11,8 @@
 
 .counter-button {
     cursor: pointer;
-    background-color: #3993DD;
-    color: #fff;
+    background-color: #2ad100;
+    color: #121212;
     border: none;
     padding: 5px 10px;
     margin: 0 5px;
@@ -22,7 +22,7 @@
 }
 
 .counter-button:hover {
-    background-color: #0b7fdf;
+    background-color: #5fff8f;
 }
 
 .counter-button:disabled {
@@ -42,15 +42,15 @@
 .add-button {
     padding: 10px;
     cursor: pointer;
-    background-color: #3993DD;
-    color: #fff;
+    background-color: #52dd39;
+    color: #000000;
     border: none;
     border-radius: 5px;
     transition: background-color 0.3s ease;
 }
 
 .add-button:hover {
-    background-color: #0b7fdf;
+    background-color: #9eff97;
 }
 
 .add-button:disabled {
