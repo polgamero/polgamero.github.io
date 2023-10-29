@@ -30,13 +30,13 @@
 }
 
 .input-field:focus {
-    border-color: #3993DD;
+    border-color: #0db30a;
     outline: none;
 }
 
 .submit-button {
     padding: 10px 20px;
-    background-color: #3993DD;
+    background-color: #1b9200;
     color: #ffffff;
     border: none;
     border-radius: 4px;
@@ -46,5 +46,5 @@
 }
 
 .submit-button:hover {
-    background-color: #0056b3;
+    background-color: #64fd62;
 }
