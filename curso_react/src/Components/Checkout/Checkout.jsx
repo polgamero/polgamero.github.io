@@ -59,11 +59,11 @@ const Checkout = () => {
     
 
     if(loading){
-        return <h1>Se esta generando tu pedido</h1>
+        return <h1 style={{textAlign: 'center'}}>Se esta generando tu pedido...</h1>
     }
 
     if(orderId!==''){
-        return <div style={{textAlign: 'center'}}><h1>¡Tu pedido fue creado con exito! 🎉</h1><p>ID: {orderId}</p><Link to='/' className="counter-button">Seguir Comprando</Link></div>
+        return <div style={{textAlign: 'center'}}><h1>¡Tu pedido fue creado con éxito!</h1><p>ID del pedido: {orderId}</p><Link to='/' className="counter-button">Seguir Comprando</Link></div>
     }
 
     return (

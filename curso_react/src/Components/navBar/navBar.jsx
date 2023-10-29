@@ -5,7 +5,7 @@ import './nav.css';
 const navBar = () => {
     return (
         <nav>
-            <Link to='/' className='nombre-ecommerce'>POL</Link>
+            <Link to='/' className='nombre-ecommerce'>POL SHOP</Link>
             <ul>
                 <NavLink to={`/categoria/auriculares`} className='nav-categoria-links'>Auriculares</NavLink>
                 <NavLink to={`/categoria/televisores`} className='nav-categoria-links'>Televisores</NavLink>
