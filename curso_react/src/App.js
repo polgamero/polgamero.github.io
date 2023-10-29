@@ -1,31 +1,30 @@
-import './App.css';
-import Home from './Pages/Home/Home';
-import Products from './Pages/Products/Products';
-import Cart from './Pages/Cart/Cart';
-import Navbar from './Components/Navbar/Navbar';
-import Item from './Components/Item/Item';
-import { BrowserRouter, Routes, Route} from 'react-router-dom';
-import MyNavbar from './Components/Navbar/BootstrapNavbar';
-import ItemListContainer from './Components/ItemListContainer/ItemListContainer';
-import ItemDetailContainer from './Components/ItemDetailContainer/ItemDetailContainer'
-import ItemCount from './Components/ItemCount/ItemCount'
+import './app.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import NavBar from './components/navBar/navBar.jsx';
+import ItemListContainer from './components/ItemlistContainer/ItemListContainer';
+import ItemDetailContainer from './components/ItemDetailContainer/ItemDetailContanier';
+import Cart from './components/Cart/Cart';
+import { CartProvider } from './context/CartContext';
+import Checkout from './components/Checkout/Checkout';
 
-function App() {
-  
+const App = () => {
   return (
-    <BrowserRouter className="App">
-      <Navbar />
-      <ItemListContainer bienvenida={'Bienvenidos'}/>
-      <ItemDetailContainer />
-      <Routes>
-        <Route path='/' element={<Home />}/>
-        <Route path='/cart' element={<Cart />}/>
-        <Route path='/products' element={<Products/>}/>
-        <Route path='/products/:itemId' element={<Item/>}/>
-      </Routes>
-    </BrowserRouter>
-    
+    <div className='App'>
+      <BrowserRouter>
+        <CartProvider>
+          <NavBar />
+          <Routes>
+            <Route path='/' element={<ItemListContainer greeting={"POL SHOP"} />} />
+            <Route path='/categoria/:categoriaId' element={<ItemListContainer />} />
+            <Route path='/item/:itemId' element={<ItemDetailContainer />} />
+            <Route path='/cart' element={<Cart />} />
+            <Route path='/checkout' element={<Checkout />} />
+            <Route path='*' element={<h1>404 NOT FOUND</h1>} />
+          </Routes>
+        </CartProvider>
+      </BrowserRouter>
+    </div>
   );
 }
-
 export default App;

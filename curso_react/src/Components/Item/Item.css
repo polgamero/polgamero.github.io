@@ -1,6 +1,9 @@
 .CardItem {
     width: 200px;
     background-color: cadetblue;
+    border-radius: 20px;
+    text-align: center;
+    padding: 20px 5px;
 }
 
 .Header {
@@ -24,5 +27,7 @@
 }
 
 .Option {
-    
+    border-radius: 10px;
+    background-color: aqua;
+    font-weight: 600;
 }
