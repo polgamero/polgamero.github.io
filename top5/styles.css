@@ -1,1 +1,53 @@
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+    margin: 0;
+}
+
+.container {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.podio {
+    width: 25%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 20px;
+    background-color: #f0f0f0;
+    border: 2px solid #ccc;
+}
+
+.podio-slot {
+    width: 100%;
+    height: 100px;
+    border: 1px dashed #aaa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fff;
+}
+
+.podio-slot p {
+    margin: 0;
+}
+
+.images-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 70%;
+}
+
+.draggable {
+    width: 150px;
+    height: 100px;
+    cursor: pointer;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+}
 
