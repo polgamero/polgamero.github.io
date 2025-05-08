@@ -137,6 +137,21 @@ let currentAudio = null;
       document.body.appendChild(button);
     });
 
+    // Detectar combinaciones de teclas (Ctrl + número)
+    document.addEventListener("keydown", (event) => {
+      if (event.ctrlKey && event.key >= '1' && event.key <= '4') {
+        event.preventDefault(); // Evita el comportamiento por defecto (ej. abrir navegador)
+        const buttonIndex = parseInt(event.key) - 1; // Mapea 1 -> índice 0
+        const button = document.querySelectorAll(".button")[buttonIndex];
+        button.click(); // Simula el click en el botón correspondiente
+      }
+    
+      // Detectar la barra espaciadora para detener sonido
+      if (event.code === "Space") {
+        event.preventDefault(); // Evita scroll hacia abajo si aplica
+        stopCurrentSound();
+        }
+      });
     // Detectar la barra espaciadora para detener sonido
     document.addEventListener("keydown", (event) => {
       if (event.code === "Space") {
