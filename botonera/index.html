@@ -16,27 +16,41 @@
       gap: 20px;
     }
 
-    .button {
-      background: linear-gradient(to bottom, #ff4c4c, #b30000);
-      color: white;
-      padding: 15px 30px;
-      border: none;
-      border-radius: 12px;
-      font-size: 18px;
-      font-weight: bold;
-      box-shadow: 0 6px #700000;
-      cursor: pointer;
-      transition: all 0.1s ease-in-out;
-    }
+.button {
+  background: radial-gradient(circle at top left, #ff6666, #cc0000);
+  color: white;
+  padding: 20px 40px;
+  border: none;
+  border-radius: 50px; /* Más redondo */
+  font-size: 24px;
+  font-weight: bold;
+  box-shadow: -6px -6px 10px rgba(255, 255, 255, 0.2), 6px 6px 12px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: all 0.1s ease-in-out;
+  position: relative;
+}
 
-    .button:hover {
-      background: linear-gradient(to bottom, #ff5e5e, #cc0000);
-    }
+.button::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 80%;
+  height: 40%;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: rotate(-15deg);
+}
 
-    .button:active {
-      box-shadow: 0 2px #700000;
-      transform: translateY(4px);
-    }
+.button:hover {
+  background: radial-gradient(circle at top left, #ff7a7a, #d10000);
+}
+
+.button:active {
+  transform: translateY(2px);
+  box-shadow: -4px -4px 6px rgba(255, 255, 255, 0.2), 4px 4px 8px rgba(0, 0, 0, 0.4);
+}
 
     #stopButton {
       position: fixed;
