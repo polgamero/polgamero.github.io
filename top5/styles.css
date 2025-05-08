@@ -25,15 +25,33 @@ body {
   border: 2px solid #ddd;
 }
 
+.podio-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.podio-header h2 {
+  font-size: 20px;
+  margin: 10px 0 0;
+  color: #222;
+}
+
+.logo-placeholder {
+  width: 100px;
+  height: 50px;
+  object-fit: contain;
+}
+
 .podio-slot {
-  height: 145px; /* ajustado al nuevo tamaño de imagen */
+  position: relative;
+  height: 145px;
   border: 2px dashed #ccc;
   background-color: #ffffff;
   border-radius: 10px;
+  padding-left: 45px;
   display: flex;
   justify-content: center;
   align-items: center;
-  position: relative;
   overflow: hidden;
   transition: border-color 0.2s;
 }
@@ -42,16 +60,27 @@ body {
   border-color: #aaa;
 }
 
-.podio-slot p {
+.rank-number {
   position: absolute;
-  top: 6px;
-  left: 10px;
-  margin: 0;
+  left: 0;
+  top: 0;
+  width: 40px;
+  height: 100%;
+  font-size: 22px;
   font-weight: bold;
-  font-size: 13px;
-  color: #444;
-  z-index: 1;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
 }
+
+.rank-1 { background-color: #FFD700; }
+.rank-2 { background-color: #C0C0C0; }
+.rank-3 { background-color: #CD7F32; }
+.rank-4 { background-color: #6495ED; }
+.rank-5 { background-color: #32CD32; }
 
 .images-container {
   flex: 1;
@@ -67,8 +96,8 @@ body {
 }
 
 .draggable {
-  width: 195px;   /* 150 + 30% */
-  height: 130px;  /* 100 + 30% */
+  width: 195px;
+  height: 130px;
   object-fit: cover;
   border: 2px solid #ccc;
   border-radius: 8px;
@@ -79,5 +108,3 @@ body {
 .draggable:hover {
   transform: scale(1.03);
 }
-
-
