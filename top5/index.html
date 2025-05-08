@@ -36,23 +36,26 @@
 
     <!-- Contenedor de imágenes -->
     <div class="images-container" id="images-container" ondrop="drop(event)" ondragover="allowDrop(event)">
-      <!-- 20 imágenes -->
-      <script>
-        const container = document.currentScript.parentElement;
-        for (let i = 1; i <= 20; i++) {
-          const img = document.createElement("img");
-          img.src = `https://picsum.photos/seed/${i}/300/200`;
-          img.className = "draggable";
-          img.id = `img-${i}`;
-          img.draggable = true;
-          img.ondragstart = drag;
-          container.appendChild(img);
-        }
-      </script>
+
+
     </div>
   </div>
 
   <script src="script.js"></script>
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const container = document.getElementById("images-container");
+    for (let i = 1; i <= 20; i++) {
+      const img = document.createElement("img");
+      img.src = `https://picsum.photos/seed/${i}/300/200`;
+      img.className = "draggable";
+      img.id = `img-${i}`;
+      img.draggable = true;
+      img.ondragstart = drag;
+      container.appendChild(img);
+    }
+  });
+</script>
 </body>
 </html>
 
