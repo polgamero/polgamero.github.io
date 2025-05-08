@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drag & Drop - TOP 5</title>
-    <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>TOP 5 Drag & Drop</title>
+    <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
     <div class="container">
@@ -27,16 +27,23 @@
             </div>
         </div>
 
-        <!-- Imágenes a arrastrar -->
-        <div class="images-container">
-            <img src="https://via.placeholder.com/150x100" alt="Imagen 1" class="draggable" id="img-1" draggable="true" ondragstart="drag(event)">
-            <img src="https://via.placeholder.com/150x100" alt="Imagen 2" class="draggable" id="img-2" draggable="true" ondragstart="drag(event)">
-            <img src="https://via.placeholder.com/150x100" alt="Imagen 3" class="draggable" id="img-3" draggable="true" ondragstart="drag(event)">
-            <!-- Agregar más imágenes según sea necesario -->
+        <!-- Contenedor de imágenes -->
+        <div class="images-container" id="images-container" ondrop="drop(event)" ondragover="allowDrop(event)">
+            <!-- 20 imágenes con links a Unsplash como placeholder -->
+            <img src="https://source.unsplash.com/random/150x100?sig=1" id="img-1" class="draggable" draggable="true" ondragstart="drag(event)">
+            <img src="https://source.unsplash.com/random/150x100?sig=2" id="img-2" class="draggable" draggable="true" ondragstart="drag(event)">
+            <img src="https://source.unsplash.com/random/150x100?sig=3" id="img-3" class="draggable" draggable="true" ondragstart="drag(event)">
+            <img src="https://source.unsplash.com/random/150x100?sig=4" id="img-4" class="draggable" draggable="true" ondragstart="drag(event)">
+            <img src="https://source.unsplash.com/random/150x100?sig=5" id="img-5" class="draggable" draggable="true" ondragstart="drag(event)">
+            <img src="https://source.unsplash.com/random/150x100?sig=6" id="img-6" class="draggable" draggable="true" ondragstart="drag(event)">
+            <img src="https://source.unsplash.com/random/150x100?sig=7" id="img-7" class="draggable" draggable="true" ondragstart="drag(event)">
+            <img src="https://source.unsplash.com/random/150x100?sig=8" id="img-8" class="draggable" draggable="true" ondragstart="drag(event)">
+            <img src="https://source.unsplash.com/random/150x100?sig=9" id="img-9" class="draggable" draggable="true" ondragstart="drag(event)">
+            <img src="https://source.unsplash.com/random/150x100?sig=10" id="img-10" class="draggable" draggable="true" ondragstart="drag(event)">
+            <!-- Puedes duplicar hasta 20 si deseas -->
         </div>
     </div>
 
     <script src="script.js"></script>
 </body>
 </html>
-
