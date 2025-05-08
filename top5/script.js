@@ -41,3 +41,44 @@ function drop(event) {
     dropTarget.appendChild(draggedImg);
   }
 }
+
+// Eventos táctiles (para móviles)
+let touchStartX = 0;
+let touchStartY = 0;
+let isTouchMove = false;
+
+function touchStart(event) {
+  touchStartX = event.touches[0].clientX;
+  touchStartY = event.touches[0].clientY;
+  isTouchMove = false;
+}
+
+function touchMove(event) {
+  const dx = Math.abs(event.touches[0].clientX - touchStartX);
+  const dy = Math.abs(event.touches[0].clientY - touchStartY);
+
+  if (dx > 5 || dy > 5) {
+    isTouchMove = true;
+  }
+}
+
+function touchEnd(event) {
+  if (isTouchMove) {
+    const draggedImg = event.target;
+    if (draggedImg && draggedImg.classList.contains("draggable")) {
+      const container = draggedImg.parentElement;
+
+      // Aquí el código para simular un "drop" similar al drag
+      const dropTarget = document.elementFromPoint(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
+      if (dropTarget) {
+        drop(dropTarget);
+      }
+    }
+  }
+}
+
+document.querySelectorAll(".draggable").forEach(img => {
+  img.addEventListener("touchstart", touchStart, { passive: false });
+  img.addEventListener("touchmove", touchMove, { passive: false });
+  img.addEventListener("touchend", touchEnd, { passive: false });
+});
