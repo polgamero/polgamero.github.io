@@ -1,1 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag & Drop - TOP 5</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Podio TOP 5 -->
+        <div class="podio" id="podio">
+            <div class="podio-slot" id="slot-1" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <p>1er Lugar</p>
+            </div>
+            <div class="podio-slot" id="slot-2" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <p>2do Lugar</p>
+            </div>
+            <div class="podio-slot" id="slot-3" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <p>3er Lugar</p>
+            </div>
+            <div class="podio-slot" id="slot-4" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <p>4to Lugar</p>
+            </div>
+            <div class="podio-slot" id="slot-5" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <p>5to Lugar</p>
+            </div>
+        </div>
+
+        <!-- Imágenes a arrastrar -->
+        <div class="images-container">
+            <img src="https://via.placeholder.com/150x100" alt="Imagen 1" class="draggable" id="img-1" draggable="true" ondragstart="drag(event)">
+            <img src="https://via.placeholder.com/150x100" alt="Imagen 2" class="draggable" id="img-2" draggable="true" ondragstart="drag(event)">
+            <img src="https://via.placeholder.com/150x100" alt="Imagen 3" class="draggable" id="img-3" draggable="true" ondragstart="drag(event)">
+            <!-- Agregar más imágenes según sea necesario -->
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
 
