@@ -42,20 +42,32 @@
     ];
 
     // Crear botones dinámicamente
+    let currentAudio = null;
+
     sounds.forEach(sound => {
       const button = document.createElement("button");
       button.className = "button";
       button.textContent = sound.name;
 
       button.addEventListener("click", () => {
+        // Detener el sonido anterior si hay uno en reproducción
+        if (currentAudio) {
+          currentAudio.pause();
+          currentAudio.currentTime = 0;
+        }
+
+        // Crear y reproducir el nuevo audio
         const audio = new Audio(sound.file);
         audio.onerror = () => {
           console.error("⚠️ Error al cargar o reproducir:", sound.file);
           alert(`Error al cargar: ${sound.name}`);
         };
+
         audio.play().catch(err => {
           console.error("🎵 Error al reproducir:", err);
         });
+
+        currentAudio = audio;
       });
 
       document.body.appendChild(button);
