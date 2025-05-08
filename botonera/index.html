@@ -136,6 +136,14 @@ let currentAudio = null;
 
       document.body.appendChild(button);
     });
+
+    // Detectar la barra espaciadora para detener sonido
+    document.addEventListener("keydown", (event) => {
+      if (event.code === "Space") {
+        event.preventDefault(); // Evita scroll hacia abajo si aplica
+        stopCurrentSound();
+        }
+      });
   </script>
 
 </body>
