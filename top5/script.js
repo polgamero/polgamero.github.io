@@ -1,28 +1,43 @@
 function allowDrop(event) {
-    event.preventDefault();
+  event.preventDefault();
 }
 
 function drag(event) {
-    event.dataTransfer.setData("text", event.target.id);
+  event.dataTransfer.setData("text/plain", event.target.id);
 }
 
 function drop(event) {
-    event.preventDefault();
-    const imgId = event.dataTransfer.getData("text");
-    const draggedImg = document.getElementById(imgId);
+  event.preventDefault();
+  const draggedId = event.dataTransfer.getData("text/plain");
+  const draggedImg = document.getElementById(draggedId);
 
-    // Evita duplicados: si ya está en otro contenedor, lo mueve
-    if (event.target.classList.contains("podio-slot") || event.target.id === "images-container") {
-        // Si el target es una imagen dentro de un slot, redirige al slot padre
-        const dropTarget = event.target.classList.contains("draggable")
-            ? event.target.parentElement
-            : event.target;
+  let dropTarget = event.target;
 
-        // Limpia el slot si ya tenía imagen
-        if (dropTarget.classList.contains("podio-slot")) {
-            dropTarget.innerHTML = `<p>${dropTarget.querySelector('p').textContent}</p>`;
-        }
+  // Si soltás sobre la imagen misma, usá su contenedor
+  if (dropTarget.classList.contains("draggable")) {
+    dropTarget = dropTarget.parentElement;
+  }
 
-        dropTarget.appendChild(draggedImg);
+  // Si soltás sobre un podio-slot con una imagen, intercambiamos
+  if (dropTarget.classList.contains("podio-slot")) {
+    const existingImg = dropTarget.querySelector("img");
+
+    if (existingImg && existingImg.id !== draggedId) {
+      const originSlot = draggedImg.parentElement;
+
+      // Intercambiar lugares
+      dropTarget.replaceChild(draggedImg, existingImg);
+      originSlot.appendChild(existingImg);
+    } else {
+      // Si está vacío o es la misma, simplemente mover
+      const label = dropTarget.querySelector("p").textContent;
+      dropTarget.innerHTML = `<p>${label}</p>`;
+      dropTarget.appendChild(draggedImg);
     }
+  }
+
+  // Si se suelta sobre el contenedor de imágenes
+  else if (dropTarget.id === "images-container") {
+    dropTarget.appendChild(draggedImg);
+  }
 }
