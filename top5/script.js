@@ -13,30 +13,30 @@ function drop(event) {
 
   let dropTarget = event.target;
 
-  // Si soltás sobre la imagen misma, usá su contenedor
+  // Si se suelta sobre la imagen en vez del contenedor
   if (dropTarget.classList.contains("draggable")) {
     dropTarget = dropTarget.parentElement;
   }
 
-  // Si soltás sobre un podio-slot con una imagen, intercambiamos
+  // Intercambio si el destino es un slot con imagen
   if (dropTarget.classList.contains("podio-slot")) {
     const existingImg = dropTarget.querySelector("img");
 
     if (existingImg && existingImg.id !== draggedId) {
       const originSlot = draggedImg.parentElement;
 
-      // Intercambiar lugares
+      // Intercambiar imágenes entre slots
       dropTarget.replaceChild(draggedImg, existingImg);
       originSlot.appendChild(existingImg);
     } else {
-      // Si está vacío o es la misma, simplemente mover
-      const label = dropTarget.querySelector("p").textContent;
-      dropTarget.innerHTML = `<p>${label}</p>`;
+      // Slot vacío o misma imagen
+      const rankNum = dropTarget.querySelector(".rank-number")?.outerHTML || "";
+      dropTarget.innerHTML = rankNum;
       dropTarget.appendChild(draggedImg);
     }
   }
 
-  // Si se suelta sobre el contenedor de imágenes
+  // Volver al contenedor derecho
   else if (dropTarget.id === "images-container") {
     dropTarget.appendChild(draggedImg);
   }
