@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Botonera de EL FOGÓN</title>
+  <title>Botonera de Sonidos</title>
   <style>
     body {
       font-family: sans-serif;
@@ -49,7 +49,13 @@
 
       button.addEventListener("click", () => {
         const audio = new Audio(sound.file);
-        audio.play();
+        audio.onerror = () => {
+          console.error("⚠️ Error al cargar o reproducir:", sound.file);
+          alert(`Error al cargar: ${sound.name}`);
+        };
+        audio.play().catch(err => {
+          console.error("🎵 Error al reproducir:", err);
+        });
       });
 
       document.body.appendChild(button);
