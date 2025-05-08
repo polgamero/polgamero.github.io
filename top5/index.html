@@ -1,49 +1,58 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>TOP 5 Drag & Drop</title>
-    <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TOP 5 Drag & Drop</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-    <div class="container">
-        <!-- Podio TOP 5 -->
-        <div class="podio" id="podio">
-            <div class="podio-slot" id="slot-1" ondrop="drop(event)" ondragover="allowDrop(event)">
-                <p>1er Lugar</p>
-            </div>
-            <div class="podio-slot" id="slot-2" ondrop="drop(event)" ondragover="allowDrop(event)">
-                <p>2do Lugar</p>
-            </div>
-            <div class="podio-slot" id="slot-3" ondrop="drop(event)" ondragover="allowDrop(event)">
-                <p>3er Lugar</p>
-            </div>
-            <div class="podio-slot" id="slot-4" ondrop="drop(event)" ondragover="allowDrop(event)">
-                <p>4to Lugar</p>
-            </div>
-            <div class="podio-slot" id="slot-5" ondrop="drop(event)" ondragover="allowDrop(event)">
-                <p>5to Lugar</p>
-            </div>
-        </div>
-
-        <!-- Contenedor de imágenes -->
-        <div class="images-container" id="images-container" ondrop="drop(event)" ondragover="allowDrop(event)">
-            <!-- 20 imágenes con links a Unsplash como placeholder -->
-            <img src="https://source.unsplash.com/random/150x100?sig=1" id="img-1" class="draggable" draggable="true" ondragstart="drag(event)">
-            <img src="https://source.unsplash.com/random/150x100?sig=2" id="img-2" class="draggable" draggable="true" ondragstart="drag(event)">
-            <img src="https://source.unsplash.com/random/150x100?sig=3" id="img-3" class="draggable" draggable="true" ondragstart="drag(event)">
-            <img src="https://source.unsplash.com/random/150x100?sig=4" id="img-4" class="draggable" draggable="true" ondragstart="drag(event)">
-            <img src="https://source.unsplash.com/random/150x100?sig=5" id="img-5" class="draggable" draggable="true" ondragstart="drag(event)">
-            <img src="https://source.unsplash.com/random/150x100?sig=6" id="img-6" class="draggable" draggable="true" ondragstart="drag(event)">
-            <img src="https://source.unsplash.com/random/150x100?sig=7" id="img-7" class="draggable" draggable="true" ondragstart="drag(event)">
-            <img src="https://source.unsplash.com/random/150x100?sig=8" id="img-8" class="draggable" draggable="true" ondragstart="drag(event)">
-            <img src="https://source.unsplash.com/random/150x100?sig=9" id="img-9" class="draggable" draggable="true" ondragstart="drag(event)">
-            <img src="https://source.unsplash.com/random/150x100?sig=10" id="img-10" class="draggable" draggable="true" ondragstart="drag(event)">
-            <!-- Puedes duplicar hasta 20 si deseas -->
-        </div>
+  <div class="container">
+    <!-- Podio TOP 5 -->
+    <div class="podio" id="podio">
+      <div class="podio-slot" id="slot-1" ondrop="drop(event)" ondragover="allowDrop(event)">
+        <p>1er Lugar</p>
+      </div>
+      <div class="podio-slot" id="slot-2" ondrop="drop(event)" ondragover="allowDrop(event)">
+        <p>2do Lugar</p>
+      </div>
+      <div class="podio-slot" id="slot-3" ondrop="drop(event)" ondragover="allowDrop(event)">
+        <p>3er Lugar</p>
+      </div>
+      <div class="podio-slot" id="slot-4" ondrop="drop(event)" ondragover="allowDrop(event)">
+        <p>4to Lugar</p>
+      </div>
+      <div class="podio-slot" id="slot-5" ondrop="drop(event)" ondragover="allowDrop(event)">
+        <p>5to Lugar</p>
+      </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- Contenedor de imágenes -->
+    <div class="images-container" id="images-container" ondrop="drop(event)" ondragover="allowDrop(event)">
+      <!-- 20 imágenes únicas desde Unsplash -->
+      <img src="https://source.unsplash.com/150x100/?nature&sig=1" id="img-1" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?city&sig=2" id="img-2" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?animal&sig=3" id="img-3" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?landscape&sig=4" id="img-4" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?travel&sig=5" id="img-5" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?mountain&sig=6" id="img-6" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?beach&sig=7" id="img-7" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?forest&sig=8" id="img-8" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?night&sig=9" id="img-9" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?sunset&sig=10" id="img-10" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?river&sig=11" id="img-11" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?desert&sig=12" id="img-12" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?lake&sig=13" id="img-13" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?snow&sig=14" id="img-14" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?car&sig=15" id="img-15" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?bike&sig=16" id="img-16" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?flower&sig=17" id="img-17" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?bird&sig=18" id="img-18" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?food&sig=19" id="img-19" class="draggable" draggable="true" ondragstart="drag(event)">
+      <img src="https://source.unsplash.com/150x100/?architecture&sig=20" id="img-20" class="draggable" draggable="true" ondragstart="drag(event)">
+    </div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
