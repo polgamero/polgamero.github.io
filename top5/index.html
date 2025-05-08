@@ -39,26 +39,15 @@
       <!-- 20 imágenes -->
       <script>
         const container = document.currentScript.parentElement;
-        <img src="https://picsum.photos/id/1011/150/100" id="img-1" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/1025/150/100" id="img-2" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/1035/150/100" id="img-3" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/1041/150/100" id="img-4" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/1052/150/100" id="img-5" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/1062/150/100" id="img-6" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/1074/150/100" id="img-7" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/1080/150/100" id="img-8" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/1084/150/100" id="img-9" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/89/150/100" id="img-10" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/896/150/100" id="img-11" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/109/150/100" id="img-12" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/110/150/100" id="img-13" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/111/150/100" id="img-14" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/112/150/100" id="img-15" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/113/150/100" id="img-16" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/114/150/100" id="img-17" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/115/150/100" id="img-18" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/116/150/100" id="img-19" class="draggable" draggable="true" ondragstart="drag(event)">
-        <img src="https://picsum.photos/id/117/150/100" id="img-20" class="draggable" draggable="true" ondragstart="drag(event)">
+        for (let i = 1; i <= 20; i++) {
+          const img = document.createElement("img");
+          img.src = `https://picsum.photos/seed/${i}/300/200`;
+          img.className = "draggable";
+          img.id = `img-${i}`;
+          img.draggable = true;
+          img.ondragstart = drag;
+          container.appendChild(img);
+        }
       </script>
     </div>
   </div>
@@ -66,3 +55,26 @@
   <script src="script.js"></script>
 </body>
 </html>
+
+
+<!--<img src="https://picsum.photos/id/1011/150/100" id="img-1" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/1025/150/100" id="img-2" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/1035/150/100" id="img-3" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/1041/150/100" id="img-4" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/1052/150/100" id="img-5" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/1062/150/100" id="img-6" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/1074/150/100" id="img-7" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/1080/150/100" id="img-8" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/1084/150/100" id="img-9" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/89/150/100" id="img-10" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/896/150/100" id="img-11" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/109/150/100" id="img-12" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/110/150/100" id="img-13" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/111/150/100" id="img-14" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/112/150/100" id="img-15" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/113/150/100" id="img-16" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/114/150/100" id="img-17" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/115/150/100" id="img-18" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/116/150/100" id="img-19" class="draggable" draggable="true" ondragstart="drag(event)">
+<img src="https://picsum.photos/id/117/150/100" id="img-20" class="draggable" draggable="true" ondragstart="drag(event)">-->
+
