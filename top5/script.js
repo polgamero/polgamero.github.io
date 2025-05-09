@@ -33,20 +33,33 @@ const imagenes = [
   { src: "https://polgamero.github.io/img/bandas/rolling.jpg", id: "img-25" }
 ];
 
-// Cargar imágenes iniciales
-function loadImages() {
-  imagesContainer.innerHTML = '';
-
-  imagenes.forEach((imagen) => {
-    const img = document.createElement("img");
-    img.src = imagen.src;
-    img.classList.add("img-item");
-    img.setAttribute("draggable", "true");
-    img.setAttribute("data-id", imagen.id);
-    enableInteraction(img);
-    imagesContainer.appendChild(img);
-  });
-}
+// Cargar imágenes iniciales (20 aleatorias)
+    function loadImages() {
+        imagesContainer.innerHTML = '';
+        
+        // Crear copia del array original para no modificarlo
+        const imagenesAleatorias = [...imagenes];
+        
+        // Mezclar el array aleatoriamente
+        for (let i = imagenesAleatorias.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [imagenesAleatorias[i], imagenesAleatorias[j]] = [imagenesAleatorias[j], imagenesAleatorias[i]];
+        }
+        
+        // Tomar solo las primeras 20 imágenes
+        const imagenesParaMostrar = imagenesAleatorias.slice(0, 20);
+        
+        imagenesParaMostrar.forEach((imagen) => {
+            const img = document.createElement("img");
+            img.src = imagen.src;
+            img.classList.add("img-item");
+            img.setAttribute("draggable", "true");
+            img.setAttribute("data-id", imagen.id);
+            
+            enableInteraction(img);
+            imagesContainer.appendChild(img);
+        });
+    }
 
 // Guardar estado en localStorage
 function saveState() {
@@ -119,19 +132,28 @@ function swapPodioImages(targetSlot) {
 
 // Habilitar interacción
 function enableInteraction(img) {
-  img.addEventListener("dragstart", () => {
+  img.addEventListener("dragstart", (e) => {
     selectedImage = img;
     img.classList.add("dragging");
+    
+    // Mostrar mensaje adecuado
     const message = img.parentElement.classList.contains("podio-slot") 
       ? "REEMPLAZAR POSICIÓN" 
       : "INGRESAR AL PODIO";
-    img.parentElement.querySelector(".overlay-message").textContent = message;
+      
+    if (img.parentElement.querySelector(".overlay-message")) {
+      img.parentElement.querySelector(".overlay-message").textContent = message;
+    }
+    
+    // Usar efecto de fantasma para drag
+    e.dataTransfer.setDragImage(img, e.offsetX, e.offsetY);
   });
 
   img.addEventListener("dragend", () => {
     img.classList.remove("dragging");
-    const overlay = img.parentElement.querySelector(".overlay-message");
-    if (overlay) overlay.textContent = "";
+    if (img.parentElement.querySelector(".overlay-message")) {
+      img.parentElement.querySelector(".overlay-message").textContent = "";
+    }
     selectedImage = null;
   });
 }
@@ -161,17 +183,34 @@ podioSlots.forEach((slot) => {
 });
 
 // Eventos del contenedor
+
+let hoverTimeout;
+let isOverContainer = false;
+
 imagesContainer.addEventListener("dragover", (e) => {
   e.preventDefault();
-  imagesContainer.classList.add("hovering");
+  clearTimeout(hoverTimeout);
+  
+  if (!isOverContainer) {
+    isOverContainer = true;
+    imagesContainer.classList.add("hovering");
+  }
 });
 
-imagesContainer.addEventListener("dragleave", () => {
-  imagesContainer.classList.remove("hovering");
+imagesContainer.addEventListener("dragleave", (e) => {
+  // Solo activar si el dragleave es realmente fuera del contenedor
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    hoverTimeout = setTimeout(() => {
+      isOverContainer = false;
+      imagesContainer.classList.remove("hovering");
+    }, 50); // Pequeño delay para evitar parpadeo
+  }
 });
 
 imagesContainer.addEventListener("drop", (e) => {
   e.preventDefault();
+  clearTimeout(hoverTimeout);
+  isOverContainer = false;
   imagesContainer.classList.remove("hovering");
   if (selectedImage) {
     imagesContainer.appendChild(selectedImage);
@@ -181,13 +220,6 @@ imagesContainer.addEventListener("drop", (e) => {
 
 // Evento del botón Reset
 resetButton.addEventListener("click", resetPodio);
-
-// Optimización de hover
-document.querySelectorAll(".img-item").forEach(img => {
-  img.style.transformOrigin = "center center";
-  img.style.backfaceVisibility = "hidden";
-  img.style.willChange = "transform";
-});
 
 // Inicialización
 document.addEventListener("DOMContentLoaded", () => {
