@@ -44,9 +44,10 @@ function enableInteraction(img) {
 podioSlots.forEach((slot) => {
   slot.addEventListener("dragover", (event) => {
     event.preventDefault();
-    hoveredSlot = slot; // Almacenar la referencia del slot actual
     resetAllHighlights(); // Resetear los resaltados
+    hoveredSlot = slot; // Almacenar la referencia del slot actual
     slot.classList.add("hovering");
+
     if (!slot.querySelector("img")) {
       setMessage("INGRESAR AL PODIO");
     } else {
@@ -60,12 +61,12 @@ podioSlots.forEach((slot) => {
   });
 
   slot.addEventListener("drop", () => {
-    if (hoveredSlot && selectedImage) {
-      hoveredSlot.classList.remove("hovering");
-      if (!hoveredSlot.querySelector("img")) {
-        hoveredSlot.appendChild(selectedImage);
+    if (selectedImage) {
+      slot.classList.remove("hovering");
+      if (!slot.querySelector("img")) {
+        slot.appendChild(selectedImage);
       } else {
-        swapImages(hoveredSlot); // Llamar a la lógica de intercambio
+        swapImages(slot); // Llamar a la lógica de intercambio
       }
       setMessage(""); // Limpiar mensaje
     }
@@ -95,6 +96,8 @@ imagesContainer.addEventListener("drop", () => {
 function swapImages(slot) {
   const currentImg = slot.querySelector("img");
   const currentParent = currentImg.parentElement;
+
+  // Intercambiar las imágenes
   slot.appendChild(selectedImage);
   currentParent.appendChild(currentImg);
 }
