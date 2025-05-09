@@ -1,71 +1,137 @@
-body {
-  font-family: 'Segoe UI', sans-serif;
+/* RESET Y ESTILOS BASE */
+body, html {
   margin: 0;
   padding: 0;
+  height: 100%;
+  font-family: 'Segoe UI', sans-serif;
   background-color: #fefefe;
+  overflow: hidden;
 }
 
+/* LAYOUT PRINCIPAL */
 .container {
   display: flex;
+  flex-direction: column;
   height: 100vh;
-  gap: 20px;
-  padding: 20px;
+  padding: 15px;
   box-sizing: border-box;
+  gap: 10px;
 }
 
+/* CABECERA */
+.header-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px;
+}
+
+.header-container .logo {
+  height: 50px;
+  width: auto;
+  object-fit: contain;
+}
+
+.header-container h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+  text-transform: uppercase;
+}
+
+/* CONTENEDOR PRINCIPAL */
+.content-wrapper {
+  display: flex;
+  flex: 1;
+  gap: 20px;
+  min-height: 0; /* Fix para overflow */
+}
+
+/* PODIO (300px DE ANCHO) */
 .podio {
-  width: 30%;
+  width: 300px;
+  background: linear-gradient(to bottom, #ffffff, #f4f4f4);
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
   gap: 15px;
-  background: linear-gradient(to bottom right, #ffffff, #f4f4f4);
-  padding: 20px;
-  border-radius: 12px;
-  border: 2px solid #ddd;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.podio-header {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.podio-header h2 {
-  font-size: 20px;
-  margin: 10px 0 0;
-  color: #222;
-}
-
-.logo-placeholder {
-  width: 100px;
-  height: 50px;
-  object-fit: contain;
+  overflow-y: auto;
 }
 
 .podio-slot {
   position: relative;
-  height: 145px;
-  background-color: #ffffff;
+  height: calc((100% - 80px) / 5);
+  min-height: 120px;
+  background-color: white;
   border: 2px dashed #ccc;
   border-radius: 10px;
-  padding-left: 45px;
+  padding-left: 50px;
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden;
-  transition: border 0.2s, box-shadow 0.2s;
+  overflow: visible; /* Key para el zoom */
 }
 
-.podio-slot.hovering {
-  border: 2px solid #0077ff;
-  box-shadow: 0 0 10px rgba(0, 119, 255, 0.4);
+/* CONTENEDOR DE IMÁGENES */
+.images-container {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  padding: 15px;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  background-color: #f9f9f9;
+  overflow-y: auto;
+  align-content: flex-start;
+  overflow-x: hidden;
 }
 
+/* IMÁGENES Y ZOOM (SOLUCIÓN DEFINITIVA) */
+.img-item {
+  width: 200px;
+  height: 140px;
+  object-fit: cover;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  cursor: grab;
+  transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28), 
+              box-shadow 0.3s ease,
+              z-index 0s 0.3s; /* Retrasa z-index */
+  position: relative;
+  z-index: 1;
+}
+
+/* HOVER: Activa zoom y z-index inmediato */
+.img-item:hover {
+  transform: scale(1.6);
+  z-index: 1000;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28), 
+              box-shadow 0.3s ease,
+              z-index 0s; /* z-index inmediato */
+}
+
+/* Zoom específico para podio (desplazado a la derecha) */
+.podio-slot .img-item:hover {
+  transform: scale(1.6) translateX(15%);
+}
+
+/* DURANTE DRAG */
+.img-item.dragging {
+  transform: scale(1.1) !important;
+  z-index: 1001 !important;
+  transition: none !important;
+}
+
+/* NÚMEROS DE RANKING */
 .rank-number {
   position: absolute;
   left: 0;
   top: 0;
-  width: 40px;
+  width: 45px;
   height: 100%;
   font-size: 22px;
   font-weight: bold;
@@ -73,8 +139,9 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  border-top-left-radius: 10px;
-  border-bottom-left-radius: 10px;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+  z-index: 2;
 }
 
 .rank-1 { background-color: #FFD700; }
@@ -83,58 +150,81 @@ body {
 .rank-4 { background-color: #6495ED; }
 .rank-5 { background-color: #32CD32; }
 
-.images-container {
-  flex: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-content: flex-start;
-  padding: 10px;
-  border: 2px solid #ccc;
-  background-color: #f9f9f9;
-  overflow-y: auto;
-  border-radius: 10px;
-  position: relative;
+/* BOTÓN RESET */
+.reset-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 20px;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  z-index: 10000;
+  transition: all 0.3s;
 }
 
-.images-container.hovering {
-  border: 2px solid #0077ff;
-  box-shadow: 0 0 10px rgba(0, 119, 255, 0.4);
+.reset-button:hover {
+  background-color: #e60000;
+  transform: scale(1.05);
 }
 
-.img-item {
-  width: 195px;
-  height: 130px;
-  object-fit: cover;
-  border: 2px solid #ccc;
-  border-radius: 8px;
-  cursor: grab;
-  transition: transform 0.2s;
-}
-
+/* OVERLAYS */
 .overlay-message {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: bold;
-  z-index: 1;
-  pointer-events: none;
-  text-align: center;
-  text-transform: uppercase;
-  border-radius: 10px;
   opacity: 0;
   transition: opacity 0.2s;
+  pointer-events: none;
+  border-radius: 8px;
+  z-index: 3;
 }
 
-.podio-slot.show-message .overlay-message,
-.images-container.show-message .overlay-message {
+.podio-slot.hovering .overlay-message,
+.images-container.hovering .overlay-message {
   opacity: 1;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #aaa;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}
+
+/* EFECTOS ADICIONALES */
+.podio-slot.hovering {
+  border: 2px solid #0077ff;
+  box-shadow: 0 0 10px rgba(0, 119, 255, 0.4);
+}
+
+.images-container.hovering {
+  border: 2px solid #0077ff;
+  box-shadow: 0 0 10px rgba(0, 119, 255, 0.4);
 }
