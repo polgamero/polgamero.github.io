@@ -192,3 +192,27 @@ body {
 .reset-animation {
   animation: fadeOut 0.5s ease-out;
 }
+
+/* Fix para el zoom en el contenedor derecho */
+.images-container {
+  position: relative;
+  overflow: visible !important; /* Permite que el zoom se vea fuera */
+}
+
+.img-item {
+  position: relative;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transform-origin: center center; /* Zoom desde el centro */
+}
+
+/* Zoom mejorado para imágenes en ambos contenedores */
+.img-item:hover {
+  transform: scale(2);
+  z-index: 1000;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
+}
+
+/* Asegura que el podio no recorte el zoom */
+.podio-slot {
+  overflow: visible !important;
+}
