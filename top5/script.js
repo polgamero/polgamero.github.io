@@ -1,6 +1,7 @@
 const imagesContainer = document.getElementById("images-container");
 const podioSlots = document.querySelectorAll(".podio-slot");
 let selectedImage = null;
+let hoveredSlot = null;
 
 // Cargar 20 imágenes
 for (let i = 1; i <= 20; i++) {
@@ -43,6 +44,8 @@ function enableInteraction(img) {
 podioSlots.forEach((slot) => {
   slot.addEventListener("dragover", (event) => {
     event.preventDefault();
+    hoveredSlot = slot; // Almacenar la referencia del slot actual
+    resetAllHighlights(); // Resetear los resaltados
     slot.classList.add("hovering");
     if (!slot.querySelector("img")) {
       setMessage("INGRESAR AL PODIO");
@@ -57,13 +60,15 @@ podioSlots.forEach((slot) => {
   });
 
   slot.addEventListener("drop", () => {
-    slot.classList.remove("hovering");
-    if (!slot.querySelector("img") && selectedImage) {
-      slot.appendChild(selectedImage);
-    } else if (slot.querySelector("img") && selectedImage) {
-      swapImages(slot);
+    if (hoveredSlot && selectedImage) {
+      hoveredSlot.classList.remove("hovering");
+      if (!hoveredSlot.querySelector("img")) {
+        hoveredSlot.appendChild(selectedImage);
+      } else {
+        swapImages(hoveredSlot); // Llamar a la lógica de intercambio
+      }
+      setMessage(""); // Limpiar mensaje
     }
-    setMessage(""); // Limpiar mensaje
   });
 });
 
@@ -80,11 +85,11 @@ imagesContainer.addEventListener("dragleave", () => {
 });
 
 imagesContainer.addEventListener("drop", () => {
-  imagesContainer.classList.remove("hovering");
   if (selectedImage) {
     imagesContainer.appendChild(selectedImage);
     setMessage(""); // Limpiar mensaje
   }
+  imagesContainer.classList.remove("hovering");
 });
 
 function swapImages(slot) {
@@ -104,4 +109,10 @@ function setMessage(message) {
       msg.style.opacity = 0;
     }
   });
+}
+
+function resetAllHighlights() {
+  // Limpiar resaltado de todos los slots
+  podioSlots.forEach(slot => slot.classList.remove("hovering"));
+  imagesContainer.classList.remove("hovering");
 }
