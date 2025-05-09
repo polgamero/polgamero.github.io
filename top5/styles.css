@@ -109,7 +109,13 @@ body {
   border: 2px solid #ccc;
   border-radius: 8px;
   cursor: grab;
-  transition: transform 0.2s;
+  transition: transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
+}
+
+.img-item.dragging {
+  transform: scale(1.05);
+  opacity: 0.8;
+  box-shadow: 0 0 15px rgba(0, 119, 255, 0.6);
 }
 
 .overlay-message {
@@ -137,4 +143,35 @@ body {
 .podio-slot.show-message .overlay-message,
 .images-container.show-message .overlay-message {
   opacity: 1;
+}
+
+/* Botón Reset */
+.reset-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 8px 16px;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: background-color 0.3s;
+  z-index: 100;
+}
+
+.reset-button:hover {
+  background-color: #cc0000;
+}
+
+/* Animaciones */
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.reset-animation {
+  animation: fadeOut 0.5s ease-out;
 }
