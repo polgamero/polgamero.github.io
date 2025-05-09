@@ -136,7 +136,7 @@ function enableInteraction(img) {
   // Zoom al hacer hover
   img.addEventListener("mouseenter", () => {
     if (!selectedImage) {
-      img.style.transform = "scale(2)";
+      img.style.transform = "scale(1.5)";
       img.style.zIndex = "1000";
     }
   });
