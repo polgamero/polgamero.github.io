@@ -1,64 +1,54 @@
-/* ESTILOS GENERALES */
-body {
-  font-family: 'Segoe UI', sans-serif;
+/* RESET BÁSICO */
+body, html {
   margin: 0;
   padding: 0;
+  height: 100%;
+  font-family: 'Segoe UI', sans-serif;
   background-color: #fefefe;
-  height: 100vh;
   overflow: hidden;
 }
 
-/* HEADER SUPERIOR */
-.header {
+/* LAYOUT PRINCIPAL */
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.header-container {
   display: flex;
   align-items: center;
   gap: 15px;
-  padding: 10px 20px;
-  background: linear-gradient(to right, #f8f8f8, #e0e0e0);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  z-index: 100;
-  position: relative;
+  padding: 10px 0;
+  margin-bottom: 10px;
 }
 
-.header .logo {
+.header-container .logo {
   height: 50px;
   width: auto;
 }
 
-.header h1 {
+.header-container h1 {
   margin: 0;
   font-size: 1.5rem;
   color: #333;
-  text-transform: uppercase;
 }
 
-/* LAYOUT PRINCIPAL */
-.main-container {
+.content-wrapper {
   display: flex;
-  height: calc(100vh - 70px);
-  position: relative;
-}
-
-/* CONTENEDORES PRINCIPALES */
-.podio-container {
-  width: 250px;
-  position: relative;
-  z-index: 1;
-}
-
-.images-outer-container {
   flex: 1;
-  position: relative;
-  overflow: hidden;
-  z-index: 1;
+  gap: 20px;
+  height: calc(100% - 70px);
 }
 
-/* PODIO */
+/* PODIO (300px de ancho) */
 .podio {
-  width: 100%;
-  height: 100%;
+  width: 300px;
   background: linear-gradient(to bottom, #ffffff, #f4f4f4);
-  border-right: 2px solid #ddd;
+  border: 2px solid #ddd;
+  border-radius: 12px;
   padding: 15px;
   display: flex;
   flex-direction: column;
@@ -68,7 +58,7 @@ body {
 
 .podio-slot {
   position: relative;
-  height: calc((100vh - 180px) / 5);
+  height: calc((100% - 80px) / 5);
   min-height: 120px;
   background-color: white;
   border: 2px dashed #ccc;
@@ -81,15 +71,19 @@ body {
 
 /* CONTENEDOR DE IMÁGENES */
 .images-container {
-  height: 100%;
+  flex: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
-  padding: 20px;
+  padding: 10px;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  background-color: #f9f9f9;
   overflow-y: auto;
+  align-content: flex-start;
 }
 
-/* IMÁGENES Y ZOOM */
+/* ¡SOLUCIÓN DEFINITIVA PARA EL ZOOM! */
 .img-item {
   width: 200px;
   height: 140px;
@@ -97,111 +91,28 @@ body {
   border: 2px solid #ddd;
   border-radius: 8px;
   cursor: grab;
-  transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28), 
-              box-shadow 0.3s ease;
+  transition: transform 0.3s ease, z-index 0.3s;
   position: relative;
   z-index: 1;
 }
 
-/* ZOOM GENERAL (funciona para ambas áreas) */
+/* Regla mágica: zoom visible sobre TODO */
 .img-item:hover {
   transform: scale(1.6);
   z-index: 1000;
   box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s ease, z-index 0s; /* z-index cambia inmediato */
 }
 
-/* Zoom específico para podio (desplaza a la derecha) */
+/* Zoom en podio (ligeramente desplazado) */
 .podio-slot .img-item:hover {
-  transform: scale(1.6) translateX(15%);
+  transform: scale(1.6) translateX(10%);
 }
 
 /* Durante el drag */
 .img-item.dragging {
   transform: scale(1.1) !important;
   z-index: 1001 !important;
-  transition: none !important;
 }
 
-/* NÚMEROS DE RANKING */
-.rank-number {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 45px;
-  height: 100%;
-  font-size: 22px;
-  font-weight: bold;
-  color: white;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-top-left-radius: 8px;
-  border-bottom-left-radius: 8px;
-  z-index: 2;
-}
-
-.rank-1 { background-color: #FFD700; }
-.rank-2 { background-color: #C0C0C0; }
-.rank-3 { background-color: #CD7F32; }
-.rank-4 { background-color: #6495ED; }
-.rank-5 { background-color: #32CD32; }
-
-/* BOTÓN RESET */
-.reset-button {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 10px 20px;
-  background-color: #ff4444;
-  color: white;
-  border: none;
-  border-radius: 25px;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
-  z-index: 10000;
-}
-
-.reset-button:hover {
-  background-color: #e60000;
-}
-
-/* OVERLAYS */
-.overlay-message {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: bold;
-  opacity: 0;
-  transition: opacity 0.2s;
-  pointer-events: none;
-  border-radius: 8px;
-  z-index: 3;
-}
-
-.podio-slot.hovering .overlay-message,
-.images-container.hovering .overlay-message {
-  opacity: 1;
-}
-
-/* SCROLLBAR */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #aaa;
-  border-radius: 4px;
-}
+/* [Mantén el resto de tus estilos...] */
