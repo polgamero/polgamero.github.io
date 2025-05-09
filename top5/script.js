@@ -1,6 +1,7 @@
-// Prevenir flickering en hover
 document.querySelectorAll('.img-item').forEach(img => {
   img.style.transformOrigin = 'center center';
+  img.style.backfaceVisibility = 'hidden';
+  img.style.willChange = 'transform';
 });
 
 // Elementos del DOM
