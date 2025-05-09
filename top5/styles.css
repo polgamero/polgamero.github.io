@@ -96,13 +96,13 @@ body {
 
 /* ZOOM MEJORADO */
 .img-item:hover {
-  transform: scale(1.2);
+  transform: scale(1.1);
   z-index: 1000 !important;
   box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
 }
 
 .podio-slot .img-item:hover {
-  transform: scale(1.2) translateX(20px);
+  transform: scale(1.1) translateX(20px);
 }
 
 .img-item.dragging {
