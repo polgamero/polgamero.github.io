@@ -3,7 +3,6 @@ body {
   margin: 0;
   padding: 0;
   background-color: #fefefe;
-  -webkit-touch-callout: none; /* Deshabilita el menú de copia en dispositivos móviles */
 }
 
 .container {
@@ -22,8 +21,8 @@ body {
   background: linear-gradient(to bottom right, #ffffff, #f4f4f4);
   padding: 20px;
   border-radius: 12px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   border: 2px solid #ddd;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .podio-header {
@@ -46,19 +45,14 @@ body {
 .podio-slot {
   position: relative;
   height: 145px;
-  border: 2px dashed #ccc;
   background-color: #ffffff;
+  border: 2px dashed #ccc;
   border-radius: 10px;
   padding-left: 45px;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  transition: border-color 0.2s;
-}
-
-.podio-slot:hover {
-  border-color: #aaa;
 }
 
 .rank-number {
@@ -96,7 +90,7 @@ body {
   border-radius: 10px;
 }
 
-.draggable {
+.img-item {
   width: 195px;
   height: 130px;
   object-fit: cover;
@@ -106,38 +100,7 @@ body {
   transition: transform 0.2s;
 }
 
-.draggable:hover {
-  transform: scale(1.03);
-}
-
-@media (max-width: 768px) {
-  .container {
-    flex-direction: column;
-    gap: 15px;
-  }
-
-  .images-container {
-    flex: none;
-    width: 100%;
-    overflow-x: auto;
-  }
-
-  .draggable {
-    width: 160px;
-    height: 105px;
-  }
-
-  .podio {
-    width: 100%;
-    margin: 0;
-  }
-
-  .podio-header h2 {
-    font-size: 18px;
-  }
-}
-
-
-.draggable:hover {
-  transform: scale(1.03);
+.img-item.selected {
+  outline: 4px solid #0077ff;
+  transform: scale(1.05);
 }
