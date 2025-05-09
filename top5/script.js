@@ -1,121 +1,143 @@
+// Elementos del DOM
 const imagesContainer = document.getElementById("images-container");
 const podioSlots = document.querySelectorAll(".podio-slot");
 let selectedImage = null;
-let hoveredSlot = null;
 
-// Cargar 20 imágenes
-for (let i = 1; i <= 20; i++) {
-  const img = document.createElement("img");
-  img.src = `https://picsum.photos/seed/${i}/195/130`;
-  img.classList.add("img-item");
-  img.setAttribute("data-origin", "container");
-  img.setAttribute("draggable", true);
-  enableInteraction(img);
-  imagesContainer.appendChild(img);
+// Cargar 20 imágenes de ejemplo
+function loadImages() {
+  for (let i = 1; i <= 20; i++) {
+    const img = document.createElement("img");
+    img.src = `https://picsum.photos/seed/${i}/195/130`;
+    img.classList.add("img-item");
+    img.setAttribute("draggable", "true");
+    enableInteraction(img);
+    imagesContainer.appendChild(img);
+  }
 }
 
+// Habilitar interacción (drag-and-drop) para una imagen
 function enableInteraction(img) {
   img.addEventListener("mousedown", () => {
     selectedImage = img;
     img.classList.add("selected");
-    setMessage("INGRESAR AL PODIO");
-  });
-
-  img.addEventListener("touchstart", () => {
-    selectedImage = img;
-    img.classList.add("selected");
-    setMessage("INGRESAR AL PODIO");
+    setMessage(img.parentElement, "INGRESAR AL PODIO");
   });
 
   img.addEventListener("dragstart", () => {
-    setMessage("INGRESAR AL PODIO");
+    selectedImage = img;
+    setMessage(img.parentElement, "INGRESAR AL PODIO");
   });
 
   img.addEventListener("dragend", () => {
-    setMessage(""); // Limpiar mensaje al soltar
     if (selectedImage) {
       selectedImage.classList.remove("selected");
+      setMessage(img.parentElement, "");
       selectedImage = null;
     }
   });
 }
 
-// Agregar resaltado en hover y mensaje
+// Eventos para los slots del podio
 podioSlots.forEach((slot) => {
-  slot.addEventListener("dragover", (event) => {
-    event.preventDefault();
-    resetAllHighlights(); // Resetear los resaltados
-    hoveredSlot = slot; // Almacenar la referencia del slot actual
+  slot.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    resetAllHighlights();
     slot.classList.add("hovering");
-
-    if (!slot.querySelector("img")) {
-      setMessage("INGRESAR AL PODIO");
-    } else {
-      setMessage("REEMPLAZAR POSICIÓN");
-    }
+    const message = slot.querySelector("img") ? "REEMPLAZAR POSICIÓN" : "INGRESAR AL PODIO";
+    setMessage(slot, message);
   });
 
   slot.addEventListener("dragleave", () => {
     slot.classList.remove("hovering");
-    setMessage(""); // Limpiar mensaje
+    setMessage(slot, "");
   });
 
-  slot.addEventListener("drop", () => {
+  slot.addEventListener("drop", (e) => {
+    e.preventDefault();
+    slot.classList.remove("hovering");
+    
     if (selectedImage) {
-      slot.classList.remove("hovering");
-      if (!slot.querySelector("img")) {
-        slot.appendChild(selectedImage);
+      if (slot.querySelector("img")) {
+        swapImages(slot); // Intercambiar imágenes si el slot está ocupado
       } else {
-        swapImages(slot); // Llamar a la lógica de intercambio
+        // Limpiar y reconstruir el slot (evita superposición)
+        const rank = slot.getAttribute("data-rank");
+        slot.innerHTML = `
+          <div class="rank-number rank-${rank}">${rank}</div>
+          <div class="overlay-message"></div>
+        `;
+        slot.appendChild(selectedImage);
       }
-      setMessage(""); // Limpiar mensaje
+      setMessage(slot, "");
     }
   });
 });
 
-// Contenedor de imágenes
-imagesContainer.addEventListener("dragover", (event) => {
-  event.preventDefault();
+// Eventos para el contenedor de imágenes
+imagesContainer.addEventListener("dragover", (e) => {
+  e.preventDefault();
   imagesContainer.classList.add("hovering");
-  setMessage("DEVOLVER A LA PILA");
+  setMessage(imagesContainer, "DEVOLVER A LA PILA");
 });
 
 imagesContainer.addEventListener("dragleave", () => {
   imagesContainer.classList.remove("hovering");
-  setMessage(""); // Limpiar mensaje
+  setMessage(imagesContainer, "");
 });
 
-imagesContainer.addEventListener("drop", () => {
+imagesContainer.addEventListener("drop", (e) => {
+  e.preventDefault();
+  imagesContainer.classList.remove("hovering");
+  
   if (selectedImage) {
     imagesContainer.appendChild(selectedImage);
-    setMessage(""); // Limpiar mensaje
+    setMessage(imagesContainer, "");
   }
-  imagesContainer.classList.remove("hovering");
 });
 
+// Intercambiar imágenes entre slots/contenedor
 function swapImages(slot) {
   const currentImg = slot.querySelector("img");
-  const currentParent = currentImg.parentElement;
-
-  // Intercambiar las imágenes
+  const rank = slot.getAttribute("data-rank");
+  
+  // Reconstruir el slot
+  slot.innerHTML = `
+    <div class="rank-number rank-${rank}">${rank}</div>
+    <div class="overlay-message"></div>
+  `;
+  
+  // Mover imágenes
   slot.appendChild(selectedImage);
-  currentParent.appendChild(currentImg);
+  if (currentImg) {
+    imagesContainer.appendChild(currentImg);
+    enableInteraction(currentImg); // Re-habilitar interacción
+  }
 }
 
-function setMessage(message) {
-  const messages = document.querySelectorAll(".overlay-message");
-  messages.forEach((msg) => {
-    msg.textContent = message;
-    if (message) {
-      msg.style.opacity = 1;
-    } else {
-      msg.style.opacity = 0;
-    }
-  });
+// Mostrar mensaje en un elemento específico
+function setMessage(element, message) {
+  const overlay = element.querySelector(".overlay-message");
+  if (!overlay) return;
+  overlay.textContent = message;
+  overlay.style.opacity = message ? 1 : 0;
 }
 
+// Resetear resaltados
 function resetAllHighlights() {
-  // Limpiar resaltado de todos los slots
   podioSlots.forEach(slot => slot.classList.remove("hovering"));
   imagesContainer.classList.remove("hovering");
 }
+
+// Manejar drops fuera de áreas válidas
+document.addEventListener("dragover", (e) => e.preventDefault());
+document.addEventListener("drop", (e) => {
+  if (!e.target.closest(".podio-slot, .images-container")) {
+    resetAllHighlights();
+    document.querySelectorAll(".overlay-message").forEach(msg => {
+      msg.style.opacity = 0;
+    });
+  }
+});
+
+// Inicializar
+loadImages();
