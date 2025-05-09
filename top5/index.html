@@ -8,14 +8,8 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- Header solo sobre el contenedor derecho -->
-    <div class="header-container">
-      <img src="https://polgamero.github.io/img/logoTop5.png" alt="Logo" class="logo">
-      <h1>TOP 5 FOGONERO</h1>
-    </div>
-
-    <div class="main-content">
-      <!-- Podio (columna izquierda) -->
+    <!-- Sidebar izquierda (solo podio) -->
+    <div class="sidebar">
       <div class="podio" id="podio">
         <div class="podio-slot" data-rank="1"><div class="rank-number rank-1">1</div><div class="overlay-message"></div></div>
         <div class="podio-slot" data-rank="2"><div class="rank-number rank-2">2</div><div class="overlay-message"></div></div>
@@ -23,11 +17,16 @@
         <div class="podio-slot" data-rank="4"><div class="rank-number rank-4">4</div><div class="overlay-message"></div></div>
         <div class="podio-slot" data-rank="5"><div class="rank-number rank-5">5</div><div class="overlay-message"></div></div>
       </div>
+    </div>
 
-      <!-- Contenedor derecho (header + imágenes) -->
-      <div class="right-panel">
-        <div class="images-container" id="images-container"></div>
+    <!-- Contenedor derecho (header + imágenes) -->
+    <div class="main-content">
+      <div class="header-container">
+        <img src="https://polgamero.github.io/img/logoTop5.png" alt="Logo" class="logo">
+        <h1>TOP 5 FOGONERO</h1>
       </div>
+
+      <div class="images-container" id="images-container"></div>
     </div>
   </div>
 
