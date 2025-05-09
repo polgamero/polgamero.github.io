@@ -1,9 +1,3 @@
-document.querySelectorAll('.img-item').forEach(img => {
-  img.style.transformOrigin = 'center center';
-  img.style.backfaceVisibility = 'hidden';
-  img.style.willChange = 'transform';
-});
-
 // Elementos del DOM
 const imagesContainer = document.getElementById("images-container");
 const podioSlots = document.querySelectorAll(".podio-slot");
@@ -43,7 +37,7 @@ const imagenes = [
 function loadImages() {
   imagesContainer.innerHTML = '';
 
-imagenes.forEach((imagen, index) => {
+  imagenes.forEach((imagen) => {
     const img = document.createElement("img");
     img.src = imagen.src;
     img.classList.add("img-item");
@@ -51,7 +45,7 @@ imagenes.forEach((imagen, index) => {
     img.setAttribute("data-id", imagen.id);
     enableInteraction(img);
     imagesContainer.appendChild(img);
-   });
+  });
 }
 
 // Guardar estado en localStorage
@@ -123,26 +117,21 @@ function swapPodioImages(targetSlot) {
   }
 }
 
-// Mostrar mensaje
-function setMessage(element, message) {
-  const overlay = element.querySelector(".overlay-message");
-  if (overlay) {
-    overlay.textContent = message;
-    overlay.style.opacity = message ? 1 : 0;
-  }
-}
-
 // Habilitar interacción
 function enableInteraction(img) {
   img.addEventListener("dragstart", () => {
     selectedImage = img;
     img.classList.add("dragging");
-    setMessage(img.parentElement, "INGRESAR AL PODIO");
+    const message = img.parentElement.classList.contains("podio-slot") 
+      ? "REEMPLAZAR POSICIÓN" 
+      : "INGRESAR AL PODIO";
+    img.parentElement.querySelector(".overlay-message").textContent = message;
   });
 
   img.addEventListener("dragend", () => {
     img.classList.remove("dragging");
-    setMessage(img.parentElement, "");
+    const overlay = img.parentElement.querySelector(".overlay-message");
+    if (overlay) overlay.textContent = "";
     selectedImage = null;
   });
 }
@@ -153,12 +142,12 @@ podioSlots.forEach((slot) => {
     e.preventDefault();
     slot.classList.add("hovering");
     const message = slot.querySelector("img") ? "REEMPLAZAR POSICIÓN" : "INGRESAR AL PODIO";
-    setMessage(slot, message);
+    slot.querySelector(".overlay-message").textContent = message;
   });
 
   slot.addEventListener("dragleave", () => {
     slot.classList.remove("hovering");
-    setMessage(slot, "");
+    slot.querySelector(".overlay-message").textContent = "";
   });
 
   slot.addEventListener("drop", (e) => {
@@ -175,18 +164,15 @@ podioSlots.forEach((slot) => {
 imagesContainer.addEventListener("dragover", (e) => {
   e.preventDefault();
   imagesContainer.classList.add("hovering");
-  setMessage(imagesContainer, "DEVOLVER A LA PILA");
 });
 
 imagesContainer.addEventListener("dragleave", () => {
   imagesContainer.classList.remove("hovering");
-  setMessage(imagesContainer, "");
 });
 
 imagesContainer.addEventListener("drop", (e) => {
   e.preventDefault();
   imagesContainer.classList.remove("hovering");
-  setMessage(imagesContainer, "");
   if (selectedImage) {
     imagesContainer.appendChild(selectedImage);
     saveState();
@@ -195,6 +181,13 @@ imagesContainer.addEventListener("drop", (e) => {
 
 // Evento del botón Reset
 resetButton.addEventListener("click", resetPodio);
+
+// Optimización de hover
+document.querySelectorAll(".img-item").forEach(img => {
+  img.style.transformOrigin = "center center";
+  img.style.backfaceVisibility = "hidden";
+  img.style.willChange = "transform";
+});
 
 // Inicialización
 document.addEventListener("DOMContentLoaded", () => {
