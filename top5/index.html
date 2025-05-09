@@ -7,14 +7,16 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="header">
-    <img src="https://polgamero.github.io/img/logoTop5.png" alt="Logo" class="logo">
-    <h1>TOP 5 FOGONERO</h1>
-  </div>
+  <div class="container">
+    <!-- Cabecera y título arriba del contenedor -->
+    <div class="header-container">
+      <img src="https://polgamero.github.io/img/logoTop5.png" alt="Logo" class="logo">
+      <h1>TOP 5 FOGONERO</h1>
+    </div>
 
-  <div class="main-container">
-    <!-- Podio -->
-    <div class="podio-container">
+    <!-- Contenedor principal -->
+    <div class="content-wrapper">
+      <!-- Podio (más ancho) -->
       <div class="podio" id="podio">
         <div class="podio-slot" data-rank="1"><div class="rank-number rank-1">1</div><div class="overlay-message"></div></div>
         <div class="podio-slot" data-rank="2"><div class="rank-number rank-2">2</div><div class="overlay-message"></div></div>
@@ -22,10 +24,8 @@
         <div class="podio-slot" data-rank="4"><div class="rank-number rank-4">4</div><div class="overlay-message"></div></div>
         <div class="podio-slot" data-rank="5"><div class="rank-number rank-5">5</div><div class="overlay-message"></div></div>
       </div>
-    </div>
 
-    <!-- Contenedor derecho -->
-    <div class="images-outer-container">
+      <!-- Contenedor de imágenes -->
       <div class="images-container" id="images-container"></div>
     </div>
   </div>
