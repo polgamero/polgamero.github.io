@@ -17,6 +17,7 @@ body {
   background: linear-gradient(to right, #f8f8f8, #e0e0e0);
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
   z-index: 100;
+  position: relative;
 }
 
 .header .logo {
@@ -35,11 +36,27 @@ body {
 .main-container {
   display: flex;
   height: calc(100vh - 70px);
+  position: relative;
 }
 
-/* PODIO (250px DE ANCHO) */
-.podio {
+/* CONTENEDORES PRINCIPALES */
+.podio-container {
   width: 250px;
+  position: relative;
+  z-index: 1;
+}
+
+.images-outer-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* PODIO */
+.podio {
+  width: 100%;
+  height: 100%;
   background: linear-gradient(to bottom, #ffffff, #f4f4f4);
   border-right: 2px solid #ddd;
   padding: 15px;
@@ -47,7 +64,6 @@ body {
   flex-direction: column;
   gap: 15px;
   overflow-y: auto;
-  overflow-x: visible;
 }
 
 .podio-slot {
@@ -61,15 +77,9 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: visible;
 }
 
-/* CONTENEDOR DERECHO */
-.content {
-  flex: 1;
-  overflow: hidden;
-}
-
+/* CONTENEDOR DE IMÁGENES */
 .images-container {
   height: 100%;
   display: flex;
@@ -77,10 +87,9 @@ body {
   gap: 15px;
   padding: 20px;
   overflow-y: auto;
-  overflow-x: visible;
 }
 
-/* IMÁGENES Y ZOOM (SOLUCIÓN CSS PURA) */
+/* IMÁGENES Y ZOOM */
 .img-item {
   width: 200px;
   height: 140px;
@@ -89,25 +98,24 @@ body {
   border-radius: 8px;
   cursor: grab;
   transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28), 
-              box-shadow 0.3s ease,
-              z-index 0s 0.3s;
+              box-shadow 0.3s ease;
   position: relative;
   z-index: 1;
 }
 
+/* ZOOM GENERAL (funciona para ambas áreas) */
 .img-item:hover {
   transform: scale(1.6);
   z-index: 1000;
   box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
-  transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28), 
-              box-shadow 0.3s ease,
-              z-index 0s;
 }
 
+/* Zoom específico para podio (desplaza a la derecha) */
 .podio-slot .img-item:hover {
   transform: scale(1.6) translateX(15%);
 }
 
+/* Durante el drag */
 .img-item.dragging {
   transform: scale(1.1) !important;
   z-index: 1001 !important;
@@ -129,6 +137,7 @@ body {
   align-items: center;
   border-top-left-radius: 8px;
   border-bottom-left-radius: 8px;
+  z-index: 2;
 }
 
 .rank-1 { background-color: #FFD700; }
@@ -175,7 +184,7 @@ body {
   transition: opacity 0.2s;
   pointer-events: none;
   border-radius: 8px;
-  z-index: 2;
+  z-index: 3;
 }
 
 .podio-slot.hovering .overlay-message,
