@@ -4,16 +4,45 @@ const podioSlots = document.querySelectorAll(".podio-slot");
 const resetButton = document.getElementById("reset-button");
 let selectedImage = null;
 
+// Path de las imagenes
+const imagenes = [
+  { src: "https://polgamero.github.io/img/bandas/atahualpa.jpg", id: "img-1" },
+  { src: "https://polgamero.github.io/img/bandas/charly.jpg", id: "img-2" },
+  { src: "https://polgamero.github.io/img/bandas/fito.jpg", id: "img-3" },
+  { src: "https://polgamero.github.io/img/bandas/soda.jpg", id: "img-4" },
+  { src: "https://polgamero.github.io/img/bandas/divididos.png", id: "img-5" },
+  { src: "https://polgamero.github.io/img/bandas/sandro.jpg", id: "img-6" },
+  { src: "https://polgamero.github.io/img/bandas/lali.jpg", id: "img-7" },
+  { src: "https://polgamero.github.io/img/bandas/tini.jpg", id: "img-8" },
+  { src: "https://polgamero.github.io/img/bandas/redondos.jpg", id: "img-9" },
+  { src: "https://polgamero.github.io/img/bandas/spinetta.jpg", id: "img-10" },
+  { src: "https://polgamero.github.io/img/bandas/sosa.jpg", id: "img-11" },
+  { src: "https://polgamero.github.io/img/bandas/gardel.jpg", id: "img-12" },
+  { src: "https://polgamero.github.io/img/bandas/taylor.jpg", id: "img-13" },
+  { src: "https://polgamero.github.io/img/bandas/beyonce.jpg", id: "img-14" },
+  { src: "https://polgamero.github.io/img/bandas/nirvana.png", id: "img-15" },
+  { src: "https://polgamero.github.io/img/bandas/bowie.png", id: "img-16" },
+  { src: "https://polgamero.github.io/img/bandas/floyd.jpg", id: "img-17" },
+  { src: "https://polgamero.github.io/img/bandas/beatles.png", id: "img-18" },
+  { src: "https://polgamero.github.io/img/bandas/MJ.png", id: "img-19" },
+  { src: "https://polgamero.github.io/img/bandas/elvis.png", id: "img-20" },
+  { src: "https://polgamero.github.io/img/bandas/madonna.png", id: "img-21" },
+  { src: "https://polgamero.github.io/img/bandas/queen.jpg", id: "img-22" },
+  { src: "https://polgamero.github.io/img/bandas/U2.png", id: "img-23" },
+  { src: "https://polgamero.github.io/img/bandas/zeppelin.jpg", id: "img-24" },
+  { src: "https://polgamero.github.io/img/bandas/rolling.jpg", id: "img-25" }
+];
+
 // Cargar imágenes iniciales
 function loadImages() {
   imagesContainer.innerHTML = '';
 
-  for (let i = 1; i <= 20; i++) {
+imagenes.forEach((imagen, index) => {
     const img = document.createElement("img");
-    img.src = `https://picsum.photos/seed/${i}/200/140`;
+    img.src = imagen.src;
     img.classList.add("img-item");
     img.setAttribute("draggable", "true");
-    img.setAttribute("data-id", `img-${i}`);
+    img.setAttribute("data-id", imagen.id);
     enableInteraction(img);
     imagesContainer.appendChild(img);
   }
