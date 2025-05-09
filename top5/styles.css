@@ -1,5 +1,5 @@
-/* RESET */
-* {
+/* RESET MEJORADO */
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -16,15 +16,17 @@ body, html {
 .app-container {
   display: flex;
   height: 100vh;
+  position: relative;
 }
 
-/* SIDEBAR IZQUIERDA (PODIO) */
+/* SIDEBAR (PODIO) */
 .sidebar {
   width: 300px;
   background: linear-gradient(to bottom, #fff, #f4f4f4);
   border-right: 2px solid #ddd;
   padding: 20px 15px;
   overflow-y: auto;
+  z-index: 10;
 }
 
 .podio {
@@ -45,14 +47,17 @@ body, html {
   align-items: center;
   justify-content: center;
   padding-left: 50px;
+  isolation: isolate;
 }
 
-/* CONTENEDOR DERECHO (HEADER + IMÁGENES) */
+/* MAIN CONTENT */
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  z-index: 5;
 }
 
 .header-container {
@@ -62,6 +67,7 @@ body, html {
   align-items: center;
   gap: 15px;
   border-bottom: 2px solid #ddd;
+  z-index: 20;
 }
 
 .header-container .logo {
@@ -84,7 +90,9 @@ body, html {
   gap: 15px;
   align-content: flex-start;
   overflow-y: auto;
+  overflow-x: visible;
   background: #f9f9f9;
+  position: relative;
 }
 
 /* IMÁGENES */
@@ -105,12 +113,12 @@ body, html {
 
 .img-item:hover {
   transform: scale(1.6);
-  z-index: 1000 !important;
+  z-index: 1000;
   box-shadow: 0 0 25px rgba(0,0,0,0.3);
 }
 
 .podio-slot .img-item:hover {
-  transform: scale(1.6) translateX(30px) !important;
+  transform: scale(1.6) translateX(30px);
 }
 
 /* NÚMEROS DE RANKING */
@@ -164,20 +172,40 @@ body, html {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.7);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
+  font-size: 1.1rem;
   opacity: 0;
   transition: opacity 0.2s;
   pointer-events: none;
   border-radius: 8px;
+  z-index: 100;
 }
 
-.podio-slot.hovering .overlay-message {
+.podio-slot.hovering .overlay-message,
+.images-container.hovering::after {
   opacity: 1;
+  z-index: 101;
+}
+
+.images-container.hovering::after {
+  content: "DEVOLVER A LA PILA";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 1.2rem;
+  z-index: 1000;
+  pointer-events: none;
 }
 
 /* SCROLLBAR */
