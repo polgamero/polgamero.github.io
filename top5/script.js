@@ -85,7 +85,7 @@ function swapPodioImages(targetSlot) {
     rebuildSlot(targetSlot, targetRank);
 
     // Mover imágenes
-    selectedParent.appendChild(targetImg);
+    selectedParent.appendChild(targetImg || document.createElement("div")); // Evita null
     targetSlot.appendChild(selectedImage);
   } 
   // Si el origen es el contenedor (nueva imagen al podio)
@@ -100,10 +100,8 @@ function swapPodioImages(targetSlot) {
 function setMessage(element, message) {
   let overlay;
   
-  // Caso especial para el images-container
   if (element.id === "images-container") {
     overlay = element.querySelector(".overlay-message");
-    // Si no existe el overlay, lo creamos dinámicamente
     if (!overlay) {
       overlay = document.createElement("div");
       overlay.className = "overlay-message";
@@ -127,15 +125,26 @@ function resetAllHighlights() {
 
 // Habilitar interacción drag-and-drop
 function enableInteraction(img) {
+  // Zoom al hacer hover
+  img.addEventListener("mouseenter", () => {
+    if (!selectedImage) img.style.transform = "scale(2)";
+  });
+
+  img.addEventListener("mouseleave", () => {
+    if (!selectedImage) img.style.transform = "scale(1)";
+  });
+
   img.addEventListener("dragstart", () => {
     selectedImage = img;
     img.classList.add("dragging");
+    img.style.transform = "scale(1)"; // Resetear zoom al arrastrar
     setMessage(img.parentElement, "INGRESAR AL PODIO");
   });
 
   img.addEventListener("dragend", () => {
     img.classList.remove("dragging");
     setMessage(img.parentElement, "");
+    selectedImage = null;
   });
 }
 
@@ -170,7 +179,7 @@ imagesContainer.addEventListener("dragover", (e) => {
   e.preventDefault();
   resetAllHighlights();
   imagesContainer.classList.add("hovering");
-  setMessage(imagesContainer, "DEVOLVER A LA PILA"); // Ahora funciona
+  setMessage(imagesContainer, "DEVOLVER A LA PILA");
 });
 
 imagesContainer.addEventListener("dragleave", () => {
@@ -181,7 +190,7 @@ imagesContainer.addEventListener("dragleave", () => {
 imagesContainer.addEventListener("drop", (e) => {
   e.preventDefault();
   imagesContainer.classList.remove("hovering");
-  setMessage(imagesContainer, ""); // Limpiar mensaje
+  setMessage(imagesContainer, "");
   
   if (selectedImage) {
     imagesContainer.appendChild(selectedImage);
