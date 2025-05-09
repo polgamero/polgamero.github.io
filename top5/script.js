@@ -6,7 +6,8 @@ let selectedImage = null;
 
 // Cargar imágenes iniciales
 function loadImages() {
-    imagesContainer.innerHTML = '';
+  imagesContainer.innerHTML = '';
+
   for (let i = 1; i <= 20; i++) {
     const img = document.createElement("img");
     img.src = `https://picsum.photos/seed/${i}/200/140`;
@@ -16,7 +17,7 @@ function loadImages() {
     enableInteraction(img);
     imagesContainer.appendChild(img);
   }
-}*/
+}
 
 // Guardar estado en localStorage
 function saveState() {
