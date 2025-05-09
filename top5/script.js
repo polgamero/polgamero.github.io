@@ -1,3 +1,8 @@
+// Prevenir flickering en hover
+document.querySelectorAll('.img-item').forEach(img => {
+  img.style.transformOrigin = 'center center';
+});
+
 // Elementos del DOM
 const imagesContainer = document.getElementById("images-container");
 const podioSlots = document.querySelectorAll(".podio-slot");
