@@ -102,7 +102,7 @@ body {
 }
 
 .podio-slot .img-item:hover {
-  transform: scale(1.8) translateX(20px);
+  transform: scale(1.2) translateX(20px);
 }
 
 .img-item.dragging {
