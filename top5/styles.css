@@ -53,6 +53,12 @@ body {
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+
+.podio-slot.hovering {
+  border: 2px solid #0077ff;
+  box-shadow: 0 0 10px rgba(0, 119, 255, 0.4);
 }
 
 .rank-number {
@@ -88,6 +94,12 @@ body {
   background-color: #f9f9f9;
   overflow-y: auto;
   border-radius: 10px;
+  position: relative;
+}
+
+.images-container.hovering {
+  border: 2px solid #0077ff;
+  box-shadow: 0 0 10px rgba(0, 119, 255, 0.4);
 }
 
 .img-item {
@@ -100,7 +112,29 @@ body {
   transition: transform 0.2s;
 }
 
-.img-item.selected {
-  outline: 4px solid #0077ff;
-  transform: scale(1.05);
+.overlay-message {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  z-index: 1;
+  pointer-events: none;
+  text-align: center;
+  text-transform: uppercase;
+  border-radius: 10px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.podio-slot.show-message .overlay-message,
+.images-container.show-message .overlay-message {
+  opacity: 1;
 }
