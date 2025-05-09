@@ -98,8 +98,23 @@ function swapPodioImages(targetSlot) {
 
 // Mostrar mensaje en un elemento específico
 function setMessage(element, message) {
-  const overlay = element.querySelector(".overlay-message");
+  let overlay;
+  
+  // Caso especial para el images-container
+  if (element.id === "images-container") {
+    overlay = element.querySelector(".overlay-message");
+    // Si no existe el overlay, lo creamos dinámicamente
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.className = "overlay-message";
+      element.appendChild(overlay);
+    }
+  } else {
+    overlay = element.querySelector(".overlay-message");
+  }
+
   if (!overlay) return;
+  
   overlay.textContent = message;
   overlay.style.opacity = message ? 1 : 0;
 }
@@ -153,8 +168,9 @@ podioSlots.forEach((slot) => {
 // Eventos para el contenedor de imágenes
 imagesContainer.addEventListener("dragover", (e) => {
   e.preventDefault();
+  resetAllHighlights();
   imagesContainer.classList.add("hovering");
-  setMessage(imagesContainer, "DEVOLVER A LA PILA");
+  setMessage(imagesContainer, "DEVOLVER A LA PILA"); // Ahora funciona
 });
 
 imagesContainer.addEventListener("dragleave", () => {
@@ -165,6 +181,7 @@ imagesContainer.addEventListener("dragleave", () => {
 imagesContainer.addEventListener("drop", (e) => {
   e.preventDefault();
   imagesContainer.classList.remove("hovering");
+  setMessage(imagesContainer, ""); // Limpiar mensaje
   
   if (selectedImage) {
     imagesContainer.appendChild(selectedImage);
