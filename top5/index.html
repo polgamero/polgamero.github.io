@@ -1,22 +1,20 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Top 5 Fogonero</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="container">
-    <!-- Logo y título ahora a la izquierda -->
-    <div class="header-left">
-      <img src="https://polgamero.github.io/img/logoTop5.png" alt="Logo" class="logo" />
-      <h1>TOP 5 FOGONERO</h1>
-    </div>
+  <div class="header">
+    <img src="https://polgamero.github.io/img/logoTop5.png" alt="Logo" class="logo">
+    <h1>TOP 5 FOGONERO</h1>
+  </div>
 
-    <!-- Podio más estrecho -->
+  <div class="main-container">
+    <!-- Podio más ancho -->
     <div class="podio" id="podio">
-      <!-- Slots -->
       <div class="podio-slot" data-rank="1"><div class="rank-number rank-1">1</div><div class="overlay-message"></div></div>
       <div class="podio-slot" data-rank="2"><div class="rank-number rank-2">2</div><div class="overlay-message"></div></div>
       <div class="podio-slot" data-rank="3"><div class="rank-number rank-3">3</div><div class="overlay-message"></div></div>
@@ -24,12 +22,13 @@
       <div class="podio-slot" data-rank="5"><div class="rank-number rank-5">5</div><div class="overlay-message"></div></div>
     </div>
 
-    <!-- Contenedor de imágenes -->
-    <div class="images-container" id="images-container"></div>
-
-    <!-- Botón Reset -->
-    <button id="reset-button" class="reset-button">Reset</button>
+    <!-- Contenedor derecho -->
+    <div class="content">
+      <div class="images-container" id="images-container"></div>
+    </div>
   </div>
+
+  <button id="reset-button" class="reset-button">Reset</button>
 
   <script src="script.js"></script>
 </body>
