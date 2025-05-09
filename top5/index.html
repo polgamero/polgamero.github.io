@@ -7,27 +7,29 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="header-container">
-    <img src="https://polgamero.github.io/img/logoTop5.png" alt="Logo" class="logo">
-    <h1>TOP 5 FOGONERO</h1>
-  </div>
-
-  <div class="container">
-    <!-- Podio (ocupará todo el alto disponible) -->
-    <div class="podio" id="podio">
-      <div class="podio-slot" data-rank="1"><div class="rank-number rank-1">1</div><div class="overlay-message"></div></div>
-      <div class="podio-slot" data-rank="2"><div class="rank-number rank-2">2</div><div class="overlay-message"></div></div>
-      <div class="podio-slot" data-rank="3"><div class="rank-number rank-3">3</div><div class="overlay-message"></div></div>
-      <div class="podio-slot" data-rank="4"><div class="rank-number rank-4">4</div><div class="overlay-message"></div></div>
-      <div class="podio-slot" data-rank="5"><div class="rank-number rank-5">5</div><div class="overlay-message"></div></div>
+  <div class="main-wrapper">
+    <!-- Header solo sobre images-container -->
+    <div class="header-wrapper">
+      <div class="header-container">
+        <img src="https://polgamero.github.io/img/logoTop5.png" alt="Logo" class="logo">
+        <h1>TOP 5 FOGONERO</h1>
+      </div>
     </div>
 
-    <!-- Contenedor de imágenes -->
-    <div class="images-container" id="images-container"></div>
+    <div class="content-wrapper">
+      <!-- Podio (full height) -->
+      <div class="podio" id="podio">
+        <!-- Slots... (mantener tu estructura actual) -->
+      </div>
+
+      <!-- Contenedor principal + header -->
+      <div class="right-panel">
+        <div class="images-container" id="images-container"></div>
+      </div>
+    </div>
   </div>
 
   <button id="reset-button" class="reset-button">Reset</button>
-
   <script src="script.js"></script>
 </body>
 </html>
