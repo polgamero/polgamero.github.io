@@ -97,6 +97,15 @@ body {
   position: relative;
 }
 
+.images-container .overlay-message {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2; /* Asegura que esté por encima de las imágenes */
+}
+
 .images-container.hovering {
   border: 2px solid #0077ff;
   box-shadow: 0 0 10px rgba(0, 119, 255, 0.4);
