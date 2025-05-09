@@ -5,7 +5,7 @@ const resetButton = document.getElementById("reset-button");
 let selectedImage = null;
 
 // Cargar imágenes iniciales
-function loadImages() {
+/*function loadImages() {
   imagesContainer.innerHTML = '';
 
   for (let i = 1; i <= 20; i++) {
@@ -17,7 +17,7 @@ function loadImages() {
     enableInteraction(img);
     imagesContainer.appendChild(img);
   }
-}
+}*/
 
 // Guardar estado en localStorage
 function saveState() {
