@@ -70,30 +70,24 @@ function resetPodio() {
   localStorage.removeItem("podioState");
 }
 
-// Intercambiar imágenes entre slots del podio
+// Intercambiar imágenes entre slots del podio (FIXED)
 function swapPodioImages(targetSlot) {
   const targetImg = targetSlot.querySelector("img");
   const selectedParent = selectedImage.parentElement;
 
-  // Si el origen es otro slot del podio (intercambio)
+  // Reconstruir el slot destino
+  const targetRank = targetSlot.getAttribute("data-rank");
+  rebuildSlot(targetSlot, targetRank);
+
+  // Si viene de otro slot del podio
   if (selectedParent.classList.contains("podio-slot")) {
     const selectedRank = selectedParent.getAttribute("data-rank");
-    const targetRank = targetSlot.getAttribute("data-rank");
-
-    // Reconstruir ambos slots
     rebuildSlot(selectedParent, selectedRank);
-    rebuildSlot(targetSlot, targetRank);
-
-    // Mover imágenes
-    selectedParent.appendChild(targetImg || document.createElement("div")); // Evita null
-    targetSlot.appendChild(selectedImage);
-  } 
-  // Si el origen es el contenedor (nueva imagen al podio)
-  else {
-    rebuildSlot(targetSlot, targetSlot.getAttribute("data-rank"));
-    targetSlot.appendChild(selectedImage);
-    if (targetImg) imagesContainer.appendChild(targetImg);
+    selectedParent.appendChild(targetImg || document.createElement("div"));
   }
+
+  // Mover la imagen seleccionada al destino
+  targetSlot.appendChild(selectedImage);
 }
 
 // Mostrar mensaje en un elemento específico
@@ -127,17 +121,24 @@ function resetAllHighlights() {
 function enableInteraction(img) {
   // Zoom al hacer hover
   img.addEventListener("mouseenter", () => {
-    if (!selectedImage) img.style.transform = "scale(2)";
+    if (!selectedImage) {
+      img.style.transform = "scale(2)";
+      img.style.zIndex = "1000";
+    }
   });
 
   img.addEventListener("mouseleave", () => {
-    if (!selectedImage) img.style.transform = "scale(1)";
+    if (!selectedImage) {
+      img.style.transform = "scale(1)";
+      img.style.zIndex = "";
+    }
   });
 
   img.addEventListener("dragstart", () => {
     selectedImage = img;
     img.classList.add("dragging");
-    img.style.transform = "scale(1)"; // Resetear zoom al arrastrar
+    img.style.transform = "scale(1)";
+    img.style.zIndex = "1001";
     setMessage(img.parentElement, "INGRESAR AL PODIO");
   });
 
