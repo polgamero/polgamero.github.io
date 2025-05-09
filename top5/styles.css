@@ -1,4 +1,4 @@
-/* ESTILOS GENERALES */
+/* RESET Y ESTILOS BASE */
 body {
   font-family: 'Segoe UI', sans-serif;
   margin: 0;
@@ -8,69 +8,55 @@ body {
   overflow: hidden;
 }
 
-/* LAYOUT PRINCIPAL CON GRID */
-.container {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto 1fr;
-  height: 100vh;
-  padding: 10px;
-  gap: 10px;
-  box-sizing: border-box;
-}
-
-/* CABECERA IZQUIERDA (LOGO + TÍTULO) */
-.header-left {
-  grid-column: 1;
-  grid-row: 1;
+/* HEADER SUPERIOR */
+.header {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  padding: 10px;
-  gap: 5px;
+  gap: 15px;
+  padding: 10px 20px;
+  background: linear-gradient(to right, #f8f8f8, #e0e0e0);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-.header-left .logo {
-  width: 80px;
-  height: auto;
-  object-fit: contain;
+.header .logo {
+  height: 50px;
+  width: auto;
 }
 
-.header-left h1 {
+.header h1 {
   margin: 0;
-  font-size: 1.2rem;
-  color: #222;
-  text-align: center;
+  font-size: 1.5rem;
+  color: #333;
   text-transform: uppercase;
 }
 
-/* PODIO (VERSIÓN ESTRECHA) */
-.podio {
-  grid-column: 1;
-  grid-row: 2;
-  width: 150px;
+/* LAYOUT PRINCIPAL */
+.main-container {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: linear-gradient(to bottom right, #ffffff, #f4f4f4);
-  padding: 15px;
-  border-radius: 12px;
-  border: 2px solid #ddd;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  height: calc(100vh - 100px);
-  overflow-y: auto;
-  z-index: 1;
+  height: calc(100vh - 70px);
 }
 
-/* SLOTS DEL PODIO */
+/* PODIO (VERSIÓN ANCHA) */
+.podio {
+  width: 250px;
+  background: linear-gradient(to bottom, #ffffff, #f4f4f4);
+  border-right: 2px solid #ddd;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
 .podio-slot {
   position: relative;
-  height: calc((100% - 60px) / 5);
-  min-height: 100px;
-  background-color: #ffffff;
+  height: calc((100vh - 180px) / 5);
+  min-height: 120px;
+  background-color: white;
   border: 2px dashed #ccc;
   border-radius: 10px;
-  padding-left: 35px;
+  padding-left: 50px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -78,9 +64,51 @@ body {
   transition: all 0.2s;
 }
 
-.podio-slot.hovering {
-  border: 2px solid #0077ff;
-  box-shadow: 0 0 10px rgba(0, 119, 255, 0.4);
+/* CONTENEDOR DERECHO */
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.images-container {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  padding: 20px;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* ESTILOS DE IMÁGENES */
+.img-item {
+  width: 200px;
+  height: 140px;
+  object-fit: cover;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  cursor: grab;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+/* ZOOM MEJORADO */
+.img-item:hover {
+  transform: scale(2);
+  z-index: 1000 !important;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+}
+
+.podio-slot .img-item:hover {
+  transform: scale(1.8) translateX(20px);
+}
+
+.img-item.dragging {
+  transform: scale(1.1);
+  opacity: 0.9;
+  z-index: 1001 !important;
 }
 
 /* NÚMEROS DE RANKING */
@@ -88,9 +116,9 @@ body {
   position: absolute;
   left: 0;
   top: 0;
-  width: 30px;
+  width: 45px;
   height: 100%;
-  font-size: 18px;
+  font-size: 22px;
   font-weight: bold;
   color: white;
   display: flex;
@@ -106,129 +134,67 @@ body {
 .rank-4 { background-color: #6495ED; }
 .rank-5 { background-color: #32CD32; }
 
-/* CONTENEDOR DE IMÁGENES (DERECHA) */
-.images-container {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-content: flex-start;
-  padding: 10px;
-  border: 2px solid #ccc;
-  background-color: #f9f9f9;
-  overflow-y: auto;
-  border-radius: 10px;
-  position: relative;
-  overflow: visible !important;
+/* BOTÓN RESET */
+.reset-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 20px;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  z-index: 10000;
+  transition: all 0.3s;
 }
 
-.images-container.hovering {
-  border: 2px solid #0077ff;
-  box-shadow: 0 0 10px rgba(0, 119, 255, 0.4);
-}
-
-/* IMÁGENES */
-.img-item {
-  width: 180px;
-  height: 120px;
-  object-fit: cover;
-  border: 2px solid #ccc;
-  border-radius: 8px;
-  cursor: grab;
-  transition: transform 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease, z-index 0.3s;
-  position: relative;
-  z-index: 1;
-}
-
-/* ZOOM AL HOVER */
-.img-item:hover {
-  transform: scale(2);
-  z-index: 1000 !important;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
-}
-
-.img-item.dragging {
+.reset-button:hover {
+  background-color: #e60000;
   transform: scale(1.05);
-  opacity: 0.8;
-  box-shadow: 0 0 15px rgba(0, 119, 255, 0.6);
-  z-index: 1001 !important;
 }
 
-/* MENSAJES OVERLAY */
+/* OVERLAYS Y EFECTOS */
 .overlay-message {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
   font-weight: bold;
-  z-index: 2;
-  pointer-events: none;
-  text-align: center;
-  text-transform: uppercase;
-  border-radius: 8px;
   opacity: 0;
   transition: opacity 0.2s;
+  pointer-events: none;
+  border-radius: 8px;
 }
 
-.podio-slot.show-message .overlay-message,
-.images-container.show-message .overlay-message {
+.podio-slot.hovering .overlay-message,
+.images-container.hovering .overlay-message {
   opacity: 1;
 }
 
-/* BOTÓN RESET */
-.reset-button {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 8px 16px;
-  background-color: #ff4444;
-  color: white;
-  border: none;
-  border-radius: 20px;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  transition: background-color 0.3s;
-  z-index: 10000;
-}
-
-.reset-button:hover {
-  background-color: #cc0000;
-}
-
-/* ANIMACIONES */
-@keyframes fadeOut {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-
-.reset-animation {
-  animation: fadeOut 0.5s ease-out;
-}
-
-/* SCROLLBAR PERSONALIZADA */
+/* SCROLLBAR */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
   background: #f1f1f1;
-  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 10px;
+  background: #aaa;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #888;
 }
