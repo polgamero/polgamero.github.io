@@ -45,7 +45,7 @@ imagenes.forEach((imagen, index) => {
     img.setAttribute("data-id", imagen.id);
     enableInteraction(img);
     imagesContainer.appendChild(img);
-  }
+   });
 }
 
 // Guardar estado en localStorage
