@@ -8,65 +8,100 @@ for (let i = 1; i <= 20; i++) {
   img.src = `https://picsum.photos/seed/${i}/195/130`;
   img.classList.add("img-item");
   img.setAttribute("data-origin", "container");
+  img.setAttribute("draggable", true);
   enableInteraction(img);
   imagesContainer.appendChild(img);
 }
 
 function enableInteraction(img) {
-  // PC
   img.addEventListener("mousedown", () => {
     selectedImage = img;
     img.classList.add("selected");
+    setMessage("INGRESAR AL PODIO");
   });
 
-  // Touch
   img.addEventListener("touchstart", () => {
     selectedImage = img;
     img.classList.add("selected");
+    setMessage("INGRESAR AL PODIO");
+  });
+
+  img.addEventListener("dragstart", () => {
+    setMessage("INGRESAR AL PODIO");
+  });
+
+  img.addEventListener("dragend", () => {
+    setMessage(""); // Limpiar mensaje al soltar
+    if (selectedImage) {
+      selectedImage.classList.remove("selected");
+      selectedImage = null;
+    }
   });
 }
 
-// Limpiar selección al soltar
-document.addEventListener("mouseup", () => {
-  if (selectedImage) selectedImage.classList.remove("selected");
+// Agregar resaltado en hover y mensaje
+podioSlots.forEach((slot) => {
+  slot.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    slot.classList.add("hovering");
+    if (!slot.querySelector("img")) {
+      setMessage("INGRESAR AL PODIO");
+    } else {
+      setMessage("REEMPLAZAR POSICIÓN");
+    }
+  });
+
+  slot.addEventListener("dragleave", () => {
+    slot.classList.remove("hovering");
+    setMessage(""); // Limpiar mensaje
+  });
+
+  slot.addEventListener("drop", () => {
+    slot.classList.remove("hovering");
+    if (!slot.querySelector("img") && selectedImage) {
+      slot.appendChild(selectedImage);
+    } else if (slot.querySelector("img") && selectedImage) {
+      swapImages(slot);
+    }
+    setMessage(""); // Limpiar mensaje
+  });
 });
 
-document.addEventListener("touchend", (e) => {
-  if (!selectedImage) return;
-
-  const touch = e.changedTouches[0];
-  const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-  handleDrop(dropTarget);
+// Contenedor de imágenes
+imagesContainer.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  imagesContainer.classList.add("hovering");
+  setMessage("DEVOLVER A LA PILA");
 });
 
-document.addEventListener("click", (e) => {
-  if (!selectedImage) return;
-  handleDrop(e.target);
+imagesContainer.addEventListener("dragleave", () => {
+  imagesContainer.classList.remove("hovering");
+  setMessage(""); // Limpiar mensaje
 });
 
-function handleDrop(target) {
-  if (!selectedImage) return;
-
-  if (target.classList.contains("podio-slot")) {
-    placeInSlot(target);
-  } else if (target.closest(".podio-slot")) {
-    placeInSlot(target.closest(".podio-slot"));
-  } else if (target.id === "images-container" || target.closest("#images-container")) {
+imagesContainer.addEventListener("drop", () => {
+  imagesContainer.classList.remove("hovering");
+  if (selectedImage) {
     imagesContainer.appendChild(selectedImage);
+    setMessage(""); // Limpiar mensaje
   }
+});
 
-  selectedImage.classList.remove("selected");
-  selectedImage = null;
+function swapImages(slot) {
+  const currentImg = slot.querySelector("img");
+  const currentParent = currentImg.parentElement;
+  slot.appendChild(selectedImage);
+  currentParent.appendChild(currentImg);
 }
 
-function placeInSlot(slot) {
-  const existingImg = slot.querySelector("img");
-
-  if (existingImg) {
-    const parentOfSelected = selectedImage.parentElement;
-    slot.appendChild(selectedImage);
-    parentOfSelected.appendChild(existingImg);
-  } else {
-    slot.appendChild(selectedImage);
-  }
+function setMessage(message) {
+  const messages = document.querySelectorAll(".overlay-message");
+  messages.forEach((msg) => {
+    msg.textContent = message;
+    if (message) {
+      msg.style.opacity = 1;
+    } else {
+      msg.style.opacity = 0;
+    }
+  });
 }
