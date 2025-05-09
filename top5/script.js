@@ -1,84 +1,72 @@
-function allowDrop(event) {
-  event.preventDefault();
+const imagesContainer = document.getElementById("images-container");
+const podioSlots = document.querySelectorAll(".podio-slot");
+let selectedImage = null;
+
+// Cargar 20 imágenes
+for (let i = 1; i <= 20; i++) {
+  const img = document.createElement("img");
+  img.src = `https://picsum.photos/seed/${i}/195/130`;
+  img.classList.add("img-item");
+  img.setAttribute("data-origin", "container");
+  enableInteraction(img);
+  imagesContainer.appendChild(img);
 }
 
-function drag(event) {
-  event.dataTransfer.setData("text/plain", event.target.id);
+function enableInteraction(img) {
+  // PC
+  img.addEventListener("mousedown", () => {
+    selectedImage = img;
+    img.classList.add("selected");
+  });
+
+  // Touch
+  img.addEventListener("touchstart", () => {
+    selectedImage = img;
+    img.classList.add("selected");
+  });
 }
 
-function drop(event) {
-  event.preventDefault();
-  const draggedId = event.dataTransfer.getData("text/plain");
-  const draggedImg = document.getElementById(draggedId);
-
-  let dropTarget = event.target;
-
-  // Si se suelta sobre la imagen en vez del contenedor
-  if (dropTarget.classList.contains("draggable")) {
-    dropTarget = dropTarget.parentElement;
-  }
-
-  // Intercambio si el destino es un slot con imagen
-  if (dropTarget.classList.contains("podio-slot")) {
-    const existingImg = dropTarget.querySelector("img");
-
-    if (existingImg && existingImg.id !== draggedId) {
-      const originSlot = draggedImg.parentElement;
-
-      // Intercambiar imágenes entre slots
-      dropTarget.replaceChild(draggedImg, existingImg);
-      originSlot.appendChild(existingImg);
-    } else {
-      // Slot vacío o misma imagen
-      const rankNum = dropTarget.querySelector(".rank-number")?.outerHTML || "";
-      dropTarget.innerHTML = rankNum;
-      dropTarget.appendChild(draggedImg);
-    }
-  }
-
-  // Volver al contenedor derecho
-  else if (dropTarget.id === "images-container") {
-    dropTarget.appendChild(draggedImg);
-  }
-}
-
-// Eventos táctiles (para móviles)
-let touchStartX = 0;
-let touchStartY = 0;
-let isTouchMove = false;
-
-function touchStart(event) {
-  touchStartX = event.touches[0].clientX;
-  touchStartY = event.touches[0].clientY;
-  isTouchMove = false;
-}
-
-function touchMove(event) {
-  const dx = Math.abs(event.touches[0].clientX - touchStartX);
-  const dy = Math.abs(event.touches[0].clientY - touchStartY);
-
-  if (dx > 5 || dy > 5) {
-    isTouchMove = true;
-  }
-}
-
-function touchEnd(event) {
-  if (isTouchMove) {
-    const draggedImg = event.target;
-    if (draggedImg && draggedImg.classList.contains("draggable")) {
-      const container = draggedImg.parentElement;
-
-      // Aquí el código para simular un "drop" similar al drag
-      const dropTarget = document.elementFromPoint(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
-      if (dropTarget) {
-        drop(dropTarget);
-      }
-    }
-  }
-}
-
-document.querySelectorAll(".draggable").forEach(img => {
-  img.addEventListener("touchstart", touchStart, { passive: false });
-  img.addEventListener("touchmove", touchMove, { passive: false });
-  img.addEventListener("touchend", touchEnd, { passive: false });
+// Limpiar selección al soltar
+document.addEventListener("mouseup", () => {
+  if (selectedImage) selectedImage.classList.remove("selected");
 });
+
+document.addEventListener("touchend", (e) => {
+  if (!selectedImage) return;
+
+  const touch = e.changedTouches[0];
+  const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+  handleDrop(dropTarget);
+});
+
+document.addEventListener("click", (e) => {
+  if (!selectedImage) return;
+  handleDrop(e.target);
+});
+
+function handleDrop(target) {
+  if (!selectedImage) return;
+
+  if (target.classList.contains("podio-slot")) {
+    placeInSlot(target);
+  } else if (target.closest(".podio-slot")) {
+    placeInSlot(target.closest(".podio-slot"));
+  } else if (target.id === "images-container" || target.closest("#images-container")) {
+    imagesContainer.appendChild(selectedImage);
+  }
+
+  selectedImage.classList.remove("selected");
+  selectedImage = null;
+}
+
+function placeInSlot(slot) {
+  const existingImg = slot.querySelector("img");
+
+  if (existingImg) {
+    const parentOfSelected = selectedImage.parentElement;
+    slot.appendChild(selectedImage);
+    parentOfSelected.appendChild(existingImg);
+  } else {
+    slot.appendChild(selectedImage);
+  }
+}
