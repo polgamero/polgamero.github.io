@@ -90,8 +90,9 @@ function loadState() {
 
 // Reconstruir slot del podio
 function rebuildSlot(slot, rank) {
+  const icons = ['🥇', '🥈', '🥉', '⭐', '🔥'];
   slot.innerHTML = `
-    <div class="rank-number rank-${rank}">${rank}</div>
+    <div class="rank-icon rank-${rank}">${icons[rank-1]}</div>
     <div class="overlay-message"></div>
   `;
 }
