@@ -75,19 +75,33 @@ function swapPodioImages(targetSlot) {
   const targetImg = targetSlot.querySelector("img");
   const selectedParent = selectedImage.parentElement;
 
-  // Reconstruir el slot destino
-  const targetRank = targetSlot.getAttribute("data-rank");
-  rebuildSlot(targetSlot, targetRank);
-
-  // Si viene de otro slot del podio
-  if (selectedParent.classList.contains("podio-slot")) {
+  // 1. Si el origen es el contenedor (nueva imagen al podio)
+  if (selectedParent === imagesContainer) {
+    // Reconstruir el slot destino
+    const targetRank = targetSlot.getAttribute("data-rank");
+    rebuildSlot(targetSlot, targetRank);
+    
+    // Mover la imagen seleccionada al podio
+    targetSlot.appendChild(selectedImage);
+    
+    // Si había una imagen en el podio, devolverla al contenedor
+    if (targetImg) {
+      imagesContainer.appendChild(targetImg);
+    }
+  } 
+  // 2. Si el origen es otro slot del podio (intercambio interno)
+  else if (selectedParent.classList.contains("podio-slot")) {
     const selectedRank = selectedParent.getAttribute("data-rank");
+    const targetRank = targetSlot.getAttribute("data-rank");
+    
+    // Reconstruir ambos slots
     rebuildSlot(selectedParent, selectedRank);
+    rebuildSlot(targetSlot, targetRank);
+    
+    // Intercambiar imágenes
     selectedParent.appendChild(targetImg || document.createElement("div"));
+    targetSlot.appendChild(selectedImage);
   }
-
-  // Mover la imagen seleccionada al destino
-  targetSlot.appendChild(selectedImage);
 }
 
 // Mostrar mensaje en un elemento específico
