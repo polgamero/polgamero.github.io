@@ -1,118 +1,140 @@
-/* RESET BÁSICO */
-body, html {
+body {
+  font-family: 'Segoe UI', sans-serif;
   margin: 0;
   padding: 0;
-  height: 100%;
-  font-family: 'Segoe UI', sans-serif;
   background-color: #fefefe;
-  overflow: hidden;
 }
 
-/* LAYOUT PRINCIPAL */
 .container {
   display: flex;
-  flex-direction: column;
   height: 100vh;
-  padding: 10px;
+  gap: 20px;
+  padding: 20px;
   box-sizing: border-box;
 }
 
-.header-container {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 10px 0;
-  margin-bottom: 10px;
-}
-
-.header-container .logo {
-  height: 50px;
-  width: auto;
-}
-
-.header-container h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #333;
-}
-
-.content-wrapper {
-  display: flex;
-  flex: 1;
-  gap: 20px;
-  height: calc(100% - 70px);
-}
-
-/* PODIO (300px de ancho) */
 .podio {
-  width: 300px;
-  background: linear-gradient(to bottom, #ffffff, #f4f4f4);
-  border: 2px solid #ddd;
-  border-radius: 12px;
-  padding: 15px;
+  width: 30%;
   display: flex;
   flex-direction: column;
   gap: 15px;
-  overflow-y: auto;
+  background: linear-gradient(to bottom right, #ffffff, #f4f4f4);
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px solid #ddd;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.podio-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.podio-header h2 {
+  font-size: 20px;
+  margin: 10px 0 0;
+  color: #222;
+}
+
+.logo-placeholder {
+  width: 100px;
+  height: 50px;
+  object-fit: contain;
 }
 
 .podio-slot {
   position: relative;
-  height: calc((100% - 80px) / 5);
-  min-height: 120px;
-  background-color: white;
+  height: 145px;
+  background-color: #ffffff;
   border: 2px dashed #ccc;
   border-radius: 10px;
-  padding-left: 50px;
+  padding-left: 45px;
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow: hidden;
+  transition: border 0.2s, box-shadow 0.2s;
 }
 
-/* CONTENEDOR DE IMÁGENES */
+.podio-slot.hovering {
+  border: 2px solid #0077ff;
+  box-shadow: 0 0 10px rgba(0, 119, 255, 0.4);
+}
+
+.rank-number {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40px;
+  height: 100%;
+  font-size: 22px;
+  font-weight: bold;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+
+.rank-1 { background-color: #FFD700; }
+.rank-2 { background-color: #C0C0C0; }
+.rank-3 { background-color: #CD7F32; }
+.rank-4 { background-color: #6495ED; }
+.rank-5 { background-color: #32CD32; }
+
 .images-container {
   flex: 1;
   display: flex;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: 12px;
+  align-content: flex-start;
   padding: 10px;
-  border: 2px solid #ddd;
-  border-radius: 12px;
+  border: 2px solid #ccc;
   background-color: #f9f9f9;
   overflow-y: auto;
-  align-content: flex-start;
+  border-radius: 10px;
+  position: relative;
 }
 
-/* ¡SOLUCIÓN DEFINITIVA PARA EL ZOOM! */
+.images-container.hovering {
+  border: 2px solid #0077ff;
+  box-shadow: 0 0 10px rgba(0, 119, 255, 0.4);
+}
+
 .img-item {
-  width: 200px;
-  height: 140px;
+  width: 195px;
+  height: 130px;
   object-fit: cover;
-  border: 2px solid #ddd;
+  border: 2px solid #ccc;
   border-radius: 8px;
   cursor: grab;
-  transition: transform 0.3s ease, z-index 0.3s;
-  position: relative;
+  transition: transform 0.2s;
+}
+
+.overlay-message {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
   z-index: 1;
+  pointer-events: none;
+  text-align: center;
+  text-transform: uppercase;
+  border-radius: 10px;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 
-/* Regla mágica: zoom visible sobre TODO */
-.img-item:hover {
-  transform: scale(1.6);
-  z-index: 1000;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
-  transition: transform 0.3s ease, z-index 0s; /* z-index cambia inmediato */
+.podio-slot.show-message .overlay-message,
+.images-container.show-message .overlay-message {
+  opacity: 1;
 }
-
-/* Zoom en podio (ligeramente desplazado) */
-.podio-slot .img-item:hover {
-  transform: scale(1.6) translateX(10%);
-}
-
-/* Durante el drag */
-.img-item.dragging {
-  transform: scale(1.1) !important;
-  z-index: 1001 !important;
-}
-
-/* [Mantén el resto de tus estilos...] */
