@@ -2,178 +2,19 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Botonera de Sonidos</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      background: #1e1e1e;
-      margin: 0;
-      padding: 60px 20px 20px;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 20px;
-    }
-
-    .button {
-      width: 120px;
-      height: 120px;
-      background: radial-gradient(circle at top left, #ff6666, #cc0000);
-      color: white;
-      border: none;
-      border-radius: 50%;
-      font-size: 18px;
-      font-weight: bold;
-      box-shadow: -6px -6px 10px rgba(255, 255, 255, 0.2), 6px 6px 12px rgba(0, 0, 0, 0.4);
-      cursor: pointer;
-      transition: all 0.1s ease-in-out;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      line-height: 1.2;
-    }
-
-    .button::after {
-      content: "";
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      width: 60%;
-      height: 30%;
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      pointer-events: none;
-      transform: rotate(-15deg);
-    }
-
-    .button:hover {
-      background: radial-gradient(circle at top left, #ff7a7a, #d10000);
-    }
-
-    .button:active {
-      transform: translateY(2px);
-      box-shadow: -4px -4px 6px rgba(255, 255, 255, 0.2), 4px 4px 8px rgba(0, 0, 0, 0.4);
-    }
-
-    /* Nuevo estilo para el texto debajo de los botones */
-    .button-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .key-combination {
-      font-size: 12px;
-      color: #ccc;
-      margin-top: 8px;
-    }
-
-    #stopButton {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      background: linear-gradient(to bottom, #333, #111);
-      color: white;
-      padding: 10px 20px;
-      font-size: 14px;
-      border: none;
-      border-radius: 8px;
-      box-shadow: 0 4px #000;
-      cursor: pointer;
-      z-index: 1000;
-      transition: all 0.1s;
-    }
-
-    #stopButton:hover {
-      background: linear-gradient(to bottom, #444, #222);
-    }
-
-    #stopButton:active {
-      box-shadow: 0 2px #000;
-      transform: translateY(2px);
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FOGÓNPAD</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
 </head>
 <body>
-
-  <button id="stopButton">⏹ Detener sonido</button>
-
-  <script>
-    // Array de sonidos: nombre (para mostrar) y archivo (ruta)
-    const sounds = [
-      { name: "Risas", file: "sounds/risas.mp3", key: "1" },
-      { name: "LOL", file: "sounds/LOL.wav", key: "2"  },
-      { name: "Pedo", file: "sounds/pedo.wav", key: "3"  },
-      { name: "Buuu", file: "sounds/buuu.wav", key: "4"  }
-      // Agrega más aquí fácilmente
-    ];
-
-    let currentAudio = null;
-
-    function stopCurrentSound() {
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-        currentAudio = null;
-      }
-    }
-
-    // Botón de detener sonido
-    document.getElementById("stopButton").addEventListener("click", stopCurrentSound);
-
-    // Crear los botones de sonido
-    sounds.forEach(sound => {
-      const buttonContainer = document.createElement("div");
-      buttonContainer.className = "button-container";
-      
-      const button = document.createElement("button");
-      button.className = "button";
-      button.textContent = sound.name;
-
-      const keyCombination = document.createElement("div");
-      keyCombination.className = "key-combination";
-      keyCombination.textContent = `Ctrl + ${sound.key}`;
-
-      button.addEventListener("click", () => {
-        stopCurrentSound();
-
-        const audio = new Audio(sound.file);
-        audio.onerror = () => {
-          console.error("⚠️ Error al cargar o reproducir:", sound.file);
-          alert(`Error al cargar: ${sound.name}`);
-        };
-
-        audio.play().catch(err => {
-          console.error("🎵 Error al reproducir:", err);
-        });
-
-        currentAudio = audio;
-      });
-
-      buttonContainer.appendChild(button);
-      buttonContainer.appendChild(keyCombination);
-      document.body.appendChild(buttonContainer);
-    });
-
-    // Detectar combinaciones de teclas (Ctrl + número)
-    document.addEventListener("keydown", (event) => {
-      if (event.ctrlKey && event.key >= '1' && event.key <= '4') {
-        event.preventDefault(); // Evita el comportamiento por defecto (ej. abrir navegador)
-        const buttonIndex = parseInt(event.key) - 1; // Mapea 1 -> índice 0
-        const button = document.querySelectorAll(".button")[buttonIndex];
-        button.click(); // Simula el click en el botón correspondiente
-      }
-
-      // Detectar la barra espaciadora para detener sonido
-      if (event.code === "Space") {
-        event.preventDefault(); // Evita scroll hacia abajo si aplica
-        stopCurrentSound();
-      }
-    });
-  </script>
-
+  <div id="control-panel">
+    <div class="panel-header">
+      <span class="brand">FOGÓNPAD<sup>®</sup></span> · Model SP-01 · v1.0
+    </div>
+    <button id="stopButton">⏹</button>
+    <div class="button-grid" id="buttonGrid"></div>
+  </div>
+  <script src="script.js"></script>
 </body>
 </html>
