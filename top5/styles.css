@@ -1,65 +1,36 @@
-/* RESET Y ESTILOS BASE */
+/* RESET */
+* {
+  box-sizing: border-box;
+}
+
 body, html {
   margin: 0;
   padding: 0;
   height: 100%;
   font-family: 'Segoe UI', sans-serif;
-  background-color: #fefefe;
-  overflow: hidden; /* Elimina scroll general */
+  background-color: #f9f9f9;
 }
 
 /* ESTRUCTURA PRINCIPAL */
-.main-wrapper {
+.app-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  overflow: hidden;
 }
 
-/* CONTENEDOR FLEXIBLE (podio + contenido) */
-.content-wrapper {
+.main-content {
   display: flex;
   flex: 1;
-  min-height: 0; /* Permite overflow interno */
+  overflow: hidden;
 }
 
-/* HEADER (solo sobre images-container) */
-.header-wrapper {
-  background: white;
-  padding: 0 20px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  width: calc(100% - 300px); /* Resta ancho del podio */
-  margin-left: auto;
-  z-index: 10;
-}
-
-.header-container {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 10px 0;
-  max-width: 100%;
-}
-
-.header-container .logo {
-  height: 50px;
-  width: auto;
-  object-fit: contain;
-}
-
-.header-container h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #333;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-/* PODIO (fixed width) */
+/* PODIO (COLUMNA IZQUIERDA) */
 .podio {
   width: 300px;
-  background: linear-gradient(to bottom, #ffffff, #f4f4f4);
+  background: linear-gradient(to bottom, #fff, #f4f4f4);
   border-right: 2px solid #ddd;
-  padding: 15px;
+  padding: 20px 15px;
   display: flex;
   flex-direction: column;
   gap: 15px;
@@ -73,32 +44,52 @@ body, html {
   background-color: white;
   border: 2px dashed #ccc;
   border-radius: 10px;
-  padding-left: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding-left: 50px;
 }
 
-/* CONTENEDOR DE IMÁGENES */
+/* PANEL DERECHO */
 .right-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 0; /* Fix para overflow */
+  overflow: hidden;
+}
+
+.header-container {
+  padding: 15px 20px;
+  background: white;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border-bottom: 2px solid #ddd;
+}
+
+.header-container .logo {
+  height: 50px;
+}
+
+.header-container h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+  white-space: nowrap;
 }
 
 .images-container {
   flex: 1;
+  padding: 20px;
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
-  padding: 20px;
+  align-content: flex-start;
   overflow-y: auto;
   background-color: #f9f9f9;
-  position: relative;
 }
 
-/* IMÁGENES (fix hover definitivo) */
+/* IMÁGENES */
 .img-item {
   width: 200px;
   height: 140px;
@@ -108,28 +99,18 @@ body, html {
   cursor: grab;
   position: relative;
   z-index: 1;
-  transform-origin: center center;
-  backface-visibility: hidden;
-  will-change: transform;
   transition: all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  transform-origin: center center;
 }
 
 .img-item:hover {
   transform: scale(1.6);
   z-index: 1000;
-  box-shadow: 0 0 25px rgba(0,0,0,0.3);
-  transition: all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  box-shadow: 0 0 20px rgba(0,0,0,0.3);
 }
 
 .podio-slot .img-item:hover {
   transform: scale(1.6) translateX(30px);
-}
-
-/* DURANTE DRAG */
-.img-item.dragging {
-  transform: scale(1.1) !important;
-  z-index: 1001 !important;
-  transition: none !important;
 }
 
 /* NÚMEROS DE RANKING */
@@ -139,15 +120,14 @@ body, html {
   top: 0;
   width: 45px;
   height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 22px;
   font-weight: bold;
   color: white;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   border-top-left-radius: 8px;
   border-bottom-left-radius: 8px;
-  z-index: 2;
 }
 
 .rank-1 { background-color: #FFD700; }
@@ -166,10 +146,9 @@ body, html {
   color: white;
   border: none;
   border-radius: 25px;
-  font-weight: bold;
   cursor: pointer;
   box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-  z-index: 10000;
+  z-index: 1000;
   transition: all 0.3s;
 }
 
@@ -178,7 +157,7 @@ body, html {
   transform: scale(1.05);
 }
 
-/* OVERLAYS */
+/* OVERLAYS Y EFECTOS */
 .overlay-message {
   position: absolute;
   top: 0;
@@ -190,29 +169,20 @@ body, html {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
   font-weight: bold;
   opacity: 0;
   transition: opacity 0.2s;
   pointer-events: none;
   border-radius: 8px;
-  z-index: 3;
 }
 
-.podio-slot.hovering .overlay-message,
-.images-container.hovering .overlay-message {
+.podio-slot.hovering .overlay-message {
   opacity: 1;
 }
 
 /* SCROLLBAR */
 ::-webkit-scrollbar {
   width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -220,8 +190,8 @@ body, html {
   border-radius: 4px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #888;
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
 }
 
 /* EFECTOS DE HOVER EN CONTENEDORES */
