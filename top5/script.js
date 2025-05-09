@@ -1,121 +1,168 @@
+// Elementos del DOM
 const imagesContainer = document.getElementById("images-container");
 const podioSlots = document.querySelectorAll(".podio-slot");
+const resetButton = document.getElementById("reset-button");
 let selectedImage = null;
-let hoveredSlot = null;
 
-// Cargar 20 imágenes
-for (let i = 1; i <= 20; i++) {
-  const img = document.createElement("img");
-  img.src = `https://picsum.photos/seed/${i}/195/130`;
-  img.classList.add("img-item");
-  img.setAttribute("data-origin", "container");
-  img.setAttribute("draggable", true);
-  enableInteraction(img);
-  imagesContainer.appendChild(img);
+// Cargar imágenes iniciales
+function loadImages() {
+  imagesContainer.innerHTML = '';
+
+  for (let i = 1; i <= 20; i++) {
+    const img = document.createElement("img");
+    img.src = `https://picsum.photos/seed/${i}/200/140`;
+    img.classList.add("img-item");
+    img.setAttribute("draggable", "true");
+    img.setAttribute("data-id", `img-${i}`);
+    enableInteraction(img);
+    imagesContainer.appendChild(img);
+  }
 }
 
+// Guardar estado en localStorage
+function saveState() {
+  const state = Array.from(podioSlots).map(slot => {
+    const img = slot.querySelector("img");
+    return img ? img.getAttribute("data-id") : null;
+  });
+  localStorage.setItem("podioState", JSON.stringify(state));
+}
+
+// Cargar estado guardado
+function loadState() {
+  const savedState = localStorage.getItem("podioState");
+  if (!savedState) return;
+
+  const state = JSON.parse(savedState);
+  state.forEach((imgId, index) => {
+    if (imgId) {
+      const img = document.querySelector(`img[data-id="${imgId}"]`);
+      if (img) {
+        const slot = podioSlots[index];
+        rebuildSlot(slot, index + 1);
+        slot.appendChild(img);
+      }
+    }
+  });
+}
+
+// Reconstruir slot del podio
+function rebuildSlot(slot, rank) {
+  slot.innerHTML = `
+    <div class="rank-number rank-${rank}">${rank}</div>
+    <div class="overlay-message"></div>
+  `;
+}
+
+// Resetear podio
+function resetPodio() {
+  podioSlots.forEach((slot, index) => {
+    const img = slot.querySelector("img");
+    if (img) {
+      imagesContainer.appendChild(img);
+    }
+    rebuildSlot(slot, index + 1);
+  });
+  localStorage.removeItem("podioState");
+}
+
+// Intercambiar imágenes
+function swapPodioImages(targetSlot) {
+  const targetImg = targetSlot.querySelector("img");
+  const selectedParent = selectedImage.parentElement;
+
+  if (selectedParent === imagesContainer) {
+    // Desde contenedor a podio
+    const targetRank = targetSlot.getAttribute("data-rank");
+    rebuildSlot(targetSlot, targetRank);
+    targetSlot.appendChild(selectedImage);
+    if (targetImg) imagesContainer.appendChild(targetImg);
+  } 
+  else if (selectedParent.classList.contains("podio-slot")) {
+    // Entre slots del podio
+    const selectedRank = selectedParent.getAttribute("data-rank");
+    rebuildSlot(selectedParent, selectedRank);
+    selectedParent.appendChild(targetImg || document.createElement("div"));
+    rebuildSlot(targetSlot, targetSlot.getAttribute("data-rank"));
+    targetSlot.appendChild(selectedImage);
+  }
+}
+
+// Mostrar mensaje
+function setMessage(element, message) {
+  const overlay = element.querySelector(".overlay-message");
+  if (overlay) {
+    overlay.textContent = message;
+    overlay.style.opacity = message ? 1 : 0;
+  }
+}
+
+// Habilitar interacción
 function enableInteraction(img) {
-  img.addEventListener("mousedown", () => {
-    selectedImage = img;
-    img.classList.add("selected");
-    setMessage("INGRESAR AL PODIO");
-  });
-
-  img.addEventListener("touchstart", () => {
-    selectedImage = img;
-    img.classList.add("selected");
-    setMessage("INGRESAR AL PODIO");
-  });
-
   img.addEventListener("dragstart", () => {
-    setMessage("INGRESAR AL PODIO");
+    selectedImage = img;
+    img.classList.add("dragging");
+    setMessage(img.parentElement, "INGRESAR AL PODIO");
   });
 
   img.addEventListener("dragend", () => {
-    setMessage(""); // Limpiar mensaje al soltar
-    if (selectedImage) {
-      selectedImage.classList.remove("selected");
-      selectedImage = null;
-    }
+    img.classList.remove("dragging");
+    setMessage(img.parentElement, "");
+    selectedImage = null;
   });
 }
 
-// Agregar resaltado en hover y mensaje
+// Eventos del podio
 podioSlots.forEach((slot) => {
-  slot.addEventListener("dragover", (event) => {
-    event.preventDefault();
-    resetAllHighlights(); // Resetear los resaltados
-    hoveredSlot = slot; // Almacenar la referencia del slot actual
+  slot.addEventListener("dragover", (e) => {
+    e.preventDefault();
     slot.classList.add("hovering");
-
-    if (!slot.querySelector("img")) {
-      setMessage("INGRESAR AL PODIO");
-    } else {
-      setMessage("REEMPLAZAR POSICIÓN");
-    }
+    const message = slot.querySelector("img") ? "REEMPLAZAR POSICIÓN" : "INGRESAR AL PODIO";
+    setMessage(slot, message);
   });
 
   slot.addEventListener("dragleave", () => {
     slot.classList.remove("hovering");
-    setMessage(""); // Limpiar mensaje
+    setMessage(slot, "");
   });
 
-  slot.addEventListener("drop", () => {
+  slot.addEventListener("drop", (e) => {
+    e.preventDefault();
+    slot.classList.remove("hovering");
     if (selectedImage) {
-      slot.classList.remove("hovering");
-      if (!slot.querySelector("img")) {
-        slot.appendChild(selectedImage);
-      } else {
-        swapImages(slot); // Llamar a la lógica de intercambio
-      }
-      setMessage(""); // Limpiar mensaje
+      swapPodioImages(slot);
+      saveState();
     }
   });
 });
 
-// Contenedor de imágenes
-imagesContainer.addEventListener("dragover", (event) => {
-  event.preventDefault();
+// Eventos del contenedor
+imagesContainer.addEventListener("dragover", (e) => {
+  e.preventDefault();
   imagesContainer.classList.add("hovering");
-  setMessage("DEVOLVER A LA PILA");
+  setMessage(imagesContainer, "DEVOLVER A LA PILA");
 });
 
 imagesContainer.addEventListener("dragleave", () => {
   imagesContainer.classList.remove("hovering");
-  setMessage(""); // Limpiar mensaje
+  setMessage(imagesContainer, "");
 });
 
-imagesContainer.addEventListener("drop", () => {
+imagesContainer.addEventListener("drop", (e) => {
+  e.preventDefault();
+  imagesContainer.classList.remove("hovering");
+  setMessage(imagesContainer, "");
   if (selectedImage) {
     imagesContainer.appendChild(selectedImage);
-    setMessage(""); // Limpiar mensaje
+    saveState();
   }
-  imagesContainer.classList.remove("hovering");
 });
 
-function swapImages(slot) {
-  const currentImg = slot.querySelector("img");
-  const currentParent = currentImg.parentElement;
+// Evento del botón Reset
+resetButton.addEventListener("click", resetPodio);
 
-  // Intercambiar las imágenes
-  slot.appendChild(selectedImage);
-  currentParent.appendChild(currentImg);
-}
-
-function setMessage(message) {
-  const messages = document.querySelectorAll(".overlay-message");
-  messages.forEach((msg) => {
-    msg.textContent = message;
-    if (message) {
-      msg.style.opacity = 1;
-    } else {
-      msg.style.opacity = 0;
-    }
-  });
-}
-
-function resetAllHighlights() {
-  // Limpiar resaltado de todos los slots
-  podioSlots.forEach(slot => slot.classList.remove("hovering"));
-  imagesContainer.classList.remove("hovering");
-}
+// Inicialización
+document.addEventListener("DOMContentLoaded", () => {
+  loadImages();
+  loadState();
+});
