@@ -5,18 +5,39 @@ body, html {
   height: 100%;
   font-family: 'Segoe UI', sans-serif;
   background-color: #fefefe;
+  overflow: hidden; /* Elimina scroll general */
 }
 
-/* CABECERA */
+/* ESTRUCTURA PRINCIPAL */
+.main-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* CONTENEDOR FLEXIBLE (podio + contenido) */
+.content-wrapper {
+  display: flex;
+  flex: 1;
+  min-height: 0; /* Permite overflow interno */
+}
+
+/* HEADER (solo sobre images-container) */
+.header-wrapper {
+  background: white;
+  padding: 0 20px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  width: calc(100% - 300px); /* Resta ancho del podio */
+  margin-left: auto;
+  z-index: 10;
+}
+
 .header-container {
   display: flex;
   align-items: center;
   gap: 15px;
-  padding: 15px;
-  background-color: white;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  z-index: 100;
-  position: relative;
+  padding: 10px 0;
+  max-width: 100%;
 }
 
 .header-container .logo {
@@ -30,24 +51,14 @@ body, html {
   font-size: 1.5rem;
   color: #333;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-/* LAYOUT PRINCIPAL */
-.container {
-  display: flex;
-  height: calc(100vh - 80px); /* Resta altura del header */
-  gap: 20px;
-  padding: 15px;
-  box-sizing: border-box;
-}
-
-/* PODIO (100% ALTO) */
+/* PODIO (fixed width) */
 .podio {
   width: 300px;
-  height: 100%;
   background: linear-gradient(to bottom, #ffffff, #f4f4f4);
-  border: 2px solid #ddd;
-  border-radius: 12px;
+  border-right: 2px solid #ddd;
   padding: 15px;
   display: flex;
   flex-direction: column;
@@ -64,26 +75,30 @@ body, html {
   border-radius: 10px;
   padding-left: 50px;
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
 }
 
 /* CONTENEDOR DE IMÁGENES */
+.right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Fix para overflow */
+}
+
 .images-container {
   flex: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
-  padding: 15px;
-  border: 2px solid #ddd;
-  border-radius: 12px;
-  background-color: #f9f9f9;
+  padding: 20px;
   overflow-y: auto;
-  align-content: flex-start;
+  background-color: #f9f9f9;
   position: relative;
 }
 
-/* IMÁGENES Y HOVER (FIXED) */
+/* IMÁGENES (fix hover definitivo) */
 .img-item {
   width: 200px;
   height: 140px;
@@ -91,20 +106,23 @@ body, html {
   border: 2px solid #ddd;
   border-radius: 8px;
   cursor: grab;
-  transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28), 
-              box-shadow 0.3s ease;
   position: relative;
+  z-index: 1;
+  transform-origin: center center;
+  backface-visibility: hidden;
+  will-change: transform;
+  transition: all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
 }
 
 .img-item:hover {
   transform: scale(1.6);
   z-index: 1000;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
-  position: absolute;
+  box-shadow: 0 0 25px rgba(0,0,0,0.3);
+  transition: all 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
 }
 
 .podio-slot .img-item:hover {
-  transform: scale(1.6) translateX(25%);
+  transform: scale(1.6) translateX(30px);
 }
 
 /* DURANTE DRAG */
@@ -150,7 +168,7 @@ body, html {
   border-radius: 25px;
   font-weight: bold;
   cursor: pointer;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
   z-index: 10000;
   transition: all 0.3s;
 }
@@ -167,7 +185,7 @@ body, html {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0,0,0,0.6);
   color: white;
   display: flex;
   align-items: center;
@@ -206,13 +224,13 @@ body, html {
   background: #888;
 }
 
-/* EFECTOS ADICIONALES */
+/* EFECTOS DE HOVER EN CONTENEDORES */
 .podio-slot.hovering {
   border: 2px solid #0077ff;
-  box-shadow: 0 0 10px rgba(0, 119, 255, 0.4);
+  box-shadow: 0 0 10px rgba(0,119,255,0.4);
 }
 
 .images-container.hovering {
   border: 2px solid #0077ff;
-  box-shadow: 0 0 10px rgba(0, 119, 255, 0.4);
+  box-shadow: 0 0 10px rgba(0,119,255,0.4);
 }
