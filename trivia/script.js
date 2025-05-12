@@ -2,15 +2,13 @@
 let currentQuestion = 0;
 let score = 0;
 let selectedPhrases = [];
-let isAnswering = false; // Bloquear múltiples clicks
+let isAnswering = false;
 const totalQuestions = 10;
 
 // Elementos DOM
 const sidebarEl = document.getElementById('sidebar');
 const quoteEl = document.getElementById('quote');
 const optionsEl = document.getElementById('options');
-
-// Sonidos
 const correctSound = document.getElementById('correctSound');
 const wrongSound = document.getElementById('wrongSound');
 
@@ -48,7 +46,7 @@ async function initGame() {
 
 // Cargar pregunta
 function loadQuestion() {
-    isAnswering = false; // Resetear bloqueo
+    isAnswering = false;
     const question = selectedPhrases[currentQuestion];
     quoteEl.textContent = `"${question.quote}"`;
 
@@ -64,12 +62,10 @@ function loadQuestion() {
 
 // Verificar respuesta
 function checkAnswer(selectedIndex) {
-    isAnswering = true; // Bloquear nuevos clicks
-    
+    isAnswering = true;
     const question = selectedPhrases[currentQuestion];
     const circles = document.querySelectorAll('.circle');
 
-    // Marcar respuesta
     if (selectedIndex === question.correct) {
         circles[currentQuestion].classList.add('correct');
         playSound(correctSound);
@@ -79,10 +75,9 @@ function checkAnswer(selectedIndex) {
         playSound(wrongSound);
     }
 
-    // Siguiente pregunta o fin del juego
     currentQuestion++;
     if (currentQuestion < totalQuestions) {
-        setTimeout(loadQuestion, 500); // 500ms en lugar de 1000ms
+        setTimeout(loadQuestion, 500);
     } else {
         setTimeout(endGame, 500);
     }
@@ -95,11 +90,55 @@ function playSound(sound) {
     sound.play().catch(e => console.log("Click en la pantalla para activar sonidos"));
 }
 
+// Mostrar highscores
+function showHighscores() {
+    const highscores = JSON.parse(localStorage.getItem('triviaHighscores')) || [];
+    const highscoresList = document.getElementById('highscores-list');
+    
+    highscoresList.innerHTML = '';
+    highscores.slice(0, 10).forEach((score, index) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <span>${index + 1}. ${score.name}</span>
+            <span>${score.points}/${totalQuestions}</span>
+        `;
+        highscoresList.appendChild(li);
+    });
+}
+
+// Guardar score
+function saveScore(playerName, points) {
+    const highscores = JSON.parse(localStorage.getItem('triviaHighscores')) || [];
+    highscores.push({ name: playerName, points });
+    highscores.sort((a, b) => b.points - a.points);
+    localStorage.setItem('triviaHighscores', JSON.stringify(highscores));
+    showHighscores();
+}
+
 // Finalizar juego
 function endGame() {
-    quoteEl.textContent = `¡Juego terminado! Puntuación: ${score}/${totalQuestions}`;
+    const playerName = prompt(`¡Juego terminado! Puntuación: ${score}/${totalQuestions}\nIngresa tu nombre:`);
+    
+    if (playerName && playerName.trim() !== '') {
+        saveScore(playerName.trim(), score);
+    } else {
+        saveScore('Anónimo', score);
+    }
+    
+    quoteEl.textContent = `¡Gracias por jugar!`;
     optionsEl.innerHTML = '<button class="option-btn" onclick="location.reload()">Jugar de nuevo</button>';
 }
 
-// Iniciar al cargar la página
-window.onload = initGame;
+// Borrar highscores
+document.getElementById('clear-highscores').onclick = () => {
+    if (confirm("¿Borrar todos los puntajes guardados?")) {
+        localStorage.removeItem('triviaHighscores');
+        showHighscores();
+    }
+};
+
+// Iniciar al cargar
+window.onload = function() {
+    initGame();
+    showHighscores();
+};
