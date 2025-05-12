@@ -22,7 +22,7 @@ body, html {
 /* SIDEBAR (PODIO) */
 .sidebar {
   width: 340px;
-  background: linear-gradient(to right, #fff, #ff00004c);
+  background: linear-gradient(to right, #fff, #ff5500);
   /*border-right: 2px solid #ddd;*/
   padding: 15px 15px;
   overflow-y: auto;
@@ -63,7 +63,7 @@ body, html {
 
 .header-container {
   padding: 15px 20px;
-  background: linear-gradient(to left, #fff, #ff00004c);;
+  background: linear-gradient(to left, #fff, #ff5500);
   display: flex;
   align-items: center;
   gap: 15px;
