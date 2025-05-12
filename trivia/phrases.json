@@ -1,0 +1,227 @@
+[
+    {
+        "quote": "El arte es la única manera de huir sin salir de casa.",
+        "options": ["Fito Páez", "Charly García", "Mercedes Sosa", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "quote": "La música es el verdadero lenguaje universal.",
+        "options": ["Luis Alberto Spinetta", "Gustavo Cerati", "Paul McCartney", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "quote": "Soy lo que soy, un tipo común y corriente.",
+        "options": ["Andrés Calamaro", "Indio Solari", "Joaquín Sabina", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "No canto para ser famoso, canto porque es mi manera de decir las cosas.",
+        "options": ["León Gieco", "Víctor Heredia", "Pedro Aznar", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "La vida es como una bicicleta, para mantener el equilibrio hay que seguir adelante.",
+        "options": ["Albert Einstein", "Bob Dylan", "John Lennon", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "quote": "Prefiero perder a haberme quedado con la duda.",
+        "options": ["Fito Páez", "Luis Alberto Spinetta", "Andrés Calamaro", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "Yo no escribo canciones, las canciones me escriben a mí.",
+        "options": ["Charly García", "Gustavo Cerati", "David Bowie", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "quote": "El silencio también hace música.",
+        "options": ["Luis Alberto Spinetta", "Mercedes Sosa", "John Cage", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "quote": "Tocar sin sentir es como hablar sin pensar.",
+        "options": ["Carlos Santana", "Pedro Aznar", "Pappo", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "Cada nota es un paso hacia la libertad.",
+        "options": ["León Gieco", "Bob Marley", "B.B. King", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "quote": "La música puede cambiar el mundo porque puede cambiar a las personas.",
+        "options": ["Bono", "Freddie Mercury", "Paul Simon", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "Cantar es una forma de rezar.",
+        "options": ["Mercedes Sosa", "Paco Ibáñez", "Atahualpa Yupanqui", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "quote": "No me gusta repetir fórmulas, prefiero explorar el caos.",
+        "options": ["Charly García", "Gustavo Cerati", "Luis Alberto Spinetta", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "quote": "Lo importante no es llegar, es el viaje.",
+        "options": ["Fito Páez", "John Lennon", "Indio Solari", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "quote": "Un buen riff vale más que mil palabras.",
+        "options": ["Pappo", "Eric Clapton", "Keith Richards", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "Mi patria es mi guitarra.",
+        "options": ["León Gieco", "Víctor Heredia", "Luis Eduardo Aute", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "quote": "La inspiración llega cuando dejo de buscarla.",
+        "options": ["Gustavo Cerati", "Fito Páez", "Spinetta", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "quote": "Mi música no es para entender, es para sentir.",
+        "options": ["Luis Alberto Spinetta", "Charly García", "Björk", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "No vine a complacer a nadie, vine a ser yo mismo.",
+        "options": ["Indio Solari", "Andrés Calamaro", "Palo Pandolfo", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "La música me salvó de mí mismo.",
+        "options": ["Charly García", "Morrissey", "Bono", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "quote": "Cuando todo falla, la música siempre queda.",
+        "options": ["Fito Páez", "Lenny Kravitz", "Silvio Rodríguez", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "Cantar es dejar salir lo que las palabras no pueden decir.",
+        "options": ["Mercedes Sosa", "Joan Baez", "Frida Kahlo", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "quote": "Cada canción es un mundo posible.",
+        "options": ["Spinetta", "Cerati", "Pedro Aznar", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "quote": "En la música no hay errores, solo nuevas ideas.",
+        "options": ["Miles Davis", "Luis Alberto Spinetta", "Charlie Parker", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "El público siente cuando uno canta con el corazón.",
+        "options": ["Mercedes Sosa", "Vicentico", "Luciano Pereyra", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "Nunca quise ser un héroe, solo un músico con algo que decir.",
+        "options": ["Charly García", "Fito Páez", "Luis Alberto Spinetta", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "quote": "Hay canciones que son más sinceras que mil discursos.",
+        "options": ["León Gieco", "Roger Waters", "Bob Dylan", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "quote": "Prefiero equivocarme por pasión que acertar por costumbre.",
+        "options": ["Andrés Calamaro", "Joaquín Sabina", "Indio Solari", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "quote": "El escenario es el único lugar donde no tengo miedo.",
+        "options": ["Gustavo Cerati", "Amy Winehouse", "Freddie Mercury", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "quote": "La música no se hace, se descubre.",
+        "options": ["Beethoven", "Luis Alberto Spinetta", "Brian Eno", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "quote": "Cada acorde me recuerda por qué empecé en esto.",
+        "options": ["Pappo", "Charly García", "B.B. King", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "No hay cultura sin música.",
+        "options": ["Mercedes Sosa", "Fito Páez", "Lila Downs", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "Cuando me preguntan qué hago, respondo: sobrevivo cantando.",
+        "options": ["León Gieco", "Silvio Rodríguez", "Víctor Heredia", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "quote": "Hay que desafinar de vez en cuando, para encontrar la melodía real.",
+        "options": ["Caetano Veloso", "Charly García", "Luis Alberto Spinetta", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "quote": "Lo más difícil es escribir una canción simple.",
+        "options": ["Gustavo Cerati", "Paul McCartney", "John Lennon", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "quote": "Quiero vivir en una canción que no termine nunca.",
+        "options": ["Fito Páez", "Kevin Johansen", "Pedro Aznar", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "quote": "Si no emociona, no es música.",
+        "options": ["Luis Alberto Spinetta", "Gustavo Cerati", "Mercedes Sosa", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "quote": "Me gusta desafiar los límites del sonido.",
+        "options": ["Brian Eno", "Charly García", "Trent Reznor", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "quote": "El aplauso es efímero, la canción es eterna.",
+        "options": ["Spinetta", "Freddie Mercury", "Fito Páez", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "quote": "Una canción puede cambiarte el día, o la vida.",
+        "options": ["Cerati", "León Gieco", "Paul Simon", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "quote": "Sin dolor no hay canción verdadera.",
+        "options": ["Amy Winehouse", "Palo Pandolfo", "Mercedes Sosa", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "quote": "El alma se afina con canciones.",
+        "options": ["Fito Páez", "Luis Alberto Spinetta", "Vicentico", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "quote": "A veces la melodía es más honesta que las palabras.",
+        "options": ["Gustavo Cerati", "Nick Drake", "Charly García", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "quote": "Cantar me enseñó a escuchar.",
+        "options": ["Mercedes Sosa", "León Gieco", "Luis Eduardo Aute", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "quote": "Una guitarra desafinada también puede decir la verdad.",
+        "options": ["Pappo", "Spinetta", "Lucinda Williams", "Frase Inventada"],
+        "correct": 3
+    }
+]

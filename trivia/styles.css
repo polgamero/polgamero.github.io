@@ -1,0 +1,132 @@
+/* Fuente Bebas Neue (importada de Google Fonts) */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+
+/* Reset y estilos generales */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Bebas Neue', sans-serif; /* Fuente principal */
+    letter-spacing: 1px; /* Mejor legibilidad */
+}
+
+body {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    min-height: 100vh;
+    background: linear-gradient(135deg, rgb(255, 85, 0) 0%, rgb(255, 120, 50) 100%);
+}
+
+/* Header con nuevo título */
+header {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 20px;
+    background-color: rgba(0, 0, 0, 0.8);
+    border-bottom: 3px solid rgb(255, 85, 0);
+}
+
+h1 {
+    font-size: 3.5rem;
+    color: rgb(255, 85, 0);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Sidebar (círculos) - Fondo oscuro */
+.sidebar {
+    padding: 20px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-right: 2px solid rgb(255, 85, 0);
+}
+
+.circle {
+    /* Estilo base (igual al que tenías) */
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border: 1px solid rgb(255, 85, 0);
+    transition: all 0.3s ease; /* Suaviza cambios de estado */
+}
+
+/* Estas clases son CLAVE para la lógica JS */
+.circle.correct {
+    background-color: #4CAF50; /* Verde */
+    border: 1px solid #4CAF50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.7);
+}
+
+.circle.incorrect {
+    background-color: #F44336; /* Rojo */
+    border: 1px solid #F44336;
+    box-shadow: 0 0 10px rgba(244, 67, 54, 0.7);
+}
+
+/* Main (juego) - Tarjetas con degradado */
+.game-container {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.9);
+    margin: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.quote {
+    font-size: 1.8rem;
+    color: #333;
+    text-align: center;
+    margin-bottom: 40px;
+    font-style: italic;
+}
+
+.options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    width: 100%;
+    max-width: 600px;
+}
+
+.option-btn {
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(to right, rgb(255, 85, 0), rgb(255, 120, 50));
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.3s;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.option-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Footer con logo */
+footer {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.8);
+    border-top: 3px solid rgb(255, 85, 0);
+}
+
+footer img {
+    height: 50px; /* Ajusta según el tamaño de tu logo */
+    filter: drop-shadow(0 0 5px rgba(255, 85, 0, 0.7));
+}
