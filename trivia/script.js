@@ -122,7 +122,7 @@ function endGame() {
     if (playerName && playerName.trim() !== '') {
         saveScore(playerName.trim(), score);
     } else {
-        saveScore('Anónimo', score);
+        //saveScore('Anónimo', score);
     }
     
     quoteEl.textContent = `¡Gracias por jugar!`;
