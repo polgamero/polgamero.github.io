@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trivia Fogonera</title>
+    <link rel="stylesheet" href="styles.css">
+
+    <script>
+    // Polyfill para fetch en navegadores muy antiguos
+    if (!window.fetch) {
+        document.write('<script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.min.js"><\/script>');
+    }
+    </script>
+</head>
+<body>
+    <header>
+        <h1>Trivia Fogonera</h1>
+    </header>
+    <aside class="sidebar" id="sidebar">
+        <!-- Círculos generados por JS -->
+    </aside>
+    <main class="game-container" id="game">
+        <p class="quote" id="quote">Cargando frase...</p>
+        <div class="options" id="options">
+            <!-- Botones generados por JS -->
+        </div>
+    </main>
+    <footer>
+    <img src="https://polgamero.github.io/img/logoTop5.png" alt="Logo Fogonero">
+    </footer>
+
+    <!-- Sonidos (actualizados) -->
+    <audio id="correctSound" src="/correct.wav" preload="auto"></audio>
+    <audio id="wrongSound" src="/wrong.wav" preload="auto"></audio>
+
+    <script src="script.js"></script>
+</body>
+</html>
