@@ -1,13 +1,10 @@
-/* Fuente Bebas Neue (importada de Google Fonts) */
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
-
-/* Reset y estilos generales */
+/* Fuente y reset */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Bebas Neue', sans-serif; /* Fuente principal */
-    letter-spacing: 1px; /* Mejor legibilidad */
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 1px;
 }
 
 body {
@@ -17,13 +14,13 @@ body {
     background: linear-gradient(135deg, rgb(255, 85, 0) 0%, rgb(255, 120, 50) 100%);
 }
 
-/* Header con nuevo título */
+/* Header */
 header {
     grid-column: 1 / -1;
     text-align: center;
     padding: 20px;
     background-color: rgba(0, 0, 0, 0.8);
-    border-bottom: 3px solid rgb(255, 85, 0);
+    border-bottom: 3px solid white;
 }
 
 h1 {
@@ -32,7 +29,7 @@ h1 {
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-/* Sidebar (círculos) - Fondo oscuro */
+/* Sidebar */
 .sidebar {
     padding: 20px 10px;
     display: flex;
@@ -44,7 +41,6 @@ h1 {
 }
 
 .circle {
-    /* Estilo base (igual al que tenías) */
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -55,23 +51,22 @@ h1 {
     justify-content: center;
     font-weight: bold;
     border: 1px solid rgb(255, 85, 0);
-    transition: all 0.3s ease; /* Suaviza cambios de estado */
+    transition: all 0.3s ease;
 }
 
-/* Estas clases son CLAVE para la lógica JS */
 .circle.correct {
-    background-color: #4CAF50; /* Verde */
+    background-color: #4CAF50;
     border: 1px solid #4CAF50;
     box-shadow: 0 0 10px rgba(76, 175, 80, 0.7);
 }
 
 .circle.incorrect {
-    background-color: #F44336; /* Rojo */
+    background-color: #F44336;
     border: 1px solid #F44336;
     box-shadow: 0 0 10px rgba(244, 67, 54, 0.7);
 }
 
-/* Main (juego) - Tarjetas con degradado */
+/* Main game */
 .game-container {
     padding: 40px;
     display: flex;
@@ -117,7 +112,7 @@ h1 {
     box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
 }
 
-/* Footer con logo */
+/* Footer */
 footer {
     grid-column: 1 / -1;
     text-align: center;
@@ -127,6 +122,76 @@ footer {
 }
 
 footer img {
-    height: 50px; /* Ajusta según el tamaño de tu logo */
+    height: 50px;
     filter: drop-shadow(0 0 5px rgba(255, 85, 0, 0.7));
+}
+
+/* Highscores */
+.highscores-container {
+    position: fixed;
+    right: 0;
+    top: 0;
+    width: 250px;
+    height: 100vh;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(50, 20, 0, 0.8));
+    padding: 20px;
+    color: white;
+    border-left: 3px solid rgb(255, 85, 0);
+    overflow-y: auto;
+}
+
+.highscores-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: rgb(255, 85, 0);
+    font-size: 1.8rem;
+}
+
+#highscores-list {
+    list-style-type: none;
+    margin-bottom: 20px;
+}
+
+#highscores-list li {
+    padding: 10px;
+    margin: 5px 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+}
+
+#highscores-list li:nth-child(1) {
+    background: linear-gradient(to right, rgba(255, 215, 0, 0.3), rgba(255, 85, 0, 0.5));
+    font-weight: bold;
+}
+
+#highscores-list li:nth-child(2) {
+    background: linear-gradient(to right, rgba(192, 192, 192, 0.3), rgba(255, 85, 0, 0.4));
+}
+
+#highscores-list li:nth-child(3) {
+    background: linear-gradient(to right, rgba(205, 127, 50, 0.3), rgba(255, 85, 0, 0.3));
+}
+
+#clear-highscores {
+    width: 100%;
+    margin-top: 10px;
+    background: linear-gradient(to right, #f44336, #d32f2f);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .highscores-container {
+        width: 200px;
+    }
+}
+
+@media (max-width: 900px) {
+    .highscores-container {
+        position: relative;
+        width: 100%;
+        height: auto;
+        grid-column: 1 / -1;
+    }
 }
