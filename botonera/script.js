@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", function () {
     { name: "LOL1", file: "https://polgamero.github.io/botonera/sounds/LOL.wav", key: "5" },
     { name: "Pedo1", file: "https://polgamero.github.io/botonera/sounds/pedo.wav", key: "6" },
     { name: "Buuu1", file: "https://polgamero.github.io/botonera/sounds/buuu.wav", key: "7" },
-    { name: "Risas", file: "https://polgamero.github.io/botonera/sounds/risas.wav", key: "8" },
+    { name: "Risas", file: "https://polgamero.github.io/botonera/sounds/risas.mp3", key: "8" },
     { name: "Buuu1", file: "https://polgamero.github.io/botonera/sounds/buuu.wav", key: "9" }
 ];
 
