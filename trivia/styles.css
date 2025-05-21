@@ -1,4 +1,10 @@
 /* Fuente y reset */
+
+:root {
+    --body-bg-color: rgba(0, 0, 0, 0.9);
+    --game-bg-color: rgba(255, 255, 255, 0.9);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -9,7 +15,7 @@
 
 body {
     display: grid;
-    grid-template-columns: 80px 1fr 250px;
+    grid-template-columns: 80px 1fr 350px;
     min-height: 100vh;
     background: linear-gradient(135deg, rgb(255, 85, 0) 0%, rgb(255, 120, 50) 100%);
 }
@@ -19,8 +25,7 @@ header {
     grid-column: 1 / 4;
     text-align: center;
     padding: 10px;
-    background-color: rgba(0, 0, 0, 0.8);
-    border-bottom: 3px solid rgb(255, 85, 0);
+    background-color: var(--body-bg-color);
 }
 
 h1 {
@@ -37,8 +42,7 @@ h1 {
     align-items: center;
     justify-content: center;
     gap: 10px;
-    background-color: rgba(0, 0, 0, 0.7);
-    border-right: 2px solid rgb(255, 85, 0);
+    background-color: var(--body-bg-color);
 }
 
 .circle {
@@ -74,10 +78,43 @@ h1 {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background-color: rgba(255, 255, 255, 0.9);
+    background-color:  var(--game-bg-color);
     margin: 20px;
     border-radius: 10px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Timer */
+#timer-container {
+    display: block; /* Visible por defecto */
+}
+
+.timer-container {
+    width: 100%;
+    max-width: 600px;
+    height: 30px;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 15px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.timer-bar {
+    height: 100%;
+    width: 100%;
+    background-color: #4CAF50;
+    transition: width 1s linear;
+}
+
+.timer-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .quote {
@@ -100,7 +137,7 @@ h1 {
     padding: 15px;
     border: none;
     border-radius: 8px;
-    background: linear-gradient(to right, rgb(255, 85, 0), rgb(255, 120, 50));
+    background: rgb(255, 85, 0);
     color: white;
     font-size: 1.2rem;
     cursor: pointer;
@@ -111,6 +148,7 @@ h1 {
 .option-btn:hover {
     transform: translateY(-3px);
     box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
+    filter: brightness(150%);
 }
 
 .replay-btn {
@@ -122,8 +160,7 @@ footer {
     grid-column: 1 / 4;
     text-align: center;
     padding: 15px;
-    background-color: rgba(0, 0, 0, 0.8);
-    border-top: 3px solid rgb(255, 85, 0);
+    background-color: var(--body-bg-color);
 }
 
 footer img {
@@ -136,10 +173,9 @@ footer img {
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(50, 20, 0, 0.8));
+    background: var(--body-bg-color);
     padding: 20px;
     color: white;
-    border-left: 3px solid rgb(255, 85, 0);
     overflow-y: auto;
 }
 
@@ -153,6 +189,7 @@ footer img {
 #highscores-list {
     list-style-type: none;
     margin-bottom: 20px;
+    width: 100%;
 }
 
 #highscores-list li {
@@ -178,21 +215,21 @@ footer img {
 }
 
 #clear-highscores {
-    width: 100%;
+    width: 140px;
     margin-top: 10px;
     background: linear-gradient(to right, #f44336, #d32f2f);
 }
 
 /* Responsive */
 @media (max-width: 1200px) {
-    .highscores-container {
-        width: 250px;
+    body {
+    grid-template-columns: 80px 1fr 250px;
     }
 }
 
 @media (max-width: 900px) {
     .game-container {
-    grid-column: 2 / 4;
+        grid-column: 2 / 4;
     }
 
     h1 {
@@ -200,7 +237,7 @@ footer img {
     }
 
     .quote {
-    font-size: 1.4rem;
+        font-size: 1.4rem;
     }
 
     .option-btn {
@@ -208,8 +245,8 @@ footer img {
     }
 
     .circle {
-    width: 25px;
-    height: 25px;
+        width: 25px;
+        height: 25px;
     }
 
     .highscores-container {
@@ -217,6 +254,5 @@ footer img {
         height: auto;
         grid-column: 1 / -1;
         border-left: 0px;
-        border-top: 3px solid rgb(255, 85, 0);
     }
 }
