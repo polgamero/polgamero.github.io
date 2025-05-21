@@ -4,6 +4,10 @@ let score = 0;
 let selectedPhrases = [];
 let isAnswering = false;
 const totalQuestions = 10;
+let timePerQuestion = 10;
+let timer;
+let totalTime = 0;
+let timeLeft = timePerQuestion;
 
 // Elementos DOM
 const sidebarEl = document.getElementById('sidebar');
@@ -12,15 +16,25 @@ const optionsEl = document.getElementById('options');
 const correctSound = document.getElementById('correctSound');
 const wrongSound = document.getElementById('wrongSound');
 
-// Cargar frases desde JSON
+// Base de datos de frases (ejemplo)
+const phrases = [
+    {
+        quote: "El arte es la única manera de huir sin salir de casa.",
+        options: ["Fito Páez", "Charly García", "Mercedes Sosa", "Frase Inventada"],
+        correct: 1
+    },
+    // ... (agregar más frases)
+];
+
+// Cargar frases
 async function loadPhrases() {
     try {
         const response = await fetch('phrases.json');
-        const phrases = await response.json();
-        return phrases.sort(() => 0.5 - Math.random()).slice(0, totalQuestions);
+        const data = await response.json();
+        return data.sort(() => 0.5 - Math.random()).slice(0, totalQuestions);
     } catch (error) {
         console.error("Error cargando frases:", error);
-        return [];
+        return phrases.sort(() => 0.5 - Math.random()).slice(0, totalQuestions);
     }
 }
 
@@ -32,7 +46,6 @@ async function initGame() {
         return;
     }
 
-    // Crear círculos en sidebar
     sidebarEl.innerHTML = '';
     for (let i = 0; i < totalQuestions; i++) {
         const circle = document.createElement('div');
@@ -42,13 +55,31 @@ async function initGame() {
     }
 
     loadQuestion();
+    showHighscores();
 }
 
 // Cargar pregunta
 function loadQuestion() {
+    document.getElementById('timer-container').style.display = 'block'; // Muestra el timer al cargar nueva pregunta
+    
     isAnswering = false;
+    clearInterval(timer);
+    timeLeft = timePerQuestion;
+    updateTimerDisplay();
+
     const question = selectedPhrases[currentQuestion];
     quoteEl.textContent = `"${question.quote}"`;
+
+    timer = setInterval(() => {
+        timeLeft--;
+        totalTime++;
+        updateTimerDisplay();
+        
+        if (timeLeft <= 0) {
+            clearInterval(timer);
+            handleTimeOut();
+        }
+    }, 1000);
 
     optionsEl.innerHTML = '';
     question.options.forEach((option, index) => {
@@ -60,9 +91,37 @@ function loadQuestion() {
     });
 }
 
+// Manejar tiempo agotado
+function handleTimeOut() {
+    const circles = document.querySelectorAll('.circle');
+    circles[currentQuestion].classList.add('incorrect');
+    playSound(wrongSound);
+    nextQuestion();
+}
+
+// Actualizar timer visual
+function updateTimerDisplay() {
+    const timerBar = document.getElementById('timer-bar');
+    const timerText = document.getElementById('timer-text');
+    
+    timerText.textContent = timeLeft;
+    const percentage = (timeLeft / timePerQuestion) * 100;
+    timerBar.style.width = `${percentage}%`;
+    
+    if (percentage < 30) {
+        timerBar.style.backgroundColor = '#f44336';
+    } else if (percentage < 60) {
+        timerBar.style.backgroundColor = '#ff9800';
+    } else {
+        timerBar.style.backgroundColor = '#4CAF50';
+    }
+}
+
 // Verificar respuesta
 function checkAnswer(selectedIndex) {
     isAnswering = true;
+    clearInterval(timer);
+    
     const question = selectedPhrases[currentQuestion];
     const circles = document.querySelectorAll('.circle');
 
@@ -75,19 +134,56 @@ function checkAnswer(selectedIndex) {
         playSound(wrongSound);
     }
 
+    nextQuestion();
+}
+
+// Siguiente pregunta
+function nextQuestion() {
     currentQuestion++;
     if (currentQuestion < totalQuestions) {
-        setTimeout(loadQuestion, 500);
+        setTimeout(loadQuestion, 1000);
     } else {
-        setTimeout(endGame, 500);
+        setTimeout(endGame, 1000);
     }
 }
 
-// Reproducir sonido
-function playSound(sound) {
-    sound.currentTime = 0;
-    sound.volume = 0.3;
-    sound.play().catch(e => console.log("Click en la pantalla para activar sonidos"));
+// Finalizar juego
+function endGame() {
+    clearInterval(timer);
+    document.getElementById('timer-container').style.display = 'none'; // Oculta el timer
+    
+    const playerName = prompt(`¡Juego terminado!\nAciertos: ${score}/${totalQuestions}\nTiempo total: ${totalTime} segundos\nIngresa tu nombre:`);
+    
+    if (playerName) {
+        saveScore(playerName.trim() || 'Anónimo', score, totalTime);
+    }
+    
+    quoteEl.textContent = `¡Gracias por jugar!`;
+    optionsEl.innerHTML = '<button class="option-btn replay-btn" onclick="location.reload()">Jugar de nuevo</button>';
+}
+
+// Formatear tiempo
+function formatTime(seconds) {
+    return `${seconds} seg`;
+}
+
+// Guardar puntaje
+function saveScore(name, points, time) {
+    const highscores = JSON.parse(localStorage.getItem('triviaHighscores')) || [];
+    highscores.push({ 
+        name, 
+        points, 
+        time,
+        displayText: `${name} | ${points}/10 | ${formatTime(time)}`
+    });
+    
+    highscores.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        return a.time - b.time;
+    });
+    
+    localStorage.setItem('triviaHighscores', JSON.stringify(highscores));
+    showHighscores();
 }
 
 // Mostrar highscores
@@ -99,34 +195,18 @@ function showHighscores() {
     highscores.slice(0, 10).forEach((score, index) => {
         const li = document.createElement('li');
         li.innerHTML = `
-            <span>${index + 1}. ${score.name}&nbsp;</span>
-            <span>${score.points}/${totalQuestions}</span>
+            <span>${index + 1}. ${score.name}</span>
+            <span>${score.points}/10 - ${formatTime(score.time)}</span>
         `;
         highscoresList.appendChild(li);
     });
 }
 
-// Guardar score
-function saveScore(playerName, points) {
-    const highscores = JSON.parse(localStorage.getItem('triviaHighscores')) || [];
-    highscores.push({ name: playerName, points });
-    highscores.sort((a, b) => b.points - a.points);
-    localStorage.setItem('triviaHighscores', JSON.stringify(highscores));
-    showHighscores();
-}
-
-// Finalizar juego
-function endGame() {
-    const playerName = prompt(`¡Juego terminado! Puntuación: ${score}/${totalQuestions}\nIngresa tu nombre:`);
-    
-    if (playerName && playerName.trim() !== '') {
-        saveScore(playerName.trim(), score);
-    } else {
-        
-    }
-    
-    quoteEl.textContent = `¡Gracias por jugar!`;
-    optionsEl.innerHTML = '<button class="option-btn replay-btn" onclick="location.reload()">Jugar de nuevo</button>';
+// Reproducir sonido
+function playSound(sound) {
+    sound.currentTime = 0;
+    sound.volume = 0.3;
+    sound.play().catch(e => console.log("Click en la pantalla para activar sonidos"));
 }
 
 // Borrar highscores
