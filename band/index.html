@@ -1,1 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Banda de tus Sueños</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <h1>La Banda de tus Sueños</h1>
+        
+        <div class="split-screen">
+            <div class="stage">
+                <div class="band-name-container">
+                    <div class="band-name-display" id="band-name-display">
+                        <span id="band-name-text">Nombre de tu banda</span>
+                    </div>
+                    <div class="band-name-edit" id="band-name-edit" style="display: none;">
+                        <input type="text" id="band-name-input" placeholder="Nombre de tu banda">
+                        <button class="save-band-name">OK</button>
+                    </div>
+                </div>
+                <div class="band-image-container">
+                    <img src="assets/instruments/band.png" alt="Banda" class="band-image">
+                    <div class="drop-zone singer-zone" data-role="singer">
+                        <div class="placeholder">Cantante</div>
+                    </div>
+                    <div class="drop-zone guitarist-zone" data-role="guitarist">
+                        <div class="placeholder">Guitarrista</div>
+                    </div>
+                    <div class="drop-zone bassist-zone" data-role="bassist">
+                        <div class="placeholder">Bajista</div>
+                    </div>
+                    <div class="drop-zone drummer-zone" data-role="drummer">
+                        <div class="placeholder">Baterista</div>
+                    </div>
+                    <div class="logo-container">
+                        <img src="assets/logos/logoTop5.png" alt="Logo" class="logo">
+                    </div>
+                </div>
+            </div>
 
+            <div class="selection-panel">
+                <div class="tabs">
+                    <button class="tab-button active" data-tab="singer">Cantantes</button>
+                    <button class="tab-button" data-tab="guitarist">Guitarristas</button>
+                    <button class="tab-button" data-tab="bassist">Bajistas</button>
+                    <button class="tab-button" data-tab="drummer">Bateristas</button>
+                </div>
+
+                <div class="tab-content active" id="singer-tab">
+                    <div class="artists-grid" id="singer-grid" data-role="singer"></div>
+                </div>
+                <div class="tab-content" id="guitarist-tab">
+                    <div class="artists-grid" id="guitarist-grid" data-role="guitarist"></div>
+                </div>
+                <div class="tab-content" id="bassist-tab">
+                    <div class="artists-grid" id="bassist-grid" data-role="bassist"></div>
+                </div>
+                <div class="tab-content" id="drummer-tab">
+                    <div class="artists-grid" id="drummer-grid" data-role="drummer"></div>
+                </div>
+
+                <button id="reset-button" class="reset-button">Reiniciar Banda</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
