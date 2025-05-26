@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const artistsConfig = {
         singer: 15,
-        guitarist: 9,
+        guitarist: 15,
         bassist: 3,
         drummer: 3
     };
