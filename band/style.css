@@ -1,0 +1,412 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Bebas Neue', 'Arial', sans-serif;
+}
+
+body {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #222;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+}
+
+/* Editor de nombre de banda */
+.band-name-container {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.band-name-display, .band-name-edit {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+#band-name-text {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #444;
+}
+
+.edit-band-name, .save-band-name {
+    background: none;
+    border: none;
+    color: #4CAF50;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.edit-band-name:hover, .save-band-name:hover {
+    background: rgba(76, 175, 80, 0.1);
+}
+
+#band-name-input {
+    padding: 5px 10px;
+    font-size: 1.8rem;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+    width: 300px;
+    font-family: 'Bebas Neue', sans-serif;
+}
+
+/* Resto del CSS (se mantiene igual que antes) */
+.split-screen {
+    display: flex;
+    min-height: 70vh;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stage {
+    flex: 1;
+    background-color: #fff;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-right: 1px dashed #ccc;
+}
+
+.band-image-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.band-image {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.drop-zone {
+    position: absolute;
+    border: 3px dashed #aaa;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.drop-zone.active-drop-zone {
+    opacity: 1;
+    background-color: rgba(76, 175, 80, 0.2);
+    border-color: #4CAF50;
+    pointer-events: auto;
+}
+
+.drop-zone.inactive-drop-zone {
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.drop-zone.highlight {
+    background-color: rgba(200, 230, 201, 0.9);
+    outline: 3px solid #4CAF50;
+    box-shadow: 0 0 10px #4CAF50;
+}
+
+.placeholder {
+    color: #333;
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+    padding: 10px;
+    pointer-events: none;
+}
+
+.singer-zone {
+    top: 60%;
+    left: 50%;
+    width: 20%;
+    height: 25%;
+    transform: translateX(-50%);
+}
+
+.guitarist-zone {
+    top: 60%;
+    left: 20%;
+    width: 20%;
+    height: 25%;
+    transform: translateX(-50%);
+}
+
+.bassist-zone {
+    top: 60%;
+    left: 80%;
+    width: 20%;
+    height: 25%;
+    transform: translateX(-50%);
+}
+
+.drummer-zone {
+    top: 15%;
+    left: 50%;
+    width: 20%;
+    height: 25%;
+    transform: translateX(-50%);
+}
+
+.artist-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 5px;
+}
+
+.selection-panel {
+    flex: 1;
+    background-color: #f0f0f0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    height: 600px;
+}
+
+.tabs {
+    display: flex;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #ccc;
+}
+
+.tab-button {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #555;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.tab-button.active {
+    color: #000;
+    font-weight: bold;
+    border-bottom: 3px solid #4CAF50;
+}
+
+.tab-button:hover:not(.active) {
+    background-color: #e0e0e0;
+}
+
+.tab-content {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.artists-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+    padding: 5px;
+}
+
+.artist-item {
+    cursor: grab;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+    aspect-ratio: 1/1;
+    position: relative;
+    background-color: #fff;
+}
+
+.artist-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15);
+}
+
+.artist-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.artist-item .artist-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.remove-artist {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(255, 0, 0, 0.7);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    font-weight: bold;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+}
+
+.remove-artist:hover {
+    background: rgba(255, 0, 0, 0.9);
+}
+
+.reset-button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s ease;
+    align-self: center;
+}
+
+.reset-button:hover {
+    background-color: #d32f2f;
+}
+
+.logo-container {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    width: 50px;
+    height: 50px;
+    z-index: 10;
+}
+
+.logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 3px rgba(0,0,0,0.3));
+}
+
+/* Modificación para el nombre de la banda clickeable */
+#band-name-text {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#band-name-text:hover {
+    color: #4CAF50;
+}
+
+/* Scrollbar general */
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+/* Fondo del scrollbar */
+::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 10px;
+}
+
+/* Thumb (la parte que se mueve) */
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #f44336, #c2e9fb);
+    border-radius: 10px;
+    border: 2px solid #f0f0f0;
+}
+
+/* Al hacer hover */
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #89f7fe, #f44336);
+}
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #f44336 #f0f0f0;
+}
+
+@media (max-width: 768px) {
+    .split-screen {
+        flex-direction: column;
+    }
+    
+    .stage {
+        border-right: none;
+        border-bottom: 1px dashed #ccc;
+        min-height: 400px;
+    }
+    
+    .band-image {
+        max-height: 300px;
+        object-fit: contain;
+    }
+    
+    .drop-zone {
+        width: 25% !important;
+        height: 20% !important;
+    }
+    
+    .singer-zone {
+        top: 5%;
+    }
+    
+    .guitarist-zone, .bassist-zone {
+        top: 30%;
+    }
+    
+    .drummer-zone {
+        bottom: 5%;
+    }
+}
+
+@media (max-width: 480px) {
+    .artists-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+    
+    .tab-button {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+
+    #band-name-input {
+        width: 200px;
+    }
+}
