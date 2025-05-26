@@ -18,8 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const artistsConfig = {
         singer: 15,
         guitarist: 15,
-        bassist: 3,
-        drummer: 3
+        bassist: 10,
+        drummer: 10
     };
 
     const artistsData = Object.fromEntries(
