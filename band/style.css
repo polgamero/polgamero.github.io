@@ -279,7 +279,7 @@ h1 {
     height: 15px;
     cursor: pointer;
     font-weight: bold;
-    z-index: 10;
+    z-index: 1000;
     display: flex;
     align-items: center;
     justify-content: center;
