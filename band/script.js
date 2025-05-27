@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateDropZone(zone, data) {
         zone.innerHTML = `
             <img src="${data.image}" class="artist-image" alt="${data.name}" onerror="this.src='assets/instruments/placeholder.png'">
-            <button class="remove-artist" data-id="${data.id}">✕</button>
+            <button class="remove-artist" data-html2canvas-ignore="true" data-id="${data.id}">✕</button>
         `;
         zone.querySelector('.remove-artist').addEventListener('click', () => {
             resetZone(zone, data);
