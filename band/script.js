@@ -317,8 +317,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Usamos html2canvas para capturar el div
         const canvas = await html2canvas(stage, {
-            backgroundColor: null
-            //scale: 2 // Mejor calidad para móviles
+            backgroundColor: null,
+            scale: 2 // Mejor calidad para móviles
         });
         
         canvas.toBlob(async (blob) => {
