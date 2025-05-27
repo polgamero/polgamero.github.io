@@ -46,9 +46,9 @@
     {"id": "b10", "name": "Diego Arnedo", "image": "assets/artists/bassists/bassist10.jpg"},
     {"id": "b11", "name": "Flea", "image": "assets/artists/bassists/bassist11.jpg"},
     {"id": "b12", "name": "Sting", "image": "assets/artists/bassists/bassist12.jpg"},
-    {"id": "b13", "name": "NOMBRE", "image": "assets/artists/bassists/bassist13.jpg"},
-    {"id": "b14", "name": "NOMBRE", "image": "assets/artists/bassists/bassist14.jpg"},
-    {"id": "b15", "name": "NOMBRE", "image": "assets/artists/bassists/bassist15.jpg"}
+    {"id": "b13", "name": "Robert Trujillo", "image": "assets/artists/bassists/bassist13.jpg"},
+    {"id": "b14", "name": "Esperanza Spalding", "image": "assets/artists/bassists/bassist14.jpg"},
+    {"id": "b15", "name": "Tina Weymouth", "image": "assets/artists/bassists/bassist15.jpg"}
 ],
 "drummer": [
     {"id": "d1", "name": "Willy Iturri", "image": "assets/artists/drummers/drummer1.jpg"},
