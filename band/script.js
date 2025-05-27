@@ -1,30 +1,14 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // ========== GENERACIÓN DINÁMICA DE ARTISTAS ==========
-    function generateArtists(role, count) {
-        const roleNames = {
-            singer: 'Cantante',
-            guitarist: 'Guitarrista',
-            bassist: 'Bajista',
-            drummer: 'Baterista'
-        };
-        
-        return Array.from({length: count}, (_, i) => ({
-            id: `${role.charAt(0)}${i+1}`,
-            name: `${roleNames[role]} ${i+1}`,
-            image: `assets/artists/${role}s/${role}${i+1}.jpg`
-        }));
+document.addEventListener('DOMContentLoaded', async () => {
+    // ========== CARGAR DATOS DESDE JSON ==========
+    let artistsData = {};
+    try {
+        const response = await fetch('artists-data.json');
+        artistsData = await response.json();
+    } catch (error) {
+        console.error("Error cargando datos de artistas:", error);
+        alert("Error al cargar los datos. Recarga la página.");
+        return;
     }
-
-    const artistsConfig = {
-        singer: 15,
-        guitarist: 15,
-        bassist: 10,
-        drummer: 10
-    };
-
-    const artistsData = Object.fromEntries(
-        Object.entries(artistsConfig).map(([role, count]) => [role, generateArtists(role, count)])
-    );
 
     // ========== SELECTORES DEL DOM ==========
     const dropZones = document.querySelectorAll('.drop-zone');
@@ -32,45 +16,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetButton = document.getElementById('reset-button');
 
     // ========== FUNCIÓN PRINCIPAL DE INICIO ==========
-    function init() {
-        loadSavedBand();
+    async function init() {
+        await loadSavedBand();
         renderArtists();
         setupListeners();
         setupBandNameEditor();
     }
 
-    // ========== EDITOR DE NOMBRE DE BANDA ==========
-    function setupBandNameEditor() {
-        const display = document.getElementById('band-name-display');
-        const edit = document.getElementById('band-name-edit');
-        const text = document.getElementById('band-name-text');
-        const input = document.getElementById('band-name-input');
-        const saveBtn = document.querySelector('.save-band-name');
-
-        const savedName = localStorage.getItem('bandName');
-        if (savedName) text.textContent = savedName;
-
-        text.addEventListener('click', () => {
-            display.style.display = 'none';
-            edit.style.display = 'flex';
-            input.value = text.textContent === "Nombre de tu banda" ? "" : text.textContent;
-            input.focus();
-        });
-
-        saveBtn.addEventListener('click', () => {
-            const newName = input.value.trim() || "Nombre de tu banda";
-            text.textContent = newName;
-            localStorage.setItem('bandName', newName);
-            edit.style.display = 'none';
-            display.style.display = 'flex';
-        });
-
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') saveBtn.click();
-        });
-    }
-
-    // ========== RENDERIZADO DE ARTISTAS ==========
+    // ========== RENDERIZADO DE ARTISTAS (ALEATORIO) ==========
     function renderArtists() {
         const savedBand = JSON.parse(localStorage.getItem('dreamBand')) || {};
 
@@ -78,30 +31,48 @@ document.addEventListener('DOMContentLoaded', () => {
             const role = grid.dataset.role;
             grid.innerHTML = '';
             
-            // Obtener una copia aleatorizada del array de artistas
-            const shuffledArtists = [...artistsData[role]].sort(() => Math.random() - 0.5);
+            // Mezclar artistas y filtrar los que ya están en la banda
+            const availableArtists = shuffleArray(artistsData[role] || [])
+                .filter(artist => !(savedBand[role]?.id === artist.id));
 
-            shuffledArtists.forEach(artist => {
-                const isInBand = savedBand[role] && savedBand[role].id === artist.id;
-                if (isInBand) return;
-
-                const el = document.createElement('div');
-                el.className = 'artist-item';
-                el.draggable = true;
-                el.dataset.id = artist.id;
-                el.dataset.role = role;
-                el.innerHTML = `
-                    <img src="${artist.image}" alt="${artist.name}" onerror="this.src='assets/instruments/placeholder.png'">
-                    <div class="artist-name" style="display:none">${artist.name}</div>
-                `;
-                grid.appendChild(el);
+            // Crear elementos del DOM
+            availableArtists.forEach(artist => {
+                const artistElement = createArtistElement(artist, role);
+                grid.appendChild(artistElement);
             });
         });
     }
 
-    // ========== CONFIGURACIÓN DE EVENTOS ==========
+    // ========== FUNCIONES AUXILIARES ==========
+    function shuffleArray(array) {
+        return [...array].sort(() => Math.random() - 0.5);
+    }
+
+    function createArtistElement(artist, role) {
+        const el = document.createElement('div');
+        el.className = 'artist-item';
+        el.draggable = true;
+        el.dataset.id = artist.id;
+        el.dataset.role = role;
+        el.innerHTML = `
+            <img src="${artist.image}" alt="${artist.name}" onerror="this.src='assets/instruments/placeholder.png'">
+            <div class="artist-name">${artist.name}</div>
+        `;
+        return el;
+    }
+
+    function getRoleName(role) {
+        const roles = {
+            singer: 'Cantante',
+            guitarist: 'Guitarrista',
+            bassist: 'Bajista',
+            drummer: 'Baterista'
+        };
+        return roles[role];
+    }
+
+    // ========== DRAG & DROP ==========
     function setupListeners() {
-        // Drag & Drop
         document.addEventListener('dragstart', onDragStart);
         document.addEventListener('dragend', onDragEnd);
 
@@ -112,7 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
             zone.addEventListener('drop', onDrop);
         });
 
-        // Tabs
         document.querySelectorAll('.tab-button').forEach(button => {
             button.addEventListener('click', () => {
                 document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
@@ -122,11 +92,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Reset
         resetButton.addEventListener('click', resetBand);
     }
 
-    // ========== FUNCIONES DRAG & DROP ==========
     function onDragStart(e) {
         const item = e.target.closest('.artist-item');
         if (!item) return;
@@ -183,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dropZones.forEach(z => z.classList.remove('active-drop-zone', 'inactive-drop-zone'));
     }
 
-    // ========== MANEJO DE ZONAS DE DROP ==========
+    // ========== MANEJO DE ZONAS ==========
     function updateDropZone(zone, data) {
         zone.innerHTML = `
             <img src="${data.image}" class="artist-image" alt="${data.name}" onerror="this.src='assets/instruments/placeholder.png'">
@@ -201,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
         saveBand();
     }
 
-    // ========== MANEJO DEL PANEL DE ARTISTAS ==========
     function removeFromPanel(id, role) {
         const grid = document.querySelector(`.artists-grid[data-role="${role}"]`);
         const item = grid.querySelector(`.artist-item[data-id="${id}"]`);
@@ -212,29 +179,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const grid = document.querySelector(`.artists-grid[data-role="${role}"]`);
         if (grid.querySelector(`.artist-item[data-id="${data.id}"]`)) return;
 
-        const el = document.createElement('div');
-        el.className = 'artist-item';
-        el.draggable = true;
-        el.dataset.id = data.id;
-        el.dataset.role = role;
-        el.innerHTML = `
-            <img src="${data.image}" alt="${data.name}" onerror="this.src='assets/instruments/placeholder.png'">
-            <div class="artist-name" style="display:none">${data.name}</div>
-        `;
+        const el = createArtistElement(data, role);
         grid.appendChild(el);
     }
 
-    // ========== FUNCIONES AUXILIARES ==========
-    function getRoleName(role) {
-        const roles = {
-            singer: 'Cantante',
-            guitarist: 'Guitarrista',
-            bassist: 'Bajista',
-            drummer: 'Baterista'
-        };
-        return roles[role];
-    }
-
+    // ========== PERSISTENCIA ==========
     function saveBand() {
         const band = {};
         dropZones.forEach(zone => {
@@ -251,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('dreamBand', JSON.stringify(band));
     }
 
-    function loadSavedBand() {
+    async function loadSavedBand() {
         try {
             const saved = JSON.parse(localStorage.getItem('dreamBand'));
             if (!saved) return;
@@ -268,7 +217,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ========== RESET COMPLETO ==========
+    // ========== EDITOR DE NOMBRE ==========
+    function setupBandNameEditor() {
+        const display = document.getElementById('band-name-display');
+        const edit = document.getElementById('band-name-edit');
+        const text = document.getElementById('band-name-text');
+        const input = document.getElementById('band-name-input');
+        const saveBtn = document.querySelector('.save-band-name');
+
+        const savedName = localStorage.getItem('bandName');
+        if (savedName) text.textContent = savedName;
+
+        text.addEventListener('click', () => {
+            display.style.display = 'none';
+            edit.style.display = 'flex';
+            input.value = text.textContent === "Nombre de tu banda" ? "" : text.textContent;
+            input.focus();
+        });
+
+        saveBtn.addEventListener('click', () => {
+            const newName = input.value.trim() || "Nombre de tu banda";
+            text.textContent = newName;
+            localStorage.setItem('bandName', newName);
+            edit.style.display = 'none';
+            display.style.display = 'flex';
+        });
+
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') saveBtn.click();
+        });
+    }
+
+    // ========== RESET ==========
     function resetBand() {
         if (!confirm('¿Reiniciar tu banda?')) return;
 
@@ -292,6 +272,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('dreamBand');
     }
 
-    // ========== INICIAR APLICACIÓN ==========
+    // ========== INICIAR ==========
     init();
 });
