@@ -1,25 +1,25 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // ========== CARGAR DATOS DE ARTISTAS ==========
+    // ========== CARGAR DATOS ==========
     let artistsData = {};
     try {
         const response = await fetch('artists-data.json');
         artistsData = await response.json();
     } catch (error) {
-        console.error("Error cargando datos:", error);
-        alert("Error al cargar los artistas. Recarga la página.");
+        console.error("Error cargando artistas:", error);
+        alert("Error al cargar los datos. Recarga la página.");
         return;
     }
 
-    // ========== SELECTORES DEL DOM ==========
+    // ========== SELECTORES ==========
     const dropZones = document.querySelectorAll('.drop-zone');
     const artistGrids = document.querySelectorAll('.artists-grid');
     const resetButton = document.getElementById('reset-button');
-    let selectedArtist = null; // Para el sistema touch
+    let selectedArtist = null;
 
     // ========== INICIALIZACIÓN ==========
     init();
 
-    async function init() {
+    function init() {
         loadSavedBand();
         renderArtists();
         setupListeners();
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ========== SISTEMA TOUCH (MÓVIL) ==========
     function detectTouchDevice() {
-        if ('ontouchstart' in window || navigator.maxTouchPoints) {
+        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
             document.body.classList.add('touch-mode');
         }
     }
@@ -37,66 +37,62 @@ document.addEventListener('DOMContentLoaded', async () => {
     function handleTouchSelection(e) {
         const item = e.currentTarget;
         
-        // Resetear selección anterior
-        document.querySelectorAll('.artist-item').forEach(el => {
-            el.classList.remove('selected-touch');
-            el.dataset.touch = "false";
-        });
-        
-        // Seleccionar nuevo artista
-        if (!selectedArtist || selectedArtist !== item) {
-            selectedArtist = item;
-            item.classList.add('selected-touch');
-            item.dataset.touch = "true";
-            
-            // Activar zonas compatibles
-            document.querySelectorAll('.drop-zone').forEach(zone => {
-                zone.classList.remove('active-touch');
-                if (zone.dataset.role === item.dataset.role) {
-                    zone.dataset.active = "true";
-                    zone.classList.add('active-touch');
-                } else {
-                    zone.dataset.active = "false";
-                }
-            });
-        } else {
-            selectedArtist = null;
+        // Deseleccionar si ya está seleccionado
+        if (selectedArtist === item) {
+            resetTouchSelection();
+            return;
         }
+
+        resetTouchSelection(); // Limpiar selección previa
+        selectedArtist = item;
+        item.classList.add('selected-touch');
+        item.dataset.touch = "true";
+
+        // Activar solo zonas compatibles
+        dropZones.forEach(zone => {
+            zone.classList.remove('active-touch');
+            if (zone.dataset.role === item.dataset.role) {
+                zone.dataset.active = "true";
+                zone.classList.add('active-touch');
+            } else {
+                zone.dataset.active = "false";
+            }
+        });
     }
 
     function handleTouchDrop(e) {
         const zone = e.currentTarget;
-        
-        if (zone.dataset.active === "true" && selectedArtist) {
-            const data = {
-                id: selectedArtist.dataset.id,
-                role: selectedArtist.dataset.role,
-                image: selectedArtist.querySelector('img').src,
-                name: selectedArtist.querySelector('.artist-name').textContent
-            };
-            
-            if (!zone.querySelector('img')) {
-                updateDropZone(zone, data);
-                removeFromPanel(data.id, data.role);
-                saveBand();
-            }
+        if (zone.dataset.active !== "true" || !selectedArtist) return;
+
+        const data = {
+            id: selectedArtist.dataset.id,
+            role: selectedArtist.dataset.role,
+            image: selectedArtist.querySelector('img').src,
+            name: selectedArtist.querySelector('.artist-name').textContent
+        };
+
+        if (!zone.querySelector('img')) {
+            processArtistDrop(zone, data);
         }
-        
-        // Resetear selección
         resetTouchSelection();
     }
 
     function resetTouchSelection() {
-        document.querySelectorAll('.artist-item, .drop-zone').forEach(el => {
-            el.classList.remove('selected-touch', 'active-touch');
-            el.dataset.touch = "false";
-            el.dataset.active = "false";
+        if (selectedArtist) {
+            selectedArtist.classList.remove('selected-touch');
+            selectedArtist.dataset.touch = "false";
+            selectedArtist = null;
+        }
+        dropZones.forEach(zone => {
+            zone.classList.remove('active-touch');
+            zone.dataset.active = "false";
         });
-        selectedArtist = null;
     }
 
     // ========== SISTEMA DRAG & DROP (DESKTOP) ==========
     function onDragStart(e) {
+        resetTouchSelection(); // Limpiar selección touch si existe
+        
         const item = e.target.closest('.artist-item');
         if (!item) return;
 
@@ -109,8 +105,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.dataTransfer.setData('text/plain', JSON.stringify(data));
 
         dropZones.forEach(zone => {
-            zone.classList.toggle('active-drop-zone', zone.dataset.role === data.role);
-            zone.classList.toggle('inactive-drop-zone', zone.dataset.role !== data.role);
+            zone.classList.remove('active-drop-zone', 'inactive-drop-zone');
+            zone.classList.add(zone.dataset.role === data.role ? 'active-drop-zone' : 'inactive-drop-zone');
         });
     }
 
@@ -136,20 +132,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         const zone = e.target.closest('.drop-zone');
         if (!zone || zone.classList.contains('inactive-drop-zone')) return;
 
-        const existingImg = zone.querySelector('img');
-        if (existingImg) return;
-
         const data = JSON.parse(e.dataTransfer.getData('text/plain'));
         processArtistDrop(zone, data);
     }
 
     // ========== FUNCIONES COMPARTIDAS ==========
     function processArtistDrop(zone, data) {
-        zone.classList.remove('highlight');
-        updateDropZone(zone, data);
-        removeFromPanel(data.id, data.role);
-        saveBand();
-        resetTouchSelection();
+        // Resetear todos los estados visuales
+        dropZones.forEach(z => {
+            z.classList.remove('highlight', 'active-drop-zone', 'inactive-drop-zone', 'active-touch');
+            z.dataset.active = "false";
+        });
+
+        if (!zone.querySelector('img')) {
+            updateDropZone(zone, data);
+            removeFromPanel(data.id, data.role);
+            saveBand();
+        }
     }
 
     function updateDropZone(zone, data) {
@@ -169,7 +168,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         saveBand();
     }
 
-    // ========== RENDERIZADO DE ARTISTAS ==========
+    // ========== RENDERIZADO ==========
     function renderArtists() {
         const savedBand = JSON.parse(localStorage.getItem('dreamBand')) || {};
 
