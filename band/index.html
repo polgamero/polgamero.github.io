@@ -14,6 +14,7 @@
         <h1>La Banda de tus Sueños</h1>
         
         <div class="split-screen">
+            <!-- SECCIÓN DEL ESCENARIO (BANDA) -->
             <div class="stage">
                 <div class="band-name-container">
                     <div class="band-name-display" id="band-name-display">
@@ -24,26 +25,35 @@
                         <button class="save-band-name">OK</button>
                     </div>
                 </div>
+                
                 <div class="band-image-container">
                     <img src="assets/instruments/band.png" alt="Banda" class="band-image">
-                    <div class="drop-zone singer-zone" data-role="singer">
+                    
+                    <!-- Zonas de Drop (ahora clickeables en móviles) -->
+                    <div class="drop-zone singer-zone" data-role="singer" data-active="false">
                         <div class="placeholder">Cantante</div>
                     </div>
-                    <div class="drop-zone guitarist-zone" data-role="guitarist">
+                    
+                    <div class="drop-zone guitarist-zone" data-role="guitarist" data-active="false">
                         <div class="placeholder">Guitarrista</div>
                     </div>
-                    <div class="drop-zone bassist-zone" data-role="bassist">
+                    
+                    <div class="drop-zone bassist-zone" data-role="bassist" data-active="false">
                         <div class="placeholder">Bajista</div>
                     </div>
-                    <div class="drop-zone drummer-zone" data-role="drummer">
+                    
+                    <div class="drop-zone drummer-zone" data-role="drummer" data-active="false">
                         <div class="placeholder">Baterista</div>
                     </div>
+                    
+                    <!-- Logo (opcional) -->
                     <div class="logo-container">
                         <img src="assets/logos/logoTop5.png" alt="Logo" class="logo">
                     </div>
                 </div>
             </div>
 
+            <!-- PANEL DE SELECCIÓN -->
             <div class="selection-panel">
                 <div class="tabs">
                     <button class="tab-button active" data-tab="singer">Cantantes</button>
@@ -52,15 +62,19 @@
                     <button class="tab-button" data-tab="drummer">Bateristas</button>
                 </div>
 
+                <!-- Contenido de las pestañas -->
                 <div class="tab-content active" id="singer-tab">
                     <div class="artists-grid" id="singer-grid" data-role="singer"></div>
                 </div>
+                
                 <div class="tab-content" id="guitarist-tab">
                     <div class="artists-grid" id="guitarist-grid" data-role="guitarist"></div>
                 </div>
+                
                 <div class="tab-content" id="bassist-tab">
                     <div class="artists-grid" id="bassist-grid" data-role="bassist"></div>
                 </div>
+                
                 <div class="tab-content" id="drummer-tab">
                     <div class="artists-grid" id="drummer-grid" data-role="drummer"></div>
                 </div>
