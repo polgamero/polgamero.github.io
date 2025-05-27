@@ -243,7 +243,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.setItem('dreamBand', JSON.stringify(band));
          // Disparar evento personalizado
         document.dispatchEvent(new CustomEvent('bandUpdated'));
-}
     }
 
     function loadSavedBand() {
