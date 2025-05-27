@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         setupListeners();
         setupBandNameEditor();
         detectTouchDevice();
+        setupShareButton();
     }
 
     // ========== SISTEMA TOUCH (MÓVIL) ==========
@@ -240,6 +241,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
         localStorage.setItem('dreamBand', JSON.stringify(band));
+         // Disparar evento personalizado
+        document.dispatchEvent(new CustomEvent('bandUpdated'));
+}
     }
 
     function loadSavedBand() {
@@ -281,6 +285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const newName = input.value.trim() || "Nombre de tu banda";
             text.textContent = newName;
             localStorage.setItem('bandName', newName);
+            document.dispatchEvent(new CustomEvent('bandUpdated'));
             edit.style.display = 'none';
             display.style.display = 'flex';
         });
@@ -290,6 +295,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // ========== COMPARTIR BANDA ==========
+    function setupShareButton() {
+        const shareButton = document.getElementById('share-button');
+        const checkShareConditions = () => {
+            const isBandComplete = [...dropZones].every(zone => zone.querySelector('img'));
+            const bandName = document.getElementById('band-name-text').textContent;
+            const isDefaultName = bandName === "Nombre de tu banda";
+            
+            shareButton.style.display = (isBandComplete && !isDefaultName) ? 'block' : 'none';
+        };
+    
+        // Verificar condiciones al cambiar cualquier cosa
+        document.addEventListener('bandUpdated', checkShareConditions);
+        
+        // Configurar el compartir
+        shareButton.addEventListener('click', shareBand);
+    }
+    
+    async function shareBand() {
+        const stage = document.querySelector('.stage');
+        
+        // Usamos html2canvas para capturar el div
+        const canvas = await html2canvas(stage, {
+            backgroundColor: null,
+            scale: 2 // Mejor calidad para móviles
+        });
+        
+        canvas.toBlob(async (blob) => {
+            const file = new File([blob], "mi_banda.png", { type: "image/png" });
+            
+            // API de compartir nativa
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: "Mirá mi banda creada con 'La Banda de tus Sueños'",
+                        files: [file]
+                    });
+                } catch (err) {
+                    console.log("Compartir cancelado:", err);
+                }
+            } else {
+                // Fallback para desktop
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = "mi_banda.png";
+                link.click();
+            }
+        }, 'image/png');
+    }
     // ========== RESET ==========
     function resetBand() {
         if (!confirm('¿Reiniciar tu banda?')) return;
