@@ -1,12 +1,12 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // ========== CARGAR DATOS DESDE JSON ==========
+    // ========== CARGAR DATOS DE ARTISTAS ==========
     let artistsData = {};
     try {
         const response = await fetch('artists-data.json');
         artistsData = await response.json();
     } catch (error) {
-        console.error("Error cargando datos de artistas:", error);
-        alert("Error al cargar los datos. Recarga la página.");
+        console.error("Error cargando datos:", error);
+        alert("Error al cargar los artistas. Recarga la página.");
         return;
     }
 
@@ -14,87 +14,88 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dropZones = document.querySelectorAll('.drop-zone');
     const artistGrids = document.querySelectorAll('.artists-grid');
     const resetButton = document.getElementById('reset-button');
+    let selectedArtist = null; // Para el sistema touch
 
-    // ========== FUNCIÓN PRINCIPAL DE INICIO ==========
+    // ========== INICIALIZACIÓN ==========
+    init();
+
     async function init() {
-        await loadSavedBand();
+        loadSavedBand();
         renderArtists();
         setupListeners();
         setupBandNameEditor();
+        detectTouchDevice();
     }
 
-    // ========== RENDERIZADO DE ARTISTAS (ALEATORIO) ==========
-    function renderArtists() {
-        const savedBand = JSON.parse(localStorage.getItem('dreamBand')) || {};
+    // ========== SISTEMA TOUCH (MÓVIL) ==========
+    function detectTouchDevice() {
+        if ('ontouchstart' in window || navigator.maxTouchPoints) {
+            document.body.classList.add('touch-mode');
+        }
+    }
 
-        artistGrids.forEach(grid => {
-            const role = grid.dataset.role;
-            grid.innerHTML = '';
+    function handleTouchSelection(e) {
+        const item = e.currentTarget;
+        
+        // Resetear selección anterior
+        document.querySelectorAll('.artist-item').forEach(el => {
+            el.classList.remove('selected-touch');
+            el.dataset.touch = "false";
+        });
+        
+        // Seleccionar nuevo artista
+        if (!selectedArtist || selectedArtist !== item) {
+            selectedArtist = item;
+            item.classList.add('selected-touch');
+            item.dataset.touch = "true";
             
-            // Mezclar artistas y filtrar los que ya están en la banda
-            const availableArtists = shuffleArray(artistsData[role] || [])
-                .filter(artist => !(savedBand[role]?.id === artist.id));
-
-            // Crear elementos del DOM
-            availableArtists.forEach(artist => {
-                const artistElement = createArtistElement(artist, role);
-                grid.appendChild(artistElement);
+            // Activar zonas compatibles
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.classList.remove('active-touch');
+                if (zone.dataset.role === item.dataset.role) {
+                    zone.dataset.active = "true";
+                    zone.classList.add('active-touch');
+                } else {
+                    zone.dataset.active = "false";
+                }
             });
+        } else {
+            selectedArtist = null;
+        }
+    }
+
+    function handleTouchDrop(e) {
+        const zone = e.currentTarget;
+        
+        if (zone.dataset.active === "true" && selectedArtist) {
+            const data = {
+                id: selectedArtist.dataset.id,
+                role: selectedArtist.dataset.role,
+                image: selectedArtist.querySelector('img').src,
+                name: selectedArtist.querySelector('.artist-name').textContent
+            };
+            
+            if (!zone.querySelector('img')) {
+                updateDropZone(zone, data);
+                removeFromPanel(data.id, data.role);
+                saveBand();
+            }
+        }
+        
+        // Resetear selección
+        resetTouchSelection();
+    }
+
+    function resetTouchSelection() {
+        document.querySelectorAll('.artist-item, .drop-zone').forEach(el => {
+            el.classList.remove('selected-touch', 'active-touch');
+            el.dataset.touch = "false";
+            el.dataset.active = "false";
         });
+        selectedArtist = null;
     }
 
-    // ========== FUNCIONES AUXILIARES ==========
-    function shuffleArray(array) {
-        return [...array].sort(() => Math.random() - 0.5);
-    }
-
-    function createArtistElement(artist, role) {
-        const el = document.createElement('div');
-        el.className = 'artist-item';
-        el.draggable = true;
-        el.dataset.id = artist.id;
-        el.dataset.role = role;
-        el.innerHTML = `
-            <img src="${artist.image}" alt="${artist.name}" onerror="this.src='assets/instruments/placeholder.png'">
-            <div class="artist-name">${artist.name}</div>
-        `;
-        return el;
-    }
-
-    function getRoleName(role) {
-        const roles = {
-            singer: 'Cantante',
-            guitarist: 'Guitarrista',
-            bassist: 'Bajista',
-            drummer: 'Baterista'
-        };
-        return roles[role];
-    }
-
-    // ========== DRAG & DROP ==========
-    function setupListeners() {
-        document.addEventListener('dragstart', onDragStart);
-        document.addEventListener('dragend', onDragEnd);
-
-        dropZones.forEach(zone => {
-            zone.addEventListener('dragover', e => e.preventDefault());
-            zone.addEventListener('dragenter', onDragEnter);
-            zone.addEventListener('dragleave', onDragLeave);
-            zone.addEventListener('drop', onDrop);
-        });
-
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', () => {
-                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-                button.classList.add('active');
-                document.getElementById(button.dataset.tab + '-tab').classList.add('active');
-            });
-        });
-
-        resetButton.addEventListener('click', resetBand);
-    }
-
+    // ========== SISTEMA DRAG & DROP (DESKTOP) ==========
     function onDragStart(e) {
         const item = e.target.closest('.artist-item');
         if (!item) return;
@@ -108,11 +109,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.dataTransfer.setData('text/plain', JSON.stringify(data));
 
         dropZones.forEach(zone => {
-            if (zone.dataset.role === data.role) {
-                zone.classList.add('active-drop-zone');
-            } else {
-                zone.classList.add('inactive-drop-zone');
-            }
+            zone.classList.toggle('active-drop-zone', zone.dataset.role === data.role);
+            zone.classList.toggle('inactive-drop-zone', zone.dataset.role !== data.role);
         });
     }
 
@@ -142,16 +140,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (existingImg) return;
 
         const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-        zone.classList.remove('highlight');
+        processArtistDrop(zone, data);
+    }
 
+    // ========== FUNCIONES COMPARTIDAS ==========
+    function processArtistDrop(zone, data) {
+        zone.classList.remove('highlight');
         updateDropZone(zone, data);
         removeFromPanel(data.id, data.role);
         saveBand();
-
-        dropZones.forEach(z => z.classList.remove('active-drop-zone', 'inactive-drop-zone'));
+        resetTouchSelection();
     }
 
-    // ========== MANEJO DE ZONAS ==========
     function updateDropZone(zone, data) {
         zone.innerHTML = `
             <img src="${data.image}" class="artist-image" alt="${data.name}" onerror="this.src='assets/instruments/placeholder.png'">
@@ -169,6 +169,50 @@ document.addEventListener('DOMContentLoaded', async () => {
         saveBand();
     }
 
+    // ========== RENDERIZADO DE ARTISTAS ==========
+    function renderArtists() {
+        const savedBand = JSON.parse(localStorage.getItem('dreamBand')) || {};
+
+        artistGrids.forEach(grid => {
+            const role = grid.dataset.role;
+            grid.innerHTML = '';
+            
+            shuffleArray(artistsData[role] || []).forEach(artist => {
+                if (!(savedBand[role]?.id === artist.id)) {
+                    grid.appendChild(createArtistElement(artist, role));
+                }
+            });
+        });
+    }
+
+    function createArtistElement(artist, role) {
+        const el = document.createElement('div');
+        el.className = 'artist-item';
+        el.draggable = true;
+        el.dataset.id = artist.id;
+        el.dataset.role = role;
+        el.innerHTML = `
+            <img src="${artist.image}" alt="${artist.name}" onerror="this.src='assets/instruments/placeholder.png'">
+            <div class="artist-name">${artist.name}</div>
+        `;
+        return el;
+    }
+
+    // ========== UTILIDADES ==========
+    function shuffleArray(array) {
+        return [...array].sort(() => Math.random() - 0.5);
+    }
+
+    function getRoleName(role) {
+        const roles = {
+            singer: 'Cantante',
+            guitarist: 'Guitarrista',
+            bassist: 'Bajista',
+            drummer: 'Baterista'
+        };
+        return roles[role];
+    }
+
     function removeFromPanel(id, role) {
         const grid = document.querySelector(`.artists-grid[data-role="${role}"]`);
         const item = grid.querySelector(`.artist-item[data-id="${id}"]`);
@@ -177,10 +221,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function restoreToPanel(data, role) {
         const grid = document.querySelector(`.artists-grid[data-role="${role}"]`);
-        if (grid.querySelector(`.artist-item[data-id="${data.id}"]`)) return;
-
-        const el = createArtistElement(data, role);
-        grid.appendChild(el);
+        if (!grid.querySelector(`.artist-item[data-id="${data.id}"]`)) {
+            grid.appendChild(createArtistElement(data, role));
+        }
     }
 
     // ========== PERSISTENCIA ==========
@@ -200,7 +243,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.setItem('dreamBand', JSON.stringify(band));
     }
 
-    async function loadSavedBand() {
+    function loadSavedBand() {
         try {
             const saved = JSON.parse(localStorage.getItem('dreamBand'));
             if (!saved) return;
@@ -212,7 +255,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
         } catch (e) {
-            console.error("Error al cargar la banda:", e);
+            console.error("Error al cargar banda:", e);
             localStorage.removeItem('dreamBand');
         }
     }
@@ -272,6 +315,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.removeItem('dreamBand');
     }
 
-    // ========== INICIAR ==========
-    init();
+    // ========== CONFIGURAR EVENTOS ==========
+    function setupListeners() {
+        // Sistema DRAG (desktop)
+        document.addEventListener('dragstart', onDragStart);
+        document.addEventListener('dragend', onDragEnd);
+
+        // Sistema TOUCH (móvil)
+        document.querySelectorAll('.artist-item').forEach(item => {
+            item.addEventListener('click', handleTouchSelection);
+        });
+
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+            zone.addEventListener('click', handleTouchDrop);
+            zone.addEventListener('dragover', e => e.preventDefault());
+            zone.addEventListener('dragenter', onDragEnter);
+            zone.addEventListener('dragleave', onDragLeave);
+            zone.addEventListener('drop', onDrop);
+        });
+
+        // Tabs
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                button.classList.add('active');
+                document.getElementById(button.dataset.tab + '-tab').classList.add('active');
+            });
+        });
+
+        // Reset
+        resetButton.addEventListener('click', resetBand);
+    }
 });
