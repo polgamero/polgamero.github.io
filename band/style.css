@@ -269,8 +269,8 @@ h1 {
 
 .remove-artist {
     position: absolute;
-    top: 5px;
-    right: 5px;
+    top: -5px;
+    right: -5px;
     background: rgba(255, 0, 0, 0.7);
     color: white;
     border: none;
