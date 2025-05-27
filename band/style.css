@@ -198,7 +198,7 @@ h1 {
     background: none;
     border: none;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 1.7rem;
     color: #555;
     border-bottom: 3px solid transparent;
     transition: all 0.3s ease;
@@ -362,7 +362,45 @@ h1 {
     scrollbar-color: #f44336 #f0f0f0;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1280px) {
+    .stage {
+        border-right: none;
+        border-bottom: 1px dashed #ccc;
+        min-height: 400px;
+    }
+    
+    .tab-button {
+    font-size: 1.2rem;
+    }
+    
+    .placeholder {
+    font-size: 1rem;
+    }
+
+    .band-image {
+        max-height: 300px;
+        object-fit: contain;
+    }
+    
+    .drop-zone {
+        width: 20% !important;
+        height: 20% !important;
+    }
+    
+    .singer-zone {
+        top: 45%;
+    }
+    
+    .guitarist-zone, .bassist-zone {
+        top: 45%;
+    }
+    
+    .drummer-zone {
+        bottom: 5%;
+    }
+}
+
+@media (max-width: 1068px) {
     .split-screen {
         flex-direction: column;
     }
@@ -373,22 +411,30 @@ h1 {
         min-height: 400px;
     }
     
+    .tab-button {
+    font-size: 1.2rem;
+    }
+    
+    .placeholder {
+    font-size: 1rem;
+    }
+
     .band-image {
         max-height: 300px;
         object-fit: contain;
     }
     
     .drop-zone {
-        width: 25% !important;
-        height: 20% !important;
+        width: 10% !important;
+        height: 30% !important;
     }
     
     .singer-zone {
-        top: 5%;
+        top: 55%;
     }
     
     .guitarist-zone, .bassist-zone {
-        top: 30%;
+        top: 55%;
     }
     
     .drummer-zone {
@@ -396,11 +442,15 @@ h1 {
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
     .artists-grid {
         grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     }
     
+    .placeholder {
+    font-size: 0.8rem;
+    }
+
     .tab-button {
         padding: 8px 12px;
         font-size: 0.9rem;
@@ -408,5 +458,60 @@ h1 {
 
     #band-name-input {
         width: 200px;
+    }
+
+    .drop-zone {
+        width: 20% !important;
+        height: 30% !important;
+    }
+
+    .logo-container {
+    top: -25%;
+    left: -10px;
+    width: 40px;
+    height: 40px;
+    }
+}
+
+@media (max-width: 480px) {
+    .artists-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+
+    .placeholder {
+    font-size: 0.6rem;
+    }
+
+    .tab-button {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+
+    #band-name-input {
+        width: 200px;
+    }
+    
+    .drop-zone {
+        width: 20% !important;
+        height: 30% !important;
+    }
+    
+    .singer-zone {
+        top: 55%;
+    }
+    
+    .guitarist-zone, .bassist-zone {
+        top: 55%;
+    }
+    
+    .drummer-zone {
+        bottom: 5%;
+    }
+    
+    .logo-container {
+    top: 260px;
+    left: -10px;
+    width: 40px;
+    height: 40px;
     }
 }
