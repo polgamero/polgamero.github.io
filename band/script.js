@@ -305,7 +305,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             shareButton.style.display = (isBandComplete && !isDefaultName) ? 'block' : 'none';
         };
     
-        // Verificar condiciones al cambiar cualquier cosa
+        // Verificar condiciones al cargar y al cambiar cualquier cosa
+        checkShareConditions();
         document.addEventListener('bandUpdated', checkShareConditions);
         
         // Configurar el compartir
