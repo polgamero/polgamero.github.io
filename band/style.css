@@ -567,7 +567,7 @@ h1 {
     
     .selection-panel {
         flex: 1;
-        min-height: 50vh !important; /* Altura mínima garantizada */
+        min-height: 60vh !important; /* Altura mínima garantizada */
         overflow-y: auto;
         -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
     }
