@@ -102,7 +102,7 @@ h1 {
 
 .drop-zone {
     position: absolute;
-    border: 3px dashed #aaa;
+    border: 1px dashed #aaa;
     border-radius: 8px;
     background-color: rgba(255, 255, 255, 0.5);
     display: flex;
@@ -381,12 +381,11 @@ h1 {
 }
 
 .share-button {
-    padding: 7px;
     line-height: 8px;
-    background-color: #4CAF50;
-    border: none;
-    border-radius: 50%;
     cursor: pointer;
+    border-radius: 50%;
+    border: 0;
+    background-color: #FFF;
     transition: all 0.3s;
     align-self: center;
 }
@@ -394,10 +393,6 @@ h1 {
 .share-button:hover {
     background-color: #3e8e41;
     transform: scale(1.1);
-}
-
-.share-button img {
-    filter: brightness(0) invert(1);
 }
 
 @media (max-width: 1280px) {
