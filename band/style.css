@@ -557,3 +557,23 @@ h1 {
     line-height: 4px;
     }
 }
+
+/* Ajustes específicos para Safari en iOS */
+@supports (-webkit-touch-callout: none) {
+    .split-screen {
+        height: 100vh !important; /* Fuerza el alto total */
+        min-height: -webkit-fill-available; /* Corrige el viewport móvil */
+    }
+    
+    .selection-panel {
+        flex: 1;
+        min-height: 50vh !important; /* Altura mínima garantizada */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
+    }
+    
+    .stage {
+        flex: 1;
+        min-height: 50vh !important;
+    }
+}
