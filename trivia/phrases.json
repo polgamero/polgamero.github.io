@@ -25,8 +25,7 @@
     },
     {
         "number": 5,
-        "quote": "Y hoy que enloquecido vuelvo, buscando tu querer. No queda más que viento.
-No queda más que viento.",
+        "quote": "Y hoy que enloquecido vuelvo, buscando tu querer. No queda más que viento. No queda más que viento.",
         "options": ["Luis Alberto Spinetta", "Mercedez Sosa", "Hilda Lizarazu", "Frase Inventada"],
         "correct": 0
     },
