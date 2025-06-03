@@ -3,35 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trivia Fogonera</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Trivia del Fogón | El Fogón Acústico</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-primary: #baa700;
+            --color-secondary: #ff2323;
+            --color-dark: #1A1A1A;
+            --color-light: #F7F7F7;
+            --color-accent: #EF476F;
+        }
+        
+        body {
+            font-family: 'Bebas Neue', sans-serif;
+            background-color: var(--color-dark);
+            color: var(--color-light);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-image: url('https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80');
+            background-size: cover;
+            background-blend-mode: overlay;
+        }
+        
+        .container {
+            text-align: center;
+            padding: 2rem;
+            max-width: 800px;
+            width: 90%;
+        }
+        
+        .logo {
+            width: 20%;
+            height: 20%;
+            margin: 0 auto 2rem;
+        }
+        
+        h1 {
+            color: var(--color-primary);
+            font-size: 4rem;
+            margin-bottom: 2rem;
+            letter-spacing: 2px;
+            /*text-shadow: 3px 3px 0 var(--color-secondary);*/
+        }
+        
+        .btn-start {
+            background-color: var(--color-secondary);
+            color: var(--color-light);
+            border: none;
+            padding: 1rem 3rem;
+            font-size: 1.8rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .btn-start:hover {
+            background-color: var(--color-accent);
+            transform: translateY(-3px);
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>Trivia Fogonera</h1>
-    </header>
-    <aside class="sidebar" id="sidebar"></aside>
-    <main class="game-container" id="game">
-            <div class="timer-container" id="timer-container">
-                <div class="timer-bar" id="timer-bar"></div>
-                <span class="timer-text" id="timer-text">10</span>
-            </div>
-        <p class="quote" id="quote">Cargando frase...</p>
-        <div class="options" id="options"></div>
-    </main>
-    <aside class="highscores-container" id="highscores">
-        <h2>🏆 Podio</h2>
-        <ol id="highscores-list"></ol>
-        <button id="clear-highscores" class="option-btn">Borrar Podio</button>
-    </aside>
-    <footer>
-        <img src="https://polgamero.github.io/img/logoTop5.png" alt="Logo Fogonero">
-    </footer>
-
-    <audio id="correctSound" src="correct.wav" preload="auto"></audio>
-    <audio id="wrongSound" src="wrong.wav" preload="auto"></audio>
-
-    <script src="script.js"></script>
+    <div class="container">
+        <img src="logoFogon.png" alt="Logo El Fogón Acústico" class="logo">
+        
+        <h1>EL FOGÓN ACÚSTICOS</h1>
+        
+        <button class="btn-start" onclick="window.location.href='trivia.html'">COMENZAR</button>
+    </div>
 </body>
 </html>
