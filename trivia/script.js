@@ -19,6 +19,7 @@ const wrongSound = document.getElementById('wrongSound');
 // Base de datos de frases (ejemplo)
 const phrases = [
     {
+        number: 1,
         quote: "El arte es la única manera de huir sin salir de casa.",
         options: ["Fito Páez", "Charly García", "Mercedes Sosa", "Frase Inventada"],
         correct: 1
