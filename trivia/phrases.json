@@ -1,227 +1,831 @@
 [
     {
-        "quote": "El arte es la única manera de huir sin salir de casa.",
+        "number": 1,
+        "quote": "Cuando el mundo tira para abajo, es mejor no estar atado a nada. Imaginen a los dinosaurios en la cama.",
         "options": ["Fito Páez", "Charly García", "Mercedes Sosa", "Frase Inventada"],
         "correct": 1
     },
     {
-        "quote": "La música es el verdadero lenguaje universal.",
-        "options": ["Luis Alberto Spinetta", "Gustavo Cerati", "Paul McCartney", "Frase Inventada"],
+        "number": 2,
+        "quote": "Cada cual tiene un trip en el bocho, difícil que lleguemos a ponernos de acuerdo.",
+        "options": ["Luis Alberto Spinetta", "Gustavo Cerati", "Charly García", "Frase Inventada"],
         "correct": 2
     },
     {
-        "quote": "Soy lo que soy, un tipo común y corriente.",
-        "options": ["Andrés Calamaro", "Indio Solari", "Joaquín Sabina", "Frase Inventada"],
+        "number": 3,
+        "quote": "Y curé mis heridas y me encendí de amor. Y quemé las cortinas y me encendí de amor.",
+        "options": ["Charly García", "Indio Solari", "Joaquín Sabina", "Frase Inventada"],
         "correct": 0
     },
     {
-        "quote": "No canto para ser famoso, canto porque es mi manera de decir las cosas.",
-        "options": ["León Gieco", "Víctor Heredia", "Pedro Aznar", "Frase Inventada"],
+        "number": 4,
+        "quote": "Yo que viví entre fachistas. Yo que morí en el altar. Yo que nací con los que estaban bien. Pero, a la noche, estaba todo mal",
+        "options": ["León Gieco", "Charly García", "Pedro Aznar", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 5,
+        "quote": "Y hoy que enloquecido vuelvo, buscando tu querer. No queda más que viento.
+No queda más que viento.",
+        "options": ["Luis Alberto Spinetta", "Mercedez Sosa", "Hilda Lizarazu", "Frase Inventada"],
         "correct": 0
     },
     {
-        "quote": "La vida es como una bicicleta, para mantener el equilibrio hay que seguir adelante.",
-        "options": ["Albert Einstein", "Bob Dylan", "John Lennon", "Frase Inventada"],
-        "correct": 2
-    },
-    {
-        "quote": "Prefiero perder a haberme quedado con la duda.",
+        "number": 6,
+        "quote": "Ya es demasiado tarde para pedir perdón, así que me voy.",
         "options": ["Fito Páez", "Luis Alberto Spinetta", "Andrés Calamaro", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "number": 7,
+        "quote": "Si no canto lo que siento, me voy a morir por dentro.",
+        "options": ["Luis Alberto Spinetta", "Gustavo Cerati", "La Bersuit", "Frase Inventada"],
         "correct": 0
     },
     {
-        "quote": "Yo no escribo canciones, las canciones me escriben a mí.",
-        "options": ["Charly García", "Gustavo Cerati", "David Bowie", "Frase Inventada"],
-        "correct": 1
-    },
-    {
-        "quote": "El silencio también hace música.",
-        "options": ["Luis Alberto Spinetta", "Mercedes Sosa", "John Cage", "Frase Inventada"],
+        "number": 8,
+        "quote": "Y no hables más muchacha, corazón de tiza. Cuando todo duerma, te robaré un color.",
+        "options": ["Bandalos Chinos", "Mercedes Sosa", "Luis Alberto Spinetta", "Frase Inventada"],
         "correct": 2
     },
     {
-        "quote": "Tocar sin sentir es como hablar sin pensar.",
+        "number": 9,
+        "quote": "Le he pedido tanto a Dios, que al final oyó mi voz. Por la noche a más tardar, yendo juntos a la par",
         "options": ["Carlos Santana", "Pedro Aznar", "Pappo", "Frase Inventada"],
-        "correct": 0
-    },
-    {
-        "quote": "Cada nota es un paso hacia la libertad.",
-        "options": ["León Gieco", "Bob Marley", "B.B. King", "Frase Inventada"],
-        "correct": 3
-    },
-    {
-        "quote": "La música puede cambiar el mundo porque puede cambiar a las personas.",
-        "options": ["Bono", "Freddie Mercury", "Paul Simon", "Frase Inventada"],
-        "correct": 0
-    },
-    {
-        "quote": "Cantar es una forma de rezar.",
-        "options": ["Mercedes Sosa", "Paco Ibáñez", "Atahualpa Yupanqui", "Frase Inventada"],
         "correct": 2
     },
     {
-        "quote": "No me gusta repetir fórmulas, prefiero explorar el caos.",
-        "options": ["Charly García", "Gustavo Cerati", "Luis Alberto Spinetta", "Frase Inventada"],
+        "number": 10,
+        "quote": "Las tazas sobre el mantel, la lluvia derramada. Un poco de miel... no basta.",
+        "options": ["La Delio Valdez", "Soda Stereo", "Conociendo Rusia", "Frase Inventada"],
         "correct": 1
     },
     {
-        "quote": "Lo importante no es llegar, es el viaje.",
-        "options": ["Fito Páez", "John Lennon", "Indio Solari", "Frase Inventada"],
+        "number": 11,
+        "quote": "Párense, todos de pie, le subí al volumen cero",
+        "options": ["Paco y Catriel", "Catupecu Machu", "León Gieco", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 12,
+        "quote": "Las penas son de nosotros, las vaquitas son ajenas",
+        "options": ["Mercedes Sosa", "Palo Pandolfo", "Atahualpa Yupanqui", "Frase Inventada"],
         "correct": 2
     },
     {
-        "quote": "Un buen riff vale más que mil palabras.",
-        "options": ["Pappo", "Eric Clapton", "Keith Richards", "Frase Inventada"],
-        "correct": 0
-    },
-    {
-        "quote": "Mi patria es mi guitarra.",
-        "options": ["León Gieco", "Víctor Heredia", "Luis Eduardo Aute", "Frase Inventada"],
+        "number": 13,
+        "quote": "Poder decir adiós es crecer",
+        "options": ["León Gieco", "Gustavo Cerati", "Luis Alberto Spinetta", "Frase Inventada"],
         "correct": 1
     },
     {
-        "quote": "La inspiración llega cuando dejo de buscarla.",
-        "options": ["Gustavo Cerati", "Fito Páez", "Spinetta", "Frase Inventada"],
-        "correct": 3
+        "number": 14,
+        "quote": "Y el mundo sigue girando aún sin tu amor",
+        "options": ["Fito Páez", "Soda Stereo", "Indio Solari", "Frase Inventada"],
+        "correct": 2
     },
     {
-        "quote": "Mi música no es para entender, es para sentir.",
-        "options": ["Luis Alberto Spinetta", "Charly García", "Björk", "Frase Inventada"],
+        "number": 15,
+        "quote": "Canto mis canciones y me gano la vida, me compré una casa que es mi guarida",
+        "options": ["Celeste Carballo", "Fabiana Cantilo", "Hilda Lizarazu", "Frase Inventada"],
         "correct": 0
     },
     {
-        "quote": "No vine a complacer a nadie, vine a ser yo mismo.",
+        "number": 16,
+        "quote": "No se piensa en el verano cuando cae la nieve",
+        "options": ["León Gieco", "Gilda", "Ráfaga", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 17,
+        "quote": "Viene a buscarme, se come mis sobras, lo tengo encima, parece mi sombra",
+        "options": ["Aterciopelados", "Lali", "Shakira", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 18,
+        "quote": "Construiste un mundo exacto de acabados tan perfectos, cada cosa calculada en su espacio y en su tiempo",
+        "options": ["Shakira", "Juanes", "Alejandro Sanz", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 19,
+        "quote": "La conocen los que la perdieron, los que la vieron de cerca irse muy lejos",
         "options": ["Indio Solari", "Andrés Calamaro", "Palo Pandolfo", "Frase Inventada"],
-        "correct": 0
-    },
-    {
-        "quote": "La música me salvó de mí mismo.",
-        "options": ["Charly García", "Morrissey", "Bono", "Frase Inventada"],
-        "correct": 3
-    },
-    {
-        "quote": "Cuando todo falla, la música siempre queda.",
-        "options": ["Fito Páez", "Lenny Kravitz", "Silvio Rodríguez", "Frase Inventada"],
-        "correct": 0
-    },
-    {
-        "quote": "Cantar es dejar salir lo que las palabras no pueden decir.",
-        "options": ["Mercedes Sosa", "Joan Baez", "Frida Kahlo", "Frase Inventada"],
         "correct": 1
     },
     {
-        "quote": "Cada canción es un mundo posible.",
-        "options": ["Spinetta", "Cerati", "Pedro Aznar", "Frase Inventada"],
+        "number": 20,
+        "quote": "El silencio también sabe gritar cuando duele",
+        "options": ["Charly García", "Bandana", "Tini", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "number": 21,
+        "quote": "Y dice que es un santo, pero es un delincuente",
+        "options": ["Tini", "Nicki Nicole", "Emilia Mermes", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 22,
+        "quote": "Escupimos para arriba, no es lluvia esto es Argentina",
+        "options": ["Mercedes Sosa", "Feli Colina", "Marilina Bertoldi", "Frase Inventada"],
         "correct": 2
     },
     {
-        "quote": "En la música no hay errores, solo nuevas ideas.",
-        "options": ["Miles Davis", "Luis Alberto Spinetta", "Charlie Parker", "Frase Inventada"],
-        "correct": 0
+        "number": 23,
+        "quote": "Los relojes no entienden de promesas rotas",
+        "options": ["Spinetta", "Gustavo Cerati", "Pedro Aznar", "Frase Inventada"],
+        "correct": 3
     },
     {
-        "quote": "El público siente cuando uno canta con el corazón.",
+        "number": 24,
+        "quote": "Los barcos viajan de país en país, la luna no siempre es la misma",
+        "options": ["Lali", "Luis Alberto Spinetta", "Fito Páez", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 25,
+        "quote": "Es solo un momento, es una mirada y saber cuál es el camino",
         "options": ["Mercedes Sosa", "Vicentico", "Luciano Pereyra", "Frase Inventada"],
-        "correct": 0
+        "correct": 1
     },
     {
-        "quote": "Nunca quise ser un héroe, solo un músico con algo que decir.",
+        "number": 26,
+        "quote": "El tiempo vuelve a pasar, pero no hay primavera en Anhedonia",
         "options": ["Charly García", "Fito Páez", "Luis Alberto Spinetta", "Frase Inventada"],
-        "correct": 3
+        "correct": 0
     },
     {
-        "quote": "Hay canciones que son más sinceras que mil discursos.",
-        "options": ["León Gieco", "Roger Waters", "Bob Dylan", "Frase Inventada"],
+        "number": 27,
+        "quote": "No te enamores nunca de aquel marinero bengalí",
+        "options": ["León Gieco", "Los Abuelos de la Nada", "Airbag", "Frase Inventada"],
         "correct": 1
     },
     {
-        "quote": "Prefiero equivocarme por pasión que acertar por costumbre.",
+        "number": 28,
+        "quote": "Y algunas veces suelo recostar mi cabeza en el hombro de la luna",
         "options": ["Andrés Calamaro", "Joaquín Sabina", "Indio Solari", "Frase Inventada"],
-        "correct": 2
-    },
-    {
-        "quote": "El escenario es el único lugar donde no tengo miedo.",
-        "options": ["Gustavo Cerati", "Amy Winehouse", "Freddie Mercury", "Frase Inventada"],
-        "correct": 2
-    },
-    {
-        "quote": "La música no se hace, se descubre.",
-        "options": ["Beethoven", "Luis Alberto Spinetta", "Brian Eno", "Frase Inventada"],
         "correct": 1
     },
     {
-        "quote": "Cada acorde me recuerda por qué empecé en esto.",
-        "options": ["Pappo", "Charly García", "B.B. King", "Frase Inventada"],
+        "number": 29,
+        "quote": "Y si querés la razón, es tuya",
+        "options": ["Gustavo Cerati", "Rata Blanca", "El Zar", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 30,
+        "quote": "No hace falta gente que labure más, hace falta que con menos se pueda vivir en paz",
+        "options": ["Alejandro Lerner", "Wos", "Paco y Catriel", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 31,
+        "quote": "Que nadie se atreva a tocar a mi vieja",
+        "options": ["Pappo", "Charly García", "Turf", "Frase Inventada"],
         "correct": 0
     },
     {
-        "quote": "No hay cultura sin música.",
-        "options": ["Mercedes Sosa", "Fito Páez", "Lila Downs", "Frase Inventada"],
+        "number": 32,
+        "quote": "Y así como todo cambia, que yo cambie no es extraño",
+        "options": ["Mercedes Sosa", "Fito Páez", "Los Espíritus", "Frase Inventada"],
         "correct": 0
     },
     {
-        "quote": "Cuando me preguntan qué hago, respondo: sobrevivo cantando.",
+        "number": 33,
+        "quote": "Tengo esa nostalgia de domingo por llover, de guitarra rota, de oxidado carrusel",
         "options": ["León Gieco", "Silvio Rodríguez", "Víctor Heredia", "Frase Inventada"],
         "correct": 2
     },
     {
-        "quote": "Hay que desafinar de vez en cuando, para encontrar la melodía real.",
-        "options": ["Caetano Veloso", "Charly García", "Luis Alberto Spinetta", "Frase Inventada"],
+        "number": 34,
+        "quote": "Podés pasear en limousine, cortar las flores del jardín",
+        "options": ["Fito Páez", "Charly García", "Luis Alberto Spinetta", "Frase Inventada"],
         "correct": 1
     },
     {
-        "quote": "Lo más difícil es escribir una canción simple.",
-        "options": ["Gustavo Cerati", "Paul McCartney", "John Lennon", "Frase Inventada"],
+        "number": 35,
+        "quote": "Perdonaría toda la ofensa pero olvidarte jamás, jamás",
+        "options": ["Gustavo Cerati", "Los Chalchaleros", "Patricia Sosa", "Frase Inventada"],
         "correct": 1
     },
     {
-        "quote": "Quiero vivir en una canción que no termine nunca.",
+        "number": 36,
+        "quote": "Si este abismo tuviera eco, escucharía tu voz",
         "options": ["Fito Páez", "Kevin Johansen", "Pedro Aznar", "Frase Inventada"],
         "correct": 3
     },
     {
-        "quote": "Si no emociona, no es música.",
+        "number": 37,
+        "quote": "Viejo roble del camino, tus hojas siempre se agitan algo",
         "options": ["Luis Alberto Spinetta", "Gustavo Cerati", "Mercedes Sosa", "Frase Inventada"],
-        "correct": 3
-    },
-    {
-        "quote": "Me gusta desafiar los límites del sonido.",
-        "options": ["Brian Eno", "Charly García", "Trent Reznor", "Frase Inventada"],
-        "correct": 1
-    },
-    {
-        "quote": "El aplauso es efímero, la canción es eterna.",
-        "options": ["Spinetta", "Freddie Mercury", "Fito Páez", "Frase Inventada"],
-        "correct": 3
-    },
-    {
-        "quote": "Una canción puede cambiarte el día, o la vida.",
-        "options": ["Cerati", "León Gieco", "Paul Simon", "Frase Inventada"],
         "correct": 0
     },
     {
-        "quote": "Sin dolor no hay canción verdadera.",
-        "options": ["Amy Winehouse", "Palo Pandolfo", "Mercedes Sosa", "Frase Inventada"],
+        "number": 38,
+        "quote": "Ya no hay nada en los cajones de esta amarga pasión",
+        "options": ["Estelares", "Los Perez García", "Juana Molina", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 39,
+        "quote": "Si la amas déjala ser, si la quieres déjala volar",
+        "options": ["Spinetta", "Intoxicados", "La 25", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 40,
+        "quote": "No importa lo que se venga pa' que sepas que te quiero",
+        "options": ["Chayanne", "David Bisbal", "Alejandro Sanz", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 41,
+        "quote": "Cada dolor tiene un nombre y yo quiero conocer el tuyo",
+        "options": ["Sara Hebe", "Palo Pandolfo", "Babasonicos", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 42,
+        "quote": "Quiero conocerte, cambiarías un poquito de mi suerte",
+        "options": ["Tan Biónica", "Miranda", "Vicentico", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 43,
+        "quote": "Me empieza a molestar que haga frío en la ciudad",
+        "options": ["Tini", "Nathy Peluso", "Nicky Nicole", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 44,
+        "quote": "Te extraño, te lloro, que lindo arruinarse con vos",
+        "options": ["Tan Biónica", "León Gieco", "María Becerra", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 45,
+        "quote": "Una mañana que yo te encontré, cuando la brisa besaba tu dulce piel",
+        "options": ["David Bisbal", "Christian Castro", "Emilia Mernes", "Frase Inventada"],
+        "correct": 1
+    }
+    {
+        "number": 46,
+        "quote": "Y el sol siempre saldrá, mientras que a alguien le queden ganas de amar",
+        "options": ["David Lebón", "Cazzu", "Pedro Aznar", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 47,
+        "quote": "Solo como un pájaro que vuela en la noche libre de vos, pero no de mí",
+        "options": ["Catupecu Machu", "Callejeros", "Miranda", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 48,
+        "quote": "Qué lástima pero adiós, me despido de ti y me voy",
+        "options": ["Miss Bolivia", "Zoe Gotusso", "Julieta Venegas", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 49,
+        "quote": "Puede que no te haga falta na', aparentemente na’",
+        "options": ["Ozuna", "Maluma", "Lali", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 50,
+        "quote": "Andaba haciendo dedo por ahí cuando llegaste con el jeep",
+        "options": ["Los Auténticos Decadentes", "Los Fabulosos Cadillacs", "Guasones", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 51,
+        "quote": "Canto mis canciones, me gano la vida, me compré una casa que es mi guarida",
+        "options": ["Celeste Carballo", "El Zar", "Fabiana Cantilo", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 52,
+        "quote": "Y saber que la abstinencia me puede",
+        "options": ["Conociendo Rusia", "Attaque 77, "Bersuit", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 53,
+        "quote": "Que solo y triste voy a estar en este cementerio",
+        "options": ["Serú Girán", "Pescado Rabioso", "Fabiana Cantilo", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 54,
+        "quote": "Y supe que hay algo más percibir en este mundo",
+        "options": ["La Renga", "Callejeros", "Kevin Johansen", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 55,
+        "quote": "El sábado pide un beso, besame, besame, besame",
+        "options": ["Sumo", "Divididos", "Las Pelotas", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 56,
+        "quote": "Que un buen trago no viene mal cuando pega la vida con tanta sed",
+        "options": ["Los Redondos", "Los Caballeros de la Quema", "Ciro y Los Persas", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 57,
+        "quote": "No pido que todos los días sean de sol",
+        "options": ["Shakira", "Lula Bertoldi", "An Espil", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 58,
+        "quote": "Estoy rodeado de viejos vinagres",
+        "options": ["Sumo", "Divididos", "Las Pelotas", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 59,
+        "quote": "Quiero tocar la guitarra todo el dia",
+        "options": ["Los Fabulosos Cadillacs", "El Kuelgue", "Los Auténticos Decadentes", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 60,
+        "quote": "No llores las flores vuelven a crecer",
+        "options": ["Zoe Gotusso", "Chechi de Marcos", "Feli Colina", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 61,
+        "quote": "Mientras miro las nuevas olas, yo ya soy parte del mar",
+        "options": ["Serú Girán", "Soda Stereo", "Pescado Rabioso", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 62,
+        "quote": "Poco a poco pude notar que en la vida hay más de una realidad",
+        "options": ["Intoxicados", "Los Ratones Paranoicos", "Los Tipitos", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 63,
+        "quote": "Voy a la cocina luego al comedor, miro las revistas y el televisor",
+        "options": ["Molotov", "Las Manos de Filippi", "Skape", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 64,
+        "quote": "Que si conmigo estás vengándote de un hombre",
+        "options": ["Las Pelotas", "Rata Blanca", "Los Piojos", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 65,
+        "quote": "El amor después del odio tal vez, se parezca a este rayo de sol",
+        "options": ["Fito Páez", "Charly García", "Gustavo Cerati", "Frase Inventada"],
         "correct": 3
     },
     {
-        "quote": "El alma se afina con canciones.",
-        "options": ["Fito Páez", "Luis Alberto Spinetta", "Vicentico", "Frase Inventada"],
+        "number": 66,
+        "quote": "No me digas lo que debo, mientras hago lo que puedo, sonríe",
+        "options": ["Los Pérez García", "Los Caballeros de la Quema", "La Beriso", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 67,
+        "quote": "Si empezamos de nuevo y arrancamos de cero prometo no desaparecer",
+        "options": ["Conociendo Rusia", "El Zar", "Fito Paez", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 68,
+        "quote": "No estoy triste, no es mi llanto, es el humo de este fasito que me hace llorar",
+        "options": ["La T y la M", "Nestor en Bloque", "Damas Gratis", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 69,
+        "quote": "Que no se apaguen las bombitas amarillas, que no se vaya nunca más la retirada",
+        "options": ["Jaime Roos", "Rubén Rada", "No te va gustar", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 70,
+        "quote": "Me gusta todo lo que sos y un poco más",
+        "options": ["WOS", "Duki", "Paulo Londra", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 71,
+        "quote": "Ojalá que la lluvia deje de ser milagro que baja por tu cuerpo",
+        "options": ["Pablo Milanés", "Silvio Rodriguez", "Fito Paez", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 72,
+        "quote": "Otra vez seremos dos extraños, otra vez volver a hacernos daño",
+        "options": ["Conociendo Rusia", "Andrés Calamaro", "Coti", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 73,
+        "quote": "Te regalo una rosa, la encontré en el camino, no se si está desnuda o tiene un solo vestido",
+        "options": ["Pablo Milanés", "Juan Luis Guerra", "Joaquín Sabina", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 74,
+        "quote": "No hay que llorar que la vida es un carnaval",
+        "options": ["Celia Cruz", "Christina Aguilera", "Shakira", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 75,
+        "quote": "Con vos es 4 de noviembre cada media hora",
+        "options": ["Virus", "Tan Biónica", "Miranda", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 76,
+        "quote": "Nada nos libra, nada más queda",
+        "options": ["Virus", "GIT", "Soda Stereo", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 77,
+        "quote": "Quiero viajar de norte a sur, sin parar de buscar",
+        "options": ["Pappo", "Viejas Locas", "Ratones Paranoicos", "Frase Inventada"],
         "correct": 3
     },
     {
-        "quote": "A veces la melodía es más honesta que las palabras.",
-        "options": ["Gustavo Cerati", "Nick Drake", "Charly García", "Frase Inventada"],
+        "number": 78,
+        "quote": "Me lo recordaste una tarde a barlovento en el puerto de Quequén",
+        "options": ["Babasónicos", "Virus", "Bándalos Chinos", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 79,
+        "quote": "Cómo fue que me dejaste de amar, yo aún podía soportar tu tanta falta de querer ",
+        "options": ["Julieta Venegas", "Mon Laferte", "Natalia Lafourcade", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 80,
+        "quote": "Y si veo a tu mamá, yo le preguntó por tí, pa ver si ya tienes alguien, alguien que te haga feliz",
+        "options": ["Ozuna", "Duki", "Bad Bunny", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 81,
+        "quote": "Con agüita del mar andaluz quise yo enamorarte, pero tú no querías más amor que el del Río de la Plata",
+        "options": ["Serrat", "Joaquín Sabina", "Alejandro Sanz", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 82,
+        "quote": "Yo quiero a mi bandera planchadita, planchadita, planchadita",
+        "options": ["Sumo", "Los Redondos", "Los Piojos", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 83,
+        "quote": "Hoy quiero darle riendas a esta superstición",
+        "options": ["Los Piojos", "La Bersuit", "Babasónicos", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 84,
+        "quote": "Estás buscando alguna religión, estás buscando un símbolo de paz",
+        "options": ["Cerati", "Fito Páez", "Charly García", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 85,
+        "quote": "Pero miénteme aunque sea y dime que algo queda entre nosotros dos",
+        "options": ["Diego Torres", "Alejandro Lerner", "Alejandro Sanz", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 86,
+        "quote": "Casi sin pensar la vida voy viviendo",
+        "options": ["Intoxicados", "Los Fabulosos Cadillacs", "Auténticos Decadentes", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 87,
+        "quote": "Inocente me has contado tu manera de sufrir y no sabes que conozco como te gusta vivir",
+        "options": ["Miranda", "La Delio Valdez", "Damas Gratis", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 88,
+        "quote": "Rock And Roll y fiebre van de la mano los dos",
+        "options": ["Viejas Locas", "Ratones Paranoicos", "Pappo", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 89,
+        "quote": "Todo concluye al fin, nada puede escapar",
+        "options": ["Enanitos Verdes", "Vox Dei", "Los Tipitos", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 90,
+        "quote": "Siguiendo la luna no llegare lejos, tan lejos como se pueda llegar",
+        "options": ["Los Fabulosos Cadillacs", "Los Caballeros de la Quema", "Callejeros", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 91,
+        "quote": "Soy el que nunca aprendió, desde que nació, cómo debe vivir el humano",
+        "options": ["Rata Blanca", "La Renga", "Ratones Paranoicos", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 92,
+        "quote": "Las minitas aman los payasos y la pasta de campeón",
+        "options": ["Soda Stereo", "Divididos", "Los Redondos", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 93,
+        "quote": "Mi amor por vos es único pero no es mi único amor",
+        "options": ["Vox Dei", "La 25", "Attaque 77", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 94,
+        "quote": "Intento volar pero no llevo alas",
+        "options": ["Ulises Bueno", "Rodrigo", "La Delio Valdez", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 95,
+        "quote": "Chicos y chicas quieren rock",
+        "options": ["Jóvenes Pordioseros", "Intoxicados", "La Renga", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 96,
+        "quote": "Te alejaste un día, ahora decidiste venir, chau",
+        "options": ["El Cuarteto de Nos", "La Vela Puerca", "No Te Va Gustar", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 97,
+        "quote": "Vas a bailar como si fuera la última noche",
+        "options": ["Ciro y los Persas", "Attaque 77", "El Bordo", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 98,
+        "quote": "No le tengas miedo, linda, a un sapo de otro pozo",
+        "options": ["Los Caballeros de la Quema", "Los Fabulosos Cadillacs", "Auténticos Decadentes", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 99,
+        "quote": "Qué decís que no vas a mentir, si te encanta",
+        "options": ["Los Piojos", "Turf", "La Renga", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 100,
+        "quote": "A la ruleta te quiero llevar, roja la sangre, verde el paño de la libertad",
+        "options": ["Turf", "La Renga", "Los Piojos", "Frase Inventada"],
+        "correct": 2
+    }
+    {
+        "number": 101,
+        "quote": "Preso de tu ilusión vas a bailar",
+        "options": ["Los Redondos", "Los Gardelitos", "La Renga", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 102,
+        "quote": "Para ver bailar voy a un club mientras muerdo el limón de un gin tonic usado",
+        "options": ["Charly García", "Calamaro", "Cerati", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 103,
+        "quote": "Cualquier estación para mí es primavera con vos",
+        "options": ["Turf", "Los Caballeros de la Quema", "Las Pastillas del Abuelo", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 104,
+        "quote": "Quiero saber que me pasa, te pregunto qué me pasa y no sabés",
+        "options": ["Turf", "Virus", "Miranda", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 105,
+        "quote": "Se queda con su foto en un rincón y sueña encontrarla arriba",
+        "options": ["No Te Va Gustar", "La Vela Puerca", "El Cuarteto de Nos", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 106,
+        "quote": "Por eso no me quedo con las ganas, miremos pelis en la cama",
+        "options": ["Chechi de Marcos", "Zoe Gotusso", "Fabiana Cantilo", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 107,
+        "quote": "Me gusta pensar que nos vamos a encontrar en la esquina de Cabildo y Juramento",
+        "options": ["Él Mató", "Bándalos Chinos", "Conociendo Rusia", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 108,
+        "quote": "Paso todo el día pensando en vos, vos pensás que pierdo el tiempo",
+        "options": ["Él Mató", "Bándalos Chinos", "Conociendo Rusia", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 109,
+        "quote": "Entre el humo del tren y el café, se me fue el ayer",
+        "options": ["Opción 1", "Opción 2", "Opción 3", "Frase Inventada"],
         "correct": 3
     },
     {
-        "quote": "Cantar me enseñó a escuchar.",
-        "options": ["Mercedes Sosa", "León Gieco", "Luis Eduardo Aute", "Frase Inventada"],
+        "number": 110,
+        "quote": "Se nos cae todo el cielo de tanto esperar",
+        "options": ["Bad Bunny", "Maná", "C Tangana", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 111,
+        "quote": "Me gusta todo lo que sos y un poco más",
+        "options": ["Duki", "Dillon", "WOS", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 112,
+        "quote": "¿Dónde irás con tanta magia?",
+        "options": ["Coti", "Los Tipitos", "Ciro y Los Persas", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 113,
+        "quote": "Ojalá que llueva café en el campo",
+        "options": ["Juan Luis Guerra", "David Bisbal", "Joaquín Sabina", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 114,
+        "quote": "Un nómade soy, un nuevo lugar buscaré, y como dije mi camino seguiré",
+        "options": ["Jóvenes Pordioseros", "La 25", "La Renga", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 115,
+        "quote": "Se acabó todo lo que había, queda un cigarro mojado",
+        "options": ["Fito Páez", "Gustavo Cerati", "Andrés Calamaro", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 116,
+        "quote": "Arrúllame, ahógame, aplástame, desármame, cómeme, fúmame",
+        "options": ["Mon Laferte", "Natalia Lafourcade", "Hilda Lizarazu", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 117,
+        "quote": "Caminamos juntos hasta que el miedo tomó el volante",
+        "options": ["La 25", "Los Redondos", "La Renga", "Frase Inventada"],
         "correct": 3
     },
     {
-        "quote": "Una guitarra desafinada también puede decir la verdad.",
-        "options": ["Pappo", "Spinetta", "Lucinda Williams", "Frase Inventada"],
+        "number": 118,
+        "quote": "Hoy voy a bailar a la nave del olvido",
+        "options": ["Soda Stereo", "La Renga", "La 25", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 119,
+        "quote": "Solo tenerte cerca, siento que vuelvo a empezar",
+        "options": ["Mon Laferte", "Natalia Lafourcade", "Julieta Venegas", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 120,
+        "quote": "Tu sombra se quedó, aunque vos ya no",
+        "options": ["Mon Laferte", "Natalia Lafourcade", "Julieta Venegas", "Frase Inventada"],
         "correct": 3
+    },
+    {
+        "number": 121,
+        "quote": "Minutos como sal en la herida, se me pasa la vida, gastando el reloj",
+        "options": ["Ricardo Arjona", "Ismael Serrano", "David Bisbal", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 122,
+        "quote": "Soy de la orilla brava, del agua turbia y la correntada",
+        "options": ["Raly Barrionuevo", "Jorge Fandermole", "La Bersuit", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 123,
+        "quote": "Saliendo de Makena un rato antes que salga el sol, yo no tengo GPS pero tengo mucho amor",
+        "options": ["Turf", "La 25", "Ciro y Los Persas", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 124,
+        "quote": "Era fuego hasta que el viento nos apagó",
+        "options": ["Opción 1", "Opción 2", "Opción 3", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "number": 125,
+        "quote": "Sé que es lo peor, pero esta es la mejor versión de mí",
+        "options": ["Él Mató", "Conociendo Rusia", "Indios", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 126,
+        "quote": "No te tragues la pena porque no estamos muertos, llegaremos a tiempo",
+        "options": ["Julieta Venegas", "Rosana", "La Oreja de Van Gogh", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 127,
+        "quote": "Pero pase lo que pase, y aunque otro me acompañe, en silencio pensaré tan solo en tí",
+        "options": ["Julieta Venegas", "Rosana", "La Oreja de Van Gogh", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 128,
+        "quote": "Después de la lluvia, el perfume de la angustia, el sonido del silencio que dejás cuando te vas",
+        "options": ["Tan Biónica", "Miranda", "Virus", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 129,
+        "quote": "Si este abismo tuviera eco, escucharía tu voz",
+        "options": ["Abel Pintos", "Luciano Pereyra", "Luis Miguel", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "number": 130,
+        "quote": "Yo voy a estar pensando en volver, en regresar, pero no me olvides",
+        "options": ["Abel Pintos", "Luciano Pereyra", "Luis Miguel", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 131,
+        "quote": "Me empieza a molestar que haga frío en la ciudad",
+        "options": ["Natalia Lafourcade", "María Becerra", "Nathy Peluso", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 132,
+        "quote": "Te busqué en la música y me encontré en el ruido",
+        "options": ["Él Mató", "Conociendo Rusia", "Bandalos Chinos", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "number": 133,
+        "quote": "No tires la toalla que hasta los más mancos la siguen remando",
+        "options": ["Los Caballeros de la Quema", "Estelares", "Los Fabulosos Cadillacs", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 134,
+        "quote": "Si el amor se cae, todo alrededor se cae",
+        "options": ["Nonpalidece", "Los Cafres", "Los Pericos", "Frase Inventada"],
+        "correct": 1
+    },
+    {
+        "number": 135,
+        "quote": "Cuando yo pienso en tí, yo siento pasos de gigante",
+        "options": ["Juan Luis Guerra", "Chichi Peralta", "Bacilos", "Frase Inventada"],
+        "correct": 2
+    },
+    {
+        "number": 136,
+        "quote": "Las luces de la ciudad no iluminan lo que siento",
+        "options": ["Tan Biónica", "Miranda", "Babasónicos", "Frase Inventada"],
+        "correct": 3
+    },
+    {
+        "number": 137,
+        "quote": "Tarde gris en la ciudad y nadie te espera, ya no habrá manera de decir adiós",
+        "options": ["Bahiano", "Dread Mar I", "Los Cafres", "Frase Inventada"],
+        "correct": 0
+    },
+    {
+        "number": 138,
+        "quote": "Qué tristeza hay en la ciudad amor, sábado soleado",
+        "options": ["La 25", "Guasones", "Estelares", "Frase Inventada"],
+        "correct": 1
     }
 ]
