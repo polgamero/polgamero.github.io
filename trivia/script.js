@@ -71,15 +71,6 @@ function loadQuestion() {
     const question = selectedPhrases[currentQuestion];
     quoteEl.textContent = `"${question.quote}"`;
 
-    optionsEl.innerHTML = '';
-    question.options.forEach((option, index) => {
-        const button = document.createElement('button');
-        button.className = 'option-btn';
-        button.textContent = option;
-        button.onclick = () => !isAnswering && checkAnswer(index);
-        optionsEl.appendChild(button);
-    });
-   
     setTimeout(() => {
         timer = setInterval(() => {
             timeLeft--;
@@ -93,6 +84,15 @@ function loadQuestion() {
         }, 1000);
     }, 2000);
 
+    optionsEl.innerHTML = '';
+    question.options.forEach((option, index) => {
+        const button = document.createElement('button');
+        button.className = 'option-btn';
+        button.textContent = option;
+        button.onclick = () => !isAnswering && checkAnswer(index);
+        optionsEl.appendChild(button);
+    });
+   
 }
 
 // Manejar tiempo agotado
