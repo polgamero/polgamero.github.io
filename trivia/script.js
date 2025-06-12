@@ -80,8 +80,6 @@ function loadQuestion() {
         optionsEl.appendChild(button);
     });
    
-    let timer;
-
     setTimeout(() => {
         timer = setInterval(() => {
             timeLeft--;
