@@ -71,8 +71,7 @@ function loadQuestion() {
     const question = selectedPhrases[currentQuestion];
     quoteEl.textContent = `"${question.quote}"`;
 
-    setTimeout(() => {
-        timer = setInterval(() => {
+    timer = setInterval(() => {
             timeLeft--;
             totalTime++;
             updateTimerDisplay();
@@ -82,7 +81,6 @@ function loadQuestion() {
                 handleTimeOut();
             }
         }, 1000);
-    }, 2000);
 
     optionsEl.innerHTML = '';
     question.options.forEach((option, index) => {
