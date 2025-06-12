@@ -80,7 +80,10 @@ function loadQuestion() {
         optionsEl.appendChild(button);
     });
    
-    setTimeOut(timer = setInterval(() => {
+    let timer;
+
+    setTimeout(() => {
+        timer = setInterval(() => {
             timeLeft--;
             totalTime++;
             updateTimerDisplay();
@@ -90,7 +93,7 @@ function loadQuestion() {
                 handleTimeOut();
             }
         }, 1000);
-    , 2000);
+    }, 2000);
 
 }
 
