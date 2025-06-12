@@ -3,12 +3,13 @@ let currentQuestion = 0;
 let score = 0;
 let selectedPhrases = [];
 let isAnswering = false;
-let isTransitioning = false; // Controla el estado de transición
+let isTransitioning = false;
 const totalQuestions = 10;
 let timePerQuestion = 10;
 let timer;
 let totalTime = 0;
 let timeLeft = timePerQuestion;
+let timerDelay;
 
 // Elementos DOM
 const sidebarEl = document.getElementById('sidebar');
@@ -37,9 +38,11 @@ function toggleOptions(disabled) {
     const buttons = document.querySelectorAll('.option-btn');
     buttons.forEach(button => {
         button.disabled = disabled;
-        button.style.opacity = disabled ? 0.6 : 1;
-        button.style.cursor = disabled ? 'not-allowed' : 'pointer';
-        button.style.transform = disabled ? 'scale(0.98)' : 'scale(1)';
+        if (disabled) {
+            button.classList.add('disabled');
+        } else {
+            button.classList.remove('disabled');
+        }
     });
 }
 
@@ -88,14 +91,22 @@ function loadQuestion() {
     timerContainer.style.display = 'block';
     isAnswering = false;
     clearInterval(timer);
+    clearTimeout(timerDelay);
     timeLeft = timePerQuestion;
     updateTimerDisplay();
 
     const question = selectedPhrases[currentQuestion];
     quoteEl.textContent = `"${question.quote}"`;
 
+    // Deshabilitar botones durante el período de gracia
+    isTransitioning = true;
+    toggleOptions(true);
+
     // Iniciar timer después de 1 segundo (período de gracia)
-    setTimeout(() => {
+    timerDelay = setTimeout(() => {
+        isTransitioning = false;
+        toggleOptions(false);
+        
         timer = setInterval(() => {
             timeLeft--;
             totalTime++;
@@ -142,6 +153,7 @@ function updateTimerDisplay() {
 function checkAnswer(selectedIndex) {
     isAnswering = true;
     clearInterval(timer);
+    clearTimeout(timerDelay);
     
     const question = selectedPhrases[currentQuestion];
     const circles = document.querySelectorAll('.circle');
@@ -169,15 +181,13 @@ function handleTimeOut() {
 // Siguiente pregunta
 function nextQuestion() {
     isTransitioning = true;
-    toggleOptions(true); // Deshabilitar botones
+    toggleOptions(true);
     
     currentQuestion++;
     if (currentQuestion < totalQuestions) {
         setTimeout(() => {
             loadQuestion();
-            isTransitioning = false;
-            toggleOptions(false); // Habilitar botones
-        }, 1500); // 1.5 segundos de transición
+        }, 1500);
     } else {
         setTimeout(endGame, 1500);
     }
