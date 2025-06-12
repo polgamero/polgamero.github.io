@@ -71,17 +71,6 @@ function loadQuestion() {
     const question = selectedPhrases[currentQuestion];
     quoteEl.textContent = `"${question.quote}"`;
 
-    timer = setInterval(() => {
-        timeLeft--;
-        totalTime++;
-        updateTimerDisplay();
-        
-        if (timeLeft <= 0) {
-            clearInterval(timer);
-            handleTimeOut();
-        }
-    }, 1000);
-
     optionsEl.innerHTML = '';
     question.options.forEach((option, index) => {
         const button = document.createElement('button');
@@ -90,6 +79,19 @@ function loadQuestion() {
         button.onclick = () => !isAnswering && checkAnswer(index);
         optionsEl.appendChild(button);
     });
+   
+    setTimeOut(timer = setInterval(() => {
+            timeLeft--;
+            totalTime++;
+            updateTimerDisplay();
+            
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                handleTimeOut();
+            }
+        }, 1000);
+    , 2000);
+
 }
 
 // Manejar tiempo agotado
