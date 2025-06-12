@@ -3,6 +3,7 @@ let currentQuestion = 0;
 let score = 0;
 let selectedPhrases = [];
 let isAnswering = false;
+let isTransitioning = false; // Controla el estado de transición
 const totalQuestions = 10;
 let timePerQuestion = 10;
 let timer;
@@ -15,6 +16,10 @@ const quoteEl = document.getElementById('quote');
 const optionsEl = document.getElementById('options');
 const correctSound = document.getElementById('correctSound');
 const wrongSound = document.getElementById('wrongSound');
+const timerContainer = document.getElementById('timer-container');
+const timerBar = document.getElementById('timer-bar');
+const timerText = document.getElementById('timer-text');
+const highscoresList = document.getElementById('highscores-list');
 
 // Base de datos de frases (ejemplo)
 const phrases = [
@@ -26,6 +31,17 @@ const phrases = [
     },
     // ... (agregar más frases)
 ];
+
+// Función para deshabilitar/habilitar botones
+function toggleOptions(disabled) {
+    const buttons = document.querySelectorAll('.option-btn');
+    buttons.forEach(button => {
+        button.disabled = disabled;
+        button.style.opacity = disabled ? 0.6 : 1;
+        button.style.cursor = disabled ? 'not-allowed' : 'pointer';
+        button.style.transform = disabled ? 'scale(0.98)' : 'scale(1)';
+    });
+}
 
 // Cargar frases
 async function loadPhrases() {
@@ -47,6 +63,14 @@ async function initGame() {
         return;
     }
 
+    // Reiniciar variables del juego
+    currentQuestion = 0;
+    score = 0;
+    totalTime = 0;
+    isAnswering = false;
+    isTransitioning = false;
+
+    // Configurar sidebar
     sidebarEl.innerHTML = '';
     for (let i = 0; i < totalQuestions; i++) {
         const circle = document.createElement('div');
@@ -61,8 +85,7 @@ async function initGame() {
 
 // Cargar pregunta
 function loadQuestion() {
-    document.getElementById('timer-container').style.display = 'block'; // Muestra el timer al cargar nueva pregunta
-    
+    timerContainer.style.display = 'block';
     isAnswering = false;
     clearInterval(timer);
     timeLeft = timePerQuestion;
@@ -71,7 +94,9 @@ function loadQuestion() {
     const question = selectedPhrases[currentQuestion];
     quoteEl.textContent = `"${question.quote}"`;
 
-    timer = setInterval(() => {
+    // Iniciar timer después de 1 segundo (período de gracia)
+    setTimeout(() => {
+        timer = setInterval(() => {
             timeLeft--;
             totalTime++;
             updateTimerDisplay();
@@ -81,31 +106,25 @@ function loadQuestion() {
                 handleTimeOut();
             }
         }, 1000);
+    }, 1000);
 
+    // Crear botones de opciones
     optionsEl.innerHTML = '';
     question.options.forEach((option, index) => {
         const button = document.createElement('button');
         button.className = 'option-btn';
         button.textContent = option;
-        button.onclick = () => !isAnswering && checkAnswer(index);
+        button.onclick = () => {
+            if (!isAnswering && !isTransitioning) {
+                checkAnswer(index);
+            }
+        };
         optionsEl.appendChild(button);
     });
-   
 }
 
-// Manejar tiempo agotado
-function handleTimeOut() {
-    const circles = document.querySelectorAll('.circle');
-    circles[currentQuestion].classList.add('incorrect');
-    playSound(wrongSound);
-    nextQuestion();
-}
-
-// Actualizar timer visual
+// Actualizar visualización del timer
 function updateTimerDisplay() {
-    const timerBar = document.getElementById('timer-bar');
-    const timerText = document.getElementById('timer-text');
-    
     timerText.textContent = timeLeft;
     const percentage = (timeLeft / timePerQuestion) * 100;
     timerBar.style.width = `${percentage}%`;
@@ -139,20 +158,36 @@ function checkAnswer(selectedIndex) {
     nextQuestion();
 }
 
+// Manejar tiempo agotado
+function handleTimeOut() {
+    const circles = document.querySelectorAll('.circle');
+    circles[currentQuestion].classList.add('incorrect');
+    playSound(wrongSound);
+    nextQuestion();
+}
+
 // Siguiente pregunta
 function nextQuestion() {
+    isTransitioning = true;
+    toggleOptions(true); // Deshabilitar botones
+    
     currentQuestion++;
     if (currentQuestion < totalQuestions) {
-        setTimeout(loadQuestion, 1000);
+        setTimeout(() => {
+            loadQuestion();
+            isTransitioning = false;
+            toggleOptions(false); // Habilitar botones
+        }, 1500); // 1.5 segundos de transición
     } else {
-        setTimeout(endGame, 1000);
+        setTimeout(endGame, 1500);
     }
 }
 
 // Finalizar juego
 function endGame() {
     clearInterval(timer);
-    document.getElementById('timer-container').style.display = 'none'; // Oculta el timer
+    timerContainer.style.display = 'none';
+    isTransitioning = false;
     
     const playerName = prompt(`¡Juego terminado!\nAciertos: ${score}/${totalQuestions}\nTiempo total: ${totalTime} segundos\nIngresa tu nombre:`);
     
@@ -161,12 +196,7 @@ function endGame() {
     }
     
     quoteEl.textContent = `¡Gracias por jugar!`;
-    optionsEl.innerHTML = '<button class="option-btn replay-btn" onclick="location.reload()">Jugar de nuevo</button>';
-}
-
-// Formatear tiempo
-function formatTime(seconds) {
-    return `${seconds} seg`;
+    optionsEl.innerHTML = '<button class="option-btn replay-btn" onclick="initGame()">Jugar de nuevo</button>';
 }
 
 // Guardar puntaje
@@ -176,29 +206,32 @@ function saveScore(name, points, time) {
         name, 
         points, 
         time,
-        displayText: `${name} | ${points}/10 | ${formatTime(time)}`
+        date: new Date().toISOString(),
+        displayText: `${name} | ${points}/10 | ${time}s`
     });
     
+    // Ordenar por puntaje (descendente) y tiempo (ascendente)
     highscores.sort((a, b) => {
         if (b.points !== a.points) return b.points - a.points;
         return a.time - b.time;
     });
     
-    localStorage.setItem('triviaHighscores', JSON.stringify(highscores));
+    localStorage.setItem('triviaHighscores', JSON.stringify(highscores.slice(0, 10)));
     showHighscores();
 }
 
 // Mostrar highscores
 function showHighscores() {
     const highscores = JSON.parse(localStorage.getItem('triviaHighscores')) || [];
-    const highscoresList = document.getElementById('highscores-list');
-    
     highscoresList.innerHTML = '';
+    
     highscores.slice(0, 10).forEach((score, index) => {
         const li = document.createElement('li');
         li.innerHTML = `
-            <span>${index + 1}. ${score.name}</span>
-            <span>${score.points}/10 - ${formatTime(score.time)}</span>
+            <span class="rank">${index + 1}.</span>
+            <span class="name">${score.name}</span>
+            <span class="score">${score.points}/10</span>
+            <span class="time">${score.time}s</span>
         `;
         highscoresList.appendChild(li);
     });
@@ -208,19 +241,27 @@ function showHighscores() {
 function playSound(sound) {
     sound.currentTime = 0;
     sound.volume = 0.3;
-    sound.play().catch(e => console.log("Click en la pantalla para activar sonidos"));
+    sound.play().catch(e => console.log("Error al reproducir sonido"));
 }
 
 // Borrar highscores
-document.getElementById('clear-highscores').onclick = () => {
+document.getElementById('clear-highscores').addEventListener('click', () => {
     if (confirm("¿Borrar todos los puntajes guardados?")) {
         localStorage.removeItem('triviaHighscores');
         showHighscores();
     }
-};
+});
 
-// Iniciar al cargar
-window.onload = function() {
+// Iniciar juego al cargar
+window.addEventListener('DOMContentLoaded', () => {
+    // Solicitar interacción para activar sonidos
+    document.addEventListener('click', () => {
+        correctSound.volume = 0;
+        correctSound.play().then(() => {
+            correctSound.pause();
+            correctSound.currentTime = 0;
+        }).catch(e => console.log("Sonidos activados"));
+    }, { once: true });
+    
     initGame();
-    showHighscores();
-};
+});
