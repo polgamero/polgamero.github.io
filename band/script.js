@@ -316,10 +316,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function shareBand() {
         const stage = document.querySelector('.stage');
         
-        // Usamos html2canvas para capturar el div
+        // 1. Definir tamaño manual (ej: 800x600 píxeles)
+            const customWidth = 580;
+            const customHeight = 430;
+
+        // 2. Configurar html2canvas con el tamaño fijo
         const canvas = await html2canvas(stage, {
-            backgroundColor: null,
-            scale: 2 // Mejor calidad para móviles
+        backgroundColor: null,
+        scale: 3, // Escala 3:1
+        width: customWidth,    // Ancho personalizado
+        height: customHeight,  // Alto personalizado
+        windowWidth: customWidth,  // Tamaño de ventana interno
+        windowHeight: customHeight
         });
         
         canvas.toBlob(async (blob) => {
