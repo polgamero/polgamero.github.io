@@ -249,7 +249,7 @@ function endGame() {
     $('#score-dialog').dialog({
         modal: true,
         title: 'Guardar Puntaje',
-        width: 350,
+        width: 550,
         buttons: {
             "Guardar": function() {
                 const playerName = $('#player-name').val().trim() || 'Anónimo';
