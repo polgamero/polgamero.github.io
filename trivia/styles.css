@@ -193,12 +193,13 @@ color: white !important;
 #score-dialog {
 display: none; /* Oculto inicialmente */
 text-align: center;
+font-size: 24px;
 }
 #score-dialog input {
 width: 100%;
 padding: 10px;
 margin-top: 15px;
-font-size: 24px;
+font-size: 20px;
 border: 2px solid #ddd;
 border-radius: 4px;
 }
