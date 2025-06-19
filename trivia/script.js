@@ -181,7 +181,7 @@ function checkAnswer(selectedIndex) {
         });
         
         nextQuestion();
-    }, 1500); // Tiempo que se muestra la respuesta correcta
+    }, 3500); // Tiempo que se muestra la respuesta correcta
 }
 /*function checkAnswer(selectedIndex) {
     isAnswering = true;
