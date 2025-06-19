@@ -157,6 +157,42 @@ function checkAnswer(selectedIndex) {
     
     const question = selectedPhrases[currentQuestion];
     const circles = document.querySelectorAll('.circle');
+    const optionButtons = document.querySelectorAll('.option-btn');
+
+    // Marcar respuesta incorrecta (rojo) y correcta (verde)
+    if (selectedIndex !== question.correct) {
+        optionButtons[selectedIndex].classList.add('incorrect-answer'); // Rojo para la seleccionada
+        optionButtons[question.correct].classList.add('correct-answer'); // Verde para la correcta
+    } else {
+        optionButtons[selectedIndex].classList.add('correct-answer'); // Verde si acertó
+    }
+
+    // Feedback visual después de 1.5 segundos
+    setTimeout(() => {
+        if (selectedIndex === question.correct) {
+            circles[currentQuestion].classList.add('correct');
+            playSound(correctSound);
+            score++;
+        } else {
+            circles[currentQuestion].classList.add('incorrect');
+            playSound(wrongSound);
+        }
+        
+        // Quitar estilos temporales de los botones
+        optionButtons.forEach(button => {
+            button.classList.remove('incorrect-answer', 'correct-answer');
+        });
+        
+        nextQuestion();
+    }, 1500); // Tiempo que se muestra la respuesta correcta
+}
+/*function checkAnswer(selectedIndex) {
+    isAnswering = true;
+    clearInterval(timer);
+    clearTimeout(timerDelay);
+    
+    const question = selectedPhrases[currentQuestion];
+    const circles = document.querySelectorAll('.circle');
 
     if (selectedIndex === question.correct) {
         circles[currentQuestion].classList.add('correct');
@@ -168,7 +204,7 @@ function checkAnswer(selectedIndex) {
     }
 
     nextQuestion();
-}
+}*/
 
 // Manejar tiempo agotado
 function handleTimeOut() {
