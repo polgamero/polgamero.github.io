@@ -229,6 +229,53 @@ function nextQuestion() {
 // Finalizar juego
 function endGame() {
     clearInterval(timer);
+    clearTimeout(timerDelay);
+    document.getElementById('timer-container').style.display = 'none';
+    
+    // Crear el contenido del diálogo
+    const dialogContent = `
+        <div id="score-dialog">
+            <h2>¡Juego Terminado!</h2>
+            <p>Aciertos: <strong>${score}/${totalQuestions}</strong></p>
+            <p>Tiempo total: <strong>${totalTime} segundos</strong></p>
+            <input type="text" id="player-name" placeholder="Ingresa tu nombre" autofocus>
+        </div>
+    `;
+    
+    // Insertar en el DOM
+    document.body.insertAdjacentHTML('beforeend', dialogContent);
+    
+    // Configurar el diálogo
+    $('#score-dialog').dialog({
+        modal: true,
+        title: 'Guardar Puntaje',
+        width: 350,
+        buttons: {
+            "Guardar": function() {
+                const playerName = $('#player-name').val().trim() || 'Anónimo';
+                saveScore(playerName, score, totalTime);
+                $(this).dialog("close");
+                showGameOverMessage();
+            },
+            "Cancelar": function() {
+                $(this).dialog("close");
+                showGameOverMessage();
+            }
+        },
+        close: function() {
+            $(this).remove();
+        }
+    });
+}
+
+function showGameOverMessage() {
+    quoteEl.textContent = `¡Gracias por jugar!`;
+    optionsEl.innerHTML = '<button class="option-btn replay-btn" onclick="location.reload()">Jugar de nuevo</button>';
+    showHighscores();
+}
+
+/*function endGame() {
+    clearInterval(timer);
     timerContainer.style.display = 'none';
     isTransitioning = false;
     
@@ -240,7 +287,7 @@ function endGame() {
     
     quoteEl.textContent = `¡Gracias por jugar!`;
     optionsEl.innerHTML = '<button class="option-btn replay-btn" onclick="initGame()">Jugar de nuevo</button>';
-}
+}*/
 
 // Guardar puntaje
 function saveScore(name, points, time) {
