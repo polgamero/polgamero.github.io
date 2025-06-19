@@ -172,6 +172,19 @@ h1 {
     transform: scale(1);
 }
 
+/* Estilos para botones de respuestas */
+.option-btn.correct-answer {
+    background-color: #4CAF50 !important;
+    color: white;
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.7);
+}
+
+.option-btn.incorrect-answer {
+    background-color: #f44336 !important;
+    color: white;
+}
+
 /* Footer */
 footer {
     grid-column: 1 / 4;
