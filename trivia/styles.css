@@ -185,6 +185,24 @@ h1 {
     color: white;
 }
 
+/* Modal */
+.ui-dialog-titlebar {
+background: #4CAF50 !important;
+color: white !important;
+}
+#score-dialog {
+display: none; /* Oculto inicialmente */
+text-align: center;
+}
+#score-dialog input {
+width: 100%;
+padding: 10px;
+margin-top: 15px;
+font-size: 16px;
+border: 2px solid #ddd;
+border-radius: 4px;
+}
+
 /* Footer */
 footer {
     grid-column: 1 / 4;
