@@ -190,11 +190,13 @@ h1 {
 background: #4CAF50 !important;
 color: white !important;
 }
+
 #score-dialog {
 display: none; /* Oculto inicialmente */
 text-align: center;
-font-size: 24px;
+font-size: 36px;
 }
+
 #score-dialog input {
 width: 100%;
 padding: 10px;
