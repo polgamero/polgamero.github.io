@@ -163,21 +163,18 @@ function checkAnswer(selectedIndex) {
     if (selectedIndex !== question.correct) {
         optionButtons[selectedIndex].classList.add('incorrect-answer'); // Rojo para la seleccionada
         optionButtons[question.correct].classList.add('correct-answer'); // Verde para la correcta
+        circles[currentQuestion].classList.add('incorrect');
+        playSound(wrongSound);
     } else {
         optionButtons[selectedIndex].classList.add('correct-answer'); // Verde si acertó
+        circles[currentQuestion].classList.add('correct');
+        playSound(correctSound);
+        score++;
     }
 
     // Feedback visual después de 1.5 segundos
     setTimeout(() => {
-        if (selectedIndex === question.correct) {
-            circles[currentQuestion].classList.add('correct');
-            playSound(correctSound);
-            score++;
-        } else {
-            circles[currentQuestion].classList.add('incorrect');
-            playSound(wrongSound);
-        }
-        
+
         // Quitar estilos temporales de los botones
         optionButtons.forEach(button => {
             button.classList.remove('incorrect-answer', 'correct-answer');
