@@ -19,14 +19,14 @@
     },
     {
         "number": 4,
-        "quote": "Yo que viví entre fachistas. Yo que morí en el altar. Yo que nací con los que estaban bien. Pero, a la noche, estaba todo mal",
+        "quote": "Yo que viví entre fachistas. Yo que morí en el altar. Yo que nací con los que estaban bien. Pero, a la noche, estaba todo mal.",
         "options": ["León Gieco", "Charly García", "Pedro Aznar", "Frase Inventada"],
         "correct": 1
     },
     {
         "number": 5,
         "quote": "Y hoy que enloquecido vuelvo, buscando tu querer. No queda más que viento. No queda más que viento.",
-        "options": ["Luis Alberto Spinetta", "Mercedez Sosa", "Hilda Lizarazu", "Frase Inventada"],
+        "options": ["Luis Alberto Spinetta", "Mercedes Sosa", "Hilda Lizarazu", "Frase Inventada"],
         "correct": 0
     },
     {
@@ -145,19 +145,19 @@
     },
     {
         "number": 25,
-        "quote": "Es solo un momento, es una mirada y saber cuál es el camino",
+        "quote": "Es solo un momento, es una mirada y saber cuál es el camino.",
         "options": ["Mercedes Sosa", "Vicentico", "Luciano Pereyra", "Frase Inventada"],
         "correct": 1
     },
     {
         "number": 26,
-        "quote": "El tiempo vuelve a pasar, pero no hay primavera en Anhedonia",
+        "quote": "El tiempo vuelve a pasar, pero no hay primavera en Anhedonia.",
         "options": ["Charly García", "Fito Páez", "Luis Alberto Spinetta", "Frase Inventada"],
         "correct": 0
     },
     {
         "number": 27,
-        "quote": "No te enamores nunca de aquel marinero bengalí",
+        "quote": "No te enamores nunca de aquel marinero bengalí.",
         "options": ["León Gieco", "Los Abuelos de la Nada", "Airbag", "Frase Inventada"],
         "correct": 1
     },
@@ -199,13 +199,13 @@
     },
     {
         "number": 34,
-        "quote": "Podés pasear en limousine, cortar las flores del jardín",
+        "quote": "Podés pasear en limousine, cortar las flores del jardín.",
         "options": ["Fito Páez", "Charly García", "Luis Alberto Spinetta", "Frase Inventada"],
         "correct": 1
     },
     {
         "number": 35,
-        "quote": "Perdonaría toda la ofensa pero olvidarte jamás, jamás",
+        "quote": "Perdonaría toda la ofensa pero olvidarte jamás, jamás.",
         "options": ["Gustavo Cerati", "Los Chalchaleros", "Patricia Sosa", "Frase Inventada"],
         "correct": 1
     },
@@ -337,19 +337,19 @@
     },
     {
         "number": 57,
-        "quote": "No pido que todos los días sean de sol",
+        "quote": "No pido que todos los días sean de sol.",
         "options": ["Shakira", "Lula Bertoldi", "An Espil", "Frase Inventada"],
         "correct": 0
     },
     {
         "number": 58,
-        "quote": "Estoy rodeado de viejos vinagres",
+        "quote": "Estoy rodeado de viejos vinagres.",
         "options": ["Sumo", "Divididos", "Las Pelotas", "Frase Inventada"],
         "correct": 0
     },
     {
         "number": 59,
-        "quote": "Quiero tocar la guitarra todo el dia",
+        "quote": "Quiero tocar la guitarra todo el dia.",
         "options": ["Los Fabulosos Cadillacs", "El Kuelgue", "Los Auténticos Decadentes", "Frase Inventada"],
         "correct": 2
     },
@@ -409,61 +409,61 @@
     },
     {
         "number": 69,
-        "quote": "Que no se apaguen las bombitas amarillas, que no se vaya nunca más la retirada",
+        "quote": "Que no se apaguen las bombitas amarillas, que no se vaya nunca más la retirada.",
         "options": ["Jaime Roos", "Rubén Rada", "No te va gustar", "Frase Inventada"],
         "correct": 0
     },
     {
         "number": 70,
-        "quote": "Me gusta todo lo que sos y un poco más",
+        "quote": "Me gusta todo lo que sos y un poco más.",
         "options": ["WOS", "Duki", "Paulo Londra", "Frase Inventada"],
         "correct": 0
     },
     {
         "number": 71,
-        "quote": "Ojalá que la lluvia deje de ser milagro que baja por tu cuerpo",
+        "quote": "Ojalá que la lluvia deje de ser milagro que baja por tu cuerpo.",
         "options": ["Pablo Milanés", "Silvio Rodriguez", "Fito Paez", "Frase Inventada"],
         "correct": 1
     },
     {
         "number": 72,
-        "quote": "Otra vez seremos dos extraños, otra vez volver a hacernos daño",
+        "quote": "Otra vez seremos dos extraños, otra vez volver a hacernos daño.",
         "options": ["Conociendo Rusia", "Andrés Calamaro", "Coti", "Frase Inventada"],
         "correct": 2
     },
     {
         "number": 73,
-        "quote": "Te regalo una rosa, la encontré en el camino, no se si está desnuda o tiene un solo vestido",
+        "quote": "Te regalo una rosa, la encontré en el camino, no se si está desnuda o tiene un solo vestido.",
         "options": ["Pablo Milanés", "Juan Luis Guerra", "Joaquín Sabina", "Frase Inventada"],
         "correct": 1
     },
     {
         "number": 74,
-        "quote": "No hay que llorar que la vida es un carnaval",
+        "quote": "No hay que llorar que la vida es un carnaval.",
         "options": ["Celia Cruz", "Christina Aguilera", "Shakira", "Frase Inventada"],
         "correct": 0
     },
     {
         "number": 75,
-        "quote": "Con vos es 4 de noviembre cada media hora",
+        "quote": "Con vos es 4 de noviembre cada media hora.",
         "options": ["Virus", "Tan Biónica", "Miranda", "Frase Inventada"],
         "correct": 1
     },
     {
         "number": 76,
-        "quote": "Nada nos libra, nada más queda",
+        "quote": "Nada nos libra, nada más queda.",
         "options": ["Virus", "GIT", "Soda Stereo", "Frase Inventada"],
         "correct": 2
     },
     {
         "number": 77,
-        "quote": "Quiero viajar de norte a sur, sin parar de buscar",
+        "quote": "Quiero viajar de norte a sur, sin parar de buscar.",
         "options": ["Pappo", "Viejas Locas", "Ratones Paranoicos", "Frase Inventada"],
         "correct": 3
     },
     {
         "number": 78,
-        "quote": "Me lo recordaste una tarde a barlovento en el puerto de Quequén",
+        "quote": "Me lo recordaste una tarde a barlovento en el puerto de Quequén.",
         "options": ["Babasónicos", "Virus", "Bándalos Chinos", "Frase Inventada"],
         "correct": 0
     },
@@ -637,31 +637,31 @@
     },
     {
         "number": 107,
-        "quote": "Me gusta pensar que nos vamos a encontrar en la esquina de Cabildo y Juramento",
+        "quote": "Me gusta pensar que nos vamos a encontrar en la esquina de Cabildo y Juramento.",
         "options": ["Él Mató", "Bándalos Chinos", "Conociendo Rusia", "Frase Inventada"],
         "correct": 2
     },
     {
         "number": 108,
-        "quote": "Paso todo el día pensando en vos, vos pensás que pierdo el tiempo",
+        "quote": "Paso todo el día pensando en vos, vos pensás que pierdo el tiempo.",
         "options": ["Él Mató", "Bándalos Chinos", "Conociendo Rusia", "Frase Inventada"],
         "correct": 0
     },
     {
         "number": 109,
-        "quote": "Entre el humo del tren y el café, se me fue el ayer",
+        "quote": "Entre el humo del tren y el café, se me fue el ayer.",
         "options": ["Babasónicos", "Marilina Bertoldi", "Julieta Venegas", "Frase Inventada"],
         "correct": 3
     },
     {
         "number": 110,
-        "quote": "Se nos cae todo el cielo de tanto esperar",
+        "quote": "Se nos cae todo el cielo de tanto esperar.",
         "options": ["Bad Bunny", "Maná", "C Tangana", "Frase Inventada"],
         "correct": 1
     },
     {
         "number": 111,
-        "quote": "Me gusta todo lo que sos y un poco más",
+        "quote": "Me gusta todo lo que sos y un poco más.",
         "options": ["Duki", "Dillon", "WOS", "Frase Inventada"],
         "correct": 2
     },
