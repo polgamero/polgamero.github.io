@@ -56,8 +56,15 @@ max-width:140px;
 
 #weatherIcon{
 width:22px;
-text-align:center;
-font-size:18px;
+height:22px;
+display:flex;
+align-items:center;
+justify-content:center;
+}
+
+#weatherIcon svg{
+width:20px;
+height:20px;
 }
 
 #temperature{
@@ -94,6 +101,8 @@ animation:scrollCity 8s linear infinite;
 100%{ transform:translateX(-50%) }
 }
 
+/* spinner */
+
 .loader{
 width:16px;
 height:16px;
@@ -106,4 +115,43 @@ animation:spin .8s linear infinite;
 @keyframes spin{
 0%{ transform:rotate(0deg) }
 100%{ transform:rotate(360deg) }
+}
+
+/* ANIMACIONES CLIMA */
+
+.sun{
+animation:sunRotate 10s linear infinite;
+transform-origin:center;
+}
+
+@keyframes sunRotate{
+from{ transform:rotate(0deg) }
+to{ transform:rotate(360deg) }
+}
+
+.cloud{
+animation:cloudMove 6s ease-in-out infinite alternate;
+}
+
+@keyframes cloudMove{
+from{ transform:translateX(-1px) }
+to{ transform:translateX(2px) }
+}
+
+.rain line{
+animation:rainFall .7s linear infinite;
+}
+
+@keyframes rainFall{
+0%{ transform:translateY(0) }
+100%{ transform:translateY(4px) }
+}
+
+.moon{
+animation:moonFloat 4s ease-in-out infinite alternate;
+}
+
+@keyframes moonFloat{
+from{ transform:translateY(-1px) }
+to{ transform:translateY(1px) }
 }
