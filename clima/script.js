@@ -62,53 +62,56 @@ return(now<sunrise||now>sunset)
 
 function iconClearDay(){
 
-return`
-
+return `
 <svg viewBox="0 0 24 24">
-<circle cx="12" cy="12" r="5" fill="#FDB813" class="sun"/>
+<g class="sun">
+<circle cx="12" cy="12" r="5" fill="#FDB813"/>
+</g>
 </svg>
-
 `
 
 }
 
 function iconClearNight(){
 
-return`
-
+return `
 <svg viewBox="0 0 24 24">
-<path d="M14 2a9 9 0 1 0 8 12A7 7 0 0 1 14 2z" fill="#aaa" class="moon"/>
+<g class="moon">
+<path d="M14 2a9 9 0 1 0 8 12A7 7 0 0 1 14 2z" fill="#cfcfcf"/>
+</g>
 </svg>
-
 `
 
 }
 
 function iconCloud(){
 
-return`
-
+return `
 <svg viewBox="0 0 24 24">
-ellipse cx="12" cy="14" rx="7" ry="4" fill="#bbb" class="cloud"/>
+<g class="cloud">
+<ellipse cx="12" cy="14" rx="7" ry="4" fill="#bfbfbf"/>
+</g>
 </svg>
-
 `
 
 }
 
 function iconRain(){
 
-return`
-
+return `
 <svg viewBox="0 0 24 24">
-ellipse cx="12" cy="10" rx="7" ry="4" fill="#bbb" class="cloud"/>
-<g class="rain" stroke="#4aa3ff" stroke-width="1">
-<line x1="9" y1="14" x2="9" y2="18"/>
-<line x1="12" y1="14" x2="12" y2="18"/>
-<line x1="15" y1="14" x2="15" y2="18"/>
-</g>
-</svg>
 
+<g class="cloud">
+<ellipse cx="12" cy="9" rx="7" ry="4" fill="#bfbfbf"/>
+</g>
+
+<g class="rain" stroke="#4aa3ff" stroke-width="1.5">
+<line x1="9" y1="13" x2="9" y2="17"/>
+<line x1="12" y1="13" x2="12" y2="17"/>
+<line x1="15" y1="13" x2="15" y2="17"/>
+</g>
+
+</svg>
 `
 
 }
