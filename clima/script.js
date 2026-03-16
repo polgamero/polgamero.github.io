@@ -47,7 +47,8 @@ const tempElement = document.getElementById("temperature");
 const iconElement = document.getElementById("weatherIcon");
 const clockElement = document.getElementById("clock");
 const cityContainer = document.querySelector(".cityContainer");
-
+const loader = document.getElementById("loader");
+const weatherContent = document.getElementById("weatherContent");
 
 // =================
 // CLOCK
@@ -148,6 +149,12 @@ console.log(err);
 
 }
 
+if(weatherData.length > 0){
+
+loader.style.display = "none";
+weatherContent.style.display = "flex";
+
+}
 }
 
 setInterval(fetchWeather,WEATHER_REFRESH_INTERVAL);
