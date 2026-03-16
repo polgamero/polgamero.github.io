@@ -1,90 +1,91 @@
 const API_KEY="969de0f6ebd36d04b40136010664f449"
 
-const CITY_ROTATION_INTERVAL=8000
-const WEATHER_REFRESH_INTERVAL=600000
+const ROTATE_INTERVAL=8000
+const REFRESH_INTERVAL=600000
 
-/* IDs OpenWeatherMap capitales */
+/* capitales */
 
 const CITY_IDS=[
-3435910, // Buenos Aires
-3432043, // La Plata
-3860259, // Córdoba
-3836277, // Santa Fe
-3841956, // Paraná
-3433955, // Corrientes
-3429577, // Resistencia
-3433899, // Formosa
-3843444, // Jujuy
-3838233, // Salta
-3836873, // Tucumán
-3835869, // Santiago del Estero
-3862286, // Catamarca
-3848950, // La Rioja
-3837213, // San Juan
-3844421, // Mendoza
-3837056, // San Luis
-3835994, // Santa Rosa
-3843123, // Neuquén
-3832899, // Viedma
-3839307, // Rawson
-3838859, // Río Gallegos
-3833367  // Ushuaia
+3435910,3432043,3860259,3836277,3841956,
+3433955,3429577,3433899,3843444,3838233,
+3836873,3835869,3862286,3848950,3837213,
+3844421,3837056,3835994,3843123,3832899,
+3839307,3838859,3833367
 ]
 
-let weatherData=[]
-let currentCityIndex=-1
-let firstRender=false
+let data=[]
+let index=0
 
-const tempElement=document.getElementById("temperature")
-const iconElement=document.getElementById("weatherIcon")
-const clockElement=document.getElementById("clock")
-const cityContainer=document.querySelector(".cityContainer")
-
+const clock=document.getElementById("clock")
 const loader=document.getElementById("loader")
-const weatherContent=document.getElementById("weatherContent")
+const content=document.getElementById("weatherContent")
 
-/* clock */
+const icon=document.getElementById("icon")
+const temp=document.getElementById("temp")
+const cityTrack=document.getElementById("cityTrack")
+
+/* reloj */
 
 function updateClock(){
 
-const now=new Date()
+const d=new Date()
 
-let h=now.getHours().toString().padStart(2,'0')
-let m=now.getMinutes().toString().padStart(2,'0')
+let h=d.getHours().toString().padStart(2,'0')
+let m=d.getMinutes().toString().padStart(2,'0')
 
-clockElement.textContent=`${h}:${m}`
+clock.textContent=`${h}:${m}`
 
 }
 
 setInterval(updateClock,1000)
 updateClock()
 
-/* icons */
+/* iconos svg animados */
 
-function iconSun(){
-return `<svg viewBox="0 0 24 24"><g class="sun"><circle cx="12" cy="12" r="5" fill="#FDB813"/></g></svg>`
-}
+function sunIcon(){
 
-function iconMoon(){
-return `<svg viewBox="0 0 24 24"><g class="moon"><path d="M14 2a9 9 0 1 0 8 12A7 7 0 0 1 14 2z" fill="#ccc"/></g></svg>`
-}
-
-function iconCloud(){
-return `<svg viewBox="0 0 24 24"><g class="cloud"><ellipse cx="12" cy="14" rx="7" ry="4" fill="#bbb"/></g></svg>`
-}
-
-function iconRain(){
-return `<svg viewBox="0 0 24 24">
-<g class="cloud"><ellipse cx="12" cy="9" rx="7" ry="4" fill="#bbb"/></g>
-<g class="rain" stroke="#4aa3ff" stroke-width="1.5">
-<line x1="9" y1="13" x2="9" y2="17"/>
-<line x1="12" y1="13" x2="12" y2="17"/>
-<line x1="15" y1="13" x2="15" y2="17"/>
+return `
+<svg viewBox="0 0 24 24">
+<circle cx="12" cy="12" r="5" fill="#FDB813"/>
+<g>
+<line x1="12" y1="1" x2="12" y2="4" stroke="#FDB813"/>
+<line x1="12" y1="20" x2="12" y2="23" stroke="#FDB813"/>
+<animateTransform attributeName="transform" type="rotate"
+from="0 12 12" to="360 12 12" dur="10s" repeatCount="indefinite"/>
 </g>
-</svg>`
+</svg>
+`
 }
 
-/* fetch unico */
+function cloudIcon(){
+
+return `
+<svg viewBox="0 0 24 24">
+<ellipse cx="12" cy="14" rx="7" ry="4" fill="#bbb"/>
+</svg>
+`
+}
+
+function rainIcon(){
+
+return `
+<svg viewBox="0 0 24 24">
+
+<ellipse cx="12" cy="9" rx="7" ry="4" fill="#bbb"/>
+
+<line x1="9" y1="13" x2="9" y2="17" stroke="#4aa3ff">
+<animate attributeName="y1" values="13;15;13" dur="0.7s" repeatCount="indefinite"/>
+</line>
+
+<line x1="12" y1="13" x2="12" y2="17" stroke="#4aa3ff">
+<animate attributeName="y1" values="13;15;13" dur="0.7s" begin="0.2s" repeatCount="indefinite"/>
+</line>
+
+</svg>
+`
+}
+
+/* api */
 
 async function fetchWeather(){
 
@@ -94,43 +95,32 @@ const ids=CITY_IDS.join(",")
 
 const url=`https://api.openweathermap.org/data/2.5/group?id=${ids}&units=metric&appid=${API_KEY}`
 
-const res=await fetch(url)
-const data=await res.json()
+const r=await fetch(url)
+const j=await r.json()
 
-weatherData=data.list.map(city=>({
+data=j.list
 
-city:city.name,
-temp:Math.round(city.main.temp),
-condition:city.weather[0].main
-
-}))
+loader.style.display="none"
+content.style.display="flex"
 
 }
 
-/* city text */
+setInterval(fetchWeather,REFRESH_INTERVAL)
+fetchWeather()
 
-function setCityText(name){
+/* ciudad */
 
-cityContainer.innerHTML=""
+function setCity(name){
 
-const track=document.createElement("div")
-track.className="cityTrack"
-
-const text1=document.createElement("span")
-text1.className="cityText"
-text1.textContent=name
-
-track.appendChild(text1)
-cityContainer.appendChild(track)
+cityTrack.classList.remove("scroll")
+cityTrack.innerHTML=name
 
 requestAnimationFrame(()=>{
 
-if(track.scrollWidth>cityContainer.clientWidth){
+if(cityTrack.scrollWidth>60){
 
-const text2=text1.cloneNode(true)
-track.appendChild(text2)
-
-track.classList.add("scrollTrack")
+cityTrack.innerHTML=name+"   "+name
+cityTrack.classList.add("scroll")
 
 }
 
@@ -138,60 +128,32 @@ track.classList.add("scrollTrack")
 
 }
 
-/* rotation */
+/* rotacion */
 
-function changeCity(){
+function rotate(){
 
-if(weatherData.length===0)return
+if(data.length===0)return
 
-const weatherBox=document.querySelector(".weatherBox")
+const c=data[index]
 
-weatherBox.classList.add("fadeOut")
+temp.textContent=Math.round(c.main.temp)+"°"
 
-setTimeout(()=>{
-
-currentCityIndex++
-
-if(currentCityIndex>=weatherData.length){
-currentCityIndex=0
+if(c.weather[0].main.includes("Rain")){
+icon.innerHTML=rainIcon()
+}
+else if(c.weather[0].main.includes("Cloud")){
+icon.innerHTML=cloudIcon()
+}
+else{
+icon.innerHTML=sunIcon()
 }
 
-const data=weatherData[currentCityIndex]
+setCity(c.name)
 
-tempElement.textContent=`${data.temp}°`
-
-if(data.condition.includes("Rain")){
-iconElement.innerHTML=iconRain()
-}else if(data.condition.includes("Cloud")){
-iconElement.innerHTML=iconCloud()
-}else{
-iconElement.innerHTML=iconSun()
-}
-
-setCityText(data.city)
-
-weatherBox.classList.remove("fadeOut")
-weatherBox.classList.add("fadeIn")
-
-setTimeout(()=>{
-weatherBox.classList.remove("fadeIn")
-},400)
-
-if(!firstRender){
-
-loader.style.display="none"
-weatherContent.style.display="flex"
-
-firstRender=true
+index++
+if(index>=data.length)index=0
 
 }
 
-},350)
-
-}
-
-setInterval(changeCity,CITY_ROTATION_INTERVAL)
-setInterval(fetchWeather,WEATHER_REFRESH_INTERVAL)
-
-fetchWeather()
-changeCity()
+setInterval(rotate,ROTATE_INTERVAL)
+rotate()
