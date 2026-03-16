@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
 <meta charset="UTF-8">
 <title>Overlay Clima</title>
@@ -10,27 +11,32 @@
 
 <div id="weatherOverlay">
 
+    <!-- CLOCK -->
     <div class="clockBox">
         <span id="clock">00:00</span>
     </div>
 
-     <div class="weatherBox">
-    
+    <!-- WEATHER -->
+    <div class="weatherBox">
+
+        <!-- Loader -->
         <div id="loader" class="loader"></div>
-    
-        <div class="weatherContent" id="weatherContent">
-    
+
+        <!-- Weather content -->
+        <div id="weatherContent" class="weatherContent">
+
             <div id="weatherIcon"></div>
-    
-            <span id="temperature">--°</span>
-    
+
+            <span id="temperature"></span>
+
             <span class="divider">|</span>
-    
+
             <div class="cityContainer"></div>
-    
+
         </div>
-    
+
     </div>
+
 </div>
 
 <script src="script.js"></script>
