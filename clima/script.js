@@ -1,8 +1,16 @@
-// =================
+// ============================================
 // CONFIG
-// =================
+// ============================================
 
 const API_KEY = "969de0f6ebd36d04b40136010664f449";
+
+const CITY_ROTATION_INTERVAL = 8000;
+const WEATHER_REFRESH_INTERVAL = 600000;
+
+
+// ============================================
+// CITY LIST (capitales provinciales)
+// ============================================
 
 const cities = [
 
@@ -32,16 +40,14 @@ const cities = [
 
 ];
 
-const CITY_ROTATION_INTERVAL = 8000;
-const WEATHER_REFRESH_INTERVAL = 600000;
 
-
-// =================
+// ============================================
 // VARIABLES
-// =================
+// ============================================
 
 let weatherData = [];
 let currentCityIndex = -1;
+let firstRender = false;
 
 const tempElement = document.getElementById("temperature");
 const iconElement = document.getElementById("weatherIcon");
@@ -51,9 +57,10 @@ const cityContainer = document.querySelector(".cityContainer");
 const loader = document.getElementById("loader");
 const weatherContent = document.getElementById("weatherContent");
 
-// =================
+
+// ============================================
 // CLOCK
-// =================
+// ============================================
 
 function updateClock(){
 
@@ -70,20 +77,18 @@ setInterval(updateClock,1000);
 updateClock();
 
 
-// =================
-// DAY / NIGHT
-// =================
+// ============================================
+// DAY/NIGHT
+// ============================================
 
 function isNight(now, sunrise, sunset){
-
 return (now < sunrise || now > sunset);
-
 }
 
 
-// =================
+// ============================================
 // ICON MAP
-// =================
+// ============================================
 
 function getIcon(condition, night){
 
@@ -112,9 +117,9 @@ return night ? "🌙" : "🌤️";
 }
 
 
-// =================
+// ============================================
 // WEATHER FETCH
-// =================
+// ============================================
 
 async function fetchWeather(){
 
@@ -129,16 +134,13 @@ try{
 const response = await fetch(url);
 const data = await response.json();
 
-const sunrise = data.sys.sunrise * 1000;
-const sunset = data.sys.sunset * 1000;
-
 weatherData.push({
 
 city: city.name,
 temp: Math.round(data.main.temp),
 condition: data.weather[0].main,
-sunrise: sunrise,
-sunset: sunset
+sunrise: data.sys.sunrise * 1000,
+sunset: data.sys.sunset * 1000
 
 });
 
@@ -150,18 +152,15 @@ console.log(err);
 
 }
 
-loader.style.display = "none";
-weatherContent.style.display = "flex";
-
 }
 
-setInterval(fetchWeather,WEATHER_REFRESH_INTERVAL);
+setInterval(fetchWeather, WEATHER_REFRESH_INTERVAL);
 fetchWeather();
 
 
-// =================
-// CITY TEXT
-// =================
+// ============================================
+// CITY TICKER
+// ============================================
 
 function setCityText(name){
 
@@ -175,7 +174,6 @@ text1.className = "cityText";
 text1.textContent = name;
 
 track.appendChild(text1);
-
 cityContainer.appendChild(track);
 
 requestAnimationFrame(()=>{
@@ -194,9 +192,9 @@ track.classList.add("scrollTrack");
 }
 
 
-// =================
+// ============================================
 // ROTATION
-// =================
+// ============================================
 
 function changeCity(){
 
@@ -217,11 +215,9 @@ currentCityIndex = 0;
 const data = weatherData[currentCityIndex];
 
 const now = Date.now();
-
 const night = isNight(now, data.sunrise, data.sunset);
 
 tempElement.textContent = `${data.temp}°`;
-
 iconElement.textContent = getIcon(data.condition, night);
 
 setCityText(data.city);
@@ -233,10 +229,20 @@ setTimeout(()=>{
 weatherBox.classList.remove("fadeIn");
 },400);
 
+
+// ocultar loader SOLO después del primer render
+if(!firstRender){
+
+loader.style.display = "none";
+weatherContent.style.display = "flex";
+
+firstRender = true;
+
+}
+
 },350);
 
 }
 
 setInterval(changeCity, CITY_ROTATION_INTERVAL);
-
 changeCity();
