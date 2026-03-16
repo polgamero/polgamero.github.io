@@ -137,9 +137,7 @@ const requests=cities.map(city=>{
 const url=`https://api.openweathermap.org/data/2.5/weather?lat=${city.lat}&lon=${city.lon}&units=metric&appid=${API_KEY}`
 
 return fetch(url)
-
 .then(r=>r.json())
-
 .then(data=>({
 
 city:city.name,
@@ -152,7 +150,11 @@ sunset:data.sys.sunset*1000
 
 })
 
-weatherData=await Promise.all(requests)
+const results = await Promise.allSettled(requests)
+
+weatherData = results
+.filter(r=>r.status==="fulfilled")
+.map(r=>r.value)
 
 }
 
