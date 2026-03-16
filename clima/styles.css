@@ -155,3 +155,46 @@ animation:moonFloat 4s ease-in-out infinite alternate;
 from{ transform:translateY(-1px) }
 to{ transform:translateY(1px) }
 }
+
+#weatherIcon svg{
+width:20px;
+height:20px;
+overflow:visible;
+}
+
+.sun{
+transform-origin:12px 12px;
+animation:sunRotate 12s linear infinite;
+}
+
+@keyframes sunRotate{
+from{ transform:rotate(0deg) }
+to{ transform:rotate(360deg) }
+}
+
+.cloud{
+animation:cloudMove 4s ease-in-out infinite alternate;
+}
+
+@keyframes cloudMove{
+from{ transform:translateX(-1px) }
+to{ transform:translateX(2px) }
+}
+
+.rain line{
+animation:rainFall .8s linear infinite;
+}
+
+@keyframes rainFall{
+0%{ transform:translateY(0) }
+100%{ transform:translateY(4px) }
+}
+
+.moon{
+animation:moonFloat 3s ease-in-out infinite alternate;
+}
+
+@keyframes moonFloat{
+from{ transform:translateY(-1px) }
+to{ transform:translateY(1px) }
+}
