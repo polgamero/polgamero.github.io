@@ -65,6 +65,7 @@ justify-content:center;
 #weatherIcon svg{
 width:20px;
 height:20px;
+overflow:visible;
 }
 
 #temperature{
@@ -101,7 +102,7 @@ animation:scrollCity 8s linear infinite;
 100%{ transform:translateX(-50%) }
 }
 
-/* spinner */
+/* loader */
 
 .loader{
 width:16px;
@@ -117,59 +118,16 @@ animation:spin .8s linear infinite;
 100%{ transform:rotate(360deg) }
 }
 
-/* ANIMACIONES CLIMA */
-
-.sun{
-animation:sunRotate 10s linear infinite;
-transform-origin:center;
-}
-
-@keyframes sunRotate{
-from{ transform:rotate(0deg) }
-to{ transform:rotate(360deg) }
-}
-
-.cloud{
-animation:cloudMove 6s ease-in-out infinite alternate;
-}
-
-@keyframes cloudMove{
-from{ transform:translateX(-1px) }
-to{ transform:translateX(2px) }
-}
-
-.rain line{
-animation:rainFall .7s linear infinite;
-}
-
-@keyframes rainFall{
-0%{ transform:translateY(0) }
-100%{ transform:translateY(4px) }
-}
-
-.moon{
-animation:moonFloat 4s ease-in-out infinite alternate;
-}
-
-@keyframes moonFloat{
-from{ transform:translateY(-1px) }
-to{ transform:translateY(1px) }
-}
-
-#weatherIcon svg{
-width:20px;
-height:20px;
-overflow:visible;
-}
+/* icon animations */
 
 .sun{
 transform-origin:12px 12px;
-animation:sunRotate 12s linear infinite;
+animation:sunRotate 10s linear infinite;
 }
 
 @keyframes sunRotate{
-from{ transform:rotate(0deg) }
-to{ transform:rotate(360deg) }
+from{transform:rotate(0)}
+to{transform:rotate(360deg)}
 }
 
 .cloud{
@@ -177,8 +135,8 @@ animation:cloudMove 4s ease-in-out infinite alternate;
 }
 
 @keyframes cloudMove{
-from{ transform:translateX(-1px) }
-to{ transform:translateX(2px) }
+from{transform:translateX(-1px)}
+to{transform:translateX(2px)}
 }
 
 .rain line{
@@ -186,8 +144,8 @@ animation:rainFall .8s linear infinite;
 }
 
 @keyframes rainFall{
-0%{ transform:translateY(0) }
-100%{ transform:translateY(4px) }
+0%{transform:translateY(0)}
+100%{transform:translateY(4px)}
 }
 
 .moon{
@@ -195,6 +153,6 @@ animation:moonFloat 3s ease-in-out infinite alternate;
 }
 
 @keyframes moonFloat{
-from{ transform:translateY(-1px) }
-to{ transform:translateY(1px) }
+from{transform:translateY(-1px)}
+to{transform:translateY(1px)}
 }
