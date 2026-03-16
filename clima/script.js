@@ -6,7 +6,7 @@ const API_KEY = "969de0f6ebd36d04b40136010664f449";
 
 const cities = [
 
-{ name:"Buenos Aires", lat:-34.59, lon:-58.40 },
+{ name:"Buenos Aires", lat:-34.61, lon:-58.38 },
 { name:"La Plata", lat:-34.92, lon:-57.95 },
 { name:"Córdoba", lat:-31.42, lon:-64.18 },
 { name:"Santa Fe", lat:-31.63, lon:-60.70 },
@@ -46,7 +46,6 @@ let currentCityIndex = -1;
 const tempElement = document.getElementById("temperature");
 const iconElement = document.getElementById("weatherIcon");
 const clockElement = document.getElementById("clock");
-
 const cityContainer = document.querySelector(".cityContainer");
 
 
@@ -70,18 +69,43 @@ updateClock();
 
 
 // =================
+// DAY / NIGHT
+// =================
+
+function isNight(now, sunrise, sunset){
+
+return (now < sunrise || now > sunset);
+
+}
+
+
+// =================
 // ICON MAP
 // =================
 
-function getIcon(condition){
+function getIcon(condition, night){
 
-if(condition.includes("Cloud")) return "☁️";
-if(condition.includes("Rain")) return "🌧️";
-if(condition.includes("Clear")) return "☀️";
-if(condition.includes("Snow")) return "❄️";
-if(condition.includes("Thunder")) return "⛈️";
+if(condition.includes("Clear")){
+return night ? "🌙" : "☀️";
+}
 
-return "🌤️";
+if(condition.includes("Cloud")){
+return night ? "🌙☁️" : "⛅";
+}
+
+if(condition.includes("Rain")){
+return "🌧️";
+}
+
+if(condition.includes("Thunder")){
+return "⛈️";
+}
+
+if(condition.includes("Snow")){
+return "❄️";
+}
+
+return night ? "🌙" : "🌤️";
 
 }
 
@@ -103,11 +127,16 @@ try{
 const response = await fetch(url);
 const data = await response.json();
 
+const sunrise = data.sys.sunrise * 1000;
+const sunset = data.sys.sunset * 1000;
+
 weatherData.push({
 
 city: city.name,
 temp: Math.round(data.main.temp),
-condition: data.weather[0].main
+condition: data.weather[0].main,
+sunrise: sunrise,
+sunset: sunset
 
 });
 
@@ -126,7 +155,7 @@ fetchWeather();
 
 
 // =================
-// CITY DISPLAY
+// CITY TEXT
 // =================
 
 function setCityText(name){
@@ -143,8 +172,6 @@ text1.textContent = name;
 track.appendChild(text1);
 
 cityContainer.appendChild(track);
-
-// medir si hace falta scroll
 
 requestAnimationFrame(()=>{
 
@@ -184,9 +211,13 @@ currentCityIndex = 0;
 
 const data = weatherData[currentCityIndex];
 
+const now = Date.now();
+
+const night = isNight(now, data.sunrise, data.sunset);
+
 tempElement.textContent = `${data.temp}°`;
 
-iconElement.textContent = getIcon(data.condition);
+iconElement.textContent = getIcon(data.condition, night);
 
 setCityText(data.city);
 
@@ -201,5 +232,6 @@ weatherBox.classList.remove("fadeIn");
 
 }
 
-setInterval(changeCity,CITY_ROTATION_INTERVAL);
+setInterval(changeCity, CITY_ROTATION_INTERVAL);
+
 changeCity();
