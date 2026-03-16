@@ -52,7 +52,7 @@ width:150px;
     height: 46px;
     
     /* Cambiamos el color sólido por uno con transparencia (RGBA) */
-    background: rgba(229, 229, 229, 0.3); 
+    background: rgba(229, 229, 229, 0.1); 
     
     /* El truco del blur */
     backdrop-filter: blur(10px);
@@ -78,7 +78,7 @@ width:150px;
     height: 36px;
     
     /* Aplicamos lo mismo aquí */
-    background: rgba(229, 229, 229, 0.3);
+    background: rgba(229, 229, 229, 0.1);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 
