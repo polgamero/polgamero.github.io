@@ -11,47 +11,50 @@ left:40px;
 width:150px;
 }
 
-.clockBox{
+.clockBox {
+    width: 150px;
+    height: 46px;
+    
+    /* Cambiamos el color sólido por uno con transparencia (RGBA) */
+    background: rgba(229, 229, 229, 0.5); 
+    
+    /* El truco del blur */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px); /* Para compatibilidad en algunos navegadores */
 
-width:150px;
-height:46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    
+    /* Un borde finito sutil ayuda a que parezca vidrio */
+    border: 1px solid rgba(255, 255, 255, 0.2);
 
-background:#e5e5e5;
-
-display:flex;
-align-items:center;
-justify-content:center;
-
-border-radius:8px;
-
-font-size:30px;
-font-weight:bold;
-
-margin-bottom:6px;
-
+    font-size: 30px;
+    font-weight: bold;
+    margin-bottom: 6px;
 }
 
 /* WEATHER BOX */
 
-.weatherBox{
+.weatherBox {
+    width: 150px;
+    height: 36px;
+    
+    /* Aplicamos lo mismo aquí */
+    background: rgba(229, 229, 229, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 
-width:150px;
-height:36px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 
-background:#e5e5e5;
-
-border-radius:8px;
-
-display:flex;
-align-items:center;
-justify-content:center;
-
-overflow:hidden;
-
-position:relative;
-
-transition:opacity .35s ease, transform .35s ease;
-
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    transition: opacity .35s ease, transform .35s ease;
 }
 
 /* TRANSITIONS */
