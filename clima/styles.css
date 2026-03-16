@@ -4,137 +4,155 @@ background:transparent;
 font-family:Arial, Helvetica, sans-serif;
 }
 
-/* CONTENEDOR GENERAL */
-
-#overlay{
+#weatherOverlay{
 position:absolute;
 bottom:40px;
 left:40px;
 width:150px;
 }
 
-/* RELOJ */
-
 .clockBox{
+
 width:150px;
 height:46px;
+
 background:#e5e5e5;
-border-radius:8px;
+
 display:flex;
 align-items:center;
 justify-content:center;
+
+border-radius:8px;
+
 font-size:30px;
 font-weight:bold;
+
 margin-bottom:6px;
+
 }
 
-/* CAJA CLIMA */
+/* WEATHER BOX */
 
 .weatherBox{
+
 width:150px;
-height:40px;
+height:36px;
+
 background:#e5e5e5;
+
 border-radius:8px;
+
 display:flex;
 align-items:center;
 justify-content:center;
-position:relative;
+
 overflow:hidden;
+
+position:relative;
+
+transition:opacity .35s ease, transform .35s ease;
+
 }
 
-/* CONTENIDO CLIMA */
+/* TRANSITIONS */
+
+.fadeOut{
+opacity:0;
+transform:translateY(6px);
+}
+
+.fadeIn{
+opacity:1;
+transform:translateY(0);
+}
+
+/* WEATHER CONTENT */
 
 .weatherContent{
+
 display:none;
 align-items:center;
-justify-content:flex-start;
-gap:6px;
+gap:4px;
+
 max-width:140px;
-height:100%;
+
 }
 
-/* ICONO */
+#weatherIcon{
 
-#icon{
 width:22px;
-height:22px;
-display:flex;
-align-items:center;
-justify-content:center;
-flex-shrink:0;
+text-align:center;
+font-size:18px;
+
 }
 
-#icon svg{
-width:20px;
-height:20px;
-display:block;
-}
+#temperature{
 
-/* TEMPERATURA */
-
-#temp{
-font-weight:bold;
 font-size:16px;
-display:flex;
-align-items:center;
-line-height:1;
-}
+font-weight:bold;
 
-/* DIVISOR */
+}
 
 .divider{
 opacity:.6;
-display:flex;
-align-items:center;
 }
 
-/* CIUDAD */
+/* CITY TICKER */
 
 .cityContainer{
+
 width:60px;
 overflow:hidden;
-display:flex;
-align-items:center;
+position:relative;
+
 }
 
-#cityTrack{
+.cityTrack{
+
+display:flex;
+gap:20px;
 white-space:nowrap;
-font-size:13px;
-display:flex;
-align-items:center;
+
 }
 
-/* ANIMACION SCROLL CIUDAD */
+.cityText{
 
-.scroll{
+font-size:13px;
+
+}
+
+.scrollTrack{
+
 animation:scrollCity 8s linear infinite;
+
 }
 
 @keyframes scrollCity{
-0%{
-transform:translateX(0);
-}
-100%{
-transform:translateX(-50%);
-}
+
+0%{ transform:translateX(0) }
+100%{ transform:translateX(-50%) }
+
 }
 
 /* LOADER */
 
 .loader{
+
 width:16px;
 height:16px;
-border:2px solid rgba(0,0,0,.2);
-border-top:2px solid black;
+
+border:2px solid rgba(0,0,0,0.2);
+border-top:2px solid rgba(0,0,0,0.8);
+
 border-radius:50%;
+
 animation:spin .8s linear infinite;
+
 }
 
 @keyframes spin{
-0%{
-transform:rotate(0);
-}
-100%{
-transform:rotate(360deg);
-}
+
+0%{ transform:rotate(0deg) }
+100%{ transform:rotate(360deg) }
+
 }
