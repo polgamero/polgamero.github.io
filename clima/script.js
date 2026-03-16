@@ -6,7 +6,7 @@ const API_KEY = "969de0f6ebd36d04b40136010664f449";
 
 const cities = [
 
-{ name:"Buenos Aires", lat:-34.61, lon:-58.38 },
+{ name:"Buenos Aires", lat:-34.59, lon:-58.67 },
 { name:"La Plata", lat:-34.92, lon:-57.95 },
 { name:"Córdoba", lat:-31.42, lon:-64.18 },
 { name:"Santa Fe", lat:-31.63, lon:-60.70 },
