@@ -9,7 +9,7 @@ const WEATHER_REFRESH_INTERVAL = 600000;
 
 
 // ============================================
-// CITY LIST (capitales provinciales)
+// CITY LIST
 // ============================================
 
 const cities = [
@@ -78,7 +78,7 @@ updateClock();
 
 
 // ============================================
-// DAY/NIGHT
+// DAY / NIGHT
 // ============================================
 
 function isNight(now, sunrise, sunset){
@@ -92,25 +92,11 @@ return (now < sunrise || now > sunset);
 
 function getIcon(condition, night){
 
-if(condition.includes("Clear")){
-return night ? "🌙" : "☀️";
-}
-
-if(condition.includes("Cloud")){
-return night ? "🌙☁️" : "⛅";
-}
-
-if(condition.includes("Rain")){
-return "🌧️";
-}
-
-if(condition.includes("Thunder")){
-return "⛈️";
-}
-
-if(condition.includes("Snow")){
-return "❄️";
-}
+if(condition.includes("Clear")) return night ? "🌙" : "☀️";
+if(condition.includes("Cloud")) return night ? "🌙☁️" : "⛅";
+if(condition.includes("Rain")) return "🌧️";
+if(condition.includes("Thunder")) return "⛈️";
+if(condition.includes("Snow")) return "❄️";
 
 return night ? "🌙" : "🌤️";
 
@@ -118,23 +104,20 @@ return night ? "🌙" : "🌤️";
 
 
 // ============================================
-// WEATHER FETCH
+// FETCH WEATHER (PARALLEL)
 // ============================================
 
 async function fetchWeather(){
 
-weatherData = [];
+loader.style.display = "block";
 
-for(const city of cities){
+const requests = cities.map(city => {
 
 const url = `https://api.openweathermap.org/data/2.5/weather?lat=${city.lat}&lon=${city.lon}&units=metric&appid=${API_KEY}`;
 
-try{
-
-const response = await fetch(url);
-const data = await response.json();
-
-weatherData.push({
+return fetch(url)
+.then(r => r.json())
+.then(data => ({
 
 city: city.name,
 temp: Math.round(data.main.temp),
@@ -142,15 +125,11 @@ condition: data.weather[0].main,
 sunrise: data.sys.sunrise * 1000,
 sunset: data.sys.sunset * 1000
 
+}));
+
 });
 
-}catch(err){
-
-console.log(err);
-
-}
-
-}
+weatherData = await Promise.all(requests);
 
 }
 
@@ -229,8 +208,6 @@ setTimeout(()=>{
 weatherBox.classList.remove("fadeIn");
 },400);
 
-
-// ocultar loader SOLO después del primer render
 if(!firstRender){
 
 loader.style.display = "none";
