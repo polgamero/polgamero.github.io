@@ -28,7 +28,10 @@ font-size:30px;
 font-weight:bold;
 
 margin-bottom:6px;
+
 }
+
+/* WEATHER BOX */
 
 .weatherBox{
 
@@ -45,30 +48,34 @@ justify-content:center;
 
 overflow:hidden;
 
+position:relative;
+
 transition:opacity .35s ease, transform .35s ease;
+
 }
 
-.fadeOut{
+/* TRANSITIONS */
 
+.fadeOut{
 opacity:0;
 transform:translateY(6px);
-
 }
 
 .fadeIn{
-
 opacity:1;
 transform:translateY(0);
-
 }
+
+/* WEATHER CONTENT */
 
 .weatherContent{
 
-display:flex;
+display:none;
 align-items:center;
 gap:4px;
 
 max-width:140px;
+
 }
 
 #weatherIcon{
@@ -77,25 +84,27 @@ width:22px;
 text-align:center;
 font-size:18px;
 
-transition:transform .4s ease, opacity .4s ease;
-
 }
 
 #temperature{
 
 font-size:16px;
 font-weight:bold;
+
 }
 
 .divider{
 opacity:.6;
 }
 
+/* CITY TICKER */
+
 .cityContainer{
 
 width:60px;
 overflow:hidden;
 position:relative;
+
 }
 
 .cityTrack{
@@ -103,29 +112,29 @@ position:relative;
 display:flex;
 gap:20px;
 white-space:nowrap;
+
 }
 
 .cityText{
 
 font-size:13px;
+
 }
 
 .scrollTrack{
 
 animation:scrollCity 8s linear infinite;
+
 }
 
 @keyframes scrollCity{
 
-0%{
-transform:translateX(0)
-}
-
-100%{
-transform:translateX(-50%)
-}
+0%{ transform:translateX(0) }
+100%{ transform:translateX(-50%) }
 
 }
+
+/* LOADER */
 
 .loader{
 
@@ -137,9 +146,7 @@ border-top:2px solid rgba(0,0,0,0.8);
 
 border-radius:50%;
 
-animation:spin 0.8s linear infinite;
-
-position:absolute;
+animation:spin .8s linear infinite;
 
 }
 
@@ -147,11 +154,5 @@ position:absolute;
 
 0%{ transform:rotate(0deg) }
 100%{ transform:rotate(360deg) }
-
-}
-
-#weatherContent{
-
-display:none;
 
 }
