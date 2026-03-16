@@ -246,3 +246,63 @@ firstRender = true;
 
 setInterval(changeCity, CITY_ROTATION_INTERVAL);
 changeCity();
+
+// ANIMACION DE LOS LOGOS
+
+const logoImg = document.getElementById('mainLogo');
+const octogono = document.getElementById('octogonoBg'); // Nueva referencia
+const LOGO_PRINCIPAL = "logoFogon2026.png";
+const LOGO_INICIALES = "inicialesFogon2026.png";
+
+function mostrarLogoPrincipal() {
+    // 1. Aseguramos que el octógono esté oculto y sin animar
+    octogono.style.opacity = "0";
+    octogono.classList.remove("girar-izquierda");
+
+    // 2. Cambiamos la imagen y aplicamos la animación 3D
+    logoImg.src = LOGO_PRINCIPAL;
+    logoImg.style.opacity = "1";
+    logoImg.className = "logo-3d";
+
+    // 3. Esperamos a que termine la animación (3s) para quitar la clase
+    setTimeout(() => {
+        logoImg.className = ""; 
+        
+        // 4. Esperamos 10 segundos estáticos con el Logo Principal
+        setTimeout(() => {
+            logoImg.style.opacity = "0"; // Desvanecemos para el cambio
+            
+            // 5. Una vez desvanecido, pasamos al siguiente logo
+            setTimeout(mostrarLogoIniciales, 800); 
+        }, 10000);
+    }, 3000);
+}
+
+function mostrarLogoIniciales() {
+    // 1. Activamos el octógono: opacidad y animación de giro
+    octogono.style.opacity = "1";
+    octogono.classList.add("girar-izquierda");
+
+    // 2. Cambiamos la imagen y aplicamos la animación Elastic
+    logoImg.src = LOGO_INICIALES;
+    logoImg.style.opacity = "1";
+    logoImg.className = "logo-elastic";
+
+    // 3. Esperamos a que termine la animación (3s) para quitar la clase
+    setTimeout(() => {
+        logoImg.className = "";
+
+        // 4. Esperamos 10 segundos estáticos con el Logo de Iniciales (y el octógono girando)
+        setTimeout(() => {
+            // 5. Desvanecemos tanto el logo como el octógono
+            logoImg.style.opacity = "0"; 
+            octogono.style.opacity = "0"; // También ocultamos el fondo rojo
+            
+            // 6. Volvemos al inicio del ciclo
+            setTimeout(mostrarLogoPrincipal, 800);
+        }, 10000);
+    }, 3000);
+}
+
+// Iniciar el ciclo cuando cargue la página
+window.addEventListener('load', mostrarLogoPrincipal);
