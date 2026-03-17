@@ -313,66 +313,91 @@ const rssUrl = "https://www.c5n.com/rss/pages/ultimas-noticias.xml";
 // Usamos este conversor gratuito para evitar el error de CORS
 const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
 
+const seccionesRSS = [
+    { nombre: "AHORA", url: "https://www.c5n.com/rss/pages/ultimas-noticias.xml" },
+    { nombre: "POLÍTICA", url: "https://www.c5n.com/rss/pages/politica.xml" },
+    { nombre: "DEPORTES", url: "https://www.c5n.com/rss/pages/deportes.xml" },
+    { nombre: "ECONOMÍA", url: "https://www.c5n.com/rss/pages/economia.xml" },
+    { nombre: "MUNDO", url: "https://www.c5n.com/rss/pages/mundo.xml" },
+    { nombre: "TECNOLOGÍA", url: "https://www.c5n.com/rss/pages/tecnologia.xml" },
+    { nombre: "SOCIEDAD", url: "https://www.c5n.com/rss/pages/sociedad.xml" }
+];
+
 const newsWrapper = document.getElementById('newsWrapper');
 const newsTicker = document.getElementById('newsTicker');
 const newsSection = document.getElementById('newsSection');
 
-let noticiasC5N = [];
+let noticiasFogón = [];
 let indexNoticia = 0;
-const DELAY_NOTICIAS = 5000; // 5 segundos para pruebas
+const DELAY_ENTRE_NOTICIAS = 5000;
 
-async function fetchNoticias() {
+// Función para obtener la primera noticia de un RSS específico
+async function fetchUltimaDeSeccion(seccion) {
+    const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(seccion.url)}&t=${new Date().getTime()}`;
     try {
         const res = await fetch(proxyUrl);
         const data = await res.json();
-        
-        // El RSS de C5N trae la categoría en 'categories' o 'description'
-        noticiasC5N = data.items.map(item => ({
-            titulo: item.title,
-            seccion: item.categories.length > 0 ? item.categories[0] : "C5N"
-        }));
-
-        if (noticiasC5N.length > 0) cicloNoticias();
+        if (data.status === "ok" && data.items.length > 0) {
+            const item = data.items[0]; // Tomamos solo la primera (la más nueva)
+            let desc = item.description.replace(/<[^>]*>/g, '').trim();
+            return {
+                seccion: seccion.nombre,
+                contenido: `${item.title.toUpperCase()}: ${desc.toUpperCase()}`
+            };
+        }
     } catch (e) {
-        console.error("Error RSS:", e);
-        noticiasC5N = [{titulo: "Error conectando con C5N", seccion: "INFO"}];
+        console.error(`Error en sección ${seccion.nombre}:`, e);
+        return null;
+    }
+}
+
+// Carga todas las secciones en paralelo
+async function cargarTodasLasNoticias() {
+    console.log("Actualizando parrilla de noticias...");
+    // Ejecutamos todos los pedidos al mismo tiempo
+    const resultados = await Promise.all(seccionesRSS.map(s => fetchUltimaDeSeccion(s)));
+    
+    // Filtramos las que hayan fallado y actualizamos el array global
+    noticiasFogón = resultados.filter(n => n !== null);
+
+    if (noticiasFogón.length > 0) {
+        indexNoticia = 0; // Reiniciamos el puntero
         cicloNoticias();
     }
 }
 
 function cicloNoticias() {
-    const data = noticiasC5N[indexNoticia];
+    const data = noticiasFogón[indexNoticia];
     
-    // 1. Seteamos data
     newsSection.innerText = data.seccion;
-    newsTicker.innerText = data.titulo + "  •  " + data.titulo; // Duplicamos para que no haya hueco
+    // Duplicamos para el loop fluido
+    newsTicker.innerText = data.contenido + "  •  " + data.contenido; 
 
-    // 2. Abrir Box
     newsWrapper.classList.add('news-active');
 
     setTimeout(() => {
-        // 3. Iniciar animación
         newsTicker.classList.add('marquee-anim');
 
-        // 4. Duración: 10 segundos (2 vueltas rápidas)
+        // Tiempo en pantalla (18s por lo largo del texto)
         setTimeout(() => {
-            // 5. Cerrar Box
             newsWrapper.classList.remove('news-active');
             
             setTimeout(() => {
-                // Limpiar clase para resetear posición del texto
                 newsTicker.classList.remove('marquee-anim');
                 
-                // Siguiente noticia
-                indexNoticia = (indexNoticia + 1) % noticiasC5N.length;
-                
-                // 6. Espera entre noticias (5s)
-                setTimeout(cicloNoticias, DELAY_NOTICIAS);
-            }, 800); // Espera que termine de cerrarse el ancho
-            
-        }, 10000); 
+                indexNoticia++;
 
-    }, 800);
+                // Si terminamos la vuelta de todas las secciones, REFRESH TOTAL
+                if (indexNoticia >= noticiasFogón.length) {
+                    setTimeout(cargarTodasLasNoticias, 1000); 
+                } else {
+                    setTimeout(cicloNoticias, DELAY_ENTRE_NOTICIAS);
+                }
+                
+            }, 800); // Espera cierre de box
+        }, 18000); 
+
+    }, 800); // Espera apertura de box
 }
 
-window.addEventListener('load', fetchNoticias);
+window.addEventListener('load', cargarTodasLasNoticias);
