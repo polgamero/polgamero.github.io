@@ -325,29 +325,26 @@ const newsSection = document.getElementById('newsSection');
 
 let noticiasFogon = [];
 let indexNoticia = 0;
-const DELAY_ENTRE_NOTICIAS = 5000; // 5 segundos para tus pruebas
+const DELAY_ENTRE_NOTICIAS = 5000;
 
-// Función para obtener la noticia real sin caché
 async function fetchUltimaDeSeccion(seccion) {
-    // Usamos allorigins para saltar el CORS y le agregamos un nro random al final para romper cualquier caché
-    const randomSalt = Math.random();
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(seccion.url + "?v=" + randomSalt)}`;
+    // Usamos AllOrigins pero con una variante para evitar el bloqueo, 
+    // y si no, pasamos a un proxy alternativo.
+    const urlReal = `${seccion.url}?v=${Date.now()}`;
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(urlReal)}`;
     
     try {
         const res = await fetch(proxyUrl);
+        if (!res.ok) throw new Error('Error en proxy');
         const data = await res.json();
         
-        // AllOrigins devuelve el XML como un string en data.contents
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(data.contents, "text/xml");
-        
-        // Buscamos el primer <item>
         const item = xmlDoc.querySelector("item");
+        
         if (item) {
             const titulo = item.querySelector("title").textContent;
             let desc = item.querySelector("description").textContent;
-            
-            // Limpiamos HTML de la descripción
             desc = desc.replace(/<[^>]*>/g, '').trim();
             
             return {
@@ -356,19 +353,38 @@ async function fetchUltimaDeSeccion(seccion) {
             };
         }
     } catch (e) {
-        console.error(`Error real en sección ${seccion.nombre}:`, e);
-        return null;
+        console.error(`Fallo en ${seccion.nombre}, reintentando con proxy alternativo...`);
+        // REINTENTO CON OTRO PROXY SI EL PRIMERO FALLA
+        try {
+            const secondaryProxy = `https://thingproxy.freeboard.io/fetch/${urlReal}`;
+            const res2 = await fetch(secondaryProxy);
+            const xmlText = await res2.text();
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+            const item = xmlDoc.querySelector("item");
+            if (item) {
+                const titulo = item.querySelector("title").textContent;
+                let desc = item.querySelector("description").textContent;
+                desc = desc.replace(/<[^>]*>/g, '').trim();
+                return { seccion: seccion.nombre, contenido: `${titulo.toUpperCase()}: ${desc.toUpperCase()}` };
+            }
+        } catch (e2) {
+            return null;
+        }
     }
 }
 
 async function cargarTodasLasNoticias() {
-    console.log("Actualizando noticias de C5N...");
+    console.log("Sincronizando con C5N...");
     const resultados = await Promise.all(seccionesRSS.map(s => fetchUltimaDeSeccion(s)));
     noticiasFogon = resultados.filter(n => n !== null);
 
     if (noticiasFogon.length > 0) {
         indexNoticia = 0;
         cicloNoticias();
+    } else {
+        // Si todo falla, reintentar en 10 segundos
+        setTimeout(cargarTodasLasNoticias, 10000);
     }
 }
 
@@ -376,50 +392,43 @@ function cicloNoticias() {
     const data = noticiasFogon[indexNoticia];
     newsSection.innerText = data.seccion;
     
-    // FIX DE LOS DOS PUNTOS: 
-    // Buscamos solo la primera vez que aparecen los ":" para separar
     const primeraVez = data.contenido.indexOf(':');
     const titulo = data.contenido.substring(0, primeraVez).trim();
     const descripcion = data.contenido.substring(primeraVez + 1).trim();
 
     newsTicker.innerHTML = `<span class="ticker-title">${titulo}:</span>&nbsp;<span class="ticker-desc">${descripcion}</span>`;
 
-    // MEDICIÓN REAL DEL TEXTO
     const largoTexto = newsTicker.scrollWidth;
-    const anchoContenedor = 500; // El ancho de tu #newsBox activo
-    
-    // VELOCIDAD CONSTANTE: 120 píxeles por segundo
+    const anchoContenedor = newsWrapper.offsetWidth; // Calculamos el ancho real
     const velocidadPxSeg = 120; 
-    const distanciaTotal = largoTexto + 50; // Solo lo suficiente para que salga de cuadro
+    const distanciaTotal = largoTexto + 100; // Suficiente para salir de cuadro
     const duracionVuelta = distanciaTotal / velocidadPxSeg;
-    
-    // Reset de posición
-    newsTicker.style.animation = 'none';
+
+    // Reset
+    newsTicker.style.transition = 'none';
     newsTicker.style.transform = 'translateX(0)';
 
     newsWrapper.classList.add('news-active');
 
     setTimeout(() => {
-        // Usamos una transición suave de una sola vez
-        // Calculamos el tiempo exacto para que no sobre tiempo vacío al final
+        // Iniciamos la traslación suave
         newsTicker.style.transition = `transform ${duracionVuelta}s linear`;
-        newsTicker.style.transform = `translateX(-${largoTexto + 50}px)`;
+        newsTicker.style.transform = `translateX(-${distanciaTotal}px)`;
 
-        // El banner se cierra apenas termina la transición
         setTimeout(() => {
             newsWrapper.classList.remove('news-active');
-            // El delay para la próxima noticia se cuenta desde que se cierra el banner
+            
             setTimeout(() => {
                 indexNoticia++;
-                     if (indexNoticia >= noticiasFogon.length) {
-                            cargarTodasLasNoticias(); 
-                        } else {
-                            setTimeout(cicloNoticias, DELAY_ENTRE_NOTICIAS);
-                        }
+                if (indexNoticia >= noticiasFogon.length) {
+                    cargarTodasLasNoticias(); 
+                } else {
+                    setTimeout(cicloNoticias, DELAY_ENTRE_NOTICIAS);
+                }
             }, 800);
-        }, (duracionVuelta * 1000)); // Cierre inmediato al terminar el texto
-        
-    }, 800); 
+        }, (duracionVuelta * 1000) + 100); 
+
+    }, 1000); // Un segundo de pausa para que se lea el inicio antes de arrancar
 }
 
 window.addEventListener('load', cargarTodasLasNoticias);
