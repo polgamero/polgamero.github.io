@@ -360,45 +360,48 @@ function cicloNoticias() {
     const data = noticiasFogon[indexNoticia];
     
     newsSection.innerText = data.seccion;
-    // Duplicamos el contenido
-    newsTicker.innerText = data.contenido + "          •          " + data.contenido; 
-
-    // 1. CALCULAMOS VELOCIDAD
-    // Usamos scrollWidth para saber cuánto mide el texto realmente en píxeles
-    const largoTexto = newsTicker.scrollWidth;
     
-    // Queremos que pase a unos 100 píxeles por segundo (ajustá este nro si querés más/menos velocidad)
-    const velocidadPxSeg = 110; 
-    const duracionUnaVuelta = largoTexto / velocidadPxSeg;
-    const duracionTotalAnimacion = duracionUnaVuelta * 2; // 2 vueltas
+    // Separamos el título de la descripción con un SPAN para el peso de fuente
+    // El formato del contenido que viene es "TITULO: DESCRIPCION"
+    const partes = data.contenido.split(': ');
+    const titulo = partes[0];
+    const descripcion = partes[1] || "";
 
+    newsTicker.innerHTML = `<span class="ticker-title">${titulo}:</span> <span class="ticker-desc">${descripcion}</span>`;
+
+    // 1. CALCULAMOS VELOCIDAD (120 px/seg)
+    const largoTexto = newsTicker.scrollWidth;
+    const velocidadPxSeg = 120; 
+    const duracionVuelta = (largoTexto + 500) / velocidadPxSeg; // Agregamos margen de salida
+
+    // Reset de posición: el texto empieza pegado a la sección
+    newsTicker.style.animation = 'none';
+    newsTicker.style.transform = 'translateX(0)';
+
+    // 2. ABRIMOS EL BANNER
     newsWrapper.classList.add('news-active');
 
+    // 3. ESPERAMOS A QUE ABRA PARA ARRANCAR EL SCROLL
+    // El banner tarda 800ms en abrirse, esperamos eso para que no se pierdan palabras
     setTimeout(() => {
-        newsTicker.style.animation = 'none';
-        newsTicker.offsetHeight; 
-        
-        // Aplicamos el tiempo calculado dinámicamente
-        newsTicker.style.animation = `marqueeScroll ${duracionUnaVuelta}s linear infinite`;
+        // Iniciamos la animación de UNA SOLA VUELTA
+        newsTicker.style.animation = `marqueeScroll ${duracionVuelta}s linear forwards`;
 
-        // 2. EL BANNER SE QUEDA LO QUE DURA LA ANIMACIÓN + UN MARGEN
-        // El banner se cierra después de que pasen las 2 vueltas completas
+        // 4. EL BANNER SE CIERRA CUANDO TERMINA LA VUELTA
         setTimeout(() => {
             newsWrapper.classList.remove('news-active');
             
             setTimeout(() => {
-                newsTicker.style.animation = 'none';
                 indexNoticia++;
-
                 if (indexNoticia >= noticiasFogon.length) {
                     cargarTodasLasNoticias(); 
                 } else {
                     setTimeout(cicloNoticias, DELAY_ENTRE_NOTICIAS);
                 }
             }, 800);
-        }, (duracionTotalAnimacion * 1000)); // Pasamos a milisegundos
+        }, (duracionVuelta * 1000) + 1000); // Duración del scroll + 1s de gracia
 
-    }, 800);
+    }, 800); // Sincronizado con la apertura del Box
 }
 
 window.addEventListener('load', cargarTodasLasNoticias);
