@@ -343,13 +343,13 @@ animation:spin .8s linear infinite;
 /* --- RECTÁNGULO DE CRISTAL (EL BOX) --- */
 #newsBox {
     width: 0;
-    height: 45px; /* Lo subí un poquito para que el texto respire */
-    background: rgba(255, 255, 255, 0.15);
+    height: 38px; /* Altura más estilizada */
+    background: rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.25);
     display: flex;
-    align-items: center; /* Centra el texto verticalmente */
+    align-items: center;
     overflow: hidden;
     transition: width 0.8s cubic-bezier(0.77, 0, 0.175, 1);
 }
@@ -365,17 +365,21 @@ animation:spin .8s linear infinite;
 }
 
 /* --- RECUADRO DE SECCIÓN (POLÍTICA, SOCIEDAD, ETC) --- */
+
 #newsSection {
-    background: #e60000;
+    /* Efecto Glass también para la sección */
+    background: rgba(230, 0, 0, 0.35); 
+    backdrop-filter: blur(5px);
     color: white;
-    padding: 0 15px;
+    padding: 0 12px;
     height: 100%;
     display: flex;
     align-items: center;
-    font-size: 15px;
+    font-size: 13px; /* Fuente un poco más chica para la nueva altura */
     font-weight: 900;
     letter-spacing: 1px;
-    border-right: 2px solid rgba(255, 255, 255, 0.2);
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+    white-space: nowrap;
 }
 
 /* --- CONTENEDOR DEL TEXTO QUE SCROLLEA --- */
@@ -390,10 +394,10 @@ animation:spin .8s linear infinite;
     white-space: nowrap;
     display: inline-block;
     color: white;
-    font-size: 18px; /* Un pelín más chico para que no toque los bordes */
-    line-height: 45px; /* Igual al height del box para centrado perfecto */
+    font-size: 17px;
+    line-height: 38px; /* Alineación perfecta con la nueva altura */
     text-transform: uppercase;
-    vertical-align: middle;
+    padding-left: 50px; /* Margen inicial para que no pegue a la sección */
 }
 
 /* --- ANIMACIÓN MARQUESINA --- */
