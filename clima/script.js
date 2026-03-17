@@ -309,47 +309,70 @@ window.addEventListener('load', mostrarLogoPrincipal);
 
 // NOTI FOGON
 
+const rssUrl = "https://www.c5n.com/rss/pages/ultimas-noticias.xml";
+// Usamos este conversor gratuito para evitar el error de CORS
+const proxyUrl = `https://api.rss2json.com/v1/api.gxml?rss_url=${encodeURIComponent(rssUrl)}`;
+
 const newsWrapper = document.getElementById('newsWrapper');
 const newsTicker = document.getElementById('newsTicker');
-const delayEntreNoticias = 30000; // 30 segundos
+const newsSection = document.getElementById('newsSection');
 
-// Lista de noticias (puedes reemplazar esto por un fetch a una API real)
-const noticias = [
-    "Bienvenidos a El Fogón 2026 - El streaming empieza ahora",
-    "Somos Hormigas: El nuevo paradigma del infotainment en Argentina",
-    "Clima en Buenos Aires: 29 grados y cielo despejado para hoy",
-    "Producción local: El Fogón rompe récords de audiencia en marzo"
-];
-
+let noticiasC5N = [];
 let indexNoticia = 0;
+const DELAY_NOTICIAS = 5000; // 5 segundos para pruebas
 
-function cicloNoticias() {
-    // 1. Cargar el texto
-    newsTicker.innerText = noticias[indexNoticia];
-    
-    // 2. Abrir el box y mostrar label
-    newsWrapper.classList.add('news-active');
-
-    // 3. Iniciar la marquesina después de que abra el box
-    setTimeout(() => {
-        newsTicker.classList.add('marquee-anim');
+async function fetchNoticias() {
+    try {
+        const res = await fetch(proxyUrl);
+        const data = await res.json();
         
-        // 4. Duración de la marquesina (aprox 15 segundos para 2 vueltas)
-        setTimeout(() => {
-            // 5. Cerrar todo (Animación a la inversa)
-            newsTicker.classList.remove('marquee-anim');
-            newsWrapper.classList.remove('news-active');
-            
-            // 6. Preparar siguiente noticia y setear el delay de 30s
-            indexNoticia = (indexNoticia + 1) % noticias.length;
-            setTimeout(cicloNoticias, delayEntreNoticias);
-            
-        }, 15000); 
+        // El RSS de C5N trae la categoría en 'categories' o 'description'
+        noticiasC5N = data.items.map(item => ({
+            titulo: item.title,
+            seccion: item.categories.length > 0 ? item.categories[0] : "C5N"
+        }));
 
-    }, 800); // Espera a que el rectángulo se despliegue
+        if (noticiasC5N.length > 0) cicloNoticias();
+    } catch (e) {
+        console.error("Error RSS:", e);
+        noticiasC5N = [{titulo: "Error conectando con C5N", seccion: "INFO"}];
+        cicloNoticias();
+    }
 }
 
-// Iniciar cuando cargue
-window.addEventListener('load', () => {
-    setTimeout(cicloNoticias, 5000); // Primer inicio a los 5 segundos
-});
+function cicloNoticias() {
+    const data = noticiasC5N[indexNoticia];
+    
+    // 1. Seteamos data
+    newsSection.innerText = data.seccion;
+    newsTicker.innerText = data.titulo + "  •  " + data.titulo; // Duplicamos para que no haya hueco
+
+    // 2. Abrir Box
+    newsWrapper.classList.add('news-active');
+
+    setTimeout(() => {
+        // 3. Iniciar animación
+        newsTicker.classList.add('marquee-anim');
+
+        // 4. Duración: 10 segundos (2 vueltas rápidas)
+        setTimeout(() => {
+            // 5. Cerrar Box
+            newsWrapper.classList.remove('news-active');
+            
+            setTimeout(() => {
+                // Limpiar clase para resetear posición del texto
+                newsTicker.classList.remove('marquee-anim');
+                
+                // Siguiente noticia
+                indexNoticia = (indexNoticia + 1) % noticiasC5N.length;
+                
+                // 6. Espera entre noticias (5s)
+                setTimeout(cicloNoticias, DELAY_NOTICIAS);
+            }, 800); // Espera que termine de cerrarse el ancho
+            
+        }, 10000); 
+
+    }, 800);
+}
+
+window.addEventListener('load', fetchNoticias);
