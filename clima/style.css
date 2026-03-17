@@ -344,11 +344,13 @@ animation:spin .8s linear infinite;
     box-shadow: 0 2px 10px rgba(0,0,0,0.3);
 }
 
-
 /* El Box de la noticia */
 #newsBox {
-    width: 0;
+    width: 0px; 
     height: 38px;
+    display: flex;
+    align-items: center; /* Centrado vertical real */
+    overflow: hidden;
     background: rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -401,20 +403,27 @@ animation:spin .8s linear infinite;
 }
 
 #tickerContainer {
-    flex-grow: 1;
-    overflow: hidden;
+    flex: 1;
+    height: 100%;
     display: flex;
-    align-items: center;
+    align-items: center; /* Centra el ticker verticalmente */
+    overflow: hidden;
 }
 
 #newsTicker {
     white-space: nowrap;
-    display: inline-block;
+    display: flex; /* Cambiamos a flex */
+    align-items: center; /* Centrado vertical del texto interno */
     font-size: 17px;
-    line-height: 38px;
+    color: white;
     text-transform: uppercase;
-    /* Eliminamos el padding-left de 100% para controlarlo por JS */
-    padding-left: 20px; 
+    padding-left: 20px;
+    margin: 0; /* Eliminamos márgenes que puedan desplazarlo */
+}
+
+.ticker-title, .ticker-desc {
+    display: inline-block;
+    line-height: normal; /* Deja que el contenedor padre maneje el centro */
 }
 
 /* --- ANIMACIÓN MARQUESINA --- */
