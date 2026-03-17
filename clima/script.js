@@ -360,20 +360,29 @@ function cicloNoticias() {
     const data = noticiasFogon[indexNoticia];
     
     newsSection.innerText = data.seccion;
-    // Agregamos mucho espacio al final para que no se pegue el inicio con el fin
+    // Duplicamos el contenido
     newsTicker.innerText = data.contenido + "          •          " + data.contenido; 
+
+    // 1. CALCULAMOS VELOCIDAD
+    // Usamos scrollWidth para saber cuánto mide el texto realmente en píxeles
+    const largoTexto = newsTicker.scrollWidth;
+    
+    // Queremos que pase a unos 100 píxeles por segundo (ajustá este nro si querés más/menos velocidad)
+    const velocidadPxSeg = 110; 
+    const duracionUnaVuelta = largoTexto / velocidadPxSeg;
+    const duracionTotalAnimacion = duracionUnaVuelta * 2; // 2 vueltas
 
     newsWrapper.classList.add('news-active');
 
     setTimeout(() => {
-        // Reiniciamos la animación (limpiamos por si acaso)
         newsTicker.style.animation = 'none';
-        newsTicker.offsetHeight; // Truco para forzar reflow
+        newsTicker.offsetHeight; 
         
-        // Aplicamos el scroll suave: 25 segundos para recorrer el texto largo
-        newsTicker.style.animation = 'marqueeScroll 25s linear infinite';
+        // Aplicamos el tiempo calculado dinámicamente
+        newsTicker.style.animation = `marqueeScroll ${duracionUnaVuelta}s linear infinite`;
 
-        // Mantenemos la noticia 20 segundos en pantalla
+        // 2. EL BANNER SE QUEDA LO QUE DURA LA ANIMACIÓN + UN MARGEN
+        // El banner se cierra después de que pasen las 2 vueltas completas
         setTimeout(() => {
             newsWrapper.classList.remove('news-active');
             
@@ -387,7 +396,7 @@ function cicloNoticias() {
                     setTimeout(cicloNoticias, DELAY_ENTRE_NOTICIAS);
                 }
             }, 800);
-        }, 20000); 
+        }, (duracionTotalAnimacion * 1000)); // Pasamos a milisegundos
 
     }, 800);
 }
