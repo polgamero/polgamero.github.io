@@ -309,15 +309,7 @@ window.addEventListener('load', mostrarLogoPrincipal);
 
 // NOTI FOGON
 
-const seccionesRSS = [
-    { nombre: "AHORA", url: "https://www.c5n.com/rss/pages/ultimas-noticias.xml" },
-    { nombre: "POLÍTICA", url: "https://www.c5n.com/rss/pages/politica.xml" },
-    { nombre: "DEPORTES", url: "https://www.c5n.com/rss/pages/deportes.xml" },
-    { nombre: "ECONOMÍA", url: "https://www.c5n.com/rss/pages/economia.xml" },
-    { nombre: "MUNDO", url: "https://www.c5n.com/rss/pages/mundo.xml" },
-    { nombre: "TECNOLOGÍA", url: "https://www.c5n.com/rss/pages/tecnologia.xml" },
-    { nombre: "SOCIEDAD", url: "https://www.c5n.com/rss/pages/sociedad.xml" }
-];
+const MI_URL_GOOGLE = "https://script.google.com/macros/s/AKfycbwHW3kNV1Bp3t_tUpy2mSGIaxias7sFLRQc-M8Kc_zWFklu5yhJgO17A6M5tiZ6wD6d/exec";
 
 const newsWrapper = document.getElementById('newsWrapper');
 const newsTicker = document.getElementById('newsTicker');
@@ -325,72 +317,21 @@ const newsSection = document.getElementById('newsSection');
 
 let noticiasFogon = [];
 let indexNoticia = 0;
-const DELAY_ENTRE_NOTICIAS = 5000;
 
-async function fetchUltimaDeSeccion(seccion) {
-    // Usamos AllOrigins pero con una variante para evitar el bloqueo, 
-    // y si no, pasamos a un proxy alternativo.
-    const urlReal = `${seccion.url}?v=${Date.now()}`;
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(urlReal)}`;
-    
+async function cargarNoticias() {
     try {
-        const res = await fetch(proxyUrl);
-        if (!res.ok) throw new Error('Error en proxy');
-        const data = await res.json();
-        
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(data.contents, "text/xml");
-        const item = xmlDoc.querySelector("item");
-        
-        if (item) {
-            const titulo = item.querySelector("title").textContent;
-            let desc = item.querySelector("description").textContent;
-            desc = desc.replace(/<[^>]*>/g, '').trim();
-            
-            return {
-                seccion: seccion.nombre,
-                contenido: `${titulo.toUpperCase()}: ${desc.toUpperCase()}`
-            };
-        }
+        const res = await fetch(MI_URL_GOOGLE);
+        noticiasFogon = await res.json();
+        if (noticiasFogon.length > 0) cicloNoticias();
     } catch (e) {
-        console.error(`Fallo en ${seccion.nombre}, reintentando con proxy alternativo...`);
-        // REINTENTO CON OTRO PROXY SI EL PRIMERO FALLA
-        try {
-            const secondaryProxy = `https://thingproxy.freeboard.io/fetch/${urlReal}`;
-            const res2 = await fetch(secondaryProxy);
-            const xmlText = await res2.text();
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-            const item = xmlDoc.querySelector("item");
-            if (item) {
-                const titulo = item.querySelector("title").textContent;
-                let desc = item.querySelector("description").textContent;
-                desc = desc.replace(/<[^>]*>/g, '').trim();
-                return { seccion: seccion.nombre, contenido: `${titulo.toUpperCase()}: ${desc.toUpperCase()}` };
-            }
-        } catch (e2) {
-            return null;
-        }
-    }
-}
-
-async function cargarTodasLasNoticias() {
-    console.log("Sincronizando con C5N...");
-    const resultados = await Promise.all(seccionesRSS.map(s => fetchUltimaDeSeccion(s)));
-    noticiasFogon = resultados.filter(n => n !== null);
-
-    if (noticiasFogon.length > 0) {
-        indexNoticia = 0;
-        cicloNoticias();
-    } else {
-        // Si todo falla, reintentar en 10 segundos
-        setTimeout(cargarTodasLasNoticias, 10000);
+        console.error("Error al conectar con el puente de Google");
+        setTimeout(cargarNoticias, 10000); // Reintento
     }
 }
 
 function cicloNoticias() {
     const data = noticiasFogon[indexNoticia];
-    newsSection.innerText = data.seccion;
+    newsSection.innerText = data.seccion.replace('-', ' ');
     
     const primeraVez = data.contenido.indexOf(':');
     const titulo = data.contenido.substring(0, primeraVez).trim();
@@ -398,37 +339,31 @@ function cicloNoticias() {
 
     newsTicker.innerHTML = `<span class="ticker-title">${titulo}:</span>&nbsp;<span class="ticker-desc">${descripcion}</span>`;
 
+    // Lógica de velocidad precalculada
     const largoTexto = newsTicker.scrollWidth;
-    const anchoContenedor = newsWrapper.offsetWidth; // Calculamos el ancho real
     const velocidadPxSeg = 120; 
-    const distanciaTotal = largoTexto + 100; // Suficiente para salir de cuadro
-    const duracionVuelta = distanciaTotal / velocidadPxSeg;
+    const duracion = (largoTexto + 600) / velocidadPxSeg;
 
-    // Reset
     newsTicker.style.transition = 'none';
     newsTicker.style.transform = 'translateX(0)';
-
     newsWrapper.classList.add('news-active');
 
     setTimeout(() => {
-        // Iniciamos la traslación suave
-        newsTicker.style.transition = `transform ${duracionVuelta}s linear`;
-        newsTicker.style.transform = `translateX(-${distanciaTotal}px)`;
+        newsTicker.style.transition = `transform ${duracion}s linear`;
+        newsTicker.style.transform = `translateX(-${largoTexto + 100}px)`;
 
         setTimeout(() => {
             newsWrapper.classList.remove('news-active');
-            
             setTimeout(() => {
                 indexNoticia++;
                 if (indexNoticia >= noticiasFogon.length) {
-                    cargarTodasLasNoticias(); 
+                    cargarNoticias(); // Refresh total al terminar la vuelta
                 } else {
-                    setTimeout(cicloNoticias, DELAY_ENTRE_NOTICIAS);
+                    setTimeout(cicloNoticias, 5000);
                 }
             }, 800);
-        }, (duracionVuelta * 1000) + 100); 
-
-    }, 1000); // Un segundo de pausa para que se lea el inicio antes de arrancar
+        }, (duracion * 1000));
+    }, 1000);
 }
 
-window.addEventListener('load', cargarTodasLasNoticias);
+window.addEventListener('load', cargarNoticias);
