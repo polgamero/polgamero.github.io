@@ -125,6 +125,10 @@ width:150px;
     background-color: #000; /* Fondo negro por si el video tarda en cargar */
 }
 
+#bgVideo {
+    filter: saturate(1.6) brightness(0.9) contrast(1.1);
+}
+
 .video-background {
     position: fixed;
     top: 0;
