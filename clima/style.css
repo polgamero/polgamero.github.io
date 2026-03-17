@@ -366,6 +366,7 @@ animation:spin .8s linear infinite;
 
 /* --- RECUADRO DE SECCIÓN (POLÍTICA, SOCIEDAD, ETC) --- */
 #newsSection {
+    font-weight: 900;
     background: rgba(255, 255, 255, 0.2);
     color: #fff;
     padding: 0 15px;
