@@ -309,10 +309,6 @@ window.addEventListener('load', mostrarLogoPrincipal);
 
 // NOTI FOGON
 
-const rssUrl = "https://www.c5n.com/rss/pages/ultimas-noticias.xml";
-// Usamos este conversor gratuito para evitar el error de CORS
-const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
-
 const seccionesRSS = [
     { nombre: "AHORA", url: "https://www.c5n.com/rss/pages/ultimas-noticias.xml" },
     { nombre: "POLÍTICA", url: "https://www.c5n.com/rss/pages/politica.xml" },
@@ -327,18 +323,17 @@ const newsWrapper = document.getElementById('newsWrapper');
 const newsTicker = document.getElementById('newsTicker');
 const newsSection = document.getElementById('newsSection');
 
-let noticiasFogón = [];
+let noticiasFogon = [];
 let indexNoticia = 0;
-const DELAY_ENTRE_NOTICIAS = 5000;
+const DELAY_ENTRE_NOTICIAS = 5000; // 5 segundos para tus pruebas
 
-// Función para obtener la primera noticia de un RSS específico
 async function fetchUltimaDeSeccion(seccion) {
     const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(seccion.url)}&t=${new Date().getTime()}`;
     try {
         const res = await fetch(proxyUrl);
         const data = await res.json();
         if (data.status === "ok" && data.items.length > 0) {
-            const item = data.items[0]; // Tomamos solo la primera (la más nueva)
+            const item = data.items[0];
             let desc = item.description.replace(/<[^>]*>/g, '').trim();
             return {
                 seccion: seccion.nombre,
@@ -346,58 +341,55 @@ async function fetchUltimaDeSeccion(seccion) {
             };
         }
     } catch (e) {
-        console.error(`Error en sección ${seccion.nombre}:`, e);
         return null;
     }
 }
 
-// Carga todas las secciones en paralelo
 async function cargarTodasLasNoticias() {
-    console.log("Actualizando parrilla de noticias...");
-    // Ejecutamos todos los pedidos al mismo tiempo
+    console.log("Actualizando noticias de C5N...");
     const resultados = await Promise.all(seccionesRSS.map(s => fetchUltimaDeSeccion(s)));
-    
-    // Filtramos las que hayan fallado y actualizamos el array global
-    noticiasFogón = resultados.filter(n => n !== null);
+    noticiasFogon = resultados.filter(n => n !== null);
 
-    if (noticiasFogón.length > 0) {
-        indexNoticia = 0; // Reiniciamos el puntero
+    if (noticiasFogon.length > 0) {
+        indexNoticia = 0;
         cicloNoticias();
     }
 }
 
 function cicloNoticias() {
-    const data = noticiasFogón[indexNoticia];
+    const data = noticiasFogon[indexNoticia];
     
     newsSection.innerText = data.seccion;
-    // Duplicamos para el loop fluido
-    newsTicker.innerText = data.contenido + "  •  " + data.contenido; 
+    // Agregamos mucho espacio al final para que no se pegue el inicio con el fin
+    newsTicker.innerText = data.contenido + "          •          " + data.contenido; 
 
     newsWrapper.classList.add('news-active');
 
     setTimeout(() => {
-        newsTicker.classList.add('marquee-anim');
+        // Reiniciamos la animación (limpiamos por si acaso)
+        newsTicker.style.animation = 'none';
+        newsTicker.offsetHeight; // Truco para forzar reflow
+        
+        // Aplicamos el scroll suave: 25 segundos para recorrer el texto largo
+        newsTicker.style.animation = 'marqueeScroll 25s linear infinite';
 
-        // Tiempo en pantalla (18s por lo largo del texto)
+        // Mantenemos la noticia 20 segundos en pantalla
         setTimeout(() => {
             newsWrapper.classList.remove('news-active');
             
             setTimeout(() => {
-                newsTicker.classList.remove('marquee-anim');
-                
+                newsTicker.style.animation = 'none';
                 indexNoticia++;
 
-                // Si terminamos la vuelta de todas las secciones, REFRESH TOTAL
-                if (indexNoticia >= noticiasFogón.length) {
-                    setTimeout(cargarTodasLasNoticias, 1000); 
+                if (indexNoticia >= noticiasFogon.length) {
+                    cargarTodasLasNoticias(); 
                 } else {
                     setTimeout(cicloNoticias, DELAY_ENTRE_NOTICIAS);
                 }
-                
-            }, 800); // Espera cierre de box
-        }, 18000); 
+            }, 800);
+        }, 20000); 
 
-    }, 800); // Espera apertura de box
+    }, 800);
 }
 
 window.addEventListener('load', cargarTodasLasNoticias);
