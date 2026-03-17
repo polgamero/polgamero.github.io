@@ -114,6 +114,17 @@ width:150px;
 
 /* VIDEO BACKGROUND */
 
+#bgVideo {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover; /* Clave: hace que el video llene la pantalla sin estirarse */
+    z-index: -2;       /* Detrás de los logos y el clima */
+    background-color: #000; /* Fondo negro por si el video tarda en cargar */
+}
+
 .video-background {
     position: fixed;
     top: 0;
