@@ -309,9 +309,9 @@ window.addEventListener('load', mostrarLogoPrincipal);
 
 // NOTI FOGON
 
-// const rssUrl = "https://www.c5n.com/rss/pages/ultimas-noticias.xml";
+const rssUrl = "https://www.c5n.com/rss/pages/ultimas-noticias.xml";
 // Usamos este conversor gratuito para evitar el error de CORS
-const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fwww.c5n.com%2Frss%2Fpages%2Fultimas-noticias.xml`;
+const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
 
 const newsWrapper = document.getElementById('newsWrapper');
 const newsTicker = document.getElementById('newsTicker');
