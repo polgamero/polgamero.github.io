@@ -327,20 +327,36 @@ let noticiasFogon = [];
 let indexNoticia = 0;
 const DELAY_ENTRE_NOTICIAS = 5000; // 5 segundos para tus pruebas
 
+// Función para obtener la noticia real sin caché
 async function fetchUltimaDeSeccion(seccion) {
-    const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(seccion.url)}&t=${new Date().getTime()}`;
+    // Usamos allorigins para saltar el CORS y le agregamos un nro random al final para romper cualquier caché
+    const randomSalt = Math.random();
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(seccion.url + "?v=" + randomSalt)}`;
+    
     try {
         const res = await fetch(proxyUrl);
         const data = await res.json();
-        if (data.status === "ok" && data.items.length > 0) {
-            const item = data.items[0];
-            let desc = item.description.replace(/<[^>]*>/g, '').trim();
+        
+        // AllOrigins devuelve el XML como un string en data.contents
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(data.contents, "text/xml");
+        
+        // Buscamos el primer <item>
+        const item = xmlDoc.querySelector("item");
+        if (item) {
+            const titulo = item.querySelector("title").textContent;
+            let desc = item.querySelector("description").textContent;
+            
+            // Limpiamos HTML de la descripción
+            desc = desc.replace(/<[^>]*>/g, '').trim();
+            
             return {
                 seccion: seccion.nombre,
-                contenido: `${item.title.toUpperCase()}: ${desc.toUpperCase()}`
+                contenido: `${titulo.toUpperCase()}: ${desc.toUpperCase()}`
             };
         }
     } catch (e) {
+        console.error(`Error real en sección ${seccion.nombre}:`, e);
         return null;
     }
 }
@@ -374,11 +390,9 @@ function cicloNoticias() {
     
     // VELOCIDAD CONSTANTE: 120 píxeles por segundo
     const velocidadPxSeg = 120; 
-    
-    // Distancia total: el texto tiene que recorrer su propio largo + el ancho del box para desaparecer
-    const distanciaTotal = largoTexto + anchoContenedor;
+    const distanciaTotal = largoTexto + 50; // Solo lo suficiente para que salga de cuadro
     const duracionVuelta = distanciaTotal / velocidadPxSeg;
-
+    
     // Reset de posición
     newsTicker.style.animation = 'none';
     newsTicker.style.transform = 'translateX(0)';
@@ -394,17 +408,17 @@ function cicloNoticias() {
         // El banner se cierra apenas termina la transición
         setTimeout(() => {
             newsWrapper.classList.remove('news-active');
-            
+            // El delay para la próxima noticia se cuenta desde que se cierra el banner
             setTimeout(() => {
                 indexNoticia++;
-                if (indexNoticia >= noticiasFogon.length) {
-                    cargarTodasLasNoticias(); 
-                } else {
-                    setTimeout(cicloNoticias, DELAY_ENTRE_NOTICIAS);
-                }
+                     if (indexNoticia >= noticiasFogon.length) {
+                            cargarTodasLasNoticias(); 
+                        } else {
+                            setTimeout(cicloNoticias, DELAY_ENTRE_NOTICIAS);
+                        }
             }, 800);
-        }, (duracionVuelta * 1000) + 200); // Solo 200ms de gracia, no más "tiempo muerto"
-
+        }, (duracionVuelta * 1000)); // Cierre inmediato al terminar el texto
+        
     }, 800); 
 }
 
