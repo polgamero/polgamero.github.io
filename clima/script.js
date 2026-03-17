@@ -97,7 +97,7 @@ return night ? "🌙" : "☀️";
 }
 
 if(condition.includes("Cloud")){
-return night ? "🌙☁️" : "⛅";
+return night ? "☁️" : "⛅";
 }
 
 if(condition.includes("Rain")){
