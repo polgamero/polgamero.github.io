@@ -306,3 +306,50 @@ function mostrarLogoIniciales() {
 
 // Iniciar el ciclo cuando cargue la página
 window.addEventListener('load', mostrarLogoPrincipal);
+
+// NOTI FOGON
+
+const newsWrapper = document.getElementById('newsWrapper');
+const newsTicker = document.getElementById('newsTicker');
+const delayEntreNoticias = 30000; // 30 segundos
+
+// Lista de noticias (puedes reemplazar esto por un fetch a una API real)
+const noticias = [
+    "Bienvenidos a El Fogón 2026 - El streaming empieza ahora",
+    "Somos Hormigas: El nuevo paradigma del infotainment en Argentina",
+    "Clima en Buenos Aires: 29 grados y cielo despejado para hoy",
+    "Producción local: El Fogón rompe récords de audiencia en marzo"
+];
+
+let indexNoticia = 0;
+
+function cicloNoticias() {
+    // 1. Cargar el texto
+    newsTicker.innerText = noticias[indexNoticia];
+    
+    // 2. Abrir el box y mostrar label
+    newsWrapper.classList.add('news-active');
+
+    // 3. Iniciar la marquesina después de que abra el box
+    setTimeout(() => {
+        newsTicker.classList.add('marquee-anim');
+        
+        // 4. Duración de la marquesina (aprox 15 segundos para 2 vueltas)
+        setTimeout(() => {
+            // 5. Cerrar todo (Animación a la inversa)
+            newsTicker.classList.remove('marquee-anim');
+            newsWrapper.classList.remove('news-active');
+            
+            // 6. Preparar siguiente noticia y setear el delay de 30s
+            indexNoticia = (indexNoticia + 1) % noticias.length;
+            setTimeout(cicloNoticias, delayEntreNoticias);
+            
+        }, 15000); 
+
+    }, 800); // Espera a que el rectángulo se despliegue
+}
+
+// Iniciar cuando cargue
+window.addEventListener('load', () => {
+    setTimeout(cicloNoticias, 5000); // Primer inicio a los 5 segundos
+});
