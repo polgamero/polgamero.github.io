@@ -313,6 +313,11 @@ animation:spin .8s linear infinite;
 
 /* NEWs NOTI FOGON */
 
+#newsBox, #newsLabel {
+    /* Ajustá este valor (ej: 10px o 12px) para que sea igual al de tu Clima/Reloj */
+    border-radius: 12px; 
+}
+
 /* --- CONTENEDOR PRINCIPAL (ARRIBA DERECHA) --- */
 #newsWrapper {
     position: absolute;
@@ -340,10 +345,10 @@ animation:spin .8s linear infinite;
 }
 
 
-/* --- RECTÁNGULO DE CRISTAL (EL BOX) --- */
+/* El Box de la noticia */
 #newsBox {
     width: 0;
-    height: 38px; /* Altura más estilizada */
+    height: 38px;
     background: rgba(255, 255, 255, 0.12);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -367,7 +372,6 @@ animation:spin .8s linear infinite;
 /* --- RECUADRO DE SECCIÓN (POLÍTICA, SOCIEDAD, ETC) --- */
 
 #newsSection {
-    /* Efecto Glass también para la sección */
     background: rgba(230, 0, 0, 0.35); 
     backdrop-filter: blur(5px);
     color: white;
@@ -375,14 +379,27 @@ animation:spin .8s linear infinite;
     height: 100%;
     display: flex;
     align-items: center;
-    font-size: 13px; /* Fuente un poco más chica para la nueva altura */
+    font-size: 13px;
     font-weight: 900;
     letter-spacing: 1px;
     border-right: 1px solid rgba(255, 255, 255, 0.2);
     white-space: nowrap;
+    border-radius: 12px 0 0 12px; /* Redondeado solo a la izquierda */
 }
 
 /* --- CONTENEDOR DEL TEXTO QUE SCROLLEA --- */
+
+/* Estilos para diferenciar Título de Descripción */
+.ticker-title {
+    font-weight: 900; /* Más pesado */
+    color: #fff;
+}
+
+.ticker-desc {
+    font-weight: 400; /* Más liviano */
+    color: rgba(255, 255, 255, 0.9);
+}
+
 #tickerContainer {
     flex-grow: 1;
     overflow: hidden;
@@ -393,11 +410,11 @@ animation:spin .8s linear infinite;
 #newsTicker {
     white-space: nowrap;
     display: inline-block;
-    color: white;
     font-size: 17px;
-    line-height: 38px; /* Alineación perfecta con la nueva altura */
+    line-height: 38px;
     text-transform: uppercase;
-    padding-left: 50px; /* Margen inicial para que no pegue a la sección */
+    /* Eliminamos el padding-left de 100% para controlarlo por JS */
+    padding-left: 20px; 
 }
 
 /* --- ANIMACIÓN MARQUESINA --- */
@@ -408,10 +425,9 @@ animation:spin .8s linear infinite;
 
 @keyframes marqueeScroll {
     0% {
-        transform: translateX(0);
+        transform: translateX(0); /* Empieza visible al lado de la sección */
     }
     100% {
-        /* Scrollea hacia la izquierda */
-        transform: translateX(-100%);
+        transform: translateX(-110%); /* Desaparece completamente a la izquierda */
     }
 }
