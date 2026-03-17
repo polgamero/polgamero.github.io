@@ -313,3 +313,65 @@ animation:spin .8s linear infinite;
 100%{ transform:rotate(360deg) }
 
 }
+
+/* NEWs NOTI FOGON */
+
+#newsWrapper {
+    position: absolute;
+    top: 40px;
+    right: 40px; /* Compensamos el margen del logo */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    z-index: 20;
+    font-family: 'Bebas Neue', sans-serif;
+}
+
+/* Etiqueta chiquita estática */
+#newsLabel {
+    background: #e60000; /* Rojo Fogón */
+    color: white;
+    padding: 2px 8px;
+    font-size: 14px;
+    letter-spacing: 1px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.5s ease;
+    margin-bottom: 4px;
+}
+
+/* El rectángulo de cristal */
+#newsBox {
+    width: 0px; /* Empieza cerrado */
+    height: 40px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    transition: width 0.8s cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+/* El texto de la marquesina */
+#newsTicker {
+    white-space: nowrap;
+    color: white;
+    font-size: 20px;
+    padding-left: 100%; /* Empieza fuera del box */
+    text-transform: uppercase;
+}
+
+/* Clases de animación que controlará JS */
+.news-active #newsBox { width: 450px; }
+.news-active #newsLabel { opacity: 1; transform: translateY(0); }
+
+.marquee-anim {
+    animation: marqueeScroll 12s linear infinite;
+}
+
+@keyframes marqueeScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-200%); } /* Ajusta según el largo de la frase */
+}
