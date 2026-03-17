@@ -47,12 +47,8 @@ width:150px;
     
     background-color: rgba(229, 229, 229, 0.1); /* Igual que las otras boxes */
     
-    /**border: 1px solid rgba(255, 255, 255, 0.2);*/
-    filter: drop-shadow(1px 0px 0px white) 
-            drop-shadow(-1px 0px 0px white) 
-            drop-shadow(0px 1px 0px white) 
-            drop-shadow(0px -1px 0px white);
-    
+    border: 1px solid rgba(255, 255, 255, 0.2);
+   
     /* El truco del blur */
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px); /* Para compatibilidad en algunos navegadores */
