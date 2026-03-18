@@ -34,8 +34,8 @@ width:200px;
 /* ESTILOS DEL OCTÓGONO BACKGROUND */
 #octogonoBg {
     position: absolute;
-    width: 96px;
-    height: 96px;
+    width: 120px;
+    height: 120px;
     
     /* Centrado perfecto dentro de #logoContainer */
     top: 50%;
