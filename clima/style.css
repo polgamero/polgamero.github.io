@@ -45,7 +45,7 @@ width:200px;
     /* Esta es la magia: crea la forma de octógono */
     clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
     
-    background-color: rgba(229, 229, 229, 0.1); /* Igual que las otras boxes */
+    background-color: rgba(189, 189, 189, 0.3); /* Igual que las otras boxes */
     
     border: 1px solid rgba(255, 255, 255, 0.2);
    
@@ -165,7 +165,7 @@ width:200px;
     height: 52px;
     
     /* Cambiamos el color sólido por uno con transparencia (RGBA) */
-    background: rgba(229, 229, 229, 0.1); 
+    background: rgba(189, 189, 189, 0.3); 
     
     /* El truco del blur */
     backdrop-filter: blur(10px);
@@ -193,7 +193,7 @@ width:200px;
     color: white;
     
     /* Aplicamos lo mismo aquí */
-    background: rgba(229, 229, 229, 0.3);
+    background: rgba(189, 189, 189, 0.3);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 
@@ -234,7 +234,7 @@ max-width:185px;
 
 #weatherIcon{
 
-width:40px;
+width:30px;
 text-align:center;
 font-size:22px;
 height:28px;
@@ -351,7 +351,7 @@ animation:spin .8s linear infinite;
     display: flex;
     align-items: center; /* Centrado vertical real */
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(189, 189, 189, 0.3);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.25);
@@ -374,7 +374,7 @@ animation:spin .8s linear infinite;
 /* --- RECUADRO DE SECCIÓN (POLÍTICA, SOCIEDAD, ETC) --- */
 
 #newsSection {
-    background: rgba(230, 0, 0, 0.35); 
+    background: rgba(230, 0, 0, 0.50); 
     backdrop-filter: blur(5px);
     color: white;
     padding: 0 12px;
