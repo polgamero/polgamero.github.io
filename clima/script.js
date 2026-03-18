@@ -318,20 +318,28 @@ const newsSection = document.getElementById('newsSection');
 let noticiasFogon = [];
 let indexNoticia = 0;
 
-async function cargarNoticias() {
+async function cargarNoticias(esReinicio = false) {
     try {
         const res = await fetch(MI_URL_GOOGLE);
-        noticiasFogon = await res.json();
-        if (noticiasFogon.length > 0) cicloNoticias();
+        const data = await res.json();
+        
+        if (data && data.length > 0) {
+            noticiasFogon = data;
+            indexNoticia = 0;
+            // Solo disparamos el ciclo si es la primera vez o si venimos de un refresh
+            cicloNoticias();
+        }
     } catch (e) {
-        console.error("Error al conectar con el puente de Google");
-        setTimeout(cargarNoticias, 10000); // Reintento
+        console.error("Error Puente Google, reintentando...");
+        setTimeout(() => cargarNoticias(true), 10000);
     }
 }
 
 function cicloNoticias() {
-    const data = noticiasFogon[indexNoticia];
-    newsSection.innerText = data.seccion.replace('-', ' ');
+    if (noticiasFogon.length === 0) return;
+    
+     const data = noticiasFogon[indexNoticia];
+    newsSection.innerText = data.seccion;
     
     const primeraVez = data.contenido.indexOf(':');
     const titulo = data.contenido.substring(0, primeraVez).trim();
@@ -341,8 +349,8 @@ function cicloNoticias() {
 
     // Lógica de velocidad precalculada
     const largoTexto = newsTicker.scrollWidth;
-    const velocidadPxSeg = 120; 
-    const duracion = (largoTexto + 600) / velocidadPxSeg;
+    const velocidad = 120; 
+    const duracion = (largoTexto + 600) / velocidad;
 
     newsTicker.style.transition = 'none';
     newsTicker.style.transform = 'translateX(0)';
@@ -357,13 +365,22 @@ function cicloNoticias() {
             setTimeout(() => {
                 indexNoticia++;
                 if (indexNoticia >= noticiasFogon.length) {
-                    cargarNoticias(); // Refresh total al terminar la vuelta
+                    cargarNoticias(true); // Refresh total al terminar la vuelta
                 } else {
                     setTimeout(cicloNoticias, 5000);
                 }
             }, 800);
-        }, (duracion * 1000));
-    }, 1000);
+        }, (duracion * 1000) + 200);
+    }, 1200);
 }
 
-window.addEventListener('load', cargarNoticias);
+function actualizarReloj() {
+    const ahora = new Date();
+    document.getElementById('hora').innerText = ahora.toLocaleTimeString('es-AR');
+}
+
+setInterval(actualizarReloj, 1000);
+window.addEventListener('load', () => {
+    actualizarReloj();
+    cargarNoticias(); // Arranque inicial
+});
