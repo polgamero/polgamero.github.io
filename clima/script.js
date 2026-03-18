@@ -376,7 +376,7 @@ function cicloNoticias() {
 
 function actualizarReloj() {
     const ahora = new Date();
-    document.getElementById('hora').innerText = ahora.toLocaleTimeString('es-AR');
+    document.getElementById('clock').innerText = ahora.toLocaleTimeString('es-AR');
 }
 
 setInterval(actualizarReloj, 1000);
