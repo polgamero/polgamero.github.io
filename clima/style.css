@@ -193,7 +193,7 @@ width:200px;
     color: white;
     
     /* Aplicamos lo mismo aquí */
-    background: rgba(229, 229, 229, 0.1);
+    background: rgba(229, 229, 229, 0.3);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 
@@ -228,13 +228,13 @@ display:none;
 align-items:center;
 gap:4px;
 
-max-width:170px;
+max-width:185px;
 
 }
 
 #weatherIcon{
 
-width:22px;
+width:40px;
 text-align:center;
 font-size:22px;
 height:28px;
@@ -295,8 +295,8 @@ animation:scrollCity 8s linear infinite;
 width:18px;
 height:18px;
 
-border:2px solid rgba(229, 229, 229, 0.2);
-border-top:2px solid rgba(219, 216, 216, 0.8);
+border:4px solid rgba(229, 229, 229, 0.2);
+border-top:4px solid rgba(219, 216, 216, 0.8);
 
 border-radius:50%;
 
@@ -347,11 +347,11 @@ animation:spin .8s linear infinite;
 /* El Box de la noticia */
 #newsBox {
     width: 0px; 
-    height: 46px;
+    height: 52px;
     display: flex;
     align-items: center; /* Centrado vertical real */
     overflow: hidden;
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.3);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.25);
@@ -363,7 +363,7 @@ animation:spin .8s linear infinite;
 
 /* --- ESTADO ACTIVO (CUANDO JS AGREGA LA CLASE) --- */
 .news-active #newsBox {
-    width: 550px; /* Ancho suficiente para leer bien */
+    width: 700px; /* Ancho suficiente para leer bien */
 }
 
 .news-active #newsLabel {
@@ -381,7 +381,7 @@ animation:spin .8s linear infinite;
     height: 100%;
     display: flex;
     align-items: center;
-    font-size: 16px;
+    font-size: 22px;
     font-weight: 900;
     letter-spacing: 1px;
     border-right: 1px solid rgba(255, 255, 255, 0.2);
@@ -414,7 +414,7 @@ animation:spin .8s linear infinite;
     white-space: nowrap;
     display: flex; /* Cambiamos a flex */
     align-items: center; /* Centrado vertical del texto interno */
-    font-size: 20px;
+    font-size: 24px;
     color: white;
     text-transform: uppercase;
     padding-left: 20px;
