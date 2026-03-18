@@ -349,6 +349,8 @@ function cicloNoticias() {
     newsWrapper.classList.add('news-active');
 
     setTimeout(() => {
+        newsTicker.style.transition = `transform 1s linear`;
+        newsTicker.style.transform = `translateX(300px)`;
         newsTicker.style.transition = `transform ${duracion}s linear`;
         newsTicker.style.transform = `translateX(-${largoTexto + 300}px)`;
 
