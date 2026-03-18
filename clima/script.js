@@ -358,7 +358,7 @@ function cicloNoticias() {
 
     setTimeout(() => {
         newsTicker.style.transition = `transform ${duracion}s linear`;
-        newsTicker.style.transform = `translateX(-${largoTexto + 300}px)`;
+        newsTicker.style.transform = `translateX(-${largoTexto + 100}px)`;
 
         setTimeout(() => {
             newsWrapper.classList.remove('news-active');
@@ -376,7 +376,7 @@ function cicloNoticias() {
 
 function actualizarReloj() {
     const ahora = new Date();
-    document.getElementById('clock').innerText = ahora.toLocaleTimeString('es-AR');
+    document.getElementById('clock').innerText = ahora.toLocaleTimeString('es-AR', { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 setInterval(actualizarReloj, 1000);
