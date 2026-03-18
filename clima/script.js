@@ -180,8 +180,8 @@ requestAnimationFrame(()=>{
 
 if(track.scrollWidth > cityContainer.clientWidth){
 
-const text2 = text1.cloneNode(true);
-track.appendChild(text2);
+//const text2 = text1.cloneNode(true);
+//track.appendChild(text2);
 
 track.classList.add("scrollTrack");
 
