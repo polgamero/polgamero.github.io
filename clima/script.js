@@ -337,7 +337,7 @@ function cicloNoticias() {
     const titulo = data.contenido.substring(0, primeraVez).trim();
     const descripcion = data.contenido.substring(primeraVez + 1).trim();
 
-    newsTicker.innerHTML = `<span class="ticker-title">${titulo}:</span>&nbsp;<span class="ticker-desc">${descripcion}</span>`;
+    newsTicker.innerHTML = `&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ticker-title">${titulo}:</span>&nbsp;<span class="ticker-desc">${descripcion}</span>`;
 
     // Lógica de velocidad precalculada
     const largoTexto = newsTicker.scrollWidth;
@@ -349,8 +349,6 @@ function cicloNoticias() {
     newsWrapper.classList.add('news-active');
 
     setTimeout(() => {
-        newsTicker.style.transition = `transform 1s linear`;
-        newsTicker.style.transform = `translateX(300px)`;
         newsTicker.style.transition = `transform ${duracion}s linear`;
         newsTicker.style.transform = `translateX(-${largoTexto + 300}px)`;
 
