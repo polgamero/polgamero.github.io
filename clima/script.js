@@ -350,7 +350,7 @@ function cicloNoticias() {
 
     setTimeout(() => {
         newsTicker.style.transition = `transform ${duracion}s linear`;
-        newsTicker.style.transform = `translateX(-${largoTexto + 100}px)`;
+        newsTicker.style.transform = `translateX(-${largoTexto + 300}px)`;
 
         setTimeout(() => {
             newsWrapper.classList.remove('news-active');
