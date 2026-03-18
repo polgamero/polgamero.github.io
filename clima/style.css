@@ -13,7 +13,7 @@ background: rgb(205, 50, 50);
 position:absolute;
 bottom:40px;
 left:40px;
-width:150px;
+width:200px;
 }
 
 /* BLOCK DE LOGO */
@@ -22,8 +22,8 @@ width:150px;
     position: absolute;
     top: 40px;
     left: 40px;
-    width: 135px; /* Contenedor general */
-    height: 135px;
+    width: 145px; /* Contenedor general */
+    height: 145px;
     perspective: 1200px;
     z-index: 10;
     display: flex;
@@ -34,8 +34,8 @@ width:150px;
 /* ESTILOS DEL OCTÓGONO BACKGROUND */
 #octogonoBg {
     position: absolute;
-    width: 80px;
-    height: 80px;
+    width: 96px;
+    height: 96px;
     
     /* Centrado perfecto dentro de #logoContainer */
     top: 50%;
@@ -179,7 +179,7 @@ width:150px;
     /* Un borde finito sutil ayuda a que parezca vidrio */
     border: 1px solid rgba(255, 255, 255, 0.2);
 
-    font-size: 36px;
+    font-size: 40px;
     color: white;
     font-weight: bold;
     margin-bottom: 6px;
@@ -228,7 +228,7 @@ display:none;
 align-items:center;
 gap:4px;
 
-max-width:140px;
+max-width:170px;
 
 }
 
@@ -242,7 +242,7 @@ height:28px;
 
 #temperature{
 
-font-size:16px;
+font-size:22px;
 font-weight:bold;
 
 }
@@ -271,7 +271,7 @@ white-space:nowrap;
 
 .cityText{
 
-font-size:13px;
+font-size:20px;
 
 }
 
