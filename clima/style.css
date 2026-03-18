@@ -22,8 +22,8 @@ width:150px;
     position: absolute;
     top: 40px;
     left: 40px;
-    width: 100px; /* Contenedor general */
-    height: 100px;
+    width: 135px; /* Contenedor general */
+    height: 135px;
     perspective: 1200px;
     z-index: 10;
     display: flex;
@@ -161,8 +161,8 @@ width:150px;
 /* CLOCKBOX */
 
 .clockBox {
-    width: 150px;
-    height: 46px;
+    width: 200px;
+    height: 52px;
     
     /* Cambiamos el color sólido por uno con transparencia (RGBA) */
     background: rgba(229, 229, 229, 0.1); 
@@ -179,7 +179,7 @@ width:150px;
     /* Un borde finito sutil ayuda a que parezca vidrio */
     border: 1px solid rgba(255, 255, 255, 0.2);
 
-    font-size: 30px;
+    font-size: 36px;
     color: white;
     font-weight: bold;
     margin-bottom: 6px;
@@ -188,8 +188,8 @@ width:150px;
 /* WEATHER BOX */
 
 .weatherBox {
-    width: 150px;
-    height: 36px;
+    width: 200px;
+    height: 52px;
     color: white;
     
     /* Aplicamos lo mismo aquí */
@@ -236,7 +236,7 @@ max-width:140px;
 
 width:22px;
 text-align:center;
-font-size:18px;
+font-size:22px;
 height:28px;
 }
 
@@ -292,8 +292,8 @@ animation:scrollCity 8s linear infinite;
 
 .loader{
 
-width:16px;
-height:16px;
+width:18px;
+height:18px;
 
 border:2px solid rgba(229, 229, 229, 0.2);
 border-top:2px solid rgba(219, 216, 216, 0.8);
@@ -335,7 +335,7 @@ animation:spin .8s linear infinite;
     background: #e60000; /* El mismo rojo del octógono */
     color: white;
     padding: 2px 12px;
-    font-size: 14px;
+    font-size: 18px;
     letter-spacing: 1.5px;
     opacity: 0;
     transform: translateY(10px);
@@ -347,7 +347,7 @@ animation:spin .8s linear infinite;
 /* El Box de la noticia */
 #newsBox {
     width: 0px; 
-    height: 38px;
+    height: 46px;
     display: flex;
     align-items: center; /* Centrado vertical real */
     overflow: hidden;
@@ -363,7 +363,7 @@ animation:spin .8s linear infinite;
 
 /* --- ESTADO ACTIVO (CUANDO JS AGREGA LA CLASE) --- */
 .news-active #newsBox {
-    width: 500px; /* Ancho suficiente para leer bien */
+    width: 550px; /* Ancho suficiente para leer bien */
 }
 
 .news-active #newsLabel {
@@ -381,7 +381,7 @@ animation:spin .8s linear infinite;
     height: 100%;
     display: flex;
     align-items: center;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 900;
     letter-spacing: 1px;
     border-right: 1px solid rgba(255, 255, 255, 0.2);
@@ -414,7 +414,7 @@ animation:spin .8s linear infinite;
     white-space: nowrap;
     display: flex; /* Cambiamos a flex */
     align-items: center; /* Centrado vertical del texto interno */
-    font-size: 17px;
+    font-size: 20px;
     color: white;
     text-transform: uppercase;
     padding-left: 20px;
