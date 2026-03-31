@@ -367,7 +367,7 @@ function cicloNoticias() {
                 if (indexNoticia >= noticiasFogon.length) {
                     cargarNoticias(true); // Refresh total al terminar la vuelta
                 } else {
-                    setTimeout(cicloNoticias, 5000);
+                    setTimeout(cicloNoticias, 10000);
                 }
             }, 800);
         }, (duracion * 1000) + 200);
