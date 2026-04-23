@@ -307,73 +307,6 @@ function mostrarLogoIniciales() {
 // Iniciar el ciclo cuando cargue la página
 window.addEventListener('load', mostrarLogoPrincipal);
 
-// NOTI FOGON
-
-const MI_URL_GOOGLE = "https://script.google.com/macros/s/AKfycbwHW3kNV1Bp3t_tUpy2mSGIaxias7sFLRQc-M8Kc_zWFklu5yhJgO17A6M5tiZ6wD6d/exec";
-
-const newsWrapper = document.getElementById('newsWrapper');
-const newsTicker = document.getElementById('newsTicker');
-const newsSection = document.getElementById('newsSection');
-
-let noticiasFogon = [];
-let indexNoticia = 0;
-
-async function cargarNoticias(esReinicio = false) {
-    try {
-        const res = await fetch(MI_URL_GOOGLE);
-        const data = await res.json();
-        
-        if (data && data.length > 0) {
-            noticiasFogon = data;
-            indexNoticia = 0;
-            // Solo disparamos el ciclo si es la primera vez o si venimos de un refresh
-            cicloNoticias();
-        }
-    } catch (e) {
-        console.error("Error Puente Google, reintentando...");
-        setTimeout(() => cargarNoticias(true), 10000);
-    }
-}
-
-function cicloNoticias() {
-    if (noticiasFogon.length === 0) return;
-    
-     const data = noticiasFogon[indexNoticia];
-    newsSection.innerText = data.seccion;
-    
-    const primeraVez = data.contenido.indexOf(':');
-    const titulo = data.contenido.substring(0, primeraVez).trim();
-    const descripcion = data.contenido.substring(primeraVez + 1).trim();
-
-    newsTicker.innerHTML = `&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ticker-title">${titulo}:</span>&nbsp;<span class="ticker-desc">${descripcion}</span>`;
-
-    // Lógica de velocidad precalculada
-    const largoTexto = newsTicker.scrollWidth;
-    const velocidad = 120; 
-    const duracion = (largoTexto + 600) / velocidad;
-
-    newsTicker.style.transition = 'none';
-    newsTicker.style.transform = 'translateX(0)';
-    newsWrapper.classList.add('news-active');
-
-    setTimeout(() => {
-        newsTicker.style.transition = `transform ${duracion}s linear`;
-        newsTicker.style.transform = `translateX(-${largoTexto + 100}px)`;
-
-        setTimeout(() => {
-            newsWrapper.classList.remove('news-active');
-            setTimeout(() => {
-                indexNoticia++;
-                if (indexNoticia >= noticiasFogon.length) {
-                    cargarNoticias(true); // Refresh total al terminar la vuelta
-                } else {
-                    setTimeout(cicloNoticias, 10000);
-                }
-            }, 800);
-        }, (duracion * 1000) + 200);
-    }, 1200);
-}
-
 function actualizarReloj() {
     const ahora = new Date();
     document.getElementById('clock').innerText = ahora.toLocaleTimeString('es-AR', { hour: "2-digit", minute: "2-digit", hour12: false });
@@ -382,5 +315,4 @@ function actualizarReloj() {
 setInterval(actualizarReloj, 1000);
 window.addEventListener('load', () => {
     actualizarReloj();
-    cargarNoticias(); // Arranque inicial
 });
