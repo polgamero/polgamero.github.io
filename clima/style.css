@@ -12,7 +12,7 @@ background: #000000;
 
 #weatherOverlay{
 position:absolute;
-bottom:25px;
+bottom:23px;
 left:40px;
 width:200px;
 }
