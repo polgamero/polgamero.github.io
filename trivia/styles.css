@@ -15,7 +15,7 @@
 
 body {
     display: grid;
-    grid-template-columns: 80px 1fr 220px 420px;
+    grid-template-columns: 80px 1fr 248px 392px;
     min-height: 100vh;
     background: linear-gradient(135deg, rgb(255, 85, 0) 0%, rgb(255, 120, 50) 100%);
 }
