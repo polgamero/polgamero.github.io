@@ -15,7 +15,7 @@
 
 body {
     display: grid;
-    grid-template-columns: 80px 1fr 300px 250px;
+    grid-template-columns: 80px 1fr 250px 250px;
     min-height: 100vh;
     background: linear-gradient(135deg, rgb(255, 85, 0) 0%, rgb(255, 120, 50) 100%);
 }
@@ -274,7 +274,7 @@ footer img {
 /* Responsive */
 @media (max-width: 1200px) {
     body {
-    grid-template-columns: 80px 1fr 200px 150px;
+    grid-template-columns: 80px 1fr 150px 150px;
     }
 }
 
