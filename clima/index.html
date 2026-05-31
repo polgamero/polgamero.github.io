@@ -8,50 +8,38 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!--<div class="video-background">
-        <video autoplay muted loop playsinline id="bgVideo">
-            <source src="fondoFogon2026.mp4" type="video/mp4">
-            Tu navegador no soporta videos.
-        </video>
-        <iframe src="https://www.youtube.com/embed/mHUkemk6kvs?autoplay=1&mute=1&loop=1&playlist=mHUkemk6kvs&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1" frameborder="0" allow="autoplay; encrypted-media"></iframe>
-    </div>-->
-    
     <div id="logoContainer">
         <div id="octogonoBg"></div>
         <img src="logoFogon2026.png" id="mainLogo" class="logo-3d" alt="Logo">
     </div>
 
-<div id="weatherOverlay">
-
-    <!-- CLOCK -->
-    <div class="clockBox">
-        <span id="clock">00:00</span>
-    </div>
-
-    <!-- WEATHER -->
-    <div class="weatherBox">
-
-        <!-- Loader -->
-        <div id="loader" class="loader"></div>
-
-        <!-- Weather content -->
-        <div id="weatherContent" class="weatherContent">
-
-            <div id="weatherIcon"></div>
-
-            <span id="temperature"></span>
-
-            <span class="divider">|</span>
-
-            <div class="cityContainer"></div>
-
+    <div id="weatherOverlay">
+        <div class="clockBox" id="btnCambiarTexto" title="Clic para cambiar texto del banner">
+            <span id="clock">00:00</span>
         </div>
 
+        <div class="weatherBox" id="btnToggleBanner" title="Clic para mostrar/ocultar banner">
+            <div id="loader" class="loader"></div>
+
+            <div id="weatherContent" class="weatherContent">
+                <div id="weatherIcon"></div>
+                <span id="temperature"></span>
+                <span class="divider">|</span>
+                <div class="cityContainer"></div>
+            </div>
+        </div>
     </div>
 
-</div>
+    <div id="horizontalBanner" class="banner-hidden">
+        <div class="banner-border-dots"></div>
+        <div class="banner-badge">
+            <span>@ELFOGONACUSTICOS</span>
+        </div>
+        <div class="banner-text-container">
+            <span id="bannerText">¡BIENVENIDOS A EL FOGÓN ACÚSTICOS 2026!</span>
+        </div>
+    </div>
 
-<script src="script.js"></script>
-
+    <script src="script.js"></script>
 </body>
 </html>
