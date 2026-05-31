@@ -7,6 +7,8 @@ const API_KEY = "969de0f6ebd36d04b40136010664f449";
 const CITY_ROTATION_INTERVAL = 8000;
 const WEATHER_REFRESH_INTERVAL = 600000;
 
+const FIREBASE_URL = "https://fogon-layout-default-rtdb.firebaseio.com/"; 
+
 // ============================================
 // CITY LIST (capitales provinciales)
 // ============================================
@@ -45,6 +47,9 @@ let weatherData = [];
 let currentCityIndex = -1;
 let firstRender = false;
 
+// Estado local del banner para saber si está abierto o cerrado en esta instancia
+let estadoBannerLocal = false; 
+
 const tempElement = document.getElementById("temperature");
 const iconElement = document.getElementById("weatherIcon");
 const clockElement = document.getElementById("clock");
@@ -66,7 +71,6 @@ function validarAccesoSeguro() {
     if (!pinIngresado) return false;
     
     const control = parseInt(pinIngresado, 10) * 3;
-    
     if (control === 10341) {
         return true;
     } else {
@@ -74,6 +78,60 @@ function validarAccesoSeguro() {
         return false;
     }
 }
+
+// ============================================
+// SINCRONIZACIÓN CON FIREBASE (Control Remoto)
+// ============================================
+
+// Envía el nuevo estado del banner a Firebase
+async function guardarEstadoEnFirebase(visible, texto) {
+    try {
+        await fetch(`${FIREBASE_URL}banner.json`, {
+            method: 'PUT',
+            body: JSON.stringify({ visible: visible, texto: texto })
+        });
+    } catch (error) {
+        console.error("Error al guardar en Firebase:", error);
+    }
+}
+
+// Escucha constantemente los cambios en Firebase (Polling rápido de alta eficiencia)
+async function escucharFirebase() {
+    try {
+        const response = await fetch(`${FIREBASE_URL}banner.json`);
+        const data = await response.json();
+        
+        if (data) {
+            // Sincronizar visibilidad del banner
+            if (data.visible !== estadoBannerLocal) {
+                estadoBannerLocal = data.visible;
+                if (estadoBannerLocal) {
+                    horizontalBanner.classList.remove("banner-hidden");
+                    horizontalBanner.classList.add("banner-visible");
+                } else {
+                    horizontalBanner.classList.remove("banner-visible");
+                    horizontalBanner.classList.add("banner-hidden");
+                }
+            }
+            // Sincronizar texto
+            if (data.texto && bannerText.textContent !== data.texto) {
+                if (horizontalBanner.classList.contains("banner-visible")) {
+                    bannerText.style.opacity = "0";
+                    setTimeout(() => {
+                        bannerText.textContent = data.texto.toUpperCase();
+                        bannerText.style.opacity = "1";
+                    }, 400);
+                } else {
+                    bannerText.textContent = data.texto.toUpperCase();
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Error al leer de Firebase:", error);
+    }
+}
+// OBS y la notebook van a revisar Firebase cada 800ms para reaccionar al toque
+setInterval(escucharFirebase, 800);
 
 // ============================================
 // CLOCK
@@ -177,36 +235,23 @@ setInterval(changeCity, CITY_ROTATION_INTERVAL);
 changeCity();
 
 // ============================================
-// ACCIONES INTERACTIVAS
+// ACCIONES INTERACTIVAS (Modifican Firebase)
 // ============================================
 
-// Alternar Banner
+// Alternar Banner a control remoto
 btnToggleBanner.addEventListener("click", () => {
-    if (validarAccAccess = validarAccesoSeguro()) {
-        if (horizontalBanner.classList.contains("banner-visible")) {
-            horizontalBanner.classList.remove("banner-visible");
-            horizontalBanner.classList.add("banner-hidden");
-        } else {
-            horizontalBanner.classList.remove("banner-hidden");
-            horizontalBanner.classList.add("banner-visible");
-        }
+    if (validarAccesoSeguro()) {
+        const nuevoEstado = !estadoBannerLocal;
+        guardarEstadoEnFirebase(nuevoEstado, bannerText.textContent);
     }
 });
 
-// Cambiar Texto del Banner
+// Cambiar Texto del Banner a control remoto
 btnCambiarTexto.addEventListener("click", () => {
     if (validarAccesoSeguro()) {
         const nuevoTexto = prompt("Ingresá el nuevo texto para el banner:", bannerText.textContent);
         if (nuevoTexto !== null && nuevoTexto.trim() !== "") {
-            if (horizontalBanner.classList.contains("banner-visible")) {
-                bannerText.style.opacity = "0";
-                setTimeout(() => {
-                    bannerText.textContent = nuevoTexto.toUpperCase();
-                    bannerText.style.opacity = "1";
-                }, 400);
-            } else {
-                bannerText.textContent = nuevoTexto.toUpperCase();
-            }
+            guardarEstadoEnFirebase(estadoBannerLocal, nuevoTexto.toUpperCase());
         }
     }
 });
@@ -253,4 +298,5 @@ function mostrarLogoIniciales() {
 window.addEventListener('load', () => {
     actualizarReloj();
     mostrarLogoPrincipal();
+    escucharFirebase(); // Carga el estado inicial guardado
 });
