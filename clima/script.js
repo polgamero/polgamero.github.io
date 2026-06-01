@@ -3,13 +3,12 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { getDatabase, ref, set, onValue } from "firebase/database";
 
 // ============================================
-// CONFIGURACIÓN DE APIS
+// CONFIGURACIÓN DE APIS Y CONSTANTES
 // ============================================
 const OPENWEATHER_API_KEY = "969de0f6ebd36d04b40136010664f449";
 const CITY_ROTATION_INTERVAL = 8000;
 const WEATHER_REFRESH_INTERVAL = 600000;
 
-// ⚠️ REEMPLAZA ESTO CON TUS CREDENCIALES REALES DE CONFIGURACIÓN DE FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyBIXOhkVDYieUy8aeSqdLPGkwJPRYiXoXI",
   authDomain: "fogon-layout.firebaseapp.com",
@@ -20,7 +19,27 @@ const firebaseConfig = {
   appId: "1:918389485844:web:e0ae2bfd0c95d568205201"
 };
 
-// Inicializar Firebase
+// ============================================
+// ELEMENTOS DEL DOM (Movidos arriba para evitar errores de inicialización)
+// ============================================
+const tempElement = document.getElementById("temperature");
+const iconElement = document.getElementById("weatherIcon");
+const clockElement = document.getElementById("clock");
+const cityContainer = document.querySelector(".cityContainer");
+const loader = document.getElementById("loader");
+const weatherContent = document.getElementById("weatherContent");
+
+const horizontalBanner = document.getElementById("horizontalBanner");
+const bannerText = document.getElementById("bannerText");
+const btnToggleBanner = document.getElementById("btnToggleBanner");
+const btnCambiarTexto = document.getElementById("btnCambiarTexto");
+
+const logoImg = document.getElementById('mainLogo');
+const octogono = document.getElementById('octogonoBg');
+
+// ============================================
+// INICIALIZACIÓN DE FIREBASE
+// ============================================
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const database = getDatabase(app);
@@ -31,12 +50,10 @@ const bannerRef = ref(database, 'banner');
 // ============================================
 let usuarioAutenticado = null;
 
-// Si estás en la notebook de control, pasale un parámetro a la URL para identificarte.
-// Ejemplo: https://tuusuario.github.io/overlay/?control=true
+// Parámetro en la URL para la notebook de control. Ejemplo: https://.../?control=true
 const esModoControl = new URLSearchParams(window.location.search).get('control') === 'true';
 
 if (esModoControl) {
-    // Solo la notebook de control intenta iniciar sesión
     signInAnonymously(auth).catch((error) => {
         console.error("Error en autenticación anónima:", error);
     });
@@ -45,8 +62,6 @@ if (esModoControl) {
 onAuthStateChanged(auth, (user) => {
     if (user) {
         usuarioAutenticado = user;
-        // ⚠️ IMPORTANTE: Abrí la consola (F12) en tu notebook de control la primera vez.
-        // Copiá el UID que va a salir acá y pegalo en las REGLAS de tu Firebase.
         console.log("==========================================");
         console.log("TU UID DE CONTROL ES:", user.uid);
         console.log("Poné este ID en las reglas de tu Firebase para bloquear accesos trolleables.");
@@ -57,11 +72,11 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // ============================================
-// ESCUCHA PASIVA NATIVA (Reemplaza al Polling de 800ms)
+// ESCUCHA PASIVA NATIVA (Sin Polling invasivo)
 // ============================================
 let estadoBannerLocal = false;
 
-// Esta función se ejecuta SOLAMENTE cuando hay un cambio real en la base de datos.
+// Esta función se ejecuta de manera pasiva SOLAMENTE cuando hay un cambio real en Firebase.
 onValue(bannerRef, (snapshot) => {
     const data = snapshot.val();
     if (data) {
@@ -76,7 +91,7 @@ onValue(bannerRef, (snapshot) => {
                 horizontalBanner.classList.add("banner-hidden");
             }
         }
-        // Sincronizar texto
+        // Sincronizar texto del banner
         if (data.texto && bannerText.textContent !== data.texto) {
             if (horizontalBanner.classList.contains("banner-visible")) {
                 bannerText.style.opacity = "0";
@@ -91,7 +106,7 @@ onValue(bannerRef, (snapshot) => {
     }
 });
 
-// Enviar datos de forma segura
+// Enviar datos de forma segura a Firebase
 function guardarEstadoEnFirebase(visible, texto) {
     if (!esModoControl || !usuarioAutenticado) {
         alert("No tenés permisos de control en esta instancia o estás esperando autenticación.");
@@ -101,13 +116,13 @@ function guardarEstadoEnFirebase(visible, texto) {
         visible: visible,
         texto: texto
     }).catch((error) => {
-        alert("Firebase rechazó la escritura. ¿Configuraste bien el UID en las Reglas?");
+        alert("Firebase rechazó la escritura. Verificá si pegaste bien el UID en las Reglas.");
         console.error(error);
     });
 }
 
 // ============================================
-// ACCIONES INTERACTIVAS (Sin PIN en código)
+// ACCIONES INTERACTIVAS (Solo ejecutan si esModoControl)
 // ============================================
 btnToggleBanner.addEventListener("click", () => {
     if (esModoControl) {
@@ -126,7 +141,7 @@ btnCambiarTexto.addEventListener("click", () => {
 });
 
 // ============================================
-// CITY LIST (capitales provinciales)
+// CITY LIST (Capitales Provinciales de Argentina)
 // ============================================
 const cities = [
     { name:"Buenos Aires", lat:-34.61, lon:-58.38 }, { name:"La Plata", lat:-34.92, lon:-57.95 },
@@ -144,22 +159,11 @@ const cities = [
 ];
 
 // ============================================
-// VARIABLES Y ELEMENTOS DEL CLIMA / RELOJ
+// RELOJ Y LOGICA DEL CLIMA
 // ============================================
 let weatherData = [];
 let currentCityIndex = -1;
 let firstRender = false;
-
-const tempElement = document.getElementById("temperature");
-const iconElement = document.getElementById("weatherIcon");
-const clockElement = document.getElementById("clock");
-const cityContainer = document.querySelector(".cityContainer");
-const loader = document.getElementById("loader");
-const weatherContent = document.getElementById("weatherContent");
-const horizontalBanner = document.getElementById("horizontalBanner");
-const bannerText = document.getElementById("bannerText");
-const btnToggleBanner = document.getElementById("btnToggleBanner");
-const btnCambiarTexto = document.getElementById("btnCambiarTexto");
 
 function actualizarReloj() {
     const ahora = new Date();
@@ -217,8 +221,10 @@ function setCityText(name){
 
 function changeCity(){
     if(weatherData.length === 0) return;
-    const weatherBox = document.querySelector(".weatherBox");
-    weatherBox.classList.add("fadeOut");
+    weatherBox.classList.add("fadeOut"); // Usa la variable directa del DOM anterior
+
+    const weatherBoxElement = document.querySelector(".weatherBox");
+    weatherBoxElement.classList.add("fadeOut");
 
     setTimeout(()=>{
         currentCityIndex++;
@@ -231,10 +237,10 @@ function changeCity(){
         iconElement.textContent = getIcon(data.condition, night);
         setCityText(data.city);
 
-        weatherBox.classList.remove("fadeOut");
-        weatherBox.classList.add("fadeIn");
+        weatherBoxElement.classList.remove("fadeOut");
+        weatherBoxElement.classList.add("fadeIn");
 
-        setTimeout(()=>{ weatherBox.classList.remove("fadeIn"); },400);
+        setTimeout(()=>{ weatherBoxElement.classList.remove("fadeIn"); },400);
 
         if(!firstRender){
             loader.style.display = "none";
@@ -247,10 +253,8 @@ setInterval(changeCity, CITY_ROTATION_INTERVAL);
 changeCity();
 
 // ============================================
-// LOGOS ANIMATION
+// ANIMACIÓN DE LOGOS ROTATIVOS
 // ============================================
-const logoImg = document.getElementById('mainLogo');
-const octogono = document.getElementById('octogonoBg');
 const LOGO_PRINCIPAL = "logoFogon2026.png";
 const LOGO_INICIALES = "inicialesFogon2026.png";
 
@@ -285,6 +289,7 @@ function mostrarLogoIniciales() {
     }, 3000);
 }
 
+// Inicialización global
 window.addEventListener('load', () => {
     actualizarReloj();
     mostrarLogoPrincipal();
