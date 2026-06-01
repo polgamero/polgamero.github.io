@@ -1,30 +1,25 @@
-/* FUENTE GLOBAL */
+/* ============================================
+   1. CONFIGURACIÓN GLOBAL Y FUENTES
+   ============================================ */
 * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
     font-family: 'Bebas Neue', Arial, Helvetica, sans-serif;
     letter-spacing: 1px;
-    box-sizing: border-box;
 }
 
-body{
-    margin:0;
+body {
     background: #000000;
     overflow: hidden;
+    width: 1920px;
+    height: 1080px;
+    position: relative;
 }
 
-#weatherOverlay{
-    position:absolute;
-    bottom:23px;
-    left:40px;
-    width:200px;
-    z-index: 100;
-}
-
-#btnCambiarTexto, #btnToggleBanner {
-    cursor: pointer;
-    user-select: none;
-}
-
-/* BLOCK DE LOGO */
+/* ============================================
+   2. CONTENEDOR DE LOGOS ROTATIVOS (ANIMACIONES SUAVES)
+   ============================================ */
 #logoContainer {
     position: absolute;
     top: 40px;
@@ -46,239 +41,276 @@ body{
     left: 50%;
     transform: translate(-50%, -50%);
     clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
-    background-color: rgba(189, 189, 189, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    z-index: -1; 
-    transition: opacity 0.8s ease-in-out; 
+    background-color: #CD3232;
     opacity: 0;
-}
-
-.girar-izquierda { animation: girarIzq 10s linear infinite; }
-@keyframes girarIzq {
-    from { transform: translate(-50%, -50%) rotate(0deg); }
-    to { transform: translate(-50%, -50%) rotate(-360deg); }
+    /* Suavizado de entrada/salida del octógono */
+    transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1); 
 }
 
 #mainLogo {
-    position: relative;
-    z-index: 1; 
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+    max-width: 130px;
+    max-height: 130px;
     opacity: 0;
-    transition: opacity 0.8s ease-in-out; 
+    object-fit: contain;
+    /* Suavizado de entrada/salida de la imagen del logo */
+    transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1); 
 }
 
+/* ANIMACIONES DE LOGO (Lentas y orgánicas) */
 .logo-3d {
-    animation: anim3D 3s forwards ease-in-out;
-    transform-style: preserve-3d;
-}
-@keyframes anim3D {
-    0% { transform: rotateY(0deg); filter: brightness(1); }
-    50% { transform: rotateY(180deg); filter: brightness(1.8) drop-shadow(0 0 20px white); }
-    100% { transform: rotateY(360deg); filter: brightness(1); }
+    animation: entrada3D 2.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
-.logo-elastic { animation: animElastic 3s forwards ease-out; }
-@keyframes animElastic {
-    0% { transform: scale(1); filter: drop-shadow(0 0 0px white); }
-    30% { transform: scale(1.2) rotate(-5deg); filter: drop-shadow(0 0 20px white); }
-    50% { transform: scale(0.9) rotate(5deg); }
-    70% { transform: scale(1.1) rotate(-3deg); }
-    100% { transform: scale(1); filter: drop-shadow(0 0 0px white); }
+.logo-elastic {
+    animation: entradaSuave 2.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
-/* VIDEO BACKGROUND */
-#bgVideo {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    object-fit: cover;
-    z-index: -2;
-    background-color: #000;
-    filter: saturate(1.6) brightness(0.9) contrast(1.1);
+.girar-izquierda {
+    animation: giroLentoOctogono 25s linear infinite;
 }
 
-.video-background {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -1;
-    overflow: hidden;
+@keyframes entrada3D {
+    0% {
+        transform: rotateY(-90deg) scale(0.8);
+        opacity: 0;
+    }
+    100% {
+        transform: rotateY(0deg) scale(1);
+        opacity: 1;
+    }
 }
-.video-background iframe {
+
+@keyframes entradaSuave {
+    0% {
+        transform: scale(0.7);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes giroLentoOctogono {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+    100% {
+        transform: translate(-50%, -50%) rotate(-360deg);
+    }
+}
+
+/* ============================================
+   3. MÓDULO IZQUIERDO: RELOJ Y CLIMA
+   ============================================ */
+#weatherOverlay {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100vw;
-    height: 56.25vw;
-    min-height: 100vh;
-    min-width: 177.77vh;
-    transform: translate(-50%, -50%);
-}
-.video-background::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.3);
+    bottom: 23px;
+    left: 40px;
+    width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
-/* CLOCKBOX & WEATHERBOX */
 .clockBox {
     width: 200px;
     height: 52px;
-    background: rgba(189, 189, 189, 0.3); 
+    color: white;
+    background: rgba(189, 189, 189, 0.15);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    font-size: 40px;
-    color: white;
-    font-weight: bold;
-    margin-bottom: 6px;
-    transition: background 0.2s ease;
 }
-.clockBox:hover { background: rgba(255, 255, 255, 0.2); }
+
+#clock {
+    font-size: 32px;
+    font-weight: bold;
+}
 
 .weatherBox {
     width: 200px;
     height: 52px;
     color: white;
-    background: rgba(189, 189, 189, 0.3);
+    background: rgba(189, 189, 189, 0.15);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     position: relative;
-    transition: opacity .35s ease, transform .35s ease, background 0.2s ease;
-}
-.weatherBox:hover { background: rgba(255, 255, 255, 0.2); }
-
-.fadeOut{ transform:translateY(6px); opacity:0; }
-.fadeIn{ transform:translateY(0); opacity:1; }
-
-.weatherContent{ display:none; align-items:center; gap:4px; max-width:185px; }
-#weatherIcon{ width:30px; text-align:center; font-size:22px; height:36px; }
-#temperature{ font-size:22px; font-weight:bold; }
-.divider{ opacity:.6; }
-
-.cityContainer{ width:80px; overflow:hidden; position:relative; }
-.cityTrack{ display:flex; gap:20px; white-space:nowrap; }
-.cityText{ font-size:20px; width:100%; text-align:center; }
-.scrollTrack{ animation:scrollCity 5s linear infinite; }
-@keyframes scrollCity{ 0%{ transform:translateX(0) } 100%{ transform:translateX(-50%) } }
-
-.loader{
-    width:18px;
-    height:18px;
-    border:4px solid rgba(229, 229, 229, 0.2);
-    border-top:4px solid rgba(219, 216, 216, 0.8);
-    border-radius:50%;
-    animation:spin .8s linear infinite;
-}
-@keyframes spin{ 0%{ transform:rotate(0deg) } 100%{ transform:rotate(360deg) } }
-
-
-/* ============================================
-   ESTILOS REDISEÑADOS DEL BANNER HORIZONTAL
-   ============================================ */
-
-#horizontalBanner {
-    position: fixed;
-    bottom: 23px;
-    left: 260px;   
-    right: 40px;   /* Simetría perfecta con el margen del reloj */
-    height: 110px; /* Alto total equivalente a Reloj + Clima unidos */
-    
-    background-color: #f7f7f7;
-    background-image: radial-gradient(#e3e3e3 10%, transparent 10%), radial-gradient(#e3e3e3 10%, transparent 10%);
-    background-size: 4px 4px;
-    background-position: 0 0, 2px 2px;
-    
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    padding-left: 230px; /* Separación suficiente para que el texto empiece libre de solapamientos */
-    padding-right: 40px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    
-    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
-    z-index: 90;
+    /* Transición de desvanecido de caja suavizado */
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.banner-hidden {
-    transform: translateY(150%);
+/* ROTACIÓN DE PROVINCIAS (Fundidos lentos) */
+.fadeOut {
     opacity: 0;
-    pointer-events: none;
+    transform: translateY(4px);
 }
 
-.banner-visible {
-    transform: translateY(0);
+.fadeIn {
     opacity: 1;
-    pointer-events: auto;
+    transform: translateY(0);
 }
 
-.banner-border-dots {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 5px;
-    background: radial-gradient(circle, #85371b 30%, transparent 40%);
-    background-size: 7px 5px;
+.weatherContent {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    max-width: 185px;
 }
 
-/* Badge elevado por fuera de la línea superior */
-.banner-badge {
-    position: absolute;
-    top: -15px; 
-    left: 15px;
-    background: #2b1108;
-    border: 3px solid #85371b;
-    padding: 8px 22px;
-    border-radius: 12px;
-    transform: rotate(-5deg); 
-    box-shadow: 0 5px 12px rgba(0,0,0,0.4);
+#weatherIcon {
+    width: 30px;
+    text-align: center;
+    font-size: 22px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.banner-badge span {
-    color: #ffffff;
-    font-size: 24px;
+#temperature {
+    font-size: 22px;
     font-weight: bold;
-    letter-spacing: 2px;
-    text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
 }
 
+.divider {
+    opacity: .4;
+    font-size: 18px;
+}
+
+.cityContainer {
+    width: 85px;
+    overflow: hidden;
+    position: relative;
+}
+
+.cityTrack {
+    display: flex;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.cityText {
+    font-size: 18px;
+    text-transform: uppercase;
+}
+
+.scrollTrack {
+    animation: tickerLento 12s linear infinite;
+}
+
+@keyframes tickerLento {
+    0% { transform: translate3d(0, 0, 0); }
+    20% { transform: translate3d(0, 0, 0); }
+    80% { transform: translate3d(-50%, 0, 0); }
+    100% { transform: translate3d(-50%, 0, 0); }
+}
+
+.loader {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top: 2px solid #fff;
+    border-radius: 50%;
+    animation: spinLento 1.5s linear infinite;
+}
+
+@keyframes spinLento {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ============================================
+   4. BANNER HORIZONTAL (Márgenes simétricos y bordes rectos)
+   ============================================ */
+#horizontalBanner {
+    position: absolute;
+    bottom: 23px; /* Perfectamente alineado al eje inferior del clima */
+    
+    /* MARGENES OBLIGATORIOS, ESTRICTOS Y SIMÉTRICOS */
+    left: 265px;  /* Comienza dejando aire limpio después de los 200px del clima */
+    right: 40px;  /* Termina exactamente a la misma distancia del borde derecho que el clima del izquierdo */
+    
+    height: 52px; /* Misma altura exacta que el bloque de clima para unificar la línea visual */
+    
+    background-color: #ffffff; 
+    border-radius: 0px; /* Bordes rectos obligatorios sin excepciones */
+    
+    position: relative; /* Clave para posicionar tu .banner-badge de forma absoluta */
+    overflow: visible;  /* Permite que el texto de las redes "salga" hacia abajo de la caja blanca */
+    z-index: 5;
+    
+    /* Entrada y salida del banner suavizadas con curvas cinemáticas */
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.banner-hidden {
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+}
+
+.banner-visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* CONTENEDOR DEL TEXTO (Garantiza el centrado absoluto) */
 .banner-text-container {
     width: 100%;
-    overflow: hidden;
+    height: 100%;
     display: flex;
     align-items: center;
+    justify-content: center;
+    padding: 0 20px;
 }
 
 #bannerText {
-    color: #2b1108;
-    font-size: 42px; 
+    color: #000000;
+    font-size: 36px; /* Letra considerablemente más grande y robusta */
     font-weight: bold;
+    text-align: center;
+    text-transform: uppercase;
     white-space: nowrap;
-    transition: opacity 0.4s ease-in-out;
+    margin: 0 auto;
+    
+    /* Suavizado cuando Firebase actualiza el texto en vivo */
+    transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.banner-border-dots {
+    /* Mantiene tus estilos previos si tenías detalles visuales acá internos */
+}
+
+/* ============================================
+   5. REUBICACIÓN DE TU CONTENEDOR REDES (Abajo a la izquierda)
+   ============================================ */
+.banner-badge {
+    position: absolute;
+    bottom: -24px; /* Desplazado exactamente abajo de la estructura blanca */
+    left: 0px;     /* Alineado obligatoriamente al extremo izquierdo del banner */
+    
+    /* Limpieza de fondos o estructuras de caja viejas */
+    background: none !important;
+    padding: 0 !important;
+    border: none !important;
+}
+
+.banner-badge span {
+    color: rgba(255, 255, 255, 0.6); /* Blanco sutil translúcido para no distraer */
+    font-size: 16px;
+    letter-spacing: 2px;
+    text-transform: lowercase; /* Fuerza el formato @fogonacusticos estético */
+    font-weight: normal;
 }
