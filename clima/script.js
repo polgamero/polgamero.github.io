@@ -20,7 +20,7 @@ const firebaseConfig = {
 };
 
 // ============================================
-// ELEMENTOS DEL DOM (Movidos arriba para evitar errores de inicialización)
+// ELEMENTOS DEL DOM
 // ============================================
 const tempElement = document.getElementById("temperature");
 const iconElement = document.getElementById("weatherIcon");
@@ -64,7 +64,6 @@ onAuthStateChanged(auth, (user) => {
         usuarioAutenticado = user;
         console.log("==========================================");
         console.log("TU UID DE CONTROL ES:", user.uid);
-        console.log("Poné este ID en las reglas de tu Firebase para bloquear accesos trolleables.");
         console.log("==========================================");
     } else {
         usuarioAutenticado = null;
@@ -72,11 +71,10 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // ============================================
-// ESCUCHA PASIVA NATIVA (Sin Polling invasivo)
+// ESCUCHA PASIVA NATIVA (Real-Time)
 // ============================================
 let estadoBannerLocal = false;
 
-// Esta función se ejecuta de manera pasiva SOLAMENTE cuando hay un cambio real en Firebase.
 onValue(bannerRef, (snapshot) => {
     const data = snapshot.val();
     if (data) {
@@ -116,13 +114,13 @@ function guardarEstadoEnFirebase(visible, texto) {
         visible: visible,
         texto: texto
     }).catch((error) => {
-        alert("Firebase rechazó la escritura. Verificá si pegaste bien el UID en las Reglas.");
+        alert("Firebase rechazó la escritura. Verificá las Reglas de tu base de datos.");
         console.error(error);
     });
 }
 
 // ============================================
-// ACCIONES INTERACTIVAS (Solo ejecutan si esModoControl)
+// ACCIONES INTERACTIVAS (Control Remoto)
 // ============================================
 btnToggleBanner.addEventListener("click", () => {
     if (esModoControl) {
@@ -159,7 +157,7 @@ const cities = [
 ];
 
 // ============================================
-// RELOJ Y LOGICA DEL CLIMA
+// RELOJ Y LÓGICA DEL CLIMA
 // ============================================
 let weatherData = [];
 let currentCityIndex = -1;
@@ -196,7 +194,7 @@ async function fetchWeather(){
                 sunrise: data.sys.sunrise * 1000,
                 sunset: data.sys.sunset * 1000
             });
-        }catch(err){ console.log(err); }
+        }catch(err){ console.error(err); }
     }
 }
 setInterval(fetchWeather, WEATHER_REFRESH_INTERVAL);
@@ -221,9 +219,11 @@ function setCityText(name){
 
 function changeCity(){
     if(weatherData.length === 0) return;
-    weatherBox.classList.add("fadeOut"); // Usa la variable directa del DOM anterior
-
+    
+    // CORREGIDO: Buscamos el elemento de forma segura en el DOM
     const weatherBoxElement = document.querySelector(".weatherBox");
+    if (!weatherBoxElement) return;
+
     weatherBoxElement.classList.add("fadeOut");
 
     setTimeout(()=>{
@@ -240,14 +240,14 @@ function changeCity(){
         weatherBoxElement.classList.remove("fadeOut");
         weatherBoxElement.classList.add("fadeIn");
 
-        setTimeout(()=>{ weatherBoxElement.classList.remove("fadeIn"); },400);
+        setTimeout(()=>{ weatherBoxElement.classList.remove("fadeIn"); }, 400);
 
         if(!firstRender){
             loader.style.display = "none";
             weatherContent.style.display = "flex";
             firstRender = true;
         }
-    },350);
+    }, 350);
 }
 setInterval(changeCity, CITY_ROTATION_INTERVAL);
 changeCity();
@@ -289,7 +289,7 @@ function mostrarLogoIniciales() {
     }, 3000);
 }
 
-// Inicialización global
+// Inicialización global al cargar la ventana
 window.addEventListener('load', () => {
     actualizarReloj();
     mostrarLogoPrincipal();
