@@ -202,8 +202,8 @@ body{
 #horizontalBanner {
     position: fixed;
     bottom: 23px;
-    left: 320px;   
-    right: 320px;
+    left: 350px;   
+    right: 350px;
     height: 110px;
     
     background-color: #f7f7f7;
