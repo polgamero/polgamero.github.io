@@ -46,7 +46,7 @@ const database = getDatabase(app);
 const bannerRef = ref(database, 'banner');
 
 // ============================================
-// AUTENTICACIÓN Y SEGURIDAD REAL-TIME (TEMPORAL PARA CAPTURAR ID)
+// AUTENTICACIÓN Y SEGURIDAD REAL-TIME (MÉTODO IMPRESO EN PANTALLA)
 // ============================================
 let usuarioAutenticado = null;
 
@@ -69,9 +69,31 @@ onAuthStateChanged(auth, (user) => {
     if (user) {
         usuarioAutenticado = user;
         
-        // 🚨 ¡ACÁ ESTÁ LA MAGIA! Si entrás desde el celu sin UID forzado, te lo muestra en pantalla
+        // 🚨 SI ESTÁ EN EL CELU SIN UID, INYECTAMOS UN TEXTO VISIBLE EN LA PANTALLA
         if (esModoControl && !uidForzado) {
-            alert("TU UID DE CHROME EN ESTE CELU ES:\n\n" + user.uid + "\n\nCopiá este código para Firebase.");
+            // Creamos un contenedor temporal flotante arriba de todo el layout
+            const debugDiv = document.createElement("div");
+            debugDiv.style.position = "fixed";
+            debugDiv.style.top = "10px";
+            debugDiv.style.left = "10px";
+            debugDiv.style.right = "10px";
+            debugDiv.style.background = "#ff0000";
+            debugDiv.style.color = "#ffffff";
+            debugDiv.style.padding = "15px";
+            debugDiv.style.zIndex = "999999";
+            debugDiv.style.fontSize = "16px";
+            debugDiv.style.wordBreak = "break-all";
+            debugDiv.style.fontFamily = "sans-serif";
+            debugDiv.style.borderRadius = "8px";
+            debugDiv.style.boxShadow = "0px 4px 15px rgba(0,0,0,0.5)";
+            
+            debugDiv.innerHTML = `
+                <strong>UID DE ESTE NAVEGADOR:</strong><br>
+                <span id="uidTexto" style="user-select: all; background: #000; padding: 4px; display: block; margin: 8px 0; border-radius: 4px;">${user.uid}</span>
+                <small style="font-size:11px;">Mantené apretado el código negro para copiarlo.</small>
+            `;
+            
+            document.body.appendChild(debugDiv);
         }
     } else if (!uidForzado) {
         usuarioAutenticado = null;
