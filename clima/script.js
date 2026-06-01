@@ -123,7 +123,7 @@ if (btnToggleBanner) {
 if (btnCambiarTexto) {
     btnCambiarTexto.addEventListener("click", () => {
         if (esModoControl && usuarioAutenticado) {
-            const nuevoTexto = prompt("Ingresá el nuevo texto para el banner:\n|----------LARGO MÁXIMO----------|", bannerText.textContent);
+            const nuevoTexto = prompt("Ingresá el nuevo texto para el banner:\n|--------LARGO MÁXIMO--------|", bannerText.textContent);
             if (nuevoTexto !== null && nuevoTexto.trim() !== "") {
                 guardarEstadoEnFirebase(estadoBannerLocal, nuevoTexto.toUpperCase());
             }
