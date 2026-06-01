@@ -231,26 +231,27 @@ body {
 }
 
 /* ============================================
-   4. BANNER HORIZONTAL (Márgenes simétricos y bordes rectos)
+   4. BANNER HORIZONTAL (Simétrico, centrado y bordes rectos)
    ============================================ */
 #horizontalBanner {
     position: absolute;
-    bottom: 23px; /* Perfectamente alineado al eje inferior del clima */
+    bottom: 23px; /* Alineado exactamente a la misma altura que el clima/reloj */
     
-    /* MARGENES OBLIGATORIOS, ESTRICTOS Y SIMÉTRICOS */
+    /* MÁRGENES ESTRICTOS Y SIMÉTRICOS */
     left: 265px;  /* Comienza dejando aire limpio después de los 200px del clima */
     right: 40px;  /* Termina exactamente a la misma distancia del borde derecho que el clima del izquierdo */
     
-    height: 52px; /* Misma altura exacta que el bloque de clima para unificar la línea visual */
+    height: 52px; /* Misma altura exacta que la caja del reloj */
     
     background-color: #ffffff; 
-    border-radius: 0px; /* Bordes rectos obligatorios sin excepciones */
+    border-radius: 0px !important; /* Forzamos bordes rectos obligatorios */
     
-    position: relative; /* Clave para posicionar tu .banner-badge de forma absoluta */
-    overflow: visible;  /* Permite que el texto de las redes "salga" hacia abajo de la caja blanca */
+    /* Mantenemos tu flujo interno */
+    position: relative; 
+    overflow: visible; /* Permitimos que el badge de las redes salga por abajo */
     z-index: 5;
     
-    /* Entrada y salida del banner suavizadas con curvas cinemáticas */
+    /* ANIMACIÓN SUAVE Y LENTA DE ENTRADA Y SALIDA */
     transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -266,51 +267,60 @@ body {
     pointer-events: auto;
 }
 
-/* CONTENEDOR DEL TEXTO (Garantiza el centrado absoluto) */
+/* El contenedor interno original de tu texto se estira y clava el centro absoluto */
 .banner-text-container {
     width: 100%;
     height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     padding: 0 20px;
 }
 
 #bannerText {
     color: #000000;
-    font-size: 36px; /* Letra considerablemente más grande y robusta */
+    font-size: 36px; /* Tamaño considerablemente más grande */
     font-weight: bold;
     text-align: center;
     text-transform: uppercase;
     white-space: nowrap;
     margin: 0 auto;
     
-    /* Suavizado cuando Firebase actualiza el texto en vivo */
+    /* Suavizado sutil de fundido cuando Firebase cambia el texto dinámicamente */
     transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Dejamos tus puntitos estéticos exactamente como los tenías diseñados */
 .banner-border-dots {
-    /* Mantiene tus estilos previos si tenías detalles visuales acá internos */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* Acá el navegador va a seguir tomando tus estilos de bordes, líneas o puntitos previos */
 }
 
 /* ============================================
-   5. REUBICACIÓN DE TU CONTENEDOR REDES (Abajo a la izquierda)
+   5. REUBICACIÓN DE TU BADGE (@ELFOGONACUSTICOS ABAJO A LA IZQUIERDA)
    ============================================ */
 .banner-badge {
     position: absolute;
-    bottom: -24px; /* Desplazado exactamente abajo de la estructura blanca */
-    left: 0px;     /* Alineado obligatoriamente al extremo izquierdo del banner */
+    bottom: -24px; /* Lo pateamos justo abajo del fondo blanco */
+    left: 0px;     /* Alineado obligatoriamente al inicio del banner (Bien a la izquierda) */
     
-    /* Limpieza de fondos o estructuras de caja viejas */
+    /* Limpiamos fondos raros o bordes para que no quede como un bloque flotante choto */
     background: none !important;
-    padding: 0 !important;
     border: none !important;
+    padding: 0 !important;
+    width: auto !important;
+    height: auto !important;
 }
 
 .banner-badge span {
-    color: rgba(255, 255, 255, 0.6); /* Blanco sutil translúcido para no distraer */
-    font-size: 16px;
+    color: rgba(255, 255, 255, 0.6) !important; /* Blanco sutil translúcido para que no sature */
+    font-size: 16px !important;
     letter-spacing: 2px;
-    text-transform: lowercase; /* Fuerza el formato @fogonacusticos estético */
-    font-weight: normal;
+    text-transform: lowercase !important; /* Forzamos minúsculas estéticas para las redes */
+    font-weight: normal !important;
 }
