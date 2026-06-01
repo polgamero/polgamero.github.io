@@ -235,12 +235,12 @@ body{
 
 .banner-border-dots {
     position: absolute;
-    top: 0;
+    top: -10;
     left: 0;
     width: 100%;
     height: 15px;
     background: radial-gradient(circle, #85371b 30%, transparent 40%);
-    background-size: 5px 20px;
+    background-size: 15px 30px;
 }
 
 .banner-badge {
