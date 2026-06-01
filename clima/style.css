@@ -247,7 +247,7 @@ body{
 .banner-badge {
     position: absolute;
     top: -15px; 
-    left: 15px;
+    left: -10px;
     background: #2b1108;
     border: 3px solid #85371b;
     padding: 8px 22px;
