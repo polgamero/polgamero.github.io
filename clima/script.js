@@ -46,26 +46,34 @@ const database = getDatabase(app);
 const bannerRef = ref(database, 'banner');
 
 // ============================================
-// AUTENTICACIÓN Y SEGURIDAD REAL-TIME
+// AUTENTICACIÓN Y SEGURIDAD REAL-TIME (TEMPORAL PARA CAPTURAR ID)
 // ============================================
 let usuarioAutenticado = null;
 
-// Parámetro en la URL para la notebook de control. Ejemplo: https://.../?control=true
-const esModoControl = new URLSearchParams(window.location.search).get('control') === 'true';
+const urlParams = new URLSearchParams(window.location.search);
+const esModoControl = urlParams.get('control') === 'true';
+const uidForzado = urlParams.get('uid'); 
 
 if (esModoControl) {
-    signInAnonymously(auth).catch((error) => {
-        console.error("Error en autenticación anónima:", error);
-    });
+    if (uidForzado) {
+        usuarioAutenticado = { uid: uidForzado };
+        console.log("Autenticado vía URL con UID:", uidForzado);
+    } else {
+        signInAnonymously(auth).catch((error) => {
+            console.error("Error en autenticación anónima:", error);
+        });
+    }
 }
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
         usuarioAutenticado = user;
-        console.log("==========================================");
-        console.log("TU UID DE CONTROL ES:", user.uid);
-        console.log("==========================================");
-    } else {
+        
+        // 🚨 ¡ACÁ ESTÁ LA MAGIA! Si entrás desde el celu sin UID forzado, te lo muestra en pantalla
+        if (esModoControl && !uidForzado) {
+            alert("TU UID DE CHROME EN ESTE CELU ES:\n\n" + user.uid + "\n\nCopiá este código para Firebase.");
+        }
+    } else if (!uidForzado) {
         usuarioAutenticado = null;
     }
 });
