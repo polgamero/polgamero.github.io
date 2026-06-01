@@ -202,8 +202,8 @@ body{
 #horizontalBanner {
     position: fixed;
     bottom: 23px;
-    left: 260px;   
-    right: 40px;   /* Simetría perfecta con el margen del reloj */
+    left: 300px;   
+    right: 300px;   /* Simetría perfecta con el margen del reloj */
     height: 110px; /* Alto total equivalente a Reloj + Clima unidos */
     
     background-color: #f7f7f7;
@@ -211,14 +211,13 @@ body{
     background-size: 4px 4px;
     background-position: 0 0, 2px 2px;
     
-    border-radius: 6px;
     display: flex;
     align-items: center;
-    padding-left: 230px; /* Separación suficiente para que el texto empiece libre de solapamientos */
+    padding-left: 40px; /* Separación suficiente para que el texto empiece libre de solapamientos */
     padding-right: 40px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     
-    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
+    transition: transform 1s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease;
     z-index: 90;
 }
 
@@ -277,8 +276,8 @@ body{
 
 #bannerText {
     color: #2b1108;
-    font-size: 42px; 
+    font-size: 60px; 
     font-weight: bold;
     white-space: nowrap;
-    transition: opacity 0.4s ease-in-out;
+    transition: opacity 0.8s ease-in-out;
 }
