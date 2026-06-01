@@ -97,7 +97,6 @@ onValue(bannerRef, (snapshot) => {
     }
 });
 
-// Enviar datos a Firebase (La seguridad corre por cuenta de la nube)
 function guardarEstadoEnFirebase(visible, texto) {
     if (!esModoControl || !usuarioAutenticado) return;
 
@@ -105,7 +104,6 @@ function guardarEstadoEnFirebase(visible, texto) {
         visible: visible,
         texto: texto
     }).catch((error) => {
-        // Si el UID de este navegador no está en las reglas de Firebase, Google va a rechazar el cambio acá
         console.warn("Acceso denegado por Firebase (No autorizado).");
     });
 }
@@ -125,7 +123,7 @@ if (btnToggleBanner) {
 if (btnCambiarTexto) {
     btnCambiarTexto.addEventListener("click", () => {
         if (esModoControl && usuarioAutenticado) {
-            const nuevoTexto = prompt("Ingresá el nuevo texto para el banner:", bannerText.textContent);
+            const nuevoTexto = prompt("Ingresá el nuevo texto para el banner:", "|----------LARGO MÁXIMO DEL TEXTO ---------|", bannerText.textContent);
             if (nuevoTexto !== null && nuevoTexto.trim() !== "") {
                 guardarEstadoEnFirebase(estadoBannerLocal, nuevoTexto.toUpperCase());
             }
