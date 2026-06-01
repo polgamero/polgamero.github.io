@@ -1,151 +1,171 @@
-// ============================================
-// CONFIG
-// ============================================
+import { initializeApp } from "firebase/app";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import { getDatabase, ref, set, onValue } from "firebase/database";
 
-const API_KEY = "969de0f6ebd36d04b40136010664f449";
-
+// ============================================
+// CONFIGURACIÓN DE APIS
+// ============================================
+const OPENWEATHER_API_KEY = "969de0f6ebd36d04b40136010664f449";
 const CITY_ROTATION_INTERVAL = 8000;
 const WEATHER_REFRESH_INTERVAL = 600000;
 
-const FIREBASE_URL = "https://fogon-layout-default-rtdb.firebaseio.com/"; 
+// ⚠️ REEMPLAZA ESTO CON TUS CREDENCIALES REALES DE CONFIGURACIÓN DE FIREBASE
+const firebaseConfig = {
+  apiKey: "AIzaSyBIXOhkVDYieUy8aeSqdLPGkwJPRYiXoXI",
+  authDomain: "fogon-layout.firebaseapp.com",
+  databaseURL: "https://fogon-layout-default-rtdb.firebaseio.com",
+  projectId: "fogon-layout",
+  storageBucket: "fogon-layout.firebasestorage.app",
+  messagingSenderId: "918389485844",
+  appId: "1:918389485844:web:e0ae2bfd0c95d568205201"
+};
+
+// Inicializar Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const database = getDatabase(app);
+const bannerRef = ref(database, 'banner');
+
+// ============================================
+// AUTENTICACIÓN Y SEGURIDAD REAL-TIME
+// ============================================
+let usuarioAutenticado = null;
+
+// Si estás en la notebook de control, pasale un parámetro a la URL para identificarte.
+// Ejemplo: https://tuusuario.github.io/overlay/?control=true
+const esModoControl = new URLSearchParams(window.location.search).get('control') === 'true';
+
+if (esModoControl) {
+    // Solo la notebook de control intenta iniciar sesión
+    signInAnonymously(auth).catch((error) => {
+        console.error("Error en autenticación anónima:", error);
+    });
+}
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        usuarioAutenticado = user;
+        // ⚠️ IMPORTANTE: Abrí la consola (F12) en tu notebook de control la primera vez.
+        // Copiá el UID que va a salir acá y pegalo en las REGLAS de tu Firebase.
+        console.log("==========================================");
+        console.log("TU UID DE CONTROL ES:", user.uid);
+        console.log("Poné este ID en las reglas de tu Firebase para bloquear accesos trolleables.");
+        console.log("==========================================");
+    } else {
+        usuarioAutenticado = null;
+    }
+});
+
+// ============================================
+// ESCUCHA PASIVA NATIVA (Reemplaza al Polling de 800ms)
+// ============================================
+let estadoBannerLocal = false;
+
+// Esta función se ejecuta SOLAMENTE cuando hay un cambio real en la base de datos.
+onValue(bannerRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+        // Sincronizar visibilidad del banner
+        if (data.visible !== estadoBannerLocal) {
+            estadoBannerLocal = data.visible;
+            if (estadoBannerLocal) {
+                horizontalBanner.classList.remove("banner-hidden");
+                horizontalBanner.classList.add("banner-visible");
+            } else {
+                horizontalBanner.classList.remove("banner-visible");
+                horizontalBanner.classList.add("banner-hidden");
+            }
+        }
+        // Sincronizar texto
+        if (data.texto && bannerText.textContent !== data.texto) {
+            if (horizontalBanner.classList.contains("banner-visible")) {
+                bannerText.style.opacity = "0";
+                setTimeout(() => {
+                    bannerText.textContent = data.texto.toUpperCase();
+                    bannerText.style.opacity = "1";
+                }, 400);
+            } else {
+                bannerText.textContent = data.texto.toUpperCase();
+            }
+        }
+    }
+});
+
+// Enviar datos de forma segura
+function guardarEstadoEnFirebase(visible, texto) {
+    if (!esModoControl || !usuarioAutenticado) {
+        alert("No tenés permisos de control en esta instancia o estás esperando autenticación.");
+        return;
+    }
+    set(bannerRef, {
+        visible: visible,
+        texto: texto
+    }).catch((error) => {
+        alert("Firebase rechazó la escritura. ¿Configuraste bien el UID en las Reglas?");
+        console.error(error);
+    });
+}
+
+// ============================================
+// ACCIONES INTERACTIVAS (Sin PIN en código)
+// ============================================
+btnToggleBanner.addEventListener("click", () => {
+    if (esModoControl) {
+        const nuevoEstado = !estadoBannerLocal;
+        guardarEstadoEnFirebase(nuevoEstado, bannerText.textContent);
+    }
+});
+
+btnCambiarTexto.addEventListener("click", () => {
+    if (esModoControl) {
+        const nuevoTexto = prompt("Ingresá el nuevo texto para el banner:", bannerText.textContent);
+        if (nuevoTexto !== null && nuevoTexto.trim() !== "") {
+            guardarEstadoEnFirebase(estadoBannerLocal, nuevoTexto.toUpperCase());
+        }
+    }
+});
 
 // ============================================
 // CITY LIST (capitales provinciales)
 // ============================================
-
 const cities = [
-    { name:"Buenos Aires", lat:-34.61, lon:-58.38 },
-    { name:"La Plata", lat:-34.92, lon:-57.95 },
-    { name:"Córdoba", lat:-31.42, lon:-64.18 },
-    { name:"Santa Fe", lat:-31.63, lon:-60.70 },
-    { name:"Paraná", lat:-31.73, lon:-60.53 },
-    { name:"Corrientes", lat:-27.47, lon:-58.83 },
-    { name:"Resistencia", lat:-27.45, lon:-58.98 },
-    { name:"Formosa", lat:-26.18, lon:-58.17 },
-    { name:"San Salvador de Jujuy", lat:-24.19, lon:-65.30 },
-    { name:"Salta", lat:-24.79, lon:-65.41 },
-    { name:"San Miguel de Tucumán", lat:-26.82, lon:-65.22 },
-    { name:"Santiago del Estero", lat:-27.78, lon:-64.27 },
-    { name:"Catamarca", lat:-28.47, lon:-65.78 },
-    { name:"La Rioja", lat:-29.41, lon:-66.85 },
-    { name:"San Juan", lat:-31.53, lon:-68.52 },
-    { name:"Mendoza", lat:-32.89, lon:-68.84 },
-    { name:"San Luis", lat:-33.30, lon:-66.34 },
-    { name:"Santa Rosa", lat:-36.62, lon:-64.29 },
-    { name:"Neuquén", lat:-38.95, lon:-68.06 },
-    { name:"Viedma", lat:-40.81, lon:-63.00 },
-    { name:"Rawson", lat:-43.30, lon:-65.10 },
-    { name:"Río Gallegos", lat:-51.62, lon:-69.21 },
+    { name:"Buenos Aires", lat:-34.61, lon:-58.38 }, { name:"La Plata", lat:-34.92, lon:-57.95 },
+    { name:"Córdoba", lat:-31.42, lon:-64.18 }, { name:"Santa Fe", lat:-31.63, lon:-60.70 },
+    { name:"Paraná", lat:-31.73, lon:-60.53 }, { name:"Corrientes", lat:-27.47, lon:-58.83 },
+    { name:"Resistencia", lat:-27.45, lon:-58.98 }, { name:"Formosa", lat:-26.18, lon:-58.17 },
+    { name:"San Salvador de Jujuy", lat:-24.19, lon:-65.30 }, { name:"Salta", lat:-24.79, lon:-65.41 },
+    { name:"San Miguel de Tucumán", lat:-26.82, lon:-65.22 }, { name:"Santiago del Estero", lat:-27.78, lon:-64.27 },
+    { name:"Catamarca", lat:-28.47, lon:-65.78 }, { name:"La Rioja", lat:-29.41, lon:-66.85 },
+    { name:"San Juan", lat:-31.53, lon:-68.52 }, { name:"Mendoza", lat:-32.89, lon:-68.84 },
+    { name:"San Luis", lat:-33.30, lon:-66.34 }, { name:"Santa Rosa", lat:-36.62, lon:-64.29 },
+    { name:"Neuquén", lat:-38.95, lon:-68.06 }, { name:"Viedma", lat:-40.81, lon:-63.00 },
+    { name:"Rawson", lat:-43.30, lon:-65.10 }, { name:"Río Gallegos", lat:-51.62, lon:-69.21 },
     { name:"Ushuaia", lat:-54.80, lon:-68.30 }
 ];
 
 // ============================================
-// VARIABLES
+// VARIABLES Y ELEMENTOS DEL CLIMA / RELOJ
 // ============================================
-
 let weatherData = [];
 let currentCityIndex = -1;
 let firstRender = false;
-
-// Estado local del banner para saber si está abierto o cerrado en esta instancia
-let estadoBannerLocal = false; 
 
 const tempElement = document.getElementById("temperature");
 const iconElement = document.getElementById("weatherIcon");
 const clockElement = document.getElementById("clock");
 const cityContainer = document.querySelector(".cityContainer");
-
 const loader = document.getElementById("loader");
 const weatherContent = document.getElementById("weatherContent");
-
 const horizontalBanner = document.getElementById("horizontalBanner");
 const bannerText = document.getElementById("bannerText");
 const btnToggleBanner = document.getElementById("btnToggleBanner");
 const btnCambiarTexto = document.getElementById("btnCambiarTexto");
-
-// ============================================
-// CÓDIGO OBSOLETO (ELIMINAR)
-// ============================================
-function validarAccesoSeguro() {
-    const pinIngresado = prompt("Ingresá el PIN de seguridad para operar el streaming:");
-    if (!pinIngresado) return false;
-    
-    const control = parseInt(pinIngresado, 10) * 3;
-    if (control === 10341) {
-        return true;
-    } else {
-        alert("PIN incorrecto. Acción cancelada.");
-        return false;
-    }
-}
-
-// ============================================
-// SINCRONIZACIÓN CON FIREBASE (Control Remoto)
-// ============================================
-
-// Envía el nuevo estado del banner a Firebase
-async function guardarEstadoEnFirebase(visible, texto) {
-    try {
-        await fetch(`${FIREBASE_URL}banner.json`, {
-            method: 'PUT',
-            body: JSON.stringify({ visible: visible, texto: texto })
-        });
-    } catch (error) {
-        console.error("Error al guardar en Firebase:", error);
-    }
-}
-
-// Escucha constantemente los cambios en Firebase (Polling rápido de alta eficiencia)
-async function escucharFirebase() {
-    try {
-        const response = await fetch(`${FIREBASE_URL}banner.json`);
-        const data = await response.json();
-        
-        if (data) {
-            // Sincronizar visibilidad del banner
-            if (data.visible !== estadoBannerLocal) {
-                estadoBannerLocal = data.visible;
-                if (estadoBannerLocal) {
-                    horizontalBanner.classList.remove("banner-hidden");
-                    horizontalBanner.classList.add("banner-visible");
-                } else {
-                    horizontalBanner.classList.remove("banner-visible");
-                    horizontalBanner.classList.add("banner-hidden");
-                }
-            }
-            // Sincronizar texto
-            if (data.texto && bannerText.textContent !== data.texto) {
-                if (horizontalBanner.classList.contains("banner-visible")) {
-                    bannerText.style.opacity = "0";
-                    setTimeout(() => {
-                        bannerText.textContent = data.texto.toUpperCase();
-                        bannerText.style.opacity = "1";
-                    }, 400);
-                } else {
-                    bannerText.textContent = data.texto.toUpperCase();
-                }
-            }
-        }
-    } catch (error) {
-        console.error("Error al leer de Firebase:", error);
-    }
-}
-// OBS y la notebook van a revisar Firebase cada 800ms para reaccionar al toque
-setInterval(escucharFirebase, 800);
-
-// ============================================
-// CLOCK
-// ============================================
 
 function actualizarReloj() {
     const ahora = new Date();
     clockElement.innerText = ahora.toLocaleTimeString('es-AR', { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 setInterval(actualizarReloj, 1000);
-
-// ============================================
-// DAY/NIGHT & ICON MAP
-// ============================================
 
 function isNight(now, sunrise, sunset){ return (now < sunrise || now > sunset); }
 
@@ -158,14 +178,10 @@ function getIcon(condition, night){
     return night ? "🌙" : "🌤️";
 }
 
-// ============================================
-// WEATHER FETCH
-// ============================================
-
 async function fetchWeather(){
     weatherData = [];
     for(const city of cities){
-        const url = `https://api.openweathermap.org/data/2.5/weather?lat=${city.lat}&lon=${city.lon}&units=metric&appid=${API_KEY}`;
+        const url = `https://api.openweathermap.org/data/2.5/weather?lat=${city.lat}&lon=${city.lon}&units=metric&appid=${OPENWEATHER_API_KEY}`;
         try{
             const response = await fetch(url);
             const data = await response.json();
@@ -181,10 +197,6 @@ async function fetchWeather(){
 }
 setInterval(fetchWeather, WEATHER_REFRESH_INTERVAL);
 fetchWeather();
-
-// ============================================
-// CITY TICKER & ROTATION
-// ============================================
 
 function setCityText(name){
     cityContainer.innerHTML = "";
@@ -235,28 +247,6 @@ setInterval(changeCity, CITY_ROTATION_INTERVAL);
 changeCity();
 
 // ============================================
-// ACCIONES INTERACTIVAS (Modifican Firebase)
-// ============================================
-
-// Alternar Banner a control remoto
-btnToggleBanner.addEventListener("click", () => {
-    if (validarAccesoSeguro()) {
-        const nuevoEstado = !estadoBannerLocal;
-        guardarEstadoEnFirebase(nuevoEstado, bannerText.textContent);
-    }
-});
-
-// Cambiar Texto del Banner a control remoto
-btnCambiarTexto.addEventListener("click", () => {
-    if (validarAccesoSeguro()) {
-        const nuevoTexto = prompt("Ingresá el nuevo texto para el banner:", bannerText.textContent);
-        if (nuevoTexto !== null && nuevoTexto.trim() !== "") {
-            guardarEstadoEnFirebase(estadoBannerLocal, nuevoTexto.toUpperCase());
-        }
-    }
-});
-
-// ============================================
 // LOGOS ANIMATION
 // ============================================
 const logoImg = document.getElementById('mainLogo');
@@ -298,5 +288,4 @@ function mostrarLogoIniciales() {
 window.addEventListener('load', () => {
     actualizarReloj();
     mostrarLogoPrincipal();
-    escucharFirebase(); // Carga el estado inicial guardado
 });
