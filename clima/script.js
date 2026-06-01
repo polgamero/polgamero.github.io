@@ -46,62 +46,25 @@ const database = getDatabase(app);
 const bannerRef = ref(database, 'banner');
 
 // ============================================
-// AUTENTICACIÓN Y SEGURIDAD REAL-TIME (MÉTODO IMPRESO EN PANTALLA)
+// AUTENTICACIÓN
 // ============================================
 let usuarioAutenticado = null;
 
 const urlParams = new URLSearchParams(window.location.search);
 const esModoControl = urlParams.get('control') === 'true';
-const uidForzado = urlParams.get('uid'); 
 
 if (esModoControl) {
-    if (uidForzado) {
-        usuarioAutenticado = { uid: uidForzado };
-        console.log("Autenticado vía URL con UID:", uidForzado);
-    } else {
-        signInAnonymously(auth).catch((error) => {
-            console.error("Error en autenticación anónima:", error);
-        });
-    }
+    signInAnonymously(auth).catch((error) => {
+        console.error("Error en autenticación anónima:", error);
+    });
 }
 
 onAuthStateChanged(auth, (user) => {
-    if (user) {
-        usuarioAutenticado = user;
-        
-        // 🚨 SI ESTÁ EN EL CELU SIN UID, INYECTAMOS UN TEXTO VISIBLE EN LA PANTALLA
-        if (esModoControl && !uidForzado) {
-            // Creamos un contenedor temporal flotante arriba de todo el layout
-            const debugDiv = document.createElement("div");
-            debugDiv.style.position = "fixed";
-            debugDiv.style.top = "10px";
-            debugDiv.style.left = "10px";
-            debugDiv.style.right = "10px";
-            debugDiv.style.background = "#ff0000";
-            debugDiv.style.color = "#ffffff";
-            debugDiv.style.padding = "15px";
-            debugDiv.style.zIndex = "999999";
-            debugDiv.style.fontSize = "16px";
-            debugDiv.style.wordBreak = "break-all";
-            debugDiv.style.fontFamily = "sans-serif";
-            debugDiv.style.borderRadius = "8px";
-            debugDiv.style.boxShadow = "0px 4px 15px rgba(0,0,0,0.5)";
-            
-            debugDiv.innerHTML = `
-                <strong>UID DE ESTE NAVEGADOR:</strong><br>
-                <span id="uidTexto" style="user-select: all; background: #000; padding: 4px; display: block; margin: 8px 0; border-radius: 4px;">${user.uid}</span>
-                <small style="font-size:11px;">Mantené apretado el código negro para copiarlo.</small>
-            `;
-            
-            document.body.appendChild(debugDiv);
-        }
-    } else if (!uidForzado) {
-        usuarioAutenticado = null;
-    }
+    usuarioAutenticado = user ? user : null;
 });
 
 // ============================================
-// ESCUCHA PASIVA NATIVA (Real-Time)
+// ESCUCHA PASIVA EN TIEMPO REAL (OBS y Controles)
 // ============================================
 let estadoBannerLocal = false;
 
@@ -134,39 +97,41 @@ onValue(bannerRef, (snapshot) => {
     }
 });
 
-// Enviar datos de forma segura a Firebase
+// Enviar datos a Firebase (La seguridad corre por cuenta de la nube)
 function guardarEstadoEnFirebase(visible, texto) {
-    if (!esModoControl || !usuarioAutenticado) {
-        alert("No tenés permisos de control en esta instancia o estás esperando autenticación.");
-        return;
-    }
+    if (!esModoControl || !usuarioAutenticado) return;
+
     set(bannerRef, {
         visible: visible,
         texto: texto
     }).catch((error) => {
-        alert("Firebase rechazó la escritura. Verificá las Reglas de tu base de datos.");
-        console.error(error);
+        // Si el UID de este navegador no está en las reglas de Firebase, Google va a rechazar el cambio acá
+        console.warn("Acceso denegado por Firebase (No autorizado).");
     });
 }
 
 // ============================================
-// ACCIONES INTERACTIVAS (Control Remoto)
+// ACCIONES INTERACTIVAS
 // ============================================
-btnToggleBanner.addEventListener("click", () => {
-    if (esModoControl) {
-        const nuevoEstado = !estadoBannerLocal;
-        guardarEstadoEnFirebase(nuevoEstado, bannerText.textContent);
-    }
-});
-
-btnCambiarTexto.addEventListener("click", () => {
-    if (esModoControl) {
-        const nuevoTexto = prompt("Ingresá el nuevo texto para el banner:", bannerText.textContent);
-        if (nuevoTexto !== null && nuevoTexto.trim() !== "") {
-            guardarEstadoEnFirebase(estadoBannerLocal, nuevoTexto.toUpperCase());
+if (btnToggleBanner) {
+    btnToggleBanner.addEventListener("click", () => {
+        if (esModoControl && usuarioAutenticado) {
+            const nuevoEstado = !estadoBannerLocal;
+            guardarEstadoEnFirebase(nuevoEstado, bannerText.textContent);
         }
-    }
-});
+    });
+}
+
+if (btnCambiarTexto) {
+    btnCambiarTexto.addEventListener("click", () => {
+        if (esModoControl && usuarioAutenticado) {
+            const nuevoTexto = prompt("Ingresá el nuevo texto para el banner:", bannerText.textContent);
+            if (nuevoTexto !== null && nuevoTexto.trim() !== "") {
+                guardarEstadoEnFirebase(estadoBannerLocal, nuevoTexto.toUpperCase());
+            }
+        }
+    });
+}
 
 // ============================================
 // CITY LIST (Capitales Provinciales de Argentina)
@@ -224,7 +189,7 @@ async function fetchWeather(){
                 sunrise: data.sys.sunrise * 1000,
                 sunset: data.sys.sunset * 1000
             });
-        }catch(err){ console.error(err); }
+        }catch(err) { console.error(err); }
     }
 }
 setInterval(fetchWeather, WEATHER_REFRESH_INTERVAL);
@@ -250,7 +215,6 @@ function setCityText(name){
 function changeCity(){
     if(weatherData.length === 0) return;
     
-    // CORREGIDO: Buscamos el elemento de forma segura en el DOM
     const weatherBoxElement = document.querySelector(".weatherBox");
     if (!weatherBoxElement) return;
 
@@ -319,7 +283,6 @@ function mostrarLogoIniciales() {
     }, 3000);
 }
 
-// Inicialización global al cargar la ventana
 window.addEventListener('load', () => {
     actualizarReloj();
     mostrarLogoPrincipal();
