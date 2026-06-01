@@ -238,9 +238,9 @@ body{
     top: 0;
     left: 0;
     width: 100%;
-    height: 5px;
+    height: 10px;
     background: radial-gradient(circle, #85371b 30%, transparent 40%);
-    background-size: 7px 5px;
+    background-size: 12px 10px;
 }
 
 /* Badge elevado por fuera de la línea superior */
