@@ -272,11 +272,12 @@ body{
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-top: 10px;
 }
 
 #bannerText {
     color: #2b1108;
-    font-size: 80px; 
+    font-size: 90px; 
     white-space: nowrap;
     transition: opacity 0.8s ease-in-out;
 }
