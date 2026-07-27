@@ -628,3 +628,24 @@ html, body {
 .gy-close-btn:hover {
   background: #c0392b;
 }
+
+/* ==========================================
+   AJUSTES DEL MODAL Y HOVER EN CEMENTERIO
+   ========================================== */
+.gy-modal-grid .card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.gy-modal-grid .card:hover {
+  transform: scale(1.15) translateY(-5px);
+  z-index: 10;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+/* Ajuste de contenedor lateral para cartas en Cementerio */
+.side-pile .pile-content .card {
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none; /* La carta del mazo/cementerio no necesita hover en la mesa */
+}
