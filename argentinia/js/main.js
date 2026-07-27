@@ -163,11 +163,12 @@ function updatePilesUI() {
   // Cementerio Rival
   els.rivalGYPile.querySelector('.pile-badge').textContent = state.rivalGraveyard.length;
   const rivalGYContent = els.rivalGYPile.querySelector('.pile-content');
+  rivalGYContent.innerHTML = '';
   if (state.rivalGraveyard.length > 0) {
     const topCard = state.rivalGraveyard[state.rivalGraveyard.length - 1];
-    rivalGYContent.innerHTML = topCard.image 
-      ? `<img src="./assets/images/cards/${topCard.image}" style="width:100%; height:100%; object-fit:cover;">`
-      : `<div style="font-size:9px; text-align:center; padding:2px; color:#fff;">${topCard.name}</div>`;
+    // Renderizamos la carta completa con la función global
+    const cardEl = createCardElement(topCard, false, false, null, 'graveyard');
+    rivalGYContent.appendChild(cardEl);
   } else {
     rivalGYContent.innerHTML = `<span style="font-size:10px; color:#7f8c8d;">Vacío</span>`;
   }
@@ -175,11 +176,12 @@ function updatePilesUI() {
   // Cementerio Local
   els.localGYPile.querySelector('.pile-badge').textContent = state.localGraveyard.length;
   const localGYContent = els.localGYPile.querySelector('.pile-content');
+  localGYContent.innerHTML = '';
   if (state.localGraveyard.length > 0) {
     const topCard = state.localGraveyard[state.localGraveyard.length - 1];
-    localGYContent.innerHTML = topCard.image 
-      ? `<img src="./assets/images/cards/${topCard.image}" style="width:100%; height:100%; object-fit:cover;">`
-      : `<div style="font-size:9px; text-align:center; padding:2px; color:#fff;">${topCard.name}</div>`;
+    // Renderizamos la carta completa con la función global
+    const cardEl = createCardElement(topCard, false, true, null, 'graveyard');
+    localGYContent.appendChild(cardEl);
   } else {
     localGYContent.innerHTML = `<span style="font-size:10px; color:#7f8c8d;">Vacío</span>`;
   }
@@ -192,28 +194,36 @@ function openGraveyardModal(isLocal) {
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
   
-  let cardsHTML = '';
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content">
+      <div class="gy-modal-header">
+        <h3>🪦 ${title} (${gyArray.length})</h3>
+        <button class="gy-close-btn">Cerrar ✖</button>
+      </div>
+      <div class="gy-modal-grid" id="gy-modal-grid-content"></div>
+    </div>
+  `;
+
+  document.body.appendChild(modalOverlay);
+
+  const gridContent = modalOverlay.querySelector('#gy-modal-grid-content');
+
   if (gyArray.length === 0) {
-    cardsHTML = `<div style="color:#bdc3c7; font-style:italic; padding:40px;">No hay cartas en el cementerio todavía.</div>`;
+    gridContent.innerHTML = `<div style="color:#bdc3c7; font-style:italic; padding:40px;">No hay cartas en el cementerio todavía.</div>`;
   } else {
-    cardsHTML = gyArray.map(card => {
-      let icon = '🃏';
-      for (const key in ICON_MAP) { if (card.name.includes(key)) icon = ICON_MAP[key]; }
-      return `
-        <div class="card ${card.rarity || 'Common'}" style="width:100px; height:140px; position:relative; pointer-events:none;">
-          <div class="card-inner">
-            <div class="card-header"><span class="card-title" style="font-size:8px;">${card.name}</span></div>
-            <div class="card-art" style="position:relative; overflow:hidden;">
-              <div style="position:absolute; inset:0; display:flex; justify-content:center; align-items:center;">${icon}</div>
-              ${card.image ? `<img src="./assets/images/cards/${card.image}" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'">` : ''}
-            </div>
-            <div class="card-type-line" style="font-size:7px;">${card.type}</div>
-          </div>
-        </div>
-      `;
-    }).join('');
+    // Generamos las cartas completas usando createCardElement para mantener consistencia
+    gyArray.forEach((cardObj, idx) => {
+      const cardEl = createCardElement(cardObj, false, isLocal, idx, 'modal');
+      // Forzamos tamaño estándar similar a la mano para que el grid sea uniforme
+      cardEl.style.width = '120px';
+      cardEl.style.height = '168px';
+      gridContent.appendChild(cardEl);
+    });
   }
 
+  modalOverlay.querySelector('.gy-close-btn').onclick = () => modalOverlay.remove();
+  modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
+}
   modalOverlay.innerHTML = `
     <div class="gy-modal-content">
       <div class="gy-modal-header">
