@@ -1,12 +1,11 @@
 import { cardDb } from './cardLoader.js';
 
-// Inyectamos estilos dinámicos para la fase de combate
+// Estilos dinámicos más sutiles (halo exterior, no tapa la carta)
 const style = document.createElement('style');
 style.innerHTML = `
-  .card.attacking { border: 3px solid #e74c3c !important; transform: translateY(-10px); }
-  .card.blocking { border: 3px solid #3498db !important; }
-  .card.selected-blocker { box-shadow: 0 0 15px 5px #3498db !important; transform: scale(1.05); }
-  .combat-badge { position: absolute; top: -10px; right: -10px; background: black; color: white; padding: 2px 8px; border-radius: 10px; font-weight: bold; font-size: 11px; z-index: 10; border: 2px solid white; text-transform: uppercase;}
+  .card.attacking { box-shadow: 0 0 0 4px #e74c3c !important; transform: translateY(-10px); }
+  .card.blocking { box-shadow: 0 0 0 4px #3498db !important; }
+  .card.selected-blocker { box-shadow: 0 0 15px 6px #3498db !important; transform: scale(1.05); }
 `;
 document.head.appendChild(style);
 
@@ -17,7 +16,7 @@ const ICON_MAP = {
 const state = {
   turnCount: 1,
   isPlayerTurn: true,
-  phase: 'main', // Fases: 'main', 'local_block'
+  phase: 'main', 
   gameOver: false,
 
   localHP: 20,
@@ -27,7 +26,7 @@ const state = {
   localHand: [],
   localLands: [],
   localCombat: [],
-  localGraveyard: [], // NUEVO: Cementerio local
+  localGraveyard: [], 
   localLandPlayedThisTurn: false,
 
   rivalHP: 20,
@@ -37,14 +36,14 @@ const state = {
   rivalHand: [],
   rivalLands: [],
   rivalCombat: [],
-  rivalGraveyard: [], // NUEVO: Cementerio IA
+  rivalGraveyard: [], 
   rivalLandPlayedThisTurn: false,
 
   pendingSpellIndex: null, 
   pendingCost: null,       
   tappedLandsThisSpell: [],
   
-  pendingBlockerIndex: null // NUEVO: UX para asignar bloqueos
+  pendingBlockerIndex: null 
 };
 
 const els = {
@@ -124,15 +123,11 @@ function createCardElement(itemObj, isTapped = false, isLocal = true, index = nu
   const el = document.createElement('div');
   
   const isSick = itemObj.summoningSickness ? 'sick' : '';
-  const isAttacking = itemObj.isAttacking ? 'attacking' : '';
-  const isBlocking = itemObj.blockingIndex !== null ? 'blocking' : '';
+  const isAttacking = itemObj.isAttacking === true ? 'attacking' : '';
+  const isBlocking = (itemObj.blockingIndex !== null && itemObj.blockingIndex !== undefined) ? 'blocking' : '';
   const isSelectedBlocker = (state.pendingBlockerIndex === index && zone === 'combat' && isLocal) ? 'selected-blocker' : '';
   
   el.className = `card ${card.rarity || 'Common'} ${isTapped ? 'tapped' : ''} ${isSick} ${isAttacking} ${isBlocking} ${isSelectedBlocker}`;
-
-  let badgeHTML = '';
-  if (itemObj.isAttacking) badgeHTML = '<div class="combat-badge" style="background:#e74c3c;">ATACANDO</div>';
-  if (itemObj.blockingIndex !== null) badgeHTML = '<div class="combat-badge" style="background:#3498db;">BLOQUEANDO</div>';
 
   let icon = '🃏';
   for (const key in ICON_MAP) { if (card.name.includes(key)) icon = ICON_MAP[key]; }
@@ -161,7 +156,6 @@ function createCardElement(itemObj, isTapped = false, isLocal = true, index = nu
     textBoxHTML = `<div class="card-text-box"><i>${card.flavorText || ''}</i><br><strong>${formattedText}</strong></div>`;
   }
 
-  // NUEVO: Mostramos daño recibido en la defensa si corresponde
   let ptText = card.power !== undefined ? `${card.power}/${card.toughness}` : '';
   if (itemObj.damageTaken > 0 && card.toughness !== undefined) {
     ptText = `${card.power}/<span style="color:red;">${card.toughness - itemObj.damageTaken}</span>`;
@@ -169,7 +163,6 @@ function createCardElement(itemObj, isTapped = false, isLocal = true, index = nu
 
   el.innerHTML = `
     <div class="card-inner">
-      ${badgeHTML}
       <div class="card-header"><span class="card-title">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
       <div class="card-art" style="position: relative; overflow: hidden;">
         <div style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;">${icon}</div>
@@ -181,28 +174,25 @@ function createCardElement(itemObj, isTapped = false, isLocal = true, index = nu
     </div>
   `;
 
-  // Asignación de clics dependiendo de la fase
-  if (state.isPlayerTurn && !state.gameOver) {
-    if (zone === 'hand' && isLocal) el.addEventListener('click', () => playCard(index));
-    else if (zone === 'land' && isLocal) el.addEventListener('click', () => tapLocalLand(itemObj));
-    else if (zone === 'combat') {
-      el.addEventListener('click', () => handleCombatClick(itemObj, isLocal, index));
-    }
+  if (zone === 'hand' && isLocal && state.isPlayerTurn && state.phase === 'main' && !state.gameOver) {
+    el.addEventListener('click', () => playCard(index));
+  } else if (zone === 'land' && isLocal && state.isPlayerTurn && state.phase === 'main' && !state.gameOver) {
+    el.addEventListener('click', () => tapLocalLand(itemObj));
+  } else if (zone === 'combat' && !state.gameOver) {
+    el.addEventListener('click', () => handleCombatClick(itemObj, isLocal, index));
   }
 
   return el;
 }
 
-// Lógica nueva de clics en combate
 function handleCombatClick(item, isLocal, index) {
-  if (state.phase === 'main' && isLocal) {
+  if (state.phase === 'main' && isLocal && state.isPlayerTurn) {
     if (item.summoningSickness) {
       logMsg(`Tu ${item.card.name} está mareado y no puede atacar este turno.`);
       return;
     }
-    if (item.tapped) return; // No puede atacar girado
+    if (item.tapped) return; 
     
-    // Toggle estado de ataque
     item.isAttacking = !item.isAttacking;
     render();
   } 
@@ -217,7 +207,6 @@ function handleCombatClick(item, isLocal, index) {
       render();
     } else {
       if (state.pendingBlockerIndex !== null && item.isAttacking) {
-        // Asignar el bloqueo
         state.localCombat[state.pendingBlockerIndex].blockingIndex = index;
         logMsg(`Asignaste a ${state.localCombat[state.pendingBlockerIndex].card.name} a bloquear a ${item.card.name}.`);
         state.pendingBlockerIndex = null;
@@ -272,12 +261,10 @@ function render() {
   els.localHpText.textContent = `${state.localHP} / 20 HP`; els.rivalHpText.textContent = `${state.rivalHP} / 20 HP`;
   els.localHpBar.style.width = `${(state.localHP / 20) * 100}%`; els.rivalHpBar.style.width = `${(state.rivalHP / 20) * 100}%`;
 
-  els.btnEndTurn.disabled = !state.isPlayerTurn || state.gameOver;
-
-  // Lógica dinámica del botón de acción según la fase
-  els.btnEndTurn.onclick = null; // Reset events
+  els.btnEndTurn.onclick = null; 
   
   if (state.phase === 'main') {
+    els.btnEndTurn.disabled = !state.isPlayerTurn || state.gameOver;
     if (state.localCombat.some(c => c.isAttacking)) {
       els.btnEndTurn.textContent = "Confirmar Ataque ⚔️";
       els.btnEndTurn.onclick = executeLocalAttack;
@@ -285,9 +272,11 @@ function render() {
     } else {
       els.btnEndTurn.textContent = "Pasar Turno ➔";
       els.btnEndTurn.onclick = passTurnToRival;
-      els.btnEndTurn.style.backgroundColor = ""; // Default
+      els.btnEndTurn.style.backgroundColor = "";
     }
   } else if (state.phase === 'local_block') {
+    // Permitir click en el botón aunque no sea tu turno
+    els.btnEndTurn.disabled = state.gameOver;
     els.btnEndTurn.textContent = "Confirmar Bloqueos 🛡️";
     els.btnEndTurn.onclick = executeRivalAttack;
     els.btnEndTurn.style.backgroundColor = "#3498db";
@@ -415,24 +404,17 @@ function checkPaymentComplete() {
   }
 }
 
-// ----------------------------------------------------
-// SISTEMA DE COMBATE Y RESOLUCIÓN DE DAÑO
-// ----------------------------------------------------
-
 async function executeLocalAttack() {
   const attackers = state.localCombat.filter(c => c.isAttacking);
   if (attackers.length === 0) return;
 
-  // En Magic, atacar gira las criaturas
   attackers.forEach(a => a.tapped = true);
   logMsg(`🗡️ Declaraste ${attackers.length} atacantes.`);
 
-  // IA asigna bloqueadores automáticamente
   let availableBlockers = state.rivalCombat.map((c, i) => ({c, i})).filter(obj => !obj.c.tapped);
   
   state.localCombat.forEach((att, aIdx) => {
     if (att.isAttacking && availableBlockers.length > 0) {
-      // IA muy básica: Bloquea con lo primero que encuentra
       let blockerObj = availableBlockers.pop();
       state.rivalCombat[blockerObj.i].blockingIndex = aIdx;
       logMsg(`🛡️ El Tano bloquea a tu ${att.card.name} usando su ${blockerObj.c.card.name}.`);
@@ -444,11 +426,11 @@ async function executeLocalAttack() {
 }
 
 function executeRivalAttack() {
-  logMsg(`🛡️ Confirmaste tus bloqueos.`);
+  logMsg(`🛡️ Resolviendo combates...`);
   resolveCombatDamage(state.rivalCombat, state.localCombat, false);
   
   state.phase = 'main';
-  startLocalTurn(); // Después del ataque del rival, pasa el turno
+  startLocalTurn(); 
 }
 
 function resolveCombatDamage(attackersArray, defendersArray, isLocalAttacking) {
@@ -458,12 +440,10 @@ function resolveCombatDamage(attackersArray, defendersArray, isLocalAttacking) {
     let blockers = defendersArray.filter(d => d.blockingIndex === aIdx);
 
     if (blockers.length === 0) {
-      // Daño directo
       if (isLocalAttacking) state.rivalHP -= attacker.card.power;
       else state.localHP -= attacker.card.power;
       logMsg(`💥 ${attacker.card.name} conectó el golpe! Hizo ${attacker.card.power} de daño.`);
     } else {
-      // Combate de criaturas (Asumimos 1 bloqueador por atacante por ahora para simplificar)
       let blocker = blockers[0];
       blocker.damageTaken += attacker.card.power;
       attacker.damageTaken += blocker.card.power;
@@ -471,11 +451,9 @@ function resolveCombatDamage(attackersArray, defendersArray, isLocalAttacking) {
     }
   });
 
-  // Chequear muertes por resistencia
   checkDeaths(state.localCombat, state.localGraveyard, "Vos");
   checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
 
-  // Limpiar estados de combate
   attackersArray.forEach(c => c.isAttacking = false);
   defendersArray.forEach(c => c.blockingIndex = null);
   state.pendingBlockerIndex = null;
@@ -492,10 +470,6 @@ function checkDeaths(combatArray, graveyardArray, ownerName) {
   }
 }
 
-// ----------------------------------------------------
-// TURNOS
-// ----------------------------------------------------
-
 async function passTurnToRival() {
   if (!state.isPlayerTurn || state.gameOver) return;
   state.isPlayerTurn = false;
@@ -504,7 +478,6 @@ async function passTurnToRival() {
   els.btnEndTurn.style.backgroundColor = "#7f8c8d";
   logMsg("Terminaste tu turno. El Tano está pensando...");
   
-  // En Magic, el daño marcado se limpia al final del turno
   state.localCombat.forEach(c => c.damageTaken = 0);
   state.rivalCombat.forEach(c => c.damageTaken = 0);
   
@@ -521,7 +494,6 @@ async function startRivalTurn() {
   if (state.rivalDeck.length > 0) state.rivalHand.push(state.rivalDeck.pop());
   render(); if (state.gameOver) return; await sleep(1000); if (state.gameOver) return;
 
-  // Fase Principal IA (Bajar tierras y hechizos)
   const landIndex = state.rivalHand.findIndex(c => c.type.includes('Tierra'));
   if (landIndex !== -1 && !state.rivalLandPlayedThisTurn) {
     const landCard = state.rivalHand.splice(landIndex, 1)[0];
@@ -544,21 +516,28 @@ async function startRivalTurn() {
     affordableIndex = state.rivalHand.findIndex(c => !c.type.includes('Tierra') && c.cmc <= state.rivalManaCurrent);
   }
 
-  // Fase de Combate IA
   let attackCount = 0;
   state.rivalCombat.forEach(unit => {
     if (!unit.tapped && !unit.summoningSickness) {
       unit.isAttacking = true;
-      unit.tapped = true; // Atacar gira
+      unit.tapped = true; 
       attackCount++;
     }
   });
 
   if (attackCount > 0) {
-    state.phase = 'local_block';
-    logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s)! Asigná tus bloqueadores y confirmá.`);
-    render();
-    // Pausamos el turno acá. Sigue cuando el jugador clickee "Confirmar Bloqueos"
+    const localHasUntappedBlockers = state.localCombat.some(c => !c.tapped);
+    
+    if (localHasUntappedBlockers) {
+      state.phase = 'local_block';
+      logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s)! Asigná tus bloqueadores y confirmá (o dejá pasar el daño).`);
+      render();
+    } else {
+      logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s) y no tenés defensores disponibles!`);
+      resolveCombatDamage(state.rivalCombat, state.localCombat, false);
+      await sleep(1500);
+      startLocalTurn();
+    }
   } else {
     logMsg("El Tano no atacó con nada.");
     await sleep(1000);
@@ -575,7 +554,7 @@ function startLocalTurn() {
   state.localLandPlayedThisTurn = false;
   state.localLands.forEach(l => l.tapped = false);
   state.localCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; });
-  state.rivalCombat.forEach(c => c.damageTaken = 0); // Reset final de daño
+  state.rivalCombat.forEach(c => c.damageTaken = 0); 
   state.localManaCurrent = state.localManaMax;
 
   if (state.localDeck.length > 0) {
