@@ -224,20 +224,6 @@ function openGraveyardModal(isLocal) {
   modalOverlay.querySelector('.gy-close-btn').onclick = () => modalOverlay.remove();
   modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
 }
-  modalOverlay.innerHTML = `
-    <div class="gy-modal-content">
-      <div class="gy-modal-header">
-        <h3>🪦 ${title} (${gyArray.length})</h3>
-        <button class="gy-close-btn">Cerrar ✖</button>
-      </div>
-      <div class="gy-modal-grid">${cardsHTML}</div>
-    </div>
-  `;
-
-  document.body.appendChild(modalOverlay);
-  modalOverlay.querySelector('.gy-close-btn').onclick = () => modalOverlay.remove();
-  modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
-}
 
 function shuffle(array) { return array.sort(() => Math.random() - 0.5); }
 
