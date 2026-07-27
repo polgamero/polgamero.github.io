@@ -16,6 +16,7 @@ const state = {
   localHand: [],
   localLands: [],
   localCombat: [],
+  localLandPlayedThisTurn: false, // NUEVO: Control de tierra por turno
 
   rivalHP: 20,
   rivalManaMax: 0,
@@ -24,10 +25,11 @@ const state = {
   rivalHand: [],
   rivalLands: [],
   rivalCombat: [],
+  rivalLandPlayedThisTurn: false, // NUEVO: Control de tierra por turno IA
 
-  pendingSpellIndex: null, // Índice de la carta en mano que se está pagando
-  pendingCost: null,       // Objeto con el costo restante
-  tappedLandsThisSpell: [] // Guardamos las tierras giradas temporalmente por si cancela
+  pendingSpellIndex: null, 
+  pendingCost: null,       
+  tappedLandsThisSpell: [] 
 };
 
 const els = {
@@ -77,7 +79,7 @@ async function initGame() {
   els.btnRestartSidebar.addEventListener('click', () => location.reload());
   render();
   logMsg("¡Arranca la partida! Robaste tus 7 cartas iniciales.");
-  logMsg("¡Tu turno! Bajá una tierra para empezar.");
+  logMsg("¡Tu turno! Bajá una estancia para empezar.");
 }
 
 function shuffle(array) {
@@ -89,11 +91,9 @@ function logMsg(msg) {
   entry.className = 'log-entry';
   entry.textContent = msg;
   els.gameLogBox.appendChild(entry);
-  // Autoscroll: siempre mostramos la línea más reciente
   els.gameLogBox.scrollTop = els.gameLogBox.scrollHeight;
 }
 
-// Convertidor de string "{2}{R}{G}" a HTML visual
 function renderManaSymbols(manaCostStr) {
   if (!manaCostStr) return '';
   const matches = manaCostStr.match(/\{[^}]+\}/g);
@@ -101,14 +101,13 @@ function renderManaSymbols(manaCostStr) {
 
   return matches.map(m => {
     const val = m.replace(/[{}]/g, '');
-    let colorClass = 'mana-c'; // Incoloro por defecto
+    let colorClass = 'mana-c'; 
     if(val === 'W') colorClass = 'mana-w';
     if(val === 'U') colorClass = 'mana-u';
     if(val === 'B') colorClass = 'mana-b';
     if(val === 'R') colorClass = 'mana-r';
     if(val === 'G') colorClass = 'mana-g';
 
-    // Si es un número (incoloro), le ponemos el número adentro
     const innerText = ['W','U','B','R','G'].includes(val) ? '' : val;
     return `<span class="mana-symbol ${colorClass}">${innerText}</span>`;
   }).join('');
@@ -117,12 +116,14 @@ function renderManaSymbols(manaCostStr) {
 function createCardElement(cardObj, isTapped = false, isLocal = true, index = null, zone = 'hand') {
   const card = cardObj.card || cardObj;
   const el = document.createElement('div');
-  el.className = `card ${card.rarity || 'Common'} ${isTapped ? 'tapped' : ''}`;
+  
+  // NUEVO: Agregar feedback visual si tiene mareo de invocación (opcional, pero útil)
+  const isSick = cardObj.summoningSickness ? 'sick' : '';
+  el.className = `card ${card.rarity || 'Common'} ${isTapped ? 'tapped' : ''} ${isSick}`;
 
   let icon = '🃏';
   for (const key in ICON_MAP) { if (card.name.includes(key)) icon = ICON_MAP[key]; }
 
-  // 1. Identificamos si es una tierra básica y qué imagen de símbolo le corresponde
   const isBasicLand = card.type.includes('Tierra básica');
   let landSymbolImg = '';
   if (isBasicLand) {
@@ -133,11 +134,9 @@ function createCardElement(cardObj, isTapped = false, isLocal = true, index = nu
     if (card.type.includes('Bosque')) landSymbolImg = 'bosque.png';
   }
 
-  // 2. Pre-armamos la caja de texto para evitar el error de sintaxis
   let textBoxHTML = '';
 
   if (isBasicLand && landSymbolImg) {
-    // Diseño limpio para las tierras con la imagen centrada
     textBoxHTML = `
       <div class="card-text-box" style="display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.85); padding: 0;">
         <img src="./assets/images/${landSymbolImg}" 
@@ -147,7 +146,6 @@ function createCardElement(cardObj, isTapped = false, isLocal = true, index = nu
       </div>
     `;
   } else {
-    // Diseño normal para hechizos, criaturas y artefactos
     let formattedText = '';
     if (card.text) {
       formattedText = card.text.replace(/\{([WUBRGC])\}/g, (match, p1) => {
@@ -169,7 +167,6 @@ function createCardElement(cardObj, isTapped = false, isLocal = true, index = nu
     `;
   }
 
-  // 3. Ensamblamos la carta final
   el.innerHTML = `
     <div class="card-inner">
       <div class="card-header">
@@ -177,23 +174,17 @@ function createCardElement(cardObj, isTapped = false, isLocal = true, index = nu
         <span class="card-cost">${renderManaSymbols(card.manaCost)}</span>
       </div>
       <div class="card-art" style="position: relative; overflow: hidden;">
-        <!-- Fondo de fallback (emoji) -->
         <div style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;">
           ${icon}
         </div>
-        <!-- Arte real de la carta -->
         ${card.image ? `<img src="./assets/images/cards/${card.image}" alt="${card.name}" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; z-index: 2;" onerror="this.style.display='none'">` : ''}
       </div>
       <div class="card-type-line">${card.type}</div>
-      
-      <!-- Inyectamos la caja de texto generada en el paso 2 -->
       ${textBoxHTML}
-      
       ${card.power !== undefined ? `<div class="card-pt">${card.power}/${card.toughness}</div>` : ''}
     </div>
   `;
 
-  // Asignamos los eventos de clic
   if (state.isPlayerTurn && !state.gameOver && isLocal) {
     if (zone === 'hand') el.addEventListener('click', () => playCard(index));
     else if (zone === 'land') el.addEventListener('click', () => tapLocalLand(cardObj));
@@ -203,18 +194,12 @@ function createCardElement(cardObj, isTapped = false, isLocal = true, index = nu
   return el;
 }
 
-// Proporción fija de toda carta: ancho/alto = 5/7
 const CARD_ASPECT = 5 / 7;
-// Tamaño "ideal" cuando hay pocas cartas (equivale al --card-w de 10vh),
-// para que una fila con 1 sola carta no la muestre gigante ni distinta
-// a las demás filas.
+
 function getIdealCardHeightPx() {
-  return window.innerHeight * 0.14; // ~ igual a --card-w(10vh) con aspect 5/7
+  return window.innerHeight * 0.14; 
 }
 
-// Calcula y aplica el tamaño exacto (en px) de las cartas de una fila,
-// de forma que SIEMPRE entren todas dentro del contenedor, sin
-// necesidad de scroll ni de que se desborden.
 function sizeCardsInRow(rowEl) {
   const cards = rowEl.querySelectorAll('.card');
   const n = cards.length;
@@ -222,22 +207,18 @@ function sizeCardsInRow(rowEl) {
 
   const rowStyles = getComputedStyle(rowEl);
   const gap = parseFloat(rowStyles.columnGap) || parseFloat(rowStyles.gap) || 6;
-  const safety = 6; // pequeño margen para no tocar los bordes de la fila
+  const safety = 6; 
 
   const availableWidth = rowEl.clientWidth - safety;
   const availableHeight = rowEl.clientHeight - safety;
 
-  // Tamaño ideal: el mismo para todas las filas del tablero
   let cardHeight = Math.min(getIdealCardHeightPx(), availableHeight);
   let cardWidth = cardHeight * CARD_ASPECT;
 
-  // Si con ese tamaño ideal no entran todas las cartas a lo ancho,
-  // se recalcula el ancho para que entren SIN scroll, y el alto se
-  // ajusta para mantener siempre la misma proporción 5/7.
   const totalGap = gap * Math.max(0, n - 1);
   const widthIfFit = (availableWidth - totalGap) / n;
   if (widthIfFit < cardWidth) {
-    cardWidth = Math.max(widthIfFit, 30); // nunca menos de 30px de ancho
+    cardWidth = Math.max(widthIfFit, 30); 
     cardHeight = cardWidth / CARD_ASPECT;
   }
 
@@ -253,26 +234,22 @@ function sizeAllRows() {
 }
 
 function render() {
-  // Nunca dejamos que el HP salga del rango [0, 20]
   state.localHP = Math.max(0, Math.min(20, state.localHP));
   state.rivalHP = Math.max(0, Math.min(20, state.rivalHP));
 
   els.localHand.innerHTML = '';
   state.localHand.forEach((card, idx) => els.localHand.appendChild(createCardElement(card, false, true, idx, 'hand')));
 
-els.rivalHand.innerHTML = '';
+  els.rivalHand.innerHTML = '';
   state.rivalHand.forEach(() => {
     const back = document.createElement('div');
     back.className = 'card card-back';
-    
-    // Insertamos la imagen del reverso. Si no existe, se oculta y queda el fondo CSS.
     back.innerHTML = `
       <img src="./assets/images/card_back.png" 
           alt="Reverso de carta" 
           style="width: 100%; height: 100%; object-fit: cover; border-radius: 2px;"
           onerror="this.style.display='none'">
     `;
-    
     els.rivalHand.appendChild(back);
   });
 
@@ -286,8 +263,6 @@ els.rivalHand.innerHTML = '';
   els.rivalCombat.innerHTML = '';
   state.rivalCombat.forEach(item => els.rivalCombat.appendChild(createCardElement(item, item.tapped, false, null, 'combat')));
 
-  // Recién ahora que las cartas ya están en el DOM podemos medir el
-  // espacio real de cada fila y asignarles su tamaño exacto.
   sizeAllRows();
 
   els.localMana.textContent = `${state.localManaCurrent} / ${state.localManaMax}`;
@@ -303,18 +278,15 @@ els.rivalHand.innerHTML = '';
 
   els.btnEndTurn.disabled = !state.isPlayerTurn || state.gameOver;
 
-    // ACTUALIZACIÓN VISUAL DEL MODO PAGO
   if (state.pendingSpellIndex !== null) {
     els.paymentControls.classList.remove('hidden');
-    els.btnEndTurn.classList.add('hidden'); // Ocultamos pasar turno para evitar errores
+    els.btnEndTurn.classList.add('hidden'); 
     els.localHand.classList.add('paying-mode');
     els.localLands.classList.add('paying-mode');
     
-    // Le agregamos la clase "paying" a la carta específica
     const pendingCardEl = els.localHand.children[state.pendingSpellIndex];
     if (pendingCardEl) pendingCardEl.classList.add('paying');
     
-    // Actualizar el texto de qué falta pagar
     let statusText = "Falta: ";
     if (state.pendingCost.W > 0) statusText += `${state.pendingCost.W} Blanco `;
     if (state.pendingCost.U > 0) statusText += `${state.pendingCost.U} Azul `;
@@ -334,9 +306,6 @@ els.rivalHand.innerHTML = '';
   checkGameOver();
 }
 
-// Pago de spells
-
-// Convierte "{2}{R}{G}" en { W:0, U:0, B:0, R:1, G:1, generic:2 }
 function parseManaCost(manaString) {
   const cost = { W: 0, U: 0, B: 0, R: 0, G: 0, generic: 0 };
   if (!manaString) return cost;
@@ -352,7 +321,6 @@ function parseManaCost(manaString) {
   return cost;
 }
 
-// Extrae qué color genera una tierra leyendo su texto (ej: "Agrega {R}")
 function getLandColor(cardText) {
   if (!cardText) return 'generic';
   if (cardText.includes('{W}')) return 'W';
@@ -360,14 +328,12 @@ function getLandColor(cardText) {
   if (cardText.includes('{B}')) return 'B';
   if (cardText.includes('{R}')) return 'R';
   if (cardText.includes('{G}')) return 'G';
-  return 'generic'; // Por si es una tierra incolora como la Ruta 40
+  return 'generic'; 
 }
 
-// Cancela el pago y endereza las tierras usadas
 function cancelPayment() {
   if (state.pendingSpellIndex === null) return;
   
-  // Enderezamos solo las tierras que giramos para este hechizo
   state.tappedLandsThisSpell.forEach(land => {
     land.tapped = false;
   });
@@ -380,7 +346,6 @@ function cancelPayment() {
   render();
 }
 
-// Event Listeners para cancelar
 els.btnCancelSpell.addEventListener('click', cancelPayment);
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && state.pendingSpellIndex !== null) {
@@ -388,7 +353,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Chequea si alguien llegó a 0 HP y termina la partida mostrando el cartel
 function checkGameOver() {
   if (state.gameOver) return;
 
@@ -411,7 +375,6 @@ function showGameOverOverlay(didWin) {
   els.btnEndTurn.disabled = true;
 }
 
-// LÓGICA DE JUEGO (Resolución de Efectos y Hechizos)
 function resolveSpell(card, isLocal) {
   const effect = card.effect;
   if(!effect) return;
@@ -439,29 +402,30 @@ function resolveSpell(card, isLocal) {
 
 function playCard(index) {
   if (!state.isPlayerTurn || state.gameOver) return;
-  
-  // Si ya estamos pagando otra cosa, ignorar clics en la mano
   if (state.pendingSpellIndex !== null) return; 
 
   const card = state.localHand[index];
 
-  // Las tierras se bajan gratis y al instante
+  // NUEVO: Verificación de 1 sola tierra por turno
   if (card.type.includes('Tierra')) {
+    if (state.localLandPlayedThisTurn) {
+      logMsg("Ya bajaste una estancia en este turno.");
+      return;
+    }
     state.localLands.push({ card, tapped: false });
     state.localHand.splice(index, 1);
+    state.localLandPlayedThisTurn = true;
     logMsg(`Bajaste la estancia: ${card.name}.`);
     render();
     return;
   }
 
-  // Iniciamos el modo de pago manual
   state.pendingSpellIndex = index;
   state.pendingCost = parseManaCost(card.manaCost);
   state.tappedLandsThisSpell = [];
   
   logMsg(`Preparando: ${card.name}. Seleccioná tierras para pagar.`);
   
-  // Si cuesta 0 (ej. un artefacto gratis), se paga automáticamente
   checkPaymentComplete(); 
   render();
 }
@@ -469,28 +433,23 @@ function playCard(index) {
 function tapLocalLand(item) {
   if (!state.isPlayerTurn || state.gameOver || item.tapped) return;
   
-  // Si NO estamos en modo pago, la tierra se gira pero el maná flota (opcional, por ahora no hace nada si no hay hechizo pendiente)
   if (state.pendingSpellIndex === null) {
     logMsg("Seleccioná primero un hechizo de tu mano para pagar.");
     return;
   }
 
-  // Determinar qué color da esta tierra
   const landColor = getLandColor(item.card.text);
   let used = false;
 
-  // 1. Intentar pagar costo específico de color
   if (['W', 'U', 'B', 'R', 'G'].includes(landColor) && state.pendingCost[landColor] > 0) {
     state.pendingCost[landColor] -= 1;
     used = true;
   } 
-  // 2. Si no sirvió para el color, intentar pagar costo genérico
   else if (state.pendingCost.generic > 0) {
     state.pendingCost.generic -= 1;
     used = true;
   }
 
-  // Si la tierra sirvió para pagar algo del costo
   if (used) {
     item.tapped = true;
     state.tappedLandsThisSpell.push(item);
@@ -509,18 +468,17 @@ function checkPaymentComplete() {
   const totalRemaining = cost.W + cost.U + cost.B + cost.R + cost.G + cost.generic;
 
   if (totalRemaining === 0) {
-    // ¡Pago completado! Se lanza la carta
     const card = state.localHand.splice(state.pendingSpellIndex, 1)[0];
     
     if (card.power !== undefined) {
-      state.localCombat.push({ card, tapped: false });
-      logMsg(`¡Invocaste a ${card.name}!`);
+      // NUEVO: La criatura entra con mareo de invocación
+      state.localCombat.push({ card, tapped: false, summoningSickness: true });
+      logMsg(`¡Invocaste a ${card.name}! (No puede atacar este turno)`);
     } else {
       logMsg(`Lanzaste con éxito: ${card.name}`);
       resolveSpell(card, true);
     }
 
-    // Limpiar estados de pago
     state.pendingSpellIndex = null;
     state.pendingCost = null;
     state.tappedLandsThisSpell = [];
@@ -529,13 +487,19 @@ function checkPaymentComplete() {
 
 function attackLocal(item) {
   if (!state.isPlayerTurn || state.gameOver || item.tapped) return;
+  
+  // NUEVO: Verificación de mareo de invocación
+  if (item.summoningSickness) {
+    logMsg(`¡Paciencia! Tu ${item.card.name} está mareado y no puede atacar en el turno que entra.`);
+    return;
+  }
+  
   item.tapped = true;
   state.rivalHP -= item.card.power;
   logMsg(`⚔️ ¡Tu ${item.card.name} atacó por ${item.card.power} de daño!`);
   render();
 }
 
-// MOTOR DE IA DEL RIVAL
 async function passTurnToRival() {
   if (!state.isPlayerTurn || state.gameOver) return;
   state.isPlayerTurn = false;
@@ -548,8 +512,13 @@ async function passTurnToRival() {
 async function startRivalTurn() {
   if (state.gameOver) return;
 
+  // NUEVO: Resetear tierra jugada y quitar mareo de invocación a las cartas del rival
+  state.rivalLandPlayedThisTurn = false;
   state.rivalLands.forEach(l => l.tapped = false);
-  state.rivalCombat.forEach(c => c.tapped = false);
+  state.rivalCombat.forEach(c => {
+    c.tapped = false;
+    c.summoningSickness = false; 
+  });
   state.rivalManaCurrent = state.rivalManaMax;
 
   if (state.rivalDeck.length > 0) state.rivalHand.push(state.rivalDeck.pop());
@@ -559,10 +528,12 @@ async function startRivalTurn() {
   await sleep(1000);
   if (state.gameOver) return;
 
+  // NUEVO: La IA también respeta la regla de 1 sola tierra
   const landIndex = state.rivalHand.findIndex(c => c.type.includes('Tierra'));
-  if (landIndex !== -1) {
+  if (landIndex !== -1 && !state.rivalLandPlayedThisTurn) {
     const landCard = state.rivalHand.splice(landIndex, 1)[0];
     state.rivalLands.push({ card: landCard, tapped: false });
+    state.rivalLandPlayedThisTurn = true;
     state.rivalManaMax += 1;
     state.rivalManaCurrent += 1;
     logMsg(`El Tano bajó una estancia: ${landCard.name}.`);
@@ -583,7 +554,8 @@ async function startRivalTurn() {
     state.rivalLands.forEach(l => { if (!l.tapped && manaToTap > 0) { l.tapped = true; manaToTap--; } });
 
     if (cardToPlay.power !== undefined) {
-      state.rivalCombat.push({ card: cardToPlay, tapped: false });
+      // NUEVO: IA invoca con mareo
+      state.rivalCombat.push({ card: cardToPlay, tapped: false, summoningSickness: true });
       logMsg(`¡El Tano invocó a ${cardToPlay.name}!`);
     } else {
       logMsg(`El Tano usó: ${cardToPlay.name}`);
@@ -602,7 +574,8 @@ async function startRivalTurn() {
 
   let attacked = false;
   for (let unit of state.rivalCombat) {
-    if (!unit.tapped) {
+    // NUEVO: El Tano solo ataca si la carta no está mareada
+    if (!unit.tapped && !unit.summoningSickness) {
       unit.tapped = true;
       state.localHP -= unit.card.power;
       logMsg(`⚔️ ¡El Tano te ataca con ${unit.card.name} por ${unit.card.power} de daño!`);
@@ -628,8 +601,14 @@ function startLocalTurn() {
   state.isPlayerTurn = true;
   els.btnEndTurn.textContent = "Pasar Turno ➔";
 
+  // NUEVO: Reset de estados al iniciar el turno
+  state.localLandPlayedThisTurn = false;
   state.localLands.forEach(l => l.tapped = false);
-  state.localCombat.forEach(c => c.tapped = false);
+  state.localCombat.forEach(c => {
+    c.tapped = false;
+    c.summoningSickness = false; // Se cura el mareo de invocación
+  });
+  
   state.localManaCurrent = state.localManaMax;
 
   if (state.localDeck.length > 0) {
