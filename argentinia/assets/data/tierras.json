@@ -1,0 +1,122 @@
+[
+  {
+    "id": "land_001",
+    "name": "La Bombonera",
+    "type": "Tierra básica — Planicie",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {W}.",
+    "flavorText": "La cancha tiembla, pero la fe permanece intacta.",
+    "image": "bombonera.png"
+  },
+  {
+    "id": "land_002",
+    "name": "El Obelisco",
+    "type": "Tierra básica — Planicie",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {W}.",
+    "flavorText": "Epicentro de la alegría colectiva.",
+    "image": "obelisco.png"
+  },
+  {
+    "id": "land_003",
+    "name": "Glaciar Perito Moreno",
+    "type": "Tierra básica — Agua",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {U}.",
+    "flavorText": "Imponente majestuosidad del sur.",
+    "image": "glaciar_perito_moreno.png"
+  },
+  {
+    "id": "land_004",
+    "name": "El Monumental",
+    "type": "Tierra básica — Agua",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {U}.",
+    "flavorText": "Casa de gigantes y un mar de pasión.",
+    "image": "monumental.png"
+  },
+  {
+    "id": "land_005",
+    "name": "Cerro Siete Colores",
+    "type": "Tierra básica — Montaña",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {R}.",
+    "flavorText": "Orgullo del norte argentino.",
+    "image": "cerro_siete_colores.png"
+  },
+  {
+    "id": "land_006",
+    "name": "Ruta 40",
+    "type": "Tierra básica — Montaña",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {R}.",
+    "flavorText": "De Norte a Sur, cruzando sierras y desiertos.",
+    "image": "ruta_40.png"
+  },
+  {
+    "id": "land_007",
+    "name": "La Pampa Húmeda",
+    "type": "Tierra básica — Bosque",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {G}.",
+    "flavorText": "Tierra fértil donde todo crece.",
+    "image": "pampa_humeda.png"
+  },
+  {
+    "id": "land_008",
+    "name": "Esteros del Iberá",
+    "type": "Tierra básica — Bosque",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {G}.",
+    "flavorText": "Un paraíso verde lleno de vida salvaje.",
+    "image": "esteros_ibera.png"
+  },
+  {
+    "id": "land_009",
+    "name": "El Riachuelo",
+    "type": "Tierra básica — Pantano",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {B}.",
+    "flavorText": "Aguas turbias, místicas y cargadas de historia.",
+    "image": "riachuelo.png"
+  },
+  {
+    "id": "land_010",
+    "name": "Cementerio de la Recoleta",
+    "type": "Tierra básica — Pantano",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {B}.",
+    "flavorText": "Silencio sepulcral entre las sombras porteñas.",
+    "image": "cementerio_recoleta.png"
+  }
+]

@@ -1,0 +1,467 @@
+:root {
+  --sidebar-width: 280px;
+  --gold: #d4af37;
+  --sky-blue: #74acdf;
+  --hp-green: #2ecc71;
+  --hp-red: #e74c3c;
+
+  /* TAMAÑO DE CARTA ÚNICO Y GLOBAL: se usa igual en mano y en campo
+     para que TODAS las cartas midan siempre lo mismo. */
+  --card-w: 10vh;
+  /* aspect-ratio 5/7 -> alto = ancho * 7/5 = 14vh */
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden; /* ESTO EVITA QUE SALGA DE LA PANTALLA */
+  background-color: #0b130e;
+  color: #fff;
+  font-family: system-ui, sans-serif;
+}
+
+#game-app {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle, #1a3c27 0%, #0d1e13 100%);
+}
+
+/* TABLERO FLEX ESTRICTO */
+#board {
+  flex: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 1vh 1vw;
+  gap: 1vh;
+}
+
+/* ALTURAS EN VH: sólo 4 filas ahora (se fue el banner central), la
+   suma total (filas + gaps + padding) queda por debajo de 100vh */
+.hand-row {
+  height: 16vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  /* SIN overflow: así nunca aparece scrollbar y el zoom de hover
+    puede desbordar la fila sin ser recortado. El tamaño de cada
+    carta se calcula en JS para que siempre entren todas. */
+  z-index: 10;
+}
+
+.field-zone-container {
+  height: 31vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1vh;
+  z-index: 5;
+}
+
+.field-row {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  /* Idem: sin overflow. El fit lo resuelve JS. */
+}
+
+.field-row::before {
+  content: attr(data-label);
+  position: absolute;
+  left: 10px;
+  top: 5px;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+/* ===================================================
+   CARTA MTG: TAMAÑO FIJO Y COHERENTE EN TODAS LAS ZONAS
+=================================================== */
+.card {
+  /* El ancho/alto reales los fija JS (renderRow -> sizeCardsInRow) en
+     px, calculados según el espacio disponible de cada fila, así las
+     cartas NUNCA se desbordan y NUNCA necesitan scroll. Estos valores
+     son sólo un fallback antes de que JS los pise. */
+  width: var(--card-w);
+  aspect-ratio: 5 / 7;
+  background: #c3c3c3;
+  border: 4px solid #111;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  padding: 2px;
+  position: relative;
+  cursor: pointer;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+  transition: transform 0.12s ease;
+  flex-shrink: 0;
+  flex-grow: 0;
+  transform-origin: bottom center; /* Crece desde abajo */
+
+  /* CONTAINER QUERY: el texto interno escala en base al tamaño REAL
+     de la carta (cqw/cqh), así el nombre y el texto siempre entran
+     completos sea cual sea el tamaño calculado por JS. */
+  container-type: size;
+  container-name: card;
+}
+
+/* EFECTO HOVER PARA LA MANO LOCAL */
+#local-hand:hover { z-index: 1000; }
+#local-hand .card:hover {
+  transform: scale(3.5) translateY(0px);
+  z-index: 1000;
+  box-shadow: 0 15px 30px rgba(0,0,0,0.9);
+}
+
+/* EFECTO HOVER EN EL CAMPO (solo para cartas NO giradas) */
+.field-row .card:not(.tapped):hover {
+  transform: scale(3.5);
+  z-index: 100;
+}
+
+/* CARTA GIRADA (TAPPED): se rota Y se reduce en la misma proporción
+   ancho/alto (5/7) para que la "caja" rotada ocupe aproximadamente el
+   mismo espacio que ocupaba antes de girar. Así no se solapa con la
+   carta de al lado. */
+/* === CARTA GIRADA (TAPPED) – SIN ACHICAR, CON SEPARACIÓN === */
+.card.tapped {
+  transform: rotate(90deg);
+  transform-origin: center center; /* gira desde el centro */
+  opacity: 0.85;
+  z-index: 1;
+  /* Aumentamos el margin para separarla de las vecinas */
+  margin-left: 15px;
+  margin-right: 15px;
+}
+
+/* Cuando está girada y hacemos hover, la mostramos normal */
+.field-row .card.tapped:hover {
+  transform: rotate(0deg) scale(3.5);
+  opacity: 1;
+  z-index: 100;
+}
+
+.card-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: url('https://www.transparenttextures.com/patterns/cream-paper.png') #fdfbf7;
+  border: 1px solid #666;
+}
+
+/* HEADER Y MANÁ MTG - tamaños en cqw/cqh: escalan con el tamaño REAL
+   de la carta (que fija JS), nunca quedan fijos ni se cortan */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2cqw 4cqw;
+  border-bottom: 1px solid #999;
+  background: linear-gradient(to bottom, #eaeaea, #d4d4d4);
+  height: 15cqh;
+  flex-shrink: 0;
+}
+.card-title {
+  font-weight: bold;
+  font-size: 9cqw;
+  line-height: 1.1;
+  color: #111;
+  white-space: wrap;
+  overflow: visible;
+  text-overflow: ellipsis;
+  max-width: 76%;
+}
+.card-cost { 
+  display: flex;
+  gap: 2cqw;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* CÍRCULOS DE MANÁ */
+.mana-symbol {
+  width: 9cqw; height: 9cqw;
+  min-width: 8px; min-height: 8px;
+  border-radius: 50%;
+  display: flex; justify-content: center; align-items: center;
+  font-size: 6cqw; font-weight: bold;
+  border: 1px solid #111;
+  color: #000;
+  box-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+.mana-w { background: #fcfcfc; } /* Blanco / Luz */
+.mana-u { background: #4ba0e3; } /* Azul / Agua */
+.mana-b { background: #1b1b1b; color: #fff; } /* Negro / Oscuridad */
+.mana-r { background: #e74c3c; } /* Rojo / Fuego */
+.mana-g { background: #2ecc71; } /* Verde / Naturaleza */
+.mana-c { background: #bdc3c7; } /* Incoloro / Genérico */
+
+/* ARTE */
+.card-art {
+  flex: 1; background: #333; display: flex; justify-content: center; align-items: center;
+  font-size: 26cqw; border-bottom: 1px solid #999; border-top: 1px solid #999;
+  min-height: 0;
+}
+
+/* TYPE LINE Y CAJA DE TEXTO */
+.card-type-line {
+  font-size: 7cqw; font-weight: bold; padding: 2cqw 4cqw;
+  background: linear-gradient(to bottom, #eaeaea, #d4d4d4);
+  border-bottom: 1px solid #999; color: #222;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+.card-text-box {
+  height: 35cqh; padding: 2cqw 3cqw; font-size: 6.5cqw; line-height: 1.15;
+  background: rgba(255,255,255,0.9); color: #111; overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* FUERZA / RESISTENCIA */
+.card-pt {
+  position: absolute; bottom: -2px; right: -2px; background: #ddd;
+  border: 2px solid #222; border-radius: 3px; padding: 1cqw 5cqw;
+  font-weight: bold; font-size: 9cqw; color: #000;
+  box-shadow: -1px -1px 2px rgba(0,0,0,0.3);
+}
+
+.card-back { background: #4a2b10; border: 4px solid #111; background-image: repeating-linear-gradient(45deg, #3e220b 0, #3e220b 5px, #4a2b10 5px, #4a2b10 10px); }
+
+/* BORDES POR RAREZA */
+.card.Mythic { border-color: #e67e22; }
+.card.Rare { border-color: var(--gold); }
+.card.Uncommon { border-color: #a6abae; }
+.card.Common { border-color: #111; }
+
+/* HUD SIDEBAR */
+#sidebar-hud {
+  width: var(--sidebar-width);
+  background: rgba(10, 15, 12, 0.95);
+  border-left: 2px solid var(--gold);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  gap: 1rem;
+  box-sizing: border-box;
+  height: 100vh;
+}
+
+/* --- HUD SIDEBAR COMPACTO --- */
+.player-card { 
+  background: rgba(255, 255, 255, 0.05); 
+  border: 1px solid rgba(255, 255, 255, 0.1); 
+  border-radius: 10px; 
+  padding: 0.6rem; /* Reducido para ganar espacio */
+  display: flex; 
+  flex-direction: row; /* Alineación horizontal */
+  flex-wrap: wrap;
+  align-items: center; 
+  gap: 0.6rem; 
+  flex-shrink: 0; 
+}
+
+.avatar { 
+  font-size: 1.6rem; /* Avatar más pequeño */
+  background: #222; 
+  padding: 0.3rem; 
+  border-radius: 50%; 
+  border: 2px solid var(--gold); 
+}
+
+.player-info {
+  flex: 1; /* Ocupa el ancho restante */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.player-info h3 {
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.hp-bar-container { 
+  width: 100%; 
+  max-width: 130px; /* Ancho máximo controlado */
+  height: 10px; /* Barra más fina */
+  background: #222; 
+  border-radius: 5px; 
+  overflow: hidden; 
+  border: 1px solid #444; 
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.hp-fill { height: 100%; background: var(--hp-green); transition: width 0.3s ease; }
+
+.hp-text { 
+  font-size: 0.7rem; 
+  color: #aaa; 
+  font-weight: bold; 
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.player-stats { 
+  width: 100%;
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 0.4rem; 
+  justify-content: space-around; 
+  margin-top: 5px;
+}
+
+.stat { background: #181818; padding: 0.3rem 0.5rem; border-radius: 4px; font-size: 0.7rem; border: 1px solid #333; }
+.mana-stat { border-color: var(--sky-blue); color: var(--sky-blue); }
+
+/* BITÁCORA: ocupa todo el espacio entre las dos player-card, con
+   scroll propio, para que se vayan acumulando los mensajes de la
+   partida sin romper el layout del sidebar. */
+.log-section {
+  flex: 1;
+  min-height: 0; /* imprescindible para que el scroll interno funcione dentro de un flex */
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+.log-title {
+  font-size: 0.75rem;
+  color: var(--gold);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+.log-box {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: #ffffff;
+  color: #1a1a1a;
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.log-entry {
+  padding-bottom: 0.35rem;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.12);
+}
+.log-entry:last-child { border-bottom: none; padding-bottom: 0; }
+
+.turn-controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.btn-turn {
+  flex: 1;
+  background: #e67e22;
+  color: #fff;
+  border: none;
+  padding: 0.55rem 0.4rem;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.btn-turn:disabled { background: #555; cursor: not-allowed; }
+.btn-reset {
+  flex: 1;
+  background: #2c2c2c;
+  color: #eee;
+  border: 1px solid #555;
+  padding: 0.55rem 0.4rem;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.btn-reset:hover { background: #3a3a3a; }
+
+/* ===================================================
+   OVERLAY DE FIN DE PARTIDA
+=================================================== */
+#game-over-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 5000;
+}
+#game-over-overlay.hidden { display: none; }
+
+.game-over-box {
+  background: #12190f;
+  border: 3px solid var(--gold);
+  border-radius: 14px;
+  padding: 2.5rem 3.5rem;
+  text-align: center;
+  box-shadow: 0 0 40px rgba(212, 175, 55, 0.4);
+}
+.game-over-box h2 {
+  font-size: 1.7rem;
+  margin-bottom: 1.5rem;
+  color: var(--gold);
+}
+#btn-restart {
+  background: #e67e22;
+  color: #fff;
+  border: none;
+  padding: 0.7rem 1.6rem;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+}
+#btn-restart:hover { background: #f39c12; }
+
+/* Ocultar elementos */
+.hidden {
+  display: none !important;
+}
+
+/* Estado de la carta seleccionada para pagar */
+.card.paying {
+  transform: scale(1.15) translateY(-15px) !important;
+  box-shadow: 0 0 20px 5px var(--sky-blue) !important;
+  z-index: 2000 !important;
+  border-color: var(--sky-blue) !important;
+}
+
+/* Opacar el resto de la mano cuando se está pagando */
+.hand-row.paying-mode .card:not(.paying) {
+  opacity: 0.4;
+  pointer-events: none;
+  filter: grayscale(80%);
+}
+
+/* Resaltar las tierras disponibles */
+.lands-row.paying-mode .card:not(.tapped) {
+  box-shadow: 0 0 15px 3px var(--gold);
+  cursor: pointer;
+}
