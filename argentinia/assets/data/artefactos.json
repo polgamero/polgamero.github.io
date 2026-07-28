@@ -1,12 +1,23 @@
 [
-  {"id": "art_001", "name": "El Mate de Calabaza", "type": "Artefacto — Reliquia Sagrada", "manaCost": "{1}", "cmc": 1, "rarity": "Common", "colors": [], "text": "{T}: Toma unos mates y curás 2 Puntos de Vida.", "flavorText": "Un amargo que reconforta el alma.", "effect": {"type": "heal", "amount": 2}, "image": "mate.png"},
-  {"id": "art_002", "name": "Parrilla a Leña", "type": "Artefacto", "manaCost": "{2}", "cmc": 2, "rarity": "Uncommon", "colors": [], "text": "Asado Criollo: Curás 5 Puntos de Vida a tu héroe.", "flavorText": "Un aplauso para el asador.", "effect": {"type": "heal", "amount": 5}, "image": "parrilla.png"},
-  {"id": "art_003", "name": "Facón de Plata", "type": "Artefacto — Equipamiento", "manaCost": "{2}", "cmc": 2, "rarity": "Rare", "colors": [], "text": "Corte preciso. Causa 3 de daño al héroe rival.", "flavorText": "Para defender el honor en la pulpería.", "effect": {"type": "damage", "amount": 3}, "image": "facon.png"},
-  {"id": "art_004", "name": "Sifón de Soda", "type": "Artefacto", "manaCost": "{1}", "cmc": 1, "rarity": "Common", "colors": [], "text": "Chorrazos de Soda: Causa 2 de daño directo.", "flavorText": "Infaltable en la mesa dominguera.", "effect": {"type": "damage", "amount": 2}, "image": "sifon_soda.png"},
-  {"id": "art_005", "name": "Termo Stanley Verde", "type": "Artefacto", "manaCost": "{2}", "cmc": 2, "rarity": "Uncommon", "colors": [], "text": "Agua Caliente. Robás 1 carta.", "flavorText": "No se enfría nunca más.", "effect": {"type": "draw", "amount": 1}, "image": "termo_stanley.png"},
-  {"id": "art_006", "name": "Radio a Pilas TDA", "type": "Artefacto", "manaCost": "{1}", "cmc": 1, "rarity": "Common", "colors": [], "text": "Escuchar el Partido: Robás 2 cartas si hay un gol.", "flavorText": "Transmite el domingo con relatos apasionados.", "effect": {"type": "draw", "amount": 2}, "image": "radio_pilas.png"},
-  {"id": "art_007", "name": "Mazo Cartas Españolas", "type": "Artefacto", "manaCost": "{2}", "cmc": 2, "rarity": "Rare", "colors": [], "text": "Cantar Truco: Causa 1 de daño psicológico.", "flavorText": "¡Quiero retruco!", "effect": {"type": "damage", "amount": 1}, "image": "cartas_espanolas.png"},
-  {"id": "art_008", "name": "Colectivo 60", "type": "Artefacto — Vehículo", "manaCost": "{3}", "cmc": 3, "rarity": "Common", "colors": [], "text": "Atropella y causa 4 de daño directo.", "flavorText": "Pase por el pasillo que al fondo hay lugar.", "effect": {"type": "damage", "amount": 4}, "image": "colectivo_60.png"},
-  {"id": "art_009", "name": "Boleadora de Ramas", "type": "Artefacto", "manaCost": "{1}", "cmc": 1, "rarity": "Uncommon", "colors": [], "text": "Golpe certero en la cabeza, 2 de daño.", "flavorText": "Precisión pampeana pura.", "effect": {"type": "damage", "amount": 2}, "image": "boleadora.png"},
-  {"id": "art_010", "name": "Frasco Dulce de Leche", "type": "Artefacto", "manaCost": "{2}", "cmc": 2, "rarity": "Common", "colors": [], "text": "Cucharada Energética: Curás 3 puntos de vida.", "flavorText": "Sabor nacional por excelencia.", "effect": {"type": "heal", "amount": 3}, "image": "frasco_ddl.png"}
+  {
+    "id": "art_001", "name": "El Mate de Calabaza", "type": "Artefacto — Reliquia Sagrada",
+    "manaCost": "{1}", "cmc": 1, "rarity": "Common", "colors": [],
+    "text": "{T}: Toma unos mates y curás 2 Puntos de Vida.", "flavorText": "Un amargo que reconforta el alma.",
+    "requiresTarget": false, "image": "mate.png",
+    "activatedAbility": { "cost": "{T}", "effect": {"type": "heal", "amount": 2}, "requiresTarget": true }
+  },
+  {
+    "id": "art_002", "name": "Parrilla a Leña", "type": "Artefacto",
+    "manaCost": "{2}", "cmc": 2, "rarity": "Uncommon", "colors": [],
+    "text": "Asado Criollo: Curás 5 Puntos de Vida a tu héroe.", "flavorText": "Un aplauso para el asador.",
+    "requiresTarget": false, "image": "parrilla.png",
+    "etbEffect": {"type": "heal", "amount": 5}
+  },
+  {
+    "id": "art_003", "name": "Facón de Plata", "type": "Artefacto — Equipamiento",
+    "manaCost": "{2}", "cmc": 2, "rarity": "Rare", "colors": [],
+    "text": "{T}: Causa 3 de daño al héroe rival.", "flavorText": "Para defender el honor en la pulpería.",
+    "requiresTarget": false, "image": "facon.png",
+    "activatedAbility": { "cost": "{T}", "effect": {"type": "damage", "amount": 3}, "requiresTarget": true }
+  }
 ]

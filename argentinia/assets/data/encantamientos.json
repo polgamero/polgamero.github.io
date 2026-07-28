@@ -1,0 +1,26 @@
+[
+  {
+    "id": "rar_003", "name": "Cumbia Santafesina", "type": "Encantamiento",
+    "manaCost": "{2}{G}", "cmc": 3, "rarity": "Rare", "colors": ["G"],
+    "text": "Ritmo Sabroso: Curás 4 HP bailando.", "flavorText": "¡Con la fuerza del acordeón!",
+    "requiresTarget": false, "adjunta": false, "image": "cumbia.png",
+    "etbEffect": {"type": "heal", "amount": 4}
+  },
+  {"id": "rar_005", "name": "Milonga de Medianoche", "type": "Encantamiento", "manaCost": "{1}{B}{W}", "cmc": 3, "rarity": "Rare", "colors": ["B", "W"], "text": "Tango Fatal: Daña 3 al rival.", "flavorText": "El tango te espera si das un paso en falso.", "effect": {"type": "damage", "amount": 3}, "requiresTarget": true, "adjunta": false, "alcance": "jugador_rival", "cuando": "unico", "image": "milonga.png"},
+  {"id": "rar_010", "name": "Hinchada Fervorosa", "type": "Encantamiento",
+    "manaCost": "{2}", "cmc": 2, "rarity": "Rare", "colors": [],
+    "text": "Recaudación Popular: Robás 2 cartas por el apoyo.", "flavorText": "La gente siempre apoya.",
+    "requiresTarget": false, "adjunta": false, "image": "hinchada.png",
+    "etbEffect": {"type": "draw", "amount": 2}
+  },
+  {
+    "id": "leg_007", "name": "La Scaloneta", "type": "Encantamiento Legendario",
+    "manaCost": "{3}{W}{R}", "cmc": 5, "rarity": "Mythic", "colors": ["W", "R"],
+    "text": "Elijo Creer: Robás 3 cartas inmediatamente para armar tu estrategia.", "flavorText": "Hermoso mañana, ¿verdad?",
+    "requiresTarget": false, "adjunta": false, "image": "scaloneta.png",
+    "etbEffect": {"type": "draw", "amount": 3}
+  },
+  {"id": "aura_001", "name": "Poncho del Paisano", "type": "Encantamiento — Aura", "manaCost": "{1}{W}", "cmc": 2, "rarity": "Uncommon", "colors": ["W"], "text": "Encantar criatura. La criatura encantada obtiene +1/+1.", "flavorText": "Abriga en las noches frías de la pampa.", "effect": null, "requiresTarget": true, "adjunta": true, "alcance": "criatura_propia", "cuando": "estatico", "auraEffect": {"stats": {"signo": "+", "cantidad": 1}, "keywords": []}, "image": "poncho.png"},
+  {"id": "aura_002", "name": "Alpargatas Aladas", "type": "Encantamiento — Aura", "manaCost": "{1}{U}", "cmc": 2, "rarity": "Uncommon", "colors": ["U"], "text": "Encantar criatura. La criatura encantada gana Vuela.", "flavorText": "Livianas como el viento pampero.", "effect": null, "requiresTarget": true, "adjunta": true, "alcance": "criatura_propia", "cuando": "estatico", "auraEffect": {"stats": null, "keywords": ["flying"]}, "image": "alpargatas.png"},
+  {"id": "aura_003", "name": "Rebenque Filoso", "type": "Encantamiento — Aura", "manaCost": "{1}{R}{R}", "cmc": 3, "rarity": "Rare", "colors": ["R"], "text": "Encantar criatura. La criatura encantada obtiene +2/+2.", "flavorText": "Cuero curtido y filo templado.", "effect": null, "requiresTarget": true, "adjunta": true, "alcance": "criatura_propia", "cuando": "estatico", "auraEffect": {"stats": {"signo": "+", "cantidad": 2}, "keywords": []}, "image": "rebenque.png"}
+]
