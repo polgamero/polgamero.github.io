@@ -128,5 +128,18 @@
     "flavorText": "Silencio sepulcral entre las sombras porteñas.",
     "image": "cementerio_recoleta.png",
     "produces": "B"
+  },
+    {
+    "id": "land_011",
+    "name": "La Constancia",
+    "type": "Tierra básica — Pantano",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {B}.",
+    "flavorText": "El corazón del delta late aquí",
+    "image": "constancia.png",
+    "produces": "B"
   }
 ]
