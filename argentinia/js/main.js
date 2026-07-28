@@ -11,8 +11,6 @@ const state = {
   gameOver: false,
 
   localHP: 20,
-  localManaMax: 0,
-  localManaCurrent: 0,
   localDeck: [],
   localHand: [],
   localLands: [],
@@ -21,8 +19,6 @@ const state = {
   localLandPlayedThisTurn: false,
 
   rivalHP: 20,
-  rivalManaMax: 0,
-  rivalManaCurrent: 0,
   rivalDeck: [],
   rivalHand: [],
   rivalLands: [],
@@ -60,8 +56,6 @@ const els = {
   rivalHpBar: document.getElementById('rival-hp-bar'),
   localHpText: document.getElementById('local-hp-text'),
   rivalHpText: document.getElementById('rival-hp-text'),
-  localMana: document.getElementById('local-mana-text'),
-  rivalMana: document.getElementById('rival-mana-text'),
 
   gameOverOverlay: document.getElementById('game-over-overlay'),
   gameOverTitle: document.getElementById('game-over-title'),
@@ -541,8 +535,6 @@ function render() {
   sizeAllRows();
   updatePilesUI();
 
-  els.localMana.textContent = `${state.localManaCurrent} / ${state.localManaMax}`;
-  els.rivalMana.textContent = `${state.rivalManaCurrent} / ${state.rivalManaMax}`;
   els.localHpText.textContent = `${state.localHP} / 20 HP`; els.rivalHpText.textContent = `${state.rivalHP} / 20 HP`;
   els.localHpBar.style.width = `${(state.localHP / 20) * 100}%`; els.rivalHpBar.style.width = `${(state.rivalHP / 20) * 100}%`;
 
@@ -1039,14 +1031,13 @@ async function startRivalTurn() {
   state.rivalLands.forEach(l => l.tapped = false);
   state.rivalCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; });
   state.rivalSupport.forEach(s => s.tapped = false);
-  state.rivalManaCurrent = state.rivalManaMax;
   if (state.rivalDeck.length > 0) state.rivalHand.push(state.rivalDeck.pop());
   render(); if (state.gameOver) return; await sleep(1000); if (state.gameOver) return;
 
   const landIndex = state.rivalHand.findIndex(c => c.type.includes('Tierra'));
   if (landIndex !== -1 && !state.rivalLandPlayedThisTurn) {
     const landCard = state.rivalHand.splice(landIndex, 1)[0];
-    state.rivalLands.push({ card: landCard, tapped: false }); state.rivalLandPlayedThisTurn = true; state.rivalManaMax += 1; state.rivalManaCurrent += 1;
+    state.rivalLands.push({ card: landCard, tapped: false }); state.rivalLandPlayedThisTurn = true;
     logMsg(`El Tano bajó una estancia: ${landCard.name}.`); render(); if (state.gameOver) return; await sleep(1000);
   }
 
@@ -1057,7 +1048,6 @@ async function startRivalTurn() {
     // Restamos del contador visual de maná
     const cost = parseManaCost(cardToPlay.manaCost);
     const totalCost = cost.W + cost.U + cost.B + cost.R + cost.G + cost.generic;
-    state.rivalManaCurrent -= totalCost;
     
     // Giramos las tierras usando la nueva función
     tapRivalLandsFor(cardToPlay);
@@ -1153,7 +1143,6 @@ function startLocalTurn() {
   state.localCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; });
   state.rivalCombat.forEach(c => c.damageTaken = 0); 
   state.localSupport.forEach(s => s.tapped = false);
-  state.localManaCurrent = state.localManaMax;
 
   if (state.localDeck.length > 0) {
     state.localHand.push(state.localDeck.pop());
