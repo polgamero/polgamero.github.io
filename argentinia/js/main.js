@@ -35,7 +35,14 @@ const state = {
   tappedLandsThisSpell: [],
   pendingTargetCard: null,
   
-  pendingBlockerIndex: null 
+  pendingBlockerIndex: null,
+  
+  localSupport: [],
+  rivalSupport: [],
+  pendingTargetSource: null, // Para saber de dónde viene el efecto (mano, etb, habilidad)
+
+  isDiscarding: false,
+  cardsToDiscard: 0
 };
 
 const els = {
@@ -67,7 +74,10 @@ const els = {
   rivalDeckPile: null,
   rivalGYPile: null,
   localDeckPile: null,
-  localGYPile: null
+  localGYPile: null,
+  
+  localSupport: document.getElementById('local-support'),
+  rivalSupport: document.getElementById('rival-support'),
 };
 
 async function initGame() {
@@ -76,8 +86,8 @@ async function initGame() {
 
   setupBoardLayout();
 
-  state.localDeck = shuffle([...cardDb.allCards]);
-  state.rivalDeck = shuffle([...cardDb.allCards]);
+  state.localDeck = buildRandomDeck();
+  state.rivalDeck = buildRandomDeck();
 
   for (let i = 0; i < 7; i++) {
     state.localHand.push(state.localDeck.pop());
@@ -96,13 +106,13 @@ async function initGame() {
 }
 
 function setupBoardLayout() {
-  const rivalLandsEl = document.getElementById('rival-lands');
-  const localLandsEl = document.getElementById('local-lands');
+  const rivalWrapper = document.getElementById('rival-wrapper');
+  const localWrapper = document.getElementById('local-wrapper');
 
   // Zona Rival
   const rivalRowContainer = document.createElement('div');
   rivalRowContainer.className = 'zone-row-container';
-  rivalLandsEl.parentNode.insertBefore(rivalRowContainer, rivalLandsEl);
+  rivalWrapper.parentNode.insertBefore(rivalRowContainer, rivalWrapper);
 
   els.rivalDeckPile = createPileElement('MAZO');
   els.rivalGYPile = createPileElement('CEMENTERIO');
@@ -110,7 +120,7 @@ function setupBoardLayout() {
 
   const rivalCenterZone = document.createElement('div');
   rivalCenterZone.className = 'lands-center-zone';
-  rivalCenterZone.appendChild(rivalLandsEl);
+  rivalCenterZone.appendChild(rivalWrapper); // Ahora mete el wrapper entero
 
   rivalRowContainer.appendChild(els.rivalDeckPile);
   rivalRowContainer.appendChild(rivalCenterZone);
@@ -119,7 +129,7 @@ function setupBoardLayout() {
   // Zona Local
   const localRowContainer = document.createElement('div');
   localRowContainer.className = 'zone-row-container';
-  localLandsEl.parentNode.insertBefore(localRowContainer, localLandsEl);
+  localWrapper.parentNode.insertBefore(localRowContainer, localWrapper);
 
   els.localDeckPile = createPileElement('MAZO');
   els.localGYPile = createPileElement('CEMENTERIO');
@@ -127,7 +137,7 @@ function setupBoardLayout() {
 
   const localCenterZone = document.createElement('div');
   localCenterZone.className = 'lands-center-zone';
-  localCenterZone.appendChild(localLandsEl);
+  localCenterZone.appendChild(localWrapper); // Ahora mete el wrapper entero
 
   localRowContainer.appendChild(els.localDeckPile);
   localRowContainer.appendChild(localCenterZone);
@@ -227,6 +237,35 @@ function openGraveyardModal(isLocal) {
 
 function shuffle(array) { return array.sort(() => Math.random() - 0.5); }
 
+function buildRandomDeck() {
+  // 1. Separamos las cartas disponibles en dos grupos
+  const landsPool = cardDb.allCards.filter(c => c.type.includes('Tierra'));
+  const spellsPool = cardDb.allCards.filter(c => !c.type.includes('Tierra'));
+
+  const deck = [];
+  const TOTAL_LANDS = 24; // Proporción clásica de MTG
+  const TOTAL_SPELLS = 36;
+
+  // 2. Rellenamos con 24 tierras al azar
+  for (let i = 0; i < TOTAL_LANDS; i++) {
+    // Si por algún motivo no hay tierras en el JSON, evitamos que se rompa
+    if (landsPool.length === 0) break; 
+    const randomLand = landsPool[Math.floor(Math.random() * landsPool.length)];
+    // El spread operator {...} clona la carta para que sean instancias independientes
+    deck.push({ ...randomLand }); 
+  }
+
+  // 3. Rellenamos con 36 hechizos al azar
+  for (let i = 0; i < TOTAL_SPELLS; i++) {
+    if (spellsPool.length === 0) break;
+    const randomSpell = spellsPool[Math.floor(Math.random() * spellsPool.length)];
+    deck.push({ ...randomSpell });
+  }
+
+  // 4. Mezclamos el mazo resultante de 60 cartas y lo devolvemos
+  return shuffle(deck);
+}
+
 function logMsg(msg) {
   const entry = document.createElement('div');
   entry.className = 'log-entry';
@@ -256,7 +295,12 @@ function createCardElement(itemObj, isTapped = false, isLocal = true, index = nu
   const isAttacking = itemObj.isAttacking === true ? 'attacking' : '';
   const isBlocking = (itemObj.blockingIndex !== null && itemObj.blockingIndex !== undefined) ? 'blocking' : '';
   const isSelectedBlocker = (state.pendingBlockerIndex === index && zone === 'combat' && isLocal) ? 'selected-blocker' : '';
-  const isTargetable = (state.pendingTargetCard !== null && zone === 'combat');
+
+  let isTargetable = false;
+  if (state.pendingTargetCard && zone === 'combat') {
+    const rules = getTargetRules(state.pendingTargetCard);
+    isTargetable = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
+  }
   const targetClass = isTargetable ? 'targetable' : '';
 
   el.className = `card ${card.rarity || 'Common'} ${isTapped ? 'tapped' : ''} ${isSick} ${isAttacking} ${isBlocking} ${isSelectedBlocker} ${targetClass}`;
@@ -274,9 +318,9 @@ function createCardElement(itemObj, isTapped = false, isLocal = true, index = nu
     if (card.type.includes('Bosque')) landSymbolImg = 'bosque.png';
   }
 
-  let textBoxHTML = '';
+  let formattedTextHTML = '';
   if (isBasicLand && landSymbolImg) {
-    textBoxHTML = `<div class="card-text-box" style="display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.85); padding: 0;">
+    formattedTextHTML = `<div class="card-text-box" style="display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.85); padding: 0;">
         <img src="./assets/images/${landSymbolImg}" alt="Símbolo de maná" style="width: 120%; height: auto; object-fit: contain; opacity: 0.9;" onerror="this.style.display='none'">
       </div>`;
   } else {
@@ -285,13 +329,32 @@ function createCardElement(itemObj, isTapped = false, isLocal = true, index = nu
       if(p1==='W') c='mana-w'; if(p1==='U') c='mana-u'; if(p1==='B') c='mana-b'; if(p1==='R') c='mana-r'; if(p1==='G') c='mana-g';
       return `<span class="mana-symbol ${c}" style="display:inline-flex; width:4cqw; height:4cqw; font-size:2.5cqw; margin:0 2px; vertical-align:middle;">${p1}</span>`;
     }) : '';
-    textBoxHTML = `<div class="card-text-box"><i>${card.flavorText || ''}</i><br><strong>${formattedText}</strong></div>`;
+
+    const effKeywords = card.power !== undefined ? getEffectiveKeywords(itemObj) : [];
+    const KEYWORD_LABELS = { flying: '🕊️ Vuela', trample: '🐘 Arrolla', lifelink: '❤️ Vínculo vital', hexproof: '🛡️ Intocable', haste: '⚡ Prisa', menace: '👥 Amenaza', vigilance: '👁️ Vigilancia' };
+    const keywordsHTML = effKeywords.length > 0
+      ? `<div class="keyword-strip">${effKeywords.map(k => `<span class="keyword-tag">${KEYWORD_LABELS[k] || k}</span>`).join('')}</div>`
+      : '';
+
+    formattedTextHTML = `<div class="card-text-box">${keywordsHTML}<i>${card.flavorText || ''}</i><br><strong>${formattedText}</strong></div>`;
   }
 
-  let ptText = card.power !== undefined ? `${card.power}/${card.toughness}` : '';
+  // Stats "efectivos": la base de la carta + lo que le suman/restan las Auras pegadas
+  const effPower = card.power !== undefined ? getEffectivePower(itemObj) : undefined;
+  const effToughness = card.toughness !== undefined ? getEffectiveToughness(itemObj) : undefined;
+  const isBuffed = effPower !== undefined && (effPower !== card.power || effToughness !== card.toughness);
+
+  let ptText = card.power !== undefined ? `${effPower}/${effToughness}` : '';
   if (itemObj.damageTaken > 0 && card.toughness !== undefined) {
-    ptText = `${card.power}/<span style="color:red;">${card.toughness - itemObj.damageTaken}</span>`;
+    ptText = `${effPower}/<span style="color:#e74c3c;">${effToughness - itemObj.damageTaken}</span>`;
+  } else if (isBuffed) {
+    ptText = `<span style="color:#27ae60;">${effPower}/${effToughness}</span>`;
   }
+
+  const attachedAuras = itemObj.auras || [];
+  const auraBadgeHTML = (zone === 'combat' && attachedAuras.length > 0)
+    ? `<div class="aura-badge" title="${attachedAuras.map(a => a.name).join(', ')}">✨${attachedAuras.length > 1 ? attachedAuras.length : ''}</div>`
+    : '';
 
   el.innerHTML = `
     <div class="card-inner">
@@ -301,24 +364,86 @@ function createCardElement(itemObj, isTapped = false, isLocal = true, index = nu
         ${card.image ? `<img src="./assets/images/cards/${card.image}" alt="${card.name}" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; z-index: 2;" onerror="this.style.display='none'">` : ''}
       </div>
       <div class="card-type-line">${card.type}</div>
-      ${textBoxHTML}
+      ${formattedTextHTML}
       ${card.power !== undefined ? `<div class="card-pt">${ptText}</div>` : ''}
+      ${auraBadgeHTML}
     </div>
   `;
 
   if (zone === 'hand' && isLocal && state.isPlayerTurn && state.phase === 'main' && !state.gameOver) {
-    el.addEventListener('click', () => playCard(index));
+    el.addEventListener('click', () => {
+      // Si está en modo descarte, descarta la carta
+      if (state.isDiscarding) {
+        handleDiscardClick(index);
+      } else {
+        // Sino, juega la carta normalmente
+        playCard(index);
+      }
+    });
   } else if (zone === 'land' && isLocal && state.isPlayerTurn && state.phase === 'main' && !state.gameOver) {
     el.addEventListener('click', () => tapLocalLand(itemObj));
   } else if (zone === 'combat' && !state.gameOver) {
     el.addEventListener('click', () => handleCombatClick(itemObj, isLocal, index));
+  } else if (zone === 'support' && isLocal && state.isPlayerTurn && state.phase === 'main' && !state.gameOver) {
+    el.addEventListener('click', () => handleSupportClick(itemObj, isLocal, index));
   }
 
   return el;
 }
 
+// Reglas de objetivo válido según la carta que se está lanzando.
+// Por defecto (hechizos de daño/cura de siempre) se mantiene el comportamiento
+// histórico: pueden apuntar a cualquier jugador o criatura. Las Auras (adjunta:true)
+// sólo pueden apuntar a una criatura propia, porque se quedan pegadas a ella.
+function getTargetRules(card) {
+  if (card.adjunta) {
+    return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: false };
+  }
+  return { allowPlayer: true, allowLocalCreature: true, allowRivalCreature: true };
+}
+
+// --- Stats efectivos: base de la carta + modificadores de todas las Auras pegadas ---
+function getEffectivePower(itemObj) {
+  const card = itemObj.card || itemObj;
+  let p = card.power || 0;
+  (itemObj.auras || []).forEach(auraCard => {
+    const mod = auraCard.auraEffect && auraCard.auraEffect.stats;
+    if (mod) p += (mod.signo === '-' ? -1 : 1) * mod.cantidad;
+  });
+  return p;
+}
+function getEffectiveToughness(itemObj) {
+  const card = itemObj.card || itemObj;
+  let t = card.toughness || 0;
+  (itemObj.auras || []).forEach(auraCard => {
+    const mod = auraCard.auraEffect && auraCard.auraEffect.stats;
+    if (mod) t += (mod.signo === '-' ? -1 : 1) * mod.cantidad;
+  });
+  return t;
+}
+function getEffectiveKeywords(itemObj) {
+  const card = itemObj.card || itemObj;
+  const base = card.keywords || [];
+  const fromAuras = (itemObj.auras || []).flatMap(a => (a.auraEffect && a.auraEffect.keywords) || []);
+  return [...new Set([...base, ...fromAuras])];
+}
+
+// Pega un Aura a una criatura: queda registrada en su lista `auras` y modifica
+// sus stats/keywords efectivos de ahí en más (hasta que la criatura muera).
+function attachAura(auraCard, creatureItem) {
+  if (!creatureItem.auras) creatureItem.auras = [];
+  creatureItem.auras.push(auraCard);
+  logMsg(`✨ ¡${auraCard.name} se pegó a ${creatureItem.card.name}!`);
+}
+
 function handleCombatClick(item, isLocal, index) {
   if (state.pendingTargetCard) {
+    const rules = getTargetRules(state.pendingTargetCard);
+    const allowed = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
+    if (!allowed) {
+      logMsg(`Ese no es un objetivo válido para ${state.pendingTargetCard.name}.`);
+      return;
+    }
     executeSpellOnTarget({ type: 'creature', isLocal, index, item });
     return;
   }
@@ -355,6 +480,11 @@ function handleCombatClick(item, isLocal, index) {
 
 function handlePlayerTargetClick(isLocal) {
   if (state.pendingTargetCard) {
+    const rules = getTargetRules(state.pendingTargetCard);
+    if (!rules.allowPlayer) {
+      logMsg(`${state.pendingTargetCard.name} necesita una criatura como objetivo, no un jugador.`);
+      return;
+    }
     executeSpellOnTarget({ type: 'player', isLocal });
   }
 }
@@ -376,7 +506,7 @@ function sizeCardsInRow(rowEl) {
   cards.forEach(c => { c.style.width = `${cardWidth}px`; c.style.height = `${cardHeight}px`; });
 }
 function sizeAllRows() {
-  [els.localHand, els.rivalHand, els.localLands, els.rivalLands, els.localCombat, els.rivalCombat].forEach(sizeCardsInRow);
+  [els.localHand, els.rivalHand, els.localLands, els.rivalLands, els.localCombat, els.rivalCombat,els.localSupport,els.rivalSupport].forEach(sizeCardsInRow);
 }
 
 function render() {
@@ -396,9 +526,13 @@ function render() {
   els.localCombat.innerHTML = ''; state.localCombat.forEach((item, idx) => els.localCombat.appendChild(createCardElement(item, item.tapped, true, idx, 'combat')));
   els.rivalCombat.innerHTML = ''; state.rivalCombat.forEach((item, idx) => els.rivalCombat.appendChild(createCardElement(item, item.tapped, false, idx, 'combat')));
 
+  els.localSupport.innerHTML = ''; state.localSupport.forEach((item, idx) => els.localSupport.appendChild(createCardElement(item, item.tapped, true, idx, 'support')));
+  els.rivalSupport.innerHTML = ''; state.rivalSupport.forEach((item, idx) => els.rivalSupport.appendChild(createCardElement(item, item.tapped, false, idx, 'support')));
+  
   if (state.pendingTargetCard) {
-    els.rivalHpBar.parentElement.classList.add('targetable');
-    els.localHpBar.parentElement.classList.add('targetable');
+    const rules = getTargetRules(state.pendingTargetCard);
+    els.rivalHpBar.parentElement.classList.toggle('targetable', rules.allowPlayer);
+    els.localHpBar.parentElement.classList.toggle('targetable', rules.allowPlayer);
   } else {
     els.rivalHpBar.parentElement.classList.remove('targetable');
     els.localHpBar.parentElement.classList.remove('targetable');
@@ -422,7 +556,7 @@ function render() {
       els.btnEndTurn.style.backgroundColor = "#e74c3c";
     } else {
       els.btnEndTurn.textContent = "Pasar Turno ➔";
-      els.btnEndTurn.onclick = passTurnToRival;
+      els.btnEndTurn.onclick = attemptPassTurn;
       els.btnEndTurn.style.backgroundColor = "";
     }
   } else if (state.phase === 'local_block') {
@@ -430,6 +564,12 @@ function render() {
     els.btnEndTurn.textContent = "Confirmar Bloqueos 🛡️";
     els.btnEndTurn.onclick = executeRivalAttack;
     els.btnEndTurn.style.backgroundColor = "#3498db";
+  }
+
+  if (state.isDiscarding) {
+    els.localHand.classList.add('discard-warning');
+  } else {
+    els.localHand.classList.remove('discard-warning');
   }
 
   if (state.pendingSpellIndex !== null) {
@@ -468,7 +608,9 @@ function parseManaCost(manaString) {
   return cost;
 }
 
-function getLandColor(cardText) {
+function getLandColor(card) {
+  if (card && card.produces) return card.produces;
+  const cardText = card && card.text;
   if (!cardText) return 'generic';
   if (cardText.includes('{W}')) return 'W'; if (cardText.includes('{U}')) return 'U'; if (cardText.includes('{B}')) return 'B'; if (cardText.includes('{R}')) return 'R'; if (cardText.includes('{G}')) return 'G';
   return 'generic'; 
@@ -515,7 +657,7 @@ function playCard(index) {
 function tapLocalLand(item) {
   if (!state.isPlayerTurn || state.gameOver || item.tapped) return;
   if (state.pendingSpellIndex === null) { logMsg("Seleccioná primero un hechizo de tu mano para pagar."); return; }
-  const landColor = getLandColor(item.card.text); let used = false;
+  const landColor = getLandColor(item.card); let used = false;
   if (['W', 'U', 'B', 'R', 'G'].includes(landColor) && state.pendingCost[landColor] > 0) { state.pendingCost[landColor] -= 1; used = true; } 
   else if (state.pendingCost.generic > 0) { state.pendingCost.generic -= 1; used = true; }
   if (used) { item.tapped = true; state.tappedLandsThisSpell.push(item); checkPaymentComplete(); } 
@@ -529,18 +671,72 @@ function checkPaymentComplete() {
   if ((cost.W + cost.U + cost.B + cost.R + cost.G + cost.generic) === 0) {
     const card = state.localHand[state.pendingSpellIndex];
     
+    const isPermanent = card.type.includes('Artefacto') || (card.type.includes('Encantamiento') && !card.adjunta);
+
     if (card.power !== undefined) {
+      // (Tu código actual para criaturas)
       state.localHand.splice(state.pendingSpellIndex, 1);
-      state.localCombat.push({ card, tapped: false, summoningSickness: true, isAttacking: false, blockingIndex: null, damageTaken: 0 });
+      const newCreature = { 
+        card, 
+        tapped: false, 
+        summoningSickness: true, 
+        isAttacking: false, 
+        blockingIndex: null, 
+        damageTaken: 0, 
+        auras: [] 
+      };
+      state.localCombat.push(newCreature);
       logMsg(`¡Invocaste a ${card.name}! (No puede atacar este turno)`);
+
+      // === NUEVO: LÓGICA ETB PARA CRIATURAS ===
+      if (card.etbEffect) {
+        if (card.requiresTarget) {
+          // Si el efecto pide que elijas a quién hacerle el daño/curación
+          state.pendingTargetCard = card;
+          state.pendingTargetSource = { type: 'etb', item: newCreature };
+          logMsg(`¡Efecto activado! Elegí un objetivo para ${card.name}.`);
+        } else {
+          // Si es directo (como hacerle 3 de daño al Tano automáticamente)
+          resolveEffectDirect(card.etbEffect, card.name, true);
+          render();
+        }
+      }
+      // =========================================
+
+      // Limpiamos los estados de casteo
+      state.pendingSpellIndex = null; 
+      state.pendingCost = null; 
+      state.tappedLandsThisSpell = [];
+      
+    } else if (isPermanent) {
+      // NUEVO: Lógica de Artefactos y Encantamientos
+      state.localHand.splice(state.pendingSpellIndex, 1);
+      const supportItem = { card, tapped: false };
+      state.localSupport.push(supportItem);
+      logMsg(`¡Bajaste ${card.name} a tu zona de soporte!`);
+
+      if (card.etbEffect) {
+        if (card.requiresTarget) {
+          state.pendingTargetCard = card;
+          state.pendingTargetSource = { type: 'etb', item: supportItem };
+          logMsg(`¡Efecto activado! Elegí un objetivo para ${card.name}.`);
+        } else {
+          resolveEffectDirect(card.etbEffect, card.name, true);
+        }
+      }
       state.pendingSpellIndex = null; state.pendingCost = null; state.tappedLandsThisSpell = [];
+
     } else {
-      if (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal')) {
+      // (Tu código actual para Instantaneos/Conjuros/Auras)
+      const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal')));
+      if (needsTarget) {
         state.pendingTargetCard = card;
-        logMsg(`¡Maná pagado! Hacé clic en un jugador o criatura para aplicar ${card.name}.`);
+        state.pendingTargetSource = null; // Viene de la mano
+        const targetHint = card.adjunta ? `Hacé clic en una de tus criaturas para encantarla con ${card.name}.` : `Hacé clic en un jugador o criatura para aplicar ${card.name}.`;
+        logMsg(`¡Maná pagado! ${targetHint}`);
       } else {
         state.localHand.splice(state.pendingSpellIndex, 1);
-        resolveSpellDirect(card, true);
+        resolveEffectDirect(card.effect, card.name, true);
         state.localGraveyard.push(card);
         state.pendingSpellIndex = null; state.pendingCost = null; state.tappedLandsThisSpell = [];
       }
@@ -550,44 +746,104 @@ function checkPaymentComplete() {
 
 function executeSpellOnTarget(targetObj) {
   if (!state.pendingTargetCard) return;
-  const card = state.localHand.splice(state.pendingSpellIndex, 1)[0];
-  const effect = card.effect;
+
+  let card;
+  let effectToApply;
+  let isPermanentSource = state.pendingTargetSource !== null;
+
+  // Extraemos la carta y el efecto correcto dependiendo de dónde provenga la acción
+  if (isPermanentSource) {
+    card = state.pendingTargetSource.item.card;
+    effectToApply = state.pendingTargetSource.type === 'etb' ? card.etbEffect : card.activatedAbility.effect;
+  } else {
+    card = state.localHand.splice(state.pendingSpellIndex, 1)[0];
+    effectToApply = card.effect;
+  }
+
+  // AURA
+  if (card.adjunta && !isPermanentSource) {
+    attachAura(card, targetObj.item);
+    state.pendingSpellIndex = null; state.pendingCost = null; state.tappedLandsThisSpell = []; state.pendingTargetCard = null;
+    render();
+    return;
+  }
 
   if (targetObj.type === 'player') {
     const targetName = targetObj.isLocal ? "vos" : "el Tano";
-    if (effect.type === 'damage') {
-      if (targetObj.isLocal) state.localHP -= effect.amount; else state.rivalHP -= effect.amount;
-      logMsg(`💥 ¡${card.name}! Le hiciste ${effect.amount} de daño a ${targetName}.`);
-    } else if (effect.type === 'heal') {
-      if (targetObj.isLocal) state.localHP += effect.amount; else state.rivalHP += effect.amount;
-      logMsg(`💚 ¡${card.name}! Le curaste ${effect.amount} de HP a ${targetName}.`);
+    if (effectToApply.type === 'damage') {
+      if (targetObj.isLocal) state.localHP -= effectToApply.amount; else state.rivalHP -= effectToApply.amount;
+      logMsg(`💥 ¡${card.name}! Le hiciste ${effectToApply.amount} de daño a ${targetName}.`);
+    } else if (effectToApply.type === 'heal') {
+      if (targetObj.isLocal) state.localHP += effectToApply.amount; else state.rivalHP += effectToApply.amount;
+      logMsg(`💚 ¡${card.name}! Le curaste ${effectToApply.amount} de HP a ${targetName}.`);
     }
   } else if (targetObj.type === 'creature') {
     const targetUnit = targetObj.item;
-    if (effect.type === 'damage') {
-      targetUnit.damageTaken += effect.amount;
-      logMsg(`💥 ¡${card.name}! Le hiciste ${effect.amount} de daño a ${targetUnit.card.name}.`);
+    if (effectToApply.type === 'damage') {
+      targetUnit.damageTaken += effectToApply.amount;
+      logMsg(`💥 ¡${card.name}! Le hiciste ${effectToApply.amount} de daño a ${targetUnit.card.name}.`);
       checkDeaths(state.localCombat, state.localGraveyard, "Vos");
       checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
     }
   }
 
-  state.localGraveyard.push(card);
-  state.pendingSpellIndex = null; state.pendingCost = null; state.tappedLandsThisSpell = []; state.pendingTargetCard = null;
+  // Solo va al cementerio si fue un hechizo desde la mano
+  if (!isPermanentSource) {
+    state.localGraveyard.push(card);
+    state.pendingSpellIndex = null; state.pendingCost = null; state.tappedLandsThisSpell = []; 
+  }
+  
+  state.pendingTargetCard = null;
+  state.pendingTargetSource = null;
   render();
 }
 
-function resolveSpellDirect(card, isLocal) {
-  const effect = card.effect; if(!effect) return;
+  function handleSupportClick(item, isLocal, index) {
+  if (!isLocal || !state.isPlayerTurn || state.phase !== 'main' || state.gameOver) return;
+
+  const card = item.card;
+  if (card.activatedAbility) {
+    if (card.activatedAbility.cost === "{T}") {
+      if (item.tapped) {
+        logMsg(`El permanente ${card.name} ya está girado.`);
+        return;
+      }
+      item.tapped = true;
+      logMsg(`Giraste ${card.name} para usar su habilidad.`);
+
+      if (card.activatedAbility.requiresTarget) {
+        state.pendingTargetCard = card;
+        state.pendingTargetSource = { type: 'support_activation', item };
+        logMsg(`Seleccioná un objetivo para el efecto de ${card.name}.`);
+        render();
+      } else {
+        resolveEffectDirect(card.activatedAbility.effect, card.name, true);
+        render();
+      }
+    }
+  }
+}
+
+function resolveEffectDirect(effect, cardName, isLocal) {
+  if(!effect) return;
   const targetName = isLocal ? "vos" : "el Tano";
   if (effect.type === 'draw') {
     for(let i=0; i<effect.amount; i++) {
       if(isLocal && state.localDeck.length > 0) state.localHand.push(state.localDeck.pop());
       if(!isLocal && state.rivalDeck.length > 0) state.rivalHand.push(state.rivalDeck.pop());
     }
-    logMsg(`🃏 ¡${card.name}! ${targetName} robó ${effect.amount} cartas extras.`);
+    logMsg(`🃏 ¡${cardName}! ${targetName} robó ${effect.amount} cartas extras.`);
+  } else if (effect.type === 'heal') {
+    if (isLocal) state.localHP += effect.amount; else state.rivalHP += effect.amount;
+    logMsg(`💚 ¡${cardName}! ${targetName} recuperó ${effect.amount} de HP.`);
+  } else if (effect.type === 'damage') {
+    if (isLocal) state.rivalHP -= effect.amount; else state.localHP -= effect.amount;
+    logMsg(`💥 ¡${cardName}! ${targetName} hizo ${effect.amount} de daño.`);
   }
 }
+
+// Retrocompatibilidad para tu código
+function resolveSpellDirect(card, isLocal) { resolveEffectDirect(card.effect, card.name, isLocal); }
 
 async function executeLocalAttack() {
   const attackers = state.localCombat.filter(c => c.isAttacking);
@@ -623,15 +879,17 @@ function resolveCombatDamage(attackersArray, defendersArray, isLocalAttacking) {
     if (!attacker.isAttacking) return;
 
     let blockers = defendersArray.filter(d => d.blockingIndex === aIdx);
+    const attackerPower = getEffectivePower(attacker);
 
     if (blockers.length === 0) {
-      if (isLocalAttacking) state.rivalHP -= attacker.card.power;
-      else state.localHP -= attacker.card.power;
-      logMsg(`💥 ${attacker.card.name} conectó el golpe! Hizo ${attacker.card.power} de daño.`);
+      if (isLocalAttacking) state.rivalHP -= attackerPower;
+      else state.localHP -= attackerPower;
+      logMsg(`💥 ${attacker.card.name} conectó el golpe! Hizo ${attackerPower} de daño.`);
     } else {
       let blocker = blockers[0];
-      blocker.damageTaken += attacker.card.power;
-      attacker.damageTaken += blocker.card.power;
+      const blockerPower = getEffectivePower(blocker);
+      blocker.damageTaken += attackerPower;
+      attacker.damageTaken += blockerPower;
       logMsg(`⚔️ Choque: ${attacker.card.name} y ${blocker.card.name} se hacen daño mutuo.`);
     }
   });
@@ -647,12 +905,59 @@ function resolveCombatDamage(attackersArray, defendersArray, isLocalAttacking) {
 function checkDeaths(combatArray, graveyardArray, ownerName) {
   for (let i = combatArray.length - 1; i >= 0; i--) {
     let unit = combatArray[i];
-    if (unit.damageTaken >= unit.card.toughness) {
+    if (unit.damageTaken >= getEffectiveToughness(unit)) {
       logMsg(`💀 ${unit.card.name} de ${ownerName} murió y va al cementerio.`);
       graveyardArray.push(unit.card);
+      if (unit.auras && unit.auras.length > 0) {
+        unit.auras.forEach(auraCard => {
+          logMsg(`💔 ${auraCard.name} se desprendió y también fue al cementerio.`);
+          graveyardArray.push(auraCard);
+        });
+      }
       combatArray.splice(i, 1);
     }
   }
+}
+
+function attemptPassTurn() {
+  if (!state.isPlayerTurn || state.gameOver) return;
+
+  if (state.isDiscarding) {
+    logMsg("❌ ¡Epa! Primero tenés que descartar las cartas que te sobran.");
+    return;
+  }
+
+  const excess = state.localHand.length - 7;
+  
+  if (excess > 0) {
+    // FASE DE DESCARTE MANUAL
+    state.isDiscarding = true;
+    state.cardsToDiscard = excess;
+    logMsg(`⚠️ Tenés demasiadas cartas. Hacé clic en ${excess} carta(s) de tu mano para descartar.`);
+    render(); // Para actualizar UI si le ponemos bordes rojos a la mano luego
+  } else {
+    // PASA EL TURNO NORMALMENTE
+    logMsg("Terminás tu turno.");
+    passTurnToRival();
+  }
+}
+
+function handleDiscardClick(index) {
+  // Sacamos la carta elegida y la mandamos al cementerio
+  const discardedCard = state.localHand.splice(index, 1)[0];
+  state.localGraveyard.push(discardedCard);
+  state.cardsToDiscard--;
+  
+  logMsg(`🗑️ Descartaste ${discardedCard.name}.`);
+
+  // Chequeamos si ya cumplió con el límite
+  if (state.cardsToDiscard <= 0) {
+    state.isDiscarding = false;
+    logMsg("Mano en 7 cartas. ¡Turno del Tano!");
+    passTurnToRival();
+  }
+  
+  render();
 }
 
 async function passTurnToRival() {
@@ -670,11 +975,70 @@ async function passTurnToRival() {
   setTimeout(startRivalTurn, 1500);
 }
 
+function canRivalAfford(card) {
+  if (!card.manaCost) return true;
+  const cost = parseManaCost(card.manaCost);
+  
+  const available = { W: 0, U: 0, B: 0, R: 0, G: 0, total: 0 };
+  
+  // Contamos qué colores tiene disponibles el Tano en sus tierras enderezadas
+  state.rivalLands.forEach(landItem => {
+    if (!landItem.tapped) {
+      const color = getLandColor(landItem.card);
+      if (['W', 'U', 'B', 'R', 'G'].includes(color)) {
+        available[color]++;
+      }
+      available.total++;
+    }
+  });
+
+  // Verificamos que tenga los colores específicos
+  if (available.W < cost.W) return false;
+  if (available.U < cost.U) return false;
+  if (available.B < cost.B) return false;
+  if (available.R < cost.R) return false;
+  if (available.G < cost.G) return false;
+
+  // Verificamos si le sobran tierras para el maná genérico
+  const remainingForGeneric = available.total - (cost.W + cost.U + cost.B + cost.R + cost.G);
+  if (remainingForGeneric < cost.generic) return false;
+
+  return true;
+}
+
+function tapRivalLandsFor(card) {
+  if (!card.manaCost) return;
+  const cost = parseManaCost(card.manaCost);
+  
+  // 1. Giramos primero las tierras de los colores específicos que pide la carta
+  ['W', 'U', 'B', 'R', 'G'].forEach(color => {
+    let needed = cost[color];
+    for (let i = 0; i < state.rivalLands.length && needed > 0; i++) {
+      const land = state.rivalLands[i];
+      if (!land.tapped && getLandColor(land.card) === color) {
+        land.tapped = true;
+        needed--;
+      }
+    }
+  });
+
+  // 2. Giramos cualquier tierra que quede suelta para pagar el maná genérico
+  let genericNeeded = cost.generic;
+  for (let i = 0; i < state.rivalLands.length && genericNeeded > 0; i++) {
+    const land = state.rivalLands[i];
+    if (!land.tapped) {
+      land.tapped = true;
+      genericNeeded--;
+    }
+  }
+}
+
 async function startRivalTurn() {
   if (state.gameOver) return;
   state.rivalLandPlayedThisTurn = false;
   state.rivalLands.forEach(l => l.tapped = false);
   state.rivalCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; });
+  state.rivalSupport.forEach(s => s.tapped = false);
   state.rivalManaCurrent = state.rivalManaMax;
   if (state.rivalDeck.length > 0) state.rivalHand.push(state.rivalDeck.pop());
   render(); if (state.gameOver) return; await sleep(1000); if (state.gameOver) return;
@@ -686,25 +1050,47 @@ async function startRivalTurn() {
     logMsg(`El Tano bajó una estancia: ${landCard.name}.`); render(); if (state.gameOver) return; await sleep(1000);
   }
 
-  let affordableIndex = state.rivalHand.findIndex(c => !c.type.includes('Tierra') && c.cmc <= state.rivalManaCurrent);
+  let affordableIndex = state.rivalHand.findIndex(c => !c.type.includes('Tierra') && canRivalAfford(c));
   while(affordableIndex !== -1) {
     const cardToPlay = state.rivalHand.splice(affordableIndex, 1)[0];
-    state.rivalManaCurrent -= cardToPlay.cmc;
-    let manaToTap = cardToPlay.cmc; state.rivalLands.forEach(l => { if (!l.tapped && manaToTap > 0) { l.tapped = true; manaToTap--; } });
+    
+    // Restamos del contador visual de maná
+    const cost = parseManaCost(cardToPlay.manaCost);
+    const totalCost = cost.W + cost.U + cost.B + cost.R + cost.G + cost.generic;
+    state.rivalManaCurrent -= totalCost;
+    
+    // Giramos las tierras usando la nueva función
+    tapRivalLandsFor(cardToPlay);
+
+    const isPermanent = cardToPlay.type.includes('Artefacto') || (cardToPlay.type.includes('Encantamiento') && !cardToPlay.adjunta);
+
     if (cardToPlay.power !== undefined) {
-      state.rivalCombat.push({ card: cardToPlay, tapped: false, summoningSickness: true, isAttacking: false, blockingIndex: null, damageTaken: 0 });
+      state.rivalCombat.push({ card: cardToPlay, tapped: false, summoningSickness: true, isAttacking: false, blockingIndex: null, damageTaken: 0, auras: [] });
       logMsg(`¡El Tano invocó a ${cardToPlay.name}!`);
+    } else if (isPermanent) {
+      // NUEVO: Manejo de Artefactos y Encantamientos para la IA
+      const supportItem = { card: cardToPlay, tapped: false };
+      state.rivalSupport.push(supportItem);
+      logMsg(`¡El Tano bajó ${cardToPlay.name} a su zona de soporte!`);
+
+      // Si la carta tiene efecto al entrar en juego (ETB)
+      if (cardToPlay.etbEffect) {
+        resolveEffectDirect(cardToPlay.etbEffect, cardToPlay.name, false);
+      }
+    } else if (cardToPlay.adjunta) {
+      if (state.rivalCombat.length > 0) {
+        attachAura(cardToPlay, state.rivalCombat[0]);
+      } else {
+        logMsg(`El Tano no tenía criaturas para encantar con ${cardToPlay.name} y lo descartó.`);
+        state.rivalGraveyard.push(cardToPlay);
+      }
     } else {
       logMsg(`El Tano usó: ${cardToPlay.name}`); 
-      if (cardToPlay.effect && cardToPlay.effect.type === 'damage') {
-        state.localHP -= cardToPlay.effect.amount;
-      } else {
-        resolveSpellDirect(cardToPlay, false);
-      }
+      resolveSpellDirect(cardToPlay, false);
       state.rivalGraveyard.push(cardToPlay);
     }
     render(); if (state.gameOver) return; await sleep(1000);
-    affordableIndex = state.rivalHand.findIndex(c => !c.type.includes('Tierra') && c.cmc <= state.rivalManaCurrent);
+    affordableIndex = state.rivalHand.findIndex(c => !c.type.includes('Tierra') && canRivalAfford(c));
   }
 
   let attackCount = 0;
@@ -727,11 +1113,31 @@ async function startRivalTurn() {
       logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s) y no tenés defensores disponibles!`);
       resolveCombatDamage(state.rivalCombat, state.localCombat, false);
       await sleep(1500);
+        const rivalExcess = state.rivalHand.length - 7;
+        if (rivalExcess > 0) {
+          for (let i = 0; i < rivalExcess; i++) {
+          // Por ahora, lógica simple: descarta cartas al azar
+          const randomIndex = Math.floor(Math.random() * state.rivalHand.length);
+          const discardedCard = state.rivalHand.splice(randomIndex, 1)[0];
+          state.rivalGraveyard.push(discardedCard);
+          logMsg(`🗑️ El Tano descartó ${discardedCard.name} por límite de mano.`);
+          }
+        }
       startLocalTurn();
     }
   } else {
     logMsg("El Tano no atacó con nada.");
     await sleep(1000);
+      const rivalExcess = state.rivalHand.length - 7;
+      if (rivalExcess > 0) {
+      for (let i = 0; i < rivalExcess; i++) {
+        // Por ahora, lógica simple: descarta cartas al azar
+        const randomIndex = Math.floor(Math.random() * state.rivalHand.length);
+        const discardedCard = state.rivalHand.splice(randomIndex, 1)[0];
+        state.rivalGraveyard.push(discardedCard);
+        logMsg(`🗑️ El Tano descartó ${discardedCard.name} por límite de mano.`);
+        }
+      }
     startLocalTurn();
   }
 }
@@ -746,6 +1152,7 @@ function startLocalTurn() {
   state.localLands.forEach(l => l.tapped = false);
   state.localCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; });
   state.rivalCombat.forEach(c => c.damageTaken = 0); 
+  state.localSupport.forEach(s => s.tapped = false);
   state.localManaCurrent = state.localManaMax;
 
   if (state.localDeck.length > 0) {

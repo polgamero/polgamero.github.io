@@ -1,12 +1,12 @@
 // js/cardLoader.js
 
 const DATA_FILES = {
-  legendarias: './assets/data/legendarias.json',
-  raras: './assets/data/raras.json',
-  pocoComunes: './assets/data/poco_comunes.json',
-  comunes: './assets/data/comunes.json',
   tierras: './assets/data/tierras.json',
-  artefactos: './assets/data/artefactos.json'
+  artefactos: './assets/data/artefactos.json',
+  criaturas: './assets/data/criaturas.json',
+  instantaneos: './assets/data/instantaneos.json',
+  conjuros: './assets/data/conjuros.json',
+  encantamientos: './assets/data/encantamientos.json'
 };
 
 class CardDatabase {
