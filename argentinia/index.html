@@ -13,16 +13,22 @@
       <!-- MANO RIVAL (OCULTA) -->
       <section id="rival-hand" class="hand-row rival-hand"></section>
 
-      <!-- CAMPO RIVAL -->
+<!-- CAMPO RIVAL -->
       <section class="field-zone-container">
-        <div id="rival-lands" class="field-row lands-row" data-label="Estancias Rival"></div>
+        <div id="rival-wrapper" class="lands-support-wrapper">
+          <div id="rival-lands" class="field-row lands-row" data-label="Tierras del Rival" style="flex: 7;"></div>
+          <div id="rival-support" class="field-row support-row" data-label="Soporte Rival" style="flex: 3;"></div>
+        </div>
         <div id="rival-combat" class="field-row combat-row" data-label="Combate Rival"></div>
       </section>
 
       <!-- TU CAMPO -->
       <section class="field-zone-container">
         <div id="local-combat" class="field-row combat-row" data-label="Tu Zona de Combate"></div>
-        <div id="local-lands" class="field-row lands-row" data-label="Tus Estancias"></div>
+        <div id="local-wrapper" class="lands-support-wrapper">
+          <div id="local-lands" class="field-row lands-row" data-label="Tus Tierras" style="flex: 7;"></div>
+          <div id="local-support" class="field-row support-row" data-label="Soporte" style="flex: 3;"></div>
+        </div>
       </section>
 
       <!-- TU MANO -->
@@ -34,16 +40,11 @@
       <div class="player-card rival-card">
         <div class="avatar" id="rival-avatar">🤠</div>
         <div class="player-info">
-          <h3>El Tano Rival</h3>
+          <h3>El Tano (TU RIVAL)</h3>
           <div class="hp-bar-container">
             <div id="rival-hp-bar" class="hp-fill" style="width: 100%;"></div>
           </div>
           <span id="rival-hp-text" class="hp-text">20 / 20 HP</span>
-        </div>
-        <div class="player-stats">
-          <span class="stat mana-stat">Yerba: <strong id="rival-mana-text">0 / 0</strong></span>
-          <span class="stat">Mazo: <strong id="rival-deck-count">0</strong></span>
-          <span class="stat">Mano: <strong id="rival-hand-count">0</strong></span>
         </div>
       </div>
 
@@ -62,15 +63,11 @@
       <div class="player-card local-card">
         <div class="avatar" id="local-avatar">🧉</div>
         <div class="player-info">
-          <h3>El Gaucho Máximo</h3>
+          <h3>El Gaucho (VOS)</h3>
           <div class="hp-bar-container">
             <div id="local-hp-bar" class="hp-fill" style="width: 100%;"></div>
           </div>
           <span id="local-hp-text" class="hp-text">20 / 20 HP</span>
-        </div>
-        <div class="player-stats">
-          <span class="stat mana-stat">Yerba: <strong id="local-mana-text">0 / 0</strong></span>
-          <span class="stat">Mazo: <strong id="local-deck-count">0</strong></span>
         </div>
       </div>
     </aside>
