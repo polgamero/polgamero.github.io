@@ -198,7 +198,7 @@ html, body {
   min-width: 8px; min-height: 8px;
   border-radius: 50%;
   display: flex; justify-content: center; align-items: center;
-  font-size: 0cqw !important;
+  font-size: 4cqw !important;
   font-weight: bold;
   border: 1px solid #111;
   color: #000;
