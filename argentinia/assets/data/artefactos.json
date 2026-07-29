@@ -1,23 +1,23 @@
 [
   {
     "id": "art_001", "name": "El Mate de Calabaza", "type": "Artefacto — Reliquia Sagrada",
-    "manaCost": "{1}", "cmc": 1, "rarity": "Common", "colors": [],
+    "manaCost": "{2}{W}", "cmc": 3, "rarity": "Common", "colors": [],
     "text": "{T}: Toma unos mates y curás 2 Puntos de Vida.", "flavorText": "Un amargo que reconforta el alma.",
     "requiresTarget": false, "image": "mate.png",
     "activatedAbility": { "cost": "{T}", "effect": {"type": "heal", "amount": 2}, "requiresTarget": true }
   },
   {
-    "id": "art_002", "name": "Parrilla a Leña", "type": "Artefacto",
-    "manaCost": "{2}", "cmc": 2, "rarity": "Uncommon", "colors": [],
-    "text": "Asado Criollo: Curás 5 Puntos de Vida a tu héroe.", "flavorText": "Un aplauso para el asador.",
-    "requiresTarget": false, "image": "parrilla.png",
-    "etbEffect": {"type": "heal", "amount": 5}
+    "id": "art_002", "name": "Imprenta Clandestina", "type": "Artefacto",
+    "manaCost": "{2}{W}", "cmc": 2, "rarity": "Uncommon", "colors": [],
+    "text": "{T}: Robás 1 carta.", "flavorText": "Toda revolución empieza informando la realidad.",
+    "requiresTarget": false, "image": "imprenta.png",
+    "activatedAbility": {"cost": "{T}", "effect": {"type": "draw", "amount": 1}, "requiresTarget": false}
   },
   {
     "id": "art_003", "name": "Facón de Plata", "type": "Artefacto — Equipamiento",
-    "manaCost": "{2}", "cmc": 2, "rarity": "Rare", "colors": [],
-    "text": "{T}: Causa 3 de daño al héroe rival.", "flavorText": "Para defender el honor en la pulpería.",
+    "manaCost": "{2}{W}", "cmc": 3, "rarity": "Rare", "colors": [],
+    "text": "{T}: Causa 2 de daño al héroe rival.", "flavorText": "Para defender el honor en la pulpería.",
     "requiresTarget": false, "image": "facon.png",
-    "activatedAbility": { "cost": "{T}", "effect": {"type": "damage", "amount": 3}, "requiresTarget": true }
+    "activatedAbility": { "cost": "{T}", "effect": {"type": "damage", "amount": 2}, "requiresTarget": true }
   }
 ]
