@@ -153,6 +153,6 @@
     "text": "{T}: Agrega {U}.",
     "flavorText": "Por los pibes de Malvinas que jamás olvidaré.",
     "image": "malvinas.png",
-    "produces": "U"
-  },
+    "produces": "U",
+  }
 ]
