@@ -141,5 +141,18 @@
     "flavorText": "El corazón del delta late aquí",
     "image": "constancia.png",
     "produces": "B"
-  }
+  },
+    {
+    "id": "land_012",
+    "name": "Las Malvinas",
+    "type": "Tierra básica — Agua",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{T}: Agrega {U}.",
+    "flavorText": "Por los pibes de Malvinas que jamás olvidaré.",
+    "image": "malvinas.png",
+    "produces": "U"
+  },
 ]
