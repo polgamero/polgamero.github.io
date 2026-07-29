@@ -150,9 +150,10 @@
     "cmc": 0,
     "rarity": "Rare",
     "colors": [],
-    "text": "{T}: Agrega {U}.",
+    "text": "Entra en juego girada. {T}: Agrega 2 {U}.",
     "flavorText": "Por los pibes de Malvinas que jamás olvidaré.",
     "image": "malvinas.png",
-    "produces": "U"
+    "produces": "U",
+    "manaAmount": 2
   }
 ]
