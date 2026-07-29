@@ -321,7 +321,7 @@ function createCardElement(itemObj, isTapped = false, isLocal = true, index = nu
     let formattedText = card.text ? card.text.replace(/\{([WUBRGC])\}/g, (match, p1) => {
       let c = 'mana-c';
       if(p1==='W') c='mana-w'; if(p1==='U') c='mana-u'; if(p1==='B') c='mana-b'; if(p1==='R') c='mana-r'; if(p1==='G') c='mana-g';
-      return `<span class="mana-symbol ${c}" style="display:inline-flex; width:4cqw; height:4cqw; font-size:2.5cqw; margin:0 2px; vertical-align:middle;">${p1}</span>`;
+      return `<span class="mana-symbol ${c}" style="display:inline-flex; width:4cqw; height:4cqw; font-size:2.5cqw; margin:0 2px; vertical-align:middle;"></span>`;
     }) : '';
 
     const effKeywords = card.power !== undefined ? getEffectiveKeywords(itemObj) : [];
