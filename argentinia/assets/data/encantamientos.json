@@ -6,7 +6,12 @@
     "requiresTarget": false, "adjunta": false, "image": "cumbia.png",
     "etbEffect": {"type": "heal", "amount": 4}
   },
-  {"id": "rar_005", "name": "Milonga de Medianoche", "type": "Encantamiento", "manaCost": "{1}{B}{W}", "cmc": 3, "rarity": "Rare", "colors": ["B", "W"], "text": "Tango Fatal: Daña 3 al rival.", "flavorText": "El tango te espera si das un paso en falso.", "effect": {"type": "damage", "amount": 3}, "requiresTarget": true, "adjunta": false, "alcance": "jugador_rival", "cuando": "unico", "image": "milonga.png"},
+  {"id": "rar_005", "name": "Milonga de Medianoche", "type": "Encantamiento",
+    "manaCost": "{1}{B}{W}", "cmc": 3, "rarity": "Rare", "colors": ["B", "W"],
+    "text": "Tango Fatal: Daña 3 al rival.", "flavorText": "El tango te espera si das un paso en falso.",
+    "requiresTarget": true, "adjunta": false, "image": "milonga.png",
+    "etbEffect": {"type": "damage", "amount": 3}
+  },
   {"id": "rar_010", "name": "Hinchada Fervorosa", "type": "Encantamiento",
     "manaCost": "{2}", "cmc": 2, "rarity": "Rare", "colors": [],
     "text": "Recaudación Popular: Robás 2 cartas por el apoyo.", "flavorText": "La gente siempre apoya.",
