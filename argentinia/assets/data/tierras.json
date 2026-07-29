@@ -145,7 +145,7 @@
     {
     "id": "land_012",
     "name": "Las Malvinas",
-    "type": "Tierra básica — Agua",
+    "type": "Tierra sagrada — Agua",
     "manaCost": "",
     "cmc": 0,
     "rarity": "Rare",
@@ -153,6 +153,6 @@
     "text": "{T}: Agrega {U}.",
     "flavorText": "Por los pibes de Malvinas que jamás olvidaré.",
     "image": "malvinas.png",
-    "produces": "U",
+    "produces": "U"
   }
 ]
