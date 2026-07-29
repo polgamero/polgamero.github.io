@@ -195,10 +195,10 @@ html, body {
 /* CÍRCULOS DE MANÁ */
 .mana-symbol {
   width: 9cqw; height: 9cqw;
-  min-width: 8px; min-height: 8px;
+  min-width: 6px; min-height: 6px;
   border-radius: 50%;
   display: flex; justify-content: center; align-items: center;
-  font-size: 6cqw !important;
+  font-size: 10cqw !important;
   font-weight: bold;
   border: 1px solid #111;
   color: #000;
