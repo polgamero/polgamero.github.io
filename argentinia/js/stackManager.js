@@ -1,25 +1,20 @@
 // js/stackManager.js
 
-import { logMsg, render } from './ui.js';
-import { state, resolveEffectDirect, attachAura } from './main.js';
 import { sleep } from './utils.js';
+import { state, resolveEffectDirect, attachAura } from './main.js';
+import { logMsg, render } from './ui.js';
 import { checkDeaths } from './combatRules.js';
 
-// Estado global de la pila
 export const spellStack = [];
+let nextStackId = 1;
 
-/**
- * Agrega un elemento a la pila y redibuja la UI
- */
 export function addToStack(item) {
+  item.id = nextStackId++;
   spellStack.push(item);
-  logMsg(`⚡ "${item.card.name}" entró a la pila.`);
+  logMsg(`⚡ "${item.card.name}" entró a la pila (ID: ${item.id}).`);
   renderStack();
 }
 
-/**
- * Resuelve el elemento superior (LIFO - el último ingresado)
- */
 export async function resolveTopStackItem() {
   if (spellStack.length === 0) return;
 
@@ -34,9 +29,6 @@ export async function resolveTopStackItem() {
   }
 }
 
-/**
- * Ejecuta la lógica física/matemática del elemento
- */
 async function executeStackItem(item) {
   const { card, isLocal, targetObj, type } = item;
 
@@ -90,11 +82,36 @@ async function executeStackItem(item) {
     return;
   }
 
-  // 3. Hechizos Instantáneos / Conjuros
-  if (type === 'spell') {
+  // 3. Instantáneos / Conjuros / Contrahechizos
+  if (type === 'spell' || type === 'instant') {
     let effectToApply = card.effect;
 
-    if (targetObj) {
+    // A) Lógica de Contrahechizo (Target a la Pila)
+    if (effectToApply && effectToApply.type === 'counter') {
+      if (targetObj && targetObj.type === 'stack') {
+        const targetIndex = spellStack.findIndex(s => s.id === targetObj.stackId);
+        if (targetIndex !== -1) {
+          const counteredItem = spellStack.splice(targetIndex, 1)[0];
+          logMsg(`🚫 ¡${card.name} contrarrestó a "${counteredItem.card.name}"!`);
+          if (counteredItem.isLocal) state.localGraveyard.push(counteredItem.card);
+          else state.rivalGraveyard.push(counteredItem.card);
+        } else {
+          logMsg(`⚠️ ${card.name} falló: el hechizo objetivo ya no está en la pila.`);
+        }
+      } else {
+        // Si no se eligió objetivo específico, contrarresta el último hechizo de la pila si existe
+        if (spellStack.length > 0) {
+          const counteredItem = spellStack.pop();
+          logMsg(`🚫 ¡${card.name} contrarrestó a "${counteredItem.card.name}"!`);
+          if (counteredItem.isLocal) state.localGraveyard.push(counteredItem.card);
+          else state.rivalGraveyard.push(counteredItem.card);
+        } else {
+          logMsg(`⚠️ ${card.name} se resolvió sin efecto (no había hechizos en la pila).`);
+        }
+      }
+    } 
+    // B) Lógica de Daño / Cura
+    else if (targetObj) {
       if (targetObj.type === 'player') {
         const targetName = targetObj.isLocal ? "vos" : "el Tano";
         if (effectToApply.type === 'damage') {
@@ -119,14 +136,36 @@ async function executeStackItem(item) {
       resolveEffectDirect(effectToApply, card.name, isLocal);
     }
     
+    // El hechizo resuelto va al cementerio
     if (isLocal) state.localGraveyard.push(card);
     else state.rivalGraveyard.push(card);
   }
 }
 
-/**
- * Renderiza la interfaz gráfica de la pila en pantalla
- */
+export function handleStackCardClick(item) {
+  if (state.pendingTargetCard && state.pendingTargetCard.effect?.type === 'counter') {
+    const counterCard = state.pendingTargetCard;
+    const spellIndex = state.pendingSpellIndex;
+
+    // Descontar maná y mover carta de la mano
+    const playedCard = state.localHand.splice(spellIndex, 1)[0];
+
+    addToStack({
+      card: playedCard,
+      isLocal: true,
+      targetObj: { type: 'stack', stackId: item.id },
+      type: 'instant'
+    });
+
+    state.pendingSpellIndex = null;
+    state.pendingCost = null;
+    state.pendingTargetCard = null;
+
+    logMsg(`🎯 Apuntaste ${playedCard.name} hacia "${item.card.name}" en la pila.`);
+    render();
+  }
+}
+
 export function renderStack() {
   const container = document.getElementById('stack-container');
   const list = document.getElementById('stack-list');
@@ -135,23 +174,23 @@ export function renderStack() {
 
   if (!container || !list) return;
 
-  // Si la pila está vacía, ocultamos la ventana flotante
   if (spellStack.length === 0) {
     container.classList.add('hidden');
     return;
   }
 
-  // Si hay elementos, la mostramos
   container.classList.remove('hidden');
   countSpan.textContent = spellStack.length;
   list.innerHTML = '';
 
-  // Dibujamos cada item (el elemento en la cima es el último índice)
+  const isTargetingCounter = state.pendingTargetCard && state.pendingTargetCard.effect?.type === 'counter';
+
   spellStack.forEach((item, index) => {
     const isTop = index === spellStack.length - 1;
     const cardDiv = document.createElement('div');
     
-    cardDiv.className = `stack-item-card ${item.isLocal ? 'local' : 'rival'} ${isTop ? 'top-item' : ''}`;
+    const targetableClass = isTargetingCounter ? 'targetable-stack' : '';
+    cardDiv.className = `stack-item-card ${item.isLocal ? 'local' : 'rival'} ${isTop ? 'top-item' : ''} ${targetableClass}`;
     
     let targetText = 'Sin objetivo';
     if (item.targetObj) {
@@ -159,6 +198,8 @@ export function renderStack() {
         targetText = `Objetivo: ${item.targetObj.isLocal ? 'Vos' : 'Rival'}`;
       } else if (item.targetObj.type === 'creature') {
         targetText = `Objetivo: ${item.targetObj.item.card.name}`;
+      } else if (item.targetObj.type === 'stack') {
+        targetText = `Objetivo: Hechizo en pila #${item.targetObj.stackId}`;
       }
     }
 
@@ -170,11 +211,15 @@ export function renderStack() {
       <div class="stack-item-meta">${targetText}</div>
     `;
 
+    if (isTargetingCounter) {
+      cardDiv.addEventListener('click', () => handleStackCardClick(item));
+    }
+
     list.appendChild(cardDiv);
   });
 
-  // Evento para el botón de resolver el elemento del Top
   if (btnResolve) {
+    btnResolve.textContent = "Pasar Prioridad / Resolver ➔";
     btnResolve.onclick = () => resolveTopStackItem();
   }
 }
