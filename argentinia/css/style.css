@@ -32,7 +32,7 @@ html, body {
 
   background-position: center center;
   background-repeat: no-repeat;
-  background-size: cover;
+  background-size: 100% 100%;
 
   overflow: hidden;
 }
@@ -46,6 +46,7 @@ html, body {
   justify-content: flex-start;
   padding: 1vh 1vw;
   gap: 1vh;
+  background: transparent;
 }
 
 /* ALTURAS EN VH: sólo 4 filas ahora (se fue el banner central), la
@@ -73,8 +74,8 @@ html, body {
 
 .field-row {
   flex: 1;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px dashed rgba(255, 255, 255, 0.15);
+  background: transparent;
+  border: none;
   border-radius: 8px;
   display: flex;
   justify-content: center;
@@ -90,9 +91,10 @@ html, body {
   left: 10px;
   top: 5px;
   font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.2);
   text-transform: uppercase;
   pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 /* ===================================================
@@ -275,8 +277,8 @@ html, body {
 /* HUD SIDEBAR */
 #sidebar-hud {
   width: var(--sidebar-width);
-  background: rgba(10, 15, 12, 0.95);
-  border-left: 2px solid var(--gold);
+  background: transparent;
+  border-left: none;
   display: flex;
   flex-direction: column;
   padding: 1rem;
@@ -379,8 +381,9 @@ html, body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  background: #ffffff;
-  color: #1a1a1a;
+  background: rgba(5, 10, 8, 0.68);
+  color: rgba(245, 238, 215, 0.92);
+  border: 1px solid rgba(212, 175, 55, 0.12);
   border-radius: 8px;
   padding: 0.6rem 0.7rem;
   display: flex;
