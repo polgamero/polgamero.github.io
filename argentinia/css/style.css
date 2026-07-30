@@ -718,3 +718,100 @@ html, body {
   transform: scale(1.05) translateY(-10px);
   box-shadow: 0 0 15px red;
 }
+
+/* Contenedor Flotante de la Pila */
+#stack-container {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 240px;
+  background-color: rgba(20, 24, 33, 0.95);
+  border: 2px solid #e2b714;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: Arial, sans-serif;
+}
+
+#stack-container.hidden {
+  display: none !important;
+}
+
+.stack-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #3f4452;
+  padding-bottom: 6px;
+  font-weight: bold;
+  font-size: 13px;
+  color: #e2b714;
+}
+
+#stack-count {
+  background-color: #e2b714;
+  color: #111;
+  border-radius: 50%;
+  padding: 2px 7px;
+  font-size: 11px;
+}
+
+.stack-list {
+  display: flex;
+  flex-direction: column-reverse; /* El LIFO: la última jugada se muestra arriba */
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.stack-item-card {
+  background: #2a2f3d;
+  border: 1px solid #4a5162;
+  border-left: 4px solid #3b82f6; /* Azul si es local */
+  border-radius: 5px;
+  padding: 8px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.stack-item-card.rival {
+  border-left-color: #ef4444; /* Rojo si es del Tano */
+}
+
+.stack-item-card.top-item {
+  border-color: #e2b714;
+  box-shadow: 0 0 10px rgba(226, 183, 20, 0.4);
+}
+
+.stack-item-title {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.stack-item-meta {
+  font-size: 11px;
+  color: #a0aec0;
+}
+
+.btn-resolve-stack {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 12px;
+  margin-top: 4px;
+  transition: background-color 0.2s;
+}
+
+.btn-resolve-stack:hover {
+  background-color: #059669;
+}
