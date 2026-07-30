@@ -269,16 +269,6 @@ function executeSpellOnTarget(targetObj) {
   render();
 }
 
-  if (!isPermanentSource) {
-    state.localGraveyard.push(card);
-    state.pendingSpellIndex = null; state.pendingCost = null; state.tappedLandsThisSpell = []; 
-  }
-  
-  state.pendingTargetCard = null;
-  state.pendingTargetSource = null;
-  render();
-}
-
 export function handleSupportClick(item, isLocal, index) {
   if (!isLocal || !state.isPlayerTurn || state.phase !== 'main' || state.gameOver) return;
 
