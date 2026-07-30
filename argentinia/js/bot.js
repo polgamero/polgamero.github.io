@@ -84,7 +84,15 @@ export async function checkRivalCounterOrResponse() {
   await sleep(600);
 
   // 2. Revisa si tiene algún instantáneo en mano que pueda pagar
-  const responseIndex = state.rivalHand.findIndex(c => c.type.includes('Instantáneo') && canRivalAfford(c));
+  const responseIndex = state.rivalHand.findIndex(c => {
+    if (!c.type.includes('Instantáneo') || !canRivalAfford(c)) return false;
+  
+    // Si la carta es un counter, SOLO la tira si hay un hechizo tuyo en la pila
+    if (c.effect && c.effect.type === 'counter') {
+      return spellStack.some(s => s.isLocal);
+    }
+    return true;
+  });  
   
   if (responseIndex !== -1) {
     const responseCard = state.rivalHand.splice(responseIndex, 1)[0];
@@ -134,8 +142,17 @@ export async function startRivalTurn() {
     state.rivalLands.push({ card: landCard, tapped: false }); state.rivalLandPlayedThisTurn = true;
     logMsg(`El Tano bajó una estancia: ${landCard.name}.`); render(); if (state.gameOver) return; await sleep(1000);
   }
-
-  let affordableIndex = state.rivalHand.findIndex(c => !c.type.includes('Tierra') && canRivalAfford(c));
+  
+  const getAffordableMainPhaseCardIndex = () => {
+  return state.rivalHand.findIndex(c => {
+    if (c.type.includes('Tierra') || !canRivalAfford(c)) return false;
+    // En su turno principal, el bot NO tira counters de la nada
+    if (c.effect && c.effect.type === 'counter') return false; 
+    return true;
+  });
+  };
+  
+  let affordableIndex = getAffordableMainPhaseCardIndex();  
   
   // Ahora es un bucle que sabe "pausarse" de verdad
   while(affordableIndex !== -1) {
@@ -192,7 +209,7 @@ export async function startRivalTurn() {
 
     render(); if (state.gameOver) return; await sleep(1000);
     // Volvemos a buscar si el Tano puede jugar otra cosa con el maná que le sobra
-    affordableIndex = state.rivalHand.findIndex(c => !c.type.includes('Tierra') && canRivalAfford(c));
+    affordableIndex = getAffordableMainPhaseCardIndex();
   }
 
   // Si ya no puede (o no quiere) jugar nada más, pasa a la Fase de Combate
