@@ -107,8 +107,14 @@ export function attachAura(auraCard, creatureItem) {
 
 export function handleCombatClick(item, isLocal, index) {
   if (state.pendingTargetCard) {
+    // NUEVO: Bloquear counters a criaturas
+    if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type === 'counter') {
+      logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a una criatura.");
+      return;
+    }
     const rules = getTargetRules(state.pendingTargetCard);
     const allowed = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
+
     if (!allowed) {
       logMsg(`Ese no es un objetivo válido para ${state.pendingTargetCard.name}.`);
       return;
@@ -149,6 +155,12 @@ export function handleCombatClick(item, isLocal, index) {
 
 export function handlePlayerTargetClick(isLocal) {
   if (state.pendingTargetCard) {
+    // NUEVO: Bloquear counters a jugadores
+    if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type === 'counter') {
+      logMsg("¡No podés contrarrestar a un jugador! Elegí un hechizo.");
+      return;
+    }
+    
     const rules = getTargetRules(state.pendingTargetCard);
     if (!rules.allowPlayer) {
       logMsg(`${state.pendingTargetCard.name} necesita una criatura como objetivo, no un jugador.`);
