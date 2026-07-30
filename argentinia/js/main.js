@@ -1,4 +1,4 @@
-import { addToStack } from './stackManager.js';
+import { addToStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { startRivalTurn } from './bot.js';
@@ -166,25 +166,65 @@ export function cancelPayment() {
   render();
 }
 
+// NUEVA FUNCIÓN: Lógica estricta de prioridad y velocidad de hechizos
+export function canPlayCard(card) {
+  if (state.gameOver || state.pendingSpellIndex !== null) return false;
+  
+  const isInstant = card.type.includes('Instantáneo');
+
+  // Si hay cartas en la pila, SOLO se pueden jugar Instantáneos
+  if (spellStack && spellStack.length > 0) {
+    return isInstant;
+  }
+
+  // Si es el turno del Rival, SOLO se pueden jugar Instantáneos
+  if (!state.isPlayerTurn) {
+    return isInstant;
+  }
+
+  // En tu turno, fase principal y pila vacía: podés jugar cualquier cosa
+  return state.phase === 'main';
+}
+
 export function playCard(index) {
-  if (!state.isPlayerTurn || state.gameOver || state.pendingSpellIndex !== null) return; 
   const card = state.localHand[index];
+  
+  if (!canPlayCard(card)) {
+    logMsg(`⚠️ No podés jugar ${card.name} en este momento.`);
+    return;
+  }
+
   if (card.type.includes('Tierra')) {
     if (state.localLandPlayedThisTurn) { logMsg("Ya bajaste una tierra en este turno."); return; }
     state.localLands.push({ card, tapped: false }); state.localHand.splice(index, 1); state.localLandPlayedThisTurn = true;
     logMsg(`Bajaste la tierra: ${card.name}.`); render(); return;
   }
-  state.pendingSpellIndex = index; state.pendingCost = parseManaCost(card.manaCost); state.tappedLandsThisSpell = [];
+
+  // Prevención: No dejamos intentar jugar un counter si no hay objetivos en la pila
+  if (card.effect && card.effect.type === 'counter') {
+    if (!spellStack || spellStack.length === 0) {
+      logMsg(`⚠️ No hay ningún hechizo en la pila para contrarrestar.`);
+      return;
+    }
+  }
+
+  state.pendingSpellIndex = index; 
+  state.pendingCost = parseManaCost(card.manaCost); 
+  state.tappedLandsThisSpell = [];
   logMsg(`Preparando: ${card.name}. Seleccioná tierras para pagar.`);
-  checkPaymentComplete(); render();
+  checkPaymentComplete(); 
+  render();
 }
 
 export function tapLocalLand(item) {
-  if (!state.isPlayerTurn || state.gameOver || item.tapped) return;
+  // ATENCIÓN: Quitamos la restricción de "!state.isPlayerTurn" para que puedas girar en el turno del rival
+  if (state.gameOver || item.tapped) return;
   if (state.pendingSpellIndex === null) { logMsg("Seleccioná primero un hechizo de tu mano para pagar."); return; }
+  
   const landColor = getLandColor(item.card); let used = false;
   if (['W', 'U', 'B', 'R', 'G'].includes(landColor) && state.pendingCost[landColor] > 0) { state.pendingCost[landColor] -= 1; used = true; } 
   else if (state.pendingCost.generic > 0) { state.pendingCost.generic -= 1; used = true; }
+  
   if (used) { item.tapped = true; state.tappedLandsThisSpell.push(item); checkPaymentComplete(); } 
   else { logMsg(`Esa yerba (${landColor}) no te sirve para este hechizo.`); }
   render();
@@ -198,23 +238,28 @@ function checkPaymentComplete() {
   if ((cost.W + cost.U + cost.B + cost.R + cost.G + cost.generic) === 0) {
     const card = state.localHand[state.pendingSpellIndex];
     const isPermanent = card.type.includes('Artefacto') || (card.type.includes('Encantamiento') && !card.adjunta);
-    const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal')));
+    
+    // Sumamos 'counter' a las validaciones que requieren un objetivo antes de ir a la pila
+    const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal' || card.effect.type === 'counter')));
 
-    // 1. Si requiere objetivo, primero le pedimos al jugador que elija (executeSpellOnTarget lo mandará al Stack después)
     if (needsTarget) {
       state.pendingTargetCard = card;
       state.pendingTargetSource = null; 
-      const targetHint = card.adjunta ? `Hacé clic en una de tus criaturas para encantarla con ${card.name}.` : `Hacé clic en un jugador o criatura para aplicar ${card.name}.`;
+      
+      let targetHint = `Hacé clic en un jugador o criatura para aplicar ${card.name}.`;
+      if (card.adjunta) targetHint = `Hacé clic en una de tus criaturas para encantarla con ${card.name}.`;
+      else if (card.effect && card.effect.type === 'counter') targetHint = `Hacé clic en el hechizo de la Pila que querés contrarrestar.`;
+      
       logMsg(`¡Maná pagado! ${targetHint}`);
       return;
     }
 
-    // 2. Si NO requiere objetivo, sacamos la carta de la mano y LA MANDAMOS A LA PILA
     state.localHand.splice(state.pendingSpellIndex, 1);
     
     let stackType = 'spell';
     if (card.power !== undefined) stackType = 'summon';
     else if (isPermanent) stackType = 'permanent';
+    else if (card.type.includes('Instantáneo')) stackType = 'instant'; // Soporte explícito
 
     addToStack({
       card: card,
@@ -223,7 +268,6 @@ function checkPaymentComplete() {
       type: stackType
     });
 
-    // Limpiamos el estado de pago
     state.pendingSpellIndex = null;
     state.pendingCost = null;
     state.tappedLandsThisSpell = [];
@@ -237,7 +281,6 @@ function executeSpellOnTarget(targetObj) {
   let card;
   let isPermanentSource = state.pendingTargetSource !== null;
 
-  // Si viene de una habilidad activada o ETB de algo ya en mesa
   if (isPermanentSource) {
     card = state.pendingTargetSource.item.card;
     addToStack({
@@ -248,15 +291,18 @@ function executeSpellOnTarget(targetObj) {
       source: state.pendingTargetSource
     });
   } 
-  // Si viene de un hechizo / aura de la mano
   else {
     card = state.localHand.splice(state.pendingSpellIndex, 1)[0];
     
+    let stackType = 'spell';
+    if (card.adjunta) stackType = 'aura';
+    else if (card.type.includes('Instantáneo')) stackType = 'instant'; // Soporte para curas/daño instantáneo
+
     addToStack({
       card: card,
       isLocal: true,
       targetObj: targetObj,
-      type: card.adjunta ? 'aura' : 'spell'
+      type: stackType
     });
 
     state.pendingSpellIndex = null;
