@@ -1,7 +1,5 @@
-// js/stackManager.js
-
 import { sleep } from './utils.js';
-import { state, resolveEffectDirect, attachAura } from './main.js';
+import { state, resolveEffectDirect, attachAura, cancelPayment } from './main.js';
 import { logMsg, render } from './ui.js';
 import { checkDeaths } from './combatRules.js';
 
@@ -220,6 +218,12 @@ export function renderStack() {
 
   if (btnResolve) {
     btnResolve.textContent = "Pasar Prioridad / Resolver ➔";
-    btnResolve.onclick = () => resolveTopStackItem();
+    btnResolve.onclick = () => {
+      // Si tocás resolver mientras estabas eligiendo tierras, se cancela tu jugada
+      if (state.pendingSpellIndex !== null) {
+        cancelPayment();
+      }
+      resolveTopStackItem();
+    };
   }
 }
