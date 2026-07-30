@@ -9,7 +9,20 @@ import {
 } from './main.js';
 
 import { resolveCombatDamage } from './combatRules.js';
-import { addToStack, spellStack, resolveTopStackItem } from './stackManager.js';
+import { addToStack, spellStack } from './stackManager.js';
+
+// NUEVO: El Tano se queda mirando la mesa hasta que la pila se vacíe
+function waitForStackToResolve() {
+  return new Promise(resolve => {
+    const checkInterval = setInterval(() => {
+      // Si la pila está vacía, dejamos de esperar y la promesa se cumple
+      if (spellStack.length === 0) {
+        clearInterval(checkInterval);
+        resolve();
+      }
+    }, 250); // Revisa cada cuarto de segundo
+  });
+}
 
 export function canRivalAfford(card) {
   if (!card.manaCost) return true;
@@ -64,11 +77,9 @@ export function tapRivalLandsFor(card) {
   }
 }
 
-// Reacción con Instantáneos del Tano en la Pila si vos tirás algo
 export function checkRivalCounterOrResponse() {
   if (spellStack.length === 0) return false;
 
-  // Busca si el Tano tiene un Instantáneo o Contrahechizo pagable
   const responseIndex = state.rivalHand.findIndex(c => c.type.includes('Instantáneo') && canRivalAfford(c));
   if (responseIndex !== -1) {
     const responseCard = state.rivalHand.splice(responseIndex, 1)[0];
@@ -115,6 +126,8 @@ export async function startRivalTurn() {
   }
 
   let affordableIndex = state.rivalHand.findIndex(c => !c.type.includes('Tierra') && canRivalAfford(c));
+  
+  // Ahora es un bucle que sabe "pausarse" de verdad
   while(affordableIndex !== -1) {
     const cardToPlay = state.rivalHand.splice(affordableIndex, 1)[0];
     
@@ -149,7 +162,6 @@ export async function startRivalTurn() {
     }
 
     if (validPlay) {
-      // 1. Pone la carta en la pila
       addToStack({
         card: cardToPlay,
         isLocal: false,
@@ -160,16 +172,20 @@ export async function startRivalTurn() {
       logMsg(`⏳ El Tano puso ${cardToPlay.name} en la pila. Tenés la prioridad para responder.`);
       render();
 
-      // En lugar de resolver automáticamente, la IA hace una pausa y le cede la prioridad a la UI
-      // El usuario puede usar un Instantáneo o presionar "Pasar Prioridad / Resolver"
-      return; 
+      // CORRECCIÓN CLAVE: En vez de hacer 'return', pausamos la función hasta que vos resuelvas la pila
+      await waitForStackToResolve();
+      
+      // Una vez que la pila se resolvió, le damos 1 segundo de respiro antes de seguir
+      await sleep(1000);
+      if (state.gameOver) return;
     }
 
     render(); if (state.gameOver) return; await sleep(1000);
+    // Volvemos a buscar si el Tano puede jugar otra cosa con el maná que le sobra
     affordableIndex = state.rivalHand.findIndex(c => !c.type.includes('Tierra') && canRivalAfford(c));
   }
 
-  // Fase de combate del Tano
+  // Si ya no puede (o no quiere) jugar nada más, pasa a la Fase de Combate
   let attackCount = 0;
   state.rivalCombat.forEach(unit => {
     if (!unit.tapped && !unit.summoningSickness) {
