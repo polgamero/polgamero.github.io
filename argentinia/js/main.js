@@ -1,3 +1,4 @@
+import { addToStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { startRivalTurn } from './bot.js';
@@ -192,71 +193,41 @@ export function tapLocalLand(item) {
 function checkPaymentComplete() {
   if (state.pendingSpellIndex === null) return;
   const cost = state.pendingCost;
+  
+  // Si terminó de pagar el maná
   if ((cost.W + cost.U + cost.B + cost.R + cost.G + cost.generic) === 0) {
     const card = state.localHand[state.pendingSpellIndex];
-    
     const isPermanent = card.type.includes('Artefacto') || (card.type.includes('Encantamiento') && !card.adjunta);
+    const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal')));
 
-    if (card.power !== undefined) {
-      state.localHand.splice(state.pendingSpellIndex, 1);
-      const newCreature = { 
-        card, 
-        tapped: false, 
-        summoningSickness: true, 
-        isAttacking: false, 
-        blockingIndex: null, 
-        damageTaken: 0, 
-        auras: [] 
-      };
-      state.localCombat.push(newCreature);
-      logMsg(`¡Invocaste a ${card.name}! (No puede atacar este turno)`);
-
-      if (card.etbEffect) {
-        if (card.requiresTarget) {
-          state.pendingTargetCard = card;
-          state.pendingTargetSource = { type: 'etb', item: newCreature };
-          logMsg(`¡Efecto activado! Elegí un objetivo para ${card.name}.`);
-        } else {
-          resolveEffectDirect(card.etbEffect, card.name, true);
-          render();
-        }
-      }
-
-      state.pendingSpellIndex = null; 
-      state.pendingCost = null; 
-      state.tappedLandsThisSpell = [];
-      
-    } else if (isPermanent) {
-      state.localHand.splice(state.pendingSpellIndex, 1);
-      const supportItem = { card, tapped: false };
-      state.localSupport.push(supportItem);
-      logMsg(`¡Bajaste ${card.name} a tu zona de soporte!`);
-
-      if (card.etbEffect) {
-        if (card.requiresTarget) {
-          state.pendingTargetCard = card;
-          state.pendingTargetSource = { type: 'etb', item: supportItem };
-          logMsg(`¡Efecto activado! Elegí un objetivo para ${card.name}.`);
-        } else {
-          resolveEffectDirect(card.etbEffect, card.name, true);
-        }
-      }
-      state.pendingSpellIndex = null; state.pendingCost = null; state.tappedLandsThisSpell = [];
-
-    } else {
-      const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal')));
-      if (needsTarget) {
-        state.pendingTargetCard = card;
-        state.pendingTargetSource = null; 
-        const targetHint = card.adjunta ? `Hacé clic en una de tus criaturas para encantarla con ${card.name}.` : `Hacé clic en un jugador o criatura para aplicar ${card.name}.`;
-        logMsg(`¡Maná pagado! ${targetHint}`);
-      } else {
-        state.localHand.splice(state.pendingSpellIndex, 1);
-        resolveEffectDirect(card.effect, card.name, true);
-        state.localGraveyard.push(card);
-        state.pendingSpellIndex = null; state.pendingCost = null; state.tappedLandsThisSpell = [];
-      }
+    // 1. Si requiere objetivo, primero le pedimos al jugador que elija (executeSpellOnTarget lo mandará al Stack después)
+    if (needsTarget) {
+      state.pendingTargetCard = card;
+      state.pendingTargetSource = null; 
+      const targetHint = card.adjunta ? `Hacé clic en una de tus criaturas para encantarla con ${card.name}.` : `Hacé clic en un jugador o criatura para aplicar ${card.name}.`;
+      logMsg(`¡Maná pagado! ${targetHint}`);
+      return;
     }
+
+    // 2. Si NO requiere objetivo, sacamos la carta de la mano y LA MANDAMOS A LA PILA
+    state.localHand.splice(state.pendingSpellIndex, 1);
+    
+    let stackType = 'spell';
+    if (card.power !== undefined) stackType = 'summon';
+    else if (isPermanent) stackType = 'permanent';
+
+    addToStack({
+      card: card,
+      isLocal: true,
+      targetObj: null,
+      type: stackType
+    });
+
+    // Limpiamos el estado de pago
+    state.pendingSpellIndex = null;
+    state.pendingCost = null;
+    state.tappedLandsThisSpell = [];
+    render();
   }
 }
 
@@ -264,42 +235,39 @@ function executeSpellOnTarget(targetObj) {
   if (!state.pendingTargetCard) return;
 
   let card;
-  let effectToApply;
   let isPermanentSource = state.pendingTargetSource !== null;
 
+  // Si viene de una habilidad activada o ETB de algo ya en mesa
   if (isPermanentSource) {
     card = state.pendingTargetSource.item.card;
-    effectToApply = state.pendingTargetSource.type === 'etb' ? card.etbEffect : card.activatedAbility.effect;
-  } else {
+    addToStack({
+      card: card,
+      isLocal: true,
+      targetObj: targetObj,
+      type: 'ability',
+      source: state.pendingTargetSource
+    });
+  } 
+  // Si viene de un hechizo / aura de la mano
+  else {
     card = state.localHand.splice(state.pendingSpellIndex, 1)[0];
-    effectToApply = card.effect;
+    
+    addToStack({
+      card: card,
+      isLocal: true,
+      targetObj: targetObj,
+      type: card.adjunta ? 'aura' : 'spell'
+    });
+
+    state.pendingSpellIndex = null;
+    state.pendingCost = null;
+    state.tappedLandsThisSpell = [];
   }
 
-  if (card.adjunta && !isPermanentSource) {
-    attachAura(card, targetObj.item);
-    state.pendingSpellIndex = null; state.pendingCost = null; state.tappedLandsThisSpell = []; state.pendingTargetCard = null;
-    render();
-    return;
-  }
-
-  if (targetObj.type === 'player') {
-    const targetName = targetObj.isLocal ? "vos" : "el Tano";
-    if (effectToApply.type === 'damage') {
-      if (targetObj.isLocal) state.localHP -= effectToApply.amount; else state.rivalHP -= effectToApply.amount;
-      logMsg(`💥 ¡${card.name}! Le hiciste ${effectToApply.amount} de daño a ${targetName}.`);
-    } else if (effectToApply.type === 'heal') {
-      if (targetObj.isLocal) state.localHP += effectToApply.amount; else state.rivalHP += effectToApply.amount;
-      logMsg(`💚 ¡${card.name}! Le curaste ${effectToApply.amount} de HP a ${targetName}.`);
-    }
-  } else if (targetObj.type === 'creature') {
-    const targetUnit = targetObj.item;
-    if (effectToApply.type === 'damage') {
-      targetUnit.damageTaken += effectToApply.amount;
-      logMsg(`💥 ¡${card.name}! Le hiciste ${effectToApply.amount} de daño a ${targetUnit.card.name}.`);
-      checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-      checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
-    }
-  }
+  state.pendingTargetCard = null;
+  state.pendingTargetSource = null;
+  render();
+}
 
   if (!isPermanentSource) {
     state.localGraveyard.push(card);
