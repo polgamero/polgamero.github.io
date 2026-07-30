@@ -4,14 +4,14 @@ import {
   render,
   parseManaCost,
   getLandColor,
-  resolveEffectDirect,
-  attachAura,
-  resolveSpellDirect,
   startLocalTurn,
   sleep
 } from './main.js';
 
 import { resolveCombatDamage } from './combatRules.js';
+
+// Importamos la pila
+import { addToStack, resolveTopStackItem } from './stackManager.js';
 
 export function canRivalAfford(card) {
   if (!card.manaCost) return true;
@@ -86,36 +86,55 @@ export async function startRivalTurn() {
   while(affordableIndex !== -1) {
     const cardToPlay = state.rivalHand.splice(affordableIndex, 1)[0];
     
-    const cost = parseManaCost(cardToPlay.manaCost);
-    const totalCost = cost.W + cost.U + cost.B + cost.R + cost.G + cost.generic;
-    
     tapRivalLandsFor(cardToPlay);
 
     const isPermanent = cardToPlay.type.includes('Artefacto') || (cardToPlay.type.includes('Encantamiento') && !cardToPlay.adjunta);
+    
+    let stackType = 'spell';
+    let aiTargetObj = null;
+    let validPlay = true;
 
+    // Evaluamos qué está jugando el Tano para empaquetarlo en la pila
     if (cardToPlay.power !== undefined) {
-      state.rivalCombat.push({ card: cardToPlay, tapped: false, summoningSickness: true, isAttacking: false, blockingIndex: null, damageTaken: 0, auras: [] });
-      logMsg(`¡El Tano invocó a ${cardToPlay.name}!`);
+      stackType = 'summon';
     } else if (isPermanent) {
-      const supportItem = { card: cardToPlay, tapped: false };
-      state.rivalSupport.push(supportItem);
-      logMsg(`¡El Tano bajó ${cardToPlay.name} a su zona de soporte!`);
-
-      if (cardToPlay.etbEffect) {
-        resolveEffectDirect(cardToPlay.etbEffect, cardToPlay.name, false);
-      }
+      stackType = 'permanent';
     } else if (cardToPlay.adjunta) {
+      stackType = 'aura';
       if (state.rivalCombat.length > 0) {
-        attachAura(cardToPlay, state.rivalCombat[0]);
+        // Se lo equipa a su propia primer criatura disponible
+        aiTargetObj = { type: 'creature', isLocal: false, item: state.rivalCombat[0] };
       } else {
+        validPlay = false;
         logMsg(`El Tano no tenía criaturas para encantar con ${cardToPlay.name} y lo descartó.`);
         state.rivalGraveyard.push(cardToPlay);
       }
     } else {
-      logMsg(`El Tano usó: ${cardToPlay.name}`); 
-      resolveSpellDirect(cardToPlay, false);
-      state.rivalGraveyard.push(cardToPlay);
+      stackType = 'spell';
+      // Lógica de objetivo para hechizos del Tano
+      if (cardToPlay.effect && cardToPlay.effect.type === 'damage') {
+        aiTargetObj = { type: 'player', isLocal: true }; // Te ataca a vos
+      } else if (cardToPlay.effect && cardToPlay.effect.type === 'heal') {
+        aiTargetObj = { type: 'player', isLocal: false }; // Se cura a sí mismo
+      }
     }
+
+    if (validPlay) {
+      // 1. Va a la Pila
+      addToStack({
+        card: cardToPlay,
+        isLocal: false,
+        targetObj: aiTargetObj,
+        type: stackType
+      });
+      
+      render(); // Forzamos un render para que veas la UI de la pila
+      await sleep(1800); // Te damos tiempo visual para leer qué tiró
+      
+      // 2. Se resuelve (Temporalmente automático hasta que hagamos la Etapa 4 de Prioridad)
+      await resolveTopStackItem();
+    }
+
     render(); if (state.gameOver) return; await sleep(1000);
     affordableIndex = state.rivalHand.findIndex(c => !c.type.includes('Tierra') && canRivalAfford(c));
   }
