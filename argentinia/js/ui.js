@@ -284,7 +284,11 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     </div>
   `;
 
-  if (zone === 'hand' && isLocal && state.isPlayerTurn && state.phase === 'main' && !state.gameOver) {
+  const isInstant = card.type && card.type.includes('Instantáneo');
+  const canRespondToStack = (spellStack && spellStack.length > 0) && isInstant;
+  const isMyMainTurn = state.isPlayerTurn && state.phase === 'main';
+
+  if (zone === 'hand' && isLocal && (isMyMainTurn || canRespondToStack) && !state.gameOver) {
     el.addEventListener('click', () => {
       if (state.isDiscarding) {
         handleDiscardClick(index);
