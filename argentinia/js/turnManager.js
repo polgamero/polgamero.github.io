@@ -1,6 +1,7 @@
 import { logMsg, els, showGameOverOverlay, render } from './ui.js';
 import { state } from './main.js';
 import { startRivalTurn } from './bot.js';
+import { spellStack } from './stackManager.js';
 
 export function checkGameOver() {
   if (state.gameOver) return;
@@ -13,6 +14,12 @@ export function checkGameOver() {
 
 export function attemptPassTurn() {
   if (!state.isPlayerTurn || state.gameOver) return;
+
+  // NUEVO: Bloqueo por pila activa
+  if (spellStack.length > 0) {
+    logMsg("❌ No podés pasar el turno con hechizos en la pila. ¡Resolvelos primero!");
+    return;
+  }
 
   if (state.isDiscarding) {
     logMsg("❌ ¡Epa! Primero tenés que descartar las cartas que te sobran.");
