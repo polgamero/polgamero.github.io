@@ -296,7 +296,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
         playCard(index);
       }
     });
-  } else if (zone === 'land' && isLocal && state.isPlayerTurn && state.phase === 'main' && !state.gameOver) {
+  } else if (zone === 'land' && isLocal && !state.gameOver) {
     el.addEventListener('click', () => tapLocalLand(itemObj));
   } else if (zone === 'combat' && !state.gameOver) {
     el.addEventListener('click', () => handleCombatClick(itemObj, isLocal, index));
