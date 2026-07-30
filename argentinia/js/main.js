@@ -182,6 +182,16 @@ export function canPlayCard(card) {
     return isInstant;
   }
 
+  if (card.effect && card.effect.type === 'counter') {
+    // Revisamos si la pila está vacía O si el único hechizo que hay es tuyo
+    const rivalSpells = spellStack.filter(s => !s.isLocal);
+    
+    if (rivalSpells.length === 0) {
+        logMsg("❌ No podés tirar un counter si no hay hechizos del Tano en la pila.");
+        return; // Esto corta la función acá mismo, cancelando el modo de pago
+    }
+  }
+  
   // En tu turno, fase principal y pila vacía: podés jugar cualquier cosa
   return state.phase === 'main';
 }
