@@ -815,3 +815,14 @@ html, body {
 .btn-resolve-stack:hover {
   background-color: #059669;
 }
+
+.stack-item-card.targetable-stack {
+  border: 2px dashed #f1c40f !important;
+  cursor: pointer;
+  animation: pulseTarget 1.2s infinite alternate;
+}
+
+@keyframes pulseTarget {
+  from { box-shadow: 0 0 4px #f1c40f; }
+  to { box-shadow: 0 0 12px #f1c40f; }
+}
