@@ -9,9 +9,7 @@ import {
 } from './main.js';
 
 import { resolveCombatDamage } from './combatRules.js';
-
-// Importamos la pila
-import { addToStack, resolveTopStackItem } from './stackManager.js';
+import { addToStack, spellStack, resolveTopStackItem } from './stackManager.js';
 
 export function canRivalAfford(card) {
   if (!card.manaCost) return true;
@@ -66,6 +64,40 @@ export function tapRivalLandsFor(card) {
   }
 }
 
+// Reacción con Instantáneos del Tano en la Pila si vos tirás algo
+export function checkRivalCounterOrResponse() {
+  if (spellStack.length === 0) return false;
+
+  // Busca si el Tano tiene un Instantáneo o Contrahechizo pagable
+  const responseIndex = state.rivalHand.findIndex(c => c.type.includes('Instantáneo') && canRivalAfford(c));
+  if (responseIndex !== -1) {
+    const responseCard = state.rivalHand.splice(responseIndex, 1)[0];
+    tapRivalLandsFor(responseCard);
+
+    let targetObj = null;
+    if (responseCard.effect?.type === 'counter') {
+      const topLocalSpell = [...spellStack].reverse().find(s => s.isLocal);
+      if (topLocalSpell) {
+        targetObj = { type: 'stack', stackId: topLocalSpell.id };
+      }
+    } else if (responseCard.effect?.type === 'damage') {
+      targetObj = { type: 'player', isLocal: true };
+    }
+
+    addToStack({
+      card: responseCard,
+      isLocal: false,
+      targetObj: targetObj,
+      type: 'instant'
+    });
+
+    logMsg(`🔴 ¡El Tano respondió en velocidad instantánea con ${responseCard.name}!`);
+    render();
+    return true;
+  }
+  return false;
+}
+
 export async function startRivalTurn() {
   if (state.gameOver) return;
   state.rivalLandPlayedThisTurn = false;
@@ -94,7 +126,6 @@ export async function startRivalTurn() {
     let aiTargetObj = null;
     let validPlay = true;
 
-    // Evaluamos qué está jugando el Tano para empaquetarlo en la pila
     if (cardToPlay.power !== undefined) {
       stackType = 'summon';
     } else if (isPermanent) {
@@ -102,7 +133,6 @@ export async function startRivalTurn() {
     } else if (cardToPlay.adjunta) {
       stackType = 'aura';
       if (state.rivalCombat.length > 0) {
-        // Se lo equipa a su propia primer criatura disponible
         aiTargetObj = { type: 'creature', isLocal: false, item: state.rivalCombat[0] };
       } else {
         validPlay = false;
@@ -110,17 +140,16 @@ export async function startRivalTurn() {
         state.rivalGraveyard.push(cardToPlay);
       }
     } else {
-      stackType = 'spell';
-      // Lógica de objetivo para hechizos del Tano
+      stackType = cardToPlay.type.includes('Instantáneo') ? 'instant' : 'spell';
       if (cardToPlay.effect && cardToPlay.effect.type === 'damage') {
-        aiTargetObj = { type: 'player', isLocal: true }; // Te ataca a vos
+        aiTargetObj = { type: 'player', isLocal: true };
       } else if (cardToPlay.effect && cardToPlay.effect.type === 'heal') {
-        aiTargetObj = { type: 'player', isLocal: false }; // Se cura a sí mismo
+        aiTargetObj = { type: 'player', isLocal: false };
       }
     }
 
     if (validPlay) {
-      // 1. Va a la Pila
+      // 1. Pone la carta en la pila
       addToStack({
         card: cardToPlay,
         isLocal: false,
@@ -128,17 +157,19 @@ export async function startRivalTurn() {
         type: stackType
       });
       
-      render(); // Forzamos un render para que veas la UI de la pila
-      await sleep(1800); // Te damos tiempo visual para leer qué tiró
-      
-      // 2. Se resuelve (Temporalmente automático hasta que hagamos la Etapa 4 de Prioridad)
-      await resolveTopStackItem();
+      logMsg(`⏳ El Tano puso ${cardToPlay.name} en la pila. Tenés la prioridad para responder.`);
+      render();
+
+      // En lugar de resolver automáticamente, la IA hace una pausa y le cede la prioridad a la UI
+      // El usuario puede usar un Instantáneo o presionar "Pasar Prioridad / Resolver"
+      return; 
     }
 
     render(); if (state.gameOver) return; await sleep(1000);
     affordableIndex = state.rivalHand.findIndex(c => !c.type.includes('Tierra') && canRivalAfford(c));
   }
 
+  // Fase de combate del Tano
   let attackCount = 0;
   state.rivalCombat.forEach(unit => {
     if (!unit.tapped && !unit.summoningSickness) {
@@ -153,35 +184,31 @@ export async function startRivalTurn() {
     
     if (localHasUntappedBlockers) {
       state.phase = 'local_block';
-      logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s)! Asigná tus bloqueadores y confirmá (o dejá pasar el daño).`);
+      logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s)! Asigná tus bloqueadores y confirmá.`);
       render();
     } else {
-      logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s) y no tenés defensores disponibles!`);
+      logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s) y no tenés defensores!`);
       resolveCombatDamage(state.rivalCombat, state.localCombat, false);
       await sleep(1500);
-        const rivalExcess = state.rivalHand.length - 7;
-        if (rivalExcess > 0) {
-          for (let i = 0; i < rivalExcess; i++) {
-          const randomIndex = Math.floor(Math.random() * state.rivalHand.length);
-          const discardedCard = state.rivalHand.splice(randomIndex, 1)[0];
-          state.rivalGraveyard.push(discardedCard);
-          logMsg(`🗑️ El Tano descartó ${discardedCard.name} por límite de mano.`);
-          }
-        }
+      discardExcessRivalHand();
       startLocalTurn();
     }
   } else {
     logMsg("El Tano no atacó con nada.");
     await sleep(1000);
-      const rivalExcess = state.rivalHand.length - 7;
-      if (rivalExcess > 0) {
-      for (let i = 0; i < rivalExcess; i++) {
-        const randomIndex = Math.floor(Math.random() * state.rivalHand.length);
-        const discardedCard = state.rivalHand.splice(randomIndex, 1)[0];
-        state.rivalGraveyard.push(discardedCard);
-        logMsg(`🗑️ El Tano descartó ${discardedCard.name} por límite de mano.`);
-        }
-      }
+    discardExcessRivalHand();
     startLocalTurn();
+  }
+}
+
+function discardExcessRivalHand() {
+  const rivalExcess = state.rivalHand.length - 7;
+  if (rivalExcess > 0) {
+    for (let i = 0; i < rivalExcess; i++) {
+      const randomIndex = Math.floor(Math.random() * state.rivalHand.length);
+      const discardedCard = state.rivalHand.splice(randomIndex, 1)[0];
+      state.rivalGraveyard.push(discardedCard);
+      logMsg(`🗑️ El Tano descartó ${discardedCard.name} por límite de mano.`);
+    }
   }
 }
