@@ -170,6 +170,22 @@ export async function startRivalTurn() {
       stackType = 'summon';
     } else if (isPermanent) {
       stackType = 'permanent';
+      
+      // NUEVO: Si el permanente es como "La Milonga" y requiere objetivo al entrar
+      if (cardToPlay.requiresTarget && cardToPlay.etbEffect) {
+        if (cardToPlay.etbEffect.type === 'damage') {
+          // Si hace daño, el Tano te apunta directo a la cara
+          aiTargetObj = { type: 'player', isLocal: true };
+        } else {
+          // Fallback por si agregás otros encantamientos con target a futuro
+          if (state.localCombat.length > 0) {
+            aiTargetObj = { type: 'creature', isLocal: true, index: 0, item: state.localCombat[0] };
+          } else {
+            aiTargetObj = { type: 'player', isLocal: true };
+          }
+        }
+      }
+
     } else if (cardToPlay.adjunta) {
       stackType = 'aura';
       if (state.rivalCombat.length > 0) {
