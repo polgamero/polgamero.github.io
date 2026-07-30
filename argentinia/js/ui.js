@@ -15,7 +15,7 @@ import {
 } from './main.js';
 
 import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
-import { renderStack } from './stackManager.js';
+import { renderStack, spellStack } from './stackManager.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
