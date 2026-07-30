@@ -15,6 +15,7 @@ import {
 } from './main.js';
 
 import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
+import { renderStack } from './stackManager.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -409,6 +410,7 @@ export function render() {
     els.paymentControls.classList.add('hidden'); els.btnEndTurn.classList.remove('hidden');
     els.localHand.classList.remove('paying-mode'); els.localLands.classList.remove('paying-mode');
   }
+  renderStack();
   checkGameOver();
 }
 
