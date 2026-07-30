@@ -1,6 +1,6 @@
 [
   {
-    "id": "art_001", "name": "El Mate de Calabaza", "type": "Artefacto — Reliquia Sagrada",
+    "id": "art_001", "name": "El Mate de Calabaza", "type": "Artefacto — Reliquia",
     "manaCost": "{2}{W}", "cmc": 3, "rarity": "Common", "colors": [],
     "text": "{T}: Toma unos mates y curás 2 Puntos de Vida.", "flavorText": "Un amargo que reconforta el alma.",
     "requiresTarget": false, "image": "mate.png",
