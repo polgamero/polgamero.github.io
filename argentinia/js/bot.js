@@ -77,15 +77,21 @@ export function tapRivalLandsFor(card) {
   }
 }
 
-export function checkRivalCounterOrResponse() {
+export async function checkRivalCounterOrResponse() {
   if (spellStack.length === 0) return false;
 
+  // 1. Simula un breve tiempo de pensamiento de la IA (600ms)
+  await sleep(600);
+
+  // 2. Revisa si tiene algún instantáneo en mano que pueda pagar
   const responseIndex = state.rivalHand.findIndex(c => c.type.includes('Instantáneo') && canRivalAfford(c));
+  
   if (responseIndex !== -1) {
     const responseCard = state.rivalHand.splice(responseIndex, 1)[0];
     tapRivalLandsFor(responseCard);
 
     let targetObj = null;
+    // Si es un contrahechizo, apunta directamente a tu hechizo en la pila
     if (responseCard.effect?.type === 'counter') {
       const topLocalSpell = [...spellStack].reverse().find(s => s.isLocal);
       if (topLocalSpell) {
@@ -95,6 +101,7 @@ export function checkRivalCounterOrResponse() {
       targetObj = { type: 'player', isLocal: true };
     }
 
+    // El Tano apila su respuesta por encima de tu carta
     addToStack({
       card: responseCard,
       isLocal: false,
@@ -102,11 +109,14 @@ export function checkRivalCounterOrResponse() {
       type: 'instant'
     });
 
-    logMsg(`🔴 ¡El Tano respondió en velocidad instantánea con ${responseCard.name}!`);
+    logMsg(`🔴 ¡El Tano te respondió en velocidad instantánea con "${responseCard.name}"!`);
     render();
     return true;
+  } else {
+    // Si no tiene nada, pasa la prioridad amablemente
+    logMsg(`👁️ El Tano revisó su mano, no tiene respuestas y pasa prioridad.`);
+    return false;
   }
-  return false;
 }
 
 export async function startRivalTurn() {
