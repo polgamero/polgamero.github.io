@@ -75,8 +75,8 @@ async function executeStackItem(item) {
           if (effectToApply.type === 'damage') {
             targetUnit.damageTaken += effectToApply.amount;
             logMsg(`💥 ¡${card.name}! Le hizo ${effectToApply.amount} de daño a ${targetUnit.card.name}.`);
-            // Acá podrías llamar a checkDeaths() si lo tenés importado
-          }
+            checkDeaths(state.localCombat, state.localGraveyard, "Vos");
+            checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
         }
       } else {
         resolveEffectDirect(card.etbEffect, card.name, isLocal);
