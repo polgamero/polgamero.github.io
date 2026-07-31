@@ -80,9 +80,19 @@ async function executeStackItem(item) {
     return;
   }
 
-  // 3. Instantáneos / Conjuros / Contrahechizos
-  if (type === 'spell' || type === 'instant') {
+ // 3. Instantáneos / Conjuros / Contrahechizos / HABILIDADES (NUEVO)
+  if (type === 'spell' || type === 'instant' || type === 'ability') {
+    
+    // Extraemos el efecto correcto dependiendo de qué originó la habilidad
     let effectToApply = card.effect;
+    
+    if (type === 'ability') {
+      if (item.source && item.source.type === 'etb') {
+        effectToApply = card.etbEffect;
+      } else if (item.source && item.source.type === 'support_activation' && card.activatedAbility) {
+        effectToApply = card.activatedAbility.effect;
+      }
+    }
 
     // A) Lógica de Contrahechizo (Target a la Pila)
     if (effectToApply && effectToApply.type === 'counter') {
@@ -134,11 +144,12 @@ async function executeStackItem(item) {
       resolveEffectDirect(effectToApply, card.name, isLocal);
     }
     
-    // El hechizo resuelto va al cementerio
-    if (isLocal) state.localGraveyard.push(card);
-    else state.rivalGraveyard.push(card);
+    // El hechizo resuelto va al cementerio (EXCEPTO si es una habilidad activada de un permanente)
+    if (type !== 'ability') {
+      if (isLocal) state.localGraveyard.push(card);
+      else state.rivalGraveyard.push(card);
+    }
   }
-}
 
 export function handleStackCardClick(item) {
   if (!state.pendingTargetCard) return;
