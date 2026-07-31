@@ -141,11 +141,26 @@ async function executeStackItem(item) {
 }
 
 export function handleStackCardClick(item) {
-  if (state.pendingTargetCard && state.pendingTargetCard.effect?.type === 'counter') {
-    const counterCard = state.pendingTargetCard;
+  if (!state.pendingTargetCard) return;
+
+  const effectType = state.pendingTargetCard.effect?.type;
+
+  // Verificamos si es un counter genérico o de criatura
+  if (effectType === 'counter' || effectType === 'counter_creature') {
+    
+    // Si es exclusivo de criatura (Derecho de Admisión), validamos el objetivo
+    if (effectType === 'counter_creature') {
+      const targetTypeStr = item.card?.type || "";
+      if (!targetTypeStr.includes('Criatura')) {
+        logMsg("❌ Derecho de Admisión solo puede contrarrestar hechizos de criatura.");
+        return;
+      }
+    }
+
+    // A PARTIR DE ACÁ, ES TU LÓGICA ORIGINAL INTACTA
     const spellIndex = state.pendingSpellIndex;
 
-    // Descontar maná y mover carta de la mano
+    // Mover carta de la mano
     const playedCard = state.localHand.splice(spellIndex, 1)[0];
 
     addToStack({
@@ -155,6 +170,7 @@ export function handleStackCardClick(item) {
       type: 'instant'
     });
 
+    // Limpiar estados pendientes
     state.pendingSpellIndex = null;
     state.pendingCost = null;
     state.pendingTargetCard = null;
@@ -181,8 +197,12 @@ export function renderStack() {
   countSpan.textContent = spellStack.length;
   list.innerHTML = '';
 
-  const isTargetingCounter = state.pendingTargetCard && 
-  (state.pendingTargetCard.effect?.type === 'counter' || state.pendingTargetCard.effect?.type === 'counter_creature');
+  const pendingEffect = state.pendingTargetCard?.effect?.type;
+  
+  // Es clickeable si estamos tirando un counter general, o si tiramos uno de criatura Y el ítem es criatura
+  const isTargetingCounter = 
+    pendingEffect === 'counter' || 
+    (pendingEffect === 'counter_creature' && item.card?.type?.includes('Criatura'));
 
   spellStack.forEach((item, index) => {
     const isTop = index === spellStack.length - 1;
