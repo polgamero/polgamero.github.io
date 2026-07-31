@@ -316,10 +316,14 @@ function executeSpellOnTarget(targetObj) {
   } 
   else {
     card = state.localHand.splice(state.pendingSpellIndex, 1)[0];
-    
+
     let stackType = 'spell';
-    if (card.adjunta) stackType = 'aura';
-    else if (card.type.includes('Instantáneo')) stackType = 'instant'; // Soporte para curas/daño instantáneo
+    const isPermanent = card.type.includes('Artefacto') || (card.type.includes('Encantamiento') && !card.adjunta);
+    
+    if (card.power !== undefined) stackType = 'summon';
+    else if (isPermanent) stackType = 'permanent';
+    else if (card.adjunta) stackType = 'aura';
+    else if (card.type.includes('Instantáneo')) stackType = 'instant';
 
     addToStack({
       card: card,
