@@ -42,10 +42,22 @@ export function parseManaCost(manaString) {
 
 export function getLandColor(card) {
   if (card && card.produces) return card.produces;
+  
+  const cardType = card?.type || '';
+  if (cardType.includes('Agua')) return 'U';
+  if (cardType.includes('Planicie')) return 'W';
+  if (cardType.includes('Pantano')) return 'B';
+  if (cardType.includes('Montaña')) return 'R';
+  if (cardType.includes('Bosque')) return 'G';
+
   const cardText = card && card.text;
   if (!cardText) return 'generic';
-  if (cardText.includes('{W}')) return 'W'; if (cardText.includes('{U}')) return 'U'; if (cardText.includes('{B}')) return 'B'; if (cardText.includes('{R}')) return 'R'; if (cardText.includes('{G}')) return 'G';
-  return 'generic'; 
+  if (cardText.includes('{W}')) return 'W';
+  if (cardText.includes('{U}')) return 'U';
+  if (cardText.includes('{B}')) return 'B';
+  if (cardText.includes('{R}')) return 'R';
+  if (cardText.includes('{G}')) return 'G';
+  return 'generic';
 }
 
 export function sleep(ms) { 
