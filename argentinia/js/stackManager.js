@@ -181,7 +181,8 @@ export function renderStack() {
   countSpan.textContent = spellStack.length;
   list.innerHTML = '';
 
-  const isTargetingCounter = state.pendingTargetCard && state.pendingTargetCard.effect?.type === 'counter';
+  const isTargetingCounter = state.pendingTargetCard && 
+  (state.pendingTargetCard.effect?.type === 'counter' || state.pendingTargetCard.effect?.type === 'counter_creature');
 
   spellStack.forEach((item, index) => {
     const isTop = index === spellStack.length - 1;
