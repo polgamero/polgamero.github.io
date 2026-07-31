@@ -89,13 +89,15 @@ export async function checkRivalCounterOrResponse() {
   const responseIndex = state.rivalHand.findIndex(c => {
     if (!c.type.includes('Instantáneo') || !canRivalAfford(c)) return false;
 
-    if (isCounterSpell(c)) {
-      // Si es exclusivo de criaturas, solo responde si hay una criatura tuya en la pila
-      if (c.effect.type === 'counter_creature') {
-        return spellStack.some(s => s.isLocal && s.card?.type?.includes('Criatura'));
+  if (isCounterSpell(c)) {
+        if (c.effect.type === 'counter_creature') {
+          return spellStack.some(s => s.isLocal && s.card?.type?.includes('Criatura'));
+        }
+        if (c.effect.type === 'counter_non_creature') {
+          return spellStack.some(s => s.isLocal && !s.card?.type?.includes('Criatura'));
+        }
+        return spellStack.some(s => s.isLocal);
       }
-      return spellStack.some(s => s.isLocal);
-    }
     return true;
   });
 
