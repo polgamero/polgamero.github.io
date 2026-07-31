@@ -150,6 +150,7 @@ async function executeStackItem(item) {
       else state.rivalGraveyard.push(card);
     }
   }
+}
 
 export function handleStackCardClick(item) {
   if (!state.pendingTargetCard) return;
