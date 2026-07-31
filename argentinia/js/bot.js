@@ -78,12 +78,7 @@ export function tapRivalLandsFor(card) {
 }
 
 function isCounterSpell(card) {
-  return card.effect && (
-    card.effect.type === 'counter' ||
-    card.effect.type === 'counter_creature' ||
-    card.effect.type === 'counter_unless_pay' ||
-    card.effect.type === 'counter_non_creature'
-  );
+  return card.effect && card.effect.type && card.effect.type.startsWith('counter');
 }
 
 export async function checkRivalCounterOrResponse() {
