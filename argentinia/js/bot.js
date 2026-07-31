@@ -77,30 +77,39 @@ export function tapRivalLandsFor(card) {
   }
 }
 
+function isCounterSpell(card) {
+  return card.effect && (
+    card.effect.type === 'counter' ||
+    card.effect.type === 'counter_creature' ||
+    card.effect.type === 'counter_unless_pay' ||
+    card.effect.type === 'counter_non_creature'
+  );
+}
+
 export async function checkRivalCounterOrResponse() {
   if (spellStack.length === 0) return false;
 
-  // 1. Simula un breve tiempo de pensamiento de la IA (600ms)
   await sleep(600);
 
-  // 2. Revisa si tiene algún instantáneo en mano que pueda pagar
   const responseIndex = state.rivalHand.findIndex(c => {
     if (!c.type.includes('Instantáneo') || !canRivalAfford(c)) return false;
-  
-    // Si la carta es un counter, SOLO la tira si hay un hechizo tuyo en la pila
-    if (c.effect && c.effect.type === 'counter') {
+
+    if (isCounterSpell(c)) {
+      // Si es exclusivo de criaturas, solo responde si hay una criatura tuya en la pila
+      if (c.effect.type === 'counter_creature') {
+        return spellStack.some(s => s.isLocal && s.card?.type?.includes('Criatura'));
+      }
       return spellStack.some(s => s.isLocal);
     }
     return true;
-  });  
-  
+  });
+
   if (responseIndex !== -1) {
     const responseCard = state.rivalHand.splice(responseIndex, 1)[0];
     tapRivalLandsFor(responseCard);
 
     let targetObj = null;
-    // Si es un contrahechizo, apunta directamente a tu hechizo en la pila
-    if (responseCard.effect?.type === 'counter') {
+    if (isCounterSpell(responseCard)) {
       const topLocalSpell = [...spellStack].reverse().find(s => s.isLocal);
       if (topLocalSpell) {
         targetObj = { type: 'stack', stackId: topLocalSpell.id };
@@ -109,7 +118,6 @@ export async function checkRivalCounterOrResponse() {
       targetObj = { type: 'player', isLocal: true };
     }
 
-    // El Tano apila su respuesta por encima de tu carta
     addToStack({
       card: responseCard,
       isLocal: false,
@@ -121,7 +129,6 @@ export async function checkRivalCounterOrResponse() {
     render();
     return true;
   } else {
-    // Si no tiene nada, pasa la prioridad amablemente
     logMsg(`👁️ El Tano revisó su mano, no tiene respuestas y pasa prioridad.`);
     return false;
   }
