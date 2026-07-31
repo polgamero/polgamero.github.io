@@ -32,8 +32,10 @@ async function executeStackItem(item) {
 
   // 1. Permanentes (Criaturas, Artefactos, Encantamientos)
   if (type === 'summon' || type === 'permanent') {
+    let newPermanentItem; 
+
     if (card.power !== undefined) {
-      const newCreature = { 
+      newPermanentItem = { 
         card, 
         tapped: false, 
         summoningSickness: true, 
@@ -43,32 +45,32 @@ async function executeStackItem(item) {
         auras: [] 
       };
       const board = isLocal ? state.localCombat : state.rivalCombat;
-      board.push(newCreature);
+      board.push(newPermanentItem);
       logMsg(`¡${card.name} entró al campo de batalla!`);
-
-      if (card.etbEffect) {
-        if (card.requiresTarget) {
-          state.pendingTargetCard = card;
-          state.pendingTargetSource = { type: 'etb', item: newCreature };
-          logMsg(`¡Efecto activado! Elegí un objetivo para ${card.name}.`);
-        } else {
-          resolveEffectDirect(card.etbEffect, card.name, isLocal);
-        }
-      }
     } else {
-      const supportItem = { card, tapped: false };
+      newPermanentItem = { card, tapped: false };
       const supportZone = isLocal ? state.localSupport : state.rivalSupport;
-      supportZone.push(supportItem);
+      supportZone.push(newPermanentItem);
       logMsg(`¡${card.name} entró a la zona de soporte!`);
+    }
 
-      if (card.etbEffect) {
-        if (card.requiresTarget) {
-          state.pendingTargetCard = card;
-          state.pendingTargetSource = { type: 'etb', item: supportItem };
-          logMsg(`¡Efecto activado! Elegí un objetivo para ${card.name}.`);
+    // REPARACIÓN BUG 1: Milonga de Medianoche y ETBs con objetivo
+    if (card.etbEffect) {
+      if (card.requiresTarget) {
+        // En vez de robarle el foco al jugador, respetamos el objetivo y el dueño originales
+        if (targetObj) {
+          addToStack({
+            card: card,
+            isLocal: isLocal, // Mantiene al dueño (vos o el Tano)
+            targetObj: targetObj,
+            type: 'ability',
+            source: { type: 'etb', item: newPermanentItem }
+          });
         } else {
-          resolveEffectDirect(card.etbEffect, card.name, isLocal);
+          logMsg(`⚠️ Error: ${card.name} entró, pero no tenía un objetivo válido asignado.`);
         }
+      } else {
+        resolveEffectDirect(card.etbEffect, card.name, isLocal);
       }
     }
     return;
@@ -80,10 +82,9 @@ async function executeStackItem(item) {
     return;
   }
 
- // 3. Instantáneos / Conjuros / Contrahechizos / HABILIDADES (NUEVO)
+  // 3. Instantáneos / Conjuros / Contrahechizos / HABILIDADES
   if (type === 'spell' || type === 'instant' || type === 'ability') {
     
-    // Extraemos el efecto correcto dependiendo de qué originó la habilidad
     let effectToApply = card.effect;
     
     if (type === 'ability') {
@@ -94,8 +95,8 @@ async function executeStackItem(item) {
       }
     }
 
-    // A) Lógica de Contrahechizo (Target a la Pila)
-    if (effectToApply && effectToApply.type === 'counter') {
+    // REPARACIÓN BUG 2: startsWith('counter') para validar tipos derivados (ej. counter_creature)
+    if (effectToApply && effectToApply.type && effectToApply.type.startsWith('counter')) {
       if (targetObj && targetObj.type === 'stack') {
         const targetIndex = spellStack.findIndex(s => s.id === targetObj.stackId);
         if (targetIndex !== -1) {
@@ -103,11 +104,27 @@ async function executeStackItem(item) {
           logMsg(`🚫 ¡${card.name} contrarrestó a "${counteredItem.card.name}"!`);
           if (counteredItem.isLocal) state.localGraveyard.push(counteredItem.card);
           else state.rivalGraveyard.push(counteredItem.card);
+          
+          // Procesamiento seguro de efectos secundarios (Ej: Derecho de Admisión -> add_counter)
+          if (card.secondaryEffect && card.secondaryEffect.type === 'add_counter') {
+            const friendlyBoard = isLocal ? state.localCombat : state.rivalCombat;
+            if (friendlyBoard.length > 0) {
+              const buffTarget = friendlyBoard[0]; // Aplica al primer aliado disponible
+              if (!buffTarget.auras) buffTarget.auras = [];
+              
+              // Inyectamos el contador aprovechando tu sistema de auras existente
+              buffTarget.auras.push({
+                name: 'Contador +1/+1',
+                auraEffect: { stats: { signo: '+', cantidad: 1 } }
+              });
+              logMsg(`💪 Además, ${card.name} le puso un contador +1/+1 a ${buffTarget.card.name}.`);
+            }
+          }
+
         } else {
           logMsg(`⚠️ ${card.name} falló: el hechizo objetivo ya no está en la pila.`);
         }
       } else {
-        // Si no se eligió objetivo específico, contrarresta el último hechizo de la pila si existe
         if (spellStack.length > 0) {
           const counteredItem = spellStack.pop();
           logMsg(`🚫 ¡${card.name} contrarrestó a "${counteredItem.card.name}"!`);
