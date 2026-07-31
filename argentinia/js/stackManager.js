@@ -183,14 +183,19 @@ export function handleStackCardClick(item) {
 
   const effectType = state.pendingTargetCard.effect?.type;
 
-  // Verificamos si es un counter genérico o de criatura
-  if (effectType === 'counter' || effectType === 'counter_creature') {
+ // Verificamos si es CUALQUIER variante de counter
+  if (effectType && effectType.startsWith('counter')) {
     
-    // Si es exclusivo de criatura (Derecho de Admisión), validamos el objetivo
     if (effectType === 'counter_creature') {
-      const targetTypeStr = item.card?.type || "";
-      if (!targetTypeStr.includes('Criatura')) {
-        logMsg("❌ Derecho de Admisión solo puede contrarrestar hechizos de criatura.");
+      if (!item.card?.type?.includes('Criatura')) {
+        logMsg("❌ Esta carta solo puede contrarrestar hechizos de criatura.");
+        return;
+      }
+    }
+
+    if (effectType === 'counter_non_creature') {
+      if (item.card?.type?.includes('Criatura')) {
+        logMsg("❌ Esta carta solo puede contrarrestar hechizos que no sean de criatura.");
         return;
       }
     }
