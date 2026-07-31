@@ -54,20 +54,29 @@ async function executeStackItem(item) {
       logMsg(`¡${card.name} entró a la zona de soporte!`);
     }
 
-    // REPARACIÓN BUG 1: Milonga de Medianoche y ETBs con objetivo
+// REPARACIÓN BUG 1: Milonga de Medianoche y ETBs con objetivo
     if (card.etbEffect) {
-      if (card.requiresTarget) {
-        // En vez de robarle el foco al jugador, respetamos el objetivo y el dueño originales
-        if (targetObj) {
-          addToStack({
-            card: card,
-            isLocal: isLocal, // Mantiene al dueño (vos o el Tano)
-            targetObj: targetObj,
-            type: 'ability',
-            source: { type: 'etb', item: newPermanentItem }
-          });
-        } else {
-          logMsg(`⚠️ Error: ${card.name} entró, pero no tenía un objetivo válido asignado.`);
+      if (card.requiresTarget && targetObj) {
+        // Resolvemos el efecto directamente sin crear una nueva habilidad en la pila
+        let effectToApply = card.etbEffect;
+        if (targetObj.type === 'player') {
+          const targetName = targetObj.isLocal ? "vos" : "el Tano";
+          if (effectToApply.type === 'damage') {
+            if (targetObj.isLocal) state.localHP -= effectToApply.amount; 
+            else state.rivalHP -= effectToApply.amount;
+            logMsg(`💥 ¡${card.name}! Le hizo ${effectToApply.amount} de daño a ${targetName}.`);
+          } else if (effectToApply.type === 'heal') {
+            if (targetObj.isLocal) state.localHP += effectToApply.amount; 
+            else state.rivalHP += effectToApply.amount;
+            logMsg(`💚 ¡${card.name}! Curó ${effectToApply.amount} de HP a ${targetName}.`);
+          }
+        } else if (targetObj.type === 'creature') {
+          const targetUnit = targetObj.item;
+          if (effectToApply.type === 'damage') {
+            targetUnit.damageTaken += effectToApply.amount;
+            logMsg(`💥 ¡${card.name}! Le hizo ${effectToApply.amount} de daño a ${targetUnit.card.name}.`);
+            // Acá podrías llamar a checkDeaths() si lo tenés importado
+          }
         }
       } else {
         resolveEffectDirect(card.etbEffect, card.name, isLocal);
@@ -229,13 +238,19 @@ export function renderStack() {
   const pendingEffect = state.pendingTargetCard?.effect?.type;
   
   // Es clickeable si estamos tirando un counter general, o si tiramos uno de criatura Y el ítem es criatura
-  const isTargetingCounter = 
-    pendingEffect === 'counter' || 
-    (pendingEffect === 'counter_creature' && item.card?.type?.includes('Criatura'));
+  //const isTargetingCounter = 
+  //pendingEffect === 'counter' || 
+  //(pendingEffect === 'counter_creature' && item.card?.type?.includes('Criatura'));
 
   spellStack.forEach((item, index) => {
     const isTop = index === spellStack.length - 1;
     const cardDiv = document.createElement('div');
+
+    const isCounterNonCreature = pendingEffect === 'counter_non_creature' && !item.card?.type?.includes('Criatura');
+    const isCounterCreature = pendingEffect === 'counter_creature' && item.card?.type?.includes('Criatura');
+    const isGenericCounter = pendingEffect === 'counter' || pendingEffect === 'counter_unless_pay';
+    
+    const isTargetingCounter = isGenericCounter || isCounterCreature || isCounterNonCreature;
     
     const targetableClass = isTargetingCounter ? 'targetable-stack' : '';
     cardDiv.className = `stack-item-card ${item.isLocal ? 'local' : 'rival'} ${isTop ? 'top-item' : ''} ${targetableClass}`;
