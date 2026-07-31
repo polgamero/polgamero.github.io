@@ -108,8 +108,8 @@ export function attachAura(auraCard, creatureItem) {
 export function handleCombatClick(item, isLocal, index) {
   if (state.pendingTargetCard) {
     // NUEVO: Bloquear counters a criaturas
-  if (state.pendingTargetCard.effect && (state.pendingTargetCard.effect.type === 'counter' || state.pendingTargetCard.effect.type === 'counter_creature')) {
-    logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a una criatura/jugador.");
+  if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type && state.pendingTargetCard.effect.type.startsWith('counter')) {
+    logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a una criatura.");
     return;
   }
     const rules = getTargetRules(state.pendingTargetCard);
@@ -156,8 +156,8 @@ export function handleCombatClick(item, isLocal, index) {
 export function handlePlayerTargetClick(isLocal) {
   if (state.pendingTargetCard) {
     // NUEVO: Bloquear counters a jugadores
-  if (state.pendingTargetCard.effect && (state.pendingTargetCard.effect.type === 'counter' || state.pendingTargetCard.effect.type === 'counter_creature')) {
-    logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a una criatura/jugador.");
+  if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type && state.pendingTargetCard.effect.type.startsWith('counter')) {
+    logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a un jugador.");
     return;
   }
     
@@ -194,7 +194,7 @@ export function canPlayCard(card) {
     return isInstant;
   }
 
-if (card.effect && (card.effect.type === 'counter' || card.effect.type === 'counter_creature')) {
+if (card.effect && card.effect.type && card.effect.type.startsWith('counter')) {
     const rivalSpells = spellStack.filter(s => !s.isLocal);
     if (rivalSpells.length === 0) {
         logMsg("❌ No podés tirar un counter si no hay hechizos del Tano en la pila.");
@@ -221,7 +221,7 @@ export function playCard(index) {
   }
 
   // Prevención: No dejamos intentar jugar un counter si no hay objetivos en la pila
-  if (card.effect && (card.effect.type === 'counter' || card.effect.type === 'counter_creature')) {
+  if (card.effect && card.effect.type && card.effect.type.startsWith('counter')) {
       if (!spellStack || spellStack.length === 0) {
         logMsg(`⚠️ No hay ningún hechizo en la pila para contrarrestar.`);
         return;
@@ -260,15 +260,14 @@ function checkPaymentComplete() {
     const isPermanent = card.type.includes('Artefacto') || (card.type.includes('Encantamiento') && !card.adjunta);
     
     // Sumamos 'counter' a las validaciones que requieren un objetivo antes de ir a la pila
-    const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal' || card.effect.type === 'counter' || card.effect.type === 'counter_creature')));
-    if (needsTarget) {
+    const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal' || card.effect.type.startsWith('counter'))));    if (needsTarget) {
       state.pendingTargetCard = card;
       state.pendingTargetSource = null; 
       
       let targetHint = `Hacé clic en un jugador o criatura para aplicar ${card.name}.`;
       if (card.adjunta) targetHint = `Hacé clic en una de tus criaturas para encantarla con ${card.name}.`;
-      else if (card.effect && (card.effect.type === 'counter' || card.effect.type === 'counter_creature')) {
-      targetHint = `Hacé clic en el hechizo de la Pila que querés contrarrestar.`;
+        else if (card.effect && card.effect.type.startsWith('counter')) {
+          targetHint = `Hacé clic en el hechizo de la Pila que querés contrarrestar.`;
     }
       
       logMsg(`¡Maná pagado! ${targetHint}`);
