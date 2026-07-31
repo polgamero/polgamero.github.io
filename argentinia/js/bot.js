@@ -154,7 +154,9 @@ export async function startRivalTurn() {
   return state.rivalHand.findIndex(c => {
     if (c.type.includes('Tierra') || !canRivalAfford(c)) return false;
     // En su turno principal, el bot NO tira counters de la nada
-    if (c.effect && c.effect.type === 'counter') return false; 
+    if (isCounterSpell(c)) {
+      return false;
+    }
     return true;
   });
   };
