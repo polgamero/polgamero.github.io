@@ -177,6 +177,7 @@ async function executeStackItem(item) {
     }
   }
 }
+}
 
 export function handleStackCardClick(item) {
   if (!state.pendingTargetCard) return;
