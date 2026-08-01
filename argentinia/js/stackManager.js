@@ -36,13 +36,8 @@ async function executeStackItem(item) {
 
     if (card.power !== undefined) {
       newPermanentItem = { 
-        card, 
-        tapped: false, 
-        summoningSickness: true, 
-        isAttacking: false, 
-        blockingIndex: null, 
-        damageTaken: 0, 
-        auras: [] 
+        card, tapped: false, summoningSickness: true, isAttacking: false, 
+        blockingIndex: null, damageTaken: 0, auras: [] 
       };
       const board = isLocal ? state.localCombat : state.rivalCombat;
       board.push(newPermanentItem);
@@ -54,10 +49,9 @@ async function executeStackItem(item) {
       logMsg(`¡${card.name} entró a la zona de soporte!`);
     }
 
-// REPARACIÓN BUG 1: Milonga de Medianoche y ETBs con objetivo
+    // REPARACIÓN BUG 1: Milonga de Medianoche y ETBs con objetivo
     if (card.etbEffect) {
       if (card.requiresTarget && targetObj) {
-        // Resolvemos el efecto directamente sin crear una nueva habilidad en la pila
         let effectToApply = card.etbEffect;
         if (targetObj.type === 'player') {
           const targetName = targetObj.isLocal ? "vos" : "el Tano";
@@ -77,13 +71,15 @@ async function executeStackItem(item) {
             logMsg(`💥 ¡${card.name}! Le hizo ${effectToApply.amount} de daño a ${targetUnit.card.name}.`);
             checkDeaths(state.localCombat, state.localGraveyard, "Vos");
             checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
-        }
+          }
+        } 
       } else {
+        // ¡Acá estaba mal identado el else! Ahora sí aplica a los ETB sin objetivo.
         resolveEffectDirect(card.etbEffect, card.name, isLocal);
       }
     }
-    return;
-  }
+    return; // Cortamos la ejecución para que los permanentes no sigan bajando.
+  } // <--- ¡ESTA ES LA LLAVE MÁGICA QUE FALTABA! Cierra el bloque 1.
 
   // 2. Auras
   if (type === 'aura' && targetObj && targetObj.item) {
@@ -176,7 +172,6 @@ async function executeStackItem(item) {
       else state.rivalGraveyard.push(card);
     }
   }
-}
 }
 
 export function handleStackCardClick(item) {
