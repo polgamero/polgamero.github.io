@@ -179,18 +179,21 @@ export function handleStackCardClick(item) {
 
   const effectType = state.pendingTargetCard.effect?.type;
 
- // Verificamos si es CUALQUIER variante de counter
+  // Verificamos si es CUALQUIER variante de counter
   if (effectType && effectType.startsWith('counter')) {
     
+    // NUEVA VALIDACIÓN: Es criatura si su type en la pila es 'summon' o si tiene atributo 'power'
+    const isCreatureSpell = item.type === 'summon' || item.card?.power !== undefined;
+
     if (effectType === 'counter_creature') {
-      if (!item.card?.type?.includes('Criatura')) {
+      if (!isCreatureSpell) {
         logMsg("❌ Esta carta solo puede contrarrestar hechizos de criatura.");
         return;
       }
     }
 
     if (effectType === 'counter_non_creature') {
-      if (item.card?.type?.includes('Criatura')) {
+      if (isCreatureSpell) {
         logMsg("❌ Esta carta solo puede contrarrestar hechizos que no sean de criatura.");
         return;
       }
