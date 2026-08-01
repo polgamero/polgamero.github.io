@@ -343,9 +343,15 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
   containerEl.innerHTML = '';
   const groups = {};
   
-  // 1. Agrupar por nombre de carta
+  // 1. Agrupar por color de producción si son tierras, o por nombre si son soportes
   zoneArray.forEach((item, idx) => {
-    const key = item.card.name; 
+    let key;
+    if (zoneType === 'land' && item.card.produces) {
+      key = `land_${item.card.produces}`; // Agrupa por color (ej: land_W, land_U, etc.)
+    } else {
+      key = item.card.name; // Soporte u otros permanentes se agrupan por nombre exacto
+    }
+
     if (!groups[key]) groups[key] = { items: [], ready: [], tapped: [] };
     
     // Guardamos el índice original para referenciar el estado real
@@ -356,7 +362,6 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
 
   // 2. Renderizar cada grupo como una sola carta apilada
   Object.values(groups).forEach(group => {
-    // La carta se muestra girada SÓLO si el 100% de las copias están giradas
     const isAllTapped = group.ready.length === 0;
     const visualItem = group.items[0].item;
     
@@ -365,7 +370,7 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
       if (state.gameOver) return;
       
       if (zoneType === 'land' && isLocal) {
-        const readyLand = group.ready[0]; // Toma la primera tierra sin girar
+        const readyLand = group.ready[0]; // Toma la primera tierra sin girar de ese color
         if (readyLand) tapLocalLand(readyLand);
       } else if (zoneType === 'support' && isLocal && state.isPlayerTurn && state.phase === 'main') {
         const readySupport = group.ready[0];
@@ -376,7 +381,7 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
       }
     };
 
-    // Creamos la carta pasándole el customClick
+    // Creamos la carta visual del grupo
     const cardEl = createCardElement(visualItem, isAllTapped, isLocal, null, zoneType, customClick);
     
     // 4. Agregar los banners si hay múltiples cartas o si alguna está girada
