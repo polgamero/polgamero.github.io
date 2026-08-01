@@ -241,17 +241,15 @@ export function renderStack() {
 
   const pendingEffect = state.pendingTargetCard?.effect?.type;
   
-  // Es clickeable si estamos tirando un counter general, o si tiramos uno de criatura Y el ítem es criatura
-  //const isTargetingCounter = 
-  //pendingEffect === 'counter' || 
-  //(pendingEffect === 'counter_creature' && item.card?.type?.includes('Criatura'));
-
-  spellStack.forEach((item, index) => {
+spellStack.forEach((item, index) => {
     const isTop = index === spellStack.length - 1;
     const cardDiv = document.createElement('div');
 
-    const isCounterNonCreature = pendingEffect === 'counter_non_creature' && !item.card?.type?.includes('Criatura');
-    const isCounterCreature = pendingEffect === 'counter_creature' && item.card?.type?.includes('Criatura');
+    // NUEVA VALIDACIÓN VISUAL:
+    const isCreatureSpell = item.type === 'summon' || item.card?.power !== undefined;
+
+    const isCounterNonCreature = pendingEffect === 'counter_non_creature' && !isCreatureSpell;
+    const isCounterCreature = pendingEffect === 'counter_creature' && isCreatureSpell;
     const isGenericCounter = pendingEffect === 'counter' || pendingEffect === 'counter_unless_pay';
     
     const isTargetingCounter = isGenericCounter || isCounterCreature || isCounterNonCreature;
