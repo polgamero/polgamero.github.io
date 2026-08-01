@@ -202,7 +202,7 @@ export function getTargetRules(card) {
   return { allowPlayer: true, allowLocalCreature: true, allowRivalCreature: true };
 }
 
-export function createCardElement(itemObj, isTapped = false, isLocal = true, index = null, zone = 'hand') {
+export function createCardElement(itemObj, isTapped = false, isLocal = true, index = null, zone = 'hand', customClick = null) {
   const card = itemObj.card || itemObj;
   const el = document.createElement('div');
   
@@ -288,20 +288,26 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const canRespondToStack = (spellStack && spellStack.length > 0) && isInstant;
   const isMyMainTurn = state.isPlayerTurn && state.phase === 'main';
 
-  if (zone === 'hand' && isLocal && (isMyMainTurn || canRespondToStack) && !state.gameOver) {
-    el.addEventListener('click', () => {
-      if (state.isDiscarding) {
-        handleDiscardClick(index);
-      } else {
-        playCard(index);
-      }
-    });
-  } else if (zone === 'land' && isLocal && !state.gameOver) {
-    el.addEventListener('click', () => tapLocalLand(itemObj));
-  } else if (zone === 'combat' && !state.gameOver) {
-    el.addEventListener('click', () => handleCombatClick(itemObj, isLocal, index));
-  } else if (zone === 'support' && isLocal && state.isPlayerTurn && state.phase === 'main' && !state.gameOver) {
-    el.addEventListener('click', () => handleSupportClick(itemObj, isLocal, index));
+  // Si se pasa un customClick (para las cartas agrupadas), lo usamos con prioridad.
+  if (customClick) {
+    el.addEventListener('click', customClick);
+  } else {
+    // Lógica original intacta
+    if (zone === 'hand' && isLocal && (isMyMainTurn || canRespondToStack) && !state.gameOver) {
+      el.addEventListener('click', () => {
+        if (state.isDiscarding) {
+          handleDiscardClick(index);
+        } else {
+          playCard(index);
+        }
+      });
+    } else if (zone === 'land' && isLocal && !state.gameOver) {
+      el.addEventListener('click', () => tapLocalLand(itemObj));
+    } else if (zone === 'combat' && !state.gameOver) {
+      el.addEventListener('click', () => handleCombatClick(itemObj, isLocal, index));
+    } else if (zone === 'support' && isLocal && state.isPlayerTurn && state.phase === 'main' && !state.gameOver) {
+      el.addEventListener('click', () => handleSupportClick(itemObj, isLocal, index));
+    }
   }
 
   return el;
@@ -333,6 +339,64 @@ export function showGameOverOverlay(didWin) {
   els.gameOverOverlay.classList.remove('hidden'); els.btnEndTurn.disabled = true;
 }
 
+function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
+  containerEl.innerHTML = '';
+  const groups = {};
+  
+  // 1. Agrupar por nombre de carta
+  zoneArray.forEach((item, idx) => {
+    const key = item.card.name; 
+    if (!groups[key]) groups[key] = { items: [], ready: [], tapped: [] };
+    
+    // Guardamos el índice original para referenciar el estado real
+    groups[key].items.push({ item, originalIndex: idx });
+    if (item.tapped) groups[key].tapped.push(item);
+    else groups[key].ready.push(item);
+  });
+
+  // 2. Renderizar cada grupo como una sola carta apilada
+  Object.values(groups).forEach(group => {
+    // La carta se muestra girada SÓLO si el 100% de las copias están giradas
+    const isAllTapped = group.ready.length === 0;
+    const visualItem = group.items[0].item;
+    
+    // 3. Lógica inteligente de clic: busca la primera disponible real en el estado
+    const customClick = () => {
+      if (state.gameOver) return;
+      
+      if (zoneType === 'land' && isLocal) {
+        const readyLand = group.ready[0]; // Toma la primera tierra sin girar
+        if (readyLand) tapLocalLand(readyLand);
+      } else if (zoneType === 'support' && isLocal && state.isPlayerTurn && state.phase === 'main') {
+        const readySupport = group.ready[0];
+        if (readySupport) {
+          const originalIdx = group.items.find(x => x.item === readySupport).originalIndex;
+          handleSupportClick(readySupport, isLocal, originalIdx);
+        }
+      }
+    };
+
+    // Creamos la carta pasándole el customClick
+    const cardEl = createCardElement(visualItem, isAllTapped, isLocal, null, zoneType, customClick);
+    
+    // 4. Agregar los banners si hay múltiples cartas o si alguna está girada
+    if (group.items.length > 1 || group.tapped.length > 0) {
+      const badgeContainer = document.createElement('div');
+      badgeContainer.className = 'stack-counter-container';
+      
+      if (group.ready.length > 0) {
+        badgeContainer.innerHTML += `<div class="stack-badge badge-ready" title="Disponibles">${group.ready.length}</div>`;
+      }
+      if (group.tapped.length > 0) {
+        badgeContainer.innerHTML += `<div class="stack-badge badge-tapped" title="Giradas">${group.tapped.length}</div>`;
+      }
+      cardEl.appendChild(badgeContainer);
+    }
+    
+    containerEl.appendChild(cardEl);
+  });
+}
+
 export function render() {
   state.localHP = Math.max(0, Math.min(20, state.localHP));
   state.rivalHP = Math.max(0, Math.min(20, state.rivalHP));
@@ -344,14 +408,16 @@ export function render() {
     els.rivalHand.appendChild(back);
   });
 
-  els.localLands.innerHTML = ''; state.localLands.forEach(item => els.localLands.appendChild(createCardElement(item, item.tapped, true, null, 'land')));
-  els.rivalLands.innerHTML = ''; state.rivalLands.forEach(item => els.rivalLands.appendChild(createCardElement(item, item.tapped, false, null, 'land')));
+ // Zonas agrupadas (Tierras y Soporte)
+  groupAndRenderZone(state.localLands, els.localLands, true, 'land');
+  groupAndRenderZone(state.rivalLands, els.rivalLands, false, 'land');
   
+  groupAndRenderZone(state.localSupport, els.localSupport, true, 'support');
+  groupAndRenderZone(state.rivalSupport, els.rivalSupport, false, 'support');
+
+  // Zona sin agrupar (El Combate se mantiene igual para poder elegir bloqueadores individuales)
   els.localCombat.innerHTML = ''; state.localCombat.forEach((item, idx) => els.localCombat.appendChild(createCardElement(item, item.tapped, true, idx, 'combat')));
   els.rivalCombat.innerHTML = ''; state.rivalCombat.forEach((item, idx) => els.rivalCombat.appendChild(createCardElement(item, item.tapped, false, idx, 'combat')));
-
-  els.localSupport.innerHTML = ''; state.localSupport.forEach((item, idx) => els.localSupport.appendChild(createCardElement(item, item.tapped, true, idx, 'support')));
-  els.rivalSupport.innerHTML = ''; state.rivalSupport.forEach((item, idx) => els.rivalSupport.appendChild(createCardElement(item, item.tapped, false, idx, 'support')));
   
   if (state.pendingTargetCard) {
     const rules = getTargetRules(state.pendingTargetCard);
