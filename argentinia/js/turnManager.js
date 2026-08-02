@@ -74,7 +74,7 @@ export function startLocalTurn() {
   if (state.gameOver) return;
   state.turnCount++;
   state.isPlayerTurn = true;
-  state.phase = 'main';
+  state.phase = 'main1';
 
   state.localLandPlayedThisTurn = false;
   state.localLands.forEach(l => l.tapped = false);
