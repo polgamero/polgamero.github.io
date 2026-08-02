@@ -9,22 +9,27 @@ import {
 
 export async function executeLocalAttack() {
   const attackers = state.localCombat.filter(c => c.isAttacking);
-  if (attackers.length === 0) return;
-
-  attackers.forEach(a => a.tapped = true);
-  logMsg(`🗡️ Declaraste ${attackers.length} atacantes.`);
-
-  let availableBlockers = state.rivalCombat.map((c, i) => ({c, i})).filter(obj => !obj.c.tapped);
   
-  state.localCombat.forEach((att, aIdx) => {
-    if (att.isAttacking && availableBlockers.length > 0) {
-      let blockerObj = availableBlockers.pop();
-      state.rivalCombat[blockerObj.i].blockingIndex = aIdx;
-      logMsg(`🛡️ El Tano bloquea a tu ${att.card.name} usando su ${blockerObj.c.card.name}.`);
-    }
-  });
+  if (attackers.length > 0) {
+    attackers.forEach(a => a.tapped = true);
+    logMsg(`🗡️ Declaraste ${attackers.length} atacantes.`);
 
-  resolveCombatDamage(state.localCombat, state.rivalCombat, true);
+    let availableBlockers = state.rivalCombat.map((c, i) => ({c, i})).filter(obj => !obj.c.tapped);
+    
+    state.localCombat.forEach((att, aIdx) => {
+      if (att.isAttacking && availableBlockers.length > 0) {
+        let blockerObj = availableBlockers.pop();
+        state.rivalCombat[blockerObj.i].blockingIndex = aIdx;
+        logMsg(`🛡️ El Tano bloquea a tu ${att.card.name} usando su ${blockerObj.c.card.name}.`);
+      }
+    });
+
+    resolveCombatDamage(state.localCombat, state.rivalCombat, true);
+  }
+
+  // ¡CLAVE! Pase lo que pase en el combate, avanzamos a la 2da Fase Principal
+  state.phase = 'main2';
+  logMsg("🌅 Terminó el combate. Arranca tu 2da Fase Principal.");
   render();
 }
 
@@ -32,7 +37,6 @@ export function executeRivalAttack() {
   logMsg(`🛡️ Resolviendo combates...`);
   resolveCombatDamage(state.rivalCombat, state.localCombat, false);
   
-  state.phase = 'main';
   startLocalTurn(); 
 }
 
