@@ -30,8 +30,7 @@ export const els = {
   rivalCombat: document.getElementById('rival-combat'),
   gameLogBox: document.getElementById('game-log-box'),
   btnEndTurn: document.getElementById('btn-end-turn'),
-  btnRestartSidebar: document.getElementById('btn-restart-sidebar'),
-
+  
   localHpBar: document.getElementById('local-hp-bar'),
   rivalHpBar: document.getElementById('rival-hp-bar'),
   localHpText: document.getElementById('local-hp-text'),
@@ -286,8 +285,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 
   const isInstant = card.type && card.type.includes('Instantáneo');
   const canRespondToStack = (spellStack && spellStack.length > 0) && isInstant;
-  const isMyMainTurn = state.isPlayerTurn && state.phase === 'main';
-
+const isMyMainTurn = state.isPlayerTurn && (state.phase === 'main1' || state.phase === 'main2');
+  
   // Si se pasa un customClick (para las cartas agrupadas), lo usamos con prioridad.
   if (customClick) {
     el.addEventListener('click', customClick);
@@ -372,7 +371,7 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
       if (zoneType === 'land' && isLocal) {
         const readyLand = group.ready[0]; // Toma la primera tierra sin girar de ese color
         if (readyLand) tapLocalLand(readyLand);
-      } else if (zoneType === 'support' && isLocal && state.isPlayerTurn && state.phase === 'main') {
+      } else if (zoneType === 'support' && isLocal && state.isPlayerTurn && state.phase === 'main1' || state.phase === 'main2') {
         const readySupport = group.ready[0];
         if (readySupport) {
           const originalIdx = group.items.find(x => x.item === readySupport).originalIndex;
@@ -439,24 +438,57 @@ export function render() {
   els.localHpText.textContent = `${state.localHP} / 20 HP`; els.rivalHpText.textContent = `${state.rivalHP} / 20 HP`;
   els.localHpBar.style.width = `${(state.localHP / 20) * 100}%`; els.rivalHpBar.style.width = `${(state.rivalHP / 20) * 100}%`;
 
-  els.btnEndTurn.onclick = null; 
+els.btnEndTurn.onclick = null; 
   
-  if (state.phase === 'main') {
+  // 1. GESTIÓN VISUAL DE LOS INDICADORES DE FASE
+  const phaseContainer = document.getElementById('phase-indicator-container');
+  const d1 = document.getElementById('dot-main1');
+  const dc = document.getElementById('dot-combat');
+  const d2 = document.getElementById('dot-main2');
+
+  if (phaseContainer && d1 && dc && d2) {
+    if (state.isPlayerTurn) {
+      phaseContainer.classList.remove('hidden');
+      d1.className = 'phase-dot'; dc.className = 'phase-dot'; d2.className = 'phase-dot';
+      
+      if (state.phase === 'main1') {
+        d1.classList.add('active', 'blinking');
+      } else if (state.phase === 'main2') {
+        d1.classList.add('active'); // Ya pasó
+        dc.classList.add('active'); // Ya pasó
+        d2.classList.add('active', 'blinking');
+      }
+    } else {
+      phaseContainer.classList.add('hidden'); // Ocultar en el turno del Tano
+    }
+  }
+
+  // 2. GESTIÓN DEL BOTÓN DE PASAR TURNO SEGÚN LA FASE
+  if (state.phase === 'main1') {
     els.btnEndTurn.disabled = !state.isPlayerTurn || state.gameOver;
     if (state.localCombat.some(c => c.isAttacking)) {
       els.btnEndTurn.textContent = "Confirmar Ataque ⚔️";
       els.btnEndTurn.onclick = executeLocalAttack;
-      els.btnEndTurn.style.backgroundColor = "#e74c3c";
+      els.btnEndTurn.style.backgroundColor = "#e74c3c"; // Rojo combate
     } else {
-      els.btnEndTurn.textContent = "Pasar Turno ➔";
-      els.btnEndTurn.onclick = attemptPassTurn;
-      els.btnEndTurn.style.backgroundColor = "";
+      els.btnEndTurn.textContent = "Saltar Combate ➔";
+      els.btnEndTurn.onclick = () => {
+        state.phase = 'main2';
+        logMsg("🌅 Decidiste no atacar. Entrás a tu 2da Fase Principal.");
+        render();
+      };
+      els.btnEndTurn.style.backgroundColor = "#e67e22"; // Naranja prevención
     }
+  } else if (state.phase === 'main2') {
+    els.btnEndTurn.disabled = !state.isPlayerTurn || state.gameOver;
+    els.btnEndTurn.textContent = "Finalizar Turno ➔";
+    els.btnEndTurn.onclick = attemptPassTurn;
+    els.btnEndTurn.style.backgroundColor = ""; // Color por defecto
   } else if (state.phase === 'local_block') {
     els.btnEndTurn.disabled = state.gameOver;
     els.btnEndTurn.textContent = "Confirmar Bloqueos 🛡️";
     els.btnEndTurn.onclick = executeRivalAttack;
-    els.btnEndTurn.style.backgroundColor = "#3498db";
+    els.btnEndTurn.style.backgroundColor = "#3498db"; // Azul defensa
   }
 
   if (state.isDiscarding) {
