@@ -13,7 +13,7 @@ export { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, st
 export const state = {
   turnCount: 1,
   isPlayerTurn: true,
-  phase: 'main', 
+  phase: 'main1', 
   gameOver: false,
 
   localHP: 20,
@@ -62,7 +62,6 @@ async function initGame() {
   }
 
   els.btnRestart.addEventListener('click', () => location.reload());
-  els.btnRestartSidebar.addEventListener('click', () => location.reload());
 
   els.rivalHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(false));
   els.localHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(true));
@@ -123,7 +122,8 @@ export function handleCombatClick(item, isLocal, index) {
     return;
   }
 
-  if (state.phase === 'main' && isLocal && state.isPlayerTurn) {
+// AHORA: Solo podés declarar atacantes en la Fase Principal 1
+  if (state.phase === 'main1' && isLocal && state.isPlayerTurn) {
     if (item.summoningSickness) {
       logMsg(`Tu ${item.card.name} está mareado y no puede atacar este turno.`);
       return;
@@ -178,32 +178,24 @@ export function cancelPayment() {
   render();
 }
 
-// NUEVA FUNCIÓN: Lógica estricta de prioridad y velocidad de hechizos
 export function canPlayCard(card) {
   if (state.gameOver || state.pendingSpellIndex !== null) return false;
   
   const isInstant = card.type.includes('Instantáneo');
 
-  // Si hay cartas en la pila, SOLO se pueden jugar Instantáneos
-  if (spellStack && spellStack.length > 0) {
-    return isInstant;
-  }
+  if (spellStack && spellStack.length > 0) return isInstant;
+  if (!state.isPlayerTurn) return isInstant;
 
-  // Si es el turno del Rival, SOLO se pueden jugar Instantáneos
-  if (!state.isPlayerTurn) {
-    return isInstant;
+  if (card.effect && card.effect.type && card.effect.type.startsWith('counter')) {
+      const rivalSpells = spellStack.filter(s => !s.isLocal);
+      if (rivalSpells.length === 0) {
+          logMsg("❌ No podés tirar un counter si no hay hechizos del Tano en la pila.");
+          return; 
+      }
   }
-
-if (card.effect && card.effect.type && card.effect.type.startsWith('counter')) {
-    const rivalSpells = spellStack.filter(s => !s.isLocal);
-    if (rivalSpells.length === 0) {
-        logMsg("❌ No podés tirar un counter si no hay hechizos del Tano en la pila.");
-        return; 
-    }
-}
   
-  // En tu turno, fase principal y pila vacía: podés jugar cualquier cosa
-  return state.phase === 'main';
+  // AHORA: En tu turno, pila vacía y en CUALQUIERA de las dos Fases Principales
+  return state.phase === 'main1' || state.phase === 'main2';
 }
 
 export function playCard(index) {
@@ -344,7 +336,8 @@ function executeSpellOnTarget(targetObj) {
 }
 
 export function handleSupportClick(item, isLocal, index) {
-  if (!isLocal || !state.isPlayerTurn || state.phase !== 'main' || state.gameOver) return;
+  // AHORA: Podés activar habilidades de soporte en main1 y main2
+  if (!isLocal || !state.isPlayerTurn || (state.phase !== 'main1' && state.phase !== 'main2') || state.gameOver) return;
 
   const card = item.card;
   if (card.activatedAbility) {
