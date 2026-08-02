@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -50,13 +50,16 @@
 
       <div class="log-section">
         <div class="log-box" id="game-log-box"></div>
-        <div id="payment-controls" class="hidden" style="margin-bottom: 10px; text-align: center;">
-          <p id="payment-status" style="font-size: 0.8rem; color: var(--gold); margin-bottom: 5px; font-weight: bold;">Pagando hechizo...</p>
-          <button id="btn-cancel-spell" class="btn-reset" style="width: 100%; background: #c0392b; border-color: #e74c3c;">❌ Cancelar (ESC)</button>
+          <!-- INDICADORES DE FASE -->
+        <div id="phase-indicator-container" class="phase-indicator hidden">
+          <div class="phase-dot" id="dot-main1" title="1ra Fase Principal"></div>
+          <div class="phase-dot" id="dot-combat" title="Fase de Combate"></div>
+          <div class="phase-dot" id="dot-main2" title="2da Fase Principal"></div>
         </div>
+        
         <div class="turn-controls">
           <button id="btn-end-turn" class="btn-turn">Pasar Turno ➔</button>
-          <button id="btn-restart-sidebar" class="btn-reset" title="Reiniciar partida">🔄 Reiniciar</button>
+          <!-- El botón de Reiniciar fue eliminado de aquí -->
         </div>
       </div>
 
