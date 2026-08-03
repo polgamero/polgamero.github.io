@@ -914,11 +914,53 @@ html, body {
 
 /* ===================================================
    MODAL DE ASIGNACIÓN DE DAÑO (MANUAL)
+   Ahora es un panel flotante NO bloqueante: no tapa el
+   tablero (el fondo es transparente y no intercepta clicks/hover),
+   así podés seguir viendo y pasando el mouse sobre las criaturas
+   en combate para leer sus habilidades antes de decidir.
 =================================================== */
 #damage-modal-overlay {
-  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.92);
-  z-index: 6000; display: flex; justify-content: center; align-items: center;
+  position: fixed; inset: 0;
+  background: transparent;
+  pointer-events: none; /* deja pasar el hover/click hacia el tablero */
+  z-index: 6000;
+  display: flex; justify-content: flex-start; align-items: center;
+  padding-left: 24px;
 }
+
+.damage-modal-box {
+  pointer-events: auto; /* el panel en sí sigue siendo interactivo */
+  width: 300px;
+  max-height: 82vh;
+  overflow-y: auto;
+  background-color: rgba(18, 22, 30, 0.96);
+  border: 2px solid var(--hp-red);
+  border-radius: 12px;
+  padding: 1.2rem;
+  box-shadow: 0 10px 34px rgba(231, 76, 60, 0.35);
+  color: #fff;
+}
+
+.damage-modal-box h2 {
+  color: var(--hp-red);
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.damage-modal-hint {
+  font-size: 0.72rem;
+  color: #aaa;
+  text-align: center;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+}
+
+.damage-modal-initial-buttons {
+  display: flex; gap: 0.7rem; justify-content: center;
+}
+
+#damage-modal-content { margin-bottom: 1.2rem; }
 
 .damage-row {
   display: flex; align-items: center; justify-content: space-between;
