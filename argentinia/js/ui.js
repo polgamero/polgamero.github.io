@@ -564,9 +564,16 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
 
   const attacker = attackerItem.card;
   const canTrample = hasKeyword(attackerItem, 'trample');
-  
+  const attackerHasDeathtouch = hasKeyword(attackerItem, 'deathtouch');
+
+  // Daño letal pendiente para cada bloqueador (1 si hay Toque Mortal, si todavía le queda vida)
+  function lethalNeeded(bItem) {
+    const remaining = Math.max(0, bItem.card.toughness - (bItem.damageTaken || 0));
+    if (remaining === 0) return 0;
+    return attackerHasDeathtouch ? 1 : remaining;
+  }
+
   let currentDistribution = blockersArray.map(() => 0);
-  let playerDamage = 0;
   let unassigned = totalDamage;
 
   // Estado inicial del modal
@@ -599,11 +606,15 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
 
     blockersArray.forEach((bItem, idx) => {
        const hp = bItem.card.toughness - (bItem.damageTaken || 0);
+       const needed = lethalNeeded(bItem);
+       const met = currentDistribution[idx] >= needed;
        html += `
          <div class="damage-row">
            <div style="text-align: left; line-height: 1.2;">
              <strong style="font-size: 1.1rem;">${bItem.card.name}</strong><br>
-             <span style="font-size: 0.8rem; color: #aaa;">Resistencia actual: ${hp}</span>
+             <span style="font-size: 0.8rem; color: ${met ? '#7ed6a5' : '#e67e22'};">
+               Resistencia actual: ${hp} ${needed > 0 ? `(letal: ${needed})` : '(ya no necesita más)'}
+             </span>
            </div>
            <div class="damage-controls">
              <button class="btn-arrow" data-idx="${idx}" data-action="minus">-</button>
@@ -614,17 +625,20 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
        `;
     });
 
-    // Si tiene Trample, sumamos la fila del rival para el overkill
+    // Si tiene Trample, mostramos el overkill calculado automáticamente (no se elige a mano)
     if (canTrample) {
+      const allLethalMet = blockersArray.every((b, i) => currentDistribution[i] >= lethalNeeded(b));
+      const overflow = allLethalMet ? unassigned : 0;
       html += `
          <div class="damage-row trample-row">
            <div style="text-align: left;">
-             <strong style="font-size: 1.1rem;">Daño al Tano (Arrollar)</strong>
+             <strong style="font-size: 1.1rem;">🐘 Arrollar al Tano</strong><br>
+             <span style="font-size: 0.8rem; color: #aaa;">
+               ${allLethalMet ? 'Se calcula automáticamente con lo que sobre.' : 'Asigná primero daño letal a todos los bloqueadores.'}
+             </span>
            </div>
            <div class="damage-controls">
-             <button class="btn-arrow" data-idx="player" data-action="minus">-</button>
-             <span class="damage-value" id="val-player">${playerDamage}</span>
-             <button class="btn-arrow" data-idx="player" data-action="plus">+</button>
+             <span class="damage-value" id="val-player">${overflow}</span>
            </div>
          </div>
       `;
@@ -644,10 +658,11 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
     updateConfirmButton();
   }
 
-  // LÓGICA DE SUMA Y RESTA DE DAÑO
+  // LÓGICA DE SUMA Y RESTA DE DAÑO (solo entre bloqueadores)
   function handleDamageChange(idx, action) {
-    let currentValue = idx === 'player' ? playerDamage : currentDistribution[parseInt(idx)];
-    
+    const i = parseInt(idx);
+    let currentValue = currentDistribution[i];
+
     if (action === 'plus' && unassigned > 0) {
       currentValue++;
       unassigned--;
@@ -658,29 +673,46 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
       return; // Bloquea si tratás de bajar de 0 o gastar más de lo que tenés
     }
 
-    if (idx === 'player') {
-      playerDamage = currentValue;
-      document.getElementById('val-player').textContent = playerDamage;
-    } else {
-      currentDistribution[parseInt(idx)] = currentValue;
-      document.getElementById(`val-blocker-${idx}`).textContent = currentDistribution[parseInt(idx)];
-    }
-    
-    document.getElementById('dmg-unassigned').textContent = unassigned;
-    updateConfirmButton();
+    currentDistribution[i] = currentValue;
+
+    renderManualUI(); // Re-renderizamos entero para refrescar el estado de "letal cumplido" y el overflow
   }
 
-  // VALIDACIÓN: TE OBLIGA A ASIGNAR TODO EL DAÑO
+  // VALIDACIÓN: exige daño letal a CADA bloqueador antes de permitir que sobre daño
+  // (y, si no hay Arrollar, exige usar absolutamente todo el daño entre los bloqueadores)
   function updateConfirmButton() {
-    btnConfirm.disabled = (unassigned > 0);
-    btnConfirm.style.opacity = unassigned > 0 ? '0.5' : '1';
-    btnConfirm.textContent = unassigned > 0 ? 'Asigná todo el daño restante' : 'Confirmar Distribución';
+    const allLethalMet = blockersArray.every((b, i) => currentDistribution[i] >= lethalNeeded(b));
+
+    let canConfirm;
+    if (unassigned === 0) {
+      // Ya se repartió todo entre bloqueadores, es una distribución válida por sí sola
+      canConfirm = true;
+    } else if (canTrample && allLethalMet) {
+      // Sobra daño, pero ya está cubierto el letal de todos: el resto arrolla
+      canConfirm = true;
+    } else {
+      canConfirm = false;
+    }
+
+    btnConfirm.disabled = !canConfirm;
+    btnConfirm.style.opacity = canConfirm ? '1' : '0.5';
+
+    if (canConfirm) {
+      btnConfirm.textContent = 'Confirmar Distribución';
+    } else if (!allLethalMet) {
+      btnConfirm.textContent = 'Asigná daño letal a todos los bloqueadores';
+    } else {
+      btnConfirm.textContent = 'Asigná todo el daño restante';
+    }
   }
 
   // CONFIRMAR Y DEVOLVER LOS DATOS AL ENGINE
   btnConfirm.onclick = () => {
-    if (unassigned > 0) return; 
+    const allLethalMet = blockersArray.every((b, i) => currentDistribution[i] >= lethalNeeded(b));
+    if (unassigned > 0 && !(canTrample && allLethalMet)) return;
+
+    const overflowToPlayer = canTrample ? unassigned : 0;
     overlay.classList.add('hidden');
-    onConfirmManual(currentDistribution, playerDamage);
+    onConfirmManual(currentDistribution, overflowToPlayer);
   };
 }
