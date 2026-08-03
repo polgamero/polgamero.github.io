@@ -68,7 +68,8 @@ export function executeRivalAttack() {
 
   state.rivalCombat.forEach((attacker, aIdx) => {
     if (attacker.isAttacking && hasKeyword(attacker, 'menace')) {
-      const blockersCount = state.localCombat.filter(d => d.blockingIndex === aIdx).length;
+      // CORRECCIÓN: Usamos == para evitar fallos si la UI envía el índice como String
+      const blockersCount = state.localCombat.filter(d => d.blockingIndex == aIdx).length;
 
       if (blockersCount === 1) {
         logMsg(`❌ ¡Epa! ${attacker.card.name} tiene Amenaza. Necesitás bloquearlo con 2 o más criaturas (o dejarlo pasar).`);
@@ -94,11 +95,12 @@ export function resolveCombatDamage(attackersArray, defendersArray, isLocalAttac
   attackersArray.forEach((attacker, aIdx) => {
     if (!attacker.isAttacking) return;
 
-    let blockers = defendersArray.filter(d => d.blockingIndex === aIdx);
+    // CORRECCIÓN: Usamos == en lugar de === para matchear strings con numbers
+    let blockers = defendersArray.filter(d => d.blockingIndex == aIdx);
     const attackerPower = getEffectivePower(attacker);
 
-    // ETAPA 4: Identificamos si el atacante tiene las nuevas habilidades
-    const attackerHasLifelink = hasKeyword(attacker, 'lifelink');
+    // Identificamos si el atacante tiene las nuevas habilidades
+    const attackerHasLifelink = hasKeyword(attacker, 'lifelink') || hasKeyword(attacker, 'life_link');
     const attackerHasDeathtouch = hasKeyword(attacker, 'deathtouch');
 
     if (blockers.length === 0) {
@@ -128,8 +130,8 @@ export function resolveCombatDamage(attackersArray, defendersArray, isLocalAttac
         const bPower = getEffectivePower(blocker);
         const bToughness = getEffectiveToughness(blocker);
 
-        // ETAPA 4: Chequeamos Keywords del Bloqueador
-        const blockerHasLifelink = hasKeyword(blocker, 'lifelink');
+        // Chequeamos Keywords del Bloqueador
+        const blockerHasLifelink = hasKeyword(blocker, 'lifelink') || hasKeyword(blocker, 'life_link');
         const blockerHasDeathtouch = hasKeyword(blocker, 'deathtouch');
 
         totalBlockerPower += bPower; 
@@ -137,10 +139,10 @@ export function resolveCombatDamage(attackersArray, defendersArray, isLocalAttac
         // 1. Vínculo Vital del Bloqueador
         if (blockerHasLifelink && bPower > 0) {
           if (isLocalAttacking) {
-            state.rivalHP += bPower; // El bloqueador es del Tano
+            state.rivalHP += bPower; 
             logMsg(`💚 Vínculo Vital: El Tano recupera ${bPower} HP por la defensa de ${blocker.card.name}.`);
           } else {
-            state.localHP += bPower; // El bloqueador es tuyo
+            state.localHP += bPower; 
             logMsg(`💚 Vínculo Vital: Recuperás ${bPower} HP por la defensa de ${blocker.card.name}.`);
           }
         }
@@ -151,30 +153,28 @@ export function resolveCombatDamage(attackersArray, defendersArray, isLocalAttac
         }
 
         // 3. El atacante reparte su daño al bloqueador actual
-        // Si tiene Toque Mortal, 1 punto de daño ya es suficiente para ser letal
         let damageToKill = attackerHasDeathtouch ? 1 : bToughness;
         let damageToDeal = Math.min(remainingAttackerPower, damageToKill);
 
-        // Si es el último bloqueador y sobra daño, le volcamos todo el remanente
-        // (En la Etapa 6 esto va a cambiar para que vaya a la cara del jugador si tiene Arrollar)
+        // Volcamos todo el remanente en el último bloqueador
         if (bIdx === blockers.length - 1 && remainingAttackerPower > 0) {
           damageToDeal = remainingAttackerPower;
         }
 
         if (damageToDeal > 0) {
-          blocker.damageTaken += damageToDeal;
+          // CORRECCIÓN: Inicialización defensiva de damageTaken por si venía null
+          blocker.damageTaken = (blocker.damageTaken || 0) + damageToDeal;
           remainingAttackerPower -= damageToDeal;
           attackerLifelinkHeal += damageToDeal;
 
-          // Toque Mortal del Atacante hacia el Bloqueador
           if (attackerHasDeathtouch) {
             blocker.tookDeathtouch = true;
           }
         }
       });
 
-      // El atacante recibe todo el daño combinado de los bloqueadores a la vez
-      attacker.damageTaken += totalBlockerPower;
+      // El atacante recibe el daño de los bloqueadores
+      attacker.damageTaken = (attacker.damageTaken || 0) + totalBlockerPower;
 
       // 4. Resolvemos la cura acumulada del atacante si tiene Vínculo Vital
       if (attackerHasLifelink && attackerLifelinkHeal > 0) {
@@ -195,7 +195,7 @@ export function resolveCombatDamage(attackersArray, defendersArray, isLocalAttac
   checkDeaths(state.localCombat, state.localGraveyard, "Vos");
   checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
 
-  // Limpiamos los estados temporales de combate y daño letal
+  // Limpieza
   attackersArray.forEach(c => { c.isAttacking = false; c.tookDeathtouch = false; });
   defendersArray.forEach(c => { c.blockingIndex = null; c.tookDeathtouch = false; });
   state.pendingBlockerIndex = null;
@@ -205,9 +205,10 @@ export function checkDeaths(combatArray, graveyardArray, ownerName) {
   for (let i = combatArray.length - 1; i >= 0; i--) {
     let unit = combatArray[i];
     
-    // ETAPA 4: Modificamos la validación de muerte. 
-    // Muere por daño normal (>= a la defensa) o porque recibió al menos 1 punto de daño de una fuente con Toque Mortal.
-    if (unit.damageTaken >= getEffectiveToughness(unit) || (unit.tookDeathtouch && unit.damageTaken > 0)) {
+    // CORRECCIÓN: Evitamos que un damageTaken nulo rompa la lógica matemática
+    let dmg = unit.damageTaken || 0;
+    
+    if (dmg >= getEffectiveToughness(unit) || (unit.tookDeathtouch && dmg > 0)) {
       logMsg(`💀 ${unit.card.name} de ${ownerName} murió y va al cementerio.`);
       graveyardArray.push(unit.card);
       if (unit.auras && unit.auras.length > 0) {
