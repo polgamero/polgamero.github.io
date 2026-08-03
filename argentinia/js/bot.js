@@ -185,9 +185,13 @@ export async function startRivalTurn() {
           // Si hace daño, el Tano te apunta directo a la cara
           aiTargetObj = { type: 'player', isLocal: true };
         } else {
-          // Fallback por si agregás otros encantamientos con target a futuro
-          if (state.localCombat.length > 0) {
-            aiTargetObj = { type: 'creature', isLocal: true, index: 0, item: state.localCombat[0] };
+
+          // --- NUEVO: LÓGICA HEXPROOF PARA EL BOT ---
+          // Filtramos tus criaturas para excluir las que tienen Hexproof
+          const validLocalTargets = state.localCombat.filter(c => !hasKeyword(c, 'hexproof'));
+          
+          if (validLocalTargets.length > 0) {
+            aiTargetObj = { type: 'creature', isLocal: true, index: 0, item: validLocalTargets[0] };
           } else {
             aiTargetObj = { type: 'player', isLocal: true };
           }
