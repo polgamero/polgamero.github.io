@@ -246,7 +246,22 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     }) : '';
 
     const effKeywords = card.power !== undefined ? getEffectiveKeywords(itemObj) : [];
-    const KEYWORD_LABELS = { flying: '🕊️ Vuela', trample: '🐘 Arrolla', lifelink: '❤️ Vínculo vital', hexproof: '🛡️ Intocable', haste: '⚡ Prisa', menace: '👥 Amenaza', vigilance: '👁️ Vigilancia' };
+
+    const KEYWORD_LABELS = { 
+    flying: '🕊️ Vuela', 
+    trample: '🐘 Arrolla', 
+    lifelink: '❤️ Vínculo vital', 
+    hexproof: '🛡️ Intocable', 
+    haste: '⚡ Prisa', 
+    menace: '👥 Amenaza', 
+    vigilance: '👁️ Vigilancia', 
+    reach: '🏹 Alcance',
+    defense: '🧱 Defensora',
+    life_link: '❤️ Vínculo vital',
+    deathtouch: '💀 Toque mortal',
+    first_strike: '⚔️ Primer golpe'
+  };
+      
     const keywordsHTML = effKeywords.length > 0
       ? `<div class="keyword-strip">${effKeywords.map(k => `<span class="keyword-tag">${KEYWORD_LABELS[k] || k}</span>`).join('')}</div>`
       : '';
