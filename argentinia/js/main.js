@@ -107,11 +107,20 @@ export function attachAura(auraCard, creatureItem) {
 
 export function handleCombatClick(item, isLocal, index) {
   if (state.pendingTargetCard) {
+
     // NUEVO: Bloquear counters a criaturas
-  if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type && state.pendingTargetCard.effect.type.startsWith('counter')) {
-    logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a una criatura.");
-    return;
-  }
+    if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type && state.pendingTargetCard.effect.type.startsWith('counter')) {
+      logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a una criatura.");
+      return;
+    }
+
+    // --- NUEVO: LÓGICA HEXPROOF (MECÁNICA) ---
+    // Si apuntás a una criatura del Tano que tiene Hexproof, denegamos la acción.
+    if (!isLocal && hasKeyword(item, 'hexproof')) {
+      logMsg(`🛡️ ¡Epa! ${item.card.name} tiene Intocable. No podés seleccionarlo como objetivo.`);
+      return;
+    }
+    
     const rules = getTargetRules(state.pendingTargetCard);
     const allowed = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
 
