@@ -15,3 +15,24 @@ export function hasKeyword(itemObj, keyword) {
   // Normalizamos a minúsculas para evitar errores de tipeo en los JSON
   return keywords.some(k => k.toLowerCase() === keyword.toLowerCase());
 }
+
+/**
+ * Verifica si un bloqueador es legal para un atacante específico (lógica de Flying/Reach).
+ * @param {Object} attacker - La unidad que ataca (de localCombat o rivalCombat)
+ * @param {Object} blocker - La unidad que intenta bloquear (de localCombat o rivalCombat)
+ * @returns {Boolean}
+ */
+export function canBlock(attacker, blocker) {
+  const attackerFlies = hasKeyword(attacker, 'flying');
+  
+  if (attackerFlies) {
+    const blockerFlies = hasKeyword(blocker, 'flying');
+    const blockerReaches = hasKeyword(blocker, 'reach');
+    
+    // Si el atacante vuela, el bloqueador SÍ O SÍ debe tener Flying o Reach
+    return blockerFlies || blockerReaches;
+  }
+  
+  // Si el atacante no vuela, cualquier criatura (con o sin volar/alcance) puede bloquearlo
+  return true;
+}
