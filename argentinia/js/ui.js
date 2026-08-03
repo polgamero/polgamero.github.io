@@ -550,3 +550,137 @@ els.btnCancelSpell.addEventListener('click', cancelPayment);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.pendingSpellIndex !== null) cancelPayment(); });
 
 let resizeTimeout = null; window.addEventListener('resize', () => { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(sizeAllRows, 120); });
+
+// Asignación de daño manual
+
+export function showDamageAssignmentModal(attackerItem, blockersArray, totalDamage, onAuto, onConfirmManual) {
+  const overlay = document.getElementById('damage-modal-overlay');
+  const content = document.getElementById('damage-modal-content');
+  const btnAuto = document.getElementById('btn-dmg-auto');
+  const btnManual = document.getElementById('btn-dmg-manual');
+  const confirmContainer = document.getElementById('damage-modal-confirm-container');
+  const btnConfirm = document.getElementById('btn-dmg-confirm');
+  const initialButtons = document.getElementById('damage-modal-initial-buttons');
+
+  const attacker = attackerItem.card;
+  const canTrample = hasKeyword(attackerItem, 'trample');
+  
+  let currentDistribution = blockersArray.map(() => 0);
+  let playerDamage = 0;
+  let unassigned = totalDamage;
+
+  // Estado inicial del modal
+  content.innerHTML = `
+    <p style="margin-bottom: 1.2rem; font-size: 1.1rem; color: #eee;">
+      Tu <strong>${attacker.name}</strong> (Poder: ${totalDamage}) fue bloqueado.<br>
+      <span style="font-size: 0.85rem; color: #aaa;">¿Cómo querés resolver el daño?</span>
+    </p>`;
+  
+  initialButtons.classList.remove('hidden');
+  confirmContainer.classList.add('hidden');
+  overlay.classList.remove('hidden');
+
+  // BOTÓN: AUTOMÁTICO
+  btnAuto.onclick = () => {
+    overlay.classList.add('hidden');
+    onAuto(); // Ejecuta tu lógica actual de combatRules.js
+  };
+
+  // BOTÓN: MANUAL
+  btnManual.onclick = () => {
+    initialButtons.classList.add('hidden');
+    confirmContainer.classList.remove('hidden');
+    renderManualUI();
+  };
+
+  // RENDER DE LAS FLECHITAS
+  function renderManualUI() {
+    let html = `<div style="margin-bottom: 15px; font-size: 1rem;">Daño restante para asignar: <strong id="dmg-unassigned" style="color: var(--gold); font-size: 1.6rem;">${unassigned}</strong></div>`;
+
+    blockersArray.forEach((bItem, idx) => {
+       const hp = bItem.card.toughness - (bItem.damageTaken || 0);
+       html += `
+         <div class="damage-row">
+           <div style="text-align: left; line-height: 1.2;">
+             <strong style="font-size: 1.1rem;">${bItem.card.name}</strong><br>
+             <span style="font-size: 0.8rem; color: #aaa;">Resistencia actual: ${hp}</span>
+           </div>
+           <div class="damage-controls">
+             <button class="btn-arrow" data-idx="${idx}" data-action="minus">-</button>
+             <span class="damage-value" id="val-blocker-${idx}">${currentDistribution[idx]}</span>
+             <button class="btn-arrow" data-idx="${idx}" data-action="plus">+</button>
+           </div>
+         </div>
+       `;
+    });
+
+    // Si tiene Trample, sumamos la fila del rival para el overkill
+    if (canTrample) {
+      html += `
+         <div class="damage-row trample-row">
+           <div style="text-align: left;">
+             <strong style="font-size: 1.1rem;">Daño al Tano (Arrollar)</strong>
+           </div>
+           <div class="damage-controls">
+             <button class="btn-arrow" data-idx="player" data-action="minus">-</button>
+             <span class="damage-value" id="val-player">${playerDamage}</span>
+             <button class="btn-arrow" data-idx="player" data-action="plus">+</button>
+           </div>
+         </div>
+      `;
+    }
+
+    content.innerHTML = html;
+
+    // Listeners dinámicos de los botones +/-
+    content.querySelectorAll('.btn-arrow').forEach(btn => {
+       btn.onclick = (e) => {
+          const idx = e.target.getAttribute('data-idx');
+          const action = e.target.getAttribute('data-action');
+          handleDamageChange(idx, action);
+       };
+    });
+
+    updateConfirmButton();
+  }
+
+  // LÓGICA DE SUMA Y RESTA DE DAÑO
+  function handleDamageChange(idx, action) {
+    let currentValue = idx === 'player' ? playerDamage : currentDistribution[parseInt(idx)];
+    
+    if (action === 'plus' && unassigned > 0) {
+      currentValue++;
+      unassigned--;
+    } else if (action === 'minus' && currentValue > 0) {
+      currentValue--;
+      unassigned++;
+    } else {
+      return; // Bloquea si tratás de bajar de 0 o gastar más de lo que tenés
+    }
+
+    if (idx === 'player') {
+      playerDamage = currentValue;
+      document.getElementById('val-player').textContent = playerDamage;
+    } else {
+      currentDistribution[parseInt(idx)] = currentValue;
+      document.getElementById(`val-blocker-${idx}`).textContent = currentDistribution[parseInt(idx)];
+    }
+    
+    document.getElementById('dmg-unassigned').textContent = unassigned;
+    updateConfirmButton();
+  }
+
+  // VALIDACIÓN: TE OBLIGA A ASIGNAR TODO EL DAÑO
+  function updateConfirmButton() {
+    btnConfirm.disabled = (unassigned > 0);
+    btnConfirm.style.opacity = unassigned > 0 ? '0.5' : '1';
+    btnConfirm.textContent = unassigned > 0 ? 'Asigná todo el daño restante' : 'Confirmar Distribución';
+  }
+
+  // CONFIRMAR Y DEVOLVER LOS DATOS AL ENGINE
+  btnConfirm.onclick = () => {
+    if (unassigned > 0) return; 
+    overlay.classList.add('hidden');
+    onConfirmManual(currentDistribution, playerDamage);
+  };
+}
