@@ -257,9 +257,9 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     vigilance: '👁️ Vigilancia', 
     reach: '🏹 Alcance',
     defense: '🧱 Defensora',
-    life_link: '❤️ Vínculo vital',
+    lifelink: '❤️ Vínculo vital',
     deathtouch: '💀 Toque mortal',
-    first_strike: '⚔️ Primer golpe'
+    firststrike: '⚔️ Primer golpe'
   };
       
     const keywordsHTML = effKeywords.length > 0
