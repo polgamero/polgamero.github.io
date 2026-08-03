@@ -223,7 +223,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     if (!isLocal && hasKeyword(itemObj, 'hexproof')) {
       isTargetable = false;
     }
-  }
+  
   const targetClass = isTargetable ? 'targetable' : '';
 
   el.className = `card ${card.rarity || 'Common'} ${isTapped ? 'tapped' : ''} ${isSick} ${isAttacking} ${isBlocking} ${isSelectedBlocker} ${targetClass}`;
@@ -309,7 +309,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 
   const isInstant = card.type && card.type.includes('Instantáneo');
   const canRespondToStack = (spellStack && spellStack.length > 0) && isInstant;
-const isMyMainTurn = state.isPlayerTurn && (state.phase === 'main1' || state.phase === 'main2');
+  const isMyMainTurn = state.isPlayerTurn && (state.phase === 'main1' || state.phase === 'main2');
   
   // Si se pasa un customClick (para las cartas agrupadas), lo usamos con prioridad.
   if (customClick) {
@@ -337,6 +337,7 @@ const isMyMainTurn = state.isPlayerTurn && (state.phase === 'main1' || state.pha
 }
 
 const CARD_ASPECT = 5 / 7;
+  
 function getIdealCardHeightPx() { return window.innerHeight * 0.14; }
 export function sizeCardsInRow(rowEl) {
   const cards = rowEl.querySelectorAll('.card');
