@@ -264,7 +264,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     menace: '👥 Amenaza', 
     vigilance: '👁️ Vigilancia', 
     reach: '🏹 Alcance',
-    defense: '🧱 Defensora',
+    defender: '🧱 Defensora',
     lifelink: '❤️ Vínculo vital',
     deathtouch: '💀 Toque mortal',
     firststrike: '⚔️ Primer golpe'
