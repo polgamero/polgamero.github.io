@@ -144,6 +144,16 @@ export function handleCombatClick(item, isLocal, index) {
       render();
     } else {
       if (state.pendingBlockerIndex !== null && item.isAttacking) {
+
+        // --- NUEVO: CHEQUEO DE FLYING/REACH PARA TU DEFENSA ---
+        const localUnit = state.localCombat[state.pendingBlockerIndex];
+        if (!canBlock(item, localUnit)) {
+           logMsg(`❌ Bloqueo ilegal: ${item.card.name} tiene Volar. Tu ${localUnit.card.name} necesita Volar o Alcance.`);
+           return; // Cortamos acá, no se asigna el bloqueo
+        }
+        // ------------------------------------------------------
+
+        // Si pasa el chequeo, asignamos el bloqueo tal cual lo tenías:
         state.localCombat[state.pendingBlockerIndex].blockingIndex = index;
         logMsg(`Asignaste a ${state.localCombat[state.pendingBlockerIndex].card.name} a bloquear a ${item.card.name}.`);
         state.pendingBlockerIndex = null;
