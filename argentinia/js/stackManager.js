@@ -2,6 +2,7 @@ import { sleep } from './utils.js';
 import { state, resolveEffectDirect, attachAura, cancelPayment } from './main.js';
 import { logMsg, render } from './ui.js';
 import { checkDeaths } from './combatRules.js';
+import { hasKeyword } from './keywords.js';
 
 export const spellStack = [];
 let nextStackId = 1;
@@ -39,6 +40,13 @@ async function executeStackItem(item) {
         card, tapped: false, summoningSickness: true, isAttacking: false, 
         blockingIndex: null, damageTaken: 0, auras: [] 
       };
+
+      // --- NUEVO: CHEQUEO DE HASTE ---
+      if (hasKeyword(newPermanentItem, 'haste')) {
+        newPermanentItem.summoningSickness = false;
+      }
+      // -------------------------------
+      
       const board = isLocal ? state.localCombat : state.rivalCombat;
       board.push(newPermanentItem);
       logMsg(`¡${card.name} entró al campo de batalla!`);
