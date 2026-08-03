@@ -5,6 +5,7 @@ import { startRivalTurn, checkRivalCounterOrResponse } from './bot.js';
 import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules } from './ui.js';
 import { buildRandomDeck, parseManaCost, getLandColor, sleep } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn } from './turnManager.js';
+import { hasKeyword, canBlock } from './keywords.js';
 
 export { logMsg, render } from './ui.js';
 export { parseManaCost, getLandColor, sleep } from './utils.js';
