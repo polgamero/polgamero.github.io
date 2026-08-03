@@ -9,6 +9,104 @@ import {
 } from './main.js';
 import { showDamageAssignmentModal } from './ui.js'; // <-- Importamos el modal
 
+// --- NUEVO: BLOQUEO INTELIGENTE DEL TANO (incluye gang-block contra Arrollar) ---
+// Decide cómo bloquear a UN atacante puntual (sin Amenaza) usando los
+// bloqueadores disponibles, en este orden de preferencia:
+//   1) Bloqueo limpio: una sola criatura que lo mata y sobrevive.
+//   2) Trade 1x1: una sola criatura que lo mata, aunque también muera.
+//   3) Si el atacante tiene Arrollar: gangea con varias criaturas (empezando
+//      por las más débiles) para matarlo y/o absorber TODO su poder y así
+//      evitar que el daño de Arrollar te llegue a la cara.
+//   4) Si nada de eso sirve, solo chumpea si el golpe es grave para su vida.
+function assignSmartBlock(att, aIdx, availableBlockers) {
+  const atkPower = getEffectivePower(att);
+  const atkTough = getEffectiveToughness(att);
+  const atkHasTrample = hasKeyword(att, 'trample');
+  const atkHasDeathtouch = hasKeyword(att, 'deathtouch');
+
+  const legalBlockers = availableBlockers.filter(obj => canBlock(att, obj.c));
+  if (legalBlockers.length === 0) return;
+
+  const kills = (blockerItem) => {
+    const bPower = getEffectivePower(blockerItem.c);
+    return bPower >= atkTough || (hasKeyword(blockerItem.c, 'deathtouch') && bPower > 0);
+  };
+  const survivesHit = (blockerItem) => {
+    const bTough = getEffectiveToughness(blockerItem.c);
+    return atkPower < bTough && !(atkHasDeathtouch && atkPower > 0);
+  };
+  const valueOf = (blockerItem) => getEffectivePower(blockerItem.c) + getEffectiveToughness(blockerItem.c);
+
+  // 1) Bloqueo limpio: lo mata y sobrevive.
+  const cleanKill = legalBlockers.find(obj => kills(obj) && survivesHit(obj));
+  if (cleanKill) {
+    commitBlock(cleanKill, aIdx, availableBlockers);
+    logMsg(`🛡️ El Tano bloquea a tu ${att.card.name} con ${cleanKill.c.card.name} y se lo lleva puesto sin perder nada.`);
+    return;
+  }
+
+  if (!atkHasTrample) {
+    // Sin Arrollar no hay motivo para gangear: buscamos el mejor trade 1x1.
+    const tradeKill = legalBlockers.find(kills);
+    if (tradeKill) {
+      commitBlock(tradeKill, aIdx, availableBlockers);
+      logMsg(`🛡️ El Tano bloquea a tu ${att.card.name} con ${tradeKill.c.card.name}, cambio parejo.`);
+      return;
+    }
+    // No lo puede matar: solo chumpea si el golpe es realmente grave para su vida.
+    if (atkPower >= state.rivalHP * 0.3) {
+      const chump = [...legalBlockers].sort((x, y) => valueOf(x) - valueOf(y))[0];
+      commitBlock(chump, aIdx, availableBlockers);
+      logMsg(`🛡️ El Tano sacrifica a ${chump.c.card.name} para frenar el golpe de tu ${att.card.name}.`);
+    }
+    return;
+  }
+
+  // 3) Tiene Arrollar y no hay bloqueo limpio 1x1: evaluamos GANGEAR.
+  // Sumamos bloqueadores del más débil al más fuerte hasta matarlo y/o
+  // absorber todo su poder (para que no pase nada de Arrollar).
+  const sortedByValue = [...legalBlockers].sort((x, y) => valueOf(x) - valueOf(y));
+
+  let gang = [];
+  let sumPower = 0;
+  let sumTough = 0;
+  for (const obj of sortedByValue) {
+    gang.push(obj);
+    sumPower += getEffectivePower(obj.c);
+    sumTough += getEffectiveToughness(obj.c);
+    if (sumPower >= atkTough && sumTough >= atkPower) break; // ya lo matamos Y frenamos todo el Arrollar
+  }
+
+  const willKillAttacker = sumPower >= atkTough;
+  const willAbsorbAllTrample = sumTough >= atkPower;
+
+  if (willKillAttacker || willAbsorbAllTrample) {
+    gang.forEach(obj => commitBlock(obj, aIdx, availableBlockers));
+    const names = gang.map(o => o.c.card.name).join(', ');
+    if (willKillAttacker && willAbsorbAllTrample) {
+      logMsg(`🧠 El Tano gangea a tu ${att.card.name} con ${names}: lo mata y no pasa nada de Arrollar.`);
+    } else if (willKillAttacker) {
+      logMsg(`🧠 El Tano gangea a tu ${att.card.name} con ${names} para matarlo, aunque algo de Arrollar se filtre.`);
+    } else {
+      logMsg(`🧠 El Tano gangea a tu ${att.card.name} con ${names} para absorber todo el Arrollar, aunque no logre matarlo.`);
+    }
+    return;
+  }
+
+  // Gangear no logra nada relevante: si el golpe es grave, chumpea con una sola para amortiguar algo.
+  if (atkPower >= state.rivalHP * 0.3) {
+    const chump = sortedByValue[0];
+    commitBlock(chump, aIdx, availableBlockers);
+    logMsg(`🛡️ El Tano sacrifica a ${chump.c.card.name} para amortiguar el Arrollar de tu ${att.card.name}.`);
+  }
+}
+
+function commitBlock(blockerItem, aIdx, availableBlockers) {
+  state.rivalCombat[blockerItem.i].blockingIndex = aIdx;
+  const idx = availableBlockers.indexOf(blockerItem);
+  if (idx !== -1) availableBlockers.splice(idx, 1);
+}
+
 export async function executeLocalAttack() {
   const attackers = state.localCombat.filter(c => c.isAttacking);
   
@@ -21,38 +119,47 @@ export async function executeLocalAttack() {
     logMsg(`🗡️ Declaraste ${attackers.length} atacantes.`);
 
     let availableBlockers = state.rivalCombat.map((c, i) => ({c, i})).filter(obj => !obj.c.tapped);
-    
-    state.localCombat.forEach((att, aIdx) => {
-      if (att.isAttacking && availableBlockers.length > 0) {
-        
-        // --- CHEQUEO DE AMENAZA (BOT DEFIENDE) ---
-        if (hasKeyword(att, 'menace')) {
-          let validBlockersIndexes = [];
-          
-          for (let i = 0; i < availableBlockers.length; i++) {
-            if (canBlock(att, availableBlockers[i].c)) {
-              validBlockersIndexes.push(i);
-              if (validBlockersIndexes.length === 2) break;
-            }
-          }
 
-          if (validBlockersIndexes.length === 2) {
-            validBlockersIndexes.reverse().forEach(idx => {
-              let blockerObj = availableBlockers.splice(idx, 1)[0];
-              state.rivalCombat[blockerObj.i].blockingIndex = aIdx;
-            });
-            logMsg(`👥 ¡Amenaza! El Tano te bloquea en pandilla a ${att.card.name}.`);
-          }
-        } else {
-          // --- LÓGICA NORMAL (1 BLOQUEADOR) ---
-          let validBlockerIndex = availableBlockers.findIndex(obj => canBlock(att, obj.c));
-          if (validBlockerIndex !== -1) {
-            let blockerObj = availableBlockers.splice(validBlockerIndex, 1)[0];
-            state.rivalCombat[blockerObj.i].blockingIndex = aIdx;
-            logMsg(`🛡️ El Tano bloquea a tu ${att.card.name} usando su ${blockerObj.c.card.name}.`);
+    // Procesamos primero a los atacantes más peligrosos (Arrollar y/o más poder),
+    // así el Tano no gasta bloqueadores en pavadas y prioriza pararte los golpes grandes.
+    const attackerIndexesSorted = state.localCombat
+      .map((c, idx) => idx)
+      .filter(idx => state.localCombat[idx].isAttacking)
+      .sort((a, b) => {
+        const A = state.localCombat[a], B = state.localCombat[b];
+        const aTrample = hasKeyword(A, 'trample') ? 1 : 0;
+        const bTrample = hasKeyword(B, 'trample') ? 1 : 0;
+        if (aTrample !== bTrample) return bTrample - aTrample;
+        return getEffectivePower(B) - getEffectivePower(A);
+      });
+
+    attackerIndexesSorted.forEach(aIdx => {
+      const att = state.localCombat[aIdx];
+      if (availableBlockers.length === 0) return;
+
+      // --- CHEQUEO DE AMENAZA (BOT DEFIENDE) ---
+      if (hasKeyword(att, 'menace')) {
+        let validBlockersIndexes = [];
+
+        for (let i = 0; i < availableBlockers.length; i++) {
+          if (canBlock(att, availableBlockers[i].c)) {
+            validBlockersIndexes.push(i);
+            if (validBlockersIndexes.length === 2) break;
           }
         }
+
+        if (validBlockersIndexes.length === 2) {
+          validBlockersIndexes.reverse().forEach(idx => {
+            let blockerObj = availableBlockers.splice(idx, 1)[0];
+            state.rivalCombat[blockerObj.i].blockingIndex = aIdx;
+          });
+          logMsg(`👥 ¡Amenaza! El Tano te bloquea en pandilla a ${att.card.name}.`);
+        }
+        return;
       }
+
+      // --- LÓGICA NORMAL / INTELIGENTE (SIN AMENAZA) ---
+      assignSmartBlock(att, aIdx, availableBlockers);
     });
 
     // Await para esperar las resoluciones manuales del jugador
