@@ -16,7 +16,8 @@ import {
 
 import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
-import { canBlock } from './keywords.js';
+// --- MODIFICACIÓN: Agregamos hasKeyword a la importación ---
+import { canBlock, hasKeyword } from './keywords.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -215,6 +216,13 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   if (state.pendingTargetCard && zone === 'combat') {
     const rules = getTargetRules(state.pendingTargetCard);
     isTargetable = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
+  }
+
+  // --- NUEVO: LÓGICA HEXPROOF (VISUAL) ---
+    // Si intentás apuntar a una criatura enemiga y tiene Hexproof, le apagamos el brillo
+    if (!isLocal && hasKeyword(itemObj, 'hexproof')) {
+      isTargetable = false;
+    }
   }
   const targetClass = isTargetable ? 'targetable' : '';
 
