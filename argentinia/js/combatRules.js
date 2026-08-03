@@ -7,6 +7,7 @@ import {
   render, 
   startLocalTurn 
 } from './main.js';
+import { showDamageAssignmentModal } from './ui.js'; // <-- Importamos el modal
 
 export async function executeLocalAttack() {
   const attackers = state.localCombat.filter(c => c.isAttacking);
@@ -54,7 +55,8 @@ export async function executeLocalAttack() {
       }
     });
 
-    resolveCombatDamage(state.localCombat, state.rivalCombat, true);
+    // Await para esperar las resoluciones manuales del jugador
+    await resolveCombatDamage(state.localCombat, state.rivalCombat, true);
   }
 
   state.phase = 'main2';
@@ -62,7 +64,7 @@ export async function executeLocalAttack() {
   render();
 }
 
-export function executeRivalAttack() {
+export async function executeRivalAttack() {
   // --- VALIDACIÓN DE AMENAZA (JUGADOR DEFIENDE) ---
   let invalidBlocks = false;
 
@@ -85,25 +87,28 @@ export function executeRivalAttack() {
   }
 
   logMsg(`🛡️ Resolviendo combates...`);
-  resolveCombatDamage(state.rivalCombat, state.localCombat, false);
+  // Await integrado para mantener consistencia, aunque el bot no usa UI
+  await resolveCombatDamage(state.rivalCombat, state.localCombat, false);
   
   startLocalTurn(); 
 }
 
-export function resolveCombatDamage(attackersArray, defendersArray, isLocalAttacking) {
-  attackersArray.forEach((attacker, aIdx) => {
-    if (!attacker.isAttacking) return;
+// Convertida a async para poder pausar con el modal
+export async function resolveCombatDamage(attackersArray, defendersArray, isLocalAttacking) {
+  // Usamos for...of para poder hacer await secuencial por cada atacante
+  for (let aIdx = 0; aIdx < attackersArray.length; aIdx++) {
+    const attacker = attackersArray[aIdx];
+    if (!attacker.isAttacking) continue;
 
     let blockers = defendersArray.filter(d => d.blockingIndex == aIdx);
     const attackerPower = getEffectivePower(attacker);
 
-    // Identificamos las Keywords de la criatura atacante
     const attackerHasLifelink = hasKeyword(attacker, 'lifelink') || hasKeyword(attacker, 'life_link');
     const attackerHasDeathtouch = hasKeyword(attacker, 'deathtouch');
     const attackerHasTrample = hasKeyword(attacker, 'trample');
 
     if (blockers.length === 0) {
-      // DAÑO DIRECTO A JUGADOR (SIN BLOQUEADORES)
+      // DAÑO DIRECTO A JUGADOR
       if (isLocalAttacking) {
         state.rivalHP -= attackerPower;
         if (attackerHasLifelink && attackerPower > 0) {
@@ -120,7 +125,30 @@ export function resolveCombatDamage(attackersArray, defendersArray, isLocalAttac
       if (attackerPower > 0) logMsg(`💥 ${attacker.card.name} conectó el golpe! Hizo ${attackerPower} de daño.`);
     } else {
       
-      // --- PROCESAR DAÑO CON BLOQUEADORES (ETAPA 6: ARROLLAR / TRAMPLE) ---
+      // --- CHEQUEO DE UI DE ASIGNACIÓN MANUAL ---
+      let useManual = false;
+      let manualDistribution = [];
+      let manualPlayerDamage = 0;
+
+      // Solo abrimos el modal si vos sos el atacante y (tiene arrollar o te bloquearon con más de 1)
+      if (isLocalAttacking && (blockers.length > 1 || attackerHasTrample)) {
+        const result = await new Promise((resolve) => {
+          showDamageAssignmentModal(
+            attacker,
+            blockers,
+            attackerPower,
+            () => resolve({ type: 'auto' }), // Automático
+            (distribucion, playerDmg) => resolve({ type: 'manual', distribucion, playerDmg }) // Manual
+          );
+        });
+
+        if (result.type === 'manual') {
+          useManual = true;
+          manualDistribution = result.distribucion;
+          manualPlayerDamage = result.playerDmg;
+        }
+      }
+
       let totalBlockerPower = 0;
       let remainingAttackerPower = attackerPower;
       let attackerLifelinkHeal = 0;
@@ -134,7 +162,7 @@ export function resolveCombatDamage(attackersArray, defendersArray, isLocalAttac
 
         totalBlockerPower += bPower; 
 
-        // 1. Vínculo Vital del Bloqueador
+        // 1. Vínculo Vital del Bloqueador (pasa igual siempre)
         if (blockerHasLifelink && bPower > 0) {
           if (isLocalAttacking) {
             state.rivalHP += bPower; 
@@ -150,43 +178,54 @@ export function resolveCombatDamage(attackersArray, defendersArray, isLocalAttac
           attacker.tookDeathtouch = true;
         }
 
-        // 3. Daño necesario para infligir daño letal al bloqueador actual
-        const currentDamage = blocker.damageTaken || 0;
-        const remainingToughness = Math.max(0, bToughness - currentDamage);
-        
-        // Si tiene Deathtouch, 1 de daño es suficiente para ser letal
-        let damageToKill = attackerHasDeathtouch ? 1 : remainingToughness;
-        let damageToDeal = Math.min(remainingAttackerPower, damageToKill);
+        // 3. Resolución de daño sobre el bloqueador
+        let damageToDeal = 0;
 
-        // Si NO tiene Arrollar (Trample) y es el último bloqueador, absorbe todo el remanente de fuerza
-        if (bIdx === blockers.length - 1 && remainingAttackerPower > 0 && !attackerHasTrample) {
-          damageToDeal = remainingAttackerPower;
+        if (useManual) {
+          // Asignación de la UI
+          damageToDeal = manualDistribution[bIdx];
+        } else {
+          // Asignación automática (la que ya tenías)
+          const currentDamage = blocker.damageTaken || 0;
+          const remainingToughness = Math.max(0, bToughness - currentDamage);
+          let damageToKill = attackerHasDeathtouch ? 1 : remainingToughness;
+          
+          damageToDeal = Math.min(remainingAttackerPower, damageToKill);
+
+          if (bIdx === blockers.length - 1 && remainingAttackerPower > 0 && !attackerHasTrample) {
+            damageToDeal = remainingAttackerPower;
+          }
+          remainingAttackerPower -= damageToDeal;
         }
 
         if (damageToDeal > 0) {
           blocker.damageTaken = (blocker.damageTaken || 0) + damageToDeal;
-          remainingAttackerPower -= damageToDeal;
           attackerLifelinkHeal += damageToDeal;
-
-          if (attackerHasDeathtouch) {
-            blocker.tookDeathtouch = true;
-          }
+          if (attackerHasDeathtouch) blocker.tookDeathtouch = true;
         }
       });
 
       // El atacante recibe el daño total de las criaturas bloqueadoras
       attacker.damageTaken = (attacker.damageTaken || 0) + totalBlockerPower;
 
-      // 4. SI TIENE ARROLLAR (TRAMPLE) Y QUEDA DAÑO REMANENTE, IMPACTA AL JUGADOR DEFENSOR
-      if (attackerHasTrample && remainingAttackerPower > 0) {
-        if (isLocalAttacking) {
-          state.rivalHP -= remainingAttackerPower;
-          logMsg(`🐘 Arrollar: ¡${attacker.card.name} repartió daño letal a los bloqueadores y arrolló con ${remainingAttackerPower} de daño al Tano!`);
-        } else {
-          state.localHP -= remainingAttackerPower;
-          logMsg(`🐘 Arrollar: ¡El ${attacker.card.name} del Tano repartió daño letal a tus defensores y te arrolló con ${remainingAttackerPower} de daño!`);
+      // 4. DAÑO ARROLLAR (TRAMPLE) AL JUGADOR
+      if (useManual) {
+        if (manualPlayerDamage > 0) {
+          state.rivalHP -= manualPlayerDamage;
+          attackerLifelinkHeal += manualPlayerDamage;
+          logMsg(`🐘 Arrollar (Asignado): ¡${attacker.card.name} arrolló con ${manualPlayerDamage} de daño al Tano!`);
         }
-        attackerLifelinkHeal += remainingAttackerPower;
+      } else {
+        if (attackerHasTrample && remainingAttackerPower > 0) {
+          if (isLocalAttacking) {
+            state.rivalHP -= remainingAttackerPower;
+            logMsg(`🐘 Arrollar: ¡${attacker.card.name} repartió daño letal a los bloqueadores y arrolló con ${remainingAttackerPower} de daño al Tano!`);
+          } else {
+            state.localHP -= remainingAttackerPower;
+            logMsg(`🐘 Arrollar: ¡El ${attacker.card.name} del Tano repartió daño letal a tus defensores y te arrolló con ${remainingAttackerPower} de daño!`);
+          }
+          attackerLifelinkHeal += remainingAttackerPower;
+        }
       }
 
       // 5. Resolvemos la cura acumulada del atacante si tiene Vínculo Vital
@@ -203,7 +242,7 @@ export function resolveCombatDamage(attackersArray, defendersArray, isLocalAttac
       const blockNames = blockers.map(b => b.card.name).join(" y ");
       logMsg(`⚔️ Choque: ${attacker.card.name} se enfrenta a ${blockNames}.`);
     }
-  });
+  } // Fin del for de atacantes
 
   checkDeaths(state.localCombat, state.localGraveyard, "Vos");
   checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
