@@ -1,4 +1,4 @@
-import { hasKeyword } from './keywords.js';
+import { hasKeyword, canBlock } from './keywords.js';
 
 import { 
   state, 
@@ -26,9 +26,18 @@ export async function executeLocalAttack() {
     
     state.localCombat.forEach((att, aIdx) => {
       if (att.isAttacking && availableBlockers.length > 0) {
-        let blockerObj = availableBlockers.pop();
-        state.rivalCombat[blockerObj.i].blockingIndex = aIdx;
-        logMsg(`🛡️ El Tano bloquea a tu ${att.card.name} usando su ${blockerObj.c.card.name}.`);
+        
+        // --- NUEVO: EL TANO BUSCA UN BLOQUEADOR LEGAL ---
+        // En vez de un pop(), buscamos el índice del primer bloqueador disponible que cumpla la regla
+        let validBlockerIndex = availableBlockers.findIndex(obj => canBlock(att, obj.c));
+
+        if (validBlockerIndex !== -1) {
+          // Lo extraemos de los disponibles usando splice
+          let blockerObj = availableBlockers.splice(validBlockerIndex, 1)[0];
+          state.rivalCombat[blockerObj.i].blockingIndex = aIdx;
+          logMsg(`🛡️ El Tano bloquea a tu ${att.card.name} usando su ${blockerObj.c.card.name}.`);
+        }
+        // ------------------------------------------------
       }
     });
 
