@@ -586,10 +586,12 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
   initialButtons.classList.remove('hidden');
   confirmContainer.classList.add('hidden');
   overlay.classList.remove('hidden');
+  state.damageModalOpen = true; // bloquea clicks de combate en el tablero mientras el panel está abierto
 
   // BOTÓN: AUTOMÁTICO
   btnAuto.onclick = () => {
     overlay.classList.add('hidden');
+    state.damageModalOpen = false;
     onAuto(); // Ejecuta tu lógica actual de combatRules.js
   };
 
@@ -713,6 +715,7 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
 
     const overflowToPlayer = canTrample ? unassigned : 0;
     overlay.classList.add('hidden');
+    state.damageModalOpen = false;
     onConfirmManual(currentDistribution, overflowToPlayer);
   };
 }
