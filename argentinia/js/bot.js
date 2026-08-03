@@ -1,4 +1,4 @@
-import { hasKeyword } from './keywords.js';
+import { hasKeyword, canBlock } from './keywords.js';
 
 import {
   state,
@@ -7,7 +7,9 @@ import {
   parseManaCost,
   getLandColor,
   startLocalTurn,
-  sleep
+  sleep,
+  getEffectivePower,
+  getEffectiveToughness
 } from './main.js';
 
 import { resolveCombatDamage } from './combatRules.js';
@@ -133,6 +135,52 @@ export async function checkRivalCounterOrResponse() {
   }
 }
 
+// --- NUEVO: EVALUACIÓN TÁCTICA DE ATAQUE ---
+// Decide si le conviene al Tano atacar con una criatura puntual, en vez de
+// mandar siempre a todo el mundo. Analiza el peor bloqueo que vos le podrías
+// armar y decide si vale la pena arriesgarse o si es mejor quedarse a defender.
+function shouldRivalAttackWith(attackerItem) {
+  const atkPower = getEffectivePower(attackerItem);
+  const atkTough = getEffectiveToughness(attackerItem);
+  const atkHasMenace = hasKeyword(attackerItem, 'menace');
+  const atkHasDeathtouch = hasKeyword(attackerItem, 'deathtouch');
+  const hasVigilance = hasKeyword(attackerItem, 'vigilance');
+
+  // Bloqueadores tuyos que legalmente podrían pararlo (respeta Volar/Alcance)
+  const validBlockers = state.localCombat.filter(b => !b.tapped && canBlock(attackerItem, b));
+
+  // Nadie te lo puede bloquear: pega gratis, siempre conviene.
+  if (validBlockers.length === 0) return true;
+
+  // Tiene Amenaza y no juntás 2 bloqueadores válidos: pasa igual, es gratis.
+  if (atkHasMenace && validBlockers.length < 2) return true;
+
+  const wouldKillAttacker = (blocker) => {
+    const bPower = getEffectivePower(blocker);
+    const blockerHasDeathtouch = hasKeyword(blocker, 'deathtouch');
+    return bPower >= atkTough || (blockerHasDeathtouch && bPower > 0);
+  };
+  const wouldKillBlocker = (blocker) => {
+    const bTough = getEffectiveToughness(blocker);
+    return atkPower >= bTough || (atkHasDeathtouch && atkPower > 0);
+  };
+
+  // Si existe UN bloqueador que lo mata gratis (lo frena y sobrevive), el Tano
+  // asume que se lo vas a poner y evita el ataque suicida, tenga o no vigilance.
+  const freeKillAvailable = validBlockers.some(b => wouldKillAttacker(b) && !wouldKillBlocker(b));
+  if (freeKillAvailable) return false;
+
+  // Si al menos con algún bloqueo se lleva puesta una criatura tuya (trade
+  // parejo o mejor), vale la pena atacar aunque no tenga vigilance.
+  const getsAGoodTrade = validBlockers.some(b => wouldKillBlocker(b));
+  if (getsAGoodTrade) return true;
+
+  // Último caso: lo bloquean pero no muere nadie de los dos lados.
+  // Sin Vigilance, atacar solo lo tapa sin ganar nada -> mejor se queda a defender.
+  // Con Vigilance no pierde nada por intentarlo (sigue pudiendo bloquear).
+  return hasVigilance;
+}
+
 export async function startRivalTurn() {
   if (state.gameOver) return;
   state.rivalLandPlayedThisTurn = false;
@@ -240,19 +288,27 @@ export async function startRivalTurn() {
     affordableIndex = getAffordableMainPhaseCardIndex();
   }
 
-  // Si ya no puede (o no quiere) jugar nada más, pasa a la Fase de Combate
+  // Si ya no puede (o no quiere) jugar nada más, evalúa la Fase de Combate
   let attackCount = 0;
+  let heldBackCount = 0;
   state.rivalCombat.forEach(unit => {
     if (!unit.tapped && !unit.summoningSickness) {
-      unit.isAttacking = true;
-      // --- MODIFICADO: CHEQUEO DE VIGILANCE PARA EL TANO ---
-      if (!hasKeyword(unit, 'vigilance')) {
-        unit.tapped = true; 
+      if (shouldRivalAttackWith(unit)) {
+        unit.isAttacking = true;
+        // --- Chequeo de Vigilance: no se gira al atacar ---
+        if (!hasKeyword(unit, 'vigilance')) {
+          unit.tapped = true;
+        }
+        attackCount++;
+      } else {
+        heldBackCount++;
       }
-      // -----------------------------------------------------
-      attackCount++;
     }
   });
+
+  if (heldBackCount > 0) {
+    logMsg(`🧠 El Tano decide guardar ${heldBackCount} criatura(s) atrás para defender.`);
+  }
 
   if (attackCount > 0) {
     const localHasUntappedBlockers = state.localCombat.some(c => !c.tapped);
