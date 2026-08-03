@@ -45,7 +45,9 @@ export const state = {
   pendingTargetSource: null, 
 
   isDiscarding: false,
-  cardsToDiscard: 0
+  cardsToDiscard: 0,
+
+  damageModalOpen: false
 };
 
 async function initGame() {
@@ -106,6 +108,7 @@ export function attachAura(auraCard, creatureItem) {
 }
 
 export function handleCombatClick(item, isLocal, index) {
+  if (state.damageModalOpen) return; // Solo se puede mirar/hover mientras se asigna daño, no interactuar
   if (state.pendingTargetCard) {
 
     // NUEVO: Bloquear counters a criaturas
@@ -174,6 +177,7 @@ export function handleCombatClick(item, isLocal, index) {
 }
 
 export function handlePlayerTargetClick(isLocal) {
+  if (state.damageModalOpen) return; // Solo se puede mirar/hover mientras se asigna daño, no interactuar
   if (state.pendingTargetCard) {
     // NUEVO: Bloquear counters a jugadores
   if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type && state.pendingTargetCard.effect.type.startsWith('counter')) {
@@ -199,7 +203,7 @@ export function cancelPayment() {
 }
 
 export function canPlayCard(card) {
-  if (state.gameOver || state.pendingSpellIndex !== null) return false;
+  if (state.gameOver || state.pendingSpellIndex !== null || state.damageModalOpen) return false;
   
   const isInstant = card.type.includes('Instantáneo');
 
@@ -356,6 +360,7 @@ function executeSpellOnTarget(targetObj) {
 }
 
 export function handleSupportClick(item, isLocal, index) {
+  if (state.damageModalOpen) return; // Solo mirar/hover mientras se asigna daño
   // AHORA: Podés activar habilidades de soporte en main1 y main2
   if (!isLocal || !state.isPlayerTurn || (state.phase !== 'main1' && state.phase !== 'main2') || state.gameOver) return;
 
