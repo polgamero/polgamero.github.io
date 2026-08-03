@@ -1,3 +1,5 @@
+import { hasKeyword } from './keywords.js';
+
 import { 
   state, 
   logMsg, 
@@ -10,8 +12,14 @@ import {
 export async function executeLocalAttack() {
   const attackers = state.localCombat.filter(c => c.isAttacking);
   
-  if (attackers.length > 0) {
-    attackers.forEach(a => a.tapped = true);
+   if (attackers.length > 0) {
+    // --- MODIFICADO: CHEQUEO DE VIGILANCE ---
+    attackers.forEach(a => {
+      if (!hasKeyword(a, 'vigilance')) {
+        a.tapped = true;
+      }
+    });
+    // ----------------------------------------
     logMsg(`🗡️ Declaraste ${attackers.length} atacantes.`);
 
     let availableBlockers = state.rivalCombat.map((c, i) => ({c, i})).filter(obj => !obj.c.tapped);
