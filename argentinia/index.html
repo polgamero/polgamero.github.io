@@ -97,6 +97,27 @@
     </div>
     <button id="btn-resolve-top" class="btn-resolve-stack">Resolver Siguiente (Top)</button>
   </div>
+
+  <!-- OVERLAY DE ASIGNACIÓN DE DAÑO (ARROLLAR / MULTI-BLOCK) -->
+  <div id="damage-modal-overlay" class="hidden">
+    <div class="game-over-box" style="min-width: 380px; border-color: var(--hp-red); box-shadow: 0 0 40px rgba(231, 76, 60, 0.4);">
+      <h2 style="color: var(--hp-red); font-size: 1.6rem; margin-bottom: 1rem;">⚔️ ASIGNAR DAÑO</h2>
+      
+      <!-- Contenido dinámico inyectado por JS -->
+      <div id="damage-modal-content" style="margin-bottom: 1.5rem;"></div>
+      
+      <!-- Botones de selección inicial -->
+      <div id="damage-modal-initial-buttons" style="display: flex; gap: 1rem; justify-content: center;">
+        <button id="btn-dmg-auto" class="btn-turn" style="background: #3498db;">Automáticamente</button>
+        <button id="btn-dmg-manual" class="btn-turn" style="background: #e67e22;">Manualmente</button>
+      </div>
+      
+      <!-- Contenedor del botón de confirmación (oculto hasta elegir manual) -->
+      <div id="damage-modal-confirm-container" class="hidden">
+        <button id="btn-dmg-confirm" class="btn-turn" style="background: var(--hp-green); width: 100%; transition: opacity 0.2s;">Confirmar Distribución</button>
+      </div>
+    </div>
+  </div>
   
   <script type="module" src="./js/main.js"></script>
 </body>
