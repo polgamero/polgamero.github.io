@@ -1,3 +1,5 @@
+import { hasKeyword } from './keywords.js';
+
 import {
   state,
   logMsg,
@@ -239,7 +241,11 @@ export async function startRivalTurn() {
   state.rivalCombat.forEach(unit => {
     if (!unit.tapped && !unit.summoningSickness) {
       unit.isAttacking = true;
-      unit.tapped = true; 
+      // --- MODIFICADO: CHEQUEO DE VIGILANCE PARA EL TANO ---
+      if (!hasKeyword(unit, 'vigilance')) {
+        unit.tapped = true; 
+      }
+      // -----------------------------------------------------
       attackCount++;
     }
   });
