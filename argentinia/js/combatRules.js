@@ -5,19 +5,11 @@ import {
   getEffectivePower, 
   getEffectiveToughness, 
   render, 
-  startLocalTurn 
+  passPriority // Importado del main/turnManager
 } from './main.js';
-import { showDamageAssignmentModal } from './ui.js'; // <-- Importamos el modal
+import { showDamageAssignmentModal } from './ui.js';
 
-// --- NUEVO: BLOQUEO INTELIGENTE DEL TANO (incluye gang-block contra Arrollar) ---
-// Decide cómo bloquear a UN atacante puntual (sin Amenaza) usando los
-// bloqueadores disponibles, en este orden de preferencia:
-//   1) Bloqueo limpio: una sola criatura que lo mata y sobrevive.
-//   2) Trade 1x1: una sola criatura que lo mata, aunque también muera.
-//   3) Si el atacante tiene Arrollar: gangea con varias criaturas (empezando
-//      por las más débiles) para matarlo y/o absorber TODO su poder y así
-//      evitar que el daño de Arrollar te llegue a la cara.
-//   4) Si nada de eso sirve, solo chumpea si el golpe es grave para su vida.
+// --- BLOQUEO INTELIGENTE DEL TANO ---
 function assignSmartBlock(att, aIdx, availableBlockers) {
   const atkPower = getEffectivePower(att);
   const atkTough = getEffectiveToughness(att);
@@ -26,16 +18,10 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
   const legalBlockers = availableBlockers.filter(obj => canBlock(att, obj.c));
   if (legalBlockers.length === 0) return;
 
-  // NUEVO: en vez de comparar poder/resistencia a lo bruto, simulamos el
-  // duelo 1x1 respetando Golpe Primero y Daño Doble (mismo helper que usa
-  // bot.js para decidir ataques). Esto evita, por ejemplo, que el Tano meta
-  // a bloquear una criatura que "en teoría" sobrevive pero en la práctica
-  // muere gratis porque el atacante le pega primero.
   const kills = (blockerItem) => predictDuel(att, blockerItem.c).attackerDies;
   const blockerSurvives = (blockerItem) => !predictDuel(att, blockerItem.c).blockerDies;
   const valueOf = (blockerItem) => getEffectivePower(blockerItem.c) + getEffectiveToughness(blockerItem.c);
 
-  // 1) Bloqueo limpio: lo mata y sobrevive. Lo mejor posible.
   const cleanKill = legalBlockers.find(obj => kills(obj) && blockerSurvives(obj));
   if (cleanKill) {
     commitBlock(cleanKill, aIdx, availableBlockers);
@@ -44,10 +30,6 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
   }
 
   if (!atkHasTrample) {
-    // 2) NUEVO: Bloqueo gratis. El bloqueador SOBREVIVE aunque no mate al
-    // atacante, así que frenar el golpe no le cuesta absolutamente nada.
-    // Esto SIEMPRE conviene, sin importar si el golpe era "grave" o no
-    // (antes el umbral del 30% de vida bloqueaba esta jugada sin sentido).
     const safeBlockers = legalBlockers.filter(blockerSurvives);
     if (safeBlockers.length > 0) {
       const chosen = [...safeBlockers].sort((x, y) => valueOf(x) - valueOf(y))[0];
@@ -56,7 +38,6 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
       return;
     }
 
-    // 3) Sin Arrollar no hay motivo para gangear: buscamos el mejor trade 1x1.
     const tradeKill = legalBlockers.find(kills);
     if (tradeKill) {
       commitBlock(tradeKill, aIdx, availableBlockers);
@@ -64,9 +45,6 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
       return;
     }
 
-    // 4) No lo puede matar y moriría gratis: chumpea si el golpe es grave,
-    // O si el bloqueador es un Defensor puro (nunca podría atacar de todas
-    // formas, así que sacrificarlo acá no le cuesta ninguna oportunidad).
     const seriousHit = atkPower >= state.rivalHP * 0.3;
     const pureDefenders = legalBlockers.filter(obj => hasKeyword(obj.c, 'defender'));
 
@@ -79,9 +57,6 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
     return;
   }
 
-  // 3) Tiene Arrollar y no hay bloqueo limpio 1x1: evaluamos GANGEAR.
-  // Sumamos bloqueadores del más débil al más fuerte hasta matarlo y/o
-  // absorber todo su poder (para que no pase nada de Arrollar).
   const sortedByValue = [...legalBlockers].sort((x, y) => valueOf(x) - valueOf(y));
 
   let gang = [];
@@ -91,7 +66,7 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
     gang.push(obj);
     sumPower += getEffectivePower(obj.c);
     sumTough += getEffectiveToughness(obj.c);
-    if (sumPower >= atkTough && sumTough >= atkPower) break; // ya lo matamos Y frenamos todo el Arrollar
+    if (sumPower >= atkTough && sumTough >= atkPower) break;
   }
 
   const willKillAttacker = sumPower >= atkTough;
@@ -110,8 +85,6 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
     return;
   }
 
-  // Gangear no logra nada relevante: chumpea si el golpe es grave, o si hay
-  // un Defensor puro disponible (no pierde nada usándolo de todas formas).
   const seriousHit = atkPower >= state.rivalHP * 0.3;
   const pureDefenders = sortedByValue.filter(obj => hasKeyword(obj.c, 'defender'));
   if (seriousHit || pureDefenders.length > 0) {
@@ -127,71 +100,68 @@ function commitBlock(blockerItem, aIdx, availableBlockers) {
   if (idx !== -1) availableBlockers.splice(idx, 1);
 }
 
-export async function executeLocalAttack() {
+// NUEVA FUNCIÓN: Llamada por la IA durante la fase de bloqueadores
+export function assignBotBlockers() {
+  const attackers = state.localCombat.filter(c => c.isAttacking);
+  if (attackers.length === 0) return;
+
+  let availableBlockers = state.rivalCombat.map((c, i) => ({c, i})).filter(obj => !obj.c.tapped);
+
+  const attackerIndexesSorted = state.localCombat
+    .map((c, idx) => idx)
+    .filter(idx => state.localCombat[idx].isAttacking)
+    .sort((a, b) => {
+      const A = state.localCombat[a], B = state.localCombat[b];
+      const aTrample = hasKeyword(A, 'trample') ? 1 : 0;
+      const bTrample = hasKeyword(B, 'trample') ? 1 : 0;
+      if (aTrample !== bTrample) return bTrample - aTrample;
+      return getEffectivePower(B) - getEffectivePower(A);
+    });
+
+  attackerIndexesSorted.forEach(aIdx => {
+    const att = state.localCombat[aIdx];
+    if (availableBlockers.length === 0) return;
+
+    if (hasKeyword(att, 'menace')) {
+      let validBlockersIndexes = [];
+      for (let i = 0; i < availableBlockers.length; i++) {
+        if (canBlock(att, availableBlockers[i].c)) {
+          validBlockersIndexes.push(i);
+          if (validBlockersIndexes.length === 2) break;
+        }
+      }
+      if (validBlockersIndexes.length === 2) {
+        validBlockersIndexes.reverse().forEach(idx => {
+          let blockerObj = availableBlockers.splice(idx, 1)[0];
+          state.rivalCombat[blockerObj.i].blockingIndex = aIdx;
+        });
+        logMsg(`👥 ¡Amenaza! El Tano te bloquea en pandilla a ${att.card.name}.`);
+      }
+      return;
+    }
+    assignSmartBlock(att, aIdx, availableBlockers);
+  });
+  logMsg(`🛡️ El Tano ha asignado sus defensores.`);
+}
+
+export function executeLocalAttack() {
   const attackers = state.localCombat.filter(c => c.isAttacking);
   
-   if (attackers.length > 0) {
+  if (attackers.length > 0) {
     attackers.forEach(a => {
       if (!hasKeyword(a, 'vigilance')) {
         a.tapped = true;
       }
     });
     logMsg(`🗡️ Declaraste ${attackers.length} atacantes.`);
-
-    let availableBlockers = state.rivalCombat.map((c, i) => ({c, i})).filter(obj => !obj.c.tapped);
-
-    // Procesamos primero a los atacantes más peligrosos (Arrollar y/o más poder),
-    // así el Tano no gasta bloqueadores en pavadas y prioriza pararte los golpes grandes.
-    const attackerIndexesSorted = state.localCombat
-      .map((c, idx) => idx)
-      .filter(idx => state.localCombat[idx].isAttacking)
-      .sort((a, b) => {
-        const A = state.localCombat[a], B = state.localCombat[b];
-        const aTrample = hasKeyword(A, 'trample') ? 1 : 0;
-        const bTrample = hasKeyword(B, 'trample') ? 1 : 0;
-        if (aTrample !== bTrample) return bTrample - aTrample;
-        return getEffectivePower(B) - getEffectivePower(A);
-      });
-
-    attackerIndexesSorted.forEach(aIdx => {
-      const att = state.localCombat[aIdx];
-      if (availableBlockers.length === 0) return;
-
-      // --- CHEQUEO DE AMENAZA (BOT DEFIENDE) ---
-      if (hasKeyword(att, 'menace')) {
-        let validBlockersIndexes = [];
-
-        for (let i = 0; i < availableBlockers.length; i++) {
-          if (canBlock(att, availableBlockers[i].c)) {
-            validBlockersIndexes.push(i);
-            if (validBlockersIndexes.length === 2) break;
-          }
-        }
-
-        if (validBlockersIndexes.length === 2) {
-          validBlockersIndexes.reverse().forEach(idx => {
-            let blockerObj = availableBlockers.splice(idx, 1)[0];
-            state.rivalCombat[blockerObj.i].blockingIndex = aIdx;
-          });
-          logMsg(`👥 ¡Amenaza! El Tano te bloquea en pandilla a ${att.card.name}.`);
-        }
-        return;
-      }
-
-      // --- LÓGICA NORMAL / INTELIGENTE (SIN AMENAZA) ---
-      assignSmartBlock(att, aIdx, availableBlockers);
-    });
-
-    // Await para esperar las resoluciones manuales del jugador
-    await resolveCombatDamage(state.localCombat, state.rivalCombat, true);
+  } else {
+    logMsg(`🌅 Decidiste no atacar con nada.`);
   }
-
-  state.phase = 'main2';
-  logMsg("🌅 Terminó el combate. Arranca tu 2da Fase Principal.");
   render();
+  passPriority('local'); // Pasamos la prioridad para avanzar la fase
 }
 
-export async function executeRivalAttack() {
+export function executeRivalAttack() {
   // --- VALIDACIÓN DE AMENAZA (JUGADOR DEFIENDE) ---
   let invalidBlocks = false;
 
@@ -210,42 +180,33 @@ export async function executeRivalAttack() {
     state.localCombat.forEach(c => c.blockingIndex = null);
     logMsg("⚠️ Se anularon tus defensas por un movimiento ilegal. Volvé a asignar a tus defensores y confirmá.");
     render();
-    return; 
+    return; // Detenemos para que el jugador corrija
   }
 
-  logMsg(`🛡️ Resolviendo combates...`);
-  // Await integrado para mantener consistencia, aunque el bot no usa UI
-  await resolveCombatDamage(state.rivalCombat, state.localCombat, false);
-  
-  startLocalTurn(); 
+  logMsg(`🛡️ Confirmaste tus bloqueos.`);
+  render();
+  passPriority('local'); // Avanzamos la fase
 }
 
-// --- NUEVO (Etapa 7): GOLPE PRIMERO (First Strike) Y DAÑO DOBLE (Double Strike) ---
-// Un bicho muere "de verdad" recién cuando checkDeaths() lo saca del array,
-// pero durante los dos sub-pasos necesitamos saber si YA está condenado
-// (para no seguir pegándole ni dejarlo pegar). Usamos la misma matemática
-// que checkDeaths: daño acumulado >= resistencia, o Toque Mortal ya prendido.
+// --- GOLPE PRIMERO (First Strike) Y DAÑO DOBLE (Double Strike) ---
 function isCreatureDead(item) {
   const dmg = item.damageTaken || 0;
   return dmg >= getEffectiveToughness(item) || (item.tookDeathtouch && dmg > 0);
 }
 
-// Pega en el paso de Iniciativa si tiene Golpe Primero o Daño Doble.
 function dealsInFirstStrikeStep(item) {
   return hasKeyword(item, 'firststrike') || hasKeyword(item, 'doublestrike');
 }
-// Pega en el paso Regular si NO tiene (solamente) Golpe Primero, o si tiene Daño Doble (pega en los dos pasos).
 function dealsInRegularStep(item) {
   return !hasKeyword(item, 'firststrike') || hasKeyword(item, 'doublestrike');
 }
 
-// Convertida a async para poder pausar con el modal
-export async function resolveCombatDamage(attackersArray, defendersArray, isLocalAttacking) {
-  // Sacamos la "foto" de quién ataca a quién ANTES de tocar un solo número.
-  // Así los dos sub-pasos (Iniciativa y Regular) pelean sobre el mismo
-  // emparejamiento, aunque checkDeaths() vaya sacando cadáveres del medio
-  // del array entre paso y paso (las referencias a los objetos siguen vivas
-  // igual, solo dejan de estar DENTRO del array).
+// Nota: se ejecuta automáticamente en turnManager en el paso 'combat_damage'
+export async function resolveCombatDamage() {
+  const isLocalAttacking = state.activePlayer === 'local';
+  const attackersArray = isLocalAttacking ? state.localCombat : state.rivalCombat;
+  const defendersArray = isLocalAttacking ? state.rivalCombat : state.localCombat;
+
   const combatPairs = attackersArray
     .filter(a => a.isAttacking)
     .map(attacker => ({
@@ -255,8 +216,6 @@ export async function resolveCombatDamage(attackersArray, defendersArray, isLoca
 
   if (combatPairs.length === 0) return;
 
-  // ¿Hace falta dividir el combate en dos pasos? Solo si hay algún bicho
-  // (atacante o bloqueador) con Golpe Primero o Daño Doble en la mesa.
   const hayIniciativa = combatPairs.some(({ attacker, blockers }) =>
     dealsInFirstStrikeStep(attacker) || blockers.some(dealsInFirstStrikeStep)
   );
@@ -265,7 +224,6 @@ export async function resolveCombatDamage(attackersArray, defendersArray, isLoca
     logMsg("⚡ --- Paso de Daño de Iniciativa (Golpe Primero) ---");
     await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInFirstStrikeStep);
 
-    // Los que se murieron de Golpe Primero se van al cementerio ANTES del paso regular.
     checkDeaths(state.localCombat, state.localGraveyard, "Vos");
     checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
 
@@ -277,20 +235,13 @@ export async function resolveCombatDamage(attackersArray, defendersArray, isLoca
   checkDeaths(state.localCombat, state.localGraveyard, "Vos");
   checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
 
-  // Limpieza al finalizar combate
   attackersArray.forEach(c => { c.isAttacking = false; c.tookDeathtouch = false; });
   defendersArray.forEach(c => { c.blockingIndex = null; c.tookDeathtouch = false; });
   state.pendingBlockerIndex = null;
 }
 
-// Resuelve UN sub-paso de daño (Iniciativa o Regular) para todos los combates
-// emparejados en combatPairs. stepFilter(item) decide si ESE bicho puntual
-// pega en este sub-paso puntual (cada atacante y cada bloqueador se evalúan
-// por separado, con su propia keyword).
 async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
   for (const { attacker, blockers } of combatPairs) {
-    // Si el atacante ya murió en Iniciativa, no pelea más: ni pega, ni lo pegan
-    // (ya no está en la mesa, no hay a quién asignarle el golpe de vuelta).
     if (isCreatureDead(attacker)) continue;
 
     const attackerDealsThisStep = stepFilter(attacker);
@@ -299,16 +250,11 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
     const attackerHasDeathtouch = hasKeyword(attacker, 'deathtouch');
     const attackerHasTrample = hasKeyword(attacker, 'trample');
 
-    // Bloqueadores que siguen en pie para este sub-paso (los que ya murieron
-    // en Iniciativa quedan afuera y no devuelven ni reciben más daño).
     const aliveBlockers = blockers.filter(b => !isCreatureDead(b));
 
-    // --- 1) DIRECCIÓN BLOQUEADORES -> ATACANTE ---
-    // Independiente de si el atacante pega este sub-paso: un bloqueador con
-    // Golpe Primero le pega al atacante en Iniciativa aunque el atacante sea "lento".
     let totalBlockerPowerThisStep = 0;
     aliveBlockers.forEach(blocker => {
-      if (!stepFilter(blocker)) return; // este bloqueador no pega en este sub-paso
+      if (!stepFilter(blocker)) return; 
 
       const bPower = getEffectivePower(blocker);
       const blockerHasLifelink = hasKeyword(blocker, 'lifelink') || hasKeyword(blocker, 'life_link');
@@ -334,11 +280,9 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       attacker.damageTaken = (attacker.damageTaken || 0) + totalBlockerPowerThisStep;
     }
 
-    // --- 2) DIRECCIÓN ATACANTE -> BLOQUEADORES / JUGADOR ---
     if (!attackerDealsThisStep) continue;
 
     if (blockers.length === 0) {
-      // Nunca lo bloquearon: pasa directo al jugador de enfrente.
       if (isLocalAttacking) {
         state.rivalHP -= attackerPower;
         if (attackerHasLifelink && attackerPower > 0) {
@@ -357,8 +301,6 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
     }
 
     if (aliveBlockers.length === 0) {
-      // Lo bloquearon, pero sus bloqueadores ya cayeron en Iniciativa.
-      // Sigue "bloqueado" a los ojos de las reglas: sin Arrollar no conecta nada.
       if (attackerHasTrample) {
         if (isLocalAttacking) {
           state.rivalHP -= attackerPower;
@@ -374,20 +316,18 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       continue;
     }
 
-    // Queda al menos un bloqueador vivo: repartimos daño como siempre.
     let useManual = false;
     let manualDistribution = [];
     let manualPlayerDamage = 0;
 
-    // Solo abrimos el modal si vos sos el atacante y (tiene arrollar o te bloquearon con más de 1)
     if (isLocalAttacking && (aliveBlockers.length > 1 || attackerHasTrample)) {
       const result = await new Promise((resolve) => {
         showDamageAssignmentModal(
           attacker,
           aliveBlockers,
           attackerPower,
-          () => resolve({ type: 'auto' }), // Automático
-          (distribucion, playerDmg) => resolve({ type: 'manual', distribucion, playerDmg }) // Manual
+          () => resolve({ type: 'auto' }),
+          (distribucion, playerDmg) => resolve({ type: 'manual', distribucion, playerDmg })
         );
       });
 
@@ -404,14 +344,11 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
     aliveBlockers.forEach((blocker, bIdx) => {
       const bToughness = getEffectiveToughness(blocker);
 
-      // Resolución de daño sobre el bloqueador
       let damageToDeal = 0;
 
       if (useManual) {
-        // Asignación de la UI
         damageToDeal = manualDistribution[bIdx];
       } else {
-        // Asignación automática (la misma lógica que ya tenías)
         const currentDamage = blocker.damageTaken || 0;
         const remainingToughness = Math.max(0, bToughness - currentDamage);
         let damageToKill = attackerHasDeathtouch ? 1 : remainingToughness;
@@ -431,7 +368,6 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       }
     });
 
-    // DAÑO ARROLLAR (TRAMPLE) AL JUGADOR
     if (useManual) {
       if (manualPlayerDamage > 0) {
         if (isLocalAttacking) state.rivalHP -= manualPlayerDamage;
@@ -450,7 +386,6 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       attackerLifelinkHeal += remainingAttackerPower;
     }
 
-    // Resolvemos la cura acumulada del atacante si tiene Vínculo Vital
     if (attackerHasLifelink && attackerLifelinkHeal > 0) {
       if (isLocalAttacking) {
         state.localHP += attackerLifelinkHeal;
