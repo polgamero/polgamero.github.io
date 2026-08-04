@@ -3,6 +3,7 @@ import { state, resolveEffectDirect, attachAura, cancelPayment } from './main.js
 import { logMsg, render } from './ui.js';
 import { checkDeaths } from './combatRules.js';
 import { hasKeyword } from './keywords.js';
+import { passPriority } from './turnManager.js';
 
 export const spellStack = [];
 let nextStackId = 1;
