@@ -139,8 +139,8 @@ export function handleCombatClick(item, isLocal, index) {
     return;
   }
 
-  // Declarar atacantes solo en sub-paso de atacantes o main1 (si el jugador activo es el local y tiene prioridad)
-  if ((state.phase === 'main1' || state.phase === 'combat_attackers') && isLocal && state.activePlayer === 'local' && state.priorityPlayer === 'local') {
+ // Declarar atacantes solo en sub-paso de atacantes
+  if (state.phase === 'combat_attackers' && isLocal && state.activePlayer === 'local' && state.priorityPlayer === 'local') {
     if (hasKeyword(item, 'defender')) {
       logMsg(`🛡️ ${item.card.name} es Defensor y no puede atacar.`);
       return;
@@ -153,7 +153,7 @@ export function handleCombatClick(item, isLocal, index) {
     
     item.isAttacking = !item.isAttacking;
     render();
-  } 
+  }
   else if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local') {
     if (isLocal) {
       if (item.tapped) {
