@@ -1,4 +1,4 @@
-import { hasKeyword, canBlock } from './keywords.js';
+import { hasKeyword, canBlock, predictDuel } from './keywords.js';
 import { 
   state, 
   logMsg, 
@@ -27,14 +27,13 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
   const legalBlockers = availableBlockers.filter(obj => canBlock(att, obj.c));
   if (legalBlockers.length === 0) return;
 
-  const kills = (blockerItem) => {
-    const bPower = getEffectivePower(blockerItem.c);
-    return bPower >= atkTough || (hasKeyword(blockerItem.c, 'deathtouch') && bPower > 0);
-  };
-  const survivesHit = (blockerItem) => {
-    const bTough = getEffectiveToughness(blockerItem.c);
-    return atkPower < bTough && !(atkHasDeathtouch && atkPower > 0);
-  };
+  // NUEVO: en vez de comparar poder/resistencia a lo bruto, simulamos el
+  // duelo 1x1 respetando Golpe Primero y Daño Doble (mismo helper que usa
+  // bot.js para decidir ataques). Esto evita, por ejemplo, que el Tano meta
+  // a bloquear una criatura que "en teoría" sobrevive pero en la práctica
+  // muere gratis porque el atacante le pega primero.
+  const kills = (blockerItem) => predictDuel(att, blockerItem.c).attackerDies;
+  const survivesHit = (blockerItem) => !predictDuel(att, blockerItem.c).blockerDies;
   const valueOf = (blockerItem) => getEffectivePower(blockerItem.c) + getEffectiveToughness(blockerItem.c);
 
   // 1) Bloqueo limpio: lo mata y sobrevive.
