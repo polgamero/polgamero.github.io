@@ -102,6 +102,13 @@ export async function advanceStep() {
 
 export async function passPriority(player) {
   if (state.gameOver) return;
+
+  // NUEVO: Bloqueo de seguridad si hay que descartar
+  if (state.isDiscarding) {
+    logMsg("⚠️ Tenés que descartar antes de poder pasar la prioridad.");
+    return; 
+  }
+  
   if (state.priorityPlayer !== player) return;
 
   logMsg(`💬 ${player === 'local' ? 'Pasaste' : 'El Tano pasó'} prioridad.`);
