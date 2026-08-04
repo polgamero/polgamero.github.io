@@ -1,6 +1,6 @@
 import { logMsg, els, showGameOverOverlay, render } from './ui.js';
 import { state } from './main.js';
-import { startRivalTurn, takeBotPriorityAction } from './bot.js';
+import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage } from './combatRules.js';
 
