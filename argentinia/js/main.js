@@ -13,8 +13,15 @@ export { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, st
 
 export const state = {
   turnCount: 1,
-  isPlayerTurn: true,
-  phase: 'main1', 
+  activePlayer: 'local',       // 'local' | 'rival'
+  priorityPlayer: 'local',     // 'local' | 'rival'
+  consecutivePasses: 0,
+  phase: 'untap', 
+  /* Fases posibles:
+     'untap', 'upkeep', 'draw', 'main1',
+     'begin_combat', 'declare_attackers', 'declare_blockers', 'combat_damage', 'end_combat',
+     'main2', 'end_step', 'cleanup'
+  */
   gameOver: false,
 
   localHP: 20,
