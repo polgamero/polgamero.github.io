@@ -882,24 +882,37 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 12px;
+  gap: 6px; /* Achicamos el gap un poquito para que entren bien las palabras */
   margin-bottom: 10px;
   padding: 5px 0;
+  flex-wrap: wrap; /* Por si la pantalla es muy chica, que caigan a la línea de abajo */
 }
 
 .phase-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+  /* Eliminamos el width y height fijos de 12px para que el contenedor abrace al texto */
+  width: auto;
+  height: auto;
+  padding: 4px 10px; 
+  border-radius: 12px; /* Ahora son cápsulas/etiquetas en lugar de círculos */
+  
   background-color: #2a2f3d;
-  border: 2px solid #4a5162;
+  border: 1px solid #4a5162;
   transition: all 0.3s ease;
   box-shadow: inset 0 0 4px rgba(0,0,0,0.5);
+  
+  /* Ajustes para el texto */
+  color: #8c97a7; /* Un gris sutil para las fases inactivas */
+  font-size: 0.65rem;
+  font-weight: 500;
+  white-space: nowrap; /* Evita que las palabras se partan en dos renglones */
+  cursor: default;
 }
 
 .phase-dot.active {
   background-color: var(--gold);
   border-color: #fff;
+  color: #111; /* Texto oscuro para contrastar perfecto con el dorado */
+  font-weight: bold;
   box-shadow: 0 0 10px var(--gold), inset 0 0 5px rgba(255,255,255,0.8);
 }
 
