@@ -301,7 +301,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const canRespondToStack = (spellStack && spellStack.length > 0) && isInstant;
     const isMyMainTurn = state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2');
     
-    if (zone === 'hand' && isLocal && (isMyMainTurn || canRespondToStack) && !state.gameOver) {
+// Agregamos state.isDiscarding para que las cartas respondan al clic en la fase de limpieza
+    if (zone === 'hand' && isLocal && (isMyMainTurn || canRespondToStack || state.isDiscarding) && !state.gameOver) {
       el.addEventListener('click', () => {
         if (state.isDiscarding) handleDiscardClick(index);
         else playCard(index);
