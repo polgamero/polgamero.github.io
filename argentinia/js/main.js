@@ -4,12 +4,12 @@ import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeath
 import { startRivalTurn, checkRivalCounterOrResponse } from './bot.js';
 import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules } from './ui.js';
 import { buildRandomDeck, parseManaCost, getLandColor, sleep } from './utils.js';
-import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn } from './turnManager.js';
+import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority } from './turnManager.js';
 import { hasKeyword, canBlock } from './keywords.js';
 
 export { logMsg, render } from './ui.js';
 export { parseManaCost, getLandColor, sleep } from './utils.js';
-export { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn } from './turnManager.js';
+export { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority } from './turnManager.js';
 
 export const state = {
   turnCount: 1,
@@ -21,7 +21,7 @@ export const state = {
   // Fases: 'untap', 'upkeep', 'draw', 'main1', 
   // 'combat_begin', 'combat_attackers', 'combat_blockers', 'combat_damage', 'combat_end',
   // 'main2', 'end_step', 'cleanup'
-  phase: 'untap', 
+  phase: 'main1', 
   gameOver: false,
 
   localHP: 20,
