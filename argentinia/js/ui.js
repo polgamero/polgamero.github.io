@@ -430,10 +430,10 @@ export function render() {
       turnOwnerBadge.className = `turn-owner-badge ${state.activePlayer === 'local' ? 'local-active' : 'rival-active'}`;
   }
 
-  // Despintamos todos
+// Despintamos todos (solo quitamos los estados activos para no romper el layout)
   ['dot-upkeep', 'dot-main1', 'dot-combat', 'dot-main2', 'dot-end'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.className = 'phase-dot';
+    if (el) el.classList.remove('active', 'blinking');
   });
 
   // Pintamos según progreso
