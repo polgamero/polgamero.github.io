@@ -1,4 +1,4 @@
-import { getEffectiveKeywords } from './main.js';
+import { getEffectiveKeywords, getEffectivePower, getEffectiveToughness } from './main.js';
 
 /**
  * Verifica si una unidad en el campo tiene una keyword específica.
@@ -35,4 +35,48 @@ export function canBlock(attacker, blocker) {
   
   // Si el atacante no vuela, cualquier criatura (con o sin volar/alcance) puede bloquearlo
   return true;
+}
+
+/**
+ * NUEVO (Etapa 7.5): Simula un duelo 1 contra 1 respetando Golpe Primero y Daño
+ * Doble, para que la IA del Tano (ataque y bloqueo) tome decisiones correctas
+ * en vez de asumir siempre daño simultáneo. Replica la misma matemática de dos
+ * sub-pasos que usa combatRules.js (resolveDamageSubStep), pero sin tocar el
+ * estado real del juego — solo predice el resultado.
+ * @param {Object} attacker - La unidad que ataca
+ * @param {Object} blocker - La unidad que bloquea
+ * @returns {{attackerDies: Boolean, blockerDies: Boolean}}
+ */
+export function predictDuel(attacker, blocker) {
+  const atkPower = getEffectivePower(attacker);
+  const atkTough = getEffectiveToughness(attacker);
+  const bPower = getEffectivePower(blocker);
+  const bTough = getEffectiveToughness(blocker);
+  const atkHasDeathtouch = hasKeyword(attacker, 'deathtouch');
+  const bHasDeathtouch = hasKeyword(blocker, 'deathtouch');
+
+  // ¿En qué sub-paso pega cada uno? (mismo criterio que combatRules.js)
+  const atkActsStep1 = hasKeyword(attacker, 'firststrike') || hasKeyword(attacker, 'doublestrike');
+  const atkActsStep2 = !hasKeyword(attacker, 'firststrike') || hasKeyword(attacker, 'doublestrike');
+  const bActsStep1 = hasKeyword(blocker, 'firststrike') || hasKeyword(blocker, 'doublestrike');
+  const bActsStep2 = !hasKeyword(blocker, 'firststrike') || hasKeyword(blocker, 'doublestrike');
+
+  let atkDmg = 0, bDmg = 0, atkGotDeathtouched = false, bGotDeathtouched = false;
+
+  // --- Paso de Iniciativa ---
+  if (atkActsStep1) { bDmg += atkPower; if (atkHasDeathtouch && atkPower > 0) bGotDeathtouched = true; }
+  if (bActsStep1) { atkDmg += bPower; if (bHasDeathtouch && bPower > 0) atkGotDeathtouched = true; }
+
+  let bDead = bDmg >= bTough || (bGotDeathtouched && bDmg > 0);
+  let atkDead = atkDmg >= atkTough || (atkGotDeathtouched && atkDmg > 0);
+
+  // --- Paso Regular --- (si alguno ya murió en Iniciativa, no hay revancha)
+  if (!atkDead && !bDead) {
+    if (atkActsStep2) { bDmg += atkPower; if (atkHasDeathtouch && atkPower > 0) bGotDeathtouched = true; }
+    if (bActsStep2) { atkDmg += bPower; if (bHasDeathtouch && bPower > 0) atkGotDeathtouched = true; }
+    bDead = bDmg >= bTough || (bGotDeathtouched && bDmg > 0);
+    atkDead = atkDmg >= atkTough || (atkGotDeathtouched && atkDmg > 0);
+  }
+
+  return { attackerDies: atkDead, blockerDies: bDead };
 }
