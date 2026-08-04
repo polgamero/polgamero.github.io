@@ -112,6 +112,11 @@ export async function checkRivalCounterOrResponse() {
       type: 'instant'
     });
 
+    // --- CÓDIGO AGREGADO PARA DEVOLVER PRIORIDAD ---
+    state.priorityPlayer = 'local';
+    state.consecutivePasses = 0;
+    // -----------------------------------------------
+    
     logMsg(`🔴 ¡El Tano te respondió en velocidad instantánea con "${responseCard.name}"!`);
     render();
     return true;
@@ -233,6 +238,11 @@ export async function takeBotPriorityAction() {
           targetObj: aiTargetObj,
           type: stackType
         });
+
+        // --- CÓDIGO AGREGADO PARA DEVOLVER PRIORIDAD ---
+        state.priorityPlayer = 'local';
+        state.consecutivePasses = 0;
+        // -----------------------------------------------
         
         logMsg(`⏳ El Tano puso ${cardToPlay.name} en la pila. Tenés la prioridad para responder.`);
         render();
