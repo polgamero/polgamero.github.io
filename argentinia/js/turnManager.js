@@ -42,6 +42,25 @@ export async function advanceStep() {
     nextPhase = 'untap';
   }
 
+  // --- ARREGLO BUG 2: Saltear combate si no hay criaturas viables ---
+  if (nextPhase === 'combat_begin') {
+    const activeBoard = state.activePlayer === 'local' ? state.localCombat : state.rivalCombat;
+    const hasCreatures = activeBoard.some(c => !hasKeyword(c, 'defender'));
+    if (!hasCreatures) {
+      logMsg(`⏩ Combate omitido automáticamente (sin criaturas para atacar).`);
+      nextPhase = 'main2'; // Salta directo a la segunda fase principal
+    }
+  }
+
+  // --- ARREGLO BUG 4: Saltear bloqueadores y daño si nadie atacó ---
+  if (nextPhase === 'combat_blockers') {
+    const activeBoard = state.activePlayer === 'local' ? state.localCombat : state.rivalCombat;
+    const isAnyoneAttacking = activeBoard.some(c => c.isAttacking);
+    if (!isAnyoneAttacking) {
+      nextPhase = 'combat_end'; // Salta directo al fin del combate
+    }
+  }
+  
   state.phase = nextPhase;
   state.priorityPlayer = state.activePlayer; // La prioridad vuelve al jugador activo al iniciar cada paso
   state.consecutivePasses = 0;
