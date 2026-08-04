@@ -13,7 +13,7 @@
       <!-- MANO RIVAL (OCULTA) -->
       <section id="rival-hand" class="hand-row rival-hand"></section>
 
-<!-- CAMPO RIVAL -->
+      <!-- CAMPO RIVAL -->
       <section class="field-zone-container">
         <div id="rival-wrapper" class="lands-support-wrapper">
           <div id="rival-lands" class="field-row lands-row" style="flex: 7;"></div>
@@ -50,31 +50,28 @@
 
       <div class="log-section">
         <div class="log-box" id="game-log-box"></div>
-        <!-- INDICADORES DE FASE Y TURNO ACTIVO -->
-        <div id="turn-active-banner" class="turn-active-banner">
-          Turno de: <span id="active-player-name">El Gaucho</span>
-        </div>
+        
+        <!-- INDICADOR DE TURNO ACTIVO -->
+        <div id="turn-owner-badge" class="turn-owner-badge">Turno de: El Gaucho</div>
+
+        <!-- INDICADORES DE FASES Y SUBFASES MTG -->
         <div id="phase-indicator-container" class="phase-indicator">
-          <div class="phase-dot" id="dot-untap" title="Enderezar / Mantenimiento / Robo"></div>
-          <div class="phase-dot" id="dot-main1" title="1ra Fase Principal"></div>
+          <div class="phase-dot" id="dot-upkeep" title="Mantenimiento / Robo">Mantenimiento</div>
+          <div class="phase-dot" id="dot-main1" title="1ra Fase Principal">Main 1</div>
           <div class="phase-dot" id="dot-combat" title="Fase de Combate">
-            <div class="subphase-bar">
-              <span id="sub-begin" title="Inicio de Combate"></span>
-              <span id="sub-attackers" title="Declarar Atacantes"></span>
-              <span id="sub-blockers" title="Declarar Bloqueadores"></span>
-              <span id="sub-damage" title="Daño de Combate"></span>
-              <span id="sub-end" title="Fin de Combate"></span>
-            </div>
+            Combate
+            <span id="combat-subphase-text" class="subphase-label"></span>
           </div>
-          <div class="phase-dot" id="dot-main2" title="2da Fase Principal"></div>
-          <div class="phase-dot" id="dot-end" title="Paso Final / Limpieza"></div>
+          <div class="phase-dot" id="dot-main2" title="2da Fase Principal">Main 2</div>
+          <div class="phase-dot" id="dot-end" title="Paso Final">Fin</div>
         </div>
+
         <div id="payment-controls" class="hidden" style="margin-bottom: 10px; text-align: center;">
           <p id="payment-status" style="font-size: 0.8rem; color: var(--gold); margin-bottom: 5px; font-weight: bold;">Pagando hechizo...</p>
           <button id="btn-cancel-spell" class="btn-reset" style="width: 100%; background: #c0392b; border-color: #e74c3c;">❌ Cancelar (ESC)</button>
         </div>
         <div class="turn-controls">
-          <button id="btn-end-turn" class="btn-turn">Pasar Turno ➔</button>
+          <button id="btn-end-turn" class="btn-turn">Pasar Prioridad ➔</button>
         </div>
       </div>
 
@@ -105,30 +102,22 @@
       <span>⚡ PILA DE HECHIZOS</span>
       <span id="stack-count">0</span>
     </div>
-    <div id="stack-list" class="stack-list">
-      <!-- Acá se renderizan dinámicamente las cartas en la pila -->
-    </div>
-    <button id="btn-resolve-top" class="btn-resolve-stack">Resolver Siguiente (Top)</button>
+    <div id="stack-list" class="stack-list"></div>
+    <button id="btn-resolve-top" class="btn-resolve-stack">Pasar Prioridad / Resolver ➔</button>
   </div>
 
-  <!-- OVERLAY DE ASIGNACIÓN DE DAÑO (ARROLLAR / MULTI-BLOCK) -->
+  <!-- OVERLAY DE ASIGNACIÓN DE DAÑO -->
   <div id="damage-modal-overlay" class="hidden">
     <div class="damage-modal-box">
       <h2>⚔️ Asignar Daño</h2>
-      <p class="damage-modal-hint">Podés seguir mirando (y pasando el mouse sobre) las cartas del campo mientras decidís.</p>
-
-      <!-- Contenido dinámico inyectado por JS -->
+      <p class="damage-modal-hint">Podés seguir mirando las cartas del campo mientras decidís.</p>
       <div id="damage-modal-content"></div>
-
-      <!-- Botones de selección inicial -->
       <div id="damage-modal-initial-buttons" class="damage-modal-initial-buttons">
         <button id="btn-dmg-auto" class="btn-turn" style="background: #3498db;">Automáticamente</button>
         <button id="btn-dmg-manual" class="btn-turn" style="background: #e67e22;">Manualmente</button>
       </div>
-
-      <!-- Contenedor del botón de confirmación (oculto hasta elegir manual) -->
       <div id="damage-modal-confirm-container" class="hidden">
-        <button id="btn-dmg-confirm" class="btn-turn" style="background: var(--hp-green); width: 100%; transition: opacity 0.2s;">Confirmar Distribución</button>
+        <button id="btn-dmg-confirm" class="btn-turn" style="background: var(--hp-green); width: 100%;">Confirmar Distribución</button>
       </div>
     </div>
   </div>
