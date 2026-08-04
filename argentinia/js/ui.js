@@ -9,14 +9,13 @@ import {
   handleCombatClick,
   handleSupportClick,
   handlePlayerTargetClick,
-  attemptPassTurn,
   cancelPayment,
-  checkGameOver
+  checkGameOver,
+  passPriority // Importado del nuevo sistema
 } from './main.js';
 
 import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
-// --- MODIFICACIÓN: Agregamos hasKeyword a la importación ---
 import { canBlock, hasKeyword } from './keywords.js';
 
 const ICON_MAP = {
@@ -218,14 +217,11 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     isTargetable = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
   }
 
-  // --- NUEVO: LÓGICA HEXPROOF (VISUAL) ---
-    // Si intentás apuntar a una criatura enemiga y tiene Hexproof, le apagamos el brillo
-    if (!isLocal && hasKeyword(itemObj, 'hexproof')) {
-      isTargetable = false;
-    }
+  if (!isLocal && hasKeyword(itemObj, 'hexproof')) {
+    isTargetable = false;
+  }
   
   const targetClass = isTargetable ? 'targetable' : '';
-
   el.className = `card ${card.rarity || 'Common'} ${isTapped ? 'tapped' : ''} ${isSick} ${isAttacking} ${isBlocking} ${isSelectedBlocker} ${targetClass}`;
 
   let icon = '🃏';
@@ -256,19 +252,10 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const effKeywords = card.power !== undefined ? getEffectiveKeywords(itemObj) : [];
 
     const KEYWORD_LABELS = { 
-    flying: '🕊️ Vuela', 
-    trample: '🐘 Arrolla', 
-    lifelink: '❤️ Vínculo vital', 
-    hexproof: '🛡️ Intocable', 
-    haste: '⚡ Prisa', 
-    menace: '👥 Amenaza', 
-    vigilance: '👁️ Vigilancia', 
-    reach: '🏹 Alcance',
-    defender: '🧱 Defensora',
-    lifelink: '❤️ Vínculo vital',
-    deathtouch: '💀 Toque mortal',
-    firststrike: '⚔️ Primer golpe'
-  };
+      flying: '🕊️ Vuela', trample: '🐘 Arrolla', hexproof: '🛡️ Intocable', haste: '⚡ Prisa', 
+      menace: '👥 Amenaza', vigilance: '👁️ Vigilancia', reach: '🏹 Alcance', defender: '🧱 Defensora',
+      lifelink: '❤️ Vínculo vital', deathtouch: '💀 Toque mortal', firststrike: '⚔️ Primer golpe'
+    };
       
     const keywordsHTML = effKeywords.length > 0
       ? `<div class="keyword-strip">${effKeywords.map(k => `<span class="keyword-tag">${KEYWORD_LABELS[k] || k}</span>`).join('')}</div>`
@@ -307,28 +294,23 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     </div>
   `;
 
-  const isInstant = card.type && card.type.includes('Instantáneo');
-  const canRespondToStack = (spellStack && spellStack.length > 0) && isInstant;
-  const isMyMainTurn = state.isPlayerTurn && (state.phase === 'main1' || state.phase === 'main2');
-  
-  // Si se pasa un customClick (para las cartas agrupadas), lo usamos con prioridad.
   if (customClick) {
     el.addEventListener('click', customClick);
   } else {
-    // Lógica original intacta
+    const isInstant = card.type && card.type.includes('Instantáneo');
+    const canRespondToStack = (spellStack && spellStack.length > 0) && isInstant;
+    const isMyMainTurn = state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2');
+    
     if (zone === 'hand' && isLocal && (isMyMainTurn || canRespondToStack) && !state.gameOver) {
       el.addEventListener('click', () => {
-        if (state.isDiscarding) {
-          handleDiscardClick(index);
-        } else {
-          playCard(index);
-        }
+        if (state.isDiscarding) handleDiscardClick(index);
+        else playCard(index);
       });
     } else if (zone === 'land' && isLocal && !state.gameOver) {
       el.addEventListener('click', () => tapLocalLand(itemObj));
     } else if (zone === 'combat' && !state.gameOver) {
       el.addEventListener('click', () => handleCombatClick(itemObj, isLocal, index));
-    } else if (zone === 'support' && isLocal && state.isPlayerTurn && state.phase === 'main' && !state.gameOver) {
+    } else if (zone === 'support' && isLocal && state.activePlayer === 'local' && state.phase.startsWith('main') && !state.gameOver) {
       el.addEventListener('click', () => handleSupportClick(itemObj, isLocal, index));
     }
   }
@@ -337,7 +319,6 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 }
 
 const CARD_ASPECT = 5 / 7;
-  
 function getIdealCardHeightPx() { return window.innerHeight * 0.14; }
 export function sizeCardsInRow(rowEl) {
   const cards = rowEl.querySelectorAll('.card');
@@ -367,36 +348,24 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
   containerEl.innerHTML = '';
   const groups = {};
   
-  // 1. Agrupar por color de producción si son tierras, o por nombre si son soportes
   zoneArray.forEach((item, idx) => {
-    let key;
-    if (zoneType === 'land' && item.card.produces) {
-      key = `land_${item.card.produces}`; // Agrupa por color (ej: land_W, land_U, etc.)
-    } else {
-      key = item.card.name; // Soporte u otros permanentes se agrupan por nombre exacto
-    }
-
+    let key = (zoneType === 'land' && item.card.produces) ? `land_${item.card.produces}` : item.card.name;
     if (!groups[key]) groups[key] = { items: [], ready: [], tapped: [] };
-    
-    // Guardamos el índice original para referenciar el estado real
     groups[key].items.push({ item, originalIndex: idx });
     if (item.tapped) groups[key].tapped.push(item);
     else groups[key].ready.push(item);
   });
 
-  // 2. Renderizar cada grupo como una sola carta apilada
   Object.values(groups).forEach(group => {
     const isAllTapped = group.ready.length === 0;
     const visualItem = group.items[0].item;
     
-    // 3. Lógica inteligente de clic: busca la primera disponible real en el estado
     const customClick = () => {
       if (state.gameOver) return;
-      
       if (zoneType === 'land' && isLocal) {
-        const readyLand = group.ready[0]; // Toma la primera tierra sin girar de ese color
+        const readyLand = group.ready[0];
         if (readyLand) tapLocalLand(readyLand);
-      } else if (zoneType === 'support' && isLocal && state.isPlayerTurn && state.phase === 'main1' || state.phase === 'main2') {
+      } else if (zoneType === 'support' && isLocal && state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2')) {
         const readySupport = group.ready[0];
         if (readySupport) {
           const originalIdx = group.items.find(x => x.item === readySupport).originalIndex;
@@ -405,20 +374,13 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
       }
     };
 
-    // Creamos la carta visual del grupo
     const cardEl = createCardElement(visualItem, isAllTapped, isLocal, null, zoneType, customClick);
     
-    // 4. Agregar los banners si hay múltiples cartas o si alguna está girada
     if (group.items.length > 1 || group.tapped.length > 0) {
       const badgeContainer = document.createElement('div');
       badgeContainer.className = 'stack-counter-container';
-      
-      if (group.ready.length > 0) {
-        badgeContainer.innerHTML += `<div class="stack-badge badge-ready" title="Disponibles">${group.ready.length}</div>`;
-      }
-      if (group.tapped.length > 0) {
-        badgeContainer.innerHTML += `<div class="stack-badge badge-tapped" title="Giradas">${group.tapped.length}</div>`;
-      }
+      if (group.ready.length > 0) badgeContainer.innerHTML += `<div class="stack-badge badge-ready" title="Disponibles">${group.ready.length}</div>`;
+      if (group.tapped.length > 0) badgeContainer.innerHTML += `<div class="stack-badge badge-tapped" title="Giradas">${group.tapped.length}</div>`;
       cardEl.appendChild(badgeContainer);
     }
     
@@ -426,6 +388,7 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
   });
 }
 
+// --- ACTUALIZACIÓN MASIVA DE UI RENDER (HUD y Botones Adaptables a Prioridad) ---
 export function render() {
   state.localHP = Math.max(0, Math.min(20, state.localHP));
   state.rivalHP = Math.max(0, Math.min(20, state.rivalHP));
@@ -437,14 +400,11 @@ export function render() {
     els.rivalHand.appendChild(back);
   });
 
- // Zonas agrupadas (Tierras y Soporte)
   groupAndRenderZone(state.localLands, els.localLands, true, 'land');
   groupAndRenderZone(state.rivalLands, els.rivalLands, false, 'land');
-  
   groupAndRenderZone(state.localSupport, els.localSupport, true, 'support');
   groupAndRenderZone(state.rivalSupport, els.rivalSupport, false, 'support');
 
-  // Zona sin agrupar (El Combate se mantiene igual para poder elegir bloqueadores individuales)
   els.localCombat.innerHTML = ''; state.localCombat.forEach((item, idx) => els.localCombat.appendChild(createCardElement(item, item.tapped, true, idx, 'combat')));
   els.rivalCombat.innerHTML = ''; state.rivalCombat.forEach((item, idx) => els.rivalCombat.appendChild(createCardElement(item, item.tapped, false, idx, 'combat')));
   
@@ -463,64 +423,61 @@ export function render() {
   els.localHpText.textContent = `${state.localHP} / 20 HP`; els.rivalHpText.textContent = `${state.rivalHP} / 20 HP`;
   els.localHpBar.style.width = `${(state.localHP / 20) * 100}%`; els.rivalHpBar.style.width = `${(state.rivalHP / 20) * 100}%`;
 
-els.btnEndTurn.onclick = null; 
-  
-  // 1. GESTIÓN VISUAL DE LOS INDICADORES DE FASE
-  const phaseContainer = document.getElementById('phase-indicator-container');
-  const d1 = document.getElementById('dot-main1');
-  const dc = document.getElementById('dot-combat');
-  const d2 = document.getElementById('dot-main2');
-
-  if (phaseContainer && d1 && dc && d2) {
-    if (state.isPlayerTurn) {
-      phaseContainer.classList.remove('hidden');
-      d1.className = 'phase-dot'; dc.className = 'phase-dot'; d2.className = 'phase-dot';
-      
-      if (state.phase === 'main1') {
-        d1.classList.add('active', 'blinking');
-      } else if (state.phase === 'main2') {
-        d1.classList.add('active'); // Ya pasó
-        dc.classList.add('active'); // Ya pasó
-        d2.classList.add('active', 'blinking');
-      }
-    } else {
-      phaseContainer.classList.add('hidden'); // Ocultar en el turno del Tano
-    }
+  // --- 1. GESTIÓN VISUAL DEL HUD Y FASES ---
+  const turnOwnerBadge = document.getElementById('turn-owner-badge');
+  if (turnOwnerBadge) {
+      turnOwnerBadge.textContent = state.activePlayer === 'local' ? "Turno de: El Gaucho" : "Turno de: El Tano";
+      turnOwnerBadge.className = `turn-owner-badge ${state.activePlayer === 'local' ? 'local-active' : 'rival-active'}`;
   }
 
-  // 2. GESTIÓN DEL BOTÓN DE PASAR TURNO SEGÚN LA FASE
-  if (state.phase === 'main1') {
-    els.btnEndTurn.disabled = !state.isPlayerTurn || state.gameOver;
-    if (state.localCombat.some(c => c.isAttacking)) {
-      els.btnEndTurn.textContent = "Confirmar Ataque ⚔️";
-      els.btnEndTurn.onclick = executeLocalAttack;
-      els.btnEndTurn.style.backgroundColor = "#e74c3c"; // Rojo combate
-    } else {
-      els.btnEndTurn.textContent = "Saltar Combate ➔";
-      els.btnEndTurn.onclick = () => {
-        state.phase = 'main2';
-        logMsg("🌅 Decidiste no atacar. Entrás a tu 2da Fase Principal.");
-        render();
+  // Despintamos todos
+  ['dot-upkeep', 'dot-main1', 'dot-combat', 'dot-main2', 'dot-end'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.className = 'phase-dot';
+  });
+
+  // Pintamos según progreso
+  if (state.phase === 'untap' || state.phase === 'upkeep' || state.phase === 'draw') document.getElementById('dot-upkeep')?.classList.add('active', 'blinking');
+  if (state.phase === 'main1') document.getElementById('dot-main1')?.classList.add('active', 'blinking');
+  if (state.phase.startsWith('combat')) document.getElementById('dot-combat')?.classList.add('active', 'blinking');
+  if (state.phase === 'main2') document.getElementById('dot-main2')?.classList.add('active', 'blinking');
+  if (state.phase === 'end_step' || state.phase === 'cleanup') document.getElementById('dot-end')?.classList.add('active', 'blinking');
+
+  const subphaseText = document.getElementById('combat-subphase-text');
+  if (state.phase.startsWith('combat_')) {
+      const labels = {
+          'combat_begin': 'Inicio',
+          'combat_attackers': 'Atacantes',
+          'combat_blockers': 'Bloqueadores',
+          'combat_damage': 'Daño',
+          'combat_end': 'Fin'
       };
-      els.btnEndTurn.style.backgroundColor = "#e67e22"; // Naranja prevención
-    }
-  } else if (state.phase === 'main2') {
-    els.btnEndTurn.disabled = !state.isPlayerTurn || state.gameOver;
-    els.btnEndTurn.textContent = "Finalizar Turno ➔";
-    els.btnEndTurn.onclick = attemptPassTurn;
-    els.btnEndTurn.style.backgroundColor = ""; // Color por defecto
-  } else if (state.phase === 'local_block') {
-    els.btnEndTurn.disabled = state.gameOver;
+      if (subphaseText) subphaseText.textContent = `- ${labels[state.phase]}`;
+  } else {
+      if (subphaseText) subphaseText.textContent = '';
+  }
+
+  // --- 2. GESTIÓN DEL BOTÓN DE ACCIÓN / PASAR PRIORIDAD ---
+  els.btnEndTurn.disabled = (state.priorityPlayer !== 'local' || state.gameOver);
+
+  if (state.phase === 'combat_attackers' && state.activePlayer === 'local') {
+    const isAttacking = state.localCombat.some(c => c.isAttacking);
+    els.btnEndTurn.textContent = isAttacking ? "Confirmar Ataque ⚔️" : "Saltar Ataque ➔";
+    els.btnEndTurn.onclick = executeLocalAttack;
+    els.btnEndTurn.style.backgroundColor = isAttacking ? "#e74c3c" : "#e67e22";
+  } else if (state.phase === 'combat_blockers' && state.activePlayer === 'rival') {
     els.btnEndTurn.textContent = "Confirmar Bloqueos 🛡️";
     els.btnEndTurn.onclick = executeRivalAttack;
-    els.btnEndTurn.style.backgroundColor = "#3498db"; // Azul defensa
+    els.btnEndTurn.style.backgroundColor = "#3498db";
+  } else {
+    els.btnEndTurn.textContent = "Pasar Prioridad ➔";
+    els.btnEndTurn.onclick = () => passPriority('local');
+    els.btnEndTurn.style.backgroundColor = ""; // Defecto
   }
 
-  if (state.isDiscarding) {
-    els.localHand.classList.add('discard-warning');
-  } else {
-    els.localHand.classList.remove('discard-warning');
-  }
+  // --- GESTIÓN DE COSTOS PENDIENTES ---
+  if (state.isDiscarding) els.localHand.classList.add('discard-warning');
+  else els.localHand.classList.remove('discard-warning');
 
   if (state.pendingSpellIndex !== null) {
     els.paymentControls.classList.remove('hidden'); els.btnEndTurn.classList.add('hidden'); 
@@ -548,11 +505,9 @@ els.btnEndTurn.onclick = null;
 
 els.btnCancelSpell.addEventListener('click', cancelPayment);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.pendingSpellIndex !== null) cancelPayment(); });
-
 let resizeTimeout = null; window.addEventListener('resize', () => { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(sizeAllRows, 120); });
 
-// Asignación de daño manual
-
+// --- PANEL MANUAL DE ASIGNACIÓN DE DAÑO (INTACTO) ---
 export function showDamageAssignmentModal(attackerItem, blockersArray, totalDamage, onAuto, onConfirmManual) {
   const overlay = document.getElementById('damage-modal-overlay');
   const content = document.getElementById('damage-modal-content');
@@ -566,7 +521,6 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
   const canTrample = hasKeyword(attackerItem, 'trample');
   const attackerHasDeathtouch = hasKeyword(attackerItem, 'deathtouch');
 
-  // Daño letal pendiente para cada bloqueador (1 si hay Toque Mortal, si todavía le queda vida)
   function lethalNeeded(bItem) {
     const remaining = Math.max(0, bItem.card.toughness - (bItem.damageTaken || 0));
     if (remaining === 0) return 0;
@@ -576,7 +530,6 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
   let currentDistribution = blockersArray.map(() => 0);
   let unassigned = totalDamage;
 
-  // Estado inicial del modal
   content.innerHTML = `
     <p style="margin-bottom: 1.2rem; font-size: 1.1rem; color: #eee;">
       Tu <strong>${attacker.name}</strong> (Poder: ${totalDamage}) fue bloqueado.<br>
@@ -586,23 +539,20 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
   initialButtons.classList.remove('hidden');
   confirmContainer.classList.add('hidden');
   overlay.classList.remove('hidden');
-  state.damageModalOpen = true; // bloquea clicks de combate en el tablero mientras el panel está abierto
+  state.damageModalOpen = true; 
 
-  // BOTÓN: AUTOMÁTICO
   btnAuto.onclick = () => {
     overlay.classList.add('hidden');
     state.damageModalOpen = false;
-    onAuto(); // Ejecuta tu lógica actual de combatRules.js
+    onAuto();
   };
 
-  // BOTÓN: MANUAL
   btnManual.onclick = () => {
     initialButtons.classList.add('hidden');
     confirmContainer.classList.remove('hidden');
     renderManualUI();
   };
 
-  // RENDER DE LAS FLECHITAS
   function renderManualUI() {
     let html = `<div style="margin-bottom: 15px; font-size: 1rem;">Daño restante para asignar: <strong id="dmg-unassigned" style="color: var(--gold); font-size: 1.6rem;">${unassigned}</strong></div>`;
 
@@ -627,7 +577,6 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
        `;
     });
 
-    // Si tiene Trample, mostramos el overkill calculado automáticamente (no se elige a mano)
     if (canTrample) {
       const allLethalMet = blockersArray.every((b, i) => currentDistribution[i] >= lethalNeeded(b));
       const overflow = allLethalMet ? unassigned : 0;
@@ -648,7 +597,6 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
 
     content.innerHTML = html;
 
-    // Listeners dinámicos de los botones +/-
     content.querySelectorAll('.btn-arrow').forEach(btn => {
        btn.onclick = (e) => {
           const idx = e.target.getAttribute('data-idx');
@@ -660,7 +608,6 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
     updateConfirmButton();
   }
 
-  // LÓGICA DE SUMA Y RESTA DE DAÑO (solo entre bloqueadores)
   function handleDamageChange(idx, action) {
     const i = parseInt(idx);
     let currentValue = currentDistribution[i];
@@ -671,44 +618,28 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
     } else if (action === 'minus' && currentValue > 0) {
       currentValue--;
       unassigned++;
-    } else {
-      return; // Bloquea si tratás de bajar de 0 o gastar más de lo que tenés
-    }
+    } else return;
 
     currentDistribution[i] = currentValue;
-
-    renderManualUI(); // Re-renderizamos entero para refrescar el estado de "letal cumplido" y el overflow
+    renderManualUI(); 
   }
 
-  // VALIDACIÓN: exige daño letal a CADA bloqueador antes de permitir que sobre daño
-  // (y, si no hay Arrollar, exige usar absolutamente todo el daño entre los bloqueadores)
   function updateConfirmButton() {
     const allLethalMet = blockersArray.every((b, i) => currentDistribution[i] >= lethalNeeded(b));
 
     let canConfirm;
-    if (unassigned === 0) {
-      // Ya se repartió todo entre bloqueadores, es una distribución válida por sí sola
-      canConfirm = true;
-    } else if (canTrample && allLethalMet) {
-      // Sobra daño, pero ya está cubierto el letal de todos: el resto arrolla
-      canConfirm = true;
-    } else {
-      canConfirm = false;
-    }
+    if (unassigned === 0) canConfirm = true;
+    else if (canTrample && allLethalMet) canConfirm = true;
+    else canConfirm = false;
 
     btnConfirm.disabled = !canConfirm;
     btnConfirm.style.opacity = canConfirm ? '1' : '0.5';
 
-    if (canConfirm) {
-      btnConfirm.textContent = 'Confirmar Distribución';
-    } else if (!allLethalMet) {
-      btnConfirm.textContent = 'Asigná daño letal a todos los bloqueadores';
-    } else {
-      btnConfirm.textContent = 'Asigná todo el daño restante';
-    }
+    if (canConfirm) btnConfirm.textContent = 'Confirmar Distribución';
+    else if (!allLethalMet) btnConfirm.textContent = 'Asigná daño letal a todos los bloqueadores';
+    else btnConfirm.textContent = 'Asigná todo el daño restante';
   }
 
-  // CONFIRMAR Y DEVOLVER LOS DATOS AL ENGINE
   btnConfirm.onclick = () => {
     const allLethalMet = blockersArray.every((b, i) => currentDistribution[i] >= lethalNeeded(b));
     if (unassigned > 0 && !(canTrample && allLethalMet)) return;
