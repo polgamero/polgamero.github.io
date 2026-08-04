@@ -50,11 +50,24 @@
 
       <div class="log-section">
         <div class="log-box" id="game-log-box"></div>
-          <!-- INDICADORES DE FASE -->
-        <div id="phase-indicator-container" class="phase-indicator hidden">
+        <!-- INDICADORES DE FASE Y TURNO ACTIVO -->
+        <div id="turn-active-banner" class="turn-active-banner">
+          Turno de: <span id="active-player-name">El Gaucho</span>
+        </div>
+        <div id="phase-indicator-container" class="phase-indicator">
+          <div class="phase-dot" id="dot-untap" title="Enderezar / Mantenimiento / Robo"></div>
           <div class="phase-dot" id="dot-main1" title="1ra Fase Principal"></div>
-          <div class="phase-dot" id="dot-combat" title="Fase de Combate"></div>
+          <div class="phase-dot" id="dot-combat" title="Fase de Combate">
+            <div class="subphase-bar">
+              <span id="sub-begin" title="Inicio de Combate"></span>
+              <span id="sub-attackers" title="Declarar Atacantes"></span>
+              <span id="sub-blockers" title="Declarar Bloqueadores"></span>
+              <span id="sub-damage" title="Daño de Combate"></span>
+              <span id="sub-end" title="Fin de Combate"></span>
+            </div>
+          </div>
           <div class="phase-dot" id="dot-main2" title="2da Fase Principal"></div>
+          <div class="phase-dot" id="dot-end" title="Paso Final / Limpieza"></div>
         </div>
         <div id="payment-controls" class="hidden" style="margin-bottom: 10px; text-align: center;">
           <p id="payment-status" style="font-size: 0.8rem; color: var(--gold); margin-bottom: 5px; font-weight: bold;">Pagando hechizo...</p>
