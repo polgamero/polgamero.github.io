@@ -1,32 +1,18 @@
 import { hasKeyword, canBlock, predictDuel } from './keywords.js';
-
 import {
   state,
   logMsg,
   render,
   parseManaCost,
   getLandColor,
-  startLocalTurn,
   sleep,
   getEffectivePower,
-  getEffectiveToughness
+  getEffectiveToughness,
+  passPriority // Importado del nuevo turnManager / main
 } from './main.js';
 
-import { resolveCombatDamage } from './combatRules.js';
+import { assignBotBlockers } from './combatRules.js';
 import { addToStack, spellStack } from './stackManager.js';
-
-// NUEVO: El Tano se queda mirando la mesa hasta que la pila se vacíe
-function waitForStackToResolve() {
-  return new Promise(resolve => {
-    const checkInterval = setInterval(() => {
-      // Si la pila está vacía, dejamos de esperar y la promesa se cumple
-      if (spellStack.length === 0) {
-        clearInterval(checkInterval);
-        resolve();
-      }
-    }, 250); // Revisa cada cuarto de segundo
-  });
-}
 
 export function canRivalAfford(card) {
   if (!card.manaCost) return true;
@@ -93,15 +79,15 @@ export async function checkRivalCounterOrResponse() {
   const responseIndex = state.rivalHand.findIndex(c => {
     if (!c.type.includes('Instantáneo') || !canRivalAfford(c)) return false;
 
-  if (isCounterSpell(c)) {
-        if (c.effect.type === 'counter_creature') {
-          return spellStack.some(s => s.isLocal && s.card?.type?.includes('Criatura'));
-        }
-        if (c.effect.type === 'counter_non_creature') {
-          return spellStack.some(s => s.isLocal && !s.card?.type?.includes('Criatura'));
-        }
-        return spellStack.some(s => s.isLocal);
+    if (isCounterSpell(c)) {
+      if (c.effect.type === 'counter_creature') {
+        return spellStack.some(s => s.isLocal && s.card?.type?.includes('Criatura'));
       }
+      if (c.effect.type === 'counter_non_creature') {
+        return spellStack.some(s => s.isLocal && !s.card?.type?.includes('Criatura'));
+      }
+      return spellStack.some(s => s.isLocal);
+    }
     return true;
   });
 
@@ -129,217 +115,169 @@ export async function checkRivalCounterOrResponse() {
     logMsg(`🔴 ¡El Tano te respondió en velocidad instantánea con "${responseCard.name}"!`);
     render();
     return true;
-  } else {
-    logMsg(`👁️ El Tano revisó su mano, no tiene respuestas y pasa prioridad.`);
-    return false;
   }
+  return false;
 }
 
-// --- NUEVO: EVALUACIÓN TÁCTICA DE ATAQUE ---
-// Decide si le conviene al Tano atacar con una criatura puntual, en vez de
-// mandar siempre a todo el mundo. Analiza el peor bloqueo que vos le podrías
-// armar y decide si vale la pena arriesgarse o si es mejor quedarse a defender.
+// --- EVALUACIÓN TÁCTICA DE ATAQUE ---
 function shouldRivalAttackWith(attackerItem) {
   const atkPower = getEffectivePower(attackerItem);
   const atkHasMenace = hasKeyword(attackerItem, 'menace');
   const hasVigilance = hasKeyword(attackerItem, 'vigilance');
 
-  // Bloqueadores tuyos que legalmente podrían pararlo (respeta Volar/Alcance)
   const validBlockers = state.localCombat.filter(b => !b.tapped && canBlock(attackerItem, b));
 
-  // Nadie te lo puede bloquear: pega gratis, siempre conviene.
   if (validBlockers.length === 0) return true;
-
-  // Tiene Amenaza y no juntás 2 bloqueadores válidos: pasa igual, es gratis.
-  // (Nota: el análisis de Amenaza en gang-block todavía no es consciente de
-  // Golpe Primero/Doble; queda como heurística simple igual que antes.)
   if (atkHasMenace && validBlockers.length < 2) return true;
 
-  // NUEVO: en vez de comparar poder/resistencia a lo bruto (daño simultáneo),
-  // simulamos el duelo 1x1 respetando Golpe Primero y Daño Doble. Esto es lo
-  // que hace que el Tano no se mande a atacar "esperando un cambio parejo"
-  // cuando en realidad, por la iniciativa, pierde su criatura gratis.
   const dueledBlockers = validBlockers.map(b => ({ b, duel: predictDuel(attackerItem, b) }));
 
-  // Si existe UN bloqueador que lo mata gratis (lo frena y sobrevive), el Tano
-  // asume que se lo vas a poner y evita el ataque suicida, tenga o no vigilance.
   const freeKillAvailable = dueledBlockers.some(({ duel }) => duel.attackerDies && !duel.blockerDies);
   if (freeKillAvailable) return false;
 
-  // Si al menos con algún bloqueo se lleva puesta una criatura tuya (trade
-  // parejo o mejor, incluyendo los casos donde el Golpe Primero le permite
-  // matar sin recibir nada), vale la pena atacar aunque no tenga vigilance.
   const getsAGoodTrade = dueledBlockers.some(({ duel }) => duel.blockerDies);
   if (getsAGoodTrade) return true;
 
-  // Último caso: lo bloquean pero no muere nadie de los dos lados.
-  // Sin Vigilance, atacar solo lo tapa sin ganar nada -> mejor se queda a defender.
-  // Con Vigilance no pierde nada por intentarlo (sigue pudiendo bloquear).
   return hasVigilance;
 }
 
-export async function startRivalTurn() {
-  if (state.gameOver) return;
-  state.rivalLandPlayedThisTurn = false;
-  state.rivalLands.forEach(l => l.tapped = false);
-  state.rivalCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; });
-  state.rivalSupport.forEach(s => s.tapped = false);
-  if (state.rivalDeck.length > 0) state.rivalHand.push(state.rivalDeck.pop());
-  render(); if (state.gameOver) return; await sleep(1000); if (state.gameOver) return;
+// NUEVO: SISTEMA DE PRIORIDAD DEL BOT (Remplaza startRivalTurn)
+export async function takeBotPriorityAction() {
+  if (state.gameOver || state.priorityPlayer !== 'rival') return;
 
-  const landIndex = state.rivalHand.findIndex(c => c.type.includes('Tierra'));
-  if (landIndex !== -1 && !state.rivalLandPlayedThisTurn) {
-    const landCard = state.rivalHand.splice(landIndex, 1)[0];
-    state.rivalLands.push({ card: landCard, tapped: false }); state.rivalLandPlayedThisTurn = true;
-    logMsg(`El Tano bajó una estancia: ${landCard.name}.`); render(); if (state.gameOver) return; await sleep(1000);
-  }
-  
-  const getAffordableMainPhaseCardIndex = () => {
-  return state.rivalHand.findIndex(c => {
-    if (c.type.includes('Tierra') || !canRivalAfford(c)) return false;
-    // En su turno principal, el bot NO tira counters de la nada
-    if (isCounterSpell(c)) {
-      return false;
+  await sleep(600); // El Tano "piensa"
+
+  // 1. Responder a la pila
+  if (spellStack.length > 0) {
+    const responded = await checkRivalCounterOrResponse();
+    if (!responded) {
+      logMsg(`👁️ El Tano revisó su mano, no tiene respuestas y pasa prioridad.`);
+      passPriority('rival');
     }
-    return true;
-  });
-  };
-  
-  let affordableIndex = getAffordableMainPhaseCardIndex();  
-  
-  // Ahora es un bucle que sabe "pausarse" de verdad
-  while(affordableIndex !== -1) {
-    const cardToPlay = state.rivalHand.splice(affordableIndex, 1)[0];
-    
-    tapRivalLandsFor(cardToPlay);
+    return; // Si respondió, addToStack ya manejará los pases de prioridad
+  }
 
-    const isPermanent = cardToPlay.type.includes('Artefacto') || (cardToPlay.type.includes('Encantamiento') && !cardToPlay.adjunta);
+  // 2. Acciones de Fase Principal (Solo en el turno del Tano)
+  if (state.activePlayer === 'rival' && (state.phase === 'main1' || state.phase === 'main2')) {
     
-    let stackType = 'spell';
-    let aiTargetObj = null;
-    let validPlay = true;
+    // Intentar bajar tierra
+    const landIndex = state.rivalHand.findIndex(c => c.type.includes('Tierra'));
+    if (landIndex !== -1 && !state.rivalLandPlayedThisTurn) {
+      const landCard = state.rivalHand.splice(landIndex, 1)[0];
+      state.rivalLands.push({ card: landCard, tapped: false }); 
+      state.rivalLandPlayedThisTurn = true;
+      logMsg(`El Tano bajó una estancia: ${landCard.name}.`); 
+      render(); 
+      await sleep(800);
+    }
+    
+    const getAffordableMainPhaseCardIndex = () => {
+      return state.rivalHand.findIndex(c => {
+        if (c.type.includes('Tierra') || !canRivalAfford(c)) return false;
+        if (isCounterSpell(c)) return false;
+        return true;
+      });
+    };
+    
+    let affordableIndex = getAffordableMainPhaseCardIndex();  
+    
+    if (affordableIndex !== -1) {
+      const cardToPlay = state.rivalHand.splice(affordableIndex, 1)[0];
+      tapRivalLandsFor(cardToPlay);
 
-    if (cardToPlay.power !== undefined) {
-      stackType = 'summon';
-    } else if (isPermanent) {
-      stackType = 'permanent';
+      const isPermanent = cardToPlay.type.includes('Artefacto') || (cardToPlay.type.includes('Encantamiento') && !cardToPlay.adjunta);
       
-      // NUEVO: Si el permanente es como "La Milonga" y requiere objetivo al entrar
-      if (cardToPlay.requiresTarget && cardToPlay.etbEffect) {
-        if (cardToPlay.etbEffect.type === 'damage') {
-          // Si hace daño, el Tano te apunta directo a la cara
-          aiTargetObj = { type: 'player', isLocal: true };
-        } else {
+      let stackType = 'spell';
+      let aiTargetObj = null;
+      let validPlay = true;
 
-          // --- NUEVO: LÓGICA HEXPROOF PARA EL BOT ---
-          // Filtramos tus criaturas para excluir las que tienen Hexproof
-          const validLocalTargets = state.localCombat.filter(c => !hasKeyword(c, 'hexproof'));
-          
-          if (validLocalTargets.length > 0) {
-            aiTargetObj = { type: 'creature', isLocal: true, index: 0, item: validLocalTargets[0] };
-          } else {
+      if (cardToPlay.power !== undefined) {
+        stackType = 'summon';
+      } else if (isPermanent) {
+        stackType = 'permanent';
+        // --- LÓGICA HEXPROOF PARA EL BOT ---
+        if (cardToPlay.requiresTarget && cardToPlay.etbEffect) {
+          if (cardToPlay.etbEffect.type === 'damage') {
             aiTargetObj = { type: 'player', isLocal: true };
+          } else {
+            const validLocalTargets = state.localCombat.filter(c => !hasKeyword(c, 'hexproof'));
+            if (validLocalTargets.length > 0) {
+              aiTargetObj = { type: 'creature', isLocal: true, index: 0, item: validLocalTargets[0] };
+            } else {
+              aiTargetObj = { type: 'player', isLocal: true };
+            }
           }
         }
-      }
-
-    } else if (cardToPlay.adjunta) {
-      stackType = 'aura';
-      if (state.rivalCombat.length > 0) {
-        aiTargetObj = { type: 'creature', isLocal: false, item: state.rivalCombat[0] };
-      } else {
-        validPlay = false;
-        logMsg(`El Tano no tenía criaturas para encantar con ${cardToPlay.name} y lo descartó.`);
-        state.rivalGraveyard.push(cardToPlay);
-      }
-    } else {
-      stackType = cardToPlay.type.includes('Instantáneo') ? 'instant' : 'spell';
-      if (cardToPlay.effect && cardToPlay.effect.type === 'damage') {
-        aiTargetObj = { type: 'player', isLocal: true };
-      } else if (cardToPlay.effect && cardToPlay.effect.type === 'heal') {
-        aiTargetObj = { type: 'player', isLocal: false };
-      }
-    }
-
-    if (validPlay) {
-      addToStack({
-        card: cardToPlay,
-        isLocal: false,
-        targetObj: aiTargetObj,
-        type: stackType
-      });
-      
-      logMsg(`⏳ El Tano puso ${cardToPlay.name} en la pila. Tenés la prioridad para responder.`);
-      render();
-
-      // CORRECCIÓN CLAVE: En vez de hacer 'return', pausamos la función hasta que vos resuelvas la pila
-      await waitForStackToResolve();
-      
-      // Una vez que la pila se resolvió, le damos 1 segundo de respiro antes de seguir
-      await sleep(1000);
-      if (state.gameOver) return;
-    }
-
-    render(); if (state.gameOver) return; await sleep(1000);
-    // Volvemos a buscar si el Tano puede jugar otra cosa con el maná que le sobra
-    affordableIndex = getAffordableMainPhaseCardIndex();
-  }
-
-  // Si ya no puede (o no quiere) jugar nada más, evalúa la Fase de Combate
-  let attackCount = 0;
-  let heldBackCount = 0;
-  state.rivalCombat.forEach(unit => {
-    // NUEVO: Defensor no puede atacar, ni entra a la evaluación táctica.
-    if (hasKeyword(unit, 'defender')) return;
-
-    if (!unit.tapped && !unit.summoningSickness) {
-      if (shouldRivalAttackWith(unit)) {
-        unit.isAttacking = true;
-        // --- Chequeo de Vigilance: no se gira al atacar ---
-        if (!hasKeyword(unit, 'vigilance')) {
-          unit.tapped = true;
+      } else if (cardToPlay.adjunta) {
+        stackType = 'aura';
+        if (state.rivalCombat.length > 0) {
+          aiTargetObj = { type: 'creature', isLocal: false, item: state.rivalCombat[0] };
+        } else {
+          validPlay = false;
+          logMsg(`El Tano no tenía criaturas para encantar con ${cardToPlay.name} y lo descartó.`);
+          state.rivalGraveyard.push(cardToPlay);
         }
-        attackCount++;
       } else {
-        heldBackCount++;
+        stackType = cardToPlay.type.includes('Instantáneo') ? 'instant' : 'spell';
+        if (cardToPlay.effect && cardToPlay.effect.type === 'damage') {
+          aiTargetObj = { type: 'player', isLocal: true };
+        } else if (cardToPlay.effect && cardToPlay.effect.type === 'heal') {
+          aiTargetObj = { type: 'player', isLocal: false };
+        }
+      }
+
+      if (validPlay) {
+        addToStack({
+          card: cardToPlay,
+          isLocal: false,
+          targetObj: aiTargetObj,
+          type: stackType
+        });
+        
+        logMsg(`⏳ El Tano puso ${cardToPlay.name} en la pila. Tenés la prioridad para responder.`);
+        render();
+        return; // Retorna para esperar resolución. El ciclo de prioridad continuará después.
       }
     }
-  });
-
-  if (heldBackCount > 0) {
-    logMsg(`🧠 El Tano decide guardar ${heldBackCount} criatura(s) atrás para defender.`);
   }
 
-  if (attackCount > 0) {
-    const localHasUntappedBlockers = state.localCombat.some(c => !c.tapped);
+  // 3. Fase de Declaración de Atacantes (Turno del Tano)
+  if (state.activePlayer === 'rival' && state.phase === 'combat_attackers') {
+    let attackCount = 0;
+    let heldBackCount = 0;
+    state.rivalCombat.forEach(unit => {
+      if (hasKeyword(unit, 'defender')) return;
+
+      if (!unit.tapped && !unit.summoningSickness) {
+        if (shouldRivalAttackWith(unit)) {
+          unit.isAttacking = true;
+          if (!hasKeyword(unit, 'vigilance')) {
+            unit.tapped = true;
+          }
+          attackCount++;
+        } else {
+          heldBackCount++;
+        }
+      }
+    });
+
+    if (heldBackCount > 0) logMsg(`🧠 El Tano decide guardar ${heldBackCount} criatura(s) atrás para defender.`);
+    if (attackCount > 0) logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s)!`);
+    else logMsg("El Tano no atacó con nada.");
     
-    if (localHasUntappedBlockers) {
-      state.phase = 'local_block';
-      logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s)! Asigná tus bloqueadores y confirmá.`);
-      render();
-    } else {
-      logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s) y no tenés defensores!`);
-      resolveCombatDamage(state.rivalCombat, state.localCombat, false);
-      await sleep(1500);
-      discardExcessRivalHand();
-      startLocalTurn();
-    }
-  } else {
-    logMsg("El Tano no atacó con nada.");
-    await sleep(1000);
-    discardExcessRivalHand();
-    startLocalTurn();
+    render();
+    passPriority('rival'); // Termina de declarar atacantes
+    return;
   }
-}
 
-function discardExcessRivalHand() {
-  const rivalExcess = state.rivalHand.length - 7;
-  if (rivalExcess > 0) {
-    for (let i = 0; i < rivalExcess; i++) {
-      const randomIndex = Math.floor(Math.random() * state.rivalHand.length);
-      const discardedCard = state.rivalHand.splice(randomIndex, 1)[0];
-      state.rivalGraveyard.push(discardedCard);
-      logMsg(`🗑️ El Tano descartó ${discardedCard.name} por límite de mano.`);
-    }
+  // 4. Fase de Declaración de Bloqueadores (Tu Turno)
+  if (state.activePlayer === 'local' && state.phase === 'combat_blockers') {
+    assignBotBlockers(); // Llama a la lógica inteligente de combate
+    render();
+    passPriority('rival');
+    return;
   }
+
+  // 5. Si no hizo nada de lo anterior, pasa prioridad
+  passPriority('rival');
 }
