@@ -1,4 +1,4 @@
-import { hasKeyword, canBlock } from './keywords.js';
+import { hasKeyword, canBlock, predictDuel } from './keywords.js';
 
 import {
   state,
@@ -141,9 +141,7 @@ export async function checkRivalCounterOrResponse() {
 // armar y decide si vale la pena arriesgarse o si es mejor quedarse a defender.
 function shouldRivalAttackWith(attackerItem) {
   const atkPower = getEffectivePower(attackerItem);
-  const atkTough = getEffectiveToughness(attackerItem);
   const atkHasMenace = hasKeyword(attackerItem, 'menace');
-  const atkHasDeathtouch = hasKeyword(attackerItem, 'deathtouch');
   const hasVigilance = hasKeyword(attackerItem, 'vigilance');
 
   // Bloqueadores tuyos que legalmente podrían pararlo (respeta Volar/Alcance)
@@ -153,26 +151,25 @@ function shouldRivalAttackWith(attackerItem) {
   if (validBlockers.length === 0) return true;
 
   // Tiene Amenaza y no juntás 2 bloqueadores válidos: pasa igual, es gratis.
+  // (Nota: el análisis de Amenaza en gang-block todavía no es consciente de
+  // Golpe Primero/Doble; queda como heurística simple igual que antes.)
   if (atkHasMenace && validBlockers.length < 2) return true;
 
-  const wouldKillAttacker = (blocker) => {
-    const bPower = getEffectivePower(blocker);
-    const blockerHasDeathtouch = hasKeyword(blocker, 'deathtouch');
-    return bPower >= atkTough || (blockerHasDeathtouch && bPower > 0);
-  };
-  const wouldKillBlocker = (blocker) => {
-    const bTough = getEffectiveToughness(blocker);
-    return atkPower >= bTough || (atkHasDeathtouch && atkPower > 0);
-  };
+  // NUEVO: en vez de comparar poder/resistencia a lo bruto (daño simultáneo),
+  // simulamos el duelo 1x1 respetando Golpe Primero y Daño Doble. Esto es lo
+  // que hace que el Tano no se mande a atacar "esperando un cambio parejo"
+  // cuando en realidad, por la iniciativa, pierde su criatura gratis.
+  const dueledBlockers = validBlockers.map(b => ({ b, duel: predictDuel(attackerItem, b) }));
 
   // Si existe UN bloqueador que lo mata gratis (lo frena y sobrevive), el Tano
   // asume que se lo vas a poner y evita el ataque suicida, tenga o no vigilance.
-  const freeKillAvailable = validBlockers.some(b => wouldKillAttacker(b) && !wouldKillBlocker(b));
+  const freeKillAvailable = dueledBlockers.some(({ duel }) => duel.attackerDies && !duel.blockerDies);
   if (freeKillAvailable) return false;
 
   // Si al menos con algún bloqueo se lleva puesta una criatura tuya (trade
-  // parejo o mejor), vale la pena atacar aunque no tenga vigilance.
-  const getsAGoodTrade = validBlockers.some(b => wouldKillBlocker(b));
+  // parejo o mejor, incluyendo los casos donde el Golpe Primero le permite
+  // matar sin recibir nada), vale la pena atacar aunque no tenga vigilance.
+  const getsAGoodTrade = dueledBlockers.some(({ duel }) => duel.blockerDies);
   if (getsAGoodTrade) return true;
 
   // Último caso: lo bloquean pero no muere nadie de los dos lados.
@@ -292,6 +289,9 @@ export async function startRivalTurn() {
   let attackCount = 0;
   let heldBackCount = 0;
   state.rivalCombat.forEach(unit => {
+    // NUEVO: Defensor no puede atacar, ni entra a la evaluación táctica.
+    if (hasKeyword(unit, 'defender')) return;
+
     if (!unit.tapped && !unit.summoningSickness) {
       if (shouldRivalAttackWith(unit)) {
         unit.isAttacking = true;
