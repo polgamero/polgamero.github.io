@@ -115,17 +115,14 @@ export function attachAura(auraCard, creatureItem) {
 }
 
 export function handleCombatClick(item, isLocal, index) {
-  if (state.damageModalOpen) return; // Solo se puede mirar/hover mientras se asigna daño, no interactuar
-  if (state.pendingTargetCard) {
+  if (state.damageModalOpen) return;
 
-    // NUEVO: Bloquear counters a criaturas
+  if (state.pendingTargetCard) {
     if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type && state.pendingTargetCard.effect.type.startsWith('counter')) {
       logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a una criatura.");
       return;
     }
 
-    // --- NUEVO: LÓGICA HEXPROOF (MECÁNICA) ---
-    // Si apuntás a una criatura del Tano que tiene Hexproof, denegamos la acción.
     if (!isLocal && hasKeyword(item, 'hexproof')) {
       logMsg(`🛡️ ¡Epa! ${item.card.name} tiene Intocable. No podés seleccionarlo como objetivo.`);
       return;
@@ -142,9 +139,8 @@ export function handleCombatClick(item, isLocal, index) {
     return;
   }
 
-// AHORA: Solo podés declarar atacantes en la Fase Principal 1
-  if (state.phase === 'main1' && isLocal && state.isPlayerTurn) {
-    // NUEVO: Defensor no puede atacar nunca.
+  // Declarar atacantes solo en sub-paso de atacantes o main1 (si el jugador activo es el local y tiene prioridad)
+  if ((state.phase === 'main1' || state.phase === 'combat_attackers') && isLocal && state.activePlayer === 'local' && state.priorityPlayer === 'local') {
     if (hasKeyword(item, 'defender')) {
       logMsg(`🛡️ ${item.card.name} es Defensor y no puede atacar.`);
       return;
@@ -158,7 +154,7 @@ export function handleCombatClick(item, isLocal, index) {
     item.isAttacking = !item.isAttacking;
     render();
   } 
-  else if (state.phase === 'local_block') {
+  else if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local') {
     if (isLocal) {
       if (item.tapped) {
         logMsg("No podés bloquear con una criatura girada.");
@@ -169,16 +165,12 @@ export function handleCombatClick(item, isLocal, index) {
       render();
     } else {
       if (state.pendingBlockerIndex !== null && item.isAttacking) {
-
-        // --- NUEVO: CHEQUEO DE FLYING/REACH PARA TU DEFENSA ---
         const localUnit = state.localCombat[state.pendingBlockerIndex];
         if (!canBlock(item, localUnit)) {
            logMsg(`❌ Bloqueo ilegal: ${item.card.name} tiene Volar. Tu ${localUnit.card.name} necesita Volar o Alcance.`);
-           return; // Cortamos acá, no se asigna el bloqueo
+           return;
         }
-        // ------------------------------------------------------
 
-        // Si pasa el chequeo, asignamos el bloqueo tal cual lo tenías:
         state.localCombat[state.pendingBlockerIndex].blockingIndex = index;
         logMsg(`Asignaste a ${state.localCombat[state.pendingBlockerIndex].card.name} a bloquear a ${item.card.name}.`);
         state.pendingBlockerIndex = null;
@@ -189,13 +181,12 @@ export function handleCombatClick(item, isLocal, index) {
 }
 
 export function handlePlayerTargetClick(isLocal) {
-  if (state.damageModalOpen) return; // Solo se puede mirar/hover mientras se asigna daño, no interactuar
+  if (state.damageModalOpen) return;
   if (state.pendingTargetCard) {
-    // NUEVO: Bloquear counters a jugadores
-  if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type && state.pendingTargetCard.effect.type.startsWith('counter')) {
-    logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a un jugador.");
-    return;
-  }
+    if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type && state.pendingTargetCard.effect.type.startsWith('counter')) {
+      logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a un jugador.");
+      return;
+    }
     
     const rules = getTargetRules(state.pendingTargetCard);
     if (!rules.allowPlayer) {
@@ -216,22 +207,21 @@ export function cancelPayment() {
 
 export function canPlayCard(card) {
   if (state.gameOver || state.pendingSpellIndex !== null || state.damageModalOpen) return false;
+  if (state.priorityPlayer !== 'local') return false; // Solo si poseés prioridad
   
   const isInstant = card.type.includes('Instantáneo');
 
+  // Si la pila no está vacía, solo instantáneos
   if (spellStack && spellStack.length > 0) return isInstant;
-  if (!state.isPlayerTurn) return isInstant;
 
   if (card.effect && card.effect.type && card.effect.type.startsWith('counter')) {
-      const rivalSpells = spellStack.filter(s => !s.isLocal);
-      if (rivalSpells.length === 0) {
-          logMsg("❌ No podés tirar un counter si no hay hechizos del Tano en la pila.");
-          return; 
-      }
+    const rivalSpells = spellStack.filter(s => !s.isLocal);
+    if (rivalSpells.length === 0) return false; 
   }
   
-  // AHORA: En tu turno, pila vacía y en CUALQUIERA de las dos Fases Principales
-  return state.phase === 'main1' || state.phase === 'main2';
+  // Si la pila está vacía, sorceries/creaturas solo en sus fases principales con su turno activo
+  if (isInstant) return true;
+  return state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2');
 }
 
 export function playCard(index) {
@@ -244,16 +234,19 @@ export function playCard(index) {
 
   if (card.type.includes('Tierra')) {
     if (state.localLandPlayedThisTurn) { logMsg("Ya bajaste una tierra en este turno."); return; }
+    if (state.activePlayer !== 'local' || (state.phase !== 'main1' && state.phase !== 'main2')) {
+      logMsg("Solo podés bajar tierras en tus Fases Principales.");
+      return;
+    }
     state.localLands.push({ card, tapped: false }); state.localHand.splice(index, 1); state.localLandPlayedThisTurn = true;
     logMsg(`Bajaste la tierra: ${card.name}.`); render(); return;
   }
 
-  // Prevención: No dejamos intentar jugar un counter si no hay objetivos en la pila
   if (card.effect && card.effect.type && card.effect.type.startsWith('counter')) {
-      if (!spellStack || spellStack.length === 0) {
-        logMsg(`⚠️ No hay ningún hechizo en la pila para contrarrestar.`);
-        return;
-      }
+    if (!spellStack || spellStack.length === 0) {
+      logMsg(`⚠️ No hay ningún hechizo en la pila para contrarrestar.`);
+      return;
+    }
   }
 
   state.pendingSpellIndex = index; 
@@ -265,7 +258,6 @@ export function playCard(index) {
 }
 
 export function tapLocalLand(item) {
-  // ATENCIÓN: Quitamos la restricción de "!state.isPlayerTurn" para que puedas girar en el turno del rival
   if (state.gameOver || item.tapped) return;
   if (state.pendingSpellIndex === null) { logMsg("Seleccioná primero un hechizo de tu mano para pagar."); return; }
   
@@ -282,21 +274,20 @@ function checkPaymentComplete() {
   if (state.pendingSpellIndex === null) return;
   const cost = state.pendingCost;
   
-  // Si terminó de pagar el maná
   if ((cost.W + cost.U + cost.B + cost.R + cost.G + cost.generic) === 0) {
     const card = state.localHand[state.pendingSpellIndex];
     const isPermanent = card.type.includes('Artefacto') || (card.type.includes('Encantamiento') && !card.adjunta);
     
-    // Sumamos 'counter' a las validaciones que requieren un objetivo antes de ir a la pila
-    const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal' || card.effect.type.startsWith('counter'))));    if (needsTarget) {
+    const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal' || card.effect.type.startsWith('counter'))));
+    if (needsTarget) {
       state.pendingTargetCard = card;
       state.pendingTargetSource = null; 
       
       let targetHint = `Hacé clic en un jugador o criatura para aplicar ${card.name}.`;
       if (card.adjunta) targetHint = `Hacé clic en una de tus criaturas para encantarla con ${card.name}.`;
-        else if (card.effect && card.effect.type.startsWith('counter')) {
-          targetHint = `Hacé clic en el hechizo de la Pila que querés contrarrestar.`;
-    }
+      else if (card.effect && card.effect.type.startsWith('counter')) {
+        targetHint = `Hacé clic en el hechizo de la Pila que querés contrarrestar.`;
+      }
       
       logMsg(`¡Maná pagado! ${targetHint}`);
       return;
@@ -307,7 +298,7 @@ function checkPaymentComplete() {
     let stackType = 'spell';
     if (card.power !== undefined) stackType = 'summon';
     else if (isPermanent) stackType = 'permanent';
-    else if (card.type.includes('Instantáneo')) stackType = 'instant'; // Soporte explícito
+    else if (card.type.includes('Instantáneo')) stackType = 'instant';
 
     addToStack({
       card: card,
@@ -316,6 +307,7 @@ function checkPaymentComplete() {
       type: stackType
     });
 
+    state.consecutivePasses = 0; // Reinicia pases
     state.pendingSpellIndex = null;
     state.pendingCost = null;
     state.tappedLandsThisSpell = [];
@@ -364,6 +356,7 @@ function executeSpellOnTarget(targetObj) {
     state.tappedLandsThisSpell = [];
   }
 
+  state.consecutivePasses = 0;
   state.pendingTargetCard = null;
   state.pendingTargetSource = null;
   render();
@@ -372,9 +365,8 @@ function executeSpellOnTarget(targetObj) {
 }
 
 export function handleSupportClick(item, isLocal, index) {
-  if (state.damageModalOpen) return; // Solo mirar/hover mientras se asigna daño
-  // AHORA: Podés activar habilidades de soporte en main1 y main2
-  if (!isLocal || !state.isPlayerTurn || (state.phase !== 'main1' && state.phase !== 'main2') || state.gameOver) return;
+  if (state.damageModalOpen) return;
+  if (!isLocal || state.priorityPlayer !== 'local' || state.gameOver) return;
 
   const card = item.card;
   if (card.activatedAbility) {
