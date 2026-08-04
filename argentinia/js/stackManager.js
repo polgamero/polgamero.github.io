@@ -21,6 +21,11 @@ export async function resolveTopStackItem() {
   logMsg(`✨ Resolviendo de la pila: ${item.card.name}`);
   
   await executeStackItem(item);
+  
+  // Tras resolver un objeto, la prioridad vuelve al jugador activo
+  state.priorityPlayer = state.activePlayer;
+  state.consecutivePasses = 0;
+
   renderStack();
   
   if (typeof render === 'function') {
@@ -31,7 +36,6 @@ export async function resolveTopStackItem() {
 async function executeStackItem(item) {
   const { card, isLocal, targetObj, type } = item;
 
-  // 1. Permanentes (Criaturas, Artefactos, Encantamientos)
   if (type === 'summon' || type === 'permanent') {
     let newPermanentItem; 
 
@@ -41,11 +45,9 @@ async function executeStackItem(item) {
         blockingIndex: null, damageTaken: 0, auras: [] 
       };
 
-      // --- NUEVO: CHEQUEO DE HASTE ---
       if (hasKeyword(newPermanentItem, 'haste')) {
         newPermanentItem.summoningSickness = false;
       }
-      // -------------------------------
       
       const board = isLocal ? state.localCombat : state.rivalCombat;
       board.push(newPermanentItem);
@@ -57,7 +59,6 @@ async function executeStackItem(item) {
       logMsg(`¡${card.name} entró a la zona de soporte!`);
     }
 
-    // REPARACIÓN BUG 1: Milonga de Medianoche y ETBs con objetivo
     if (card.etbEffect) {
       if (card.requiresTarget && targetObj) {
         let effectToApply = card.etbEffect;
@@ -82,22 +83,18 @@ async function executeStackItem(item) {
           }
         } 
       } else {
-        // ¡Acá estaba mal identado el else! Ahora sí aplica a los ETB sin objetivo.
         resolveEffectDirect(card.etbEffect, card.name, isLocal);
       }
     }
-    return; // Cortamos la ejecución para que los permanentes no sigan bajando.
-  } // <--- ¡ESTA ES LA LLAVE MÁGICA QUE FALTABA! Cierra el bloque 1.
+    return;
+  }
 
-  // 2. Auras
   if (type === 'aura' && targetObj && targetObj.item) {
     attachAura(card, targetObj.item);
     return;
   }
 
-  // 3. Instantáneos / Conjuros / Contrahechizos / HABILIDADES
   if (type === 'spell' || type === 'instant' || type === 'ability') {
-    
     let effectToApply = card.effect;
     
     if (type === 'ability') {
@@ -108,7 +105,6 @@ async function executeStackItem(item) {
       }
     }
 
-    // REPARACIÓN BUG 2: startsWith('counter') para validar tipos derivados (ej. counter_creature)
     if (effectToApply && effectToApply.type && effectToApply.type.startsWith('counter')) {
       if (targetObj && targetObj.type === 'stack') {
         const targetIndex = spellStack.findIndex(s => s.id === targetObj.stackId);
@@ -118,14 +114,11 @@ async function executeStackItem(item) {
           if (counteredItem.isLocal) state.localGraveyard.push(counteredItem.card);
           else state.rivalGraveyard.push(counteredItem.card);
           
-          // Procesamiento seguro de efectos secundarios (Ej: Derecho de Admisión -> add_counter)
           if (card.secondaryEffect && card.secondaryEffect.type === 'add_counter') {
             const friendlyBoard = isLocal ? state.localCombat : state.rivalCombat;
             if (friendlyBoard.length > 0) {
-              const buffTarget = friendlyBoard[0]; // Aplica al primer aliado disponible
+              const buffTarget = friendlyBoard[0];
               if (!buffTarget.auras) buffTarget.auras = [];
-              
-              // Inyectamos el contador aprovechando tu sistema de auras existente
               buffTarget.auras.push({
                 name: 'Contador +1/+1',
                 auraEffect: { stats: { signo: '+', cantidad: 1 } }
@@ -144,11 +137,10 @@ async function executeStackItem(item) {
           if (counteredItem.isLocal) state.localGraveyard.push(counteredItem.card);
           else state.rivalGraveyard.push(counteredItem.card);
         } else {
-          logMsg(`⚠️ ${card.name} se resolvió sin efecto (no había hechizos en la pila).`);
+          logMsg(`⚠️ ${card.name} se resolvió sin efecto.`);
         }
       }
     } 
-    // B) Lógica de Daño / Cura
     else if (targetObj) {
       if (targetObj.type === 'player') {
         const targetName = targetObj.isLocal ? "vos" : "el Tano";
@@ -174,7 +166,6 @@ async function executeStackItem(item) {
       resolveEffectDirect(effectToApply, card.name, isLocal);
     }
     
-    // El hechizo resuelto va al cementerio (EXCEPTO si es una habilidad activada de un permanente)
     if (type !== 'ability') {
       if (isLocal) state.localGraveyard.push(card);
       else state.rivalGraveyard.push(card);
@@ -187,30 +178,20 @@ export function handleStackCardClick(item) {
 
   const effectType = state.pendingTargetCard.effect?.type;
 
-  // Verificamos si es CUALQUIER variante de counter
   if (effectType && effectType.startsWith('counter')) {
-    
-    // NUEVA VALIDACIÓN: Es criatura si su type en la pila es 'summon' o si tiene atributo 'power'
     const isCreatureSpell = item.type === 'summon' || item.card?.power !== undefined;
 
-    if (effectType === 'counter_creature') {
-      if (!isCreatureSpell) {
-        logMsg("❌ Esta carta solo puede contrarrestar hechizos de criatura.");
-        return;
-      }
+    if (effectType === 'counter_creature' && !isCreatureSpell) {
+      logMsg("❌ Esta carta solo puede contrarrestar hechizos de criatura.");
+      return;
     }
 
-    if (effectType === 'counter_non_creature') {
-      if (isCreatureSpell) {
-        logMsg("❌ Esta carta solo puede contrarrestar hechizos que no sean de criatura.");
-        return;
-      }
+    if (effectType === 'counter_non_creature' && isCreatureSpell) {
+      logMsg("❌ Esta carta solo puede contrarrestar hechizos que no sean de criatura.");
+      return;
     }
 
-    // A PARTIR DE ACÁ, ES TU LÓGICA ORIGINAL INTACTA
     const spellIndex = state.pendingSpellIndex;
-
-    // Mover carta de la mano
     const playedCard = state.localHand.splice(spellIndex, 1)[0];
 
     addToStack({
@@ -220,7 +201,7 @@ export function handleStackCardClick(item) {
       type: 'instant'
     });
 
-    // Limpiar estados pendientes
+    state.consecutivePasses = 0;
     state.pendingSpellIndex = null;
     state.pendingCost = null;
     state.pendingTargetCard = null;
@@ -249,20 +230,18 @@ export function renderStack() {
 
   const pendingEffect = state.pendingTargetCard?.effect?.type;
   
-spellStack.forEach((item, index) => {
+  spellStack.forEach((item, index) => {
     const isTop = index === spellStack.length - 1;
     const cardDiv = document.createElement('div');
 
-    // NUEVA VALIDACIÓN VISUAL:
     const isCreatureSpell = item.type === 'summon' || item.card?.power !== undefined;
-
     const isCounterNonCreature = pendingEffect === 'counter_non_creature' && !isCreatureSpell;
     const isCounterCreature = pendingEffect === 'counter_creature' && isCreatureSpell;
     const isGenericCounter = pendingEffect === 'counter' || pendingEffect === 'counter_unless_pay';
     
     const isTargetingCounter = isGenericCounter || isCounterCreature || isCounterNonCreature;
-    
     const targetableClass = isTargetingCounter ? 'targetable-stack' : '';
+
     cardDiv.className = `stack-item-card ${item.isLocal ? 'local' : 'rival'} ${isTop ? 'top-item' : ''} ${targetableClass}`;
     
     let targetText = 'Sin objetivo';
@@ -294,11 +273,10 @@ spellStack.forEach((item, index) => {
   if (btnResolve) {
     btnResolve.textContent = "Pasar Prioridad / Resolver ➔";
     btnResolve.onclick = () => {
-      // Si tocás resolver mientras estabas eligiendo tierras, se cancela tu jugada
       if (state.pendingSpellIndex !== null) {
         cancelPayment();
       }
-      resolveTopStackItem();
+      passPriority('local');
     };
   }
 }
