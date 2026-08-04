@@ -458,7 +458,7 @@ export function render() {
   }
 
   // --- 2. GESTIÓN DEL BOTÓN DE ACCIÓN / PASAR PRIORIDAD ---
-  els.btnEndTurn.disabled = (state.priorityPlayer !== 'local' || state.gameOver);
+  els.btnEndTurn.disabled = (state.priorityPlayer !== 'local' || state.gameOver || state.isDiscarding);
 
   if (state.phase === 'combat_attackers' && state.activePlayer === 'local') {
     const isAttacking = state.localCombat.some(c => c.isAttacking);
