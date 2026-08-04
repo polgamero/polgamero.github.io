@@ -171,7 +171,7 @@ export async function takeBotPriorityAction() {
       const landCard = state.rivalHand.splice(landIndex, 1)[0];
       state.rivalLands.push({ card: landCard, tapped: false }); 
       state.rivalLandPlayedThisTurn = true;
-      logMsg(`El Tano bajó una estancia: ${landCard.name}.`); 
+      logMsg(`El Tano bajó una tierra: ${landCard.name}.`); 
       render(); 
       await sleep(800);
     }
