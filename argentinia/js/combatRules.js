@@ -22,7 +22,6 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
   const atkPower = getEffectivePower(att);
   const atkTough = getEffectiveToughness(att);
   const atkHasTrample = hasKeyword(att, 'trample');
-  const atkHasDeathtouch = hasKeyword(att, 'deathtouch');
 
   const legalBlockers = availableBlockers.filter(obj => canBlock(att, obj.c));
   if (legalBlockers.length === 0) return;
@@ -33,11 +32,11 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
   // a bloquear una criatura que "en teoría" sobrevive pero en la práctica
   // muere gratis porque el atacante le pega primero.
   const kills = (blockerItem) => predictDuel(att, blockerItem.c).attackerDies;
-  const survivesHit = (blockerItem) => !predictDuel(att, blockerItem.c).blockerDies;
+  const blockerSurvives = (blockerItem) => !predictDuel(att, blockerItem.c).blockerDies;
   const valueOf = (blockerItem) => getEffectivePower(blockerItem.c) + getEffectiveToughness(blockerItem.c);
 
-  // 1) Bloqueo limpio: lo mata y sobrevive.
-  const cleanKill = legalBlockers.find(obj => kills(obj) && survivesHit(obj));
+  // 1) Bloqueo limpio: lo mata y sobrevive. Lo mejor posible.
+  const cleanKill = legalBlockers.find(obj => kills(obj) && blockerSurvives(obj));
   if (cleanKill) {
     commitBlock(cleanKill, aIdx, availableBlockers);
     logMsg(`🛡️ El Tano bloquea a tu ${att.card.name} con ${cleanKill.c.card.name} y se lo lleva puesto sin perder nada.`);
@@ -45,16 +44,35 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
   }
 
   if (!atkHasTrample) {
-    // Sin Arrollar no hay motivo para gangear: buscamos el mejor trade 1x1.
+    // 2) NUEVO: Bloqueo gratis. El bloqueador SOBREVIVE aunque no mate al
+    // atacante, así que frenar el golpe no le cuesta absolutamente nada.
+    // Esto SIEMPRE conviene, sin importar si el golpe era "grave" o no
+    // (antes el umbral del 30% de vida bloqueaba esta jugada sin sentido).
+    const safeBlockers = legalBlockers.filter(blockerSurvives);
+    if (safeBlockers.length > 0) {
+      const chosen = [...safeBlockers].sort((x, y) => valueOf(x) - valueOf(y))[0];
+      commitBlock(chosen, aIdx, availableBlockers);
+      logMsg(`🛡️ El Tano frena a tu ${att.card.name} con ${chosen.c.card.name}: no arriesga nada, sobrevive tranquilo.`);
+      return;
+    }
+
+    // 3) Sin Arrollar no hay motivo para gangear: buscamos el mejor trade 1x1.
     const tradeKill = legalBlockers.find(kills);
     if (tradeKill) {
       commitBlock(tradeKill, aIdx, availableBlockers);
       logMsg(`🛡️ El Tano bloquea a tu ${att.card.name} con ${tradeKill.c.card.name}, cambio parejo.`);
       return;
     }
-    // No lo puede matar: solo chumpea si el golpe es realmente grave para su vida.
-    if (atkPower >= state.rivalHP * 0.3) {
-      const chump = [...legalBlockers].sort((x, y) => valueOf(x) - valueOf(y))[0];
+
+    // 4) No lo puede matar y moriría gratis: chumpea si el golpe es grave,
+    // O si el bloqueador es un Defensor puro (nunca podría atacar de todas
+    // formas, así que sacrificarlo acá no le cuesta ninguna oportunidad).
+    const seriousHit = atkPower >= state.rivalHP * 0.3;
+    const pureDefenders = legalBlockers.filter(obj => hasKeyword(obj.c, 'defender'));
+
+    if (seriousHit || pureDefenders.length > 0) {
+      const pool = pureDefenders.length > 0 ? pureDefenders : legalBlockers;
+      const chump = [...pool].sort((x, y) => valueOf(x) - valueOf(y))[0];
       commitBlock(chump, aIdx, availableBlockers);
       logMsg(`🛡️ El Tano sacrifica a ${chump.c.card.name} para frenar el golpe de tu ${att.card.name}.`);
     }
@@ -92,9 +110,12 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
     return;
   }
 
-  // Gangear no logra nada relevante: si el golpe es grave, chumpea con una sola para amortiguar algo.
-  if (atkPower >= state.rivalHP * 0.3) {
-    const chump = sortedByValue[0];
+  // Gangear no logra nada relevante: chumpea si el golpe es grave, o si hay
+  // un Defensor puro disponible (no pierde nada usándolo de todas formas).
+  const seriousHit = atkPower >= state.rivalHP * 0.3;
+  const pureDefenders = sortedByValue.filter(obj => hasKeyword(obj.c, 'defender'));
+  if (seriousHit || pureDefenders.length > 0) {
+    const chump = pureDefenders.length > 0 ? pureDefenders[0] : sortedByValue[0];
     commitBlock(chump, aIdx, availableBlockers);
     logMsg(`🛡️ El Tano sacrifica a ${chump.c.card.name} para amortiguar el Arrollar de tu ${att.card.name}.`);
   }
