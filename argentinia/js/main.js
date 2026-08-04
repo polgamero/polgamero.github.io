@@ -1,7 +1,7 @@
 import { addToStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
-import { startRivalTurn, checkRivalCounterOrResponse } from './bot.js';
+import { checkRivalCounterOrResponse } from './bot.js';
 import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules } from './ui.js';
 import { buildRandomDeck, parseManaCost, getLandColor, sleep } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority } from './turnManager.js';
