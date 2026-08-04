@@ -137,6 +137,11 @@ export function handleCombatClick(item, isLocal, index) {
 
 // AHORA: Solo podés declarar atacantes en la Fase Principal 1
   if (state.phase === 'main1' && isLocal && state.isPlayerTurn) {
+    // NUEVO: Defensor no puede atacar nunca.
+    if (hasKeyword(item, 'defender')) {
+      logMsg(`🛡️ ${item.card.name} es Defensor y no puede atacar.`);
+      return;
+    }
     if (item.summoningSickness) {
       logMsg(`Tu ${item.card.name} está mareado y no puede atacar este turno.`);
       return;
