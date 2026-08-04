@@ -3,6 +3,7 @@ import { state } from './main.js';
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage } from './combatRules.js';
+import { hasKeyword } from './keywords.js';
 
 export function checkGameOver() {
   if (state.gameOver) return;
