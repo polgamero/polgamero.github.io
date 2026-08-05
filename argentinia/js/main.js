@@ -44,6 +44,7 @@ export const state = {
   pendingCost: null,       
   tappedLandsThisSpell: [],
   pendingTargetCard: null,
+  pendingAbilitySource: null,
   
   pendingBlockerIndex: null,
   
@@ -84,9 +85,16 @@ async function initGame() {
 export function getEffectivePower(itemObj) {
   const card = itemObj.card || itemObj;
   let p = card.power || 0;
-  (itemObj.auras || []).forEach(auraCard => {
-    const mod = auraCard.auraEffect && auraCard.auraEffect.stats;
-    if (mod) p += (mod.signo === '-' ? -1 : 1) * mod.cantidad;
+  (itemObj.auras || []).forEach(attached => {
+    const mod = attached.auraEffect && attached.auraEffect.stats;
+    // Soporte para stats asimétricos nuevos
+    if (mod && mod.powerMod !== undefined) {
+      p += mod.powerMod;
+    } 
+    // Compatibilidad con el formato viejo (auras simétricas)
+    else if (mod && mod.cantidad) {
+      p += (mod.signo === '-' ? -1 : 1) * mod.cantidad;
+    }
   });
   return p;
 }
@@ -94,9 +102,14 @@ export function getEffectivePower(itemObj) {
 export function getEffectiveToughness(itemObj) {
   const card = itemObj.card || itemObj;
   let t = card.toughness || 0;
-  (itemObj.auras || []).forEach(auraCard => {
-    const mod = auraCard.auraEffect && auraCard.auraEffect.stats;
-    if (mod) t += (mod.signo === '-' ? -1 : 1) * mod.cantidad;
+  (itemObj.auras || []).forEach(attached => {
+    const mod = attached.auraEffect && attached.auraEffect.stats;
+    if (mod && mod.toughnessMod !== undefined) {
+      t += mod.toughnessMod;
+    } 
+    else if (mod && mod.cantidad) {
+      t += (mod.signo === '-' ? -1 : 1) * mod.cantidad;
+    }
   });
   return t;
 }
@@ -198,10 +211,15 @@ export function handlePlayerTargetClick(isLocal) {
 }
 
 export function cancelPayment() {
-  if (state.pendingSpellIndex === null) return;
+  if (state.pendingSpellIndex === null && state.pendingAbilitySource === null) return;
   state.tappedLandsThisSpell.forEach(land => land.tapped = false);
-  state.pendingSpellIndex = null; state.pendingCost = null; state.tappedLandsThisSpell = []; state.pendingTargetCard = null;
-  logMsg("Cancelaste el hechizo. Las tierras se enderezaron.");
+  state.pendingSpellIndex = null; 
+  state.pendingAbilitySource = null; // <- Agregado
+  state.pendingCost = null; 
+  state.tappedLandsThisSpell = []; 
+  state.pendingTargetCard = null;
+  state.pendingTargetSource = null;
+  logMsg("Cancelaste la acción. Las tierras se enderezaron.");
   render();
 }
 
@@ -259,7 +277,10 @@ export function playCard(index) {
 
 export function tapLocalLand(item) {
   if (state.gameOver || item.tapped) return;
-  if (state.pendingSpellIndex === null) { logMsg("Seleccioná primero un hechizo de tu mano para pagar."); return; }
+  if (state.pendingSpellIndex === null && state.pendingAbilitySource === null) { 
+    logMsg("Seleccioná primero un hechizo o habilidad para pagar."); 
+    return; 
+  }
   
   const landColor = getLandColor(item.card); let used = false;
   if (['W', 'U', 'B', 'R', 'G'].includes(landColor) && state.pendingCost[landColor] > 0) { state.pendingCost[landColor] -= 1; used = true; } 
@@ -271,49 +292,51 @@ export function tapLocalLand(item) {
 }
 
 function checkPaymentComplete() {
-  if (state.pendingSpellIndex === null) return;
   const cost = state.pendingCost;
-  
+  if (!cost) return;
+
   if ((cost.W + cost.U + cost.B + cost.R + cost.G + cost.generic) === 0) {
-    const card = state.localHand[state.pendingSpellIndex];
-    const isPermanent = card.type.includes('Artefacto') || (card.type.includes('Encantamiento') && !card.adjunta);
     
-    const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal' || card.effect.type.startsWith('counter'))));
-    if (needsTarget) {
-      state.pendingTargetCard = card;
-      state.pendingTargetSource = null; 
+    // CASO A: ESTAMOS PAGANDO UNA CARTA DE LA MANO
+    if (state.pendingSpellIndex !== null) {
+      const card = state.localHand[state.pendingSpellIndex];
+      // ... (Mantené todo tu código actual de castear cartas acá adentro hasta el addToStack) ...
+      // Recordá limpiar: state.pendingSpellIndex = null;
+    } 
+    
+    // CASO B: ESTAMOS PAGANDO UNA HABILIDAD DE LA MESA
+    else if (state.pendingAbilitySource !== null) {
+      const source = state.pendingAbilitySource;
+      const card = source.item.card;
       
-      let targetHint = `Hacé clic en un jugador o criatura para aplicar ${card.name}.`;
-      if (card.adjunta) targetHint = `Hacé clic en una de tus criaturas para encantarla con ${card.name}.`;
-      else if (card.effect && card.effect.type.startsWith('counter')) {
-        targetHint = `Hacé clic en el hechizo de la Pila que querés contrarrestar.`;
+      // Si el pago incluía {T}, giramos el artefacto ahora
+      if (source.requiresTap) {
+        source.item.tapped = true;
       }
-      
-      logMsg(`¡Maná pagado! ${targetHint}`);
-      return;
+
+      if (card.activatedAbility.requiresTarget && state.pendingTargetCard) {
+        logMsg(`¡Costo pagado! Elegí un objetivo para la habilidad de ${card.name}.`);
+        state.pendingTargetSource = source; // Guardamos el source para executeSpellOnTarget
+        render();
+        return;
+      }
+
+      addToStack({
+        card: card,
+        isLocal: source.isLocal,
+        targetObj: null,
+        type: 'ability',
+        source: { type: 'support_activation', index: source.index }
+      });
+
+      logMsg(`Activaste la habilidad de ${card.name}.`);
+      state.consecutivePasses = 0;
+      state.pendingAbilitySource = null;
+      state.pendingCost = null;
+      state.tappedLandsThisSpell = [];
+      render();
+      checkRivalCounterOrResponse();
     }
-
-    state.localHand.splice(state.pendingSpellIndex, 1);
-    
-    let stackType = 'spell';
-    if (card.power !== undefined) stackType = 'summon';
-    else if (isPermanent) stackType = 'permanent';
-    else if (card.type.includes('Instantáneo')) stackType = 'instant';
-
-    addToStack({
-      card: card,
-      isLocal: true,
-      targetObj: null,
-      type: stackType
-    });
-
-    state.consecutivePasses = 0; // Reinicia pases
-    state.pendingSpellIndex = null;
-    state.pendingCost = null;
-    state.tappedLandsThisSpell = [];
-    render();
-
-    checkRivalCounterOrResponse();
   }
 }
 
@@ -365,29 +388,45 @@ function executeSpellOnTarget(targetObj) {
 }
 
 export function handleSupportClick(item, isLocal, index) {
-  if (state.damageModalOpen) return;
-  if (!isLocal || state.priorityPlayer !== 'local' || state.gameOver) return;
+  if (state.gameOver || !isLocal) return;
+  if (state.phase !== 'main1' && state.phase !== 'main2') return;
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null) {
+    logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
+    return;
+  }
 
   const card = item.card;
-  if (card.activatedAbility) {
-    if (card.activatedAbility.cost === "{T}") {
-      if (item.tapped) {
-        logMsg(`El permanente ${card.name} ya está girado.`);
-        return;
-      }
-      item.tapped = true;
-      logMsg(`Giraste ${card.name} para usar su habilidad.`);
+  if (!card.activatedAbility) return;
 
-      if (card.activatedAbility.requiresTarget) {
-        state.pendingTargetCard = card;
-        state.pendingTargetSource = { type: 'support_activation', item };
-        logMsg(`Seleccioná un objetivo para el efecto de ${card.name}.`);
-        render();
-      } else {
-        resolveEffectDirect(card.activatedAbility.effect, card.name, true);
-        render();
-      }
-    }
+  const costStr = card.activatedAbility.cost || "";
+  const requiresTap = costStr.includes('{T}');
+  
+  if (requiresTap && item.tapped) {
+    logMsg(`⏳ ${card.name} ya está girado.`);
+    return;
+  }
+
+  // Extraemos el costo de maná removiendo el símbolo de tapeo
+  const manaCostStr = costStr.replace('{T}', '').trim();
+  const manaCost = parseManaCost(manaCostStr || "");
+
+  state.pendingAbilitySource = { item, index, isLocal, requiresTap };
+  state.pendingCost = manaCost;
+  state.tappedLandsThisSpell = [];
+
+  // Verificamos si requiere objetivos
+  const needsTarget = card.activatedAbility.requiresTarget;
+  if (needsTarget) {
+    state.pendingTargetCard = card;
+  }
+
+  const totalMana = manaCost.W + manaCost.U + manaCost.B + manaCost.R + manaCost.G + manaCost.generic;
+  
+  if (totalMana === 0) {
+    checkPaymentComplete(); // Si solo cuesta {T} o {0}, lo procesamos directo
+  } else {
+    logMsg(`Activando ${card.name}. Elegí tierras para pagar el costo.`);
+    render();
   }
 }
 
