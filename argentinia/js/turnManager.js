@@ -170,9 +170,29 @@ function executeDrawStep() {
 
 function executeCleanupStep() {
   const isLocal = state.activePlayer === 'local';
+  
+  // Limpiamos el daño residual
   state.localCombat.forEach(c => c.damageTaken = 0);
   state.rivalCombat.forEach(c => c.damageTaken = 0);
 
+  // LÓGICA NUEVA: Devolver vehículos a la zona de soporte
+  const revertVehicles = (combatZone, supportZone) => {
+    for (let i = combatZone.length - 1; i >= 0; i--) {
+      if (combatZone[i].isVehicle) {
+        const v = combatZone.splice(i, 1)[0];
+        v.isVehicle = false;
+        // Le borramos las estadísticas de criatura
+        delete v.card.power;
+        delete v.card.toughness;
+        supportZone.push(v);
+      }
+    }
+  };
+
+  revertVehicles(state.localCombat, state.localSupport);
+  revertVehicles(state.rivalCombat, state.rivalSupport);
+
+  // Lógica de descarte habitual...
   if (isLocal) {
     const excess = state.localHand.length - 7;
     if (excess > 0) {
