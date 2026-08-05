@@ -402,6 +402,9 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
 }
 
 export function checkDeaths(combatArray, graveyardArray, ownerName) {
+  const isLocal = ownerName === "Vos";
+  const supportArray = isLocal ? state.localSupport : state.rivalSupport;
+
   for (let i = combatArray.length - 1; i >= 0; i--) {
     let unit = combatArray[i];
     let dmg = unit.damageTaken || 0;
@@ -409,10 +412,17 @@ export function checkDeaths(combatArray, graveyardArray, ownerName) {
     if (dmg >= getEffectiveToughness(unit) || (unit.tookDeathtouch && dmg > 0)) {
       logMsg(`💀 ${unit.card.name} de ${ownerName} murió y va al cementerio.`);
       graveyardArray.push(unit.card);
+      
       if (unit.auras && unit.auras.length > 0) {
-        unit.auras.forEach(auraCard => {
-          logMsg(`💔 ${auraCard.name} se desprendió y también fue al cementerio.`);
-          graveyardArray.push(auraCard);
+        unit.auras.forEach(attachedCard => {
+          if (attachedCard.type.includes('Equipamiento')) {
+            logMsg(`🛠️ ${attachedCard.name} cae a la mesa (Zona de Soporte).`);
+            // El equipamiento vuelve al support, destapeado
+            supportArray.push({ card: attachedCard, tapped: false });
+          } else {
+            logMsg(`💔 ${attachedCard.name} se desprendió y también fue al cementerio.`);
+            graveyardArray.push(attachedCard);
+          }
         });
       }
       combatArray.splice(i, 1);
