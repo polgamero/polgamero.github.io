@@ -364,8 +364,9 @@ function checkPaymentComplete() {
         source.item.tapped = true;
       }
  
-      if (card.activatedAbility.requiresTarget && state.pendingTargetCard) {
+      if (card.activatedAbility.requiresTarget) {
         logMsg(`¡Costo pagado! Elegí un objetivo para la habilidad de ${card.name}.`);
+        state.pendingTargetCard = card;
         state.pendingTargetSource = source; // Guardamos el source para executeSpellOnTarget
         render();
         return;
@@ -432,6 +433,7 @@ function executeSpellOnTarget(targetObj) {
   state.consecutivePasses = 0;
   state.pendingTargetCard = null;
   state.pendingTargetSource = null;
+  state.pendingAbilitySource = null;
   render();
 
   checkRivalCounterOrResponse();
@@ -464,11 +466,8 @@ export function handleSupportClick(item, isLocal, index) {
   state.pendingCost = manaCost;
   state.tappedLandsThisSpell = [];
 
-  // Verificamos si requiere objetivos
-  const needsTarget = card.activatedAbility.requiresTarget;
-  if (needsTarget) {
-    state.pendingTargetCard = card;
-  }
+  // El objetivo se pide recién cuando el costo esté pagado (ver checkPaymentComplete, CASO B).
+  // No seteamos pendingTargetCard acá todavía.
 
   const totalMana = manaCost.W + manaCost.U + manaCost.B + manaCost.R + manaCost.G + manaCost.generic;
   
