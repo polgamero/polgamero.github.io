@@ -161,11 +161,39 @@ async function executeStackItem(item) {
           logMsg(`💥 ¡${card.name}! Le hizo ${effectToApply.amount} de daño a ${targetUnit.card.name}.`);
           checkDeaths(state.localCombat, state.localGraveyard, "Vos");
           checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+        } 
+        // LÓGICA NUEVA: EQUIPAMIENTO
+        else if (effectToApply.type === 'attach_equipment') {
+          if (!targetUnit.auras) targetUnit.auras = [];
+          targetUnit.auras.push({
+            name: card.name,
+            auraEffect: { stats: effectToApply.stats }
+          });
+          logMsg(`🗡️ ¡${card.name} fue equipado a ${targetUnit.card.name}!`);
         }
       }
     } else {
-      resolveEffectDirect(effectToApply, card.name, isLocal);
-    }
+      // LÓGICA NUEVA: VEHÍCULOS (no requieren un targetObj externo porque se "activan" a sí mismos)
+      if (effectToApply.type === 'crew_vehicle') {
+        const supportZone = isLocal ? state.localSupport : state.rivalSupport;
+        const combatZone = isLocal ? state.localCombat : state.rivalCombat;
+        
+        // Buscamos el vehículo en el soporte
+        const vehicleIndex = supportZone.findIndex(s => s.card.id === card.id);
+        if (vehicleIndex !== -1) {
+          const vehicleItem = supportZone.splice(vehicleIndex, 1)[0];
+          
+          // Le pasamos los stats base para que se vuelva criatura temporal
+          vehicleItem.card.power = card.baseStats.power;
+          vehicleItem.card.toughness = card.baseStats.toughness;
+          vehicleItem.isVehicle = true; // Flag clave para devolverlo después
+          
+          combatZone.push(vehicleItem);
+          logMsg(`🚗 ¡${card.name} fue tripulado y aceleró al campo de batalla como un ${card.baseStats.power}/${card.baseStats.toughness}!`);
+        }
+      } else {
+        resolveEffectDirect(effectToApply, card.name, isLocal);
+      }
     
     if (type !== 'ability') {
       if (isLocal) state.localGraveyard.push(card);
