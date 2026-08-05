@@ -224,7 +224,7 @@ export function cancelPayment() {
 }
 
 export function canPlayCard(card) {
-  if (state.gameOver || state.pendingSpellIndex !== null || state.damageModalOpen) return false;
+  if (state.gameOver || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.damageModalOpen) return false;
   if (state.priorityPlayer !== 'local') return false; // Solo si poseés prioridad
   
   const isInstant = card.type.includes('Instantáneo');
@@ -297,7 +297,16 @@ function checkPaymentComplete() {
   if (!cost) return;
  
   if ((cost.W + cost.U + cost.B + cost.R + cost.G + cost.generic) === 0) {
-    
+
+    // SALVAGUARDA: esto no debería poder pasar nunca (canPlayCard ya lo previene),
+    // pero si por algún motivo quedaran ambos pagos pendientes a la vez, mejor
+    // frenar y avisar que resolver la carta equivocada.
+    if (state.pendingSpellIndex !== null && state.pendingAbilitySource !== null) {
+      logMsg("⚠️ Se detectó un conflicto de pagos pendientes. Cancelando ambos por seguridad.");
+      cancelPayment();
+      return;
+    }
+
     // CASO A: ESTAMOS PAGANDO UNA CARTA DE LA MANO
     if (state.pendingSpellIndex !== null) {
       const card = state.localHand[state.pendingSpellIndex];
