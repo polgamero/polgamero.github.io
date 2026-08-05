@@ -194,6 +194,7 @@ async function executeStackItem(item) {
       } else {
         resolveEffectDirect(effectToApply, card.name, isLocal);
       }
+    }
     
     if (type !== 'ability') {
       if (isLocal) state.localGraveyard.push(card);
