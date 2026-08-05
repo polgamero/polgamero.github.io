@@ -86,7 +86,7 @@
     "activatedAbility": { 
       "cost": "{1}{T}", 
       "effect": {"type": "draw", "amount": 1}, 
-      "requiresTarget": true 
+      "requiresTarget": false 
     }
   }
 ]
