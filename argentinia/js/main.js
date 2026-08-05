@@ -291,17 +291,58 @@ export function tapLocalLand(item) {
   render();
 }
 
+
 function checkPaymentComplete() {
   const cost = state.pendingCost;
   if (!cost) return;
-
+ 
   if ((cost.W + cost.U + cost.B + cost.R + cost.G + cost.generic) === 0) {
     
     // CASO A: ESTAMOS PAGANDO UNA CARTA DE LA MANO
     if (state.pendingSpellIndex !== null) {
       const card = state.localHand[state.pendingSpellIndex];
-      // ... (Mantené todo tu código actual de castear cartas acá adentro hasta el addToStack) ...
-      // Recordá limpiar: state.pendingSpellIndex = null;
+      const isPermanent = card.type.includes('Artefacto') || (card.type.includes('Encantamiento') && !card.adjunta);
+ 
+      const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal' || card.effect.type.startsWith('counter'))));
+      if (needsTarget) {
+        state.pendingTargetCard = card;
+        state.pendingTargetSource = null;
+ 
+        let targetHint = `Hacé clic en un jugador o criatura para aplicar ${card.name}.`;
+        if (card.adjunta) targetHint = `Hacé clic en una de tus criaturas para encantarla con ${card.name}.`;
+        else if (card.effect && card.effect.type.startsWith('counter')) {
+          targetHint = `Hacé clic en el hechizo de la Pila que querés contrarrestar.`;
+        }
+ 
+        logMsg(`¡Maná pagado! ${targetHint}`);
+        render();
+        return;
+      }
+ 
+      state.localHand.splice(state.pendingSpellIndex, 1);
+ 
+      let stackType = 'spell';
+      if (card.power !== undefined) stackType = 'summon';
+      else if (isPermanent) stackType = 'permanent';
+      else if (card.type.includes('Instantáneo')) stackType = 'instant';
+ 
+      addToStack({
+        card: card,
+        isLocal: true,
+        targetObj: null,
+        type: stackType
+      });
+ 
+      logMsg(`⏳ ${card.name} entró a la pila.`);
+ 
+      // --- LIMPIEZA DE ESTADO QUE FALTABA (espejo del CASO B) ---
+      state.consecutivePasses = 0;
+      state.pendingSpellIndex = null;
+      state.pendingCost = null;
+      state.tappedLandsThisSpell = [];
+      render();
+ 
+      checkRivalCounterOrResponse();
     } 
     
     // CASO B: ESTAMOS PAGANDO UNA HABILIDAD DE LA MESA
@@ -313,14 +354,14 @@ function checkPaymentComplete() {
       if (source.requiresTap) {
         source.item.tapped = true;
       }
-
+ 
       if (card.activatedAbility.requiresTarget && state.pendingTargetCard) {
         logMsg(`¡Costo pagado! Elegí un objetivo para la habilidad de ${card.name}.`);
         state.pendingTargetSource = source; // Guardamos el source para executeSpellOnTarget
         render();
         return;
       }
-
+ 
       addToStack({
         card: card,
         isLocal: source.isLocal,
@@ -328,7 +369,7 @@ function checkPaymentComplete() {
         type: 'ability',
         source: { type: 'support_activation', index: source.index }
       });
-
+ 
       logMsg(`Activaste la habilidad de ${card.name}.`);
       state.consecutivePasses = 0;
       state.pendingAbilitySource = null;
