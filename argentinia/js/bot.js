@@ -146,6 +146,96 @@ function shouldRivalAttackWith(attackerItem) {
   return hasVigilance;
 }
 
+// NUEVO: Evaluación táctica para activar artefactos y soporte
+export function tryActivateBotAbilities() {
+  // Recorremos los artefactos en la mesa del Tano
+  for (let i = 0; i < state.rivalSupport.length; i++) {
+    const supportItem = state.rivalSupport[i];
+    const card = supportItem.card;
+    
+    // Si no tiene habilidad activable o ya está girado y la requiere, pasamos
+    if (!card.activatedAbility) continue;
+    const ability = card.activatedAbility;
+    const requiresTap = ability.cost.includes('{T}');
+    if (requiresTap && supportItem.tapped) continue;
+
+    // Extraemos el costo de maná para ver si el Tano lo puede pagar
+    const manaCostString = ability.cost.replace('{T}', '').replace(',', '').trim();
+    const dummyCardForCost = { manaCost: manaCostString || null };
+    
+    if (dummyCardForCost.manaCost && !canRivalAfford(dummyCardForCost)) continue;
+
+    let shouldActivate = false;
+    let aiTargetObj = null;
+
+    // 🧠 CEREBRO DEL TANO: ¿Cuándo y a quién activar?
+    if (ability.effect.type === 'crew_vehicle') {
+      // Tripular la Carreta Blindada solo en main1 para poder atacar con ella
+      if (state.phase === 'main1') shouldActivate = true;
+    } 
+    else if (ability.effect.type === 'attach_equipment') {
+      // Equipar el Facón en main1 a su criatura más fuerte que no esté girada
+      if (state.phase === 'main1' && state.rivalCombat.length > 0) {
+         const bestTargets = state.rivalCombat.filter(c => !c.tapped);
+         if (bestTargets.length > 0) {
+           const chosen = bestTargets.reduce((prev, current) => 
+              (getEffectivePower(prev) > getEffectivePower(current)) ? prev : current
+           );
+           aiTargetObj = { type: 'creature', isLocal: false, item: chosen };
+           shouldActivate = true;
+         }
+      }
+    }
+    else if (ability.effect.type === 'heal' || ability.effect.type === 'draw') {
+      // Tomar Mate o usar la Imprenta: priorizar en main2 si sobra maná, o si está perdiendo sangre
+      if (state.phase === 'main2' || (ability.effect.type === 'heal' && state.rivalHP <= 12)) {
+        aiTargetObj = ability.requiresTarget ? { type: 'player', isLocal: false } : null;
+        shouldActivate = true;
+      }
+    }
+    else if (ability.effect.type === 'damage') {
+      // Boleadoras: Tratar de matar una criatura tuya molesta, o pegarte directo en main2
+      if (state.localCombat.length > 0) {
+        const vulnerable = state.localCombat.find(c => 
+          !hasKeyword(c, 'hexproof') && getEffectiveToughness(c) <= ability.effect.amount
+        );
+        if (vulnerable) {
+           aiTargetObj = { type: 'creature', isLocal: true, index: state.localCombat.indexOf(vulnerable), item: vulnerable };
+           shouldActivate = true;
+        }
+      }
+      // Si no hay criaturas vulnerables y está cerrando el turno, te pega a la cara
+      if (!shouldActivate && state.phase === 'main2') {
+         aiTargetObj = { type: 'player', isLocal: true };
+         shouldActivate = true;
+      }
+    }
+
+    // ⚡ EJECUCIÓN
+    if (shouldActivate) {
+      if (dummyCardForCost.manaCost) tapRivalLandsFor(dummyCardForCost);
+      if (requiresTap) supportItem.tapped = true;
+
+      addToStack({
+        card: card,
+        isLocal: false,
+        targetObj: aiTargetObj,
+        type: 'ability',
+        source: { type: 'support_activation', index: i }
+      });
+
+      // Devolvemos la prioridad al jugador para que pueda responder
+      state.priorityPlayer = 'local';
+      state.consecutivePasses = 0;
+      
+      logMsg(`⚙️ El Tano activó la habilidad de ${card.name}. Tenés prioridad para responder.`);
+      render();
+      return true; // Retornamos true para pausar su loop de toma de decisiones
+    }
+  }
+  return false;
+}
+
 // NUEVO: SISTEMA DE PRIORIDAD DEL BOT (Remplaza startRivalTurn)
 export async function takeBotPriorityAction() {
   if (state.gameOver || state.priorityPlayer !== 'rival') return;
@@ -175,6 +265,11 @@ export async function takeBotPriorityAction() {
       render(); 
       await sleep(800);
     }
+
+    // --- NUEVO: Intentar activar habilidades de artefactos primero ---
+    const abilityActivated = tryActivateBotAbilities();
+    if (abilityActivated) return; // Si activó algo, la función corta y espera resolución
+    // -----------------------------------------------------------------
     
     const getAffordableMainPhaseCardIndex = () => {
       return state.rivalHand.findIndex(c => {
