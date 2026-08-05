@@ -480,11 +480,13 @@ export function render() {
   if (state.isDiscarding) els.localHand.classList.add('discard-warning');
   else els.localHand.classList.remove('discard-warning');
 
-  if (state.pendingSpellIndex !== null) {
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null) {
     els.paymentControls.classList.remove('hidden'); els.btnEndTurn.classList.add('hidden'); 
     els.localHand.classList.add('paying-mode'); els.localLands.classList.add('paying-mode');
-    const pendingCardEl = els.localHand.children[state.pendingSpellIndex];
-    if (pendingCardEl) pendingCardEl.classList.add('paying');
+    if (state.pendingSpellIndex !== null) {
+      const pendingCardEl = els.localHand.children[state.pendingSpellIndex];
+      if (pendingCardEl) pendingCardEl.classList.add('paying');
+    }
     
     let statusText = state.pendingTargetCard ? "¡Maná pagado! Elegí un objetivo brillante ✨" : "Falta: ";
     if (!state.pendingTargetCard) {
@@ -509,7 +511,7 @@ els.btnCancelSpell.addEventListener('click', cancelPayment);
 // ACTUALIZADO: Controles de teclado globales (Escape y Barra Espaciadora)
 document.addEventListener('keydown', (e) => { 
   // Cancelar pagos pendientes
-  if (e.key === 'Escape' && state.pendingSpellIndex !== null) {
+  if (e.key === 'Escape' && (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null)) {
     cancelPayment(); 
   }
   
