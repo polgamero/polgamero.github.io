@@ -505,8 +505,29 @@ export function render() {
 }
 
 els.btnCancelSpell.addEventListener('click', cancelPayment);
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.pendingSpellIndex !== null) cancelPayment(); });
-let resizeTimeout = null; window.addEventListener('resize', () => { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(sizeAllRows, 120); });
+
+// ACTUALIZADO: Controles de teclado globales (Escape y Barra Espaciadora)
+document.addEventListener('keydown', (e) => { 
+  // Cancelar pagos pendientes
+  if (e.key === 'Escape' && state.pendingSpellIndex !== null) {
+    cancelPayment(); 
+  }
+  
+  // Pasar prioridad / Avanzar turno con la barra espaciadora
+  if (e.code === 'Space') {
+    // Si el botón está habilitado y visible, simulamos el click
+    if (!els.btnEndTurn.disabled && !els.btnEndTurn.classList.contains('hidden')) {
+      e.preventDefault(); // Evitamos que la pantalla scrollee para abajo
+      els.btnEndTurn.click();
+    }
+  }
+});
+
+let resizeTimeout = null; 
+window.addEventListener('resize', () => { 
+  clearTimeout(resizeTimeout); 
+  resizeTimeout = setTimeout(sizeAllRows, 120); 
+});
 
 // --- PANEL MANUAL DE ASIGNACIÓN DE DAÑO (INTACTO) ---
 export function showDamageAssignmentModal(attackerItem, blockersArray, totalDamage, onAuto, onConfirmManual) {
