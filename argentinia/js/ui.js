@@ -8,6 +8,7 @@ import {
   tapLocalLand,
   handleCombatClick,
   handleSupportClick,
+  handleSupportTargetClick,
   handlePlayerTargetClick,
   cancelPayment,
   checkGameOver,
@@ -197,9 +198,20 @@ export function renderManaSymbols(manaCostStr) {
 
 export function getTargetRules(card) {
   if (card.adjunta) {
-    return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: false };
+    return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
   }
-  return { allowPlayer: true, allowLocalCreature: true, allowRivalCreature: true };
+  // Un objeto en la pila puede llegar con requiresTarget desde una carta (spell/instant) o desde
+  // una habilidad activada (source de tablero) — buscamos el effect en cualquiera de los dos lugares.
+  const effectType = card.effect?.type || card.activatedAbility?.effect?.type;
+
+  if (effectType === 'destroy_artifact') {
+    return { allowPlayer: false, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: true, allowRivalPermanent: true, permanentFilter: 'Artefacto' };
+  }
+  if (effectType === 'destroy_enchantment') {
+    return { allowPlayer: false, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: true, allowRivalPermanent: true, permanentFilter: 'Encantamiento' };
+  }
+
+  return { allowPlayer: true, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
 }
 
 export function createCardElement(itemObj, isTapped = false, isLocal = true, index = null, zone = 'hand', customClick = null) {
@@ -212,9 +224,15 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const isSelectedBlocker = (state.pendingBlockerIndex === index && zone === 'combat' && isLocal) ? 'selected-blocker' : '';
 
   let isTargetable = false;
-  if (state.pendingTargetCard && zone === 'combat') {
+  if (state.pendingTargetCard) {
     const rules = getTargetRules(state.pendingTargetCard);
-    isTargetable = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
+    if (zone === 'combat') {
+      isTargetable = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
+    } else if (zone === 'support') {
+      const allowThisSide = isLocal ? rules.allowLocalPermanent : rules.allowRivalPermanent;
+      const matchesFilter = !rules.permanentFilter || card.type.includes(rules.permanentFilter);
+      isTargetable = allowThisSide && matchesFilter;
+    }
   }
 
   if (!isLocal && hasKeyword(itemObj, 'hexproof')) {
@@ -366,11 +384,24 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
       if (zoneType === 'land' && isLocal) {
         const readyLand = group.ready[0];
         if (readyLand) tapLocalLand(readyLand);
-      } else if (zoneType === 'support' && isLocal && state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2')) {
-        const readySupport = group.ready[0];
-        if (readySupport) {
-          const originalIdx = group.items.find(x => x.item === readySupport).originalIndex;
-          handleSupportClick(readySupport, isLocal, originalIdx);
+      } else if (zoneType === 'support') {
+        // Si hay un hechizo esperando un objetivo tipo permanente, prioriza eso sobre activar la habilidad
+        if (state.pendingTargetCard) {
+          const rules = getTargetRules(state.pendingTargetCard);
+          const allowThisSide = isLocal ? rules.allowLocalPermanent : rules.allowRivalPermanent;
+          const matchesFilter = !rules.permanentFilter || group.items[0].item.card.type.includes(rules.permanentFilter);
+          if (allowThisSide && matchesFilter) {
+            const { item: targetItem, originalIndex } = group.items[0];
+            handleSupportTargetClick(targetItem, isLocal, originalIndex);
+            return;
+          }
+        }
+        if (isLocal && state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2')) {
+          const readySupport = group.ready[0];
+          if (readySupport) {
+            const originalIdx = group.items.find(x => x.item === readySupport).originalIndex;
+            handleSupportClick(readySupport, isLocal, originalIdx);
+          }
         }
       }
     };
