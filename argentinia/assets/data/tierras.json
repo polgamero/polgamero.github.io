@@ -1,6 +1,6 @@
 [
   {
-    "id": "land_001",
+    "id": "tier_001",
     "name": "La Bombonera",
     "type": "Tierra básica — Planicie",
     "manaCost": "",
@@ -13,7 +13,7 @@
     "produces": "W"
   },
   {
-    "id": "land_002",
+    "id": "tier_002",
     "name": "El Obelisco",
     "type": "Tierra básica — Planicie",
     "manaCost": "",
@@ -26,7 +26,7 @@
     "produces": "W"
   },
   {
-    "id": "land_003",
+    "id": "tier_003",
     "name": "Glaciar Perito Moreno",
     "type": "Tierra básica — Agua",
     "manaCost": "",
@@ -39,7 +39,7 @@
     "produces": "U"
   },
   {
-    "id": "land_004",
+    "id": "tier_004",
     "name": "El Monumental",
     "type": "Tierra básica — Agua",
     "manaCost": "",
@@ -52,7 +52,7 @@
     "produces": "U"
   },
   {
-    "id": "land_005",
+    "id": "tier_005",
     "name": "Cerro Siete Colores",
     "type": "Tierra básica — Montaña",
     "manaCost": "",
@@ -65,7 +65,7 @@
     "produces": "R"
   },
   {
-    "id": "land_006",
+    "id": "tier_006",
     "name": "Ruta 40",
     "type": "Tierra básica — Montaña",
     "manaCost": "",
@@ -78,7 +78,7 @@
     "produces": "R"
   },
   {
-    "id": "land_007",
+    "id": "tier_007",
     "name": "La Pampa Húmeda",
     "type": "Tierra básica — Bosque",
     "manaCost": "",
@@ -91,7 +91,7 @@
     "produces": "G"
   },
   {
-    "id": "land_008",
+    "id": "tier_008",
     "name": "Esteros del Iberá",
     "type": "Tierra básica — Bosque",
     "manaCost": "",
@@ -104,7 +104,7 @@
     "produces": "G"
   },
   {
-    "id": "land_009",
+    "id": "tier_009",
     "name": "El Riachuelo",
     "type": "Tierra básica — Pantano",
     "manaCost": "",
@@ -117,7 +117,7 @@
     "produces": "B"
   },
   {
-    "id": "land_010",
+    "id": "tier_010",
     "name": "Cementerio de la Recoleta",
     "type": "Tierra básica — Pantano",
     "manaCost": "",
@@ -129,8 +129,8 @@
     "image": "cementerio_recoleta.png",
     "produces": "B"
   },
-    {
-    "id": "land_011",
+  {
+    "id": "tier_011",
     "name": "La Constancia",
     "type": "Tierra básica — Pantano",
     "manaCost": "",
@@ -142,18 +142,73 @@
     "image": "constancia.png",
     "produces": "B"
   },
-    {
-    "id": "land_012",
+  {
+    "id": "tier_012",
     "name": "Las Malvinas",
     "type": "Tierra sagrada — Agua",
     "manaCost": "",
     "cmc": 0,
     "rarity": "Rare",
     "colors": [],
-    "text": "Entra en juego girada. {T}: Agrega 2 {U}.",
+    "text": "Entra en juego girada. {T}: Agrega {U}{U}.",
     "flavorText": "Por los pibes de Malvinas que jamás olvidaré.",
     "image": "malvinas.png",
     "produces": "U",
-    "manaAmount": 2
+    "manaAmount": 2,
+    "entersTapped": true
+  },
+  {
+    "id": "tier_013",
+    "name": "Delta del Tigre",
+    "type": "Tierra — Agua Bosque",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Entra en juego sin girar. {T}: Agrega {U} o {G}.",
+    "flavorText": "Donde el río se abre en mil canales y el monte no se decide a terminar.",
+    "image": "delta_tigre.png",
+    "producesOptions": [
+      "U",
+      "G"
+    ]
+  },
+  {
+    "id": "tier_014",
+    "name": "Puerto de Ushuaia",
+    "type": "Tierra — Agua Planicie",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra en juego girada. {T}: Agrega {U} o {W}.",
+    "flavorText": "El fin del mundo, principio de todo.",
+    "image": "puerto_ushuaia.png",
+    "producesOptions": [
+      "U",
+      "W"
+    ],
+    "entersTapped": true
+  },
+  {
+    "id": "tier_015",
+    "name": "Biblioteca Nacional",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{T}: Robás una carta y perdés 1 Punto de Vida.",
+    "flavorText": "El conocimiento siempre tiene un precio.",
+    "image": "biblioteca_nacional.png",
+    "activatedAbility": {
+      "cost": "{T}",
+      "effect": {
+        "type": "draw_and_lose_life",
+        "amount": 1,
+        "lifeLoss": 1
+      },
+      "requiresTarget": false
+    }
   }
 ]

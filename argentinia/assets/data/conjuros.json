@@ -1,20 +1,25 @@
 [
   {
-    "id": "unco_001",
+    "id": "conj_001",
     "name": "Choripán de Costanera",
     "type": "Conjuro",
     "manaCost": "{1}{R}",
     "cmc": 2,
     "rarity": "Uncommon",
-    "colors": ["R"],
+    "colors": [
+      "R"
+    ],
     "text": "Con Chimichurri: Te cura 3 de HP al instante.",
     "flavorText": "Infaltable a la salida de la cancha.",
     "requiresTarget": false,
     "image": "choripan.png",
-    "effect": { "type": "heal", "amount": 3 }
+    "effect": {
+      "type": "heal",
+      "amount": 3
+    }
   },
   {
-    "id": "unco_003",
+    "id": "conj_002",
     "name": "La Picadita",
     "type": "Conjuro",
     "manaCost": "{2}",
@@ -25,100 +30,135 @@
     "flavorText": "Para picar mientras esperamos el asado.",
     "requiresTarget": false,
     "image": "picadita.png",
-    "effect": { "type": "draw", "amount": 2 }
+    "effect": {
+      "type": "draw",
+      "amount": 2
+    }
   },
   {
-    "id": "unco_008",
+    "id": "conj_003",
     "name": "Fin de Año",
     "type": "Conjuro",
     "manaCost": "{1}{R}{R}",
     "cmc": 3,
     "rarity": "Uncommon",
-    "colors": ["R"],
+    "colors": [
+      "R"
+    ],
     "text": "Estruendo Festivo: Causa 3 de daño al jugador o criatura objetivo.",
     "flavorText": "Luces y estruendos en todo el barrio.",
     "requiresTarget": true,
     "image": "festejos.png",
-    "effect": { "type": "damage", "amount": 3 }
+    "effect": {
+      "type": "damage",
+      "amount": 3
+    }
   },
   {
-    "id": "rar_001",
+    "id": "conj_004",
     "name": "Piquete Nacional",
     "type": "Conjuro",
     "manaCost": "{2}{R}{R}",
     "cmc": 4,
     "rarity": "Rare",
-    "colors": ["R"],
+    "colors": [
+      "R"
+    ],
     "text": "Corte de Ruta: Causa 4 de daño por el humo de las gomas quemadas.",
     "flavorText": "Corte total en la autopista.",
     "requiresTarget": true,
     "image": "piquete.png",
-    "effect": { "type": "damage", "amount": 4 }
+    "effect": {
+      "type": "damage",
+      "amount": 4
+    }
   },
   {
-    "id": "rar_002",
+    "id": "conj_005",
     "name": "Dólar Blue Desbocado",
     "type": "Conjuro",
     "manaCost": "{3}{B}{R}",
     "cmc": 5,
     "rarity": "Rare",
-    "colors": ["B", "R"],
+    "colors": [
+      "B",
+      "R"
+    ],
     "text": "Devaluación: Causa 5 de daño al jugador o criatura objetivo.",
     "flavorText": "¡Subió otro escalón!",
     "requiresTarget": true,
     "image": "dolar_blue.png",
-    "effect": { "type": "damage", "amount": 5 }
+    "effect": {
+      "type": "damage",
+      "amount": 5
+    }
   },
   {
-    "id": "rar_004",
+    "id": "conj_006",
     "name": "Tormenta Santa Rosa",
     "type": "Conjuro",
     "manaCost": "{3}{U}{U}",
     "cmc": 5,
     "rarity": "Rare",
-    "colors": ["U"],
+    "colors": [
+      "U"
+    ],
     "text": "Temporal Pampeano: Robás 3 cartas.",
     "flavorText": "Llega puntual a fines de agosto.",
     "requiresTarget": false,
     "image": "santa_rosa.png",
-    "effect": { "type": "draw", "amount": 3 }
+    "effect": {
+      "type": "draw",
+      "amount": 3
+    }
   },
   {
-    "id": "rar_006",
+    "id": "conj_007",
     "name": "Asadito con amigos",
     "type": "Conjuro",
     "manaCost": "{4}{G}",
     "cmc": 5,
     "rarity": "Rare",
-    "colors": ["G"],
+    "colors": [
+      "G"
+    ],
     "text": "Banquete Familiar: Te cura 8 de HP al instante.",
     "flavorText": "Sobró achura para toda la semana.",
     "requiresTarget": false,
     "image": "asado.png",
-    "effect": { "type": "heal", "amount": 8 }
+    "effect": {
+      "type": "heal",
+      "amount": 8
+    }
   },
   {
-    "id": "rar_003",
+    "id": "conj_008",
     "name": "Cacerolazo General",
     "type": "Conjuro",
     "manaCost": "{3}{W}{W}",
     "cmc": 5,
     "rarity": "Rare",
-    "colors": ["W"],
+    "colors": [
+      "W"
+    ],
     "text": "Ruido de Fondo: Destruye todas las criaturas en el campo de batalla.",
     "flavorText": "Cuando el pueblo sale a la calle con la cacerola, no queda títere con cabeza.",
     "requiresTarget": false,
     "image": "cacerolazo.png",
-    "effect": { "type": "destroy_all_creatures" }
+    "effect": {
+      "type": "destroy_all_creatures"
+    }
   },
   {
-    "id": "unco_002",
+    "id": "conj_009",
     "name": "Vecinos en Asamblea",
     "type": "Conjuro",
     "manaCost": "{2}{W}",
     "cmc": 3,
     "rarity": "Uncommon",
-    "colors": ["W"],
+    "colors": [
+      "W"
+    ],
     "text": "Se juntan en la esquina: Creás dos fichas de criatura 1/1 Vecino Movilizado.",
     "flavorText": "La cuadra entera se junta a discutir el problema... y a resolverlo a los codazos.",
     "requiresTarget": false,
@@ -127,120 +167,159 @@
       "type": "create_tokens",
       "amount": 2,
       "tokenName": "Vecino Movilizado",
-      "tokenStats": { "power": 1, "toughness": 1 },
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
       "tokenKeywords": []
     }
   },
   {
-    "id": "rar_009",
+    "id": "conj_010",
     "name": "Cuarentena Total",
     "type": "Conjuro",
     "manaCost": "{2}{W}{W}",
     "cmc": 4,
     "rarity": "Rare",
-    "colors": ["W"],
+    "colors": [
+      "W"
+    ],
     "text": "Aislamiento Obligatorio: Las criaturas del jugador objetivo no pueden atacar en su próximo turno.",
     "flavorText": "Quedate en tu casa, no se puede circular.",
     "requiresTarget": true,
     "image": "cuarentena.png",
-    "effect": { "type": "prevent_attack", "duration": "next_turn" }
+    "effect": {
+      "type": "prevent_attack",
+      "duration": "next_turn"
+    }
   },
   {
-    "id": "unco_005",
+    "id": "conj_011",
     "name": "Vuelto en Mano",
     "type": "Conjuro",
     "manaCost": "{1}{U}",
     "cmc": 2,
     "rarity": "Uncommon",
-    "colors": ["U"],
+    "colors": [
+      "U"
+    ],
     "text": "Devolución: Volvé la criatura objetivo a la mano de su dueño.",
     "flavorText": "Éste no era el cambio que pediste, andate por donde viniste.",
     "requiresTarget": true,
     "image": "vuelto.png",
-    "effect": { "type": "bounce" }
+    "effect": {
+      "type": "bounce"
+    }
   },
   {
-    "id": "unco_006",
+    "id": "conj_012",
     "name": "Corralito",
     "type": "Conjuro",
     "manaCost": "{2}{B}",
     "cmc": 3,
     "rarity": "Uncommon",
-    "colors": ["B"],
+    "colors": [
+      "B"
+    ],
     "text": "Congelamiento: El jugador objetivo descarta 2 cartas.",
     "flavorText": "Tu plata quedó atrapada del otro lado del mostrador.",
     "requiresTarget": true,
     "image": "corralito.png",
-    "effect": { "type": "discard", "amount": 2 }
+    "effect": {
+      "type": "discard",
+      "amount": 2
+    }
   },
   {
-    "id": "rar_005",
+    "id": "conj_013",
     "name": "Yuyo del Loco",
     "type": "Conjuro",
     "manaCost": "{2}{B}{B}",
     "cmc": 4,
     "rarity": "Rare",
-    "colors": ["B"],
+    "colors": [
+      "B"
+    ],
     "text": "Brebaje Maldito: Destruí la criatura objetivo.",
     "flavorText": "Un té mal preparado y no contás el cuento.",
     "requiresTarget": true,
     "image": "yuyo_del_loco.png",
-    "effect": { "type": "destroy_creature" }
+    "effect": {
+      "type": "destroy_creature"
+    }
   },
   {
-    "id": "rar_007",
+    "id": "conj_014",
     "name": "Vela a la Difunta Correa",
     "type": "Conjuro",
     "manaCost": "{3}{B}{B}",
     "cmc": 5,
     "rarity": "Rare",
-    "colors": ["B"],
+    "colors": [
+      "B"
+    ],
     "text": "Milagro Campestre: Devolvé una criatura de tu cementerio al campo de batalla.",
     "flavorText": "Le prendés una vela y te devuelve el favor desde el más allá.",
     "requiresTarget": false,
     "image": "difunta_correa.png",
-    "effect": { "type": "reanimate", "amount": 1 }
+    "effect": {
+      "type": "reanimate",
+      "amount": 1
+    }
   },
   {
-    "id": "com_011",
+    "id": "conj_015",
     "name": "Siembra de Otoño",
     "type": "Conjuro",
     "manaCost": "{1}{G}",
     "cmc": 2,
     "rarity": "Common",
-    "colors": ["G"],
+    "colors": [
+      "G"
+    ],
     "text": "Buena Cosecha: Buscá una tierra básica en tu mazo y ponela en el campo de batalla.",
     "flavorText": "El campo siempre da una mano más.",
     "requiresTarget": false,
     "image": "siembra_otono.png",
-    "effect": { "type": "ramp", "amount": 1 }
+    "effect": {
+      "type": "ramp",
+      "amount": 1
+    }
   },
   {
-    "id": "com_012",
+    "id": "conj_016",
     "name": "Yuyerío Salvaje",
     "type": "Conjuro",
     "manaCost": "{1}{G}",
     "cmc": 2,
     "rarity": "Common",
-    "colors": ["G"],
+    "colors": [
+      "G"
+    ],
     "text": "Maleza Descontrolada: Destruí el encantamiento objetivo.",
     "flavorText": "La maleza no respeta bendiciones ni maleficios.",
     "requiresTarget": true,
     "image": "yuyerio.png",
-    "effect": { "type": "destroy_enchantment" }
+    "effect": {
+      "type": "destroy_enchantment"
+    }
   },
   {
-    "id": "com_013",
+    "id": "conj_017",
     "name": "Piedrazo a la Vidriera",
     "type": "Conjuro",
     "manaCost": "{1}{R}",
     "cmc": 2,
     "rarity": "Common",
-    "colors": ["R"],
+    "colors": [
+      "R"
+    ],
     "text": "Mensaje Contundente: Destruí el artefacto objetivo.",
     "flavorText": "A veces el mensaje se manda con una piedra.",
     "requiresTarget": true,
     "image": "piedrazo.png",
-    "effect": { "type": "destroy_artifact" }
+    "effect": {
+      "type": "destroy_artifact"
+    }
   }
 ]

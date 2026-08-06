@@ -1,31 +1,271 @@
 [
   {
-    "id": "rar_003", "name": "Cumbia Santafesina", "type": "Encantamiento",
-    "manaCost": "{2}{G}", "cmc": 3, "rarity": "Rare", "colors": ["G"],
-    "text": "Ritmo Sabroso: Curás 4 HP bailando.", "flavorText": "¡Con la fuerza del acordeón!",
-    "requiresTarget": false, "adjunta": false, "image": "cumbia.png",
-    "etbEffect": {"type": "heal", "amount": 4}
-  },
-  {"id": "rar_005", "name": "Milonga de Medianoche", "type": "Encantamiento",
-    "manaCost": "{1}{B}{W}", "cmc": 3, "rarity": "Rare", "colors": ["B", "W"],
-    "text": "Tango Fatal: Daña 3 al rival.", "flavorText": "El tango te espera si das un paso en falso.",
-    "requiresTarget": true, "adjunta": false, "image": "milonga.png",
-    "etbEffect": {"type": "damage", "amount": 3}
-  },
-  {"id": "rar_010", "name": "Hinchada Fervorosa", "type": "Encantamiento",
-    "manaCost": "{2}", "cmc": 2, "rarity": "Rare", "colors": [],
-    "text": "Recaudación Popular: Robás 2 cartas por el apoyo.", "flavorText": "La gente siempre apoya.",
-    "requiresTarget": false, "adjunta": false, "image": "hinchada.png",
-    "etbEffect": {"type": "draw", "amount": 2}
+    "id": "ench_001",
+    "name": "Cumbia Santafesina",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Ritmo Sabroso: Siempre que una criatura entre al campo de batalla bajo tu control, ganás 1 Punto de Vida.",
+    "flavorText": "¡Con la fuerza del acordeón!",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "cumbia.png",
+    "creatureEtbTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
   },
   {
-    "id": "leg_007", "name": "La Scaloneta", "type": "Encantamiento Legendario",
-    "manaCost": "{3}{W}{R}", "cmc": 5, "rarity": "Mythic", "colors": ["W", "R"],
-    "text": "Elijo Creer: Robás 3 cartas inmediatamente para armar tu estrategia.", "flavorText": "Hermoso mañana, ¿verdad?",
-    "requiresTarget": false, "adjunta": false, "image": "scaloneta.png",
-    "etbEffect": {"type": "draw", "amount": 3}
+    "id": "ench_002",
+    "name": "Milonga de Medianoche",
+    "type": "Encantamiento",
+    "manaCost": "{1}{B}{W}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "W"
+    ],
+    "text": "Tango Fatal: Siempre que una criatura que controla tu oponente muera, ese jugador pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "El tango te espera si das un paso en falso.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "milonga.png",
+    "opponentDeathTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
   },
-  {"id": "aura_001", "name": "Poncho del Paisano", "type": "Encantamiento — Aura", "manaCost": "{1}{W}", "cmc": 2, "rarity": "Uncommon", "colors": ["W"], "text": "Encantar criatura. La criatura encantada obtiene +1/+1.", "flavorText": "Abriga en las noches frías de la pampa.", "effect": null, "requiresTarget": true, "adjunta": true, "alcance": "criatura_propia", "cuando": "estatico", "auraEffect": {"stats": {"signo": "+", "cantidad": 1}, "keywords": []}, "image": "poncho.png"},
-  {"id": "aura_002", "name": "Alpargatas Aladas", "type": "Encantamiento — Aura", "manaCost": "{1}{U}", "cmc": 2, "rarity": "Uncommon", "colors": ["U"], "text": "Encantar criatura. La criatura encantada gana Vuela.", "flavorText": "Livianas como el viento pampero.", "effect": null, "requiresTarget": true, "adjunta": true, "alcance": "criatura_propia", "cuando": "estatico", "auraEffect": {"stats": null, "keywords": ["flying"]}, "image": "alpargatas.png"},
-  {"id": "aura_003", "name": "Rebenque Filoso", "type": "Encantamiento — Aura", "manaCost": "{1}{R}{R}", "cmc": 3, "rarity": "Rare", "colors": ["R"], "text": "Encantar criatura. La criatura encantada obtiene +2/+2.", "flavorText": "Cuero curtido y filo templado.", "effect": null, "requiresTarget": true, "adjunta": true, "alcance": "criatura_propia", "cuando": "estatico", "auraEffect": {"stats": {"signo": "+", "cantidad": 2}, "keywords": []}, "image": "rebenque.png"}
+  {
+    "id": "ench_003",
+    "name": "Hinchada Fervorosa",
+    "type": "Encantamiento",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Recaudación Popular: Al comienzo de tu paso final, si atacaste con dos o más criaturas este turno, robás una carta.",
+    "flavorText": "La gente siempre apoya... si hay espectáculo.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "hinchada.png",
+    "endStepTrigger": {
+      "type": "draw",
+      "amount": 1,
+      "condition": "attacked_with_two_or_more"
+    }
+  },
+  {
+    "id": "ench_004",
+    "name": "La Scaloneta",
+    "type": "Encantamiento Legendario",
+    "manaCost": "{3}{W}{R}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [
+      "W",
+      "R"
+    ],
+    "text": "Elijo Creer: Al comienzo de tu paso de Mantenimiento, robás una carta.",
+    "flavorText": "Hermoso mañana, ¿verdad?",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "scaloneta.png",
+    "upkeepTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_005",
+    "name": "Fuerza de la Manada",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Efecto estático: Tus criaturas obtienen +1/+1.",
+    "flavorText": "Ninguna fiera del monte anda sola.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "fuerza_manada.png",
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 1,
+      "toughnessMod": 1
+    }
+  },
+  {
+    "id": "ench_006",
+    "name": "Viento Pampero",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Efecto estático: Tus criaturas tienen Vuela.",
+    "flavorText": "La llanura entera se levanta con vos.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "viento_pampero.png",
+    "staticEffect": {
+      "type": "team_keyword",
+      "scope": "own",
+      "keyword": "flying"
+    }
+  },
+  {
+    "id": "ench_007",
+    "name": "Toque de Queda",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}{W}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Efecto estático: Las criaturas del rival obtienen -1/-1.",
+    "flavorText": "A las diez de la noche, que no quede nadie en la calle.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "toque_de_queda.png",
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "opponent",
+      "powerMod": -1,
+      "toughnessMod": -1
+    }
+  },
+  {
+    "id": "ench_008",
+    "name": "Rezo de la Abuela",
+    "type": "Encantamiento",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, ganás 1 Punto de Vida.",
+    "flavorText": "Todas las noches, antes de dormir, pedía por vos.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "rezo_abuela.png",
+    "upkeepTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_009",
+    "name": "Poncho del Paisano",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Encantar criatura. La criatura encantada obtiene +1/+1.",
+    "flavorText": "Abriga en las noches frías de la pampa.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 1
+      },
+      "keywords": []
+    },
+    "image": "poncho.png"
+  },
+  {
+    "id": "ench_010",
+    "name": "Alpargatas Aladas",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Encantar criatura. La criatura encantada gana Vuela.",
+    "flavorText": "Livianas como el viento pampero.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [
+        "flying"
+      ]
+    },
+    "image": "alpargatas.png"
+  },
+  {
+    "id": "ench_011",
+    "name": "Rebenque Filoso",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{R}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Encantar criatura. La criatura encantada obtiene +2/+2.",
+    "flavorText": "Cuero curtido y filo templado.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 2
+      },
+      "keywords": []
+    },
+    "image": "rebenque.png"
+  },
+  {
+    "id": "ench_012",
+    "name": "Maldición del Yaguareté",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{B}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Encantar criatura rival. La criatura encantada obtiene -2/-2.",
+    "flavorText": "El monte cobra sus deudas tarde o temprano.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_rival",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "-",
+        "cantidad": 2
+      },
+      "keywords": []
+    },
+    "image": "maldicion_yaguarete.png"
+  }
 ]

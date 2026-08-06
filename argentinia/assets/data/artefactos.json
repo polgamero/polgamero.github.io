@@ -1,92 +1,82 @@
 [
   {
-    "id": "art_001", 
-    "name": "El Mate de Calabaza", 
-    "type": "Artefacto",
-    "manaCost": "{1}", 
-    "cmc": 1, 
-    "rarity": "Common", 
-    "colors": [],
-    "text": "{T}: Toma unos mates y curás 2 Puntos de Vida.", 
+    "id": "art_001",
+    "name": "El Mate de Calabaza",
+    "type": "Artefacto — Reliquia",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": ["W"],
+    "text": "{T}: Ganás 2 Puntos de Vida.",
     "flavorText": "Un amargo que reconforta el alma.",
-    "requiresTarget": false, 
     "image": "mate.png",
-    "activatedAbility": { "cost": "{T}", "effect": {"type": "heal", "amount": 2}, "requiresTarget": false }
-  },
-  {
-    "id": "art_002", 
-    "name": "Facón de Plata", 
-    "type": "Artefacto — Equipamiento",
-    "manaCost": "{2}", 
-    "cmc": 2, 
-    "rarity": "Uncommon", 
-    "colors": [],
-    "text": "La criatura equipada obtiene +2/+0.\nEquipar {2}.", 
-    "flavorText": "Brilla con la luz de la luna, corta como el viento.",
-    "requiresTarget": false, 
-    "image": "facon.png",
-    "activatedAbility": { 
-      "cost": "{2}", 
-      "effect": {
-        "type": "attach_equipment", 
-        "stats": { "powerMod": 2, "toughnessMod": 0 }
-      }, 
-      "requiresTarget": true 
+    "activatedAbility": {
+      "cost": "{T}",
+      "effect": { "type": "heal", "amount": 2 },
+      "requiresTarget": false
     }
   },
   {
-    "id": "art_003", 
-    "name": "Carreta Blindada", 
-    "type": "Artefacto — Vehículo",
-    "manaCost": "{3}", 
-    "cmc": 3, 
-    "rarity": "Rare", 
-    "colors": [],
-    "text": "Tripular {2} (Pagá {2} para que este Vehículo se convierta en una criatura 4/4 hasta el final del turno).", 
-    "flavorText": "A prueba de flechas, lanzas y luz mala.",
-    "requiresTarget": false, 
-    "image": "carreta.png",
-    "baseStats": { "power": 4, "toughness": 4 },
-    "activatedAbility": { 
-      "cost": "{2}", 
-      "effect": { "type": "crew_vehicle" }, 
-      "requiresTarget": false 
-    }
-  },
-  {
-    "id": "art_004", 
-    "name": "Boleadoras Encantadas", 
-    "type": "Artefacto — Reliquia",
-    "manaCost": "{1}", 
-    "cmc": 1, 
-    "rarity": "Uncommon", 
-    "colors": [],
-    "text": "{2}, {T}: Hace 2 de daño a cualquier objetivo.", 
-    "flavorText": "Te agarran desde leguas de distancia.",
-    "requiresTarget": false, 
-    "image": "boleadoras.png",
-    "activatedAbility": { 
-      "cost": "{2}{T}", 
-      "effect": {"type": "damage", "amount": 2}, 
-      "requiresTarget": true 
-    }
-  },
-  {
-    "id": "art_005", 
-    "name": "Imprenta Clandestina", 
-    "type": "Artefacto — Reliquia",
-    "manaCost": "{1}", 
-    "cmc": 1, 
-    "rarity": "Uncommon", 
-    "colors": [],
-    "text": "{1}, {T}: Robas una carta.", 
+    "id": "art_002",
+    "name": "Imprenta Clandestina",
+    "type": "Artefacto",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": ["W"],
+    "text": "{T}: Robás 1 carta.",
     "flavorText": "Toda revolución empieza informando la realidad.",
-    "requiresTarget": false, 
     "image": "imprenta.png",
-    "activatedAbility": { 
-      "cost": "{1}{T}", 
-      "effect": {"type": "draw", "amount": 1}, 
-      "requiresTarget": false 
+    "activatedAbility": {
+      "cost": "{T}",
+      "effect": { "type": "draw", "amount": 1 },
+      "requiresTarget": false
+    }
+  },
+  {
+    "id": "art_003",
+    "name": "Facón de Plata",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": ["W"],
+    "text": "Equipar {2}. La criatura equipada tiene \"{T}: Causa 2 de daño al héroe rival.\"",
+    "flavorText": "Para defender el honor en la pulpería.",
+    "image": "facon.png",
+    "equipment": {
+      "equipCost": "{2}"
+    },
+    "activatedAbility": {
+      "cost": "{2}",
+      "effect": { "type": "attach_equipment" },
+      "requiresTarget": true
+    },
+    "grantedAbility": {
+      "cost": "{T}",
+      "effect": { "type": "damage", "amount": 2 },
+      "requiresTarget": false
+    }
+  },
+  {
+    "id": "art_004",
+    "name": "Poncho de Diamante",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": ["W"],
+    "text": "Equipar {1}. La criatura equipada obtiene +0/+2.",
+    "flavorText": "Tejido con hebras que ni el viento pampero atraviesa.",
+    "image": "poncho_diamante.png",
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedStats": { "powerMod": 0, "toughnessMod": 2 }
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": { "type": "attach_equipment" },
+      "requiresTarget": true
     }
   }
 ]
