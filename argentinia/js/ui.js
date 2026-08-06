@@ -3,8 +3,10 @@ import {
   getEffectivePower,
   getEffectiveToughness,
   getEffectiveKeywords,
+  getEquipmentOn,
   handleDiscardClick,
   playCard,
+  canPlayCard,
   tapLocalLand,
   handleCombatClick,
   handleSupportClick,
@@ -198,17 +200,34 @@ export function renderManaSymbols(manaCostStr) {
 
 export function getTargetRules(card) {
   if (card.adjunta) {
-    return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
+    // `alcance` decide a quién se le puede adjuntar: "criatura_propia" (default, ej. Poncho del
+    // Paisano), "criatura_rival" (Auras-maldición, ej. Maldición del Yaguareté) o "cualquier_criatura".
+    const alcance = card.alcance || 'criatura_propia';
+    return {
+      allowPlayer: false,
+      allowLocalCreature: alcance !== 'criatura_rival',
+      allowRivalCreature: alcance === 'criatura_rival' || alcance === 'cualquier_criatura',
+      allowLocalPermanent: false,
+      allowRivalPermanent: false
+    };
   }
   // Un objeto en la pila puede llegar con requiresTarget desde una carta (spell/instant) o desde
   // una habilidad activada (source de tablero) — buscamos el effect en cualquiera de los dos lugares.
-  const effectType = card.effect?.type || card.activatedAbility?.effect?.type;
+  const effectType = card.effect?.type || card.activatedAbility?.effect?.type || card.grantedAbility?.effect?.type;
 
   if (effectType === 'destroy_artifact') {
     return { allowPlayer: false, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: true, allowRivalPermanent: true, permanentFilter: 'Artefacto' };
   }
   if (effectType === 'destroy_enchantment') {
     return { allowPlayer: false, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: true, allowRivalPermanent: true, permanentFilter: 'Encantamiento' };
+  }
+  if (effectType === 'prevent_attack') {
+    // Este efecto es "el jugador objetivo", no una criatura ni un permanente.
+    return { allowPlayer: true, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
+  }
+  if (effectType === 'pump' || effectType === 'grant_keyword_temp') {
+    // Trucos de combate: solo tiene sentido apuntar a tu propia criatura.
+    return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
   }
 
   return { allowPlayer: true, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
@@ -318,6 +337,11 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     ? `<div class="aura-badge" title="${attachedAuras.map(a => a.name).join(', ')}">✨${attachedAuras.length > 1 ? attachedAuras.length : ''}</div>`
     : '';
 
+  const attachedEquipment = (zone === 'combat' && card.power !== undefined) ? getEquipmentOn(itemObj) : [];
+  const equipmentBadgeHTML = attachedEquipment.length > 0
+    ? `<div class="aura-badge" style="left: 4px; right: auto;" title="${attachedEquipment.map(e => e.card.name).join(', ')}">⚔️${attachedEquipment.length > 1 ? attachedEquipment.length : ''}</div>`
+    : '';
+
   el.innerHTML = `
     <div class="card-inner">
       <div class="card-header"><span class="card-title">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
@@ -329,18 +353,21 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       ${formattedTextHTML}
       ${card.power !== undefined ? `<div class="card-pt">${ptText}</div>` : ''}
       ${auraBadgeHTML}
+      ${equipmentBadgeHTML}
     </div>
   `;
 
   if (customClick) {
     el.addEventListener('click', customClick);
   } else {
-    const isInstant = card.type && card.type.includes('Instantáneo');
-    const canRespondToStack = (spellStack && spellStack.length > 0) && isInstant;
-    const isMyMainTurn = state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2');
-    
+// Antes acá se reimplementaba una versión más estricta de "¿puedo jugar esto?" (solo tu
+// fase principal, o responder algo que ya está en la pila), lo que dejaba a los instantáneos
+// sin poder jugarse fuera de esos dos casos — por ejemplo, como truco de combate en el turno
+// del rival con la pila vacía. canPlayCard ya tiene la regla correcta (cualquier instantáneo
+// se puede jugar siempre que tengas prioridad), así que la consultamos directo en vez de
+// duplicar la lógica acá.
 // Agregamos state.isDiscarding para que las cartas respondan al clic en la fase de limpieza
-    if (zone === 'hand' && isLocal && (isMyMainTurn || canRespondToStack || state.isDiscarding) && !state.gameOver) {
+    if (zone === 'hand' && isLocal && (canPlayCard(card) || state.isDiscarding) && !state.gameOver) {
       el.addEventListener('click', () => {
         if (state.isDiscarding) handleDiscardClick(index);
         else playCard(index);

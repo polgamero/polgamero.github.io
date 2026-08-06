@@ -5,7 +5,10 @@ import {
   getEffectivePower, 
   getEffectiveToughness, 
   render, 
-  passPriority // Importado del main/turnManager
+  passPriority, // Importado del main/turnManager
+  detachEquipmentFrom,
+  triggerCreatureDies,
+  triggerAnyCreatureDeath
 } from './main.js';
 import { showDamageAssignmentModal } from './ui.js';
 
@@ -146,6 +149,7 @@ export function assignBotBlockers() {
 
 export function executeLocalAttack() {
   const attackers = state.localCombat.filter(c => c.isAttacking);
+  state.localAttackersDeclaredThisTurn = attackers.length;
   
   if (attackers.length > 0) {
     attackers.forEach(a => {
@@ -215,6 +219,16 @@ export async function resolveCombatDamage() {
     }));
 
   if (combatPairs.length === 0) return;
+
+  // Fog (ej. "Que Pare Todo"): se previene TODO el daño de combate de este turno. Igual
+  // limpiamos las flags de atacante/bloqueador al final, como en cualquier otro combate.
+  if (state.combatDamagePrevented) {
+    logMsg("🌫️ El daño de combate de este turno queda prevenido por completo.");
+    attackersArray.forEach(c => { c.isAttacking = false; c.tookDeathtouch = false; });
+    defendersArray.forEach(c => { c.blockingIndex = null; c.tookDeathtouch = false; });
+    state.pendingBlockerIndex = null;
+    return;
+  }
 
   const hayIniciativa = combatPairs.some(({ attacker, blockers }) =>
     dealsInFirstStrikeStep(attacker) || blockers.some(dealsInFirstStrikeStep)
@@ -403,7 +417,6 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
 
 export function checkDeaths(combatArray, graveyardArray, ownerName) {
   const isLocal = ownerName === "Vos";
-  const supportArray = isLocal ? state.localSupport : state.rivalSupport;
 
   for (let i = combatArray.length - 1; i >= 0; i--) {
     let unit = combatArray[i];
@@ -412,19 +425,37 @@ export function checkDeaths(combatArray, graveyardArray, ownerName) {
     if (dmg >= getEffectiveToughness(unit) || (unit.tookDeathtouch && dmg > 0)) {
       logMsg(`💀 ${unit.card.name} de ${ownerName} murió y va al cementerio.`);
       graveyardArray.push(unit.card);
-      
+
+      // Auras: se van al cementerio junto con la criatura (adjuntas de por vida).
       if (unit.auras && unit.auras.length > 0) {
-        unit.auras.forEach(attachedCard => {
-          if (attachedCard.type.includes('Equipamiento')) {
-            logMsg(`🛠️ ${attachedCard.name} cae a la mesa (Zona de Soporte).`);
-            // El equipamiento vuelve al support, destapeado
-            supportArray.push({ card: attachedCard, tapped: false });
-          } else {
-            logMsg(`💔 ${attachedCard.name} se desprendió y también fue al cementerio.`);
-            graveyardArray.push(attachedCard);
-          }
+        unit.auras.forEach(auraCard => {
+          logMsg(`💔 ${auraCard.name} se desprendió y también fue al cementerio.`);
+          graveyardArray.push(auraCard);
         });
       }
+
+      // Equipamiento: a diferencia de las Auras, NO va al cementerio con la criatura.
+      // Ya vive como su propio permanente en la zona de soporte — solo hay que
+      // desprenderlo (attachedTo = null), se queda listo para volver a equiparse.
+      detachEquipmentFrom(unit, isLocal);
+
+      // Habilidad Disparada: "Siempre que una criatura que controla tu oponente muera..."
+      // (ej. Milonga de Medianoche). Buscamos ese gatillo en la mesa del RIVAL de quien
+      // acaba de perder la criatura, porque desde su perspectiva vos sos "el oponente".
+      const opponentSupport = isLocal ? state.rivalSupport : state.localSupport;
+      opponentSupport.forEach(item => {
+        const trig = item.card.opponentDeathTrigger;
+        if (!trig || trig.type !== 'drain') return;
+        if (isLocal) { state.localHP -= trig.amount; state.rivalHP += trig.amount; }
+        else { state.rivalHP -= trig.amount; state.localHP += trig.amount; }
+        logMsg(`🩸 ¡${item.card.name}! Drena ${trig.amount} de vida por la muerte de ${unit.card.name}.`);
+      });
+
+      // Habilidad Disparada de la propia criatura: "Cuando esta criatura muera..."
+      triggerCreatureDies(unit, isLocal);
+      // Habilidad Disparada estilo Blood Artist: "Cuando CUALQUIER criatura muera..."
+      triggerAnyCreatureDeath(unit, isLocal);
+
       combatArray.splice(i, 1);
     }
   }

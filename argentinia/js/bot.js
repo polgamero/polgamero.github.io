@@ -17,58 +17,128 @@ import { addToStack, spellStack } from './stackManager.js';
 export function canRivalAfford(card) {
   if (!card.manaCost) return true;
   const cost = parseManaCost(card.manaCost);
-  
-  const available = { W: 0, U: 0, B: 0, R: 0, G: 0, total: 0 };
-  
+
+  const fixed = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  const duals = [];
+  let totalMana = 0;
+
   state.rivalLands.forEach(landItem => {
-    if (!landItem.tapped) {
+    if (landItem.tapped) return;
+    const amount = landItem.card.manaAmount || 1;
+    totalMana += amount;
+    if (landItem.card.producesOptions) {
+      duals.push({ options: landItem.card.producesOptions, amount });
+    } else {
       const color = getLandColor(landItem.card);
-      if (['W', 'U', 'B', 'R', 'G'].includes(color)) {
-        available[color]++;
-      }
-      available.total++;
+      if (['W', 'U', 'B', 'R', 'G'].includes(color)) fixed[color] += amount;
     }
   });
 
-  if (available.W < cost.W) return false;
-  if (available.U < cost.U) return false;
-  if (available.B < cost.B) return false;
-  if (available.R < cost.R) return false;
-  if (available.G < cost.G) return false;
+  const colors = ['W', 'U', 'B', 'R', 'G'];
+  const remainingNeed = {};
+  colors.forEach(c => { remainingNeed[c] = Math.max(0, cost[c] - fixed[c]); });
 
-  const remainingForGeneric = available.total - (cost.W + cost.U + cost.B + cost.R + cost.G);
-  if (remainingForGeneric < cost.generic) return false;
+  // Asignación golosa: las duales con menos opciones (más específicas) se reparten primero,
+  // para no "gastar" una tierra flexible en un color que otra tierra menos flexible ya cubre.
+  [...duals].sort((a, b) => a.options.length - b.options.length).forEach(d => {
+    const need = colors.find(c => d.options.includes(c) && remainingNeed[c] > 0);
+    if (need) {
+      const take = Math.min(d.amount, remainingNeed[need]);
+      remainingNeed[need] -= take;
+    }
+  });
 
-  return true;
+  if (colors.some(c => remainingNeed[c] > 0)) return false;
+
+  const remainingForGeneric = totalMana - (cost.W + cost.U + cost.B + cost.R + cost.G);
+  return remainingForGeneric >= cost.generic;
 }
 
 export function tapRivalLandsFor(card) {
   if (!card.manaCost) return;
   const cost = parseManaCost(card.manaCost);
-  
-  ['W', 'U', 'B', 'R', 'G'].forEach(color => {
+  const colors = ['W', 'U', 'B', 'R', 'G'];
+
+  // 1) Primero cubrimos cada color con tierras fijas (de un solo color)
+  colors.forEach(color => {
     let needed = cost[color];
     for (let i = 0; i < state.rivalLands.length && needed > 0; i++) {
       const land = state.rivalLands[i];
-      if (!land.tapped && getLandColor(land.card) === color) {
+      if (!land.tapped && !land.card.producesOptions && getLandColor(land.card) === color) {
         land.tapped = true;
-        needed--;
+        needed -= (land.card.manaAmount || 1);
       }
     }
   });
 
+  // 2) Lo que falte de cada color se cubre con tierras duales (las más específicas primero)
+  const dualEntries = state.rivalLands.filter(l => !l.tapped && l.card.producesOptions)
+    .sort((a, b) => a.card.producesOptions.length - b.card.producesOptions.length);
+
+  colors.forEach(color => {
+    let stillNeeded = cost[color] - state.rivalLands
+      .filter(l => l.tapped && !l.card.producesOptions && getLandColor(l.card) === color)
+      .reduce((sum, l) => sum + (l.card.manaAmount || 1), 0);
+
+    for (const land of dualEntries) {
+      if (stillNeeded <= 0) break;
+      if (land.tapped) continue;
+      if (land.card.producesOptions.includes(color)) {
+        land.tapped = true;
+        stillNeeded -= (land.card.manaAmount || 1);
+      }
+    }
+  });
+
+  // 3) Genérico: cualquier tierra que todavía no se giró
   let genericNeeded = cost.generic;
   for (let i = 0; i < state.rivalLands.length && genericNeeded > 0; i++) {
     const land = state.rivalLands[i];
     if (!land.tapped) {
       land.tapped = true;
-      genericNeeded--;
+      genericNeeded -= (land.card.manaAmount || 1);
     }
   }
 }
 
 function isCounterSpell(card) {
   return card.effect && card.effect.type && card.effect.type.startsWith('counter');
+}
+
+// NUEVO: El Tano usa un instantáneo de daño como truco de combate cuando VOS declarás
+// atacantes — antes de esto, el Tano jamás consideraba instantáneos salvo que hubiera algo
+// en la pila para responder, así que nunca defendía proactivamente con una quema.
+function tryBotCombatTrick() {
+  if (!(state.activePlayer === 'local' && state.phase === 'combat_attackers')) return false;
+
+  const attackingUnits = state.localCombat.filter(c => c.isAttacking);
+  if (attackingUnits.length === 0) return false;
+
+  const cardIndex = state.rivalHand.findIndex(c =>
+    c.type.includes('Instantáneo') && c.effect && c.effect.type === 'damage' && canRivalAfford(c)
+  );
+  if (cardIndex === -1) return false;
+
+  const card = state.rivalHand[cardIndex];
+  const target = attackingUnits.find(c => !hasKeyword(c, 'hexproof') && getEffectiveToughness(c) <= card.effect.amount);
+  if (!target) return false;
+
+  state.rivalHand.splice(cardIndex, 1);
+  tapRivalLandsFor(card);
+
+  addToStack({
+    card,
+    isLocal: false,
+    targetObj: { type: 'creature', isLocal: true, index: state.localCombat.indexOf(target), item: target },
+    type: 'instant'
+  });
+
+  state.priorityPlayer = 'local';
+  state.consecutivePasses = 0;
+
+  logMsg(`🔴 ¡El Tano respondió a tus atacantes con "${card.name}"!`);
+  render();
+  return true;
 }
 
 export async function checkRivalCounterOrResponse() {
@@ -221,7 +291,8 @@ export function tryActivateBotAbilities() {
         isLocal: false,
         targetObj: aiTargetObj,
         type: 'ability',
-        source: { type: 'support_activation', index: i }
+        source: { type: 'support_activation', index: i },
+        sourceItem: supportItem
       });
 
       // Devolvemos la prioridad al jugador para que pueda responder
@@ -231,6 +302,71 @@ export function tryActivateBotAbilities() {
       logMsg(`⚙️ El Tano activó la habilidad de ${card.name}. Tenés prioridad para responder.`);
       render();
       return true; // Retornamos true para pausar su loop de toma de decisiones
+    }
+  }
+  return false;
+}
+
+// NUEVO: El Tano usa las habilidades que un Equipo le presta a una criatura que ya tiene puesta
+// (ej. Facón de Plata equipado: "{T}: hace 2 de daño"). Es la contraparte de tryActivateBotAbilities
+// pero mirando las criaturas equipadas en vez de los permanentes de soporte.
+export function tryActivateGrantedBotAbilities() {
+  for (let i = 0; i < state.rivalCombat.length; i++) {
+    const creatureItem = state.rivalCombat[i];
+    const supportZone = state.rivalSupport;
+    const equippedItem = supportZone.find(s => s.attachedTo === creatureItem && s.card.grantedAbility);
+    if (!equippedItem) continue;
+
+    const ability = equippedItem.card.grantedAbility;
+    const requiresTap = (ability.cost || "").includes('{T}');
+    if (requiresTap && (creatureItem.tapped || creatureItem.summoningSickness)) continue;
+
+    const manaCostString = (ability.cost || "").replace('{T}', '').replace(',', '').trim();
+    const dummyCardForCost = { manaCost: manaCostString || null };
+    if (dummyCardForCost.manaCost && !canRivalAfford(dummyCardForCost)) continue;
+
+    let shouldActivate = false;
+    let aiTargetObj = null;
+
+    if (ability.effect.type === 'damage') {
+      // Mismo criterio que las Boleadoras: matar algo vulnerable, o pegar en main2
+      const vulnerable = state.localCombat.find(c =>
+        !hasKeyword(c, 'hexproof') && getEffectiveToughness(c) <= ability.effect.amount
+      );
+      if (vulnerable) {
+        aiTargetObj = ability.requiresTarget ? { type: 'creature', isLocal: true, index: state.localCombat.indexOf(vulnerable), item: vulnerable } : null;
+        shouldActivate = true;
+      } else if (state.phase === 'main2') {
+        aiTargetObj = ability.requiresTarget ? { type: 'player', isLocal: true } : null;
+        shouldActivate = true;
+      }
+    } else if (ability.effect.type === 'heal' || ability.effect.type === 'draw') {
+      if (state.phase === 'main2') {
+        aiTargetObj = ability.requiresTarget ? { type: 'player', isLocal: false } : null;
+        shouldActivate = true;
+      }
+    }
+
+    if (shouldActivate) {
+      if (dummyCardForCost.manaCost) tapRivalLandsFor(dummyCardForCost);
+      if (requiresTap) creatureItem.tapped = true;
+
+      const equipIndex = supportZone.indexOf(equippedItem);
+      addToStack({
+        card: equippedItem.card,
+        isLocal: false,
+        targetObj: aiTargetObj,
+        type: 'ability',
+        source: { type: 'equipped_activation', index: equipIndex },
+        sourceItem: equippedItem
+      });
+
+      state.priorityPlayer = 'local';
+      state.consecutivePasses = 0;
+
+      logMsg(`⚙️ El Tano usó la habilidad de ${equippedItem.card.name} con ${creatureItem.card.name}. Tenés prioridad para responder.`);
+      render();
+      return true;
     }
   }
   return false;
@@ -252,6 +388,13 @@ export async function takeBotPriorityAction() {
     return; // Si respondió, addToStack ya manejará los pases de prioridad
   }
 
+  // 1.5. Truco de combate: si vos declarás atacantes y la pila está vacía, el Tano puede
+  // quemar a uno antes de que se asignen bloqueos.
+  if (state.phase === 'combat_attackers' && state.activePlayer === 'local') {
+    const trickUsed = tryBotCombatTrick();
+    if (trickUsed) return;
+  }
+
   // 2. Acciones de Fase Principal (Solo en el turno del Tano)
   if (state.activePlayer === 'rival' && (state.phase === 'main1' || state.phase === 'main2')) {
     
@@ -259,9 +402,10 @@ export async function takeBotPriorityAction() {
     const landIndex = state.rivalHand.findIndex(c => c.type.includes('Tierra'));
     if (landIndex !== -1 && !state.rivalLandPlayedThisTurn) {
       const landCard = state.rivalHand.splice(landIndex, 1)[0];
-      state.rivalLands.push({ card: landCard, tapped: false }); 
+      const entersTapped = !!landCard.entersTapped;
+      state.rivalLands.push({ card: landCard, tapped: entersTapped }); 
       state.rivalLandPlayedThisTurn = true;
-      logMsg(`El Tano bajó una tierra: ${landCard.name}.`); 
+      logMsg(entersTapped ? `El Tano bajó una tierra: ${landCard.name} (entra girada).` : `El Tano bajó una tierra: ${landCard.name}.`); 
       render(); 
       await sleep(800);
     }
@@ -269,6 +413,10 @@ export async function takeBotPriorityAction() {
     // --- NUEVO: Intentar activar habilidades de artefactos primero ---
     const abilityActivated = tryActivateBotAbilities();
     if (abilityActivated) return; // Si activó algo, la función corta y espera resolución
+
+    // --- NUEVO: Intentar usar habilidades otorgadas por Equipos ya puestos ---
+    const grantedActivated = tryActivateGrantedBotAbilities();
+    if (grantedActivated) return;
     // -----------------------------------------------------------------
     
     const getAffordableMainPhaseCardIndex = () => {
@@ -316,7 +464,21 @@ export async function takeBotPriorityAction() {
         }
       } else if (cardToPlay.adjunta) {
         stackType = 'aura';
-        if (state.rivalCombat.length > 0) {
+        // Maldiciones (alcance: criatura_rival) van a tu criatura más peligrosa;
+        // las Auras normales (buff propio) van a la mejor criatura del Tano.
+        if (cardToPlay.alcance === 'criatura_rival') {
+          const validTargets = state.localCombat.filter(c => !hasKeyword(c, 'hexproof'));
+          if (validTargets.length > 0) {
+            const chosen = validTargets.reduce((prev, current) =>
+              getEffectivePower(prev) > getEffectivePower(current) ? prev : current
+            );
+            aiTargetObj = { type: 'creature', isLocal: true, item: chosen };
+          } else {
+            validPlay = false;
+            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y lo descartó.`);
+            state.rivalGraveyard.push(cardToPlay);
+          }
+        } else if (state.rivalCombat.length > 0) {
           aiTargetObj = { type: 'creature', isLocal: false, item: state.rivalCombat[0] };
         } else {
           validPlay = false;
@@ -363,6 +525,37 @@ export async function takeBotPriorityAction() {
         // LÓGICA NUEVA: DESCARTE (Corralito, etc.)
         else if (cardToPlay.effect && cardToPlay.effect.type === 'discard') {
           aiTargetObj = { type: 'player', isLocal: true };
+        }
+        // LÓGICA NUEVA: PREVENIR ATAQUE (Cuarentena Total)
+        else if (cardToPlay.effect && cardToPlay.effect.type === 'prevent_attack') {
+          // El Tano te lo tira a vos para frenar tu próximo ataque
+          aiTargetObj = { type: 'player', isLocal: true };
+        }
+        // LÓGICA NUEVA: TRUCO DE COMBATE (Fuerza de Toro, etc.) — a su mejor criatura
+        else if (cardToPlay.effect && cardToPlay.effect.type === 'pump') {
+          if (state.rivalCombat.length > 0) {
+            const chosen = state.rivalCombat.reduce((prev, current) =>
+              getEffectivePower(prev) > getEffectivePower(current) ? prev : current
+            );
+            aiTargetObj = { type: 'creature', isLocal: false, item: chosen };
+          } else {
+            validPlay = false;
+            logMsg(`El Tano no tenía criaturas para reforzar con ${cardToPlay.name} y lo descartó.`);
+            state.rivalGraveyard.push(cardToPlay);
+          }
+        }
+        // LÓGICA NUEVA: PROTECCIÓN TEMPORAL (A Cubierto, etc.) — protege a su criatura más grande
+        else if (cardToPlay.effect && cardToPlay.effect.type === 'grant_keyword_temp') {
+          if (state.rivalCombat.length > 0) {
+            const chosen = state.rivalCombat.reduce((prev, current) =>
+              (getEffectivePower(prev) + getEffectiveToughness(prev)) > (getEffectivePower(current) + getEffectiveToughness(current)) ? prev : current
+            );
+            aiTargetObj = { type: 'creature', isLocal: false, item: chosen };
+          } else {
+            validPlay = false;
+            logMsg(`El Tano no tenía criaturas para proteger con ${cardToPlay.name} y lo descartó.`);
+            state.rivalGraveyard.push(cardToPlay);
+          }
         }
         // LÓGICA NUEVA: DESTRUIR PERMANENTE (Piedrazo a la Vidriera / Yuyerío Salvaje)
         else if (cardToPlay.effect && (cardToPlay.effect.type === 'destroy_artifact' || cardToPlay.effect.type === 'destroy_enchantment')) {
@@ -421,6 +614,7 @@ export async function takeBotPriorityAction() {
     if (heldBackCount > 0) logMsg(`🧠 El Tano decide guardar ${heldBackCount} criatura(s) atrás para defender.`);
     if (attackCount > 0) logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s)!`);
     else logMsg("El Tano no atacó con nada.");
+    state.rivalAttackersDeclaredThisTurn = attackCount;
     
     render();
     passPriority('rival'); // Termina de declarar atacantes

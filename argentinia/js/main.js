@@ -52,10 +52,27 @@ export const state = {
   rivalSupport: [],
   pendingTargetSource: null, 
 
+  // Efectos genéricos de una sola aplicación, sin fechas ni contadores de turno.
+  // Cada entrada se borra sola la primera vez que el motor llega al punto donde
+  // corresponde aplicarla (ver turnManager.js). Ej: { id, effectType: 'prevent_attack',
+  // targetPlayer: 'local'|'rival', sourceName }.
+  activeEffects: [],
+
+  // Fog: cuando es true, se previene TODO el daño de combate de este turno (ambos bandos).
+  // Se resetea solo en Limpieza. Los tempEffects ("hasta el final del turno" de los
+  // trucos de combate como Fuerza de Toro) viven directo en cada criatura (itemObj.tempEffects)
+  // y también se limpian en ese mismo paso.
+  combatDamagePrevented: false,
+
   isDiscarding: false,
   cardsToDiscard: 0,
 
-  damageModalOpen: false
+  damageModalOpen: false,
+
+  // Contadores por turno para condiciones de gatillos (ej. Hinchada Fervorosa:
+  // "si atacaste con 2 o más criaturas este turno"). Se resetean en el Enderezar de cada uno.
+  localAttackersDeclaredThisTurn: 0,
+  rivalAttackersDeclaredThisTurn: 0
 };
 
 async function initGame() {
@@ -96,6 +113,19 @@ export function getEffectivePower(itemObj) {
       p += (mod.signo === '-' ? -1 : 1) * mod.cantidad;
     }
   });
+  // Bonos de Equipamiento adjunto (estáticos, ej. Poncho de Diamante +0/+2)
+  getEquipmentOn(itemObj).forEach(eq => {
+    const stats = eq.card.equipment && eq.card.equipment.grantedStats;
+    if (stats && stats.powerMod !== undefined) p += stats.powerMod;
+  });
+  // Encantamientos estáticos globales (ej. "Tus criaturas obtienen +1/+1")
+  getStaticTeamModifiers(itemObj).forEach(m => {
+    if (m.type === 'team_buff' && m.powerMod !== undefined) p += m.powerMod;
+  });
+  // Trucos de combate "hasta el final del turno" (ej. Fuerza de Toro +3/+3)
+  (itemObj.tempEffects || []).forEach(t => {
+    if (t.powerMod !== undefined) p += t.powerMod;
+  });
   return p;
 }
 
@@ -111,6 +141,16 @@ export function getEffectiveToughness(itemObj) {
       t += (mod.signo === '-' ? -1 : 1) * mod.cantidad;
     }
   });
+  getEquipmentOn(itemObj).forEach(eq => {
+    const stats = eq.card.equipment && eq.card.equipment.grantedStats;
+    if (stats && stats.toughnessMod !== undefined) t += stats.toughnessMod;
+  });
+  getStaticTeamModifiers(itemObj).forEach(m => {
+    if (m.type === 'team_buff' && m.toughnessMod !== undefined) t += m.toughnessMod;
+  });
+  (itemObj.tempEffects || []).forEach(t2 => {
+    if (t2.toughnessMod !== undefined) t += t2.toughnessMod;
+  });
   return t;
 }
 
@@ -118,7 +158,98 @@ export function getEffectiveKeywords(itemObj) {
   const card = itemObj.card || itemObj;
   const base = card.keywords || [];
   const fromAuras = (itemObj.auras || []).flatMap(a => (a.auraEffect && a.auraEffect.keywords) || []);
-  return [...new Set([...base, ...fromAuras])];
+  const fromEquipment = getEquipmentOn(itemObj).flatMap(eq => (eq.card.equipment && eq.card.equipment.grantedKeywords) || []);
+  const fromStatic = getStaticTeamModifiers(itemObj)
+    .filter(m => m.type === 'team_keyword')
+    .map(m => m.keyword);
+  const fromTemp = (itemObj.tempEffects || []).flatMap(t => t.keywords || []);
+  return [...new Set([...base, ...fromAuras, ...fromEquipment, ...fromStatic, ...fromTemp])];
+}
+
+// --- ENCANTAMIENTOS ESTÁTICOS GLOBALES ---
+// Busca, en la zona de soporte del dueño (y del rival, para efectos "scope: opponent"),
+// permanentes con `card.staticEffect` y devuelve los que aplican a esta criatura.
+// No usan la pila: mientras el Encantamiento esté en el campo, el efecto está activo.
+function getStaticTeamModifiers(itemObj) {
+  const isLocal = state.localCombat.includes(itemObj);
+  const ownSupport = isLocal ? state.localSupport : state.rivalSupport;
+  const oppSupport = isLocal ? state.rivalSupport : state.localSupport;
+  const mods = [];
+  ownSupport.forEach(s => {
+    const eff = s.card.staticEffect;
+    if (eff && (eff.scope || 'own') === 'own') mods.push(eff);
+  });
+  oppSupport.forEach(s => {
+    const eff = s.card.staticEffect;
+    if (eff && eff.scope === 'opponent') mods.push(eff);
+  });
+  return mods;
+}
+
+// Habilidad Disparada: "Siempre que una criatura entre al campo bajo tu control..." (ej. Cumbia
+// Santafesina). Se llama a mano desde stackManager cada vez que una criatura (propia, ficha o
+// reanimada) se empuja al campo de batalla. Misma simplificación que el resto: resuelve directo,
+// sin pasar por la pila.
+export function triggerCreatureEtb(isLocal) {
+  const supportZone = isLocal ? state.localSupport : state.rivalSupport;
+  supportZone.forEach(item => {
+    if (item.card.creatureEtbTrigger) {
+      resolveEffectDirect(item.card.creatureEtbTrigger, item.card.name, isLocal);
+    }
+  });
+}
+
+// Habilidad Disparada: "Cuando esta criatura muera..." (la de la criatura misma, no importa
+// cómo haya muerto — combate, un removal, o el día de mañana un sacrificio). Es la contraparte
+// de triggerCreatureEtb, pero para la salida en vez de la entrada.
+export function triggerCreatureDies(unit, isLocal) {
+  const trig = unit.card.diesTrigger;
+  if (!trig) return;
+  resolveEffectDirect(trig, unit.card.name, isLocal);
+}
+
+// Habilidad Disparada estilo "Blood Artist": se dispara con la muerte de CUALQUIER criatura
+// del campo (propia o rival, incluida ella misma), a diferencia de diesTrigger (solo la propia)
+// y opponentDeathTrigger (solo las del rival). El "watcher" no tiene por qué seguir vivo:
+// si murió en la misma movida que está mirando, igual se dispara una última vez.
+export function triggerAnyCreatureDeath(deadUnit, deadUnitIsLocal) {
+  const watchers = [
+    ...state.localCombat.filter(u => u !== deadUnit).map(u => ({ unit: u, isLocal: true })),
+    ...state.rivalCombat.filter(u => u !== deadUnit).map(u => ({ unit: u, isLocal: false })),
+    { unit: deadUnit, isLocal: deadUnitIsLocal }
+  ];
+  watchers.forEach(({ unit, isLocal }) => {
+    const trig = unit.card.anyCreatureDiesTrigger;
+    if (!trig) return;
+    if (trig.type === 'drain') {
+      if (isLocal) { state.rivalHP -= trig.amount; state.localHP += trig.amount; }
+      else { state.localHP -= trig.amount; state.rivalHP += trig.amount; }
+      logMsg(`🩸 ¡${unit.card.name}! Drena ${trig.amount} de vida por la muerte de ${deadUnit.card.name}.`);
+    } else {
+      resolveEffectDirect(trig, unit.card.name, isLocal);
+    }
+  });
+}
+
+// --- EQUIPAMIENTO REAL (Equip) ---
+// Devuelve los items de la zona de soporte (Equipos) adjuntos a esta criatura.
+export function getEquipmentOn(itemObj) {
+  const isLocal = state.localCombat.includes(itemObj);
+  const supportZone = isLocal ? state.localSupport : state.rivalSupport;
+  return supportZone.filter(s => s.attachedTo === itemObj);
+}
+
+// Cuando una criatura sale del campo de batalla por cualquier vía (muerte, rebote,
+// destrucción, arrasada), el Equipo que tuviera puesto se cae y se queda en tu campo:
+// nunca va al cementerio con la criatura.
+export function detachEquipmentFrom(creatureItem, isLocal) {
+  const supportZone = isLocal ? state.localSupport : state.rivalSupport;
+  supportZone.forEach(s => {
+    if (s.attachedTo === creatureItem) {
+      logMsg(`🗡️ ${s.card.name} se cae al piso, pero sigue en tu campo listo para volver a equiparse.`);
+      s.attachedTo = null;
+    }
+  });
 }
 
 export function attachAura(auraCard, creatureItem) {
@@ -191,6 +322,59 @@ export function handleCombatClick(item, isLocal, index) {
       }
     }
   }
+  // Fuera de combate: clic en tu propia criatura para usar la habilidad que le da un Equipo
+  // (ej. Facón de Plata otorga "{T}: hace 2 de daño" a quien lo tenga puesto).
+  else if (state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2') && isLocal && state.priorityPlayer === 'local') {
+    tryActivateGrantedAbility(item, isLocal, index);
+  }
+}
+
+function tryActivateGrantedAbility(creatureItem, isLocal, creatureIndex) {
+  const equippedWithAbility = getEquipmentOn(creatureItem).find(eq => eq.card.grantedAbility);
+  if (!equippedWithAbility) return false;
+
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null) {
+    logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
+    return true;
+  }
+
+  const ability = equippedWithAbility.card.grantedAbility;
+  const costStr = ability.cost || "";
+  const requiresTap = costStr.includes('{T}');
+
+  if (requiresTap && creatureItem.tapped) {
+    logMsg(`${creatureItem.card.name} ya está girada.`);
+    return true;
+  }
+  if (requiresTap && creatureItem.summoningSickness) {
+    logMsg(`${creatureItem.card.name} tiene mareo de invocación: todavía no puede usar la habilidad de ${equippedWithAbility.card.name}.`);
+    return true;
+  }
+
+  const manaCostStr = costStr.replace('{T}', '').trim();
+  const manaCost = parseManaCost(manaCostStr || "");
+  const supportZone = isLocal ? state.localSupport : state.rivalSupport;
+  const equipIndex = supportZone.indexOf(equippedWithAbility);
+
+  state.pendingAbilitySource = {
+    item: equippedWithAbility,
+    tapTarget: creatureItem,
+    index: equipIndex,
+    isLocal,
+    requiresTap,
+    abilityKind: 'granted'
+  };
+  state.pendingCost = manaCost;
+  state.tappedLandsThisSpell = [];
+
+  const totalMana = manaCost.W + manaCost.U + manaCost.B + manaCost.R + manaCost.G + manaCost.generic;
+  if (totalMana === 0) {
+    checkPaymentComplete();
+  } else {
+    logMsg(`Activando la habilidad de ${equippedWithAbility.card.name} en ${creatureItem.card.name}. Elegí tierras para pagar.`);
+    render();
+  }
+  return true;
 }
 
 export function handleSupportTargetClick(item, isLocal, index) {
@@ -277,8 +461,10 @@ export function playCard(index) {
       logMsg("Solo podés bajar tierras en tus Fases Principales.");
       return;
     }
-    state.localLands.push({ card, tapped: false }); state.localHand.splice(index, 1); state.localLandPlayedThisTurn = true;
-    logMsg(`Bajaste la tierra: ${card.name}.`); render(); return;
+    const entersTapped = !!card.entersTapped;
+    state.localLands.push({ card, tapped: entersTapped }); state.localHand.splice(index, 1); state.localLandPlayedThisTurn = true;
+    logMsg(entersTapped ? `Bajaste la tierra: ${card.name} (entra girada).` : `Bajaste la tierra: ${card.name}.`);
+    render(); return;
   }
 
   if (card.effect && card.effect.type && card.effect.type.startsWith('counter')) {
@@ -298,17 +484,56 @@ export function playCard(index) {
 
 export function tapLocalLand(item) {
   if (state.gameOver || item.tapped) return;
+
+  // Tierras de utilidad (sin `produces`, con activatedAbility propia — ej. Biblioteca
+  // Nacional) se activan como cualquier permanente con habilidad, no como fuente de maná.
+  if (item.card.activatedAbility && !item.card.produces && !item.card.producesOptions) {
+    const index = state.localLands.indexOf(item);
+    handleSupportClick(item, true, index);
+    return;
+  }
+
   if (state.pendingSpellIndex === null && state.pendingAbilitySource === null) { 
     logMsg("Seleccioná primero un hechizo o habilidad para pagar."); 
     return; 
   }
   
-  const landColor = getLandColor(item.card); let used = false;
-  if (['W', 'U', 'B', 'R', 'G'].includes(landColor) && state.pendingCost[landColor] > 0) { state.pendingCost[landColor] -= 1; used = true; } 
-  else if (state.pendingCost.generic > 0) { state.pendingCost.generic -= 1; used = true; }
-  
+  // Soporte para tierras que producen más de 1 maná (ej. Las Malvinas: {T}: Agrega {U}{U}).
+  // El excedente de un color se puede usar para pagar costo genérico, como en MTG real.
+  const amount = item.card.manaAmount || 1;
+  let remaining = amount;
+  let used = false;
+
+  if (item.card.producesOptions) {
+    // Tierra dual: elegimos automáticamente el color que más te sirve pagar ahora mismo.
+    const bestColor = item.card.producesOptions.find(c => (state.pendingCost[c] || 0) > 0) || item.card.producesOptions[0];
+    const takeFromColor = Math.min(remaining, state.pendingCost[bestColor] || 0);
+    if (takeFromColor > 0) {
+      state.pendingCost[bestColor] -= takeFromColor;
+      remaining -= takeFromColor;
+      used = true;
+    }
+  } else {
+    const landColor = getLandColor(item.card);
+    if (['W', 'U', 'B', 'R', 'G'].includes(landColor)) {
+      const takeFromColor = Math.min(remaining, state.pendingCost[landColor] || 0);
+      if (takeFromColor > 0) {
+        state.pendingCost[landColor] -= takeFromColor;
+        remaining -= takeFromColor;
+        used = true;
+      }
+    }
+  }
+
+  if (remaining > 0 && state.pendingCost.generic > 0) {
+    const takeGeneric = Math.min(remaining, state.pendingCost.generic);
+    state.pendingCost.generic -= takeGeneric;
+    remaining -= takeGeneric;
+    used = true;
+  }
+
   if (used) { item.tapped = true; state.tappedLandsThisSpell.push(item); checkPaymentComplete(); } 
-  else { logMsg(`Esa yerba (${landColor}) no te sirve para este hechizo.`); }
+  else { logMsg(`Esa yerba no te sirve para este hechizo.`); }
   render();
 }
 
@@ -375,17 +600,21 @@ function checkPaymentComplete() {
       checkRivalCounterOrResponse();
     } 
     
-    // CASO B: ESTAMOS PAGANDO UNA HABILIDAD DE LA MESA
+    // CASO B: ESTAMOS PAGANDO UNA HABILIDAD DE LA MESA (propia, o de un Equipo otorgada a una criatura)
     else if (state.pendingAbilitySource !== null) {
       const source = state.pendingAbilitySource;
       const card = source.item.card;
+      const isGranted = source.abilityKind === 'granted';
+      const ability = isGranted ? card.grantedAbility : card.activatedAbility;
+      const tapTarget = source.tapTarget || source.item;
       
-      // Si el pago incluía {T}, giramos el artefacto ahora
+      // Si el pago incluía {T}, giramos a quien corresponda (el permanente mismo,
+      // o la criatura equipada si la habilidad viene de un Equipo).
       if (source.requiresTap) {
-        source.item.tapped = true;
+        tapTarget.tapped = true;
       }
  
-      if (card.activatedAbility.requiresTarget) {
+      if (ability.requiresTarget) {
         logMsg(`¡Costo pagado! Elegí un objetivo para la habilidad de ${card.name}.`);
         state.pendingTargetCard = card;
         state.pendingTargetSource = source; // Guardamos el source para executeSpellOnTarget
@@ -398,7 +627,8 @@ function checkPaymentComplete() {
         isLocal: source.isLocal,
         targetObj: null,
         type: 'ability',
-        source: { type: 'support_activation', index: source.index }
+        source: { type: isGranted ? 'equipped_activation' : 'support_activation', index: source.index },
+        sourceItem: source.item
       });
  
       logMsg(`Activaste la habilidad de ${card.name}.`);
@@ -419,14 +649,17 @@ function executeSpellOnTarget(targetObj) {
   let isPermanentSource = state.pendingTargetSource !== null;
 
   if (isPermanentSource) {
-    card = state.pendingTargetSource.item.card;
+    const src = state.pendingTargetSource;
+    card = src.item.card;
+    const isGranted = src.abilityKind === 'granted';
     addToStack({
       card: card,
       isLocal: true,
       targetObj: targetObj,
       type: 'ability',
       // Agregamos el type correcto para que el stackManager lo reconozca
-      source: { type: 'support_activation', index: state.pendingTargetSource.index }
+      source: { type: isGranted ? 'equipped_activation' : 'support_activation', index: src.index },
+      sourceItem: src.item
     });
   }
   else {
@@ -484,7 +717,7 @@ export function handleSupportClick(item, isLocal, index) {
   const manaCostStr = costStr.replace('{T}', '').trim();
   const manaCost = parseManaCost(manaCostStr || "");
 
-  state.pendingAbilitySource = { item, index, isLocal, requiresTap };
+  state.pendingAbilitySource = { item, index, isLocal, requiresTap, tapTarget: item, abilityKind: 'own' };
   state.pendingCost = manaCost;
   state.tappedLandsThisSpell = [];
 
@@ -516,6 +749,14 @@ export function resolveEffectDirect(effect, cardName, isLocal) {
   } else if (effect.type === 'damage') {
     if (isLocal) state.rivalHP -= effect.amount; else state.localHP -= effect.amount;
     logMsg(`💥 ¡${cardName}! ${targetName} hizo ${effect.amount} de daño.`);
+  } else if (effect.type === 'fog') {
+    state.combatDamagePrevented = true;
+    logMsg(`🌫️ ¡${cardName}! Se previene todo el daño de combate este turno.`);
+  } else if (effect.type === 'draw_and_lose_life') {
+    if (isLocal && state.localDeck.length > 0) state.localHand.push(state.localDeck.pop());
+    if (!isLocal && state.rivalDeck.length > 0) state.rivalHand.push(state.rivalDeck.pop());
+    if (isLocal) state.localHP -= effect.lifeLoss; else state.rivalHP -= effect.lifeLoss;
+    logMsg(`📖 ¡${cardName}! ${targetName} robó una carta y perdió ${effect.lifeLoss} de vida.`);
   }
 }
 

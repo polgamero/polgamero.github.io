@@ -1,5 +1,5 @@
 import { sleep } from './utils.js';
-import { state, resolveEffectDirect, attachAura, cancelPayment } from './main.js';
+import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath } from './main.js';
 import { logMsg, render } from './ui.js';
 import { checkDeaths } from './combatRules.js';
 import { hasKeyword } from './keywords.js';
@@ -7,6 +7,7 @@ import { passPriority } from './turnManager.js';
 
 export const spellStack = [];
 let nextStackId = 1;
+let nextEffectId = 1;
 
 export function addToStack(item) {
   item.id = nextStackId++;
@@ -53,11 +54,21 @@ async function executeStackItem(item) {
       const board = isLocal ? state.localCombat : state.rivalCombat;
       board.push(newPermanentItem);
       logMsg(`¡${card.name} entró al campo de batalla!`);
+      triggerCreatureEtb(isLocal);
     } else {
       newPermanentItem = { card, tapped: false };
+      // Los Equipos entran al campo sin equipar a nadie todavía (se equipan pagando Equipar).
+      if (card.equipment) newPermanentItem.attachedTo = null;
       const supportZone = isLocal ? state.localSupport : state.rivalSupport;
       supportZone.push(newPermanentItem);
       logMsg(`¡${card.name} entró a la zona de soporte!`);
+
+      // Si es un Encantamiento estático que puede llevar resistencias a 0 (ej. Toque de
+      // Queda), chequeamos muertes de inmediato, no solo tras el próximo daño de combate.
+      if (card.staticEffect) {
+        checkDeaths(state.localCombat, state.localGraveyard, "Vos");
+        checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+      }
     }
 
     if (card.etbEffect) {
@@ -92,6 +103,9 @@ async function executeStackItem(item) {
 
   if (type === 'aura' && targetObj && targetObj.item) {
     attachAura(card, targetObj.item);
+    // Si es una Aura-maldición (-X/-X), la criatura puede morir en el acto.
+    checkDeaths(state.localCombat, state.localGraveyard, "Vos");
+    checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
     return;
   }
 
@@ -103,6 +117,9 @@ async function executeStackItem(item) {
         effectToApply = card.etbEffect;
       } else if (item.source && item.source.type === 'support_activation' && card.activatedAbility) {
         effectToApply = card.activatedAbility.effect;
+      } else if (item.source && item.source.type === 'equipped_activation' && card.grantedAbility) {
+        // Habilidad que un Equipo le presta a la criatura que lo tiene puesto (ej. Facón de Plata).
+        effectToApply = card.grantedAbility.effect;
       }
     }
 
@@ -174,6 +191,17 @@ async function executeStackItem(item) {
             logMsg(`🗑️ ¡${card.name}! ${targetName} no tenía cartas para descartar.`);
           }
         }
+        // LÓGICA NUEVA: EFECTO GENÉRICO DE UNA SOLA APLICACIÓN (ej. Cuarentena Total)
+        else if (effectToApply.type === 'prevent_attack') {
+          const targetPlayer = targetObj.isLocal ? 'local' : 'rival';
+          state.activeEffects.push({
+            id: nextEffectId++,
+            effectType: 'prevent_attack',
+            targetPlayer,
+            sourceName: card.name
+          });
+          logMsg(`🚫 ¡${card.name}! ${targetName} no va a poder atacar en su próxima fase de combate.`);
+        }
       } else if (targetObj.type === 'creature') {
         const targetUnit = targetObj.item;
         if (effectToApply.type === 'damage') {
@@ -182,14 +210,30 @@ async function executeStackItem(item) {
           checkDeaths(state.localCombat, state.localGraveyard, "Vos");
           checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
         } 
-        // LÓGICA NUEVA: EQUIPAMIENTO
+        // LÓGICA NUEVA: EQUIPAR (real) — el Equipo que activó esta habilidad se adjunta a la criatura.
+        // No se copia a `auras`: el Equipo sigue siendo su propio permanente en la zona de soporte,
+        // simplemente ahora apunta con `attachedTo` a la criatura equipada.
         else if (effectToApply.type === 'attach_equipment') {
-          if (!targetUnit.auras) targetUnit.auras = [];
-          targetUnit.auras.push({
-            name: card.name,
-            auraEffect: { stats: effectToApply.stats }
-          });
-          logMsg(`🗡️ ¡${card.name} fue equipado a ${targetUnit.card.name}!`);
+          const equipmentItem = item.sourceItem;
+          if (equipmentItem) {
+            equipmentItem.attachedTo = targetUnit;
+            logMsg(`⚔️ ¡${card.name} fue equipado a ${targetUnit.card.name}!`);
+          } else {
+            logMsg(`⚠️ ${card.name} no pudo encontrar su propio permanente en la zona de soporte para equiparse.`);
+          }
+        }
+        // LÓGICA NUEVA: TRUCO DE COMBATE — +X/+X hasta el final del turno (ej. Fuerza de Toro)
+        else if (effectToApply.type === 'pump') {
+          if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
+          targetUnit.tempEffects.push({ powerMod: effectToApply.powerMod, toughnessMod: effectToApply.toughnessMod });
+          const pText = `${effectToApply.powerMod >= 0 ? '+' : ''}${effectToApply.powerMod}/${effectToApply.toughnessMod >= 0 ? '+' : ''}${effectToApply.toughnessMod}`;
+          logMsg(`💪 ¡${card.name}! ${targetUnit.card.name} obtiene ${pText} hasta el final del turno.`);
+        }
+        // LÓGICA NUEVA: PROTECCIÓN TEMPORAL — otorga una keyword hasta el final del turno (ej. A Cubierto)
+        else if (effectToApply.type === 'grant_keyword_temp') {
+          if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
+          targetUnit.tempEffects.push({ keywords: [effectToApply.keyword] });
+          logMsg(`🛡️ ¡${card.name}! ${targetUnit.card.name} gana ${effectToApply.keyword} hasta el final del turno.`);
         }
         // LÓGICA NUEVA: DESTRUIR CRIATURA
         else if (effectToApply.type === 'destroy_creature') {
@@ -199,8 +243,11 @@ async function executeStackItem(item) {
           const idx = board.indexOf(targetUnit);
           if (idx !== -1) {
             board.splice(idx, 1);
+            detachEquipmentFrom(targetUnit, isTargetLocal);
             grave.push(targetUnit.card);
             logMsg(`💀 ¡${card.name} destruyó a ${targetUnit.card.name}!`);
+            triggerCreatureDies(targetUnit, isTargetLocal);
+            triggerAnyCreatureDeath(targetUnit, isTargetLocal);
           } else {
             logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
           }
@@ -213,6 +260,7 @@ async function executeStackItem(item) {
           const idx = board.indexOf(targetUnit);
           if (idx !== -1) {
             board.splice(idx, 1);
+            detachEquipmentFrom(targetUnit, isTargetLocal);
             // Si era un Vehículo tripulado, le sacamos las estadísticas temporales de criatura
             if (targetUnit.isVehicle) {
               delete targetUnit.card.power;
@@ -236,6 +284,12 @@ async function executeStackItem(item) {
           supportZone.splice(idx, 1);
           grave.push(targetItem.card);
           logMsg(`💥 ¡${card.name} destruyó a ${targetItem.card.name}!`);
+          // Si era un Encantamiento estático (ej. Fuerza de la Manada), alguna criatura
+          // que dependía de ese +1/+1 para sobrevivir podría morir ahora.
+          if (targetItem.card.staticEffect) {
+            checkDeaths(state.localCombat, state.localGraveyard, "Vos");
+            checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+          }
         } else if (idx === -1) {
           logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
         }
@@ -262,21 +316,24 @@ async function executeStackItem(item) {
       }
       // LÓGICA NUEVA: ARRASAR EL CAMPO (board wipe)
       else if (effectToApply.type === 'destroy_all_creatures') {
-        const wipeBoard = (combatZone, graveyard) => {
+        const wipeBoard = (combatZone, graveyard, isLocalZone) => {
           let count = 0;
           while (combatZone.length > 0) {
             const unit = combatZone.pop();
+            detachEquipmentFrom(unit, isLocalZone);
             if (unit.isVehicle) {
               delete unit.card.power;
               delete unit.card.toughness;
             }
             graveyard.push(unit.card);
+            triggerCreatureDies(unit, isLocalZone);
+            triggerAnyCreatureDeath(unit, isLocalZone);
             count++;
           }
           return count;
         };
-        const localCount = wipeBoard(state.localCombat, state.localGraveyard);
-        const rivalCount = wipeBoard(state.rivalCombat, state.rivalGraveyard);
+        const localCount = wipeBoard(state.localCombat, state.localGraveyard, true);
+        const rivalCount = wipeBoard(state.rivalCombat, state.rivalGraveyard, false);
         logMsg(`💥 ¡${card.name} arrasó con todo! (${localCount} tuya(s) + ${rivalCount} del Tano fueron al cementerio)`);
       }
       // LÓGICA NUEVA: CREAR FICHAS
@@ -305,6 +362,7 @@ async function executeStackItem(item) {
           };
           if (hasKeyword(newTokenUnit, 'haste')) newTokenUnit.summoningSickness = false;
           board.push(newTokenUnit);
+          triggerCreatureEtb(isLocal);
         }
         logMsg(`✨ ¡${card.name} creó ${amount} ficha(s) de "${effectToApply.tokenName}"!`);
       }
@@ -329,6 +387,7 @@ async function executeStackItem(item) {
           };
           if (hasKeyword(newUnit, 'haste')) newUnit.summoningSickness = false;
           board.push(newUnit);
+          triggerCreatureEtb(isLocal);
           revivedCount++;
         }
         if (revivedCount > 0) {

@@ -1,5 +1,5 @@
 import { logMsg, els, showGameOverOverlay, render } from './ui.js';
-import { state } from './main.js';
+import { state, resolveEffectDirect } from './main.js';
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage } from './combatRules.js';
@@ -43,6 +43,16 @@ export async function advanceStep() {
     nextPhase = 'untap';
   }
 
+  // --- Efecto activo: prevenir el combate completo de este jugador (ej. Cuarentena Total) ---
+  if (nextPhase === 'combat_begin') {
+    const preventIdx = state.activeEffects.findIndex(e => e.effectType === 'prevent_attack' && e.targetPlayer === state.activePlayer);
+    if (preventIdx !== -1) {
+      const effect = state.activeEffects.splice(preventIdx, 1)[0]; // se consume una sola vez
+      logMsg(`🚫 ¡${effect.sourceName} sigue haciendo efecto! ${state.activePlayer === 'local' ? 'No podés' : 'El Tano no puede'} declarar combate este turno.`);
+      nextPhase = 'main2'; // Salta directo a la segunda fase principal
+    }
+  }
+
   // --- ARREGLO BUG 2: Saltear combate si no hay criaturas viables ---
   if (nextPhase === 'combat_begin') {
     const activeBoard = state.activePlayer === 'local' ? state.localCombat : state.rivalCombat;
@@ -75,6 +85,12 @@ export async function advanceStep() {
     return;
   }
 
+  if (state.phase === 'upkeep') {
+    executeUpkeepStep();
+    render();
+    // En Mantenimiento sí hay prioridad
+  }
+
   if (state.phase === 'draw') {
     executeDrawStep();
     render();
@@ -85,6 +101,12 @@ export async function advanceStep() {
     logMsg("⚔️ Resolviendo daño de combate...");
     resolveCombatDamage();
     render();
+  }
+
+  if (state.phase === 'end_step') {
+    executeEndStep();
+    render();
+    // En el Paso Final también hay prioridad
   }
 
   if (state.phase === 'cleanup') {
@@ -145,16 +167,47 @@ function executeUntapStep() {
   const isLocal = state.activePlayer === 'local';
   if (isLocal) {
     state.localLandPlayedThisTurn = false;
+    state.localAttackersDeclaredThisTurn = 0;
     state.localLands.forEach(l => l.tapped = false);
     state.localCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; });
     state.localSupport.forEach(s => s.tapped = false);
   } else {
     state.rivalLandPlayedThisTurn = false;
+    state.rivalAttackersDeclaredThisTurn = 0;
     state.rivalLands.forEach(l => l.tapped = false);
     state.rivalCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; });
     state.rivalSupport.forEach(s => s.tapped = false);
   }
   logMsg(`🔄 Permanentes enderezados para ${isLocal ? 'El Gaucho' : 'El Tano'}.`);
+}
+
+// Habilidad Disparada por fase (ej. "Al comienzo de tu mantenimiento, ganás 1 vida").
+// Simplificación deliberada: se resuelve directo, sin pasar por la pila (igual que
+// ya hacían las habilidades activadas sin objetivo antes de esta etapa).
+function executeUpkeepStep() {
+  const isLocal = state.activePlayer === 'local';
+  const supportZone = isLocal ? state.localSupport : state.rivalSupport;
+  supportZone.forEach(item => {
+    if (item.card.upkeepTrigger) {
+      resolveEffectDirect(item.card.upkeepTrigger, item.card.name, isLocal);
+    }
+  });
+}
+
+// Habilidad Disparada por fase con condición opcional (ej. Hinchada Fervorosa: "si atacaste con
+// 2 o más criaturas este turno, robás"). Misma simplificación que el resto: resuelve directo,
+// sin pasar por la pila.
+function executeEndStep() {
+  const isLocal = state.activePlayer === 'local';
+  const supportZone = isLocal ? state.localSupport : state.rivalSupport;
+  const attackersCount = isLocal ? state.localAttackersDeclaredThisTurn : state.rivalAttackersDeclaredThisTurn;
+
+  supportZone.forEach(item => {
+    const trig = item.card.endStepTrigger;
+    if (!trig) return;
+    if (trig.condition === 'attacked_with_two_or_more' && attackersCount < 2) return;
+    resolveEffectDirect(trig, item.card.name, isLocal);
+  });
 }
 
 function executeDrawStep() {
@@ -174,6 +227,12 @@ function executeCleanupStep() {
   // Limpiamos el daño residual
   state.localCombat.forEach(c => c.damageTaken = 0);
   state.rivalCombat.forEach(c => c.damageTaken = 0);
+
+  // Trucos de combate "hasta el final del turno" (ej. Fuerza de Toro, A Cubierto) y Fog:
+  // todo lo temporal expira acá, en Limpieza.
+  state.localCombat.forEach(c => c.tempEffects = []);
+  state.rivalCombat.forEach(c => c.tempEffects = []);
+  state.combatDamagePrevented = false;
 
   // LÓGICA NUEVA: Devolver vehículos a la zona de soporte
   const revertVehicles = (combatZone, supportZone) => {
