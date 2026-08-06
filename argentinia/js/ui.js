@@ -240,7 +240,27 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   }
   
   const targetClass = isTargetable ? 'targetable' : '';
-  el.className = `card ${card.rarity || 'Common'} ${isTapped ? 'tapped' : ''} ${isSick} ${isAttacking} ${isBlocking} ${isSelectedBlocker} ${targetClass}`;
+  
+  // --- NUEVA LÓGICA DE COLORES MTG ---
+  let bgClass = 'bg-colorless'; // Default para incoloras y artefactos
+  
+  if (card.type && card.type.toLowerCase().includes('tierra')) {
+    bgClass = 'bg-land';
+  } else if (card.colors && card.colors.length > 0) {
+    if (card.colors.length >= 2) {
+      bgClass = 'bg-gold';
+    } else {
+      const c = card.colors[0].toUpperCase();
+      if (c === 'W') bgClass = 'bg-w';
+      else if (c === 'U') bgClass = 'bg-u';
+      else if (c === 'B') bgClass = 'bg-b';
+      else if (c === 'R') bgClass = 'bg-r';
+      else if (c === 'G') bgClass = 'bg-g';
+    }
+  }
+
+  // Agregamos bgClass a la lista de clases
+  el.className = `card ${bgClass} ${card.rarity || 'Common'} ${isTapped ? 'tapped' : ''} ${isSick} ${isAttacking} ${isBlocking} ${isSelectedBlocker} ${targetClass}`;
 
   let icon = '🃏';
   for (const key in ICON_MAP) { if (card.name.includes(key)) icon = ICON_MAP[key]; }
