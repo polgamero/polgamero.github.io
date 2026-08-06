@@ -193,6 +193,27 @@ export function handleCombatClick(item, isLocal, index) {
   }
 }
 
+export function handleSupportTargetClick(item, isLocal, index) {
+  if (state.damageModalOpen) return;
+  if (!state.pendingTargetCard) return;
+
+  if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type && state.pendingTargetCard.effect.type.startsWith('counter')) {
+    logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a un permanente.");
+    return;
+  }
+
+  const rules = getTargetRules(state.pendingTargetCard);
+  const allowed = isLocal ? rules.allowLocalPermanent : rules.allowRivalPermanent;
+  const matchesFilter = !rules.permanentFilter || item.card.type.includes(rules.permanentFilter);
+
+  if (!allowed || !matchesFilter) {
+    logMsg(`Ese no es un objetivo válido para ${state.pendingTargetCard.name}.`);
+    return;
+  }
+
+  executeSpellOnTarget({ type: 'permanent', isLocal, index, item });
+}
+
 export function handlePlayerTargetClick(isLocal) {
   if (state.damageModalOpen) return;
   if (state.pendingTargetCard) {
