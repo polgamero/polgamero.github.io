@@ -275,6 +275,12 @@ export async function takeBotPriorityAction() {
       return state.rivalHand.findIndex(c => {
         if (c.type.includes('Tierra') || !canRivalAfford(c)) return false;
         if (isCounterSpell(c)) return false;
+        // NUEVO: El Tano solo arrasa el campo si está en desventaja de poder
+        if (c.effect && c.effect.type === 'destroy_all_creatures') {
+          const localPower = state.localCombat.reduce((sum, u) => sum + getEffectivePower(u), 0);
+          const rivalPower = state.rivalCombat.reduce((sum, u) => sum + getEffectivePower(u), 0);
+          if (rivalPower >= localPower) return false;
+        }
         return true;
       });
     };
