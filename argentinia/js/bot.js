@@ -364,6 +364,18 @@ export async function takeBotPriorityAction() {
         else if (cardToPlay.effect && cardToPlay.effect.type === 'discard') {
           aiTargetObj = { type: 'player', isLocal: true };
         }
+        // LÓGICA NUEVA: DESTRUIR PERMANENTE (Piedrazo a la Vidriera / Yuyerío Salvaje)
+        else if (cardToPlay.effect && (cardToPlay.effect.type === 'destroy_artifact' || cardToPlay.effect.type === 'destroy_enchantment')) {
+          const filterType = cardToPlay.effect.type === 'destroy_artifact' ? 'Artefacto' : 'Encantamiento';
+          const validTargets = state.localSupport.filter(s => s.card.type.includes(filterType));
+          if (validTargets.length > 0) {
+            aiTargetObj = { type: 'permanent', isLocal: true, item: validTargets[0] };
+          } else {
+            validPlay = false;
+            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y lo descartó.`);
+            state.rivalGraveyard.push(cardToPlay);
+          }
+        }
       }
 
       if (validPlay) {
