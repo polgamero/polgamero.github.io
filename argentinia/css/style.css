@@ -98,16 +98,25 @@ html, body {
 }
 
 /* ===================================================
+   VARIABLES DE COLOR DE CARTA (Paleta MTG)
+=================================================== */
+.card.bg-w { --card-bg: #EAE0D5; --card-text: #111; }
+.card.bg-u { --card-bg: #C1D7E9; --card-text: #111; }
+.card.bg-b { --card-bg: #2B252C; --card-text: #f5f5f5; }
+.card.bg-r { --card-bg: #E49977; --card-text: #111; }
+.card.bg-g { --card-bg: #A3C09A; --card-text: #111; }
+.card.bg-gold { --card-bg: #CDB87E; --card-text: #111; }
+.card.bg-colorless { --card-bg: #A6AFB2; --card-text: #111; }
+.card.bg-land { --card-bg: #8D7A68; --card-text: #f5f5f5; }
+
+/* ===================================================
    CARTA MTG: TAMAÑO FIJO Y COHERENTE EN TODAS LAS ZONAS
 =================================================== */
 .card {
-  /* El ancho/alto reales los fija JS (renderRow -> sizeCardsInRow) en
-     px, calculados según el espacio disponible de cada fila, así las
-     cartas NUNCA se desbordan y NUNCA necesitan scroll. Estos valores
-     son sólo un fallback antes de que JS los pise. */
   width: var(--card-w);
   aspect-ratio: 5 / 7;
-  background: #c3c3c3;
+  /* El borde exterior negro clásico de MTG */
+  background-color: #111; 
   border: 4px solid #111;
   border-radius: 6px;
   display: flex;
@@ -119,11 +128,7 @@ html, body {
   transition: transform 0.12s ease;
   flex-shrink: 0;
   flex-grow: 0;
-  transform-origin: bottom center; /* Crece desde abajo */
-
-  /* CONTAINER QUERY: el texto interno escala en base al tamaño REAL
-     de la carta (cqw/cqh), así el nombre y el texto siempre entran
-     completos sea cual sea el tamaño calculado por JS. */
+  transform-origin: bottom center;
   container-type: size;
   container-name: card;
 }
@@ -142,22 +147,15 @@ html, body {
   z-index: 100;
 }
 
-/* CARTA GIRADA (TAPPED): se rota Y se reduce en la misma proporción
-   ancho/alto (5/7) para que la "caja" rotada ocupe aproximadamente el
-   mismo espacio que ocupaba antes de girar. Así no se solapa con la
-   carta de al lado. */
-/* === CARTA GIRADA (TAPPED) – SIN ACHICAR, CON SEPARACIÓN === */
 .card.tapped {
   transform: rotate(90deg);
-  transform-origin: center center;  /*gira desde el centro */
+  transform-origin: center center;
   opacity: 0.85;
   z-index: 100;
-  /* Aumentamos el margin para separarla de las vecinas */
   margin-left: 15px;
   margin-right: 15px;
 }
 
-/* Cuando está girada y hacemos hover, la mostramos normal */
 .field-row .card.tapped:hover {
   transform: rotate(0deg) scale(2.8);
   transform-origin: center bottom; 
@@ -165,36 +163,93 @@ html, body {
   z-index: 100;
 }
 
+/* --- TEXTURA Y MARCO INTERNO --- */
 .card-inner {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: url('https://www.transparenttextures.com/patterns/cream-paper.png') #fdfbf7;
-  border: 1px solid #666;
+  background-color: var(--card-bg, #c3c3c3);
+  /* Textura + Sombra radial para efecto viñeta/desgastado */
+  background-image: 
+    url('https://www.transparenttextures.com/patterns/cream-paper.png'),
+    radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.4) 100%);
+  background-blend-mode: multiply;
+  border: 1px solid rgba(0,0,0,0.6);
+  box-shadow: inset 0 0 12px rgba(0,0,0,0.4); /* Profundidad de marco */
 }
 
-/* HEADER Y MANÁ MTG - tamaños en cqw/cqh: escalan con el tamaño REAL
-   de la carta (que fija JS), nunca quedan fijos ni se cortan */
+/* HEADER Y TIPO (Semi-transparentes para que se luzca el color y la textura) */
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 2cqw 4cqw;
-  border-bottom: 1px solid #999;
-  background: linear-gradient(to bottom, #eaeaea, #d4d4d4);
+  border-bottom: 1px solid rgba(0,0,0,0.6);
+  background: linear-gradient(to bottom, rgba(255,255,255,0.4), rgba(255,255,255,0.05));
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
   height: 15cqh;
   flex-shrink: 0;
 }
+
 .card-title {
   font-weight: bold;
   font-size: 8cqw;
   line-height: 1.1;
-  color: #111;
+  color: var(--card-text, #111);
   white-space: wrap;
   overflow: visible;
   text-overflow: ellipsis;
   max-width: 76%;
+  text-shadow: 1px 1px 0px rgba(255,255,255,0.3);
 }
+
+/* Sombra oscura para el texto en cartas Negras y Tierras */
+.card.bg-b .card-title,
+.card.bg-land .card-title {
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+}
+
+/* ARTE */
+.card-art {
+  flex: 1; 
+  background: #222; 
+  display: flex; 
+  justify-content: center; 
+  align-items: center;
+  font-size: 26cqw; 
+  border-bottom: 1px solid rgba(0,0,0,0.7); 
+  border-top: 1px solid rgba(0,0,0,0.7);
+  min-height: 35px;
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.8);
+}
+
+/* TYPE LINE */
+.card-type-line {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 7cqw; font-weight: bold; padding: 2cqw 4cqw;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.4), rgba(255,255,255,0.05));
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
+  border-bottom: 1px solid rgba(0,0,0,0.6); 
+  color: var(--card-text, #222);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.card.bg-b .card-type-line,
+.card.bg-land .card-type-line {
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+}
+
+/* CAJA DE TEXTO (Se mantiene color pergamino para máxima legibilidad, igual que en MTG) */
+.card-text-box {
+  height: 30cqh; padding: 2cqw 3cqw; font-size: 6cqw; line-height: 1.15;
+  background-color: rgba(253, 251, 247, 0.92);
+  background-image: url('https://www.transparenttextures.com/patterns/cream-paper.png');
+  color: #111; overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+}
+
 .card-cost { 
   display: flex;
   gap: 2cqw;
@@ -220,33 +275,6 @@ html, body {
 .mana-r { background: #e74c3c; } /* Rojo / Fuego */
 .mana-g { background: #2ecc71; } /* Verde / Naturaleza */
 .mana-c { background: #bdc3c7; } /* Incoloro / Genérico */
-
-/* ARTE */
-.card-art {
-  flex: 1; background: #333; display: flex; justify-content: center; align-items: center;
-  font-size: 26cqw; border-bottom: 1px solid #999; border-top: 1px solid #999;
-  min-height: 35px;
-}
-
-/* TYPE LINE Y CAJA DE TEXTO */
-.card-type-line {
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 7cqw; font-weight: bold; padding: 2cqw 4cqw;
-  background: linear-gradient(to bottom, #eaeaea, #d4d4d4);
-  border-bottom: 1px solid #999; color: #222;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  flex-shrink: 0;
-}
-.card-text-box {
-  height: 30cqh; padding: 2cqw 3cqw; font-size: 6cqw; line-height: 1.15;
-  background: rgba(255,255,255,0.9); color: #111; overflow: hidden;
-  flex-shrink: 0;
-}
-.keyword-strip { display: flex; flex-wrap: wrap; gap: 1.5cqw; margin-bottom: 1cqw; }
-.keyword-tag {
-  background: #2c2c54; color: #fff; border-radius: 3px;
-  padding: 0.5cqw 2cqw; font-size: 5.5cqw; font-weight: bold; white-space: nowrap;
-}
 
 /* FUERZA / RESISTENCIA */
 .card-pt {
