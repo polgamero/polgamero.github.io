@@ -171,7 +171,7 @@ html, body {
   background-color: var(--card-bg, #c3c3c3);
   /* Textura + Sombra radial para efecto viñeta/desgastado */
   background-image: 
-    url('https://www.transparenttextures.com/patterns/cream-paper.png'),
+    url('https://www.transparenttextures.com/patterns/clean-gray-paper.png'),
     radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.4) 100%);
   background-blend-mode: multiply;
   border: 1px solid rgba(0,0,0,0.6);
