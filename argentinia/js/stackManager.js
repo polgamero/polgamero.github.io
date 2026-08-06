@@ -154,6 +154,26 @@ async function executeStackItem(item) {
           else state.rivalHP += effectToApply.amount;
           logMsg(`💚 ¡${card.name}! Curó ${effectToApply.amount} de HP a ${targetName}.`);
         }
+        // LÓGICA NUEVA: DESCARTE
+        else if (effectToApply.type === 'discard') {
+          const targetHand = targetObj.isLocal ? state.localHand : state.rivalHand;
+          const targetGraveyard = targetObj.isLocal ? state.localGraveyard : state.rivalGraveyard;
+          const amount = Math.min(effectToApply.amount, targetHand.length);
+          const discardedNames = [];
+          for (let i = 0; i < amount; i++) {
+            // El Tano descarta al azar; a vos te descartamos desde el final de la mano
+            // (más adelante se puede pedir que elijas cuáles, por ahora es automático).
+            const idx = targetObj.isLocal ? targetHand.length - 1 : Math.floor(Math.random() * targetHand.length);
+            const discarded = targetHand.splice(idx, 1)[0];
+            targetGraveyard.push(discarded);
+            discardedNames.push(discarded.name);
+          }
+          if (discardedNames.length > 0) {
+            logMsg(`🗑️ ¡${card.name}! ${targetName} descartó: ${discardedNames.join(', ')}.`);
+          } else {
+            logMsg(`🗑️ ¡${card.name}! ${targetName} no tenía cartas para descartar.`);
+          }
+        }
       } else if (targetObj.type === 'creature') {
         const targetUnit = targetObj.item;
         if (effectToApply.type === 'damage') {
@@ -170,6 +190,39 @@ async function executeStackItem(item) {
             auraEffect: { stats: effectToApply.stats }
           });
           logMsg(`🗡️ ¡${card.name} fue equipado a ${targetUnit.card.name}!`);
+        }
+        // LÓGICA NUEVA: DESTRUIR CRIATURA
+        else if (effectToApply.type === 'destroy_creature') {
+          const isTargetLocal = state.localCombat.includes(targetUnit);
+          const board = isTargetLocal ? state.localCombat : state.rivalCombat;
+          const grave = isTargetLocal ? state.localGraveyard : state.rivalGraveyard;
+          const idx = board.indexOf(targetUnit);
+          if (idx !== -1) {
+            board.splice(idx, 1);
+            grave.push(targetUnit.card);
+            logMsg(`💀 ¡${card.name} destruyó a ${targetUnit.card.name}!`);
+          } else {
+            logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+          }
+        }
+        // LÓGICA NUEVA: REBOTE A LA MANO
+        else if (effectToApply.type === 'bounce') {
+          const isTargetLocal = state.localCombat.includes(targetUnit);
+          const board = isTargetLocal ? state.localCombat : state.rivalCombat;
+          const hand = isTargetLocal ? state.localHand : state.rivalHand;
+          const idx = board.indexOf(targetUnit);
+          if (idx !== -1) {
+            board.splice(idx, 1);
+            // Si era un Vehículo tripulado, le sacamos las estadísticas temporales de criatura
+            if (targetUnit.isVehicle) {
+              delete targetUnit.card.power;
+              delete targetUnit.card.toughness;
+            }
+            hand.push(targetUnit.card);
+            logMsg(`🔄 ¡${card.name} devolvió a ${targetUnit.card.name} a la mano de su dueño!`);
+          } else {
+            logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+          }
         }
       }
     } else {
