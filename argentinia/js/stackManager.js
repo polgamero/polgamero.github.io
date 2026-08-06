@@ -244,7 +244,109 @@ async function executeStackItem(item) {
           combatZone.push(vehicleItem);
           logMsg(`🚗 ¡${card.name} fue tripulado y aceleró al campo de batalla como un ${card.baseStats.power}/${card.baseStats.toughness}!`);
         }
-      } else {
+      }
+      // LÓGICA NUEVA: ARRASAR EL CAMPO (board wipe)
+      else if (effectToApply.type === 'destroy_all_creatures') {
+        const wipeBoard = (combatZone, graveyard) => {
+          let count = 0;
+          while (combatZone.length > 0) {
+            const unit = combatZone.pop();
+            if (unit.isVehicle) {
+              delete unit.card.power;
+              delete unit.card.toughness;
+            }
+            graveyard.push(unit.card);
+            count++;
+          }
+          return count;
+        };
+        const localCount = wipeBoard(state.localCombat, state.localGraveyard);
+        const rivalCount = wipeBoard(state.rivalCombat, state.rivalGraveyard);
+        logMsg(`💥 ¡${card.name} arrasó con todo! (${localCount} tuya(s) + ${rivalCount} del Tano fueron al cementerio)`);
+      }
+      // LÓGICA NUEVA: CREAR FICHAS
+      else if (effectToApply.type === 'create_tokens') {
+        const board = isLocal ? state.localCombat : state.rivalCombat;
+        const amount = effectToApply.amount || 1;
+        for (let i = 0; i < amount; i++) {
+          const tokenCard = {
+            id: `token_${card.id}_${Date.now()}_${i}`,
+            name: effectToApply.tokenName || 'Ficha',
+            type: 'Criatura Token',
+            manaCost: null,
+            cmc: 0,
+            rarity: 'Common',
+            colors: card.colors || [],
+            power: effectToApply.tokenStats?.power ?? 1,
+            toughness: effectToApply.tokenStats?.toughness ?? 1,
+            text: 'Ficha de criatura.',
+            flavorText: '',
+            keywords: effectToApply.tokenKeywords || [],
+            isToken: true
+          };
+          const newTokenUnit = {
+            card: tokenCard, tapped: false, summoningSickness: true, isAttacking: false,
+            blockingIndex: null, damageTaken: 0, auras: []
+          };
+          if (hasKeyword(newTokenUnit, 'haste')) newTokenUnit.summoningSickness = false;
+          board.push(newTokenUnit);
+        }
+        logMsg(`✨ ¡${card.name} creó ${amount} ficha(s) de "${effectToApply.tokenName}"!`);
+      }
+      // LÓGICA NUEVA: REANIMAR DESDE EL CEMENTERIO
+      else if (effectToApply.type === 'reanimate') {
+        const graveyard = isLocal ? state.localGraveyard : state.rivalGraveyard;
+        const board = isLocal ? state.localCombat : state.rivalCombat;
+        const amount = effectToApply.amount || 1;
+        let revivedCount = 0;
+        for (let i = 0; i < amount; i++) {
+          // Buscamos la criatura que murió más recientemente (el final del cementerio)
+          let targetIdx = -1;
+          for (let j = graveyard.length - 1; j >= 0; j--) {
+            if (graveyard[j].power !== undefined) { targetIdx = j; break; }
+          }
+          if (targetIdx === -1) break;
+
+          const revivedCard = graveyard.splice(targetIdx, 1)[0];
+          const newUnit = {
+            card: revivedCard, tapped: false, summoningSickness: true, isAttacking: false,
+            blockingIndex: null, damageTaken: 0, auras: []
+          };
+          if (hasKeyword(newUnit, 'haste')) newUnit.summoningSickness = false;
+          board.push(newUnit);
+          revivedCount++;
+        }
+        if (revivedCount > 0) {
+          logMsg(`⚰️ ¡${card.name} devolvió ${revivedCount} criatura(s) del cementerio al campo de batalla!`);
+        } else {
+          logMsg(`⚠️ ${card.name} no encontró ninguna criatura en el cementerio para revivir.`);
+        }
+      }
+      // LÓGICA NUEVA: BUSCAR TIERRAS (rampa de maná)
+      else if (effectToApply.type === 'ramp') {
+        const deck = isLocal ? state.localDeck : state.rivalDeck;
+        const landZone = isLocal ? state.localLands : state.rivalLands;
+        const amount = effectToApply.amount || 1;
+        let foundCount = 0;
+        for (let i = 0; i < amount; i++) {
+          const idx = deck.findIndex(c => c.type.includes('Tierra'));
+          if (idx === -1) break;
+          const landCard = deck.splice(idx, 1)[0];
+          landZone.push({ card: landCard, tapped: false });
+          foundCount++;
+        }
+        // Barajamos el resto del mazo tras buscar
+        for (let i = deck.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+        if (foundCount > 0) {
+          logMsg(`🌱 ¡${card.name} buscó ${foundCount} tierra(s) y la(s) puso en el campo de batalla!`);
+        } else {
+          logMsg(`⚠️ ${card.name} no encontró tierras en el mazo.`);
+        }
+      }
+      else {
         resolveEffectDirect(effectToApply, card.name, isLocal);
       }
     }
