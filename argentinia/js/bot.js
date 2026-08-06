@@ -24,6 +24,9 @@ export function canRivalAfford(card) {
 
   state.rivalLands.forEach(landItem => {
     if (landItem.tapped) return;
+    // Tierras de utilidad sin `produces` ni `producesOptions` (ej. Biblioteca Nacional) no
+    // producen maná real — su {T} activa otra cosa. No cuentan para pagar hechizos.
+    if (!landItem.card.produces && !landItem.card.producesOptions) return;
     const amount = landItem.card.manaAmount || 1;
     totalMana += amount;
     if (landItem.card.producesOptions) {
@@ -90,11 +93,11 @@ export function tapRivalLandsFor(card) {
     }
   });
 
-  // 3) Genérico: cualquier tierra que todavía no se giró
+  // 3) Genérico: cualquier tierra que todavía no se giró (y que produzca maná de verdad)
   let genericNeeded = cost.generic;
   for (let i = 0; i < state.rivalLands.length && genericNeeded > 0; i++) {
     const land = state.rivalLands[i];
-    if (!land.tapped) {
+    if (!land.tapped && (land.card.produces || land.card.producesOptions)) {
       land.tapped = true;
       genericNeeded -= (land.card.manaAmount || 1);
     }
