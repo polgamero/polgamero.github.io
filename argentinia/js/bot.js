@@ -324,6 +324,40 @@ export async function takeBotPriorityAction() {
         } else if (cardToPlay.effect && cardToPlay.effect.type === 'heal') {
           aiTargetObj = { type: 'player', isLocal: false };
         }
+        // LÓGICA NUEVA: REMOCIÓN DE CRIATURA (Yuyo del Loco, etc.)
+        else if (cardToPlay.effect && cardToPlay.effect.type === 'destroy_creature') {
+          const validTargets = state.localCombat.filter(c => !hasKeyword(c, 'hexproof'));
+          if (validTargets.length > 0) {
+            // El Tano apunta a tu criatura más grande (poder + resistencia)
+            const chosen = validTargets.reduce((prev, current) =>
+              (getEffectivePower(prev) + getEffectiveToughness(prev)) > (getEffectivePower(current) + getEffectiveToughness(current)) ? prev : current
+            );
+            aiTargetObj = { type: 'creature', isLocal: true, item: chosen };
+          } else {
+            validPlay = false;
+            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y lo descartó.`);
+            state.rivalGraveyard.push(cardToPlay);
+          }
+        }
+        // LÓGICA NUEVA: REBOTE (Vuelto en Mano, etc.)
+        else if (cardToPlay.effect && cardToPlay.effect.type === 'bounce') {
+          const validTargets = state.localCombat.filter(c => !hasKeyword(c, 'hexproof'));
+          if (validTargets.length > 0) {
+            // El Tano apunta a tu criatura con más poder (la más amenazante en combate)
+            const chosen = validTargets.reduce((prev, current) =>
+              getEffectivePower(prev) > getEffectivePower(current) ? prev : current
+            );
+            aiTargetObj = { type: 'creature', isLocal: true, item: chosen };
+          } else {
+            validPlay = false;
+            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y lo descartó.`);
+            state.rivalGraveyard.push(cardToPlay);
+          }
+        }
+        // LÓGICA NUEVA: DESCARTE (Corralito, etc.)
+        else if (cardToPlay.effect && cardToPlay.effect.type === 'discard') {
+          aiTargetObj = { type: 'player', isLocal: true };
+        }
       }
 
       if (validPlay) {
