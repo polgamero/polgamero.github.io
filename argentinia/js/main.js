@@ -425,9 +425,10 @@ function executeSpellOnTarget(targetObj) {
       isLocal: true,
       targetObj: targetObj,
       type: 'ability',
-      source: state.pendingTargetSource
+      // Agregamos el type correcto para que el stackManager lo reconozca
+      source: { type: 'support_activation', index: state.pendingTargetSource.index }
     });
-  } 
+  }
   else {
     card = state.localHand.splice(state.pendingSpellIndex, 1)[0];
 
