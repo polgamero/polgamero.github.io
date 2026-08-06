@@ -225,6 +225,21 @@ async function executeStackItem(item) {
           }
         }
       }
+      // LÓGICA NUEVA: DESTRUIR PERMANENTE (Artefacto / Encantamiento en la zona de soporte)
+      else if (targetObj.type === 'permanent') {
+        const targetItem = targetObj.item;
+        const isTargetLocal = state.localSupport.includes(targetItem);
+        const supportZone = isTargetLocal ? state.localSupport : state.rivalSupport;
+        const grave = isTargetLocal ? state.localGraveyard : state.rivalGraveyard;
+        const idx = supportZone.indexOf(targetItem);
+        if ((effectToApply.type === 'destroy_artifact' || effectToApply.type === 'destroy_enchantment') && idx !== -1) {
+          supportZone.splice(idx, 1);
+          grave.push(targetItem.card);
+          logMsg(`💥 ¡${card.name} destruyó a ${targetItem.card.name}!`);
+        } else if (idx === -1) {
+          logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+        }
+      }
     } else {
       // LÓGICA NUEVA: VEHÍCULOS (no requieren un targetObj externo porque se "activan" a sí mismos)
       if (effectToApply.type === 'crew_vehicle') {
@@ -434,6 +449,8 @@ export function renderStack() {
       if (item.targetObj.type === 'player') {
         targetText = `Objetivo: ${item.targetObj.isLocal ? 'Vos' : 'Rival'}`;
       } else if (item.targetObj.type === 'creature') {
+        targetText = `Objetivo: ${item.targetObj.item.card.name}`;
+      } else if (item.targetObj.type === 'permanent') {
         targetText = `Objetivo: ${item.targetObj.item.card.name}`;
       } else if (item.targetObj.type === 'stack') {
         targetText = `Objetivo: Hechizo en pila #${item.targetObj.stackId}`;
