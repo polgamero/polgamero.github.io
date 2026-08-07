@@ -45,14 +45,14 @@ html, body {
   flex-direction: column;
   justify-content: flex-start;
   padding: 1vh 1vw;
-  gap: 1vh;
+  gap: 0.8vh;
   background: transparent;
 }
 
 /* ALTURAS EN VH: sólo 4 filas ahora (se fue el banner central), la
    suma total (filas + gaps + padding) queda por debajo de 100vh */
 .hand-row {
-  height: 16vh;
+  height: 18vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -65,7 +65,7 @@ html, body {
 }
 
 .field-zone-container {
-  height: 31vh;
+  height: 29.5vh;
   display: flex;
   flex-direction: column;
   gap: 1vh;
@@ -115,10 +115,9 @@ html, body {
 .card {
   width: var(--card-w);
   aspect-ratio: 5 / 7;
-  /* Borde exterior negro clásico de MTG: bien fino, como una carta real (antes 4px+2px de
-     padding, después 2px+1px — ahora al mínimo real para no robarle espacio al contenido). */
+  /* Borde exterior negro clásico de MTG. */
   background-color: #111; 
-  border: 1px solid #111;
+  border: 2px solid #111;
   border-radius: 6px;
   display: flex;
   flex-direction: column;
@@ -150,11 +149,12 @@ html, body {
   opacity: 0.85;
   z-index: 100;
   /* El ancho/alto en pantalla (ya intercambiados para el footprint apaisado) los asigna
-     sizeCardsInRow() en JS — acá NO rotamos .card entero (eso fue lo que rompía el ancho:
-     el layout reservaba el tamaño ORIGINAL vertical, pero el rotate(90deg) la mostraba
-     apaisada, más ancha que el espacio que tenía reservado). Ahora .card ya reserva el
-     tamaño apaisado correcto, y es .card-inner quien rota — ver más abajo.
-     overflow visible porque .card-inner queda posicionado absoluto y girado adentro. */
+     sizeCardsInRow() en JS. .card-inner es quien rota adentro — se centra con flexbox
+     (display:flex + align/justify:center), no con position:absolute + translate, así el
+     transform-origin del hover (bottom center) no pelea con el centrado. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: visible;
 }
 
@@ -168,6 +168,7 @@ html, body {
   flex-direction: column;
   width: 100%;
   height: 100%;
+  flex-shrink: 0;
   /* La medida de referencia para todo el texto interno (cqw/cqh) vive acá, no en .card —
      así, cuando .card-inner se agranda/rota para una carta girada (ver .tapped más abajo),
      el texto sigue calculando su tamaño contra las medidas reales del contenido, no contra
@@ -180,26 +181,28 @@ html, body {
     url('https://www.transparenttextures.com/patterns/clean-gray-paper.png'),
     radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.25) 100%);
   background-blend-mode: multiply;
-  border: 1px solid rgba(0,0,0,0.6);
+  border: 2px solid rgba(0,0,0,0.6); /* mismo grosor que el borde exterior de .card, para
+                                         que una carta girada no se vea con marco más fino */
   border-radius: 4px; /* acompaña el redondeo exterior de .card (6px), como una carta real */
   overflow: hidden; /* clip: nada se escapa del marco redondeado, ni texto ni bloques internos */
   box-shadow: inset 0 0 12px rgba(0,0,0,0.4); /* Profundidad de marco */
+  transition: transform 0.15s ease;
 }
 
 /* CARTA GIRADA: .card ya reserva su footprint apaisado (JS le swapea width/height).
-   Achicar .card-inner de vuelta a sus proporciones ORIGINALES (verticales) y centrarlo
-   girado 90° adentro — así visualmente ocupa exactamente el rectángulo apaisado del padre,
-   sin invadir a sus vecinas ni perder su relación de aspecto real. */
+   .card-inner mantiene sus proporciones ORIGINALES (verticales, asignadas por JS) y
+   se centra solo (flexbox del padre), rotado 90° — ocupa exactamente el rectángulo
+   apaisado del padre, sin invadir a sus vecinas ni perder su relación de aspecto real. */
 .card.tapped .card-inner {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  /* ancho/alto ORIGINALES (verticales) los asigna sizeCardsInRow() en JS */
-  transform: translate(-50%, -50%) rotate(90deg);
+  transform: rotate(90deg);
+  transform-origin: center center;
 }
 
+/* Al hacer hover sobre una girada: se desgira y hace zoom, con el mismo origen (abajo al
+   centro) que usan todas las demás cartas del juego — antes pivotaba desde el medio. */
 .field-row .card.tapped:hover .card-inner {
-  transform: translate(-50%, -50%) rotate(0deg) scale(2.8);
+  transform: rotate(0deg) scale(2.8);
+  transform-origin: bottom center;
   z-index: 200;
 }
 
