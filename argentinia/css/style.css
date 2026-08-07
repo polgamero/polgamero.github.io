@@ -130,8 +130,6 @@ html, body {
   flex-shrink: 0;
   flex-grow: 0;
   transform-origin: bottom center;
-  container-type: size;
-  container-name: card;
 }
 
 /* EFECTO HOVER PARA LA MANO LOCAL */
@@ -149,26 +147,33 @@ html, body {
 }
 
 .card.tapped {
-  transform: rotate(90deg);
-  transform-origin: center center;
   opacity: 0.85;
   z-index: 100;
-  margin-left: 15px;
-  margin-right: 15px;
+  /* El ancho/alto en pantalla (ya intercambiados para el footprint apaisado) los asigna
+     sizeCardsInRow() en JS — acá NO rotamos .card entero (eso fue lo que rompía el ancho:
+     el layout reservaba el tamaño ORIGINAL vertical, pero el rotate(90deg) la mostraba
+     apaisada, más ancha que el espacio que tenía reservado). Ahora .card ya reserva el
+     tamaño apaisado correcto, y es .card-inner quien rota — ver más abajo.
+     overflow visible porque .card-inner queda posicionado absoluto y girado adentro. */
+  overflow: visible;
 }
 
 .field-row .card.tapped:hover {
-  transform: rotate(0deg) scale(2.8);
-  transform-origin: center bottom; 
-  opacity: 1;
-  z-index: 100;
+  z-index: 200;
 }
 
 /* --- TEXTURA Y MARCO INTERNO --- */
 .card-inner {
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: 100%;
+  /* La medida de referencia para todo el texto interno (cqw/cqh) vive acá, no en .card —
+     así, cuando .card-inner se agranda/rota para una carta girada (ver .tapped más abajo),
+     el texto sigue calculando su tamaño contra las medidas reales del contenido, no contra
+     el rectángulo apaisado del padre. */
+  container-type: size;
+  container-name: card;
   background-color: var(--card-bg, #c3c3c3);
   /* Textura + Sombra radial para efecto viñeta/desgastado */
   background-image: 
@@ -179,6 +184,23 @@ html, body {
   border-radius: 4px; /* acompaña el redondeo exterior de .card (6px), como una carta real */
   overflow: hidden; /* clip: nada se escapa del marco redondeado, ni texto ni bloques internos */
   box-shadow: inset 0 0 12px rgba(0,0,0,0.4); /* Profundidad de marco */
+}
+
+/* CARTA GIRADA: .card ya reserva su footprint apaisado (JS le swapea width/height).
+   Achicar .card-inner de vuelta a sus proporciones ORIGINALES (verticales) y centrarlo
+   girado 90° adentro — así visualmente ocupa exactamente el rectángulo apaisado del padre,
+   sin invadir a sus vecinas ni perder su relación de aspecto real. */
+.card.tapped .card-inner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* ancho/alto ORIGINALES (verticales) los asigna sizeCardsInRow() en JS */
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.field-row .card.tapped:hover .card-inner {
+  transform: translate(-50%, -50%) rotate(0deg) scale(2.8);
+  z-index: 200;
 }
 
 /* HEADER Y TIPO (Semi-transparentes para que se luzca el color y la textura) */
@@ -350,6 +372,11 @@ html, body {
   box-shadow: 0 4px 14px rgba(0,0,0,0.7);
   text-align: left;
   line-height: 1.4;
+  /* El tooltip es hijo de la carta, así que si la carta está en :hover (zoom x2.8) el
+     tooltip se escala CON ella. Esto lo contrarresta para que siempre se vea del mismo
+     tamaño en pantalla, esté la carta agrandada o no. */
+  transform: scale(0.357);
+  transform-origin: bottom left;
 }
 
 .card-back { background: #4a2b10; border: 4px solid #111; background-image: repeating-linear-gradient(45deg, #3e220b 0, #3e220b 5px, #4a2b10 5px, #4a2b10 10px); }
