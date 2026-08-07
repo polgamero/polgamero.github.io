@@ -190,8 +190,11 @@ html, body {
     url('https://www.transparenttextures.com/patterns/clean-gray-paper.png'),
     radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.25) 100%);
   background-blend-mode: multiply;
-  border: 2px solid rgba(0,0,0,0.6); /* mismo grosor que el borde exterior de .card, para
-                                         que una carta girada no se vea con marco más fino */
+  border: 1px solid #111; /* sólido, no semi-transparente: antes era rgba(0,0,0,0.6), casi
+                              invisible al lado del marco exterior en una carta vertical, pero
+                              en una girada con hover ESTE es el único borde que se llega a ver
+                              (el .card exterior queda chico al lado del .card-inner agrandado),
+                              y se notaba "sin borde negro" por ser translúcido. */
   border-radius: 4px; /* acompaña el redondeo exterior de .card (6px), como una carta real */
   overflow: hidden; /* clip: nada se escapa del marco redondeado, ni texto ni bloques internos */
   box-shadow: inset 0 0 12px rgba(0,0,0,0.4); /* Profundidad de marco */
@@ -220,11 +223,12 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2cqw 4cqw;
+  padding: 1cqw 4cqw;
   border-bottom: 1px solid rgba(0,0,0,0.6);
   background: linear-gradient(to bottom, rgba(255,255,255,0.4), rgba(255,255,255,0.05));
   box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
-  height: 15cqh;
+  height: 9cqh; /* antes 15cqh — en una carta MTG real el título ocupa mucho menos, y
+                   ese espacio de sobra se lo pasamos a la caja de texto de abajo */
   flex-shrink: 0;
   overflow: hidden; /* si el título es muy largo, se trunca acá, nunca se escapa del header */
 }
@@ -265,14 +269,14 @@ html, body {
 /* TYPE LINE */
 .card-type-line {
   display: flex; justify-content: space-between; align-items: center;
-  font-weight: bold; padding: 2cqw 4cqw;
+  font-weight: bold; padding: 0.7cqw 4cqw;
   background: linear-gradient(to bottom, rgba(255,255,255,0.4), rgba(255,255,255,0.05));
   box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
   border-bottom: 1px solid rgba(0,0,0,0.6); 
   color: var(--card-text, #222);
   flex-shrink: 0;
   overflow: hidden;
-  font-size: 7cqw; /* base heredado por .rarity-icon — sin esto, el ● no tiene tamaño propio
+  font-size: 6cqw; /* base heredado por .rarity-icon — sin esto, el ● no tiene tamaño propio
                        y hereda el default del navegador (gigante), rompe la altura de toda
                        la carta. .card-type-text lo pisa con su propio tamaño dinámico. */
 }
@@ -290,7 +294,7 @@ html, body {
 
 /* CAJA DE TEXTO (Se mantiene color pergamino para máxima legibilidad, igual que en MTG) */
 .card-text-box {
-  height: 30cqh; padding: 2cqw 3cqw; font-size: 6cqw; line-height: 1.15;
+  height: 37cqh; padding: 2cqw 3cqw; font-size: 6cqw; line-height: 1.15;
   background-color: rgba(253, 251, 247, 0.92);
   background-image: url('https://www.transparenttextures.com/patterns/cream-paper.png');
   color: #111; overflow: hidden;
