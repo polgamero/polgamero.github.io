@@ -296,18 +296,18 @@ export function performSacrifice(item, isLocal) {
 // Busca, en la zona de soporte del dueño (y del rival, para efectos "scope: opponent"),
 // permanentes con `card.staticEffect` y devuelve los que aplican a esta criatura.
 // No usan la pila: mientras el Encantamiento esté en el campo, el efecto está activo.
-function getStaticTeamModifiers(itemObj) {
+export function getStaticTeamModifiers(itemObj) {
   const isLocal = state.localCombat.includes(itemObj);
   const ownSupport = isLocal ? state.localSupport : state.rivalSupport;
   const oppSupport = isLocal ? state.rivalSupport : state.localSupport;
   const mods = [];
   ownSupport.forEach(s => {
     const eff = s.card.staticEffect;
-    if (eff && (eff.scope || 'own') === 'own') mods.push(eff);
+    if (eff && (eff.scope || 'own') === 'own') mods.push({ ...eff, sourceName: s.card.name });
   });
   oppSupport.forEach(s => {
     const eff = s.card.staticEffect;
-    if (eff && eff.scope === 'opponent') mods.push(eff);
+    if (eff && eff.scope === 'opponent') mods.push({ ...eff, sourceName: s.card.name });
   });
   return mods;
 }

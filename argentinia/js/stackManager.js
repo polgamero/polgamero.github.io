@@ -1,6 +1,6 @@
 import { sleep } from './utils.js';
 import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, performSacrifice } from './main.js';
-import { logMsg, render } from './ui.js';
+import { logMsg, render, createCardElement } from './ui.js';
 import { checkDeaths } from './combatRules.js';
 import { hasKeyword } from './keywords.js';
 import { passPriority } from './turnManager.js';
@@ -263,14 +263,14 @@ async function executeStackItem(item) {
         // LÓGICA NUEVA: TRUCO DE COMBATE — +X/+X hasta el final del turno (ej. Fuerza de Toro)
         else if (effectToApply.type === 'pump') {
           if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
-          targetUnit.tempEffects.push({ powerMod: effectToApply.powerMod, toughnessMod: effectToApply.toughnessMod });
+          targetUnit.tempEffects.push({ name: card.name, powerMod: effectToApply.powerMod, toughnessMod: effectToApply.toughnessMod });
           const pText = `${effectToApply.powerMod >= 0 ? '+' : ''}${effectToApply.powerMod}/${effectToApply.toughnessMod >= 0 ? '+' : ''}${effectToApply.toughnessMod}`;
           logMsg(`💪 ¡${card.name}! ${targetUnit.card.name} obtiene ${pText} hasta el final del turno.`);
         }
         // LÓGICA NUEVA: PROTECCIÓN TEMPORAL — otorga una keyword hasta el final del turno (ej. A Cubierto)
         else if (effectToApply.type === 'grant_keyword_temp') {
           if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
-          targetUnit.tempEffects.push({ keywords: [effectToApply.keyword] });
+          targetUnit.tempEffects.push({ name: card.name, keywords: [effectToApply.keyword] });
           logMsg(`🛡️ ¡${card.name}! ${targetUnit.card.name} gana ${effectToApply.keyword} hasta el final del turno.`);
         }
         // LÓGICA NUEVA: DESTRUIR CRIATURA
@@ -532,6 +532,44 @@ export function handleStackCardClick(item) {
   }
 }
 
+let stackPreviewEl = null;
+function getStackPreviewEl() {
+  if (!stackPreviewEl) {
+    stackPreviewEl = document.createElement('div');
+    stackPreviewEl.id = 'stack-hover-preview';
+    document.body.appendChild(stackPreviewEl);
+  }
+  return stackPreviewEl;
+}
+
+function showStackHoverPreview(item, anchorEl) {
+  const preview = getStackPreviewEl();
+  preview.innerHTML = '';
+
+  // zone: 'preview' no matchea ninguna rama de clicks de createCardElement, así que
+  // esta carta queda puramente decorativa (no se le puede hacer click).
+  const cardEl = createCardElement(item, false, item.isLocal, null, 'preview');
+  cardEl.style.width = '190px';
+  cardEl.style.height = `${190 * 7 / 5}px`;
+  preview.appendChild(cardEl);
+
+  const stackContainer = document.getElementById('stack-container');
+  const containerRect = stackContainer.getBoundingClientRect();
+  const anchorRect = anchorEl.getBoundingClientRect();
+
+  preview.style.left = `${containerRect.left - 210}px`;
+  const previewHeight = 190 * 7 / 5;
+  let top = anchorRect.top + (anchorRect.height / 2) - (previewHeight / 2);
+  top = Math.max(10, Math.min(top, window.innerHeight - previewHeight - 10));
+  preview.style.top = `${top}px`;
+
+  preview.classList.add('visible');
+}
+
+function hideStackHoverPreview() {
+  if (stackPreviewEl) stackPreviewEl.classList.remove('visible');
+}
+
 export function renderStack() {
   const container = document.getElementById('stack-container');
   const list = document.getElementById('stack-list');
@@ -542,6 +580,7 @@ export function renderStack() {
 
   if (spellStack.length === 0) {
     container.classList.add('hidden');
+    hideStackHoverPreview();
     return;
   }
 
@@ -589,6 +628,12 @@ export function renderStack() {
     if (isTargetingCounter) {
       cardDiv.addEventListener('click', () => handleStackCardClick(item));
     }
+
+    // Vista previa completa de la carta al pasar el mouse — así un jugador que no
+    // conoce todas las cartas de memoria puede ver qué hace antes de decidir si
+    // contrarrestarla o dejarla pasar.
+    cardDiv.addEventListener('mouseenter', () => showStackHoverPreview(item, cardDiv));
+    cardDiv.addEventListener('mouseleave', hideStackHoverPreview);
 
     list.appendChild(cardDiv);
   });

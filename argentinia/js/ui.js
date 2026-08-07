@@ -4,6 +4,7 @@ import {
   getEffectiveToughness,
   getEffectiveKeywords,
   getEquipmentOn,
+  getStaticTeamModifiers,
   handleDiscardClick,
   playCard,
   canPlayCard,
@@ -346,13 +347,79 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   }
 
   const attachedAuras = itemObj.auras || [];
-  const auraBadgeHTML = (zone === 'combat' && attachedAuras.length > 0)
-    ? `<div class="aura-badge" title="${attachedAuras.map(a => a.name).join(', ')}">✨${attachedAuras.length > 1 ? attachedAuras.length : ''}</div>`
-    : '';
-
   const attachedEquipment = (zone === 'combat' && card.power !== undefined) ? getEquipmentOn(itemObj) : [];
-  const equipmentBadgeHTML = attachedEquipment.length > 0
-    ? `<div class="aura-badge" style="left: 4px; right: auto;" title="${attachedEquipment.map(e => e.card.name).join(', ')}">⚔️${attachedEquipment.length > 1 ? attachedEquipment.length : ''}</div>`
+  const staticMods = (zone === 'combat' && card.power !== undefined) ? getStaticTeamModifiers(itemObj) : [];
+  const tempMods = (zone === 'combat' && card.power !== undefined) ? (itemObj.tempEffects || []) : [];
+
+  // Describe en criollo qué hace cada modificador (no solo su nombre), para el tooltip
+  // de abajo — "Facón de Plata: {T}: 2 de daño", "Poncho del Paisano: +1/+1",
+  // "Fuerza de la Manada: +1/+1 (mientras esté en el campo)", "Fuerza de Toro: +3/+3 (hasta fin de turno)".
+  const KEYWORD_LABELS_SHORT = {
+    flying: 'Vuela', trample: 'Arrolla', hexproof: 'Intocable', haste: 'Prisa',
+    menace: 'Amenaza', vigilance: 'Vigilancia', reach: 'Alcance', defender: 'Defensora',
+    lifelink: 'Vínculo vital', deathtouch: 'Toque mortal', firststrike: 'Primer golpe',
+    doublestrike: 'Doble golpe', indestructible: 'Indestructible'
+  };
+  const describeStats = (stats) => {
+    if (!stats) return '';
+    const p = stats.powerMod !== undefined ? stats.powerMod : (stats.cantidad ? (stats.signo === '-' ? -stats.cantidad : stats.cantidad) : 0);
+    const t = stats.toughnessMod !== undefined ? stats.toughnessMod : (stats.cantidad ? (stats.signo === '-' ? -stats.cantidad : stats.cantidad) : 0);
+    if (p === 0 && t === 0) return '';
+    return `${p >= 0 ? '+' : ''}${p}/${t >= 0 ? '+' : ''}${t}`;
+  };
+  const describeAura = (auraCard) => {
+    const eff = auraCard.auraEffect;
+    if (!eff) return 'Adjunta';
+    const parts = [];
+    const statsText = describeStats(eff.stats);
+    if (statsText) parts.push(statsText);
+    if (eff.keywords && eff.keywords.length > 0) parts.push(eff.keywords.map(k => KEYWORD_LABELS_SHORT[k] || k).join(', '));
+    return parts.join(' · ') || 'Adjunta';
+  };
+  const describeEquipment = (equipItem) => {
+    const eqCard = equipItem.card;
+    const eq = eqCard.equipment;
+    const parts = [];
+    const statsText = eq ? describeStats(eq.grantedStats) : '';
+    if (statsText) parts.push(statsText);
+    if (eq && eq.grantedKeywords && eq.grantedKeywords.length > 0) parts.push(eq.grantedKeywords.map(k => KEYWORD_LABELS_SHORT[k] || k).join(', '));
+    if (eqCard.grantedAbility) {
+      const ab = eqCard.grantedAbility;
+      parts.push(`${ab.cost}: ${ab.effect.type === 'damage' ? `${ab.effect.amount} de daño` : ab.effect.type}`);
+    }
+    return parts.join(' · ') || 'Equipado';
+  };
+  const describeStaticMod = (m) => {
+    if (m.type === 'team_buff') return describeStats({ powerMod: m.powerMod, toughnessMod: m.toughnessMod });
+    if (m.type === 'team_keyword') return KEYWORD_LABELS_SHORT[m.keyword] || m.keyword;
+    return '';
+  };
+  const describeTempMod = (t) => {
+    const parts = [];
+    const statsText = describeStats(t);
+    if (statsText) parts.push(statsText);
+    if (t.keywords && t.keywords.length > 0) parts.push(t.keywords.map(k => KEYWORD_LABELS_SHORT[k] || k).join(', '));
+    return parts.join(' · ');
+  };
+
+  // Un solo badge combinado (evita amontonar 4 iconos distintos en las esquinas de una
+  // carta chica). Muestra los iconos de lo que esté activo, y el tooltip lista cada
+  // modificador por separado con su propio icono adelante.
+  const modifierLines = [
+    ...attachedAuras.map(a => `✨ ${a.name}: ${describeAura(a)}`),
+    ...attachedEquipment.map(e => `⚔️ ${e.card.name}: ${describeEquipment(e)}`),
+    ...staticMods.map(m => `🌐 ${m.sourceName}: ${describeStaticMod(m)} (mientras esté en el campo)`),
+    ...tempMods.map(t => `⏳ ${t.name || 'Efecto'}: ${describeTempMod(t)} (hasta fin de turno)`)
+  ];
+  const modifierIcons = [
+    attachedAuras.length > 0 ? '✨' : '',
+    attachedEquipment.length > 0 ? '⚔️' : '',
+    staticMods.length > 0 ? '🌐' : '',
+    tempMods.length > 0 ? '⏳' : ''
+  ].join('');
+
+  const auraBadgeHTML = modifierLines.length > 0
+    ? `<div class="aura-badge" data-tooltip="${modifierLines.join('\n').replace(/"/g, '&quot;')}">${modifierIcons}</div>`
     : '';
 
   el.innerHTML = `
@@ -366,7 +433,6 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       ${formattedTextHTML}
       ${card.power !== undefined ? `<div class="card-pt">${ptText}</div>` : ''}
       ${auraBadgeHTML}
-      ${equipmentBadgeHTML}
     </div>
   `;
 
