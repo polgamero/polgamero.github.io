@@ -242,6 +242,19 @@ export function getTargetRules(card) {
   return { allowPlayer: true, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
 }
 
+// El tamaño de letra de la carta usa cqw (proporcional al ancho de LA CARTA), así que
+// agrandar la carta no alcanza para que un nombre largo entre — el texto escala junto con
+// la carta, mantiene la misma proporción relativa. Esto reduce la fuente según el largo del
+// texto, para que "El Flaco Spinetta" entre igual de bien que "El Firulais".
+function fitScale(text, idealChars, minScale = 0.55) {
+  if (!text) return 1;
+  return fitScaleByLength(text.length, idealChars, minScale);
+}
+function fitScaleByLength(len, idealChars, minScale = 0.55) {
+  if (len <= idealChars) return 1;
+  return Math.max(minScale, idealChars / len);
+}
+
 export function createCardElement(itemObj, isTapped = false, isLocal = true, index = null, zone = 'hand', customClick = null) {
   const card = itemObj.card || itemObj;
   const el = document.createElement('div');
@@ -332,7 +345,12 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       ? `<div class="keyword-strip">${effKeywords.map(k => `<span class="keyword-tag">${KEYWORD_LABELS[k] || k}</span>`).join('')}</div>`
       : '';
 
-    formattedTextHTML = `<div class="card-text-box">${keywordsHTML}<i>${card.flavorText || ''}</i><br><strong>${formattedText}</strong></div>`;
+    // Cartas con mucho texto (flavor + reglas + varias keywords) achican la letra para
+    // entrar en la caja fija, en vez de desbordarse por abajo.
+    const totalTextLen = (card.flavorText || '').length + (card.text || '').length + (effKeywords.length * 10);
+    const textBoxScale = fitScaleByLength(totalTextLen, 90);
+
+    formattedTextHTML = `<div class="card-text-box" style="font-size: ${(6 * textBoxScale).toFixed(2)}cqw;">${keywordsHTML}<i>${card.flavorText || ''}</i><br><strong>${formattedText}</strong></div>`;
   }
 
   const effPower = card.power !== undefined ? getEffectivePower(itemObj) : undefined;
@@ -424,12 +442,12 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 
   el.innerHTML = `
     <div class="card-inner">
-      <div class="card-header"><span class="card-title">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
+      <div class="card-header"><span class="card-title" style="font-size: ${(8 * fitScale(card.name, 13, 0.5)).toFixed(2)}cqw;">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
       <div class="card-art" style="position: relative; overflow: hidden;">
         <div style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;">${icon}</div>
         ${card.image ? `<img src="./assets/images/cards/${card.image}" alt="${card.name}" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; z-index: 2;" onerror="this.style.display='none'">` : ''}
       </div>
-      <div class="card-type-line">${card.type}<span class="rarity-icon">●</span></div>
+      <div class="card-type-line"><span class="card-type-text" style="font-size: ${(7 * fitScale(card.type, 22)).toFixed(2)}cqw;">${card.type}</span><span class="rarity-icon">●</span></div>
       ${formattedTextHTML}
       ${card.power !== undefined ? `<div class="card-pt">${ptText}</div>` : ''}
       ${auraBadgeHTML}
@@ -464,7 +482,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 }
 
 const CARD_ASPECT = 5 / 7;
-function getIdealCardHeightPx() { return window.innerHeight * 0.14; }
+function getIdealCardHeightPx() { return window.innerHeight * 0.175; }
 export function sizeCardsInRow(rowEl) {
   const cards = rowEl.querySelectorAll('.card');
   const n = cards.length;
