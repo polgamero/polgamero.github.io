@@ -149,11 +149,14 @@ function resolveBotMulligan() {
 // quiera, y si se queda con una mano después de mulliganear, le pide elegir qué cartas
 // van al fondo del mazo (regla real de MTG desde 2019 — "mulligan de Londres").
 function startLocalMulliganFlow(onDone) {
+  const MAX_MULLIGANS = 7; // en MTG real podés mulliganear hasta quedarte con mano de 0
   let mulliganCount = 0;
 
   const askPlayer = () => {
-    showMulliganModal(state.localHand, mulliganCount, {
+    const canMulliganMore = mulliganCount < MAX_MULLIGANS;
+    showMulliganModal(state.localHand, mulliganCount, canMulliganMore, {
       onMulligan: () => {
+        if (!canMulliganMore) return; // seguridad extra, no debería poder llegar acá
         state.localDeck.push(...state.localHand);
         state.localHand = [];
         state.localDeck = shuffle(state.localDeck);
@@ -167,7 +170,23 @@ function startLocalMulliganFlow(onDone) {
           onDone();
           return;
         }
-        showBottomCardsModal(state.localHand, mulliganCount, (chosenCards) => {
+        // Si hay que dejar la mano ENTERA (tope de 7 mulligans), no tiene sentido pedir
+        // que se seleccionen una por una — van todas al fondo directo.
+        const countToBottom = Math.min(mulliganCount, state.localHand.length);
+        if (countToBottom >= state.localHand.length) {
+          const allCards = [...state.localHand];
+          allCards.forEach(c => {
+            const idx = state.localHand.indexOf(c);
+            if (idx !== -1) {
+              state.localHand.splice(idx, 1);
+              state.localDeck.unshift(c);
+            }
+          });
+          logMsg(`Dejaste tu mano entera (${allCards.length} carta(s)) al fondo del mazo. Arrancás con 0 cartas en mano.`);
+          onDone();
+          return;
+        }
+        showBottomCardsModal(state.localHand, countToBottom, (chosenCards) => {
           chosenCards.forEach(c => {
             const idx = state.localHand.indexOf(c);
             if (idx !== -1) {
@@ -175,7 +194,7 @@ function startLocalMulliganFlow(onDone) {
               state.localDeck.unshift(c);
             }
           });
-          logMsg(`Dejaste ${mulliganCount} carta(s) al fondo del mazo. Mano final: ${state.localHand.length} cartas.`);
+          logMsg(`Dejaste ${countToBottom} carta(s) al fondo del mazo. Mano final: ${state.localHand.length} cartas.`);
           onDone();
         });
       }

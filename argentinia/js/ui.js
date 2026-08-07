@@ -744,7 +744,7 @@ function renderMulliganMiniCard(card, extraClass) {
 }
 
 // Paso 1: mostrar la mano y elegir Mulligan o Quedarse.
-export function showMulliganModal(hand, mulliganCount, callbacks) {
+export function showMulliganModal(hand, mulliganCount, canMulliganMore, callbacks) {
   injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
@@ -753,24 +753,33 @@ export function showMulliganModal(hand, mulliganCount, callbacks) {
   const keepLabel = mulliganCount > 0
     ? `Quedarme (dejo ${mulliganCount} carta${mulliganCount > 1 ? 's' : ''} al fondo)`
     : 'Quedarme con esta mano';
+  const subtitle = canMulliganMore
+    ? '¿Te la quedás, o volvés a barajar y robás 7 de nuevo?'
+    : 'Ya llegaste al máximo de 7 mulligans — esta vez tenés que quedarte con lo que hay.';
+  const mulliganBtnHTML = canMulliganMore
+    ? `<button class="mulligan-btn mulligan-btn-mull" id="btn-do-mulligan">🔄 Mulligan</button>`
+    : `<button class="mulligan-btn mulligan-btn-mull" disabled>🔄 Mulligan</button>`;
 
   overlay.innerHTML = `
     <div class="mulligan-panel">
       <div class="mulligan-title">${mulliganCount === 0 ? 'Tu mano inicial' : `Mano nueva (mulligan #${mulliganCount})`}</div>
-      <div class="mulligan-subtitle">¿Te la quedás, o volvés a barajar y robás 7 de nuevo?</div>
+      <div class="mulligan-subtitle">${subtitle}</div>
       <div class="mulligan-hand-row">${cardsHTML}</div>
       <div class="mulligan-buttons">
-        <button class="mulligan-btn mulligan-btn-mull" id="btn-do-mulligan">🔄 Mulligan</button>
+        ${mulliganBtnHTML}
         <button class="mulligan-btn mulligan-btn-keep" id="btn-keep-hand">${keepLabel}</button>
       </div>
     </div>
   `;
   document.body.appendChild(overlay);
 
-  overlay.querySelector('#btn-do-mulligan').addEventListener('click', () => {
-    overlay.remove();
-    callbacks.onMulligan();
-  });
+  const mullBtn = overlay.querySelector('#btn-do-mulligan');
+  if (mullBtn) {
+    mullBtn.addEventListener('click', () => {
+      overlay.remove();
+      callbacks.onMulligan();
+    });
+  }
   overlay.querySelector('#btn-keep-hand').addEventListener('click', () => {
     overlay.remove();
     callbacks.onKeep();
