@@ -6,12 +6,17 @@
     "manaCost": "{1}{U}",
     "cmc": 2,
     "rarity": "Uncommon",
-    "colors": ["U"],
+    "colors": [
+      "U"
+    ],
     "text": "Esquiva la Patada: Robás 1 carta rápido.",
     "flavorText": "Pasa como si fuera invisible.",
     "requiresTarget": false,
     "image": "gambeta.png",
-    "effect": { "type": "draw", "amount": 1 }
+    "effect": {
+      "type": "draw",
+      "amount": 1
+    }
   },
   {
     "id": "inst_007",
@@ -20,12 +25,17 @@
     "manaCost": "{2}{R}",
     "cmc": 3,
     "rarity": "Uncommon",
-    "colors": ["R"],
+    "colors": [
+      "R"
+    ],
     "text": "Trago Cordobés: Te cura 4 puntos de vida del alma.",
     "flavorText": "70/30 en una botella cortada.",
     "requiresTarget": false,
     "image": "fernet.png",
-    "effect": { "type": "heal", "amount": 4 }
+    "effect": {
+      "type": "heal",
+      "amount": 4
+    }
   },
   {
     "id": "inst_008",
@@ -34,12 +44,17 @@
     "manaCost": "{1}{W}",
     "cmc": 2,
     "rarity": "Uncommon",
-    "colors": ["W"],
+    "colors": [
+      "W"
+    ],
     "text": "Salvar las Papas: Te cura 2 puntos de vida.",
     "flavorText": "Hoy por ti, mañana por mí.",
     "requiresTarget": false,
     "image": "gauchada.png",
-    "effect": { "type": "heal", "amount": 2 }
+    "effect": {
+      "type": "heal",
+      "amount": 2
+    }
   },
   {
     "id": "inst_009",
@@ -48,12 +63,17 @@
     "manaCost": "{W}",
     "cmc": 1,
     "rarity": "Uncommon",
-    "colors": ["W"],
+    "colors": [
+      "W"
+    ],
     "text": "Saludo Amistoso: Robás 1 carta con cariño.",
     "flavorText": "¡Hola che! ¿Cómo andás?",
     "requiresTarget": false,
     "image": "beso_mejilla.png",
-    "effect": { "type": "draw", "amount": 1 }
+    "effect": {
+      "type": "draw",
+      "amount": 1
+    }
   },
   {
     "id": "inst_010",
@@ -62,12 +82,17 @@
     "manaCost": "{2}{W}",
     "cmc": 3,
     "rarity": "Rare",
-    "colors": ["W"],
+    "colors": [
+      "W"
+    ],
     "text": "Ruido Ensordecedor: 2 de daño al jugador o criatura objetivo.",
     "flavorText": "Se escucha en todos los balcones.",
     "requiresTarget": true,
     "image": "cacerolazo.png",
-    "effect": { "type": "damage", "amount": 2 }
+    "effect": {
+      "type": "damage",
+      "amount": 2
+    }
   },
   {
     "id": "inst_011",
@@ -76,12 +101,17 @@
     "manaCost": "{1}{R}",
     "cmc": 2,
     "rarity": "Rare",
-    "colors": ["R"],
+    "colors": [
+      "R"
+    ],
     "text": "Jugada Clandestina: Metés un gol directo de 4 de daño al jugador o criatura objetivo.",
     "flavorText": "Un poco con la cabeza y un poco con la mano.",
     "requiresTarget": true,
     "image": "mano_dios.png",
-    "effect": { "type": "damage", "amount": 4 }
+    "effect": {
+      "type": "damage",
+      "amount": 4
+    }
   },
   {
     "id": "inst_001",
@@ -90,12 +120,17 @@
     "manaCost": "{U}{U}",
     "cmc": 2,
     "rarity": "Uncommon",
-    "colors": ["U"],
+    "colors": [
+      "U"
+    ],
     "text": "Contrarresta el hechizo objetivo. A otra cosa mariposa.",
     "flavorText": "Las cosas como son, flaco.",
     "requiresTarget": true,
     "image": "corta_bocha.png",
-    "effect": { "type": "counter", "amount": 0 }
+    "effect": {
+      "type": "counter",
+      "amount": 0
+    }
   },
   {
     "id": "inst_002",
@@ -104,12 +139,17 @@
     "manaCost": "{1}{U}",
     "cmc": 2,
     "rarity": "Common",
-    "colors": ["U"],
+    "colors": [
+      "U"
+    ],
     "text": "Contrarresta el hechizo objetivo a menos que su controlador pague {3}.",
     "flavorText": "Si lo querés pasar, vas a tener que tributar.",
     "requiresTarget": true,
     "image": "impuesto_pais.png",
-    "effect": { "type": "counter_unless_pay", "amount": 3 }
+    "effect": {
+      "type": "counter_unless_pay",
+      "amount": 3
+    }
   },
   {
     "id": "inst_003",
@@ -118,12 +158,17 @@
     "manaCost": "{1}{U}",
     "cmc": 2,
     "rarity": "Common",
-    "colors": ["U"],
+    "colors": [
+      "U"
+    ],
     "text": "Contrarresta el hechizo objetivo que no sea de criatura.",
     "flavorText": "Tengo un primo abogado que te frena esto en dos minutos.",
     "requiresTarget": true,
     "image": "amparo.png",
-    "effect": { "type": "counter_non_creature", "amount": 0 }
+    "effect": {
+      "type": "counter_non_creature",
+      "amount": 0
+    }
   },
   {
     "id": "inst_004",
@@ -132,12 +177,17 @@
     "manaCost": "{3}{U}{U}",
     "cmc": 5,
     "rarity": "Rare",
-    "colors": ["U"],
+    "colors": [
+      "U"
+    ],
     "text": "Puedes pagar 1 punto de vida y descartar una carta azul en lugar de pagar el coste de maná de este hechizo. Contrarresta el hechizo objetivo.",
     "flavorText": "Se aprueba por decreto y no se discute más.",
     "requiresTarget": true,
     "image": "dnu.png",
-    "effect": { "type": "counter", "amount": 0 }
+    "effect": {
+      "type": "counter",
+      "amount": 0
+    }
   },
   {
     "id": "inst_005",
@@ -146,13 +196,23 @@
     "manaCost": "{U}{U}",
     "cmc": 2,
     "rarity": "Uncommon",
-    "colors": ["U"],
+    "colors": [
+      "U"
+    ],
     "text": "Contrarresta el hechizo de criatura objetivo. Pon un contador +1/+1 sobre hasta una criatura objetivo que controlas.",
     "flavorText": "Con esas zapatillas acá no entrás, fiera.",
     "requiresTarget": true,
     "image": "derecho_admision.png",
-    "effect": { "type": "counter_creature", "amount": 0 },
-    "secondaryEffect": { "type": "add_counter", "counterType": "+1/+1", "amount": 1, "target": "friendly_creature" }
+    "effect": {
+      "type": "counter_creature",
+      "amount": 0
+    },
+    "secondaryEffect": {
+      "type": "add_counter",
+      "counterType": "+1/+1",
+      "amount": 1,
+      "target": "friendly_creature"
+    }
   },
   {
     "id": "inst_012",
@@ -161,12 +221,18 @@
     "manaCost": "{G}",
     "cmc": 1,
     "rarity": "Common",
-    "colors": ["G"],
+    "colors": [
+      "G"
+    ],
     "text": "La criatura objetivo obtiene +3/+3 hasta el final del turno.",
     "flavorText": "Un empujón campero justo antes del choque.",
     "requiresTarget": true,
     "image": "fuerza_de_toro.png",
-    "effect": { "type": "pump", "powerMod": 3, "toughnessMod": 3 }
+    "effect": {
+      "type": "pump",
+      "powerMod": 3,
+      "toughnessMod": 3
+    }
   },
   {
     "id": "inst_013",
@@ -175,12 +241,17 @@
     "manaCost": "{W}",
     "cmc": 1,
     "rarity": "Uncommon",
-    "colors": ["W"],
+    "colors": [
+      "W"
+    ],
     "text": "La criatura objetivo gana Intocable hasta el final del turno.",
     "flavorText": "Nadie te encuentra si sabés dónde esconderte.",
     "requiresTarget": true,
     "image": "a_cubierto.png",
-    "effect": { "type": "grant_keyword_temp", "keyword": "hexproof" }
+    "effect": {
+      "type": "grant_keyword_temp",
+      "keyword": "hexproof"
+    }
   },
   {
     "id": "inst_014",
@@ -189,12 +260,16 @@
     "manaCost": "{G}",
     "cmc": 1,
     "rarity": "Rare",
-    "colors": ["G"],
+    "colors": [
+      "G"
+    ],
     "text": "Previene todo el daño de combate que se fuera a hacer este turno.",
     "flavorText": "Se paró el partido, se paró todo.",
     "requiresTarget": false,
     "image": "que_pare_todo.png",
-    "effect": { "type": "fog" }
+    "effect": {
+      "type": "fog"
+    }
   },
   {
     "id": "inst_015",
@@ -203,12 +278,16 @@
     "manaCost": "{1}{B}{B}",
     "cmc": 3,
     "rarity": "Rare",
-    "colors": ["B"],
+    "colors": [
+      "B"
+    ],
     "text": "Destruí la criatura objetivo.",
     "flavorText": "El árbitro no llegó a ver nada.",
     "requiresTarget": true,
     "image": "codazo_bajo_el_agua.png",
-    "effect": { "type": "destroy_creature" }
+    "effect": {
+      "type": "destroy_creature"
+    }
   },
   {
     "id": "inst_016",
@@ -217,11 +296,33 @@
     "manaCost": "{U}",
     "cmc": 1,
     "rarity": "Common",
-    "colors": ["U"],
+    "colors": [
+      "U"
+    ],
     "text": "Devolvé la criatura objetivo a la mano de su dueño.",
     "flavorText": "Todavía no, pibe. Volvé más tarde.",
     "requiresTarget": true,
     "image": "che_volve.png",
-    "effect": { "type": "bounce" }
+    "effect": {
+      "type": "bounce"
+    }
+  },
+  {
+    "id": "inst_017",
+    "name": "Mauro Viale",
+    "type": "Instantáneo",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Tu criatura con más poder pelea contra la criatura objetivo (cada una le hace daño a la otra igual a su fuerza).",
+    "flavorText": "Grita más fuerte que el invitado y gana el punto igual.",
+    "requiresTarget": true,
+    "image": "mauro_viale.png",
+    "effect": {
+      "type": "fight"
+    }
   }
 ]

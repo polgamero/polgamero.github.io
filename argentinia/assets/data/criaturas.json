@@ -505,5 +505,169 @@
       "type": "drain",
       "amount": 1
     }
+  },
+  {
+    "id": "crea_027",
+    "name": "El Flaco Spinetta",
+    "type": "Criatura Legendaria — Artista",
+    "manaCost": "{2}{W}{W}",
+    "cmc": 4,
+    "rarity": "Mythic",
+    "colors": [
+      "W"
+    ],
+    "power": 3,
+    "toughness": 4,
+    "text": "Doblegolpe.",
+    "flavorText": "Toca cada acorde dos veces: una para vos, otra para el que escucha en silencio.",
+    "image": "spinetta.png",
+    "keywords": [
+      "doublestrike"
+    ]
+  },
+  {
+    "id": "crea_028",
+    "name": "Charly García",
+    "type": "Criatura Legendaria — Artista",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Mythic",
+    "colors": [
+      "W"
+    ],
+    "power": 4,
+    "toughness": 4,
+    "text": "Indestructible.",
+    "flavorText": "Se cayó de un noveno piso y siguió tocando el piano.",
+    "image": "charly_garcia.png",
+    "keywords": [
+      "indestructible"
+    ]
+  },
+  {
+    "id": "crea_029",
+    "name": "Moria Casán",
+    "type": "Criatura Legendaria — Diva",
+    "manaCost": "{2}{B}{B}",
+    "cmc": 4,
+    "rarity": "Mythic",
+    "colors": [
+      "B"
+    ],
+    "power": 3,
+    "toughness": 5,
+    "text": "Indestructible.",
+    "flavorText": "¿Qué le vas a hacer? Es la one.",
+    "image": "moria_casan.png",
+    "keywords": [
+      "indestructible"
+    ]
+  },
+  {
+    "id": "crea_030",
+    "name": "Ricardo Iorio",
+    "type": "Criatura Legendaria — Metalero",
+    "manaCost": "{1}{R}{R}",
+    "cmc": 3,
+    "rarity": "Mythic",
+    "colors": [
+      "R"
+    ],
+    "power": 3,
+    "toughness": 2,
+    "text": "Prisa.",
+    "flavorText": "No negocia. Entra tocando desde el primer riff.",
+    "image": "ricardo_iorio.png",
+    "keywords": [
+      "haste"
+    ]
+  },
+  {
+    "id": "crea_031",
+    "name": "Alberto Samid",
+    "type": "Criatura Legendaria — Empresario",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Mythic",
+    "colors": [
+      "G"
+    ],
+    "power": 3,
+    "toughness": 3,
+    "text": "{1}{G}: Pelea contra la criatura objetivo (cada una le hace daño a la otra igual a su fuerza).",
+    "flavorText": "Nunca dice las cosas con vueltas.",
+    "image": "alberto_samid.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{G}",
+      "effect": {
+        "type": "fight"
+      },
+      "requiresTarget": true
+    }
+  },
+  {
+    "id": "crea_032",
+    "name": "Susana Giménez",
+    "type": "Criatura Legendaria — Diva",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Mythic",
+    "colors": [
+      "B"
+    ],
+    "power": 2,
+    "toughness": 3,
+    "text": "Cuando esta criatura entre al campo de batalla, el jugador rival descarta una carta.",
+    "flavorText": "¿Vos me querés decir a mí lo que tengo que hacer?",
+    "image": "susana_gimenez.png",
+    "keywords": [],
+    "etbEffect": {
+      "type": "discard",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_033",
+    "name": "Roberto Giordano",
+    "type": "Criatura Legendaria — Místico",
+    "manaCost": "{1}{B}{B}",
+    "cmc": 3,
+    "rarity": "Mythic",
+    "colors": [
+      "B"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "text": "Cuando esta criatura entre al campo de batalla, robás una carta y perdés 1 Punto de Vida.",
+    "flavorText": "Vio tu futuro. No le gustó lo que vio.",
+    "image": "roberto_giordano.png",
+    "keywords": [],
+    "etbEffect": {
+      "type": "draw_and_lose_life",
+      "amount": 1,
+      "lifeLoss": 1
+    }
+  },
+  {
+    "id": "crea_034",
+    "name": "El Recaudador Implacable",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "power": 2,
+    "toughness": 3,
+    "text": "Cuando esta criatura muera, el jugador rival pierde 2 Puntos de Vida y vos ganás 2.",
+    "flavorText": "Ni la muerte lo exime de cobrar lo que se le debe.",
+    "image": "recaudador.png",
+    "keywords": [],
+    "diesTrigger": {
+      "type": "drain",
+      "amount": 2
+    }
   }
 ]
