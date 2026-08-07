@@ -238,14 +238,16 @@ html, body {
   color: var(--card-text, #222);
   flex-shrink: 0;
   overflow: hidden;
+  font-size: 7cqw; /* base heredado por .rarity-icon — sin esto, el ● no tiene tamaño propio
+                       y hereda el default del navegador (gigante), rompe la altura de toda
+                       la carta. .card-type-text lo pisa con su propio tamaño dinámico. */
 }
 .card-type-text {
   flex: 1;
   min-width: 0; /* imprescindible para que el ellipsis funcione en un hijo flex */
-  font-size: 7cqw;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.rarity-icon { flex-shrink: 0; margin-left: 3px; }
+.rarity-icon { flex-shrink: 0; margin-left: 3px; font-size: 1em; }
 
 .card.bg-b .card-type-line,
 .card.bg-land .card-type-line {
