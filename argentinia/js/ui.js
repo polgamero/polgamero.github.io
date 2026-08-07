@@ -355,7 +355,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const totalTextLen = (card.flavorText || '').length + (card.text || '').length + (effKeywords.length * 10);
     const textBoxScale = fitScaleByLength(totalTextLen, 90);
 
-    formattedTextHTML = `<div class="card-text-box" style="font-size: clamp(8px, ${(6 * textBoxScale).toFixed(2)}cqw, 26px);">${keywordsHTML}<i>${card.flavorText || ''}</i><br><strong>${formattedText}</strong></div>`;
+    formattedTextHTML = `<div class="card-text-box" style="font-size: clamp(6px, ${(6 * textBoxScale).toFixed(2)}cqw, 26px);">${keywordsHTML}<i>${card.flavorText || ''}</i><br><strong>${formattedText}</strong></div>`;
   }
 
   const effPower = card.power !== undefined ? getEffectivePower(itemObj) : undefined;
@@ -447,12 +447,12 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 
   el.innerHTML = `
     <div class="card-inner">
-      <div class="card-header"><span class="card-title" style="font-size: clamp(9px, ${(8 * fitScale(card.name, 13, 0.5)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
+      <div class="card-header"><span class="card-title" style="font-size: clamp(6px, ${(8 * fitScale(card.name, 13, 0.5)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
       <div class="card-art" style="position: relative; overflow: hidden;">
         <div style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;">${icon}</div>
         ${card.image ? `<img src="./assets/images/cards/${card.image}" alt="${card.name}" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; z-index: 2;" onerror="this.style.display='none'">` : ''}
       </div>
-      <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(7px, ${(7 * fitScale(card.type, 22)).toFixed(2)}cqw, 30px);">${card.type}</span><span class="rarity-icon">●</span></div>
+      <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(5px, ${(7 * fitScale(card.type, 22)).toFixed(2)}cqw, 30px);">${card.type}</span><span class="rarity-icon">●</span></div>
       ${formattedTextHTML}
       ${card.power !== undefined ? `<div class="card-pt">${ptText}</div>` : ''}
       ${auraBadgeHTML}
@@ -487,6 +487,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 }
 
 const CARD_ASPECT = 5 / 7;
+const CARD_ASPECT_INV = 7 / 5; // cuánto más ancha es una carta girada, respecto de una vertical
 function getIdealCardHeightPx() { return window.innerHeight * 0.175; }
 export function sizeCardsInRow(rowEl) {
   const cards = rowEl.querySelectorAll('.card');
@@ -496,10 +497,19 @@ export function sizeCardsInRow(rowEl) {
   const gap = parseFloat(rowStyles.columnGap) || parseFloat(rowStyles.gap) || 6;
   const availableWidth = rowEl.clientWidth - 6;
   const availableHeight = rowEl.clientHeight - 6;
+
+  // Las giradas ocupan 7/5 del ancho de una vertical (intercambian sus medidas). Si no las
+  // contamos aparte acá, el "cuántas entran" queda mal apenas hay una girada en la fila —
+  // esto es lo que hacía que las cartas se empezaran a pisar entre sí.
+  let tappedCount = 0;
+  cards.forEach(c => { if (c.classList.contains('tapped')) tappedCount++; });
+  const untappedCount = n - tappedCount;
+  const effectiveUnits = (tappedCount * CARD_ASPECT_INV) + untappedCount;
+
   let cardHeight = Math.min(getIdealCardHeightPx(), availableHeight);
   let cardWidth = cardHeight * CARD_ASPECT;
-  const widthIfFit = (availableWidth - (gap * Math.max(0, n - 1))) / n;
-  if (widthIfFit < cardWidth) { cardWidth = Math.max(widthIfFit, 30); cardHeight = cardWidth / CARD_ASPECT; }
+  const widthIfFit = (availableWidth - (gap * Math.max(0, n - 1))) / effectiveUnits;
+  if (widthIfFit < cardWidth) { cardWidth = Math.max(widthIfFit, 24); cardHeight = cardWidth / CARD_ASPECT; }
 
   cards.forEach(c => {
     const inner = c.querySelector('.card-inner');
@@ -711,31 +721,37 @@ function injectMulliganStyles() {
       display: flex; align-items: center; justify-content: center;
     }
     .mulligan-panel {
-      max-width: 880px; width: 92%; max-height: 90vh; overflow-y: auto;
+      max-width: 980px; width: 95%; max-height: 90vh; overflow-y: auto;
       background: linear-gradient(180deg, rgba(18,25,15,0.97), rgba(11,19,14,0.99));
       border: 2px solid var(--gold, #d4af37);
       border-radius: 16px;
-      padding: 28px 34px;
+      padding: 28px 30px;
       box-shadow: 0 0 60px rgba(212,175,55,0.15), 0 20px 60px rgba(0,0,0,0.6);
-      text-align: center;
     }
     .mulligan-title {
-      font-size: 24px; font-weight: 700; color: var(--gold, #d4af37);
+      text-align: center; font-size: 24px; font-weight: 700; color: var(--gold, #d4af37);
       margin-bottom: 6px; text-shadow: 0 0 20px rgba(212,175,55,0.4);
     }
-    .mulligan-subtitle { font-size: 14px; color: #cfe0d4; margin-bottom: 22px; }
+    .mulligan-subtitle { text-align: center; font-size: 14px; color: #cfe0d4; margin-bottom: 22px; }
     .mulligan-hand-row {
-      display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 26px;
-      min-height: 168px;
+      display: flex; justify-content: center; gap: 8px; flex-wrap: nowrap; margin-bottom: 26px;
+      min-height: 154px;
     }
     .mulligan-card-slot {
-      width: 110px !important; height: 154px !important;
+      width: 100px !important; height: 140px !important;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
+      flex-shrink: 0;
     }
-    .mulligan-card-slot.selectable:hover { transform: translateY(-6px); z-index: 10; }
+    /* Las cartas del modal no tenían NINGÚN hover-zoom: las reglas de zoom del resto del
+       juego están atadas a #local-hand / .field-row específicamente, y esta fila no es
+       ninguna de esas dos. Le damos su propia regla, mismo criterio (bottom center). */
+    .mulligan-card-slot:hover {
+      transform: scale(2.6);
+      z-index: 20;
+    }
+    .mulligan-card-slot.selectable:hover { transform: scale(2.6) translateY(-6px); z-index: 20; }
     .mulligan-card-slot.chosen {
       box-shadow: 0 0 0 3px #e74c3c, 0 0 16px rgba(231,76,60,0.6);
-      transform: translateY(-10px);
     }
     .mulligan-buttons { display: flex; justify-content: center; gap: 14px; }
     .mulligan-btn {
