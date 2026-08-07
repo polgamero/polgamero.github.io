@@ -7,8 +7,8 @@
 
   /* TAMAÑO DE CARTA ÚNICO Y GLOBAL: se usa igual en mano y en campo
      para que TODAS las cartas midan siempre lo mismo. */
-  --card-w: 10vh;
-  /* aspect-ratio 5/7 -> alto = ancho * 7/5 = 14vh */
+  --card-w: 12.5vh;
+  /* aspect-ratio 5/7 -> alto = ancho * 7/5 = 17.5vh */
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
@@ -115,14 +115,14 @@ html, body {
 .card {
   width: var(--card-w);
   aspect-ratio: 5 / 7;
-  /* El borde exterior negro clásico de MTG (antes era 4px + 2px de padding: demasiado
-     grosor "robado" al contenido en cartas chicas. Ahora es más fino, como una carta real). */
+  /* Borde exterior negro clásico de MTG: bien fino, como una carta real (antes 4px+2px de
+     padding, después 2px+1px — ahora al mínimo real para no robarle espacio al contenido). */
   background-color: #111; 
-  border: 2px solid #111;
+  border: 1px solid #111;
   border-radius: 6px;
   display: flex;
   flex-direction: column;
-  padding: 1px;
+  padding: 0px;
   position: relative;
   cursor: pointer;
   box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
@@ -231,14 +231,21 @@ html, body {
 /* TYPE LINE */
 .card-type-line {
   display: flex; justify-content: space-between; align-items: center;
-  font-size: 7cqw; font-weight: bold; padding: 2cqw 4cqw;
+  font-weight: bold; padding: 2cqw 4cqw;
   background: linear-gradient(to bottom, rgba(255,255,255,0.4), rgba(255,255,255,0.05));
   box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
   border-bottom: 1px solid rgba(0,0,0,0.6); 
   color: var(--card-text, #222);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   flex-shrink: 0;
+  overflow: hidden;
 }
+.card-type-text {
+  flex: 1;
+  min-width: 0; /* imprescindible para que el ellipsis funcione en un hijo flex */
+  font-size: 7cqw;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rarity-icon { flex-shrink: 0; margin-left: 3px; }
 
 .card.bg-b .card-type-line,
 .card.bg-land .card-type-line {
@@ -253,6 +260,27 @@ html, body {
   color: #111; overflow: hidden;
   flex-shrink: 0;
   box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+}
+
+/* Antes no tenían NINGÚN estilo propio (heredaban el default del navegador: un <div> a lo
+   ancho completo por cada keyword), lo que empujaba el resto del texto fuera de la caja.
+   Ahora son etiquetas chicas en fila que se acomodan solas. */
+.keyword-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 2px;
+}
+.keyword-tag {
+  display: inline-block;
+  font-size: 0.85em;
+  font-weight: bold;
+  background: rgba(0,0,0,0.12);
+  border: 1px solid rgba(0,0,0,0.3);
+  border-radius: 3px;
+  padding: 0px 3px;
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
 .card-cost { 
