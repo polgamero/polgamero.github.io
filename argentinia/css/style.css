@@ -123,9 +123,11 @@ html, body {
 .card {
   width: var(--card-w);
   aspect-ratio: 5 / 7;
-  /* Borde exterior negro clásico de MTG. */
+  /* El borde negro clásico de MTG ahora vive TODO en .card-inner (3px) — este elemento
+     dejaba de mostrarse en el hover de una girada (rota .card-inner, no .card, así que
+     acá ya no hace falta ni conviene declarar un borde propio: simplifica y arregla el
+     problema de raíz). */
   background-color: #111; 
-  border: 2px solid #111;
   border-radius: 6px;
   display: flex;
   flex-direction: column;
@@ -190,11 +192,9 @@ html, body {
     url('https://www.transparenttextures.com/patterns/clean-gray-paper.png'),
     radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.25) 100%);
   background-blend-mode: multiply;
-  border: 1px solid #111; /* sólido, no semi-transparente: antes era rgba(0,0,0,0.6), casi
-                              invisible al lado del marco exterior en una carta vertical, pero
-                              en una girada con hover ESTE es el único borde que se llega a ver
-                              (el .card exterior queda chico al lado del .card-inner agrandado),
-                              y se notaba "sin borde negro" por ser translúcido. */
+  border: 3px solid #111; /* ahora es el ÚNICO borde de la carta (sacamos el de .card,
+                              que dejaba de verse en el hover de una girada). Con este
+                              solo alcanza y sobra, y queda consistente en todos los casos. */
   border-radius: 4px; /* acompaña el redondeo exterior de .card (6px), como una carta real */
   overflow: hidden; /* clip: nada se escapa del marco redondeado, ni texto ni bloques internos */
   box-shadow: inset 0 0 12px rgba(0,0,0,0.4); /* Profundidad de marco */
@@ -227,8 +227,8 @@ html, body {
   border-bottom: 1px solid rgba(0,0,0,0.6);
   background: linear-gradient(to bottom, rgba(255,255,255,0.4), rgba(255,255,255,0.05));
   box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
-  height: 9cqh; /* antes 15cqh — en una carta MTG real el título ocupa mucho menos, y
-                   ese espacio de sobra se lo pasamos a la caja de texto de abajo */
+  height: 7cqh; /* antes 9cqh, y 15cqh originalmente — cada vuelta le ganamos más espacio
+                   real al cuadro de texto, que es el que de verdad necesita el lugar */
   flex-shrink: 0;
   overflow: hidden; /* si el título es muy largo, se trunca acá, nunca se escapa del header */
 }
@@ -269,7 +269,7 @@ html, body {
 /* TYPE LINE */
 .card-type-line {
   display: flex; justify-content: space-between; align-items: center;
-  font-weight: bold; padding: 0.7cqw 4cqw;
+  font-weight: bold; padding: 0.3cqw 4cqw;
   background: linear-gradient(to bottom, rgba(255,255,255,0.4), rgba(255,255,255,0.05));
   box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
   border-bottom: 1px solid rgba(0,0,0,0.6); 
@@ -294,7 +294,7 @@ html, body {
 
 /* CAJA DE TEXTO (Se mantiene color pergamino para máxima legibilidad, igual que en MTG) */
 .card-text-box {
-  height: 37cqh; padding: 2cqw 3cqw; font-size: 6cqw; line-height: 1.15;
+  height: 42cqh; padding: 2cqw 3cqw; font-size: 6cqw; line-height: 1.15;
   background-color: rgba(253, 251, 247, 0.92);
   background-image: url('https://www.transparenttextures.com/patterns/cream-paper.png');
   color: #111; overflow: hidden;
@@ -330,17 +330,21 @@ html, body {
   flex-shrink: 0;
 }
 
-/* CÍRCULOS DE MANÁ */
+/* CÍRCULOS DE MANÁ (más chicos, como en una carta real — antes eran grandes y encima el
+   font-size (10cqw) era MÁS GRANDE que el propio círculo (9cqw): nunca podía entrar bien) */
 .mana-symbol {
-  width: 9cqw; height: 9cqw;
-  min-width: 6px; min-height: 6px;
+  width: 7cqw; height: 7cqw;
+  min-width: 14px; min-height: 14px;
   border-radius: 50%;
   display: flex; justify-content: center; align-items: center;
-  font-size: 10cqw !important;
+  font-size: 4.6cqw; /* .renderManaSymbols() lo achica más para números de 2+ dígitos */
+  line-height: 1;
+  padding: 0;
   font-weight: bold;
   border: 1px solid #111;
   color: #000;
   box-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+  flex-shrink: 0;
 }
 .mana-w { background: #fcfcfc; } /* Blanco / Luz */
 .mana-u { background: #4ba0e3; } /* Azul / Agua */
