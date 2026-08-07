@@ -8,6 +8,7 @@ import {
   sleep,
   getEffectivePower,
   getEffectiveToughness,
+  performSacrifice,
   passPriority // Importado del nuevo turnManager / main
 } from './main.js';
 
@@ -161,7 +162,17 @@ export async function checkRivalCounterOrResponse() {
       }
       return spellStack.some(s => s.isLocal);
     }
-    return true;
+
+    // Fuera de counters, solo consideramos jugarla en respuesta si no necesita objetivo,
+    // o si es un tipo que sabemos targetear bien acá abajo. Si no, la dejamos afuera del
+    // camino reactivo (igual la puede jugar en su propia fase principal, donde SÍ sabe
+    // targetear pump/fight/etc.) — mejor no jugarla que jugarla y que fallezca sin efecto.
+    if (!c.requiresTarget) return true;
+    if (c.effect?.type === 'damage') return true;
+    if (c.effect?.type === 'destroy_creature' || c.effect?.type === 'bounce') {
+      return state.localCombat.some(u => !hasKeyword(u, 'hexproof'));
+    }
+    return false;
   });
 
   if (responseIndex !== -1) {
@@ -175,7 +186,20 @@ export async function checkRivalCounterOrResponse() {
         targetObj = { type: 'stack', stackId: topLocalSpell.id };
       }
     } else if (responseCard.effect?.type === 'damage') {
-      targetObj = { type: 'player', isLocal: true };
+      // Preferimos rematar una criatura vulnerable; si no hay, pegamos a la cara
+      const vulnerable = state.localCombat.find(c =>
+        !hasKeyword(c, 'hexproof') && getEffectiveToughness(c) <= responseCard.effect.amount
+      );
+      targetObj = vulnerable
+        ? { type: 'creature', isLocal: true, index: state.localCombat.indexOf(vulnerable), item: vulnerable }
+        : { type: 'player', isLocal: true };
+    } else if (responseCard.effect?.type === 'destroy_creature' || responseCard.effect?.type === 'bounce') {
+      // La criatura tuya con más poder efectivo (la más peligrosa)
+      const candidates = state.localCombat.filter(c => !hasKeyword(c, 'hexproof'));
+      if (candidates.length > 0) {
+        const chosen = candidates.reduce((prev, cur) => getEffectivePower(prev) > getEffectivePower(cur) ? prev : cur);
+        targetObj = { type: 'creature', isLocal: true, index: state.localCombat.indexOf(chosen), item: chosen };
+      }
     }
 
     addToStack({
@@ -221,13 +245,20 @@ function shouldRivalAttackWith(attackerItem) {
 
 // NUEVO: Evaluación táctica para activar artefactos y soporte
 export function tryActivateBotAbilities() {
-  // Recorremos los artefactos en la mesa del Tano
-  for (let i = 0; i < state.rivalSupport.length; i++) {
-    const supportItem = state.rivalSupport[i];
+  // Recorremos artefactos Y tierras de utilidad del Tano (cualquier permanente con
+  // activatedAbility propia que no sea simplemente maná).
+  const candidates = [
+    ...state.rivalSupport.map((item, idx) => ({ item, index: idx, zoneType: 'support' })),
+    ...state.rivalLands.map((item, idx) => ({ item, index: idx, zoneType: 'land' }))
+  ];
+
+  for (const { item: supportItem, index: i, zoneType } of candidates) {
     const card = supportItem.card;
-    
-    // Si no tiene habilidad activable o ya está girado y la requiere, pasamos
+
     if (!card.activatedAbility) continue;
+    // Para tierras, ignoramos las de maná normal (esas las maneja tapRivalLandsFor)
+    if (zoneType === 'land' && (card.produces || card.producesOptions)) continue;
+
     const ability = card.activatedAbility;
     const requiresTap = ability.cost.includes('{T}');
     if (requiresTap && supportItem.tapped) continue;
@@ -235,8 +266,11 @@ export function tryActivateBotAbilities() {
     // Extraemos el costo de maná para ver si el Tano lo puede pagar
     const manaCostString = ability.cost.replace('{T}', '').replace(',', '').trim();
     const dummyCardForCost = { manaCost: manaCostString || null };
-    
     if (dummyCardForCost.manaCost && !canRivalAfford(dummyCardForCost)) continue;
+
+    // Si el costo pide sacrificar, chequeamos que tenga algo válido para pagar con eso
+    if (ability.sacrifice === 'creature' && state.rivalCombat.length === 0) continue;
+    if (ability.sacrifice === 'artifact' && !state.rivalSupport.some(s => s.card.type.includes('Artefacto'))) continue;
 
     let shouldActivate = false;
     let aiTargetObj = null;
@@ -283,11 +317,33 @@ export function tryActivateBotAbilities() {
          shouldActivate = true;
       }
     }
+    else if (ability.effect.type === 'ramp') {
+      // Tipo fetchland: le conviene usarla temprano, mientras todavía le faltan tierras
+      if (state.phase === 'main1' && state.rivalLands.length < 6) shouldActivate = true;
+    }
+    else if (ability.effect.type === 'draw_and_lose_life') {
+      // Tipo Cassette Pirata / Biblioteca Nacional: solo si no está muy lastimado
+      if (state.phase === 'main2' && state.rivalHP > 8) shouldActivate = true;
+    }
 
     // ⚡ EJECUCIÓN
     if (shouldActivate) {
       if (dummyCardForCost.manaCost) tapRivalLandsFor(dummyCardForCost);
       if (requiresTap) supportItem.tapped = true;
+
+      // El sacrificio se paga ahora, antes de que la habilidad llegue a la pila —
+      // igual que para el jugador humano.
+      if (ability.sacrifice === 'self') {
+        performSacrifice(supportItem, false);
+      } else if (ability.sacrifice === 'creature') {
+        const worst = state.rivalCombat.reduce((prev, current) =>
+          (getEffectivePower(prev) + getEffectiveToughness(prev)) < (getEffectivePower(current) + getEffectiveToughness(current)) ? prev : current
+        );
+        performSacrifice(worst, false);
+      } else if (ability.sacrifice === 'artifact') {
+        const artifacts = state.rivalSupport.filter(s => s.card.type.includes('Artefacto'));
+        performSacrifice(artifacts[0], false);
+      }
 
       addToStack({
         card: card,
@@ -333,6 +389,11 @@ export function tryActivateGrantedBotAbilities() {
     const dummyCardForCost = { manaCost: manaCostString || null };
     if (dummyCardForCost.manaCost && !canRivalAfford(dummyCardForCost)) continue;
 
+    // Si el costo pide sacrificar, chequeamos que tenga algo válido para pagar con eso.
+    // Al elegir criatura, evitamos sacrificar a la que está activando la propia habilidad.
+    if (ability.sacrifice === 'creature' && state.rivalCombat.filter(c => c !== creatureItem).length === 0) continue;
+    if (ability.sacrifice === 'artifact' && !state.rivalSupport.some(s => s.card.type.includes('Artefacto'))) continue;
+
     let shouldActivate = false;
     let aiTargetObj = null;
 
@@ -368,6 +429,20 @@ export function tryActivateGrantedBotAbilities() {
     if (shouldActivate) {
       if (dummyCardForCost.manaCost) tapRivalLandsFor(dummyCardForCost);
       if (requiresTap) creatureItem.tapped = true;
+
+      // El sacrificio se paga ahora, antes de que la habilidad llegue a la pila.
+      if (ability.sacrifice === 'creature') {
+        const candidates = state.rivalCombat.filter(c => c !== creatureItem);
+        const worst = candidates.reduce((prev, current) =>
+          (getEffectivePower(prev) + getEffectiveToughness(prev)) < (getEffectivePower(current) + getEffectiveToughness(current)) ? prev : current
+        );
+        performSacrifice(worst, false);
+      } else if (ability.sacrifice === 'artifact') {
+        const artifacts = state.rivalSupport.filter(s => s.card.type.includes('Artefacto'));
+        performSacrifice(artifacts[0], false);
+      } else if (ability.sacrifice === 'self') {
+        performSacrifice(creatureItem, false);
+      }
 
       const sourceIndex = ownAbility ? i : supportZone.indexOf(equippedItem);
       const sourceItem = ownAbility ? creatureItem : equippedItem;

@@ -439,10 +439,12 @@ async function executeStackItem(item) {
         const amount = effectToApply.amount || 1;
         let foundCount = 0;
         for (let i = 0; i < amount; i++) {
-          const idx = deck.findIndex(c => c.type.includes('Tierra'));
+          // Filtramos específicamente "básica", como dice el texto de estas cartas
+          // (antes buscaba cualquier tierra, incluidas duales o especiales).
+          const idx = deck.findIndex(c => c.type.includes('Tierra') && c.type.includes('básica'));
           if (idx === -1) break;
           const landCard = deck.splice(idx, 1)[0];
-          landZone.push({ card: landCard, tapped: false });
+          landZone.push({ card: landCard, tapped: !!landCard.entersTapped });
           foundCount++;
         }
         // Barajamos el resto del mazo tras buscar

@@ -259,6 +259,11 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       const matchesFilter = !rules.permanentFilter || card.type.includes(rules.permanentFilter);
       isTargetable = allowThisSide && matchesFilter;
     }
+  } else if (state.pendingSacrificeChoice && isLocal) {
+    // Resaltamos qué se puede elegir para pagar un costo de Sacrificar.
+    const { eligibleType } = state.pendingSacrificeChoice;
+    if (eligibleType === 'creature' && zone === 'combat') isTargetable = true;
+    else if (eligibleType === 'artifact' && zone === 'support' && card.type.includes('Artefacto')) isTargetable = true;
   }
 
   if (!isLocal && hasKeyword(itemObj, 'hexproof')) {
@@ -318,8 +323,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const KEYWORD_LABELS = { 
       flying: '🕊️ Vuela', trample: '🐘 Arrolla', hexproof: '🛡️ Intocable', haste: '⚡ Prisa', 
       menace: '👥 Amenaza', vigilance: '👁️ Vigilancia', reach: '🏹 Alcance', defender: '🧱 Defensora',
-      lifelink: '❤️ Vínculo vital', deathtouch: '💀 Toque mortal', firststrike: '🗡️ Primer golpe', doublestrike: '⚔️ Doble golpe',
-      indestructible: '💎 Indestructible'
+      lifelink: '❤️ Vínculo vital', deathtouch: '💀 Toque mortal', firststrike: '⚔️ Primer golpe'
     };
       
     const keywordsHTML = effKeywords.length > 0

@@ -64,6 +64,11 @@ export const state = {
   // y también se limpian en ese mismo paso.
   combatDamagePrevented: false,
 
+  // Sacrificar como costo: cuando una habilidad pide "Sacrificá una criatura" o "un artefacto"
+  // (no "esta misma"), pausamos acá hasta que el jugador elija cuál. `source` guarda todo lo
+  // necesario para retomar la activación (target, pila) una vez resuelto el sacrificio.
+  pendingSacrificeChoice: null,
+
   isDiscarding: false,
   cardsToDiscard: 0,
 
@@ -166,6 +171,36 @@ export function getEffectiveKeywords(itemObj) {
   return [...new Set([...base, ...fromAuras, ...fromEquipment, ...fromStatic, ...fromTemp])];
 }
 
+// --- SACRIFICAR COMO COSTO ---
+// Saca un permanente propio del campo de batalla y lo manda al cementerio, como parte de
+// pagar el costo de una habilidad (no como resultado de daño ni de un "destroy"). Por eso
+// NO chequea Indestructible: en MTG real, Indestructible no protege contra un sacrificio.
+// Busca en las 3 zonas posibles (criaturas, soporte, tierras) porque lo que se sacrifica
+// puede ser cualquiera de los tres.
+export function performSacrifice(item, isLocal) {
+  const zones = isLocal
+    ? [state.localCombat, state.localSupport, state.localLands]
+    : [state.rivalCombat, state.rivalSupport, state.rivalLands];
+  const grave = isLocal ? state.localGraveyard : state.rivalGraveyard;
+
+  for (const zone of zones) {
+    const idx = zone.indexOf(item);
+    if (idx === -1) continue;
+    const isCreatureZone = (zone === state.localCombat || zone === state.rivalCombat);
+    zone.splice(idx, 1);
+    if (isCreatureZone) detachEquipmentFrom(item, isLocal);
+    grave.push(item.card);
+    logMsg(`🔪 ¡Sacrificaste a ${item.card.name}!`);
+    if (isCreatureZone) {
+      triggerCreatureDies(item, isLocal);
+      triggerAnyCreatureDeath(item, isLocal);
+    }
+    return true;
+  }
+  logMsg(`⚠️ No se pudo sacrificar a ${item.card.name}: ya no está en el campo.`);
+  return false;
+}
+
 // --- ENCANTAMIENTOS ESTÁTICOS GLOBALES ---
 // Busca, en la zona de soporte del dueño (y del rival, para efectos "scope: opponent"),
 // permanentes con `card.staticEffect` y devuelve los que aplican a esta criatura.
@@ -260,6 +295,11 @@ export function attachAura(auraCard, creatureItem) {
 
 export function handleCombatClick(item, isLocal, index) {
   if (state.damageModalOpen) return;
+
+  if (state.pendingSacrificeChoice) {
+    tryResolveSacrificeChoice(item, isLocal);
+    return;
+  }
 
   if (state.pendingTargetCard) {
     if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type && state.pendingTargetCard.effect.type.startsWith('counter')) {
@@ -434,10 +474,11 @@ export function handlePlayerTargetClick(isLocal) {
 }
 
 export function cancelPayment() {
-  if (state.pendingSpellIndex === null && state.pendingAbilitySource === null) return;
+  if (state.pendingSpellIndex === null && state.pendingAbilitySource === null && state.pendingSacrificeChoice === null) return;
   state.tappedLandsThisSpell.forEach(land => land.tapped = false);
   state.pendingSpellIndex = null; 
   state.pendingAbilitySource = null; // <- Agregado
+  state.pendingSacrificeChoice = null;
   state.pendingCost = null; 
   state.tappedLandsThisSpell = []; 
   state.pendingTargetCard = null;
@@ -502,6 +543,7 @@ export function playCard(index) {
 
 export function tapLocalLand(item) {
   if (state.gameOver || item.tapped) return;
+  if (state.pendingSacrificeChoice) return; // Una tierra no es una opción válida de sacrificio hoy
 
   // Tierras de utilidad (sin `produces`, con activatedAbility propia — ej. Biblioteca
   // Nacional) se activan como cualquier permanente con habilidad, no como fuente de maná.
@@ -631,33 +673,82 @@ function checkPaymentComplete() {
       if (source.requiresTap) {
         tapTarget.tapped = true;
       }
- 
-      if (ability.requiresTarget) {
-        logMsg(`¡Costo pagado! Elegí un objetivo para la habilidad de ${card.name}.`);
-        state.pendingTargetCard = card;
-        state.pendingTargetSource = source; // Guardamos el source para executeSpellOnTarget
-        render();
+
+      // Si el costo incluye Sacrificar, se paga acá, antes de que la habilidad llegue
+      // a la pila (así es en MTG real: los costos se pagan en el momento de activar).
+      if (ability.sacrifice) {
+        if (ability.sacrifice === 'self') {
+          performSacrifice(source.item, source.isLocal);
+          finalizeAbilityActivation(source, ability, card);
+        } else {
+          // 'creature' o 'artifact': hay que elegir cuál. Pausamos acá.
+          state.pendingSacrificeChoice = { source, ability, card, eligibleType: ability.sacrifice };
+          logMsg(`¡Maná pagado! Elegí qué ${ability.sacrifice === 'creature' ? 'criatura' : 'artefacto'} sacrificar para pagar el costo de ${card.name}.`);
+          render();
+        }
         return;
       }
- 
-      addToStack({
-        card: card,
-        isLocal: source.isLocal,
-        targetObj: null,
-        type: 'ability',
-        source: { type: isGranted ? 'equipped_activation' : 'support_activation', index: source.index },
-        sourceItem: source.item
-      });
- 
-      logMsg(`Activaste la habilidad de ${card.name}.`);
-      state.consecutivePasses = 0;
-      state.pendingAbilitySource = null;
-      state.pendingCost = null;
-      state.tappedLandsThisSpell = [];
-      render();
-      checkRivalCounterOrResponse();
+
+      finalizeAbilityActivation(source, ability, card);
     }
   }
+}
+
+// Segunda mitad de la activación de una habilidad (elegir objetivo si hace falta, o ir
+// directo a la pila). Separado de checkPaymentComplete para poder retomarlo después de
+// resolver una elección de sacrificio, que pausa el flujo a mitad de camino.
+function finalizeAbilityActivation(source, ability, card) {
+  const isGranted = source.abilityKind === 'granted';
+
+  if (ability.requiresTarget) {
+    logMsg(`Elegí un objetivo para la habilidad de ${card.name}.`);
+    state.pendingTargetCard = card;
+    state.pendingTargetSource = source;
+    render();
+    return;
+  }
+
+  addToStack({
+    card: card,
+    isLocal: source.isLocal,
+    targetObj: null,
+    type: 'ability',
+    source: { type: isGranted ? 'equipped_activation' : 'support_activation', index: source.index },
+    sourceItem: source.item
+  });
+
+  logMsg(`Activaste la habilidad de ${card.name}.`);
+  state.consecutivePasses = 0;
+  state.pendingAbilitySource = null;
+  state.pendingCost = null;
+  state.tappedLandsThisSpell = [];
+  render();
+  checkRivalCounterOrResponse();
+}
+
+// Se llama cuando el jugador local elige qué sacrificar (criatura o artefacto propio) para
+// completar el costo de una habilidad pendiente. Devuelve true si el click era para esto,
+// así el llamador (handleCombatClick / handleSupportClick) sabe si debe frenar ahí.
+export function tryResolveSacrificeChoice(item, isLocal) {
+  const pending = state.pendingSacrificeChoice;
+  if (!pending) return false;
+  if (!isLocal) {
+    logMsg("Solo podés sacrificar tus propios permanentes.");
+    return true;
+  }
+
+  const isCreatureItem = item.card.power !== undefined || item.isVehicle;
+  const matchesType = pending.eligibleType === 'creature' ? isCreatureItem : !isCreatureItem;
+  if (!matchesType) {
+    logMsg(`Ese no es un ${pending.eligibleType === 'creature' ? 'criatura' : 'artefacto'} válido para sacrificar acá.`);
+    return true;
+  }
+
+  performSacrifice(item, isLocal);
+  const { source, ability, card } = pending;
+  state.pendingSacrificeChoice = null;
+  finalizeAbilityActivation(source, ability, card);
+  return true;
 }
 
 function executeSpellOnTarget(targetObj) {
@@ -714,6 +805,12 @@ function executeSpellOnTarget(targetObj) {
 
 export function handleSupportClick(item, isLocal, index) {
   if (state.gameOver || !isLocal) return;
+
+  if (state.pendingSacrificeChoice) {
+    tryResolveSacrificeChoice(item, isLocal);
+    return;
+  }
+
   if (state.phase !== 'main1' && state.phase !== 'main2') return;
   if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null) {
     logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
