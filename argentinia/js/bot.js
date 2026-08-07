@@ -316,11 +316,16 @@ export function tryActivateBotAbilities() {
 export function tryActivateGrantedBotAbilities() {
   for (let i = 0; i < state.rivalCombat.length; i++) {
     const creatureItem = state.rivalCombat[i];
-    const supportZone = state.rivalSupport;
-    const equippedItem = supportZone.find(s => s.attachedTo === creatureItem && s.card.grantedAbility);
-    if (!equippedItem) continue;
 
-    const ability = equippedItem.card.grantedAbility;
+    // Prioridad: habilidad PROPIA de la criatura (ej. Alberto Samid, "Pelea contra...").
+    // Si no tiene, buscamos si algún Equipo puesto se la está prestando.
+    const ownAbility = creatureItem.card.activatedAbility;
+    const supportZone = state.rivalSupport;
+    const equippedItem = !ownAbility ? supportZone.find(s => s.attachedTo === creatureItem && s.card.grantedAbility) : null;
+    if (!ownAbility && !equippedItem) continue;
+
+    const ability = ownAbility || equippedItem.card.grantedAbility;
+    const sourceCard = ownAbility ? creatureItem.card : equippedItem.card;
     const requiresTap = (ability.cost || "").includes('{T}');
     if (requiresTap && (creatureItem.tapped || creatureItem.summoningSickness)) continue;
 
@@ -348,26 +353,37 @@ export function tryActivateGrantedBotAbilities() {
         aiTargetObj = ability.requiresTarget ? { type: 'player', isLocal: false } : null;
         shouldActivate = true;
       }
+    } else if (ability.effect.type === 'fight') {
+      // Pelea si le conviene: mata o daña bien a cambio de poco (o nada) de vuelta.
+      const myPower = getEffectivePower(creatureItem);
+      const target = state.localCombat.find(c =>
+        !hasKeyword(c, 'hexproof') && getEffectiveToughness(c) <= myPower && getEffectivePower(c) < getEffectiveToughness(creatureItem)
+      );
+      if (target) {
+        aiTargetObj = { type: 'creature', isLocal: true, index: state.localCombat.indexOf(target), item: target };
+        shouldActivate = true;
+      }
     }
 
     if (shouldActivate) {
       if (dummyCardForCost.manaCost) tapRivalLandsFor(dummyCardForCost);
       if (requiresTap) creatureItem.tapped = true;
 
-      const equipIndex = supportZone.indexOf(equippedItem);
+      const sourceIndex = ownAbility ? i : supportZone.indexOf(equippedItem);
+      const sourceItem = ownAbility ? creatureItem : equippedItem;
       addToStack({
-        card: equippedItem.card,
+        card: sourceCard,
         isLocal: false,
         targetObj: aiTargetObj,
         type: 'ability',
-        source: { type: 'equipped_activation', index: equipIndex },
-        sourceItem: equippedItem
+        source: { type: ownAbility ? 'support_activation' : 'equipped_activation', index: sourceIndex },
+        sourceItem: sourceItem
       });
 
       state.priorityPlayer = 'local';
       state.consecutivePasses = 0;
 
-      logMsg(`⚙️ El Tano usó la habilidad de ${equippedItem.card.name} con ${creatureItem.card.name}. Tenés prioridad para responder.`);
+      logMsg(`⚙️ El Tano usó la habilidad de ${sourceCard.name} con ${creatureItem.card.name}. Tenés prioridad para responder.`);
       render();
       return true;
     }

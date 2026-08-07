@@ -170,13 +170,13 @@ function executeUntapStep() {
     state.localAttackersDeclaredThisTurn = 0;
     state.localLands.forEach(l => l.tapped = false);
     state.localCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; });
-    state.localSupport.forEach(s => s.tapped = false);
+    state.localSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });
   } else {
     state.rivalLandPlayedThisTurn = false;
     state.rivalAttackersDeclaredThisTurn = 0;
     state.rivalLands.forEach(l => l.tapped = false);
     state.rivalCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; });
-    state.rivalSupport.forEach(s => s.tapped = false);
+    state.rivalSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });
   }
   logMsg(`🔄 Permanentes enderezados para ${isLocal ? 'El Gaucho' : 'El Tano'}.`);
 }

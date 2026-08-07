@@ -330,15 +330,20 @@ export function handleCombatClick(item, isLocal, index) {
 }
 
 function tryActivateGrantedAbility(creatureItem, isLocal, creatureIndex) {
-  const equippedWithAbility = getEquipmentOn(creatureItem).find(eq => eq.card.grantedAbility);
-  if (!equippedWithAbility) return false;
+  // Prioridad: si la criatura tiene su PROPIA habilidad activada (ej. Alberto Samid,
+  // "{1}{G}: Pelea contra la criatura objetivo"), usamos esa. Si no, buscamos si algún
+  // Equipo puesto le está prestando una (ej. Facón de Plata).
+  const ownAbility = creatureItem.card.activatedAbility;
+  const equippedWithAbility = !ownAbility ? getEquipmentOn(creatureItem).find(eq => eq.card.grantedAbility) : null;
+  if (!ownAbility && !equippedWithAbility) return false;
 
   if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null) {
     logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
     return true;
   }
 
-  const ability = equippedWithAbility.card.grantedAbility;
+  const ability = ownAbility || equippedWithAbility.card.grantedAbility;
+  const sourceCardName = ownAbility ? creatureItem.card.name : equippedWithAbility.card.name;
   const costStr = ability.cost || "";
   const requiresTap = costStr.includes('{T}');
 
@@ -347,23 +352,36 @@ function tryActivateGrantedAbility(creatureItem, isLocal, creatureIndex) {
     return true;
   }
   if (requiresTap && creatureItem.summoningSickness) {
-    logMsg(`${creatureItem.card.name} tiene mareo de invocación: todavía no puede usar la habilidad de ${equippedWithAbility.card.name}.`);
+    logMsg(`${creatureItem.card.name} tiene mareo de invocación: todavía no puede usar la habilidad de ${sourceCardName}.`);
     return true;
   }
 
   const manaCostStr = costStr.replace('{T}', '').trim();
   const manaCost = parseManaCost(manaCostStr || "");
-  const supportZone = isLocal ? state.localSupport : state.rivalSupport;
-  const equipIndex = supportZone.indexOf(equippedWithAbility);
 
-  state.pendingAbilitySource = {
-    item: equippedWithAbility,
-    tapTarget: creatureItem,
-    index: equipIndex,
-    isLocal,
-    requiresTap,
-    abilityKind: 'granted'
-  };
+  if (ownAbility) {
+    // La criatura activa su propia habilidad: ella misma es "item" y "tapTarget".
+    state.pendingAbilitySource = {
+      item: creatureItem,
+      tapTarget: creatureItem,
+      index: creatureIndex,
+      isLocal,
+      requiresTap,
+      abilityKind: 'own'
+    };
+  } else {
+    const supportZone = isLocal ? state.localSupport : state.rivalSupport;
+    const equipIndex = supportZone.indexOf(equippedWithAbility);
+    state.pendingAbilitySource = {
+      item: equippedWithAbility,
+      tapTarget: creatureItem,
+      index: equipIndex,
+      isLocal,
+      requiresTap,
+      abilityKind: 'granted'
+    };
+  }
+
   state.pendingCost = manaCost;
   state.tappedLandsThisSpell = [];
 
@@ -371,7 +389,7 @@ function tryActivateGrantedAbility(creatureItem, isLocal, creatureIndex) {
   if (totalMana === 0) {
     checkPaymentComplete();
   } else {
-    logMsg(`Activando la habilidad de ${equippedWithAbility.card.name} en ${creatureItem.card.name}. Elegí tierras para pagar.`);
+    logMsg(`Activando la habilidad de ${sourceCardName} en ${creatureItem.card.name}. Elegí tierras para pagar.`);
     render();
   }
   return true;
@@ -757,6 +775,28 @@ export function resolveEffectDirect(effect, cardName, isLocal) {
     if (!isLocal && state.rivalDeck.length > 0) state.rivalHand.push(state.rivalDeck.pop());
     if (isLocal) state.localHP -= effect.lifeLoss; else state.rivalHP -= effect.lifeLoss;
     logMsg(`📖 ¡${cardName}! ${targetName} robó una carta y perdió ${effect.lifeLoss} de vida.`);
+  } else if (effect.type === 'drain') {
+    // Genérico para cualquier disparador (diesTrigger, upkeepTrigger, etc.), no solo los
+    // dos casos de muerte que ya tenían su propio código a mano.
+    if (isLocal) { state.rivalHP -= effect.amount; state.localHP += effect.amount; }
+    else { state.localHP -= effect.amount; state.rivalHP += effect.amount; }
+    logMsg(`🩸 ¡${cardName}! Drena ${effect.amount} de vida.`);
+  } else if (effect.type === 'discard') {
+    // Discard sin target explícito (ej. un ETB): siempre le pega al oponente de quien
+    // controla el disparador, igual que ya hacen damage/heal en esta misma función.
+    const targetHand = isLocal ? state.rivalHand : state.localHand;
+    const targetGrave = isLocal ? state.rivalGraveyard : state.localGraveyard;
+    const discardedNames = [];
+    for (let i = 0; i < effect.amount && targetHand.length > 0; i++) {
+      const idx = Math.floor(Math.random() * targetHand.length);
+      const discarded = targetHand.splice(idx, 1)[0];
+      targetGrave.push(discarded);
+      discardedNames.push(discarded.name);
+    }
+    const opponentName = isLocal ? "el Tano" : "vos";
+    logMsg(discardedNames.length > 0
+      ? `🗑️ ¡${cardName}! ${opponentName} descartó: ${discardedNames.join(', ')}.`
+      : `🗑️ ¡${cardName}! ${opponentName} no tenía cartas para descartar.`);
   }
 }
 

@@ -1,5 +1,5 @@
 import { sleep } from './utils.js';
-import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath } from './main.js';
+import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower } from './main.js';
 import { logMsg, render } from './ui.js';
 import { checkDeaths } from './combatRules.js';
 import { hasKeyword } from './keywords.js';
@@ -56,7 +56,9 @@ async function executeStackItem(item) {
       logMsg(`¡${card.name} entró al campo de batalla!`);
       triggerCreatureEtb(isLocal);
     } else {
-      newPermanentItem = { card, tapped: false };
+      // enteredThisTurn: para que un Vehículo recién jugado y tripulado en el mismo turno
+      // respete el mareo de invocación al convertirse en criatura (ver crew_vehicle abajo).
+      newPermanentItem = { card, tapped: false, enteredThisTurn: true };
       // Los Equipos entran al campo sin equipar a nadie todavía (se equipan pagando Equipar).
       if (card.equipment) newPermanentItem.attachedTo = null;
       const supportZone = isLocal ? state.localSupport : state.rivalSupport;
@@ -222,6 +224,31 @@ async function executeStackItem(item) {
             logMsg(`⚠️ ${card.name} no pudo encontrar su propio permanente en la zona de soporte para equiparse.`);
           }
         }
+        // LÓGICA NUEVA: PELEAR — la criatura "atacante" (la que activó esto, o si viene de
+        // un hechizo, tu criatura con más poder) y la criatura objetivo se hacen daño mutuo
+        // igual a su fuerza. No usa la pila para elegir la propia: viene resuelta de antemano.
+        else if (effectToApply.type === 'fight') {
+          let selfUnit = item.sourceItem;
+          if (!selfUnit) {
+            // Viene de un hechizo, no de la habilidad de una criatura: auto-elegimos tu
+            // criatura con más poder para que sea la que pelea.
+            const ownBoard = isLocal ? state.localCombat : state.rivalCombat;
+            if (ownBoard.length > 0) {
+              selfUnit = ownBoard.reduce((prev, current) => getEffectivePower(prev) > getEffectivePower(current) ? prev : current);
+            }
+          }
+          if (selfUnit) {
+            const selfPower = getEffectivePower(selfUnit);
+            const targetPower = getEffectivePower(targetUnit);
+            targetUnit.damageTaken = (targetUnit.damageTaken || 0) + selfPower;
+            selfUnit.damageTaken = (selfUnit.damageTaken || 0) + targetPower;
+            logMsg(`🥊 ¡${selfUnit.card.name} pelea contra ${targetUnit.card.name}! (${selfPower} vs ${targetPower} de daño)`);
+            checkDeaths(state.localCombat, state.localGraveyard, "Vos");
+            checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+          } else {
+            logMsg(`⚠️ ${card.name} no tenía ninguna criatura tuya para pelear.`);
+          }
+        }
         // LÓGICA NUEVA: TRUCO DE COMBATE — +X/+X hasta el final del turno (ej. Fuerza de Toro)
         else if (effectToApply.type === 'pump') {
           if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
@@ -242,12 +269,16 @@ async function executeStackItem(item) {
           const grave = isTargetLocal ? state.localGraveyard : state.rivalGraveyard;
           const idx = board.indexOf(targetUnit);
           if (idx !== -1) {
-            board.splice(idx, 1);
-            detachEquipmentFrom(targetUnit, isTargetLocal);
-            grave.push(targetUnit.card);
-            logMsg(`💀 ¡${card.name} destruyó a ${targetUnit.card.name}!`);
-            triggerCreatureDies(targetUnit, isTargetLocal);
-            triggerAnyCreatureDeath(targetUnit, isTargetLocal);
+            if (hasKeyword(targetUnit, 'indestructible')) {
+              logMsg(`🛡️ ${targetUnit.card.name} es Indestructible: ${card.name} no pudo hacer nada.`);
+            } else {
+              board.splice(idx, 1);
+              detachEquipmentFrom(targetUnit, isTargetLocal);
+              grave.push(targetUnit.card);
+              logMsg(`💀 ¡${card.name} destruyó a ${targetUnit.card.name}!`);
+              triggerCreatureDies(targetUnit, isTargetLocal);
+              triggerAnyCreatureDeath(targetUnit, isTargetLocal);
+            }
           } else {
             logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
           }
@@ -309,6 +340,9 @@ async function executeStackItem(item) {
           vehicleItem.card.power = card.baseStats.power;
           vehicleItem.card.toughness = card.baseStats.toughness;
           vehicleItem.isVehicle = true; // Flag clave para devolverlo después
+          // Respeta el mareo de invocación: si el Vehículo entró este mismo turno, no puede
+          // atacar apenas se tripula, igual que cualquier criatura recién jugada.
+          vehicleItem.summoningSickness = !!vehicleItem.enteredThisTurn;
           
           combatZone.push(vehicleItem);
           logMsg(`🚗 ¡${card.name} fue tripulado y aceleró al campo de batalla como un ${card.baseStats.power}/${card.baseStats.toughness}!`);
@@ -318,8 +352,10 @@ async function executeStackItem(item) {
       else if (effectToApply.type === 'destroy_all_creatures') {
         const wipeBoard = (combatZone, graveyard, isLocalZone) => {
           let count = 0;
-          while (combatZone.length > 0) {
-            const unit = combatZone.pop();
+          for (let i = combatZone.length - 1; i >= 0; i--) {
+            const unit = combatZone[i];
+            if (hasKeyword(unit, 'indestructible')) continue; // sobrevive al arrase
+            combatZone.splice(i, 1);
             detachEquipmentFrom(unit, isLocalZone);
             if (unit.isVehicle) {
               delete unit.card.power;

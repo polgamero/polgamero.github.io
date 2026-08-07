@@ -229,6 +229,13 @@ export function getTargetRules(card) {
     // Trucos de combate: solo tiene sentido apuntar a tu propia criatura.
     return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
   }
+  if (effectType === 'fight') {
+    // Pelear: tu criatura (implícita) contra una criatura del rival.
+    return { allowPlayer: false, allowLocalCreature: false, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
+  }
+  if (effectType === 'discard') {
+    return { allowPlayer: true, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
+  }
 
   return { allowPlayer: true, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
 }

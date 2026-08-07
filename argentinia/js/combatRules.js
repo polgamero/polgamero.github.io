@@ -421,8 +421,17 @@ export function checkDeaths(combatArray, graveyardArray, ownerName) {
   for (let i = combatArray.length - 1; i >= 0; i--) {
     let unit = combatArray[i];
     let dmg = unit.damageTaken || 0;
-    
-    if (dmg >= getEffectiveToughness(unit) || (unit.tookDeathtouch && dmg > 0)) {
+    const toughness = getEffectiveToughness(unit);
+    const indestructible = hasKeyword(unit, 'indestructible');
+
+    // Indestructible previene morir por daño letal o por deathtouch (son "destrucción"),
+    // pero NO previene morir si la resistencia efectiva queda en 0 o menos (eso no es
+    // "destruir", es una regla aparte que ni Indestructible esquiva en MTG real).
+    const diesToZeroToughness = toughness <= 0;
+    const diesToLethalDamage = !indestructible && toughness > 0 && dmg >= toughness;
+    const diesToDeathtouch = !indestructible && unit.tookDeathtouch && dmg > 0;
+
+    if (diesToZeroToughness || diesToLethalDamage || diesToDeathtouch) {
       logMsg(`💀 ${unit.card.name} de ${ownerName} murió y va al cementerio.`);
       graveyardArray.push(unit.card);
 
