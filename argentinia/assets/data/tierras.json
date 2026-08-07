@@ -210,5 +210,26 @@
       },
       "requiresTarget": false
     }
+  },
+  {
+    "id": "tier_016",
+    "name": "Sendero al Delta",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{T}, Sacrificá esta tierra: Buscá una tierra básica en tu mazo y ponela en el campo de batalla.",
+    "flavorText": "Un camino que se borra apenas lo cruzás.",
+    "image": "sendero_delta.png",
+    "activatedAbility": {
+      "cost": "{T}",
+      "sacrifice": "self",
+      "effect": {
+        "type": "ramp",
+        "amount": 1
+      },
+      "requiresTarget": false
+    }
   }
 ]

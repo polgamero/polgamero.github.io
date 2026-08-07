@@ -669,5 +669,31 @@
       "type": "drain",
       "amount": 2
     }
+  },
+  {
+    "id": "crea_035",
+    "name": "Chatarrero Implacable",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "text": "{1}, Sacrificá un artefacto: Robás una carta.",
+    "flavorText": "Todo lo que brilla, tarde o temprano, termina en su carro.",
+    "image": "chatarrero.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}",
+      "sacrifice": "artifact",
+      "effect": {
+        "type": "draw",
+        "amount": 1
+      },
+      "requiresTarget": false
+    }
   }
 ]

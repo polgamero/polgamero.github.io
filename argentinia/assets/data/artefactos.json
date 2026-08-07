@@ -235,5 +235,26 @@
       },
       "requiresTarget": false
     }
+  },
+  {
+    "id": "art_011",
+    "name": "Altar de las Ofrendas",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{1}, Sacrificá una criatura: El jugador rival pierde 2 Puntos de Vida y vos ganás 2.",
+    "flavorText": "Pide poco. Da mucho. Nunca pregunta a quién.",
+    "image": "altar_ofrendas.png",
+    "activatedAbility": {
+      "cost": "{1}",
+      "sacrifice": "creature",
+      "effect": {
+        "type": "drain",
+        "amount": 2
+      },
+      "requiresTarget": false
+    }
   }
 ]
