@@ -132,15 +132,17 @@
   {
     "id": "tier_011",
     "name": "La Constancia",
-    "type": "Tierra básica — Pantano",
+    "type": "Tierra sagrada — Pantano",
     "manaCost": "",
     "cmc": 0,
     "rarity": "Rare",
     "colors": [],
-    "text": "{T}: Agrega {B}.",
+    "text": "Entra en juego girada. {T}: Agrega {B}{B}.",
     "flavorText": "El corazón del delta late aquí",
     "image": "constancia.png",
-    "produces": "B"
+    "produces": "B",
+    "manaAmount": 2,
+    "entersTapped": true
   },
   {
     "id": "tier_012",

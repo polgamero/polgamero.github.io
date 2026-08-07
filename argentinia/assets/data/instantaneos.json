@@ -324,5 +324,24 @@
     "effect": {
       "type": "fight"
     }
+  },
+  {
+    "id": "inst_018",
+    "name": "Corte de Manga",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "El jugador objetivo descarta una carta.",
+    "flavorText": "No hacen falta palabras.",
+    "requiresTarget": true,
+    "image": "corte_de_manga.png",
+    "effect": {
+      "type": "discard",
+      "amount": 1
+    }
   }
 ]
