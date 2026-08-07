@@ -20,6 +20,7 @@ import {
 import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { canBlock, hasKeyword } from './keywords.js';
+import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -415,6 +416,177 @@ export function sizeCardsInRow(rowEl) {
 
 export function sizeAllRows() {
   [els.localHand, els.rivalHand, els.localLands, els.rivalLands, els.localCombat, els.rivalCombat, els.localSupport, els.rivalSupport].forEach(sizeCardsInRow);
+}
+
+// --- MODAL DE SELECCIÓN DE MAZO INICIAL ---
+// Se muestra apenas carga la página, antes de que arranque la partida. 100% autocontenido:
+// inyecta su propio <style> y elementos, no depende de nada que ya exista en el HTML.
+
+const COLOR_INFO = {
+  W: { name: 'Blanco', file: 'blanco.png', bg: '#d8c9a0', desc: 'Orden y sacrificio. Vidas que se recuperan, ejercitos que se multiplican, reglas que doblegan al rival.' },
+  U: { name: 'Azul',   file: 'azul.png',   bg: '#3b6ea5', desc: 'Conocimiento y control. Cartas de sobra, hechizos que se esfuman, criaturas que planean por encima de todo.' },
+  B: { name: 'Negro',  file: 'negro.png',  bg: '#4a3a5c', desc: 'Ambicion sin limites. La muerte no es el final: es una herramienta mas.' },
+  R: { name: 'Rojo',   file: 'rojo.png',   bg: '#a5423b', desc: 'Fuego y velocidad. Golpeas primero, golpeas fuerte, y no pedis permiso.' },
+  G: { name: 'Verde',  file: 'verde.png',  bg: '#437a45', desc: 'Fuerza bruta de la naturaleza. Criaturas gigantes, mana de sobra, y pelea directa cuando hace falta.' },
+};
+
+const PAIR_INFO = {
+  WU: { title: 'Control Celeste',      desc: 'Contencion total: contrarrestas lo que no podes permitir, y volas por encima del resto.' },
+  UB: { title: 'Sombra y Sigilo',      desc: 'Cada respuesta tuya es una trampa. El rival nunca sabe que le espera.' },
+  BR: { title: 'Caos Sangriento',      desc: 'Agresivo y sin piedad: sacrificas lo que haga falta para ganar mas rapido de lo que el rival puede reaccionar.' },
+  RG: { title: 'Furia Salvaje',        desc: 'Criaturas enormes que pegan fuerte y rapido. Sin sutilezas.' },
+  GW: { title: 'Comunidad y Vida',     desc: 'Un ejercito que crece turno a turno, respaldado por vida de sobra.' },
+  WB: { title: 'Drenaje Implacable',   desc: 'Cada punto de vida que le sacas al rival es un punto que ganas vos.' },
+  UR: { title: 'Tormenta de Hechizos', desc: 'Velocidad mental pura: respuestas instantaneas y quema directa.' },
+  BG: { title: 'Ciclo Eterno',         desc: 'Nada se pierde del todo. Todo vuelve del cementerio para pelear de nuevo.' },
+  RW: { title: 'Ofensiva Total',       desc: 'Atacas rapido, atacas en masa, y no le das tiempo al rival de organizarse.' },
+  GU: { title: 'Evolucion Constante',  desc: 'Mana de sobra y criaturas que crecen turno tras turno hasta ser imparables.' },
+};
+
+function injectDeckSelectionStyles() {
+  if (document.getElementById('deck-select-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'deck-select-styles';
+  style.textContent = `
+    #deck-select-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #1a1420 0%, #0a0810 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .deck-select-panel {
+      max-width: 920px; width: 92%; max-height: 90vh; overflow-y: auto;
+      background: linear-gradient(180deg, rgba(30,22,40,0.95), rgba(15,12,20,0.98));
+      border: 1px solid rgba(212,175,55,0.35);
+      border-radius: 16px;
+      padding: 32px 36px;
+      box-shadow: 0 0 60px rgba(212,175,55,0.15), 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .deck-select-title {
+      text-align: center; font-size: 26px; font-weight: 700;
+      color: #f0e0b0; letter-spacing: 0.5px; margin-bottom: 4px;
+      text-shadow: 0 0 20px rgba(212,175,55,0.4);
+    }
+    .deck-select-subtitle {
+      text-align: center; font-size: 14px; color: #a89bb5; margin-bottom: 28px;
+    }
+    .deck-select-mono-row {
+      display: flex; justify-content: center; gap: 22px; margin-bottom: 32px; flex-wrap: wrap;
+    }
+    .deck-select-mono-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      background: none; border: none; cursor: pointer; padding: 8px;
+      transition: transform 0.15s ease;
+    }
+    .deck-select-mono-btn:hover { transform: translateY(-4px) scale(1.06); }
+    .deck-select-circle-big {
+      width: 76px; height: 76px; border-radius: 50%;
+      border: 2px solid rgba(212,175,55,0.5);
+      background-size: cover; background-position: center;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.5);
+    }
+    .deck-select-mono-btn:hover .deck-select-circle-big {
+      border-color: #f0e0b0; box-shadow: 0 4px 24px rgba(212,175,55,0.5);
+    }
+    .deck-select-mono-label { color: #e8ddc8; font-size: 14px; font-weight: 600; }
+    .deck-select-divider {
+      display: flex; align-items: center; gap: 12px; margin: 8px 0 20px 0;
+      color: #6e6478; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px;
+    }
+    .deck-select-divider::before, .deck-select-divider::after {
+      content: ''; flex: 1; height: 1px; background: rgba(212,175,55,0.25);
+    }
+    .deck-select-pairs-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;
+    }
+    .deck-select-pair-btn {
+      display: flex; align-items: center; gap: 12px; text-align: left;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(212,175,55,0.18);
+      border-radius: 10px; padding: 10px 14px; cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    }
+    .deck-select-pair-btn:hover {
+      background: rgba(212,175,55,0.08); border-color: rgba(212,175,55,0.55);
+      transform: translateY(-2px);
+    }
+    .deck-select-pair-icons { display: flex; flex-shrink: 0; }
+    .deck-select-circle-small {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 1.5px solid rgba(240,224,176,0.6);
+      background-size: cover; background-position: center;
+    }
+    .deck-select-circle-small + .deck-select-circle-small { margin-left: -10px; }
+    .deck-select-pair-text { flex: 1; }
+    .deck-select-pair-title { color: #f0e0b0; font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+    .deck-select-pair-desc { color: #b8adc4; font-size: 12px; line-height: 1.35; }
+  `;
+  document.head.appendChild(style);
+}
+
+function circleStyle(colorKey) {
+  const info = COLOR_INFO[colorKey];
+  return `background-color:${info.bg}; background-image:url('./assets/images/ui/${info.file}');`;
+}
+
+export function showDeckSelectionModal(onChoose) {
+  injectDeckSelectionStyles();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'deck-select-overlay';
+
+  const monoButtonsHTML = ALL_COLORS.map(colorKey => {
+    const info = COLOR_INFO[colorKey];
+    return `
+      <button class="deck-select-mono-btn" data-mono="${colorKey}" title="${info.desc}">
+        <div class="deck-select-circle-big" style="${circleStyle(colorKey)}"></div>
+        <span class="deck-select-mono-label">${info.name}</span>
+      </button>
+    `;
+  }).join('');
+
+  const pairButtonsHTML = GUILD_PAIRS.map(([a, b]) => {
+    const key = a + b;
+    const pair = PAIR_INFO[key];
+    return `
+      <button class="deck-select-pair-btn" data-pair="${key}">
+        <div class="deck-select-pair-icons">
+          <div class="deck-select-circle-small" style="${circleStyle(a)}"></div>
+          <div class="deck-select-circle-small" style="${circleStyle(b)}"></div>
+        </div>
+        <div class="deck-select-pair-text">
+          <div class="deck-select-pair-title">${pair.title}</div>
+          <div class="deck-select-pair-desc">${pair.desc}</div>
+        </div>
+      </button>
+    `;
+  }).join('');
+
+  overlay.innerHTML = `
+    <div class="deck-select-panel">
+      <div class="deck-select-title">Elegi tu mazo</div>
+      <div class="deck-select-subtitle">El Tano ya barajo el suyo al azar. Vos elegis con que pelear.</div>
+      <div class="deck-select-mono-row">${monoButtonsHTML}</div>
+      <div class="deck-select-divider">o combina dos colores</div>
+      <div class="deck-select-pairs-grid">${pairButtonsHTML}</div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelectorAll('[data-mono]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const color = btn.getAttribute('data-mono');
+      overlay.remove();
+      onChoose([color]);
+    });
+  });
+
+  overlay.querySelectorAll('[data-pair]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.getAttribute('data-pair');
+      overlay.remove();
+      onChoose([key[0], key[1]]);
+    });
+  });
 }
 
 export function showGameOverOverlay(didWin) {

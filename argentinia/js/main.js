@@ -2,7 +2,7 @@ import { addToStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal } from './ui.js';
 import { buildRandomDeck, parseManaCost, getLandColor, sleep } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority } from './turnManager.js';
 import { hasKeyword, canBlock } from './keywords.js';
@@ -80,13 +80,14 @@ export const state = {
   rivalAttackersDeclaredThisTurn: 0
 };
 
-async function initGame() {
+async function initGame(humanIdentity) {
   logMsg("Cargando el mazo...");
-  await cardDb.loadAll();
 
   setupBoardLayout();
 
-  state.localDeck = buildRandomDeck();
+  // El mazo del jugador humano respeta la identidad de color que eligió en el modal
+  // inicial; el del Tano siempre es al azar (ver buildRandomDeck en utils.js).
+  state.localDeck = buildRandomDeck(humanIdentity);
   state.rivalDeck = buildRandomDeck();
 
   for (let i = 0; i < 7; i++) {
@@ -100,8 +101,18 @@ async function initGame() {
   els.localHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(true));
 
   render();
-  logMsg("¡Arranca la partida! Robaste tus 7 cartas iniciales.");
+  logMsg(`¡Arranca la partida! Elegiste ${humanIdentity.join('/')}. Robaste tus 7 cartas iniciales.`);
   logMsg("¡Tu turno! Bajá una tierra para empezar.");
+}
+
+// Carga la base de cartas primero (para que el modal ya pueda arrancar el juego apenas
+// el jugador elige) y recién ahí muestra el modal de selección de color. El juego en sí
+// no arranca hasta que el jugador elige — initGame() se llama desde el callback del modal.
+async function boot() {
+  await cardDb.loadAll();
+  showDeckSelectionModal((chosenIdentity) => {
+    initGame(chosenIdentity);
+  });
 }
 
 export function getEffectivePower(itemObj) {
@@ -899,4 +910,4 @@ export function resolveEffectDirect(effect, cardName, isLocal) {
 
 export function resolveSpellDirect(card, isLocal) { resolveEffectDirect(card.effect, card.name, isLocal); }
 
-initGame();
+boot();

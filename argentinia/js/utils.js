@@ -18,6 +18,10 @@ const GUILD_PAIRS = [
   ['W', 'B'], ['U', 'R'], ['B', 'G'], ['R', 'W'], ['G', 'U']
 ];
 
+// Se exportan para que el modal de selección de mazo (ui.js) pueda listar las mismas
+// opciones que el generador realmente entiende — una sola fuente de verdad.
+export { ALL_COLORS, GUILD_PAIRS };
+
 const MAX_COPIES_SPELL = 4;       // límite de copias de una misma carta no-tierra, como en MTG real
 const MAX_COPIES_NONBASIC_LAND = 2;
 const NONBASIC_LAND_BUDGET = 6;   // de las 24 tierras, cuántas como máximo son "especiales" (duales, etc.)
@@ -161,11 +165,13 @@ function buildLandSection(identity, spellSection, targetTotal) {
   return landPicks;
 }
 
-export function buildRandomDeck() {
+export function buildRandomDeck(forcedIdentity) {
   const TOTAL_LANDS = 24;
   const TOTAL_SPELLS = 36;
 
-  const identity = pickDeckIdentity();
+  // Si viene una identidad forzada (el jugador humano la eligió en el modal inicial), la
+  // usamos tal cual. Si no (el Tano siempre llama sin argumento), se sortea como siempre.
+  const identity = forcedIdentity || pickDeckIdentity();
   console.log(`[buildRandomDeck] Identidad elegida: ${identity.join('/')}`);
 
   const spellSection = buildSpellSection(identity, TOTAL_SPELLS);
