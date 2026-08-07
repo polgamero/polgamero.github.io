@@ -196,7 +196,11 @@ export function renderManaSymbols(manaCostStr) {
     let colorClass = 'mana-c'; 
     if(val === 'W') colorClass = 'mana-w'; if(val === 'U') colorClass = 'mana-u'; if(val === 'B') colorClass = 'mana-b'; if(val === 'R') colorClass = 'mana-r'; if(val === 'G') colorClass = 'mana-g';
     const innerText = ['W','U','B','R','G'].includes(val) ? '' : val;
-    return `<span class="mana-symbol ${colorClass}">${innerText}</span>`;
+    // Números de 2+ dígitos (10, 12...) necesitan una fuente más chica para entrar
+    // centrados en el mismo círculo sin desbordar — 1 dígito usa el tamaño normal.
+    const fontSize = innerText.length >= 2 ? '3.2cqw' : '4.6cqw';
+    const style = innerText ? ` style="font-size:${fontSize};"` : '';
+    return `<span class="mana-symbol ${colorClass}"${style}>${innerText}</span>`;
   }).join('');
 }
 
