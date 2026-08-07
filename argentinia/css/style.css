@@ -100,14 +100,14 @@ html, body {
 /* ===================================================
    VARIABLES DE COLOR DE CARTA (Paleta MTG)
 =================================================== */
-.card.bg-w { --card-bg: #EAE0D5; --card-text: #111; }
-.card.bg-u { --card-bg: #C1D7E9; --card-text: #111; }
-.card.bg-b { --card-bg: #2B252C; --card-text: #f5f5f5; }
-.card.bg-r { --card-bg: #E49977; --card-text: #111; }
-.card.bg-g { --card-bg: #A3C09A; --card-text: #111; }
-.card.bg-gold { --card-bg: #CDB87E; --card-text: #111; }
-.card.bg-colorless { --card-bg: #A6AFB2; --card-text: #111; }
-.card.bg-land { --card-bg: #8D7A68; --card-text: #f5f5f5; }
+.card.bg-w { --card-bg: #F2E4B8; --card-text: #111; }
+.card.bg-u { --card-bg: #6FAEDE; --card-text: #111; }
+.card.bg-b { --card-bg: #1C1620; --card-text: #f5f5f5; }
+.card.bg-r { --card-bg: #E2703A; --card-text: #111; }
+.card.bg-g { --card-bg: #5FA362; --card-text: #111; }
+.card.bg-gold { --card-bg: #D9BF6C; --card-text: #111; }
+.card.bg-colorless { --card-bg: #9AA5AA; --card-text: #111; }
+.card.bg-land { --card-bg: #A0785A; --card-text: #f5f5f5; }
 
 /* ===================================================
    CARTA MTG: TAMAÑO FIJO Y COHERENTE EN TODAS LAS ZONAS
@@ -115,13 +115,14 @@ html, body {
 .card {
   width: var(--card-w);
   aspect-ratio: 5 / 7;
-  /* El borde exterior negro clásico de MTG */
+  /* El borde exterior negro clásico de MTG (antes era 4px + 2px de padding: demasiado
+     grosor "robado" al contenido en cartas chicas. Ahora es más fino, como una carta real). */
   background-color: #111; 
-  border: 4px solid #111;
+  border: 2px solid #111;
   border-radius: 6px;
   display: flex;
   flex-direction: column;
-  padding: 2px;
+  padding: 1px;
   position: relative;
   cursor: pointer;
   box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
@@ -172,9 +173,11 @@ html, body {
   /* Textura + Sombra radial para efecto viñeta/desgastado */
   background-image: 
     url('https://www.transparenttextures.com/patterns/clean-gray-paper.png'),
-    radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.4) 100%);
+    radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.25) 100%);
   background-blend-mode: multiply;
   border: 1px solid rgba(0,0,0,0.6);
+  border-radius: 4px; /* acompaña el redondeo exterior de .card (6px), como una carta real */
+  overflow: hidden; /* clip: nada se escapa del marco redondeado, ni texto ni bloques internos */
   box-shadow: inset 0 0 12px rgba(0,0,0,0.4); /* Profundidad de marco */
 }
 
@@ -189,17 +192,19 @@ html, body {
   box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
   height: 15cqh;
   flex-shrink: 0;
+  overflow: hidden; /* si el título es muy largo, se trunca acá, nunca se escapa del header */
 }
 
 .card-title {
+  flex: 1;
+  min-width: 0; /* imprescindible para que text-overflow:ellipsis funcione en un hijo flex */
   font-weight: bold;
   font-size: 8cqw;
   line-height: 1.1;
   color: var(--card-text, #111);
-  white-space: wrap;
-  overflow: visible;
+  white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 76%;
   text-shadow: 1px 1px 0px rgba(255,255,255,0.3);
 }
 
@@ -284,14 +289,37 @@ html, body {
   box-shadow: -1px -1px 2px rgba(0,0,0,0.3);
 }
 
-/* BADGE DE AURA: se muestra en la criatura que tiene un Encantamiento — Aura
-   pegado (esquina opuesta al P/T). El title del div lista los nombres al hacer hover. */
+/* BADGE DE AURA/EQUIPO: se muestra en la criatura que tiene un Encantamiento — Aura o un
+   Equipo pegado (esquina inferior). Al pasar el mouse muestra un tooltip propio (no el
+   nativo del navegador) con el nombre de cada modificador y qué hace en criollo. */
 .aura-badge {
   position: absolute; bottom: -2px; left: -2px; background: #8e44ad;
   border: 2px solid #222; border-radius: 3px; padding: 1cqw 4cqw;
   font-weight: bold; font-size: 8cqw; color: #fff;
   box-shadow: 1px -1px 2px rgba(0,0,0,0.3);
   z-index: 3;
+}
+
+.aura-badge[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 130%;
+  left: 0;
+  background: rgba(10,14,10,0.97);
+  color: #f0e8d0;
+  border: 1px solid var(--gold, #d4af37);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: normal;
+  white-space: pre-line;
+  width: max-content;
+  max-width: 220px;
+  z-index: 5000;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.7);
+  text-align: left;
+  line-height: 1.4;
 }
 
 .card-back { background: #4a2b10; border: 4px solid #111; background-image: repeating-linear-gradient(45deg, #3e220b 0, #3e220b 5px, #4a2b10 5px, #4a2b10 10px); }
@@ -860,6 +888,22 @@ html, body {
   cursor: pointer;
   animation: pulseTarget 1.2s infinite alternate;
 }
+
+/* Vista previa de la carta completa al pasar el mouse sobre un ítem de la pila.
+   Se posiciona a la izquierda del panel de la pila (ver stackManager.js). */
+#stack-hover-preview {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+#stack-hover-preview.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+#stack-hover-preview .card { cursor: default; }
 
 @keyframes pulseTarget {
   from { box-shadow: 0 0 4px #f1c40f; }
