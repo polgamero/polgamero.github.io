@@ -1,5 +1,5 @@
 import { sleep } from './utils.js';
-import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower } from './main.js';
+import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, performSacrifice } from './main.js';
 import { logMsg, render } from './ui.js';
 import { checkDeaths } from './combatRules.js';
 import { hasKeyword } from './keywords.js';
@@ -55,6 +55,17 @@ async function executeStackItem(item) {
       board.push(newPermanentItem);
       logMsg(`¡${card.name} entró al campo de batalla!`);
       triggerCreatureEtb(isLocal);
+
+      // Regla de Leyenda: si ya tenías otra copia de esta misma Legendaria en el campo,
+      // la recién llegada se sacrifica (simplificación: en MTG real elegís cuál te
+      // quedás; acá se queda siempre la que ya estaba antes).
+      if (card.type.includes('Legendaria')) {
+        const duplicate = board.find(u => u !== newPermanentItem && u.card.name === card.name);
+        if (duplicate) {
+          logMsg(`⚖️ Regla de Leyenda: ya tenías a ${card.name} en el campo. La copia nueva se sacrifica.`);
+          performSacrifice(newPermanentItem, isLocal);
+        }
+      }
     } else {
       // enteredThisTurn: para que un Vehículo recién jugado y tripulado en el mismo turno
       // respete el mareo de invocación al convertirse en criatura (ver crew_vehicle abajo).
@@ -274,6 +285,7 @@ async function executeStackItem(item) {
             } else {
               board.splice(idx, 1);
               detachEquipmentFrom(targetUnit, isTargetLocal);
+              sendAurasToGraveyard(targetUnit, isTargetLocal);
               grave.push(targetUnit.card);
               logMsg(`💀 ¡${card.name} destruyó a ${targetUnit.card.name}!`);
               triggerCreatureDies(targetUnit, isTargetLocal);
@@ -292,6 +304,7 @@ async function executeStackItem(item) {
           if (idx !== -1) {
             board.splice(idx, 1);
             detachEquipmentFrom(targetUnit, isTargetLocal);
+            sendAurasToGraveyard(targetUnit, isTargetLocal);
             // Si era un Vehículo tripulado, le sacamos las estadísticas temporales de criatura
             if (targetUnit.isVehicle) {
               delete targetUnit.card.power;
@@ -357,6 +370,7 @@ async function executeStackItem(item) {
             if (hasKeyword(unit, 'indestructible')) continue; // sobrevive al arrase
             combatZone.splice(i, 1);
             detachEquipmentFrom(unit, isLocalZone);
+            sendAurasToGraveyard(unit, isLocalZone);
             if (unit.isVehicle) {
               delete unit.card.power;
               delete unit.card.toughness;
@@ -424,6 +438,16 @@ async function executeStackItem(item) {
           if (hasKeyword(newUnit, 'haste')) newUnit.summoningSickness = false;
           board.push(newUnit);
           triggerCreatureEtb(isLocal);
+
+          // Regla de Leyenda: también aplica si lo que reanimás ya tiene una copia viva
+          if (revivedCard.type.includes('Legendaria')) {
+            const duplicate = board.find(u => u !== newUnit && u.card.name === revivedCard.name);
+            if (duplicate) {
+              logMsg(`⚖️ Regla de Leyenda: ya tenías a ${revivedCard.name} en el campo. La reanimada se sacrifica.`);
+              performSacrifice(newUnit, isLocal);
+            }
+          }
+
           revivedCount++;
         }
         if (revivedCount > 0) {

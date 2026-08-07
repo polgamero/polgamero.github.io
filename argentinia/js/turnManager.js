@@ -212,12 +212,26 @@ function executeEndStep() {
 
 function executeDrawStep() {
   const isLocal = state.activePlayer === 'local';
-  if (isLocal && state.localDeck.length > 0) {
-    state.localHand.push(state.localDeck.pop());
-    logMsg(`🃏 Robaste una carta.`);
-  } else if (!isLocal && state.rivalDeck.length > 0) {
-    state.rivalHand.push(state.rivalDeck.pop());
-    logMsg(`🃏 El Tano robó una carta.`);
+  if (isLocal) {
+    if (state.localDeck.length > 0) {
+      state.localHand.push(state.localDeck.pop());
+      logMsg(`🃏 Robaste una carta.`);
+    } else {
+      // Regla real de MTG: intentar robar de una biblioteca vacía es una forma legítima
+      // de perder la partida, no un "no pasa nada".
+      logMsg(`💀 ¡Intentaste robar de un mazo vacío! Te quedaste sin cartas para seguir jugando.`);
+      state.gameOver = true;
+      showGameOverOverlay(false);
+    }
+  } else {
+    if (state.rivalDeck.length > 0) {
+      state.rivalHand.push(state.rivalDeck.pop());
+      logMsg(`🃏 El Tano robó una carta.`);
+    } else {
+      logMsg(`🏆 ¡El Tano intentó robar de un mazo vacío! Se quedó sin cartas para seguir jugando.`);
+      state.gameOver = true;
+      showGameOverOverlay(true);
+    }
   }
 }
 

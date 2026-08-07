@@ -324,8 +324,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const KEYWORD_LABELS = { 
       flying: '🕊️ Vuela', trample: '🐘 Arrolla', hexproof: '🛡️ Intocable', haste: '⚡ Prisa', 
       menace: '👥 Amenaza', vigilance: '👁️ Vigilancia', reach: '🏹 Alcance', defender: '🧱 Defensora',
-      lifelink: '❤️ Vínculo vital', deathtouch: '💀 Toque mortal', firststrike: '🗡️ Primer golpe', doublestrike: '⚔️ Doble golpe',
-      indestructible: '💎 Indestructible'
+      lifelink: '❤️ Vínculo vital', deathtouch: '💀 Toque mortal', firststrike: '🗡️ Primer golpe', doublestrike: '⚔️ Doble golpe', indestructible: '💎 Indestructible'
     };
       
     const keywordsHTML = effKeywords.length > 0
@@ -451,13 +450,13 @@ function injectDeckSelectionStyles() {
   style.textContent = `
     #deck-select-overlay {
       position: fixed; inset: 0; z-index: 9999;
-      background: radial-gradient(ellipse at center, #1a1420 0%, #0a0810 100%);
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
       display: flex; align-items: center; justify-content: center;
     }
     .deck-select-panel {
       max-width: 920px; width: 92%; max-height: 90vh; overflow-y: auto;
-      background: linear-gradient(180deg, rgba(30,22,40,0.95), rgba(15,12,20,0.98));
-      border: 1px solid rgba(212,175,55,0.35);
+      background: linear-gradient(180deg, rgba(18,25,15,0.97), rgba(11,19,14,0.99));
+      border: 2px solid var(--gold, #d4af37);
       border-radius: 16px;
       padding: 32px 36px;
       box-shadow: 0 0 60px rgba(212,175,55,0.15), 0 20px 60px rgba(0,0,0,0.6);
@@ -587,6 +586,155 @@ export function showDeckSelectionModal(onChoose) {
       overlay.remove();
       onChoose([key[0], key[1]]);
     });
+  });
+}
+
+function injectMulliganStyles() {
+  if (document.getElementById('mulligan-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'mulligan-styles';
+  style.textContent = `
+    #mulligan-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .mulligan-panel {
+      max-width: 880px; width: 92%; max-height: 90vh; overflow-y: auto;
+      background: linear-gradient(180deg, rgba(18,25,15,0.97), rgba(11,19,14,0.99));
+      border: 2px solid var(--gold, #d4af37);
+      border-radius: 16px;
+      padding: 28px 34px;
+      box-shadow: 0 0 60px rgba(212,175,55,0.15), 0 20px 60px rgba(0,0,0,0.6);
+      text-align: center;
+    }
+    .mulligan-title {
+      font-size: 24px; font-weight: 700; color: var(--gold, #d4af37);
+      margin-bottom: 6px; text-shadow: 0 0 20px rgba(212,175,55,0.4);
+    }
+    .mulligan-subtitle { font-size: 14px; color: #cfe0d4; margin-bottom: 22px; }
+    .mulligan-hand-row {
+      display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 26px;
+    }
+    .mulligan-mini-card {
+      width: 100px; border: 1.5px solid rgba(212,175,55,0.4); border-radius: 8px;
+      background: #1a2419; padding: 6px; cursor: default;
+      transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .mulligan-mini-card.selectable { cursor: pointer; }
+    .mulligan-mini-card.selectable:hover { transform: translateY(-4px); border-color: var(--gold, #d4af37); }
+    .mulligan-mini-card.chosen {
+      border-color: #e74c3c; box-shadow: 0 0 14px rgba(231,76,60,0.5);
+      transform: translateY(-6px);
+    }
+    .mulligan-mini-art {
+      width: 100%; height: 70px; border-radius: 4px; margin-bottom: 6px;
+      background-size: cover; background-position: center; background-color: #0e150c;
+      display: flex; align-items: center; justify-content: center; font-size: 26px;
+    }
+    .mulligan-mini-name { font-size: 10px; font-weight: 700; color: #f0e8d0; line-height: 1.2; margin-bottom: 2px; }
+    .mulligan-mini-type { font-size: 9px; color: #9db3a3; }
+    .mulligan-buttons { display: flex; justify-content: center; gap: 14px; }
+    .mulligan-btn {
+      padding: 10px 22px; border-radius: 8px; border: none; cursor: pointer;
+      font-weight: bold; font-size: 14px;
+    }
+    .mulligan-btn-keep { background: #e67e22; color: #fff; }
+    .mulligan-btn-keep:hover { background: #f39c12; }
+    .mulligan-btn-mull { background: #2c2c2c; color: #eee; border: 1px solid #555; }
+    .mulligan-btn-mull:hover { background: #3a3a3a; }
+    .mulligan-btn-confirm:disabled { background: #555; cursor: not-allowed; }
+  `;
+  document.head.appendChild(style);
+}
+
+function renderMulliganMiniCard(card, extraClass) {
+  const icon = card.type.includes('Tierra') ? '⛰️' : (card.power !== undefined ? '⚔️' : '✨');
+  return `
+    <div class="mulligan-mini-card ${extraClass || ''}" data-card-id="${card.id}">
+      <div class="mulligan-mini-art" style="${card.image ? `background-image:url('./assets/images/cards/${card.image}')` : ''}">${card.image ? '' : icon}</div>
+      <div class="mulligan-mini-name">${card.name}</div>
+      <div class="mulligan-mini-type">${card.manaCost || 'Tierra'}</div>
+    </div>
+  `;
+}
+
+// Paso 1: mostrar la mano y elegir Mulligan o Quedarse.
+export function showMulliganModal(hand, mulliganCount, callbacks) {
+  injectMulliganStyles();
+  const overlay = document.createElement('div');
+  overlay.id = 'mulligan-overlay';
+
+  const cardsHTML = hand.map(c => renderMulliganMiniCard(c)).join('');
+  const keepLabel = mulliganCount > 0
+    ? `Quedarme (dejo ${mulliganCount} carta${mulliganCount > 1 ? 's' : ''} al fondo)`
+    : 'Quedarme con esta mano';
+
+  overlay.innerHTML = `
+    <div class="mulligan-panel">
+      <div class="mulligan-title">${mulliganCount === 0 ? 'Tu mano inicial' : `Mano nueva (mulligan #${mulliganCount})`}</div>
+      <div class="mulligan-subtitle">¿Te la quedás, o volvés a barajar y robás 7 de nuevo?</div>
+      <div class="mulligan-hand-row">${cardsHTML}</div>
+      <div class="mulligan-buttons">
+        <button class="mulligan-btn mulligan-btn-mull" id="btn-do-mulligan">🔄 Mulligan</button>
+        <button class="mulligan-btn mulligan-btn-keep" id="btn-keep-hand">${keepLabel}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#btn-do-mulligan').addEventListener('click', () => {
+    overlay.remove();
+    callbacks.onMulligan();
+  });
+  overlay.querySelector('#btn-keep-hand').addEventListener('click', () => {
+    overlay.remove();
+    callbacks.onKeep();
+  });
+}
+
+// Paso 2 (solo si mulliganeaste al menos una vez): elegir qué cartas van al fondo del mazo.
+export function showBottomCardsModal(hand, countToBottom, onConfirm) {
+  injectMulliganStyles();
+  const overlay = document.createElement('div');
+  overlay.id = 'mulligan-overlay';
+
+  const chosen = new Set();
+  const cardsHTML = hand.map(c => renderMulliganMiniCard(c, 'selectable')).join('');
+
+  overlay.innerHTML = `
+    <div class="mulligan-panel">
+      <div class="mulligan-title">Elegí ${countToBottom} carta${countToBottom > 1 ? 's' : ''} para el fondo del mazo</div>
+      <div class="mulligan-subtitle" id="mulligan-count-hint">Seleccionadas: 0 / ${countToBottom}</div>
+      <div class="mulligan-hand-row">${cardsHTML}</div>
+      <div class="mulligan-buttons">
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-bottom" disabled>Confirmar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const hint = overlay.querySelector('#mulligan-count-hint');
+  const confirmBtn = overlay.querySelector('#btn-confirm-bottom');
+
+  overlay.querySelectorAll('.mulligan-mini-card').forEach((el, idx) => {
+    el.addEventListener('click', () => {
+      const card = hand[idx];
+      if (chosen.has(card)) {
+        chosen.delete(card);
+        el.classList.remove('chosen');
+      } else if (chosen.size < countToBottom) {
+        chosen.add(card);
+        el.classList.add('chosen');
+      }
+      hint.textContent = `Seleccionadas: ${chosen.size} / ${countToBottom}`;
+      confirmBtn.disabled = chosen.size !== countToBottom;
+    });
+  });
+
+  confirmBtn.addEventListener('click', () => {
+    overlay.remove();
+    onConfirm([...chosen]);
   });
 }
 

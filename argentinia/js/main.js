@@ -2,8 +2,8 @@ import { addToStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal } from './ui.js';
-import { buildRandomDeck, parseManaCost, getLandColor, sleep } from './utils.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showMulliganModal, showBottomCardsModal } from './ui.js';
+import { buildRandomDeck, parseManaCost, getLandColor, sleep, shuffle } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority } from './turnManager.js';
 import { hasKeyword, canBlock } from './keywords.js';
 
@@ -95,14 +95,94 @@ async function initGame(humanIdentity) {
     state.rivalHand.push(state.rivalDeck.pop());
   }
 
-  els.btnRestart.addEventListener('click', () => location.reload());
+  // El Tano resuelve su propio mulligan solo, sin UI (ver resolveBotMulligan).
+  resolveBotMulligan();
 
-  els.rivalHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(false));
-  els.localHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(true));
+  // El jugador humano decide el suyo de forma interactiva. La partida arranca de
+  // verdad recién cuando termina de resolver su mano (finishSetup).
+  const finishSetup = () => {
+    els.btnRestart.addEventListener('click', () => location.reload());
+    els.rivalHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(false));
+    els.localHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(true));
 
-  render();
-  logMsg(`¡Arranca la partida! Elegiste ${humanIdentity.join('/')}. Robaste tus 7 cartas iniciales.`);
-  logMsg("¡Tu turno! Bajá una tierra para empezar.");
+    render();
+    logMsg(`¡Arranca la partida! Elegiste ${humanIdentity.join('/')}.`);
+    logMsg("¡Tu turno! Bajá una tierra para empezar.");
+  };
+
+  startLocalMulliganFlow(finishSetup);
+}
+
+// Mulligan de Londres simplificado: mientras la mano no tenga entre 2 y 5 tierras (una
+// mano "razonable"), vuelve a barajar y robar 7. Como no hay UI para el Tano, resuelve
+// todo de una y deja al fondo del mazo tantas cartas como veces mulliganeó (las de más
+// costo primero, para priorizar quedarse con lo barato jugable).
+function resolveBotMulligan() {
+  const MAX_MULLIGANS = 2;
+  let count = 0;
+
+  while (count < MAX_MULLIGANS) {
+    const lands = state.rivalHand.filter(c => c.type.includes('Tierra')).length;
+    if (lands >= 2 && lands <= 5) break;
+
+    state.rivalDeck.push(...state.rivalHand);
+    state.rivalHand = [];
+    state.rivalDeck = shuffle(state.rivalDeck);
+    for (let i = 0; i < 7; i++) state.rivalHand.push(state.rivalDeck.pop());
+    count++;
+  }
+
+  if (count > 0) {
+    const toBottom = [...state.rivalHand].sort((a, b) => (b.cmc || 0) - (a.cmc || 0)).slice(0, count);
+    toBottom.forEach(c => {
+      const idx = state.rivalHand.indexOf(c);
+      if (idx !== -1) {
+        state.rivalHand.splice(idx, 1);
+        state.rivalDeck.unshift(c);
+      }
+    });
+    logMsg(`🃏 El Tano hizo mulligan ${count} vez(es) y dejó ${count} carta(s) al fondo de su mazo.`);
+  }
+}
+
+// Flujo interactivo del jugador humano: muestra la mano, deja mulliganear las veces que
+// quiera, y si se queda con una mano después de mulliganear, le pide elegir qué cartas
+// van al fondo del mazo (regla real de MTG desde 2019 — "mulligan de Londres").
+function startLocalMulliganFlow(onDone) {
+  let mulliganCount = 0;
+
+  const askPlayer = () => {
+    showMulliganModal(state.localHand, mulliganCount, {
+      onMulligan: () => {
+        state.localDeck.push(...state.localHand);
+        state.localHand = [];
+        state.localDeck = shuffle(state.localDeck);
+        for (let i = 0; i < 7; i++) state.localHand.push(state.localDeck.pop());
+        mulliganCount++;
+        askPlayer();
+      },
+      onKeep: () => {
+        if (mulliganCount === 0) {
+          logMsg("Te quedaste con tu mano inicial.");
+          onDone();
+          return;
+        }
+        showBottomCardsModal(state.localHand, mulliganCount, (chosenCards) => {
+          chosenCards.forEach(c => {
+            const idx = state.localHand.indexOf(c);
+            if (idx !== -1) {
+              state.localHand.splice(idx, 1);
+              state.localDeck.unshift(c);
+            }
+          });
+          logMsg(`Dejaste ${mulliganCount} carta(s) al fondo del mazo. Mano final: ${state.localHand.length} cartas.`);
+          onDone();
+        });
+      }
+    });
+  };
+
+  askPlayer();
 }
 
 // Carga la base de cartas primero (para que el modal ya pueda arrancar el juego apenas
@@ -296,6 +376,20 @@ export function detachEquipmentFrom(creatureItem, isLocal) {
       s.attachedTo = null;
     }
   });
+}
+
+// Cuando una criatura sale del campo por CUALQUIER vía que no sea "morir en combate"
+// (rebote, sacrificio, un removal puntual, un arrase total), sus Auras —y los contadores
+// +1/+1, que hoy viven en ese mismo array— no pueden seguir existiendo sin ella: van al
+// cementerio de su dueño, no se pierden de la memoria del juego.
+export function sendAurasToGraveyard(unit, isLocal) {
+  if (!unit.auras || unit.auras.length === 0) return;
+  const grave = isLocal ? state.localGraveyard : state.rivalGraveyard;
+  unit.auras.forEach(auraCard => {
+    logMsg(`💔 ${auraCard.name} se desprendió de ${unit.card.name} y fue al cementerio.`);
+    grave.push(auraCard);
+  });
+  unit.auras = [];
 }
 
 export function attachAura(auraCard, creatureItem) {

@@ -7,6 +7,7 @@ import {
   render, 
   passPriority, // Importado del main/turnManager
   detachEquipmentFrom,
+  sendAurasToGraveyard,
   triggerCreatureDies,
   triggerAnyCreatureDeath
 } from './main.js';
@@ -435,13 +436,10 @@ export function checkDeaths(combatArray, graveyardArray, ownerName) {
       logMsg(`💀 ${unit.card.name} de ${ownerName} murió y va al cementerio.`);
       graveyardArray.push(unit.card);
 
-      // Auras: se van al cementerio junto con la criatura (adjuntas de por vida).
-      if (unit.auras && unit.auras.length > 0) {
-        unit.auras.forEach(auraCard => {
-          logMsg(`💔 ${auraCard.name} se desprendió y también fue al cementerio.`);
-          graveyardArray.push(auraCard);
-        });
-      }
+      // Auras (y contadores +1/+1, que hoy viven en el mismo array): se van al cementerio
+      // junto con la criatura. Misma función que usan el resto de los caminos de salida
+      // del campo (rebote, sacrificio, removal, arrase) para no volver a duplicar esto.
+      sendAurasToGraveyard(unit, isLocal);
 
       // Equipamiento: a diferencia de las Auras, NO va al cementerio con la criatura.
       // Ya vive como su propio permanente en la zona de soporte — solo hay que
