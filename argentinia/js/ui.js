@@ -231,6 +231,11 @@ export function getTargetRules(card) {
     // Trucos de combate: solo tiene sentido apuntar a tu propia criatura.
     return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
   }
+  if (effectType === 'attach_equipment') {
+    // Equipar: nunca a una criatura rival. Este caso faltaba del todo (caía en el
+    // default, que permite ambos lados) — por eso se podía "equipar" al Firulais del Tano.
+    return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
+  }
   if (effectType === 'fight') {
     // Pelear: tu criatura (implícita) contra una criatura del rival.
     return { allowPlayer: false, allowLocalCreature: false, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
@@ -495,7 +500,29 @@ export function sizeCardsInRow(rowEl) {
   let cardWidth = cardHeight * CARD_ASPECT;
   const widthIfFit = (availableWidth - (gap * Math.max(0, n - 1))) / n;
   if (widthIfFit < cardWidth) { cardWidth = Math.max(widthIfFit, 30); cardHeight = cardWidth / CARD_ASPECT; }
-  cards.forEach(c => { c.style.width = `${cardWidth}px`; c.style.height = `${cardHeight}px`; });
+
+  cards.forEach(c => {
+    const inner = c.querySelector('.card-inner');
+    if (c.classList.contains('tapped')) {
+      // Girada: el layout tiene que reservar el rectángulo APAISADO (ancho/alto
+      // intercambiados) — es el footprint real que ocupa en pantalla una vez rotada.
+      // .card-inner mantiene las medidas ORIGINALES (verticales) y es quien rota
+      // adentro (ver CSS), centrado, para que nunca invada a sus vecinas.
+      c.style.width = `${cardHeight}px`;
+      c.style.height = `${cardWidth}px`;
+      if (inner) {
+        inner.style.width = `${cardWidth}px`;
+        inner.style.height = `${cardHeight}px`;
+      }
+    } else {
+      c.style.width = `${cardWidth}px`;
+      c.style.height = `${cardHeight}px`;
+      if (inner) {
+        inner.style.width = '';
+        inner.style.height = '';
+      }
+    }
+  });
 }
 
 export function sizeAllRows() {
@@ -699,25 +726,17 @@ function injectMulliganStyles() {
     .mulligan-subtitle { font-size: 14px; color: #cfe0d4; margin-bottom: 22px; }
     .mulligan-hand-row {
       display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 26px;
+      min-height: 168px;
     }
-    .mulligan-mini-card {
-      width: 100px; border: 1.5px solid rgba(212,175,55,0.4); border-radius: 8px;
-      background: #1a2419; padding: 6px; cursor: default;
-      transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    .mulligan-card-slot {
+      width: 110px !important; height: 154px !important;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
-    .mulligan-mini-card.selectable { cursor: pointer; }
-    .mulligan-mini-card.selectable:hover { transform: translateY(-4px); border-color: var(--gold, #d4af37); }
-    .mulligan-mini-card.chosen {
-      border-color: #e74c3c; box-shadow: 0 0 14px rgba(231,76,60,0.5);
-      transform: translateY(-6px);
+    .mulligan-card-slot.selectable:hover { transform: translateY(-6px); z-index: 10; }
+    .mulligan-card-slot.chosen {
+      box-shadow: 0 0 0 3px #e74c3c, 0 0 16px rgba(231,76,60,0.6);
+      transform: translateY(-10px);
     }
-    .mulligan-mini-art {
-      width: 100%; height: 70px; border-radius: 4px; margin-bottom: 6px;
-      background-size: cover; background-position: center; background-color: #0e150c;
-      display: flex; align-items: center; justify-content: center; font-size: 26px;
-    }
-    .mulligan-mini-name { font-size: 10px; font-weight: 700; color: #f0e8d0; line-height: 1.2; margin-bottom: 2px; }
-    .mulligan-mini-type { font-size: 9px; color: #9db3a3; }
     .mulligan-buttons { display: flex; justify-content: center; gap: 14px; }
     .mulligan-btn {
       padding: 10px 22px; border-radius: 8px; border: none; cursor: pointer;
@@ -727,20 +746,30 @@ function injectMulliganStyles() {
     .mulligan-btn-keep:hover { background: #f39c12; }
     .mulligan-btn-mull { background: #2c2c2c; color: #eee; border: 1px solid #555; }
     .mulligan-btn-mull:hover { background: #3a3a3a; }
-    .mulligan-btn-confirm:disabled { background: #555; cursor: not-allowed; }
+    .mulligan-btn:disabled { background: #444; color: #888; cursor: not-allowed; border-color: #444; }
   `;
   document.head.appendChild(style);
 }
 
-function renderMulliganMiniCard(card, extraClass) {
-  const icon = card.type.includes('Tierra') ? '⛰️' : (card.power !== undefined ? '⚔️' : '✨');
-  return `
-    <div class="mulligan-mini-card ${extraClass || ''}" data-card-id="${card.id}">
-      <div class="mulligan-mini-art" style="${card.image ? `background-image:url('./assets/images/cards/${card.image}')` : ''}">${card.image ? '' : icon}</div>
-      <div class="mulligan-mini-name">${card.name}</div>
-      <div class="mulligan-mini-type">${card.manaCost || 'Tierra'}</div>
-    </div>
-  `;
+// Construye una fila de cartas REALES (el mismo createCardElement que usa todo el resto
+// del juego), no una versión mini simplificada — así el jugador ve la carta completa y
+// tiene el mismo hover-zoom para leerla bien, en vez de una tarjetita con datos sueltos.
+// zone='mulligan-pick' evita que createCardElement le pegue cualquier click-handler propio.
+function buildMulliganCardRow(hand, selectable, onCardClick) {
+  const row = document.createElement('div');
+  row.className = 'mulligan-hand-row';
+  hand.forEach(card => {
+    const cardEl = createCardElement(card, false, true, null, 'mulligan-pick', null);
+    cardEl.classList.add('mulligan-card-slot');
+    if (selectable) {
+      cardEl.classList.add('selectable');
+      cardEl.addEventListener('click', () => onCardClick(card, cardEl));
+    } else {
+      cardEl.style.cursor = 'default';
+    }
+    row.appendChild(cardEl);
+  });
+  return row;
 }
 
 // Paso 1: mostrar la mano y elegir Mulligan o Quedarse.
@@ -749,12 +778,11 @@ export function showMulliganModal(hand, mulliganCount, canMulliganMore, callback
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
 
-  const cardsHTML = hand.map(c => renderMulliganMiniCard(c)).join('');
   const keepLabel = mulliganCount > 0
     ? `Quedarme (dejo ${mulliganCount} carta${mulliganCount > 1 ? 's' : ''} al fondo)`
     : 'Quedarme con esta mano';
   const subtitle = canMulliganMore
-    ? '¿Te la quedás, o volvés a barajar y robás 7 de nuevo?'
+    ? '¿Te la quedás, o volvés a barajar y robás 7 de nuevo? Pasá el mouse por una carta para verla completa.'
     : 'Ya llegaste al máximo de 7 mulligans — esta vez tenés que quedarte con lo que hay.';
   const mulliganBtnHTML = canMulliganMore
     ? `<button class="mulligan-btn mulligan-btn-mull" id="btn-do-mulligan">🔄 Mulligan</button>`
@@ -764,13 +792,14 @@ export function showMulliganModal(hand, mulliganCount, canMulliganMore, callback
     <div class="mulligan-panel">
       <div class="mulligan-title">${mulliganCount === 0 ? 'Tu mano inicial' : `Mano nueva (mulligan #${mulliganCount})`}</div>
       <div class="mulligan-subtitle">${subtitle}</div>
-      <div class="mulligan-hand-row">${cardsHTML}</div>
+      <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
         ${mulliganBtnHTML}
         <button class="mulligan-btn mulligan-btn-keep" id="btn-keep-hand">${keepLabel}</button>
       </div>
     </div>
   `;
+  overlay.querySelector('.mulligan-hand-row-slot').replaceWith(buildMulliganCardRow(hand, false, null));
   document.body.appendChild(overlay);
 
   const mullBtn = overlay.querySelector('#btn-do-mulligan');
@@ -793,39 +822,36 @@ export function showBottomCardsModal(hand, countToBottom, onConfirm) {
   overlay.id = 'mulligan-overlay';
 
   const chosen = new Set();
-  const cardsHTML = hand.map(c => renderMulliganMiniCard(c, 'selectable')).join('');
 
   overlay.innerHTML = `
     <div class="mulligan-panel">
       <div class="mulligan-title">Elegí ${countToBottom} carta${countToBottom > 1 ? 's' : ''} para el fondo del mazo</div>
       <div class="mulligan-subtitle" id="mulligan-count-hint">Seleccionadas: 0 / ${countToBottom}</div>
-      <div class="mulligan-hand-row">${cardsHTML}</div>
+      <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
         <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-bottom" disabled>Confirmar</button>
       </div>
     </div>
   `;
+
+  const hint = () => overlay.querySelector('#mulligan-count-hint');
+  const confirmBtn = () => overlay.querySelector('#btn-confirm-bottom');
+
+  const row = buildMulliganCardRow(hand, true, (card, cardEl) => {
+    if (chosen.has(card)) {
+      chosen.delete(card);
+      cardEl.classList.remove('chosen');
+    } else if (chosen.size < countToBottom) {
+      chosen.add(card);
+      cardEl.classList.add('chosen');
+    }
+    hint().textContent = `Seleccionadas: ${chosen.size} / ${countToBottom}`;
+    confirmBtn().disabled = chosen.size !== countToBottom;
+  });
+  overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
 
-  const hint = overlay.querySelector('#mulligan-count-hint');
-  const confirmBtn = overlay.querySelector('#btn-confirm-bottom');
-
-  overlay.querySelectorAll('.mulligan-mini-card').forEach((el, idx) => {
-    el.addEventListener('click', () => {
-      const card = hand[idx];
-      if (chosen.has(card)) {
-        chosen.delete(card);
-        el.classList.remove('chosen');
-      } else if (chosen.size < countToBottom) {
-        chosen.add(card);
-        el.classList.add('chosen');
-      }
-      hint.textContent = `Seleccionadas: ${chosen.size} / ${countToBottom}`;
-      confirmBtn.disabled = chosen.size !== countToBottom;
-    });
-  });
-
-  confirmBtn.addEventListener('click', () => {
+  overlay.querySelector('#btn-confirm-bottom').addEventListener('click', () => {
     overlay.remove();
     onConfirm([...chosen]);
   });

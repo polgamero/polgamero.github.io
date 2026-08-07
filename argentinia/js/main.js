@@ -944,6 +944,14 @@ export function handleSupportClick(item, isLocal, index) {
   const card = item.card;
   if (!card.activatedAbility) return;
 
+  // Si es un Equipo, no tiene sentido ni empezar a pagar si no tenés ninguna criatura
+  // propia para equiparle — antes esto se descubría recién al elegir el objetivo (o, peor,
+  // ni eso, si el objetivo era ilegal).
+  if (card.activatedAbility.effect && card.activatedAbility.effect.type === 'attach_equipment' && state.localCombat.length === 0) {
+    logMsg(`⚠️ No tenés ninguna criatura para equipar con ${card.name}.`);
+    return;
+  }
+
   const costStr = card.activatedAbility.cost || "";
   const requiresTap = costStr.includes('{T}');
   
