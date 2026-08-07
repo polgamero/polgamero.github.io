@@ -52,7 +52,7 @@ html, body {
 /* ALTURAS EN VH: sólo 4 filas ahora (se fue el banner central), la
    suma total (filas + gaps + padding) queda por debajo de 100vh */
 .hand-row {
-  height: 18vh;
+  height: 20vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -64,8 +64,16 @@ html, body {
   z-index: 1;
 }
 
+/* La mano del rival son dorsos de carta — puramente decorativos, nunca hay que leerlos
+   (ni con el Tano ni el día de mañana con otro jugador humano en multiplayer). No tiene
+   sentido que ocupen tanto como la mano que sí necesitás leer: los achicamos y ese
+   espacio se lo repartimos a las filas que sí importan (campo, tu mano). */
+#rival-hand {
+  height: 7vh;
+}
+
 .field-zone-container {
-  height: 29.5vh;
+  height: 33.5vh;
   display: flex;
   flex-direction: column;
   gap: 1vh;
@@ -160,6 +168,7 @@ html, body {
 
 .field-row .card.tapped:hover {
   z-index: 200;
+  opacity: 1;
 }
 
 /* --- TEXTURA Y MARCO INTERNO --- */
