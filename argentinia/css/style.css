@@ -334,7 +334,6 @@ html, body {
    font-size (10cqw) era MÁS GRANDE que el propio círculo (9cqw): nunca podía entrar bien) */
 .mana-symbol {
   width: 7cqw; height: 7cqw;
-  min-width: 14px; min-height: 14px;
   border-radius: 50%;
   display: flex; justify-content: center; align-items: center;
   font-size: 4.6cqw; /* .renderManaSymbols() lo achica más para números de 2+ dígitos */
