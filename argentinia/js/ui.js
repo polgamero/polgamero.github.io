@@ -359,7 +359,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const totalTextLen = (card.flavorText || '').length + (card.text || '').length + (effKeywords.length * 10);
     const textBoxScale = fitScaleByLength(totalTextLen, 90);
 
-    formattedTextHTML = `<div class="card-text-box" style="font-size: clamp(6px, ${(6 * textBoxScale).toFixed(2)}cqw, 26px);">${keywordsHTML}<i>${card.flavorText || ''}</i><br><strong>${formattedText}</strong></div>`;
+    formattedTextHTML = `<div class="card-text-box" style="font-size: clamp(4px, ${(6 * textBoxScale).toFixed(2)}cqw, 26px);">${keywordsHTML}<i>${card.flavorText || ''}</i><br><strong>${formattedText}</strong></div>`;
   }
 
   const effPower = card.power !== undefined ? getEffectivePower(itemObj) : undefined;
@@ -451,12 +451,12 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 
   el.innerHTML = `
     <div class="card-inner">
-      <div class="card-header"><span class="card-title" style="font-size: clamp(6px, ${(8 * fitScale(card.name, 13, 0.5)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
+      <div class="card-header"><span class="card-title" style="font-size: clamp(4px, ${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
       <div class="card-art" style="position: relative; overflow: hidden;">
         <div style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;">${icon}</div>
         ${card.image ? `<img src="./assets/images/cards/${card.image}" alt="${card.name}" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
       </div>
-      <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(5px, ${(7 * fitScale(card.type, 16, 0.4)).toFixed(2)}cqw, 30px);">${card.type}</span><span class="rarity-icon">●</span></div>
+      <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(card.type, 16, 0.3)).toFixed(2)}cqw, 30px);">${card.type}</span><span class="rarity-icon">●</span></div>
       ${formattedTextHTML}
       ${card.power !== undefined ? `<div class="card-pt">${ptText}</div>` : ''}
       ${auraBadgeHTML}
