@@ -167,7 +167,7 @@
       "type": "create_tokens",
       "amount": 2,
       "tokenName": "Vecino Movilizado",
-      "img": "vecino.png",
+      "image": "vecino.png",
       "tokenStats": {
         "power": 1,
         "toughness": 1
