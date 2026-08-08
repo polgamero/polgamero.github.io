@@ -750,7 +750,7 @@ function injectMulliganStyles() {
        juego están atadas a #local-hand / .field-row específicamente, y esta fila no es
        ninguna de esas dos. Le damos su propia regla, mismo criterio (bottom center). */
     .mulligan-card-slot:hover {
-      transform: scale(2.6);
+      transform: scale(2.0);
       z-index: 20;
     }
     .mulligan-card-slot.selectable:hover { transform: scale(2.6) translateY(-6px); z-index: 20; }
