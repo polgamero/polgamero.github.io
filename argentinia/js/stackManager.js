@@ -396,7 +396,7 @@ async function executeStackItem(item) {
             name: effectToApply.tokenName || 'Ficha',
             type: 'Criatura Token',
             manaCost: null,
-            imagen: card.img,
+            image: card.image,
             cmc: 0,
             rarity: 'Common',
             colors: card.colors || [],
