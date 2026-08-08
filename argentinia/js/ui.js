@@ -333,7 +333,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   let formattedTextHTML = '';
   if (isBasicLand && landSymbolImg) {
     formattedTextHTML = `<div class="card-text-box" style="display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.85); padding: 0;">
-        <img src="./assets/images/${landSymbolImg}" alt="Símbolo de maná" style="width: 120%; height: auto; object-fit: contain; opacity: 0.9;" onerror="this.style.display='none'">
+        <img src="./assets/images/${landSymbolImg}" alt="Símbolo de maná" style="width: 120%; height: stretch; object-fit: cover; opacity: 0.9;" onerror="this.style.display='none'">
       </div>`;
   } else {
     let formattedText = card.text ? card.text.replace(/\{([WUBRGC])\}/g, (match, p1) => {
@@ -454,7 +454,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       <div class="card-header"><span class="card-title" style="font-size: clamp(4px, ${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
       <div class="card-art" style="position: relative; overflow: hidden;">
         <div style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;">${icon}</div>
-        ${card.image ? `<img src="./assets/images/cards/${card.image}" alt="${card.name}" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
+        ${card.image ? `<img src="./assets/images/cards/${card.image}" alt="${card.name}" style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
       </div>
       <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(card.type, 16, 0.3)).toFixed(2)}cqw, 30px);">${card.type}</span><span class="rarity-icon">●</span></div>
       ${formattedTextHTML}
