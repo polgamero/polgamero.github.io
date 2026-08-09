@@ -644,6 +644,12 @@ html, body {
   transform: scale(1.05);
 }
 
+/* Criatura ya elegida para tripular un Vehículo (girada como parte del costo) */
+.card.crewing-selected {
+  box-shadow: 0 0 15px 6px #f39c12 !important;
+  transform: scale(1.05);
+}
+
 /* Selección de objetivo (Targeting) */
 .targetable {
   cursor: crosshair !important;
