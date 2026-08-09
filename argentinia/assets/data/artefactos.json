@@ -119,7 +119,7 @@
       "toughness": 4
     },
     "activatedAbility": {
-      "cost": "{2}",
+      "crewCost": 2,
       "effect": {
         "type": "crew_vehicle"
       },
@@ -142,7 +142,7 @@
       "toughness": 6
     },
     "activatedAbility": {
-      "cost": "{3}",
+      "crewCost": 3,
       "effect": {
         "type": "crew_vehicle"
       },
@@ -168,7 +168,7 @@
       "toughness": 4
     },
     "activatedAbility": {
-      "cost": "{1}",
+      "crewCost": 1,
       "effect": {
         "type": "crew_vehicle"
       },
@@ -255,6 +255,202 @@
         "amount": 2
       },
       "requiresTarget": false
+    }
+  },
+  {
+    "id": "art_012",
+    "name": "Billetera Vieja",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agregá {1}.",
+    "flavorText": "Siempre hay un peso guardado en el forro, para las emergencias.",
+    "image": "billetera_vieja.png",
+    "keywords": [],
+    "produces": "C"
+  },
+  {
+    "id": "art_013",
+    "name": "Reloj de Bolsillo del Abuelo",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Prisa Repentina: podés jugar esta carta como si tuviera Destello. {T}: Agregá {W} o {U}.",
+    "flavorText": "Marca la hora justo cuando menos lo esperás.",
+    "image": "reloj_abuelo.png",
+    "keywords": [
+      "flash"
+    ],
+    "producesOptions": [
+      "W",
+      "U"
+    ]
+  },
+  {
+    "id": "art_014",
+    "name": "Fajo de Dólares Blue",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{T}, Sacrificá este artefacto: Agregá un maná de cualquier color.",
+    "flavorText": "Cambia de mano, cambia de color, cambia de valor.",
+    "image": "fajo_dolares.png",
+    "keywords": [],
+    "producesOptions": [
+      "W",
+      "U",
+      "B",
+      "R",
+      "G"
+    ],
+    "sacrificeOnTap": true
+  },
+  {
+    "id": "art_015",
+    "name": "El Robotito de Chatarra",
+    "type": "Artefacto — Criatura Constructo",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [],
+    "power": 2,
+    "toughness": 4,
+    "text": "Armado con lo que había en el galpón.",
+    "flavorText": "Le falta una tuerca, pero aguanta los golpes.",
+    "image": "robotito_chatarra.png",
+    "keywords": []
+  },
+  {
+    "id": "art_016",
+    "name": "Campanario del Barrio",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Cuando una criatura entre al campo de batalla bajo tu control, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Cada campanada anuncia una boca más para alimentar la resistencia.",
+    "image": "campanario.png",
+    "keywords": [],
+    "creatureEtbTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "art_017",
+    "name": "Bandera de la Cuadra",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Efecto estático: Tus criaturas obtienen +1/+0.",
+    "flavorText": "Se planta en la vereda y ya cambia cómo camina toda la cuadra.",
+    "image": "bandera_cuadra.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 1,
+      "toughnessMod": 0
+    }
+  },
+  {
+    "id": "art_018",
+    "name": "Reloj Cucú Descompuesto",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Al comienzo de tu paso de Mantenimiento, robás una carta y perdés 1 Punto de Vida.",
+    "flavorText": "Canta a cualquier hora, y siempre te cobra el susto.",
+    "image": "reloj_cucu.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "draw_and_lose_life",
+      "amount": 1,
+      "lifeLoss": 1
+    }
+  },
+  {
+    "id": "art_019",
+    "name": "Daga Escondida",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Prisa Repentina: podés jugar esta carta como si tuviera Destello. Equipar {1}. La criatura equipada tiene Toque Mortal.",
+    "flavorText": "Nadie ve el filo hasta que ya es tarde.",
+    "image": "daga_escondida.png",
+    "keywords": [
+      "flash"
+    ],
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedKeywords": [
+        "deathtouch"
+      ]
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true
+    }
+  },
+  {
+    "id": "art_020",
+    "name": "Depósito de Chatarra",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{1}, Sacrificá un artefacto: Robás una carta.",
+    "flavorText": "Todo lo que ya no sirve, todavía sirve para algo.",
+    "image": "deposito_chatarra.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}",
+      "sacrifice": "artifact",
+      "effect": {
+        "type": "draw",
+        "amount": 1
+      },
+      "requiresTarget": false
+    }
+  },
+  {
+    "id": "art_021",
+    "name": "Refugio Improvisado",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Prisa Repentina: podés jugar esta carta como si tuviera Destello. {1}, {T}: La criatura objetivo que controlás gana Intocable hasta el final del turno.",
+    "flavorText": "Se arma en un segundo, pero aguanta lo que haga falta.",
+    "image": "refugio_improvisado.png",
+    "keywords": [
+      "flash"
+    ],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "grant_keyword_temp",
+        "keyword": "hexproof"
+      },
+      "requiresTarget": true
     }
   }
 ]

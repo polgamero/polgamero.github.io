@@ -233,5 +233,192 @@
       },
       "requiresTarget": false
     }
+  },
+  {
+    "id": "tier_017",
+    "name": "Puente Pueyrredón",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {W} o {B}.",
+    "flavorText": "Cruza dos mundos que no siempre se llevan bien.",
+    "image": "puente_pueyrredon.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "W",
+      "B"
+    ]
+  },
+  {
+    "id": "tier_018",
+    "name": "Cordillera de los Andes",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {R} o {G}.",
+    "flavorText": "Fuego bajo tierra, vida en la superficie.",
+    "image": "cordillera_andes.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "R",
+      "G"
+    ]
+  },
+  {
+    "id": "tier_019",
+    "name": "Barrio Chino",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {U} o {B}.",
+    "flavorText": "De noche, ninguna otra esquina tiene tantas luces ni tantos secretos.",
+    "image": "barrio_chino.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "U",
+      "B"
+    ]
+  },
+  {
+    "id": "tier_020",
+    "name": "Feria de Mataderos",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {W} o {G}.",
+    "flavorText": "Doma, empanadas y folklore, todo en la misma vereda.",
+    "image": "feria_mataderos.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "W",
+      "G"
+    ]
+  },
+  {
+    "id": "tier_021",
+    "name": "El Chaltén",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {B} o {R}.",
+    "flavorText": "La montaña que se esconde, y cuando aparece, impone.",
+    "image": "el_chalten.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "B",
+      "R"
+    ]
+  },
+  {
+    "id": "tier_022",
+    "name": "Termas de Río Hondo",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {U} o {R}.",
+    "flavorText": "Agua que hierve sola, sin pedirle permiso a nadie.",
+    "image": "termas_rio_hondo.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "U",
+      "R"
+    ]
+  },
+  {
+    "id": "tier_023",
+    "name": "Cancha de Potrero",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{2}: Cancha de Potrero se convierte en una criatura 2/2 con Prisa hasta el final del turno. Sigue siendo una tierra.",
+    "flavorText": "No da maná, pero cuando hace falta, sale a jugar.",
+    "image": "cancha_potrero.png",
+    "baseStats": {
+      "power": 2,
+      "toughness": 2
+    },
+    "keywords": [
+      "haste"
+    ],
+    "activatedAbility": {
+      "cost": "{2}",
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false
+    }
+  },
+  {
+    "id": "tier_024",
+    "name": "Refugio de Montaña",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{2}: Refugio de Montaña se convierte en una criatura 2/4 hasta el final del turno. Sigue siendo una tierra.",
+    "flavorText": "Aguanta cualquier temporal, y a cualquiera que se le ocurra molestar.",
+    "image": "refugio_montana.png",
+    "baseStats": {
+      "power": 2,
+      "toughness": 4
+    },
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}",
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false
+    }
+  },
+  {
+    "id": "tier_025",
+    "name": "Feria Americana",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Ganás 1 Punto de Vida.",
+    "flavorText": "Siempre hay algo útil escondido entre lo que nadie más quiere.",
+    "image": "feria_americana.png",
+    "activatedAbility": {
+      "cost": "{T}",
+      "effect": {
+        "type": "heal",
+        "amount": 1
+      },
+      "requiresTarget": false
+    }
+  },
+  {
+    "id": "tier_026",
+    "name": "Selva Misionera",
+    "type": "Tierra — Bosque",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {G}{G}.",
+    "flavorText": "Tan densa que hay quien jura que todavía no la exploraron entera.",
+    "image": "selva_misionera.png",
+    "entersTapped": true,
+    "manaAmount": 2,
+    "produces": "G"
   }
 ]

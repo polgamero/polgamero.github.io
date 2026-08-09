@@ -267,5 +267,204 @@
       "keywords": []
     },
     "image": "maldicion_yaguarete.png"
+  },
+  {
+    "id": "ench_013",
+    "name": "Pacto de Sangre del Sótano",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Siempre que una criatura del oponente muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Lo que se firma ahí abajo, se cumple sí o sí.",
+    "image": "pacto_sangre.png",
+    "keywords": [],
+    "opponentDeathTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_014",
+    "name": "Letanía del Cementerio",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, robás una carta y perdés 1 Punto de Vida.",
+    "flavorText": "Cada nombre que se reza, cuesta algo a cambio.",
+    "image": "letania_cementerio.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "draw_and_lose_life",
+      "amount": 1,
+      "lifeLoss": 1
+    }
+  },
+  {
+    "id": "ench_015",
+    "name": "Aguante del Fondo",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Efecto estático: Tus criaturas obtienen +0/+1.",
+    "flavorText": "Los del fondo son los que más aguantan.",
+    "image": "aguante_fondo.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 0,
+      "toughnessMod": 1
+    }
+  },
+  {
+    "id": "ench_016",
+    "name": "Bengala de Cancha",
+    "type": "Encantamiento",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que ataques con una o más criaturas, le hacés 1 de daño al jugador rival.",
+    "flavorText": "Se prende apenas arranca el aguante.",
+    "image": "bengala_cancha.png",
+    "keywords": [],
+    "anyCreatureAttacksTrigger": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_017",
+    "name": "Grito de Guerra",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Efecto estático: Tus criaturas obtienen +1/+0.",
+    "flavorText": "Un solo grito, y toda la barra se prende fuego.",
+    "image": "grito_guerra.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 1,
+      "toughnessMod": 0
+    }
+  },
+  {
+    "id": "ench_018",
+    "name": "Fogón de la Previa",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, le hacés 1 de daño al jugador rival.",
+    "flavorText": "Cada uno que se suma, tira una chispa más al fuego.",
+    "image": "fogon_previa.png",
+    "keywords": [],
+    "creatureEtbTrigger": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_019",
+    "name": "Manto de los Vecinos",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Al final de tu turno, si atacaste con dos o más criaturas este turno, ganás 2 Puntos de Vida.",
+    "flavorText": "Cuando salen todos juntos, el barrio entero los cubre.",
+    "image": "manto_vecinos.png",
+    "keywords": [],
+    "endStepTrigger": {
+      "type": "heal",
+      "amount": 2,
+      "condition": "attacked_with_two_or_more"
+    }
+  },
+  {
+    "id": "ench_020",
+    "name": "Susurro del Río",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que ataques con una o más criaturas, robás una carta.",
+    "flavorText": "El agua siempre sabe algo que todavía no pasó.",
+    "image": "susurro_rio.png",
+    "keywords": [],
+    "anyCreatureAttacksTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_021",
+    "name": "Raíces de la Terraza",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Efecto estático: Tus criaturas obtienen +0/+1.",
+    "flavorText": "Se agarran fuerte de donde pueden, y no las mueve nadie.",
+    "image": "raices_terraza.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 0,
+      "toughnessMod": 1
+    }
+  },
+  {
+    "id": "ench_022",
+    "name": "Consejo de la Cuadra",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "U"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, robás una carta.",
+    "flavorText": "Todos los vecinos se juntan, y siempre sale algo bueno de la charla.",
+    "image": "consejo_cuadra.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
   }
 ]

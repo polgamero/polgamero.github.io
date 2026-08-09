@@ -487,7 +487,7 @@
   },
   {
     "id": "crea_026",
-    "name": "Marta Minujín",
+    "name": "Marta Minujín del Más Allá",
     "type": "Criatura Legendaria — Espíritu Artista",
     "manaCost": "{1}{B}",
     "cmc": 2,
@@ -497,8 +497,8 @@
     ],
     "power": 1,
     "toughness": 2,
-    "text": "Pincelada de Sangre: Siempre que Marta Minujín u otra criatura muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
-    "flavorText": "Cada obra necesita su propio rojo, y el campo de batalla nunca deja de proveerlo.",
+    "text": "Pincelada de Sangre: Siempre que Marta Minujín del Más Allá u otra criatura muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Ya no pinta con óleo. Cada obra necesita su propio rojo, y el campo de batalla nunca deja de proveerlo.",
     "image": "marta_minujin.png",
     "keywords": [],
     "anyCreatureDiesTrigger": {
@@ -694,6 +694,230 @@
         "amount": 1
       },
       "requiresTarget": false
+    }
+  },
+  {
+    "id": "crea_036",
+    "name": "Buzo de la Costanera",
+    "type": "Criatura — Humano",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "power": 2,
+    "toughness": 3,
+    "keywords": [
+      "flying"
+    ],
+    "text": "Vuela. Siempre que Buzo de la Costanera ataque, robás una carta.",
+    "flavorText": "Encuentra de todo en el fondo del río: monedas, botellas, y algún que otro secreto.",
+    "image": "buzo_costanera.png",
+    "attackTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_037",
+    "name": "Vecina Metiche",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "power": 1,
+    "toughness": 3,
+    "keywords": [],
+    "text": "Siempre que Vecina Metiche le haga daño de combate al jugador, ese jugador descarta una carta.",
+    "flavorText": "\"Yo no digo nada, pero vi todo.\"",
+    "image": "vecina_metiche.png",
+    "combatDamageTrigger": {
+      "type": "discard",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_038",
+    "name": "Contrabandista del Riachuelo",
+    "type": "Criatura — Humano",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "power": 3,
+    "toughness": 2,
+    "keywords": [],
+    "text": "Siempre que Contrabandista del Riachuelo le haga daño de combate al jugador, robás una carta.",
+    "flavorText": "Cruza la frontera del barrio sin que nadie se entere.",
+    "image": "contrabandista_riachuelo.png",
+    "combatDamageTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_039",
+    "name": "Capitana del Aguante",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "power": 3,
+    "toughness": 3,
+    "keywords": [
+      "vigilance"
+    ],
+    "text": "Vigilancia. Siempre que Capitana del Aguante ataque, ganás 1 Punto de Vida.",
+    "flavorText": "La que siempre está, en las buenas y en las malas.",
+    "image": "capitana_aguante.png",
+    "attackTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_040",
+    "name": "Escudera de la Vecinal",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "power": 1,
+    "toughness": 4,
+    "keywords": [],
+    "text": "Siempre que Escudera de la Vecinal bloquee, ganás 1 Punto de Vida.",
+    "flavorText": "Organiza la olla popular y no deja pasar a nadie con hambre.",
+    "image": "escudera_vecinal.png",
+    "blockTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_041",
+    "name": "Jabalí del Descampado",
+    "type": "Criatura — Bestia",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "power": 4,
+    "toughness": 3,
+    "keywords": [
+      "trample"
+    ],
+    "text": "Arrolla. Siempre que Jabalí del Descampado le haga daño de combate al jugador, ganás 2 Puntos de Vida.",
+    "flavorText": "Se escapó de algún lado, y ahora el descampado es suyo.",
+    "image": "jabali_descampado.png",
+    "combatDamageTrigger": {
+      "type": "heal",
+      "amount": 2
+    }
+  },
+  {
+    "id": "crea_042",
+    "name": "Cazadora de la Reserva",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "power": 3,
+    "toughness": 3,
+    "keywords": [
+      "reach"
+    ],
+    "text": "Alcance. Siempre que Cazadora de la Reserva ataque, ganás 1 Punto de Vida.",
+    "flavorText": "Conoce cada sendero de la reserva mejor que su propia casa.",
+    "image": "cazadora_reserva.png",
+    "attackTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_043",
+    "name": "Barquero del Delta",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{G}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "G",
+      "U"
+    ],
+    "power": 3,
+    "toughness": 4,
+    "keywords": [
+      "hexproof"
+    ],
+    "text": "Intocable. Siempre que Barquero del Delta bloquee, robás una carta.",
+    "flavorText": "Nadie que cruzó el delta con él tuvo una queja — ni la oportunidad de tenerla.",
+    "image": "barquero_delta.png",
+    "blockTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_044",
+    "name": "Cortejo Fúnebre del Barrio",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{W}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "B"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "keywords": [
+      "deathtouch"
+    ],
+    "text": "Toque Mortal. Siempre que Cortejo Fúnebre del Barrio le haga daño de combate al jugador, ese jugador pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Caminan despacio, pero nunca se detienen.",
+    "image": "cortejo_funebre.png",
+    "combatDamageTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_045",
+    "name": "El Centinela de Chatarra",
+    "type": "Criatura — Constructo",
+    "manaCost": "{4}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [],
+    "power": 0,
+    "toughness": 6,
+    "keywords": [
+      "defender"
+    ],
+    "text": "Defensora. Siempre que El Centinela de Chatarra bloquee, le hace 2 de daño al jugador rival.",
+    "flavorText": "Armado con chapa de auto viejo y una alarma que nunca se calla.",
+    "image": "centinela_chatarra.png",
+    "blockTrigger": {
+      "type": "damage",
+      "amount": 2
     }
   }
 ]
