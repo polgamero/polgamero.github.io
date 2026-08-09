@@ -9,9 +9,32 @@ import {
   detachEquipmentFrom,
   sendAurasToGraveyard,
   triggerCreatureDies,
-  triggerAnyCreatureDeath
+  triggerAnyCreatureDeath,
+  resolveEffectDirect,
+  cleanupIfVehicle
 } from './main.js';
 import { showDamageAssignmentModal } from './ui.js';
+
+// Habilidades Disparadas de combate ("cuando ataca", "cuando bloquea", "cuando le pega
+// al jugador"): la tercera pata que le faltaba al motor de disparadores. Misma
+// simplificación que el resto (resuelve directo, sin pasar por la pila).
+export function triggerCombatAbility(unit, triggerKey, isLocal) {
+  const trig = unit.card[triggerKey];
+  if (!trig) return;
+  resolveEffectDirect(trig, unit.card.name, isLocal);
+}
+
+// A diferencia de attackTrigger/blockTrigger (que viven en la criatura misma), este vive en
+// la zona de soporte — para Encantamientos/Artefactos que reaccionan a "atacaste con 1 o
+// más criaturas este combate" sin ser ellos mismos quienes atacan.
+export function triggerAnyCreatureAttacks(isLocal) {
+  const support = isLocal ? state.localSupport : state.rivalSupport;
+  support.forEach(s => {
+    if (s.card.anyCreatureAttacksTrigger) {
+      resolveEffectDirect(s.card.anyCreatureAttacksTrigger, s.card.name, isLocal);
+    }
+  });
+}
 
 // --- BLOQUEO INTELIGENTE DEL TANO ---
 function assignSmartBlock(att, aIdx, availableBlockers) {
@@ -157,7 +180,9 @@ export function executeLocalAttack() {
       if (!hasKeyword(a, 'vigilance')) {
         a.tapped = true;
       }
+      triggerCombatAbility(a, 'attackTrigger', true);
     });
+    triggerAnyCreatureAttacks(true);
     logMsg(`🗡️ Declaraste ${attackers.length} atacantes.`);
   } else {
     logMsg(`🌅 Decidiste no atacar con nada.`);
@@ -211,6 +236,15 @@ export async function resolveCombatDamage() {
   const isLocalAttacking = state.activePlayer === 'local';
   const attackersArray = isLocalAttacking ? state.localCombat : state.rivalCombat;
   const defendersArray = isLocalAttacking ? state.rivalCombat : state.localCombat;
+
+  // blockTrigger: se dispara una sola vez por bloqueadora, acá — sin importar por cuál de
+  // los 3 caminos se asignó el bloqueo (jugador local, o el Tano en sus 2 ramas), para
+  // cuando llega este paso los bloqueos ya están definidos y es el único lugar seguro.
+  defendersArray.forEach(d => {
+    if (d.blockingIndex !== null && d.blockingIndex !== undefined) {
+      triggerCombatAbility(d, 'blockTrigger', !isLocalAttacking);
+    }
+  });
 
   const combatPairs = attackersArray
     .filter(a => a.isAttacking)
@@ -297,6 +331,12 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
 
     if (!attackerDealsThisStep) continue;
 
+    // combatDamageTrigger ("cuando esta criatura le pega al jugador"): se acumula acá y se
+    // dispara una sola vez al final, sea cual sea de los 4 caminos por los que el ataque
+    // termine llegando al jugador (sin bloqueo, arrollar con todo muerto, arrollar
+    // manual, o arrollar automático) — evitar repetir el disparo en cada rama por separado.
+    let damageToPlayerThisStep = 0;
+
     if (blockers.length === 0) {
       if (isLocalAttacking) {
         state.rivalHP -= attackerPower;
@@ -312,6 +352,8 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         }
       }
       if (attackerPower > 0) logMsg(`💥 ${attacker.card.name} conectó el golpe! Hizo ${attackerPower} de daño.`);
+      damageToPlayerThisStep += attackerPower;
+      if (damageToPlayerThisStep > 0) triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
       continue;
     }
 
@@ -325,9 +367,11 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
           if (attackerHasLifelink && attackerPower > 0) state.rivalHP += attackerPower;
         }
         logMsg(`🐘 Arrollar: los bloqueadores de ${attacker.card.name} ya habían caído en Iniciativa, así que TODO su daño (${attackerPower}) pasa de largo.`);
+        damageToPlayerThisStep += attackerPower;
       } else {
         logMsg(`🛡️ ${attacker.card.name} sigue "bloqueado" (sus defensores cayeron en Iniciativa) y sin Arrollar no conecta nada.`);
       }
+      if (damageToPlayerThisStep > 0) triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
       continue;
     }
 
@@ -389,6 +433,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         else state.localHP -= manualPlayerDamage;
         attackerLifelinkHeal += manualPlayerDamage;
         logMsg(`🐘 Arrollar (Asignado): ¡${attacker.card.name} arrolló con ${manualPlayerDamage} de daño!`);
+        damageToPlayerThisStep += manualPlayerDamage;
       }
     } else if (attackerHasTrample && remainingAttackerPower > 0) {
       if (isLocalAttacking) {
@@ -399,7 +444,10 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         logMsg(`🐘 Arrollar: ¡El ${attacker.card.name} del Tano repartió daño letal a tus defensores y te arrolló con ${remainingAttackerPower} de daño!`);
       }
       attackerLifelinkHeal += remainingAttackerPower;
+      damageToPlayerThisStep += remainingAttackerPower;
     }
+
+    if (damageToPlayerThisStep > 0) triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
 
     if (attackerHasLifelink && attackerLifelinkHeal > 0) {
       if (isLocalAttacking) {
@@ -440,6 +488,7 @@ export function checkDeaths(combatArray, graveyardArray, ownerName) {
       // junto con la criatura. Misma función que usan el resto de los caminos de salida
       // del campo (rebote, sacrificio, removal, arrase) para no volver a duplicar esto.
       sendAurasToGraveyard(unit, isLocal);
+      cleanupIfVehicle(unit); // si era un Vehículo tripulado, saca el power/toughness "prestado"
 
       // Equipamiento: a diferencia de las Auras, NO va al cementerio con la criatura.
       // Ya vive como su propio permanente en la zona de soporte — solo hay que

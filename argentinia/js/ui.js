@@ -288,7 +288,12 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const { eligibleType } = state.pendingSacrificeChoice;
     if (eligibleType === 'creature' && zone === 'combat') isTargetable = true;
     else if (eligibleType === 'artifact' && zone === 'support' && card.type.includes('Artefacto')) isTargetable = true;
+  } else if (state.pendingCrew && isLocal && zone === 'combat') {
+    // Elegible si está sin girar, o si ya la elegiste (clickearla de nuevo la saca).
+    isTargetable = !itemObj.tapped || state.pendingCrew.selected.includes(itemObj);
   }
+
+  const isCrewingSelected = (state.pendingCrew && state.pendingCrew.selected.includes(itemObj)) ? 'crewing-selected' : '';
 
   if (!isLocal && hasKeyword(itemObj, 'hexproof')) {
     isTargetable = false;
@@ -315,7 +320,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   }
 
   // Agregamos bgClass a la lista de clases
-  el.className = `card ${bgClass} ${card.rarity || 'Common'} ${isTapped ? 'tapped' : ''} ${isSick} ${isAttacking} ${isBlocking} ${isSelectedBlocker} ${targetClass}`;
+  el.className = `card ${bgClass} ${card.rarity || 'Common'} ${isTapped ? 'tapped' : ''} ${isSick} ${isAttacking} ${isBlocking} ${isSelectedBlocker} ${targetClass} ${isCrewingSelected}`;
 
   let icon = '🃏';
   for (const key in ICON_MAP) { if (card.name.includes(key)) icon = ICON_MAP[key]; }
@@ -377,6 +382,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const attachedEquipment = (zone === 'combat' && card.power !== undefined) ? getEquipmentOn(itemObj) : [];
   const staticMods = (zone === 'combat' && card.power !== undefined) ? getStaticTeamModifiers(itemObj) : [];
   const tempMods = (zone === 'combat' && card.power !== undefined) ? (itemObj.tempEffects || []) : [];
+  const counters = (zone === 'combat' && card.power !== undefined) ? itemObj.counters : null;
 
   // Describe en criollo qué hace cada modificador (no solo su nombre), para el tooltip
   // de abajo — "Facón de Plata: {T}: 2 de daño", "Poncho del Paisano: +1/+1",
@@ -429,16 +435,21 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     return parts.join(' · ');
   };
 
-  // Un solo badge combinado (evita amontonar 4 iconos distintos en las esquinas de una
+  // Un solo badge combinado (evita amontonar iconos distintos en las esquinas de una
   // carta chica). Muestra los iconos de lo que esté activo, y el tooltip lista cada
   // modificador por separado con su propio icono adelante.
+  const counterLine = (counters && ((counters.plusOne || 0) > 0 || (counters.minusOne || 0) > 0))
+    ? [`🔵 Contadores: ${(counters.plusOne||0) > 0 ? `+${counters.plusOne}/+${counters.plusOne}` : `-${counters.minusOne}/-${counters.minusOne}`}`]
+    : [];
   const modifierLines = [
+    ...counterLine,
     ...attachedAuras.map(a => `✨ ${a.name}: ${describeAura(a)}`),
     ...attachedEquipment.map(e => `⚔️ ${e.card.name}: ${describeEquipment(e)}`),
     ...staticMods.map(m => `🌐 ${m.sourceName}: ${describeStaticMod(m)} (mientras esté en el campo)`),
     ...tempMods.map(t => `⏳ ${t.name || 'Efecto'}: ${describeTempMod(t)} (hasta fin de turno)`)
   ];
   const modifierIcons = [
+    counterLine.length > 0 ? '🔵' : '',
     attachedAuras.length > 0 ? '✨' : '',
     attachedEquipment.length > 0 ? '⚔️' : '',
     staticMods.length > 0 ? '🌐' : '',
@@ -753,7 +764,7 @@ function injectMulliganStyles() {
       transform: scale(2.0);
       z-index: 20;
     }
-    .mulligan-card-slot.selectable:hover { transform: scale(2.6) translateY(-6px); z-index: 20; }
+    .mulligan-card-slot.selectable:hover { transform: scale(2.0) translateY(-6px); z-index: 20; }
     .mulligan-card-slot.chosen {
       box-shadow: 0 0 0 3px #e74c3c, 0 0 16px rgba(231,76,60,0.6);
     }
@@ -887,7 +898,14 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
   const groups = {};
   
   zoneArray.forEach((item, idx) => {
-    let key = (zoneType === 'land' && item.card.produces) ? `land_${item.card.produces}` : item.card.name;
+    // Antes se agrupaba por COLOR que produce (`land_${produces}`) — mezclaba a Las Malvinas
+    // (maná x2) con cualquier tierra básica del mismo color en el MISMO stack visual, aunque
+    // sean cartas totalmente distintas. Clickear el stack giraba "la primera que caiga" sin
+    // ninguna garantía de cuál era, dando de maná lo que le tocara a esa (y el contador del
+    // badge no reflejaba bien la mezcla). Agrupar por identidad de carta (id) es siempre
+    // correcto: junta copias de la MISMA carta (ej. 3 tierras básicas iguales) y nunca mezcla
+    // cartas mecánicamente distintas, aunque compartan color.
+    let key = item.card.id || item.card.name;
     if (!groups[key]) groups[key] = { items: [], ready: [], tapped: [] };
     groups[key].items.push({ item, originalIndex: idx });
     if (item.tapped) groups[key].tapped.push(item);
@@ -1030,22 +1048,28 @@ export function render() {
   if (state.isDiscarding) els.localHand.classList.add('discard-warning');
   else els.localHand.classList.remove('discard-warning');
 
-  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null) {
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew) {
     els.paymentControls.classList.remove('hidden'); els.btnEndTurn.classList.add('hidden'); 
-    els.localHand.classList.add('paying-mode'); els.localLands.classList.add('paying-mode');
+    els.localHand.classList.add('paying-mode');
+    if (!state.pendingCrew) els.localLands.classList.add('paying-mode');
     if (state.pendingSpellIndex !== null) {
       const pendingCardEl = els.localHand.children[state.pendingSpellIndex];
       if (pendingCardEl) pendingCardEl.classList.add('paying');
     }
     
-    let statusText = state.pendingTargetCard ? "¡Maná pagado! Elegí un objetivo brillante ✨" : "Falta: ";
-    if (!state.pendingTargetCard) {
-      if (state.pendingCost.W > 0) statusText += `${state.pendingCost.W} Blanco `;
-      if (state.pendingCost.U > 0) statusText += `${state.pendingCost.U} Azul `;
-      if (state.pendingCost.B > 0) statusText += `${state.pendingCost.B} Negro `;
-      if (state.pendingCost.R > 0) statusText += `${state.pendingCost.R} Rojo `;
-      if (state.pendingCost.G > 0) statusText += `${state.pendingCost.G} Verde `;
-      if (state.pendingCost.generic > 0) statusText += `${state.pendingCost.generic} Genérico`;
+    let statusText;
+    if (state.pendingCrew) {
+      statusText = `Tripulando ${state.pendingCrew.item.card.name}: ${state.pendingCrew.powerSoFar}/${state.pendingCrew.required} de poder — clickeá tus criaturas 🚗`;
+    } else {
+      statusText = state.pendingTargetCard ? "¡Maná pagado! Elegí un objetivo brillante ✨" : "Falta: ";
+      if (!state.pendingTargetCard) {
+        if (state.pendingCost.W > 0) statusText += `${state.pendingCost.W} Blanco `;
+        if (state.pendingCost.U > 0) statusText += `${state.pendingCost.U} Azul `;
+        if (state.pendingCost.B > 0) statusText += `${state.pendingCost.B} Negro `;
+        if (state.pendingCost.R > 0) statusText += `${state.pendingCost.R} Rojo `;
+        if (state.pendingCost.G > 0) statusText += `${state.pendingCost.G} Verde `;
+        if (state.pendingCost.generic > 0) statusText += `${state.pendingCost.generic} Genérico`;
+      }
     }
     els.paymentStatus.textContent = statusText;
   } else {

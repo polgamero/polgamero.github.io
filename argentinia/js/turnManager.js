@@ -248,8 +248,8 @@ function executeCleanupStep() {
   state.rivalCombat.forEach(c => c.tempEffects = []);
   state.combatDamagePrevented = false;
 
-  // LÓGICA NUEVA: Devolver vehículos a la zona de soporte
-  const revertVehicles = (combatZone, supportZone) => {
+  // LÓGICA NUEVA: Devolver vehículos (y tierras-criatura) a su zona de origen
+  const revertVehicles = (combatZone, supportZone, landsZone) => {
     for (let i = combatZone.length - 1; i >= 0; i--) {
       if (combatZone[i].isVehicle) {
         const v = combatZone.splice(i, 1)[0];
@@ -257,13 +257,14 @@ function executeCleanupStep() {
         // Le borramos las estadísticas de criatura
         delete v.card.power;
         delete v.card.toughness;
-        supportZone.push(v);
+        (v.wasLand ? landsZone : supportZone).push(v);
+        v.wasLand = false;
       }
     }
   };
 
-  revertVehicles(state.localCombat, state.localSupport);
-  revertVehicles(state.rivalCombat, state.rivalSupport);
+  revertVehicles(state.localCombat, state.localSupport, state.localLands);
+  revertVehicles(state.rivalCombat, state.rivalSupport, state.rivalLands);
 
   // Lógica de descarte habitual...
   if (isLocal) {

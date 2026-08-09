@@ -37,11 +37,47 @@ class CardDatabase {
 
       this.isLoaded = true;
       console.log(`[CardDatabase] Carga completa. Total de cartas: ${this.allCards.length}`);
+
+      // No bloquea el arranque del juego (no lleva "await" acá abajo): dispara los chequeos
+      // de imagen en paralelo y va completando la tabla en consola a medida que responden.
+      this.reportMissingImages();
+
       return this.allCards;
 
     } catch (error) {
       console.error('[CardDatabase] Fallo la carga de cartas:', error);
       throw error;
+    }
+  }
+
+  // Recorre TODAS las cartas cargadas y avisa por consola cuáles todavía no tienen su
+  // imagen en /assets/images/cards/ — para no tener que esperar a que te toque esa carta
+  // en una partida para enterarte de que le falta el arte.
+  async reportMissingImages() {
+    const missing = [];
+
+    const checks = this.allCards.map(async (card) => {
+      if (!card.image) {
+        missing.push({ carta: card.name, id: card.id, problema: 'sin campo "image" en el JSON' });
+        return;
+      }
+      const path = `./assets/images/cards/${card.image}`;
+      try {
+        const res = await fetch(path, { method: 'HEAD' });
+        if (!res.ok) missing.push({ carta: card.name, id: card.id, problema: `falta el archivo: ${card.image}` });
+      } catch (e) {
+        missing.push({ carta: card.name, id: card.id, problema: `falta el archivo: ${card.image}` });
+      }
+    });
+
+    await Promise.all(checks);
+
+    if (missing.length > 0) {
+      missing.sort((a, b) => a.carta.localeCompare(b.carta));
+      console.warn(`[CardDatabase] ${missing.length} carta(s) sin imagen (de ${this.allCards.length} totales):`);
+      console.table(missing);
+    } else {
+      console.log('[CardDatabase] Todas las cartas tienen su imagen. 🎉');
     }
   }
 

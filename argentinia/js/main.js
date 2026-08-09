@@ -68,6 +68,9 @@ export const state = {
   // (no "esta misma"), pausamos acá hasta que el jugador elija cuál. `source` guarda todo lo
   // necesario para retomar la activación (target, pila) una vez resuelto el sacrificio.
   pendingSacrificeChoice: null,
+  // Tripular un Vehículo: { item, isLocal, required, selected:[], powerSoFar } — se paga
+  // GIRANDO criaturas propias hasta sumar el poder pedido, nunca con maná (regla 702.121).
+  pendingCrew: null,
 
   isDiscarding: false,
   cardsToDiscard: 0,
@@ -217,6 +220,7 @@ async function boot() {
 export function getEffectivePower(itemObj) {
   const card = itemObj.card || itemObj;
   let p = card.power || 0;
+  p += getCounterStats(itemObj);
   (itemObj.auras || []).forEach(attached => {
     const mod = attached.auraEffect && attached.auraEffect.stats;
     // Soporte para stats asimétricos nuevos
@@ -247,6 +251,7 @@ export function getEffectivePower(itemObj) {
 export function getEffectiveToughness(itemObj) {
   const card = itemObj.card || itemObj;
   let t = card.toughness || 0;
+  t += getCounterStats(itemObj);
   (itemObj.auras || []).forEach(attached => {
     const mod = attached.auraEffect && attached.auraEffect.stats;
     if (mod && mod.toughnessMod !== undefined) {
@@ -298,7 +303,10 @@ export function performSacrifice(item, isLocal) {
     if (idx === -1) continue;
     const isCreatureZone = (zone === state.localCombat || zone === state.rivalCombat);
     zone.splice(idx, 1);
-    if (isCreatureZone) detachEquipmentFrom(item, isLocal);
+    if (isCreatureZone) {
+      detachEquipmentFrom(item, isLocal);
+      cleanupIfVehicle(item); // si era un Vehículo tripulado, saca el power/toughness "prestado"
+    }
     grave.push(item.card);
     logMsg(`🔪 ¡Sacrificaste a ${item.card.name}!`);
     if (isCreatureZone) {
@@ -411,14 +419,76 @@ export function sendAurasToGraveyard(unit, isLocal) {
   unit.auras = [];
 }
 
+// Si un Vehículo tripulado (que "es una criatura hasta el final del turno") sale del campo
+// por cualquier camino que no sea llegar a Limpieza normalmente — muere en combate, lo
+// sacrifican, lo rebotan, lo arrasa un board wipe — hay que sacarle el power/toughness de
+// criatura ACÁ, en el momento, o se queda pegado ese estado (ej. se vería con stats en el
+// cementerio o en la mano, como si siguiera siendo una criatura). Se llama junto con
+// sendAurasToGraveyard/detachEquipmentFrom en todos los caminos de salida del campo.
+export function cleanupIfVehicle(unit) {
+  if (unit.isVehicle) {
+    delete unit.card.power;
+    delete unit.card.toughness;
+    unit.isVehicle = false;
+    unit.wasLand = false;
+  }
+}
+
 export function attachAura(auraCard, creatureItem) {
   if (!creatureItem.auras) creatureItem.auras = [];
   creatureItem.auras.push(auraCard);
   logMsg(`✨ ¡${auraCard.name} se pegó a ${creatureItem.card.name}!`);
 }
 
+// Sistema real de contadores +1/+1 y -1/-1 (antes se simulaban con "auras falsas" que ni
+// siquiera eran cartas reales — sin id, sin type — y que además terminaban empujadas al
+// cementerio cuando la criatura moría, como si fueran una carta de verdad).
+// Viven directo acá, en el item de combate: cuando la criatura muere, el item se saca del
+// array y los contadores desaparecen solos con él — no van a ningún lado, como en MTG real.
+export function addCounters(item, type, amount) {
+  if (!item.counters) item.counters = { plusOne: 0, minusOne: 0 };
+  item.counters[type] = (item.counters[type] || 0) + amount;
+
+  // Regla de estado: un contador +1/+1 y uno -1/-1 en la misma criatura se cancelan de a
+  // pares (no pueden convivir).
+  const cancel = Math.min(item.counters.plusOne, item.counters.minusOne);
+  if (cancel > 0) {
+    item.counters.plusOne -= cancel;
+    item.counters.minusOne -= cancel;
+  }
+}
+
+export function getCounterStats(itemObj) {
+  const c = itemObj.counters;
+  if (!c) return 0;
+  return (c.plusOne || 0) - (c.minusOne || 0);
+}
+
+// Bug reportado: se podían apilar 2 Alpargatas Aladas (o cualquier Aura/Equipo/efecto que
+// otorgue una keyword) en la MISMA criatura, aunque ya tuviera esa habilidad de cualquier
+// fuente. Esta función identifica qué keyword(s) otorgaría el hechizo/habilidad pendiente,
+// sea cual sea su forma (Aura, Equipo, o un efecto puntual tipo grant_keyword_temp) — así
+// el chequeo de destino es uno solo y cubre los 3 casos por igual.
+export function getKeywordsGrantedByPendingSpell(pendingCard) {
+  if (pendingCard.adjunta && pendingCard.auraEffect && pendingCard.auraEffect.keywords) {
+    return pendingCard.auraEffect.keywords;
+  }
+  if (pendingCard.equipment && pendingCard.equipment.grantedKeywords) {
+    return pendingCard.equipment.grantedKeywords;
+  }
+  if (pendingCard.effect && pendingCard.effect.type === 'grant_keyword_temp' && pendingCard.effect.keyword) {
+    return [pendingCard.effect.keyword];
+  }
+  return [];
+}
+
 export function handleCombatClick(item, isLocal, index) {
   if (state.damageModalOpen) return;
+
+  if (state.pendingCrew) {
+    handleCrewClick(item, isLocal);
+    return;
+  }
 
   if (state.pendingSacrificeChoice) {
     tryResolveSacrificeChoice(item, isLocal);
@@ -443,6 +513,16 @@ export function handleCombatClick(item, isLocal, index) {
       logMsg(`Ese no es un objetivo válido para ${state.pendingTargetCard.name}.`);
       return;
     }
+
+    // No dejar apilar una habilidad redundante: si ya tiene Vuela, no le vuelvas a poner
+    // algo que otorgue Vuela (aunque venga de una fuente distinta).
+    const grantedKeywords = getKeywordsGrantedByPendingSpell(state.pendingTargetCard);
+    const redundant = grantedKeywords.find(k => hasKeyword(item, k));
+    if (redundant) {
+      logMsg(`${item.card.name} ya tiene esa habilidad — no hace falta repetirla.`);
+      return;
+    }
+
     executeSpellOnTarget({ type: 'creature', isLocal, index, item });
     return;
   }
@@ -500,6 +580,15 @@ function tryActivateGrantedAbility(creatureItem, isLocal, creatureIndex) {
   const ownAbility = creatureItem.card.activatedAbility;
   const equippedWithAbility = !ownAbility ? getEquipmentOn(creatureItem).find(eq => eq.card.grantedAbility) : null;
   if (!ownAbility && !equippedWithAbility) return false;
+
+  // Un Vehículo ya tripulado (ahora una criatura en Combate) todavía tiene pegada su
+  // habilidad de Tripular original — no es una habilidad de criatura real, así que no
+  // dejamos que se "active" de nuevo desde acá (buscaría el Vehículo en Soporte/Tierras,
+  // que ya no está ahí, y no haría nada — mejor cortarlo acá con un mensaje claro).
+  if (ownAbility && ownAbility.crewCost !== undefined) {
+    logMsg(`${creatureItem.card.name} ya está tripulado — no hay nada más que activar.`);
+    return true;
+  }
 
   if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null) {
     logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
@@ -598,6 +687,7 @@ export function handlePlayerTargetClick(isLocal) {
 }
 
 export function cancelPayment() {
+  if (state.pendingCrew) { cancelCrew(); return; }
   if (state.pendingSpellIndex === null && state.pendingAbilitySource === null && state.pendingSacrificeChoice === null) return;
   state.tappedLandsThisSpell.forEach(land => land.tapped = false);
   state.pendingSpellIndex = null; 
@@ -612,10 +702,13 @@ export function cancelPayment() {
 }
 
 export function canPlayCard(card) {
-  if (state.gameOver || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.damageModalOpen) return false;
+  if (state.gameOver || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null || state.damageModalOpen) return false;
   if (state.priorityPlayer !== 'local') return false; // Solo si poseés prioridad
   
-  const isInstant = card.type.includes('Instantáneo');
+  // Flash: un permanente con esta keyword se puede jugar como si fuera un instantáneo,
+  // aunque su tipo real sea Artefacto/Criatura/Encantamiento (no cambia qué ES la carta,
+  // solo relaja CUÁNDO se puede jugar).
+  const isInstant = card.type.includes('Instantáneo') || (card.keywords && card.keywords.includes('flash'));
 
   // Si la pila no está vacía, solo instantáneos
   if (spellStack && spellStack.length > 0) return isInstant;
@@ -665,9 +758,155 @@ export function playCard(index) {
   render();
 }
 
+// Aplica hasta `amount` de maná (de un color fijo, o eligiendo automáticamente entre
+// varias opciones si es dual) al pago pendiente — el sobrante de un color siempre puede
+// cubrir el costo genérico, como en MTG real. La comparten tierras y artefactos que
+// producen maná, para no duplicar esta cuenta en dos lugares.
+function applyManaToPendingCost(colorOrOptions, amount) {
+  let remaining = amount;
+  let used = false;
+
+  if (Array.isArray(colorOrOptions)) {
+    const bestColor = colorOrOptions.find(c => (state.pendingCost[c] || 0) > 0) || colorOrOptions[0];
+    const takeFromColor = Math.min(remaining, state.pendingCost[bestColor] || 0);
+    if (takeFromColor > 0) { state.pendingCost[bestColor] -= takeFromColor; remaining -= takeFromColor; used = true; }
+  } else if (['W', 'U', 'B', 'R', 'G'].includes(colorOrOptions)) {
+    const takeFromColor = Math.min(remaining, state.pendingCost[colorOrOptions] || 0);
+    if (takeFromColor > 0) { state.pendingCost[colorOrOptions] -= takeFromColor; remaining -= takeFromColor; used = true; }
+  }
+  // maná genérico puro (ej. Billetera Vieja "{T}: Agregá {1}"), o el sobrante de arriba
+  if (remaining > 0 && state.pendingCost.generic > 0) {
+    const takeGeneric = Math.min(remaining, state.pendingCost.generic);
+    state.pendingCost.generic -= takeGeneric;
+    remaining -= takeGeneric;
+    used = true;
+  }
+  return used;
+}
+
+// Artefactos que producen maná (mana rocks / Treasures). Mismo criterio que una tierra:
+// solo tiene sentido tocarlos mientras estás pagando algo. Si además `sacrificeOnTap` es
+// true (estilo Treasure — un solo uso), se sacrifica solo apenas rinde el maná.
+function tapSupportManaSource(item, isLocal) {
+  if (item.tapped) { logMsg(`${item.card.name} ya está girado.`); return; }
+  const card = item.card;
+  const amount = card.manaAmount || 1;
+  const colorOrOptions = card.producesOptions || card.produces;
+  const used = applyManaToPendingCost(colorOrOptions, amount);
+
+  if (used) {
+    item.tapped = true;
+    state.tappedLandsThisSpell.push(item); // mismo array: si se cancela el pago, se des-gira
+    if (card.sacrificeOnTap) {
+      performSacrifice(item, isLocal);
+    }
+    checkPaymentComplete();
+  } else {
+    logMsg(`${card.name} no te sirve para pagar esto.`);
+  }
+  render();
+}
+
+export function startCrewing(item, isLocal) {
+  const required = item.card.activatedAbility.crewCost;
+  state.pendingCrew = { item, isLocal, required, selected: [], powerSoFar: 0 };
+  logMsg(`Elegí criaturas para tripular a ${item.card.name} (necesitás ${required} de poder total). Podés cancelar si te arrepentís.`);
+  render();
+}
+
+// Clickear una criatura propia mientras hay una tripulación pendiente: la suma (girándola)
+// o la saca (des-girándola) si ya estaba elegida. Sin restricción de mareo de invocación:
+// tripular NO es "usar la habilidad de la criatura" ni "atacar", así que el mareo no aplica
+// acá (regla 302.6) — una criatura recién bajada SÍ puede ayudar a tripular.
+export function handleCrewClick(item, isLocal) {
+  const pc = state.pendingCrew;
+  if (!pc) return false;
+
+  if (!isLocal) {
+    logMsg("Solo tus propias criaturas pueden tripular.");
+    return true;
+  }
+
+  const alreadyIdx = pc.selected.indexOf(item);
+  if (alreadyIdx !== -1) {
+    pc.selected.splice(alreadyIdx, 1);
+    item.tapped = false;
+    pc.powerSoFar -= getEffectivePower(item);
+    render();
+    return true;
+  }
+
+  if (item.tapped) {
+    logMsg(`${item.card.name} ya está girada — no puede sumar poder para tripular.`);
+    return true;
+  }
+
+  pc.selected.push(item);
+  item.tapped = true;
+  pc.powerSoFar += getEffectivePower(item);
+  logMsg(`${item.card.name} ayuda a tripular (${pc.powerSoFar}/${pc.required} de poder).`);
+  if (pc.powerSoFar >= pc.required) {
+    confirmCrew();
+  } else {
+    render();
+  }
+  return true;
+}
+
+export function confirmCrew() {
+  const pc = state.pendingCrew;
+  if (!pc) return;
+  if (pc.powerSoFar < pc.required) {
+    logMsg(`Todavía falta poder para tripular ${pc.item.card.name} (${pc.powerSoFar}/${pc.required}).`);
+    return;
+  }
+
+  const card = pc.item.card;
+  const supportZone = pc.isLocal ? state.localSupport : state.rivalSupport;
+  const landsZone = pc.isLocal ? state.localLands : state.rivalLands;
+  const combatZone = pc.isLocal ? state.localCombat : state.rivalCombat;
+
+  let originZone = supportZone;
+  let vIdx = supportZone.indexOf(pc.item);
+  let fromLand = false;
+  if (vIdx === -1) {
+    vIdx = landsZone.indexOf(pc.item);
+    originZone = landsZone;
+    fromLand = true;
+  }
+  if (vIdx === -1) {
+    logMsg(`⚠️ ${card.name} ya no está disponible.`);
+    state.pendingCrew = null;
+    render();
+    return;
+  }
+
+  const vehicleItem = originZone.splice(vIdx, 1)[0];
+  vehicleItem.card.power = card.baseStats.power;
+  vehicleItem.card.toughness = card.baseStats.toughness;
+  vehicleItem.isVehicle = true;
+  vehicleItem.wasLand = fromLand;
+  vehicleItem.summoningSickness = !!vehicleItem.enteredThisTurn;
+  combatZone.push(vehicleItem);
+
+  logMsg(`🚗 ¡${card.name} fue tripulado (${pc.powerSoFar} de poder) y aceleró al campo de batalla como un ${card.baseStats.power}/${card.baseStats.toughness}!`);
+  state.pendingCrew = null;
+  render();
+}
+
+export function cancelCrew() {
+  const pc = state.pendingCrew;
+  if (!pc) return;
+  pc.selected.forEach(item => { item.tapped = false; });
+  logMsg(`Cancelaste la tripulación de ${pc.item.card.name}.`);
+  state.pendingCrew = null;
+  render();
+}
+
 export function tapLocalLand(item) {
   if (state.gameOver || item.tapped) return;
   if (state.pendingSacrificeChoice) return; // Una tierra no es una opción válida de sacrificio hoy
+  if (state.pendingCrew) { logMsg("Terminá de elegir criaturas para tripular, o cancelá, antes de otra cosa."); return; }
 
   // Tierras de utilidad (sin `produces`, con activatedAbility propia — ej. Biblioteca
   // Nacional) se activan como cualquier permanente con habilidad, no como fuente de maná.
@@ -685,36 +924,8 @@ export function tapLocalLand(item) {
   // Soporte para tierras que producen más de 1 maná (ej. Las Malvinas: {T}: Agrega {U}{U}).
   // El excedente de un color se puede usar para pagar costo genérico, como en MTG real.
   const amount = item.card.manaAmount || 1;
-  let remaining = amount;
-  let used = false;
-
-  if (item.card.producesOptions) {
-    // Tierra dual: elegimos automáticamente el color que más te sirve pagar ahora mismo.
-    const bestColor = item.card.producesOptions.find(c => (state.pendingCost[c] || 0) > 0) || item.card.producesOptions[0];
-    const takeFromColor = Math.min(remaining, state.pendingCost[bestColor] || 0);
-    if (takeFromColor > 0) {
-      state.pendingCost[bestColor] -= takeFromColor;
-      remaining -= takeFromColor;
-      used = true;
-    }
-  } else {
-    const landColor = getLandColor(item.card);
-    if (['W', 'U', 'B', 'R', 'G'].includes(landColor)) {
-      const takeFromColor = Math.min(remaining, state.pendingCost[landColor] || 0);
-      if (takeFromColor > 0) {
-        state.pendingCost[landColor] -= takeFromColor;
-        remaining -= takeFromColor;
-        used = true;
-      }
-    }
-  }
-
-  if (remaining > 0 && state.pendingCost.generic > 0) {
-    const takeGeneric = Math.min(remaining, state.pendingCost.generic);
-    state.pendingCost.generic -= takeGeneric;
-    remaining -= takeGeneric;
-    used = true;
-  }
+  const colorOrOptions = item.card.producesOptions || getLandColor(item.card);
+  const used = applyManaToPendingCost(colorOrOptions, amount);
 
   if (used) { item.tapped = true; state.tappedLandsThisSpell.push(item); checkPaymentComplete(); } 
   else { logMsg(`Esa yerba no te sirve para este hechizo.`); }
@@ -935,13 +1146,48 @@ export function handleSupportClick(item, isLocal, index) {
     return;
   }
 
+  // Si hay una tripulación pendiente, ningún otro permanente hace nada hasta que se
+  // resuelva (clickear una criatura sigue yendo a handleCombatClick/handleCrewClick).
+  if (state.pendingCrew) {
+    logMsg("Terminá de elegir criaturas para tripular, o cancelá, antes de otra cosa.");
+    return;
+  }
+
+  const card = item.card;
+
+  // Tripular un Vehículo (regla 702.121 real): se paga girando poder de criaturas propias,
+  // NUNCA con maná — esto reemplaza un bug de diseño donde se cobraba maná por error.
+  // No entra al flujo normal de pago/pila: abre un modo de selección de criaturas aparte
+  // (ver startCrewing) y resuelve de una sola vez al confirmar, igual que Equipar — así no
+  // queda ninguna ventana en el medio donde se pueda volver a clickear y pagar de nuevo.
+  if (card.activatedAbility && card.activatedAbility.crewCost !== undefined) {
+    if (state.phase !== 'main1' && state.phase !== 'main2') return;
+    if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null) {
+      logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
+      return;
+    }
+    startCrewing(item, isLocal);
+    return;
+  }
+
+  // Artefactos que producen maná (mana rocks / Treasures): se comportan igual que una
+  // tierra, no como una habilidad — sirven en cualquier momento en que estés pagando algo
+  // (incluso en medio del turno rival), no solo en tus fases principales.
+  if (card.produces || card.producesOptions) {
+    if (state.pendingSpellIndex === null && state.pendingAbilitySource === null) {
+      logMsg("Seleccioná primero un hechizo o habilidad para pagar.");
+      return;
+    }
+    tapSupportManaSource(item, isLocal);
+    return;
+  }
+
   if (state.phase !== 'main1' && state.phase !== 'main2') return;
   if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null) {
     logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
     return;
   }
 
-  const card = item.card;
   if (!card.activatedAbility) return;
 
   // Si es un Equipo, no tiene sentido ni empezar a pagar si no tenés ninguna criatura

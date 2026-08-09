@@ -9,11 +9,21 @@ import {
   getEffectivePower,
   getEffectiveToughness,
   performSacrifice,
+  resolveEffectDirect,
+  getKeywordsGrantedByPendingSpell,
   passPriority // Importado del nuevo turnManager / main
 } from './main.js';
 
-import { assignBotBlockers } from './combatRules.js';
+import { assignBotBlockers, triggerCombatAbility, triggerAnyCreatureAttacks } from './combatRules.js';
 import { addToStack, spellStack } from './stackManager.js';
+
+// Fuentes de maná del Tano: sus tierras + cualquier artefacto que produzca maná (mana
+// rocks / Treasures) que no esté ya girado. Un solo lugar para juntarlas evita repetir
+// este filtro en cada función de abajo.
+function getRivalManaSources() {
+  const artifacts = state.rivalSupport.filter(s => s.card.produces || s.card.producesOptions);
+  return [...state.rivalLands, ...artifacts];
+}
 
 export function canRivalAfford(card) {
   if (!card.manaCost) return true;
@@ -23,7 +33,7 @@ export function canRivalAfford(card) {
   const duals = [];
   let totalMana = 0;
 
-  state.rivalLands.forEach(landItem => {
+  getRivalManaSources().forEach(landItem => {
     if (landItem.tapped) return;
     // Tierras de utilidad sin `produces` ni `producesOptions` (ej. Biblioteca Nacional) no
     // producen maná real — su {T} activa otra cosa. No cuentan para pagar hechizos.
@@ -62,25 +72,27 @@ export function tapRivalLandsFor(card) {
   if (!card.manaCost) return;
   const cost = parseManaCost(card.manaCost);
   const colors = ['W', 'U', 'B', 'R', 'G'];
+  const sources = getRivalManaSources();
 
-  // 1) Primero cubrimos cada color con tierras fijas (de un solo color)
+  // 1) Primero cubrimos cada color con fuentes fijas (de un solo color)
   colors.forEach(color => {
     let needed = cost[color];
-    for (let i = 0; i < state.rivalLands.length && needed > 0; i++) {
-      const land = state.rivalLands[i];
+    for (let i = 0; i < sources.length && needed > 0; i++) {
+      const land = sources[i];
       if (!land.tapped && !land.card.producesOptions && getLandColor(land.card) === color) {
         land.tapped = true;
         needed -= (land.card.manaAmount || 1);
+        if (land.card.sacrificeOnTap) performSacrifice(land, false);
       }
     }
   });
 
-  // 2) Lo que falte de cada color se cubre con tierras duales (las más específicas primero)
-  const dualEntries = state.rivalLands.filter(l => !l.tapped && l.card.producesOptions)
+  // 2) Lo que falte de cada color se cubre con fuentes duales (las más específicas primero)
+  const dualEntries = sources.filter(l => !l.tapped && l.card.producesOptions)
     .sort((a, b) => a.card.producesOptions.length - b.card.producesOptions.length);
 
   colors.forEach(color => {
-    let stillNeeded = cost[color] - state.rivalLands
+    let stillNeeded = cost[color] - sources
       .filter(l => l.tapped && !l.card.producesOptions && getLandColor(l.card) === color)
       .reduce((sum, l) => sum + (l.card.manaAmount || 1), 0);
 
@@ -90,17 +102,19 @@ export function tapRivalLandsFor(card) {
       if (land.card.producesOptions.includes(color)) {
         land.tapped = true;
         stillNeeded -= (land.card.manaAmount || 1);
+        if (land.card.sacrificeOnTap) performSacrifice(land, false);
       }
     }
   });
 
-  // 3) Genérico: cualquier tierra que todavía no se giró (y que produzca maná de verdad)
+  // 3) Genérico: cualquier fuente que todavía no se giró (y que produzca maná de verdad)
   let genericNeeded = cost.generic;
-  for (let i = 0; i < state.rivalLands.length && genericNeeded > 0; i++) {
-    const land = state.rivalLands[i];
+  for (let i = 0; i < sources.length && genericNeeded > 0; i++) {
+    const land = sources[i];
     if (!land.tapped && (land.card.produces || land.card.producesOptions)) {
       land.tapped = true;
       genericNeeded -= (land.card.manaAmount || 1);
+      if (land.card.sacrificeOnTap) performSacrifice(land, false);
     }
   }
 }
@@ -151,7 +165,8 @@ export async function checkRivalCounterOrResponse() {
   await sleep(600);
 
   const responseIndex = state.rivalHand.findIndex(c => {
-    if (!c.type.includes('Instantáneo') || !canRivalAfford(c)) return false;
+    const hasFlash = c.keywords && c.keywords.includes('flash');
+    if (!(c.type.includes('Instantáneo') || hasFlash) || !canRivalAfford(c)) return false;
 
     if (isCounterSpell(c)) {
       if (c.effect.type === 'counter_creature') {
@@ -206,7 +221,12 @@ export async function checkRivalCounterOrResponse() {
       card: responseCard,
       isLocal: false,
       targetObj: targetObj,
-      type: 'instant'
+      // Un permanente con Flash (artefacto/criatura) tiene que entrar al campo como
+      // corresponde, no resolverse como si fuera un hechizo de una sola vez — antes esto
+      // estaba fijo en 'instant' sin importar qué era la carta.
+      type: responseCard.power !== undefined ? 'summon'
+          : (responseCard.type.includes('Artefacto') || responseCard.type.includes('Encantamiento')) ? 'permanent'
+          : 'instant'
     });
 
     // --- CÓDIGO AGREGADO PARA DEVOLVER PRIORIDAD ---
@@ -243,6 +263,48 @@ function shouldRivalAttackWith(attackerItem) {
   return hasVigilance;
 }
 
+// Tripular un Vehículo del Tano: se paga girando poder de criaturas propias, nunca maná
+// (regla 702.121). Prioriza gastar criaturas mareadas (no pueden atacar este turno de
+// todas formas) o de bajo poder antes que sus mejores atacantes, para no restarle
+// potencial de ataque si hay alternativas más baratas para completar el poder pedido.
+function tryBotCrewVehicle(vehicleItem, zoneType) {
+  if (state.phase !== 'main1') return; // mismo criterio de timing que ya tenía
+
+  const required = vehicleItem.card.activatedAbility.crewCost;
+  const candidates = state.rivalCombat
+    .filter(c => !c.tapped)
+    .sort((a, b) => {
+      if (a.summoningSickness !== b.summoningSickness) return a.summoningSickness ? -1 : 1;
+      return getEffectivePower(a) - getEffectivePower(b);
+    });
+
+  const chosen = [];
+  let powerSoFar = 0;
+  for (const c of candidates) {
+    if (powerSoFar >= required) break;
+    chosen.push(c);
+    powerSoFar += getEffectivePower(c);
+  }
+  if (powerSoFar < required) return; // no le alcanza el poder disponible para tripularlo
+
+  const originZone = zoneType === 'land' ? state.rivalLands : state.rivalSupport;
+  const vIdx = originZone.indexOf(vehicleItem);
+  if (vIdx === -1) return;
+
+  chosen.forEach(c => { c.tapped = true; });
+
+  const card = vehicleItem.card;
+  const removed = originZone.splice(vIdx, 1)[0];
+  removed.card.power = card.baseStats.power;
+  removed.card.toughness = card.baseStats.toughness;
+  removed.isVehicle = true;
+  removed.wasLand = (zoneType === 'land');
+  removed.summoningSickness = !!removed.enteredThisTurn;
+  state.rivalCombat.push(removed);
+
+  logMsg(`🚗 El Tano tripuló a ${card.name} con ${chosen.length} criatura(s) suya(s) (${powerSoFar} de poder) — ahora es un ${card.baseStats.power}/${card.baseStats.toughness}.`);
+}
+
 // NUEVO: Evaluación táctica para activar artefactos y soporte
 export function tryActivateBotAbilities() {
   // Recorremos artefactos Y tierras de utilidad del Tano (cualquier permanente con
@@ -260,6 +322,15 @@ export function tryActivateBotAbilities() {
     if (zoneType === 'land' && (card.produces || card.producesOptions)) continue;
 
     const ability = card.activatedAbility;
+
+    // Tripular un Vehículo: se paga girando poder de criaturas, no maná — va por un camino
+    // totalmente aparte (antes esto intentaba leer ability.cost.includes(...) más abajo,
+    // que ni siquiera existe en un Vehículo, y encima cobraba maná por error).
+    if (ability.crewCost !== undefined) {
+      tryBotCrewVehicle(supportItem, zoneType);
+      continue;
+    }
+
     const requiresTap = ability.cost.includes('{T}');
     if (requiresTap && supportItem.tapped) continue;
 
@@ -276,10 +347,12 @@ export function tryActivateBotAbilities() {
     let aiTargetObj = null;
 
     // 🧠 CEREBRO DEL TANO: ¿Cuándo y a quién activar?
+    // Nota: si llegamos hasta acá con effect.type 'crew_vehicle', es una tierra-criatura
+    // (man-land) pagada con maná — los Vehículos de verdad ya se filtraron arriba
+    // (ability.crewCost) y nunca llegan a este árbol.
     if (ability.effect.type === 'crew_vehicle') {
-      // Tripular la Carreta Blindada solo en main1 para poder atacar con ella
       if (state.phase === 'main1') shouldActivate = true;
-    } 
+    }
     else if (ability.effect.type === 'attach_equipment') {
       // Equipar el Facón en main1 a su criatura más fuerte que no esté girada
       if (state.phase === 'main1' && state.rivalCombat.length > 0) {
@@ -288,6 +361,12 @@ export function tryActivateBotAbilities() {
            const chosen = bestTargets.reduce((prev, current) => 
               (getEffectivePower(prev) > getEffectivePower(current)) ? prev : current
            );
+           // Bug reportado: sin este chequeo, el Tano volvía a pagar y re-equipar lo mismo
+           // en la misma criatura una y otra vez cada vez que este loop se ejecutaba (varias
+           // veces por turno), porque "chosen" siempre daba la misma criatura y nada le
+           // avisaba que ya estaba puesto ahí. Si ya está en esa criatura, no repetir — pero
+           // sí lo deja moverlo a una mejor si la situación cambió (como en MTG real).
+           if (supportItem.attachedTo === chosen) continue;
            aiTargetObj = { type: 'creature', isLocal: false, item: chosen };
            shouldActivate = true;
          }
@@ -382,6 +461,12 @@ export function tryActivateGrantedBotAbilities() {
 
     const ability = ownAbility || equippedItem.card.grantedAbility;
     const sourceCard = ownAbility ? creatureItem.card : equippedItem.card;
+
+    // Un Vehículo ya tripulado (ahora una criatura en combate) todavía tiene pegada su
+    // habilidad de Tripular original — no es una habilidad de criatura de verdad, así que
+    // la salteamos acá explícitamente en vez de confiar en que ningún caso de abajo matchee.
+    if (ability.crewCost !== undefined) continue;
+
     const requiresTap = (ability.cost || "").includes('{T}');
     if (requiresTap && (creatureItem.tapped || creatureItem.summoningSickness)) continue;
 
@@ -573,7 +658,20 @@ export async function takeBotPriorityAction() {
             state.rivalGraveyard.push(cardToPlay);
           }
         } else if (state.rivalCombat.length > 0) {
-          aiTargetObj = { type: 'creature', isLocal: false, item: state.rivalCombat[0] };
+          // Mismo criterio que del lado del jugador: no le vuelvas a poner una habilidad que
+          // esa criatura ya tiene (de cualquier fuente) — antes siempre iba a rivalCombat[0]
+          // sin chequear nada.
+          const grantedKeywords = getKeywordsGrantedByPendingSpell(cardToPlay);
+          const validSelfTargets = state.rivalCombat.filter(c =>
+            !grantedKeywords.some(k => hasKeyword(c, k))
+          );
+          if (validSelfTargets.length > 0) {
+            aiTargetObj = { type: 'creature', isLocal: false, item: validSelfTargets[0] };
+          } else {
+            validPlay = false;
+            logMsg(`El Tano no tenía ninguna criatura que se beneficiara de ${cardToPlay.name} y lo descartó.`);
+            state.rivalGraveyard.push(cardToPlay);
+          }
         } else {
           validPlay = false;
           logMsg(`El Tano no tenía criaturas para encantar con ${cardToPlay.name} y lo descartó.`);
@@ -698,6 +796,7 @@ export async function takeBotPriorityAction() {
           if (!hasKeyword(unit, 'vigilance')) {
             unit.tapped = true;
           }
+          triggerCombatAbility(unit, 'attackTrigger', false);
           attackCount++;
         } else {
           heldBackCount++;
@@ -706,7 +805,10 @@ export async function takeBotPriorityAction() {
     });
 
     if (heldBackCount > 0) logMsg(`🧠 El Tano decide guardar ${heldBackCount} criatura(s) atrás para defender.`);
-    if (attackCount > 0) logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s)!`);
+    if (attackCount > 0) {
+      logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s)!`);
+      triggerAnyCreatureAttacks(false);
+    }
     else logMsg("El Tano no atacó con nada.");
     state.rivalAttackersDeclaredThisTurn = attackCount;
     

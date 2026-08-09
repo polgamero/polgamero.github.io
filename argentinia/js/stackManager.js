@@ -1,5 +1,5 @@
 import { sleep } from './utils.js';
-import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, performSacrifice } from './main.js';
+import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, getEffectiveToughness, performSacrifice, addCounters, cleanupIfVehicle } from './main.js';
 import { logMsg, render, createCardElement } from './ui.js';
 import { checkDeaths } from './combatRules.js';
 import { hasKeyword } from './keywords.js';
@@ -148,12 +148,13 @@ async function executeStackItem(item) {
           if (card.secondaryEffect && card.secondaryEffect.type === 'add_counter') {
             const friendlyBoard = isLocal ? state.localCombat : state.rivalCombat;
             if (friendlyBoard.length > 0) {
-              const buffTarget = friendlyBoard[0];
-              if (!buffTarget.auras) buffTarget.auras = [];
-              buffTarget.auras.push({
-                name: 'Contador +1/+1',
-                auraEffect: { stats: { signo: '+', cantidad: 1 } }
-              });
+              // Simplificación consciente: "hasta una criatura objetivo que controlás" pediría
+              // una segunda selección de objetivo, independiente de a quién le contrarrestás el
+              // hechizo — elegimos automáticamente tu criatura más fuerte en vez de sumar esa UI.
+              const buffTarget = friendlyBoard.reduce((best, cur) =>
+                getEffectivePower(cur) + getEffectiveToughness(cur) > getEffectivePower(best) + getEffectiveToughness(best) ? cur : best
+              );
+              addCounters(buffTarget, 'plusOne', card.secondaryEffect.amount || 1);
               logMsg(`💪 Además, ${card.name} le puso un contador +1/+1 a ${buffTarget.card.name}.`);
             }
           }
@@ -286,6 +287,7 @@ async function executeStackItem(item) {
               board.splice(idx, 1);
               detachEquipmentFrom(targetUnit, isTargetLocal);
               sendAurasToGraveyard(targetUnit, isTargetLocal);
+              cleanupIfVehicle(targetUnit); // si era un Vehículo tripulado, saca el power/toughness "prestado"
               grave.push(targetUnit.card);
               logMsg(`💀 ¡${card.name} destruyó a ${targetUnit.card.name}!`);
               triggerCreatureDies(targetUnit, isTargetLocal);
@@ -305,11 +307,7 @@ async function executeStackItem(item) {
             board.splice(idx, 1);
             detachEquipmentFrom(targetUnit, isTargetLocal);
             sendAurasToGraveyard(targetUnit, isTargetLocal);
-            // Si era un Vehículo tripulado, le sacamos las estadísticas temporales de criatura
-            if (targetUnit.isVehicle) {
-              delete targetUnit.card.power;
-              delete targetUnit.card.toughness;
-            }
+            cleanupIfVehicle(targetUnit); // si era un Vehículo tripulado, saca el power/toughness "prestado"
             hand.push(targetUnit.card);
             logMsg(`🔄 ¡${card.name} devolvió a ${targetUnit.card.name} a la mano de su dueño!`);
           } else {
@@ -339,20 +337,36 @@ async function executeStackItem(item) {
         }
       }
     } else {
-      // LÓGICA NUEVA: VEHÍCULOS (no requieren un targetObj externo porque se "activan" a sí mismos)
+      // LÓGICA: TIERRAS-CRIATURA (man-lands). OJO: esto ya NO lo usan los Vehículos de
+      // verdad (Carreta Blindada, Rolls Royce, Caballo de San Martín) — esos ahora se
+      // tripulan girando poder de criaturas propias (ver startCrewing/confirmCrew en
+      // main.js, activatedAbility.crewCost), nunca con maná. Este camino sigue vivo
+      // solo para las tierras-criatura (Cancha de Potrero, Refugio de Montaña), que SÍ
+      // se animan pagando maná — como Mutavault en MTG real, es una mecánica distinta
+      // de Tripular aunque reutilice el mismo efecto interno "se vuelve criatura".
       if (effectToApply.type === 'crew_vehicle') {
         const supportZone = isLocal ? state.localSupport : state.rivalSupport;
+        const landsZone = isLocal ? state.localLands : state.rivalLands;
         const combatZone = isLocal ? state.localCombat : state.rivalCombat;
-        
-        // Buscamos el vehículo en el soporte
-        const vehicleIndex = supportZone.findIndex(s => s.card.id === card.id);
+
+        // Los Vehículos normales viven en Soporte, pero una "tierra-criatura" (man-land)
+        // usa este MISMO mecanismo desde la zona de Tierras — buscamos en las dos.
+        let vehicleIndex = supportZone.findIndex(s => s.card.id === card.id);
+        let originZone = supportZone;
+        let fromLand = false;
+        if (vehicleIndex === -1) {
+          vehicleIndex = landsZone.findIndex(s => s.card.id === card.id);
+          originZone = landsZone;
+          fromLand = true;
+        }
         if (vehicleIndex !== -1) {
-          const vehicleItem = supportZone.splice(vehicleIndex, 1)[0];
+          const vehicleItem = originZone.splice(vehicleIndex, 1)[0];
           
           // Le pasamos los stats base para que se vuelva criatura temporal
           vehicleItem.card.power = card.baseStats.power;
           vehicleItem.card.toughness = card.baseStats.toughness;
           vehicleItem.isVehicle = true; // Flag clave para devolverlo después
+          vehicleItem.wasLand = fromLand; // A qué zona devolverla: Tierras o Soporte
           // Respeta el mareo de invocación: si el Vehículo entró este mismo turno, no puede
           // atacar apenas se tripula, igual que cualquier criatura recién jugada.
           vehicleItem.summoningSickness = !!vehicleItem.enteredThisTurn;
@@ -371,10 +385,7 @@ async function executeStackItem(item) {
             combatZone.splice(i, 1);
             detachEquipmentFrom(unit, isLocalZone);
             sendAurasToGraveyard(unit, isLocalZone);
-            if (unit.isVehicle) {
-              delete unit.card.power;
-              delete unit.card.toughness;
-            }
+            cleanupIfVehicle(unit); // si era un Vehículo tripulado, saca el power/toughness "prestado"
             graveyard.push(unit.card);
             triggerCreatureDies(unit, isLocalZone);
             triggerAnyCreatureDeath(unit, isLocalZone);
