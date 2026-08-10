@@ -1,11 +1,37 @@
 import { sleep } from './utils.js';
-import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, getEffectiveToughness, performSacrifice, addCounters, cleanupIfVehicle } from './main.js';
+import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, getEffectiveToughness, performSacrifice, addCounters, cleanupIfVehicle, tryAutoPayCounterTax } from './main.js';
 import { logMsg, render, createCardElement } from './ui.js';
 import { checkDeaths } from './combatRules.js';
 import { hasKeyword, getProtectionMatch } from './keywords.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 import { passPriority } from './turnManager.js';
+
+// A qué le puede apuntar cada variante de "contrarrestar" — regla real de MTG (702.61 y
+// glosario de counterspells): un counterspell normal SOLO frena HECHIZOS en la pila, nunca
+// habilidades activadas ni disparadas, a menos que la carta lo diga explícitamente (como
+// Stifle/Tale's End, que hacen lo contrario — solo habilidades — o Disallow, que hace las
+// dos cosas). Antes esto no se chequeaba en ningún lado: cualquier counter servía contra
+// cualquier cosa en la pila, hechizo o habilidad, indistinto.
+export function getCounterTargetRestriction(effectType) {
+  if (effectType === 'counter_ability') return { allowSpell: false, allowAbility: true };
+  if (effectType === 'counter_any') return { allowSpell: true, allowAbility: true };
+  // counter, counter_creature, counter_non_creature, counter_unless_pay: solo hechizos.
+  return { allowSpell: true, allowAbility: false };
+}
+
+// Sustituye el valor de X en un efecto, en TODOS los campos donde podría aparecer como
+// texto literal "X" — no solo `amount` (daño/cura/robar), sino también `powerMod`/
+// `toughnessMod` (un bufo con X, ej. "+X/+X hasta el final del turno"). Antes solo se
+// chequeaba `amount`, así que un pump con X nunca se resolvía bien.
+function resolveXInEffect(effect, xValue) {
+  if (!effect) return effect;
+  const resolved = { ...effect };
+  ['amount', 'powerMod', 'toughnessMod', 'lifeLoss'].forEach(key => {
+    if (resolved[key] === 'X') resolved[key] = xValue;
+  });
+  return resolved;
+}
 
 export const spellStack = [];
 let nextStackId = 1;
@@ -25,7 +51,12 @@ export async function resolveTopStackItem() {
   logMsg(`✨ Resolviendo de la pila: ${item.card.name}`);
   
   await executeStackItem(item);
-  
+
+  // Si quedó pausado esperando que alguien decida pagar "contrarresta a menos que...", no
+  // terminamos de resolver todavía — la prioridad NO se resetea hasta que se decida
+  // (payCounterTax / declineCounterTax hacen eso ellos mismos al terminar).
+  if (state.pendingCounterUnlessPay) return;
+
   // Tras resolver un objeto, la prioridad vuelve al jugador activo
   state.priorityPlayer = state.activePlayer;
   state.consecutivePasses = 0;
@@ -37,8 +68,121 @@ export async function resolveTopStackItem() {
   }
 }
 
+// Aplica UN efecto a UN target puntual (criatura o jugador) — extraído para reusarlo en
+// objetivos múltiples, donde cada target de la carta tiene su propio efecto. Replica
+// exactamente los mismos pasos que ya usa la resolución de un target único (girar
+// Indestructible, sacar Equipos/Auras, avisar Vehículos) para no tener dos reglas
+// distintas para lo mismo.
+function applyEffectToSingleTarget(effect, targetObj, isLocal, cardName, sourceColors) {
+  if (targetObj.type === 'player') {
+    const isTargetLocal = targetObj.isLocal;
+    const targetName = isTargetLocal ? "vos" : "el Tano";
+    if (effect.type === 'damage') {
+      if (isTargetLocal) state.localHP -= effect.amount; else state.rivalHP -= effect.amount;
+      logMsg(`💥 ¡${cardName}! Le hizo ${effect.amount} de daño a ${targetName}.`);
+    } else if (effect.type === 'heal') {
+      if (isTargetLocal) state.localHP += effect.amount; else state.rivalHP += effect.amount;
+      logMsg(`💚 ¡${cardName}! ${targetName} ganó ${effect.amount} de vida.`);
+    } else if (effect.type === 'discard') {
+      const hand = isTargetLocal ? state.localHand : state.rivalHand;
+      const grave = isTargetLocal ? state.localGraveyard : state.rivalGraveyard;
+      const amount = Math.min(effect.amount || 1, hand.length);
+      for (let i = 0; i < amount; i++) {
+        const idx = isTargetLocal ? hand.length - 1 : Math.floor(Math.random() * hand.length);
+        const discarded = hand.splice(idx, 1)[0];
+        if (discarded) grave.push(discarded);
+      }
+      logMsg(`🗑️ ¡${cardName}! ${targetName} descartó ${amount} carta(s).`);
+    } else if (effect.type === 'draw') {
+      const hand = isTargetLocal ? state.localHand : state.rivalHand;
+      const deck = isTargetLocal ? state.localDeck : state.rivalDeck;
+      const amount = Math.min(effect.amount || 1, deck.length);
+      for (let i = 0; i < amount; i++) hand.push(deck.pop());
+      logMsg(`🃏 ¡${cardName}! ${targetName} robó ${amount} carta(s).`);
+    }
+    return;
+  }
+
+  if (targetObj.type === 'creature') {
+    const targetUnit = targetObj.item;
+    const isTargetLocal = state.localCombat.includes(targetUnit);
+    const board = isTargetLocal ? state.localCombat : state.rivalCombat;
+    const grave = isTargetLocal ? state.localGraveyard : state.rivalGraveyard;
+
+    const protectedColor = getProtectionMatch(targetUnit, sourceColors || []);
+    if (protectedColor) {
+      logMsg(`🛡️ ¡${targetUnit.card.name} tiene Protección de ${COLOR_LABELS[protectedColor] || protectedColor}! ${cardName} no le hace nada.`);
+      return;
+    }
+
+    if (effect.type === 'damage') {
+      targetUnit.damageTaken = (targetUnit.damageTaken || 0) + effect.amount;
+      logMsg(`💥 ¡${cardName}! Le hizo ${effect.amount} de daño a ${targetUnit.card.name}.`);
+      checkDeaths(state.localCombat, state.localGraveyard, "Vos");
+      checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+    } else if (effect.type === 'pump') {
+      if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
+      targetUnit.tempEffects.push({ powerMod: effect.powerMod || 0, toughnessMod: effect.toughnessMod || 0 });
+      logMsg(`💪 ¡${cardName}! ${targetUnit.card.name} obtuvo +${effect.powerMod || 0}/+${effect.toughnessMod || 0} hasta el final del turno.`);
+    } else if (effect.type === 'destroy_creature' || effect.type === 'exile_creature' || effect.type === 'bounce') {
+      const idx = board.indexOf(targetUnit);
+      if (idx === -1) { logMsg(`⚠️ ${cardName} falló: el objetivo ya no está en el campo.`); return; }
+      if (effect.type === 'destroy_creature' && hasKeyword(targetUnit, 'indestructible')) {
+        logMsg(`🛡️ ${targetUnit.card.name} es Indestructible: ${cardName} no pudo hacer nada.`);
+        return;
+      }
+      board.splice(idx, 1);
+      detachEquipmentFrom(targetUnit, isTargetLocal);
+      sendAurasToGraveyard(targetUnit, isTargetLocal);
+      cleanupIfVehicle(targetUnit);
+      if (effect.type === 'destroy_creature') {
+        grave.push(targetUnit.card);
+        logMsg(`💀 ¡${cardName} destruyó a ${targetUnit.card.name}!`);
+        triggerCreatureDies(targetUnit, isTargetLocal);
+        triggerAnyCreatureDeath(targetUnit, isTargetLocal);
+      } else if (effect.type === 'exile_creature') {
+        (isTargetLocal ? state.localExile : state.rivalExile).push(targetUnit.card);
+        logMsg(`🌀 ¡${cardName} exilió a ${targetUnit.card.name}!`);
+      } else {
+        (isTargetLocal ? state.localHand : state.rivalHand).push(targetUnit.card);
+        logMsg(`🔄 ¡${cardName} devolvió a ${targetUnit.card.name} a la mano de su dueño!`);
+      }
+    }
+    return;
+  }
+
+  if (targetObj.type === 'permanent') {
+    const permItem = targetObj.item;
+    const isTargetLocal = state.localSupport.includes(permItem);
+    const zone = isTargetLocal ? state.localSupport : state.rivalSupport;
+    const grave = isTargetLocal ? state.localGraveyard : state.rivalGraveyard;
+    const idx = zone.indexOf(permItem);
+    if (idx === -1) { logMsg(`⚠️ ${cardName} falló: el objetivo ya no está en el campo.`); return; }
+    if ((effect.type === 'destroy_artifact' && permItem.card.type.includes('Artefacto')) ||
+        (effect.type === 'destroy_enchantment' && permItem.card.type.includes('Encantamiento'))) {
+      zone.splice(idx, 1);
+      grave.push(permItem.card);
+      logMsg(`💥 ¡${cardName} destruyó ${permItem.card.name}!`);
+    }
+  }
+}
+
 async function executeStackItem(item) {
   const { card, isLocal, targetObj, type } = item;
+
+  // Mandar la carta que se está resolviendo a donde corresponda (cementerio normal, o
+  // Exilio si vino por Flashback) — se llama en cada lugar donde el hechizo termina de
+  // resolverse ANTES de llegar al final natural de la función (contrarrestar algo mal
+  // targeteado, pagar/no pagar un "contrarresta a menos que", etc.), para que la carta
+  // nunca desaparezca del juego sin ir a ningún lado.
+  const sendResolvedCardAway = () => {
+    if (item.castFrom === 'flashback') {
+      (isLocal ? state.localExile : state.rivalExile).push(card);
+      logMsg(`🌀 ${card.name} se exilía tras resolverse (Flashback ya usado).`);
+    } else {
+      (isLocal ? state.localGraveyard : state.rivalGraveyard).push(card);
+    }
+  };
 
   if (type === 'planeswalker') {
     const pwZone = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
@@ -97,6 +241,11 @@ async function executeStackItem(item) {
     if (card.etbEffect) {
       if (card.requiresTarget && targetObj) {
         let effectToApply = card.etbEffect;
+        // Costo de maná variable ({X}): si el efecto usa "X" como cantidad, lo resolvemos
+        // acá al valor real que el jugador fijó al lanzar el hechizo (nunca antes de esto).
+        if (effectToApply) {
+          effectToApply = resolveXInEffect(effectToApply, item.xValue || 0);
+        }
         if (targetObj.type === 'player') {
           const targetName = targetObj.isLocal ? "vos" : "el Tano";
           if (effectToApply.type === 'damage') {
@@ -137,6 +286,33 @@ async function executeStackItem(item) {
     return;
   }
 
+  // Objetivos múltiples: cada entrada de card.targets[] tiene su propio efecto, ya
+  // emparejado en orden con targetObj.targets[] (el jugador/el Tano los eligió uno por
+  // uno, en ese mismo orden, al castear el hechizo).
+  if (targetObj && targetObj.type === 'multi') {
+    (card.targets || []).forEach((spec, i) => {
+      const chosen = targetObj.targets[i];
+      if (!chosen) return;
+      let effectToApply = spec.effect;
+      if (effectToApply) {
+        effectToApply = resolveXInEffect(effectToApply, item.xValue || 0);
+      }
+      applyEffectToSingleTarget(effectToApply, chosen, isLocal, card.name, card.colors);
+    });
+    // BUG encontrado y arreglado: esto hacía return sin mandar la carta a ningún lado —
+    // un hechizo multi-target resuelto desaparecía del juego entero, ni cementerio ni
+    // Exilio. Mismo criterio de Flashback que el resto de los hechizos.
+    if (item.castFrom === 'flashback') {
+      (isLocal ? state.localExile : state.rivalExile).push(card);
+      logMsg(`🌀 ${card.name} se exilía tras resolverse (Flashback ya usado).`);
+    } else if (isLocal) {
+      state.localGraveyard.push(card);
+    } else {
+      state.rivalGraveyard.push(card);
+    }
+    return;
+  }
+
   if (type === 'spell' || type === 'instant' || type === 'ability') {
     let effectToApply = card.effect;
     
@@ -151,10 +327,54 @@ async function executeStackItem(item) {
       }
     }
 
+    // Costo de maná variable ({X}): si el efecto usa "X" como cantidad, lo resolvemos acá
+    // al valor real que el jugador (o el Tano) fijó al lanzar el hechizo — nunca antes.
+    if (effectToApply) {
+      effectToApply = resolveXInEffect(effectToApply, item.xValue || 0);
+    }
+
     if (effectToApply && effectToApply.type && effectToApply.type.startsWith('counter')) {
       if (targetObj && targetObj.type === 'stack') {
         const targetIndex = spellStack.findIndex(s => s.id === targetObj.stackId);
         if (targetIndex !== -1) {
+          const targetItem = spellStack[targetIndex];
+
+          // Red de seguridad (además de lo que ya valida handleStackCardClick del lado
+          // humano): un counter normal no puede frenar una habilidad, y uno tipo Stifle no
+          // puede frenar un hechizo. Cubre sobre todo al Tano, que no pasa por esa validación.
+          const targetIsAbility = targetItem.type === 'ability';
+          const restriction = getCounterTargetRestriction(effectToApply.type);
+          const typeAllowed = targetIsAbility ? restriction.allowAbility : restriction.allowSpell;
+          if (!typeAllowed) {
+            logMsg(`⚠️ ${card.name} no puede contrarrestar a "${targetItem.card.name}" — ${targetIsAbility ? 'es una habilidad, no un hechizo' : 'es un hechizo, no una habilidad'}.`);
+            sendResolvedCardAway();
+            return;
+          }
+
+          // "Contrarresta a menos que pague": el CONTROLADOR del hechizo amenazado decide,
+          // no quien tira el counterspell. Si es tuyo, pausamos y te dejamos elegir; si es
+          // del Tano, decide en el momento (paga si puede).
+          if (effectToApply.type === 'counter_unless_pay') {
+            const amount = effectToApply.amount;
+            if (targetItem.isLocal) {
+              // Guardamos también el propio counterspell (card/isLocal/castFrom) para que
+              // payCounterTax/declineCounterTax lo puedan mandar a destino cuando
+              // terminen de resolver esto — si no, se perdía sin ir a ningún lado.
+              state.pendingCounterUnlessPay = { targetStackId: targetObj.stackId, amount, targetCardName: targetItem.card.name, counterCard: card, counterIsLocal: isLocal, counterCastFrom: item.castFrom };
+              logMsg(`💰 ¡${card.name} amenaza con contrarrestar "${targetItem.card.name}"! Pagá {${amount}} o se pierde.`);
+              return;
+            } else {
+              const paid = tryAutoPayCounterTax(false, amount);
+              if (paid) {
+                logMsg(`💰 El Tano pagó {${amount}} para que "${targetItem.card.name}" no se pierda.`);
+                sendResolvedCardAway();
+                return;
+              }
+              logMsg(`🚫 El Tano no pudo pagar {${amount}} — "${targetItem.card.name}" se pierde.`);
+              // sigue de largo: se contrarresta de verdad, como cualquier counter normal
+            }
+          }
+
           const counteredItem = spellStack.splice(targetIndex, 1)[0];
           logMsg(`🚫 ¡${card.name} contrarrestó a "${counteredItem.card.name}"!`);
           if (counteredItem.isLocal) state.localGraveyard.push(counteredItem.card);
@@ -276,32 +496,59 @@ async function executeStackItem(item) {
         // un hechizo, tu criatura con más poder) y la criatura objetivo se hacen daño mutuo
         // igual a su fuerza. No usa la pila para elegir la propia: viene resuelta de antemano.
         else if (effectToApply.type === 'fight') {
-          let selfUnit = item.sourceItem;
+          // Prioridad: la criatura que el jugador ELIGIÓ manualmente (targetObj.fightWithItem,
+          // ver el paso 2 de selección en handleCombatClick) > la fuente de una habilidad
+          // propia (ej. Alberto Samid, donde "quién pelea" ya está claro de antemano) > el
+          // viejo fallback de auto-elegir tu criatura más fuerte, por si algo llega sin
+          // ninguna de las dos anteriores.
+          let selfUnit = targetObj.fightWithItem || item.sourceItem;
           if (!selfUnit) {
-            // Viene de un hechizo, no de la habilidad de una criatura: auto-elegimos tu
-            // criatura con más poder para que sea la que pelea.
             const ownBoard = isLocal ? state.localCombat : state.rivalCombat;
             if (ownBoard.length > 0) {
               selfUnit = ownBoard.reduce((prev, current) => getEffectivePower(prev) > getEffectivePower(current) ? prev : current);
             }
           }
           if (selfUnit) {
+            // Pelear (fight) NO es daño de combate — son reglas propias (regla 701.12 y
+            // el comprehensive rules glossary de "fight"). Repasado contra las reglas
+            // oficiales: Primer Golpe, Doble Golpe y Arrollar NO participan (el daño
+            // siempre es simultáneo, una sola vez, y nunca hay jugador de por medio) — por
+            // eso ninguno de los dos se chequea acá abajo. Toque Mortal, Vínculo Vital,
+            // Indestructible y Protección SÍ participan igual que en combate normal.
             const selfPower = getEffectivePower(selfUnit);
             const targetPower = getEffectivePower(targetUnit);
+            const selfHasDeathtouch = hasKeyword(selfUnit, 'deathtouch');
+            const targetHasDeathtouch = hasKeyword(targetUnit, 'deathtouch');
+            const selfHasLifelink = hasKeyword(selfUnit, 'lifelink');
+            const targetHasLifelink = hasKeyword(targetUnit, 'lifelink');
+
             // Protección corre en las dos direcciones: cada uno puede estar a salvo del
             // color del otro sin que eso frene la pelea en sí, solo el daño de ese lado.
             const targetProtectedFromSelf = getProtectionMatch(targetUnit, selfUnit.card.colors || []);
             const selfProtectedFromTarget = getProtectionMatch(selfUnit, targetUnit.card.colors || []);
+
             if (targetProtectedFromSelf) {
               logMsg(`🛡️ ¡${targetUnit.card.name} tiene Protección de ${COLOR_LABELS[targetProtectedFromSelf] || targetProtectedFromSelf}! No recibe daño de ${selfUnit.card.name}.`);
-            } else {
+            } else if (selfPower > 0) {
               targetUnit.damageTaken = (targetUnit.damageTaken || 0) + selfPower;
+              if (selfHasDeathtouch) targetUnit.tookDeathtouch = true;
+              if (selfHasLifelink) {
+                if (isLocal) state.localHP += selfPower; else state.rivalHP += selfPower;
+                logMsg(`💚 Vínculo Vital: ${selfUnit.card.name} le da ${selfPower} de vida a su controlador.`);
+              }
             }
+
             if (selfProtectedFromTarget) {
               logMsg(`🛡️ ¡${selfUnit.card.name} tiene Protección de ${COLOR_LABELS[selfProtectedFromTarget] || selfProtectedFromTarget}! No recibe daño de ${targetUnit.card.name}.`);
-            } else {
+            } else if (targetPower > 0) {
               selfUnit.damageTaken = (selfUnit.damageTaken || 0) + targetPower;
+              if (targetHasDeathtouch) selfUnit.tookDeathtouch = true;
+              if (targetHasLifelink) {
+                if (isLocal) state.rivalHP += targetPower; else state.localHP += targetPower;
+                logMsg(`💚 Vínculo Vital: ${targetUnit.card.name} le da ${targetPower} de vida a su controlador.`);
+              }
             }
+
             logMsg(`🥊 ¡${selfUnit.card.name} pelea contra ${targetUnit.card.name}! (${selfPower} vs ${targetPower} de daño)`);
             checkDeaths(state.localCombat, state.localGraveyard, "Vos");
             checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
@@ -593,8 +840,17 @@ async function executeStackItem(item) {
     }
     
     if (type !== 'ability') {
-      if (isLocal) state.localGraveyard.push(card);
-      else state.rivalGraveyard.push(card);
+      // Flashback: al resolver, se exilía en vez de volver al cementerio (regla real de
+      // Flashback — "úsala una vez, después se va del todo"). Cualquier otro casteo normal
+      // sigue yendo al cementerio como siempre.
+      if (item.castFrom === 'flashback') {
+        (isLocal ? state.localExile : state.rivalExile).push(card);
+        logMsg(`🌀 ${card.name} se exilía tras resolverse (Flashback ya usado).`);
+      } else if (isLocal) {
+        state.localGraveyard.push(card);
+      } else {
+        state.rivalGraveyard.push(card);
+      }
     }
   }
 }
@@ -605,6 +861,18 @@ export function handleStackCardClick(item) {
   const effectType = state.pendingTargetCard.effect?.type;
 
   if (effectType && effectType.startsWith('counter')) {
+    const isAbility = item.type === 'ability';
+    const restriction = getCounterTargetRestriction(effectType);
+
+    if (isAbility && !restriction.allowAbility) {
+      logMsg("❌ Esta carta solo puede contrarrestar HECHIZOS — no frena habilidades activadas ni disparadas.");
+      return;
+    }
+    if (!isAbility && !restriction.allowSpell) {
+      logMsg("❌ Esta carta solo puede contrarrestar HABILIDADES activadas o disparadas — no frena hechizos.");
+      return;
+    }
+
     const isCreatureSpell = item.type === 'summon' || item.card?.power !== undefined;
 
     if (effectType === 'counter_creature' && !isCreatureSpell) {
@@ -700,11 +968,18 @@ export function renderStack() {
     const cardDiv = document.createElement('div');
 
     const isCreatureSpell = item.type === 'summon' || item.card?.power !== undefined;
-    const isCounterNonCreature = pendingEffect === 'counter_non_creature' && !isCreatureSpell;
-    const isCounterCreature = pendingEffect === 'counter_creature' && isCreatureSpell;
-    const isGenericCounter = pendingEffect === 'counter' || pendingEffect === 'counter_unless_pay';
-    
-    const isTargetingCounter = isGenericCounter || isCounterCreature || isCounterNonCreature;
+    const isAbilityItem = item.type === 'ability';
+
+    let isTargetingCounter = false;
+    if (pendingEffect && pendingEffect.startsWith('counter')) {
+      const restriction = getCounterTargetRestriction(pendingEffect);
+      const typeAllowed = isAbilityItem ? restriction.allowAbility : restriction.allowSpell;
+      if (typeAllowed) {
+        if (pendingEffect === 'counter_creature') isTargetingCounter = isCreatureSpell;
+        else if (pendingEffect === 'counter_non_creature') isTargetingCounter = !isCreatureSpell;
+        else isTargetingCounter = true; // counter, counter_unless_pay, counter_ability, counter_any
+      }
+    }
     const targetableClass = isTargetingCounter ? 'targetable-stack' : '';
 
     cardDiv.className = `stack-item-card ${item.isLocal ? 'local' : 'rival'} ${isTop ? 'top-item' : ''} ${targetableClass}`;

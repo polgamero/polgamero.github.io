@@ -17,7 +17,9 @@ import {
   cancelPayment,
   payWithAlternativeCost,
   payWard,
+  payCounterTax,
   activateLoyaltyAbility,
+  castFromGraveyard,
   checkGameOver,
   passPriority // Importado del nuevo sistema
 } from './main.js';
@@ -55,6 +57,7 @@ export const els = {
   btnCancelSpell : document.getElementById('btn-cancel-spell'),
   btnAltCost : document.getElementById('btn-alt-cost'),
   btnPayWard : document.getElementById('btn-pay-ward'),
+  btnPayCounterTax : document.getElementById('btn-pay-counter-tax'),
 
   rivalDeckPile: null,
   rivalGYPile: null,
@@ -186,6 +189,99 @@ export function updatePilesUI() {
 // ya usó su habilidad este turno, o si el costo es negativo y no tiene Lealtad suficiente
 // — el resto de las restricciones (fase, turno) las valida activateLoyaltyAbility al elegir,
 // así que acá alcanza con un chequeo simple para no ofrecer botones obviamente inválidos.
+// Elegir el valor de X (regla 107.3/601.2b: se anuncia y se fija ANTES de pagar nada). El
+// hint de "maná disponible" es solo informativo — no le impide al jugador probar un X más
+// alto (si no le alcanza, simplemente no va a poder terminar de pagar y puede cancelar).
+// Elegir modo de un hechizo modal ("Elegí uno —", regla 700.2/601.2b): un botón por modo,
+// mostrando su texto completo — se elige ANTES de pagar nada, así que acá no hay ningún
+// chequeo de maná ni de targets todavía (eso viene después, ya con el modo fijado).
+export function showModalSpellChoice(card, onConfirm, onCancel) {
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+
+  const modesHTML = card.modes.map((mode, idx) => `
+    <button class="loyalty-ability-btn" data-idx="${idx}" style="justify-content: flex-start;">
+      <span class="loyalty-ability-text">${mode.text}</span>
+    </button>
+  `).join('');
+
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width: 440px;">
+      <div class="gy-modal-header">
+        <h3>🔀 ${card.name} — Elegí un modo</h3>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
+        ${modesHTML}
+        <button id="modal-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">❌ Cancelar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalOverlay);
+
+  modalOverlay.querySelectorAll('.loyalty-ability-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      modalOverlay.remove();
+      onConfirm(idx);
+    });
+  });
+  modalOverlay.querySelector('#modal-cancel').addEventListener('click', () => {
+    modalOverlay.remove();
+    onCancel();
+  });
+}
+
+export function showXValueModal(card, onConfirm, onCancel) {
+  const untappedLands = state.localLands.filter(l => !l.tapped).length;
+  const untappedRocks = state.localSupport.filter(s => !s.tapped && (s.card.produces || s.card.producesOptions)).length;
+  const baseCost = { ...card };
+  const restOfCostSymbols = (card.manaCost.match(/\{[^}]+\}/g) || []).filter(s => s !== '{X}').length;
+  const roughMaxX = Math.max(0, (untappedLands + untappedRocks) - restOfCostSymbols);
+
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width: 380px;">
+      <div class="gy-modal-header">
+        <h3>✨ ${card.name}</h3>
+      </div>
+      <div style="padding: 20px; text-align: center;">
+        <p style="color:#cfe0d4; font-size: 14px; margin-bottom: 14px;">${card.text || ''}</p>
+        <p style="color:#a89bb5; font-size: 12px; margin-bottom: 16px;">Maná disponible aprox.: podés pagar hasta X = ${roughMaxX} (con lo que tenés sin girar ahora).</p>
+        <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom: 20px;">
+          <button id="x-minus" class="mulligan-btn mulligan-btn-mull" style="padding: 8px 16px;">−</button>
+          <span id="x-value-display" style="font-size: 28px; font-weight: bold; color: var(--gold, #d4af37); min-width: 50px;">0</span>
+          <button id="x-plus" class="mulligan-btn mulligan-btn-mull" style="padding: 8px 16px;">+</button>
+        </div>
+        <div class="mulligan-buttons">
+          <button id="x-cancel" class="mulligan-btn mulligan-btn-mull">❌ Cancelar</button>
+          <button id="x-confirm" class="mulligan-btn mulligan-btn-keep">Confirmar X</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalOverlay);
+
+  let xValue = 0;
+  const display = modalOverlay.querySelector('#x-value-display');
+  modalOverlay.querySelector('#x-minus').addEventListener('click', () => {
+    xValue = Math.max(0, xValue - 1);
+    display.textContent = xValue;
+  });
+  modalOverlay.querySelector('#x-plus').addEventListener('click', () => {
+    xValue += 1;
+    display.textContent = xValue;
+  });
+  modalOverlay.querySelector('#x-confirm').addEventListener('click', () => {
+    modalOverlay.remove();
+    onConfirm(xValue);
+  });
+  modalOverlay.querySelector('#x-cancel').addEventListener('click', () => {
+    modalOverlay.remove();
+    onCancel();
+  });
+}
+
 export function showLoyaltyAbilityModal(pwItem, isLocal) {
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
@@ -255,10 +351,32 @@ export function openGraveyardModal(isLocal) {
     gridContent.innerHTML = `<div style="color:#bdc3c7; font-style:italic; padding:40px;">No hay cartas en el cementerio todavía.</div>`;
   } else {
     gyArray.forEach((cardObj, idx) => {
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.alignItems = 'center';
+      wrapper.style.gap = '4px';
+
       const cardEl = createCardElement(cardObj, false, isLocal, idx, 'modal');
       cardEl.style.width = '120px';
       cardEl.style.height = '168px';
-      gridContent.appendChild(cardEl);
+      wrapper.appendChild(cardEl);
+
+      // Flashback: solo en TU cementerio, solo si la carta lo tiene.
+      if (isLocal && cardObj.flashback) {
+        const fbBtn = document.createElement('button');
+        fbBtn.className = 'mulligan-btn mulligan-btn-keep';
+        fbBtn.style.fontSize = '11px';
+        fbBtn.style.padding = '4px 8px';
+        fbBtn.textContent = `🔄 Flashback ${cardObj.flashback.cost}`;
+        fbBtn.addEventListener('click', () => {
+          modalOverlay.remove();
+          castFromGraveyard(cardObj, isLocal);
+        });
+        wrapper.appendChild(fbBtn);
+      }
+
+      gridContent.appendChild(wrapper);
     });
   }
 
@@ -1007,6 +1125,49 @@ export function showMulliganModal(hand, mulliganCount, canMulliganMore, callback
 }
 
 // Paso 2 (solo si mulliganeaste al menos una vez): elegir qué cartas van al fondo del mazo.
+// Scry N / Surveil N: mirás las N cartas de arriba del mazo y decidís, una por una, si se
+// quedan arriba o se van — al fondo del mazo (Scry) o al cementerio (Surveil). Reusa el
+// mismo armado de fila de cartas seleccionables que ya usa el Mulligan. El botón de
+// Confirmar SIEMPRE está habilitado (a diferencia de "elegir para el fondo" del Mulligan,
+// acá 0 cartas elegidas es perfectamente legal — significa "todas se quedan arriba").
+export function showScrySurveilModal(cards, mode, onConfirm) {
+  injectMulliganStyles();
+  const overlay = document.createElement('div');
+  overlay.id = 'mulligan-overlay';
+
+  const destino = mode === 'surveil' ? 'al cementerio' : 'al fondo del mazo';
+  const icono = mode === 'surveil' ? '👁️' : '🔮';
+  const chosen = new Set();
+
+  overlay.innerHTML = `
+    <div class="mulligan-panel">
+      <div class="mulligan-title">${icono} ${mode === 'surveil' ? 'Surveil' : 'Scry'} ${cards.length}</div>
+      <div class="mulligan-subtitle">Clickeá una carta para mandarla ${destino}. Las que no toques se quedan arriba, en el mismo orden.</div>
+      <div class="mulligan-hand-row-slot"></div>
+      <div class="mulligan-buttons">
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-scry">Confirmar</button>
+      </div>
+    </div>
+  `;
+
+  const row = buildMulliganCardRow(cards, true, (card, cardEl) => {
+    if (chosen.has(card)) {
+      chosen.delete(card);
+      cardEl.classList.remove('chosen');
+    } else {
+      chosen.add(card);
+      cardEl.classList.add('chosen');
+    }
+  });
+  overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#btn-confirm-scry').addEventListener('click', () => {
+    overlay.remove();
+    onConfirm(cards.filter(c => chosen.has(c)), cards.filter(c => !chosen.has(c)));
+  });
+}
+
 export function showBottomCardsModal(hand, countToBottom, onConfirm) {
   injectMulliganStyles();
   const overlay = document.createElement('div');
@@ -1211,10 +1372,10 @@ export function render() {
   if (state.isDiscarding) els.localHand.classList.add('discard-warning');
   else els.localHand.classList.remove('discard-warning');
 
-  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice) {
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay) {
     els.paymentControls.classList.remove('hidden'); els.btnEndTurn.classList.add('hidden'); 
     els.localHand.classList.add('paying-mode');
-    if (!state.pendingCrew && !state.pendingWardChoice) els.localLands.classList.add('paying-mode');
+    if (!state.pendingCrew && !state.pendingWardChoice && !state.pendingCounterUnlessPay) els.localLands.classList.add('paying-mode');
     if (state.pendingSpellIndex !== null) {
       const pendingCardEl = els.localHand.children[state.pendingSpellIndex];
       if (pendingCardEl) pendingCardEl.classList.add('paying');
@@ -1225,6 +1386,10 @@ export function render() {
       statusText = `Tripulando ${state.pendingCrew.item.card.name}: ${state.pendingCrew.powerSoFar}/${state.pendingCrew.required} de poder — clickeá tus criaturas 🚗`;
     } else if (state.pendingWardChoice) {
       statusText = `🔶 ¡${state.pendingWardChoice.targetObj.item.card.name} tiene Ward ${state.pendingWardChoice.wardCost}! Pagá o el hechizo se pierde.`;
+    } else if (state.pendingCounterUnlessPay) {
+      statusText = `💰 ¡"${state.pendingCounterUnlessPay.targetCardName}" va a ser contrarrestado! Pagá {${state.pendingCounterUnlessPay.amount}} o se pierde.`;
+    } else if (state.pendingFightChoice) {
+      statusText = `🥊 Elegiste a ${state.pendingFightChoice.opponentItem.card.name} como rival. Ahora clickeá CUÁL de tus criaturas pelea.`;
     } else {
       statusText = state.pendingTargetCard ? "¡Maná pagado! Elegí un objetivo brillante ✨" : "Falta: ";
       if (!state.pendingTargetCard) {
@@ -1234,6 +1399,7 @@ export function render() {
         if (state.pendingCost.R > 0) statusText += `${state.pendingCost.R} Rojo `;
         if (state.pendingCost.G > 0) statusText += `${state.pendingCost.G} Verde `;
         if (state.pendingCost.generic > 0) statusText += `${state.pendingCost.generic} Genérico`;
+        if (state.pendingHybridLifePayment) statusText += ` (+ ${state.pendingHybridLifePayment} de vida al terminar)`;
       }
     }
     els.paymentStatus.textContent = statusText;
@@ -1242,10 +1408,12 @@ export function render() {
     // seguís pagando el maná normal — una vez que ya elegiste un camino (pagaste maná del
     // todo, o ya estás eligiendo objetivo) no tiene sentido seguir ofreciéndolo.
     const pendingCard = state.pendingSpellIndex !== null ? state.localHand[state.pendingSpellIndex] : null;
-    if (pendingCard && pendingCard.alternativeCost && !state.pendingTargetCard && !state.pendingCrew && !state.pendingWardChoice) {
+    if (pendingCard && pendingCard.alternativeCost && !state.pendingTargetCard && !state.pendingCrew && !state.pendingWardChoice && !state.pendingCounterUnlessPay && !state.pendingHybridLifePayment) {
       els.btnAltCost.classList.remove('hidden');
       const ac = pendingCard.alternativeCost;
-      const altLabel = ac.type === 'life' ? `💉 Pagar con ${ac.amount} de vida en vez de maná` : `Pagar costo alternativo`;
+      const altLabel = ac.type === 'life' ? `💉 Pagar con ${ac.amount} de vida en vez de maná`
+        : ac.type === 'hybrid' ? `💉 Pagar con ${ac.manaCost} + ${ac.life} de vida en vez del costo completo`
+        : `Pagar costo alternativo`;
       els.btnAltCost.textContent = altLabel;
     } else {
       els.btnAltCost.classList.add('hidden');
@@ -1256,6 +1424,13 @@ export function render() {
       els.btnPayWard.textContent = `🔶 Pagar Ward ${state.pendingWardChoice.wardCost}`;
     } else {
       els.btnPayWard.classList.add('hidden');
+    }
+
+    if (state.pendingCounterUnlessPay) {
+      els.btnPayCounterTax.classList.remove('hidden');
+      els.btnPayCounterTax.textContent = `💰 Pagar {${state.pendingCounterUnlessPay.amount}}`;
+    } else {
+      els.btnPayCounterTax.classList.add('hidden');
     }
   } else {
     els.paymentControls.classList.add('hidden'); els.btnEndTurn.classList.remove('hidden');
@@ -1268,6 +1443,7 @@ export function render() {
 els.btnCancelSpell.addEventListener('click', cancelPayment);
 els.btnAltCost.addEventListener('click', payWithAlternativeCost);
 els.btnPayWard.addEventListener('click', payWard);
+els.btnPayCounterTax.addEventListener('click', payCounterTax);
 
 // ACTUALIZADO: Controles de teclado globales (Escape y Barra Espaciadora)
 document.addEventListener('keydown', (e) => { 

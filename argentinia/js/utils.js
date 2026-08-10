@@ -187,6 +187,8 @@ export function parseManaCost(manaString) {
   if (!matches) return cost;
   matches.forEach(m => {
     const val = m.replace(/[{}]/g, '');
+    if (val === 'X') return; // El valor de X se suma aparte, una vez que el jugador lo elige
+                              // (no se sabe todavía en este punto — ver confirmXValue en main.js).
     if (['W', 'U', 'B', 'R', 'G'].includes(val)) cost[val] += 1;
     else if (!isNaN(val)) cost.generic += parseInt(val, 10);
   });
