@@ -467,5 +467,152 @@
       "powerMod": 4,
       "toughnessMod": 4
     }
+  },
+  {
+    "id": "conj_025",
+    "name": "No hay Pacto sin Sangre",
+    "type": "Conjuro",
+    "manaCost": "{3}{B}{B}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Podés pagar {1} y 2 Puntos de Vida en vez del costo de maná de este hechizo. El jugador rival pierde 3 Puntos de Vida y vos ganás 3.",
+    "flavorText": "La sangre corta siempre alcanza para algo.",
+    "requiresTarget": false,
+    "image": "pacto_con_sangre.png",
+    "alternativeCost": {
+      "type": "hybrid",
+      "manaCost": "{1}",
+      "life": 2
+    },
+    "effect": {
+      "type": "drain",
+      "amount": 3
+    }
+  },
+  {
+    "id": "conj_026",
+    "name": "Asamblea de Vecinos",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}{W}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "modal": true,
+    "text": "Elegí uno — • Ganás 4 Puntos de Vida. • Creás dos fichas de criatura 1/1 Vecino Movilizado. • Destruye el artefacto objetivo.",
+    "flavorText": "La cuadra siempre tiene tres formas de resolver un problema.",
+    "image": "asamblea_vecinos.png",
+    "modes": [
+      {
+        "text": "Ganás 4 Puntos de Vida.",
+        "effect": {
+          "type": "heal",
+          "amount": 4
+        },
+        "requiresTarget": false
+      },
+      {
+        "text": "Creás dos fichas de criatura 1/1 Vecino Movilizado.",
+        "effect": {
+          "type": "create_tokens",
+          "amount": 2,
+          "tokenName": "Vecino Movilizado",
+          "image": "vecino.png",
+          "tokenStats": {
+            "power": 1,
+            "toughness": 1
+          },
+          "tokenKeywords": []
+        },
+        "requiresTarget": false
+      },
+      {
+        "text": "Destruye el artefacto objetivo.",
+        "effect": {
+          "type": "destroy_artifact"
+        },
+        "requiresTarget": true
+      }
+    ]
+  },
+  {
+    "id": "conj_027",
+    "name": "Justicia Impartida",
+    "type": "Conjuro",
+    "manaCost": "{1}{W}{U}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "U"
+    ],
+    "multiTarget": true,
+    "text": "Destruye el artefacto objetivo. Destruye el encantamiento objetivo.",
+    "flavorText": "Uno se ocupa de la máquina, el otro del hechizo — nadie se salva de los dos.",
+    "image": "justicia_impartida.png",
+    "targets": [
+      {
+        "effect": {
+          "type": "destroy_artifact"
+        }
+      },
+      {
+        "effect": {
+          "type": "destroy_enchantment"
+        }
+      }
+    ]
+  },
+  {
+    "id": "conj_028",
+    "name": "Instinto de Cacería",
+    "type": "Conjuro",
+    "manaCost": "{X}{G}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "La criatura objetivo que controlás obtiene +X/+X hasta el final del turno.",
+    "flavorText": "Cuanto más hambre junta, más grande se pone.",
+    "requiresTarget": true,
+    "image": "instinto_caceria.png",
+    "effect": {
+      "type": "pump",
+      "powerMod": "X",
+      "toughnessMod": "X"
+    }
+  },
+  {
+    "id": "conj_029",
+    "name": "Purga del Pantano",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "G"
+    ],
+    "multiTarget": true,
+    "text": "Destruye la criatura objetivo. Exiliá el cementerio del jugador objetivo.",
+    "flavorText": "No alcanza con matarlo. Hay que asegurarse de que no vuelva nunca más.",
+    "image": "purga_pantano.png",
+    "targets": [
+      {
+        "effect": {
+          "type": "destroy_creature"
+        }
+      },
+      {
+        "effect": {
+          "type": "exile_graveyard"
+        }
+      }
+    ]
   }
 ]
