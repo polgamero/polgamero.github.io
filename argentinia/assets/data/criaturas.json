@@ -1393,5 +1393,47 @@
     "text": "Prisa.",
     "flavorText": "Llega, agarra los cuernos, y ya está peleando.",
     "image": "domador_toros.png"
+  },
+  {
+    "id": "crea_069",
+    "name": "Scout Precisa",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "keywords": [],
+    "text": "Cuando Scout Precisa entra al campo de batalla, Vigila 2. (Mira las dos primeras cartas de tu biblioteca. Pon X de ellas en tu cementerio y el resto en la parte superior de tu mazo en cualquier orden.)",
+    "flavorText": "Sabe exactamente qué merece vivir, y qué no.",
+    "image": "scout_precisa.png",
+    "etbEffect": {
+      "type": "surveil",
+      "amount": 2
+    },
+    "requiresTarget": false
+  },
+  {
+    "id": "crea_070",
+    "name": "Guardiana del Faro",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "power": 2,
+    "toughness": 4,
+    "keywords": [
+      "vigilance",
+      "ward_1"
+    ],
+    "text": "Vigilancia, Ward {1}.",
+    "flavorText": "El que se le acerca sin permiso, paga con su sangre.",
+    "image": "guardiana_faro.png"
   }
 ]
