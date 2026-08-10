@@ -203,11 +203,11 @@
     "cmc": 2,
     "rarity": "Common",
     "colors": [],
-    "text": "{2}, {T}: Robás una carta.",
+    "text": "{3}, {T}: Robás una carta.",
     "flavorText": "El de maicena siempre trae suerte.",
     "image": "alfajor_fortuna.png",
     "activatedAbility": {
-      "cost": "{2}{T}",
+      "cost": "{3}{T}",
       "effect": {
         "type": "draw",
         "amount": 1
@@ -223,7 +223,7 @@
     "cmc": 1,
     "rarity": "Common",
     "colors": [],
-    "text": "{T}: Robás una carta y perdés 1 Punto de Vida.",
+    "text": "{T}: Robás una carta y perdés 2 Puntos de Vida.",
     "flavorText": "Grabado de la radio, con la voz del locutor incluida.",
     "image": "cassette_pirata.png",
     "activatedAbility": {
@@ -231,7 +231,7 @@
       "effect": {
         "type": "draw_and_lose_life",
         "amount": 1,
-        "lifeLoss": 1
+        "lifeLoss": 2
       },
       "requiresTarget": false
     }
@@ -266,14 +266,14 @@
     "rarity": "Common",
     "colors": [],
     "text": "{T}: Agregá {1}.",
-    "flavorText": "Siempre hay un peso guardado en el forro, para las emergencias.",
+    "flavorText": "Siempre hay un peso guardado en el fondo, para las emergencias.",
     "image": "billetera_vieja.png",
     "keywords": [],
     "produces": "C"
   },
   {
     "id": "art_013",
-    "name": "Reloj de Bolsillo del Abuelo",
+    "name": "Reloj de Bolsillo",
     "type": "Artefacto",
     "manaCost": "{2}",
     "cmc": 2,
@@ -313,8 +313,8 @@
   },
   {
     "id": "art_015",
-    "name": "El Robotito de Chatarra",
-    "type": "Artefacto — Criatura Constructo",
+    "name": "Robotito de Chatarra",
+    "type": "Artefacto — Criatura",
     "manaCost": "{3}",
     "cmc": 3,
     "rarity": "Common",
@@ -364,7 +364,7 @@
   },
   {
     "id": "art_018",
-    "name": "Reloj Cucú Descompuesto",
+    "name": "Reloj Descompuesto",
     "type": "Artefacto",
     "manaCost": "{2}",
     "cmc": 2,
