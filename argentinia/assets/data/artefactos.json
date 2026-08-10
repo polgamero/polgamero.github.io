@@ -452,5 +452,52 @@
       },
       "requiresTarget": true
     }
+  },
+  {
+    "id": "art_022",
+    "name": "Trampa para Fantasmas",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{2}, Sacrificá Trampa para Fantasmas: Exilia a la criatura objetivo.",
+    "flavorText": "Funciona una sola vez. Pero funciona con cualquier cosa.",
+    "image": "trampa_fantasmas.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}",
+      "sacrifice": "self",
+      "effect": {
+        "type": "exile_creature"
+      },
+      "requiresTarget": true
+    }
+  },
+  {
+    "id": "art_023",
+    "name": "Amuleto Bendecido",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Equipar {1}. La criatura equipada tiene Protección de Negro.",
+    "flavorText": "Se lo cuelgan al cuello los que ya vieron demasiado.",
+    "image": "amuleto_bendecido.png",
+    "keywords": [],
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedKeywords": [
+        "protection_B"
+      ]
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true
+    }
   }
 ]

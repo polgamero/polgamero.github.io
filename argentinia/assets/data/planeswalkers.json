@@ -1,0 +1,223 @@
+[
+  {
+    "id": "pw_001",
+    "name": "El Cacique del Barrio",
+    "type": "Planeswalker — Cacique",
+    "manaCost": "{3}{W}{W}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [
+      "W"
+    ],
+    "loyalty": 5,
+    "text": "Planeswalker Legendario.",
+    "flavorText": "Nadie entra ni sale de la cuadra sin que él se entere.",
+    "image": "cacique_barrio.png",
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Contención",
+        "text": "Ganás 2 Puntos de Vida.",
+        "effect": {
+          "type": "heal",
+          "amount": 2
+        }
+      },
+      {
+        "cost": -2,
+        "name": "-2: Ajuste de Cuentas",
+        "text": "El jugador rival pierde 2 Puntos de Vida y vos ganás 2.",
+        "effect": {
+          "type": "drain",
+          "amount": 2
+        }
+      },
+      {
+        "cost": -7,
+        "name": "-7: Ley del Barrio",
+        "text": "El jugador rival pierde 7 Puntos de Vida.",
+        "effect": {
+          "type": "damage",
+          "amount": 7
+        }
+      }
+    ]
+  },
+  {
+    "id": "pw_002",
+    "name": "La Bruja del Puerto",
+    "type": "Planeswalker — Bruja",
+    "manaCost": "{2}{U}{U}",
+    "cmc": 4,
+    "rarity": "Mythic",
+    "colors": [
+      "U"
+    ],
+    "loyalty": 4,
+    "text": "Planeswalker Legendario.",
+    "flavorText": "Lee las cartas antes de que el barco termine de atracar.",
+    "image": "bruja_puerto.png",
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Visión del Río",
+        "text": "Robás una carta.",
+        "effect": {
+          "type": "draw",
+          "amount": 1
+        }
+      },
+      {
+        "cost": -3,
+        "name": "-3: Niebla Cerrada",
+        "text": "El jugador rival descarta dos cartas.",
+        "effect": {
+          "type": "discard",
+          "amount": 2
+        }
+      },
+      {
+        "cost": -8,
+        "name": "-8: Marea de Conocimiento",
+        "text": "Robás cuatro cartas.",
+        "effect": {
+          "type": "draw",
+          "amount": 4
+        }
+      }
+    ]
+  },
+  {
+    "id": "pw_003",
+    "name": "El Enterrador",
+    "type": "Planeswalker — Enterrador",
+    "manaCost": "{2}{B}{B}",
+    "cmc": 4,
+    "rarity": "Mythic",
+    "colors": [
+      "B"
+    ],
+    "loyalty": 5,
+    "text": "Planeswalker Legendario.",
+    "flavorText": "Ya cavó tu pozo. Solo pregunta cuándo.",
+    "image": "el_enterrador.png",
+    "loyaltyAbilities": [
+      {
+        "cost": 2,
+        "name": "+2: Cobro de Deuda",
+        "text": "El jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+        "effect": {
+          "type": "drain",
+          "amount": 1
+        }
+      },
+      {
+        "cost": -3,
+        "name": "-3: Últimos Ritos",
+        "text": "El jugador rival descarta una carta.",
+        "effect": {
+          "type": "discard",
+          "amount": 1
+        }
+      },
+      {
+        "cost": -8,
+        "name": "-8: Sentencia Final",
+        "text": "El jugador rival pierde 8 Puntos de Vida.",
+        "effect": {
+          "type": "damage",
+          "amount": 8
+        }
+      }
+    ]
+  },
+  {
+    "id": "pw_004",
+    "name": "El Piromántico Callejero",
+    "type": "Planeswalker — Piromántico",
+    "manaCost": "{2}{R}{R}",
+    "cmc": 4,
+    "rarity": "Mythic",
+    "colors": [
+      "R"
+    ],
+    "loyalty": 4,
+    "text": "Planeswalker Legendario.",
+    "flavorText": "Cada esquina tiene su propio fueguito.",
+    "image": "piromantico_callejero.png",
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Chispita",
+        "text": "Le hacés 1 de daño al jugador rival.",
+        "effect": {
+          "type": "damage",
+          "amount": 1
+        }
+      },
+      {
+        "cost": -2,
+        "name": "-2: Bengalazo",
+        "text": "Le hacés 3 de daño al jugador rival.",
+        "effect": {
+          "type": "damage",
+          "amount": 3
+        }
+      },
+      {
+        "cost": -7,
+        "name": "-7: Incendio Total",
+        "text": "Le hacés 7 de daño al jugador rival.",
+        "effect": {
+          "type": "damage",
+          "amount": 7
+        }
+      }
+    ]
+  },
+  {
+    "id": "pw_005",
+    "name": "La Guardiana del Delta",
+    "type": "Planeswalker — Guardiana",
+    "manaCost": "{3}{G}{G}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [
+      "G"
+    ],
+    "loyalty": 6,
+    "text": "Planeswalker Legendario.",
+    "flavorText": "El delta entero respira cuando ella lo permite.",
+    "image": "guardiana_delta.png",
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Savia Nueva",
+        "text": "Ganás 3 Puntos de Vida.",
+        "effect": {
+          "type": "heal",
+          "amount": 3
+        }
+      },
+      {
+        "cost": -3,
+        "name": "-3: Ciclo Natural",
+        "text": "Robás una carta y perdés 1 Punto de Vida.",
+        "effect": {
+          "type": "draw_and_lose_life",
+          "amount": 1,
+          "lifeLoss": 1
+        }
+      },
+      {
+        "cost": -8,
+        "name": "-8: Renacer del Delta",
+        "text": "Ganás 8 Puntos de Vida.",
+        "effect": {
+          "type": "heal",
+          "amount": 8
+        }
+      }
+    ]
+  }
+]

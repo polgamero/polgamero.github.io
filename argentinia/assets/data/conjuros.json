@@ -322,5 +322,150 @@
     "effect": {
       "type": "destroy_artifact"
     }
+  },
+  {
+    "id": "conj_018",
+    "name": "Corriente de Datos",
+    "type": "Conjuro",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Robás dos cartas.",
+    "flavorText": "La información siempre termina llegando a quien sabe esperar.",
+    "requiresTarget": false,
+    "image": "corriente_datos.png",
+    "effect": {
+      "type": "draw",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_019",
+    "name": "Espejismo Colectivo",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Exilia a la criatura objetivo. Devolvela al campo de batalla bajo el control de su dueño al comienzo del próximo Paso Final de su controlador.",
+    "flavorText": "Un instante desaparece del barrio entero. Después, nadie recuerda haber visto nada raro.",
+    "requiresTarget": true,
+    "image": "espejismo_colectivo.png",
+    "effect": {
+      "type": "exile_and_return"
+    }
+  },
+  {
+    "id": "conj_020",
+    "name": "Saqueo entre Ruinas",
+    "type": "Conjuro",
+    "manaCost": "{1}{B}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "R"
+    ],
+    "text": "Le hace 4 de daño a cualquier objetivo.",
+    "flavorText": "Entre los escombros siempre queda algo para llevarse.",
+    "requiresTarget": true,
+    "image": "saqueo_ruinas.png",
+    "effect": {
+      "type": "damage",
+      "amount": 4
+    }
+  },
+  {
+    "id": "conj_021",
+    "name": "Invocación de Urgencia",
+    "type": "Conjuro",
+    "manaCost": "{4}{R}{R}",
+    "cmc": 6,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Podés pagar 6 Puntos de Vida en vez del costo de maná de este hechizo. Le hace 5 de daño a cualquier objetivo.",
+    "flavorText": "Cuando no hay tiempo para juntar el mango, se paga con lo que hay.",
+    "requiresTarget": true,
+    "image": "invocacion_urgencia.png",
+    "alternativeCost": {
+      "type": "life",
+      "amount": 6
+    },
+    "effect": {
+      "type": "damage",
+      "amount": 5
+    }
+  },
+  {
+    "id": "conj_024",
+    "name": "Marcha de la Cuadra",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Creás dos fichas de criatura 1/1 Vecino Movilizado.",
+    "flavorText": "Cuando se juntan todos, no hay quien los pare.",
+    "requiresTarget": false,
+    "image": "marcha_cuadra.png",
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenName": "Vecino Movilizado",
+      "image": "vecino.png",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": []
+    }
+  },
+  {
+    "id": "conj_022",
+    "name": "Bendición del Barrio",
+    "type": "Conjuro",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Ganás 5 Puntos de Vida.",
+    "flavorText": "A veces alcanza con que alguien te desee lo mejor.",
+    "requiresTarget": false,
+    "image": "bendicion_barrio.png",
+    "effect": {
+      "type": "heal",
+      "amount": 5
+    }
+  },
+  {
+    "id": "conj_023",
+    "name": "Estampida Verde",
+    "type": "Conjuro",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "La criatura objetivo que controlás obtiene +4/+4 hasta el final del turno.",
+    "flavorText": "Cuando arranca la estampida, no hay cerco que la frene.",
+    "requiresTarget": true,
+    "image": "estampida_verde.png",
+    "effect": {
+      "type": "pump",
+      "powerMod": 4,
+      "toughnessMod": 4
+    }
   }
 ]

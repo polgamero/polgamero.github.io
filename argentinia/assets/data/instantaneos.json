@@ -343,5 +343,179 @@
       "type": "discard",
       "amount": 1
     }
+  },
+  {
+    "id": "inst_019",
+    "name": "Destierro",
+    "type": "Instantáneo",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Exilia a la criatura objetivo. No cuenta como que murió (Indestructible no la salva, y no vuelve del cementerio).",
+    "flavorText": "Ni el recuerdo va a quedar en el barrio.",
+    "requiresTarget": true,
+    "image": "destierro.png",
+    "effect": {
+      "type": "exile_creature"
+    }
+  },
+  {
+    "id": "inst_020",
+    "name": "Pacto Final",
+    "type": "Instantáneo",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Exilia a la criatura objetivo.",
+    "flavorText": "No hay funeral. No hay nada que enterrar.",
+    "requiresTarget": true,
+    "image": "pacto_final.png",
+    "effect": {
+      "type": "exile_creature"
+    }
+  },
+  {
+    "id": "inst_021",
+    "name": "Purga del Osario",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Exilia el cementerio del jugador objetivo.",
+    "flavorText": "Ni los muertos se salvan de una buena limpieza.",
+    "requiresTarget": true,
+    "image": "purga_osario.png",
+    "effect": {
+      "type": "exile_graveyard"
+    }
+  },
+  {
+    "id": "inst_022",
+    "name": "Explosión de Bengalas",
+    "type": "Instantáneo",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Le hace 3 de daño a cualquier objetivo.",
+    "flavorText": "Se ve hermoso. Se siente horrible.",
+    "requiresTarget": true,
+    "image": "explosion_bengalas.png",
+    "effect": {
+      "type": "damage",
+      "amount": 3
+    }
+  },
+  {
+    "id": "inst_023",
+    "name": "Chispazo",
+    "type": "Instantáneo",
+    "manaCost": "{R}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Le hace 2 de daño a cualquier objetivo.",
+    "flavorText": "Rápido, sucio, efectivo.",
+    "requiresTarget": true,
+    "image": "chispazo.png",
+    "effect": {
+      "type": "damage",
+      "amount": 2
+    }
+  },
+  {
+    "id": "inst_024",
+    "name": "Sacrificio Ritual",
+    "type": "Instantáneo",
+    "manaCost": "{B}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Como costo adicional para lanzar este hechizo, descartá una carta. Robás dos cartas.",
+    "flavorText": "Todo tiene un precio, hasta el conocimiento.",
+    "requiresTarget": false,
+    "image": "sacrificio_ritual.png",
+    "additionalCost": {
+      "type": "discard",
+      "amount": 1
+    },
+    "effect": {
+      "type": "draw",
+      "amount": 2
+    }
+  },
+  {
+    "id": "inst_025",
+    "name": "Latigazo de la Selva",
+    "type": "Instantáneo",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "La criatura objetivo que controlás obtiene +2/+2 hasta el final del turno.",
+    "flavorText": "La selva le presta fuerza a quien la respeta.",
+    "requiresTarget": true,
+    "image": "latigazo_selva.png",
+    "effect": {
+      "type": "pump",
+      "powerMod": 2,
+      "toughnessMod": 2
+    }
+  },
+  {
+    "id": "inst_026",
+    "name": "Instinto de Manada",
+    "type": "Instantáneo",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Ganás 4 Puntos de Vida.",
+    "flavorText": "Cuando uno cae, todos los demás se cierran alrededor.",
+    "requiresTarget": false,
+    "image": "instinto_manada.png",
+    "effect": {
+      "type": "heal",
+      "amount": 4
+    }
+  },
+  {
+    "id": "inst_027",
+    "name": "Golpe de Furia",
+    "type": "Instantáneo",
+    "manaCost": "{R}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "La criatura objetivo que controlás obtiene +3/+0 hasta el final del turno.",
+    "flavorText": "Un segundo de bronca alcanza y sobra.",
+    "requiresTarget": true,
+    "image": "golpe_furia.png",
+    "effect": {
+      "type": "pump",
+      "powerMod": 3,
+      "toughnessMod": 0
+    }
   }
 ]

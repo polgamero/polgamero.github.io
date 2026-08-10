@@ -466,5 +466,113 @@
       "type": "draw",
       "amount": 1
     }
+  },
+  {
+    "id": "ench_023",
+    "name": "Espíritu del Monte",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Siempre que ataques con una o más criaturas, ganás 2 Puntos de Vida.",
+    "flavorText": "La montaña cuida a los que se animan a bajar de ella a pelear.",
+    "image": "espiritu_monte.png",
+    "keywords": [],
+    "anyCreatureAttacksTrigger": {
+      "type": "heal",
+      "amount": 2
+    }
+  },
+  {
+    "id": "ench_024",
+    "name": "Custodia del Clan",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Encantar criatura. La criatura encantada tiene Ward {2}.",
+    "flavorText": "El clan entero responde si alguien se atreve a tocarla.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [
+        "ward_2"
+      ]
+    },
+    "image": "custodia_clan.png"
+  },
+  {
+    "id": "ench_025",
+    "name": "Corriente Subterránea",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, robás una carta y perdés 1 Punto de Vida.",
+    "flavorText": "Fluye por debajo de todo, sin que nadie la vea pasar.",
+    "image": "corriente_subterranea.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "draw_and_lose_life",
+      "amount": 1,
+      "lifeLoss": 1
+    }
+  },
+  {
+    "id": "ench_026",
+    "name": "Ecos del Puerto",
+    "type": "Encantamiento",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, ganás 1 Punto de Vida.",
+    "flavorText": "Cada barco que llega deja algo bueno atrás.",
+    "image": "ecos_puerto.png",
+    "keywords": [],
+    "creatureEtbTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_027",
+    "name": "Velo de Bruma",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{U}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Encantar criatura. La criatura encantada gana Intocable.",
+    "flavorText": "Se pierde entre la niebla del río, y ya nadie la encuentra.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [
+        "hexproof"
+      ]
+    },
+    "image": "velo_bruma.png"
   }
 ]

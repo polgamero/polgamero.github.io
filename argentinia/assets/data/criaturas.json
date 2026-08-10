@@ -919,5 +919,479 @@
       "type": "damage",
       "amount": 2
     }
+  },
+  {
+    "id": "crea_046",
+    "name": "Contrabandista de Sombras",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "keywords": [
+      "flying"
+    ],
+    "text": "Vuela. Siempre que Contrabandista de Sombras le haga daño de combate al jugador, robás una carta.",
+    "flavorText": "Nunca la ven venir, ni la ven irse.",
+    "image": "contrabandista_sombras.png",
+    "combatDamageTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_047",
+    "name": "Guardiana del Umbral",
+    "type": "Criatura — Humano",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "power": 3,
+    "toughness": 3,
+    "keywords": [],
+    "text": "{2}{U}: Exilia a la criatura objetivo. Volvé al campo de batalla bajo el control de su dueño al comienzo del próximo Paso Final de su controlador.",
+    "flavorText": "Abre una puerta a ningún lado — hasta que decide que ya alcanzó.",
+    "image": "guardiana_umbral.png",
+    "activatedAbility": {
+      "cost": "{2}{U}",
+      "effect": {
+        "type": "exile_and_return"
+      },
+      "requiresTarget": true
+    }
+  },
+  {
+    "id": "crea_048",
+    "name": "Vigía de la Niebla",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "power": 1,
+    "toughness": 3,
+    "keywords": [
+      "hexproof"
+    ],
+    "text": "Intocable.",
+    "flavorText": "Nadie la puede señalar si nadie la puede ver bien.",
+    "image": "vigia_niebla.png"
+  },
+  {
+    "id": "crea_049",
+    "name": "Portera del Santuario",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "power": 2,
+    "toughness": 3,
+    "keywords": [
+      "vigilance"
+    ],
+    "text": "Vigilancia. Siempre que Portera del Santuario bloquee, ganás 1 Punto de Vida.",
+    "flavorText": "No se mueve de la puerta, pase lo que pase adentro.",
+    "image": "portera_santuario.png",
+    "blockTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_050",
+    "name": "Ángel del Descampado",
+    "type": "Criatura — Ángel",
+    "manaCost": "{4}{W}",
+    "cmc": 5,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "power": 4,
+    "toughness": 5,
+    "keywords": [
+      "flying"
+    ],
+    "text": "Vuela.",
+    "flavorText": "Cae del cielo justo cuando el barrio más lo necesita.",
+    "image": "angel_descampado.png"
+  },
+  {
+    "id": "crea_051",
+    "name": "Puma de la Sierra",
+    "type": "Criatura — Bestia",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "power": 3,
+    "toughness": 2,
+    "keywords": [
+      "trample"
+    ],
+    "text": "Arrolla.",
+    "flavorText": "Baja de la sierra cuando el hambre le gana al miedo.",
+    "image": "puma_sierra.png"
+  },
+  {
+    "id": "crea_052",
+    "name": "Guardabosque Veterano",
+    "type": "Criatura — Humano",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "power": 4,
+    "toughness": 4,
+    "keywords": [],
+    "text": "Siempre que Guardabosque Veterano ataque, ganás 1 Punto de Vida.",
+    "flavorText": "Conoce cada árbol de memoria, y cada forma de volver sano.",
+    "image": "guardabosque_veterano.png",
+    "attackTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_053",
+    "name": "Piromaníaco de Feria",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "power": 2,
+    "toughness": 1,
+    "keywords": [
+      "haste"
+    ],
+    "text": "Prisa.",
+    "flavorText": "Le encanta el fuego. Le encanta demasiado el fuego.",
+    "image": "piromaniaco_feria.png"
+  },
+  {
+    "id": "crea_054",
+    "name": "Domador de Incendios",
+    "type": "Criatura — Humano",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "power": 4,
+    "toughness": 3,
+    "keywords": [],
+    "text": "Siempre que Domador de Incendios le haga daño de combate al jugador, le hacés 1 de daño adicional.",
+    "flavorText": "El fuego lo escucha a él antes que a nadie.",
+    "image": "domador_incendios.png",
+    "combatDamageTrigger": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_055",
+    "name": "Custodio del Más Allá",
+    "type": "Criatura — Espíritu",
+    "manaCost": "{1}{W}{U}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "U"
+    ],
+    "power": 2,
+    "toughness": 3,
+    "keywords": [
+      "flying"
+    ],
+    "text": "Vuela. {1}{W}{U}: Exilia a la criatura objetivo.",
+    "flavorText": "No juzga. Simplemente borra.",
+    "image": "custodio_mas_alla.png",
+    "activatedAbility": {
+      "cost": "{1}{W}{U}",
+      "effect": {
+        "type": "exile_creature"
+      },
+      "requiresTarget": true
+    }
+  },
+  {
+    "id": "crea_056",
+    "name": "Devorador del Pantano",
+    "type": "Criatura — Bestia",
+    "manaCost": "{2}{B}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "G"
+    ],
+    "power": 4,
+    "toughness": 4,
+    "keywords": [
+      "deathtouch"
+    ],
+    "text": "Toque Mortal. Cuando Devorador del Pantano muera, el jugador rival pierde 2 Puntos de Vida y vos ganás 2.",
+    "flavorText": "Lo que se hunde en el pantano, no vuelve a salir.",
+    "image": "devorador_pantano.png",
+    "diesTrigger": {
+      "type": "drain",
+      "amount": 2
+    }
+  },
+  {
+    "id": "crea_057",
+    "name": "Purificador de la Fe",
+    "type": "Criatura — Clérigo",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "power": 2,
+    "toughness": 3,
+    "keywords": [
+      "protection_B"
+    ],
+    "text": "Protección de Negro.",
+    "flavorText": "Ni la sombra más densa se le anima a tocar.",
+    "image": "purificador_fe.png"
+  },
+  {
+    "id": "crea_058",
+    "name": "Bárbaro Anti-Mago",
+    "type": "Criatura — Humano",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "power": 3,
+    "toughness": 2,
+    "keywords": [
+      "protection_U"
+    ],
+    "text": "Protección de Azul.",
+    "flavorText": "Rompió tantos hechizos a las trompadas que ya ni le hacen efecto.",
+    "image": "barbaro_antimago.png"
+  },
+  {
+    "id": "crea_059",
+    "name": "Bruja del Callejón",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "keywords": [
+      "ward_2"
+    ],
+    "text": "Ward 2 (Cuando esta criatura pasa a ser el objetivo de un hechizo o habilidad de un rival, contrarrestalo a menos que ese jugador pague 2 de maná extra).",
+    "flavorText": "Quien le apunta sin pagar peaje, se queda con las manos vacías.",
+    "image": "bruja_callejon.png"
+  },
+  {
+    "id": "crea_060",
+    "name": "Centinela Encantada",
+    "type": "Criatura — Espíritu",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "power": 3,
+    "toughness": 4,
+    "keywords": [
+      "flying",
+      "ward_1"
+    ],
+    "text": "Vuela. Ward 1.",
+    "flavorText": "Flota tan tranquila que nadie se anima a molestarla gratis.",
+    "image": "centinela_encantada.png"
+  },
+  {
+    "id": "crea_061",
+    "name": "Verdulera del Mercado",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "power": 2,
+    "toughness": 1,
+    "keywords": [],
+    "text": "Siempre que Verdulera del Mercado ataque, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Vende caro lo que le costó barato, y no se guarda nada para ella.",
+    "image": "verdulera_mercado.png",
+    "attackTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_062",
+    "name": "Sepulturero de Turno",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "power": 2,
+    "toughness": 3,
+    "keywords": [],
+    "text": "Siempre que Sepulturero de Turno bloquee, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Cava despacio, pero nunca deja el trabajo a medias.",
+    "image": "sepulturero_turno.png",
+    "blockTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_063",
+    "name": "Trepadora del Cerro",
+    "type": "Criatura — Bestia",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "keywords": [
+      "reach"
+    ],
+    "text": "Alcance.",
+    "flavorText": "Sube donde nadie más se anima.",
+    "image": "trepadora_cerro.png"
+  },
+  {
+    "id": "crea_064",
+    "name": "Custodio de la Reserva",
+    "type": "Criatura — Humano",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "power": 3,
+    "toughness": 5,
+    "keywords": [
+      "vigilance"
+    ],
+    "text": "Vigilancia.",
+    "flavorText": "No se pierde nada de lo que pasa en el monte.",
+    "image": "custodio_reserva.png"
+  },
+  {
+    "id": "crea_065",
+    "name": "Contadora del Puerto",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "power": 1,
+    "toughness": 3,
+    "keywords": [],
+    "text": "Siempre que Contadora del Puerto ataque, robás una carta.",
+    "flavorText": "Lleva la cuenta de todo lo que entra y sale.",
+    "image": "contadora_puerto.png",
+    "attackTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_066",
+    "name": "Segundo al Mando",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "keywords": [
+      "flying"
+    ],
+    "text": "Vuela.",
+    "flavorText": "Siempre un paso atrás del que manda, y dos adelante de todos los demás.",
+    "image": "segundo_al_mando.png"
+  },
+  {
+    "id": "crea_067",
+    "name": "Portera de la Feria",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "power": 1,
+    "toughness": 3,
+    "keywords": [
+      "defender"
+    ],
+    "text": "Defensora.",
+    "flavorText": "No deja pasar a nadie sin pagar la entrada.",
+    "image": "portera_feria.png"
+  },
+  {
+    "id": "crea_068",
+    "name": "Domador de Toros",
+    "type": "Criatura — Humano",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "power": 4,
+    "toughness": 2,
+    "keywords": [
+      "haste"
+    ],
+    "text": "Prisa.",
+    "flavorText": "Llega, agarra los cuernos, y ya está peleando.",
+    "image": "domador_toros.png"
   }
 ]
