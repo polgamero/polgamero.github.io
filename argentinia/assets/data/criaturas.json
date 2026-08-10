@@ -487,7 +487,7 @@
   },
   {
     "id": "crea_026",
-    "name": "Marta Minujín del Más Allá",
+    "name": "Marta Minujín",
     "type": "Criatura Legendaria — Espíritu Artista",
     "manaCost": "{1}{B}",
     "cmc": 2,
@@ -497,7 +497,7 @@
     ],
     "power": 1,
     "toughness": 2,
-    "text": "Pincelada de Sangre: Siempre que Marta Minujín del Más Allá u otra criatura muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+    "text": "Pincelada de Sangre: Siempre que Marta Minujín u otra criatura muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
     "flavorText": "Ya no pinta con óleo. Cada obra necesita su propio rojo, y el campo de batalla nunca deja de proveerlo.",
     "image": "marta_minujin.png",
     "keywords": [],
