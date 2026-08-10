@@ -517,5 +517,323 @@
       "powerMod": 3,
       "toughnessMod": 0
     }
+  },
+  {
+    "id": "inst_028",
+    "name": "Pacto Desesperado",
+    "type": "Instantáneo",
+    "manaCost": "{3}{B}{B}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Podés pagar {1} y 1 Punto de Vida en vez del costo de maná de este hechizo. Destruye a la criatura objetivo.",
+    "flavorText": "Cuando no hay tiempo de juntar el mango, se firma con lo que hay: sangre.",
+    "requiresTarget": true,
+    "image": "pacto_desesperado.png",
+    "alternativeCost": {
+      "type": "hybrid",
+      "manaCost": "{1}",
+      "life": 1
+    },
+    "effect": {
+      "type": "destroy_creature"
+    }
+  },
+  {
+    "id": "inst_029",
+    "name": "Juramento a Medias",
+    "type": "Instantáneo",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Podés pagar {1} y 2 Puntos de Vida en vez del costo de maná de este hechizo. Ganás 4 Puntos de Vida.",
+    "flavorText": "Cuando no hay tiempo de rezar entero, se promete lo que se puede.",
+    "requiresTarget": false,
+    "image": "juramento_medias.png",
+    "alternativeCost": {
+      "type": "hybrid",
+      "manaCost": "{1}",
+      "life": 2
+    },
+    "effect": {
+      "type": "heal",
+      "amount": 4
+    }
+  },
+  {
+    "id": "inst_030",
+    "name": "Trato de Urgencia",
+    "type": "Instantáneo",
+    "manaCost": "{2}{R}{R}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Podés pagar {1} y 2 Puntos de Vida en vez del costo de maná de este hechizo. Le hace 4 de daño a cualquier objetivo.",
+    "flavorText": "Cuando no hay tiempo de juntar el mango, se paga con lo que hay.",
+    "requiresTarget": true,
+    "image": "trato_urgencia.png",
+    "alternativeCost": {
+      "type": "hybrid",
+      "manaCost": "{1}",
+      "life": 2
+    },
+    "effect": {
+      "type": "damage",
+      "amount": 4
+    }
+  },
+  {
+    "id": "inst_031",
+    "name": "Instinto Desesperado",
+    "type": "Instantáneo",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Podés pagar {1} y 1 Punto de Vida en vez del costo de maná de este hechizo. La criatura objetivo que controlás obtiene +3/+3 hasta el final del turno.",
+    "flavorText": "El instinto no espera a que juntes el maná.",
+    "requiresTarget": true,
+    "image": "instinto_desesperado.png",
+    "alternativeCost": {
+      "type": "hybrid",
+      "manaCost": "{1}",
+      "life": 1
+    },
+    "effect": {
+      "type": "pump",
+      "powerMod": 3,
+      "toughnessMod": 3
+    }
+  },
+  {
+    "id": "inst_032",
+    "name": "Peaje del Río",
+    "type": "Instantáneo",
+    "manaCost": "{U}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Contrarresta el hechizo objetivo a menos que su controlador pague {2}.",
+    "flavorText": "Cruzás gratis, o no cruzás.",
+    "requiresTarget": true,
+    "image": "peaje_rio.png",
+    "effect": {
+      "type": "counter_unless_pay",
+      "amount": 2
+    }
+  },
+  {
+    "id": "inst_033",
+    "name": "Impuesto de Guerra",
+    "type": "Instantáneo",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Contrarresta el hechizo objetivo a menos que su controlador pague {3}.",
+    "flavorText": "La guerra se paga siempre — cuestión de cuándo.",
+    "requiresTarget": true,
+    "image": "impuesto_guerra.png",
+    "effect": {
+      "type": "counter_unless_pay",
+      "amount": 3
+    }
+  },
+  {
+    "id": "inst_034",
+    "name": "Silencio de Biblioteca",
+    "type": "Instantáneo",
+    "manaCost": "{U}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Contrarresta la habilidad activada o disparada objetivo. No puede contrarrestar hechizos.",
+    "flavorText": "Ni siquiera el eco se anima a responder ahí adentro.",
+    "requiresTarget": true,
+    "image": "silencio_biblioteca.png",
+    "effect": {
+      "type": "counter_ability"
+    }
+  },
+  {
+    "id": "inst_035",
+    "name": "Veto Absoluto",
+    "type": "Instantáneo",
+    "manaCost": "{2}{U}{W}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "W"
+    ],
+    "text": "Contrarresta el hechizo, la habilidad activada o la habilidad disparada objetivo.",
+    "flavorText": "No importa qué forma tenga. Acá no pasa.",
+    "requiresTarget": true,
+    "image": "veto_absoluto.png",
+    "effect": {
+      "type": "counter_any"
+    }
+  },
+  {
+    "id": "inst_036",
+    "name": "Descarga Callejera",
+    "type": "Instantáneo",
+    "manaCost": "{X}{R}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Le hace X de daño a cualquier objetivo.",
+    "flavorText": "Cuanto más juntás, más duele.",
+    "requiresTarget": true,
+    "image": "descarga_callejera.png",
+    "effect": {
+      "type": "damage",
+      "amount": "X"
+    }
+  },
+  {
+    "id": "inst_037",
+    "name": "Decisión de Último Momento",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "modal": true,
+    "text": "Elegí uno — • Robás una carta. • Devolvé la criatura objetivo a la mano de su dueño.",
+    "flavorText": "A último momento siempre hay una salida — la cuestión es cuál.",
+    "image": "decision_ultimo_momento.png",
+    "modes": [
+      {
+        "text": "Robás una carta.",
+        "effect": {
+          "type": "draw",
+          "amount": 1
+        },
+        "requiresTarget": false
+      },
+      {
+        "text": "Devolvé la criatura objetivo a la mano de su dueño.",
+        "effect": {
+          "type": "bounce"
+        },
+        "requiresTarget": true
+      }
+    ]
+  },
+  {
+    "id": "inst_038",
+    "name": "Visión del Puerto",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Mirá las 2 cartas de arriba de tu mazo. Poné cualquier cantidad de ellas al fondo del mazo, y el resto de vuelta arriba en el mismo orden.",
+    "flavorText": "El río siempre le muestra a la Bruja lo que viene, antes de que llegue.",
+    "requiresTarget": false,
+    "image": "vision_puerto.png",
+    "effect": {
+      "type": "scry",
+      "amount": 2
+    }
+  },
+  {
+    "id": "inst_039",
+    "name": "Bengala de Repuesto",
+    "type": "Instantáneo",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Le hace 2 de daño a cualquier objetivo.\n\nFlashback {3}{R}",
+    "flavorText": "Si la primera no alcanzó, siempre queda una de más en el bolsillo.",
+    "requiresTarget": true,
+    "image": "bengala_repuesto.png",
+    "effect": {
+      "type": "damage",
+      "amount": 2
+    },
+    "flashback": {
+      "cost": "{3}{R}"
+    }
+  },
+  {
+    "id": "inst_040",
+    "name": "Segunda Lectura",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Robás una carta.\n\nFlashback {2}{U}{U}",
+    "flavorText": "La primera vez la leés. La segunda, la entendés.",
+    "requiresTarget": false,
+    "image": "segunda_lectura.png",
+    "effect": {
+      "type": "draw",
+      "amount": 1
+    },
+    "flashback": {
+      "cost": "{2}{U}{U}"
+    }
+  },
+  {
+    "id": "inst_041",
+    "name": "Pacto entre Sombras",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "modal": true,
+    "text": "Elegí uno — • Contrarresta la habilidad activada o disparada objetivo. • Surveil 3.",
+    "flavorText": "Uno frena lo que ya empezó. El otro decide qué queda y qué se pudre.",
+    "image": "pacto_sombras.png",
+    "modes": [
+      {
+        "text": "Contrarresta la habilidad activada o disparada objetivo.",
+        "effect": {
+          "type": "counter_ability"
+        },
+        "requiresTarget": true
+      },
+      {
+        "text": "Surveil 3.",
+        "effect": {
+          "type": "surveil",
+          "amount": 3
+        },
+        "requiresTarget": false
+      }
+    ]
   }
 ]
