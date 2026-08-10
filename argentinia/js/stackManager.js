@@ -2,7 +2,9 @@ import { sleep } from './utils.js';
 import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, getEffectiveToughness, performSacrifice, addCounters, cleanupIfVehicle } from './main.js';
 import { logMsg, render, createCardElement } from './ui.js';
 import { checkDeaths } from './combatRules.js';
-import { hasKeyword } from './keywords.js';
+import { hasKeyword, getProtectionMatch } from './keywords.js';
+
+const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 import { passPriority } from './turnManager.js';
 
 export const spellStack = [];
@@ -37,6 +39,14 @@ export async function resolveTopStackItem() {
 
 async function executeStackItem(item) {
   const { card, isLocal, targetObj, type } = item;
+
+  if (type === 'planeswalker') {
+    const pwZone = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
+    const newPw = { card, loyalty: card.loyalty, abilityUsedThisTurn: false };
+    pwZone.push(newPw);
+    logMsg(`🔮 ¡${card.name} entró al campo de batalla con ${card.loyalty} de Lealtad!`);
+    return;
+  }
 
   if (type === 'summon' || type === 'permanent') {
     let newPermanentItem; 
@@ -101,10 +111,15 @@ async function executeStackItem(item) {
         } else if (targetObj.type === 'creature') {
           const targetUnit = targetObj.item;
           if (effectToApply.type === 'damage') {
-            targetUnit.damageTaken += effectToApply.amount;
-            logMsg(`💥 ¡${card.name}! Le hizo ${effectToApply.amount} de daño a ${targetUnit.card.name}.`);
-            checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-            checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+            const protectedColor = getProtectionMatch(targetUnit, card.colors || []);
+            if (protectedColor) {
+              logMsg(`🛡️ ¡${targetUnit.card.name} tiene Protección de ${COLOR_LABELS[protectedColor] || protectedColor}! El daño de ${card.name} fue prevenido.`);
+            } else {
+              targetUnit.damageTaken += effectToApply.amount;
+              logMsg(`💥 ¡${card.name}! Le hizo ${effectToApply.amount} de daño a ${targetUnit.card.name}.`);
+              checkDeaths(state.localCombat, state.localGraveyard, "Vos");
+              checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+            }
           }
         } 
       } else {
@@ -205,6 +220,19 @@ async function executeStackItem(item) {
             logMsg(`🗑️ ¡${card.name}! ${targetName} no tenía cartas para descartar.`);
           }
         }
+        // LÓGICA NUEVA: EXILIAR CEMENTERIO ENTERO (odio de cementerio)
+        else if (effectToApply.type === 'exile_graveyard') {
+          const targetGraveyard = targetObj.isLocal ? state.localGraveyard : state.rivalGraveyard;
+          const targetExile = targetObj.isLocal ? state.localExile : state.rivalExile;
+          const count = targetGraveyard.length;
+          if (count > 0) {
+            targetExile.push(...targetGraveyard);
+            targetGraveyard.length = 0;
+            logMsg(`🌀 ¡${card.name} exilió las ${count} carta(s) del cementerio de ${targetName}!`);
+          } else {
+            logMsg(`${card.name}: el cementerio de ${targetName} ya estaba vacío.`);
+          }
+        }
         // LÓGICA NUEVA: EFECTO GENÉRICO DE UNA SOLA APLICACIÓN (ej. Cuarentena Total)
         else if (effectToApply.type === 'prevent_attack') {
           const targetPlayer = targetObj.isLocal ? 'local' : 'rival';
@@ -219,17 +247,25 @@ async function executeStackItem(item) {
       } else if (targetObj.type === 'creature') {
         const targetUnit = targetObj.item;
         if (effectToApply.type === 'damage') {
-          targetUnit.damageTaken += effectToApply.amount;
-          logMsg(`💥 ¡${card.name}! Le hizo ${effectToApply.amount} de daño a ${targetUnit.card.name}.`);
-          checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-          checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+          const protectedColor = getProtectionMatch(targetUnit, card.colors || []);
+          if (protectedColor) {
+            logMsg(`🛡️ ¡${targetUnit.card.name} tiene Protección de ${COLOR_LABELS[protectedColor] || protectedColor}! El daño de ${card.name} fue prevenido.`);
+          } else {
+            targetUnit.damageTaken += effectToApply.amount;
+            logMsg(`💥 ¡${card.name}! Le hizo ${effectToApply.amount} de daño a ${targetUnit.card.name}.`);
+            checkDeaths(state.localCombat, state.localGraveyard, "Vos");
+            checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+          }
         } 
         // LÓGICA NUEVA: EQUIPAR (real) — el Equipo que activó esta habilidad se adjunta a la criatura.
         // No se copia a `auras`: el Equipo sigue siendo su propio permanente en la zona de soporte,
         // simplemente ahora apunta con `attachedTo` a la criatura equipada.
         else if (effectToApply.type === 'attach_equipment') {
           const equipmentItem = item.sourceItem;
-          if (equipmentItem) {
+          const protectedColor = getProtectionMatch(targetUnit, card.colors || []);
+          if (protectedColor) {
+            logMsg(`🛡️ ¡${targetUnit.card.name} tiene Protección de ${COLOR_LABELS[protectedColor] || protectedColor}! No se le puede equipar ${card.name}.`);
+          } else if (equipmentItem) {
             equipmentItem.attachedTo = targetUnit;
             logMsg(`⚔️ ¡${card.name} fue equipado a ${targetUnit.card.name}!`);
           } else {
@@ -252,8 +288,20 @@ async function executeStackItem(item) {
           if (selfUnit) {
             const selfPower = getEffectivePower(selfUnit);
             const targetPower = getEffectivePower(targetUnit);
-            targetUnit.damageTaken = (targetUnit.damageTaken || 0) + selfPower;
-            selfUnit.damageTaken = (selfUnit.damageTaken || 0) + targetPower;
+            // Protección corre en las dos direcciones: cada uno puede estar a salvo del
+            // color del otro sin que eso frene la pelea en sí, solo el daño de ese lado.
+            const targetProtectedFromSelf = getProtectionMatch(targetUnit, selfUnit.card.colors || []);
+            const selfProtectedFromTarget = getProtectionMatch(selfUnit, targetUnit.card.colors || []);
+            if (targetProtectedFromSelf) {
+              logMsg(`🛡️ ¡${targetUnit.card.name} tiene Protección de ${COLOR_LABELS[targetProtectedFromSelf] || targetProtectedFromSelf}! No recibe daño de ${selfUnit.card.name}.`);
+            } else {
+              targetUnit.damageTaken = (targetUnit.damageTaken || 0) + selfPower;
+            }
+            if (selfProtectedFromTarget) {
+              logMsg(`🛡️ ¡${selfUnit.card.name} tiene Protección de ${COLOR_LABELS[selfProtectedFromTarget] || selfProtectedFromTarget}! No recibe daño de ${targetUnit.card.name}.`);
+            } else {
+              selfUnit.damageTaken = (selfUnit.damageTaken || 0) + targetPower;
+            }
             logMsg(`🥊 ¡${selfUnit.card.name} pelea contra ${targetUnit.card.name}! (${selfPower} vs ${targetPower} de daño)`);
             checkDeaths(state.localCombat, state.localGraveyard, "Vos");
             checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
@@ -293,6 +341,51 @@ async function executeStackItem(item) {
               triggerCreatureDies(targetUnit, isTargetLocal);
               triggerAnyCreatureDeath(targetUnit, isTargetLocal);
             }
+          } else {
+            logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+          }
+        }
+        // LÓGICA NUEVA: EXILIAR CRIATURA — a diferencia de destruir, el Exilio NO es
+        // "destrucción" en las reglas reales: Indestructible NO lo frena. Tampoco cuenta
+        // como que la criatura "murió" (morir = ir al cementerio desde el campo), así que
+        // NO dispara triggerCreatureDies ni triggerAnyCreatureDeath ("cuando muera una
+        // criatura..."). Y como no pasa por el cementerio, cartas como Reanimar no la
+        // pueden traer de vuelta — es la diferencia clave que hace valioso al Exilio.
+        // LÓGICA NUEVA: PARPADEO TEMPORAL — exilia y programa el regreso para el próximo
+        // Paso Final DEL CONTROLADOR (no necesariamente el que viene ahora mismo: si se
+        // tira en el turno rival, vuelve recién en tu próximo turno). Al volver entra como
+        // un objeto totalmente nuevo — sin auras, sin equipos, sin contadores, con mareo de
+        // invocación fresco — tal cual la regla real de MTG. Como pasa por el Exilio,
+        // Indestructible tampoco frena esto.
+        else if (effectToApply.type === 'exile_and_return') {
+          const isTargetLocal = state.localCombat.includes(targetUnit);
+          const board = isTargetLocal ? state.localCombat : state.rivalCombat;
+          const exileZone = isTargetLocal ? state.localExile : state.rivalExile;
+          const idx = board.indexOf(targetUnit);
+          if (idx !== -1) {
+            board.splice(idx, 1);
+            detachEquipmentFrom(targetUnit, isTargetLocal);
+            sendAurasToGraveyard(targetUnit, isTargetLocal);
+            cleanupIfVehicle(targetUnit);
+            exileZone.push(targetUnit.card);
+            state.scheduledReturns.push({ card: targetUnit.card, isLocal: isTargetLocal });
+            logMsg(`🌀 ¡${card.name} exilió a ${targetUnit.card.name}! Vuelve al campo en el próximo Paso Final de su controlador.`);
+          } else {
+            logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+          }
+        }
+        else if (effectToApply.type === 'exile_creature') {
+          const isTargetLocal = state.localCombat.includes(targetUnit);
+          const board = isTargetLocal ? state.localCombat : state.rivalCombat;
+          const exileZone = isTargetLocal ? state.localExile : state.rivalExile;
+          const idx = board.indexOf(targetUnit);
+          if (idx !== -1) {
+            board.splice(idx, 1);
+            detachEquipmentFrom(targetUnit, isTargetLocal);
+            sendAurasToGraveyard(targetUnit, isTargetLocal);
+            cleanupIfVehicle(targetUnit);
+            exileZone.push(targetUnit.card);
+            logMsg(`🌀 ¡${card.name} exilió a ${targetUnit.card.name}! No va a poder volver del cementerio.`);
           } else {
             logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
           }

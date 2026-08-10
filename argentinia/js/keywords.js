@@ -16,6 +16,22 @@ export function hasKeyword(itemObj, keyword) {
   return keywords.some(k => k.toLowerCase() === keyword.toLowerCase());
 }
 
+// Protección de [color]: se representa como una keyword más ('protection_W', 'protection_U',
+// etc.) para reusar TODO el sistema de agregación que ya existe (getEffectiveKeywords ya
+// suma base + Auras + Equipos + estáticos + efectos temporales) — así una Aura o un Equipo
+// pueden otorgar Protección igual que cualquier otra keyword, sin código nuevo para eso.
+export function hasProtectionFrom(itemObj, color) {
+  return hasKeyword(itemObj, `protection_${color}`);
+}
+
+// Si `sourceColors` (los colores de un hechizo, habilidad, o criatura atacante) incluye
+// algún color del que el objetivo tiene Protección, devuelve ESE color (para el mensaje);
+// si no hay ninguna protección relevante, devuelve null.
+export function getProtectionMatch(itemObj, sourceColors) {
+  if (!sourceColors || sourceColors.length === 0) return null;
+  return sourceColors.find(c => hasProtectionFrom(itemObj, c)) || null;
+}
+
 /**
  * Verifica si un bloqueador es legal para un atacante específico (lógica de Flying/Reach).
  * @param {Object} attacker - La unidad que ataca (de localCombat o rivalCombat)
@@ -30,10 +46,13 @@ export function canBlock(attacker, blocker) {
     const blockerReaches = hasKeyword(blocker, 'reach');
     
     // Si el atacante vuela, el bloqueador SÍ O SÍ debe tener Flying o Reach
-    return blockerFlies || blockerReaches;
+    if (!blockerFlies && !blockerReaches) return false;
   }
+
+  // Protección de [color]: el atacante no puede ser bloqueado por una criatura de ese color.
+  const blockerColors = (blocker.card.colors || []);
+  if (getProtectionMatch(attacker, blockerColors)) return false;
   
-  // Si el atacante no vuela, cualquier criatura (con o sin volar/alcance) puede bloquearlo
   return true;
 }
 

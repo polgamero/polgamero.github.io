@@ -1,4 +1,7 @@
-import { hasKeyword, canBlock, predictDuel } from './keywords.js';
+import { hasKeyword, canBlock, predictDuel, getProtectionMatch } from './keywords.js';
+
+const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
+
 import { 
   state, 
   logMsg, 
@@ -11,7 +14,8 @@ import {
   triggerCreatureDies,
   triggerAnyCreatureDeath,
   resolveEffectDirect,
-  cleanupIfVehicle
+  cleanupIfVehicle,
+  checkPlaneswalkerDeaths
 } from './main.js';
 import { showDamageAssignmentModal } from './ui.js';
 
@@ -309,6 +313,15 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       const blockerHasLifelink = hasKeyword(blocker, 'lifelink') || hasKeyword(blocker, 'life_link');
       const blockerHasDeathtouch = hasKeyword(blocker, 'deathtouch');
 
+      // Protección de [color]: si el atacante tiene Protección del color de ESTE
+      // bloqueador, ese bloqueador en particular no le hace nada — ni daño, ni Toque
+      // Mortal, ni le da Vínculo Vital a su controlador (sin daño real, no hay nada que
+      // curar). Caso raro (normalmente canBlock ya frena el bloqueo de entrada), pero
+      // cubre situaciones donde el atacante gana Protección recién después de bloquearse.
+      if (getProtectionMatch(attacker, blocker.card.colors || [])) {
+        return;
+      }
+
       totalBlockerPowerThisStep += bPower;
 
       if (blockerHasLifelink && bPower > 0) {
@@ -338,6 +351,19 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
     let damageToPlayerThisStep = 0;
 
     if (blockers.length === 0) {
+      if (attacker.attackTarget) {
+        // Redirigido a un Planeswalker: el daño le resta Lealtad directo, nunca golpea al
+        // jugador, y NO cuenta como "daño de combate al jugador" (no dispara
+        // combatDamageTrigger — esa es específicamente sobre pegarle a un jugador).
+        attacker.attackTarget.loyalty -= attackerPower;
+        logMsg(`🔮 ¡${attacker.card.name} atacó a ${attacker.attackTarget.card.name} y le sacó ${attackerPower} de Lealtad! (queda en ${attacker.attackTarget.loyalty})`);
+        if (attackerHasLifelink && attackerPower > 0) {
+          if (isLocalAttacking) state.localHP += attackerPower; else state.rivalHP += attackerPower;
+          logMsg(`💚 Vínculo Vital: ¡${attacker.card.name} te curó ${attackerPower} HP!`);
+        }
+        checkPlaneswalkerDeaths();
+        continue;
+      }
       if (isLocalAttacking) {
         state.rivalHP -= attackerPower;
         if (attackerHasLifelink && attackerPower > 0) {
@@ -359,6 +385,15 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
 
     if (aliveBlockers.length === 0) {
       if (attackerHasTrample) {
+        if (attacker.attackTarget) {
+          attacker.attackTarget.loyalty -= attackerPower;
+          logMsg(`🔮 Arrollar: los bloqueadores de ${attacker.card.name} ya habían caído en Iniciativa, así que TODO su daño (${attackerPower}) le pega de lleno a ${attacker.attackTarget.card.name}.`);
+          if (attackerHasLifelink && attackerPower > 0) {
+            if (isLocalAttacking) state.localHP += attackerPower; else state.rivalHP += attackerPower;
+          }
+          checkPlaneswalkerDeaths();
+          continue;
+        }
         if (isLocalAttacking) {
           state.rivalHP -= attackerPower;
           if (attackerHasLifelink && attackerPower > 0) state.localHP += attackerPower;
@@ -421,30 +456,57 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       }
 
       if (damageToDeal > 0) {
-        blocker.damageTaken = (blocker.damageTaken || 0) + damageToDeal;
-        attackerLifelinkHeal += damageToDeal;
-        if (attackerHasDeathtouch) blocker.tookDeathtouch = true;
+        const blockerProtected = getProtectionMatch(blocker, attacker.card.colors || []);
+        if (blockerProtected) {
+          // Protección de [color]: SÍ podía elegir bloquear (eso no se lo prohíbe), pero
+          // el daño se previene entero al momento de aplicarse — mismo criterio que en
+          // MTG real, la asignación ya ocurrió (no le "regala" ese poder a otro
+          // bloqueador ni al jugador), simplemente ese daño puntual nunca llega a pasar.
+          logMsg(`🛡️ ¡${blocker.card.name} tiene Protección de ${COLOR_LABELS[blockerProtected] || blockerProtected}! El daño de ${attacker.card.name} fue prevenido.`);
+        } else {
+          blocker.damageTaken = (blocker.damageTaken || 0) + damageToDeal;
+          attackerLifelinkHeal += damageToDeal;
+          if (attackerHasDeathtouch) blocker.tookDeathtouch = true;
+        }
       }
     });
 
     if (useManual) {
       if (manualPlayerDamage > 0) {
-        if (isLocalAttacking) state.rivalHP -= manualPlayerDamage;
-        else state.localHP -= manualPlayerDamage;
-        attackerLifelinkHeal += manualPlayerDamage;
-        logMsg(`🐘 Arrollar (Asignado): ¡${attacker.card.name} arrolló con ${manualPlayerDamage} de daño!`);
-        damageToPlayerThisStep += manualPlayerDamage;
+        if (attacker.attackTarget) {
+          // Arrollar redirigido a un Planeswalker: el sobrante también le come Lealtad a
+          // ÉL, no a la cara del jugador — antes este camino (asignación manual) no
+          // chequeaba attackTarget para nada y siempre le pegaba al jugador.
+          attacker.attackTarget.loyalty -= manualPlayerDamage;
+          logMsg(`🐘 Arrollar (Asignado): ¡${attacker.card.name} le arrolló ${manualPlayerDamage} de daño a ${attacker.attackTarget.card.name}! (Lealtad: ${attacker.attackTarget.loyalty})`);
+          attackerLifelinkHeal += manualPlayerDamage;
+          checkPlaneswalkerDeaths();
+        } else {
+          if (isLocalAttacking) state.rivalHP -= manualPlayerDamage;
+          else state.localHP -= manualPlayerDamage;
+          attackerLifelinkHeal += manualPlayerDamage;
+          logMsg(`🐘 Arrollar (Asignado): ¡${attacker.card.name} arrolló con ${manualPlayerDamage} de daño!`);
+          damageToPlayerThisStep += manualPlayerDamage;
+        }
       }
     } else if (attackerHasTrample && remainingAttackerPower > 0) {
-      if (isLocalAttacking) {
+      if (attacker.attackTarget) {
+        // Mismo caso, para el reparto automático (sin asignación manual).
+        attacker.attackTarget.loyalty -= remainingAttackerPower;
+        logMsg(`🐘 Arrollar: ¡${attacker.card.name} repartió daño letal a sus bloqueadores y le arrolló ${remainingAttackerPower} de daño a ${attacker.attackTarget.card.name}! (Lealtad: ${attacker.attackTarget.loyalty})`);
+        attackerLifelinkHeal += remainingAttackerPower;
+        checkPlaneswalkerDeaths();
+      } else if (isLocalAttacking) {
         state.rivalHP -= remainingAttackerPower;
         logMsg(`🐘 Arrollar: ¡${attacker.card.name} repartió daño letal a los bloqueadores y arrolló con ${remainingAttackerPower} de daño al Tano!`);
+        attackerLifelinkHeal += remainingAttackerPower;
+        damageToPlayerThisStep += remainingAttackerPower;
       } else {
         state.localHP -= remainingAttackerPower;
         logMsg(`🐘 Arrollar: ¡El ${attacker.card.name} del Tano repartió daño letal a tus defensores y te arrolló con ${remainingAttackerPower} de daño!`);
+        attackerLifelinkHeal += remainingAttackerPower;
+        damageToPlayerThisStep += remainingAttackerPower;
       }
-      attackerLifelinkHeal += remainingAttackerPower;
-      damageToPlayerThisStep += remainingAttackerPower;
     }
 
     if (damageToPlayerThisStep > 0) triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);

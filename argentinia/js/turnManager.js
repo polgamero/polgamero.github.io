@@ -1,5 +1,5 @@
 import { logMsg, els, showGameOverOverlay, render } from './ui.js';
-import { state, resolveEffectDirect } from './main.js';
+import { state, resolveEffectDirect, resolveScheduledReturns } from './main.js';
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage } from './combatRules.js';
@@ -169,14 +169,16 @@ function executeUntapStep() {
     state.localLandPlayedThisTurn = false;
     state.localAttackersDeclaredThisTurn = 0;
     state.localLands.forEach(l => l.tapped = false);
-    state.localCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; });
+    state.localCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; c.attackTarget = null; });
     state.localSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });
+    state.localPlaneswalkers.forEach(pw => { pw.abilityUsedThisTurn = false; });
   } else {
     state.rivalLandPlayedThisTurn = false;
     state.rivalAttackersDeclaredThisTurn = 0;
     state.rivalLands.forEach(l => l.tapped = false);
-    state.rivalCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; });
+    state.rivalCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; c.attackTarget = null; });
     state.rivalSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });
+    state.rivalPlaneswalkers.forEach(pw => { pw.abilityUsedThisTurn = false; });
   }
   logMsg(`🔄 Permanentes enderezados para ${isLocal ? 'El Gaucho' : 'El Tano'}.`);
 }
@@ -201,6 +203,8 @@ function executeEndStep() {
   const isLocal = state.activePlayer === 'local';
   const supportZone = isLocal ? state.localSupport : state.rivalSupport;
   const attackersCount = isLocal ? state.localAttackersDeclaredThisTurn : state.rivalAttackersDeclaredThisTurn;
+
+  resolveScheduledReturns(isLocal); // Parpadeo temporal: acá vuelven las que corresponda
 
   supportZone.forEach(item => {
     const trig = item.card.endStepTrigger;

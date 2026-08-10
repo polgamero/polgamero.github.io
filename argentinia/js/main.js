@@ -2,10 +2,12 @@ import { addToStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showMulliganModal, showBottomCardsModal } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal } from './ui.js';
 import { buildRandomDeck, parseManaCost, getLandColor, sleep, shuffle } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority } from './turnManager.js';
-import { hasKeyword, canBlock } from './keywords.js';
+import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
+
+const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 
 export { logMsg, render } from './ui.js';
 export { parseManaCost, getLandColor, sleep } from './utils.js';
@@ -30,6 +32,10 @@ export const state = {
   localLands: [],
   localCombat: [],
   localGraveyard: [], 
+  localExile: [], // Zona de Exilio: separada del cementerio — lo que va acá no vuelve
+                   // (salvo que algo lo diga explícitamente), y no cuenta como "murió".
+  localPlaneswalkers: [], // { card, loyalty, abilityUsedThisTurn } — no son criaturas, no
+                           // atacan ni bloquean, pero SÍ se los puede atacar en su lugar.
   localLandPlayedThisTurn: false,
 
   rivalHP: 20,
@@ -38,6 +44,8 @@ export const state = {
   rivalLands: [],
   rivalCombat: [],
   rivalGraveyard: [], 
+  rivalExile: [],
+  rivalPlaneswalkers: [],
   rivalLandPlayedThisTurn: false,
 
   pendingSpellIndex: null, 
@@ -71,6 +79,16 @@ export const state = {
   // Tripular un Vehículo: { item, isLocal, required, selected:[], powerSoFar } — se paga
   // GIRANDO criaturas propias hasta sumar el poder pedido, nunca con maná (regla 702.121).
   pendingCrew: null,
+  // Parpadeo temporal (exile_and_return): { card, isLocal } por cada criatura exiliada que
+  // tiene que volver — se revisa en cada Paso Final (ver resolveScheduledReturns).
+  scheduledReturns: [],
+  // Redirigir un ataque a un Planeswalker rival en vez de a la cara: { attackerIndex } —
+  // se activa clickeando DE NUEVO a una atacante ya declarada, y se completa clickeando
+  // el Planeswalker objetivo.
+  pendingAttackRedirect: null,
+  // Ward: se activa la primera vez que un hechizo/habilidad de un RIVAL apunta a algo con
+  // esta keyword — pausa el casteo hasta que el que targeteó decida pagar o dejarlo perder.
+  pendingWardChoice: null,
 
   isDiscarding: false,
   cardsToDiscard: 0,
@@ -434,6 +452,127 @@ export function cleanupIfVehicle(unit) {
   }
 }
 
+// PLANESWALKERS: no son criaturas (no atacan ni bloquean), pero SÍ se los puede atacar en
+// vez de al jugador. Tienen Lealtad en vez de vida, y una sola habilidad activable por
+// turno (sea +, - o 0), solo en Fase Principal con la pila vacía — mismo criterio de
+// timing que cualquier otra habilidad activada de este motor.
+export function activateLoyaltyAbility(pwItem, abilityIndex, isLocal) {
+  if (state.phase !== 'main1' && state.phase !== 'main2') {
+    logMsg("Las habilidades de Lealtad solo se pueden usar en tus Fases Principales.");
+    return;
+  }
+  if (state.activePlayer !== (isLocal ? 'local' : 'rival')) {
+    logMsg("Solo podés activar la habilidad de un Planeswalker en tu propio turno.");
+    return;
+  }
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice) {
+    logMsg("Terminá lo que tenés pendiente antes de activar esto.");
+    return;
+  }
+  if (pwItem.abilityUsedThisTurn) {
+    logMsg(`${pwItem.card.name} ya usó su habilidad de Lealtad este turno.`);
+    return;
+  }
+  const ability = pwItem.card.loyaltyAbilities[abilityIndex];
+  if (!ability) return;
+  if (ability.cost < 0 && pwItem.loyalty < Math.abs(ability.cost)) {
+    logMsg(`${pwItem.card.name} no tiene suficiente Lealtad para esa habilidad (tiene ${pwItem.loyalty}).`);
+    return;
+  }
+
+  pwItem.loyalty += ability.cost;
+  pwItem.abilityUsedThisTurn = true;
+  logMsg(`🔮 ${pwItem.card.name} activó "${ability.name}" (Lealtad ahora: ${pwItem.loyalty}).`);
+
+  if (ability.effect) {
+    resolveEffectDirect(ability.effect, pwItem.card.name, isLocal);
+  }
+
+  checkPlaneswalkerDeaths();
+  render();
+}
+
+// Regla de estado: un Planeswalker con Lealtad 0 o menos muere — se revisa después de
+// activar una habilidad (puede costar lealtad) y después de recibir daño de combate.
+export function checkPlaneswalkerDeaths() {
+  [
+    { zone: state.localPlaneswalkers, grave: state.localGraveyard },
+    { zone: state.rivalPlaneswalkers, grave: state.rivalGraveyard }
+  ].forEach(({ zone, grave }) => {
+    for (let i = zone.length - 1; i >= 0; i--) {
+      if (zone[i].loyalty <= 0) {
+        logMsg(`💀 ¡${zone[i].card.name} se quedó sin Lealtad y murió!`);
+        grave.push(zone[i].card);
+        zone.splice(i, 1);
+      }
+    }
+  });
+}
+
+export function handlePlaneswalkerClick(pwItem, isLocal, index) {
+  if (state.gameOver) return;
+
+  // Completar una redirección de ataque: clickear un Planeswalker RIVAL mientras hay una
+  // atacante local esperando a dónde mandarse.
+  if (state.pendingAttackRedirect && !isLocal) {
+    const attacker = state.localCombat[state.pendingAttackRedirect.attackerIndex];
+    if (attacker) {
+      attacker.attackTarget = pwItem;
+      logMsg(`🔮 ¡${attacker.card.name} redirige su ataque a ${pwItem.card.name}!`);
+    }
+    state.pendingAttackRedirect = null;
+    render();
+    return;
+  }
+
+  // Click normal sobre tu propio Planeswalker: abrir el menú de sus habilidades (mismo
+  // patrón imperativo que el resto de los modales del juego).
+  if (isLocal) {
+    showLoyaltyAbilityModal(pwItem, isLocal);
+  }
+}
+
+// Parpadeo temporal (exile_and_return): la criatura vuelve como un OBJETO NUEVO — mareo de
+// invocación fresco, sin auras/equipos/contadores viejos (ya se habían perdido al salir del
+// campo, es la regla real de MTG). Reusa el mismo patrón de entrada que un summon normal:
+// dispara "cuando entra una criatura" del controlador Y el etbEffect propio de la carta (si
+// no pide target — un caso raro que no tenemos hoy entre las cartas del proyecto).
+export function resolveScheduledReturns(isLocal) {
+  const toReturn = state.scheduledReturns.filter(entry => entry.isLocal === isLocal);
+  if (toReturn.length === 0) return;
+  state.scheduledReturns = state.scheduledReturns.filter(entry => entry.isLocal !== isLocal);
+
+  const exileZone = isLocal ? state.localExile : state.rivalExile;
+  const combatZone = isLocal ? state.localCombat : state.rivalCombat;
+
+  toReturn.forEach(entry => {
+    const idx = exileZone.indexOf(entry.card);
+    if (idx !== -1) exileZone.splice(idx, 1);
+
+    const newUnit = {
+      card: entry.card, tapped: false, summoningSickness: true, isAttacking: false,
+      blockingIndex: null, damageTaken: 0, auras: []
+    };
+    if (hasKeyword(newUnit, 'haste')) newUnit.summoningSickness = false;
+
+    combatZone.push(newUnit);
+    logMsg(`🌀 ¡${entry.card.name} volvió del Exilio, como si acabara de entrar al campo!`);
+    triggerCreatureEtb(isLocal);
+
+    if (entry.card.type.includes('Legendaria')) {
+      const duplicate = combatZone.find(u => u !== newUnit && u.card.name === entry.card.name);
+      if (duplicate) {
+        logMsg(`⚖️ Regla de Leyenda: ya tenías a ${entry.card.name} en el campo. La que vuelve del Exilio se sacrifica.`);
+        performSacrifice(newUnit, isLocal);
+      }
+    }
+
+    if (entry.card.etbEffect && !entry.card.requiresTarget) {
+      resolveEffectDirect(entry.card.etbEffect, entry.card.name, isLocal);
+    }
+  });
+}
+
 export function attachAura(auraCard, creatureItem) {
   if (!creatureItem.auras) creatureItem.auras = [];
   creatureItem.auras.push(auraCard);
@@ -505,6 +644,17 @@ export function handleCombatClick(item, isLocal, index) {
       logMsg(`🛡️ ¡Epa! ${item.card.name} tiene Intocable. No podés seleccionarlo como objetivo.`);
       return;
     }
+
+    // Protección de [color]: a diferencia de Intocable, esto aplica SIEMPRE (hasta a tu
+    // propia criatura, si por algo le apuntás con algo de ese color — así es en MTG real,
+    // no depende de quién controle el hechizo). Cubre de yapa "no puede ser Encantada ni
+    // Equipada" de esa cosa, porque adjuntar una Aura o un Equipo también pasa por acá.
+    const sourceColors = state.pendingTargetCard.colors || [];
+    const protectedColor = getProtectionMatch(item, sourceColors);
+    if (protectedColor) {
+      logMsg(`🛡️ ¡Epa! ${item.card.name} tiene Protección de ${COLOR_LABELS[protectedColor] || protectedColor}. ${state.pendingTargetCard.name} no le puede hacer nada.`);
+      return;
+    }
     
     const rules = getTargetRules(state.pendingTargetCard);
     const allowed = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
@@ -523,6 +673,19 @@ export function handleCombatClick(item, isLocal, index) {
       return;
     }
 
+    // Ward: solo se activa contra un hechizo/habilidad de un RIVAL del controlador (nunca
+    // contra tu propio target — así es en MTG real, "an opponent controls"). Pausa acá:
+    // no resolvemos el target todavía, esperamos a que el jugador local (quien está
+    // casteando en este flujo) decida pagar el maná extra o dejar que se pierda.
+    const wardKw = (getEffectiveKeywords(item) || []).find(k => k.startsWith('ward_'));
+    if (wardKw && !isLocal) {
+      const wardCost = parseInt(wardKw.split('_')[1], 10);
+      state.pendingWardChoice = { targetObj: { type: 'creature', isLocal, index, item }, wardCost };
+      logMsg(`🔶 ¡${item.card.name} tiene Ward ${wardCost}! Pagá ${wardCost} de maná extra o tu hechizo se pierde sin efecto.`);
+      render();
+      return;
+    }
+
     executeSpellOnTarget({ type: 'creature', isLocal, index, item });
     return;
   }
@@ -538,8 +701,28 @@ export function handleCombatClick(item, isLocal, index) {
       return;
     }
     if (item.tapped) return; 
-    
-    item.isAttacking = !item.isAttacking;
+
+    if (!item.isAttacking) {
+      item.isAttacking = true;
+      item.attackTarget = null; // por defecto, ataca al jugador
+      state.pendingAttackRedirect = null;
+      render();
+      return;
+    }
+
+    // Ya estaba atacando. Si el rival tiene Planeswalkers, un segundo click abre el modo
+    // de redirección (clickeá un Planeswalker rival para mandarle el ataque a él en vez de
+    // a la cara); un tercer click sobre la misma criatura la saca del combate.
+    if (state.rivalPlaneswalkers.length > 0 && state.pendingAttackRedirect?.attackerIndex !== index) {
+      state.pendingAttackRedirect = { attackerIndex: index };
+      logMsg(`Elegí un Planeswalker rival para redirigir el ataque de ${item.card.name}, o clickealo de nuevo para sacarlo del combate.`);
+      render();
+      return;
+    }
+
+    item.isAttacking = false;
+    item.attackTarget = null;
+    state.pendingAttackRedirect = null;
     render();
   }
   else if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local') {
@@ -688,6 +871,7 @@ export function handlePlayerTargetClick(isLocal) {
 
 export function cancelPayment() {
   if (state.pendingCrew) { cancelCrew(); return; }
+  if (state.pendingWardChoice) { declineWard(); return; }
   if (state.pendingSpellIndex === null && state.pendingAbilitySource === null && state.pendingSacrificeChoice === null) return;
   state.tappedLandsThisSpell.forEach(land => land.tapped = false);
   state.pendingSpellIndex = null; 
@@ -702,7 +886,7 @@ export function cancelPayment() {
 }
 
 export function canPlayCard(card) {
-  if (state.gameOver || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null || state.damageModalOpen) return false;
+  if (state.gameOver || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null || state.pendingWardChoice !== null || state.damageModalOpen) return false;
   if (state.priorityPlayer !== 'local') return false; // Solo si poseés prioridad
   
   // Flash: un permanente con esta keyword se puede jugar como si fuera un instantáneo,
@@ -756,6 +940,44 @@ export function playCard(index) {
   logMsg(`Preparando: ${card.name}. Seleccioná tierras para pagar.`);
   checkPaymentComplete(); 
   render();
+}
+
+// Costo adicional obligatorio de una carta (vida o descarte), distinto de un costo
+// ALTERNATIVO (que reemplaza al maná — ver payWithAlternativeCost más abajo): este se paga
+// SIEMPRE, además del maná normal, sin excepción — como "Costo adicional: descartá una
+// carta" en MTG real. `card` ya está desconectado de si sigue físicamente en la mano o no
+// en este punto exacto (según si necesita target o no), así que lo excluimos por referencia,
+// no por índice, para nunca descartarse a sí misma por error.
+export function payAdditionalCost(card, isLocal) {
+  if (!card.additionalCost) return;
+  const ac = card.additionalCost;
+  const hand = isLocal ? state.localHand : state.rivalHand;
+  const graveyard = isLocal ? state.localGraveyard : state.rivalGraveyard;
+
+  if (ac.type === 'life') {
+    if (isLocal) state.localHP -= ac.amount; else state.rivalHP -= ac.amount;
+    logMsg(`💉 ${card.name}: costo adicional pagado con ${ac.amount} de vida.`);
+  } else if (ac.type === 'discard') {
+    const pool = hand.filter(c => c !== card);
+    const amount = Math.min(ac.amount, pool.length);
+    const discardedNames = [];
+    for (let i = 0; i < amount; i++) {
+      // Vos elegís desde el final de la mano (misma simplificación que ya usa el efecto
+      // "discard" de las cartas); el Tano, al azar.
+      const target = isLocal ? pool[pool.length - 1 - i] : pool[Math.floor(Math.random() * pool.length)];
+      const idx = hand.indexOf(target);
+      if (idx !== -1) {
+        const discarded = hand.splice(idx, 1)[0];
+        graveyard.push(discarded);
+        discardedNames.push(discarded.name);
+        const poolIdx = pool.indexOf(target);
+        if (poolIdx !== -1) pool.splice(poolIdx, 1);
+      }
+    }
+    if (discardedNames.length > 0) {
+      logMsg(`🗑️ ${card.name}: costo adicional pagado descartando ${discardedNames.join(', ')}.`);
+    }
+  }
 }
 
 // Aplica hasta `amount` de maná (de un color fijo, o eligiendo automáticamente entre
@@ -907,6 +1129,7 @@ export function tapLocalLand(item) {
   if (state.gameOver || item.tapped) return;
   if (state.pendingSacrificeChoice) return; // Una tierra no es una opción válida de sacrificio hoy
   if (state.pendingCrew) { logMsg("Terminá de elegir criaturas para tripular, o cancelá, antes de otra cosa."); return; }
+  if (state.pendingWardChoice) { logMsg("Resolvé el Ward pendiente (pagar o dejarlo perder) antes de otra cosa."); return; }
 
   // Tierras de utilidad (sin `produces`, con activatedAbility propia — ej. Biblioteca
   // Nacional) se activan como cualquier permanente con habilidad, no como fuente de maná.
@@ -932,6 +1155,28 @@ export function tapLocalLand(item) {
   render();
 }
 
+// Costo ALTERNATIVO (distinto del adicional): reemplaza al maná por completo — "pagá X de
+// vida en vez del costo de maná", como el maná Phyrexiano en MTG real. Es una elección del
+// jugador, nunca automática.
+export function payWithAlternativeCost() {
+  if (state.pendingSpellIndex === null) return;
+  const card = state.localHand[state.pendingSpellIndex];
+  if (!card || !card.alternativeCost) return;
+  const ac = card.alternativeCost;
+
+  if (ac.type === 'life') {
+    state.localHP -= ac.amount;
+    logMsg(`💉 Pagaste ${card.name} con ${ac.amount} de vida en vez de maná.`);
+  }
+
+  // El costo de maná pendiente queda anulado: ya se pagó de otra forma. Si ya habías
+  // girado alguna tierra antes de arrepentirte, se las devolvemos sin girar.
+  state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
+  state.tappedLandsThisSpell = [];
+  state.pendingCost = { W: 0, U: 0, B: 0, R: 0, G: 0, generic: 0 };
+  checkPaymentComplete();
+}
+
 
 function checkPaymentComplete() {
   const cost = state.pendingCost;
@@ -952,7 +1197,13 @@ function checkPaymentComplete() {
     if (state.pendingSpellIndex !== null) {
       const card = state.localHand[state.pendingSpellIndex];
       const isPermanent = card.type.includes('Artefacto') || (card.type.includes('Encantamiento') && !card.adjunta);
- 
+
+      // Costo adicional (vida o descarte): se paga JUNTO con el maná, no antes ni después —
+      // en MTG real todos los costos se pagan a la vez al confirmar el hechizo. Se hace acá,
+      // apenas el maná se termina de pagar, para que sea el mismo momento sin importar si
+      // la carta después necesita un objetivo o no.
+      payAdditionalCost(card, true);
+
       const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal' || card.effect.type.startsWith('counter'))));
       if (needsTarget) {
         state.pendingTargetCard = card;
@@ -973,6 +1224,7 @@ function checkPaymentComplete() {
  
       let stackType = 'spell';
       if (card.power !== undefined) stackType = 'summon';
+      else if (card.type.includes('Planeswalker')) stackType = 'planeswalker';
       else if (isPermanent) stackType = 'permanent';
       else if (card.type.includes('Instantáneo')) stackType = 'instant';
  
@@ -1113,6 +1365,7 @@ function executeSpellOnTarget(targetObj) {
     const isPermanent = card.type.includes('Artefacto') || (card.type.includes('Encantamiento') && !card.adjunta);
     
     if (card.power !== undefined) stackType = 'summon';
+    else if (card.type.includes('Planeswalker')) stackType = 'planeswalker';
     else if (isPermanent) stackType = 'permanent';
     else if (card.adjunta) stackType = 'aura';
     else if (card.type.includes('Instantáneo')) stackType = 'instant';
@@ -1138,6 +1391,65 @@ function executeSpellOnTarget(targetObj) {
   checkRivalCounterOrResponse();
 }
 
+// Pagar Ward: buscamos maná disponible entre tierras y artefactos que produzcan (Ward
+// siempre pide genérico, así que no importa el color) y lo giramos automáticamente hasta
+// cubrir el costo — simplificación consciente, no hace falta elegir cuáles una por una,
+// a diferencia del pago normal de un hechizo.
+export function payWard() {
+  const wc = state.pendingWardChoice;
+  if (!wc) return;
+
+  const sources = [...state.localLands, ...state.localSupport.filter(s => s.card.produces || s.card.producesOptions)]
+    .filter(s => !s.tapped);
+
+  let need = wc.wardCost;
+  const toTap = [];
+  for (const s of sources) {
+    if (need <= 0) break;
+    toTap.push(s);
+    need -= (s.card.manaAmount || 1);
+  }
+
+  if (need > 0) {
+    logMsg(`No tenés suficiente maná disponible para pagar Ward ${wc.wardCost}. El hechizo se pierde sin efecto.`);
+    declineWard();
+    return;
+  }
+
+  toTap.forEach(s => { s.tapped = true; });
+  logMsg(`💰 Pagaste Ward ${wc.wardCost}. El hechizo sigue su curso.`);
+  const targetObj = wc.targetObj;
+  state.pendingWardChoice = null;
+  executeSpellOnTarget(targetObj);
+}
+
+// No pagar Ward: el hechizo se pierde. Si era una carta de la mano, se comporta como un
+// counterspell real — se gasta igual y va al cementerio sin resolver su efecto. Si era una
+// habilidad activada, el costo para activarla ya se había pagado antes (no se devuelve,
+// como en MTG real), simplemente no logra su objetivo.
+export function declineWard() {
+  const wc = state.pendingWardChoice;
+  if (!wc) return;
+  logMsg(`No pagaste Ward ${wc.wardCost} — el hechizo se pierde sin efecto.`);
+
+  if (state.pendingTargetSource === null && state.pendingSpellIndex !== null) {
+    const card = state.localHand[state.pendingSpellIndex];
+    if (card) {
+      state.localHand.splice(state.pendingSpellIndex, 1);
+      state.localGraveyard.push(card);
+    }
+    state.pendingSpellIndex = null;
+    state.pendingCost = null;
+    state.tappedLandsThisSpell = [];
+  }
+
+  state.pendingWardChoice = null;
+  state.pendingTargetCard = null;
+  state.pendingTargetSource = null;
+  state.pendingAbilitySource = null;
+  render();
+}
+
 export function handleSupportClick(item, isLocal, index) {
   if (state.gameOver || !isLocal) return;
 
@@ -1150,6 +1462,10 @@ export function handleSupportClick(item, isLocal, index) {
   // resuelva (clickear una criatura sigue yendo a handleCombatClick/handleCrewClick).
   if (state.pendingCrew) {
     logMsg("Terminá de elegir criaturas para tripular, o cancelá, antes de otra cosa.");
+    return;
+  }
+  if (state.pendingWardChoice) {
+    logMsg("Resolvé el Ward pendiente (pagar o dejarlo perder) antes de otra cosa.");
     return;
   }
 

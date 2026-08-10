@@ -6,7 +6,8 @@ const DATA_FILES = {
   criaturas: './assets/data/criaturas.json',
   instantaneos: './assets/data/instantaneos.json',
   conjuros: './assets/data/conjuros.json',
-  encantamientos: './assets/data/encantamientos.json'
+  encantamientos: './assets/data/encantamientos.json',
+  planeswalkers: './assets/data/planeswalkers.json'
 };
 
 class CardDatabase {

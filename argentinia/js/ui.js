@@ -11,9 +11,13 @@ import {
   tapLocalLand,
   handleCombatClick,
   handleSupportClick,
+  handlePlaneswalkerClick,
   handleSupportTargetClick,
   handlePlayerTargetClick,
   cancelPayment,
+  payWithAlternativeCost,
+  payWard,
+  activateLoyaltyAbility,
   checkGameOver,
   passPriority // Importado del nuevo sistema
 } from './main.js';
@@ -49,14 +53,20 @@ export const els = {
   paymentControls : document.getElementById('payment-controls'),
   paymentStatus : document.getElementById('payment-status'),
   btnCancelSpell : document.getElementById('btn-cancel-spell'),
+  btnAltCost : document.getElementById('btn-alt-cost'),
+  btnPayWard : document.getElementById('btn-pay-ward'),
 
   rivalDeckPile: null,
   rivalGYPile: null,
+  rivalExilePile: null,
   localDeckPile: null,
   localGYPile: null,
+  localExilePile: null,
   
   localSupport: document.getElementById('local-support'),
   rivalSupport: document.getElementById('rival-support'),
+  localPlaneswalkers: document.getElementById('local-planeswalkers'),
+  rivalPlaneswalkers: document.getElementById('rival-planeswalkers'),
 };
 
 export function setupBoardLayout() {
@@ -70,6 +80,8 @@ export function setupBoardLayout() {
   els.rivalDeckPile = createPileElement('MAZO');
   els.rivalGYPile = createPileElement('CEMENTERIO');
   els.rivalGYPile.addEventListener('click', () => openGraveyardModal(false));
+  els.rivalExilePile = createPileElement('EXILIO');
+  els.rivalExilePile.addEventListener('click', () => openExileModal(false));
 
   const rivalCenterZone = document.createElement('div');
   rivalCenterZone.className = 'lands-center-zone';
@@ -78,6 +90,7 @@ export function setupBoardLayout() {
   rivalRowContainer.appendChild(els.rivalDeckPile);
   rivalRowContainer.appendChild(rivalCenterZone);
   rivalRowContainer.appendChild(els.rivalGYPile);
+  rivalRowContainer.appendChild(els.rivalExilePile);
 
   const localRowContainer = document.createElement('div');
   localRowContainer.className = 'zone-row-container';
@@ -86,6 +99,8 @@ export function setupBoardLayout() {
   els.localDeckPile = createPileElement('MAZO');
   els.localGYPile = createPileElement('CEMENTERIO');
   els.localGYPile.addEventListener('click', () => openGraveyardModal(true));
+  els.localExilePile = createPileElement('EXILIO');
+  els.localExilePile.addEventListener('click', () => openExileModal(true));
 
   const localCenterZone = document.createElement('div');
   localCenterZone.className = 'lands-center-zone';
@@ -94,6 +109,7 @@ export function setupBoardLayout() {
   localRowContainer.appendChild(els.localDeckPile);
   localRowContainer.appendChild(localCenterZone);
   localRowContainer.appendChild(els.localGYPile);
+  localRowContainer.appendChild(els.localExilePile);
 }
 
 function createPileElement(label) {
@@ -141,6 +157,77 @@ export function updatePilesUI() {
   } else {
     localGYContent.innerHTML = `<span style="font-size:10px; color:#7f8c8d;">Vacío</span>`;
   }
+
+  els.rivalExilePile.querySelector('.pile-badge').textContent = state.rivalExile.length;
+  const rivalExileContent = els.rivalExilePile.querySelector('.pile-content');
+  rivalExileContent.innerHTML = '';
+  if (state.rivalExile.length > 0) {
+    const topCard = state.rivalExile[state.rivalExile.length - 1];
+    const cardEl = createCardElement(topCard, false, false, null, 'graveyard');
+    rivalExileContent.appendChild(cardEl);
+  } else {
+    rivalExileContent.innerHTML = `<span style="font-size:10px; color:#7f8c8d;">Vacío</span>`;
+  }
+
+  els.localExilePile.querySelector('.pile-badge').textContent = state.localExile.length;
+  const localExileContent = els.localExilePile.querySelector('.pile-content');
+  localExileContent.innerHTML = '';
+  if (state.localExile.length > 0) {
+    const topCard = state.localExile[state.localExile.length - 1];
+    const cardEl = createCardElement(topCard, false, true, null, 'graveyard');
+    localExileContent.appendChild(cardEl);
+  } else {
+    localExileContent.innerHTML = `<span style="font-size:10px; color:#7f8c8d;">Vacío</span>`;
+  }
+}
+
+// Menú de habilidades de Lealtad de un Planeswalker: se abre al clickear el tuyo propio.
+// Cada botón muestra el costo (+N/-N/0) y el texto de la habilidad; se deshabilita solo si
+// ya usó su habilidad este turno, o si el costo es negativo y no tiene Lealtad suficiente
+// — el resto de las restricciones (fase, turno) las valida activateLoyaltyAbility al elegir,
+// así que acá alcanza con un chequeo simple para no ofrecer botones obviamente inválidos.
+export function showLoyaltyAbilityModal(pwItem, isLocal) {
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+
+  const alreadyUsed = pwItem.abilityUsedThisTurn;
+  const abilitiesHTML = (pwItem.card.loyaltyAbilities || []).map((ability, idx) => {
+    const costLabel = ability.cost > 0 ? `+${ability.cost}` : `${ability.cost}`;
+    const cantAfford = ability.cost < 0 && pwItem.loyalty < Math.abs(ability.cost);
+    const disabled = alreadyUsed || cantAfford;
+    return `
+      <button class="loyalty-ability-btn ${disabled ? 'disabled' : ''}" data-idx="${idx}" ${disabled ? 'disabled' : ''}>
+        <span class="loyalty-cost">${costLabel}</span>
+        <span class="loyalty-ability-text">${ability.name}${ability.text ? ' — ' + ability.text : ''}</span>
+      </button>
+    `;
+  }).join('');
+
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width: 480px;">
+      <div class="gy-modal-header">
+        <h3>🔮 ${pwItem.card.name} (Lealtad: ${pwItem.loyalty})</h3>
+        <button class="gy-close-btn">Cerrar ✖</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
+        ${alreadyUsed ? `<div style="color:#e67e22; font-style:italic;">Ya usaste una habilidad de Lealtad este turno.</div>` : ''}
+        ${abilitiesHTML}
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modalOverlay);
+
+  modalOverlay.querySelectorAll('.loyalty-ability-btn:not(.disabled)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      modalOverlay.remove();
+      activateLoyaltyAbility(pwItem, idx, isLocal);
+    });
+  });
+
+  modalOverlay.querySelector('.gy-close-btn').onclick = () => modalOverlay.remove();
+  modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
 }
 
 export function openGraveyardModal(isLocal) {
@@ -168,6 +255,42 @@ export function openGraveyardModal(isLocal) {
     gridContent.innerHTML = `<div style="color:#bdc3c7; font-style:italic; padding:40px;">No hay cartas en el cementerio todavía.</div>`;
   } else {
     gyArray.forEach((cardObj, idx) => {
+      const cardEl = createCardElement(cardObj, false, isLocal, idx, 'modal');
+      cardEl.style.width = '120px';
+      cardEl.style.height = '168px';
+      gridContent.appendChild(cardEl);
+    });
+  }
+
+  modalOverlay.querySelector('.gy-close-btn').onclick = () => modalOverlay.remove();
+  modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
+}
+
+export function openExileModal(isLocal) {
+  const exileArray = isLocal ? state.localExile : state.rivalExile;
+  const title = isLocal ? "Tu Exilio" : "Exilio del Tano";
+
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content">
+      <div class="gy-modal-header">
+        <h3>🌀 ${title} (${exileArray.length})</h3>
+        <button class="gy-close-btn">Cerrar ✖</button>
+      </div>
+      <div class="gy-modal-grid" id="exile-modal-grid-content"></div>
+    </div>
+  `;
+
+  document.body.appendChild(modalOverlay);
+
+  const gridContent = modalOverlay.querySelector('#exile-modal-grid-content');
+
+  if (exileArray.length === 0) {
+    gridContent.innerHTML = `<div style="color:#bdc3c7; font-style:italic; padding:40px;">No hay cartas exiliadas todavía.</div>`;
+  } else {
+    exileArray.forEach((cardObj, idx) => {
       const cardEl = createCardElement(cardObj, false, isLocal, idx, 'modal');
       cardEl.style.width = '120px';
       cardEl.style.height = '168px';
@@ -245,6 +368,17 @@ export function getTargetRules(card) {
     return { allowPlayer: false, allowLocalCreature: false, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
   }
   if (effectType === 'discard') {
+    return { allowPlayer: true, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
+  }
+  if (effectType === 'exile_creature' || effectType === 'exile_and_return') {
+    // Remoción: apunta a una criatura de cualquier lado (igual que destruir/rebotar). En
+    // exile_and_return en particular, apuntar a tu PROPIA criatura suele ser justo el punto
+    // (retriggerea su "cuando entra", le saca auras malas encima, resetea el daño marcado).
+    return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
+  }
+  if (effectType === 'exile_graveyard') {
+    // Odio de cementerio: el objetivo es el JUGADOR (se exilia TODO su cementerio), nunca
+    // una criatura en el campo.
     return { allowPlayer: true, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
   }
 
@@ -352,11 +486,19 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const KEYWORD_LABELS = { 
       flying: '🕊️ Vuela', trample: '🐘 Arrolla', hexproof: '🛡️ Intocable', haste: '⚡ Prisa', 
       menace: '👥 Amenaza', vigilance: '👁️ Vigilancia', reach: '🏹 Alcance', defender: '🧱 Defensora',
-      lifelink: '❤️ Vínculo vital', deathtouch: '💀 Toque mortal', firststrike: '🗡️ Primer golpe', doublestrike: '⚔️ Doble golpe', indestructible: '💎 Indestructible'
+      lifelink: '❤️ Vínculo vital', deathtouch: '💀 Toque mortal', firststrike: '🗡️ Primer golpe', doublestrike: '⚔️ Doble golpe', indestructible: '💎 Indestructible',
+      protection_W: '🛡️ Protección de Blanco', protection_U: '🛡️ Protección de Azul', protection_B: '🛡️ Protección de Negro',
+      protection_R: '🛡️ Protección de Rojo', protection_G: '🛡️ Protección de Verde'
     };
       
+    // Ward N es dinámico (el número varía carta por carta), no puede vivir en el
+    // diccionario fijo de arriba — se resuelve al vuelo acá.
+    const labelFor = (k) => {
+      if (k.startsWith('ward_')) return `🔶 Ward ${k.split('_')[1]}`;
+      return KEYWORD_LABELS[k] || k;
+    };
     const keywordsHTML = effKeywords.length > 0
-      ? `<div class="keyword-strip">${effKeywords.map(k => `<span class="keyword-tag">${KEYWORD_LABELS[k] || k}</span>`).join('')}</div>`
+      ? `<div class="keyword-strip">${effKeywords.map(k => `<span class="keyword-tag">${labelFor(k)}</span>`).join('')}</div>`
       : '';
 
     // Cartas con mucho texto (flavor + reglas + varias keywords) achican la letra para
@@ -378,6 +520,11 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     ptText = `<span style="color:#27ae60;">${effPower}/${effToughness}</span>`;
   }
 
+  // Lealtad de un Planeswalker: mismo cuadrito que Poder/Resistencia, pero con su propio
+  // color (violeta, como en las cartas reales) para diferenciarlo de un vistazo.
+  const isPlaneswalker = card.type.includes('Planeswalker');
+  const loyaltyText = isPlaneswalker ? `${itemObj.loyalty}` : '';
+
   const attachedAuras = itemObj.auras || [];
   const attachedEquipment = (zone === 'combat' && card.power !== undefined) ? getEquipmentOn(itemObj) : [];
   const staticMods = (zone === 'combat' && card.power !== undefined) ? getStaticTeamModifiers(itemObj) : [];
@@ -391,7 +538,13 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     flying: 'Vuela', trample: 'Arrolla', hexproof: 'Intocable', haste: 'Prisa',
     menace: 'Amenaza', vigilance: 'Vigilancia', reach: 'Alcance', defender: 'Defensora',
     lifelink: 'Vínculo vital', deathtouch: 'Toque mortal', firststrike: 'Primer golpe',
-    doublestrike: 'Doble golpe', indestructible: 'Indestructible'
+    doublestrike: 'Doble golpe', indestructible: 'Indestructible',
+    protection_W: 'Protección de Blanco', protection_U: 'Protección de Azul', protection_B: 'Protección de Negro',
+    protection_R: 'Protección de Rojo', protection_G: 'Protección de Verde'
+  };
+  const shortLabelFor = (k) => {
+    if (k.startsWith('ward_')) return `Ward ${k.split('_')[1]}`;
+    return KEYWORD_LABELS_SHORT[k] || k;
   };
   const describeStats = (stats) => {
     if (!stats) return '';
@@ -406,7 +559,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const parts = [];
     const statsText = describeStats(eff.stats);
     if (statsText) parts.push(statsText);
-    if (eff.keywords && eff.keywords.length > 0) parts.push(eff.keywords.map(k => KEYWORD_LABELS_SHORT[k] || k).join(', '));
+    if (eff.keywords && eff.keywords.length > 0) parts.push(eff.keywords.map(shortLabelFor).join(', '));
     return parts.join(' · ') || 'Adjunta';
   };
   const describeEquipment = (equipItem) => {
@@ -415,7 +568,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const parts = [];
     const statsText = eq ? describeStats(eq.grantedStats) : '';
     if (statsText) parts.push(statsText);
-    if (eq && eq.grantedKeywords && eq.grantedKeywords.length > 0) parts.push(eq.grantedKeywords.map(k => KEYWORD_LABELS_SHORT[k] || k).join(', '));
+    if (eq && eq.grantedKeywords && eq.grantedKeywords.length > 0) parts.push(eq.grantedKeywords.map(shortLabelFor).join(', '));
     if (eqCard.grantedAbility) {
       const ab = eqCard.grantedAbility;
       parts.push(`${ab.cost}: ${ab.effect.type === 'damage' ? `${ab.effect.amount} de daño` : ab.effect.type}`);
@@ -431,7 +584,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const parts = [];
     const statsText = describeStats(t);
     if (statsText) parts.push(statsText);
-    if (t.keywords && t.keywords.length > 0) parts.push(t.keywords.map(k => KEYWORD_LABELS_SHORT[k] || k).join(', '));
+    if (t.keywords && t.keywords.length > 0) parts.push(t.keywords.map(shortLabelFor).join(', '));
     return parts.join(' · ');
   };
 
@@ -470,6 +623,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(card.type, 16, 0.3)).toFixed(2)}cqw, 30px);">${card.type}</span><span class="rarity-icon">●</span></div>
       ${formattedTextHTML}
       ${card.power !== undefined ? `<div class="card-pt">${ptText}</div>` : ''}
+      ${isPlaneswalker ? `<div class="card-pt card-loyalty">${loyaltyText}</div>` : ''}
       ${auraBadgeHTML}
     </div>
   `;
@@ -495,6 +649,12 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       el.addEventListener('click', () => handleCombatClick(itemObj, isLocal, index));
     } else if (zone === 'support' && isLocal && state.activePlayer === 'local' && state.phase.startsWith('main') && !state.gameOver) {
       el.addEventListener('click', () => handleSupportClick(itemObj, isLocal, index));
+    } else if (zone === 'planeswalker' && !state.gameOver) {
+      // Sin restricción de fase acá: clickear tu PROPIO Planeswalker (para abrir el menú de
+      // habilidades) y clickear uno RIVAL (para completar una redirección de ataque en
+      // combate) necesitan poder pasar en momentos distintos del turno — cada caso valida
+      // su propio momento correcto adentro de handlePlaneswalkerClick.
+      el.addEventListener('click', () => handlePlaneswalkerClick(itemObj, isLocal, index));
     }
   }
 
@@ -551,7 +711,7 @@ export function sizeCardsInRow(rowEl) {
 }
 
 export function sizeAllRows() {
-  [els.localHand, els.rivalHand, els.localLands, els.rivalLands, els.localCombat, els.rivalCombat, els.localSupport, els.rivalSupport].forEach(sizeCardsInRow);
+  [els.localHand, els.rivalHand, els.localLands, els.rivalLands, els.localCombat, els.rivalCombat, els.localSupport, els.rivalSupport, els.localPlaneswalkers, els.rivalPlaneswalkers].forEach(sizeCardsInRow);
 }
 
 // --- MODAL DE SELECCIÓN DE MAZO INICIAL ---
@@ -974,6 +1134,9 @@ export function render() {
   groupAndRenderZone(state.localSupport, els.localSupport, true, 'support');
   groupAndRenderZone(state.rivalSupport, els.rivalSupport, false, 'support');
 
+  els.localPlaneswalkers.innerHTML = ''; state.localPlaneswalkers.forEach((item, idx) => els.localPlaneswalkers.appendChild(createCardElement(item, false, true, idx, 'planeswalker')));
+  els.rivalPlaneswalkers.innerHTML = ''; state.rivalPlaneswalkers.forEach((item, idx) => els.rivalPlaneswalkers.appendChild(createCardElement(item, false, false, idx, 'planeswalker')));
+
   els.localCombat.innerHTML = ''; state.localCombat.forEach((item, idx) => els.localCombat.appendChild(createCardElement(item, item.tapped, true, idx, 'combat')));
   els.rivalCombat.innerHTML = ''; state.rivalCombat.forEach((item, idx) => els.rivalCombat.appendChild(createCardElement(item, item.tapped, false, idx, 'combat')));
   
@@ -1048,10 +1211,10 @@ export function render() {
   if (state.isDiscarding) els.localHand.classList.add('discard-warning');
   else els.localHand.classList.remove('discard-warning');
 
-  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew) {
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice) {
     els.paymentControls.classList.remove('hidden'); els.btnEndTurn.classList.add('hidden'); 
     els.localHand.classList.add('paying-mode');
-    if (!state.pendingCrew) els.localLands.classList.add('paying-mode');
+    if (!state.pendingCrew && !state.pendingWardChoice) els.localLands.classList.add('paying-mode');
     if (state.pendingSpellIndex !== null) {
       const pendingCardEl = els.localHand.children[state.pendingSpellIndex];
       if (pendingCardEl) pendingCardEl.classList.add('paying');
@@ -1060,6 +1223,8 @@ export function render() {
     let statusText;
     if (state.pendingCrew) {
       statusText = `Tripulando ${state.pendingCrew.item.card.name}: ${state.pendingCrew.powerSoFar}/${state.pendingCrew.required} de poder — clickeá tus criaturas 🚗`;
+    } else if (state.pendingWardChoice) {
+      statusText = `🔶 ¡${state.pendingWardChoice.targetObj.item.card.name} tiene Ward ${state.pendingWardChoice.wardCost}! Pagá o el hechizo se pierde.`;
     } else {
       statusText = state.pendingTargetCard ? "¡Maná pagado! Elegí un objetivo brillante ✨" : "Falta: ";
       if (!state.pendingTargetCard) {
@@ -1072,6 +1237,26 @@ export function render() {
       }
     }
     els.paymentStatus.textContent = statusText;
+
+    // Costo alternativo (pagar con vida en vez de maná): el botón solo aparece mientras
+    // seguís pagando el maná normal — una vez que ya elegiste un camino (pagaste maná del
+    // todo, o ya estás eligiendo objetivo) no tiene sentido seguir ofreciéndolo.
+    const pendingCard = state.pendingSpellIndex !== null ? state.localHand[state.pendingSpellIndex] : null;
+    if (pendingCard && pendingCard.alternativeCost && !state.pendingTargetCard && !state.pendingCrew && !state.pendingWardChoice) {
+      els.btnAltCost.classList.remove('hidden');
+      const ac = pendingCard.alternativeCost;
+      const altLabel = ac.type === 'life' ? `💉 Pagar con ${ac.amount} de vida en vez de maná` : `Pagar costo alternativo`;
+      els.btnAltCost.textContent = altLabel;
+    } else {
+      els.btnAltCost.classList.add('hidden');
+    }
+
+    if (state.pendingWardChoice) {
+      els.btnPayWard.classList.remove('hidden');
+      els.btnPayWard.textContent = `🔶 Pagar Ward ${state.pendingWardChoice.wardCost}`;
+    } else {
+      els.btnPayWard.classList.add('hidden');
+    }
   } else {
     els.paymentControls.classList.add('hidden'); els.btnEndTurn.classList.remove('hidden');
     els.localHand.classList.remove('paying-mode'); els.localLands.classList.remove('paying-mode');
@@ -1081,6 +1266,8 @@ export function render() {
 }
 
 els.btnCancelSpell.addEventListener('click', cancelPayment);
+els.btnAltCost.addEventListener('click', payWithAlternativeCost);
+els.btnPayWard.addEventListener('click', payWard);
 
 // ACTUALIZADO: Controles de teclado globales (Escape y Barra Espaciadora)
 document.addEventListener('keydown', (e) => { 
