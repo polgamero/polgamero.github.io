@@ -270,7 +270,7 @@
   },
   {
     "id": "ench_013",
-    "name": "Pacto de Sangre del Sótano",
+    "name": "Pacto de Sangre",
     "type": "Encantamiento",
     "manaCost": "{2}{B}",
     "cmc": 3,
@@ -279,7 +279,7 @@
       "B"
     ],
     "text": "Siempre que una criatura del oponente muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
-    "flavorText": "Lo que se firma ahí abajo, se cumple sí o sí.",
+    "flavorText": "Lo que se pacta, se cumple sí o sí.",
     "image": "pacto_sangre.png",
     "keywords": [],
     "opponentDeathTrigger": {
@@ -318,7 +318,7 @@
       "B"
     ],
     "text": "Efecto estático: Tus criaturas obtienen +0/+1.",
-    "flavorText": "Los del fondo son los que más aguantan.",
+    "flavorText": "Los del fondo son los que más joden.",
     "image": "aguante_fondo.png",
     "keywords": [],
     "staticEffect": {
@@ -339,7 +339,7 @@
       "R"
     ],
     "text": "Siempre que ataques con una o más criaturas, le hacés 1 de daño al jugador rival.",
-    "flavorText": "Se prende apenas arranca el aguante.",
+    "flavorText": "En la cancha se juega todo, incluso la vida.",
     "image": "bengala_cancha.png",
     "keywords": [],
     "anyCreatureAttacksTrigger": {
@@ -358,7 +358,7 @@
       "R"
     ],
     "text": "Efecto estático: Tus criaturas obtienen +1/+0.",
-    "flavorText": "Un solo grito, y toda la barra se prende fuego.",
+    "flavorText": "Un solo grito, y la valentía se hace realidad.",
     "image": "grito_guerra.png",
     "keywords": [],
     "staticEffect": {
@@ -389,7 +389,7 @@
   },
   {
     "id": "ench_019",
-    "name": "Manto de los Vecinos",
+    "name": "Alarma Vecinal",
     "type": "Encantamiento",
     "manaCost": "{2}{W}",
     "cmc": 3,
@@ -398,8 +398,8 @@
       "W"
     ],
     "text": "Al final de tu turno, si atacaste con dos o más criaturas este turno, ganás 2 Puntos de Vida.",
-    "flavorText": "Cuando salen todos juntos, el barrio entero los cubre.",
-    "image": "manto_vecinos.png",
+    "flavorText": "Cuando salen de a uno, el barrio entero los cubre.",
+    "image": "alarma_vecinal.png",
     "keywords": [],
     "endStepTrigger": {
       "type": "heal",
@@ -488,7 +488,7 @@
   },
   {
     "id": "ench_024",
-    "name": "Custodia del Clan",
+    "name": "Custodia del titán",
     "type": "Encantamiento — Aura",
     "manaCost": "{1}{G}",
     "cmc": 2,
@@ -509,7 +509,7 @@
         "ward_2"
       ]
     },
-    "image": "custodia_clan.png"
+    "image": "custodia_titan.png"
   },
   {
     "id": "ench_025",
