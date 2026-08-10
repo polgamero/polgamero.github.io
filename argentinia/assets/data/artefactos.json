@@ -476,7 +476,7 @@
   },
   {
     "id": "art_023",
-    "name": "Amuleto Bendecido",
+    "name": "Amuleto Bendito",
     "type": "Artefacto — Equipamiento",
     "manaCost": "{2}",
     "cmc": 2,
@@ -484,7 +484,7 @@
     "colors": [],
     "text": "Equipar {1}. La criatura equipada tiene Protección de Negro.",
     "flavorText": "Se lo cuelgan al cuello los que ya vieron demasiado.",
-    "image": "amuleto_bendecido.png",
+    "image": "amuleto_bendito.png",
     "keywords": [],
     "equipment": {
       "equipCost": "{1}",
