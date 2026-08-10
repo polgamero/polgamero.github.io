@@ -215,14 +215,14 @@
   },
   {
     "id": "tier_016",
-    "name": "Sendero al Delta",
+    "name": "Sendero de las cataratas",
     "type": "Tierra",
     "manaCost": "",
     "cmc": 0,
     "rarity": "Rare",
     "colors": [],
     "text": "{T}, Sacrificá esta tierra: Buscá una tierra básica en tu mazo y ponela en el campo de batalla.",
-    "flavorText": "Un camino que se borra apenas lo cruzás.",
+    "flavorText": "Un camino que se borra entre la bruma apenas lo cruzás.",
     "image": "sendero_delta.png",
     "activatedAbility": {
       "cost": "{T}",
@@ -338,15 +338,15 @@
   },
   {
     "id": "tier_023",
-    "name": "Cancha de Potrero",
+    "name": "Puente Alsina",
     "type": "Tierra",
     "manaCost": null,
     "cmc": 0,
     "rarity": "Rare",
     "colors": [],
-    "text": "{2}: Cancha de Potrero se convierte en una criatura 2/2 con Prisa hasta el final del turno. Sigue siendo una tierra.",
+    "text": "{2}: Puente Alsina se convierte en una criatura 2/2 con Prisa hasta el final del turno. Sigue siendo una tierra.",
     "flavorText": "No da maná, pero cuando hace falta, sale a jugar.",
-    "image": "cancha_potrero.png",
+    "image": "puente_alsina.png",
     "baseStats": {
       "power": 2,
       "toughness": 2
@@ -364,15 +364,15 @@
   },
   {
     "id": "tier_024",
-    "name": "Refugio de Montaña",
+    "name": "Refugio Jakob",
     "type": "Tierra",
     "manaCost": null,
     "cmc": 0,
     "rarity": "Rare",
     "colors": [],
-    "text": "{2}: Refugio de Montaña se convierte en una criatura 2/4 hasta el final del turno. Sigue siendo una tierra.",
+    "text": "{2}: Refugio Jakob se convierte en una criatura 2/4 hasta el final del turno. Sigue siendo una tierra.",
     "flavorText": "Aguanta cualquier temporal, y a cualquiera que se le ocurra molestar.",
-    "image": "refugio_montana.png",
+    "image": "refugio_jakob.png",
     "baseStats": {
       "power": 2,
       "toughness": 4
