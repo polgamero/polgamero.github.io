@@ -22,11 +22,11 @@
     "id": "inst_007",
     "name": "Fernet con Cola",
     "type": "Instantáneo",
-    "manaCost": "{2}{R}",
+    "manaCost": "{2}{W}",
     "cmc": 3,
     "rarity": "Uncommon",
     "colors": [
-      "R"
+      "W"
     ],
     "text": "Trago Cordobés: Te cura 4 puntos de vida del alma.",
     "flavorText": "70/30 en una botella cortada.",
@@ -60,13 +60,13 @@
     "id": "inst_009",
     "name": "Beso en la Mejilla",
     "type": "Instantáneo",
-    "manaCost": "{W}",
+    "manaCost": "{U}",
     "cmc": 1,
     "rarity": "Uncommon",
     "colors": [
-      "W"
+      "U"
     ],
-    "text": "Saludo Amistoso: Robás 1 carta con cariño.",
+    "text": "Saludo Amistoso: Robás 1 carta.",
     "flavorText": "¡Hola che! ¿Cómo andás?",
     "requiresTarget": false,
     "image": "beso_mejilla.png",
@@ -79,13 +79,13 @@
     "id": "inst_010",
     "name": "Cacerolazo de Barrio",
     "type": "Instantáneo",
-    "manaCost": "{2}{W}",
-    "cmc": 3,
+    "manaCost": "{1}{R}",
+    "cmc": 2,
     "rarity": "Rare",
     "colors": [
-      "W"
+      "R"
     ],
-    "text": "Ruido Ensordecedor: 2 de daño al jugador o criatura objetivo.",
+    "text": "Ruido Ensordecedor: 2 de daño al jugador objetivo.",
     "flavorText": "Se escucha en todos los balcones.",
     "requiresTarget": true,
     "image": "cacerolazo.png",
@@ -98,8 +98,8 @@
     "id": "inst_011",
     "name": "Mano de Dios",
     "type": "Instantáneo",
-    "manaCost": "{1}{R}",
-    "cmc": 2,
+    "manaCost": "{3}{R}",
+    "cmc": 4,
     "rarity": "Rare",
     "colors": [
       "R"
@@ -264,7 +264,7 @@
       "G"
     ],
     "text": "Previene todo el daño de combate que se fuera a hacer este turno.",
-    "flavorText": "Se paró el partido, se paró todo.",
+    "flavorText": "Se paró el tiempo, se paró todo.",
     "requiresTarget": false,
     "image": "que_pare_todo.png",
     "effect": {
@@ -282,7 +282,7 @@
       "B"
     ],
     "text": "Destruí la criatura objetivo.",
-    "flavorText": "El árbitro no llegó a ver nada.",
+    "flavorText": "El agua no llegó a pararlo.",
     "requiresTarget": true,
     "image": "codazo_bajo_el_agua.png",
     "effect": {
@@ -317,7 +317,7 @@
     "colors": [
       "G"
     ],
-    "text": "Tu criatura con más poder pelea contra la criatura objetivo (cada una le hace daño a la otra igual a su fuerza).",
+    "text": "Tu criatura objetivo pelea contra la criatura rival objetivo.",
     "flavorText": "Grita más fuerte que el invitado y gana el punto igual.",
     "requiresTarget": true,
     "image": "mauro_viale.png",
@@ -346,7 +346,7 @@
   },
   {
     "id": "inst_019",
-    "name": "Destierro",
+    "name": "Destierro del barrio",
     "type": "Instantáneo",
     "manaCost": "{2}{W}",
     "cmc": 3,
@@ -354,8 +354,8 @@
     "colors": [
       "W"
     ],
-    "text": "Exilia a la criatura objetivo. No cuenta como que murió (Indestructible no la salva, y no vuelve del cementerio).",
-    "flavorText": "Ni el recuerdo va a quedar en el barrio.",
+    "text": "Exilia a la criatura objetivo.",
+    "flavorText": "Ni el recuerdo va a quedar en el lugar donde vivió.",
     "requiresTarget": true,
     "image": "destierro.png",
     "effect": {
@@ -382,7 +382,7 @@
   },
   {
     "id": "inst_021",
-    "name": "Purga del Osario",
+    "name": "Purga del Panteón",
     "type": "Instantáneo",
     "manaCost": "{1}{B}",
     "cmc": 2,
@@ -393,7 +393,7 @@
     "text": "Exilia el cementerio del jugador objetivo.",
     "flavorText": "Ni los muertos se salvan de una buena limpieza.",
     "requiresTarget": true,
-    "image": "purga_osario.png",
+    "image": "purga_panteon.png",
     "effect": {
       "type": "exile_graveyard"
     }
