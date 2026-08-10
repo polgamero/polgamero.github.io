@@ -3,11 +3,11 @@
     "id": "conj_001",
     "name": "Choripán de Costanera",
     "type": "Conjuro",
-    "manaCost": "{1}{R}",
+    "manaCost": "{1}{W}",
     "cmc": 2,
     "rarity": "Uncommon",
     "colors": [
-      "R"
+      "W"
     ],
     "text": "Con Chimichurri: Te cura 3 de HP al instante.",
     "flavorText": "Infaltable a la salida de la cancha.",
@@ -22,10 +22,10 @@
     "id": "conj_002",
     "name": "La Picadita",
     "type": "Conjuro",
-    "manaCost": "{2}",
+    "manaCost": "{U}{U}",
     "cmc": 2,
     "rarity": "Uncommon",
-    "colors": [],
+    "colors": [U],
     "text": "Queso y Salame: Robás 2 cartas.",
     "flavorText": "Para picar mientras esperamos el asado.",
     "requiresTarget": false,
@@ -97,8 +97,8 @@
     "id": "conj_006",
     "name": "Tormenta Santa Rosa",
     "type": "Conjuro",
-    "manaCost": "{3}{U}{U}",
-    "cmc": 5,
+    "manaCost": "{2}{U}{U}",
+    "cmc": 4,
     "rarity": "Rare",
     "colors": [
       "U"
@@ -116,11 +116,11 @@
     "id": "conj_007",
     "name": "Asadito con amigos",
     "type": "Conjuro",
-    "manaCost": "{4}{G}",
+    "manaCost": "{4}{W}",
     "cmc": 5,
     "rarity": "Rare",
     "colors": [
-      "G"
+      "W"
     ],
     "text": "Banquete Familiar: Te cura 8 de HP al instante.",
     "flavorText": "Sobró achura para toda la semana.",
@@ -135,11 +135,11 @@
     "id": "conj_008",
     "name": "Cacerolazo General",
     "type": "Conjuro",
-    "manaCost": "{3}{W}{W}",
+    "manaCost": "{3}{B}{B}",
     "cmc": 5,
     "rarity": "Rare",
     "colors": [
-      "W"
+      "B"
     ],
     "text": "Ruido de Fondo: Destruye todas las criaturas en el campo de batalla.",
     "flavorText": "Cuando el pueblo sale a la calle con la cacerola, no queda títere con cabeza.",
@@ -405,7 +405,7 @@
   },
   {
     "id": "conj_024",
-    "name": "Marcha de la Cuadra",
+    "name": "El equipo sale a la cancha",
     "type": "Conjuro",
     "manaCost": "{2}{W}",
     "cmc": 3,
@@ -413,15 +413,15 @@
     "colors": [
       "W"
     ],
-    "text": "Creás dos fichas de criatura 1/1 Vecino Movilizado.",
-    "flavorText": "Cuando se juntan todos, no hay quien los pare.",
+    "text": "Creás dos fichas de criatura 1/1 Jugador Libre.",
+    "flavorText": "Se terminó el contrato, están enojados y con ganas de pelear.",
     "requiresTarget": false,
-    "image": "marcha_cuadra.png",
+    "image": "equipo_cancha.png",
     "effect": {
       "type": "create_tokens",
       "amount": 2,
-      "tokenName": "Vecino Movilizado",
-      "image": "vecino.png",
+      "tokenName": "Jugador Libre",
+      "image": "jugador_libre.png",
       "tokenStats": {
         "power": 1,
         "toughness": 1
@@ -431,9 +431,9 @@
   },
   {
     "id": "conj_022",
-    "name": "Bendición del Barrio",
+    "name": "Bendición de la vieja",
     "type": "Conjuro",
-    "manaCost": "{1}{W}",
+    "manaCost": "{2}{W}",
     "cmc": 2,
     "rarity": "Common",
     "colors": [
@@ -442,7 +442,7 @@
     "text": "Ganás 5 Puntos de Vida.",
     "flavorText": "A veces alcanza con que alguien te desee lo mejor.",
     "requiresTarget": false,
-    "image": "bendicion_barrio.png",
+    "image": "bendicion_vieja.png",
     "effect": {
       "type": "heal",
       "amount": 5
