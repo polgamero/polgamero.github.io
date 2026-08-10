@@ -25,7 +25,9 @@
     "manaCost": "{U}{U}",
     "cmc": 2,
     "rarity": "Uncommon",
-    "colors": [U],
+    "colors": [
+      "U"
+    ],
     "text": "Queso y Salame: Robás 2 cartas.",
     "flavorText": "Para picar mientras esperamos el asado.",
     "requiresTarget": false,
