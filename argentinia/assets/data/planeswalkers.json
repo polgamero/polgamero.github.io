@@ -11,7 +11,7 @@
     ],
     "loyalty": 5,
     "text": "Planeswalker Legendario.",
-    "flavorText": "Nadie entra ni sale de la cuadra sin que él se entere.",
+    "flavorText": "Nadie entra ni sale del barrio sin que él se entere.",
     "image": "cacique_barrio.png",
     "loyaltyAbilities": [
       {
@@ -133,7 +133,7 @@
   },
   {
     "id": "pw_004",
-    "name": "El Piromántico Callejero",
+    "name": "El Piromaníaco Callejero",
     "type": "Planeswalker — Piromántico",
     "manaCost": "{2}{R}{R}",
     "cmc": 4,
@@ -143,12 +143,12 @@
     ],
     "loyalty": 4,
     "text": "Planeswalker Legendario.",
-    "flavorText": "Cada esquina tiene su propio fueguito.",
+    "flavorText": "Cada esquina arde en su propio fuego.",
     "image": "piromantico_callejero.png",
     "loyaltyAbilities": [
       {
         "cost": 1,
-        "name": "+1: Chispita",
+        "name": "+1: Chispa",
         "text": "Le hacés 1 de daño al jugador rival.",
         "effect": {
           "type": "damage",
@@ -166,7 +166,7 @@
       },
       {
         "cost": -7,
-        "name": "-7: Incendio Total",
+        "name": "-7: Incendio",
         "text": "Le hacés 7 de daño al jugador rival.",
         "effect": {
           "type": "damage",
