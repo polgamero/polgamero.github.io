@@ -721,7 +721,7 @@
   },
   {
     "id": "crea_037",
-    "name": "Vecina Metiche",
+    "name": "Vecino Metiche",
     "type": "Criatura — Humano",
     "manaCost": "{2}{U}",
     "cmc": 3,
@@ -732,7 +732,7 @@
     "power": 1,
     "toughness": 3,
     "keywords": [],
-    "text": "Siempre que Vecina Metiche le haga daño de combate al jugador, ese jugador descarta una carta.",
+    "text": "Siempre que Vecino Metiche le haga daño de combate al jugador, ese jugador descarta una carta.",
     "flavorText": "\"Yo no digo nada, pero vi todo.\"",
     "image": "vecina_metiche.png",
     "combatDamageTrigger": {
@@ -786,7 +786,7 @@
   },
   {
     "id": "crea_040",
-    "name": "Escudera de la Vecinal",
+    "name": "La Forjadora de Escudos",
     "type": "Criatura — Humano",
     "manaCost": "{1}{W}",
     "cmc": 2,
@@ -797,7 +797,7 @@
     "power": 1,
     "toughness": 4,
     "keywords": [],
-    "text": "Siempre que Escudera de la Vecinal bloquee, ganás 1 Punto de Vida.",
+    "text": "Siempre que La Forjadora de Escudos bloquee, ganás 1 Punto de Vida.",
     "flavorText": "Organiza la olla popular y no deja pasar a nadie con hambre.",
     "image": "escudera_vecinal.png",
     "blockTrigger": {
@@ -877,7 +877,7 @@
   },
   {
     "id": "crea_044",
-    "name": "Cortejo Fúnebre del Barrio",
+    "name": "Cortejo Fúnebre",
     "type": "Criatura — Humano",
     "manaCost": "{1}{W}{B}",
     "cmc": 3,
@@ -1025,7 +1025,7 @@
       "flying"
     ],
     "text": "Vuela.",
-    "flavorText": "Cae del cielo justo cuando el barrio más lo necesita.",
+    "flavorText": "Cae del cielo justo cuando la siembra más la necesita.",
     "image": "angel_descampado.png"
   },
   {
@@ -1089,7 +1089,7 @@
   },
   {
     "id": "crea_054",
-    "name": "Domador de Incendios",
+    "name": "Combate Incendios",
     "type": "Criatura — Humano",
     "manaCost": "{3}{R}",
     "cmc": 4,
@@ -1100,7 +1100,7 @@
     "power": 4,
     "toughness": 3,
     "keywords": [],
-    "text": "Siempre que Domador de Incendios le haga daño de combate al jugador, le hacés 1 de daño adicional.",
+    "text": "Siempre que Combate Incendios le haga daño de combate al jugador, le hacés 1 de daño adicional.",
     "flavorText": "El fuego lo escucha a él antes que a nadie.",
     "image": "domador_incendios.png",
     "combatDamageTrigger": {
@@ -1339,7 +1339,7 @@
   },
   {
     "id": "crea_066",
-    "name": "Segundo al Mando",
+    "name": "Capitán al Mando",
     "type": "Criatura — Humano",
     "manaCost": "{2}{U}",
     "cmc": 3,
@@ -1347,12 +1347,12 @@
     "colors": [
       "U"
     ],
-    "power": 2,
+    "power": 3,
     "toughness": 2,
     "keywords": [
-      "flying"
+      "firststrike"
     ],
-    "text": "Vuela.",
+    "text": "Golpea primero y golpea fuerte.",
     "flavorText": "Siempre un paso atrás del que manda, y dos adelante de todos los demás.",
     "image": "segundo_al_mando.png"
   },
