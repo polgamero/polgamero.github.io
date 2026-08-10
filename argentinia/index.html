@@ -16,8 +16,9 @@
       <!-- CAMPO RIVAL -->
       <section class="field-zone-container">
         <div id="rival-wrapper" class="lands-support-wrapper">
-          <div id="rival-lands" class="field-row lands-row" style="flex: 7;"></div>
+          <div id="rival-lands" class="field-row lands-row" style="flex: 6;"></div>
           <div id="rival-support" class="field-row support-row" style="flex: 3;"></div>
+          <div id="rival-planeswalkers" class="field-row planeswalker-row" style="flex: 3;"></div>
         </div>
         <div id="rival-combat" class="field-row combat-row"></div>
       </section>
@@ -26,8 +27,9 @@
       <section class="field-zone-container">
         <div id="local-combat" class="field-row combat-row"></div>
         <div id="local-wrapper" class="lands-support-wrapper">
-          <div id="local-lands" class="field-row lands-row" style="flex: 7;"></div>
+          <div id="local-lands" class="field-row lands-row" style="flex: 6;"></div>
           <div id="local-support" class="field-row support-row" style="flex: 3;"></div>
+          <div id="local-planeswalkers" class="field-row planeswalker-row" style="flex: 3;"></div>
         </div>
       </section>
 
@@ -68,6 +70,8 @@
 
         <div id="payment-controls" class="hidden" style="margin-bottom: 10px; text-align: center;">
           <p id="payment-status" style="font-size: 0.8rem; color: var(--gold); margin-bottom: 5px; font-weight: bold;">Pagando hechizo...</p>
+          <button id="btn-alt-cost" class="btn-reset hidden" style="width: 100%; background: #6c3483; border-color: #9b59b6; margin-bottom: 5px;">💉 Pagar con vida en vez de maná</button>
+          <button id="btn-pay-ward" class="btn-reset hidden" style="width: 100%; background: #d68910; border-color: #f39c12; margin-bottom: 5px;">🔶 Pagar Ward</button>
           <button id="btn-cancel-spell" class="btn-reset" style="width: 100%; background: #c0392b; border-color: #e74c3c;">❌ Cancelar (ESC)</button>
         </div>
         <div class="turn-controls">
