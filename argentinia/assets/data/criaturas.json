@@ -1435,5 +1435,72 @@
     "text": "Vigilancia, Ward {1}.",
     "flavorText": "El que se le acerca sin permiso, paga con su sangre.",
     "image": "guardiana_faro.png"
+  },
+  {
+    "id": "crea_071",
+    "name": "El Familiar",
+    "type": "Criatura — Bestia",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "keywords": [
+      "deathtouch"
+    ],
+    "text": "Toque Mortal. Escape—{3}{B}{B}, exiliar tres cartas de tu cementerio. (Podés lanzar esta carta desde tu cementerio pagando su costo de Escape en vez de su costo de maná.)",
+    "flavorText": "Cada año pide su parte. Cada año, vuelve a buscarla.",
+    "image": "el_familiar.png",
+    "escape": {
+      "cost": "{3}{B}{B}",
+      "exileCount": 3
+    }
+  },
+  {
+    "id": "crea_072",
+    "name": "Vendedor Ambulante",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "power": 1,
+    "toughness": 2,
+    "keywords": [],
+    "text": "Kicker {2}{U} (Podés pagar {2}{U} adicional al lanzar este hechizo). Si fue Kickeada, robás una carta al entrar al campo de batalla.",
+    "flavorText": "«¿Le interesa uno para el amigo también?»",
+    "image": "vendedor_ambulante.png",
+    "kicker": {
+      "cost": "{2}{U}",
+      "bonusText": "robás una carta al entrar",
+      "bonusEffect": {
+        "type": "draw",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "crea_073",
+    "name": "Yarará",
+    "type": "Criatura — Serpiente",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "power": 1,
+    "toughness": 1,
+    "keywords": [
+      "infect"
+    ],
+    "text": "Infectar (Esta criatura le da contadores de Veneno a los jugadores en vez de quitarles HP, y contadores -1/-1 a las criaturas en vez de dañarlas normalmente.)",
+    "flavorText": "No hace ruido. No avisa. Ataca una sola vez, y alcanza.",
+    "image": "yarara.png"
   }
 ]

@@ -219,5 +219,50 @@
         }
       }
     ]
+  },
+  {
+    "id": "pw_006",
+    "name": "El Comisario",
+    "type": "Planeswalker — Comisario",
+    "manaCost": "{3}{W}{B}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [
+      "W",
+      "B"
+    ],
+    "loyalty": 5,
+    "text": "Planeswalker Legendario.",
+    "flavorText": "En su comisaría, la ley se aplica antes de leerse.",
+    "image": "comisario.png",
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Palo y Zanahoria",
+        "text": "Ganás 2 Puntos de Vida.",
+        "effect": {
+          "type": "heal",
+          "amount": 2
+        }
+      },
+      {
+        "cost": -3,
+        "name": "-3: Orden de Arresto",
+        "text": "Destruye la criatura objetivo.",
+        "requiresTarget": true,
+        "effect": {
+          "type": "destroy_creature"
+        }
+      },
+      {
+        "cost": -8,
+        "name": "-8: Traslado a Devoto",
+        "text": "Exilia la criatura objetivo.",
+        "requiresTarget": true,
+        "effect": {
+          "type": "exile_creature"
+        }
+      }
+    ]
   }
 ]

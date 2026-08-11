@@ -15,7 +15,8 @@ import {
   triggerAnyCreatureDeath,
   resolveEffectDirect,
   cleanupIfVehicle,
-  checkPlaneswalkerDeaths
+  checkPlaneswalkerDeaths,
+  addCounters
 } from './main.js';
 import { showDamageAssignmentModal } from './ui.js';
 
@@ -293,6 +294,34 @@ export async function resolveCombatDamage() {
   state.pendingBlockerIndex = null;
 }
 
+// Infectar (regla real 702.90): una criatura con Infectar hace TODO su daño de combate de
+// forma alternativa — a otra criatura, en vez de dañarla normalmente, le pone contadores
+// -1/-1 (que además YA reducen su resistencia efectiva sola, vía getEffectiveToughness —
+// el mismo sistema que ya usa Proliferar y Lealtad); a un jugador, en vez de bajarle HP, le
+// pone contadores de Veneno. A un Planeswalker NO le cambia nada: sigue siendo pérdida de
+// Lealtad normal, como en MTG real (Infectar solo altera daño a jugadores y a criaturas).
+function dealCombatDamageToCreature(source, targetItem, amount) {
+  if (amount <= 0) return;
+  if (hasKeyword(source, 'infect')) {
+    addCounters(targetItem, 'minusOne', amount);
+    logMsg(`☠️ ¡Infectar! ${targetItem.card.name} recibió ${amount} contador(es) -1/-1 de ${source.card.name}.`);
+  } else {
+    targetItem.damageTaken = (targetItem.damageTaken || 0) + amount;
+  }
+}
+
+function dealCombatDamageToPlayer(source, isTargetLocal, amount) {
+  if (amount <= 0) return;
+  if (hasKeyword(source, 'infect')) {
+    if (isTargetLocal) state.localPoison = (state.localPoison || 0) + amount;
+    else state.rivalPoison = (state.rivalPoison || 0) + amount;
+    logMsg(`☠️ ¡Infectar! ${source.card.name} le puso ${amount} contador(es) de Veneno a ${isTargetLocal ? 'Vos' : 'El Tano'}.`);
+  } else {
+    if (isTargetLocal) state.localHP -= amount;
+    else state.rivalHP -= amount;
+  }
+}
+
 async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
   for (const { attacker, blockers } of combatPairs) {
     if (isCreatureDead(attacker)) continue;
@@ -305,7 +334,6 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
 
     const aliveBlockers = blockers.filter(b => !isCreatureDead(b));
 
-    let totalBlockerPowerThisStep = 0;
     aliveBlockers.forEach(blocker => {
       if (!stepFilter(blocker)) return; 
 
@@ -322,7 +350,10 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         return;
       }
 
-      totalBlockerPowerThisStep += bPower;
+      // Se aplica POR bloqueador (no como un total acumulado) para que un bloqueo múltiple
+      // con bloqueadores mezclados (algunos con Infectar, otros sin) redirija cada parte
+      // por separado — cada uno decide su propio destino (contador -1/-1 o daño normal).
+      dealCombatDamageToCreature(blocker, attacker, bPower);
 
       if (blockerHasLifelink && bPower > 0) {
         if (isLocalAttacking) {
@@ -337,10 +368,6 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         attacker.tookDeathtouch = true;
       }
     });
-
-    if (totalBlockerPowerThisStep > 0) {
-      attacker.damageTaken = (attacker.damageTaken || 0) + totalBlockerPowerThisStep;
-    }
 
     if (!attackerDealsThisStep) continue;
 
@@ -365,13 +392,13 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         continue;
       }
       if (isLocalAttacking) {
-        state.rivalHP -= attackerPower;
+        dealCombatDamageToPlayer(attacker, false, attackerPower);
         if (attackerHasLifelink && attackerPower > 0) {
           state.localHP += attackerPower;
           logMsg(`💚 Vínculo Vital: ¡${attacker.card.name} te curó ${attackerPower} HP!`);
         }
       } else {
-        state.localHP -= attackerPower;
+        dealCombatDamageToPlayer(attacker, true, attackerPower);
         if (attackerHasLifelink && attackerPower > 0) {
           state.rivalHP += attackerPower;
           logMsg(`💚 Vínculo Vital: ¡${attacker.card.name} curó ${attackerPower} HP al Tano!`);
@@ -395,10 +422,10 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
           continue;
         }
         if (isLocalAttacking) {
-          state.rivalHP -= attackerPower;
+          dealCombatDamageToPlayer(attacker, false, attackerPower);
           if (attackerHasLifelink && attackerPower > 0) state.localHP += attackerPower;
         } else {
-          state.localHP -= attackerPower;
+          dealCombatDamageToPlayer(attacker, true, attackerPower);
           if (attackerHasLifelink && attackerPower > 0) state.rivalHP += attackerPower;
         }
         logMsg(`🐘 Arrollar: los bloqueadores de ${attacker.card.name} ya habían caído en Iniciativa, así que TODO su daño (${attackerPower}) pasa de largo.`);
@@ -464,7 +491,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
           // bloqueador ni al jugador), simplemente ese daño puntual nunca llega a pasar.
           logMsg(`🛡️ ¡${blocker.card.name} tiene Protección de ${COLOR_LABELS[blockerProtected] || blockerProtected}! El daño de ${attacker.card.name} fue prevenido.`);
         } else {
-          blocker.damageTaken = (blocker.damageTaken || 0) + damageToDeal;
+          dealCombatDamageToCreature(attacker, blocker, damageToDeal);
           attackerLifelinkHeal += damageToDeal;
           if (attackerHasDeathtouch) blocker.tookDeathtouch = true;
         }
@@ -482,8 +509,8 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
           attackerLifelinkHeal += manualPlayerDamage;
           checkPlaneswalkerDeaths();
         } else {
-          if (isLocalAttacking) state.rivalHP -= manualPlayerDamage;
-          else state.localHP -= manualPlayerDamage;
+          if (isLocalAttacking) dealCombatDamageToPlayer(attacker, false, manualPlayerDamage);
+          else dealCombatDamageToPlayer(attacker, true, manualPlayerDamage);
           attackerLifelinkHeal += manualPlayerDamage;
           logMsg(`🐘 Arrollar (Asignado): ¡${attacker.card.name} arrolló con ${manualPlayerDamage} de daño!`);
           damageToPlayerThisStep += manualPlayerDamage;
@@ -497,12 +524,12 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         attackerLifelinkHeal += remainingAttackerPower;
         checkPlaneswalkerDeaths();
       } else if (isLocalAttacking) {
-        state.rivalHP -= remainingAttackerPower;
+        dealCombatDamageToPlayer(attacker, false, remainingAttackerPower);
         logMsg(`🐘 Arrollar: ¡${attacker.card.name} repartió daño letal a los bloqueadores y arrolló con ${remainingAttackerPower} de daño al Tano!`);
         attackerLifelinkHeal += remainingAttackerPower;
         damageToPlayerThisStep += remainingAttackerPower;
       } else {
-        state.localHP -= remainingAttackerPower;
+        dealCombatDamageToPlayer(attacker, true, remainingAttackerPower);
         logMsg(`🐘 Arrollar: ¡El ${attacker.card.name} del Tano repartió daño letal a tus defensores y te arrolló con ${remainingAttackerPower} de daño!`);
         attackerLifelinkHeal += remainingAttackerPower;
         damageToPlayerThisStep += remainingAttackerPower;

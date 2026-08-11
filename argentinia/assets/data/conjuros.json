@@ -616,5 +616,25 @@
         }
       }
     ]
+  },
+  {
+    "id": "conj_030",
+    "name": "Injerto de Ceibo",
+    "type": "Conjuro",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Brote Nuevo: La criatura objetivo que controlás recibe un contador +1/+1.",
+    "flavorText": "El ceibo prende de cualquier gajo, si lo plantás con ganas.",
+    "requiresTarget": true,
+    "image": "injerto_ceibo.png",
+    "effect": {
+      "type": "add_counter",
+      "counterType": "plusOne",
+      "amount": 1
+    }
   }
 ]

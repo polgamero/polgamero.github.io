@@ -835,5 +835,112 @@
         "requiresTarget": false
       }
     ]
+  },
+  {
+    "id": "inst_042",
+    "name": "¡Quiero Retruco!",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Doble o Nada: Elegí cualquier cantidad de permanentes y/o Planeswalkers que ya tengan un contador. Cada uno elegido recibe un contador más de cada tipo que ya tenga.",
+    "flavorText": "En el truco, quien pide retruco no está agrandando la apuesta — está agrandando lo que ya tenías en la mano.",
+    "requiresTarget": false,
+    "image": "quiero_retruco.png",
+    "effect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "inst_043",
+    "name": "Plaga del Silo",
+    "type": "Instantáneo",
+    "manaCost": "{B}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "Grano Podrido: La criatura objetivo recibe un contador -1/-1.",
+    "flavorText": "Lo que se guardó húmedo, nunca más vuelve a servir.",
+    "requiresTarget": true,
+    "image": "plaga_silo.png",
+    "effect": {
+      "type": "add_counter",
+      "counterType": "minusOne",
+      "amount": 1
+    }
+  },
+  {
+    "id": "inst_044",
+    "name": "Pacto en la Salamanca",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Saber Prohibido: Robás una carta. Escape—{3}{U}{U}, exiliar dos cartas de tu cementerio.",
+    "flavorText": "Cada medianoche, alguien vuelve a pedir el mismo trato.",
+    "requiresTarget": false,
+    "image": "pacto_salamanca.png",
+    "effect": {
+      "type": "draw",
+      "amount": 1
+    },
+    "escape": {
+      "cost": "{3}{U}{U}",
+      "exileCount": 2
+    }
+  },
+  {
+    "id": "inst_045",
+    "name": "Petardos de Año Nuevo",
+    "type": "Instantáneo",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Le hace 2 de daño a cualquier objetivo. Kicker {2}{R} (Podés pagar {2}{R} adicional al lanzar este hechizo). Si fue Kickeada, le hacés 2 de daño adicional al jugador rival.",
+    "flavorText": "Uno más nunca sobra.",
+    "requiresTarget": true,
+    "image": "petardos_ano_nuevo.png",
+    "effect": {
+      "type": "damage",
+      "amount": 2
+    },
+    "kicker": {
+      "cost": "{2}{R}",
+      "bonusText": "le hacés 2 de daño adicional al jugador rival",
+      "bonusEffect": {
+        "type": "damage",
+        "amount": 2
+      }
+    }
+  },
+  {
+    "id": "inst_046",
+    "name": "Colmillo de Yarará",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "El jugador objetivo recibe 2 contadores de Veneno.",
+    "flavorText": "Ni hace falta que te muerda entero. Con un poco alcanza.",
+    "requiresTarget": true,
+    "image": "colmillo_yarara.png",
+    "effect": {
+      "type": "poison",
+      "amount": 2
+    }
   }
 ]

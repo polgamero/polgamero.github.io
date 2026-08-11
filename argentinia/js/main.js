@@ -2,8 +2,8 @@ import { addToStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal } from './ui.js';
-import { buildRandomDeck, parseManaCost, getLandColor, sleep, shuffle } from './utils.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showMainMenu, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showEscapeExileModal, showKickerModal } from './ui.js';
+import { buildRandomDeck, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
 
@@ -26,7 +26,20 @@ export const state = {
   phase: 'main1', 
   gameOver: false,
 
+  // Dificultad del Tano (Grupo C, Etapa 4): 'hard' (default) usa todo lo construido en las
+  // Etapas 1-3 (reacciona en velocidad instantánea, evalúa trades al Pelear, prioriza
+  // remoción/desarrollo al elegir carta). 'easy' vuelve al comportamiento de base: solo
+  // actúa en su propio turno, pelea únicamente si es gratis, y juega la primera carta que
+  // puede pagar sin ningún criterio de prioridad. Se cambia desde el menú de Opciones
+  // (ver showOptionsMenu en ui.js) — no hay forma de cambiarla a mitad de partida.
+  botDifficulty: 'hard',
+
   localHP: 20,
+  // Veneno (regla real 104.3c, junto a Infectar en 702.90): condición de derrota
+  // ALTERNATIVA a quedarse en 0 HP — con 10 o más contadores de Veneno, perdés igual sin
+  // importar cuánta vida tengas. Infectar es la vía normal de conseguirlos (combatRules.js);
+  // Proliferar también puede multiplicarlos si ya tenés alguno.
+  localPoison: 0,
   localDeck: [],
   localHand: [],
   localLands: [],
@@ -39,6 +52,7 @@ export const state = {
   localLandPlayedThisTurn: false,
 
   rivalHP: 20,
+  rivalPoison: 0,
   rivalDeck: [],
   rivalHand: [],
   rivalLands: [],
@@ -102,10 +116,28 @@ export const state = {
   // confirmado, se guarda en pendingXValue hasta que el hechizo termine de pagarse del todo.
   pendingXChoice: null,
   pendingXValue: null,
-  // Flashback: 'flashback' mientras se está pagando una carta lanzada desde el cementerio
-  // por esta vía — se adjunta al ítem de la pila para saber, al resolver, que hay que
-  // exiliarla en vez de devolverla al cementerio.
+  // Kicker: costo ADICIONAL y OPCIONAL (a diferencia de additionalCost, que es obligatorio
+  // y siempre se paga). { index, card } mientras se decide sí/no; una vez confirmado, se
+  // guarda en pendingKicked (true/false) hasta que el hechizo entre a la pila, momento en
+  // el que viaja con el ítem de la pila para saber, al resolver, si hay que aplicar el
+  // bonus del Kicker.
+  pendingKickerChoice: null,
+  pendingKicked: null,
+  // Flashback/Escape: 'flashback' o 'escape' mientras se está pagando una carta lanzada
+  // desde el cementerio por esa vía — se adjunta al ítem de la pila para saber, al resolver,
+  // si hay que exiliarla (Flashback) o dejarla ir a destino normal (Escape).
   pendingCastFrom: null,
+  // Scry/Surveil: true mientras el modal está abierto esperando que el jugador decida qué
+  // hacer con las cartas — bloquea que el resto del juego siga de largo mientras tanto
+  // (era el bug real: antes esto no pausaba nada).
+  pendingScrySurveilChoice: false,
+  // Proliferar: true mientras el modal de selección de permanentes está abierto — mismo
+  // criterio de pausa que Scry/Surveil (bloquea el resto del juego hasta que se confirme).
+  pendingProliferateChoice: false,
+  // Escape: { card, exileCount } mientras se elige qué N cartas del cementerio se exilian
+  // como costo adicional — se resuelve DESPUÉS del maná, antes de que la carta termine de
+  // entrar a la pila (mismo momento que cualquier otro costo adicional).
+  pendingEscapeExileChoice: null,
   // Hechizos modales ("Elegí uno —"): { index, card } mientras se elige el modo.
   pendingModeChoice: null,
   // Habilidad de Lealtad con target: { pwItem, ability } mientras se elige la criatura.
@@ -255,8 +287,10 @@ function startLocalMulliganFlow(onDone) {
 // no arranca hasta que el jugador elige — initGame() se llama desde el callback del modal.
 async function boot() {
   await cardDb.loadAll();
-  showDeckSelectionModal((chosenIdentity) => {
-    initGame(chosenIdentity);
+  showMainMenu(() => {
+    showDeckSelectionModal((chosenIdentity) => {
+      initGame(chosenIdentity);
+    });
   });
 }
 
@@ -462,6 +496,56 @@ export function sendAurasToGraveyard(unit, isLocal) {
   unit.auras = [];
 }
 
+// SBA (regla real 704.5n): un Aura pegada a un permanente que YA NO es un objetivo legal
+// para ella se desprende sola y va al cementerio de su dueño — nadie tiene que destruirla.
+// El caso real que puede pasar en este juego: la criatura encantada gana Protección de un
+// color que el Aura tiene DESPUÉS de que ya estaba pegada (ej. la equipan con Amuleto
+// Bendito mientras ya tenía puesta una Aura Negra) — el chequeo de legalidad que ya existe
+// al LANZAR el Aura (getTargetRules) no alcanza para esto, porque es un estado que puede
+// cambiar recién más tarde. Se corre junto a checkGameOver en cada render(), como el resto
+// de las state-based actions de este motor.
+export function checkAuraLegality() {
+  const checkZone = (combatArray, graveyard) => {
+    combatArray.forEach(unit => {
+      if (!unit.auras || unit.auras.length === 0) return;
+      const stillLegal = [];
+      unit.auras.forEach(auraCard => {
+        const illegalColor = getProtectionMatch(unit, auraCard.colors || []);
+        if (illegalColor) {
+          logMsg(`💔 ¡${unit.card.name} tiene Protección de ${illegalColor} y ${auraCard.name} ya no puede seguir pegada! Se cae al cementerio.`);
+          graveyard.push(auraCard);
+        } else {
+          stillLegal.push(auraCard);
+        }
+      });
+      unit.auras = stillLegal;
+    });
+  };
+  checkZone(state.localCombat, state.localGraveyard);
+  checkZone(state.rivalCombat, state.rivalGraveyard);
+}
+
+// SBA (regla real 704.5m — el caso simétrico de checkAuraLegality de arriba, pero para
+// Equipos): un Equipo pegado a una criatura que ganó Protección de su color DESPUÉS de que
+// ya estaba puesto también queda ilegalmente adjunto — pero a diferencia de un Aura, un
+// Equipo NO va al cementerio (no depende de estar pegado a algo para existir). Se
+// desprende solo y se queda como permanente en tu campo, listo para volver a equiparse en
+// otra criatura apenas puedas pagar el costo de Equipar de nuevo.
+export function checkEquipmentLegality() {
+  const checkZone = (supportZone) => {
+    supportZone.forEach(item => {
+      if (!item.attachedTo) return;
+      const illegalColor = getProtectionMatch(item.attachedTo, item.card.colors || []);
+      if (illegalColor) {
+        logMsg(`🛡️ ¡${item.attachedTo.card.name} tiene Protección de ${illegalColor} y ${item.card.name} ya no puede seguir puesto! Se cae, pero se queda en tu campo.`);
+        item.attachedTo = null;
+      }
+    });
+  };
+  checkZone(state.localSupport);
+  checkZone(state.rivalSupport);
+}
+
 // Si un Vehículo tripulado (que "es una criatura hasta el final del turno") sale del campo
 // por cualquier camino que no sea llegar a Limpieza normalmente — muere en combate, lo
 // sacrifican, lo rebotan, lo arrasa un board wipe — hay que sacarle el power/toughness de
@@ -490,7 +574,7 @@ export function activateLoyaltyAbility(pwItem, abilityIndex, isLocal) {
     logMsg("Solo podés activar la habilidad de un Planeswalker en tu propio turno.");
     return;
   }
-  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice) {
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice || state.pendingKickerChoice) {
     logMsg("Terminá lo que tenés pendiente antes de activar esto.");
     return;
   }
@@ -530,8 +614,9 @@ export function activateLoyaltyAbility(pwItem, abilityIndex, isLocal) {
 
 // Resolver una habilidad de Lealtad con target, una vez que se eligió la criatura. No pasa
 // por la pila (las habilidades de Lealtad se resuelven directo en este motor, no se pueden
-// responder) — alcance acotado a propósito: daño y bufo, los dos patrones más comunes de
-// Planeswalker real. Destruir/exiliar por esta vía queda para una próxima iteración.
+// responder). Soporta daño, bufo, destruir y exiliar — los 4 patrones más comunes de
+// habilidad de Lealtad con target en MTG real (destruir/exiliar se sumaron después, mismo
+// criterio y mismos pasos de limpieza que ya usa stackManager.js para hechizos normales).
 export function resolveLoyaltyTargetChoice(targetUnit, isTargetLocal) {
   const ltc = state.pendingLoyaltyTargetChoice;
   if (!ltc) return;
@@ -555,6 +640,33 @@ export function resolveLoyaltyTargetChoice(targetUnit, isTargetLocal) {
     if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
     targetUnit.tempEffects.push({ powerMod: effect.powerMod || 0, toughnessMod: effect.toughnessMod || 0 });
     logMsg(`💪 "${ability.name}" le dio +${effect.powerMod || 0}/+${effect.toughnessMod || 0} a ${targetUnit.card.name} hasta el final del turno.`);
+  } else if (effect.type === 'destroy_creature' || effect.type === 'exile_creature') {
+    const board = isTargetLocal ? state.localCombat : state.rivalCombat;
+    const grave = isTargetLocal ? state.localGraveyard : state.rivalGraveyard;
+    const idx = board.indexOf(targetUnit);
+    if (idx === -1) {
+      logMsg(`⚠️ "${ability.name}" falló: el objetivo ya no está en el campo.`);
+      render();
+      return;
+    }
+    if (effect.type === 'destroy_creature' && hasKeyword(targetUnit, 'indestructible')) {
+      logMsg(`🛡️ ${targetUnit.card.name} es Indestructible: "${ability.name}" no pudo hacer nada.`);
+      render();
+      return;
+    }
+    board.splice(idx, 1);
+    detachEquipmentFrom(targetUnit, isTargetLocal);
+    sendAurasToGraveyard(targetUnit, isTargetLocal);
+    cleanupIfVehicle(targetUnit);
+    if (effect.type === 'destroy_creature') {
+      grave.push(targetUnit.card);
+      logMsg(`💀 "${ability.name}" destruyó a ${targetUnit.card.name}!`);
+      triggerCreatureDies(targetUnit, isTargetLocal);
+      triggerAnyCreatureDeath(targetUnit, isTargetLocal);
+    } else {
+      (isTargetLocal ? state.localExile : state.rivalExile).push(targetUnit.card);
+      logMsg(`🌀 "${ability.name}" exilió a ${targetUnit.card.name}!`);
+    }
   } else {
     logMsg(`⚠️ "${ability.name}" tiene un tipo de efecto que esta habilidad todavía no soporta con target.`);
   }
@@ -592,6 +704,36 @@ export function handlePlaneswalkerClick(pwItem, isLocal, index) {
     }
     state.pendingAttackRedirect = null;
     render();
+    return;
+  }
+
+  // Objetivos múltiples con un Planeswalker como blanco (ej. el sub-target de daño de un
+  // hechizo con varios efectos): mismo reuso de getTargetRules que el resto del motor.
+  if (state.pendingMultiTargetChoice) {
+    const mtc = state.pendingMultiTargetChoice;
+    const spec = mtc.card.targets[mtc.currentIndex];
+    const rules = getTargetRules({ effect: spec.effect });
+    const allowed = isLocal ? rules.allowLocalPlaneswalker : rules.allowRivalPlaneswalker;
+    if (!allowed) {
+      logMsg("Ese no es un objetivo válido para este target del hechizo.");
+      return;
+    }
+    advanceMultiTargetChoice({ type: 'planeswalker', isLocal, item: pwItem });
+    return;
+  }
+
+  // BUG ENCONTRADO Y ARREGLADO (Cabo suelto #13): un hechizo de daño a "cualquier objetivo"
+  // (jugador o criatura) no contemplaba a los Planeswalkers para nada — ni como opción de
+  // click. Un Planeswalker SÍ es un objetivo legal real en MTG (le resta Lealtad en vez de
+  // HP), así que si el efecto lo permite (getTargetRules), un click acá ahora cuenta.
+  if (state.pendingTargetCard) {
+    const rules = getTargetRules(state.pendingTargetCard);
+    const allowed = isLocal ? rules.allowLocalPlaneswalker : rules.allowRivalPlaneswalker;
+    if (!allowed) {
+      logMsg(`Ese no es un objetivo válido para ${state.pendingTargetCard.name}.`);
+      return;
+    }
+    executeSpellOnTarget({ type: 'planeswalker', isLocal, item: pwItem });
     return;
   }
 
@@ -1054,11 +1196,48 @@ export function cancelPayment() {
     return;
   }
   if (state.pendingSpellIndex === null && state.pendingAbilitySource === null && state.pendingSacrificeChoice === null) return;
+
+  // BUG ENCONTRADO Y ARREGLADO (Cabo suelto #10): una vez que el costo de Sacrificar ya se
+  // pagó DE VERDAD (la criatura/artefacto ya está en el cementerio — sea porque el costo
+  // era "self" y se pagó automático, o porque ya elegiste cuál), "Cancelar" dejaba de tener
+  // sentido pero el juego lo permitía igual: borraba todo el estado pendiente sin devolver
+  // nada, perdiendo el permanente sacrificado sin que la habilidad llegara a pasar nunca.
+  // En MTG real, una vez pagado un costo (sacrificio incluido) la activación queda
+  // irrevocablemente comprometida — acá replicamos eso negando el cancelar y obligando a
+  // terminar de elegir el objetivo (si la habilidad lo pide).
+  if (state.pendingAbilitySource && state.pendingAbilitySource.sacrificePaid) {
+    logMsg("⚠️ Ya pagaste el sacrificio de esta habilidad — no se puede cancelar. Tenés que terminar de elegir el objetivo.");
+    return;
+  }
+
   state.tappedLandsThisSpell.forEach(land => land.tapped = false);
+
+  // Si esto era un Flashback/Escape a mitad de pago (o esperando target), la carta está
+  // "prestada" en la mano — hay que devolverla a su cementerio, no dejarla ahí pegada como
+  // si fuera una carta de mano real y gratis.
+  if (state.pendingCastFrom && state.pendingSpellIndex !== null) {
+    const returningCard = state.localHand.splice(state.pendingSpellIndex, 1)[0];
+    if (returningCard) {
+      state.localGraveyard.push(returningCard);
+      logMsg(`${returningCard.name} vuelve a tu cementerio.`);
+    }
+  }
+
+  // BUG ENCONTRADO Y ARREGLADO (Cabo suelto #10, parte 2): si la habilidad pedía {T} ADEMÁS
+  // de "Sacrificá una criatura/artefacto" (no "self"), cancelar mientras todavía estabas
+  // ELIGIENDO qué sacrificar enderezaba las tierras de maná... pero nunca al permanente que
+  // había activado la habilidad, que se quedaba girado para siempre sin haber logrado nada.
+  if (state.pendingAbilitySource && state.pendingAbilitySource.requiresTap) {
+    const tapTarget = state.pendingAbilitySource.tapTarget || state.pendingAbilitySource.item;
+    if (tapTarget) tapTarget.tapped = false;
+  }
+
   state.pendingSpellIndex = null; 
   state.pendingAbilitySource = null; // <- Agregado
   state.pendingSacrificeChoice = null;
   state.pendingCost = null; 
+  state.pendingCastFrom = null;
+  state.pendingKicked = null;
   state.tappedLandsThisSpell = []; 
   state.pendingTargetCard = null;
   state.pendingTargetSource = null;
@@ -1067,7 +1246,7 @@ export function cancelPayment() {
 }
 
 export function canPlayCard(card) {
-  if (state.gameOver || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.damageModalOpen) return false;
+  if (state.gameOver || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen) return false;
   if (state.priorityPlayer !== 'local') return false; // Solo si poseés prioridad
   
   // Flash: un permanente con esta keyword se puede jugar como si fuera un instantáneo,
@@ -1137,6 +1316,16 @@ export function playCard(index) {
     return;
   }
 
+  // Kicker (costo ADICIONAL y OPCIONAL, distinto del additionalCost obligatorio que ya
+  // existe): se anuncia y se decide ANTES de pagar nada, igual que X — recién con la
+  // respuesta sabemos si el costo total incluye el Kicker o no.
+  if (card.kicker) {
+    state.pendingKickerChoice = { index, card };
+    showKickerModal(card, confirmKickerChoice, cancelKickerChoice);
+    render();
+    return;
+  }
+
   state.pendingSpellIndex = index; 
   state.pendingCost = parseManaCost(card.manaCost); 
   state.tappedLandsThisSpell = [];
@@ -1149,13 +1338,34 @@ export function playCard(index) {
 // para reusar TODO el flujo normal de pago y targeting sin duplicar código (el resto del
 // motor ya sabe hacer esto bien) — con el costo de Flashback en vez del normal. Al
 // resolverse, stackManager.js la manda a Exilio en vez de al cementerio (regla real).
+// Lanzar una carta desde el cementerio, ya sea por Flashback o por Escape. Comparten TODO
+// el mismo esqueleto (mover temporalmente a la mano, pagar un costo de maná propio,
+// resolver como cualquier otra carta) — lo único que cambia es de dónde sale el costo, y
+// que Escape pide ADEMÁS exiliar N cartas más del cementerio (eso se resuelve más
+// adelante, en checkPaymentComplete, al mismo tiempo que cualquier otro costo adicional).
 export function castFromGraveyard(card, isLocal) {
   if (!isLocal) return; // nunca podés lanzar del cementerio del Tano
-  if (!card.flashback) return;
+  const source = card.flashback ? 'flashback' : (card.escape ? 'escape' : null);
+  if (!source) return;
+  const ability = source === 'flashback' ? card.flashback : card.escape;
+  const abilityLabel = source === 'flashback' ? 'Flashback' : 'Escape';
+
   if (state.gameOver || state.priorityPlayer !== 'local') { logMsg("No tenés prioridad ahora mismo."); return; }
-  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice) {
-    logMsg("Terminá lo que tenés pendiente antes de usar Flashback.");
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice || state.pendingKickerChoice) {
+    logMsg(`Terminá lo que tenés pendiente antes de usar ${abilityLabel}.`);
     return;
+  }
+
+  // Escape (regla real 702.130): además del costo de maná, pide exiliar N cartas MÁS de tu
+  // cementerio (sin contar a la carta misma). Si no hay suficientes, ni arranca — no tiene
+  // sentido sacarla de la mano para después descubrir que no se puede pagar.
+  if (source === 'escape') {
+    const exileCount = ability.exileCount || 0;
+    const otherCount = state.localGraveyard.filter(c => c !== card).length;
+    if (otherCount < exileCount) {
+      logMsg(`⚠️ Necesitás exiliar ${exileCount} carta(s) más de tu cementerio para el Escape de ${card.name}, y no tenés suficientes.`);
+      return;
+    }
   }
 
   const isInstant = card.type.includes('Instantáneo') || (card.keywords && card.keywords.includes('flash'));
@@ -1164,7 +1374,7 @@ export function castFromGraveyard(card, isLocal) {
     return;
   }
   if (!isInstant && !(state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2'))) {
-    logMsg("Solo podés usar Flashback en esta carta durante tu Fase Principal.");
+    logMsg(`Solo podés usar ${abilityLabel} en esta carta durante tu Fase Principal.`);
     return;
   }
 
@@ -1175,14 +1385,15 @@ export function castFromGraveyard(card, isLocal) {
 
   const newIndex = state.localHand.length;
   state.localHand.push(card);
-  state.pendingCastFrom = 'flashback';
+  state.pendingCastFrom = source;
   state.pendingSpellIndex = newIndex;
-  state.pendingCost = parseManaCost(card.flashback.cost);
+  state.pendingCost = parseManaCost(ability.cost);
   state.tappedLandsThisSpell = [];
-  logMsg(`🔄 Preparando ${card.name} con Flashback (${card.flashback.cost}). Seleccioná tierras para pagar.`);
+  logMsg(`🔄 Preparando ${card.name} con ${abilityLabel} (${ability.cost}). Seleccioná tierras para pagar.`);
   checkPaymentComplete();
   render();
 }
+
 
 // Costo adicional obligatorio de una carta (vida o descarte), distinto de un costo
 // ALTERNATIVO (que reemplaza al maná — ver payWithAlternativeCost más abajo): este se paga
@@ -1431,6 +1642,10 @@ export function tapLocalLand(item) {
   if (state.pendingModeChoice) { logMsg("Elegí primero un modo para el hechizo."); return; }
   if (state.pendingLoyaltyTargetChoice) { logMsg("Elegí primero un objetivo para esa habilidad de Lealtad."); return; }
   if (state.pendingMultiTargetChoice) { logMsg("Elegí primero todos los objetivos del hechizo."); return; }
+  if (state.pendingScrySurveilChoice) { logMsg("Terminá de elegir qué hacer con las cartas antes de otra cosa."); return; }
+  if (state.pendingProliferateChoice) { logMsg("Terminá de elegir qué proliferar antes de otra cosa."); return; }
+  if (state.pendingEscapeExileChoice) { logMsg("Terminá de elegir qué exiliar para el Escape antes de otra cosa."); return; }
+  if (state.pendingKickerChoice) { logMsg("Terminá de decidir el Kicker antes de otra cosa."); return; }
 
   // Tierras de utilidad (sin `produces`, con activatedAbility propia — ej. Biblioteca
   // Nacional) se activan como cualquier permanente con habilidad, no como fuente de maná.
@@ -1513,6 +1728,38 @@ export function cancelXChoice() {
   render();
 }
 
+// Kicker: costo ADICIONAL y OPCIONAL (a diferencia de additionalCost, que es obligatorio).
+// Se resuelve ANTES de armar el costo real, igual que X — recién acá sabemos si hay que
+// sumarle el costo del Kicker al costo de maná normal de la carta.
+export function confirmKickerChoice(paidKicker) {
+  const kc = state.pendingKickerChoice;
+  if (!kc) return;
+  const { index, card } = kc;
+
+  state.pendingKickerChoice = null;
+  state.pendingKicked = paidKicker;
+  state.pendingSpellIndex = index;
+
+  if (paidKicker) {
+    state.pendingCost = sumManaCosts(parseManaCost(card.manaCost), parseManaCost(card.kicker.cost));
+    logMsg(`💪 ${card.name}: pagando también el Kicker (${card.kicker.cost}). Seleccioná tierras para pagar todo junto.`);
+  } else {
+    state.pendingCost = parseManaCost(card.manaCost);
+    logMsg(`${card.name}: sin Kicker. Seleccioná tierras para pagar.`);
+  }
+
+  state.tappedLandsThisSpell = [];
+  checkPaymentComplete();
+  render();
+}
+
+export function cancelKickerChoice() {
+  if (!state.pendingKickerChoice) return;
+  logMsg(`Cancelaste ${state.pendingKickerChoice.card.name}.`);
+  state.pendingKickerChoice = null;
+  render();
+}
+
 export function payWithAlternativeCost() {
   if (state.pendingSpellIndex === null) return;
   const card = state.localHand[state.pendingSpellIndex];
@@ -1542,6 +1789,72 @@ export function payWithAlternativeCost() {
 }
 
 
+// Termina de castear una carta de la mano una vez que TODOS los costos (maná, adicional,
+// y si era Escape, las cartas exiliadas) ya están pagados: pide objetivo(s) si hace falta,
+// o manda directo a la pila. Separado de checkPaymentComplete para poder pausar en el medio
+// (el modal de Escape) y retomar exactamente acá cuando el jugador confirme qué exilia.
+function finishCastingHandCard(card) {
+  const isPermanent = card.type.includes('Artefacto') || (card.type.includes('Encantamiento') && !card.adjunta);
+
+  // Objetivos múltiples (ej. "Destruye el artefacto objetivo. Destruye el encantamiento
+  // objetivo."): cada target de la carta tiene su PROPIO efecto — se eligen uno por uno,
+  // en orden, y recién cuando están todos se manda el hechizo entero a la pila.
+  if (card.multiTarget && card.targets && card.targets.length > 0) {
+    state.pendingMultiTargetChoice = { card, chosenTargets: [], currentIndex: 0 };
+    logMsg(`¡Maná pagado! Elegí el objetivo 1 de ${card.targets.length} para ${card.name}.`);
+    render();
+    return;
+  }
+
+  const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal' || card.effect.type.startsWith('counter'))));
+  if (needsTarget) {
+    state.pendingTargetCard = card;
+    state.pendingTargetSource = null;
+
+    let targetHint = `Hacé clic en un jugador o criatura para aplicar ${card.name}.`;
+    if (card.adjunta) targetHint = `Hacé clic en una de tus criaturas para encantarla con ${card.name}.`;
+    else if (card.effect && card.effect.type.startsWith('counter')) {
+      targetHint = `Hacé clic en el hechizo de la Pila que querés contrarrestar.`;
+    }
+
+    logMsg(`¡Maná pagado! ${targetHint}`);
+    render();
+    return;
+  }
+
+  state.localHand.splice(state.pendingSpellIndex, 1);
+
+  let stackType = 'spell';
+  if (card.power !== undefined) stackType = 'summon';
+  else if (card.type.includes('Planeswalker')) stackType = 'planeswalker';
+  else if (isPermanent) stackType = 'permanent';
+  else if (card.type.includes('Instantáneo')) stackType = 'instant';
+
+  addToStack({
+    card: card,
+    isLocal: true,
+    targetObj: null,
+    type: stackType,
+    xValue: state.pendingXValue,
+    castFrom: state.pendingCastFrom,
+    kicked: state.pendingKicked
+  });
+
+  logMsg(`⏳ ${card.name} entró a la pila.`);
+
+  // --- LIMPIEZA DE ESTADO QUE FALTABA (espejo del CASO B) ---
+  state.consecutivePasses = 0;
+  state.pendingSpellIndex = null;
+  state.pendingCost = null;
+  state.pendingXValue = null;
+  state.pendingCastFrom = null;
+  state.pendingKicked = null;
+  state.tappedLandsThisSpell = [];
+  render();
+
+  checkRivalCounterOrResponse();
+}
+
 function checkPaymentComplete() {
   const cost = state.pendingCost;
   if (!cost) return;
@@ -1560,7 +1873,6 @@ function checkPaymentComplete() {
     // CASO A: ESTAMOS PAGANDO UNA CARTA DE LA MANO
     if (state.pendingSpellIndex !== null) {
       const card = state.localHand[state.pendingSpellIndex];
-      const isPermanent = card.type.includes('Artefacto') || (card.type.includes('Encantamiento') && !card.adjunta);
 
       // Costo adicional (vida o descarte): se paga JUNTO con el maná, no antes ni después —
       // en MTG real todos los costos se pagan a la vez al confirmar el hechizo. Se hace acá,
@@ -1576,61 +1888,33 @@ function checkPaymentComplete() {
         state.pendingHybridLifePayment = null;
       }
 
-      // Objetivos múltiples (ej. "Destruye el artefacto objetivo. Destruye el encantamiento
-      // objetivo."): cada target de la carta tiene su PROPIO efecto — se eligen uno por uno,
-      // en orden, y recién cuando están todos se manda el hechizo entero a la pila.
-      if (card.multiTarget && card.targets && card.targets.length > 0) {
-        state.pendingMultiTargetChoice = { card, chosenTargets: [], currentIndex: 0 };
-        logMsg(`¡Maná pagado! Elegí el objetivo 1 de ${card.targets.length} para ${card.name}.`);
-        render();
-        return;
+      // Escape: el costo adicional de "exiliar N cartas del cementerio" se paga en este
+      // mismo momento (igual que vida/descarte arriba). Como YA validamos en
+      // castFromGraveyard que hay suficientes cartas, acá solo queda elegir cuáles —
+      // pausamos con el mismo patrón que Ward/Scry-Surveil/Proliferar y retomamos en
+      // finishCastingHandCard cuando el jugador confirme.
+      if (state.pendingCastFrom === 'escape' && card.escape) {
+        const exileCount = card.escape.exileCount || 0;
+        if (exileCount > 0) {
+          const pool = state.localGraveyard.slice();
+          state.pendingEscapeExileChoice = { card, exileCount };
+          logMsg(`🌀 Escape de ${card.name}: elegí ${exileCount} carta(s) de tu cementerio para exiliar.`);
+          render();
+          showEscapeExileModal(pool, exileCount, (chosenCards) => {
+            chosenCards.forEach(c => {
+              const idx = state.localGraveyard.indexOf(c);
+              if (idx !== -1) state.localGraveyard.splice(idx, 1);
+            });
+            state.localExile.push(...chosenCards);
+            logMsg(`🌀 ${card.name} (Escape): se exiliaron ${chosenCards.length} carta(s) de tu cementerio.`);
+            state.pendingEscapeExileChoice = null;
+            finishCastingHandCard(card);
+          });
+          return;
+        }
       }
 
-      const needsTarget = card.adjunta || (card.requiresTarget ?? (card.effect && (card.effect.type === 'damage' || card.effect.type === 'heal' || card.effect.type.startsWith('counter'))));
-      if (needsTarget) {
-        state.pendingTargetCard = card;
-        state.pendingTargetSource = null;
- 
-        let targetHint = `Hacé clic en un jugador o criatura para aplicar ${card.name}.`;
-        if (card.adjunta) targetHint = `Hacé clic en una de tus criaturas para encantarla con ${card.name}.`;
-        else if (card.effect && card.effect.type.startsWith('counter')) {
-          targetHint = `Hacé clic en el hechizo de la Pila que querés contrarrestar.`;
-        }
- 
-        logMsg(`¡Maná pagado! ${targetHint}`);
-        render();
-        return;
-      }
- 
-      state.localHand.splice(state.pendingSpellIndex, 1);
- 
-      let stackType = 'spell';
-      if (card.power !== undefined) stackType = 'summon';
-      else if (card.type.includes('Planeswalker')) stackType = 'planeswalker';
-      else if (isPermanent) stackType = 'permanent';
-      else if (card.type.includes('Instantáneo')) stackType = 'instant';
- 
-      addToStack({
-        card: card,
-        isLocal: true,
-        targetObj: null,
-        type: stackType,
-        xValue: state.pendingXValue,
-        castFrom: state.pendingCastFrom
-      });
- 
-      logMsg(`⏳ ${card.name} entró a la pila.`);
- 
-      // --- LIMPIEZA DE ESTADO QUE FALTABA (espejo del CASO B) ---
-      state.consecutivePasses = 0;
-      state.pendingSpellIndex = null;
-      state.pendingCost = null;
-      state.pendingXValue = null;
-      state.pendingCastFrom = null;
-      state.tappedLandsThisSpell = [];
-      render();
- 
-      checkRivalCounterOrResponse();
+      finishCastingHandCard(card);
     } 
     
     // CASO B: ESTAMOS PAGANDO UNA HABILIDAD DE LA MESA (propia, o de un Equipo otorgada a una criatura)
@@ -1652,6 +1936,9 @@ function checkPaymentComplete() {
       if (ability.sacrifice) {
         if (ability.sacrifice === 'self') {
           performSacrifice(source.item, source.isLocal);
+          // Costo IRREVERSIBLE ya pagado: a partir de acá, "Cancelar" ya no puede desandar
+          // nada (ver cancelPayment) — si todavía falta elegir target, hay que completarlo.
+          source.sacrificePaid = true;
           finalizeAbilityActivation(source, ability, card);
         } else {
           // 'creature' o 'artifact': hay que elegir cuál. Pausamos acá.
@@ -1719,6 +2006,8 @@ export function tryResolveSacrificeChoice(item, isLocal) {
 
   performSacrifice(item, isLocal);
   const { source, ability, card } = pending;
+  // Costo IRREVERSIBLE ya pagado — mismo criterio que la rama 'self' de arriba.
+  source.sacrificePaid = true;
   state.pendingSacrificeChoice = null;
   finalizeAbilityActivation(source, ability, card);
   return true;
@@ -1803,13 +2092,15 @@ function executeSpellOnTarget(targetObj) {
       targetObj: targetObj,
       type: stackType,
       xValue: state.pendingXValue,
-      castFrom: state.pendingCastFrom
+      castFrom: state.pendingCastFrom,
+      kicked: state.pendingKicked
     });
 
     state.pendingSpellIndex = null;
     state.pendingCost = null;
     state.pendingXValue = null;
     state.pendingCastFrom = null;
+    state.pendingKicked = null;
     state.tappedLandsThisSpell = [];
   }
 
@@ -1942,6 +2233,22 @@ export function handleSupportClick(item, isLocal, index) {
   }
   if (state.pendingMultiTargetChoice) {
     logMsg("Elegí primero todos los objetivos del hechizo.");
+    return;
+  }
+  if (state.pendingScrySurveilChoice) {
+    logMsg("Terminá de elegir qué hacer con las cartas antes de otra cosa.");
+    return;
+  }
+  if (state.pendingProliferateChoice) {
+    logMsg("Terminá de elegir qué proliferar antes de otra cosa.");
+    return;
+  }
+  if (state.pendingEscapeExileChoice) {
+    logMsg("Terminá de elegir qué exiliar para el Escape antes de otra cosa.");
+    return;
+  }
+  if (state.pendingKickerChoice) {
+    logMsg("Terminá de decidir el Kicker antes de otra cosa.");
     return;
   }
 
@@ -2085,10 +2392,18 @@ export function resolveEffectDirect(effect, cardName, isLocal) {
       }
       const destino = effect.type === 'surveil' ? 'al cementerio' : 'al fondo';
       logMsg(`${effect.type === 'surveil' ? '👁️' : '🔮'} ${cardName}: ${kept.length} se quedaron arriba, ${moved.length} se fueron ${destino}.`);
+
+      // Recién ACÁ termina de resolverse de verdad — hacemos nosotros mismos lo que
+      // resolveTopStackItem hace normalmente al final (se había frenado por el flag).
+      state.pendingScrySurveilChoice = false;
+      state.priorityPlayer = state.activePlayer;
+      state.consecutivePasses = 0;
       render();
+      checkRivalCounterOrResponse();
     };
 
     if (isLocal) {
+      state.pendingScrySurveilChoice = true;
       showScrySurveilModal(topCards, effect.type, finishScrySurveil);
     } else {
       // El Tano: heurística simple — si ya tiene 5 o más tierras en juego, manda las
@@ -2099,6 +2414,84 @@ export function resolveEffectDirect(effect, cardName, isLocal) {
         if (c.type.includes('Tierra') && landsInPlay >= 5) moved.push(c); else kept.push(c);
       });
       finishScrySurveil(moved, kept);
+    }
+  } else if (effect.type === 'proliferate') {
+    // Proliferar (regla real 701.30): elegís CUALQUIER cantidad de permanentes (acá:
+    // criaturas con contadores +1/+1 o -1/-1, y Planeswalkers, que siempre tienen Lealtad)
+    // y a cada uno elegido le sumás UN contador más de CADA tipo que ya tenga. No es un
+    // target de verdad (por eso Intocable/Protección no lo frenan, a diferencia de todo lo
+    // demás que se resuelve en esta función).
+    const eligible = [];
+    state.localCombat.forEach(item => {
+      if (item.counters && ((item.counters.plusOne || 0) > 0 || (item.counters.minusOne || 0) > 0)) {
+        eligible.push({ item, ownerIsLocal: true, kind: 'creature' });
+      }
+    });
+    state.rivalCombat.forEach(item => {
+      if (item.counters && ((item.counters.plusOne || 0) > 0 || (item.counters.minusOne || 0) > 0)) {
+        eligible.push({ item, ownerIsLocal: false, kind: 'creature' });
+      }
+    });
+    state.localPlaneswalkers.forEach(item => eligible.push({ item, ownerIsLocal: true, kind: 'planeswalker' }));
+    state.rivalPlaneswalkers.forEach(item => eligible.push({ item, ownerIsLocal: false, kind: 'planeswalker' }));
+    // El Veneno también es un contador de verdad (regla 122.3e) — si ya tenés alguno,
+    // Proliferar te puede sumar más. Sin `item` porque no es una carta, es del jugador.
+    if ((state.localPoison || 0) > 0) eligible.push({ item: null, ownerIsLocal: true, kind: 'player_poison' });
+    if ((state.rivalPoison || 0) > 0) eligible.push({ item: null, ownerIsLocal: false, kind: 'player_poison' });
+
+    if (eligible.length === 0) {
+      logMsg(`${cardName}: no hay ningún contador en el campo para proliferar.`);
+      return;
+    }
+
+    const applyProliferate = (entry) => {
+      const { item, kind, ownerIsLocal } = entry;
+      if (kind === 'planeswalker') {
+        item.loyalty += 1;
+        logMsg(`🔮 ${item.card.name} ganó un contador de Lealtad (ahora: ${item.loyalty}).`);
+      } else if (kind === 'player_poison') {
+        if (ownerIsLocal) state.localPoison += 1; else state.rivalPoison += 1;
+        logMsg(`☠️ ${ownerIsLocal ? 'Vos' : 'El Tano'} ${ownerIsLocal ? 'recibiste' : 'recibió'} un contador de Veneno más (ahora: ${ownerIsLocal ? state.localPoison : state.rivalPoison}).`);
+      } else {
+        if ((item.counters.plusOne || 0) > 0) addCounters(item, 'plusOne', 1);
+        if ((item.counters.minusOne || 0) > 0) addCounters(item, 'minusOne', 1);
+        logMsg(`🔵 ${item.card.name} recibió otro contador.`);
+      }
+    };
+
+    const finishProliferate = (chosen) => {
+      chosen.forEach(applyProliferate);
+      // Un -1/-1 de más puede terminar de matar a alguna criatura (SBA).
+      checkDeaths(state.localCombat, state.localGraveyard, "Vos");
+      checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+      logMsg(chosen.length > 0
+        ? `✨ ¡${cardName}! Se proliferaron ${chosen.length} contador(es).`
+        : `${cardName}: no se proliferó ningún contador.`);
+
+      state.pendingProliferateChoice = false;
+      state.priorityPlayer = state.activePlayer;
+      state.consecutivePasses = 0;
+      render();
+      checkRivalCounterOrResponse();
+      checkGameOver(); // el Veneno proliferado puede llegar justo a 10 y terminar la partida
+    };
+
+    if (isLocal) {
+      state.pendingProliferateChoice = true;
+      showProliferateModal(eligible, finishProliferate);
+    } else {
+      // El Tano: elige SIEMPRE lo que lo beneficia a ÉL — sus propios +1/+1 y Planeswalkers,
+      // los -1/-1 que ya tenga el jugador humano, y TU Veneno (al revés que el resto de los
+      // contadores: el Veneno es malo para quien lo tiene, así que le conviene el tuyo, no
+      // el suyo). Nunca ayuda al rival ni se perjudica.
+      const chosen = eligible.filter(e => {
+        if (e.kind === 'planeswalker') return !e.ownerIsLocal;
+        if (e.kind === 'player_poison') return e.ownerIsLocal;
+        const c = e.item.counters;
+        if (e.ownerIsLocal) return (c.minusOne || 0) > 0; // criatura tuya debilitada: le conviene
+        return (c.plusOne || 0) > 0; // criatura propia reforzada: le conviene
+      });
+      finishProliferate(chosen);
     }
   }
 }

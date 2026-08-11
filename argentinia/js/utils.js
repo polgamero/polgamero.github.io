@@ -195,6 +195,19 @@ export function parseManaCost(manaString) {
   return cost;
 }
 
+// Suma dos costos YA PARSEADOS símbolo por símbolo — usado por Kicker para combinar el
+// costo base de la carta + el costo adicional opcional del Kicker en un solo total a pagar.
+export function sumManaCosts(a, b) {
+  return {
+    W: (a.W || 0) + (b.W || 0),
+    U: (a.U || 0) + (b.U || 0),
+    B: (a.B || 0) + (b.B || 0),
+    R: (a.R || 0) + (b.R || 0),
+    G: (a.G || 0) + (b.G || 0),
+    generic: (a.generic || 0) + (b.generic || 0)
+  };
+}
+
 export function getLandColor(card) {
   if (card && card.produces) return card.produces;
   // Tierras duales (producesOptions): esta función solo puede devolver UN color, así que

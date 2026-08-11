@@ -21,6 +21,8 @@ import {
   activateLoyaltyAbility,
   castFromGraveyard,
   checkGameOver,
+  checkAuraLegality,
+  checkEquipmentLegality,
   passPriority // Importado del nuevo sistema
 } from './main.js';
 
@@ -282,6 +284,48 @@ export function showXValueModal(card, onConfirm, onCancel) {
   });
 }
 
+// Kicker: costo ADICIONAL y OPCIONAL — a diferencia de un hechizo modal (elegís UNO de
+// varios modos), acá es sí/no sobre pagar más por un bonus extra, y el efecto base se
+// lanza de todos modos elijas lo que elijas. Mismo esqueleto visual que showModalSpellChoice.
+export function showKickerModal(card, onConfirm, onCancel) {
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+
+  const bonusText = card.kicker.bonusText || 'un bonus adicional';
+
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width: 440px;">
+      <div class="gy-modal-header">
+        <h3>💪 ${card.name} — Kicker</h3>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0 0 4px;">Podés pagar ${card.kicker.cost} adicional. Si lo hacés: ${bonusText}.</p>
+        <button class="loyalty-ability-btn" id="kicker-yes" style="justify-content: flex-start;">
+          <span class="loyalty-ability-text">💪 Sí, pagar Kicker ${card.kicker.cost}</span>
+        </button>
+        <button class="loyalty-ability-btn" id="kicker-no" style="justify-content: flex-start;">
+          <span class="loyalty-ability-text">➡️ No, lanzarlo sin Kicker</span>
+        </button>
+        <button id="modal-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">❌ Cancelar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalOverlay);
+
+  modalOverlay.querySelector('#kicker-yes').addEventListener('click', () => {
+    modalOverlay.remove();
+    onConfirm(true);
+  });
+  modalOverlay.querySelector('#kicker-no').addEventListener('click', () => {
+    modalOverlay.remove();
+    onConfirm(false);
+  });
+  modalOverlay.querySelector('#modal-cancel').addEventListener('click', () => {
+    modalOverlay.remove();
+    onCancel();
+  });
+}
+
 export function showLoyaltyAbilityModal(pwItem, isLocal) {
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
@@ -376,6 +420,25 @@ export function openGraveyardModal(isLocal) {
         wrapper.appendChild(fbBtn);
       }
 
+      // Escape: solo en TU cementerio, solo si la carta lo tiene. Mostramos el costo de
+      // maná Y cuántas cartas más hay que exiliar, para que sepas de entrada si te alcanza
+      // el cementerio antes de siquiera intentarlo.
+      if (isLocal && cardObj.escape) {
+        const escBtn = document.createElement('button');
+        escBtn.className = 'mulligan-btn mulligan-btn-keep';
+        escBtn.style.fontSize = '11px';
+        escBtn.style.padding = '4px 8px';
+        escBtn.style.background = '#6c3483';
+        escBtn.style.borderColor = '#9b59b6';
+        const exileCount = cardObj.escape.exileCount || 0;
+        escBtn.textContent = `🌀 Escape ${cardObj.escape.cost} + exiliar ${exileCount}`;
+        escBtn.addEventListener('click', () => {
+          modalOverlay.remove();
+          castFromGraveyard(cardObj, isLocal);
+        });
+        wrapper.appendChild(escBtn);
+      }
+
       gridContent.appendChild(wrapper);
     });
   }
@@ -465,6 +528,13 @@ export function getTargetRules(card) {
   if (effectType === 'destroy_artifact') {
     return { allowPlayer: false, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: true, allowRivalPermanent: true, permanentFilter: 'Artefacto' };
   }
+  if (effectType === 'damage') {
+    // BUG ENCONTRADO Y ARREGLADO (Cabo suelto #13): "cualquier objetivo" caía en el default
+    // de más abajo, que solo contemplaba jugador o criatura — un Planeswalker (regla real
+    // moderna: el daño no discrimina) ni aparecía como opción. Ahora sí: le resta Lealtad
+    // en vez de HP, mismo criterio que la habilidad de Lealtad con target (item 12).
+    return { allowPlayer: true, allowLocalCreature: true, allowRivalCreature: true, allowLocalPlaneswalker: true, allowRivalPlaneswalker: true, allowLocalPermanent: false, allowRivalPermanent: false };
+  }
   if (effectType === 'destroy_enchantment') {
     return { allowPlayer: false, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: true, allowRivalPermanent: true, permanentFilter: 'Encantamiento' };
   }
@@ -488,11 +558,24 @@ export function getTargetRules(card) {
   if (effectType === 'discard') {
     return { allowPlayer: true, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
   }
+  if (effectType === 'poison') {
+    // Los contadores de Veneno son de JUGADOR, nunca de criatura (a diferencia de -1/-1).
+    return { allowPlayer: true, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
+  }
   if (effectType === 'exile_creature' || effectType === 'exile_and_return') {
     // Remoción: apunta a una criatura de cualquier lado (igual que destruir/rebotar). En
     // exile_and_return en particular, apuntar a tu PROPIA criatura suele ser justo el punto
     // (retriggerea su "cuando entra", le saca auras malas encima, resetea el daño marcado).
     return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
+  }
+  if (effectType === 'add_counter') {
+    // Contador permanente: +1/+1 solo tiene sentido en tu propia criatura (como "pump").
+    // -1/-1 es remoción, así que puede apuntar a cualquier lado (como "destroy_creature").
+    const counterType = card.effect?.counterType || card.activatedAbility?.effect?.counterType || card.grantedAbility?.effect?.counterType;
+    if (counterType === 'minusOne') {
+      return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
+    }
+    return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
   }
   if (effectType === 'exile_graveyard') {
     // Odio de cementerio: el objetivo es el JUGADOR (se exilia TODO su cementerio), nunca
@@ -534,6 +617,12 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       const allowThisSide = isLocal ? rules.allowLocalPermanent : rules.allowRivalPermanent;
       const matchesFilter = !rules.permanentFilter || card.type.includes(rules.permanentFilter);
       isTargetable = allowThisSide && matchesFilter;
+    } else if (zone === 'planeswalker') {
+      // BUG ENCONTRADO Y ARREGLADO (Cabo suelto #13, parte visual): el click ya funcionaba
+      // una vez arreglado en handlePlaneswalkerClick, pero el brillo dorado de "esto se
+      // puede targetear" nunca se prendía acá — el jugador no tenía forma de SABER que un
+      // Planeswalker era una opción válida sin adivinarlo.
+      isTargetable = isLocal ? rules.allowLocalPlaneswalker : rules.allowRivalPlaneswalker;
     }
   } else if (state.pendingSacrificeChoice && isLocal) {
     // Resaltamos qué se puede elegir para pagar un costo de Sacrificar.
@@ -941,6 +1030,194 @@ function circleStyle(colorKey) {
   return `background-color:${info.bg}; background-image:url('./assets/images/ui/${info.file}');`;
 }
 
+function injectMainMenuStyles() {
+  if (document.getElementById('main-menu-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'main-menu-styles';
+  style.textContent = `
+    #main-menu-overlay, #options-menu-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background-color: #0b130e; /* fallback si menu.png todavía no está subida */
+      background-image:
+        linear-gradient(180deg, rgba(11,19,14,0.15) 0%, rgba(11,19,14,0.8) 100%),
+        url('./assets/images/ui/menu.png');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+    }
+    .main-menu-logo-wrap {
+      position: absolute; top: 5vh; left: 0; right: 0;
+      display: flex; justify-content: center;
+    }
+    .main-menu-logo {
+      max-width: 55vw; max-height: 32vh; width: auto; height: auto;
+      filter: drop-shadow(0 8px 30px rgba(0,0,0,0.6));
+    }
+    .main-menu-buttons {
+      position: absolute; left: 5vw; bottom: 8vh;
+      display: flex; flex-direction: column; gap: 14px;
+      width: 300px;
+    }
+    .main-menu-btn {
+      display: block; width: 100%;
+      background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
+      border: 2px solid var(--gold, #d4af37);
+      border-radius: 10px;
+      color: #f0e0b0;
+      font-size: 17px; font-weight: 700; letter-spacing: 0.5px;
+      padding: 13px 20px; text-align: left;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .main-menu-btn:hover {
+      transform: translateX(6px);
+      background: linear-gradient(180deg, rgba(212,175,55,0.18), rgba(11,19,14,0.96));
+      box-shadow: 0 4px 22px rgba(212,175,55,0.35);
+    }
+    .main-menu-btn-primary {
+      border-color: #f0e0b0; font-size: 19px;
+      background: linear-gradient(180deg, rgba(212,175,55,0.25), rgba(11,19,14,0.96));
+    }
+    .main-menu-btn-primary:hover { box-shadow: 0 4px 26px rgba(212,175,55,0.55); }
+    .main-menu-btn-disabled { opacity: 0.45; cursor: not-allowed; position: relative; }
+    .main-menu-btn-disabled:hover {
+      transform: none;
+      background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .main-menu-btn-disabled:hover::after {
+      content: attr(data-tooltip);
+      position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%);
+      background: rgba(0,0,0,0.92); color: #f0e0b0;
+      padding: 6px 12px; border-radius: 6px; font-size: 12px; white-space: nowrap;
+      border: 1px solid var(--gold, #d4af37); pointer-events: none; z-index: 10;
+    }
+    #options-menu-overlay { display: flex; align-items: center; justify-content: center; }
+    .options-menu-panel {
+      max-width: 520px; width: 92%;
+      background: linear-gradient(180deg, rgba(18,25,15,0.97), rgba(11,19,14,0.99));
+      border: 2px solid var(--gold, #d4af37);
+      border-radius: 16px;
+      padding: 32px 36px;
+      box-shadow: 0 0 60px rgba(212,175,55,0.15), 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .options-menu-title {
+      text-align: center; font-size: 24px; font-weight: 700;
+      color: #f0e0b0; margin-bottom: 24px;
+      text-shadow: 0 0 20px rgba(212,175,55,0.4);
+    }
+    .options-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 4px;
+      border-bottom: 1px solid rgba(212,175,55,0.15);
+    }
+    .options-row:last-of-type { border-bottom: none; }
+    .options-label { color: #e8ddc8; font-size: 15px; }
+    .options-toggle-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1.5px solid rgba(212,175,55,0.4);
+      border-radius: 8px;
+      color: #f0e0b0;
+      font-size: 14px; font-weight: 600;
+      padding: 7px 16px;
+      cursor: pointer;
+      min-width: 90px;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .options-toggle-btn:hover { background: rgba(212,175,55,0.15); border-color: #f0e0b0; }
+    .options-row-disabled .options-label { opacity: 0.5; }
+    .options-row-disabled .options-toggle-btn { opacity: 0.45; cursor: not-allowed; position: relative; }
+    .options-row-disabled .options-toggle-btn:hover {
+      background: rgba(255,255,255,0.05); border-color: rgba(212,175,55,0.4);
+    }
+    .options-row-disabled .options-toggle-btn:hover::after {
+      content: attr(data-tooltip);
+      position: absolute; right: 0; top: 100%; margin-top: 6px;
+      background: rgba(0,0,0,0.92); color: #f0e0b0;
+      padding: 6px 12px; border-radius: 6px; font-size: 12px; white-space: nowrap;
+      border: 1px solid var(--gold, #d4af37); pointer-events: none; z-index: 10;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+// Menú principal: primer cimiento de cara al multiplayer — todo lo que hoy arranca directo
+// (boot() en main.js) ahora pasa por acá primero. Jugar/Opciones son reales; Multijugador,
+// Mi Mazo y Enciclopedia quedan con el placeholder deshabilitado hasta que existan de
+// verdad (no tiene sentido prometer algo que todavía no está armado).
+export function showMainMenu(onPlay) {
+  injectMainMenuStyles();
+  const overlay = document.createElement('div');
+  overlay.id = 'main-menu-overlay';
+  overlay.innerHTML = `
+    <div class="main-menu-logo-wrap">
+      <img class="main-menu-logo" src="./assets/images/ui/logo.png" alt="Argentinia" onerror="this.style.display='none'">
+    </div>
+    <div class="main-menu-buttons">
+      <button class="main-menu-btn main-menu-btn-primary" id="menu-play">Jugar (Solitario)</button>
+      <button class="main-menu-btn main-menu-btn-disabled" data-tooltip="Deshabilitado">Multijugador</button>
+      <button class="main-menu-btn main-menu-btn-disabled" data-tooltip="Deshabilitado">Mi Mazo</button>
+      <button class="main-menu-btn main-menu-btn-disabled" data-tooltip="Deshabilitado">Enciclopedia</button>
+      <button class="main-menu-btn" id="menu-options">Opciones</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#menu-play').addEventListener('click', () => {
+    overlay.remove();
+    onPlay();
+  });
+
+  overlay.querySelector('#menu-options').addEventListener('click', () => {
+    overlay.style.display = 'none';
+    showOptionsMenu(() => { overlay.style.display = ''; });
+  });
+}
+
+// Opciones: hoy solo Dificultad impacta de verdad en el juego (Grupo C, Etapas 1-4). Las
+// otras dos quedan como placeholder deshabilitado — están para mostrar hacia dónde va esto,
+// no porque hagan algo todavía (no hay sistema de sonido ni de animaciones configurables).
+export function showOptionsMenu(onBack) {
+  injectMainMenuStyles();
+  const overlay = document.createElement('div');
+  overlay.id = 'options-menu-overlay';
+
+  const difficultyLabel = () => (state.botDifficulty === 'easy' ? 'Fácil' : 'Difícil');
+
+  overlay.innerHTML = `
+    <div class="options-menu-panel">
+      <div class="options-menu-title">Opciones</div>
+      <div class="options-row">
+        <span class="options-label">Dificultad del Tano</span>
+        <button class="options-toggle-btn" id="opt-difficulty">${difficultyLabel()}</button>
+      </div>
+      <div class="options-row options-row-disabled">
+        <span class="options-label">Velocidad de animaciones</span>
+        <button class="options-toggle-btn" data-tooltip="Deshabilitado">Normal</button>
+      </div>
+      <div class="options-row options-row-disabled">
+        <span class="options-label">Sonido</span>
+        <button class="options-toggle-btn" data-tooltip="Deshabilitado">Activado</button>
+      </div>
+      <button class="main-menu-btn" id="opt-back" style="margin-top: 24px;">Volver</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const diffBtn = overlay.querySelector('#opt-difficulty');
+  diffBtn.addEventListener('click', () => {
+    state.botDifficulty = state.botDifficulty === 'easy' ? 'hard' : 'easy';
+    diffBtn.textContent = difficultyLabel();
+    logMsg(`🎚️ Dificultad del Tano: ${difficultyLabel()}.`);
+  });
+
+  overlay.querySelector('#opt-back').addEventListener('click', () => {
+    overlay.remove();
+    onBack();
+  });
+}
+
 export function showDeckSelectionModal(onChoose) {
   injectDeckSelectionStyles();
 
@@ -1168,6 +1445,123 @@ export function showScrySurveilModal(cards, mode, onConfirm) {
   });
 }
 
+// Proliferar: a diferencia de Scry/Surveil (cartas de la mano/mazo), acá elegimos entre
+// PERMANENTES del campo (criaturas con contadores, Planeswalkers). Reusamos el mismo
+// createCardElement que dibuja el resto del tablero (así se ve la carta real, con su
+// badge de contadores o su cuadrito de Lealtad ya calculados solos) pero con zone='combat'
+// y un customClick propio — eso pisa por completo el handler por defecto de esa zona
+// (ver createCardElement: "if (customClick) ... else { ...zona... }"), así clickear una
+// carta acá adentro NUNCA dispara handleCombatClick/handlePlaneswalkerClick del juego real.
+export function showProliferateModal(eligible, onConfirm) {
+  injectMulliganStyles();
+  const overlay = document.createElement('div');
+  overlay.id = 'mulligan-overlay';
+
+  const chosen = new Set();
+
+  overlay.innerHTML = `
+    <div class="mulligan-panel">
+      <div class="mulligan-title">🔵 Proliferar</div>
+      <div class="mulligan-subtitle">Clickeá cualquier cantidad de permanentes para sumarles un contador más de cada tipo que ya tengan. Podés no elegir ninguno.</div>
+      <div class="mulligan-hand-row-slot"></div>
+      <div class="mulligan-buttons">
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-proliferate">Confirmar</button>
+      </div>
+    </div>
+  `;
+
+  const row = document.createElement('div');
+  row.className = 'mulligan-hand-row';
+  eligible.forEach(entry => {
+    let cardEl;
+    const toggle = () => {
+      if (chosen.has(entry)) {
+        chosen.delete(entry);
+        cardEl.classList.remove('chosen');
+      } else {
+        chosen.add(entry);
+        cardEl.classList.add('chosen');
+      }
+    };
+
+    if (entry.kind === 'player_poison') {
+      // El Veneno es del JUGADOR, no una carta — no hay nada que pasarle a
+      // createCardElement, así que armamos un chip propio con la misma clase .chosen para
+      // que se vea igual de seleccionable que el resto de las entradas.
+      cardEl = document.createElement('div');
+      cardEl.className = 'mulligan-card-slot selectable';
+      const poisonCount = entry.ownerIsLocal ? state.localPoison : state.rivalPoison;
+      cardEl.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:6px; color:#cfe0d4; text-align:center; padding: 8px;">
+          <span style="font-size:28px;">☠️</span>
+          <span style="font-size:12px; font-weight:bold;">Veneno de ${entry.ownerIsLocal ? 'Vos' : 'El Tano'}</span>
+          <span style="font-size:11px; color:#a89bb5;">(${poisonCount} actual)</span>
+        </div>
+      `;
+      cardEl.addEventListener('click', toggle);
+      row.appendChild(cardEl);
+      return;
+    }
+
+    cardEl = createCardElement(entry.item, !!entry.item.tapped, entry.ownerIsLocal, null, 'combat', toggle);
+    cardEl.classList.add('mulligan-card-slot', 'selectable');
+    row.appendChild(cardEl);
+  });
+  overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#btn-confirm-proliferate').addEventListener('click', () => {
+    overlay.remove();
+    onConfirm([...chosen]);
+  });
+}
+
+// Escape: elegir N cartas del cementerio para exiliar como costo adicional. Mismo
+// esqueleto exacto que showBottomCardsModal (selección hasta llegar a la cantidad exacta,
+// confirmar deshabilitado hasta entonces) — reusamos buildMulliganCardRow porque acá los
+// elegibles SON cartas de verdad (del cementerio), a diferencia de Proliferar que elige
+// permanentes del campo.
+export function showEscapeExileModal(graveyardCards, exileCount, onConfirm) {
+  injectMulliganStyles();
+  const overlay = document.createElement('div');
+  overlay.id = 'mulligan-overlay';
+
+  const chosen = new Set();
+
+  overlay.innerHTML = `
+    <div class="mulligan-panel">
+      <div class="mulligan-title">🌀 Escape: elegí ${exileCount} carta${exileCount > 1 ? 's' : ''} de tu cementerio para exiliar</div>
+      <div class="mulligan-subtitle" id="mulligan-count-hint-escape">Seleccionadas: 0 / ${exileCount}</div>
+      <div class="mulligan-hand-row-slot"></div>
+      <div class="mulligan-buttons">
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-escape" disabled>Confirmar</button>
+      </div>
+    </div>
+  `;
+
+  const hint = () => overlay.querySelector('#mulligan-count-hint-escape');
+  const confirmBtn = () => overlay.querySelector('#btn-confirm-escape');
+
+  const row = buildMulliganCardRow(graveyardCards, true, (card, cardEl) => {
+    if (chosen.has(card)) {
+      chosen.delete(card);
+      cardEl.classList.remove('chosen');
+    } else if (chosen.size < exileCount) {
+      chosen.add(card);
+      cardEl.classList.add('chosen');
+    }
+    hint().textContent = `Seleccionadas: ${chosen.size} / ${exileCount}`;
+    confirmBtn().disabled = chosen.size !== exileCount;
+  });
+  overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#btn-confirm-escape').addEventListener('click', () => {
+    overlay.remove();
+    onConfirm([...chosen]);
+  });
+}
+
 export function showBottomCardsModal(hand, countToBottom, onConfirm) {
   injectMulliganStyles();
   const overlay = document.createElement('div');
@@ -1313,7 +1707,11 @@ export function render() {
   sizeAllRows();
   updatePilesUI();
 
-  els.localHpText.textContent = `${state.localHP} / 20 HP`; els.rivalHpText.textContent = `${state.rivalHP} / 20 HP`;
+  // El Veneno se muestra pegado al HP, y solo si tenés alguno (0 no ensucia el HUD). Con
+  // 10 llegás a la derrota alternativa — checkGameOver() más abajo ya lo controla solo.
+  const localPoisonText = state.localPoison > 0 ? ` ☠️${state.localPoison}` : '';
+  const rivalPoisonText = state.rivalPoison > 0 ? ` ☠️${state.rivalPoison}` : '';
+  els.localHpText.textContent = `${state.localHP} / 20 HP${localPoisonText}`; els.rivalHpText.textContent = `${state.rivalHP} / 20 HP${rivalPoisonText}`;
   els.localHpBar.style.width = `${(state.localHP / 20) * 100}%`; els.rivalHpBar.style.width = `${(state.rivalHP / 20) * 100}%`;
 
   // --- 1. GESTIÓN VISUAL DEL HUD Y FASES ---
@@ -1437,6 +1835,8 @@ export function render() {
     els.localHand.classList.remove('paying-mode'); els.localLands.classList.remove('paying-mode');
   }
   renderStack();
+  checkAuraLegality();
+  checkEquipmentLegality();
   checkGameOver();
 }
 
@@ -1481,6 +1881,13 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
   const attacker = attackerItem.card;
   const canTrample = hasKeyword(attackerItem, 'trample');
   const attackerHasDeathtouch = hasKeyword(attackerItem, 'deathtouch');
+
+  // BUG ENCONTRADO Y ARREGLADO (Cabo suelto #14): el modal decía "Arrollar al Tano" siempre,
+  // sin importar que el ataque estuviera redirigido a un Planeswalker (attackerItem.attackTarget)
+  // — los mensajes de log del resto del motor (combatRules.js) ya distinguían esto bien, pero
+  // acá, en el ÚNICO lugar donde el jugador decide la distribución, se quedaba desactualizado.
+  const trampleTargetName = attackerItem.attackTarget ? attackerItem.attackTarget.card.name : 'al Tano';
+  const trampleLabel = attackerItem.attackTarget ? `a ${trampleTargetName}` : trampleTargetName;
 
   function lethalNeeded(bItem) {
     const remaining = Math.max(0, bItem.card.toughness - (bItem.damageTaken || 0));
@@ -1541,12 +1948,13 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
     if (canTrample) {
       const allLethalMet = blockersArray.every((b, i) => currentDistribution[i] >= lethalNeeded(b));
       const overflow = allLethalMet ? unassigned : 0;
+      const overflowNoun = attackerItem.attackTarget ? 'Lealtad' : 'HP';
       html += `
          <div class="damage-row trample-row">
            <div style="text-align: left;">
-             <strong style="font-size: 1.1rem;">🐘 Arrollar al Tano</strong><br>
+             <strong style="font-size: 1.1rem;">🐘 Arrollar ${trampleLabel}</strong><br>
              <span style="font-size: 0.8rem; color: #aaa;">
-               ${allLethalMet ? 'Se calcula automáticamente con lo que sobre.' : 'Asigná primero daño letal a todos los bloqueadores.'}
+               ${allLethalMet ? `Se calcula automáticamente con lo que sobre (le come ${overflowNoun}).` : 'Asigná primero daño letal a todos los bloqueadores.'}
              </span>
            </div>
            <div class="damage-controls">

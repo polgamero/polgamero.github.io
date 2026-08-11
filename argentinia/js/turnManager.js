@@ -11,6 +11,11 @@ export function checkGameOver() {
     state.gameOver = true; logMsg("💀 Te quedaste sin HP. ¡Ganó el Tano!"); showGameOverOverlay(false);
   } else if (state.rivalHP <= 0) {
     state.gameOver = true; logMsg("🏆 ¡VICTORIA! Hiciste morder el polvo al Tano."); showGameOverOverlay(true);
+  } else if (state.localPoison >= 10) {
+    // Condición de derrota ALTERNATIVA (regla 104.3c): no importa cuánto HP te quede.
+    state.gameOver = true; logMsg("☠️ ¡Te llegaron 10 contadores de Veneno! El Infectar del Tano te venció."); showGameOverOverlay(false);
+  } else if (state.rivalPoison >= 10) {
+    state.gameOver = true; logMsg("☠️ ¡El Tano llegó a 10 contadores de Veneno! Se murió infectado."); showGameOverOverlay(true);
   }
 }
 

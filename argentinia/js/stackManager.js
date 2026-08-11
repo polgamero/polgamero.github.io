@@ -1,5 +1,5 @@
 import { sleep } from './utils.js';
-import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, getEffectiveToughness, performSacrifice, addCounters, cleanupIfVehicle, tryAutoPayCounterTax } from './main.js';
+import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, getEffectiveToughness, performSacrifice, addCounters, cleanupIfVehicle, tryAutoPayCounterTax, checkPlaneswalkerDeaths } from './main.js';
 import { logMsg, render, createCardElement } from './ui.js';
 import { checkDeaths } from './combatRules.js';
 import { hasKeyword, getProtectionMatch } from './keywords.js';
@@ -52,10 +52,34 @@ export async function resolveTopStackItem() {
   
   await executeStackItem(item);
 
+  // Kicker: si se pagó el costo opcional al lanzar el hechizo, el bonus se aplica ACÁ,
+  // después de que el efecto base ya resolvió — así funciona para CUALQUIER tipo de
+  // hechizo sin tener que tocar cada rama de executeStackItem una por una. El bonus de
+  // Kicker en este juego está limitado a efectos SIN target propio (daño a la cara, robar,
+  // curarse, drenar, etc. — el mismo vocabulario que ya entiende resolveEffectDirect), para
+  // no necesitar una segunda selección de objetivo además de la del efecto base.
+  if (item.kicked && item.card.kicker && item.card.kicker.bonusEffect) {
+    logMsg(`💪 ¡${item.card.name} fue Kickeado! Se suma el bonus.`);
+    resolveEffectDirect(item.card.kicker.bonusEffect, item.card.name, item.isLocal);
+  }
+
   // Si quedó pausado esperando que alguien decida pagar "contrarresta a menos que...", no
   // terminamos de resolver todavía — la prioridad NO se resetea hasta que se decida
   // (payCounterTax / declineCounterTax hacen eso ellos mismos al terminar).
   if (state.pendingCounterUnlessPay) return;
+
+  // BUG ENCONTRADO Y ARREGLADO: Scry/Surveil abría el modal para elegir qué hacer con las
+  // cartas, pero nunca pausaba el resto del juego — la prioridad se reseteaba igual y el
+  // Tano podía tomar otra acción mientras el humano todavía estaba decidiendo, chocando
+  // contra un estado a medio terminar y rompiendo el juego. Mismo criterio que el pago de
+  // Ward/CounterTax: no seguimos hasta que se resuelva (finishScrySurveil en main.js hace
+  // el reseteo de prioridad ella misma al terminar).
+  if (state.pendingScrySurveilChoice) return;
+
+  // Mismo criterio: Proliferar abre su propio modal (elegir permanentes) y no puede seguir
+  // de largo hasta que se confirme — finishProliferate en main.js resetea la prioridad ella
+  // misma al terminar.
+  if (state.pendingProliferateChoice) return;
 
   // Tras resolver un objeto, la prioridad vuelve al jugador activo
   state.priorityPlayer = state.activePlayer;
@@ -163,6 +187,21 @@ function applyEffectToSingleTarget(effect, targetObj, isLocal, cardName, sourceC
       zone.splice(idx, 1);
       grave.push(permItem.card);
       logMsg(`💥 ¡${cardName} destruyó ${permItem.card.name}!`);
+    }
+    return;
+  }
+
+  // LÓGICA NUEVA (Cabo suelto #13): mismo caso que en la resolución de target único, para
+  // cuando un Planeswalker es UNO de los varios targets de un hechizo multi-target.
+  if (targetObj.type === 'planeswalker') {
+    const pwItem = targetObj.item;
+    const isTargetLocal = state.localPlaneswalkers.includes(pwItem);
+    const zone = isTargetLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
+    if (!zone.includes(pwItem)) { logMsg(`⚠️ ${cardName} falló: el objetivo ya no está en el campo.`); return; }
+    if (effect.type === 'damage') {
+      pwItem.loyalty -= effect.amount;
+      logMsg(`💥 ¡${cardName}! Le sacó ${effect.amount} de Lealtad a ${pwItem.card.name} (queda en ${pwItem.loyalty}).`);
+      checkPlaneswalkerDeaths();
     }
   }
 }
@@ -420,6 +459,14 @@ async function executeStackItem(item) {
           else state.rivalHP += effectToApply.amount;
           logMsg(`💚 ¡${card.name}! Curó ${effectToApply.amount} de HP a ${targetName}.`);
         }
+        // LÓGICA NUEVA: VENENO DIRECTO (sin pasar por combate/Infectar) — solo existe para
+        // jugadores, nunca para criaturas (regla real: los contadores de Veneno son de
+        // jugador, distinto de los -1/-1 que sí van en criaturas).
+        else if (effectToApply.type === 'poison') {
+          if (targetObj.isLocal) state.localPoison = (state.localPoison || 0) + effectToApply.amount;
+          else state.rivalPoison = (state.rivalPoison || 0) + effectToApply.amount;
+          logMsg(`☠️ ¡${card.name}! ${targetName === 'vos' ? 'Te' : 'Le'} puso ${effectToApply.amount} contador(es) de Veneno${targetName === 'el Tano' ? ' al Tano' : ''}.`);
+        }
         // LÓGICA NUEVA: DESCARTE
         else if (effectToApply.type === 'discard') {
           const targetHand = targetObj.isLocal ? state.localHand : state.rivalHand;
@@ -563,6 +610,19 @@ async function executeStackItem(item) {
           const pText = `${effectToApply.powerMod >= 0 ? '+' : ''}${effectToApply.powerMod}/${effectToApply.toughnessMod >= 0 ? '+' : ''}${effectToApply.toughnessMod}`;
           logMsg(`💪 ¡${card.name}! ${targetUnit.card.name} obtiene ${pText} hasta el final del turno.`);
         }
+        // LÓGICA NUEVA: CONTADOR PERMANENTE +1/+1 o -1/-1 — a diferencia de "pump" (temporal,
+        // se borra en Limpieza), esto usa el mismo sistema real de contadores que ya tienen
+        // los Planeswalkers (addCounters), así que se queda mientras la criatura viva Y
+        // Proliferar lo puede multiplicar más adelante.
+        else if (effectToApply.type === 'add_counter') {
+          const counterType = effectToApply.counterType === 'minusOne' ? 'minusOne' : 'plusOne';
+          const amount = effectToApply.amount || 1;
+          addCounters(targetUnit, counterType, amount);
+          const signo = counterType === 'plusOne' ? '+' : '-';
+          logMsg(`🔵 ¡${card.name}! ${targetUnit.card.name} recibió ${amount} contador(es) ${signo}${amount}/${signo}${amount}.`);
+          checkDeaths(state.localCombat, state.localGraveyard, "Vos");
+          checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+        }
         // LÓGICA NUEVA: PROTECCIÓN TEMPORAL — otorga una keyword hasta el final del turno (ej. A Cubierto)
         else if (effectToApply.type === 'grant_keyword_temp') {
           if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
@@ -674,6 +734,22 @@ async function executeStackItem(item) {
           }
         } else if (idx === -1) {
           logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+        }
+      }
+      // LÓGICA NUEVA (Cabo suelto #13): DAÑO A UN PLANESWALKER — un hechizo de daño a
+      // "cualquier objetivo" ahora también puede apuntarle a uno (regla real moderna). Le
+      // resta Lealtad en vez de HP; el resto de los tipos de efecto no tiene sentido acá
+      // (curar/robar/etc. son cosas de jugador, no de Planeswalker) así que no se listan.
+      else if (targetObj.type === 'planeswalker') {
+        const pwItem = targetObj.item;
+        const isTargetLocal = state.localPlaneswalkers.includes(pwItem);
+        const zone = isTargetLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
+        if (!zone.includes(pwItem)) {
+          logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+        } else if (effectToApply.type === 'damage') {
+          pwItem.loyalty -= effectToApply.amount;
+          logMsg(`💥 ¡${card.name}! Le sacó ${effectToApply.amount} de Lealtad a ${pwItem.card.name} (queda en ${pwItem.loyalty}).`);
+          checkPlaneswalkerDeaths();
         }
       }
     } else {
