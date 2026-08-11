@@ -1215,14 +1215,15 @@ function injectEncyclopediaStyles() {
     .encyclopedia-body { flex: 1; display: flex; gap: 20px; min-height: 0; }
     .encyclopedia-grid-box {
       flex: 1; overflow-y: auto;
-      background: rgba(0,0,0,0.2);
+      background: #F5F5F5;
       border: 2px solid rgba(212,175,55,0.3);
       border-radius: 12px;
       padding: 20px;
       display: flex; flex-wrap: wrap; align-content: flex-start; gap: 20px;
     }
+    .encyclopedia-card-slot .card-inner { border-width: 6px; }
     .encyclopedia-card-slot.unowned .card { filter: grayscale(100%) brightness(0.55); }
-    .encyclopedia-empty-msg { color: #7a7086; font-size: 14px; margin: auto; text-align: center; }
+    .encyclopedia-empty-msg { color: #5a5266; font-size: 14px; margin: auto; text-align: center; }
     .encyclopedia-filters {
       width: 260px; flex-shrink: 0;
       background: rgba(18,25,15,0.6);
@@ -1242,6 +1243,20 @@ function injectEncyclopediaStyles() {
     }
     .encyclopedia-filter-option:hover { background: rgba(212,175,55,0.08); }
     .encyclopedia-filter-option input { accent-color: var(--gold, #d4af37); width: 16px; height: 16px; cursor: pointer; }
+    .encyclopedia-search-input {
+      width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,0.05);
+      border: 1.5px solid rgba(212,175,55,0.4);
+      border-radius: 8px;
+      color: #f0e0b0; font-size: 14px;
+      padding: 9px 12px;
+      margin-bottom: 18px;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .encyclopedia-search-input::placeholder { color: #8a8095; }
+    .encyclopedia-search-input:focus {
+      outline: none; border-color: #f0e0b0; background: rgba(255,255,255,0.08);
+    }
   `;
   document.head.appendChild(style);
 }
@@ -1252,6 +1267,7 @@ export function showEncyclopedia(onBack) {
   const ownedIds = getOwnedCardIds();
   let activeTab = 'criaturas';
   let ownershipFilter = 'all'; // 'all' | 'owned'
+  let searchQuery = '';
   const activeRarities = new Set(ENCYCLOPEDIA_RARITIES.map(r => r.key));
 
   const overlay = document.createElement('div');
@@ -1271,12 +1287,13 @@ export function showEncyclopedia(onBack) {
   overlay.innerHTML = `
     <div class="encyclopedia-header">
       <button class="encyclopedia-back-btn" id="enc-back">← Volver</button>
-      <div class="encyclopedia-title">📖 Enciclopedia</div>
+      <div class="encyclopedia-title">Enciclopedia</div>
     </div>
     <div class="encyclopedia-tabs">${tabsHTML}</div>
     <div class="encyclopedia-body">
       <div class="encyclopedia-grid-box" id="enc-grid"></div>
       <div class="encyclopedia-filters">
+        <input type="text" class="encyclopedia-search-input" id="enc-search" placeholder="Buscar carta...">
         <div class="encyclopedia-filter-section-title">Opciones</div>
         <label class="encyclopedia-filter-option">
           <input type="radio" name="enc-ownership" value="all" checked>
@@ -1295,11 +1312,19 @@ export function showEncyclopedia(onBack) {
 
   const gridBox = overlay.querySelector('#enc-grid');
 
+  // Normaliza (minúsculas + sin acentos) para que buscar "arara" encuentre "Yarará" sin
+  // que el jugador tenga que acordarse de poner la tilde.
+  function normalizeSearch(str) {
+    return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
   function renderGrid() {
     gridBox.innerHTML = '';
+    const query = normalizeSearch(searchQuery);
     const cards = cardDb.getByCategory(activeTab)
       .filter(c => activeRarities.has(c.rarity))
-      .filter(c => ownershipFilter === 'all' || ownedIds.has(c.id));
+      .filter(c => ownershipFilter === 'all' || ownedIds.has(c.id))
+      .filter(c => !query || normalizeSearch(c.name).includes(query));
 
     if (cards.length === 0) {
       gridBox.innerHTML = '<div class="encyclopedia-empty-msg">No hay cartas que coincidan con estos filtros.</div>';
@@ -1318,6 +1343,11 @@ export function showEncyclopedia(onBack) {
       gridBox.appendChild(slot);
     });
   }
+
+  overlay.querySelector('#enc-search').addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    renderGrid();
+  });
 
   overlay.querySelectorAll('.encyclopedia-tab').forEach(btn => {
     btn.addEventListener('click', () => {
