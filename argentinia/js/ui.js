@@ -28,6 +28,7 @@ import {
 
 import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
+import { cardDb } from './cardLoader.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 
@@ -1142,6 +1143,215 @@ function injectMainMenuStyles() {
   document.head.appendChild(style);
 }
 
+// Enciclopedia: reusa TODO lo que ya existe (createCardElement, la paleta de colores por
+// maná, el cardDb ya cargado en boot()) — nada de esto es exclusivo de la Enciclopedia a
+// propósito, porque la idea es reusar esta misma UI (grilla + solapas + filtros) el día que
+// exista la pantalla de armado de mazos ("Mis Mazos").
+const ENCYCLOPEDIA_TABS = [
+  { key: 'criaturas', label: 'Criaturas' },
+  { key: 'instantaneos', label: 'Instantáneos' },
+  { key: 'conjuros', label: 'Conjuros' },
+  { key: 'encantamientos', label: 'Encantamientos' },
+  { key: 'artefactos', label: 'Artefactos' },
+  { key: 'planeswalkers', label: 'Planeswalkers' },
+  { key: 'tierras', label: 'Tierras' }
+];
+
+const ENCYCLOPEDIA_RARITIES = [
+  { key: 'Mythic', label: 'Legendarias' },
+  { key: 'Rare', label: 'Raras' },
+  { key: 'Uncommon', label: 'Poco Comunes' },
+  { key: 'Common', label: 'Comunes' }
+];
+
+// TODO(colección real): hoy no existe sistema de mazos propios ni de apertura de sobres —
+// como hablamos, por ahora tenés TODO el pool y la Enciclopedia es un catálogo visual. El
+// día que exista una colección de verdad, esta función pasa a leer de localStorage en vez
+// de devolver el pool entero — el resto de la Enciclopedia (grilla, solapas, filtros,
+// grisado de lo que no tenés) ya está listo para ese cambio sin tocar nada más.
+export function getOwnedCardIds() {
+  return new Set(cardDb.allCards.map(c => c.id));
+}
+
+function injectEncyclopediaStyles() {
+  if (document.getElementById('encyclopedia-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'encyclopedia-styles';
+  style.textContent = `
+    #encyclopedia-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display: flex; flex-direction: column;
+      padding: 24px 32px;
+      /* Mucho más grande que el --card-w de 12.5vh del tablero, a propósito — "tamaño
+         grande, como el hover-zoom" que pidió el usuario. */
+      --card-w: 32vh;
+    }
+    .encyclopedia-header { display: flex; align-items: center; gap: 20px; margin-bottom: 16px; flex-shrink: 0; }
+    .encyclopedia-title {
+      font-size: 26px; font-weight: 700; color: #f0e0b0;
+      text-shadow: 0 0 20px rgba(212,175,55,0.4);
+    }
+    .encyclopedia-back-btn {
+      background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
+      border: 2px solid var(--gold, #d4af37);
+      border-radius: 8px; color: #f0e0b0; font-weight: 700; font-size: 14px;
+      padding: 8px 16px; cursor: pointer; transition: background 0.15s ease;
+    }
+    .encyclopedia-back-btn:hover { background: rgba(212,175,55,0.15); }
+    .encyclopedia-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; flex-shrink: 0; }
+    .encyclopedia-tab {
+      background: rgba(255,255,255,0.03);
+      border: 1.5px solid rgba(212,175,55,0.25);
+      border-radius: 8px 8px 0 0;
+      color: #b8adc4; font-size: 14px; font-weight: 600;
+      padding: 8px 18px; cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    .encyclopedia-tab:hover { background: rgba(212,175,55,0.1); color: #f0e0b0; }
+    .encyclopedia-tab.active {
+      background: rgba(212,175,55,0.18); border-color: var(--gold, #d4af37); color: #f0e0b0;
+    }
+    .encyclopedia-body { flex: 1; display: flex; gap: 20px; min-height: 0; }
+    .encyclopedia-grid-box {
+      flex: 1; overflow-y: auto;
+      background: rgba(0,0,0,0.2);
+      border: 2px solid rgba(212,175,55,0.3);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex; flex-wrap: wrap; align-content: flex-start; gap: 20px;
+    }
+    .encyclopedia-card-slot.unowned .card { filter: grayscale(100%) brightness(0.55); }
+    .encyclopedia-empty-msg { color: #7a7086; font-size: 14px; margin: auto; text-align: center; }
+    .encyclopedia-filters {
+      width: 260px; flex-shrink: 0;
+      background: rgba(18,25,15,0.6);
+      border: 2px solid rgba(212,175,55,0.3);
+      border-radius: 12px;
+      padding: 20px; overflow-y: auto;
+    }
+    .encyclopedia-filter-section-title {
+      color: #f0e0b0; font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; margin: 18px 0 10px 0;
+    }
+    .encyclopedia-filter-section-title:first-child { margin-top: 0; }
+    .encyclopedia-filter-option {
+      display: flex; align-items: center; gap: 8px;
+      color: #e8ddc8; font-size: 14px;
+      padding: 6px 4px; cursor: pointer; border-radius: 6px;
+    }
+    .encyclopedia-filter-option:hover { background: rgba(212,175,55,0.08); }
+    .encyclopedia-filter-option input { accent-color: var(--gold, #d4af37); width: 16px; height: 16px; cursor: pointer; }
+  `;
+  document.head.appendChild(style);
+}
+
+export function showEncyclopedia(onBack) {
+  injectEncyclopediaStyles();
+
+  const ownedIds = getOwnedCardIds();
+  let activeTab = 'criaturas';
+  let ownershipFilter = 'all'; // 'all' | 'owned'
+  const activeRarities = new Set(ENCYCLOPEDIA_RARITIES.map(r => r.key));
+
+  const overlay = document.createElement('div');
+  overlay.id = 'encyclopedia-overlay';
+
+  const tabsHTML = ENCYCLOPEDIA_TABS.map(t =>
+    `<button class="encyclopedia-tab${t.key === activeTab ? ' active' : ''}" data-tab="${t.key}">${t.label}</button>`
+  ).join('');
+
+  const rarityFiltersHTML = ENCYCLOPEDIA_RARITIES.map(r =>
+    `<label class="encyclopedia-filter-option">
+       <input type="checkbox" data-rarity="${r.key}" checked>
+       ${r.label}
+     </label>`
+  ).join('');
+
+  overlay.innerHTML = `
+    <div class="encyclopedia-header">
+      <button class="encyclopedia-back-btn" id="enc-back">← Volver</button>
+      <div class="encyclopedia-title">📖 Enciclopedia</div>
+    </div>
+    <div class="encyclopedia-tabs">${tabsHTML}</div>
+    <div class="encyclopedia-body">
+      <div class="encyclopedia-grid-box" id="enc-grid"></div>
+      <div class="encyclopedia-filters">
+        <div class="encyclopedia-filter-section-title">Opciones</div>
+        <label class="encyclopedia-filter-option">
+          <input type="radio" name="enc-ownership" value="all" checked>
+          Mostrar todas
+        </label>
+        <label class="encyclopedia-filter-option">
+          <input type="radio" name="enc-ownership" value="owned">
+          Mostrar solo cartas que poseo
+        </label>
+        <div class="encyclopedia-filter-section-title">Rareza</div>
+        ${rarityFiltersHTML}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const gridBox = overlay.querySelector('#enc-grid');
+
+  function renderGrid() {
+    gridBox.innerHTML = '';
+    const cards = cardDb.getByCategory(activeTab)
+      .filter(c => activeRarities.has(c.rarity))
+      .filter(c => ownershipFilter === 'all' || ownedIds.has(c.id));
+
+    if (cards.length === 0) {
+      gridBox.innerHTML = '<div class="encyclopedia-empty-msg">No hay cartas que coincidan con estos filtros.</div>';
+      return;
+    }
+
+    cards.forEach(card => {
+      const owned = ownedIds.has(card.id);
+      const slot = document.createElement('div');
+      slot.className = `encyclopedia-card-slot${owned ? '' : ' unowned'}`;
+      // zone='encyclopedia' (una zona que no existe en el resto del motor) a propósito:
+      // así createCardElement no le pega ningún handler de click de juego (declarar
+      // ataque, activar habilidad, etc.) — acá es pura vidriera, sin acción.
+      const cardEl = createCardElement(card, false, true, null, 'encyclopedia', null);
+      slot.appendChild(cardEl);
+      gridBox.appendChild(slot);
+    });
+  }
+
+  overlay.querySelectorAll('.encyclopedia-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeTab = btn.getAttribute('data-tab');
+      overlay.querySelectorAll('.encyclopedia-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderGrid();
+    });
+  });
+
+  overlay.querySelectorAll('input[name="enc-ownership"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      ownershipFilter = radio.value;
+      renderGrid();
+    });
+  });
+
+  overlay.querySelectorAll('input[data-rarity]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      const rarity = checkbox.getAttribute('data-rarity');
+      if (checkbox.checked) activeRarities.add(rarity);
+      else activeRarities.delete(rarity);
+      renderGrid();
+    });
+  });
+
+  overlay.querySelector('#enc-back').addEventListener('click', () => {
+    overlay.remove();
+    onBack();
+  });
+
+  renderGrid();
+}
+
 // Menú principal: primer cimiento de cara al multiplayer — todo lo que hoy arranca directo
 // (boot() en main.js) ahora pasa por acá primero. Jugar/Opciones son reales; Multijugador,
 // Mi Mazo y Enciclopedia quedan con el placeholder deshabilitado hasta que existan de
@@ -1157,8 +1367,8 @@ export function showMainMenu(onPlay) {
     <div class="main-menu-buttons">
       <button class="main-menu-btn main-menu-btn-primary" id="menu-play">Jugar (Solitario)</button>
       <button class="main-menu-btn main-menu-btn-disabled" data-tooltip="Deshabilitado">Multijugador</button>
-      <button class="main-menu-btn main-menu-btn-disabled" data-tooltip="Deshabilitado">Mi Mazo</button>
-      <button class="main-menu-btn main-menu-btn-disabled" data-tooltip="Deshabilitado">Enciclopedia</button>
+      <button class="main-menu-btn main-menu-btn-disabled" data-tooltip="Deshabilitado">Mis Mazos</button>
+      <button class="main-menu-btn" id="menu-encyclopedia">Enciclopedia</button>
       <button class="main-menu-btn" id="menu-options">Opciones</button>
     </div>
   `;
@@ -1167,6 +1377,11 @@ export function showMainMenu(onPlay) {
   overlay.querySelector('#menu-play').addEventListener('click', () => {
     overlay.remove();
     onPlay();
+  });
+
+  overlay.querySelector('#menu-encyclopedia').addEventListener('click', () => {
+    overlay.style.display = 'none';
+    showEncyclopedia(() => { overlay.style.display = ''; });
   });
 
   overlay.querySelector('#menu-options').addEventListener('click', () => {
