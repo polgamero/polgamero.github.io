@@ -434,11 +434,23 @@ html, body {
 }
 
 .avatar { 
+  /* BUG ENCONTRADO Y ARREGLADO: antes este div no tenía ancho/alto fijo — se armaba solo
+     con el tamaño del emoji (font-size + padding). Eso funcionaba bien para texto, pero
+     .avatar img { width:100%; height:100% } necesita un padre con tamaño DEFINIDO para
+     calcular ese 100% — sin uno, el navegador caía al tamaño natural de la foto de Google
+     (bastante más grande), inflando el círculo entero y achicando la bitácora al lado.
+     Con un tamaño fijo acá, tanto el emoji como la foto quedan del mismo tamaño de siempre. */
+  width: 2.4rem;
+  height: 2.4rem;
   font-size: 1.6rem; /* Avatar más pequeño */
   background: #222; 
-  padding: 0.3rem; 
   border-radius: 50%; 
   border: 2px solid var(--gold); 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 /* Fase 0 del multiplayer: si el jugador local está logueado con Google, el avatar muestra

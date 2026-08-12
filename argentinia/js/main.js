@@ -6,9 +6,16 @@ import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRu
 import { buildRandomDeck, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { onAuthChange } from './firebaseClient.js';
+import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen } from './firebaseClient.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
+
+// Fase 1: rastrea la carga (asíncrona) del perfil de Firestore del usuario logueado.
+// initGame la espera ANTES de decidir si hay que crear una colección inicial — sin esto,
+// si alguien logueado aprieta "Jugar" muy rápido después de loguearse, state.userProfile
+// todavía podría estar en null aunque YA tenga una cuenta real, y le pisaríamos la
+// colección/puntos existentes con una colección "inicial" nueva por error de timing.
+let userProfileLoadPromise = Promise.resolve();
 
 export { logMsg, render } from './ui.js';
 export { parseManaCost, getLandColor, sleep } from './utils.js';
@@ -40,6 +47,12 @@ export const state = {
   // { uid, displayName, photoURL, email } — se actualiza solo desde onAuthChange en boot()
   // (main.js), nunca hay que tocarlo a mano desde otro lado.
   currentUser: null,
+  // Fase 1: el documento de Firestore del jugador logueado (puntos, colección de cartas,
+  // mazos) — null si no hay sesión, O si hay sesión pero todavía no se determinó si ya
+  // existe (mientras se está cargando) o si es su primera vez (ver userProfileLoadPromise
+  // en boot(), main.js). getOwnedCardIds() en ui.js lee esto para el grisado real de la
+  // Enciclopedia; si es null, por ahora se ve el pool completo (mismo criterio de siempre).
+  userProfile: null,
 
   localHP: 20,
   // Veneno (regla real 104.3c, junto a Infectar en 702.90): condición de derrota
@@ -175,6 +188,25 @@ async function initGame(humanIdentity) {
   state.localDeck = buildRandomDeck(humanIdentity);
   state.rivalDeck = buildRandomDeck();
 
+  // FASE 1: si hay sesión iniciada, esperamos a que termine de resolverse si ya tiene
+  // perfil guardado (ver el comentario de userProfileLoadPromise más arriba) y, si es
+  // realmente su primera vez, este mazo recién armado —completo, con copias— se convierte
+  // en su colección inicial persistente. Se captura ACÁ, antes de robar la mano de
+  // apertura, para que la colección guardada sea exactamente el mazo de 60 que le tocó.
+  if (state.currentUser) {
+    await userProfileLoadPromise;
+    if (!state.userProfile) {
+      const starterCardIds = state.localDeck.map(c => c.id);
+      try {
+        state.userProfile = await createUserProfile(state.currentUser.uid, state.currentUser, starterCardIds);
+        logMsg("🎁 ¡Se guardó tu colección inicial de 60 cartas en tu cuenta!");
+      } catch (err) {
+        console.error('No se pudo guardar la colección inicial:', err);
+        logMsg("⚠️ No se pudo guardar tu colección inicial — revisá tu conexión. Podés seguir jugando igual.");
+      }
+    }
+  }
+
   for (let i = 0; i < 7; i++) {
     state.localHand.push(state.localDeck.pop());
     state.rivalHand.push(state.rivalDeck.pop());
@@ -306,6 +338,24 @@ async function boot() {
       email: firebaseUser.email
     } : null;
     updateAccountUI(state.currentUser);
+
+    if (state.currentUser) {
+      // Fase 1: apenas se loguea, buscamos si ya tiene perfil guardado. Si lo tiene, lo
+      // cargamos y le refrescamos la marca de última conexión; si no (nunca jugó logueado),
+      // queda en null — initGame() se encarga de crearlo la primera vez que arme un mazo.
+      userProfileLoadPromise = loadUserProfile(state.currentUser.uid)
+        .then(profile => {
+          state.userProfile = profile;
+          if (profile) touchLastSeen(state.currentUser.uid).catch(() => {});
+        })
+        .catch(err => {
+          console.error('No se pudo cargar el perfil de Firestore:', err);
+          state.userProfile = null;
+        });
+    } else {
+      state.userProfile = null;
+      userProfileLoadPromise = Promise.resolve();
+    }
   });
 
   await cardDb.loadAll();

@@ -1051,6 +1051,13 @@ function injectMainMenuStyles() {
     .main-menu-logo-wrap {
       position: absolute; top: 5vh; left: 0; right: 0;
       display: flex; justify-content: center;
+      /* BUG ENCONTRADO Y ARREGLADO: este div ocupa TODO el ancho de la pantalla (left:0;
+         right:0) aunque visualmente solo se vea el logo centrado — el resto es "aire"
+         invisible, pero seguía interceptando clicks. Como en el HTML viene DESPUÉS de
+         .main-menu-account, pintaba ENCIMA y tapaba el botón de login/logout salvo en el
+         borde de arriba, donde todavía no llegaba a superponerse. Es puramente decorativo,
+         nunca necesita recibir clicks. */
+      pointer-events: none;
     }
     .main-menu-logo {
       max-width: 55vw; max-height: 32vh; width: auto; height: auto;
@@ -1199,12 +1206,15 @@ const ENCYCLOPEDIA_RARITIES = [
   { key: 'Common', label: 'Comunes' }
 ];
 
-// TODO(colección real): hoy no existe sistema de mazos propios ni de apertura de sobres —
-// como hablamos, por ahora tenés TODO el pool y la Enciclopedia es un catálogo visual. El
-// día que exista una colección de verdad, esta función pasa a leer de localStorage en vez
-// de devolver el pool entero — el resto de la Enciclopedia (grilla, solapas, filtros,
-// grisado de lo que no tenés) ya está listo para ese cambio sin tocar nada más.
+// FASE 1: ya existe una colección real por cuenta (Firestore, users/{uid}.collection) —
+// si hay sesión Y ya se terminó de cargar (o crear) su perfil, se devuelve esa colección
+// de verdad. Sin sesión, o con sesión pero perfil todavía sin resolver (recién logueado,
+// nunca jugó todavía), se sigue mostrando el pool completo — mismo criterio acordado desde
+// que se armó la Enciclopedia, solo que ahora deja de ser el único camino posible.
 export function getOwnedCardIds() {
+  if (state.currentUser && state.userProfile && state.userProfile.collection) {
+    return new Set(state.userProfile.collection);
+  }
   return new Set(cardDb.allCards.map(c => c.id));
 }
 
