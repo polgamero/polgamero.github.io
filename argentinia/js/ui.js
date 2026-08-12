@@ -29,6 +29,7 @@ import {
 import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
+import { signInWithGoogle, signOutUser } from './firebaseClient.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 
@@ -50,6 +51,7 @@ export const els = {
   rivalHpBar: document.getElementById('rival-hp-bar'),
   localHpText: document.getElementById('local-hp-text'),
   rivalHpText: document.getElementById('rival-hp-text'),
+  localAvatar: document.getElementById('local-avatar'),
 
   gameOverOverlay: document.getElementById('game-over-overlay'),
   gameOverTitle: document.getElementById('game-over-title'),
@@ -1094,6 +1096,39 @@ function injectMainMenuStyles() {
       padding: 6px 12px; border-radius: 6px; font-size: 12px; white-space: nowrap;
       border: 1px solid var(--gold, #d4af37); pointer-events: none; z-index: 10;
     }
+    .main-menu-account { position: absolute; top: 24px; right: 32px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .main-menu-login-btn {
+      display: flex; align-items: center; gap: 8px;
+      background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
+      border: 2px solid var(--gold, #d4af37);
+      border-radius: 10px;
+      color: #f0e0b0; font-size: 14px; font-weight: 700;
+      padding: 9px 16px; cursor: pointer;
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+    }
+    .main-menu-login-btn:hover { background: rgba(212,175,55,0.18); box-shadow: 0 4px 18px rgba(212,175,55,0.3); }
+    .main-menu-account-info {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(11,19,14,0.75);
+      border: 2px solid var(--gold, #d4af37);
+      border-radius: 10px;
+      padding: 6px 14px 6px 6px;
+    }
+    .main-menu-account-photo {
+      width: 34px; height: 34px; border-radius: 50%;
+      object-fit: cover; border: 1.5px solid var(--gold, #d4af37);
+      background: #222; flex-shrink: 0;
+    }
+    .main-menu-account-name {
+      color: #f0e0b0; font-size: 13px; font-weight: 700; max-width: 160px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .main-menu-logout-btn {
+      background: none; border: none; color: #b8adc4; font-size: 11px;
+      cursor: pointer; text-decoration: underline; padding: 0; display: block;
+    }
+    .main-menu-logout-btn:hover { color: #f0e0b0; }
+    .main-menu-account-error { color: #e07a6b; font-size: 12px; max-width: 260px; text-align: right; }
     #options-menu-overlay { display: flex; align-items: center; justify-content: center; }
     .options-menu-panel {
       max-width: 520px; width: 92%;
@@ -1386,11 +1421,67 @@ export function showEncyclopedia(onBack) {
 // (boot() en main.js) ahora pasa por acá primero. Jugar/Opciones son reales; Multijugador,
 // Mi Mazo y Enciclopedia quedan con el placeholder deshabilitado hasta que existan de
 // verdad (no tiene sentido prometer algo que todavía no está armado).
+// Fase 0 del multiplayer: widget de cuenta (login/logout con Google). Se usa en dos
+// momentos distintos con la MISMA función — el render inicial dentro de showMainMenu, y
+// cada vez que cambia el estado de sesión (login/logout/recarga con sesión activa), vía
+// updateAccountUI más abajo, que ya está enganchado en boot() (main.js) apenas arranca la
+// página, sin importar qué pantalla esté mostrándose en ese momento.
+function renderAccountBox(container, user) {
+  if (!container) return;
+
+  if (user) {
+    container.innerHTML = `
+      <div class="main-menu-account-info">
+        <img class="main-menu-account-photo" src="${user.photoURL || ''}" alt="" onerror="this.style.visibility='hidden'">
+        <div>
+          <div class="main-menu-account-name">${user.displayName || user.email || 'Jugador'}</div>
+          <button class="main-menu-logout-btn" id="menu-logout">Cerrar sesión</button>
+        </div>
+      </div>
+    `;
+    container.querySelector('#menu-logout').addEventListener('click', () => {
+      signOutUser().catch(err => {
+        console.error('Error al cerrar sesión:', err);
+      });
+    });
+  } else {
+    container.innerHTML = `<button class="main-menu-login-btn" id="menu-login">🔵 Iniciar sesión con Google</button>`;
+    container.querySelector('#menu-login').addEventListener('click', () => {
+      container.innerHTML = `<button class="main-menu-login-btn" id="menu-login" disabled>Conectando…</button>`;
+      signInWithGoogle().catch(err => {
+        // El caso más común acá ni siquiera es un error real: el jugador cerró el popup
+        // sin elegir cuenta (auth/popup-closed-by-user) — no hace falta asustarlo por eso.
+        console.error('Error al iniciar sesión:', err);
+        renderAccountBox(container, null);
+        const errMsg = document.createElement('div');
+        errMsg.className = 'main-menu-account-error';
+        errMsg.textContent = err.code === 'auth/popup-closed-by-user'
+          ? ''
+          : 'No se pudo iniciar sesión. Probá de nuevo.';
+        if (errMsg.textContent) container.appendChild(errMsg);
+      });
+    });
+  }
+}
+
+// Se llama desde boot() (main.js) cada vez que Firebase avisa un cambio de sesión — no
+// asume que haya un menú o un tablero en pantalla, chequea cada pieza por separado antes de
+// tocarla, porque el login puede pasar en cualquier momento de la vida de la página.
+export function updateAccountUI(user) {
+  if (els.localAvatar) {
+    els.localAvatar.innerHTML = (user && user.photoURL)
+      ? `<img src="${user.photoURL}" alt="" onerror="this.parentElement.textContent='🧉'">`
+      : '🧉';
+  }
+  renderAccountBox(document.getElementById('main-menu-account'), user);
+}
+
 export function showMainMenu(onPlay) {
   injectMainMenuStyles();
   const overlay = document.createElement('div');
   overlay.id = 'main-menu-overlay';
   overlay.innerHTML = `
+    <div class="main-menu-account" id="main-menu-account"></div>
     <div class="main-menu-logo-wrap">
       <img class="main-menu-logo" src="./assets/images/ui/logo.png" alt="Argentinia" onerror="this.style.display='none'">
     </div>
@@ -1403,6 +1494,7 @@ export function showMainMenu(onPlay) {
     </div>
   `;
   document.body.appendChild(overlay);
+  renderAccountBox(overlay.querySelector('#main-menu-account'), state.currentUser);
 
   overlay.querySelector('#menu-play').addEventListener('click', () => {
     overlay.remove();

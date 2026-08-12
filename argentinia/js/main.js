@@ -2,10 +2,11 @@ import { addToStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showMainMenu, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showEscapeExileModal, showKickerModal } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showEscapeExileModal, showKickerModal } from './ui.js';
 import { buildRandomDeck, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
+import { onAuthChange } from './firebaseClient.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 
@@ -33,6 +34,12 @@ export const state = {
   // puede pagar sin ningún criterio de prioridad. Se cambia desde el menú de Opciones
   // (ver showOptionsMenu en ui.js) — no hay forma de cambiarla a mitad de partida.
   botDifficulty: 'hard',
+
+  // Fase 0 del multiplayer: null si no hay nadie logueado (Solitario funciona igual, sin
+  // persistencia — el login es opcional). Si hay sesión, es un objeto chico normalizado
+  // { uid, displayName, photoURL, email } — se actualiza solo desde onAuthChange en boot()
+  // (main.js), nunca hay que tocarlo a mano desde otro lado.
+  currentUser: null,
 
   localHP: 20,
   // Veneno (regla real 104.3c, junto a Infectar en 702.90): condición de derrota
@@ -286,6 +293,21 @@ function startLocalMulliganFlow(onDone) {
 // el jugador elige) y recién ahí muestra el modal de selección de color. El juego en sí
 // no arranca hasta que el jugador elige — initGame() se llama desde el callback del modal.
 async function boot() {
+  // Fase 0 del multiplayer: se engancha UNA sola vez, apenas arranca la página, sin
+  // importar qué pantalla esté mostrándose en ese momento (menú, Opciones, Enciclopedia, o
+  // ya en medio de una partida) — updateAccountUI decide sola qué actualizar según qué haya
+  // en el DOM en ese instante. Esto es lo que hace que loguearte desde cualquier lado
+  // refresque el avatar y el widget de cuenta sin tener que reabrir nada a mano.
+  onAuthChange((firebaseUser) => {
+    state.currentUser = firebaseUser ? {
+      uid: firebaseUser.uid,
+      displayName: firebaseUser.displayName,
+      photoURL: firebaseUser.photoURL,
+      email: firebaseUser.email
+    } : null;
+    updateAccountUI(state.currentUser);
+  });
+
   await cardDb.loadAll();
   showMainMenu(() => {
     showDeckSelectionModal((chosenIdentity) => {
