@@ -1,5 +1,5 @@
 import { logMsg, els, showGameOverOverlay, render, updateAccountUI } from './ui.js';
-import { state, resolveEffectDirect, resolveScheduledReturns } from './main.js';
+import { state, resolveEffectDirect, resolveScheduledReturns, getLocalPlayerName } from './main.js';
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage } from './combatRules.js';
@@ -32,10 +32,17 @@ export function checkGameOver() {
 function awardBotGamePoints(won) {
   if (!state.currentUser) return;
   const delta = pointsForBotGameEnd(won, state.botDifficulty);
+  const difficultyLabel = state.botDifficulty === 'hard' ? 'Difícil' : 'Fácil';
   awardPoints(state.currentUser.uid, delta)
     .then(newTotal => {
       if (state.userProfile) state.userProfile.points = newTotal;
-      logMsg(`🪙 +${delta} puntos (total: ${newTotal}).`);
+      // BUGFIX (revisión post-Fase 3): mensaje más claro sobre qué pasó y por qué, en vez
+      // de un genérico "+N puntos" — distingue victoria/derrota y menciona la dificultad,
+      // que es justo lo que determina cuánto se ganó.
+      const msg = won
+        ? `🪙 ¡Le ganaste al Tano en ${difficultyLabel}! Sumaste ${delta} puntos de premio — llevás ${newTotal} en total.`
+        : `🪙 Perdiste esta vez, pero te llevás ${delta} puntos de recompensa igual — llevás ${newTotal} en total. ¡Mejor suerte la próxima!`;
+      logMsg(msg);
       updateAccountUI(state.currentUser);
     })
     .catch(err => {
@@ -210,7 +217,7 @@ function executeUntapStep() {
     state.rivalSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });
     state.rivalPlaneswalkers.forEach(pw => { pw.abilityUsedThisTurn = false; });
   }
-  logMsg(`🔄 Permanentes enderezados para ${isLocal ? 'El Gaucho' : 'El Tano'}.`);
+  logMsg(`🔄 Permanentes enderezados para ${isLocal ? getLocalPlayerName() : 'El Tano'}.`);
 }
 
 // Habilidad Disparada por fase (ej. "Al comienzo de tu mantenimiento, ganás 1 vida").

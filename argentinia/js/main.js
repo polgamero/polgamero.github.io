@@ -2,8 +2,8 @@ import { addToStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showEscapeExileModal, showKickerModal, showAbandonConfirmModal } from './ui.js';
-import { buildRandomDeck, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle } from './utils.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showEscapeExileModal, showKickerModal, showAbandonConfirmModal } from './ui.js';
+import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
 import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints } from './firebaseClient.js';
@@ -179,22 +179,45 @@ export const state = {
   rivalAttackersDeclaredThisTurn: 0
 };
 
-async function initGame(humanIdentity) {
+// BUGFIX (revisión post-Fase 3): nombre del jugador local, en UN solo lugar — antes
+// "El Gaucho" estaba hardcodeado suelto en varios mensajes distintos (el log de
+// enderezar, el cartel de "Turno de:", el nombre del HUD), y cuando se agregó el login
+// cada uno se actualizaba por separado (o se olvidaba). Ahora todo el juego pasa por acá:
+// devuelve SOLO el nombre de pila de Google si hay sesión (nunca el apellido completo, por
+// privacidad — no queremos doxear a nadie), o "El Gaucho" si no hay sesión.
+export function getLocalPlayerName() {
+  if (state.currentUser && state.currentUser.displayName) {
+    const firstName = state.currentUser.displayName.trim().split(/\s+/)[0];
+    if (firstName) return firstName;
+  }
+  return 'El Gaucho';
+}
+
+// FASE 3, ETAPA 4: deckSource es { type: 'random', identity: [...] } (comportamiento de
+// siempre, disponible con o sin sesión) o { type: 'saved', deck: {...} } (uno de tus
+// mazos guardados de verdad, armado 100% desde tu colección). El del Tano SIEMPRE es al
+// azar — no tiene colección propia.
+async function initGame(deckSource) {
   logMsg("Cargando el mazo...");
 
   setupBoardLayout();
 
-  // El mazo del jugador humano respeta la identidad de color que eligió en el modal
-  // inicial; el del Tano siempre es al azar (ver buildRandomDeck en utils.js).
-  state.localDeck = buildRandomDeck(humanIdentity);
+  let deckLabel;
+  if (deckSource.type === 'saved') {
+    state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds);
+    deckLabel = deckSource.deck.name;
+  } else {
+    state.localDeck = buildRandomDeck(deckSource.identity);
+    deckLabel = deckSource.identity.join('/');
+  }
   state.rivalDeck = buildRandomDeck();
 
-  // FASE 1: si hay sesión iniciada, esperamos a que termine de resolverse si ya tiene
-  // perfil guardado (ver el comentario de userProfileLoadPromise más arriba) y, si es
-  // realmente su primera vez, este mazo recién armado —completo, con copias— se convierte
-  // en su colección inicial persistente. Se captura ACÁ, antes de robar la mano de
-  // apertura, para que la colección guardada sea exactamente el mazo de 60 que le tocó.
-  if (state.currentUser) {
+  // FASE 1: red de contención para cuando el perfil todavía no existe — el camino normal
+  // ahora es promptStarterDeckSelection (se dispara solo apenas hay login, ver boot() más
+  // abajo), así que esto casi nunca debería disparar en la práctica. Solo tiene sentido
+  // para el camino RANDOM: si ya se llegó a elegir un mazo GUARDADO, por definición ya
+  // existía un perfil (no hay forma de tener un mazo guardado sin uno).
+  if (deckSource.type === 'random' && state.currentUser) {
     await userProfileLoadPromise;
     if (!state.userProfile) {
       const starterCardIds = state.localDeck.map(c => c.id);
@@ -234,7 +257,7 @@ async function initGame(humanIdentity) {
             if (state.currentUser) {
               awardPoints(state.currentUser.uid, POINTS.abandonPenalty)
                 .then(newTotal => {
-                  logMsg(`🏳️ Abandonaste la partida. ${POINTS.abandonPenalty} puntos (total: ${newTotal}).`);
+                  logMsg(`🏳️ Abandonaste la partida — te descontamos ${Math.abs(POINTS.abandonPenalty)} puntos. Te quedan ${newTotal} en total.`);
                 })
                 .catch(err => console.error('No se pudo aplicar la penalidad de abandono:', err))
                 .finally(() => location.reload());
@@ -258,7 +281,7 @@ async function initGame(humanIdentity) {
     });
 
     render();
-    logMsg(`¡Arranca la partida! Elegiste ${humanIdentity.join('/')}.`);
+    logMsg(deckSource.type === 'saved' ? `¡Arranca la partida! Jugás con "${deckLabel}".` : `¡Arranca la partida! Elegiste ${deckLabel}.`);
     logMsg("¡Tu turno! Bajá una tierra para empezar.");
   };
 
@@ -423,11 +446,24 @@ async function boot() {
   });
 
   await cardDb.loadAll();
-  showMainMenu(() => {
-    showDeckSelectionModal((chosenIdentity) => {
-      initGame(chosenIdentity);
-    });
-  });
+  showMainMenu(startPlayFlow);
+}
+
+// FASE 3, ETAPA 4: si el jugador logueado ya tiene al menos un mazo guardado, "Jugar" le
+// pregunta con cuál de los suyos quiere entrar (showPlayDeckPickerModal) — con la opción de
+// igual armar uno random si prefiere. Sin sesión, o con sesión pero sin ningún mazo
+// guardado todavía (no debería pasar en la práctica, pero por las dudas), el comportamiento
+// es EXACTAMENTE el de siempre: selector de identidad, mazo random.
+function startPlayFlow() {
+  const savedDecks = (state.currentUser && state.userProfile && state.userProfile.decks) || [];
+  if (savedDecks.length > 0) {
+    showPlayDeckPickerModal(
+      (chosenDeck) => initGame({ type: 'saved', deck: chosenDeck }),
+      () => showDeckSelectionModal((chosenIdentity) => initGame({ type: 'random', identity: chosenIdentity }))
+    );
+  } else {
+    showDeckSelectionModal((chosenIdentity) => initGame({ type: 'random', identity: chosenIdentity }));
+  }
 }
 
 export function getEffectivePower(itemObj) {
@@ -496,7 +532,16 @@ export function getEffectiveKeywords(itemObj) {
     .filter(m => m.type === 'team_keyword')
     .map(m => m.keyword);
   const fromTemp = (itemObj.tempEffects || []).flatMap(t => t.keywords || []);
-  return [...new Set([...base, ...fromAuras, ...fromEquipment, ...fromStatic, ...fromTemp])];
+  // FASE 3, ETAPA 4: mejora permanente por Fichas (Tienda) — recién ahora empieza a
+  // importar de verdad en las partidas. SOLO para el jugador local logueado (mismo patrón
+  // de isLocal que getStaticTeamModifiers acá arriba), y SOLO mientras la carta esté de
+  // este lado del campo — nunca afecta la copia del Tano de la misma carta, aunque
+  // coincida el ID.
+  const isLocal = state.localCombat.includes(itemObj);
+  const fromEnhancement = (isLocal && state.userProfile && state.userProfile.enhancements && state.userProfile.enhancements[card.id])
+    ? [state.userProfile.enhancements[card.id]]
+    : [];
+  return [...new Set([...base, ...fromAuras, ...fromEquipment, ...fromStatic, ...fromTemp, ...fromEnhancement])];
 }
 
 // --- SACRIFICAR COMO COSTO ---

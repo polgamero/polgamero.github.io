@@ -181,6 +181,21 @@ export function buildRandomDeck(forcedIdentity) {
   return shuffle([...landSection, ...spellSection]);
 }
 
+// FASE 3, ETAPA 4: convierte el cardIds guardado de un mazo real ("Mis Mazos") en cartas de
+// juego de verdad, listas para barajar y jugar. Clona cada carta con {...cardDef} en vez de
+// reusar la misma referencia — mismo criterio que weightedSample de acá arriba: cada copia
+// necesita ser un objeto DISTINTO, aunque sean 4 copias de la misma carta, porque el motor
+// le va a ir pegando estado propio (girada, contadores, etc.) a cada instancia por separado.
+export function buildDeckFromCardIds(cardIds) {
+  const cards = cardIds
+    .map(id => {
+      const cardDef = cardDb.getById(id);
+      return cardDef ? { ...cardDef } : null;
+    })
+    .filter(Boolean);
+  return shuffle(cards);
+}
+
 export function parseManaCost(manaString) {
   const cost = { W: 0, U: 0, B: 0, R: 0, G: 0, generic: 0 };
   if (!manaString) return cost;

@@ -1,5 +1,6 @@
 import {
   state,
+  getLocalPlayerName,
   getEffectivePower,
   getEffectiveToughness,
   getEffectiveKeywords,
@@ -31,7 +32,7 @@ import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards } from './utils.js';
 import { signInWithGoogle, signOutUser, purchasePack, craftEnhancement, deleteUserProfile, createDeck } from './firebaseClient.js';
-import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS } from './store.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, POINTS } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 
@@ -1168,6 +1169,10 @@ function injectMainMenuStyles() {
     }
     .main-menu-account-points {
       color: #d4af37; font-size: 11px; font-weight: 600; margin: 1px 0 2px;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .coin-icon, .ficha-icon {
+      width: 1.1em; height: 1.1em; object-fit: contain; vertical-align: -0.15em; flex-shrink: 0;
     }
     .main-menu-logout-btn {
       background: none; border: none; color: #b8adc4; font-size: 11px;
@@ -1255,6 +1260,13 @@ function injectMainMenuStyles() {
 // maná, el cardDb ya cargado en boot()) — nada de esto es exclusivo de la Enciclopedia a
 // propósito, porque la idea es reusar esta misma UI (grilla + solapas + filtros) el día que
 // exista la pantalla de armado de mazos ("Mis Mazos").
+// BUGFIX: íconos reales para puntos y Fichas (moneda.png / ficha.png en
+// assets/images/ui/), reemplazando los emojis 🪙/🎫 en toda la UI estructurada (widget de
+// cuenta, Tienda). Con onerror que cae al emoji de siempre si el archivo todavía no está
+// subido — así nunca se ve un ícono roto mientras tanto.
+const COIN_ICON_HTML = `<img class="coin-icon" src="./assets/images/ui/moneda.png" alt="🪙" onerror="this.outerHTML='🪙'">`;
+const FICHA_ICON_HTML = `<img class="ficha-icon" src="./assets/images/ui/ficha.png" alt="🎫" onerror="this.outerHTML='🎫'">`;
+
 const ENCYCLOPEDIA_TABS = [
   { key: 'criaturas', label: 'Criaturas' },
   { key: 'instantaneos', label: 'Instantáneos' },
@@ -1533,6 +1545,16 @@ function injectStoreStyles() {
     .store-buy-btn:hover { box-shadow: 0 4px 22px rgba(212,175,55,0.4); }
     .store-buy-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
     .store-error-msg { color: #e07a6b; font-size: 13px; margin-top: 12px; }
+    .store-points-info { text-align: left; }
+    .store-points-info .store-section-title { text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .store-points-list { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .store-points-list li {
+      color: #cfe0d4; font-size: 13px; padding: 8px 12px;
+      background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 3px solid rgba(212,175,55,0.5);
+    }
+    .store-points-list li strong { color: #f0e0b0; }
+    .store-points-list li.store-points-penalty { border-left-color: #e07a6b; }
+    .store-points-list li.store-points-penalty strong { color: #e07a6b; }
     .store-card-grid {
       display: flex; flex-wrap: wrap; justify-content: center; gap: 16px;
       --card-w: 14vh;
@@ -1584,13 +1606,29 @@ export function showStoreScreen(onBack) {
   const body = overlay.querySelector('#store-body');
   let craftSelectedCardId = null;
 
+  // BUGFIX: panel de "cómo conseguir puntos" — se muestra SIEMPRE, arriba de todo, sin
+  // importar si hay sesión o no (así también le sirve a alguien que todavía no se logueó
+  // y quiere entender el sistema antes de decidir). Lee los valores reales de store.js, así
+  // nunca queda desactualizado si se reajusta el balance más adelante.
+  const pointsInfoHTML = `
+    <div class="store-section store-points-info">
+      <div class="store-section-title">${COIN_ICON_HTML} Cómo conseguir puntos</div>
+      <ul class="store-points-list">
+        <li>Ganarle al Tano en <strong>Difícil</strong> — <strong>${POINTS.winVsTanoDificil} puntos</strong></li>
+        <li>Ganarle al Tano en <strong>Fácil</strong> — <strong>${POINTS.winVsTanoFacil} puntos</strong></li>
+        <li>Perder una partida — <strong>${POINTS.lossVsTano} puntos</strong> igual, por animarte a jugar</li>
+        <li class="store-points-penalty">Abandonar a mitad de partida — <strong>${POINTS.abandonPenalty} puntos</strong></li>
+      </ul>
+    </div>
+  `;
+
   function renderMainView() {
     if (!state.currentUser) {
-      body.innerHTML = `<div class="store-section"><div class="store-section-desc">Iniciá sesión desde el menú principal para acceder a la Tienda — los puntos y la colección son por cuenta.</div></div>`;
+      body.innerHTML = pointsInfoHTML + `<div class="store-section"><div class="store-section-desc">Iniciá sesión desde el menú principal para acceder a la Tienda — los puntos y la colección son por cuenta.</div></div>`;
       return;
     }
     if (!state.userProfile) {
-      body.innerHTML = `<div class="store-section"><div class="store-section-desc">Todavía no tenés un perfil guardado — jugá tu primera partida logueado para arrancar tu colección, y volvé acá.</div></div>`;
+      body.innerHTML = pointsInfoHTML + `<div class="store-section"><div class="store-section-desc">Todavía no tenés un perfil guardado — jugá tu primera partida logueado para arrancar tu colección, y volvé acá.</div></div>`;
       return;
     }
 
@@ -1599,10 +1637,10 @@ export function showStoreScreen(onBack) {
     const canBuyPack = points >= PACK_COST;
     const canCraft = fichas >= FICHAS_PER_ENHANCEMENT;
 
-    body.innerHTML = `
+    body.innerHTML = pointsInfoHTML + `
       <div class="store-balance-row">
-        <div class="store-balance-chip"><div class="store-balance-value">🪙 ${points}</div><div class="store-balance-label">Puntos</div></div>
-        <div class="store-balance-chip"><div class="store-balance-value">🎫 ${fichas}</div><div class="store-balance-label">Fichas</div></div>
+        <div class="store-balance-chip"><div class="store-balance-value">${COIN_ICON_HTML} ${points}</div><div class="store-balance-label">Puntos</div></div>
+        <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${fichas}</div><div class="store-balance-label">Fichas</div></div>
       </div>
       <div class="store-section">
         <div class="store-pack-visual">📦</div>
@@ -1612,7 +1650,7 @@ export function showStoreScreen(onBack) {
         <div class="store-error-msg" id="store-buy-error"></div>
       </div>
       <div class="store-section">
-        <div class="store-ficha-visual">🎫</div>
+        <div class="store-ficha-visual">${FICHA_ICON_HTML}</div>
         <div class="store-section-title">Mejora permanente — ${FICHAS_PER_ENHANCEMENT} Fichas</div>
         <div class="store-section-desc">Elegí una carta que ya tengas (que todavía no esté mejorada) y dale una keyword para siempre, solo en tu colección.</div>
         <button class="store-buy-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? 'Craftear mejora' : `Te faltan ${FICHAS_PER_ENHANCEMENT - fichas} Ficha(s)`}</button>
@@ -1650,7 +1688,7 @@ export function showStoreScreen(onBack) {
     body.innerHTML = `
       <div class="store-section">
         <div class="store-section-title">🎉 ¡Sobre abierto!</div>
-        <div class="store-section-desc">+1 Ficha (van ${state.userProfile.fichas || 0} en total)</div>
+        <div class="store-section-desc">${FICHA_ICON_HTML} +1 Ficha (van ${state.userProfile.fichas || 0} en total)</div>
       </div>
       <div class="store-card-grid">${gridHTML}</div>
       <div style="text-align:center;"><button class="store-buy-btn" id="store-continue">Continuar</button></div>
@@ -1810,6 +1848,10 @@ function injectDeckBuilderStyles() {
       position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.85); color: #f0e0b0;
       border: 1px solid var(--gold, #d4af37); border-radius: 6px; font-size: 11px; font-weight: 700;
       padding: 2px 6px; pointer-events: none;
+      /* BUGFIX: la imagen de arte de la carta (createCardElement) tiene z-index:2 propio —
+         sin un z-index explícito acá, el badge quedaba tapado detrás de esa imagen. Con
+         esto gana siempre. */
+      z-index: 10;
     }
     .deckbuilder-side { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; }
     .deckbuilder-side-title { color: #f0e0b0; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
@@ -1894,7 +1936,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
     <div class="deckbuilder-header">
       <button class="encyclopedia-back-btn" id="deckbuilder-cancel">← Cancelar</button>
       <div class="deckbuilder-name">${deckName}</div>
-      <button class="store-buy-btn" id="deckbuilder-save">💾 Guardar mazo</button>
+      <button class="store-buy-btn" id="deckbuilder-save" disabled>💾 Guardar mazo</button>
     </div>
     <div class="store-error-msg" id="deckbuilder-error" style="text-align:left;"></div>
     <div class="encyclopedia-tabs">${tabsHTML}</div>
@@ -1904,7 +1946,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
         <div class="encyclopedia-grid-box" id="deckbuilder-grid"></div>
       </div>
       <div class="deckbuilder-side">
-        <div class="deckbuilder-side-title" id="deckbuilder-count">Tu mazo (0 cartas)</div>
+        <div class="deckbuilder-side-title" id="deckbuilder-count">Tu mazo (0 / ${DECK_SIZE_EXACT} cartas)</div>
         <div class="deckbuilder-list" id="deckbuilder-list"></div>
       </div>
     </div>
@@ -1939,7 +1981,15 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
     cards.forEach(card => {
       const owned = ownedCounts[card.id] || 0;
       const inDeck = deckCounts[card.id] || 0;
-      const maxed = inDeck >= owned;
+      // Regla oficial 100.2a: máximo MAX_COPIES_PER_CARD copias de una misma carta, salvo
+      // Tierras básicas (esas no tienen tope — ni acá, ni en MTG real). El "cap" que
+      // mostramos es lo mínimo entre lo que tenés y lo que la regla permite, para que el
+      // número de la derecha del badge sea siempre "hasta dónde podés llegar de verdad",
+      // no solo "cuánto tenés" (que podría ser más alto y confundir).
+      const isBasicLand = card.type.includes('básica');
+      const cap = isBasicLand ? owned : Math.min(owned, MAX_COPIES_PER_CARD);
+      const deckFull = totalInDeck() >= DECK_SIZE_EXACT;
+      const maxed = inDeck >= cap || deckFull;
 
       const wrap = document.createElement('div');
       wrap.className = `deckbuilder-pool-card-wrap${maxed ? ' maxed' : ''}`;
@@ -1947,11 +1997,12 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
 
       const badge = document.createElement('div');
       badge.className = 'deckbuilder-pool-card-badge';
-      badge.textContent = `${inDeck}/${owned}`;
+      badge.textContent = `${inDeck}/${cap}`;
       wrap.appendChild(badge);
 
       wrap.addEventListener('click', () => {
-        if ((deckCounts[card.id] || 0) >= owned) return;
+        if ((deckCounts[card.id] || 0) >= cap) return; // ya llegaste al máximo de copias de ESTA carta
+        if (totalInDeck() >= DECK_SIZE_EXACT) return; // ya llegaste a las 60 del mazo entero
         deckCounts[card.id] = (deckCounts[card.id] || 0) + 1;
         renderPool();
         renderList();
@@ -1963,7 +2014,12 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
 
   function renderList() {
     const entries = Object.entries(deckCounts).filter(([, n]) => n > 0);
-    countLabel.textContent = `Tu mazo (${totalInDeck()} cartas)`;
+    const total = totalInDeck();
+    countLabel.textContent = `Tu mazo (${total} / ${DECK_SIZE_EXACT} cartas)`;
+    countLabel.style.color = total === DECK_SIZE_EXACT ? '#7cbf7c' : '#f0e0b0';
+
+    const saveBtn = overlay.querySelector('#deckbuilder-save');
+    saveBtn.disabled = total !== DECK_SIZE_EXACT;
 
     if (entries.length === 0) {
       list.innerHTML = '<div class="deckbuilder-empty-hint">Todavía no agregaste ninguna carta — hacé click en una de la izquierda.</div>';
@@ -2018,8 +2074,10 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
     Object.entries(deckCounts).forEach(([id, count]) => {
       for (let i = 0; i < count; i++) cardIds.push(id);
     });
-    if (cardIds.length === 0) {
-      errorBox.textContent = 'Agregá al menos una carta antes de guardar.';
+    // Chequeo defensivo: el botón ya debería estar deshabilitado salvo que sean
+    // exactamente DECK_SIZE_EXACT cartas, pero no confiamos solo en eso.
+    if (cardIds.length !== DECK_SIZE_EXACT) {
+      errorBox.textContent = `El mazo tiene que tener exactamente ${DECK_SIZE_EXACT} cartas (tiene ${cardIds.length}).`;
       return;
     }
     errorBox.textContent = '';
@@ -2046,6 +2104,58 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
 // restantes armándolos 100% desde tu colección real (Etapa 2, showDeckBuilderScreen más
 // abajo). Reusa createCardElement y hasta el mismo .encyclopedia-grid-box que la
 // Enciclopedia para la vista de detalle — la reutilización de UI que veníamos buscando.
+// FASE 3, ETAPA 4: elegir con qué mazo jugar — se muestra en vez del selector random de
+// siempre cuando el jugador logueado ya tiene al menos un mazo guardado. Reusa el MISMO
+// estilo de slot que "Mis Mazos" (ver injectMyDecksStyles más arriba), pero acá el click
+// ELIGE ese mazo para arrancar la partida, no abre el detalle de solo lectura. Sin sesión,
+// o sin ningún mazo guardado todavía, ni se llega a esta pantalla — el llamador
+// (showMainMenu → boot() en main.js) decide eso antes de invocarla.
+export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom) {
+  injectMyDecksStyles();
+  injectStoreStyles(); // reusa .store-back-link para el link de "jugar random"
+
+  const overlay = document.createElement('div');
+  overlay.id = 'mydecks-overlay';
+  const decks = (state.userProfile && state.userProfile.decks) || [];
+
+  const slotsHTML = decks.map(deck => `
+    <div class="mydecks-slot mydecks-slot-filled" data-deck-id="${deck.id}">
+      <div class="mydecks-slot-name">${deck.name}</div>
+      ${deck.isDefault ? '<span class="mydecks-slot-badge">Default</span>' : ''}
+      <div class="mydecks-slot-count">${(deck.cardIds || []).length} cartas</div>
+    </div>
+  `).join('');
+
+  overlay.innerHTML = `
+    <div class="mydecks-header">
+      <div class="mydecks-title">¿Con qué mazo jugás?</div>
+    </div>
+    <div class="mydecks-body">
+      <div class="mydecks-slots-grid">${slotsHTML}</div>
+      <div style="text-align:center; margin-top: 24px;">
+        <button class="store-back-link" id="playpicker-random">🎲 Jugar con un mazo random en cambio</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelectorAll('.mydecks-slot-filled').forEach(el => {
+    el.addEventListener('click', () => {
+      const deckId = el.getAttribute('data-deck-id');
+      const deck = decks.find(d => d.id === deckId);
+      if (deck) {
+        overlay.remove();
+        onChooseDeck(deck);
+      }
+    });
+  });
+
+  overlay.querySelector('#playpicker-random').addEventListener('click', () => {
+    overlay.remove();
+    onPlayRandom();
+  });
+}
+
 export function showMyDecksScreen(onBack) {
   injectMyDecksStyles();
   injectEncyclopediaStyles(); // reusamos .encyclopedia-grid-box para la vista de detalle
@@ -2165,13 +2275,13 @@ function renderAccountBox(container, user) {
     // objeto de auth — puede no estar cargado todavía (recién logueado) o no existir aún
     // (nunca jugó una partida), así que se muestra solo cuando hay un número real.
     const pointsHTML = state.userProfile && typeof state.userProfile.points === 'number'
-      ? `<div class="main-menu-account-points">🪙 ${state.userProfile.points} puntos</div>`
+      ? `<div class="main-menu-account-points">${COIN_ICON_HTML} ${state.userProfile.points} puntos</div>`
       : '';
     container.innerHTML = `
       <div class="main-menu-account-info">
         <img class="main-menu-account-photo" src="${user.photoURL || ''}" alt="" onerror="this.style.visibility='hidden'">
         <div>
-          <div class="main-menu-account-name">${user.displayName || user.email || 'Jugador'}</div>
+          <div class="main-menu-account-name">${getLocalPlayerName()}</div>
           ${pointsHTML}
           <button class="main-menu-logout-btn" id="menu-logout">Cerrar sesión</button>
         </div>
@@ -2212,7 +2322,10 @@ export function updateAccountUI(user) {
       : '🧉';
   }
   if (els.localPlayerName) {
-    els.localPlayerName.textContent = (user && user.displayName) ? `${user.displayName} (VOS)` : 'El Gaucho (VOS)';
+    // BUGFIX: sin sesión, "El Gaucho (VOS)" como siempre. Con sesión, SOLO el nombre de
+    // pila (sin apellido, por privacidad) y sin el "(VOS)" — ya queda claro que sos vos
+    // por el contexto del HUD.
+    els.localPlayerName.textContent = user ? getLocalPlayerName() : 'El Gaucho (VOS)';
   }
   renderAccountBox(document.getElementById('main-menu-account'), user);
 }
@@ -2883,7 +2996,7 @@ export function render() {
   // --- 1. GESTIÓN VISUAL DEL HUD Y FASES ---
   const turnOwnerBadge = document.getElementById('turn-owner-badge');
   if (turnOwnerBadge) {
-      turnOwnerBadge.textContent = state.activePlayer === 'local' ? "Turno de: El Gaucho" : "Turno de: El Tano";
+      turnOwnerBadge.textContent = state.activePlayer === 'local' ? `Turno de: ${getLocalPlayerName()}` : "Turno de: El Tano";
       turnOwnerBadge.className = `turn-owner-badge ${state.activePlayer === 'local' ? 'local-active' : 'rival-active'}`;
   }
 

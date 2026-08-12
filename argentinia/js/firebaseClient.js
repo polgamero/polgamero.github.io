@@ -19,6 +19,8 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { cardDb } from './cardLoader.js';
+import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD } from './store.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAAvUAaZ35_sF9uCsecLPg7zqhB7mLa7yo",
@@ -209,7 +211,12 @@ export async function createDeck(uid, name, cardIds) {
 
     if (decks.length >= 5) throw new Error('Ya tenés el máximo de 5 mazos.');
     if (!name || !name.trim()) throw new Error('El mazo necesita un nombre.');
-    if (!cardIds || cardIds.length === 0) throw new Error('El mazo necesita al menos una carta.');
+    // FASE 3, ETAPA 3: tamaño de mazo rígido — ni de más, ni de menos. (Sí, en el
+    // reglamento real de MTG 60 es un PISO, no un tope — acá se decidió a propósito que
+    // sea exacto para esta versión del juego.)
+    if (!cardIds || cardIds.length !== DECK_SIZE_EXACT) {
+      throw new Error(`El mazo tiene que tener exactamente ${DECK_SIZE_EXACT} cartas (tiene ${cardIds ? cardIds.length : 0}).`);
+    }
 
     const ownedCounts = {};
     (data.collection || []).forEach(id => { ownedCounts[id] = (ownedCounts[id] || 0) + 1; });
@@ -217,6 +224,13 @@ export async function createDeck(uid, name, cardIds) {
     cardIds.forEach(id => { requestedCounts[id] = (requestedCounts[id] || 0) + 1; });
     for (const [id, count] of Object.entries(requestedCounts)) {
       if (count > (ownedCounts[id] || 0)) throw new Error('Estás usando más copias de una carta de las que tenés.');
+      // Regla oficial 100.2a: máximo 4 copias de una misma carta, salvo Tierras básicas
+      // (esas no tienen límite, ni acá ni en MTG real).
+      const cardDef = cardDb.getById(id);
+      const isBasicLand = cardDef && cardDef.type.includes('básica');
+      if (!isBasicLand && count > MAX_COPIES_PER_CARD) {
+        throw new Error(`No podés tener más de ${MAX_COPIES_PER_CARD} copias de la misma carta (salvo Tierras básicas)${cardDef ? `: ${cardDef.name}` : ''}.`);
+      }
     }
 
     const newDeck = { id: `deck_${Date.now()}`, name: name.trim(), cardIds, isDefault: false, createdAt: Date.now() };

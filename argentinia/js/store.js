@@ -51,3 +51,20 @@ export const ENHANCEMENT_KEYWORDS = [
   { key: 'reach', label: 'Alcance' },
   { key: 'hexproof', label: 'Intocable' }
 ];
+
+// --- Reglas de armado de mazo (Fase 3, Etapa 3) ---
+// Respetan las reglas oficiales de constructed de MTG, con UNA excepción de diseño
+// explícita: acá el tamaño de mazo es un límite RÍGIDO de 60 (ni más ni menos), no "60 o
+// más" como en el reglamento real — así lo pidió el usuario. El máximo de copias iguales
+// SÍ es 100% el oficial (regla 100.2a): 4 copias de cualquier carta que no sea Tierra
+// básica — las básicas no tienen límite, ni acá ni en MTG real.
+//
+// La colección (lo que te toca en los sobres) NUNCA tiene límite de copias — eso es
+// intencional y no cambia con esto: los topes de acá abajo solo aplican al ARMAR un mazo,
+// no a cuánto podés juntar.
+//
+// Estos números son justo los que en algún momento va a poder tocar el panel de Admin
+// (todavía no existe, queda anotado para cuando lo armemos) — por eso viven centralizados
+// acá, no hardcodeados sueltos por ui.js/firebaseClient.js.
+export const DECK_SIZE_EXACT = 60;
+export const MAX_COPIES_PER_CARD = 4; // no aplica a Tierras básicas (sin límite, como en MTG real)
