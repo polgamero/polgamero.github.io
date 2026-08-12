@@ -1,22 +1,47 @@
-import { logMsg, els, showGameOverOverlay, render } from './ui.js';
+import { logMsg, els, showGameOverOverlay, render, updateAccountUI } from './ui.js';
 import { state, resolveEffectDirect, resolveScheduledReturns } from './main.js';
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage } from './combatRules.js';
 import { hasKeyword } from './keywords.js';
+import { awardPoints } from './firebaseClient.js';
+import { pointsForBotGameEnd } from './store.js';
 
 export function checkGameOver() {
   if (state.gameOver) return;
   if (state.localHP <= 0) {
     state.gameOver = true; logMsg("💀 Te quedaste sin HP. ¡Ganó el Tano!"); showGameOverOverlay(false);
+    awardBotGamePoints(false);
   } else if (state.rivalHP <= 0) {
     state.gameOver = true; logMsg("🏆 ¡VICTORIA! Hiciste morder el polvo al Tano."); showGameOverOverlay(true);
+    awardBotGamePoints(true);
   } else if (state.localPoison >= 10) {
     // Condición de derrota ALTERNATIVA (regla 104.3c): no importa cuánto HP te quede.
     state.gameOver = true; logMsg("☠️ ¡Te llegaron 10 contadores de Veneno! El Infectar del Tano te venció."); showGameOverOverlay(false);
+    awardBotGamePoints(false);
   } else if (state.rivalPoison >= 10) {
     state.gameOver = true; logMsg("☠️ ¡El Tano llegó a 10 contadores de Veneno! Se murió infectado."); showGameOverOverlay(true);
+    awardBotGamePoints(true);
   }
+}
+
+// FASE 2: le suma (o resta) puntos a la cuenta logueada al terminar la partida contra el
+// Tano. Sin sesión, no hace nada — Solitario sin login sigue sin puntos, como siempre.
+// No bloquea nada del cierre de partida (el overlay de Fin de Partida ya se mostró arriba,
+// esto pasa "en paralelo" y solo actualiza el número una vez que Firestore responde).
+function awardBotGamePoints(won) {
+  if (!state.currentUser) return;
+  const delta = pointsForBotGameEnd(won, state.botDifficulty);
+  awardPoints(state.currentUser.uid, delta)
+    .then(newTotal => {
+      if (state.userProfile) state.userProfile.points = newTotal;
+      logMsg(`🪙 +${delta} puntos (total: ${newTotal}).`);
+      updateAccountUI(state.currentUser);
+    })
+    .catch(err => {
+      console.error('No se pudieron guardar los puntos de esta partida:', err);
+      logMsg("⚠️ No se pudieron guardar los puntos de esta partida — revisá tu conexión.");
+    });
 }
 
 // SECUENCIA OFICIAL DE PASOS Y FASES MTG

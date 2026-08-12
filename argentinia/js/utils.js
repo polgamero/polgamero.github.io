@@ -1,4 +1,5 @@
 import { cardDb } from './cardLoader.js';
+import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT } from './store.js';
 
 export function shuffle(array) { 
   return array.sort(() => Math.random() - 0.5); 
@@ -234,4 +235,36 @@ export function getLandColor(card) {
 
 export function sleep(ms) { 
   return new Promise(resolve => setTimeout(resolve, ms)); 
+}
+
+// --- FASE 2: SOBRES ---
+// Arma el contenido de un sobre — misma estructura que un booster real de MTG (comunes +
+// poco comunes + una rara garantizada, con chance de mítica en su lugar + una tierra).
+// Puramente aleatorio del lado del cliente: aceptable para un proyecto de este tamaño sin
+// backend propio, mismo criterio de confianza que ya usa buildRandomDeck de acá arriba —
+// lo que de verdad blinda la compra (que no se pueda pagar dos veces, etc.) es la
+// transacción de Firestore en purchasePack (firebaseClient.js), no esto.
+function pickRandomCard(pool) {
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+export function generatePackCards() {
+  const byRarity = {
+    Common: cardDb.allCards.filter(c => c.rarity === 'Common'),
+    Uncommon: cardDb.allCards.filter(c => c.rarity === 'Uncommon'),
+    Rare: cardDb.allCards.filter(c => c.rarity === 'Rare'),
+    Mythic: cardDb.allCards.filter(c => c.rarity === 'Mythic')
+  };
+  const lands = cardDb.allCards.filter(c => c.type.includes('Tierra'));
+
+  const cards = [];
+  for (let i = 0; i < PACK_COMMONS; i++) cards.push(pickRandomCard(byRarity.Common));
+  for (let i = 0; i < PACK_UNCOMMONS; i++) cards.push(pickRandomCard(byRarity.Uncommon));
+
+  const isMythicSlot = byRarity.Mythic.length > 0 && Math.random() < MYTHIC_CHANCE_IN_RARE_SLOT;
+  cards.push(pickRandomCard(isMythicSlot ? byRarity.Mythic : byRarity.Rare));
+
+  for (let i = 0; i < PACK_LANDS; i++) cards.push(pickRandomCard(lands));
+
+  return cards; // 15 cartas (objetos de carta completos, no solo IDs)
 }

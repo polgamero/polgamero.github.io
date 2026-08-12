@@ -29,7 +29,9 @@ import {
 import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
-import { signInWithGoogle, signOutUser } from './firebaseClient.js';
+import { generatePackCards } from './utils.js';
+import { signInWithGoogle, signOutUser, purchasePack, craftEnhancement, deleteUserProfile, createDeck } from './firebaseClient.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 
@@ -52,10 +54,12 @@ export const els = {
   localHpText: document.getElementById('local-hp-text'),
   rivalHpText: document.getElementById('rival-hp-text'),
   localAvatar: document.getElementById('local-avatar'),
+  localPlayerName: document.getElementById('local-player-name'),
 
   gameOverOverlay: document.getElementById('game-over-overlay'),
   gameOverTitle: document.getElementById('game-over-title'),
   btnRestart: document.getElementById('btn-restart'),
+  btnAbandonGame: document.getElementById('btn-abandon-game'),
 
   paymentControls : document.getElementById('payment-controls'),
   paymentStatus : document.getElementById('payment-status'),
@@ -324,6 +328,38 @@ export function showKickerModal(card, onConfirm, onCancel) {
     onConfirm(false);
   });
   modalOverlay.querySelector('#modal-cancel').addEventListener('click', () => {
+    modalOverlay.remove();
+    onCancel();
+  });
+}
+
+// FASE 2: confirmación antes de abandonar — es una acción con penalidad real de puntos, así
+// que nunca se ejecuta con un solo click. Mismo esqueleto que showKickerModal.
+export function showAbandonConfirmModal(onConfirm, onCancel) {
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width: 440px;">
+      <div class="gy-modal-header">
+        <h3>🏳️ ¿Abandonar la partida?</h3>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0 0 4px;">Vas a perder puntos por abandonar — más de lo que perderías si jugás hasta el final y perdés. Esto no se puede deshacer.</p>
+        <button class="loyalty-ability-btn" id="abandon-yes" style="justify-content: flex-start;">
+          <span class="loyalty-ability-text">🏳️ Sí, abandonar de todos modos</span>
+        </button>
+        <button id="abandon-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">❌ Seguir jugando</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalOverlay);
+
+  modalOverlay.querySelector('#abandon-yes').addEventListener('click', () => {
+    modalOverlay.remove();
+    onConfirm();
+  });
+  modalOverlay.querySelector('#abandon-cancel').addEventListener('click', () => {
     modalOverlay.remove();
     onCancel();
   });
@@ -1130,6 +1166,9 @@ function injectMainMenuStyles() {
       color: #f0e0b0; font-size: 13px; font-weight: 700; max-width: 160px;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
+    .main-menu-account-points {
+      color: #d4af37; font-size: 11px; font-weight: 600; margin: 1px 0 2px;
+    }
     .main-menu-logout-btn {
       background: none; border: none; color: #b8adc4; font-size: 11px;
       cursor: pointer; text-decoration: underline; padding: 0; display: block;
@@ -1181,6 +1220,33 @@ function injectMainMenuStyles() {
       padding: 6px 12px; border-radius: 6px; font-size: 12px; white-space: nowrap;
       border: 1px solid var(--gold, #d4af37); pointer-events: none; z-index: 10;
     }
+    .options-danger-zone {
+      margin-top: 26px; padding-top: 18px; border-top: 1px solid rgba(224,122,107,0.3);
+    }
+    .options-danger-title {
+      color: #e07a6b; font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 10px;
+    }
+    .options-danger-btn {
+      background: transparent; border: 1.5px solid #6e3a33; border-radius: 8px;
+      color: #b06a5f; font-size: 13px; font-weight: 600; padding: 9px 16px;
+      cursor: pointer; width: 100%; transition: background 0.15s ease, color 0.15s ease;
+    }
+    .options-danger-btn:hover { background: rgba(224,122,107,0.12); color: #e07a6b; }
+    .delete-confirm-input {
+      width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,0.05); border: 1.5px solid #6e3a33; border-radius: 8px;
+      color: #f0e0b0; font-size: 14px; padding: 9px 12px; text-align: center;
+      letter-spacing: 1px; font-weight: 700;
+    }
+    .delete-confirm-input:focus { outline: none; border-color: #e07a6b; }
+    .delete-confirm-btn {
+      background: #6e3a33; border: 2px solid #e07a6b; border-radius: 10px;
+      color: #f0e0b0; font-size: 14px; font-weight: 700; padding: 10px 20px; cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .delete-confirm-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .delete-confirm-btn:not(:disabled):hover { background: #8a4a41; }
   `;
   document.head.appendChild(style);
 }
@@ -1427,6 +1493,661 @@ export function showEncyclopedia(onBack) {
   renderGrid();
 }
 
+function injectStoreStyles() {
+  if (document.getElementById('store-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'store-styles';
+  style.textContent = `
+    #store-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display: flex; flex-direction: column;
+      padding: 24px 32px;
+    }
+    .store-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
+    .store-title { font-size: 26px; font-weight: 700; color: #f0e0b0; text-shadow: 0 0 20px rgba(212,175,55,0.4); }
+    .store-body { flex: 1; overflow-y: auto; max-width: 900px; width: 100%; margin: 0 auto; }
+    .store-balance-row { display: flex; gap: 24px; margin-bottom: 28px; justify-content: center; }
+    .store-balance-chip {
+      background: rgba(18,25,15,0.7); border: 2px solid var(--gold, #d4af37); border-radius: 12px;
+      padding: 14px 28px; text-align: center; min-width: 160px;
+    }
+    .store-balance-value { color: #f0e0b0; font-size: 26px; font-weight: 700; }
+    .store-balance-label { color: #b8adc4; font-size: 12px; margin-top: 2px; }
+    .store-section {
+      background: rgba(18,25,15,0.5); border: 2px solid rgba(212,175,55,0.3); border-radius: 14px;
+      padding: 24px; margin-bottom: 20px; text-align: center;
+    }
+    .store-section-title { color: #f0e0b0; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .store-section-desc { color: #cfe0d4; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+    .store-pack-visual {
+      font-size: 64px; margin-bottom: 10px;
+      filter: drop-shadow(0 6px 16px rgba(212,175,55,0.3));
+    }
+    .store-buy-btn {
+      background: linear-gradient(180deg, rgba(212,175,55,0.28), rgba(11,19,14,0.96));
+      border: 2px solid var(--gold, #d4af37); border-radius: 10px;
+      color: #f0e0b0; font-size: 15px; font-weight: 700;
+      padding: 11px 26px; cursor: pointer; transition: box-shadow 0.15s ease;
+    }
+    .store-buy-btn:hover { box-shadow: 0 4px 22px rgba(212,175,55,0.4); }
+    .store-buy-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+    .store-error-msg { color: #e07a6b; font-size: 13px; margin-top: 12px; }
+    .store-card-grid {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 16px;
+      --card-w: 14vh;
+      margin: 20px 0;
+    }
+    .store-ficha-visual { font-size: 40px; }
+    .store-craft-list {
+      max-height: 50vh; overflow-y: auto;
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 14px;
+      --card-w: 12vh;
+      padding: 10px;
+    }
+    .store-craft-card-btn { cursor: pointer; border-radius: 8px; transition: transform 0.15s ease; background: none; border: none; padding: 0; }
+    .store-craft-card-btn:hover { transform: translateY(-4px); }
+    .store-keyword-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 16px 0; }
+    .store-keyword-btn {
+      background: rgba(255,255,255,0.05); border: 1.5px solid rgba(212,175,55,0.4); border-radius: 8px;
+      color: #f0e0b0; font-size: 14px; font-weight: 600; padding: 12px; cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .store-keyword-btn:hover { background: rgba(212,175,55,0.18); border-color: #f0e0b0; }
+    .store-back-link { background: none; border: none; color: #b8adc4; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 10px; }
+    .store-back-link:hover { color: #f0e0b0; }
+  `;
+  document.head.appendChild(style);
+}
+
+// FASE 2: Tienda — comprar sobres con puntos, y craftear mejoras permanentes con Fichas.
+// Como con la Enciclopedia, reusa createCardElement para dibujar cartas (acá con zone=
+// 'encyclopedia', el mismo truco de "zona inerte" para que ningún click dispare una acción
+// de juego real) — nada de esto necesitó inventar una forma nueva de mostrar una carta.
+export function showStoreScreen(onBack) {
+  injectStoreStyles();
+  const overlay = document.createElement('div');
+  overlay.id = 'store-overlay';
+  overlay.innerHTML = `
+    <div class="store-header">
+      <button class="encyclopedia-back-btn" id="store-back">← Volver</button>
+      <div class="store-title">Tienda</div>
+    </div>
+    <div class="store-body" id="store-body"></div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#store-back').addEventListener('click', () => {
+    overlay.remove();
+    onBack();
+  });
+
+  const body = overlay.querySelector('#store-body');
+  let craftSelectedCardId = null;
+
+  function renderMainView() {
+    if (!state.currentUser) {
+      body.innerHTML = `<div class="store-section"><div class="store-section-desc">Iniciá sesión desde el menú principal para acceder a la Tienda — los puntos y la colección son por cuenta.</div></div>`;
+      return;
+    }
+    if (!state.userProfile) {
+      body.innerHTML = `<div class="store-section"><div class="store-section-desc">Todavía no tenés un perfil guardado — jugá tu primera partida logueado para arrancar tu colección, y volvé acá.</div></div>`;
+      return;
+    }
+
+    const points = state.userProfile.points || 0;
+    const fichas = state.userProfile.fichas || 0;
+    const canBuyPack = points >= PACK_COST;
+    const canCraft = fichas >= FICHAS_PER_ENHANCEMENT;
+
+    body.innerHTML = `
+      <div class="store-balance-row">
+        <div class="store-balance-chip"><div class="store-balance-value">🪙 ${points}</div><div class="store-balance-label">Puntos</div></div>
+        <div class="store-balance-chip"><div class="store-balance-value">🎫 ${fichas}</div><div class="store-balance-label">Fichas</div></div>
+      </div>
+      <div class="store-section">
+        <div class="store-pack-visual">📦</div>
+        <div class="store-section-title">Sobre — ${PACK_COST} puntos</div>
+        <div class="store-section-desc">15 cartas (comunes, poco comunes, y una rara garantizada con chance de mítica) + 1 Ficha.</div>
+        <button class="store-buy-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>Comprar sobre</button>
+        <div class="store-error-msg" id="store-buy-error"></div>
+      </div>
+      <div class="store-section">
+        <div class="store-ficha-visual">🎫</div>
+        <div class="store-section-title">Mejora permanente — ${FICHAS_PER_ENHANCEMENT} Fichas</div>
+        <div class="store-section-desc">Elegí una carta que ya tengas (que todavía no esté mejorada) y dale una keyword para siempre, solo en tu colección.</div>
+        <button class="store-buy-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? 'Craftear mejora' : `Te faltan ${FICHAS_PER_ENHANCEMENT - fichas} Ficha(s)`}</button>
+      </div>
+    `;
+
+    body.querySelector('#store-buy-pack').addEventListener('click', async () => {
+      const btn = body.querySelector('#store-buy-pack');
+      const errBox = body.querySelector('#store-buy-error');
+      btn.disabled = true;
+      errBox.textContent = '';
+      try {
+        const packCards = generatePackCards();
+        const updated = await purchasePack(state.currentUser.uid, PACK_COST, packCards.map(c => c.id));
+        state.userProfile = updated;
+        renderPackRevealView(packCards);
+      } catch (err) {
+        console.error('No se pudo comprar el sobre:', err);
+        errBox.textContent = err.message || 'No se pudo comprar el sobre. Probá de nuevo.';
+        btn.disabled = !canBuyPack;
+      }
+    });
+
+    if (canCraft) {
+      body.querySelector('#store-craft').addEventListener('click', () => renderCraftPickCardView());
+    }
+  }
+
+  function renderPackRevealView(packCards) {
+    const gridHTML = packCards.map(card => {
+      const el = createCardElement(card, false, true, null, 'encyclopedia', null);
+      return el.outerHTML;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="store-section">
+        <div class="store-section-title">🎉 ¡Sobre abierto!</div>
+        <div class="store-section-desc">+1 Ficha (van ${state.userProfile.fichas || 0} en total)</div>
+      </div>
+      <div class="store-card-grid">${gridHTML}</div>
+      <div style="text-align:center;"><button class="store-buy-btn" id="store-continue">Continuar</button></div>
+    `;
+    body.querySelector('#store-continue').addEventListener('click', renderMainView);
+  }
+
+  function renderCraftPickCardView() {
+    const enhancements = state.userProfile.enhancements || {};
+    const ownedUnique = [...new Set(state.userProfile.collection || [])];
+    const eligibleCards = ownedUnique
+      .filter(id => !enhancements[id])
+      .map(id => cardDb.getById(id))
+      .filter(Boolean);
+
+    if (eligibleCards.length === 0) {
+      body.innerHTML = `
+        <div class="store-section">
+          <div class="store-section-desc">No te queda ninguna carta sin mejorar todavía en tu colección.</div>
+          <button class="store-back-link" id="store-craft-back">← Volver</button>
+        </div>
+      `;
+      body.querySelector('#store-craft-back').addEventListener('click', renderMainView);
+      return;
+    }
+
+    body.innerHTML = `
+      <div class="store-section">
+        <div class="store-section-title">Elegí qué carta mejorar</div>
+        <div class="store-section-desc">Esto gasta ${FICHAS_PER_ENHANCEMENT} Fichas y es permanente — solo en tu colección.</div>
+        <div class="store-craft-list" id="store-craft-list"></div>
+        <button class="store-back-link" id="store-craft-cancel">← Cancelar</button>
+      </div>
+    `;
+
+    const list = body.querySelector('#store-craft-list');
+    eligibleCards.forEach(card => {
+      const btn = document.createElement('button');
+      btn.className = 'store-craft-card-btn';
+      const cardEl = createCardElement(card, false, true, null, 'encyclopedia', null);
+      btn.appendChild(cardEl);
+      btn.addEventListener('click', () => {
+        craftSelectedCardId = card.id;
+        renderCraftPickKeywordView(card);
+      });
+      list.appendChild(btn);
+    });
+
+    body.querySelector('#store-craft-cancel').addEventListener('click', renderMainView);
+  }
+
+  function renderCraftPickKeywordView(card) {
+    const keywordButtonsHTML = ENHANCEMENT_KEYWORDS.map(k =>
+      `<button class="store-keyword-btn" data-keyword="${k.key}">${k.label}</button>`
+    ).join('');
+
+    body.innerHTML = `
+      <div class="store-section">
+        <div class="store-section-title">${card.name} — elegí la keyword</div>
+        <div class="store-keyword-grid">${keywordButtonsHTML}</div>
+        <div class="store-error-msg" id="store-craft-error"></div>
+        <button class="store-back-link" id="store-craft-back">← Elegir otra carta</button>
+      </div>
+    `;
+
+    body.querySelectorAll('.store-keyword-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const keyword = btn.getAttribute('data-keyword');
+        const errBox = body.querySelector('#store-craft-error');
+        body.querySelectorAll('.store-keyword-btn').forEach(b => b.disabled = true);
+        try {
+          const updated = await craftEnhancement(state.currentUser.uid, craftSelectedCardId, keyword, FICHAS_PER_ENHANCEMENT);
+          state.userProfile = updated;
+          renderMainView();
+        } catch (err) {
+          console.error('No se pudo craftear la mejora:', err);
+          errBox.textContent = err.message || 'No se pudo craftear la mejora. Probá de nuevo.';
+          body.querySelectorAll('.store-keyword-btn').forEach(b => b.disabled = false);
+        }
+      });
+    });
+
+    body.querySelector('#store-craft-back').addEventListener('click', renderCraftPickCardView);
+  }
+
+  renderMainView();
+}
+
+function injectMyDecksStyles() {
+  if (document.getElementById('mydecks-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'mydecks-styles';
+  style.textContent = `
+    #mydecks-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display: flex; flex-direction: column;
+      padding: 24px 32px;
+      --card-w: 14vh;
+    }
+    .mydecks-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
+    .mydecks-title { font-size: 26px; font-weight: 700; color: #f0e0b0; text-shadow: 0 0 20px rgba(212,175,55,0.4); }
+    .mydecks-body { flex: 1; overflow-y: auto; max-width: 900px; width: 100%; margin: 0 auto; }
+    .mydecks-slots-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px;
+    }
+    .mydecks-slot {
+      border-radius: 12px; padding: 20px; text-align: center; min-height: 100px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    }
+    .mydecks-slot-filled {
+      background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
+      border: 2px solid var(--gold, #d4af37);
+      cursor: pointer; transition: box-shadow 0.15s ease, transform 0.15s ease;
+    }
+    .mydecks-slot-filled:hover { box-shadow: 0 4px 22px rgba(212,175,55,0.35); transform: translateY(-3px); }
+    .mydecks-slot-name { color: #f0e0b0; font-size: 16px; font-weight: 700; }
+    .mydecks-slot-count { color: #b8adc4; font-size: 12px; }
+    .mydecks-slot-badge {
+      background: rgba(212,175,55,0.2); border: 1px solid var(--gold, #d4af37); border-radius: 6px;
+      color: #f0e0b0; font-size: 10px; font-weight: 700; padding: 2px 8px; text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .mydecks-slot-empty {
+      background: rgba(255,255,255,0.02); border: 1.5px dashed rgba(212,175,55,0.4);
+      color: #d4af37; font-size: 14px; cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .mydecks-slot-empty:hover { background: rgba(212,175,55,0.08); border-color: #f0e0b0; color: #f0e0b0; }
+    .mydecks-detail-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .mydecks-detail-title { color: #f0e0b0; font-size: 18px; font-weight: 700; }
+  `;
+  document.head.appendChild(style);
+}
+
+function injectDeckBuilderStyles() {
+  if (document.getElementById('deckbuilder-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'deckbuilder-styles';
+  style.textContent = `
+    #deckbuilder-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display: flex; flex-direction: column;
+      padding: 24px 32px;
+      --card-w: 12vh;
+    }
+    .deckbuilder-header { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; flex-shrink: 0; flex-wrap: wrap; }
+    .deckbuilder-name { color: #f0e0b0; font-size: 20px; font-weight: 700; flex: 1; }
+    .deckbuilder-body { flex: 1; display: flex; gap: 16px; min-height: 0; margin-top: 12px; }
+    .deckbuilder-pool { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .deckbuilder-pool-card-wrap { position: relative; cursor: pointer; transition: transform 0.15s ease; }
+    .deckbuilder-pool-card-wrap:hover { transform: translateY(-3px); }
+    .deckbuilder-pool-card-wrap.maxed { opacity: 0.4; cursor: not-allowed; }
+    .deckbuilder-pool-card-wrap.maxed:hover { transform: none; }
+    .deckbuilder-pool-card-badge {
+      position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.85); color: #f0e0b0;
+      border: 1px solid var(--gold, #d4af37); border-radius: 6px; font-size: 11px; font-weight: 700;
+      padding: 2px 6px; pointer-events: none;
+    }
+    .deckbuilder-side { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; }
+    .deckbuilder-side-title { color: #f0e0b0; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+    .deckbuilder-list {
+      flex: 1; overflow-y: auto;
+      background: rgba(0,0,0,0.2); border: 2px solid rgba(212,175,55,0.3); border-radius: 10px; padding: 10px;
+    }
+    .deckbuilder-list-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; color: #e8ddc8;
+    }
+    .deckbuilder-list-item:last-child { border-bottom: none; }
+    .deckbuilder-list-remove {
+      background: none; border: 1px solid rgba(224,122,107,0.5); color: #e07a6b; border-radius: 5px;
+      width: 20px; height: 20px; cursor: pointer; font-size: 13px; line-height: 1; flex-shrink: 0;
+    }
+    .deckbuilder-list-remove:hover { background: rgba(224,122,107,0.15); }
+    .deckbuilder-empty-hint { color: #7a7086; font-size: 13px; text-align: center; padding: 20px 10px; }
+  `;
+  document.head.appendChild(style);
+}
+
+// FASE 3, ETAPA 2: nombre del mazo nuevo, antes de entrar al constructor. Cualquier nombre
+// no vacío sirve (sin la exigencia de escribir una palabra exacta como en borrar cuenta —
+// acá no hay nada irreversible todavía, recién se guarda de verdad al final del constructor).
+export function showDeckNameModal(defaultName, onConfirm, onCancel) {
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width: 420px;">
+      <div class="gy-modal-header"><h3>Nombrá tu mazo</h3></div>
+      <div style="display:flex; flex-direction:column; gap:12px; padding: 16px;">
+        <input type="text" class="encyclopedia-search-input" id="deckname-input" value="${defaultName}" maxlength="40" style="margin-bottom:0;">
+        <button class="store-buy-btn" id="deckname-confirm-btn">Continuar</button>
+        <button id="deckname-cancel-btn" class="mulligan-btn mulligan-btn-mull">Cancelar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalOverlay);
+
+  const input = modalOverlay.querySelector('#deckname-input');
+  input.focus();
+  input.select();
+
+  modalOverlay.querySelector('#deckname-confirm-btn').addEventListener('click', () => {
+    const name = input.value.trim();
+    if (!name) return; // no dejamos continuar sin nombre — el input se queda como está
+    modalOverlay.remove();
+    onConfirm(name);
+  });
+  modalOverlay.querySelector('#deckname-cancel-btn').addEventListener('click', () => {
+    modalOverlay.remove();
+    onCancel();
+  });
+}
+
+// FASE 3, ETAPA 2: constructor de mazos — pool de la izquierda (SOLO cartas que ya tenés,
+// con solapas por tipo y buscador, igual que la Enciclopedia) y el mazo en construcción a
+// la derecha. Nunca deja agregar más copias de una carta de las que realmente tenés — el
+// tope real y definitivo lo pone igual la transacción de Firestore (createDeck), esto es
+// solo para que la experiencia de armar no se sienta rota antes de llegar a guardar.
+export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
+  injectEncyclopediaStyles();
+  injectDeckBuilderStyles();
+
+  const ownedCounts = {};
+  (state.userProfile.collection || []).forEach(id => { ownedCounts[id] = (ownedCounts[id] || 0) + 1; });
+
+  let activeTab = 'criaturas';
+  let searchQuery = '';
+  const deckCounts = {}; // cardId -> cantidad agregada al mazo en construcción
+
+  const overlay = document.createElement('div');
+  overlay.id = 'deckbuilder-overlay';
+
+  const tabsHTML = ENCYCLOPEDIA_TABS.map(t =>
+    `<button class="encyclopedia-tab${t.key === activeTab ? ' active' : ''}" data-tab="${t.key}">${t.label}</button>`
+  ).join('');
+
+  overlay.innerHTML = `
+    <div class="deckbuilder-header">
+      <button class="encyclopedia-back-btn" id="deckbuilder-cancel">← Cancelar</button>
+      <div class="deckbuilder-name">${deckName}</div>
+      <button class="store-buy-btn" id="deckbuilder-save">💾 Guardar mazo</button>
+    </div>
+    <div class="store-error-msg" id="deckbuilder-error" style="text-align:left;"></div>
+    <div class="encyclopedia-tabs">${tabsHTML}</div>
+    <input type="text" class="encyclopedia-search-input" id="deckbuilder-search" placeholder="Buscar carta...">
+    <div class="deckbuilder-body">
+      <div class="deckbuilder-pool">
+        <div class="encyclopedia-grid-box" id="deckbuilder-grid"></div>
+      </div>
+      <div class="deckbuilder-side">
+        <div class="deckbuilder-side-title" id="deckbuilder-count">Tu mazo (0 cartas)</div>
+        <div class="deckbuilder-list" id="deckbuilder-list"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const grid = overlay.querySelector('#deckbuilder-grid');
+  const list = overlay.querySelector('#deckbuilder-list');
+  const countLabel = overlay.querySelector('#deckbuilder-count');
+  const errorBox = overlay.querySelector('#deckbuilder-error');
+
+  function normalizeSearch(str) {
+    return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function totalInDeck() {
+    return Object.values(deckCounts).reduce((sum, n) => sum + n, 0);
+  }
+
+  function renderPool() {
+    grid.innerHTML = '';
+    const query = normalizeSearch(searchQuery);
+    const cards = cardDb.getByCategory(activeTab)
+      .filter(c => (ownedCounts[c.id] || 0) > 0)
+      .filter(c => !query || normalizeSearch(c.name).includes(query));
+
+    if (cards.length === 0) {
+      grid.innerHTML = '<div class="encyclopedia-empty-msg">No tenés cartas de este tipo (o ninguna coincide con la búsqueda).</div>';
+      return;
+    }
+
+    cards.forEach(card => {
+      const owned = ownedCounts[card.id] || 0;
+      const inDeck = deckCounts[card.id] || 0;
+      const maxed = inDeck >= owned;
+
+      const wrap = document.createElement('div');
+      wrap.className = `deckbuilder-pool-card-wrap${maxed ? ' maxed' : ''}`;
+      wrap.appendChild(createCardElement(card, false, true, null, 'encyclopedia', null));
+
+      const badge = document.createElement('div');
+      badge.className = 'deckbuilder-pool-card-badge';
+      badge.textContent = `${inDeck}/${owned}`;
+      wrap.appendChild(badge);
+
+      wrap.addEventListener('click', () => {
+        if ((deckCounts[card.id] || 0) >= owned) return;
+        deckCounts[card.id] = (deckCounts[card.id] || 0) + 1;
+        renderPool();
+        renderList();
+      });
+
+      grid.appendChild(wrap);
+    });
+  }
+
+  function renderList() {
+    const entries = Object.entries(deckCounts).filter(([, n]) => n > 0);
+    countLabel.textContent = `Tu mazo (${totalInDeck()} cartas)`;
+
+    if (entries.length === 0) {
+      list.innerHTML = '<div class="deckbuilder-empty-hint">Todavía no agregaste ninguna carta — hacé click en una de la izquierda.</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    entries
+      .map(([id, count]) => ({ card: cardDb.getById(id), count }))
+      .filter(e => e.card)
+      .sort((a, b) => a.card.name.localeCompare(b.card.name))
+      .forEach(({ card, count }) => {
+        const item = document.createElement('div');
+        item.className = 'deckbuilder-list-item';
+        const label = document.createElement('span');
+        label.textContent = `${count}x ${card.name}`;
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'deckbuilder-list-remove';
+        removeBtn.textContent = '−';
+        removeBtn.addEventListener('click', () => {
+          deckCounts[card.id] = Math.max(0, (deckCounts[card.id] || 0) - 1);
+          renderPool();
+          renderList();
+        });
+        item.appendChild(label);
+        item.appendChild(removeBtn);
+        list.appendChild(item);
+      });
+  }
+
+  overlay.querySelector('#deckbuilder-search').addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    renderPool();
+  });
+
+  overlay.querySelectorAll('.encyclopedia-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeTab = btn.getAttribute('data-tab');
+      overlay.querySelectorAll('.encyclopedia-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderPool();
+    });
+  });
+
+  overlay.querySelector('#deckbuilder-cancel').addEventListener('click', () => {
+    overlay.remove();
+    onCancel();
+  });
+
+  overlay.querySelector('#deckbuilder-save').addEventListener('click', async () => {
+    const cardIds = [];
+    Object.entries(deckCounts).forEach(([id, count]) => {
+      for (let i = 0; i < count; i++) cardIds.push(id);
+    });
+    if (cardIds.length === 0) {
+      errorBox.textContent = 'Agregá al menos una carta antes de guardar.';
+      return;
+    }
+    errorBox.textContent = '';
+    const saveBtn = overlay.querySelector('#deckbuilder-save');
+    saveBtn.disabled = true;
+    try {
+      const updated = await createDeck(state.currentUser.uid, deckName, cardIds);
+      state.userProfile = updated;
+      overlay.remove();
+      onSaved();
+    } catch (err) {
+      console.error('No se pudo guardar el mazo:', err);
+      errorBox.textContent = err.message || 'No se pudo guardar el mazo. Probá de nuevo.';
+      saveBtn.disabled = false;
+    }
+  });
+
+  renderPool();
+  renderList();
+}
+
+// FASE 3: "Mis Mazos" — lista tus hasta 5 mazos (arranca con 1: el mazo inicial random,
+// marcado como default), te deja ver el contenido de cada uno (Etapa 1), y crear los 4
+// restantes armándolos 100% desde tu colección real (Etapa 2, showDeckBuilderScreen más
+// abajo). Reusa createCardElement y hasta el mismo .encyclopedia-grid-box que la
+// Enciclopedia para la vista de detalle — la reutilización de UI que veníamos buscando.
+export function showMyDecksScreen(onBack) {
+  injectMyDecksStyles();
+  injectEncyclopediaStyles(); // reusamos .encyclopedia-grid-box para la vista de detalle
+  const overlay = document.createElement('div');
+  overlay.id = 'mydecks-overlay';
+  overlay.innerHTML = `
+    <div class="mydecks-header">
+      <button class="encyclopedia-back-btn" id="mydecks-back">← Volver</button>
+      <div class="mydecks-title">Mis Mazos</div>
+    </div>
+    <div class="mydecks-body" id="mydecks-body"></div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#mydecks-back').addEventListener('click', () => {
+    overlay.remove();
+    onBack();
+  });
+
+  const body = overlay.querySelector('#mydecks-body');
+  const MAX_DECKS = 5;
+
+  function renderListView() {
+    if (!state.currentUser) {
+      body.innerHTML = `<div class="store-section"><div class="store-section-desc">Iniciá sesión desde el menú principal para acceder a tus mazos — son por cuenta.</div></div>`;
+      return;
+    }
+    if (!state.userProfile) {
+      body.innerHTML = `<div class="store-section"><div class="store-section-desc">Todavía no tenés un perfil guardado — jugá tu primera partida logueado para arrancar tu colección, y volvé acá.</div></div>`;
+      return;
+    }
+
+    const decks = state.userProfile.decks || [];
+    const slotsHTML = [];
+
+    decks.forEach(deck => {
+      slotsHTML.push(`
+        <div class="mydecks-slot mydecks-slot-filled" data-deck-id="${deck.id}">
+          <div class="mydecks-slot-name">${deck.name}</div>
+          ${deck.isDefault ? '<span class="mydecks-slot-badge">Default</span>' : ''}
+          <div class="mydecks-slot-count">${(deck.cardIds || []).length} cartas</div>
+        </div>
+      `);
+    });
+
+    for (let i = decks.length; i < MAX_DECKS; i++) {
+      slotsHTML.push(`
+        <div class="mydecks-slot mydecks-slot-empty">+ Crear mazo</div>
+      `);
+    }
+
+    body.innerHTML = `<div class="mydecks-slots-grid">${slotsHTML.join('')}</div>`;
+
+    body.querySelectorAll('.mydecks-slot-filled').forEach(el => {
+      el.addEventListener('click', () => {
+        const deckId = el.getAttribute('data-deck-id');
+        const deck = decks.find(d => d.id === deckId);
+        if (deck) renderDetailView(deck);
+      });
+    });
+
+    // FASE 3, ETAPA 2: un slot vacío ahora arma un mazo de verdad — primero el nombre,
+    // después el constructor (grilla + búsqueda, igual que la Enciclopedia, pero solo con
+    // lo que ya tenés). Al volver de cualquiera de los dos caminos (guardó o canceló),
+    // se refresca la lista sola.
+    body.querySelectorAll('.mydecks-slot-empty').forEach(el => {
+      el.addEventListener('click', () => {
+        const nextNumber = decks.length + 1;
+        showDeckNameModal(`Mazo ${nextNumber}`,
+          (name) => {
+            showDeckBuilderScreen(name, renderListView, renderListView);
+          },
+          () => {} // canceló el nombre: no hace falta hacer nada
+        );
+      });
+    });
+  }
+
+  function renderDetailView(deck) {
+    const cards = (deck.cardIds || []).map(id => cardDb.getById(id)).filter(Boolean);
+
+    body.innerHTML = `
+      <div class="mydecks-detail-header">
+        <button class="store-back-link" id="mydecks-detail-back">← Mis Mazos</button>
+        <div class="mydecks-detail-title">${deck.name} — ${cards.length} cartas</div>
+      </div>
+      <div class="encyclopedia-grid-box" id="mydecks-detail-grid"></div>
+    `;
+    body.querySelector('#mydecks-detail-back').addEventListener('click', renderListView);
+
+    const grid = body.querySelector('#mydecks-detail-grid');
+    cards.forEach(card => {
+      const slot = document.createElement('div');
+      slot.className = 'encyclopedia-card-slot';
+      // Acá nunca hay grisado: todo lo que está en un mazo, por definición, es tuyo.
+      slot.appendChild(createCardElement(card, false, true, null, 'encyclopedia', null));
+      grid.appendChild(slot);
+    });
+  }
+
+  renderListView();
+}
+
 // Menú principal: primer cimiento de cara al multiplayer — todo lo que hoy arranca directo
 // (boot() en main.js) ahora pasa por acá primero. Jugar/Opciones son reales; Multijugador,
 // Mi Mazo y Enciclopedia quedan con el placeholder deshabilitado hasta que existan de
@@ -1440,11 +2161,18 @@ function renderAccountBox(container, user) {
   if (!container) return;
 
   if (user) {
+    // Fase 2: los puntos viven en el perfil de Firestore (state.userProfile), no en el
+    // objeto de auth — puede no estar cargado todavía (recién logueado) o no existir aún
+    // (nunca jugó una partida), así que se muestra solo cuando hay un número real.
+    const pointsHTML = state.userProfile && typeof state.userProfile.points === 'number'
+      ? `<div class="main-menu-account-points">🪙 ${state.userProfile.points} puntos</div>`
+      : '';
     container.innerHTML = `
       <div class="main-menu-account-info">
         <img class="main-menu-account-photo" src="${user.photoURL || ''}" alt="" onerror="this.style.visibility='hidden'">
         <div>
           <div class="main-menu-account-name">${user.displayName || user.email || 'Jugador'}</div>
+          ${pointsHTML}
           <button class="main-menu-logout-btn" id="menu-logout">Cerrar sesión</button>
         </div>
       </div>
@@ -1483,6 +2211,9 @@ export function updateAccountUI(user) {
       ? `<img src="${user.photoURL}" alt="" onerror="this.parentElement.textContent='🧉'">`
       : '🧉';
   }
+  if (els.localPlayerName) {
+    els.localPlayerName.textContent = (user && user.displayName) ? `${user.displayName} (VOS)` : 'El Gaucho (VOS)';
+  }
   renderAccountBox(document.getElementById('main-menu-account'), user);
 }
 
@@ -1498,8 +2229,9 @@ export function showMainMenu(onPlay) {
     <div class="main-menu-buttons">
       <button class="main-menu-btn main-menu-btn-primary" id="menu-play">Jugar (Solitario)</button>
       <button class="main-menu-btn main-menu-btn-disabled" data-tooltip="Deshabilitado">Multijugador</button>
-      <button class="main-menu-btn main-menu-btn-disabled" data-tooltip="Deshabilitado">Mis Mazos</button>
+      <button class="main-menu-btn" id="menu-mydecks">Mis Mazos</button>
       <button class="main-menu-btn" id="menu-encyclopedia">Enciclopedia</button>
+      <button class="main-menu-btn" id="menu-store">Tienda</button>
       <button class="main-menu-btn" id="menu-options">Opciones</button>
     </div>
   `;
@@ -1514,6 +2246,22 @@ export function showMainMenu(onPlay) {
   overlay.querySelector('#menu-encyclopedia').addEventListener('click', () => {
     overlay.style.display = 'none';
     showEncyclopedia(() => { overlay.style.display = ''; });
+  });
+
+  // Fase 3, Etapa 1: "Mis Mazos" ya es un botón real (no "deshabilitado" como
+  // Multijugador) — todavía es solo modo lectura, pero eso ya es funcionalidad de verdad,
+  // no una promesa vacía.
+  overlay.querySelector('#menu-mydecks').addEventListener('click', () => {
+    overlay.style.display = 'none';
+    showMyDecksScreen(() => { overlay.style.display = ''; });
+  });
+
+  // La Tienda SÍ es un botón real (no "deshabilitado" como Multijugador) porque no depende
+  // de una funcionalidad que todavía no existe — solo depende de tener sesión iniciada, que
+  // showStoreScreen ya sabe explicar sola si no la hay.
+  overlay.querySelector('#menu-store').addEventListener('click', () => {
+    overlay.style.display = 'none';
+    showStoreScreen(() => { overlay.style.display = ''; });
   });
 
   overlay.querySelector('#menu-options').addEventListener('click', () => {
@@ -1532,6 +2280,16 @@ export function showOptionsMenu(onBack) {
 
   const difficultyLabel = () => (state.botDifficulty === 'easy' ? 'Fácil' : 'Difícil');
 
+  // Zona de Peligro: pensada para testing/desarrollo (reiniciar tu propia cuenta sin tener
+  // que andar borrando el documento a mano en la consola de Firestore) — solo tiene sentido
+  // si hay sesión iniciada, así que directamente no se muestra sin login.
+  const dangerZoneHTML = state.currentUser ? `
+    <div class="options-danger-zone">
+      <div class="options-danger-title">Zona de Peligro</div>
+      <button class="options-danger-btn" id="opt-delete-account">🗑️ Borrar mi cuenta (colección, puntos, todo)</button>
+    </div>
+  ` : '';
+
   overlay.innerHTML = `
     <div class="options-menu-panel">
       <div class="options-menu-title">Opciones</div>
@@ -1547,6 +2305,7 @@ export function showOptionsMenu(onBack) {
         <span class="options-label">Sonido</span>
         <button class="options-toggle-btn" data-tooltip="Deshabilitado">Activado</button>
       </div>
+      ${dangerZoneHTML}
       <button class="main-menu-btn" id="opt-back" style="margin-top: 24px;">Volver</button>
     </div>
   `;
@@ -1559,17 +2318,77 @@ export function showOptionsMenu(onBack) {
     logMsg(`🎚️ Dificultad del Tano: ${difficultyLabel()}.`);
   });
 
+  if (state.currentUser) {
+    overlay.querySelector('#opt-delete-account').addEventListener('click', () => {
+      showDeleteAccountModal(async () => {
+        try {
+          await deleteUserProfile(state.currentUser.uid);
+          state.userProfile = null;
+          logMsg("🗑️ Tu cuenta se borró — la próxima vez que juegues, arrancás de cero.");
+        } catch (err) {
+          console.error('No se pudo borrar la cuenta:', err);
+          logMsg("⚠️ No se pudo borrar la cuenta — revisá tu conexión e intentá de nuevo.");
+        } finally {
+          location.reload();
+        }
+      }, () => {});
+    });
+  }
+
   overlay.querySelector('#opt-back').addEventListener('click', () => {
     overlay.remove();
     onBack();
   });
 }
 
-export function showDeckSelectionModal(onChoose) {
+// Confirmación con texto escrito a propósito (no un simple sí/no) — borrar la cuenta es
+// irreversible y destruye colección + puntos + Fichas + mazos, así que el botón de
+// confirmar se queda deshabilitado hasta que el jugador escriba la palabra exacta.
+export function showDeleteAccountModal(onConfirm, onCancel) {
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width: 460px;">
+      <div class="gy-modal-header"><h3>⚠️ Borrar tu cuenta</h3></div>
+      <div style="display:flex; flex-direction:column; gap:12px; padding: 16px;">
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0;">Esto borra tu colección, tus puntos, tus Fichas y tus mazos guardados — PARA SIEMPRE. No se puede deshacer.</p>
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0;">Escribí <strong>ELIMINAR</strong> para confirmar:</p>
+        <input type="text" class="delete-confirm-input" id="delete-confirm-input" placeholder="ELIMINAR" autocomplete="off">
+        <button class="delete-confirm-btn" id="delete-confirm-btn" disabled>Borrar todo</button>
+        <button id="delete-cancel-btn" class="mulligan-btn mulligan-btn-mull">Cancelar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalOverlay);
+
+  const input = modalOverlay.querySelector('#delete-confirm-input');
+  const confirmBtn = modalOverlay.querySelector('#delete-confirm-btn');
+
+  input.addEventListener('input', () => {
+    confirmBtn.disabled = input.value !== 'ELIMINAR';
+  });
+
+  confirmBtn.addEventListener('click', () => {
+    if (input.value !== 'ELIMINAR') return; // defensivo: no debería poder llegar acá igual
+    modalOverlay.remove();
+    onConfirm();
+  });
+
+  modalOverlay.querySelector('#delete-cancel-btn').addEventListener('click', () => {
+    modalOverlay.remove();
+    onCancel();
+  });
+}
+
+export function showDeckSelectionModal(onChoose, titleOverrides = {}) {
   injectDeckSelectionStyles();
 
   const overlay = document.createElement('div');
   overlay.id = 'deck-select-overlay';
+
+  const title = titleOverrides.title || 'Elegi tu mazo';
+  const subtitle = titleOverrides.subtitle || 'El Tano ya barajo el suyo al azar. Vos elegis con que pelear.';
 
   const monoButtonsHTML = ALL_COLORS.map(colorKey => {
     const info = COLOR_INFO[colorKey];
@@ -1600,8 +2419,8 @@ export function showDeckSelectionModal(onChoose) {
 
   overlay.innerHTML = `
     <div class="deck-select-panel">
-      <div class="deck-select-title">Elegi tu mazo</div>
-      <div class="deck-select-subtitle">El Tano ya barajo el suyo al azar. Vos elegis con que pelear.</div>
+      <div class="deck-select-title">${title}</div>
+      <div class="deck-select-subtitle">${subtitle}</div>
       <div class="deck-select-mono-row">${monoButtonsHTML}</div>
       <div class="deck-select-divider">o combina dos colores</div>
       <div class="deck-select-pairs-grid">${pairButtonsHTML}</div>

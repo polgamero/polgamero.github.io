@@ -2,11 +2,12 @@ import { addToStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showEscapeExileModal, showKickerModal } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showEscapeExileModal, showKickerModal, showAbandonConfirmModal } from './ui.js';
 import { buildRandomDeck, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen } from './firebaseClient.js';
+import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints } from './firebaseClient.js';
+import { POINTS } from './store.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 
@@ -222,6 +223,40 @@ async function initGame(humanIdentity) {
     els.rivalHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(false));
     els.localHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(true));
 
+    // FASE 2: abandonar tiene una penalidad más dura que perder jugando hasta el final —
+    // por eso el botón pide confirmación (showAbandonConfirmModal) antes de aplicar nada.
+    if (els.btnAbandonGame) {
+      els.btnAbandonGame.addEventListener('click', () => {
+        if (state.gameOver) return; // ya terminó de una forma normal, "abandonar" no tiene sentido
+        showAbandonConfirmModal(
+          () => {
+            state.gameOver = true; // evita que checkGameOver procese esto como otra cosa
+            if (state.currentUser) {
+              awardPoints(state.currentUser.uid, POINTS.abandonPenalty)
+                .then(newTotal => {
+                  logMsg(`🏳️ Abandonaste la partida. ${POINTS.abandonPenalty} puntos (total: ${newTotal}).`);
+                })
+                .catch(err => console.error('No se pudo aplicar la penalidad de abandono:', err))
+                .finally(() => location.reload());
+            } else {
+              location.reload();
+            }
+          },
+          () => {} // "Seguir jugando": no hace falta hacer nada, el modal ya se cerró solo
+        );
+      });
+    }
+
+    // Mejor esfuerzo, NO 100% confiable — es una limitación real de la plataforma web, no
+    // del código: los navegadores no garantizan que un pedido de red termine de completarse
+    // durante beforeunload. El mecanismo confiable de verdad es el botón de arriba; esto es
+    // solo una red de contención para cuando alguien cierra la pestaña sin pasar por él.
+    window.addEventListener('beforeunload', () => {
+      if (!state.gameOver && state.currentUser) {
+        awardPoints(state.currentUser.uid, POINTS.abandonPenalty).catch(() => {});
+      }
+    });
+
     render();
     logMsg(`¡Arranca la partida! Elegiste ${humanIdentity.join('/')}.`);
     logMsg("¡Tu turno! Bajá una tierra para empezar.");
@@ -324,6 +359,30 @@ function startLocalMulliganFlow(onDone) {
 // Carga la base de cartas primero (para que el modal ya pueda arrancar el juego apenas
 // el jugador elige) y recién ahí muestra el modal de selección de color. El juego en sí
 // no arranca hasta que el jugador elige — initGame() se llama desde el callback del modal.
+// Se muestra automáticamente apenas se detecta una cuenta logueada SIN perfil todavía —
+// primera vez de verdad, o después de un borrado de cuenta desde Opciones. Reusa el MISMO
+// modal que "Jugar" (mismo mecanismo de elegir identidad, mismo buildRandomDeck), pero con
+// un título distinto que deja bien claro que ESTA elección es para siempre. La partida NO
+// arranca acá — solo se guarda la colección; el jugador vuelve al menú y juega cuando quiera.
+function promptStarterDeckSelection() {
+  showDeckSelectionModal(
+    async (chosenIdentity) => {
+      const starterDeck = buildRandomDeck(chosenIdentity);
+      try {
+        state.userProfile = await createUserProfile(state.currentUser.uid, state.currentUser, starterDeck.map(c => c.id));
+        logMsg(`🎁 ¡Tu colección inicial (${chosenIdentity.join('/')}) quedó guardada para siempre!`);
+      } catch (err) {
+        console.error('No se pudo guardar la colección inicial:', err);
+        logMsg("⚠️ No se pudo guardar tu colección inicial — revisá tu conexión. Volvé a entrar para reintentarlo.");
+      }
+    },
+    {
+      title: 'Elegí tu mazo inicial',
+      subtitle: 'Estas cartas te van a acompañar para siempre — pensalo bien, no se puede cambiar después.'
+    }
+  );
+}
+
 async function boot() {
   // Fase 0 del multiplayer: se engancha UNA sola vez, apenas arranca la página, sin
   // importar qué pantalla esté mostrándose en ese momento (menú, Opciones, Enciclopedia, o
@@ -341,12 +400,17 @@ async function boot() {
 
     if (state.currentUser) {
       // Fase 1: apenas se loguea, buscamos si ya tiene perfil guardado. Si lo tiene, lo
-      // cargamos y le refrescamos la marca de última conexión; si no (nunca jugó logueado),
-      // queda en null — initGame() se encarga de crearlo la primera vez que arme un mazo.
+      // cargamos y le refrescamos la marca de última conexión; si no (primera vez de
+      // verdad, o la cuenta se acaba de borrar), le mostramos YA el modal de mazo inicial
+      // — no hace falta esperar a que apriete "Jugar".
       userProfileLoadPromise = loadUserProfile(state.currentUser.uid)
         .then(profile => {
           state.userProfile = profile;
-          if (profile) touchLastSeen(state.currentUser.uid).catch(() => {});
+          if (profile) {
+            touchLastSeen(state.currentUser.uid).catch(() => {});
+          } else {
+            promptStarterDeckSelection();
+          }
         })
         .catch(err => {
           console.error('No se pudo cargar el perfil de Firestore:', err);
