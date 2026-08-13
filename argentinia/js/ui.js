@@ -32,7 +32,7 @@ import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, craftEnhancement, deleteUserProfile, createDeck, saveGameConfig, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, logAdminAction } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, craftEnhancement, deleteUserProfile, createDeck, saveGameConfig, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, applyGameConfig, getDefaultGameConfig } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -1173,10 +1173,7 @@ function injectMainMenuStyles() {
       display: flex; align-items: center; gap: 4px;
     }
     .coin-icon, .ficha-icon {
-      width: 3em; height: 3em; object-fit: contain; vertical-align: -0.15em; flex-shrink: 0;
-    }
-    .sobre-expansion {
-      width: 8em; height: 8em; object-fit: contain; flex-shrink: 0;
+      width: 1.1em; height: 1.1em; object-fit: contain; vertical-align: -0.15em; flex-shrink: 0;
     }
     .main-menu-logout-btn {
       background: none; border: none; color: #b8adc4; font-size: 11px;
@@ -1184,6 +1181,20 @@ function injectMainMenuStyles() {
     }
     .main-menu-logout-btn:hover { color: #f0e0b0; }
     .main-menu-account-error { color: #e07a6b; font-size: 12px; max-width: 260px; text-align: right; }
+    .main-menu-news {
+      position: absolute; bottom: 24px; right: 32px; width: 280px; max-height: 220px;
+      background: rgba(11,19,14,0.85); border: 2px solid rgba(212,175,55,0.35); border-radius: 12px;
+      padding: 12px 14px; overflow-y: auto; z-index: 5;
+    }
+    .main-menu-news-title {
+      color: #f0e0b0; font-size: 13px; font-weight: 700; margin-bottom: 8px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .main-menu-news-item { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .main-menu-news-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .main-menu-news-date { color: #8a9a8e; font-size: 10px; margin-bottom: 2px; }
+    .main-menu-news-text { color: #cfe0d4; font-size: 12px; line-height: 1.4; white-space: pre-wrap; }
+    .main-menu-news-empty { color: #8a9a8e; font-size: 12px; font-style: italic; }
     .main-menu-admin-btn {
       background: linear-gradient(180deg, rgba(120,60,180,0.28), rgba(11,19,14,0.96));
       border: 2px solid #b06ad4; border-radius: 8px;
@@ -1276,7 +1287,6 @@ function injectMainMenuStyles() {
 // cuenta, Tienda). Con onerror que cae al emoji de siempre si el archivo todavía no está
 // subido — así nunca se ve un ícono roto mientras tanto.
 const COIN_ICON_HTML = `<img class="coin-icon" src="./assets/images/ui/moneda.png" alt="🪙" onerror="this.outerHTML='🪙'">`;
-const SOBRE_HTML = `<img class="sobre-expansion" src="./assets/images/ui/sobre.png" alt="✉️" onerror="this.outerHTML='✉️'">`;
 
 // PANEL DE ADMIN: solo esta cuenta puede ver el botón — esto es puramente cosmético (ocultar
 // el botón para todos los demás), NO es la protección real. Lo que de verdad impide que
@@ -1284,6 +1294,22 @@ const SOBRE_HTML = `<img class="sobre-expansion" src="./assets/images/ui/sobre.p
 // que chequea este mismo email de forma independiente — aunque alguien se saltee esta UI
 // por completo (devtools, requests a mano), Firestore lo va a rechazar igual.
 const ADMIN_EMAIL = 'pablogamero1@gmail.com';
+
+// "Noticias": texto libre que escribe el admin — se escapa antes de insertarlo como HTML,
+// simple buena práctica aunque la fuente sea de confianza (evita romper el layout si el
+// texto trae "<" o similar).
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+function formatAnnouncementDate(date) {
+  if (!date) return '';
+  const datePart = date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const timePart = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  return `${datePart} ${timePart}`;
+}
 const FICHA_ICON_HTML = `<img class="ficha-icon" src="./assets/images/ui/ficha.png" alt="🎫" onerror="this.outerHTML='🎫'">`;
 
 const ENCYCLOPEDIA_TABS = [
@@ -1691,7 +1717,7 @@ export function showStoreScreen(onBack) {
         <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${fichas}</div><div class="store-balance-label">Fichas</div></div>
       </div>
       <div class="store-section">
-        <div class="store-pack-visual">${SOBRE_HTML}</div>
+        <div class="store-pack-visual">📦</div>
         <div class="store-section-title">Sobre — ${PACK_COST} puntos</div>
         <div class="store-section-desc">15 cartas (comunes, poco comunes, y una rara garantizada con chance de mítica) + 1 Ficha.</div>
         <button class="store-buy-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>Comprar sobre</button>
@@ -2634,6 +2660,20 @@ export function showAdminPanel(onBack) {
     </div>
   `;
 
+  // "Anuncios" — las Noticias del menú principal. Publicar y borrar viven acá juntos: el
+  // botón de Enviar arma uno nuevo, y la lista de abajo (que se recarga después de
+  // publicar o borrar) trae uno de borrar al lado de cada anuncio existente.
+  const announcementsHTML = `
+    <div class="admin-section">
+      <div class="admin-section-title">Anuncios (Noticias del menú principal)</div>
+      <textarea class="admin-field-input" id="announcement-text" placeholder="Escribí el anuncio…" rows="3" style="width:100%; box-sizing:border-box; text-align:left; resize:vertical;"></textarea>
+      <button class="admin-save-btn" id="announcement-post" style="margin-top:10px;">📢 Publicar anuncio</button>
+      <div class="store-error-msg" id="announcement-error" style="text-align:center;"></div>
+      <div class="admin-success-msg" id="announcement-success"></div>
+      <div id="announcement-list" style="margin-top:16px;"></div>
+    </div>
+  `;
+
   overlay.innerHTML = `
     <div class="admin-header">
       <button class="encyclopedia-back-btn" id="admin-back">← Volver</button>
@@ -2642,6 +2682,7 @@ export function showAdminPanel(onBack) {
     <div class="admin-body">
       ${sectionsHTML}
       ${grantHTML}
+      ${announcementsHTML}
       ${placeholdersHTML}
       <button class="admin-save-btn" id="admin-save">💾 Guardar cambios</button>
       <div class="store-error-msg" id="admin-error" style="text-align:center;"></div>
@@ -2706,6 +2747,76 @@ export function showAdminPanel(onBack) {
       grantErrorBox.textContent = err.message || 'No se pudo aplicar. Probá de nuevo.';
     } finally {
       sendBtn.disabled = false;
+    }
+  });
+
+  // "Anuncios": arma la lista actual (con su botón de borrar cada uno) y la vuelve a pedir
+  // después de publicar o borrar — así siempre se ve el estado real, sin tener que armar a
+  // mano el ida y vuelta de agregar/sacar un elemento de la lista en el DOM.
+  function renderAnnouncementList(announcements) {
+    const listEl = overlay.querySelector('#announcement-list');
+    if (announcements.length === 0) {
+      listEl.innerHTML = '<div class="admin-field-label">No hay anuncios publicados todavía.</div>';
+      return;
+    }
+    listEl.innerHTML = announcements.map(a => `
+      <div class="admin-field-row" data-announcement-id="${a.id}">
+        <span class="admin-field-label" style="flex:1; text-align:left;">
+          <strong>${formatAnnouncementDate(a.createdAt)}</strong> — ${escapeHtml(a.text)}
+        </span>
+        <button class="admin-announcement-delete" data-id="${a.id}" title="Borrar">🗑️</button>
+      </div>
+    `).join('');
+    listEl.querySelectorAll('.admin-announcement-delete').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!window.confirm('¿Borrar este anuncio? No se puede deshacer.')) return;
+        btn.disabled = true;
+        try {
+          await deleteAnnouncement(btn.dataset.id);
+          await reloadAnnouncements();
+        } catch (err) {
+          console.error('No se pudo borrar el anuncio:', err);
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  function reloadAnnouncements() {
+    return fetchAnnouncements()
+      .then(renderAnnouncementList)
+      .catch(err => {
+        console.error('No se pudieron cargar los anuncios:', err);
+        overlay.querySelector('#announcement-list').innerHTML = '<div class="admin-field-label">No se pudieron cargar los anuncios.</div>';
+      });
+  }
+  reloadAnnouncements();
+
+  overlay.querySelector('#announcement-post').addEventListener('click', async () => {
+    const errorBox = overlay.querySelector('#announcement-error');
+    const successBox = overlay.querySelector('#announcement-success');
+    errorBox.textContent = '';
+    successBox.textContent = '';
+
+    const textarea = overlay.querySelector('#announcement-text');
+    const text = textarea.value.trim();
+    if (!text) {
+      errorBox.textContent = 'Escribí algo antes de publicar.';
+      return;
+    }
+
+    const postBtn = overlay.querySelector('#announcement-post');
+    postBtn.disabled = true;
+    try {
+      await postAnnouncement(state.currentUser.uid, text);
+      textarea.value = '';
+      successBox.textContent = '✅ Anuncio publicado — ya aparece en el menú principal.';
+      await reloadAnnouncements();
+    } catch (err) {
+      console.error('No se pudo publicar el anuncio:', err);
+      errorBox.textContent = err.message || 'No se pudo publicar. Probá de nuevo.';
+    } finally {
+      postBtn.disabled = false;
     }
   });
 
@@ -2981,10 +3092,37 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
       <button class="main-menu-btn" id="menu-store">Tienda</button>
       <button class="main-menu-btn" id="menu-options">Opciones</button>
     </div>
+    <div class="main-menu-news" id="main-menu-news">
+      <div class="main-menu-news-title">📰 Noticias</div>
+      <div class="main-menu-news-list" id="main-menu-news-list">
+        <div class="main-menu-news-empty">Cargando…</div>
+      </div>
+    </div>
   `;
   document.body.appendChild(overlay);
   renderAccountBox(overlay.querySelector('#main-menu-account'), state.currentUser);
   updateMainMenuLoginGatedButtons(overlay);
+
+  // "Noticias": públicas para cualquiera, con o sin sesión (ver firestore.rules) — no
+  // bloquea el resto del menú, que ya se ve de entrada mientras esto carga.
+  const newsListEl = overlay.querySelector('#main-menu-news-list');
+  fetchAnnouncements()
+    .then(announcements => {
+      if (announcements.length === 0) {
+        newsListEl.innerHTML = '<div class="main-menu-news-empty">Sin noticias por ahora.</div>';
+        return;
+      }
+      newsListEl.innerHTML = announcements.map(a => `
+        <div class="main-menu-news-item">
+          <div class="main-menu-news-date">${formatAnnouncementDate(a.createdAt)}</div>
+          <div class="main-menu-news-text">${escapeHtml(a.text)}</div>
+        </div>
+      `).join('');
+    })
+    .catch(err => {
+      console.error('No se pudieron cargar las noticias:', err);
+      newsListEl.innerHTML = '<div class="main-menu-news-empty">No se pudieron cargar las noticias.</div>';
+    });
 
   overlay.querySelector('#menu-play').addEventListener('click', () => {
     overlay.remove();

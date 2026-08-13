@@ -18,7 +18,7 @@ import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX } from './store.js';
 
@@ -471,4 +471,38 @@ export async function adminGrantCurrencyToAll(currencyField, amount) {
 // esto) — es solo trazabilidad, mejor esfuerzo: si esto falla, el regalo ya se hizo igual.
 export async function logAdminAction(action) {
   await setDoc(doc(collection(db, 'adminActions')), { ...action, timestamp: serverTimestamp() });
+}
+
+// ============================================================================
+// "Noticias" del menú principal — cualquiera puede leerlas (ver firestore.rules), solo el
+// admin puede publicar o borrar.
+// ============================================================================
+
+// Trae las últimas maxCount noticias, más recientes primero. Normaliza createdAt a un Date
+// real de JS (en vez de un Timestamp de Firestore) — así el resto del código nunca necesita
+// saber nada de Timestamps, solo trabaja con fechas de siempre.
+export async function fetchAnnouncements(maxCount = 15) {
+  const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(maxCount));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => {
+    const data = d.data();
+    return {
+      id: d.id,
+      text: data.text,
+      adminUid: data.adminUid,
+      createdAt: data.createdAt && typeof data.createdAt.toDate === 'function' ? data.createdAt.toDate() : null
+    };
+  });
+}
+
+export async function postAnnouncement(adminUid, text) {
+  await setDoc(doc(collection(db, 'announcements')), {
+    text: text.trim(),
+    adminUid,
+    createdAt: serverTimestamp()
+  });
+}
+
+export async function deleteAnnouncement(announcementId) {
+  await deleteDoc(doc(db, 'announcements', announcementId));
 }
