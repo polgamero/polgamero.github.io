@@ -1173,7 +1173,7 @@ function injectMainMenuStyles() {
       display: flex; align-items: center; gap: 4px;
     }
     .coin-icon, .ficha-icon {
-      width: 1.1em; height: 1.1em; object-fit: contain; vertical-align: -0.15em; flex-shrink: 0;
+      width: 3em; height: 1.1em; object-fit: contain; vertical-align: -0.15em; flex-shrink: 0;
     }
     .main-menu-logout-btn {
       background: none; border: none; color: #b8adc4; font-size: 11px;
@@ -1273,6 +1273,7 @@ function injectMainMenuStyles() {
 // cuenta, Tienda). Con onerror que cae al emoji de siempre si el archivo todavía no está
 // subido — así nunca se ve un ícono roto mientras tanto.
 const COIN_ICON_HTML = `<img class="coin-icon" src="./assets/images/ui/moneda.png" alt="🪙" onerror="this.outerHTML='🪙'">`;
+const SOBRE_HTML = `<img class="sobre-expansion" src="./assets/images/ui/sobre.png" alt="✉️" onerror="this.outerHTML='✉️'">`;
 
 // PANEL DE ADMIN: solo esta cuenta puede ver el botón — esto es puramente cosmético (ocultar
 // el botón para todos los demás), NO es la protección real. Lo que de verdad impide que
@@ -1687,7 +1688,7 @@ export function showStoreScreen(onBack) {
         <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${fichas}</div><div class="store-balance-label">Fichas</div></div>
       </div>
       <div class="store-section">
-        <div class="store-pack-visual">📦</div>
+        <div class="store-pack-visual">${SOBRE_HTML}</div>
         <div class="store-section-title">Sobre — ${PACK_COST} puntos</div>
         <div class="store-section-desc">15 cartas (comunes, poco comunes, y una rara garantizada con chance de mítica) + 1 Ficha.</div>
         <button class="store-buy-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>Comprar sobre</button>
