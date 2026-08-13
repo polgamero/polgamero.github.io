@@ -587,6 +587,12 @@ function tryBotPostBlockTrick() {
 }
 
 export async function checkRivalCounterOrResponse() {
+  // FASE 4, ETAPA 4: durante una partida multiplayer real (state.currentMatch existe), el
+  // "rival" es una persona de verdad con su propio cliente — nunca este código decide por
+  // ella. Se blinda ACÁ, en la entrada, en vez de en cada uno de los 6 lugares de main.js
+  // que llaman a esto: así queda protegido sin importar desde dónde se lo llame, incluso si
+  // en el futuro se agrega un séptimo lugar y alguien se olvida de este chequeo ahí.
+  if (state.currentMatch) return false;
   if (spellStack.length === 0) return false;
   // Grupo C, Etapa 4: en Fácil, el Tano nunca juega en velocidad instantánea — ni
   // contrarresta, ni se defiende, ni responde a nada. Pasa prioridad y ya (comportamiento
@@ -1049,6 +1055,12 @@ export function tryActivateGrantedBotAbilities() {
 
 // NUEVO: SISTEMA DE PRIORIDAD DEL BOT (Remplaza startRivalTurn)
 export async function takeBotPriorityAction() {
+  // FASE 4, ETAPA 4: mismo criterio que checkRivalCounterOrResponse acá arriba — durante
+  // una partida multiplayer real, "esperar la jugada real del rival" significa exactamente
+  // NO HACER NADA acá. El otro cliente (el de la persona de verdad) es quien procesa su
+  // propia prioridad y publica el resultado — este cliente solo lo refleja (ver
+  // startListeningToMatch, Etapa 3), nunca lo simula.
+  if (state.currentMatch) return;
   if (state.gameOver || state.priorityPlayer !== 'rival') return;
 
   await sleep(600); // El Tano "piensa"

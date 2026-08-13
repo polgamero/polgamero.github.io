@@ -24,6 +24,7 @@ import {
   checkGameOver,
   checkAuraLegality,
   checkEquipmentLegality,
+  publishMatchState,
   passPriority // Importado del nuevo sistema
 } from './main.js';
 
@@ -31,8 +32,8 @@ import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, craftEnhancement, deleteUserProfile, createDeck } from './firebaseClient.js';
-import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, POINTS } from './store.js';
+import { signInWithGoogle, signOutUser, purchasePack, craftEnhancement, deleteUserProfile, createDeck, saveGameConfig, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, logAdminAction } from './firebaseClient.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, applyGameConfig, getDefaultGameConfig } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 
@@ -1180,6 +1181,13 @@ function injectMainMenuStyles() {
     }
     .main-menu-logout-btn:hover { color: #f0e0b0; }
     .main-menu-account-error { color: #e07a6b; font-size: 12px; max-width: 260px; text-align: right; }
+    .main-menu-admin-btn {
+      background: linear-gradient(180deg, rgba(120,60,180,0.28), rgba(11,19,14,0.96));
+      border: 2px solid #b06ad4; border-radius: 8px;
+      color: #e8d4f5; font-size: 12px; font-weight: 700;
+      padding: 6px 14px; cursor: pointer; transition: box-shadow 0.15s ease;
+    }
+    .main-menu-admin-btn:hover { box-shadow: 0 4px 16px rgba(176,106,212,0.4); }
     #options-menu-overlay { display: flex; align-items: center; justify-content: center; }
     .options-menu-panel {
       max-width: 520px; width: 92%;
@@ -1265,6 +1273,13 @@ function injectMainMenuStyles() {
 // cuenta, Tienda). Con onerror que cae al emoji de siempre si el archivo todavía no está
 // subido — así nunca se ve un ícono roto mientras tanto.
 const COIN_ICON_HTML = `<img class="coin-icon" src="./assets/images/ui/moneda.png" alt="🪙" onerror="this.outerHTML='🪙'">`;
+
+// PANEL DE ADMIN: solo esta cuenta puede ver el botón — esto es puramente cosmético (ocultar
+// el botón para todos los demás), NO es la protección real. Lo que de verdad impide que
+// cualquier otra persona escriba en gameConfig es firestore.rules del lado del servidor,
+// que chequea este mismo email de forma independiente — aunque alguien se saltee esta UI
+// por completo (devtools, requests a mano), Firestore lo va a rechazar igual.
+const ADMIN_EMAIL = 'pablogamero1@gmail.com';
 const FICHA_ICON_HTML = `<img class="ficha-icon" src="./assets/images/ui/ficha.png" alt="🎫" onerror="this.outerHTML='🎫'">`;
 
 const ENCYCLOPEDIA_TABS = [
@@ -1345,7 +1360,24 @@ function injectEncyclopediaStyles() {
       display: flex; flex-wrap: wrap; align-content: flex-start; gap: 20px;
     }
     .encyclopedia-card-slot .card-inner { border-width: 6px; }
-    .encyclopedia-card-slot.unowned .card { filter: grayscale(100%) brightness(0.55); }
+    /* BUGFIX (revisión post-Etapa 4): antes esto grisaba la carta ENTERA (nombre, texto,
+       poder/resistencia incluidos) — ahora, a pedido, solo el ARTE se reemplaza por un
+       rectángulo negro con el logo del juego (genera intriga, invita a comprar sobres); el
+       resto de la carta (nombre, tipo, texto, P/T) queda exactamente igual que si la
+       tuvieras. .card-art ya es un contenedor propio con overflow:hidden (ver
+       createCardElement en ui.js), así que tocar solo ese contenedor no pisa nada del
+       resto del layout de la carta. */
+    .encyclopedia-card-slot.unowned .card-art {
+      background-color: #0b0b0b;
+      background-image: url('./assets/images/ui/logo.png');
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: 55% auto;
+    }
+    .encyclopedia-card-slot.unowned .card-art img,
+    .encyclopedia-card-slot.unowned .card-art > div {
+      visibility: hidden;
+    }
     .encyclopedia-empty-msg { color: #5a5266; font-size: 14px; margin: auto; text-align: center; }
     .encyclopedia-filters {
       width: 260px; flex-shrink: 0;
@@ -1388,8 +1420,12 @@ export function showEncyclopedia(onBack) {
   injectEncyclopediaStyles();
 
   const ownedIds = getOwnedCardIds();
+  // BUGFIX: para el filtro nuevo "Solo cartas mejoradas" — no cambia cómo se DIBUJA la
+  // carta (sin badge, sin keyword de más, tal cual se pidió: "base de datos pura"), solo
+  // decide cuáles entran en la grilla.
+  const enhancedIds = new Set(Object.keys((state.userProfile && state.userProfile.enhancements) || {}));
   let activeTab = 'criaturas';
-  let ownershipFilter = 'all'; // 'all' | 'owned'
+  let ownershipFilter = 'all'; // 'all' | 'owned' | 'enhanced'
   let searchQuery = '';
   const activeRarities = new Set(ENCYCLOPEDIA_RARITIES.map(r => r.key));
 
@@ -1426,6 +1462,10 @@ export function showEncyclopedia(onBack) {
           <input type="radio" name="enc-ownership" value="owned">
           Mostrar solo cartas que poseo
         </label>
+        <label class="encyclopedia-filter-option">
+          <input type="radio" name="enc-ownership" value="enhanced">
+          Solo cartas mejoradas
+        </label>
         <div class="encyclopedia-filter-section-title">Rareza</div>
         ${rarityFiltersHTML}
       </div>
@@ -1446,7 +1486,11 @@ export function showEncyclopedia(onBack) {
     const query = normalizeSearch(searchQuery);
     const cards = cardDb.getByCategory(activeTab)
       .filter(c => activeRarities.has(c.rarity))
-      .filter(c => ownershipFilter === 'all' || ownedIds.has(c.id))
+      .filter(c => {
+        if (ownershipFilter === 'owned') return ownedIds.has(c.id);
+        if (ownershipFilter === 'enhanced') return enhancedIds.has(c.id);
+        return true; // 'all'
+      })
       .filter(c => !query || normalizeSearch(c.name).includes(query));
 
     if (cards.length === 0) {
@@ -1855,6 +1899,13 @@ function injectDeckBuilderStyles() {
     }
     .deckbuilder-side { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; }
     .deckbuilder-side-title { color: #f0e0b0; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+    .deckbuilder-pool-card-wrap.enhanced .card { outline: 2px solid #d4af37; outline-offset: 2px; border-radius: 8px; }
+    .deckbuilder-enhanced-marker {
+      position: absolute; bottom: 4px; left: 4px; right: 4px; text-align: center;
+      background: rgba(212,175,55,0.92); color: #1a1408;
+      border-radius: 6px; font-size: 10px; font-weight: 700; padding: 2px 4px;
+      pointer-events: none; z-index: 10;
+    }
     .deckbuilder-list {
       flex: 1; overflow-y: auto;
       background: rgba(0,0,0,0.2); border: 2px solid rgba(212,175,55,0.3); border-radius: 10px; padding: 10px;
@@ -1966,6 +2017,15 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
     return Object.values(deckCounts).reduce((sum, n) => sum + n, 0);
   }
 
+  // Cuántas cartas mejoradas ya hay en el mazo en construcción — el tope
+  // MAX_ENHANCED_CARDS_PER_DECK (default 3, admin-editable) cuenta esto, no las copias de
+  // una sola carta puntual (eso ya lo maneja el cap normal de 1 por tile mejorado).
+  function totalEnhancedInDeck() {
+    return Object.entries(deckCounts)
+      .filter(([key]) => key.endsWith(ENHANCED_SUFFIX))
+      .reduce((sum, [, n]) => sum + n, 0);
+  }
+
   function renderPool() {
     grid.innerHTML = '';
     const query = normalizeSearch(searchQuery);
@@ -1978,22 +2038,33 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
       return;
     }
 
-    cards.forEach(card => {
-      const owned = ownedCounts[card.id] || 0;
-      const inDeck = deckCounts[card.id] || 0;
-      // Regla oficial 100.2a: máximo MAX_COPIES_PER_CARD copias de una misma carta, salvo
-      // Tierras básicas (esas no tienen tope — ni acá, ni en MTG real). El "cap" que
-      // mostramos es lo mínimo entre lo que tenés y lo que la regla permite, para que el
-      // número de la derecha del badge sea siempre "hasta dónde podés llegar de verdad",
-      // no solo "cuánto tenés" (que podría ser más alto y confundir).
-      const isBasicLand = card.type.includes('básica');
-      const cap = isBasicLand ? owned : Math.min(owned, MAX_COPIES_PER_CARD);
+    const enhancements = (state.userProfile && state.userProfile.enhancements) || {};
+
+    // Dibuja UN tile del pool. trackingKey es la clave que se usa en deckCounts (puede
+    // traer el sufijo ENHANCED_SUFFIX) — displayCard es lo que se le pasa a
+    // createCardElement (con la keyword ya mezclada adentro si es la copia mejorada).
+    function renderPoolTile(displayCard, trackingKey, ownedForThisSlot, isEnhancedTile) {
+      const isBasicLand = displayCard.type.includes('básica');
+      const cap = isBasicLand ? ownedForThisSlot : Math.min(ownedForThisSlot, MAX_COPIES_PER_CARD);
+      const inDeck = deckCounts[trackingKey] || 0;
       const deckFull = totalInDeck() >= DECK_SIZE_EXACT;
-      const maxed = inDeck >= cap || deckFull;
+      // Tope aparte para cartas mejoradas: aunque a ESTA carta puntual todavía le quede
+      // margen (inDeck < cap), si ya llegaste al máximo de mejoradas del mazo entero
+      // (MAX_ENHANCED_CARDS_PER_DECK, admin-editable, default 3) no se puede agregar una
+      // mejorada DISTINTA — por eso es un chequeo separado, no alcanza con el cap normal.
+      const enhancedDeckCapReached = isEnhancedTile && inDeck === 0 && totalEnhancedInDeck() >= MAX_ENHANCED_CARDS_PER_DECK;
+      const maxed = inDeck >= cap || deckFull || enhancedDeckCapReached;
 
       const wrap = document.createElement('div');
-      wrap.className = `deckbuilder-pool-card-wrap${maxed ? ' maxed' : ''}`;
-      wrap.appendChild(createCardElement(card, false, true, null, 'encyclopedia', null));
+      wrap.className = `deckbuilder-pool-card-wrap${maxed ? ' maxed' : ''}${isEnhancedTile ? ' enhanced' : ''}`;
+      wrap.appendChild(createCardElement(displayCard, false, true, null, 'encyclopedia', null));
+
+      if (isEnhancedTile) {
+        const star = document.createElement('div');
+        star.className = 'deckbuilder-enhanced-marker';
+        star.textContent = '✨ Mejorada';
+        wrap.appendChild(star);
+      }
 
       const badge = document.createElement('div');
       badge.className = 'deckbuilder-pool-card-badge';
@@ -2001,14 +2072,34 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
       wrap.appendChild(badge);
 
       wrap.addEventListener('click', () => {
-        if ((deckCounts[card.id] || 0) >= cap) return; // ya llegaste al máximo de copias de ESTA carta
+        if ((deckCounts[trackingKey] || 0) >= cap) return; // ya llegaste al máximo de copias de ESTE slot
         if (totalInDeck() >= DECK_SIZE_EXACT) return; // ya llegaste a las 60 del mazo entero
-        deckCounts[card.id] = (deckCounts[card.id] || 0) + 1;
+        if (isEnhancedTile && (deckCounts[trackingKey] || 0) === 0 && totalEnhancedInDeck() >= MAX_ENHANCED_CARDS_PER_DECK) return; // tope de mejoradas por mazo
+        deckCounts[trackingKey] = (deckCounts[trackingKey] || 0) + 1;
         renderPool();
         renderList();
       });
 
       grid.appendChild(wrap);
+    }
+
+    cards.forEach(card => {
+      const owned = ownedCounts[card.id] || 0;
+      const enhancementKeyword = enhancements[card.id];
+
+      if (enhancementKeyword) {
+        // BUGFIX (revisión post-Etapa 4): la carta tiene una mejora crafteada — se muestra
+        // como un slot SEPARADO y distinguible ("✨ Mejorada"), siempre con tope de 1 copia
+        // (solo existe UNA copia mejorada, sin importar cuántas tengas en total). El resto
+        // de tus copias (si te queda alguna) se muestra aparte, como una carta normal.
+        const enhancedDisplayCard = { ...card, keywords: [...(card.keywords || []), enhancementKeyword] };
+        renderPoolTile(enhancedDisplayCard, `${card.id}${ENHANCED_SUFFIX}`, 1, true);
+
+        const remainingOwned = Math.max(0, owned - 1);
+        if (remainingOwned > 0) renderPoolTile(card, card.id, remainingOwned, false);
+      } else {
+        renderPoolTile(card, card.id, owned, false);
+      }
     });
   }
 
@@ -2028,19 +2119,23 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
 
     list.innerHTML = '';
     entries
-      .map(([id, count]) => ({ card: cardDb.getById(id), count }))
+      .map(([trackingKey, count]) => {
+        const isEnhanced = trackingKey.endsWith(ENHANCED_SUFFIX);
+        const baseId = isEnhanced ? trackingKey.slice(0, -ENHANCED_SUFFIX.length) : trackingKey;
+        return { trackingKey, card: cardDb.getById(baseId), count, isEnhanced };
+      })
       .filter(e => e.card)
       .sort((a, b) => a.card.name.localeCompare(b.card.name))
-      .forEach(({ card, count }) => {
+      .forEach(({ trackingKey, card, count, isEnhanced }) => {
         const item = document.createElement('div');
         item.className = 'deckbuilder-list-item';
         const label = document.createElement('span');
-        label.textContent = `${count}x ${card.name}`;
+        label.textContent = isEnhanced ? `${count}x ${card.name} ✨` : `${count}x ${card.name}`;
         const removeBtn = document.createElement('button');
         removeBtn.className = 'deckbuilder-list-remove';
         removeBtn.textContent = '−';
         removeBtn.addEventListener('click', () => {
-          deckCounts[card.id] = Math.max(0, (deckCounts[card.id] || 0) - 1);
+          deckCounts[trackingKey] = Math.max(0, (deckCounts[trackingKey] || 0) - 1);
           renderPool();
           renderList();
         });
@@ -2159,6 +2254,7 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom) {
 export function showMyDecksScreen(onBack) {
   injectMyDecksStyles();
   injectEncyclopediaStyles(); // reusamos .encyclopedia-grid-box para la vista de detalle
+  injectDeckBuilderStyles(); // reusamos .deckbuilder-enhanced-marker para marcar la copia mejorada
   const overlay = document.createElement('div');
   overlay.id = 'mydecks-overlay';
   overlay.innerHTML = `
@@ -2234,7 +2330,23 @@ export function showMyDecksScreen(onBack) {
   }
 
   function renderDetailView(deck) {
-    const cards = (deck.cardIds || []).map(id => cardDb.getById(id)).filter(Boolean);
+    // BUGFIX (revisión post-Etapa 4): resuelve el sufijo ENHANCED_SUFFIX para mostrar la
+    // copia mejorada con su keyword de más y el marcador visual — mismo criterio que el
+    // constructor de mazos, para que se vea igual acá y ahí.
+    const enhancements = (state.userProfile && state.userProfile.enhancements) || {};
+    const cards = (deck.cardIds || [])
+      .map(id => {
+        const isEnhanced = id.endsWith(ENHANCED_SUFFIX);
+        const baseId = isEnhanced ? id.slice(0, -ENHANCED_SUFFIX.length) : id;
+        const cardDef = cardDb.getById(baseId);
+        if (!cardDef) return null;
+        const keyword = isEnhanced ? enhancements[baseId] : null;
+        return {
+          displayCard: keyword ? { ...cardDef, keywords: [...(cardDef.keywords || []), keyword] } : cardDef,
+          isEnhanced: !!keyword
+        };
+      })
+      .filter(Boolean);
 
     body.innerHTML = `
       <div class="mydecks-detail-header">
@@ -2246,11 +2358,18 @@ export function showMyDecksScreen(onBack) {
     body.querySelector('#mydecks-detail-back').addEventListener('click', renderListView);
 
     const grid = body.querySelector('#mydecks-detail-grid');
-    cards.forEach(card => {
+    cards.forEach(({ displayCard, isEnhanced }) => {
       const slot = document.createElement('div');
       slot.className = 'encyclopedia-card-slot';
+      slot.style.position = 'relative';
       // Acá nunca hay grisado: todo lo que está en un mazo, por definición, es tuyo.
-      slot.appendChild(createCardElement(card, false, true, null, 'encyclopedia', null));
+      slot.appendChild(createCardElement(displayCard, false, true, null, 'encyclopedia', null));
+      if (isEnhanced) {
+        const marker = document.createElement('div');
+        marker.className = 'deckbuilder-enhanced-marker';
+        marker.textContent = '✨ Mejorada';
+        slot.appendChild(marker);
+      }
       grid.appendChild(slot);
     });
   }
@@ -2277,7 +2396,13 @@ function renderAccountBox(container, user) {
     const pointsHTML = state.userProfile && typeof state.userProfile.points === 'number'
       ? `<div class="main-menu-account-points">${COIN_ICON_HTML} ${state.userProfile.points} puntos</div>`
       : '';
+    // PANEL DE ADMIN: el botón solo se arma si el email logueado coincide EXACTO — para
+    // cualquier otra cuenta, ni siquiera existe en el DOM (no es solo "oculto con CSS").
+    const adminBtnHTML = user.email === ADMIN_EMAIL
+      ? `<button class="main-menu-admin-btn" id="menu-admin">🛠️ Admin</button>`
+      : '';
     container.innerHTML = `
+      ${adminBtnHTML}
       <div class="main-menu-account-info">
         <img class="main-menu-account-photo" src="${user.photoURL || ''}" alt="" onerror="this.style.visibility='hidden'">
         <div>
@@ -2287,6 +2412,15 @@ function renderAccountBox(container, user) {
         </div>
       </div>
     `;
+    if (user.email === ADMIN_EMAIL) {
+      container.querySelector('#menu-admin').addEventListener('click', () => {
+        const mainMenuOverlay = document.getElementById('main-menu-overlay');
+        if (mainMenuOverlay) mainMenuOverlay.style.display = 'none';
+        showAdminPanel(() => {
+          if (mainMenuOverlay) mainMenuOverlay.style.display = '';
+        });
+      });
+    }
     container.querySelector('#menu-logout').addEventListener('click', () => {
       signOutUser().catch(err => {
         console.error('Error al cerrar sesión:', err);
@@ -2315,6 +2449,25 @@ function renderAccountBox(container, user) {
 // Se llama desde boot() (main.js) cada vez que Firebase avisa un cambio de sesión — no
 // asume que haya un menú o un tablero en pantalla, chequea cada pieza por separado antes de
 // tocarla, porque el login puede pasar en cualquier momento de la vida de la página.
+// BUGFIX (revisión post-Etapa 4): Enciclopedia/Mis Mazos/Tienda pasan a "deshabilitado"
+// (mismo look que Multijugador) sin sesión, y a botón normal con sesión — se llama al
+// armar el menú Y cada vez que cambia el login (por si alguien se loguea con el menú ya
+// abierto, sin tener que cerrar y volver a entrar para que se note).
+function updateMainMenuLoginGatedButtons(overlay) {
+  const loggedIn = !!state.currentUser;
+  ['menu-multiplayer', 'menu-encyclopedia', 'menu-mydecks', 'menu-store'].forEach(id => {
+    const btn = overlay.querySelector(`#${id}`);
+    if (!btn) return;
+    if (loggedIn) {
+      btn.classList.remove('main-menu-btn-disabled');
+      btn.removeAttribute('data-tooltip');
+    } else {
+      btn.classList.add('main-menu-btn-disabled');
+      btn.setAttribute('data-tooltip', 'Iniciá sesión para acceder');
+    }
+  });
+}
+
 export function updateAccountUI(user) {
   if (els.localAvatar) {
     els.localAvatar.innerHTML = (user && user.photoURL)
@@ -2328,9 +2481,486 @@ export function updateAccountUI(user) {
     els.localPlayerName.textContent = user ? getLocalPlayerName() : 'El Gaucho (VOS)';
   }
   renderAccountBox(document.getElementById('main-menu-account'), user);
+  const mainMenuOverlay = document.getElementById('main-menu-overlay');
+  if (mainMenuOverlay) updateMainMenuLoginGatedButtons(mainMenuOverlay);
 }
 
-export function showMainMenu(onPlay) {
+function injectAdminPanelStyles() {
+  if (document.getElementById('admin-panel-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'admin-panel-styles';
+  style.textContent = `
+    #admin-panel-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #1f1530 0%, #0b0713 100%);
+      display: flex; flex-direction: column;
+      padding: 24px 32px;
+    }
+    .admin-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
+    .admin-title { font-size: 26px; font-weight: 700; color: #e8d4f5; text-shadow: 0 0 20px rgba(176,106,212,0.4); }
+    .admin-body { flex: 1; overflow-y: auto; max-width: 700px; width: 100%; margin: 0 auto; padding-bottom: 40px; }
+    .admin-section {
+      background: rgba(30,20,45,0.5); border: 2px solid rgba(176,106,212,0.3); border-radius: 14px;
+      padding: 20px 24px; margin-bottom: 18px;
+    }
+    .admin-section-title {
+      color: #e8d4f5; font-size: 15px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 14px; padding-bottom: 8px;
+      border-bottom: 1px solid rgba(176,106,212,0.2);
+    }
+    .admin-field-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 8px 0;
+    }
+    .admin-field-label { color: #d8c4e8; font-size: 13px; flex: 1; }
+    .admin-field-input {
+      width: 100px; box-sizing: border-box;
+      background: rgba(255,255,255,0.06); border: 1.5px solid rgba(176,106,212,0.4); border-radius: 6px;
+      color: #f0e0b0; font-size: 14px; font-weight: 600; padding: 6px 10px; text-align: right;
+    }
+    .admin-field-input:focus { outline: none; border-color: #b06ad4; }
+    .admin-field-row-disabled .admin-field-label { opacity: 0.5; }
+    .admin-field-row-disabled .admin-field-input { opacity: 0.4; cursor: not-allowed; }
+    .admin-save-btn {
+      background: linear-gradient(180deg, rgba(176,106,212,0.3), rgba(11,19,14,0.96));
+      border: 2px solid #b06ad4; border-radius: 10px;
+      color: #f0e0b0; font-size: 15px; font-weight: 700;
+      padding: 12px 28px; cursor: pointer; width: 100%; margin-top: 8px;
+      transition: box-shadow 0.15s ease;
+    }
+    .admin-save-btn:hover { box-shadow: 0 4px 22px rgba(176,106,212,0.4); }
+    .admin-save-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+    .admin-success-msg { color: #7cbf7c; font-size: 13px; margin-top: 10px; text-align: center; }
+  `;
+  document.head.appendChild(style);
+}
+
+// PANEL DE ADMIN: formulario de balance, con GUARDAR escribiendo de verdad en Firestore
+// (gameConfig/settings) y aplicando el cambio YA en esta misma sesión (applyGameConfig),
+// sin necesitar recargar la página. El acceso real está blindado del lado del servidor
+// (firestore.rules) — acá solo hay un chequeo defensivo extra, por si algo raro hiciera
+// llegar a alguien que no sea el admin hasta este punto.
+export function showAdminPanel(onBack) {
+  injectAdminPanelStyles();
+  injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn
+
+  if (!state.currentUser || state.currentUser.email !== ADMIN_EMAIL) {
+    console.error('showAdminPanel: acceso bloqueado, la cuenta actual no es la del admin.');
+    onBack();
+    return;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = 'admin-panel-overlay';
+
+  const fields = [
+    { section: 'Puntos', id: 'winVsTanoFacil', label: 'Victoria vs Tano (Fácil)', value: POINTS.winVsTanoFacil, step: '1' },
+    { section: 'Puntos', id: 'winVsTanoDificil', label: 'Victoria vs Tano (Difícil)', value: POINTS.winVsTanoDificil, step: '1' },
+    { section: 'Puntos', id: 'lossVsTano', label: 'Derrota vs Tano', value: POINTS.lossVsTano, step: '1' },
+    { section: 'Puntos', id: 'winVsHumano', label: 'Victoria vs Humano (PvP, a futuro)', value: POINTS.winVsHumano, step: '1' },
+    { section: 'Puntos', id: 'lossVsHumano', label: 'Derrota vs Humano (PvP, a futuro)', value: POINTS.lossVsHumano, step: '1' },
+    { section: 'Puntos', id: 'abandonPenalty', label: 'Penalidad por abandonar', value: POINTS.abandonPenalty, step: '1' },
+    { section: 'Sobres', id: 'packCost', label: 'Costo del sobre (puntos)', value: PACK_COST, step: '1' },
+    { section: 'Sobres', id: 'mythicChancePercent', label: 'Probabilidad de carta mítica (%)', value: +(MYTHIC_CHANCE_IN_RARE_SLOT * 100).toFixed(2), step: '0.1' },
+    { section: 'Fichas', id: 'fichasPerEnhancement', label: 'Fichas necesarias para craftear', value: FICHAS_PER_ENHANCEMENT, step: '1' },
+    { section: 'Mazos', id: 'deckSizeExact', label: 'Cartas exactas por mazo', value: DECK_SIZE_EXACT, step: '1' },
+    { section: 'Mazos', id: 'maxCopiesPerCard', label: 'Máximo de copias iguales por mazo', value: MAX_COPIES_PER_CARD, step: '1' },
+    { section: 'Mazos', id: 'maxEnhancedCardsPerDeck', label: 'Máximo de cartas mejoradas por mazo', value: MAX_ENHANCED_CARDS_PER_DECK, step: '1' }
+  ];
+
+  const sections = [...new Set(fields.map(f => f.section))];
+  const sectionsHTML = sections.map(sectionName => {
+    const rowsHTML = fields.filter(f => f.section === sectionName).map(f => `
+      <div class="admin-field-row">
+        <span class="admin-field-label">${f.label}</span>
+        <input type="number" class="admin-field-input" id="cfg-${f.id}" value="${f.value}" step="${f.step}">
+      </div>
+    `).join('');
+    return `<div class="admin-section"><div class="admin-section-title">${sectionName}</div>${rowsHTML}</div>`;
+  }).join('');
+
+  // Placeholders a propósito — mismo criterio que Multijugador en el menú principal: no
+  // prometen algo que todavía no toca ningún sistema real del juego.
+  const placeholdersHTML = `
+    <div class="admin-section">
+      <div class="admin-section-title">Próximamente</div>
+      <div class="admin-field-row admin-field-row-disabled">
+        <span class="admin-field-label">Vida inicial de cada jugador</span>
+        <input type="number" class="admin-field-input" value="20" disabled>
+      </div>
+      <div class="admin-field-row admin-field-row-disabled">
+        <span class="admin-field-label">Tamaño de mano inicial</span>
+        <input type="number" class="admin-field-input" value="7" disabled>
+      </div>
+    </div>
+  `;
+
+  // FASE 4 (post-roadmap): "regalar puntos/Fichas" — sección aparte de la config de
+  // balance de arriba, con su propio botón de Enviar (no se guarda junto con "Guardar
+  // cambios"; son dos acciones distintas). El desplegable de destinatarios arranca vacío y
+  // se llena async más abajo (fetchAllUserProfiles) — no tiene sentido bloquear el resto
+  // del panel esperando esa consulta.
+  const grantHTML = `
+    <div class="admin-section">
+      <div class="admin-section-title">Regalar Puntos o Fichas</div>
+      <div class="admin-field-row">
+        <span class="admin-field-label">Cantidad</span>
+        <input type="number" class="admin-field-input" id="grant-amount" value="0" step="1">
+      </div>
+      <div class="admin-field-row">
+        <span class="admin-field-label">Moneda</span>
+        <select class="admin-field-input" id="grant-currency" style="text-align:left;">
+          <option value="points">Puntos</option>
+          <option value="fichas">Fichas</option>
+        </select>
+      </div>
+      <div class="admin-field-row">
+        <span class="admin-field-label">Para</span>
+        <select class="admin-field-input" id="grant-recipient" style="text-align:left; max-width: 220px;">
+          <option value="">Cargando usuarios…</option>
+        </select>
+      </div>
+      <div class="admin-field-row">
+        <span class="admin-field-label">Motivo (opcional)</span>
+        <input type="text" class="admin-field-input" id="grant-reason" placeholder="ej: compensación por bug" style="text-align:left; width:220px;">
+      </div>
+      <button class="admin-save-btn" id="admin-grant-send">📤 Enviar</button>
+      <div class="store-error-msg" id="admin-grant-error" style="text-align:center;"></div>
+      <div class="admin-success-msg" id="admin-grant-success"></div>
+    </div>
+  `;
+
+  overlay.innerHTML = `
+    <div class="admin-header">
+      <button class="encyclopedia-back-btn" id="admin-back">← Volver</button>
+      <div class="admin-title">🛠️ Panel de Admin</div>
+    </div>
+    <div class="admin-body">
+      ${sectionsHTML}
+      ${grantHTML}
+      ${placeholdersHTML}
+      <button class="admin-save-btn" id="admin-save">💾 Guardar cambios</button>
+      <div class="store-error-msg" id="admin-error" style="text-align:center;"></div>
+      <div class="admin-success-msg" id="admin-success"></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  // Carga la lista real de usuarios de forma asíncrona — no bloquea el resto del panel,
+  // que ya se ve de entrada mientras esto termina.
+  const recipientSelect = overlay.querySelector('#grant-recipient');
+  fetchAllUserProfiles()
+    .then(profiles => {
+      const options = ['<option value="ALL">Todos los usuarios</option>']
+        .concat(profiles.map(p => `<option value="${p.uid}">${p.displayName || p.email || p.uid}</option>`));
+      recipientSelect.innerHTML = options.join('');
+    })
+    .catch(err => {
+      console.error('No se pudo cargar la lista de usuarios:', err);
+      recipientSelect.innerHTML = '<option value="">No se pudo cargar la lista de usuarios</option>';
+    });
+
+  overlay.querySelector('#admin-grant-send').addEventListener('click', async () => {
+    const grantErrorBox = overlay.querySelector('#admin-grant-error');
+    const grantSuccessBox = overlay.querySelector('#admin-grant-success');
+    grantErrorBox.textContent = '';
+    grantSuccessBox.textContent = '';
+
+    const amount = parseInt(overlay.querySelector('#grant-amount').value, 10);
+    const currencyField = overlay.querySelector('#grant-currency').value;
+    const recipient = overlay.querySelector('#grant-recipient').value;
+    const reason = overlay.querySelector('#grant-reason').value.trim();
+    const currencyLabel = currencyField === 'points' ? 'puntos' : 'Fichas';
+
+    if (!Number.isInteger(amount) || amount === 0) {
+      grantErrorBox.textContent = 'La cantidad tiene que ser un número entero distinto de cero.';
+      return;
+    }
+    if (!recipient) {
+      grantErrorBox.textContent = 'Elegí a quién regalarle.';
+      return;
+    }
+
+    const recipientOption = overlay.querySelector('#grant-recipient').selectedOptions[0];
+    const recipientLabel = recipient === 'ALL' ? 'TODOS los usuarios' : (recipientOption ? recipientOption.textContent : recipient);
+    if (!window.confirm(`¿Confirmás dar ${amount} ${currencyLabel} a ${recipientLabel}?`)) return;
+
+    const sendBtn = overlay.querySelector('#admin-grant-send');
+    sendBtn.disabled = true;
+    try {
+      if (recipient === 'ALL') {
+        const result = await adminGrantCurrencyToAll(currencyField, amount);
+        grantSuccessBox.textContent = `✅ Aplicado a ${result.succeeded}/${result.total} cuentas${result.failed > 0 ? ` (${result.failed} fallaron)` : ''}.`;
+        await logAdminAction({ adminUid: state.currentUser.uid, targetUid: 'ALL', currencyField, amount, reason }).catch(() => {});
+      } else {
+        const newValue = await adminGrantCurrency(recipient, currencyField, amount);
+        grantSuccessBox.textContent = `✅ Listo — esa cuenta ahora tiene ${newValue} ${currencyLabel}.`;
+        await logAdminAction({ adminUid: state.currentUser.uid, targetUid: recipient, currencyField, amount, reason }).catch(() => {});
+      }
+    } catch (err) {
+      console.error('No se pudo aplicar el regalo:', err);
+      grantErrorBox.textContent = err.message || 'No se pudo aplicar. Probá de nuevo.';
+    } finally {
+      sendBtn.disabled = false;
+    }
+  });
+
+  overlay.querySelector('#admin-back').addEventListener('click', () => {
+    overlay.remove();
+    onBack();
+  });
+
+  overlay.querySelector('#admin-save').addEventListener('click', async () => {
+    const errorBox = overlay.querySelector('#admin-error');
+    const successBox = overlay.querySelector('#admin-success');
+    errorBox.textContent = '';
+    successBox.textContent = '';
+
+    const readNumber = (id) => {
+      const raw = overlay.querySelector(`#cfg-${id}`).value;
+      return raw === '' ? NaN : Number(raw);
+    };
+
+    const newConfig = {
+      winVsTanoFacil: readNumber('winVsTanoFacil'),
+      winVsTanoDificil: readNumber('winVsTanoDificil'),
+      lossVsTano: readNumber('lossVsTano'),
+      winVsHumano: readNumber('winVsHumano'),
+      lossVsHumano: readNumber('lossVsHumano'),
+      abandonPenalty: readNumber('abandonPenalty'),
+      packCost: readNumber('packCost'),
+      mythicChance: readNumber('mythicChancePercent') / 100,
+      fichasPerEnhancement: readNumber('fichasPerEnhancement'),
+      deckSizeExact: readNumber('deckSizeExact'),
+      maxCopiesPerCard: readNumber('maxCopiesPerCard'),
+      maxEnhancedCardsPerDeck: readNumber('maxEnhancedCardsPerDeck')
+    };
+
+    if (Object.values(newConfig).some(v => typeof v !== 'number' || Number.isNaN(v))) {
+      errorBox.textContent = 'Todos los campos tienen que ser números válidos.';
+      return;
+    }
+    // Un par de chequeos de sanidad mínimos — no reemplazan el criterio del admin, pero
+    // evitan un typo catastrófico (ej. mazo de 0 cartas) que dejaría el juego injugable.
+    if (newConfig.deckSizeExact <= 0 || newConfig.maxCopiesPerCard <= 0 || newConfig.packCost < 0 || newConfig.fichasPerEnhancement <= 0) {
+      errorBox.textContent = 'Algún valor no tiene sentido (¿cero o negativo donde no correspondía?). Revisá antes de guardar.';
+      return;
+    }
+
+    const saveBtn = overlay.querySelector('#admin-save');
+    saveBtn.disabled = true;
+    try {
+      await saveGameConfig(newConfig);
+      applyGameConfig(newConfig); // ya queda activo en ESTA sesión, sin recargar
+      successBox.textContent = '✅ Guardado — ya está activo para todos los jugadores.';
+    } catch (err) {
+      console.error('No se pudo guardar la configuración:', err);
+      errorBox.textContent = err.message || 'No se pudo guardar. Probá de nuevo.';
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+}
+
+function injectMultiplayerLobbyStyles() {
+  if (document.getElementById('multiplayer-lobby-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'multiplayer-lobby-styles';
+  style.textContent = `
+    #multiplayer-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display: flex; flex-direction: column;
+      padding: 24px 32px;
+    }
+    .mp-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
+    .mp-title { font-size: 26px; font-weight: 700; color: #f0e0b0; text-shadow: 0 0 20px rgba(212,175,55,0.4); }
+    .mp-body { flex: 1; overflow-y: auto; max-width: 560px; width: 100%; margin: 0 auto; }
+    .mp-section {
+      background: rgba(18,25,15,0.5); border: 2px solid rgba(212,175,55,0.3); border-radius: 14px;
+      padding: 24px; margin-bottom: 20px; text-align: center;
+    }
+    .mp-section-title { color: #f0e0b0; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .mp-section-desc { color: #cfe0d4; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+    .mp-code-display {
+      font-size: 40px; font-weight: 700; letter-spacing: 6px; color: #f0e0b0;
+      background: rgba(0,0,0,0.3); border: 2px dashed rgba(212,175,55,0.5); border-radius: 10px;
+      padding: 16px; margin: 12px 0 18px;
+    }
+    .mp-spinner { font-size: 28px; margin-bottom: 4px; animation: mp-pulse 1.4s ease-in-out infinite; }
+    @keyframes mp-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+  `;
+  document.head.appendChild(style);
+}
+
+// FASE 4: cimiento de matchmaking — crear partida (código de 6 caracteres para compartir),
+// unirse con un código, sala de espera en tiempo real. LA SINCRONIZACIÓN DE LA PARTIDA EN
+// SÍ (mano, campo, turnos) todavía NO existe — eso es la próxima etapa. Esto solo resuelve
+// "cómo se encuentran dos jugadores", a propósito, para no prometer más de lo que hay.
+// FASE 4, ETAPA 6: se muestra al arrancar SOLO si el perfil trae un activeMatchId con una
+// partida genuinamente en curso (main.js ya la validó con fetchMatchForReconnect antes de
+// llamar a esto — nunca se ofrece reconectar a algo que ya terminó o no existe más).
+export function showReconnectPrompt(onReconnect, onAbandon) {
+  injectStoreStyles(); // reusa .store-buy-btn / .store-back-link
+  const overlay = document.createElement('div');
+  overlay.id = 'reconnect-overlay';
+  overlay.style.cssText = 'position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#16211a; border:2px solid rgba(212,175,55,0.5); border-radius:16px; padding:32px; max-width:420px; text-align:center;">
+      <div style="font-size:20px; font-weight:700; color:#f0e0b0; margin-bottom:12px;">🔄 Tenés una partida en curso</div>
+      <div style="color:#cfe0d4; font-size:14px; margin-bottom:24px; line-height:1.5;">Parece que recargaste la página a mitad de una partida multiplayer. ¿Querés volver a ella?</div>
+      <button class="store-buy-btn" id="reconnect-yes">Reconectarme</button>
+      <br><br>
+      <button class="store-back-link" id="reconnect-no">Abandonarla</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#reconnect-yes').addEventListener('click', () => {
+    overlay.remove();
+    onReconnect();
+  });
+  overlay.querySelector('#reconnect-no').addEventListener('click', () => {
+    overlay.remove();
+    onAbandon();
+  });
+}
+
+export function showMultiplayerLobby(onBack, onMatched) {
+  injectMultiplayerLobbyStyles();
+  injectStoreStyles(); // reusa .store-buy-btn / .store-back-link / .store-error-msg
+  injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn / .encyclopedia-search-input
+
+  const overlay = document.createElement('div');
+  overlay.id = 'multiplayer-overlay';
+  overlay.innerHTML = `
+    <div class="mp-header">
+      <button class="encyclopedia-back-btn" id="mp-back">← Volver</button>
+      <div class="mp-title">Multijugador</div>
+    </div>
+    <div class="mp-body" id="mp-body"></div>
+  `;
+  document.body.appendChild(overlay);
+
+  const body = overlay.querySelector('#mp-body');
+  let unsubscribe = null;
+
+  function cleanup() {
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+  }
+
+  overlay.querySelector('#mp-back').addEventListener('click', () => {
+    cleanup();
+    overlay.remove();
+    onBack();
+  });
+
+  function renderHome() {
+    cleanup();
+    body.innerHTML = `
+      <div class="mp-section">
+        <div class="mp-section-title">Crear partida</div>
+        <div class="mp-section-desc">Genera un código de 6 caracteres para compartir con quien quieras que juegue.</div>
+        <button class="store-buy-btn" id="mp-create">Crear partida</button>
+        <div class="store-error-msg" id="mp-create-error"></div>
+      </div>
+      <div class="mp-section">
+        <div class="mp-section-title">Unirse con un código</div>
+        <input type="text" class="encyclopedia-search-input" id="mp-code-input" placeholder="Código de 6 caracteres" maxlength="6">
+        <button class="store-buy-btn" id="mp-join">Unirse</button>
+        <div class="store-error-msg" id="mp-join-error"></div>
+      </div>
+    `;
+
+    body.querySelector('#mp-create').addEventListener('click', async () => {
+      const btn = body.querySelector('#mp-create');
+      const errBox = body.querySelector('#mp-create-error');
+      btn.disabled = true;
+      errBox.textContent = '';
+      try {
+        const match = await createMatch(state.currentUser.uid, state.currentUser);
+        renderWaitingRoom(match.code);
+      } catch (err) {
+        console.error('No se pudo crear la partida:', err);
+        errBox.textContent = err.message || 'No se pudo crear la partida. Probá de nuevo.';
+        btn.disabled = false;
+      }
+    });
+
+    body.querySelector('#mp-join').addEventListener('click', async () => {
+      const input = body.querySelector('#mp-code-input');
+      const btn = body.querySelector('#mp-join');
+      const errBox = body.querySelector('#mp-join-error');
+      const code = input.value.trim();
+      if (!code) { errBox.textContent = 'Ingresá un código.'; return; }
+      btn.disabled = true;
+      errBox.textContent = '';
+      try {
+        const match = await joinMatchByCode(state.currentUser.uid, code, state.currentUser);
+        renderMatched(match);
+      } catch (err) {
+        console.error('No se pudo unir a la partida:', err);
+        errBox.textContent = err.message || 'No se pudo unir a la partida. Probá de nuevo.';
+        btn.disabled = false;
+      }
+    });
+  }
+
+  function renderWaitingRoom(code) {
+    cleanup();
+    body.innerHTML = `
+      <div class="mp-section">
+        <div class="mp-spinner">⏳</div>
+        <div class="mp-section-title">Esperando rival…</div>
+        <div class="mp-code-display">${code}</div>
+        <div class="mp-section-desc">Compartí este código con quien quieras que se una a la partida.</div>
+        <button class="store-back-link" id="mp-cancel">Cancelar</button>
+      </div>
+    `;
+
+    unsubscribe = listenToMatch(code, (data) => {
+      if (!data) { renderHome(); return; } // se canceló/borró desde otro lado
+      if (data.status === 'active' && data.guestUid) {
+        renderMatched({ code, ...data });
+      }
+    });
+
+    body.querySelector('#mp-cancel').addEventListener('click', async () => {
+      cleanup();
+      try { await cancelMatch(code); } catch (err) { console.error('No se pudo cancelar la partida:', err); }
+      renderHome();
+    });
+  }
+
+  // FASE 4 (cierre del roadmap): ya no es un cartel de "todavía no está listo" — con las
+  // Etapas 1 a 6 completas, emparejarse de verdad lleva a elegir mazo y arrancar una
+  // partida sincronizada real. myRole (host o guest) se calcula acá, comparando MI uid
+  // contra hostUid del match — es la ÚNICA vez que se calcula, y de acá en más viaja tal
+  // cual a onMatched, así main.js nunca tiene que volver a derivarlo.
+  function renderMatched(match) {
+    cleanup();
+    const myUid = state.currentUser.uid;
+    const myRole = match.hostUid === myUid ? 'host' : 'guest';
+    const rivalUid = myRole === 'host' ? match.guestUid : match.hostUid;
+    const rivalName = (match.players && match.players[rivalUid] && match.players[rivalUid].displayName) || 'tu rival';
+
+    body.innerHTML = `
+      <div class="mp-section">
+        <div class="mp-section-title">🎉 ¡Emparejado con ${rivalName}!</div>
+        <div class="mp-section-desc">Elegí con qué mazo vas a jugar esta partida.</div>
+        <button class="store-buy-btn" id="mp-start">Elegir mazo y arrancar</button>
+      </div>
+    `;
+    body.querySelector('#mp-start').addEventListener('click', () => {
+      overlay.remove();
+      onMatched(match.code, myRole);
+    });
+  }
+
+  renderHome();
+}
+
+export function showMainMenu(onPlay, onMultiplayerMatched) {
   injectMainMenuStyles();
   const overlay = document.createElement('div');
   overlay.id = 'main-menu-overlay';
@@ -2341,7 +2971,7 @@ export function showMainMenu(onPlay) {
     </div>
     <div class="main-menu-buttons">
       <button class="main-menu-btn main-menu-btn-primary" id="menu-play">Jugar (Solitario)</button>
-      <button class="main-menu-btn main-menu-btn-disabled" data-tooltip="Deshabilitado">Multijugador</button>
+      <button class="main-menu-btn" id="menu-multiplayer">Multijugador</button>
       <button class="main-menu-btn" id="menu-mydecks">Mis Mazos</button>
       <button class="main-menu-btn" id="menu-encyclopedia">Enciclopedia</button>
       <button class="main-menu-btn" id="menu-store">Tienda</button>
@@ -2350,29 +2980,41 @@ export function showMainMenu(onPlay) {
   `;
   document.body.appendChild(overlay);
   renderAccountBox(overlay.querySelector('#main-menu-account'), state.currentUser);
+  updateMainMenuLoginGatedButtons(overlay);
 
   overlay.querySelector('#menu-play').addEventListener('click', () => {
     overlay.remove();
     onPlay();
   });
 
+  // FASE 4 (cierre del roadmap): Multijugador ya conecta con una partida jugable de
+  // verdad — onMultiplayerMatched (pasado desde main.js) es quien arma el mazo/mano y
+  // arranca la sincronización real, una vez emparejados. Mismo gateo por sesión que
+  // Enciclopedia/Mis Mazos/Tienda: sin cuenta no hay con quién identificarte frente a un rival.
+  overlay.querySelector('#menu-multiplayer').addEventListener('click', () => {
+    if (!state.currentUser) return;
+    overlay.style.display = 'none';
+    showMultiplayerLobby(() => { overlay.style.display = ''; }, onMultiplayerMatched);
+  });
+
+  // BUGFIX (revisión post-Etapa 4): Enciclopedia/Mis Mazos/Tienda ahora quedan
+  // DESHABILITADAS de verdad sin sesión (mismo look que Multijugador), en vez de dejar
+  // entrar y mostrar un cartel adentro — updateMainMenuLoginGatedButtons (más abajo) las
+  // pinta como corresponde, y acá el click no hace nada si no hay sesión.
   overlay.querySelector('#menu-encyclopedia').addEventListener('click', () => {
+    if (!state.currentUser) return;
     overlay.style.display = 'none';
     showEncyclopedia(() => { overlay.style.display = ''; });
   });
 
-  // Fase 3, Etapa 1: "Mis Mazos" ya es un botón real (no "deshabilitado" como
-  // Multijugador) — todavía es solo modo lectura, pero eso ya es funcionalidad de verdad,
-  // no una promesa vacía.
   overlay.querySelector('#menu-mydecks').addEventListener('click', () => {
+    if (!state.currentUser) return;
     overlay.style.display = 'none';
     showMyDecksScreen(() => { overlay.style.display = ''; });
   });
 
-  // La Tienda SÍ es un botón real (no "deshabilitado" como Multijugador) porque no depende
-  // de una funcionalidad que todavía no existe — solo depende de tener sesión iniciada, que
-  // showStoreScreen ya sabe explicar sola si no la hay.
   overlay.querySelector('#menu-store').addEventListener('click', () => {
+    if (!state.currentUser) return;
     overlay.style.display = 'none';
     showStoreScreen(() => { overlay.style.display = ''; });
   });
@@ -3117,6 +3759,11 @@ export function render() {
   checkAuraLegality();
   checkEquipmentLegality();
   checkGameOver();
+
+  // FASE 4, ETAPA 2: publica mi mitad del estado en Firestore después de CUALQUIER cambio
+  // real al tablero — no se espera (render() es síncrona), y si no hay una partida
+  // multiplayer activa no hace nada en absoluto (ver el guard adentro de la función).
+  publishMatchState();
 }
 
 els.btnCancelSpell.addEventListener('click', cancelPayment);

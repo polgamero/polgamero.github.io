@@ -4,33 +4,77 @@ import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage } from './combatRules.js';
 import { hasKeyword } from './keywords.js';
-import { awardPoints } from './firebaseClient.js';
-import { pointsForBotGameEnd } from './store.js';
+import { awardPoints, clearActiveMatchId } from './firebaseClient.js';
+import { pointsForBotGameEnd, POINTS } from './store.js';
 
 export function checkGameOver() {
+  // FASE 4, ETAPA 6: gameOver y abandonedBy llegan JUNTOS por sync en el mismo publish
+  // cuando el rival abandona (ambos son campos compartidos) — si este chequeo fuera
+  // DESPUÉS del guard de "ya terminó" de acá abajo, nunca se llegaría a procesar del lado
+  // de quien lo recibe (gameOver ya llegaría en true). Por eso usa su propio guard
+  // idempotente (abandonProcessedLocally, puramente de este cliente, nunca se sincroniza)
+  // en vez de reusar state.gameOver para eso.
+  if (state.abandonedBy === 'rival' && !state.abandonProcessedLocally) {
+    state.abandonProcessedLocally = true;
+    state.gameOver = true;
+    logMsg("🏳️ ¡Tu rival abandonó la partida! Ganaste.");
+    showGameOverOverlay(true);
+    awardMatchEndPoints(true);
+    return;
+  }
+
   if (state.gameOver) return;
   if (state.localHP <= 0) {
     state.gameOver = true; logMsg("💀 Te quedaste sin HP. ¡Ganó el Tano!"); showGameOverOverlay(false);
-    awardBotGamePoints(false);
+    awardMatchEndPoints(false);
   } else if (state.rivalHP <= 0) {
     state.gameOver = true; logMsg("🏆 ¡VICTORIA! Hiciste morder el polvo al Tano."); showGameOverOverlay(true);
-    awardBotGamePoints(true);
+    awardMatchEndPoints(true);
   } else if (state.localPoison >= 10) {
     // Condición de derrota ALTERNATIVA (regla 104.3c): no importa cuánto HP te quede.
     state.gameOver = true; logMsg("☠️ ¡Te llegaron 10 contadores de Veneno! El Infectar del Tano te venció."); showGameOverOverlay(false);
-    awardBotGamePoints(false);
+    awardMatchEndPoints(false);
   } else if (state.rivalPoison >= 10) {
     state.gameOver = true; logMsg("☠️ ¡El Tano llegó a 10 contadores de Veneno! Se murió infectado."); showGameOverOverlay(true);
-    awardBotGamePoints(true);
+    awardMatchEndPoints(true);
   }
 }
 
-// FASE 2: le suma (o resta) puntos a la cuenta logueada al terminar la partida contra el
-// Tano. Sin sesión, no hace nada — Solitario sin login sigue sin puntos, como siempre.
-// No bloquea nada del cierre de partida (el overlay de Fin de Partida ya se mostró arriba,
-// esto pasa "en paralelo" y solo actualiza el número una vez que Firestore responde).
-function awardBotGamePoints(won) {
+// FASE 2 (renombrada en la Etapa 6 de la Fase 4: ya no es solo "vs Tano"): le suma (o
+// resta) puntos a la cuenta logueada al terminar la partida — contra el Tano O contra un
+// rival de verdad, cada cliente premia SOLO su propia cuenta (nunca puede escribir puntos
+// en la cuenta de otro jugador — ver firestore.rules, users/{userId} — así que cuando gano
+// una partida multiplayer, el que se premia a sí mismo con la victoria es MI cliente; el
+// rival, al perder, hace lo mismo del otro lado con su propia derrota). Sin sesión, no hace
+// nada — Solitario sin login sigue sin puntos, como siempre. No bloquea nada del cierre de
+// partida (el overlay de Fin de Partida ya se mostró arriba, esto pasa "en paralelo" y solo
+// actualiza el número una vez que Firestore responde).
+function awardMatchEndPoints(won) {
   if (!state.currentUser) return;
+
+  if (state.currentMatch) {
+    // FASE 4, ETAPA 6: la partida ya terminó — borro el rastro para que un futuro reload no
+    // ofrezca "reconectate" a algo que ya no está en curso. Mejor esfuerzo, no bloquea nada
+    // si falla (revisa la próxima vez que arranque igual, ver fetchMatchForReconnect).
+    clearActiveMatchId(state.currentUser.uid).catch(() => {});
+
+    const delta = won ? POINTS.winVsHumano : POINTS.lossVsHumano;
+    awardPoints(state.currentUser.uid, delta)
+      .then(newTotal => {
+        if (state.userProfile) state.userProfile.points = newTotal;
+        const msg = won
+          ? `🪙 ¡Le ganaste a tu rival! Sumaste ${delta} puntos de premio — llevás ${newTotal} en total.`
+          : `🪙 Perdiste esta vez, pero te llevás ${delta} puntos de recompensa igual — llevás ${newTotal} en total. ¡Mejor suerte la próxima!`;
+        logMsg(msg);
+        updateAccountUI(state.currentUser);
+      })
+      .catch(err => {
+        console.error('No se pudieron guardar los puntos de esta partida:', err);
+        logMsg("⚠️ No se pudieron guardar los puntos de esta partida — revisá tu conexión.");
+      });
+    return;
+  }
+
   const delta = pointsForBotGameEnd(won, state.botDifficulty);
   const difficultyLabel = state.botDifficulty === 'hard' ? 'Difícil' : 'Fácil';
   awardPoints(state.currentUser.uid, delta)
@@ -113,6 +157,25 @@ export async function advanceStep() {
   state.priorityPlayer = state.activePlayer; // La prioridad vuelve al jugador activo al iniciar cada paso
   state.consecutivePasses = 0;
 
+  // FASE 4, ETAPA 4 — LA PARTE MÁS DELICADA DE TODO EL ROADMAP: si lo que acabamos de armar
+  // es el arranque de un turno que ahora le pertenece al RIVAL (nextPhase/state.phase ya es
+  // 'untap' porque recién salimos de cleanup, y state.activePlayer YA CAMBIÓ arriba), este
+  // cliente NO tiene que seguir procesando el Enderezar de SU tablero — eso mutaría
+  // state.rivalXxx solo en MI pantalla. Antes del ajuste de buildMyPublicPatch (matchSync.js)
+  // esa mutación se perdía sin publicarse nunca; ahora SÍ se publicaría (por tener yo la
+  // autoridad de esta llamada), pero igual NO es donde tiene que pasar: el jugador que recién
+  // arranca su turno es quien tiene que enderezar SU PROPIO tablero, no yo adivinándolo por
+  // él. Publico el cambio de turno/fase tal cual (render() ya lo hace) y me detengo acá —
+  // cuando esto le llegue al cliente del rival por sync, ESE cliente nota que ahora es su
+  // turno con fase 'untap' y llama a processMyTurnStart() (ver más abajo, y el listener en
+  // main.js). En Solitario (sin currentMatch) esto nunca se activa — sigue siendo el mismo
+  // único cliente de siempre, procesando todo de punta a punta sin parar acá.
+  if (state.currentMatch && state.phase === 'untap' && state.activePlayer !== 'local') {
+    logMsg(`📌 --- Le toca el turno a tu rival. ---`);
+    render();
+    return;
+  }
+
   logMsg(`📌 --- ${state.activePlayer === 'local' ? 'Tu' : 'Turno Tano'}: Paso de ${getPhaseName(state.phase)} ---`);
 
   // Lógica de fases automáticas
@@ -153,11 +216,34 @@ export async function advanceStep() {
 
   render();
 
-  // Si le toca la prioridad al Tano, le notificamos a su IA
-  if (state.priorityPlayer === 'rival') {
+  // Si le toca la prioridad al Tano, le notificamos a su IA (solo en Solitario — en
+  // multiplayer, bot.js ya se blinda solo, pero evitamos hasta el setTimeout de más).
+  if (!state.currentMatch && state.priorityPlayer === 'rival') {
     setTimeout(takeBotPriorityAction, 600);
   }
 }
+
+// FASE 4, ETAPA 4: la contraparte del "me detengo acá" de advanceStep() de arriba — se
+// llama desde el cliente del jugador cuyo turno ACABA de empezar (sync trajo
+// activePlayer:'local' con phase:'untap', dejado así a propósito por el cliente saliente).
+// A diferencia de advanceStep() (que TRANSICIONA hacia la siguiente fase), esto EJECUTA el
+// Enderezar en el que este cliente ya está parado, y recién ahí sigue de largo hacia
+// Mantenimiento — porque el Enderezar nunca tiene ventana de prioridad, ni acá ni en
+// Solitario. Si las condiciones no dan (no es mi turno, o la fase ya avanzó), no hace nada:
+// es seguro llamarla de más por las dudas, nunca duplica el enderezar.
+export async function processMyTurnStart() {
+  if (state.gameOver || state.phase !== 'untap' || state.activePlayer !== 'local') return;
+  executeUntapStep();
+  await advanceStep();
+}
+
+// FASE 4, ETAPA 4: reentrancia — evita que una carrera de sincronización (un segundo
+// snapshot de Firestore llegando mientras el primero todavía está resolviendo) dispare una
+// doble resolución del mismo "ambos pasaron". Es un cinturón de seguridad barato para un
+// caso límite genuinamente raro, no una solución completa a condiciones de carrera — el
+// modelo de esta Fase ya asume un cliente confiable, no arbitrado por servidor (ver la
+// charla de arquitectura al arrancar la Fase 4).
+let isResolvingBothPassed = false;
 
 export async function passPriority(player) {
   if (state.gameOver) return;
@@ -173,30 +259,63 @@ export async function passPriority(player) {
   logMsg(`💬 ${player === 'local' ? 'Pasaste' : 'El Tano pasó'} prioridad.`);
   state.consecutivePasses++;
 
-  // Si hay algo en la pila y ambos pasaron
-  if (spellStack.length > 0) {
-    if (state.consecutivePasses >= 2) {
-      logMsg("⚡ Ambos pasaron prioridad. Resolviendo la cima de la pila...");
-      state.consecutivePasses = 0;
-      await resolveTopStackItem();
-      render();
-      if (state.priorityPlayer === 'rival') setTimeout(takeBotPriorityAction, 600);
-      return;
-    }
-  } else {
-    // Si la pila está vacía y ambos pasaron -> avanzamos de paso
-    if (state.consecutivePasses >= 2) {
-      await advanceStep();
-      return;
-    }
+  if (state.consecutivePasses >= 2) {
+    await resolveBothPassed();
+    return;
   }
 
   // Rotar prioridad al otro jugador
   state.priorityPlayer = state.priorityPlayer === 'local' ? 'rival' : 'local';
   render();
 
-  if (state.priorityPlayer === 'rival') {
+  if (!state.currentMatch && state.priorityPlayer === 'rival') {
     setTimeout(takeBotPriorityAction, 600);
+  }
+}
+
+// FASE 4, ETAPA 4 — LA PARTE DELICADA: "ambos pasaron, ¿qué pasa ahora?" (resolver la cima
+// de la pila, o avanzar de fase) muta estado que puede pertenecer a CUALQUIERA de los dos
+// lados (ej. executeUntapStep endereza los permanentes de quien sea el jugador activo, no
+// necesariamente los míos) — pero publishMatchState() (Etapa 2) SOLO publica mi propia
+// mitad, nunca la del rival. Si yo procesara esto durante el turno del rival, terminaría
+// mutando state.rivalXxx solo en MI pantalla, sin publicarlo nunca: el rival de verdad
+// jamás vería ese cambio, y su próxima publicación pisaría lo que "vi" acá con lo real.
+//
+// Por eso: en multiplayer, esto SOLO lo ejecuta el cliente de quien tiene el turno activo
+// (state.activePlayer === 'local' para ese cliente) — nunca el no-activo, aunque haya sido
+// SU pase el que completó el conteo. Se llama desde dos lugares:
+//   1) El final de passPriority() de acá arriba, cuando mi PROPIO pase llega a 2.
+//   2) startListeningToMatch() (main.js), cuando lo que se sincronizó desde el rival deja
+//      el conteo en 2 Y ahora es mi turno — porque en ese caso nadie más en ESTE cliente
+//      iba a disparar esta función si no la separábamos así.
+// En Solitario (sin currentMatch) siempre hay autoridad — es el único cliente que existe,
+// exactamente el comportamiento de siempre, sin ningún cambio.
+export async function resolveBothPassed() {
+  if (isResolvingBothPassed) return;
+  const hasAuthority = !state.currentMatch || state.activePlayer === 'local';
+  if (!hasAuthority) {
+    // No es mi turno — no me corresponde resolver. Publico que ya pasé (render() lo hace)
+    // y espero: cuando esto le llegue al cliente de quien SÍ tiene el turno activo, esta
+    // misma función se vuelve a evaluar ahí, con autoridad real.
+    render();
+    return;
+  }
+
+  isResolvingBothPassed = true;
+  try {
+    // Si hay algo en la pila y ambos pasaron
+    if (spellStack.length > 0) {
+      logMsg("⚡ Ambos pasaron prioridad. Resolviendo la cima de la pila...");
+      state.consecutivePasses = 0;
+      await resolveTopStackItem();
+      render();
+      if (!state.currentMatch && state.priorityPlayer === 'rival') setTimeout(takeBotPriorityAction, 600);
+    } else {
+      // Si la pila está vacía y ambos pasaron -> avanzamos de paso
+      await advanceStep();
+    }
+  } finally {
+    isResolvingBothPassed = false;
   }
 }
 

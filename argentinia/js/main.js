@@ -2,12 +2,13 @@ import { addToStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showEscapeExileModal, showKickerModal, showAbandonConfirmModal } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showEscapeExileModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt } from './ui.js';
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle } from './utils.js';
-import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority } from './turnManager.js';
+import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints } from './firebaseClient.js';
-import { POINTS } from './store.js';
+import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId } from './firebaseClient.js';
+import { POINTS, applyGameConfig } from './store.js';
+import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc } from './matchSync.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 
@@ -54,6 +55,21 @@ export const state = {
   // en boot(), main.js). getOwnedCardIds() en ui.js lee esto para el grisado real de la
   // Enciclopedia; si es null, por ahora se ve el pool completo (mismo criterio de siempre).
   userProfile: null,
+
+  // Fase 4, Etapa 2: null durante Solitario (el 100% de las partidas hasta que el
+  // multiplayer esté completo) — nunca se publica nada a Firestore en ese caso. Cuando una
+  // partida multiplayer arranca de verdad, pasa a { matchId, myRole } ('host' o 'guest'),
+  // y ahí sí render() (ui.js) publica mi mitad del estado después de cada cambio real.
+  currentMatch: null,
+  // Fase 4, Etapa 6: null mientras nadie abandonó. 'local' si abandoné yo (mi propio botón
+  // ya lo maneja directo, sin pasar por acá); 'rival' si el rival abandonó — esto es lo que
+  // mi sync trae de vuelta y checkGameOver() usa para saber que gané por abandono ajeno.
+  abandonedBy: null,
+  // Puramente local — NUNCA se sincroniza (no es parte de matchSync.js). gameOver y
+  // abandonedBy llegan JUNTOS en el mismo publish cuando el rival abandona, así que
+  // checkGameOver() no puede usar el propio state.gameOver como guard de "ya lo procesé" en
+  // este caso puntual (ya llegaría en true). Este flag cumple ese rol aparte.
+  abandonProcessedLocally: false,
 
   localHP: 20,
   // Veneno (regla real 104.3c, junto a Infectar en 702.90): condición de derrota
@@ -197,6 +213,73 @@ export function getLocalPlayerName() {
 // siempre, disponible con o sin sesión) o { type: 'saved', deck: {...} } (uno de tus
 // mazos guardados de verdad, armado 100% desde tu colección). El del Tano SIEMPRE es al
 // azar — no tiene colección propia.
+//
+// FASE 4, ETAPA 5 (nota de auditoría): esta función es 100% Solitario — arma un
+// state.rivalDeck real de mentira (buildRandomDeck) y resuelve su mulligan con
+// resolveBotMulligan(), que SÍ mira el contenido real de state.rivalHand (nunca pasa por
+// isHiddenRivalZone). Nunca se llama con una partida multiplayer activa todavía — armar
+// una partida multiplayer real (mazos de ambos jugadores, mulligan de cada uno por su
+// cuenta) es trabajo de una etapa futura, no de esta. Si eso llega a rutear por acá algún
+// día, hay que revisar esto de nuevo.
+// FASE 4, ETAPA 6: extraído de lo que antes vivía inline dentro de initGame — hace falta
+// engancharlo también al RECONECTARSE a una partida en curso (resumeReconnectedMatch, más
+// abajo), no solo al arrancar una nueva. Todo lo que toca acá ya es módulo/global (els,
+// state, funciones importadas) — nada de esto dependía de variables locales de initGame,
+// así que sacarlo de ahí no cambia el comportamiento en absoluto.
+function hookGameplayButtons() {
+  els.btnRestart.addEventListener('click', () => location.reload());
+  els.rivalHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(false));
+  els.localHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(true));
+
+  // FASE 2: abandonar tiene una penalidad más dura que perder jugando hasta el final — por
+  // eso el botón pide confirmación (showAbandonConfirmModal) antes de aplicar nada.
+  if (els.btnAbandonGame) {
+    els.btnAbandonGame.addEventListener('click', () => {
+      if (state.gameOver) return; // ya terminó de una forma normal, "abandonar" no tiene sentido
+      showAbandonConfirmModal(
+        () => {
+          state.gameOver = true; // evita que checkGameOver procese esto como otra cosa
+          // FASE 4, ETAPA 6: en multiplayer, el rival tiene que ENTERARSE de que abandoné —
+          // se publica ANTES de recargar, para que le llegue por sync incluso si mi
+          // pantalla ya se está yendo. Su propio checkGameOver() (turnManager.js) detecta
+          // abandonedBy:'rival' y se premia a sí mismo con la victoria — nunca puedo
+          // hacerlo yo por él (no tengo permiso de escritura sobre su cuenta).
+          if (state.currentMatch) {
+            state.abandonedBy = 'local';
+            publishMatchState();
+          }
+          if (state.currentUser) {
+            awardPoints(state.currentUser.uid, POINTS.abandonPenalty)
+              .then(newTotal => {
+                logMsg(`🏳️ Abandonaste la partida — te descontamos ${Math.abs(POINTS.abandonPenalty)} puntos. Te quedan ${newTotal} en total.`);
+              })
+              .catch(err => console.error('No se pudo aplicar la penalidad de abandono:', err))
+              .finally(() => location.reload());
+          } else {
+            location.reload();
+          }
+        },
+        () => {} // "Seguir jugando": no hace falta hacer nada, el modal ya se cerró solo
+      );
+    });
+  }
+
+  // Mejor esfuerzo, NO 100% confiable — es una limitación real de la plataforma web, no del
+  // código: los navegadores no garantizan que un pedido de red termine de completarse
+  // durante beforeunload. El mecanismo confiable de verdad es el botón de arriba; esto es
+  // solo una red de contención para cuando alguien cierra la pestaña sin pasar por él.
+  window.addEventListener('beforeunload', () => {
+    if (!state.gameOver && state.currentUser) {
+      awardPoints(state.currentUser.uid, POINTS.abandonPenalty).catch(() => {});
+      // Mismo mejor esfuerzo para avisarle al rival, si había una partida multiplayer activa.
+      if (state.currentMatch) {
+        state.abandonedBy = 'local';
+        publishMatchState().catch(() => {});
+      }
+    }
+  });
+}
+
 async function initGame(deckSource) {
   logMsg("Cargando el mazo...");
 
@@ -204,7 +287,7 @@ async function initGame(deckSource) {
 
   let deckLabel;
   if (deckSource.type === 'saved') {
-    state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds);
+    state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements);
     deckLabel = deckSource.deck.name;
   } else {
     state.localDeck = buildRandomDeck(deckSource.identity);
@@ -242,44 +325,7 @@ async function initGame(deckSource) {
   // El jugador humano decide el suyo de forma interactiva. La partida arranca de
   // verdad recién cuando termina de resolver su mano (finishSetup).
   const finishSetup = () => {
-    els.btnRestart.addEventListener('click', () => location.reload());
-    els.rivalHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(false));
-    els.localHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(true));
-
-    // FASE 2: abandonar tiene una penalidad más dura que perder jugando hasta el final —
-    // por eso el botón pide confirmación (showAbandonConfirmModal) antes de aplicar nada.
-    if (els.btnAbandonGame) {
-      els.btnAbandonGame.addEventListener('click', () => {
-        if (state.gameOver) return; // ya terminó de una forma normal, "abandonar" no tiene sentido
-        showAbandonConfirmModal(
-          () => {
-            state.gameOver = true; // evita que checkGameOver procese esto como otra cosa
-            if (state.currentUser) {
-              awardPoints(state.currentUser.uid, POINTS.abandonPenalty)
-                .then(newTotal => {
-                  logMsg(`🏳️ Abandonaste la partida — te descontamos ${Math.abs(POINTS.abandonPenalty)} puntos. Te quedan ${newTotal} en total.`);
-                })
-                .catch(err => console.error('No se pudo aplicar la penalidad de abandono:', err))
-                .finally(() => location.reload());
-            } else {
-              location.reload();
-            }
-          },
-          () => {} // "Seguir jugando": no hace falta hacer nada, el modal ya se cerró solo
-        );
-      });
-    }
-
-    // Mejor esfuerzo, NO 100% confiable — es una limitación real de la plataforma web, no
-    // del código: los navegadores no garantizan que un pedido de red termine de completarse
-    // durante beforeunload. El mecanismo confiable de verdad es el botón de arriba; esto es
-    // solo una red de contención para cuando alguien cierra la pestaña sin pasar por él.
-    window.addEventListener('beforeunload', () => {
-      if (!state.gameOver && state.currentUser) {
-        awardPoints(state.currentUser.uid, POINTS.abandonPenalty).catch(() => {});
-      }
-    });
-
+    hookGameplayButtons();
     render();
     logMsg(deckSource.type === 'saved' ? `¡Arranca la partida! Jugás con "${deckLabel}".` : `¡Arranca la partida! Elegiste ${deckLabel}.`);
     logMsg("¡Tu turno! Bajá una tierra para empezar.");
@@ -431,6 +477,12 @@ async function boot() {
           state.userProfile = profile;
           if (profile) {
             touchLastSeen(state.currentUser.uid).catch(() => {});
+            // FASE 4, ETAPA 6: si el perfil trae una partida marcada como en curso, se la
+            // consultamos a Firestore para confirmar que sigue siendo real antes de
+            // ofrecer reconectar (ver offerReconnectIfStillActive).
+            if (profile.activeMatchId) {
+              offerReconnectIfStillActive(profile.activeMatchId);
+            }
           } else {
             promptStarterDeckSelection();
           }
@@ -446,7 +498,18 @@ async function boot() {
   });
 
   await cardDb.loadAll();
-  showMainMenu(startPlayFlow);
+
+  // PANEL DE ADMIN: carga la configuración de balance guardada en Firestore ANTES de
+  // mostrar el menú — si nadie tocó nada todavía (o falla la carga por conexión), el juego
+  // sigue funcionando perfecto con los defaults hardcodeados en store.js, así que un error
+  // acá nunca deja a un jugador sin poder jugar.
+  try {
+    const config = await loadGameConfig();
+    applyGameConfig(config);
+  } catch (err) {
+    console.error('No se pudo cargar la configuración del juego — se usan los valores por defecto:', err);
+  }
+  showMainMenu(startPlayFlow, startMultiplayerFlow);
 }
 
 // FASE 3, ETAPA 4: si el jugador logueado ya tiene al menos un mazo guardado, "Jugar" le
@@ -464,6 +527,213 @@ function startPlayFlow() {
   } else {
     showDeckSelectionModal((chosenIdentity) => initGame({ type: 'random', identity: chosenIdentity }));
   }
+}
+
+// FASE 4 (CIERRE DEL ROADMAP): se llama desde showMultiplayerLobby (ui.js) apenas dos
+// jugadores se emparejan — elegís tu mazo exactamente con el mismo picker que Solitario. No
+// hace falta coordinar nada con el rival para esto: cada mazo/mano es privado por diseño,
+// así que cada cliente arma el suyo de forma totalmente independiente.
+function startMultiplayerFlow(matchId, myRole) {
+  const savedDecks = (state.currentUser && state.userProfile && state.userProfile.decks) || [];
+  if (savedDecks.length > 0) {
+    showPlayDeckPickerModal(
+      (chosenDeck) => startMultiplayerMatch(matchId, myRole, { type: 'saved', deck: chosenDeck }),
+      () => showDeckSelectionModal((chosenIdentity) => startMultiplayerMatch(matchId, myRole, { type: 'random', identity: chosenIdentity }))
+    );
+  } else {
+    showDeckSelectionModal((chosenIdentity) => startMultiplayerMatch(matchId, myRole, { type: 'random', identity: chosenIdentity }));
+  }
+}
+
+// FASE 4 (CIERRE DEL ROADMAP): arranca una partida multiplayer real — cada cliente arma SU
+// PROPIO mazo/mano (el rival NUNCA se arma acá, es una persona de verdad del otro lado; su
+// mano/mazo llegan solos por sync una vez que publique lo suyo). "Quién arranca" se decide
+// con una regla FIJA que ambos clientes calculan por su cuenta con su propio myRole, sin
+// coordinar nada ni sortear nada: el host siempre juega primero.
+function startMultiplayerMatch(matchId, myRole, deckSource) {
+  setupBoardLayout();
+
+  let deckLabel;
+  if (deckSource.type === 'saved') {
+    state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements);
+    deckLabel = deckSource.deck.name;
+  } else {
+    state.localDeck = buildRandomDeck(deckSource.identity);
+    deckLabel = deckSource.identity.join('/');
+  }
+
+  // Arrancan vacíos a propósito — se llenan solos apenas llegue el primer sync del rival
+  // con las cantidades reales (ver startListeningToMatch, matchSync.js).
+  state.rivalHand = [];
+  state.rivalDeck = [];
+
+  for (let i = 0; i < 7; i++) {
+    state.localHand.push(state.localDeck.pop());
+  }
+
+  state.currentMatch = { matchId, myRole };
+  state.activePlayer = myRole === 'host' ? 'local' : 'rival';
+  state.priorityPlayer = state.activePlayer;
+  state.phase = 'main1';
+  state.turnCount = 1;
+
+  // El mulligan es 100% local (solo mira tu propia mano/mazo) — se reusa TAL CUAL de
+  // Solitario, sin ningún cambio: nunca necesitó saber nada del rival para funcionar bien.
+  const finishSetup = () => {
+    startListeningToMatch(matchId, myRole);
+    hookGameplayButtons();
+    render();
+    logMsg(deckSource.type === 'saved' ? `¡Arranca la partida! Jugás con "${deckLabel}".` : `¡Arranca la partida! Elegiste ${deckLabel}.`);
+    logMsg(state.activePlayer === 'local' ? "¡Tu turno! Bajá una tierra para empezar." : "Esperando a que tu rival juegue...");
+  };
+
+  startLocalMulliganFlow(finishSetup);
+}
+
+// FASE 4, ETAPA 2: publica MI mitad del estado en Firestore — se llama desde render()
+// (ui.js) después de CUALQUIER cambio real al tablero, sin excepción. Si no estoy en una
+// partida multiplayer activa (state.currentMatch en null — el caso de Solitario, que sigue
+// siendo el 100% de las partidas hasta que el multiplayer esté completo), no hace
+// ABSOLUTAMENTE nada: nunca se intenta escribir en Firestore durante una partida contra el
+// Tano. "Fire and forget" a propósito (no se espera con await desde render(), que es
+// síncrona) — un fallo de red acá no debe trabar ni romper el renderizado del juego.
+// FASE 4, ETAPA 5: true si la zona que se está por tocar es la mano/mazo del RIVAL durante
+// una partida multiplayer real — ahí este cliente NUNCA tiene las cartas de verdad (por
+// diseño, ver matchSync.js: solo se sincroniza la CANTIDAD). Cualquier efecto que necesite
+// buscar, nombrar o mover una carta puntual de esa zona a una zona PÚBLICA (cementerio,
+// exilio, campo) no se puede resolver bien todavía — haría falta que el propio cliente del
+// rival aplique el efecto sobre sus datos privados, algo que no existe todavía. Se usa para
+// saltear esos efectos con un aviso honesto, en vez de arriesgar un crash (revisar
+// propiedades de un valor vacío) o corromper una zona pública con un valor inventado.
+export function isHiddenRivalZone(isTargetLocal) {
+  return !!state.currentMatch && !isTargetLocal;
+}
+
+export async function publishMatchState() {
+  if (!state.currentMatch || !state.currentUser) return;
+  const { matchId, myRole } = state.currentMatch;
+  try {
+    const publicPatch = buildMyPublicPatch(state, myRole);
+    const privatePatch = buildMyPrivatePatch(state);
+    await Promise.all([
+      publishMyPublicState(matchId, publicPatch),
+      publishMyPrivateState(matchId, state.currentUser.uid, privatePatch)
+    ]);
+  } catch (err) {
+    console.error('No se pudo publicar el estado de la partida:', err);
+  }
+}
+
+// FASE 4, ETAPA 3: se suscribe al documento público de la partida — cada vez que cambia
+// (el rival publicó algo, o el eco de mi propia escritura de la Etapa 2), traduce SU mitad
+// y lo compartido a la forma del motor (extractRivalStateFromPublicDoc/
+// extractSharedStateFromPublicDoc, matchSync.js) y lo aplica sobre `state`, re-renderizando.
+// Devuelve la función de unsubscribe — apagar la escucha (salir de la partida, terminar el
+// juego) es responsabilidad de quien la llamó, no de esta función.
+export function startListeningToMatch(matchId, myRole) {
+  return listenToMatch(matchId, (publicDoc) => {
+    if (!publicDoc) return;
+
+    const incoming = {
+      ...extractRivalStateFromPublicDoc(publicDoc, myRole),
+      ...extractSharedStateFromPublicDoc(publicDoc, myRole)
+    };
+
+    // BUGFIX evitado a propósito: publishMatchState() (Etapa 2) escribe MI mitad en el
+    // MISMO documento que estoy escuchando acá — sin este chequeo, cada publish generaría
+    // un eco que dispara render(), que dispara otro publish, en cascada infinita de
+    // escrituras innecesarias. Si nada de lo que llegó es distinto de lo que ya tengo, no
+    // volvemos a renderizar.
+    const changed = Object.keys(incoming).some(key => JSON.stringify(state[key]) !== JSON.stringify(incoming[key]));
+    if (!changed) return;
+
+    Object.assign(state, incoming);
+    render();
+
+    // FASE 4, ETAPA 4: si lo que acaba de llegar deja "ambos pasaron prioridad" (consecutivePasses
+    // >= 2) Y ahora es MI turno, tengo la autoridad para resolver qué pasa después (ver
+    // resolveBothPassed en turnManager.js, y por qué esto tiene que ser así) — el rival, al
+    // pasar, no pudo resolverlo porque no era su turno. Sin este llamado, nadie en este
+    // cliente se enteraría de que le toca procesar la resolución.
+    if (!state.gameOver && state.activePlayer === 'local' && state.consecutivePasses >= 2) {
+      resolveBothPassed();
+    }
+
+    // FASE 4, ETAPA 4 (la parte más delicada): si el turno recién me llegó (el rival lo dejó
+    // así a propósito, con activePlayer:'local' para mí y phase:'untap' sin procesar — ver el
+    // comentario en advanceStep(), turnManager.js), me toca enderezar MI PROPIO tablero acá.
+    if (!state.gameOver && state.activePlayer === 'local' && state.phase === 'untap') {
+      processMyTurnStart();
+    }
+  });
+}
+
+// FASE 4, ETAPA 6 (reconexión): reconstruye el `state` local COMPLETO desde lo último
+// publicado en Firestore — se usa cuando alguien recarga la página a mitad de una partida
+// multiplayer, momento en el que el `state` en memoria (todo lo de siempre: mano, mazo,
+// campo de batalla, turno) se pierde por completo, igual que si la partida jamás hubiera
+// arrancado. Mi propia mitad se reconstruye del documento PÚBLICO (extractMyStateFromPublicDoc
+// — es simétrico a cómo ya reconstruyo la mitad del rival), y mi mano/mazo REALES vienen del
+// documento PRIVADO (nunca del público, por diseño — ver Etapa 5). No arranca la escucha en
+// tiempo real ni prepara el tablero — eso es responsabilidad de quien llama a esto.
+export function reconstructStateFromMatch(publicDoc, privateDoc, myRole) {
+  Object.assign(
+    state,
+    extractMyStateFromPublicDoc(publicDoc, myRole),
+    extractRivalStateFromPublicDoc(publicDoc, myRole),
+    extractSharedStateFromPublicDoc(publicDoc, myRole)
+  );
+  state.localHand = privateDoc.hand || [];
+  state.localDeck = privateDoc.deck || [];
+}
+
+// FASE 4, ETAPA 6: retoma una partida multiplayer después de un reload — arma el tablero
+// desde cero (setupBoardLayout, igual que un initGame normal), pero en vez de barajar
+// mazos nuevos y hacer mulligan, reconstruye TODO desde lo último publicado en Firestore
+// (reconstructStateFromMatch) y arranca la escucha en tiempo real donde había quedado.
+function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc) {
+  const mainMenuOverlay = document.getElementById('main-menu-overlay');
+  if (mainMenuOverlay) mainMenuOverlay.remove();
+
+  setupBoardLayout();
+  state.currentMatch = { matchId, myRole };
+  reconstructStateFromMatch(publicDoc, privateDoc, myRole);
+  startListeningToMatch(matchId, myRole);
+  hookGameplayButtons();
+
+  render();
+  logMsg("🔄 Te reconectaste a tu partida en curso.");
+}
+
+// FASE 4, ETAPA 6: se llama apenas carga el perfil en boot() — si trae un activeMatchId,
+// confirmamos con Firestore que la partida SIGUE siendo real (no terminada, no borrada)
+// antes de ofrecer reconectar. Nunca confiamos ciegamente en el marcador solo: podría estar
+// desactualizado (ej. el otro cliente falló al limpiarlo).
+function offerReconnectIfStillActive(matchId) {
+  fetchMatchForReconnect(matchId, state.currentUser.uid)
+    .then(matchData => {
+      if (!matchData) {
+        clearActiveMatchId(state.currentUser.uid).catch(() => {});
+        return;
+      }
+      const myRole = matchData.publicDoc.hostUid === state.currentUser.uid ? 'host' : 'guest';
+      showReconnectPrompt(
+        () => resumeReconnectedMatch(matchId, myRole, matchData.publicDoc, matchData.privateDoc),
+        () => {
+          // "Abandonarla": mismo efecto que el botón de abandonar de siempre, pero sin
+          // necesidad de volver a entrar a la partida primero — le avisamos al rival igual.
+          state.currentMatch = { matchId, myRole };
+          Object.assign(state, extractSharedStateFromPublicDoc(matchData.publicDoc, myRole));
+          state.abandonedBy = 'local';
+          publishMatchState().catch(() => {});
+          if (state.currentUser) {
+            awardPoints(state.currentUser.uid, POINTS.abandonPenalty).catch(() => {});
+          }
+          clearActiveMatchId(state.currentUser.uid).catch(() => {});
+        }
+      );
+    })
+    .catch(err => console.error('No se pudo revisar la partida en curso:', err));
 }
 
 export function getEffectivePower(itemObj) {
@@ -532,16 +802,12 @@ export function getEffectiveKeywords(itemObj) {
     .filter(m => m.type === 'team_keyword')
     .map(m => m.keyword);
   const fromTemp = (itemObj.tempEffects || []).flatMap(t => t.keywords || []);
-  // FASE 3, ETAPA 4: mejora permanente por Fichas (Tienda) — recién ahora empieza a
-  // importar de verdad en las partidas. SOLO para el jugador local logueado (mismo patrón
-  // de isLocal que getStaticTeamModifiers acá arriba), y SOLO mientras la carta esté de
-  // este lado del campo — nunca afecta la copia del Tano de la misma carta, aunque
-  // coincida el ID.
-  const isLocal = state.localCombat.includes(itemObj);
-  const fromEnhancement = (isLocal && state.userProfile && state.userProfile.enhancements && state.userProfile.enhancements[card.id])
-    ? [state.userProfile.enhancements[card.id]]
-    : [];
-  return [...new Set([...base, ...fromAuras, ...fromEquipment, ...fromStatic, ...fromTemp, ...fromEnhancement])];
+  // FASE 3 (revisión post-Etapa 4): la mejora por Fichas YA NO se busca acá dinámicamente
+  // — antes esto aplicaba a CUALQUIER copia con el mismo ID, lo cual estaba mal (el pedido
+  // es que sea UNA sola copia puntual, elegible). Ahora la keyword de la mejora se hornea
+  // directo en card.keywords de esa copia específica al armar el mazo (ver
+  // buildDeckFromCardIds en utils.js), así que ya viene incluida en `base` de acá arriba.
+  return [...new Set([...base, ...fromAuras, ...fromEquipment, ...fromStatic, ...fromTemp])];
 }
 
 // --- SACRIFICAR COMO COSTO ---
@@ -2541,6 +2807,15 @@ export function resolveEffectDirect(effect, cardName, isLocal) {
     // controla el disparador, igual que ya hacen damage/heal en esta misma función.
     const targetHand = isLocal ? state.rivalHand : state.localHand;
     const targetGrave = isLocal ? state.rivalGraveyard : state.localGraveyard;
+    const opponentName = isLocal ? "el Tano" : "vos";
+
+    // FASE 4, ETAPA 5: si el objetivo es la mano del RIVAL en una partida multiplayer real,
+    // no tengo sus cartas de verdad — ver isHiddenRivalZone más arriba.
+    if (isHiddenRivalZone(!isLocal)) {
+      logMsg(`⚠️ ${cardName}: el descarte forzado sobre tu rival todavía no se puede resolver en multiplayer (su mano es privada) — no se descartó ninguna carta.`);
+      return;
+    }
+
     const discardedNames = [];
     for (let i = 0; i < effect.amount && targetHand.length > 0; i++) {
       const idx = Math.floor(Math.random() * targetHand.length);
@@ -2548,7 +2823,6 @@ export function resolveEffectDirect(effect, cardName, isLocal) {
       targetGrave.push(discarded);
       discardedNames.push(discarded.name);
     }
-    const opponentName = isLocal ? "el Tano" : "vos";
     logMsg(discardedNames.length > 0
       ? `🗑️ ¡${cardName}! ${opponentName} descartó: ${discardedNames.join(', ')}.`
       : `🗑️ ¡${cardName}! ${opponentName} no tenía cartas para descartar.`);

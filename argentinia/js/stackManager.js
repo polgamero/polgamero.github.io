@@ -1,5 +1,5 @@
 import { sleep } from './utils.js';
-import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, getEffectiveToughness, performSacrifice, addCounters, cleanupIfVehicle, tryAutoPayCounterTax, checkPlaneswalkerDeaths } from './main.js';
+import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, getEffectiveToughness, performSacrifice, addCounters, cleanupIfVehicle, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone } from './main.js';
 import { logMsg, render, createCardElement } from './ui.js';
 import { checkDeaths } from './combatRules.js';
 import { hasKeyword, getProtectionMatch } from './keywords.js';
@@ -108,15 +108,23 @@ function applyEffectToSingleTarget(effect, targetObj, isLocal, cardName, sourceC
       if (isTargetLocal) state.localHP += effect.amount; else state.rivalHP += effect.amount;
       logMsg(`💚 ¡${cardName}! ${targetName} ganó ${effect.amount} de vida.`);
     } else if (effect.type === 'discard') {
-      const hand = isTargetLocal ? state.localHand : state.rivalHand;
-      const grave = isTargetLocal ? state.localGraveyard : state.rivalGraveyard;
-      const amount = Math.min(effect.amount || 1, hand.length);
-      for (let i = 0; i < amount; i++) {
-        const idx = isTargetLocal ? hand.length - 1 : Math.floor(Math.random() * hand.length);
-        const discarded = hand.splice(idx, 1)[0];
-        if (discarded) grave.push(discarded);
+      // FASE 4, ETAPA 5: si el objetivo es la mano del RIVAL en multiplayer, no tengo sus
+      // cartas de verdad — ver isHiddenRivalZone (main.js). Esta rama ya era segura contra
+      // crashes (el `if (discarded)` de abajo), pero igual mentía en el mensaje: decía
+      // "descartó N carta(s)" sin haber descartado nada real.
+      if (isHiddenRivalZone(isTargetLocal)) {
+        logMsg(`⚠️ ${cardName}: el descarte forzado sobre tu rival todavía no se puede resolver en multiplayer (su mano es privada) — no se descartó ninguna carta.`);
+      } else {
+        const hand = isTargetLocal ? state.localHand : state.rivalHand;
+        const grave = isTargetLocal ? state.localGraveyard : state.rivalGraveyard;
+        const amount = Math.min(effect.amount || 1, hand.length);
+        for (let i = 0; i < amount; i++) {
+          const idx = isTargetLocal ? hand.length - 1 : Math.floor(Math.random() * hand.length);
+          const discarded = hand.splice(idx, 1)[0];
+          if (discarded) grave.push(discarded);
+        }
+        logMsg(`🗑️ ¡${cardName}! ${targetName} descartó ${amount} carta(s).`);
       }
-      logMsg(`🗑️ ¡${cardName}! ${targetName} descartó ${amount} carta(s).`);
     } else if (effect.type === 'draw') {
       const hand = isTargetLocal ? state.localHand : state.rivalHand;
       const deck = isTargetLocal ? state.localDeck : state.rivalDeck;
@@ -469,22 +477,28 @@ async function executeStackItem(item) {
         }
         // LÓGICA NUEVA: DESCARTE
         else if (effectToApply.type === 'discard') {
-          const targetHand = targetObj.isLocal ? state.localHand : state.rivalHand;
-          const targetGraveyard = targetObj.isLocal ? state.localGraveyard : state.rivalGraveyard;
-          const amount = Math.min(effectToApply.amount, targetHand.length);
-          const discardedNames = [];
-          for (let i = 0; i < amount; i++) {
-            // El Tano descarta al azar; a vos te descartamos desde el final de la mano
-            // (más adelante se puede pedir que elijas cuáles, por ahora es automático).
-            const idx = targetObj.isLocal ? targetHand.length - 1 : Math.floor(Math.random() * targetHand.length);
-            const discarded = targetHand.splice(idx, 1)[0];
-            targetGraveyard.push(discarded);
-            discardedNames.push(discarded.name);
-          }
-          if (discardedNames.length > 0) {
-            logMsg(`🗑️ ¡${card.name}! ${targetName} descartó: ${discardedNames.join(', ')}.`);
+          // FASE 4, ETAPA 5: si el objetivo es la mano del RIVAL en multiplayer, no tengo
+          // sus cartas de verdad — ver isHiddenRivalZone (main.js).
+          if (isHiddenRivalZone(targetObj.isLocal)) {
+            logMsg(`⚠️ ${card.name}: el descarte forzado sobre tu rival todavía no se puede resolver en multiplayer (su mano es privada) — no se descartó ninguna carta.`);
           } else {
-            logMsg(`🗑️ ¡${card.name}! ${targetName} no tenía cartas para descartar.`);
+            const targetHand = targetObj.isLocal ? state.localHand : state.rivalHand;
+            const targetGraveyard = targetObj.isLocal ? state.localGraveyard : state.rivalGraveyard;
+            const amount = Math.min(effectToApply.amount, targetHand.length);
+            const discardedNames = [];
+            for (let i = 0; i < amount; i++) {
+              // El Tano descarta al azar; a vos te descartamos desde el final de la mano
+              // (más adelante se puede pedir que elijas cuáles, por ahora es automático).
+              const idx = targetObj.isLocal ? targetHand.length - 1 : Math.floor(Math.random() * targetHand.length);
+              const discarded = targetHand.splice(idx, 1)[0];
+              targetGraveyard.push(discarded);
+              discardedNames.push(discarded.name);
+            }
+            if (discardedNames.length > 0) {
+              logMsg(`🗑️ ¡${card.name}! ${targetName} descartó: ${discardedNames.join(', ')}.`);
+            } else {
+              logMsg(`🗑️ ¡${card.name}! ${targetName} no tenía cartas para descartar.`);
+            }
           }
         }
         // LÓGICA NUEVA: EXILIAR CEMENTERIO ENTERO (odio de cementerio)
@@ -886,6 +900,12 @@ async function executeStackItem(item) {
       }
       // LÓGICA NUEVA: BUSCAR TIERRAS (rampa de maná)
       else if (effectToApply.type === 'ramp') {
+        // FASE 4, ETAPA 5: si esto buscara en el mazo del RIVAL en multiplayer (no debería
+        // pasar en la práctica — la rampa siempre busca en el propio mazo — pero por las
+        // dudas, blindaje defensivo contra revisar propiedades de un valor vacío).
+        if (isHiddenRivalZone(isLocal)) {
+          logMsg(`⚠️ ${card.name}: buscar en el mazo del rival todavía no se puede resolver en multiplayer (es privado).`);
+        } else {
         const deck = isLocal ? state.localDeck : state.rivalDeck;
         const landZone = isLocal ? state.localLands : state.rivalLands;
         const amount = effectToApply.amount || 1;
@@ -908,6 +928,7 @@ async function executeStackItem(item) {
           logMsg(`🌱 ¡${card.name} buscó ${foundCount} tierra(s) y la(s) puso en el campo de batalla!`);
         } else {
           logMsg(`⚠️ ${card.name} no encontró tierras en el mazo.`);
+        }
         }
       }
       else {

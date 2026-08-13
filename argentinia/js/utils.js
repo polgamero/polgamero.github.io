@@ -1,5 +1,5 @@
 import { cardDb } from './cardLoader.js';
-import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT } from './store.js';
+import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT, ENHANCED_SUFFIX } from './store.js';
 
 export function shuffle(array) { 
   return array.sort(() => Math.random() - 0.5); 
@@ -181,16 +181,37 @@ export function buildRandomDeck(forcedIdentity) {
   return shuffle([...landSection, ...spellSection]);
 }
 
-// FASE 3, ETAPA 4: convierte el cardIds guardado de un mazo real ("Mis Mazos") en cartas de
-// juego de verdad, listas para barajar y jugar. Clona cada carta con {...cardDef} en vez de
-// reusar la misma referencia — mismo criterio que weightedSample de acá arriba: cada copia
-// necesita ser un objeto DISTINTO, aunque sean 4 copias de la misma carta, porque el motor
-// le va a ir pegando estado propio (girada, contadores, etc.) a cada instancia por separado.
-export function buildDeckFromCardIds(cardIds) {
+// FASE 3, ETAPA 4 (revisión): convierte el cardIds guardado de un mazo real ("Mis Mazos")
+// en cartas de juego de verdad, listas para barajar y jugar. Clona cada carta con
+// {...cardDef} en vez de reusar la misma referencia — mismo criterio que weightedSample de
+// acá arriba: cada copia necesita ser un objeto DISTINTO, aunque sean 4 copias de la misma
+// carta, porque el motor le va a ir pegando estado propio (girada, contadores, etc.) a cada
+// instancia por separado.
+//
+// Si el id trae el sufijo ENHANCED_SUFFIX (la copia puntual mejorada por Fichas), la
+// keyword de la mejora se HORNEA directo en el keywords[] de ESA copia clonada, acá mismo,
+// antes de que la partida arranque — así el resto del motor (mano, campo, getEffectiveKeywords)
+// ni se entera de que existe un sistema de mejoras: para él, esa carta simplemente nació
+// con esa keyword de más, en esta única copia. El Tano nunca pasa por acá (su mazo siempre
+// sale de buildRandomDeck), así que nunca puede terminar con una mejora ajena.
+//
+// `enhancements` se recibe como PARÁMETRO (el {cardId: keyword} de state.userProfile), en
+// vez de importar `state` directo de main.js — a propósito: evita un import circular
+// (utils.js -> main.js -> ui.js/firebaseClient.js -> SDK de Firebase) que rompía poder
+// importar este archivo de forma aislada, y de paso deja la función más pura y testeable.
+export function buildDeckFromCardIds(cardIds, enhancements) {
   const cards = cardIds
     .map(id => {
-      const cardDef = cardDb.getById(id);
-      return cardDef ? { ...cardDef } : null;
+      const isEnhancedSlot = id.endsWith(ENHANCED_SUFFIX);
+      const baseId = isEnhancedSlot ? id.slice(0, -ENHANCED_SUFFIX.length) : id;
+      const cardDef = cardDb.getById(baseId);
+      if (!cardDef) return null;
+      const cloned = { ...cardDef };
+      if (isEnhancedSlot) {
+        const keyword = enhancements && enhancements[baseId];
+        if (keyword) cloned.keywords = [...(cloned.keywords || []), keyword];
+      }
+      return cloned;
     })
     .filter(Boolean);
   return shuffle(cards);
