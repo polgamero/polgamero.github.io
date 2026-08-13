@@ -1173,7 +1173,10 @@ function injectMainMenuStyles() {
       display: flex; align-items: center; gap: 4px;
     }
     .coin-icon, .ficha-icon {
-      width: 3em; height: 1.1em; object-fit: contain; vertical-align: -0.15em; flex-shrink: 0;
+      width: 3em; height: 3em; object-fit: contain; vertical-align: -0.15em; flex-shrink: 0;
+    }
+    .sobre-expansion {
+      width: 8em; height: 8em; object-fit: contain; flex-shrink: 0;
     }
     .main-menu-logout-btn {
       background: none; border: none; color: #b8adc4; font-size: 11px;
