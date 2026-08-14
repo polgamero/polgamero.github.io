@@ -23,14 +23,22 @@ export const PER_PLAYER_FIELDS = [
 // (no con prefijo host/guest).
 export const SHARED_FIELDS = [
   'turnCount', 'phase', 'gameOver', 'consecutivePasses', 'combatDamagePrevented',
-  'activeEffects', 'scheduledReturns'
+  'activeEffects', 'scheduledReturns',
+  // Mecanismo GENERAL de decisión remota — ver main.js, requestRivalDecision/
+  // handleIncomingDecisionRequest. Excepción DELIBERADA a la regla de abajo (ningún otro
+  // pending* viaja): a diferencia de un pendingCrew o un pendingXChoice (que son estado de
+  // interacción 100% local, de quien está resolviendo su propia jugada), estos dos
+  // son, por diseño, el CANAL DE COMUNICACIÓN en sí entre los dos clientes — sin que
+  // viajen por Firestore, no hay forma de que el rival se entere de que hay algo que
+  // decidir, ni de que a mí me llegue su respuesta.
+  'pendingDecision', 'decisionResponse'
 ];
 
-// A propósito NO se sincroniza nada de esto — es estado de interacción puramente LOCAL de
-// quien está jugando en ese momento (en qué mitad de un pago está, qué modal tiene abierto,
-// qué está eligiendo), o son cosas que ya maneja otro sistema por su cuenta
+// A propósito NO se sincroniza nada MÁS de esto — es estado de interacción puramente LOCAL
+// de quien está jugando en ese momento (en qué mitad de un pago está, qué modal tiene
+// abierto, qué está eligiendo), o son cosas que ya maneja otro sistema por su cuenta
 // (currentUser/userProfile ya viven en Firebase Auth + el perfil de usuario, no en el
-// estado de una partida puntual). Ningún campo pending*, isDiscarding, cardsToDiscard,
+// estado de una partida puntual). Ningún OTRO campo pending*, isDiscarding, cardsToDiscard,
 // damageModalOpen, botDifficulty, currentUser, userProfile o tappedLandsThisSpell viaja
 // por Firestore — quedan 100% locales a la pantalla de quien está resolviendo esa jugada.
 

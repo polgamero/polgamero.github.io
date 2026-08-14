@@ -199,7 +199,13 @@ export async function advanceStep() {
 
   if (state.phase === 'combat_damage') {
     logMsg("⚔️ Resolviendo daño de combate...");
-    resolveCombatDamage();
+    // BUGFIX: faltaba este await — resolveCombatDamage() es async y tiene una pausa real
+    // adentro (el modal de asignación de daño de Arrollar, cuando hay más de un
+    // bloqueador). Sin el await, esta función seguía de largo (y render() corría) mientras
+    // la resolución de combate podía seguir en curso en el fondo — arriesgaba que se
+    // avanzara de fase, o que otra acción se disparara, antes de que el combate hubiera
+    // terminado de verdad.
+    await resolveCombatDamage();
     render();
   }
 
@@ -210,7 +216,9 @@ export async function advanceStep() {
   }
 
   if (state.phase === 'cleanup') {
-    executeCleanupStep();
+    // BUGFIX: faltaba este await — ver el comentario dentro de executeCleanupStep() para
+    // el detalle completo del riesgo que esto cerraba.
+    await executeCleanupStep();
     return;
   }
 
@@ -395,7 +403,7 @@ function executeDrawStep() {
   }
 }
 
-function executeCleanupStep() {
+async function executeCleanupStep() {
   const isLocal = state.activePlayer === 'local';
   
   // Limpiamos el daño residual
@@ -447,10 +455,16 @@ function executeCleanupStep() {
   }
 
   // Avanzamos turno automáticamente si no requiere descarte interactivo
-  advanceStep();
+  // BUGFIX: faltaba este await — advanceStep() es async, y sin esperarlo acá, quien llamó
+  // a ESTA función (el advanceStep() de más arriba, que ya te está esperando a VOS con su
+  // propio await) daba por completada la transición de turno cuando en realidad la
+  // continuación recursiva (pasar de limpieza al enderezar del turno siguiente) todavía
+  // podía seguir en curso en el fondo. Mismo patrón de bug que ya se arregló para
+  // resolveCombatDamage().
+  await advanceStep();
 }
 
-export function handleDiscardClick(index) {
+export async function handleDiscardClick(index) {
   const discardedCard = state.localHand.splice(index, 1)[0];
   state.localGraveyard.push(discardedCard);
   state.cardsToDiscard--;
@@ -459,7 +473,10 @@ export function handleDiscardClick(index) {
 
   if (state.cardsToDiscard <= 0) {
     state.isDiscarding = false;
-    advanceStep();
+    // BUGFIX: faltaba este await — mismo patrón que executeCleanupStep/resolveCombatDamage.
+    // Sin él, el render() de acá abajo podía correr con la transición de turno todavía a
+    // medio resolver en el fondo.
+    await advanceStep();
   }
   
   render();
@@ -473,10 +490,14 @@ export function passTurnToRival() {
   passPriority('local');
 }
 
-export function startLocalTurn() {
+// NOTA: código muerto por ahora — se importa y reexporta desde main.js, pero no hay ningún
+// llamador activo en el resto del proyecto (probablemente un remanente de una etapa
+// anterior del desarrollo). Se corrige igual, por consistencia con los otros 2 arreglos de
+// este mismo lote y por si algo lo termina usando más adelante.
+export async function startLocalTurn() {
   state.activePlayer = 'local';
   state.phase = 'untap';
-  advanceStep();
+  await advanceStep();
 }
 
 function getPhaseName(phaseKey) {

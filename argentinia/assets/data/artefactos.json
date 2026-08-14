@@ -111,7 +111,7 @@
     "cmc": 3,
     "rarity": "Rare",
     "colors": [],
-    "text": "Tripular {2} (Pagá {2} para que este Vehículo se convierta en una criatura 4/4 hasta el final del turno).",
+    "text": "Tripular 2. (Girar cualquier cantidad de criaturas que controlás con una fuerza total de 2 o más: Este Vehículo se convierte en una criatura artefacto hasta el final del turno.)",
     "flavorText": "A prueba de flechas, lanzas y luz mala.",
     "image": "carreta.png",
     "baseStats": {
@@ -134,7 +134,7 @@
     "cmc": 4,
     "rarity": "Rare",
     "colors": [],
-    "text": "Tripular {3} (Pagá {3} para que este Vehículo se convierta en una criatura 6/6 hasta el final del turno).",
+    "text": "Tripular 3. (Girar cualquier cantidad de criaturas que controlás con una fuerza total de 3 o más: Este Vehículo se convierte en una criatura artefacto hasta el final del turno.)",
     "flavorText": "Yo no manejo el rating, yo manejo esto.",
     "image": "rolls_royce_ricky.png",
     "baseStats": {
@@ -157,7 +157,7 @@
     "cmc": 2,
     "rarity": "Uncommon",
     "colors": [],
-    "text": "Tripular {1} (Pagá {1} para que este Vehículo se convierta en una criatura 3/4 con Arrollar hasta el final del turno).",
+    "text": "Tripular 1. (Girar cualquier cantidad de criaturas que controlás con una fuerza total de 1 o más: Este Vehículo se convierte en una criatura artefacto con Arrollar hasta el final del turno.)",
     "flavorText": "Cruzó los Andes sin quejarse una sola vez.",
     "image": "caballo_san_martin.png",
     "keywords": [

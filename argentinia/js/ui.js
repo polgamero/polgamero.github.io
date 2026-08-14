@@ -296,6 +296,91 @@ export function showXValueModal(card, onConfirm, onCancel) {
   });
 }
 
+// BUG 2 (post-lanzamiento): "Buena Cosecha" (Siembra de Otoño) antes traía la primera
+// tierra básica que encontraba en el mazo, sin dejarte elegir de qué color — este modal es
+// el arreglo. availableColors ya viene FILTRADO (solo los colores que el jugador REALMENTE
+// tiene en el mazo — no tiene sentido ofrecer un color sin ninguna tierra de ese tipo).
+// Reusa .deck-select-mono-btn tal cual (mismas imágenes de color que ya usa la pantalla de
+// elegir mazo random) en vez de inventar clases nuevas para lo mismo.
+// MECANISMO GENERAL DE DECISIÓN REMOTA (ver requestRivalDecision/handleIncomingDecisionRequest,
+// main.js) — este es el primer caso concreto: te llegó por sync que el RIVAL amenaza con
+// contrarrestar TU hechizo a menos que pagues. Corre en TU PROPIA pantalla, tripulando tus
+// propias tierras si elegís pagar — a diferencia de antes, donde el cliente del rival
+// decidía esto por vos sin preguntarte nada.
+export function showCounterTaxDecisionModal(amount, targetCardName, onPay, onDecline) {
+  injectMulliganStyles();
+
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width: 420px;">
+      <div class="gy-modal-header">
+        <h3>💰 ¡Te amenazan con contrarrestar!</h3>
+      </div>
+      <div style="padding: 20px; text-align: center;">
+        <p style="color:#cfe0d4; font-size: 14px; margin-bottom: 18px;">
+          Tu rival quiere contrarrestar <strong>"${targetCardName}"</strong> a menos que pagues {${amount}}.
+        </p>
+        <div class="mulligan-buttons">
+          <button id="counter-tax-decline" class="mulligan-btn mulligan-btn-mull">❌ No pagar</button>
+          <button id="counter-tax-pay" class="mulligan-btn mulligan-btn-keep">💰 Pagar {${amount}}</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalOverlay);
+
+  modalOverlay.querySelector('#counter-tax-pay').addEventListener('click', () => {
+    modalOverlay.remove();
+    onPay();
+  });
+  modalOverlay.querySelector('#counter-tax-decline').addEventListener('click', () => {
+    modalOverlay.remove();
+    onDecline();
+  });
+}
+
+export function showRampLandChoiceModal(availableColors, cardName, onChoose) {
+  injectMulliganStyles();
+  injectDeckSelectionStyles();
+  state.pendingRampChoice = true;
+
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+
+  const buttonsHTML = availableColors.map(colorKey => {
+    const info = COLOR_INFO[colorKey];
+    return `
+      <button class="deck-select-mono-btn" data-color="${colorKey}" title="${info.name}">
+        <div class="deck-select-circle-big" style="${circleStyle(colorKey)}"></div>
+        <span class="deck-select-mono-label">${info.name}</span>
+      </button>
+    `;
+  }).join('');
+
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width: 420px;">
+      <div class="gy-modal-header">
+        <h3>🌱 ${cardName}</h3>
+      </div>
+      <div style="padding: 20px; text-align: center;">
+        <p style="color:#cfe0d4; font-size: 14px; margin-bottom: 18px;">¿Qué color de tierra básica buscás en tu mazo?</p>
+        <div class="deck-select-mono-row">${buttonsHTML}</div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalOverlay);
+
+  modalOverlay.querySelectorAll('.deck-select-mono-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const color = btn.getAttribute('data-color');
+      state.pendingRampChoice = false;
+      modalOverlay.remove();
+      onChoose(color);
+    });
+  });
+}
+
 // Kicker: costo ADICIONAL y OPCIONAL — a diferencia de un hechizo modal (elegís UNO de
 // varios modos), acá es sí/no sobre pagar más por un bonus extra, y el efecto base se
 // lanza de todos modos elijas lo que elijas. Mismo esqueleto visual que showModalSpellChoice.
@@ -895,8 +980,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 // duplicar la lógica acá.
 // Agregamos state.isDiscarding para que las cartas respondan al clic en la fase de limpieza
     if (zone === 'hand' && isLocal && (canPlayCard(card) || state.isDiscarding) && !state.gameOver) {
-      el.addEventListener('click', () => {
-        if (state.isDiscarding) handleDiscardClick(index);
+      el.addEventListener('click', async () => {
+        if (state.isDiscarding) await handleDiscardClick(index);
         else playCard(index);
       });
     } else if (zone === 'land' && isLocal && !state.gameOver) {
@@ -3950,7 +4035,23 @@ export function render() {
   }
 
   // --- 2. GESTIÓN DEL BOTÓN DE ACCIÓN / PASAR PRIORIDAD ---
-  els.btnEndTurn.disabled = (state.priorityPlayer !== 'local' || state.gameOver || state.isDiscarding);
+  // BUGFIX: antes solo chequeaba damageModalOpen/pendingRampChoice — "Pasar Prioridad"
+  // (botón O el atajo de la barra espaciadora) se podía disparar mientras CUALQUIER otra
+  // elección a medio resolver seguía esperando tu click (tripular, pagar Ward, elegir
+  // modo, elegir objetivos, Scry/Surveil, Proliferar, Escape, Kicker, contrarrestar a
+  // menos que pagues, etc.) — arriesgando una condición de carrera con esa resolución.
+  // Misma lista que ya usa canPlayCard (más pendingTargetCard/pendingSacrificeChoice/
+  // pendingHybridLifePayment, que faltaban ahí también).
+  const anyPendingChoice = state.pendingSpellIndex !== null || state.pendingAbilitySource !== null ||
+    state.pendingTargetCard !== null || state.pendingCrew !== null || state.pendingWardChoice !== null ||
+    state.pendingCounterUnlessPay !== null || state.pendingHybridLifePayment !== null ||
+    state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null ||
+    state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null ||
+    state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice ||
+    state.pendingKickerChoice || state.pendingRampChoice || state.pendingSacrificeChoice !== null ||
+    state.damageModalOpen || state.awaitingRivalDecision || state.respondingToDecision;
+
+  els.btnEndTurn.disabled = (state.priorityPlayer !== 'local' || state.gameOver || state.isDiscarding || anyPendingChoice);
 
   if (state.phase === 'combat_attackers' && state.activePlayer === 'local') {
     const isAttacking = state.localCombat.some(c => c.isAttacking);

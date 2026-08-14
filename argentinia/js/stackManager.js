@@ -1,6 +1,7 @@
 import { sleep } from './utils.js';
-import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, getEffectiveToughness, performSacrifice, addCounters, cleanupIfVehicle, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName } from './main.js';
-import { logMsg, render, createCardElement } from './ui.js';
+import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, getEffectiveToughness, performSacrifice, addCounters, cleanupIfVehicle, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, resolveForcedDiscardOnRival } from './main.js';
+import { otherRole } from './matchSync.js';
+import { logMsg, render, createCardElement, showRampLandChoiceModal } from './ui.js';
 import { checkDeaths } from './combatRules.js';
 import { hasKeyword, getProtectionMatch } from './keywords.js';
 
@@ -108,12 +109,19 @@ function applyEffectToSingleTarget(effect, targetObj, isLocal, cardName, sourceC
       if (isTargetLocal) state.localHP += effect.amount; else state.rivalHP += effect.amount;
       logMsg(`💚 ¡${cardName}! ${targetName} ganó ${effect.amount} de vida.`);
     } else if (effect.type === 'discard') {
-      // FASE 4, ETAPA 5: si el objetivo es la mano del RIVAL en multiplayer, no tengo sus
-      // cartas de verdad — ver isHiddenRivalZone (main.js). Esta rama ya era segura contra
-      // crashes (el `if (discarded)` de abajo), pero igual mentía en el mensaje: decía
-      // "descartó N carta(s)" sin haber descartado nada real.
+      // BUGFIX (post-lanzamiento): antes esto solo evitaba el crash (el `if (discarded)`
+      // de abajo), pero igual mentía en el mensaje ("descartó N carta(s)" sin haber
+      // descartado nada real) o de plano se saltaba entero. Ahora le pide al cliente REAL
+      // del rival que aplique el descarte sobre su mano de verdad (ver
+      // resolveForcedDiscardOnRival, main.js) — sin await a propósito, ver el comentario
+      // largo en la rama gemela de main.js (resolveEffectDirect) para el porqué completo.
       if (isHiddenRivalZone(isTargetLocal)) {
-        logMsg(`⚠️ ${cardName}: el descarte forzado sobre tu rival todavía no se puede resolver en multiplayer (su mano es privada) — no se descartó ninguna carta.`);
+        resolveForcedDiscardOnRival(effect.amount || 1, cardName).then(discardedNames => {
+          logMsg(discardedNames.length > 0
+            ? `🗑️ ¡${cardName}! ${targetName} descartó: ${discardedNames.join(', ')}.`
+            : `🗑️ ¡${cardName}! ${targetName} no tenía cartas para descartar.`);
+          render();
+        });
       } else {
         const hand = isTargetLocal ? state.localHand : state.rivalHand;
         const grave = isTargetLocal ? state.localGraveyard : state.rivalGraveyard;
@@ -399,8 +407,12 @@ async function executeStackItem(item) {
           }
 
           // "Contrarresta a menos que pague": el CONTROLADOR del hechizo amenazado decide,
-          // no quien tira el counterspell. Si es tuyo, pausamos y te dejamos elegir; si es
-          // del Tano, decide en el momento (paga si puede).
+          // no quien tira el counterspell. Si es tuyo, pausamos y te dejamos elegir. Si es
+          // del rival: en Solitario, el Tano decide solo (paga si puede, sin UI — no hay
+          // nadie del otro lado a quien preguntarle). En MULTIPLAYER, la decisión es de
+          // VERDAD del rival — se la preguntamos por sync, en SU propia pantalla, en vez de
+          // decidir nosotros mismos por él (ver requestRivalDecision, main.js — mecanismo
+          // GENERAL, reusable para cualquier otra decisión futura del rival).
           if (effectToApply.type === 'counter_unless_pay') {
             const amount = effectToApply.amount;
             if (targetItem.isLocal) {
@@ -410,6 +422,16 @@ async function executeStackItem(item) {
               state.pendingCounterUnlessPay = { targetStackId: targetObj.stackId, amount, targetCardName: targetItem.card.name, counterCard: card, counterIsLocal: isLocal, counterCastFrom: item.castFrom };
               logMsg(`💰 ¡${card.name} amenaza con contrarrestar "${targetItem.card.name}"! Pagá {${amount}} o se pierde.`);
               return;
+            } else if (state.currentMatch) {
+              const rivalRole = otherRole(state.currentMatch.myRole);
+              const response = await requestRivalDecision('counter_unless_pay', rivalRole, { amount, targetCardName: targetItem.card.name });
+              if (response.paid) {
+                logMsg(`💰 ${getRivalName()} pagó {${amount}} para que "${targetItem.card.name}" no se pierda.`);
+                sendResolvedCardAway();
+                return;
+              }
+              logMsg(`🚫 ${getRivalName()} no pagó {${amount}} — "${targetItem.card.name}" se pierde.`);
+              // sigue de largo: se contrarresta de verdad, como cualquier counter normal
             } else {
               const paid = tryAutoPayCounterTax(false, amount);
               if (paid) {
@@ -480,10 +502,18 @@ async function executeStackItem(item) {
         }
         // LÓGICA NUEVA: DESCARTE
         else if (effectToApply.type === 'discard') {
-          // FASE 4, ETAPA 5: si el objetivo es la mano del RIVAL en multiplayer, no tengo
-          // sus cartas de verdad — ver isHiddenRivalZone (main.js).
+          // BUGFIX (post-lanzamiento): antes esto se saltaba entero contra la mano oculta
+          // del rival en multiplayer. Ahora le pide a SU cliente real que aplique el
+          // descarte sobre su mano de verdad (resolveForcedDiscardOnRival, main.js). Acá SÍ
+          // se puede usar un await de verdad — a diferencia de las otras 2 ramas gemelas de
+          // esto (main.js y applyEffectToSingleTarget), esta vive dentro de
+          // executeStackItem, que ya es async y ya se espera correctamente desde
+          // resolveTopStackItem — no hace falta el patrón de "disparar y no esperar".
           if (isHiddenRivalZone(targetObj.isLocal)) {
-            logMsg(`⚠️ ${card.name}: el descarte forzado sobre tu rival todavía no se puede resolver en multiplayer (su mano es privada) — no se descartó ninguna carta.`);
+            const discardedNames = await resolveForcedDiscardOnRival(effectToApply.amount, card.name);
+            logMsg(discardedNames.length > 0
+              ? `🗑️ ¡${card.name}! ${targetName} descartó: ${discardedNames.join(', ')}.`
+              : `🗑️ ¡${card.name}! ${targetName} no tenía cartas para descartar.`);
           } else {
             const targetHand = targetObj.isLocal ? state.localHand : state.rivalHand;
             const targetGraveyard = targetObj.isLocal ? state.localGraveyard : state.rivalGraveyard;
@@ -914,10 +944,24 @@ async function executeStackItem(item) {
         const amount = effectToApply.amount || 1;
         let foundCount = 0;
         for (let i = 0; i < amount; i++) {
-          // Filtramos específicamente "básica", como dice el texto de estas cartas
-          // (antes buscaba cualquier tierra, incluidas duales o especiales).
-          const idx = deck.findIndex(c => c.type.includes('Tierra') && c.type.includes('básica'));
-          if (idx === -1) break;
+          // BUG 2 (post-lanzamiento): antes tomaba directo la PRIMERA tierra básica que
+          // encontraba en el mazo (mezclado al azar, sin dejarte elegir). Ahora, si sos vos
+          // (con pantalla real), te deja elegir el COLOR entre los que de verdad tenés
+          // disponibles en el mazo — recién ahí buscamos una tierra de ese color puntual.
+          const availableColors = [...new Set(
+            deck.filter(c => c.type.includes('Tierra') && c.type.includes('básica')).map(c => c.produces)
+          )];
+          if (availableColors.length === 0) break;
+
+          // El Tano (isLocal:false, sin UI real detrás) no puede "elegir" en una pantalla —
+          // toma el primer color disponible, mismo comportamiento que antes tenía TODO el
+          // mundo. Solo el jugador con pantalla de verdad ve el modal.
+          const chosenColor = isLocal
+            ? await new Promise(resolve => showRampLandChoiceModal(availableColors, card.name, resolve))
+            : availableColors[0];
+
+          const idx = deck.findIndex(c => c.type.includes('Tierra') && c.type.includes('básica') && c.produces === chosenColor);
+          if (idx === -1) break; // no debería pasar (chosenColor salió de availableColors), defensivo
           const landCard = deck.splice(idx, 1)[0];
           landZone.push({ card: landCard, tapped: !!landCard.entersTapped });
           foundCount++;

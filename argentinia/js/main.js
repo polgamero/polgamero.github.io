@@ -2,13 +2,13 @@ import { addToStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showEscapeExileModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showEscapeExileModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showCounterTaxDecisionModal } from './ui.js';
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
 import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
-import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc } from './matchSync.js';
+import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, otherRole } from './matchSync.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 
@@ -188,6 +188,27 @@ export const state = {
   cardsToDiscard: 0,
 
   damageModalOpen: false,
+  // BUG 2 (post-lanzamiento): mismo patrón que damageModalOpen — true mientras el modal de
+  // elegir color de tierra (ramp) está esperando tu click, para bloquear otras acciones
+  // mientras tanto (ver canPlayCard y el cálculo de btnEndTurn.disabled).
+  pendingRampChoice: false,
+
+  // Mecanismo GENERAL de decisión remota (contrarrestar-a-menos-que-pagues fue el primer
+  // caso, pero está pensado para cualquier futura decisión que le pertenezca al RIVAL en
+  // multiplayer) — ver requestRivalDecision/handleIncomingDecisionRequest más abajo.
+  // A diferencia de todos los demás pending*, ESTOS DOS SÍ viajan por Firestore (ver
+  // matchSync.js, SHARED_FIELDS) — son el canal de comunicación en sí entre los clientes.
+  pendingDecision: null,   // quien PREGUNTA publica acá: {type, forRole, requestId, ...datos}
+  decisionResponse: null,  // quien RESPONDE publica acá: {requestId, ...respuesta}
+  // Puramente local (nunca se publica) — true en MI pantalla mientras espero que el rival
+  // responda una pregunta mía. Bloquea mis propias otras acciones mientras tanto (ver
+  // canPlayCard y btnEndTurn.disabled).
+  awaitingRivalDecision: false,
+  // Puramente local — true en MI pantalla mientras el modal de responder una pregunta del
+  // rival está abierto (ver handleIncomingDecisionRequest). Aparte de pendingCounterUnlessPay
+  // a propósito: ese otro campo tiene su propia UI de estado permanente (el botón de la
+  // barra de estado, payCounterTax/declineCounterTax) — mezclarlos generaría UI duplicada.
+  respondingToDecision: false,
 
   // Contadores por turno para condiciones de gatillos (ej. Hinchada Fervorosa:
   // "si atacaste con 2 o más criaturas este turno"). Se resetean en el Enderezar de cada uno.
@@ -673,7 +694,101 @@ export async function publishMatchState() {
 // extractSharedStateFromPublicDoc, matchSync.js) y lo aplica sobre `state`, re-renderizando.
 // Devuelve la función de unsubscribe — apagar la escucha (salir de la partida, terminar el
 // juego) es responsabilidad de quien la llamó, no de esta función.
+// Vive FUERA de `state` a propósito — nunca se debe publicar una referencia a función a
+// Firestore. Guarda {requestId, resolve} de la Promise que requestRivalDecision está
+// esperando en este momento (a lo sumo una a la vez — la pila resuelve una cosa por vez).
+let pendingDecisionResolver = null;
+
+// MECANISMO GENERAL DE DECISIÓN REMOTA — pensado para reusarse en cualquier decisión futura
+// que le pertenezca al RIVAL durante una partida multiplayer (contrarrestar-a-menos-que-
+// pagues es el primer caso, pero el mismo canal sirve para lo que venga después: Ward,
+// elegir un modo, lo que sea). Se llama desde MI cliente cuando necesito preguntarle algo
+// al rival — publica la pregunta, se queda esperando (awaitingRivalDecision:true bloquea
+// mis propias otras acciones mientras tanto), y se resuelve solo cuando su respuesta llega
+// por sync (ver el listener en startListeningToMatch, más arriba).
+export async function requestRivalDecision(type, forRole, data) {
+  const requestId = `dec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  state.awaitingRivalDecision = true;
+  state.pendingDecision = { type, forRole, requestId, ...data };
+  state.decisionResponse = null; // limpio cualquier respuesta vieja de una pregunta anterior
+  render(); // publica YA (render() llama a publishMatchState) — no esperamos al próximo tick
+
+  const response = await new Promise(resolve => {
+    pendingDecisionResolver = { requestId, resolve };
+  });
+
+  state.pendingDecision = null;
+  state.awaitingRivalDecision = false;
+  render();
+  return response;
+}
+
+// BUGFIX (post-lanzamiento, Etapa 5 revisada): antes, un efecto que obligaba al RIVAL a
+// descartar en multiplayer simplemente se salteaba entero — ni una carta se iba a ningún
+// lado, con un aviso de "no se puede resolver". Esto era HONESTO (no fingía un resultado
+// falso) pero dejaba el efecto de la carta completamente sin cumplir, algo peor que
+// resolverlo bien. Reusa el mecanismo general de decisión remota: le pide al cliente REAL
+// del rival que aplique el descarte sobre SU mano real — su cementerio real se entera del
+// resultado por el sync normal de siempre (Graveyard es un campo público), así que del otro
+// lado el nombre de la carta descartada aparece de verdad, no un placeholder.
+export async function resolveForcedDiscardOnRival(amount, cardName) {
+  const rivalRole = otherRole(state.currentMatch.myRole);
+  const response = await requestRivalDecision('forced_discard', rivalRole, { amount, cardName });
+  return response.discardedNames || [];
+}
+
+// Se llama en la pantalla del RIVAL cuando les llega una pregunta para ellos — despacha
+// según el tipo. El patrón (aplicar/mostrar lo que corresponda, y al final llamar a
+// respondToDecision) es el mismo para cualquier tipo nuevo.
+function handleIncomingDecisionRequest(decision) {
+  if (decision.type === 'counter_unless_pay') {
+    state.respondingToDecision = true;
+    showCounterTaxDecisionModal(decision.amount, decision.targetCardName,
+      () => {
+        // "Pagar": tryAutoPayCounterTax(true, ...) — el `true` es correcto ACÁ porque esto
+        // corre en la pantalla de quien está respondiendo, así que "sus propias tierras"
+        // siempre son state.localLands para ellos mismos, sin importar qué rol tengan.
+        state.respondingToDecision = false;
+        const paid = tryAutoPayCounterTax(true, decision.amount);
+        respondToDecision(decision.requestId, { paid });
+      },
+      () => {
+        state.respondingToDecision = false;
+        respondToDecision(decision.requestId, { paid: false });
+      }
+    );
+  } else if (decision.type === 'forced_discard') {
+    // Sin modal a propósito — el descarte forzado ya es automático hoy, tanto para vos
+    // (mismo criterio: última carta de la mano) como para el Tano (al azar). Esto corre en
+    // MI PROPIA pantalla (yo soy quien recibió la pregunta), así que "mi mano" es de
+    // verdad state.localHand — nada de placeholders acá, esto SÍ tiene las cartas reales.
+    const discardedNames = [];
+    for (let i = 0; i < decision.amount && state.localHand.length > 0; i++) {
+      const discarded = state.localHand.splice(state.localHand.length - 1, 1)[0];
+      state.localGraveyard.push(discarded);
+      discardedNames.push(discarded.name);
+    }
+    logMsg(discardedNames.length > 0
+      ? `🗑️ ¡${decision.cardName} de tu rival te hizo descartar: ${discardedNames.join(', ')}!`
+      : `🗑️ ¡${decision.cardName} de tu rival intentó hacerte descartar, pero no tenías cartas!`);
+    render(); // publica mi mano/cementerio REALES ya actualizados, por el sync normal de siempre
+    respondToDecision(decision.requestId, { discardedNames });
+  }
+}
+
+// Publica mi respuesta a una pregunta que me llegó — el cliente que preguntó la recibe por
+// sync y resuelve su Promise pendiente (ver el listener en startListeningToMatch).
+function respondToDecision(requestId, responseData) {
+  state.decisionResponse = { requestId, ...responseData };
+  render();
+}
+
 export function startListeningToMatch(matchId, myRole) {
+  // Evita procesar la MISMA pregunta dos veces si el listener vuelve a disparar por algo
+  // no relacionado mientras pendingDecision sigue siendo la misma — sin esto, podría
+  // mostrarse el modal de "Pagar/No pagar" repetido.
+  const handledDecisionIds = new Set();
+
   return listenToMatch(matchId, (publicDoc) => {
     if (!publicDoc) return;
 
@@ -692,6 +807,22 @@ export function startListeningToMatch(matchId, myRole) {
 
     Object.assign(state, incoming);
     render();
+
+    // Mecanismo GENERAL de decisión remota (ver requestRivalDecision más abajo) — dos
+    // casos posibles acá: (a) me llegó la RESPUESTA a algo que YO le pregunté al rival
+    // (resuelve mi Promise pendiente y listo), o (b) me llegó una PREGUNTA para MÍ (le
+    // muestro la UI correspondiente). El requestId es lo que evita procesar ecos o la
+    // misma pregunta/respuesta más de una vez.
+    if (state.decisionResponse && pendingDecisionResolver && state.decisionResponse.requestId === pendingDecisionResolver.requestId) {
+      const resolver = pendingDecisionResolver;
+      pendingDecisionResolver = null;
+      resolver.resolve(state.decisionResponse);
+    }
+
+    if (state.pendingDecision && state.pendingDecision.forRole === myRole && !handledDecisionIds.has(state.pendingDecision.requestId)) {
+      handledDecisionIds.add(state.pendingDecision.requestId);
+      handleIncomingDecisionRequest(state.pendingDecision);
+    }
 
     // FASE 4, ETAPA 4: si lo que acaba de llegar deja "ambos pasaron prioridad" (consecutivePasses
     // >= 2) Y ahora es MI turno, tengo la autoridad para resolver qué pasa después (ver
@@ -1069,7 +1200,7 @@ export function activateLoyaltyAbility(pwItem, abilityIndex, isLocal) {
     logMsg("Solo podés activar la habilidad de un Planeswalker en tu propio turno.");
     return;
   }
-  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice || state.pendingKickerChoice) {
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.pendingRampChoice) {
     logMsg("Terminá lo que tenés pendiente antes de activar esto.");
     return;
   }
@@ -1741,7 +1872,7 @@ export function cancelPayment() {
 }
 
 export function canPlayCard(card) {
-  if (state.gameOver || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen) return false;
+  if (state.gameOver || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen || state.pendingRampChoice || state.awaitingRivalDecision || state.respondingToDecision) return false;
   if (state.priorityPlayer !== 'local') return false; // Solo si poseés prioridad
   
   // Flash: un permanente con esta keyword se puede jugar como si fuera un instantáneo,
@@ -1846,7 +1977,7 @@ export function castFromGraveyard(card, isLocal) {
   const abilityLabel = source === 'flashback' ? 'Flashback' : 'Escape';
 
   if (state.gameOver || state.priorityPlayer !== 'local') { logMsg("No tenés prioridad ahora mismo."); return; }
-  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice || state.pendingKickerChoice) {
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.pendingRampChoice) {
     logMsg(`Terminá lo que tenés pendiente antes de usar ${abilityLabel}.`);
     return;
   }
@@ -2141,6 +2272,7 @@ export function tapLocalLand(item) {
   if (state.pendingProliferateChoice) { logMsg("Terminá de elegir qué proliferar antes de otra cosa."); return; }
   if (state.pendingEscapeExileChoice) { logMsg("Terminá de elegir qué exiliar para el Escape antes de otra cosa."); return; }
   if (state.pendingKickerChoice) { logMsg("Terminá de decidir el Kicker antes de otra cosa."); return; }
+  if (state.pendingRampChoice) { logMsg("Terminá de elegir el color de tierra antes de otra cosa."); return; }
 
   // Tierras de utilidad (sin `produces`, con activatedAbility propia — ej. Biblioteca
   // Nacional) se activan como cualquier permanente con habilidad, no como fuente de maná.
@@ -2746,6 +2878,10 @@ export function handleSupportClick(item, isLocal, index) {
     logMsg("Terminá de decidir el Kicker antes de otra cosa.");
     return;
   }
+  if (state.pendingRampChoice) {
+    logMsg("Terminá de elegir el color de tierra antes de otra cosa.");
+    return;
+  }
 
   const card = item.card;
 
@@ -2857,10 +2993,23 @@ export function resolveEffectDirect(effect, cardName, isLocal) {
     const targetGrave = isLocal ? state.rivalGraveyard : state.localGraveyard;
     const opponentName = isLocal ? getRivalName() : "vos";
 
-    // FASE 4, ETAPA 5: si el objetivo es la mano del RIVAL en una partida multiplayer real,
-    // no tengo sus cartas de verdad — ver isHiddenRivalZone más arriba.
+    // BUGFIX (post-lanzamiento): antes, si el objetivo era la mano oculta del RIVAL en
+    // multiplayer, esto se saltaba entero — CERO cartas se iban a ningún lado. Ahora se le
+    // pide al cliente REAL del rival que aplique el descarte sobre su mano de verdad (ver
+    // resolveForcedDiscardOnRival, main.js). Sin `await` a propósito: resolveEffectDirect y
+    // sus 13+ invocadores (todo el sistema de gatillos del motor) son sincrónicos por
+    // diseño — convertirlos en async encadenaría decenas de sitios en todo el juego.
+    // awaitingRivalDecision (ya construido la ronda pasada) es lo que de verdad evita que
+    // pase algo raro mientras tanto: bloquea mis propias otras acciones hasta que la
+    // respuesta real vuelva. El mensaje del resultado llega un instante después (una vez
+    // que el viaje de red termina), no en la misma línea de log que el resto del efecto.
     if (isHiddenRivalZone(!isLocal)) {
-      logMsg(`⚠️ ${cardName}: el descarte forzado sobre tu rival todavía no se puede resolver en multiplayer (su mano es privada) — no se descartó ninguna carta.`);
+      resolveForcedDiscardOnRival(effect.amount, cardName).then(discardedNames => {
+        logMsg(discardedNames.length > 0
+          ? `🗑️ ¡${cardName}! ${opponentName} descartó: ${discardedNames.join(', ')}.`
+          : `🗑️ ¡${cardName}! ${opponentName} no tenía cartas para descartar.`);
+        render();
+      });
       return;
     }
 
