@@ -1197,7 +1197,7 @@ function injectMainMenuStyles() {
     .main-menu-buttons {
       position: absolute; left: 5vw; bottom: 8vh;
       display: flex; flex-direction: column; gap: 14px;
-      width: 300px;
+      width: 200px;
     }
     .main-menu-btn {
       display: block; width: 100%;
@@ -1206,7 +1206,7 @@ function injectMainMenuStyles() {
       border-radius: 10px;
       color: #f0e0b0;
       font-size: 17px; font-weight: 700; letter-spacing: 0.5px;
-      padding: 13px 20px; text-align: left;
+      padding: 7px 10px; text-align: left;
       cursor: pointer;
       transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
       box-shadow: 0 4px 16px rgba(0,0,0,0.4);
@@ -1217,7 +1217,7 @@ function injectMainMenuStyles() {
       box-shadow: 0 4px 22px rgba(212,175,55,0.35);
     }
     .main-menu-btn-primary {
-      border-color: #f0e0b0; font-size: 19px;
+      border-color: #f0e0b0; font-size: 18px;
       background: linear-gradient(180deg, rgba(212,175,55,0.25), rgba(11,19,14,0.96));
     }
     .main-menu-btn-primary:hover { box-shadow: 0 4px 26px rgba(212,175,55,0.55); }
@@ -1275,8 +1275,8 @@ function injectMainMenuStyles() {
     .main-menu-logout-btn:hover { color: #f0e0b0; }
     .main-menu-account-error { color: #e07a6b; font-size: 12px; max-width: 260px; text-align: right; }
     .main-menu-news {
-      position: absolute; bottom: 24px; right: 32px; width: 280px; max-height: 220px;
-      background: rgba(11,19,14,0.85); border: 2px solid rgba(212,175,55,0.35); border-radius: 12px;
+      position: absolute; bottom: 8vh; right: 32px; width: 350px; max-height: 220px;
+      background: rgba(11,19,14,0.85); border: 2px solid var(--gold); border-radius: 12px 0 0 12px;
       padding: 12px 14px; overflow-y: auto; z-index: 5;
     }
     .main-menu-news-title {
@@ -1478,7 +1478,7 @@ function injectEncyclopediaStyles() {
       flex: 1; overflow-y: auto;
       background: #F5F5F5;
       border: 2px solid rgba(212,175,55,0.3);
-      border-radius: 12px;
+      border-radius: 12px 0 0 12px;
       padding: 20px;
       display: flex; flex-wrap: wrap; align-content: flex-start; gap: 20px;
     }
@@ -1700,7 +1700,7 @@ function injectStoreStyles() {
     .store-section-title { color: #f0e0b0; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
     .store-section-desc { color: #cfe0d4; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
     .store-pack-visual {
-      width: 8em; height: 8em; object-fit: contain; margin: 0 auto 10px; display: block;
+      width: 20em; height: 20em; object-fit: contain; margin: 0 auto 10px; display: block;
       filter: drop-shadow(0 6px 16px rgba(212,175,55,0.3));
     }
     .store-buy-btn {
