@@ -1,5 +1,5 @@
 import { logMsg, els, showGameOverOverlay, render, updateAccountUI } from './ui.js';
-import { state, resolveEffectDirect, resolveScheduledReturns, getLocalPlayerName } from './main.js';
+import { state, resolveEffectDirect, resolveScheduledReturns, getLocalPlayerName, getRivalName } from './main.js';
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage } from './combatRules.js';
@@ -25,17 +25,17 @@ export function checkGameOver() {
 
   if (state.gameOver) return;
   if (state.localHP <= 0) {
-    state.gameOver = true; logMsg("💀 Te quedaste sin HP. ¡Ganó el Tano!"); showGameOverOverlay(false);
+    state.gameOver = true; logMsg(`💀 Te quedaste sin HP. ¡Ganó ${getRivalName()}!`); showGameOverOverlay(false);
     awardMatchEndPoints(false);
   } else if (state.rivalHP <= 0) {
-    state.gameOver = true; logMsg("🏆 ¡VICTORIA! Hiciste morder el polvo al Tano."); showGameOverOverlay(true);
+    state.gameOver = true; logMsg(`🏆 ¡VICTORIA! Hiciste morder el polvo a ${getRivalName()}.`); showGameOverOverlay(true);
     awardMatchEndPoints(true);
   } else if (state.localPoison >= 10) {
     // Condición de derrota ALTERNATIVA (regla 104.3c): no importa cuánto HP te quede.
-    state.gameOver = true; logMsg("☠️ ¡Te llegaron 10 contadores de Veneno! El Infectar del Tano te venció."); showGameOverOverlay(false);
+    state.gameOver = true; logMsg(`☠️ ¡Te llegaron 10 contadores de Veneno! El Infectar de ${getRivalName()} te venció.`); showGameOverOverlay(false);
     awardMatchEndPoints(false);
   } else if (state.rivalPoison >= 10) {
-    state.gameOver = true; logMsg("☠️ ¡El Tano llegó a 10 contadores de Veneno! Se murió infectado."); showGameOverOverlay(true);
+    state.gameOver = true; logMsg(`☠️ ¡${getRivalName()} llegó a 10 contadores de Veneno! Se murió infectado.`); showGameOverOverlay(true);
     awardMatchEndPoints(true);
   }
 }
@@ -129,7 +129,7 @@ export async function advanceStep() {
     const preventIdx = state.activeEffects.findIndex(e => e.effectType === 'prevent_attack' && e.targetPlayer === state.activePlayer);
     if (preventIdx !== -1) {
       const effect = state.activeEffects.splice(preventIdx, 1)[0]; // se consume una sola vez
-      logMsg(`🚫 ¡${effect.sourceName} sigue haciendo efecto! ${state.activePlayer === 'local' ? 'No podés' : 'El Tano no puede'} declarar combate este turno.`);
+      logMsg(`🚫 ¡${effect.sourceName} sigue haciendo efecto! ${state.activePlayer === 'local' ? 'No podés' : `${getRivalName()} no puede`} declarar combate este turno.`);
       nextPhase = 'main2'; // Salta directo a la segunda fase principal
     }
   }
@@ -176,7 +176,7 @@ export async function advanceStep() {
     return;
   }
 
-  logMsg(`📌 --- ${state.activePlayer === 'local' ? 'Tu' : 'Turno Tano'}: Paso de ${getPhaseName(state.phase)} ---`);
+  logMsg(`📌 --- ${state.activePlayer === 'local' ? 'Tu' : `Turno de ${getRivalName()}`}: Paso de ${getPhaseName(state.phase)} ---`);
 
   // Lógica de fases automáticas
   if (state.phase === 'untap') {
@@ -256,7 +256,7 @@ export async function passPriority(player) {
   
   if (state.priorityPlayer !== player) return;
 
-  logMsg(`💬 ${player === 'local' ? 'Pasaste' : 'El Tano pasó'} prioridad.`);
+  logMsg(`💬 ${player === 'local' ? 'Pasaste' : `${getRivalName()} pasó`} prioridad.`);
   state.consecutivePasses++;
 
   if (state.consecutivePasses >= 2) {
@@ -336,7 +336,7 @@ function executeUntapStep() {
     state.rivalSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });
     state.rivalPlaneswalkers.forEach(pw => { pw.abilityUsedThisTurn = false; });
   }
-  logMsg(`🔄 Permanentes enderezados para ${isLocal ? getLocalPlayerName() : 'El Tano'}.`);
+  logMsg(`🔄 Permanentes enderezados para ${isLocal ? getLocalPlayerName() : getRivalName()}.`);
 }
 
 // Habilidad Disparada por fase (ej. "Al comienzo de tu mantenimiento, ganás 1 vida").

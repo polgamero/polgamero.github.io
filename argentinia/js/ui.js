@@ -1,6 +1,7 @@
 import {
   state,
   getLocalPlayerName,
+  getRivalName,
   getEffectivePower,
   getEffectiveToughness,
   getEffectiveKeywords,
@@ -32,7 +33,7 @@ import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, craftEnhancement, deleteUserProfile, createDeck, saveGameConfig, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, craftEnhancement, deleteUserProfile, createDeck, updateDeck, deleteDeck, saveGameConfig, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, applyGameConfig, getDefaultGameConfig } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -207,6 +208,7 @@ export function updatePilesUI() {
 // mostrando su texto completo — se elige ANTES de pagar nada, así que acá no hay ningún
 // chequeo de maná ni de targets todavía (eso viene después, ya con el modo fijado).
 export function showModalSpellChoice(card, onConfirm, onCancel) {
+  injectMulliganStyles(); // BUGFIX: blindaje defensivo, ver el comentario en showDeckNameModal
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
 
@@ -243,6 +245,7 @@ export function showModalSpellChoice(card, onConfirm, onCancel) {
 }
 
 export function showXValueModal(card, onConfirm, onCancel) {
+  injectMulliganStyles();
   const untappedLands = state.localLands.filter(l => !l.tapped).length;
   const untappedRocks = state.localSupport.filter(s => !s.tapped && (s.card.produces || s.card.producesOptions)).length;
   const baseCost = { ...card };
@@ -297,6 +300,7 @@ export function showXValueModal(card, onConfirm, onCancel) {
 // varios modos), acá es sí/no sobre pagar más por un bonus extra, y el efecto base se
 // lanza de todos modos elijas lo que elijas. Mismo esqueleto visual que showModalSpellChoice.
 export function showKickerModal(card, onConfirm, onCancel) {
+  injectMulliganStyles();
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
 
@@ -338,6 +342,7 @@ export function showKickerModal(card, onConfirm, onCancel) {
 // FASE 2: confirmación antes de abandonar — es una acción con penalidad real de puntos, así
 // que nunca se ejecuta con un solo click. Mismo esqueleto que showKickerModal.
 export function showAbandonConfirmModal(onConfirm, onCancel) {
+  injectMulliganStyles();
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
 
@@ -368,6 +373,7 @@ export function showAbandonConfirmModal(onConfirm, onCancel) {
 }
 
 export function showLoyaltyAbilityModal(pwItem, isLocal) {
+  injectMulliganStyles();
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
 
@@ -412,8 +418,9 @@ export function showLoyaltyAbilityModal(pwItem, isLocal) {
 }
 
 export function openGraveyardModal(isLocal) {
+  injectMulliganStyles();
   const gyArray = isLocal ? state.localGraveyard : state.rivalGraveyard;
-  const title = isLocal ? "Tu Cementerio" : "Cementerio del Tano";
+  const title = isLocal ? "Tu Cementerio" : `Cementerio de ${getRivalName()}`;
 
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
@@ -489,8 +496,9 @@ export function openGraveyardModal(isLocal) {
 }
 
 export function openExileModal(isLocal) {
+  injectMulliganStyles();
   const exileArray = isLocal ? state.localExile : state.rivalExile;
-  const title = isLocal ? "Tu Exilio" : "Exilio del Tano";
+  const title = isLocal ? "Tu Exilio" : `Exilio de ${getRivalName()}`;
 
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
@@ -1173,7 +1181,7 @@ function injectMainMenuStyles() {
       display: flex; align-items: center; gap: 4px;
     }
     .coin-icon, .ficha-icon {
-      width: 1.1em; height: 1.1em; object-fit: contain; vertical-align: -0.15em; flex-shrink: 0;
+      width: 3em; height: 3em; object-fit: contain; vertical-align: middle; flex-shrink: 0;
     }
     .main-menu-logout-btn {
       background: none; border: none; color: #b8adc4; font-size: 11px;
@@ -1607,7 +1615,7 @@ function injectStoreStyles() {
     .store-section-title { color: #f0e0b0; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
     .store-section-desc { color: #cfe0d4; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
     .store-pack-visual {
-      font-size: 64px; margin-bottom: 10px;
+      width: 8em; height: 8em; object-fit: contain; margin: 0 auto 10px; display: block;
       filter: drop-shadow(0 6px 16px rgba(212,175,55,0.3));
     }
     .store-buy-btn {
@@ -1691,6 +1699,8 @@ export function showStoreScreen(onBack) {
         <li>Ganarle al Tano en <strong>Difícil</strong> — <strong>${POINTS.winVsTanoDificil} puntos</strong></li>
         <li>Ganarle al Tano en <strong>Fácil</strong> — <strong>${POINTS.winVsTanoFacil} puntos</strong></li>
         <li>Perder una partida — <strong>${POINTS.lossVsTano} puntos</strong> igual, por animarte a jugar</li>
+        <li>Ganarle a un rival de verdad (Multijugador) — <strong>${POINTS.winVsHumano} puntos</strong></li>
+        <li>Perder contra un rival de verdad — <strong>${POINTS.lossVsHumano} puntos</strong> igual</li>
         <li class="store-points-penalty">Abandonar a mitad de partida — <strong>${POINTS.abandonPenalty} puntos</strong></li>
       </ul>
     </div>
@@ -1717,7 +1727,7 @@ export function showStoreScreen(onBack) {
         <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${fichas}</div><div class="store-balance-label">Fichas</div></div>
       </div>
       <div class="store-section">
-        <div class="store-pack-visual">📦</div>
+        <img class="store-pack-visual" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">
         <div class="store-section-title">Sobre — ${PACK_COST} puntos</div>
         <div class="store-section-desc">15 cartas (comunes, poco comunes, y una rara garantizada con chance de mítica) + 1 Ficha.</div>
         <button class="store-buy-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>Comprar sobre</button>
@@ -1959,6 +1969,14 @@ function injectDeckBuilderStyles() {
 // no vacío sirve (sin la exigencia de escribir una palabra exacta como en borrar cuenta —
 // acá no hay nada irreversible todavía, recién se guarda de verdad al final del constructor).
 export function showDeckNameModal(defaultName, onConfirm, onCancel) {
+  // BUGFIX: este modal usa clases de otros módulos (.store-buy-btn, .mulligan-btn,
+  // .encyclopedia-search-input) sin nunca haberlas inyectado — si nadie más lo hizo antes
+  // en esa sesión de navegación, los botones salían con el estilo por defecto del
+  // navegador (gris, sin bordes redondeados, texto negro). Con esto, siempre están.
+  injectStoreStyles();
+  injectMulliganStyles();
+  injectEncyclopediaStyles();
+
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
 
@@ -1966,7 +1984,7 @@ export function showDeckNameModal(defaultName, onConfirm, onCancel) {
     <div class="gy-modal-content" style="max-width: 420px;">
       <div class="gy-modal-header"><h3>Nombrá tu mazo</h3></div>
       <div style="display:flex; flex-direction:column; gap:12px; padding: 16px;">
-        <input type="text" class="encyclopedia-search-input" id="deckname-input" value="${defaultName}" maxlength="40" style="margin-bottom:0;">
+        <input type="text" class="encyclopedia-search-input" id="deckname-input" value="${defaultName}" maxlength="30" style="margin-bottom:0;">
         <button class="store-buy-btn" id="deckname-confirm-btn">Continuar</button>
         <button id="deckname-cancel-btn" class="mulligan-btn mulligan-btn-mull">Cancelar</button>
       </div>
@@ -1995,7 +2013,11 @@ export function showDeckNameModal(defaultName, onConfirm, onCancel) {
 // la derecha. Nunca deja agregar más copias de una carta de las que realmente tenés — el
 // tope real y definitivo lo pone igual la transacción de Firestore (createDeck), esto es
 // solo para que la experiencia de armar no se sienta rota antes de llegar a guardar.
-export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
+// FASE 3, ETAPA 2 (extendido más adelante para editar): sin existingDeck, arma un mazo
+// nuevo desde cero (comportamiento de siempre). Con existingDeck, arranca con sus cartas
+// ya puestas — mismas reglas, mismo pool, mismo tope — y al guardar actualiza ESE mazo en
+// vez de crear uno nuevo.
+export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck) {
   injectEncyclopediaStyles();
   injectDeckBuilderStyles();
 
@@ -2004,7 +2026,10 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
 
   let activeTab = 'criaturas';
   let searchQuery = '';
-  const deckCounts = {}; // cardId -> cantidad agregada al mazo en construcción
+  const deckCounts = {}; // cardId (o cardId::enhanced) -> cantidad agregada al mazo en construcción
+  if (existingDeck) {
+    (existingDeck.cardIds || []).forEach(id => { deckCounts[id] = (deckCounts[id] || 0) + 1; });
+  }
 
   const overlay = document.createElement('div');
   overlay.id = 'deckbuilder-overlay';
@@ -2016,7 +2041,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
   overlay.innerHTML = `
     <div class="deckbuilder-header">
       <button class="encyclopedia-back-btn" id="deckbuilder-cancel">← Cancelar</button>
-      <div class="deckbuilder-name">${deckName}</div>
+      <div class="deckbuilder-name">${existingDeck ? '✏️ ' : ''}${deckName}</div>
       <button class="store-buy-btn" id="deckbuilder-save" disabled>💾 Guardar mazo</button>
     </div>
     <div class="store-error-msg" id="deckbuilder-error" style="text-align:left;"></div>
@@ -2209,7 +2234,9 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
     const saveBtn = overlay.querySelector('#deckbuilder-save');
     saveBtn.disabled = true;
     try {
-      const updated = await createDeck(state.currentUser.uid, deckName, cardIds);
+      const updated = existingDeck
+        ? await updateDeck(state.currentUser.uid, existingDeck.id, deckName, cardIds)
+        : await createDeck(state.currentUser.uid, deckName, cardIds);
       state.userProfile = updated;
       overlay.remove();
       onSaved();
@@ -2235,9 +2262,15 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel) {
 // ELIGE ese mazo para arrancar la partida, no abre el detalle de solo lectura. Sin sesión,
 // o sin ningún mazo guardado todavía, ni se llega a esta pantalla — el llamador
 // (showMainMenu → boot() en main.js) decide eso antes de invocarla.
-export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom) {
+// FEATURE (#9): "onPlayRandom" ahora es OPCIONAL — cuando no se pasa (logueado, jugando en
+// Solitario), el link de "jugar con un mazo random" directamente no se muestra: estando
+// logueado, siempre elegís uno de tus propios mazos. Sin sesión, el llamador ni siquiera
+// pasa por acá (no hay mazos guardados que elegir). También se suma "Volver" — antes este
+// modal no tenía ninguna salida más que elegir un mazo o clickear random.
+export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel) {
   injectMyDecksStyles();
   injectStoreStyles(); // reusa .store-back-link para el link de "jugar random"
+  injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn para "Volver"
 
   const overlay = document.createElement('div');
   overlay.id = 'mydecks-overlay';
@@ -2253,13 +2286,16 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom) {
 
   overlay.innerHTML = `
     <div class="mydecks-header">
+      <button class="encyclopedia-back-btn" id="playpicker-back">← Volver</button>
       <div class="mydecks-title">¿Con qué mazo jugás?</div>
     </div>
     <div class="mydecks-body">
       <div class="mydecks-slots-grid">${slotsHTML}</div>
+      ${onPlayRandom ? `
       <div style="text-align:center; margin-top: 24px;">
         <button class="store-back-link" id="playpicker-random">🎲 Jugar con un mazo random en cambio</button>
       </div>
+      ` : ''}
     </div>
   `;
   document.body.appendChild(overlay);
@@ -2275,9 +2311,16 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom) {
     });
   });
 
-  overlay.querySelector('#playpicker-random').addEventListener('click', () => {
+  if (onPlayRandom) {
+    overlay.querySelector('#playpicker-random').addEventListener('click', () => {
+      overlay.remove();
+      onPlayRandom();
+    });
+  }
+
+  overlay.querySelector('#playpicker-back').addEventListener('click', () => {
     overlay.remove();
-    onPlayRandom();
+    if (onCancel) onCancel();
   });
 }
 
@@ -2382,10 +2425,38 @@ export function showMyDecksScreen(onBack) {
       <div class="mydecks-detail-header">
         <button class="store-back-link" id="mydecks-detail-back">← Mis Mazos</button>
         <div class="mydecks-detail-title">${deck.name} — ${cards.length} cartas</div>
+        <button class="admin-save-btn" id="mydecks-detail-edit" style="width:auto; padding:8px 18px;">✏️ Editar</button>
+        <button class="delete-confirm-btn" id="mydecks-detail-delete" style="width:auto; padding:8px 18px;">🗑️ Eliminar</button>
       </div>
       <div class="encyclopedia-grid-box" id="mydecks-detail-grid"></div>
     `;
     body.querySelector('#mydecks-detail-back').addEventListener('click', renderListView);
+
+    // "Editar": reabre el constructor con este mazo precargado — al guardar, actualiza
+    // ESTE mazo en vez de crear uno nuevo (ver updateDeck, firebaseClient.js).
+    body.querySelector('#mydecks-detail-edit').addEventListener('click', () => {
+      showDeckBuilderScreen(deck.name, renderListView, () => renderDetailView(deck), deck);
+    });
+
+    // "Eliminar": pide confirmación con texto escrito (mismo criterio que borrar la
+    // cuenta — es irreversible) y nunca deja la cuenta sin ningún mazo.
+    body.querySelector('#mydecks-detail-delete').addEventListener('click', () => {
+      const currentDecks = (state.userProfile.decks || []);
+      if (currentDecks.length <= 1) {
+        showSimpleAlertModal('No podés eliminar tu único mazo — siempre tiene que quedar al menos uno guardado.');
+        return;
+      }
+      showDeleteDeckConfirmModal(deck.name, async () => {
+        try {
+          const updated = await deleteDeck(state.currentUser.uid, deck.id);
+          state.userProfile = updated;
+          renderListView();
+        } catch (err) {
+          console.error('No se pudo eliminar el mazo:', err);
+          showSimpleAlertModal(err.message || 'No se pudo eliminar el mazo. Probá de nuevo.');
+        }
+      });
+    });
 
     const grid = body.querySelector('#mydecks-detail-grid');
     cards.forEach(({ displayCard, isEnhanced }) => {
@@ -2587,8 +2658,8 @@ export function showAdminPanel(onBack) {
     { section: 'Puntos', id: 'winVsTanoFacil', label: 'Victoria vs Tano (Fácil)', value: POINTS.winVsTanoFacil, step: '1' },
     { section: 'Puntos', id: 'winVsTanoDificil', label: 'Victoria vs Tano (Difícil)', value: POINTS.winVsTanoDificil, step: '1' },
     { section: 'Puntos', id: 'lossVsTano', label: 'Derrota vs Tano', value: POINTS.lossVsTano, step: '1' },
-    { section: 'Puntos', id: 'winVsHumano', label: 'Victoria vs Humano (PvP, a futuro)', value: POINTS.winVsHumano, step: '1' },
-    { section: 'Puntos', id: 'lossVsHumano', label: 'Derrota vs Humano (PvP, a futuro)', value: POINTS.lossVsHumano, step: '1' },
+    { section: 'Puntos', id: 'winVsHumano', label: 'Victoria vs Humano (PvP)', value: POINTS.winVsHumano, step: '1' },
+    { section: 'Puntos', id: 'lossVsHumano', label: 'Derrota vs Humano (PvP)', value: POINTS.lossVsHumano, step: '1' },
     { section: 'Puntos', id: 'abandonPenalty', label: 'Penalidad por abandonar', value: POINTS.abandonPenalty, step: '1' },
     { section: 'Sobres', id: 'packCost', label: 'Costo del sobre (puntos)', value: PACK_COST, step: '1' },
     { section: 'Sobres', id: 'mythicChancePercent', label: 'Probabilidad de carta mítica (%)', value: +(MYTHIC_CHANCE_IN_RARE_SLOT * 100).toFixed(2), step: '0.1' },
@@ -3057,7 +3128,11 @@ export function showMultiplayerLobby(onBack, onMatched) {
     const myUid = state.currentUser.uid;
     const myRole = match.hostUid === myUid ? 'host' : 'guest';
     const rivalUid = myRole === 'host' ? match.guestUid : match.hostUid;
-    const rivalName = (match.players && match.players[rivalUid] && match.players[rivalUid].displayName) || 'tu rival';
+    // BUGFIX: mismo criterio de privacidad que getLocalPlayerName (main.js) — solo el
+    // nombre de pila, nunca el apellido completo de Google. Antes esto mostraba el
+    // displayName entero sin recortar.
+    const rivalFullName = (match.players && match.players[rivalUid] && match.players[rivalUid].displayName) || '';
+    const rivalName = (rivalFullName.trim().split(/\s+/)[0]) || 'tu rival';
 
     body.innerHTML = `
       <div class="mp-section">
@@ -3068,7 +3143,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
     `;
     body.querySelector('#mp-start').addEventListener('click', () => {
       overlay.remove();
-      onMatched(match.code, myRole);
+      onMatched(match.code, myRole, rivalName);
     });
   }
 
@@ -3238,10 +3313,63 @@ export function showOptionsMenu(onBack) {
   });
 }
 
+// Alerta simple de un solo botón — para avisos que no necesitan "sí/no", solo "entendido"
+// (ej. "no podés eliminar tu único mazo"). Distinto de showAbandonConfirmModal y compañía,
+// que sí piden una decisión.
+export function showSimpleAlertModal(message) {
+  injectMulliganStyles();
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width: 420px;">
+      <div style="display:flex; flex-direction:column; gap:14px; padding: 16px;">
+        <p style="color:#cfe0d4; font-size: 14px; margin: 0; line-height: 1.5;">${message}</p>
+        <button id="simple-alert-ok" class="mulligan-btn mulligan-btn-keep">Entendido</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalOverlay);
+  modalOverlay.querySelector('#simple-alert-ok').addEventListener('click', () => modalOverlay.remove());
+}
+
+// Confirmar eliminar un mazo — simple sí/no, a diferencia de borrar la cuenta (esto no pide
+// escribir nada): perder un mazo es recuperable rearmándolo desde tu colección, perder la
+// cuenta entera no.
+export function showDeleteDeckConfirmModal(deckName, onConfirm, onCancel) {
+  injectMulliganStyles();
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width: 440px;">
+      <div class="gy-modal-header"><h3>🗑️ Eliminar "${escapeHtml(deckName)}"</h3></div>
+      <div style="display:flex; flex-direction:column; gap:12px; padding: 16px;">
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0;">Esto borra el mazo para siempre. No se puede deshacer.</p>
+        <button id="delete-deck-confirm-btn" class="delete-confirm-btn">Sí, eliminar</button>
+        <button id="delete-deck-cancel-btn" class="mulligan-btn mulligan-btn-mull">Cancelar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalOverlay);
+  modalOverlay.querySelector('#delete-deck-confirm-btn').addEventListener('click', () => {
+    modalOverlay.remove();
+    onConfirm();
+  });
+  modalOverlay.querySelector('#delete-deck-cancel-btn').addEventListener('click', () => {
+    modalOverlay.remove();
+    if (onCancel) onCancel();
+  });
+}
+
 // Confirmación con texto escrito a propósito (no un simple sí/no) — borrar la cuenta es
 // irreversible y destruye colección + puntos + Fichas + mazos, así que el botón de
 // confirmar se queda deshabilitado hasta que el jugador escriba la palabra exacta.
 export function showDeleteAccountModal(onConfirm, onCancel) {
+  // BUGFIX: el botón "Cancelar" usa .mulligan-btn sin nunca haberla inyectado — mismo caso
+  // que showDeckNameModal. .delete-confirm-input/.delete-confirm-btn ya venían bien porque
+  // viven en injectMainMenuStyles(), que ya corrió antes para llegar hasta acá (siempre se
+  // pasa por el menú principal para abrir Opciones).
+  injectMulliganStyles();
+
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
 
@@ -3278,8 +3406,9 @@ export function showDeleteAccountModal(onConfirm, onCancel) {
   });
 }
 
-export function showDeckSelectionModal(onChoose, titleOverrides = {}) {
+export function showDeckSelectionModal(onChoose, titleOverrides = {}, onCancel) {
   injectDeckSelectionStyles();
+  injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn para "Volver"
 
   const overlay = document.createElement('div');
   overlay.id = 'deck-select-overlay';
@@ -3314,8 +3443,12 @@ export function showDeckSelectionModal(onChoose, titleOverrides = {}) {
     `;
   }).join('');
 
+  // BUGFIX (#9): antes este modal no tenía NINGUNA salida — ni back, ni cancelar. "Volver"
+  // es opcional en su comportamiento (si no hay onCancel, solo cierra el modal), pero el
+  // botón siempre está.
   overlay.innerHTML = `
     <div class="deck-select-panel">
+      <button class="encyclopedia-back-btn" id="deckselect-back" style="margin-bottom: 12px;">← Volver</button>
       <div class="deck-select-title">${title}</div>
       <div class="deck-select-subtitle">${subtitle}</div>
       <div class="deck-select-mono-row">${monoButtonsHTML}</div>
@@ -3325,6 +3458,11 @@ export function showDeckSelectionModal(onChoose, titleOverrides = {}) {
   `;
 
   document.body.appendChild(overlay);
+
+  overlay.querySelector('#deckselect-back').addEventListener('click', () => {
+    overlay.remove();
+    if (onCancel) onCancel();
+  });
 
   overlay.querySelectorAll('[data-mono]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -3557,7 +3695,7 @@ export function showProliferateModal(eligible, onConfirm) {
       cardEl.innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:6px; color:#cfe0d4; text-align:center; padding: 8px;">
           <span style="font-size:28px;">☠️</span>
-          <span style="font-size:12px; font-weight:bold;">Veneno de ${entry.ownerIsLocal ? 'Vos' : 'El Tano'}</span>
+          <span style="font-size:12px; font-weight:bold;">Veneno de ${entry.ownerIsLocal ? 'Vos' : getRivalName()}</span>
           <span style="font-size:11px; color:#a89bb5;">(${poisonCount} actual)</span>
         </div>
       `;
@@ -3667,7 +3805,7 @@ export function showBottomCardsModal(hand, countToBottom, onConfirm) {
 }
 
 export function showGameOverOverlay(didWin) {
-  els.gameOverTitle.textContent = didWin ? "🏆 ¡Ganaste! Hiciste morder el polvo al Tano." : "💀 Perdiste. El Tano te ganó esta partida.";
+  els.gameOverTitle.textContent = didWin ? `🏆 ¡Ganaste! Hiciste morder el polvo a ${getRivalName()}.` : `💀 Perdiste. ${getRivalName()} te ganó esta partida.`;
   els.gameOverOverlay.classList.remove('hidden'); els.btnEndTurn.disabled = true;
 }
 
@@ -3780,7 +3918,7 @@ export function render() {
   // --- 1. GESTIÓN VISUAL DEL HUD Y FASES ---
   const turnOwnerBadge = document.getElementById('turn-owner-badge');
   if (turnOwnerBadge) {
-      turnOwnerBadge.textContent = state.activePlayer === 'local' ? `Turno de: ${getLocalPlayerName()}` : "Turno de: El Tano";
+      turnOwnerBadge.textContent = state.activePlayer === 'local' ? `Turno de: ${getLocalPlayerName()}` : `Turno de: ${getRivalName()}`;
       turnOwnerBadge.className = `turn-owner-badge ${state.activePlayer === 'local' ? 'local-active' : 'rival-active'}`;
   }
 
@@ -3919,9 +4057,18 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null)) {
     cancelPayment(); 
   }
-  
+
+  // BUGFIX: la barra espaciadora es el atajo de "Pasar Turno", pero antes se activaba
+  // SIEMPRE, sin importar dónde estuviera el foco — así que escribir un espacio en
+  // CUALQUIER campo de texto de la página (ej. el "Motivo" del panel de Admin, o el nombre
+  // de un mazo) quedaba bloqueado, porque el atajo llamaba a preventDefault() de todos
+  // modos. Ahora se ignora por completo mientras el foco esté en un input/textarea/campo
+  // editable — ahí la barra espaciadora tiene que escribir un espacio de verdad.
+  const activeTag = document.activeElement && document.activeElement.tagName;
+  const isTypingInField = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable);
+
   // Pasar prioridad / Avanzar turno con la barra espaciadora
-  if (e.code === 'Space') {
+  if (e.code === 'Space' && !isTypingInField) {
     // Si el botón está habilitado y visible, simulamos el click
     if (!els.btnEndTurn.disabled && !els.btnEndTurn.classList.contains('hidden')) {
       e.preventDefault(); // Evitamos que la pantalla scrollee para abajo
@@ -3954,8 +4101,8 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
   // sin importar que el ataque estuviera redirigido a un Planeswalker (attackerItem.attackTarget)
   // — los mensajes de log del resto del motor (combatRules.js) ya distinguían esto bien, pero
   // acá, en el ÚNICO lugar donde el jugador decide la distribución, se quedaba desactualizado.
-  const trampleTargetName = attackerItem.attackTarget ? attackerItem.attackTarget.card.name : 'al Tano';
-  const trampleLabel = attackerItem.attackTarget ? `a ${trampleTargetName}` : trampleTargetName;
+  const trampleTargetName = attackerItem.attackTarget ? attackerItem.attackTarget.card.name : getRivalName();
+  const trampleLabel = `a ${trampleTargetName}`;
 
   function lethalNeeded(bItem) {
     const remaining = Math.max(0, bItem.card.toughness - (bItem.damageTaken || 0));

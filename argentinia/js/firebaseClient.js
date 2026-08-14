@@ -204,6 +204,64 @@ export async function craftEnhancement(uid, cardId, keyword, fichaCost) {
 // validado DENTRO de la transacción — no confía en que el cliente ya haya chequeado esto,
 // lo vuelve a comprobar del lado "servidor": máximo de mazos, nombre no vacío, al menos
 // una carta, y que ninguna carta use más copias de las que realmente están en tu colección.
+// Valida que cardIds represente un mazo legal para esta cuenta (tamaño exacto, posesión
+// real, tope de copias, reglas de la copia mejorada) — compartido entre createDeck y
+// updateDeck, porque las reglas son EXACTAMENTE las mismas para crear un mazo nuevo o
+// editar uno existente. Tira una excepción con mensaje claro si algo no cumple.
+function validateDeckCards(data, name, cardIds) {
+  if (!name || !name.trim()) throw new Error('El mazo necesita un nombre.');
+  // BUGFIX: el input del cliente ya limita a 30 caracteres (maxlength), pero esto es la
+  // defensa real del lado del servidor — un nombre más largo rompía el layout de la
+  // tarjeta del mazo en "Mis Mazos" (se salía de la caja).
+  if (name.trim().length > 30) throw new Error('El nombre del mazo no puede tener más de 30 caracteres.');
+  // FASE 3, ETAPA 3: tamaño de mazo rígido — ni de más, ni de menos. (Sí, en el
+  // reglamento real de MTG 60 es un PISO, no un tope — acá se decidió a propósito que sea
+  // exacto para esta versión del juego.)
+  if (!cardIds || cardIds.length !== DECK_SIZE_EXACT) {
+    throw new Error(`El mazo tiene que tener exactamente ${DECK_SIZE_EXACT} cartas (tiene ${cardIds ? cardIds.length : 0}).`);
+  }
+
+  const ownedCounts = {};
+  (data.collection || []).forEach(id => { ownedCounts[id] = (ownedCounts[id] || 0) + 1; });
+
+  // FASE 3 (revisión): "crea_028::enhanced" representa la copia puntual mejorada por
+  // Fichas — para el tope de copias/posesión cuenta como la MISMA carta base que
+  // "crea_028" (no podés tener 4 planas + 1 mejorada = 5, seguiría violando la 100.2a),
+  // pero se valida aparte que: 1) esa carta REALMENTE tenga una mejora crafteada, y
+  // 2) nunca se pida más de 1 copia mejorada de la misma carta (solo existe 1).
+  const enhancements = data.enhancements || {};
+  const requestedCounts = {};
+  const enhancedSlotCounts = {};
+  cardIds.forEach(id => {
+    const isEnhancedSlot = id.endsWith(ENHANCED_SUFFIX);
+    const baseId = isEnhancedSlot ? id.slice(0, -ENHANCED_SUFFIX.length) : id;
+    requestedCounts[baseId] = (requestedCounts[baseId] || 0) + 1;
+    if (isEnhancedSlot) enhancedSlotCounts[baseId] = (enhancedSlotCounts[baseId] || 0) + 1;
+  });
+
+  for (const [baseId, count] of Object.entries(requestedCounts)) {
+    if (count > (ownedCounts[baseId] || 0)) throw new Error('Estás usando más copias de una carta de las que tenés.');
+    // Regla oficial 100.2a: máximo 4 copias de una misma carta, salvo Tierras básicas
+    // (esas no tienen límite, ni acá ni en MTG real).
+    const cardDef = cardDb.getById(baseId);
+    const isBasicLand = cardDef && cardDef.type.includes('básica');
+    if (!isBasicLand && count > MAX_COPIES_PER_CARD) {
+      throw new Error(`No podés tener más de ${MAX_COPIES_PER_CARD} copias de la misma carta (salvo Tierras básicas)${cardDef ? `: ${cardDef.name}` : ''}.`);
+    }
+  }
+  for (const [baseId, count] of Object.entries(enhancedSlotCounts)) {
+    if (!enhancements[baseId]) throw new Error('Estás usando la copia mejorada de una carta que no tiene ninguna mejora crafteada.');
+    if (count > 1) throw new Error('Solo puede haber una copia mejorada de la misma carta en el mazo.');
+  }
+
+  // Tope total de cartas mejoradas por mazo (admin-editable, default 3) — sin esto, un
+  // jugador con muchas Fichas podría armar un mazo entero de bombas mejoradas.
+  const totalEnhancedInDeck = Object.values(enhancedSlotCounts).reduce((sum, n) => sum + n, 0);
+  if (totalEnhancedInDeck > MAX_ENHANCED_CARDS_PER_DECK) {
+    throw new Error(`No podés tener más de ${MAX_ENHANCED_CARDS_PER_DECK} cartas mejoradas en el mismo mazo.`);
+  }
+}
+
 export async function createDeck(uid, name, cardIds) {
   const ref = doc(db, 'users', uid);
   return runTransaction(db, async (tx) => {
@@ -213,56 +271,58 @@ export async function createDeck(uid, name, cardIds) {
     const decks = data.decks || [];
 
     if (decks.length >= 5) throw new Error('Ya tenés el máximo de 5 mazos.');
-    if (!name || !name.trim()) throw new Error('El mazo necesita un nombre.');
-    // FASE 3, ETAPA 3: tamaño de mazo rígido — ni de más, ni de menos. (Sí, en el
-    // reglamento real de MTG 60 es un PISO, no un tope — acá se decidió a propósito que
-    // sea exacto para esta versión del juego.)
-    if (!cardIds || cardIds.length !== DECK_SIZE_EXACT) {
-      throw new Error(`El mazo tiene que tener exactamente ${DECK_SIZE_EXACT} cartas (tiene ${cardIds ? cardIds.length : 0}).`);
-    }
-
-    const ownedCounts = {};
-    (data.collection || []).forEach(id => { ownedCounts[id] = (ownedCounts[id] || 0) + 1; });
-
-    // FASE 3 (revisión): "crea_028::enhanced" representa la copia puntual mejorada por
-    // Fichas — para el tope de copias/posesión cuenta como la MISMA carta base que
-    // "crea_028" (no podés tener 4 planas + 1 mejorada = 5, seguiría violando la 100.2a),
-    // pero se valida aparte que: 1) esa carta REALMENTE tenga una mejora crafteada, y
-    // 2) nunca se pida más de 1 copia mejorada de la misma carta (solo existe 1).
-    const enhancements = data.enhancements || {};
-    const requestedCounts = {};
-    const enhancedSlotCounts = {};
-    cardIds.forEach(id => {
-      const isEnhancedSlot = id.endsWith(ENHANCED_SUFFIX);
-      const baseId = isEnhancedSlot ? id.slice(0, -ENHANCED_SUFFIX.length) : id;
-      requestedCounts[baseId] = (requestedCounts[baseId] || 0) + 1;
-      if (isEnhancedSlot) enhancedSlotCounts[baseId] = (enhancedSlotCounts[baseId] || 0) + 1;
-    });
-
-    for (const [baseId, count] of Object.entries(requestedCounts)) {
-      if (count > (ownedCounts[baseId] || 0)) throw new Error('Estás usando más copias de una carta de las que tenés.');
-      // Regla oficial 100.2a: máximo 4 copias de una misma carta, salvo Tierras básicas
-      // (esas no tienen límite, ni acá ni en MTG real).
-      const cardDef = cardDb.getById(baseId);
-      const isBasicLand = cardDef && cardDef.type.includes('básica');
-      if (!isBasicLand && count > MAX_COPIES_PER_CARD) {
-        throw new Error(`No podés tener más de ${MAX_COPIES_PER_CARD} copias de la misma carta (salvo Tierras básicas)${cardDef ? `: ${cardDef.name}` : ''}.`);
-      }
-    }
-    for (const [baseId, count] of Object.entries(enhancedSlotCounts)) {
-      if (!enhancements[baseId]) throw new Error('Estás usando la copia mejorada de una carta que no tiene ninguna mejora crafteada.');
-      if (count > 1) throw new Error('Solo puede haber una copia mejorada de la misma carta en el mazo.');
-    }
-
-    // Tope total de cartas mejoradas por mazo (admin-editable, default 3) — sin esto, un
-    // jugador con muchas Fichas podría armar un mazo entero de bombas mejoradas.
-    const totalEnhancedInDeck = Object.values(enhancedSlotCounts).reduce((sum, n) => sum + n, 0);
-    if (totalEnhancedInDeck > MAX_ENHANCED_CARDS_PER_DECK) {
-      throw new Error(`No podés tener más de ${MAX_ENHANCED_CARDS_PER_DECK} cartas mejoradas en el mismo mazo.`);
-    }
+    validateDeckCards(data, name, cardIds);
 
     const newDeck = { id: `deck_${Date.now()}`, name: name.trim(), cardIds, isDefault: false, createdAt: Date.now() };
     const updated = { decks: [...decks, newDeck] };
+    tx.update(ref, updated);
+    return { ...data, ...updated };
+  });
+}
+
+// Edita un mazo YA GUARDADO — mismas reglas que crear uno nuevo (mismo validateDeckCards),
+// pero reemplaza el nombre/cardIds del mazo existente en vez de sumar uno a la lista.
+// Conserva su id/isDefault/createdAt originales — solo cambia el contenido.
+export async function updateDeck(uid, deckId, name, cardIds) {
+  const ref = doc(db, 'users', uid);
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
+    const data = snap.data();
+    const decks = data.decks || [];
+    const idx = decks.findIndex(d => d.id === deckId);
+    if (idx === -1) throw new Error('Ese mazo ya no existe.');
+
+    validateDeckCards(data, name, cardIds);
+
+    const newDecks = [...decks];
+    newDecks[idx] = { ...decks[idx], name: name.trim(), cardIds };
+    const updated = { decks: newDecks };
+    tx.update(ref, updated);
+    return { ...data, ...updated };
+  });
+}
+
+// Borra un mazo guardado — nunca deja la cuenta sin ninguno (siempre tiene que quedar al
+// menos 1 para poder jugar). Si el que se borra era el "Default" y quedan otros, el primero
+// que quede pasa a serlo — para que nunca quede una cuenta sin ningún mazo marcado así.
+export async function deleteDeck(uid, deckId) {
+  const ref = doc(db, 'users', uid);
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
+    const data = snap.data();
+    const decks = data.decks || [];
+    if (decks.length <= 1) throw new Error('No podés eliminar tu único mazo — siempre tiene que quedar al menos uno.');
+    const idx = decks.findIndex(d => d.id === deckId);
+    if (idx === -1) throw new Error('Ese mazo ya no existe.');
+
+    const remaining = decks.filter(d => d.id !== deckId);
+    if (decks[idx].isDefault && !remaining.some(d => d.isDefault)) {
+      remaining[0] = { ...remaining[0], isDefault: true };
+    }
+
+    const updated = { decks: remaining };
     tx.update(ref, updated);
     return { ...data, ...updated };
   });

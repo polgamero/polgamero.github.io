@@ -1,5 +1,5 @@
 import { sleep } from './utils.js';
-import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, getEffectiveToughness, performSacrifice, addCounters, cleanupIfVehicle, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone } from './main.js';
+import { state, resolveEffectDirect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, triggerCreatureEtb, triggerCreatureDies, triggerAnyCreatureDeath, getEffectivePower, getEffectiveToughness, performSacrifice, addCounters, cleanupIfVehicle, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName } from './main.js';
 import { logMsg, render, createCardElement } from './ui.js';
 import { checkDeaths } from './combatRules.js';
 import { hasKeyword, getProtectionMatch } from './keywords.js';
@@ -100,7 +100,7 @@ export async function resolveTopStackItem() {
 function applyEffectToSingleTarget(effect, targetObj, isLocal, cardName, sourceColors) {
   if (targetObj.type === 'player') {
     const isTargetLocal = targetObj.isLocal;
-    const targetName = isTargetLocal ? "vos" : "el Tano";
+    const targetName = isTargetLocal ? "vos" : getRivalName();
     if (effect.type === 'damage') {
       if (isTargetLocal) state.localHP -= effect.amount; else state.rivalHP -= effect.amount;
       logMsg(`💥 ¡${cardName}! Le hizo ${effect.amount} de daño a ${targetName}.`);
@@ -151,7 +151,7 @@ function applyEffectToSingleTarget(effect, targetObj, isLocal, cardName, sourceC
       targetUnit.damageTaken = (targetUnit.damageTaken || 0) + effect.amount;
       logMsg(`💥 ¡${cardName}! Le hizo ${effect.amount} de daño a ${targetUnit.card.name}.`);
       checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-      checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+      checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
     } else if (effect.type === 'pump') {
       if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
       targetUnit.tempEffects.push({ powerMod: effect.powerMod || 0, toughnessMod: effect.toughnessMod || 0 });
@@ -281,7 +281,7 @@ async function executeStackItem(item) {
       // Queda), chequeamos muertes de inmediato, no solo tras el próximo daño de combate.
       if (card.staticEffect) {
         checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-        checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+        checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
       }
     }
 
@@ -294,7 +294,7 @@ async function executeStackItem(item) {
           effectToApply = resolveXInEffect(effectToApply, item.xValue || 0);
         }
         if (targetObj.type === 'player') {
-          const targetName = targetObj.isLocal ? "vos" : "el Tano";
+          const targetName = targetObj.isLocal ? "vos" : getRivalName();
           if (effectToApply.type === 'damage') {
             if (targetObj.isLocal) state.localHP -= effectToApply.amount; 
             else state.rivalHP -= effectToApply.amount;
@@ -314,7 +314,7 @@ async function executeStackItem(item) {
               targetUnit.damageTaken += effectToApply.amount;
               logMsg(`💥 ¡${card.name}! Le hizo ${effectToApply.amount} de daño a ${targetUnit.card.name}.`);
               checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-              checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+              checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
             }
           }
         } 
@@ -329,7 +329,7 @@ async function executeStackItem(item) {
     attachAura(card, targetObj.item);
     // Si es una Aura-maldición (-X/-X), la criatura puede morir en el acto.
     checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-    checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+    checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
     return;
   }
 
@@ -413,11 +413,11 @@ async function executeStackItem(item) {
             } else {
               const paid = tryAutoPayCounterTax(false, amount);
               if (paid) {
-                logMsg(`💰 El Tano pagó {${amount}} para que "${targetItem.card.name}" no se pierda.`);
+                logMsg(`💰 ${getRivalName()} pagó {${amount}} para que "${targetItem.card.name}" no se pierda.`);
                 sendResolvedCardAway();
                 return;
               }
-              logMsg(`🚫 El Tano no pudo pagar {${amount}} — "${targetItem.card.name}" se pierde.`);
+              logMsg(`🚫 ${getRivalName()} no pudo pagar {${amount}} — "${targetItem.card.name}" se pierde.`);
               // sigue de largo: se contrarresta de verdad, como cualquier counter normal
             }
           }
@@ -457,7 +457,7 @@ async function executeStackItem(item) {
     } 
     else if (targetObj) {
       if (targetObj.type === 'player') {
-        const targetName = targetObj.isLocal ? "vos" : "el Tano";
+        const targetName = targetObj.isLocal ? "vos" : getRivalName();
         if (effectToApply.type === 'damage') {
           if (targetObj.isLocal) state.localHP -= effectToApply.amount; 
           else state.rivalHP -= effectToApply.amount;
@@ -473,7 +473,10 @@ async function executeStackItem(item) {
         else if (effectToApply.type === 'poison') {
           if (targetObj.isLocal) state.localPoison = (state.localPoison || 0) + effectToApply.amount;
           else state.rivalPoison = (state.rivalPoison || 0) + effectToApply.amount;
-          logMsg(`☠️ ¡${card.name}! ${targetName === 'vos' ? 'Te' : 'Le'} puso ${effectToApply.amount} contador(es) de Veneno${targetName === 'el Tano' ? ' al Tano' : ''}.`);
+          // BUGFIX: antes comparaba targetName === 'el Tano' (string fija) para decidir si
+          // agregar "al Tano" al final — con un nombre real de rival, esa comparación
+          // nunca daba true. Ahora usa targetObj.isLocal directo, sin depender del string.
+          logMsg(`☠️ ¡${card.name}! ${targetObj.isLocal ? 'Te' : 'Le'} puso ${effectToApply.amount} contador(es) de Veneno${targetObj.isLocal ? '' : ` a ${targetName}`}.`);
         }
         // LÓGICA NUEVA: DESCARTE
         else if (effectToApply.type === 'discard') {
@@ -535,7 +538,7 @@ async function executeStackItem(item) {
             targetUnit.damageTaken += effectToApply.amount;
             logMsg(`💥 ¡${card.name}! Le hizo ${effectToApply.amount} de daño a ${targetUnit.card.name}.`);
             checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-            checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+            checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
           }
         } 
         // LÓGICA NUEVA: EQUIPAR (real) — el Equipo que activó esta habilidad se adjunta a la criatura.
@@ -612,7 +615,7 @@ async function executeStackItem(item) {
 
             logMsg(`🥊 ¡${selfUnit.card.name} pelea contra ${targetUnit.card.name}! (${selfPower} vs ${targetPower} de daño)`);
             checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-            checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+            checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
           } else {
             logMsg(`⚠️ ${card.name} no tenía ninguna criatura tuya para pelear.`);
           }
@@ -635,7 +638,7 @@ async function executeStackItem(item) {
           const signo = counterType === 'plusOne' ? '+' : '-';
           logMsg(`🔵 ¡${card.name}! ${targetUnit.card.name} recibió ${amount} contador(es) ${signo}${amount}/${signo}${amount}.`);
           checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-          checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+          checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
         }
         // LÓGICA NUEVA: PROTECCIÓN TEMPORAL — otorga una keyword hasta el final del turno (ej. A Cubierto)
         else if (effectToApply.type === 'grant_keyword_temp') {
@@ -744,7 +747,7 @@ async function executeStackItem(item) {
           // que dependía de ese +1/+1 para sobrevivir podría morir ahora.
           if (targetItem.card.staticEffect) {
             checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-            checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+            checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
           }
         } else if (idx === -1) {
           logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
@@ -825,7 +828,7 @@ async function executeStackItem(item) {
         };
         const localCount = wipeBoard(state.localCombat, state.localGraveyard, true);
         const rivalCount = wipeBoard(state.rivalCombat, state.rivalGraveyard, false);
-        logMsg(`💥 ¡${card.name} arrasó con todo! (${localCount} tuya(s) + ${rivalCount} del Tano fueron al cementerio)`);
+        logMsg(`💥 ¡${card.name} arrasó con todo! (${localCount} tuya(s) + ${rivalCount} de ${getRivalName()} fueron al cementerio)`);
       }
       // LÓGICA NUEVA: CREAR FICHAS
       else if (effectToApply.type === 'create_tokens') {
@@ -1094,7 +1097,7 @@ export function renderStack() {
       }
     }
 
-    const ownerText = item.isLocal ? 'Vos' : 'El Tano';
+    const ownerText = item.isLocal ? 'Vos' : getRivalName();
 
     cardDiv.innerHTML = `
       <div class="stack-item-title">${isTop ? '▶ ' : ''}${item.card.name}</div>

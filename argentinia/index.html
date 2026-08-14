@@ -8,6 +8,16 @@
 </head>
 <body>
 
+  <!-- FEATURE (#6): pantalla de carga — sin esto, #game-app (todo el tablero, HP en
+       20/20, "El Tano (TU RIVAL)" fijo) se ve tal cual apenas carga el HTML, mucho antes de
+       que main.js termine de cargar las cartas y mostrar el menú principal de verdad — con
+       conexión lenta, eso podía durar varios segundos y quedaba poco profesional. Este
+       overlay cubre TODO desde el primer instante, y main.js lo saca recién cuando el menú
+       está listo para mostrarse (ver boot(), al final). -->
+  <div id="boot-loading-overlay">
+    <div class="boot-spinner"></div>
+  </div>
+
   <div id="game-app">
     <main id="board">
       <!-- MANO RIVAL (OCULTA) -->

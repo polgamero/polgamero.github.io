@@ -16,8 +16,8 @@ export const POINTS = {
   winVsTanoFacil: 50,
   winVsTanoDificil: 100,
   lossVsTano: 15,
-  // Todavía no hay PvP (esa es la Fase 5 en adelante) — quedan definidos desde ya para no
-  // tener que volver a esta charla de balance más adelante.
+  // PvP real desde la Fase 4 (Etapas 1 a 6 del roadmap de sincronización) — ya no es "a
+  // futuro", se usan de verdad en cada partida multiplayer que termina.
   winVsHumano: 120,
   lossVsHumano: 20,
   abandonPenalty: -30

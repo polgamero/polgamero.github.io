@@ -16,7 +16,8 @@ import {
   resolveEffectDirect,
   cleanupIfVehicle,
   checkPlaneswalkerDeaths,
-  addCounters
+  addCounters,
+  getRivalName
 } from './main.js';
 import { showDamageAssignmentModal } from './ui.js';
 
@@ -279,7 +280,7 @@ export async function resolveCombatDamage() {
     await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInFirstStrikeStep);
 
     checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-    checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+    checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
 
     logMsg("⚔️ --- Paso de Daño Regular ---");
   }
@@ -287,7 +288,7 @@ export async function resolveCombatDamage() {
   await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInRegularStep);
 
   checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-  checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+  checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
 
   attackersArray.forEach(c => { c.isAttacking = false; c.tookDeathtouch = false; });
   defendersArray.forEach(c => { c.blockingIndex = null; c.tookDeathtouch = false; });
@@ -315,7 +316,7 @@ function dealCombatDamageToPlayer(source, isTargetLocal, amount) {
   if (hasKeyword(source, 'infect')) {
     if (isTargetLocal) state.localPoison = (state.localPoison || 0) + amount;
     else state.rivalPoison = (state.rivalPoison || 0) + amount;
-    logMsg(`☠️ ¡Infectar! ${source.card.name} le puso ${amount} contador(es) de Veneno a ${isTargetLocal ? 'Vos' : 'El Tano'}.`);
+    logMsg(`☠️ ¡Infectar! ${source.card.name} le puso ${amount} contador(es) de Veneno a ${isTargetLocal ? 'Vos' : getRivalName()}.`);
   } else {
     if (isTargetLocal) state.localHP -= amount;
     else state.rivalHP -= amount;
@@ -358,7 +359,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       if (blockerHasLifelink && bPower > 0) {
         if (isLocalAttacking) {
           state.rivalHP += bPower;
-          logMsg(`💚 Vínculo Vital: El Tano recupera ${bPower} HP por la defensa de ${blocker.card.name}.`);
+          logMsg(`💚 Vínculo Vital: ${getRivalName()} recupera ${bPower} HP por la defensa de ${blocker.card.name}.`);
         } else {
           state.localHP += bPower;
           logMsg(`💚 Vínculo Vital: Recuperás ${bPower} HP por la defensa de ${blocker.card.name}.`);
@@ -401,7 +402,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         dealCombatDamageToPlayer(attacker, true, attackerPower);
         if (attackerHasLifelink && attackerPower > 0) {
           state.rivalHP += attackerPower;
-          logMsg(`💚 Vínculo Vital: ¡${attacker.card.name} curó ${attackerPower} HP al Tano!`);
+          logMsg(`💚 Vínculo Vital: ¡${attacker.card.name} curó ${attackerPower} HP a ${getRivalName()}!`);
         }
       }
       if (attackerPower > 0) logMsg(`💥 ${attacker.card.name} conectó el golpe! Hizo ${attackerPower} de daño.`);
@@ -525,12 +526,12 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         checkPlaneswalkerDeaths();
       } else if (isLocalAttacking) {
         dealCombatDamageToPlayer(attacker, false, remainingAttackerPower);
-        logMsg(`🐘 Arrollar: ¡${attacker.card.name} repartió daño letal a los bloqueadores y arrolló con ${remainingAttackerPower} de daño al Tano!`);
+        logMsg(`🐘 Arrollar: ¡${attacker.card.name} repartió daño letal a los bloqueadores y arrolló con ${remainingAttackerPower} de daño a ${getRivalName()}!`);
         attackerLifelinkHeal += remainingAttackerPower;
         damageToPlayerThisStep += remainingAttackerPower;
       } else {
         dealCombatDamageToPlayer(attacker, true, remainingAttackerPower);
-        logMsg(`🐘 Arrollar: ¡El ${attacker.card.name} del Tano repartió daño letal a tus defensores y te arrolló con ${remainingAttackerPower} de daño!`);
+        logMsg(`🐘 Arrollar: ¡El ${attacker.card.name} de ${getRivalName()} repartió daño letal a tus defensores y te arrolló con ${remainingAttackerPower} de daño!`);
         attackerLifelinkHeal += remainingAttackerPower;
         damageToPlayerThisStep += remainingAttackerPower;
       }
@@ -544,7 +545,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         logMsg(`💚 Vínculo Vital: Recuperás ${attackerLifelinkHeal} HP por el ataque de ${attacker.card.name}.`);
       } else {
         state.rivalHP += attackerLifelinkHeal;
-        logMsg(`💚 Vínculo Vital: El Tano recupera ${attackerLifelinkHeal} HP por el ataque de ${attacker.card.name}.`);
+        logMsg(`💚 Vínculo Vital: ${getRivalName()} recupera ${attackerLifelinkHeal} HP por el ataque de ${attacker.card.name}.`);
       }
     }
 

@@ -779,7 +779,15 @@ html, body {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.85);
-  z-index: 1000;
+  /* BUGFIX: esta clase la reusan 9 modales distintos — 7 que solo aparecen DURANTE una
+     partida (elegir hechizo, valor de X, kicker, abandonar, habilidad de lealtad,
+     cementerio, exilio, donde 1000 alcanzaba de sobra) y 2 que aparecen DENTRO de
+     pantallas de menú a pantalla completa (nombrar mazo, borrar cuenta — showDeckBuilderScreen
+     y showOptionsMenu, ambas en z-index:9999). Con 1000, esos 2 quedaban tapados por
+     completo — invisibles y sin poder interactuar, aunque el modal SÍ se hubiera armado
+     bien en el DOM. Subir esto a un valor por encima de TODO lo demás en el juego arregla
+     los 2 casos rotos sin afectar en nada a los otros 7, que ya andaban bien. */
+  z-index: 20000;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1250,4 +1258,53 @@ html, body {
 .damage-value { 
   font-size: 1.4rem; font-weight: bold; width: 30px; 
   text-align: center; color: var(--gold); 
+}
+
+/* FEATURE (#10): estética consistente para TODAS las barras de scroll del juego — fina,
+   fondo oscuro acorde al tema, "thumb" dorado (el mismo --gold de siempre). Global a
+   propósito: cualquier panel/modal que scrollee (Enciclopedia, Mis Mazos, constructor de
+   mazos, Noticias, la pila de hechizos, etc.) la hereda sola, sin tener que acordarse de
+   agregarla cada vez que se crea una pantalla nueva. No tiene efecto en elementos que no
+   scrollean, así que es segura de aplicar así de ancho. */
+* {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--gold) #0b130e; /* Firefox: thumb, track */
+}
+*::-webkit-scrollbar { /* Chrome/Safari/Edge */
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: #0b130e;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--gold);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #f0e0b0;
+}
+
+/* FEATURE (#6): pantalla de carga inicial — ver el comentario en index.html. z-index por
+   encima de absolutamente todo lo demás en el juego (incluso por encima de los modales a
+   20000, aunque en la práctica nunca deberían coexistir). */
+#boot-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.boot-spinner {
+  width: 64px;
+  height: 64px;
+  border: 6px solid rgba(212, 175, 55, 0.25);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: boot-spin 0.9s linear infinite;
+}
+@keyframes boot-spin {
+  to { transform: rotate(360deg); }
 }

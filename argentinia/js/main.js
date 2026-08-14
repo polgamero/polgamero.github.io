@@ -209,6 +209,17 @@ export function getLocalPlayerName() {
   return 'El Gaucho';
 }
 
+// BUGFIX: nombre a mostrar para el RIVAL — "El Tano" en Solitario (el bot de siempre), o
+// el nombre de pila real del rival en una partida multiplayer (ya viene recortado a primer
+// nombre desde showMultiplayerLobby, ver renderMatched en ui.js). Reemplaza los mensajes
+// que antes decían "El Tano" hardcodeado incluso jugando contra una persona de verdad.
+export function getRivalName() {
+  if (state.currentMatch && state.currentMatch.rivalName) {
+    return state.currentMatch.rivalName;
+  }
+  return 'El Tano';
+}
+
 // FASE 3, ETAPA 4: deckSource es { type: 'random', identity: [...] } (comportamiento de
 // siempre, disponible con o sin sesión) o { type: 'saved', deck: {...} } (uno de tus
 // mazos guardados de verdad, armado 100% desde tu colección). El del Tano SIEMPRE es al
@@ -497,18 +508,29 @@ async function boot() {
     }
   });
 
-  await cardDb.loadAll();
-
-  // PANEL DE ADMIN: carga la configuración de balance guardada en Firestore ANTES de
-  // mostrar el menú — si nadie tocó nada todavía (o falla la carga por conexión), el juego
-  // sigue funcionando perfecto con los defaults hardcodeados en store.js, así que un error
-  // acá nunca deja a un jugador sin poder jugar.
+  // FEATURE (#6): todo lo que sigue queda envuelto en un finally que saca la pantalla de
+  // carga pase lo que pase — si cardDb.loadAll() (sin su propio try/catch, a propósito: sin
+  // cartas el juego no puede arrancar igual) llegara a fallar, es preferible mostrar el
+  // menú roto/vacío (con su propio error en la consola) antes que dejar a alguien mirando
+  // un círculo girando para siempre sin ninguna pista de qué pasó.
   try {
-    const config = await loadGameConfig();
-    applyGameConfig(config);
-  } catch (err) {
-    console.error('No se pudo cargar la configuración del juego — se usan los valores por defecto:', err);
+    await cardDb.loadAll();
+
+    // PANEL DE ADMIN: carga la configuración de balance guardada en Firestore ANTES de
+    // mostrar el menú — si nadie tocó nada todavía (o falla la carga por conexión), el
+    // juego sigue funcionando perfecto con los defaults hardcodeados en store.js, así que
+    // un error acá nunca deja a un jugador sin poder jugar.
+    try {
+      const config = await loadGameConfig();
+      applyGameConfig(config);
+    } catch (err) {
+      console.error('No se pudo cargar la configuración del juego — se usan los valores por defecto:', err);
+    }
+  } finally {
+    const loadingOverlay = document.getElementById('boot-loading-overlay');
+    if (loadingOverlay) loadingOverlay.remove();
   }
+
   showMainMenu(startPlayFlow, startMultiplayerFlow);
 }
 
@@ -519,13 +541,21 @@ async function boot() {
 // es EXACTAMENTE el de siempre: selector de identidad, mazo random.
 function startPlayFlow() {
   const savedDecks = (state.currentUser && state.userProfile && state.userProfile.decks) || [];
-  if (savedDecks.length > 0) {
+  // FEATURE (#9): logueado, siempre elegís uno de tus propios mazos — nunca la opción de
+  // mazo random, que solo tenía sentido para alguien sin cuenta (nada propio para armar).
+  // "Volver" te devuelve al menú principal en vez de dejarte sin salida.
+  if (state.currentUser && savedDecks.length > 0) {
     showPlayDeckPickerModal(
       (chosenDeck) => initGame({ type: 'saved', deck: chosenDeck }),
-      () => showDeckSelectionModal((chosenIdentity) => initGame({ type: 'random', identity: chosenIdentity }))
+      null,
+      () => showMainMenu(startPlayFlow, startMultiplayerFlow)
     );
   } else {
-    showDeckSelectionModal((chosenIdentity) => initGame({ type: 'random', identity: chosenIdentity }));
+    showDeckSelectionModal(
+      (chosenIdentity) => initGame({ type: 'random', identity: chosenIdentity }),
+      {},
+      () => showMainMenu(startPlayFlow, startMultiplayerFlow)
+    );
   }
 }
 
@@ -533,15 +563,25 @@ function startPlayFlow() {
 // jugadores se emparejan — elegís tu mazo exactamente con el mismo picker que Solitario. No
 // hace falta coordinar nada con el rival para esto: cada mazo/mano es privado por diseño,
 // así que cada cliente arma el suyo de forma totalmente independiente.
-function startMultiplayerFlow(matchId, myRole) {
+function startMultiplayerFlow(matchId, myRole, rivalName) {
+  // BUGFIX: el subtítulo por defecto de este modal decía "El Tano ya barajó el suyo..."
+  // hardcodeado — acá lo pisamos con el nombre real del rival, ya que este mismo modal se
+  // reusa tanto para Solitario como para elegir un mazo random en multiplayer.
+  const mpTitleOverrides = { subtitle: `${rivalName} ya eligió el suyo. Vos elegís con qué pelear.` };
   const savedDecks = (state.currentUser && state.userProfile && state.userProfile.decks) || [];
   if (savedDecks.length > 0) {
     showPlayDeckPickerModal(
-      (chosenDeck) => startMultiplayerMatch(matchId, myRole, { type: 'saved', deck: chosenDeck }),
-      () => showDeckSelectionModal((chosenIdentity) => startMultiplayerMatch(matchId, myRole, { type: 'random', identity: chosenIdentity }))
+      (chosenDeck) => startMultiplayerMatch(matchId, myRole, { type: 'saved', deck: chosenDeck }, rivalName),
+      () => showDeckSelectionModal(
+        (chosenIdentity) => startMultiplayerMatch(matchId, myRole, { type: 'random', identity: chosenIdentity }, rivalName),
+        mpTitleOverrides,
+        () => startMultiplayerFlow(matchId, myRole, rivalName) // "Volver": vuelve al picker de mazos guardados
+      )
     );
   } else {
-    showDeckSelectionModal((chosenIdentity) => startMultiplayerMatch(matchId, myRole, { type: 'random', identity: chosenIdentity }));
+    // Caso raro/defensivo — en la práctica toda cuenta logueada tiene al menos 1 mazo, así
+    // que este camino no debería alcanzarse nunca en multiplayer.
+    showDeckSelectionModal((chosenIdentity) => startMultiplayerMatch(matchId, myRole, { type: 'random', identity: chosenIdentity }, rivalName), mpTitleOverrides);
   }
 }
 
@@ -550,7 +590,7 @@ function startMultiplayerFlow(matchId, myRole) {
 // mano/mazo llegan solos por sync una vez que publique lo suyo). "Quién arranca" se decide
 // con una regla FIJA que ambos clientes calculan por su cuenta con su propio myRole, sin
 // coordinar nada ni sortear nada: el host siempre juega primero.
-function startMultiplayerMatch(matchId, myRole, deckSource) {
+function startMultiplayerMatch(matchId, myRole, deckSource, rivalName) {
   setupBoardLayout();
 
   let deckLabel;
@@ -571,7 +611,10 @@ function startMultiplayerMatch(matchId, myRole, deckSource) {
     state.localHand.push(state.localDeck.pop());
   }
 
-  state.currentMatch = { matchId, myRole };
+  // BUGFIX: guardamos el nombre real del rival acá — getRivalName() (más arriba en este
+  // archivo) lo usa en vez de "El Tano" en todos los mensajes que corren tanto en
+  // Solitario como en multiplayer (motor de combate, efectos, turnos).
+  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival' };
   state.activePlayer = myRole === 'host' ? 'local' : 'rival';
   state.priorityPlayer = state.activePlayer;
   state.phase = 'main1';
@@ -691,12 +734,12 @@ export function reconstructStateFromMatch(publicDoc, privateDoc, myRole) {
 // desde cero (setupBoardLayout, igual que un initGame normal), pero en vez de barajar
 // mazos nuevos y hacer mulligan, reconstruye TODO desde lo último publicado en Firestore
 // (reconstructStateFromMatch) y arranca la escucha en tiempo real donde había quedado.
-function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc) {
+function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc, rivalName) {
   const mainMenuOverlay = document.getElementById('main-menu-overlay');
   if (mainMenuOverlay) mainMenuOverlay.remove();
 
   setupBoardLayout();
-  state.currentMatch = { matchId, myRole };
+  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival' };
   reconstructStateFromMatch(publicDoc, privateDoc, myRole);
   startListeningToMatch(matchId, myRole);
   hookGameplayButtons();
@@ -717,12 +760,17 @@ function offerReconnectIfStillActive(matchId) {
         return;
       }
       const myRole = matchData.publicDoc.hostUid === state.currentUser.uid ? 'host' : 'guest';
+      // BUGFIX: mismo criterio de privacidad de siempre — solo el nombre de pila.
+      const rivalUid = myRole === 'host' ? matchData.publicDoc.guestUid : matchData.publicDoc.hostUid;
+      const rivalFullName = (matchData.publicDoc.players && matchData.publicDoc.players[rivalUid] && matchData.publicDoc.players[rivalUid].displayName) || '';
+      const rivalName = (rivalFullName.trim().split(/\s+/)[0]) || 'tu rival';
+
       showReconnectPrompt(
-        () => resumeReconnectedMatch(matchId, myRole, matchData.publicDoc, matchData.privateDoc),
+        () => resumeReconnectedMatch(matchId, myRole, matchData.publicDoc, matchData.privateDoc, rivalName),
         () => {
           // "Abandonarla": mismo efecto que el botón de abandonar de siempre, pero sin
           // necesidad de volver a entrar a la partida primero — le avisamos al rival igual.
-          state.currentMatch = { matchId, myRole };
+          state.currentMatch = { matchId, myRole, rivalName };
           Object.assign(state, extractSharedStateFromPublicDoc(matchData.publicDoc, myRole));
           state.abandonedBy = 'local';
           publishMatchState().catch(() => {});
@@ -1082,7 +1130,7 @@ export function resolveLoyaltyTargetChoice(targetUnit, isTargetLocal) {
     targetUnit.damageTaken = (targetUnit.damageTaken || 0) + effect.amount;
     logMsg(`💥 "${ability.name}" le hizo ${effect.amount} de daño a ${targetUnit.card.name}.`);
     checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-    checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+    checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
   } else if (effect.type === 'pump') {
     if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
     targetUnit.tempEffects.push({ powerMod: effect.powerMod || 0, toughnessMod: effect.toughnessMod || 0 });
@@ -1452,7 +1500,7 @@ export function handleCombatClick(item, isLocal, index) {
         return;
       }
       state.pendingBlockerIndex = index;
-      logMsg(`Seleccionaste ${item.card.name}. Ahora hacé clic en el atacante del Tano que querés bloquear.`);
+      logMsg(`Seleccionaste ${item.card.name}. Ahora hacé clic en el atacante de ${getRivalName()} que querés bloquear.`);
       render();
     } else {
       if (state.pendingBlockerIndex !== null && item.isAttacking) {
@@ -2775,7 +2823,7 @@ export function handleSupportClick(item, isLocal, index) {
 
 export function resolveEffectDirect(effect, cardName, isLocal) {
   if(!effect) return;
-  const targetName = isLocal ? "vos" : "el Tano";
+  const targetName = isLocal ? "vos" : getRivalName();
   if (effect.type === 'draw') {
     for(let i=0; i<effect.amount; i++) {
       if(isLocal && state.localDeck.length > 0) state.localHand.push(state.localDeck.pop());
@@ -2807,7 +2855,7 @@ export function resolveEffectDirect(effect, cardName, isLocal) {
     // controla el disparador, igual que ya hacen damage/heal en esta misma función.
     const targetHand = isLocal ? state.rivalHand : state.localHand;
     const targetGrave = isLocal ? state.rivalGraveyard : state.localGraveyard;
-    const opponentName = isLocal ? "el Tano" : "vos";
+    const opponentName = isLocal ? getRivalName() : "vos";
 
     // FASE 4, ETAPA 5: si el objetivo es la mano del RIVAL en una partida multiplayer real,
     // no tengo sus cartas de verdad — ver isHiddenRivalZone más arriba.
@@ -2906,7 +2954,7 @@ export function resolveEffectDirect(effect, cardName, isLocal) {
         logMsg(`🔮 ${item.card.name} ganó un contador de Lealtad (ahora: ${item.loyalty}).`);
       } else if (kind === 'player_poison') {
         if (ownerIsLocal) state.localPoison += 1; else state.rivalPoison += 1;
-        logMsg(`☠️ ${ownerIsLocal ? 'Vos' : 'El Tano'} ${ownerIsLocal ? 'recibiste' : 'recibió'} un contador de Veneno más (ahora: ${ownerIsLocal ? state.localPoison : state.rivalPoison}).`);
+        logMsg(`☠️ ${ownerIsLocal ? 'Vos' : getRivalName()} ${ownerIsLocal ? 'recibiste' : 'recibió'} un contador de Veneno más (ahora: ${ownerIsLocal ? state.localPoison : state.rivalPoison}).`);
       } else {
         if ((item.counters.plusOne || 0) > 0) addCounters(item, 'plusOne', 1);
         if ((item.counters.minusOne || 0) > 0) addCounters(item, 'minusOne', 1);
@@ -2918,7 +2966,7 @@ export function resolveEffectDirect(effect, cardName, isLocal) {
       chosen.forEach(applyProliferate);
       // Un -1/-1 de más puede terminar de matar a alguna criatura (SBA).
       checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-      checkDeaths(state.rivalCombat, state.rivalGraveyard, "El Tano");
+      checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
       logMsg(chosen.length > 0
         ? `✨ ¡${cardName}! Se proliferaron ${chosen.length} contador(es).`
         : `${cardName}: no se proliferó ningún contador.`);
