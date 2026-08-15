@@ -913,7 +913,7 @@ html, body {
       background-color: #0b130e; /* fallback si menu.png todavía no está subida */
       background-image:
         linear-gradient(180deg, rgba(11,19,14,0.15) 0%, rgba(11,19,14,0.8) 100%),
-        url('./assets/images/ui/menu.png');
+        url('../assets/images/ui/menu.png');
       background-size: cover;
       background-position: center center;
       background-repeat: no-repeat;
@@ -1162,7 +1162,7 @@ html, body {
        resto del layout de la carta. */
     .encyclopedia-card-slot.unowned .card-art {
       background-color: #0b0b0b;
-      background-image: url('./assets/images/ui/logo.png');
+      background-image: url('../assets/images/ui/logo.png');
       background-repeat: no-repeat;
       background-position: center center;
       background-size: 55% auto;
@@ -1491,11 +1491,11 @@ html, body {
 
 
 /* --- Paleta de selectores de mazo: antes circleStyle() generaba style="..." --- */
-.deck-select-color-W { background-color:#d8c9a0; background-image:url('./assets/images/ui/blanco.png'); }
-.deck-select-color-U { background-color:#3b6ea5; background-image:url('./assets/images/ui/azul.png'); }
-.deck-select-color-B { background-color:#4a3a5c; background-image:url('./assets/images/ui/negro.png'); }
-.deck-select-color-R { background-color:#a5423b; background-image:url('./assets/images/ui/rojo.png'); }
-.deck-select-color-G { background-color:#437a45; background-image:url('./assets/images/ui/verde.png'); }
+.deck-select-color-W { background-color:#d8c9a0; background-image:url('../assets/images/ui/blanco.png'); }
+.deck-select-color-U { background-color:#3b6ea5; background-image:url('../assets/images/ui/azul.png'); }
+.deck-select-color-B { background-color:#4a3a5c; background-image:url('../assets/images/ui/negro.png'); }
+.deck-select-color-R { background-color:#a5423b; background-image:url('../assets/images/ui/rojo.png'); }
+.deck-select-color-G { background-color:#437a45; background-image:url('../assets/images/ui/verde.png'); }
 
 /* --- Utilidades/componentes que antes vivían en style="..." o element.style fijo --- */
 .pile-card-back, .card-back-image { width:100%; height:100%; object-fit:cover; }
@@ -1677,3 +1677,302 @@ html, body {
     padding: 0 2px;
   }
 }
+
+/* ============================================================================
+   ENTREGA 23.2 — RECUPERACIÓN VISUAL / CONTRATO CON index.html REAL
+
+   La Entrega 21 migró estilos inyectados desde JS a un archivo externo. Dos cosas que
+   el chequeo estático no podía detectar sin el HTML real:
+   1) url('./assets/...') dejó de ser page-relative y pasó a resolverse desde /css/.
+   2) selectores que sólo existían en index.html (loading, fases, daño, abandono, avatar)
+      no formaron parte del inventario de migración.
+
+   Este bloque restaura presentación únicamente. No cambia reglas ni lógica del motor.
+   ============================================================================ */
+
+/* --- Fondo real de partida: css/style.css -> ../assets/... --- */
+#game-app {
+  background-color: #0d1e13;
+  background-image:
+    url('../assets/images/ui/fondo.png'),
+    radial-gradient(circle, #1a3c27 0%, #0d1e13 100%);
+  background-size: cover, cover;
+  background-position: center center, center center;
+  background-repeat: no-repeat, no-repeat;
+}
+
+/* --- Pantalla de carga presente en el index.html real --- */
+#boot-loading-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2147483600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 72%);
+}
+.boot-spinner {
+  width: 64px;
+  height: 64px;
+  border: 6px solid rgba(212, 175, 55, 0.20);
+  border-top-color: var(--gold, #d4af37);
+  border-right-color: rgba(240, 224, 176, 0.72);
+  border-radius: 50%;
+  box-shadow: 0 0 28px rgba(212, 175, 55, 0.20);
+  animation: boot-spin 0.85s linear infinite;
+}
+@keyframes boot-spin { to { transform: rotate(360deg); } }
+
+/* --- HUD de jugadores: el <img> de Google no puede usar su tamaño natural --- */
+.avatar {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  min-height: 52px;
+  flex: 0 0 52px;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
+}
+
+/* Botón existente en index.html que no tenía selector propio en el CSS empaquetado. */
+.btn-abandon {
+  flex: 1;
+  min-width: 0;
+  background: #6e3a33;
+  color: #f7eeee;
+  border: 1px solid #e07a6b;
+  padding: 0.55rem 0.4rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.74rem;
+  line-height: 1.15;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.btn-abandon:hover { background: #8a4a41; border-color: #f09a8c; }
+.btn-abandon:disabled { opacity: 0.5; cursor: not-allowed; }
+.turn-controls > button { min-width: 0; }
+
+/* --- Turno / fases del HUD. JS ya alterna local-active, rival-active, active y blinking. --- */
+.turn-owner-badge {
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border-left: 3px solid var(--gold, #d4af37);
+  background: rgba(0, 0, 0, 0.22);
+  color: #e8ddc8;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+.turn-owner-badge.local-active { border-left-color: var(--gold, #d4af37); color: #f0e0b0; }
+.turn-owner-badge.rival-active { border-left-color: var(--sky-blue, #74acdf); color: #d9efff; }
+.phase-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.phase-dot {
+  position: relative;
+  padding: 3px 7px 3px 10px;
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+  color: #8f9c92;
+  background: rgba(255, 255, 255, 0.018);
+  font-size: 0.70rem;
+  line-height: 1.15;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.phase-dot.active {
+  color: #fff1c2;
+  background: rgba(212, 175, 55, 0.12);
+  border-left-color: var(--gold, #d4af37);
+  font-weight: 800;
+}
+.phase-dot.blinking { animation: phase-soft-pulse 1.15s ease-in-out infinite alternate; }
+@keyframes phase-soft-pulse {
+  from { box-shadow: inset 0 0 0 rgba(212,175,55,0); }
+  to   { box-shadow: inset 0 0 10px rgba(212,175,55,0.16); }
+}
+.subphase-label {
+  display: inline;
+  margin-left: 4px;
+  color: #d6c78f;
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+
+/* --- Colores MTG: createCardElement() ya asigna estas clases; faltaban sus reglas. --- */
+.card.bg-w         { background: #d8c9a0; }
+.card.bg-u         { background: #3b6ea5; }
+.card.bg-b         { background: #4a3a5c; }
+.card.bg-r         { background: #a5423b; }
+.card.bg-g         { background: #437a45; }
+.card.bg-gold      { background: #d4af37; }
+.card.bg-land      { background: #806a4a; }
+.card.bg-colorless { background: #8e969b; }
+.card-type-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.card-loyalty { background: #7d4d9b; color: #fff; border-color: #3f214f; }
+
+/* --- Contadores de permanentes agrupados (listos/girados). --- */
+.stack-counter-container {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  z-index: 30;
+  display: flex;
+  gap: 3px;
+  pointer-events: none;
+}
+.stack-badge {
+  min-width: 21px;
+  height: 21px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.85);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 900;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.65);
+}
+.badge-ready  { background: #237a45; }
+.badge-tapped { background: #5b6570; }
+
+/* --- Botones de modos, Kicker, abandono y habilidades de Lealtad/activadas. --- */
+.loyalty-ability-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(212,175,55,0.38);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.045);
+  color: #f0e0b0;
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.loyalty-ability-btn:hover:not(:disabled):not(.disabled) {
+  background: rgba(212,175,55,0.13);
+  border-color: rgba(212,175,55,0.8);
+  transform: translateY(-1px);
+}
+.loyalty-ability-btn:disabled,
+.loyalty-ability-btn.disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.loyalty-cost {
+  min-width: 52px;
+  flex-shrink: 0;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: #6c3483;
+  color: #fff;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 900;
+}
+.loyalty-ability-text {
+  flex: 1;
+  min-width: 0;
+  color: #e8ddc8;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+/* --- Modal de asignación de daño presente en el HTML real. --- */
+#damage-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.48);
+}
+#damage-modal-overlay.hidden { display: none !important; }
+.damage-modal-box {
+  width: min(560px, 94vw);
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: 20px;
+  border: 2px solid rgba(212,175,55,0.55);
+  border-radius: 12px;
+  background: #16211a;
+  color: #ecf0f1;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.7);
+}
+.damage-modal-box h2 { margin-bottom: 6px; color: #f0e0b0; }
+.damage-modal-hint { color: #aebbb1; font-size: 0.78rem; margin-bottom: 16px; }
+.damage-modal-initial-buttons { display: flex; gap: 10px; }
+.damage-modal-initial-buttons .btn-turn { min-width: 0; }
+.damage-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.09);
+}
+.damage-row:last-child { border-bottom: none; }
+.trample-row { margin-top: 6px; padding-top: 14px; border-top: 1px solid rgba(212,175,55,0.25); }
+.damage-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.btn-arrow {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(212,175,55,0.55);
+  border-radius: 6px;
+  background: #25332a;
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+}
+.btn-arrow:hover { background: #34473a; }
+.damage-value {
+  min-width: 30px;
+  text-align: center;
+  color: #f0e0b0;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+/* La lista de Noticias es un contenedor semántico; evitar bullets/márgenes del navegador. */
+.main-menu-news-list { list-style: none; margin: 0; padding: 0; }
+
+.admin-announcement-delete {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(224,122,107,0.55);
+  border-radius: 7px;
+  background: rgba(110,58,51,0.65);
+  color: #f7eeee;
+  cursor: pointer;
+}
+.admin-announcement-delete:hover { background: #8a4a41; }
+.admin-announcement-delete:disabled { opacity: 0.45; cursor: not-allowed; }
+
