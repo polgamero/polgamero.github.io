@@ -39,8 +39,8 @@ import { signInWithGoogle, signOutUser, purchasePack, craftEnhancement, deleteUs
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, applyGameConfig, getDefaultGameConfig } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
-
 import { recordTelemetryUiLog, captureTelemetryState } from './telemetry.js';
+
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
 };
@@ -145,14 +145,14 @@ export function updatePilesUI() {
   els.rivalDeckPile.querySelector('.pile-badge').textContent = state.rivalDeck.length;
   const rivalDeckContent = els.rivalDeckPile.querySelector('.pile-content');
   rivalDeckContent.innerHTML = state.rivalDeck.length > 0 
-    ? `<img src="./assets/images/card_back.png" class="pile-card-back">` 
-    : `<span class="pile-empty-label">Vacío</span>`;
+    ? `<img src="./assets/images/card_back.png" style="width:100%; height:100%; object-fit:cover;">` 
+    : `<span style="font-size:10px; color:#7f8c8d;">Vacío</span>`;
 
   els.localDeckPile.querySelector('.pile-badge').textContent = state.localDeck.length;
   const localDeckContent = els.localDeckPile.querySelector('.pile-content');
   localDeckContent.innerHTML = state.localDeck.length > 0 
-    ? `<img src="./assets/images/card_back.png" class="pile-card-back">` 
-    : `<span class="pile-empty-label">Vacío</span>`;
+    ? `<img src="./assets/images/card_back.png" style="width:100%; height:100%; object-fit:cover;">` 
+    : `<span style="font-size:10px; color:#7f8c8d;">Vacío</span>`;
 
   els.rivalGYPile.querySelector('.pile-badge').textContent = state.rivalGraveyard.length;
   const rivalGYContent = els.rivalGYPile.querySelector('.pile-content');
@@ -162,7 +162,7 @@ export function updatePilesUI() {
     const cardEl = createCardElement(topCard, false, false, null, 'graveyard');
     rivalGYContent.appendChild(cardEl);
   } else {
-    rivalGYContent.innerHTML = `<span class="pile-empty-label">Vacío</span>`;
+    rivalGYContent.innerHTML = `<span style="font-size:10px; color:#7f8c8d;">Vacío</span>`;
   }
 
   els.localGYPile.querySelector('.pile-badge').textContent = state.localGraveyard.length;
@@ -173,7 +173,7 @@ export function updatePilesUI() {
     const cardEl = createCardElement(topCard, false, true, null, 'graveyard');
     localGYContent.appendChild(cardEl);
   } else {
-    localGYContent.innerHTML = `<span class="pile-empty-label">Vacío</span>`;
+    localGYContent.innerHTML = `<span style="font-size:10px; color:#7f8c8d;">Vacío</span>`;
   }
 
   els.rivalExilePile.querySelector('.pile-badge').textContent = state.rivalExile.length;
@@ -184,7 +184,7 @@ export function updatePilesUI() {
     const cardEl = createCardElement(topCard, false, false, null, 'graveyard');
     rivalExileContent.appendChild(cardEl);
   } else {
-    rivalExileContent.innerHTML = `<span class="pile-empty-label">Vacío</span>`;
+    rivalExileContent.innerHTML = `<span style="font-size:10px; color:#7f8c8d;">Vacío</span>`;
   }
 
   els.localExilePile.querySelector('.pile-badge').textContent = state.localExile.length;
@@ -195,7 +195,7 @@ export function updatePilesUI() {
     const cardEl = createCardElement(topCard, false, true, null, 'graveyard');
     localExileContent.appendChild(cardEl);
   } else {
-    localExileContent.innerHTML = `<span class="pile-empty-label">Vacío</span>`;
+    localExileContent.innerHTML = `<span style="font-size:10px; color:#7f8c8d;">Vacío</span>`;
   }
 }
 
@@ -211,23 +211,24 @@ export function updatePilesUI() {
 // mostrando su texto completo — se elige ANTES de pagar nada, así que acá no hay ningún
 // chequeo de maná ni de targets todavía (eso viene después, ya con el modo fijado).
 export function showModalSpellChoice(card, onConfirm, onCancel) {
+  injectMulliganStyles(); // BUGFIX: blindaje defensivo, ver el comentario en showDeckNameModal
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
 
   const modesHTML = card.modes.map((mode, idx) => `
-    <button class="loyalty-ability-btn btn-align-start" data-idx="${idx}">
+    <button class="loyalty-ability-btn" data-idx="${idx}" style="justify-content: flex-start;">
       <span class="loyalty-ability-text">${mode.text}</span>
     </button>
   `).join('');
 
   modalOverlay.innerHTML = `
-    <div class="gy-modal-content modal-w-440">
+    <div class="gy-modal-content" style="max-width: 440px;">
       <div class="gy-modal-header">
         <h3>🔀 ${card.name} — Elegí un modo</h3>
       </div>
-      <div class="modal-action-column">
+      <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
         ${modesHTML}
-        <button id="modal-cancel" class="mulligan-btn mulligan-btn-mull modal-cancel-spaced">❌ Cancelar</button>
+        <button id="modal-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">❌ Cancelar</button>
       </div>
     </div>
   `;
@@ -247,6 +248,7 @@ export function showModalSpellChoice(card, onConfirm, onCancel) {
 }
 
 export function showXValueModal(card, onConfirm, onCancel) {
+  injectMulliganStyles();
   const untappedLands = state.localLands.filter(l => !l.tapped).length;
   const untappedRocks = state.localSupport.filter(s => !s.tapped && (s.card.produces || s.card.producesOptions)).length;
   const baseCost = { ...card };
@@ -256,17 +258,17 @@ export function showXValueModal(card, onConfirm, onCancel) {
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
   modalOverlay.innerHTML = `
-    <div class="gy-modal-content modal-w-380">
+    <div class="gy-modal-content" style="max-width: 380px;">
       <div class="gy-modal-header">
         <h3>✨ ${card.name}</h3>
       </div>
-      <div class="modal-centered-body">
-        <p class="modal-copy modal-copy-mb14">${card.text || ''}</p>
-        <p class="modal-hint">Maná disponible aprox.: podés pagar hasta X = ${roughMaxX} (con lo que tenés sin girar ahora).</p>
-        <div class="x-value-controls">
-          <button id="x-minus" class="mulligan-btn mulligan-btn-mull x-step-btn">−</button>
-          <span id="x-value-display" class="x-value-display">0</span>
-          <button id="x-plus" class="mulligan-btn mulligan-btn-mull x-step-btn">+</button>
+      <div style="padding: 20px; text-align: center;">
+        <p style="color:#cfe0d4; font-size: 14px; margin-bottom: 14px;">${card.text || ''}</p>
+        <p style="color:#a89bb5; font-size: 12px; margin-bottom: 16px;">Maná disponible aprox.: podés pagar hasta X = ${roughMaxX} (con lo que tenés sin girar ahora).</p>
+        <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom: 20px;">
+          <button id="x-minus" class="mulligan-btn mulligan-btn-mull" style="padding: 8px 16px;">−</button>
+          <span id="x-value-display" style="font-size: 28px; font-weight: bold; color: var(--gold, #d4af37); min-width: 50px;">0</span>
+          <button id="x-plus" class="mulligan-btn mulligan-btn-mull" style="padding: 8px 16px;">+</button>
         </div>
         <div class="mulligan-buttons">
           <button id="x-cancel" class="mulligan-btn mulligan-btn-mull">❌ Cancelar</button>
@@ -309,16 +311,17 @@ export function showXValueModal(card, onConfirm, onCancel) {
 // propias tierras si elegís pagar — a diferencia de antes, donde el cliente del rival
 // decidía esto por vos sin preguntarte nada.
 export function showCounterTaxDecisionModal(amount, targetCardName, onPay, onDecline) {
+  injectMulliganStyles();
 
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
   modalOverlay.innerHTML = `
-    <div class="gy-modal-content modal-w-420">
+    <div class="gy-modal-content" style="max-width: 420px;">
       <div class="gy-modal-header">
         <h3>💰 ¡Te amenazan con contrarrestar!</h3>
       </div>
-      <div class="modal-centered-body">
-        <p class="modal-copy modal-copy-mb18">
+      <div style="padding: 20px; text-align: center;">
+        <p style="color:#cfe0d4; font-size: 14px; margin-bottom: 18px;">
           Tu rival quiere contrarrestar <strong>"${targetCardName}"</strong> a menos que pagues {${amount}}.
         </p>
         <div class="mulligan-buttons">
@@ -341,6 +344,8 @@ export function showCounterTaxDecisionModal(amount, targetCardName, onPay, onDec
 }
 
 export function showRampLandChoiceModal(availableColors, cardName, onChoose) {
+  injectMulliganStyles();
+  injectDeckSelectionStyles();
   state.pendingRampChoice = true;
 
   const modalOverlay = document.createElement('div');
@@ -350,19 +355,19 @@ export function showRampLandChoiceModal(availableColors, cardName, onChoose) {
     const info = COLOR_INFO[colorKey];
     return `
       <button class="deck-select-mono-btn" data-color="${colorKey}" title="${info.name}">
-        <div class="deck-select-circle-big ${circleClass(colorKey)}"></div>
+        <div class="deck-select-circle-big" style="${circleStyle(colorKey)}"></div>
         <span class="deck-select-mono-label">${info.name}</span>
       </button>
     `;
   }).join('');
 
   modalOverlay.innerHTML = `
-    <div class="gy-modal-content modal-w-420">
+    <div class="gy-modal-content" style="max-width: 420px;">
       <div class="gy-modal-header">
         <h3>🌱 ${cardName}</h3>
       </div>
-      <div class="modal-centered-body">
-        <p class="modal-copy modal-copy-mb18">¿Qué color de tierra básica buscás en tu mazo?</p>
+      <div style="padding: 20px; text-align: center;">
+        <p style="color:#cfe0d4; font-size: 14px; margin-bottom: 18px;">¿Qué color de tierra básica buscás en tu mazo?</p>
         <div class="deck-select-mono-row">${buttonsHTML}</div>
       </div>
     </div>
@@ -383,25 +388,26 @@ export function showRampLandChoiceModal(availableColors, cardName, onChoose) {
 // varios modos), acá es sí/no sobre pagar más por un bonus extra, y el efecto base se
 // lanza de todos modos elijas lo que elijas. Mismo esqueleto visual que showModalSpellChoice.
 export function showKickerModal(card, onConfirm, onCancel) {
+  injectMulliganStyles();
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
 
   const bonusText = card.kicker.bonusText || 'un bonus adicional';
 
   modalOverlay.innerHTML = `
-    <div class="gy-modal-content modal-w-440">
+    <div class="gy-modal-content" style="max-width: 440px;">
       <div class="gy-modal-header">
         <h3>💪 ${card.name} — Kicker</h3>
       </div>
-      <div class="modal-action-column">
-        <p class="modal-copy modal-copy-small">Podés pagar ${card.kicker.cost} adicional. Si lo hacés: ${bonusText}.</p>
-        <button class="loyalty-ability-btn btn-align-start" id="kicker-yes">
+      <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0 0 4px;">Podés pagar ${card.kicker.cost} adicional. Si lo hacés: ${bonusText}.</p>
+        <button class="loyalty-ability-btn" id="kicker-yes" style="justify-content: flex-start;">
           <span class="loyalty-ability-text">💪 Sí, pagar Kicker ${card.kicker.cost}</span>
         </button>
-        <button class="loyalty-ability-btn btn-align-start" id="kicker-no">
+        <button class="loyalty-ability-btn" id="kicker-no" style="justify-content: flex-start;">
           <span class="loyalty-ability-text">➡️ No, lanzarlo sin Kicker</span>
         </button>
-        <button id="modal-cancel" class="mulligan-btn mulligan-btn-mull modal-cancel-spaced">❌ Cancelar</button>
+        <button id="modal-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">❌ Cancelar</button>
       </div>
     </div>
   `;
@@ -424,20 +430,21 @@ export function showKickerModal(card, onConfirm, onCancel) {
 // FASE 2: confirmación antes de abandonar — es una acción con penalidad real de puntos, así
 // que nunca se ejecuta con un solo click. Mismo esqueleto que showKickerModal.
 export function showAbandonConfirmModal(onConfirm, onCancel) {
+  injectMulliganStyles();
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
 
   modalOverlay.innerHTML = `
-    <div class="gy-modal-content modal-w-440">
+    <div class="gy-modal-content" style="max-width: 440px;">
       <div class="gy-modal-header">
         <h3>🏳️ ¿Abandonar la partida?</h3>
       </div>
-      <div class="modal-action-column">
-        <p class="modal-copy modal-copy-small">Vas a perder puntos por abandonar — más de lo que perderías si jugás hasta el final y perdés. Esto no se puede deshacer.</p>
-        <button class="loyalty-ability-btn btn-align-start" id="abandon-yes">
+      <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0 0 4px;">Vas a perder puntos por abandonar — más de lo que perderías si jugás hasta el final y perdés. Esto no se puede deshacer.</p>
+        <button class="loyalty-ability-btn" id="abandon-yes" style="justify-content: flex-start;">
           <span class="loyalty-ability-text">🏳️ Sí, abandonar de todos modos</span>
         </button>
-        <button id="abandon-cancel" class="mulligan-btn mulligan-btn-mull modal-cancel-spaced">❌ Seguir jugando</button>
+        <button id="abandon-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">❌ Seguir jugando</button>
       </div>
     </div>
   `;
@@ -454,6 +461,7 @@ export function showAbandonConfirmModal(onConfirm, onCancel) {
 }
 
 export function showActivatedAbilityModal(cardName, options, onChoose, onCancel) {
+  injectMulliganStyles();
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
 
@@ -491,19 +499,19 @@ export function showActivatedAbilityModal(cardName, options, onChoose, onCancel)
     const timingSuffix = timing === 'instant' ? ' · ⚡ Instantánea' : (timing === 'sorcery' ? ' · ⏳ Conjuro' : '');
     return `
       <button class="loyalty-ability-btn" data-idx="${idx}">
-        <span class="loyalty-cost loyalty-cost-wide">${describeCost(option.ability)}</span>
+        <span class="loyalty-cost" style="min-width:105px;">${describeCost(option.ability)}</span>
         <span class="loyalty-ability-text">${describeEffect(option.ability)}${sourceSuffix}${timingSuffix}</span>
       </button>
     `;
   }).join('');
 
   modalOverlay.innerHTML = `
-    <div class="gy-modal-content modal-w-520">
+    <div class="gy-modal-content" style="max-width: 520px;">
       <div class="gy-modal-header">
         <h3>⚙️ ${cardName}: elegí una habilidad</h3>
         <button class="gy-close-btn">Cerrar ✖</button>
       </div>
-      <div class="modal-action-column">
+      <div style="display:flex; flex-direction:column; gap:10px; padding:16px;">
         ${optionsHTML}
       </div>
     </div>
@@ -526,6 +534,7 @@ export function showActivatedAbilityModal(cardName, options, onChoose, onCancel)
 }
 
 export function showLoyaltyAbilityModal(pwItem, isLocal) {
+  injectMulliganStyles();
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
 
@@ -543,13 +552,13 @@ export function showLoyaltyAbilityModal(pwItem, isLocal) {
   }).join('');
 
   modalOverlay.innerHTML = `
-    <div class="gy-modal-content modal-w-480">
+    <div class="gy-modal-content" style="max-width: 480px;">
       <div class="gy-modal-header">
         <h3>🔮 ${pwItem.card.name} (Lealtad: ${pwItem.loyalty})</h3>
         <button class="gy-close-btn">Cerrar ✖</button>
       </div>
-      <div class="modal-action-column">
-        ${alreadyUsed ? `<div class="loyalty-already-used">Ya usaste una habilidad de Lealtad este turno.</div>` : ''}
+      <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
+        ${alreadyUsed ? `<div style="color:#e67e22; font-style:italic;">Ya usaste una habilidad de Lealtad este turno.</div>` : ''}
         ${abilitiesHTML}
       </div>
     </div>
@@ -570,6 +579,7 @@ export function showLoyaltyAbilityModal(pwItem, isLocal) {
 }
 
 export function openGraveyardModal(isLocal) {
+  injectMulliganStyles();
   const gyArray = isLocal ? state.localGraveyard : state.rivalGraveyard;
   const title = isLocal ? "Tu Cementerio" : `Cementerio de ${getRivalName()}`;
 
@@ -591,21 +601,26 @@ export function openGraveyardModal(isLocal) {
   const gridContent = modalOverlay.querySelector('#gy-modal-grid-content');
 
   if (gyArray.length === 0) {
-    gridContent.innerHTML = `<div class="zone-empty-message">No hay cartas en el cementerio todavía.</div>`;
+    gridContent.innerHTML = `<div style="color:#bdc3c7; font-style:italic; padding:40px;">No hay cartas en el cementerio todavía.</div>`;
   } else {
     gyArray.forEach((cardObj, idx) => {
       const wrapper = document.createElement('div');
-      wrapper.classList.add('graveyard-card-wrapper');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.alignItems = 'center';
+      wrapper.style.gap = '4px';
 
       const cardEl = createCardElement(cardObj, false, isLocal, idx, 'modal');
-      cardEl.classList.add('zone-preview-card');
+      cardEl.style.width = '120px';
+      cardEl.style.height = '168px';
       wrapper.appendChild(cardEl);
 
       // Flashback: solo en TU cementerio, solo si la carta lo tiene.
       if (isLocal && cardObj.flashback) {
         const fbBtn = document.createElement('button');
         fbBtn.className = 'mulligan-btn mulligan-btn-keep';
-        fbBtn.classList.add('graveyard-action-btn');
+        fbBtn.style.fontSize = '11px';
+        fbBtn.style.padding = '4px 8px';
         fbBtn.textContent = `🔄 Flashback ${cardObj.flashback.cost}`;
         fbBtn.addEventListener('click', () => {
           modalOverlay.remove();
@@ -620,7 +635,10 @@ export function openGraveyardModal(isLocal) {
       if (isLocal && cardObj.escape) {
         const escBtn = document.createElement('button');
         escBtn.className = 'mulligan-btn mulligan-btn-keep';
-        escBtn.classList.add('graveyard-action-btn', 'escape-action-btn');
+        escBtn.style.fontSize = '11px';
+        escBtn.style.padding = '4px 8px';
+        escBtn.style.background = '#6c3483';
+        escBtn.style.borderColor = '#9b59b6';
         const exileCount = cardObj.escape.exileCount || 0;
         escBtn.textContent = `🌀 Escape ${cardObj.escape.cost} + exiliar ${exileCount}`;
         escBtn.addEventListener('click', () => {
@@ -639,6 +657,7 @@ export function openGraveyardModal(isLocal) {
 }
 
 export function openExileModal(isLocal) {
+  injectMulliganStyles();
   const exileArray = isLocal ? state.localExile : state.rivalExile;
   const title = isLocal ? "Tu Exilio" : `Exilio de ${getRivalName()}`;
 
@@ -660,11 +679,12 @@ export function openExileModal(isLocal) {
   const gridContent = modalOverlay.querySelector('#exile-modal-grid-content');
 
   if (exileArray.length === 0) {
-    gridContent.innerHTML = `<div class="zone-empty-message">No hay cartas exiliadas todavía.</div>`;
+    gridContent.innerHTML = `<div style="color:#bdc3c7; font-style:italic; padding:40px;">No hay cartas exiliadas todavía.</div>`;
   } else {
     exileArray.forEach((cardObj, idx) => {
       const cardEl = createCardElement(cardObj, false, isLocal, idx, 'modal');
-      cardEl.classList.add('zone-preview-card');
+      cardEl.style.width = '120px';
+      cardEl.style.height = '168px';
       gridContent.appendChild(cardEl);
     });
   }
@@ -693,8 +713,9 @@ export function renderManaSymbols(manaCostStr) {
     const innerText = ['W','U','B','R','G'].includes(val) ? '' : val;
     // Números de 2+ dígitos (10, 12...) necesitan una fuente más chica para entrar
     // centrados en el mismo círculo sin desbordar — 1 dígito usa el tamaño normal.
-    const valueClass = innerText ? (innerText.length >= 2 ? ' mana-symbol-value-wide' : ' mana-symbol-value') : '';
-    return `<span class="mana-symbol ${colorClass}${valueClass}">${innerText}</span>`;
+    const fontSize = innerText.length >= 2 ? '3.2cqw' : '4.6cqw';
+    const style = innerText ? ` style="font-size:${fontSize};"` : '';
+    return `<span class="mana-symbol ${colorClass}"${style}>${innerText}</span>`;
   }).join('');
 }
 
@@ -897,14 +918,14 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 
   let formattedTextHTML = '';
   if (isBasicLand && landSymbolImg) {
-    formattedTextHTML = `<div class="card-text-box land-symbol-box">
-        <img src="./assets/images/${landSymbolImg}" alt="Símbolo de maná" class="land-symbol-image" onerror="this.hidden=true">
+    formattedTextHTML = `<div class="card-text-box" style="display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.85); padding: 0;">
+        <img src="./assets/images/${landSymbolImg}" alt="Símbolo de maná" style="width: 120%; height: stretch; object-fit: cover; opacity: 0.9;" onerror="this.style.display='none'">
       </div>`;
   } else {
     let formattedText = card.text ? card.text.replace(/\{([WUBRGC])\}/g, (match, p1) => {
       let c = 'mana-c';
       if(p1==='W') c='mana-w'; if(p1==='U') c='mana-u'; if(p1==='B') c='mana-b'; if(p1==='R') c='mana-r'; if(p1==='G') c='mana-g';
-      return `<span class="mana-symbol ${c} rules-mana-symbol"></span>`;
+      return `<span class="mana-symbol ${c}" style="display:inline-flex; width:4cqw; height:4cqw; font-size:2.5cqw; margin:0 2px; vertical-align:middle;"></span>`;
     }) : '';
 
     const effKeywords = card.power !== undefined ? getEffectiveKeywords(itemObj) : [];
@@ -941,9 +962,9 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 
   let ptText = card.power !== undefined ? `${effPower}/${effToughness}` : '';
   if (itemObj.damageTaken > 0 && card.toughness !== undefined) {
-    ptText = `${effPower}/<span class="pt-damaged">${effToughness - itemObj.damageTaken}</span>`;
+    ptText = `${effPower}/<span style="color:#e74c3c;">${effToughness - itemObj.damageTaken}</span>`;
   } else if (isBuffed) {
-    ptText = `<span class="pt-buffed">${effPower}/${effToughness}</span>`;
+    ptText = `<span style="color:#27ae60;">${effPower}/${effToughness}</span>`;
   }
 
   // Lealtad de un Planeswalker: mismo cuadrito que Poder/Resistencia, pero con su propio
@@ -1043,9 +1064,9 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   el.innerHTML = `
     <div class="card-inner">
       <div class="card-header"><span class="card-title" style="font-size: clamp(4px, ${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
-      <div class="card-art card-art-layered">
-        <div class="card-art-fallback">${icon}</div>
-        ${card.image ? `<img src="./assets/images/cards/${card.image}" alt="${card.name}" class="card-art-image" onerror="this.hidden=true">` : ''}
+      <div class="card-art" style="position: relative; overflow: hidden;">
+        <div style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;">${icon}</div>
+        ${card.image ? `<img src="./assets/images/cards/${card.image}" alt="${card.name}" style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
       </div>
       <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(card.type, 16, 0.3)).toFixed(2)}cqw, 30px);">${card.type}</span><span class="rarity-icon">●</span></div>
       ${formattedTextHTML}
@@ -1060,7 +1081,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   // group renderer elige la copia lista correcta si hay varias apiladas visualmente.
   const instantButtonAllowedZone = zone === 'combat';
   if (isLocal && instantButtonAllowedZone && hasExplicitInstantAbility && state.priorityPlayer === 'local' && !state.gameOver) {
-    // Garantiza que el botón absoluto se ancle a la carta aunque el CSS externo cambie.
+    // La acción instantánea sigue anclada a la carta, pero visualmente queda fuera del
+    // contenido: pequeña, centrada y debajo de todo para no tapar texto/PT.
     el.classList.add('card-with-instant-action');
     const instantBtn = document.createElement('button');
     instantBtn.type = 'button';
@@ -1172,14 +1194,14 @@ export function sizeAllRows() {
 
 // --- MODAL DE SELECCIÓN DE MAZO INICIAL ---
 // Se muestra apenas carga la página, antes de que arranque la partida. 100% autocontenido:
-// usa clases predefinidas en style.css; no crea hojas de estilo en runtime.
+// inyecta su propio <style> y elementos, no depende de nada que ya exista en el HTML.
 
 const COLOR_INFO = {
-  W: { name: 'Blanco', desc: 'Orden y sacrificio. Vidas que se recuperan, ejercitos que se multiplican, reglas que doblegan al rival.' },
-  U: { name: 'Azul',   desc: 'Conocimiento y control. Cartas de sobra, hechizos que se esfuman, criaturas que planean por encima de todo.' },
-  B: { name: 'Negro',  desc: 'Ambicion sin limites. La muerte no es el final: es una herramienta mas.' },
-  R: { name: 'Rojo',   desc: 'Fuego y velocidad. Golpeas primero, golpeas fuerte, y no pedis permiso.' },
-  G: { name: 'Verde',  desc: 'Fuerza bruta de la naturaleza. Criaturas gigantes, mana de sobra, y pelea directa cuando hace falta.' },
+  W: { name: 'Blanco', file: 'blanco.png', bg: '#d8c9a0', desc: 'Orden y sacrificio. Vidas que se recuperan, ejercitos que se multiplican, reglas que doblegan al rival.' },
+  U: { name: 'Azul',   file: 'azul.png',   bg: '#3b6ea5', desc: 'Conocimiento y control. Cartas de sobra, hechizos que se esfuman, criaturas que planean por encima de todo.' },
+  B: { name: 'Negro',  file: 'negro.png',  bg: '#4a3a5c', desc: 'Ambicion sin limites. La muerte no es el final: es una herramienta mas.' },
+  R: { name: 'Rojo',   file: 'rojo.png',   bg: '#a5423b', desc: 'Fuego y velocidad. Golpeas primero, golpeas fuerte, y no pedis permiso.' },
+  G: { name: 'Verde',  file: 'verde.png',  bg: '#437a45', desc: 'Fuerza bruta de la naturaleza. Criaturas gigantes, mana de sobra, y pelea directa cuando hace falta.' },
 };
 
 const PAIR_INFO = {
@@ -1195,13 +1217,296 @@ const PAIR_INFO = {
   GU: { title: 'Evolucion Constante',  desc: 'Mana de sobra y criaturas que crecen turno tras turno hasta ser imparables.' },
 };
 
-
-
-function circleClass(colorKey) {
-  return `deck-select-color-${colorKey}`;
+function injectDeckSelectionStyles() {
+  if (document.getElementById('deck-select-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'deck-select-styles';
+  style.textContent = `
+    #deck-select-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .deck-select-panel {
+      max-width: 920px; width: 92%; max-height: 90vh; overflow-y: auto;
+      background: linear-gradient(180deg, rgba(18,25,15,0.97), rgba(11,19,14,0.99));
+      border: 2px solid var(--gold, #d4af37);
+      border-radius: 16px;
+      padding: 32px 36px;
+      box-shadow: 0 0 60px rgba(212,175,55,0.15), 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .deck-select-title {
+      text-align: center; font-size: 26px; font-weight: 700;
+      color: #f0e0b0; letter-spacing: 0.5px; margin-bottom: 4px;
+      text-shadow: 0 0 20px rgba(212,175,55,0.4);
+    }
+    .deck-select-subtitle {
+      text-align: center; font-size: 14px; color: #a89bb5; margin-bottom: 28px;
+    }
+    .deck-select-mono-row {
+      display: flex; justify-content: center; gap: 22px; margin-bottom: 32px; flex-wrap: wrap;
+    }
+    .deck-select-mono-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      background: none; border: none; cursor: pointer; padding: 8px;
+      transition: transform 0.15s ease;
+    }
+    .deck-select-mono-btn:hover { transform: translateY(-4px) scale(1.06); }
+    .deck-select-circle-big {
+      width: 76px; height: 76px; border-radius: 50%;
+      border: 2px solid rgba(212,175,55,0.5);
+      background-size: cover; background-position: center;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.5);
+    }
+    .deck-select-mono-btn:hover .deck-select-circle-big {
+      border-color: #f0e0b0; box-shadow: 0 4px 24px rgba(212,175,55,0.5);
+    }
+    .deck-select-mono-label { color: #e8ddc8; font-size: 14px; font-weight: 600; }
+    .deck-select-divider {
+      display: flex; align-items: center; gap: 12px; margin: 8px 0 20px 0;
+      color: #6e6478; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px;
+    }
+    .deck-select-divider::before, .deck-select-divider::after {
+      content: ''; flex: 1; height: 1px; background: rgba(212,175,55,0.25);
+    }
+    .deck-select-pairs-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;
+    }
+    .deck-select-pair-btn {
+      display: flex; align-items: center; gap: 12px; text-align: left;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(212,175,55,0.18);
+      border-radius: 10px; padding: 10px 14px; cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    }
+    .deck-select-pair-btn:hover {
+      background: rgba(212,175,55,0.08); border-color: rgba(212,175,55,0.55);
+      transform: translateY(-2px);
+    }
+    .deck-select-pair-icons { display: flex; flex-shrink: 0; }
+    .deck-select-circle-small {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 1.5px solid rgba(240,224,176,0.6);
+      background-size: cover; background-position: center;
+    }
+    .deck-select-circle-small + .deck-select-circle-small { margin-left: -10px; }
+    .deck-select-pair-text { flex: 1; }
+    .deck-select-pair-title { color: #f0e0b0; font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+    .deck-select-pair-desc { color: #b8adc4; font-size: 12px; line-height: 1.35; }
+  `;
+  document.head.appendChild(style);
 }
 
+function circleStyle(colorKey) {
+  const info = COLOR_INFO[colorKey];
+  return `background-color:${info.bg}; background-image:url('./assets/images/ui/${info.file}');`;
+}
 
+function injectMainMenuStyles() {
+  if (document.getElementById('main-menu-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'main-menu-styles';
+  style.textContent = `
+    #main-menu-overlay, #options-menu-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background-color: #0b130e; /* fallback si menu.png todavía no está subida */
+      background-image:
+        linear-gradient(180deg, rgba(11,19,14,0.15) 0%, rgba(11,19,14,0.8) 100%),
+        url('./assets/images/ui/menu.png');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+    }
+    .main-menu-logo-wrap {
+      position: absolute; top: 5vh; left: 0; right: 0;
+      display: flex; justify-content: center;
+      /* BUG ENCONTRADO Y ARREGLADO: este div ocupa TODO el ancho de la pantalla (left:0;
+         right:0) aunque visualmente solo se vea el logo centrado — el resto es "aire"
+         invisible, pero seguía interceptando clicks. Como en el HTML viene DESPUÉS de
+         .main-menu-account, pintaba ENCIMA y tapaba el botón de login/logout salvo en el
+         borde de arriba, donde todavía no llegaba a superponerse. Es puramente decorativo,
+         nunca necesita recibir clicks. */
+      pointer-events: none;
+    }
+    .main-menu-logo {
+      max-width: 55vw; max-height: 32vh; width: auto; height: auto;
+      filter: drop-shadow(0 8px 30px rgba(0,0,0,0.6));
+    }
+    .main-menu-buttons {
+      position: absolute; left: 5vw; bottom: 8vh;
+      display: flex; flex-direction: column; gap: 14px;
+      width: 300px;
+    }
+    .main-menu-btn {
+      display: block; width: 100%;
+      background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
+      border: 2px solid var(--gold, #d4af37);
+      border-radius: 10px;
+      color: #f0e0b0;
+      font-size: 17px; font-weight: 700; letter-spacing: 0.5px;
+      padding: 13px 20px; text-align: left;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .main-menu-btn:hover {
+      transform: translateX(6px);
+      background: linear-gradient(180deg, rgba(212,175,55,0.18), rgba(11,19,14,0.96));
+      box-shadow: 0 4px 22px rgba(212,175,55,0.35);
+    }
+    .main-menu-btn-primary {
+      border-color: #f0e0b0; font-size: 19px;
+      background: linear-gradient(180deg, rgba(212,175,55,0.25), rgba(11,19,14,0.96));
+    }
+    .main-menu-btn-primary:hover { box-shadow: 0 4px 26px rgba(212,175,55,0.55); }
+    .main-menu-btn-disabled { opacity: 0.45; cursor: not-allowed; position: relative; }
+    .main-menu-btn-disabled:hover {
+      transform: none;
+      background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .main-menu-btn-disabled:hover::after {
+      content: attr(data-tooltip);
+      position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%);
+      background: rgba(0,0,0,0.92); color: #f0e0b0;
+      padding: 6px 12px; border-radius: 6px; font-size: 12px; white-space: nowrap;
+      border: 1px solid var(--gold, #d4af37); pointer-events: none; z-index: 10;
+    }
+    .main-menu-account { position: absolute; top: 24px; right: 32px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .main-menu-login-btn {
+      display: flex; align-items: center; gap: 8px;
+      background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
+      border: 2px solid var(--gold, #d4af37);
+      border-radius: 10px;
+      color: #f0e0b0; font-size: 14px; font-weight: 700;
+      padding: 9px 16px; cursor: pointer;
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+    }
+    .main-menu-login-btn:hover { background: rgba(212,175,55,0.18); box-shadow: 0 4px 18px rgba(212,175,55,0.3); }
+    .main-menu-account-info {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(11,19,14,0.75);
+      border: 2px solid var(--gold, #d4af37);
+      border-radius: 10px;
+      padding: 6px 14px 6px 6px;
+    }
+    .main-menu-account-photo {
+      width: 34px; height: 34px; border-radius: 50%;
+      object-fit: cover; border: 1.5px solid var(--gold, #d4af37);
+      background: #222; flex-shrink: 0;
+    }
+    .main-menu-account-name {
+      color: #f0e0b0; font-size: 13px; font-weight: 700; max-width: 160px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .main-menu-account-points {
+      color: #d4af37; font-size: 11px; font-weight: 600; margin: 1px 0 2px;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .coin-icon, .ficha-icon {
+      width: 3em; height: 3em; object-fit: contain; vertical-align: middle; flex-shrink: 0;
+    }
+    .main-menu-logout-btn {
+      background: none; border: none; color: #b8adc4; font-size: 11px;
+      cursor: pointer; text-decoration: underline; padding: 0; display: block;
+    }
+    .main-menu-logout-btn:hover { color: #f0e0b0; }
+    .main-menu-account-error { color: #e07a6b; font-size: 12px; max-width: 260px; text-align: right; }
+    .main-menu-news {
+      position: absolute; bottom: 24px; right: 32px; width: 280px; max-height: 220px;
+      background: rgba(11,19,14,0.85); border: 2px solid rgba(212,175,55,0.35); border-radius: 12px;
+      padding: 12px 14px; overflow-y: auto; z-index: 5;
+    }
+    .main-menu-news-title {
+      color: #f0e0b0; font-size: 13px; font-weight: 700; margin-bottom: 8px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .main-menu-news-item { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .main-menu-news-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .main-menu-news-date { color: #8a9a8e; font-size: 10px; margin-bottom: 2px; }
+    .main-menu-news-text { color: #cfe0d4; font-size: 12px; line-height: 1.4; white-space: pre-wrap; }
+    .main-menu-news-empty { color: #8a9a8e; font-size: 12px; font-style: italic; }
+    .main-menu-admin-btn {
+      background: linear-gradient(180deg, rgba(120,60,180,0.28), rgba(11,19,14,0.96));
+      border: 2px solid #b06ad4; border-radius: 8px;
+      color: #e8d4f5; font-size: 12px; font-weight: 700;
+      padding: 6px 14px; cursor: pointer; transition: box-shadow 0.15s ease;
+    }
+    .main-menu-admin-btn:hover { box-shadow: 0 4px 16px rgba(176,106,212,0.4); }
+    #options-menu-overlay { display: flex; align-items: center; justify-content: center; }
+    .options-menu-panel {
+      max-width: 520px; width: 92%;
+      background: linear-gradient(180deg, rgba(18,25,15,0.97), rgba(11,19,14,0.99));
+      border: 2px solid var(--gold, #d4af37);
+      border-radius: 16px;
+      padding: 32px 36px;
+      box-shadow: 0 0 60px rgba(212,175,55,0.15), 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .options-menu-title {
+      text-align: center; font-size: 24px; font-weight: 700;
+      color: #f0e0b0; margin-bottom: 24px;
+      text-shadow: 0 0 20px rgba(212,175,55,0.4);
+    }
+    .options-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 4px;
+      border-bottom: 1px solid rgba(212,175,55,0.15);
+    }
+    .options-row:last-of-type { border-bottom: none; }
+    .options-label { color: #e8ddc8; font-size: 15px; }
+    .options-toggle-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1.5px solid rgba(212,175,55,0.4);
+      border-radius: 8px;
+      color: #f0e0b0;
+      font-size: 14px; font-weight: 600;
+      padding: 7px 16px;
+      cursor: pointer;
+      min-width: 90px;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .options-toggle-btn:hover { background: rgba(212,175,55,0.15); border-color: #f0e0b0; }
+    .options-row-disabled .options-label { opacity: 0.5; }
+    .options-row-disabled .options-toggle-btn { opacity: 0.45; cursor: not-allowed; position: relative; }
+    .options-row-disabled .options-toggle-btn:hover {
+      background: rgba(255,255,255,0.05); border-color: rgba(212,175,55,0.4);
+    }
+    .options-row-disabled .options-toggle-btn:hover::after {
+      content: attr(data-tooltip);
+      position: absolute; right: 0; top: 100%; margin-top: 6px;
+      background: rgba(0,0,0,0.92); color: #f0e0b0;
+      padding: 6px 12px; border-radius: 6px; font-size: 12px; white-space: nowrap;
+      border: 1px solid var(--gold, #d4af37); pointer-events: none; z-index: 10;
+    }
+    .options-danger-zone {
+      margin-top: 26px; padding-top: 18px; border-top: 1px solid rgba(224,122,107,0.3);
+    }
+    .options-danger-title {
+      color: #e07a6b; font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 10px;
+    }
+    .options-danger-btn {
+      background: transparent; border: 1.5px solid #6e3a33; border-radius: 8px;
+      color: #b06a5f; font-size: 13px; font-weight: 600; padding: 9px 16px;
+      cursor: pointer; width: 100%; transition: background 0.15s ease, color 0.15s ease;
+    }
+    .options-danger-btn:hover { background: rgba(224,122,107,0.12); color: #e07a6b; }
+    .delete-confirm-input {
+      width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,0.05); border: 1.5px solid #6e3a33; border-radius: 8px;
+      color: #f0e0b0; font-size: 14px; padding: 9px 12px; text-align: center;
+      letter-spacing: 1px; font-weight: 700;
+    }
+    .delete-confirm-input:focus { outline: none; border-color: #e07a6b; }
+    .delete-confirm-btn {
+      background: #6e3a33; border: 2px solid #e07a6b; border-radius: 10px;
+      color: #f0e0b0; font-size: 14px; font-weight: 700; padding: 10px 20px; cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .delete-confirm-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .delete-confirm-btn:not(:disabled):hover { background: #8a4a41; }
+  `;
+  document.head.appendChild(style);
+}
 
 // Enciclopedia: reusa TODO lo que ya existe (createCardElement, la paleta de colores por
 // maná, el cardDb ya cargado en boot()) — nada de esto es exclusivo de la Enciclopedia a
@@ -1266,9 +1571,113 @@ export function getOwnedCardIds() {
   return new Set(cardDb.allCards.map(c => c.id));
 }
 
-
+function injectEncyclopediaStyles() {
+  if (document.getElementById('encyclopedia-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'encyclopedia-styles';
+  style.textContent = `
+    #encyclopedia-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display: flex; flex-direction: column;
+      padding: 24px 32px;
+      /* Mucho más grande que el --card-w de 12.5vh del tablero, a propósito — "tamaño
+         grande, como el hover-zoom" que pidió el usuario. */
+      --card-w: 32vh;
+    }
+    .encyclopedia-header { display: flex; align-items: center; gap: 20px; margin-bottom: 16px; flex-shrink: 0; }
+    .encyclopedia-title {
+      font-size: 26px; font-weight: 700; color: #f0e0b0;
+      text-shadow: 0 0 20px rgba(212,175,55,0.4);
+    }
+    .encyclopedia-back-btn {
+      background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
+      border: 2px solid var(--gold, #d4af37);
+      border-radius: 8px; color: #f0e0b0; font-weight: 700; font-size: 14px;
+      padding: 8px 16px; cursor: pointer; transition: background 0.15s ease;
+    }
+    .encyclopedia-back-btn:hover { background: rgba(212,175,55,0.15); }
+    .encyclopedia-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; flex-shrink: 0; }
+    .encyclopedia-tab {
+      background: rgba(255,255,255,0.03);
+      border: 1.5px solid rgba(212,175,55,0.25);
+      border-radius: 8px 8px 0 0;
+      color: #b8adc4; font-size: 14px; font-weight: 600;
+      padding: 8px 18px; cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    .encyclopedia-tab:hover { background: rgba(212,175,55,0.1); color: #f0e0b0; }
+    .encyclopedia-tab.active {
+      background: rgba(212,175,55,0.18); border-color: var(--gold, #d4af37); color: #f0e0b0;
+    }
+    .encyclopedia-body { flex: 1; display: flex; gap: 20px; min-height: 0; }
+    .encyclopedia-grid-box {
+      flex: 1; overflow-y: auto;
+      background: #F5F5F5;
+      border: 2px solid rgba(212,175,55,0.3);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex; flex-wrap: wrap; align-content: flex-start; gap: 20px;
+    }
+    .encyclopedia-card-slot .card-inner { border-width: 6px; }
+    /* BUGFIX (revisión post-Etapa 4): antes esto grisaba la carta ENTERA (nombre, texto,
+       poder/resistencia incluidos) — ahora, a pedido, solo el ARTE se reemplaza por un
+       rectángulo negro con el logo del juego (genera intriga, invita a comprar sobres); el
+       resto de la carta (nombre, tipo, texto, P/T) queda exactamente igual que si la
+       tuvieras. .card-art ya es un contenedor propio con overflow:hidden (ver
+       createCardElement en ui.js), así que tocar solo ese contenedor no pisa nada del
+       resto del layout de la carta. */
+    .encyclopedia-card-slot.unowned .card-art {
+      background-color: #0b0b0b;
+      background-image: url('./assets/images/ui/logo.png');
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: 55% auto;
+    }
+    .encyclopedia-card-slot.unowned .card-art img,
+    .encyclopedia-card-slot.unowned .card-art > div {
+      visibility: hidden;
+    }
+    .encyclopedia-empty-msg { color: #5a5266; font-size: 14px; margin: auto; text-align: center; }
+    .encyclopedia-filters {
+      width: 260px; flex-shrink: 0;
+      background: rgba(18,25,15,0.6);
+      border: 2px solid rgba(212,175,55,0.3);
+      border-radius: 12px;
+      padding: 20px; overflow-y: auto;
+    }
+    .encyclopedia-filter-section-title {
+      color: #f0e0b0; font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; margin: 18px 0 10px 0;
+    }
+    .encyclopedia-filter-section-title:first-child { margin-top: 0; }
+    .encyclopedia-filter-option {
+      display: flex; align-items: center; gap: 8px;
+      color: #e8ddc8; font-size: 14px;
+      padding: 6px 4px; cursor: pointer; border-radius: 6px;
+    }
+    .encyclopedia-filter-option:hover { background: rgba(212,175,55,0.08); }
+    .encyclopedia-filter-option input { accent-color: var(--gold, #d4af37); width: 16px; height: 16px; cursor: pointer; }
+    .encyclopedia-search-input {
+      width: 100%; box-sizing: border-box;
+      background: rgba(255,255,255,0.05);
+      border: 1.5px solid rgba(212,175,55,0.4);
+      border-radius: 8px;
+      color: #f0e0b0; font-size: 14px;
+      padding: 9px 12px;
+      margin-bottom: 18px;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .encyclopedia-search-input::placeholder { color: #8a8095; }
+    .encyclopedia-search-input:focus {
+      outline: none; border-color: #f0e0b0; background: rgba(255,255,255,0.08);
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 export function showEncyclopedia(onBack) {
+  injectEncyclopediaStyles();
 
   const ownedIds = getOwnedCardIds();
   // BUGFIX: para el filtro nuevo "Solo cartas mejoradas" — no cambia cómo se DIBUJA la
@@ -1400,13 +1809,89 @@ export function showEncyclopedia(onBack) {
   renderGrid();
 }
 
-
+function injectStoreStyles() {
+  if (document.getElementById('store-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'store-styles';
+  style.textContent = `
+    #store-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display: flex; flex-direction: column;
+      padding: 24px 32px;
+    }
+    .store-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
+    .store-title { font-size: 26px; font-weight: 700; color: #f0e0b0; text-shadow: 0 0 20px rgba(212,175,55,0.4); }
+    .store-body { flex: 1; overflow-y: auto; max-width: 900px; width: 100%; margin: 0 auto; }
+    .store-balance-row { display: flex; gap: 24px; margin-bottom: 28px; justify-content: center; }
+    .store-balance-chip {
+      background: rgba(18,25,15,0.7); border: 2px solid var(--gold, #d4af37); border-radius: 12px;
+      padding: 14px 28px; text-align: center; min-width: 160px;
+    }
+    .store-balance-value { color: #f0e0b0; font-size: 26px; font-weight: 700; }
+    .store-balance-label { color: #b8adc4; font-size: 12px; margin-top: 2px; }
+    .store-section {
+      background: rgba(18,25,15,0.5); border: 2px solid rgba(212,175,55,0.3); border-radius: 14px;
+      padding: 24px; margin-bottom: 20px; text-align: center;
+    }
+    .store-section-title { color: #f0e0b0; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .store-section-desc { color: #cfe0d4; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+    .store-pack-visual {
+      width: 8em; height: 8em; object-fit: contain; margin: 0 auto 10px; display: block;
+      filter: drop-shadow(0 6px 16px rgba(212,175,55,0.3));
+    }
+    .store-buy-btn {
+      background: linear-gradient(180deg, rgba(212,175,55,0.28), rgba(11,19,14,0.96));
+      border: 2px solid var(--gold, #d4af37); border-radius: 10px;
+      color: #f0e0b0; font-size: 15px; font-weight: 700;
+      padding: 11px 26px; cursor: pointer; transition: box-shadow 0.15s ease;
+    }
+    .store-buy-btn:hover { box-shadow: 0 4px 22px rgba(212,175,55,0.4); }
+    .store-buy-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+    .store-error-msg { color: #e07a6b; font-size: 13px; margin-top: 12px; }
+    .store-points-info { text-align: left; }
+    .store-points-info .store-section-title { text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .store-points-list { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .store-points-list li {
+      color: #cfe0d4; font-size: 13px; padding: 8px 12px;
+      background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 3px solid rgba(212,175,55,0.5);
+    }
+    .store-points-list li strong { color: #f0e0b0; }
+    .store-points-list li.store-points-penalty { border-left-color: #e07a6b; }
+    .store-points-list li.store-points-penalty strong { color: #e07a6b; }
+    .store-card-grid {
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 16px;
+      --card-w: 14vh;
+      margin: 20px 0;
+    }
+    .store-ficha-visual { font-size: 40px; }
+    .store-craft-list {
+      max-height: 50vh; overflow-y: auto;
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 14px;
+      --card-w: 12vh;
+      padding: 10px;
+    }
+    .store-craft-card-btn { cursor: pointer; border-radius: 8px; transition: transform 0.15s ease; background: none; border: none; padding: 0; }
+    .store-craft-card-btn:hover { transform: translateY(-4px); }
+    .store-keyword-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 16px 0; }
+    .store-keyword-btn {
+      background: rgba(255,255,255,0.05); border: 1.5px solid rgba(212,175,55,0.4); border-radius: 8px;
+      color: #f0e0b0; font-size: 14px; font-weight: 600; padding: 12px; cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .store-keyword-btn:hover { background: rgba(212,175,55,0.18); border-color: #f0e0b0; }
+    .store-back-link { background: none; border: none; color: #b8adc4; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 10px; }
+    .store-back-link:hover { color: #f0e0b0; }
+  `;
+  document.head.appendChild(style);
+}
 
 // FASE 2: Tienda — comprar sobres con puntos, y craftear mejoras permanentes con Fichas.
 // Como con la Enciclopedia, reusa createCardElement para dibujar cartas (acá con zone=
 // 'encyclopedia', el mismo truco de "zona inerte" para que ningún click dispare una acción
 // de juego real) — nada de esto necesitó inventar una forma nueva de mostrar una carta.
 export function showStoreScreen(onBack) {
+  injectStoreStyles();
   const overlay = document.createElement('div');
   overlay.id = 'store-overlay';
   overlay.innerHTML = `
@@ -1512,7 +1997,7 @@ export function showStoreScreen(onBack) {
         <div class="store-section-desc">${FICHA_ICON_HTML} +1 Ficha (van ${state.userProfile.fichas || 0} en total)</div>
       </div>
       <div class="store-card-grid">${gridHTML}</div>
-      <div class="text-center"><button class="store-buy-btn" id="store-continue">Continuar</button></div>
+      <div style="text-align:center;"><button class="store-buy-btn" id="store-continue">Continuar</button></div>
     `;
     body.querySelector('#store-continue').addEventListener('click', renderMainView);
   }
@@ -1598,9 +2083,109 @@ export function showStoreScreen(onBack) {
   renderMainView();
 }
 
+function injectMyDecksStyles() {
+  if (document.getElementById('mydecks-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'mydecks-styles';
+  style.textContent = `
+    #mydecks-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display: flex; flex-direction: column;
+      padding: 24px 32px;
+      --card-w: 14vh;
+    }
+    .mydecks-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
+    .mydecks-title { font-size: 26px; font-weight: 700; color: #f0e0b0; text-shadow: 0 0 20px rgba(212,175,55,0.4); }
+    .mydecks-body { flex: 1; overflow-y: auto; max-width: 900px; width: 100%; margin: 0 auto; }
+    .mydecks-slots-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px;
+    }
+    .mydecks-slot {
+      border-radius: 12px; padding: 20px; text-align: center; min-height: 100px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    }
+    .mydecks-slot-filled {
+      background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
+      border: 2px solid var(--gold, #d4af37);
+      cursor: pointer; transition: box-shadow 0.15s ease, transform 0.15s ease;
+    }
+    .mydecks-slot-filled:hover { box-shadow: 0 4px 22px rgba(212,175,55,0.35); transform: translateY(-3px); }
+    .mydecks-slot-name { color: #f0e0b0; font-size: 16px; font-weight: 700; }
+    .mydecks-slot-count { color: #b8adc4; font-size: 12px; }
+    .mydecks-slot-badge {
+      background: rgba(212,175,55,0.2); border: 1px solid var(--gold, #d4af37); border-radius: 6px;
+      color: #f0e0b0; font-size: 10px; font-weight: 700; padding: 2px 8px; text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .mydecks-slot-empty {
+      background: rgba(255,255,255,0.02); border: 1.5px dashed rgba(212,175,55,0.4);
+      color: #d4af37; font-size: 14px; cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+    .mydecks-slot-empty:hover { background: rgba(212,175,55,0.08); border-color: #f0e0b0; color: #f0e0b0; }
+    .mydecks-detail-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .mydecks-detail-title { color: #f0e0b0; font-size: 18px; font-weight: 700; }
+  `;
+  document.head.appendChild(style);
+}
 
-
-
+function injectDeckBuilderStyles() {
+  if (document.getElementById('deckbuilder-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'deckbuilder-styles';
+  style.textContent = `
+    #deckbuilder-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display: flex; flex-direction: column;
+      padding: 24px 32px;
+      --card-w: 12vh;
+    }
+    .deckbuilder-header { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; flex-shrink: 0; flex-wrap: wrap; }
+    .deckbuilder-name { color: #f0e0b0; font-size: 20px; font-weight: 700; flex: 1; }
+    .deckbuilder-body { flex: 1; display: flex; gap: 16px; min-height: 0; margin-top: 12px; }
+    .deckbuilder-pool { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .deckbuilder-pool-card-wrap { position: relative; cursor: pointer; transition: transform 0.15s ease; }
+    .deckbuilder-pool-card-wrap:hover { transform: translateY(-3px); }
+    .deckbuilder-pool-card-wrap.maxed { opacity: 0.4; cursor: not-allowed; }
+    .deckbuilder-pool-card-wrap.maxed:hover { transform: none; }
+    .deckbuilder-pool-card-badge {
+      position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.85); color: #f0e0b0;
+      border: 1px solid var(--gold, #d4af37); border-radius: 6px; font-size: 11px; font-weight: 700;
+      padding: 2px 6px; pointer-events: none;
+      /* BUGFIX: la imagen de arte de la carta (createCardElement) tiene z-index:2 propio —
+         sin un z-index explícito acá, el badge quedaba tapado detrás de esa imagen. Con
+         esto gana siempre. */
+      z-index: 10;
+    }
+    .deckbuilder-side { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; }
+    .deckbuilder-side-title { color: #f0e0b0; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+    .deckbuilder-pool-card-wrap.enhanced .card { outline: 2px solid #d4af37; outline-offset: 2px; border-radius: 8px; }
+    .deckbuilder-enhanced-marker {
+      position: absolute; bottom: 4px; left: 4px; right: 4px; text-align: center;
+      background: rgba(212,175,55,0.92); color: #1a1408;
+      border-radius: 6px; font-size: 10px; font-weight: 700; padding: 2px 4px;
+      pointer-events: none; z-index: 10;
+    }
+    .deckbuilder-list {
+      flex: 1; overflow-y: auto;
+      background: rgba(0,0,0,0.2); border: 2px solid rgba(212,175,55,0.3); border-radius: 10px; padding: 10px;
+    }
+    .deckbuilder-list-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; color: #e8ddc8;
+    }
+    .deckbuilder-list-item:last-child { border-bottom: none; }
+    .deckbuilder-list-remove {
+      background: none; border: 1px solid rgba(224,122,107,0.5); color: #e07a6b; border-radius: 5px;
+      width: 20px; height: 20px; cursor: pointer; font-size: 13px; line-height: 1; flex-shrink: 0;
+    }
+    .deckbuilder-list-remove:hover { background: rgba(224,122,107,0.15); }
+    .deckbuilder-empty-hint { color: #7a7086; font-size: 13px; text-align: center; padding: 20px 10px; }
+  `;
+  document.head.appendChild(style);
+}
 
 // FASE 3, ETAPA 2: nombre del mazo nuevo, antes de entrar al constructor. Cualquier nombre
 // no vacío sirve (sin la exigencia de escribir una palabra exacta como en borrar cuenta —
@@ -1610,15 +2195,18 @@ export function showDeckNameModal(defaultName, onConfirm, onCancel) {
   // .encyclopedia-search-input) sin nunca haberlas inyectado — si nadie más lo hizo antes
   // en esa sesión de navegación, los botones salían con el estilo por defecto del
   // navegador (gris, sin bordes redondeados, texto negro). Con esto, siempre están.
+  injectStoreStyles();
+  injectMulliganStyles();
+  injectEncyclopediaStyles();
 
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
 
   modalOverlay.innerHTML = `
-    <div class="gy-modal-content modal-w-420">
+    <div class="gy-modal-content" style="max-width: 420px;">
       <div class="gy-modal-header"><h3>Nombrá tu mazo</h3></div>
-      <div class="modal-action-column modal-action-column-gap12">
-        <input type="text" class="encyclopedia-search-input no-margin-bottom" id="deckname-input" value="${defaultName}" maxlength="30">
+      <div style="display:flex; flex-direction:column; gap:12px; padding: 16px;">
+        <input type="text" class="encyclopedia-search-input" id="deckname-input" value="${defaultName}" maxlength="30" style="margin-bottom:0;">
         <button class="store-buy-btn" id="deckname-confirm-btn">Continuar</button>
         <button id="deckname-cancel-btn" class="mulligan-btn mulligan-btn-mull">Cancelar</button>
       </div>
@@ -1652,6 +2240,8 @@ export function showDeckNameModal(defaultName, onConfirm, onCancel) {
 // ya puestas — mismas reglas, mismo pool, mismo tope — y al guardar actualiza ESE mazo en
 // vez de crear uno nuevo.
 export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck) {
+  injectEncyclopediaStyles();
+  injectDeckBuilderStyles();
 
   const ownedCounts = {};
   (state.userProfile.collection || []).forEach(id => { ownedCounts[id] = (ownedCounts[id] || 0) + 1; });
@@ -1676,7 +2266,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       <div class="deckbuilder-name">${existingDeck ? '✏️ ' : ''}${deckName}</div>
       <button class="store-buy-btn" id="deckbuilder-save" disabled>💾 Guardar mazo</button>
     </div>
-    <div class="store-error-msg text-left" id="deckbuilder-error"></div>
+    <div class="store-error-msg" id="deckbuilder-error" style="text-align:left;"></div>
     <div class="encyclopedia-tabs">${tabsHTML}</div>
     <input type="text" class="encyclopedia-search-input" id="deckbuilder-search" placeholder="Buscar carta...">
     <div class="deckbuilder-body">
@@ -1794,7 +2384,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     const entries = Object.entries(deckCounts).filter(([, n]) => n > 0);
     const total = totalInDeck();
     countLabel.textContent = `Tu mazo (${total} / ${DECK_SIZE_EXACT} cartas)`;
-    countLabel.classList.toggle('deck-count-valid', total === DECK_SIZE_EXACT);
+    countLabel.style.color = total === DECK_SIZE_EXACT ? '#7cbf7c' : '#f0e0b0';
 
     const saveBtn = overlay.querySelector('#deckbuilder-save');
     saveBtn.disabled = total !== DECK_SIZE_EXACT;
@@ -1890,7 +2480,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 // Enciclopedia para la vista de detalle — la reutilización de UI que veníamos buscando.
 // FASE 3, ETAPA 4: elegir con qué mazo jugar — se muestra en vez del selector random de
 // siempre cuando el jugador logueado ya tiene al menos un mazo guardado. Reusa el MISMO
-// estilo de slot que "Mis Mazos" (definido en style.css), pero acá el click
+// estilo de slot que "Mis Mazos" (ver injectMyDecksStyles más arriba), pero acá el click
 // ELIGE ese mazo para arrancar la partida, no abre el detalle de solo lectura. Sin sesión,
 // o sin ningún mazo guardado todavía, ni se llega a esta pantalla — el llamador
 // (showMainMenu → boot() en main.js) decide eso antes de invocarla.
@@ -1900,6 +2490,9 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 // pasa por acá (no hay mazos guardados que elegir). También se suma "Volver" — antes este
 // modal no tenía ninguna salida más que elegir un mazo o clickear random.
 export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel) {
+  injectMyDecksStyles();
+  injectStoreStyles(); // reusa .store-back-link para el link de "jugar random"
+  injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn para "Volver"
 
   const overlay = document.createElement('div');
   overlay.id = 'mydecks-overlay';
@@ -1921,7 +2514,7 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel) {
     <div class="mydecks-body">
       <div class="mydecks-slots-grid">${slotsHTML}</div>
       ${onPlayRandom ? `
-      <div class="text-center mt-24">
+      <div style="text-align:center; margin-top: 24px;">
         <button class="store-back-link" id="playpicker-random">🎲 Jugar con un mazo random en cambio</button>
       </div>
       ` : ''}
@@ -1954,6 +2547,9 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel) {
 }
 
 export function showMyDecksScreen(onBack) {
+  injectMyDecksStyles();
+  injectEncyclopediaStyles(); // reusamos .encyclopedia-grid-box para la vista de detalle
+  injectDeckBuilderStyles(); // reusamos .deckbuilder-enhanced-marker para marcar la copia mejorada
   const overlay = document.createElement('div');
   overlay.id = 'mydecks-overlay';
   overlay.innerHTML = `
@@ -2051,8 +2647,8 @@ export function showMyDecksScreen(onBack) {
       <div class="mydecks-detail-header">
         <button class="store-back-link" id="mydecks-detail-back">← Mis Mazos</button>
         <div class="mydecks-detail-title">${deck.name} — ${cards.length} cartas</div>
-        <button class="admin-save-btn compact-action-btn" id="mydecks-detail-edit">✏️ Editar</button>
-        <button class="delete-confirm-btn compact-action-btn" id="mydecks-detail-delete">🗑️ Eliminar</button>
+        <button class="admin-save-btn" id="mydecks-detail-edit" style="width:auto; padding:8px 18px;">✏️ Editar</button>
+        <button class="delete-confirm-btn" id="mydecks-detail-delete" style="width:auto; padding:8px 18px;">🗑️ Eliminar</button>
       </div>
       <div class="encyclopedia-grid-box" id="mydecks-detail-grid"></div>
     `;
@@ -2088,7 +2684,7 @@ export function showMyDecksScreen(onBack) {
     cards.forEach(({ displayCard, isEnhanced }) => {
       const slot = document.createElement('div');
       slot.className = 'encyclopedia-card-slot';
-      slot.classList.add('deck-slot-positioned');
+      slot.style.position = 'relative';
       // Acá nunca hay grisado: todo lo que está en un mazo, por definición, es tuyo.
       slot.appendChild(createCardElement(displayCard, false, true, null, 'encyclopedia', null));
       if (isEnhanced) {
@@ -2131,7 +2727,7 @@ function renderAccountBox(container, user) {
     container.innerHTML = `
       ${adminBtnHTML}
       <div class="main-menu-account-info">
-        <img class="main-menu-account-photo" src="${user.photoURL || ''}" alt="" onerror="this.classList.add('image-error-invisible')">
+        <img class="main-menu-account-photo" src="${user.photoURL || ''}" alt="" onerror="this.style.visibility='hidden'">
         <div>
           <div class="main-menu-account-name">${getLocalPlayerName()}</div>
           ${pointsHTML}
@@ -2142,9 +2738,9 @@ function renderAccountBox(container, user) {
     if (user.email === ADMIN_EMAIL) {
       container.querySelector('#menu-admin').addEventListener('click', () => {
         const mainMenuOverlay = document.getElementById('main-menu-overlay');
-        if (mainMenuOverlay) mainMenuOverlay.classList.add('hidden');
+        if (mainMenuOverlay) mainMenuOverlay.style.display = 'none';
         showAdminPanel(() => {
-          if (mainMenuOverlay) mainMenuOverlay.classList.remove('hidden');
+          if (mainMenuOverlay) mainMenuOverlay.style.display = '';
         });
       });
     }
@@ -2212,7 +2808,55 @@ export function updateAccountUI(user) {
   if (mainMenuOverlay) updateMainMenuLoginGatedButtons(mainMenuOverlay);
 }
 
-
+function injectAdminPanelStyles() {
+  if (document.getElementById('admin-panel-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'admin-panel-styles';
+  style.textContent = `
+    #admin-panel-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #1f1530 0%, #0b0713 100%);
+      display: flex; flex-direction: column;
+      padding: 24px 32px;
+    }
+    .admin-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
+    .admin-title { font-size: 26px; font-weight: 700; color: #e8d4f5; text-shadow: 0 0 20px rgba(176,106,212,0.4); }
+    .admin-body { flex: 1; overflow-y: auto; max-width: 700px; width: 100%; margin: 0 auto; padding-bottom: 40px; }
+    .admin-section {
+      background: rgba(30,20,45,0.5); border: 2px solid rgba(176,106,212,0.3); border-radius: 14px;
+      padding: 20px 24px; margin-bottom: 18px;
+    }
+    .admin-section-title {
+      color: #e8d4f5; font-size: 15px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 14px; padding-bottom: 8px;
+      border-bottom: 1px solid rgba(176,106,212,0.2);
+    }
+    .admin-field-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 8px 0;
+    }
+    .admin-field-label { color: #d8c4e8; font-size: 13px; flex: 1; }
+    .admin-field-input {
+      width: 100px; box-sizing: border-box;
+      background: rgba(255,255,255,0.06); border: 1.5px solid rgba(176,106,212,0.4); border-radius: 6px;
+      color: #f0e0b0; font-size: 14px; font-weight: 600; padding: 6px 10px; text-align: right;
+    }
+    .admin-field-input:focus { outline: none; border-color: #b06ad4; }
+    .admin-field-row-disabled .admin-field-label { opacity: 0.5; }
+    .admin-field-row-disabled .admin-field-input { opacity: 0.4; cursor: not-allowed; }
+    .admin-save-btn {
+      background: linear-gradient(180deg, rgba(176,106,212,0.3), rgba(11,19,14,0.96));
+      border: 2px solid #b06ad4; border-radius: 10px;
+      color: #f0e0b0; font-size: 15px; font-weight: 700;
+      padding: 12px 28px; cursor: pointer; width: 100%; margin-top: 8px;
+      transition: box-shadow 0.15s ease;
+    }
+    .admin-save-btn:hover { box-shadow: 0 4px 22px rgba(176,106,212,0.4); }
+    .admin-save-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+    .admin-success-msg { color: #7cbf7c; font-size: 13px; margin-top: 10px; text-align: center; }
+  `;
+  document.head.appendChild(style);
+}
 
 // PANEL DE ADMIN: formulario de balance, con GUARDAR escribiendo de verdad en Firestore
 // (gameConfig/settings) y aplicando el cambio YA en esta misma sesión (applyGameConfig),
@@ -2220,6 +2864,8 @@ export function updateAccountUI(user) {
 // (firestore.rules) — acá solo hay un chequeo defensivo extra, por si algo raro hiciera
 // llegar a alguien que no sea el admin hasta este punto.
 export function showAdminPanel(onBack) {
+  injectAdminPanelStyles();
+  injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn
 
   if (!state.currentUser || state.currentUser.email !== ADMIN_EMAIL) {
     console.error('showAdminPanel: acceso bloqueado, la cuenta actual no es la del admin.');
@@ -2286,23 +2932,23 @@ export function showAdminPanel(onBack) {
       </div>
       <div class="admin-field-row">
         <span class="admin-field-label">Moneda</span>
-        <select class="admin-field-input text-left" id="grant-currency">
+        <select class="admin-field-input" id="grant-currency" style="text-align:left;">
           <option value="points">Puntos</option>
           <option value="fichas">Fichas</option>
         </select>
       </div>
       <div class="admin-field-row">
         <span class="admin-field-label">Para</span>
-        <select class="admin-field-input text-left admin-input-max220" id="grant-recipient">
+        <select class="admin-field-input" id="grant-recipient" style="text-align:left; max-width: 220px;">
           <option value="">Cargando usuarios…</option>
         </select>
       </div>
       <div class="admin-field-row">
         <span class="admin-field-label">Motivo (opcional)</span>
-        <input type="text" class="admin-field-input text-left admin-input-w220" id="grant-reason" placeholder="ej: compensación por bug">
+        <input type="text" class="admin-field-input" id="grant-reason" placeholder="ej: compensación por bug" style="text-align:left; width:220px;">
       </div>
       <button class="admin-save-btn" id="admin-grant-send">📤 Enviar</button>
-      <div class="store-error-msg text-center" id="admin-grant-error"></div>
+      <div class="store-error-msg" id="admin-grant-error" style="text-align:center;"></div>
       <div class="admin-success-msg" id="admin-grant-success"></div>
     </div>
   `;
@@ -2313,11 +2959,11 @@ export function showAdminPanel(onBack) {
   const announcementsHTML = `
     <div class="admin-section">
       <div class="admin-section-title">Anuncios (Noticias del menú principal)</div>
-      <textarea class="admin-field-input admin-announcement-textarea" id="announcement-text" placeholder="Escribí el anuncio…" rows="3"></textarea>
-      <button class="admin-save-btn mt-10" id="announcement-post">📢 Publicar anuncio</button>
-      <div class="store-error-msg text-center" id="announcement-error"></div>
+      <textarea class="admin-field-input" id="announcement-text" placeholder="Escribí el anuncio…" rows="3" style="width:100%; box-sizing:border-box; text-align:left; resize:vertical;"></textarea>
+      <button class="admin-save-btn" id="announcement-post" style="margin-top:10px;">📢 Publicar anuncio</button>
+      <div class="store-error-msg" id="announcement-error" style="text-align:center;"></div>
       <div class="admin-success-msg" id="announcement-success"></div>
-      <div id="announcement-list" class="mt-16"></div>
+      <div id="announcement-list" style="margin-top:16px;"></div>
     </div>
   `;
 
@@ -2332,7 +2978,7 @@ export function showAdminPanel(onBack) {
       ${announcementsHTML}
       ${placeholdersHTML}
       <button class="admin-save-btn" id="admin-save">💾 Guardar cambios</button>
-      <div class="store-error-msg text-center" id="admin-error"></div>
+      <div class="store-error-msg" id="admin-error" style="text-align:center;"></div>
       <div class="admin-success-msg" id="admin-success"></div>
     </div>
   `;
@@ -2408,7 +3054,7 @@ export function showAdminPanel(onBack) {
     }
     listEl.innerHTML = announcements.map(a => `
       <div class="admin-field-row" data-announcement-id="${a.id}">
-        <span class="admin-field-label admin-field-label-grow">
+        <span class="admin-field-label" style="flex:1; text-align:left;">
           <strong>${formatAnnouncementDate(a.createdAt)}</strong> — ${escapeHtml(a.text)}
         </span>
         <button class="admin-announcement-delete" data-id="${a.id}" title="Borrar">🗑️</button>
@@ -2524,7 +3170,36 @@ export function showAdminPanel(onBack) {
   });
 }
 
-
+function injectMultiplayerLobbyStyles() {
+  if (document.getElementById('multiplayer-lobby-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'multiplayer-lobby-styles';
+  style.textContent = `
+    #multiplayer-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display: flex; flex-direction: column;
+      padding: 24px 32px;
+    }
+    .mp-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
+    .mp-title { font-size: 26px; font-weight: 700; color: #f0e0b0; text-shadow: 0 0 20px rgba(212,175,55,0.4); }
+    .mp-body { flex: 1; overflow-y: auto; max-width: 560px; width: 100%; margin: 0 auto; }
+    .mp-section {
+      background: rgba(18,25,15,0.5); border: 2px solid rgba(212,175,55,0.3); border-radius: 14px;
+      padding: 24px; margin-bottom: 20px; text-align: center;
+    }
+    .mp-section-title { color: #f0e0b0; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .mp-section-desc { color: #cfe0d4; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+    .mp-code-display {
+      font-size: 40px; font-weight: 700; letter-spacing: 6px; color: #f0e0b0;
+      background: rgba(0,0,0,0.3); border: 2px dashed rgba(212,175,55,0.5); border-radius: 10px;
+      padding: 16px; margin: 12px 0 18px;
+    }
+    .mp-spinner { font-size: 28px; margin-bottom: 4px; animation: mp-pulse 1.4s ease-in-out infinite; }
+    @keyframes mp-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+  `;
+  document.head.appendChild(style);
+}
 
 // FASE 4: cimiento de matchmaking — crear partida (código de 6 caracteres para compartir),
 // unirse con un código, sala de espera en tiempo real. LA SINCRONIZACIÓN DE LA PARTIDA EN
@@ -2534,13 +3209,14 @@ export function showAdminPanel(onBack) {
 // partida genuinamente en curso (main.js ya la validó con fetchMatchForReconnect antes de
 // llamar a esto — nunca se ofrece reconectar a algo que ya terminó o no existe más).
 export function showReconnectPrompt(onReconnect, onAbandon) {
+  injectStoreStyles(); // reusa .store-buy-btn / .store-back-link
   const overlay = document.createElement('div');
   overlay.id = 'reconnect-overlay';
-  overlay.className = 'reconnect-overlay';
+  overlay.style.cssText = 'position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center;';
   overlay.innerHTML = `
-    <div class="reconnect-panel">
-      <div class="reconnect-title">🔄 Tenés una partida en curso</div>
-      <div class="reconnect-copy">Parece que recargaste la página a mitad de una partida multiplayer. ¿Querés volver a ella?</div>
+    <div style="background:#16211a; border:2px solid rgba(212,175,55,0.5); border-radius:16px; padding:32px; max-width:420px; text-align:center;">
+      <div style="font-size:20px; font-weight:700; color:#f0e0b0; margin-bottom:12px;">🔄 Tenés una partida en curso</div>
+      <div style="color:#cfe0d4; font-size:14px; margin-bottom:24px; line-height:1.5;">Parece que recargaste la página a mitad de una partida multiplayer. ¿Querés volver a ella?</div>
       <button class="store-buy-btn" id="reconnect-yes">Reconectarme</button>
       <br><br>
       <button class="store-back-link" id="reconnect-no">Abandonarla</button>
@@ -2559,6 +3235,9 @@ export function showReconnectPrompt(onReconnect, onAbandon) {
 }
 
 export function showMultiplayerLobby(onBack, onMatched) {
+  injectMultiplayerLobbyStyles();
+  injectStoreStyles(); // reusa .store-buy-btn / .store-back-link / .store-error-msg
+  injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn / .encyclopedia-search-input
 
   const overlay = document.createElement('div');
   overlay.id = 'multiplayer-overlay';
@@ -2694,12 +3373,13 @@ export function showMultiplayerLobby(onBack, onMatched) {
 }
 
 export function showMainMenu(onPlay, onMultiplayerMatched) {
+  injectMainMenuStyles();
   const overlay = document.createElement('div');
   overlay.id = 'main-menu-overlay';
   overlay.innerHTML = `
     <div class="main-menu-account" id="main-menu-account"></div>
     <div class="main-menu-logo-wrap">
-      <img class="main-menu-logo" src="./assets/images/ui/logo.png" alt="Argentinia" onerror="this.hidden=true">
+      <img class="main-menu-logo" src="./assets/images/ui/logo.png" alt="Argentinia" onerror="this.style.display='none'">
     </div>
     <div class="main-menu-buttons">
       <button class="main-menu-btn main-menu-btn-primary" id="menu-play">Jugar (Solitario)</button>
@@ -2752,8 +3432,8 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
   // Enciclopedia/Mis Mazos/Tienda: sin cuenta no hay con quién identificarte frente a un rival.
   overlay.querySelector('#menu-multiplayer').addEventListener('click', () => {
     if (!state.currentUser) return;
-    overlay.classList.add('hidden');
-    showMultiplayerLobby(() => { overlay.classList.remove('hidden'); }, onMultiplayerMatched);
+    overlay.style.display = 'none';
+    showMultiplayerLobby(() => { overlay.style.display = ''; }, onMultiplayerMatched);
   });
 
   // BUGFIX (revisión post-Etapa 4): Enciclopedia/Mis Mazos/Tienda ahora quedan
@@ -2762,25 +3442,25 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
   // pinta como corresponde, y acá el click no hace nada si no hay sesión.
   overlay.querySelector('#menu-encyclopedia').addEventListener('click', () => {
     if (!state.currentUser) return;
-    overlay.classList.add('hidden');
-    showEncyclopedia(() => { overlay.classList.remove('hidden'); });
+    overlay.style.display = 'none';
+    showEncyclopedia(() => { overlay.style.display = ''; });
   });
 
   overlay.querySelector('#menu-mydecks').addEventListener('click', () => {
     if (!state.currentUser) return;
-    overlay.classList.add('hidden');
-    showMyDecksScreen(() => { overlay.classList.remove('hidden'); });
+    overlay.style.display = 'none';
+    showMyDecksScreen(() => { overlay.style.display = ''; });
   });
 
   overlay.querySelector('#menu-store').addEventListener('click', () => {
     if (!state.currentUser) return;
-    overlay.classList.add('hidden');
-    showStoreScreen(() => { overlay.classList.remove('hidden'); });
+    overlay.style.display = 'none';
+    showStoreScreen(() => { overlay.style.display = ''; });
   });
 
   overlay.querySelector('#menu-options').addEventListener('click', () => {
-    overlay.classList.add('hidden');
-    showOptionsMenu(() => { overlay.classList.remove('hidden'); });
+    overlay.style.display = 'none';
+    showOptionsMenu(() => { overlay.style.display = ''; });
   });
 }
 
@@ -2788,6 +3468,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
 // otras dos quedan como placeholder deshabilitado — están para mostrar hacia dónde va esto,
 // no porque hagan algo todavía (no hay sistema de sonido ni de animaciones configurables).
 export function showOptionsMenu(onBack) {
+  injectMainMenuStyles();
   const overlay = document.createElement('div');
   overlay.id = 'options-menu-overlay';
 
@@ -2819,7 +3500,7 @@ export function showOptionsMenu(onBack) {
         <button class="options-toggle-btn" data-tooltip="Deshabilitado">Activado</button>
       </div>
       ${dangerZoneHTML}
-      <button class="main-menu-btn mt-24" id="opt-back">Volver</button>
+      <button class="main-menu-btn" id="opt-back" style="margin-top: 24px;">Volver</button>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -2858,12 +3539,13 @@ export function showOptionsMenu(onBack) {
 // (ej. "no podés eliminar tu único mazo"). Distinto de showAbandonConfirmModal y compañía,
 // que sí piden una decisión.
 export function showSimpleAlertModal(message) {
+  injectMulliganStyles();
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
   modalOverlay.innerHTML = `
-    <div class="gy-modal-content modal-w-420">
-      <div class="modal-action-column modal-action-column-gap14">
-        <p class="modal-copy modal-copy-line">${message}</p>
+    <div class="gy-modal-content" style="max-width: 420px;">
+      <div style="display:flex; flex-direction:column; gap:14px; padding: 16px;">
+        <p style="color:#cfe0d4; font-size: 14px; margin: 0; line-height: 1.5;">${message}</p>
         <button id="simple-alert-ok" class="mulligan-btn mulligan-btn-keep">Entendido</button>
       </div>
     </div>
@@ -2876,13 +3558,14 @@ export function showSimpleAlertModal(message) {
 // escribir nada): perder un mazo es recuperable rearmándolo desde tu colección, perder la
 // cuenta entera no.
 export function showDeleteDeckConfirmModal(deckName, onConfirm, onCancel) {
+  injectMulliganStyles();
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
   modalOverlay.innerHTML = `
-    <div class="gy-modal-content modal-w-440">
+    <div class="gy-modal-content" style="max-width: 440px;">
       <div class="gy-modal-header"><h3>🗑️ Eliminar "${escapeHtml(deckName)}"</h3></div>
-      <div class="modal-action-column modal-action-column-gap12">
-        <p class="modal-copy modal-copy-small-line">Esto borra el mazo para siempre. No se puede deshacer.</p>
+      <div style="display:flex; flex-direction:column; gap:12px; padding: 16px;">
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0;">Esto borra el mazo para siempre. No se puede deshacer.</p>
         <button id="delete-deck-confirm-btn" class="delete-confirm-btn">Sí, eliminar</button>
         <button id="delete-deck-cancel-btn" class="mulligan-btn mulligan-btn-mull">Cancelar</button>
       </div>
@@ -2905,18 +3588,19 @@ export function showDeleteDeckConfirmModal(deckName, onConfirm, onCancel) {
 export function showDeleteAccountModal(onConfirm, onCancel) {
   // BUGFIX: el botón "Cancelar" usa .mulligan-btn sin nunca haberla inyectado — mismo caso
   // que showDeckNameModal. .delete-confirm-input/.delete-confirm-btn ya venían bien porque
-  // viven en style.css y están disponibles desde la carga inicial (siempre se
+  // viven en injectMainMenuStyles(), que ya corrió antes para llegar hasta acá (siempre se
   // pasa por el menú principal para abrir Opciones).
+  injectMulliganStyles();
 
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
 
   modalOverlay.innerHTML = `
-    <div class="gy-modal-content modal-w-460">
+    <div class="gy-modal-content" style="max-width: 460px;">
       <div class="gy-modal-header"><h3>⚠️ Borrar tu cuenta</h3></div>
-      <div class="modal-action-column modal-action-column-gap12">
-        <p class="modal-copy modal-copy-small-line">Esto borra tu colección, tus puntos, tus Fichas y tus mazos guardados — PARA SIEMPRE. No se puede deshacer.</p>
-        <p class="modal-copy modal-copy-small-line">Escribí <strong>ELIMINAR</strong> para confirmar:</p>
+      <div style="display:flex; flex-direction:column; gap:12px; padding: 16px;">
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0;">Esto borra tu colección, tus puntos, tus Fichas y tus mazos guardados — PARA SIEMPRE. No se puede deshacer.</p>
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0;">Escribí <strong>ELIMINAR</strong> para confirmar:</p>
         <input type="text" class="delete-confirm-input" id="delete-confirm-input" placeholder="ELIMINAR" autocomplete="off">
         <button class="delete-confirm-btn" id="delete-confirm-btn" disabled>Borrar todo</button>
         <button id="delete-cancel-btn" class="mulligan-btn mulligan-btn-mull">Cancelar</button>
@@ -2945,6 +3629,8 @@ export function showDeleteAccountModal(onConfirm, onCancel) {
 }
 
 export function showDeckSelectionModal(onChoose, titleOverrides = {}, onCancel) {
+  injectDeckSelectionStyles();
+  injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn para "Volver"
 
   const overlay = document.createElement('div');
   overlay.id = 'deck-select-overlay';
@@ -2956,7 +3642,7 @@ export function showDeckSelectionModal(onChoose, titleOverrides = {}, onCancel) 
     const info = COLOR_INFO[colorKey];
     return `
       <button class="deck-select-mono-btn" data-mono="${colorKey}" title="${info.desc}">
-        <div class="deck-select-circle-big ${circleClass(colorKey)}"></div>
+        <div class="deck-select-circle-big" style="${circleStyle(colorKey)}"></div>
         <span class="deck-select-mono-label">${info.name}</span>
       </button>
     `;
@@ -2968,8 +3654,8 @@ export function showDeckSelectionModal(onChoose, titleOverrides = {}, onCancel) 
     return `
       <button class="deck-select-pair-btn" data-pair="${key}">
         <div class="deck-select-pair-icons">
-          <div class="deck-select-circle-small ${circleClass(a)}"></div>
-          <div class="deck-select-circle-small ${circleClass(b)}"></div>
+          <div class="deck-select-circle-small" style="${circleStyle(a)}"></div>
+          <div class="deck-select-circle-small" style="${circleStyle(b)}"></div>
         </div>
         <div class="deck-select-pair-text">
           <div class="deck-select-pair-title">${pair.title}</div>
@@ -2984,7 +3670,7 @@ export function showDeckSelectionModal(onChoose, titleOverrides = {}, onCancel) 
   // botón siempre está.
   overlay.innerHTML = `
     <div class="deck-select-panel">
-      <button class="encyclopedia-back-btn mb-12" id="deckselect-back">← Volver</button>
+      <button class="encyclopedia-back-btn" id="deckselect-back" style="margin-bottom: 12px;">← Volver</button>
       <div class="deck-select-title">${title}</div>
       <div class="deck-select-subtitle">${subtitle}</div>
       <div class="deck-select-mono-row">${monoButtonsHTML}</div>
@@ -3017,7 +3703,62 @@ export function showDeckSelectionModal(onChoose, titleOverrides = {}, onCancel) 
   });
 }
 
-
+function injectMulliganStyles() {
+  if (document.getElementById('mulligan-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'mulligan-styles';
+  style.textContent = `
+    #mulligan-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .mulligan-panel {
+      max-width: 980px; width: 95%; max-height: 90vh; overflow: visible;
+      background: linear-gradient(180deg, rgba(18,25,15,0.97), rgba(11,19,14,0.99));
+      border: 2px solid var(--gold, #d4af37);
+      border-radius: 16px;
+      padding: 28px 30px;
+      box-shadow: 0 0 60px rgba(212,175,55,0.15), 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .mulligan-title {
+      text-align: center; font-size: 24px; font-weight: 700; color: var(--gold, #d4af37);
+      margin-bottom: 6px; text-shadow: 0 0 20px rgba(212,175,55,0.4);
+    }
+    .mulligan-subtitle { text-align: center; font-size: 14px; color: #cfe0d4; margin-bottom: 22px; }
+    .mulligan-hand-row {
+      display: flex; justify-content: center; gap: 8px; flex-wrap: nowrap; margin-bottom: 26px;
+      min-height: 154px;
+    }
+    .mulligan-card-slot {
+      width: 100px !important; height: 140px !important;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      flex-shrink: 0;
+    }
+    /* Las cartas del modal no tenían NINGÚN hover-zoom: las reglas de zoom del resto del
+       juego están atadas a #local-hand / .field-row específicamente, y esta fila no es
+       ninguna de esas dos. Le damos su propia regla, mismo criterio (bottom center). */
+    .mulligan-card-slot:hover {
+      transform: scale(2.0);
+      z-index: 20;
+    }
+    .mulligan-card-slot.selectable:hover { transform: scale(2.0) translateY(-6px); z-index: 20; }
+    .mulligan-card-slot.chosen {
+      box-shadow: 0 0 0 3px #e74c3c, 0 0 16px rgba(231,76,60,0.6);
+    }
+    .mulligan-buttons { display: flex; justify-content: center; gap: 14px; }
+    .mulligan-btn {
+      padding: 10px 22px; border-radius: 8px; border: none; cursor: pointer;
+      font-weight: bold; font-size: 14px;
+    }
+    .mulligan-btn-keep { background: #e67e22; color: #fff; }
+    .mulligan-btn-keep:hover { background: #f39c12; }
+    .mulligan-btn-mull { background: #2c2c2c; color: #eee; border: 1px solid #555; }
+    .mulligan-btn-mull:hover { background: #3a3a3a; }
+    .mulligan-btn:disabled { background: #444; color: #888; cursor: not-allowed; border-color: #444; }
+  `;
+  document.head.appendChild(style);
+}
 
 // Construye una fila de cartas REALES (el mismo createCardElement que usa todo el resto
 // del juego), no una versión mini simplificada — así el jugador ve la carta completa y
@@ -3033,7 +3774,7 @@ function buildMulliganCardRow(hand, selectable, onCardClick) {
       cardEl.classList.add('selectable');
       cardEl.addEventListener('click', () => onCardClick(card, cardEl, cardIndex));
     } else {
-      cardEl.classList.add('cursor-default');
+      cardEl.style.cursor = 'default';
     }
     row.appendChild(cardEl);
   });
@@ -3042,6 +3783,7 @@ function buildMulliganCardRow(hand, selectable, onCardClick) {
 
 // Paso 1: mostrar la mano y elegir Mulligan o Quedarse.
 export function showMulliganModal(hand, mulliganCount, canMulliganMore, callbacks) {
+  injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
 
@@ -3089,6 +3831,7 @@ export function showMulliganModal(hand, mulliganCount, canMulliganMore, callback
 // Confirmar SIEMPRE está habilitado (a diferencia de "elegir para el fondo" del Mulligan,
 // acá 0 cartas elegidas es perfectamente legal — significa "todas se quedan arriba").
 export function showScrySurveilModal(cards, mode, onConfirm) {
+  injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
 
@@ -3133,6 +3876,7 @@ export function showScrySurveilModal(cards, mode, onConfirm) {
 // (ver createCardElement: "if (customClick) ... else { ...zona... }"), así clickear una
 // carta acá adentro NUNCA dispara handleCombatClick/handlePlaneswalkerClick del juego real.
 export function showProliferateModal(eligible, onConfirm) {
+  injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
 
@@ -3171,10 +3915,10 @@ export function showProliferateModal(eligible, onConfirm) {
       cardEl.className = 'mulligan-card-slot selectable';
       const poisonCount = entry.ownerIsLocal ? state.localPoison : state.rivalPoison;
       cardEl.innerHTML = `
-        <div class="poison-target-summary">
-          <span class="poison-target-icon">☠️</span>
-          <span class="poison-target-title">Veneno de ${entry.ownerIsLocal ? 'Vos' : getRivalName()}</span>
-          <span class="poison-target-count">(${poisonCount} actual)</span>
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:6px; color:#cfe0d4; text-align:center; padding: 8px;">
+          <span style="font-size:28px;">☠️</span>
+          <span style="font-size:12px; font-weight:bold;">Veneno de ${entry.ownerIsLocal ? 'Vos' : getRivalName()}</span>
+          <span style="font-size:11px; color:#a89bb5;">(${poisonCount} actual)</span>
         </div>
       `;
       cardEl.addEventListener('click', toggle);
@@ -3201,6 +3945,7 @@ export function showProliferateModal(eligible, onConfirm) {
 // puramente visuales; la validación real de elegibilidad vive en main.js. No hay Cancelar:
 // cuando se abre, la selección forma parte de una instrucción que ya está resolviéndose.
 export function showGraveyardChoiceModal(entries, countToChoose, cardName, filterLabel, actionLabel, onConfirm) {
+  injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
 
@@ -3273,6 +4018,7 @@ export function showEscapeExileModal(graveyardCards, exileCount, onConfirm) {
 // No hay Cancelar: el efecto ya está resolviéndose. Recibe items de battlefield reales,
 // por eso varias copias idénticas siguen siendo seleccionables como objetos distintos.
 export function showSacrificeEffectModal(candidates, countToSacrifice, cardName, permanentType, onConfirm) {
+  injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
 
@@ -3333,6 +4079,7 @@ export function showSacrificeEffectModal(candidates, countToSacrifice, cardName,
 // elecciones distintas. No hay botón Cancelar porque, cuando aparece, una instrucción o
 // un costo ya está a mitad de resolución.
 export function showHandDiscardChoiceModal(hand, countToDiscard, cardName, actionLabel, onConfirm) {
+  injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
 
@@ -3380,6 +4127,7 @@ export function showHandFilterDiscardModal(hand, countToDiscard, cardName, mode,
 }
 
 export function showBottomCardsModal(hand, countToBottom, onConfirm) {
+  injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
 
@@ -3499,7 +4247,7 @@ export function render() {
   els.localHand.innerHTML = ''; state.localHand.forEach((card, idx) => els.localHand.appendChild(createCardElement(card, false, true, idx, 'hand')));
   els.rivalHand.innerHTML = ''; state.rivalHand.forEach(() => {
     const back = document.createElement('div'); back.className = 'card card-back';
-    back.innerHTML = `<img src="./assets/images/card_back.png" alt="Reverso" class="card-back-image" onerror="this.hidden=true">`;
+    back.innerHTML = `<img src="./assets/images/card_back.png" alt="Reverso" style="width: 100%; height: 100%; object-fit: cover; border-radius: 2px;" onerror="this.style.display='none'">`;
     els.rivalHand.appendChild(back);
   });
 
@@ -3587,19 +4335,19 @@ export function render() {
 
   els.btnEndTurn.disabled = (state.priorityPlayer !== 'local' || state.gameOver || state.isDiscarding || anyPendingChoice);
 
-  els.btnEndTurn.classList.remove('btn-turn-attack-confirm', 'btn-turn-block-confirm');
   if (state.phase === 'combat_attackers' && state.activePlayer === 'local') {
     const isAttacking = state.localCombat.some(c => c.isAttacking);
     els.btnEndTurn.textContent = isAttacking ? "Confirmar Ataque ⚔️" : "Saltar Ataque ➔";
     els.btnEndTurn.onclick = executeLocalAttack;
-    if (isAttacking) els.btnEndTurn.classList.add('btn-turn-attack-confirm');
+    els.btnEndTurn.style.backgroundColor = isAttacking ? "#e74c3c" : "#e67e22";
   } else if (state.phase === 'combat_blockers' && state.activePlayer === 'rival') {
     els.btnEndTurn.textContent = "Confirmar Bloqueos 🛡️";
     els.btnEndTurn.onclick = executeRivalAttack;
-    els.btnEndTurn.classList.add('btn-turn-block-confirm');
+    els.btnEndTurn.style.backgroundColor = "#3498db";
   } else {
     els.btnEndTurn.textContent = "Pasar Prioridad ➔";
     els.btnEndTurn.onclick = () => passPriority('local');
+    els.btnEndTurn.style.backgroundColor = ""; // Defecto
   }
 
   // --- GESTIÓN DE COSTOS PENDIENTES ---
@@ -3674,8 +4422,7 @@ export function render() {
   checkEquipmentLegality();
   checkGameOver();
 
-  // ENTREGA 22: snapshot diagnóstico del estado YA estabilizado por este render. La
-  // telemetría sólo observa/diffea; nunca toca state ni participa de la resolución.
+  // ENTREGA 22+: snapshot diagnóstico del estado estabilizado por este render.
   captureTelemetryState('render');
 
   // FASE 4, ETAPA 2: publica mi mitad del estado en Firestore después de CUALQUIER cambio
@@ -3707,9 +4454,11 @@ document.addEventListener('keydown', (e) => {
 
   // Pasar prioridad / Avanzar turno con la barra espaciadora
   if (e.code === 'Space' && !isTypingInField) {
-    // Si el botón está habilitado y visible, simulamos el click
+    e.preventDefault(); // Evitamos scroll también durante el autorepeat del navegador.
+    // Una pulsación física = una sola acción. Mantener la barra apretada no vuelve a
+    // disparar prioridad ni genera cientos de eventos diagnósticos.
+    if (e.repeat) return;
     if (!els.btnEndTurn.disabled && !els.btnEndTurn.classList.contains('hidden')) {
-      e.preventDefault(); // Evitamos que la pantalla scrollee para abajo
       els.btnEndTurn.click();
     }
   }
@@ -3752,9 +4501,9 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
   let unassigned = totalDamage;
 
   content.innerHTML = `
-    <p class="combat-damage-intro">
+    <p style="margin-bottom: 1.2rem; font-size: 1.1rem; color: #eee;">
       Tu <strong>${attacker.name}</strong> (Poder: ${totalDamage}) fue bloqueado.<br>
-      <span class="combat-damage-hint">¿Cómo querés resolver el daño?</span>
+      <span style="font-size: 0.85rem; color: #aaa;">¿Cómo querés resolver el daño?</span>
     </p>`;
   
   initialButtons.classList.remove('hidden');
@@ -3775,7 +4524,7 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
   };
 
   function renderManualUI() {
-    let html = `<div class="combat-damage-remaining">Daño restante para asignar: <strong id="dmg-unassigned" class="combat-damage-unassigned">${unassigned}</strong></div>`;
+    let html = `<div style="margin-bottom: 15px; font-size: 1rem;">Daño restante para asignar: <strong id="dmg-unassigned" style="color: var(--gold); font-size: 1.6rem;">${unassigned}</strong></div>`;
 
     blockersArray.forEach((bItem, idx) => {
        const hp = bItem.card.toughness - (bItem.damageTaken || 0);
@@ -3783,9 +4532,9 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
        const met = currentDistribution[idx] >= needed;
        html += `
          <div class="damage-row">
-           <div class="combat-damage-target-copy">
-             <strong class="combat-damage-target-name">${bItem.card.name}</strong><br>
-             <span class="damage-status ${met ? 'damage-status-met' : 'damage-status-pending'}">
+           <div style="text-align: left; line-height: 1.2;">
+             <strong style="font-size: 1.1rem;">${bItem.card.name}</strong><br>
+             <span style="font-size: 0.8rem; color: ${met ? '#7ed6a5' : '#e67e22'};">
                Resistencia actual: ${hp} ${needed > 0 ? `(letal: ${needed})` : '(ya no necesita más)'}
              </span>
            </div>
@@ -3804,9 +4553,9 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
       const overflowNoun = attackerItem.attackTarget ? 'Lealtad' : 'HP';
       html += `
          <div class="damage-row trample-row">
-           <div class="text-left">
-             <strong class="combat-damage-target-name">🐘 Arrollar ${trampleLabel}</strong><br>
-             <span class="damage-status damage-status-note">
+           <div style="text-align: left;">
+             <strong style="font-size: 1.1rem;">🐘 Arrollar ${trampleLabel}</strong><br>
+             <span style="font-size: 0.8rem; color: #aaa;">
                ${allLethalMet ? `Se calcula automáticamente con lo que sobre (le come ${overflowNoun}).` : 'Asigná primero daño letal a todos los bloqueadores.'}
              </span>
            </div>
@@ -3855,6 +4604,7 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
     else canConfirm = false;
 
     btnConfirm.disabled = !canConfirm;
+    btnConfirm.style.opacity = canConfirm ? '1' : '0.5';
 
     if (canConfirm) btnConfirm.textContent = 'Confirmar Distribución';
     else if (!allLethalMet) btnConfirm.textContent = 'Asigná daño letal a todos los bloqueadores';

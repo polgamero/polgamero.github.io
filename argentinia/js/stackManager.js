@@ -107,7 +107,7 @@ export async function resolveTopStackItem() {
     stackDepthAfterPop: spellStack.length
   });
   logMsg(`✨ Resolviendo de la pila: ${item.card.name}`);
-
+  
   await executeStackItem(item);
 
   // Kicker: si se pagó el costo opcional al lanzar el hechizo, el bonus se aplica ACÁ,
@@ -1640,7 +1640,8 @@ function showStackHoverPreview(item, anchorEl) {
   // zone: 'preview' no matchea ninguna rama de clicks de createCardElement, así que
   // esta carta queda puramente decorativa (no se le puede hacer click).
   const cardEl = createCardElement(item, false, item.isLocal, null, 'preview');
-  cardEl.classList.add('stack-preview-card');
+  cardEl.style.width = '190px';
+  cardEl.style.height = `${190 * 7 / 5}px`;
   preview.appendChild(cardEl);
 
   const stackContainer = document.getElementById('stack-container');

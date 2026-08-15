@@ -17,7 +17,7 @@
 // igual que en el motor: la telemetría no intenta saltarse la privacidad de Firestore.
 
 export const TELEMETRY_SCHEMA_VERSION = 3;
-export const TELEMETRY_VERSION = '23.1.0';
+export const TELEMETRY_VERSION = '23.3.0';
 
 const STORAGE_CURRENT = 'argentinia.telemetry.current.v1';
 const STORAGE_RECOVERED = 'argentinia.telemetry.recovered.v1';
@@ -729,11 +729,19 @@ async function performRemoteTelemetryUpload(session, user, kind, reason) {
     return false;
   }
 
+  // Checkpoint incremental de verdad: si en estos 30 s no apareció ningún evento ni bug
+  // nuevo, no hay nada que escribir. Esto evita escrituras de Firestore por puro heartbeat.
+  let checkpoint = buildRemoteCheckpoint(session, kind, reason);
+  if (kind !== 'final' && !checkpoint.gapDetected && checkpoint.events.length === 0 && checkpoint.bugCandidates.length === 0) {
+    remoteState.status = 'ok';
+    remoteState.lastError = null;
+    updatePanelStatus();
+    return true;
+  }
+
   remoteState.status = 'syncing';
   remoteState.lastError = null;
   updatePanelStatus();
-  recordTelemetryEvent('telemetry_remote_upload_start', { kind, reason });
-  let checkpoint = buildRemoteCheckpoint(session, kind, reason);
   if (checkpoint.gapDetected) {
     addBugCandidate({
       code: 'REMOTE_TELEMETRY_GAP',
@@ -768,13 +776,8 @@ async function performRemoteTelemetryUpload(session, user, kind, reason) {
     remoteState.chunkCount += result?.chunkCount || 0;
     remoteState.lastChunkIds = Array.isArray(result?.chunkIds) ? result.chunkIds.slice(-6) : [];
     if (kind === 'final') remoteFinalUploadedSessionId = session.sessionId;
-    recordTelemetryEvent('telemetry_remote_upload_ok', {
-      kind,
-      reason,
-      chunks: result?.chunkCount ?? 0,
-      events: result?.eventCount ?? checkpoint.events.length,
-      throughSeq: remoteState.lastUploadedSeq
-    });
+    // No registramos un evento de "upload OK" dentro del propio stream: hacerlo dejaba
+    // siempre un evento pendiente y provocaba una escritura inútil en el checkpoint siguiente.
     return true;
   } catch (error) {
     remoteState.status = 'error';
@@ -846,7 +849,7 @@ export function startTelemetrySession(meta = {}) {
   currentSession = {
     schemaVersion: TELEMETRY_SCHEMA_VERSION,
     telemetryVersion: TELEMETRY_VERSION,
-    engineBaseline: 'Entrega 23.1 Firestore-only telemetry',
+    engineBaseline: 'Entrega 23.3 UI Fidelity + Firestore telemetry',
     sessionId: makeId('game'),
     startedAt: nowIso(),
     endedAt: null,
@@ -996,6 +999,7 @@ function installInteractionCapture() {
 
   document.addEventListener('keydown', event => {
     if (!currentSession) return;
+    if (event.repeat) return;
     if (![' ', 'Escape', 'Enter'].includes(event.key)) return;
     recordTelemetryEvent('ui_key', {
       key: event.key === ' ' ? 'Space' : event.key,
