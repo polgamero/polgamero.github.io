@@ -60,7 +60,6 @@ let panel = null;
 let statusEl = null;
 let cloudEl = null;
 let bugsEl = null;
-let recoveredBtn = null;
 let uploadBtn = null;
 let remoteCheckpointTimer = null;
 let remoteUploadInFlight = null;
@@ -849,7 +848,7 @@ export function startTelemetrySession(meta = {}) {
   currentSession = {
     schemaVersion: TELEMETRY_SCHEMA_VERSION,
     telemetryVersion: TELEMETRY_VERSION,
-    engineBaseline: 'Entrega 23.3 UI Fidelity + Firestore telemetry',
+    engineBaseline: 'Entrega 23.5 Admin Debugging + Visual Baseline 23.4 + Firestore telemetry',
     sessionId: makeId('game'),
     startedAt: nowIso(),
     endedAt: null,
@@ -1096,9 +1095,13 @@ function buildStats(session) {
     byType[ev.type] = (byType[ev.type] || 0) + 1;
     bySeverity[ev.severity] = (bySeverity[ev.severity] || 0) + 1;
   });
+  const manualBugMarkerCount = session.bugCandidates.filter(b => b?.code === 'MANUAL_BUG_MARKER').length;
+  const automaticBugCandidateCount = Math.max(0, session.bugCandidates.length - manualBugMarkerCount);
   return {
     eventCount: session.events.length,
     bugCandidateCount: session.bugCandidates.length,
+    automaticBugCandidateCount,
+    manualBugMarkerCount,
     byType,
     bySeverity,
     truncated: !!session.truncated
@@ -1243,15 +1246,14 @@ function buildPanel() {
   bugsEl.className = 'telemetry-bugs';
 
   const markBtn = button('🐞 Marcar', 'Marcar este instante como bug observado y subir checkpoint inmediato', () => markTelemetryBug());
-  const exportBtn = button('⬇ Log', 'Exportar diagnóstico completo de esta partida a este dispositivo', () => exportTelemetry());
   uploadBtn = button('☁️ Subir ahora', 'Forzar un checkpoint remoto ahora mismo', () => {
     requestRemoteTelemetryUpload('hud_manual', { kind: 'latest', capture: true }).catch(() => {});
   });
 
-  recoveredBtn = button('↩ Anterior', 'Exportar una sesión recuperada de antes de un refresh/crash', () => exportTelemetry(recoveredSession));
-  recoveredBtn.hidden = !recoveredSession;
-
-  panel.append(statusEl, cloudEl, bugsEl, markBtn, exportBtn, uploadBtn, recoveredBtn);
+  // ENTREGA 23.5.1: la descarga central vive en Admin > DEBUGGING. Conservamos
+  // exportTelemetry()/recovery internamente como red de seguridad, pero quitamos los dos
+  // controles redundantes del HUD para no tapar superficie de juego.
+  panel.append(statusEl, cloudEl, bugsEl, markBtn, uploadBtn);
   document.body.appendChild(panel);
   updatePanelStatus();
 }
@@ -1286,7 +1288,6 @@ function updatePanelStatus() {
     cloudEl.title = details.join(' | ');
   }
   if (uploadBtn) uploadBtn.disabled = !currentSession || remoteState.status === 'syncing';
-  if (recoveredBtn) recoveredBtn.hidden = !recoveredSession;
 }
 
 function recoverStoredSession() {

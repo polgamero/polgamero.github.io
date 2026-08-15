@@ -657,7 +657,7 @@ function startPlayFlow() {
 // jugadores se emparejan — elegís tu mazo exactamente con el mismo picker que Solitario. No
 // hace falta coordinar nada con el rival para esto: cada mazo/mano es privado por diseño,
 // así que cada cliente arma el suyo de forma totalmente independiente.
-function startMultiplayerFlow(matchId, myRole, rivalName) {
+function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '') {
   // BUGFIX: el subtítulo por defecto de este modal decía "El Tano ya barajó el suyo..."
   // hardcodeado — acá lo pisamos con el nombre real del rival, ya que este mismo modal se
   // reusa tanto para Solitario como para elegir un mazo random en multiplayer.
@@ -665,17 +665,17 @@ function startMultiplayerFlow(matchId, myRole, rivalName) {
   const savedDecks = (state.currentUser && state.userProfile && state.userProfile.decks) || [];
   if (savedDecks.length > 0) {
     showPlayDeckPickerModal(
-      (chosenDeck) => startMultiplayerMatch(matchId, myRole, { type: 'saved', deck: chosenDeck }, rivalName),
+      (chosenDeck) => startMultiplayerMatch(matchId, myRole, { type: 'saved', deck: chosenDeck }, rivalName, rivalPhotoURL),
       () => showDeckSelectionModal(
-        (chosenIdentity) => startMultiplayerMatch(matchId, myRole, { type: 'random', identity: chosenIdentity }, rivalName),
+        (chosenIdentity) => startMultiplayerMatch(matchId, myRole, { type: 'random', identity: chosenIdentity }, rivalName, rivalPhotoURL),
         mpTitleOverrides,
-        () => startMultiplayerFlow(matchId, myRole, rivalName) // "Volver": vuelve al picker de mazos guardados
+        () => startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL) // "Volver": vuelve al picker de mazos guardados
       )
     );
   } else {
     // Caso raro/defensivo — en la práctica toda cuenta logueada tiene al menos 1 mazo, así
     // que este camino no debería alcanzarse nunca en multiplayer.
-    showDeckSelectionModal((chosenIdentity) => startMultiplayerMatch(matchId, myRole, { type: 'random', identity: chosenIdentity }, rivalName), mpTitleOverrides);
+    showDeckSelectionModal((chosenIdentity) => startMultiplayerMatch(matchId, myRole, { type: 'random', identity: chosenIdentity }, rivalName, rivalPhotoURL), mpTitleOverrides);
   }
 }
 
@@ -684,7 +684,7 @@ function startMultiplayerFlow(matchId, myRole, rivalName) {
 // mano/mazo llegan solos por sync una vez que publique lo suyo). "Quién arranca" se decide
 // con una regla FIJA que ambos clientes calculan por su cuenta con su propio myRole, sin
 // coordinar nada ni sortear nada: el host siempre juega primero.
-function startMultiplayerMatch(matchId, myRole, deckSource, rivalName) {
+function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '') {
   setupBoardLayout();
 
   let deckLabel;
@@ -708,7 +708,7 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName) {
   // BUGFIX: guardamos el nombre real del rival acá — getRivalName() (más arriba en este
   // archivo) lo usa en vez de "El Tano" en todos los mensajes que corren tanto en
   // Solitario como en multiplayer (motor de combate, efectos, turnos).
-  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival' };
+  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '' };
   state.activePlayer = myRole === 'host' ? 'local' : 'rival';
   state.priorityPlayer = state.activePlayer;
   state.phase = 'main1';
@@ -1629,12 +1629,12 @@ export function reconstructStateFromMatch(publicDoc, privateDoc, myRole) {
 // desde cero (setupBoardLayout, igual que un initGame normal), pero en vez de barajar
 // mazos nuevos y hacer mulligan, reconstruye TODO desde lo último publicado en Firestore
 // (reconstructStateFromMatch) y arranca la escucha en tiempo real donde había quedado.
-function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc, rivalName) {
+function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc, rivalName, rivalPhotoURL = '') {
   const mainMenuOverlay = document.getElementById('main-menu-overlay');
   if (mainMenuOverlay) mainMenuOverlay.remove();
 
   setupBoardLayout();
-  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival' };
+  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '' };
   reconstructStateFromMatch(publicDoc, privateDoc, myRole);
 
   // ENTREGA 22: un refresh corta la ejecución JS anterior, pero su backup queda exportable
@@ -1673,15 +1673,17 @@ function offerReconnectIfStillActive(matchId) {
       const myRole = matchData.publicDoc.hostUid === state.currentUser.uid ? 'host' : 'guest';
       // BUGFIX: mismo criterio de privacidad de siempre — solo el nombre de pila.
       const rivalUid = myRole === 'host' ? matchData.publicDoc.guestUid : matchData.publicDoc.hostUid;
-      const rivalFullName = (matchData.publicDoc.players && matchData.publicDoc.players[rivalUid] && matchData.publicDoc.players[rivalUid].displayName) || '';
+      const rivalProfile = (matchData.publicDoc.players && matchData.publicDoc.players[rivalUid]) || {};
+      const rivalFullName = rivalProfile.displayName || '';
       const rivalName = (rivalFullName.trim().split(/\s+/)[0]) || 'tu rival';
+      const rivalPhotoURL = rivalProfile.photoURL || '';
 
       showReconnectPrompt(
-        () => resumeReconnectedMatch(matchId, myRole, matchData.publicDoc, matchData.privateDoc, rivalName),
+        () => resumeReconnectedMatch(matchId, myRole, matchData.publicDoc, matchData.privateDoc, rivalName, rivalPhotoURL),
         () => {
           // "Abandonarla": mismo efecto que el botón de abandonar de siempre, pero sin
           // necesidad de volver a entrar a la partida primero — le avisamos al rival igual.
-          state.currentMatch = { matchId, myRole, rivalName };
+          state.currentMatch = { matchId, myRole, rivalName, rivalPhotoURL };
           Object.assign(state, extractSharedStateFromPublicDoc(matchData.publicDoc, myRole));
           state.abandonedBy = 'local';
           publishMatchState().catch(() => {});

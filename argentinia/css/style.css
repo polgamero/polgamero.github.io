@@ -1360,19 +1360,19 @@ html, body {
   box-shadow: 0 1px 4px rgba(0,0,0,.65);
 }
 
-/* Telemetría diagnóstica: arriba a la izquierda y 10% más compacta.
-   En el HUD actual eso reduce más de 50px el ancho visual sin cambiar contenido ni acciones. */
+/* Telemetría diagnóstica: pegada al origen de la pantalla.
+   Entrega 23.5.1 elimina del HUD visible Log/Anterior; Admin > DEBUGGING centraliza descargas. */
 .telemetry-panel {
   position: fixed;
-  left: 8px;
+  left: 0;
   right: auto;
-  top: 8px;
+  top: 0;
   bottom: auto;
   z-index: 2147483000;
   display: flex;
   align-items: center;
   gap: 5px;
-  max-width: calc(100vw - 16px);
+  max-width: 100vw;
   padding: 6px;
   border-radius: 9px;
   background: rgba(12,12,12,.88);
@@ -1401,7 +1401,7 @@ html, body {
 .telemetry-btn:disabled { opacity:.55; cursor:default; }
 .telemetry-btn[hidden] { display:none; }
 @media (max-width:640px) {
-  .telemetry-panel { left:5px; right:auto; top:5px; bottom:auto; gap:3px; padding:4px; font-size:10px; transform:scale(.90); transform-origin:top left; }
+  .telemetry-panel { left:0; right:auto; top:0; bottom:auto; gap:3px; padding:4px; font-size:10px; transform:scale(.90); transform-origin:top left; }
   .telemetry-btn { padding:4px 5px; font-size:10px; }
   .telemetry-status { min-width:56px; padding:0 2px; }
 }

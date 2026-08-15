@@ -35,7 +35,7 @@ import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, craftEnhancement, deleteUserProfile, createDeck, updateDeck, deleteDeck, saveGameConfig, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, craftEnhancement, deleteUserProfile, createDeck, updateDeck, deleteDeck, saveGameConfig, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, applyGameConfig, getDefaultGameConfig } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -61,6 +61,8 @@ export const els = {
   rivalHpText: document.getElementById('rival-hp-text'),
   localAvatar: document.getElementById('local-avatar'),
   localPlayerName: document.getElementById('local-player-name'),
+  rivalAvatar: document.getElementById('rival-avatar'),
+  rivalPlayerName: document.querySelector('.rival-card .player-info h3'),
 
   gameOverOverlay: document.getElementById('game-over-overlay'),
   gameOverTitle: document.getElementById('game-over-title'),
@@ -1331,32 +1333,41 @@ function injectMainMenuStyles() {
       max-width: 55vw; max-height: 32vh; width: auto; height: auto;
       filter: drop-shadow(0 8px 30px rgba(0,0,0,0.6));
     }
-    .main-menu-buttons {
-      position: absolute; left: 5vw; bottom: 8vh;
-      display: flex; flex-direction: column; gap: 14px;
-      width: 300px;
-    }
-    .main-menu-btn {
-      display: block; width: 100%;
-      background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
-      border: 2px solid var(--gold, #d4af37);
-      border-radius: 10px;
-      color: #f0e0b0;
-      font-size: 17px; font-weight: 700; letter-spacing: 0.5px;
-      padding: 13px 20px; text-align: left;
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-    }
+.main-menu-buttons {
+    position: absolute;
+    left: 5vw;
+    bottom: 8vh;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 230px;
+}
+.main-menu-btn {
+    display: block;
+    width: 100%;
+    background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
+    border: 2px solid var(--gold, #d4af37);
+    border-radius: 10px;
+    color: #f0e0b0;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 7px 10px;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
     .main-menu-btn:hover {
       transform: translateX(6px);
       background: linear-gradient(180deg, rgba(212,175,55,0.18), rgba(11,19,14,0.96));
       box-shadow: 0 4px 22px rgba(212,175,55,0.35);
     }
-    .main-menu-btn-primary {
-      border-color: #f0e0b0; font-size: 19px;
-      background: linear-gradient(180deg, rgba(212,175,55,0.25), rgba(11,19,14,0.96));
-    }
+.main-menu-btn-primary {
+    border-color: #f0e0b0;
+    font-size: 18px;
+    background: linear-gradient(180deg, rgba(212,175,55,0.25), rgba(11,19,14,0.96));
+}
     .main-menu-btn-primary:hover { box-shadow: 0 4px 26px rgba(212,175,55,0.55); }
     .main-menu-btn-disabled { opacity: 0.45; cursor: not-allowed; position: relative; }
     .main-menu-btn-disabled:hover {
@@ -1411,11 +1422,19 @@ function injectMainMenuStyles() {
     }
     .main-menu-logout-btn:hover { color: #f0e0b0; }
     .main-menu-account-error { color: #e07a6b; font-size: 12px; max-width: 260px; text-align: right; }
-    .main-menu-news {
-      position: absolute; bottom: 24px; right: 32px; width: 280px; max-height: 220px;
-      background: rgba(11,19,14,0.85); border: 2px solid rgba(212,175,55,0.35); border-radius: 12px;
-      padding: 12px 14px; overflow-y: auto; z-index: 5;
-    }
+.main-menu-news {
+    position: absolute;
+    bottom: 8vh;
+    right: 32px;
+    width: 350px;
+    max-height: 220px;
+    background: rgba(11,19,14,0.85);
+    border: 2px solid var(--gold);
+    border-radius: 12px 0 0 12px;
+    padding: 12px 14px;
+    overflow-y: auto;
+    z-index: 5;
+}
     .main-menu-news-title {
       color: #f0e0b0; font-size: 13px; font-weight: 700; margin-bottom: 8px;
       text-transform: uppercase; letter-spacing: 0.5px;
@@ -1611,14 +1630,18 @@ function injectEncyclopediaStyles() {
       background: rgba(212,175,55,0.18); border-color: var(--gold, #d4af37); color: #f0e0b0;
     }
     .encyclopedia-body { flex: 1; display: flex; gap: 20px; min-height: 0; }
-    .encyclopedia-grid-box {
-      flex: 1; overflow-y: auto;
-      background: #F5F5F5;
-      border: 2px solid rgba(212,175,55,0.3);
-      border-radius: 12px;
-      padding: 20px;
-      display: flex; flex-wrap: wrap; align-content: flex-start; gap: 20px;
-    }
+.encyclopedia-grid-box {
+    flex: 1;
+    overflow-y: auto;
+    background: #F5F5F5;
+    border: 2px solid rgba(212,175,55,0.3);
+    border-radius: 12px 0 0 12px;
+    padding: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 20px;
+}
     .encyclopedia-card-slot .card-inner { border-width: 6px; }
     /* BUGFIX (revisión post-Etapa 4): antes esto grisaba la carta ENTERA (nombre, texto,
        poder/resistencia incluidos) — ahora, a pedido, solo el ARTE se reemplaza por un
@@ -1836,10 +1859,14 @@ function injectStoreStyles() {
     }
     .store-section-title { color: #f0e0b0; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
     .store-section-desc { color: #cfe0d4; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
-    .store-pack-visual {
-      width: 8em; height: 8em; object-fit: contain; margin: 0 auto 10px; display: block;
-      filter: drop-shadow(0 6px 16px rgba(212,175,55,0.3));
-    }
+.store-pack-visual {
+    width: 20em;
+    height: 20em;
+    object-fit: contain;
+    margin: 0 auto 10px;
+    display: block;
+    filter: drop-shadow(0 6px 16px rgba(212,175,55,0.3));
+}
     .store-buy-btn {
       background: linear-gradient(180deg, rgba(212,175,55,0.28), rgba(11,19,14,0.96));
       border: 2px solid var(--gold, #d4af37); border-radius: 10px;
@@ -2794,6 +2821,44 @@ function updateMainMenuLoginGatedButtons(overlay) {
   });
 }
 
+// FASE 4 / HOTFIX 23.4.2: el documento público del match ya contiene el perfil
+// básico de ambos jugadores ({ displayName, photoURL }). La lógica de gameplay ya usaba
+// getRivalName(), pero el HUD superior seguía mostrando el fallback estático del HTML.
+// Esta función mantiene Solitario exactamente como siempre (El Tano + 🤠) y, si hay un
+// currentMatch real, pinta nombre de pila + foto Google del rival. No hace lecturas ni
+// escrituras extra: usa únicamente los datos que ya llegaron durante el matchmaking o la
+// reconexión y quedaron guardados en state.currentMatch.
+function updateRivalAccountUI() {
+  if (!els.rivalAvatar && !els.rivalPlayerName) return;
+
+  const multiplayer = !!state.currentMatch;
+  const rivalName = multiplayer ? getRivalName() : 'El Tano';
+  const rivalPhotoURL = multiplayer ? (state.currentMatch.rivalPhotoURL || '') : '';
+
+  if (els.rivalPlayerName) {
+    els.rivalPlayerName.textContent = multiplayer ? `${rivalName} (TU RIVAL)` : 'El Tano (TU RIVAL)';
+  }
+
+  if (els.rivalAvatar) {
+    const identityKey = `${multiplayer ? 'mp' : 'solo'}|${rivalPhotoURL}`;
+    if (els.rivalAvatar.dataset.identityKey !== identityKey) {
+      els.rivalAvatar.dataset.identityKey = identityKey;
+      els.rivalAvatar.textContent = '';
+      if (rivalPhotoURL) {
+        const img = document.createElement('img');
+        img.src = rivalPhotoURL;
+        img.alt = '';
+        img.addEventListener('error', () => {
+          els.rivalAvatar.textContent = '🤠';
+        }, { once: true });
+        els.rivalAvatar.appendChild(img);
+      } else {
+        els.rivalAvatar.textContent = '🤠';
+      }
+    }
+  }
+}
+
 export function updateAccountUI(user) {
   if (els.localAvatar) {
     els.localAvatar.innerHTML = (user && user.photoURL)
@@ -2824,7 +2889,7 @@ function injectAdminPanelStyles() {
     }
     .admin-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
     .admin-title { font-size: 26px; font-weight: 700; color: #e8d4f5; text-shadow: 0 0 20px rgba(176,106,212,0.4); }
-    .admin-body { flex: 1; overflow-y: auto; max-width: 700px; width: 100%; margin: 0 auto; padding-bottom: 40px; }
+    .admin-body { flex: 1; overflow-y: auto; max-width: 1180px; width: 100%; margin: 0 auto; padding-bottom: 40px; }
     .admin-section {
       background: rgba(30,20,45,0.5); border: 2px solid rgba(176,106,212,0.3); border-radius: 14px;
       padding: 20px 24px; margin-bottom: 18px;
@@ -2857,6 +2922,29 @@ function injectAdminPanelStyles() {
     .admin-save-btn:hover { box-shadow: 0 4px 22px rgba(176,106,212,0.4); }
     .admin-save-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
     .admin-success-msg { color: #7cbf7c; font-size: 13px; margin-top: 10px; text-align: center; }
+    .admin-pane-narrow { max-width: 700px; margin: 0 auto; }
+    .admin-tab-pane.hidden { display: none !important; }
+    .admin-future-box { text-align: center; padding: 46px 24px; color: #bda9cd; }
+    .admin-future-icon { display:block; font-size:42px; margin-bottom:12px; }
+    .admin-debug-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    .admin-debug-summary { color:#cdb9dc; font-size:13px; }
+    .admin-debug-refresh { width:auto; margin:0; padding:8px 14px; font-size:13px; }
+    .admin-debug-table-wrap { overflow:auto; border:1px solid rgba(176,106,212,0.25); border-radius:10px; background:rgba(8,5,12,0.45); }
+    .admin-debug-table { width:100%; border-collapse:collapse; min-width:920px; font-size:12px; }
+    .admin-debug-table th { position:sticky; top:0; z-index:2; background:#24162f; color:#ead9f4; text-align:left; padding:10px 9px; border-bottom:1px solid rgba(176,106,212,0.35); white-space:nowrap; }
+    .admin-debug-table td { padding:9px; border-bottom:1px solid rgba(176,106,212,0.13); color:#d9cce2; vertical-align:middle; }
+    .admin-debug-table tr:last-child td { border-bottom:none; }
+    .admin-debug-table tbody tr:hover { background:rgba(176,106,212,0.07); }
+    .admin-debug-mode { display:inline-block; border:1px solid rgba(212,175,55,0.45); border-radius:999px; padding:3px 7px; color:#f0e0b0; white-space:nowrap; }
+    .admin-debug-match { color:#8f7aa0; font-size:10px; margin-top:3px; font-family:monospace; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .admin-debug-bug-auto { color:#e8a35a; font-weight:700; white-space:nowrap; }
+    .admin-debug-bug-manual { color:#d790ce; font-size:10px; white-space:nowrap; }
+    .admin-debug-status { display:inline-block; padding:3px 7px; border-radius:999px; background:rgba(255,255,255,0.06); white-space:nowrap; }
+    .admin-debug-status.completed { color:#81c784; }
+    .admin-debug-status.running { color:#ffd166; }
+    .admin-debug-download { width:auto; margin:0; padding:7px 10px; font-size:12px; white-space:nowrap; }
+    .admin-debug-empty { padding:30px; color:#a995b8; text-align:center; font-style:italic; }
+    .admin-debug-error { padding:18px; color:#e07a6b; text-align:center; }
   `;
   document.head.appendChild(style);
 }
@@ -2868,8 +2956,8 @@ function injectAdminPanelStyles() {
 // llegar a alguien que no sea el admin hasta este punto.
 export function showAdminPanel(onBack) {
   injectAdminPanelStyles();
-  injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn
-  injectStoreStyles(); // .store-error-msg y demás compartidos, sin depender de haber abierto Tienda
+  injectEncyclopediaStyles(); // reusa tabs + botón Volver con el mismo lenguaje visual
+  injectStoreStyles(); // .store-error-msg y demás compartidos
 
   if (!state.currentUser || state.currentUser.email !== ADMIN_EMAIL) {
     console.error('showAdminPanel: acceso bloqueado, la cuenta actual no es la del admin.');
@@ -2906,8 +2994,6 @@ export function showAdminPanel(onBack) {
     return `<div class="admin-section"><div class="admin-section-title">${sectionName}</div>${rowsHTML}</div>`;
   }).join('');
 
-  // Placeholders a propósito — mismo criterio que Multijugador en el menú principal: no
-  // prometen algo que todavía no toca ningún sistema real del juego.
   const placeholdersHTML = `
     <div class="admin-section">
       <div class="admin-section-title">Próximamente</div>
@@ -2922,11 +3008,6 @@ export function showAdminPanel(onBack) {
     </div>
   `;
 
-  // FASE 4 (post-roadmap): "regalar puntos/Fichas" — sección aparte de la config de
-  // balance de arriba, con su propio botón de Enviar (no se guarda junto con "Guardar
-  // cambios"; son dos acciones distintas). El desplegable de destinatarios arranca vacío y
-  // se llena async más abajo (fetchAllUserProfiles) — no tiene sentido bloquear el resto
-  // del panel esperando esa consulta.
   const grantHTML = `
     <div class="admin-section">
       <div class="admin-section-title">Regalar Puntos o Fichas</div>
@@ -2957,9 +3038,6 @@ export function showAdminPanel(onBack) {
     </div>
   `;
 
-  // "Anuncios" — las Noticias del menú principal. Publicar y borrar viven acá juntos: el
-  // botón de Enviar arma uno nuevo, y la lista de abajo (que se recarga después de
-  // publicar o borrar) trae uno de borrar al lado de cada anuncio existente.
   const announcementsHTML = `
     <div class="admin-section">
       <div class="admin-section-title">Anuncios (Noticias del menú principal)</div>
@@ -2971,25 +3049,225 @@ export function showAdminPanel(onBack) {
     </div>
   `;
 
+  const adminTabs = [
+    { key: 'game', label: 'AJUSTES DEL JUEGO' },
+    { key: 'messages', label: 'MENSAJES Y USUARIOS' },
+    { key: 'stats', label: 'ESTADÍSTICAS (a futuro)' },
+    { key: 'debug', label: 'DEBUGGING' }
+  ];
+  const tabsHTML = adminTabs.map((tab, idx) =>
+    `<button class="encyclopedia-tab${idx === 0 ? ' active' : ''}" data-admin-tab="${tab.key}">${tab.label}</button>`
+  ).join('');
+
   overlay.innerHTML = `
     <div class="admin-header">
       <button class="encyclopedia-back-btn" id="admin-back">← Volver</button>
       <div class="admin-title">🛠️ Panel de Admin</div>
     </div>
     <div class="admin-body">
-      ${sectionsHTML}
-      ${grantHTML}
-      ${announcementsHTML}
-      ${placeholdersHTML}
-      <button class="admin-save-btn" id="admin-save">💾 Guardar cambios</button>
-      <div class="store-error-msg" id="admin-error" style="text-align:center;"></div>
-      <div class="admin-success-msg" id="admin-success"></div>
+      <div class="encyclopedia-tabs" id="admin-tabs">${tabsHTML}</div>
+
+      <div class="admin-tab-pane" data-admin-pane="game">
+        <div class="admin-pane-narrow">
+          ${sectionsHTML}
+          ${placeholdersHTML}
+          <button class="admin-save-btn" id="admin-save">💾 Guardar cambios</button>
+          <div class="store-error-msg" id="admin-error" style="text-align:center;"></div>
+          <div class="admin-success-msg" id="admin-success"></div>
+        </div>
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="messages">
+        <div class="admin-pane-narrow">
+          ${grantHTML}
+          ${announcementsHTML}
+        </div>
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="stats">
+        <div class="admin-section admin-future-box">
+          <span class="admin-future-icon">📊</span>
+          <div class="admin-section-title">Estadísticas</div>
+          <div>Esta solapa queda reservada para métricas agregadas del juego. No calcula ni publica nada todavía.</div>
+        </div>
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="debug">
+        <div class="admin-section">
+          <div class="admin-section-title">Caja negra — historial de partidas</div>
+          <div class="admin-debug-toolbar">
+            <div class="admin-debug-summary" id="admin-debug-summary">Entrá a esta solapa para cargar los logs.</div>
+            <button class="admin-save-btn admin-debug-refresh" id="admin-debug-refresh">🔄 Actualizar</button>
+          </div>
+          <div class="admin-debug-table-wrap" id="admin-debug-table-wrap">
+            <div class="admin-debug-empty">Cargando historial…</div>
+          </div>
+        </div>
+      </div>
     </div>
   `;
   document.body.appendChild(overlay);
 
-  // Carga la lista real de usuarios de forma asíncrona — no bloquea el resto del panel,
-  // que ya se ve de entrada mientras esto termina.
+  let debugLoaded = false;
+  let debugLoading = false;
+  let debugSessions = [];
+
+  function parseAdminJson(value, fallback = {}) {
+    if (typeof value !== 'string' || !value) return fallback;
+    try { return JSON.parse(value); } catch { return fallback; }
+  }
+
+  function formatTelemetryDate(value) {
+    if (!value) return '—';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'medium' });
+  }
+
+  function normalizeTelemetryMode(rawMode) {
+    const raw = String(rawMode || '').toLowerCase();
+    if (raw.startsWith('multiplayer')) return raw.includes('reconnect') ? 'Multijugador · reconexión' : 'Multijugador';
+    if (raw === 'solo') return 'Solo';
+    return rawMode || '—';
+  }
+
+  function safeDownloadPart(value) {
+    return String(value || 'partida').replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'partida';
+  }
+
+  function downloadAdminJson(payload, filename) {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function telemetryBugCounts(session) {
+    const total = Number(session.bugCandidateCount || 0);
+    const stats = parseAdminJson(session.statsJson, {});
+    if (Number.isFinite(stats.automaticBugCandidateCount) && Number.isFinite(stats.manualBugMarkerCount)) {
+      return { total, automatic: stats.automaticBugCandidateCount, manual: stats.manualBugMarkerCount, exactSplit: true };
+    }
+    const summaries = parseAdminJson(session.bugCandidatesJson, []);
+    const manualKnown = Array.isArray(summaries) ? summaries.filter(b => b?.code === 'MANUAL_BUG_MARKER').length : 0;
+    const splitIsComplete = Array.isArray(summaries) && summaries.length >= total;
+    return {
+      total,
+      automatic: splitIsComplete ? Math.max(0, total - manualKnown) : total,
+      manual: manualKnown,
+      exactSplit: splitIsComplete
+    };
+  }
+
+  function renderTelemetrySessions(sessions) {
+    const wrap = overlay.querySelector('#admin-debug-table-wrap');
+    const summary = overlay.querySelector('#admin-debug-summary');
+    summary.textContent = `${sessions.length} sesión${sessions.length === 1 ? '' : 'es'} encontrada${sessions.length === 1 ? '' : 's'} en Firestore.`;
+    if (sessions.length === 0) {
+      wrap.innerHTML = '<div class="admin-debug-empty">Todavía no hay logs remotos subidos.</div>';
+      return;
+    }
+
+    const rows = sessions.map(session => {
+      const meta = parseAdminJson(session.metaJson, {});
+      const mode = normalizeTelemetryMode(session.mode || meta.mode);
+      const localName = session.playerName || meta.localPlayerName || 'Jugador';
+      const rivalName = meta.rivalName || (String(session.mode || '').startsWith('multi') ? 'Rival' : 'El Tano');
+      const bugs = telemetryBugCounts(session);
+      const status = session.status || 'running';
+      const statusLabel = status === 'completed' ? 'Completo' : (status === 'running' ? 'En curso' : 'Parcial');
+      const date = session.startedAtClient || session.endedAtClient || null;
+      const bugSplitTitle = bugs.exactSplit ? '' : ' title="Sesión legacy: el total es exacto; el desglose auto/manual puede ser parcial."';
+      return `
+        <tr>
+          <td>${escapeHtml(formatTelemetryDate(date))}</td>
+          <td><span class="admin-debug-mode">${escapeHtml(mode)}</span>${session.matchId ? `<div class="admin-debug-match" title="${escapeHtml(session.matchId)}">${escapeHtml(session.matchId)}</div>` : ''}</td>
+          <td><strong>${escapeHtml(localName)}</strong><br><span style="color:#9987a7;">vs ${escapeHtml(rivalName)}</span></td>
+          <td${bugSplitTitle}><div class="admin-debug-bug-auto">⚙️ ${bugs.automatic} auto</div><div class="admin-debug-bug-manual">🐞 ${bugs.manual} marcado${bugs.manual === 1 ? '' : 's'} · ${bugs.total} total</div></td>
+          <td>${Number(session.eventCount || 0).toLocaleString('es-AR')}</td>
+          <td><span class="admin-debug-status ${status === 'completed' ? 'completed' : 'running'}">${statusLabel}</span></td>
+          <td><button class="admin-save-btn admin-debug-download" data-telemetry-download="${escapeHtml(session.id || session.sessionId || '')}">⬇ JSON</button></td>
+        </tr>
+      `;
+    }).join('');
+
+    wrap.innerHTML = `
+      <table class="admin-debug-table">
+        <thead><tr><th>Fecha y hora</th><th>Tipo</th><th>Quién jugó contra quién</th><th>Bugs</th><th>Eventos</th><th>Estado</th><th>Log</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+
+    wrap.querySelectorAll('[data-telemetry-download]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const sessionId = btn.dataset.telemetryDownload;
+        const session = debugSessions.find(s => (s.id || s.sessionId) === sessionId);
+        const oldText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Armando…';
+        try {
+          const archive = await fetchTelemetrySessionArchive(sessionId);
+          const meta = archive.meta || {};
+          const mode = normalizeTelemetryMode(meta.mode || session?.mode);
+          const player = session?.playerName || meta.localPlayerName || 'Jugador';
+          const rival = meta.rivalName || (String(session?.mode || '').startsWith('multi') ? 'Rival' : 'El-Tano');
+          const stamp = String(archive.startedAt || new Date().toISOString()).replace(/[:.]/g, '-');
+          const filename = `Argentinia_Log_${safeDownloadPart(mode)}_${safeDownloadPart(player)}-vs-${safeDownloadPart(rival)}_${stamp}_${safeDownloadPart(sessionId)}.json`;
+          downloadAdminJson(archive, filename);
+          btn.textContent = '✅ Bajado';
+          setTimeout(() => { if (btn.isConnected) btn.textContent = oldText; }, 1400);
+        } catch (err) {
+          console.error('No se pudo reconstruir el log de Firestore:', err);
+          btn.textContent = '❌ Error';
+          window.alert(`No se pudo descargar este log: ${err?.message || err}`);
+          setTimeout(() => { if (btn.isConnected) btn.textContent = oldText; }, 1800);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  async function reloadTelemetryHistory() {
+    if (debugLoading) return;
+    debugLoading = true;
+    const refreshBtn = overlay.querySelector('#admin-debug-refresh');
+    const wrap = overlay.querySelector('#admin-debug-table-wrap');
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = '⏳ Cargando…';
+    wrap.innerHTML = '<div class="admin-debug-empty">Leyendo telemetrySessions…</div>';
+    try {
+      debugSessions = await fetchTelemetrySessionsForAdmin();
+      debugLoaded = true;
+      renderTelemetrySessions(debugSessions);
+    } catch (err) {
+      console.error('No se pudo cargar el historial de telemetría:', err);
+      wrap.innerHTML = `<div class="admin-debug-error">No se pudo leer el historial de logs.<br>${escapeHtml(err?.message || String(err))}</div>`;
+      overlay.querySelector('#admin-debug-summary').textContent = 'Error leyendo Firestore.';
+    } finally {
+      debugLoading = false;
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = '🔄 Actualizar';
+    }
+  }
+
+  function activateAdminTab(key) {
+    overlay.querySelectorAll('[data-admin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === key));
+    overlay.querySelectorAll('[data-admin-pane]').forEach(pane => pane.classList.toggle('hidden', pane.dataset.adminPane !== key));
+    if (key === 'debug' && !debugLoaded) reloadTelemetryHistory();
+  }
+
+  overlay.querySelectorAll('[data-admin-tab]').forEach(btn => {
+    btn.addEventListener('click', () => activateAdminTab(btn.dataset.adminTab));
+  });
+  overlay.querySelector('#admin-debug-refresh').addEventListener('click', reloadTelemetryHistory);
+
+  // Carga la lista real de usuarios de forma asíncrona — no bloquea el resto del panel.
   const recipientSelect = overlay.querySelector('#grant-recipient');
   fetchAllUserProfiles()
     .then(profiles => {
@@ -3047,9 +3325,6 @@ export function showAdminPanel(onBack) {
     }
   });
 
-  // "Anuncios": arma la lista actual (con su botón de borrar cada uno) y la vuelve a pedir
-  // después de publicar o borrar — así siempre se ve el estado real, sin tener que armar a
-  // mano el ida y vuelta de agregar/sacar un elemento de la lista en el DOM.
   function renderAnnouncementList(announcements) {
     const listEl = overlay.querySelector('#announcement-list');
     if (announcements.length === 0) {
@@ -3152,8 +3427,6 @@ export function showAdminPanel(onBack) {
       errorBox.textContent = 'Todos los campos tienen que ser números válidos.';
       return;
     }
-    // Un par de chequeos de sanidad mínimos — no reemplazan el criterio del admin, pero
-    // evitan un typo catastrófico (ej. mazo de 0 cartas) que dejaría el juego injugable.
     if (newConfig.deckSizeExact <= 0 || newConfig.maxCopiesPerCard <= 0 || newConfig.packCost < 0 || newConfig.fichasPerEnhancement <= 0) {
       errorBox.textContent = 'Algún valor no tiene sentido (¿cero o negativo donde no correspondía?). Revisá antes de guardar.';
       return;
@@ -3163,7 +3436,7 @@ export function showAdminPanel(onBack) {
     saveBtn.disabled = true;
     try {
       await saveGameConfig(newConfig);
-      applyGameConfig(newConfig); // ya queda activo en ESTA sesión, sin recargar
+      applyGameConfig(newConfig);
       successBox.textContent = '✅ Guardado — ya está activo para todos los jugadores.';
     } catch (err) {
       console.error('No se pudo guardar la configuración:', err);
@@ -3357,8 +3630,10 @@ export function showMultiplayerLobby(onBack, onMatched) {
     // BUGFIX: mismo criterio de privacidad que getLocalPlayerName (main.js) — solo el
     // nombre de pila, nunca el apellido completo de Google. Antes esto mostraba el
     // displayName entero sin recortar.
-    const rivalFullName = (match.players && match.players[rivalUid] && match.players[rivalUid].displayName) || '';
+    const rivalProfile = (match.players && match.players[rivalUid]) || {};
+    const rivalFullName = rivalProfile.displayName || '';
     const rivalName = (rivalFullName.trim().split(/\s+/)[0]) || 'tu rival';
+    const rivalPhotoURL = rivalProfile.photoURL || '';
 
     body.innerHTML = `
       <div class="mp-section">
@@ -3369,7 +3644,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
     `;
     body.querySelector('#mp-start').addEventListener('click', () => {
       overlay.remove();
-      onMatched(match.code, myRole, rivalName);
+      onMatched(match.code, myRole, rivalName, rivalPhotoURL);
     });
   }
 
@@ -4247,6 +4522,7 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
 export function render() {
   state.localHP = Math.max(0, Math.min(20, state.localHP));
   state.rivalHP = Math.max(0, Math.min(20, state.rivalHP));
+  updateRivalAccountUI();
 
   els.localHand.innerHTML = ''; state.localHand.forEach((card, idx) => els.localHand.appendChild(createCardElement(card, false, true, idx, 'hand')));
   els.rivalHand.innerHTML = ''; state.rivalHand.forEach(() => {

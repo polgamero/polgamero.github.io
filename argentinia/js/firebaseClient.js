@@ -566,6 +566,143 @@ export async function deleteAnnouncement(announcementId) {
   await deleteDoc(doc(db, 'announcements', announcementId));
 }
 
+// ============================================================================
+// ENTREGA 23.5 — Admin / Debugging: historial y descarga de telemetría.
+//
+// Estas lecturas NO agregan permisos nuevos: las reglas de Entrega 23.1 ya permiten que
+// isAdmin() lea telemetrySessions y sus chunks. El cliente normal sigue pudiendo leer sólo
+// sus propias sesiones. No se escribe nada desde este panel.
+// ============================================================================
+
+function firestoreTimestampMs(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (typeof value.seconds === 'number') return (value.seconds * 1000) + Math.floor((value.nanoseconds || 0) / 1e6);
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseTelemetryJsonField(value, fallback) {
+  if (typeof value !== 'string' || !value) return fallback;
+  try { return JSON.parse(value); } catch { return fallback; }
+}
+
+// Devuelve TODAS las sesiones visibles para el admin. Ordenamos del lado del cliente para
+// no exigir índices nuevos de Firestore; con el volumen de QA de Argentinia esto es chico y
+// además garantiza que también aparezcan sesiones viejas/incompletas.
+export async function fetchTelemetrySessionsForAdmin() {
+  const snap = await getDocs(collection(db, 'telemetrySessions'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => {
+    const aMs = firestoreTimestampMs(a.finalizedAt || a.updatedAt) || Date.parse(a.endedAtClient || a.startedAtClient || '') || 0;
+    const bMs = firestoreTimestampMs(b.finalizedAt || b.updatedAt) || Date.parse(b.endedAtClient || b.startedAtClient || '') || 0;
+    return bMs - aMs;
+  });
+}
+
+// Reconstruye el mismo tipo de JSON que exporta telemetry.js, pero usando como fuente los
+// chunks persistidos en Firestore. Los eventos y bugCandidates son los payloads REALES que
+// subió el tester; sólo el envoltorio/resumen se recompone desde el documento índice.
+export async function fetchTelemetrySessionArchive(sessionId) {
+  if (!sessionId) throw new Error('Falta sessionId para descargar telemetría.');
+
+  const indexSnap = await getDoc(doc(db, 'telemetrySessions', sessionId));
+  if (!indexSnap.exists()) throw new Error('La sesión de telemetría ya no existe.');
+  const index = indexSnap.data();
+
+  const chunksSnap = await getDocs(collection(db, 'telemetrySessions', sessionId, 'chunks'));
+  const chunkDocs = chunksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  const events = [];
+  const bugs = [];
+  for (const chunk of chunkDocs) {
+    const payload = parseTelemetryJsonField(chunk.payloadJson, null);
+    if (!payload || typeof payload !== 'object') continue;
+    if (Array.isArray(payload.events)) events.push(...payload.events);
+    if (Array.isArray(payload.bugCandidates)) bugs.push(...payload.bugCandidates);
+  }
+
+  // Los IDs de chunks son idempotentes, pero igual deduplicamos defensivamente por seq/id
+  // para que un archivo descargado desde Admin nunca repita evidencia.
+  const eventBySeq = new Map();
+  events.forEach((ev, idx) => {
+    const key = Number.isFinite(Number(ev?.seq)) ? `seq:${Number(ev.seq)}` : `fallback:${idx}:${JSON.stringify(ev)}`;
+    if (!eventBySeq.has(key)) eventBySeq.set(key, ev);
+  });
+  const mergedEvents = [...eventBySeq.values()].sort((a, b) => (Number(a?.seq) || 0) - (Number(b?.seq) || 0));
+
+  const bugById = new Map();
+  bugs.forEach((bug, idx) => {
+    const key = bug?.id || `${bug?.code || 'BUG'}:${bug?.eventSeq ?? ''}:${bug?.detectedAt || ''}:${idx}`;
+    if (!bugById.has(key)) bugById.set(key, bug);
+  });
+  let mergedBugs = [...bugById.values()].sort((a, b) => (Number(a?.eventSeq) || 0) - (Number(b?.eventSeq) || 0));
+  if (mergedBugs.length === 0) {
+    // Compatibilidad defensiva: si una sesión antigua no conservó bug deltas en chunks,
+    // el índice guarda al menos el resumen de los últimos 100 candidatos.
+    mergedBugs = parseTelemetryJsonField(index.bugCandidatesJson, []) || [];
+  }
+
+  const meta = parseTelemetryJsonField(index.metaJson, {}) || {};
+  const finalSnapshot = parseTelemetryJsonField(index.latestSnapshotJson, null);
+  const byType = {};
+  const bySeverity = {};
+  mergedEvents.forEach(ev => {
+    const type = ev?.type || 'unknown';
+    const severity = ev?.severity || 'info';
+    byType[type] = (byType[type] || 0) + 1;
+    bySeverity[severity] = (bySeverity[severity] || 0) + 1;
+  });
+  const stats = {
+    eventCount: mergedEvents.length,
+    bugCandidateCount: mergedBugs.length,
+    byType,
+    bySeverity,
+    truncated: !!index.truncated
+  };
+  const manualCount = mergedBugs.filter(b => b?.code === 'MANUAL_BUG_MARKER').length;
+  const automaticCount = Math.max(0, mergedBugs.length - manualCount);
+  const summaryLines = [
+    'Argentinia — Diagnóstico de partida (reconstruido desde Firestore)',
+    `Sesión: ${sessionId}`,
+    `Motor base: ${index.engineBaseline || '?'}`,
+    `Telemetría: ${index.telemetryVersion || '?'} / schema ${index.schemaVersion || '?'}`,
+    `Inicio: ${index.startedAtClient || '?'}`,
+    `Fin: ${index.endedAtClient || '(sesión todavía abierta)'}`,
+    `Modo: ${index.mode || meta.mode || '?'}`,
+    index.matchId ? `Match: ${index.matchId} (${index.myRole || '?'})` : null,
+    `Eventos subidos: ${mergedEvents.length}`,
+    `Candidatos de bug: ${mergedBugs.length} (automáticos: ${automaticCount}, manuales: ${manualCount})`
+  ].filter(Boolean);
+
+  return {
+    schemaVersion: index.schemaVersion || null,
+    telemetryVersion: index.telemetryVersion || null,
+    engineBaseline: index.engineBaseline || null,
+    sessionId,
+    startedAt: index.startedAtClient || null,
+    endedAt: index.endedAtClient || null,
+    endReason: index.endReason || null,
+    meta,
+    remote: {
+      source: 'firestore',
+      reconstructedFromChunks: true,
+      status: index.status || null,
+      lastUploadedSeq: index.lastUploadedSeq || 0,
+      lastUploadedBugCount: index.lastUploadedBugCount || 0,
+      lastUploadKind: index.lastUploadKind || null,
+      lastUploadReason: index.lastUploadReason || null,
+      chunkCount: chunkDocs.length,
+      downloadedAt: new Date().toISOString()
+    },
+    stats,
+    humanSummary: summaryLines.join('\n'),
+    bugCandidates: mergedBugs,
+    finalSnapshot,
+    events: mergedEvents,
+    truncated: !!index.truncated
+  };
+}
+
 
 // ============================================================================
 // ENTREGA 23.1 — Telemetría remota Firestore-only.
