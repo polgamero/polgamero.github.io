@@ -187,6 +187,15 @@
     "effect": {
       "type": "counter",
       "amount": 0
+    },
+    "alternativeCost": {
+      "manaCost": null,
+      "life": 1,
+      "discard": {
+        "amount": 1,
+        "selection": "choice",
+        "color": "U"
+      }
     }
   },
   {
@@ -209,7 +218,7 @@
     },
     "secondaryEffect": {
       "type": "add_counter",
-      "counterType": "+1/+1",
+      "counterType": "plusOne",
       "amount": 1,
       "target": "friendly_creature"
     }
@@ -941,6 +950,640 @@
     "effect": {
       "type": "poison",
       "amount": 2
+    }
+  },
+  {
+    "id": "inst_047",
+    "name": "Bancá la Parada",
+    "type": "Instantáneo",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "La criatura objetivo obtiene +0/+3 hasta el final del turno.",
+    "flavorText": "No hace falta ganar. A veces alcanza con aguantar.",
+    "requiresTarget": true,
+    "image": "banca_parada.png",
+    "effect": {
+      "type": "pump",
+      "powerMod": 0,
+      "toughnessMod": 3
+    }
+  },
+  {
+    "id": "inst_048",
+    "name": "No Pasás",
+    "type": "Instantáneo",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "La criatura objetivo gana Indestructible hasta el final del turno.",
+    "flavorText": "De este lado de la puerta se termina la discusión.",
+    "requiresTarget": true,
+    "image": "no_pasas.png",
+    "effect": {
+      "type": "grant_keyword_temp",
+      "keyword": "indestructible"
+    }
+  },
+  {
+    "id": "inst_049",
+    "name": "Entre Líneas",
+    "type": "Instantáneo",
+    "manaCost": "{U}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Adiviná 2.",
+    "flavorText": "Lo importante nunca estaba escrito en grande.",
+    "requiresTarget": false,
+    "image": "entre_lineas.png",
+    "effect": {
+      "type": "scry",
+      "amount": 2
+    }
+  },
+  {
+    "id": "inst_050",
+    "name": "Agarrá Viento",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "La criatura objetivo gana Vuela hasta el final del turno.",
+    "flavorText": "Una bolsa de nylon puede cruzar media ciudad si la engancha bien.",
+    "requiresTarget": true,
+    "image": "agarra_viento.png",
+    "effect": {
+      "type": "grant_keyword_temp",
+      "keyword": "flying"
+    }
+  },
+  {
+    "id": "inst_051",
+    "name": "Mordida Ponzoñosa",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "El jugador objetivo recibe 1 contador de Veneno.",
+    "flavorText": "Primero arde. Después preocupa.",
+    "requiresTarget": true,
+    "image": "mordida_ponzonosa.png",
+    "effect": {
+      "type": "poison",
+      "amount": 1
+    }
+  },
+  {
+    "id": "inst_052",
+    "name": "Apagón del Pasillo",
+    "type": "Instantáneo",
+    "manaCost": "{4}{B}",
+    "cmc": 5,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "Destruí la criatura objetivo.",
+    "flavorText": "Se cortó la luz y alguien dejó de contestar.",
+    "requiresTarget": true,
+    "image": "apagon_pasillo.png",
+    "effect": {
+      "type": "destroy_creature"
+    }
+  },
+  {
+    "id": "inst_053",
+    "name": "A las Chapas",
+    "type": "Instantáneo",
+    "manaCost": "{R}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "La criatura objetivo obtiene +2/+0 hasta el final del turno.",
+    "flavorText": "Después vemos cómo frenamos.",
+    "requiresTarget": true,
+    "image": "a_las_chapas.png",
+    "effect": {
+      "type": "pump",
+      "powerMod": 2,
+      "toughnessMod": 0
+    }
+  },
+  {
+    "id": "inst_054",
+    "name": "Saltó la Térmica",
+    "type": "Instantáneo",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Le hacés 2 de daño a cualquier objetivo.",
+    "flavorText": "Dos estufas, una pava eléctrica y se terminó la paciencia.",
+    "requiresTarget": true,
+    "image": "salto_termica.png",
+    "effect": {
+      "type": "damage",
+      "amount": 2
+    }
+  },
+  {
+    "id": "inst_055",
+    "name": "Dale que Va",
+    "type": "Instantáneo",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "La criatura objetivo obtiene +2/+2 hasta el final del turno.",
+    "flavorText": "Si ya arrancó, no la pares ahora.",
+    "requiresTarget": true,
+    "image": "dale_que_va.png",
+    "effect": {
+      "type": "pump",
+      "powerMod": 2,
+      "toughnessMod": 2
+    }
+  },
+  {
+    "id": "inst_056",
+    "name": "Ramazo",
+    "type": "Instantáneo",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "La criatura objetivo obtiene +1/+3 hasta el final del turno.",
+    "flavorText": "El monte también sabe pelear a distancia.",
+    "requiresTarget": true,
+    "image": "ramazo.png",
+    "effect": {
+      "type": "pump",
+      "powerMod": 1,
+      "toughnessMod": 3
+    }
+  },
+  {
+    "id": "inst_057",
+    "name": "Cierre de Persiana",
+    "type": "Instantáneo",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "La criatura objetivo no puede atacar durante su próximo turno.",
+    "flavorText": "A veces la defensa más efectiva baja de golpe y hace ruido.",
+    "image": "cierre_persiana.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "prevent_attack"
+    }
+  },
+  {
+    "id": "inst_058",
+    "name": "Cadena de Favores",
+    "type": "Instantáneo",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Ganás 4 Puntos de Vida.",
+    "flavorText": "Uno trae hielo, otro una silla, otro llama a alguien que sabe.",
+    "image": "cadena_favores.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "heal",
+      "amount": 4
+    }
+  },
+  {
+    "id": "inst_059",
+    "name": "Corte de Señal",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Contrarresta la habilidad activada o disparada objetivo.",
+    "flavorText": "La transmisión siguió. Lo que desapareció fue la respuesta.",
+    "image": "corte_senal.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "counter_ability"
+    }
+  },
+  {
+    "id": "inst_060",
+    "name": "Ola de Retorno",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Devolvé la criatura objetivo a la mano de su propietario.",
+    "flavorText": "La costa guarda pocas cosas para siempre.",
+    "image": "ola_retorno.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "bounce"
+    }
+  },
+  {
+    "id": "inst_061",
+    "name": "Cobro por Adelantado",
+    "type": "Instantáneo",
+    "manaCost": "{B}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "El jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Después discutimos la deuda. Primero pagame la seña.",
+    "image": "cobro_adelantado.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "inst_062",
+    "name": "Tierra sobre el Cajón",
+    "type": "Instantáneo",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "Exilia el cementerio del jugador objetivo.",
+    "flavorText": "Una palada más y se termina la conversación.",
+    "image": "tierra_sobre_cajon.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "exile_graveyard"
+    }
+  },
+  {
+    "id": "inst_063",
+    "name": "Chispa del Transformador",
+    "type": "Instantáneo",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Destruye el Artefacto objetivo.",
+    "flavorText": "Primero se escucha el golpe. Después se apaga media cuadra.",
+    "image": "chispa_transformador.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "destroy_artifact"
+    }
+  },
+  {
+    "id": "inst_064",
+    "name": "Revolver la Guantera",
+    "type": "Instantáneo",
+    "manaCost": "{R}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Descartá una carta, luego robá una carta.",
+    "flavorText": "Siempre aparece un mapa viejo, dos monedas y algo que conviene no preguntar.",
+    "image": "revolver_guantera.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "rummage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "inst_065",
+    "name": "Yuyo Protector",
+    "type": "Instantáneo",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "La criatura objetivo gana Intocable hasta el final del turno.",
+    "flavorText": "Crece justo donde hace falta que nadie pueda pasar.",
+    "image": "yuyo_protector.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "grant_keyword_temp",
+      "keyword": "hexproof"
+    }
+  },
+  {
+    "id": "inst_066",
+    "name": "Embate del Alambrado",
+    "type": "Instantáneo",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "La criatura objetivo gana Arrolla hasta el final del turno.",
+    "flavorText": "El campo parece quieto hasta que algo decide cruzarlo.",
+    "image": "embate_alambrado.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "grant_keyword_temp",
+      "keyword": "trample"
+    }
+  },
+  {
+    "id": "inst_067",
+    "name": "Cubrir la Retaguardia",
+    "type": "Instantáneo",
+    "manaCost": "{W}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "La criatura objetivo gana Indestructible hasta el final del turno.",
+    "flavorText": "Un segundo alcanza cuando todos saben dónde ponerse.",
+    "image": "cubrir_la_retaguardia.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "grant_keyword_temp",
+      "keyword": "indestructible"
+    }
+  },
+  {
+    "id": "inst_068",
+    "name": "Campanazo de Alerta",
+    "type": "Instantáneo",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Prevén todo el daño de combate que se fuera a hacer este turno.",
+    "flavorText": "Tres campanadas y hasta los perros saben que nadie sale.",
+    "image": "campanazo_de_alerta.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "fog"
+    }
+  },
+  {
+    "id": "inst_069",
+    "name": "Desviar la Señal",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Contrarresta el hechizo objetivo a menos que su controlador pague {2}.",
+    "flavorText": "La orden salió clara. Llegó a otro lado.",
+    "image": "desviar_la_senal.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "counter_unless_pay",
+      "amount": 2
+    }
+  },
+  {
+    "id": "inst_070",
+    "name": "Releer el Expediente",
+    "type": "Instantáneo",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Robá una carta. Flashback {4}{U}.",
+    "flavorText": "La segunda lectura siempre encuentra la frase que faltaba.",
+    "image": "releer_el_expediente.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "draw",
+      "amount": 1
+    },
+    "flashback": {
+      "cost": "{4}{U}"
+    }
+  },
+  {
+    "id": "inst_071",
+    "name": "Última Voluntad",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "Devolvé una criatura de tu cementerio a tu mano.",
+    "flavorText": "La firma tiembla, pero la instrucción es clarísima.",
+    "image": "ultima_voluntad.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "return_from_graveyard",
+      "filter": "creature",
+      "amount": 1
+    }
+  },
+  {
+    "id": "inst_072",
+    "name": "Cobro Pendiente",
+    "type": "Instantáneo",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "El jugador rival pierde 2 Puntos de Vida y vos ganás 2.",
+    "flavorText": "La deuda no venció. Aprendió a caminar.",
+    "image": "cobro_pendiente.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "drain",
+      "amount": 2
+    }
+  },
+  {
+    "id": "inst_073",
+    "name": "Cortocircuito del Transformador",
+    "type": "Instantáneo",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Hacé 3 de daño al objetivo.",
+    "flavorText": "Una explosión azul, tres cuadras oscuras y alguien diciendo que ya vuelve.",
+    "image": "cortocircuito_del_transformador.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "damage",
+      "amount": 3
+    }
+  },
+  {
+    "id": "inst_074",
+    "name": "Quemar los Papeles",
+    "type": "Instantáneo",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Descartá una carta, luego robá una carta. Flashback {3}{R}.",
+    "flavorText": "La copia importante era la que nadie recordó sacar.",
+    "image": "quemar_los_papeles.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "rummage",
+      "amount": 1
+    },
+    "flashback": {
+      "cost": "{3}{R}"
+    }
+  },
+  {
+    "id": "inst_075",
+    "name": "Enredar las Ruedas",
+    "type": "Instantáneo",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "La criatura objetivo no puede atacar en su próximo turno.",
+    "flavorText": "No hace falta romper el carro si alcanza con que no salga.",
+    "image": "enredar_las_ruedas.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "prevent_attack",
+      "amount": 1
+    }
+  },
+  {
+    "id": "inst_076",
+    "name": "Fuerza del Ombú",
+    "type": "Instantáneo",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "La criatura objetivo obtiene +3/+3 hasta el final del turno.",
+    "flavorText": "Una sombra grande también puede empujar.",
+    "image": "fuerza_del_ombu.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "pump",
+      "powerMod": 3,
+      "toughnessMod": 3
+    }
+  },
+  {
+    "id": "inst_077",
+    "name": "Cambio de Frecuencia",
+    "type": "Instantáneo",
+    "manaCost": "{1}{W}{U}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "U"
+    ],
+    "text": "Contrarresta el hechizo o la habilidad activada o disparada objetivo.",
+    "flavorText": "La conversación sigue. Sólo que ahora nadie escucha la misma.",
+    "image": "cambio_de_frecuencia.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "counter_any",
+      "amount": 0
+    }
+  },
+  {
+    "id": "inst_078",
+    "name": "Cobro con Intereses",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B",
+      "R"
+    ],
+    "text": "El jugador rival pierde 2 Puntos de Vida y vos ganás 2.",
+    "flavorText": "La cifra era chica hasta que empezó a acumular noches.",
+    "image": "cobro_con_intereses.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "drain",
+      "amount": 2
+    }
+  },
+  {
+    "id": "inst_079",
+    "name": "Desvío por el Humedal",
+    "type": "Instantáneo",
+    "manaCost": "{G}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "G",
+      "U"
+    ],
+    "text": "Devolvé la criatura objetivo a la mano de su dueño.",
+    "flavorText": "El cartel decía veinte minutos. El agua tenía otra opinión.",
+    "image": "desvio_por_el_humedal.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "bounce"
     }
   }
 ]

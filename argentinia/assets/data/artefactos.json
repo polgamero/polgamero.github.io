@@ -18,7 +18,8 @@
         "type": "heal",
         "amount": 2
       },
-      "requiresTarget": false
+      "requiresTarget": false,
+      "timing": "instant"
     }
   },
   {
@@ -40,7 +41,8 @@
         "type": "draw",
         "amount": 1
       },
-      "requiresTarget": false
+      "requiresTarget": false,
+      "timing": "instant"
     }
   },
   {
@@ -64,7 +66,8 @@
       "effect": {
         "type": "attach_equipment"
       },
-      "requiresTarget": true
+      "requiresTarget": true,
+      "timing": "sorcery"
     },
     "grantedAbility": {
       "cost": "{T}",
@@ -72,7 +75,8 @@
         "type": "damage",
         "amount": 2
       },
-      "requiresTarget": false
+      "requiresTarget": false,
+      "timing": "instant"
     }
   },
   {
@@ -100,7 +104,8 @@
       "effect": {
         "type": "attach_equipment"
       },
-      "requiresTarget": true
+      "requiresTarget": true,
+      "timing": "sorcery"
     }
   },
   {
@@ -111,7 +116,7 @@
     "cmc": 3,
     "rarity": "Rare",
     "colors": [],
-    "text": "Tripular 2. (Girar cualquier cantidad de criaturas que controlás con una fuerza total de 2 o más: Este Vehículo se convierte en una criatura artefacto hasta el final del turno.)",
+    "text": "Tripular {2} (Pagá {2} para que este Vehículo se convierta en una criatura 4/4 hasta el final del turno).",
     "flavorText": "A prueba de flechas, lanzas y luz mala.",
     "image": "carreta.png",
     "baseStats": {
@@ -123,7 +128,8 @@
       "effect": {
         "type": "crew_vehicle"
       },
-      "requiresTarget": false
+      "requiresTarget": false,
+      "timing": "sorcery"
     }
   },
   {
@@ -134,7 +140,7 @@
     "cmc": 4,
     "rarity": "Rare",
     "colors": [],
-    "text": "Tripular 3. (Girar cualquier cantidad de criaturas que controlás con una fuerza total de 3 o más: Este Vehículo se convierte en una criatura artefacto hasta el final del turno.)",
+    "text": "Tripular {3} (Pagá {3} para que este Vehículo se convierta en una criatura 6/6 hasta el final del turno).",
     "flavorText": "Yo no manejo el rating, yo manejo esto.",
     "image": "rolls_royce_ricky.png",
     "baseStats": {
@@ -146,7 +152,8 @@
       "effect": {
         "type": "crew_vehicle"
       },
-      "requiresTarget": false
+      "requiresTarget": false,
+      "timing": "sorcery"
     }
   },
   {
@@ -157,7 +164,7 @@
     "cmc": 2,
     "rarity": "Uncommon",
     "colors": [],
-    "text": "Tripular 1. (Girar cualquier cantidad de criaturas que controlás con una fuerza total de 1 o más: Este Vehículo se convierte en una criatura artefacto con Arrollar hasta el final del turno.)",
+    "text": "Tripular {1} (Pagá {1} para que este Vehículo se convierta en una criatura 3/4 con Arrollar hasta el final del turno).",
     "flavorText": "Cruzó los Andes sin quejarse una sola vez.",
     "image": "caballo_san_martin.png",
     "keywords": [
@@ -172,7 +179,8 @@
       "effect": {
         "type": "crew_vehicle"
       },
-      "requiresTarget": false
+      "requiresTarget": false,
+      "timing": "sorcery"
     }
   },
   {
@@ -192,7 +200,8 @@
         "type": "heal",
         "amount": 1
       },
-      "requiresTarget": false
+      "requiresTarget": false,
+      "timing": "instant"
     }
   },
   {
@@ -212,7 +221,8 @@
         "type": "draw",
         "amount": 1
       },
-      "requiresTarget": false
+      "requiresTarget": false,
+      "timing": "instant"
     }
   },
   {
@@ -223,17 +233,17 @@
     "cmc": 1,
     "rarity": "Common",
     "colors": [],
-    "text": "{T}: Robás una carta y perdés 2 Puntos de Vida.",
+    "text": "{T}: Robá una carta, luego descartá una carta.",
     "flavorText": "Grabado de la radio, con la voz del locutor incluida.",
     "image": "cassette_pirata.png",
     "activatedAbility": {
       "cost": "{T}",
       "effect": {
-        "type": "draw_and_lose_life",
-        "amount": 1,
-        "lifeLoss": 2
+        "type": "loot",
+        "amount": 1
       },
-      "requiresTarget": false
+      "requiresTarget": false,
+      "timing": "instant"
     }
   },
   {
@@ -254,7 +264,8 @@
         "type": "drain",
         "amount": 2
       },
-      "requiresTarget": false
+      "requiresTarget": false,
+      "timing": "instant"
     }
   },
   {
@@ -405,7 +416,8 @@
       "effect": {
         "type": "attach_equipment"
       },
-      "requiresTarget": true
+      "requiresTarget": true,
+      "timing": "sorcery"
     }
   },
   {
@@ -427,7 +439,8 @@
         "type": "draw",
         "amount": 1
       },
-      "requiresTarget": false
+      "requiresTarget": false,
+      "timing": "instant"
     }
   },
   {
@@ -450,7 +463,8 @@
         "type": "grant_keyword_temp",
         "keyword": "hexproof"
       },
-      "requiresTarget": true
+      "requiresTarget": true,
+      "timing": "instant"
     }
   },
   {
@@ -471,7 +485,8 @@
       "effect": {
         "type": "exile_creature"
       },
-      "requiresTarget": true
+      "requiresTarget": true,
+      "timing": "instant"
     }
   },
   {
@@ -497,7 +512,491 @@
       "effect": {
         "type": "attach_equipment"
       },
-      "requiresTarget": true
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_024",
+    "name": "Atado con Alambre",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Equipar {1}. La criatura equipada obtiene +1/+0.",
+    "flavorText": "Si todavía se mueve, todavía sirve.",
+    "image": "atado_con_alambre.png",
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedStats": {
+        "powerMod": 1,
+        "toughnessMod": 0
+      }
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_025",
+    "name": "Caja de Herramientas",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Equipar {1}. La criatura equipada obtiene +0/+1.",
+    "flavorText": "Siempre falta una llave, pero nunca la que termina salvando el día.",
+    "image": "caja_herramientas.png",
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedStats": {
+        "powerMod": 0,
+        "toughnessMod": 1
+      }
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_026",
+    "name": "Parrilla Portátil",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Ganás 2 Puntos de Vida.",
+    "flavorText": "Dos ladrillos, una rejilla y ya hay plan para el domingo.",
+    "image": "parrilla_portatil.png",
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "heal",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_027",
+    "name": "Mapa Rutero",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Adiviná 1.",
+    "flavorText": "Está doblado por una ruta que ya no existe, pero igual te lleva.",
+    "image": "mapa_rutero.png",
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "scry",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_028",
+    "name": "Farol a Kerosén",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{1}, {T}: Adiviná 1.",
+    "flavorText": "No ilumina mucho, pero alcanza para saber por dónde no seguir.",
+    "image": "farol_kerosen.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "scry",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_029",
+    "name": "Botiquín de Ruta",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{1}, {T}: Ganás 2 Puntos de Vida.",
+    "flavorText": "Tiene vendas, alcohol y una curita que nadie recuerda haber comprado.",
+    "image": "botiquin_ruta.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "heal",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_030",
+    "name": "Radio a Válvulas",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{1}, {T}: Vigilá 1.",
+    "flavorText": "Entre la estática se escucha algo que todavía no pasó.",
+    "image": "radio_valvulas.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "surveil",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_031",
+    "name": "Máquina de Fichar",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{3}, {T}: Proliferá.",
+    "flavorText": "Marca la entrada, la salida y algunas horas que nadie trabajó.",
+    "image": "maquina_fichar.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "proliferate"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_032",
+    "name": "Caja de Repuestos",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{2}, {T}: Devolvé un Artefacto de tu cementerio a tu mano.",
+    "flavorText": "Siempre hay una pieza que no sabías que necesitabas hasta que se rompe todo.",
+    "image": "caja_repuestos.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "return_from_graveyard",
+        "filter": "artifact",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_033",
+    "name": "Colectivo de la Línea Fantasma",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Amenaza. Tripular {2} (Pagá {2} para que este Vehículo se convierta en una criatura 4/4 hasta el final del turno).",
+    "flavorText": "No figura en ninguna aplicación, pero siempre hay alguien esperando que pase.",
+    "image": "colectivo_linea_fantasma.png",
+    "keywords": [
+      "menace"
+    ],
+    "baseStats": {
+      "power": 4,
+      "toughness": 4
+    },
+    "activatedAbility": {
+      "crewCost": 2,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_034",
+    "name": "Linterna del Sereno",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{1}, {T}: Vigilá 1.",
+    "flavorText": "Alumbra poco, pero justo lo suficiente para descubrir qué quedó escondido.",
+    "image": "linterna_del_sereno.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "surveil",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_035",
+    "name": "Guitarra Criolla Encantada",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Equipar {1}. La criatura equipada obtiene +1/+1.",
+    "flavorText": "Si la afinás de noche, alguna cuerda siempre responde sola.",
+    "image": "guitarra_criolla_encantada.png",
+    "keywords": [],
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedStats": {
+        "powerMod": 1,
+        "toughnessMod": 1
+      }
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_036",
+    "name": "Casco de Bombero Voluntario",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Equipar {1}. La criatura equipada tiene Vigilancia.",
+    "flavorText": "Todavía huele a humo de incendios que nadie recuerda.",
+    "image": "casco_de_bombero_voluntario.png",
+    "keywords": [],
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedKeywords": [
+        "vigilance"
+      ]
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_037",
+    "name": "Botiquín del Parador",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Ganás 2 Puntos de Vida.",
+    "flavorText": "Tiene vendas, alcohol y una curita que venció en otra década.",
+    "image": "botiquin_del_parador.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "heal",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_038",
+    "name": "Cámara Súper 8 Maldita",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{2}, {T}: Vigilá 2.",
+    "flavorText": "Revela fotogramas de gente que nunca estuvo delante de la lente.",
+    "image": "camara_super_8_maldita.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "surveil",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_039",
+    "name": "Generador a Nafta",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}, sacrificá este artefacto: Agregá un maná de cualquier color.",
+    "flavorText": "Arranca al tercer intento, justo cuando todos ya habían perdido la fe.",
+    "image": "generador_a_nafta.png",
+    "keywords": [],
+    "producesOptions": [
+      "W",
+      "U",
+      "B",
+      "R",
+      "G"
+    ],
+    "sacrificeOnTap": true
+  },
+  {
+    "id": "art_040",
+    "name": "Lancha Colectiva del Delta",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Vigilancia. Tripular {2}.",
+    "flavorText": "No tiene horario. Tiene un patrón que sabe cuándo hace falta pasar.",
+    "image": "lancha_colectiva_del_delta.png",
+    "keywords": [
+      "vigilance"
+    ],
+    "baseStats": {
+      "power": 4,
+      "toughness": 4
+    },
+    "activatedAbility": {
+      "crewCost": 2,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_041",
+    "name": "Rastrojero del Correo",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{4}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Arrolla. Tripular {3}.",
+    "flavorText": "Entrega cartas en pueblos donde hace años cerró el correo.",
+    "image": "rastrojero_del_correo.png",
+    "keywords": [
+      "trample"
+    ],
+    "baseStats": {
+      "power": 5,
+      "toughness": 5
+    },
+    "activatedAbility": {
+      "crewCost": 3,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_042",
+    "name": "Central Telefónica Abandonada",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{1}, {T}: Adiviná 1. {4}, {T}: Robá una carta.",
+    "flavorText": "Hay líneas que siguen dando tono aunque no estén conectadas a nada.",
+    "image": "central_telefonica_abandonada.png",
+    "keywords": [],
+    "activatedAbilities": [
+      {
+        "cost": "{1}{T}",
+        "effect": {
+          "type": "scry",
+          "amount": 1
+        },
+        "requiresTarget": false,
+        "timing": "instant"
+      },
+      {
+        "cost": "{4}{T}",
+        "effect": {
+          "type": "draw",
+          "amount": 1
+        },
+        "requiresTarget": false,
+        "timing": "instant"
+      }
+    ]
+  },
+  {
+    "id": "art_043",
+    "name": "Proyector del Cine Cerrado",
+    "type": "Artefacto",
+    "manaCost": "{5}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "{3}, {T}: Exiliá la criatura objetivo y devolvela al campo de batalla.",
+    "flavorText": "La función termina, la pantalla queda blanca y alguien vuelve distinto.",
+    "image": "proyector_del_cine_cerrado.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "exile_and_return"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
     }
   }
 ]
