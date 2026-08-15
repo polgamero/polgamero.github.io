@@ -1892,6 +1892,7 @@ function injectStoreStyles() {
 // de juego real) — nada de esto necesitó inventar una forma nueva de mostrar una carta.
 export function showStoreScreen(onBack) {
   injectStoreStyles();
+  injectEncyclopediaStyles(); // .encyclopedia-back-btn: no depender del orden de navegación
   const overlay = document.createElement('div');
   overlay.id = 'store-overlay';
   overlay.innerHTML = `
@@ -2241,6 +2242,7 @@ export function showDeckNameModal(defaultName, onConfirm, onCancel) {
 // vez de crear uno nuevo.
 export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck) {
   injectEncyclopediaStyles();
+  injectStoreStyles(); // .store-buy-btn/.store-error-msg: siempre disponibles
   injectDeckBuilderStyles();
 
   const ownedCounts = {};
@@ -2550,6 +2552,7 @@ export function showMyDecksScreen(onBack) {
   injectMyDecksStyles();
   injectEncyclopediaStyles(); // reusamos .encyclopedia-grid-box para la vista de detalle
   injectDeckBuilderStyles(); // reusamos .deckbuilder-enhanced-marker para marcar la copia mejorada
+  injectStoreStyles(); // .store-back-link/.store-section: siempre disponibles
   const overlay = document.createElement('div');
   overlay.id = 'mydecks-overlay';
   overlay.innerHTML = `
@@ -2866,6 +2869,7 @@ function injectAdminPanelStyles() {
 export function showAdminPanel(onBack) {
   injectAdminPanelStyles();
   injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn
+  injectStoreStyles(); // .store-error-msg y demás compartidos, sin depender de haber abierto Tienda
 
   if (!state.currentUser || state.currentUser.email !== ADMIN_EMAIL) {
     console.error('showAdminPanel: acceso bloqueado, la cuenta actual no es la del admin.');

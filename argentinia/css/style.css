@@ -7,8 +7,8 @@
 
   /* TAMAÑO DE CARTA ÚNICO Y GLOBAL: se usa igual en mano y en campo
      para que TODAS las cartas midan siempre lo mismo. */
-  --card-w: 10vh;
-  /* aspect-ratio 5/7 -> alto = ancho * 7/5 = 14vh */
+  --card-w: 12.5vh;
+  /* aspect-ratio 5/7 -> alto = ancho * 7/5 = 17.5vh */
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
@@ -26,7 +26,15 @@ html, body {
   display: flex;
   width: 100vw;
   height: 100vh;
-  background: radial-gradient(circle, #1a3c27 0%, #0d1e13 100%);
+
+  background-image:
+    url("https://polgamero.github.io/argentinia/assets/images/ui/fondo.png");
+
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+
+  overflow: hidden;
 }
 
 /* TABLERO FLEX ESTRICTO */
@@ -37,13 +45,14 @@ html, body {
   flex-direction: column;
   justify-content: flex-start;
   padding: 1vh 1vw;
-  gap: 1vh;
+  gap: 0.8vh;
+  background: transparent;
 }
 
 /* ALTURAS EN VH: sólo 4 filas ahora (se fue el banner central), la
    suma total (filas + gaps + padding) queda por debajo de 100vh */
 .hand-row {
-  height: 16vh;
+  height: 20vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -55,8 +64,16 @@ html, body {
   z-index: 1;
 }
 
+/* La mano del rival son dorsos de carta — puramente decorativos, nunca hay que leerlos
+   (ni con el Tano ni el día de mañana con otro jugador humano en multiplayer). No tiene
+   sentido que ocupen tanto como la mano que sí necesitás leer: los achicamos y ese
+   espacio se lo repartimos a las filas que sí importan (campo, tu mano). */
+#rival-hand {
+  height: 7vh;
+}
+
 .field-zone-container {
-  height: 31vh;
+  height: 33.5vh;
   display: flex;
   flex-direction: column;
   gap: 1vh;
@@ -65,8 +82,8 @@ html, body {
 
 .field-row {
   flex: 1;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px dashed rgba(255, 255, 255, 0.15);
+  background: transparent;
+  border: none;
   border-radius: 8px;
   display: flex;
   justify-content: center;
@@ -82,40 +99,46 @@ html, body {
   left: 10px;
   top: 5px;
   font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.2);
   text-transform: uppercase;
   pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
+
+/* ===================================================
+   VARIABLES DE COLOR DE CARTA (Paleta MTG)
+=================================================== */
+.card.bg-w { --card-bg: #F2E4B8; --card-text: #111; }
+.card.bg-u { --card-bg: #6FAEDE; --card-text: #111; }
+.card.bg-b { --card-bg: #1C1620; --card-text: #f5f5f5; }
+.card.bg-r { --card-bg: #E2703A; --card-text: #111; }
+.card.bg-g { --card-bg: #5FA362; --card-text: #111; }
+.card.bg-gold { --card-bg: #D9BF6C; --card-text: #111; }
+.card.bg-colorless { --card-bg: #9AA5AA; --card-text: #111; }
+.card.bg-land { --card-bg: #A0785A; --card-text: #f5f5f5; }
 
 /* ===================================================
    CARTA MTG: TAMAÑO FIJO Y COHERENTE EN TODAS LAS ZONAS
 =================================================== */
 .card {
-  /* El ancho/alto reales los fija JS (renderRow -> sizeCardsInRow) en
-     px, calculados según el espacio disponible de cada fila, así las
-     cartas NUNCA se desbordan y NUNCA necesitan scroll. Estos valores
-     son sólo un fallback antes de que JS los pise. */
   width: var(--card-w);
   aspect-ratio: 5 / 7;
-  background: #c3c3c3;
-  border: 4px solid #111;
+  /* El borde negro clásico de MTG ahora vive TODO en .card-inner (3px) — este elemento
+     dejaba de mostrarse en el hover de una girada (rota .card-inner, no .card, así que
+     acá ya no hace falta ni conviene declarar un borde propio: simplifica y arregla el
+     problema de raíz). */
+  background-color: #111; 
   border-radius: 6px;
   display: flex;
   flex-direction: column;
-  padding: 2px;
+  padding: 0px;
   position: relative;
   cursor: pointer;
   box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
   transition: transform 0.12s ease;
   flex-shrink: 0;
   flex-grow: 0;
-  transform-origin: bottom center; /* Crece desde abajo */
-
-  /* CONTAINER QUERY: el texto interno escala en base al tamaño REAL
-     de la carta (cqw/cqh), así el nombre y el texto siempre entran
-     completos sea cual sea el tamaño calculado por JS. */
-  container-type: size;
-  container-name: card;
+  transform-origin: bottom center;
 }
 
 /* EFECTO HOVER PARA LA MANO LOCAL */
@@ -132,59 +155,174 @@ html, body {
   z-index: 100;
 }
 
-/* CARTA GIRADA (TAPPED): se rota Y se reduce en la misma proporción
-   ancho/alto (5/7) para que la "caja" rotada ocupe aproximadamente el
-   mismo espacio que ocupaba antes de girar. Así no se solapa con la
-   carta de al lado. */
-/* === CARTA GIRADA (TAPPED) – SIN ACHICAR, CON SEPARACIÓN === */
 .card.tapped {
-  transform: rotate(90deg);
-  transform-origin: center center;  /*gira desde el centro */
   opacity: 0.85;
   z-index: 100;
-  /* Aumentamos el margin para separarla de las vecinas */
-  margin-left: 15px;
-  margin-right: 15px;
+  /* El ancho/alto en pantalla (ya intercambiados para el footprint apaisado) los asigna
+     sizeCardsInRow() en JS. .card-inner es quien rota adentro — se centra con flexbox
+     (display:flex + align/justify:center), no con position:absolute + translate, así el
+     transform-origin del hover (bottom center) no pelea con el centrado. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
 }
 
-/* Cuando está girada y hacemos hover, la mostramos normal */
 .field-row .card.tapped:hover {
-  transform: rotate(0deg) scale(2.8);
-  transform-origin: center bottom; 
+  z-index: 200;
   opacity: 1;
-  z-index: 100;
 }
 
+/* --- TEXTURA Y MARCO INTERNO --- */
 .card-inner {
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: 100%;
-  background: url('https://www.transparenttextures.com/patterns/cream-paper.png') #fdfbf7;
-  border: 1px solid #666;
+  flex-shrink: 0;
+  /* La medida de referencia para todo el texto interno (cqw/cqh) vive acá, no en .card —
+     así, cuando .card-inner se agranda/rota para una carta girada (ver .tapped más abajo),
+     el texto sigue calculando su tamaño contra las medidas reales del contenido, no contra
+     el rectángulo apaisado del padre. */
+  container-type: size;
+  container-name: card;
+  background-color: var(--card-bg, #c3c3c3);
+  /* Textura + Sombra radial para efecto viñeta/desgastado */
+  background-image: 
+    url('https://www.transparenttextures.com/patterns/clean-gray-paper.png'),
+    radial-gradient(circle at center, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.25) 100%);
+  background-blend-mode: multiply;
+  border: 3px solid #111; /* ahora es el ÚNICO borde de la carta (sacamos el de .card,
+                              que dejaba de verse en el hover de una girada). Con este
+                              solo alcanza y sobra, y queda consistente en todos los casos. */
+  border-radius: 4px; /* acompaña el redondeo exterior de .card (6px), como una carta real */
+  overflow: hidden; /* clip: nada se escapa del marco redondeado, ni texto ni bloques internos */
+  box-shadow: inset 0 0 12px rgba(0,0,0,0.4); /* Profundidad de marco */
+  transition: transform 0.15s ease;
 }
 
-/* HEADER Y MANÁ MTG - tamaños en cqw/cqh: escalan con el tamaño REAL
-   de la carta (que fija JS), nunca quedan fijos ni se cortan */
+/* CARTA GIRADA: .card ya reserva su footprint apaisado (JS le swapea width/height).
+   .card-inner mantiene sus proporciones ORIGINALES (verticales, asignadas por JS) y
+   se centra solo (flexbox del padre), rotado 90° — ocupa exactamente el rectángulo
+   apaisado del padre, sin invadir a sus vecinas ni perder su relación de aspecto real. */
+.card.tapped .card-inner {
+  transform: rotate(90deg);
+  transform-origin: center center;
+}
+
+/* Al hacer hover sobre una girada: se desgira y hace zoom, con el mismo origen (abajo al
+   centro) que usan todas las demás cartas del juego — antes pivotaba desde el medio. */
+.field-row .card.tapped:hover .card-inner {
+  transform: rotate(0deg) scale(2.8);
+  transform-origin: bottom center;
+  z-index: 200;
+}
+
+/* HEADER Y TIPO (Semi-transparentes para que se luzca el color y la textura) */
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2cqw 4cqw;
-  border-bottom: 1px solid #999;
-  background: linear-gradient(to bottom, #eaeaea, #d4d4d4);
-  height: 15cqh;
+  padding: 1cqw 4cqw;
+  border-bottom: 1px solid rgba(0,0,0,0.6);
+  background: linear-gradient(to bottom, rgba(255,255,255,0.4), rgba(255,255,255,0.05));
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
+  height: 7cqh; /* antes 9cqh, y 15cqh originalmente — cada vuelta le ganamos más espacio
+                   real al cuadro de texto, que es el que de verdad necesita el lugar */
   flex-shrink: 0;
+  overflow: hidden; /* si el título es muy largo, se trunca acá, nunca se escapa del header */
 }
+
 .card-title {
+  flex: 1;
+  min-width: 0; /* imprescindible para que text-overflow:ellipsis funcione en un hijo flex */
   font-weight: bold;
   font-size: 8cqw;
   line-height: 1.1;
-  color: #111;
-  white-space: wrap;
-  overflow: visible;
+  color: var(--card-text, #111);
+  white-space: nowrap;
+  overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 76%;
+  text-shadow: 1px 1px 0px rgba(255,255,255,0.3);
 }
+
+/* Sombra oscura para el texto en cartas Negras y Tierras */
+.card.bg-b .card-title,
+.card.bg-land .card-title {
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+}
+
+/* ARTE */
+.card-art {
+  flex: 1; 
+  background: #222; 
+  display: flex; 
+  justify-content: center; 
+  align-items: center;
+  font-size: 26cqw; 
+  border-bottom: 1px solid rgba(0,0,0,0.7); 
+  border-top: 1px solid rgba(0,0,0,0.7);
+  min-height: 35px;
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.8);
+}
+
+/* TYPE LINE */
+.card-type-line {
+  display: flex; justify-content: space-between; align-items: center;
+  font-weight: bold; padding: 0.3cqw 4cqw;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.4), rgba(255,255,255,0.05));
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.3);
+  border-bottom: 1px solid rgba(0,0,0,0.6); 
+  color: var(--card-text, #222);
+  flex-shrink: 0;
+  overflow: hidden;
+  font-size: 6cqw; /* base heredado por .rarity-icon — sin esto, el ● no tiene tamaño propio
+                       y hereda el default del navegador (gigante), rompe la altura de toda
+                       la carta. .card-type-text lo pisa con su propio tamaño dinámico. */
+}
+.card-type-text {
+  flex: 1;
+  min-width: 0; /* imprescindible para que el ellipsis funcione en un hijo flex */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rarity-icon { flex-shrink: 0; margin-left: 3px; font-size: 1em; }
+
+.card.bg-b .card-type-line,
+.card.bg-land .card-type-line {
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
+}
+
+/* CAJA DE TEXTO (Se mantiene color pergamino para máxima legibilidad, igual que en MTG) */
+.card-text-box {
+  height: 42cqh; padding: 2cqw 3cqw; font-size: 6cqw; line-height: 1.15;
+  background-color: rgba(253, 251, 247, 0.92);
+  background-image: url('https://www.transparenttextures.com/patterns/cream-paper.png');
+  color: #111; overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+}
+
+/* Antes no tenían NINGÚN estilo propio (heredaban el default del navegador: un <div> a lo
+   ancho completo por cada keyword), lo que empujaba el resto del texto fuera de la caja.
+   Ahora son etiquetas chicas en fila que se acomodan solas. */
+.keyword-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 2px;
+}
+.keyword-tag {
+  display: inline-block;
+  font-size: 0.85em;
+  font-weight: bold;
+  background: rgba(0,0,0,0.12);
+  border: 1px solid rgba(0,0,0,0.3);
+  border-radius: 3px;
+  padding: 0px 3px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
 .card-cost { 
   display: flex;
   gap: 2cqw;
@@ -192,17 +330,20 @@ html, body {
   flex-shrink: 0;
 }
 
-/* CÍRCULOS DE MANÁ */
+/* CÍRCULOS DE MANÁ (más chicos, como en una carta real — antes eran grandes y encima el
+   font-size (10cqw) era MÁS GRANDE que el propio círculo (9cqw): nunca podía entrar bien) */
 .mana-symbol {
-  width: 9cqw; height: 9cqw;
-  min-width: 6px; min-height: 6px;
+  width: 7cqw; height: 7cqw;
   border-radius: 50%;
   display: flex; justify-content: center; align-items: center;
-  font-size: 10cqw !important;
+  font-size: 4.6cqw; /* .renderManaSymbols() lo achica más para números de 2+ dígitos */
+  line-height: 1;
+  padding: 0;
   font-weight: bold;
   border: 1px solid #111;
   color: #000;
   box-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+  flex-shrink: 0;
 }
 .mana-w { background: #fcfcfc; } /* Blanco / Luz */
 .mana-u { background: #4ba0e3; } /* Azul / Agua */
@@ -210,33 +351,6 @@ html, body {
 .mana-r { background: #e74c3c; } /* Rojo / Fuego */
 .mana-g { background: #2ecc71; } /* Verde / Naturaleza */
 .mana-c { background: #bdc3c7; } /* Incoloro / Genérico */
-
-/* ARTE */
-.card-art {
-  flex: 1; background: #333; display: flex; justify-content: center; align-items: center;
-  font-size: 26cqw; border-bottom: 1px solid #999; border-top: 1px solid #999;
-  min-height: 35px;
-}
-
-/* TYPE LINE Y CAJA DE TEXTO */
-.card-type-line {
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 7cqw; font-weight: bold; padding: 2cqw 4cqw;
-  background: linear-gradient(to bottom, #eaeaea, #d4d4d4);
-  border-bottom: 1px solid #999; color: #222;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  flex-shrink: 0;
-}
-.card-text-box {
-  height: 30cqh; padding: 2cqw 3cqw; font-size: 6cqw; line-height: 1.15;
-  background: rgba(255,255,255,0.9); color: #111; overflow: hidden;
-  flex-shrink: 0;
-}
-.keyword-strip { display: flex; flex-wrap: wrap; gap: 1.5cqw; margin-bottom: 1cqw; }
-.keyword-tag {
-  background: #2c2c54; color: #fff; border-radius: 3px;
-  padding: 0.5cqw 2cqw; font-size: 5.5cqw; font-weight: bold; white-space: nowrap;
-}
 
 /* FUERZA / RESISTENCIA */
 .card-pt {
@@ -246,14 +360,42 @@ html, body {
   box-shadow: -1px -1px 2px rgba(0,0,0,0.3);
 }
 
-/* BADGE DE AURA: se muestra en la criatura que tiene un Encantamiento — Aura
-   pegado (esquina opuesta al P/T). El title del div lista los nombres al hacer hover. */
+/* BADGE DE AURA/EQUIPO: se muestra en la criatura que tiene un Encantamiento — Aura o un
+   Equipo pegado (esquina inferior). Al pasar el mouse muestra un tooltip propio (no el
+   nativo del navegador) con el nombre de cada modificador y qué hace en criollo. */
 .aura-badge {
   position: absolute; bottom: -2px; left: -2px; background: #8e44ad;
   border: 2px solid #222; border-radius: 3px; padding: 1cqw 4cqw;
   font-weight: bold; font-size: 8cqw; color: #fff;
   box-shadow: 1px -1px 2px rgba(0,0,0,0.3);
   z-index: 3;
+}
+
+.aura-badge[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 130%;
+  left: 0;
+  background: rgba(10,14,10,0.97);
+  color: #f0e8d0;
+  border: 1px solid var(--gold, #d4af37);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: normal;
+  white-space: pre-line;
+  width: max-content;
+  max-width: 220px;
+  z-index: 5000;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.7);
+  text-align: left;
+  line-height: 1.4;
+  /* El tooltip es hijo de la carta, así que si la carta está en :hover (zoom x2.8) el
+     tooltip se escala CON ella. Esto lo contrarresta para que siempre se vea del mismo
+     tamaño en pantalla, esté la carta agrandada o no. */
+  transform: scale(0.357);
+  transform-origin: bottom left;
 }
 
 .card-back { background: #4a2b10; border: 4px solid #111; background-image: repeating-linear-gradient(45deg, #3e220b 0, #3e220b 5px, #4a2b10 5px, #4a2b10 10px); }
@@ -267,8 +409,8 @@ html, body {
 /* HUD SIDEBAR */
 #sidebar-hud {
   width: var(--sidebar-width);
-  background: rgba(10, 15, 12, 0.95);
-  border-left: 2px solid var(--gold);
+  background: transparent;
+  border-left: none;
   display: flex;
   flex-direction: column;
   padding: 1rem;
@@ -292,11 +434,34 @@ html, body {
 }
 
 .avatar { 
+  /* BUG ENCONTRADO Y ARREGLADO: antes este div no tenía ancho/alto fijo — se armaba solo
+     con el tamaño del emoji (font-size + padding). Eso funcionaba bien para texto, pero
+     .avatar img { width:100%; height:100% } necesita un padre con tamaño DEFINIDO para
+     calcular ese 100% — sin uno, el navegador caía al tamaño natural de la foto de Google
+     (bastante más grande), inflando el círculo entero y achicando la bitácora al lado.
+     Con un tamaño fijo acá, tanto el emoji como la foto quedan del mismo tamaño de siempre. */
+  width: 2.4rem;
+  height: 2.4rem;
   font-size: 1.6rem; /* Avatar más pequeño */
   background: #222; 
-  padding: 0.3rem; 
   border-radius: 50%; 
   border: 2px solid var(--gold); 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Fase 0 del multiplayer: si el jugador local está logueado con Google, el avatar muestra
+   su foto de perfil real en vez del emoji 🧉 — ver updateAccountUI en ui.js. El avatar del
+   Tano nunca cambia (es la IA, no tiene cuenta de Google). */
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
 .player-info {
@@ -371,8 +536,9 @@ html, body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  background: #ffffff;
-  color: #1a1a1a;
+  background: rgba(5, 10, 8, 0.68);
+  color: rgba(245, 238, 215, 0.92);
+  border: 1px solid rgba(212, 175, 55, 0.12);
   border-radius: 8px;
   padding: 0.6rem 0.7rem;
   display: flex;
@@ -389,7 +555,8 @@ html, body {
 
 .turn-controls {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.4rem;
   flex-shrink: 0;
 }
 .btn-turn {
@@ -404,6 +571,19 @@ html, body {
   cursor: pointer;
 }
 .btn-turn:disabled { background: #555; cursor: not-allowed; }
+.btn-abandon {
+  /* Fase 2: intencionalmente más chico y apagado que "Pasar Prioridad" — es una acción
+     rara y con penalidad de puntos, no algo que se quiera clickear por error. */
+  background: transparent;
+  color: #b06a5f;
+  border: 1px solid #6e3a33;
+  padding: 0.35rem 0.4rem;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.btn-abandon:hover { background: rgba(224, 122, 107, 0.12); color: #e07a6b; }
 .btn-reset {
   flex: 1;
   background: #2c2c2c;
@@ -501,6 +681,12 @@ html, body {
   transform: scale(1.05);
 }
 
+/* Criatura ya elegida para tripular un Vehículo (girada como parte del costo) */
+.card.crewing-selected {
+  box-shadow: 0 0 15px 6px #f39c12 !important;
+  transform: scale(1.05);
+}
+
 /* Selección de objetivo (Targeting) */
 .targetable {
   cursor: crosshair !important;
@@ -593,7 +779,15 @@ html, body {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.85);
-  z-index: 1000;
+  /* BUGFIX: esta clase la reusan 9 modales distintos — 7 que solo aparecen DURANTE una
+     partida (elegir hechizo, valor de X, kicker, abandonar, habilidad de lealtad,
+     cementerio, exilio, donde 1000 alcanzaba de sobra) y 2 que aparecen DENTRO de
+     pantallas de menú a pantalla completa (nombrar mazo, borrar cuenta — showDeckBuilderScreen
+     y showOptionsMenu, ambas en z-index:9999). Con 1000, esos 2 quedaban tapados por
+     completo — invisibles y sin poder interactuar, aunque el modal SÍ se hubiera armado
+     bien en el DOM. Subir esto a un valor por encima de TODO lo demás en el juego arregla
+     los 2 casos rotos sin afectar en nada a los otros 7, que ya andaban bien. */
+  z-index: 20000;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -628,7 +822,7 @@ html, body {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  overflow-y: auto;
+  overflow-y: visible;
   padding: 10px;
   justify-content: center;
 }
@@ -684,6 +878,64 @@ html, body {
 }
 .support-row::before {
   color: rgba(212, 175, 55, 0.5) !important;
+}
+
+/* ESTÉTICA ZONA PLANESWALKERS (mismo criterio visual que Soporte, con su propio violeta
+   para diferenciarla de un vistazo) */
+.planeswalker-row {
+  background: rgba(155, 89, 182, 0.06) !important;
+  border: 1px dashed rgba(155, 89, 182, 0.35) !important;
+}
+.planeswalker-row::before {
+  color: rgba(155, 89, 182, 0.55) !important;
+}
+
+/* Recuadro de Lealtad: mismo lugar y forma que Poder/Resistencia, pero en violeta para no
+   confundirlo con una criatura de un vistazo. */
+.card-loyalty {
+  background: #6c3483 !important;
+  color: #fff !important;
+  border-color: #9b59b6 !important;
+}
+
+/* Menú de habilidades de Lealtad (showLoyaltyAbilityModal) */
+.loyalty-ability-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(155, 89, 182, 0.12);
+  border: 1px solid #9b59b6;
+  border-radius: 8px;
+  color: #f0e8d0;
+  cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+  transition: background 0.15s ease;
+}
+.loyalty-ability-btn:hover {
+  background: rgba(155, 89, 182, 0.28);
+}
+.loyalty-ability-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: rgba(120, 120, 120, 0.1);
+}
+.loyalty-ability-btn .loyalty-cost {
+  flex-shrink: 0;
+  min-width: 34px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 15px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: #6c3483;
+  color: #fff;
+}
+.loyalty-ability-btn .loyalty-ability-text {
+  font-size: 13px;
+  line-height: 1.3;
 }
 
 /* ANIMACIÓN PARA FASE DE DESCARTE */
@@ -822,59 +1074,269 @@ html, body {
   animation: pulseTarget 1.2s infinite alternate;
 }
 
+/* Vista previa de la carta completa al pasar el mouse sobre un ítem de la pila.
+   Se posiciona a la izquierda del panel de la pila (ver stackManager.js). */
+#stack-hover-preview {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+#stack-hover-preview.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+#stack-hover-preview .card { cursor: default; }
+
 @keyframes pulseTarget {
   from { box-shadow: 0 0 4px #f1c40f; }
   to { box-shadow: 0 0 12px #f1c40f; }
 }
 
-/* ============================================================================
-   ENTREGA 23.3 — COMPATIBILIDAD DEL HTML REAL + AJUSTES EXPLÍCITOS DEL TEST
-
-   La UI dinámica volvió al comportamiento exacto pre-Entrega 21: los 9 bloques de
-   presentación de ui.js se inyectan otra vez desde el mismo código de Entrega 20.1.
-   Este archivo conserva sólo el CSS base histórico y lo que NO pertenecía a esos
-   inyectores: elementos del index real, telemetría y ajustes pedidos después.
-   ============================================================================ */
-
-/* Fondo real del tablero. Desde css/style.css los assets están un nivel arriba. */
-#game-app {
-  background-color: #0d1e13;
-  background-image:
-    url('../assets/images/ui/fondo.png'),
-    radial-gradient(circle, #1a3c27 0%, #0d1e13 100%);
-  background-size: cover, cover;
-  background-position: center center, center center;
-  background-repeat: no-repeat, no-repeat;
+/* ==========================================
+   STACK COUNTERS (Cartas agrupadas)
+   ========================================== */
+.stack-counter-container {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  z-index: 200;
+  pointer-events: none; /* Evita que el badge interfiera con el clic de la carta */
 }
 
-/* Mano rival compacta: los 5vh recuperados se reparten entre ambos campos. */
-.rival-hand { height: 11vh; flex: 0 0 11vh; }
-.field-zone-container { height: 33.5vh; }
+.stack-badge {
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border: 2px solid #111;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
 
-/* El campo no lleva cajas, fondos ni contornos de zona. */
+.badge-ready { 
+  background: #2ecc71; 
+  color: #111; 
+}
+
+.badge-tapped { 
+  background: #7f8c8d; 
+  color: #fff; 
+}
+
+/* ==========================================
+   INDICADORES DE FASE DEL TURNO
+   ========================================== */
+.phase-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px; /* Achicamos el gap un poquito para que entren bien las palabras */
+  margin-bottom: 10px;
+  padding: 5px 0;
+  flex-wrap: wrap; /* Por si la pantalla es muy chica, que caigan a la línea de abajo */
+}
+
+.phase-dot {
+  /* Eliminamos el width y height fijos de 12px para que el contenedor abrace al texto */
+  width: auto;
+  height: auto;
+  padding: 4px 10px; 
+  border-radius: 12px; /* Ahora son cápsulas/etiquetas en lugar de círculos */
+  
+  background-color: #2a2f3d;
+  border: 1px solid #4a5162;
+  transition: all 0.3s ease;
+  box-shadow: inset 0 0 4px rgba(0,0,0,0.5);
+  
+  /* Ajustes para el texto */
+  color: #8c97a7; /* Un gris sutil para las fases inactivas */
+  font-size: 0.65rem;
+  font-weight: 500;
+  white-space: nowrap; /* Evita que las palabras se partan en dos renglones */
+  cursor: default;
+}
+
+.phase-dot.active {
+  background-color: var(--gold);
+  border-color: #fff;
+  color: #111; /* Texto oscuro para contrastar perfecto con el dorado */
+  font-weight: bold;
+  box-shadow: 0 0 10px var(--gold), inset 0 0 5px rgba(255,255,255,0.8);
+}
+
+.phase-dot.blinking {
+  animation: pulse-phase 1.2s infinite alternate;
+}
+
+@keyframes pulse-phase {
+  0% { opacity: 0.6; box-shadow: 0 0 4px var(--gold); }
+  100% { opacity: 1; box-shadow: 0 0 15px var(--gold), 0 0 25px rgba(212, 175, 55, 0.4); }
+}
+
+/* ===================================================
+   MODAL DE ASIGNACIÓN DE DAÑO (MANUAL)
+   Ahora es un panel flotante NO bloqueante: no tapa el
+   tablero (el fondo es transparente y no intercepta clicks/hover),
+   así podés seguir viendo y pasando el mouse sobre las criaturas
+   en combate para leer sus habilidades antes de decidir.
+=================================================== */
+#damage-modal-overlay {
+  position: fixed; inset: 0;
+  background: transparent;
+  pointer-events: none; /* deja pasar el hover/click hacia el tablero */
+  z-index: 6000;
+  display: flex; justify-content: flex-start; align-items: center;
+  padding-left: 24px;
+}
+
+.damage-modal-box {
+  pointer-events: auto; /* el panel en sí sigue siendo interactivo */
+  width: 300px;
+  max-height: 82vh;
+  overflow-y: auto;
+  background-color: rgba(18, 22, 30, 0.96);
+  border: 2px solid var(--hp-red);
+  border-radius: 12px;
+  padding: 1.2rem;
+  box-shadow: 0 10px 34px rgba(231, 76, 60, 0.35);
+  color: #fff;
+}
+
+.damage-modal-box h2 {
+  color: var(--hp-red);
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.damage-modal-hint {
+  font-size: 0.72rem;
+  color: #aaa;
+  text-align: center;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+}
+
+.damage-modal-initial-buttons {
+  display: flex; gap: 0.7rem; justify-content: center;
+}
+
+#damage-modal-content { margin-bottom: 1.2rem; }
+
+.damage-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.1);
+  margin-bottom: 0.6rem; padding: 0.8rem 1rem; border-radius: 8px;
+}
+
+.damage-row.trample-row { 
+  border-color: var(--hp-red); 
+  background: rgba(231, 76, 60, 0.1); 
+  margin-top: 1rem;
+}
+
+.damage-controls { display: flex; align-items: center; gap: 12px; }
+
+.btn-arrow {
+  background: #333; color: #fff; border: 1px solid var(--gold); border-radius: 6px;
+  width: 32px; height: 32px; font-weight: bold; font-size: 1.2rem; cursor: pointer;
+  display: flex; justify-content: center; align-items: center; transition: 0.2s;
+}
+
+.btn-arrow:hover { background: var(--gold); color: #111; }
+.btn-arrow:active { transform: scale(0.9); }
+
+.damage-value { 
+  font-size: 1.4rem; font-weight: bold; width: 30px; 
+  text-align: center; color: var(--gold); 
+}
+
+/* FEATURE (#10): estética consistente para TODAS las barras de scroll del juego — fina,
+   fondo oscuro acorde al tema, "thumb" dorado (el mismo --gold de siempre). Global a
+   propósito: cualquier panel/modal que scrollee (Enciclopedia, Mis Mazos, constructor de
+   mazos, Noticias, la pila de hechizos, etc.) la hereda sola, sin tener que acordarse de
+   agregarla cada vez que se crea una pantalla nueva. No tiene efecto en elementos que no
+   scrollean, así que es segura de aplicar así de ancho. */
+* {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--gold) #0b130e; /* Firefox: thumb, track */
+}
+*::-webkit-scrollbar { /* Chrome/Safari/Edge */
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: #0b130e;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--gold);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #f0e0b0;
+}
+
+/* FEATURE (#6): pantalla de carga inicial — ver el comentario en index.html. z-index por
+   encima de absolutamente todo lo demás en el juego (incluso por encima de los modales a
+   20000, aunque en la práctica nunca deberían coexistir). */
+#boot-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.boot-spinner {
+  width: 64px;
+  height: 64px;
+  border: 6px solid rgba(212, 175, 55, 0.25);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: boot-spin 0.9s linear infinite;
+}
+@keyframes boot-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================================
+   ENTREGA 23.4 — OVERRIDES MÍNIMOS SOBRE EL BASELINE VISUAL APROBADO
+   Fuente visual: style(4).css provisto por el usuario.
+   ============================================================================ */
+
+/* Pedido explícito posterior al baseline: ninguna caja/guía visual en Battlefield,
+   Support, Tierras ni Planeswalkers. Las zonas siguen existiendo para layout/clicks. */
 .field-row,
 .support-row,
-.planeswalker-row {
+.planeswalker-row,
+.lands-row,
+.combat-row {
   background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
+  border: none !important;
   box-shadow: none !important;
+  outline: none !important;
 }
 .field-row::before,
 .support-row::before,
-.planeswalker-row::before { display: none !important; }
+.planeswalker-row::before,
+.lands-row::before,
+.combat-row::before {
+  content: none !important;
+  display: none !important;
+}
 
-/* Colores MTG con la misma textura de papel transparente que usa la carta histórica. */
-.card.bg-w         { background: url('https://www.transparenttextures.com/patterns/cream-paper.png') #d8c9a0; }
-.card.bg-u         { background: url('https://www.transparenttextures.com/patterns/cream-paper.png') #3b6ea5; }
-.card.bg-b         { background: url('https://www.transparenttextures.com/patterns/cream-paper.png') #4a3a5c; }
-.card.bg-r         { background: url('https://www.transparenttextures.com/patterns/cream-paper.png') #a5423b; }
-.card.bg-g         { background: url('https://www.transparenttextures.com/patterns/cream-paper.png') #437a45; }
-.card.bg-gold      { background: url('https://www.transparenttextures.com/patterns/cream-paper.png') #d4af37; }
-.card.bg-land      { background: url('https://www.transparenttextures.com/patterns/cream-paper.png') #806a4a; }
-.card.bg-colorless { background: url('https://www.transparenttextures.com/patterns/cream-paper.png') #8e969b; }
-
-/* Acción instantánea de criatura: chica, centrada y por debajo del contenido. */
+/* Pedido explícito posterior al baseline: botón de habilidad instantánea mínimo,
+   centrado y debajo de la carta, sin alterar el footprint ni .card-inner. */
 .card-with-instant-action { position: relative; }
 .instant-ability-fab {
   position: absolute;
@@ -883,7 +1345,7 @@ html, body {
   top: auto;
   bottom: -7px;
   transform: translateX(-50%);
-  z-index: 25;
+  z-index: 250;
   width: 16px;
   height: 16px;
   padding: 0;
@@ -898,183 +1360,38 @@ html, body {
   box-shadow: 0 1px 4px rgba(0,0,0,.65);
 }
 
-/* Pantalla de carga: existe en index.html antes de que ui.js pueda inyectar nada. */
-#boot-loading-overlay {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 2147483600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 72%);
-}
-.boot-spinner {
-  width: 64px;
-  height: 64px;
-  border: 6px solid rgba(212,175,55,.20);
-  border-top-color: var(--gold,#d4af37);
-  border-right-color: rgba(240,224,176,.72);
-  border-radius: 50%;
-  box-shadow: 0 0 28px rgba(212,175,55,.20);
-  animation: boot-spin .85s linear infinite;
-}
-@keyframes boot-spin { to { transform: rotate(360deg); } }
-
-/* Foto de Google dentro del avatar del HUD. */
-.avatar {
-  width: 52px;
-  height: 52px;
-  min-width: 52px;
-  min-height: 52px;
-  flex: 0 0 52px;
-  padding: 0;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-.avatar img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: cover;
-  object-position: center;
-  border-radius: 50%;
-}
-
-/* Controles presentes directamente en index.html. */
-.btn-abandon {
-  flex: 1;
-  min-width: 0;
-  background: #6e3a33;
-  color: #f7eeee;
-  border: 1px solid #e07a6b;
-  padding: .55rem .4rem;
-  border-radius: 6px;
-  font-weight: 700;
-  font-size: .74rem;
-  line-height: 1.15;
-  cursor: pointer;
-}
-.btn-abandon:hover { background:#8a4a41; border-color:#f09a8c; }
-.btn-abandon:disabled { opacity:.5; cursor:not-allowed; }
-.turn-controls > button { min-width: 0; }
-
-.turn-owner-badge {
-  flex-shrink: 0;
-  padding: 6px 8px;
-  border-radius: 6px;
-  border-left: 3px solid var(--gold,#d4af37);
-  background: rgba(0,0,0,.22);
-  color: #e8ddc8;
-  font-size: .76rem;
-  font-weight: 800;
-}
-.turn-owner-badge.local-active { border-left-color:var(--gold,#d4af37); color:#f0e0b0; }
-.turn-owner-badge.rival-active { border-left-color:var(--sky-blue,#74acdf); color:#d9efff; }
-.phase-indicator { display:flex; flex-direction:column; gap:2px; flex-shrink:0; }
-.phase-dot {
-  padding: 3px 7px 3px 10px;
-  border-left: 3px solid transparent;
-  border-radius: 4px;
-  color: #8f9c92;
-  background: rgba(255,255,255,.018);
-  font-size: .70rem;
-  line-height: 1.15;
-}
-.phase-dot.active {
-  color:#fff1c2;
-  background:rgba(212,175,55,.12);
-  border-left-color:var(--gold,#d4af37);
-  font-weight:800;
-}
-.phase-dot.blinking { animation:phase-soft-pulse 1.15s ease-in-out infinite alternate; }
-@keyframes phase-soft-pulse {
-  from { box-shadow:inset 0 0 0 rgba(212,175,55,0); }
-  to { box-shadow:inset 0 0 10px rgba(212,175,55,.16); }
-}
-.subphase-label { margin-left:4px; color:#d6c78f; font-size:.62rem; font-weight:600; }
-
-/* Planeswalker/card extras que no pertenecían a los inyectores históricos. */
-.card-type-text { min-width:0; overflow:hidden; text-overflow:ellipsis; }
-.card-loyalty { background:#7d4d9b; color:#fff; border-color:#3f214f; }
-.stack-counter-container {
-  position:absolute; top:-7px; right:-7px; z-index:30; display:flex; gap:2px; pointer-events:none;
-}
-.stack-badge {
-  min-width:16px; height:16px; padding:0 4px; display:inline-flex; align-items:center; justify-content:center;
-  border-radius:999px; border:1px solid rgba(255,255,255,.8); color:#fff; font-size:8px; line-height:1;
-  font-weight:900; box-shadow:0 1px 3px rgba(0,0,0,.65);
-}
-.badge-ready { background:#237a45; }
-.badge-tapped { background:#5b6570; }
-
-/* Habilidades activadas / Lealtad: botones usados por modales del HTML real. */
-.loyalty-ability-btn {
-  width:100%; display:flex; align-items:center; gap:10px; padding:10px 12px;
-  border:1px solid rgba(212,175,55,.38); border-radius:8px;
-  background:rgba(255,255,255,.045); color:#f0e0b0; cursor:pointer; font:inherit;
-}
-.loyalty-ability-btn:hover:not(:disabled):not(.disabled) { background:rgba(212,175,55,.13); border-color:rgba(212,175,55,.8); }
-.loyalty-ability-btn:disabled,.loyalty-ability-btn.disabled { opacity:.42; cursor:not-allowed; }
-.loyalty-cost { min-width:52px; flex-shrink:0; padding:5px 7px; border-radius:6px; background:#6c3483; color:#fff; text-align:center; font-size:12px; font-weight:900; }
-.loyalty-ability-text { flex:1; min-width:0; color:#e8ddc8; text-align:left; font-size:13px; line-height:1.35; }
-
-/* Modal de daño del index real. */
-#damage-modal-overlay {
-  position:fixed; inset:0; z-index:10020; display:flex; align-items:center; justify-content:center;
-  padding:20px; background:rgba(0,0,0,.48);
-}
-#damage-modal-overlay.hidden { display:none !important; }
-.damage-modal-box {
-  width:min(560px,94vw); max-height:86vh; overflow-y:auto; padding:20px;
-  border:2px solid rgba(212,175,55,.55); border-radius:12px; background:#16211a;
-  color:#ecf0f1; box-shadow:0 16px 40px rgba(0,0,0,.7);
-}
-.damage-modal-box h2 { margin-bottom:6px; color:#f0e0b0; }
-.damage-modal-hint { color:#aebbb1; font-size:.78rem; margin-bottom:16px; }
-.damage-modal-initial-buttons { display:flex; gap:10px; }
-.damage-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.09); }
-.damage-row:last-child { border-bottom:none; }
-.trample-row { margin-top:6px; padding-top:14px; border-top:1px solid rgba(212,175,55,.25); }
-.damage-controls { display:flex; align-items:center; gap:8px; flex-shrink:0; }
-.btn-arrow { width:32px; height:32px; border:1px solid rgba(212,175,55,.55); border-radius:6px; background:#25332a; color:#fff; font-weight:900; cursor:pointer; }
-.btn-arrow:hover { background:#34473a; }
-.damage-value { min-width:30px; text-align:center; color:#f0e0b0; font-size:1.1rem; font-weight:900; }
-
-/* ============================================================================
-   Telemetría: HUD completamente a la izquierda.
-   ============================================================================ */
+/* Telemetría diagnóstica: completamente abajo a la izquierda. */
 .telemetry-panel {
-  position:fixed;
-  left:8px;
-  right:auto;
-  bottom:8px;
-  z-index:2147483000;
-  display:flex;
-  align-items:center;
-  gap:5px;
-  max-width:calc(100vw - 16px);
-  padding:6px;
-  border-radius:9px;
-  background:rgba(12,12,12,.88);
-  box-shadow:0 2px 12px rgba(0,0,0,.45);
-  backdrop-filter:blur(5px);
-  color:#fff;
-  font:600 11px/1.1 system-ui,sans-serif;
-  user-select:none;
+  position: fixed;
+  left: 8px;
+  right: auto;
+  bottom: 8px;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: calc(100vw - 16px);
+  padding: 6px;
+  border-radius: 9px;
+  background: rgba(12,12,12,.88);
+  box-shadow: 0 2px 12px rgba(0,0,0,.45);
+  backdrop-filter: blur(5px);
+  color: #fff;
+  font: 600 11px/1.1 system-ui,sans-serif;
+  user-select: none;
 }
 .telemetry-status { min-width:64px; padding:0 4px; white-space:nowrap; }
 .telemetry-cloud { padding:2px 5px; border-radius:999px; background:rgba(255,255,255,.09); white-space:nowrap; }
 .telemetry-bugs { padding:2px 5px; border-radius:999px; background:#4b2727; white-space:nowrap; }
 .telemetry-btn {
-  border:1px solid rgba(255,255,255,.28); background:#242424; color:#fff; border-radius:6px;
-  padding:5px 7px; font:600 11px/1.1 system-ui,sans-serif; cursor:pointer; white-space:nowrap;
+  border:1px solid rgba(255,255,255,.28);
+  background:#242424;
+  color:#fff;
+  border-radius:6px;
+  padding:5px 7px;
+  font:600 11px/1.1 system-ui,sans-serif;
+  cursor:pointer;
+  white-space:nowrap;
 }
 .telemetry-btn:hover { background:#343434; }
 .telemetry-btn:disabled { opacity:.55; cursor:default; }
