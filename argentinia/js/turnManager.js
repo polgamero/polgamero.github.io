@@ -6,6 +6,7 @@ import { resolveCombatDamage, hasPendingCombatDamageContinuation } from './comba
 import { hasKeyword } from './keywords.js';
 import { awardPoints, clearActiveMatchId } from './firebaseClient.js';
 import { pointsForBotGameEnd, POINTS } from './store.js';
+import { recordTelemetryEvent } from './telemetry.js';
 
 export function checkGameOver() {
   // FASE 4, ETAPA 6: gameOver y abandonedBy llegan JUNTOS por sync en el mismo publish
@@ -114,6 +115,15 @@ const PHASE_SEQUENCE = [
 export async function advanceStep() {
   if (state.gameOver) return;
 
+  const phaseBefore = state.phase;
+  const activeBefore = state.activePlayer;
+  const turnBefore = state.turnCount;
+  recordTelemetryEvent('advance_step_requested', {
+    turnCount: turnBefore,
+    phase: phaseBefore,
+    activePlayer: activeBefore
+  });
+
   const currentIdx = PHASE_SEQUENCE.indexOf(state.phase);
   let nextPhase = PHASE_SEQUENCE[(currentIdx + 1) % PHASE_SEQUENCE.length];
 
@@ -156,6 +166,11 @@ export async function advanceStep() {
   state.phase = nextPhase;
   state.priorityPlayer = state.activePlayer; // La prioridad vuelve al jugador activo al iniciar cada paso
   state.consecutivePasses = 0;
+  recordTelemetryEvent('phase_committed', {
+    from: { turnCount: turnBefore, phase: phaseBefore, activePlayer: activeBefore },
+    to: { turnCount: state.turnCount, phase: state.phase, activePlayer: state.activePlayer },
+    priorityPlayer: state.priorityPlayer
+  });
 
   // FASE 4, ETAPA 4 — LA PARTE MÁS DELICADA DE TODO EL ROADMAP: si lo que acabamos de armar
   // es el arranque de un turno que ahora le pertenece al RIVAL (nextPhase/state.phase ya es
@@ -264,6 +279,14 @@ export async function passPriority(player) {
   
   if (state.priorityPlayer !== player) return;
 
+  recordTelemetryEvent('priority_pass', {
+    player,
+    turnCount: state.turnCount,
+    phase: state.phase,
+    activePlayer: state.activePlayer,
+    priorityPlayer: state.priorityPlayer,
+    consecutivePassesBefore: state.consecutivePasses
+  });
   logMsg(`💬 ${player === 'local' ? 'Pasaste' : `${getRivalName()} pasó`} prioridad.`);
   state.consecutivePasses++;
 

@@ -7,6 +7,7 @@ import { hasKeyword, getProtectionMatch } from './keywords.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 import { passPriority, checkGameOver } from './turnManager.js';
+import { recordTelemetryEvent } from './telemetry.js';
 
 // A qué le puede apuntar cada variante de "contrarrestar" — regla real de MTG (702.61 y
 // glosario de counterspells): un counterspell normal SOLO frena HECHIZOS en la pila, nunca
@@ -76,6 +77,14 @@ function enqueueSacrificeResolution(task) {
 export function addToStack(item) {
   item.id = nextStackId++;
   spellStack.push(item);
+  recordTelemetryEvent('stack_push', {
+    stackId: item.id,
+    type: item.type || null,
+    abilityKind: item.abilityKind || null,
+    card: { id: item.card?.id ?? null, name: item.card?.name ?? null },
+    isLocal: item.isLocal ?? null,
+    stackDepth: spellStack.length
+  });
   if (item.abilityKind === 'triggered') {
     const label = item.triggerLabel ? ` — ${item.triggerLabel}` : '';
     logMsg(`⚡ Habilidad disparada de "${item.card.name}"${label} entró a la pila (ID: ${item.id}).`);
@@ -89,8 +98,16 @@ export async function resolveTopStackItem() {
   if (spellStack.length === 0) return;
 
   const item = spellStack.pop();
+  const telemetryStartedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  recordTelemetryEvent('stack_resolve_start', {
+    stackId: item.id ?? null,
+    type: item.type || null,
+    abilityKind: item.abilityKind || null,
+    card: { id: item.card?.id ?? null, name: item.card?.name ?? null },
+    stackDepthAfterPop: spellStack.length
+  });
   logMsg(`✨ Resolviendo de la pila: ${item.card.name}`);
-  
+
   await executeStackItem(item);
 
   // Kicker: si se pagó el costo opcional al lanzar el hechizo, el bonus se aplica ACÁ,
@@ -109,7 +126,10 @@ export async function resolveTopStackItem() {
   // Si quedó pausado esperando que alguien decida pagar "contrarresta a menos que...", no
   // terminamos de resolver todavía — la prioridad NO se resetea hasta que se decida
   // (payCounterTax / declineCounterTax hacen eso ellos mismos al terminar).
-  if (state.pendingCounterUnlessPay) return;
+  if (state.pendingCounterUnlessPay) {
+    recordTelemetryEvent('stack_resolve_paused', { stackId: item.id ?? null, card: item.card?.name ?? null, reason: 'pendingCounterUnlessPay' });
+    return;
+  }
 
   // BUG ENCONTRADO Y ARREGLADO: Scry/Surveil abría el modal para elegir qué hacer con las
   // cartas, pero nunca pausaba el resto del juego — la prioridad se reseteaba igual y el
@@ -117,12 +137,18 @@ export async function resolveTopStackItem() {
   // contra un estado a medio terminar y rompiendo el juego. Mismo criterio que el pago de
   // Ward/CounterTax: no seguimos hasta que se resuelva (finishScrySurveil en main.js hace
   // el reseteo de prioridad ella misma al terminar).
-  if (state.pendingScrySurveilChoice) return;
+  if (state.pendingScrySurveilChoice) {
+    recordTelemetryEvent('stack_resolve_paused', { stackId: item.id ?? null, card: item.card?.name ?? null, reason: 'pendingScrySurveilChoice' });
+    return;
+  }
 
   // Mismo criterio: Proliferar abre su propio modal (elegir permanentes) y no puede seguir
   // de largo hasta que se confirme — finishProliferate en main.js resetea la prioridad ella
   // misma al terminar.
-  if (state.pendingProliferateChoice) return;
+  if (state.pendingProliferateChoice) {
+    recordTelemetryEvent('stack_resolve_paused', { stackId: item.id ?? null, card: item.card?.name ?? null, reason: 'pendingProliferateChoice' });
+    return;
+  }
 
   // Punto 8: barrera defensiva para cualquier cadena de descarte interactivo iniciada por
   // el objeto que acaba de resolverse. Con Trigger Stack los disparos ya no resuelven de
@@ -132,6 +158,15 @@ export async function resolveTopStackItem() {
   // Tras resolver un objeto, la prioridad vuelve al jugador activo
   state.priorityPlayer = state.activePlayer;
   state.consecutivePasses = 0;
+
+  const telemetryEndedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  recordTelemetryEvent('stack_resolve_end', {
+    stackId: item.id ?? null,
+    card: item.card?.name ?? null,
+    durationMs: Math.round(telemetryEndedAt - telemetryStartedAt),
+    stackDepth: spellStack.length,
+    priorityPlayer: state.priorityPlayer
+  });
 
   renderStack();
   
@@ -1605,8 +1640,7 @@ function showStackHoverPreview(item, anchorEl) {
   // zone: 'preview' no matchea ninguna rama de clicks de createCardElement, así que
   // esta carta queda puramente decorativa (no se le puede hacer click).
   const cardEl = createCardElement(item, false, item.isLocal, null, 'preview');
-  cardEl.style.width = '190px';
-  cardEl.style.height = `${190 * 7 / 5}px`;
+  cardEl.classList.add('stack-preview-card');
   preview.appendChild(cardEl);
 
   const stackContainer = document.getElementById('stack-container');

@@ -18,7 +18,7 @@ import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX } from './store.js';
 
@@ -26,7 +26,6 @@ const firebaseConfig = {
   apiKey: "AIzaSyAAvUAaZ35_sF9uCsecLPg7zqhB7mLa7yo",
   authDomain: "argentinia-tcg.firebaseapp.com",
   projectId: "argentinia-tcg",
-  storageBucket: "argentinia-tcg.firebasestorage.app",
   messagingSenderId: "624830573266",
   appId: "1:624830573266:web:55ff4c56665f33a5821b0b"
 };
@@ -565,4 +564,201 @@ export async function postAnnouncement(adminUid, text) {
 
 export async function deleteAnnouncement(announcementId) {
   await deleteDoc(doc(db, 'announcements', announcementId));
+}
+
+
+// ============================================================================
+// ENTREGA 23.1 — Telemetría remota Firestore-only.
+//
+// No usa Cloud Storage. Cada checkpoint escribe únicamente los eventos/bugs NUEVOS como
+// chunks bajo telemetrySessions/{sessionId}/chunks/{chunkId}, y actualiza el documento
+// padre con un índice/resumen. Los chunks se escriben junto con el índice en un writeBatch
+// atómico: o queda todo el checkpoint o no queda nada.
+//
+// El UID se usa para autorización y vive en los documentos de Firestore, pero NO entra al
+// JSON exportable local de telemetría. El nombre visible viene del mismo nombre de pila de
+// Google que ya usa el juego.
+// ============================================================================
+
+const TELEMETRY_CHUNK_TARGET_BYTES = 600 * 1024;
+const TELEMETRY_SINGLE_DOC_GUARD_BYTES = 850 * 1024;
+
+function telemetryUtf8Bytes(text) {
+  try {
+    if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(text).length;
+  } catch {}
+  // Fallback conservador para runtimes de test: encodeURIComponent aproxima UTF-8.
+  try { return unescape(encodeURIComponent(text)).length; } catch { return String(text).length * 2; }
+}
+
+function telemetryJson(value) {
+  return JSON.stringify(value ?? null);
+}
+
+function splitTelemetryEvents(events) {
+  if (!Array.isArray(events) || events.length === 0) return [];
+  const groups = [];
+  let current = [];
+  let currentBytes = 2; // []
+
+  for (const event of events) {
+    const raw = telemetryJson(event);
+    const eventBytes = telemetryUtf8Bytes(raw) + (current.length ? 1 : 0);
+    if (eventBytes > TELEMETRY_SINGLE_DOC_GUARD_BYTES) {
+      throw new Error(`Telemetría remota: evento #${event?.seq ?? '?'} demasiado grande para Firestore (${eventBytes} bytes).`);
+    }
+    if (current.length && currentBytes + eventBytes > TELEMETRY_CHUNK_TARGET_BYTES) {
+      groups.push(current);
+      current = [];
+      currentBytes = 2;
+    }
+    current.push(event);
+    currentBytes += eventBytes;
+  }
+  if (current.length) groups.push(current);
+  return groups;
+}
+
+function chunkDocId(events, partIndex, totalParts) {
+  const first = Number(events?.[0]?.seq || 0);
+  const last = Number(events?.[events.length - 1]?.seq || first);
+  const pad = n => String(Math.max(0, n)).padStart(9, '0');
+  const part = totalParts > 1 ? `-p${String(partIndex + 1).padStart(2, '0')}` : '';
+  return `${pad(first)}-${pad(last)}${part}`;
+}
+
+function telemetryIndexData(checkpoint, playerName, reason) {
+  const summary = checkpoint?.summary || {};
+  const bySeverity = summary?.stats?.bySeverity || {};
+  return {
+    ownerUid: auth.currentUser?.uid || null,
+    playerName: String(playerName || summary?.meta?.localPlayerName || 'Jugador').slice(0, 80),
+    sessionId: checkpoint?.sessionId || null,
+    matchId: summary?.meta?.matchId || null,
+    mode: summary?.meta?.mode || null,
+    myRole: summary?.meta?.myRole || null,
+    difficulty: summary?.meta?.difficulty || null,
+    deckLabel: summary?.meta?.deckLabel || null,
+    telemetryVersion: summary?.telemetryVersion || null,
+    schemaVersion: summary?.schemaVersion || null,
+    engineBaseline: summary?.engineBaseline || null,
+    startedAtClient: summary?.startedAt || null,
+    endedAtClient: summary?.endedAt || null,
+    endReason: summary?.endReason || null,
+    status: checkpoint?.kind === 'final' ? 'completed' : (summary?.endedAt ? 'ended_unfinalized' : 'running'),
+    eventCount: checkpoint?.throughSeq || summary?.stats?.eventCount || 0,
+    bugCandidateCount: summary?.stats?.bugCandidateCount || 0,
+    errorCount: bySeverity.error || 0,
+    warningCount: bySeverity.warning || 0,
+    lastUploadedSeq: checkpoint?.throughSeq || 0,
+    lastUploadedBugCount: checkpoint?.throughBugCount || 0,
+    lastUploadKind: checkpoint?.kind || 'latest',
+    lastUploadReason: reason || null,
+    latestSnapshotJson: telemetryJson(summary?.finalSnapshot || null),
+    bugCandidatesJson: telemetryJson((summary?.bugCandidates || []).slice(-100).map(b => ({
+      id: b?.id || null, detectedAt: b?.detectedAt || null, eventSeq: b?.eventSeq ?? null,
+      severity: b?.severity || null, code: b?.code || null, message: b?.message || null
+    }))),
+    statsJson: telemetryJson(summary?.stats || null),
+    metaJson: telemetryJson(summary?.meta || null),
+    truncated: !!summary?.truncated,
+    checkpointIntervalMs: summary?.remote?.checkpointIntervalMs || 30000,
+    updatedAt: serverTimestamp(),
+    ...(checkpoint?.kind === 'final' ? { finalizedAt: serverTimestamp() } : {})
+  };
+}
+
+/**
+ * Persiste un checkpoint incremental de telemetría exclusivamente en Firestore.
+ *
+ * `checkpoint.events` contiene sólo los eventos todavía no confirmados remotamente.
+ * Se divide en documentos <= ~600 KiB y se escribe junto con el índice en un batch atómico.
+ * Los IDs de chunk dependen del rango de seq: reintentar el mismo checkpoint sobrescribe
+ * el mismo documento en vez de duplicarlo.
+ */
+export async function uploadTelemetrySession({ uid, playerName, checkpoint, reason = 'interval' }) {
+  if (!uid || !checkpoint?.sessionId) throw new Error('Telemetría remota: faltan uid o sessionId.');
+  if (!auth.currentUser || auth.currentUser.uid !== uid) {
+    throw new Error('Telemetría remota: la sesión autenticada no coincide con el jugador.');
+  }
+  if (checkpoint.kind !== 'latest' && checkpoint.kind !== 'final') {
+    throw new Error(`Telemetría remota: kind inválido (${checkpoint.kind}).`);
+  }
+
+  const eventGroups = splitTelemetryEvents(checkpoint.events || []);
+  const bugDelta = Array.isArray(checkpoint.bugCandidates) ? checkpoint.bugCandidates : [];
+  const batch = writeBatch(db);
+  const indexRef = doc(db, 'telemetrySessions', checkpoint.sessionId);
+  const indexData = telemetryIndexData(checkpoint, playerName, reason);
+  batch.set(indexRef, indexData, { merge: true });
+
+  const chunkIds = [];
+  eventGroups.forEach((events, index) => {
+    const chunkId = chunkDocId(events, index, eventGroups.length);
+    chunkIds.push(chunkId);
+    // Los bugs nuevos van en el último chunk del checkpoint. En la práctica son pocos; el
+    // guard de tamaño de abajo evita acercarnos al límite duro de 1 MiB por documento.
+    const chunkBugs = index === eventGroups.length - 1 ? bugDelta : [];
+    const payloadJson = telemetryJson({ events, bugCandidates: chunkBugs });
+    const payloadBytes = telemetryUtf8Bytes(payloadJson);
+    if (payloadBytes > TELEMETRY_SINGLE_DOC_GUARD_BYTES) {
+      throw new Error(`Telemetría remota: chunk ${chunkId} demasiado grande (${payloadBytes} bytes).`);
+    }
+    const chunkRef = doc(db, 'telemetrySessions', checkpoint.sessionId, 'chunks', chunkId);
+    batch.set(chunkRef, {
+      ownerUid: uid,
+      sessionId: checkpoint.sessionId,
+      matchId: checkpoint?.summary?.meta?.matchId || null,
+      playerName: String(playerName || checkpoint?.summary?.meta?.localPlayerName || 'Jugador').slice(0, 80),
+      chunkId,
+      seqStart: events[0]?.seq || null,
+      seqEnd: events[events.length - 1]?.seq || null,
+      eventCount: events.length,
+      bugCandidateCount: chunkBugs.length,
+      reason: reason || null,
+      final: checkpoint.kind === 'final',
+      payloadJson,
+      uploadedAt: serverTimestamp()
+    }, { merge: true });
+  });
+
+  // Caso raro: bugs nuevos sin eventos nuevos. Se conserva evidencia en un chunk bug-only
+  // determinístico por contador para no depender de que exista un evento acompañante.
+  if (!eventGroups.length && bugDelta.length) {
+    const bugStart = Math.max(1, (checkpoint.throughBugCount || bugDelta.length) - bugDelta.length + 1);
+    const bugEnd = checkpoint.throughBugCount || bugDelta.length;
+    const chunkId = `bugs-${String(bugStart).padStart(6, '0')}-${String(bugEnd).padStart(6, '0')}`;
+    const payloadJson = telemetryJson({ events: [], bugCandidates: bugDelta });
+    const payloadBytes = telemetryUtf8Bytes(payloadJson);
+    if (payloadBytes > TELEMETRY_SINGLE_DOC_GUARD_BYTES) {
+      throw new Error(`Telemetría remota: chunk ${chunkId} demasiado grande (${payloadBytes} bytes).`);
+    }
+    chunkIds.push(chunkId);
+    batch.set(doc(db, 'telemetrySessions', checkpoint.sessionId, 'chunks', chunkId), {
+      ownerUid: uid,
+      sessionId: checkpoint.sessionId,
+      matchId: checkpoint?.summary?.meta?.matchId || null,
+      playerName: String(playerName || checkpoint?.summary?.meta?.localPlayerName || 'Jugador').slice(0, 80),
+      chunkId,
+      seqStart: null,
+      seqEnd: null,
+      eventCount: 0,
+      bugCandidateCount: bugDelta.length,
+      reason: reason || null,
+      final: checkpoint.kind === 'final',
+      payloadJson,
+      uploadedAt: serverTimestamp()
+    }, { merge: true });
+  }
+
+  await batch.commit();
+
+  return {
+    kind: checkpoint.kind,
+    chunkCount: chunkIds.length,
+    chunkIds,
+    uploadedThroughSeq: checkpoint.throughSeq || 0,
+    uploadedThroughBugCount: checkpoint.throughBugCount || 0,
+    eventCount: (checkpoint.events || []).length
+  };
 }

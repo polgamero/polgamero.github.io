@@ -6,9 +6,10 @@ import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRu
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId } from './firebaseClient.js';
+import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, otherRole } from './matchSync.js';
+import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks } from './telemetry.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 
@@ -314,6 +315,9 @@ function hookGameplayButtons() {
       showAbandonConfirmModal(
         () => {
           state.gameOver = true; // evita que checkGameOver procese esto como otra cosa
+          // ENTREGA 23: cerrar la caja negra ANTES de iniciar las escrituras de abandono /
+          // recarga. El upload final corre en paralelo mientras se aplica la penalidad.
+          endTelemetrySession('abandon_local');
           // FASE 4, ETAPA 6: en multiplayer, el rival tiene que ENTERARSE de que abandoné —
           // se publica ANTES de recargar, para que le llegue por sync incluso si mi
           // pantalla ya se está yendo. Su propio checkGameOver() (turnManager.js) detecta
@@ -369,6 +373,16 @@ async function initGame(deckSource) {
     deckLabel = deckSource.identity.join('/');
   }
   state.rivalDeck = buildRandomDeck();
+
+  // ENTREGA 22: sesión diagnóstica aislada para esta partida contra el Tano. Se arranca
+  // después de construir ambos mazos y ANTES de robar, así el log conserva el orden inicial
+  // completo de las dos bibliotecas sin intervenir en ningún RNG ni regla.
+  startTelemetrySession({
+    mode: 'solo',
+    difficulty: state.botDifficulty,
+    deckLabel
+  });
+  recordTelemetryInitialDecks({ revealRival: true });
 
   // FASE 1: red de contención para cuando el perfil todavía no existe — el camino normal
   // ahora es promptStarterDeckSelection (se dispara solo apenas hay login, ver boot() más
@@ -453,6 +467,10 @@ function startLocalMulliganFlow(onDone) {
     showMulliganModal(state.localHand, mulliganCount, canMulliganMore, {
       onMulligan: () => {
         if (!canMulliganMore) return; // seguridad extra, no debería poder llegar acá
+        recordTelemetryEvent('mulligan_requested', {
+          mulliganNumber: mulliganCount + 1,
+          handBefore: state.localHand.map(c => ({ id: c?.id ?? null, name: c?.name ?? null }))
+        });
         state.localDeck.push(...state.localHand);
         state.localHand = [];
         state.localDeck = shuffle(state.localDeck);
@@ -528,6 +546,18 @@ function promptStarterDeckSelection() {
 }
 
 async function boot() {
+  // ENTREGA 22: instala listeners de errores/interacciones y el pequeño panel de exportación.
+  // Los providers son funciones para evitar copias: la telemetría lee el estado actual sólo
+  // cuando necesita capturarlo. No se conecta a Firebase ni muta el motor.
+  initTelemetry({
+    getState: () => state,
+    getStack: () => spellStack,
+    getLocalPlayerName,
+    getRivalName,
+    getCurrentUser: () => state.currentUser,
+    uploadRemote: uploadTelemetrySession
+  });
+
   // Fase 0 del multiplayer: se engancha UNA sola vez, apenas arranca la página, sin
   // importar qué pantalla esté mostrándose en ese momento (menú, Opciones, Enciclopedia, o
   // ya en medio de una partida) — updateAccountUI decide sola qué actualizar según qué haya
@@ -684,6 +714,17 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName) {
   state.phase = 'main1';
   state.turnCount = 1;
 
+  // ENTREGA 22: en multiplayer el start ocurre acá (la mano inicial de 7 ya fue robada
+  // localmente). recordTelemetryInitialDecks reconstruye el orden original de las 60 cartas
+  // como biblioteca restante + mano inicial invertida; del rival guarda sólo cantidad.
+  startTelemetrySession({
+    mode: 'multiplayer',
+    matchId,
+    myRole,
+    deckLabel
+  });
+  recordTelemetryInitialDecks({ revealRival: false, reconstructLocalOpeningHand: true });
+
   // El mulligan es 100% local (solo mira tu propia mano/mazo) — se reusa TAL CUAL de
   // Solitario, sin ningún cambio: nunca necesitó saber nada del rival para funcionar bien.
   const finishSetup = () => {
@@ -719,14 +760,51 @@ export function isHiddenRivalZone(isTargetLocal) {
 export async function publishMatchState() {
   if (!state.currentMatch || !state.currentUser) return;
   const { matchId, myRole } = state.currentMatch;
+  const publishId = `pub_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const startedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   try {
     const publicPatch = buildMyPublicPatch(state, myRole);
     const privatePatch = buildMyPrivatePatch(state);
+
+    recordTelemetryNetwork('sync_publish_start', {
+      publishId,
+      matchId,
+      myRole,
+      turnCount: publicPatch.turnCount,
+      phase: publicPatch.phase,
+      activePlayer: publicPatch.activePlayer,
+      priorityPlayer: publicPatch.priorityPlayer,
+      consecutivePasses: publicPatch.consecutivePasses,
+      pendingDecision: publicPatch.pendingDecision ? {
+        type: publicPatch.pendingDecision.type,
+        forRole: publicPatch.pendingDecision.forRole,
+        requestId: publicPatch.pendingDecision.requestId
+      } : null,
+      decisionResponse: publicPatch.decisionResponse ? {
+        type: publicPatch.decisionResponse.type,
+        requestId: publicPatch.decisionResponse.requestId
+      } : null,
+      localHandCount: privatePatch.hand?.length ?? null,
+      localDeckCount: privatePatch.deck?.length ?? null
+    });
+
     await Promise.all([
       publishMyPublicState(matchId, publicPatch),
       publishMyPrivateState(matchId, state.currentUser.uid, privatePatch)
     ]);
+
+    const endedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    recordTelemetryNetwork('sync_publish_ok', {
+      publishId,
+      durationMs: Math.round(endedAt - startedAt)
+    });
   } catch (err) {
+    const endedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    recordTelemetryNetwork('sync_publish_error', {
+      publishId,
+      durationMs: Math.round(endedAt - startedAt),
+      error: err
+    }, 'error');
     console.error('No se pudo publicar el estado de la partida:', err);
   }
 }
@@ -743,12 +821,18 @@ export async function publishMatchState() {
 // queda al menos una decisión activa/encolada y bloquea acciones locales hasta vaciarla.
 const remoteDecisionQueue = createRemoteDecisionQueue({
   onActivate: (request) => {
+    recordTelemetryDecision('remote_decision_activate', {
+      type: request.type,
+      forRole: request.forRole,
+      requestId: request.requestId
+    });
     state.awaitingRivalDecision = true;
     state.pendingDecision = request;
     state.decisionResponse = null;
     render(); // publica YA la siguiente pregunta; no espera a otro tick/render incidental
   },
   onIdle: () => {
+    recordTelemetryDecision('remote_decision_queue_idle');
     state.pendingDecision = null;
     state.decisionResponse = null;
     state.awaitingRivalDecision = false;
@@ -762,6 +846,12 @@ const remoteDecisionQueue = createRemoteDecisionQueue({
 // la mano privada del rival, sin sobrescribir resolvers ni perder respuestas.
 export function requestRivalDecision(type, forRole, data) {
   const requestId = `dec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  recordTelemetryDecision('remote_decision_enqueue', {
+    type,
+    forRole,
+    requestId,
+    data
+  });
   return remoteDecisionQueue.enqueue({ type, forRole, requestId, ...data });
 }
 
@@ -1420,6 +1510,10 @@ function handleIncomingDecisionRequest(decision) {
 // Publica mi respuesta a una pregunta que me llegó — el cliente que preguntó la recibe por
 // sync y resuelve su Promise pendiente (ver el listener en startListeningToMatch).
 function respondToDecision(requestId, responseData) {
+  recordTelemetryDecision('remote_decision_response_sent', {
+    requestId,
+    responseData
+  });
   state.decisionResponse = { requestId, ...responseData };
   render();
 }
@@ -1443,8 +1537,28 @@ export function startListeningToMatch(matchId, myRole) {
     // un eco que dispara render(), que dispara otro publish, en cascada infinita de
     // escrituras innecesarias. Si nada de lo que llegó es distinto de lo que ya tengo, no
     // volvemos a renderizar.
-    const changed = Object.keys(incoming).some(key => JSON.stringify(state[key]) !== JSON.stringify(incoming[key]));
-    if (!changed) return;
+    const changedKeys = Object.keys(incoming).filter(key => JSON.stringify(state[key]) !== JSON.stringify(incoming[key]));
+    if (changedKeys.length === 0) return;
+
+    recordTelemetryNetwork('sync_receive', {
+      matchId,
+      myRole,
+      changedKeys,
+      turnCount: incoming.turnCount ?? state.turnCount,
+      phase: incoming.phase ?? state.phase,
+      activePlayer: incoming.activePlayer ?? state.activePlayer,
+      priorityPlayer: incoming.priorityPlayer ?? state.priorityPlayer,
+      consecutivePasses: incoming.consecutivePasses ?? state.consecutivePasses,
+      pendingDecision: incoming.pendingDecision ? {
+        type: incoming.pendingDecision.type,
+        forRole: incoming.pendingDecision.forRole,
+        requestId: incoming.pendingDecision.requestId
+      } : null,
+      decisionResponse: incoming.decisionResponse ? {
+        type: incoming.decisionResponse.type,
+        requestId: incoming.decisionResponse.requestId
+      } : null
+    });
 
     Object.assign(state, incoming);
     render();
@@ -1457,11 +1571,20 @@ export function startListeningToMatch(matchId, myRole) {
     if (state.decisionResponse) {
       // ETAPA MOTOR 3: sólo la respuesta cuyo requestId coincide con la decisión ACTIVA
       // avanza la cola. Ecos atrasados o respuestas de otro request se ignoran sin tocarla.
+      recordTelemetryDecision('remote_decision_response_received', {
+        type: state.decisionResponse.type,
+        requestId: state.decisionResponse.requestId
+      });
       remoteDecisionQueue.resolveResponse(state.decisionResponse);
     }
 
     if (state.pendingDecision && state.pendingDecision.forRole === myRole && !handledDecisionIds.has(state.pendingDecision.requestId)) {
       handledDecisionIds.add(state.pendingDecision.requestId);
+      recordTelemetryDecision('remote_decision_request_received', {
+        type: state.pendingDecision.type,
+        forRole: state.pendingDecision.forRole,
+        requestId: state.pendingDecision.requestId
+      });
       handleIncomingDecisionRequest(state.pendingDecision);
     }
 
@@ -1513,6 +1636,22 @@ function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc, rivalNam
   setupBoardLayout();
   state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival' };
   reconstructStateFromMatch(publicDoc, privateDoc, myRole);
+
+  // ENTREGA 22: un refresh corta la ejecución JS anterior, pero su backup queda exportable
+  // como "Anterior". La reconexión abre una sesión nueva correlacionada por el mismo matchId.
+  startTelemetrySession({
+    mode: 'multiplayer_reconnect',
+    matchId,
+    myRole,
+    deckLabel: 'reconnect'
+  });
+  recordTelemetryEvent('reconnect_state_loaded', {
+    localHandCount: state.localHand.length,
+    localDeckCount: state.localDeck.length,
+    turnCount: state.turnCount,
+    phase: state.phase
+  });
+
   startListeningToMatch(matchId, myRole);
   hookGameplayButtons();
 
