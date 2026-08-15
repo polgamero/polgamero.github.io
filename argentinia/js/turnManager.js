@@ -1,8 +1,8 @@
 import { logMsg, els, showGameOverOverlay, render, updateAccountUI } from './ui.js';
-import { state, resolveEffectDirect, resolveScheduledReturns, getLocalPlayerName, getRivalName } from './main.js';
+import { state, queueTriggeredAbilities, resolveScheduledReturns, getLocalPlayerName, getRivalName } from './main.js';
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
-import { resolveCombatDamage } from './combatRules.js';
+import { resolveCombatDamage, hasPendingCombatDamageContinuation } from './combatRules.js';
 import { hasKeyword } from './keywords.js';
 import { awardPoints, clearActiveMatchId } from './firebaseClient.js';
 import { pointsForBotGameEnd, POINTS } from './store.js';
@@ -318,8 +318,16 @@ export async function resolveBothPassed() {
       await resolveTopStackItem();
       render();
       if (!state.currentMatch && state.priorityPlayer === 'rival') setTimeout(takeBotPriorityAction, 600);
+    } else if (state.phase === 'combat_damage' && hasPendingCombatDamageContinuation()) {
+      // Trigger Stack: si el daño de iniciativa produjo triggers, el daño regular se pausó
+      // hasta que esa pila se vaciara. Ambos vuelven a pasar con Stack vacía => continuar.
+      state.consecutivePasses = 0;
+      await resolveCombatDamage();
+      state.priorityPlayer = state.activePlayer;
+      render();
+      if (!state.currentMatch && state.priorityPlayer === 'rival') setTimeout(takeBotPriorityAction, 600);
     } else {
-      // Si la pila está vacía y ambos pasaron -> avanzamos de paso
+      // Si la pila está vacía y no hay una continuación interna -> avanzamos de paso.
       await advanceStep();
     }
   } finally {
@@ -352,12 +360,18 @@ function executeUntapStep() {
 // ya hacían las habilidades activadas sin objetivo antes de esta etapa).
 function executeUpkeepStep() {
   const isLocal = state.activePlayer === 'local';
-  const supportZone = isLocal ? state.localSupport : state.rivalSupport;
-  supportZone.forEach(item => {
-    if (item.card.upkeepTrigger) {
-      resolveEffectDirect(item.card.upkeepTrigger, item.card.name, isLocal);
-    }
-  });
+  const combat = isLocal ? state.localCombat : state.rivalCombat;
+  const support = isLocal ? state.localSupport : state.rivalSupport;
+  const lands = isLocal ? state.localLands : state.rivalLands;
+  const planeswalkers = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
+  queueTriggeredAbilities(
+    [...combat, ...support, ...lands, ...planeswalkers]
+      .filter(item => item.card?.upkeepTrigger)
+      .map(item => ({
+        effect: item.card.upkeepTrigger, sourceCard: item.card, sourceItem: item, isLocal,
+        triggerType: 'upkeep'
+      }))
+  );
 }
 
 // Habilidad Disparada por fase con condición opcional (ej. Hinchada Fervorosa: "si atacaste con
@@ -370,12 +384,14 @@ function executeEndStep() {
 
   resolveScheduledReturns(isLocal); // Parpadeo temporal: acá vuelven las que corresponda
 
+  const entries = [];
   supportZone.forEach(item => {
     const trig = item.card.endStepTrigger;
     if (!trig) return;
     if (trig.condition === 'attacked_with_two_or_more' && attackersCount < 2) return;
-    resolveEffectDirect(trig, item.card.name, isLocal);
+    entries.push({ effect: trig, sourceCard: item.card, sourceItem: item, isLocal, triggerType: 'end_step' });
   });
+  queueTriggeredAbilities(entries);
 }
 
 function executeDrawStep() {

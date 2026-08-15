@@ -13,11 +13,13 @@ import {
   tapLocalLand,
   handleCombatClick,
   handleSupportClick,
+  handleInstantActivatedAbilityClick,
   handlePlaneswalkerClick,
   handleSupportTargetClick,
   handlePlayerTargetClick,
   cancelPayment,
   payWithAlternativeCost,
+  canPayCastCompositeNonManaCosts,
   payWard,
   payCounterTax,
   activateLoyaltyAbility,
@@ -32,7 +34,7 @@ import {
 import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
-import { generatePackCards } from './utils.js';
+import { generatePackCards, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
 import { signInWithGoogle, signOutUser, purchasePack, craftEnhancement, deleteUserProfile, createDeck, updateDeck, deleteDeck, saveGameConfig, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, applyGameConfig, getDefaultGameConfig } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
@@ -457,6 +459,79 @@ export function showAbandonConfirmModal(onConfirm, onCancel) {
   });
 }
 
+export function showActivatedAbilityModal(cardName, options, onChoose, onCancel) {
+  injectMulliganStyles();
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+
+  const describeEffect = (ability) => {
+    if (ability.name) return ability.name;
+    if (ability.text) return ability.text;
+    if (ability.crewCost !== undefined) return `Tripular ${ability.crewCost}`;
+    const effect = ability.effect || {};
+    const labels = {
+      draw: 'Robar cartas', heal: 'Ganar vida', damage: 'Hacer daño', drain: 'Drenar vida',
+      fight: 'Pelear', attach_equipment: 'Equipar', exile_creature: 'Exiliar criatura',
+      exile_and_return: 'Exiliar y devolver', ramp: 'Buscar tierra', create_tokens: 'Crear fichas',
+      grant_keyword_temp: 'Otorgar habilidad', draw_and_lose_life: 'Robar y perder vida',
+      discard: 'Descartar', sacrifice: 'Sacrificar', reanimate: 'Reanimar',
+      scry: 'Adivinar', surveil: 'Vigilar', proliferate: 'Proliferar'
+    };
+    const base = labels[effect.type] || effect.type || 'Habilidad';
+    const amount = effect.amount !== undefined ? ` ${effect.amount}` : '';
+    return `${base}${amount}`;
+  };
+  const describeCost = (ability) => {
+    if (ability.crewCost !== undefined) return `Tripular ${ability.crewCost}`;
+    const bits = [];
+    if (ability.cost) bits.push(ability.cost);
+    if (ability.sacrifice) {
+      const sac = ability.sacrifice === 'self' ? 'Sacrificar esta carta' : `Sacrificar ${ability.sacrifice === 'creature' ? 'criatura' : 'artefacto'}`;
+      bits.push(sac);
+    }
+    return bits.join(', ') || '{0}';
+  };
+
+  const optionsHTML = options.map((option, idx) => {
+    const sourceSuffix = option.sourceName && option.sourceName !== cardName ? ` — ${option.sourceName}` : '';
+    const timing = getActivatedAbilityTiming(option.ability);
+    const timingSuffix = timing === 'instant' ? ' · ⚡ Instantánea' : (timing === 'sorcery' ? ' · ⏳ Conjuro' : '');
+    return `
+      <button class="loyalty-ability-btn" data-idx="${idx}">
+        <span class="loyalty-cost" style="min-width:105px;">${describeCost(option.ability)}</span>
+        <span class="loyalty-ability-text">${describeEffect(option.ability)}${sourceSuffix}${timingSuffix}</span>
+      </button>
+    `;
+  }).join('');
+
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width: 520px;">
+      <div class="gy-modal-header">
+        <h3>⚙️ ${cardName}: elegí una habilidad</h3>
+        <button class="gy-close-btn">Cerrar ✖</button>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px; padding:16px;">
+        ${optionsHTML}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modalOverlay);
+
+  modalOverlay.querySelectorAll('.loyalty-ability-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.idx);
+      modalOverlay.remove();
+      onChoose(idx);
+    });
+  });
+  const cancel = () => {
+    modalOverlay.remove();
+    if (onCancel) onCancel();
+  };
+  modalOverlay.querySelector('.gy-close-btn').onclick = cancel;
+  modalOverlay.onclick = (e) => { if (e.target === modalOverlay) cancel(); };
+}
+
 export function showLoyaltyAbilityModal(pwItem, isLocal) {
   injectMulliganStyles();
   const modalOverlay = document.createElement('div');
@@ -657,10 +732,21 @@ export function getTargetRules(card) {
   }
   // Un objeto en la pila puede llegar con requiresTarget desde una carta (spell/instant) o desde
   // una habilidad activada (source de tablero) — buscamos el effect en cualquiera de los dos lugares.
-  const effectType = card.effect?.type || card.activatedAbility?.effect?.type || card.grantedAbility?.effect?.type;
+  const firstActivated = Array.isArray(card.activatedAbilities) ? card.activatedAbilities[0] : card.activatedAbility;
+  const firstGranted = Array.isArray(card.grantedAbilities) ? card.grantedAbilities[0] : card.grantedAbility;
+  const effectType = card.effect?.type || firstActivated?.effect?.type || firstGranted?.effect?.type;
 
   if (effectType === 'destroy_artifact') {
-    return { allowPlayer: false, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: true, allowRivalPermanent: true, permanentFilter: 'Artefacto' };
+    // PUNTO 10 PRE-500: un Artefacto sigue siendo Artefacto aunque esté representado en
+    // Combat (Criatura Artefacto / Vehículo tripulado). Separamos tipo de carta de zona:
+    // Support usa permanentFilter y Combat usa creatureFilter, ambos con el mismo subtipo.
+    return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: true, creatureFilter: 'Artefacto', allowLocalPermanent: true, allowRivalPermanent: true, permanentFilter: 'Artefacto' };
+  }
+  if (effectType === 'heal') {
+    // Curar modifica HP de jugador; el resolver dirigido no tiene una semántica de
+    // "curar criatura". Dejarlo caer al default ofrecía criaturas como targets que luego
+    // no hacían nada. Punto 9 formaliza esta frontera para Loyalty y el resto del motor.
+    return { allowPlayer: true, allowLocalCreature: false, allowRivalCreature: false, allowLocalPlaneswalker: false, allowRivalPlaneswalker: false, allowLocalPermanent: false, allowRivalPermanent: false };
   }
   if (effectType === 'damage') {
     // BUG ENCONTRADO Y ARREGLADO (Cabo suelto #13): "cualquier objetivo" caía en el default
@@ -702,10 +788,16 @@ export function getTargetRules(card) {
     // (retriggerea su "cuando entra", le saca auras malas encima, resetea el daño marcado).
     return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
   }
+  // ETAPA MOTOR 1: estos dos efectos antes caían en el default genérico, que también
+  // permitía seleccionar jugadores. La resolución solo entiende criaturas, así que ofrecer
+  // la cara del jugador como target era una jugada ilegal que terminaba sin efecto.
+  if (effectType === 'destroy_creature' || effectType === 'bounce') {
+    return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
+  }
   if (effectType === 'add_counter') {
     // Contador permanente: +1/+1 solo tiene sentido en tu propia criatura (como "pump").
     // -1/-1 es remoción, así que puede apuntar a cualquier lado (como "destroy_creature").
-    const counterType = card.effect?.counterType || card.activatedAbility?.effect?.counterType || card.grantedAbility?.effect?.counterType;
+    const counterType = card.effect?.counterType || firstActivated?.effect?.counterType || firstGranted?.effect?.counterType;
     if (counterType === 'minusOne') {
       return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
     }
@@ -746,7 +838,9 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   if (state.pendingTargetCard) {
     const rules = getTargetRules(state.pendingTargetCard);
     if (zone === 'combat') {
-      isTargetable = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
+      const allowThisSide = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
+      const matchesFilter = !rules.creatureFilter || card.type.includes(rules.creatureFilter);
+      isTargetable = allowThisSide && matchesFilter;
     } else if (zone === 'support') {
       const allowThisSide = isLocal ? rules.allowLocalPermanent : rules.allowRivalPermanent;
       const matchesFilter = !rules.permanentFilter || card.type.includes(rules.permanentFilter);
@@ -761,8 +855,10 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   } else if (state.pendingSacrificeChoice && isLocal) {
     // Resaltamos qué se puede elegir para pagar un costo de Sacrificar.
     const { eligibleType } = state.pendingSacrificeChoice;
-    if (eligibleType === 'creature' && zone === 'combat') isTargetable = true;
-    else if (eligibleType === 'artifact' && zone === 'support' && card.type.includes('Artefacto')) isTargetable = true;
+    // ETAPA MOTOR 1: el brillo usa la MISMA validación real que el click. Un Encantamiento
+    // ya no puede disfrazarse de "artefacto", y un Vehículo tripulado sigue siendo Artefacto.
+    const zoneCanContainSacrifice = zone === 'combat' || zone === 'support';
+    if (zoneCanContainSacrifice && isSacrificeCandidate(itemObj, eligibleType)) isTargetable = true;
   } else if (state.pendingCrew && isLocal && zone === 'combat') {
     // Elegible si está sin girar, o si ya la elegiste (clickearla de nuevo la saca).
     isTargetable = !itemObj.tapped || state.pendingCrew.selected.includes(itemObj);
@@ -775,6 +871,14 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   }
   
   const targetClass = isTargetable ? 'targetable' : '';
+
+  // Punto 12: acceso separado para habilidades instantáneas. En Combat el click normal puede
+  // estar ocupado declarando ataque/bloqueo, así que un pequeño botón ⚡ evita ambigüedad.
+  const ownInstantAbility = getActivatedAbilities(card).some(ab => getActivatedAbilityTiming(ab) === 'instant');
+  const grantedInstantAbility = zone === 'combat' && isLocal && (getEquipmentOn(itemObj) || []).some(eq =>
+    getGrantedAbilities(eq.card).some(ab => getActivatedAbilityTiming(ab) === 'instant')
+  );
+  const hasExplicitInstantAbility = ownInstantAbility || grantedInstantAbility;
   
   // --- NUEVA LÓGICA DE COLORES MTG ---
   let bgClass = 'bg-colorless'; // Default para incoloras y artefactos
@@ -910,10 +1014,11 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const statsText = eq ? describeStats(eq.grantedStats) : '';
     if (statsText) parts.push(statsText);
     if (eq && eq.grantedKeywords && eq.grantedKeywords.length > 0) parts.push(eq.grantedKeywords.map(shortLabelFor).join(', '));
-    if (eqCard.grantedAbility) {
-      const ab = eqCard.grantedAbility;
-      parts.push(`${ab.cost}: ${ab.effect.type === 'damage' ? `${ab.effect.amount} de daño` : ab.effect.type}`);
-    }
+    const grantedAbilities = getGrantedAbilities(eqCard);
+    grantedAbilities.forEach(ab => {
+      const cost = ab.crewCost !== undefined ? `Tripular ${ab.crewCost}` : (ab.cost || '{0}');
+      parts.push(`${cost}: ${ab.effect?.type === 'damage' ? `${ab.effect.amount} de daño` : (ab.name || ab.text || ab.effect?.type || 'habilidad')}`);
+    });
     return parts.join(' · ') || 'Equipado';
   };
   const describeStaticMod = (m) => {
@@ -969,6 +1074,27 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     </div>
   `;
 
+  // El botón separado sólo hace falta en Combat, donde el click normal puede significar
+  // declarar atacante/bloqueador. Support y Tierras ya tienen un click inequívoco y el
+  // group renderer elige la copia lista correcta si hay varias apiladas visualmente.
+  const instantButtonAllowedZone = zone === 'combat';
+  if (isLocal && instantButtonAllowedZone && hasExplicitInstantAbility && state.priorityPlayer === 'local' && !state.gameOver) {
+    // Garantiza que el botón absoluto se ancle a la carta aunque el CSS externo cambie.
+    if (!el.style.position) el.style.position = 'relative';
+    const instantBtn = document.createElement('button');
+    instantBtn.type = 'button';
+    instantBtn.textContent = '⚡';
+    instantBtn.title = 'Activar habilidad instantánea';
+    instantBtn.setAttribute('aria-label', `Activar habilidad instantánea de ${card.name}`);
+    instantBtn.style.cssText = 'position:absolute;top:4px;right:4px;z-index:20;border:1px solid rgba(255,255,255,.8);border-radius:999px;background:rgba(20,20,20,.82);color:white;width:28px;height:28px;cursor:pointer;font-size:15px;line-height:24px;padding:0;';
+    instantBtn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      handleInstantActivatedAbilityClick(itemObj, true, index, zone);
+    });
+    el.appendChild(instantBtn);
+  }
+
   if (customClick) {
     el.addEventListener('click', customClick);
   } else {
@@ -988,7 +1114,15 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       el.addEventListener('click', () => tapLocalLand(itemObj));
     } else if (zone === 'combat' && !state.gameOver) {
       el.addEventListener('click', () => handleCombatClick(itemObj, isLocal, index));
-    } else if (zone === 'support' && isLocal && state.activePlayer === 'local' && state.phase.startsWith('main') && !state.gameOver) {
+    } else if (zone === 'support' && isLocal && !state.gameOver && (
+      (state.activePlayer === 'local' && state.phase.startsWith('main')) ||
+      (state.priorityPlayer === 'local' && hasExplicitInstantAbility) ||
+      ((card.produces || card.producesOptions) && state.pendingCost &&
+       (state.pendingCost.W + state.pendingCost.U + state.pendingCost.B + state.pendingCost.R + state.pendingCost.G + state.pendingCost.generic) > 0)
+    )) {
+      // HOTFIX 1.1 — fuentes de maná de Soporte (ej. Fajo de Dólares Blue) también deben
+      // poder clickearse mientras pagás un instantáneo fuera de tu propia fase principal.
+      // El timing de las demás habilidades de Soporte sigue exactamente igual que antes.
       el.addEventListener('click', () => handleSupportClick(itemObj, isLocal, index));
     } else if (zone === 'planeswalker' && !state.gameOver) {
       // Sin restricción de fase acá: clickear tu PROPIO Planeswalker (para abrir el menú de
@@ -1197,7 +1331,7 @@ function injectMainMenuStyles() {
     .main-menu-buttons {
       position: absolute; left: 5vw; bottom: 8vh;
       display: flex; flex-direction: column; gap: 14px;
-      width: 200px;
+      width: 300px;
     }
     .main-menu-btn {
       display: block; width: 100%;
@@ -1206,7 +1340,7 @@ function injectMainMenuStyles() {
       border-radius: 10px;
       color: #f0e0b0;
       font-size: 17px; font-weight: 700; letter-spacing: 0.5px;
-      padding: 7px 10px; text-align: left;
+      padding: 13px 20px; text-align: left;
       cursor: pointer;
       transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
       box-shadow: 0 4px 16px rgba(0,0,0,0.4);
@@ -1217,7 +1351,7 @@ function injectMainMenuStyles() {
       box-shadow: 0 4px 22px rgba(212,175,55,0.35);
     }
     .main-menu-btn-primary {
-      border-color: #f0e0b0; font-size: 18px;
+      border-color: #f0e0b0; font-size: 19px;
       background: linear-gradient(180deg, rgba(212,175,55,0.25), rgba(11,19,14,0.96));
     }
     .main-menu-btn-primary:hover { box-shadow: 0 4px 26px rgba(212,175,55,0.55); }
@@ -1275,8 +1409,8 @@ function injectMainMenuStyles() {
     .main-menu-logout-btn:hover { color: #f0e0b0; }
     .main-menu-account-error { color: #e07a6b; font-size: 12px; max-width: 260px; text-align: right; }
     .main-menu-news {
-      position: absolute; bottom: 8vh; right: 32px; width: 350px; max-height: 220px;
-      background: rgba(11,19,14,0.85); border: 2px solid var(--gold); border-radius: 12px 0 0 12px;
+      position: absolute; bottom: 24px; right: 32px; width: 280px; max-height: 220px;
+      background: rgba(11,19,14,0.85); border: 2px solid rgba(212,175,55,0.35); border-radius: 12px;
       padding: 12px 14px; overflow-y: auto; z-index: 5;
     }
     .main-menu-news-title {
@@ -1478,7 +1612,7 @@ function injectEncyclopediaStyles() {
       flex: 1; overflow-y: auto;
       background: #F5F5F5;
       border: 2px solid rgba(212,175,55,0.3);
-      border-radius: 12px 0 0 12px;
+      border-radius: 12px;
       padding: 20px;
       display: flex; flex-wrap: wrap; align-content: flex-start; gap: 20px;
     }
@@ -1700,7 +1834,7 @@ function injectStoreStyles() {
     .store-section-title { color: #f0e0b0; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
     .store-section-desc { color: #cfe0d4; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
     .store-pack-visual {
-      width: 20em; height: 20em; object-fit: contain; margin: 0 auto 10px; display: block;
+      width: 8em; height: 8em; object-fit: contain; margin: 0 auto 10px; display: block;
       filter: drop-shadow(0 6px 16px rgba(212,175,55,0.3));
     }
     .store-buy-btn {
@@ -3630,12 +3764,12 @@ function injectMulliganStyles() {
 function buildMulliganCardRow(hand, selectable, onCardClick) {
   const row = document.createElement('div');
   row.className = 'mulligan-hand-row';
-  hand.forEach(card => {
+  hand.forEach((card, cardIndex) => {
     const cardEl = createCardElement(card, false, true, null, 'mulligan-pick', null);
     cardEl.classList.add('mulligan-card-slot');
     if (selectable) {
       cardEl.classList.add('selectable');
-      cardEl.addEventListener('click', () => onCardClick(card, cardEl));
+      cardEl.addEventListener('click', () => onCardClick(card, cardEl, cardIndex));
     } else {
       cardEl.style.cursor = 'default';
     }
@@ -3802,50 +3936,191 @@ export function showProliferateModal(eligible, onConfirm) {
   });
 }
 
+
+// Punto 6: selector GENERAL de Cementerio. Recibe entries {card, index} para que dos
+// copias idénticas sigan siendo distinguibles por slot. `filterLabel` y `actionLabel` son
+// puramente visuales; la validación real de elegibilidad vive en main.js. No hay Cancelar:
+// cuando se abre, la selección forma parte de una instrucción que ya está resolviéndose.
+export function showGraveyardChoiceModal(entries, countToChoose, cardName, filterLabel, actionLabel, onConfirm) {
+  injectMulliganStyles();
+  const overlay = document.createElement('div');
+  overlay.id = 'mulligan-overlay';
+
+  const chosenIndexes = new Set();
+  const count = Math.max(0, Math.min(countToChoose || 1, entries.length));
+  const noun = count === 1 ? 'carta' : 'cartas';
+
+  overlay.innerHTML = `
+    <div class="mulligan-panel">
+      <div class="mulligan-title">⚰️ ${cardName}: ${actionLabel || `elegí ${count} ${noun} del cementerio`}</div>
+      <div class="mulligan-subtitle" id="graveyard-choice-count-hint">${filterLabel ? `${filterLabel} · ` : ''}Seleccionadas: 0 / ${count}</div>
+      <div class="mulligan-hand-row-slot"></div>
+      <div class="mulligan-buttons">
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-graveyard-choice" disabled>Confirmar elección</button>
+      </div>
+    </div>
+  `;
+
+  const hint = () => overlay.querySelector('#graveyard-choice-count-hint');
+  const confirmBtn = () => overlay.querySelector('#btn-confirm-graveyard-choice');
+  const row = document.createElement('div');
+  row.className = 'mulligan-hand-row';
+
+  entries.forEach(entry => {
+    let cardEl;
+    const toggle = () => {
+      if (chosenIndexes.has(entry.index)) {
+        chosenIndexes.delete(entry.index);
+        cardEl.classList.remove('chosen');
+      } else if (chosenIndexes.size < count) {
+        chosenIndexes.add(entry.index);
+        cardEl.classList.add('chosen');
+      }
+      hint().textContent = `${filterLabel ? `${filterLabel} · ` : ''}Seleccionadas: ${chosenIndexes.size} / ${count}`;
+      confirmBtn().disabled = chosenIndexes.size !== count;
+    };
+    cardEl = createCardElement({ card: entry.card }, false, true, null, 'graveyard', toggle);
+    cardEl.classList.add('mulligan-card-slot', 'selectable');
+    row.appendChild(cardEl);
+  });
+
+  overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#btn-confirm-graveyard-choice').addEventListener('click', () => {
+    if (chosenIndexes.size !== count) return;
+    overlay.remove();
+    onConfirm([...chosenIndexes].sort((a, b) => a - b));
+  });
+}
+
 // Escape: elegir N cartas del cementerio para exiliar como costo adicional. Mismo
 // esqueleto exacto que showBottomCardsModal (selección hasta llegar a la cantidad exacta,
 // confirmar deshabilitado hasta entonces) — reusamos buildMulliganCardRow porque acá los
 // elegibles SON cartas de verdad (del cementerio), a diferencia de Proliferar que elige
 // permanentes del campo.
 export function showEscapeExileModal(graveyardCards, exileCount, onConfirm) {
+  const entries = graveyardCards.map((card, index) => ({ card, index }));
+  showGraveyardChoiceModal(
+    entries,
+    exileCount,
+    'Escape',
+    'cualquier carta',
+    `elegí ${exileCount} carta${exileCount > 1 ? 's' : ''} de tu cementerio para exiliar`,
+    chosenIndexes => onConfirm(chosenIndexes.map(i => graveyardCards[i]).filter(Boolean))
+  );
+}
+
+// Punto 5: el dueño elige exactamente N permanentes propios para sacrificar como EFECTO.
+// No hay Cancelar: el efecto ya está resolviéndose. Recibe items de battlefield reales,
+// por eso varias copias idénticas siguen siendo seleccionables como objetos distintos.
+export function showSacrificeEffectModal(candidates, countToSacrifice, cardName, permanentType, onConfirm) {
   injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
 
   const chosen = new Set();
+  const typeLabel = permanentType === 'artifact' ? 'artefacto' : 'criatura';
 
   overlay.innerHTML = `
     <div class="mulligan-panel">
-      <div class="mulligan-title">🌀 Escape: elegí ${exileCount} carta${exileCount > 1 ? 's' : ''} de tu cementerio para exiliar</div>
-      <div class="mulligan-subtitle" id="mulligan-count-hint-escape">Seleccionadas: 0 / ${exileCount}</div>
+      <div class="mulligan-title">🔪 ${cardName}: sacrificá ${countToSacrifice} ${typeLabel}${countToSacrifice > 1 ? 's' : ''}</div>
+      <div class="mulligan-subtitle" id="sacrifice-effect-count-hint">Seleccionadas: 0 / ${countToSacrifice}</div>
       <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
-        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-escape" disabled>Confirmar</button>
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-sacrifice-effect" disabled>Confirmar sacrificio</button>
       </div>
     </div>
   `;
 
-  const hint = () => overlay.querySelector('#mulligan-count-hint-escape');
-  const confirmBtn = () => overlay.querySelector('#btn-confirm-escape');
+  const hint = () => overlay.querySelector('#sacrifice-effect-count-hint');
+  const confirmBtn = () => overlay.querySelector('#btn-confirm-sacrifice-effect');
+  const row = document.createElement('div');
+  row.className = 'mulligan-hand-row';
 
-  const row = buildMulliganCardRow(graveyardCards, true, (card, cardEl) => {
-    if (chosen.has(card)) {
-      chosen.delete(card);
+  candidates.forEach(item => {
+    let cardEl;
+    const toggle = () => {
+      if (chosen.has(item)) {
+        chosen.delete(item);
+        cardEl.classList.remove('chosen');
+      } else if (chosen.size < countToSacrifice) {
+        chosen.add(item);
+        cardEl.classList.add('chosen');
+      }
+      hint().textContent = `Seleccionadas: ${chosen.size} / ${countToSacrifice}`;
+      confirmBtn().disabled = chosen.size !== countToSacrifice;
+    };
+
+    const zone = state.localCombat.includes(item) ? 'combat'
+      : state.localLands.includes(item) ? 'land'
+      : 'support';
+    cardEl = createCardElement(item, !!item.tapped, true, null, zone, toggle);
+    cardEl.classList.add('mulligan-card-slot', 'selectable');
+    row.appendChild(cardEl);
+  });
+
+  overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#btn-confirm-sacrifice-effect').addEventListener('click', () => {
+    if (chosen.size !== countToSacrifice) return;
+    overlay.remove();
+    onConfirm([...chosen]);
+  });
+}
+
+// Punto 8: selector GENÉRICO de descarte desde la propia mano. Lo reutilizan el descarte
+// elegido normal, los costos adicionales y, mediante el wrapper de abajo, Loot/Rummage.
+// Usa ÍNDICES de slot, no Set(card): dos copias idénticas tienen que seguir siendo dos
+// elecciones distintas. No hay botón Cancelar porque, cuando aparece, una instrucción o
+// un costo ya está a mitad de resolución.
+export function showHandDiscardChoiceModal(hand, countToDiscard, cardName, actionLabel, onConfirm) {
+  injectMulliganStyles();
+  const overlay = document.createElement('div');
+  overlay.id = 'mulligan-overlay';
+
+  const chosenIndexes = new Set();
+  overlay.innerHTML = `
+    <div class="mulligan-panel">
+      <div class="mulligan-title">🃏 ${cardName}: ${actionLabel || 'Elegí qué descartar'}</div>
+      <div class="mulligan-subtitle" id="hand-discard-count-hint">Seleccionadas: 0 / ${countToDiscard}</div>
+      <div class="mulligan-hand-row-slot"></div>
+      <div class="mulligan-buttons">
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-hand-discard" disabled>Confirmar descarte</button>
+      </div>
+    </div>
+  `;
+
+  const hint = () => overlay.querySelector('#hand-discard-count-hint');
+  const confirmBtn = () => overlay.querySelector('#btn-confirm-hand-discard');
+  const row = buildMulliganCardRow(hand, true, (_card, cardEl, cardIndex) => {
+    if (chosenIndexes.has(cardIndex)) {
+      chosenIndexes.delete(cardIndex);
       cardEl.classList.remove('chosen');
-    } else if (chosen.size < exileCount) {
-      chosen.add(card);
+    } else if (chosenIndexes.size < countToDiscard) {
+      chosenIndexes.add(cardIndex);
       cardEl.classList.add('chosen');
     }
-    hint().textContent = `Seleccionadas: ${chosen.size} / ${exileCount}`;
-    confirmBtn().disabled = chosen.size !== exileCount;
+    hint().textContent = `Seleccionadas: ${chosenIndexes.size} / ${countToDiscard}`;
+    confirmBtn().disabled = chosenIndexes.size !== countToDiscard;
   });
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
 
-  overlay.querySelector('#btn-confirm-escape').addEventListener('click', () => {
+  overlay.querySelector('#btn-confirm-hand-discard').addEventListener('click', () => {
+    if (chosenIndexes.size !== countToDiscard) return;
     overlay.remove();
-    onConfirm([...chosen]);
+    onConfirm([...chosenIndexes].sort((a, b) => a - b));
   });
+}
+
+// Punto 4: Loot/Rummage conserva su API y textos, pero usa el selector genérico del Punto 8.
+export function showHandFilterDiscardModal(hand, countToDiscard, cardName, mode, onConfirm) {
+  const actionLabel = mode === 'loot'
+    ? 'Después de robar, elegí qué descartar'
+    : 'Elegí qué descartar antes de robar';
+  return showHandDiscardChoiceModal(hand, countToDiscard, cardName, actionLabel, onConfirm);
 }
 
 export function showBottomCardsModal(hand, countToBottom, onConfirm) {
@@ -3934,7 +4209,10 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
             return;
           }
         }
-        if (isLocal && state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2')) {
+        const supportHasInstant = getActivatedAbilities(group.items[0].item.card).some(ab => getActivatedAbilityTiming(ab) === 'instant');
+        const supportTimingAllowsClick = (state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2')) ||
+          (state.priorityPlayer === 'local' && supportHasInstant);
+        if (isLocal && supportTimingAllowsClick) {
           const readySupport = group.ready[0];
           if (readySupport) {
             const originalIdx = group.items.find(x => x.item === readySupport).originalIndex;
@@ -4042,12 +4320,13 @@ export function render() {
   // menos que pagues, etc.) — arriesgando una condición de carrera con esa resolución.
   // Misma lista que ya usa canPlayCard (más pendingTargetCard/pendingSacrificeChoice/
   // pendingHybridLifePayment, que faltaban ahí también).
-  const anyPendingChoice = state.pendingSpellIndex !== null || state.pendingAbilitySource !== null ||
+  const anyPendingChoice = state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice !== null ||
     state.pendingTargetCard !== null || state.pendingCrew !== null || state.pendingWardChoice !== null ||
     state.pendingCounterUnlessPay !== null || state.pendingHybridLifePayment !== null ||
     state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null ||
     state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null ||
-    state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice ||
+    state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice || state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || (state.resolvingSacrificeEffects || 0) > 0 ||
+    (state.resolvingCardFilterEffects || 0) > 0 || (state.resolvingDiscardEffects || 0) > 0 || (state.resolvingGraveyardChoices || 0) > 0 || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice ||
     state.pendingKickerChoice || state.pendingRampChoice || state.pendingSacrificeChoice !== null ||
     state.damageModalOpen || state.awaitingRivalDecision || state.respondingToDecision;
 
@@ -4081,6 +4360,7 @@ export function render() {
       if (pendingCardEl) pendingCardEl.classList.add('paying');
     }
     
+    const pendingCard = state.pendingSpellIndex !== null ? state.localHand[state.pendingSpellIndex] : null;
     let statusText;
     if (state.pendingCrew) {
       statusText = `Tripulando ${state.pendingCrew.item.card.name}: ${state.pendingCrew.powerSoFar}/${state.pendingCrew.required} de poder — clickeá tus criaturas 🚗`;
@@ -4099,22 +4379,20 @@ export function render() {
         if (state.pendingCost.R > 0) statusText += `${state.pendingCost.R} Rojo `;
         if (state.pendingCost.G > 0) statusText += `${state.pendingCost.G} Verde `;
         if (state.pendingCost.generic > 0) statusText += `${state.pendingCost.generic} Genérico`;
-        if (state.pendingHybridLifePayment) statusText += ` (+ ${state.pendingHybridLifePayment} de vida al terminar)`;
+        if (state.pendingAlternativeCostChosen && pendingCard?.alternativeCost) statusText += ` [alternativo: ${describeCompositeCost(pendingCard.alternativeCost)}]`;
       }
     }
     els.paymentStatus.textContent = statusText;
 
-    // Costo alternativo (pagar con vida en vez de maná): el botón solo aparece mientras
-    // seguís pagando el maná normal — una vez que ya elegiste un camino (pagaste maná del
-    // todo, o ya estás eligiendo objetivo) no tiene sentido seguir ofreciéndolo.
-    const pendingCard = state.pendingSpellIndex !== null ? state.localHand[state.pendingSpellIndex] : null;
-    if (pendingCard && pendingCard.alternativeCost && !state.pendingTargetCard && !state.pendingCrew && !state.pendingWardChoice && !state.pendingCounterUnlessPay && !state.pendingHybridLifePayment) {
+    // Punto 14: el costo alternativo puede combinar maná/vida/descarte/sacrificio/exilio.
+    // Sólo se ofrece antes de comprometer una vía, nunca sobre Flashback/Escape, y sólo si
+    // los componentes no-maná son legalmente pagables (el maná se elige manualmente después).
+    const canOfferAlt = pendingCard && pendingCard.alternativeCost && !state.pendingAlternativeCostChosen && !state.pendingCastFrom &&
+      !state.pendingTargetCard && !state.pendingCrew && !state.pendingWardChoice && !state.pendingCounterUnlessPay &&
+      !state.pendingCompositeCostPayment && canPayCastCompositeNonManaCosts(pendingCard, true, true, { excludeCard: pendingCard });
+    if (canOfferAlt) {
       els.btnAltCost.classList.remove('hidden');
-      const ac = pendingCard.alternativeCost;
-      const altLabel = ac.type === 'life' ? `💉 Pagar con ${ac.amount} de vida en vez de maná`
-        : ac.type === 'hybrid' ? `💉 Pagar con ${ac.manaCost} + ${ac.life} de vida en vez del costo completo`
-        : `Pagar costo alternativo`;
-      els.btnAltCost.textContent = altLabel;
+      els.btnAltCost.textContent = `🔀 Pagar alternativo: ${describeCompositeCost(pendingCard.alternativeCost)}`;
     } else {
       els.btnAltCost.classList.add('hidden');
     }

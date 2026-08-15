@@ -5,6 +5,159 @@ export function shuffle(array) {
   return array.sort(() => Math.random() - 0.5); 
 }
 
+// Punto 11 pre-500: contrato retrocompatible para habilidades activadas múltiples.
+// `activatedAbilities[]` es el formato nuevo; si no existe, la propiedad histórica
+// `activatedAbility` se normaliza a una lista de un elemento. Si ambos aparecen, el array
+// es autoritativo para evitar duplicar una misma habilidad durante una migración gradual.
+export function getActivatedAbilities(card) {
+  if (!card) return [];
+  if (Array.isArray(card.activatedAbilities)) return card.activatedAbilities.filter(Boolean);
+  return card.activatedAbility ? [card.activatedAbility] : [];
+}
+
+// Mismo criterio para habilidades prestadas por Equipo. Ningún JSON actual necesita
+// `grantedAbilities[]`, pero soportarlo acá evita reconstruir otra excepción el día que un
+// Equipo otorgue más de una habilidad activada. `grantedAbility` sigue 100% compatible.
+export function getGrantedAbilities(card) {
+  if (!card) return [];
+  if (Array.isArray(card.grantedAbilities)) return card.grantedAbilities.filter(Boolean);
+  return card.grantedAbility ? [card.grantedAbility] : [];
+}
+
+// Punto 12 pre-500: timing explícito de habilidades activadas.
+// - sin campo: 'legacy' para preservar EXACTAMENTE el comportamiento de las 231 cartas actuales;
+// - 'sorcery': propia Main + prioridad + pila vacía;
+// - 'instant': cualquier paso/fase donde el controlador tenga prioridad.
+// Un valor desconocido es 'invalid' para que un typo futuro no se convierta silenciosamente
+// en una habilidad usable con otra regla.
+export function getActivatedAbilityTiming(ability) {
+  if (!ability || ability.timing === undefined || ability.timing === null || ability.timing === '') return 'legacy';
+  if (ability.timing === 'sorcery' || ability.timing === 'instant') return ability.timing;
+  return 'invalid';
+}
+
+// =========================================================================
+// ETAPA MOTOR 1 — helpers de reglas puros (sin DOM / sin Firestore)
+// =========================================================================
+// Una ficha puede disparar "cuando muere" o "cuando sale del campo", pero una vez que
+// abandona el campo deja de existir y NO puede terminar en mano/cementerio/exilio.
+// Centralizar esta regla evita que cada removal/rebote/arrase implemente una versión distinta.
+export function moveBattlefieldCardToZone(card, destinationZone) {
+  if (!card || !Array.isArray(destinationZone)) return false;
+  if (card.isToken) return false;
+  destinationZone.push(card);
+  return true;
+}
+
+// Valida el tipo REAL de permanente que puede pagarse como costo de sacrificio.
+// Importante: una Criatura Artefacto / Vehículo tripulado puede ser simultáneamente criatura
+// y artefacto, por lo que puede satisfacer cualquiera de los dos costos.
+export function isSacrificeCandidate(item, eligibleType) {
+  if (!item) return false;
+  const card = item.card || item;
+  if (!card) return false;
+  if (eligibleType === 'creature') return card.power !== undefined || !!item.isVehicle;
+  if (eligibleType === 'artifact') return typeof card.type === 'string' && card.type.includes('Artefacto');
+  return false;
+}
+
+// Descarte automático al azar sobre una mano REAL. La función acepta randomFn para poder
+// regresionarla de forma determinista en Node, pero el juego usa Math.random por defecto.
+export function removeRandomCardsFromHand(hand, amount, randomFn = Math.random) {
+  if (!Array.isArray(hand) || amount <= 0) return [];
+  const removed = [];
+  const n = Math.min(amount, hand.length);
+  for (let i = 0; i < n; i++) {
+    const idx = Math.floor(randomFn() * hand.length);
+    removed.push(hand.splice(idx, 1)[0]);
+  }
+  return removed;
+}
+
+
+// =========================================================================
+// ETAPA MOTOR 2 — destino correcto de objetos contrarrestados
+// =========================================================================
+// Contrarrestar una HABILIDAD solo la saca de la pila: el permanente que la originó sigue
+// donde estaba. Para hechizos, Flashback reemplaza el destino normal por Exilio; Escape y
+// los casteos normales vuelven al Cementerio si son contrarrestados.
+// Devuelve el destino aplicado para facilitar logs/tests sin duplicar esta regla.
+export function moveCounteredStackItemToDestination(stackItem, gameState) {
+  if (!stackItem || !stackItem.card || !gameState) return 'none';
+  if (stackItem.type === 'ability') return 'ability';
+
+  const isLocal = !!stackItem.isLocal;
+  if (stackItem.castFrom === 'flashback') {
+    (isLocal ? gameState.localExile : gameState.rivalExile).push(stackItem.card);
+    return 'exile';
+  }
+
+  (isLocal ? gameState.localGraveyard : gameState.rivalGraveyard).push(stackItem.card);
+  return 'graveyard';
+}
+
+
+// =========================================================================
+// ETAPA MOTOR 3 — cola local para decisiones remotas
+// =========================================================================
+// Firestore mantiene UN único buzón público (`pendingDecision`/`decisionResponse`) por
+// compatibilidad con el protocolo existente. La serialización ocurre ACÁ, antes de publicar:
+// si varios triggers síncronos piden decisiones al rival en el mismo evento (por ejemplo,
+// tres descartes forzados), sólo la primera pregunta ocupa el buzón. Las demás esperan en
+// memoria y se publican estrictamente una por una cuando llega la respuesta anterior.
+//
+// El helper es deliberadamente agnóstico de DOM/Firestore/state: producción le inyecta
+// onActivate/onIdle, y los tests pueden verificar orden/correlación sin simular la red.
+export function createRemoteDecisionQueue({ onActivate = () => {}, onIdle = () => {} } = {}) {
+  const waiting = [];
+  let active = null;
+
+  function pump() {
+    if (active || waiting.length === 0) {
+      if (!active && waiting.length === 0) onIdle();
+      return;
+    }
+    active = waiting.shift();
+    onActivate(active.request);
+  }
+
+  function enqueue(request) {
+    if (!request || !request.requestId) {
+      return Promise.reject(new Error('Una decisión remota necesita requestId.'));
+    }
+    return new Promise(resolve => {
+      waiting.push({ request, resolve });
+      pump();
+    });
+  }
+
+  // Devuelve false ante una respuesta vieja/ajena. Nunca avanza la cola por un requestId
+  // que no corresponde al pedido ACTIVO: esa correlación es la barrera contra ecos de sync.
+  function resolveResponse(response) {
+    if (!active || !response || response.requestId !== active.request.requestId) return false;
+
+    const completed = active;
+    active = null;
+
+    // Activamos la siguiente ANTES de resolver la Promise anterior. Así, si el `.then()`
+    // del efecto completado hace render(), jamás deja el canal publicado en un estado vacío
+    // intermedio mientras todavía quedan decisiones esperando.
+    if (waiting.length > 0) pump();
+    else onIdle();
+
+    completed.resolve(response);
+    return true;
+  }
+
+  return {
+    enqueue,
+    resolveResponse,
+    get activeRequest() { return active ? active.request : null; },
+    get queuedCount() { return waiting.length; },
+    get pendingCount() { return waiting.length + (active ? 1 : 0); }
+  };
+}
+
 // --- ARMADO DE MAZO "DE VERDAD" ---
 // Antes, buildRandomDeck elegía cartas 100% al azar de TODO el pool: mazos de 5 colores,
 // sin curva, con manos que muchas veces no tenían nada jugable. Ahora el mazo arranca
@@ -303,4 +456,120 @@ export function generatePackCards() {
   for (let i = 0; i < PACK_LANDS; i++) cards.push(pickRandomCard(lands));
 
   return cards; // 15 cartas (objetos de carta completos, no solo IDs)
+}
+
+// =========================================================================
+// PUNTO 14 PRE-500 — COSTOS COMPUESTOS (retrocompatibles)
+// =========================================================================
+// El motor histórico ya aceptaba:
+//   alternativeCost: { type:'life', amount:N }
+//   alternativeCost: { type:'hybrid', manaCost:'{1}', life:N }
+//   additionalCost:  { type:'discard', amount:N }
+// Punto 14 NO obliga a migrarlos. Los normalizamos al contrato nuevo:
+//   {
+//     manaCost: '{1}' | null,
+//     life: 1,
+//     discard: { amount:1, selection:'choice', color:'U' },
+//     sacrifice: { target:'own_creature'|'own_artifact', amount:1 },
+//     exileFromGraveyard: { amount:2, filter:'any' }
+//   }
+// Un objeto puede combinar varios componentes. `manaCost:null` significa 0 maná.
+export function normalizeCompositeCost(cost) {
+  if (!cost || typeof cost !== 'object') return null;
+
+  // Formatos legacy.
+  if (cost.type === 'life') {
+    return { manaCost: null, life: Math.max(0, Number(cost.amount) || 0), discard: null, sacrifice: null, exileFromGraveyard: null };
+  }
+  if (cost.type === 'hybrid') {
+    return { manaCost: cost.manaCost || null, life: Math.max(0, Number(cost.life) || 0), discard: null, sacrifice: null, exileFromGraveyard: null };
+  }
+  if (cost.type === 'discard') {
+    return {
+      manaCost: null,
+      life: 0,
+      discard: {
+        amount: Math.max(0, Math.floor(Number(cost.amount ?? 1) || 0)),
+        selection: cost.selection === 'random' ? 'random' : 'choice',
+        color: cost.color || null
+      },
+      sacrifice: null,
+      exileFromGraveyard: null
+    };
+  }
+  if (cost.type === 'sacrifice') {
+    return {
+      manaCost: null, life: 0, discard: null,
+      sacrifice: { target: cost.target || null, amount: Math.max(0, Math.floor(Number(cost.amount ?? 1) || 0)) },
+      exileFromGraveyard: null
+    };
+  }
+  if (cost.type === 'exile_from_graveyard') {
+    return {
+      manaCost: null, life: 0, discard: null, sacrifice: null,
+      exileFromGraveyard: { amount: Math.max(0, Math.floor(Number(cost.amount ?? 1) || 0)), filter: cost.filter || 'any' }
+    };
+  }
+
+  const discard = cost.discard && typeof cost.discard === 'object' ? {
+    amount: Math.max(0, Math.floor(Number(cost.discard.amount ?? 1) || 0)),
+    selection: cost.discard.selection === 'random' ? 'random' : 'choice',
+    color: cost.discard.color || null
+  } : null;
+  const sacrifice = cost.sacrifice && typeof cost.sacrifice === 'object' ? {
+    target: cost.sacrifice.target || null,
+    amount: Math.max(0, Math.floor(Number(cost.sacrifice.amount ?? 1) || 0))
+  } : null;
+  const exileFromGraveyard = cost.exileFromGraveyard && typeof cost.exileFromGraveyard === 'object' ? {
+    amount: Math.max(0, Math.floor(Number(cost.exileFromGraveyard.amount ?? 1) || 0)),
+    filter: cost.exileFromGraveyard.filter || 'any'
+  } : null;
+
+  return {
+    manaCost: typeof cost.manaCost === 'string' && cost.manaCost.trim() ? cost.manaCost : null,
+    life: Math.max(0, Number(cost.life) || 0),
+    discard,
+    sacrifice,
+    exileFromGraveyard
+  };
+}
+
+export function compositeCostHasNonMana(cost) {
+  const c = normalizeCompositeCost(cost);
+  return !!(c && (c.life > 0 || (c.discard && c.discard.amount > 0) || (c.sacrifice && c.sacrifice.amount > 0) || (c.exileFromGraveyard && c.exileFromGraveyard.amount > 0)));
+}
+
+export function getCompositeCostManaString(cost) {
+  return normalizeCompositeCost(cost)?.manaCost || null;
+}
+
+export function cardMatchesDiscardCost(card, discardSpec) {
+  if (!card || !discardSpec) return false;
+  if (discardSpec.color && !(Array.isArray(card.colors) && card.colors.includes(discardSpec.color))) return false;
+  return true;
+}
+
+export function describeCompositeCost(cost) {
+  const c = normalizeCompositeCost(cost);
+  if (!c) return '';
+  const parts = [];
+  if (c.manaCost) parts.push(c.manaCost);
+  if (c.life > 0) parts.push(`${c.life} de vida`);
+  if (c.discard && c.discard.amount > 0) {
+    const colorNames = { W:'blanca', U:'azul', B:'negra', R:'roja', G:'verde' };
+    const color = c.discard.color ? ` ${colorNames[c.discard.color] || c.discard.color}` : '';
+    parts.push(`descartar ${c.discard.amount} carta${c.discard.amount > 1 ? 's' : ''}${color}`);
+  }
+  if (c.sacrifice && c.sacrifice.amount > 0) {
+    const what = c.sacrifice.target === 'own_artifact' ? 'artefacto' : c.sacrifice.target === 'own_creature' ? 'criatura' : 'permanente';
+    parts.push(`sacrificar ${c.sacrifice.amount} ${what}${c.sacrifice.amount > 1 ? 's' : ''}`);
+  }
+  if (c.exileFromGraveyard && c.exileFromGraveyard.amount > 0) {
+    parts.push(`exiliar ${c.exileFromGraveyard.amount} carta${c.exileFromGraveyard.amount > 1 ? 's' : ''} del cementerio`);
+  }
+  return parts.length ? parts.join(' + ') : '0';
+}
+
+export function combineManaCostStrings(...parts) {
+  return parts.filter(p => typeof p === 'string' && p.trim()).join('') || null;
 }

@@ -1,4 +1,5 @@
 import { hasKeyword, canBlock, predictDuel, getProtectionMatch } from './keywords.js';
+import { moveBattlefieldCardToZone } from './utils.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 
@@ -13,33 +14,61 @@ import {
   sendAurasToGraveyard,
   triggerCreatureDies,
   triggerAnyCreatureDeath,
-  resolveEffectDirect,
+  queueCreatureDeathBatch,
+  queueTriggeredAbility,
+  queueTriggeredAbilities,
   cleanupIfVehicle,
   checkPlaneswalkerDeaths,
   addCounters,
-  getRivalName
+  getRivalName,
+  waitForDiscardEffects
 } from './main.js';
 import { showDamageAssignmentModal } from './ui.js';
 
-// Habilidades Disparadas de combate ("cuando ataca", "cuando bloquea", "cuando le pega
-// al jugador"): la tercera pata que le faltaba al motor de disparadores. Misma
-// simplificación que el resto (resuelve directo, sin pasar por la pila).
+// Habilidades disparadas de combate: ahora se APILAN en vez de resolver durante la
+// declaración/daño. `triggerKey` se traduce a una etiqueta estable para Stack/logs.
 export function triggerCombatAbility(unit, triggerKey, isLocal) {
-  const trig = unit.card[triggerKey];
-  if (!trig) return;
-  resolveEffectDirect(trig, unit.card.name, isLocal);
+  const trig = unit?.card?.[triggerKey];
+  if (!trig) return null;
+  const triggerType = triggerKey === 'attackTrigger' ? 'attack'
+    : triggerKey === 'blockTrigger' ? 'block'
+    : triggerKey === 'combatDamageTrigger' ? 'combat_damage'
+    : triggerKey;
+  return queueTriggeredAbility({
+    effect: trig, sourceCard: unit.card, sourceItem: unit, isLocal, triggerType
+  });
 }
 
-// A diferencia de attackTrigger/blockTrigger (que viven en la criatura misma), este vive en
-// la zona de soporte — para Encantamientos/Artefactos que reaccionan a "atacaste con 1 o
-// más criaturas este combate" sin ser ellos mismos quienes atacan.
+// Encantamientos/Artefactos que reaccionan a que una criatura ataque. Snapshot + batch para
+// que todos los watchers del mismo evento entren juntos a la Stack.
 export function triggerAnyCreatureAttacks(isLocal) {
   const support = isLocal ? state.localSupport : state.rivalSupport;
-  support.forEach(s => {
-    if (s.card.anyCreatureAttacksTrigger) {
-      resolveEffectDirect(s.card.anyCreatureAttacksTrigger, s.card.name, isLocal);
+  return queueTriggeredAbilities(
+    support
+      .filter(s => s.card?.anyCreatureAttacksTrigger)
+      .map(s => ({
+        effect: s.card.anyCreatureAttacksTrigger, sourceCard: s.card, sourceItem: s, isLocal,
+        triggerType: 'any_creature_attacks'
+      }))
+  );
+}
+
+// Los blockTrigger deben dispararse al DECLARAR/confirmar bloqueadores, no al empezar el
+// daño. Marcamos cada bloqueador para que una ronda de prioridad/IA no los duplique.
+export function queueDeclaredBlockTriggers(defenders, defenderIsLocal) {
+  const entries = [];
+  defenders.forEach(unit => {
+    if (unit.blockingIndex === null || unit.blockingIndex === undefined) return;
+    if (unit.blockTriggerQueuedThisCombat) return;
+    unit.blockTriggerQueuedThisCombat = true;
+    if (unit.card?.blockTrigger) {
+      entries.push({
+        effect: unit.card.blockTrigger, sourceCard: unit.card, sourceItem: unit,
+        isLocal: defenderIsLocal, triggerType: 'block'
+      });
     }
   });
+  return queueTriggeredAbilities(entries);
 }
 
 // --- BLOQUEO INTELIGENTE DEL TANO ---
@@ -177,15 +206,30 @@ export function assignBotBlockers() {
   logMsg(`🛡️ El Tano ha asignado sus defensores.`);
 }
 
-export function executeLocalAttack() {
+// Conserva la información de "esta criatura fue bloqueada" aunque todos sus bloqueadores
+// abandonen el campo antes del daño. Con Trigger Stack esto dejó de ser un edge hipotético:
+// responder al blockTrigger destruyendo/rebotando al bloqueador no vuelve al atacante
+// mágicamente "no bloqueado". Sin Arrollar, sigue sin pegar al jugador.
+export function markDeclaredBlocks(attackers, defenders) {
+  (attackers || []).forEach((attacker, aIdx) => {
+    if (!attacker?.isAttacking) return;
+    if ((defenders || []).some(defender => defender?.blockingIndex == aIdx)) {
+      attacker.wasBlockedThisCombat = true;
+    }
+  });
+}
+
+function isUnitStillOnBattlefield(item) {
+  return state.localCombat.includes(item) || state.rivalCombat.includes(item);
+}
+
+export async function executeLocalAttack() {
   const attackers = state.localCombat.filter(c => c.isAttacking);
   state.localAttackersDeclaredThisTurn = attackers.length;
   
   if (attackers.length > 0) {
     attackers.forEach(a => {
-      if (!hasKeyword(a, 'vigilance')) {
-        a.tapped = true;
-      }
+      if (!hasKeyword(a, 'vigilance')) a.tapped = true;
       triggerCombatAbility(a, 'attackTrigger', true);
     });
     triggerAnyCreatureAttacks(true);
@@ -219,9 +263,13 @@ export function executeRivalAttack() {
     return; // Detenemos para que el jugador corrija
   }
 
+  markDeclaredBlocks(state.rivalCombat, state.localCombat);
+  queueDeclaredBlockTriggers(state.localCombat, true);
   logMsg(`🛡️ Confirmaste tus bloqueos.`);
   render();
-  passPriority('local'); // Avanzamos la fase
+  // Si hubo blockTrigger, queueTriggeredAbility reseteó consecutivePasses; este pase es
+  // NUEVO respecto de esa Stack y le entrega al atacante una ventana real de respuesta.
+  passPriority('local');
 }
 
 // --- GOLPE PRIMERO (First Strike) Y DAÑO DOBLE (Double Strike) ---
@@ -237,20 +285,47 @@ function dealsInRegularStep(item) {
   return !hasKeyword(item, 'firststrike') || hasKeyword(item, 'doublestrike');
 }
 
-// Nota: se ejecuta automáticamente en turnManager en el paso 'combat_damage'
+// Trigger Stack: si el daño de iniciativa genera habilidades disparadas, hay que abrir una
+// ventana de prioridad ANTES del daño regular. Conservamos el snapshot de pares en memoria
+// para que una criatura muerta en iniciativa no desplace índices y reasigne bloqueos al volver.
+let pendingCombatDamageContinuation = null;
+
+export function hasPendingCombatDamageContinuation() {
+  return !!pendingCombatDamageContinuation;
+}
+
+function finishCombatDamageStep(attackersArray, defendersArray) {
+  attackersArray.forEach(c => {
+    c.isAttacking = false;
+    c.wasBlockedThisCombat = false;
+    c.tookDeathtouch = false;
+    c.blockTriggerQueuedThisCombat = false;
+  });
+  defendersArray.forEach(c => {
+    c.blockingIndex = null;
+    c.tookDeathtouch = false;
+    c.blockTriggerQueuedThisCombat = false;
+  });
+  state.pendingBlockerIndex = null;
+}
+
+// Nota: se ejecuta automáticamente en turnManager en el paso 'combat_damage'. Si existe una
+// continuación pendiente, esta llamada es la segunda mitad (daño regular después de que la
+// Stack de iniciativa quedó vacía).
 export async function resolveCombatDamage() {
+  if (pendingCombatDamageContinuation) {
+    const { combatPairs, isLocalAttacking, attackersArray, defendersArray } = pendingCombatDamageContinuation;
+    pendingCombatDamageContinuation = null;
+    logMsg("⚔️ --- Paso de Daño Regular ---");
+    await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInRegularStep);
+    checkAllDeaths();
+    finishCombatDamageStep(attackersArray, defendersArray);
+    return;
+  }
+
   const isLocalAttacking = state.activePlayer === 'local';
   const attackersArray = isLocalAttacking ? state.localCombat : state.rivalCombat;
   const defendersArray = isLocalAttacking ? state.rivalCombat : state.localCombat;
-
-  // blockTrigger: se dispara una sola vez por bloqueadora, acá — sin importar por cuál de
-  // los 3 caminos se asignó el bloqueo (jugador local, o el Tano en sus 2 ramas), para
-  // cuando llega este paso los bloqueos ya están definidos y es el único lugar seguro.
-  defendersArray.forEach(d => {
-    if (d.blockingIndex !== null && d.blockingIndex !== undefined) {
-      triggerCombatAbility(d, 'blockTrigger', !isLocalAttacking);
-    }
-  });
 
   const combatPairs = attackersArray
     .filter(a => a.isAttacking)
@@ -259,15 +334,15 @@ export async function resolveCombatDamage() {
       blockers: defendersArray.filter(d => d.blockingIndex == attackersArray.indexOf(attacker))
     }));
 
-  if (combatPairs.length === 0) return;
+  if (combatPairs.length === 0) {
+    finishCombatDamageStep(attackersArray, defendersArray);
+    return;
+  }
 
-  // Fog (ej. "Que Pare Todo"): se previene TODO el daño de combate de este turno. Igual
-  // limpiamos las flags de atacante/bloqueador al final, como en cualquier otro combate.
+  // Fog: no hay daño; tampoco nacen combatDamageTrigger. Se limpian flags normalmente.
   if (state.combatDamagePrevented) {
     logMsg("🌫️ El daño de combate de este turno queda prevenido por completo.");
-    attackersArray.forEach(c => { c.isAttacking = false; c.tookDeathtouch = false; });
-    defendersArray.forEach(c => { c.blockingIndex = null; c.tookDeathtouch = false; });
-    state.pendingBlockerIndex = null;
+    finishCombatDamageStep(attackersArray, defendersArray);
     return;
   }
 
@@ -276,23 +351,25 @@ export async function resolveCombatDamage() {
   );
 
   if (hayIniciativa) {
+    const serialBefore = state.triggerStackSerial || 0;
     logMsg("⚡ --- Paso de Daño de Iniciativa (Golpe Primero) ---");
     await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInFirstStrikeStep);
+    checkAllDeaths();
 
-    checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-    checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
-
+    // Si iniciativa produjo combatDamage/dies/anyDies/etc., no seguimos de largo: esas
+    // habilidades quedan en Stack y ambos jugadores pueden responder. Cuando la pila quede
+    // vacía y vuelvan a pasar, turnManager reingresa acá para ejecutar el daño regular.
+    if ((state.triggerStackSerial || 0) > serialBefore) {
+      pendingCombatDamageContinuation = { combatPairs, isLocalAttacking, attackersArray, defendersArray };
+      logMsg("⏸️ El daño regular espera: hay habilidades disparadas de iniciativa en la pila.");
+      return;
+    }
     logMsg("⚔️ --- Paso de Daño Regular ---");
   }
 
   await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInRegularStep);
-
-  checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-  checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
-
-  attackersArray.forEach(c => { c.isAttacking = false; c.tookDeathtouch = false; });
-  defendersArray.forEach(c => { c.blockingIndex = null; c.tookDeathtouch = false; });
-  state.pendingBlockerIndex = null;
+  checkAllDeaths();
+  finishCombatDamageStep(attackersArray, defendersArray);
 }
 
 // Infectar (regla real 702.90): una criatura con Infectar hace TODO su daño de combate de
@@ -325,7 +402,10 @@ function dealCombatDamageToPlayer(source, isTargetLocal, amount) {
 
 async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
   for (const { attacker, blockers } of combatPairs) {
-    if (isCreatureDead(attacker)) continue;
+    // Entre Iniciativa y daño regular ahora puede resolverse una Stack completa. Una
+    // criatura destruida/rebotada/exiliada durante esa ventana no puede seguir pegando
+    // desde una referencia JS vieja guardada en combatPairs.
+    if (!isUnitStillOnBattlefield(attacker) || isCreatureDead(attacker)) continue;
 
     const attackerDealsThisStep = stepFilter(attacker);
     const attackerPower = getEffectivePower(attacker);
@@ -333,7 +413,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
     const attackerHasDeathtouch = hasKeyword(attacker, 'deathtouch');
     const attackerHasTrample = hasKeyword(attacker, 'trample');
 
-    const aliveBlockers = blockers.filter(b => !isCreatureDead(b));
+    const aliveBlockers = blockers.filter(b => isUnitStillOnBattlefield(b) && !isCreatureDead(b));
 
     aliveBlockers.forEach(blocker => {
       if (!stepFilter(blocker)) return; 
@@ -378,7 +458,9 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
     // manual, o arrollar automático) — evitar repetir el disparo en cada rama por separado.
     let damageToPlayerThisStep = 0;
 
-    if (blockers.length === 0) {
+    const wasBlocked = !!attacker.wasBlockedThisCombat || blockers.length > 0;
+
+    if (!wasBlocked) {
       if (attacker.attackTarget) {
         // Redirigido a un Planeswalker: el daño le resta Lealtad directo, nunca golpea al
         // jugador, y NO cuenta como "daño de combate al jugador" (no dispara
@@ -407,7 +489,9 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       }
       if (attackerPower > 0) logMsg(`💥 ${attacker.card.name} conectó el golpe! Hizo ${attackerPower} de daño.`);
       damageToPlayerThisStep += attackerPower;
-      if (damageToPlayerThisStep > 0) triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
+      if (damageToPlayerThisStep > 0) {
+        triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
+      }
       continue;
     }
 
@@ -434,7 +518,9 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       } else {
         logMsg(`🛡️ ${attacker.card.name} sigue "bloqueado" (sus defensores cayeron en Iniciativa) y sin Arrollar no conecta nada.`);
       }
-      if (damageToPlayerThisStep > 0) triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
+      if (damageToPlayerThisStep > 0) {
+        triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
+      }
       continue;
     }
 
@@ -537,7 +623,9 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       }
     }
 
-    if (damageToPlayerThisStep > 0) triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
+    if (damageToPlayerThisStep > 0) {
+      triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
+    }
 
     if (attackerHasLifelink && attackerLifelinkHeal > 0) {
       if (isLocalAttacking) {
@@ -554,55 +642,64 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
   }
 }
 
+function unitDiesToStateBasedDamage(unit) {
+  const dmg = unit.damageTaken || 0;
+  const toughness = getEffectiveToughness(unit);
+  const indestructible = hasKeyword(unit, 'indestructible');
+  const diesToZeroToughness = toughness <= 0;
+  const diesToLethalDamage = !indestructible && toughness > 0 && dmg >= toughness;
+  const diesToDeathtouch = !indestructible && unit.tookDeathtouch && dmg > 0;
+  return diesToZeroToughness || diesToLethalDamage || diesToDeathtouch;
+}
+
+function removeDeadCombatUnit(unit, isLocal) {
+  const combatArray = isLocal ? state.localCombat : state.rivalCombat;
+  const graveyardArray = isLocal ? state.localGraveyard : state.rivalGraveyard;
+  const ownerName = isLocal ? 'Vos' : getRivalName();
+  const idx = combatArray.indexOf(unit);
+  if (idx === -1) return false;
+
+  logMsg(unit.card.isToken
+    ? `💀 ${unit.card.name} de ${ownerName} murió; al ser ficha, deja de existir.`
+    : `💀 ${unit.card.name} de ${ownerName} murió y va al cementerio.`);
+  combatArray.splice(idx, 1);
+  moveBattlefieldCardToZone(unit.card, graveyardArray);
+  sendAurasToGraveyard(unit, isLocal);
+  cleanupIfVehicle(unit);
+  detachEquipmentFrom(unit, isLocal);
+  return true;
+}
+
+// Trigger Stack: las acciones basadas en estado posteriores a un mismo bloque de daño se
+// aplican simultáneamente a AMBOS lados. Primero fotografiamos todos los watchers, luego
+// retiramos todos los muertos y recién después apilamos el lote completo de disparos.
+export function checkAllDeaths() {
+  const watchersSnapshot = [
+    ...state.localCombat.map(unit => ({ unit, isLocal: true })),
+    ...state.rivalCombat.map(unit => ({ unit, isLocal: false }))
+  ];
+  const doomed = [
+    ...state.localCombat.filter(unitDiesToStateBasedDamage).map(unit => ({ unit, isLocal: true })),
+    ...state.rivalCombat.filter(unitDiesToStateBasedDamage).map(unit => ({ unit, isLocal: false }))
+  ];
+  if (doomed.length === 0) return [];
+
+  const removed = doomed.filter(({ unit, isLocal }) => removeDeadCombatUnit(unit, isLocal));
+  queueCreatureDeathBatch(removed, watchersSnapshot);
+  return removed.map(entry => entry.unit);
+}
+
+// API histórica para chequeos puntuales de una sola zona. El runtime nuevo usa
+// checkAllDeaths() cuando ambas mitades pueden morir por el mismo evento; conservamos este
+// wrapper para caminos/fixtures antiguos que verdaderamente inspeccionan una sola zona.
 export function checkDeaths(combatArray, graveyardArray, ownerName) {
-  const isLocal = ownerName === "Vos";
-
-  for (let i = combatArray.length - 1; i >= 0; i--) {
-    let unit = combatArray[i];
-    let dmg = unit.damageTaken || 0;
-    const toughness = getEffectiveToughness(unit);
-    const indestructible = hasKeyword(unit, 'indestructible');
-
-    // Indestructible previene morir por daño letal o por deathtouch (son "destrucción"),
-    // pero NO previene morir si la resistencia efectiva queda en 0 o menos (eso no es
-    // "destruir", es una regla aparte que ni Indestructible esquiva en MTG real).
-    const diesToZeroToughness = toughness <= 0;
-    const diesToLethalDamage = !indestructible && toughness > 0 && dmg >= toughness;
-    const diesToDeathtouch = !indestructible && unit.tookDeathtouch && dmg > 0;
-
-    if (diesToZeroToughness || diesToLethalDamage || diesToDeathtouch) {
-      logMsg(`💀 ${unit.card.name} de ${ownerName} murió y va al cementerio.`);
-      graveyardArray.push(unit.card);
-
-      // Auras (y contadores +1/+1, que hoy viven en el mismo array): se van al cementerio
-      // junto con la criatura. Misma función que usan el resto de los caminos de salida
-      // del campo (rebote, sacrificio, removal, arrase) para no volver a duplicar esto.
-      sendAurasToGraveyard(unit, isLocal);
-      cleanupIfVehicle(unit); // si era un Vehículo tripulado, saca el power/toughness "prestado"
-
-      // Equipamiento: a diferencia de las Auras, NO va al cementerio con la criatura.
-      // Ya vive como su propio permanente en la zona de soporte — solo hay que
-      // desprenderlo (attachedTo = null), se queda listo para volver a equiparse.
-      detachEquipmentFrom(unit, isLocal);
-
-      // Habilidad Disparada: "Siempre que una criatura que controla tu oponente muera..."
-      // (ej. Milonga de Medianoche). Buscamos ese gatillo en la mesa del RIVAL de quien
-      // acaba de perder la criatura, porque desde su perspectiva vos sos "el oponente".
-      const opponentSupport = isLocal ? state.rivalSupport : state.localSupport;
-      opponentSupport.forEach(item => {
-        const trig = item.card.opponentDeathTrigger;
-        if (!trig || trig.type !== 'drain') return;
-        if (isLocal) { state.localHP -= trig.amount; state.rivalHP += trig.amount; }
-        else { state.rivalHP -= trig.amount; state.localHP += trig.amount; }
-        logMsg(`🩸 ¡${item.card.name}! Drena ${trig.amount} de vida por la muerte de ${unit.card.name}.`);
-      });
-
-      // Habilidad Disparada de la propia criatura: "Cuando esta criatura muera..."
-      triggerCreatureDies(unit, isLocal);
-      // Habilidad Disparada estilo Blood Artist: "Cuando CUALQUIER criatura muera..."
-      triggerAnyCreatureDeath(unit, isLocal);
-
-      combatArray.splice(i, 1);
-    }
-  }
+  const isLocal = combatArray === state.localCombat || ownerName === 'Vos';
+  const watchersSnapshot = [
+    ...state.localCombat.map(unit => ({ unit, isLocal: true })),
+    ...state.rivalCombat.map(unit => ({ unit, isLocal: false }))
+  ];
+  const doomed = combatArray.filter(unitDiesToStateBasedDamage).map(unit => ({ unit, isLocal }));
+  const removed = doomed.filter(({ unit, isLocal: ownerIsLocal }) => removeDeadCombatUnit(unit, ownerIsLocal));
+  queueCreatureDeathBatch(removed, watchersSnapshot);
+  return removed.map(entry => entry.unit);
 }

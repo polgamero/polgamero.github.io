@@ -26,11 +26,9 @@ export const SHARED_FIELDS = [
   'activeEffects', 'scheduledReturns',
   // Mecanismo GENERAL de decisión remota — ver main.js, requestRivalDecision/
   // handleIncomingDecisionRequest. Excepción DELIBERADA a la regla de abajo (ningún otro
-  // pending* viaja): a diferencia de un pendingCrew o un pendingXChoice (que son estado de
-  // interacción 100% local, de quien está resolviendo su propia jugada), estos dos
-  // son, por diseño, el CANAL DE COMUNICACIÓN en sí entre los dos clientes — sin que
-  // viajen por Firestore, no hay forma de que el rival se entere de que hay algo que
-  // decidir, ni de que a mí me llegue su respuesta.
+  // pending* viaja): estos dos son el BUZÓN de red entre clientes. ETAPA MOTOR 3 mantiene
+  // una cola LOCAL delante de este buzón, de modo que Firestore sigue transportando sólo
+  // una pregunta/respuesta a la vez sin perder triggers simultáneos ni cambiar el schema.
   'pendingDecision', 'decisionResponse'
 ];
 

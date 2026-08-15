@@ -1,9 +1,9 @@
-import { addToStack, spellStack } from './stackManager.js';
+import { addToStack, spellStack, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showEscapeExileModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showCounterTaxDecisionModal } from './ui.js';
-import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle } from './utils.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal } from './ui.js';
+import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
 import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId } from './firebaseClient.js';
@@ -29,6 +29,9 @@ export const state = {
   activePlayer: 'local',    // 'local' o 'rival'
   priorityPlayer: 'local',  // 'local' o 'rival'
   consecutivePasses: 0,
+  // Entrega 20 / Trigger Stack: serial local monotónico para detectar si un evento
+  // automático generó habilidades disparadas que abren una ventana de prioridad.
+  triggerStackSerial: 0,
   
   // Fases: 'untap', 'upkeep', 'draw', 'main1', 
   // 'combat_begin', 'combat_attackers', 'combat_blockers', 'combat_damage', 'combat_end',
@@ -104,6 +107,9 @@ export const state = {
   tappedLandsThisSpell: [],
   pendingTargetCard: null,
   pendingAbilitySource: null,
+  // Punto 11: mientras se elige entre dos o más habilidades activadas del mismo permanente
+  // (incluidas las prestadas por Equipos), bloqueamos otros clicks para no iniciar dos pagos.
+  pendingActivatedAbilityChoice: null,
   
   pendingBlockerIndex: null,
   
@@ -145,7 +151,14 @@ export const state = {
   pendingCounterUnlessPay: null,
   // Costo híbrido elegido (maná reducido + vida, ej. "{1} y 1 de vida" en vez del costo
   // completo): cuánta vida falta cobrar cuando termine de pagarse el maná reducido.
-  pendingHybridLifePayment: null,
+  pendingHybridLifePayment: null, // legacy: se conserva por compatibilidad de estado; Punto 14 usa pendingAlternativeCostChosen.
+  // Punto 14: costo alternativo compuesto elegido para el hechizo actualmente en pago.
+  pendingAlternativeCostChosen: false,
+  // True mientras se están seleccionando/preparando componentes no-maná de un costo de casteo.
+  pendingCompositeCostPayment: false,
+  // Una vez que vida/descarte/sacrificio/exilio se comprometieron, cancelar ya no puede
+  // devolver sólo el maná dejando esos otros costos perdidos.
+  pendingSpellCostsIrreversible: false,
   // Pelear (fight) desde un hechizo: ya elegiste a la criatura rival, ahora esperamos que
   // elijas CUÁL de las tuyas pelea — { opponentItem, opponentIndex }.
   pendingFightChoice: null,
@@ -171,6 +184,33 @@ export const state = {
   // Proliferar: true mientras el modal de selección de permanentes está abierto — mismo
   // criterio de pausa que Scry/Surveil (bloquea el resto del juego hasta que se confirme).
   pendingProliferateChoice: false,
+  // Punto 4: Loot/Rummage. Mientras el jugador elige qué carta(s) de SU mano descartar,
+  // este objeto mantiene bloqueadas las demás acciones. Es completamente distinto de
+  // `isDiscarding`, que pertenece al descarte obligatorio de Cleanup y al terminar avanza
+  // el turno. Acá sólo termina un efecto que está resolviéndose.
+  pendingHandFilterChoice: null,
+  // Punto 8: descarte elegido general (efectos de "descarta N" y costos adicionales).
+  // Separado de Loot/Rummage para que un costo de casteo nunca pueda confundirse con un
+  // filtro de mano que roba cartas. `resolvingDiscardEffects` cubre también las elecciones
+  // encoladas y bloquea prioridad hasta que toda la instrucción terminó.
+  pendingDiscardChoice: null,
+  resolvingDiscardEffects: 0,
+  // Punto 5: selección obligatoria de permanentes al resolver un efecto \"sacrifice\".
+  pendingSacrificeEffectChoice: null,
+  resolvingSacrificeEffects: 0,
+  // Punto 6: selector general de Cementerio. Mantiene bloqueada la UI mientras el jugador
+  // elige cartas de un cementerio público. `resolvingGraveyardChoices` también cubre selecciones
+  // encoladas para que dos triggers no abran modales superpuestos.
+  pendingGraveyardChoice: null,
+  resolvingGraveyardChoices: 0,
+  // Punto 7: target de un ETB que nació DURANTE una resolución (hoy, al reanimar). A
+  // diferencia de pendingTargetCard normal, acá no hay una carta esperando entrar a la
+  // pila: la criatura ya entró y su trigger necesita declarar un objetivo antes de resolver.
+  pendingResolvedEffectTargetChoice: null,
+  resolvingResolvedEffectTargetChoices: 0,
+  // Cantidad de efectos Loot/Rummage activos o encolados. Evita una ventana de prioridad
+  // entre dos filtros de mano disparados por el mismo evento. Nunca viaja por Firestore.
+  resolvingCardFilterEffects: 0,
   // Escape: { card, exileCount } mientras se elige qué N cartas del cementerio se exilian
   // como costo adicional — se resuelve DESPUÉS del maná, antes de que la carta termine de
   // entrar a la pila (mismo momento que cualquier otro costo adicional).
@@ -192,6 +232,9 @@ export const state = {
   // elegir color de tierra (ramp) está esperando tu click, para bloquear otras acciones
   // mientras tanto (ver canPlayCard y el cálculo de btnEndTurn.disabled).
   pendingRampChoice: false,
+  // Punto 3: profundidad local de una secuencia de triggers por casteo. NO se sincroniza
+  // por Firestore; sólo evita que un modal interno entregue prioridad antes de que terminen
+  // todos los watchers Spellslinger del mismo hechizo.
 
   // Mecanismo GENERAL de decisión remota (contrarrestar-a-menos-que-pagues fue el primer
   // caso, pero está pensado para cualquier futura decisión que le pertenezca al RIVAL en
@@ -688,39 +731,38 @@ export async function publishMatchState() {
   }
 }
 
-// FASE 4, ETAPA 3: se suscribe al documento público de la partida — cada vez que cambia
-// (el rival publicó algo, o el eco de mi propia escritura de la Etapa 2), traduce SU mitad
-// y lo compartido a la forma del motor (extractRivalStateFromPublicDoc/
-// extractSharedStateFromPublicDoc, matchSync.js) y lo aplica sobre `state`, re-renderizando.
-// Devuelve la función de unsubscribe — apagar la escucha (salir de la partida, terminar el
-// juego) es responsabilidad de quien la llamó, no de esta función.
-// Vive FUERA de `state` a propósito — nunca se debe publicar una referencia a función a
-// Firestore. Guarda {requestId, resolve} de la Promise que requestRivalDecision está
-// esperando en este momento (a lo sumo una a la vez — la pila resuelve una cosa por vez).
-let pendingDecisionResolver = null;
+// FASE 4, ETAPA 3 + ETAPA MOTOR 3: el documento público conserva UN solo buzón de
+// decisión (`pendingDecision`/`decisionResponse`), pero ya no asumimos que el motor genera
+// "a lo sumo una" pregunta. Los triggers directos son síncronos y pueden disparar varias
+// decisiones remotas en el mismo evento; por eso una cola LOCAL serializa las preguntas y
+// publica exactamente una por vez. Las Promises se correlacionan por requestId y una
+// respuesta vieja/ajena nunca puede resolver otra petición.
+//
+// Vive fuera de `state` a propósito: la cola contiene resolvers de Promise (funciones), que
+// jamás deben viajar por Firestore. `state.awaitingRivalDecision`, en cambio, sí refleja si
+// queda al menos una decisión activa/encolada y bloquea acciones locales hasta vaciarla.
+const remoteDecisionQueue = createRemoteDecisionQueue({
+  onActivate: (request) => {
+    state.awaitingRivalDecision = true;
+    state.pendingDecision = request;
+    state.decisionResponse = null;
+    render(); // publica YA la siguiente pregunta; no espera a otro tick/render incidental
+  },
+  onIdle: () => {
+    state.pendingDecision = null;
+    state.decisionResponse = null;
+    state.awaitingRivalDecision = false;
+    render(); // limpia el buzón público al terminar TODA la cola
+  }
+});
 
-// MECANISMO GENERAL DE DECISIÓN REMOTA — pensado para reusarse en cualquier decisión futura
-// que le pertenezca al RIVAL durante una partida multiplayer (contrarrestar-a-menos-que-
-// pagues es el primer caso, pero el mismo canal sirve para lo que venga después: Ward,
-// elegir un modo, lo que sea). Se llama desde MI cliente cuando necesito preguntarle algo
-// al rival — publica la pregunta, se queda esperando (awaitingRivalDecision:true bloquea
-// mis propias otras acciones mientras tanto), y se resuelve solo cuando su respuesta llega
-// por sync (ver el listener en startListeningToMatch, más arriba).
-export async function requestRivalDecision(type, forRole, data) {
+// MECANISMO GENERAL DE DECISIÓN REMOTA — cada llamada obtiene su propia Promise, pero si ya
+// hay otra pregunta en vuelo queda encolada sin tocar el buzón publicado. Esto permite que
+// múltiples `discard` de gatillos simultáneos se resuelvan realmente uno detrás de otro en
+// la mano privada del rival, sin sobrescribir resolvers ni perder respuestas.
+export function requestRivalDecision(type, forRole, data) {
   const requestId = `dec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  state.awaitingRivalDecision = true;
-  state.pendingDecision = { type, forRole, requestId, ...data };
-  state.decisionResponse = null; // limpio cualquier respuesta vieja de una pregunta anterior
-  render(); // publica YA (render() llama a publishMatchState) — no esperamos al próximo tick
-
-  const response = await new Promise(resolve => {
-    pendingDecisionResolver = { requestId, resolve };
-  });
-
-  state.pendingDecision = null;
-  state.awaitingRivalDecision = false;
-  render();
-  return response;
+  return remoteDecisionQueue.enqueue({ type, forRole, requestId, ...data });
 }
 
 // BUGFIX (post-lanzamiento, Etapa 5 revisada): antes, un efecto que obligaba al RIVAL a
@@ -732,9 +774,446 @@ export async function requestRivalDecision(type, forRole, data) {
 // resultado por el sync normal de siempre (Graveyard es un campo público), así que del otro
 // lado el nombre de la carta descartada aparece de verdad, no un placeholder.
 export async function resolveForcedDiscardOnRival(amount, cardName) {
+  // Compatibilidad con mensajes/tests viejos: este canal conserva la semántica RANDOM del
+  // hotfix histórico. El descarte normal del Punto 8 usa `self_discard` y, por default, lo
+  // ELIGE el jugador afectado.
   const rivalRole = otherRole(state.currentMatch.myRole);
   const response = await requestRivalDecision('forced_discard', rivalRole, { amount, cardName });
   return response.discardedNames || [];
+}
+
+// PUNTO 8 PRE-500 — DESCARTE ELEGIDO / SELF-DISCARD INTERACTIVO.
+// Una sola infraestructura decide y MUEVE cartas desde una mano a su cementerio. El default
+// de `discard` pasa a ser la regla natural del juego: el JUGADOR AFECTADO elige qué descarta.
+// Para cartas futuras que digan expresamente "al azar", el JSON puede usar
+//   { "type":"discard", "amount":1, "selection":"random" }.
+//
+// En multiplayer la mano rival sigue siendo privada: este cliente nunca ve sus cartas; le
+// manda `self_discard` al dueño real, que hace la elección sobre SU mano y sólo devuelve los
+// nombres ya públicos por haber ido al cementerio.
+let discardChoiceChain = Promise.resolve();
+
+function chooseRandomDiscardEntries(entries, count) {
+  const pool = [...entries];
+  const chosen = [];
+  while (chosen.length < count && pool.length > 0) {
+    const idx = Math.floor(Math.random() * pool.length);
+    chosen.push(pool.splice(idx, 1)[0]);
+  }
+  return chosen;
+}
+
+function chooseBotDiscardEntries(entries, count) {
+  if (state.botDifficulty === 'easy') return chooseRandomDiscardEntries(entries, count);
+
+  // En Difícil el Tano intenta perder las cartas menos valiosas. Es deliberadamente simple:
+  // tierras sobrantes primero; después CMC bajo. No pretende "leer" sinergias del mazo.
+  const landsInPlay = state.rivalLands.length;
+  const score = entry => {
+    const card = entry.card || {};
+    const isLand = !!(card.type && card.type.includes('Tierra'));
+    if (isLand && landsInPlay >= 4) return -10;
+    const body = card.power !== undefined ? (Number(card.power || 0) + Number(card.toughness || 0)) * 0.15 : 0;
+    return Number(card.cmc || 0) + body;
+  };
+  return [...entries].sort((a, b) => score(a) - score(b) || a.index - b.index).slice(0, count);
+}
+
+async function discardCardsFromHandNow(options) {
+  options = options || {};
+  const victimIsLocal = options.victimIsLocal !== false;
+  const parsedAmount = Number(options.amount ?? 1);
+  const amount = Number.isFinite(parsedAmount) ? Math.max(0, Math.floor(parsedAmount)) : 1;
+  const selection = options.selection === 'random' ? 'random' : 'choice';
+  const cardName = options.cardName || 'Efecto';
+  const reason = options.reason || 'effect';
+  const requireExact = !!options.requireExact;
+  const excludeCard = options.excludeCard || null;
+
+  if (amount <= 0) return { completed: true, discardedCards: [], discardedNames: [] };
+
+  // Mano rival oculta en multiplayer: la elección/movimiento ocurre enteramente del otro lado.
+  if (state.currentMatch && !victimIsLocal) {
+    const response = await requestRivalDecision('self_discard', otherRole(state.currentMatch.myRole), {
+      amount, selection, cardName, reason, requireExact
+    });
+    return {
+      completed: response.completed !== false,
+      discardedCards: [],
+      discardedNames: response.discardedNames || []
+    };
+  }
+
+  const hand = victimIsLocal ? state.localHand : state.rivalHand;
+  const graveyard = victimIsLocal ? state.localGraveyard : state.rivalGraveyard;
+  const entries = hand
+    .map((card, index) => ({ card, index }))
+    .filter(entry => entry.card && entry.card !== excludeCard);
+
+  if (requireExact && entries.length < amount) {
+    return { completed: false, discardedCards: [], discardedNames: [] };
+  }
+
+  const count = Math.min(amount, entries.length);
+  if (count <= 0) return { completed: !requireExact, discardedCards: [], discardedNames: [] };
+
+  let chosenEntries;
+  if (selection === 'random') {
+    chosenEntries = chooseRandomDiscardEntries(entries, count);
+  } else if (victimIsLocal) {
+    state.pendingDiscardChoice = { cardName, amount: count, reason, selection };
+    render();
+    try {
+      const snapshot = entries.map(entry => entry.card);
+      const actionLabel = reason === 'additional_cost'
+        ? `Costo adicional: elegí ${count} carta${count > 1 ? 's' : ''} para descartar`
+        : `Elegí ${count} carta${count > 1 ? 's' : ''} para descartar`;
+      const selectedSnapshotIndexes = await new Promise(resolve =>
+        showHandDiscardChoiceModal(snapshot, count, cardName, actionLabel, resolve)
+      );
+      chosenEntries = [...new Set(selectedSnapshotIndexes)]
+        .filter(i => Number.isInteger(i) && i >= 0 && i < entries.length)
+        .map(i => entries[i])
+        .slice(0, count);
+    } finally {
+      state.pendingDiscardChoice = null;
+      render();
+    }
+  } else {
+    chosenEntries = chooseBotDiscardEntries(entries, count);
+  }
+
+  // Defensa de costo: el modal normal sólo habilita Confirmar cuando hay exactamente N,
+  // pero si algún callback externo/malformado devolviera menos slots NO consumimos una parte
+  // de un costo obligatorio. Un efecto normal sí puede descartar hasta lo disponible.
+  if (requireExact && chosenEntries.length !== amount) {
+    return { completed: false, discardedCards: [], discardedNames: [] };
+  }
+
+  // Los slots elegidos pertenecen al snapshot original: sacamos de mayor a menor para no
+  // desplazar índices. Volvemos a ordenar al final sólo para que logs/tests sean estables.
+  const removed = [];
+  [...chosenEntries]
+    .sort((a, b) => b.index - a.index)
+    .forEach(entry => {
+      const currentIndex = hand.indexOf(entry.card);
+      if (currentIndex === -1 || entry.card === excludeCard) return;
+      const card = hand.splice(currentIndex, 1)[0];
+      removed.push({ card, originalIndex: entry.index });
+    });
+  // El splice debe ir de mayor a menor, pero el Cementerio recibe las cartas en el orden
+  // estable de los slots originales. Así un descarte múltiple no invierte accidentalmente
+  // el array y las mecánicas que miran "lo más reciente" conservan un orden determinista.
+  removed.sort((a, b) => a.originalIndex - b.originalIndex);
+  const discardedCards = removed.map(entry => entry.card);
+  graveyard.push(...discardedCards);
+  return { completed: !requireExact || discardedCards.length === amount, discardedCards, discardedNames: discardedCards.map(c => c.name) };
+}
+
+export function discardCardsFromHand(options) {
+  state.resolvingDiscardEffects = (state.resolvingDiscardEffects || 0) + 1;
+  render();
+  const run = discardChoiceChain.then(() => discardCardsFromHandNow(options), () => discardCardsFromHandNow(options));
+  discardChoiceChain = run.catch(() => {});
+  return run.finally(() => {
+    state.resolvingDiscardEffects = Math.max(0, (state.resolvingDiscardEffects || 1) - 1);
+    if (state.resolvingDiscardEffects === 0) render();
+  });
+}
+
+// Punto 8: frontera reutilizable para rutas históricas de triggers directos que no esperan
+// el Promise devuelto por resolveEffectDirect(). El contador se incrementa SINCRÓNICAMENTE
+// al encolar el descarte, así que esperar acá garantiza que no se entregue prioridad ni se
+// avance una fase mientras el jugador todavía está eligiendo cartas de su mano.
+export async function waitForDiscardEffects() {
+  while (state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0) {
+    await sleep(20);
+  }
+}
+
+// PUNTO 14 — COSTOS COMPUESTOS DE CASTEO.
+// `alternativeCost` reemplaza SOLO el costo base de maná. Kicker y `additionalCost` siguen
+// sumándose. Los componentes no-maná se PREPARAN todos antes de mover una sola carta/permanente:
+// si falta algún recurso, no se cobra vida, no se descarta, no se sacrifica ni se exilia nada.
+export function getCastCompositeCostBundle(card, useAlternative = false) {
+  const alternative = useAlternative ? normalizeCompositeCost(card?.alternativeCost) : null;
+  const additional = normalizeCompositeCost(card?.additionalCost);
+  return {
+    alternative,
+    additional,
+    life: (alternative?.life || 0) + (additional?.life || 0),
+    discards: [alternative?.discard, additional?.discard].filter(c => c && c.amount > 0),
+    sacrifices: [alternative?.sacrifice, additional?.sacrifice].filter(c => c && c.amount > 0),
+    graveyardExiles: [alternative?.exileFromGraveyard, additional?.exileFromGraveyard].filter(c => c && c.amount > 0)
+  };
+}
+
+export function getCastingManaCostString(card, options = {}) {
+  const useAlternative = !!options.useAlternative;
+  const kicked = !!options.kicked;
+  const baseOverride = options.baseOverride ?? null;
+  const alt = useAlternative ? normalizeCompositeCost(card?.alternativeCost) : null;
+  const add = normalizeCompositeCost(card?.additionalCost);
+  const base = useAlternative ? (alt?.manaCost || null) : (baseOverride ?? card?.manaCost ?? null);
+  const kicker = kicked ? card?.kicker?.cost : null;
+  return combineManaCostStrings(base, kicker, add?.manaCost || null);
+}
+
+function canAssignDistinctResources(resources, requirements, matches) {
+  if (requirements.length === 0) return true;
+  if (resources.length < requirements.length) return false;
+  const ordered = requirements
+    .map((req, idx) => ({ req, idx, options: resources.map((r, i) => matches(r, req) ? i : -1).filter(i => i >= 0) }))
+    .sort((a, b) => a.options.length - b.options.length);
+  if (ordered.some(x => x.options.length === 0)) return false;
+  const used = new Set();
+  const walk = pos => {
+    if (pos >= ordered.length) return true;
+    for (const i of ordered[pos].options) {
+      if (used.has(i)) continue;
+      used.add(i);
+      if (walk(pos + 1)) return true;
+      used.delete(i);
+    }
+    return false;
+  };
+  return walk(0);
+}
+
+function expandCostRequirements(specs) {
+  return specs.flatMap(spec => Array.from({ length: Math.max(0, spec.amount || 0) }, () => spec));
+}
+
+export function canPayCastCompositeNonManaCosts(card, isLocal, useAlternative = false, options = {}) {
+  const bundle = getCastCompositeCostBundle(card, useAlternative);
+  const hp = isLocal ? state.localHP : state.rivalHP;
+  const lifeFloor = Math.max(0, Number(options.lifeFloor) || 0);
+  if (bundle.life > 0 && hp - bundle.life < lifeFloor) return false;
+
+  const hand = isLocal ? state.localHand : state.rivalHand;
+  const excludeCard = options.excludeCard || null;
+  const handResources = hand.filter(c => c && c !== excludeCard);
+  const discardReqs = expandCostRequirements(bundle.discards);
+  if (!canAssignDistinctResources(handResources, discardReqs, (c, req) => cardMatchesDiscardCost(c, req))) return false;
+
+  const combat = isLocal ? state.localCombat : state.rivalCombat;
+  const support = isLocal ? state.localSupport : state.rivalSupport;
+  const lands = isLocal ? state.localLands : state.rivalLands;
+  const battlefield = [...combat, ...support, ...lands];
+  const sacrificeReqs = expandCostRequirements(bundle.sacrifices);
+  if (!canAssignDistinctResources(battlefield, sacrificeReqs, (item, req) => {
+    const t = req.target === 'own_artifact' ? 'artifact' : req.target === 'own_creature' ? 'creature' : null;
+    return !!t && isSacrificeCandidate(item, t);
+  })) return false;
+
+  const graveyard = isLocal ? state.localGraveyard : state.rivalGraveyard;
+  const graveReqs = expandCostRequirements(bundle.graveyardExiles);
+  if (!canAssignDistinctResources(graveyard, graveReqs, (c, req) => cardMatchesGraveyardFilter(c, req.filter || 'any'))) return false;
+  return true;
+}
+
+function chooseHandCardsForCompositeCost(isLocal, spec, card, excludeCards = []) {
+  const hand = isLocal ? state.localHand : state.rivalHand;
+  const excluded = new Set(excludeCards.filter(Boolean));
+  const entries = hand.map((c, index) => ({ card: c, index }))
+    .filter(e => !excluded.has(e.card) && cardMatchesDiscardCost(e.card, spec));
+  const count = Math.max(0, spec.amount || 0);
+  if (entries.length < count) return Promise.resolve(null);
+  if (count === 0) return Promise.resolve([]);
+  if (entries.length === count) return Promise.resolve(entries.map(e => e.card));
+
+  if (!isLocal) {
+    const chosen = spec.selection === 'random'
+      ? chooseRandomDiscardEntries(entries, count)
+      : chooseBotDiscardEntries(entries, count);
+    return Promise.resolve(chosen.map(e => e.card));
+  }
+
+  if (spec.selection === 'random') {
+    return Promise.resolve(chooseRandomDiscardEntries(entries, count).map(e => e.card));
+  }
+
+  const snapshot = entries.map(e => e.card);
+  const colorNames = { W:'blanca', U:'azul', B:'negra', R:'roja', G:'verde' };
+  const colorText = spec.color ? ` ${colorNames[spec.color] || spec.color}` : '';
+  state.pendingDiscardChoice = { cardName: card.name, amount: count, reason: 'cast_cost', selection: 'choice' };
+  render();
+  return new Promise(resolve => {
+    showHandDiscardChoiceModal(snapshot, count, card.name,
+      `Costo de ${card.name}: elegí ${count} carta${count > 1 ? 's' : ''}${colorText} para descartar`, indexes => {
+        state.pendingDiscardChoice = null;
+        render();
+        const chosen = [...new Set(indexes)]
+          .filter(i => Number.isInteger(i) && i >= 0 && i < snapshot.length)
+          .map(i => snapshot[i])
+          .slice(0, count);
+        resolve(chosen.length === count ? chosen : null);
+      });
+  });
+}
+
+function chooseSacrificeItemsForCompositeCost(isLocal, spec, card, excludeItems = []) {
+  const permanentType = spec.target === 'own_artifact' ? 'artifact' : spec.target === 'own_creature' ? 'creature' : null;
+  if (!permanentType) return Promise.resolve(null);
+  const excluded = new Set(excludeItems.filter(Boolean));
+  const candidates = getSacrificeEffectCandidates(isLocal, permanentType).filter(item => !excluded.has(item));
+  const count = Math.max(0, spec.amount || 0);
+  if (candidates.length < count) return Promise.resolve(null);
+  if (count === 0) return Promise.resolve([]);
+  if (candidates.length === count) return Promise.resolve([...candidates]);
+
+  if (!isLocal) {
+    const value = item => Number(item.card?.cmc || 0) + Number(item.card?.power || 0) * .2 + Number(item.card?.toughness || 0) * .2;
+    return Promise.resolve([...candidates].sort((a,b) => value(a)-value(b)).slice(0,count));
+  }
+
+  state.pendingSacrificeEffectChoice = { permanentType, amount: count, cardName: card.name, reason: 'cast_cost' };
+  render();
+  return new Promise(resolve => {
+    showSacrificeEffectModal(candidates, count, card.name, permanentType, chosen => {
+      state.pendingSacrificeEffectChoice = null;
+      render();
+      const valid = (chosen || []).filter(item => candidates.includes(item)).slice(0, count);
+      resolve(valid.length === count ? valid : null);
+    });
+  });
+}
+
+function chooseGraveyardCardsForCompositeCost(isLocal, spec, card, excludeCards = []) {
+  const excluded = new Set(excludeCards.filter(Boolean));
+  const candidates = getGraveyardChoiceCandidates(isLocal, spec.filter || 'any').filter(e => !excluded.has(e.card));
+  const count = Math.max(0, spec.amount || 0);
+  if (candidates.length < count) return Promise.resolve(null);
+  if (count === 0) return Promise.resolve([]);
+  if (candidates.length === count) return Promise.resolve(candidates.map(e => e.card));
+  if (!isLocal) return Promise.resolve(chooseBotGraveyardEntries(candidates, count, 'lowest_value').map(e => e.card));
+
+  state.pendingGraveyardChoice = { zoneIsLocal:true, filter:spec.filter || 'any', amount:count, cardName:card.name, reason:'cast_cost' };
+  render();
+  return new Promise(resolve => {
+    showGraveyardChoiceModal(candidates, count, card.name, graveyardFilterLabel(spec.filter || 'any'),
+      `Costo de ${card.name}: elegí ${count} carta${count > 1 ? 's' : ''} para exiliar`, chosenIndexes => {
+        state.pendingGraveyardChoice = null;
+        render();
+        const graveyard = state.localGraveyard;
+        const chosen = [...new Set(chosenIndexes)]
+          .map(i => graveyard[i])
+          .filter(c => c && !excluded.has(c) && cardMatchesGraveyardFilter(c, spec.filter || 'any'))
+          .slice(0, count);
+        resolve(chosen.length === count ? chosen : null);
+      });
+  });
+}
+
+async function prepareCastCompositeNonManaCosts(card, isLocal, useAlternative) {
+  const bundle = getCastCompositeCostBundle(card, useAlternative);
+  if (!canPayCastCompositeNonManaCosts(card, isLocal, useAlternative, { excludeCard: isLocal ? card : null })) return null;
+
+  const selectedDiscards = [];
+  for (const spec of bundle.discards) {
+    const chosen = await chooseHandCardsForCompositeCost(isLocal, spec, card, [isLocal ? card : null, ...selectedDiscards]);
+    if (!chosen) return null;
+    selectedDiscards.push(...chosen);
+  }
+
+  const selectedSacrifices = [];
+  for (const spec of bundle.sacrifices) {
+    const chosen = await chooseSacrificeItemsForCompositeCost(isLocal, spec, card, selectedSacrifices);
+    if (!chosen) return null;
+    selectedSacrifices.push(...chosen);
+  }
+
+  const selectedGraveyard = [];
+  for (const spec of bundle.graveyardExiles) {
+    const chosen = await chooseGraveyardCardsForCompositeCost(isLocal, spec, card, selectedGraveyard);
+    if (!chosen) return null;
+    selectedGraveyard.push(...chosen);
+  }
+
+  // Revalidación final: ninguna decisión previa movió recursos todavía. La vida puede haber
+  // cambiado por otra consecuencia síncrona, así que se vuelve a comprobar justo antes del commit.
+  const hp = isLocal ? state.localHP : state.rivalHP;
+  if (hp < bundle.life) return null;
+  return { bundle, selectedDiscards, selectedSacrifices, selectedGraveyard };
+}
+
+function commitCastCompositeNonManaCosts(card, isLocal, prepared, useAlternative) {
+  if (!prepared) return false;
+  const { bundle, selectedDiscards, selectedSacrifices, selectedGraveyard } = prepared;
+  const hand = isLocal ? state.localHand : state.rivalHand;
+  const grave = isLocal ? state.localGraveyard : state.rivalGraveyard;
+  const exile = isLocal ? state.localExile : state.rivalExile;
+
+  // Revalidamos referencias antes de mutar: costo atómico o nada.
+  if (selectedDiscards.some(c => !hand.includes(c) || (isLocal && c === card))) return false;
+  const allBattlefield = isLocal ? [...state.localCombat, ...state.localSupport, ...state.localLands] : [...state.rivalCombat, ...state.rivalSupport, ...state.rivalLands];
+  if (selectedSacrifices.some(item => !allBattlefield.includes(item))) return false;
+  if (selectedGraveyard.some(c => !grave.includes(c))) return false;
+  const hp = isLocal ? state.localHP : state.rivalHP;
+  if (hp < bundle.life) return false;
+
+  if (bundle.life > 0) {
+    if (isLocal) state.localHP -= bundle.life; else state.rivalHP -= bundle.life;
+  }
+
+  if (selectedDiscards.length) {
+    const entries = selectedDiscards.map(c => ({ card:c, index:hand.indexOf(c) })).sort((a,b) => b.index-a.index);
+    const removed = [];
+    entries.forEach(e => { if (e.index >= 0) removed.push({ card:hand.splice(e.index,1)[0], index:e.index }); });
+    removed.sort((a,b) => a.index-b.index);
+    grave.push(...removed.map(e => e.card));
+  }
+
+  // Exilio antes que sacrificio: performSacrificeBatch puede disparar triggers de muerte
+  // inmediatamente en la arquitectura actual. Todos los demás componentes deben estar ya
+  // comprometidos antes de que esos triggers tengan oportunidad de resolver.
+  if (selectedGraveyard.length) {
+    selectedGraveyard.forEach(c => {
+      const idx = grave.indexOf(c);
+      if (idx !== -1) grave.splice(idx,1);
+    });
+    exile.push(...selectedGraveyard);
+  }
+
+  if (selectedSacrifices.length) performSacrificeBatch(selectedSacrifices, isLocal);
+
+  if (bundle.life > 0 || selectedDiscards.length || selectedSacrifices.length || selectedGraveyard.length) {
+    if (isLocal) state.pendingSpellCostsIrreversible = true;
+    const paid = [];
+    if (bundle.life) paid.push(`${bundle.life} de vida`);
+    if (selectedDiscards.length) paid.push(`descartó ${selectedDiscards.map(c=>c.name).join(', ')}`);
+    if (selectedSacrifices.length) paid.push(`sacrificó ${selectedSacrifices.map(i=>i.card.name).join(', ')}`);
+    if (selectedGraveyard.length) paid.push(`exilió ${selectedGraveyard.map(c=>c.name).join(', ')} del cementerio`);
+    logMsg(`💳 ${card.name}: ${useAlternative ? 'costo alternativo' : 'costo adicional'} pagado (${paid.join('; ')}).`);
+  }
+  return true;
+}
+
+export async function payCastCompositeNonManaCosts(card, isLocal, useAlternative = false) {
+  const prepared = await prepareCastCompositeNonManaCosts(card, isLocal, useAlternative);
+  if (!prepared || !commitCastCompositeNonManaCosts(card, isLocal, prepared, useAlternative)) {
+    throw new Error(`No se pudo pagar completamente el costo ${useAlternative ? 'alternativo' : 'adicional'} de ${card.name}.`);
+  }
+  return prepared;
+}
+
+// Punto 5: selección humana local para una decisión de sacrificio. Devuelve exactamente
+// los permanentes elegidos (o todos los disponibles si hay menos que la cantidad pedida).
+function chooseLocalSacrificeForEffect(permanentType, amount, cardName) {
+  const candidates = getSacrificeEffectCandidates(true, permanentType);
+  const count = Math.min(Math.max(0, amount || 1), candidates.length);
+  if (count === 0) return Promise.resolve([]);
+
+  state.pendingSacrificeEffectChoice = { permanentType, amount: count, cardName };
+  render();
+  return new Promise(resolve => {
+    showSacrificeEffectModal(candidates, count, cardName, permanentType, chosen => {
+      state.pendingSacrificeEffectChoice = null;
+      const removed = performSacrificeBatch(chosen, true);
+      render();
+      resolve(removed);
+    });
+  });
 }
 
 // Se llama en la pantalla del RIVAL cuando les llega una pregunta para ellos — despacha
@@ -743,6 +1222,11 @@ export async function resolveForcedDiscardOnRival(amount, cardName) {
 function handleIncomingDecisionRequest(decision) {
   if (decision.type === 'counter_unless_pay') {
     state.respondingToDecision = true;
+    // ETAPA MOTOR 3: actualizar la UI ANTES de abrir el modal. El listener hizo render()
+    // cuando todavía era false; sin este render el botón/atajo de Pasar Prioridad podía
+    // quedar visualmente habilitado durante una decisión remota aunque canPlayCard ya la
+    // considerara bloqueante.
+    render();
     showCounterTaxDecisionModal(decision.amount, decision.targetCardName,
       () => {
         // "Pagar": tryAutoPayCounterTax(true, ...) — el `true` es correcto ACÁ porque esto
@@ -757,17 +1241,174 @@ function handleIncomingDecisionRequest(decision) {
         respondToDecision(decision.requestId, { paid: false });
       }
     );
+  } else if (decision.type === 'self_card_filter') {
+    // Punto 4: una carta del rival necesita Loot/Rummage sobre SU PROPIA mano/mazo.
+    // Esas zonas son privadas, así que el cliente dueño ejecuta el efecto completo sobre
+    // sus datos reales y sólo confirma al solicitante cuando terminó. Si es Loot/Rummage
+    // humano, resolveGameEffect abre acá mismo el modal local de selección.
+    state.respondingToDecision = true;
+    render();
+    resolveGameEffect({ type: decision.filterType, amount: decision.amount }, {
+      sourceCard: { name: decision.cardName || 'Efecto rival', colors: [] },
+      cardName: decision.cardName || 'Efecto rival',
+      isLocal: true,
+      targetObj: null
+    }).then(() => {
+      state.respondingToDecision = false;
+      respondToDecision(decision.requestId, { completed: true });
+    }).catch(err => {
+      console.error('Error resolviendo Loot/Rummage remoto:', err);
+      state.respondingToDecision = false;
+      respondToDecision(decision.requestId, { completed: false });
+    });
+  } else if (decision.type === 'self_sacrifice') {
+    // Punto 5: el dueño REAL de los permanentes hace su propia elección. En multiplayer
+    // nunca elegimos por el rival desde placeholders/copia pública: su cliente abre el modal
+    // sobre su battlefield local y recién después confirma los nombres sacrificados.
+    state.respondingToDecision = true;
+    render();
+    chooseLocalSacrificeForEffect(decision.permanentType, decision.amount, decision.cardName || 'Efecto rival')
+      .then(removed => {
+        state.respondingToDecision = false;
+        respondToDecision(decision.requestId, {
+          completed: true,
+          sacrificedNames: removed.map(item => item.card.name)
+        });
+      })
+      .catch(err => {
+        console.error('Error resolviendo sacrificio remoto:', err);
+        state.pendingSacrificeEffectChoice = null;
+        state.respondingToDecision = false;
+        respondToDecision(decision.requestId, { completed: false, sacrificedNames: [] });
+      });
+  } else if (decision.type === 'self_return_from_graveyard') {
+    // Punto 15: una carta controlada por el rival devuelve cartas de SU cementerio a SU
+    // mano. El cementerio es público pero la mano es privada, por eso el dueño real hace
+    // tanto la elección como el movimiento en su propio cliente y sólo devuelve los nombres
+    // que ya quedaron revelados por la propia acción.
+    state.respondingToDecision = true;
+    render();
+    chooseGraveyardCards({
+      zoneIsLocal: true,
+      chooserIsLocal: true,
+      filter: decision.filter || 'any',
+      amount: decision.amount || 1,
+      cardName: decision.cardName || 'Efecto rival',
+      actionLabel: `elegí ${decision.amount || 1} carta${(decision.amount || 1) > 1 ? 's' : ''} para devolver a tu mano`,
+      botStrategy: 'highest_value'
+    }).then(chosenCards => {
+      const returnedNames = [];
+      for (const chosenCard of chosenCards) {
+        const idx = state.localGraveyard.indexOf(chosenCard);
+        if (idx === -1 || chosenCard?.isToken) continue;
+        const [returnedCard] = state.localGraveyard.splice(idx, 1);
+        state.localHand.push(returnedCard);
+        returnedNames.push(returnedCard.name);
+      }
+      state.respondingToDecision = false;
+      render();
+      respondToDecision(decision.requestId, { completed: true, returnedNames });
+    }).catch(err => {
+      console.error('Error devolviendo carta remota del cementerio a la mano:', err);
+      state.pendingGraveyardChoice = null;
+      state.respondingToDecision = false;
+      render();
+      respondToDecision(decision.requestId, { completed: false, returnedNames: [] });
+    });
+  } else if (decision.type === 'graveyard_choice') {
+    // Punto 6: el jugador remoto elige desde el cementerio indicado por rol fijo. Al llegar
+    // a SU pantalla, ese rol se traduce otra vez a local/rival y el mismo selector general
+    // abre el modal sobre los slots reales de esa zona pública.
+    state.respondingToDecision = true;
+    render();
+    const zoneIsLocal = !!state.currentMatch && decision.zoneOwnerRole === state.currentMatch.myRole;
+    chooseGraveyardCards({
+      zoneIsLocal,
+      chooserIsLocal: true,
+      filter: decision.filter || 'any',
+      amount: decision.amount || 1,
+      cardName: decision.cardName || 'Efecto rival',
+      actionLabel: decision.actionLabel || null,
+      botStrategy: decision.botStrategy || 'highest_value'
+    }).then(chosenCards => {
+      const graveyard = zoneIsLocal ? state.localGraveyard : state.rivalGraveyard;
+      state.respondingToDecision = false;
+      respondToDecision(decision.requestId, {
+        completed: true,
+        selectedIndexes: chosenCards.map(card => graveyard.indexOf(card)).filter(i => i >= 0),
+        selectedNames: chosenCards.map(card => card.name)
+      });
+    }).catch(err => {
+      console.error('Error resolviendo selección remota de cementerio:', err);
+      state.pendingGraveyardChoice = null;
+      state.respondingToDecision = false;
+      respondToDecision(decision.requestId, { completed: false, selectedIndexes: [], selectedNames: [] });
+    });
+  } else if (decision.type === 'resolved_effect_target') {
+    // Punto 7: un ETB del rival nació durante resolución y necesita target. El controlador
+    // real elige en SU pantalla; la respuesta vuelve como descriptor público de zona/slot.
+    state.respondingToDecision = true;
+    render();
+    chooseResolvedEffectTarget({
+      effect: decision.effect,
+      sourceCard: decision.sourceCard || { name: decision.cardName || 'ETB rival', colors: [] },
+      cardName: decision.cardName || 'ETB rival',
+      controllerIsLocal: true,
+      chooserIsLocal: true
+    }).then(target => {
+      state.respondingToDecision = false;
+      respondToDecision(decision.requestId, { completed: !!target, target: serializeResolvedEffectTarget(target) });
+    }).catch(err => {
+      console.error('Error eligiendo target remoto de ETB reanimado:', err);
+      pendingResolvedEffectTargetResolver = null;
+      state.pendingResolvedEffectTargetChoice = null;
+      state.pendingTargetCard = null;
+      state.respondingToDecision = false;
+      respondToDecision(decision.requestId, { completed: false, target: null });
+    });
+  } else if (decision.type === 'self_discard') {
+    // Punto 8: el jugador AFECTADO decide sobre SU mano privada. Para `selection:random`
+    // el mismo helper hace el azar localmente sin revelar la mano; para `choice` abre el
+    // selector genérico. El solicitante sólo recibe los nombres que ya quedaron públicos
+    // al ir al cementerio.
+    state.respondingToDecision = true;
+    render();
+    discardCardsFromHand({
+      victimIsLocal: true,
+      amount: decision.amount || 1,
+      selection: decision.selection || 'choice',
+      cardName: decision.cardName || 'Efecto rival',
+      reason: decision.reason || 'effect',
+      requireExact: !!decision.requireExact
+    }).then(result => {
+      state.respondingToDecision = false;
+      logMsg(result.discardedNames.length > 0
+        ? `🗑️ ${decision.cardName || 'Efecto rival'}: descartaste ${result.discardedNames.join(', ')}.`
+        : `🗑️ ${decision.cardName || 'Efecto rival'}: no descartaste ninguna carta.`);
+      respondToDecision(decision.requestId, {
+        completed: result.completed,
+        discardedNames: result.discardedNames
+      });
+    }).catch(err => {
+      console.error('Error resolviendo descarte remoto elegido:', err);
+      state.pendingDiscardChoice = null;
+      state.respondingToDecision = false;
+      respondToDecision(decision.requestId, { completed: false, discardedNames: [] });
+    });
   } else if (decision.type === 'forced_discard') {
-    // Sin modal a propósito — el descarte forzado ya es automático hoy, tanto para vos
-    // (mismo criterio: última carta de la mano) como para el Tano (al azar). Esto corre en
+    // Compatibilidad con el canal viejo: descarte forzado RANDOM. Las cartas normales con
+    // `effect.type:"discard"` ya usan `self_discard` y elección del jugador afectado.
+    // Esto corre en
     // MI PROPIA pantalla (yo soy quien recibió la pregunta), así que "mi mano" es de
     // verdad state.localHand — nada de placeholders acá, esto SÍ tiene las cartas reales.
+    // ETAPA MOTOR 1: el descarte remoto ahora es realmente AL AZAR. Antes siempre
+    // quitaba la última carta del array de mano: era oculto para el rival, pero no random.
+    const discarded = removeRandomCardsFromHand(state.localHand, decision.amount);
     const discardedNames = [];
-    for (let i = 0; i < decision.amount && state.localHand.length > 0; i++) {
-      const discarded = state.localHand.splice(state.localHand.length - 1, 1)[0];
-      state.localGraveyard.push(discarded);
-      discardedNames.push(discarded.name);
-    }
+    discarded.forEach(card => {
+      state.localGraveyard.push(card);
+      discardedNames.push(card.name);
+    });
     logMsg(discardedNames.length > 0
       ? `🗑️ ¡${decision.cardName} de tu rival te hizo descartar: ${discardedNames.join(', ')}!`
       : `🗑️ ¡${decision.cardName} de tu rival intentó hacerte descartar, pero no tenías cartas!`);
@@ -813,10 +1454,10 @@ export function startListeningToMatch(matchId, myRole) {
     // (resuelve mi Promise pendiente y listo), o (b) me llegó una PREGUNTA para MÍ (le
     // muestro la UI correspondiente). El requestId es lo que evita procesar ecos o la
     // misma pregunta/respuesta más de una vez.
-    if (state.decisionResponse && pendingDecisionResolver && state.decisionResponse.requestId === pendingDecisionResolver.requestId) {
-      const resolver = pendingDecisionResolver;
-      pendingDecisionResolver = null;
-      resolver.resolve(state.decisionResponse);
+    if (state.decisionResponse) {
+      // ETAPA MOTOR 3: sólo la respuesta cuyo requestId coincide con la decisión ACTIVA
+      // avanza la cola. Ecos atrasados o respuestas de otro request se ignoran sin tocarla.
+      remoteDecisionQueue.resolveResponse(state.decisionResponse);
     }
 
     if (state.pendingDecision && state.pendingDecision.forRole === myRole && !handledDecisionIds.has(state.pendingDecision.requestId)) {
@@ -989,12 +1630,401 @@ export function getEffectiveKeywords(itemObj) {
   return [...new Set([...base, ...fromAuras, ...fromEquipment, ...fromStatic, ...fromTemp])];
 }
 
+// Punto 6: infraestructura GENERAL de selección de Cementerio. Separamos expresamente
+// el dueño de la zona (`zoneIsLocal`) de quién toma la decisión (`chooserIsLocal`): eso
+// permite reutilizar exactamente el mismo selector tanto para "elegí de TU cementerio"
+// como para "elegí del cementerio RIVAL" sin duplicar lógica.
+export const GRAVEYARD_FILTERS = ['any', 'creature', 'instant', 'sorcery', 'land', 'artifact', 'enchantment', 'planeswalker'];
+
+export function cardMatchesGraveyardFilter(card, filter = 'any') {
+  if (!card || card.isToken) return false; // una ficha no debería persistir nunca en GY
+  if (!GRAVEYARD_FILTERS.includes(filter)) return false;
+  if (filter === 'any') return true;
+  const type = typeof card.type === 'string' ? card.type : '';
+  if (filter === 'creature') return card.power !== undefined || type.includes('Criatura');
+  if (filter === 'instant') return type.includes('Instantáneo');
+  if (filter === 'sorcery') return type.includes('Conjuro');
+  if (filter === 'land') return type.includes('Tierra');
+  if (filter === 'artifact') return type.includes('Artefacto');
+  if (filter === 'enchantment') return type.includes('Encantamiento');
+  if (filter === 'planeswalker') return type.includes('Planeswalker');
+  return false;
+}
+
+export function getGraveyardChoiceCandidates(zoneIsLocal, filter = 'any') {
+  const graveyard = zoneIsLocal ? state.localGraveyard : state.rivalGraveyard;
+  return graveyard
+    .map((card, index) => ({ card, index }))
+    .filter(entry => cardMatchesGraveyardFilter(entry.card, filter));
+}
+
+function graveyardFilterLabel(filter) {
+  return ({
+    any: 'cualquier carta', creature: 'criaturas', instant: 'instantáneos', sorcery: 'conjuros',
+    land: 'tierras', artifact: 'artefactos', enchantment: 'encantamientos', planeswalker: 'planeswalkers'
+  })[filter] || filter;
+}
+
+function chooseBotGraveyardEntries(entries, count, strategy = 'highest_value') {
+  const copy = [...entries];
+  if (strategy === 'last') return copy.slice(-count);
+  const value = e => (e.card.cmc || 0) + (e.card.power !== undefined ? ((e.card.power || 0) + (e.card.toughness || 0)) / 10 : 0);
+  copy.sort((a, b) => strategy === 'lowest_value' ? value(a) - value(b) : value(b) - value(a));
+  return copy.slice(0, count);
+}
+
+let graveyardChoiceChain = Promise.resolve();
+
+async function chooseGraveyardCardsNow(options) {
+  const {
+    zoneIsLocal = true,
+    chooserIsLocal = true,
+    filter = 'any',
+    amount = 1,
+    cardName = 'Efecto',
+    actionLabel = null,
+    botStrategy = 'highest_value'
+  } = options || {};
+  if (!GRAVEYARD_FILTERS.includes(filter)) {
+    logMsg(`⚠️ ${cardName}: filtro de cementerio desconocido "${filter}".`);
+    return [];
+  }
+
+  const candidates = getGraveyardChoiceCandidates(zoneIsLocal, filter);
+  const count = Math.min(Math.max(0, Number(amount) || 0), candidates.length);
+  if (count <= 0) return [];
+
+  // Si todas las cartas elegibles deben elegirse, no existe decisión real que mostrar/pedir.
+  if (candidates.length === count) return candidates.map(e => e.card);
+
+  if (chooserIsLocal) {
+    state.pendingGraveyardChoice = { zoneIsLocal, filter, amount: count, cardName };
+    render();
+    const chosenIndexes = await new Promise(resolve => {
+      showGraveyardChoiceModal(
+        candidates,
+        count,
+        cardName,
+        graveyardFilterLabel(filter),
+        actionLabel || `elegí ${count} carta${count > 1 ? 's' : ''} del cementerio`,
+        resolve
+      );
+    });
+    state.pendingGraveyardChoice = null;
+    render();
+    const graveyard = zoneIsLocal ? state.localGraveyard : state.rivalGraveyard;
+    return chosenIndexes
+      .map(index => graveyard[index])
+      .filter(card => cardMatchesGraveyardFilter(card, filter));
+  }
+
+  // En multiplayer la decisión del otro jugador se toma en SU cliente. El cementerio es
+  // público, pero quién ELIGE sigue siendo una regla de juego; devolvemos índices de slots
+  // para distinguir copias idénticas sin revelar nada adicional.
+  if (state.currentMatch) {
+    const myRole = state.currentMatch.myRole;
+    const zoneOwnerRole = zoneIsLocal ? myRole : otherRole(myRole);
+    const response = await requestRivalDecision('graveyard_choice', otherRole(myRole), {
+      zoneOwnerRole, filter, amount: count, cardName, actionLabel, botStrategy
+    });
+    const graveyard = zoneIsLocal ? state.localGraveyard : state.rivalGraveyard;
+    return (response.selectedIndexes || [])
+      .map(index => graveyard[index])
+      .filter(card => cardMatchesGraveyardFilter(card, filter))
+      .slice(0, count);
+  }
+
+  return chooseBotGraveyardEntries(candidates, count, botStrategy).map(e => e.card);
+}
+
+export function chooseGraveyardCards(options) {
+  options = options || {};
+  state.resolvingGraveyardChoices = (state.resolvingGraveyardChoices || 0) + 1;
+  render();
+  const run = graveyardChoiceChain.then(() => chooseGraveyardCardsNow(options), () => chooseGraveyardCardsNow(options));
+  graveyardChoiceChain = run.catch(() => {});
+  return run.finally(() => {
+    state.resolvingGraveyardChoices = Math.max(0, (state.resolvingGraveyardChoices || 1) - 1);
+    if (state.resolvingGraveyardChoices === 0) render();
+  });
+}
+
+// PUNTO 7 PRE-500 — TARGET ASÍNCRONO PARA ETB REANIMADOS.
+// Los ETB de criaturas casteadas normalmente ya declaran su target ANTES de entrar a la
+// pila. Reanimate descubre qué criatura vuelve recién durante la resolución, así que ese
+// camino necesita declarar el objetivo en ese momento. Reutilizamos getTargetRules y los
+// clicks normales del battlefield, pero NO executeSpellOnTarget: no hay un hechizo nuevo
+// que castear ni una segunda entrada a la pila.
+let pendingResolvedEffectTargetResolver = null;
+let resolvedEffectTargetChoiceChain = Promise.resolve();
+
+function resolvedEffectTargetCard(sourceCard, effect, cardName) {
+  return {
+    id: sourceCard?.id || `resolved_effect_${Date.now()}`,
+    name: cardName || sourceCard?.name || 'Habilidad disparada',
+    colors: sourceCard?.colors || [],
+    effect,
+    requiresTarget: true
+  };
+}
+
+function controllerAllowsTargetSide(rules, targetKind, targetIsLocal, controllerIsLocal) {
+  if (targetKind === 'player') return !!rules.allowPlayer;
+  const sameSide = targetIsLocal === controllerIsLocal;
+  const suffix = targetKind === 'creature' ? 'Creature' : targetKind === 'permanent' ? 'Permanent' : 'Planeswalker';
+  return !!rules[`allow${sameSide ? 'Local' : 'Rival'}${suffix}`];
+}
+
+export function isResolvedEffectTargetLegal(targetObj, options) {
+  if (!targetObj || !options?.effect) return false;
+  const controllerIsLocal = options.controllerIsLocal !== false;
+  const sourceCard = options.sourceCard || { name: options.cardName || 'Efecto', colors: [] };
+  const cardLike = resolvedEffectTargetCard(sourceCard, options.effect, options.cardName);
+  const rules = getTargetRules(cardLike);
+
+  if (!controllerAllowsTargetSide(rules, targetObj.type, targetObj.isLocal, controllerIsLocal)) return false;
+
+  if (targetObj.type === 'creature') {
+    const unit = targetObj.item;
+    if (!unit) return false;
+    const board = targetObj.isLocal ? state.localCombat : state.rivalCombat;
+    if (!board.includes(unit)) return false;
+    // Intocable sólo impide ser objetivo de un OPONENTE. Protección de color impide el
+    // target sin importar quién controle la fuente, igual que en el selector normal.
+    if (targetObj.isLocal !== controllerIsLocal && hasKeyword(unit, 'hexproof')) return false;
+    if (getProtectionMatch(unit, sourceCard.colors || [])) return false;
+    if (rules.creatureFilter && !unit.card.type.includes(rules.creatureFilter)) return false;
+    if (options.effect.type === 'grant_keyword_temp' && options.effect.keyword && hasKeyword(unit, options.effect.keyword)) return false;
+    return true;
+  }
+
+  if (targetObj.type === 'permanent') {
+    const zone = targetObj.isLocal ? state.localSupport : state.rivalSupport;
+    if (!targetObj.item || !zone.includes(targetObj.item)) return false;
+    return !rules.permanentFilter || targetObj.item.card.type.includes(rules.permanentFilter);
+  }
+
+  if (targetObj.type === 'planeswalker') {
+    const zone = targetObj.isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
+    return !!targetObj.item && zone.includes(targetObj.item);
+  }
+
+  return targetObj.type === 'player';
+}
+
+export function getResolvedEffectTargetCandidates(options) {
+  const controllerIsLocal = options?.controllerIsLocal !== false;
+  const sourceCard = options?.sourceCard || { name: options?.cardName || 'Efecto', colors: [] };
+  const effect = options?.effect;
+  if (!effect) return [];
+  const rules = getTargetRules(resolvedEffectTargetCard(sourceCard, effect, options?.cardName));
+  const candidates = [];
+
+  if (rules.allowPlayer) {
+    candidates.push({ type: 'player', isLocal: true }, { type: 'player', isLocal: false });
+  }
+  for (const [isLocal, board] of [[true, state.localCombat], [false, state.rivalCombat]]) {
+    if (!controllerAllowsTargetSide(rules, 'creature', isLocal, controllerIsLocal)) continue;
+    board.forEach((item, index) => {
+      const target = { type: 'creature', isLocal, index, item };
+      if (isResolvedEffectTargetLegal(target, options)) candidates.push(target);
+    });
+  }
+  for (const [isLocal, zone] of [[true, state.localSupport], [false, state.rivalSupport]]) {
+    if (!controllerAllowsTargetSide(rules, 'permanent', isLocal, controllerIsLocal)) continue;
+    zone.forEach((item, index) => {
+      const target = { type: 'permanent', isLocal, index, item };
+      if (isResolvedEffectTargetLegal(target, options)) candidates.push(target);
+    });
+  }
+  for (const [isLocal, zone] of [[true, state.localPlaneswalkers], [false, state.rivalPlaneswalkers]]) {
+    if (!controllerAllowsTargetSide(rules, 'planeswalker', isLocal, controllerIsLocal)) continue;
+    zone.forEach((item, index) => {
+      const target = { type: 'planeswalker', isLocal, index, item };
+      if (isResolvedEffectTargetLegal(target, options)) candidates.push(target);
+    });
+  }
+  return candidates;
+}
+
+function chooseBotResolvedEffectTarget(candidates, options) {
+  if (candidates.length === 0) return null;
+  const controllerIsLocal = options.controllerIsLocal !== false;
+  const effect = options.effect || {};
+  const own = t => t.isLocal === controllerIsLocal;
+  const opponent = t => !own(t);
+  const strongest = arr => arr.reduce((best, t) => {
+    const value = t.item?.card ? (t.item.card.cmc || 0) + ((t.item.card.power || 0) + (t.item.card.toughness || 0)) / 10 : 0;
+    const bestValue = best?.item?.card ? (best.item.card.cmc || 0) + ((best.item.card.power || 0) + (best.item.card.toughness || 0)) / 10 : -1;
+    return value > bestValue ? t : best;
+  }, null);
+
+  if (['pump', 'grant_keyword_temp', 'attach_equipment'].includes(effect.type) || (effect.type === 'add_counter' && effect.counterType !== 'minusOne')) {
+    return strongest(candidates.filter(t => t.type === 'creature' && own(t))) || candidates.find(own) || candidates[0];
+  }
+  if (effect.type === 'heal') return candidates.find(t => t.type === 'player' && own(t)) || candidates[0];
+  if (['discard', 'poison', 'exile_graveyard', 'prevent_attack'].includes(effect.type)) {
+    return candidates.find(t => t.type === 'player' && opponent(t)) || candidates.find(opponent) || candidates[0];
+  }
+  if (effect.type === 'damage') {
+    const killablePw = candidates.find(t => t.type === 'planeswalker' && opponent(t) && t.item.loyalty <= (effect.amount || 0));
+    return killablePw || candidates.find(t => t.type === 'player' && opponent(t)) || strongest(candidates.filter(t => t.type === 'creature' && opponent(t))) || candidates[0];
+  }
+  if (['destroy_creature', 'exile_creature', 'bounce', 'fight'].includes(effect.type) || (effect.type === 'add_counter' && effect.counterType === 'minusOne')) {
+    return strongest(candidates.filter(t => t.type === 'creature' && opponent(t))) || candidates.find(opponent) || candidates[0];
+  }
+  if (effect.type === 'destroy_artifact') {
+    // Puede vivir en Support o en Combat (Criatura Artefacto / Vehículo tripulado).
+    return strongest(candidates.filter(t => (t.type === 'permanent' || t.type === 'creature') && opponent(t))) || candidates.find(opponent) || candidates[0];
+  }
+  if (effect.type === 'destroy_enchantment') {
+    return strongest(candidates.filter(t => t.type === 'permanent' && opponent(t))) || candidates.find(opponent) || candidates[0];
+  }
+  return candidates.find(opponent) || candidates[0];
+}
+
+function serializeResolvedEffectTarget(targetObj) {
+  if (!targetObj || !state.currentMatch) return null;
+  const myRole = state.currentMatch.myRole;
+  const ownerRole = targetObj.isLocal ? myRole : otherRole(myRole);
+  if (targetObj.type === 'player') return { type: 'player', ownerRole };
+  const zone = targetObj.type === 'creature'
+    ? (targetObj.isLocal ? state.localCombat : state.rivalCombat)
+    : targetObj.type === 'permanent'
+      ? (targetObj.isLocal ? state.localSupport : state.rivalSupport)
+      : (targetObj.isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers);
+  const index = targetObj.index ?? zone.indexOf(targetObj.item);
+  if (index < 0) return null;
+  return {
+    type: targetObj.type,
+    ownerRole,
+    index,
+    cardId: targetObj.item?.card?.id || null,
+    cardName: targetObj.item?.card?.name || null
+  };
+}
+
+function deserializeResolvedEffectTarget(descriptor) {
+  if (!descriptor || !state.currentMatch) return null;
+  const isLocal = descriptor.ownerRole === state.currentMatch.myRole;
+  if (descriptor.type === 'player') return { type: 'player', isLocal };
+  const zone = descriptor.type === 'creature'
+    ? (isLocal ? state.localCombat : state.rivalCombat)
+    : descriptor.type === 'permanent'
+      ? (isLocal ? state.localSupport : state.rivalSupport)
+      : descriptor.type === 'planeswalker'
+        ? (isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers)
+        : null;
+  if (!zone) return null;
+  const item = zone[descriptor.index];
+  if (!item) return null;
+  if (descriptor.cardId && item.card?.id && descriptor.cardId !== item.card.id) return null;
+  if (!descriptor.cardId && descriptor.cardName && item.card?.name !== descriptor.cardName) return null;
+  return { type: descriptor.type, isLocal, index: descriptor.index, item };
+}
+
+function finishPendingResolvedEffectTarget(targetObj) {
+  const pending = state.pendingResolvedEffectTargetChoice;
+  if (!pending) return false;
+  if (!isResolvedEffectTargetLegal(targetObj, pending.options)) {
+    logMsg(`Ese no es un objetivo válido para ${pending.cardName}.`);
+    return true;
+  }
+  const resolver = pendingResolvedEffectTargetResolver;
+  pendingResolvedEffectTargetResolver = null;
+  state.pendingResolvedEffectTargetChoice = null;
+  // pendingTargetCard se usa sólo como adaptador visual para que el battlefield ilumine
+  // targets con las mismas reglas que un hechizo normal. Nunca llega a executeSpellOnTarget.
+  state.pendingTargetCard = null;
+  render();
+  if (resolver) resolver(targetObj);
+  return true;
+}
+
+async function chooseResolvedEffectTargetNow(options) {
+  options = options || {};
+  const effect = options.effect;
+  const sourceCard = options.sourceCard || { name: options.cardName || 'Habilidad disparada', colors: [] };
+  const controllerIsLocal = options.controllerIsLocal !== false;
+  const chooserIsLocal = options.chooserIsLocal !== false;
+  const cardName = options.cardName || `ETB de ${sourceCard.name}`;
+  if (!effect) return null;
+
+  const candidates = getResolvedEffectTargetCandidates({ ...options, sourceCard, controllerIsLocal });
+  if (candidates.length === 0) {
+    logMsg(`⚠️ ${cardName}: no hay objetivos legales.`);
+    return null;
+  }
+  if (candidates.length === 1) return candidates[0];
+
+  if (chooserIsLocal) {
+    const cardLike = resolvedEffectTargetCard(sourceCard, effect, cardName);
+    state.pendingResolvedEffectTargetChoice = {
+      cardName,
+      options: { ...options, sourceCard, controllerIsLocal, chooserIsLocal: true }
+    };
+    // Reutilizamos el resaltado/estado de targeting de UI, pero los handlers interceptan
+    // pendingResolvedEffectTargetChoice ANTES del flujo normal de casteo.
+    state.pendingTargetCard = cardLike;
+    logMsg(`🎯 ${cardName}: elegí un objetivo.`);
+    render();
+    return new Promise(resolve => { pendingResolvedEffectTargetResolver = resolve; });
+  }
+
+  if (state.currentMatch) {
+    const response = await requestRivalDecision('resolved_effect_target', otherRole(state.currentMatch.myRole), {
+      effect,
+      sourceCard: { id: sourceCard.id || null, name: sourceCard.name, colors: sourceCard.colors || [] },
+      cardName
+    });
+    const target = deserializeResolvedEffectTarget(response.target || null);
+    if (!target || !isResolvedEffectTargetLegal(target, { ...options, sourceCard, controllerIsLocal })) {
+      logMsg(`⚠️ ${cardName}: el objetivo remoto dejó de ser legal.`);
+      return null;
+    }
+    return target;
+  }
+
+  return chooseBotResolvedEffectTarget(candidates, { ...options, sourceCard, controllerIsLocal });
+}
+
+export function chooseResolvedEffectTarget(options) {
+  state.resolvingResolvedEffectTargetChoices = (state.resolvingResolvedEffectTargetChoices || 0) + 1;
+  render();
+  const run = resolvedEffectTargetChoiceChain.then(
+    () => chooseResolvedEffectTargetNow(options),
+    () => chooseResolvedEffectTargetNow(options)
+  );
+  resolvedEffectTargetChoiceChain = run.catch(() => {});
+  return run.finally(() => {
+    state.resolvingResolvedEffectTargetChoices = Math.max(0, (state.resolvingResolvedEffectTargetChoices || 1) - 1);
+    if (state.resolvingResolvedEffectTargetChoices === 0) render();
+  });
+}
+
 // --- SACRIFICAR COMO COSTO ---
 // Saca un permanente propio del campo de batalla y lo manda al cementerio, como parte de
 // pagar el costo de una habilidad (no como resultado de daño ni de un "destroy"). Por eso
 // NO chequea Indestructible: en MTG real, Indestructible no protege contra un sacrificio.
 // Busca en las 3 zonas posibles (criaturas, soporte, tierras) porque lo que se sacrifica
 // puede ser cualquiera de los tres.
+export function getSacrificeEffectCandidates(isLocal, permanentType) {
+  const combat = isLocal ? state.localCombat : state.rivalCombat;
+  const support = isLocal ? state.localSupport : state.rivalSupport;
+  const lands = isLocal ? state.localLands : state.rivalLands;
+
+  if (permanentType === 'creature') return [...combat];
+  if (permanentType === 'artifact') {
+    return [...combat, ...support, ...lands].filter(item =>
+      item && item.card && typeof item.card.type === 'string' && item.card.type.includes('Artefacto')
+    );
+  }
+  return [];
+}
+
+// --- SACRIFICAR COMO COSTO ---
+// API histórica: un solo permanente. Se mantiene independiente para no cambiar ninguna
+// ruta preexistente; comparte exactamente las reglas de salida con el nuevo batch.
 export function performSacrifice(item, isLocal) {
   const zones = isLocal
     ? [state.localCombat, state.localSupport, state.localLands]
@@ -1008,10 +2038,11 @@ export function performSacrifice(item, isLocal) {
     zone.splice(idx, 1);
     if (isCreatureZone) {
       detachEquipmentFrom(item, isLocal);
-      cleanupIfVehicle(item); // si era un Vehículo tripulado, saca el power/toughness "prestado"
+      sendAurasToGraveyard(item, isLocal);
+      cleanupIfVehicle(item);
     }
-    grave.push(item.card);
-    logMsg(`🔪 ¡Sacrificaste a ${item.card.name}!`);
+    moveBattlefieldCardToZone(item.card, grave);
+    logMsg(`🔪 ¡Sacrificaste a ${item.card.name}!${item.card.isToken ? ' Al ser ficha, dejó de existir.' : ''}`);
     if (isCreatureZone) {
       triggerCreatureDies(item, isLocal);
       triggerAnyCreatureDeath(item, isLocal);
@@ -1020,6 +2051,51 @@ export function performSacrifice(item, isLocal) {
   }
   logMsg(`⚠️ No se pudo sacrificar a ${item.card.name}: ya no está en el campo.`);
   return false;
+}
+
+// Punto 5: sacrifica varios permanentes como UNA misma instrucción. Primero salen todos y
+// recién después se disparan sus muertes, preservando watchers simultáneos.
+export function performSacrificeBatch(items, isLocal) {
+  const uniqueItems = [...new Set((items || []).filter(Boolean))];
+  if (uniqueItems.length === 0) return [];
+
+  const zones = isLocal
+    ? [state.localCombat, state.localSupport, state.localLands]
+    : [state.rivalCombat, state.rivalSupport, state.rivalLands];
+  const combat = isLocal ? state.localCombat : state.rivalCombat;
+  const grave = isLocal ? state.localGraveyard : state.rivalGraveyard;
+  const deathWatchersSnapshot = [
+    ...state.localCombat.map(unit => ({ unit, isLocal: true })),
+    ...state.rivalCombat.map(unit => ({ unit, isLocal: false }))
+  ];
+
+  const removed = [];
+  for (const item of uniqueItems) {
+    let foundZone = null;
+    let idx = -1;
+    for (const zone of zones) {
+      idx = zone.indexOf(item);
+      if (idx !== -1) { foundZone = zone; break; }
+    }
+    if (!foundZone) continue;
+
+    const isCreatureZone = foundZone === combat;
+    foundZone.splice(idx, 1);
+    if (isCreatureZone) {
+      detachEquipmentFrom(item, isLocal);
+      sendAurasToGraveyard(item, isLocal);
+      cleanupIfVehicle(item);
+    }
+    moveBattlefieldCardToZone(item.card, grave);
+    removed.push({ item, isCreature: isCreatureZone });
+    logMsg(`🔪 ¡Sacrificaste a ${item.card.name}!${item.card.isToken ? ' Al ser ficha, dejó de existir.' : ''}`);
+  }
+
+  queueCreatureDeathBatch(
+    removed.filter(entry => entry.isCreature).map(entry => ({ unit: entry.item, isLocal })),
+    deathWatchersSnapshot
+  );
+  return removed.map(entry => entry.item);
 }
 
 // --- ENCANTAMIENTOS ESTÁTICOS GLOBALES ---
@@ -1042,49 +2118,306 @@ export function getStaticTeamModifiers(itemObj) {
   return mods;
 }
 
-// Habilidad Disparada: "Siempre que una criatura entre al campo bajo tu control..." (ej. Cumbia
-// Santafesina). Se llama a mano desde stackManager cada vez que una criatura (propia, ficha o
-// reanimada) se empuja al campo de batalla. Misma simplificación que el resto: resuelve directo,
-// sin pasar por la pila.
-export function triggerCreatureEtb(isLocal) {
-  const supportZone = isLocal ? state.localSupport : state.rivalSupport;
-  supportZone.forEach(item => {
-    if (item.card.creatureEtbTrigger) {
-      resolveEffectDirect(item.card.creatureEtbTrigger, item.card.name, isLocal);
+// ---------------------------------------------------------------------------
+// ENTREGA 20 — TRIGGER STACK
+// ---------------------------------------------------------------------------
+// Desde esta entrega, una habilidad disparada NO ejecuta su efecto al detectarse. Se crea
+// un objeto real `type:"ability"` en la misma Stack de hechizos/habilidades activadas.
+// La fuente puede abandonar el campo después: el objeto de Stack conserva el snapshot de
+// `card` + `ability.effect`. Contrarrestar la habilidad solo remueve ese objeto; nunca la fuente.
+const TRIGGER_LABELS = {
+  etb: 'ETB', creature_etb: 'entrada de criatura', land_etb: 'Landfall', spell_cast: 'Spellslinger',
+  dies: 'al morir', any_creature_dies: 'muerte de criatura', opponent_death: 'muerte rival',
+  attack: 'al atacar', any_creature_attacks: 'ataque', block: 'al bloquear',
+  combat_damage: 'daño de combate', upkeep: 'mantenimiento', end_step: 'paso final',
+  reanimate_etb: 'ETB reanimado', return_etb: 'ETB al volver'
+};
+
+export function queueTriggeredAbility({
+  effect, sourceCard, sourceItem = null, isLocal = true, triggerType = 'trigger',
+  targetObj = null, selfTarget = false, eventCard = null, eventItem = null
+} = {}) {
+  if (!effect || !effect.type || !sourceCard) return null;
+  const triggerLabel = TRIGGER_LABELS[triggerType] || triggerType;
+  const stackItem = {
+    card: sourceCard,
+    isLocal,
+    targetObj,
+    type: 'ability',
+    abilityKind: 'triggered',
+    triggerType,
+    triggerLabel,
+    ability: { effect: { ...effect } },
+    source: {
+      type: 'triggered', triggerType, sourceItem, sourceCardId: sourceCard.id || null,
+      selfTarget: !!selfTarget, eventCard: eventCard || null, eventItem: eventItem || null
     }
-  });
+  };
+  addToStack(stackItem);
+  state.triggerStackSerial = (state.triggerStackSerial || 0) + 1;
+  // Un trigger nuevo invalida pases previos: nadie puede haber pasado respecto de un objeto
+  // que todavía no existía. Esto es crítico cuando los bloqueadores se declararon tras un pase.
+  state.consecutivePasses = 0;
+  return stackItem;
+}
+
+// AP/NAP simplificado para un lote detectado como simultáneo: el jugador activo coloca
+// primero sus disparos y el no-activo después, por lo que los del no-activo quedan arriba.
+// Como la Stack es LIFO, invertimos cada grupo al INSERTAR para que, sin UI manual de orden,
+// la resolución dentro de cada controlador conserve el orden histórico del snapshot.
+export function queueTriggeredAbilities(entries = []) {
+  const valid = entries.filter(e => e && e.effect && e.sourceCard);
+  const activeIsLocal = state.activePlayer === 'local';
+  const activeEntries = valid.filter(e => !!e.isLocal === activeIsLocal).reverse();
+  const nonActiveEntries = valid.filter(e => !!e.isLocal !== activeIsLocal).reverse();
+  return [...activeEntries, ...nonActiveEntries].map(queueTriggeredAbility).filter(Boolean);
+}
+
+// "Siempre que una criatura entre bajo tu control". Detecta y APILA; no resuelve.
+export function triggerCreatureEtb(isLocal, enteredCard = null, enteredItem = null) {
+  // Un watcher de ETB puede ser cualquier permanente propio, no sólo un Encantamiento/Artefacto
+  // en Soporte. Esto es especialmente importante para criaturas como Campanera de la Procesión:
+  // cuando entra al campo ya está en Combat y debe poder ver su propia entrada y las siguientes.
+  const combat = isLocal ? state.localCombat : state.rivalCombat;
+  const support = isLocal ? state.localSupport : state.rivalSupport;
+  const lands = isLocal ? state.localLands : state.rivalLands;
+  const planeswalkers = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
+  const watchers = [...combat, ...support, ...lands, ...planeswalkers]
+    .filter(item => item?.card?.creatureEtbTrigger);
+  return queueTriggeredAbilities(
+    watchers.map(item => ({
+      effect: item.card.creatureEtbTrigger, sourceCard: item.card, sourceItem: item, isLocal,
+      triggerType: 'creature_etb', eventCard: enteredCard, eventItem: enteredItem
+    }))
+  );
+}
+
+// PUNTO 2 PRE-500 — LANDFALL / "cuando una Tierra entre bajo tu control".
+// Contrato JSON opt-in y retrocompatible:
+//   "landEtbTrigger": { "type": "draw", "amount": 1 }
+// Ninguna carta actual necesita este campo. El evento se dispara tanto al jugar una Tierra
+// desde la mano como cuando un efecto de Ramp la pone directamente en el campo.
+//
+// Tomamos un SNAPSHOT de los permanentes que ya estaban presentes justo después de entrar
+// la Tierra. Así cada uno dispara una sola vez por esa entrada, aunque una resolución previa
+// quite a otro watcher del campo, y un permanente que aparezca DURANTE la resolución no puede
+// "ver hacia atrás" una Tierra que entró antes que él.
+//
+// Landfall no abre selección de target propia en este punto: reutiliza efectos discretos que
+// el resolver universal sabe ejecutar SIN objetivo (draw, drain, tokens, ramp, scry, etc.).
+// Si algún JSON futuro intenta usar un efecto que exige target, lo rechazamos con log explícito
+// en vez de fallar silenciosamente.
+export async function triggerLandEtb(isLocal, landCard, landItem = null) {
+  const combat = isLocal ? state.localCombat : state.rivalCombat;
+  const support = isLocal ? state.localSupport : state.rivalSupport;
+  const lands = isLocal ? state.localLands : state.rivalLands;
+  const planeswalkers = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
+
+  const watchers = [
+    ...combat.map(item => ({ card: item.card, item })),
+    ...support.map(item => ({ card: item.card, item })),
+    ...lands.map(item => ({ card: item.card, item })),
+    ...planeswalkers.map(item => ({ card: item.card, item }))
+  ].filter(entry => entry.card && entry.card.landEtbTrigger);
+
+  const entries = [];
+  for (const { card, item } of watchers) {
+    const effect = card.landEtbTrigger;
+    const implicitSelfCreature = ['add_counter', 'pump', 'grant_keyword_temp'].includes(effect.type)
+      && combat.includes(item);
+    const implicitTarget = implicitSelfCreature ? { type: 'creature', isLocal, item } : null;
+
+    if (!implicitTarget && !canResolveGameEffectWithoutTarget(effect.type)) {
+      logMsg(`⚠️ ${card.name}: su landEtbTrigger usa "${effect.type}", que necesita elegir un objetivo externo o no es válido en Landfall.`);
+      continue;
+    }
+
+    logMsg(`🌿 Landfall — ${card.name} reaccionó a ${landCard?.name || 'una Tierra'}.`);
+    entries.push({
+      effect, sourceCard: card, sourceItem: item, isLocal, targetObj: implicitTarget,
+      selfTarget: implicitSelfCreature, triggerType: 'land_etb', eventCard: landCard, eventItem: landItem
+    });
+  }
+  return queueTriggeredAbilities(entries);
+}
+
+// PUNTO 3 PRE-500 — SPELLSLINGER / "cuando casteás un Instantáneo o Conjuro".
+// Contrato JSON recomendado (opt-in y retrocompatible):
+//   "spellCastTrigger": {
+//     "filter": "instant_or_sorcery",
+//     "effect": { "type": "draw", "amount": 1 }
+//   }
+//
+// También aceptamos defensivamente la forma corta estilo Landfall
+//   "spellCastTrigger": { "type": "draw", "amount": 1 }
+// que equivale al filtro default instant_or_sorcery. Ninguna carta actual usa este campo.
+//
+// El evento ocurre DESPUÉS de que el hechizo ya entró a la pila. Por eso un hechizo que
+// más tarde sea contrarrestado igualmente ya disparó estos watchers. No se dispara al
+// seleccionar/pagar la carta, ni por habilidades activadas, ni por permanentes con Flash:
+// el filtro mira el TIPO REAL de la carta casteada.
+export function spellCastTriggerMatches(castCard, filter = 'instant_or_sorcery') {
+  if (!castCard || typeof castCard.type !== 'string') return false;
+  const isInstant = castCard.type.includes('Instantáneo');
+  const isSorcery = castCard.type.includes('Conjuro');
+  if (filter === 'instant') return isInstant;
+  if (filter === 'sorcery') return isSorcery;
+  if (filter === 'instant_or_sorcery') return isInstant || isSorcery;
+  return false;
+}
+
+export async function triggerSpellCast(isLocal, castCard, stackItem = null) {
+  if (!castCard) return [];
+  const combat = isLocal ? state.localCombat : state.rivalCombat;
+  const support = isLocal ? state.localSupport : state.rivalSupport;
+  const lands = isLocal ? state.localLands : state.rivalLands;
+  const planeswalkers = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
+
+  const watchers = [
+    ...combat.map(item => ({ card: item.card, item })),
+    ...support.map(item => ({ card: item.card, item })),
+    ...lands.map(item => ({ card: item.card, item })),
+    ...planeswalkers.map(item => ({ card: item.card, item }))
+  ].filter(entry => entry.card && entry.card.spellCastTrigger);
+
+  const entries = [];
+  for (const { card, item } of watchers) {
+    const spec = card.spellCastTrigger;
+    const filter = spec.filter || 'instant_or_sorcery';
+    const effect = spec.effect || (spec.type ? spec : null);
+    if (!['instant_or_sorcery', 'instant', 'sorcery'].includes(filter)) {
+      logMsg(`⚠️ ${card.name}: spellCastTrigger usa el filtro desconocido "${filter}".`);
+      continue;
+    }
+    if (!spellCastTriggerMatches(castCard, filter)) continue;
+    if (!effect || !effect.type) {
+      logMsg(`⚠️ ${card.name}: spellCastTrigger no tiene un effect válido.`);
+      continue;
+    }
+
+    const implicitSelfCreature = ['add_counter', 'pump', 'grant_keyword_temp'].includes(effect.type)
+      && combat.includes(item);
+    const implicitTarget = implicitSelfCreature ? { type: 'creature', isLocal, item } : null;
+    if (!implicitTarget && !canResolveGameEffectWithoutTarget(effect.type)) {
+      logMsg(`⚠️ ${card.name}: su spellCastTrigger usa "${effect.type}", que necesita elegir un objetivo externo o no es válido en Spellslinger.`);
+      continue;
+    }
+
+    logMsg(`✨ Spellslinger — ${card.name} reaccionó a ${castCard.name}.`);
+    entries.push({
+      effect, sourceCard: card, sourceItem: item, isLocal, targetObj: implicitTarget,
+      selfTarget: implicitSelfCreature, triggerType: 'spell_cast', eventCard: castCard, eventItem: stackItem
+    });
+  }
+  return queueTriggeredAbilities(entries);
+}
+
+// Lote de muertes simultáneas. Todos los disparos del mismo evento se recolectan ANTES de
+// apilarse, usando el snapshot previo a las muertes. Esto evita que un Blood-Artist-like que
+// también murió deje de "ver" a las otras criaturas y, además, permite aplicar AP/NAP al
+// conjunto completo en vez de apilar muerte por muerte según el orden accidental de arrays.
+export function queueCreatureDeathBatch(deadEntries = [], watchersSnapshot = null) {
+  const dead = (deadEntries || []).filter(entry => entry?.unit?.card);
+  if (dead.length === 0) return [];
+  const snapshot = watchersSnapshot || [
+    ...state.localCombat.map(unit => ({ unit, isLocal: true })),
+    ...state.rivalCombat.map(unit => ({ unit, isLocal: false })),
+    ...dead.filter(entry => !state.localCombat.includes(entry.unit) && !state.rivalCombat.includes(entry.unit))
+  ];
+  const entries = [];
+
+  for (const { unit, isLocal } of dead) {
+    if (unit.card.diesTrigger) {
+      entries.push({
+        effect: unit.card.diesTrigger, sourceCard: unit.card, sourceItem: unit, isLocal,
+        triggerType: 'dies', eventCard: unit.card, eventItem: unit
+      });
+    }
+
+    const watcherIsLocal = !isLocal;
+    // opponentDeathTrigger puede vivir en cualquier permanente. Los watchers de Combat salen
+    // del snapshot PREVIO a la muerte para que incluso uno que muere simultáneamente alcance a
+    // ver la muerte rival; Soporte/Tierras/PW siguen vivos fuera de ese snapshot de criaturas.
+    const watcherSupport = watcherIsLocal ? state.localSupport : state.rivalSupport;
+    const watcherLands = watcherIsLocal ? state.localLands : state.rivalLands;
+    const watcherPlaneswalkers = watcherIsLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
+    [...watcherSupport, ...watcherLands, ...watcherPlaneswalkers].forEach(item => {
+      if (!item.card?.opponentDeathTrigger) return;
+      entries.push({
+        effect: item.card.opponentDeathTrigger, sourceCard: item.card, sourceItem: item,
+        isLocal: watcherIsLocal, triggerType: 'opponent_death', eventCard: unit.card, eventItem: unit
+      });
+    });
+    snapshot.forEach(({ unit: watcher, isLocal: watcherLocal }) => {
+      if (watcherLocal !== watcherIsLocal || !watcher?.card?.opponentDeathTrigger) return;
+      entries.push({
+        effect: watcher.card.opponentDeathTrigger, sourceCard: watcher.card, sourceItem: watcher,
+        isLocal: watcherLocal, triggerType: 'opponent_death', eventCard: unit.card, eventItem: unit
+      });
+    });
+
+    snapshot.forEach(({ unit: watcher, isLocal: watcherLocal }) => {
+      if (!watcher?.card?.anyCreatureDiesTrigger) return;
+      entries.push({
+        effect: watcher.card.anyCreatureDiesTrigger, sourceCard: watcher.card, sourceItem: watcher,
+        isLocal: watcherLocal, triggerType: 'any_creature_dies', eventCard: unit.card, eventItem: unit
+      });
+    });
+  }
+  return queueTriggeredAbilities(entries);
 }
 
 // Habilidad Disparada: "Cuando esta criatura muera..." (la de la criatura misma, no importa
 // cómo haya muerto — combate, un removal, o el día de mañana un sacrificio). Es la contraparte
 // de triggerCreatureEtb, pero para la salida en vez de la entrada.
 export function triggerCreatureDies(unit, isLocal) {
-  const trig = unit.card.diesTrigger;
-  if (!trig) return;
-  resolveEffectDirect(trig, unit.card.name, isLocal);
+  const trig = unit?.card?.diesTrigger;
+  if (!trig) return null;
+  return queueTriggeredAbility({
+    effect: trig, sourceCard: unit.card, sourceItem: unit, isLocal, triggerType: 'dies'
+  });
 }
 
-// Habilidad Disparada estilo "Blood Artist": se dispara con la muerte de CUALQUIER criatura
-// del campo (propia o rival, incluida ella misma), a diferencia de diesTrigger (solo la propia)
-// y opponentDeathTrigger (solo las del rival). El "watcher" no tiene por qué seguir vivo:
-// si murió en la misma movida que está mirando, igual se dispara una última vez.
-export function triggerAnyCreatureDeath(deadUnit, deadUnitIsLocal) {
-  const watchers = [
+// "Muere cualquier criatura" / "muere criatura rival". El snapshot preserva watchers de
+// un evento simultáneo aunque sus fuentes también hayan muerto. Ahora todos se APILAN.
+export function triggerAnyCreatureDeath(deadUnit, deadUnitIsLocal, watchersSnapshot = null) {
+  const entries = [];
+
+  const watcherIsLocal = !deadUnitIsLocal;
+  const watcherSupport = watcherIsLocal ? state.localSupport : state.rivalSupport;
+  const watcherLands = watcherIsLocal ? state.localLands : state.rivalLands;
+  const watcherPlaneswalkers = watcherIsLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
+  [...watcherSupport, ...watcherLands, ...watcherPlaneswalkers].forEach(item => {
+    const trig = item.card?.opponentDeathTrigger;
+    if (!trig) return;
+    entries.push({
+      effect: trig, sourceCard: item.card, sourceItem: item, isLocal: watcherIsLocal,
+      triggerType: 'opponent_death', eventCard: deadUnit?.card, eventItem: deadUnit
+    });
+  });
+
+  const watchers = watchersSnapshot || [
     ...state.localCombat.filter(u => u !== deadUnit).map(u => ({ unit: u, isLocal: true })),
     ...state.rivalCombat.filter(u => u !== deadUnit).map(u => ({ unit: u, isLocal: false })),
-    { unit: deadUnit, isLocal: deadUnitIsLocal }
+    ...(deadUnit ? [{ unit: deadUnit, isLocal: deadUnitIsLocal }] : [])
   ];
   watchers.forEach(({ unit, isLocal }) => {
-    const trig = unit.card.anyCreatureDiesTrigger;
-    if (!trig) return;
-    if (trig.type === 'drain') {
-      if (isLocal) { state.rivalHP -= trig.amount; state.localHP += trig.amount; }
-      else { state.localHP -= trig.amount; state.rivalHP += trig.amount; }
-      logMsg(`🩸 ¡${unit.card.name}! Drena ${trig.amount} de vida por la muerte de ${deadUnit.card.name}.`);
-    } else {
-      resolveEffectDirect(trig, unit.card.name, isLocal);
+    if (isLocal === watcherIsLocal) {
+      const opponentTrig = unit?.card?.opponentDeathTrigger;
+      if (opponentTrig) entries.push({
+        effect: opponentTrig, sourceCard: unit.card, sourceItem: unit, isLocal,
+        triggerType: 'opponent_death', eventCard: deadUnit?.card, eventItem: deadUnit
+      });
     }
+    const trig = unit?.card?.anyCreatureDiesTrigger;
+    if (!trig) return;
+    entries.push({
+      effect: trig, sourceCard: unit.card, sourceItem: unit, isLocal,
+      triggerType: 'any_creature_dies', eventCard: deadUnit?.card, eventItem: deadUnit
+    });
   });
+
+  return queueTriggeredAbilities(entries);
 }
 
 // --- EQUIPAMIENTO REAL (Equip) ---
@@ -1191,7 +2524,19 @@ export function cleanupIfVehicle(unit) {
 // vez de al jugador. Tienen Lealtad en vez de vida, y una sola habilidad activable por
 // turno (sea +, - o 0), solo en Fase Principal con la pila vacía — mismo criterio de
 // timing que cualquier otra habilidad activada de este motor.
-export function activateLoyaltyAbility(pwItem, abilityIndex, isLocal) {
+// PUNTO 9 PRE-500 — PLANESWALKERS SOBRE EL RESOLVER UNIVERSAL.
+// La Lealtad sigue siendo una activación DIRECTA en este motor (no entra a la pila) y se
+// mantiene exactamente la regla existente de una habilidad por turno, sólo en tu Main.
+// Lo que cambia es la ejecución del `effect`: ya no existe un mini-resolver paralelo para
+// Planeswalkers. Una vez pagada la Lealtad, el mismo resolveGameEffect que usan hechizos,
+// ETB y triggers ejecuta el resultado.
+function loyaltyEffectSourceCard(pwItem, ability) {
+  // Conserva identidad/colores del Planeswalker (Protección, tokens, logs) pero hace que los
+  // mensajes del resolver identifiquen también QUÉ habilidad de Lealtad produjo el efecto.
+  return { ...pwItem.card, name: `${pwItem.card.name} — ${ability.name}` };
+}
+
+export async function activateLoyaltyAbility(pwItem, abilityIndex, isLocal) {
   if (state.phase !== 'main1' && state.phase !== 'main2') {
     logMsg("Las habilidades de Lealtad solo se pueden usar en tus Fases Principales.");
     return;
@@ -1200,7 +2545,7 @@ export function activateLoyaltyAbility(pwItem, abilityIndex, isLocal) {
     logMsg("Solo podés activar la habilidad de un Planeswalker en tu propio turno.");
     return;
   }
-  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.pendingRampChoice) {
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0 || state.pendingResolvedEffectTargetChoice || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.pendingRampChoice) {
     logMsg("Terminá lo que tenés pendiente antes de activar esto.");
     return;
   }
@@ -1209,94 +2554,116 @@ export function activateLoyaltyAbility(pwItem, abilityIndex, isLocal) {
     return;
   }
   const ability = pwItem.card.loyaltyAbilities[abilityIndex];
-  if (!ability) return;
+  if (!ability || !ability.effect) return;
   if (ability.cost < 0 && pwItem.loyalty < Math.abs(ability.cost)) {
     logMsg(`${pwItem.card.name} no tiene suficiente Lealtad para esa habilidad (tiene ${pwItem.loyalty}).`);
     return;
   }
 
+  const sourceCard = loyaltyEffectSourceCard(pwItem, ability);
+
+  // Validación de CONTEXTO antes de pagar. `resolveGameEffect` es universal para el
+  // vocabulario discreto, pero no todo tipo sirve en cualquier forma: create_tokens no se
+  // vuelve dirigido por agregar requiresTarget, y Fight/Equipar necesitan una fuente
+  // criatura/Equipo que un Planeswalker no es. Rechazamos esos contratos imposibles en vez
+  // de pagar Lealtad y producir un no-op silencioso.
+  const effectType = ability.effect.type;
+  const sourceSpecificUnsupported = ['attach_equipment', 'fight', 'crew_vehicle'].includes(effectType);
+  const executionShapeSupported = ability.requiresTarget
+    ? canResolveGameEffectWithTarget(effectType)
+    : canResolveGameEffectWithoutTarget(effectType);
+  if (!executionShapeSupported || sourceSpecificUnsupported) {
+    logMsg(`⚠️ ${pwItem.card.name}: "${ability.name}" usa ${effectType}, que no es compatible con una habilidad de Lealtad ${ability.requiresTarget ? 'dirigida' : 'sin objetivo'} en el motor actual.`);
+    return;
+  }
+
+  // Una habilidad dirigida no puede activarse si no existe NINGÚN target legal. Antes el
+  // humano podía pagar Lealtad y quedar atrapado esperando una criatura inexistente.
+  if (ability.requiresTarget) {
+    const candidates = getResolvedEffectTargetCandidates({
+      effect: ability.effect,
+      sourceCard,
+      controllerIsLocal: isLocal,
+      chooserIsLocal: isLocal,
+      cardName: ability.name
+    });
+    if (candidates.length === 0) {
+      logMsg(`⚠️ ${pwItem.card.name}: "${ability.name}" no tiene ningún objetivo legal.`);
+      return;
+    }
+  }
+
+  // El costo de Lealtad es irreversible desde este punto, igual que antes.
   pwItem.loyalty += ability.cost;
   pwItem.abilityUsedThisTurn = true;
   logMsg(`🔮 ${pwItem.card.name} activó "${ability.name}" (Lealtad ahora: ${pwItem.loyalty}).`);
 
-  // Habilidad de Lealtad CON target (ej. "-3: Le hace 3 de daño a la criatura objetivo"):
-  // el costo de Lealtad ya se pagó (no se devuelve, mismo criterio que cualquier otra
-  // habilidad activada) — ahora esperamos que se elija el objetivo antes de aplicar nada.
+  let targetObj = null;
   if (ability.requiresTarget) {
-    state.pendingLoyaltyTargetChoice = { pwItem, ability };
-    logMsg(`Elegí un objetivo para "${ability.name}".`);
-    checkPlaneswalkerDeaths(); // por si pagar la Lealtad lo mató a él mismo
-    render();
-    return;
+    // Preservamos el orden histórico: si pagar el costo deja al PW en 0, muere antes de que
+    // el jugador termine de elegir el target; la habilidad ya fue activada y puede resolver.
+    checkPlaneswalkerDeaths();
+    targetObj = await chooseResolvedEffectTarget({
+      effect: ability.effect,
+      sourceCard,
+      sourceItem: pwItem,
+      controllerIsLocal: isLocal,
+      chooserIsLocal: isLocal,
+      cardName: `${pwItem.card.name} — ${ability.name}`
+    });
+    if (!targetObj) {
+      render();
+      return;
+    }
   }
 
-  if (ability.effect) {
-    resolveEffectDirect(ability.effect, pwItem.card.name, isLocal);
+  const result = await resolveGameEffect(ability.effect, {
+    sourceCard,
+    sourceItem: pwItem,
+    isLocal,
+    targetObj,
+    triggerType: 'loyalty'
+  });
+  if (!result.handled) {
+    logMsg(`⚠️ ${pwItem.card.name}: "${ability.name}" usa un efecto (${ability.effect.type}) que no puede resolverse como habilidad de Lealtad en el motor actual.`);
   }
 
+  // Para habilidades sin target conserva el orden anterior: efecto primero y luego SBA de
+  // Lealtad. En las dirigidas ya se chequeó al pagar; repetir es inocuo y cubre daño/otros
+  // efectos que eventualmente modifiquen Lealtad durante la resolución.
   checkPlaneswalkerDeaths();
   render();
 }
 
-// Resolver una habilidad de Lealtad con target, una vez que se eligió la criatura. No pasa
-// por la pila (las habilidades de Lealtad se resuelven directo en este motor, no se pueden
-// responder). Soporta daño, bufo, destruir y exiliar — los 4 patrones más comunes de
-// habilidad de Lealtad con target en MTG real (destruir/exiliar se sumaron después, mismo
-// criterio y mismos pasos de limpieza que ya usa stackManager.js para hechizos normales).
-export function resolveLoyaltyTargetChoice(targetUnit, isTargetLocal) {
+// Compatibilidad defensiva con estados viejos/hot-reload que pudieran conservar
+// pendingLoyaltyTargetChoice. La ruta NUEVA ya no crea ese pending: usa el selector general
+// chooseResolvedEffectTarget. Si apareciera uno heredado, también termina en resolveGameEffect
+// y no revive el viejo whitelist damage/pump/destroy/exile.
+export async function resolveLoyaltyTargetChoice(targetUnit, isTargetLocal) {
   const ltc = state.pendingLoyaltyTargetChoice;
   if (!ltc) return;
   const { pwItem, ability } = ltc;
-  const effect = ability.effect;
   state.pendingLoyaltyTargetChoice = null;
-
-  const protectedColor = getProtectionMatch(targetUnit, pwItem.card.colors || []);
-  if (protectedColor) {
-    logMsg(`🛡️ ¡${targetUnit.card.name} tiene Protección de ${COLOR_LABELS[protectedColor] || protectedColor}! "${ability.name}" no le hace nada.`);
+  const sourceCard = loyaltyEffectSourceCard(pwItem, ability);
+  const targetObj = { type: 'creature', isLocal: isTargetLocal, item: targetUnit };
+  const legal = isResolvedEffectTargetLegal(targetObj, {
+    effect: ability.effect,
+    sourceCard,
+    controllerIsLocal: true
+  });
+  if (!legal) {
+    logMsg(`Ese no es un objetivo válido para "${ability.name}".`);
     render();
     return;
   }
-
-  if (effect.type === 'damage') {
-    targetUnit.damageTaken = (targetUnit.damageTaken || 0) + effect.amount;
-    logMsg(`💥 "${ability.name}" le hizo ${effect.amount} de daño a ${targetUnit.card.name}.`);
-    checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-    checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
-  } else if (effect.type === 'pump') {
-    if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
-    targetUnit.tempEffects.push({ powerMod: effect.powerMod || 0, toughnessMod: effect.toughnessMod || 0 });
-    logMsg(`💪 "${ability.name}" le dio +${effect.powerMod || 0}/+${effect.toughnessMod || 0} a ${targetUnit.card.name} hasta el final del turno.`);
-  } else if (effect.type === 'destroy_creature' || effect.type === 'exile_creature') {
-    const board = isTargetLocal ? state.localCombat : state.rivalCombat;
-    const grave = isTargetLocal ? state.localGraveyard : state.rivalGraveyard;
-    const idx = board.indexOf(targetUnit);
-    if (idx === -1) {
-      logMsg(`⚠️ "${ability.name}" falló: el objetivo ya no está en el campo.`);
-      render();
-      return;
-    }
-    if (effect.type === 'destroy_creature' && hasKeyword(targetUnit, 'indestructible')) {
-      logMsg(`🛡️ ${targetUnit.card.name} es Indestructible: "${ability.name}" no pudo hacer nada.`);
-      render();
-      return;
-    }
-    board.splice(idx, 1);
-    detachEquipmentFrom(targetUnit, isTargetLocal);
-    sendAurasToGraveyard(targetUnit, isTargetLocal);
-    cleanupIfVehicle(targetUnit);
-    if (effect.type === 'destroy_creature') {
-      grave.push(targetUnit.card);
-      logMsg(`💀 "${ability.name}" destruyó a ${targetUnit.card.name}!`);
-      triggerCreatureDies(targetUnit, isTargetLocal);
-      triggerAnyCreatureDeath(targetUnit, isTargetLocal);
-    } else {
-      (isTargetLocal ? state.localExile : state.rivalExile).push(targetUnit.card);
-      logMsg(`🌀 "${ability.name}" exilió a ${targetUnit.card.name}!`);
-    }
-  } else {
-    logMsg(`⚠️ "${ability.name}" tiene un tipo de efecto que esta habilidad todavía no soporta con target.`);
-  }
-
+  await resolveGameEffect(ability.effect, {
+    sourceCard,
+    sourceItem: pwItem,
+    isLocal: true,
+    targetObj,
+    triggerType: 'loyalty_legacy_target'
+  });
+  checkPlaneswalkerDeaths();
   render();
 }
 
@@ -1319,6 +2686,11 @@ export function checkPlaneswalkerDeaths() {
 
 export function handlePlaneswalkerClick(pwItem, isLocal, index) {
   if (state.gameOver) return;
+
+  if (state.pendingResolvedEffectTargetChoice) {
+    finishPendingResolvedEffectTarget({ type: 'planeswalker', isLocal, index, item: pwItem });
+    return;
+  }
 
   // Completar una redirección de ataque: clickear un Planeswalker RIVAL mientras hay una
   // atacante local esperando a dónde mandarse.
@@ -1395,7 +2767,7 @@ export function resolveScheduledReturns(isLocal) {
 
     combatZone.push(newUnit);
     logMsg(`🌀 ¡${entry.card.name} volvió del Exilio, como si acabara de entrar al campo!`);
-    triggerCreatureEtb(isLocal);
+    triggerCreatureEtb(isLocal, entry.card, newUnit);
 
     if (entry.card.type.includes('Legendaria')) {
       const duplicate = combatZone.find(u => u !== newUnit && u.card.name === entry.card.name);
@@ -1406,7 +2778,10 @@ export function resolveScheduledReturns(isLocal) {
     }
 
     if (entry.card.etbEffect && !entry.card.requiresTarget) {
-      resolveEffectDirect(entry.card.etbEffect, entry.card.name, isLocal);
+      queueTriggeredAbility({
+        effect: entry.card.etbEffect, sourceCard: entry.card, sourceItem: newUnit, isLocal,
+        triggerType: 'return_etb'
+      });
     }
   });
 }
@@ -1461,6 +2836,16 @@ export function getKeywordsGrantedByPendingSpell(pendingCard) {
 
 export function handleCombatClick(item, isLocal, index) {
   if (state.damageModalOpen) return;
+  if (state.pendingActivatedAbilityChoice) { logMsg("Elegí primero qué habilidad querés activar."); return; }
+  if (state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0) {
+    logMsg("Terminá primero el descarte pendiente.");
+    return;
+  }
+
+  if (state.pendingResolvedEffectTargetChoice) {
+    finishPendingResolvedEffectTarget({ type: 'creature', isLocal, index, item });
+    return;
+  }
 
   if (state.pendingCrew) {
     handleCrewClick(item, isLocal);
@@ -1486,7 +2871,8 @@ export function handleCombatClick(item, isLocal, index) {
   if (state.pendingLoyaltyTargetChoice) {
     const rules = getTargetRules({ effect: state.pendingLoyaltyTargetChoice.ability.effect });
     const allowed = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
-    if (!allowed) {
+    const matchesFilter = !rules.creatureFilter || item.card.type.includes(rules.creatureFilter);
+    if (!allowed || !matchesFilter) {
       logMsg("Ese no es un objetivo válido para esa habilidad.");
       return;
     }
@@ -1505,7 +2891,8 @@ export function handleCombatClick(item, isLocal, index) {
     const spec = mtc.card.targets[mtc.currentIndex];
     const rules = getTargetRules({ effect: spec.effect });
     const allowed = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
-    if (!allowed) {
+    const matchesFilter = !rules.creatureFilter || item.card.type.includes(rules.creatureFilter);
+    if (!allowed || !matchesFilter) {
       logMsg("Ese no es un objetivo válido para este target del hechizo.");
       return;
     }
@@ -1546,8 +2933,9 @@ export function handleCombatClick(item, isLocal, index) {
     
     const rules = getTargetRules(state.pendingTargetCard);
     const allowed = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
+    const matchesFilter = !rules.creatureFilter || item.card.type.includes(rules.creatureFilter);
 
-    if (!allowed) {
+    if (!allowed || !matchesFilter) {
       logMsg(`Ese no es un objetivo válido para ${state.pendingTargetCard.name}.`);
       return;
     }
@@ -1648,75 +3036,160 @@ export function handleCombatClick(item, isLocal, index) {
       }
     }
   }
-  // Fuera de combate: clic en tu propia criatura para usar la habilidad que le da un Equipo
-  // (ej. Facón de Plata otorga "{T}: hace 2 de daño" a quien lo tenga puesto).
-  else if (state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2') && isLocal && state.priorityPlayer === 'local') {
+  // Si el click no fue consumido por declarar atacante/bloqueador, una criatura propia
+  // puede intentar activar habilidades. `presentActivatedAbilityChoice` filtra por timing:
+  // las cartas legacy siguen siendo Main-only; las `instant` funcionan con prioridad.
+  else if (isLocal && state.priorityPlayer === 'local') {
     tryActivateGrantedAbility(item, isLocal, index);
   }
 }
 
-function tryActivateGrantedAbility(creatureItem, isLocal, creatureIndex) {
-  // Prioridad: si la criatura tiene su PROPIA habilidad activada (ej. Alberto Samid,
-  // "{1}{G}: Pelea contra la criatura objetivo"), usamos esa. Si no, buscamos si algún
-  // Equipo puesto le está prestando una (ej. Facón de Plata).
-  const ownAbility = creatureItem.card.activatedAbility;
-  const equippedWithAbility = !ownAbility ? getEquipmentOn(creatureItem).find(eq => eq.card.grantedAbility) : null;
-  if (!ownAbility && !equippedWithAbility) return false;
+// PUNTO 12 PRE-500 — TIMING CONFIGURABLE DE HABILIDADES ACTIVADAS.
+// IMPORTANTE: las 231 cartas actuales NO tienen `timing`; para ellas usamos 'legacy', que
+// conserva exactamente la regla histórica (propia Main + prioridad, incluso si la pila no
+// está vacía). Las cartas nuevas pueden declarar 'sorcery' (Main + prioridad + pila vacía)
+// o 'instant' (cualquier ventana donde su controlador tenga prioridad).
+export function canActivateActivatedAbilityNow(ability, isLocal = true) {
+  if (!ability || state.gameOver) return false;
+  const controller = isLocal ? 'local' : 'rival';
+  if (state.priorityPlayer !== controller) return false;
 
-  // Un Vehículo ya tripulado (ahora una criatura en Combate) todavía tiene pegada su
-  // habilidad de Tripular original — no es una habilidad de criatura real, así que no
-  // dejamos que se "active" de nuevo desde acá (buscaría el Vehículo en Soporte/Tierras,
-  // que ya no está ahí, y no haría nada — mejor cortarlo acá con un mensaje claro).
-  if (ownAbility && ownAbility.crewCost !== undefined) {
-    logMsg(`${creatureItem.card.name} ya está tripulado — no hay nada más que activar.`);
+  const timing = getActivatedAbilityTiming(ability);
+  if (timing === 'invalid') return false;
+
+  const ownMain = state.activePlayer === controller && (state.phase === 'main1' || state.phase === 'main2');
+  const intrinsicSorceryOnly = ability.crewCost !== undefined || ability.effect?.type === 'crew_vehicle' || ability.effect?.type === 'attach_equipment';
+
+  // Equipar/Tripular son acciones que este motor modela como sorcery-speed por naturaleza.
+  // Marcar una de ellas como `timing:"instant"` es un contrato inválido, no una forma de
+  // esquivar esa regla especial.
+  if (intrinsicSorceryOnly && timing === 'instant') return false;
+
+  if (timing === 'instant') return true;
+  if (!ownMain) return false;
+  if (timing === 'sorcery') return spellStack.length === 0;
+  return true; // legacy: comportamiento pre-Punto-12, sin cambio silencioso.
+}
+
+function activatedTimingFailureMessage(ability) {
+  const timing = getActivatedAbilityTiming(ability);
+  if (timing === 'invalid') return `⚠️ Timing de habilidad desconocido: "${ability?.timing}".`;
+  if ((ability?.crewCost !== undefined || ability?.effect?.type === 'crew_vehicle' || ability?.effect?.type === 'attach_equipment') && timing === 'instant') {
+    return '⚠️ Equipar/Tripular no pueden declararse con timing instantáneo.';
+  }
+  if (state.priorityPlayer !== 'local') return 'No tenés prioridad para activar esa habilidad.';
+  if (timing === 'sorcery' && spellStack.length > 0) return 'Esa habilidad necesita timing de conjuro: la pila debe estar vacía.';
+  return 'Esa habilidad sólo se puede activar en una ventana válida para su timing.';
+}
+
+function buildCreatureActivatedAbilityOptions(creatureItem, isLocal, creatureIndex) {
+  const options = [];
+
+  getActivatedAbilities(creatureItem.card).forEach((ability, abilityIndex) => {
+    // Un Vehículo ya tripulado conserva en su carta la habilidad de Tripular, pero esa
+    // habilidad sólo existe mientras el Vehículo está en Support/Tierras. Si además tiene
+    // otra habilidad propia, ESA sí debe seguir disponible en Combat.
+    if (ability.crewCost !== undefined) return;
+    options.push({
+      ability,
+      abilityIndex,
+      abilityKind: 'own',
+      item: creatureItem,
+      tapTarget: creatureItem,
+      index: creatureIndex,
+      isLocal,
+      sourceName: creatureItem.card.name
+    });
+  });
+
+  const supportZone = isLocal ? state.localSupport : state.rivalSupport;
+  for (const equipment of getEquipmentOn(creatureItem)) {
+    const equipIndex = supportZone.indexOf(equipment);
+    getGrantedAbilities(equipment.card).forEach((ability, abilityIndex) => {
+      options.push({
+        ability,
+        abilityIndex,
+        abilityKind: 'granted',
+        item: equipment,
+        tapTarget: creatureItem,
+        index: equipIndex,
+        isLocal,
+        sourceName: equipment.card.name
+      });
+    });
+  }
+
+  return options;
+}
+
+function buildPermanentActivatedAbilityOptions(item, isLocal, index) {
+  return getActivatedAbilities(item.card).map((ability, abilityIndex) => ({
+    ability,
+    abilityIndex,
+    abilityKind: 'own',
+    item,
+    tapTarget: item,
+    index,
+    isLocal,
+    sourceName: item.card.name
+  }));
+}
+
+function beginActivatedAbility(source, displayName = source.sourceName || source.item.card.name) {
+  const ability = source.ability;
+  if (!ability) return false;
+
+  // Revalidación al confirmar: el modal puede haber estado abierto mientras cambió el estado
+  // por sync. Nunca pagamos/giramos nada si el timing ya no es legal.
+  if (!canActivateActivatedAbilityNow(ability, source.isLocal)) {
+    logMsg(activatedTimingFailureMessage(ability));
+    render();
     return true;
   }
 
-  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null) {
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null) {
     logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
     return true;
   }
 
-  const ability = ownAbility || equippedWithAbility.card.grantedAbility;
-  const sourceCardName = ownAbility ? creatureItem.card.name : equippedWithAbility.card.name;
-  const costStr = ability.cost || "";
-  const requiresTap = costStr.includes('{T}');
-
-  if (requiresTap && creatureItem.tapped) {
-    logMsg(`${creatureItem.card.name} ya está girada.`);
+  // Tripular sigue siendo una acción especial (se paga girando criaturas, no maná ni pila),
+  // pero ahora puede convivir en el MISMO permanent con otras habilidades del array.
+  if (ability.crewCost !== undefined) {
+    if (state.phase !== 'main1' && state.phase !== 'main2') return true;
+    startCrewing(source.item, source.isLocal, ability);
     return true;
   }
-  if (requiresTap && creatureItem.summoningSickness) {
-    logMsg(`${creatureItem.card.name} tiene mareo de invocación: todavía no puede usar la habilidad de ${sourceCardName}.`);
+
+  if (ability.effect?.type === 'attach_equipment' && state.localCombat.length === 0) {
+    logMsg(`⚠️ No tenés ninguna criatura para equipar con ${source.item.card.name}.`);
+    return true;
+  }
+
+  const costStr = ability.cost || "";
+  const requiresTap = costStr.includes('{T}');
+  const tapTarget = source.tapTarget || source.item;
+
+  if (requiresTap && tapTarget.tapped) {
+    logMsg(`⏳ ${tapTarget.card.name} ya está girado.`);
+    return true;
+  }
+
+  // {T} en una criatura está sujeto al mareo; {T} en un Artefacto/Tierra no. Esto conserva
+  // exactamente la diferencia histórica entre habilidades propias de criatura y soporte.
+  const combatZone = source.isLocal ? state.localCombat : state.rivalCombat;
+  if (requiresTap && combatZone.includes(tapTarget) && tapTarget.summoningSickness) {
+    logMsg(`${tapTarget.card.name} tiene mareo de invocación: todavía no puede usar la habilidad de ${source.sourceName || displayName}.`);
     return true;
   }
 
   const manaCostStr = costStr.replace('{T}', '').trim();
   const manaCost = parseManaCost(manaCostStr || "");
+  source.requiresTap = requiresTap;
+  source.tapTarget = tapTarget;
 
-  if (ownAbility) {
-    // La criatura activa su propia habilidad: ella misma es "item" y "tapTarget".
-    state.pendingAbilitySource = {
-      item: creatureItem,
-      tapTarget: creatureItem,
-      index: creatureIndex,
-      isLocal,
-      requiresTap,
-      abilityKind: 'own'
-    };
-  } else {
-    const supportZone = isLocal ? state.localSupport : state.rivalSupport;
-    const equipIndex = supportZone.indexOf(equippedWithAbility);
-    state.pendingAbilitySource = {
-      item: equippedWithAbility,
-      tapTarget: creatureItem,
-      index: equipIndex,
-      isLocal,
-      requiresTap,
-      abilityKind: 'granted'
-    };
-  }
-
+  // Punto 11: guardamos LA habilidad concreta elegida. Con un array ya no alcanza con
+  // reconstruirla después desde card.activatedAbility/card.grantedAbility.
+  state.pendingAbilitySource = source;
   state.pendingCost = manaCost;
   state.tappedLandsThisSpell = [];
 
@@ -1724,14 +3197,80 @@ function tryActivateGrantedAbility(creatureItem, isLocal, creatureIndex) {
   if (totalMana === 0) {
     checkPaymentComplete();
   } else {
-    logMsg(`Activando la habilidad de ${sourceCardName} en ${creatureItem.card.name}. Elegí tierras para pagar.`);
+    logMsg(`Activando la habilidad de ${source.sourceName || displayName}. Elegí tierras para pagar el costo.`);
     render();
   }
   return true;
 }
 
+function presentActivatedAbilityChoice(displayName, options) {
+  if (!options || options.length === 0) return false;
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null) {
+    logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
+    return true;
+  }
+
+  const legalOptions = options.filter(option => canActivateActivatedAbilityNow(option.ability, option.isLocal));
+  if (legalOptions.length === 0) {
+    logMsg(activatedTimingFailureMessage(options[0]?.ability));
+    render();
+    return true;
+  }
+
+  if (legalOptions.length === 1) return beginActivatedAbility(legalOptions[0], displayName);
+
+  state.pendingActivatedAbilityChoice = { displayName, options: legalOptions };
+  render();
+  showActivatedAbilityModal(displayName, legalOptions, (choiceIndex) => {
+    const pending = state.pendingActivatedAbilityChoice;
+    state.pendingActivatedAbilityChoice = null;
+    if (!pending) return;
+    const chosen = pending.options[choiceIndex];
+    if (!chosen) { render(); return; }
+    beginActivatedAbility(chosen, pending.displayName);
+  }, () => {
+    state.pendingActivatedAbilityChoice = null;
+    render();
+  });
+  return true;
+}
+
+function tryActivateGrantedAbility(creatureItem, isLocal, creatureIndex) {
+  const options = buildCreatureActivatedAbilityOptions(creatureItem, isLocal, creatureIndex);
+  if (options.length === 0 && getActivatedAbilities(creatureItem.card).some(ab => ab.crewCost !== undefined)) {
+    logMsg(`${creatureItem.card.name} ya está tripulado — no hay una habilidad activada disponible desde Combate.`);
+    return true;
+  }
+  return presentActivatedAbilityChoice(creatureItem.card.name, options);
+}
+
+// Acceso UI independiente para timing instantáneo. En los subpasos de declarar atacantes o
+// bloqueadores, el click principal de la criatura ya tiene otro significado; el botón ⚡
+// llama acá y evita que activar una habilidad cambie accidentalmente la declaración de combate.
+export function handleInstantActivatedAbilityClick(item, isLocal, index, zoneType = 'combat') {
+  if (state.gameOver || !isLocal) return false;
+  let resolvedIndex = index;
+  let options = [];
+  if (zoneType === 'combat') {
+    if (resolvedIndex === null || resolvedIndex === undefined) resolvedIndex = state.localCombat.indexOf(item);
+    options = buildCreatureActivatedAbilityOptions(item, true, resolvedIndex);
+  } else {
+    const zone = zoneType === 'land' ? state.localLands : state.localSupport;
+    if (resolvedIndex === null || resolvedIndex === undefined) resolvedIndex = zone.indexOf(item);
+    options = buildPermanentActivatedAbilityOptions(item, true, resolvedIndex);
+  }
+  const instantOptions = options.filter(option => getActivatedAbilityTiming(option.ability) === 'instant');
+  if (instantOptions.length === 0) return false;
+  return presentActivatedAbilityChoice(item.card.name, instantOptions);
+}
+
 export function handleSupportTargetClick(item, isLocal, index) {
   if (state.damageModalOpen) return;
+
+  if (state.pendingResolvedEffectTargetChoice) {
+    finishPendingResolvedEffectTarget({ type: 'permanent', isLocal, index, item });
+    return;
+  }
 
   // Objetivos múltiples: un target puede ser un permanente (artefacto/encantamiento) en
   // vez de una criatura o jugador — mismo reuso de getTargetRules con el effect del target
@@ -1771,6 +3310,11 @@ export function handleSupportTargetClick(item, isLocal, index) {
 
 export function handlePlayerTargetClick(isLocal) {
   if (state.damageModalOpen) return;
+
+  if (state.pendingResolvedEffectTargetChoice) {
+    finishPendingResolvedEffectTarget({ type: 'player', isLocal });
+    return;
+  }
 
   // Objetivos múltiples: mismo reuso de getTargetRules con el effect del target actual.
   if (state.pendingMultiTargetChoice) {
@@ -1831,8 +3375,16 @@ export function cancelPayment() {
   // En MTG real, una vez pagado un costo (sacrificio incluido) la activación queda
   // irrevocablemente comprometida — acá replicamos eso negando el cancelar y obligando a
   // terminar de elegir el objetivo (si la habilidad lo pide).
+  if (state.pendingCompositeCostPayment) {
+    logMsg("⚠️ Terminá primero la selección de componentes del costo que está en curso.");
+    return;
+  }
   if (state.pendingAbilitySource && state.pendingAbilitySource.sacrificePaid) {
     logMsg("⚠️ Ya pagaste el sacrificio de esta habilidad — no se puede cancelar. Tenés que terminar de elegir el objetivo.");
+    return;
+  }
+  if (state.pendingSpellIndex !== null && state.pendingSpellCostsIrreversible) {
+    logMsg("⚠️ Ya pagaste un componente irreversible del costo de este hechizo — no se puede cancelar. Tenés que terminar de castearlo.");
     return;
   }
 
@@ -1864,6 +3416,10 @@ export function cancelPayment() {
   state.pendingCost = null; 
   state.pendingCastFrom = null;
   state.pendingKicked = null;
+  state.pendingAlternativeCostChosen = false;
+  state.pendingCompositeCostPayment = false;
+  state.pendingSpellCostsIrreversible = false;
+  state.pendingHybridLifePayment = null;
   state.tappedLandsThisSpell = []; 
   state.pendingTargetCard = null;
   state.pendingTargetSource = null;
@@ -1872,8 +3428,17 @@ export function cancelPayment() {
 }
 
 export function canPlayCard(card) {
-  if (state.gameOver || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen || state.pendingRampChoice || state.awaitingRivalDecision || state.respondingToDecision) return false;
+  if (state.gameOver || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice || state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || state.pendingCompositeCostPayment || (state.resolvingCardFilterEffects || 0) > 0 || (state.resolvingDiscardEffects || 0) > 0 || (state.resolvingSacrificeEffects || 0) > 0 || (state.resolvingGraveyardChoices || 0) > 0 || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen || state.pendingRampChoice || state.awaitingRivalDecision || state.respondingToDecision) return false;
   if (state.priorityPlayer !== 'local') return false; // Solo si poseés prioridad
+
+  // Punto 8 legacy: preservamos esta prevalidación explícita para el schema histórico.
+  if (card.additionalCost && card.additionalCost.type === 'discard') {
+    const needed = Math.max(0, Math.floor(Number(card.additionalCost.amount || 1)));
+    const available = state.localHand.filter(c => c !== card).length;
+    if (available < needed) return false;
+  }
+  // Punto 14: los costos compuestos nuevos prevalidan TODOS sus componentes no-maná.
+  if (card.additionalCost && !card.additionalCost.type && !canPayCastCompositeNonManaCosts(card, true, false, { excludeCard: card })) return false;
   
   // Flash: un permanente con esta keyword se puede jugar como si fuera un instantáneo,
   // aunque su tipo real sea Artefacto/Criatura/Encantamiento (no cambia qué ES la carta,
@@ -1908,8 +3473,17 @@ export function playCard(index) {
       return;
     }
     const entersTapped = !!card.entersTapped;
-    state.localLands.push({ card, tapped: entersTapped }); state.localHand.splice(index, 1); state.localLandPlayedThisTurn = true;
+    const landItem = { card, tapped: entersTapped };
+    state.localLands.push(landItem); state.localHand.splice(index, 1); state.localLandPlayedThisTurn = true;
     logMsg(entersTapped ? `Bajaste la tierra: ${card.name} (entra girada).` : `Bajaste la tierra: ${card.name}.`);
+    // PUNTO 2: jugar una Tierra es una entrada real al campo y dispara Landfall. No esperamos
+    // acá para conservar el contrato síncrono histórico de playCard(); triggerLandEtb se ocupa
+    // de serializar internamente cualquier decisión interactiva y los flags bloquean la UI.
+    triggerLandEtb(true, card, landItem).catch(err => {
+      console.error('Error resolviendo Landfall al jugar una Tierra:', err);
+      logMsg(`⚠️ Ocurrió un error resolviendo Landfall por ${card.name}.`);
+      render();
+    });
     render(); return;
   }
 
@@ -1919,6 +3493,13 @@ export function playCard(index) {
       return;
     }
   }
+
+  // Estado de costos de una nueva carta: se fija antes de cualquier modal (modo/X/Kicker)
+  // para que una selección anterior jamás pueda filtrarse al nuevo casteo.
+  state.pendingAlternativeCostChosen = false;
+  state.pendingCompositeCostPayment = false;
+  state.pendingSpellCostsIrreversible = false;
+  state.pendingHybridLifePayment = null;
 
   // Hechizos modales ("Elegí uno —"): el modo se anuncia y se fija ANTES que todo lo demás
   // (regla 601.2b, antes incluso que X en el orden real). Una vez elegido, "resolvemos" la
@@ -1952,8 +3533,11 @@ export function playCard(index) {
     return;
   }
 
-  state.pendingSpellIndex = index; 
-  state.pendingCost = parseManaCost(card.manaCost); 
+  state.pendingSpellIndex = index;
+  state.pendingAlternativeCostChosen = false;
+  state.pendingSpellCostsIrreversible = false;
+  state.pendingCompositeCostPayment = false;
+  state.pendingCost = parseManaCost(getCastingManaCostString(card));
   state.tappedLandsThisSpell = [];
   logMsg(`Preparando: ${card.name}. Seleccioná tierras para pagar.`);
   checkPaymentComplete(); 
@@ -1977,8 +3561,15 @@ export function castFromGraveyard(card, isLocal) {
   const abilityLabel = source === 'flashback' ? 'Flashback' : 'Escape';
 
   if (state.gameOver || state.priorityPlayer !== 'local') { logMsg("No tenés prioridad ahora mismo."); return; }
-  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.pendingRampChoice) {
+  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.pendingRampChoice) {
     logMsg(`Terminá lo que tenés pendiente antes de usar ${abilityLabel}.`);
+    return;
+  }
+
+  // Punto 14: Flashback/Escape también pagan cualquier costo adicional compuesto. Como
+  // la carta fuente todavía está en el cementerio, no hace falta excluirla de la mano.
+  if (!canPayCastCompositeNonManaCosts(card, true, false)) {
+    logMsg(`⚠️ No tenés recursos suficientes para pagar el costo adicional de ${card.name}.`);
     return;
   }
 
@@ -1987,9 +3578,10 @@ export function castFromGraveyard(card, isLocal) {
   // sentido sacarla de la mano para después descubrir que no se puede pagar.
   if (source === 'escape') {
     const exileCount = ability.exileCount || 0;
+    const extraCostExiles = getCastCompositeCostBundle(card, false).graveyardExiles.reduce((sum, spec) => sum + (spec.amount || 0), 0);
     const otherCount = state.localGraveyard.filter(c => c !== card).length;
-    if (otherCount < exileCount) {
-      logMsg(`⚠️ Necesitás exiliar ${exileCount} carta(s) más de tu cementerio para el Escape de ${card.name}, y no tenés suficientes.`);
+    if (otherCount < exileCount + extraCostExiles) {
+      logMsg(`⚠️ Necesitás suficientes cartas distintas para Escape (${exileCount}) y otros costos de cementerio (${extraCostExiles}) de ${card.name}.`);
       return;
     }
   }
@@ -2013,7 +3605,10 @@ export function castFromGraveyard(card, isLocal) {
   state.localHand.push(card);
   state.pendingCastFrom = source;
   state.pendingSpellIndex = newIndex;
-  state.pendingCost = parseManaCost(ability.cost);
+  state.pendingAlternativeCostChosen = false; // Flashback/Escape ya son una vía alternativa propia.
+  state.pendingSpellCostsIrreversible = false;
+  state.pendingCompositeCostPayment = false;
+  state.pendingCost = parseManaCost(getCastingManaCostString(card, { baseOverride: ability.cost }));
   state.tappedLandsThisSpell = [];
   logMsg(`🔄 Preparando ${card.name} con ${abilityLabel} (${ability.cost}). Seleccioná tierras para pagar.`);
   checkPaymentComplete();
@@ -2028,35 +3623,31 @@ export function castFromGraveyard(card, isLocal) {
 // en este punto exacto (según si necesita target o no), así que lo excluimos por referencia,
 // no por índice, para nunca descartarse a sí misma por error.
 export function payAdditionalCost(card, isLocal) {
-  if (!card.additionalCost) return;
+  if (!card?.additionalCost) return null;
   const ac = card.additionalCost;
-  const hand = isLocal ? state.localHand : state.rivalHand;
-  const graveyard = isLocal ? state.localGraveyard : state.rivalGraveyard;
-
+  // API legacy preservada byte-semánticamente para callers externos y tests antiguos.
   if (ac.type === 'life') {
     if (isLocal) state.localHP -= ac.amount; else state.rivalHP -= ac.amount;
     logMsg(`💉 ${card.name}: costo adicional pagado con ${ac.amount} de vida.`);
-  } else if (ac.type === 'discard') {
-    const pool = hand.filter(c => c !== card);
-    const amount = Math.min(ac.amount, pool.length);
-    const discardedNames = [];
-    for (let i = 0; i < amount; i++) {
-      // Vos elegís desde el final de la mano (misma simplificación que ya usa el efecto
-      // "discard" de las cartas); el Tano, al azar.
-      const target = isLocal ? pool[pool.length - 1 - i] : pool[Math.floor(Math.random() * pool.length)];
-      const idx = hand.indexOf(target);
-      if (idx !== -1) {
-        const discarded = hand.splice(idx, 1)[0];
-        graveyard.push(discarded);
-        discardedNames.push(discarded.name);
-        const poolIdx = pool.indexOf(target);
-        if (poolIdx !== -1) pool.splice(poolIdx, 1);
-      }
-    }
-    if (discardedNames.length > 0) {
-      logMsg(`🗑️ ${card.name}: costo adicional pagado descartando ${discardedNames.join(', ')}.`);
-    }
+    return null;
   }
+  if (ac.type === 'discard') {
+    return discardCardsFromHand({
+      victimIsLocal: isLocal,
+      amount: ac.amount || 1,
+      selection: ac.selection || 'choice',
+      cardName: card.name,
+      reason: 'additional_cost',
+      requireExact: true,
+      excludeCard: isLocal ? card : null
+    }).then(result => {
+      if (!result.completed) throw new Error(`No hay suficientes cartas para pagar el costo adicional de ${card.name}.`);
+      if (result.discardedNames.length > 0) logMsg(`🗑️ ${card.name}: costo adicional pagado descartando ${result.discardedNames.join(', ')}.`);
+      return result;
+    });
+  }
+  if (!compositeCostHasNonMana(ac)) return null;
+  return payCastCompositeNonManaCosts(card, isLocal, false);
 }
 
 // Aplica hasta `amount` de maná (de un color fijo, o eligiendo automáticamente entre
@@ -2085,10 +3676,22 @@ function applyManaToPendingCost(colorOrOptions, amount) {
   return used;
 }
 
-// Artefactos que producen maná (mana rocks / Treasures). Mismo criterio que una tierra:
-// solo tiene sentido tocarlos mientras estás pagando algo. Si además `sacrificeOnTap` es
-// true (estilo Treasure — un solo uso), se sacrifica solo apenas rinde el maná.
+// Punto 13: una fuente de maná que ADEMÁS está pagando {T} para su propia habilidad
+// utility no puede usarse dos veces en el mismo costo. Ej.: una Tierra con "{T}, {2}: ..."
+// debe reservar su propio giro para {T}; las otras tierras pagan el {2}. La misma regla
+// sirve defensivamente para mana rocks con habilidad propia.
+//
+// Fuentes de maná de mesa (Tierras o mana rocks / Treasures). Sólo producen maná cuando
+// existe un pago pendiente: este motor no mantiene una mana pool flotante. Si además
+// `sacrificeOnTap` es true (estilo Treasure), se sacrifica apenas rinde el maná.
 function tapSupportManaSource(item, isLocal) {
+  if (state.pendingAbilitySource?.requiresTap) {
+    const reservedTapTarget = state.pendingAbilitySource.tapTarget || state.pendingAbilitySource.item;
+    if (reservedTapTarget === item) {
+      logMsg(`${item.card.name} está reservada para pagar el {T} de su propia habilidad; usá otra fuente para el maná.`);
+      return;
+    }
+  }
   if (item.tapped) { logMsg(`${item.card.name} ya está girado.`); return; }
   const card = item.card;
   const amount = card.manaAmount || 1;
@@ -2108,8 +3711,9 @@ function tapSupportManaSource(item, isLocal) {
   render();
 }
 
-export function startCrewing(item, isLocal) {
-  const required = item.card.activatedAbility.crewCost;
+export function startCrewing(item, isLocal, ability = getActivatedAbilities(item.card).find(ab => ab.crewCost !== undefined)) {
+  const required = ability?.crewCost;
+  if (required === undefined) return;
   state.pendingCrew = { item, isLocal, required, selected: [], powerSoFar: 0 };
   logMsg(`Elegí criaturas para tripular a ${item.card.name} (necesitás ${required} de poder total). Podés cancelar si te arrepentís.`);
   render();
@@ -2227,8 +3831,8 @@ export function payCounterTax() {
   render();
 }
 
-// No pagar: el hechizo amenazado se contrarresta de verdad — se saca de la pila y va al
-// cementerio de su dueño, igual que un counter normal.
+// No pagar: el hechizo amenazado se contrarresta de verdad y se saca de la pila.
+// ETAPA MOTOR 2: su destino depende de cómo fue lanzado (Flashback -> Exilio; normal/Escape -> Cementerio).
 export function declineCounterTax() {
   const pc = state.pendingCounterUnlessPay;
   if (!pc) return;
@@ -2236,8 +3840,9 @@ export function declineCounterTax() {
   if (targetIndex !== -1) {
     const counteredItem = spellStack.splice(targetIndex, 1)[0];
     logMsg(`🚫 ¡No pagaste! "${counteredItem.card.name}" fue contrarrestado.`);
-    if (counteredItem.isLocal) state.localGraveyard.push(counteredItem.card);
-    else state.rivalGraveyard.push(counteredItem.card);
+    // ETAPA MOTOR 2: Flashback contrarrestado se exilia; una habilidad contrarrestada no
+    // manda su permanente fuente al cementerio. Misma regla que usa stackManager.js.
+    moveCounteredStackItemToDestination(counteredItem, state);
   }
   sendCounterspellAway(pc);
   state.pendingCounterUnlessPay = null;
@@ -2258,7 +3863,8 @@ function sendCounterspellAway(pc) {
 }
 
 export function tapLocalLand(item) {
-  if (state.gameOver || item.tapped) return;
+  if (state.gameOver) return;
+  if (state.pendingActivatedAbilityChoice) { logMsg("Elegí primero qué habilidad querés activar."); return; }
   if (state.pendingSacrificeChoice) return; // Una tierra no es una opción válida de sacrificio hoy
   if (state.pendingCrew) { logMsg("Terminá de elegir criaturas para tripular, o cancelá, antes de otra cosa."); return; }
   if (state.pendingWardChoice) { logMsg("Resolvé el Ward pendiente (pagar o dejarlo perder) antes de otra cosa."); return; }
@@ -2270,17 +3876,26 @@ export function tapLocalLand(item) {
   if (state.pendingMultiTargetChoice) { logMsg("Elegí primero todos los objetivos del hechizo."); return; }
   if (state.pendingScrySurveilChoice) { logMsg("Terminá de elegir qué hacer con las cartas antes de otra cosa."); return; }
   if (state.pendingProliferateChoice) { logMsg("Terminá de elegir qué proliferar antes de otra cosa."); return; }
+  if (state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0) { logMsg("Terminá primero el descarte pendiente."); return; }
+  if (state.pendingResolvedEffectTargetChoice || (state.resolvingResolvedEffectTargetChoices || 0) > 0) { logMsg("Elegí primero el objetivo del ETB que está resolviéndose."); return; }
   if (state.pendingEscapeExileChoice) { logMsg("Terminá de elegir qué exiliar para el Escape antes de otra cosa."); return; }
   if (state.pendingKickerChoice) { logMsg("Terminá de decidir el Kicker antes de otra cosa."); return; }
   if (state.pendingRampChoice) { logMsg("Terminá de elegir el color de tierra antes de otra cosa."); return; }
 
-  // Tierras de utilidad (sin `produces`, con activatedAbility propia — ej. Biblioteca
-  // Nacional) se activan como cualquier permanente con habilidad, no como fuente de maná.
-  if (item.card.activatedAbility && !item.card.produces && !item.card.producesOptions) {
+  // PUNTO 13 — TIERRA DE MANÁ + UTILIDAD. Todas las Tierras con habilidades pasan por
+  // el mismo dispatcher de permanentes. Ahí el contexto decide sin ambigüedad:
+  //   - si estamos PAGANDO algo y la Tierra produce maná -> produce maná;
+  //   - si no hay pago pendiente -> ofrece sus habilidades utility según timing.
+  // No existe mana pool flotante en este motor, así que fuera de un pago "producir maná"
+  // no es una segunda acción útil que necesite modal. Una Tierra simple sin habilidades
+  // conserva exactamente el click histórico de fuente de maná durante pagos.
+  if (getActivatedAbilities(item.card).length > 0) {
     const index = state.localLands.indexOf(item);
     handleSupportClick(item, true, index);
     return;
   }
+
+  if (item.tapped) return;
 
   if (state.pendingSpellIndex === null && state.pendingAbilitySource === null) { 
     logMsg("Seleccioná primero un hechizo o habilidad para pagar."); 
@@ -2312,7 +3927,10 @@ export function confirmModeChoice(modeIndex) {
 
   state.pendingModeChoice = null;
   state.pendingSpellIndex = mc.index;
-  state.pendingCost = parseManaCost(mc.card.manaCost);
+  state.pendingAlternativeCostChosen = false;
+  state.pendingCompositeCostPayment = false;
+  state.pendingSpellCostsIrreversible = false;
+  state.pendingCost = parseManaCost(getCastingManaCostString(resolvedCard));
   state.tappedLandsThisSpell = [];
   logMsg(`Elegiste el modo "${chosenMode.text}" para ${mc.card.name}. Seleccioná tierras para pagar.`);
   checkPaymentComplete();
@@ -2339,8 +3957,13 @@ export function confirmXValue(xValueRaw) {
   state.pendingXChoice = null;
   state.pendingXValue = xValue;
   state.pendingSpellIndex = xc.index;
-  const cost = parseManaCost(xc.card.manaCost); // el {X} de la cadena no suma nada acá
+  let cost = parseManaCost(xc.card.manaCost); // el {X} de la cadena no suma nada acá
   cost.generic += xValue;
+  const addMana = getCompositeCostManaString(xc.card.additionalCost);
+  if (addMana) cost = sumManaCosts(cost, parseManaCost(addMana));
+  state.pendingAlternativeCostChosen = false;
+  state.pendingSpellCostsIrreversible = false;
+  state.pendingCompositeCostPayment = false;
   state.pendingCost = cost;
   state.tappedLandsThisSpell = [];
   logMsg(`Elegiste X = ${xValue} para ${xc.card.name}. Seleccioná tierras para pagar (${xValue} de eso es solo por el X).`);
@@ -2367,11 +3990,13 @@ export function confirmKickerChoice(paidKicker) {
   state.pendingKicked = paidKicker;
   state.pendingSpellIndex = index;
 
+  state.pendingAlternativeCostChosen = false;
+  state.pendingSpellCostsIrreversible = false;
+  state.pendingCompositeCostPayment = false;
+  state.pendingCost = parseManaCost(getCastingManaCostString(card, { kicked: paidKicker }));
   if (paidKicker) {
-    state.pendingCost = sumManaCosts(parseManaCost(card.manaCost), parseManaCost(card.kicker.cost));
     logMsg(`💪 ${card.name}: pagando también el Kicker (${card.kicker.cost}). Seleccioná tierras para pagar todo junto.`);
   } else {
-    state.pendingCost = parseManaCost(card.manaCost);
     logMsg(`${card.name}: sin Kicker. Seleccioná tierras para pagar.`);
   }
 
@@ -2391,28 +4016,38 @@ export function payWithAlternativeCost() {
   if (state.pendingSpellIndex === null) return;
   const card = state.localHand[state.pendingSpellIndex];
   if (!card || !card.alternativeCost) return;
-  const ac = card.alternativeCost;
-
-  if (ac.type === 'life') {
-    state.localHP -= ac.amount;
-    logMsg(`💉 Pagaste ${card.name} con ${ac.amount} de vida en vez de maná.`);
-    // El costo de maná pendiente queda anulado: ya se pagó de otra forma. Si ya habías
-    // girado alguna tierra antes de arrepentirte, se las devolvemos sin girar.
-    state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
-    state.tappedLandsThisSpell = [];
-    state.pendingCost = { W: 0, U: 0, B: 0, R: 0, G: 0, generic: 0 };
-    checkPaymentComplete();
-  } else if (ac.type === 'hybrid') {
-    // Costo híbrido (ej. "{1} y 1 de vida" en vez del costo completo): la vida se cobra
-    // recién cuando termines de pagar el maná reducido — todos los costos se pagan juntos,
-    // como en MTG real, no en este mismo click.
-    state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
-    state.tappedLandsThisSpell = [];
-    state.pendingCost = parseManaCost(ac.manaCost);
-    state.pendingHybridLifePayment = ac.life;
-    logMsg(`Elegiste pagar ${card.name} con ${ac.manaCost} de maná + ${ac.life} de vida. Seleccioná tierras para completar el maná.`);
-    render();
+  if (state.pendingCastFrom) {
+    logMsg(`⚠️ ${card.name} ya se está lanzando mediante ${state.pendingCastFrom}; no podés elegir otra vía alternativa.`);
+    return;
   }
+  if (!canPayCastCompositeNonManaCosts(card, true, true, { excludeCard: card })) {
+    logMsg(`⚠️ No tenés los recursos no-maná necesarios para el costo alternativo de ${card.name}.`);
+    return;
+  }
+
+  // Elegir la vía alternativa reemplaza SOLO el costo base. Kicker y additionalCost se
+  // conservan. Cualquier tierra que hubieras girado probando la vía normal se devuelve.
+  state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
+  state.tappedLandsThisSpell = [];
+  state.pendingAlternativeCostChosen = true;
+  state.pendingSpellCostsIrreversible = false;
+  state.pendingCompositeCostPayment = false;
+  state.pendingHybridLifePayment = null;
+  const altManaString = getCastingManaCostString(card, {
+    useAlternative: true,
+    kicked: !!state.pendingKicked
+  });
+  state.pendingCost = parseManaCost(altManaString);
+  if (altManaString && altManaString.includes('{X}')) {
+    state.pendingCost.generic += Math.max(0, Number(state.pendingXValue) || 0);
+  } else if (card.manaCost && card.manaCost.includes('{X}')) {
+    // Contrato simple y seguro: una alternativa fija que no declara {X} no compra un X gratis.
+    state.pendingXValue = 0;
+  }
+
+  logMsg(`🔀 Elegiste el costo alternativo de ${card.name}: ${describeCompositeCost(card.alternativeCost)}${state.pendingKicked ? ' + Kicker' : ''}.`);
+  checkPaymentComplete();
+  render();
 }
 
 
@@ -2420,7 +4055,7 @@ export function payWithAlternativeCost() {
 // y si era Escape, las cartas exiliadas) ya están pagados: pide objetivo(s) si hace falta,
 // o manda directo a la pila. Separado de checkPaymentComplete para poder pausar en el medio
 // (el modal de Escape) y retomar exactamente acá cuando el jugador confirme qué exilia.
-function finishCastingHandCard(card) {
+async function finishCastingHandCard(card) {
   const isPermanent = card.type.includes('Artefacto') || (card.type.includes('Encantamiento') && !card.adjunta);
 
   // Objetivos múltiples (ej. "Destruye el artefacto objetivo. Destruye el encantamiento
@@ -2457,7 +4092,7 @@ function finishCastingHandCard(card) {
   else if (isPermanent) stackType = 'permanent';
   else if (card.type.includes('Instantáneo')) stackType = 'instant';
 
-  addToStack({
+  const stackItem = {
     card: card,
     isLocal: true,
     targetObj: null,
@@ -2465,7 +4100,8 @@ function finishCastingHandCard(card) {
     xValue: state.pendingXValue,
     castFrom: state.pendingCastFrom,
     kicked: state.pendingKicked
-  });
+  };
+  addToStack(stackItem);
 
   logMsg(`⏳ ${card.name} entró a la pila.`);
 
@@ -2476,10 +4112,50 @@ function finishCastingHandCard(card) {
   state.pendingXValue = null;
   state.pendingCastFrom = null;
   state.pendingKicked = null;
+  state.pendingAlternativeCostChosen = false;
+  state.pendingCompositeCostPayment = false;
+  state.pendingSpellCostsIrreversible = false;
+  state.pendingHybridLifePayment = null;
   state.tappedLandsThisSpell = [];
   render();
 
+  // PUNTO 3: el spell ya está casteado y en la pila. Sus watchers disparan AHORA, antes
+  // de entregar prioridad para respuestas. Si después lo contrarrestan, el trigger ya ocurrió.
+  await triggerSpellCast(true, card, stackItem);
   checkRivalCounterOrResponse();
+}
+
+function continueCastingAfterAdditionalCosts(card) {
+  // Escape: el costo adicional de exiliar N cartas del cementerio se paga después del
+  // descarte/vida obligatorio y antes de que el hechizo entre a la pila.
+  if (state.pendingCastFrom === 'escape' && card.escape) {
+    const exileCount = card.escape.exileCount || 0;
+    if (exileCount > 0) {
+      state.pendingEscapeExileChoice = { card, exileCount };
+      logMsg(`🌀 Escape de ${card.name}: elegí ${exileCount} carta(s) de tu cementerio para exiliar.`);
+      render();
+      void chooseGraveyardCards({
+        zoneIsLocal: true, chooserIsLocal: true, filter: 'any', amount: exileCount,
+        cardName: card.name, actionLabel: `elegí ${exileCount} carta(s) para pagar Escape`
+      }).then(chosenCards => {
+        chosenCards.forEach(c => {
+          const idx = state.localGraveyard.indexOf(c);
+          if (idx !== -1) state.localGraveyard.splice(idx, 1);
+        });
+        state.localExile.push(...chosenCards);
+        logMsg(`🌀 ${card.name} (Escape): se exiliaron ${chosenCards.length} carta(s) de tu cementerio.`);
+        state.pendingEscapeExileChoice = null;
+        void finishCastingHandCard(card);
+      }).catch(err => {
+        console.error('Error eligiendo cartas para Escape:', err);
+        state.pendingEscapeExileChoice = null;
+        cancelPayment();
+      });
+      return;
+    }
+  }
+
+  void finishCastingHandCard(card);
 }
 
 function checkPaymentComplete() {
@@ -2501,47 +4177,29 @@ function checkPaymentComplete() {
     if (state.pendingSpellIndex !== null) {
       const card = state.localHand[state.pendingSpellIndex];
 
-      // Costo adicional (vida o descarte): se paga JUNTO con el maná, no antes ni después —
-      // en MTG real todos los costos se pagan a la vez al confirmar el hechizo. Se hace acá,
-      // apenas el maná se termina de pagar, para que sea el mismo momento sin importar si
-      // la carta después necesita un objetivo o no.
-      payAdditionalCost(card, true);
-
-      // Si elegiste el camino híbrido (maná reducido + vida), la vida se cobra recién ACÁ,
-      // en el mismo momento en que el maná termina de pagarse — nunca antes.
-      if (state.pendingHybridLifePayment) {
-        state.localHP -= state.pendingHybridLifePayment;
-        logMsg(`💉 ${card.name}: costo híbrido completado con ${state.pendingHybridLifePayment} de vida.`);
-        state.pendingHybridLifePayment = null;
+      // Punto 14: una vez terminado TODO el maná, preparamos y comprometemos juntos los
+      // componentes no-maná de la vía elegida (alternativa + adicional). El flag evita que
+      // un render/callback reentrante inicie el pago dos veces.
+      if (state.pendingCompositeCostPayment) return;
+      const useAlternative = !!state.pendingAlternativeCostChosen;
+      const bundle = getCastCompositeCostBundle(card, useAlternative);
+      const hasNonMana = bundle.life > 0 || bundle.discards.length > 0 || bundle.sacrifices.length > 0 || bundle.graveyardExiles.length > 0;
+      if (hasNonMana) {
+        state.pendingCompositeCostPayment = true;
+        render();
+        payCastCompositeNonManaCosts(card, true, useAlternative).then(() => {
+          state.pendingCompositeCostPayment = false;
+          continueCastingAfterAdditionalCosts(card);
+        }).catch(err => {
+          state.pendingCompositeCostPayment = false;
+          console.error('No se pudo pagar el costo compuesto:', err);
+          logMsg(`⚠️ No se pudo pagar completamente el costo de ${card.name}; no se consumió ningún componente no-maná parcial.`);
+          cancelPayment();
+        });
+        return;
       }
 
-      // Escape: el costo adicional de "exiliar N cartas del cementerio" se paga en este
-      // mismo momento (igual que vida/descarte arriba). Como YA validamos en
-      // castFromGraveyard que hay suficientes cartas, acá solo queda elegir cuáles —
-      // pausamos con el mismo patrón que Ward/Scry-Surveil/Proliferar y retomamos en
-      // finishCastingHandCard cuando el jugador confirme.
-      if (state.pendingCastFrom === 'escape' && card.escape) {
-        const exileCount = card.escape.exileCount || 0;
-        if (exileCount > 0) {
-          const pool = state.localGraveyard.slice();
-          state.pendingEscapeExileChoice = { card, exileCount };
-          logMsg(`🌀 Escape de ${card.name}: elegí ${exileCount} carta(s) de tu cementerio para exiliar.`);
-          render();
-          showEscapeExileModal(pool, exileCount, (chosenCards) => {
-            chosenCards.forEach(c => {
-              const idx = state.localGraveyard.indexOf(c);
-              if (idx !== -1) state.localGraveyard.splice(idx, 1);
-            });
-            state.localExile.push(...chosenCards);
-            logMsg(`🌀 ${card.name} (Escape): se exiliaron ${chosenCards.length} carta(s) de tu cementerio.`);
-            state.pendingEscapeExileChoice = null;
-            finishCastingHandCard(card);
-          });
-          return;
-        }
-      }
-
-      finishCastingHandCard(card);
+      continueCastingAfterAdditionalCosts(card);
     } 
     
     // CASO B: ESTAMOS PAGANDO UNA HABILIDAD DE LA MESA (propia, o de un Equipo otorgada a una criatura)
@@ -2549,7 +4207,7 @@ function checkPaymentComplete() {
       const source = state.pendingAbilitySource;
       const card = source.item.card;
       const isGranted = source.abilityKind === 'granted';
-      const ability = isGranted ? card.grantedAbility : card.activatedAbility;
+      const ability = source.ability || (isGranted ? getGrantedAbilities(card)[0] : getActivatedAbilities(card)[0]);
       const tapTarget = source.tapTarget || source.item;
       
       // Si el pago incluía {T}, giramos a quien corresponda (el permanente mismo,
@@ -2589,7 +4247,9 @@ function finalizeAbilityActivation(source, ability, card) {
 
   if (ability.requiresTarget) {
     logMsg(`Elegí un objetivo para la habilidad de ${card.name}.`);
-    state.pendingTargetCard = card;
+    // El targeter mira `card.effect`; usamos una vista efímera de la carta fuente con
+    // el efecto de LA habilidad elegida. La carta real no se muta.
+    state.pendingTargetCard = { ...card, effect: ability.effect, requiresTarget: true };
     state.pendingTargetSource = source;
     render();
     return;
@@ -2600,8 +4260,9 @@ function finalizeAbilityActivation(source, ability, card) {
     isLocal: source.isLocal,
     targetObj: null,
     type: 'ability',
-    source: { type: isGranted ? 'equipped_activation' : 'support_activation', index: source.index },
-    sourceItem: source.item
+    source: { type: isGranted ? 'equipped_activation' : 'support_activation', index: source.index, abilityIndex: source.abilityIndex },
+    sourceItem: source.item,
+    ability
   });
 
   logMsg(`Activaste la habilidad de ${card.name}.`);
@@ -2624,8 +4285,9 @@ export function tryResolveSacrificeChoice(item, isLocal) {
     return true;
   }
 
-  const isCreatureItem = item.card.power !== undefined || item.isVehicle;
-  const matchesType = pending.eligibleType === 'creature' ? isCreatureItem : !isCreatureItem;
+  // ETAPA MOTOR 1: no inferimos "artefacto = cualquier cosa que no sea criatura".
+  // Se valida el tipo real, compartiendo exactamente la misma regla con el resaltado de UI.
+  const matchesType = isSacrificeCandidate(item, pending.eligibleType);
   if (!matchesType) {
     logMsg(`Ese no es un ${pending.eligibleType === 'creature' ? 'criatura' : 'artefacto'} válido para sacrificar acá.`);
     return true;
@@ -2642,7 +4304,7 @@ export function tryResolveSacrificeChoice(item, isLocal) {
 
 // Avanza un objetivo múltiple: guarda el target recién elegido, y o pide el siguiente o
 // (si ya están todos) manda el hechizo entero a la pila con la lista completa adjunta.
-function advanceMultiTargetChoice(targetObj) {
+async function advanceMultiTargetChoice(targetObj) {
   const mtc = state.pendingMultiTargetChoice;
   mtc.chosenTargets.push(targetObj);
   mtc.currentIndex++;
@@ -2661,14 +4323,15 @@ function advanceMultiTargetChoice(targetObj) {
   else if (isPermanent) stackType = 'permanent';
   else if (card.type.includes('Instantáneo')) stackType = 'instant';
 
-  addToStack({
+  const stackItem = {
     card: card,
     isLocal: true,
     targetObj: { type: 'multi', targets: mtc.chosenTargets },
     type: stackType,
     xValue: state.pendingXValue,
     castFrom: state.pendingCastFrom
-  });
+  };
+  addToStack(stackItem);
 
   logMsg(`⏳ ${card.name} entró a la pila (todos los objetivos elegidos).`);
   state.consecutivePasses = 0;
@@ -2676,29 +4339,37 @@ function advanceMultiTargetChoice(targetObj) {
   state.pendingCost = null;
   state.pendingXValue = null;
   state.pendingCastFrom = null;
+  state.pendingAlternativeCostChosen = false;
+  state.pendingCompositeCostPayment = false;
+  state.pendingSpellCostsIrreversible = false;
+  state.pendingHybridLifePayment = null;
   state.tappedLandsThisSpell = [];
   render();
+  await triggerSpellCast(true, card, stackItem);
   checkRivalCounterOrResponse();
 }
 
-function executeSpellOnTarget(targetObj) {
+async function executeSpellOnTarget(targetObj) {
   if (!state.pendingTargetCard) return;
 
   let card;
+  let castStackItem = null;
   let isPermanentSource = state.pendingTargetSource !== null;
 
   if (isPermanentSource) {
     const src = state.pendingTargetSource;
     card = src.item.card;
     const isGranted = src.abilityKind === 'granted';
+    const ability = src.ability || (isGranted ? getGrantedAbilities(card)[0] : getActivatedAbilities(card)[0]);
     addToStack({
       card: card,
       isLocal: true,
       targetObj: targetObj,
       type: 'ability',
-      // Agregamos el type correcto para que el stackManager lo reconozca
-      source: { type: isGranted ? 'equipped_activation' : 'support_activation', index: src.index },
-      sourceItem: src.item
+      // Punto 11: la pila conserva cuál habilidad concreta se activó.
+      source: { type: isGranted ? 'equipped_activation' : 'support_activation', index: src.index, abilityIndex: src.abilityIndex },
+      sourceItem: src.item,
+      ability
     });
   }
   else {
@@ -2713,7 +4384,7 @@ function executeSpellOnTarget(targetObj) {
     else if (card.adjunta) stackType = 'aura';
     else if (card.type.includes('Instantáneo')) stackType = 'instant';
 
-    addToStack({
+    castStackItem = {
       card: card,
       isLocal: true,
       targetObj: targetObj,
@@ -2721,13 +4392,18 @@ function executeSpellOnTarget(targetObj) {
       xValue: state.pendingXValue,
       castFrom: state.pendingCastFrom,
       kicked: state.pendingKicked
-    });
+    };
+    addToStack(castStackItem);
 
     state.pendingSpellIndex = null;
     state.pendingCost = null;
     state.pendingXValue = null;
     state.pendingCastFrom = null;
     state.pendingKicked = null;
+    state.pendingAlternativeCostChosen = false;
+    state.pendingCompositeCostPayment = false;
+    state.pendingSpellCostsIrreversible = false;
+    state.pendingHybridLifePayment = null;
     state.tappedLandsThisSpell = [];
   }
 
@@ -2737,6 +4413,10 @@ function executeSpellOnTarget(targetObj) {
   state.pendingAbilitySource = null;
   render();
 
+  // Las habilidades activadas usan el mismo selector, pero NO son hechizos casteados.
+  if (!isPermanentSource && castStackItem) {
+    await triggerSpellCast(true, card, castStackItem);
+  }
   checkRivalCounterOrResponse();
 }
 
@@ -2761,7 +4441,12 @@ export function tryAutoPayCounterTax(isLocal, amount) {
     need -= (s.card.manaAmount || 1);
   }
   if (need > 0) return false;
-  toTap.forEach(s => { s.tapped = true; });
+  toTap.forEach(s => {
+    s.tapped = true;
+    // HOTFIX 1.1 — una fuente de un solo uso (Fajo de Dólares Blue / Treasure-like)
+    // paga el impuesto Y se sacrifica, igual que cuando se usa en el pago normal.
+    if (s.card.sacrificeOnTap) performSacrifice(s, isLocal);
+  });
   return true;
 }
 
@@ -2786,7 +4471,11 @@ export function payWard() {
     return;
   }
 
-  toTap.forEach(s => { s.tapped = true; });
+  toTap.forEach(s => {
+    s.tapped = true;
+    // HOTFIX 1.1 — Ward también consume correctamente las fuentes con sacrificeOnTap.
+    if (s.card.sacrificeOnTap) performSacrifice(s, true);
+  });
   logMsg(`💰 Pagaste Ward ${wc.wardCost}. El hechizo sigue su curso.`);
   const targetObj = wc.targetObj;
   state.pendingWardChoice = null;
@@ -2806,10 +4495,25 @@ export function declineWard() {
     const card = state.localHand[state.pendingSpellIndex];
     if (card) {
       state.localHand.splice(state.pendingSpellIndex, 1);
-      state.localGraveyard.push(card);
+      // AUDITORÍA PRE-FASE 3: Ward contrarresta ANTES de que esta ruta llegue a addToStack,
+      // pero el destino es exactamente el mismo que si el objeto ya estuviera en la pila:
+      // Flashback -> Exilio; Escape/normal -> Cementerio.
+      moveCounteredStackItemToDestination({
+        card,
+        isLocal: true,
+        type: 'spell',
+        castFrom: state.pendingCastFrom
+      }, state);
     }
     state.pendingSpellIndex = null;
     state.pendingCost = null;
+    state.pendingXValue = null;
+    state.pendingCastFrom = null;
+    state.pendingKicked = null;
+    state.pendingAlternativeCostChosen = false;
+    state.pendingCompositeCostPayment = false;
+    state.pendingSpellCostsIrreversible = false;
+    state.pendingHybridLifePayment = null;
     state.tappedLandsThisSpell = [];
   }
 
@@ -2822,6 +4526,16 @@ export function declineWard() {
 
 export function handleSupportClick(item, isLocal, index) {
   if (state.gameOver || !isLocal) return;
+  if (state.pendingActivatedAbilityChoice) { logMsg("Elegí primero qué habilidad querés activar."); return; }
+
+  if (state.pendingResolvedEffectTargetChoice || (state.resolvingResolvedEffectTargetChoices || 0) > 0) {
+    logMsg("Elegí primero el objetivo del ETB que está resolviéndose.");
+    return;
+  }
+  if (state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0) {
+    logMsg("Terminá primero el descarte pendiente.");
+    return;
+  }
 
   if (state.pendingSacrificeChoice) {
     tryResolveSacrificeChoice(item, isLocal);
@@ -2884,270 +4598,65 @@ export function handleSupportClick(item, isLocal, index) {
   }
 
   const card = item.card;
+  const abilityOptions = buildPermanentActivatedAbilityOptions(item, isLocal, index);
 
-  // Tripular un Vehículo (regla 702.121 real): se paga girando poder de criaturas propias,
-  // NUNCA con maná — esto reemplaza un bug de diseño donde se cobraba maná por error.
-  // No entra al flujo normal de pago/pila: abre un modo de selección de criaturas aparte
-  // (ver startCrewing) y resuelve de una sola vez al confirmar, igual que Equipar — así no
-  // queda ninguna ventana en el medio donde se pueda volver a clickear y pagar de nuevo.
-  if (card.activatedAbility && card.activatedAbility.crewCost !== undefined) {
-    if (state.phase !== 'main1' && state.phase !== 'main2') return;
-    if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null) {
-      logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
+  // Punto 13: cualquier permanente que produzca maná (mana rock O Tierra) conserva
+  // prioridad de fuente de maná mientras ya estamos pagando algo. Fuera de un pago, si
+  // además tiene habilidades activadas, esas habilidades utility quedan disponibles.
+  if (card.produces || card.producesOptions) {
+    if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null) {
+      tapSupportManaSource(item, isLocal);
       return;
     }
-    startCrewing(item, isLocal);
-    return;
-  }
-
-  // Artefactos que producen maná (mana rocks / Treasures): se comportan igual que una
-  // tierra, no como una habilidad — sirven en cualquier momento en que estés pagando algo
-  // (incluso en medio del turno rival), no solo en tus fases principales.
-  if (card.produces || card.producesOptions) {
-    if (state.pendingSpellIndex === null && state.pendingAbilitySource === null) {
+    if (abilityOptions.length === 0) {
       logMsg("Seleccioná primero un hechizo o habilidad para pagar.");
       return;
     }
-    tapSupportManaSource(item, isLocal);
-    return;
   }
 
-  if (state.phase !== 'main1' && state.phase !== 'main2') return;
+  // Punto 12: ya no hacemos un guard global de fase acá. Cada opción se valida por su
+  // propio timing dentro de present/beginActivatedAbility. Las legacy siguen Main-only.
   if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null) {
     logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
     return;
   }
 
-  if (!card.activatedAbility) return;
+  if (abilityOptions.length === 0) return;
+  presentActivatedAbilityChoice(card.name, abilityOptions);
+}
 
-  // Si es un Equipo, no tiene sentido ni empezar a pagar si no tenés ninguna criatura
-  // propia para equiparle — antes esto se descubría recién al elegir el objetivo (o, peor,
-  // ni eso, si el objetivo era ilegal).
-  if (card.activatedAbility.effect && card.activatedAbility.effect.type === 'attach_equipment' && state.localCombat.length === 0) {
-    logMsg(`⚠️ No tenés ninguna criatura para equipar con ${card.name}.`);
-    return;
-  }
-
-  const costStr = card.activatedAbility.cost || "";
-  const requiresTap = costStr.includes('{T}');
-  
-  if (requiresTap && item.tapped) {
-    logMsg(`⏳ ${card.name} ya está girado.`);
-    return;
-  }
-
-  // Extraemos el costo de maná removiendo el símbolo de tapeo
-  const manaCostStr = costStr.replace('{T}', '').trim();
-  const manaCost = parseManaCost(manaCostStr || "");
-
-  state.pendingAbilitySource = { item, index, isLocal, requiresTap, tapTarget: item, abilityKind: 'own' };
-  state.pendingCost = manaCost;
-  state.tappedLandsThisSpell = [];
-
-  // El objetivo se pide recién cuando el costo esté pagado (ver checkPaymentComplete, CASO B).
-  // No seteamos pendingTargetCard acá todavía.
-
-  const totalMana = manaCost.W + manaCost.U + manaCost.B + manaCost.R + manaCost.G + manaCost.generic;
-  
-  if (totalMana === 0) {
-    checkPaymentComplete(); // Si solo cuesta {T} o {0}, lo procesamos directo
-  } else {
-    logMsg(`Activando ${card.name}. Elegí tierras para pagar el costo.`);
+export function resolveEffectDirect(effect, cardName, isLocal, sourceCard = null, sourceItem = null) {
+  if (!effect) return Promise.resolve({ handled: false, reason: 'no_effect' });
+  const card = sourceCard || { name: cardName, colors: [] };
+  const pending = resolveGameEffect(effect, {
+    sourceCard: card,
+    cardName,
+    isLocal,
+    sourceItem,
+    targetObj: null
+  });
+  // Compatibilidad deliberada: el sistema histórico de triggers llama esta función sin
+  // `await`. Los efectos síncronos mutan el estado antes del primer await; los interactivos
+  // (descarte remoto, Ramp, etc.) ya tienen sus propios flags/colas de bloqueo.
+  pending.catch(err => {
+    console.error(`Error resolviendo efecto directo de ${cardName}:`, err);
+    logMsg(`⚠️ ${cardName}: ocurrió un error resolviendo su efecto.`);
     render();
-  }
+  });
+  return pending;
 }
 
-export function resolveEffectDirect(effect, cardName, isLocal) {
-  if(!effect) return;
-  const targetName = isLocal ? "vos" : getRivalName();
-  if (effect.type === 'draw') {
-    for(let i=0; i<effect.amount; i++) {
-      if(isLocal && state.localDeck.length > 0) state.localHand.push(state.localDeck.pop());
-      if(!isLocal && state.rivalDeck.length > 0) state.rivalHand.push(state.rivalDeck.pop());
-    }
-    logMsg(`🃏 ¡${cardName}! ${targetName} robó ${effect.amount} cartas extras.`);
-  } else if (effect.type === 'heal') {
-    if (isLocal) state.localHP += effect.amount; else state.rivalHP += effect.amount;
-    logMsg(`💚 ¡${cardName}! ${targetName} recuperó ${effect.amount} de HP.`);
-  } else if (effect.type === 'damage') {
-    if (isLocal) state.rivalHP -= effect.amount; else state.localHP -= effect.amount;
-    logMsg(`💥 ¡${cardName}! ${targetName} hizo ${effect.amount} de daño.`);
-  } else if (effect.type === 'fog') {
-    state.combatDamagePrevented = true;
-    logMsg(`🌫️ ¡${cardName}! Se previene todo el daño de combate este turno.`);
-  } else if (effect.type === 'draw_and_lose_life') {
-    if (isLocal && state.localDeck.length > 0) state.localHand.push(state.localDeck.pop());
-    if (!isLocal && state.rivalDeck.length > 0) state.rivalHand.push(state.rivalDeck.pop());
-    if (isLocal) state.localHP -= effect.lifeLoss; else state.rivalHP -= effect.lifeLoss;
-    logMsg(`📖 ¡${cardName}! ${targetName} robó una carta y perdió ${effect.lifeLoss} de vida.`);
-  } else if (effect.type === 'drain') {
-    // Genérico para cualquier disparador (diesTrigger, upkeepTrigger, etc.), no solo los
-    // dos casos de muerte que ya tenían su propio código a mano.
-    if (isLocal) { state.rivalHP -= effect.amount; state.localHP += effect.amount; }
-    else { state.localHP -= effect.amount; state.rivalHP += effect.amount; }
-    logMsg(`🩸 ¡${cardName}! Drena ${effect.amount} de vida.`);
-  } else if (effect.type === 'discard') {
-    // Discard sin target explícito (ej. un ETB): siempre le pega al oponente de quien
-    // controla el disparador, igual que ya hacen damage/heal en esta misma función.
-    const targetHand = isLocal ? state.rivalHand : state.localHand;
-    const targetGrave = isLocal ? state.rivalGraveyard : state.localGraveyard;
-    const opponentName = isLocal ? getRivalName() : "vos";
-
-    // BUGFIX (post-lanzamiento): antes, si el objetivo era la mano oculta del RIVAL en
-    // multiplayer, esto se saltaba entero — CERO cartas se iban a ningún lado. Ahora se le
-    // pide al cliente REAL del rival que aplique el descarte sobre su mano de verdad (ver
-    // resolveForcedDiscardOnRival, main.js). Sin `await` a propósito: resolveEffectDirect y
-    // sus 13+ invocadores (todo el sistema de gatillos del motor) son sincrónicos por
-    // diseño — convertirlos en async encadenaría decenas de sitios en todo el juego.
-    // awaitingRivalDecision (ya construido la ronda pasada) es lo que de verdad evita que
-    // pase algo raro mientras tanto: bloquea mis propias otras acciones hasta que la
-    // respuesta real vuelva. El mensaje del resultado llega un instante después (una vez
-    // que el viaje de red termina), no en la misma línea de log que el resto del efecto.
-    if (isHiddenRivalZone(!isLocal)) {
-      resolveForcedDiscardOnRival(effect.amount, cardName).then(discardedNames => {
-        logMsg(discardedNames.length > 0
-          ? `🗑️ ¡${cardName}! ${opponentName} descartó: ${discardedNames.join(', ')}.`
-          : `🗑️ ¡${cardName}! ${opponentName} no tenía cartas para descartar.`);
-        render();
-      });
-      return;
-    }
-
-    const discardedNames = [];
-    for (let i = 0; i < effect.amount && targetHand.length > 0; i++) {
-      const idx = Math.floor(Math.random() * targetHand.length);
-      const discarded = targetHand.splice(idx, 1)[0];
-      targetGrave.push(discarded);
-      discardedNames.push(discarded.name);
-    }
-    logMsg(discardedNames.length > 0
-      ? `🗑️ ¡${cardName}! ${opponentName} descartó: ${discardedNames.join(', ')}.`
-      : `🗑️ ¡${cardName}! ${opponentName} no tenía cartas para descartar.`);
-  } else if (effect.type === 'scry' || effect.type === 'surveil') {
-    // Convención del mazo en este proyecto: pop() saca del FINAL del array, así que el
-    // final = la cima del mazo. Sacamos las últimas N cartas y las damos vuelta para que
-    // topCards[0] sea la más arriba de todas (más natural para mostrar en el modal).
-    const deck = isLocal ? state.localDeck : state.rivalDeck;
-    const amount = Math.min(effect.amount, deck.length);
-    if (amount === 0) { logMsg(`${cardName}: no hay cartas para mirar, el mazo está vacío.`); return; }
-    const topCards = deck.splice(deck.length - amount, amount).reverse();
-
-    const finishScrySurveil = (moved, kept) => {
-      // "kept" vuelve arriba en el mismo orden relativo: las empujamos al revés para que
-      // pop() siga sacando kept[0] primero, como si nada se hubiera movido.
-      kept.slice().reverse().forEach(c => deck.push(c));
-      if (effect.type === 'surveil') {
-        const grave = isLocal ? state.localGraveyard : state.rivalGraveyard;
-        moved.forEach(c => grave.push(c));
-      } else {
-        deck.unshift(...moved); // al fondo del array = al fondo del mazo
-      }
-      const destino = effect.type === 'surveil' ? 'al cementerio' : 'al fondo';
-      logMsg(`${effect.type === 'surveil' ? '👁️' : '🔮'} ${cardName}: ${kept.length} se quedaron arriba, ${moved.length} se fueron ${destino}.`);
-
-      // Recién ACÁ termina de resolverse de verdad — hacemos nosotros mismos lo que
-      // resolveTopStackItem hace normalmente al final (se había frenado por el flag).
-      state.pendingScrySurveilChoice = false;
-      state.priorityPlayer = state.activePlayer;
-      state.consecutivePasses = 0;
-      render();
-      checkRivalCounterOrResponse();
-    };
-
-    if (isLocal) {
-      state.pendingScrySurveilChoice = true;
-      showScrySurveilModal(topCards, effect.type, finishScrySurveil);
-    } else {
-      // El Tano: heurística simple — si ya tiene 5 o más tierras en juego, manda las
-      // tierras de más para abajo/cementerio; todo lo demás se lo queda arriba.
-      const landsInPlay = state.rivalLands.length;
-      const kept = [], moved = [];
-      topCards.forEach(c => {
-        if (c.type.includes('Tierra') && landsInPlay >= 5) moved.push(c); else kept.push(c);
-      });
-      finishScrySurveil(moved, kept);
-    }
-  } else if (effect.type === 'proliferate') {
-    // Proliferar (regla real 701.30): elegís CUALQUIER cantidad de permanentes (acá:
-    // criaturas con contadores +1/+1 o -1/-1, y Planeswalkers, que siempre tienen Lealtad)
-    // y a cada uno elegido le sumás UN contador más de CADA tipo que ya tenga. No es un
-    // target de verdad (por eso Intocable/Protección no lo frenan, a diferencia de todo lo
-    // demás que se resuelve en esta función).
-    const eligible = [];
-    state.localCombat.forEach(item => {
-      if (item.counters && ((item.counters.plusOne || 0) > 0 || (item.counters.minusOne || 0) > 0)) {
-        eligible.push({ item, ownerIsLocal: true, kind: 'creature' });
-      }
-    });
-    state.rivalCombat.forEach(item => {
-      if (item.counters && ((item.counters.plusOne || 0) > 0 || (item.counters.minusOne || 0) > 0)) {
-        eligible.push({ item, ownerIsLocal: false, kind: 'creature' });
-      }
-    });
-    state.localPlaneswalkers.forEach(item => eligible.push({ item, ownerIsLocal: true, kind: 'planeswalker' }));
-    state.rivalPlaneswalkers.forEach(item => eligible.push({ item, ownerIsLocal: false, kind: 'planeswalker' }));
-    // El Veneno también es un contador de verdad (regla 122.3e) — si ya tenés alguno,
-    // Proliferar te puede sumar más. Sin `item` porque no es una carta, es del jugador.
-    if ((state.localPoison || 0) > 0) eligible.push({ item: null, ownerIsLocal: true, kind: 'player_poison' });
-    if ((state.rivalPoison || 0) > 0) eligible.push({ item: null, ownerIsLocal: false, kind: 'player_poison' });
-
-    if (eligible.length === 0) {
-      logMsg(`${cardName}: no hay ningún contador en el campo para proliferar.`);
-      return;
-    }
-
-    const applyProliferate = (entry) => {
-      const { item, kind, ownerIsLocal } = entry;
-      if (kind === 'planeswalker') {
-        item.loyalty += 1;
-        logMsg(`🔮 ${item.card.name} ganó un contador de Lealtad (ahora: ${item.loyalty}).`);
-      } else if (kind === 'player_poison') {
-        if (ownerIsLocal) state.localPoison += 1; else state.rivalPoison += 1;
-        logMsg(`☠️ ${ownerIsLocal ? 'Vos' : getRivalName()} ${ownerIsLocal ? 'recibiste' : 'recibió'} un contador de Veneno más (ahora: ${ownerIsLocal ? state.localPoison : state.rivalPoison}).`);
-      } else {
-        if ((item.counters.plusOne || 0) > 0) addCounters(item, 'plusOne', 1);
-        if ((item.counters.minusOne || 0) > 0) addCounters(item, 'minusOne', 1);
-        logMsg(`🔵 ${item.card.name} recibió otro contador.`);
-      }
-    };
-
-    const finishProliferate = (chosen) => {
-      chosen.forEach(applyProliferate);
-      // Un -1/-1 de más puede terminar de matar a alguna criatura (SBA).
-      checkDeaths(state.localCombat, state.localGraveyard, "Vos");
-      checkDeaths(state.rivalCombat, state.rivalGraveyard, getRivalName());
-      logMsg(chosen.length > 0
-        ? `✨ ¡${cardName}! Se proliferaron ${chosen.length} contador(es).`
-        : `${cardName}: no se proliferó ningún contador.`);
-
-      state.pendingProliferateChoice = false;
-      state.priorityPlayer = state.activePlayer;
-      state.consecutivePasses = 0;
-      render();
-      checkRivalCounterOrResponse();
-      checkGameOver(); // el Veneno proliferado puede llegar justo a 10 y terminar la partida
-    };
-
-    if (isLocal) {
-      state.pendingProliferateChoice = true;
-      showProliferateModal(eligible, finishProliferate);
-    } else {
-      // El Tano: elige SIEMPRE lo que lo beneficia a ÉL — sus propios +1/+1 y Planeswalkers,
-      // los -1/-1 que ya tenga el jugador humano, y TU Veneno (al revés que el resto de los
-      // contadores: el Veneno es malo para quien lo tiene, así que le conviene el tuyo, no
-      // el suyo). Nunca ayuda al rival ni se perjudica.
-      const chosen = eligible.filter(e => {
-        if (e.kind === 'planeswalker') return !e.ownerIsLocal;
-        if (e.kind === 'player_poison') return e.ownerIsLocal;
-        const c = e.item.counters;
-        if (e.ownerIsLocal) return (c.minusOne || 0) > 0; // criatura tuya debilitada: le conviene
-        return (c.plusOne || 0) > 0; // criatura propia reforzada: le conviene
-      });
-      finishProliferate(chosen);
-    }
-  }
+// Lo usa el resolver universal cuando termina un modal interactivo (Scry/Surveil/
+// Proliferate). Mantiene el mismo comportamiento anterior sin crear una dependencia
+// stackManager -> bot adicional: stackManager ya depende de main.js y este wrapper
+// conserva el borde existente main -> bot.
+export function resumeAfterInteractiveEffect() {
+  // Con Trigger Stack cada watcher es un objeto independiente: un modal pertenece a la
+  // habilidad que está resolviendo y, cuando termina, la prioridad vuelve normalmente.
+  checkRivalCounterOrResponse();
 }
 
-export function resolveSpellDirect(card, isLocal) { resolveEffectDirect(card.effect, card.name, isLocal); }
+
+export function resolveSpellDirect(card, isLocal) { return resolveEffectDirect(card.effect, card.name, isLocal, card); }
 
 boot();
