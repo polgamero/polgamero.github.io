@@ -6,7 +6,7 @@ import { checkDeaths, checkAllDeaths } from './combatRules.js';
 import { hasKeyword, getProtectionMatch } from './keywords.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
-import { passPriority, checkGameOver } from './turnManager.js';
+import { passPriority, checkGameOver, resetPriorityClock } from './turnManager.js';
 import { recordTelemetryEvent } from './telemetry.js';
 
 // A qué le puede apuntar cada variante de "contrarrestar" — regla real de MTG (702.61 y
@@ -118,6 +118,7 @@ export function addToStack(item) {
   } else {
     logMsg(`⚡ "${item.card.name}" entró a la pila (ID: ${item.id}).`);
   }
+  if (state.currentMatch && item.isLocal) resetPriorityClock('stack_push');
   renderStack();
 }
 
@@ -186,6 +187,7 @@ export async function resolveTopStackItem() {
   // Tras resolver un objeto, la prioridad vuelve al jugador activo
   state.priorityPlayer = state.activePlayer;
   state.consecutivePasses = 0;
+  resetPriorityClock('stack_resolved');
 
   const telemetryEndedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   recordTelemetryEvent('stack_resolve_end', {
@@ -1734,7 +1736,6 @@ export function renderStack() {
   const container = document.getElementById('stack-container');
   const list = document.getElementById('stack-list');
   const countSpan = document.getElementById('stack-count');
-  const btnResolve = document.getElementById('btn-resolve-top');
 
   if (!container || !list) return;
 
@@ -1810,13 +1811,4 @@ export function renderStack() {
     list.appendChild(cardDiv);
   });
 
-  if (btnResolve) {
-    btnResolve.textContent = "Pasar Prioridad / Resolver ➔";
-    btnResolve.onclick = () => {
-      if (state.pendingSpellIndex !== null) {
-        cancelPayment();
-      }
-      passPriority('local');
-    };
-  }
 }

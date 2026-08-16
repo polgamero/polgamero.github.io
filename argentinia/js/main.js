@@ -4,7 +4,7 @@ import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeath
 import { checkRivalCounterOrResponse } from './bot.js';
 import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier } from './ui.js';
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
-import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow } from './turnManager.js';
+import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
 import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
@@ -32,6 +32,15 @@ export const state = {
   activePlayer: 'local',    // 'local' o 'rival'
   priorityPlayer: 'local',  // 'local' o 'rival'
   consecutivePasses: 0,
+  // ENTREGA 23.9: reloj de prioridad multiplayer. serial/duración/activity son públicos;
+  // deadline/remaining/paused son locales y nunca cruzan Firestore.
+  priorityClockSerial: 0,
+  priorityClockDurationMs: 15000,
+  priorityActivity: null,
+  priorityClockDeadlineLocalMs: 0,
+  priorityClockRemainingMs: 15000,
+  priorityClockPausedLocal: true,
+  priorityClockPauseReasonLocal: 'not_started',
   // Entrega 20 / Trigger Stack: serial local monotónico para detectar si un evento
   // automático generó habilidades disparadas que abren una ventana de prioridad.
   triggerStackSerial: 0,
@@ -840,6 +849,7 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
       hideMultiplayerReadyBarrier();
       startListeningToMatch(matchId, myRole);
       hookGameplayButtons();
+      if (state.priorityPlayer === 'local') resetPriorityClock('match_start');
       render();
       recordTelemetryEvent('multiplayer_both_ready', { matchId, myRole, hostReady: true, guestReady: true });
       logMsg(`¡Arranca la partida! Jugás con "${deckLabel}".`);
@@ -1840,6 +1850,15 @@ export function startListeningToMatch(matchId, myRole) {
         writerSeq: Number.isFinite(writerSeq) ? writerSeq : null,
         reason: writerClientId === matchSyncClientId ? 'same_client' : 'same_role'
       });
+      if ((!touchedKeys || touchedKeys.has('priorityClockSerial')) && Number.isFinite(Number(publicDoc.priorityClockSerial))) {
+        syncPriorityClockFromNetwork({
+          serial: Number(publicDoc.priorityClockSerial),
+          durationMs: Number(publicDoc.priorityClockDurationMs) || 15000,
+          receivedAtClientMs: receiveClientMs,
+          source: 'self_ack',
+          serverCommittedAtMs
+        });
+      }
       return;
     }
 
@@ -1920,6 +1939,15 @@ export function startListeningToMatch(matchId, myRole) {
     remoteSyncApplyDepth++;
     try {
       Object.assign(state, incoming);
+      if ((!touchedKeys || touchedKeys.has('priorityClockSerial')) && Number.isFinite(Number(publicDoc.priorityClockSerial))) {
+        syncPriorityClockFromNetwork({
+          serial: Number(publicDoc.priorityClockSerial),
+          durationMs: Number(publicDoc.priorityClockDurationMs) || 15000,
+          receivedAtClientMs: receiveClientMs,
+          source: 'remote_sync',
+          serverCommittedAtMs
+        });
+      }
       relinkEquipmentAttachments(state);
       if (hasIncomingStack) {
         replaceSpellStackFromSync(deserializeStackFromPublic(publicDoc.stackState, state, myRole));
@@ -4042,6 +4070,7 @@ export function playCard(index) {
       logMsg(`⚠️ Ocurrió un error resolviendo Landfall por ${card.name}.`);
       render();
     });
+    resetPriorityClock('land_played');
     render(); return;
   }
 

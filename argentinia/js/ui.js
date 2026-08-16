@@ -42,6 +42,7 @@ import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 import { recordTelemetryUiLog, captureTelemetryState } from './telemetry.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_VERSION_SHORT } from './version.js';
+import { getPriorityUxCopy, getEffectivePriorityActivity, canPriorityClockRun, PRIORITY_CLOCK_DURATION_MS } from './priorityUX.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -65,6 +66,15 @@ export const els = {
   localPlayerName: document.getElementById('local-player-name'),
   rivalAvatar: document.getElementById('rival-avatar'),
   rivalPlayerName: document.querySelector('.rival-card .player-info h3'),
+  localPlayerCard: document.querySelector('.player-card.local-card'),
+  rivalPlayerCard: document.querySelector('.player-card.rival-card'),
+  turnPriorityHud: document.getElementById('turn-priority-hud'),
+  priorityOwnerBadge: document.getElementById('priority-owner-badge'),
+  priorityContextLabel: document.getElementById('priority-context-label'),
+  priorityClock: document.getElementById('priority-clock'),
+  priorityFuseFill: document.getElementById('priority-fuse-fill'),
+  priorityFuseSpark: document.getElementById('priority-fuse-spark'),
+  priorityCountdown: document.getElementById('priority-countdown'),
 
   gameOverOverlay: document.getElementById('game-over-overlay'),
   gameOverTitle: document.getElementById('game-over-title'),
@@ -4809,6 +4819,62 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
 }
 
 // --- ACTUALIZACIÓN MASIVA DE UI RENDER (HUD y Botones Adaptables a Prioridad) ---
+
+
+function getStackTopDisplayName() {
+  const top = spellStack.length ? spellStack[spellStack.length - 1] : null;
+  if (!top) return '';
+  if (top.type === 'ability' && top.abilityKind === 'triggered') {
+    return `${top.card?.name || 'habilidad'} (${top.triggerLabel || 'habilidad disparada'})`;
+  }
+  return top.card?.name || 'la cima de la pila';
+}
+
+export function refreshTurnPriorityHudClock() {
+  if (!els.priorityClock || !els.priorityFuseFill || !els.priorityCountdown) return;
+  const isMulti = !!state.currentMatch && !state.gameOver;
+  if (!isMulti) {
+    els.priorityClock.classList.add('hidden');
+    return;
+  }
+
+  els.priorityClock.classList.remove('hidden');
+  const activity = getEffectivePriorityActivity(state);
+  const running = canPriorityClockRun(state);
+  const duration = Math.max(1000, Number(state.priorityClockDurationMs) || PRIORITY_CLOCK_DURATION_MS);
+  const remaining = Math.max(0, Math.min(duration, Number(state.priorityClockRemainingMs ?? duration)));
+  const fraction = Math.max(0, Math.min(1, remaining / duration));
+  const seconds = Math.ceil(remaining / 1000);
+  els.priorityFuseFill.style.width = `${(fraction * 100).toFixed(2)}%`;
+  if (els.priorityFuseSpark) els.priorityFuseSpark.style.left = `calc(${(fraction * 100).toFixed(2)}% - 8px)`;
+  els.priorityCountdown.textContent = state.priorityClockPausedLocal || activity ? '⏸' : `${seconds}`;
+  els.priorityClock.classList.toggle('paused', !!(state.priorityClockPausedLocal || activity || !running));
+  els.priorityClock.classList.toggle('danger', running && remaining <= 5000);
+  els.priorityClock.classList.toggle('expired', running && remaining <= 0);
+}
+
+function renderTurnPriorityHud() {
+  const topName = getStackTopDisplayName();
+  const copy = getPriorityUxCopy(state, getLocalPlayerName(), getRivalName(), topName);
+  const turnBadge = document.getElementById('turn-owner-badge');
+  if (turnBadge) turnBadge.textContent = copy.turnText;
+  if (els.priorityOwnerBadge) els.priorityOwnerBadge.textContent = copy.priorityText;
+  if (els.priorityContextLabel) els.priorityContextLabel.textContent = copy.contextText;
+  if (els.turnPriorityHud) {
+    els.turnPriorityHud.classList.toggle('my-priority', copy.isMyPriority && (state.consecutivePasses || 0) < 2);
+    els.turnPriorityHud.classList.toggle('rival-priority', !copy.isMyPriority && (state.consecutivePasses || 0) < 2);
+    els.turnPriorityHud.classList.toggle('resolving', (state.consecutivePasses || 0) >= 2);
+  }
+  if (els.localPlayerCard) {
+    els.localPlayerCard.classList.toggle('active-turn-player', copy.isMyTurn);
+    els.localPlayerCard.classList.toggle('has-priority-player', copy.isMyPriority && (state.consecutivePasses || 0) < 2);
+  }
+  if (els.rivalPlayerCard) {
+    els.rivalPlayerCard.classList.toggle('active-turn-player', !copy.isMyTurn);
+    els.rivalPlayerCard.classList.toggle('has-priority-player', !copy.isMyPriority && (state.consecutivePasses || 0) < 2);
+  }
+  refreshTurnPriorityHudClock();
+}
 export function render() {
   state.localHP = Math.max(0, Math.min(20, state.localHP));
   state.rivalHP = Math.max(0, Math.min(20, state.rivalHP));
@@ -4852,11 +4918,7 @@ export function render() {
   els.localHpBar.style.width = `${(state.localHP / 20) * 100}%`; els.rivalHpBar.style.width = `${(state.rivalHP / 20) * 100}%`;
 
   // --- 1. GESTIÓN VISUAL DEL HUD Y FASES ---
-  const turnOwnerBadge = document.getElementById('turn-owner-badge');
-  if (turnOwnerBadge) {
-      turnOwnerBadge.textContent = state.activePlayer === 'local' ? `Turno de: ${getLocalPlayerName()}` : `Turno de: ${getRivalName()}`;
-      turnOwnerBadge.className = `turn-owner-badge ${state.activePlayer === 'local' ? 'local-active' : 'rival-active'}`;
-  }
+  renderTurnPriorityHud();
 
 // Despintamos todos (solo quitamos los estados activos para no romper el layout)
   ['dot-upkeep', 'dot-main1', 'dot-combat', 'dot-main2', 'dot-end'].forEach(id => {
@@ -4954,6 +5016,20 @@ export function render() {
     els.btnEndTurn.textContent = "Pasar Prioridad ➔";
     els.btnEndTurn.onclick = () => passPriority('local');
     els.btnEndTurn.style.backgroundColor = ""; // Defecto
+  }
+
+  // El control principal nunca miente: si la prioridad no es nuestra, deja de parecer una
+  // acción disponible. Con Stack profunda esto reemplaza el viejo botón verde ambiguo.
+  if ((state.consecutivePasses || 0) >= 2) {
+    els.btnEndTurn.textContent = spellStack.length > 0 ? "Resolviendo la pila…" : "Avanzando…";
+    els.btnEndTurn.onclick = null;
+    els.btnEndTurn.disabled = true;
+    els.btnEndTurn.style.backgroundColor = "#665d39";
+  } else if (state.priorityPlayer !== 'local' && !state.gameOver) {
+    els.btnEndTurn.textContent = `Esperando a ${getRivalName()}…`;
+    els.btnEndTurn.onclick = null;
+    els.btnEndTurn.disabled = true;
+    els.btnEndTurn.style.backgroundColor = "#34495e";
   }
 
   // --- GESTIÓN DE COSTOS PENDIENTES ---
@@ -5063,10 +5139,12 @@ document.addEventListener('keydown', (e) => {
 
   // Pasar prioridad / Avanzar turno con la barra espaciadora
   if (e.code === 'Space' && !isTypingInField) {
-    e.preventDefault(); // Evitamos scroll también durante el autorepeat del navegador.
+    e.preventDefault(); // Evitamos scroll y también el click nativo del botón enfocado.
+    e.stopPropagation();
     // Una pulsación física = una sola acción. Mantener la barra apretada no vuelve a
     // disparar prioridad ni genera cientos de eventos diagnósticos.
     if (e.repeat) return;
+    if (document.activeElement && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();
     if (!els.btnEndTurn.disabled && !els.btnEndTurn.classList.contains('hidden')) {
       els.btnEndTurn.click();
     }

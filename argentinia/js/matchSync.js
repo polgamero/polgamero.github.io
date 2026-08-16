@@ -6,6 +6,7 @@
 //   1) snapshots parciales nunca pisan arrays válidos con `undefined`;
 //   2) la Stack viaja como estado público canónico y se rehidrata desde la perspectiva
 //      de cada cliente, incluyendo targets y fuentes de habilidades.
+import { deriveLocalPriorityActivity } from './priorityUX.js';
 
 export const PER_PLAYER_FIELDS = [
   'HP', 'Poison', 'Lands', 'Combat', 'Graveyard', 'Exile', 'Support', 'Planeswalkers',
@@ -15,7 +16,8 @@ export const PER_PLAYER_FIELDS = [
 export const SHARED_FIELDS = [
   'turnCount', 'phase', 'gameOver', 'consecutivePasses', 'combatDamagePrevented',
   'activeEffects', 'scheduledReturns',
-  'pendingDecision', 'decisionResponse'
+  'pendingDecision', 'decisionResponse',
+  'priorityClockSerial', 'priorityClockDurationMs', 'priorityActivity'
 ];
 
 export function otherRole(role) {
@@ -317,6 +319,14 @@ export function buildMyPublicPatch(state, myRole, stack = []) {
   }
 
   SHARED_FIELDS.forEach(field => {
+    if (field === 'priorityActivity') {
+      // Sólo el dueño actual de la prioridad deriva actividad desde sus flags privados.
+      // El otro cliente conserva el valor sincronizado para no borrar un "está pagando" remoto.
+      patch.priorityActivity = state.priorityPlayer === 'local'
+        ? deriveLocalPriorityActivity(state)
+        : (state.priorityActivity || null);
+      return;
+    }
     if (state[field] !== undefined) patch[field] = state[field];
   });
   patch.activePlayer = state.activePlayer === 'local' ? myRole : rivalRole;

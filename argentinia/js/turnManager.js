@@ -1,4 +1,4 @@
-import { logMsg, els, showGameOverOverlay, render, updateAccountUI } from './ui.js';
+import { logMsg, els, showGameOverOverlay, render, updateAccountUI, refreshTurnPriorityHudClock } from './ui.js';
 import { state, queueTriggeredAbilities, resolveScheduledReturns, getLocalPlayerName, getRivalName } from './main.js';
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
@@ -7,6 +7,7 @@ import { hasKeyword } from './keywords.js';
 import { awardPoints, clearActiveMatchId } from './firebaseClient.js';
 import { pointsForBotGameEnd, POINTS } from './store.js';
 import { recordTelemetryEvent } from './telemetry.js';
+import { PRIORITY_CLOCK_DURATION_MS, getEffectivePriorityActivity, canPriorityClockRun } from './priorityUX.js';
 
 export function checkGameOver() {
   // FASE 4, ETAPA 6: gameOver y abandonedBy llegan JUNTOS por sync en el mismo publish
@@ -170,6 +171,7 @@ export async function advanceStep() {
   state.phase = nextPhase;
   state.priorityPlayer = state.activePlayer; // La prioridad vuelve al jugador activo al iniciar cada paso
   state.consecutivePasses = 0;
+  resetPriorityClock('phase_change');
   recordTelemetryEvent('phase_committed', {
     from: { turnCount: turnBefore, phase: phaseBefore, activePlayer: activeBefore },
     to: { turnCount: state.turnCount, phase: state.phase, activePlayer: state.activePlayer },
@@ -272,10 +274,157 @@ export async function processMyTurnStart() {
 // charla de arquitectura al arrancar la Fase 4).
 let isResolvingBothPassed = false;
 
+
+// ---------------------------------------------------------------------------
+// ENTREGA 23.9 — RELOJ DE PRIORIDAD MULTIPLAYER
+// ---------------------------------------------------------------------------
+let priorityClockLastAutoPassSerial = null;
+let priorityClockLastActivity = null;
+let priorityClockWasBlocked = true;
+let priorityClockTickBusy = false;
+
+export function resetPriorityClock(reason = 'priority_window', options = {}) {
+  if (!state.currentMatch || state.gameOver) return false;
+  const durationMs = Math.max(1000, Number(options.durationMs || state.priorityClockDurationMs || PRIORITY_CLOCK_DURATION_MS));
+  state.priorityClockDurationMs = durationMs;
+  state.priorityClockSerial = Math.max(0, Number(state.priorityClockSerial) || 0) + 1;
+  state.priorityClockDeadlineLocalMs = Date.now() + durationMs;
+  state.priorityClockRemainingMs = durationMs;
+  state.priorityClockPausedLocal = false;
+  state.priorityClockPauseReasonLocal = null;
+  state.priorityActivity = null;
+  priorityClockLastAutoPassSerial = null;
+  priorityClockLastActivity = null;
+  priorityClockWasBlocked = false;
+  recordTelemetryEvent(options.telemetryType || 'priority_clock_start', {
+    serial: state.priorityClockSerial,
+    durationMs,
+    reason,
+    turnCount: state.turnCount,
+    phase: state.phase,
+    activePlayer: state.activePlayer,
+    priorityPlayer: state.priorityPlayer,
+    stackDepth: spellStack.length
+  });
+  return true;
+}
+
+export function syncPriorityClockFromNetwork({ serial, durationMs, receivedAtClientMs, source = 'remote_sync', serverCommittedAtMs = null } = {}) {
+  const nextSerial = Number(serial);
+  if (!state.currentMatch || !Number.isFinite(nextSerial)) return false;
+  const duration = Math.max(1000, Number(durationMs) || PRIORITY_CLOCK_DURATION_MS);
+  // Usamos el instante de RECEPCIÓN del write confirmado como ancla local. Así no dependemos
+  // de que los dos Windows tengan el reloj de pared sincronizado. Ambos reciben el mismo
+  // commit y quedan normalmente separados sólo por la latencia de escucha.
+  const now = Number(receivedAtClientMs) || Date.now();
+  state.priorityClockDurationMs = duration;
+  state.priorityClockSerial = nextSerial;
+  state.priorityClockDeadlineLocalMs = now + duration;
+  state.priorityClockRemainingMs = duration;
+  state.priorityClockPausedLocal = false;
+  state.priorityClockPauseReasonLocal = null;
+  priorityClockLastAutoPassSerial = null;
+  priorityClockLastActivity = null;
+  priorityClockWasBlocked = false;
+  recordTelemetryEvent('priority_clock_sync', {
+    serial: nextSerial,
+    durationMs: duration,
+    source,
+    serverCommittedAtMs: Number.isFinite(Number(serverCommittedAtMs)) ? Number(serverCommittedAtMs) : null
+  });
+  refreshTurnPriorityHudClock();
+  return true;
+}
+
+function pausePriorityClock(activity) {
+  const now = Date.now();
+  const remaining = Math.max(0, (Number(state.priorityClockDeadlineLocalMs) || now) - now);
+  state.priorityClockRemainingMs = remaining;
+  state.priorityClockPausedLocal = true;
+  state.priorityClockPauseReasonLocal = activity || 'blocked';
+  if (priorityClockLastActivity !== activity) {
+    recordTelemetryEvent('priority_clock_pause', {
+      serial: state.priorityClockSerial,
+      remainingMs: Math.round(remaining),
+      reason: activity || 'blocked',
+      priorityPlayer: state.priorityPlayer
+    });
+  }
+  priorityClockLastActivity = activity;
+  priorityClockWasBlocked = true;
+}
+
+async function priorityClockTick() {
+  if (priorityClockTickBusy) return;
+  if (!state.currentMatch || state.gameOver || state.multiplayerWaitingForReady) {
+    refreshTurnPriorityHudClock();
+    return;
+  }
+
+  const activity = getEffectivePriorityActivity(state);
+  const canRun = canPriorityClockRun(state);
+  if (!canRun) {
+    pausePriorityClock(activity || ((state.consecutivePasses || 0) >= 2 ? 'resolving' : 'blocked'));
+    refreshTurnPriorityHudClock();
+    return;
+  }
+
+  // Si el dueño local acaba de terminar una acción/selección, arranca una ventana NUEVA
+  // completa de 15s. No heredamos los 2 segundos que quizá quedaban antes de elegir target.
+  if (priorityClockWasBlocked && state.priorityPlayer === 'local') {
+    resetPriorityClock('resume_after_action', { telemetryType: 'priority_clock_reset' });
+    render(); // publica serial + priorityActivity=null en el mismo delta normal.
+  }
+  priorityClockWasBlocked = false;
+  priorityClockLastActivity = null;
+
+  if (!Number.isFinite(Number(state.priorityClockDeadlineLocalMs)) || Number(state.priorityClockDeadlineLocalMs) <= 0) {
+    // El cliente pasivo espera a recibir el serial del dueño. El dueño puede inicializarlo.
+    if (state.priorityPlayer === 'local') {
+      resetPriorityClock('missing_deadline');
+      render();
+    }
+    refreshTurnPriorityHudClock();
+    return;
+  }
+
+  const remaining = Math.max(0, Number(state.priorityClockDeadlineLocalMs) - Date.now());
+  state.priorityClockRemainingMs = remaining;
+  state.priorityClockPausedLocal = false;
+  state.priorityClockPauseReasonLocal = null;
+  refreshTurnPriorityHudClock();
+
+  if (remaining > 0 || state.priorityPlayer !== 'local') return;
+  if (priorityClockLastAutoPassSerial === state.priorityClockSerial) return;
+
+  priorityClockLastAutoPassSerial = state.priorityClockSerial;
+  recordTelemetryEvent('priority_timeout_autopass', {
+    serial: state.priorityClockSerial,
+    turnCount: state.turnCount,
+    phase: state.phase,
+    activePlayer: state.activePlayer,
+    priorityPlayer: state.priorityPlayer,
+    stackDepth: spellStack.length
+  }, 'warning');
+  logMsg('🔥 Se consumió la mecha: pasaste prioridad automáticamente.');
+  priorityClockTickBusy = true;
+  try {
+    await passPriority('local');
+  } finally {
+    priorityClockTickBusy = false;
+  }
+}
+
+// DOM-only tick: NO llama render() salvo en transiciones semánticas (reset/timeout), por lo
+// que la animación de la mecha jamás genera un write por frame a Firestore.
+const priorityClockInterval = setInterval(() => { priorityClockTick().catch(err => console.error('Priority clock tick:', err)); }, 125);
+if (priorityClockInterval && typeof priorityClockInterval.unref === 'function') priorityClockInterval.unref();
+
 export function beginActivePlayerPriorityWindow() {
   if (state.gameOver) return;
   state.priorityPlayer = state.activePlayer;
   state.consecutivePasses = 0;
+  resetPriorityClock('active_player_priority_window');
   render();
   if (!state.currentMatch && state.priorityPlayer === 'rival') {
     setTimeout(takeBotPriorityAction, 600);
@@ -329,6 +478,8 @@ export async function passPriority(player) {
 
   // Rotar prioridad al otro jugador
   state.priorityPlayer = state.priorityPlayer === 'local' ? 'rival' : 'local';
+  state.priorityActivity = null;
+  resetPriorityClock('priority_passed');
   render();
 
   if (!state.currentMatch && state.priorityPlayer === 'rival') {
@@ -378,6 +529,7 @@ export async function resolveBothPassed() {
       state.consecutivePasses = 0;
       await resolveCombatDamage();
       state.priorityPlayer = state.activePlayer;
+      resetPriorityClock('combat_damage_continuation');
       render();
       if (!state.currentMatch && state.priorityPlayer === 'rival') setTimeout(takeBotPriorityAction, 600);
     } else {

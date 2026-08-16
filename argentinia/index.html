@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ARGENTINIA - TCG Criollo</title>
-  <link rel="stylesheet" href="./css/style.css?v=23.8.5">
+  <link rel="stylesheet" href="./css/style.css?v=23.9.0">
 </head>
 <body>
 
@@ -63,8 +63,21 @@
       <div class="log-section">
         <div class="log-box" id="game-log-box"></div>
         
-        <!-- INDICADOR DE TURNO ACTIVO -->
-        <div id="turn-owner-badge" class="turn-owner-badge">Turno de: El Gaucho</div>
+        <!-- ENTREGA 23.9: TURNO y PRIORIDAD son dos conceptos distintos y siempre visibles. -->
+        <div id="turn-priority-hud" class="turn-priority-hud" aria-live="polite">
+          <div class="turn-priority-head">
+            <div id="turn-owner-badge" class="turn-owner-badge priority-turn-label">TU TURNO · MAIN 1</div>
+            <div id="priority-owner-badge" class="priority-owner-badge">⚡ PRIORIDAD: VOS</div>
+          </div>
+          <div id="priority-context-label" class="priority-context-label">Podés jugar una acción legal o pasar prioridad.</div>
+          <div id="priority-clock" class="priority-clock hidden" aria-label="Tiempo de prioridad">
+            <div class="priority-fuse-track">
+              <div id="priority-fuse-fill" class="priority-fuse-fill"></div>
+              <div id="priority-fuse-spark" class="priority-fuse-spark">🔥</div>
+            </div>
+            <span id="priority-countdown" class="priority-countdown">15</span>
+          </div>
+        </div>
 
         <!-- INDICADORES DE FASES Y SUBFASES MTG -->
         <div id="phase-indicator-container" class="phase-indicator">
@@ -119,7 +132,7 @@
       <span id="stack-count">0</span>
     </div>
     <div id="stack-list" class="stack-list"></div>
-    <button id="btn-resolve-top" class="btn-resolve-stack">Pasar Prioridad / Resolver ➔</button>
+    <div class="stack-priority-hint">La pila resuelve sola cuando ambos pasan prioridad.</div>
   </div>
 
   <!-- OVERLAY DE ASIGNACIÓN DE DAÑO -->
