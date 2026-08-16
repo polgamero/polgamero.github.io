@@ -1,7 +1,8 @@
 // js/matchSync.js
 //
 // Traductor puro entre el state local/rival del motor y el documento host/guest de
-// Firestore. Entrega 23.6 agrega dos garantías críticas para multiplayer:
+// Firestore. Entrega 23.6 agregó las primeras garantías críticas; 23.7 endurece
+// autoridad, identidad estable de permanentes y operaciones públicas→privadas:
 //   1) snapshots parciales nunca pisan arrays válidos con `undefined`;
 //   2) la Stack viaja como estado público canónico y se rehidrata desde la perspectiva
 //      de cada cliente, incluyendo targets y fuentes de habilidades.
@@ -37,6 +38,35 @@ const BOARD_ZONE_SPECS = [
   ['planeswalkers', 'localPlaneswalkers', 'rivalPlaneswalkers']
 ];
 
+// ENTREGA 23.7 — identidad pública ESTABLE de permanentes. La telemetría ya tenía IDs
+// locales, pero eran deliberadamente diagnósticos y se regeneraban al rehidratar un
+// snapshot. Para operaciones multiplayer que cruzan una zona pública hacia una privada
+// (por ejemplo, "Che, Volvé" -> mano del dueño) necesitamos nombrar inequívocamente AL
+// OBJETO DE CAMPO, incluso si hay dos copias de la misma carta. Este ID viaja dentro del
+// item público y sobrevive sync/reconexión; nunca contiene información privada.
+let nextSyncObjectSerial = 1;
+
+function makeSyncObjectId(ownerRole) {
+  const randomPart = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+    ? crypto.randomUUID().replace(/-/g, '').slice(0, 12)
+    : `${Date.now().toString(36)}${(nextSyncObjectSerial++).toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  return `${ownerRole || 'p'}_${randomPart}`;
+}
+
+function ensureItemSyncId(item, ownerRole) {
+  if (!item || typeof item !== 'object') return null;
+  if (!item._syncObjectId) item._syncObjectId = makeSyncObjectId(ownerRole);
+  return item._syncObjectId;
+}
+
+export function ensureBoardItemSyncIds(state, myRole) {
+  if (!state || !myRole) return;
+  for (const [, localKey, rivalKey] of BOARD_ZONE_SPECS) {
+    (Array.isArray(state[localKey]) ? state[localKey] : []).forEach(item => ensureItemSyncId(item, myRole));
+    (Array.isArray(state[rivalKey]) ? state[rivalKey] : []).forEach(item => ensureItemSyncId(item, otherRole(myRole)));
+  }
+}
+
 function zoneArray(state, zoneName, isLocal) {
   const spec = BOARD_ZONE_SPECS.find(([wire]) => wire === zoneName);
   if (!spec) return null;
@@ -44,17 +74,19 @@ function zoneArray(state, zoneName, isLocal) {
   return Array.isArray(state?.[key]) ? state[key] : null;
 }
 
-function serializeBoardItemRef(item, state, myRole) {
+export function serializeBoardItemRef(item, state, myRole) {
   if (!item || !state) return null;
   for (const [zoneName, localKey, rivalKey] of BOARD_ZONE_SPECS) {
     for (const [isLocal, key] of [[true, localKey], [false, rivalKey]]) {
       const zone = Array.isArray(state[key]) ? state[key] : [];
       const index = zone.indexOf(item);
       if (index !== -1) {
+        const ownerRole = isLocal ? myRole : otherRole(myRole);
         return {
-          ownerRole: isLocal ? myRole : otherRole(myRole),
+          ownerRole,
           zone: zoneName,
           index,
+          syncObjectId: ensureItemSyncId(item, ownerRole),
           cardId: item?.card?.id || null,
           cardName: item?.card?.name || null
         };
@@ -69,7 +101,9 @@ function deserializeBoardItemRef(ref, state, myRole) {
   const isLocal = ref.ownerRole === myRole;
   const zone = zoneArray(state, ref.zone, isLocal);
   if (!zone) return null;
-  const item = zone[Number(ref.index)];
+  let item = null;
+  if (ref.syncObjectId) item = zone.find(candidate => candidate?._syncObjectId === ref.syncObjectId) || null;
+  if (!item) item = zone[Number(ref.index)];
   if (!item) return null;
   if (ref.cardId && item?.card?.id && ref.cardId !== item.card.id) return null;
   if (!ref.cardId && ref.cardName && item?.card?.name !== ref.cardName) return null;
@@ -102,11 +136,13 @@ export function serializeStackTarget(targetObj, state, myRole) {
     index = targetObj._syncDescriptor.index;
   }
   const item = targetObj.item || (index >= 0 ? zone[index] : null);
+  const ownerRole = isLocal ? myRole : otherRole(myRole);
   const descriptor = {
     type: targetObj.type,
-    ownerRole: isLocal ? myRole : otherRole(myRole),
+    ownerRole,
     zone: zoneName,
     index,
+    syncObjectId: item ? ensureItemSyncId(item, ownerRole) : (targetObj._syncDescriptor?.syncObjectId || null),
     cardId: item?.card?.id || targetObj._syncDescriptor?.cardId || null,
     cardName: item?.card?.name || targetObj._syncDescriptor?.cardName || null,
     cardSnapshot: item?.card ? {
@@ -133,9 +169,15 @@ export function deserializeStackTarget(descriptor, state, myRole) {
   const zoneName = descriptor.zone || targetZoneName(descriptor.type);
   const zone = zoneArray(state, zoneName, isLocal) || [];
   const index = Number(descriptor.index);
-  let item = Number.isInteger(index) && index >= 0 ? zone[index] : null;
+  let item = descriptor.syncObjectId
+    ? (zone.find(candidate => candidate?._syncObjectId === descriptor.syncObjectId) || null)
+    : null;
+  if (!item) item = Number.isInteger(index) && index >= 0 ? zone[index] : null;
   if (item && descriptor.cardId && item?.card?.id && descriptor.cardId !== item.card.id) item = null;
   if (item && !descriptor.cardId && descriptor.cardName && item?.card?.name !== descriptor.cardName) item = null;
+  // Si resolvimos por el fallback de índice (snapshot viejo/reconexión) heredamos la identidad
+  // pública del descriptor. Así volver a serializar no inventa otro syncObjectId distinto.
+  if (item && descriptor.syncObjectId && !item._syncObjectId) item._syncObjectId = descriptor.syncObjectId;
 
   // Si el target ya abandonó la zona (o una reconexión ocurre después), conservamos un
   // tombstone mínimo para que la UI pueda nombrarlo y el resolver lo trate como ausente
@@ -228,6 +270,8 @@ export function buildMyPublicPatch(state, myRole, stack = []) {
   const rivalRole = otherRole(myRole);
   const patch = {};
   const hasAuthority = state.activePlayer === 'local' || state.stackResolutionAuthority === true;
+
+  ensureBoardItemSyncIds(state, myRole);
 
   PER_PLAYER_FIELDS.forEach(field => {
     const value = state[`local${field}`];

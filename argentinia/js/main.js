@@ -8,7 +8,7 @@ import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, st
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
 import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
-import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, otherRole } from './matchSync.js';
+import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, otherRole } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks } from './telemetry.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
@@ -79,6 +79,11 @@ export const state = {
   // publicar también las mutaciones públicas del rival causadas por SU propio hechizo,
   // aunque el turno activo pertenezca al otro jugador.
   stackResolutionAuthority: false,
+  // ENTREGA 23.7: indicador PURAMENTE local de backpressure. Se activa mientras existe una
+  // escritura multiplayer en vuelo y queda disponible para HUD/telemetría; no viaja por
+  // Firestore ni bloquea por sí solo acciones encadenadas del motor (render() suele publicar
+  // en mitad de una misma acción síncrona).
+  matchSyncBusy: false,
 
   localHP: 20,
   // Veneno (regla real 104.3c, junto a Infectar en 702.90): condición de derrota
@@ -111,6 +116,10 @@ export const state = {
   pendingSpellIndex: null, 
   pendingCost: null,       
   tappedLandsThisSpell: [],
+  // ENTREGA 23.7 — mini transacción de pago para fuentes de maná "de un uso" (Fajo de
+  // Dólares Blue / Treasure-like). Si el jugador cancela ANTES de que el hechizo/habilidad
+  // llegue a la pila, estas fuentes vuelven exactamente a la zona/posición de donde salieron.
+  paymentManaSourceRollbacks: [],
   pendingTargetCard: null,
   pendingAbilitySource: null,
   // Punto 11: mientras se elige entre dos o más habilidades activadas del mismo permanente
@@ -422,7 +431,7 @@ async function initGame(deckSource) {
   const finishSetup = () => {
     hookGameplayButtons();
     render();
-    logMsg(deckSource.type === 'saved' ? `¡Arranca la partida! Jugás con "${deckLabel}".` : `¡Arranca la partida! Elegiste ${deckLabel}.`);
+    logMsg(`¡Arranca la partida! Jugás con "${deckLabel}".`);
     logMsg("¡Tu turno! Bajá una tierra para empezar.");
   };
 
@@ -664,25 +673,20 @@ function startPlayFlow() {
 // hace falta coordinar nada con el rival para esto: cada mazo/mano es privado por diseño,
 // así que cada cliente arma el suyo de forma totalmente independiente.
 function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '') {
-  // BUGFIX: el subtítulo por defecto de este modal decía "El Tano ya barajó el suyo..."
-  // hardcodeado — acá lo pisamos con el nombre real del rival, ya que este mismo modal se
-  // reusa tanto para Solitario como para elegir un mazo random en multiplayer.
-  const mpTitleOverrides = { subtitle: `${rivalName} ya eligió el suyo. Vos elegís con qué pelear.` };
+  // 23.7.1: multiplayer es exclusivamente con mazos propios guardados. No existe fallback
+  // a identidad/mazo random: cada tester entra con una lista real, reproducible y auditable.
   const savedDecks = (state.currentUser && state.userProfile && state.userProfile.decks) || [];
-  if (savedDecks.length > 0) {
-    showPlayDeckPickerModal(
-      (chosenDeck) => startMultiplayerMatch(matchId, myRole, { type: 'saved', deck: chosenDeck }, rivalName, rivalPhotoURL),
-      () => showDeckSelectionModal(
-        (chosenIdentity) => startMultiplayerMatch(matchId, myRole, { type: 'random', identity: chosenIdentity }, rivalName, rivalPhotoURL),
-        mpTitleOverrides,
-        () => startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL) // "Volver": vuelve al picker de mazos guardados
-      )
-    );
-  } else {
-    // Caso raro/defensivo — en la práctica toda cuenta logueada tiene al menos 1 mazo, así
-    // que este camino no debería alcanzarse nunca en multiplayer.
-    showDeckSelectionModal((chosenIdentity) => startMultiplayerMatch(matchId, myRole, { type: 'random', identity: chosenIdentity }, rivalName, rivalPhotoURL), mpTitleOverrides);
+  if (savedDecks.length === 0) {
+    alert('Para jugar Multijugador necesitás al menos un mazo propio guardado en Mis Mazos.');
+    showMainMenu(startPlayFlow, startMultiplayerFlow);
+    return;
   }
+
+  showPlayDeckPickerModal(
+    (chosenDeck) => startMultiplayerMatch(matchId, myRole, { type: 'saved', deck: chosenDeck }, rivalName, rivalPhotoURL),
+    null,
+    () => showMainMenu(startPlayFlow, startMultiplayerFlow)
+  );
 }
 
 // FASE 4 (CIERRE DEL ROADMAP): arranca una partida multiplayer real — cada cliente arma SU
@@ -691,17 +695,15 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '') {
 // con una regla FIJA que ambos clientes calculan por su cuenta con su propio myRole, sin
 // coordinar nada ni sortear nada: el host siempre juega primero.
 function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '') {
+  if (deckSource?.type !== 'saved' || !deckSource.deck) {
+    throw new Error('Multijugador sólo admite mazos propios guardados.');
+  }
+
   setupBoardLayout();
   replaceSpellStackFromSync([]);
 
-  let deckLabel;
-  if (deckSource.type === 'saved') {
-    state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements);
-    deckLabel = deckSource.deck.name;
-  } else {
-    state.localDeck = buildRandomDeck(deckSource.identity);
-    deckLabel = deckSource.identity.join('/');
-  }
+  const deckLabel = deckSource.deck.name;
+  state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements);
 
   // Arrancan vacíos a propósito — se llenan solos apenas llegue el primer sync del rival
   // con las cantidades reales (ver startListeningToMatch, matchSync.js).
@@ -777,26 +779,51 @@ let remoteSyncApplyDepth = 0;
 // cuando termine la actual, publicamos UNA sola vez el estado más fresco disponible.
 let matchPublishInFlight = null;
 let matchPublishQueued = false;
-let lastMatchPublishFingerprint = null;
 let matchSyncWriterSeq = 0;
+const matchSyncClientId = `cli_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+let lastKnownPublicWire = null;
+let lastKnownPrivateWire = null;
+const lastAppliedWriterSeq = new Map();
 
-function matchPublishFingerprint(matchId, myRole, publicPatch, privatePatch) {
-  try { return JSON.stringify({ matchId, myRole, publicPatch, privatePatch }); }
-  catch { return `${matchId}|${myRole}|${Date.now()}`; }
+function wireClone(value) {
+  try { return JSON.parse(JSON.stringify(value)); }
+  catch { return value; }
+}
+
+function wireEqual(a, b) {
+  try { return JSON.stringify(a) === JSON.stringify(b); }
+  catch { return a === b; }
+}
+
+// ENTREGA 23.7 — publica DELTAS, no snapshots completos. Ésta es la barrera que evita que
+// un cliente pasivo vuelva a escribir una phase/turnCount vieja simplemente porque hizo
+// click en "Pasar prioridad" después de recibir el estado nuevo del rival.
+function buildWireDelta(candidate, baseline) {
+  if (!candidate || typeof candidate !== 'object') return {};
+  if (!baseline || typeof baseline !== 'object') return { ...candidate };
+  const delta = {};
+  Object.entries(candidate).forEach(([key, value]) => {
+    if (!wireEqual(value, baseline[key])) delta[key] = value;
+  });
+  return delta;
+}
+
+function mergeWireBaseline(baseline, patch) {
+  return { ...(baseline || {}), ...(wireClone(patch) || {}) };
 }
 
 async function drainMatchPublishQueue() {
   while (matchPublishQueued && state.currentMatch && state.currentUser) {
     matchPublishQueued = false;
     const { matchId, myRole } = state.currentMatch;
-    const publicPatch = buildMyPublicPatch(state, myRole, spellStack);
-    const privatePatch = buildMyPrivatePatch(state);
-    const fingerprint = matchPublishFingerprint(matchId, myRole, publicPatch, privatePatch);
+    const publicCandidate = buildMyPublicPatch(state, myRole, spellStack);
+    const privateCandidate = buildMyPrivatePatch(state);
+    const publicPatch = buildWireDelta(publicCandidate, lastKnownPublicWire);
+    const privatePatch = buildWireDelta(privateCandidate, lastKnownPrivateWire);
 
-    // render() se llama mucho por razones puramente visuales. Si ni el documento público,
-    // ni mano/mazo privados, ni la Stack cambiaron desde el último write confirmado, no hay
-    // ninguna razón para volver a escribir Firestore.
-    if (fingerprint === lastMatchPublishFingerprint) continue;
+    const publicKeys = Object.keys(publicPatch);
+    const privateKeys = Object.keys(privatePatch);
+    if (publicKeys.length === 0 && privateKeys.length === 0) continue;
 
     // Metadato de transporte: como el documento usa merge:true, un listener no puede saber
     // qué campos pertenecen AL ÚLTIMO write mirando sólo el snapshot final. Guardamos la
@@ -804,11 +831,14 @@ async function drainMatchPublishQueue() {
     // legítimos sobre SU propio battlefield (daño/removal resuelto por el jugador activo)
     // sin confundir campos viejos que simplemente quedaron almacenados en el documento.
     const writerSeq = ++matchSyncWriterSeq;
-    publicPatch.syncMeta = {
-      writerRole: myRole,
-      writerSeq,
-      touchedKeys: Object.keys(publicPatch)
-    };
+    if (publicKeys.length > 0) {
+      publicPatch.syncMeta = {
+        writerRole: myRole,
+        writerClientId: matchSyncClientId,
+        writerSeq,
+        touchedKeys: [...publicKeys]
+      };
+    }
 
     const publishId = `pub_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const startedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -817,32 +847,37 @@ async function drainMatchPublishQueue() {
       publishId,
       matchId,
       myRole,
-      turnCount: publicPatch.turnCount,
-      phase: publicPatch.phase,
-      activePlayer: publicPatch.activePlayer,
-      priorityPlayer: publicPatch.priorityPlayer,
-      consecutivePasses: publicPatch.consecutivePasses,
-      stackDepth: Array.isArray(publicPatch.stackState) ? publicPatch.stackState.length : 0,
+      turnCount: publicCandidate.turnCount,
+      phase: publicCandidate.phase,
+      activePlayer: publicCandidate.activePlayer,
+      priorityPlayer: publicCandidate.priorityPlayer,
+      consecutivePasses: publicCandidate.consecutivePasses,
+      stackDepth: Array.isArray(publicCandidate.stackState) ? publicCandidate.stackState.length : 0,
       writerSeq,
-      pendingDecision: publicPatch.pendingDecision ? {
-        type: publicPatch.pendingDecision.type,
-        forRole: publicPatch.pendingDecision.forRole,
-        requestId: publicPatch.pendingDecision.requestId
+      writerClientId: matchSyncClientId,
+      publicKeys,
+      privateKeys,
+      pendingDecision: publicCandidate.pendingDecision ? {
+        type: publicCandidate.pendingDecision.type,
+        forRole: publicCandidate.pendingDecision.forRole,
+        requestId: publicCandidate.pendingDecision.requestId
       } : null,
-      decisionResponse: publicPatch.decisionResponse ? {
-        type: publicPatch.decisionResponse.type,
-        requestId: publicPatch.decisionResponse.requestId
+      decisionResponse: publicCandidate.decisionResponse ? {
+        type: publicCandidate.decisionResponse.type,
+        requestId: publicCandidate.decisionResponse.requestId
       } : null,
-      localHandCount: privatePatch.hand?.length ?? null,
-      localDeckCount: privatePatch.deck?.length ?? null
+      localHandCount: privateCandidate.hand?.length ?? null,
+      localDeckCount: privateCandidate.deck?.length ?? null
     });
 
+    state.matchSyncBusy = true;
     try {
-      await Promise.all([
-        publishMyPublicState(matchId, publicPatch),
-        publishMyPrivateState(matchId, state.currentUser.uid, privatePatch)
-      ]);
-      lastMatchPublishFingerprint = fingerprint;
+      const writes = [];
+      if (publicKeys.length > 0) writes.push(publishMyPublicState(matchId, publicPatch));
+      if (privateKeys.length > 0) writes.push(publishMyPrivateState(matchId, state.currentUser.uid, privatePatch));
+      await Promise.all(writes);
+      if (publicKeys.length > 0) lastKnownPublicWire = mergeWireBaseline(lastKnownPublicWire, publicPatch);
+      if (privateKeys.length > 0) lastKnownPrivateWire = mergeWireBaseline(lastKnownPrivateWire, privatePatch);
       const endedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
       recordTelemetryNetwork('sync_publish_ok', {
         publishId,
@@ -859,6 +894,8 @@ async function drainMatchPublishQueue() {
       // No hacemos loop apretado ante una caída de red. El próximo cambio real/render o
       // checkpoint de gameplay volverá a pedir publish; el fingerprint no se confirma si
       // este write falló.
+    } finally {
+      state.matchSyncBusy = false;
     }
   }
 }
@@ -1441,6 +1478,50 @@ function handleIncomingDecisionRequest(decision) {
         state.respondingToDecision = false;
         respondToDecision(decision.requestId, { completed: false, sacrificedNames: [] });
       });
+  } else if (decision.type === 'move_public_card_to_private_hand') {
+    // ENTREGA 23.7 — una carta pública del campo del dueño tiene que entrar en SU mano
+    // privada. El cliente que lanzó el bounce jamás escribe la carta real en `rivalHand`:
+    // pide esta operación al dueño, que valida el permanente por syncObjectId, lo mueve en
+    // su estado real y publica sólo el nuevo handCount + el battlefield público.
+    state.respondingToDecision = true;
+    render();
+    try {
+      const target = deserializeStackTarget(decision.target, state, state.currentMatch?.myRole);
+      const targetItem = target?.item || null;
+      const idx = targetItem ? state.localCombat.indexOf(targetItem) : -1;
+      if (idx === -1 || target?.type !== 'creature' || target?.isLocal !== true || targetItem?._syncTombstone) {
+        state.respondingToDecision = false;
+        render();
+        respondToDecision(decision.requestId, {
+          completed: false,
+          reason: 'target_not_found',
+          cardName: decision.cardName || decision.target?.cardName || null
+        });
+        return;
+      }
+
+      state.localCombat.splice(idx, 1);
+      detachEquipmentFrom(targetItem, true);
+      sendAurasToGraveyard(targetItem, true);
+      cleanupIfVehicle(targetItem);
+      const movedCard = targetItem.card;
+      if (!movedCard?.isToken) state.localHand.push(movedCard);
+
+      state.respondingToDecision = false;
+      // Este render publica PRIMERO el movimiento real del dueño. La cola de publish es
+      // serial, así que el ACK de `respondToDecision` no puede adelantar este cambio.
+      render();
+      respondToDecision(decision.requestId, {
+        completed: true,
+        cardName: movedCard?.name || decision.cardName || null,
+        tokenCeasedToExist: !!movedCard?.isToken
+      });
+    } catch (err) {
+      console.error('Error moviendo permanente remoto a mano privada:', err);
+      state.respondingToDecision = false;
+      render();
+      respondToDecision(decision.requestId, { completed: false, reason: 'exception' });
+    }
   } else if (decision.type === 'self_return_from_graveyard') {
     // Punto 15: una carta controlada por el rival devuelve cartas de SU cementerio a SU
     // mano. El cementerio es público pero la mano es privada, por eso el dueño real hace
@@ -1600,6 +1681,43 @@ export function startListeningToMatch(matchId, myRole) {
     const syncMeta = publicDoc.syncMeta && typeof publicDoc.syncMeta === 'object' ? publicDoc.syncMeta : null;
     const touchedKeys = syncMeta && Array.isArray(syncMeta.touchedKeys) ? new Set(syncMeta.touchedKeys) : null;
     const writerRole = syncMeta?.writerRole || null;
+    const writerClientId = syncMeta?.writerClientId || null;
+    const writerSeq = Number(syncMeta?.writerSeq);
+
+    // El eco de MI propia escritura es un ACK de transporte, no una orden de gameplay.
+    // 23.6 frenó el re-publish del snapshot remoto; 23.7 además impide que un snapshot local
+    // viejo vuelva a aplicar consecutivePasses/phase sobre un estado que ya avanzó.
+    if ((writerClientId && writerClientId === matchSyncClientId) || (writerRole && writerRole === myRole)) {
+      lastKnownPublicWire = wireClone(publicDoc);
+      if (writerClientId && Number.isFinite(writerSeq)) lastAppliedWriterSeq.set(writerClientId, writerSeq);
+      recordTelemetryNetwork('sync_self_echo_ignored', {
+        matchId,
+        myRole,
+        writerRole,
+        writerClientId,
+        writerSeq: Number.isFinite(writerSeq) ? writerSeq : null,
+        reason: writerClientId === matchSyncClientId ? 'same_client' : 'same_role'
+      });
+      return;
+    }
+
+    const writerKey = writerClientId || writerRole || null;
+    if (writerKey && Number.isFinite(writerSeq)) {
+      const previousSeq = lastAppliedWriterSeq.get(writerKey) || 0;
+      if (writerSeq <= previousSeq) {
+        recordTelemetryNetwork('sync_stale_snapshot_ignored', {
+          matchId,
+          myRole,
+          writerRole,
+          writerClientId,
+          writerSeq,
+          previousSeq
+        }, 'warning');
+        return;
+      }
+      lastAppliedWriterSeq.set(writerKey, writerSeq);
+    }
+
     const writtenByRival = writerRole ? writerRole !== myRole : false;
 
     const incoming = {
@@ -1620,6 +1738,9 @@ export function startListeningToMatch(matchId, myRole) {
 
     const changedKeys = Object.keys(incoming).filter(key => JSON.stringify(state[key]) !== JSON.stringify(incoming[key]));
     if (stackChanged) changedKeys.push('spellStack');
+    // El documento completo recién observado pasa a ser el baseline de deltas incluso si
+    // no cambió ningún campo que este cliente materializa en `state`.
+    lastKnownPublicWire = wireClone(publicDoc);
     if (changedKeys.length === 0) return;
 
     recordTelemetryNetwork('sync_receive', {
@@ -1627,7 +1748,8 @@ export function startListeningToMatch(matchId, myRole) {
       myRole,
       changedKeys,
       writerRole,
-      writerSeq: syncMeta?.writerSeq ?? null,
+      writerClientId,
+      writerSeq: Number.isFinite(writerSeq) ? writerSeq : null,
       turnCount: incoming.turnCount ?? state.turnCount,
       phase: incoming.phase ?? state.phase,
       activePlayer: incoming.activePlayer ?? state.activePlayer,
@@ -1721,6 +1843,8 @@ export function reconstructStateFromMatch(publicDoc, privateDoc, myRole) {
   );
   state.localHand = privateDoc.hand || [];
   state.localDeck = privateDoc.deck || [];
+  lastKnownPublicWire = wireClone(publicDoc || {});
+  lastKnownPrivateWire = wireClone(privateDoc || {});
   replaceSpellStackFromSync(deserializeStackFromPublic(publicDoc.stackState || [], state, myRole));
 }
 
@@ -3222,6 +3346,10 @@ export function handleCombatClick(item, isLocal, index) {
 
  // Declarar atacantes solo en sub-paso de atacantes
   if (state.phase === 'combat_attackers' && isLocal && state.activePlayer === 'local' && state.priorityPlayer === 'local') {
+    if ((state.localAttackersDeclaredThisTurn || 0) > 0) {
+      logMsg('⚔️ Los atacantes ya fueron declarados para este combate.');
+      return;
+    }
     if (hasKeyword(item, 'defender')) {
       logMsg(`🛡️ ${item.card.name} es Defensor y no puede atacar.`);
       return;
@@ -3321,6 +3449,13 @@ function activatedTimingFailureMessage(ability) {
     return '⚠️ Equipar/Tripular no pueden declararse con timing instantáneo.';
   }
   if (state.priorityPlayer !== 'local') return 'No tenés prioridad para activar esa habilidad.';
+  const isEquip = ability?.effect?.type === 'attach_equipment';
+  if (isEquip && spellStack.length > 0) {
+    return 'Equipar usa timing de conjuro: primero tiene que quedar vacía la pila.';
+  }
+  if (isEquip && !(state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2'))) {
+    return 'Equipar sólo se puede activar en una de tus fases principales. Si el Equipo tiene Destello, Destello sólo cambia cuándo podés LANZAR la carta; no vuelve instantánea la habilidad de Equipar.';
+  }
   if (timing === 'sorcery' && spellStack.length > 0) return 'Esa habilidad necesita timing de conjuro: la pila debe estar vacía.';
   return 'Esa habilidad sólo se puede activar en una ventana válida para su timing.';
 }
@@ -3435,6 +3570,7 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
   state.pendingAbilitySource = source;
   state.pendingCost = manaCost;
   state.tappedLandsThisSpell = [];
+  state.paymentManaSourceRollbacks = [];
 
   const totalMana = manaCost.W + manaCost.U + manaCost.B + manaCost.R + manaCost.G + manaCost.generic;
   if (totalMana === 0) {
@@ -3599,10 +3735,12 @@ export function cancelPayment() {
     return;
   }
   if (state.pendingMultiTargetChoice) {
-    logMsg("Cancelaste la selección de objetivos — el hechizo se pierde, el maná se devuelve.");
+    logMsg("Cancelaste la selección de objetivos — el hechizo vuelve atrás y el pago se revierte.");
     state.pendingMultiTargetChoice = null;
     state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
+    restorePaymentManaSources();
     state.tappedLandsThisSpell = [];
+    state.paymentManaSourceRollbacks = [];
     state.pendingSpellIndex = null;
     state.pendingCost = null;
     render();
@@ -3632,6 +3770,7 @@ export function cancelPayment() {
   }
 
   state.tappedLandsThisSpell.forEach(land => land.tapped = false);
+  restorePaymentManaSources();
 
   // Si esto era un Flashback/Escape a mitad de pago (o esperando target), la carta está
   // "prestada" en la mano — hay que devolverla a su cementerio, no dejarla ahí pegada como
@@ -3664,9 +3803,10 @@ export function cancelPayment() {
   state.pendingSpellCostsIrreversible = false;
   state.pendingHybridLifePayment = null;
   state.tappedLandsThisSpell = []; 
+  state.paymentManaSourceRollbacks = [];
   state.pendingTargetCard = null;
   state.pendingTargetSource = null;
-  logMsg("Cancelaste la acción. Las tierras se enderezaron.");
+  logMsg("Cancelaste la acción. Se revirtió el pago de maná (tierras/fuentes enderezadas y fuentes sacrificadas restauradas).");
   render();
 }
 
@@ -3782,6 +3922,7 @@ export function playCard(index) {
   state.pendingCompositeCostPayment = false;
   state.pendingCost = parseManaCost(getCastingManaCostString(card));
   state.tappedLandsThisSpell = [];
+  state.paymentManaSourceRollbacks = [];
   logMsg(`Preparando: ${card.name}. Seleccioná tierras para pagar.`);
   checkPaymentComplete(); 
   render();
@@ -3853,6 +3994,7 @@ export function castFromGraveyard(card, isLocal) {
   state.pendingCompositeCostPayment = false;
   state.pendingCost = parseManaCost(getCastingManaCostString(card, { baseOverride: ability.cost }));
   state.tappedLandsThisSpell = [];
+  state.paymentManaSourceRollbacks = [];
   logMsg(`🔄 Preparando ${card.name} con ${abilityLabel} (${ability.cost}). Seleccioná tierras para pagar.`);
   checkPaymentComplete();
   render();
@@ -3919,6 +4061,64 @@ function applyManaToPendingCost(colorOrOptions, amount) {
   return used;
 }
 
+function manaDescriptorCanPayPendingCost(colorOrOptions, amount = 1) {
+  const cost = state.pendingCost;
+  if (!cost || amount <= 0 || !colorOrOptions) return false;
+  const genericNeeded = (cost.generic || 0) > 0;
+
+  if (Array.isArray(colorOrOptions)) {
+    if (colorOrOptions.some(color => (cost[color] || 0) > 0)) return true;
+    return genericNeeded && colorOrOptions.length > 0;
+  }
+  if (['W', 'U', 'B', 'R', 'G'].includes(colorOrOptions)) {
+    return (cost[colorOrOptions] || 0) > 0 || genericNeeded;
+  }
+  // Fuente incolora/genérica: sólo sirve para el componente genérico.
+  return genericNeeded;
+}
+
+// Fuente única para lógica + UI: si esto devuelve true, el click real también puede gastar
+// al menos 1 maná del costo pendiente. Evita el caso observado donde Fajo funcionaba al
+// clickearlo pero no recibía el halo amarillo de "fuente utilizable".
+export function canManaSourcePayPendingCost(card) {
+  if (!card) return false;
+  const isLand = typeof card.type === 'string' && card.type.toLowerCase().includes('tierra');
+  const colorOrOptions = card.producesOptions || card.produces || (isLand ? getLandColor(card) : null);
+  return manaDescriptorCanPayPendingCost(colorOrOptions, card.manaAmount || 1);
+}
+
+function rememberManaSourceRollback(item, isLocal) {
+  if (!item?.card || !item.card.sacrificeOnTap) return;
+  const zones = isLocal
+    ? [['combat', state.localCombat], ['support', state.localSupport], ['lands', state.localLands]]
+    : [['combat', state.rivalCombat], ['support', state.rivalSupport], ['lands', state.rivalLands]];
+  for (const [zoneName, zone] of zones) {
+    const index = zone.indexOf(item);
+    if (index === -1) continue;
+    state.paymentManaSourceRollbacks.push({ item, card: item.card, isLocal, zoneName, index });
+    return;
+  }
+}
+
+function restorePaymentManaSources() {
+  const rollbacks = Array.isArray(state.paymentManaSourceRollbacks) ? [...state.paymentManaSourceRollbacks] : [];
+  // Restauramos en orden inverso para preservar índices si alguna vez se sacrifican varias
+  // fuentes de la misma zona durante un único pago.
+  rollbacks.reverse().forEach(entry => {
+    const grave = entry.isLocal ? state.localGraveyard : state.rivalGraveyard;
+    const zoneMap = entry.isLocal
+      ? { combat: state.localCombat, support: state.localSupport, lands: state.localLands }
+      : { combat: state.rivalCombat, support: state.rivalSupport, lands: state.rivalLands };
+    const zone = zoneMap[entry.zoneName];
+    if (!zone || zone.includes(entry.item)) return;
+    const graveIdx = grave.indexOf(entry.card);
+    if (graveIdx !== -1) grave.splice(graveIdx, 1);
+    entry.item.tapped = false;
+    zone.splice(Math.max(0, Math.min(entry.index, zone.length)), 0, entry.item);
+  });
+  state.paymentManaSourceRollbacks = [];
+}
+
 // Punto 13: una fuente de maná que ADEMÁS está pagando {T} para su propia habilidad
 // utility no puede usarse dos veces en el mismo costo. Ej.: una Tierra con "{T}, {2}: ..."
 // debe reservar su propio giro para {T}; las otras tierras pagan el {2}. La misma regla
@@ -3945,6 +4145,7 @@ function tapSupportManaSource(item, isLocal) {
     item.tapped = true;
     state.tappedLandsThisSpell.push(item); // mismo array: si se cancela el pago, se des-gira
     if (card.sacrificeOnTap) {
+      rememberManaSourceRollback(item, isLocal);
       performSacrifice(item, isLocal);
     }
     checkPaymentComplete();
@@ -4145,8 +4346,9 @@ export function tapLocalLand(item) {
     return; 
   }
   
-  // Soporte para tierras que producen más de 1 maná (ej. Las Malvinas: {T}: Agrega {U}{U}).
-  // El excedente de un color se puede usar para pagar costo genérico, como en MTG real.
+  // Soporte genérico para tierras que eventualmente produzcan más de 1 maná. Las duales
+  // actuales (Constancia/Malvinas/Selva) usan producesOptions y rinden 1; el excedente de
+  // cualquier fuente multi-maná futura puede cubrir costo genérico, como en MTG real.
   const amount = item.card.manaAmount || 1;
   const colorOrOptions = item.card.producesOptions || getLandColor(item.card);
   const used = applyManaToPendingCost(colorOrOptions, amount);
@@ -4175,6 +4377,7 @@ export function confirmModeChoice(modeIndex) {
   state.pendingSpellCostsIrreversible = false;
   state.pendingCost = parseManaCost(getCastingManaCostString(resolvedCard));
   state.tappedLandsThisSpell = [];
+  state.paymentManaSourceRollbacks = [];
   logMsg(`Elegiste el modo "${chosenMode.text}" para ${mc.card.name}. Seleccioná tierras para pagar.`);
   checkPaymentComplete();
   render();
@@ -4209,6 +4412,7 @@ export function confirmXValue(xValueRaw) {
   state.pendingCompositeCostPayment = false;
   state.pendingCost = cost;
   state.tappedLandsThisSpell = [];
+  state.paymentManaSourceRollbacks = [];
   logMsg(`Elegiste X = ${xValue} para ${xc.card.name}. Seleccioná tierras para pagar (${xValue} de eso es solo por el X).`);
   checkPaymentComplete();
   render();
@@ -4244,6 +4448,7 @@ export function confirmKickerChoice(paidKicker) {
   }
 
   state.tappedLandsThisSpell = [];
+  state.paymentManaSourceRollbacks = [];
   checkPaymentComplete();
   render();
 }
@@ -4271,7 +4476,9 @@ export function payWithAlternativeCost() {
   // Elegir la vía alternativa reemplaza SOLO el costo base. Kicker y additionalCost se
   // conservan. Cualquier tierra que hubieras girado probando la vía normal se devuelve.
   state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
+  restorePaymentManaSources();
   state.tappedLandsThisSpell = [];
+  state.paymentManaSourceRollbacks = [];
   state.pendingAlternativeCostChosen = true;
   state.pendingSpellCostsIrreversible = false;
   state.pendingCompositeCostPayment = false;
@@ -4360,6 +4567,7 @@ async function finishCastingHandCard(card) {
   state.pendingSpellCostsIrreversible = false;
   state.pendingHybridLifePayment = null;
   state.tappedLandsThisSpell = [];
+  state.paymentManaSourceRollbacks = [];
   render();
 
   // PUNTO 3: el spell ya está casteado y en la pila. Sus watchers disparan AHORA, antes
@@ -4513,6 +4721,7 @@ function finalizeAbilityActivation(source, ability, card) {
   state.pendingAbilitySource = null;
   state.pendingCost = null;
   state.tappedLandsThisSpell = [];
+  state.paymentManaSourceRollbacks = [];
   render();
   checkRivalCounterOrResponse();
 }
@@ -4587,6 +4796,7 @@ async function advanceMultiTargetChoice(targetObj) {
   state.pendingSpellCostsIrreversible = false;
   state.pendingHybridLifePayment = null;
   state.tappedLandsThisSpell = [];
+  state.paymentManaSourceRollbacks = [];
   render();
   await triggerSpellCast(true, card, stackItem);
   checkRivalCounterOrResponse();
@@ -4648,6 +4858,7 @@ async function executeSpellOnTarget(targetObj) {
     state.pendingSpellCostsIrreversible = false;
     state.pendingHybridLifePayment = null;
     state.tappedLandsThisSpell = [];
+    state.paymentManaSourceRollbacks = [];
   }
 
   state.consecutivePasses = 0;
@@ -4758,6 +4969,7 @@ export function declineWard() {
     state.pendingSpellCostsIrreversible = false;
     state.pendingHybridLifePayment = null;
     state.tappedLandsThisSpell = [];
+    state.paymentManaSourceRollbacks = [];
   }
 
   state.pendingWardChoice = null;

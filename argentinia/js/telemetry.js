@@ -17,7 +17,7 @@
 // igual que en el motor: la telemetría no intenta saltarse la privacidad de Firestore.
 
 export const TELEMETRY_SCHEMA_VERSION = 3;
-export const TELEMETRY_VERSION = '23.6.0';
+export const TELEMETRY_VERSION = '23.7.1';
 
 const STORAGE_CURRENT = 'argentinia.telemetry.current.v1';
 const STORAGE_RECOVERED = 'argentinia.telemetry.recovered.v1';
@@ -864,7 +864,7 @@ export function startTelemetrySession(meta = {}) {
   currentSession = {
     schemaVersion: TELEMETRY_SCHEMA_VERSION,
     telemetryVersion: TELEMETRY_VERSION,
-    engineBaseline: 'Entrega 23.6 Multiplayer Critical Sync + Admin Debugging 23.5 + Visual Baseline 23.4',
+    engineBaseline: 'Entrega 23.7.1 Solo Trigger Idempotence + Multiplayer Lobby + Authority 23.7 + Visual Baseline 23.4',
     sessionId: makeId('game'),
     startedAt: nowIso(),
     endedAt: null,

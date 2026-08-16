@@ -130,7 +130,11 @@ export async function advanceStep() {
   // Si terminamos cleanup, rotamos el jugador activo al siguiente
   if (state.phase === 'cleanup') {
     state.activePlayer = state.activePlayer === 'local' ? 'rival' : 'local';
-    state.turnCount = state.activePlayer === 'local' ? state.turnCount + 1 : state.turnCount;
+    // ENTREGA 23.7 — el contador representa TURNOS globales, no "mis turnos". En
+    // multiplayer cada notebook ve a sí misma como `local`; la lógica vieja incrementaba
+    // sólo si el jugador NUEVO era local, condición que nunca se cumplía en el cliente que
+    // estaba entregando el turno. Resultado real observado: una partida entera clavada en 1.
+    state.turnCount += 1;
     nextPhase = 'untap';
   }
 
@@ -279,6 +283,24 @@ export async function passPriority(player) {
   
   if (state.priorityPlayer !== player) return;
 
+  // ENTREGA 23.7 — invariant duro: una ventana de prioridad tiene como máximo DOS pases
+  // consecutivos. Aunque el botón quede visualmente habilitado por latencia/backoff, jamás
+  // se acepta un tercer pase. El playtest 23.6 llegó a 30; ahora la corrupción se corta en
+  // la frontera de la mutación, no sólo en telemetría después del hecho.
+  if ((state.consecutivePasses || 0) >= 2) {
+    recordTelemetryEvent('priority_pass_blocked', {
+      player,
+      turnCount: state.turnCount,
+      phase: state.phase,
+      activePlayer: state.activePlayer,
+      priorityPlayer: state.priorityPlayer,
+      consecutivePasses: state.consecutivePasses,
+      reason: 'already_two_passes'
+    }, 'warning');
+    logMsg('⏳ Ambos jugadores ya pasaron prioridad. Esperando la resolución/sincronización...');
+    return;
+  }
+
   recordTelemetryEvent('priority_pass', {
     player,
     turnCount: state.turnCount,
@@ -288,7 +310,7 @@ export async function passPriority(player) {
     consecutivePassesBefore: state.consecutivePasses
   });
   logMsg(`💬 ${player === 'local' ? 'Pasaste' : `${getRivalName()} pasó`} prioridad.`);
-  state.consecutivePasses++;
+  state.consecutivePasses = Math.min(2, (state.consecutivePasses || 0) + 1);
 
   if (state.consecutivePasses >= 2) {
     await resolveBothPassed();

@@ -1622,6 +1622,13 @@ export async function takeBotPriorityAction() {
 
   // 3. Fase de Declaración de Atacantes (Turno del Tano)
   if (state.activePlayer === 'rival' && state.phase === 'combat_attackers') {
+    // 23.7.1: si ya declaró atacantes y recupera prioridad en este mismo paso después de
+    // resolver un trigger, no vuelve a declarar ni a disparar anyCreatureAttacks.
+    if ((state.rivalAttackersDeclaredThisTurn || 0) > 0) {
+      passPriority('rival');
+      return;
+    }
+
     let attackCount = 0;
     let heldBackCount = 0;
     for (const unit of state.rivalCombat) {

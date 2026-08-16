@@ -1,6 +1,6 @@
 import { sleep, moveBattlefieldCardToZone, moveCounteredStackItemToDestination } from './utils.js';
 import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, triggerCreatureEtb, triggerLandEtb, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, cleanupIfVehicle, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal } from './main.js';
-import { otherRole } from './matchSync.js';
+import { otherRole, serializeStackTarget } from './matchSync.js';
 import { logMsg, render, createCardElement, showRampLandChoiceModal, showScrySurveilModal, showProliferateModal, showHandFilterDiscardModal, showSacrificeEffectModal } from './ui.js';
 import { checkDeaths, checkAllDeaths } from './combatRules.js';
 import { hasKeyword, getProtectionMatch } from './keywords.js';
@@ -851,19 +851,37 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
         else if (effectToApply.type === 'bounce') {
           const isTargetLocal = state.localCombat.includes(targetUnit);
           const board = isTargetLocal ? state.localCombat : state.rivalCombat;
-          const hand = isTargetLocal ? state.localHand : state.rivalHand;
           const idx = board.indexOf(targetUnit);
-          if (idx !== -1) {
+          if (idx === -1) {
+            logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+          } else if (state.currentMatch && !isTargetLocal) {
+            // ENTREGA 23.7 — la mano rival es PRIVADA. No insertar jamás `targetUnit.card`
+            // en state.rivalHand: eso era el HIDDEN_HAND_LEAK y además el dueño real nunca
+            // recibía la carta. La operación la ejecuta el cliente propietario, referenciando
+            // el permanente público con su syncObjectId estable.
+            const targetDescriptor = serializeStackTarget(targetObj, state, state.currentMatch.myRole);
+            const response = await requestRivalDecision(
+              'move_public_card_to_private_hand',
+              otherRole(state.currentMatch.myRole),
+              { target: targetDescriptor, cardName: targetUnit.card.name, sourceCardName: card.name }
+            );
+            if (response?.completed) {
+              logMsg(response.tokenCeasedToExist
+                ? `🔄 ¡${card.name}! ${targetUnit.card.name} dejó el campo y, al ser ficha, dejó de existir.`
+                : `🔄 ¡${card.name} devolvió a ${targetUnit.card.name} a la mano de su dueño!`);
+            } else {
+              logMsg(`⚠️ ${card.name} no pudo completar el rebote remoto de ${targetUnit.card.name}.`);
+            }
+          } else {
+            // Local/single-player: la mano real está disponible en este mismo cliente.
             board.splice(idx, 1);
             detachEquipmentFrom(targetUnit, isTargetLocal);
             sendAurasToGraveyard(targetUnit, isTargetLocal);
             cleanupIfVehicle(targetUnit); // si era un Vehículo tripulado, saca el power/toughness "prestado"
-            moveBattlefieldCardToZone(targetUnit.card, hand);
+            moveBattlefieldCardToZone(targetUnit.card, state.localHand);
             logMsg(targetUnit.card.isToken
               ? `🔄 ¡${card.name}! ${targetUnit.card.name} dejó el campo y, al ser ficha, dejó de existir.`
               : `🔄 ¡${card.name} devolvió a ${targetUnit.card.name} a la mano de su dueño!`);
-          } else {
-            logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
           }
         }
       }

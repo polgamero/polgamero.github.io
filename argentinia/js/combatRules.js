@@ -224,6 +224,16 @@ function isUnitStillOnBattlefield(item) {
 }
 
 export async function executeLocalAttack() {
+  // 23.7.1: declarar atacantes es una acción idempotente por paso de combate.
+  // Si una habilidad disparada (ej. Bengala de Cancha) usa la pila y luego la prioridad
+  // vuelve al atacante, NO hay que volver a "confirmar" los mismos atacantes ni disparar
+  // otra vez los triggers de ataque.
+  if ((state.localAttackersDeclaredThisTurn || 0) > 0) {
+    logMsg('⚡ Los atacantes ya fueron declarados. Pasás prioridad.');
+    passPriority('local');
+    return;
+  }
+
   const attackers = state.localCombat.filter(c => c.isAttacking);
   state.localAttackersDeclaredThisTurn = attackers.length;
   

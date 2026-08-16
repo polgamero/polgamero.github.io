@@ -24,6 +24,7 @@ import {
   payCounterTax,
   activateLoyaltyAbility,
   castFromGraveyard,
+  canManaSourcePayPendingCost,
   checkGameOver,
   checkAuraLegality,
   checkEquipmentLegality,
@@ -875,6 +876,12 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   }
   
   const targetClass = isTargetable ? 'targetable' : '';
+  // ENTREGA 23.7: una sola fuente de verdad para las fuentes de maná utilizables.
+  // Si el motor aceptaría esta fuente para el costo pendiente, la UI la marca también.
+  const isManaPayable = isLocal && !itemObj.tapped &&
+    (zone === 'land' || zone === 'support') &&
+    canManaSourcePayPendingCost(card);
+  const manaPayableClass = isManaPayable ? 'mana-payable' : '';
 
   // Punto 12: acceso separado para habilidades instantáneas. En Combat el click normal puede
   // estar ocupado declarando ataque/bloqueo, así que un pequeño botón ⚡ evita ambigüedad.
@@ -903,7 +910,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   }
 
   // Agregamos bgClass a la lista de clases
-  el.className = `card ${bgClass} ${card.rarity || 'Common'} ${isTapped ? 'tapped' : ''} ${isSick} ${isAttacking} ${isBlocking} ${isSelectedBlocker} ${targetClass} ${isCrewingSelected}`;
+  el.className = `card ${bgClass} ${card.rarity || 'Common'} ${isTapped ? 'tapped' : ''} ${isSick} ${isAttacking} ${isBlocking} ${isSelectedBlocker} ${targetClass} ${isCrewingSelected} ${manaPayableClass}`;
 
   let icon = '🃏';
   for (const key in ICON_MAP) { if (card.name.includes(key)) icon = ICON_MAP[key]; }
@@ -3478,6 +3485,113 @@ function injectMultiplayerLobbyStyles() {
   document.head.appendChild(style);
 }
 
+function injectMultiplayerMatchBannerStyles() {
+  if (document.getElementById('multiplayer-match-banner-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'multiplayer-match-banner-styles';
+  style.textContent = `
+    .mp-versus-banner {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
+      align-items: center;
+      gap: 18px;
+      margin: 18px auto 20px;
+      padding: 18px 20px;
+      background:
+        radial-gradient(circle at center, rgba(212,175,55,0.16), transparent 42%),
+        linear-gradient(180deg, rgba(29,38,24,0.96), rgba(8,14,10,0.98));
+      border: 2px solid #d4af37;
+      border-radius: 14px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.48), inset 0 0 22px rgba(212,175,55,0.08);
+      overflow: hidden;
+    }
+    .mp-versus-banner::before,
+    .mp-versus-banner::after {
+      content: "";
+      position: absolute;
+      top: 10px; bottom: 10px;
+      width: 1px;
+      background: linear-gradient(transparent, rgba(212,175,55,0.45), transparent);
+    }
+    .mp-versus-banner::before { left: 43%; }
+    .mp-versus-banner::after { right: 43%; }
+    .mp-versus-player {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      text-align: center;
+    }
+    .mp-versus-role {
+      color: #9fb6a5;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.8px;
+    }
+    .mp-versus-avatar {
+      width: 78px;
+      height: 78px;
+      border-radius: 50%;
+      border: 3px solid #d4af37;
+      object-fit: cover;
+      background: #111a13;
+      box-shadow: 0 0 0 3px rgba(240,224,176,0.08), 0 5px 16px rgba(0,0,0,0.5);
+    }
+    .mp-versus-avatar-fallback {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 42px;
+      line-height: 1;
+    }
+    .mp-versus-name {
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #f0e0b0;
+      font-size: 17px;
+      font-weight: 800;
+      text-shadow: 0 0 12px rgba(212,175,55,0.28);
+    }
+    .mp-versus-vs {
+      color: #d4af37;
+      font-family: Georgia, serif;
+      font-size: 30px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-shadow: 0 0 18px rgba(212,175,55,0.48);
+    }
+    @media (max-width: 560px) {
+      .mp-versus-banner { gap: 10px; padding: 15px 10px; }
+      .mp-versus-avatar { width: 62px; height: 62px; }
+      .mp-versus-name { max-width: 115px; font-size: 14px; }
+      .mp-versus-vs { font-size: 24px; }
+      .mp-versus-banner::before,
+      .mp-versus-banner::after { display: none; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function multiplayerProfileBannerHTML(profile, roleLabel, fallbackName) {
+  const fullName = String(profile?.displayName || '').trim();
+  const firstName = fullName.split(/\s+/)[0] || fallbackName;
+  const photoURL = String(profile?.photoURL || '').trim();
+  const avatar = photoURL
+    ? `<img class="mp-versus-avatar" src="${escapeHtml(photoURL)}" alt="${escapeHtml(firstName)}" onerror="this.outerHTML='<div class=&quot;mp-versus-avatar mp-versus-avatar-fallback&quot;>🤠</div>'">`
+    : `<div class="mp-versus-avatar mp-versus-avatar-fallback">🤠</div>`;
+  return `
+    <div class="mp-versus-player">
+      <div class="mp-versus-role">${escapeHtml(roleLabel)}</div>
+      ${avatar}
+      <div class="mp-versus-name">${escapeHtml(firstName)}</div>
+    </div>
+  `;
+}
+
 // FASE 4: cimiento de matchmaking — crear partida (código de 6 caracteres para compartir),
 // unirse con un código, sala de espera en tiempo real. LA SINCRONIZACIÓN DE LA PARTIDA EN
 // SÍ (mano, campo, turnos) todavía NO existe — eso es la próxima etapa. Esto solo resuelve
@@ -3513,6 +3627,7 @@ export function showReconnectPrompt(onReconnect, onAbandon) {
 
 export function showMultiplayerLobby(onBack, onMatched) {
   injectMultiplayerLobbyStyles();
+  injectMultiplayerMatchBannerStyles();
   injectStoreStyles(); // reusa .store-buy-btn / .store-back-link / .store-error-msg
   injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn / .encyclopedia-search-input
 
@@ -3634,11 +3749,18 @@ export function showMultiplayerLobby(onBack, onMatched) {
     const rivalFullName = rivalProfile.displayName || '';
     const rivalName = (rivalFullName.trim().split(/\s+/)[0]) || 'tu rival';
     const rivalPhotoURL = rivalProfile.photoURL || '';
+    const hostProfile = (match.players && match.players[match.hostUid]) || {};
+    const guestProfile = (match.players && match.players[match.guestUid]) || {};
 
     body.innerHTML = `
       <div class="mp-section">
-        <div class="mp-section-title">🎉 ¡Emparejado con ${rivalName}!</div>
-        <div class="mp-section-desc">Elegí con qué mazo vas a jugar esta partida.</div>
+        <div class="mp-section-title">🎉 ¡Emparejado con ${escapeHtml(rivalName)}!</div>
+        <div class="mp-versus-banner" aria-label="Enfrentamiento confirmado">
+          ${multiplayerProfileBannerHTML(hostProfile, 'HOST', 'Host')}
+          <div class="mp-versus-vs">VS.</div>
+          ${multiplayerProfileBannerHTML(guestProfile, 'GUEST', 'Guest')}
+        </div>
+        <div class="mp-section-desc">Elegí con qué mazo propio vas a jugar esta partida.</div>
         <button class="store-buy-btn" id="mp-start">Elegir mazo y arrancar</button>
       </div>
     `;
@@ -4491,11 +4613,19 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
             return;
           }
         }
-        const supportHasInstant = getActivatedAbilities(group.items[0].item.card).some(ab => getActivatedAbilityTiming(ab) === 'instant');
-        const supportTimingAllowsClick = (state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2')) ||
-          (state.priorityPlayer === 'local' && supportHasInstant);
+        const supportHasAbility = getActivatedAbilities(group.items[0].item.card).length > 0;
+        const supportCanPayNow = !!state.pendingCost &&
+          group.ready.some(x => canManaSourcePayPendingCost(x.item.card));
+        // 23.7.1: con prioridad dejamos que el click llegue al validador central de timing.
+        // Antes la UI tragaba silenciosamente clicks sobre Equipar/sorcery-speed en turno
+        // rival, por eso Daga Escondida no explicaba que Destello sólo permite lanzarla.
+        const supportTimingAllowsClick = supportCanPayNow ||
+          (state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2')) ||
+          (state.priorityPlayer === 'local' && supportHasAbility);
         if (isLocal && supportTimingAllowsClick) {
-          const readySupport = group.ready[0];
+          const readySupport = supportCanPayNow
+            ? group.ready.find(x => canManaSourcePayPendingCost(x.item.card))
+            : group.ready[0];
           if (readySupport) {
             const originalIdx = group.items.find(x => x.item === readySupport).originalIndex;
             handleSupportClick(readySupport, isLocal, originalIdx);
@@ -4613,13 +4743,22 @@ export function render() {
     state.pendingKickerChoice || state.pendingRampChoice || state.pendingSacrificeChoice !== null ||
     state.damageModalOpen || state.awaitingRivalDecision || state.respondingToDecision;
 
-  els.btnEndTurn.disabled = (state.priorityPlayer !== 'local' || state.gameOver || state.isDiscarding || anyPendingChoice);
+  els.btnEndTurn.disabled = (state.priorityPlayer !== 'local' || state.gameOver || state.isDiscarding || anyPendingChoice || (state.consecutivePasses || 0) >= 2);
 
   if (state.phase === 'combat_attackers' && state.activePlayer === 'local') {
+    const attackersAlreadyDeclared = (state.localAttackersDeclaredThisTurn || 0) > 0;
     const isAttacking = state.localCombat.some(c => c.isAttacking);
-    els.btnEndTurn.textContent = isAttacking ? "Confirmar Ataque ⚔️" : "Saltar Ataque ➔";
-    els.btnEndTurn.onclick = executeLocalAttack;
-    els.btnEndTurn.style.backgroundColor = isAttacking ? "#e74c3c" : "#e67e22";
+    if (attackersAlreadyDeclared) {
+      // 23.7.1: tras resolver triggers de ataque, seguimos en este paso pero la declaración
+      // ya ocurrió. El botón pasa prioridad; jamás vuelve a declarar/disparar el mismo ataque.
+      els.btnEndTurn.textContent = "Pasar Prioridad ➔";
+      els.btnEndTurn.onclick = () => passPriority('local');
+      els.btnEndTurn.style.backgroundColor = "";
+    } else {
+      els.btnEndTurn.textContent = isAttacking ? "Confirmar Ataque ⚔️" : "Saltar Ataque ➔";
+      els.btnEndTurn.onclick = executeLocalAttack;
+      els.btnEndTurn.style.backgroundColor = isAttacking ? "#e74c3c" : "#e67e22";
+    }
   } else if (state.phase === 'combat_blockers' && state.activePlayer === 'rival') {
     els.btnEndTurn.textContent = "Confirmar Bloqueos 🛡️";
     els.btnEndTurn.onclick = executeRivalAttack;
@@ -4637,7 +4776,10 @@ export function render() {
   if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay) {
     els.paymentControls.classList.remove('hidden'); els.btnEndTurn.classList.add('hidden'); 
     els.localHand.classList.add('paying-mode');
-    if (!state.pendingCrew && !state.pendingWardChoice && !state.pendingCounterUnlessPay) els.localLands.classList.add('paying-mode');
+    if (!state.pendingCrew && !state.pendingWardChoice && !state.pendingCounterUnlessPay) {
+      els.localLands.classList.add('paying-mode');
+      els.localSupport.classList.add('paying-mode');
+    }
     if (state.pendingSpellIndex !== null) {
       const pendingCardEl = els.localHand.children[state.pendingSpellIndex];
       if (pendingCardEl) pendingCardEl.classList.add('paying');
@@ -4695,7 +4837,7 @@ export function render() {
     }
   } else {
     els.paymentControls.classList.add('hidden'); els.btnEndTurn.classList.remove('hidden');
-    els.localHand.classList.remove('paying-mode'); els.localLands.classList.remove('paying-mode');
+    els.localHand.classList.remove('paying-mode'); els.localLands.classList.remove('paying-mode'); els.localSupport.classList.remove('paying-mode');
   }
   renderStack();
   checkAuraLegality();

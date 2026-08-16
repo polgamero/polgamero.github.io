@@ -1405,3 +1405,14 @@ html, body {
   .telemetry-btn { padding:4px 5px; font-size:10px; }
   .telemetry-status { min-width:56px; padding:0 2px; }
 }
+
+/* ==========================================================
+   ENTREGA 23.7 — MANA SOURCE ELIGIBILITY
+   Se agrega al FINAL para preservar byte-a-byte el baseline visual 23.6.
+   La clase la decide el mismo resolver que acepta el pago; así mana rocks
+   como Fajo de Dólares Blue reciben el halo dorado cuando realmente sirven.
+   ========================================================== */
+.card.mana-payable {
+  box-shadow: 0 0 15px 3px var(--gold);
+  cursor: pointer;
+}
