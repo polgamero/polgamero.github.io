@@ -1585,5 +1585,24 @@
     "effect": {
       "type": "bounce"
     }
+  },
+  {
+    "id": "inst_080",
+    "name": "Pará Ahí",
+    "type": "Instantáneo",
+    "manaCost": "{U}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Contrarresta el hechizo instantáneo objetivo.",
+    "flavorText": "Una cosa es venir rápido. Otra es que te dejen pasar.",
+    "requiresTarget": true,
+    "image": "corta_bocha.png",
+    "effect": {
+      "type": "counter_instant",
+      "amount": 0
+    }
   }
 ]

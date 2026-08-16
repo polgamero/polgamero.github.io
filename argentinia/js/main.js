@@ -668,6 +668,20 @@ async function boot() {
     } catch (err) {
       console.error('No se pudo cargar la configuración del juego — se usan los valores por defecto:', err);
     }
+  } catch (err) {
+    console.error('[BOOT_FATAL] No se pudo cargar/validar el pool de cartas:', err);
+    const rateLimited = err?.code === 'GITHUB_PAGES_RATE_LIMIT' || err?.status === 429;
+    const poolMismatch = err?.code === 'POOL_CONTRACT_VIOLATION';
+    const title = rateLimited ? '⏳ GitHub Pages limitó temporalmente las solicitudes'
+      : poolMismatch ? '🛑 El pool de cartas no coincide con esta versión'
+      : '🛑 No se pudo cargar la base de cartas';
+    const body = rateLimited
+      ? 'No sigas refrescando repetidamente: eso puede prolongar el bloqueo. Esperá unos minutos y reintentá una sola vez.'
+      : poolMismatch
+        ? 'Argentinia se detuvo antes de jugar para evitar arrancar con cartas faltantes, duplicadas o de otra entrega.'
+        : 'Revisá la conexión y la consola. El juego no habilitará gameplay con una carga parcial.';
+    document.body.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#08100b;color:#f0e0b0;font-family:system-ui;padding:24px"><div style="max-width:680px;border:2px solid #d4af37;border-radius:14px;padding:24px;text-align:center;background:#111a13"><h2>${title}</h2><p>${body}</p><p style="opacity:.8">Motor ${ENGINE_VERSION} · Pool esperado: 501 cartas.</p></div></div>`;
+    return;
   } finally {
     const loadingOverlay = document.getElementById('boot-loading-overlay');
     if (loadingOverlay) loadingOverlay.remove();

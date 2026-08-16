@@ -9,12 +9,12 @@ export const MULTIPLAYER_TEST_DECK_NAME = 'Mazo de pruebas';
 // Si NO hacés mulligan, ambos clientes reciben exactamente esta mano inicial:
 // 3 islas + Reloj Descompuesto + Silencio de Biblioteca + Pará Ahí + Corta la Bocha.
 export const MULTIPLAYER_TEST_OPENING_HAND_DRAW_ORDER = [
-  'tier_004', 'tier_004', 'tier_004', 'art_018', 'inst_034', 'inst_047', 'inst_001'
+  'tier_004', 'tier_004', 'tier_004', 'art_018', 'inst_034', 'inst_080', 'inst_001'
 ];
 
 // Y los seis robos siguientes están sesgados para que sigan llegando tierras/counters.
 export const MULTIPLAYER_TEST_EARLY_DRAW_ORDER = [
-  'tier_004', 'inst_003', 'tier_004', 'inst_047', 'tier_004', 'inst_034'
+  'tier_004', 'inst_003', 'tier_004', 'inst_080', 'tier_004', 'inst_034'
 ];
 
 const repeat = (id, count) => Array.from({ length: count }, () => id);
@@ -25,7 +25,7 @@ const repeat = (id, count) => Array.from({ length: count }, () => id);
 const rest = [
   ...repeat('tier_004', 14),
   ...repeat('inst_003', 7),
-  ...repeat('inst_047', 6),
+  ...repeat('inst_080', 6),
   ...repeat('inst_001', 5),
   ...repeat('inst_034', 4),
   ...repeat('art_018', 3),
