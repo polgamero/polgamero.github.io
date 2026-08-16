@@ -28,7 +28,7 @@ jobs:
           python-version: '3.12'
 
       - name: Generate card image manifest and validate 501-card pool
-        run: python tools/generate_image_manifest.py --root . --expected-total 501
+        run: python /argentinia/tools/generate_image_manifest.py --root . --expected-total 501
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
