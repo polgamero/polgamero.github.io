@@ -1,4 +1,4 @@
-import { addToStack, spellStack, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
+import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse } from './bot.js';
@@ -8,7 +8,7 @@ import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, st
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
 import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
-import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, otherRole } from './matchSync.js';
+import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, otherRole } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks } from './telemetry.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
@@ -74,6 +74,11 @@ export const state = {
   // checkGameOver() no puede usar el propio state.gameOver como guard de "ya lo procesé" en
   // este caso puntual (ya llegaría en true). Este flag cumple ese rol aparte.
   abandonProcessedLocally: false,
+  // ENTREGA 23.6: bandera LOCAL (no viaja por matchSync) que se activa sólo mientras este
+  // cliente está resolviendo un objeto de Stack que controla. Durante esa ventana puede
+  // publicar también las mutaciones públicas del rival causadas por SU propio hechizo,
+  // aunque el turno activo pertenezca al otro jugador.
+  stackResolutionAuthority: false,
 
   localHP: 20,
   // Veneno (regla real 104.3c, junto a Infectar en 702.90): condición de derrota
@@ -363,6 +368,7 @@ async function initGame(deckSource) {
   logMsg("Cargando el mazo...");
 
   setupBoardLayout();
+  replaceSpellStackFromSync([]);
 
   let deckLabel;
   if (deckSource.type === 'saved') {
@@ -686,6 +692,7 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '') {
 // coordinar nada ni sortear nada: el host siempre juega primero.
 function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '') {
   setupBoardLayout();
+  replaceSpellStackFromSync([]);
 
   let deckLabel;
   if (deckSource.type === 'saved') {
@@ -757,14 +764,54 @@ export function isHiddenRivalZone(isTargetLocal) {
   return !!state.currentMatch && !isTargetLocal;
 }
 
-export async function publishMatchState() {
-  if (!state.currentMatch || !state.currentUser) return;
-  const { matchId, myRole } = state.currentMatch;
-  const publishId = `pub_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-  const startedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-  try {
-    const publicPatch = buildMyPublicPatch(state, myRole);
+
+// ENTREGA 23.6 — frontera de sincronización remota.
+// Mientras aplicamos un snapshot que VINO de Firestore, render() puede hacer todo su trabajo
+// visual/diagnóstico normal, pero publishMatchState() NO debe devolver ese mismo snapshot al
+// servidor. Éste era el eco que convertía un cambio remoto en otro write y, en combate,
+// podía reinyectar una fase vieja hasta formar una tormenta.
+let remoteSyncApplyDepth = 0;
+
+// Un solo publish público/privado puede estar en vuelo por cliente. Si el motor cambia de
+// nuevo mientras espera a Firestore, no abrimos una segunda escritura: marcamos `queued` y,
+// cuando termine la actual, publicamos UNA sola vez el estado más fresco disponible.
+let matchPublishInFlight = null;
+let matchPublishQueued = false;
+let lastMatchPublishFingerprint = null;
+let matchSyncWriterSeq = 0;
+
+function matchPublishFingerprint(matchId, myRole, publicPatch, privatePatch) {
+  try { return JSON.stringify({ matchId, myRole, publicPatch, privatePatch }); }
+  catch { return `${matchId}|${myRole}|${Date.now()}`; }
+}
+
+async function drainMatchPublishQueue() {
+  while (matchPublishQueued && state.currentMatch && state.currentUser) {
+    matchPublishQueued = false;
+    const { matchId, myRole } = state.currentMatch;
+    const publicPatch = buildMyPublicPatch(state, myRole, spellStack);
     const privatePatch = buildMyPrivatePatch(state);
+    const fingerprint = matchPublishFingerprint(matchId, myRole, publicPatch, privatePatch);
+
+    // render() se llama mucho por razones puramente visuales. Si ni el documento público,
+    // ni mano/mazo privados, ni la Stack cambiaron desde el último write confirmado, no hay
+    // ninguna razón para volver a escribir Firestore.
+    if (fingerprint === lastMatchPublishFingerprint) continue;
+
+    // Metadato de transporte: como el documento usa merge:true, un listener no puede saber
+    // qué campos pertenecen AL ÚLTIMO write mirando sólo el snapshot final. Guardamos la
+    // lista exacta de keys tocadas y el rol que escribió. Así el rival puede aceptar cambios
+    // legítimos sobre SU propio battlefield (daño/removal resuelto por el jugador activo)
+    // sin confundir campos viejos que simplemente quedaron almacenados en el documento.
+    const writerSeq = ++matchSyncWriterSeq;
+    publicPatch.syncMeta = {
+      writerRole: myRole,
+      writerSeq,
+      touchedKeys: Object.keys(publicPatch)
+    };
+
+    const publishId = `pub_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const startedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 
     recordTelemetryNetwork('sync_publish_start', {
       publishId,
@@ -775,6 +822,8 @@ export async function publishMatchState() {
       activePlayer: publicPatch.activePlayer,
       priorityPlayer: publicPatch.priorityPlayer,
       consecutivePasses: publicPatch.consecutivePasses,
+      stackDepth: Array.isArray(publicPatch.stackState) ? publicPatch.stackState.length : 0,
+      writerSeq,
       pendingDecision: publicPatch.pendingDecision ? {
         type: publicPatch.pendingDecision.type,
         forRole: publicPatch.pendingDecision.forRole,
@@ -788,25 +837,46 @@ export async function publishMatchState() {
       localDeckCount: privatePatch.deck?.length ?? null
     });
 
-    await Promise.all([
-      publishMyPublicState(matchId, publicPatch),
-      publishMyPrivateState(matchId, state.currentUser.uid, privatePatch)
-    ]);
-
-    const endedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    recordTelemetryNetwork('sync_publish_ok', {
-      publishId,
-      durationMs: Math.round(endedAt - startedAt)
-    });
-  } catch (err) {
-    const endedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    recordTelemetryNetwork('sync_publish_error', {
-      publishId,
-      durationMs: Math.round(endedAt - startedAt),
-      error: err
-    }, 'error');
-    console.error('No se pudo publicar el estado de la partida:', err);
+    try {
+      await Promise.all([
+        publishMyPublicState(matchId, publicPatch),
+        publishMyPrivateState(matchId, state.currentUser.uid, privatePatch)
+      ]);
+      lastMatchPublishFingerprint = fingerprint;
+      const endedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      recordTelemetryNetwork('sync_publish_ok', {
+        publishId,
+        durationMs: Math.round(endedAt - startedAt)
+      });
+    } catch (err) {
+      const endedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      recordTelemetryNetwork('sync_publish_error', {
+        publishId,
+        durationMs: Math.round(endedAt - startedAt),
+        error: err
+      }, 'error');
+      console.error('No se pudo publicar el estado de la partida:', err);
+      // No hacemos loop apretado ante una caída de red. El próximo cambio real/render o
+      // checkpoint de gameplay volverá a pedir publish; el fingerprint no se confirma si
+      // este write falló.
+    }
   }
+}
+
+export function publishMatchState(options = {}) {
+  if (!state.currentMatch || !state.currentUser) return Promise.resolve(false);
+  if (remoteSyncApplyDepth > 0 && !options.force) return Promise.resolve(false);
+
+  matchPublishQueued = true;
+  if (!matchPublishInFlight) {
+    matchPublishInFlight = drainMatchPublishQueue().finally(() => {
+      matchPublishInFlight = null;
+      // Puede haberse encolado un cambio en el micro-instante entre el último chequeo del
+      // while y este finally. Lo drenamos en otro microtask, siempre serializado.
+      if (matchPublishQueued) publishMatchState().catch(() => {});
+    });
+  }
+  return matchPublishInFlight;
 }
 
 // FASE 4, ETAPA 3 + ETAPA MOTOR 3: el documento público conserva UN solo buzón de
@@ -1527,28 +1597,43 @@ export function startListeningToMatch(matchId, myRole) {
   return listenToMatch(matchId, (publicDoc) => {
     if (!publicDoc) return;
 
+    const syncMeta = publicDoc.syncMeta && typeof publicDoc.syncMeta === 'object' ? publicDoc.syncMeta : null;
+    const touchedKeys = syncMeta && Array.isArray(syncMeta.touchedKeys) ? new Set(syncMeta.touchedKeys) : null;
+    const writerRole = syncMeta?.writerRole || null;
+    const writtenByRival = writerRole ? writerRole !== myRole : false;
+
     const incoming = {
-      ...extractRivalStateFromPublicDoc(publicDoc, myRole),
-      ...extractSharedStateFromPublicDoc(publicDoc, myRole)
+      // Si el ÚLTIMO write fue del rival, puede contener cambios autoritativos sobre MI
+      // battlefield (daño, removal, bounce, etc.). Sólo importamos las keys que ese write
+      // declaró haber tocado; nunca leemos de rebote campos viejos del documento mergeado.
+      ...(writtenByRival ? extractMyStateFromPublicDoc(publicDoc, myRole, touchedKeys) : {}),
+      ...extractRivalStateFromPublicDoc(publicDoc, myRole, touchedKeys),
+      ...extractSharedStateFromPublicDoc(publicDoc, myRole, touchedKeys)
     };
 
-    // BUGFIX evitado a propósito: publishMatchState() (Etapa 2) escribe MI mitad en el
-    // MISMO documento que estoy escuchando acá — sin este chequeo, cada publish generaría
-    // un eco que dispara render(), que dispara otro publish, en cascada infinita de
-    // escrituras innecesarias. Si nada de lo que llegó es distinto de lo que ya tengo, no
-    // volvemos a renderizar.
+    // ENTREGA 23.6: la Stack es parte del snapshot público, pero necesita traducción de
+    // perspectiva host/guest <-> local/rival. Comparamos en formato canónico para que un
+    // eco de nuestro propio publish no parezca un cambio sólo porque `isLocal` se invierte.
+    const hasIncomingStack = (!touchedKeys || touchedKeys.has('stackState')) && Object.prototype.hasOwnProperty.call(publicDoc, 'stackState') && Array.isArray(publicDoc.stackState);
+    const currentCanonicalStack = hasIncomingStack ? serializeStackForPublic(spellStack, state, myRole) : null;
+    const stackChanged = hasIncomingStack && JSON.stringify(currentCanonicalStack) !== JSON.stringify(publicDoc.stackState);
+
     const changedKeys = Object.keys(incoming).filter(key => JSON.stringify(state[key]) !== JSON.stringify(incoming[key]));
+    if (stackChanged) changedKeys.push('spellStack');
     if (changedKeys.length === 0) return;
 
     recordTelemetryNetwork('sync_receive', {
       matchId,
       myRole,
       changedKeys,
+      writerRole,
+      writerSeq: syncMeta?.writerSeq ?? null,
       turnCount: incoming.turnCount ?? state.turnCount,
       phase: incoming.phase ?? state.phase,
       activePlayer: incoming.activePlayer ?? state.activePlayer,
       priorityPlayer: incoming.priorityPlayer ?? state.priorityPlayer,
       consecutivePasses: incoming.consecutivePasses ?? state.consecutivePasses,
+      stackDepth: hasIncomingStack ? publicDoc.stackState.length : spellStack.length,
       pendingDecision: incoming.pendingDecision ? {
         type: incoming.pendingDecision.type,
         forRole: incoming.pendingDecision.forRole,
@@ -1560,8 +1645,19 @@ export function startListeningToMatch(matchId, myRole) {
       } : null
     });
 
-    Object.assign(state, incoming);
-    render();
+    // CRÍTICO: renderizar un snapshot remoto NO lo vuelve a publicar. Aplicamos primero
+    // zonas/campos, después rehidratamos targets/fuentes de la Stack contra esas zonas ya
+    // frescas, y recién entonces renderizamos con la frontera de publish cerrada.
+    remoteSyncApplyDepth++;
+    try {
+      Object.assign(state, incoming);
+      if (hasIncomingStack) {
+        replaceSpellStackFromSync(deserializeStackFromPublic(publicDoc.stackState, state, myRole));
+      }
+      render();
+    } finally {
+      remoteSyncApplyDepth = Math.max(0, remoteSyncApplyDepth - 1);
+    }
 
     // Mecanismo GENERAL de decisión remota (ver requestRivalDecision más abajo) — dos
     // casos posibles acá: (a) me llegó la RESPUESTA a algo que YO le pregunté al rival
@@ -1593,8 +1689,10 @@ export function startListeningToMatch(matchId, myRole) {
     // resolveBothPassed en turnManager.js, y por qué esto tiene que ser así) — el rival, al
     // pasar, no pudo resolverlo porque no era su turno. Sin este llamado, nadie en este
     // cliente se enteraría de que le toca procesar la resolución.
-    if (!state.gameOver && state.activePlayer === 'local' && state.consecutivePasses >= 2) {
-      resolveBothPassed();
+    if (!state.gameOver && state.consecutivePasses >= 2) {
+      const topStackItem = spellStack.length > 0 ? spellStack[spellStack.length - 1] : null;
+      const ownsResolution = topStackItem ? !!topStackItem.isLocal : state.activePlayer === 'local';
+      if (ownsResolution) resolveBothPassed();
     }
 
     // FASE 4, ETAPA 4 (la parte más delicada): si el turno recién me llegó (el rival lo dejó
@@ -1623,6 +1721,7 @@ export function reconstructStateFromMatch(publicDoc, privateDoc, myRole) {
   );
   state.localHand = privateDoc.hand || [];
   state.localDeck = privateDoc.deck || [];
+  replaceSpellStackFromSync(deserializeStackFromPublic(publicDoc.stackState || [], state, myRole));
 }
 
 // FASE 4, ETAPA 6: retoma una partida multiplayer después de un reload — arma el tablero
@@ -2564,9 +2663,12 @@ export function triggerAnyCreatureDeath(deadUnit, deadUnitIsLocal, watchersSnaps
 // --- EQUIPAMIENTO REAL (Equip) ---
 // Devuelve los items de la zona de soporte (Equipos) adjuntos a esta criatura.
 export function getEquipmentOn(itemObj) {
-  const isLocal = state.localCombat.includes(itemObj);
-  const supportZone = isLocal ? state.localSupport : state.rivalSupport;
-  return supportZone.filter(s => s.attachedTo === itemObj);
+  const localCombat = Array.isArray(state.localCombat) ? state.localCombat : [];
+  const isLocal = localCombat.includes(itemObj);
+  const supportZone = isLocal
+    ? (Array.isArray(state.localSupport) ? state.localSupport : [])
+    : (Array.isArray(state.rivalSupport) ? state.rivalSupport : []);
+  return supportZone.filter(s => s && s.attachedTo === itemObj);
 }
 
 // Cuando una criatura sale del campo de batalla por cualquier vía (muerte, rebote,

@@ -39,6 +39,18 @@ export const spellStack = [];
 let nextStackId = 1;
 let nextEffectId = 1;
 
+// ENTREGA 23.6 — la Stack es estado público compartido en multiplayer. `spellStack`
+// conserva la MISMA referencia de array porque otros módulos la importan directamente;
+// por eso el sync reemplaza su contenido con splice en vez de reasignarla. Al recibir IDs
+// remotos adelantamos el contador local para que la próxima respuesta nunca reutilice un ID.
+export function replaceSpellStackFromSync(items = []) {
+  const incoming = Array.isArray(items) ? items : [];
+  spellStack.splice(0, spellStack.length, ...incoming);
+  const numericIds = incoming.map(item => Number(item?.id)).filter(Number.isFinite);
+  if (numericIds.length) nextStackId = Math.max(nextStackId, Math.max(...numericIds) + 1);
+}
+
+
 // Punto 4: Loot/Rummage puede aparecer en varios triggers directos que históricamente no
 // esperan Promises. Serializamos el EFECTO ENTERO (no sólo el modal) para conservar el orden
 // semántico: dos Loot simultáneos deben hacer "robar->descartar" uno completo y recién luego

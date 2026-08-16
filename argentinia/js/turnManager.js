@@ -304,42 +304,41 @@ export async function passPriority(player) {
   }
 }
 
-// FASE 4, ETAPA 4 — LA PARTE DELICADA: "ambos pasaron, ¿qué pasa ahora?" (resolver la cima
-// de la pila, o avanzar de fase) muta estado que puede pertenecer a CUALQUIERA de los dos
-// lados (ej. executeUntapStep endereza los permanentes de quien sea el jugador activo, no
-// necesariamente los míos) — pero publishMatchState() (Etapa 2) SOLO publica mi propia
-// mitad, nunca la del rival. Si yo procesara esto durante el turno del rival, terminaría
-// mutando state.rivalXxx solo en MI pantalla, sin publicarlo nunca: el rival de verdad
-// jamás vería ese cambio, y su próxima publicación pisaría lo que "vi" acá con lo real.
-//
-// Por eso: en multiplayer, esto SOLO lo ejecuta el cliente de quien tiene el turno activo
-// (state.activePlayer === 'local' para ese cliente) — nunca el no-activo, aunque haya sido
-// SU pase el que completó el conteo. Se llama desde dos lugares:
-//   1) El final de passPriority() de acá arriba, cuando mi PROPIO pase llega a 2.
-//   2) startListeningToMatch() (main.js), cuando lo que se sincronizó desde el rival deja
-//      el conteo en 2 Y ahora es mi turno — porque en ese caso nadie más en ESTE cliente
-//      iba a disparar esta función si no la separábamos así.
-// En Solitario (sin currentMatch) siempre hay autoridad — es el único cliente que existe,
-// exactamente el comportamiento de siempre, sin ningún cambio.
+// ENTREGA 23.6 — autoridad de resolución multiplayer. "Ambos pasaron" tiene dos casos:
+//   1) Stack NO vacía: resuelve el cliente que controla el objeto superior. Ese cliente es
+//      el único que posee de verdad sus zonas privadas (mano/mazo) y, durante la resolución,
+//      `stackResolutionAuthority` le permite publicar también las mutaciones PÚBLICAS que su
+//      propio objeto cause sobre el rival (removal, daño, counter, etc.).
+//   2) Stack vacía: avanzar fase/turno sigue siendo responsabilidad del jugador activo.
+// El cliente sin autoridad sólo publica su pase y espera el snapshot resultante. En Solitario
+// no cambia nada: el único cliente siempre tiene autoridad.
 export async function resolveBothPassed() {
   if (isResolvingBothPassed) return;
-  const hasAuthority = !state.currentMatch || state.activePlayer === 'local';
+  const topStackItem = spellStack.length > 0 ? spellStack[spellStack.length - 1] : null;
+  // ENTREGA 23.6: con Stack no vacía, la autoridad es el CONTROLADOR del objeto superior.
+  // Así cada cliente resuelve sus propios efectos privados (robar, descartar, pagar costos)
+  // con sus cartas reales. Con Stack vacía, avanzar fase/turno sigue siendo responsabilidad
+  // exclusiva del jugador activo, igual que antes.
+  const hasAuthority = !state.currentMatch || (topStackItem ? !!topStackItem.isLocal : state.activePlayer === 'local');
   if (!hasAuthority) {
-    // No es mi turno — no me corresponde resolver. Publico que ya pasé (render() lo hace)
-    // y espero: cuando esto le llegue al cliente de quien SÍ tiene el turno activo, esta
-    // misma función se vuelve a evaluar ahí, con autoridad real.
+    // Mi pase puede ser el segundo aunque el objeto superior lo controle el rival. Publico
+    // el contador=2 y espero a que el listener del controlador tome la resolución.
     render();
     return;
   }
 
   isResolvingBothPassed = true;
   try {
-    // Si hay algo en la pila y ambos pasaron
     if (spellStack.length > 0) {
       logMsg("⚡ Ambos pasaron prioridad. Resolviendo la cima de la pila...");
       state.consecutivePasses = 0;
-      await resolveTopStackItem();
-      render();
+      state.stackResolutionAuthority = true;
+      try {
+        await resolveTopStackItem();
+        render();
+      } finally {
+        state.stackResolutionAuthority = false;
+      }
       if (!state.currentMatch && state.priorityPlayer === 'rival') setTimeout(takeBotPriorityAction, 600);
     } else if (state.phase === 'combat_damage' && hasPendingCombatDamageContinuation()) {
       // Trigger Stack: si el daño de iniciativa produjo triggers, el daño regular se pausó
