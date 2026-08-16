@@ -3922,6 +3922,9 @@ export function showMultiplayerLobby(onBack, onMatched) {
 
 export function showMainMenu(onPlay, onMultiplayerMatched) {
   injectMainMenuStyles();
+  // ENTREGA 23.8.5 — el menú principal es singleton DOM. Aunque un flujo viejo o una
+  // llamada accidental intente abrirlo dos veces, nunca quedan dos #main-menu-overlay.
+  document.querySelectorAll('#main-menu-overlay').forEach(el => el.remove());
   const overlay = document.createElement('div');
   overlay.id = 'main-menu-overlay';
   overlay.innerHTML = `

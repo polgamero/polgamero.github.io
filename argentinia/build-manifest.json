@@ -1,6 +1,6 @@
 {
-  "engineVersion": "23.8.4",
-  "engineProtocolVersion": "mp-23.8.4",
-  "buildLabel": "Entrega 23.8.4 Image Audit Manifest",
+  "engineVersion": "23.8.5",
+  "engineProtocolVersion": "mp-23.8.5",
+  "buildLabel": "Entrega 23.8.5 Single Boot Module Guard",
   "generatedFor": "GitHub Pages cache freshness check"
 }

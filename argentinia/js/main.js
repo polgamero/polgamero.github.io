@@ -585,6 +585,21 @@ async function checkBuildFreshness() {
 }
 
 async function boot() {
+  // ENTREGA 23.8.5 — guard GLOBAL, no sólo module-local. Si por un HTML viejo/cacheado
+  // main.js llegara a evaluarse bajo dos URLs distintas, sólo la primera instancia puede
+  // arrancar la app. Esto evita dos listeners de Auth, dos menús y dos estados compitiendo.
+  if (globalThis.__ARGENTINIA_BOOT_STARTED__) {
+    console.error('[BOOT_GUARD] Se bloqueó un segundo boot de Argentinia.', {
+      firstVersion: globalThis.__ARGENTINIA_BOOT_VERSION__ || null,
+      attemptedVersion: ENGINE_VERSION,
+      moduleUrl: import.meta.url
+    });
+    return;
+  }
+  globalThis.__ARGENTINIA_BOOT_STARTED__ = true;
+  globalThis.__ARGENTINIA_BOOT_VERSION__ = ENGINE_VERSION;
+  globalThis.__ARGENTINIA_BOOT_MODULE_URL__ = import.meta.url;
+
   // ENTREGA 22: instala listeners de errores/interacciones y el pequeño panel de exportación.
   // Los providers son funciones para evitar copias: la telemetría lee el estado actual sólo
   // cuando necesita capturarlo. No se conecta a Firebase ni muta el motor.
@@ -736,6 +751,11 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '') {
 // con una regla FIJA que ambos clientes calculan por su cuenta con su propio myRole, sin
 // coordinar nada ni sortear nada: el host siempre juega primero.
 function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '') {
+  // ENTREGA 23.8.5 — al entrar a gameplay no puede sobrevivir ningún overlay del flujo
+  // menú/lobby/picker. Antes el menú quedaba oculto (display:none) debajo del tablero; con
+  // el doble boot podía quedar una SEGUNDA copia visible y parecía que la partida explotaba.
+  document.querySelectorAll('#main-menu-overlay, #multiplayer-overlay, #mydecks-overlay').forEach(el => el.remove());
+
   if (state.currentMatch?.engineVersion && !isExactMultiplayerVersionCompatible(state.currentMatch.engineVersion, state.currentMatch.engineProtocolVersion)) {
     throw new Error(`No se puede iniciar multiplayer con builds distintas (${ENGINE_VERSION} vs ${state.currentMatch.engineVersion}).`);
   }
@@ -5305,4 +5325,8 @@ export function resumeAfterInteractiveEffect() {
 
 export function resolveSpellDirect(card, isLocal) { return resolveEffectDirect(card.effect, card.name, isLocal, card); }
 
+// ENTREGA 23.8.5 — IMPORTANTE: index.html carga ./js/main.js SIN query-string.
+// Todos los módulos internos que importan './main.js' resuelven exactamente la misma URL,
+// por lo que existe un único singleton de state. El guard global de boot es una segunda
+// barrera defensiva ante HTML viejo/cacheado o futuras entradas accidentales duplicadas.
 boot();
