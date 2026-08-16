@@ -21,6 +21,7 @@ import {
 import { getFirestore, doc, getDoc, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX } from './store.js';
+import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAAvUAaZ35_sF9uCsecLPg7zqhB7mLa7yo",
@@ -376,6 +377,12 @@ export async function createMatch(uid, profileFields) {
       status: 'waiting', // 'waiting' | 'active' | 'cancelled'
       hostUid: uid,
       guestUid: null,
+      hostReady: false,
+      guestReady: false,
+      engineVersion: ENGINE_VERSION,
+      engineProtocolVersion: ENGINE_PROTOCOL_VERSION,
+      hostEngineVersion: ENGINE_VERSION,
+      guestEngineVersion: null,
       players: {
         [uid]: { displayName: profileFields.displayName || '', photoURL: profileFields.photoURL || '' }
       },
@@ -401,12 +408,17 @@ export async function joinMatchByCode(uid, rawCode, profileFields) {
   if (!snap.exists()) throw new Error('No existe ninguna partida con ese código.');
   const data = snap.data();
   if (data.hostUid === uid) throw new Error('No podés unirte a tu propia partida.');
+  if (!isExactMultiplayerVersionCompatible(data.engineVersion, data.engineProtocolVersion)) {
+    const remote = data.engineVersion || 'versión anterior/desconocida';
+    throw new Error(`Versión incompatible: la partida fue creada con ${remote} y esta notebook usa ${ENGINE_VERSION}. Actualizá ambas pestañas antes de jugar.`);
+  }
   if (data.status !== 'waiting') throw new Error('Esa partida ya no está esperando jugadores.');
   if (data.guestUid) throw new Error('Esa partida ya tiene 2 jugadores.');
 
   const updated = {
     status: 'active',
     guestUid: uid,
+    guestEngineVersion: ENGINE_VERSION,
     players: {
       ...data.players,
       [uid]: { displayName: profileFields.displayName || '', photoURL: profileFields.photoURL || '' }
@@ -420,6 +432,18 @@ export async function joinMatchByCode(uid, rawCode, profileFields) {
 
 // FASE 4, ETAPA 6: activeMatchId vive en MI PROPIO perfil (users/{uid}), no en el match en
 // sí — así lo puedo leer apenas cargo mi perfil al arrancar, sin una consulta aparte.
+
+// ENTREGA 23.7.2 — barrera de readiness: deck + mulligan local deben estar publicados
+// antes de abrir la primera ventana de prioridad. Estos flags son públicos, no contienen
+// cartas ni información privada.
+export async function setMatchPlayerReady(matchId, role, ready = true) {
+  if (role !== 'host' && role !== 'guest') throw new Error('Rol multiplayer inválido para readiness.');
+  await setDoc(doc(db, 'matches', matchId), {
+    [`${role}Ready`]: !!ready,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+}
+
 export async function setActiveMatchId(uid, matchId) {
   await setDoc(doc(db, 'users', uid), { activeMatchId: matchId }, { merge: true });
 }
@@ -440,6 +464,15 @@ export async function fetchMatchForReconnect(matchId, uid) {
   if (!publicSnap.exists() || !privateSnap.exists()) return null;
   const publicDoc = publicSnap.data();
   if (publicDoc.gameOver) return null;
+  if (!isExactMultiplayerVersionCompatible(publicDoc.engineVersion, publicDoc.engineProtocolVersion)) {
+    return {
+      incompatible: true,
+      engineVersion: publicDoc.engineVersion || null,
+      engineProtocolVersion: publicDoc.engineProtocolVersion || null,
+      publicDoc,
+      privateDoc: privateSnap.data()
+    };
+  }
   return { publicDoc, privateDoc: privateSnap.data() };
 }
 
@@ -448,8 +481,12 @@ export async function fetchMatchForReconnect(matchId, uid) {
 // unsubscribe (cortar la escucha al salir de la pantalla, para no dejarla corriendo de más).
 export function listenToMatch(code, onUpdate) {
   const ref = doc(db, 'matches', code.trim().toUpperCase());
-  return onSnapshot(ref, (snap) => {
-    onUpdate(snap.exists() ? snap.data() : null);
+  return onSnapshot(ref, { includeMetadataChanges: true }, (snap) => {
+    onUpdate(snap.exists() ? snap.data() : null, {
+      hasPendingWrites: !!snap.metadata?.hasPendingWrites,
+      fromCache: !!snap.metadata?.fromCache,
+      receivedAtClientMs: Date.now()
+    });
   });
 }
 
@@ -470,7 +507,18 @@ export async function cancelMatch(code) {
 // turno — todo lo que el rival puede ver legítimamente, pero NUNCA el contenido de mi mano
 // ni mi mazo, solo la cantidad — ver buildMyPublicPatch).
 export async function publishMyPublicState(matchId, publicPatch) {
-  await setDoc(doc(db, 'matches', matchId), publicPatch, { merge: true });
+  // 23.8: serverCommittedAt es un reloj COMÚN a ambas notebooks. `serverTimestamp()` se
+  // resuelve en el backend; el listener rival recibe el Timestamp real ya confirmado.
+  const patch = { ...publicPatch };
+  if (publicPatch?.syncMeta && typeof publicPatch.syncMeta === 'object') {
+    patch.syncMeta = {
+      ...publicPatch.syncMeta,
+      serverCommittedAt: serverTimestamp(),
+      engineVersion: ENGINE_VERSION,
+      engineProtocolVersion: ENGINE_PROTOCOL_VERSION
+    };
+  }
+  await setDoc(doc(db, 'matches', matchId), patch, { merge: true });
 }
 
 // Escribe mi mano y mazo REALES en mi documento privado — el único que solo yo puedo leer

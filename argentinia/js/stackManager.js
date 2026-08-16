@@ -1,6 +1,6 @@
-import { sleep, moveBattlefieldCardToZone, moveCounteredStackItemToDestination } from './utils.js';
+import { sleep, moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getProliferateCandidates } from './utils.js';
 import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, triggerCreatureEtb, triggerLandEtb, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, cleanupIfVehicle, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal } from './main.js';
-import { otherRole, serializeStackTarget } from './matchSync.js';
+import { otherRole, serializeStackTarget, refreshStackItemBoardRefs } from './matchSync.js';
 import { logMsg, render, createCardElement, showRampLandChoiceModal, showScrySurveilModal, showProliferateModal, showHandFilterDiscardModal, showSacrificeEffectModal } from './ui.js';
 import { checkDeaths, checkAllDeaths } from './combatRules.js';
 import { hasKeyword, getProtectionMatch } from './keywords.js';
@@ -18,8 +18,23 @@ import { recordTelemetryEvent } from './telemetry.js';
 export function getCounterTargetRestriction(effectType) {
   if (effectType === 'counter_ability') return { allowSpell: false, allowAbility: true };
   if (effectType === 'counter_any') return { allowSpell: true, allowAbility: true };
-  // counter, counter_creature, counter_non_creature, counter_unless_pay: solo hechizos.
+  // counter, counter_creature, counter_non_creature, counter_instant, counter_unless_pay: solo hechizos.
   return { allowSpell: true, allowAbility: false };
+}
+
+export function isStackItemLegalCounterTarget(effectType, item) {
+  if (!effectType || !item) return false;
+  const isAbility = item.type === 'ability';
+  const restriction = getCounterTargetRestriction(effectType);
+  if (isAbility) return !!restriction.allowAbility;
+  if (!restriction.allowSpell) return false;
+
+  const isCreatureSpell = item.type === 'summon' || item.card?.power !== undefined || item.card?.type?.includes('Criatura');
+  const isInstantSpell = item.type === 'instant' || item.card?.type?.includes('Instantáneo');
+  if (effectType === 'counter_creature') return !!isCreatureSpell;
+  if (effectType === 'counter_non_creature') return !isCreatureSpell;
+  if (effectType === 'counter_instant') return !!isInstantSpell;
+  return true;
 }
 
 // Sustituye el valor de X en un efecto, en TODOS los campos donde podría aparecer como
@@ -110,6 +125,7 @@ export async function resolveTopStackItem() {
   if (spellStack.length === 0) return;
 
   const item = spellStack.pop();
+  if (state.currentMatch?.myRole) refreshStackItemBoardRefs(item, state, state.currentMatch.myRole);
   const telemetryStartedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   recordTelemetryEvent('stack_resolve_start', {
     stackId: item.id ?? null,
@@ -499,23 +515,18 @@ async function resolveSimpleDirectEffect(effect, cardName, isLocal) {
     // y a cada uno elegido le sumás UN contador más de CADA tipo que ya tenga. No es un
     // target de verdad (por eso Intocable/Protección no lo frenan, a diferencia de todo lo
     // demás que se resuelve en esta función).
-    const eligible = [];
-    state.localCombat.forEach(item => {
-      if (item.counters && ((item.counters.plusOne || 0) > 0 || (item.counters.minusOne || 0) > 0)) {
-        eligible.push({ item, ownerIsLocal: true, kind: 'creature' });
-      }
+    const eligible = getProliferateCandidates(state);
+    recordTelemetryEvent('proliferate_scan', {
+      card: cardName,
+      eligibleCount: eligible.length,
+      eligible: eligible.map(entry => ({
+        side: entry.ownerIsLocal ? 'local' : 'rival',
+        kind: entry.kind,
+        cardId: entry.item?.card?.id || null,
+        cardName: entry.item?.card?.name || null,
+        counterTypes: entry.counterTypes || []
+      }))
     });
-    state.rivalCombat.forEach(item => {
-      if (item.counters && ((item.counters.plusOne || 0) > 0 || (item.counters.minusOne || 0) > 0)) {
-        eligible.push({ item, ownerIsLocal: false, kind: 'creature' });
-      }
-    });
-    state.localPlaneswalkers.forEach(item => eligible.push({ item, ownerIsLocal: true, kind: 'planeswalker' }));
-    state.rivalPlaneswalkers.forEach(item => eligible.push({ item, ownerIsLocal: false, kind: 'planeswalker' }));
-    // El Veneno también es un contador de verdad (regla 122.3e) — si ya tenés alguno,
-    // Proliferar te puede sumar más. Sin `item` porque no es una carta, es del jugador.
-    if ((state.localPoison || 0) > 0) eligible.push({ item: null, ownerIsLocal: true, kind: 'player_poison' });
-    if ((state.rivalPoison || 0) > 0) eligible.push({ item: null, ownerIsLocal: false, kind: 'player_poison' });
 
     if (eligible.length === 0) {
       logMsg(`${cardName}: no hay ningún contador en el campo para proliferar.`);
@@ -531,9 +542,12 @@ async function resolveSimpleDirectEffect(effect, cardName, isLocal) {
         if (ownerIsLocal) state.localPoison += 1; else state.rivalPoison += 1;
         logMsg(`☠️ ${ownerIsLocal ? 'Vos' : getRivalName()} ${ownerIsLocal ? 'recibiste' : 'recibió'} un contador de Veneno más (ahora: ${ownerIsLocal ? state.localPoison : state.rivalPoison}).`);
       } else {
-        if ((item.counters.plusOne || 0) > 0) addCounters(item, 'plusOne', 1);
-        if ((item.counters.minusOne || 0) > 0) addCounters(item, 'minusOne', 1);
-        logMsg(`🔵 ${item.card.name} recibió otro contador.`);
+        const types = (entry.counterTypes || Object.keys(item?.counters || {})).filter(type => Number(item?.counters?.[type]) > 0);
+        types.forEach(type => {
+          if (type === 'plusOne' || type === 'minusOne') addCounters(item, type, 1);
+          else item.counters[type] = Number(item.counters[type] || 0) + 1;
+        });
+        logMsg(`🔵 ${item.card.name} recibió otro contador de cada tipo que ya tenía.`);
       }
     };
 
@@ -564,9 +578,10 @@ async function resolveSimpleDirectEffect(effect, cardName, isLocal) {
       const chosen = eligible.filter(e => {
         if (e.kind === 'planeswalker') return !e.ownerIsLocal;
         if (e.kind === 'player_poison') return e.ownerIsLocal;
-        const c = e.item.counters;
-        if (e.ownerIsLocal) return (c.minusOne || 0) > 0; // criatura tuya debilitada: le conviene
-        return (c.plusOne || 0) > 0; // criatura propia reforzada: le conviene
+        const c = e.item?.counters || {};
+        if (e.ownerIsLocal) return (c.minusOne || 0) > 0; // rival debilitado: le conviene profundizar -1/-1
+        // En sus propios permanentes, cualquier contador modelado salvo -1/-1 se presume beneficioso.
+        return (e.counterTypes || []).some(type => type !== 'minusOne');
       });
       finishProliferate(chosen);
     }
@@ -1262,7 +1277,7 @@ export function canResolveGameEffectWithTarget(effectType) {
 
 export function getEffectExecutionClass(effectType) {
   if ([
-    'counter', 'counter_creature', 'counter_non_creature', 'counter_unless_pay',
+    'counter', 'counter_creature', 'counter_non_creature', 'counter_instant', 'counter_unless_pay',
     'counter_ability', 'counter_any'
   ].includes(effectType)) return 'stack_control';
   if (['team_buff', 'team_keyword'].includes(effectType)) return 'continuous';
@@ -1485,9 +1500,27 @@ async function executeStackItem(item) {
           // puede frenar un hechizo. Cubre sobre todo al Tano, que no pasa por esa validación.
           const targetIsAbility = targetItem.type === 'ability';
           const restriction = getCounterTargetRestriction(effectToApply.type);
-          const typeAllowed = targetIsAbility ? restriction.allowAbility : restriction.allowSpell;
-          if (!typeAllowed) {
-            logMsg(`⚠️ ${card.name} no puede contrarrestar a "${targetItem.card.name}" — ${targetIsAbility ? 'es una habilidad, no un hechizo' : 'es un hechizo, no una habilidad'}.`);
+          const targetTypeAllowed = targetIsAbility ? restriction.allowAbility : restriction.allowSpell;
+          const targetIsCreatureSpell = !targetIsAbility && (
+            targetItem.type === 'summon' ||
+            targetItem.card?.power !== undefined ||
+            targetItem.card?.type?.includes('Criatura')
+          );
+          const targetIsInstantSpell = !targetIsAbility && (
+            targetItem.type === 'instant' ||
+            targetItem.card?.type?.includes('Instantáneo')
+          );
+          const targetSubtypeAllowed =
+            effectToApply.type !== 'counter_creature' || targetIsCreatureSpell;
+          const targetNonCreatureAllowed =
+            effectToApply.type !== 'counter_non_creature' || !targetIsCreatureSpell;
+          const targetInstantAllowed =
+            effectToApply.type !== 'counter_instant' || targetIsInstantSpell;
+          if (!targetTypeAllowed || !targetSubtypeAllowed || !targetNonCreatureAllowed || !targetInstantAllowed) {
+            const reason = effectToApply.type === 'counter_instant'
+              ? 'no es un hechizo instantáneo'
+              : (targetIsAbility ? 'es una habilidad, no un hechizo' : 'no coincide con la restricción de este counter');
+            logMsg(`⚠️ ${card.name} no puede contrarrestar a "${targetItem.card.name}" — ${reason}.`);
             sendResolvedCardAway();
             return;
           }
@@ -1619,6 +1652,12 @@ export async function handleStackCardClick(item) {
       return;
     }
 
+    const isInstantSpell = !isAbility && (item.type === 'instant' || item.card?.type?.includes('Instantáneo'));
+    if (effectType === 'counter_instant' && !isInstantSpell) {
+      logMsg("❌ Esta carta solo puede contrarrestar hechizos instantáneos.");
+      return;
+    }
+
     const spellIndex = state.pendingSpellIndex;
     const playedCard = state.localHand.splice(spellIndex, 1)[0];
 
@@ -1723,9 +1762,7 @@ export function renderStack() {
       const restriction = getCounterTargetRestriction(pendingEffect);
       const typeAllowed = isAbilityItem ? restriction.allowAbility : restriction.allowSpell;
       if (typeAllowed) {
-        if (pendingEffect === 'counter_creature') isTargetingCounter = isCreatureSpell;
-        else if (pendingEffect === 'counter_non_creature') isTargetingCounter = !isCreatureSpell;
-        else isTargetingCounter = true; // counter, counter_unless_pay, counter_ability, counter_any
+        isTargetingCounter = isStackItemLegalCounterTarget(pendingEffect, item);
       }
     }
     const targetableClass = isTargetingCounter ? 'targetable-stack' : '';

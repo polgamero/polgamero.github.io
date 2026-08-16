@@ -41,6 +41,7 @@ import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXAC
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 import { recordTelemetryUiLog, captureTelemetryState } from './telemetry.js';
+import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_VERSION_SHORT } from './version.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -2525,7 +2526,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 // logueado, siempre elegís uno de tus propios mazos. Sin sesión, el llamador ni siquiera
 // pasa por acá (no hay mazos guardados que elegir). También se suma "Volver" — antes este
 // modal no tenía ninguna salida más que elegir un mazo o clickear random.
-export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel) {
+export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, onPlayTestDeck = null) {
   injectMyDecksStyles();
   injectStoreStyles(); // reusa .store-back-link para el link de "jugar random"
   injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn para "Volver"
@@ -2554,6 +2555,11 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel) {
         <button class="store-back-link" id="playpicker-random">🎲 Jugar con un mazo random en cambio</button>
       </div>
       ` : ''}
+      ${onPlayTestDeck ? `
+      <div style="text-align:center; margin-top: 28px; padding-top: 16px; border-top: 1px solid rgba(212,175,55,.25);">
+        <button class="store-back-link" id="playpicker-testdeck" style="color:var(--gold, #d4af37); font-weight:700;">Usar &quot;Mazo de pruebas&quot;</button>
+      </div>
+      ` : ''}
     </div>
   `;
   document.body.appendChild(overlay);
@@ -2573,6 +2579,13 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel) {
     overlay.querySelector('#playpicker-random').addEventListener('click', () => {
       overlay.remove();
       onPlayRandom();
+    });
+  }
+
+  if (onPlayTestDeck) {
+    overlay.querySelector('#playpicker-testdeck').addEventListener('click', () => {
+      overlay.remove();
+      onPlayTestDeck();
     });
   }
 
@@ -3069,7 +3082,7 @@ export function showAdminPanel(onBack) {
   overlay.innerHTML = `
     <div class="admin-header">
       <button class="encyclopedia-back-btn" id="admin-back">← Volver</button>
-      <div class="admin-title">🛠️ Panel de Admin</div>
+      <div class="admin-title">🛠️ Panel de Admin <span style="font-size:12px;color:#d4af37;opacity:.92">· Motor ${ENGINE_VERSION}</span></div>
     </div>
     <div class="admin-body">
       <div class="encyclopedia-tabs" id="admin-tabs">${tabsHTML}</div>
@@ -3158,7 +3171,13 @@ export function showAdminPanel(onBack) {
     const total = Number(session.bugCandidateCount || 0);
     const stats = parseAdminJson(session.statsJson, {});
     if (Number.isFinite(stats.automaticBugCandidateCount) && Number.isFinite(stats.manualBugMarkerCount)) {
-      return { total, automatic: stats.automaticBugCandidateCount, manual: stats.manualBugMarkerCount, exactSplit: true };
+      return {
+        total,
+        automatic: stats.automaticBugCandidateCount,
+        automaticOccurrences: Number.isFinite(stats.automaticBugOccurrenceCount) ? stats.automaticBugOccurrenceCount : stats.automaticBugCandidateCount,
+        manual: stats.manualBugMarkerCount,
+        exactSplit: true
+      };
     }
     const summaries = parseAdminJson(session.bugCandidatesJson, []);
     const manualKnown = Array.isArray(summaries) ? summaries.filter(b => b?.code === 'MANUAL_BUG_MARKER').length : 0;
@@ -3166,6 +3185,7 @@ export function showAdminPanel(onBack) {
     return {
       total,
       automatic: splitIsComplete ? Math.max(0, total - manualKnown) : total,
+      automaticOccurrences: splitIsComplete ? Math.max(0, total - manualKnown) : total,
       manual: manualKnown,
       exactSplit: splitIsComplete
     };
@@ -3195,7 +3215,8 @@ export function showAdminPanel(onBack) {
           <td>${escapeHtml(formatTelemetryDate(date))}</td>
           <td><span class="admin-debug-mode">${escapeHtml(mode)}</span>${session.matchId ? `<div class="admin-debug-match" title="${escapeHtml(session.matchId)}">${escapeHtml(session.matchId)}</div>` : ''}</td>
           <td><strong>${escapeHtml(localName)}</strong><br><span style="color:#9987a7;">vs ${escapeHtml(rivalName)}</span></td>
-          <td${bugSplitTitle}><div class="admin-debug-bug-auto">⚙️ ${bugs.automatic} auto</div><div class="admin-debug-bug-manual">🐞 ${bugs.manual} marcado${bugs.manual === 1 ? '' : 's'} · ${bugs.total} total</div></td>
+          <td><span class="admin-debug-mode">v${escapeHtml(session.telemetryVersion || meta.engineVersion || '?')}</span></td>
+          <td${bugSplitTitle}><div class="admin-debug-bug-auto">⚙️ ${bugs.automatic} auto${bugs.automaticOccurrences > bugs.automatic ? ` · ${bugs.automaticOccurrences} ocurr.` : ''}</div><div class="admin-debug-bug-manual">🐞 ${bugs.manual} marcado${bugs.manual === 1 ? '' : 's'} · ${bugs.total} total</div></td>
           <td>${Number(session.eventCount || 0).toLocaleString('es-AR')}</td>
           <td><span class="admin-debug-status ${status === 'completed' ? 'completed' : 'running'}">${statusLabel}</span></td>
           <td><button class="admin-save-btn admin-debug-download" data-telemetry-download="${escapeHtml(session.id || session.sessionId || '')}">⬇ JSON</button></td>
@@ -3205,7 +3226,7 @@ export function showAdminPanel(onBack) {
 
     wrap.innerHTML = `
       <table class="admin-debug-table">
-        <thead><tr><th>Fecha y hora</th><th>Tipo</th><th>Quién jugó contra quién</th><th>Bugs</th><th>Eventos</th><th>Estado</th><th>Log</th></tr></thead>
+        <thead><tr><th>Fecha y hora</th><th>Tipo</th><th>Quién jugó contra quién</th><th>Motor</th><th>Bugs</th><th>Eventos</th><th>Estado</th><th>Log</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     `;
@@ -3739,6 +3760,20 @@ export function showMultiplayerLobby(onBack, onMatched) {
   // cual a onMatched, así main.js nunca tiene que volver a derivarlo.
   function renderMatched(match) {
     cleanup();
+    const remoteEngine = match.engineVersion || null;
+    const remoteProtocol = match.engineProtocolVersion || null;
+    const guestEngine = match.guestEngineVersion || null;
+    const incompatible = remoteEngine !== ENGINE_VERSION || remoteProtocol !== ENGINE_PROTOCOL_VERSION || (match.guestUid && guestEngine !== ENGINE_VERSION);
+    if (incompatible) {
+      body.innerHTML = `
+        <div class="mp-section">
+          <div class="mp-section-title">⚠️ Versiones incompatibles</div>
+          <div class="mp-section-desc">Esta notebook usa <b>${ENGINE_VERSION}</b>, pero la partida informa <b>${escapeHtml(remoteEngine || guestEngine || 'versión anterior/desconocida')}</b>.<br>Actualizá ambas pestañas antes de jugar.</div>
+          <button class="store-back-link" id="mp-incompatible-back">← Volver</button>
+        </div>`;
+      body.querySelector('#mp-incompatible-back').addEventListener('click', renderHome);
+      return;
+    }
     const myUid = state.currentUser.uid;
     const myRole = match.hostUid === myUid ? 'host' : 'guest';
     const rivalUid = myRole === 'host' ? match.guestUid : match.hostUid;
@@ -3760,7 +3795,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
           <div class="mp-versus-vs">VS.</div>
           ${multiplayerProfileBannerHTML(guestProfile, 'GUEST', 'Guest')}
         </div>
-        <div class="mp-section-desc">Elegí con qué mazo propio vas a jugar esta partida.</div>
+        <div class="mp-section-desc">Elegí con qué mazo propio vas a jugar esta partida.<br><span style="color:#a99362;font-size:11px">Motor v${ENGINE_VERSION} · protocolo ${ENGINE_PROTOCOL_VERSION}</span></div>
         <button class="store-buy-btn" id="mp-start">Elegir mazo y arrancar</button>
       </div>
     `;
@@ -4270,12 +4305,10 @@ export function showScrySurveilModal(cards, mode, onConfirm) {
 }
 
 // Proliferar: a diferencia de Scry/Surveil (cartas de la mano/mazo), acá elegimos entre
-// PERMANENTES del campo (criaturas con contadores, Planeswalkers). Reusamos el mismo
-// createCardElement que dibuja el resto del tablero (así se ve la carta real, con su
-// badge de contadores o su cuadrito de Lealtad ya calculados solos) pero con zone='combat'
-// y un customClick propio — eso pisa por completo el handler por defecto de esa zona
-// (ver createCardElement: "if (customClick) ... else { ...zona... }"), así clickear una
-// carta acá adentro NUNCA dispara handleCombatClick/handlePlaneswalkerClick del juego real.
+// CUALQUIER permanente/jugador que ya tenga contadores: criaturas, Support, Tierras,
+// Planeswalkers y Veneno, de ambos jugadores. Reusamos createCardElement con la zona REAL
+// del permanente y un customClick propio; por lo tanto el selector nunca dispara la acción
+// normal de esa carta en el tablero.
 export function showProliferateModal(eligible, onConfirm) {
   injectMulliganStyles();
   const overlay = document.createElement('div');
@@ -4327,7 +4360,11 @@ export function showProliferateModal(eligible, onConfirm) {
       return;
     }
 
-    cardEl = createCardElement(entry.item, !!entry.item.tapped, entry.ownerIsLocal, null, 'combat', toggle);
+    const modalZone = entry.kind === 'planeswalker' ? 'planeswalker'
+      : entry.kind === 'support' ? 'support'
+      : entry.kind === 'land' ? 'land'
+      : 'combat';
+    cardEl = createCardElement(entry.item, !!entry.item.tapped, entry.ownerIsLocal, null, modalZone, toggle);
     cardEl.classList.add('mulligan-card-slot', 'selectable');
     row.appendChild(cardEl);
   });
@@ -4602,6 +4639,14 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
         const readyLand = group.ready[0];
         if (readyLand) tapLocalLand(readyLand);
       } else if (zoneType === 'support') {
+        // 23.7.2 P0: si estamos eligiendo el artefacto de un costo de sacrificio, ESE click
+        // tiene prioridad absoluta. Antes el renderer agrupado intentaba tratar al Fajo como
+        // fuente de maná y podía explotar antes de llegar a tryResolveSacrificeChoice().
+        if (state.pendingSacrificeChoice && isLocal) {
+          const { item: targetItem, originalIndex } = group.items[0];
+          handleSupportClick(targetItem, true, originalIndex);
+          return;
+        }
         // Si hay un hechizo esperando un objetivo tipo permanente, prioriza eso sobre activar la habilidad
         if (state.pendingTargetCard) {
           const rules = getTargetRules(state.pendingTargetCard);
@@ -4615,7 +4660,7 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
         }
         const supportHasAbility = getActivatedAbilities(group.items[0].item.card).length > 0;
         const supportCanPayNow = !!state.pendingCost &&
-          group.ready.some(x => canManaSourcePayPendingCost(x.item.card));
+          group.ready.some(x => canManaSourcePayPendingCost(x.card));
         // 23.7.1: con prioridad dejamos que el click llegue al validador central de timing.
         // Antes la UI tragaba silenciosamente clicks sobre Equipar/sorcery-speed en turno
         // rival, por eso Daga Escondida no explicaba que Destello sólo permite lanzarla.
@@ -4624,7 +4669,7 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
           (state.priorityPlayer === 'local' && supportHasAbility);
         if (isLocal && supportTimingAllowsClick) {
           const readySupport = supportCanPayNow
-            ? group.ready.find(x => canManaSourcePayPendingCost(x.item.card))
+            ? group.ready.find(x => canManaSourcePayPendingCost(x.card))
             : group.ready[0];
           if (readySupport) {
             const originalIdx = group.items.find(x => x.item === readySupport).originalIndex;
@@ -4743,7 +4788,27 @@ export function render() {
     state.pendingKickerChoice || state.pendingRampChoice || state.pendingSacrificeChoice !== null ||
     state.damageModalOpen || state.awaitingRivalDecision || state.respondingToDecision;
 
-  els.btnEndTurn.disabled = (state.priorityPlayer !== 'local' || state.gameOver || state.isDiscarding || anyPendingChoice || (state.consecutivePasses || 0) >= 2);
+  els.btnEndTurn.disabled = (!!state.multiplayerWaitingForReady || state.priorityPlayer !== 'local' || state.gameOver || state.isDiscarding || anyPendingChoice || (state.consecutivePasses || 0) >= 2);
+
+  // 23.7.2: si el defensor no tiene NINGÚN bloqueador legal, declarar cero es
+  // automático. No salteamos el paso: executeRivalAttack abre la ventana post-bloqueadores,
+  // así instantáneos/habilidades antes del daño siguen existiendo.
+  let autoZeroBlockersPending = false;
+  if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local' && (state.consecutivePasses || 0) === 1) {
+    const attackers = state.rivalCombat.filter(attacker => attacker.isAttacking);
+    const hasLegalBlocker = state.localCombat.some(defender => !defender.tapped && attackers.some(attacker => canBlock(attacker, defender)));
+    autoZeroBlockersPending = !hasLegalBlocker;
+    if (!hasLegalBlocker && !state.autoZeroBlockersQueued) {
+      state.autoZeroBlockersQueued = true;
+      queueMicrotask(() => {
+        state.autoZeroBlockersQueued = false;
+        if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local') {
+          logMsg('🛡️ No tenés bloqueadores legales. Se declararon 0 bloqueadores automáticamente.');
+          executeRivalAttack();
+        }
+      });
+    }
+  }
 
   if (state.phase === 'combat_attackers' && state.activePlayer === 'local') {
     const attackersAlreadyDeclared = (state.localAttackersDeclaredThisTurn || 0) > 0;
@@ -4760,9 +4825,16 @@ export function render() {
       els.btnEndTurn.style.backgroundColor = isAttacking ? "#e74c3c" : "#e67e22";
     }
   } else if (state.phase === 'combat_blockers' && state.activePlayer === 'rival') {
-    els.btnEndTurn.textContent = "Confirmar Bloqueos 🛡️";
-    els.btnEndTurn.onclick = executeRivalAttack;
-    els.btnEndTurn.style.backgroundColor = "#3498db";
+    if (autoZeroBlockersPending) {
+      els.btnEndTurn.textContent = "Sin bloqueadores — avanzando…";
+      els.btnEndTurn.onclick = null;
+      els.btnEndTurn.disabled = true;
+      els.btnEndTurn.style.backgroundColor = "#3498db";
+    } else {
+      els.btnEndTurn.textContent = "Confirmar Bloqueos 🛡️";
+      els.btnEndTurn.onclick = executeRivalAttack;
+      els.btnEndTurn.style.backgroundColor = "#3498db";
+    }
   } else {
     els.btnEndTurn.textContent = "Pasar Prioridad ➔";
     els.btnEndTurn.onclick = () => passPriority('local');
@@ -5042,4 +5114,31 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
     state.damageModalOpen = false;
     onConfirmManual(currentDistribution, overflowToPlayer);
   };
+}
+
+// ENTREGA 23.7.2 — overlay bloqueante entre mulligan local y comienzo REAL de la partida.
+// No reemplaza el lobby: evita que el jugador que terminó primero pueda bajar tierra/pasar
+// prioridad mientras el otro todavía está eligiendo mazo o mulligan.
+export function showMultiplayerReadyBarrier(rivalName, localReady = true, rivalReady = false) {
+  let overlay = document.getElementById('multiplayer-ready-barrier');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'multiplayer-ready-barrier';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147482500;background:rgba(5,9,7,.82);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = '<div class="mp-ready-card" style="min-width:min(520px,86vw);max-width:720px;padding:26px 30px;border:2px solid var(--gold,#d4af37);border-radius:16px;background:linear-gradient(180deg,rgba(18,25,15,.98),rgba(8,14,10,.98));box-shadow:0 14px 50px rgba(0,0,0,.6);text-align:center;color:#f0e0b0;font-family:system-ui,sans-serif"><div style="font-size:30px;margin-bottom:8px">⏳</div><div id="mp-ready-title" style="font-size:22px;font-weight:800;letter-spacing:.5px"></div><div id="mp-ready-detail" style="margin-top:10px;color:#cfe0d4;font-size:14px"></div></div>';
+    document.body.appendChild(overlay);
+  }
+  const safeName = rivalName || 'tu rival';
+  const title = overlay.querySelector('#mp-ready-title');
+  const detail = overlay.querySelector('#mp-ready-detail');
+  if (title) title.textContent = rivalReady ? '¡Ambos listos!' : `Esperando a ${safeName}…`;
+  if (detail) detail.textContent = rivalReady
+    ? 'Sincronizando el primer turno…'
+    : (localReady ? 'Tu mazo y mulligan ya están confirmados. La partida se habilita cuando el otro jugador termine.' : 'Preparando tu partida…');
+  overlay.classList.remove('hidden');
+}
+
+export function hideMultiplayerReadyBarrier() {
+  const overlay = document.getElementById('multiplayer-ready-barrier');
+  if (overlay) overlay.remove();
 }

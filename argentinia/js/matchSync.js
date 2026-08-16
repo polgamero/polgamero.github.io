@@ -79,16 +79,22 @@ export function serializeBoardItemRef(item, state, myRole) {
   for (const [zoneName, localKey, rivalKey] of BOARD_ZONE_SPECS) {
     for (const [isLocal, key] of [[true, localKey], [false, rivalKey]]) {
       const zone = Array.isArray(state[key]) ? state[key] : [];
-      const index = zone.indexOf(item);
+      // 23.7.2: Firestore rehidrata objetos JS nuevos. Si `item` es una referencia vieja
+      // de una habilidad en Stack, `indexOf(item)` falla aunque el mismo permanente siga
+      // vivo. La identidad pública estable manda primero.
+      const syncId = item?._syncObjectId || item?._syncDescriptor?.syncObjectId || null;
+      let index = syncId ? zone.findIndex(candidate => candidate?._syncObjectId === syncId) : -1;
+      if (index < 0) index = zone.indexOf(item);
       if (index !== -1) {
+        const liveItem = zone[index];
         const ownerRole = isLocal ? myRole : otherRole(myRole);
         return {
           ownerRole,
           zone: zoneName,
           index,
-          syncObjectId: ensureItemSyncId(item, ownerRole),
-          cardId: item?.card?.id || null,
-          cardName: item?.card?.name || null
+          syncObjectId: ensureItemSyncId(liveItem, ownerRole),
+          cardId: liveItem?.card?.id || item?.card?.id || null,
+          cardName: liveItem?.card?.name || item?.card?.name || null
         };
       }
     }
@@ -96,7 +102,7 @@ export function serializeBoardItemRef(item, state, myRole) {
   return null;
 }
 
-function deserializeBoardItemRef(ref, state, myRole) {
+export function deserializeBoardItemRef(ref, state, myRole) {
   if (!ref || !state) return null;
   const isLocal = ref.ownerRole === myRole;
   const zone = zoneArray(state, ref.zone, isLocal);
@@ -202,18 +208,30 @@ function serializeStackSource(source, state, myRole) {
     if (hasOwn(source, key)) out[key] = source[key];
   });
   if (source.eventCard) out.eventCard = source.eventCard;
-  const sourceItemRef = serializeBoardItemRef(source.sourceItem, state, myRole);
-  const eventItemRef = serializeBoardItemRef(source.eventItem, state, myRole);
-  if (sourceItemRef) out.sourceItemRef = sourceItemRef;
-  if (eventItemRef) out.eventItemRef = eventItemRef;
+  const sourceItemRef = serializeBoardItemRef(source.sourceItem, state, myRole) || source._sourceItemRef || null;
+  const eventItemRef = serializeBoardItemRef(source.eventItem, state, myRole) || source._eventItemRef || null;
+  if (sourceItemRef) {
+    out.sourceItemRef = sourceItemRef;
+    source._sourceItemRef = sourceItemRef;
+  }
+  if (eventItemRef) {
+    out.eventItemRef = eventItemRef;
+    source._eventItemRef = eventItemRef;
+  }
   return out;
 }
 
 function deserializeStackSource(source, state, myRole) {
   if (!source) return null;
   const out = { ...source };
-  if (source.sourceItemRef) out.sourceItem = deserializeBoardItemRef(source.sourceItemRef, state, myRole);
-  if (source.eventItemRef) out.eventItem = deserializeBoardItemRef(source.eventItemRef, state, myRole);
+  if (source.sourceItemRef) {
+    out._sourceItemRef = source.sourceItemRef;
+    out.sourceItem = deserializeBoardItemRef(source.sourceItemRef, state, myRole);
+  }
+  if (source.eventItemRef) {
+    out._eventItemRef = source.eventItemRef;
+    out.eventItem = deserializeBoardItemRef(source.eventItemRef, state, myRole);
+  }
   delete out.sourceItemRef;
   delete out.eventItemRef;
   return out;
@@ -222,7 +240,7 @@ function deserializeStackSource(source, state, myRole) {
 export function serializeStackForPublic(stack, state, myRole) {
   if (!Array.isArray(stack)) return [];
   return stack.map(item => {
-    const sourceItemRef = serializeBoardItemRef(item?.sourceItem, state, myRole);
+    const sourceItemRef = serializeBoardItemRef(item?.sourceItem, state, myRole) || item?._sourceItemRef || null;
     const wire = {
       id: item?.id ?? null,
       controllerRole: item?.isLocal ? myRole : otherRole(myRole),
@@ -238,7 +256,13 @@ export function serializeStackForPublic(stack, state, myRole) {
       ability: item?.ability || null,
       source: serializeStackSource(item?.source, state, myRole)
     };
-    if (sourceItemRef) wire.sourceItemRef = sourceItemRef;
+    if (sourceItemRef) {
+      wire.sourceItemRef = sourceItemRef;
+      // Persistimos el descriptor también en el objeto local de Stack. El eco propio no se
+      // rehidrata (correctamente), así que sin esto el controlador podría conservar un
+      // puntero JS viejo si su Support cambia mientras la habilidad espera resolución.
+      item._sourceItemRef = sourceItemRef;
+    }
     return wire;
   });
 }
@@ -261,7 +285,10 @@ export function deserializeStackFromPublic(stackState, state, myRole) {
       ability: wire?.ability || null,
       source: deserializeStackSource(wire?.source, state, myRole)
     };
-    if (wire?.sourceItemRef) item.sourceItem = deserializeBoardItemRef(wire.sourceItemRef, state, myRole);
+    if (wire?.sourceItemRef) {
+      item._sourceItemRef = wire.sourceItemRef;
+      item.sourceItem = deserializeBoardItemRef(wire.sourceItemRef, state, myRole);
+    }
     return item;
   });
 }
@@ -344,4 +371,46 @@ export function buildMyPrivatePatch(state) {
     hand: Array.isArray(state.localHand) ? state.localHand : [],
     deck: Array.isArray(state.localDeck) ? state.localDeck : []
   };
+}
+
+// 23.7.2: re-adquiere referencias VIVAS justo antes de render/resolución. Un Stack item
+// puede sobrevivir a una rehidratación legítima de Support/Combat; nunca debe depender de
+// que el objeto JS original siga siendo el mismo.
+export function refreshStackItemBoardRefs(item, state, myRole) {
+  if (!item || !state || !myRole) return item;
+  if (item._sourceItemRef) item.sourceItem = deserializeBoardItemRef(item._sourceItemRef, state, myRole);
+  if (item.source?._sourceItemRef) item.source.sourceItem = deserializeBoardItemRef(item.source._sourceItemRef, state, myRole);
+  if (item.source?._eventItemRef) item.source.eventItem = deserializeBoardItemRef(item.source._eventItemRef, state, myRole);
+  if (item.targetObj?._syncDescriptor) item.targetObj = deserializeStackTarget(item.targetObj._syncDescriptor, state, myRole);
+  if (item.targetObj?.type === 'multi' && Array.isArray(item.targetObj.targets)) {
+    item.targetObj.targets = item.targetObj.targets.map(target =>
+      target?._syncDescriptor ? deserializeStackTarget(target._syncDescriptor, state, myRole) : target
+    );
+  }
+  return item;
+}
+
+export function refreshStackBoardRefs(stack, state, myRole) {
+  (Array.isArray(stack) ? stack : []).forEach(item => refreshStackItemBoardRefs(item, state, myRole));
+  return stack;
+}
+
+// 23.7.2: Equipment.attachedTo también cruza Firestore como un objeto serializado y,
+// por definición, vuelve como OTRA referencia JS. Re-enlazamos cada Equipo con la criatura
+// viva usando _syncObjectId. Si la criatura ya no existe, el Equipo queda desadjuntado.
+export function relinkEquipmentAttachments(state) {
+  if (!state) return state;
+  const relink = (supportZone, combatZone) => {
+    const support = Array.isArray(supportZone) ? supportZone : [];
+    const combat = Array.isArray(combatZone) ? combatZone : [];
+    support.forEach(item => {
+      if (!item?.attachedTo) return;
+      const targetId = item.attachedTo?._syncObjectId || item.attachedTo?._syncDescriptor?.syncObjectId || null;
+      if (!targetId) return;
+      item.attachedTo = combat.find(unit => unit?._syncObjectId === targetId) || null;
+    });
+  };
+  relink(state.localSupport, state.localCombat);
+  relink(state.rivalSupport, state.rivalCombat);
+  return state;
 }

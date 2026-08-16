@@ -16,8 +16,10 @@
 // En multiplayer la mano/mazo rival siguen siendo sólo cantidades/placeholders, exactamente
 // igual que en el motor: la telemetría no intenta saltarse la privacidad de Firestore.
 
-export const TELEMETRY_SCHEMA_VERSION = 3;
-export const TELEMETRY_VERSION = '23.7.1';
+import { ENGINE_VERSION, ENGINE_VERSION_SHORT, ENGINE_BASELINE } from './version.js';
+
+export const TELEMETRY_SCHEMA_VERSION = 4;
+export const TELEMETRY_VERSION = ENGINE_VERSION;
 
 const STORAGE_CURRENT = 'argentinia.telemetry.current.v1';
 const STORAGE_RECOVERED = 'argentinia.telemetry.recovered.v1';
@@ -528,37 +530,69 @@ function invariantFindings(state, stack) {
   return findings;
 }
 
-function bugFingerprint(finding) {
-  // Tormentas/overlaps son una CLASE de problema, no miles de bugs distintos por cada
-  // combinación efímera de publishId. Un único candidato cada ventana de deduplicación
-  // conserva la señal sin hacer explotar el contador del HUD ni los chunks remotos.
-  if (finding?.code === 'SYNC_PUBLISH_OVERLAP' || finding?.code === 'POSSIBLE_SYNC_RENDER_STORM') {
-    return finding.code;
+function bugRootCauseKey(finding) {
+  const code = finding?.code || 'UNKNOWN';
+  const details = finding?.details || {};
+  if (code === 'JS_ERROR') {
+    return `JS_ERROR|${details.filename || ''}|${details.lineno || ''}|${details.colno || ''}|${finding?.message || ''}`;
   }
-  return `${finding.code}|${JSON.stringify(finding.details || {})}`;
+  if (code === 'UNHANDLED_REJECTION') {
+    const reason = details?.reason?.message || details?.reason?.name || String(details?.reason || '');
+    return `UNHANDLED_REJECTION|${reason}`;
+  }
+  if (code === 'SYNC_PUBLISH_OVERLAP' || code === 'POSSIBLE_SYNC_RENDER_STORM' || code === 'INVALID_PASS_COUNT') {
+    return code;
+  }
+  return `${code}|${JSON.stringify(details)}`;
+}
+
+function shouldAggregateBug(finding) {
+  return new Set(['JS_ERROR', 'UNHANDLED_REJECTION', 'SYNC_PUBLISH_OVERLAP', 'POSSIBLE_SYNC_RENDER_STORM', 'INVALID_PASS_COUNT']).has(finding?.code);
 }
 
 function addBugCandidate(finding, eventSeq = null) {
   if (!currentSession) return;
-  const fingerprint = bugFingerprint(finding);
+  const rootCauseKey = bugRootCauseKey(finding);
   const now = Date.now();
-  const previous = emittedInvariantFingerprints.get(fingerprint);
-  // El mismo estado roto repetido en cada render no tiene que inundar el archivo.
-  if (previous && now - previous < 15000) return;
-  emittedInvariantFingerprints.set(fingerprint, now);
 
+  if (shouldAggregateBug(finding)) {
+    const existing = currentSession.bugCandidates.find(candidate => candidate?.rootCauseKey === rootCauseKey);
+    if (existing) {
+      existing.occurrences = Math.max(1, Number(existing.occurrences || 1)) + 1;
+      existing.lastDetectedAt = nowIso();
+      existing.lastEventSeq = eventSeq;
+      existing.lastDetails = safeClone(finding.details || {});
+      updatePanelStatus();
+      schedulePersist();
+      return existing;
+    }
+  } else {
+    // Invariantes de estado no agregadas por causa raíz mantienen una ventana corta para
+    // evitar repetir el MISMO snapshot roto en cada render.
+    const previous = emittedInvariantFingerprints.get(rootCauseKey);
+    if (previous && now - previous < 15000) return;
+    emittedInvariantFingerprints.set(rootCauseKey, now);
+  }
+
+  const detectedAt = nowIso();
   const candidate = {
     id: makeId('bug'),
-    detectedAt: nowIso(),
+    detectedAt,
+    firstDetectedAt: detectedAt,
+    lastDetectedAt: detectedAt,
     eventSeq,
+    lastEventSeq: eventSeq,
     severity: finding.severity || 'warning',
     code: finding.code,
+    rootCauseKey,
+    occurrences: 1,
     message: finding.message,
     details: safeClone(finding.details || {})
   };
   currentSession.bugCandidates.push(candidate);
   updatePanelStatus();
   schedulePersist();
+  return candidate;
 }
 
 function recordStormSample(type) {
@@ -864,7 +898,7 @@ export function startTelemetrySession(meta = {}) {
   currentSession = {
     schemaVersion: TELEMETRY_SCHEMA_VERSION,
     telemetryVersion: TELEMETRY_VERSION,
-    engineBaseline: 'Entrega 23.7.1 Solo Trigger Idempotence + Multiplayer Lobby + Authority 23.7 + Visual Baseline 23.4',
+    engineBaseline: ENGINE_BASELINE,
     sessionId: makeId('game'),
     startedAt: nowIso(),
     endedAt: null,
@@ -875,6 +909,7 @@ export function startTelemetrySession(meta = {}) {
       matchId: meta.matchId ?? state?.currentMatch?.matchId ?? null,
       myRole: meta.myRole ?? state?.currentMatch?.myRole ?? null,
       deckLabel: meta.deckLabel ?? null,
+      engineVersion: ENGINE_VERSION,
       browser: typeof navigator !== 'undefined' ? navigator.userAgent : null,
       page: typeof location !== 'undefined' ? location.pathname : null,
       localPlayerName: typeof providers.getLocalPlayerName === 'function' ? providers.getLocalPlayerName() : null,
@@ -1113,10 +1148,14 @@ function buildStats(session) {
   });
   const manualBugMarkerCount = session.bugCandidates.filter(b => b?.code === 'MANUAL_BUG_MARKER').length;
   const automaticBugCandidateCount = Math.max(0, session.bugCandidates.length - manualBugMarkerCount);
+  const automaticBugOccurrenceCount = session.bugCandidates
+    .filter(b => b?.code !== 'MANUAL_BUG_MARKER')
+    .reduce((sum, b) => sum + Math.max(1, Number(b?.occurrences || 1)), 0);
   return {
     eventCount: session.events.length,
     bugCandidateCount: session.bugCandidates.length,
     automaticBugCandidateCount,
+    automaticBugOccurrenceCount,
     manualBugMarkerCount,
     byType,
     bySeverity,
@@ -1277,11 +1316,11 @@ function buildPanel() {
 function updatePanelStatus() {
   if (!statusEl || !bugsEl) return;
   if (!currentSession) {
-    statusEl.textContent = '🧪 listo';
+    statusEl.textContent = `🧪 v${ENGINE_VERSION_SHORT}`;
     bugsEl.textContent = '🐞 0';
   } else {
     const ended = !!currentSession.endedAt;
-    statusEl.textContent = ended ? `🧪 fin · ${currentSession.events.length}` : `🔴 REC · ${currentSession.events.length}`;
+    statusEl.textContent = ended ? `🧪 v${ENGINE_VERSION_SHORT} · ${currentSession.events.length}` : `🔴 v${ENGINE_VERSION_SHORT} · ${currentSession.events.length}`;
     bugsEl.textContent = `🐞 ${currentSession.bugCandidates.length}`;
   }
 
@@ -1351,5 +1390,8 @@ export const __telemetryTest = {
   invariantFindings,
   exportableSession,
   remoteExportSummary,
-  buildRemoteCheckpoint
+  buildRemoteCheckpoint,
+  bugRootCauseKey,
+  addBugCandidate,
+  getCurrentSession: () => currentSession
 };

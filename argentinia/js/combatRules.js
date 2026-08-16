@@ -10,6 +10,7 @@ import {
   getEffectiveToughness, 
   render, 
   passPriority, // Importado del main/turnManager
+  beginActivePlayerPriorityWindow,
   detachEquipmentFrom,
   sendAurasToGraveyard,
   triggerCreatureDies,
@@ -276,10 +277,10 @@ export function executeRivalAttack() {
   markDeclaredBlocks(state.rivalCombat, state.localCombat);
   queueDeclaredBlockTriggers(state.localCombat, true);
   logMsg(`🛡️ Confirmaste tus bloqueos.`);
-  render();
-  // Si hubo blockTrigger, queueTriggeredAbility reseteó consecutivePasses; este pase es
-  // NUEVO respecto de esa Stack y le entrega al atacante una ventana real de respuesta.
-  passPriority('local');
+  // La declaración de bloqueadores abre una ventana NUEVA. El jugador activo recibe
+  // prioridad primero; no heredamos el pase que hizo para llegar a este paso ni salteamos
+  // directo al daño cuando se declararon cero bloqueadores.
+  beginActivePlayerPriorityWindow();
 }
 
 // --- GOLPE PRIMERO (First Strike) Y DAÑO DOBLE (Double Strike) ---

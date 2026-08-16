@@ -573,3 +573,38 @@ export function describeCompositeCost(cost) {
 export function combineManaCostStrings(...parts) {
   return parts.filter(p => typeof p === 'string' && p.trim()).join('') || null;
 }
+
+// ENTREGA 23.7.2 — una sola fuente de verdad para Proliferar. Reglas: puede elegir
+// CUALQUIER permanente/jugador que ya tenga uno o más contadores, incluso del rival.
+// El motor hoy modela contadores genéricos en `item.counters`, Lealtad separada en PW y
+// Veneno en el jugador. Escaneamos todas las zonas de permanentes, no sólo criaturas.
+export function getProliferateCandidates(state) {
+  const out = [];
+  const scanCounterZone = (zone, ownerIsLocal, kind) => {
+    (Array.isArray(zone) ? zone : []).forEach(item => {
+      const counters = item && item.counters && typeof item.counters === 'object' ? item.counters : null;
+      const counterTypes = counters
+        ? Object.keys(counters).filter(type => Number(counters[type]) > 0)
+        : [];
+      if (counterTypes.length > 0) out.push({ item, ownerIsLocal, kind, counterTypes });
+    });
+  };
+
+  scanCounterZone(state.localCombat, true, 'creature');
+  scanCounterZone(state.rivalCombat, false, 'creature');
+  scanCounterZone(state.localSupport, true, 'support');
+  scanCounterZone(state.rivalSupport, false, 'support');
+  scanCounterZone(state.localLands, true, 'land');
+  scanCounterZone(state.rivalLands, false, 'land');
+
+  (Array.isArray(state.localPlaneswalkers) ? state.localPlaneswalkers : []).forEach(item => {
+    if (Number(item?.loyalty) > 0) out.push({ item, ownerIsLocal: true, kind: 'planeswalker', counterTypes: ['loyalty'] });
+  });
+  (Array.isArray(state.rivalPlaneswalkers) ? state.rivalPlaneswalkers : []).forEach(item => {
+    if (Number(item?.loyalty) > 0) out.push({ item, ownerIsLocal: false, kind: 'planeswalker', counterTypes: ['loyalty'] });
+  });
+
+  if (Number(state.localPoison) > 0) out.push({ item: null, ownerIsLocal: true, kind: 'player_poison', counterTypes: ['poison'] });
+  if (Number(state.rivalPoison) > 0) out.push({ item: null, ownerIsLocal: false, kind: 'player_poison', counterTypes: ['poison'] });
+  return out;
+}

@@ -2,14 +2,16 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal } from './ui.js';
-import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings } from './utils.js';
-import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart } from './turnManager.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier } from './ui.js';
+import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
+import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession } from './firebaseClient.js';
+import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
-import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, otherRole } from './matchSync.js';
+import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks } from './telemetry.js';
+import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_BUILD_LABEL, BUILD_MANIFEST_URL, isExactMultiplayerVersionCompatible } from './version.js';
+import { MULTIPLAYER_TEST_DECK_NAME, buildMultiplayerTestDeck } from './testDeck.js';
 
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 
@@ -22,7 +24,7 @@ let userProfileLoadPromise = Promise.resolve();
 
 export { logMsg, render } from './ui.js';
 export { parseManaCost, getLandColor, sleep } from './utils.js';
-export { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority } from './turnManager.js';
+export { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, beginActivePlayerPriorityWindow } from './turnManager.js';
 
 export const state = {
   turnCount: 1,
@@ -84,6 +86,9 @@ export const state = {
   // Firestore ni bloquea por sí solo acciones encadenadas del motor (render() suele publicar
   // en mitad de una misma acción síncrona).
   matchSyncBusy: false,
+  // 23.7.2: barrera puramente local hasta que ambos clientes terminaron deck+mulligan.
+  multiplayerWaitingForReady: false,
+  autoZeroBlockersQueued: false,
 
   localHP: 20,
   // Veneno (regla real 104.3c, junto a Infectar en 702.90): condición de derrota
@@ -560,6 +565,25 @@ function promptStarterDeckSelection() {
   );
 }
 
+async function checkBuildFreshness() {
+  try {
+    const url = `${BUILD_MANIFEST_URL}?fresh=${Date.now()}`;
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) return { ok: true, unverifiable: true };
+    const manifest = await response.json();
+    const ok = manifest?.engineVersion === ENGINE_VERSION && manifest?.engineProtocolVersion === ENGINE_PROTOCOL_VERSION;
+    if (!ok) {
+      console.error('BUILD_MISMATCH', { loaded: ENGINE_VERSION, manifest });
+      return { ok: false, manifest };
+    }
+    return { ok: true, manifest };
+  } catch (error) {
+    // Offline/manifest no disponible no impide Solitario; el handshake multiplayer sigue
+    // bloqueando builds distintas del otro lado.
+    return { ok: true, unverifiable: true, error };
+  }
+}
+
 async function boot() {
   // ENTREGA 22: instala listeners de errores/interacciones y el pequeño panel de exportación.
   // Los providers son funciones para evitar copias: la telemetría lee el estado actual sólo
@@ -572,6 +596,15 @@ async function boot() {
     getCurrentUser: () => state.currentUser,
     uploadRemote: uploadTelemetrySession
   });
+
+  const freshness = await checkBuildFreshness();
+  if (!freshness.ok) {
+    const serverVersion = freshness.manifest?.engineVersion || 'más nueva';
+    const loadingOverlay = document.getElementById('boot-loading-overlay');
+    if (loadingOverlay) loadingOverlay.remove();
+    document.body.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#08100b;color:#f0e0b0;font-family:system-ui;padding:24px"><div style="max-width:620px;border:2px solid #d4af37;border-radius:14px;padding:24px;text-align:center;background:#111a13"><h2>♻️ Actualización disponible</h2><p>Esta pestaña cargó Argentinia ${ENGINE_VERSION}, pero el servidor publica ${serverVersion}.</p><p>Recargá la página con Ctrl+F5 / recarga completa antes de jugar.</p></div></div>`;
+    return;
+  }
 
   // Fase 0 del multiplayer: se engancha UNA sola vez, apenas arranca la página, sin
   // importar qué pantalla esté mostrándose en ese momento (menú, Opciones, Enciclopedia, o
@@ -673,19 +706,13 @@ function startPlayFlow() {
 // hace falta coordinar nada con el rival para esto: cada mazo/mano es privado por diseño,
 // así que cada cliente arma el suyo de forma totalmente independiente.
 function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '') {
-  // 23.7.1: multiplayer es exclusivamente con mazos propios guardados. No existe fallback
-  // a identidad/mazo random: cada tester entra con una lista real, reproducible y auditable.
-  const savedDecks = (state.currentUser && state.userProfile && state.userProfile.decks) || [];
-  if (savedDecks.length === 0) {
-    alert('Para jugar Multijugador necesitás al menos un mazo propio guardado en Mis Mazos.');
-    showMainMenu(startPlayFlow, startMultiplayerFlow);
-    return;
-  }
-
+  // Multiplayer normal sigue sin mazos random. 23.8.1 agrega una ÚNICA excepción de QA:
+  // "Mazo de pruebas", determinista y no persistente, visible al pie del picker.
   showPlayDeckPickerModal(
     (chosenDeck) => startMultiplayerMatch(matchId, myRole, { type: 'saved', deck: chosenDeck }, rivalName, rivalPhotoURL),
     null,
-    () => showMainMenu(startPlayFlow, startMultiplayerFlow)
+    () => showMainMenu(startPlayFlow, startMultiplayerFlow),
+    () => startMultiplayerMatch(matchId, myRole, { type: 'test' }, rivalName, rivalPhotoURL)
   );
 }
 
@@ -695,15 +722,25 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '') {
 // con una regla FIJA que ambos clientes calculan por su cuenta con su propio myRole, sin
 // coordinar nada ni sortear nada: el host siempre juega primero.
 function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '') {
-  if (deckSource?.type !== 'saved' || !deckSource.deck) {
-    throw new Error('Multijugador sólo admite mazos propios guardados.');
+  if (state.currentMatch?.engineVersion && !isExactMultiplayerVersionCompatible(state.currentMatch.engineVersion, state.currentMatch.engineProtocolVersion)) {
+    throw new Error(`No se puede iniciar multiplayer con builds distintas (${ENGINE_VERSION} vs ${state.currentMatch.engineVersion}).`);
+  }
+  const isSavedDeck = deckSource?.type === 'saved' && !!deckSource.deck;
+  const isTestDeck = deckSource?.type === 'test';
+  if (!isSavedDeck && !isTestDeck) {
+    throw new Error('Multijugador sólo admite mazos propios guardados o el Mazo de pruebas de QA.');
   }
 
   setupBoardLayout();
   replaceSpellStackFromSync([]);
+  lastKnownPublicWire = null;
+  lastKnownPrivateWire = null;
+  lastAppliedWriterSeq.clear();
 
-  const deckLabel = deckSource.deck.name;
-  state.localDeck = buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements);
+  const deckLabel = isTestDeck ? MULTIPLAYER_TEST_DECK_NAME : deckSource.deck.name;
+  state.localDeck = isTestDeck
+    ? buildMultiplayerTestDeck()
+    : buildDeckFromCardIds(deckSource.deck.cardIds, state.userProfile && state.userProfile.enhancements);
 
   // Arrancan vacíos a propósito — se llenan solos apenas llegue el primer sync del rival
   // con las cantidades reales (ver startListeningToMatch, matchSync.js).
@@ -717,7 +754,7 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
   // BUGFIX: guardamos el nombre real del rival acá — getRivalName() (más arriba en este
   // archivo) lo usa en vez de "El Tano" en todos los mensajes que corren tanto en
   // Solitario como en multiplayer (motor de combate, efectos, turnos).
-  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '' };
+  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '', engineVersion: ENGINE_VERSION, engineProtocolVersion: ENGINE_PROTOCOL_VERSION };
   state.activePlayer = myRole === 'host' ? 'local' : 'rival';
   state.priorityPlayer = state.activePlayer;
   state.phase = 'main1';
@@ -736,15 +773,52 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
 
   // El mulligan es 100% local (solo mira tu propia mano/mazo) — se reusa TAL CUAL de
   // Solitario, sin ningún cambio: nunca necesitó saber nada del rival para funcionar bien.
-  const finishSetup = () => {
-    startListeningToMatch(matchId, myRole);
-    hookGameplayButtons();
+  const finishSetup = async () => {
+    state.multiplayerWaitingForReady = true;
+    showMultiplayerReadyBarrier(rivalName || 'tu rival', true, false);
+
+    // Primero publicamos el estado POST-mulligan completo (incluida mano privada), y sólo
+    // después levantamos nuestro ready. Así "ready" significa de verdad "ya podés leer mi
+    // estado inicial consistente", no simplemente "cerré el modal".
     render();
-    logMsg(deckSource.type === 'saved' ? `¡Arranca la partida! Jugás con "${deckLabel}".` : `¡Arranca la partida! Elegiste ${deckLabel}.`);
-    logMsg(state.activePlayer === 'local' ? "¡Tu turno! Bajá una tierra para empezar." : "Esperando a que tu rival juegue...");
+    await publishMatchState({ force: true });
+    await setMatchPlayerReady(matchId, myRole, true);
+
+    const stopReadyListener = listenToMatch(matchId, (doc) => {
+      if (!doc) return;
+      const bothReady = doc.hostReady === true && doc.guestReady === true;
+      showMultiplayerReadyBarrier(rivalName || 'tu rival', true, bothReady);
+      if (!bothReady) return;
+
+      stopReadyListener();
+      // El snapshot que confirmó bothReady ya contiene el estado inicial post-mulligan de
+      // ambos. Lo aplicamos ANTES de quitar el overlay: así el host nunca puede actuar en
+      // un tablero donde todavía ve 0 cartas/0 mazo del guest por unos milisegundos.
+      Object.assign(state,
+        extractRivalStateFromPublicDoc(doc, myRole),
+        extractSharedStateFromPublicDoc(doc, myRole)
+      );
+      relinkEquipmentAttachments(state);
+      if (Array.isArray(doc.stackState)) replaceSpellStackFromSync(deserializeStackFromPublic(doc.stackState, state, myRole));
+      lastKnownPublicWire = wireClone(doc);
+
+      state.multiplayerWaitingForReady = false;
+      hideMultiplayerReadyBarrier();
+      startListeningToMatch(matchId, myRole);
+      hookGameplayButtons();
+      render();
+      recordTelemetryEvent('multiplayer_both_ready', { matchId, myRole, hostReady: true, guestReady: true });
+      logMsg(`¡Arranca la partida! Jugás con "${deckLabel}".`);
+      logMsg(state.activePlayer === 'local' ? "¡Tu turno! Bajá una tierra para empezar." : "Esperando a que tu rival juegue...");
+    });
   };
 
-  startLocalMulliganFlow(finishSetup);
+  startLocalMulliganFlow(() => { finishSetup().catch(err => {
+    console.error('No se pudo completar la barrera de inicio multiplayer:', err);
+    state.multiplayerWaitingForReady = false;
+    hideMultiplayerReadyBarrier();
+    alert('No se pudo sincronizar el inicio de la partida. Volvé al menú e intentá nuevamente.');
+  }); });
 }
 
 // FASE 4, ETAPA 2: publica MI mitad del estado en Firestore — se llama desde render()
@@ -790,9 +864,31 @@ function wireClone(value) {
   catch { return value; }
 }
 
+function stableWireValue(value, seen = new WeakSet()) {
+  if (value === null || typeof value !== 'object') return value;
+  if (seen.has(value)) return '[Circular]';
+  seen.add(value);
+  if (Array.isArray(value)) {
+    const out = value.map(v => stableWireValue(v, seen));
+    seen.delete(value);
+    return out;
+  }
+  const out = {};
+  Object.keys(value).sort().forEach(key => {
+    const v = value[key];
+    if (v !== undefined && typeof v !== 'function') out[key] = stableWireValue(v, seen);
+  });
+  seen.delete(value);
+  return out;
+}
+
+function stableWireStringify(value) {
+  try { return JSON.stringify(stableWireValue(value)); }
+  catch { try { return JSON.stringify(value); } catch { return String(value); } }
+}
+
 function wireEqual(a, b) {
-  try { return JSON.stringify(a) === JSON.stringify(b); }
-  catch { return a === b; }
+  return stableWireStringify(a) === stableWireStringify(b);
 }
 
 // ENTREGA 23.7 — publica DELTAS, no snapshots completos. Ésta es la barrera que evita que
@@ -831,16 +927,19 @@ async function drainMatchPublishQueue() {
     // legítimos sobre SU propio battlefield (daño/removal resuelto por el jugador activo)
     // sin confundir campos viejos que simplemente quedaron almacenados en el documento.
     const writerSeq = ++matchSyncWriterSeq;
+    const publishId = `pub_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     if (publicKeys.length > 0) {
       publicPatch.syncMeta = {
         writerRole: myRole,
         writerClientId: matchSyncClientId,
         writerSeq,
+        publishId,
+        engineVersion: ENGINE_VERSION,
+        engineProtocolVersion: ENGINE_PROTOCOL_VERSION,
         touchedKeys: [...publicKeys]
       };
     }
 
-    const publishId = `pub_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const startedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 
     recordTelemetryNetwork('sync_publish_start', {
@@ -1675,14 +1774,23 @@ export function startListeningToMatch(matchId, myRole) {
   // mostrarse el modal de "Pagar/No pagar" repetido.
   const handledDecisionIds = new Set();
 
-  return listenToMatch(matchId, (publicDoc) => {
+  return listenToMatch(matchId, (publicDoc, snapshotMeta = {}) => {
     if (!publicDoc) return;
+    const receivePerfStarted = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const receiveClientMs = Number(snapshotMeta.receivedAtClientMs || Date.now());
 
     const syncMeta = publicDoc.syncMeta && typeof publicDoc.syncMeta === 'object' ? publicDoc.syncMeta : null;
     const touchedKeys = syncMeta && Array.isArray(syncMeta.touchedKeys) ? new Set(syncMeta.touchedKeys) : null;
     const writerRole = syncMeta?.writerRole || null;
     const writerClientId = syncMeta?.writerClientId || null;
     const writerSeq = Number(syncMeta?.writerSeq);
+    const syncPublishId = syncMeta?.publishId || null;
+    const serverCommittedAtMs = syncMeta?.serverCommittedAt && typeof syncMeta.serverCommittedAt.toMillis === 'function'
+      ? syncMeta.serverCommittedAt.toMillis()
+      : (Number(syncMeta?.serverCommittedAt?.seconds) * 1000 + Number(syncMeta?.serverCommittedAt?.nanoseconds || 0) / 1e6 || null);
+    const serverToReceiveApproxMs = Number.isFinite(serverCommittedAtMs)
+      ? Math.round(receiveClientMs - serverCommittedAtMs)
+      : null;
 
     // El eco de MI propia escritura es un ACK de transporte, no una orden de gameplay.
     // 23.6 frenó el re-publish del snapshot remoto; 23.7 además impide que un snapshot local
@@ -1734,9 +1842,9 @@ export function startListeningToMatch(matchId, myRole) {
     // eco de nuestro propio publish no parezca un cambio sólo porque `isLocal` se invierte.
     const hasIncomingStack = (!touchedKeys || touchedKeys.has('stackState')) && Object.prototype.hasOwnProperty.call(publicDoc, 'stackState') && Array.isArray(publicDoc.stackState);
     const currentCanonicalStack = hasIncomingStack ? serializeStackForPublic(spellStack, state, myRole) : null;
-    const stackChanged = hasIncomingStack && JSON.stringify(currentCanonicalStack) !== JSON.stringify(publicDoc.stackState);
+    const stackChanged = hasIncomingStack && !wireEqual(currentCanonicalStack, publicDoc.stackState);
 
-    const changedKeys = Object.keys(incoming).filter(key => JSON.stringify(state[key]) !== JSON.stringify(incoming[key]));
+    const changedKeys = Object.keys(incoming).filter(key => !wireEqual(state[key], incoming[key]));
     if (stackChanged) changedKeys.push('spellStack');
     // El documento completo recién observado pasa a ser el baseline de deltas incluso si
     // no cambió ningún campo que este cliente materializa en `state`.
@@ -1750,6 +1858,11 @@ export function startListeningToMatch(matchId, myRole) {
       writerRole,
       writerClientId,
       writerSeq: Number.isFinite(writerSeq) ? writerSeq : null,
+      publishId: syncPublishId,
+      serverCommittedAtMs: Number.isFinite(serverCommittedAtMs) ? serverCommittedAtMs : null,
+      serverToReceiveApproxMs,
+      snapshotFromCache: !!snapshotMeta.fromCache,
+      snapshotHasPendingWrites: !!snapshotMeta.hasPendingWrites,
       turnCount: incoming.turnCount ?? state.turnCount,
       phase: incoming.phase ?? state.phase,
       activePlayer: incoming.activePlayer ?? state.activePlayer,
@@ -1773,10 +1886,24 @@ export function startListeningToMatch(matchId, myRole) {
     remoteSyncApplyDepth++;
     try {
       Object.assign(state, incoming);
+      relinkEquipmentAttachments(state);
       if (hasIncomingStack) {
         replaceSpellStackFromSync(deserializeStackFromPublic(publicDoc.stackState, state, myRole));
+      } else {
+        refreshStackBoardRefs(spellStack, state, myRole);
       }
       render();
+      const renderEnded = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      recordTelemetryNetwork('sync_render_applied', {
+        matchId,
+        myRole,
+        publishId: syncPublishId,
+        writerRole,
+        writerSeq: Number.isFinite(writerSeq) ? writerSeq : null,
+        receiveToRenderMs: Math.max(0, Math.round(renderEnded - receivePerfStarted)),
+        serverCommittedAtMs: Number.isFinite(serverCommittedAtMs) ? serverCommittedAtMs : null,
+        serverToReceiveApproxMs
+      });
     } finally {
       remoteSyncApplyDepth = Math.max(0, remoteSyncApplyDepth - 1);
     }
@@ -1843,6 +1970,7 @@ export function reconstructStateFromMatch(publicDoc, privateDoc, myRole) {
   );
   state.localHand = privateDoc.hand || [];
   state.localDeck = privateDoc.deck || [];
+  relinkEquipmentAttachments(state);
   lastKnownPublicWire = wireClone(publicDoc || {});
   lastKnownPrivateWire = wireClone(privateDoc || {});
   replaceSpellStackFromSync(deserializeStackFromPublic(publicDoc.stackState || [], state, myRole));
@@ -1857,7 +1985,7 @@ function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc, rivalNam
   if (mainMenuOverlay) mainMenuOverlay.remove();
 
   setupBoardLayout();
-  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '' };
+  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '', engineVersion: ENGINE_VERSION, engineProtocolVersion: ENGINE_PROTOCOL_VERSION };
   reconstructStateFromMatch(publicDoc, privateDoc, myRole);
 
   // ENTREGA 22: un refresh corta la ejecución JS anterior, pero su backup queda exportable
@@ -1891,6 +2019,11 @@ function offerReconnectIfStillActive(matchId) {
     .then(matchData => {
       if (!matchData) {
         clearActiveMatchId(state.currentUser.uid).catch(() => {});
+        return;
+      }
+      if (matchData.incompatible) {
+        const remote = matchData.engineVersion || 'versión anterior/desconocida';
+        window.alert(`La partida guardada usa ${remote} y esta pestaña usa ${ENGINE_VERSION}. No se puede reconectar con motores distintos. Actualizá ambas notebooks.`);
         return;
       }
       const myRole = matchData.publicDoc.hostUid === state.currentUser.uid ? 'host' : 'guest';
@@ -2786,13 +2919,21 @@ export function triggerAnyCreatureDeath(deadUnit, deadUnitIsLocal, watchersSnaps
 
 // --- EQUIPAMIENTO REAL (Equip) ---
 // Devuelve los items de la zona de soporte (Equipos) adjuntos a esta criatura.
+function sameBattlefieldObject(a, b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const aId = a._syncObjectId || a._syncDescriptor?.syncObjectId || null;
+  const bId = b._syncObjectId || b._syncDescriptor?.syncObjectId || null;
+  return !!aId && !!bId && aId === bId;
+}
+
 export function getEquipmentOn(itemObj) {
   const localCombat = Array.isArray(state.localCombat) ? state.localCombat : [];
-  const isLocal = localCombat.includes(itemObj);
+  const isLocal = localCombat.some(unit => sameBattlefieldObject(unit, itemObj));
   const supportZone = isLocal
     ? (Array.isArray(state.localSupport) ? state.localSupport : [])
     : (Array.isArray(state.rivalSupport) ? state.rivalSupport : []);
-  return supportZone.filter(s => s && s.attachedTo === itemObj);
+  return supportZone.filter(s => s && sameBattlefieldObject(s.attachedTo, itemObj));
 }
 
 // Cuando una criatura sale del campo de batalla por cualquier vía (muerte, rebote,
@@ -2801,7 +2942,7 @@ export function getEquipmentOn(itemObj) {
 export function detachEquipmentFrom(creatureItem, isLocal) {
   const supportZone = isLocal ? state.localSupport : state.rivalSupport;
   supportZone.forEach(s => {
-    if (s.attachedTo === creatureItem) {
+    if (sameBattlefieldObject(s.attachedTo, creatureItem)) {
       logMsg(`🗡️ ${s.card.name} se cae al piso, pero sigue en tu campo listo para volver a equiparse.`);
       s.attachedTo = null;
     }
@@ -3877,6 +4018,28 @@ export function playCard(index) {
     }
   }
 
+  if (card.effect?.type === 'proliferate') {
+    const proliferables = getProliferateCandidates(state);
+    recordTelemetryEvent('proliferate_precast_scan', {
+      card: card.name,
+      eligibleCount: proliferables.length,
+      eligible: proliferables.map(entry => ({
+        side: entry.ownerIsLocal ? 'local' : 'rival',
+        kind: entry.kind,
+        cardId: entry.item?.card?.id || null,
+        cardName: entry.item?.card?.name || null,
+        counterTypes: entry.counterTypes || []
+      }))
+    });
+    if (proliferables.length === 0 && typeof window !== 'undefined' && typeof window.confirm === 'function') {
+      const ok = window.confirm(`⚠️ ${card.name}: ahora mismo no se detecta ningún permanente o jugador con contadores. Proliferar puede elegir cero, así que el hechizo es legal pero podría no hacer nada. ¿Querés lanzarlo igual?`);
+      if (!ok) {
+        logMsg(`Cancelaste ${card.name} antes de pagar: no había contadores proliferables visibles.`);
+        return;
+      }
+    }
+  }
+
   // Estado de costos de una nueva carta: se fija antes de cualquier modal (modo/X/Kicker)
   // para que una selección anterior jamás pueda filtrarse al nuevo casteo.
   state.pendingAlternativeCostChosen = false;
@@ -4137,6 +4300,20 @@ function tapSupportManaSource(item, isLocal) {
   }
   if (item.tapped) { logMsg(`${item.card.name} ya está girado.`); return; }
   const card = item.card;
+
+  // 23.7.2: un mismo permanente no puede ser sacrificado dos veces para dos componentes
+  // distintos del mismo costo. Si Chatarrero pide {1} + sacrificar un artefacto y este
+  // Fajo es el ÚNICO artefacto elegible, consumirlo como mana source dejaría el costo
+  // imposible. Lo frenamos antes de mutar nada; con otro artefacto presente sí es legal.
+  const pendingSacrifice = state.pendingAbilitySource?.ability?.sacrifice;
+  if (card.sacrificeOnTap && pendingSacrifice && pendingSacrifice !== 'self') {
+    const ownPermanents = [...state.localCombat, ...state.localSupport];
+    const remainingCandidates = ownPermanents.filter(candidate => candidate !== item && isSacrificeCandidate(candidate, pendingSacrifice));
+    if (isSacrificeCandidate(item, pendingSacrifice) && remainingCandidates.length === 0) {
+      logMsg(`⚠️ ${card.name} es tu único ${pendingSacrifice === 'artifact' ? 'artefacto' : 'permanente'} elegible para el otro componente del costo. No podés sacrificarlo para producir maná y sacrificarlo de nuevo.`);
+      return;
+    }
+  }
   const amount = card.manaAmount || 1;
   const colorOrOptions = card.producesOptions || card.produces;
   const used = applyManaToPendingCost(colorOrOptions, amount);

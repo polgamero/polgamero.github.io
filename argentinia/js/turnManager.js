@@ -272,6 +272,16 @@ export async function processMyTurnStart() {
 // charla de arquitectura al arrancar la Fase 4).
 let isResolvingBothPassed = false;
 
+export function beginActivePlayerPriorityWindow() {
+  if (state.gameOver) return;
+  state.priorityPlayer = state.activePlayer;
+  state.consecutivePasses = 0;
+  render();
+  if (!state.currentMatch && state.priorityPlayer === 'rival') {
+    setTimeout(takeBotPriorityAction, 600);
+  }
+}
+
 export async function passPriority(player) {
   if (state.gameOver) return;
 

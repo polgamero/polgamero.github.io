@@ -36,7 +36,7 @@ import {
 import { moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming } from './utils.js';
 
 import { assignBotBlockers, triggerCombatAbility, triggerAnyCreatureAttacks, queueDeclaredBlockTriggers, markDeclaredBlocks, checkDeaths } from './combatRules.js';
-import { addToStack, spellStack, getCounterTargetRestriction, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
+import { addToStack, spellStack, isStackItemLegalCounterTarget, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
 
 // Punto 14: affordability de una ruta de casteo completa. La vía alternativa reemplaza
 // sólo el costo base; Kicker y additionalCost siguen sumándose. El piso de 5 de vida es
@@ -715,19 +715,7 @@ export async function checkRivalCounterOrResponse() {
     if (isCounterSpell(c)) {
       // Un counter normal solo le sirve al Tano contra HECHIZOS (nunca habilidades) a
       // menos que la carta lo diga explícitamente — misma regla real de MTG.
-      const restriction = getCounterTargetRestriction(c.effect.type);
-      const matchesStackItem = (s) => {
-        if (!s.isLocal) return false;
-        const isAbility = s.type === 'ability';
-        return isAbility ? restriction.allowAbility : restriction.allowSpell;
-      };
-      if (c.effect.type === 'counter_creature') {
-        return spellStack.some(s => matchesStackItem(s) && s.card?.type?.includes('Criatura'));
-      }
-      if (c.effect.type === 'counter_non_creature') {
-        return spellStack.some(s => matchesStackItem(s) && !s.card?.type?.includes('Criatura'));
-      }
-      return spellStack.some(matchesStackItem);
+      return spellStack.some(s => s.isLocal && isStackItemLegalCounterTarget(c.effect.type, s));
     }
 
     // Fuera de counters, solo consideramos jugarla en respuesta si no necesita objetivo,
@@ -750,12 +738,7 @@ export async function checkRivalCounterOrResponse() {
 
     let targetObj = null;
     if (isCounterSpell(responseCard)) {
-      const restriction = getCounterTargetRestriction(responseCard.effect.type);
-      const topLocalSpell = [...spellStack].reverse().find(s => {
-        if (!s.isLocal) return false;
-        const isAbility = s.type === 'ability';
-        return isAbility ? restriction.allowAbility : restriction.allowSpell;
-      });
+      const topLocalSpell = [...spellStack].reverse().find(s => s.isLocal && isStackItemLegalCounterTarget(responseCard.effect.type, s));
       if (topLocalSpell) {
         targetObj = { type: 'stack', stackId: topLocalSpell.id };
       }
