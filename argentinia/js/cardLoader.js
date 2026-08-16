@@ -1,10 +1,11 @@
 // js/cardLoader.js
-// ENTREGA 23.8.3 — guardas anti-duplicación / anti-rate-limit.
-// IMPORTANTE: el runtime NO hace HEAD/GET masivos para auditar imágenes. La existencia de
-// assets se audita offline; en juego, una imagen se solicita únicamente cuando realmente
-// se renderiza una carta.
+// ENTREGA 23.8.4 — auditoría segura por manifest + guardas anti-duplicación / anti-rate-limit.
+// IMPORTANTE: el runtime NO hace HEAD/GET por carta. GitHub Actions genera un único manifest
+// estático con los archivos existentes y el navegador lo consulta una sola vez.
 
 import { POOL_BASELINE } from './poolContract.js';
+
+const IMAGE_MANIFEST_URL = './assets/images/cards/cards-image-manifest.json';
 
 const DATA_FILES = {
   tierras: './assets/data/tierras.json',
@@ -73,6 +74,8 @@ class CardDatabase {
     this.allCards = [];
     this.isLoaded = false;
     this.loadPromise = null;
+    this.imageManifest = null;
+    this.imageManifestPromise = null;
   }
 
   async loadAll() {
@@ -129,14 +132,76 @@ class CardDatabase {
 
     console.log(`[CardDatabase] Pool validado: ${this.allCards.length}/${POOL_BASELINE.total} cartas.`, counts);
 
-    // Diagnóstico LOCAL, sin una sola request de red. Sólo avisa si al JSON le falta el
-    // nombre del archivo; NO intenta comprobar remotamente 501 imágenes.
-    const withoutImageField = this.allCards.filter(card => !card?.image);
-    if (withoutImageField.length) {
-      console.warn(`[CardDatabase] ${withoutImageField.length} carta(s) sin campo image en JSON. La existencia de archivos se audita offline.`);
-    }
+    // Conserva la tabla útil de imágenes faltantes, pero con UNA sola request al manifest
+    // generado por GitHub Actions. Es fire-and-forget: jamás bloquea el arranque del juego.
+    void this.reportMissingImagesFromManifest();
 
     return this.allCards;
+  }
+
+  async loadImageManifest({ force = false } = {}) {
+    if (this.imageManifest && !force) return this.imageManifest;
+    if (this.imageManifestPromise && !force) return this.imageManifestPromise;
+
+    const url = force ? `${IMAGE_MANIFEST_URL}?audit=${Date.now()}` : IMAGE_MANIFEST_URL;
+    const promise = (async () => {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) {
+        const error = new Error(`No se pudo cargar el manifiesto de imágenes: HTTP ${response.status}`);
+        error.code = response.status === 404 ? 'IMAGE_MANIFEST_NOT_AVAILABLE' : 'IMAGE_MANIFEST_HTTP_ERROR';
+        error.status = response.status;
+        throw error;
+      }
+      const manifest = await response.json();
+      if (!manifest || manifest.schemaVersion !== 1 || !Array.isArray(manifest.missing)) {
+        const error = new Error('El manifiesto de imágenes no tiene el formato esperado.');
+        error.code = 'IMAGE_MANIFEST_INVALID';
+        throw error;
+      }
+      this.imageManifest = manifest;
+      return manifest;
+    })();
+
+    if (!force) this.imageManifestPromise = promise;
+    try {
+      return await promise;
+    } finally {
+      if (!force) this.imageManifestPromise = null;
+    }
+  }
+
+  async getImageAudit({ force = false } = {}) {
+    const manifest = await this.loadImageManifest({ force });
+    return {
+      ...manifest,
+      missingPreview: manifest.missing.slice(0, 20)
+    };
+  }
+
+  async reportMissingImagesFromManifest() {
+    try {
+      const audit = await this.getImageAudit();
+      const imageStats = audit.images || {};
+      const missing = Array.isArray(audit.missing) ? audit.missing : [];
+      console.log(`[CardDatabase] Auditoría segura de imágenes: ${missing.length} carta(s) sin archivo; ${imageStats.existingFileCount ?? '?'} archivo(s) presentes. 1 manifest, 0 probes por carta.`);
+      if (missing.length) {
+        console.groupCollapsed(`[CardDatabase] Primeras ${Math.min(20, missing.length)} imágenes faltantes de ${missing.length}`);
+        console.table(missing.slice(0, 20).map(entry => ({
+          id: entry.id,
+          carta: entry.name,
+          categoria: entry.category,
+          png: entry.image
+        })));
+        console.info('Lista completa: Admin → DEBUGGING → Auditoría de imágenes.');
+        console.groupEnd();
+      }
+    } catch (error) {
+      if (error?.code === 'IMAGE_MANIFEST_NOT_AVAILABLE') {
+        console.warn('[CardDatabase] Manifiesto de imágenes no disponible. Activá el deploy por GitHub Actions de la Entrega 23.8.4 para generarlo automáticamente.');
+      } else {
+        console.warn('[CardDatabase] No se pudo leer la auditoría de imágenes (el juego continúa normalmente):', error);
+      }
+    }
   }
 
   getByCategory(category) {

@@ -3114,6 +3114,22 @@ export function showAdminPanel(onBack) {
 
       <div class="admin-tab-pane hidden" data-admin-pane="debug">
         <div class="admin-section">
+          <div class="admin-section-title">🖼️ Auditoría de imágenes</div>
+          <div class="admin-debug-toolbar">
+            <div class="admin-debug-summary" id="admin-image-summary">Entrá a esta solapa para leer el manifiesto generado en el deploy.</div>
+            <button class="admin-save-btn admin-debug-refresh" id="admin-image-refresh">🔄 Actualizar</button>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;">
+            <button class="admin-save-btn" id="admin-image-toggle" style="display:none;">Ver todas</button>
+            <button class="admin-save-btn" id="admin-image-download-txt" disabled>⬇ TXT de PNG faltantes</button>
+            <button class="admin-save-btn" id="admin-image-download-json" disabled>⬇ JSON</button>
+          </div>
+          <div class="admin-debug-table-wrap" id="admin-image-table-wrap">
+            <div class="admin-debug-empty">Cargando manifiesto…</div>
+          </div>
+        </div>
+
+        <div class="admin-section">
           <div class="admin-section-title">Caja negra — historial de partidas</div>
           <div class="admin-debug-toolbar">
             <div class="admin-debug-summary" id="admin-debug-summary">Entrá a esta solapa para cargar los logs.</div>
@@ -3131,6 +3147,10 @@ export function showAdminPanel(onBack) {
   let debugLoaded = false;
   let debugLoading = false;
   let debugSessions = [];
+  let imageAuditLoaded = false;
+  let imageAuditLoading = false;
+  let imageAuditShowAll = false;
+  let imageAudit = null;
 
   function parseAdminJson(value, fallback = {}) {
     if (typeof value !== 'string' || !value) return fallback;
@@ -3165,6 +3185,81 @@ export function showAdminPanel(onBack) {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function downloadAdminText(text, filename) {
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function renderImageAudit(audit) {
+    const wrap = overlay.querySelector('#admin-image-table-wrap');
+    const summary = overlay.querySelector('#admin-image-summary');
+    const toggle = overlay.querySelector('#admin-image-toggle');
+    const txtBtn = overlay.querySelector('#admin-image-download-txt');
+    const jsonBtn = overlay.querySelector('#admin-image-download-json');
+    const missing = Array.isArray(audit?.missing) ? audit.missing : [];
+    const stats = audit?.images || {};
+    const generated = audit?.generatedAt ? formatTelemetryDate(audit.generatedAt) : '—';
+
+    summary.textContent = `${missing.length} carta${missing.length === 1 ? '' : 's'} sin imagen · ${stats.existingFileCount ?? '?'} archivo${stats.existingFileCount === 1 ? '' : 's'} presente${stats.existingFileCount === 1 ? '' : 's'} · manifest ${generated}.`;
+    txtBtn.disabled = false;
+    jsonBtn.disabled = false;
+
+    if (!missing.length) {
+      toggle.style.display = 'none';
+      wrap.innerHTML = '<div class="admin-debug-empty">✅ Todas las cartas con campo image tienen su archivo presente.</div>';
+      return;
+    }
+
+    toggle.style.display = missing.length > 20 ? '' : 'none';
+    toggle.textContent = imageAuditShowAll ? 'Mostrar primeras 20' : `Ver todas (${missing.length})`;
+    const rows = (imageAuditShowAll ? missing : missing.slice(0, 20)).map(entry => `
+      <tr>
+        <td><code>${escapeHtml(entry.id || '—')}</code></td>
+        <td>${escapeHtml(entry.name || '—')}</td>
+        <td>${escapeHtml(entry.category || '—')}</td>
+        <td><code>${escapeHtml(entry.image || '—')}</code></td>
+      </tr>
+    `).join('');
+    wrap.innerHTML = `
+      <table class="admin-debug-table">
+        <thead><tr><th>ID</th><th>Carta</th><th>Categoría</th><th>PNG esperado</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${!imageAuditShowAll && missing.length > 20 ? `<div class="admin-debug-empty">Mostrando 20 de ${missing.length}. No se hicieron requests a las imágenes.</div>` : ''}
+    `;
+  }
+
+  async function reloadImageAudit(force = false) {
+    if (imageAuditLoading) return;
+    imageAuditLoading = true;
+    const refreshBtn = overlay.querySelector('#admin-image-refresh');
+    const wrap = overlay.querySelector('#admin-image-table-wrap');
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = '⏳ Cargando…';
+    wrap.innerHTML = '<div class="admin-debug-empty">Leyendo un único cards-image-manifest.json…</div>';
+    try {
+      imageAudit = await cardDb.getImageAudit({ force });
+      imageAuditLoaded = true;
+      renderImageAudit(imageAudit);
+    } catch (err) {
+      console.error('No se pudo cargar el manifiesto de imágenes:', err);
+      imageAuditLoaded = false;
+      overlay.querySelector('#admin-image-summary').textContent = 'Manifest no disponible.';
+      wrap.innerHTML = `<div class="admin-debug-error">No se encontró la auditoría automática de imágenes.<br>${escapeHtml(err?.message || String(err))}<br><br>En GitHub: Settings → Pages → Source: GitHub Actions. Luego hacé un deploy de esta versión.</div>`;
+    } finally {
+      imageAuditLoading = false;
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = '🔄 Actualizar';
+    }
   }
 
   function telemetryBugCounts(session) {
@@ -3287,13 +3382,30 @@ export function showAdminPanel(onBack) {
   function activateAdminTab(key) {
     overlay.querySelectorAll('[data-admin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === key));
     overlay.querySelectorAll('[data-admin-pane]').forEach(pane => pane.classList.toggle('hidden', pane.dataset.adminPane !== key));
-    if (key === 'debug' && !debugLoaded) reloadTelemetryHistory();
+    if (key === 'debug') {
+      if (!debugLoaded) reloadTelemetryHistory();
+      if (!imageAuditLoaded) reloadImageAudit(false);
+    }
   }
 
   overlay.querySelectorAll('[data-admin-tab]').forEach(btn => {
     btn.addEventListener('click', () => activateAdminTab(btn.dataset.adminTab));
   });
   overlay.querySelector('#admin-debug-refresh').addEventListener('click', reloadTelemetryHistory);
+  overlay.querySelector('#admin-image-refresh').addEventListener('click', () => reloadImageAudit(true));
+  overlay.querySelector('#admin-image-toggle').addEventListener('click', () => {
+    imageAuditShowAll = !imageAuditShowAll;
+    if (imageAudit) renderImageAudit(imageAudit);
+  });
+  overlay.querySelector('#admin-image-download-txt').addEventListener('click', () => {
+    if (!imageAudit) return;
+    const missing = Array.isArray(imageAudit.missing) ? imageAudit.missing : [];
+    downloadAdminText(missing.map(entry => entry.image).join('\n') + (missing.length ? '\n' : ''), `Argentinia_imagenes_faltantes_v${ENGINE_VERSION}.txt`);
+  });
+  overlay.querySelector('#admin-image-download-json').addEventListener('click', () => {
+    if (!imageAudit) return;
+    downloadAdminJson(imageAudit, `Argentinia_auditoria_imagenes_v${ENGINE_VERSION}.json`);
+  });
 
   // Carga la lista real de usuarios de forma asíncrona — no bloquea el resto del panel.
   const recipientSelect = overlay.querySelector('#grant-recipient');
