@@ -36,9 +36,9 @@ jobs:
           test -d argentinia/assets/images/cards
           echo "OK: polgamero.github.io/argentinia layout detected"
 
-      - name: Generate card image manifest and validate 501-card pool
+      - name: Generate card image manifest and validate 511-card pool
         working-directory: ./argentinia
-        run: python tools/generate_image_manifest.py --root . --expected-total 501
+        run: python tools/generate_image_manifest.py --root . --expected-total 511
 
       - name: Verify generated manifest
         run: |
