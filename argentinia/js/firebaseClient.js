@@ -527,6 +527,28 @@ export async function publishMyPrivateState(matchId, uid, privatePatch) {
   await setDoc(doc(db, 'matches', matchId, 'private', uid), privatePatch, { merge: true });
 }
 
+
+// ENTREGA 23.10 — CANAL EFÍMERO PARTICIPANT-ONLY PARA SELECCIONES PRIVADAS.
+// A diferencia del documento público matches/{matchId}, estos documentos sólo pueden ser
+// leídos/escritos por host o guest del match (ver reglas 23.10). Nunca son la fuente de verdad
+// de mano/mazo: contienen únicamente una OFERTA saneada (tokens opacos o descriptores que el
+// propio efecto permite revelar). La zona real sigue viviendo exclusivamente en private/{uid}.
+export async function publishPrivateSelectionOffer(matchId, requestId, offer) {
+  await setDoc(doc(db, 'matches', matchId, 'privateSelections', requestId), {
+    ...offer,
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function fetchPrivateSelectionOffer(matchId, requestId) {
+  const snap = await getDoc(doc(db, 'matches', matchId, 'privateSelections', requestId));
+  return snap.exists() ? snap.data() : null;
+}
+
+export async function deletePrivateSelectionOffer(matchId, requestId) {
+  await deleteDoc(doc(db, 'matches', matchId, 'privateSelections', requestId));
+}
+
 // ============================================================================
 // PANEL DE ADMIN: "regalar puntos/Fichas" — la protección real de todo esto vive en
 // firestore.rules (users/{userId}: el admin solo puede tocar points/fichas, nunca otro

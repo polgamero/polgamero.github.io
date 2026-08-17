@@ -1227,5 +1227,82 @@
         "trample"
       ]
     }
+  },
+  {
+    "id": "conj_059",
+    "name": "Allanamiento de Madrugada",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Mirá la mano del jugador rival. Elegí una carta que no sea tierra. Ese jugador descarta esa carta.",
+    "flavorText": "La puerta cedió antes que la excusa.",
+    "image": "corralito.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "hand",
+      "amount": 1,
+      "visibility": "reveal_candidates",
+      "destination": "graveyard",
+      "range": "all",
+      "filter": "nonland",
+      "target": "opponent_player"
+    }
+  },
+  {
+    "id": "conj_060",
+    "name": "Archivo Clasificado",
+    "type": "Conjuro",
+    "manaCost": "{3}{U}{B}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "text": "Mirá las cinco primeras cartas del mazo del jugador rival. Elegí dos. Exiliá esas cartas.",
+    "flavorText": "Dos páginas bastaron para cambiar la versión oficial.",
+    "image": "turno_morgue.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "deck",
+      "amount": 2,
+      "visibility": "reveal_candidates",
+      "destination": "exile",
+      "range": "top_n",
+      "rangeCount": 5,
+      "filter": "any",
+      "target": "opponent_player"
+    }
+  },
+  {
+    "id": "conj_061",
+    "name": "Al Fondo del Cajón",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Mirá la mano del jugador rival. Elegí una carta de ella. Poné esa carta en el fondo de su mazo.",
+    "flavorText": "No desapareció. Quedó donde nadie la iba a buscar pronto.",
+    "image": "planos_del_puerto.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "hand",
+      "amount": 1,
+      "visibility": "reveal_candidates",
+      "destination": "bottom",
+      "range": "all",
+      "filter": "any",
+      "target": "opponent_player"
+    }
   }
 ]

@@ -69,12 +69,16 @@ export const els = {
   localPlayerCard: document.querySelector('.player-card.local-card'),
   rivalPlayerCard: document.querySelector('.player-card.rival-card'),
   turnPriorityHud: document.getElementById('turn-priority-hud'),
+  turnOwnerBadge: document.getElementById('turn-owner-badge'),
+  turnPhaseBadge: document.getElementById('turn-phase-badge'),
   priorityOwnerBadge: document.getElementById('priority-owner-badge'),
+  priorityStateChip: document.getElementById('priority-state-chip'),
   priorityContextLabel: document.getElementById('priority-context-label'),
   priorityClock: document.getElementById('priority-clock'),
   priorityFuseFill: document.getElementById('priority-fuse-fill'),
   priorityFuseSpark: document.getElementById('priority-fuse-spark'),
   priorityCountdown: document.getElementById('priority-countdown'),
+  priorityPauseLabel: document.getElementById('priority-pause-label'),
 
   gameOverOverlay: document.getElementById('game-over-overlay'),
   gameOverTitle: document.getElementById('game-over-title'),
@@ -441,6 +445,92 @@ export function showKickerModal(card, onConfirm, onCancel) {
   });
 }
 
+
+// ENTREGA 23.10 — elegir VÍA de casteo antes de targets/pago. Una alternativa es una
+// decisión de 601.2b, no un botón que aparece cuando ya empezaste a girar tierras.
+export function showAlternativeCostModal(card, alternativeLabel, onConfirm, onCancel) {
+  injectMulliganStyles();
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'gy-modal-overlay';
+  modalOverlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width: 460px;">
+      <div class="gy-modal-header"><h3>🔀 ${card.name} — Vía de casteo</h3></div>
+      <div style="display:flex; flex-direction:column; gap:10px; padding:16px;">
+        <p style="color:#cfe0d4;font-size:13px;margin:0 0 4px;">Elegí el costo base antes de declarar objetivos.</p>
+        <button class="loyalty-ability-btn" id="cast-normal"><span class="loyalty-ability-text">💠 Normal: ${card.manaCost || '{0}'}</span></button>
+        <button class="loyalty-ability-btn" id="cast-alt"><span class="loyalty-ability-text">🔀 Alternativo: ${alternativeLabel}</span></button>
+        <button id="cast-route-cancel" class="mulligan-btn mulligan-btn-mull">❌ Cancelar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modalOverlay);
+  modalOverlay.querySelector('#cast-normal').addEventListener('click', () => { modalOverlay.remove(); onConfirm(false); });
+  modalOverlay.querySelector('#cast-alt').addEventListener('click', () => { modalOverlay.remove(); onConfirm(true); });
+  modalOverlay.querySelector('#cast-route-cancel').addEventListener('click', () => { modalOverlay.remove(); onCancel(); });
+}
+
+// ENTREGA 23.10 — selector universal de una OFERTA privada saneada. En opaque_slots la UI
+// recibe únicamente tokens y posiciones: no existe card.name/id en este cliente. Si una
+// regla futura dice explícitamente "mirá/revelá", reveal_candidates puede mostrar sólo los
+// descriptores temporales autorizados sin materializar rivalHand/rivalDeck.
+export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel = null) {
+  injectMulliganStyles();
+  const overlay = document.createElement('div');
+  overlay.className = 'gy-modal-overlay';
+  const amount = Math.max(0, Number(offer?.amount || 0));
+  const chosen = new Set();
+  const zoneLabel = offer?.zone === 'deck' ? 'mazo rival' : 'mano rival';
+  overlay.innerHTML = `
+    <div class="gy-modal-content" style="max-width:760px;">
+      <div class="gy-modal-header"><h3>🔐 ${cardName || 'Efecto'} — ${zoneLabel}</h3></div>
+      <div style="padding:16px;">
+        <p id="private-zone-hint" style="color:#cfe0d4;font-size:13px;">Elegí ${amount} carta${amount===1?'':'s'} · 0/${amount}</p>
+        <div id="private-zone-row" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:16px 0;"></div>
+        <div class="mulligan-buttons">
+          ${onCancel ? '<button id="private-zone-cancel" class="mulligan-btn mulligan-btn-mull">❌ Cancelar</button>' : ''}
+          <button id="private-zone-confirm" class="mulligan-btn mulligan-btn-keep" disabled>Confirmar elección</button>
+        </div>
+      </div>
+    </div>`;
+  const row = overlay.querySelector('#private-zone-row');
+  const hint = overlay.querySelector('#private-zone-hint');
+  const confirm = overlay.querySelector('#private-zone-confirm');
+  (offer?.candidates || []).forEach((entry, idx) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'loyalty-ability-btn';
+    btn.style.cssText = 'width:128px;min-height:170px;display:flex;align-items:center;justify-content:center;text-align:center;';
+    btn.dataset.token = entry.token;
+    if (entry.selectable === false) {
+      btn.disabled = true;
+      btn.style.opacity = '0.45';
+      btn.title = 'Esta carta fue revelada, pero no cumple la restricción de elección.';
+    }
+    if (offer.visibility === 'reveal_candidates' && entry.card) {
+      btn.innerHTML = `<span class="loyalty-ability-text"><strong>${entry.card.name || 'Carta'}</strong><br><small>${entry.card.type || ''}</small></span>`;
+    } else {
+      btn.innerHTML = `<span class="loyalty-ability-text" style="font-size:30px;">🂠<br><small>Carta ${idx + 1}</small></span>`;
+      btn.title = 'Carta privada: identidad no revelada';
+    }
+    btn.addEventListener('click', () => {
+      if (entry.selectable === false) return;
+      const token = entry.token;
+      if (chosen.has(token)) { chosen.delete(token); btn.classList.remove('chosen'); }
+      else if (chosen.size < amount) { chosen.add(token); btn.classList.add('chosen'); }
+      hint.textContent = `Elegí ${amount} carta${amount===1?'':'s'} · ${chosen.size}/${amount}`;
+      confirm.disabled = chosen.size !== amount;
+    });
+    row.appendChild(btn);
+  });
+  document.body.appendChild(overlay);
+  confirm.addEventListener('click', () => {
+    if (chosen.size !== amount) return;
+    const tokens = [...chosen];
+    overlay.remove();
+    onConfirm(tokens);
+  });
+  if (onCancel) overlay.querySelector('#private-zone-cancel').addEventListener('click', () => { overlay.remove(); onCancel(); });
+}
+
 // FASE 2: confirmación antes de abandonar — es una acción con penalidad real de puntos, así
 // que nunca se ejecuta con un solo click. Mismo esqueleto que showKickerModal.
 export function showAbandonConfirmModal(onConfirm, onCancel) {
@@ -775,8 +865,13 @@ export function getTargetRules(card) {
     return { allowPlayer: false, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: true, allowRivalPermanent: true, permanentFilter: 'Encantamiento' };
   }
   if (effectType === 'prevent_attack') {
-    // Este efecto es "el jugador objetivo", no una criatura ni un permanente.
+    // Efecto GLOBAL: el jugador objetivo no puede declarar combate (Cuarentena Total).
     return { allowPlayer: true, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
+  }
+  if (effectType === 'cant_attack_next_turn') {
+    // 23.9.3: contrato distinto — una criatura concreta no puede atacar en el próximo turno
+    // de su controlador. No debe colapsar al jugador entero como hacía prevent_attack.
+    return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
   }
   if (effectType === 'pump' || effectType === 'grant_keyword_temp') {
     // Trucos de combate: solo tiene sentido apuntar a tu propia criatura.
@@ -792,6 +887,11 @@ export function getTargetRules(card) {
     return { allowPlayer: false, allowLocalCreature: false, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
   }
   if (effectType === 'discard') {
+    return { allowPlayer: true, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
+  }
+  if (effectType === 'private_zone_move') {
+    // El objeto elegido durante CR 601/602 es el JUGADOR; la carta concreta de Hand/Deck
+    // se conoce recién durante resolución a través del protocolo privado.
     return { allowPlayer: true, allowLocalCreature: false, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
   }
   if (effectType === 'poison') {
@@ -4830,39 +4930,65 @@ function getStackTopDisplayName() {
   return top.card?.name || 'la cima de la pila';
 }
 
+function getPriorityPauseLabel(activity) {
+  const labels = {
+    ready: 'SINCRONIZANDO', resolving: 'RESOLVIENDO', discarding: 'DESCARTANDO',
+    paying_mana: 'PAGANDO COSTE', choosing_target: 'ELIGIENDO OBJETIVO', choosing_ability: 'ELIGIENDO HABILIDAD',
+    choosing_sacrifice: 'ELIGIENDO SACRIFICIO', choosing_attackers: 'DECLARANDO ATACANTES', choosing_blockers: 'DECLARANDO BLOQUEADORES',
+    assigning_damage: 'ASIGNANDO DAÑO', remote_decision: 'DECISIÓN PENDIENTE', choosing_cards: 'SELECCIONANDO CARTAS',
+    choosing_mode: 'ELIGIENDO MODO', resolution_choice: 'ELECCIÓN DE RESOLUCIÓN', blocked: 'ACCIÓN OBLIGATORIA'
+  };
+  return labels[activity] || String(activity || 'PAUSADO').replaceAll('_', ' ').toUpperCase();
+}
+
 export function refreshTurnPriorityHudClock() {
   if (!els.priorityClock || !els.priorityFuseFill || !els.priorityCountdown) return;
   const isMulti = !!state.currentMatch && !state.gameOver;
   if (!isMulti) {
     els.priorityClock.classList.add('hidden');
+    els.priorityPauseLabel?.classList.add('hidden');
     return;
   }
 
   els.priorityClock.classList.remove('hidden');
   const activity = getEffectivePriorityActivity(state);
   const running = canPriorityClockRun(state);
+  const paused = !!(state.priorityClockPausedLocal || activity || !running);
   const duration = Math.max(1000, Number(state.priorityClockDurationMs) || PRIORITY_CLOCK_DURATION_MS);
   const remaining = Math.max(0, Math.min(duration, Number(state.priorityClockRemainingMs ?? duration)));
   const fraction = Math.max(0, Math.min(1, remaining / duration));
   const seconds = Math.ceil(remaining / 1000);
   els.priorityFuseFill.style.width = `${(fraction * 100).toFixed(2)}%`;
   if (els.priorityFuseSpark) els.priorityFuseSpark.style.left = `calc(${(fraction * 100).toFixed(2)}% - 8px)`;
-  els.priorityCountdown.textContent = state.priorityClockPausedLocal || activity ? '⏸' : `${seconds}`;
-  els.priorityClock.classList.toggle('paused', !!(state.priorityClockPausedLocal || activity || !running));
+  // 23.9.1: el número queda CONGELADO y visible durante la pausa. El usuario ve cuánto
+  // tiempo conserva; el motivo aparece debajo. No mostramos sólo "⏸", que ocultaba información.
+  els.priorityCountdown.textContent = `${seconds}`;
+  els.priorityClock.classList.toggle('paused', paused);
   els.priorityClock.classList.toggle('danger', running && remaining <= 5000);
   els.priorityClock.classList.toggle('expired', running && remaining <= 0);
+  if (els.priorityPauseLabel) {
+    const reason = activity || state.priorityClockPauseReasonLocal;
+    els.priorityPauseLabel.textContent = `⏸ PAUSADO · ${getPriorityPauseLabel(reason)}`;
+    els.priorityPauseLabel.classList.toggle('hidden', !paused || !reason);
+  }
 }
 
 function renderTurnPriorityHud() {
   const topName = getStackTopDisplayName();
   const copy = getPriorityUxCopy(state, getLocalPlayerName(), getRivalName(), topName);
-  const turnBadge = document.getElementById('turn-owner-badge');
-  if (turnBadge) turnBadge.textContent = copy.turnText;
+  if (els.turnOwnerBadge) els.turnOwnerBadge.textContent = copy.turnOwnerText;
+  if (els.turnPhaseBadge) els.turnPhaseBadge.textContent = copy.phaseText;
   if (els.priorityOwnerBadge) els.priorityOwnerBadge.textContent = copy.priorityText;
   if (els.priorityContextLabel) els.priorityContextLabel.textContent = copy.contextText;
+  if (els.priorityStateChip) {
+    els.priorityStateChip.textContent = copy.stateChipText;
+    els.priorityStateChip.className = `priority-state-chip ${copy.stateChipKind || ''}`.trim();
+  }
   if (els.turnPriorityHud) {
     els.turnPriorityHud.classList.toggle('my-priority', copy.isMyPriority && (state.consecutivePasses || 0) < 2);
     els.turnPriorityHud.classList.toggle('rival-priority', !copy.isMyPriority && (state.consecutivePasses || 0) < 2);
+    els.turnPriorityHud.classList.toggle('my-turn', copy.isMyTurn);
+    els.turnPriorityHud.classList.toggle('rival-turn', !copy.isMyTurn);
     els.turnPriorityHud.classList.toggle('resolving', (state.consecutivePasses || 0) >= 2);
   }
   if (els.localPlayerCard) {
@@ -4874,6 +5000,36 @@ function renderTurnPriorityHud() {
     els.rivalPlayerCard.classList.toggle('has-priority-player', !copy.isMyPriority && (state.consecutivePasses || 0) < 2);
   }
   refreshTurnPriorityHudClock();
+}
+
+function renderPhaseProgress() {
+  const phaseOrder = [
+    ['dot-untap', 'untap'], ['dot-upkeep', 'upkeep'], ['dot-draw', 'draw'], ['dot-main1', 'main1'],
+    ['dot-combat', 'combat'], ['dot-main2', 'main2'], ['dot-end', 'end_step'], ['dot-cleanup', 'cleanup']
+  ];
+  const phaseIndex = state.phase?.startsWith('combat')
+    ? 4
+    : phaseOrder.findIndex(([, key]) => key === state.phase);
+
+  phaseOrder.forEach(([id], idx) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('active', 'completed', 'blinking');
+    if (phaseIndex >= 0 && idx < phaseIndex) el.classList.add('completed');
+    if (phaseIndex >= 0 && idx === phaseIndex) el.classList.add('active', 'blinking');
+  });
+
+  const combatDot = document.getElementById('dot-combat');
+  if (combatDot) {
+    const labels = {
+      combat_begin: 'Combate · Inicio', combat_attackers: 'Combate · Atacantes',
+      combat_blockers: 'Combate · Bloqueadores', combat_damage: 'Combate · Daño', combat_end: 'Combate · Fin'
+    };
+    const label = labels[state.phase] || 'Combate';
+    combatDot.dataset.phaseLabel = label;
+    combatDot.title = label;
+    combatDot.setAttribute('aria-label', label);
+  }
 }
 export function render() {
   state.localHP = Math.max(0, Math.min(20, state.localHP));
@@ -4920,32 +5076,8 @@ export function render() {
   // --- 1. GESTIÓN VISUAL DEL HUD Y FASES ---
   renderTurnPriorityHud();
 
-// Despintamos todos (solo quitamos los estados activos para no romper el layout)
-  ['dot-upkeep', 'dot-main1', 'dot-combat', 'dot-main2', 'dot-end'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.remove('active', 'blinking');
-  });
-
-  // Pintamos según progreso
-  if (state.phase === 'untap' || state.phase === 'upkeep' || state.phase === 'draw') document.getElementById('dot-upkeep')?.classList.add('active', 'blinking');
-  if (state.phase === 'main1') document.getElementById('dot-main1')?.classList.add('active', 'blinking');
-  if (state.phase.startsWith('combat')) document.getElementById('dot-combat')?.classList.add('active', 'blinking');
-  if (state.phase === 'main2') document.getElementById('dot-main2')?.classList.add('active', 'blinking');
-  if (state.phase === 'end_step' || state.phase === 'cleanup') document.getElementById('dot-end')?.classList.add('active', 'blinking');
-
-  const subphaseText = document.getElementById('combat-subphase-text');
-  if (state.phase.startsWith('combat_')) {
-      const labels = {
-          'combat_begin': 'Inicio',
-          'combat_attackers': 'Atacantes',
-          'combat_blockers': 'Bloqueadores',
-          'combat_damage': 'Daño',
-          'combat_end': 'Fin'
-      };
-      if (subphaseText) subphaseText.textContent = `- ${labels[state.phase]}`;
-  } else {
-      if (subphaseText) subphaseText.textContent = '';
-  }
+// 23.9.1: progreso de fase mínimo — puntos + tooltip, sin texto persistente.
+  renderPhaseProgress();
 
   // --- 2. GESTIÓN DEL BOTÓN DE ACCIÓN / PASAR PRIORIDAD ---
   // BUGFIX: antes solo chequeaba damageModalOpen/pendingRampChoice — "Pasar Prioridad"
@@ -4955,7 +5087,7 @@ export function render() {
   // menos que pagues, etc.) — arriesgando una condición de carrera con esa resolución.
   // Misma lista que ya usa canPlayCard (más pendingTargetCard/pendingSacrificeChoice/
   // pendingHybridLifePayment, que faltaban ahí también).
-  const anyPendingChoice = state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice !== null ||
+  const anyPendingChoice = !!state.pendingCastTransaction || !!state.pendingAlternativeCostChoice || !!state.pendingPrivateZoneChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice !== null ||
     state.pendingTargetCard !== null || state.pendingCrew !== null || state.pendingWardChoice !== null ||
     state.pendingCounterUnlessPay !== null || state.pendingHybridLifePayment !== null ||
     state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null ||
@@ -4971,7 +5103,7 @@ export function render() {
   // automático. No salteamos el paso: executeRivalAttack abre la ventana post-bloqueadores,
   // así instantáneos/habilidades antes del daño siguen existiendo.
   let autoZeroBlockersPending = false;
-  if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local' && (state.consecutivePasses || 0) === 1) {
+  if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local' && (state.consecutivePasses || 0) === 1 && !state.localBlockersDeclaredThisCombat) {
     const attackers = state.rivalCombat.filter(attacker => attacker.isAttacking);
     const hasLegalBlocker = state.localCombat.some(defender => !defender.tapped && attackers.some(attacker => canBlock(attacker, defender)));
     autoZeroBlockersPending = !hasLegalBlocker;
@@ -4979,7 +5111,7 @@ export function render() {
       state.autoZeroBlockersQueued = true;
       queueMicrotask(() => {
         state.autoZeroBlockersQueued = false;
-        if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local') {
+        if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local' && !state.localBlockersDeclaredThisCombat) {
           logMsg('🛡️ No tenés bloqueadores legales. Se declararon 0 bloqueadores automáticamente.');
           executeRivalAttack();
         }
@@ -5002,7 +5134,11 @@ export function render() {
       els.btnEndTurn.style.backgroundColor = isAttacking ? "#e74c3c" : "#e67e22";
     }
   } else if (state.phase === 'combat_blockers' && state.activePlayer === 'rival') {
-    if (autoZeroBlockersPending) {
+    if (state.localBlockersDeclaredThisCombat) {
+      els.btnEndTurn.textContent = "Pasar Prioridad ➔";
+      els.btnEndTurn.onclick = () => passPriority('local');
+      els.btnEndTurn.style.backgroundColor = "";
+    } else if (autoZeroBlockersPending) {
       els.btnEndTurn.textContent = "Sin bloqueadores — avanzando…";
       els.btnEndTurn.onclick = null;
       els.btnEndTurn.disabled = true;
@@ -5036,19 +5172,21 @@ export function render() {
   if (state.isDiscarding) els.localHand.classList.add('discard-warning');
   else els.localHand.classList.remove('discard-warning');
 
-  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay) {
+  if (state.pendingSpellIndex !== null || state.pendingCastTransaction?.stage === 'targets' || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay) {
     els.paymentControls.classList.remove('hidden'); els.btnEndTurn.classList.add('hidden'); 
     els.localHand.classList.add('paying-mode');
     if (!state.pendingCrew && !state.pendingWardChoice && !state.pendingCounterUnlessPay) {
       els.localLands.classList.add('paying-mode');
       els.localSupport.classList.add('paying-mode');
     }
-    if (state.pendingSpellIndex !== null) {
-      const pendingCardEl = els.localHand.children[state.pendingSpellIndex];
+    const castHandIndex = state.pendingCastTransaction?.handIndex;
+    const visiblePendingIndex = state.pendingSpellIndex !== null ? state.pendingSpellIndex : (Number.isInteger(castHandIndex) ? castHandIndex : null);
+    if (visiblePendingIndex !== null) {
+      const pendingCardEl = els.localHand.children[visiblePendingIndex];
       if (pendingCardEl) pendingCardEl.classList.add('paying');
     }
     
-    const pendingCard = state.pendingSpellIndex !== null ? state.localHand[state.pendingSpellIndex] : null;
+    const pendingCard = state.pendingCastTransaction?.card || (state.pendingSpellIndex !== null ? state.localHand[state.pendingSpellIndex] : null);
     let statusText;
     if (state.pendingCrew) {
       statusText = `Tripulando ${state.pendingCrew.item.card.name}: ${state.pendingCrew.powerSoFar}/${state.pendingCrew.required} de poder — clickeá tus criaturas 🚗`;
@@ -5059,8 +5197,8 @@ export function render() {
     } else if (state.pendingFightChoice) {
       statusText = `🥊 Elegiste a ${state.pendingFightChoice.opponentItem.card.name} como rival. Ahora clickeá CUÁL de tus criaturas pelea.`;
     } else {
-      statusText = state.pendingTargetCard ? "¡Maná pagado! Elegí un objetivo brillante ✨" : "Falta: ";
-      if (!state.pendingTargetCard) {
+      statusText = state.pendingCastTransaction?.stage === 'targets' ? "🎯 Declarando objetivos — todavía no pagaste nada" : (state.pendingTargetCard ? "Elegí un objetivo brillante ✨" : "Falta: ");
+      if (!state.pendingTargetCard && state.pendingCastTransaction?.stage !== 'targets') {
         if (state.pendingCost.W > 0) statusText += `${state.pendingCost.W} Blanco `;
         if (state.pendingCost.U > 0) statusText += `${state.pendingCost.U} Azul `;
         if (state.pendingCost.B > 0) statusText += `${state.pendingCost.B} Negro `;
@@ -5075,7 +5213,7 @@ export function render() {
     // Punto 14: el costo alternativo puede combinar maná/vida/descarte/sacrificio/exilio.
     // Sólo se ofrece antes de comprometer una vía, nunca sobre Flashback/Escape, y sólo si
     // los componentes no-maná son legalmente pagables (el maná se elige manualmente después).
-    const canOfferAlt = pendingCard && pendingCard.alternativeCost && !state.pendingAlternativeCostChosen && !state.pendingCastFrom &&
+    const canOfferAlt = pendingCard && !state.pendingCastTransaction && pendingCard.alternativeCost && !state.pendingAlternativeCostChosen && !state.pendingCastFrom &&
       !state.pendingTargetCard && !state.pendingCrew && !state.pendingWardChoice && !state.pendingCounterUnlessPay &&
       !state.pendingCompositeCostPayment && canPayCastCompositeNonManaCosts(pendingCard, true, true, { excludeCard: pendingCard });
     if (canOfferAlt) {
@@ -5124,7 +5262,7 @@ els.btnPayCounterTax.addEventListener('click', payCounterTax);
 // ACTUALIZADO: Controles de teclado globales (Escape y Barra Espaciadora)
 document.addEventListener('keydown', (e) => { 
   // Cancelar pagos pendientes
-  if (e.key === 'Escape' && (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null)) {
+  if (e.key === 'Escape' && (state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null)) {
     cancelPayment(); 
   }
 

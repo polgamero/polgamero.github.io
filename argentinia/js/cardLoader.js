@@ -80,7 +80,7 @@ class CardDatabase {
 
   async loadAll() {
     // Idempotencia fuerte: si boot() o cualquier caller futuro intenta cargar dos veces,
-    // JAMÁS se vuelve a hacer push sobre allCards ni se duplica 501 -> 1002.
+    // JAMÁS se vuelve a hacer push sobre allCards ni se duplica 511 -> 1022.
     if (this.isLoaded) return this.allCards;
     if (this.loadPromise) return this.loadPromise;
 

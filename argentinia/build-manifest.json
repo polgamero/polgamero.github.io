@@ -1,6 +1,6 @@
 {
-  "engineVersion": "23.9.0",
-  "engineProtocolVersion": "mp-23.9.0",
-  "buildLabel": "Entrega 23.9 Multiplayer Turn & Priority UX",
+  "engineVersion": "23.10.1",
+  "engineProtocolVersion": "mp-23.10.0",
+  "buildLabel": "Entrega 23.10.1 Private Effects + Anti-Peek + Pool 511",
   "generatedFor": "GitHub Pages cache freshness check"
 }

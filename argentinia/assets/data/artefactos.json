@@ -998,5 +998,34 @@
       "requiresTarget": true,
       "timing": "instant"
     }
+  },
+  {
+    "id": "art_044",
+    "name": "Lectora de Microfilm",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{3}, {T}: Mirá las tres primeras cartas del mazo del jugador rival. Elegí una. Exiliá esa carta.",
+    "flavorText": "Amplía hasta lo que alguien esperaba mantener ilegible.",
+    "image": "proyector_del_cine_cerrado.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "private_zone_move",
+        "zone": "deck",
+        "amount": 1,
+        "visibility": "reveal_candidates",
+        "destination": "exile",
+        "range": "top_n",
+        "rangeCount": 3,
+        "filter": "any",
+        "target": "opponent_player"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
   }
 ]

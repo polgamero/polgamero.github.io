@@ -84,6 +84,7 @@ const networkPublishesInFlight = new Set();
 const networkPublishStartSeq = new Map();
 let lastCompletedPublishStartSeq = 0;
 const recentEventTimes = new Map();
+const blockerDeclarationCounts = new Map();
 const emittedInvariantFingerprints = new Map();
 let cardInstanceIds = new WeakMap();
 let nextCardInstanceId = 1;
@@ -540,14 +541,14 @@ function bugRootCauseKey(finding) {
     const reason = details?.reason?.message || details?.reason?.name || String(details?.reason || '');
     return `UNHANDLED_REJECTION|${reason}`;
   }
-  if (code === 'SYNC_PUBLISH_OVERLAP' || code === 'POSSIBLE_SYNC_RENDER_STORM' || code === 'INVALID_PASS_COUNT') {
+  if (code === 'SYNC_PUBLISH_OVERLAP' || code === 'POSSIBLE_SYNC_RENDER_STORM' || code === 'INVALID_PASS_COUNT' || code === 'BLOCKER_DECLARATION_LOOP') {
     return code;
   }
   return `${code}|${JSON.stringify(details)}`;
 }
 
 function shouldAggregateBug(finding) {
-  return new Set(['JS_ERROR', 'UNHANDLED_REJECTION', 'SYNC_PUBLISH_OVERLAP', 'POSSIBLE_SYNC_RENDER_STORM', 'INVALID_PASS_COUNT']).has(finding?.code);
+  return new Set(['JS_ERROR', 'UNHANDLED_REJECTION', 'SYNC_PUBLISH_OVERLAP', 'POSSIBLE_SYNC_RENDER_STORM', 'INVALID_PASS_COUNT', 'BLOCKER_DECLARATION_LOOP']).has(finding?.code);
 }
 
 function addBugCandidate(finding, eventSeq = null) {
@@ -633,6 +634,26 @@ export function recordTelemetryEvent(type, data = {}, severity = 'info') {
   }
 
   recordStormSample(type);
+
+  // 23.9.3: progreso temporal de combate. Dos declaraciones de bloqueadores para el mismo
+  // defensor/turno son imposibles en el motor actual y fueron exactamente la firma del
+  // hard-lock observado en combat_blockers con cero bloqueadores legales.
+  if (type === 'blockers_declared') {
+    const declarationKey = `${data.turnCount}|${data.activePlayer}|${data.player}`;
+    const count = (blockerDeclarationCounts.get(declarationKey) || 0) + 1;
+    blockerDeclarationCounts.set(declarationKey, count);
+    if (count >= 2) {
+      addBugCandidate({
+        code: 'BLOCKER_DECLARATION_LOOP',
+        severity: 'error',
+        message: 'Se declararon bloqueadores más de una vez en el mismo combate; posible loop de progreso.',
+        details: {
+          turnCount: data.turnCount, activePlayer: data.activePlayer, player: data.player,
+          phase: data.phase, declarationCount: count
+        }
+      }, event.seq);
+    }
+  }
 
   if (type === 'sync_publish_start' && data.publishId) {
     networkPublishesInFlight.add(data.publishId);
@@ -930,6 +951,7 @@ export function startTelemetrySession(meta = {}) {
   networkPublishStartSeq.clear();
   lastCompletedPublishStartSeq = 0;
   recentEventTimes.clear();
+  blockerDeclarationCounts.clear();
   cardInstanceIds = new WeakMap();
   nextCardInstanceId = 1;
   stopRemoteCheckpointLoop();

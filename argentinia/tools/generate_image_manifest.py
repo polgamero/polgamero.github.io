@@ -24,14 +24,14 @@ CATEGORY_FILES = {
 }
 EXPECTED_COUNTS = {
     "tierras": 55,
-    "artefactos": 43,
-    "criaturas": 209,
-    "instantaneos": 80,
-    "conjuros": 58,
+    "artefactos": 44,
+    "criaturas": 210,
+    "instantaneos": 85,
+    "conjuros": 61,
     "encantamientos": 50,
     "planeswalkers": 6,
 }
-EXPECTED_TOTAL = 501
+EXPECTED_TOTAL = 511
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"}
 
 

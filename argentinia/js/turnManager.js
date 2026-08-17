@@ -7,7 +7,7 @@ import { hasKeyword } from './keywords.js';
 import { awardPoints, clearActiveMatchId } from './firebaseClient.js';
 import { pointsForBotGameEnd, POINTS } from './store.js';
 import { recordTelemetryEvent } from './telemetry.js';
-import { PRIORITY_CLOCK_DURATION_MS, getEffectivePriorityActivity, canPriorityClockRun } from './priorityUX.js';
+import { PRIORITY_CLOCK_DURATION_MS, getEffectivePriorityActivity, canPriorityClockRun, getFrozenPriorityRemainingMs } from './priorityUX.js';
 
 export function checkGameOver() {
   // FASE 4, ETAPA 6: gameOver y abandonedBy llegan JUNTOS por sync en el mismo publish
@@ -139,6 +139,20 @@ export async function advanceStep() {
     nextPhase = 'untap';
   }
 
+  // 23.9.3: una restricción por criatura se ARMA únicamente cuando llega el próximo
+  // combate de su controlador, nunca retroactivamente si fue creada durante ese mismo turno.
+  // Si el objeto ya no existe (murió, rebotó, blink, etc.), se descarta la restricción.
+  if (nextPhase === 'combat_begin') {
+    const targetBoard = state.activePlayer === 'local' ? state.localCombat : state.rivalCombat;
+    state.activeEffects = (state.activeEffects || []).filter(effect => {
+      if (effect.effectType !== 'cant_attack_next_turn' || effect.targetPlayer !== state.activePlayer) return true;
+      const targetStillExists = targetBoard.some(unit => unit?._effectObjectId && unit._effectObjectId === effect.targetObjectId);
+      if (!targetStillExists) return false;
+      if (Number(state.turnCount) > Number(effect.createdTurnCount ?? -1)) effect.appliesThisCombat = true;
+      return true;
+    });
+  }
+
   // --- Efecto activo: prevenir el combate completo de este jugador (ej. Cuarentena Total) ---
   if (nextPhase === 'combat_begin') {
     const preventIdx = state.activeEffects.findIndex(e => e.effectType === 'prevent_attack' && e.targetPlayer === state.activePlayer);
@@ -166,6 +180,18 @@ export async function advanceStep() {
     if (!isAnyoneAttacking) {
       nextPhase = 'combat_end'; // Salta directo al fin del combate
     }
+  }
+
+  // La restricción por criatura dura exactamente ese próximo combate. Se consume al salir
+  // del combate, o inmediatamente si otro efecto global hizo que combat_begin saltara a main2.
+  const combatWasSkippedToMain2 = phaseBefore === 'main1' && nextPhase === 'main2';
+  const leavingCombat = phaseBefore === 'combat_end' && nextPhase === 'main2';
+  if (combatWasSkippedToMain2 || leavingCombat) {
+    state.activeEffects = (state.activeEffects || []).filter(effect => !(
+      effect.effectType === 'cant_attack_next_turn' &&
+      effect.targetPlayer === state.activePlayer &&
+      effect.appliesThisCombat === true
+    ));
   }
   
   state.phase = nextPhase;
@@ -317,15 +343,18 @@ export function syncPriorityClockFromNetwork({ serial, durationMs, receivedAtCli
   // de que los dos Windows tengan el reloj de pared sincronizado. Ambos reciben el mismo
   // commit y quedan normalmente separados sólo por la latencia de escucha.
   const now = Number(receivedAtClientMs) || Date.now();
+  const activityAtSync = getEffectivePriorityActivity(state);
+  const preservePaused = !!state.priorityClockPausedLocal && !!activityAtSync;
+  const preservedRemaining = Math.max(0, Math.min(duration, Number(state.priorityClockRemainingMs) || duration));
   state.priorityClockDurationMs = duration;
   state.priorityClockSerial = nextSerial;
-  state.priorityClockDeadlineLocalMs = now + duration;
-  state.priorityClockRemainingMs = duration;
-  state.priorityClockPausedLocal = false;
-  state.priorityClockPauseReasonLocal = null;
+  state.priorityClockRemainingMs = preservePaused ? preservedRemaining : duration;
+  state.priorityClockDeadlineLocalMs = now + state.priorityClockRemainingMs;
+  state.priorityClockPausedLocal = preservePaused;
+  state.priorityClockPauseReasonLocal = preservePaused ? activityAtSync : null;
   priorityClockLastAutoPassSerial = null;
-  priorityClockLastActivity = null;
-  priorityClockWasBlocked = false;
+  priorityClockLastActivity = preservePaused ? activityAtSync : null;
+  priorityClockWasBlocked = preservePaused;
   recordTelemetryEvent('priority_clock_sync', {
     serial: nextSerial,
     durationMs: duration,
@@ -338,14 +367,23 @@ export function syncPriorityClockFromNetwork({ serial, durationMs, receivedAtCli
 
 function pausePriorityClock(activity) {
   const now = Date.now();
-  const remaining = Math.max(0, (Number(state.priorityClockDeadlineLocalMs) || now) - now);
+  // 23.9.1 FIX: en 23.9 recalculábamos deadline-now CADA 125ms incluso ya pausados.
+  // La lógica impedía el auto-pass, pero la mecha seguía consumiéndose visualmente durante
+  // descarte/target/pago. Sólo calculamos remaining en la TRANSICIÓN hacia pausa; luego se congela.
+  const wasPaused = !!state.priorityClockPausedLocal;
+  const remaining = getFrozenPriorityRemainingMs({
+    wasPaused,
+    remainingMs: state.priorityClockRemainingMs,
+    deadlineMs: state.priorityClockDeadlineLocalMs,
+    nowMs: now
+  });
   state.priorityClockRemainingMs = remaining;
   state.priorityClockPausedLocal = true;
   state.priorityClockPauseReasonLocal = activity || 'blocked';
   if (priorityClockLastActivity !== activity) {
     recordTelemetryEvent('priority_clock_pause', {
       serial: state.priorityClockSerial,
-      remainingMs: Math.round(remaining),
+      remainingMs: Math.round(state.priorityClockRemainingMs),
       reason: activity || 'blocked',
       priorityPlayer: state.priorityPlayer
     });
@@ -546,6 +584,7 @@ function executeUntapStep() {
   if (isLocal) {
     state.localLandPlayedThisTurn = false;
     state.localAttackersDeclaredThisTurn = 0;
+    state.localBlockersDeclaredThisCombat = false;
     state.localLands.forEach(l => l.tapped = false);
     state.localCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; c.attackTarget = null; });
     state.localSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });
@@ -553,6 +592,7 @@ function executeUntapStep() {
   } else {
     state.rivalLandPlayedThisTurn = false;
     state.rivalAttackersDeclaredThisTurn = 0;
+    state.rivalBlockersDeclaredThisCombat = false;
     state.rivalLands.forEach(l => l.tapped = false);
     state.rivalCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; c.attackTarget = null; });
     state.rivalSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });

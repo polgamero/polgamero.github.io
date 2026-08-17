@@ -10,7 +10,7 @@ import { deriveLocalPriorityActivity } from './priorityUX.js';
 
 export const PER_PLAYER_FIELDS = [
   'HP', 'Poison', 'Lands', 'Combat', 'Graveyard', 'Exile', 'Support', 'Planeswalkers',
-  'LandPlayedThisTurn', 'AttackersDeclaredThisTurn'
+  'LandPlayedThisTurn', 'AttackersDeclaredThisTurn', 'BlockersDeclaredThisCombat'
 ];
 
 export const SHARED_FIELDS = [
@@ -319,6 +319,17 @@ export function buildMyPublicPatch(state, myRole, stack = []) {
   }
 
   SHARED_FIELDS.forEach(field => {
+    if (field === 'activeEffects') {
+      // 23.9.3: `local/rival` es perspectiva del navegador, no identidad wire. Conservamos
+      // targetPlayer por compatibilidad diagnóstica, pero targetRole es la autoridad canónica.
+      patch.activeEffects = (Array.isArray(state.activeEffects) ? state.activeEffects : []).map(effect => ({
+        ...effect,
+        targetRole: effect?.targetPlayer === 'local' ? myRole
+          : effect?.targetPlayer === 'rival' ? rivalRole
+          : (effect?.targetRole || null)
+      }));
+      return;
+    }
     if (field === 'priorityActivity') {
       // Sólo el dueño actual de la prioridad deriva actividad desde sus flags privados.
       // El otro cliente conserva el valor sincronizado para no borrar un "está pagando" remoto.
@@ -366,7 +377,18 @@ export function extractMyStateFromPublicDoc(publicDoc, myRole, touchedKeys = nul
 export function extractSharedStateFromPublicDoc(publicDoc, myRole, touchedKeys = null) {
   const result = {};
   SHARED_FIELDS.forEach(field => {
-    if (touchedAllows(touchedKeys, field) && hasOwn(publicDoc, field) && publicDoc[field] !== undefined) result[field] = publicDoc[field];
+    if (!touchedAllows(touchedKeys, field) || !hasOwn(publicDoc, field) || publicDoc[field] === undefined) return;
+    if (field === 'activeEffects') {
+      result.activeEffects = (Array.isArray(publicDoc.activeEffects) ? publicDoc.activeEffects : []).map(effect => {
+        if (!effect?.targetRole) return effect; // compatibilidad con snapshots pre-23.9.3
+        return {
+          ...effect,
+          targetPlayer: effect.targetRole === myRole ? 'local' : effect.targetRole === otherRole(myRole) ? 'rival' : effect.targetPlayer
+        };
+      });
+      return;
+    }
+    result[field] = publicDoc[field];
   });
   if (touchedAllows(touchedKeys, 'activePlayer') && hasOwn(publicDoc, 'activePlayer')) result.activePlayer = publicDoc.activePlayer === myRole ? 'local' : 'rival';
   if (touchedAllows(touchedKeys, 'priorityPlayer') && hasOwn(publicDoc, 'priorityPlayer')) result.priorityPlayer = publicDoc.priorityPlayer === myRole ? 'local' : 'rival';

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ARGENTINIA - TCG Criollo</title>
-  <link rel="stylesheet" href="./css/style.css?v=23.9.0">
+  <link rel="stylesheet" href="./css/style.css?v=23.10.1">
 </head>
 <body>
 
@@ -63,13 +63,17 @@
       <div class="log-section">
         <div class="log-box" id="game-log-box"></div>
         
-        <!-- ENTREGA 23.9: TURNO y PRIORIDAD son dos conceptos distintos y siempre visibles. -->
+        <!-- ENTREGA 23.9.1: cabecera compacta. Turno, fase, prioridad y actividad son capas distintas. -->
         <div id="turn-priority-hud" class="turn-priority-hud" aria-live="polite">
           <div class="turn-priority-head">
-            <div id="turn-owner-badge" class="turn-owner-badge priority-turn-label">TU TURNO · MAIN 1</div>
-            <div id="priority-owner-badge" class="priority-owner-badge">⚡ PRIORIDAD: VOS</div>
+            <div id="turn-owner-badge" class="turn-owner-badge priority-turn-label">TU TURNO</div>
+            <div id="turn-phase-badge" class="turn-phase-badge">MAIN 1</div>
           </div>
-          <div id="priority-context-label" class="priority-context-label">Podés jugar una acción legal o pasar prioridad.</div>
+          <div class="priority-status-row">
+            <div id="priority-owner-badge" class="priority-owner-badge">⚡ TENÉS PRIORIDAD</div>
+            <div id="priority-state-chip" class="priority-state-chip my-priority">TU PRIORIDAD</div>
+          </div>
+          <div id="priority-context-label" class="priority-context-label">Jugá una acción legal o pasá prioridad.</div>
           <div id="priority-clock" class="priority-clock hidden" aria-label="Tiempo de prioridad">
             <div class="priority-fuse-track">
               <div id="priority-fuse-fill" class="priority-fuse-fill"></div>
@@ -77,18 +81,19 @@
             </div>
             <span id="priority-countdown" class="priority-countdown">15</span>
           </div>
+          <div id="priority-pause-label" class="priority-pause-label hidden">⏸ PAUSADO</div>
         </div>
 
-        <!-- INDICADORES DE FASES Y SUBFASES MTG -->
-        <div id="phase-indicator-container" class="phase-indicator">
-          <div class="phase-dot" id="dot-upkeep" title="Mantenimiento / Robo">Mantenimiento</div>
-          <div class="phase-dot" id="dot-main1" title="1ra Fase Principal">Main 1</div>
-          <div class="phase-dot" id="dot-combat" title="Fase de Combate">
-            Combate
-            <span id="combat-subphase-text" class="subphase-label"></span>
-          </div>
-          <div class="phase-dot" id="dot-main2" title="2da Fase Principal">Main 2</div>
-          <div class="phase-dot" id="dot-end" title="Paso Final">Fin</div>
+        <!-- 23.9.1: fases como puntos mínimos. El tooltip revela el nombre sin robar alto a la bitácora. -->
+        <div id="phase-indicator-container" class="phase-indicator" aria-label="Progreso del turno">
+          <div class="phase-dot" tabindex="0" id="dot-untap" data-phase-label="Enderezar" title="Enderezar" aria-label="Enderezar"></div>
+          <div class="phase-dot" tabindex="0" id="dot-upkeep" data-phase-label="Mantenimiento" title="Mantenimiento" aria-label="Mantenimiento"></div>
+          <div class="phase-dot" tabindex="0" id="dot-draw" data-phase-label="Robo" title="Robo" aria-label="Robo"></div>
+          <div class="phase-dot" tabindex="0" id="dot-main1" data-phase-label="Main 1" title="1ra Fase Principal" aria-label="Main 1"></div>
+          <div class="phase-dot" tabindex="0" id="dot-combat" data-phase-label="Combate" title="Combate" aria-label="Combate"></div>
+          <div class="phase-dot" tabindex="0" id="dot-main2" data-phase-label="Main 2" title="2da Fase Principal" aria-label="Main 2"></div>
+          <div class="phase-dot" tabindex="0" id="dot-end" data-phase-label="Paso Final" title="Paso Final" aria-label="Paso Final"></div>
+          <div class="phase-dot" tabindex="0" id="dot-cleanup" data-phase-label="Limpieza" title="Limpieza" aria-label="Limpieza"></div>
         </div>
 
         <div id="payment-controls" class="hidden" style="margin-bottom: 10px; text-align: center;">

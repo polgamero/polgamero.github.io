@@ -29,7 +29,7 @@
         "text": "La criatura objetivo no puede atacar en su próximo turno.",
         "requiresTarget": true,
         "effect": {
-          "type": "prevent_attack",
+          "type": "cant_attack_next_turn",
           "duration": "next_turn"
         }
       },

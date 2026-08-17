@@ -1482,3 +1482,233 @@ html, body {
   .priority-turn-label,.priority-owner-badge { font-size:.62rem; }
   .priority-context-label { font-size:.61rem; }
 }
+
+
+/* ===================================================
+   ENTREGA 23.9.1 — HUD COMPACTO / PHASE DOTS / PAUSED FUSE
+   Nueve mejoras UX solicitadas tras el playtest ZQMMBV.
+=================================================== */
+/* Recupera alto para la bitácora reduciendo chrome vertical sin alterar el tablero. */
+.log-section { gap:.34rem; padding:.58rem; }
+.log-box { flex:1 1 220px; min-height:150px; padding:.52rem .62rem; gap:.32rem; }
+
+.turn-priority-hud {
+  padding:.42rem .5rem .38rem;
+  border-radius:9px;
+  min-width:0;
+  overflow:visible;
+}
+.turn-priority-head {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:.35rem;
+  min-width:0;
+}
+.priority-turn-label {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:.68rem;
+  line-height:1.15;
+}
+.turn-phase-badge {
+  max-width:8.5rem;
+  padding:.15rem .38rem;
+  border-radius:999px;
+  border:1px solid rgba(212,175,55,.42);
+  background:rgba(212,175,55,.09);
+  color:#f1d978;
+  font-size:.57rem;
+  line-height:1.15;
+  font-weight:900;
+  letter-spacing:.045em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.priority-status-row {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:.4rem;
+  margin-top:.28rem;
+  min-width:0;
+}
+.priority-owner-badge {
+  min-width:0;
+  text-align:left;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  font-size:.76rem;
+  line-height:1.15;
+  letter-spacing:.012em;
+}
+.priority-state-chip {
+  flex:0 0 auto;
+  max-width:7.6rem;
+  padding:.14rem .35rem;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.065);
+  color:#cbd2d9;
+  font-size:.52rem;
+  line-height:1.1;
+  font-weight:900;
+  letter-spacing:.04em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.priority-state-chip.my-priority { color:#ffb15b; border-color:rgba(230,126,34,.52); background:rgba(230,126,34,.11); }
+.priority-state-chip.rival-priority { color:#a9d4f6; border-color:rgba(116,172,223,.45); background:rgba(116,172,223,.09); }
+.priority-state-chip.activity { color:#ffe0a3; border-color:rgba(212,175,55,.45); background:rgba(212,175,55,.09); }
+.priority-state-chip.resolving { color:#f4dc72; border-color:rgba(212,175,55,.58); background:rgba(212,175,55,.12); }
+.priority-context-label {
+  margin-top:.2rem;
+  min-height:0;
+  font-size:.64rem;
+  line-height:1.22;
+  color:#cbd2d9;
+  overflow-wrap:anywhere;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.priority-clock { margin-top:.32rem; grid-template-columns:1fr 2rem; gap:.38rem; }
+.priority-fuse-track { height:7px; }
+.priority-countdown { min-width:1.9rem; height:1.22rem; font-size:.64rem; }
+.priority-clock.paused .priority-fuse-fill,
+.priority-clock.paused .priority-fuse-spark { transition:none !important; animation-play-state:paused !important; }
+.priority-clock.paused .priority-fuse-fill { opacity:.48; filter:saturate(.45); }
+.priority-clock.paused .priority-fuse-spark { opacity:.55; filter:grayscale(.2) drop-shadow(0 0 3px rgba(255,139,39,.5)); }
+.priority-pause-label {
+  margin-top:.18rem;
+  color:#c9b78b;
+  font-size:.52rem;
+  line-height:1.15;
+  font-weight:800;
+  letter-spacing:.035em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.priority-pause-label.hidden { display:none !important; }
+
+/* El turno se reconoce por una barra dorada + badge; la prioridad usa un marcador naranja distinto. */
+.player-card { position:relative; overflow:visible; }
+.player-card.active-turn-player {
+  border-color:rgba(212,175,55,.82);
+  box-shadow:inset 3px 0 0 rgba(212,175,55,.86), 0 0 14px rgba(212,175,55,.22);
+}
+.player-card.active-turn-player::after {
+  content:'TURNO';
+  position:absolute;
+  right:.42rem;
+  top:-.42rem;
+  padding:.1rem .3rem;
+  border-radius:999px;
+  background:#c9a835;
+  color:#17130b;
+  border:1px solid #f2db78;
+  font:900 .48rem/1.1 system-ui,sans-serif;
+  letter-spacing:.05em;
+  box-shadow:0 2px 7px rgba(0,0,0,.45);
+  z-index:4;
+}
+.player-card.has-priority-player { outline:1px solid rgba(230,126,34,.78); outline-offset:2px; }
+.player-card.has-priority-player::before {
+  content:'⚡';
+  position:absolute;
+  left:-.38rem;
+  top:50%;
+  transform:translateY(-50%);
+  width:1rem;
+  height:1rem;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:#e67e22;
+  color:#fff;
+  font-size:.58rem;
+  box-shadow:0 0 9px rgba(230,126,34,.75);
+  z-index:4;
+}
+
+/* Ocho puntos de progreso: pasados encendidos tenue, actual brillante. Tooltip sólo al hover. */
+.phase-indicator {
+  position:relative;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:8px;
+  min-height:18px;
+  margin:0;
+  padding:2px 0 1px;
+  flex-wrap:nowrap;
+  overflow:visible;
+}
+.phase-dot {
+  position:relative;
+  width:8px;
+  height:8px;
+  min-width:8px;
+  padding:0;
+  border-radius:50%;
+  background:#252b34;
+  border:1px solid #59616d;
+  box-shadow:inset 0 0 3px rgba(0,0,0,.7);
+  color:transparent;
+  font-size:0;
+  cursor:help;
+  transition:transform .16s ease, background .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.phase-dot.completed {
+  background:rgba(212,175,55,.44);
+  border-color:rgba(212,175,55,.68);
+  box-shadow:0 0 5px rgba(212,175,55,.18);
+}
+.phase-dot.active {
+  width:10px;
+  height:10px;
+  min-width:10px;
+  background:var(--gold);
+  border-color:#fff3ba;
+  transform:scale(1.05);
+  box-shadow:0 0 9px rgba(212,175,55,.85), inset 0 0 3px rgba(255,255,255,.7);
+}
+.phase-dot.blinking { animation:pulse-phase-dot 1.15s ease-in-out infinite alternate; }
+@keyframes pulse-phase-dot { from{box-shadow:0 0 5px rgba(212,175,55,.5)} to{box-shadow:0 0 13px rgba(212,175,55,1)} }
+.phase-dot::after {
+  content:attr(data-phase-label);
+  position:absolute;
+  left:50%;
+  bottom:calc(100% + 8px);
+  transform:translate(-50%,4px);
+  opacity:0;
+  pointer-events:none;
+  z-index:1000;
+  padding:.24rem .42rem;
+  border-radius:5px;
+  background:rgba(10,12,15,.96);
+  border:1px solid rgba(212,175,55,.42);
+  color:#eee6d2;
+  font:700 .58rem/1.15 system-ui,sans-serif;
+  white-space:nowrap;
+  box-shadow:0 3px 10px rgba(0,0,0,.55);
+  transition:opacity .12s ease, transform .12s ease;
+}
+.phase-dot:hover::after,
+.phase-dot:focus-visible::after { opacity:1; transform:translate(-50%,0); }
+
+@media (max-width:1050px) {
+  .turn-priority-head,.priority-status-row { gap:.24rem; }
+  .priority-turn-label { font-size:.61rem; }
+  .turn-phase-badge { max-width:6.3rem; font-size:.5rem; }
+  .priority-owner-badge { font-size:.68rem; }
+  .priority-state-chip { max-width:5.8rem; font-size:.46rem; }
+  .priority-context-label { font-size:.58rem; }
+  .phase-indicator { gap:6px; }
+}

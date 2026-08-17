@@ -25,6 +25,7 @@ import {
   waitForDiscardEffects
 } from './main.js';
 import { showDamageAssignmentModal } from './ui.js';
+import { recordTelemetryEvent } from './telemetry.js';
 
 // Habilidades disparadas de combate: ahora se APILAN en vez de resolver durante la
 // declaración/daño. `triggerKey` se traduce a una etiqueta estable para Stack/logs.
@@ -253,6 +254,14 @@ export async function executeLocalAttack() {
 }
 
 export function executeRivalAttack() {
+  // 23.9.3: declarar bloqueadores es idempotente, incluso si fueron CERO. La ventana
+  // post-bloqueadores devuelve prioridad y NO debe volver a entrar a esta declaración.
+  if (state.localBlockersDeclaredThisCombat) {
+    logMsg('🛡️ Los bloqueadores ya fueron declarados. Pasás prioridad.');
+    passPriority('local');
+    return;
+  }
+
   // --- VALIDACIÓN DE AMENAZA (JUGADOR DEFIENDE) ---
   let invalidBlocks = false;
 
@@ -275,6 +284,14 @@ export function executeRivalAttack() {
   }
 
   markDeclaredBlocks(state.rivalCombat, state.localCombat);
+  state.localBlockersDeclaredThisCombat = true;
+  recordTelemetryEvent('blockers_declared', {
+    player: 'local',
+    turnCount: state.turnCount,
+    activePlayer: state.activePlayer,
+    phase: state.phase,
+    blockerCount: state.localCombat.filter(unit => unit.blockingIndex !== null && unit.blockingIndex !== undefined).length
+  });
   queueDeclaredBlockTriggers(state.localCombat, true);
   logMsg(`🛡️ Confirmaste tus bloqueos.`);
   // La declaración de bloqueadores abre una ventana NUEVA. El jugador activo recibe

@@ -1,4 +1,5 @@
 import { hasKeyword, canBlock, predictDuel, getProtectionMatch } from './keywords.js';
+import { recordTelemetryEvent } from './telemetry.js';
 import {
   state,
   logMsg,
@@ -14,6 +15,7 @@ import {
   payAdditionalCost,
   getEffectiveKeywords,
   checkPlaneswalkerDeaths,
+  putLoyaltyAbilityOnStack,
   detachEquipmentFrom,
   sendAurasToGraveyard,
   cleanupIfVehicle,
@@ -134,11 +136,13 @@ function chooseBotAttackTarget(attackerItem) {
   return null;
 }
 
-// PUNTO 9 PRE-500 — el Tano usa EXACTAMENTE el mismo resolver universal para Loyalty que
-// el humano. Su criterio de QUÉ habilidad conviene conservarse; sólo dejamos de tener una
-// segunda implementación manual de damage/pump/destroy/exile.
+// 23.9.2 — el Tano usa el MISMO carril de Stack que el humano para Loyalty. Conserva su
+// criterio de elección, pero la habilidad ya no resuelve "de costado": fija target, paga
+// Lealtad, entra como abilityKind:"loyalty" y corta su turno para abrir prioridad.
 async function tryActivateBotPlaneswalkers() {
-  if (state.phase !== 'main1') return;
+  if (state.phase !== 'main1' && state.phase !== 'main2') return false;
+  if (state.activePlayer !== 'rival' || state.priorityPlayer !== 'rival' || spellStack.length > 0) return false;
+
   for (const pwItem of state.rivalPlaneswalkers) {
     if (pwItem.abilityUsedThisTurn) continue;
     const abilities = pwItem.card.loyaltyAbilities || [];
@@ -171,13 +175,9 @@ async function tryActivateBotPlaneswalkers() {
 
     const ability = chosen.a;
     const sourceCard = { ...pwItem.card, name: `${pwItem.card.name} — ${ability.name}` };
-    pwItem.loyalty += ability.cost;
-    pwItem.abilityUsedThisTurn = true;
-    logMsg(`🔮 El Tano activó "${ability.name}" en ${pwItem.card.name} (Lealtad ahora: ${pwItem.loyalty}).`);
-
     let targetObj = null;
     if (ability.requiresTarget) {
-      checkPlaneswalkerDeaths();
+      // Igual que el humano: target primero, costo después.
       targetObj = await chooseResolvedEffectTarget({
         effect: ability.effect,
         sourceCard,
@@ -187,20 +187,19 @@ async function tryActivateBotPlaneswalkers() {
         cardName: `${pwItem.card.name} — ${ability.name}`
       });
       if (!targetObj) continue;
+
+      // La elección no debe poder pagar un costo sobre una ventana que cambió mientras el
+      // selector estaba activo (defensivo; en Solitario normalmente todo es síncrono).
+      if (state.gameOver || state.activePlayer !== 'rival' || state.priorityPlayer !== 'rival' ||
+          (state.phase !== 'main1' && state.phase !== 'main2') || spellStack.length > 0 ||
+          pwItem.abilityUsedThisTurn || !canAfford(ability)) continue;
     }
 
-    const result = await resolveGameEffect(ability.effect, {
-      sourceCard,
-      sourceItem: pwItem,
-      isLocal: false,
-      targetObj,
-      triggerType: 'loyalty_bot'
-    });
-    if (!result.handled) {
-      logMsg(`⚠️ ${pwItem.card.name}: "${ability.name}" no pudo resolverse como Loyalty (${ability.effect.type}).`);
-    }
-    checkPlaneswalkerDeaths();
+    putLoyaltyAbilityOnStack(pwItem, ability, chosen.idx, false, targetObj);
+    logMsg(`🔮 El Tano puso "${ability.name}" de ${pwItem.card.name} en la pila.`);
+    return true;
   }
+  return false;
 }
 
 // Ward: si el objetivo que el Tano eligió tiene esta keyword y te pertenece a vos (o sea,
@@ -285,26 +284,10 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
   const idx = state.rivalGraveyard.findIndex(isUsable);
   if (idx === -1) return false;
 
+  // 601.2a: la carta deja conceptualmente el cementerio al anunciar el casteo. Todavía
+  // no se activó ninguna fuente ni se pagó nada.
   const card = state.rivalGraveyard.splice(idx, 1)[0];
   const { source, ability } = getAbility(card);
-  await payBotCastRoute(card, false, { baseOverride: ability.cost });
-
-  // Punto 6: Escape del Tano también usa el selector general. `botStrategy: "last"`
-  // conserva EXACTAMENTE la heurística histórica (las últimas cartas del array), así que
-  // migramos infraestructura sin cambiar decisiones de IA de partidas existentes.
-  if (source === 'escape') {
-    const exileCount = ability.exileCount || 0;
-    const chosen = await chooseGraveyardCards({
-      zoneIsLocal: false, chooserIsLocal: false, filter: 'any', amount: exileCount,
-      cardName: card.name, actionLabel: 'elegí cartas para pagar Escape', botStrategy: 'last'
-    });
-    chosen.forEach(c => {
-      const gyIdx = state.rivalGraveyard.indexOf(c);
-      if (gyIdx !== -1) state.rivalGraveyard.splice(gyIdx, 1);
-    });
-    state.rivalExile.push(...chosen);
-    logMsg(`🌀 El Tano exilió ${chosen.length} carta(s) de su cementerio para el Escape de ${card.name}.`);
-  }
 
   let aiTargetObj = null;
   if (card.effect) {
@@ -325,12 +308,22 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
     }
   }
 
-  if (!tryPayWardForBotTarget(aiTargetObj)) {
-    // AUDITORÍA PRE-FASE 3: Ward contrarrestó el casteo desde cementerio antes de addToStack.
-    // Aplicamos la MISMA regla central de destino: Flashback -> Exilio; Escape -> Cementerio.
-    // Las cartas adicionales pagadas por Escape ya quedaron exiliadas como costo y no vuelven.
-    moveCounteredStackItemToDestination({ card, isLocal: false, type: 'spell', castFrom: source }, state);
-    return true;
+  // Objetivo fijado: recién ahora fuentes y pago.
+  await payBotCastRoute(card, false, { baseOverride: ability.cost });
+
+  // Escape paga su exilio como parte del commit de costos, después de fijar objetivos.
+  if (source === 'escape') {
+    const exileCount = ability.exileCount || 0;
+    const chosen = await chooseGraveyardCards({
+      zoneIsLocal: false, chooserIsLocal: false, filter: 'any', amount: exileCount,
+      cardName: card.name, actionLabel: 'elegí cartas para pagar Escape', botStrategy: 'last'
+    });
+    chosen.forEach(c => {
+      const gyIdx = state.rivalGraveyard.indexOf(c);
+      if (gyIdx !== -1) state.rivalGraveyard.splice(gyIdx, 1);
+    });
+    state.rivalExile.push(...chosen);
+    logMsg(`🌀 El Tano exilió ${chosen.length} carta(s) de su cementerio para el Escape de ${card.name}.`);
   }
 
   let stackType = 'spell';
@@ -348,6 +341,10 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
   addToStack(castStackItem);
   logMsg(`🔄 El Tano usó ${source === 'escape' ? 'Escape' : 'Flashback'} en ${card.name}.`);
   await triggerSpellCast(false, card, castStackItem);
+  if (!tryPayWardForBotTarget(aiTargetObj)) {
+    const stackIndex = spellStack.indexOf(castStackItem);
+    if (stackIndex >= 0) moveCounteredStackItemToDestination(spellStack.splice(stackIndex, 1)[0], state);
+  }
   state.priorityPlayer = 'local';
   state.consecutivePasses = 0;
   return true;
@@ -403,7 +400,7 @@ function chooseBotMultiTargets(card) {
         const best = state.rivalCombat.reduce((prev, cur) => getEffectivePower(cur) > getEffectivePower(prev) ? cur : prev);
         targetObj = { type: 'creature', isLocal: false, item: best };
       }
-    } else if (effect.type === 'discard') {
+    } else if (effect.type === 'discard' || effect.type === 'private_zone_move') {
       targetObj = { type: 'player', isLocal: true };
     } else if (effect.type === 'draw') {
       targetObj = { type: 'player', isLocal: false };
@@ -561,15 +558,10 @@ async function tryBotCombatTrick() {
   const target = attackingUnits.find(c => isValidBotTarget(c, card.colors) && getEffectiveToughness(c) <= card.effect.amount);
   if (!target) return false;
 
+  const targetObj = { type: 'creature', isLocal: true, index: state.localCombat.indexOf(target), item: target };
+  // Target fijado: recién ahora se compromete la carta y se activan fuentes.
   state.rivalHand.splice(cardIndex, 1);
   tapRivalLandsFor(card);
-
-  const targetObj = { type: 'creature', isLocal: true, index: state.localCombat.indexOf(target), item: target };
-  if (!tryPayWardForBotTarget(targetObj)) {
-    state.rivalGraveyard.push(card);
-    render();
-    return true;
-  }
 
   const castStackItem = {
     card,
@@ -579,6 +571,10 @@ async function tryBotCombatTrick() {
   };
   addToStack(castStackItem);
   await triggerSpellCast(false, card, castStackItem);
+  if (!tryPayWardForBotTarget(targetObj)) {
+    const idx = spellStack.indexOf(castStackItem);
+    if (idx >= 0) moveCounteredStackItemToDestination(spellStack.splice(idx, 1)[0], state);
+  }
 
   state.priorityPlayer = 'local';
   state.consecutivePasses = 0;
@@ -731,11 +727,11 @@ export async function checkRivalCounterOrResponse() {
   });
 
   if (responseIndex !== -1) {
-    const responseCard = state.rivalHand.splice(responseIndex, 1)[0];
-    const useAlternative = chooseBotCastRoute(responseCard);
-    if (useAlternative === null) { state.rivalHand.splice(responseIndex, 0, responseCard); return false; }
-    await payBotCastRoute(responseCard, useAlternative);
+    const responseCard = state.rivalHand[responseIndex];
+    const useAlternative = chooseBotCastRoute(responseCard, { excludeCard: responseCard });
+    if (useAlternative === null) return false;
 
+    // CR 601: targetear la Stack/campo ANTES de comprometer carta, fuentes o costos.
     let targetObj = null;
     if (isCounterSpell(responseCard)) {
       const topLocalSpell = [...spellStack].reverse().find(s => s.isLocal && isStackItemLegalCounterTarget(responseCard.effect.type, s));
@@ -759,11 +755,10 @@ export async function checkRivalCounterOrResponse() {
       }
     }
 
-    if (!tryPayWardForBotTarget(targetObj)) {
-      state.rivalGraveyard.push(responseCard);
-      render();
-      return true;
-    }
+    if (responseCard.requiresTarget && !targetObj) return false;
+
+    state.rivalHand.splice(responseIndex, 1);
+    await payBotCastRoute(responseCard, useAlternative);
 
     const castStackItem = {
       card: responseCard,
@@ -778,6 +773,10 @@ export async function checkRivalCounterOrResponse() {
     };
     addToStack(castStackItem);
     await triggerSpellCast(false, responseCard, castStackItem);
+    if (!tryPayWardForBotTarget(targetObj)) {
+      const idx = spellStack.indexOf(castStackItem);
+      if (idx >= 0) moveCounteredStackItemToDestination(spellStack.splice(idx, 1)[0], state);
+    }
 
     // --- CÓDIGO AGREGADO PARA DEVOLVER PRIORIDAD ---
     state.priorityPlayer = 'local';
@@ -1077,6 +1076,15 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
           aiTargetObj = ability.requiresTarget ? { type: 'player', isLocal: false } : null;
           shouldActivate = true;
         }
+      } else if (effect.type === 'cant_attack_next_turn') {
+        const validTargets = state.localCombat.filter(c => isValidBotTarget(c, sourceCard.colors));
+        if (validTargets.length > 0 && (state.phase === 'main2' || state.activePlayer === 'local')) {
+          const chosen = validTargets.reduce((prev, current) =>
+            (getEffectivePower(prev) + getEffectiveToughness(prev)) > (getEffectivePower(current) + getEffectiveToughness(current)) ? prev : current
+          );
+          aiTargetObj = { type: 'creature', isLocal: true, index: state.localCombat.indexOf(chosen), item: chosen };
+          shouldActivate = true;
+        }
       } else if (effect.type === 'return_from_graveyard') {
         const hasCandidate = state.rivalGraveyard.some(c => cardMatchesGraveyardFilter(c, effect.filter || 'any'));
         if (hasCandidate && (state.phase === 'main2' || timing === 'instant')) shouldActivate = true;
@@ -1186,10 +1194,12 @@ export async function takeBotPriorityAction() {
       await sleep(800);
     }
 
-    // Planeswalkers propios: revisa si conviene usar alguna habilidad de Lealtad este turno
-    // (resuelve todo de una, sin pasar por la pila — mismo criterio que el jugador humano).
-    await tryActivateBotPlaneswalkers();
-    render();
+    // Planeswalkers propios: si activa Loyalty, ahora entra a la Stack y el Tano corta acá
+    // para abrir la ventana de prioridad antes de seguir jugando su Main.
+    if (await tryActivateBotPlaneswalkers()) {
+      render();
+      return;
+    }
 
     // Flashback o Escape desde su propio cementerio: si tiene algo pagable, lo usa antes de
     // seguir con el resto de sus decisiones — esto SÍ pasa por la pila (a diferencia de
@@ -1280,7 +1290,10 @@ export async function takeBotPriorityAction() {
     let affordableIndex = pickBestMainPhaseCardIndex(getAllAffordableMainPhaseCardIndexes());
     
     if (affordableIndex !== -1) {
-      let cardToPlay = state.rivalHand.splice(affordableIndex, 1)[0];
+      // 23.10 / CR 601: se aparta conceptualmente la carta al anunciarla, pero no se
+      // activan fuentes ni se pagan costos hasta fijar modo/ruta/X/Kicker y objetivos.
+      const originalCardToPlay = state.rivalHand.splice(affordableIndex, 1)[0];
+      let cardToPlay = originalCardToPlay;
 
       // Hechizos modales: el Tano elige un modo ANTES de todo lo demás (mismo orden que
       // el jugador humano) — "resuelve" la carta en una versión con el effect/requiresTarget
@@ -1310,19 +1323,14 @@ export async function takeBotPriorityAction() {
         logMsg(`💪 El Tano pagó también el Kicker de ${cardToPlay.name}.`);
       }
 
+      // 601.2b: X queda anunciado antes de objetivos y antes de activar fuentes.
       const routeManaCost = getCastingManaCostString(cardToPlay, { useAlternative, kicked: botKicked });
       let botXValue = null;
       if (routeManaCost && routeManaCost.includes('{X}')) {
         const manaSourceCard = { ...cardToPlay, manaCost: routeManaCost };
         botXValue = chooseBotXValue(manaSourceCard);
-        const effectiveManaCost = routeManaCost.replace('{X}', Array(botXValue).fill('{1}').join(''));
-        tapRivalLandsFor({ manaCost: effectiveManaCost });
-        await payCastCompositeNonManaCosts(cardToPlay, false, useAlternative);
         logMsg(`✨ El Tano eligió X = ${botXValue} para ${cardToPlay.name}.`);
-      } else {
-        await payBotCastRoute(cardToPlay, useAlternative, { kicked: botKicked });
       }
-      if (useAlternative) logMsg(`🔀 El Tano pagó ${cardToPlay.name} por su costo alternativo.`);
 
       const isPermanent = cardToPlay.type.includes('Artefacto') || (cardToPlay.type.includes('Encantamiento') && !cardToPlay.adjunta);
       
@@ -1362,8 +1370,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: true, item: chosen };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y lo descartó.`);
-            state.rivalGraveyard.push(cardToPlay);
+            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y no lo lanzó.`);
           }
         } else if (state.rivalCombat.length > 0) {
           // Mismo criterio que del lado del jugador: no le vuelvas a poner una habilidad que
@@ -1377,13 +1384,11 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: false, item: validSelfTargets[0] };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía ninguna criatura que se beneficiara de ${cardToPlay.name} y lo descartó.`);
-            state.rivalGraveyard.push(cardToPlay);
+            logMsg(`El Tano no tenía ninguna criatura que se beneficiara de ${cardToPlay.name} y no lo lanzó.`);
           }
         } else {
           validPlay = false;
-          logMsg(`El Tano no tenía criaturas para encantar con ${cardToPlay.name} y lo descartó.`);
-          state.rivalGraveyard.push(cardToPlay);
+          logMsg(`El Tano no tenía criaturas para encantar con ${cardToPlay.name} y no lo lanzó.`);
         }
       } else {
         stackType = cardToPlay.type.includes('Instantáneo') ? 'instant' : 'spell';
@@ -1398,8 +1403,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'multi', targets: chosenTargets };
           } else {
             validPlay = false;
-            logMsg(`El Tano no encontró objetivos válidos para todos los modos de ${cardToPlay.name} y lo descartó.`);
-            state.rivalGraveyard.push(cardToPlay);
+            logMsg(`El Tano no encontró objetivos válidos para todos los modos de ${cardToPlay.name} y no lo lanzó.`);
           }
         }
         else if (cardToPlay.effect && cardToPlay.effect.type === 'damage') {
@@ -1432,8 +1436,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: true, item: chosen };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y lo descartó.`);
-            state.rivalGraveyard.push(cardToPlay);
+            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y no lo lanzó.`);
           }
         }
         // LÓGICA NUEVA: REBOTE (Vuelto en Mano, etc.)
@@ -1447,12 +1450,16 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: true, item: chosen };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y lo descartó.`);
-            state.rivalGraveyard.push(cardToPlay);
+            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y no lo lanzó.`);
           }
         }
         // LÓGICA NUEVA: DESCARTE (Corralito, etc.)
         else if (cardToPlay.effect && cardToPlay.effect.type === 'discard') {
+          aiTargetObj = { type: 'player', isLocal: true };
+        }
+        // 23.10.1: Hand/Deck rival se TARGETEA como jugador durante casteo. La
+        // identidad de la carta privada se elegirá recién cuando el hechizo resuelva.
+        else if (cardToPlay.effect && cardToPlay.effect.type === 'private_zone_move') {
           aiTargetObj = { type: 'player', isLocal: true };
         }
         // LÓGICA NUEVA: EXILIAR CEMENTERIO — el Tano se lo tira a quien tenga más cartas
@@ -1462,13 +1469,25 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'player', isLocal: true };
           } else {
             validPlay = false;
-            logMsg(`El Tano no encontró un cementerio que valiera la pena exiliar y descartó ${cardToPlay.name}.`);
-            state.rivalGraveyard.push(cardToPlay);
+            logMsg(`El Tano no encontró un cementerio que valiera la pena exiliar y no lanzó ${cardToPlay.name}.`);
           }
         }
-        // LÓGICA NUEVA: PREVENIR ATAQUE (Cuarentena Total)
+        // 23.9.3: impedir que UNA criatura ataque en el próximo turno de su controlador.
+        else if (cardToPlay.effect && cardToPlay.effect.type === 'cant_attack_next_turn') {
+          const validTargets = state.localCombat.filter(c => isValidBotTarget(c, cardToPlay.colors));
+          if (validTargets.length > 0) {
+            const chosen = validTargets.reduce((prev, current) =>
+              (getEffectivePower(prev) + getEffectiveToughness(prev)) > (getEffectivePower(current) + getEffectiveToughness(current)) ? prev : current
+            );
+            aiTargetObj = { type: 'creature', isLocal: true, item: chosen, index: state.localCombat.indexOf(chosen) };
+          } else {
+            validPlay = false;
+            logMsg(`El Tano no tenía criaturas válidas para frenar con ${cardToPlay.name} y no lo lanzó.`);
+          }
+        }
+        // PREVENIR COMBATE GLOBAL (Cuarentena Total)
         else if (cardToPlay.effect && cardToPlay.effect.type === 'prevent_attack') {
-          // El Tano te lo tira a vos para frenar tu próximo ataque
+          // El Tano te lo tira a vos para frenar tu próximo ataque completo.
           aiTargetObj = { type: 'player', isLocal: true };
         }
         // LÓGICA NUEVA: TRUCO DE COMBATE (Fuerza de Toro, etc.) — a su mejor criatura
@@ -1480,8 +1499,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: false, item: chosen };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía criaturas para reforzar con ${cardToPlay.name} y lo descartó.`);
-            state.rivalGraveyard.push(cardToPlay);
+            logMsg(`El Tano no tenía criaturas para reforzar con ${cardToPlay.name} y no lo lanzó.`);
           }
         }
         // LÓGICA NUEVA: CONTADOR PERMANENTE (+1/+1 propio, o -1/-1 al rival) — mismo criterio
@@ -1496,9 +1514,8 @@ export async function takeBotPriorityAction() {
               aiTargetObj = { type: 'creature', isLocal: true, item: chosen };
             } else {
               validPlay = false;
-              logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y lo descartó.`);
-              state.rivalGraveyard.push(cardToPlay);
-            }
+              logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y no lo lanzó.`);
+              }
           } else if (state.rivalCombat.length > 0) {
             const chosen = state.rivalCombat.reduce((prev, current) =>
               getEffectivePower(prev) > getEffectivePower(current) ? prev : current
@@ -1506,8 +1523,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: false, item: chosen };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía criaturas para reforzar con ${cardToPlay.name} y lo descartó.`);
-            state.rivalGraveyard.push(cardToPlay);
+            logMsg(`El Tano no tenía criaturas para reforzar con ${cardToPlay.name} y no lo lanzó.`);
           }
         }
         // LÓGICA NUEVA: PROTECCIÓN TEMPORAL (A Cubierto, etc.) — protege a su criatura más grande
@@ -1519,8 +1535,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: false, item: chosen };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía criaturas para proteger con ${cardToPlay.name} y lo descartó.`);
-            state.rivalGraveyard.push(cardToPlay);
+            logMsg(`El Tano no tenía criaturas para proteger con ${cardToPlay.name} y no lo lanzó.`);
           }
         }
         // ETAPA 2 (Grupo C, Pelear del Tano): antes solo consideraba un cambio 100% gratis
@@ -1546,8 +1561,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: true, index: state.localCombat.indexOf(bestPair.theirs), item: bestPair.theirs, fightWithItem: bestPair.mine };
           } else {
             validPlay = false;
-            logMsg(`El Tano no encontró una pelea que le convenga con ${cardToPlay.name} y lo descartó.`);
-            state.rivalGraveyard.push(cardToPlay);
+            logMsg(`El Tano no encontró una pelea que le convenga con ${cardToPlay.name} y no lo lanzó.`);
           }
         }
         // LÓGICA NUEVA: DESTRUIR PERMANENTE (Piedrazo a la Vidriera / Yuyerío Salvaje)
@@ -1566,40 +1580,54 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'permanent', isLocal: true, item: supportTargets[0] };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y lo descartó.`);
-            state.rivalGraveyard.push(cardToPlay);
+            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y no lo lanzó.`);
           }
         }
       }
 
-      if (validPlay && tryPayWardForBotTarget(aiTargetObj)) {
-        const castStackItem = {
-          card: cardToPlay,
-          isLocal: false,
-          targetObj: aiTargetObj,
-          type: stackType,
-          xValue: botXValue,
-          kicked: botKicked
-        };
-        addToStack(castStackItem);
-        await triggerSpellCast(false, cardToPlay, castStackItem);
-
-        // --- CÓDIGO AGREGADO PARA DEVOLVER PRIORIDAD ---
-        state.priorityPlayer = 'local';
-        state.consecutivePasses = 0;
-        // -----------------------------------------------
-        
-        logMsg(`⏳ El Tano puso ${cardToPlay.name} en la pila. Tenés la prioridad para responder.`);
+      if (!validPlay) {
+        // 601.2e: propuesta ilegal -> rewind completo. Nada se pagó todavía.
+        state.rivalHand.splice(Math.min(affordableIndex, state.rivalHand.length), 0, originalCardToPlay);
         render();
-        return; // Retorna para esperar resolución. El ciclo de prioridad continuará después.
-      } else if (validPlay) {
-        // Tenía target válido pero Ward le ganó la pulseada de maná: la carta ya se sacó de
-        // la mano (se "gastó" igual, como en MTG real), va al cementerio sin efecto.
-        state.rivalGraveyard.push(cardToPlay);
-        state.priorityPlayer = 'local';
-        state.consecutivePasses = 0;
-        render();
+        return;
       }
+
+      // 601.2f-g-h: con objetivos ya legales se fija el total, se activan fuentes y se paga.
+      if (routeManaCost && routeManaCost.includes('{X}')) {
+        const effectiveManaCost = routeManaCost.replace('{X}', Array(botXValue || 0).fill('{1}').join(''));
+        tapRivalLandsFor({ manaCost: effectiveManaCost });
+        await payCastCompositeNonManaCosts(cardToPlay, false, useAlternative);
+      } else {
+        await payBotCastRoute(cardToPlay, useAlternative, { kicked: botKicked });
+      }
+      if (useAlternative) logMsg(`🔀 El Tano pagó ${cardToPlay.name} por su costo alternativo.`);
+
+      const castStackItem = {
+        card: cardToPlay,
+        isLocal: false,
+        targetObj: aiTargetObj,
+        type: stackType,
+        xValue: botXValue,
+        kicked: botKicked
+      };
+      addToStack(castStackItem);
+      await triggerSpellCast(false, cardToPlay, castStackItem);
+
+      // Ward es posterior al casteo. Aún se resuelve como prompt simplificado (no trigger
+      // separado en Stack), pero ya no evita que el hechizo haya sido casteado primero.
+      if (!tryPayWardForBotTarget(aiTargetObj)) {
+        const stackIndex = spellStack.indexOf(castStackItem);
+        if (stackIndex >= 0) {
+          const [counteredItem] = spellStack.splice(stackIndex, 1);
+          moveCounteredStackItemToDestination(counteredItem, state);
+        }
+      }
+
+      state.priorityPlayer = 'local';
+      state.consecutivePasses = 0;
+      logMsg(`⏳ El Tano puso ${cardToPlay.name} en la pila. Tenés la prioridad para responder.`);
+      render();
+      return;
     }
   }
 
@@ -1616,6 +1644,16 @@ export async function takeBotPriorityAction() {
     let heldBackCount = 0;
     for (const unit of state.rivalCombat) {
       if (hasKeyword(unit, 'defender')) continue;
+      const attackLock = (state.activeEffects || []).find(effect =>
+        effect.effectType === 'cant_attack_next_turn' &&
+        effect.targetPlayer === 'rival' &&
+        effect.appliesThisCombat === true &&
+        effect.targetObjectId && effect.targetObjectId === unit._effectObjectId
+      );
+      if (attackLock) {
+        logMsg(`🚫 ${unit.card.name} no puede atacar en este combate por ${attackLock.sourceName || 'un efecto'}.`);
+        continue;
+      }
 
       if (!unit.tapped && !unit.summoningSickness) {
         if (shouldRivalAttackWith(unit)) {
@@ -1650,13 +1688,16 @@ export async function takeBotPriorityAction() {
 
   // 4. Fase de Declaración de Bloqueadores (Tu Turno)
   if (state.activePlayer === 'local' && state.phase === 'combat_blockers') {
-    // Guard de idempotencia: si el Tano vuelve a tener prioridad en esta misma fase (ej.
-    // después de usar un truco reactivo más abajo), no hay que volver a asignar bloqueos
-    // desde cero — assignBotBlockers no sabe que ya corrió antes.
-    const alreadyBlocked = state.rivalCombat.some(c => c.blockingIndex !== null && c.blockingIndex !== undefined);
-    if (!alreadyBlocked) {
+    // 23.9.3: la declaración del Tano también es idempotente si bloqueó CERO criaturas.
+    // Inferirlo mirando blockingIndex fallaba exactamente en ese caso.
+    if (!state.rivalBlockersDeclaredThisCombat) {
       assignBotBlockers(); // Llama a la lógica inteligente de combate
       markDeclaredBlocks(state.localCombat, state.rivalCombat);
+      state.rivalBlockersDeclaredThisCombat = true;
+      recordTelemetryEvent('blockers_declared', {
+        player: 'rival', turnCount: state.turnCount, activePlayer: state.activePlayer, phase: state.phase,
+        blockerCount: state.rivalCombat.filter(unit => unit.blockingIndex !== null && unit.blockingIndex !== undefined).length
+      });
       queueDeclaredBlockTriggers(state.rivalCombat, false);
       render();
     }

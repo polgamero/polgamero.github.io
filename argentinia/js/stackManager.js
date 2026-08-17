@@ -1,5 +1,5 @@
 import { sleep, moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getProliferateCandidates } from './utils.js';
-import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, triggerCreatureEtb, triggerLandEtb, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, cleanupIfVehicle, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal } from './main.js';
+import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, triggerCreatureEtb, triggerLandEtb, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, cleanupIfVehicle, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal, completeCastTargetDeclaration, requestPrivateZoneChoice } from './main.js';
 import { otherRole, serializeStackTarget, refreshStackItemBoardRefs } from './matchSync.js';
 import { logMsg, render, createCardElement, showRampLandChoiceModal, showScrySurveilModal, showProliferateModal, showHandFilterDiscardModal, showSacrificeEffectModal } from './ui.js';
 import { checkDeaths, checkAllDeaths } from './combatRules.js';
@@ -53,6 +53,15 @@ function resolveXInEffect(effect, xValue) {
 export const spellStack = [];
 let nextStackId = 1;
 let nextEffectId = 1;
+let nextEffectObjectId = 1;
+
+function ensureEffectObjectId(unit) {
+  if (!unit || typeof unit !== 'object') return null;
+  if (!unit._effectObjectId) {
+    unit._effectObjectId = `fxobj_${Date.now().toString(36)}_${(nextEffectObjectId++).toString(36)}`;
+  }
+  return unit._effectObjectId;
+}
 
 // ENTREGA 23.6 — la Stack es estado público compartido en multiplayer. `spellStack`
 // conserva la MISMA referencia de array porque otros módulos la importan directamente;
@@ -115,6 +124,8 @@ export function addToStack(item) {
   if (item.abilityKind === 'triggered') {
     const label = item.triggerLabel ? ` — ${item.triggerLabel}` : '';
     logMsg(`⚡ Habilidad disparada de "${item.card.name}"${label} entró a la pila (ID: ${item.id}).`);
+  } else if (item.abilityKind === 'loyalty') {
+    logMsg(`🔮 Habilidad de Lealtad de "${item.card.name}" — ${item.ability?.name || 'Loyalty'} entró a la pila (ID: ${item.id}).`);
   } else {
     logMsg(`⚡ "${item.card.name}" entró a la pila (ID: ${item.id}).`);
   }
@@ -647,6 +658,32 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             logMsg(`🗑️ ¡${card.name}! ${targetName} no tenía cartas para descartar.`);
           }
         }
+        // ENTREGA 23.10.1 — EFECTO SOBRE ZONA PRIVADA RIVAL.
+        // El target declarado por CR 601 es el JUGADOR. La carta concreta NO se mira ni
+        // se elige hasta que este bloque corre durante la RESOLUCIÓN del objeto de Stack.
+        // Así no existe el exploit "miro la mano y cancelo antes de pagar".
+        else if (effectToApply.type === 'private_zone_move') {
+          const result = await requestPrivateZoneChoice({
+            zone: effectToApply.zone || 'hand',
+            amount: effectToApply.amount || 1,
+            visibility: effectToApply.visibility || 'reveal_candidates',
+            destination: effectToApply.destination || 'graveyard',
+            range: effectToApply.range || (effectToApply.zone === 'deck' ? 'top_n' : 'all'),
+            rangeCount: effectToApply.rangeCount,
+            filter: effectToApply.filter || 'any',
+            operation: 'move',
+            cardName: card.name,
+            ownerIsLocal: targetObj.isLocal,
+            chooserIsLocal: isLocal
+          });
+          if (result.selectedCount > 0) {
+            const publicNames = Array.isArray(result.movedNames) && result.movedNames.length
+              ? `: ${result.movedNames.join(', ')}` : '';
+            logMsg(`🔐 ¡${card.name}! movió ${result.selectedCount} carta(s) de la zona privada de ${targetName}${publicNames}.`);
+          } else {
+            logMsg(`🔐 ${card.name}: no había cartas elegibles en la zona privada de ${targetName}.`);
+          }
+        }
         // LÓGICA NUEVA: EXILIAR CEMENTERIO ENTERO (odio de cementerio)
         else if (effectToApply.type === 'exile_graveyard') {
           const targetGraveyard = targetObj.isLocal ? state.localGraveyard : state.rivalGraveyard;
@@ -683,6 +720,29 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             checkAllDeaths();
           }
         } 
+        // 23.9.3: restricción INDIVIDUAL de ataque. No comparte semántica con
+        // prevent_attack (que sigue siendo global por jugador para Cuarentena Total).
+        // La identidad vive en el item de battlefield: si sale y vuelve, es un objeto nuevo
+        // y no hereda esta restricción.
+        else if (effectToApply.type === 'cant_attack_next_turn') {
+          const board = targetObj.isLocal ? state.localCombat : state.rivalCombat;
+          if (!board.includes(targetUnit)) {
+            logMsg(`⚠️ ${card.name} falló: la criatura objetivo ya no está en el campo.`);
+          } else {
+            const targetObjectId = ensureEffectObjectId(targetUnit);
+            const targetPlayer = targetObj.isLocal ? 'local' : 'rival';
+            state.activeEffects.push({
+              id: nextEffectId++,
+              effectType: 'cant_attack_next_turn',
+              targetPlayer,
+              targetObjectId,
+              createdTurnCount: state.turnCount,
+              appliesThisCombat: false,
+              sourceName: card.name
+            });
+            logMsg(`🚫 ¡${card.name}! ${targetUnit.card.name} no podrá atacar durante el próximo turno de su controlador.`);
+          }
+        }
         // LÓGICA NUEVA: EQUIPAR (real) — el Equipo que activó esta habilidad se adjunta a la criatura.
         // No se copia a `auras`: el Equipo sigue siendo su propio permanente en la zona de soporte,
         // simplemente ahora apunta con `attachedTo` a la criatura equipada.
@@ -1270,7 +1330,7 @@ export function canResolveGameEffectWithoutTarget(effectType) {
 // También lo reutilizan las habilidades de Lealtad del Punto 9 y el futuro validador JSON.
 export function canResolveGameEffectWithTarget(effectType) {
   return [
-    'damage', 'heal', 'poison', 'discard', 'exile_graveyard', 'prevent_attack',
+    'damage', 'heal', 'poison', 'discard', 'private_zone_move', 'exile_graveyard', 'prevent_attack', 'cant_attack_next_turn',
     'pump', 'grant_keyword_temp', 'attach_equipment', 'fight', 'add_counter',
     'destroy_creature', 'exile_creature', 'exile_and_return', 'bounce',
     'destroy_artifact', 'destroy_enchantment'
@@ -1285,7 +1345,7 @@ export function getEffectExecutionClass(effectType) {
   if (['team_buff', 'team_keyword'].includes(effectType)) return 'continuous';
   if ([
     'draw', 'loot', 'rummage', 'sacrifice', 'heal', 'damage', 'fog', 'draw_and_lose_life', 'drain', 'discard',
-    'scry', 'surveil', 'proliferate', 'poison', 'exile_graveyard', 'prevent_attack',
+    'scry', 'surveil', 'proliferate', 'poison', 'private_zone_move', 'exile_graveyard', 'prevent_attack', 'cant_attack_next_turn',
     'pump', 'grant_keyword_temp', 'attach_equipment', 'fight', 'add_counter',
     'destroy_creature', 'exile_creature', 'exile_and_return', 'bounce',
     'destroy_artifact', 'destroy_enchantment', 'crew_vehicle',
@@ -1473,12 +1533,10 @@ async function executeStackItem(item) {
       effectToApply = resolveXInEffect(effectToApply, item.xValue || 0);
     }
 
-    // ENTREGA 20 — una habilidad disparada conserva el target que eligió al dispararse,
-    // pero ese objetivo se vuelve a validar al resolver. Si la criatura/permanente/PW ya
-    // abandonó el campo, o ganó una protección que lo vuelve ilegal, la habilidad se
-    // resuelve sin efecto. La fuente de la habilidad NO necesita seguir en mesa salvo que
-    // el propio target sea implícitamente ella misma (Landfall/Spellslinger self).
-    if (type === 'ability' && item.abilityKind === 'triggered' && targetObj && targetObj.type !== 'stack') {
+    // Las habilidades disparadas y las Loyalty conservan el target fijado al entrar a la
+    // Stack, pero ese objetivo se revalida al resolver. La fuente NO necesita seguir en
+    // mesa: una Loyalty sigue existiendo aunque pagar el costo haya matado al Planeswalker.
+    if (type === 'ability' && ['triggered', 'loyalty'].includes(item.abilityKind) && targetObj && targetObj.type !== 'stack') {
       const targetStillLegal = isResolvedEffectTargetLegal(targetObj, {
         effect: effectToApply,
         sourceCard: card,
@@ -1486,7 +1544,9 @@ async function executeStackItem(item) {
         cardName: card.name
       });
       if (!targetStillLegal) {
-        logMsg(`⚠️ La habilidad disparada de ${card.name} se resolvió sin efecto: su objetivo ya no es legal.`);
+        const kindLabel = item.abilityKind === 'loyalty' ? 'habilidad de Lealtad' : 'habilidad disparada';
+        const abilityLabel = item.abilityKind === 'loyalty' && item.ability?.name ? ` "${item.ability.name}"` : '';
+        logMsg(`⚠️ La ${kindLabel}${abilityLabel} de ${card.name} se resolvió sin efecto: su objetivo ya no es legal.`);
         return;
       }
     }
@@ -1660,6 +1720,11 @@ export async function handleStackCardClick(item) {
       return;
     }
 
+    if (state.pendingCastTransaction?.stage === 'targets') {
+      await completeCastTargetDeclaration({ type:'stack', stackId:item.id });
+      return;
+    }
+
     const spellIndex = state.pendingSpellIndex;
     const playedCard = state.localHand.splice(spellIndex, 1)[0];
 
@@ -1775,9 +1840,9 @@ export function renderStack() {
       if (item.targetObj.type === 'player') {
         targetText = `Objetivo: ${item.targetObj.isLocal ? 'Vos' : 'Rival'}`;
       } else if (item.targetObj.type === 'creature') {
-        targetText = `Objetivo: ${item.targetObj.item.card.name}`;
+        targetText = `Objetivo: ${item.targetObj.item?.card?.name || 'objetivo ausente'}`;
       } else if (item.targetObj.type === 'permanent') {
-        targetText = `Objetivo: ${item.targetObj.item.card.name}`;
+        targetText = `Objetivo: ${item.targetObj.item?.card?.name || 'objetivo ausente'}`;
       } else if (item.targetObj.type === 'stack') {
         targetText = `Objetivo: Hechizo en pila #${item.targetObj.stackId}`;
       }
@@ -1785,11 +1850,18 @@ export function renderStack() {
 
     const ownerText = item.isLocal ? 'Vos' : getRivalName();
     const isTriggeredAbility = item.type === 'ability' && item.abilityKind === 'triggered';
+    const isLoyaltyAbility = item.type === 'ability' && item.abilityKind === 'loyalty';
     const itemTitle = isTriggeredAbility
       ? `${item.card.name} — ${item.triggerLabel || 'Habilidad disparada'}`
-      : item.card.name;
-    const ownerLabel = isTriggeredAbility ? 'Controlada por' : 'Lanzado por';
-    const kindText = isTriggeredAbility ? '<div class="stack-item-meta"><strong>Habilidad disparada</strong></div>' : '';
+      : isLoyaltyAbility
+        ? `${item.card.name} — ${item.ability?.name || 'Habilidad de Lealtad'}`
+        : item.card.name;
+    const ownerLabel = (isTriggeredAbility || isLoyaltyAbility) ? 'Controlada por' : 'Lanzado por';
+    const kindText = isTriggeredAbility
+      ? '<div class="stack-item-meta"><strong>Habilidad disparada</strong></div>'
+      : isLoyaltyAbility
+        ? '<div class="stack-item-meta"><strong>Habilidad de Lealtad</strong></div>'
+        : '';
 
     cardDiv.innerHTML = `
       <div class="stack-item-title">${isTop ? '▶ ' : ''}${itemTitle}</div>

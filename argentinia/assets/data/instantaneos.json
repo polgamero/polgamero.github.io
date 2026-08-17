@@ -1160,7 +1160,8 @@
     "image": "cierre_persiana.png",
     "requiresTarget": true,
     "effect": {
-      "type": "prevent_attack"
+      "type": "cant_attack_next_turn",
+      "duration": "next_turn"
     }
   },
   {
@@ -1503,8 +1504,9 @@
     "image": "enredar_las_ruedas.png",
     "requiresTarget": true,
     "effect": {
-      "type": "prevent_attack",
-      "amount": 1
+      "type": "cant_attack_next_turn",
+      "amount": 1,
+      "duration": "next_turn"
     }
   },
   {
@@ -1603,6 +1605,135 @@
     "effect": {
       "type": "counter_instant",
       "amount": 0
+    }
+  },
+  {
+    "id": "inst_081",
+    "name": "Requisa Relámpago",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Mirá la mano del jugador rival. Elegí una carta de ella. Ese jugador descarta esa carta.",
+    "flavorText": "—Documento, bolso y bolsillo. En ese orden.",
+    "requiresTarget": true,
+    "image": "cobro_pendiente.png",
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "hand",
+      "amount": 1,
+      "visibility": "reveal_candidates",
+      "destination": "graveyard",
+      "range": "all",
+      "filter": "any",
+      "target": "opponent_player"
+    }
+  },
+  {
+    "id": "inst_082",
+    "name": "Precinto de Evidencia",
+    "type": "Instantáneo",
+    "manaCost": "{2}{U}{B}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "text": "Mirá la mano del jugador rival. Elegí una carta de ella. Exiliá esa carta.",
+    "flavorText": "Lo que entra al sobre deja de pertenecer a la escena.",
+    "requiresTarget": true,
+    "image": "apagon_pasillo.png",
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "hand",
+      "amount": 1,
+      "visibility": "reveal_candidates",
+      "destination": "exile",
+      "range": "all",
+      "filter": "any",
+      "target": "opponent_player"
+    }
+  },
+  {
+    "id": "inst_083",
+    "name": "Pinchazo de Archivo",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Mirá las tres primeras cartas del mazo del jugador rival. Elegí una. Poné esa carta en su cementerio.",
+    "flavorText": "No hizo falta abrir el expediente entero.",
+    "requiresTarget": true,
+    "image": "silencio_biblioteca.png",
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "deck",
+      "amount": 1,
+      "visibility": "reveal_candidates",
+      "destination": "graveyard",
+      "range": "top_n",
+      "rangeCount": 3,
+      "filter": "any",
+      "target": "opponent_player"
+    }
+  },
+  {
+    "id": "inst_084",
+    "name": "Secuestro de Carpeta",
+    "type": "Instantáneo",
+    "manaCost": "{2}{U}{B}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "text": "Mirá las cuatro primeras cartas del mazo del jugador rival. Elegí una. Exiliá esa carta.",
+    "flavorText": "Cuando volvieron a contar los folios, faltaba justo el importante.",
+    "requiresTarget": true,
+    "image": "pacto_sombras.png",
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "deck",
+      "amount": 1,
+      "visibility": "reveal_candidates",
+      "destination": "exile",
+      "range": "top_n",
+      "rangeCount": 4,
+      "filter": "any",
+      "target": "opponent_player"
+    }
+  },
+  {
+    "id": "inst_085",
+    "name": "Manotazo a Ciegas",
+    "type": "Instantáneo",
+    "manaCost": "{B}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Elegí una carta de la mano del jugador rival sin mirarla. Ese jugador descarta esa carta.",
+    "flavorText": "No sabía qué había agarrado. Sabía que iba a doler.",
+    "requiresTarget": true,
+    "image": "corte_de_manga.png",
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "hand",
+      "amount": 1,
+      "visibility": "opaque_slots",
+      "destination": "graveyard",
+      "range": "all",
+      "filter": "any",
+      "target": "opponent_player"
     }
   }
 ]
