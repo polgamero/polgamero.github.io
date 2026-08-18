@@ -1,6 +1,6 @@
 {
-  "engineVersion": "23.11.5",
+  "engineVersion": "23.11.6",
   "engineProtocolVersion": "mp-23.10.0",
-  "buildLabel": "Entrega 23.11.5 Mobile Module Singleton + First-Paint Boot Recovery + Pool 511",
+  "buildLabel": "Entrega 23.11.6 Desktop Isolation + Staged Mobile Boot + Lazy Firebase + Pool 511",
   "generatedFor": "GitHub Pages cache freshness check"
 }

@@ -12,7 +12,7 @@ const PORTRAIT_CLASS = 'arg-mobile-portrait';
 const LANDSCAPE_CLASS = 'arg-mobile-landscape';
 const FULLSCREEN_CLASS = 'arg-mobile-is-fullscreen';
 const FORCE_PARAM = 'ui';
-const PHONE_SHORT_SIDE_MAX = 720;
+const PHONE_SHORT_SIDE_MAX = 600;
 const LOG_OPEN_CLASS = 'arg-mobile-log-open';
 const STACK_OPEN_CLASS = 'arg-mobile-stack-open';
 const CARD_PREVIEW_OPEN_CLASS = 'arg-mobile-card-preview-open';
@@ -53,7 +53,7 @@ export function normalizeForcedMode(value) {
   return normalized === 'mobile' || normalized === 'desktop' ? normalized : 'auto';
 }
 
-export function classifyMobileSurface({ width, height, coarsePointer = false, forcedMode = 'auto' } = {}) {
+export function classifyMobileSurface({ width, height, screenWidth = 0, screenHeight = 0, coarsePointer = false, touchPoints = 0, forcedMode = 'auto' } = {}) {
   const forced = normalizeForcedMode(forcedMode);
   if (forced === 'mobile') return true;
   if (forced === 'desktop') return false;
@@ -61,10 +61,13 @@ export function classifyMobileSurface({ width, height, coarsePointer = false, fo
   const w = Number(width) || 0;
   const h = Number(height) || 0;
   if (w <= 0 || h <= 0) return false;
+  const sw = Number(screenWidth) || w;
+  const sh = Number(screenHeight) || h;
+  const physicalShortSide = Math.min(sw, sh);
 
-  // No identificamos Android/iPhone por User-Agent. Nos importa una superficie táctil
-  // de teléfono: puntero grueso + lado corto pequeño. Así una notebook touch no cambia UI.
-  return Boolean(coarsePointer) && Math.min(w, h) <= PHONE_SHORT_SIDE_MAX;
+  // 23.11.6: sólo smartphone físico. La altura de una ventana NO decide mobile y una
+  // notebook touch/coarse queda desktop. screen.width/height en CSS px es estable al rotar.
+  return Boolean(coarsePointer) && Number(touchPoints || 0) > 0 && physicalShortSide <= PHONE_SHORT_SIDE_MAX;
 }
 
 export function getOrientationForViewport(width, height) {
@@ -91,7 +94,10 @@ function isMobileSurfaceNow() {
   return classifyMobileSurface({
     width: window.innerWidth,
     height: window.innerHeight,
+    screenWidth: window.screen?.width || 0,
+    screenHeight: window.screen?.height || 0,
     coarsePointer: hasCoarsePointer(),
+    touchPoints: window.navigator?.maxTouchPoints || 0,
     forcedMode: getForcedModeFromLocation(),
   });
 }

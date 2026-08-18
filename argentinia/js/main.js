@@ -6,7 +6,7 @@ import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRu
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks } from './telemetry.js';
@@ -666,6 +666,17 @@ async function boot() {
     uploadRemote: uploadTelemetrySession
   });
 
+  const phoneBoot = globalThis.__ARGENTINIA_PHONE_SURFACE__ === true;
+  globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('engine_core_boot_path', { phoneBoot, firebaseDeferred: phoneBoot });
+
+  // 23.11.6: desktop conserva el boot online histórico. En smartphone el primer menú y
+  // Solitario NO dependen del SDK remoto de Firebase; la fachada lazy lo cargará bajo
+  // demanda al tocar Login/Multiplayer/Tienda/Admin. Esto evita que Auth/Firestore forme
+  // parte del camino crítico antes del primer menú mobile.
+  if (!phoneBoot) {
+    await preloadFirebaseClient();
+  }
+
   const freshness = await checkBuildFreshness();
   if (!freshness.ok) {
     const serverVersion = freshness.manifest?.engineVersion || 'más nueva';
@@ -691,6 +702,21 @@ async function boot() {
     updateAccountUI(state.currentUser);
 
     if (state.currentUser) {
+      // 23.11.6 mobile: Firebase queda fuera del camino crítico hasta que el usuario
+      // activa explícitamente una función online (por ejemplo Login). Una vez que Auth
+      // ya cargó el SDK y entrega un usuario real, recuperamos también la configuración
+      // remota para recuperar paridad con desktop SIN volver a bloquear el primer menú.
+      if (phoneBoot) {
+        loadGameConfig()
+          .then(config => {
+            applyGameConfig(config);
+            globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('firebase_config_loaded_after_auth_mobile');
+          })
+          .catch(err => {
+            console.error('No se pudo cargar la configuración del juego tras autenticar en mobile — se mantienen los valores por defecto:', err);
+          });
+      }
+
       // Fase 1: apenas se loguea, buscamos si ya tiene perfil guardado. Si lo tiene, lo
       // cargamos y le refrescamos la marca de última conexión; si no (primera vez de
       // verdad, o la cuenta se acaba de borrar), le mostramos YA el modal de mazo inicial
@@ -726,17 +752,22 @@ async function boot() {
   // menú roto/vacío (con su propio error en la consola) antes que dejar a alguien mirando
   // un círculo girando para siempre sin ninguna pista de qué pasó.
   try {
+    globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('card_pool_load_start');
     await cardDb.loadAll();
+    globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('card_pool_load_ready', { total: cardDb.allCards.length });
 
-    // PANEL DE ADMIN: carga la configuración de balance guardada en Firestore ANTES de
-    // mostrar el menú — si nadie tocó nada todavía (o falla la carga por conexión), el
-    // juego sigue funcionando perfecto con los defaults hardcodeados en store.js, así que
-    // un error acá nunca deja a un jugador sin poder jugar.
-    try {
-      const config = await loadGameConfig();
-      applyGameConfig(config);
-    } catch (err) {
-      console.error('No se pudo cargar la configuración del juego — se usan los valores por defecto:', err);
+    // PANEL DE ADMIN / balance remoto: desktop conserva la carga previa al menú. En phone
+    // boot usamos defaults hasta que el usuario invoque una función online; así Firebase
+    // queda completamente fuera del camino crítico de Solitario/mobile.
+    if (!phoneBoot) {
+      try {
+        const config = await loadGameConfig();
+        applyGameConfig(config);
+      } catch (err) {
+        console.error('No se pudo cargar la configuración del juego — se usan los valores por defecto:', err);
+      }
+    } else {
+      globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('firebase_config_deferred_mobile');
     }
   } catch (err) {
     console.error('[BOOT_FATAL] No se pudo cargar/validar el pool de cartas:', err);
