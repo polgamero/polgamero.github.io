@@ -423,13 +423,17 @@ function classifyGameplayCardElement(card, eventTarget) {
   const zone = card.closest(GAMEPLAY_ZONE_SELECTOR);
   const turnText = getTurnButtonText();
   const localCombat = zone?.id === 'local-combat';
+  const rivalCombat = zone?.id === 'rival-combat';
   return classifyMobileTapIntent({
     targetable: card.classList.contains('targetable'),
     manaPayable: card.classList.contains('mana-payable'),
     instantAction: Boolean(eventTarget?.closest?.('.instant-ability-fab')),
     discardChoice: zone?.id === 'local-hand' && zone.classList.contains('discard-warning'),
     combatDeclaration: localCombat && /Confirmar Ataque|Saltar Ataque/i.test(turnText),
-    blockingDeclaration: localCombat && /Confirmar Bloqueos/i.test(turnText),
+    // Durante declaración de bloqueadores hay DOS taps de gameplay: primero la bloqueadora
+    // local y después el atacante rival. Ambos deben atravesar directo al motor; si el segundo
+    // cae en preview, la asignación nunca se completa (bug mobile 23.11.11).
+    blockingDeclaration: (localCombat || rivalCombat) && /Confirmar Bloqueos/i.test(turnText),
     pendingChoice: isPendingChoiceDom(),
     waitingRival: isWaitingRivalDom(),
     damageModalOpen: isDamageModalOpenDom(),

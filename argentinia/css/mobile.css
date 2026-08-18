@@ -1345,3 +1345,73 @@ html.argentinia-mobile .main-menu-news-empty {
   font-size: 9px !important;
   line-height: 1.25 !important;
 }
+
+
+/* ==========================================================
+   ENTREGA 23.11.12 — MOBILE COMBAT TAP + CARD GEOMETRY POLISH
+   Sólo presentación; la única semántica táctil asociada vive en mobileUI.js y reusa
+   los listeners existentes del motor.
+   ========================================================== */
+
+/* A) Sin el dock superior, Cementerio/Exilio rival recuperan la posición histórica arriba. */
+html.argentinia-mobile .side-pile.arg-mobile-rival-public-zone .pile-badge {
+  top: -6px !important;
+  bottom: auto !important;
+  right: -4px !important;
+  z-index: 600 !important;
+}
+
+/* B) El wrapper tapped conserva un hit-area cómodo, pero no pinta un rectángulo negro
+      mayor que la card-inner rotada. El marco visible vuelve a ser el borde real de la carta. */
+html.argentinia-mobile .field-row .card.tapped {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* C) En desktop el arte necesita un mínimo de 35px; en una carta mobile de ~59px eso
+      fuerza el arte a comerse casi toda la altura y recorta tipo/texto. En teléfono el
+      flexbox puede respetar la proporción real y el arte debe poder encogerse. */
+html.argentinia-mobile :is(
+  #local-hand,#rival-hand,#local-lands,#rival-lands,#local-combat,#rival-combat,
+  #local-support,#rival-support,#local-planeswalkers,#rival-planeswalkers
+) .card-art {
+  min-height: 0 !important;
+}
+
+/* Las básicas dejan de usar el 120% + cover heredado del renderer, que cortaba el símbolo. */
+html.argentinia-mobile .card-text-box > img[alt="Símbolo de maná"] {
+  width: 88% !important;
+  height: 88% !important;
+  max-width: 88% !important;
+  max-height: 88% !important;
+  object-fit: contain !important;
+}
+
+/* D) REC aún más discreto; sigue desplegando el panel completo al tocarlo. */
+html.argentinia-mobile .telemetry-panel {
+  padding: 1px !important;
+  gap: 1px !important;
+  border-radius: 5px !important;
+}
+html.argentinia-mobile .arg-mobile-telemetry-toggle {
+  min-width: 32px !important;
+  width: 32px !important;
+  height: 20px !important;
+  padding: 0 3px !important;
+  border-radius: 5px !important;
+  font-size: 8px !important;
+}
+
+/* E) Noticias mobile colapsa físicamente en SU esquina inferior derecha, no por clip
+      de la esquina superior izquierda. Expandido conserva la huella 23.11.11. */
+html.argentinia-mobile .main-menu-news.arg-news-collapsed {
+  width: 96px !important;
+  max-height: 28px !important;
+  padding: 5px 7px !important;
+  border-radius: 8px !important;
+}
+html.argentinia-mobile .main-menu-news.arg-news-collapsed .main-menu-news-title {
+  font-size: 9px !important;
+  line-height: 16px !important;
+}

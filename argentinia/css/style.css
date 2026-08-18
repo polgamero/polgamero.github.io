@@ -1787,3 +1787,39 @@ html, body {
   opacity: 0;
   pointer-events: none;
 }
+
+
+/* ==========================================================
+   ENTREGA 23.11.12 — NEWS BOTTOM-RIGHT COLLAPSE
+   23.11.11 recortaba visualmente la esquina TOP-LEFT de un panel que seguía anclado
+   abajo-derecha; por eso el chip terminaba flotando hacia el centro. Ahora se contrae
+   el box real: como right/bottom permanecen fijos, la esquina superior izquierda viaja
+   diagonalmente hacia la esquina inferior derecha y el chip queda donde corresponde.
+   ========================================================== */
+.main-menu-news {
+  clip-path: none !important;
+  transform-origin: bottom right !important;
+  transition:
+    width .34s cubic-bezier(.2,.75,.25,1),
+    max-height .34s cubic-bezier(.2,.75,.25,1),
+    padding .34s cubic-bezier(.2,.75,.25,1),
+    border-radius .34s cubic-bezier(.2,.75,.25,1),
+    box-shadow .2s ease !important;
+}
+.main-menu-news.arg-news-collapsed {
+  clip-path: none !important;
+  width: 132px !important;
+  max-height: 38px !important;
+  padding: 8px 12px !important;
+  border-radius: 10px !important;
+}
+.main-menu-news.arg-news-collapsed .main-menu-news-title {
+  margin: 0 !important;
+  white-space: nowrap !important;
+}
+.main-menu-news.arg-news-collapsed .main-menu-news-list {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
