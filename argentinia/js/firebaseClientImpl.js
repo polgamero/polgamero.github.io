@@ -10,15 +10,18 @@
 // Los valores de firebaseConfig son datos PÚBLICOS a propósito: viajan en el código que le
 // llega a cualquier jugador en el navegador. Lo que protege la base de datos de verdad son
 // las Reglas de Seguridad de Firestore (Fase 1 en adelante), no que esto esté "oculto".
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+// 23.11.9: PIN intencional a 12.16.0. Firebase 12.17.0/12.17.1 (@firebase/auth 1.13.4)
+// tienen una regresión de IndexedDB + visibilitychange que rompe signInWithPopup con
+// "Database is closing/hidden". No subir esta versión sin un contrato/regresión explícito.
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
 import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
   signOut,
   onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX } from './store.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
