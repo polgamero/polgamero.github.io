@@ -1,0 +1,1044 @@
+[
+  {
+    "id": "tier_001",
+    "name": "La Bombonera",
+    "type": "Tierra básica — Planicie",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {W}.",
+    "flavorText": "La cancha tiembla, pero la fe permanece intacta.",
+    "image": "bombonera.png",
+    "produces": "W"
+  },
+  {
+    "id": "tier_002",
+    "name": "El Obelisco",
+    "type": "Tierra básica — Planicie",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {W}.",
+    "flavorText": "Epicentro de la alegría colectiva.",
+    "image": "obelisco.png",
+    "produces": "W"
+  },
+  {
+    "id": "tier_003",
+    "name": "Glaciar Perito Moreno",
+    "type": "Tierra básica — Agua",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {U}.",
+    "flavorText": "Imponente majestuosidad del sur.",
+    "image": "glaciar_perito_moreno.png",
+    "produces": "U"
+  },
+  {
+    "id": "tier_004",
+    "name": "El Monumental",
+    "type": "Tierra básica — Agua",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {U}.",
+    "flavorText": "Casa de gigantes y un mar de pasión.",
+    "image": "monumental.png",
+    "produces": "U"
+  },
+  {
+    "id": "tier_005",
+    "name": "Cerro Siete Colores",
+    "type": "Tierra básica — Montaña",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {R}.",
+    "flavorText": "Orgullo del norte argentino.",
+    "image": "cerro_siete_colores.png",
+    "produces": "R"
+  },
+  {
+    "id": "tier_006",
+    "name": "Ruta 40",
+    "type": "Tierra básica — Montaña",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {R}.",
+    "flavorText": "De Norte a Sur, cruzando sierras y desiertos.",
+    "image": "ruta_40.png",
+    "produces": "R"
+  },
+  {
+    "id": "tier_007",
+    "name": "La Pampa Húmeda",
+    "type": "Tierra básica — Bosque",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {G}.",
+    "flavorText": "Tierra fértil donde todo crece.",
+    "image": "pampa_humeda.png",
+    "produces": "G"
+  },
+  {
+    "id": "tier_008",
+    "name": "Esteros del Iberá",
+    "type": "Tierra básica — Bosque",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {G}.",
+    "flavorText": "Un paraíso verde lleno de vida salvaje.",
+    "image": "esteros_ibera.png",
+    "produces": "G"
+  },
+  {
+    "id": "tier_009",
+    "name": "El Riachuelo",
+    "type": "Tierra básica — Pantano",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {B}.",
+    "flavorText": "Aguas turbias, místicas y cargadas de historia.",
+    "image": "riachuelo.png",
+    "produces": "B"
+  },
+  {
+    "id": "tier_010",
+    "name": "Cementerio de la Recoleta",
+    "type": "Tierra básica — Pantano",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agrega {B}.",
+    "flavorText": "Silencio sepulcral entre las sombras porteñas.",
+    "image": "cementerio_recoleta.png",
+    "produces": "B"
+  },
+  {
+    "id": "tier_011",
+    "name": "La Constancia",
+    "type": "Tierra sagrada — Pantano",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {B} o {G}.",
+    "flavorText": "El corazón del delta late aquí",
+    "image": "constancia.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "B",
+      "G"
+    ]
+  },
+  {
+    "id": "tier_012",
+    "name": "Las Malvinas",
+    "type": "Tierra sagrada — Agua",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {U} o {W}.",
+    "flavorText": "Por los pibes de Malvinas que jamás olvidaré.",
+    "image": "malvinas.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "U",
+      "W"
+    ]
+  },
+  {
+    "id": "tier_013",
+    "name": "Delta del Tigre",
+    "type": "Tierra — Agua Bosque",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Entra en juego sin girar. {T}: Agrega {U} o {G}.",
+    "flavorText": "Donde el río se abre en mil canales y el monte no se decide a terminar.",
+    "image": "delta_tigre.png",
+    "producesOptions": [
+      "U",
+      "G"
+    ]
+  },
+  {
+    "id": "tier_014",
+    "name": "Puerto de Ushuaia",
+    "type": "Tierra — Agua Planicie",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra en juego girada. {T}: Agrega {U} o {W}.",
+    "flavorText": "El fin del mundo, principio de todo.",
+    "image": "puerto_ushuaia.png",
+    "producesOptions": [
+      "U",
+      "W"
+    ],
+    "entersTapped": true
+  },
+  {
+    "id": "tier_015",
+    "name": "Biblioteca Nacional",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Biblioteca Nacional entra al campo de batalla girada. {T}: Agregá {U}. {T}: Robás una carta y perdés 1 Punto de Vida.",
+    "flavorText": "El conocimiento siempre tiene un precio.",
+    "image": "biblioteca_nacional.png",
+    "activatedAbility": {
+      "cost": "{T}",
+      "effect": {
+        "type": "draw_and_lose_life",
+        "amount": 1,
+        "lifeLoss": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    },
+    "entersTapped": true,
+    "produces": "U"
+  },
+  {
+    "id": "tier_016",
+    "name": "Sendero de las cataratas",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Sendero de las cataratas entra al campo de batalla girado. {T}: Agregá {G}. {T}, Sacrificá esta tierra: Buscá una tierra básica en tu mazo y ponela en el campo de batalla.",
+    "flavorText": "Un camino que se borra entre la bruma apenas lo cruzás.",
+    "image": "sendero_delta.png",
+    "activatedAbility": {
+      "cost": "{T}",
+      "sacrifice": "self",
+      "effect": {
+        "type": "ramp",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    },
+    "entersTapped": true,
+    "produces": "G"
+  },
+  {
+    "id": "tier_017",
+    "name": "Puente Pueyrredón",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {W} o {B}.",
+    "flavorText": "Cruza dos mundos que no siempre se llevan bien.",
+    "image": "puente_pueyrredon.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "W",
+      "B"
+    ]
+  },
+  {
+    "id": "tier_018",
+    "name": "Cordillera de los Andes",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {R} o {G}.",
+    "flavorText": "Fuego bajo tierra, vida en la superficie.",
+    "image": "cordillera_andes.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "R",
+      "G"
+    ]
+  },
+  {
+    "id": "tier_019",
+    "name": "Barrio Chino",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {U} o {B}.",
+    "flavorText": "De noche, ninguna otra esquina tiene tantas luces ni tantos secretos.",
+    "image": "barrio_chino.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "U",
+      "B"
+    ]
+  },
+  {
+    "id": "tier_020",
+    "name": "Feria de Mataderos",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {W} o {G}.",
+    "flavorText": "Doma, empanadas y folklore, todo en la misma vereda.",
+    "image": "feria_mataderos.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "W",
+      "G"
+    ]
+  },
+  {
+    "id": "tier_021",
+    "name": "El Chaltén",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {B} o {R}.",
+    "flavorText": "La montaña que se esconde, y cuando aparece, impone.",
+    "image": "el_chalten.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "B",
+      "R"
+    ]
+  },
+  {
+    "id": "tier_022",
+    "name": "Termas de Río Hondo",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {U} o {R}.",
+    "flavorText": "Agua que hierve sola, sin pedirle permiso a nadie.",
+    "image": "termas_rio_hondo.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "U",
+      "R"
+    ]
+  },
+  {
+    "id": "tier_023",
+    "name": "Puente Alsina",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{2}: Puente Alsina se convierte en una criatura 2/2 con Prisa hasta el final del turno. Sigue siendo una tierra.",
+    "flavorText": "No da maná, pero cuando hace falta, sale a jugar.",
+    "image": "puente_alsina.png",
+    "baseStats": {
+      "power": 2,
+      "toughness": 2
+    },
+    "keywords": [
+      "haste"
+    ],
+    "activatedAbility": {
+      "cost": "{2}",
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "tier_024",
+    "name": "Refugio Jakob",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{2}: Refugio Jakob se convierte en una criatura 2/4 hasta el final del turno. Sigue siendo una tierra.",
+    "flavorText": "Aguanta cualquier temporal, y a cualquiera que se le ocurra molestar.",
+    "image": "refugio_jakob.png",
+    "baseStats": {
+      "power": 2,
+      "toughness": 4
+    },
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}",
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "tier_025",
+    "name": "Feria Americana",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Feria Americana entra al campo de batalla girada. {T}: Agregá {W}. {T}: Ganás 1 Punto de Vida.",
+    "flavorText": "Siempre hay algo útil escondido entre lo que nadie más quiere.",
+    "image": "feria_americana.png",
+    "activatedAbility": {
+      "cost": "{T}",
+      "effect": {
+        "type": "heal",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    },
+    "entersTapped": true,
+    "produces": "W"
+  },
+  {
+    "id": "tier_026",
+    "name": "Selva Misionera",
+    "type": "Tierra — Bosque",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {G}{G}.",
+    "flavorText": "Tan densa que hay quien jura que todavía no la exploraron entera.",
+    "image": "selva_misionera.png",
+    "entersTapped": true,
+    "manaAmount": 2,
+    "produces": "G"
+  },
+  {
+    "id": "tier_027",
+    "name": "Bañados del Pilcomayo",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {B} o {G}.",
+    "flavorText": "El agua parece quieta hasta que algo respira debajo.",
+    "image": "banados_pilcomayo.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "B",
+      "G"
+    ]
+  },
+  {
+    "id": "tier_028",
+    "name": "Laguna del Diamante",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {G} o {U}.",
+    "flavorText": "El cielo baja a tomar agua entre los volcanes.",
+    "image": "laguna_diamante.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "G",
+      "U"
+    ]
+  },
+  {
+    "id": "tier_029",
+    "name": "Basílica de Luján",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {W} o {B}.",
+    "flavorText": "Fe, promesas y silencios bajo la misma torre.",
+    "image": "basilica_lujan.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "W",
+      "B"
+    ]
+  },
+  {
+    "id": "tier_030",
+    "name": "Dársena Sur",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {U} o {B}.",
+    "flavorText": "Agua oscura, grúas inmóviles y luces que nunca terminan de apagarse.",
+    "image": "darsena_sur.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "U",
+      "B"
+    ]
+  },
+  {
+    "id": "tier_031",
+    "name": "Valle de Calamuchita",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {W} o {G}.",
+    "flavorText": "Entre sierras y arroyos, hasta el silencio parece cuidado.",
+    "image": "valle_calamuchita.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "W",
+      "G"
+    ]
+  },
+  {
+    "id": "tier_032",
+    "name": "Vaca Muerta",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {B} o {R}.",
+    "flavorText": "Bajo la piedra duerme algo que todos quieren despertar.",
+    "image": "vaca_muerta.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "B",
+      "R"
+    ]
+  },
+  {
+    "id": "tier_033",
+    "name": "Puerto Madryn",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {U} o {R}.",
+    "flavorText": "El mar helado golpea contra una costa que arde de viento.",
+    "image": "puerto_madryn.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "U",
+      "R"
+    ]
+  },
+  {
+    "id": "tier_034",
+    "name": "Salinas Grandes",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {W} o {R}.",
+    "flavorText": "Blanco hasta doler los ojos; rojo cuando cae el sol.",
+    "image": "salinas_grandes.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "W",
+      "R"
+    ]
+  },
+  {
+    "id": "tier_035",
+    "name": "Plaza del Cabildo",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Entra al campo de batalla girada. {T}: Agregá {R} o {W}.",
+    "flavorText": "Hay discusiones que todavía rebotan en las paredes.",
+    "image": "plaza_cabildo.png",
+    "entersTapped": true,
+    "producesOptions": [
+      "R",
+      "W"
+    ]
+  },
+  {
+    "id": "tier_036",
+    "name": "Mar Argentino",
+    "type": "Tierra básica — Agua",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agregá {U}.",
+    "flavorText": "No termina donde se pierde la costa; recién empieza.",
+    "image": "mar_argentino.png",
+    "produces": "U"
+  },
+  {
+    "id": "tier_037",
+    "name": "Capilla del Camino",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Capilla del Camino entra al campo de batalla girada. {T}: Agregá {W}. {2}{W}, {T}: Ganás 3 Puntos de Vida.",
+    "flavorText": "Siempre hay una vela prendida, aunque la ruta lleve horas vacía.",
+    "image": "capilla_camino.png",
+    "entersTapped": true,
+    "produces": "W",
+    "activatedAbility": {
+      "cost": "{2}{W}{T}",
+      "effect": {
+        "type": "heal",
+        "amount": 3
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_038",
+    "name": "Observatorio Costero",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Observatorio Costero entra al campo de batalla girado. {T}: Agregá {U}. {2}{U}, {T}: Adiviná 2.",
+    "flavorText": "Las tormentas se ven mejor cuando todavía son una línea en la pantalla.",
+    "image": "observatorio_costero.png",
+    "entersTapped": true,
+    "produces": "U",
+    "activatedAbility": {
+      "cost": "{2}{U}{T}",
+      "effect": {
+        "type": "scry",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_039",
+    "name": "Panteón Municipal",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Panteón Municipal entra al campo de batalla girado. {T}: Agregá {B}. {2}{B}, {T}: Vigilá 2.",
+    "flavorText": "Hay nichos con flores nuevas y nombres que nadie pronuncia.",
+    "image": "panteon_municipal.png",
+    "entersTapped": true,
+    "produces": "B",
+    "activatedAbility": {
+      "cost": "{2}{B}{T}",
+      "effect": {
+        "type": "surveil",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_040",
+    "name": "Usina Abandonada",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Usina Abandonada entra al campo de batalla girada. {T}: Agregá {R}. {2}{R}, {T}: Hacé 1 de daño al objetivo.",
+    "flavorText": "Las turbinas dejaron de girar. Los cables no recibieron el aviso.",
+    "image": "usina_abandonada.png",
+    "entersTapped": true,
+    "produces": "R",
+    "activatedAbility": {
+      "cost": "{2}{R}{T}",
+      "effect": {
+        "type": "damage",
+        "amount": 1
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_041",
+    "name": "Reserva del Humedal",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Reserva del Humedal entra al campo de batalla girada. {T}: Agregá {G}. {2}{G}, {T}: Buscá una tierra básica en tu mazo y ponela en el campo de batalla.",
+    "flavorText": "Cada sendero que cierran aparece de nuevo un poco más allá.",
+    "image": "reserva_humedal.png",
+    "entersTapped": true,
+    "produces": "G",
+    "activatedAbility": {
+      "cost": "{2}{G}{T}",
+      "effect": {
+        "type": "ramp",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "tier_042",
+    "name": "Estación de Servicio 24 Horas",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{T}: Agregá {C}. {2}, {T}: Ganás 1 Punto de Vida.",
+    "flavorText": "En algún momento de la madrugada, todos terminan ahí.",
+    "image": "estacion_servicio_24h.png",
+    "produces": "C",
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "heal",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_043",
+    "name": "Peaje Fantasma",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{T}: Agregá {C}. {2}, {T}: Adiviná 1.",
+    "flavorText": "La barrera sube sola. El ticket igual sale impreso.",
+    "image": "peaje_fantasma.png",
+    "produces": "C",
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "scry",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_044",
+    "name": "Cantera Abandonada",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{T}: Agregá {C}. {3}, {T}: Poné un contador +1/+1 sobre la criatura objetivo.",
+    "flavorText": "Las máquinas se oxidaron. La piedra sigue creciendo en silencio.",
+    "image": "cantera_abandonada.png",
+    "produces": "C",
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "add_counter",
+        "counterType": "plusOne",
+        "amount": 1
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "tier_045",
+    "name": "Terminal de Ómnibus Vacía",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{T}: Agregá {C}. {3}, {T}: Devolvé una Tierra de tu cementerio a tu mano.",
+    "flavorText": "Todos los carteles anuncian salidas. Ninguno dice hacia dónde.",
+    "image": "terminal_omnibus_vacia.png",
+    "produces": "C",
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "return_from_graveyard",
+        "filter": "land",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_046",
+    "name": "Santuario de la Banquina",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Santuario de la Banquina entra girado. {T}: Agregá {W}. {2}{W}, {T}: Ganás 2 Puntos de Vida.",
+    "flavorText": "Un techo de chapa, flores nuevas y botellas que nadie se lleva.",
+    "image": "santuario_de_la_banquina.png",
+    "entersTapped": true,
+    "produces": "W",
+    "activatedAbility": {
+      "cost": "{2}{W}{T}",
+      "effect": {
+        "type": "heal",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_047",
+    "name": "Dársena de Niebla",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Dársena de Niebla entra girada. {T}: Agregá {U}. {1}{U}, {T}: Robá una carta, luego descartá una carta.",
+    "flavorText": "Los barcos aparecen primero como sonido.",
+    "image": "darsena_de_niebla.png",
+    "entersTapped": true,
+    "produces": "U",
+    "activatedAbility": {
+      "cost": "{1}{U}{T}",
+      "effect": {
+        "type": "loot",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_048",
+    "name": "Crematorio del Oeste",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Crematorio del Oeste entra girado. {T}: Agregá {B}. {3}{B}, {T}: Devolvé una criatura de tu cementerio a tu mano.",
+    "flavorText": "Las chimeneas están frías; el registro de nombres, no.",
+    "image": "crematorio_del_oeste.png",
+    "entersTapped": true,
+    "produces": "B",
+    "activatedAbility": {
+      "cost": "{3}{B}{T}",
+      "effect": {
+        "type": "return_from_graveyard",
+        "filter": "creature",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_049",
+    "name": "Taller Bajo el Puente",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Taller Bajo el Puente entra girado. {T}: Agregá {R}. {1}{R}, {T}: Descartá una carta, luego robá una carta.",
+    "flavorText": "El ruido de las herramientas se mezcla con el de los autos de arriba.",
+    "image": "taller_bajo_el_puente.png",
+    "entersTapped": true,
+    "produces": "R",
+    "activatedAbility": {
+      "cost": "{1}{R}{T}",
+      "effect": {
+        "type": "rummage",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_050",
+    "name": "Vivero Provincial",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Vivero Provincial entra girado. {T}: Agregá {G}. {2}{G}, {T}: Poné un contador +1/+1 sobre la criatura objetivo.",
+    "flavorText": "Cada plantín tiene un cartel. Ninguno sabe leerlo.",
+    "image": "vivero_provincial.png",
+    "entersTapped": true,
+    "produces": "G",
+    "activatedAbility": {
+      "cost": "{2}{G}{T}",
+      "effect": {
+        "type": "add_counter",
+        "counterType": "plusOne",
+        "amount": 1
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "tier_051",
+    "name": "Paso Fronterizo Nevado",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{T}: Agregá {C}. {4}, {T}: Robá una carta.",
+    "flavorText": "Del otro lado hay otro puesto, otra bandera y exactamente el mismo frío.",
+    "image": "paso_fronterizo_nevado.png",
+    "produces": "C",
+    "activatedAbility": {
+      "cost": "{4}{T}",
+      "effect": {
+        "type": "draw",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_052",
+    "name": "Islote de Camalotes",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{T}: Agregá {C}. {3}, {T}: Creá una ficha de criatura Camalote 1/1.",
+    "flavorText": "Hoy está acá. Mañana el río decide.",
+    "image": "islote_de_camalotes.png",
+    "produces": "C",
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "create_tokens",
+        "amount": 1,
+        "tokenName": "Camalote",
+        "tokenStats": {
+          "power": 1,
+          "toughness": 1
+        },
+        "tokenKeywords": []
+      },
+      "requiresTarget": false,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "tier_053",
+    "name": "Cancha Bajo la Autopista",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{T}: Agregá {C}. {2}, {T}: La criatura objetivo obtiene +1/+1 hasta el final del turno.",
+    "flavorText": "El techo es de hormigón y las líneas las pintó alguien con lo que había.",
+    "image": "cancha_bajo_la_autopista.png",
+    "produces": "C",
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "pump",
+        "powerMod": 1,
+        "toughnessMod": 1
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_054",
+    "name": "Galpón del Ferrocarril",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{T}: Agregá {C}. {3}, {T}: Devolvé un Artefacto de tu cementerio a tu mano.",
+    "flavorText": "Los trenes se fueron. Las piezas se quedaron esperando otro uso.",
+    "image": "galpon_del_ferrocarril.png",
+    "produces": "C",
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "return_from_graveyard",
+        "filter": "artifact",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_055",
+    "name": "Salar de la Puna",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{T}: Agregá {C}. {3}, {T}: Exiliá el cementerio del jugador objetivo.",
+    "flavorText": "De día enceguece. De noche parece que guarda todo debajo de la sal.",
+    "image": "salar_de_la_puna.png",
+    "produces": "C",
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "exile_graveyard"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  }
+]

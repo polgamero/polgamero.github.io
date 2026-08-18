@@ -1,0 +1,1480 @@
+/* ============================================================================
+   ARGENTINIA 23.11.2 — MOBILE SHELL PHASE 1 + TOUCH PHASE 2 + COMPLEX OVERLAYS PHASE 3
+   Esta hoja NO reemplaza style.css y NO toca desktop. Todas las reglas de juego/UI
+   existente quedan bajo .argentinia-mobile o pertenecen exclusivamente a los gates
+   creados por mobileUI.js.
+   Objetivo de esta fase: viewport móvil estable, landscape obligatorio, fullscreen
+   opt-in, safe areas y contención de estilos/inline sizes inyectados por JS.
+   ============================================================================ */
+
+#arg-mobile-rotate-gate,
+#arg-mobile-enter-gate,
+#arg-mobile-fullscreen-retry {
+  display: none;
+}
+
+html.argentinia-mobile,
+html.argentinia-mobile body {
+  width: 100dvw;
+  height: 100dvh;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #0b130e;
+}
+
+html.argentinia-mobile {
+  --arg-safe-top: env(safe-area-inset-top, 0px);
+  --arg-safe-right: env(safe-area-inset-right, 0px);
+  --arg-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --arg-safe-left: env(safe-area-inset-left, 0px);
+  --sidebar-width: clamp(178px, 25dvw, 224px);
+  --card-w: 12.5dvh;
+}
+
+html.argentinia-mobile body {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.argentinia-mobile #game-app {
+  width: 100dvw !important;
+  height: 100dvh !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding-top: var(--arg-safe-top);
+  padding-right: var(--arg-safe-right);
+  padding-bottom: var(--arg-safe-bottom);
+  padding-left: var(--arg-safe-left);
+}
+
+html.argentinia-mobile #board,
+html.argentinia-mobile #sidebar-hud {
+  height: calc(100dvh - var(--arg-safe-top) - var(--arg-safe-bottom)) !important;
+  min-height: 0;
+}
+
+/* ---------- Gates móviles: por encima incluso del boot overlay ---------- */
+html.argentinia-mobile #arg-mobile-rotate-gate,
+html.argentinia-mobile #arg-mobile-enter-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  padding:
+    max(18px, var(--arg-safe-top))
+    max(18px, var(--arg-safe-right))
+    max(18px, var(--arg-safe-bottom))
+    max(18px, var(--arg-safe-left));
+  background:
+    radial-gradient(circle at 50% 35%, rgba(212,175,55,.12), transparent 38%),
+    linear-gradient(180deg, #101a13 0%, #070b08 100%);
+  color: #f0e0b0;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+}
+
+html.argentinia-mobile.arg-mobile-portrait #arg-mobile-rotate-gate {
+  display: flex;
+}
+
+html.argentinia-mobile.arg-mobile-landscape:not(.arg-mobile-entered) #arg-mobile-enter-gate {
+  display: flex;
+}
+
+.arg-mobile-gate-card {
+  width: min(560px, 92dvw);
+  max-height: 88dvh;
+  overflow: auto;
+  padding: clamp(18px, 4dvh, 30px) clamp(22px, 5dvw, 38px);
+  border: 2px solid rgba(212,175,55,.8);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(20,29,21,.98), rgba(8,13,9,.98));
+  box-shadow: 0 16px 60px rgba(0,0,0,.72), 0 0 28px rgba(212,175,55,.12);
+}
+
+.arg-mobile-gate-icon {
+  display: block;
+  font-size: clamp(36px, 11dvh, 72px);
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.arg-mobile-gate-title {
+  margin: 0 0 8px;
+  font-family: Georgia, serif;
+  font-size: clamp(22px, 6dvh, 34px);
+  letter-spacing: .04em;
+  color: #f0e0b0;
+}
+
+.arg-mobile-gate-copy {
+  margin: 0 auto;
+  max-width: 500px;
+  color: #cfe0d4;
+  font-size: clamp(12px, 3.4dvh, 16px);
+  line-height: 1.4;
+}
+
+.arg-mobile-enter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: min(320px, 76dvw);
+  min-height: 48px;
+  margin-top: 18px;
+  padding: 10px 24px;
+  border: 2px solid #f0e0b0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(212,175,55,.34), rgba(66,49,14,.92));
+  color: #fff7dc;
+  font: 800 clamp(14px, 3.7dvh, 18px)/1 system-ui, sans-serif;
+  letter-spacing: .035em;
+  cursor: pointer;
+  box-shadow: 0 6px 22px rgba(0,0,0,.42), 0 0 16px rgba(212,175,55,.22);
+}
+
+.arg-mobile-gate-note {
+  margin-top: 10px;
+  color: #8ea398;
+  font-size: 11px;
+}
+
+html.argentinia-mobile.arg-mobile-entered.arg-mobile-landscape:not(.arg-mobile-is-fullscreen) #arg-mobile-fullscreen-retry {
+  display: flex;
+  position: fixed;
+  right: max(8px, var(--arg-safe-right));
+  top: max(8px, var(--arg-safe-top));
+  z-index: 2147483001;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(240,224,176,.55);
+  border-radius: 10px;
+  background: rgba(8,13,9,.82);
+  color: #f0e0b0;
+  font-size: 19px;
+  cursor: pointer;
+  backdrop-filter: blur(5px);
+}
+
+/* ---------- Shell del tablero. Fase 1: misma estructura, sólo viewport seguro ---------- */
+html.argentinia-mobile #board {
+  padding: .55dvh .55dvw !important;
+  gap: .45dvh !important;
+}
+
+html.argentinia-mobile #sidebar-hud {
+  width: var(--sidebar-width) !important;
+  padding: .38rem !important;
+  gap: .35rem !important;
+}
+
+html.argentinia-mobile .player-card {
+  padding: .3rem !important;
+  gap: .3rem !important;
+  border-radius: 7px !important;
+}
+html.argentinia-mobile .avatar {
+  width: 1.85rem !important;
+  height: 1.85rem !important;
+  font-size: 1.2rem !important;
+}
+html.argentinia-mobile .player-info h3 { font-size: .66rem !important; margin-bottom: 1px !important; }
+html.argentinia-mobile .hp-bar-container { height: 7px !important; max-width: 100px !important; }
+html.argentinia-mobile .hp-text { font-size: .58rem !important; }
+html.argentinia-mobile .log-section { padding: .32rem !important; gap: .22rem !important; border-radius: 7px !important; }
+html.argentinia-mobile .log-box { min-height: 0 !important; padding: .3rem !important; font-size: .56rem !important; gap: .18rem !important; }
+html.argentinia-mobile .turn-priority-hud { padding: .3rem .34rem !important; border-radius: 7px !important; }
+html.argentinia-mobile .priority-context-label { font-size: .56rem !important; min-height: 1.3em !important; }
+html.argentinia-mobile .priority-turn-label,
+html.argentinia-mobile .priority-owner-badge,
+html.argentinia-mobile .priority-state-chip { font-size: .56rem !important; }
+html.argentinia-mobile .phase-indicator { margin: 0 !important; }
+html.argentinia-mobile .turn-controls { gap: .22rem !important; }
+html.argentinia-mobile .btn-turn,
+html.argentinia-mobile .btn-abandon { min-height: 34px; padding: .35rem .3rem !important; font-size: .64rem !important; }
+
+/* Stack: los estilos JS/desktop posteriores no pueden devolverla fuera del viewport. */
+html.argentinia-mobile #stack-container {
+  right: calc(var(--sidebar-width) + var(--arg-safe-right) + 6px) !important;
+  top: 50% !important;
+  width: min(210px, 31dvw) !important;
+  max-height: 78dvh !important;
+}
+html.argentinia-mobile #stack-hover-preview {
+  display: none !important; /* hover no es una interacción móvil válida; preview por tap llega en Fase 2 */
+}
+
+/* ---------- Contención de CSS dinámico e inline sizes de ui.js ---------- */
+html.argentinia-mobile :is(
+  .deck-select-panel,
+  .options-menu-panel,
+  .gy-modal-content,
+  .damage-modal-box,
+  .mulligan-panel
+) {
+  max-width: calc(100dvw - var(--arg-safe-left) - var(--arg-safe-right) - 24px) !important;
+  max-height: calc(100dvh - var(--arg-safe-top) - var(--arg-safe-bottom) - 18px) !important;
+  overflow: auto !important;
+}
+
+html.argentinia-mobile .gy-modal-overlay,
+html.argentinia-mobile #damage-modal-overlay,
+html.argentinia-mobile #mulligan-overlay,
+html.argentinia-mobile #deck-select-overlay {
+  padding:
+    max(7px, var(--arg-safe-top))
+    max(7px, var(--arg-safe-right))
+    max(7px, var(--arg-safe-bottom))
+    max(7px, var(--arg-safe-left)) !important;
+}
+
+html.argentinia-mobile .deck-select-panel { padding: 14px 18px !important; width: 96% !important; }
+html.argentinia-mobile .deck-select-title { font-size: clamp(17px, 5dvh, 23px) !important; }
+html.argentinia-mobile .deck-select-subtitle { margin-bottom: 10px !important; font-size: 11px !important; }
+html.argentinia-mobile .deck-select-mono-row { gap: 12px !important; margin-bottom: 13px !important; }
+html.argentinia-mobile .deck-select-circle-big { width: 52px !important; height: 52px !important; }
+html.argentinia-mobile .deck-select-mono-btn { gap: 4px !important; padding: 3px !important; }
+html.argentinia-mobile .deck-select-pairs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 7px !important; }
+html.argentinia-mobile .deck-select-pair-btn { padding: 6px 9px !important; gap: 8px !important; }
+html.argentinia-mobile .deck-select-pair-desc { display: none !important; }
+
+html.argentinia-mobile .main-menu-logo-wrap { top: 2dvh !important; }
+html.argentinia-mobile .main-menu-logo { max-width: 43dvw !important; max-height: 26dvh !important; }
+html.argentinia-mobile .main-menu-buttons {
+  left: max(3dvw, var(--arg-safe-left)) !important;
+  bottom: max(4dvh, var(--arg-safe-bottom)) !important;
+  width: min(210px, 31dvw) !important;
+  gap: 4px !important;
+}
+html.argentinia-mobile .main-menu-btn {
+  padding: 5px 8px !important;
+  font-size: clamp(11px, 3.1dvh, 15px) !important;
+  border-radius: 7px !important;
+}
+html.argentinia-mobile .main-menu-account {
+  top: max(8px, var(--arg-safe-top)) !important;
+  right: max(9px, var(--arg-safe-right)) !important;
+  transform: scale(.82);
+  transform-origin: top right;
+}
+html.argentinia-mobile .main-menu-news { display: none !important; }
+
+html.argentinia-mobile :is(
+  #encyclopedia-overlay,
+  #store-overlay,
+  #mydecks-overlay,
+  #deckbuilder-overlay,
+  #admin-panel-overlay,
+  #multiplayer-overlay,
+  #options-menu-overlay
+) {
+  padding:
+    max(7px, var(--arg-safe-top))
+    max(9px, var(--arg-safe-right))
+    max(7px, var(--arg-safe-bottom))
+    max(9px, var(--arg-safe-left)) !important;
+  overflow: auto !important;
+}
+
+html.argentinia-mobile :is(.encyclopedia-header,.store-header,.mydecks-header,.deckbuilder-header,.admin-header,.mp-header) {
+  margin-bottom: 8px !important;
+  gap: 8px !important;
+}
+html.argentinia-mobile :is(.encyclopedia-title,.store-title,.mydecks-title,.admin-title,.mp-title) {
+  font-size: clamp(17px, 4.8dvh, 22px) !important;
+}
+html.argentinia-mobile .encyclopedia-tabs { margin-bottom: 7px !important; gap: 3px !important; }
+html.argentinia-mobile .encyclopedia-tab { padding: 5px 8px !important; font-size: 10px !important; }
+html.argentinia-mobile .encyclopedia-body { gap: 8px !important; }
+html.argentinia-mobile .encyclopedia-filters { width: min(190px, 26dvw) !important; padding: 8px !important; }
+html.argentinia-mobile .store-balance-row { gap: 8px !important; margin-bottom: 10px !important; }
+html.argentinia-mobile .store-balance-chip { min-width: 110px !important; padding: 7px 12px !important; }
+html.argentinia-mobile .store-pack-visual { width: min(34dvh, 180px) !important; height: min(34dvh, 180px) !important; }
+html.argentinia-mobile .mydecks-slots-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 8px !important; }
+html.argentinia-mobile .mydecks-slot { min-height: 70px !important; padding: 9px !important; }
+html.argentinia-mobile .deckbuilder-body { gap: 8px !important; }
+html.argentinia-mobile .deckbuilder-side { width: min(230px, 30dvw) !important; }
+html.argentinia-mobile .admin-body { padding-bottom: 10px !important; }
+html.argentinia-mobile .admin-debug-table { min-width: 760px !important; }
+html.argentinia-mobile .mp-body { max-width: min(560px, 88dvw) !important; }
+html.argentinia-mobile .mp-section { padding: 10px !important; }
+
+html.argentinia-mobile .mulligan-panel { padding: 10px 14px !important; overflow: auto !important; }
+html.argentinia-mobile .mulligan-title { font-size: 18px !important; margin-bottom: 2px !important; }
+html.argentinia-mobile .mulligan-subtitle { font-size: 11px !important; margin-bottom: 7px !important; }
+html.argentinia-mobile .mulligan-hand-row { min-height: 94px !important; gap: 5px !important; margin-bottom: 8px !important; }
+html.argentinia-mobile .mulligan-card-slot { width: 64px !important; height: 90px !important; }
+html.argentinia-mobile .mulligan-card-slot:hover,
+html.argentinia-mobile .mulligan-card-slot.selectable:hover { transform: none !important; }
+html.argentinia-mobile .mulligan-btn { padding: 7px 14px !important; font-size: 11px !important; }
+
+/* Cualquier panel "listo para jugar" construido con cssText inline queda contenido. */
+html.argentinia-mobile .mp-ready-card {
+  min-width: 0 !important;
+  width: min(720px, 88dvw) !important;
+  max-height: 86dvh !important;
+  overflow: auto !important;
+  padding: 16px 20px !important;
+}
+
+/* En portrait el gate es la única interfaz válida. El juego puede seguir booting debajo. */
+@media (orientation: portrait) {
+  html.argentinia-mobile body { overflow: hidden !important; }
+}
+
+/* ============================================================================
+   ARGENTINIA 23.11.1 — MOBILE TOUCH / PLAYABLE BOARD PHASE 2
+   La capa desktop sigue intacta. Estas reglas convierten el shell en una superficie
+   jugable con dedo: sin hover pegajoso, mano deslizable, targets táctiles, drawers de
+   bitácora/Stack y preview por tap con acción explícita.
+   ============================================================================ */
+
+/* En touch no existe hover semántico: evitamos zooms pegajosos de navegador móvil. */
+html.argentinia-mobile #local-hand .card:hover,
+html.argentinia-mobile .field-row .card:not(.tapped):hover,
+html.argentinia-mobile .gy-modal-grid .card:hover {
+  transform: none !important;
+  z-index: auto !important;
+}
+html.argentinia-mobile .field-row .card.tapped:hover .card-inner {
+  transform: rotate(90deg) !important;
+  transform-origin: center center !important;
+}
+
+/* Más tablero, menos sidebar. La bitácora abandona el layout permanente y vive en drawer. */
+html.argentinia-mobile {
+  --sidebar-width: clamp(150px, 20.5dvw, 178px);
+  --arg-touch-min: 42px;
+}
+html.argentinia-mobile #sidebar-hud {
+  padding: .28rem !important;
+  gap: .26rem !important;
+}
+html.argentinia-mobile #game-log-box {
+  display: none !important;
+}
+html.argentinia-mobile .log-section {
+  padding: .28rem !important;
+  gap: .2rem !important;
+}
+html.argentinia-mobile .player-card {
+  padding: .24rem !important;
+  gap: .22rem !important;
+  flex-wrap: nowrap !important;
+}
+html.argentinia-mobile .avatar {
+  width: 1.65rem !important;
+  height: 1.65rem !important;
+  font-size: 1.05rem !important;
+  border-width: 1px !important;
+}
+html.argentinia-mobile .player-info h3 {
+  max-width: 118px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .58rem !important;
+}
+html.argentinia-mobile .hp-text { font-size: .54rem !important; }
+html.argentinia-mobile .turn-priority-hud { padding: .25rem .28rem !important; }
+html.argentinia-mobile .priority-context-label {
+  font-size: .54rem !important;
+  line-height: 1.2 !important;
+  max-height: 2.4em;
+  overflow: hidden;
+}
+html.argentinia-mobile .phase-dot {
+  width: 7px !important;
+  height: 7px !important;
+}
+html.argentinia-mobile .btn-turn {
+  min-height: var(--arg-touch-min) !important;
+  font-size: .68rem !important;
+  touch-action: manipulation;
+}
+html.argentinia-mobile .btn-abandon {
+  min-height: 28px !important;
+  font-size: .55rem !important;
+}
+html.argentinia-mobile #payment-controls :is(button,.btn-reset) {
+  min-height: 36px !important;
+  font-size: .62rem !important;
+}
+html.argentinia-mobile #payment-status {
+  font-size: .59rem !important;
+  line-height: 1.2 !important;
+}
+
+/* Mano propia: nunca volver a comprimirla a miniaturas imposibles. Se desliza horizontal. */
+html.argentinia-mobile #local-hand {
+  justify-content: flex-start !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  padding: 1px 7px 5px !important;
+  gap: 6px !important;
+  touch-action: pan-x pinch-zoom;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+html.argentinia-mobile #local-hand::-webkit-scrollbar,
+html.argentinia-mobile .field-row::-webkit-scrollbar { display: none; }
+html.argentinia-mobile #local-hand .card {
+  width: clamp(52px, 13.5dvh, 78px) !important;
+  height: auto !important;
+  min-width: 52px !important;
+  scroll-snap-align: center;
+}
+
+/* Campo: si una mesa se llena, preservamos un blanco táctil mínimo y permitimos paneo. */
+html.argentinia-mobile .field-row {
+  justify-content: flex-start !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  padding-inline: 3px !important;
+  touch-action: pan-x pinch-zoom;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+html.argentinia-mobile .field-row .card:not(.tapped) {
+  min-width: 42px !important;
+  min-height: 59px !important;
+}
+html.argentinia-mobile .field-row .card.tapped {
+  min-width: 59px !important;
+  min-height: 42px !important;
+}
+html.argentinia-mobile .lands-support-wrapper { gap: .35dvh !important; }
+html.argentinia-mobile .field-zone-container { gap: .35dvh !important; }
+html.argentinia-mobile .field-row::before {
+  left: 4px !important;
+  top: 2px !important;
+  font-size: .45rem !important;
+}
+
+/* Mazo/cementerio/exilio no pueden comerse media fila en landscape de teléfono. */
+html.argentinia-mobile .zone-row-container { gap: 4px !important; }
+html.argentinia-mobile .lands-center-zone { min-height: 0 !important; }
+html.argentinia-mobile .side-pile {
+  width: 42px !important;
+  height: 59px !important;
+  min-width: 42px !important;
+  flex-shrink: 0 !important;
+  font-size: .52rem !important;
+}
+html.argentinia-mobile .side-pile .pile-count { font-size: .55rem !important; }
+
+/* Los estados que requieren elección ganan un área táctil inequívoca. */
+html.argentinia-mobile .card.targetable,
+html.argentinia-mobile .card.mana-payable {
+  outline: 3px solid rgba(241,196,15,.9) !important;
+  outline-offset: -1px;
+}
+html.argentinia-mobile .hp-bar-container.targetable {
+  min-height: 32px !important;
+  display: flex !important;
+  align-items: center;
+  outline: 3px solid rgba(241,196,15,.85) !important;
+  outline-offset: 2px;
+  touch-action: manipulation;
+}
+html.argentinia-mobile .instant-ability-fab {
+  min-width: 34px !important;
+  min-height: 34px !important;
+  font-size: 17px !important;
+  touch-action: manipulation;
+}
+
+/* ---------- Dock móvil: Bitácora y Stack sin robar tablero permanentemente ---------- */
+#arg-mobile-utility-dock,
+#arg-mobile-layer-scrim,
+#arg-mobile-card-preview { display: none; }
+
+html.argentinia-mobile.arg-mobile-entered.arg-mobile-landscape #arg-mobile-utility-dock {
+  display: flex;
+  position: fixed;
+  z-index: 2147482000;
+  right: calc(var(--sidebar-width) + var(--arg-safe-right) + 6px);
+  top: max(6px, var(--arg-safe-top));
+  gap: 5px;
+}
+.arg-mobile-tool-btn {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(240,224,176,.58);
+  border-radius: 10px;
+  background: rgba(8,13,9,.86);
+  color: #f0e0b0;
+  box-shadow: 0 4px 18px rgba(0,0,0,.42);
+  backdrop-filter: blur(5px);
+  font-size: 18px;
+  touch-action: manipulation;
+}
+.arg-mobile-tool-btn.has-items { border-color: #e2b714; box-shadow: 0 0 12px rgba(226,183,20,.32); }
+#arg-mobile-stack-badge {
+  position: absolute;
+  right: -5px;
+  top: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #e2b714;
+  color: #111;
+  font: 800 10px/1 system-ui,sans-serif;
+  border: 1px solid #111;
+}
+
+html.argentinia-mobile:is(.arg-mobile-log-open,.arg-mobile-stack-open,.arg-mobile-card-preview-open,.arg-mobile-stack-preview-open) #arg-mobile-layer-scrim {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 2147482100;
+  background: rgba(0,0,0,.58);
+  backdrop-filter: blur(2px);
+}
+
+/* La bitácora real (no una copia) se convierte temporalmente en drawer. */
+html.argentinia-mobile.arg-mobile-log-open #game-log-box {
+  display: flex !important;
+  position: fixed !important;
+  z-index: 2147482200;
+  left: max(10px, var(--arg-safe-left)) !important;
+  top: max(10px, var(--arg-safe-top)) !important;
+  bottom: max(10px, var(--arg-safe-bottom)) !important;
+  width: min(64dvw, 620px) !important;
+  max-width: calc(100dvw - var(--sidebar-width) - 28px) !important;
+  padding: 12px 14px !important;
+  border: 2px solid rgba(212,175,55,.72) !important;
+  border-radius: 13px !important;
+  background: rgba(5,10,8,.97) !important;
+  box-shadow: 0 18px 60px rgba(0,0,0,.72) !important;
+  font-size: clamp(11px, 2.8dvh, 14px) !important;
+  line-height: 1.4 !important;
+  overflow-y: auto !important;
+}
+
+/* 23.11.9 — Pila persistente como desktop. Si el motor la marca hidden sigue oculta;
+   si contiene objetos queda SIEMPRE visible, sin drawer ni tap previo. Tres filas visibles
+   como máximo y scroll vertical táctil para pilas largas. */
+html.argentinia-mobile #arg-mobile-stack-toggle {
+  display: none !important;
+}
+html.argentinia-mobile #stack-container:not(.hidden) {
+  display: flex !important;
+  flex-direction: column !important;
+  position: fixed !important;
+  z-index: 1250 !important;
+  right: calc(var(--sidebar-width) + var(--arg-safe-right) + 6px) !important;
+  left: auto !important;
+  top: 50% !important;
+  bottom: auto !important;
+  transform: translateY(-50%) !important;
+  width: min(218px, 30dvw) !important;
+  max-width: min(218px, calc(100dvw - var(--sidebar-width) - var(--arg-safe-left) - var(--arg-safe-right) - 18px)) !important;
+  max-height: min(82dvh, 232px) !important;
+  padding: 8px !important;
+  gap: 6px !important;
+  border: 2px solid rgba(226,183,20,.82) !important;
+  border-radius: 9px !important;
+  background: rgba(20,24,33,.96) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.62) !important;
+}
+html.argentinia-mobile #stack-container:not(.hidden) .stack-header {
+  flex: 0 0 auto !important;
+  padding-bottom: 4px !important;
+  font-size: 11px !important;
+}
+html.argentinia-mobile #stack-container:not(.hidden) .stack-list {
+  flex: 0 1 auto !important;
+  max-height: 174px !important; /* ~3 filas reales; el resto scrollea */
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y !important;
+  gap: 5px !important;
+  scrollbar-width: thin;
+}
+html.argentinia-mobile #stack-container:not(.hidden) .stack-item-card {
+  flex: 0 0 auto !important;
+  min-height: 48px;
+  padding: 6px 8px !important;
+  font-size: 11px !important;
+  line-height: 1.15 !important;
+  touch-action: manipulation;
+}
+html.argentinia-mobile #stack-container:not(.hidden) .stack-item-title {
+  margin-bottom: 2px !important;
+  font-size: 11px !important;
+}
+html.argentinia-mobile #stack-container:not(.hidden) .stack-item-meta {
+  font-size: 9.5px !important;
+  line-height: 1.15 !important;
+}
+
+/* ---------- Preview de cualquier carta del tablero ---------- */
+html.argentinia-mobile.arg-mobile-card-preview-open #arg-mobile-card-preview {
+  display: flex;
+  position: fixed;
+  z-index: 2147482300;
+  inset: max(8px, var(--arg-safe-top)) max(8px, var(--arg-safe-right)) max(8px, var(--arg-safe-bottom)) max(8px, var(--arg-safe-left));
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  pointer-events: none;
+}
+#arg-mobile-card-preview-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+html.argentinia-mobile #arg-mobile-card-preview-stage .card {
+  width: auto !important;
+  height: min(78dvh, 344px) !important;
+  max-width: 54dvw !important;
+  aspect-ratio: 5 / 7 !important;
+  transform: none !important;
+  opacity: 1 !important;
+  box-shadow: 0 18px 60px rgba(0,0,0,.9) !important;
+}
+html.argentinia-mobile #arg-mobile-card-preview-stage .card-inner {
+  width: 100% !important;
+  height: 100% !important;
+  transform: none !important;
+}
+.arg-mobile-preview-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 130px;
+  pointer-events: auto;
+}
+.arg-mobile-preview-action-btn,
+.arg-mobile-preview-close-btn {
+  min-width: 130px;
+  min-height: 48px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font: 800 12px/1.1 system-ui,sans-serif;
+  letter-spacing: .03em;
+  touch-action: manipulation;
+}
+.arg-mobile-preview-action-btn {
+  border: 2px solid #d4af37;
+  background: linear-gradient(180deg, #735b14, #3d310c);
+  color: #fff4c9;
+}
+.arg-mobile-preview-close-btn {
+  border: 1px solid #718078;
+  background: #1b241f;
+  color: #dbe7df;
+}
+
+/* Preview del Stack reutiliza el renderer completo ya existente de stackManager.js. */
+html.argentinia-mobile.arg-mobile-stack-preview-open #stack-hover-preview {
+  display: block !important;
+  position: fixed !important;
+  z-index: 2147482300 !important;
+  left: 50% !important;
+  top: 50% !important;
+  right: auto !important;
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) !important;
+  pointer-events: none !important;
+}
+html.argentinia-mobile.arg-mobile-stack-preview-open #stack-hover-preview .card {
+  width: auto !important;
+  height: min(78dvh, 344px) !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+html.argentinia-mobile.arg-mobile-stack-preview-open #stack-hover-preview .card-inner {
+  width: 100% !important;
+  height: 100% !important;
+  transform: none !important;
+}
+
+/* Los drawers/previews no existen en portrait, aunque se gire a mitad de una interacción. */
+html.argentinia-mobile.arg-mobile-portrait :is(#arg-mobile-utility-dock,#arg-mobile-layer-scrim,#arg-mobile-card-preview,#stack-container) {
+  display: none !important;
+}
+
+/* 23.11.7: NO usar :has() para estado global mobile. En el S23 el Mulligan era el
+   primer DOM complejo y :has() obligaba al navegador a invalidar selectores ascendentes.
+   mobileUI mantiene una clase raíz explícita, mucho más barata de recalcular. */
+html.argentinia-mobile.arg-mobile-blocking-overlay-open #arg-mobile-utility-dock {
+  display: none !important;
+}
+
+/* ============================================================================
+   ARGENTINIA 23.11.2 — MOBILE COMPLEX OVERLAYS / PRIVATE CHOICES PHASE 3
+   Overlay-only: cementerio/exilio, decisiones privadas, selectores múltiples y daño manual.
+   Desktop/style.css y reglas de juego permanecen intactos.
+   ============================================================================ */
+
+/* El tercer acceso del dock reúne las cuatro zonas públicas sin obligar a acertar una pila chica. */
+#arg-mobile-zones-drawer { display: none; }
+html.argentinia-mobile.arg-mobile-zones-open #arg-mobile-zones-drawer {
+  display: flex;
+  position: fixed;
+  z-index: 2147482200;
+  left: max(10px, var(--arg-safe-left));
+  top: max(10px, var(--arg-safe-top));
+  bottom: max(10px, var(--arg-safe-bottom));
+  width: min(54dvw, 460px);
+  max-width: calc(100dvw - var(--sidebar-width) - 28px);
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px;
+  border: 2px solid rgba(212,175,55,.72);
+  border-radius: 13px;
+  background: rgba(9,14,11,.98);
+  box-shadow: 0 18px 60px rgba(0,0,0,.72);
+}
+.arg-mobile-zones-title {
+  text-align: center;
+  color: #f0e0b0;
+  font: 900 clamp(13px,3.5dvh,18px)/1.1 system-ui,sans-serif;
+  letter-spacing: .05em;
+}
+.arg-mobile-zones-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 9px;
+}
+.arg-mobile-zones-grid button {
+  min-height: 54px;
+  padding: 9px 10px;
+  border: 1px solid rgba(212,175,55,.52);
+  border-radius: 10px;
+  background: #18231d;
+  color: #eaf1ec;
+  font: 800 clamp(11px,2.8dvh,14px)/1.15 system-ui,sans-serif;
+  touch-action: manipulation;
+}
+html.argentinia-mobile:is(.arg-mobile-log-open,.arg-mobile-stack-open,.arg-mobile-zones-open,.arg-mobile-card-preview-open,.arg-mobile-stack-preview-open) #arg-mobile-layer-scrim {
+  display: block;
+}
+
+
+/* Base común de decisiones complejas: panel dentro del safe viewport, cabecera estable y targets grandes. */
+html.argentinia-mobile.arg-mobile-landscape .gy-modal-overlay {
+  padding:
+    max(6px, var(--arg-safe-top))
+    max(7px, var(--arg-safe-right))
+    max(6px, var(--arg-safe-bottom))
+    max(7px, var(--arg-safe-left)) !important;
+}
+html.argentinia-mobile.arg-mobile-landscape .gy-modal-content {
+  width: min(94dvw, 900px) !important;
+  max-width: calc(100dvw - var(--arg-safe-left) - var(--arg-safe-right) - 14px) !important;
+  max-height: calc(100dvh - var(--arg-safe-top) - var(--arg-safe-bottom) - 12px) !important;
+  padding: 10px !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+html.argentinia-mobile.arg-mobile-landscape .gy-modal-header {
+  flex: 0 0 auto;
+  min-height: 38px;
+  margin-bottom: 7px !important;
+  padding-bottom: 7px !important;
+  gap: 8px;
+}
+html.argentinia-mobile.arg-mobile-landscape .gy-modal-header h3 {
+  margin: 0;
+  font-size: clamp(12px,3.3dvh,17px) !important;
+  line-height: 1.15;
+}
+html.argentinia-mobile.arg-mobile-landscape .gy-close-btn,
+html.argentinia-mobile.arg-mobile-landscape .gy-modal-content :is(.mulligan-btn,.loyalty-ability-btn) {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+html.argentinia-mobile.arg-mobile-landscape .gy-modal-content .loyalty-ability-btn {
+  padding: 8px 10px !important;
+  gap: 8px !important;
+  font-size: clamp(11px,2.8dvh,14px) !important;
+}
+
+/* Cementerio/exilio: navegador horizontal de cartas grandes. Tap en carta => preview Fase 2. */
+html.argentinia-mobile .arg-mobile-zone-browser-overlay .gy-modal-content {
+  width: calc(100dvw - var(--arg-safe-left) - var(--arg-safe-right) - 16px) !important;
+  height: calc(100dvh - var(--arg-safe-top) - var(--arg-safe-bottom) - 12px) !important;
+}
+html.argentinia-mobile .arg-mobile-zone-browser-overlay .gy-modal-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  justify-content: flex-start !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 5px 5px 9px !important;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pinch-zoom;
+}
+html.argentinia-mobile .arg-mobile-zone-browser-overlay .gy-modal-grid > * {
+  flex: 0 0 auto !important;
+  scroll-snap-align: center;
+}
+html.argentinia-mobile .arg-mobile-zone-browser-overlay .gy-modal-grid .card {
+  width: clamp(84px,24dvh,112px) !important;
+  height: auto !important;
+  aspect-ratio: 5/7;
+  flex: 0 0 auto !important;
+  transform: none !important;
+}
+html.argentinia-mobile .arg-mobile-zone-browser-overlay .gy-modal-grid .mulligan-btn {
+  width: 100%;
+  min-height: 40px !important;
+  padding: 6px 7px !important;
+  font-size: 10px !important;
+}
+
+/* Protocolo privado: selección legible, horizontal y con confirmación inequívoca. */
+html.argentinia-mobile .arg-mobile-private-zone-overlay .gy-modal-content {
+  width: calc(100dvw - var(--arg-safe-left) - var(--arg-safe-right) - 16px) !important;
+  height: calc(100dvh - var(--arg-safe-top) - var(--arg-safe-bottom) - 12px) !important;
+}
+html.argentinia-mobile .arg-mobile-private-zone-overlay .gy-modal-content > div:last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 6px 6px !important;
+}
+html.argentinia-mobile #private-zone-hint {
+  flex: 0 0 auto;
+  margin: 0 !important;
+  padding: 4px 8px 7px;
+  text-align: center;
+  font-size: clamp(11px,2.8dvh,14px) !important;
+}
+html.argentinia-mobile #private-zone-row {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  gap: 9px !important;
+  margin: 3px 0 8px !important;
+  padding: 4px 6px 8px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+}
+html.argentinia-mobile #private-zone-row > button {
+  position: relative;
+  flex: 0 0 clamp(92px,25dvh,118px) !important;
+  width: clamp(92px,25dvh,118px) !important;
+  min-width: clamp(92px,25dvh,118px) !important;
+  min-height: clamp(128px,35dvh,166px) !important;
+  max-height: 70dvh;
+  padding: 9px 7px !important;
+  border: 2px solid #54655b !important;
+  border-radius: 11px !important;
+  background: linear-gradient(180deg,rgba(40,54,46,.98),rgba(19,28,23,.98)) !important;
+  scroll-snap-align: center;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+html.argentinia-mobile #private-zone-row > button .loyalty-ability-text {
+  font-size: clamp(10px,2.6dvh,13px) !important;
+  line-height: 1.2 !important;
+  overflow-wrap: anywhere;
+}
+html.argentinia-mobile #private-zone-row > button.chosen {
+  border-color: #f1c40f !important;
+  box-shadow: 0 0 0 3px rgba(241,196,15,.34), 0 0 20px rgba(241,196,15,.55) !important;
+  transform: translateY(-3px) !important;
+}
+html.argentinia-mobile #private-zone-row > button.chosen::after {
+  content: '✓';
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #f1c40f;
+  color: #111;
+  font: 900 16px/1 system-ui,sans-serif;
+}
+html.argentinia-mobile #private-zone-row > button:disabled {
+  opacity: .42 !important;
+  filter: grayscale(.5);
+}
+html.argentinia-mobile .arg-mobile-private-zone-overlay .mulligan-buttons {
+  flex: 0 0 auto;
+  gap: 8px !important;
+  padding-top: 3px;
+}
+html.argentinia-mobile .arg-mobile-private-zone-overlay .mulligan-buttons button {
+  min-height: 46px !important;
+  min-width: 150px;
+}
+
+/* Selectores múltiples reutilizados por Scry/Surveil/Proliferar/descartar/sacrificar/Escape. */
+html.argentinia-mobile #mulligan-overlay.arg-mobile-selection-overlay .mulligan-panel {
+  width: calc(100dvw - var(--arg-safe-left) - var(--arg-safe-right) - 16px) !important;
+  max-width: none !important;
+  max-height: calc(100dvh - var(--arg-safe-top) - var(--arg-safe-bottom) - 12px) !important;
+  padding: 9px 12px !important;
+  overflow: hidden !important;
+}
+html.argentinia-mobile #mulligan-overlay.arg-mobile-selection-overlay .mulligan-title {
+  font-size: clamp(14px,3.8dvh,19px) !important;
+  line-height: 1.1;
+}
+html.argentinia-mobile #mulligan-overlay.arg-mobile-selection-overlay .mulligan-subtitle {
+  margin: 2px 0 6px !important;
+  font-size: clamp(10px,2.5dvh,12px) !important;
+  line-height: 1.2;
+}
+html.argentinia-mobile #mulligan-overlay.arg-mobile-selection-overlay .mulligan-hand-row {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  max-height: 58dvh;
+  justify-content: flex-start !important;
+  gap: 7px !important;
+  margin-bottom: 7px !important;
+  padding: 4px 5px 7px;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+}
+html.argentinia-mobile #mulligan-overlay.arg-mobile-selection-overlay .mulligan-card-slot {
+  width: clamp(72px,20dvh,92px) !important;
+  height: auto !important;
+  aspect-ratio: 5/7;
+  min-width: clamp(72px,20dvh,92px) !important;
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  transform: none !important;
+}
+html.argentinia-mobile #mulligan-overlay.arg-mobile-selection-overlay .mulligan-card-slot.chosen {
+  box-shadow: 0 0 0 3px #f1c40f, 0 0 18px rgba(241,196,15,.68) !important;
+}
+html.argentinia-mobile #mulligan-overlay.arg-mobile-selection-overlay .mulligan-buttons {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+html.argentinia-mobile #mulligan-overlay.arg-mobile-selection-overlay .mulligan-buttons .mulligan-btn {
+  min-height: 44px;
+  padding: 7px 16px !important;
+  font-size: 11px !important;
+}
+
+/* Daño manual: sigue siendo NO bloqueante, pero el panel cabe en landscape y +/- son táctiles. */
+html.argentinia-mobile #damage-modal-overlay:not(.hidden) {
+  justify-content: flex-start !important;
+  align-items: center !important;
+  padding:
+    max(5px,var(--arg-safe-top))
+    0
+    max(5px,var(--arg-safe-bottom))
+    max(7px,var(--arg-safe-left)) !important;
+}
+html.argentinia-mobile #damage-modal-overlay:not(.hidden) .damage-modal-box {
+  width: min(46dvw, 370px) !important;
+  max-width: calc(100dvw - var(--sidebar-width) - 26px) !important;
+  max-height: calc(100dvh - var(--arg-safe-top) - var(--arg-safe-bottom) - 10px) !important;
+  padding: 9px 10px !important;
+  border-radius: 11px !important;
+  overflow-y: auto !important;
+}
+html.argentinia-mobile .damage-modal-box h2 {
+  margin: 0 0 3px !important;
+  font-size: clamp(14px,3.6dvh,18px) !important;
+}
+html.argentinia-mobile .damage-modal-hint {
+  margin: 0 0 6px !important;
+  font-size: clamp(9px,2.2dvh,11px) !important;
+}
+html.argentinia-mobile #damage-modal-content {
+  margin-bottom: 7px !important;
+  font-size: 11px !important;
+}
+html.argentinia-mobile #damage-modal-content > p {
+  margin-bottom: 7px !important;
+  font-size: 11px !important;
+  line-height: 1.18 !important;
+}
+html.argentinia-mobile .damage-row {
+  min-height: 50px;
+  margin-bottom: 5px !important;
+  padding: 5px 7px !important;
+  gap: 6px;
+}
+html.argentinia-mobile .damage-row strong { font-size: 11px !important; }
+html.argentinia-mobile .damage-row span { font-size: 9px !important; }
+html.argentinia-mobile .damage-controls { gap: 7px !important; }
+html.argentinia-mobile .btn-arrow {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px;
+  font-size: 20px !important;
+  touch-action: manipulation;
+}
+html.argentinia-mobile .damage-value {
+  width: 28px !important;
+  font-size: 18px !important;
+}
+html.argentinia-mobile .damage-modal-initial-buttons {
+  gap: 7px !important;
+}
+html.argentinia-mobile .damage-modal-initial-buttons .btn-turn,
+html.argentinia-mobile #damage-modal-confirm-container .btn-turn {
+  min-height: 46px !important;
+  padding: 7px 9px !important;
+  font-size: 11px !important;
+}
+
+/* Portrait nunca deja un overlay complejo por encima del gate de rotación. */
+html.argentinia-mobile.arg-mobile-portrait :is(#arg-mobile-zones-drawer,.gy-modal-overlay,#mulligan-overlay,#damage-modal-overlay) {
+  visibility: hidden !important;
+}
+
+/* === 23.11.3 — BOOT RESILIENCE / FALLBACK SIN MOTOR =====================
+   Este overlay existe ya en index.html y se activa por una clase puesta por un script
+   inline sin imports. Por eso puede verse aunque main.js/Firebase no lleguen a evaluar. */
+#arg-mobile-boot-fallback { display: none; }
+
+html.argentinia-mobile-bootstrap:not(.arg-mobile-engine-ready) #arg-mobile-boot-fallback,
+html.argentinia-mobile-bootstrap:not(.arg-mobile-shell-ready) #arg-mobile-boot-fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+  background: radial-gradient(circle at 50% 25%, #1b2c20 0%, #08100b 62%, #020504 100%);
+  color: #f0e0b0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-align: center;
+}
+
+.arg-mobile-boot-fallback-card {
+  width: min(560px, 86dvw);
+  max-height: 88dvh;
+  overflow: auto;
+  padding: 20px 24px;
+  border: 2px solid #d4af37;
+  border-radius: 18px;
+  background: rgba(17, 26, 19, .96);
+  box-shadow: 0 18px 50px rgba(0,0,0,.55);
+}
+
+.arg-mobile-boot-fallback-icon { font-size: 34px; }
+.arg-mobile-boot-fallback-card h1 { margin: 4px 0 8px; font-size: clamp(24px, 6dvh, 38px); }
+.arg-mobile-boot-fallback-card p { margin: 8px 0; line-height: 1.35; }
+.arg-mobile-boot-fallback-status { opacity: .8; font-size: 13px; }
+#arg-mobile-boot-fallback-retry {
+  min-width: 150px;
+  min-height: 46px;
+  margin-top: 10px;
+  border: 1px solid #d4af37;
+  border-radius: 10px;
+  background: #6f1d1b;
+  color: #fff6dc;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.arg-mobile-boot-portrait-copy { display: none; }
+@media (orientation: portrait) {
+  html.argentinia-mobile-bootstrap:not(.arg-mobile-engine-ready) .arg-mobile-boot-landscape-copy { display: none; }
+  html.argentinia-mobile-bootstrap:not(.arg-mobile-engine-ready) .arg-mobile-boot-portrait-copy { display: block; }
+}
+
+
+/* 23.11.8 — orientación runtime CSS-only. Después del boot NO hay listeners JS de
+   resize/orientationchange. El gate captura portrait y se libera automáticamente al volver
+   a landscape, sin mutar DOM ni disparar observers. */
+@media (orientation: portrait) {
+  html.argentinia-mobile #arg-mobile-rotate-gate {
+    display: flex !important;
+  }
+  html.argentinia-mobile #arg-mobile-enter-gate,
+  html.argentinia-mobile #arg-mobile-fullscreen-retry {
+    display: none !important;
+  }
+}
+
+/* ==========================================================
+   ENTREGA 23.11.10 — MOBILE UI POLISH
+   Sólo presentación táctil. No cambia reglas, estado ni handlers del motor.
+   ========================================================== */
+
+/* 1) Cuando la fila entra en pantalla, el campo vuelve a verse centrado como desktop.
+      `safe center` degrada a inicio automáticamente si la mesa realmente desborda y necesita scroll. */
+html.argentinia-mobile .field-row {
+  justify-content: safe center !important;
+  scroll-padding-inline: 8px !important;
+}
+
+/* 2) Los contadores de CEMENTERIO/EXILIO rival quedan dentro del borde inferior del slot.
+      Así el dock superior ya no los tapa y siguen visibles con safe-area/notch. */
+/* mobileUI marca explícitamente la fila rival; evitamos :has() para no reintroducir
+   el patrón costoso que eliminamos en 23.11.8. */
+html.argentinia-mobile .side-pile.arg-mobile-rival-public-zone .pile-badge {
+  top: auto !important;
+  bottom: 0 !important;
+  right: -4px !important;
+  z-index: 600 !important;
+}
+
+/* 3) Contadores de cartas agrupadas (especialmente tierras): dentro del footprint y SIEMPRE
+      encima del arte. En una fila scrolleable, top:-12 podía quedar recortado por overflow. */
+html.argentinia-mobile .lands-row .card .stack-counter-container,
+html.argentinia-mobile .support-row .card .stack-counter-container {
+  top: 2px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 5000 !important;
+  gap: 2px !important;
+}
+html.argentinia-mobile .lands-row .stack-badge,
+html.argentinia-mobile .support-row .stack-badge {
+  padding: 1px 5px !important;
+  min-width: 19px !important;
+  min-height: 17px !important;
+  justify-content: center !important;
+  border-width: 1px !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,.95) !important;
+}
+
+/* 4) Telemetría/REC mobile: de forma predeterminada es un chip mínimo y sólo ocupa HUD
+      cuando el usuario decide desplegarlo. Desktop conserva el panel histórico completo. */
+html.argentinia-mobile .telemetry-panel {
+  left: max(4px, var(--arg-safe-left)) !important;
+  top: max(4px, var(--arg-safe-top)) !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  transform-origin: top left !important;
+  gap: 4px !important;
+  padding: 4px !important;
+  max-width: calc(100dvw - var(--sidebar-width) - var(--arg-safe-left) - 12px) !important;
+  border-radius: 9px !important;
+  z-index: 2147482050 !important;
+}
+html.argentinia-mobile .telemetry-panel:not(.arg-mobile-telemetry-expanded) > :not(.arg-mobile-telemetry-toggle) {
+  display: none !important;
+}
+html.argentinia-mobile .arg-mobile-telemetry-toggle {
+  order: -100;
+  min-width: 48px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid rgba(255,104,104,.68);
+  border-radius: 8px;
+  background: rgba(35,11,11,.94);
+  color: #ffdddd;
+  box-shadow: 0 3px 12px rgba(0,0,0,.48);
+  font: 800 11px/1 system-ui,sans-serif;
+  letter-spacing: .3px;
+  touch-action: manipulation;
+}
+html.argentinia-mobile .telemetry-panel.arg-mobile-telemetry-expanded {
+  flex-wrap: wrap !important;
+  background: rgba(12,12,12,.95) !important;
+}
+html.argentinia-mobile .telemetry-panel.arg-mobile-telemetry-expanded .arg-mobile-telemetry-toggle {
+  background: rgba(73,19,19,.96);
+}
+
+
+/* ==========================================================
+   ENTREGA 23.11.11 — MOBILE SURFACE CLEANUP
+   Simplifica la superficie táctil ahora que Stack, zonas públicas y bitácora tienen
+   interacción directa. Sin reglas ni handlers nuevos de gameplay.
+   ========================================================== */
+
+/* A) Las zonas públicas ya son botones reales de mesa: los labels caben dentro de su slot
+      y se retira por completo de la superficie el dock redundante (📜/⚡/🗂️). */
+html.argentinia-mobile .side-pile .pile-label {
+  width: 100% !important;
+  bottom: -11px !important;
+  font-size: 6px !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+html.argentinia-mobile #arg-mobile-utility-dock,
+html.argentinia-mobile #arg-mobile-zones-drawer {
+  display: none !important;
+}
+
+/* B) Bitácora: vuelve a su lugar natural del sidebar como en desktop. La ventana queda
+      acotada a unas pocas líneas y el resto se recorre con pan vertical táctil. */
+html.argentinia-mobile #game-log-box {
+  display: flex !important;
+  position: static !important;
+  flex: 0 0 clamp(42px, 15dvh, 58px) !important;
+  width: 100% !important;
+  min-height: 42px !important;
+  max-height: 58px !important;
+  padding: 4px 5px !important;
+  gap: 2px !important;
+  border-radius: 6px !important;
+  font-size: .49rem !important;
+  line-height: 1.22 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  touch-action: pan-y !important;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+}
+html.argentinia-mobile #game-log-box .log-entry {
+  padding-bottom: 2px !important;
+}
+
+/* El antiguo drawer deja de tener autoridad incluso si quedara una clase histórica. */
+html.argentinia-mobile.arg-mobile-log-open #game-log-box {
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 42px !important;
+  max-height: 58px !important;
+  padding: 4px 5px !important;
+  border-width: 1px !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  font-size: .49rem !important;
+  line-height: 1.22 !important;
+}
+
+/* C) La mano usa el mismo criterio del battlefield: centrada cuando entra y safe-start
+      automático si alguna situación extrema realmente necesita scroll horizontal. */
+html.argentinia-mobile #local-hand {
+  justify-content: safe center !important;
+  scroll-padding-inline: 8px !important;
+}
+
+/* D) Los puntos de fase no heredan el padding de las antiguas cápsulas desktop. Se blinda
+      el cuadrado físico para que el activo jamás se convierta en óvalo dentro de flexbox. */
+html.argentinia-mobile .phase-dot {
+  width: 7px !important;
+  height: 7px !important;
+  min-width: 7px !important;
+  min-height: 7px !important;
+  max-width: 7px !important;
+  max-height: 7px !important;
+  flex: 0 0 7px !important;
+  aspect-ratio: 1 / 1 !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  box-sizing: border-box !important;
+}
+
+/* E) REC: conserva la función 23.11.10 pero deja de competir visualmente con el juego. */
+html.argentinia-mobile .telemetry-panel {
+  padding: 2px !important;
+  gap: 2px !important;
+  border-radius: 6px !important;
+}
+html.argentinia-mobile .arg-mobile-telemetry-toggle {
+  min-width: 38px !important;
+  height: 24px !important;
+  padding: 0 5px !important;
+  border-radius: 6px !important;
+  font-size: 9px !important;
+  letter-spacing: 0 !important;
+}
+
+/* F) Noticias vuelve a existir en teléfono. Mantiene el mismo panel/datos del menú desktop;
+      sólo adapta su huella al landscape del teléfono. El estado collapsed/expanded lo
+      controla showMainMenu y NO requiere un modal mobile paralelo. */
+html.argentinia-mobile .main-menu-news {
+  display: block !important;
+  right: max(8px, var(--arg-safe-right)) !important;
+  bottom: max(8px, var(--arg-safe-bottom)) !important;
+  width: min(250px, 36dvw) !important;
+  max-height: min(42dvh, 150px) !important;
+  padding: 8px 10px !important;
+  border-radius: 10px !important;
+}
+html.argentinia-mobile .main-menu-news-title {
+  font-size: 10px !important;
+  margin-bottom: 5px !important;
+}
+html.argentinia-mobile .main-menu-news-list {
+  max-height: min(30dvh, 108px) !important;
+}
+html.argentinia-mobile .main-menu-news-date { font-size: 8px !important; }
+html.argentinia-mobile .main-menu-news-text,
+html.argentinia-mobile .main-menu-news-empty {
+  font-size: 9px !important;
+  line-height: 1.25 !important;
+}
+
+
+/* ==========================================================
+   ENTREGA 23.11.12 — MOBILE COMBAT TAP + CARD GEOMETRY POLISH
+   Sólo presentación; la única semántica táctil asociada vive en mobileUI.js y reusa
+   los listeners existentes del motor.
+   ========================================================== */
+
+/* A) Sin el dock superior, Cementerio/Exilio rival recuperan la posición histórica arriba. */
+html.argentinia-mobile .side-pile.arg-mobile-rival-public-zone .pile-badge {
+  top: -6px !important;
+  bottom: auto !important;
+  right: -4px !important;
+  z-index: 600 !important;
+}
+
+/* B) El wrapper tapped conserva un hit-area cómodo, pero no pinta un rectángulo negro
+      mayor que la card-inner rotada. El marco visible vuelve a ser el borde real de la carta. */
+html.argentinia-mobile .field-row .card.tapped {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* C) En desktop el arte necesita un mínimo de 35px; en una carta mobile de ~59px eso
+      fuerza el arte a comerse casi toda la altura y recorta tipo/texto. En teléfono el
+      flexbox puede respetar la proporción real y el arte debe poder encogerse. */
+html.argentinia-mobile :is(
+  #local-hand,#rival-hand,#local-lands,#rival-lands,#local-combat,#rival-combat,
+  #local-support,#rival-support,#local-planeswalkers,#rival-planeswalkers
+) .card-art {
+  min-height: 0 !important;
+}
+
+/* Las básicas dejan de usar el 120% + cover heredado del renderer, que cortaba el símbolo. */
+html.argentinia-mobile .basic-land-symbol-box {
+  background-color: transparent !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+html.argentinia-mobile .basic-land-symbol-main {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+/* D) REC aún más discreto; sigue desplegando el panel completo al tocarlo. */
+html.argentinia-mobile .telemetry-panel {
+  padding: 1px !important;
+  gap: 1px !important;
+  border-radius: 5px !important;
+}
+html.argentinia-mobile .arg-mobile-telemetry-toggle {
+  min-width: 32px !important;
+  width: 32px !important;
+  height: 20px !important;
+  padding: 0 3px !important;
+  border-radius: 5px !important;
+  font-size: 8px !important;
+}
+
+/* E) Noticias mobile colapsa físicamente en SU esquina inferior derecha, no por clip
+      de la esquina superior izquierda. Expandido conserva la huella 23.11.11. */
+html.argentinia-mobile .main-menu-news.arg-news-collapsed {
+  width: 96px !important;
+  max-height: 28px !important;
+  padding: 5px 7px !important;
+  border-radius: 8px !important;
+}
+html.argentinia-mobile .main-menu-news.arg-news-collapsed .main-menu-news-title {
+  font-size: 9px !important;
+  line-height: 16px !important;
+}
+
+/* ============================================================================
+   23.12.0 — CARD BROWSER / DECKBUILDER UX
+   ============================================================================ */
+
+/* La corrección de proporciones de cartas mobile deja de estar limitada al battlefield:
+   Enciclopedia y Constructor usan el mismo renderer y deben permitir que el arte encoja
+   para preservar tipo/texto/símbolos de la mitad inferior. */
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay,#mydecks-overlay) .card-art {
+  min-height: 0 !important;
+}
+
+html.argentinia-mobile .deckbuilder-filters {
+  width: min(170px, 22dvw) !important;
+  padding: 7px !important;
+}
+html.argentinia-mobile .deckbuilder-side {
+  width: min(205px, 26dvw) !important;
+}
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay) .encyclopedia-filter-section-title {
+  font-size: 9px !important;
+  margin: 8px 0 4px !important;
+}
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay) .encyclopedia-filter-option {
+  font-size: 9px !important;
+  padding: 2px 1px !important;
+  gap: 4px !important;
+}
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay) .encyclopedia-filter-option input {
+  width: 12px !important;
+  height: 12px !important;
+}
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay) .encyclopedia-search-input {
+  font-size: 10px !important;
+  padding: 5px 6px !important;
+  margin-bottom: 7px !important;
+}
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay) .card-browser-zoom {
+  gap: 4px !important;
+  font-size: 9px !important;
+  margin-bottom: 5px !important;
+}
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay) .card-browser-filter-grid {
+  gap: 0 4px !important;
+}
+
+/* El contador x/y vive arriba-centro como los contadores de tierras agrupadas y no tapa
+   el coste de maná de la esquina superior derecha. */
+html.argentinia-mobile .deckbuilder-pool-card-badge {
+  top: -5px !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  padding: 1px 5px !important;
+  font-size: 9px !important;
+}

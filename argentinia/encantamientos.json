@@ -1,0 +1,1075 @@
+[
+  {
+    "id": "ench_001",
+    "name": "Cumbia Santafesina",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Ritmo Sabroso: Siempre que una criatura entre al campo de batalla bajo tu control, ganás 1 Punto de Vida.",
+    "flavorText": "¡Con la fuerza del acordeón!",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "cumbia.png",
+    "creatureEtbTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_002",
+    "name": "Milonga de Medianoche",
+    "type": "Encantamiento",
+    "manaCost": "{1}{B}{W}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "W"
+    ],
+    "text": "Tango Fatal: Siempre que una criatura que controla tu oponente muera, ese jugador pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "El tango te espera si das un paso en falso.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "milonga.png",
+    "opponentDeathTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_003",
+    "name": "Hinchada Fervorosa",
+    "type": "Encantamiento",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Recaudación Popular: Al comienzo de tu paso final, si atacaste con dos o más criaturas este turno, robás una carta.",
+    "flavorText": "La gente siempre apoya... si hay espectáculo.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "hinchada.png",
+    "endStepTrigger": {
+      "type": "draw",
+      "amount": 1,
+      "condition": "attacked_with_two_or_more"
+    }
+  },
+  {
+    "id": "ench_004",
+    "name": "La Scaloneta",
+    "type": "Encantamiento Legendario",
+    "manaCost": "{3}{W}{R}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [
+      "W",
+      "R"
+    ],
+    "text": "Elijo Creer: Al comienzo de tu paso de Mantenimiento, robás una carta.",
+    "flavorText": "Hermoso mañana, ¿verdad?",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "scaloneta.png",
+    "upkeepTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_005",
+    "name": "Fuerza de la Manada",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Efecto estático: Tus criaturas obtienen +1/+1.",
+    "flavorText": "Ninguna fiera del monte anda sola.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "fuerza_manada.png",
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 1,
+      "toughnessMod": 1
+    }
+  },
+  {
+    "id": "ench_006",
+    "name": "Viento Pampero",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Efecto estático: Tus criaturas tienen Vuela.",
+    "flavorText": "La llanura entera se levanta con vos.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "viento_pampero.png",
+    "staticEffect": {
+      "type": "team_keyword",
+      "scope": "own",
+      "keyword": "flying"
+    }
+  },
+  {
+    "id": "ench_007",
+    "name": "Toque de Queda",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}{W}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Efecto estático: Las criaturas del rival obtienen -1/-1.",
+    "flavorText": "A las diez de la noche, que no quede nadie en la calle.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "toque_de_queda.png",
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "opponent",
+      "powerMod": -1,
+      "toughnessMod": -1
+    }
+  },
+  {
+    "id": "ench_008",
+    "name": "Rezo de la Abuela",
+    "type": "Encantamiento",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, ganás 1 Punto de Vida.",
+    "flavorText": "Todas las noches, antes de dormir, pedía por vos.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "rezo_abuela.png",
+    "upkeepTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_009",
+    "name": "Poncho del Paisano",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Encantar criatura. La criatura encantada obtiene +1/+1.",
+    "flavorText": "Abriga en las noches frías de la pampa.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 1
+      },
+      "keywords": []
+    },
+    "image": "poncho.png"
+  },
+  {
+    "id": "ench_010",
+    "name": "Alpargatas Aladas",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Encantar criatura. La criatura encantada gana Vuela.",
+    "flavorText": "Livianas como el viento pampero.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [
+        "flying"
+      ]
+    },
+    "image": "alpargatas.png"
+  },
+  {
+    "id": "ench_011",
+    "name": "Rebenque Filoso",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{R}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Encantar criatura. La criatura encantada obtiene +2/+2.",
+    "flavorText": "Cuero curtido y filo templado.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 2
+      },
+      "keywords": []
+    },
+    "image": "rebenque.png"
+  },
+  {
+    "id": "ench_012",
+    "name": "Maldición del Yaguareté",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{B}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Encantar criatura rival. La criatura encantada obtiene -2/-2.",
+    "flavorText": "El monte cobra sus deudas tarde o temprano.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_rival",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "-",
+        "cantidad": 2
+      },
+      "keywords": []
+    },
+    "image": "maldicion_yaguarete.png"
+  },
+  {
+    "id": "ench_013",
+    "name": "Pacto de Sangre",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Siempre que una criatura del oponente muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Lo que se pacta, se cumple sí o sí.",
+    "image": "pacto_sangre.png",
+    "keywords": [],
+    "opponentDeathTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_014",
+    "name": "Letanía del Cementerio",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, robás una carta y perdés 1 Punto de Vida.",
+    "flavorText": "Cada nombre que se reza, cuesta algo a cambio.",
+    "image": "letania_cementerio.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "draw_and_lose_life",
+      "amount": 1,
+      "lifeLoss": 1
+    }
+  },
+  {
+    "id": "ench_015",
+    "name": "Aguante del Fondo",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Efecto estático: Tus criaturas obtienen +0/+1.",
+    "flavorText": "Los del fondo son los que más joden.",
+    "image": "aguante_fondo.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 0,
+      "toughnessMod": 1
+    }
+  },
+  {
+    "id": "ench_016",
+    "name": "Bengala de Cancha",
+    "type": "Encantamiento",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que ataques con una o más criaturas, le hacés 1 de daño al jugador rival.",
+    "flavorText": "En la cancha se juega todo, incluso la vida.",
+    "image": "bengala_cancha.png",
+    "keywords": [],
+    "anyCreatureAttacksTrigger": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_017",
+    "name": "Grito de Guerra",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Efecto estático: Tus criaturas obtienen +1/+0.",
+    "flavorText": "Un solo grito, y la valentía se hace realidad.",
+    "image": "grito_guerra.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 1,
+      "toughnessMod": 0
+    }
+  },
+  {
+    "id": "ench_018",
+    "name": "Fogón de la Previa",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, le hacés 1 de daño al jugador rival.",
+    "flavorText": "Cada uno que se suma, tira una chispa más al fuego.",
+    "image": "fogon_previa.png",
+    "keywords": [],
+    "creatureEtbTrigger": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_019",
+    "name": "Alarma Vecinal",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Al final de tu turno, si atacaste con dos o más criaturas este turno, ganás 2 Puntos de Vida.",
+    "flavorText": "Cuando salen de a uno, el barrio entero los cubre.",
+    "image": "alarma_vecinal.png",
+    "keywords": [],
+    "endStepTrigger": {
+      "type": "heal",
+      "amount": 2,
+      "condition": "attacked_with_two_or_more"
+    }
+  },
+  {
+    "id": "ench_020",
+    "name": "Susurro del Río",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que ataques con una o más criaturas, robás una carta.",
+    "flavorText": "El agua siempre sabe algo que todavía no pasó.",
+    "image": "susurro_rio.png",
+    "keywords": [],
+    "anyCreatureAttacksTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_021",
+    "name": "Raíces de la Terraza",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, ganás 1 Punto de Vida.",
+    "flavorText": "Se agarran fuerte de donde pueden, y no las mueve nadie.",
+    "image": "raices_terraza.png",
+    "keywords": [],
+    "landEtbTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_022",
+    "name": "Consejo de la Cuadra",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "U"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, robás una carta.",
+    "flavorText": "Todos los vecinos se juntan, y siempre sale algo bueno de la charla.",
+    "image": "consejo_cuadra.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_023",
+    "name": "Espíritu del Monte",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Siempre que ataques con una o más criaturas, ganás 2 Puntos de Vida.",
+    "flavorText": "La montaña cuida a los que se animan a bajar de ella a pelear.",
+    "image": "espiritu_monte.png",
+    "keywords": [],
+    "anyCreatureAttacksTrigger": {
+      "type": "heal",
+      "amount": 2
+    }
+  },
+  {
+    "id": "ench_024",
+    "name": "Custodia del titán",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Encantar criatura. La criatura encantada tiene Ward {2}.",
+    "flavorText": "El clan entero responde si alguien se atreve a tocarla.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [
+        "ward_2"
+      ]
+    },
+    "image": "custodia_titan.png"
+  },
+  {
+    "id": "ench_025",
+    "name": "Corriente Subterránea",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que lances un hechizo Instantáneo o Conjuro, Scry 1.",
+    "flavorText": "Fluye por debajo de todo, sin que nadie la vea pasar.",
+    "image": "corriente_subterranea.png",
+    "keywords": [],
+    "spellCastTrigger": {
+      "filter": "instant_or_sorcery",
+      "effect": {
+        "type": "scry",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "ench_026",
+    "name": "Ecos del Puerto",
+    "type": "Encantamiento",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, ganás 1 Punto de Vida.",
+    "flavorText": "Cada barco que llega deja algo bueno atrás.",
+    "image": "ecos_puerto.png",
+    "keywords": [],
+    "creatureEtbTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_027",
+    "name": "Velo de Bruma",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{U}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Encantar criatura. La criatura encantada gana Intocable.",
+    "flavorText": "Se pierde entre la niebla del río, y ya nadie la encuentra.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [
+        "hexproof"
+      ]
+    },
+    "image": "velo_bruma.png"
+  },
+  {
+    "id": "ench_028",
+    "name": "Cinta de la Promesa",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Encantar criatura que controlás. La criatura encantada obtiene +1/+1 y tiene Vigilancia.",
+    "flavorText": "Se ata una vez. Se recuerda cada vez que toca salir.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 1
+      },
+      "keywords": [
+        "vigilance"
+      ]
+    },
+    "image": "cinta_promesa.png"
+  },
+  {
+    "id": "ench_029",
+    "name": "Campera Prestada",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{W}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Encantar criatura que controlás. La criatura encantada obtiene +1/+1.",
+    "flavorText": "Te queda grande, pero abriga igual.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 1
+      },
+      "keywords": []
+    },
+    "image": "campera_prestada.png"
+  },
+  {
+    "id": "ench_030",
+    "name": "Humedad del Sótano",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "Encantar criatura rival. La criatura encantada obtiene -1/-1.",
+    "flavorText": "Al principio es una mancha. Después se come la pared.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_rival",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "-",
+        "cantidad": 1
+      },
+      "keywords": []
+    },
+    "image": "humedad_sotano.png"
+  },
+  {
+    "id": "ench_031",
+    "name": "Bufanda de la Tribuna",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{R}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Encantar criatura que controlás. La criatura encantada tiene Amenaza.",
+    "flavorText": "Se usa aunque hagan treinta grados.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [
+        "menace"
+      ]
+    },
+    "image": "bufanda_tribuna.png"
+  },
+  {
+    "id": "ench_032",
+    "name": "Espuelas de Chispa",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Encantar criatura que controlás. La criatura encantada obtiene +1/+1 y tiene Prisa.",
+    "flavorText": "No hace al caballo más rápido. Le recuerda que tiene apuro.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 1
+      },
+      "keywords": [
+        "haste"
+      ]
+    },
+    "image": "espuelas_chispa.png"
+  },
+  {
+    "id": "ench_033",
+    "name": "Savia del Ombú",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Encantar criatura que controlás. La criatura encantada obtiene +2/+2.",
+    "flavorText": "No se ve subir, pero de golpe todo es más grueso.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 2
+      },
+      "keywords": []
+    },
+    "image": "savia_ombu.png"
+  },
+  {
+    "id": "ench_034",
+    "name": "Frecuencia Fantasma",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, Adiviná 1.",
+    "flavorText": "La radio no está enchufada, pero todas las noches alguien pide una canción.",
+    "image": "frecuencia_fantasma.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "scry",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_035",
+    "name": "Marea de Fondo",
+    "type": "Encantamiento",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, Adiviná 1.",
+    "flavorText": "Todo lo que llega a la costa mueve algo que no se ve.",
+    "image": "marea_de_fondo.png",
+    "keywords": [],
+    "creatureEtbTrigger": {
+      "type": "scry",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_036",
+    "name": "Cuaderno del Sepulturero",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, Vigilá 1.",
+    "flavorText": "Los nombres están en orden. Las fechas, no siempre.",
+    "image": "cuaderno_sepulturero.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "surveil",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_037",
+    "name": "Libro de Actas Negras",
+    "type": "Encantamiento",
+    "manaCost": "{3}{B}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Siempre que una criatura que controla tu oponente muera, robás una carta.",
+    "flavorText": "Cada ausencia deja una firma.",
+    "image": "libro_actas_negras.png",
+    "keywords": [],
+    "opponentDeathTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_038",
+    "name": "Radio a Todo Volumen",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que lances un Instantáneo o Conjuro, le hacés 1 de daño al jugador rival.",
+    "flavorText": "Si no la escuchás desde la otra cuadra, está demasiado baja.",
+    "image": "radio_todo_volumen.png",
+    "keywords": [],
+    "spellCastTrigger": {
+      "filter": "instant_or_sorcery",
+      "effect": {
+        "type": "damage",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "ench_039",
+    "name": "Asfalto Hirviendo",
+    "type": "Encantamiento",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, le hacés 1 de daño al jugador rival.",
+    "flavorText": "A la siesta hasta la sombra quema.",
+    "image": "asfalto_hirviendo.png",
+    "keywords": [],
+    "landEtbTrigger": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_040",
+    "name": "Brotación del Terraplén",
+    "type": "Encantamiento",
+    "manaCost": "{4}{G}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, creá una ficha de criatura Brote 1/1.",
+    "flavorText": "Le tiraron tierra encima. Lo tomó como una invitación.",
+    "image": "brotacion_terraplen.png",
+    "keywords": [],
+    "landEtbTrigger": {
+      "type": "create_tokens",
+      "amount": 1,
+      "tokenName": "Brote",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": []
+    }
+  },
+  {
+    "id": "ench_041",
+    "name": "Turno de Guardia",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Tus criaturas tienen Vigilancia.",
+    "flavorText": "En la cuadra siempre hay una ventana con la luz prendida.",
+    "image": "turno_de_guardia.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_keyword",
+      "scope": "own",
+      "keyword": "vigilance"
+    }
+  },
+  {
+    "id": "ench_042",
+    "name": "Promesa Cumplida",
+    "type": "Encantamiento",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Siempre que muera una criatura, ganás 1 Punto de Vida.",
+    "flavorText": "Hay velas que se prenden por los que llegan y otras por los que no.",
+    "image": "promesa_cumplida.png",
+    "keywords": [],
+    "anyCreatureDiesTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_043",
+    "name": "Sala de Monitoreo",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Al comienzo de tu mantenimiento, Adiviná 2.",
+    "flavorText": "Doce pantallas, una silla y alguien que nunca pestañea.",
+    "image": "sala_de_monitoreo.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "scry",
+      "amount": 2
+    }
+  },
+  {
+    "id": "ench_044",
+    "name": "Frecuencia Intervenida",
+    "type": "Encantamiento",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que lances un Instantáneo o Conjuro, robá una carta y luego descartá una carta.",
+    "flavorText": "Cada conversación deja un ruido de fondo. Ellos aprendieron a leerlo.",
+    "image": "frecuencia_intervenida.png",
+    "keywords": [],
+    "spellCastTrigger": {
+      "filter": "instant_or_sorcery",
+      "effect": {
+        "type": "loot",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "ench_045",
+    "name": "Campanas del Velorio",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Siempre que muera una criatura, Vigilá 1.",
+    "flavorText": "Suena una vez por cada silla que queda vacía.",
+    "image": "campanas_del_velorio.png",
+    "keywords": [],
+    "anyCreatureDiesTrigger": {
+      "type": "surveil",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_046",
+    "name": "Libro Negro de Turnos",
+    "type": "Encantamiento",
+    "manaCost": "{3}{B}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Al comienzo de tu mantenimiento, robás una carta y perdés 1 Punto de Vida.",
+    "flavorText": "Todos figuran. Algunos todavía no saben para qué.",
+    "image": "libro_negro_de_turnos.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "draw_and_lose_life",
+      "amount": 1,
+      "lifeLoss": 1
+    }
+  },
+  {
+    "id": "ench_047",
+    "name": "Murga en la Avenida",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que ataques con una o más criaturas, le hacés 1 de daño al jugador rival.",
+    "flavorText": "Empieza en una esquina y para la siguiente ya cortó media avenida.",
+    "image": "murga_en_la_avenida.png",
+    "keywords": [],
+    "anyCreatureAttacksTrigger": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_048",
+    "name": "Sirena de Fábrica",
+    "type": "Encantamiento",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, le hacés 1 de daño al jugador rival.",
+    "flavorText": "La fábrica cerró. La sirena nunca recibió el aviso.",
+    "image": "sirena_de_fabrica.png",
+    "keywords": [],
+    "creatureEtbTrigger": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_049",
+    "name": "Reserva Cercada",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, ganás 2 Puntos de Vida.",
+    "flavorText": "El alambrado marca el límite. Los animales nunca lo leyeron.",
+    "image": "reserva_cercada.png",
+    "keywords": [],
+    "landEtbTrigger": {
+      "type": "heal",
+      "amount": 2
+    }
+  },
+  {
+    "id": "ench_050",
+    "name": "Ley del Monte",
+    "type": "Encantamiento",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Tus criaturas tienen Arrolla.",
+    "flavorText": "En el monte todo termina pasando por encima de algo.",
+    "image": "ley_del_monte.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_keyword",
+      "scope": "own",
+      "keyword": "trample"
+    }
+  }
+]
