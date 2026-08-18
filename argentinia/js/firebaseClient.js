@@ -5,6 +5,7 @@
 // conservar exactamente el comportamiento histórico.
 
 let clientPromise = null;
+let clientReady = false;
 let authBridgeStarted = false;
 let authInnerStop = null;
 const authSubscribers = new Set();
@@ -18,12 +19,14 @@ export function preloadFirebaseClient() {
     diag('firebase_import_requested');
     clientPromise = import('./firebaseClientImpl.js')
       .then(mod => {
+        clientReady = true;
         diag('firebase_import_loaded');
         startAuthBridgeIfPossible(mod);
         return mod;
       })
       .catch(error => {
         clientPromise = null;
+        clientReady = false;
         diag('firebase_import_failed', { name: error?.name || 'Error', message: error?.message || String(error) });
         throw error;
       });
@@ -47,6 +50,8 @@ function startAuthBridgeIfPossible(mod) {
     throw error;
   }
 }
+
+export function isFirebaseClientReady() { return clientReady; }
 
 export function onAuthChange(onChange) {
   if (typeof onChange !== 'function') return () => {};
@@ -90,7 +95,19 @@ export function listenToMatch(...args) {
   };
 }
 
-export const signInWithGoogle = asyncProxy('signInWithGoogle');
+export function signInWithGoogle(...args) {
+  const wasReady = clientReady;
+  diag('google_signin_requested', { firebaseReady: wasReady });
+  return preloadFirebaseClient().then(mod => {
+    diag('google_signin_sdk_ready', { prewarmed: wasReady });
+    return mod.signInWithGoogle(...args);
+  }).catch(error => {
+    const detail = { code: error?.code || null, name: error?.name || null, message: error?.message || String(error), at: Date.now() };
+    diag('google_signin_failed', detail);
+    try { sessionStorage.setItem('argentinia.mobile.lastAuthError.v1', JSON.stringify(detail)); } catch {}
+    throw error;
+  });
+}
 export const signOutUser = asyncProxy('signOutUser');
 export const loadUserProfile = asyncProxy('loadUserProfile');
 export const createUserProfile = asyncProxy('createUserProfile');

@@ -25,6 +25,30 @@ const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde'
 // colección/puntos existentes con una colección "inicial" nueva por error de timing.
 let userProfileLoadPromise = Promise.resolve();
 
+
+async function mobileSoloYield(stage, detail = null) {
+  if (globalThis.__ARGENTINIA_PHONE_SURFACE__ !== true) return;
+  try {
+    sessionStorage.setItem('argentinia.mobile.lastRuntimeStage.v1', JSON.stringify({ stage, detail, at: Date.now() }));
+  } catch {}
+  globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('solo_start_stage', { stage, detail });
+  // Corta el arranque de Solitario en tareas pequeñas para que Chrome pueda pintar y
+  // procesar input entre board/decks/telemetría/mulligan. Desktop no entra acá.
+  await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+}
+
+function scheduleMobileFirebasePrewarm() {
+  if (globalThis.__ARGENTINIA_PHONE_SURFACE__ !== true) return;
+  const run = () => {
+    globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('firebase_mobile_prewarm_start');
+    preloadFirebaseClient()
+      .then(() => globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('firebase_mobile_prewarm_ready'))
+      .catch(error => globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('firebase_mobile_prewarm_failed', { code: error?.code || null, message: error?.message || String(error) }));
+  };
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 2500 });
+  else setTimeout(run, 900);
+}
+
 export { logMsg, render } from './ui.js';
 export { parseManaCost, getLandColor, sleep } from './utils.js';
 export { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, beginActivePlayerPriorityWindow } from './turnManager.js';
@@ -404,8 +428,10 @@ function hookGameplayButtons() {
 async function initGame(deckSource) {
   logMsg("Cargando el mazo...");
 
+  await mobileSoloYield('before_board_layout');
   setupBoardLayout();
   replaceSpellStackFromSync([]);
+  await mobileSoloYield('board_layout_ready');
 
   let deckLabel;
   if (deckSource.type === 'saved') {
@@ -415,7 +441,9 @@ async function initGame(deckSource) {
     state.localDeck = buildRandomDeck(deckSource.identity);
     deckLabel = deckSource.identity.join('/');
   }
+  await mobileSoloYield('local_deck_ready', { count: state.localDeck.length });
   state.rivalDeck = buildRandomDeck();
+  await mobileSoloYield('rival_deck_ready', { count: state.rivalDeck.length });
 
   // ENTREGA 22: sesión diagnóstica aislada para esta partida contra el Tano. Se arranca
   // después de construir ambos mazos y ANTES de robar, así el log conserva el orden inicial
@@ -426,6 +454,7 @@ async function initGame(deckSource) {
     deckLabel
   });
   recordTelemetryInitialDecks({ revealRival: true });
+  await mobileSoloYield('telemetry_ready');
 
   // FASE 1: red de contención para cuando el perfil todavía no existe — el camino normal
   // ahora es promptStarterDeckSelection (se dispara solo apenas hay login, ver boot() más
@@ -453,6 +482,7 @@ async function initGame(deckSource) {
 
   // El Tano resuelve su propio mulligan solo, sin UI (ver resolveBotMulligan).
   resolveBotMulligan();
+  await mobileSoloYield('opening_hands_ready', { local: state.localHand.length, rival: state.rivalHand.length });
 
   // El jugador humano decide el suyo de forma interactiva. La partida arranca de
   // verdad recién cuando termina de resolver su mano (finishSetup).
@@ -464,6 +494,7 @@ async function initGame(deckSource) {
   };
 
   startLocalMulliganFlow(finishSetup);
+  await mobileSoloYield('mulligan_ui_open');
 }
 
 // Mulligan de Londres simplificado: mientras la mano no tenga entre 2 y 5 tierras (una
@@ -791,6 +822,9 @@ async function boot() {
 
   markEngineBootState('ready', { engineVersion: ENGINE_VERSION });
   showMainMenu(startPlayFlow, startMultiplayerFlow);
+  // Firebase queda fuera del critical path, pero se precalienta cuando el menú ya está
+  // visible. Así el click de Google puede abrir el popup dentro de la activación del usuario.
+  scheduleMobileFirebasePrewarm();
 }
 
 // FASE 3, ETAPA 4: si el jugador logueado ya tiene al menos un mazo guardado, "Jugar" le

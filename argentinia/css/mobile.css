@@ -691,19 +691,10 @@ html.argentinia-mobile.arg-mobile-portrait :is(#arg-mobile-utility-dock,#arg-mob
   display: none !important;
 }
 
-/* El dock pertenece al gameplay, no a menús/lobbies/modales de preparación. */
-html.argentinia-mobile body:has(#boot-loading-overlay:not(.hidden)) #arg-mobile-utility-dock,
-html.argentinia-mobile body:has(#main-menu-overlay) #arg-mobile-utility-dock,
-html.argentinia-mobile body:has(#deck-select-overlay) #arg-mobile-utility-dock,
-html.argentinia-mobile body:has(#play-deck-picker-overlay) #arg-mobile-utility-dock,
-html.argentinia-mobile body:has(#multiplayer-overlay) #arg-mobile-utility-dock,
-html.argentinia-mobile body:has(#mulligan-overlay) #arg-mobile-utility-dock,
-html.argentinia-mobile body:has(#options-menu-overlay) #arg-mobile-utility-dock,
-html.argentinia-mobile body:has(#encyclopedia-overlay) #arg-mobile-utility-dock,
-html.argentinia-mobile body:has(#store-overlay) #arg-mobile-utility-dock,
-html.argentinia-mobile body:has(#mydecks-overlay) #arg-mobile-utility-dock,
-html.argentinia-mobile body:has(#deckbuilder-overlay) #arg-mobile-utility-dock,
-html.argentinia-mobile body:has(#admin-panel-overlay) #arg-mobile-utility-dock {
+/* 23.11.7: NO usar :has() para estado global mobile. En el S23 el Mulligan era el
+   primer DOM complejo y :has() obligaba al navegador a invalidar selectores ascendentes.
+   mobileUI mantiene una clase raíz explícita, mucho más barata de recalcular. */
+html.argentinia-mobile.arg-mobile-blocking-overlay-open #arg-mobile-utility-dock {
   display: none !important;
 }
 
@@ -758,12 +749,6 @@ html.argentinia-mobile:is(.arg-mobile-log-open,.arg-mobile-stack-open,.arg-mobil
   display: block;
 }
 
-/* Cualquier decisión modal real manda sobre las utilidades flotantes. */
-html.argentinia-mobile body:has(.gy-modal-overlay) #arg-mobile-utility-dock,
-html.argentinia-mobile body:has(#mulligan-overlay) #arg-mobile-utility-dock,
-html.argentinia-mobile body:has(#damage-modal-overlay:not(.hidden)) #arg-mobile-utility-dock {
-  display: none !important;
-}
 
 /* Base común de decisiones complejas: panel dentro del safe viewport, cabecera estable y targets grandes. */
 html.argentinia-mobile.arg-mobile-landscape .gy-modal-overlay {

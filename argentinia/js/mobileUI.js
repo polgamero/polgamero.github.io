@@ -18,6 +18,7 @@ const STACK_OPEN_CLASS = 'arg-mobile-stack-open';
 const CARD_PREVIEW_OPEN_CLASS = 'arg-mobile-card-preview-open';
 const STACK_PREVIEW_OPEN_CLASS = 'arg-mobile-stack-preview-open';
 const ZONES_OPEN_CLASS = 'arg-mobile-zones-open';
+const BLOCKING_OVERLAY_CLASS = 'arg-mobile-blocking-overlay-open';
 const GAMEPLAY_ZONE_SELECTOR = '#local-hand,#rival-hand,#local-lands,#rival-lands,#local-combat,#rival-combat,#local-support,#rival-support,#local-planeswalkers,#rival-planeswalkers';
 const directClickBypass = new WeakSet();
 let lastStackPreviewAnchor = null;
@@ -320,12 +321,26 @@ function decorateComplexOverlays() {
   if (damage && !damage.classList.contains('hidden')) damage.dataset.mobileOverlayKind = classifyMobileOverlayKind({ damage: true });
 }
 
+const MOBILE_BLOCKING_OVERLAY_SELECTOR = [
+  '#boot-loading-overlay:not(.hidden)', '#main-menu-overlay', '#deck-select-overlay',
+  '#play-deck-picker-overlay', '#multiplayer-overlay', '#mulligan-overlay',
+  '#options-menu-overlay', '#encyclopedia-overlay', '#store-overlay', '#mydecks-overlay',
+  '#deckbuilder-overlay', '#admin-panel-overlay', '.gy-modal-overlay',
+  '#damage-modal-overlay:not(.hidden)'
+].join(',');
+
+function syncMobileBlockingOverlayState() {
+  const open = Boolean(document.body?.querySelector(MOBILE_BLOCKING_OVERLAY_SELECTOR));
+  document.documentElement.classList.toggle(BLOCKING_OVERLAY_CLASS, open);
+}
+
 let complexOverlayObserver = null;
 function ensureComplexOverlayObserver() {
   if (complexOverlayObserver || typeof MutationObserver === 'undefined' || !document.body) return;
-  complexOverlayObserver = new MutationObserver(decorateComplexOverlays);
+  const refresh = () => { decorateComplexOverlays(); syncMobileBlockingOverlayState(); };
+  complexOverlayObserver = new MutationObserver(refresh);
   complexOverlayObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-  decorateComplexOverlays();
+  refresh();
 }
 
 function isMobileGameplayActive() {
@@ -511,7 +526,7 @@ export function updateMobileEnvironment() {
 
   root.classList.toggle(MOBILE_ROOT_CLASS, mobile);
   if (!mobile) {
-    root.classList.remove(PORTRAIT_CLASS, LANDSCAPE_CLASS, ENTERED_CLASS, FULLSCREEN_CLASS, LOG_OPEN_CLASS, STACK_OPEN_CLASS, ZONES_OPEN_CLASS, CARD_PREVIEW_OPEN_CLASS, STACK_PREVIEW_OPEN_CLASS);
+    root.classList.remove(PORTRAIT_CLASS, LANDSCAPE_CLASS, ENTERED_CLASS, FULLSCREEN_CLASS, LOG_OPEN_CLASS, STACK_OPEN_CLASS, ZONES_OPEN_CLASS, CARD_PREVIEW_OPEN_CLASS, STACK_PREVIEW_OPEN_CLASS, BLOCKING_OVERLAY_CLASS);
     document.getElementById('stack-container')?.classList.remove('arg-mobile-drawer-open');
     return false;
   }
