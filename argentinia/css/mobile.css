@@ -1132,3 +1132,88 @@ html.argentinia-mobile-bootstrap:not(.arg-mobile-shell-ready) #arg-mobile-boot-f
     display: none !important;
   }
 }
+
+/* ==========================================================
+   ENTREGA 23.11.10 — MOBILE UI POLISH
+   Sólo presentación táctil. No cambia reglas, estado ni handlers del motor.
+   ========================================================== */
+
+/* 1) Cuando la fila entra en pantalla, el campo vuelve a verse centrado como desktop.
+      `safe center` degrada a inicio automáticamente si la mesa realmente desborda y necesita scroll. */
+html.argentinia-mobile .field-row {
+  justify-content: safe center !important;
+  scroll-padding-inline: 8px !important;
+}
+
+/* 2) Los contadores de CEMENTERIO/EXILIO rival quedan dentro del borde inferior del slot.
+      Así el dock superior ya no los tapa y siguen visibles con safe-area/notch. */
+/* mobileUI marca explícitamente la fila rival; evitamos :has() para no reintroducir
+   el patrón costoso que eliminamos en 23.11.8. */
+html.argentinia-mobile .side-pile.arg-mobile-rival-public-zone .pile-badge {
+  top: auto !important;
+  bottom: 0 !important;
+  right: -4px !important;
+  z-index: 600 !important;
+}
+
+/* 3) Contadores de cartas agrupadas (especialmente tierras): dentro del footprint y SIEMPRE
+      encima del arte. En una fila scrolleable, top:-12 podía quedar recortado por overflow. */
+html.argentinia-mobile .lands-row .card .stack-counter-container,
+html.argentinia-mobile .support-row .card .stack-counter-container {
+  top: 2px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 5000 !important;
+  gap: 2px !important;
+}
+html.argentinia-mobile .lands-row .stack-badge,
+html.argentinia-mobile .support-row .stack-badge {
+  padding: 1px 5px !important;
+  min-width: 19px !important;
+  min-height: 17px !important;
+  justify-content: center !important;
+  border-width: 1px !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,.95) !important;
+}
+
+/* 4) Telemetría/REC mobile: de forma predeterminada es un chip mínimo y sólo ocupa HUD
+      cuando el usuario decide desplegarlo. Desktop conserva el panel histórico completo. */
+html.argentinia-mobile .telemetry-panel {
+  left: max(4px, var(--arg-safe-left)) !important;
+  top: max(4px, var(--arg-safe-top)) !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  transform-origin: top left !important;
+  gap: 4px !important;
+  padding: 4px !important;
+  max-width: calc(100dvw - var(--sidebar-width) - var(--arg-safe-left) - 12px) !important;
+  border-radius: 9px !important;
+  z-index: 2147482050 !important;
+}
+html.argentinia-mobile .telemetry-panel:not(.arg-mobile-telemetry-expanded) > :not(.arg-mobile-telemetry-toggle) {
+  display: none !important;
+}
+html.argentinia-mobile .arg-mobile-telemetry-toggle {
+  order: -100;
+  min-width: 48px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid rgba(255,104,104,.68);
+  border-radius: 8px;
+  background: rgba(35,11,11,.94);
+  color: #ffdddd;
+  box-shadow: 0 3px 12px rgba(0,0,0,.48);
+  font: 800 11px/1 system-ui,sans-serif;
+  letter-spacing: .3px;
+  touch-action: manipulation;
+}
+html.argentinia-mobile .telemetry-panel.arg-mobile-telemetry-expanded {
+  flex-wrap: wrap !important;
+  background: rgba(12,12,12,.95) !important;
+}
+html.argentinia-mobile .telemetry-panel.arg-mobile-telemetry-expanded .arg-mobile-telemetry-toggle {
+  background: rgba(73,19,19,.96);
+}

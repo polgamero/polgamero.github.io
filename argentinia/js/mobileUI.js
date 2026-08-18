@@ -295,6 +295,40 @@ function setClassState(el, className, enabled) {
   if (has !== Boolean(enabled)) el.classList.toggle(className, Boolean(enabled));
 }
 
+function ensureMobileTelemetryToggle() {
+  const panel = document.getElementById('argentinia-telemetry-panel');
+  if (!panel || panel.querySelector('#arg-mobile-telemetry-toggle')) return;
+
+  const toggle = document.createElement('button');
+  toggle.id = 'arg-mobile-telemetry-toggle';
+  toggle.className = 'arg-mobile-telemetry-toggle';
+  toggle.type = 'button';
+  toggle.textContent = '🔴 REC';
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.setAttribute('aria-label', 'Desplegar panel de reporte de bugs');
+  toggle.addEventListener('click', () => {
+    const expanded = panel.classList.toggle('arg-mobile-telemetry-expanded');
+    toggle.textContent = expanded ? '✕ REC' : '🔴 REC';
+    toggle.setAttribute('aria-expanded', String(expanded));
+    toggle.setAttribute('aria-label', expanded ? 'Colapsar panel de reporte de bugs' : 'Desplegar panel de reporte de bugs');
+  });
+  panel.prepend(toggle);
+}
+
+function markMobileZoneRows() {
+  const rivalWrapper = document.getElementById('rival-wrapper');
+  const localWrapper = document.getElementById('local-wrapper');
+  const rivalRow = rivalWrapper?.closest('.zone-row-container');
+  const localRow = localWrapper?.closest('.zone-row-container');
+  rivalRow?.classList.add('arg-mobile-rival-zone-row');
+  localRow?.classList.add('arg-mobile-local-zone-row');
+
+  rivalRow?.querySelectorAll('.side-pile').forEach(pile => {
+    const label = pile.querySelector('.pile-label')?.textContent?.trim().toUpperCase();
+    setClassState(pile, 'arg-mobile-rival-public-zone', label === 'CEMENTERIO' || label === 'EXILIO');
+  });
+}
+
 function decorateComplexOverlays() {
   if (!document?.body) return;
   document.querySelectorAll('.gy-modal-overlay').forEach(overlay => {
@@ -336,6 +370,8 @@ function scheduleComplexOverlayRefresh() {
   overlayRefreshRaf = requestAnimationFrame(() => {
     overlayRefreshRaf = 0;
     decorateComplexOverlays();
+    markMobileZoneRows();
+    ensureMobileTelemetryToggle();
     syncMobileBlockingOverlayState();
   });
 }
@@ -548,6 +584,8 @@ export function updateMobileEnvironment({ preserveOrientation = false } = {}) {
   ensureMobileTouchUI();
   ensureComplexOverlayObserver();
   decorateComplexOverlays();
+  markMobileZoneRows();
+  ensureMobileTelemetryToggle();
 
   // 23.11.8: después del boot mobile la orientación visual queda en manos de CSS
   // @media (orientation). No reaccionamos a resize/orientationchange con trabajo JS pesado.

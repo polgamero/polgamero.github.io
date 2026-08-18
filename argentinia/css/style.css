@@ -1712,3 +1712,20 @@ html, body {
   .priority-context-label { font-size:.58rem; }
   .phase-indicator { gap:6px; }
 }
+
+/* ==========================================================
+   ENTREGA 23.11.10 — DESKTOP RIVAL HOVER ORIGIN
+   Las cartas del rival viven en la mitad superior del tablero. Al escalar desde bottom
+   podían salir por el borde superior; en esas zonas pivotan desde TOP y crecen hacia abajo.
+   Tu lado conserva el comportamiento histórico sin cambios.
+   ========================================================== */
+#rival-hand .card,
+#rival-wrapper .card,
+#rival-combat .card {
+  transform-origin: top center;
+}
+
+#rival-wrapper .card.tapped:hover .card-inner,
+#rival-combat .card.tapped:hover .card-inner {
+  transform-origin: top center;
+}
