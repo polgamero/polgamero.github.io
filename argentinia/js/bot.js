@@ -1139,6 +1139,98 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
   return false;
 }
 
+// 23.11.3 — PRE-FLIGHT FORMAL DEL TANO PARA MAIN PHASE.
+// Antes el selector principal sólo filtraba "pagable" y recién DESPUÉS de elegir una carta
+// descubría si realmente existían los objetivos/condiciones que su heurística exigía. Si esa
+// propuesta fallaba, el viejo `return` podía dejar la prioridad en `rival` sin callback futuro.
+// Este pre-flight NO paga, NO saca la carta de la mano y NO publica nada: sólo responde si la
+// carta puede convertirse AHORA en una propuesta de casteo legal/útil según los criterios que
+// el propio Tano ya usa más abajo.
+function resolveBotModalVariantForPreflight(card) {
+  if (!card?.modal || !Array.isArray(card.modes) || card.modes.length === 0) return card;
+  const chosenMode = card.modes[chooseBotMode(card)];
+  return { ...card, effect: chosenMode.effect, requiresTarget: chosenMode.requiresTarget, chosenModeText: chosenMode.text };
+}
+
+function canBotBuildMainPhaseCastProposal(rawCard) {
+  const card = resolveBotModalVariantForPreflight(rawCard);
+  if (!card) return false;
+
+  // Auras: replicamos exactamente el criterio del casteo real (maldición rival vs buff propio).
+  if (card.adjunta) {
+    if (card.alcance === 'criatura_rival') {
+      return state.localCombat.some(c => isValidBotTarget(c, card.colors));
+    }
+    const grantedKeywords = getKeywordsGrantedByPendingSpell(card);
+    return state.rivalCombat.some(c => !grantedKeywords.some(k => hasKeyword(c, k)));
+  }
+
+  // Todos los targets múltiples tienen que existir antes de que la carta compita por ser elegida.
+  if (card.multiTarget && Array.isArray(card.targets) && card.targets.length > 0) {
+    return Boolean(chooseBotMultiTargets(card));
+  }
+
+  // Criaturas/Planeswalkers sin ETB target no necesitan otra validación de target para castearse.
+  if (card.power !== undefined || card.type?.includes('Planeswalker')) return true;
+
+  const isPermanent = card.type?.includes('Artefacto') || (card.type?.includes('Encantamiento') && !card.adjunta);
+  if (isPermanent && card.requiresTarget && card.etbEffect) {
+    return getResolvedEffectTargetCandidates({
+      effect: card.etbEffect,
+      sourceCard: card,
+      controllerIsLocal: false,
+      chooserIsLocal: false,
+      cardName: card.name
+    }).length > 0;
+  }
+
+  if (!card.requiresTarget) return true;
+  const effect = card.effect || {};
+
+  // Efectos cuyo target siempre puede ser un jugador adecuado.
+  if (['damage', 'heal', 'poison', 'discard', 'private_zone_move', 'prevent_attack'].includes(effect.type)) return true;
+
+  // El Tano históricamente no desperdicia odio de cementerio sobre un cementerio vacío.
+  if (effect.type === 'exile_graveyard') return state.localGraveyard.length > 0;
+
+  // Remoción/freno: su heurística sólo los usa sobre una criatura rival válida.
+  if (['destroy_creature', 'exile_creature', 'exile_and_return', 'bounce', 'cant_attack_next_turn'].includes(effect.type)) {
+    return state.localCombat.some(c => isValidBotTarget(c, card.colors));
+  }
+
+  // Buff/protección: sólo sobre una criatura propia real.
+  if (effect.type === 'pump' || effect.type === 'grant_keyword_temp') return state.rivalCombat.length > 0;
+  if (effect.type === 'add_counter') {
+    if (effect.counterType === 'minusOne') return state.localCombat.some(c => isValidBotTarget(c, card.colors));
+    return state.rivalCombat.length > 0;
+  }
+
+  // Fight agrega una condición estratégica: no basta con que haya dos criaturas; tiene que
+  // existir al menos una pareja que el Tano considere una pelea aceptable.
+  if (effect.type === 'fight') {
+    const validTargets = state.localCombat.filter(c => isValidBotTarget(c, card.colors));
+    return state.rivalCombat.some(mine => Boolean(bestFightTargetFor(mine, validTargets)));
+  }
+
+  if (effect.type === 'destroy_artifact') {
+    return state.localCombat.some(c => c.card.type.includes('Artefacto') && isValidBotTarget(c, card.colors))
+      || state.localSupport.some(s => s.card.type.includes('Artefacto'));
+  }
+  if (effect.type === 'destroy_enchantment') {
+    return state.localSupport.some(s => s.card.type.includes('Encantamiento'));
+  }
+
+  // Cinturón genérico para futuros efectos targeteados: si el contrato universal sabe
+  // enumerar al menos un target legal, la propuesta puede competir. Si no, queda afuera.
+  return getResolvedEffectTargetCandidates({
+    effect,
+    sourceCard: card,
+    controllerIsLocal: false,
+    chooserIsLocal: false,
+    cardName: card.name
+  }).length > 0;
+}
+
 // NUEVO: SISTEMA DE PRIORIDAD DEL BOT (Remplaza startRivalTurn)
 export async function takeBotPriorityAction() {
   // FASE 4, ETAPA 4: mismo criterio que checkRivalCounterOrResponse acá arriba — durante
@@ -1267,6 +1359,9 @@ export async function takeBotPriorityAction() {
         // componentes no-maná; si el normal no alcanza, contempla la vía alternativa.
         if (chooseBotCastRoute(c, { excludeCard: c }) === null) return;
         if (isCounterSpell(c)) return;
+        // 23.11.3: una carta pagable no alcanza. Si no puede formar una propuesta legal/útil
+        // con sus targets actuales, ni siquiera compite en la selección de Main.
+        if (!canBotBuildMainPhaseCastProposal(c)) return;
         // NUEVO: El Tano solo arrasa el campo si está en desventaja de poder
         if (c.effect && c.effect.type === 'destroy_all_creatures') {
           const localPower = state.localCombat.reduce((sum, u) => sum + getEffectivePower(u), 0);
@@ -1292,7 +1387,7 @@ export async function takeBotPriorityAction() {
     if (affordableIndex !== -1) {
       // 23.10 / CR 601: se aparta conceptualmente la carta al anunciarla, pero no se
       // activan fuentes ni se pagan costos hasta fijar modo/ruta/X/Kicker y objetivos.
-      const originalCardToPlay = state.rivalHand.splice(affordableIndex, 1)[0];
+      const originalCardToPlay = state.rivalHand[affordableIndex];
       let cardToPlay = originalCardToPlay;
 
       // Hechizos modales: el Tano elige un modo ANTES de todo lo demás (mismo orden que
@@ -1310,8 +1405,11 @@ export async function takeBotPriorityAction() {
       // paga normal si puede; sólo usa alternativa si la normal no alcanza.
       const useAlternative = chooseBotCastRoute(cardToPlay);
       if (useAlternative === null) {
-        // Defensa ante un cambio de estado inesperado entre evaluación y compromiso.
-        state.rivalHand.splice(affordableIndex, 0, cardToPlay);
+        // Defensa ante un cambio de estado inesperado entre evaluación y compromiso. Como la
+        // carta todavía NO salió de la mano, el rewind es gratis. Lo importante: nunca dejamos
+        // la prioridad del bot huérfana.
+        recordTelemetryEvent('bot_cast_proposal_rejected', { cardId: originalCardToPlay?.id || null, cardName: originalCardToPlay?.name || null, reason: 'route_became_unpayable', phase: state.phase });
+        passPriority('rival');
         return;
       }
 
@@ -1586,11 +1684,25 @@ export async function takeBotPriorityAction() {
       }
 
       if (!validPlay) {
-        // 601.2e: propuesta ilegal -> rewind completo. Nada se pagó todavía.
-        state.rivalHand.splice(Math.min(affordableIndex, state.rivalHand.length), 0, originalCardToPlay);
+        // 601.2e: propuesta ilegal -> rewind completo. En 23.11.3 la carta ni siquiera salió
+        // de la mano. Este camino debería ser excepcional porque el pre-flight ya filtró las
+        // propuestas conocidas; aun así, el fail-safe SIEMPRE devuelve la prioridad y jamás
+        // vuelve a dejar al Tano congelado.
+        recordTelemetryEvent('bot_cast_proposal_rejected', { cardId: originalCardToPlay?.id || null, cardName: originalCardToPlay?.name || null, reason: 'late_target_revalidation_failed', phase: state.phase });
         render();
+        passPriority('rival');
         return;
       }
+
+      // 601.2f-g-h: recién AHORA la propuesta quedó cerrada. Se retira la carta real de la
+      // mano y, desde este punto, se comprometen fuentes/costos y el objeto entra a Stack.
+      const committedHandIndex = state.rivalHand.indexOf(originalCardToPlay);
+      if (committedHandIndex < 0) {
+        recordTelemetryEvent('bot_cast_proposal_rejected', { cardId: originalCardToPlay?.id || null, cardName: originalCardToPlay?.name || null, reason: 'card_missing_before_commit', phase: state.phase });
+        passPriority('rival');
+        return;
+      }
+      state.rivalHand.splice(committedHandIndex, 1);
 
       // 601.2f-g-h: con objetivos ya legales se fija el total, se activan fuentes y se paga.
       if (routeManaCost && routeManaCost.includes('{X}')) {

@@ -64,6 +64,9 @@ let cloudEl = null;
 let bugsEl = null;
 let uploadBtn = null;
 let remoteCheckpointTimer = null;
+let botPriorityWatchdogTimer = null;
+let botPriorityStallSince = null;
+let botPriorityStallFingerprint = null;
 let remoteUploadInFlight = null;
 let remoteFinalPending = null;
 let remoteFinalUploadedSessionId = null;
@@ -541,14 +544,14 @@ function bugRootCauseKey(finding) {
     const reason = details?.reason?.message || details?.reason?.name || String(details?.reason || '');
     return `UNHANDLED_REJECTION|${reason}`;
   }
-  if (code === 'SYNC_PUBLISH_OVERLAP' || code === 'POSSIBLE_SYNC_RENDER_STORM' || code === 'INVALID_PASS_COUNT' || code === 'BLOCKER_DECLARATION_LOOP') {
+  if (code === 'SYNC_PUBLISH_OVERLAP' || code === 'POSSIBLE_SYNC_RENDER_STORM' || code === 'INVALID_PASS_COUNT' || code === 'BLOCKER_DECLARATION_LOOP' || code === 'BOT_PRIORITY_STALL') {
     return code;
   }
   return `${code}|${JSON.stringify(details)}`;
 }
 
 function shouldAggregateBug(finding) {
-  return new Set(['JS_ERROR', 'UNHANDLED_REJECTION', 'SYNC_PUBLISH_OVERLAP', 'POSSIBLE_SYNC_RENDER_STORM', 'INVALID_PASS_COUNT', 'BLOCKER_DECLARATION_LOOP']).has(finding?.code);
+  return new Set(['JS_ERROR', 'UNHANDLED_REJECTION', 'SYNC_PUBLISH_OVERLAP', 'POSSIBLE_SYNC_RENDER_STORM', 'INVALID_PASS_COUNT', 'BLOCKER_DECLARATION_LOOP', 'BOT_PRIORITY_STALL']).has(finding?.code);
 }
 
 function addBugCandidate(finding, eventSeq = null) {
@@ -700,6 +703,78 @@ export function recordTelemetryNetwork(type, data = {}, severity = 'info') {
 
 export function recordTelemetryDecision(type, data = {}, severity = 'info') {
   return recordTelemetryEvent(type, data, severity);
+}
+
+
+const BOT_PRIORITY_STALL_MS = 6000;
+
+function stopBotPriorityWatchdog() {
+  if (botPriorityWatchdogTimer) clearInterval(botPriorityWatchdogTimer);
+  botPriorityWatchdogTimer = null;
+  botPriorityStallSince = null;
+  botPriorityStallFingerprint = null;
+}
+
+function pollBotPriorityWatchdog() {
+  if (!currentSession || currentSession.endedAt || currentSession.meta?.mode !== 'solo' || typeof providers.getState !== 'function') {
+    botPriorityStallSince = null;
+    botPriorityStallFingerprint = null;
+    return;
+  }
+  const state = providers.getState();
+  const stack = typeof providers.getStack === 'function' ? providers.getStack() : [];
+  const pending = pendingSummary(state);
+  const suspicious = !state?.gameOver
+    && !state?.currentMatch
+    && state?.priorityPlayer === 'rival'
+    && Array.isArray(stack) && stack.length === 0
+    && Object.keys(pending).length === 0;
+
+  if (!suspicious) {
+    botPriorityStallSince = null;
+    botPriorityStallFingerprint = null;
+    return;
+  }
+
+  const now = Date.now();
+  if (botPriorityStallSince == null) {
+    botPriorityStallSince = now;
+    return;
+  }
+  if (now - botPriorityStallSince < BOT_PRIORITY_STALL_MS) return;
+
+  const fingerprint = `${state.turnCount}|${state.phase}|${state.activePlayer}|${state.priorityPlayer}`;
+  if (botPriorityStallFingerprint === fingerprint) return;
+  botPriorityStallFingerprint = fingerprint;
+
+  const event = recordTelemetryEvent('bot_priority_stall_detected', {
+    turnCount: state.turnCount,
+    phase: state.phase,
+    activePlayer: state.activePlayer,
+    priorityPlayer: state.priorityPlayer,
+    stackLength: stack.length,
+    pending,
+    stalledForMs: now - botPriorityStallSince
+  }, 'warning');
+  addBugCandidate({
+    code: 'BOT_PRIORITY_STALL',
+    severity: 'error',
+    message: 'El Tano conserva la prioridad sin Stack, decisión pendiente ni progreso durante demasiado tiempo.',
+    details: {
+      turnCount: state.turnCount,
+      phase: state.phase,
+      activePlayer: state.activePlayer,
+      priorityPlayer: state.priorityPlayer,
+      stackLength: stack.length,
+      pending,
+      thresholdMs: BOT_PRIORITY_STALL_MS
+    }
+  }, event?.seq ?? currentSession._seq);
+}
+
+function startBotPriorityWatchdog() {
+  stopBotPriorityWatchdog();
+  botPriorityWatchdogTimer = setInterval(pollBotPriorityWatchdog, 1000);
 }
 
 
@@ -962,6 +1037,7 @@ export function startTelemetrySession(meta = {}) {
   schedulePersist();
   updatePanelStatus();
   startRemoteCheckpointLoop();
+  startBotPriorityWatchdog();
   // Primer checkpoint apenas nace la sesión; después, uno incremental cada 30 s.
   setTimeout(() => requestRemoteTelemetryUpload('session_start', { kind: 'latest', capture: true }).catch(() => {}), 0);
   return currentSession.sessionId;
@@ -1021,6 +1097,7 @@ export function captureTelemetryState(reason = 'render') {
       phase: snapshot.turn.phase
     });
     stopRemoteCheckpointLoop();
+    stopBotPriorityWatchdog();
     // No bloquea render(): el final se sube en segundo plano y queda serializado si había
     // un checkpoint periódico todavía en vuelo.
     setTimeout(() => requestRemoteTelemetryUpload('game_over_detected', { kind: 'final', capture: false }).catch(() => {}), 0);
@@ -1039,6 +1116,7 @@ export function endTelemetrySession(reason = 'manual') {
   recordTelemetryEvent('session_end', { reason });
   schedulePersist(true);
   stopRemoteCheckpointLoop();
+  stopBotPriorityWatchdog();
   requestRemoteTelemetryUpload(reason, { kind: 'final', capture: false }).catch(() => {});
 }
 

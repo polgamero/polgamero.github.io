@@ -4,11 +4,44 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>ARGENTINIA - TCG Criollo</title>
-  <link rel="stylesheet" href="./css/style.css?v=23.11.2">
-  <link rel="stylesheet" href="./css/mobile.css?v=23.11.2">
-  <script type="module" src="./js/mobileUI.js?v=23.11.2"></script>
+  <link rel="stylesheet" href="./css/style.css?v=23.11.3">
+  <link rel="stylesheet" href="./css/mobile.css?v=23.11.3">
+  <script>
+    // 23.11.3 — bootstrap mobile SIN dependencias. Corre antes de cualquier módulo/Firebase
+    // para que un teléfono jamás dependa del motor para dejar de mostrar una pantalla negra.
+    (() => {
+      try {
+        const forced = new URLSearchParams(location.search).get('ui');
+        const coarse = matchMedia('(pointer: coarse)').matches;
+        const phone = Math.min(innerWidth || 0, innerHeight || 0) <= 720;
+        const mobile = forced === 'mobile' || (forced !== 'desktop' && coarse && phone);
+        if (mobile) document.documentElement.classList.add('argentinia-mobile-bootstrap');
+      } catch {}
+      setTimeout(() => {
+        if (document.documentElement.classList.contains('arg-mobile-engine-ready')) return;
+        const status = document.getElementById('arg-mobile-boot-fallback-status');
+        const retry = document.getElementById('arg-mobile-boot-fallback-retry');
+        if (status) status.textContent = 'Argentinia está tardando demasiado en iniciar. Revisá tu conexión y reintentá.';
+        if (retry) retry.hidden = false;
+      }, 10000);
+    })();
+  </script>
+  <script type="module" src="./js/mobileUI.js?v=23.11.3"></script>
 </head>
 <body>
+
+  <!-- 23.11.3: fallback mobile estático. No depende de main.js, Firebase ni módulos ES.
+       Si el motor no llega a evaluar, esta capa sigue pudiendo explicar qué pasa/reintentar. -->
+  <div id="arg-mobile-boot-fallback" role="status" aria-live="polite">
+    <div class="arg-mobile-boot-fallback-card">
+      <div class="arg-mobile-boot-fallback-icon" aria-hidden="true">🧉</div>
+      <h1>ARGENTINIA</h1>
+      <p class="arg-mobile-boot-landscape-copy">Cargando el motor del juego…</p>
+      <p class="arg-mobile-boot-portrait-copy"><strong>Girá el celular.</strong><br>Argentinia se juega exclusivamente en horizontal.</p>
+      <p id="arg-mobile-boot-fallback-status" class="arg-mobile-boot-fallback-status">Preparando cartas y conexión…</p>
+      <button id="arg-mobile-boot-fallback-retry" type="button" hidden onclick="location.reload()">REINTENTAR</button>
+    </div>
+  </div>
 
   <!-- FEATURE (#6): pantalla de carga — sin esto, #game-app (todo el tablero, HP en
        20/20, "El Tano (TU RIVAL)" fijo) se ve tal cual apenas carga el HTML, mucho antes de

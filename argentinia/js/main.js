@@ -586,10 +586,38 @@ function promptStarterDeckSelection() {
   );
 }
 
+const BUILD_FRESHNESS_TIMEOUT_MS = 5000;
+
+function markEngineBootState(status, detail = {}) {
+  try {
+    document.documentElement.dataset.argEngineBoot = status;
+    document.documentElement.classList.toggle('arg-mobile-engine-ready', status === 'ready');
+    window.dispatchEvent(new CustomEvent('argentinia:boot-status', { detail: { status, ...detail } }));
+  } catch {
+    // Diagnóstico best-effort: jamás puede romper el boot por falta de CustomEvent/DOM.
+  }
+}
+
+async function fetchBuildManifestWithTimeout(url, timeoutMs = BUILD_FRESHNESS_TIMEOUT_MS) {
+  if (typeof AbortController === 'function') {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort('build_freshness_timeout'), timeoutMs);
+    try {
+      return await fetch(url, { cache: 'no-store', signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return await Promise.race([
+    fetch(url, { cache: 'no-store' }),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('BUILD_FRESHNESS_TIMEOUT')), timeoutMs))
+  ]);
+}
+
 async function checkBuildFreshness() {
   try {
     const url = `${BUILD_MANIFEST_URL}?fresh=${Date.now()}`;
-    const response = await fetch(url, { cache: 'no-store' });
+    const response = await fetchBuildManifestWithTimeout(url);
     if (!response.ok) return { ok: true, unverifiable: true };
     const manifest = await response.json();
     const ok = manifest?.engineVersion === ENGINE_VERSION && manifest?.engineProtocolVersion === ENGINE_PROTOCOL_VERSION;
@@ -620,6 +648,7 @@ async function boot() {
   globalThis.__ARGENTINIA_BOOT_STARTED__ = true;
   globalThis.__ARGENTINIA_BOOT_VERSION__ = ENGINE_VERSION;
   globalThis.__ARGENTINIA_BOOT_MODULE_URL__ = import.meta.url;
+  markEngineBootState('loading', { engineVersion: ENGINE_VERSION });
 
   // ENTREGA 22: instala listeners de errores/interacciones y el pequeño panel de exportación.
   // Los providers son funciones para evitar copias: la telemetría lee el estado actual sólo
@@ -636,6 +665,7 @@ async function boot() {
   const freshness = await checkBuildFreshness();
   if (!freshness.ok) {
     const serverVersion = freshness.manifest?.engineVersion || 'más nueva';
+    markEngineBootState('error', { code: 'BUILD_MISMATCH', serverVersion });
     const loadingOverlay = document.getElementById('boot-loading-overlay');
     if (loadingOverlay) loadingOverlay.remove();
     document.body.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#08100b;color:#f0e0b0;font-family:system-ui;padding:24px"><div style="max-width:620px;border:2px solid #d4af37;border-radius:14px;padding:24px;text-align:center;background:#111a13"><h2>♻️ Actualización disponible</h2><p>Esta pestaña cargó Argentinia ${ENGINE_VERSION}, pero el servidor publica ${serverVersion}.</p><p>Recargá la página con Ctrl+F5 / recarga completa antes de jugar.</p></div></div>`;
@@ -706,6 +736,7 @@ async function boot() {
     }
   } catch (err) {
     console.error('[BOOT_FATAL] No se pudo cargar/validar el pool de cartas:', err);
+    markEngineBootState('error', { code: err?.code || 'BOOT_FATAL', message: err?.message || String(err) });
     const rateLimited = err?.code === 'GITHUB_PAGES_RATE_LIMIT' || err?.status === 429;
     const poolMismatch = err?.code === 'POOL_CONTRACT_VIOLATION';
     const title = rateLimited ? '⏳ GitHub Pages limitó temporalmente las solicitudes'
@@ -723,6 +754,7 @@ async function boot() {
     if (loadingOverlay) loadingOverlay.remove();
   }
 
+  markEngineBootState('ready', { engineVersion: ENGINE_VERSION });
   showMainMenu(startPlayFlow, startMultiplayerFlow);
 }
 

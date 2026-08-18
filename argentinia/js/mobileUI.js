@@ -4,6 +4,7 @@
 // ya renderizadas por el motor (targetable, mana-payable, textos/botones de fase, etc.).
 
 const MOBILE_ROOT_CLASS = 'argentinia-mobile';
+const MOBILE_SHELL_READY_CLASS = 'arg-mobile-shell-ready';
 const ENTERED_CLASS = 'arg-mobile-entered';
 const PORTRAIT_CLASS = 'arg-mobile-portrait';
 const LANDSCAPE_CLASS = 'arg-mobile-landscape';
@@ -524,6 +525,7 @@ export function updateMobileEnvironment() {
 
 export function initMobileUI() {
   updateMobileEnvironment();
+  document.documentElement.classList.add(MOBILE_SHELL_READY_CLASS);
 
   const refresh = () => window.requestAnimationFrame(updateMobileEnvironment);
   window.addEventListener('resize', refresh, { passive: true });
