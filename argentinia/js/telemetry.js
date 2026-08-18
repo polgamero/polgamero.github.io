@@ -66,7 +66,10 @@ let uploadBtn = null;
 let remoteCheckpointTimer = null;
 let botPriorityWatchdogTimer = null;
 let botPriorityStallSince = null;
-let botPriorityStallFingerprint = null;
+let botPriorityWatchdogKey = null;
+let botPriorityStallReportedKey = null;
+let botPriorityProgressSerial = 0;
+let botPriorityLastProgressEventSeq = 0;
 let remoteUploadInFlight = null;
 let remoteFinalPending = null;
 let remoteFinalUploadedSessionId = null;
@@ -620,6 +623,17 @@ function eventRelativeMs() {
   return Math.round(perfNow() - currentSession._perfStarted);
 }
 
+const BOT_PRIORITY_PROGRESS_EVENT_TYPES = new Set([
+  'state_change', 'priority_pass', 'advance_step_requested', 'phase_committed',
+  'stack_push', 'stack_resolve_start', 'stack_resolve_end',
+  'cast_transaction_begin', 'cast_cost_locked', 'cast_transaction_committed',
+  'blockers_declared'
+]);
+
+export function isBotPriorityProgressEvent(type) {
+  return BOT_PRIORITY_PROGRESS_EVENT_TYPES.has(type);
+}
+
 export function recordTelemetryEvent(type, data = {}, severity = 'info') {
   if (!currentSession) return null;
   const event = {
@@ -631,6 +645,16 @@ export function recordTelemetryEvent(type, data = {}, severity = 'info') {
     data: safeClone(data)
   };
   currentSession.events.push(event);
+
+  // 23.11.4: `BOT_PRIORITY_STALL` mide una MISMA ventana de prioridad, no simplemente
+  // el hecho de observar `priorityPlayer === rival` en dos polls separados. Cualquier
+  // progreso semántico del motor invalida el reloj previo aunque el watchdog no haya
+  // alcanzado a observar el estado intermedio (race real vista en el log 23.11.3).
+  if (isBotPriorityProgressEvent(type)) {
+    botPriorityProgressSerial += 1;
+    botPriorityLastProgressEventSeq = event.seq;
+  }
+
   if (currentSession.events.length > MAX_EVENTS) {
     currentSession.events.splice(0, currentSession.events.length - MAX_EVENTS);
     currentSession.truncated = true;
@@ -708,17 +732,33 @@ export function recordTelemetryDecision(type, data = {}, severity = 'info') {
 
 const BOT_PRIORITY_STALL_MS = 6000;
 
+export function buildBotPriorityWatchdogKey(state, stackLength, pending, progressSerial) {
+  return [
+    state?.turnCount ?? '?',
+    state?.phase ?? '?',
+    state?.activePlayer ?? '?',
+    state?.priorityPlayer ?? '?',
+    Number(stackLength) || 0,
+    Object.keys(pending || {}).sort().join(','),
+    Number(progressSerial) || 0
+  ].join('|');
+}
+
+function resetBotPriorityWatchdogWindow() {
+  botPriorityStallSince = null;
+  botPriorityWatchdogKey = null;
+  botPriorityStallReportedKey = null;
+}
+
 function stopBotPriorityWatchdog() {
   if (botPriorityWatchdogTimer) clearInterval(botPriorityWatchdogTimer);
   botPriorityWatchdogTimer = null;
-  botPriorityStallSince = null;
-  botPriorityStallFingerprint = null;
+  resetBotPriorityWatchdogWindow();
 }
 
 function pollBotPriorityWatchdog() {
   if (!currentSession || currentSession.endedAt || currentSession.meta?.mode !== 'solo' || typeof providers.getState !== 'function') {
-    botPriorityStallSince = null;
-    botPriorityStallFingerprint = null;
+    resetBotPriorityWatchdogWindow();
     return;
   }
   const state = providers.getState();
@@ -731,21 +771,29 @@ function pollBotPriorityWatchdog() {
     && Object.keys(pending).length === 0;
 
   if (!suspicious) {
-    botPriorityStallSince = null;
-    botPriorityStallFingerprint = null;
+    resetBotPriorityWatchdogWindow();
     return;
   }
 
   const now = Date.now();
+  const windowKey = buildBotPriorityWatchdogKey(state, stack.length, pending, botPriorityProgressSerial);
+
+  // Si hubo cualquier progreso entre polls, aunque terminemos otra vez con prioridad del
+  // Tano en la misma fase, es OTRA ventana temporal y su reloj comienza de cero.
+  if (botPriorityWatchdogKey !== windowKey) {
+    botPriorityWatchdogKey = windowKey;
+    botPriorityStallSince = now;
+    botPriorityStallReportedKey = null;
+    return;
+  }
+
   if (botPriorityStallSince == null) {
     botPriorityStallSince = now;
     return;
   }
   if (now - botPriorityStallSince < BOT_PRIORITY_STALL_MS) return;
-
-  const fingerprint = `${state.turnCount}|${state.phase}|${state.activePlayer}|${state.priorityPlayer}`;
-  if (botPriorityStallFingerprint === fingerprint) return;
-  botPriorityStallFingerprint = fingerprint;
+  if (botPriorityStallReportedKey === windowKey) return;
+  botPriorityStallReportedKey = windowKey;
 
   const event = recordTelemetryEvent('bot_priority_stall_detected', {
     turnCount: state.turnCount,
@@ -754,12 +802,15 @@ function pollBotPriorityWatchdog() {
     priorityPlayer: state.priorityPlayer,
     stackLength: stack.length,
     pending,
-    stalledForMs: now - botPriorityStallSince
+    stalledForMs: now - botPriorityStallSince,
+    watchdogWindowKey: windowKey,
+    progressSerial: botPriorityProgressSerial,
+    lastProgressEventSeq: botPriorityLastProgressEventSeq
   }, 'warning');
   addBugCandidate({
     code: 'BOT_PRIORITY_STALL',
     severity: 'error',
-    message: 'El Tano conserva la prioridad sin Stack, decisión pendiente ni progreso durante demasiado tiempo.',
+    message: 'El Tano conserva la misma ventana de prioridad sin Stack, decisión pendiente ni progreso durante demasiado tiempo.',
     details: {
       turnCount: state.turnCount,
       phase: state.phase,
@@ -767,7 +818,10 @@ function pollBotPriorityWatchdog() {
       priorityPlayer: state.priorityPlayer,
       stackLength: stack.length,
       pending,
-      thresholdMs: BOT_PRIORITY_STALL_MS
+      thresholdMs: BOT_PRIORITY_STALL_MS,
+      watchdogWindowKey: windowKey,
+      progressSerial: botPriorityProgressSerial,
+      lastProgressEventSeq: botPriorityLastProgressEventSeq
     }
   }, event?.seq ?? currentSession._seq);
 }

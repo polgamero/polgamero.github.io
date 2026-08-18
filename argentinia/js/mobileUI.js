@@ -3,6 +3,8 @@
 // contiene reglas de juego. Para decidir entre preview y acción usa únicamente señales DOM
 // ya renderizadas por el motor (targetable, mana-payable, textos/botones de fase, etc.).
 
+globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('mobile_ui_module_evaluating');
+
 const MOBILE_ROOT_CLASS = 'argentinia-mobile';
 const MOBILE_SHELL_READY_CLASS = 'arg-mobile-shell-ready';
 const ENTERED_CLASS = 'arg-mobile-entered';
@@ -526,6 +528,7 @@ export function updateMobileEnvironment() {
 export function initMobileUI() {
   updateMobileEnvironment();
   document.documentElement.classList.add(MOBILE_SHELL_READY_CLASS);
+  globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('mobile_shell_ready', { width: window.innerWidth, height: window.innerHeight });
 
   const refresh = () => window.requestAnimationFrame(updateMobileEnvironment);
   window.addEventListener('resize', refresh, { passive: true });

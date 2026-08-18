@@ -110,20 +110,62 @@ function enqueueSacrificeResolution(task) {
 }
 
 
+
+export function getTriggerProvenance(item) {
+  if (!item || item.abilityKind !== 'triggered') return '';
+  const triggerType = item.triggerType || item.source?.triggerType || '';
+  const eventCard = item.source?.eventCard || null;
+  const name = eventCard?.name || '';
+  switch (triggerType) {
+    case 'dies':
+    case 'any_creature_dies':
+    case 'opponent_death':
+      return name ? `Murió ${name}` : 'Murió una criatura';
+    case 'creature_etb':
+      return name ? `Entró ${name}` : 'Entró una criatura';
+    case 'etb':
+    case 'reanimate_etb':
+    case 'return_etb':
+      return name ? `Entró ${name}` : 'La fuente entró al campo';
+    case 'land_etb':
+      return name ? `Entró la tierra ${name}` : 'Entró una tierra';
+    case 'spell_cast':
+      return name ? `Se lanzó ${name}` : 'Se lanzó un hechizo';
+    case 'attack':
+    case 'any_creature_attacks':
+      return name ? `Atacó ${name}` : 'Atacó una criatura';
+    case 'block':
+      return name ? `Bloqueó ${name}` : 'Se declaró un bloqueo';
+    case 'combat_damage':
+      return name ? `${name} hizo daño de combate` : 'Se hizo daño de combate';
+    case 'upkeep':
+      return 'Comenzó el mantenimiento';
+    case 'end_step':
+      return 'Comenzó el paso final';
+    default:
+      return name ? `Evento: ${name}` : '';
+  }
+}
+
 export function addToStack(item) {
   item.id = nextStackId++;
   spellStack.push(item);
+  const triggerProvenance = getTriggerProvenance(item);
   recordTelemetryEvent('stack_push', {
     stackId: item.id,
     type: item.type || null,
     abilityKind: item.abilityKind || null,
+    triggerType: item.triggerType || null,
+    triggerProvenance: triggerProvenance || null,
+    eventCard: item.source?.eventCard ? { id: item.source.eventCard.id ?? null, name: item.source.eventCard.name ?? null } : null,
     card: { id: item.card?.id ?? null, name: item.card?.name ?? null },
     isLocal: item.isLocal ?? null,
     stackDepth: spellStack.length
   });
   if (item.abilityKind === 'triggered') {
     const label = item.triggerLabel ? ` — ${item.triggerLabel}` : '';
-    logMsg(`⚡ Habilidad disparada de "${item.card.name}"${label} entró a la pila (ID: ${item.id}).`);
+    const provenance = triggerProvenance ? ` · ${triggerProvenance}` : '';
+    logMsg(`⚡ Habilidad disparada de "${item.card.name}"${label}${provenance} entró a la pila (ID: ${item.id}).`);
   } else if (item.abilityKind === 'loyalty') {
     logMsg(`🔮 Habilidad de Lealtad de "${item.card.name}" — ${item.ability?.name || 'Loyalty'} entró a la pila (ID: ${item.id}).`);
   } else {
@@ -1862,10 +1904,15 @@ export function renderStack() {
       : isLoyaltyAbility
         ? '<div class="stack-item-meta"><strong>Habilidad de Lealtad</strong></div>'
         : '';
+    const triggerProvenance = isTriggeredAbility ? getTriggerProvenance(item) : '';
+    const provenanceText = triggerProvenance
+      ? `<div class="stack-item-meta stack-trigger-provenance">Disparada por: <strong>${triggerProvenance}</strong></div>`
+      : '';
 
     cardDiv.innerHTML = `
       <div class="stack-item-title">${isTop ? '▶ ' : ''}${itemTitle}</div>
       ${kindText}
+      ${provenanceText}
       <div class="stack-item-meta">${ownerLabel}: <strong>${ownerText}</strong></div>
       <div class="stack-item-meta">${targetText}</div>
     `;

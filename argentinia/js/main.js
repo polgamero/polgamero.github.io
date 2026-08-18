@@ -14,6 +14,8 @@ import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_BUILD_LABEL, BUILD_MANI
 import { MULTIPLAYER_TEST_DECK_NAME, buildMultiplayerTestDeck } from './testDeck.js';
 import { PRIVATE_ZONE_VISIBILITY, PRIVATE_ZONE_FILTERS, buildPrivateZoneOffer, resolvePrivateZoneSelection } from './privateZoneProtocol.js';
 
+globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
+
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 
 // Fase 1: rastrea la carga (asíncrona) del perfil de Firestore del usuario logueado.
@@ -592,6 +594,8 @@ function markEngineBootState(status, detail = {}) {
   try {
     document.documentElement.dataset.argEngineBoot = status;
     document.documentElement.classList.toggle('arg-mobile-engine-ready', status === 'ready');
+    globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.(`engine_${status}`, detail);
+    if (status === 'ready') globalThis.__ARGENTINIA_BOOT_DIAG__?.releaseFallbackIfReady?.();
     window.dispatchEvent(new CustomEvent('argentinia:boot-status', { detail: { status, ...detail } }));
   } catch {
     // Diagnóstico best-effort: jamás puede romper el boot por falta de CustomEvent/DOM.
@@ -3265,7 +3269,8 @@ export function triggerCreatureDies(unit, isLocal) {
   const trig = unit?.card?.diesTrigger;
   if (!trig) return null;
   return queueTriggeredAbility({
-    effect: trig, sourceCard: unit.card, sourceItem: unit, isLocal, triggerType: 'dies'
+    effect: trig, sourceCard: unit.card, sourceItem: unit, isLocal, triggerType: 'dies',
+    eventCard: unit.card, eventItem: unit
   });
 }
 
@@ -3714,7 +3719,7 @@ export function resolveScheduledReturns(isLocal) {
     if (entry.card.etbEffect && !entry.card.requiresTarget) {
       queueTriggeredAbility({
         effect: entry.card.etbEffect, sourceCard: entry.card, sourceItem: newUnit, isLocal,
-        triggerType: 'return_etb'
+        triggerType: 'return_etb', eventCard: entry.card, eventItem: newUnit
       });
     }
   });

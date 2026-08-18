@@ -4,29 +4,186 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>ARGENTINIA - TCG Criollo</title>
-  <link rel="stylesheet" href="./css/style.css?v=23.11.3">
-  <link rel="stylesheet" href="./css/mobile.css?v=23.11.3">
+  <link rel="stylesheet" href="./css/style.css?v=23.11.4">
+  <link rel="stylesheet" href="./css/mobile.css?v=23.11.4">
+  <style id="arg-mobile-boot-critical-style">
+    /* 23.11.4: fallback CRÍTICO inline. No depende de style.css/mobile.css ni de módulos JS. */
+    #arg-mobile-boot-fallback { display: none; }
+    @media (hover: none) and (pointer: coarse), (max-device-width: 1024px) {
+      html:not(.arg-mobile-engine-ready) #arg-mobile-boot-fallback,
+      html:not(.arg-mobile-shell-ready) #arg-mobile-boot-fallback {
+        position: fixed; inset: 0; z-index: 2147483647; display: flex;
+        align-items: center; justify-content: center; box-sizing: border-box;
+        padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        background: radial-gradient(circle at 50% 25%, #1b2c20 0%, #08100b 62%, #020504 100%);
+        color: #f0e0b0; font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; text-align:center;
+      }
+    }
+    html.argentinia-mobile-bootstrap:not(.arg-mobile-engine-ready) #arg-mobile-boot-fallback,
+    html.argentinia-mobile-bootstrap:not(.arg-mobile-shell-ready) #arg-mobile-boot-fallback,
+    html.arg-bootdiag-force #arg-mobile-boot-fallback {
+      position: fixed; inset: 0; z-index: 2147483647; display: flex;
+      align-items: center; justify-content: center; box-sizing: border-box;
+      padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      background: radial-gradient(circle at 50% 25%, #1b2c20 0%, #08100b 62%, #020504 100%);
+      color: #f0e0b0; font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; text-align:center;
+    }
+    #arg-mobile-boot-fallback .arg-mobile-boot-fallback-card { width:min(620px,90vw); max-height:90dvh; overflow:auto; padding:18px 20px; border:2px solid #d4af37; border-radius:16px; background:#111a13; box-sizing:border-box; }
+    #arg-mobile-boot-fallback h1 { margin:4px 0 8px; }
+    #arg-mobile-boot-fallback button { min-height:44px; margin:6px 4px 0; padding:8px 12px; border:1px solid #d4af37; border-radius:9px; background:#6f1d1b; color:#fff6dc; font-weight:800; }
+    #arg-mobile-boot-fallback-continue { display:none; }
+    html.arg-bootdiag-force.arg-mobile-engine-ready.arg-mobile-shell-ready #arg-mobile-boot-fallback-continue { display:inline-block; }
+    #arg-mobile-boot-diag-panel { margin-top:12px; text-align:left; }
+    #arg-mobile-boot-diag-panel pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:42dvh; overflow:auto; padding:10px; border:1px solid rgba(212,175,55,.45); border-radius:8px; background:#050806; color:#d9f6d8; font:11px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace; }
+    .arg-mobile-boot-portrait-copy { display:none; }
+    @media (orientation: portrait) { .arg-mobile-boot-landscape-copy { display:none; } .arg-mobile-boot-portrait-copy { display:block; } }
+  </style>
   <script>
-    // 23.11.3 — bootstrap mobile SIN dependencias. Corre antes de cualquier módulo/Firebase
-    // para que un teléfono jamás dependa del motor para dejar de mostrar una pantalla negra.
+    // 23.11.4 — "DevTools de emergencia" dentro del propio HTML. Funciona antes de
+    // main.js/Firebase/mobileUI y captura fallos de carga que la telemetría normal no puede ver.
     (() => {
-      try {
-        const forced = new URLSearchParams(location.search).get('ui');
-        const coarse = matchMedia('(pointer: coarse)').matches;
-        const phone = Math.min(innerWidth || 0, innerHeight || 0) <= 720;
-        const mobile = forced === 'mobile' || (forced !== 'desktop' && coarse && phone);
-        if (mobile) document.documentElement.classList.add('argentinia-mobile-bootstrap');
-      } catch {}
+      const VERSION = '23.11.4';
+      const startedAt = Date.now();
+      const events = [];
+      let lastError = null;
+      let manifestProbe = 'pending';
+      const params = (() => { try { return new URLSearchParams(location.search); } catch { return { get: () => null }; } })();
+      const root = document.documentElement;
+
+      function safeMatch(query) { try { return !!matchMedia(query).matches; } catch { return false; } }
+      function snapshot() {
+        return {
+          version: VERSION,
+          elapsedMs: Date.now() - startedAt,
+          url: location.href,
+          online: typeof navigator.onLine === 'boolean' ? navigator.onLine : null,
+          visibility: document.visibilityState || null,
+          readyState: document.readyState,
+          viewport: { width: innerWidth || null, height: innerHeight || null, dpr: devicePixelRatio || 1 },
+          screen: { width: screen?.width || null, height: screen?.height || null, availWidth: screen?.availWidth || null, availHeight: screen?.availHeight || null },
+          media: { coarse: safeMatch('(pointer: coarse)'), hoverNone: safeMatch('(hover: none)'), portrait: safeMatch('(orientation: portrait)') },
+          engineBoot: root.dataset.argEngineBoot || null,
+          engineVersion: globalThis.__ARGENTINIA_BOOT_VERSION__ || null,
+          engineStarted: !!globalThis.__ARGENTINIA_BOOT_STARTED__,
+          classes: root.className,
+          manifestProbe,
+          lastError,
+          userAgent: navigator.userAgent || null,
+          events: events.slice(-20)
+        };
+      }
+      function render() {
+        const pre = document.getElementById('arg-mobile-boot-diag-output');
+        if (pre) pre.textContent = JSON.stringify(snapshot(), null, 2);
+      }
+      function forceFallbackVisible() {
+        const fallback = document.getElementById('arg-mobile-boot-fallback');
+        if (!fallback) return false;
+        fallback.style.setProperty('display', 'flex', 'important');
+        fallback.style.setProperty('position', 'fixed', 'important');
+        fallback.style.setProperty('inset', '0', 'important');
+        fallback.style.setProperty('z-index', '2147483647', 'important');
+        fallback.style.setProperty('align-items', 'center', 'important');
+        fallback.style.setProperty('justify-content', 'center', 'important');
+        fallback.style.setProperty('background', '#08100b', 'important');
+        return true;
+      }
+      function releaseFallbackIfReady() {
+        if (root.classList.contains('arg-bootdiag-force')) return false;
+        if (!root.classList.contains('arg-mobile-engine-ready') || !root.classList.contains('arg-mobile-shell-ready')) return false;
+        const fallback = document.getElementById('arg-mobile-boot-fallback');
+        if (!fallback) return false;
+        fallback.removeAttribute('style');
+        return true;
+      }
+      function mark(stage, detail = null) {
+        events.push({ atMs: Date.now() - startedAt, stage, detail });
+        if (events.length > 40) events.splice(0, events.length - 40);
+        render();
+        releaseFallbackIfReady();
+      }
+      async function copyDiag() {
+        const text = JSON.stringify(snapshot(), null, 2);
+        try { await navigator.clipboard.writeText(text); mark('diagnostic_copied'); return; } catch {}
+        try {
+          const ta = document.createElement('textarea'); ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+          document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); mark('diagnostic_copied_fallback');
+        } catch (error) { mark('diagnostic_copy_failed', String(error?.message || error)); }
+      }
+      function showDiag() {
+        const panel = document.getElementById('arg-mobile-boot-diag-panel');
+        if (panel) panel.hidden = false;
+        render();
+      }
+      function continueFromDiag() { root.classList.remove('arg-bootdiag-force'); releaseFallbackIfReady(); }
+      globalThis.__ARGENTINIA_BOOT_DIAG__ = { version: VERSION, mark, render, snapshot, copyDiag, showDiag, continueFromDiag, forceFallbackVisible, releaseFallbackIfReady };
+
+      addEventListener('error', event => {
+        lastError = { type: 'error', message: event.message || 'Resource/module load error', filename: event.filename || null, line: event.lineno || null };
+        mark('window_error', lastError);
+      }, true);
+      addEventListener('unhandledrejection', event => {
+        lastError = { type: 'unhandledrejection', message: String(event.reason?.message || event.reason || 'unknown') };
+        mark('unhandled_rejection', lastError);
+      });
+      addEventListener('online', () => mark('network_online'));
+      addEventListener('offline', () => mark('network_offline'));
+
+      const forced = params.get('ui');
+      const coarse = safeMatch('(pointer: coarse)');
+      const hoverNone = safeMatch('(hover: none)');
+      const shortSide = Math.min(innerWidth || screen?.width || 0, innerHeight || screen?.height || 0);
+      const mobile = forced === 'mobile' || (forced !== 'desktop' && (coarse || hoverNone) && shortSide <= 720);
+      if (mobile) root.classList.add('argentinia-mobile-bootstrap');
+      const forceDiag = params.get('bootdiag') === '1';
+      if (forceDiag) root.classList.add('arg-bootdiag-force');
+      mark('html_bootstrap', { mobile, forced: forced || 'auto', coarse, hoverNone, shortSide });
+      if (mobile || forceDiag) {
+        // El parser continúa aunque un módulo ES remoto se quede colgado. Estos intentos
+        // hacen visible el fallback por style inline, incluso si mobile.css no cargó.
+        setTimeout(forceFallbackVisible, 50);
+        setTimeout(forceFallbackVisible, 500);
+      }
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        mark('dom_content_loaded');
+        render();
+        try {
+          const controller = typeof AbortController === 'function' ? new AbortController() : null;
+          const timer = controller ? setTimeout(() => controller.abort(), 4500) : null;
+          const response = await fetch(`./build-manifest.json?bootdiag=${Date.now()}`, { cache: 'no-store', ...(controller ? { signal: controller.signal } : {}) });
+          if (timer) clearTimeout(timer);
+          manifestProbe = response.ok ? `http_${response.status}` : `http_${response.status}`;
+          if (response.ok) {
+            const manifest = await response.json();
+            manifestProbe += ` engine=${manifest?.engineVersion || '?'}`;
+          }
+          mark('manifest_probe', manifestProbe);
+        } catch (error) {
+          manifestProbe = `error:${error?.name || 'Error'}:${error?.message || error}`;
+          mark('manifest_probe_error', manifestProbe);
+        }
+      }, { once: true });
+      addEventListener('load', () => mark('window_load'), { once: true });
+
       setTimeout(() => {
-        if (document.documentElement.classList.contains('arg-mobile-engine-ready')) return;
+        if (root.classList.contains('arg-mobile-engine-ready') && !root.classList.contains('arg-bootdiag-force')) return;
+        root.classList.add('arg-mobile-boot-timeout');
+        forceFallbackVisible();
         const status = document.getElementById('arg-mobile-boot-fallback-status');
         const retry = document.getElementById('arg-mobile-boot-fallback-retry');
-        if (status) status.textContent = 'Argentinia está tardando demasiado en iniciar. Revisá tu conexión y reintentá.';
+        const diag = document.getElementById('arg-mobile-boot-fallback-diag');
+        if (status) status.textContent = 'Argentinia está tardando demasiado en iniciar. Abrí DIAGNÓSTICO y copiá el reporte si el reintento no funciona.';
         if (retry) retry.hidden = false;
-      }, 10000);
+        if (diag) diag.hidden = false;
+        showDiag();
+        mark('boot_watchdog_timeout');
+      }, 8000);
     })();
   </script>
-  <script type="module" src="./js/mobileUI.js?v=23.11.3"></script>
+  <script type="module" src="./js/mobileUI.js?v=23.11.4"
+    onload="globalThis.__ARGENTINIA_BOOT_DIAG__?.mark('mobile_ui_module_loaded')"
+    onerror="globalThis.__ARGENTINIA_BOOT_DIAG__?.mark('mobile_ui_module_load_error')"></script>
 </head>
 <body>
 
@@ -40,6 +197,12 @@
       <p class="arg-mobile-boot-portrait-copy"><strong>Girá el celular.</strong><br>Argentinia se juega exclusivamente en horizontal.</p>
       <p id="arg-mobile-boot-fallback-status" class="arg-mobile-boot-fallback-status">Preparando cartas y conexión…</p>
       <button id="arg-mobile-boot-fallback-retry" type="button" hidden onclick="location.reload()">REINTENTAR</button>
+      <button id="arg-mobile-boot-fallback-diag" type="button" hidden onclick="globalThis.__ARGENTINIA_BOOT_DIAG__?.showDiag()">DIAGNÓSTICO</button>
+      <button id="arg-mobile-boot-fallback-copy" type="button" onclick="globalThis.__ARGENTINIA_BOOT_DIAG__?.copyDiag()">COPIAR DIAGNÓSTICO</button>
+      <button id="arg-mobile-boot-fallback-continue" type="button" onclick="globalThis.__ARGENTINIA_BOOT_DIAG__?.continueFromDiag()">CONTINUAR</button>
+      <div id="arg-mobile-boot-diag-panel" hidden>
+        <pre id="arg-mobile-boot-diag-output">Inicializando diagnóstico…</pre>
+      </div>
     </div>
   </div>
 
@@ -191,6 +354,8 @@
     </div>
   </div>
   
-  <script type="module" src="./js/main.js"></script>
+  <script type="module" src="./js/main.js?v=23.11.4"
+    onload="globalThis.__ARGENTINIA_BOOT_DIAG__?.mark('main_module_loaded')"
+    onerror="globalThis.__ARGENTINIA_BOOT_DIAG__?.mark('main_module_load_error')"></script>
 </body>
 </html>
