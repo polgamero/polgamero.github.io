@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>ARGENTINIA - TCG Criollo</title>
-  <link rel="stylesheet" href="./css/style.css?v=23.11.4">
-  <link rel="stylesheet" href="./css/mobile.css?v=23.11.4">
+  <link rel="stylesheet" href="./css/style.css?v=23.11.5">
+  <link rel="stylesheet" href="./css/mobile.css?v=23.11.5">
   <style id="arg-mobile-boot-critical-style">
-    /* 23.11.4: fallback CRÍTICO inline. No depende de style.css/mobile.css ni de módulos JS. */
+    /* 23.11.5: fallback CRÍTICO inline. No depende de style.css/mobile.css ni de módulos JS. */
     #arg-mobile-boot-fallback { display: none; }
     @media (hover: none) and (pointer: coarse), (max-device-width: 1024px) {
       html:not(.arg-mobile-engine-ready) #arg-mobile-boot-fallback,
@@ -32,17 +32,17 @@
     #arg-mobile-boot-fallback h1 { margin:4px 0 8px; }
     #arg-mobile-boot-fallback button { min-height:44px; margin:6px 4px 0; padding:8px 12px; border:1px solid #d4af37; border-radius:9px; background:#6f1d1b; color:#fff6dc; font-weight:800; }
     #arg-mobile-boot-fallback-continue { display:none; }
-    html.arg-bootdiag-force.arg-mobile-engine-ready.arg-mobile-shell-ready #arg-mobile-boot-fallback-continue { display:inline-block; }
+    html.arg-bootdiag-force #arg-mobile-boot-fallback-continue { display:inline-block; }
     #arg-mobile-boot-diag-panel { margin-top:12px; text-align:left; }
     #arg-mobile-boot-diag-panel pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:42dvh; overflow:auto; padding:10px; border:1px solid rgba(212,175,55,.45); border-radius:8px; background:#050806; color:#d9f6d8; font:11px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace; }
     .arg-mobile-boot-portrait-copy { display:none; }
     @media (orientation: portrait) { .arg-mobile-boot-landscape-copy { display:none; } .arg-mobile-boot-portrait-copy { display:block; } }
   </style>
   <script>
-    // 23.11.4 — "DevTools de emergencia" dentro del propio HTML. Funciona antes de
+    // 23.11.5 — "DevTools de emergencia" dentro del propio HTML. Funciona antes de
     // main.js/Firebase/mobileUI y captura fallos de carga que la telemetría normal no puede ver.
     (() => {
-      const VERSION = '23.11.4';
+      const VERSION = '23.11.5';
       const startedAt = Date.now();
       const events = [];
       let lastError = null;
@@ -115,7 +115,13 @@
         if (panel) panel.hidden = false;
         render();
       }
-      function continueFromDiag() { root.classList.remove('arg-bootdiag-force'); releaseFallbackIfReady(); }
+      async function continueFromDiag() {
+        mark('diagnostic_continue_requested');
+        root.classList.remove('arg-bootdiag-force');
+        try { await globalThis.__ARGENTINIA_START_APP__?.(); }
+        catch (error) { mark('diagnostic_continue_failed', String(error?.message || error)); }
+        releaseFallbackIfReady();
+      }
       globalThis.__ARGENTINIA_BOOT_DIAG__ = { version: VERSION, mark, render, snapshot, copyDiag, showDiag, continueFromDiag, forceFallbackVisible, releaseFallbackIfReady };
 
       addEventListener('error', event => {
@@ -167,12 +173,20 @@
       addEventListener('load', () => mark('window_load'), { once: true });
 
       setTimeout(() => {
-        if (root.classList.contains('arg-mobile-engine-ready') && !root.classList.contains('arg-bootdiag-force')) return;
-        root.classList.add('arg-mobile-boot-timeout');
+        const heldForDiag = root.classList.contains('arg-bootdiag-force') && !globalThis.__ARGENTINIA_APP_START_REQUESTED__;
         forceFallbackVisible();
         const status = document.getElementById('arg-mobile-boot-fallback-status');
         const retry = document.getElementById('arg-mobile-boot-fallback-retry');
         const diag = document.getElementById('arg-mobile-boot-fallback-diag');
+        if (heldForDiag) {
+          if (status) status.textContent = 'Modo diagnóstico activo: el motor está detenido a propósito. Copiá el diagnóstico o tocá ARRANCAR MOTOR.';
+          if (diag) diag.hidden = false;
+          showDiag();
+          mark('bootdiag_engine_held');
+          return;
+        }
+        if (root.classList.contains('arg-mobile-engine-ready')) return;
+        root.classList.add('arg-mobile-boot-timeout');
         if (status) status.textContent = 'Argentinia está tardando demasiado en iniciar. Abrí DIAGNÓSTICO y copiá el reporte si el reintento no funciona.';
         if (retry) retry.hidden = false;
         if (diag) diag.hidden = false;
@@ -181,9 +195,6 @@
       }, 8000);
     })();
   </script>
-  <script type="module" src="./js/mobileUI.js?v=23.11.4"
-    onload="globalThis.__ARGENTINIA_BOOT_DIAG__?.mark('mobile_ui_module_loaded')"
-    onerror="globalThis.__ARGENTINIA_BOOT_DIAG__?.mark('mobile_ui_module_load_error')"></script>
 </head>
 <body>
 
@@ -199,7 +210,7 @@
       <button id="arg-mobile-boot-fallback-retry" type="button" hidden onclick="location.reload()">REINTENTAR</button>
       <button id="arg-mobile-boot-fallback-diag" type="button" hidden onclick="globalThis.__ARGENTINIA_BOOT_DIAG__?.showDiag()">DIAGNÓSTICO</button>
       <button id="arg-mobile-boot-fallback-copy" type="button" onclick="globalThis.__ARGENTINIA_BOOT_DIAG__?.copyDiag()">COPIAR DIAGNÓSTICO</button>
-      <button id="arg-mobile-boot-fallback-continue" type="button" onclick="globalThis.__ARGENTINIA_BOOT_DIAG__?.continueFromDiag()">CONTINUAR</button>
+      <button id="arg-mobile-boot-fallback-continue" type="button" onclick="globalThis.__ARGENTINIA_BOOT_DIAG__?.continueFromDiag()">ARRANCAR MOTOR</button>
       <div id="arg-mobile-boot-diag-panel" hidden>
         <pre id="arg-mobile-boot-diag-output">Inicializando diagnóstico…</pre>
       </div>
@@ -354,8 +365,46 @@
     </div>
   </div>
   
-  <script type="module" src="./js/main.js?v=23.11.4"
-    onload="globalThis.__ARGENTINIA_BOOT_DIAG__?.mark('main_module_loaded')"
-    onerror="globalThis.__ARGENTINIA_BOOT_DIAG__?.mark('main_module_load_error')"></script>
+  <script>
+    // 23.11.5 — bootstrap por etapas. CRÍTICO: main.js se importa por su URL CANÓNICA
+    // ./js/main.js, SIN query-string, porque varios módulos internos importan exactamente
+    // ese specifier. Versionarlo en index crea una segunda instancia ES Module del singleton.
+    (() => {
+      let startPromise = null;
+      const diag = () => globalThis.__ARGENTINIA_BOOT_DIAG__;
+      async function startApp() {
+        if (startPromise) return startPromise;
+        globalThis.__ARGENTINIA_APP_START_REQUESTED__ = true;
+        startPromise = (async () => {
+          diag()?.mark?.('app_modules_start_requested');
+          try {
+            // Mobile UI no participa del grafo circular del motor; puede versionarse.
+            await import('./js/mobileUI.js?v=23.11.5');
+            diag()?.mark?.('mobile_ui_module_loaded');
+            // Cedemos un frame real para que el shell/fallback pueda pintarse antes del motor.
+            await new Promise(resolve => requestAnimationFrame(() => resolve()));
+            diag()?.mark?.('first_paint_yield_complete');
+            // NO AGREGAR ?v=... acá. main.js debe conservar una sola identidad de módulo.
+            await import('./js/main.js');
+            diag()?.mark?.('main_module_loaded');
+          } catch (error) {
+            diag()?.mark?.('app_module_load_error', { name: error?.name || 'Error', message: error?.message || String(error), stack: error?.stack || null });
+            throw error;
+          }
+        })();
+        return startPromise;
+      }
+      globalThis.__ARGENTINIA_START_APP__ = startApp;
+
+      const params = (() => { try { return new URLSearchParams(location.search); } catch { return { get: () => null }; } })();
+      if (params.get('bootdiag') === '1') {
+        diag()?.mark?.('app_modules_held_for_bootdiag');
+        return;
+      }
+      // Nunca arrancamos el grafo pesado dentro del mismo task que termina de parsear HTML.
+      // Primero permitimos al navegador presentar el fallback/shell en pantalla.
+      requestAnimationFrame(() => setTimeout(() => { void startApp(); }, 0));
+    })();
+  </script>
 </body>
 </html>

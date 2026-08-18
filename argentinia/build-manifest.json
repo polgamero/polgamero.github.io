@@ -1,6 +1,6 @@
 {
-  "engineVersion": "23.11.4",
+  "engineVersion": "23.11.5",
   "engineProtocolVersion": "mp-23.10.0",
-  "buildLabel": "Entrega 23.11.4 Priority Window Identity + Trigger Provenance + Mobile Boot Diagnostics + Pool 511",
+  "buildLabel": "Entrega 23.11.5 Mobile Module Singleton + First-Paint Boot Recovery + Pool 511",
   "generatedFor": "GitHub Pages cache freshness check"
 }
