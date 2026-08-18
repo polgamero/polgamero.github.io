@@ -1217,3 +1217,131 @@ html.argentinia-mobile .telemetry-panel.arg-mobile-telemetry-expanded {
 html.argentinia-mobile .telemetry-panel.arg-mobile-telemetry-expanded .arg-mobile-telemetry-toggle {
   background: rgba(73,19,19,.96);
 }
+
+
+/* ==========================================================
+   ENTREGA 23.11.11 — MOBILE SURFACE CLEANUP
+   Simplifica la superficie táctil ahora que Stack, zonas públicas y bitácora tienen
+   interacción directa. Sin reglas ni handlers nuevos de gameplay.
+   ========================================================== */
+
+/* A) Las zonas públicas ya son botones reales de mesa: los labels caben dentro de su slot
+      y se retira por completo de la superficie el dock redundante (📜/⚡/🗂️). */
+html.argentinia-mobile .side-pile .pile-label {
+  width: 100% !important;
+  bottom: -11px !important;
+  font-size: 6px !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+html.argentinia-mobile #arg-mobile-utility-dock,
+html.argentinia-mobile #arg-mobile-zones-drawer {
+  display: none !important;
+}
+
+/* B) Bitácora: vuelve a su lugar natural del sidebar como en desktop. La ventana queda
+      acotada a unas pocas líneas y el resto se recorre con pan vertical táctil. */
+html.argentinia-mobile #game-log-box {
+  display: flex !important;
+  position: static !important;
+  flex: 0 0 clamp(42px, 15dvh, 58px) !important;
+  width: 100% !important;
+  min-height: 42px !important;
+  max-height: 58px !important;
+  padding: 4px 5px !important;
+  gap: 2px !important;
+  border-radius: 6px !important;
+  font-size: .49rem !important;
+  line-height: 1.22 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  touch-action: pan-y !important;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+}
+html.argentinia-mobile #game-log-box .log-entry {
+  padding-bottom: 2px !important;
+}
+
+/* El antiguo drawer deja de tener autoridad incluso si quedara una clase histórica. */
+html.argentinia-mobile.arg-mobile-log-open #game-log-box {
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 42px !important;
+  max-height: 58px !important;
+  padding: 4px 5px !important;
+  border-width: 1px !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  font-size: .49rem !important;
+  line-height: 1.22 !important;
+}
+
+/* C) La mano usa el mismo criterio del battlefield: centrada cuando entra y safe-start
+      automático si alguna situación extrema realmente necesita scroll horizontal. */
+html.argentinia-mobile #local-hand {
+  justify-content: safe center !important;
+  scroll-padding-inline: 8px !important;
+}
+
+/* D) Los puntos de fase no heredan el padding de las antiguas cápsulas desktop. Se blinda
+      el cuadrado físico para que el activo jamás se convierta en óvalo dentro de flexbox. */
+html.argentinia-mobile .phase-dot {
+  width: 7px !important;
+  height: 7px !important;
+  min-width: 7px !important;
+  min-height: 7px !important;
+  max-width: 7px !important;
+  max-height: 7px !important;
+  flex: 0 0 7px !important;
+  aspect-ratio: 1 / 1 !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  box-sizing: border-box !important;
+}
+
+/* E) REC: conserva la función 23.11.10 pero deja de competir visualmente con el juego. */
+html.argentinia-mobile .telemetry-panel {
+  padding: 2px !important;
+  gap: 2px !important;
+  border-radius: 6px !important;
+}
+html.argentinia-mobile .arg-mobile-telemetry-toggle {
+  min-width: 38px !important;
+  height: 24px !important;
+  padding: 0 5px !important;
+  border-radius: 6px !important;
+  font-size: 9px !important;
+  letter-spacing: 0 !important;
+}
+
+/* F) Noticias vuelve a existir en teléfono. Mantiene el mismo panel/datos del menú desktop;
+      sólo adapta su huella al landscape del teléfono. El estado collapsed/expanded lo
+      controla showMainMenu y NO requiere un modal mobile paralelo. */
+html.argentinia-mobile .main-menu-news {
+  display: block !important;
+  right: max(8px, var(--arg-safe-right)) !important;
+  bottom: max(8px, var(--arg-safe-bottom)) !important;
+  width: min(250px, 36dvw) !important;
+  max-height: min(42dvh, 150px) !important;
+  padding: 8px 10px !important;
+  border-radius: 10px !important;
+}
+html.argentinia-mobile .main-menu-news-title {
+  font-size: 10px !important;
+  margin-bottom: 5px !important;
+}
+html.argentinia-mobile .main-menu-news-list {
+  max-height: min(30dvh, 108px) !important;
+}
+html.argentinia-mobile .main-menu-news-date { font-size: 8px !important; }
+html.argentinia-mobile .main-menu-news-text,
+html.argentinia-mobile .main-menu-news-empty {
+  font-size: 9px !important;
+  line-height: 1.25 !important;
+}

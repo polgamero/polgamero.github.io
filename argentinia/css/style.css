@@ -1729,3 +1729,61 @@ html, body {
 #rival-combat .card.tapped:hover .card-inner {
   transform-origin: top center;
 }
+
+
+/* ==========================================================
+   ENTREGA 23.11.11 — DESKTOP RIVAL HOVER STACKING
+   23.11.10 corrigió el origen geométrico del zoom rival. Esta capa corrige el stacking:
+   las dos mitades del battlefield son flex-items hermanos con z-index propio, por lo que
+   subir sólo la carta no alcanza para cruzar el stacking context del campo local.
+   Mientras el puntero está sobre el campo rival elevamos SU contenedor completo y luego
+   la carta hovered, sin alterar el orden normal cuando no hay hover.
+   ========================================================== */
+#rival-hand + .field-zone-container:hover {
+  z-index: 3000;
+}
+#rival-hand + .field-zone-container .card:hover {
+  z-index: 4000 !important;
+}
+#rival-hand + .field-zone-container .card.tapped:hover .card-inner {
+  z-index: 4001 !important;
+}
+
+
+/* ==========================================================
+   ENTREGA 23.11.11 — MAIN MENU NEWS COLLAPSE
+   El panel conserva dimensiones/posición expandidas y se recorta desde bottom-right hacia
+   su título top-left. El resultado visual es un cierre diagonal sin desplazar el menú.
+   La interacción vive en newsPanel.js para no tocar ui.js/gameplay.
+   ========================================================== */
+.main-menu-news {
+  overflow: hidden !important;
+  transform-origin: top left;
+  clip-path: inset(0 0 0 0 round 10px);
+  transition: clip-path .34s cubic-bezier(.2,.75,.25,1), box-shadow .2s ease;
+  box-shadow: 0 8px 28px rgba(0,0,0,.28);
+}
+.main-menu-news .main-menu-news-title {
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+}
+.main-menu-news .main-menu-news-list {
+  max-height: 168px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  opacity: 1;
+  transition: opacity .18s ease;
+  scrollbar-width: thin;
+}
+.main-menu-news.arg-news-collapsed {
+  clip-path: inset(0 calc(100% - 118px) calc(100% - 34px) 0 round 9px);
+  box-shadow: 0 4px 14px rgba(0,0,0,.22);
+}
+.main-menu-news.arg-news-collapsed .main-menu-news-title {
+  margin-bottom: 0 !important;
+}
+.main-menu-news.arg-news-collapsed .main-menu-news-list {
+  opacity: 0;
+  pointer-events: none;
+}
