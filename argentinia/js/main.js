@@ -3961,7 +3961,7 @@ export function handleCombatClick(item, isLocal, index) {
     // no resolvemos el target todavía, esperamos a que el jugador local (quien está
     // casteando en este flujo) decida pagar el maná extra o dejar que se pierda.
     const wardKw = (getEffectiveKeywords(item) || []).find(k => k.startsWith('ward_'));
-    if (wardKw && !isLocal && !state.pendingCastTransaction) {
+    if (wardKw && !isLocal && !state.pendingCastTransaction && !state.pendingTargetSource) {
       const wardCost = parseInt(wardKw.split('_')[1], 10);
       state.pendingWardChoice = { targetObj: { type: 'creature', isLocal, index, item }, wardCost };
       logMsg(`🔶 ¡${item.card.name} tiene Ward ${wardCost}! Pagá ${wardCost} de maná extra o tu hechizo se pierde sin efecto.`);
@@ -4214,13 +4214,38 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
     return true;
   }
 
-  const manaCostStr = costStr.replace('{T}', '').trim();
-  const manaCost = parseManaCost(manaCostStr || "");
   source.requiresTap = requiresTap;
   source.tapTarget = tapTarget;
+  source.activationDisplayName = source.sourceName || displayName;
+  source.chosenTarget = null;
 
-  // Punto 11: guardamos LA habilidad concreta elegida. Con un array ya no alcanza con
-  // reconstruirla después desde card.activatedAbility/card.grantedAbility.
+  // 23.11.13 — CR602 humano: una habilidad targeteada declara su target ANTES de pagar
+  // maná, {T} o sacrificios. El source queda reservado pero todavía no se toca ningún costo.
+  // Esto replica el orden que 602.2b hereda de 601.2b–i y evita el bug visto con Amuleto.
+  state.pendingAbilitySource = source;
+  state.tappedLandsThisSpell = [];
+  state.paymentManaSourceRollbacks = [];
+
+  if (ability.requiresTarget) {
+    const card = source.item.card;
+    state.pendingTargetCard = { ...card, effect: ability.effect, requiresTarget: true };
+    state.pendingTargetSource = source;
+    state.pendingCost = null;
+    logMsg(`🎯 Elegí un objetivo para la habilidad de ${card.name} antes de pagar.`);
+    render();
+    return true;
+  }
+
+  beginActivatedAbilityPayment(source);
+  return true;
+}
+
+function beginActivatedAbilityPayment(source) {
+  const ability = source?.ability;
+  if (!ability) return false;
+  const costStr = ability.cost || "";
+  const manaCostStr = costStr.replace('{T}', '').trim();
+  const manaCost = parseManaCost(manaCostStr || "");
   state.pendingAbilitySource = source;
   state.pendingCost = manaCost;
   state.tappedLandsThisSpell = [];
@@ -4230,7 +4255,8 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
   if (totalMana === 0) {
     checkPaymentComplete();
   } else {
-    logMsg(`Activando la habilidad de ${source.sourceName || displayName}. Elegí tierras para pagar el costo.`);
+    const prefix = source.chosenTarget ? 'Objetivo fijado. ' : '';
+    logMsg(`${prefix}Activando la habilidad de ${source.activationDisplayName || source.sourceName || source.item.card.name}. Elegí tierras para pagar el costo.`);
     render();
   }
   return true;
@@ -5347,9 +5373,13 @@ export function tapLocalLand(item) {
 
   if (item.tapped) return;
 
-  if (state.pendingSpellIndex === null && state.pendingAbilitySource === null) { 
-    logMsg("Seleccioná primero un hechizo o habilidad para pagar."); 
-    return; 
+  // 23.11.13: pendingAbilitySource puede existir mientras todavía estamos declarando el
+  // target CR602. Eso NO significa que haya un costo abierto. Una tierra simple no puede
+  // intentar aplicar maná hasta que pendingCost exista.
+  if (!state.pendingCost) {
+    if (state.pendingAbilitySource && state.pendingTargetCard) logMsg("Elegí primero el objetivo de la habilidad; todavía no hay ningún costo para pagar.");
+    else logMsg("Seleccioná primero un hechizo o habilidad para pagar.");
+    return;
   }
   
   // Soporte genérico para tierras que eventualmente produzcan más de 1 maná. Las duales
@@ -5742,38 +5772,49 @@ function checkPaymentComplete() {
   }
 }
 
-// Segunda mitad de la activación de una habilidad (elegir objetivo si hace falta, o ir
-// directo a la pila). Separado de checkPaymentComplete para poder retomarlo después de
-// resolver una elección de sacrificio, que pausa el flujo a mitad de camino.
+// Segunda mitad de la activación de una habilidad: todos los targets ya fueron declarados
+// antes de pagar. Esta función sólo compromete la propuesta completa en la Stack después de
+// maná/{T}/sacrificios. Se puede retomar desde una elección de sacrificio sin reabrir targets.
 function finalizeAbilityActivation(source, ability, card) {
   const isGranted = source.abilityKind === 'granted';
-
-  if (ability.requiresTarget) {
-    logMsg(`Elegí un objetivo para la habilidad de ${card.name}.`);
-    // El targeter mira `card.effect`; usamos una vista efímera de la carta fuente con
-    // el efecto de LA habilidad elegida. La carta real no se muta.
-    state.pendingTargetCard = { ...card, effect: ability.effect, requiresTarget: true };
-    state.pendingTargetSource = source;
-    render();
+  const targetObj = ability.requiresTarget ? source.chosenTarget : null;
+  if (ability.requiresTarget && !targetObj) {
+    logMsg(`⚠️ ${card.name}: faltó el objetivo declarado de la habilidad. Se cancela antes de entrar a la pila.`);
+    cancelPayment();
     return;
   }
 
-  addToStack({
-    card: card,
+  const stackItem = {
+    card,
     isLocal: source.isLocal,
-    targetObj: null,
+    targetObj,
     type: 'ability',
     source: { type: isGranted ? 'equipped_activation' : 'support_activation', index: source.index, abilityIndex: source.abilityIndex },
     sourceItem: source.item,
     ability
-  });
+  };
+  addToStack(stackItem);
 
   logMsg(`Activaste la habilidad de ${card.name}.`);
   state.consecutivePasses = 0;
   state.pendingAbilitySource = null;
+  state.pendingTargetCard = null;
+  state.pendingTargetSource = null;
   state.pendingCost = null;
   state.tappedLandsThisSpell = [];
   state.paymentManaSourceRollbacks = [];
+
+  // Igual que el pipeline 601: Ward se observa después de que el objeto targeteado ya está
+  // realmente en la Stack. El prompt sigue siendo la simplificación histórica del motor,
+  // pero target y costo de la habilidad ya respetan el orden de activación.
+  const ward = detectWardForDeclaredTarget(card, targetObj);
+  if (ward) {
+    state.pendingWardChoice = { ...ward, stackId: stackItem.id, postCast: true };
+    logMsg(`🔶 ${ward.targetObj.item.card.name} disparó Ward ${ward.wardCost}. La habilidad YA está en la pila: pagá o será contrarrestada.`);
+    render();
+    return;
+  }
+
   render();
   checkRivalCounterOrResponse();
 }
@@ -5871,20 +5912,16 @@ async function executeSpellOnTarget(targetObj) {
   }
 
   if (isPermanentSource) {
+    // 23.11.13 — CR602 humano: seleccionar un target NO compromete todavía el costo.
+    // Guardamos el target legal dentro de la propuesta de activación, cerramos el targeter
+    // visual y recién entonces abrimos el pago de maná/{T}/sacrificio.
     const src = state.pendingTargetSource;
     card = src.item.card;
-    const isGranted = src.abilityKind === 'granted';
-    const ability = src.ability || (isGranted ? getGrantedAbilities(card)[0] : getActivatedAbilities(card)[0]);
-    addToStack({
-      card: card,
-      isLocal: true,
-      targetObj: targetObj,
-      type: 'ability',
-      // Punto 11: la pila conserva cuál habilidad concreta se activó.
-      source: { type: isGranted ? 'equipped_activation' : 'support_activation', index: src.index, abilityIndex: src.abilityIndex },
-      sourceItem: src.item,
-      ability
-    });
+    src.chosenTarget = targetObj;
+    state.pendingTargetCard = null;
+    state.pendingTargetSource = null;
+    beginActivatedAbilityPayment(src);
+    return;
   }
   else {
     card = state.localHand.splice(state.pendingSpellIndex, 1)[0];
@@ -6140,8 +6177,12 @@ export function handleSupportClick(item, isLocal, index) {
   // prioridad de fuente de maná mientras ya estamos pagando algo. Fuera de un pago, si
   // además tiene habilidades activadas, esas habilidades utility quedan disponibles.
   if (card.produces || card.producesOptions) {
-    if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null) {
+    if (state.pendingCost && (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null)) {
       tapSupportManaSource(item, isLocal);
+      return;
+    }
+    if (state.pendingAbilitySource && state.pendingTargetCard) {
+      logMsg("Elegí primero el objetivo de la habilidad; todavía no hay ningún costo para pagar.");
       return;
     }
     if (abilityOptions.length === 0) {

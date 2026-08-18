@@ -601,8 +601,10 @@ export function updateMobileEnvironment({ preserveOrientation = false } = {}) {
   }
   setClassState(root, FULLSCREEN_CLASS, isFullscreenNow());
 
-  // En modo PWA/fullscreen no necesitamos bloquear el juego detrás del launcher.
-  if (isStandaloneDisplay()) root.classList.add(ENTERED_CLASS);
+  // 23.11.13 — launcher histórico queda disponible en código, pero producción entra
+  // automáticamente. Fullscreen continúa siendo opt-in con ⛶; portrait sigue bloqueado por
+  // el gate CSS. Esto elimina el paso “ENTRAR AL JUEGO” sin borrar la capa de recuperación.
+  root.classList.add(ENTERED_CLASS);
   return true;
 }
 

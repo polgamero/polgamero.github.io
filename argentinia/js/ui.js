@@ -1038,8 +1038,12 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 
   let formattedTextHTML = '';
   if (isBasicLand && landSymbolImg) {
-    formattedTextHTML = `<div class="card-text-box" style="display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.85); padding: 0;">
-        <img src="./assets/images/${landSymbolImg}" alt="Símbolo de maná" style="width: 120%; height: stretch; object-fit: cover; opacity: 0.9;" onerror="this.style.display='none'">
+    const landSymbolUrl = `./assets/images/${landSymbolImg}`;
+    // 23.11.13 — doble capa sin deformación: el mismo arte llena toda la franja inferior
+    // como fondo cover y, encima, conserva el símbolo completo con contain. Así nunca queda
+    // un rectángulo vacío aunque la proporción del asset no coincida con la caja de la carta.
+    formattedTextHTML = `<div class="card-text-box basic-land-symbol-box" style="display:flex; justify-content:center; align-items:center; padding:0; position:relative; overflow:hidden; background-image:linear-gradient(rgba(255,255,255,0.16),rgba(255,255,255,0.16)),url('${landSymbolUrl}'); background-size:cover; background-position:center;">
+        <img class="basic-land-symbol-main" src="${landSymbolUrl}" alt="Símbolo de maná" style="position:relative; z-index:2; width:100%; height:100%; object-fit:contain; object-position:center;" onerror="this.style.display='none'">
       </div>`;
   } else {
     let formattedText = card.text ? card.text.replace(/\{([WUBRGC])\}/g, (match, p1) => {
@@ -1662,6 +1666,10 @@ const COIN_ICON_HTML = `<img class="coin-icon" src="./assets/images/ui/moneda.pn
 // por completo (devtools, requests a mano), Firestore lo va a rechazar igual.
 const ADMIN_EMAIL = 'pablogamero1@gmail.com';
 
+export function isAdminUser(user = state.currentUser) {
+  return String(user?.email || '').trim().toLowerCase() === ADMIN_EMAIL;
+}
+
 // "Noticias": texto libre que escribe el admin — se escapa antes de insertarlo como HTML,
 // simple buena práctica aunque la fuente sea de confianza (evita romper el layout si el
 // texto trae "<" o similar).
@@ -1702,10 +1710,25 @@ const ENCYCLOPEDIA_RARITIES = [
 // nunca jugó todavía), se sigue mostrando el pool completo — mismo criterio acordado desde
 // que se armó la Enciclopedia, solo que ahora deja de ser el único camino posible.
 export function getOwnedCardIds() {
+  // 23.11.13 — laboratorio admin: Pablo ve el pool completo como poseído sin mutar ni
+  // inflar users/{uid}.collection. Esto afecta sólo Enciclopedia/Deckbuilder de su cuenta.
+  if (isAdminUser()) return new Set(cardDb.allCards.map(c => c.id));
   if (state.currentUser && state.userProfile && state.userProfile.collection) {
     return new Set(state.userProfile.collection);
   }
   return new Set(cardDb.allCards.map(c => c.id));
+}
+
+export function getDeckBuilderOwnedCounts() {
+  const counts = {};
+  if (isAdminUser()) {
+    cardDb.allCards.forEach(card => {
+      counts[card.id] = card.type?.includes('básica') ? DECK_SIZE_EXACT : MAX_COPIES_PER_CARD;
+    });
+    return counts;
+  }
+  (state.userProfile?.collection || []).forEach(id => { counts[id] = (counts[id] || 0) + 1; });
+  return counts;
 }
 
 function injectEncyclopediaStyles() {
@@ -2390,8 +2413,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   injectStoreStyles(); // .store-buy-btn/.store-error-msg: siempre disponibles
   injectDeckBuilderStyles();
 
-  const ownedCounts = {};
-  (state.userProfile.collection || []).forEach(id => { ownedCounts[id] = (ownedCounts[id] || 0) + 1; });
+  const ownedCounts = getDeckBuilderOwnedCounts();
 
   let activeTab = 'criaturas';
   let searchQuery = '';

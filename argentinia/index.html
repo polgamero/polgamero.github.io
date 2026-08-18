@@ -4,15 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>ARGENTINIA - TCG Criollo</title>
-  <link rel="stylesheet" href="./css/style.css?v=23.11.12">
-  <link rel="stylesheet" href="./css/mobile.css?v=23.11.12">
+  <link rel="stylesheet" href="./css/style.css?v=23.11.13">
+  <link rel="stylesheet" href="./css/mobile.css?v=23.11.13">
   <style id="arg-mobile-boot-critical-style">
     /* 23.11.8: fallback CRÍTICO inline. No depende de style.css/mobile.css ni de módulos JS. */
     #arg-mobile-boot-fallback { display: none; }
     /* 23.11.6: NUNCA activamos este fallback sólo por media query. Desktop queda fuera
        por construcción; únicamente la clase bootstrap estricta de teléfono puede mostrarlo. */
-    html.argentinia-mobile-bootstrap:not(.arg-mobile-engine-ready) #arg-mobile-boot-fallback,
-    html.argentinia-mobile-bootstrap:not(.arg-mobile-shell-ready) #arg-mobile-boot-fallback,
     html.arg-bootdiag-force #arg-mobile-boot-fallback {
       position: fixed; inset: 0; z-index: 2147483647; display: flex;
       align-items: center; justify-content: center; box-sizing: border-box;
@@ -25,6 +23,27 @@
     #arg-mobile-boot-fallback button { min-height:44px; margin:6px 4px 0; padding:8px 12px; border:1px solid #d4af37; border-radius:9px; background:#6f1d1b; color:#fff6dc; font-weight:800; }
     #arg-mobile-boot-fallback-continue { display:none; }
     html.arg-bootdiag-force #arg-mobile-boot-fallback-continue { display:inline-block; }
+    /* 23.11.13 — producción mobile silenciosa. El toolkit diagnóstico sigue entero pero
+       sólo se expone con ?bootdiag=1. En uso normal, la única pantalla previa visible es
+       el gate de portrait; en landscape el motor arranca solo. */
+    @media (orientation: portrait) {
+      html.argentinia-mobile-bootstrap:not(.arg-bootdiag-force) #arg-mobile-boot-fallback {
+        position: fixed; inset: 0; z-index: 2147483647; display: flex;
+        align-items: center; justify-content: center; box-sizing: border-box;
+        padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        background: radial-gradient(circle at 50% 25%, #1b2c20 0%, #08100b 62%, #020504 100%);
+        color: #f0e0b0; font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; text-align:center;
+      }
+      html.argentinia-mobile-bootstrap:not(.arg-bootdiag-force) #arg-mobile-boot-fallback .arg-mobile-boot-fallback-card {
+        width:min(420px,88vw); padding:18px 20px; border:2px solid #d4af37; border-radius:16px; background:#111a13; box-sizing:border-box;
+      }
+      html.argentinia-mobile-bootstrap:not(.arg-bootdiag-force) #arg-mobile-boot-fallback :is(.arg-mobile-boot-fallback-icon,h1,.arg-mobile-boot-landscape-copy,#arg-mobile-boot-fallback-status,button,#arg-mobile-boot-diag-panel) {
+        display:none !important;
+      }
+      html.argentinia-mobile-bootstrap:not(.arg-bootdiag-force) #arg-mobile-boot-fallback .arg-mobile-boot-portrait-copy {
+        display:block !important; margin:0; font-size:18px; line-height:1.45;
+      }
+    }
     #arg-mobile-boot-diag-panel { margin-top:12px; text-align:left; }
     #arg-mobile-boot-diag-panel pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:42dvh; overflow:auto; padding:10px; border:1px solid rgba(212,175,55,.45); border-radius:8px; background:#050806; color:#d9f6d8; font:11px/1.35 ui-monospace,SFMono-Regular,Consolas,monospace; }
     .arg-mobile-boot-portrait-copy { display:none; }
@@ -34,7 +53,7 @@
     // 23.11.8 — "DevTools de emergencia" dentro del propio HTML. Funciona antes de
     // main.js/Firebase/mobileUI y captura fallos de carga que la telemetría normal no puede ver.
     (() => {
-      const VERSION = '23.11.12';
+      const VERSION = '23.11.13';
       const startedAt = Date.now();
       const events = [];
       let lastError = null;
@@ -163,9 +182,9 @@
       const forceDiag = params.get('bootdiag') === '1';
       if (forceDiag) root.classList.add('arg-bootdiag-force');
       mark('html_bootstrap', { mobile: phoneSurface, forced: forced || 'auto', coarse, hoverNone, maxTouchPoints, viewportShortSide, screenShortSide });
-      if (phoneSurface || forceDiag) {
-        // El parser continúa aunque un módulo ES remoto se quede colgado. Estos intentos
-        // hacen visible el fallback por style inline, incluso si mobile.css no cargó.
+      if (forceDiag) {
+        // El parser continúa aunque un módulo ES remoto se quede colgado. En producción
+        // normal no mostramos este toolkit; ?bootdiag=1 lo conserva completo bajo demanda.
         setTimeout(forceFallbackVisible, 50);
         setTimeout(forceFallbackVisible, 500);
       }
@@ -194,8 +213,8 @@
       setTimeout(() => {
         // CRÍTICO 23.11.8: watchdog exclusivamente phone/bootdiag. 23.11.5 llamaba
         // forceFallbackVisible() también en desktop a los 8s: ése era el cartel fantasma.
-        if (!(globalThis.__ARGENTINIA_PHONE_SURFACE__ === true || root.classList.contains('arg-bootdiag-force'))) return;
-        const heldForDiag = root.classList.contains('arg-bootdiag-force') && !globalThis.__ARGENTINIA_APP_START_REQUESTED__;
+        if (!root.classList.contains('arg-bootdiag-force')) return;
+        const heldForDiag = !globalThis.__ARGENTINIA_APP_START_REQUESTED__;
         forceFallbackVisible();
         const status = document.getElementById('arg-mobile-boot-fallback-status');
         const retry = document.getElementById('arg-mobile-boot-fallback-retry');
@@ -420,9 +439,9 @@
             };
             await setStage('Etapa 1/3 — cargando interfaz táctil…', 'mobile_ui_module_import_start');
             // Mobile UI no participa del grafo circular del motor; puede versionarse.
-            await import('./js/mobileUI.js?v=23.11.12');
+            await import('./js/mobileUI.js?v=23.11.13');
             diag()?.mark?.('mobile_ui_module_loaded');
-            await import('./js/newsPanel.js?v=23.11.12');
+            await import('./js/newsPanel.js?v=23.11.13');
             diag()?.mark?.('news_panel_module_loaded');
             await setStage('Etapa 2/3 — cargando motor local (Firebase diferido en celular)…', 'main_module_import_start');
             // NO AGREGAR ?v=... acá. main.js debe conservar una sola identidad de módulo.
@@ -448,7 +467,6 @@
         if (isPhonePortrait()) {
           const status = document.getElementById('arg-mobile-boot-fallback-status');
           if (status) status.textContent = 'Motor en pausa. Girá el celular para continuar.';
-          diag()?.forceFallbackVisible?.();
           diag()?.mark?.('auto_boot_waiting_landscape', { width: innerWidth, height: innerHeight });
           return;
         }

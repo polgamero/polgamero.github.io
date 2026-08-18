@@ -1380,12 +1380,19 @@ html.argentinia-mobile :is(
 }
 
 /* Las básicas dejan de usar el 120% + cover heredado del renderer, que cortaba el símbolo. */
-html.argentinia-mobile .card-text-box > img[alt="Símbolo de maná"] {
-  width: 88% !important;
-  height: 88% !important;
-  max-width: 88% !important;
-  max-height: 88% !important;
+html.argentinia-mobile .basic-land-symbol-box {
+  background-color: transparent !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+html.argentinia-mobile .basic-land-symbol-main {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
   object-fit: contain !important;
+  object-position: center !important;
 }
 
 /* D) REC aún más discreto; sigue desplegando el panel completo al tocarlo. */

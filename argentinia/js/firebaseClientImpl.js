@@ -44,6 +44,7 @@ export const db = getFirestore(app);
 // El scope de foto de perfil (photoURL) ya viene incluido en el perfil básico de Google —
 // no hace falta pedir ningún permiso extra aparte, alcanza con el login estándar.
 const googleProvider = new GoogleAuthProvider();
+const ADMIN_EMAIL = 'pablogamero1@gmail.com';
 
 // Devuelve una Promise que resuelve con el UserCredential de Firebase, o rechaza si el
 // jugador cerró el popup, lo bloqueó el navegador, o falló la red. Quien llama decide qué
@@ -211,7 +212,7 @@ export async function craftEnhancement(uid, cardId, keyword, fichaCost) {
 // real, tope de copias, reglas de la copia mejorada) — compartido entre createDeck y
 // updateDeck, porque las reglas son EXACTAMENTE las mismas para crear un mazo nuevo o
 // editar uno existente. Tira una excepción con mensaje claro si algo no cumple.
-function validateDeckCards(data, name, cardIds) {
+function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false } = {}) {
   if (!name || !name.trim()) throw new Error('El mazo necesita un nombre.');
   // BUGFIX: el input del cliente ya limita a 30 caracteres (maxlength), pero esto es la
   // defensa real del lado del servidor — un nombre más largo rompía el layout de la
@@ -225,7 +226,16 @@ function validateDeckCards(data, name, cardIds) {
   }
 
   const ownedCounts = {};
-  (data.collection || []).forEach(id => { ownedCounts[id] = (ownedCounts[id] || 0) + 1; });
+  if (allowVirtualAdminPool) {
+    // 23.11.13 — colección virtual de test: el admin puede guardar mazos contra todo el
+    // pool sin persistir 511 IDs/copias artificiales en su perfil. Los topes legales de
+    // copias siguen aplicando más abajo; sólo se saltea la restricción económica de posesión.
+    cardDb.allCards.forEach(card => {
+      ownedCounts[card.id] = card.type?.includes('básica') ? DECK_SIZE_EXACT : MAX_COPIES_PER_CARD;
+    });
+  } else {
+    (data.collection || []).forEach(id => { ownedCounts[id] = (ownedCounts[id] || 0) + 1; });
+  }
 
   // FASE 3 (revisión): "crea_028::enhanced" representa la copia puntual mejorada por
   // Fichas — para el tope de copias/posesión cuenta como la MISMA carta base que
@@ -274,7 +284,9 @@ export async function createDeck(uid, name, cardIds) {
     const decks = data.decks || [];
 
     if (decks.length >= 5) throw new Error('Ya tenés el máximo de 5 mazos.');
-    validateDeckCards(data, name, cardIds);
+    validateDeckCards(data, name, cardIds, {
+      allowVirtualAdminPool: auth.currentUser?.uid === uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL
+    });
 
     const newDeck = { id: `deck_${Date.now()}`, name: name.trim(), cardIds, isDefault: false, createdAt: Date.now() };
     const updated = { decks: [...decks, newDeck] };
@@ -296,7 +308,9 @@ export async function updateDeck(uid, deckId, name, cardIds) {
     const idx = decks.findIndex(d => d.id === deckId);
     if (idx === -1) throw new Error('Ese mazo ya no existe.');
 
-    validateDeckCards(data, name, cardIds);
+    validateDeckCards(data, name, cardIds, {
+      allowVirtualAdminPool: auth.currentUser?.uid === uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL
+    });
 
     const newDecks = [...decks];
     newDecks[idx] = { ...decks[idx], name: name.trim(), cardIds };
