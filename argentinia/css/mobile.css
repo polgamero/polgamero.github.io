@@ -1095,3 +1095,17 @@ html.argentinia-mobile-bootstrap:not(.arg-mobile-shell-ready) #arg-mobile-boot-f
   html.argentinia-mobile-bootstrap:not(.arg-mobile-engine-ready) .arg-mobile-boot-landscape-copy { display: none; }
   html.argentinia-mobile-bootstrap:not(.arg-mobile-engine-ready) .arg-mobile-boot-portrait-copy { display: block; }
 }
+
+
+/* 23.11.8 — orientación runtime CSS-only. Después del boot NO hay listeners JS de
+   resize/orientationchange. El gate captura portrait y se libera automáticamente al volver
+   a landscape, sin mutar DOM ni disparar observers. */
+@media (orientation: portrait) {
+  html.argentinia-mobile #arg-mobile-rotate-gate {
+    display: flex !important;
+  }
+  html.argentinia-mobile #arg-mobile-enter-gate,
+  html.argentinia-mobile #arg-mobile-fullscreen-retry {
+    display: none !important;
+  }
+}

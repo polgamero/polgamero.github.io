@@ -141,9 +141,9 @@ function ensureMobileGates() {
     <div class="arg-mobile-gate-card">
       <span class="arg-mobile-gate-icon" aria-hidden="true">🧉</span>
       <h1 class="arg-mobile-gate-title">ARGENTINIA</h1>
-      <p class="arg-mobile-gate-copy">Modo celular listo. El juego intentará usar <strong>pantalla completa</strong> y bloquear la orientación en horizontal.</p>
+      <p class="arg-mobile-gate-copy">Modo celular listo. El juego queda bloqueado visualmente en vertical. La pantalla completa es <strong>opcional</strong>.</p>
       <button id="arg-mobile-enter-btn" class="arg-mobile-enter-btn" type="button">ENTRAR AL JUEGO</button>
-      <p class="arg-mobile-gate-note">Si tu navegador no permite fullscreen u orientation lock, el juego continúa igual y seguirá bloqueando visualmente el modo vertical.</p>
+      <p class="arg-mobile-gate-note">Podés usar el botón ⛶ más adelante si querés pantalla completa. Girar el teléfono nunca habilita juego vertical.</p>
     </div>`;
 
   const retry = document.createElement('button');
@@ -171,32 +171,21 @@ async function requestFullscreenSafely() {
   }
 }
 
-async function lockLandscapeSafely() {
-  const orientation = window.screen?.orientation;
-  if (!orientation || typeof orientation.lock !== 'function') return false;
-  try {
-    await orientation.lock('landscape');
-    return true;
-  } catch {
-    // No es fatal: el gate de portrait sigue siendo la garantía real del producto.
-    return false;
-  }
-}
-
 export async function requestImmersiveMode() {
-  // Fullscreen primero: varios navegadores sólo permiten orientation.lock estando fullscreen.
+  // 23.11.8: fullscreen queda OPT-IN. Ya no usamos bloqueo programático de orientación: el gate CSS de
+  // portrait garantiza que vertical nunca sea jugable sin involucrar APIs de orientación.
   const fullscreen = await requestFullscreenSafely();
-  const landscapeLocked = await lockLandscapeSafely();
-  updateMobileEnvironment();
-  return { fullscreen, landscapeLocked };
+  updateMobileEnvironment({ preserveOrientation: true });
+  return { fullscreen, landscapeLocked: false };
 }
 
 export async function enterMobileExperience() {
   if (!isMobileSurfaceNow()) return { fullscreen: false, landscapeLocked: false };
+  // Entrar al juego sólo libera el launcher. No pedimos fullscreen ni lock automáticamente:
+  // esto mantiene el menú estable, evita conflictos al rotar y no interfiere con OAuth popup.
   document.documentElement.classList.add(ENTERED_CLASS);
-  const result = await requestImmersiveMode();
-  updateMobileEnvironment();
-  return result;
+  updateMobileEnvironment({ preserveOrientation: true });
+  return { fullscreen: isFullscreenNow(), landscapeLocked: false };
 }
 
 
@@ -264,12 +253,11 @@ function ensureMobileTouchUI() {
     btn.setAttribute('aria-label', count > 0 ? `Abrir pila, ${count} objeto${count === 1 ? '' : 's'}` : 'Pila vacía');
     if (count === 0) {
       document.documentElement.classList.remove(STACK_OPEN_CLASS, STACK_PREVIEW_OPEN_CLASS);
-      stackContainer?.classList.remove('arg-mobile-drawer-open');
+      if (stackContainer?.classList.contains('arg-mobile-drawer-open')) stackContainer.classList.remove('arg-mobile-drawer-open');
     }
   };
   syncStackBadge();
   if (stackCount) new MutationObserver(syncStackBadge).observe(stackCount, { childList: true, characterData: true, subtree: true });
-  if (stackContainer) new MutationObserver(syncStackBadge).observe(stackContainer, { attributes: true, attributeFilter: ['class'] });
 
   document.addEventListener('click', interceptMobileGameplayTap, true);
 }
@@ -301,6 +289,12 @@ function syncPublicZoneDrawer() {
   });
 }
 
+function setClassState(el, className, enabled) {
+  if (!el) return;
+  const has = el.classList.contains(className);
+  if (has !== Boolean(enabled)) el.classList.toggle(className, Boolean(enabled));
+}
+
 function decorateComplexOverlays() {
   if (!document?.body) return;
   document.querySelectorAll('.gy-modal-overlay').forEach(overlay => {
@@ -309,13 +303,13 @@ function decorateComplexOverlays() {
       zoneBrowser: Boolean(overlay.querySelector('.gy-modal-grid')),
     });
     overlay.dataset.mobileOverlayKind = kind;
-    overlay.classList.toggle('arg-mobile-private-zone-overlay', kind === 'private-zone');
-    overlay.classList.toggle('arg-mobile-zone-browser-overlay', kind === 'zone-browser');
-    overlay.classList.toggle('arg-mobile-choice-overlay', kind === 'choice');
+    setClassState(overlay, 'arg-mobile-private-zone-overlay', kind === 'private-zone');
+    setClassState(overlay, 'arg-mobile-zone-browser-overlay', kind === 'zone-browser');
+    setClassState(overlay, 'arg-mobile-choice-overlay', kind === 'choice');
   });
   document.querySelectorAll('#mulligan-overlay').forEach(overlay => {
     overlay.dataset.mobileOverlayKind = classifyMobileOverlayKind({ selection: true });
-    overlay.classList.add('arg-mobile-selection-overlay');
+    setClassState(overlay, 'arg-mobile-selection-overlay', true);
   });
   const damage = document.getElementById('damage-modal-overlay');
   if (damage && !damage.classList.contains('hidden')) damage.dataset.mobileOverlayKind = classifyMobileOverlayKind({ damage: true });
@@ -331,16 +325,33 @@ const MOBILE_BLOCKING_OVERLAY_SELECTOR = [
 
 function syncMobileBlockingOverlayState() {
   const open = Boolean(document.body?.querySelector(MOBILE_BLOCKING_OVERLAY_SELECTOR));
-  document.documentElement.classList.toggle(BLOCKING_OVERLAY_CLASS, open);
+  setClassState(document.documentElement, BLOCKING_OVERLAY_CLASS, open);
 }
 
 let complexOverlayObserver = null;
+let damageOverlayObserver = null;
+let overlayRefreshRaf = 0;
+function scheduleComplexOverlayRefresh() {
+  if (overlayRefreshRaf) return;
+  overlayRefreshRaf = requestAnimationFrame(() => {
+    overlayRefreshRaf = 0;
+    decorateComplexOverlays();
+    syncMobileBlockingOverlayState();
+  });
+}
 function ensureComplexOverlayObserver() {
   if (complexOverlayObserver || typeof MutationObserver === 'undefined' || !document.body) return;
-  const refresh = () => { decorateComplexOverlays(); syncMobileBlockingOverlayState(); };
-  complexOverlayObserver = new MutationObserver(refresh);
-  complexOverlayObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-  refresh();
+  // 23.11.8: jamás observamos atributos que nuestro propio callback modifica. El observer
+  // principal sólo detecta alta/baja de overlays. El único overlay estático que cambia por
+  // clase (daño manual) tiene un observer separado cuyo callback no toca SU clase.
+  complexOverlayObserver = new MutationObserver(scheduleComplexOverlayRefresh);
+  complexOverlayObserver.observe(document.body, { childList: true, subtree: true });
+  const damage = document.getElementById('damage-modal-overlay');
+  if (damage) {
+    damageOverlayObserver = new MutationObserver(scheduleComplexOverlayRefresh);
+    damageOverlayObserver.observe(damage, { attributes: true, attributeFilter: ['class'] });
+  }
+  scheduleComplexOverlayRefresh();
 }
 
 function isMobileGameplayActive() {
@@ -514,20 +525,22 @@ export function closeMobileLayers({ keepPreview = false, keepStack = false } = {
   root.classList.remove(LOG_OPEN_CLASS, ZONES_OPEN_CLASS);
   if (!keepStack) {
     root.classList.remove(STACK_OPEN_CLASS);
-    document.getElementById('stack-container')?.classList.remove('arg-mobile-drawer-open');
+    const stack = document.getElementById('stack-container');
+    if (stack?.classList.contains('arg-mobile-drawer-open')) stack.classList.remove('arg-mobile-drawer-open');
   }
   if (!keepPreview) root.classList.remove(CARD_PREVIEW_OPEN_CLASS);
   hideStackItemPreview();
 }
 
-export function updateMobileEnvironment() {
+export function updateMobileEnvironment({ preserveOrientation = false } = {}) {
   const root = document.documentElement;
   const mobile = isMobileSurfaceNow();
 
-  root.classList.toggle(MOBILE_ROOT_CLASS, mobile);
+  setClassState(root, MOBILE_ROOT_CLASS, mobile);
   if (!mobile) {
     root.classList.remove(PORTRAIT_CLASS, LANDSCAPE_CLASS, ENTERED_CLASS, FULLSCREEN_CLASS, LOG_OPEN_CLASS, STACK_OPEN_CLASS, ZONES_OPEN_CLASS, CARD_PREVIEW_OPEN_CLASS, STACK_PREVIEW_OPEN_CLASS, BLOCKING_OVERLAY_CLASS);
-    document.getElementById('stack-container')?.classList.remove('arg-mobile-drawer-open');
+    const stack = document.getElementById('stack-container');
+    if (stack?.classList.contains('arg-mobile-drawer-open')) stack.classList.remove('arg-mobile-drawer-open');
     return false;
   }
 
@@ -535,11 +548,16 @@ export function updateMobileEnvironment() {
   ensureMobileTouchUI();
   ensureComplexOverlayObserver();
   decorateComplexOverlays();
-  const orientation = getOrientationForViewport(window.innerWidth, window.innerHeight);
-  root.classList.toggle(PORTRAIT_CLASS, orientation === 'portrait');
-  root.classList.toggle(LANDSCAPE_CLASS, orientation === 'landscape');
-  root.classList.toggle(FULLSCREEN_CLASS, isFullscreenNow());
-  if (orientation === 'portrait') closeMobileLayers();
+
+  // 23.11.8: después del boot mobile la orientación visual queda en manos de CSS
+  // @media (orientation). No reaccionamos a resize/orientationchange con trabajo JS pesado.
+  // Conservamos LANDSCAPE_CLASS como perfil de layout porque el juego sólo se inicia allí.
+  if (!preserveOrientation || (!root.classList.contains(PORTRAIT_CLASS) && !root.classList.contains(LANDSCAPE_CLASS))) {
+    const orientation = getOrientationForViewport(window.innerWidth, window.innerHeight);
+    setClassState(root, PORTRAIT_CLASS, orientation === 'portrait');
+    setClassState(root, LANDSCAPE_CLASS, orientation === 'landscape');
+  }
+  setClassState(root, FULLSCREEN_CLASS, isFullscreenNow());
 
   // En modo PWA/fullscreen no necesitamos bloquear el juego detrás del launcher.
   if (isStandaloneDisplay()) root.classList.add(ENTERED_CLASS);
@@ -551,16 +569,10 @@ export function initMobileUI() {
   document.documentElement.classList.add(MOBILE_SHELL_READY_CLASS);
   globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('mobile_shell_ready', { width: window.innerWidth, height: window.innerHeight });
 
-  const refresh = () => window.requestAnimationFrame(updateMobileEnvironment);
-  window.addEventListener('resize', refresh, { passive: true });
-  window.addEventListener('orientationchange', refresh, { passive: true });
-  document.addEventListener('fullscreenchange', updateMobileEnvironment);
-
-  try {
-    window.screen?.orientation?.addEventListener?.('change', refresh);
-  } catch {
-    // API opcional.
-  }
+  // 23.11.8: NO listeners de resize/orientationchange después del boot. CSS dinámico (dvh,
+  // safe-area y @media orientation) hace el trabajo visual. Esto evita ráfagas de rAF y
+  // observers durante rotación/address-bar resize en Android.
+  document.addEventListener('fullscreenchange', () => updateMobileEnvironment({ preserveOrientation: true }));
 }
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {

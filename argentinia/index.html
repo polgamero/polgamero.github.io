@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>ARGENTINIA - TCG Criollo</title>
-  <link rel="stylesheet" href="./css/style.css?v=23.11.7">
-  <link rel="stylesheet" href="./css/mobile.css?v=23.11.7">
+  <link rel="stylesheet" href="./css/style.css?v=23.11.8">
+  <link rel="stylesheet" href="./css/mobile.css?v=23.11.8">
   <style id="arg-mobile-boot-critical-style">
-    /* 23.11.7: fallback CRÍTICO inline. No depende de style.css/mobile.css ni de módulos JS. */
+    /* 23.11.8: fallback CRÍTICO inline. No depende de style.css/mobile.css ni de módulos JS. */
     #arg-mobile-boot-fallback { display: none; }
     /* 23.11.6: NUNCA activamos este fallback sólo por media query. Desktop queda fuera
        por construcción; únicamente la clase bootstrap estricta de teléfono puede mostrarlo. */
@@ -31,10 +31,10 @@
     @media (orientation: portrait) { .arg-mobile-boot-landscape-copy { display:none; } .arg-mobile-boot-portrait-copy { display:block; } }
   </style>
   <script>
-    // 23.11.7 — "DevTools de emergencia" dentro del propio HTML. Funciona antes de
+    // 23.11.8 — "DevTools de emergencia" dentro del propio HTML. Funciona antes de
     // main.js/Firebase/mobileUI y captura fallos de carga que la telemetría normal no puede ver.
     (() => {
-      const VERSION = '23.11.7';
+      const VERSION = '23.11.8';
       const startedAt = Date.now();
       const events = [];
       let lastError = null;
@@ -61,8 +61,8 @@
           classes: root.className,
           manifestProbe,
           lastError,
-          lastRuntimeStage: (() => { try { return JSON.parse(sessionStorage.getItem('argentinia.mobile.lastRuntimeStage.v1') || 'null'); } catch { return null; } })(),
-          lastAuthError: (() => { try { return JSON.parse(sessionStorage.getItem('argentinia.mobile.lastAuthError.v1') || 'null'); } catch { return null; } })(),
+          lastRuntimeStage: (() => { try { return JSON.parse(sessionStorage.getItem('argentinia.mobile.lastRuntimeStage.v1') || localStorage.getItem('argentinia.mobile.lastRuntimeStage.v1') || 'null'); } catch { return null; } })(),
+          lastAuthError: (() => { try { return JSON.parse(sessionStorage.getItem('argentinia.mobile.lastAuthError.v1') || localStorage.getItem('argentinia.mobile.lastAuthError.v1') || 'null'); } catch { return null; } })(),
           userAgent: navigator.userAgent || null,
           events: events.slice(-20)
         };
@@ -152,7 +152,7 @@
       const maxTouchPoints = Number(navigator.maxTouchPoints || 0);
       const viewportShortSide = Math.min(innerWidth || 0, innerHeight || 0);
       const screenShortSide = Math.min(screen?.width || 0, screen?.height || 0);
-      // 23.11.7: smartphone ESTRICTO. Nunca usamos hover:none ni el alto de una ventana de
+      // 23.11.8: smartphone ESTRICTO. Nunca usamos hover:none ni el alto de una ventana de
       // notebook para activar mobile. Una notebook touch sigue siendo desktop aunque tenga
       // pointer coarse. Sólo una pantalla física chica + touch/coarse entra automáticamente.
       const phoneSurface = forced === 'mobile' || (
@@ -192,7 +192,7 @@
       addEventListener('load', () => mark('window_load'), { once: true });
 
       setTimeout(() => {
-        // CRÍTICO 23.11.7: watchdog exclusivamente phone/bootdiag. 23.11.5 llamaba
+        // CRÍTICO 23.11.8: watchdog exclusivamente phone/bootdiag. 23.11.5 llamaba
         // forceFallbackVisible() también en desktop a los 8s: ése era el cartel fantasma.
         if (!(globalThis.__ARGENTINIA_PHONE_SURFACE__ === true || root.classList.contains('arg-bootdiag-force'))) return;
         const heldForDiag = root.classList.contains('arg-bootdiag-force') && !globalThis.__ARGENTINIA_APP_START_REQUESTED__;
@@ -388,15 +388,16 @@
   </div>
   
   <script>
-    // 23.11.7 — bootstrap por etapas + gate portrait real. CRÍTICO: main.js se importa por su URL CANÓNICA
+    // 23.11.8 — bootstrap por etapas + gate portrait real. CRÍTICO: main.js se importa por su URL CANÓNICA
     // ./js/main.js, SIN query-string, porque varios módulos internos importan exactamente
     // ese specifier. Versionarlo en index crea una segunda instancia ES Module del singleton.
     (() => {
       let startPromise = null;
+      let detachOrientationStartupListeners = () => {};
       const diag = () => globalThis.__ARGENTINIA_BOOT_DIAG__;
       const isPhonePortrait = () => globalThis.__ARGENTINIA_PHONE_SURFACE__ === true && !(innerWidth > innerHeight);
       async function startApp() {
-        // 23.11.7: en un teléfono vertical NO evaluamos mobileUI/main/Firebase/cartas.
+        // 23.11.8: en un teléfono vertical NO evaluamos mobileUI/main/Firebase/cartas.
         // Portrait es sólo un gate HTML ultraliviano. El motor empieza recién al rotar.
         if (isPhonePortrait()) {
           const status = document.getElementById('arg-mobile-boot-fallback-status');
@@ -405,6 +406,7 @@
           return false;
         }
         if (startPromise) return startPromise;
+        detachOrientationStartupListeners();
         globalThis.__ARGENTINIA_APP_START_REQUESTED__ = true;
         startPromise = (async () => {
           diag()?.mark?.('app_modules_start_requested');
@@ -418,7 +420,7 @@
             };
             await setStage('Etapa 1/3 — cargando interfaz táctil…', 'mobile_ui_module_import_start');
             // Mobile UI no participa del grafo circular del motor; puede versionarse.
-            await import('./js/mobileUI.js?v=23.11.7');
+            await import('./js/mobileUI.js?v=23.11.8');
             diag()?.mark?.('mobile_ui_module_loaded');
             await setStage('Etapa 2/3 — cargando motor local (Firebase diferido en celular)…', 'main_module_import_start');
             // NO AGREGAR ?v=... acá. main.js debe conservar una sola identidad de módulo.
@@ -455,6 +457,11 @@
       maybeStartAfterOrientation();
       addEventListener('orientationchange', maybeStartAfterOrientation, { passive: true });
       addEventListener('resize', maybeStartAfterOrientation, { passive: true });
+      detachOrientationStartupListeners = () => {
+        removeEventListener('orientationchange', maybeStartAfterOrientation);
+        removeEventListener('resize', maybeStartAfterOrientation);
+        detachOrientationStartupListeners = () => {};
+      };
     })();
   </script>
 </body>

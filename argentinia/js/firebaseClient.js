@@ -6,6 +6,7 @@
 
 let clientPromise = null;
 let clientReady = false;
+let clientModule = null;
 let authBridgeStarted = false;
 let authInnerStop = null;
 const authSubscribers = new Set();
@@ -20,6 +21,7 @@ export function preloadFirebaseClient() {
     clientPromise = import('./firebaseClientImpl.js')
       .then(mod => {
         clientReady = true;
+        clientModule = mod;
         diag('firebase_import_loaded');
         startAuthBridgeIfPossible(mod);
         return mod;
@@ -27,6 +29,7 @@ export function preloadFirebaseClient() {
       .catch(error => {
         clientPromise = null;
         clientReady = false;
+        clientModule = null;
         diag('firebase_import_failed', { name: error?.name || 'Error', message: error?.message || String(error) });
         throw error;
       });
@@ -95,18 +98,36 @@ export function listenToMatch(...args) {
   };
 }
 
+function persistAuthError(error) {
+  const detail = { code: error?.code || null, name: error?.name || null, message: error?.message || String(error), at: Date.now() };
+  diag('google_signin_failed', detail);
+  try {
+    const payload = JSON.stringify(detail);
+    sessionStorage.setItem('argentinia.mobile.lastAuthError.v1', payload);
+    localStorage.setItem('argentinia.mobile.lastAuthError.v1', payload);
+  } catch {}
+  return error;
+}
+
 export function signInWithGoogle(...args) {
-  const wasReady = clientReady;
-  diag('google_signin_requested', { firebaseReady: wasReady });
+  const wasReady = clientReady && !!clientModule;
+  diag('google_signin_requested', { firebaseReady: wasReady, direct: wasReady });
+
+  // 23.11.8: si el prewarm ya terminó, llamamos signInWithPopup en ESTE MISMO task/click.
+  // No interponemos Promise.then() entre el gesto del usuario y la apertura del popup.
+  if (clientModule) {
+    try {
+      diag('google_signin_sdk_ready', { prewarmed: true, direct: true });
+      return Promise.resolve(clientModule.signInWithGoogle(...args)).catch(error => { throw persistAuthError(error); });
+    } catch (error) {
+      return Promise.reject(persistAuthError(error));
+    }
+  }
+
   return preloadFirebaseClient().then(mod => {
-    diag('google_signin_sdk_ready', { prewarmed: wasReady });
+    diag('google_signin_sdk_ready', { prewarmed: false, direct: false });
     return mod.signInWithGoogle(...args);
-  }).catch(error => {
-    const detail = { code: error?.code || null, name: error?.name || null, message: error?.message || String(error), at: Date.now() };
-    diag('google_signin_failed', detail);
-    try { sessionStorage.setItem('argentinia.mobile.lastAuthError.v1', JSON.stringify(detail)); } catch {}
-    throw error;
-  });
+  }).catch(error => { throw persistAuthError(error); });
 }
 export const signOutUser = asyncProxy('signOutUser');
 export const loadUserProfile = asyncProxy('loadUserProfile');

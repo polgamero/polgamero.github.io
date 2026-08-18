@@ -29,7 +29,9 @@ let userProfileLoadPromise = Promise.resolve();
 async function mobileSoloYield(stage, detail = null) {
   if (globalThis.__ARGENTINIA_PHONE_SURFACE__ !== true) return;
   try {
-    sessionStorage.setItem('argentinia.mobile.lastRuntimeStage.v1', JSON.stringify({ stage, detail, at: Date.now() }));
+    const payload = JSON.stringify({ stage, detail, at: Date.now(), engineVersion: ENGINE_VERSION });
+    sessionStorage.setItem('argentinia.mobile.lastRuntimeStage.v1', payload);
+    localStorage.setItem('argentinia.mobile.lastRuntimeStage.v1', payload);
   } catch {}
   globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('solo_start_stage', { stage, detail });
   // Corta el arranque de Solitario en tareas pequeñas para que Chrome pueda pintar y
@@ -493,6 +495,7 @@ async function initGame(deckSource) {
     logMsg("¡Tu turno! Bajá una tierra para empezar.");
   };
 
+  await mobileSoloYield('before_mulligan_ui', { local: state.localHand.length });
   startLocalMulliganFlow(finishSetup);
   await mobileSoloYield('mulligan_ui_open');
 }
