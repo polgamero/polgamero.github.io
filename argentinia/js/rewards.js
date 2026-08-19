@@ -163,7 +163,11 @@ export function normalizeDailyRewardsState(raw, date = new Date()) {
     streak: Math.max(0, Math.min(7, Math.floor(Number(raw.streak) || 0))),
     unlockedDays,
     claimedDays,
-    lastClaimedDay: Number.isInteger(Number(raw.lastClaimedDay)) ? Number(raw.lastClaimedDay) : null,
+    lastClaimedDay: raw.lastClaimedDay == null
+      ? null
+      : (Number.isInteger(Number(raw.lastClaimedDay)) && Number(raw.lastClaimedDay) >= 1 && Number(raw.lastClaimedDay) <= 7
+          ? Number(raw.lastClaimedDay)
+          : null),
     schemaVersion: Math.max(0, Math.floor(Number(raw.schemaVersion) || 0)),
     serverCycleStartDay: raw.serverCycleStartDay || null,
     serverLastLoginDay: raw.serverLastLoginDay || null,
@@ -182,7 +186,7 @@ export function serializeDailyRewardsForFirestore(state, authoritativeNow, serve
     streak: normalized.streak,
     unlockedDays: normalized.unlockedDays.slice(),
     claimedDays: normalized.claimedDays.slice(),
-    lastClaimedDay: Number.isInteger(Number(normalized.lastClaimedDay)) ? Number(normalized.lastClaimedDay) : null
+    lastClaimedDay: normalized.lastClaimedDay == null ? null : Number(normalized.lastClaimedDay)
   };
 }
 

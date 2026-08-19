@@ -134,9 +134,9 @@ function injectStyles() {
     #pack-opening-overlay.show-summary > .pack-opening-controls { visibility:hidden; }
     .pack-opening-summary-title { text-align:center; font-size:clamp(20px,3vw,32px); font-weight:950; color:#f0e0b0; }
     .pack-opening-summary-sub { text-align:center; color:#9ead9f; font-size:12px; margin:4px 0 12px; }
-    .pack-opening-summary-grid { flex:1; min-height:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(72px,1fr)); gap:10px; max-width:1100px; width:100%; margin:0 auto; align-content:start; }
-    .pack-opening-summary-card { display:flex; justify-content:center; min-width:0; }
-    .pack-opening-summary-card .card { --card-w:clamp(68px,7vw,105px); transform:none !important; }
+    .pack-opening-summary-grid { flex:1; min-height:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(72px,1fr)); gap:10px; max-width:1100px; width:100%; margin:0 auto; align-content:start; align-items:start; }
+    .pack-opening-summary-card { display:flex; justify-content:center; align-items:flex-start; min-width:0; min-height:0; }
+    .pack-opening-summary-card .card { --card-w:clamp(68px,7vw,105px); width:var(--card-w) !important; height:auto !important; aspect-ratio:5/7 !important; align-self:flex-start !important; flex:0 0 auto !important; transform:none !important; }
     .pack-opening-summary-card.final-rare .card { filter:drop-shadow(0 0 10px rgba(238,202,50,.55)); }
     .pack-opening-summary-card.final-mythic .card { filter:drop-shadow(0 0 12px rgba(242,111,28,.74)); }
     .pack-opening-summary-actions { display:flex; justify-content:center; padding-top:14px; }
@@ -158,9 +158,9 @@ function injectStyles() {
       .pack-opening-summary { padding:8px 12px; }
       .pack-opening-summary-title { font-size:17px; }
       .pack-opening-summary-sub { font-size:9px; margin:2px 0 7px; }
-      .pack-opening-summary-grid { display:flex; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; justify-content:flex-start; gap:7px; padding:5px 2px 8px; touch-action:pan-x; }
-      .pack-opening-summary-card { flex:0 0 auto; }
-      .pack-opening-summary-card .card { --card-w:72px; }
+      .pack-opening-summary-grid { display:flex; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; justify-content:flex-start; align-items:flex-start; gap:7px; padding:5px 2px 8px; touch-action:pan-x; }
+      .pack-opening-summary-card { flex:0 0 auto; align-self:flex-start; }
+      .pack-opening-summary-card .card { --card-w:72px; width:72px !important; height:auto !important; aspect-ratio:5/7 !important; flex:0 0 auto !important; }
       .pack-opening-summary-actions { padding-top:4px; }
       .pack-opening-intro-pack { width:78px; }
       .pack-opening-intro-title { font-size:20px; margin:6px 0 2px; }
