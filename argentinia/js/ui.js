@@ -2018,9 +2018,14 @@ export function showDailyRewardsScreen(onBack) {
       btn.disabled = true;
       try {
         await adminResetDailyRewardDebug(state.currentUser.uid);
-        state.userProfile = { ...state.userProfile, rewardDebugOffsetDays: 0 };
+        // 23.13.6 — RESET es una operación QA completa: además de volver el offset a 0,
+        // resincroniza inmediatamente la racha contra el día real del servidor. Si veníamos
+        // simulando fechas futuras, advanceDailyLoginState detecta el retroceso y vuelve a D1.
+        const result = await registerDailyLogin(state.currentUser.uid);
+        state.userProfile = { ...result.profile, rewardDebugOffsetDays: 0 };
         updateAccountUI(state.currentUser);
         renderRewards();
+        if (result.login?.newCalendarLogin) showDailyLoginRewardModal(result.login);
       } catch (err) {
         console.error('No se pudo resetear el reloj de debug:', err);
         showSimpleAlertModal(err.message || 'No se pudo resetear el reloj de debug.');
