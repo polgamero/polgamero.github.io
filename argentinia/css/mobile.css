@@ -1478,3 +1478,23 @@ html.argentinia-mobile .deckbuilder-pool-card-badge {
   padding: 1px 5px !important;
   font-size: 9px !important;
 }
+
+/* ============================================================================
+   23.12.2 — CARD BROWSER ZOOM / DECK BADGE POLISH
+   ============================================================================ */
+/* La fórmula responsive de border-width vive en ui.js y aplica también en smartphone.
+   Acá sólo reservamos espacio táctil/visual para que el x/4 quede ENTERO por encima de la
+   carta y no tape el nombre ni sea recortado por el viewport scrolleable. */
+html.argentinia-mobile #deckbuilder-grid {
+  padding-top: 26px !important;
+  row-gap: 24px !important;
+}
+html.argentinia-mobile .deckbuilder-pool-card-wrap {
+  overflow: visible !important;
+}
+html.argentinia-mobile .deckbuilder-pool-card-badge {
+  top: -15px !important;
+  padding: 1px 5px !important;
+  font-size: 8px !important;
+  line-height: 11px !important;
+}

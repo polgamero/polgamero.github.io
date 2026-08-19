@@ -1887,6 +1887,12 @@ function injectEncyclopediaStyles() {
 }
     .encyclopedia-card-slot { content-visibility: auto; contain-intrinsic-size: 180px 252px; }
     .encyclopedia-card-slot .card-inner { border-width: 6px; }
+    :is(#encyclopedia-overlay,#deckbuilder-overlay,#mydecks-overlay) .card-inner {
+      /* 23.12.2 — override más específico: el marco acompaña el zoom. El 6px histórico
+         queda arriba para preservar el baseline, pero este selector con IDs manda en browser. */
+      border-width: clamp(1px, calc(var(--card-w) * 0.02), 6px);
+      border-radius: clamp(2px, calc(var(--card-w) * 0.018), 4px);
+    }
     /* BUGFIX (revisión post-Etapa 4): antes esto grisaba la carta ENTERA (nombre, texto,
        poder/resistencia incluidos) — ahora, a pedido, solo el ARTE se reemplaza por un
        rectángulo negro con el logo del juego (genera intriga, invita a comprar sobres); el
@@ -2464,14 +2470,16 @@ function injectDeckBuilderStyles() {
     .deckbuilder-body { flex: 1; display: flex; gap: 16px; min-height: 0; margin-top: 12px; }
     .deckbuilder-pool { flex: 1; display: flex; flex-direction: column; min-height: 0; }
     .deckbuilder-pool-card-wrap {
-      position: relative; cursor: pointer; transition: transform 0.15s ease;
-      content-visibility: auto; contain-intrinsic-size: 110px 154px;
+      position: relative; cursor: pointer; transition: transform 0.15s ease; overflow: visible;
+      /* No content-visibility acá: su paint containment recortaba el badge x/4 que vive
+         deliberadamente fuera de la carta. Las imágenes siguen loading=lazy/fetchpriority=low. */
     }
+    #deckbuilder-grid { padding-top: 34px; row-gap: 30px; }
     .deckbuilder-pool-card-wrap:hover { transform: translateY(-3px); }
     .deckbuilder-pool-card-wrap.maxed { opacity: 0.4; cursor: not-allowed; }
     .deckbuilder-pool-card-wrap.maxed:hover { transform: none; }
     .deckbuilder-pool-card-badge {
-      position: absolute; top: -7px; left: 50%; right: auto; transform: translateX(-50%);
+      position: absolute; top: -20px; left: 50%; right: auto; transform: translateX(-50%);
       background: rgba(0,0,0,0.88); color: #f0e0b0;
       border: 1px solid var(--gold, #d4af37); border-radius: 999px; font-size: 11px; font-weight: 700;
       padding: 2px 7px; pointer-events: none; white-space: nowrap; z-index: 20;

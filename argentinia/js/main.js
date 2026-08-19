@@ -12,6 +12,7 @@ import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks } from './telemetry.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_BUILD_LABEL, BUILD_MANIFEST_URL, isExactMultiplayerVersionCompatible } from './version.js';
 import { MULTIPLAYER_TEST_DECK_NAME, buildMultiplayerTestDeck } from './testDeck.js';
+import { stampCardOwner, zoneForCardOwner } from './zoneOwnership.js';
 import { PRIVATE_ZONE_VISIBILITY, PRIVATE_ZONE_FILTERS, buildPrivateZoneOffer, resolvePrivateZoneSelection } from './privateZoneProtocol.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
@@ -3422,9 +3423,12 @@ export function detachEquipmentFrom(creatureItem, isLocal) {
 // cementerio de su dueño, no se pierden de la memoria del juego.
 export function sendAurasToGraveyard(unit, isLocal) {
   if (!unit.auras || unit.auras.length === 0) return;
-  const grave = isLocal ? state.localGraveyard : state.rivalGraveyard;
+  const myRole = state.currentMatch?.myRole || null;
   unit.auras.forEach(auraCard => {
-    logMsg(`💔 ${auraCard.name} se desprendió de ${unit.card.name} y fue al cementerio.`);
+    // 23.12.2 — el Aura va al cementerio de SU PROPIETARIO, no al del permanente
+    // encantado. Esto importa especialmente para maldiciones propias sobre criaturas rivales.
+    const grave = zoneForCardOwner(auraCard, state.localGraveyard, state.rivalGraveyard, isLocal, myRole);
+    logMsg(`💔 ${auraCard.name} se desprendió de ${unit.card.name} y fue al cementerio de su dueño.`);
     grave.push(auraCard);
   });
   unit.auras = [];
@@ -3439,15 +3443,16 @@ export function sendAurasToGraveyard(unit, isLocal) {
 // cambiar recién más tarde. Se corre junto a checkGameOver en cada render(), como el resto
 // de las state-based actions de este motor.
 export function checkAuraLegality() {
-  const checkZone = (combatArray, graveyard) => {
+  const myRole = state.currentMatch?.myRole || null;
+  const checkZone = (combatArray, hostIsLocal) => {
     combatArray.forEach(unit => {
       if (!unit.auras || unit.auras.length === 0) return;
       const stillLegal = [];
       unit.auras.forEach(auraCard => {
         const illegalColor = getProtectionMatch(unit, auraCard.colors || []);
         if (illegalColor) {
-          logMsg(`💔 ¡${unit.card.name} tiene Protección de ${illegalColor} y ${auraCard.name} ya no puede seguir pegada! Se cae al cementerio.`);
-          graveyard.push(auraCard);
+          logMsg(`💔 ¡${unit.card.name} tiene Protección de ${illegalColor} y ${auraCard.name} ya no puede seguir pegada! Se cae al cementerio de su dueño.`);
+          zoneForCardOwner(auraCard, state.localGraveyard, state.rivalGraveyard, hostIsLocal, myRole).push(auraCard);
         } else {
           stillLegal.push(auraCard);
         }
@@ -3455,8 +3460,8 @@ export function checkAuraLegality() {
       unit.auras = stillLegal;
     });
   };
-  checkZone(state.localCombat, state.localGraveyard);
-  checkZone(state.rivalCombat, state.rivalGraveyard);
+  checkZone(state.localCombat, true);
+  checkZone(state.rivalCombat, false);
 }
 
 // SBA (regla real 704.5m — el caso simétrico de checkAuraLegality de arriba, pero para
@@ -3793,7 +3798,8 @@ export function resolveScheduledReturns(isLocal) {
   });
 }
 
-export function attachAura(auraCard, creatureItem) {
+export function attachAura(auraCard, creatureItem, ownerIsLocal = null) {
+  if (ownerIsLocal !== null) stampCardOwner(auraCard, !!ownerIsLocal, state.currentMatch?.myRole || null);
   if (!creatureItem.auras) creatureItem.auras = [];
   creatureItem.auras.push(auraCard);
   logMsg(`✨ ¡${auraCard.name} se pegó a ${creatureItem.card.name}!`);

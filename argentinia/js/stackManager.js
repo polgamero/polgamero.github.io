@@ -1,6 +1,7 @@
 import { sleep, moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getProliferateCandidates } from './utils.js';
 import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, triggerCreatureEtb, triggerLandEtb, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, cleanupIfVehicle, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal, completeCastTargetDeclaration, requestPrivateZoneChoice } from './main.js';
 import { otherRole, serializeStackTarget, refreshStackItemBoardRefs } from './matchSync.js';
+import { stampCardOwner, zoneForCardOwner } from './zoneOwnership.js';
 import { logMsg, render, createCardElement, showRampLandChoiceModal, showScrySurveilModal, showProliferateModal, showHandFilterDiscardModal, showSacrificeEffectModal } from './ui.js';
 import { checkDeaths, checkAllDeaths } from './combatRules.js';
 import { hasKeyword, getProtectionMatch } from './keywords.js';
@@ -997,7 +998,10 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             detachEquipmentFrom(targetUnit, isTargetLocal);
             sendAurasToGraveyard(targetUnit, isTargetLocal);
             cleanupIfVehicle(targetUnit); // si era un Vehículo tripulado, saca el power/toughness "prestado"
-            moveBattlefieldCardToZone(targetUnit.card, state.localHand);
+            const ownerHand = zoneForCardOwner(
+              targetUnit.card, state.localHand, state.rivalHand, isTargetLocal, state.currentMatch?.myRole || null
+            );
+            moveBattlefieldCardToZone(targetUnit.card, ownerHand);
             logMsg(targetUnit.card.isToken
               ? `🔄 ¡${card.name}! ${targetUnit.card.name} dejó el campo y, al ser ficha, dejó de existir.`
               : `🔄 ¡${card.name} devolvió a ${targetUnit.card.name} a la mano de su dueño!`);
@@ -1452,6 +1456,7 @@ async function executeStackItem(item) {
   };
 
   if (type === 'planeswalker') {
+    stampCardOwner(card, isLocal, state.currentMatch?.myRole || null);
     const pwZone = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
     const newPw = { card, loyalty: card.loyalty, abilityUsedThisTurn: false };
     pwZone.push(newPw);
@@ -1460,6 +1465,7 @@ async function executeStackItem(item) {
   }
 
   if (type === 'summon' || type === 'permanent') {
+    stampCardOwner(card, isLocal, state.currentMatch?.myRole || null);
     let newPermanentItem; 
 
     if (card.power !== undefined) {
@@ -1518,7 +1524,8 @@ async function executeStackItem(item) {
   }
 
   if (type === 'aura' && targetObj && targetObj.item) {
-    attachAura(card, targetObj.item);
+    stampCardOwner(card, isLocal, state.currentMatch?.myRole || null);
+    attachAura(card, targetObj.item, isLocal);
     // Si es una Aura-maldición (-X/-X), la criatura puede morir en el acto.
     checkAllDeaths();
     return;
