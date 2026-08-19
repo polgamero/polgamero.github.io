@@ -1,0 +1,11 @@
+{
+  "name": "Argentinia — Magia y Leyenda",
+  "short_name": "Argentinia",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b130e",
+  "theme_color": "#0b130e",
+  "orientation": "landscape"
+}

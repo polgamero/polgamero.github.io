@@ -11,6 +11,9 @@ const ENTERED_CLASS = 'arg-mobile-entered';
 const PORTRAIT_CLASS = 'arg-mobile-portrait';
 const LANDSCAPE_CLASS = 'arg-mobile-landscape';
 const FULLSCREEN_CLASS = 'arg-mobile-is-fullscreen';
+const BROWSER_UI_CLASS = 'arg-mobile-browser-ui';
+const IOS_INSTALL_CLASS = 'arg-mobile-ios-install-fallback';
+let forceIosInstallFallback = false;
 const FORCE_PARAM = 'ui';
 const PHONE_SHORT_SIDE_MAX = 600;
 const LOG_OPEN_CLASS = 'arg-mobile-log-open';
@@ -117,6 +120,66 @@ function isFullscreenNow() {
   return Boolean(document.fullscreenElement) || isStandaloneDisplay();
 }
 
+function isIPhoneSurface() {
+  const ua = String(window.navigator?.userAgent || '');
+  return /iPhone|iPod/i.test(ua);
+}
+
+function hasElementFullscreenApi() {
+  const request = document.documentElement?.requestFullscreen;
+  if (typeof request !== 'function') return false;
+  // En iPhone exigimos confirmación POSITIVA: WebKit puede exponer superficies parciales
+  // que luego rechazan fullscreen para elementos no-video. En Android/desktop mantenemos
+  // compatibilidad con motores antiguos donde fullscreenEnabled puede ser undefined.
+  if (isIPhoneSurface()) return document.fullscreenEnabled === true;
+  return document.fullscreenEnabled !== false;
+}
+
+function shouldUseIosInstallFallback() {
+  return isIPhoneSurface() && !isStandaloneDisplay() && (forceIosInstallFallback || !hasElementFullscreenApi());
+}
+
+function ensureIosInstallHelp() {
+  if (document.getElementById('arg-mobile-ios-install-help')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'arg-mobile-ios-install-help';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'Usar Argentinia como app en iPhone');
+  overlay.innerHTML = `
+    <div class="arg-mobile-ios-install-card">
+      <div class="arg-mobile-ios-install-kicker">IPHONE · MODO APP</div>
+      <h2>Más pantalla para jugar</h2>
+      <p>En iPhone, este navegador no ofrece Fullscreen API para el tablero. Podés abrir Argentinia como app sin la barra del navegador:</p>
+      <ol>
+        <li>Tocá <strong>Compartir</strong> en el navegador.</li>
+        <li>Elegí <strong>Agregar a pantalla de inicio</strong>.</li>
+        <li>Abrí <strong>Argentinia</strong> desde el nuevo ícono.</li>
+      </ol>
+      <p class="arg-mobile-ios-install-note">No es obligatorio: el juego también se adapta al espacio reducido del navegador.</p>
+      <button id="arg-mobile-ios-install-close" type="button">ENTENDIDO</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay || event.target?.id === 'arg-mobile-ios-install-close') overlay.classList.remove('open');
+  });
+}
+
+function showIosInstallHelp() {
+  ensureIosInstallHelp();
+  document.getElementById('arg-mobile-ios-install-help')?.classList.add('open');
+}
+
+function configureImmersiveControl() {
+  const retry = document.getElementById('arg-mobile-fullscreen-retry');
+  if (!retry) return;
+  const fallback = shouldUseIosInstallFallback();
+  setClassState(document.documentElement, IOS_INSTALL_CLASS, fallback);
+  retry.textContent = fallback ? '▣' : '⛶';
+  retry.title = fallback ? 'Modo app en iPhone' : 'Volver a pantalla completa';
+  retry.setAttribute('aria-label', fallback ? 'Cómo usar Argentinia como app en iPhone' : 'Volver a pantalla completa');
+}
+
 function ensureMobileGates() {
   if (document.getElementById('arg-mobile-rotate-gate')) return;
 
@@ -159,23 +222,37 @@ function ensureMobileGates() {
 }
 
 async function requestFullscreenSafely() {
-  if (document.fullscreenElement || typeof document.documentElement?.requestFullscreen !== 'function') {
+  if (document.fullscreenElement || !hasElementFullscreenApi()) {
     return Boolean(document.fullscreenElement);
   }
   try {
     await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
     return true;
   } catch {
-    // Safari/iOS y otros navegadores pueden no exponer Fullscreen API para documentElement.
+    // Safari/iOS y otros navegadores pueden exponer parcialmente la API y rechazarla
+    // para elementos no-video. El caller decide si ofrece el fallback instalable.
     return false;
   }
 }
 
 export async function requestImmersiveMode() {
-  // 23.11.8: fullscreen queda OPT-IN. Ya no usamos bloqueo programático de orientación: el gate CSS de
-  // portrait garantiza que vertical nunca sea jugable sin involucrar APIs de orientación.
+  // Fullscreen sigue siendo opt-in. En iPhone/engines sin Element Fullscreen no fingimos
+  // que el botón funciona: ofrecemos el camino soportado de Home Screen web app.
+  if (shouldUseIosInstallFallback()) {
+    showIosInstallHelp();
+    updateMobileEnvironment({ preserveOrientation: true });
+    return { fullscreen: false, landscapeLocked: false, fallback: 'ios-home-screen' };
+  }
+
   const fullscreen = await requestFullscreenSafely();
   updateMobileEnvironment({ preserveOrientation: true });
+  if (!fullscreen && isIPhoneSurface()) {
+    // Feature detection optimista: si un WebKit futuro declara soporte pero esta invocación
+    // concreta la rechaza, degradamos definitivamente al modo app durante esta sesión.
+    forceIosInstallFallback = true;
+    showIosInstallHelp();
+    configureImmersiveControl();
+  }
   return { fullscreen, landscapeLocked: false };
 }
 
@@ -578,7 +655,7 @@ export function updateMobileEnvironment({ preserveOrientation = false } = {}) {
 
   setClassState(root, MOBILE_ROOT_CLASS, mobile);
   if (!mobile) {
-    root.classList.remove(PORTRAIT_CLASS, LANDSCAPE_CLASS, ENTERED_CLASS, FULLSCREEN_CLASS, LOG_OPEN_CLASS, STACK_OPEN_CLASS, ZONES_OPEN_CLASS, CARD_PREVIEW_OPEN_CLASS, STACK_PREVIEW_OPEN_CLASS, BLOCKING_OVERLAY_CLASS);
+    root.classList.remove(PORTRAIT_CLASS, LANDSCAPE_CLASS, ENTERED_CLASS, FULLSCREEN_CLASS, BROWSER_UI_CLASS, IOS_INSTALL_CLASS, LOG_OPEN_CLASS, STACK_OPEN_CLASS, ZONES_OPEN_CLASS, CARD_PREVIEW_OPEN_CLASS, STACK_PREVIEW_OPEN_CLASS, BLOCKING_OVERLAY_CLASS);
     const stack = document.getElementById('stack-container');
     if (stack?.classList.contains('arg-mobile-drawer-open')) stack.classList.remove('arg-mobile-drawer-open');
     return false;
@@ -599,7 +676,13 @@ export function updateMobileEnvironment({ preserveOrientation = false } = {}) {
     setClassState(root, PORTRAIT_CLASS, orientation === 'portrait');
     setClassState(root, LANDSCAPE_CLASS, orientation === 'landscape');
   }
-  setClassState(root, FULLSCREEN_CLASS, isFullscreenNow());
+  const fullscreenNow = isFullscreenNow();
+  setClassState(root, FULLSCREEN_CLASS, fullscreenNow);
+  // Perfil compacto únicamente cuando la UI del navegador consume altura. En fullscreen
+  // Android o en una Home Screen web app esta clase desaparece y la geometría existente
+  // queda literalmente fuera del selector.
+  setClassState(root, BROWSER_UI_CLASS, !fullscreenNow);
+  configureImmersiveControl();
 
   // 23.11.13 — launcher histórico queda disponible en código, pero producción entra
   // automáticamente. Fullscreen continúa siendo opt-in con ⛶; portrait sigue bloqueado por

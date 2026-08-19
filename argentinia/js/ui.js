@@ -5921,12 +5921,15 @@ export function render() {
     } else {
       statusText = state.pendingCastTransaction?.stage === 'targets' ? "🎯 Declarando objetivos — todavía no pagaste nada" : (state.pendingTargetCard ? "Elegí un objetivo brillante ✨" : "Falta: ");
       if (!state.pendingTargetCard && state.pendingCastTransaction?.stage !== 'targets') {
-        if (state.pendingCost.W > 0) statusText += `${state.pendingCost.W} Blanco `;
-        if (state.pendingCost.U > 0) statusText += `${state.pendingCost.U} Azul `;
-        if (state.pendingCost.B > 0) statusText += `${state.pendingCost.B} Negro `;
-        if (state.pendingCost.R > 0) statusText += `${state.pendingCost.R} Rojo `;
-        if (state.pendingCost.G > 0) statusText += `${state.pendingCost.G} Verde `;
-        if (state.pendingCost.generic > 0) statusText += `${state.pendingCost.generic} Genérico`;
+        // Defensa de UI: nunca asumir que pendingCost existe sólo porque hay alguna acción
+        // pendiente. Un cancel/interacción solapada no debe poder tirar todo el render.
+        const pendingCost = state.pendingCost || { W:0, U:0, B:0, R:0, G:0, generic:0 };
+        if (pendingCost.W > 0) statusText += `${pendingCost.W} Blanco `;
+        if (pendingCost.U > 0) statusText += `${pendingCost.U} Azul `;
+        if (pendingCost.B > 0) statusText += `${pendingCost.B} Negro `;
+        if (pendingCost.R > 0) statusText += `${pendingCost.R} Rojo `;
+        if (pendingCost.G > 0) statusText += `${pendingCost.G} Verde `;
+        if (pendingCost.generic > 0) statusText += `${pendingCost.generic} Genérico`;
         if (state.pendingAlternativeCostChosen && pendingCard?.alternativeCost) statusText += ` [alternativo: ${describeCompositeCost(pendingCard.alternativeCost)}]`;
       }
     }

@@ -4216,8 +4216,8 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
     return true;
   }
 
-  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null) {
-    logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
+  if (state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null) {
+    logMsg("Terminá el casteo o pago anterior antes de activar otra cosa.");
     return true;
   }
 
@@ -4301,8 +4301,8 @@ function beginActivatedAbilityPayment(source) {
 
 function presentActivatedAbilityChoice(displayName, options) {
   if (!options || options.length === 0) return false;
-  if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null) {
-    logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
+  if (state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null) {
+    logMsg("Terminá el casteo o pago anterior antes de activar otra cosa.");
     return true;
   }
 
