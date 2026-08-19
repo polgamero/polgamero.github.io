@@ -35,14 +35,16 @@ import {
 import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
-import { generatePackCards, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, craftEnhancement, deleteUserProfile, createDeck, updateDeck, deleteDeck, saveGameConfig, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive } from './firebaseClient.js';
+import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
+import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, createDeck, updateDeck, deleteDeck, saveGameConfig, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, applyGameConfig, getDefaultGameConfig } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 import { recordTelemetryUiLog, captureTelemetryState } from './telemetry.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_VERSION_SHORT } from './version.js';
 import { getPriorityUxCopy, getEffectivePriorityActivity, canPriorityClockRun, PRIORITY_CLOCK_DURATION_MS } from './priorityUX.js';
+import { DAILY_REWARD_SCHEDULE, normalizeInventory, normalizeDailyRewardsState, unclaimedUnlockedDays, CHEST_ITEM_KEYS, rewardForDay } from './rewards.js';
+import { showPackOpeningExperience, showGuaranteedMythicExperience } from './packOpening.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -1695,6 +1697,403 @@ function formatAnnouncementDate(date) {
 }
 const FICHA_ICON_HTML = `<img class="ficha-icon" src="./assets/images/ui/ficha.png" alt="🎫" onerror="this.outerHTML='🎫'">`;
 
+const PACK_ICON_HTML = `<img class="reward-pack-icon" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">`;
+
+function injectRewardsStyles() {
+  if (document.getElementById('rewards-system-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'rewards-system-styles';
+  style.textContent = `
+    #chest-overlay, #daily-rewards-overlay {
+      position: fixed; inset: 0; z-index: 10020;
+      background:
+        radial-gradient(circle at 50% 10%, rgba(212,175,55,.12), transparent 32%),
+        linear-gradient(180deg, #0d1710 0%, #07100a 100%);
+      color: #f0e0b0; display: flex; flex-direction: column; padding: 24px 32px;
+    }
+    .reward-screen-header { display:flex; align-items:center; gap:18px; flex-shrink:0; margin-bottom:18px; }
+    .reward-screen-title { font-size:26px; font-weight:800; color:#f0e0b0; letter-spacing:.3px; }
+    .reward-screen-subtitle { color:#9fb0a2; font-size:12px; margin-left:auto; text-align:right; }
+    .reward-screen-body { flex:1; min-height:0; overflow:auto; max-width:1180px; width:100%; margin:0 auto; padding:4px 4px 30px; }
+    .chest-summary { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:14px; margin-bottom:18px; }
+    .chest-item {
+      position:relative; min-height:190px; background:linear-gradient(180deg,rgba(24,36,27,.94),rgba(10,18,12,.98));
+      border:2px solid rgba(212,175,55,.42); border-radius:16px; padding:18px;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+      box-shadow:0 12px 36px rgba(0,0,0,.28); overflow:hidden;
+    }
+    .chest-item.chest-mythic { border-color:#d9792f; box-shadow:0 0 30px rgba(217,121,47,.14),0 12px 36px rgba(0,0,0,.3); }
+    .chest-item-icon { min-height:72px; display:flex; align-items:center; justify-content:center; font-size:54px; }
+    .chest-item .coin-icon, .chest-item .ficha-icon { width:68px; height:68px; }
+    .reward-pack-icon { width:72px; height:72px; object-fit:contain; vertical-align:middle; }
+    .chest-item-title { font-size:16px; font-weight:800; margin-top:7px; }
+    .chest-item-count { font-size:28px; font-weight:900; color:#d4af37; margin:4px 0 9px; }
+    .chest-mythic .chest-item-count { color:#ef9b52; }
+    .chest-item-desc { color:#aebcaf; font-size:11px; line-height:1.35; min-height:31px; }
+    .reward-action-btn {
+      margin-top:12px; border:2px solid #d4af37; border-radius:10px; padding:8px 16px; min-width:120px;
+      background:linear-gradient(180deg,rgba(212,175,55,.24),rgba(16,25,17,.95)); color:#f0e0b0;
+      font-size:12px; font-weight:800; cursor:pointer;
+    }
+    .reward-action-btn:hover:not(:disabled) { box-shadow:0 0 20px rgba(212,175,55,.3); transform:translateY(-1px); }
+    .reward-action-btn:disabled { opacity:.35; cursor:not-allowed; }
+    .chest-mythic .reward-action-btn { border-color:#d9792f; background:linear-gradient(180deg,rgba(217,121,47,.24),rgba(16,25,17,.95)); }
+    .chest-future { border:1px dashed rgba(212,175,55,.28); border-radius:12px; color:#829087; padding:13px 16px; text-align:center; font-size:11px; }
+    .daily-pass-intro { text-align:center; margin:0 auto 18px; max-width:760px; color:#c9d4cb; line-height:1.45; }
+    .daily-pass-streak { font-size:22px; font-weight:900; color:#f0e0b0; margin-bottom:4px; }
+    .daily-pass-reset { color:#89978d; font-size:11px; }
+    .daily-reward-track { display:grid; grid-template-columns:repeat(7,minmax(105px,1fr)); gap:12px; min-width:805px; padding:14px 4px 20px; }
+    .daily-reward-day { display:flex; flex-direction:column; align-items:center; gap:7px; min-width:0; }
+    .daily-reward-circle {
+      width:104px; height:104px; border-radius:50%; box-sizing:border-box;
+      border:3px solid #49544c; background:radial-gradient(circle,#1d2920,#0b120d 72%);
+      display:flex; align-items:center; justify-content:center; flex-direction:column; position:relative;
+      filter:saturate(.55); opacity:.7; transition:.18s ease;
+    }
+    .daily-reward-day.current-streak .daily-reward-circle { border-color:#d4af37; filter:none; opacity:1; box-shadow:0 0 22px rgba(212,175,55,.2); }
+    .daily-reward-day.unlocked .daily-reward-circle { border-color:#f0d56a; filter:none; opacity:1; box-shadow:0 0 28px rgba(212,175,55,.3); }
+    .daily-reward-day.claimed .daily-reward-circle { border-color:#6abf78; filter:none; opacity:1; box-shadow:0 0 18px rgba(68,163,84,.18); }
+    .daily-reward-day.day-7 .daily-reward-circle { border-color:#9e5424; background:radial-gradient(circle,rgba(217,121,47,.28),#17100a 72%); }
+    .daily-reward-day.day-7.unlocked .daily-reward-circle, .daily-reward-day.day-7.claimed .daily-reward-circle { box-shadow:0 0 34px rgba(217,121,47,.38); }
+    .daily-reward-label { font-size:11px; font-weight:800; color:#c8d0ca; text-transform:uppercase; }
+    .daily-reward-icons { display:flex; align-items:center; justify-content:center; gap:2px; min-height:42px; max-width:82px; flex-wrap:wrap; }
+    .daily-reward-icons .coin-icon, .daily-reward-icons .ficha-icon { width:30px; height:30px; }
+    .daily-reward-icons .reward-pack-icon { width:38px; height:38px; }
+    .daily-reward-amount { font-size:11px; font-weight:900; color:#f0e0b0; }
+    .daily-reward-check { position:absolute; right:-3px; top:-5px; width:27px; height:27px; border-radius:50%; background:#346c3d; border:2px solid #8bd397; display:flex; align-items:center; justify-content:center; color:white; font-weight:900; }
+    .daily-reward-status { min-height:30px; font-size:10px; color:#8e9b91; text-align:center; }
+    .daily-reward-day.unlocked .daily-reward-status { color:#f0d56a; font-weight:700; }
+    .daily-reward-day.claimed .daily-reward-status { color:#7fc58a; }
+    .daily-rewards-scroll { overflow-x:auto; overflow-y:hidden; padding-bottom:4px; }
+    .daily-rewards-help { margin-top:12px; text-align:center; color:#8b998f; font-size:11px; }
+    .daily-admin-debug { margin:0 auto 12px; max-width:760px; display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; padding:8px 10px; border:1px dashed rgba(191,105,255,.65); border-radius:10px; color:#d7b8ef; background:rgba(90,38,120,.12); font-size:10px; }
+    .main-menu-account-actions { display:flex; gap:6px; align-items:center; justify-content:flex-end; }
+    .main-menu-reward-btn {
+      background:linear-gradient(180deg,rgba(212,175,55,.18),rgba(11,19,14,.96));
+      border:1.5px solid #d4af37; border-radius:8px; color:#f0e0b0; font-size:11px; font-weight:800;
+      padding:6px 10px; cursor:pointer; position:relative; white-space:nowrap;
+    }
+    .main-menu-reward-btn:hover { box-shadow:0 3px 14px rgba(212,175,55,.3); }
+    .main-menu-reward-badge { position:absolute; min-width:15px; height:15px; line-height:15px; padding:0 3px; box-sizing:border-box; border-radius:9px; right:-6px; top:-7px; background:#c63d34; color:#fff; font-size:9px; text-align:center; border:1px solid #ffd0cc; }
+    #daily-login-reward-modal, #reward-reveal-modal {
+      position:fixed; inset:0; z-index:12050; background:rgba(0,0,0,.76); display:flex; align-items:center; justify-content:center; padding:18px;
+    }
+    .daily-login-panel, .reward-reveal-panel {
+      width:min(620px,94vw); max-height:90vh; overflow:auto; box-sizing:border-box;
+      background:radial-gradient(circle at 50% 0%,rgba(212,175,55,.18),transparent 36%),linear-gradient(180deg,#172219,#08100b);
+      border:3px solid #d4af37; border-radius:20px; box-shadow:0 0 60px rgba(212,175,55,.24),0 24px 90px rgba(0,0,0,.7);
+      padding:26px 30px; text-align:center; color:#f0e0b0;
+    }
+    .daily-login-kicker { color:#d4af37; font-size:11px; text-transform:uppercase; letter-spacing:1.6px; font-weight:900; }
+    .daily-login-title { font-size:28px; line-height:1.1; font-weight:900; margin:8px 0; }
+    .daily-login-copy { color:#c2cdc4; font-size:14px; line-height:1.45; }
+    .daily-login-reward { margin:18px auto 6px; display:flex; align-items:center; justify-content:center; gap:12px; min-height:70px; }
+    .daily-login-reward .coin-icon, .daily-login-reward .ficha-icon { width:60px; height:60px; }
+    .daily-login-reward .reward-pack-icon { width:72px; height:72px; }
+    .daily-login-reward-text { font-size:18px; font-weight:900; color:#f0d56a; }
+    .daily-login-actions { display:flex; justify-content:center; gap:10px; margin-top:20px; flex-wrap:wrap; }
+    .reward-secondary-btn { border:1.5px solid #637067; border-radius:10px; padding:8px 14px; background:rgba(255,255,255,.035); color:#bdc8bf; font-weight:700; cursor:pointer; }
+    .reward-reveal-cards { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:16px 0; }
+    .reward-reveal-cards .card { --card-w:92px; }
+    .reward-reveal-panel.mythic-reveal { border-color:#d9792f; box-shadow:0 0 70px rgba(217,121,47,.42),0 24px 90px rgba(0,0,0,.75); }
+    .reward-reveal-panel.mythic-reveal .reward-reveal-cards .card { --card-w:210px; filter:drop-shadow(0 0 24px rgba(217,121,47,.55)); }
+  `;
+  document.head.appendChild(style);
+}
+
+function rewardIconHTML(reward) {
+  const amount = Math.max(0, Number(reward?.amount) || 0);
+  if (reward?.type === 'points') return `${COIN_ICON_HTML}<span class="daily-reward-amount">${amount}</span>`;
+  if (reward?.type === 'fichas') return `${FICHA_ICON_HTML}<span class="daily-reward-amount">${amount}</span>`;
+  if (reward?.type === 'standardPack') return `${PACK_ICON_HTML}<span class="daily-reward-amount">×${amount}</span>`;
+  if (reward?.type === 'guaranteedMythic') return `<span style="font-size:37px;filter:drop-shadow(0 0 9px rgba(217,121,47,.65))">✦</span><span class="daily-reward-amount">Mítica</span>`;
+  return `<span class="daily-reward-amount">${amount}</span>`;
+}
+
+function rewardDescription(entry) {
+  if (!entry) return '';
+  return (entry.rewards || []).map(reward => {
+    const n = Number(reward.amount) || 0;
+    if (reward.type === 'points') return `${n} puntos`;
+    if (reward.type === 'fichas') return `${n} Ficha${n === 1 ? '' : 's'} de mejora`;
+    if (reward.type === 'standardPack') return `${n} sobre${n === 1 ? '' : 's'}`;
+    if (reward.type === 'guaranteedMythic') return '1 carta mítica asegurada';
+    return `${n} ${reward.type}`;
+  }).join(' + ');
+}
+
+function renderRewardRevealModal({ title, cards, subtitle = '', mythic = false, onClose }) {
+  injectRewardsStyles();
+  document.getElementById('reward-reveal-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'reward-reveal-modal';
+  const cardHTML = (cards || []).map(card => createCardElement(card, false, true, null, 'encyclopedia', null).outerHTML).join('');
+  modal.innerHTML = `
+    <div class="reward-reveal-panel${mythic ? ' mythic-reveal' : ''}">
+      <div class="daily-login-kicker">${mythic ? '✦ RECOMPENSA MÍTICA ✦' : 'MI COFRE'}</div>
+      <div class="daily-login-title">${title}</div>
+      ${subtitle ? `<div class="daily-login-copy">${subtitle}</div>` : ''}
+      <div class="reward-reveal-cards">${cardHTML}</div>
+      <button class="reward-action-btn" id="reward-reveal-close">Continuar</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector('#reward-reveal-close').addEventListener('click', () => {
+    modal.remove();
+    onClose?.();
+  });
+}
+
+export function showChestScreen(onBack) {
+  injectRewardsStyles();
+  injectEncyclopediaStyles();
+  document.getElementById('chest-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'chest-overlay';
+  overlay.innerHTML = `
+    <div class="reward-screen-header">
+      <button class="encyclopedia-back-btn" id="chest-back">← Volver</button>
+      <div class="reward-screen-title">Mi Cofre</div>
+      <div class="reward-screen-subtitle">Tus recompensas e items quedan guardados acá hasta que decidas usarlos.</div>
+    </div>
+    <div class="reward-screen-body" id="chest-body"></div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#chest-back').addEventListener('click', () => { overlay.remove(); onBack?.(); });
+  const body = overlay.querySelector('#chest-body');
+
+  function renderChest() {
+    if (!state.currentUser || !state.userProfile) {
+      body.innerHTML = '<div class="chest-future">Iniciá sesión y completá tu perfil para usar Mi Cofre.</div>';
+      return;
+    }
+    const inventory = normalizeInventory(state.userProfile.inventory);
+    const points = Number(state.userProfile.points) || 0;
+    const fichas = Number(state.userProfile.fichas) || 0;
+    const packs = inventory[CHEST_ITEM_KEYS.standardPack];
+    const mythics = inventory[CHEST_ITEM_KEYS.guaranteedMythic];
+    body.innerHTML = `
+      <div class="chest-summary">
+        <div class="chest-item">
+          <div class="chest-item-icon">${COIN_ICON_HTML}</div><div class="chest-item-title">Puntos</div><div class="chest-item-count">${points}</div>
+          <div class="chest-item-desc">Tu moneda para comprar sobres en la Tienda.</div>
+        </div>
+        <div class="chest-item">
+          <div class="chest-item-icon">${FICHA_ICON_HTML}</div><div class="chest-item-title">Fichas de mejora</div><div class="chest-item-count">${fichas}</div>
+          <div class="chest-item-desc">Usalas para mejorar permanentemente una carta de tu colección.</div>
+          <button class="reward-action-btn" id="chest-use-fichas" ${fichas < FICHAS_PER_ENHANCEMENT ? 'disabled' : ''}>MEJORAR CARTA</button>
+        </div>
+        <div class="chest-item">
+          <div class="chest-item-icon">${PACK_ICON_HTML}</div><div class="chest-item-title">Sobres</div><div class="chest-item-count">${packs}</div>
+          <div class="chest-item-desc">15 cartas + 1 Ficha al abrir. Comprados y regalados usan el mismo inventario.</div>
+          <button class="reward-action-btn" id="chest-open-pack" ${packs < 1 ? 'disabled' : ''}>ABRIR</button>
+        </div>
+        <div class="chest-item chest-mythic">
+          <div class="chest-item-icon">✦</div><div class="chest-item-title">Carta mítica asegurada</div><div class="chest-item-count">${mythics}</div>
+          <div class="chest-item-desc">Premio especial: al abrirlo recibís una mítica aleatoria real del pool.</div>
+          <button class="reward-action-btn" id="chest-open-mythic" ${mythics < 1 ? 'disabled' : ''}>REVELAR</button>
+        </div>
+      </div>
+      <div class="chest-future">El Cofre ya usa un inventario extensible: futuros cosméticos, tickets, regalos de eventos u otros items pueden sumarse sin rediseñar colección/puntos.</div>`;
+
+    body.querySelector('#chest-use-fichas')?.addEventListener('click', () => {
+      overlay.remove();
+      showStoreScreen(() => showChestScreen(onBack), { initialView: 'craft' });
+    });
+
+    body.querySelector('#chest-open-pack')?.addEventListener('click', async () => {
+      const btn = body.querySelector('#chest-open-pack');
+      btn.disabled = true;
+      try {
+        const packCards = generatePackCards();
+        state.userProfile = await openInventoryPack(state.currentUser.uid, packCards.map(c => c.id));
+        updateAccountUI(state.currentUser);
+        // 23.13.1 — la economía YA terminó antes de empezar el show. La animación es una
+        // presentación de recompensas acreditadas, así cerrar/saltar/girar no puede repetir
+        // ni perder el sobre. Usamos el mismo renderer real de cartas, no una tarjeta falsa.
+        showPackOpeningExperience({
+          cards: packCards,
+          fichaTotal: state.userProfile.fichas || 0,
+          renderCard: card => createCardElement(card, false, true, null, 'pack-opening', () => {}),
+          onClose: renderChest
+        });
+      } catch (err) {
+        console.error('No se pudo abrir el sobre del Cofre:', err);
+        showSimpleAlertModal(err.message || 'No se pudo abrir el sobre. Probá de nuevo.');
+        renderChest();
+      }
+    });
+
+    body.querySelector('#chest-open-mythic')?.addEventListener('click', async () => {
+      const btn = body.querySelector('#chest-open-mythic');
+      btn.disabled = true;
+      try {
+        const card = generateGuaranteedMythicCard();
+        state.userProfile = await openGuaranteedMythic(state.currentUser.uid, card.id);
+        updateAccountUI(state.currentUser);
+        // La Mythic del Día 7 comparte el lenguaje audiovisual del slot Mythic de un sobre,
+        // pero la carta ya está acreditada antes de iniciar la revelación.
+        showGuaranteedMythicExperience({
+          card,
+          renderCard: rewardCard => createCardElement(rewardCard, false, true, null, 'pack-opening', () => {}),
+          onClose: renderChest
+        });
+      } catch (err) {
+        console.error('No se pudo revelar la recompensa mítica:', err);
+        showSimpleAlertModal(err.message || 'No se pudo abrir la recompensa mítica.');
+        renderChest();
+      }
+    });
+  }
+  renderChest();
+}
+
+export function showDailyRewardsScreen(onBack) {
+  injectRewardsStyles();
+  injectEncyclopediaStyles();
+  document.getElementById('daily-rewards-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'daily-rewards-overlay';
+  overlay.innerHTML = `
+    <div class="reward-screen-header">
+      <button class="encyclopedia-back-btn" id="daily-rewards-back">← Volver</button>
+      <div class="reward-screen-title">Recompensas diarias</div>
+      <div class="reward-screen-subtitle">Ciclo semanal · lunes a domingo</div>
+    </div>
+    <div class="reward-screen-body" id="daily-rewards-body"></div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#daily-rewards-back').addEventListener('click', () => { overlay.remove(); onBack?.(); });
+  const body = overlay.querySelector('#daily-rewards-body');
+
+  function renderRewards() {
+    if (!state.currentUser || !state.userProfile) {
+      body.innerHTML = '<div class="chest-future">Iniciá sesión para participar del ciclo de recompensas.</div>';
+      return;
+    }
+    const daily = normalizeDailyRewardsState(state.userProfile.dailyRewards);
+    const pending = unclaimedUnlockedDays(daily);
+    const daysHTML = DAILY_REWARD_SCHEDULE.map(entry => {
+      const claimed = daily.claimedDays.includes(entry.day);
+      const unlocked = daily.unlockedDays.includes(entry.day) && !claimed;
+      const current = entry.day <= daily.streak;
+      const classes = ['daily-reward-day', `day-${entry.day}`, claimed ? 'claimed' : '', unlocked ? 'unlocked' : '', current ? 'current-streak' : ''].filter(Boolean).join(' ');
+      const icons = entry.rewards.map(rewardIconHTML).join('');
+      const status = claimed ? '✓ Reclamado' : unlocked ? 'Disponible' : entry.day <= daily.streak ? 'Desbloqueado' : 'Bloqueado';
+      return `<div class="${classes}" data-reward-day="${entry.day}">
+        <div class="daily-reward-label">Día ${entry.day}</div>
+        <div class="daily-reward-circle">${claimed ? '<span class="daily-reward-check">✓</span>' : ''}<div class="daily-reward-icons">${icons}</div></div>
+        <div class="daily-reward-status">${status}</div>
+        ${unlocked ? `<button class="reward-action-btn" data-claim-day="${entry.day}">RECLAMAR</button>` : ''}
+      </div>`;
+    }).join('');
+    body.innerHTML = `
+      <div class="daily-pass-intro">
+        <div class="daily-pass-streak">🔥 Racha actual: ${daily.streak} / 7</div>
+        <div>Entrá al juego cada día. Si cortás la racha, volvés al Día 1; cada premio concreto puede cobrarse una sola vez dentro de la misma semana.</div>
+        <div class="daily-pass-reset">El tablero se reinicia todos los lunes. ${pending.length ? `Tenés ${pending.length} premio${pending.length === 1 ? '' : 's'} para reclamar.` : 'No tenés premios pendientes.'}</div>
+      </div>
+      ${isAdminUser() ? `<div class="daily-admin-debug">
+        <div><strong>🧪 ADMIN DEBUG</strong> · reloj oficial + <span id="daily-debug-offset">${Number(state.userProfile?.dailyRewardDebugOffsetDays) || 0}</span> día(s)</div>
+        <button class="reward-secondary-btn" id="daily-debug-next">+1 DÍA</button>
+        <button class="reward-secondary-btn" id="daily-debug-reset">RESET</button>
+      </div>` : ''}
+      <div class="daily-rewards-scroll"><div class="daily-reward-track">${daysHTML}</div></div>
+      <div class="daily-rewards-help">El Día 6 entrega un sobre + 100 puntos. El Día 7 entrega una carta mítica aleatoria asegurada, guardada primero en Mi Cofre. El calendario oficial usa hora de Firestore (Argentina/UTC−3), no el reloj del dispositivo.</div>`;
+    body.querySelector('#daily-debug-next')?.addEventListener('click', async () => {
+      const btn = body.querySelector('#daily-debug-next');
+      btn.disabled = true;
+      try {
+        const offset = await adminAdvanceDailyRewardDebugDay(state.currentUser.uid);
+        const result = await registerDailyLogin(state.currentUser.uid);
+        state.userProfile = { ...result.profile, dailyRewardDebugOffsetDays: offset };
+        updateAccountUI(state.currentUser);
+        renderRewards();
+        if (result.login?.newCalendarLogin) showDailyLoginRewardModal(result.login);
+      } catch (err) {
+        console.error('No se pudo avanzar el día de debug:', err);
+        showSimpleAlertModal(err.message || 'No se pudo avanzar el día de debug.');
+        renderRewards();
+      }
+    });
+    body.querySelector('#daily-debug-reset')?.addEventListener('click', async () => {
+      const btn = body.querySelector('#daily-debug-reset');
+      btn.disabled = true;
+      try {
+        await adminResetDailyRewardDebug(state.currentUser.uid);
+        const result = await registerDailyLogin(state.currentUser.uid);
+        state.userProfile = { ...result.profile, dailyRewardDebugOffsetDays: 0 };
+        updateAccountUI(state.currentUser);
+        renderRewards();
+      } catch (err) {
+        console.error('No se pudo resetear el reloj de debug:', err);
+        showSimpleAlertModal(err.message || 'No se pudo resetear el reloj de debug.');
+        renderRewards();
+      }
+    });
+
+    body.querySelectorAll('[data-claim-day]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const day = Number(btn.dataset.claimDay);
+        btn.disabled = true;
+        try {
+          state.userProfile = await claimDailyReward(state.currentUser.uid, day);
+          updateAccountUI(state.currentUser);
+          renderRewards();
+        } catch (err) {
+          console.error('No se pudo reclamar premio diario:', err);
+          showSimpleAlertModal(err.message || 'No se pudo reclamar el premio.');
+          renderRewards();
+        }
+      });
+    });
+  }
+  renderRewards();
+}
+
+export function showDailyLoginRewardModal(loginInfo) {
+  if (!loginInfo?.newCalendarLogin) return;
+  injectRewardsStyles();
+  document.getElementById('daily-login-reward-modal')?.remove();
+  const reward = rewardForDay(loginInfo.rewardDay);
+  const modal = document.createElement('div');
+  modal.id = 'daily-login-reward-modal';
+  const canClaim = !!loginInfo.rewardUnlocked && !!reward;
+  modal.innerHTML = `
+    <div class="daily-login-panel">
+      <div class="daily-login-kicker">RECOMPENSA DIARIA</div>
+      <div class="daily-login-title">¡Felicitaciones!</div>
+      <div class="daily-login-copy">Llevás <strong>${loginInfo.streak} logueo${loginInfo.streak === 1 ? '' : 's'} seguido${loginInfo.streak === 1 ? '' : 's'} de 7</strong>.${loginInfo.streakReset ? '<br>Tu racha anterior se cortó y hoy empezaste una nueva.' : ''}</div>
+      ${reward ? `<div class="daily-login-reward"><div class="daily-reward-icons">${reward.rewards.map(rewardIconHTML).join('')}</div><div class="daily-login-reward-text">${rewardDescription(reward)}</div></div>` : ''}
+      <div class="daily-login-copy" id="daily-login-result">${canClaim ? 'Tu premio está listo para reclamar.' : 'Este tier ya había sido cobrado durante esta semana. Podés seguir reconstruyendo la racha.'}</div>
+      <div class="daily-login-actions">
+        ${canClaim ? '<button class="reward-action-btn" id="daily-login-claim">RECLAMAR PREMIO</button>' : ''}
+        <button class="reward-secondary-btn" id="daily-login-view">Ver los 7 días</button>
+        <button class="reward-secondary-btn" id="daily-login-close">Cerrar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelector('#daily-login-close').addEventListener('click', () => modal.remove());
+  modal.querySelector('#daily-login-view').addEventListener('click', () => {
+    modal.remove();
+    const menu = document.getElementById('main-menu-overlay');
+    if (menu) menu.style.display = 'none';
+    showDailyRewardsScreen(() => { if (menu) menu.style.display = ''; });
+  });
+  modal.querySelector('#daily-login-claim')?.addEventListener('click', async () => {
+    const btn = modal.querySelector('#daily-login-claim');
+    const result = modal.querySelector('#daily-login-result');
+    btn.disabled = true;
+    try {
+      state.userProfile = await claimDailyReward(state.currentUser.uid, loginInfo.rewardDay);
+      updateAccountUI(state.currentUser);
+      result.innerHTML = `✅ <strong>¡Premio reclamado!</strong>${reward?.rewards.some(r => r.type === 'standardPack' || r.type === 'guaranteedMythic') ? ' Los items quedaron guardados en Mi Cofre.' : ''}`;
+      btn.remove();
+    } catch (err) {
+      console.error('No se pudo reclamar el premio del login:', err);
+      result.textContent = err.message || 'No se pudo reclamar el premio. Probá de nuevo.';
+      btn.disabled = false;
+    }
+  });
+}
+
 const ENCYCLOPEDIA_TABS = [
   { key: 'criaturas', label: 'Criaturas' },
   { key: 'instantaneos', label: 'Instantáneos' },
@@ -2212,7 +2611,7 @@ function injectStoreStyles() {
 // Como con la Enciclopedia, reusa createCardElement para dibujar cartas (acá con zone=
 // 'encyclopedia', el mismo truco de "zona inerte" para que ningún click dispare una acción
 // de juego real) — nada de esto necesitó inventar una forma nueva de mostrar una carta.
-export function showStoreScreen(onBack) {
+export function showStoreScreen(onBack, options = {}) {
   injectStoreStyles();
   injectEncyclopediaStyles(); // .encyclopedia-back-btn: no depender del orden de navegación
   const overlay = document.createElement('div');
@@ -2274,8 +2673,8 @@ export function showStoreScreen(onBack) {
       <div class="store-section">
         <img class="store-pack-visual" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">
         <div class="store-section-title">Sobre — ${PACK_COST} puntos</div>
-        <div class="store-section-desc">15 cartas (comunes, poco comunes, y una rara garantizada con chance de mítica) + 1 Ficha.</div>
-        <button class="store-buy-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>Comprar sobre</button>
+        <div class="store-section-desc">La compra ya no abre el sobre automáticamente: queda guardado en <strong>Mi Cofre</strong>. Al abrirlo recibís 15 cartas + 1 Ficha.</div>
+        <button class="store-buy-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>Comprar y guardar en Mi Cofre</button>
         <div class="store-error-msg" id="store-buy-error"></div>
       </div>
       <div class="store-section">
@@ -2292,10 +2691,22 @@ export function showStoreScreen(onBack) {
       btn.disabled = true;
       errBox.textContent = '';
       try {
-        const packCards = generatePackCards();
-        const updated = await purchasePack(state.currentUser.uid, PACK_COST, packCards.map(c => c.id));
+        const updated = await purchasePack(state.currentUser.uid, PACK_COST);
         state.userProfile = updated;
-        renderPackRevealView(packCards);
+        updateAccountUI(state.currentUser);
+        body.innerHTML = `
+          <div class="store-section">
+            <div class="store-pack-visual">${PACK_ICON_HTML}</div>
+            <div class="store-section-title">✅ Sobre comprado</div>
+            <div class="store-section-desc">No se abrió todavía: quedó guardado en <strong>Mi Cofre</strong> para que lo abras cuando quieras.</div>
+            <button class="store-buy-btn" id="store-go-chest">Ir a Mi Cofre</button>
+            <button class="store-back-link" id="store-buy-more">← Volver a la Tienda</button>
+          </div>`;
+        body.querySelector('#store-go-chest').addEventListener('click', () => {
+          overlay.remove();
+          showChestScreen(() => showStoreScreen(onBack));
+        });
+        body.querySelector('#store-buy-more').addEventListener('click', renderMainView);
       } catch (err) {
         console.error('No se pudo comprar el sobre:', err);
         errBox.textContent = err.message || 'No se pudo comprar el sobre. Probá de nuevo.';
@@ -2404,6 +2815,9 @@ export function showStoreScreen(onBack) {
   }
 
   renderMainView();
+  if (options.initialView === 'craft' && state.userProfile && (state.userProfile.fichas || 0) >= FICHAS_PER_ENHANCEMENT) {
+    renderCraftPickCardView();
+  }
 }
 
 function injectMyDecksStyles() {
@@ -3146,8 +3560,17 @@ function renderAccountBox(container, user) {
     const adminBtnHTML = user.email === ADMIN_EMAIL
       ? `<button class="main-menu-admin-btn" id="menu-admin">🛠️ Admin</button>`
       : '';
+    const inventory = normalizeInventory(state.userProfile?.inventory);
+    const chestPending = inventory[CHEST_ITEM_KEYS.standardPack] + inventory[CHEST_ITEM_KEYS.guaranteedMythic];
+    const rewardsPending = state.userProfile ? unclaimedUnlockedDays(state.userProfile.dailyRewards).length : 0;
+    const rewardActionsHTML = `
+      <div class="main-menu-account-actions">
+        <button class="main-menu-reward-btn" id="menu-chest">🎁 Mi Cofre${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
+        <button class="main-menu-reward-btn" id="menu-daily-rewards">🔥 Recompensas diarias${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
+      </div>`;
     container.innerHTML = `
       ${adminBtnHTML}
+      ${rewardActionsHTML}
       <div class="main-menu-account-info">
         <img class="main-menu-account-photo" src="${user.photoURL || ''}" alt="" onerror="this.style.visibility='hidden'">
         <div>
@@ -3157,6 +3580,24 @@ function renderAccountBox(container, user) {
         </div>
       </div>
     `;
+    container.querySelector('#menu-chest').addEventListener('click', () => {
+      if (!state.userProfile) return;
+      const mainMenuOverlay = document.getElementById('main-menu-overlay');
+      if (mainMenuOverlay) mainMenuOverlay.style.display = 'none';
+      showChestScreen(() => {
+        if (mainMenuOverlay) mainMenuOverlay.style.display = '';
+        renderAccountBox(container, state.currentUser);
+      });
+    });
+    container.querySelector('#menu-daily-rewards').addEventListener('click', () => {
+      if (!state.userProfile) return;
+      const mainMenuOverlay = document.getElementById('main-menu-overlay');
+      if (mainMenuOverlay) mainMenuOverlay.style.display = 'none';
+      showDailyRewardsScreen(() => {
+        if (mainMenuOverlay) mainMenuOverlay.style.display = '';
+        renderAccountBox(container, state.currentUser);
+      });
+    });
     if (user.email === ADMIN_EMAIL) {
       container.querySelector('#menu-admin').addEventListener('click', () => {
         const mainMenuOverlay = document.getElementById('main-menu-overlay');
@@ -3402,7 +3843,7 @@ export function showAdminPanel(onBack) {
 
   const grantHTML = `
     <div class="admin-section">
-      <div class="admin-section-title">Regalar Puntos o Fichas</div>
+      <div class="admin-section-title">Regalar Puntos, Fichas o Sobres</div>
       <div class="admin-field-row">
         <span class="admin-field-label">Cantidad</span>
         <input type="number" class="admin-field-input" id="grant-amount" value="0" step="1">
@@ -3412,6 +3853,7 @@ export function showAdminPanel(onBack) {
         <select class="admin-field-input" id="grant-currency" style="text-align:left;">
           <option value="points">Puntos</option>
           <option value="fichas">Fichas</option>
+          <option value="standardPacks">Sobres para Mi Cofre</option>
         </select>
       </div>
       <div class="admin-field-row">
@@ -3802,10 +4244,14 @@ export function showAdminPanel(onBack) {
     const currencyField = overlay.querySelector('#grant-currency').value;
     const recipient = overlay.querySelector('#grant-recipient').value;
     const reason = overlay.querySelector('#grant-reason').value.trim();
-    const currencyLabel = currencyField === 'points' ? 'puntos' : 'Fichas';
+    const currencyLabel = currencyField === 'points' ? 'puntos' : currencyField === 'fichas' ? 'Fichas' : 'sobres';
 
     if (!Number.isInteger(amount) || amount === 0) {
       grantErrorBox.textContent = 'La cantidad tiene que ser un número entero distinto de cero.';
+      return;
+    }
+    if (currencyField === 'standardPacks' && amount < 1) {
+      grantErrorBox.textContent = 'Los sobres se pueden regalar, no quitar. Usá una cantidad positiva.';
       return;
     }
     if (!recipient) {
@@ -3821,11 +4267,15 @@ export function showAdminPanel(onBack) {
     sendBtn.disabled = true;
     try {
       if (recipient === 'ALL') {
-        const result = await adminGrantCurrencyToAll(currencyField, amount);
+        const result = currencyField === 'standardPacks'
+          ? await adminGrantPacksToAll(amount)
+          : await adminGrantCurrencyToAll(currencyField, amount);
         grantSuccessBox.textContent = `✅ Aplicado a ${result.succeeded}/${result.total} cuentas${result.failed > 0 ? ` (${result.failed} fallaron)` : ''}.`;
         await logAdminAction({ adminUid: state.currentUser.uid, targetUid: 'ALL', currencyField, amount, reason }).catch(() => {});
       } else {
-        const newValue = await adminGrantCurrency(recipient, currencyField, amount);
+        const newValue = currencyField === 'standardPacks'
+          ? await adminGrantPacks(recipient, amount)
+          : await adminGrantCurrency(recipient, currencyField, amount);
         grantSuccessBox.textContent = `✅ Listo — esa cuenta ahora tiene ${newValue} ${currencyLabel}.`;
         await logAdminAction({ adminUid: state.currentUser.uid, targetUid: recipient, currencyField, amount, reason }).catch(() => {});
       }
@@ -4294,6 +4744,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
 
 export function showMainMenu(onPlay, onMultiplayerMatched) {
   injectMainMenuStyles();
+  injectRewardsStyles();
   // ENTREGA 23.8.5 — el menú principal es singleton DOM. Aunque un flujo viejo o una
   // llamada accidental intente abrirlo dos veces, nunca quedan dos #main-menu-overlay.
   document.querySelectorAll('#main-menu-overlay').forEach(el => el.remove());

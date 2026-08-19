@@ -272,7 +272,9 @@ html.argentinia-mobile :is(
   #deckbuilder-overlay,
   #admin-panel-overlay,
   #multiplayer-overlay,
-  #options-menu-overlay
+  #options-menu-overlay,
+  #chest-overlay,
+  #daily-rewards-overlay
 ) {
   padding:
     max(7px, var(--arg-safe-top))
@@ -1498,3 +1500,52 @@ html.argentinia-mobile .deckbuilder-pool-card-badge {
   font-size: 8px !important;
   line-height: 11px !important;
 }
+
+
+/* ============================================================================
+   ARGENTINIA 23.13.0 — MI COFRE + RECOMPENSAS DIARIAS
+   ============================================================================ */
+html.argentinia-mobile .main-menu-account-actions { gap: 4px !important; }
+html.argentinia-mobile .main-menu-reward-btn { font-size: 9px !important; padding: 4px 7px !important; border-radius: 6px !important; }
+html.argentinia-mobile .main-menu-reward-badge { transform: scale(.9); transform-origin:center; }
+html.argentinia-mobile :is(#chest-overlay,#daily-rewards-overlay) .reward-screen-header { margin-bottom: 7px !important; gap: 8px !important; }
+html.argentinia-mobile :is(#chest-overlay,#daily-rewards-overlay) .reward-screen-title { font-size: clamp(17px,4.8dvh,22px) !important; }
+html.argentinia-mobile :is(#chest-overlay,#daily-rewards-overlay) .reward-screen-subtitle { font-size: 9px !important; max-width: 270px; }
+html.argentinia-mobile .chest-summary { grid-template-columns: repeat(4,minmax(120px,1fr)) !important; gap: 7px !important; margin-bottom: 7px !important; }
+html.argentinia-mobile .chest-item { min-height: 145px !important; padding: 8px !important; border-radius: 11px !important; }
+html.argentinia-mobile .chest-item-icon { min-height: 43px !important; font-size: 36px !important; }
+html.argentinia-mobile .chest-item .coin-icon,
+html.argentinia-mobile .chest-item .ficha-icon { width: 42px !important; height: 42px !important; }
+html.argentinia-mobile .chest-item .reward-pack-icon { width: 48px !important; height: 48px !important; }
+html.argentinia-mobile .chest-item-title { font-size: 11px !important; margin-top: 2px !important; }
+html.argentinia-mobile .chest-item-count { font-size: 19px !important; margin: 1px 0 3px !important; }
+html.argentinia-mobile .chest-item-desc { font-size: 8px !important; min-height: 20px !important; line-height: 1.2 !important; }
+html.argentinia-mobile .reward-action-btn { margin-top: 5px !important; min-width: 88px !important; padding: 5px 9px !important; font-size: 9px !important; }
+html.argentinia-mobile .chest-future { padding: 6px 10px !important; font-size: 8px !important; }
+html.argentinia-mobile .daily-pass-intro { margin-bottom: 4px !important; line-height: 1.2 !important; font-size: 9px !important; }
+html.argentinia-mobile .daily-pass-streak { font-size: 15px !important; margin-bottom: 1px !important; }
+html.argentinia-mobile .daily-pass-reset { font-size: 8px !important; }
+html.argentinia-mobile .daily-reward-track { min-width: 650px !important; grid-template-columns: repeat(7,86px) !important; justify-content:center; gap: 6px !important; padding: 4px 2px 7px !important; }
+html.argentinia-mobile .daily-reward-circle { width: 72px !important; height: 72px !important; border-width: 2px !important; }
+html.argentinia-mobile .daily-reward-label { font-size: 8px !important; }
+html.argentinia-mobile .daily-reward-icons { min-height: 31px !important; max-width: 62px !important; }
+html.argentinia-mobile .daily-reward-icons .coin-icon,
+html.argentinia-mobile .daily-reward-icons .ficha-icon { width: 23px !important; height: 23px !important; }
+html.argentinia-mobile .daily-reward-icons .reward-pack-icon { width: 29px !important; height: 29px !important; }
+html.argentinia-mobile .daily-reward-amount { font-size: 8px !important; }
+html.argentinia-mobile .daily-reward-status { min-height: 13px !important; font-size: 7px !important; }
+html.argentinia-mobile .daily-reward-check { width: 19px !important; height: 19px !important; font-size: 10px !important; }
+html.argentinia-mobile .daily-rewards-help { display:none !important; }
+html.argentinia-mobile .daily-login-panel,
+html.argentinia-mobile .reward-reveal-panel { width: min(650px,92dvw) !important; max-height: 91dvh !important; padding: 12px 17px !important; border-radius: 13px !important; }
+html.argentinia-mobile .daily-login-kicker { font-size: 8px !important; }
+html.argentinia-mobile .daily-login-title { font-size: 20px !important; margin: 3px 0 !important; }
+html.argentinia-mobile .daily-login-copy { font-size: 9px !important; line-height: 1.25 !important; }
+html.argentinia-mobile .daily-login-reward { margin: 7px auto 2px !important; min-height: 43px !important; gap: 7px !important; }
+html.argentinia-mobile .daily-login-reward-text { font-size: 12px !important; }
+html.argentinia-mobile .daily-login-actions { margin-top: 8px !important; gap: 6px !important; }
+html.argentinia-mobile .reward-secondary-btn { padding: 5px 9px !important; font-size: 8px !important; }
+html.argentinia-mobile .reward-reveal-cards { gap: 4px !important; margin: 7px 0 !important; flex-wrap: nowrap !important; overflow-x:auto !important; justify-content:flex-start !important; }
+html.argentinia-mobile .reward-reveal-cards .card { --card-w: 62px !important; flex:0 0 auto !important; }
+html.argentinia-mobile .reward-reveal-panel.mythic-reveal .reward-reveal-cards { justify-content:center !important; }
+html.argentinia-mobile .reward-reveal-panel.mythic-reveal .reward-reveal-cards .card { --card-w: 128px !important; }

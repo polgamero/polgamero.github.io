@@ -431,8 +431,8 @@ export function sleep(ms) {
 // poco comunes + una rara garantizada, con chance de mítica en su lugar + una tierra).
 // Puramente aleatorio del lado del cliente: aceptable para un proyecto de este tamaño sin
 // backend propio, mismo criterio de confianza que ya usa buildRandomDeck de acá arriba —
-// lo que de verdad blinda la compra (que no se pueda pagar dos veces, etc.) es la
-// transacción de Firestore en purchasePack (firebaseClient.js), no esto.
+// La compra y el consumo del sobre sí son transacciones Firestore; el contenido aleatorio
+// sigue generándose en cliente mientras Argentinia no tenga un backend autoritativo propio.
 function pickRandomCard(pool) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -456,6 +456,15 @@ export function generatePackCards() {
   for (let i = 0; i < PACK_LANDS; i++) cards.push(pickRandomCard(lands));
 
   return cards; // 15 cartas (objetos de carta completos, no solo IDs)
+}
+
+// 23.13.0 — premio final del pase semanal. La elección se hace al ABRIR el item de Mi
+// Cofre, no al reclamarlo, para que el cofre pueda guardar una recompensa mítica pendiente
+// sin materializar de antemano qué carta tocará.
+export function generateGuaranteedMythicCard() {
+  const mythics = cardDb.allCards.filter(c => c.rarity === 'Mythic');
+  if (!mythics.length) throw new Error('No hay cartas míticas cargadas.');
+  return pickRandomCard(mythics);
 }
 
 // =========================================================================

@@ -2,11 +2,11 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal } from './ui.js';
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, loadUserProfile, createUserProfile, touchLastSeen, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, loadUserProfile, createUserProfile, registerDailyLogin, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks } from './telemetry.js';
@@ -25,6 +25,26 @@ const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde'
 // todavía podría estar en null aunque YA tenga una cuenta real, y le pisaríamos la
 // colección/puntos existentes con una colección "inicial" nueva por error de timing.
 let userProfileLoadPromise = Promise.resolve();
+
+// 23.13.0 — una sola puerta para registrar el login diario después de tener un perfil real.
+// Firestore hace la operación idempotente, así que un callback duplicado/reload el mismo día
+// no duplica streak ni premio. La UI de claim aparece sólo en el primer login calendario.
+async function processDailyLoginRewards() {
+  if (!state.currentUser || !state.userProfile) return null;
+  try {
+    const result = await registerDailyLogin(state.currentUser.uid);
+    state.userProfile = { ...result.profile, dailyRewardDebugOffsetDays: result.login?.debugOffsetDays || 0 };
+    updateAccountUI(state.currentUser);
+    if (result.login?.newCalendarLogin) {
+      setTimeout(() => showDailyLoginRewardModal(result.login), 0);
+    }
+    return result;
+  } catch (err) {
+    console.error('No se pudo registrar la recompensa diaria:', err);
+    // No bloquea login ni gameplay: el usuario puede seguir jugando y reintentar al volver.
+    return null;
+  }
+}
 
 
 async function mobileSoloYield(stage, detail = null) {
@@ -470,6 +490,7 @@ async function initGame(deckSource) {
       const starterCardIds = state.localDeck.map(c => c.id);
       try {
         state.userProfile = await createUserProfile(state.currentUser.uid, state.currentUser, starterCardIds);
+        await processDailyLoginRewards();
         logMsg("🎁 ¡Se guardó tu colección inicial de 60 cartas en tu cuenta!");
       } catch (err) {
         console.error('No se pudo guardar la colección inicial:', err);
@@ -610,6 +631,7 @@ function promptStarterDeckSelection() {
       const starterDeck = buildRandomDeck(chosenIdentity);
       try {
         state.userProfile = await createUserProfile(state.currentUser.uid, state.currentUser, starterDeck.map(c => c.id));
+        await processDailyLoginRewards();
         logMsg(`🎁 ¡Tu colección inicial (${chosenIdentity.join('/')}) quedó guardada para siempre!`);
       } catch (err) {
         console.error('No se pudo guardar la colección inicial:', err);
@@ -757,10 +779,10 @@ async function boot() {
       // verdad, o la cuenta se acaba de borrar), le mostramos YA el modal de mazo inicial
       // — no hace falta esperar a que apriete "Jugar".
       userProfileLoadPromise = loadUserProfile(state.currentUser.uid)
-        .then(profile => {
+        .then(async profile => {
           state.userProfile = profile;
           if (profile) {
-            touchLastSeen(state.currentUser.uid).catch(() => {});
+            await processDailyLoginRewards();
             // FASE 4, ETAPA 6: si el perfil trae una partida marcada como en curso, se la
             // consultamos a Firestore para confirmar que sigue siendo real antes de
             // ofrecer reconectar (ver offerReconnectIfStillActive).

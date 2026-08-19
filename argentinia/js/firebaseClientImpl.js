@@ -21,9 +21,10 @@ import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX } from './store.js';
+import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, weekKeyFromDate, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
 
 const firebaseConfig = {
@@ -74,7 +75,7 @@ export function onAuthChange(onChange) {
 //     collection: string[],   // IDs de carta, CON repetidos = copias que tenés
 //     decks: [{ id, name, cardIds: string[], isDefault, createdAt }],  // hasta 5, el
 //       primero ("starter") se crea solo con el mazo inicial random (Fase 3)
-//     fichas: number,          // Fase 2: 1 por sobre comprado
+//     fichas: number,          // Fase 2/23.13: +1 por sobre ABIERTO
 //     enhancements: { [cardId]: keyword },  // Fase 2: mejoras permanentes por Ficha
 //     createdAt, lastSeenAt }
 //
@@ -87,7 +88,16 @@ export function onAuthChange(onChange) {
 // primera vez y nunca terminó de armar su colección inicial).
 export async function loadUserProfile(uid) {
   const snap = await getDoc(doc(db, 'users', uid));
-  return snap.exists() ? snap.data() : null;
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  // 23.13.0 — migración lazy/no destructiva: perfiles históricos no tienen Mi Cofre ni
+  // dailyRewards. Los normalizamos en memoria; la primera transacción posterior persiste
+  // los campos nuevos sin tocar colección/mazos/economía existente.
+  return {
+    ...data,
+    inventory: normalizeInventory(data.inventory),
+    dailyRewards: normalizeDailyRewardsState(data.dailyRewards)
+  };
 }
 
 // Se llama UNA sola vez por cuenta, la primera vez que alguien logueado termina de armar
@@ -111,6 +121,10 @@ export async function createUserProfile(uid, profileFields, starterCardIds) {
     ],
     fichas: 0,
     enhancements: {},
+    // 23.13.0 — Mi Cofre e historial del pase semanal. Se crean vacíos; el login actual
+    // se registra inmediatamente después desde main.js para mantener una única ruta.
+    inventory: defaultInventory(),
+    dailyRewards: defaultDailyRewardsState(),
     // Fase 4, Etapa 6: null hasta que se crea/une a una partida multiplayer real —
     // ver setActiveMatchId/clearActiveMatchId, más abajo en este archivo.
     activeMatchId: null,
@@ -158,10 +172,10 @@ export async function awardPoints(uid, delta) {
   });
 }
 
-// Compra un sobre: valida DENTRO de la misma transacción que le alcancen los puntos (si no
-// alcanzan, tira un error y no toca nada), descuenta el costo, y suma las cartas nuevas +
-// 1 Ficha a la colección. Devuelve el perfil ya actualizado.
-export async function purchasePack(uid, cost, newCardIds) {
+// 23.13.0 — Comprar ya NO abre el sobre. La transacción descuenta puntos y deposita una
+// unidad en Mi Cofre; abrirlo es otra acción atómica. Esto unifica sobres comprados,
+// recompensas diarias y futuros regalos/admin bajo el mismo inventario persistente.
+export async function purchasePack(uid, cost) {
   const ref = doc(db, 'users', uid);
   return runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
@@ -169,14 +183,196 @@ export async function purchasePack(uid, cost, newCardIds) {
     const data = snap.data();
     const currentPoints = data.points || 0;
     if (currentPoints < cost) throw new Error('No te alcanzan los puntos para este sobre.');
+    const inventory = normalizeInventory(data.inventory);
+    inventory[CHEST_ITEM_KEYS.standardPack] += 1;
+    const updated = { points: currentPoints - cost, inventory };
+    tx.update(ref, updated);
+    return { ...data, ...updated, dailyRewards: normalizeDailyRewardsState(data.dailyRewards) };
+  });
+}
 
+function validatePackCardIds(cardIds) {
+  if (!Array.isArray(cardIds) || cardIds.length !== 15) throw new Error('El contenido del sobre no es válido.');
+  const cards = cardIds.map(id => cardDb.getById(id));
+  if (cards.some(c => !c)) throw new Error('El sobre contiene una carta desconocida.');
+  if (!cards.some(c => c.rarity === 'Rare' || c.rarity === 'Mythic')) throw new Error('El sobre no contiene su slot raro/mítico.');
+  return cards;
+}
+
+// Consume UN sobre ya existente en Mi Cofre, agrega sus 15 cartas a la colección y entrega
+// la +1 Ficha histórica recién al ABRIR (no al comprar). Así un sobre regalado se comporta
+// exactamente igual que uno comprado.
+export async function openInventoryPack(uid, newCardIds) {
+  validatePackCardIds(newCardIds);
+  const ref = doc(db, 'users', uid);
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
+    const data = snap.data();
+    const inventory = normalizeInventory(data.inventory);
+    if (inventory[CHEST_ITEM_KEYS.standardPack] < 1) throw new Error('No tenés sobres para abrir.');
+    inventory[CHEST_ITEM_KEYS.standardPack] -= 1;
     const updated = {
-      points: currentPoints - cost,
+      inventory,
       collection: [...(data.collection || []), ...newCardIds],
       fichas: (data.fichas || 0) + 1
     };
     tx.update(ref, updated);
-    return { ...data, ...updated };
+    return { ...data, ...updated, dailyRewards: normalizeDailyRewardsState(data.dailyRewards) };
+  });
+}
+
+// Consume la recompensa final del pase y agrega exactamente UNA carta Mythic existente.
+export async function openGuaranteedMythic(uid, cardId) {
+  const card = cardDb.getById(cardId);
+  if (!card || card.rarity !== 'Mythic') throw new Error('La recompensa mítica no es válida.');
+  const ref = doc(db, 'users', uid);
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
+    const data = snap.data();
+    const inventory = normalizeInventory(data.inventory);
+    if (inventory[CHEST_ITEM_KEYS.guaranteedMythic] < 1) throw new Error('No tenés recompensas míticas para abrir.');
+    inventory[CHEST_ITEM_KEYS.guaranteedMythic] -= 1;
+    const updated = { inventory, collection: [...(data.collection || []), cardId] };
+    tx.update(ref, updated);
+    return { ...data, ...updated, dailyRewards: normalizeDailyRewardsState(data.dailyRewards) };
+  });
+}
+
+// ============================================================================
+// 23.13.2 — RELOJ AUTORITATIVO DE RECOMPENSAS.
+// No usamos Date.now() en producción. Hacemos una escritura serverTimestamp() en un doc
+// auxiliar, la releemos desde el servidor y usamos ese instante para calcular el día ART.
+// Security Rules valida además la transición contra request.time, así cambiar el reloj del
+// teléfono/PC no adelanta el pase.
+// ============================================================================
+async function fetchRewardDebugOffsetDays(uid) {
+  if (!(auth.currentUser?.uid === uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL)) return 0;
+  try {
+    const snap = await getDocFromServer(doc(db, 'rewardDebug', uid));
+    return snap.exists() ? Math.max(0, Math.min(30, Math.floor(Number(snap.data().offsetDays) || 0))) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function getAuthoritativeRewardNow(uid) {
+  const ref = doc(db, 'rewardClock', uid);
+  await setDoc(ref, { now: serverTimestamp() });
+  const snap = await getDocFromServer(ref);
+  const raw = snap.exists() ? snap.data().now : null;
+  if (!raw || typeof raw.toDate !== 'function') throw new Error('No se pudo obtener la hora oficial de Recompensas.');
+  const serverNow = raw.toDate();
+  const debugOffsetDays = await fetchRewardDebugOffsetDays(uid);
+  return {
+    serverNow,
+    effectiveNow: new Date(serverNow.getTime() + debugOffsetDays * 86400000),
+    debugOffsetDays
+  };
+}
+
+export async function adminAdvanceDailyRewardDebugDay(uid) {
+  if (!(auth.currentUser?.uid === uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL)) {
+    throw new Error('Esta herramienta de debug es exclusiva del admin.');
+  }
+  const ref = doc(db, 'rewardDebug', uid);
+  return runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    const current = snap.exists() ? Math.max(0, Math.floor(Number(snap.data().offsetDays) || 0)) : 0;
+    const next = Math.min(30, current + 1);
+    tx.set(ref, { offsetDays: next, updatedAt: serverTimestamp() });
+    return next;
+  });
+}
+
+export async function adminResetDailyRewardDebug(uid) {
+  if (!(auth.currentUser?.uid === uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL)) {
+    throw new Error('Esta herramienta de debug es exclusiva del admin.');
+  }
+  await setDoc(doc(db, 'rewardDebug', uid), { offsetDays: 0, updatedAt: serverTimestamp() });
+  return 0;
+}
+
+// Registra como máximo UN login por fecha local. La transacción es idempotente: recargar,
+// abrir dos pestañas o recibir dos callbacks de Auth el mismo día no duplica progreso.
+export async function registerDailyLogin(uid, nowMs = null) {
+  const clock = nowMs == null
+    ? await getAuthoritativeRewardNow(uid)
+    : { serverNow: new Date(nowMs), effectiveNow: new Date(nowMs), debugOffsetDays: 0 };
+  const now = clock.effectiveNow;
+  const ref = doc(db, 'users', uid);
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
+    const data = snap.data();
+
+    // Migración segura 23.13.2: los estados 23.13.0/1 nacieron del reloj local y no se
+    // pueden certificar retroactivamente. El primer login con reloj servidor empieza un
+    // ciclo autoritativo limpio en Día 1; después todas las transiciones quedan verificadas.
+    const sourceDaily = hasAuthoritativeDailyState(data.dailyRewards) ? data.dailyRewards : null;
+    const login = advanceDailyLoginState(sourceDaily, now);
+    const inventory = normalizeInventory(data.inventory);
+
+    if (login.newCalendarLogin) {
+      const persistedDaily = serializeDailyRewardsForFirestore(login.state, now, serverTimestamp());
+      tx.update(ref, { dailyRewards: persistedDaily, lastSeenAt: serverTimestamp() });
+    } else {
+      tx.update(ref, { lastSeenAt: serverTimestamp() });
+    }
+
+    return {
+      profile: { ...data, inventory, dailyRewards: login.state },
+      login: {
+        newCalendarLogin: login.newCalendarLogin,
+        rewardDay: login.rewardDay,
+        rewardUnlocked: login.rewardUnlocked,
+        streakReset: login.streakReset,
+        streak: login.state.streak,
+        weekKey: login.state.weekKey,
+        authoritative: nowMs == null,
+        serverNowMs: clock.serverNow.getTime(),
+        effectiveNowMs: now.getTime(),
+        debugOffsetDays: clock.debugOffsetDays
+      }
+    };
+  });
+}
+
+// Claim separado del login: entrar desbloquea; el botón RECLAMAR acredita. Un tier sólo se
+// acredita una vez por semana y todo (claimedDays + monedas/items) se compromete junto.
+export async function claimDailyReward(uid, day, nowMs = null) {
+  const clock = nowMs == null
+    ? await getAuthoritativeRewardNow(uid)
+    : { serverNow: new Date(nowMs), effectiveNow: new Date(nowMs), debugOffsetDays: 0 };
+  const now = clock.effectiveNow;
+  const reward = rewardForDay(day);
+  if (!reward) throw new Error('Ese premio diario no existe.');
+  const ref = doc(db, 'users', uid);
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
+    const data = snap.data();
+    if (!hasAuthoritativeDailyState(data.dailyRewards)) throw new Error('Volvé a entrar para sincronizar tu pase con el reloj oficial.');
+    const dailyRewards = normalizeDailyRewardsState(data.dailyRewards, now);
+    if (dailyRewards.weekKey !== weekKeyFromDate(now)) throw new Error('Ese ciclo semanal ya terminó. Volvé a entrar para iniciar el nuevo.');
+    if (!isRewardClaimable(dailyRewards, day, now)) throw new Error('Ese premio no está disponible o ya fue reclamado.');
+    const rewarded = applyRewardToProfileData({ ...data, inventory: normalizeInventory(data.inventory) }, reward);
+    const claimedDays = [...dailyRewards.claimedDays, Number(day)];
+    const nextDaily = { ...dailyRewards, claimedDays, lastClaimedDay: Number(day) };
+    const persistedDaily = serializeDailyRewardsForFirestore(nextDaily, now, serverTimestamp());
+    // Claim NO cambia el día de último login: serialize usa hoy por conveniencia, así lo
+    // sobrescribimos con el valor certificado ya existente.
+    persistedDaily.serverLastLoginDay = data.dailyRewards.serverLastLoginDay;
+    persistedDaily.serverWeekStartAt = data.dailyRewards.serverWeekStartAt;
+    const updated = {
+      points: Number(rewarded.points) || 0,
+      fichas: Number(rewarded.fichas) || 0,
+      inventory: normalizeInventory(rewarded.inventory),
+      dailyRewards: persistedDaily
+    };
+    tx.update(ref, updated);
+    return { ...data, ...updated, dailyRewards: nextDaily };
   });
 }
 
@@ -608,6 +804,32 @@ export async function adminGrantCurrencyToAll(currencyField, amount) {
   const results = await Promise.allSettled(
     profiles.map(p => adminGrantCurrency(p.uid, currencyField, amount))
   );
+  const failed = results.filter(r => r.status === 'rejected').length;
+  return { total: profiles.length, succeeded: profiles.length - failed, failed };
+}
+
+
+// 23.13.2 — Regalo de sobres al Cofre. Es inventario, no compra: no descuenta puntos y
+// no abre el sobre. Firestore Rules permite al admin modificar únicamente standardPacks
+// dentro del inventory de otra cuenta; guaranteedMythics queda fuera de este permiso.
+export async function adminGrantPacks(targetUid, amount) {
+  const delta = Math.floor(Number(amount) || 0);
+  if (delta <= 0) throw new Error('La cantidad de sobres debe ser mayor que 0.');
+  const ref = doc(db, 'users', targetUid);
+  return runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('Esa cuenta no existe.');
+    const data = snap.data();
+    const inventory = normalizeInventory(data.inventory);
+    inventory[CHEST_ITEM_KEYS.standardPack] += delta;
+    tx.update(ref, { inventory });
+    return inventory[CHEST_ITEM_KEYS.standardPack];
+  });
+}
+
+export async function adminGrantPacksToAll(amount) {
+  const profiles = await fetchAllUserProfiles();
+  const results = await Promise.allSettled(profiles.map(p => adminGrantPacks(p.uid, amount)));
   const failed = results.filter(r => r.status === 'rejected').length;
   return { total: profiles.length, succeeded: profiles.length - failed, failed };
 }
