@@ -39,11 +39,13 @@ export function buildPackRevealSequence(cards = []) {
 }
 
 export function tierPresentation(tier) {
-  if (tier === 'mythic') return { label: 'MÍTICA', kicker: '✦ ALGO EXTRAORDINARIO ✦', className: 'tier-mythic' };
-  if (tier === 'rare') return { label: 'RARA', kicker: '✦ SLOT RARO ✦', className: 'tier-rare' };
-  if (tier === 'uncommon') return { label: 'POCO COMÚN', kicker: 'La tensión sube…', className: 'tier-uncommon' };
-  if (tier === 'land') return { label: 'TIERRA', kicker: 'Tierra del sobre', className: 'tier-land' };
-  return { label: 'COMÚN', kicker: 'Primero, las comunes', className: 'tier-common' };
+  // 23.13.3 — la rareza gobierna color/halo internamente, pero no se anuncia antes del flip.
+  // La sorpresa la construyen la luz, el ritmo y la propia carta; nunca texto spoiler.
+  if (tier === 'mythic') return { label: '', kicker: '', className: 'tier-mythic' };
+  if (tier === 'rare') return { label: '', kicker: '', className: 'tier-rare' };
+  if (tier === 'uncommon') return { label: '', kicker: '', className: 'tier-uncommon' };
+  if (tier === 'land') return { label: '', kicker: '', className: 'tier-land' };
+  return { label: '', kicker: '', className: 'tier-common' };
 }
 
 function injectStyles() {
@@ -226,7 +228,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     <div class="pack-opening-stage">
       <img class="pack-opening-intro-pack" src="${PACK_IMAGE}" alt="Sobre" onerror="this.outerHTML='<div style=&quot;font-size:72px&quot;>📦</div>'">
       <div class="pack-opening-intro-title">Tu sobre está listo.</div>
-      <div class="pack-opening-intro-copy">15 cartas. Revelá una por una y dejá el slot Rare/Mythic para el final.</div>
+      <div class="pack-opening-intro-copy">15 cartas. Tocá para descubrirlas una por una.</div>
       <div class="pack-opening-kicker" style="display:none"></div>
       <div class="pack-opening-rarity" style="display:none"></div>
       <div class="pack-opening-card-zone" style="display:none">
@@ -244,7 +246,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     </div>
     <div class="pack-opening-summary">
       <div class="pack-opening-summary-title">🎉 Sobre completo</div>
-      <div class="pack-opening-summary-sub">${fichaTotal === null ? '+1 Ficha de mejora' : `+1 Ficha de mejora · Total: ${fichaTotal}`} · La última carta fue tu slot especial.</div>
+      <div class="pack-opening-summary-sub">${fichaTotal === null ? '+1 Ficha de mejora' : `+1 Ficha de mejora · Total: ${fichaTotal}`}.</div>
       <div class="pack-opening-summary-grid"></div>
       <div class="pack-opening-summary-actions"><button class="pack-opening-primary pack-opening-summary-close" type="button">VOLVER A MI COFRE</button></div>
     </div>`;
@@ -301,14 +303,14 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     backFace.replaceChildren(createBackFace().firstElementChild);
     frontFace.innerHTML = '';
     name.textContent = '';
-    kicker.style.display = '';
-    rarity.style.display = '';
+    kicker.style.display = 'none';
+    rarity.style.display = 'none';
     cardZone.style.display = '';
     introPack.style.display = 'none';
     introTitle.style.display = 'none';
     introCopy.style.display = 'none';
     primary.disabled = false;
-    primary.textContent = entry.isFinal ? (entry.tier === 'mythic' ? 'PREPARAR MÍTICA' : 'PREPARAR RARA') : 'REVELAR';
+    primary.textContent = 'REVELAR';
   }
 
   function doReveal() {
@@ -332,8 +334,9 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
       charging = true;
       overlay.classList.add('is-charging');
       primary.disabled = true;
-      primary.textContent = entry.tier === 'mythic' ? '✦ MÍTICA… ✦' : '✦ RARA… ✦';
-      kicker.textContent = entry.tier === 'mythic' ? '✦ EL SOBRE ESTÁ ARDIENDO ✦' : '✦ ALGO ESPECIAL SE ACERCA ✦';
+      primary.textContent = '···';
+      kicker.textContent = '';
+      rarity.textContent = '';
       const delay = entry.tier === 'mythic' ? 1450 : 1050;
       window.setTimeout(() => { if (!closed) doReveal(); }, delay);
       return;
@@ -381,10 +384,10 @@ export function showGuaranteedMythicExperience({ card, renderCard, onClose = nul
   overlay.id = 'pack-opening-overlay';
   overlay.classList.add('tier-mythic');
   overlay.innerHTML = `
-    <div class="pack-opening-topbar"><div class="pack-opening-title">ARGENTINIA · RECOMPENSA MÍTICA</div><div class="pack-opening-progress">Día 7</div></div>
+    <div class="pack-opening-topbar"><div class="pack-opening-title">ARGENTINIA · RECOMPENSA</div><div class="pack-opening-progress">Día 7</div></div>
     <div class="pack-opening-stage">
-      <div class="pack-opening-kicker">✦ RECOMPENSA MÍTICA ASEGURADA ✦</div>
-      <div class="pack-opening-rarity">MÍTICA</div>
+      <div class="pack-opening-kicker"></div>
+      <div class="pack-opening-rarity"></div>
       <div class="pack-opening-card-zone"><div class="pack-opening-halo"></div><div class="pack-opening-card-shell"><div class="pack-opening-face pack-opening-back"></div><div class="pack-opening-face pack-opening-front"></div></div></div>
       <div class="pack-opening-name"></div>
     </div>
@@ -406,13 +409,13 @@ export function showGuaranteedMythicExperience({ card, renderCard, onClose = nul
     charging = true;
     overlay.classList.add('is-charging');
     btn.disabled = true;
-    btn.textContent = '✦ MÍTICA… ✦';
+    btn.textContent = '···';
     window.setTimeout(() => {
       renderFront(front, card, renderCard);
       shell.classList.add('is-revealed');
       overlay.classList.remove('is-charging');
       overlay.classList.add('just-revealed','is-revealed-state');
-      name.textContent = card?.name || 'Carta mítica';
+      name.textContent = card?.name || 'Carta';
       btn.disabled = false;
       btn.textContent = 'VOLVER A MI COFRE';
       revealed = true;

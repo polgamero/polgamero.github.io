@@ -1725,7 +1725,7 @@ function injectRewardsStyles() {
     .chest-item.chest-mythic { border-color:#d9792f; box-shadow:0 0 30px rgba(217,121,47,.14),0 12px 36px rgba(0,0,0,.3); }
     .chest-item-icon { min-height:72px; display:flex; align-items:center; justify-content:center; font-size:54px; }
     .chest-item .coin-icon, .chest-item .ficha-icon { width:68px; height:68px; }
-    .reward-pack-icon { width:72px; height:72px; object-fit:contain; vertical-align:middle; }
+    .reward-pack-icon { width:120px; height:120px; object-fit:contain; vertical-align:middle; }
     .chest-item-title { font-size:16px; font-weight:800; margin-top:7px; }
     .chest-item-count { font-size:28px; font-weight:900; color:#d4af37; margin:4px 0 9px; }
     .chest-mythic .chest-item-count { color:#ef9b52; }
@@ -1789,7 +1789,7 @@ function injectRewardsStyles() {
     .daily-login-copy { color:#c2cdc4; font-size:14px; line-height:1.45; }
     .daily-login-reward { margin:18px auto 6px; display:flex; align-items:center; justify-content:center; gap:12px; min-height:70px; }
     .daily-login-reward .coin-icon, .daily-login-reward .ficha-icon { width:60px; height:60px; }
-    .daily-login-reward .reward-pack-icon { width:72px; height:72px; }
+    .daily-login-reward .reward-pack-icon { width:120px; height:120px; }
     .daily-login-reward-text { font-size:18px; font-weight:900; color:#f0d56a; }
     .daily-login-actions { display:flex; justify-content:center; gap:10px; margin-top:20px; flex-wrap:wrap; }
     .reward-secondary-btn { border:1.5px solid #637067; border-radius:10px; padding:8px 14px; background:rgba(255,255,255,.035); color:#bdc8bf; font-weight:700; cursor:pointer; }
@@ -1956,7 +1956,7 @@ export function showDailyRewardsScreen(onBack) {
     <div class="reward-screen-header">
       <button class="encyclopedia-back-btn" id="daily-rewards-back">← Volver</button>
       <div class="reward-screen-title">Recompensas diarias</div>
-      <div class="reward-screen-subtitle">Ciclo semanal · lunes a domingo</div>
+      <div class="reward-screen-subtitle">Racha de 7 accesos consecutivos</div>
     </div>
     <div class="reward-screen-body" id="daily-rewards-body"></div>`;
   document.body.appendChild(overlay);
@@ -1987,23 +1987,23 @@ export function showDailyRewardsScreen(onBack) {
     body.innerHTML = `
       <div class="daily-pass-intro">
         <div class="daily-pass-streak">🔥 Racha actual: ${daily.streak} / 7</div>
-        <div>Entrá al juego cada día. Si cortás la racha, volvés al Día 1; cada premio concreto puede cobrarse una sola vez dentro de la misma semana.</div>
-        <div class="daily-pass-reset">El tablero se reinicia todos los lunes. ${pending.length ? `Tenés ${pending.length} premio${pending.length === 1 ? '' : 's'} para reclamar.` : 'No tenés premios pendientes.'}</div>
+        <div>Tu primer acceso es siempre el Día 1. Cada día consecutivo avanzás un escalón; si faltás un día, tu próximo acceso vuelve inmediatamente al Día 1.</div>
+        <div class="daily-pass-reset">Después de completar el Día 7, el acceso del día siguiente empieza un ciclo nuevo. ${pending.length ? `Tenés ${pending.length} premio${pending.length === 1 ? '' : 's'} para reclamar.` : 'Tu premio del día aparecerá automáticamente en tu próximo acceso válido.'}</div>
       </div>
       ${isAdminUser() ? `<div class="daily-admin-debug">
-        <div><strong>🧪 ADMIN DEBUG</strong> · reloj oficial + <span id="daily-debug-offset">${Number(state.userProfile?.dailyRewardDebugOffsetDays) || 0}</span> día(s)</div>
+        <div><strong>🧪 ADMIN DEBUG</strong> · reloj oficial + <span id="daily-debug-offset">${Number(state.userProfile?.rewardDebugOffsetDays) || 0}</span> día(s)</div>
         <button class="reward-secondary-btn" id="daily-debug-next">+1 DÍA</button>
         <button class="reward-secondary-btn" id="daily-debug-reset">RESET</button>
       </div>` : ''}
       <div class="daily-rewards-scroll"><div class="daily-reward-track">${daysHTML}</div></div>
-      <div class="daily-rewards-help">El Día 6 entrega un sobre + 100 puntos. El Día 7 entrega una carta mítica aleatoria asegurada, guardada primero en Mi Cofre. El calendario oficial usa hora de Firestore (Argentina/UTC−3), no el reloj del dispositivo.</div>`;
+      <div class="daily-rewards-help">El Día 6 entrega un sobre + 100 puntos. El Día 7 entrega una carta mítica aleatoria asegurada, guardada primero en Mi Cofre. La racha usa la fecha oficial de Firestore en Argentina/UTC−3, no el reloj del dispositivo.</div>`;
     body.querySelector('#daily-debug-next')?.addEventListener('click', async () => {
       const btn = body.querySelector('#daily-debug-next');
       btn.disabled = true;
       try {
         const offset = await adminAdvanceDailyRewardDebugDay(state.currentUser.uid);
         const result = await registerDailyLogin(state.currentUser.uid);
-        state.userProfile = { ...result.profile, dailyRewardDebugOffsetDays: offset };
+        state.userProfile = { ...result.profile, rewardDebugOffsetDays: offset };
         updateAccountUI(state.currentUser);
         renderRewards();
         if (result.login?.newCalendarLogin) showDailyLoginRewardModal(result.login);
@@ -2018,8 +2018,7 @@ export function showDailyRewardsScreen(onBack) {
       btn.disabled = true;
       try {
         await adminResetDailyRewardDebug(state.currentUser.uid);
-        const result = await registerDailyLogin(state.currentUser.uid);
-        state.userProfile = { ...result.profile, dailyRewardDebugOffsetDays: 0 };
+        state.userProfile = { ...state.userProfile, rewardDebugOffsetDays: 0 };
         updateAccountUI(state.currentUser);
         renderRewards();
       } catch (err) {
@@ -2062,7 +2061,7 @@ export function showDailyLoginRewardModal(loginInfo) {
       <div class="daily-login-title">¡Felicitaciones!</div>
       <div class="daily-login-copy">Llevás <strong>${loginInfo.streak} logueo${loginInfo.streak === 1 ? '' : 's'} seguido${loginInfo.streak === 1 ? '' : 's'} de 7</strong>.${loginInfo.streakReset ? '<br>Tu racha anterior se cortó y hoy empezaste una nueva.' : ''}</div>
       ${reward ? `<div class="daily-login-reward"><div class="daily-reward-icons">${reward.rewards.map(rewardIconHTML).join('')}</div><div class="daily-login-reward-text">${rewardDescription(reward)}</div></div>` : ''}
-      <div class="daily-login-copy" id="daily-login-result">${canClaim ? 'Tu premio está listo para reclamar.' : 'Este tier ya había sido cobrado durante esta semana. Podés seguir reconstruyendo la racha.'}</div>
+      <div class="daily-login-copy" id="daily-login-result">${canClaim ? 'Tu premio está listo para reclamar.' : 'Este premio ya fue reclamado en el ciclo activo.'}</div>
       <div class="daily-login-actions">
         ${canClaim ? '<button class="reward-action-btn" id="daily-login-claim">RECLAMAR PREMIO</button>' : ''}
         <button class="reward-secondary-btn" id="daily-login-view">Ver los 7 días</button>
@@ -2696,7 +2695,7 @@ export function showStoreScreen(onBack, options = {}) {
         updateAccountUI(state.currentUser);
         body.innerHTML = `
           <div class="store-section">
-            <div class="store-pack-visual">${PACK_ICON_HTML}</div>
+            <img class="store-pack-visual" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">
             <div class="store-section-title">✅ Sobre comprado</div>
             <div class="store-section-desc">No se abrió todavía: quedó guardado en <strong>Mi Cofre</strong> para que lo abras cuando quieras.</div>
             <button class="store-buy-btn" id="store-go-chest">Ir a Mi Cofre</button>

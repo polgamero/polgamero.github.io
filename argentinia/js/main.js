@@ -33,7 +33,7 @@ async function processDailyLoginRewards() {
   if (!state.currentUser || !state.userProfile) return null;
   try {
     const result = await registerDailyLogin(state.currentUser.uid);
-    state.userProfile = { ...result.profile, dailyRewardDebugOffsetDays: result.login?.debugOffsetDays || 0 };
+    state.userProfile = { ...result.profile, rewardDebugOffsetDays: result.login?.debugOffsetDays || 0 };
     updateAccountUI(state.currentUser);
     if (result.login?.newCalendarLogin) {
       setTimeout(() => showDailyLoginRewardModal(result.login), 0);

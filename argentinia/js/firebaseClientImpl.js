@@ -24,7 +24,7 @@ import {
 import { getFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX } from './store.js';
-import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, weekKeyFromDate, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
+import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, localDateKey, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
 
 const firebaseConfig = {
@@ -241,17 +241,18 @@ export async function openGuaranteedMythic(uid, cardId) {
 }
 
 // ============================================================================
-// 23.13.2 — RELOJ AUTORITATIVO DE RECOMPENSAS.
-// No usamos Date.now() en producción. Hacemos una escritura serverTimestamp() en un doc
-// auxiliar, la releemos desde el servidor y usamos ese instante para calcular el día ART.
-// Security Rules valida además la transición contra request.time, así cambiar el reloj del
-// teléfono/PC no adelanta el pase.
+// 23.13.3 — RELOJ AUTORITATIVO + RACHA MÓVIL DE 7 DÍAS.
+// El reloj real sigue viniendo de serverTimestamp()/getDocFromServer(). El offset QA ya NO
+// vive en rewardDebug/{uid}: queda como campo aislado del propio perfil admin para evitar el
+// permiso fallido observado físicamente en 23.13.2 y reducir una colección/regla extra.
+// Security Rules vuelve a calcular el mismo día desde request.time y autoriza ese campo sólo
+// para la cuenta admin autenticada.
 // ============================================================================
 async function fetchRewardDebugOffsetDays(uid) {
   if (!(auth.currentUser?.uid === uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL)) return 0;
   try {
-    const snap = await getDocFromServer(doc(db, 'rewardDebug', uid));
-    return snap.exists() ? Math.max(0, Math.min(30, Math.floor(Number(snap.data().offsetDays) || 0))) : 0;
+    const snap = await getDocFromServer(doc(db, 'users', uid));
+    return snap.exists() ? Math.max(0, Math.min(30, Math.floor(Number(snap.data().rewardDebugOffsetDays) || 0))) : 0;
   } catch {
     return 0;
   }
@@ -276,12 +277,13 @@ export async function adminAdvanceDailyRewardDebugDay(uid) {
   if (!(auth.currentUser?.uid === uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL)) {
     throw new Error('Esta herramienta de debug es exclusiva del admin.');
   }
-  const ref = doc(db, 'rewardDebug', uid);
+  const ref = doc(db, 'users', uid);
   return runTransaction(db, async tx => {
     const snap = await tx.get(ref);
-    const current = snap.exists() ? Math.max(0, Math.floor(Number(snap.data().offsetDays) || 0)) : 0;
+    if (!snap.exists()) throw new Error('No se encontró tu perfil admin.');
+    const current = Math.max(0, Math.floor(Number(snap.data().rewardDebugOffsetDays) || 0));
     const next = Math.min(30, current + 1);
-    tx.set(ref, { offsetDays: next, updatedAt: serverTimestamp() });
+    tx.update(ref, { rewardDebugOffsetDays: next });
     return next;
   });
 }
@@ -290,12 +292,18 @@ export async function adminResetDailyRewardDebug(uid) {
   if (!(auth.currentUser?.uid === uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL)) {
     throw new Error('Esta herramienta de debug es exclusiva del admin.');
   }
-  await setDoc(doc(db, 'rewardDebug', uid), { offsetDays: 0, updatedAt: serverTimestamp() });
+  const ref = doc(db, 'users', uid);
+  await runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('No se encontró tu perfil admin.');
+    tx.update(ref, { rewardDebugOffsetDays: 0 });
+  });
   return 0;
 }
 
-// Registra como máximo UN login por fecha local. La transacción es idempotente: recargar,
-// abrir dos pestañas o recibir dos callbacks de Auth el mismo día no duplica progreso.
+// Registra como máximo UN login por fecha oficial ART. Primer acceso = Día 1. El día
+// siguiente avanza hasta Día 7; un gap reinicia Día 1; después de Día 7, el siguiente día
+// consecutivo empieza un ciclo nuevo. La operación es idempotente el mismo día.
 export async function registerDailyLogin(uid, nowMs = null) {
   const clock = nowMs == null
     ? await getAuthoritativeRewardNow(uid)
@@ -307,9 +315,8 @@ export async function registerDailyLogin(uid, nowMs = null) {
     if (!snap.exists()) throw new Error('No se encontró tu perfil.');
     const data = snap.data();
 
-    // Migración segura 23.13.2: los estados 23.13.0/1 nacieron del reloj local y no se
-    // pueden certificar retroactivamente. El primer login con reloj servidor empieza un
-    // ciclo autoritativo limpio en Día 1; después todas las transiciones quedan verificadas.
+    // Schema 3: los estados semanales 23.13.0–23.13.2 no representan el nuevo concepto.
+    // El primer acceso 23.13.3 empieza inmediatamente Día 1, sea el día calendario que sea.
     const sourceDaily = hasAuthoritativeDailyState(data.dailyRewards) ? data.dailyRewards : null;
     const login = advanceDailyLoginState(sourceDaily, now);
     const inventory = normalizeInventory(data.inventory);
@@ -328,8 +335,10 @@ export async function registerDailyLogin(uid, nowMs = null) {
         rewardDay: login.rewardDay,
         rewardUnlocked: login.rewardUnlocked,
         streakReset: login.streakReset,
+        cycleRestarted: login.cycleRestarted,
+        cycleCompleted: login.cycleCompleted,
         streak: login.state.streak,
-        weekKey: login.state.weekKey,
+        cycleStartDate: login.state.cycleStartDate,
         authoritative: nowMs == null,
         serverNowMs: clock.serverNow.getTime(),
         effectiveNowMs: now.getTime(),
@@ -339,8 +348,9 @@ export async function registerDailyLogin(uid, nowMs = null) {
   });
 }
 
-// Claim separado del login: entrar desbloquea; el botón RECLAMAR acredita. Un tier sólo se
-// acredita una vez por semana y todo (claimedDays + monedas/items) se compromete junto.
+// Claim separado del login: entrar desbloquea y RECLAMAR acredita. Los premios pertenecen
+// al ciclo activo. Antes de reclamar exigimos que hoy ya haya sido registrado con el reloj
+// oficial; así una llamada manual no puede cobrar un ciclo viejo después de cortar la racha.
 export async function claimDailyReward(uid, day, nowMs = null) {
   const clock = nowMs == null
     ? await getAuthoritativeRewardNow(uid)
@@ -353,18 +363,16 @@ export async function claimDailyReward(uid, day, nowMs = null) {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('No se encontró tu perfil.');
     const data = snap.data();
-    if (!hasAuthoritativeDailyState(data.dailyRewards)) throw new Error('Volvé a entrar para sincronizar tu pase con el reloj oficial.');
+    if (!hasAuthoritativeDailyState(data.dailyRewards)) throw new Error('Volvé a entrar para sincronizar tu racha con el reloj oficial.');
     const dailyRewards = normalizeDailyRewardsState(data.dailyRewards, now);
-    if (dailyRewards.weekKey !== weekKeyFromDate(now)) throw new Error('Ese ciclo semanal ya terminó. Volvé a entrar para iniciar el nuevo.');
+    if (dailyRewards.lastLoginDate !== localDateKey(now)) throw new Error('Volvé a entrar hoy para activar tu recompensa diaria.');
     if (!isRewardClaimable(dailyRewards, day, now)) throw new Error('Ese premio no está disponible o ya fue reclamado.');
     const rewarded = applyRewardToProfileData({ ...data, inventory: normalizeInventory(data.inventory) }, reward);
     const claimedDays = [...dailyRewards.claimedDays, Number(day)];
     const nextDaily = { ...dailyRewards, claimedDays, lastClaimedDay: Number(day) };
     const persistedDaily = serializeDailyRewardsForFirestore(nextDaily, now, serverTimestamp());
-    // Claim NO cambia el día de último login: serialize usa hoy por conveniencia, así lo
-    // sobrescribimos con el valor certificado ya existente.
     persistedDaily.serverLastLoginDay = data.dailyRewards.serverLastLoginDay;
-    persistedDaily.serverWeekStartAt = data.dailyRewards.serverWeekStartAt;
+    persistedDaily.serverCycleStartDay = data.dailyRewards.serverCycleStartDay;
     const updated = {
       points: Number(rewarded.points) || 0,
       fichas: Number(rewarded.fichas) || 0,

@@ -1516,7 +1516,7 @@ html.argentinia-mobile .chest-item { min-height: 145px !important; padding: 8px 
 html.argentinia-mobile .chest-item-icon { min-height: 43px !important; font-size: 36px !important; }
 html.argentinia-mobile .chest-item .coin-icon,
 html.argentinia-mobile .chest-item .ficha-icon { width: 42px !important; height: 42px !important; }
-html.argentinia-mobile .chest-item .reward-pack-icon { width: 48px !important; height: 48px !important; }
+html.argentinia-mobile .chest-item .reward-pack-icon { width: 120px !important; height: 120px !important; }
 html.argentinia-mobile .chest-item-title { font-size: 11px !important; margin-top: 2px !important; }
 html.argentinia-mobile .chest-item-count { font-size: 19px !important; margin: 1px 0 3px !important; }
 html.argentinia-mobile .chest-item-desc { font-size: 8px !important; min-height: 20px !important; line-height: 1.2 !important; }

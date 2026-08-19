@@ -1,12 +1,12 @@
-// js/rewards.js — Entrega 23.13.2
-// Dominio puro para recompensas semanales y Mi Cofre. No toca DOM ni Firebase.
-// 23.13.2: el calendario deja de depender del reloj/dispositivo. El cliente recibe un
-// instante autoritativo de Firestore y todas estas funciones lo interpretan en la zona
-// oficial de Argentinia (UTC-3). Las Security Rules vuelven a validar la misma fecha.
+// js/rewards.js — Entrega 23.13.3
+// Dominio puro para racha de 7 accesos consecutivos + Mi Cofre. No toca DOM ni Firebase.
+// 23.13.3 abandona el viejo tablero lunes-domingo: cualquier primer acceso es Día 1.
+// Cada fecha oficial consecutiva avanza un tier; faltar un día reinicia inmediatamente en
+// Día 1; después de completar Día 7, el acceso consecutivo siguiente inicia un nuevo ciclo.
+// El instante efectivo sigue viniendo de Firestore y se interpreta en ART/UTC-3.
 
-
-export const REWARD_TIMEZONE_OFFSET_MINUTES = -180; // Argentina/ART fija para el pase.
-export const DAILY_REWARDS_SCHEMA_VERSION = 2;
+export const REWARD_TIMEZONE_OFFSET_MINUTES = -180;
+export const DAILY_REWARDS_SCHEMA_VERSION = 3;
 
 function timestampLikeToDate(value) {
   if (!value) return null;
@@ -35,7 +35,7 @@ function officialParts(date = new Date()) {
     year: shifted.getUTCFullYear(),
     month: shifted.getUTCMonth() + 1,
     day: shifted.getUTCDate(),
-    dayOfWeek: shifted.getUTCDay() === 0 ? 7 : shifted.getUTCDay() // lunes=1 ... domingo=7
+    dayOfWeek: shifted.getUTCDay() === 0 ? 7 : shifted.getUTCDay()
   };
 }
 
@@ -44,6 +44,7 @@ export function rewardDayStamp(date = new Date()) {
   return new Date(Date.UTC(p.year, p.month - 1, p.day, 0, 0, 0, 0));
 }
 
+// Compatibilidad histórica/documental: ya NO define un ciclo de recompensas desde 23.13.3.
 export function rewardWeekStartStamp(date = new Date()) {
   const p = officialParts(date);
   const day = rewardDayStamp(date);
@@ -51,25 +52,42 @@ export function rewardWeekStartStamp(date = new Date()) {
   return day;
 }
 
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+export function localDateKey(date = new Date()) {
+  const p = officialParts(date);
+  return `${p.year}-${pad2(p.month)}-${pad2(p.day)}`;
+}
+
+// Compatibilidad histórica. No participa de la racha desde schema 3.
+export function weekKeyFromDate(date = new Date()) {
+  const monday = rewardWeekStartStamp(date);
+  return `${monday.getUTCFullYear()}-${pad2(monday.getUTCMonth() + 1)}-${pad2(monday.getUTCDate())}`;
+}
+
+function dateKeyToUtcMs(key) {
+  const [y, m, d] = String(key || '').split('-').map(Number);
+  if (!y || !m || !d) return NaN;
+  return Date.UTC(y, m - 1, d);
+}
+
+function dateKeyToStamp(key) {
+  const ms = dateKeyToUtcMs(key);
+  return Number.isFinite(ms) ? new Date(ms) : null;
+}
+
+export function calendarDayDiff(fromKey, toKey) {
+  const a = dateKeyToUtcMs(fromKey);
+  const b = dateKeyToUtcMs(toKey);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return NaN;
+  return Math.round((b - a) / 86400000);
+}
+
 export function hasAuthoritativeDailyState(raw) {
   return !!(raw && typeof raw === 'object'
     && Number(raw.schemaVersion) >= DAILY_REWARDS_SCHEMA_VERSION
-    && timestampLikeToDate(raw.serverWeekStartAt)
+    && timestampLikeToDate(raw.serverCycleStartDay)
     && timestampLikeToDate(raw.serverLastLoginDay));
-}
-
-export function serializeDailyRewardsForFirestore(state, authoritativeNow, serverTimestampValue) {
-  const normalized = normalizeDailyRewardsState(state, authoritativeNow);
-  return {
-    schemaVersion: DAILY_REWARDS_SCHEMA_VERSION,
-    serverWeekStartAt: rewardWeekStartStamp(authoritativeNow),
-    serverLastLoginDay: rewardDayStamp(authoritativeNow),
-    serverUpdatedAt: serverTimestampValue,
-    streak: normalized.streak,
-    unlockedDays: normalized.unlockedDays.slice(),
-    claimedDays: normalized.claimedDays.slice(),
-    lastClaimedDay: Number.isInteger(Number(normalized.lastClaimedDay)) ? Number(normalized.lastClaimedDay) : null
-  };
 }
 
 export const CHEST_ITEM_KEYS = Object.freeze({
@@ -77,9 +95,6 @@ export const CHEST_ITEM_KEYS = Object.freeze({
   guaranteedMythic: 'guaranteedMythics'
 });
 
-// Balance inicial acordado para el pase de 7 logins consecutivos. Está deliberadamente
-// concentrado al final: los primeros días dan progreso visible sin regalar un sobre entero,
-// el día 6 ya se siente fuerte y el día 7 tiene un premio único de colección.
 export const DAILY_REWARD_SCHEDULE = Object.freeze([
   { day: 1, rewards: Object.freeze([{ type: 'points', amount: 30 }]) },
   { day: 2, rewards: Object.freeze([{ type: 'points', amount: 30 }]) },
@@ -108,43 +123,16 @@ export function normalizeInventory(raw) {
   };
 }
 
-function pad2(n) { return String(n).padStart(2, '0'); }
-
-// Mantiene el nombre histórico por compatibilidad, pero desde 23.13.2 significa
-// "fecha oficial de Recompensas" (ART/UTC-3), NO la fecha local del dispositivo.
-export function localDateKey(date = new Date()) {
-  const p = officialParts(date);
-  return `${p.year}-${pad2(p.month)}-${pad2(p.day)}`;
-}
-
-export function weekKeyFromDate(date = new Date()) {
-  const monday = rewardWeekStartStamp(date);
-  return `${monday.getUTCFullYear()}-${pad2(monday.getUTCMonth() + 1)}-${pad2(monday.getUTCDate())}`;
-}
-
-function dateKeyToUtcMs(key) {
-  const [y, m, d] = String(key || '').split('-').map(Number);
-  if (!y || !m || !d) return NaN;
-  return Date.UTC(y, m - 1, d);
-}
-
-export function calendarDayDiff(fromKey, toKey) {
-  const a = dateKeyToUtcMs(fromKey);
-  const b = dateKeyToUtcMs(toKey);
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return NaN;
-  return Math.round((b - a) / 86400000);
-}
-
 export function defaultDailyRewardsState(date = new Date()) {
   return {
-    weekKey: weekKeyFromDate(date),
+    cycleStartDate: null,
     lastLoginDate: null,
     streak: 0,
     unlockedDays: [],
     claimedDays: [],
     lastClaimedDay: null,
     schemaVersion: 0,
-    serverWeekStartAt: null,
+    serverCycleStartDay: null,
     serverLastLoginDay: null,
     serverUpdatedAt: null
   };
@@ -160,61 +148,110 @@ export function normalizeDailyRewardsState(raw, date = new Date()) {
     ? [...new Set(raw.claimedDays.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 7))]
     : [];
 
-  const serverWeek = timestampLikeToDate(raw.serverWeekStartAt);
+  const serverCycle = timestampLikeToDate(raw.serverCycleStartDay);
   const serverLast = timestampLikeToDate(raw.serverLastLoginDay);
-  const derivedWeekKey = serverWeek
-    ? `${serverWeek.getUTCFullYear()}-${pad2(serverWeek.getUTCMonth()+1)}-${pad2(serverWeek.getUTCDate())}`
+  const derivedCycleKey = serverCycle
+    ? `${serverCycle.getUTCFullYear()}-${pad2(serverCycle.getUTCMonth()+1)}-${pad2(serverCycle.getUTCDate())}`
     : null;
   const derivedLastKey = serverLast
     ? `${serverLast.getUTCFullYear()}-${pad2(serverLast.getUTCMonth()+1)}-${pad2(serverLast.getUTCDate())}`
     : null;
 
   return {
-    weekKey: derivedWeekKey || (typeof raw.weekKey === 'string' && raw.weekKey ? raw.weekKey : base.weekKey),
+    cycleStartDate: derivedCycleKey || (typeof raw.cycleStartDate === 'string' ? raw.cycleStartDate : null),
     lastLoginDate: derivedLastKey || (typeof raw.lastLoginDate === 'string' ? raw.lastLoginDate : null),
     streak: Math.max(0, Math.min(7, Math.floor(Number(raw.streak) || 0))),
     unlockedDays,
     claimedDays,
     lastClaimedDay: Number.isInteger(Number(raw.lastClaimedDay)) ? Number(raw.lastClaimedDay) : null,
     schemaVersion: Math.max(0, Math.floor(Number(raw.schemaVersion) || 0)),
-    serverWeekStartAt: raw.serverWeekStartAt || null,
+    serverCycleStartDay: raw.serverCycleStartDay || null,
     serverLastLoginDay: raw.serverLastLoginDay || null,
     serverUpdatedAt: raw.serverUpdatedAt || null
   };
 }
 
-// Registra un login de calendario. Un tier concreto sólo puede desbloquearse una vez por
-// semana aunque una racha se corte y vuelva a empezar: evita farmear "día 1" adrede.
+export function serializeDailyRewardsForFirestore(state, authoritativeNow, serverTimestampValue) {
+  const normalized = normalizeDailyRewardsState(state, authoritativeNow);
+  const cycleStart = dateKeyToStamp(normalized.cycleStartDate) || rewardDayStamp(authoritativeNow);
+  return {
+    schemaVersion: DAILY_REWARDS_SCHEMA_VERSION,
+    serverCycleStartDay: cycleStart,
+    serverLastLoginDay: rewardDayStamp(authoritativeNow),
+    serverUpdatedAt: serverTimestampValue,
+    streak: normalized.streak,
+    unlockedDays: normalized.unlockedDays.slice(),
+    claimedDays: normalized.claimedDays.slice(),
+    lastClaimedDay: Number.isInteger(Number(normalized.lastClaimedDay)) ? Number(normalized.lastClaimedDay) : null
+  };
+}
+
+// Cualquier primer acceso es Día 1. El mismo día es idempotente. El día siguiente avanza
+// mientras la racha esté en 1..6. Un gap, un reloj que retrocede (QA) o el día siguiente a
+// completar Día 7 inicia un ciclo nuevo en Día 1 con premios nuevamente disponibles.
 export function advanceDailyLoginState(raw, date = new Date()) {
   const todayKey = localDateKey(date);
-  const currentWeekKey = weekKeyFromDate(date);
-  let state = normalizeDailyRewardsState(raw, date);
-
-  if (state.weekKey !== currentWeekKey) {
-    state = defaultDailyRewardsState(date);
-  }
+  const state = normalizeDailyRewardsState(raw, date);
 
   if (state.lastLoginDate === todayKey) {
-    return { state, newCalendarLogin: false, rewardDay: null, rewardUnlocked: false, streakReset: false };
+    return {
+      state,
+      newCalendarLogin: false,
+      rewardDay: null,
+      rewardUnlocked: false,
+      streakReset: false,
+      cycleRestarted: false,
+      cycleCompleted: false
+    };
   }
 
   const diff = state.lastLoginDate ? calendarDayDiff(state.lastLoginDate, todayKey) : NaN;
   const consecutive = diff === 1;
-  const nextStreak = state.lastLoginDate && consecutive ? Math.min(7, state.streak + 1) : 1;
+  const canContinue = !!state.lastLoginDate && consecutive && state.streak >= 1 && state.streak < 7;
+  const cycleCompleted = !!state.lastLoginDate && consecutive && state.streak >= 7;
   const streakReset = !!state.lastLoginDate && !consecutive;
-  const rewardDay = nextStreak;
-  const rewardUnlocked = !state.unlockedDays.includes(rewardDay);
-  const unlockedDays = rewardUnlocked
-    ? [...state.unlockedDays, rewardDay]
-    : state.unlockedDays.slice();
+
+  if (canContinue) {
+    const nextStreak = state.streak + 1;
+    const unlockedDays = state.unlockedDays.includes(nextStreak)
+      ? state.unlockedDays.slice()
+      : [...state.unlockedDays, nextStreak];
+    const next = {
+      ...state,
+      cycleStartDate: state.cycleStartDate || state.lastLoginDate,
+      lastLoginDate: todayKey,
+      streak: nextStreak,
+      unlockedDays
+    };
+    return {
+      state: next,
+      newCalendarLogin: true,
+      rewardDay: nextStreak,
+      rewardUnlocked: true,
+      streakReset: false,
+      cycleRestarted: false,
+      cycleCompleted: false
+    };
+  }
 
   const next = {
-    ...state,
+    ...defaultDailyRewardsState(date),
+    cycleStartDate: todayKey,
     lastLoginDate: todayKey,
-    streak: nextStreak,
-    unlockedDays
+    streak: 1,
+    unlockedDays: [1],
+    claimedDays: [],
+    lastClaimedDay: null
   };
-  return { state: next, newCalendarLogin: true, rewardDay, rewardUnlocked, streakReset };
+  return {
+    state: next,
+    newCalendarLogin: true,
+    rewardDay: 1,
+    rewardUnlocked: true,
+    streakReset,
+    cycleRestarted: !!state.lastLoginDate,
+    cycleCompleted
+  };
 }
 
 export function rewardForDay(day) {
