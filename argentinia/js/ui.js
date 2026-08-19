@@ -45,6 +45,8 @@ import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_VERSION_SHORT } from '.
 import { getPriorityUxCopy, getEffectivePriorityActivity, canPriorityClockRun, PRIORITY_CLOCK_DURATION_MS } from './priorityUX.js';
 import { DAILY_REWARD_SCHEDULE, normalizeInventory, normalizeDailyRewardsState, unclaimedUnlockedDays, CHEST_ITEM_KEYS, rewardForDay } from './rewards.js';
 import { showPackOpeningExperience, showGuaranteedMythicExperience } from './packOpening.js';
+import { applyCardZoom } from './cardZoom.js';
+import { announcePhaseTransition } from './phaseBanner.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -2197,8 +2199,7 @@ function browserArchetypeFiltersHTML(prefix) {
 }
 
 function setBrowserCardZoom(overlay, value) {
-  const numeric = Math.max(8, Math.min(50, Number(value) || 12));
-  overlay.style.setProperty('--card-w', `${numeric}vh`);
+  return applyCardZoom(overlay, value, { cssVar: '--card-w', unit: 'vh', min: 8, max: 50, fallback: 12 });
 }
 
 function debounce(fn, wait = 120) {
@@ -5747,6 +5748,10 @@ function renderPhaseProgress() {
     combatDot.title = label;
     combatDot.setAttribute('aria-label', label);
   }
+
+  // 23.13.7 — banner de macrofase: deduplicado por turno/jugador/fase en el módulo.
+  // Un rerender por prioridad o por un hover nunca vuelve a disparar el aviso.
+  announcePhaseTransition({ phase: state.phase, turnCount: state.turnCount, activePlayer: state.activePlayer });
 }
 export function render() {
   state.localHP = Math.max(0, Math.min(20, state.localHP));

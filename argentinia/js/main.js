@@ -3089,9 +3089,18 @@ export function performSacrificeBatch(items, isLocal) {
 // permanentes con `card.staticEffect` y devuelve los que aplican a esta criatura.
 // No usan la pila: mientras el Encantamiento esté en el campo, el efecto está activo.
 export function getStaticTeamModifiers(itemObj) {
-  const isLocal = state.localCombat.includes(itemObj);
-  const ownSupport = isLocal ? state.localSupport : state.rivalSupport;
-  const oppSupport = isLocal ? state.rivalSupport : state.localSupport;
+  // 23.13.7 — ANTHEM SCOPE HARDENING.
+  // Un efecto estático de battlefield (team_buff/team_keyword) sólo puede modificar un
+  // permanente que esté REALMENTE en una zona de criaturas del battlefield. Antes se
+  // infería "rival" para cualquier objeto que no estuviera en localCombat; eso hacía que
+  // una carta de criatura renderizada en la MANO local consultara rivalSupport y pudiera
+  // heredar, por ejemplo, el +1/+0 de Bandera de la Cuadra del Tano.
+  const inLocalBattlefield = state.localCombat.includes(itemObj);
+  const inRivalBattlefield = state.rivalCombat.includes(itemObj);
+  if (!inLocalBattlefield && !inRivalBattlefield) return [];
+
+  const ownSupport = inLocalBattlefield ? state.localSupport : state.rivalSupport;
+  const oppSupport = inLocalBattlefield ? state.rivalSupport : state.localSupport;
   const mods = [];
   ownSupport.forEach(s => {
     const eff = s.card.staticEffect;

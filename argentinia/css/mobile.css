@@ -1549,3 +1549,33 @@ html.argentinia-mobile .reward-reveal-cards { gap: 4px !important; margin: 7px 0
 html.argentinia-mobile .reward-reveal-cards .card { --card-w: 62px !important; flex:0 0 auto !important; }
 html.argentinia-mobile .reward-reveal-panel.mythic-reveal .reward-reveal-cards { justify-content:center !important; }
 html.argentinia-mobile .reward-reveal-panel.mythic-reveal .reward-reveal-cards .card { --card-w: 128px !important; }
+
+/* 23.13.7 — las tres macrofases importantes conservan tamaño/identidad también en teléfono. */
+html.argentinia-mobile .phase-dot.phase-dot-major {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+  flex: 0 0 18px !important;
+  font-size: 9px !important;
+  color:#f4e9c6 !important;
+}
+html.argentinia-mobile .phase-dot.phase-dot-major.active {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
+  min-height: 22px !important;
+  max-width: 22px !important;
+  max-height: 22px !important;
+  flex-basis: 22px !important;
+  font-size: 11px !important;
+  color:#181206 !important;
+}
+html.argentinia-mobile .phase-dot.phase-dot-combat > span { font-size:10px !important; }
+html.argentinia-mobile .phase-indicator { gap:5px !important; min-height:24px !important; }
+html.argentinia-mobile .phase-banner { width:86%; gap:8px; }
+html.argentinia-mobile .phase-banner-label { font-size:clamp(18px,5.2vw,34px); letter-spacing:.07em; }
+html.argentinia-mobile .phase-banner.major .phase-banner-label { font-size:clamp(24px,6.8vw,42px); }
+html.argentinia-mobile .phase-banner-rule { max-width:100px; }

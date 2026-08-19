@@ -1823,3 +1823,118 @@ html, body {
   pointer-events: none !important;
   overflow: hidden !important;
 }
+
+/* ================================================================
+   ENTREGA 23.13.7 — PHASE READABILITY / MACRO PIPS + BOARD BANNER
+   ================================================================ */
+#board { position: relative; }
+
+/* Main 1 / Combate / Main 2 tienen jerarquía propia: el doble o más del diámetro normal. */
+.phase-dot.phase-dot-major {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  flex: 0 0 20px;
+  border-width: 1.5px;
+  color: #f4e9c6;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 950;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,.9);
+  background: radial-gradient(circle at 36% 32%, #454d58 0 18%, #20262e 68%);
+}
+.phase-dot.phase-dot-major > span { pointer-events:none; transform:translateY(-.2px); }
+.phase-dot.phase-dot-combat > span { font-size: 11px; }
+.phase-dot.phase-dot-major.completed {
+  color:#f7e6a5;
+  background:radial-gradient(circle at 36% 32%,rgba(224,190,78,.62),rgba(86,69,27,.72) 70%);
+  border-color:rgba(240,208,96,.82);
+}
+.phase-dot.phase-dot-major.active {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  flex-basis: 24px;
+  color:#181206;
+  font-size:12px;
+  background:radial-gradient(circle at 36% 28%,#fff2a4 0 16%,#e1b83d 50%,#8b6415 100%);
+  border-color:#fff6c9;
+  box-shadow:0 0 7px rgba(255,229,117,.95),0 0 18px rgba(212,175,55,.72),inset 0 0 5px rgba(255,255,255,.78);
+}
+.phase-dot.phase-dot-major.phase-dot-combat.active {
+  background:radial-gradient(circle at 36% 28%,#ffd2a2 0 14%,#e88635 52%,#843513 100%);
+  border-color:#ffe2bf;
+  box-shadow:0 0 8px rgba(255,173,91,.95),0 0 20px rgba(224,102,32,.7),inset 0 0 5px rgba(255,255,255,.7);
+}
+
+#phase-banner-layer {
+  position:absolute;
+  inset:0;
+  z-index:6900;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  pointer-events:none;
+  isolation:isolate;
+}
+.phase-banner {
+  --phase-accent:#7fb8e8;
+  --phase-accent-hot:#dcefff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+  width:min(78%,760px);
+  opacity:0;
+  transform:translate3d(-110vw,0,0) skewX(-7deg);
+  filter:drop-shadow(0 10px 22px rgba(0,0,0,.52));
+  will-change:transform,opacity;
+}
+.phase-banner.major { --phase-accent:#e1b83d; --phase-accent-hot:#fff0a9; width:min(82%,820px); }
+.phase-banner.combat { --phase-accent:#df7134; --phase-accent-hot:#ffd0a5; }
+.phase-banner-rule {
+  height:2px;
+  flex:1 1 120px;
+  max-width:220px;
+  background:linear-gradient(90deg,transparent,var(--phase-accent),var(--phase-accent-hot));
+  box-shadow:0 0 8px color-mix(in srgb,var(--phase-accent) 75%,transparent);
+}
+.phase-banner-rule:last-child { transform:scaleX(-1); }
+.phase-banner-label {
+  position:relative;
+  padding:.16em .34em .2em;
+  font-family:Georgia,'Times New Roman',serif;
+  font-size:clamp(26px,4.3vw,62px);
+  font-weight:900;
+  letter-spacing:.09em;
+  line-height:1;
+  white-space:nowrap;
+  color:var(--phase-accent-hot);
+  background:linear-gradient(180deg,#fff 0%,var(--phase-accent-hot) 28%,var(--phase-accent) 65%,#7c6630 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  text-shadow:none;
+  filter:drop-shadow(0 2px 0 rgba(0,0,0,.85)) drop-shadow(0 0 12px color-mix(in srgb,var(--phase-accent) 50%,transparent));
+}
+.phase-banner.major .phase-banner-label { font-size:clamp(34px,5.2vw,74px); }
+.phase-banner.run { animation:arg-phase-banner-sweep 3.05s linear both; }
+.phase-banner.major.run { animation-duration:3.3s; }
+@keyframes arg-phase-banner-sweep {
+  0%   { opacity:0; transform:translate3d(-110vw,0,0) skewX(-7deg) scale(.94); }
+  13%  { opacity:1; }
+  22%  { opacity:1; transform:translate3d(0,0,0) skewX(0) scale(1); }
+  76%  { opacity:1; transform:translate3d(0,0,0) skewX(0) scale(1); }
+  88%  { opacity:1; }
+  100% { opacity:0; transform:translate3d(110vw,0,0) skewX(7deg) scale(.96); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .phase-banner.run { animation:arg-phase-banner-reduced 1.55s ease both; }
+  @keyframes arg-phase-banner-reduced { 0%,100%{opacity:0} 15%,85%{opacity:1;transform:none} }
+}

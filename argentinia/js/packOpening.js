@@ -1,4 +1,5 @@
 import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS } from './store.js';
+import { bindCardZoomControl } from './cardZoom.js';
 
 // 23.13.1 — Presentación pura. Este módulo NO compra, NO consume sobres y NO escribe
 // Firestore. La economía debe haber terminado antes de invocarlo. Así cerrar/saltar la
@@ -127,19 +128,47 @@ function injectStyles() {
     .pack-opening-intro-copy { color:#aeb9af; max-width:560px; text-align:center; font-size:13px; line-height:1.4; }
     @keyframes pack-float { to { transform:translateY(-7px) rotate(1deg); } }
 
-    .pack-opening-summary { position:absolute; inset:0; z-index:3; display:none; flex-direction:column; background:linear-gradient(180deg,rgba(8,13,9,.98),rgba(4,8,5,.99)); padding:18px 24px; box-sizing:border-box; overflow:auto; }
+    .pack-opening-summary {
+      --pack-summary-card-w:108px;
+      position:absolute; inset:0; z-index:3; display:none; flex-direction:column;
+      background:linear-gradient(180deg,rgba(8,13,9,.985),rgba(4,8,5,.995));
+      padding:14px 20px 12px; box-sizing:border-box; overflow:hidden;
+    }
     #pack-opening-overlay.show-summary .pack-opening-summary { display:flex; }
     #pack-opening-overlay.show-summary > .pack-opening-topbar,
     #pack-opening-overlay.show-summary > .pack-opening-stage,
     #pack-opening-overlay.show-summary > .pack-opening-controls { visibility:hidden; }
     .pack-opening-summary-title { text-align:center; font-size:clamp(20px,3vw,32px); font-weight:950; color:#f0e0b0; }
-    .pack-opening-summary-sub { text-align:center; color:#9ead9f; font-size:12px; margin:4px 0 12px; }
-    .pack-opening-summary-grid { flex:1; min-height:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(72px,1fr)); gap:10px; max-width:1100px; width:100%; margin:0 auto; align-content:start; align-items:start; }
-    .pack-opening-summary-card { display:flex; justify-content:center; align-items:flex-start; min-width:0; min-height:0; }
-    .pack-opening-summary-card .card { --card-w:clamp(68px,7vw,105px); width:var(--card-w) !important; height:auto !important; aspect-ratio:5/7 !important; align-self:flex-start !important; flex:0 0 auto !important; transform:none !important; }
+    .pack-opening-summary-sub { text-align:center; color:#9ead9f; font-size:12px; margin:3px 0 7px; }
+    .pack-opening-summary-toolbar {
+      display:flex; justify-content:center; align-items:center; gap:9px; flex:0 0 auto;
+      width:min(560px,96%); margin:0 auto 8px; padding:6px 11px;
+      border:1px solid rgba(212,175,55,.34); border-radius:10px; background:rgba(8,16,10,.74);
+    }
+    .pack-opening-summary-toolbar .zoom-icon { font-size:13px; }
+    .pack-opening-summary-toolbar input[type="range"] { width:min(360px,68vw); accent-color:#d4af37; cursor:pointer; }
+    .pack-opening-summary-toolbar .zoom-value { min-width:34px; color:#f0e0b0; font-size:10px; font-weight:900; text-align:right; }
+    .pack-opening-summary-viewport {
+      flex:1 1 auto; min-height:0; width:min(1240px,100%); margin:0 auto; overflow:auto;
+      overscroll-behavior:contain; scrollbar-gutter:stable; touch-action:pan-x pan-y;
+      border:1px solid rgba(212,175,55,.18); border-radius:12px;
+      background:radial-gradient(circle at 50% 15%,rgba(212,175,55,.055),transparent 44%),rgba(0,0,0,.16);
+    }
+    .pack-opening-summary-grid {
+      min-width:100%; width:max-content; min-height:100%; display:grid;
+      grid-template-columns:repeat(5,var(--pack-summary-card-w));
+      gap:16px 18px; padding:16px; box-sizing:border-box;
+      justify-content:center; align-content:start; align-items:start;
+    }
+    .pack-opening-summary-card { width:var(--pack-summary-card-w); display:flex; justify-content:center; align-items:flex-start; min-width:0; min-height:0; }
+    .pack-opening-summary-card .card {
+      --card-w:var(--pack-summary-card-w); width:var(--pack-summary-card-w) !important;
+      max-width:none !important; min-width:0 !important; height:auto !important; min-height:0 !important;
+      aspect-ratio:5/7 !important; align-self:flex-start !important; flex:0 0 auto !important; transform:none !important;
+    }
     .pack-opening-summary-card.final-rare .card { filter:drop-shadow(0 0 10px rgba(238,202,50,.55)); }
     .pack-opening-summary-card.final-mythic .card { filter:drop-shadow(0 0 12px rgba(242,111,28,.74)); }
-    .pack-opening-summary-actions { display:flex; justify-content:center; padding-top:14px; }
+    .pack-opening-summary-actions { display:flex; justify-content:center; flex:0 0 auto; padding-top:8px; }
 
     @media (max-height:520px), (max-width:900px) {
       #pack-opening-overlay { --pack-card-w:clamp(106px,min(25vw,42vh),166px); }
@@ -155,13 +184,19 @@ function injectStyles() {
       .pack-opening-controls { min-height:44px; padding:1px 8px 7px; gap:8px; }
       .pack-opening-primary { min-width:135px; min-height:32px; padding:5px 14px; font-size:10px; }
       .pack-opening-hint { display:none; }
-      .pack-opening-summary { padding:8px 12px; }
+      .pack-opening-summary { --pack-summary-card-w:92px; padding:6px 8px; }
       .pack-opening-summary-title { font-size:17px; }
-      .pack-opening-summary-sub { font-size:9px; margin:2px 0 7px; }
-      .pack-opening-summary-grid { display:flex; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; justify-content:flex-start; align-items:flex-start; gap:7px; padding:5px 2px 8px; touch-action:pan-x; }
-      .pack-opening-summary-card { flex:0 0 auto; align-self:flex-start; }
-      .pack-opening-summary-card .card { --card-w:72px; width:72px !important; height:auto !important; aspect-ratio:5/7 !important; flex:0 0 auto !important; }
-      .pack-opening-summary-actions { padding-top:4px; }
+      .pack-opening-summary-sub { font-size:9px; margin:1px 0 4px; }
+      .pack-opening-summary-toolbar { width:min(430px,96%); padding:4px 8px; margin-bottom:5px; gap:6px; }
+      .pack-opening-summary-toolbar input[type="range"] { width:min(300px,64vw); }
+      .pack-opening-summary-viewport { border-radius:8px; }
+      .pack-opening-summary-grid {
+        grid-template-columns:repeat(5,var(--pack-summary-card-w)); gap:10px 11px; padding:10px;
+        justify-content:start; align-items:flex-start; min-height:100%; touch-action:pan-x pan-y;
+      }
+      .pack-opening-summary-card { width:var(--pack-summary-card-w); flex:0 0 auto; align-self:flex-start; }
+      .pack-opening-summary-card .card { --card-w:var(--pack-summary-card-w); width:var(--pack-summary-card-w) !important; height:auto !important; aspect-ratio:5/7 !important; flex:0 0 auto !important; }
+      .pack-opening-summary-actions { padding-top:3px; }
       .pack-opening-intro-pack { width:78px; }
       .pack-opening-intro-title { font-size:20px; margin:6px 0 2px; }
       .pack-opening-intro-copy { font-size:9px; max-width:420px; }
@@ -247,10 +282,25 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     <div class="pack-opening-summary">
       <div class="pack-opening-summary-title">🎉 Sobre completo</div>
       <div class="pack-opening-summary-sub">${fichaTotal === null ? '+1 Ficha de mejora' : `+1 Ficha de mejora · Total: ${fichaTotal}`}.</div>
-      <div class="pack-opening-summary-grid"></div>
+      <div class="pack-opening-summary-toolbar" title="Cambiar tamaño de las cartas">
+        <span class="zoom-icon">🔍</span>
+        <input class="pack-opening-summary-zoom" type="range" min="72" max="190" step="2" value="108" aria-label="Tamaño de cartas del resumen">
+        <span class="zoom-value">108</span>
+      </div>
+      <div class="pack-opening-summary-viewport"><div class="pack-opening-summary-grid"></div></div>
       <div class="pack-opening-summary-actions"><button class="pack-opening-primary pack-opening-summary-close" type="button">VOLVER A MI COFRE</button></div>
     </div>`;
   document.body.appendChild(overlay);
+  const summaryPanel = overlay.querySelector('.pack-opening-summary');
+  const summaryZoom = overlay.querySelector('.pack-opening-summary-zoom');
+  const summaryZoomValue = overlay.querySelector('.pack-opening-summary-toolbar .zoom-value');
+  const compactSummary = window.matchMedia?.('(max-height:520px), (max-width:900px)')?.matches;
+  if (compactSummary) summaryZoom.value = '92';
+  bindCardZoomControl({
+    root: summaryPanel, slider: summaryZoom, valueLabel: summaryZoomValue,
+    cssVar: '--pack-summary-card-w', unit: 'px', min: 72, max: 190,
+    fallback: compactSummary ? 92 : 108
+  });
   // Preload gradual: sólo las dos próximas ilustraciones. Evita blank-flips sin volver a
   // disparar un burst de 15 requests simultáneos contra el hosting.
   preloadCardArtwork(sequence[0]?.card);
