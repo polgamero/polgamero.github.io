@@ -1422,3 +1422,59 @@ html.argentinia-mobile .main-menu-news.arg-news-collapsed .main-menu-news-title 
   font-size: 9px !important;
   line-height: 16px !important;
 }
+
+/* ============================================================================
+   23.12.0 — CARD BROWSER / DECKBUILDER UX
+   ============================================================================ */
+
+/* La corrección de proporciones de cartas mobile deja de estar limitada al battlefield:
+   Enciclopedia y Constructor usan el mismo renderer y deben permitir que el arte encoja
+   para preservar tipo/texto/símbolos de la mitad inferior. */
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay,#mydecks-overlay) .card-art {
+  min-height: 0 !important;
+}
+
+html.argentinia-mobile .deckbuilder-filters {
+  width: min(170px, 22dvw) !important;
+  padding: 7px !important;
+}
+html.argentinia-mobile .deckbuilder-side {
+  width: min(205px, 26dvw) !important;
+}
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay) .encyclopedia-filter-section-title {
+  font-size: 9px !important;
+  margin: 8px 0 4px !important;
+}
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay) .encyclopedia-filter-option {
+  font-size: 9px !important;
+  padding: 2px 1px !important;
+  gap: 4px !important;
+}
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay) .encyclopedia-filter-option input {
+  width: 12px !important;
+  height: 12px !important;
+}
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay) .encyclopedia-search-input {
+  font-size: 10px !important;
+  padding: 5px 6px !important;
+  margin-bottom: 7px !important;
+}
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay) .card-browser-zoom {
+  gap: 4px !important;
+  font-size: 9px !important;
+  margin-bottom: 5px !important;
+}
+html.argentinia-mobile :is(#encyclopedia-overlay,#deckbuilder-overlay) .card-browser-filter-grid {
+  gap: 0 4px !important;
+}
+
+/* El contador x/y vive arriba-centro como los contadores de tierras agrupadas y no tapa
+   el coste de maná de la esquina superior derecha. */
+html.argentinia-mobile .deckbuilder-pool-card-badge {
+  top: -5px !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  padding: 1px 5px !important;
+  font-size: 9px !important;
+}
