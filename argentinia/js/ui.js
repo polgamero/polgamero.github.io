@@ -1185,12 +1185,20 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     ? `<div class="aura-badge" data-tooltip="${modifierLines.join('\n').replace(/"/g, '&quot;')}">${modifierIcons}</div>`
     : '';
 
+  // 23.12.0 — las vistas catálogo/deckbuilder pueden mostrar cientos de cartas. Sus
+  // imágenes no deben salir todas juntas contra el hosting: el navegador sólo pide las que
+  // se acercan al viewport y las decodifica fuera del camino crítico. En el tablero real
+  // mantenemos carga inmediata para no introducir latencia durante una partida.
+  const browserImageAttrs = zone === 'encyclopedia'
+    ? ' loading="lazy" decoding="async" fetchpriority="low"'
+    : ' decoding="async"';
+
   el.innerHTML = `
     <div class="card-inner">
       <div class="card-header"><span class="card-title" style="font-size: clamp(4px, ${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
       <div class="card-art" style="position: relative; overflow: hidden;">
         <div style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;">${icon}</div>
-        ${card.image ? `<img src="./assets/images/cards/${card.image}" alt="${card.name}" style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
+        ${card.image ? `<img src="./assets/images/cards/${card.image}" alt="${card.name}"${browserImageAttrs} style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
       </div>
       <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(card.type, 16, 0.3)).toFixed(2)}cqw, 30px);">${card.type}</span><span class="rarity-icon">●</span></div>
       ${formattedTextHTML}
@@ -1704,6 +1712,100 @@ const ENCYCLOPEDIA_RARITIES = [
   { key: 'Common', label: 'Comunes' }
 ];
 
+// 23.12.0 — filtros compartidos por Enciclopedia y Constructor. Multicolores coinciden
+// con cualquiera de sus colores; "Incoloras" significa colors vacío. Los arquetipos son
+// etiquetas mecánicas derivadas del JSON (no texto libre), por eso sirven igual en ambos
+// navegadores y no requieren migrar las 511 cartas.
+const CARD_BROWSER_COLORS = [
+  { key: 'W', label: '⚪ Blancas' },
+  { key: 'U', label: '🔵 Azules' },
+  { key: 'B', label: '⚫ Negras' },
+  { key: 'R', label: '🔴 Rojas' },
+  { key: 'G', label: '🟢 Verdes' },
+  { key: 'C', label: '◇ Incoloras' }
+];
+
+const CARD_BROWSER_ARCHETYPES = [
+  { key: 'poison', label: '☠️ Veneno', effectTypes: ['poison', 'proliferate'] },
+  { key: 'draw', label: '🃏 Robo', effectTypes: ['draw', 'draw_and_lose_life', 'loot', 'rummage'] },
+  { key: 'heal', label: '❤️ Curación', effectTypes: ['heal', 'drain'], keywords: ['lifelink'] },
+  { key: 'tokens', label: '👥 Tokens', effectTypes: ['create_tokens'] }
+];
+
+function collectCardMechanics(card) {
+  const effectTypes = new Set();
+  const visit = value => {
+    if (!value) return;
+    if (Array.isArray(value)) { value.forEach(visit); return; }
+    if (typeof value !== 'object') return;
+    if (typeof value.type === 'string') effectTypes.add(value.type);
+    Object.values(value).forEach(visit);
+  };
+  [
+    'effect','secondaryEffect','etbEffect','diesTrigger','attackTrigger','combatDamageTrigger',
+    'landEtbTrigger','upkeepTrigger','spellCastTrigger','creatureEtbTrigger','staticEffect',
+    'equipment','auraEffect','activatedAbility','activatedAbilities','loyaltyAbilities',
+    'blockTrigger','anyCreatureDiesTrigger','anyCreatureAttacksTrigger','opponentDeathTrigger',
+    'endStepTrigger','grantedAbility'
+  ].forEach(key => visit(card?.[key]));
+  return effectTypes;
+}
+
+function getCardArchetypes(card) {
+  const mechanics = collectCardMechanics(card);
+  const keywords = new Set((card?.keywords || []).map(k => String(k).toLowerCase()));
+  const result = new Set();
+  CARD_BROWSER_ARCHETYPES.forEach(def => {
+    if (def.effectTypes.some(type => mechanics.has(type)) ||
+        (def.keywords || []).some(keyword => keywords.has(keyword))) {
+      result.add(def.key);
+    }
+  });
+  return result;
+}
+
+function cardMatchesColorFilter(card, activeColors) {
+  if (activeColors.size === CARD_BROWSER_COLORS.length) return true;
+  const colors = Array.isArray(card?.colors) ? card.colors : [];
+  if (colors.length === 0) return activeColors.has('C');
+  return colors.some(color => activeColors.has(String(color).toUpperCase()));
+}
+
+function cardMatchesArchetypeFilter(card, activeArchetypes) {
+  if (activeArchetypes.size === 0) return true;
+  const cardArchetypes = getCardArchetypes(card);
+  return [...activeArchetypes].some(key => cardArchetypes.has(key));
+}
+
+function browserColorFiltersHTML(prefix) {
+  return CARD_BROWSER_COLORS.map(color => `
+    <label class="encyclopedia-filter-option">
+      <input type="checkbox" data-browser-color="${color.key}" data-filter-prefix="${prefix}" checked>
+      ${color.label}
+    </label>`).join('');
+}
+
+function browserArchetypeFiltersHTML(prefix) {
+  return CARD_BROWSER_ARCHETYPES.map(archetype => `
+    <label class="encyclopedia-filter-option">
+      <input type="checkbox" data-browser-archetype="${archetype.key}" data-filter-prefix="${prefix}">
+      ${archetype.label}
+    </label>`).join('');
+}
+
+function setBrowserCardZoom(overlay, value) {
+  const numeric = Math.max(8, Math.min(50, Number(value) || 12));
+  overlay.style.setProperty('--card-w', `${numeric}vh`);
+}
+
+function debounce(fn, wait = 120) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  };
+}
+
 // FASE 1: ya existe una colección real por cuenta (Firestore, users/{uid}.collection) —
 // si hay sesión Y ya se terminó de cargar (o crear) su perfil, se devuelve esa colección
 // de verdad. Sin sesión, o con sesión pero perfil todavía sin resolver (recién logueado,
@@ -1783,6 +1885,7 @@ function injectEncyclopediaStyles() {
     align-content: flex-start;
     gap: 20px;
 }
+    .encyclopedia-card-slot { content-visibility: auto; contain-intrinsic-size: 180px 252px; }
     .encyclopedia-card-slot .card-inner { border-width: 6px; }
     /* BUGFIX (revisión post-Etapa 4): antes esto grisaba la carta ENTERA (nombre, texto,
        poder/resistencia incluidos) — ahora, a pedido, solo el ARTE se reemplaza por un
@@ -1836,6 +1939,14 @@ function injectEncyclopediaStyles() {
     .encyclopedia-search-input:focus {
       outline: none; border-color: #f0e0b0; background: rgba(255,255,255,0.08);
     }
+    .card-browser-zoom {
+      display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center;
+      color: #e8ddc8; font-size: 12px; margin: 0 0 12px 0;
+    }
+    .card-browser-zoom input[type="range"] { width: 100%; accent-color: var(--gold, #d4af37); cursor: pointer; }
+    .card-browser-filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 8px; }
+    .card-browser-filter-grid .encyclopedia-filter-option { min-width: 0; }
+    .card-browser-filter-grid.archetypes { grid-template-columns: 1fr; }
   `;
   document.head.appendChild(style);
 }
@@ -1844,14 +1955,14 @@ export function showEncyclopedia(onBack) {
   injectEncyclopediaStyles();
 
   const ownedIds = getOwnedCardIds();
-  // BUGFIX: para el filtro nuevo "Solo cartas mejoradas" — no cambia cómo se DIBUJA la
-  // carta (sin badge, sin keyword de más, tal cual se pidió: "base de datos pura"), solo
-  // decide cuáles entran en la grilla.
   const enhancedIds = new Set(Object.keys((state.userProfile && state.userProfile.enhancements) || {}));
   let activeTab = 'criaturas';
-  let ownershipFilter = 'all'; // 'all' | 'owned' | 'enhanced'
+  let ownershipFilter = 'all'; // 'all' | 'owned'
+  let enhancedOnly = false;
   let searchQuery = '';
   const activeRarities = new Set(ENCYCLOPEDIA_RARITIES.map(r => r.key));
+  const activeColors = new Set(CARD_BROWSER_COLORS.map(c => c.key));
+  const activeArchetypes = new Set();
 
   const overlay = document.createElement('div');
   overlay.id = 'encyclopedia-overlay';
@@ -1867,6 +1978,8 @@ export function showEncyclopedia(onBack) {
      </label>`
   ).join('');
 
+  const defaultZoom = document.documentElement.classList.contains('argentinia-mobile') ? 24 : 32;
+
   overlay.innerHTML = `
     <div class="encyclopedia-header">
       <button class="encyclopedia-back-btn" id="enc-back">← Volver</button>
@@ -1877,6 +1990,11 @@ export function showEncyclopedia(onBack) {
       <div class="encyclopedia-grid-box" id="enc-grid"></div>
       <div class="encyclopedia-filters">
         <input type="text" class="encyclopedia-search-input" id="enc-search" placeholder="Buscar carta...">
+        <div class="card-browser-zoom" title="Cambiar tamaño de las cartas">
+          <span>🔍</span>
+          <input type="range" id="enc-card-zoom" min="12" max="45" step="1" value="${defaultZoom}">
+          <span id="enc-card-zoom-value">${defaultZoom}</span>
+        </div>
         <div class="encyclopedia-filter-section-title">Opciones</div>
         <label class="encyclopedia-filter-option">
           <input type="radio" name="enc-ownership" value="all" checked>
@@ -1884,23 +2002,26 @@ export function showEncyclopedia(onBack) {
         </label>
         <label class="encyclopedia-filter-option">
           <input type="radio" name="enc-ownership" value="owned">
-          Mostrar solo cartas que poseo
+          Solo cartas que poseo
         </label>
         <label class="encyclopedia-filter-option">
-          <input type="radio" name="enc-ownership" value="enhanced">
-          Solo cartas mejoradas
+          <input type="checkbox" id="enc-enhanced-only">
+          ✨ Solo mejoradas
         </label>
+        <div class="encyclopedia-filter-section-title">Color</div>
+        <div class="card-browser-filter-grid">${browserColorFiltersHTML('enc')}</div>
         <div class="encyclopedia-filter-section-title">Rareza</div>
-        ${rarityFiltersHTML}
+        <div class="card-browser-filter-grid">${rarityFiltersHTML}</div>
+        <div class="encyclopedia-filter-section-title">Arquetipo</div>
+        <div class="card-browser-filter-grid archetypes">${browserArchetypeFiltersHTML('enc')}</div>
       </div>
     </div>
   `;
   document.body.appendChild(overlay);
+  setBrowserCardZoom(overlay, defaultZoom);
 
   const gridBox = overlay.querySelector('#enc-grid');
 
-  // Normaliza (minúsculas + sin acentos) para que buscar "arara" encuentre "Yarará" sin
-  // que el jugador tenga que acordarse de poner la tilde.
   function normalizeSearch(str) {
     return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
@@ -1910,11 +2031,10 @@ export function showEncyclopedia(onBack) {
     const query = normalizeSearch(searchQuery);
     const cards = cardDb.getByCategory(activeTab)
       .filter(c => activeRarities.has(c.rarity))
-      .filter(c => {
-        if (ownershipFilter === 'owned') return ownedIds.has(c.id);
-        if (ownershipFilter === 'enhanced') return enhancedIds.has(c.id);
-        return true; // 'all'
-      })
+      .filter(c => cardMatchesColorFilter(c, activeColors))
+      .filter(c => cardMatchesArchetypeFilter(c, activeArchetypes))
+      .filter(c => ownershipFilter !== 'owned' || ownedIds.has(c.id))
+      .filter(c => !enhancedOnly || enhancedIds.has(c.id))
       .filter(c => !query || normalizeSearch(c.name).includes(query));
 
     if (cards.length === 0) {
@@ -1922,22 +2042,27 @@ export function showEncyclopedia(onBack) {
       return;
     }
 
+    const fragment = document.createDocumentFragment();
     cards.forEach(card => {
       const owned = ownedIds.has(card.id);
       const slot = document.createElement('div');
       slot.className = `encyclopedia-card-slot${owned ? '' : ' unowned'}`;
-      // zone='encyclopedia' (una zona que no existe en el resto del motor) a propósito:
-      // así createCardElement no le pega ningún handler de click de juego (declarar
-      // ataque, activar habilidad, etc.) — acá es pura vidriera, sin acción.
       const cardEl = createCardElement(card, false, true, null, 'encyclopedia', null);
       slot.appendChild(cardEl);
-      gridBox.appendChild(slot);
+      fragment.appendChild(slot);
     });
+    gridBox.appendChild(fragment);
   }
 
-  overlay.querySelector('#enc-search').addEventListener('input', (e) => {
-    searchQuery = e.target.value;
+  const debouncedSearch = debounce(value => {
+    searchQuery = value;
     renderGrid();
+  });
+  overlay.querySelector('#enc-search').addEventListener('input', (e) => debouncedSearch(e.target.value));
+
+  overlay.querySelector('#enc-card-zoom').addEventListener('input', e => {
+    setBrowserCardZoom(overlay, e.target.value);
+    overlay.querySelector('#enc-card-zoom-value').textContent = e.target.value;
   });
 
   overlay.querySelectorAll('.encyclopedia-tab').forEach(btn => {
@@ -1956,11 +2081,34 @@ export function showEncyclopedia(onBack) {
     });
   });
 
+  overlay.querySelector('#enc-enhanced-only').addEventListener('change', e => {
+    enhancedOnly = e.target.checked;
+    renderGrid();
+  });
+
   overlay.querySelectorAll('input[data-rarity]').forEach(checkbox => {
     checkbox.addEventListener('change', () => {
       const rarity = checkbox.getAttribute('data-rarity');
       if (checkbox.checked) activeRarities.add(rarity);
       else activeRarities.delete(rarity);
+      renderGrid();
+    });
+  });
+
+  overlay.querySelectorAll('input[data-browser-color][data-filter-prefix="enc"]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      const color = checkbox.getAttribute('data-browser-color');
+      if (checkbox.checked) activeColors.add(color);
+      else activeColors.delete(color);
+      renderGrid();
+    });
+  });
+
+  overlay.querySelectorAll('input[data-browser-archetype][data-filter-prefix="enc"]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      const archetype = checkbox.getAttribute('data-browser-archetype');
+      if (checkbox.checked) activeArchetypes.add(archetype);
+      else activeArchetypes.delete(archetype);
       renderGrid();
     });
   });
@@ -2315,19 +2463,20 @@ function injectDeckBuilderStyles() {
     .deckbuilder-name { color: #f0e0b0; font-size: 20px; font-weight: 700; flex: 1; }
     .deckbuilder-body { flex: 1; display: flex; gap: 16px; min-height: 0; margin-top: 12px; }
     .deckbuilder-pool { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-    .deckbuilder-pool-card-wrap { position: relative; cursor: pointer; transition: transform 0.15s ease; }
+    .deckbuilder-pool-card-wrap {
+      position: relative; cursor: pointer; transition: transform 0.15s ease;
+      content-visibility: auto; contain-intrinsic-size: 110px 154px;
+    }
     .deckbuilder-pool-card-wrap:hover { transform: translateY(-3px); }
     .deckbuilder-pool-card-wrap.maxed { opacity: 0.4; cursor: not-allowed; }
     .deckbuilder-pool-card-wrap.maxed:hover { transform: none; }
     .deckbuilder-pool-card-badge {
-      position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.85); color: #f0e0b0;
-      border: 1px solid var(--gold, #d4af37); border-radius: 6px; font-size: 11px; font-weight: 700;
-      padding: 2px 6px; pointer-events: none;
-      /* BUGFIX: la imagen de arte de la carta (createCardElement) tiene z-index:2 propio —
-         sin un z-index explícito acá, el badge quedaba tapado detrás de esa imagen. Con
-         esto gana siempre. */
-      z-index: 10;
+      position: absolute; top: -7px; left: 50%; right: auto; transform: translateX(-50%);
+      background: rgba(0,0,0,0.88); color: #f0e0b0;
+      border: 1px solid var(--gold, #d4af37); border-radius: 999px; font-size: 11px; font-weight: 700;
+      padding: 2px 7px; pointer-events: none; white-space: nowrap; z-index: 20;
     }
+    .deckbuilder-filters { width: 220px; flex-shrink: 0; }
     .deckbuilder-side { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; }
     .deckbuilder-side-title { color: #f0e0b0; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
     .deckbuilder-pool-card-wrap.enhanced .card { outline: 2px solid #d4af37; outline-offset: 2px; border-radius: 8px; }
@@ -2410,14 +2559,20 @@ export function showDeckNameModal(defaultName, onConfirm, onCancel) {
 // vez de crear uno nuevo.
 export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck) {
   injectEncyclopediaStyles();
-  injectStoreStyles(); // .store-buy-btn/.store-error-msg: siempre disponibles
+  injectStoreStyles();
   injectDeckBuilderStyles();
 
   const ownedCounts = getDeckBuilderOwnedCounts();
+  const enhancements = (state.userProfile && state.userProfile.enhancements) || {};
+  const enhancedIds = new Set(Object.keys(enhancements));
 
   let activeTab = 'criaturas';
   let searchQuery = '';
-  const deckCounts = {}; // cardId (o cardId::enhanced) -> cantidad agregada al mazo en construcción
+  let enhancedOnly = false;
+  const activeRarities = new Set(ENCYCLOPEDIA_RARITIES.map(r => r.key));
+  const activeColors = new Set(CARD_BROWSER_COLORS.map(c => c.key));
+  const activeArchetypes = new Set();
+  const deckCounts = {};
   if (existingDeck) {
     (existingDeck.cardIds || []).forEach(id => { deckCounts[id] = (deckCounts[id] || 0) + 1; });
   }
@@ -2428,6 +2583,13 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   const tabsHTML = ENCYCLOPEDIA_TABS.map(t =>
     `<button class="encyclopedia-tab${t.key === activeTab ? ' active' : ''}" data-tab="${t.key}">${t.label}</button>`
   ).join('');
+  const rarityFiltersHTML = ENCYCLOPEDIA_RARITIES.map(r =>
+    `<label class="encyclopedia-filter-option">
+       <input type="checkbox" data-deck-rarity="${r.key}" checked>
+       ${r.label}
+     </label>`
+  ).join('');
+  const defaultZoom = document.documentElement.classList.contains('argentinia-mobile') ? 20 : 12;
 
   overlay.innerHTML = `
     <div class="deckbuilder-header">
@@ -2437,10 +2599,28 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     </div>
     <div class="store-error-msg" id="deckbuilder-error" style="text-align:left;"></div>
     <div class="encyclopedia-tabs">${tabsHTML}</div>
-    <input type="text" class="encyclopedia-search-input" id="deckbuilder-search" placeholder="Buscar carta...">
     <div class="deckbuilder-body">
       <div class="deckbuilder-pool">
         <div class="encyclopedia-grid-box" id="deckbuilder-grid"></div>
+      </div>
+      <div class="encyclopedia-filters deckbuilder-filters">
+        <input type="text" class="encyclopedia-search-input" id="deckbuilder-search" placeholder="Buscar carta...">
+        <div class="card-browser-zoom" title="Cambiar tamaño de las cartas">
+          <span>🔍</span>
+          <input type="range" id="deckbuilder-card-zoom" min="8" max="40" step="1" value="${defaultZoom}">
+          <span id="deckbuilder-card-zoom-value">${defaultZoom}</span>
+        </div>
+        <div class="encyclopedia-filter-section-title">Opciones</div>
+        <label class="encyclopedia-filter-option">
+          <input type="checkbox" id="deckbuilder-enhanced-only">
+          ✨ Solo mejoradas
+        </label>
+        <div class="encyclopedia-filter-section-title">Color</div>
+        <div class="card-browser-filter-grid">${browserColorFiltersHTML('deck')}</div>
+        <div class="encyclopedia-filter-section-title">Rareza</div>
+        <div class="card-browser-filter-grid">${rarityFiltersHTML}</div>
+        <div class="encyclopedia-filter-section-title">Arquetipo</div>
+        <div class="card-browser-filter-grid archetypes">${browserArchetypeFiltersHTML('deck')}</div>
       </div>
       <div class="deckbuilder-side">
         <div class="deckbuilder-side-title" id="deckbuilder-count">Tu mazo (0 / ${DECK_SIZE_EXACT} cartas)</div>
@@ -2449,6 +2629,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     </div>
   `;
   document.body.appendChild(overlay);
+  setBrowserCardZoom(overlay, defaultZoom);
 
   const grid = overlay.querySelector('#deckbuilder-grid');
   const list = overlay.querySelector('#deckbuilder-list');
@@ -2463,13 +2644,32 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     return Object.values(deckCounts).reduce((sum, n) => sum + n, 0);
   }
 
-  // Cuántas cartas mejoradas ya hay en el mazo en construcción — el tope
-  // MAX_ENHANCED_CARDS_PER_DECK (default 3, admin-editable) cuenta esto, no las copias de
-  // una sola carta puntual (eso ya lo maneja el cap normal de 1 por tile mejorado).
   function totalEnhancedInDeck() {
     return Object.entries(deckCounts)
       .filter(([key]) => key.endsWith(ENHANCED_SUFFIX))
       .reduce((sum, [, n]) => sum + n, 0);
+  }
+
+  function isTileMaxed(trackingKey, cap, isEnhancedTile) {
+    const inDeck = deckCounts[trackingKey] || 0;
+    const deckFull = totalInDeck() >= DECK_SIZE_EXACT;
+    const enhancedDeckCapReached = isEnhancedTile && inDeck === 0 && totalEnhancedInDeck() >= MAX_ENHANCED_CARDS_PER_DECK;
+    return inDeck >= cap || deckFull || enhancedDeckCapReached;
+  }
+
+  // 23.12.0 — agregar/quitar una carta ya NO destruye y reconstruye toda la grilla.
+  // Antes, en Criaturas, un solo click podía recrear hasta 210 <img>; al construir 60
+  // cartas eso generaba una tormenta de elementos/request candidates contra GitHub Pages.
+  function refreshPoolTileStates() {
+    grid.querySelectorAll('.deckbuilder-pool-card-wrap').forEach(wrap => {
+      const trackingKey = wrap.dataset.trackingKey;
+      const cap = Number(wrap.dataset.cap || 0);
+      const isEnhancedTile = wrap.dataset.enhanced === '1';
+      const inDeck = deckCounts[trackingKey] || 0;
+      wrap.classList.toggle('maxed', isTileMaxed(trackingKey, cap, isEnhancedTile));
+      const badge = wrap.querySelector('.deckbuilder-pool-card-badge');
+      if (badge) badge.textContent = `${inDeck}/${cap}`;
+    });
   }
 
   function renderPool() {
@@ -2477,32 +2677,30 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     const query = normalizeSearch(searchQuery);
     const cards = cardDb.getByCategory(activeTab)
       .filter(c => (ownedCounts[c.id] || 0) > 0)
+      .filter(c => activeRarities.has(c.rarity))
+      .filter(c => cardMatchesColorFilter(c, activeColors))
+      .filter(c => cardMatchesArchetypeFilter(c, activeArchetypes))
+      .filter(c => !enhancedOnly || enhancedIds.has(c.id))
       .filter(c => !query || normalizeSearch(c.name).includes(query));
 
     if (cards.length === 0) {
-      grid.innerHTML = '<div class="encyclopedia-empty-msg">No tenés cartas de este tipo (o ninguna coincide con la búsqueda).</div>';
+      grid.innerHTML = '<div class="encyclopedia-empty-msg">No tenés cartas que coincidan con estos filtros.</div>';
       return;
     }
 
-    const enhancements = (state.userProfile && state.userProfile.enhancements) || {};
+    const fragment = document.createDocumentFragment();
 
-    // Dibuja UN tile del pool. trackingKey es la clave que se usa en deckCounts (puede
-    // traer el sufijo ENHANCED_SUFFIX) — displayCard es lo que se le pasa a
-    // createCardElement (con la keyword ya mezclada adentro si es la copia mejorada).
     function renderPoolTile(displayCard, trackingKey, ownedForThisSlot, isEnhancedTile) {
       const isBasicLand = displayCard.type.includes('básica');
       const cap = isBasicLand ? ownedForThisSlot : Math.min(ownedForThisSlot, MAX_COPIES_PER_CARD);
       const inDeck = deckCounts[trackingKey] || 0;
-      const deckFull = totalInDeck() >= DECK_SIZE_EXACT;
-      // Tope aparte para cartas mejoradas: aunque a ESTA carta puntual todavía le quede
-      // margen (inDeck < cap), si ya llegaste al máximo de mejoradas del mazo entero
-      // (MAX_ENHANCED_CARDS_PER_DECK, admin-editable, default 3) no se puede agregar una
-      // mejorada DISTINTA — por eso es un chequeo separado, no alcanza con el cap normal.
-      const enhancedDeckCapReached = isEnhancedTile && inDeck === 0 && totalEnhancedInDeck() >= MAX_ENHANCED_CARDS_PER_DECK;
-      const maxed = inDeck >= cap || deckFull || enhancedDeckCapReached;
+      const maxed = isTileMaxed(trackingKey, cap, isEnhancedTile);
 
       const wrap = document.createElement('div');
       wrap.className = `deckbuilder-pool-card-wrap${maxed ? ' maxed' : ''}${isEnhancedTile ? ' enhanced' : ''}`;
+      wrap.dataset.trackingKey = trackingKey;
+      wrap.dataset.cap = String(cap);
+      wrap.dataset.enhanced = isEnhancedTile ? '1' : '0';
       wrap.appendChild(createCardElement(displayCard, false, true, null, 'encyclopedia', null));
 
       if (isEnhancedTile) {
@@ -2518,15 +2716,13 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       wrap.appendChild(badge);
 
       wrap.addEventListener('click', () => {
-        if ((deckCounts[trackingKey] || 0) >= cap) return; // ya llegaste al máximo de copias de ESTE slot
-        if (totalInDeck() >= DECK_SIZE_EXACT) return; // ya llegaste a las 60 del mazo entero
-        if (isEnhancedTile && (deckCounts[trackingKey] || 0) === 0 && totalEnhancedInDeck() >= MAX_ENHANCED_CARDS_PER_DECK) return; // tope de mejoradas por mazo
+        if (isTileMaxed(trackingKey, cap, isEnhancedTile)) return;
         deckCounts[trackingKey] = (deckCounts[trackingKey] || 0) + 1;
-        renderPool();
+        refreshPoolTileStates();
         renderList();
       });
 
-      grid.appendChild(wrap);
+      fragment.appendChild(wrap);
     }
 
     cards.forEach(card => {
@@ -2534,19 +2730,19 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       const enhancementKeyword = enhancements[card.id];
 
       if (enhancementKeyword) {
-        // BUGFIX (revisión post-Etapa 4): la carta tiene una mejora crafteada — se muestra
-        // como un slot SEPARADO y distinguible ("✨ Mejorada"), siempre con tope de 1 copia
-        // (solo existe UNA copia mejorada, sin importar cuántas tengas en total). El resto
-        // de tus copias (si te queda alguna) se muestra aparte, como una carta normal.
         const enhancedDisplayCard = { ...card, keywords: [...(card.keywords || []), enhancementKeyword] };
         renderPoolTile(enhancedDisplayCard, `${card.id}${ENHANCED_SUFFIX}`, 1, true);
 
-        const remainingOwned = Math.max(0, owned - 1);
-        if (remainingOwned > 0) renderPoolTile(card, card.id, remainingOwned, false);
-      } else {
+        if (!enhancedOnly) {
+          const remainingOwned = Math.max(0, owned - 1);
+          if (remainingOwned > 0) renderPoolTile(card, card.id, remainingOwned, false);
+        }
+      } else if (!enhancedOnly) {
         renderPoolTile(card, card.id, owned, false);
       }
     });
+
+    grid.appendChild(fragment);
   }
 
   function renderList() {
@@ -2582,7 +2778,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         removeBtn.textContent = '−';
         removeBtn.addEventListener('click', () => {
           deckCounts[trackingKey] = Math.max(0, (deckCounts[trackingKey] || 0) - 1);
-          renderPool();
+          refreshPoolTileStates();
           renderList();
         });
         item.appendChild(label);
@@ -2591,9 +2787,15 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       });
   }
 
-  overlay.querySelector('#deckbuilder-search').addEventListener('input', (e) => {
-    searchQuery = e.target.value;
+  const debouncedSearch = debounce(value => {
+    searchQuery = value;
     renderPool();
+  });
+  overlay.querySelector('#deckbuilder-search').addEventListener('input', e => debouncedSearch(e.target.value));
+
+  overlay.querySelector('#deckbuilder-card-zoom').addEventListener('input', e => {
+    setBrowserCardZoom(overlay, e.target.value);
+    overlay.querySelector('#deckbuilder-card-zoom-value').textContent = e.target.value;
   });
 
   overlay.querySelectorAll('.encyclopedia-tab').forEach(btn => {
@@ -2601,6 +2803,38 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       activeTab = btn.getAttribute('data-tab');
       overlay.querySelectorAll('.encyclopedia-tab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      renderPool();
+    });
+  });
+
+  overlay.querySelector('#deckbuilder-enhanced-only').addEventListener('change', e => {
+    enhancedOnly = e.target.checked;
+    renderPool();
+  });
+
+  overlay.querySelectorAll('input[data-deck-rarity]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      const rarity = checkbox.getAttribute('data-deck-rarity');
+      if (checkbox.checked) activeRarities.add(rarity);
+      else activeRarities.delete(rarity);
+      renderPool();
+    });
+  });
+
+  overlay.querySelectorAll('input[data-browser-color][data-filter-prefix="deck"]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      const color = checkbox.getAttribute('data-browser-color');
+      if (checkbox.checked) activeColors.add(color);
+      else activeColors.delete(color);
+      renderPool();
+    });
+  });
+
+  overlay.querySelectorAll('input[data-browser-archetype][data-filter-prefix="deck"]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      const archetype = checkbox.getAttribute('data-browser-archetype');
+      if (checkbox.checked) activeArchetypes.add(archetype);
+      else activeArchetypes.delete(archetype);
       renderPool();
     });
   });
@@ -2615,8 +2849,6 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     Object.entries(deckCounts).forEach(([id, count]) => {
       for (let i = 0; i < count; i++) cardIds.push(id);
     });
-    // Chequeo defensivo: el botón ya debería estar deshabilitado salvo que sean
-    // exactamente DECK_SIZE_EXACT cartas, pero no confiamos solo en eso.
     if (cardIds.length !== DECK_SIZE_EXACT) {
       errorBox.textContent = `El mazo tiene que tener exactamente ${DECK_SIZE_EXACT} cartas (tiene ${cardIds.length}).`;
       return;
