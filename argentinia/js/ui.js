@@ -813,18 +813,31 @@ export function logMsg(msg) {
   els.gameLogBox.scrollTop = els.gameLogBox.scrollHeight;
 }
 
-// 23.13.19 — símbolos de maná reales. IMPORTANTE: estas URLs son relativas al DOCUMENTO,
-// no al archivo js/ui.js. En GitHub Pages, si la app vive en /argentinia/, `./assets/...`
-// resuelve correctamente a /argentinia/assets/... sin asumir que el repo sea el root del dominio.
+// 23.13.21 — set visual completo de símbolos de maná, ahora también {0} e incoloro {C}. IMPORTANTE: estas URLs son relativas
+// al DOCUMENTO, no al archivo js/ui.js. En GitHub Pages, si la app vive en /argentinia/,
+// `./assets/...` resuelve correctamente a /argentinia/assets/... sin asumir el root del dominio.
 const MANA_ICON_URLS = Object.freeze({
   W: './assets/images/ui/mana_blanco.png',
   U: './assets/images/ui/mana_azul.png',
   B: './assets/images/ui/mana_negro.png',
   R: './assets/images/ui/mana_rojo.png',
-  G: './assets/images/ui/mana_verde.png'
+  G: './assets/images/ui/mana_verde.png',
+  '0': './assets/images/ui/mana_0.png',
+  '1': './assets/images/ui/mana_1.png',
+  '2': './assets/images/ui/mana_2.png',
+  '3': './assets/images/ui/mana_3.png',
+  '4': './assets/images/ui/mana_4.png',
+  '5': './assets/images/ui/mana_5.png',
+  '6': './assets/images/ui/mana_6.png',
+  '7': './assets/images/ui/mana_7.png',
+  '8': './assets/images/ui/mana_8.png',
+  '9': './assets/images/ui/mana_9.png',
+  C: './assets/images/ui/mana_incoloro.png',
+  X: './assets/images/ui/mana_x.png',
+  T: './assets/images/ui/girar.png'
 });
 
-function renderColoredManaIcon(symbol, extraClass = '') {
+function renderManaIcon(symbol, extraClass = '') {
   const src = MANA_ICON_URLS[symbol];
   if (!src) return '';
   const cls = extraClass ? `mana-icon ${extraClass}` : 'mana-icon';
@@ -837,24 +850,23 @@ export function renderManaSymbols(manaCostStr) {
   if (!matches) return '';
   return matches.map(m => {
     const val = m.replace(/[{}]/g, '').toUpperCase();
-    if (MANA_ICON_URLS[val]) return renderColoredManaIcon(val, 'mana-icon-card-cost');
+    if (MANA_ICON_URLS[val]) return renderManaIcon(val, 'mana-icon-card-cost');
 
-    // Genérico/X/incoloro conservan el círculo numérico histórico: el cambio 23.13.19
-    // reemplaza únicamente los cinco círculos planos DE COLOR por los PNG oficiales.
+    // Fallback para símbolos sin PNG propio (hoy principalmente genéricos >9).
     const innerText = val;
     const fontSize = innerText.length >= 2 ? '3.2cqw' : '4.6cqw';
     return `<span class="mana-symbol mana-c" style="font-size:${fontSize};">${innerText}</span>`;
   }).join('');
 }
 
-// Para reglas, tierras y modales: coloreados => PNG; costes genéricos/X/C => círculo compacto;
-// {T} y cualquier futuro símbolo no-mana permanecen textuales para no inventar iconografía.
+// Para reglas, tierras y modales: W/U/B/R/G, 0..9, C, X y T usan PNG.
+// Cualquier genérico sin asset propio (>9) conserva el círculo CSS; otros símbolos permanecen textuales.
 export function renderInlineGameSymbols(text) {
   if (text === null || text === undefined) return '';
   return String(text).replace(/\{([^}]+)\}/g, (match, raw) => {
     const val = String(raw).toUpperCase();
-    if (MANA_ICON_URLS[val]) return renderColoredManaIcon(val, 'mana-icon-inline');
-    if (/^(?:\d+|X|C)$/.test(val)) {
+    if (MANA_ICON_URLS[val]) return renderManaIcon(val, 'mana-icon-inline');
+    if (/^(?:\d+|C)$/.test(val)) {
       const wide = val.length >= 2 ? ' mana-symbol-inline-wide' : '';
       return `<span class="mana-symbol mana-c mana-symbol-inline${wide}">${val}</span>`;
     }
@@ -1085,7 +1097,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
         <img class="basic-land-symbol-main" src="${landSymbolUrl}" alt="Símbolo de maná" style="width:100%; height:100%; object-fit:cover; object-position:center;" onerror="this.style.display='none'">
       </div>`;
   } else {
-    // 23.13.19 — la misma capa visual sirve para costes de habilidades y para el maná
+    // 23.13.20 — la misma capa visual sirve para costes de habilidades y para el maná
     // declarado por Tierras. Los JSON siguen canónicos ({W}/{U}/{B}/{R}/{G}); sólo cambia UI.
     let formattedText = card.text ? renderInlineGameSymbols(card.text) : '';
 
