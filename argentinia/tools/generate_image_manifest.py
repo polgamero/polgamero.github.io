@@ -10,7 +10,10 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import sys
+import unicodedata
+from collections import defaultdict
 from pathlib import Path
 
 CATEGORY_FILES = {
@@ -33,6 +36,85 @@ EXPECTED_COUNTS = {
 }
 EXPECTED_TOTAL = 511
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"}
+
+# 23.13.16 — ownership/naming guard.
+# One historical shared illustration is grandfathered because both card names
+# genuinely describe the same "Cacerolazo" concept. New cards may not add
+# themselves to this shared asset or reuse any other card image.
+LEGACY_SHARED_IMAGE_OWNERS = {
+    "cacerolazo.png": {"inst_010", "conj_008"},
+}
+
+# The 23.13.16 pool is gapless in every family. Any future card must append
+# above these maxima and use the canonical filename derived from its own name.
+CANONICAL_IMAGE_BASELINE_MAX = {
+    "art": 44,
+    "conj": 61,
+    "crea": 210,
+    "ench": 50,
+    "inst": 85,
+    "pw": 6,
+    "tier": 55,
+}
+
+# These eleven cards were found during the 23.13.16 requisition with a
+# placeholder/borrowed image. Lock their corrected ownership permanently.
+CANONICAL_IMAGE_REQUIRED_IDS = {
+    "inst_080", "inst_081", "inst_082", "inst_083", "inst_084", "inst_085",
+    "conj_059", "conj_060", "conj_061", "crea_210", "art_044",
+}
+
+
+def canonical_card_image_name(card_name: str) -> str:
+    normalized = unicodedata.normalize("NFD", str(card_name))
+    normalized = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    normalized = normalized.lower()
+    normalized = re.sub(r"[^a-z0-9]+", "_", normalized)
+    normalized = re.sub(r"_+", "_", normalized).strip("_")
+    return f"{normalized}.png"
+
+
+def parse_card_id(card_id: str):
+    match = re.fullmatch(r"([a-z]+)_(\d+)", str(card_id))
+    if not match:
+        return None, None
+    return match.group(1), int(match.group(2))
+
+
+def validate_image_ownership(cards) -> list[str]:
+    errors = []
+    owners = defaultdict(list)
+
+    for category, card in cards:
+        card_id = str(card.get("id") or "").strip()
+        card_name = str(card.get("name") or "").strip()
+        image = card.get("image")
+        if not isinstance(image, str) or not image.strip():
+            continue
+        image = image.strip().replace("\\", "/")
+        owners[image].append((card_id, card_name, category))
+
+        prefix, number = parse_card_id(card_id)
+        future_card = prefix in CANONICAL_IMAGE_BASELINE_MAX and number is not None and number > CANONICAL_IMAGE_BASELINE_MAX[prefix]
+        if card_id in CANONICAL_IMAGE_REQUIRED_IDS or future_card:
+            expected = canonical_card_image_name(card_name)
+            if image != expected:
+                errors.append(
+                    f'{card_id} "{card_name}" usa image="{image}", esperado="{expected}" '
+                    f'({"carta corregida 23.13.16" if card_id in CANONICAL_IMAGE_REQUIRED_IDS else "carta nueva"})'
+                )
+
+    for image, entries in sorted(owners.items()):
+        if len(entries) <= 1:
+            continue
+        ids = {entry[0] for entry in entries}
+        allowed = LEGACY_SHARED_IMAGE_OWNERS.get(image)
+        if allowed is not None and ids == allowed:
+            continue
+        rendered = ", ".join(f'{card_id} "{name}"' for card_id, name, _ in entries)
+        errors.append(f'image="{image}" está reutilizada por: {rendered}')
+
+    return errors
 
 
 def load_json(path: Path):
@@ -92,6 +174,13 @@ def main() -> int:
         if total != args.expected_total:
             print(f"ERROR: total del pool inesperado. Esperado={args.expected_total} Actual={total}", file=sys.stderr)
             return 3
+
+    ownership_errors = validate_image_ownership(cards)
+    if ownership_errors:
+        print("ERROR: auditoría de ownership/nombre de imágenes falló:", file=sys.stderr)
+        for item in ownership_errors:
+            print(f"  - {item}", file=sys.stderr)
+        return 4
 
     existing_files = []
     for path in image_dir.rglob("*"):
@@ -158,7 +247,7 @@ def main() -> int:
     txt_lines = [entry["image"] for entry in missing]
     txt_path.write_text(("\n".join(txt_lines) + ("\n" if txt_lines else "")), encoding="utf-8")
 
-    print(f"IMAGE_MANIFEST_OK pool={total} existing={len(existing_files)} missingCards={len(missing)}")
+    print(f"IMAGE_MANIFEST_OK pool={total} existing={len(existing_files)} missingCards={len(missing)} imageOwnership=OK")
     print(f"Manifest: {manifest_path.relative_to(root)}")
     print(f"TXT: {txt_path.relative_to(root)}")
     return 0
