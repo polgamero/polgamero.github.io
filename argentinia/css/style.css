@@ -352,6 +352,44 @@ html, body {
 .mana-g { background: #2ecc71; } /* Verde / Naturaleza */
 .mana-c { background: #bdc3c7; } /* Incoloro / Genérico */
 
+/* 23.13.19 — los cinco colores usan los PNG oficiales de Argentinia. El tamaño del archivo
+   fuente no importa: el renderer los encierra en estas cajas chicas y mantiene aspect-ratio.
+   Genérico/X/C conservan .mana-symbol para no inventar assets que no existen. */
+.mana-icon {
+  display: block;
+  object-fit: contain;
+  object-position: center;
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  pointer-events: none;
+  user-select: none;
+}
+.mana-icon-card-cost {
+  width: 7cqw;
+  height: 7cqw;
+}
+.mana-icon-inline {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin: 0 0.08em;
+  vertical-align: -0.14em;
+}
+.mana-symbol-inline {
+  display: inline-flex;
+  width: 1em;
+  height: 1em;
+  margin: 0 0.08em;
+  vertical-align: -0.12em;
+  font-size: 0.72em !important;
+  border-width: 1px;
+  box-sizing: border-box;
+}
+.mana-symbol-inline-wide { font-size: 0.58em !important; }
+
 /* FUERZA / RESISTENCIA */
 .card-pt {
   position: absolute; bottom: -2px; right: -2px; background: #ddd;

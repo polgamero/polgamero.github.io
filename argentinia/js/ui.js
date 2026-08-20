@@ -288,7 +288,7 @@ export function showXValueModal(card, onConfirm, onCancel) {
         <h3>✨ ${card.name}</h3>
       </div>
       <div style="padding: 20px; text-align: center;">
-        <p style="color:#cfe0d4; font-size: 14px; margin-bottom: 14px;">${card.text || ''}</p>
+        <p style="color:#cfe0d4; font-size: 14px; margin-bottom: 14px;">${renderInlineGameSymbols(card.text || '')}</p>
         <p style="color:#a89bb5; font-size: 12px; margin-bottom: 16px;">Maná disponible aprox.: podés pagar hasta X = ${roughMaxX} (con lo que tenés sin girar ahora).</p>
         <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom: 20px;">
           <button id="x-minus" class="mulligan-btn mulligan-btn-mull" style="padding: 8px 16px;">−</button>
@@ -425,9 +425,9 @@ export function showKickerModal(card, onConfirm, onCancel) {
         <h3>💪 ${card.name} — Kicker</h3>
       </div>
       <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
-        <p style="color:#cfe0d4; font-size: 13px; margin: 0 0 4px;">Podés pagar ${card.kicker.cost} adicional. Si lo hacés: ${bonusText}.</p>
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0 0 4px;">Podés pagar ${renderInlineGameSymbols(card.kicker.cost)} adicional. Si lo hacés: ${bonusText}.</p>
         <button class="loyalty-ability-btn" id="kicker-yes" style="justify-content: flex-start;">
-          <span class="loyalty-ability-text">💪 Sí, pagar Kicker ${card.kicker.cost}</span>
+          <span class="loyalty-ability-text">💪 Sí, pagar Kicker ${renderInlineGameSymbols(card.kicker.cost)}</span>
         </button>
         <button class="loyalty-ability-btn" id="kicker-no" style="justify-content: flex-start;">
           <span class="loyalty-ability-text">➡️ No, lanzarlo sin Kicker</span>
@@ -464,8 +464,8 @@ export function showAlternativeCostModal(card, alternativeLabel, onConfirm, onCa
       <div class="gy-modal-header"><h3>🔀 ${card.name} — Vía de casteo</h3></div>
       <div style="display:flex; flex-direction:column; gap:10px; padding:16px;">
         <p style="color:#cfe0d4;font-size:13px;margin:0 0 4px;">Elegí el costo base antes de declarar objetivos.</p>
-        <button class="loyalty-ability-btn" id="cast-normal"><span class="loyalty-ability-text">💠 Normal: ${card.manaCost || '{0}'}</span></button>
-        <button class="loyalty-ability-btn" id="cast-alt"><span class="loyalty-ability-text">🔀 Alternativo: ${alternativeLabel}</span></button>
+        <button class="loyalty-ability-btn" id="cast-normal"><span class="loyalty-ability-text">💠 Normal: ${renderInlineGameSymbols(card.manaCost || '{0}')}</span></button>
+        <button class="loyalty-ability-btn" id="cast-alt"><span class="loyalty-ability-text">🔀 Alternativo: ${renderInlineGameSymbols(alternativeLabel)}</span></button>
         <button id="cast-route-cancel" class="mulligan-btn mulligan-btn-mull">❌ Cancelar</button>
       </div>
     </div>`;
@@ -610,7 +610,7 @@ export function showActivatedAbilityModal(cardName, options, onChoose, onCancel)
     const timingSuffix = timing === 'instant' ? ' · ⚡ Instantánea' : (timing === 'sorcery' ? ' · ⏳ Conjuro' : '');
     return `
       <button class="loyalty-ability-btn" data-idx="${idx}">
-        <span class="loyalty-cost" style="min-width:105px;">${describeCost(option.ability)}</span>
+        <span class="loyalty-cost" style="min-width:105px;">${renderInlineGameSymbols(describeCost(option.ability))}</span>
         <span class="loyalty-ability-text">${describeEffect(option.ability)}${sourceSuffix}${timingSuffix}</span>
       </button>
     `;
@@ -732,7 +732,7 @@ export function openGraveyardModal(isLocal) {
         fbBtn.className = 'mulligan-btn mulligan-btn-keep';
         fbBtn.style.fontSize = '11px';
         fbBtn.style.padding = '4px 8px';
-        fbBtn.textContent = `🔄 Flashback ${cardObj.flashback.cost}`;
+        fbBtn.innerHTML = `🔄 Flashback ${renderInlineGameSymbols(cardObj.flashback.cost)}`;
         fbBtn.addEventListener('click', () => {
           modalOverlay.remove();
           castFromGraveyard(cardObj, isLocal);
@@ -751,7 +751,7 @@ export function openGraveyardModal(isLocal) {
         escBtn.style.background = '#6c3483';
         escBtn.style.borderColor = '#9b59b6';
         const exileCount = cardObj.escape.exileCount || 0;
-        escBtn.textContent = `🌀 Escape ${cardObj.escape.cost} + exiliar ${exileCount}`;
+        escBtn.innerHTML = `🌀 Escape ${renderInlineGameSymbols(cardObj.escape.cost)} + exiliar ${exileCount}`;
         escBtn.addEventListener('click', () => {
           modalOverlay.remove();
           castFromGraveyard(cardObj, isLocal);
@@ -813,21 +813,53 @@ export function logMsg(msg) {
   els.gameLogBox.scrollTop = els.gameLogBox.scrollHeight;
 }
 
+// 23.13.19 — símbolos de maná reales. IMPORTANTE: estas URLs son relativas al DOCUMENTO,
+// no al archivo js/ui.js. En GitHub Pages, si la app vive en /argentinia/, `./assets/...`
+// resuelve correctamente a /argentinia/assets/... sin asumir que el repo sea el root del dominio.
+const MANA_ICON_URLS = Object.freeze({
+  W: './assets/images/ui/mana_blanco.png',
+  U: './assets/images/ui/mana_azul.png',
+  B: './assets/images/ui/mana_negro.png',
+  R: './assets/images/ui/mana_rojo.png',
+  G: './assets/images/ui/mana_verde.png'
+});
+
+function renderColoredManaIcon(symbol, extraClass = '') {
+  const src = MANA_ICON_URLS[symbol];
+  if (!src) return '';
+  const cls = extraClass ? `mana-icon ${extraClass}` : 'mana-icon';
+  return `<img class="${cls}" src="${src}" alt="{${symbol}}" draggable="false" decoding="async">`;
+}
+
 export function renderManaSymbols(manaCostStr) {
   if (!manaCostStr) return '';
   const matches = manaCostStr.match(/\{[^}]+\}/g);
   if (!matches) return '';
   return matches.map(m => {
-    const val = m.replace(/[{}]/g, '');
-    let colorClass = 'mana-c'; 
-    if(val === 'W') colorClass = 'mana-w'; if(val === 'U') colorClass = 'mana-u'; if(val === 'B') colorClass = 'mana-b'; if(val === 'R') colorClass = 'mana-r'; if(val === 'G') colorClass = 'mana-g';
-    const innerText = ['W','U','B','R','G'].includes(val) ? '' : val;
-    // Números de 2+ dígitos (10, 12...) necesitan una fuente más chica para entrar
-    // centrados en el mismo círculo sin desbordar — 1 dígito usa el tamaño normal.
+    const val = m.replace(/[{}]/g, '').toUpperCase();
+    if (MANA_ICON_URLS[val]) return renderColoredManaIcon(val, 'mana-icon-card-cost');
+
+    // Genérico/X/incoloro conservan el círculo numérico histórico: el cambio 23.13.19
+    // reemplaza únicamente los cinco círculos planos DE COLOR por los PNG oficiales.
+    const innerText = val;
     const fontSize = innerText.length >= 2 ? '3.2cqw' : '4.6cqw';
-    const style = innerText ? ` style="font-size:${fontSize};"` : '';
-    return `<span class="mana-symbol ${colorClass}"${style}>${innerText}</span>`;
+    return `<span class="mana-symbol mana-c" style="font-size:${fontSize};">${innerText}</span>`;
   }).join('');
+}
+
+// Para reglas, tierras y modales: coloreados => PNG; costes genéricos/X/C => círculo compacto;
+// {T} y cualquier futuro símbolo no-mana permanecen textuales para no inventar iconografía.
+export function renderInlineGameSymbols(text) {
+  if (text === null || text === undefined) return '';
+  return String(text).replace(/\{([^}]+)\}/g, (match, raw) => {
+    const val = String(raw).toUpperCase();
+    if (MANA_ICON_URLS[val]) return renderColoredManaIcon(val, 'mana-icon-inline');
+    if (/^(?:\d+|X|C)$/.test(val)) {
+      const wide = val.length >= 2 ? ' mana-symbol-inline-wide' : '';
+      return `<span class="mana-symbol mana-c mana-symbol-inline${wide}">${val}</span>`;
+    }
+    return match;
+  });
 }
 
 export function getTargetRules(card) {
@@ -1053,11 +1085,9 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
         <img class="basic-land-symbol-main" src="${landSymbolUrl}" alt="Símbolo de maná" style="width:100%; height:100%; object-fit:cover; object-position:center;" onerror="this.style.display='none'">
       </div>`;
   } else {
-    let formattedText = card.text ? card.text.replace(/\{([WUBRGC])\}/g, (match, p1) => {
-      let c = 'mana-c';
-      if(p1==='W') c='mana-w'; if(p1==='U') c='mana-u'; if(p1==='B') c='mana-b'; if(p1==='R') c='mana-r'; if(p1==='G') c='mana-g';
-      return `<span class="mana-symbol ${c}" style="display:inline-flex; width:4cqw; height:4cqw; font-size:2.5cqw; margin:0 2px; vertical-align:middle;"></span>`;
-    }) : '';
+    // 23.13.19 — la misma capa visual sirve para costes de habilidades y para el maná
+    // declarado por Tierras. Los JSON siguen canónicos ({W}/{U}/{B}/{R}/{G}); sólo cambia UI.
+    let formattedText = card.text ? renderInlineGameSymbols(card.text) : '';
 
     const effKeywords = card.power !== undefined ? getEffectiveKeywords(itemObj) : [];
 
