@@ -1704,3 +1704,149 @@ html.argentinia-mobile.arg-mobile-ios-install-fallback #arg-mobile-fullscreen-re
   font: 900 11px/1 system-ui,sans-serif;
   letter-spacing: .04em;
 }
+
+/* ============================================================================
+   23.13.9 — DECK COMPOSITION SIDEBAR
+   ============================================================================ */
+html.argentinia-mobile .deckbuilder-side {
+  width: min(235px, 30dvw) !important;
+}
+html.argentinia-mobile .deckbuilder-list {
+  padding: 5px !important;
+}
+html.argentinia-mobile .deckbuilder-type-group + .deckbuilder-type-group {
+  margin-top: 7px !important;
+}
+html.argentinia-mobile .deckbuilder-type-header {
+  padding: 4px 5px !important;
+  gap: 4px !important;
+  font-size: 8px !important;
+  letter-spacing: .2px !important;
+}
+html.argentinia-mobile .deckbuilder-type-header-mv {
+  font-size: 7px !important;
+}
+html.argentinia-mobile .deckbuilder-cmc-group {
+  margin-top: 3px !important;
+  padding-left: 3px !important;
+}
+html.argentinia-mobile .deckbuilder-cmc-title {
+  padding: 2px 2px 1px !important;
+  font-size: 7px !important;
+}
+html.argentinia-mobile .deckbuilder-list-item {
+  gap: 3px !important;
+  padding: 2px 1px 2px 3px !important;
+  font-size: 8px !important;
+}
+html.argentinia-mobile .deckbuilder-list-card-name {
+  padding: 2px !important;
+  cursor: pointer !important;
+}
+html.argentinia-mobile .deckbuilder-list-remove {
+  width: 16px !important;
+  height: 16px !important;
+  font-size: 10px !important;
+}
+html.argentinia-mobile .deckbuilder-card-preview.touch {
+  padding: 7px !important;
+}
+
+/* ============================================================================
+   23.13.10 — DECK STATS LAB + EDITABLE DECK NAME
+   ============================================================================ */
+html.argentinia-mobile .deckbuilder-name-input {
+  min-width: 120px !important;
+  max-width: min(260px, 28dvw) !important;
+  height: 28px !important;
+  padding: 4px 7px !important;
+  font-size: 12px !important;
+}
+html.argentinia-mobile .deckbuilder-stats-btn {
+  margin-bottom: 4px !important;
+  padding: 5px 6px !important;
+  font-size: 8px !important;
+}
+html.argentinia-mobile .deck-stats-overlay {
+  padding: 6px !important;
+}
+html.argentinia-mobile .deck-stats-modal {
+  width: min(96vw, 860px) !important;
+  max-height: 94dvh !important;
+  padding: 8px !important;
+  border-radius: 10px !important;
+}
+html.argentinia-mobile .deck-stats-header {
+  top: -8px !important;
+  padding: 5px 0 7px !important;
+}
+html.argentinia-mobile .deck-stats-title {
+  font-size: 14px !important;
+}
+html.argentinia-mobile .deck-stats-close {
+  width: 25px !important;
+  height: 25px !important;
+  font-size: 15px !important;
+}
+html.argentinia-mobile .deck-stats-grid {
+  grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  gap: 6px !important;
+}
+html.argentinia-mobile .deck-stats-panel {
+  padding: 7px !important;
+  border-radius: 8px !important;
+}
+html.argentinia-mobile .deck-stats-panel h4 {
+  margin-bottom: 5px !important;
+  font-size: 8px !important;
+}
+html.argentinia-mobile .deck-stats-kpis {
+  gap: 4px !important;
+}
+html.argentinia-mobile .deck-stats-kpi {
+  padding: 5px 2px !important;
+}
+html.argentinia-mobile .deck-stats-kpi strong {
+  font-size: 13px !important;
+}
+html.argentinia-mobile .deck-stats-kpi span,
+html.argentinia-mobile .deck-stats-note {
+  font-size: 7px !important;
+}
+html.argentinia-mobile .deck-curve-row {
+  grid-template-columns: 31px 1fr 22px !important;
+  gap: 4px !important;
+  margin: 3px 0 !important;
+  font-size: 7px !important;
+}
+html.argentinia-mobile .deck-curve-track { height: 7px !important; }
+html.argentinia-mobile .deck-color-row {
+  grid-template-columns: 72px 1fr !important;
+  gap: 4px !important;
+  margin: 3px 0 !important;
+  font-size: 7px !important;
+}
+html.argentinia-mobile .deck-color-row .deck-color-values { gap: 7px !important; }
+html.argentinia-mobile .deck-health-list { gap: 3px !important; }
+html.argentinia-mobile .deck-health-item {
+  padding: 4px 6px !important;
+  font-size: 7px !important;
+}
+html.argentinia-mobile .deck-hand-sim-intro {
+  gap: 5px !important;
+  font-size: 7px !important;
+}
+html.argentinia-mobile .deck-hand-sim-btn {
+  padding: 5px 8px !important;
+  font-size: 8px !important;
+}
+html.argentinia-mobile .deck-hand-results {
+  grid-template-columns: repeat(5,minmax(0,1fr)) !important;
+  gap: 3px !important;
+  margin-top: 5px !important;
+}
+html.argentinia-mobile .deck-hand-metric { padding: 4px 2px !important; }
+html.argentinia-mobile .deck-hand-metric strong { font-size: 11px !important; }
+html.argentinia-mobile .deck-hand-metric span { font-size: 6px !important; }
+html.argentinia-mobile .deck-hand-distribution { height: 44px !important; margin-top: 5px !important; }
+html.argentinia-mobile .deck-hand-dist-col { min-width: 16px !important; font-size: 6px !important; }

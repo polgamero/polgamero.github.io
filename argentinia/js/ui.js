@@ -47,6 +47,8 @@ import { DAILY_REWARD_SCHEDULE, normalizeInventory, normalizeDailyRewardsState, 
 import { showPackOpeningExperience, showGuaranteedMythicExperience } from './packOpening.js';
 import { applyCardZoom } from './cardZoom.js';
 import { announcePhaseTransition } from './phaseBanner.js';
+import { buildDeckComposition, formatManaValue } from './deckComposition.js';
+import { buildDeckStatistics, analyzeDeckHealth, simulateOpeningHands } from './deckStatistics.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -2464,6 +2466,13 @@ export function showEncyclopedia(onBack) {
     gridBox.appendChild(fragment);
   }
 
+  if (nameInput) {
+    nameInput.addEventListener('input', () => {
+      workingDeckName = nameInput.value.trim();
+      updateDeckSaveState();
+    });
+  }
+
   const debouncedSearch = debounce(value => {
     searchQuery = value;
     renderGrid();
@@ -2904,7 +2913,7 @@ function injectDeckBuilderStyles() {
       padding: 2px 7px; pointer-events: none; white-space: nowrap; z-index: 20;
     }
     .deckbuilder-filters { width: 220px; flex-shrink: 0; }
-    .deckbuilder-side { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; }
+    .deckbuilder-side { width: 330px; flex-shrink: 0; display: flex; flex-direction: column; min-width: 0; }
     .deckbuilder-side-title { color: #f0e0b0; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
     .deckbuilder-pool-card-wrap.enhanced .card { outline: 2px solid #d4af37; outline-offset: 2px; border-radius: 8px; }
     .deckbuilder-enhanced-marker {
@@ -2915,19 +2924,104 @@ function injectDeckBuilderStyles() {
     }
     .deckbuilder-list {
       flex: 1; overflow-y: auto;
-      background: rgba(0,0,0,0.2); border: 2px solid rgba(212,175,55,0.3); border-radius: 10px; padding: 10px;
+      background: rgba(0,0,0,0.2); border: 2px solid rgba(212,175,55,0.3); border-radius: 10px; padding: 8px;
+    }
+    .deckbuilder-type-group + .deckbuilder-type-group { margin-top: 12px; }
+    .deckbuilder-type-header {
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      padding:7px 8px; border-radius:7px;
+      background:linear-gradient(90deg,rgba(212,175,55,.18),rgba(212,175,55,.04));
+      border-left:3px solid #d4af37; color:#f5e7bd; font-size:11px; font-weight:800; letter-spacing:.45px;
+    }
+    .deckbuilder-type-header-count { color:#fff3cc; white-space:nowrap; }
+    .deckbuilder-type-header-mv { color:#cbbf9f; font-size:10px; font-weight:700; white-space:nowrap; }
+    .deckbuilder-cmc-group { margin-top:5px; padding-left:7px; }
+    .deckbuilder-cmc-title {
+      color:#a99362; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.55px;
+      padding:4px 3px 2px; border-bottom:1px solid rgba(212,175,55,.12);
     }
     .deckbuilder-list-item {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; color: #e8ddc8;
+      display:flex; align-items:center; justify-content:space-between; gap:6px;
+      min-width:0; padding:4px 2px 4px 6px; border-bottom:1px solid rgba(255,255,255,0.045); font-size:12px; color:#e8ddc8;
     }
-    .deckbuilder-list-item:last-child { border-bottom: none; }
+    .deckbuilder-list-item:last-child { border-bottom:none; }
+    .deckbuilder-list-card-name {
+      flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:help;
+      border-radius:4px; padding:2px 3px; transition:background .12s ease,color .12s ease;
+    }
+    .deckbuilder-list-card-name:hover { background:rgba(212,175,55,.12); color:#fff1c5; }
     .deckbuilder-list-remove {
-      background: none; border: 1px solid rgba(224,122,107,0.5); color: #e07a6b; border-radius: 5px;
-      width: 20px; height: 20px; cursor: pointer; font-size: 13px; line-height: 1; flex-shrink: 0;
+      background:none; border:1px solid rgba(224,122,107,0.5); color:#e07a6b; border-radius:5px;
+      width:20px; height:20px; cursor:pointer; font-size:13px; line-height:1; flex-shrink:0;
     }
-    .deckbuilder-list-remove:hover { background: rgba(224,122,107,0.15); }
-    .deckbuilder-empty-hint { color: #7a7086; font-size: 13px; text-align: center; padding: 20px 10px; }
+    .deckbuilder-list-remove:hover { background:rgba(224,122,107,0.15); }
+    .deckbuilder-empty-hint { color:#7a7086; font-size:13px; text-align:center; padding:20px 10px; }
+    .deckbuilder-card-preview {
+      position:fixed; z-index:10060; pointer-events:none; opacity:0;
+      transform:scale(.94); transform-origin:center; transition:opacity .12s ease,transform .12s ease;
+      filter:drop-shadow(0 14px 24px rgba(0,0,0,.65));
+    }
+    .deckbuilder-card-preview.visible { opacity:1; transform:scale(1); }
+    .deckbuilder-card-preview .card { cursor:default !important; }
+    .deckbuilder-card-preview-close { display:none; }
+    .deckbuilder-card-preview.touch {
+      left:50% !important; top:50% !important; transform:translate(-50%,-50%) scale(.96);
+      pointer-events:auto; padding:10px; border-radius:12px;
+      background:rgba(9,16,12,.96); border:1px solid rgba(212,175,55,.75);
+      box-shadow:0 18px 50px rgba(0,0,0,.75); filter:none;
+    }
+    .deckbuilder-card-preview.touch.visible { transform:translate(-50%,-50%) scale(1); }
+    .deckbuilder-card-preview.touch .deckbuilder-card-preview-close {
+      display:block; position:absolute; right:-9px; top:-9px; width:26px; height:26px; border-radius:50%;
+      border:1px solid #d4af37; background:#151a16; color:#f5e7bd; font-weight:900; cursor:pointer; z-index:2;
+    }
+    .deckbuilder-name-input {
+      flex:1; min-width:180px; max-width:420px; height:38px; padding:7px 11px; border-radius:8px;
+      border:1.5px solid rgba(212,175,55,.72); background:rgba(4,12,8,.86); color:#f0e0b0;
+      font:700 18px Georgia,serif; outline:none;
+    }
+    .deckbuilder-name-input:focus { border-color:#f0d26a; box-shadow:0 0 0 2px rgba(212,175,55,.13); }
+    .deckbuilder-stats-btn {
+      width:100%; margin:0 0 8px; padding:9px 10px; border-radius:8px; cursor:pointer;
+      border:1px solid rgba(212,175,55,.62); color:#f6e7b7; background:linear-gradient(180deg,rgba(43,55,31,.92),rgba(14,24,17,.96));
+      font-weight:800; letter-spacing:.15px;
+    }
+    .deckbuilder-stats-btn:hover { border-color:#f2d267; box-shadow:0 0 16px rgba(212,175,55,.18); }
+    .deck-stats-overlay { position:fixed; inset:0; z-index:10120; background:rgba(2,7,4,.82); display:grid; place-items:center; padding:24px; }
+    .deck-stats-modal {
+      width:min(980px,94vw); max-height:90vh; overflow:auto; border:2px solid rgba(212,175,55,.7); border-radius:16px;
+      background:radial-gradient(circle at 50% 0%,rgba(45,58,37,.98),rgba(8,16,11,.99) 58%); color:#e9dfc9;
+      box-shadow:0 26px 80px rgba(0,0,0,.78); padding:18px;
+    }
+    .deck-stats-header { display:flex; align-items:center; gap:12px; position:sticky; top:-18px; z-index:2; padding:10px 0 12px; background:rgba(8,16,11,.96); }
+    .deck-stats-title { flex:1; color:#f4e3ae; font:800 23px Georgia,serif; }
+    .deck-stats-close { width:34px; height:34px; border-radius:50%; border:1px solid #d4af37; background:#151a16; color:#f5e7bd; font-size:20px; cursor:pointer; }
+    .deck-stats-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .deck-stats-panel { background:rgba(0,0,0,.2); border:1px solid rgba(212,175,55,.25); border-radius:12px; padding:13px; min-width:0; }
+    .deck-stats-panel.wide { grid-column:1/-1; }
+    .deck-stats-panel h4 { margin:0 0 10px; color:#e8ce7b; font-size:13px; letter-spacing:.6px; text-transform:uppercase; }
+    .deck-stats-kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+    .deck-stats-kpi { text-align:center; padding:9px 5px; border-radius:9px; background:rgba(255,255,255,.035); }
+    .deck-stats-kpi strong { display:block; color:#fff0bd; font-size:20px; }
+    .deck-stats-kpi span { color:#a99e87; font-size:10px; }
+    .deck-curve-row,.deck-color-row { display:grid; grid-template-columns:42px 1fr 34px; align-items:center; gap:8px; margin:6px 0; font-size:11px; }
+    .deck-curve-track { height:11px; background:rgba(255,255,255,.07); border-radius:999px; overflow:hidden; }
+    .deck-curve-fill { height:100%; background:linear-gradient(90deg,#866c27,#e3bf49); border-radius:inherit; }
+    .deck-color-row { grid-template-columns:115px 1fr; }
+    .deck-color-row .deck-color-values { display:flex; justify-content:flex-end; gap:14px; font-variant-numeric:tabular-nums; }
+    .deck-health-list { display:flex; flex-direction:column; gap:7px; }
+    .deck-health-item { border-radius:8px; padding:8px 10px; font-size:11px; border-left:4px solid #8c805d; background:rgba(255,255,255,.03); }
+    .deck-health-item.ok { border-color:#58b875; }.deck-health-item.warn { border-color:#d6a73a; }.deck-health-item.danger { border-color:#df655b; }
+    .deck-health-item strong { color:#f1e7ce; }.deck-health-item span { color:#aaa08d; }
+    .deck-hand-sim-intro { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .deck-hand-sim-btn { border:1px solid #d4af37; background:#272314; color:#f7e8b5; border-radius:9px; padding:9px 14px; font-weight:800; cursor:pointer; }
+    .deck-hand-results { margin-top:11px; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+    .deck-hand-metric { border-radius:9px; background:rgba(255,255,255,.035); padding:9px; text-align:center; }
+    .deck-hand-metric strong { display:block; color:#fff0bd; font-size:18px; }.deck-hand-metric span { color:#a79d89; font-size:9px; }
+    .deck-hand-distribution { margin-top:10px; display:flex; align-items:flex-end; gap:5px; height:70px; }
+    .deck-hand-dist-col { flex:1; min-width:22px; text-align:center; font-size:8px; color:#9f947d; }
+    .deck-hand-dist-bar { margin:0 auto 3px; width:70%; min-height:1px; background:#c5a23b; border-radius:4px 4px 0 0; }
+    .deck-stats-note { color:#918873; font-size:10px; margin-top:8px; line-height:1.35; }
   `;
   document.head.appendChild(style);
 }
@@ -3000,6 +3094,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   const activeColors = new Set(CARD_BROWSER_COLORS.map(c => c.key));
   const activeArchetypes = new Set();
   const deckCounts = {};
+  let workingDeckName = String(deckName || '').trim();
   if (existingDeck) {
     (existingDeck.cardIds || []).forEach(id => { deckCounts[id] = (deckCounts[id] || 0) + 1; });
   }
@@ -3021,7 +3116,9 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   overlay.innerHTML = `
     <div class="deckbuilder-header">
       <button class="encyclopedia-back-btn" id="deckbuilder-cancel">← Cancelar</button>
-      <div class="deckbuilder-name">${existingDeck ? '✏️ ' : ''}${deckName}</div>
+      ${existingDeck
+        ? `<input class="deckbuilder-name-input" id="deckbuilder-name-input" maxlength="30" value="${escapeHtml(workingDeckName)}" aria-label="Nombre del mazo">`
+        : `<div class="deckbuilder-name">${escapeHtml(workingDeckName)}</div>`}
       <button class="store-buy-btn" id="deckbuilder-save" disabled>💾 Guardar mazo</button>
     </div>
     <div class="store-error-msg" id="deckbuilder-error" style="text-align:left;"></div>
@@ -3050,6 +3147,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         <div class="card-browser-filter-grid archetypes">${browserArchetypeFiltersHTML('deck')}</div>
       </div>
       <div class="deckbuilder-side">
+        <button class="deckbuilder-stats-btn" id="deckbuilder-stats" type="button">📊 Estadísticas del mazo</button>
         <div class="deckbuilder-side-title" id="deckbuilder-count">Tu mazo (0 / ${DECK_SIZE_EXACT} cartas)</div>
         <div class="deckbuilder-list" id="deckbuilder-list"></div>
       </div>
@@ -3062,6 +3160,56 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   const list = overlay.querySelector('#deckbuilder-list');
   const countLabel = overlay.querySelector('#deckbuilder-count');
   const errorBox = overlay.querySelector('#deckbuilder-error');
+  const nameInput = overlay.querySelector('#deckbuilder-name-input');
+
+  const deckCategoryById = new Map();
+  ENCYCLOPEDIA_TABS.forEach(tab => cardDb.getByCategory(tab.key).forEach(card => deckCategoryById.set(card.id, tab.key)));
+
+  const cardPreview = document.createElement('div');
+  cardPreview.className = 'deckbuilder-card-preview';
+  overlay.appendChild(cardPreview);
+  const usesTouchPreview = document.documentElement.classList.contains('argentinia-mobile') ||
+    !!window.matchMedia?.('(hover: none), (pointer: coarse)')?.matches;
+
+  function hideDeckCardPreview() {
+    cardPreview.classList.remove('visible', 'touch');
+    cardPreview.innerHTML = '';
+  }
+
+  function showDeckCardPreview(entry, anchorEl, touch = false) {
+    if (!entry?.card) return;
+    cardPreview.innerHTML = '';
+    cardPreview.classList.toggle('touch', touch);
+
+    const enhancementKeyword = entry.isEnhanced ? enhancements[entry.card.id] : null;
+    const displayCard = enhancementKeyword
+      ? { ...entry.card, keywords: [...(entry.card.keywords || []), enhancementKeyword] }
+      : entry.card;
+    const cardEl = createCardElement(displayCard, false, true, null, 'preview', null);
+    const previewWidth = touch ? Math.min(190, Math.max(145, window.innerHeight * 0.48)) : 190;
+    cardEl.style.width = `${previewWidth}px`;
+    cardEl.style.height = `${previewWidth * 7 / 5}px`;
+    cardPreview.appendChild(cardEl);
+
+    if (touch) {
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'deckbuilder-card-preview-close';
+      closeBtn.type = 'button';
+      closeBtn.textContent = '×';
+      closeBtn.setAttribute('aria-label', 'Cerrar vista previa');
+      closeBtn.addEventListener('click', event => { event.stopPropagation(); hideDeckCardPreview(); });
+      cardPreview.appendChild(closeBtn);
+    } else {
+      const anchorRect = anchorEl.getBoundingClientRect();
+      const previewHeight = previewWidth * 7 / 5;
+      const left = Math.max(10, anchorRect.left - previewWidth - 18);
+      let top = anchorRect.top + anchorRect.height / 2 - previewHeight / 2;
+      top = Math.max(10, Math.min(top, window.innerHeight - previewHeight - 10));
+      cardPreview.style.left = `${left}px`;
+      cardPreview.style.top = `${top}px`;
+    }
+    cardPreview.classList.add('visible');
+  }
 
   function normalizeSearch(str) {
     return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -3069,6 +3217,24 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 
   function totalInDeck() {
     return Object.values(deckCounts).reduce((sum, n) => sum + n, 0);
+  }
+
+  function getCurrentDeckEntries() {
+    return Object.entries(deckCounts)
+      .filter(([, n]) => n > 0)
+      .map(([trackingKey, count]) => {
+        const isEnhanced = trackingKey.endsWith(ENHANCED_SUFFIX);
+        const baseId = isEnhanced ? trackingKey.slice(0, -ENHANCED_SUFFIX.length) : trackingKey;
+        const card = cardDb.getById(baseId);
+        return { trackingKey, card, count, isEnhanced, categoryKey: card ? deckCategoryById.get(card.id) : null };
+      })
+      .filter(entry => entry.card);
+  }
+
+  function updateDeckSaveState() {
+    const saveBtn = overlay.querySelector('#deckbuilder-save');
+    const validName = !!workingDeckName && workingDeckName.length <= 30;
+    saveBtn.disabled = totalInDeck() !== DECK_SIZE_EXACT || !validName;
   }
 
   function totalEnhancedInDeck() {
@@ -3172,46 +3338,176 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     grid.appendChild(fragment);
   }
 
+  function showDeckStatisticsModal() {
+    const entries = getCurrentDeckEntries();
+    const stats = buildDeckStatistics(entries);
+    const health = analyzeDeckHealth(stats);
+    const modal = document.createElement('div');
+    modal.className = 'deck-stats-overlay';
+
+    const curveKeys = ['0','1','2','3','4','5','6+'];
+    const curveMax = Math.max(1, ...curveKeys.map(key => stats.curve[key] || 0));
+    const curveHTML = curveKeys.map(key => {
+      const count = stats.curve[key] || 0;
+      const width = Math.round((count / curveMax) * 100);
+      return `<div class="deck-curve-row"><strong>${key === '6+' ? '6+' : `CMC ${key}`}</strong><div class="deck-curve-track"><div class="deck-curve-fill" style="width:${width}%"></div></div><span>${count}</span></div>`;
+    }).join('');
+
+    const colorMeta = [
+      ['W','⚪ Blanco'],['U','🔵 Azul'],['B','⚫ Negro'],['R','🔴 Rojo'],['G','🟢 Verde'],['C','◇ Incoloro']
+    ];
+    const colorHTML = colorMeta.map(([key,label]) => `
+      <div class="deck-color-row">
+        <strong>${label}</strong>
+        <div class="deck-color-values"><span>demanda <b>${stats.demand[key] || 0}</b></span><span>fuentes <b>${stats.sources[key] || 0}</b></span></div>
+      </div>`).join('');
+
+    const healthHTML = health.map(item => `<div class="deck-health-item ${item.level}"><strong>${escapeHtml(item.title)}</strong> <span>— ${escapeHtml(item.detail)}</span></div>`).join('');
+
+    modal.innerHTML = `
+      <div class="deck-stats-modal" role="dialog" aria-modal="true" aria-label="Estadísticas del mazo">
+        <div class="deck-stats-header"><div class="deck-stats-title">📊 Estadísticas — ${escapeHtml(workingDeckName || 'Mazo')}</div><button class="deck-stats-close" type="button" aria-label="Cerrar">×</button></div>
+        <div class="deck-stats-grid">
+          <section class="deck-stats-panel wide">
+            <h4>Resumen general</h4>
+            <div class="deck-stats-kpis">
+              <div class="deck-stats-kpi"><strong>${stats.total}</strong><span>cartas</span></div>
+              <div class="deck-stats-kpi"><strong>${stats.lands}</strong><span>tierras</span></div>
+              <div class="deck-stats-kpi"><strong>${stats.creatures}</strong><span>criaturas</span></div>
+              <div class="deck-stats-kpi"><strong>${stats.nonlands}</strong><span>no-tierras</span></div>
+              <div class="deck-stats-kpi"><strong>${formatManaValue(stats.averageManaValue)}</strong><span>MV sin tierras</span></div>
+            </div>
+          </section>
+          <section class="deck-stats-panel"><h4>Curva de maná</h4>${curveHTML}</section>
+          <section class="deck-stats-panel"><h4>Demanda de color vs fuentes</h4>${colorHTML}<div class="deck-stats-note">“Demanda” cuenta símbolos coloreados en los costes. “Fuentes” cuenta permanentes del mazo capaces de producir ese color; las fuentes de cualquier color cuentan para cada color que pueden pagar.${stats.flexibleSources ? ` · ${stats.flexibleSources} fuente(s) flexible(s).` : ''}</div></section>
+          <section class="deck-stats-panel wide"><h4>Salud del mazo · orientativo</h4><div class="deck-health-list">${healthHTML}</div><div class="deck-stats-note">Estas señales no bloquean el guardado ni pretenden definir un único estilo correcto de construcción.</div></section>
+          <section class="deck-stats-panel wide">
+            <h4>🎲 Probar mano · simulación Monte Carlo</h4>
+            <div class="deck-hand-sim-intro"><button class="deck-hand-sim-btn" type="button">Simular 100 manos</button><span>100 manos aleatorias de 7 cartas, sin mulligan previo.</span></div>
+            <div class="deck-hand-results" hidden></div>
+            <div class="deck-hand-distribution" hidden></div>
+            <div class="deck-stats-note">Criterios: “equilibrada” = 2–4 tierras + al menos un hechizo CMC ≤3; “salida temprana” = 2–4 tierras + al menos una jugada CMC 1–2; “mulligan probable” = 0–1 o 6–7 tierras. Son métricas de referencia, no reglas universales.</div>
+          </section>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    const close = () => modal.remove();
+    modal.querySelector('.deck-stats-close').addEventListener('click', close);
+    modal.addEventListener('click', event => { if (event.target === modal) close(); });
+
+    modal.querySelector('.deck-hand-sim-btn').addEventListener('click', () => {
+      const result = simulateOpeningHands(entries, 100);
+      const results = modal.querySelector('.deck-hand-results');
+      const dist = modal.querySelector('.deck-hand-distribution');
+      results.hidden = false;
+      dist.hidden = false;
+      const metrics = [
+        ['Mano equilibrada',`${result.balancedPct}%`],
+        ['Salida temprana',`${result.earlyPlayPct}%`],
+        ['Mulligan probable',`${result.mulliganPct}%`],
+        ['3–4 tierras',`${result.threeFourLandsPct}%`],
+        ['0 tierras',`${result.zeroLandPct}%`],
+        ['1 tierra',`${result.oneLandPct}%`],
+        ['5+ tierras',`${result.fivePlusLandsPct}%`],
+        ['Prom. tierras',result.averageLands.toFixed(2)],
+        ['Prom. criaturas',result.averageCreatures.toFixed(2)],
+        ['Con criatura',`${result.creatureHandPct}%`]
+      ];
+      results.innerHTML = metrics.map(([label,value]) => `<div class="deck-hand-metric"><strong>${value}</strong><span>${label}</span></div>`).join('');
+      const max = Math.max(1, ...result.landHistogram);
+      dist.innerHTML = result.landHistogram.map((pct,index) => `<div class="deck-hand-dist-col"><div class="deck-hand-dist-bar" style="height:${Math.max(1, Math.round((pct/max)*54))}px"></div><b>${index}</b><br>${pct}%</div>`).join('');
+    });
+  }
+
   function renderList() {
-    const entries = Object.entries(deckCounts).filter(([, n]) => n > 0);
+    const entries = getCurrentDeckEntries();
+
     const total = totalInDeck();
     countLabel.textContent = `Tu mazo (${total} / ${DECK_SIZE_EXACT} cartas)`;
     countLabel.style.color = total === DECK_SIZE_EXACT ? '#7cbf7c' : '#f0e0b0';
 
-    const saveBtn = overlay.querySelector('#deckbuilder-save');
-    saveBtn.disabled = total !== DECK_SIZE_EXACT;
+    updateDeckSaveState();
 
+    hideDeckCardPreview();
     if (entries.length === 0) {
       list.innerHTML = '<div class="deckbuilder-empty-hint">Todavía no agregaste ninguna carta — hacé click en una de la izquierda.</div>';
       return;
     }
 
     list.innerHTML = '';
-    entries
-      .map(([trackingKey, count]) => {
-        const isEnhanced = trackingKey.endsWith(ENHANCED_SUFFIX);
-        const baseId = isEnhanced ? trackingKey.slice(0, -ENHANCED_SUFFIX.length) : trackingKey;
-        return { trackingKey, card: cardDb.getById(baseId), count, isEnhanced };
-      })
-      .filter(e => e.card)
-      .sort((a, b) => a.card.name.localeCompare(b.card.name))
-      .forEach(({ trackingKey, card, count, isEnhanced }) => {
-        const item = document.createElement('div');
-        item.className = 'deckbuilder-list-item';
-        const label = document.createElement('span');
-        label.textContent = isEnhanced ? `${count}x ${card.name} ✨` : `${count}x ${card.name}`;
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'deckbuilder-list-remove';
-        removeBtn.textContent = '−';
-        removeBtn.addEventListener('click', () => {
-          deckCounts[trackingKey] = Math.max(0, (deckCounts[trackingKey] || 0) - 1);
-          refreshPoolTileStates();
-          renderList();
+    const composition = buildDeckComposition(entries);
+
+    composition.forEach(group => {
+      const groupEl = document.createElement('section');
+      groupEl.className = 'deckbuilder-type-group';
+
+      const header = document.createElement('div');
+      header.className = 'deckbuilder-type-header';
+      const headerMain = document.createElement('span');
+      headerMain.innerHTML = `${group.label} <span class="deckbuilder-type-header-count">(${group.count})</span>`;
+      header.appendChild(headerMain);
+      if (group.showManaValue) {
+        const mv = document.createElement('span');
+        mv.className = 'deckbuilder-type-header-mv';
+        mv.textContent = `MV = ${formatManaValue(group.manaValue)}`;
+        header.appendChild(mv);
+      }
+      groupEl.appendChild(header);
+
+      const renderEntries = (parent, cmcEntries) => {
+        cmcEntries.forEach(entry => {
+          const item = document.createElement('div');
+          item.className = 'deckbuilder-list-item';
+          const label = document.createElement('span');
+          label.className = 'deckbuilder-list-card-name';
+          label.textContent = `${entry.count > 1 ? `${entry.count}× ` : ''}${entry.card.name}${entry.isEnhanced ? ' ✨' : ''}`;
+          label.title = usesTouchPreview ? 'Tocá para ver la carta completa' : 'Pasá el mouse para ver la carta completa';
+
+          if (usesTouchPreview) {
+            label.addEventListener('click', event => {
+              event.stopPropagation();
+              showDeckCardPreview(entry, label, true);
+            });
+          } else {
+            label.addEventListener('mouseenter', () => showDeckCardPreview(entry, label, false));
+            label.addEventListener('mouseleave', hideDeckCardPreview);
+          }
+
+          const removeBtn = document.createElement('button');
+          removeBtn.className = 'deckbuilder-list-remove';
+          removeBtn.type = 'button';
+          removeBtn.textContent = '−';
+          removeBtn.setAttribute('aria-label', `Quitar una copia de ${entry.card.name}`);
+          removeBtn.addEventListener('click', () => {
+            const trackingKey = entry.trackingKey;
+            deckCounts[trackingKey] = Math.max(0, (deckCounts[trackingKey] || 0) - 1);
+            refreshPoolTileStates();
+            renderList();
+          });
+          item.appendChild(label);
+          item.appendChild(removeBtn);
+          parent.appendChild(item);
         });
-        item.appendChild(label);
-        item.appendChild(removeBtn);
-        list.appendChild(item);
-      });
+      };
+
+      if (group.key === 'tierras') {
+        const flat = group.cmcGroups.flatMap(cmcGroup => cmcGroup.entries);
+        renderEntries(groupEl, flat);
+      } else {
+        group.cmcGroups.forEach(cmcGroup => {
+          const cmcEl = document.createElement('div');
+          cmcEl.className = 'deckbuilder-cmc-group';
+          const cmcTitle = document.createElement('div');
+          cmcTitle.className = 'deckbuilder-cmc-title';
+          cmcTitle.textContent = `CMC: ${cmcGroup.cmc}`;
+          cmcEl.appendChild(cmcTitle);
+          renderEntries(cmcEl, cmcGroup.entries);
+          groupEl.appendChild(cmcEl);
+        });
+      }
+      list.appendChild(groupEl);
+    });
   }
 
   const debouncedSearch = debounce(value => {
@@ -3266,6 +3562,8 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     });
   });
 
+  overlay.querySelector('#deckbuilder-stats').addEventListener('click', showDeckStatisticsModal);
+
   overlay.querySelector('#deckbuilder-cancel').addEventListener('click', () => {
     overlay.remove();
     onCancel();
@@ -3285,8 +3583,8 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     saveBtn.disabled = true;
     try {
       const updated = existingDeck
-        ? await updateDeck(state.currentUser.uid, existingDeck.id, deckName, cardIds)
-        : await createDeck(state.currentUser.uid, deckName, cardIds);
+        ? await updateDeck(state.currentUser.uid, existingDeck.id, workingDeckName, cardIds)
+        : await createDeck(state.currentUser.uid, workingDeckName, cardIds);
       state.userProfile = updated;
       overlay.remove();
       onSaved();
