@@ -310,7 +310,9 @@ export async function registerDailyLogin(uid, nowMs = null) {
     : { serverNow: new Date(nowMs), effectiveNow: new Date(nowMs), debugOffsetDays: 0 };
   const now = clock.effectiveNow;
   const ref = doc(db, 'users', uid);
-  return runTransaction(db, async (tx) => {
+  let transitionDebug = null;
+  try {
+    return await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('No se encontró tu perfil.');
     const data = snap.data();
@@ -320,6 +322,24 @@ export async function registerDailyLogin(uid, nowMs = null) {
     const sourceDaily = hasAuthoritativeDailyState(data.dailyRewards) ? data.dailyRewards : null;
     const login = advanceDailyLoginState(sourceDaily, now);
     const inventory = normalizeInventory(data.inventory);
+    const previous = normalizeDailyRewardsState(data.dailyRewards, now);
+    transitionDebug = {
+      schemaVersion: Number(data.dailyRewards?.schemaVersion) || 0,
+      hasServerUpdatedAt: !!data.dailyRewards?.serverUpdatedAt,
+      previousLastLoginDate: previous.lastLoginDate,
+      previousCycleStartDate: previous.cycleStartDate,
+      previousStreak: previous.streak,
+      previousUnlockedDays: previous.unlockedDays.slice(),
+      previousClaimedDays: previous.claimedDays.slice(),
+      previousLastClaimedDay: previous.lastClaimedDay,
+      effectiveDate: localDateKey(now),
+      requestedRewardDay: login.rewardDay,
+      requestedStreak: login.state.streak,
+      requestedUnlockedDays: login.state.unlockedDays.slice(),
+      requestedClaimedDays: login.state.claimedDays.slice(),
+      requestedLastClaimedDay: login.state.lastClaimedDay,
+      debugOffsetDays: clock.debugOffsetDays
+    };
 
     if (login.newCalendarLogin) {
       const persistedDaily = serializeDailyRewardsForFirestore(login.state, now, serverTimestamp());
@@ -345,7 +365,13 @@ export async function registerDailyLogin(uid, nowMs = null) {
         debugOffsetDays: clock.debugOffsetDays
       }
     };
-  });
+    });
+  } catch (error) {
+    if (error?.code === 'permission-denied') {
+      console.error('[DailyRewards 23.13.13] Firestore rechazó registerDailyLogin.', transitionDebug || { effectiveDate: localDateKey(now) });
+    }
+    throw error;
+  }
 }
 
 // Claim separado del login: entrar desbloquea y RECLAMAR acredita. Los premios pertenecen
