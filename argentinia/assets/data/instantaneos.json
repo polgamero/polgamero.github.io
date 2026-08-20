@@ -1601,7 +1601,7 @@
     "text": "Contrarresta el hechizo instantáneo objetivo.",
     "flavorText": "Una cosa es venir rápido. Otra es que te dejen pasar.",
     "requiresTarget": true,
-    "image": "corta_bocha.png",
+    "image": "para_ahi.png",
     "effect": {
       "type": "counter_instant",
       "amount": 0
@@ -1620,7 +1620,7 @@
     "text": "Mirá la mano del jugador rival. Elegí una carta de ella. Ese jugador descarta esa carta.",
     "flavorText": "—Documento, bolso y bolsillo. En ese orden.",
     "requiresTarget": true,
-    "image": "cobro_pendiente.png",
+    "image": "requisa_relampago.png",
     "effect": {
       "type": "private_zone_move",
       "zone": "hand",
@@ -1646,7 +1646,7 @@
     "text": "Mirá la mano del jugador rival. Elegí una carta de ella. Exiliá esa carta.",
     "flavorText": "Lo que entra al sobre deja de pertenecer a la escena.",
     "requiresTarget": true,
-    "image": "apagon_pasillo.png",
+    "image": "precinto_de_evidencia.png",
     "effect": {
       "type": "private_zone_move",
       "zone": "hand",
@@ -1671,7 +1671,7 @@
     "text": "Mirá las tres primeras cartas del mazo del jugador rival. Elegí una. Poné esa carta en su cementerio.",
     "flavorText": "No hizo falta abrir el expediente entero.",
     "requiresTarget": true,
-    "image": "silencio_biblioteca.png",
+    "image": "pinchazo_de_archivo.png",
     "effect": {
       "type": "private_zone_move",
       "zone": "deck",
@@ -1698,7 +1698,7 @@
     "text": "Mirá las cuatro primeras cartas del mazo del jugador rival. Elegí una. Exiliá esa carta.",
     "flavorText": "Cuando volvieron a contar los folios, faltaba justo el importante.",
     "requiresTarget": true,
-    "image": "pacto_sombras.png",
+    "image": "secuestro_de_carpeta.png",
     "effect": {
       "type": "private_zone_move",
       "zone": "deck",
@@ -1724,7 +1724,7 @@
     "text": "Elegí una carta de la mano del jugador rival sin mirarla. Ese jugador descarta esa carta.",
     "flavorText": "No sabía qué había agarrado. Sabía que iba a doler.",
     "requiresTarget": true,
-    "image": "corte_de_manga.png",
+    "image": "manotazo_a_ciegas.png",
     "effect": {
       "type": "private_zone_move",
       "zone": "hand",

@@ -1009,7 +1009,7 @@
     "colors": [],
     "text": "{3}, {T}: Mirá las tres primeras cartas del mazo del jugador rival. Elegí una. Exiliá esa carta.",
     "flavorText": "Amplía hasta lo que alguien esperaba mantener ilegible.",
-    "image": "proyector_del_cine_cerrado.png",
+    "image": "lectora_de_microfilm.png",
     "keywords": [],
     "activatedAbility": {
       "cost": "{3}{T}",

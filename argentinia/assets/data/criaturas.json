@@ -4529,7 +4529,7 @@
     ],
     "text": "{2}{B}, {T}: Mirá la mano del jugador rival. Elegí una carta que no sea tierra. Ese jugador descarta esa carta.",
     "flavorText": "El boleto era lo de menos.",
-    "image": "recaudador.png",
+    "image": "revisor_de_terminal.png",
     "power": 2,
     "toughness": 3,
     "keywords": [],

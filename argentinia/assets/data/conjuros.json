@@ -1240,7 +1240,7 @@
     ],
     "text": "Mirá la mano del jugador rival. Elegí una carta que no sea tierra. Ese jugador descarta esa carta.",
     "flavorText": "La puerta cedió antes que la excusa.",
-    "image": "corralito.png",
+    "image": "allanamiento_de_madrugada.png",
     "requiresTarget": true,
     "effect": {
       "type": "private_zone_move",
@@ -1266,7 +1266,7 @@
     ],
     "text": "Mirá las cinco primeras cartas del mazo del jugador rival. Elegí dos. Exiliá esas cartas.",
     "flavorText": "Dos páginas bastaron para cambiar la versión oficial.",
-    "image": "turno_morgue.png",
+    "image": "archivo_clasificado.png",
     "requiresTarget": true,
     "effect": {
       "type": "private_zone_move",
@@ -1292,7 +1292,7 @@
     ],
     "text": "Mirá la mano del jugador rival. Elegí una carta de ella. Poné esa carta en el fondo de su mazo.",
     "flavorText": "No desapareció. Quedó donde nadie la iba a buscar pronto.",
-    "image": "planos_del_puerto.png",
+    "image": "al_fondo_del_cajon.png",
     "requiresTarget": true,
     "effect": {
       "type": "private_zone_move",
