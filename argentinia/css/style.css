@@ -1938,3 +1938,104 @@ html, body {
   .phase-banner.run { animation:arg-phase-banner-reduced 1.55s ease both; }
   @keyframes arg-phase-banner-reduced { 0%,100%{opacity:0} 15%,85%{opacity:1;transform:none} }
 }
+
+/* === 23.13.15 · Pack Card 3D Inspector =====================================
+   Scope intencionalmente exclusivo del overlay de apertura. No reutilizar nombres
+   genéricos como .card/.shine/.card-front del prototipo externo: Argentinia ya usa
+   .card en todo el motor y una colisión acá podría alterar tablero/Enciclopedia. */
+#pack-opening-overlay .pack-opening-card-shell.arg-pack3d-shell {
+  --arg-pack3d-rx: 0deg;
+  --arg-pack3d-ry: 0deg;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+#pack-opening-overlay .pack-opening-card-shell.arg-pack3d-shell.is-revealed {
+  transform: rotateX(var(--arg-pack3d-rx)) rotateY(calc(180deg + var(--arg-pack3d-ry)));
+}
+#pack-opening-overlay .pack-opening-card-shell.arg-pack3d-shell.arg-pack3d-ready {
+  cursor: grab;
+  touch-action: none;
+}
+#pack-opening-overlay .pack-opening-card-shell.arg-pack3d-shell.arg-pack3d-dragging {
+  cursor: grabbing;
+  transition: none !important;
+}
+#pack-opening-overlay .pack-opening-card-shell.arg-pack3d-shell.arg-pack3d-settling {
+  transition: transform .6s cubic-bezier(.25,1,.5,1) !important;
+}
+#pack-opening-overlay .pack-opening-card-shell.arg-pack3d-shell.arg-pack3d-intro.is-revealed {
+  pointer-events: none;
+  animation: arg-pack3d-intro-spawn 1.2s cubic-bezier(.25,1,.5,1) both;
+}
+@keyframes arg-pack3d-intro-spawn {
+  0%   { transform: scale(.30) rotateX(20deg) rotateY(-540deg); }
+  70%  { transform: scale(1.05) rotateX(-5deg) rotateY(195deg); }
+  85%  { transform: scale(.98) rotateX(2deg) rotateY(176deg); }
+  100% { transform: scale(1) rotateX(0deg) rotateY(180deg); }
+}
+#pack-opening-overlay .arg-pack3d-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  border-radius: 10px;
+  background: none;
+  mix-blend-mode: overlay;
+}
+#pack-opening-overlay .pack-opening-face {
+  transform-style: preserve-3d;
+}
+#pack-opening-overlay .pack-opening-front,
+#pack-opening-overlay .pack-opening-back {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  #pack-opening-overlay .pack-opening-card-shell.arg-pack3d-shell.arg-pack3d-intro.is-revealed {
+    animation: none !important;
+  }
+}
+
+/* === 23.13.15 · Persistent Card Browser + Sort ============================= */
+:is(#encyclopedia-overlay,#deckbuilder-overlay) .card-browser-tab-pane {
+  display: contents;
+}
+:is(#encyclopedia-overlay,#deckbuilder-overlay) .card-browser-tab-pane[hidden],
+:is(#encyclopedia-overlay,#deckbuilder-overlay) [hidden] {
+  display: none !important;
+}
+.card-browser-sort {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 38px;
+  gap: 7px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.card-browser-sort select,
+.card-browser-sort-direction {
+  min-height: 34px;
+  border: 1px solid rgba(212,175,55,.38);
+  border-radius: 8px;
+  background: rgba(255,255,255,.05);
+  color: #f0e0b0;
+  font: inherit;
+}
+.card-browser-sort select {
+  width: 100%;
+  padding: 6px 9px;
+  cursor: pointer;
+}
+.card-browser-sort select option {
+  background: #101812;
+  color: #f0e0b0;
+}
+.card-browser-sort-direction {
+  cursor: pointer;
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1;
+}
+.card-browser-sort-direction:hover {
+  border-color: #e8ce7b;
+  background: rgba(212,175,55,.12);
+}

@@ -1,5 +1,6 @@
 import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS } from './store.js';
 import { bindCardZoomControl } from './cardZoom.js';
+import { bindPackCardInspector } from './packCardInspector.js';
 
 // 23.13.1 — Presentación pura. Este módulo NO compra, NO consume sobres y NO escribe
 // Firestore. La economía debe haber terminado antes de invocarlo. Así cerrar/saltar la
@@ -319,6 +320,8 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
   const introPack = overlay.querySelector('.pack-opening-intro-pack');
   const introTitle = overlay.querySelector('.pack-opening-intro-title');
   const introCopy = overlay.querySelector('.pack-opening-intro-copy');
+  const hint = overlay.querySelector('.pack-opening-hint');
+  const inspector = bindPackCardInspector(shell, { frontFace });
 
   let index = -1;
   let revealed = false;
@@ -329,6 +332,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     if (closed) return;
     closed = true;
     window.removeEventListener('keydown', onKey);
+    inspector.destroy();
     overlay.remove();
     onClose?.();
   }
@@ -349,6 +353,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     preloadCardArtwork(entry.card);
     preloadCardArtwork(sequence[index + 1]?.card);
     setTier(overlay, entry);
+    inspector.reset();
     shell.classList.remove('is-revealed');
     backFace.replaceChildren(createBackFace().firstElementChild);
     frontFace.innerHTML = '';
@@ -361,12 +366,14 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     introCopy.style.display = 'none';
     primary.disabled = false;
     primary.textContent = 'REVELAR';
+    if (hint) hint.textContent = 'Click/tap · Enter · Espacio';
   }
 
   function doReveal() {
     const entry = sequence[index];
     renderFront(frontFace, entry.card, renderCard);
     shell.classList.add('is-revealed');
+    inspector.startRevealIntro();
     overlay.classList.remove('is-charging');
     overlay.classList.add('just-revealed','is-revealed-state');
     name.textContent = entry.card?.name || 'Carta';
@@ -374,6 +381,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     charging = false;
     primary.disabled = false;
     primary.textContent = entry.isFinal ? 'VER RESUMEN' : 'SIGUIENTE';
+    if (hint) hint.textContent = 'Arrastrá la carta para inspeccionarla · click/tap para seguir';
     window.setTimeout(() => overlay.classList.remove('just-revealed'), 520);
   }
 
@@ -419,7 +427,14 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
   }
 
   primary.addEventListener('click', advance);
-  shell.addEventListener('click', advance);
+  shell.addEventListener('click', event => {
+    if (inspector.consumeClickSuppression()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    advance();
+  });
   skip.addEventListener('click', showSummary);
   overlay.querySelector('.pack-opening-summary-close').addEventListener('click', close);
   window.addEventListener('keydown', onKey);
@@ -448,11 +463,13 @@ export function showGuaranteedMythicExperience({ card, renderCard, onClose = nul
   const front = overlay.querySelector('.pack-opening-front');
   const btn = overlay.querySelector('.pack-opening-primary');
   const name = overlay.querySelector('.pack-opening-name');
+  const hint = overlay.querySelector('.pack-opening-hint');
+  const inspector = bindPackCardInspector(shell, { frontFace: front });
   back.appendChild(createBackFace().firstElementChild);
   let revealed = false;
   let charging = false;
 
-  function close() { window.removeEventListener('keydown', onKey); overlay.remove(); onClose?.(); }
+  function close() { window.removeEventListener('keydown', onKey); inspector.destroy(); overlay.remove(); onClose?.(); }
   function act() {
     if (charging) return;
     if (revealed) { close(); return; }
@@ -463,18 +480,27 @@ export function showGuaranteedMythicExperience({ card, renderCard, onClose = nul
     window.setTimeout(() => {
       renderFront(front, card, renderCard);
       shell.classList.add('is-revealed');
+      inspector.startRevealIntro();
       overlay.classList.remove('is-charging');
       overlay.classList.add('just-revealed','is-revealed-state');
       name.textContent = card?.name || 'Carta';
       btn.disabled = false;
       btn.textContent = 'VOLVER A MI COFRE';
+      if (hint) hint.textContent = 'Arrastrá la carta para inspeccionarla';
       revealed = true;
       charging = false;
     }, 1500);
   }
   function onKey(e) { if ((e.key === 'Enter' || e.key === ' ') && !charging) { e.preventDefault(); act(); } }
   btn.addEventListener('click', act);
-  shell.addEventListener('click', act);
+  shell.addEventListener('click', event => {
+    if (inspector.consumeClickSuppression()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    act();
+  });
   window.addEventListener('keydown', onKey);
   return { close };
 }

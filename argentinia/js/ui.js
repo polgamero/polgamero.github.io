@@ -49,6 +49,7 @@ import { applyCardZoom } from './cardZoom.js';
 import { announcePhaseTransition } from './phaseBanner.js';
 import { buildDeckComposition, formatManaValue } from './deckComposition.js';
 import { buildDeckStatistics, analyzeDeckHealth, simulateOpeningHands } from './deckStatistics.js';
+import { getCardBrowserSortOptions, normalizeCardBrowserSort, compareCardsForBrowser } from './cardBrowser.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -2204,6 +2205,45 @@ function setBrowserCardZoom(overlay, value) {
   return applyCardZoom(overlay, value, { cssVar: '--card-w', unit: 'vh', min: 8, max: 50, fallback: 12 });
 }
 
+function browserSortOptionsHTML(categoryKey, selectedKey = 'cmc') {
+  return getCardBrowserSortOptions(categoryKey)
+    .map(option => `<option value="${option.key}"${option.key === selectedKey ? ' selected' : ''}>${option.label}</option>`)
+    .join('');
+}
+
+function syncBrowserSortControls(root, prefix, categoryKey, sortState) {
+  const normalized = normalizeCardBrowserSort(categoryKey, sortState);
+  const select = root.querySelector(`#${prefix}-sort-key`);
+  const direction = root.querySelector(`#${prefix}-sort-direction`);
+  if (select) {
+    select.innerHTML = browserSortOptionsHTML(categoryKey, normalized.key);
+    select.value = normalized.key;
+  }
+  if (direction) {
+    direction.textContent = normalized.direction === 'desc' ? '↓' : '↑';
+    direction.title = normalized.direction === 'desc' ? 'Orden decreciente' : 'Orden creciente';
+    direction.setAttribute('aria-label', direction.title);
+  }
+  return normalized;
+}
+
+function createBrowserTabPane(host, cache, tabKey) {
+  let entry = cache.get(tabKey);
+  if (entry) return entry;
+  const pane = document.createElement('div');
+  pane.className = 'card-browser-tab-pane';
+  pane.dataset.browserTab = tabKey;
+  pane.hidden = true;
+  host.appendChild(pane);
+  entry = { pane, records: [], empty: null };
+  cache.set(tabKey, entry);
+  return entry;
+}
+
+function activateBrowserTab(cache, tabKey) {
+  cache.forEach((entry, key) => { entry.pane.hidden = key !== tabKey; });
+}
+
 function debounce(fn, wait = 120) {
   let timer = null;
   return (...args) => {
@@ -2375,6 +2415,7 @@ export function showEncyclopedia(onBack) {
   const activeRarities = new Set(ENCYCLOPEDIA_RARITIES.map(r => r.key));
   const activeColors = new Set(CARD_BROWSER_COLORS.map(c => c.key));
   const activeArchetypes = new Set();
+  const sortByTab = new Map(ENCYCLOPEDIA_TABS.map(tab => [tab.key, { key: 'cmc', direction: 'asc' }]));
 
   const overlay = document.createElement('div');
   overlay.id = 'encyclopedia-overlay';
@@ -2407,6 +2448,11 @@ export function showEncyclopedia(onBack) {
           <input type="range" id="enc-card-zoom" min="12" max="45" step="1" value="${defaultZoom}">
           <span id="enc-card-zoom-value">${defaultZoom}</span>
         </div>
+        <div class="encyclopedia-filter-section-title">Ordenar</div>
+        <div class="card-browser-sort">
+          <select id="enc-sort-key" aria-label="Ordenar cartas por">${browserSortOptionsHTML(activeTab, 'cmc')}</select>
+          <button type="button" id="enc-sort-direction" class="card-browser-sort-direction" aria-label="Orden creciente" title="Orden creciente">↑</button>
+        </div>
         <div class="encyclopedia-filter-section-title">Opciones</div>
         <label class="encyclopedia-filter-option">
           <input type="radio" name="enc-ownership" value="all" checked>
@@ -2438,37 +2484,62 @@ export function showEncyclopedia(onBack) {
     return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
-  function renderGrid() {
-    gridBox.innerHTML = '';
-    const query = normalizeSearch(searchQuery);
-    const cards = cardDb.getByCategory(activeTab)
-      .filter(c => activeRarities.has(c.rarity))
-      .filter(c => cardMatchesColorFilter(c, activeColors))
-      .filter(c => cardMatchesArchetypeFilter(c, activeArchetypes))
-      .filter(c => ownershipFilter !== 'owned' || ownedIds.has(c.id))
-      .filter(c => !enhancedOnly || enhancedIds.has(c.id))
-      .filter(c => !query || normalizeSearch(c.name).includes(query));
+  // 23.13.15 — cada solapa se construye UNA sola vez por apertura de Enciclopedia.
+  // Después, filtros/orden sólo ocultan o reordenan los mismos nodos. Volver de
+  // Instantáneos a Criaturas ya no recrea 210 <img> ni vuelve a generar candidatos HTTP.
+  const tabCache = new Map();
 
-    if (cards.length === 0) {
-      gridBox.innerHTML = '<div class="encyclopedia-empty-msg">No hay cartas que coincidan con estos filtros.</div>';
-      return;
-    }
+  function ensureTab(tabKey) {
+    const entry = createBrowserTabPane(gridBox, tabCache, tabKey);
+    if (entry.records.length || entry.empty) return entry;
 
     const fragment = document.createDocumentFragment();
-    cards.forEach(card => {
+    cardDb.getByCategory(tabKey).forEach(card => {
       const owned = ownedIds.has(card.id);
       const slot = document.createElement('div');
       slot.className = `encyclopedia-card-slot${owned ? '' : ' unowned'}`;
-      const cardEl = createCardElement(card, false, true, null, 'encyclopedia', null);
-      slot.appendChild(cardEl);
+      slot.appendChild(createCardElement(card, false, true, null, 'encyclopedia', null));
       fragment.appendChild(slot);
+      entry.records.push({ card, node: slot, owned, enhanced: enhancedIds.has(card.id) });
     });
-    gridBox.appendChild(fragment);
+    entry.pane.appendChild(fragment);
+    entry.empty = document.createElement('div');
+    entry.empty.className = 'encyclopedia-empty-msg';
+    entry.empty.textContent = 'No hay cartas que coincidan con estos filtros.';
+    entry.empty.hidden = true;
+    entry.pane.appendChild(entry.empty);
+    return entry;
+  }
+
+  function refreshGrid() {
+    const entry = ensureTab(activeTab);
+    activateBrowserTab(tabCache, activeTab);
+    const query = normalizeSearch(searchQuery);
+    const sort = normalizeCardBrowserSort(activeTab, sortByTab.get(activeTab));
+    sortByTab.set(activeTab, sort);
+    syncBrowserSortControls(overlay, 'enc', activeTab, sort);
+
+    entry.records.sort((a, b) => compareCardsForBrowser(a.card, b.card, sort));
+    let visible = 0;
+    entry.records.forEach(record => {
+      const card = record.card;
+      const matches = activeRarities.has(card.rarity) &&
+        cardMatchesColorFilter(card, activeColors) &&
+        cardMatchesArchetypeFilter(card, activeArchetypes) &&
+        (ownershipFilter !== 'owned' || record.owned) &&
+        (!enhancedOnly || record.enhanced) &&
+        (!query || normalizeSearch(card.name).includes(query));
+      record.node.hidden = !matches;
+      if (matches) visible += 1;
+      entry.pane.appendChild(record.node); // mueve el nodo existente; no recrea su <img>
+    });
+    entry.empty.hidden = visible !== 0;
+    entry.pane.appendChild(entry.empty);
   }
 
   const debouncedSearch = debounce(value => {
     searchQuery = value;
-    renderGrid();
+    refreshGrid();
   });
   overlay.querySelector('#enc-search').addEventListener('input', (e) => debouncedSearch(e.target.value));
 
@@ -2477,25 +2548,36 @@ export function showEncyclopedia(onBack) {
     overlay.querySelector('#enc-card-zoom-value').textContent = e.target.value;
   });
 
+  overlay.querySelector('#enc-sort-key').addEventListener('change', e => {
+    const current = normalizeCardBrowserSort(activeTab, sortByTab.get(activeTab));
+    sortByTab.set(activeTab, { ...current, key: e.target.value });
+    refreshGrid();
+  });
+  overlay.querySelector('#enc-sort-direction').addEventListener('click', () => {
+    const current = normalizeCardBrowserSort(activeTab, sortByTab.get(activeTab));
+    sortByTab.set(activeTab, { ...current, direction: current.direction === 'asc' ? 'desc' : 'asc' });
+    refreshGrid();
+  });
+
   overlay.querySelectorAll('.encyclopedia-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       activeTab = btn.getAttribute('data-tab');
       overlay.querySelectorAll('.encyclopedia-tab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      renderGrid();
+      refreshGrid();
     });
   });
 
   overlay.querySelectorAll('input[name="enc-ownership"]').forEach(radio => {
     radio.addEventListener('change', () => {
       ownershipFilter = radio.value;
-      renderGrid();
+      refreshGrid();
     });
   });
 
   overlay.querySelector('#enc-enhanced-only').addEventListener('change', e => {
     enhancedOnly = e.target.checked;
-    renderGrid();
+    refreshGrid();
   });
 
   overlay.querySelectorAll('input[data-rarity]').forEach(checkbox => {
@@ -2503,7 +2585,7 @@ export function showEncyclopedia(onBack) {
       const rarity = checkbox.getAttribute('data-rarity');
       if (checkbox.checked) activeRarities.add(rarity);
       else activeRarities.delete(rarity);
-      renderGrid();
+      refreshGrid();
     });
   });
 
@@ -2512,7 +2594,7 @@ export function showEncyclopedia(onBack) {
       const color = checkbox.getAttribute('data-browser-color');
       if (checkbox.checked) activeColors.add(color);
       else activeColors.delete(color);
-      renderGrid();
+      refreshGrid();
     });
   });
 
@@ -2521,7 +2603,7 @@ export function showEncyclopedia(onBack) {
       const archetype = checkbox.getAttribute('data-browser-archetype');
       if (checkbox.checked) activeArchetypes.add(archetype);
       else activeArchetypes.delete(archetype);
-      renderGrid();
+      refreshGrid();
     });
   });
 
@@ -2530,7 +2612,7 @@ export function showEncyclopedia(onBack) {
     onBack();
   });
 
-  renderGrid();
+  refreshGrid();
 }
 
 function injectStoreStyles() {
@@ -3086,6 +3168,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   const activeRarities = new Set(ENCYCLOPEDIA_RARITIES.map(r => r.key));
   const activeColors = new Set(CARD_BROWSER_COLORS.map(c => c.key));
   const activeArchetypes = new Set();
+  const sortByTab = new Map(ENCYCLOPEDIA_TABS.map(tab => [tab.key, { key: 'cmc', direction: 'asc' }]));
   const deckCounts = {};
   let workingDeckName = String(deckName || '').trim();
   if (existingDeck) {
@@ -3126,6 +3209,11 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
           <span>🔍</span>
           <input type="range" id="deckbuilder-card-zoom" min="8" max="40" step="1" value="${defaultZoom}">
           <span id="deckbuilder-card-zoom-value">${defaultZoom}</span>
+        </div>
+        <div class="encyclopedia-filter-section-title">Ordenar</div>
+        <div class="card-browser-sort">
+          <select id="deck-sort-key" aria-label="Ordenar cartas por">${browserSortOptionsHTML(activeTab, 'cmc')}</select>
+          <button type="button" id="deck-sort-direction" class="card-browser-sort-direction" aria-label="Orden creciente" title="Orden creciente">↑</button>
         </div>
         <div class="encyclopedia-filter-section-title">Opciones</div>
         <label class="encyclopedia-filter-option">
@@ -3269,25 +3357,18 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     });
   }
 
-  function renderPool() {
-    grid.innerHTML = '';
-    const query = normalizeSearch(searchQuery);
-    const cards = cardDb.getByCategory(activeTab)
-      .filter(c => (ownedCounts[c.id] || 0) > 0)
-      .filter(c => activeRarities.has(c.rarity))
-      .filter(c => cardMatchesColorFilter(c, activeColors))
-      .filter(c => cardMatchesArchetypeFilter(c, activeArchetypes))
-      .filter(c => !enhancedOnly || enhancedIds.has(c.id))
-      .filter(c => !query || normalizeSearch(c.name).includes(query));
+  // 23.13.15 — cache DOM por solapa. El pool se materializa una sola vez por categoría;
+  // filtros, orden y volver a una solapa mueven/ocultan esos mismos nodos. Agregar/quitar
+  // cartas sigue usando refreshPoolTileStates() y tampoco reconstruye imágenes.
+  const poolTabCache = new Map();
 
-    if (cards.length === 0) {
-      grid.innerHTML = '<div class="encyclopedia-empty-msg">No tenés cartas que coincidan con estos filtros.</div>';
-      return;
-    }
+  function ensurePoolTab(tabKey) {
+    const entry = createBrowserTabPane(grid, poolTabCache, tabKey);
+    if (entry.records.length || entry.empty) return entry;
 
     const fragment = document.createDocumentFragment();
 
-    function renderPoolTile(displayCard, trackingKey, ownedForThisSlot, isEnhancedTile) {
+    function createPoolRecord(baseCard, displayCard, trackingKey, ownedForThisSlot, isEnhancedTile) {
       const isBasicLand = displayCard.type.includes('básica');
       const cap = isBasicLand ? ownedForThisSlot : Math.min(ownedForThisSlot, MAX_COPIES_PER_CARD);
       const inDeck = deckCounts[trackingKey] || 0;
@@ -3320,26 +3401,62 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       });
 
       fragment.appendChild(wrap);
+      entry.records.push({ card: baseCard, displayCard, node: wrap, trackingKey, isEnhancedTile });
     }
 
-    cards.forEach(card => {
+    cardDb.getByCategory(tabKey).forEach(card => {
       const owned = ownedCounts[card.id] || 0;
+      if (owned <= 0) return;
       const enhancementKeyword = enhancements[card.id];
-
       if (enhancementKeyword) {
         const enhancedDisplayCard = { ...card, keywords: [...(card.keywords || []), enhancementKeyword] };
-        renderPoolTile(enhancedDisplayCard, `${card.id}${ENHANCED_SUFFIX}`, 1, true);
-
-        if (!enhancedOnly) {
-          const remainingOwned = Math.max(0, owned - 1);
-          if (remainingOwned > 0) renderPoolTile(card, card.id, remainingOwned, false);
-        }
-      } else if (!enhancedOnly) {
-        renderPoolTile(card, card.id, owned, false);
+        createPoolRecord(card, enhancedDisplayCard, `${card.id}${ENHANCED_SUFFIX}`, 1, true);
+        const remainingOwned = Math.max(0, owned - 1);
+        if (remainingOwned > 0) createPoolRecord(card, card, card.id, remainingOwned, false);
+      } else {
+        createPoolRecord(card, card, card.id, owned, false);
       }
     });
 
-    grid.appendChild(fragment);
+    entry.pane.appendChild(fragment);
+    entry.empty = document.createElement('div');
+    entry.empty.className = 'encyclopedia-empty-msg';
+    entry.empty.textContent = 'No tenés cartas que coincidan con estos filtros.';
+    entry.empty.hidden = true;
+    entry.pane.appendChild(entry.empty);
+    return entry;
+  }
+
+  function refreshPool() {
+    const entry = ensurePoolTab(activeTab);
+    activateBrowserTab(poolTabCache, activeTab);
+    const query = normalizeSearch(searchQuery);
+    const sort = normalizeCardBrowserSort(activeTab, sortByTab.get(activeTab));
+    sortByTab.set(activeTab, sort);
+    syncBrowserSortControls(overlay, 'deck', activeTab, sort);
+
+    entry.records.sort((a, b) => {
+      const byCard = compareCardsForBrowser(a.card, b.card, sort);
+      if (byCard !== 0) return byCard;
+      if (a.isEnhancedTile !== b.isEnhancedTile) return a.isEnhancedTile ? -1 : 1;
+      return a.trackingKey.localeCompare(b.trackingKey);
+    });
+
+    let visible = 0;
+    entry.records.forEach(record => {
+      const card = record.card;
+      const matches = activeRarities.has(card.rarity) &&
+        cardMatchesColorFilter(card, activeColors) &&
+        cardMatchesArchetypeFilter(card, activeArchetypes) &&
+        (!enhancedOnly || record.isEnhancedTile) &&
+        (!query || normalizeSearch(card.name).includes(query));
+      record.node.hidden = !matches;
+      if (matches) visible += 1;
+      entry.pane.appendChild(record.node); // mueve el nodo existente; mantiene su <img>
+    });
+    entry.empty.hidden = visible !== 0;
+    entry.pane.appendChild(entry.empty);
+    refreshPoolTileStates();
   }
 
   function showDeckStatisticsModal() {
@@ -3516,7 +3633,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 
   const debouncedSearch = debounce(value => {
     searchQuery = value;
-    renderPool();
+    refreshPool();
   });
   overlay.querySelector('#deckbuilder-search').addEventListener('input', e => debouncedSearch(e.target.value));
 
@@ -3525,18 +3642,29 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     overlay.querySelector('#deckbuilder-card-zoom-value').textContent = e.target.value;
   });
 
+  overlay.querySelector('#deck-sort-key').addEventListener('change', e => {
+    const current = normalizeCardBrowserSort(activeTab, sortByTab.get(activeTab));
+    sortByTab.set(activeTab, { ...current, key: e.target.value });
+    refreshPool();
+  });
+  overlay.querySelector('#deck-sort-direction').addEventListener('click', () => {
+    const current = normalizeCardBrowserSort(activeTab, sortByTab.get(activeTab));
+    sortByTab.set(activeTab, { ...current, direction: current.direction === 'asc' ? 'desc' : 'asc' });
+    refreshPool();
+  });
+
   overlay.querySelectorAll('.encyclopedia-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       activeTab = btn.getAttribute('data-tab');
       overlay.querySelectorAll('.encyclopedia-tab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      renderPool();
+      refreshPool();
     });
   });
 
   overlay.querySelector('#deckbuilder-enhanced-only').addEventListener('change', e => {
     enhancedOnly = e.target.checked;
-    renderPool();
+    refreshPool();
   });
 
   overlay.querySelectorAll('input[data-deck-rarity]').forEach(checkbox => {
@@ -3544,7 +3672,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       const rarity = checkbox.getAttribute('data-deck-rarity');
       if (checkbox.checked) activeRarities.add(rarity);
       else activeRarities.delete(rarity);
-      renderPool();
+      refreshPool();
     });
   });
 
@@ -3553,7 +3681,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       const color = checkbox.getAttribute('data-browser-color');
       if (checkbox.checked) activeColors.add(color);
       else activeColors.delete(color);
-      renderPool();
+      refreshPool();
     });
   });
 
@@ -3562,7 +3690,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       const archetype = checkbox.getAttribute('data-browser-archetype');
       if (checkbox.checked) activeArchetypes.add(archetype);
       else activeArchetypes.delete(archetype);
-      renderPool();
+      refreshPool();
     });
   });
 
@@ -3599,7 +3727,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     }
   });
 
-  renderPool();
+  refreshPool();
   renderList();
 }
 
