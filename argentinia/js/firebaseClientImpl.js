@@ -46,6 +46,7 @@ export const db = getFirestore(app);
 // no hace falta pedir ningún permiso extra aparte, alcanza con el login estándar.
 const googleProvider = new GoogleAuthProvider();
 const ADMIN_EMAIL = 'pablogamero1@gmail.com';
+const REWARD_RULES_VERSION = '23.13.14';
 
 // Devuelve una Promise que resuelve con el UserCredential de Firebase, o rechaza si el
 // jugador cerró el popup, lo bloqueó el navegador, o falló la red. Quien llama decide qué
@@ -260,16 +261,30 @@ async function fetchRewardDebugOffsetDays(uid) {
 
 export async function getAuthoritativeRewardNow(uid) {
   const ref = doc(db, 'rewardClock', uid);
-  await setDoc(ref, { now: serverTimestamp() });
+  try {
+    // 23.13.14 — attestation de Rules: las Rules nuevas aceptan este campo versionado;
+    // una Rules vieja lo rechaza y nos permite distinguir deploy incompleto de bug lógico.
+    await setDoc(ref, { now: serverTimestamp(), rulesVersion: REWARD_RULES_VERSION });
+  } catch (error) {
+    if (error?.code === 'permission-denied') {
+      console.error(`[DailyRewards ${REWARD_RULES_VERSION}] Rules incompatibles o no publicadas: el probe rewardClock fue rechazado.`);
+    }
+    throw error;
+  }
   const snap = await getDocFromServer(ref);
-  const raw = snap.exists() ? snap.data().now : null;
+  const clockData = snap.exists() ? snap.data() : {};
+  const raw = clockData.now || null;
+  if (clockData.rulesVersion !== REWARD_RULES_VERSION) {
+    throw new Error(`RULES_VERSION_MISMATCH_${REWARD_RULES_VERSION.replaceAll('.', '_')}`);
+  }
   if (!raw || typeof raw.toDate !== 'function') throw new Error('No se pudo obtener la hora oficial de Recompensas.');
   const serverNow = raw.toDate();
   const debugOffsetDays = await fetchRewardDebugOffsetDays(uid);
   return {
     serverNow,
     effectiveNow: new Date(serverNow.getTime() + debugOffsetDays * 86400000),
-    debugOffsetDays
+    debugOffsetDays,
+    rulesVersion: clockData.rulesVersion
   };
 }
 
@@ -338,11 +353,18 @@ export async function registerDailyLogin(uid, nowMs = null) {
       requestedUnlockedDays: login.state.unlockedDays.slice(),
       requestedClaimedDays: login.state.claimedDays.slice(),
       requestedLastClaimedDay: login.state.lastClaimedDay,
-      debugOffsetDays: clock.debugOffsetDays
+      debugOffsetDays: clock.debugOffsetDays,
+      rulesVersion: clock.rulesVersion || null
     };
 
     if (login.newCalendarLogin) {
       const persistedDaily = serializeDailyRewardsForFirestore(login.state, now, serverTimestamp());
+      // Continuidad D2..D7: el inicio del ciclo es un dato inmutable. Preservamos el
+      // Timestamp EXACTO almacenado, no sólo su fecha normalizada, para que Rules pueda
+      // exigir igualdad fuerte sin migrar/resetear perfiles existentes.
+      if (sourceDaily && login.state.streak > 1 && data.dailyRewards?.serverCycleStartDay) {
+        persistedDaily.serverCycleStartDay = data.dailyRewards.serverCycleStartDay;
+      }
       tx.update(ref, { dailyRewards: persistedDaily, lastSeenAt: serverTimestamp() });
     } else {
       tx.update(ref, { lastSeenAt: serverTimestamp() });
@@ -362,13 +384,14 @@ export async function registerDailyLogin(uid, nowMs = null) {
         authoritative: nowMs == null,
         serverNowMs: clock.serverNow.getTime(),
         effectiveNowMs: now.getTime(),
-        debugOffsetDays: clock.debugOffsetDays
+        debugOffsetDays: clock.debugOffsetDays,
+      rulesVersion: clock.rulesVersion || null
       }
     };
     });
   } catch (error) {
     if (error?.code === 'permission-denied') {
-      console.error('[DailyRewards 23.13.13] Firestore rechazó registerDailyLogin.', transitionDebug || { effectiveDate: localDateKey(now) });
+      console.error('[DailyRewards 23.13.14] Firestore rechazó registerDailyLogin.', transitionDebug || { effectiveDate: localDateKey(now) });
     }
     throw error;
   }
