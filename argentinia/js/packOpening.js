@@ -10,6 +10,8 @@ const STYLE_ID = 'pack-opening-cinematic-styles';
 const PACK_IMAGE = './assets/images/ui/sobres.png';
 const CARD_BACK_IMAGE = './assets/images/card_back.png';
 const PACK_REVEAL_INTRO_MS = 1200;
+const FINAL_RARE_SUSPENSE_MS = 1050;
+const FINAL_MYTHIC_SUSPENSE_MS = 1450;
 
 export function buildPackRevealSequence(cards = []) {
   if (!Array.isArray(cards) || cards.length !== PACK_COMMONS + PACK_UNCOMMONS + PACK_LANDS + 1) {
@@ -346,15 +348,41 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     if (!grid.childElementCount) sequence.forEach(entry => grid.appendChild(summaryCardElement(entry, renderCard)));
   }
 
-  // 23.13.17 — reveal directo: después de ABRIR SOBRE no existe un estado intermedio
-  // de carta boca abajo esperando un segundo click. Cada entrada se prepara y se revela en
-  // una sola operación, iniciando inmediatamente el spawn 3D. La protección drag→click del
-  // inspector sigue gobernando el avance para que inspeccionar nunca salte una carta.
+  // 23.13.18 — Direct Reveal se conserva para todo el sobre, pero la última carta
+  // recupera EXACTAMENTE la fase de suspenso visual de 23.13.15 antes del flip. No vuelve
+  // el botón REVELAR: al llegar a Rare/Mythic el charging arranca solo y desemboca solo en
+  // el reveal. Así mantenemos el flujo ágil de 23.13.17 sin perder el clímax del pack.
+  function revealPreparedEntry(entry, preparedIndex) {
+    if (closed || index !== preparedIndex || overlay.classList.contains('show-summary')) return;
+    renderFront(frontFace, entry.card, renderCard);
+    shell.classList.add('is-revealed');
+    inspector.startRevealIntro();
+    overlay.classList.remove('is-charging');
+    overlay.classList.add('just-revealed','is-revealed-state');
+    name.textContent = entry.card?.name || 'Carta';
+    revealed = true;
+
+    // Mientras gira, ni Enter/Espacio ni el botón pueden adelantar una carta. El inspector
+    // conserva también la protección drag→click de 23.13.15/17.
+    charging = true;
+    primary.disabled = true;
+    primary.textContent = entry.isFinal ? 'VER RESUMEN' : 'SIGUIENTE';
+    if (hint) hint.textContent = 'Esperá el giro · después arrastrá para inspeccionar';
+    window.setTimeout(() => {
+      if (closed || index !== preparedIndex) return;
+      charging = false;
+      primary.disabled = false;
+      if (hint) hint.textContent = 'Arrastrá la carta para inspeccionarla · click/tap para seguir';
+    }, PACK_REVEAL_INTRO_MS);
+    window.setTimeout(() => overlay.classList.remove('just-revealed'), 520);
+  }
+
   function prepareEntry(nextIndex) {
     index = nextIndex;
     revealed = false;
     charging = false;
     const entry = sequence[index];
+    const preparedIndex = index;
     preloadCardArtwork(entry.card);
     preloadCardArtwork(sequence[index + 1]?.card);
     setTier(overlay, entry);
@@ -370,26 +398,20 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     introTitle.style.display = 'none';
     introCopy.style.display = 'none';
 
-    renderFront(frontFace, entry.card, renderCard);
-    shell.classList.add('is-revealed');
-    inspector.startRevealIntro();
-    overlay.classList.add('just-revealed','is-revealed-state');
-    name.textContent = entry.card?.name || 'Carta';
-    revealed = true;
-    // Mientras gira, ni Enter/Espacio ni el botón pueden adelantar una carta. El shell ya
-    // queda protegido por pointer-events del inspector durante la intro.
-    charging = true;
-    primary.disabled = true;
-    primary.textContent = entry.isFinal ? 'VER RESUMEN' : 'SIGUIENTE';
-    if (hint) hint.textContent = 'Esperá el giro · después arrastrá para inspeccionar';
-    const preparedIndex = index;
-    window.setTimeout(() => {
-      if (closed || index !== preparedIndex) return;
-      charging = false;
-      primary.disabled = false;
-      if (hint) hint.textContent = 'Arrastrá la carta para inspeccionarla · click/tap para seguir';
-    }, PACK_REVEAL_INTRO_MS);
-    window.setTimeout(() => overlay.classList.remove('just-revealed'), 520);
+    if (entry.isFinal) {
+      // Restauración quirúrgica de 23.13.15: halo pulsante + vibración + rayos y pausa
+      // específica por rareza. La carta sigue revelándose automáticamente: cero clicks extra.
+      charging = true;
+      overlay.classList.add('is-charging');
+      primary.disabled = true;
+      primary.textContent = '···';
+      if (hint) hint.textContent = '...';
+      const suspenseMs = entry.tier === 'mythic' ? FINAL_MYTHIC_SUSPENSE_MS : FINAL_RARE_SUSPENSE_MS;
+      window.setTimeout(() => revealPreparedEntry(entry, preparedIndex), suspenseMs);
+      return;
+    }
+
+    revealPreparedEntry(entry, preparedIndex);
   }
 
   function advance() {
