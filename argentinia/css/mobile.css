@@ -1381,19 +1381,18 @@ html.argentinia-mobile :is(
   min-height: 0 !important;
 }
 
-/* Las básicas dejan de usar el 120% + cover heredado del renderer, que cortaba el símbolo. */
+/* 23.13.17 — tierras básicas: una sola imagen, sin segunda capa de fondo. El PNG
+   editado por arte controla el encuadre; el renderer sólo llena la caja inferior. */
 html.argentinia-mobile .basic-land-symbol-box {
-  background-color: transparent !important;
-  background-repeat: no-repeat !important;
-  background-size: cover !important;
-  background-position: center !important;
+  background: none !important;
+  overflow: hidden !important;
 }
 html.argentinia-mobile .basic-land-symbol-main {
   width: 100% !important;
   height: 100% !important;
   max-width: 100% !important;
   max-height: 100% !important;
-  object-fit: contain !important;
+  object-fit: cover !important;
   object-position: center !important;
 }
 
@@ -1848,5 +1847,19 @@ html.argentinia-mobile .deck-hand-results {
 html.argentinia-mobile .deck-hand-metric { padding: 4px 2px !important; }
 html.argentinia-mobile .deck-hand-metric strong { font-size: 11px !important; }
 html.argentinia-mobile .deck-hand-metric span { font-size: 6px !important; }
-html.argentinia-mobile .deck-hand-distribution { height: 44px !important; margin-top: 5px !important; }
-html.argentinia-mobile .deck-hand-dist-col { min-width: 16px !important; font-size: 6px !important; }
+/* 23.13.17 — el histograma vive en su propia fila. Antes el contenedor mobile medía
+   44px pero las barras inline podían medir 54px: desbordaban hacia arriba y tapaban KPIs. */
+html.argentinia-mobile .deck-hand-distribution {
+  min-height: 62px !important;
+  height: auto !important;
+  margin-top: 8px !important;
+  gap: 3px !important;
+  align-items: end !important;
+}
+html.argentinia-mobile .deck-hand-dist-col {
+  min-width: 0 !important;
+  grid-template-rows: 46px auto auto !important;
+  font-size: 6px !important;
+}
+html.argentinia-mobile .deck-hand-dist-bar-slot { height: 46px !important; }
+

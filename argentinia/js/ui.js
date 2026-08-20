@@ -1046,11 +1046,11 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   let formattedTextHTML = '';
   if (isBasicLand && landSymbolImg) {
     const landSymbolUrl = `./assets/images/${landSymbolImg}`;
-    // 23.11.13 — doble capa sin deformación: el mismo arte llena toda la franja inferior
-    // como fondo cover y, encima, conserva el símbolo completo con contain. Así nunca queda
-    // un rectángulo vacío aunque la proporción del asset no coincida con la caja de la carta.
-    formattedTextHTML = `<div class="card-text-box basic-land-symbol-box" style="display:flex; justify-content:center; align-items:center; padding:0; position:relative; overflow:hidden; background-image:linear-gradient(rgba(255,255,255,0.16),rgba(255,255,255,0.16)),url('${landSymbolUrl}'); background-size:cover; background-position:center;">
-        <img class="basic-land-symbol-main" src="${landSymbolUrl}" alt="Símbolo de maná" style="position:relative; z-index:2; width:100%; height:100%; object-fit:contain; object-position:center;" onerror="this.style.display='none'">
+    // 23.13.17 — una sola capa real. El asset ocupa toda la caja inferior con cover;
+    // el PNG puede prepararse con margen/expansión vertical sin que el renderer duplique el
+    // mismo dibujo como fondo + foreground (artefacto visual que se notaba especialmente en móvil).
+    formattedTextHTML = `<div class="card-text-box basic-land-symbol-box" style="display:flex; justify-content:center; align-items:center; padding:0; position:relative; overflow:hidden;">
+        <img class="basic-land-symbol-main" src="${landSymbolUrl}" alt="Símbolo de maná" style="width:100%; height:100%; object-fit:cover; object-position:center;" onerror="this.style.display='none'">
       </div>`;
   } else {
     let formattedText = card.text ? card.text.replace(/\{([WUBRGC])\}/g, (match, p1) => {
@@ -3093,9 +3093,10 @@ function injectDeckBuilderStyles() {
     .deck-hand-results { margin-top:11px; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
     .deck-hand-metric { border-radius:9px; background:rgba(255,255,255,.035); padding:9px; text-align:center; }
     .deck-hand-metric strong { display:block; color:#fff0bd; font-size:18px; }.deck-hand-metric span { color:#a79d89; font-size:9px; }
-    .deck-hand-distribution { margin-top:10px; display:flex; align-items:flex-end; gap:5px; height:70px; }
-    .deck-hand-dist-col { flex:1; min-width:22px; text-align:center; font-size:8px; color:#9f947d; }
-    .deck-hand-dist-bar { margin:0 auto 3px; width:70%; min-height:1px; background:#c5a23b; border-radius:4px 4px 0 0; }
+    .deck-hand-distribution { margin-top:14px; display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:5px; align-items:end; min-height:86px; }
+    .deck-hand-dist-col { min-width:0; display:grid; grid-template-rows:62px auto auto; align-items:end; text-align:center; font-size:8px; color:#9f947d; }
+    .deck-hand-dist-bar-slot { height:62px; display:flex; align-items:flex-end; justify-content:center; overflow:hidden; }
+    .deck-hand-dist-bar { width:70%; min-height:1px; height:var(--deck-hand-bar-height,1%); background:#c5a23b; border-radius:4px 4px 0 0; }
     .deck-stats-note { color:#918873; font-size:10px; margin-top:8px; line-height:1.35; }
   `;
   document.head.appendChild(style);
@@ -3537,7 +3538,10 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       ];
       results.innerHTML = metrics.map(([label,value]) => `<div class="deck-hand-metric"><strong>${value}</strong><span>${label}</span></div>`).join('');
       const max = Math.max(1, ...result.landHistogram);
-      dist.innerHTML = result.landHistogram.map((pct,index) => `<div class="deck-hand-dist-col"><div class="deck-hand-dist-bar" style="height:${Math.max(1, Math.round((pct/max)*54))}px"></div><b>${index}</b><br>${pct}%</div>`).join('');
+      dist.innerHTML = result.landHistogram.map((pct,index) => {
+        const barPct = Math.max(1, Math.round((pct / max) * 100));
+        return `<div class="deck-hand-dist-col"><div class="deck-hand-dist-bar-slot"><div class="deck-hand-dist-bar" style="--deck-hand-bar-height:${barPct}%"></div></div><b>${index}</b><span>${pct}%</span></div>`;
+      }).join('');
     });
   }
 

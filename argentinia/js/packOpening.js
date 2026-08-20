@@ -9,6 +9,7 @@ import { bindPackCardInspector } from './packCardInspector.js';
 const STYLE_ID = 'pack-opening-cinematic-styles';
 const PACK_IMAGE = './assets/images/ui/sobres.png';
 const CARD_BACK_IMAGE = './assets/images/card_back.png';
+const PACK_REVEAL_INTRO_MS = 1200;
 
 export function buildPackRevealSequence(cards = []) {
   if (!Array.isArray(cards) || cards.length !== PACK_COMMONS + PACK_UNCOMMONS + PACK_LANDS + 1) {
@@ -321,7 +322,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
   const introTitle = overlay.querySelector('.pack-opening-intro-title');
   const introCopy = overlay.querySelector('.pack-opening-intro-copy');
   const hint = overlay.querySelector('.pack-opening-hint');
-  const inspector = bindPackCardInspector(shell, { frontFace });
+  const inspector = bindPackCardInspector(shell, { frontFace, introMs: PACK_REVEAL_INTRO_MS });
 
   let index = -1;
   let revealed = false;
@@ -345,6 +346,10 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     if (!grid.childElementCount) sequence.forEach(entry => grid.appendChild(summaryCardElement(entry, renderCard)));
   }
 
+  // 23.13.17 — reveal directo: después de ABRIR SOBRE no existe un estado intermedio
+  // de carta boca abajo esperando un segundo click. Cada entrada se prepara y se revela en
+  // una sola operación, iniciando inmediatamente el spawn 3D. La protección drag→click del
+  // inspector sigue gobernando el avance para que inspeccionar nunca salte una carta.
   function prepareEntry(nextIndex) {
     index = nextIndex;
     revealed = false;
@@ -364,52 +369,33 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
     introPack.style.display = 'none';
     introTitle.style.display = 'none';
     introCopy.style.display = 'none';
-    primary.disabled = false;
-    primary.textContent = 'REVELAR';
-    if (hint) hint.textContent = 'Click/tap · Enter · Espacio';
-  }
 
-  function doReveal() {
-    const entry = sequence[index];
     renderFront(frontFace, entry.card, renderCard);
     shell.classList.add('is-revealed');
     inspector.startRevealIntro();
-    overlay.classList.remove('is-charging');
     overlay.classList.add('just-revealed','is-revealed-state');
     name.textContent = entry.card?.name || 'Carta';
     revealed = true;
-    charging = false;
-    primary.disabled = false;
+    // Mientras gira, ni Enter/Espacio ni el botón pueden adelantar una carta. El shell ya
+    // queda protegido por pointer-events del inspector durante la intro.
+    charging = true;
+    primary.disabled = true;
     primary.textContent = entry.isFinal ? 'VER RESUMEN' : 'SIGUIENTE';
-    if (hint) hint.textContent = 'Arrastrá la carta para inspeccionarla · click/tap para seguir';
+    if (hint) hint.textContent = 'Esperá el giro · después arrastrá para inspeccionar';
+    const preparedIndex = index;
+    window.setTimeout(() => {
+      if (closed || index !== preparedIndex) return;
+      charging = false;
+      primary.disabled = false;
+      if (hint) hint.textContent = 'Arrastrá la carta para inspeccionarla · click/tap para seguir';
+    }, PACK_REVEAL_INTRO_MS);
     window.setTimeout(() => overlay.classList.remove('just-revealed'), 520);
-  }
-
-  function revealCurrent() {
-    if (charging || revealed || index < 0) return;
-    const entry = sequence[index];
-    if (entry.isFinal) {
-      charging = true;
-      overlay.classList.add('is-charging');
-      primary.disabled = true;
-      primary.textContent = '···';
-      kicker.textContent = '';
-      rarity.textContent = '';
-      const delay = entry.tier === 'mythic' ? 1450 : 1050;
-      window.setTimeout(() => { if (!closed) doReveal(); }, delay);
-      return;
-    }
-    doReveal();
   }
 
   function advance() {
     if (closed || charging) return;
     if (index < 0) {
       prepareEntry(0);
-      return;
-    }
-    if (!revealed) {
-      revealCurrent();
       return;
     }
     if (sequence[index].isFinal) {

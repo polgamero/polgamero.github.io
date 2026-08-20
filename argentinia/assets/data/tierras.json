@@ -429,12 +429,14 @@
     "cmc": 0,
     "rarity": "Rare",
     "colors": [],
-    "text": "Entra al campo de batalla girada. {T}: Agregá {G}{G}.",
+    "text": "Entra al campo de batalla girada. {T}: Agregá {G} o {R}.",
     "flavorText": "Tan densa que hay quien jura que todavía no la exploraron entera.",
     "image": "selva_misionera.png",
     "entersTapped": true,
-    "manaAmount": 2,
-    "produces": "G"
+    "producesOptions": [
+      "G",
+      "R"
+    ]
   },
   {
     "id": "tier_027",
