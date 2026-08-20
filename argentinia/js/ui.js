@@ -2466,13 +2466,6 @@ export function showEncyclopedia(onBack) {
     gridBox.appendChild(fragment);
   }
 
-  if (nameInput) {
-    nameInput.addEventListener('input', () => {
-      workingDeckName = nameInput.value.trim();
-      updateDeckSaveState();
-    });
-  }
-
   const debouncedSearch = debounce(value => {
     searchQuery = value;
     renderGrid();
@@ -3161,6 +3154,17 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   const countLabel = overlay.querySelector('#deckbuilder-count');
   const errorBox = overlay.querySelector('#deckbuilder-error');
   const nameInput = overlay.querySelector('#deckbuilder-name-input');
+
+  // 23.13.11 — el input de rename vive en el Constructor, no en Enciclopedia.
+  // 23.13.10 renderizaba el campo correctamente pero el listener quedó insertado
+  // accidentalmente en showEncyclopediaScreen(), por lo que workingDeckName jamás
+  // cambiaba y updateDeck() recibía silenciosamente el nombre anterior.
+  if (nameInput) {
+    nameInput.addEventListener('input', () => {
+      workingDeckName = nameInput.value.trim();
+      updateDeckSaveState();
+    });
+  }
 
   const deckCategoryById = new Map();
   ENCYCLOPEDIA_TABS.forEach(tab => cardDb.getByCategory(tab.key).forEach(card => deckCategoryById.set(card.id, tab.key)));
