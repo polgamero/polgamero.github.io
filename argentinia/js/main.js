@@ -6,7 +6,7 @@ import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRu
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, loadGameConfig, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks } from './telemetry.js';
@@ -824,6 +824,13 @@ async function boot() {
         state.userProfile = profile;
         applyUsernameIdentity(profile);
         updateAccountUI(state.currentUser);
+
+        // 23.13.25 — no bloquea el login ni el boot: para usuarios normales devuelve
+        // inmediatamente `not_admin`; para Admin mantiene publicada una ventana semanal
+        // trusted de Clasificados. cardDb.loadAll() es idempotente si aún estaba en curso.
+        void ensureClassifiedsSchedule().catch(err => {
+          console.error('No se pudo mantener el calendario de Avisos Clasificados:', err);
+        });
 
         // Cuenta recién creada: primero termina la colección/mazo inicial. Si cerró la
         // pestaña después del username, este flag permite retomar exactamente acá.

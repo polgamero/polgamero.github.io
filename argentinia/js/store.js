@@ -45,6 +45,20 @@ export let MYTHIC_CHANCE_IN_RARE_SLOT = 1 / 7;
 // --- Fichas (admin-editable: costo de craftear) ---
 export let FICHAS_PER_ENHANCEMENT = 3;
 
+// --- Avisos Clasificados (admin-editable: precios + chance del slot premium) ---
+// La composición semanal (4 Common + 2 Uncommon + 1 Rare/Mythic) es contrato fijo. Estos
+// valores sólo controlan economía y la chance Mythic usada al PUBLICAR semanas futuras; la
+// semana ya publicada conserva su precio/rareza hasta el próximo lunes.
+export let CLASSIFIEDS_COMMON_POINTS = 50;
+export let CLASSIFIEDS_COMMON_FICHAS = 0;
+export let CLASSIFIEDS_UNCOMMON_POINTS = 100;
+export let CLASSIFIEDS_UNCOMMON_FICHAS = 1;
+export let CLASSIFIEDS_RARE_POINTS = 200;
+export let CLASSIFIEDS_RARE_FICHAS = 3;
+export let CLASSIFIEDS_MYTHIC_POINTS = 300;
+export let CLASSIFIEDS_MYTHIC_FICHAS = 5;
+export let CLASSIFIEDS_MYTHIC_CHANCE = 1 / 7;
+
 // Marca, dentro del cardIds de UN mazo guardado, cuál copia puntual es "la mejorada" — como
 // la colección es solo un array de IDs repetidos (sin identidad individual por copia), esto
 // es lo que permite elegir/reconocer ESA copia en particular al armar el mazo y en el juego,
@@ -106,6 +120,15 @@ export function getDefaultGameConfig() {
     packCost: 150,
     mythicChance: 1 / 7,
     fichasPerEnhancement: 3,
+    classifiedsCommonPoints: 50,
+    classifiedsCommonFichas: 0,
+    classifiedsUncommonPoints: 100,
+    classifiedsUncommonFichas: 1,
+    classifiedsRarePoints: 200,
+    classifiedsRareFichas: 3,
+    classifiedsMythicPoints: 300,
+    classifiedsMythicFichas: 5,
+    classifiedsMythicChance: 1 / 7,
     deckSizeExact: 60,
     maxCopiesPerCard: 4,
     maxEnhancedCardsPerDeck: 3
@@ -128,6 +151,15 @@ export function applyGameConfig(config) {
   if (typeof config.packCost === 'number') PACK_COST = config.packCost;
   if (typeof config.mythicChance === 'number') MYTHIC_CHANCE_IN_RARE_SLOT = config.mythicChance;
   if (typeof config.fichasPerEnhancement === 'number') FICHAS_PER_ENHANCEMENT = config.fichasPerEnhancement;
+  if (typeof config.classifiedsCommonPoints === 'number') CLASSIFIEDS_COMMON_POINTS = config.classifiedsCommonPoints;
+  if (typeof config.classifiedsCommonFichas === 'number') CLASSIFIEDS_COMMON_FICHAS = config.classifiedsCommonFichas;
+  if (typeof config.classifiedsUncommonPoints === 'number') CLASSIFIEDS_UNCOMMON_POINTS = config.classifiedsUncommonPoints;
+  if (typeof config.classifiedsUncommonFichas === 'number') CLASSIFIEDS_UNCOMMON_FICHAS = config.classifiedsUncommonFichas;
+  if (typeof config.classifiedsRarePoints === 'number') CLASSIFIEDS_RARE_POINTS = config.classifiedsRarePoints;
+  if (typeof config.classifiedsRareFichas === 'number') CLASSIFIEDS_RARE_FICHAS = config.classifiedsRareFichas;
+  if (typeof config.classifiedsMythicPoints === 'number') CLASSIFIEDS_MYTHIC_POINTS = config.classifiedsMythicPoints;
+  if (typeof config.classifiedsMythicFichas === 'number') CLASSIFIEDS_MYTHIC_FICHAS = config.classifiedsMythicFichas;
+  if (typeof config.classifiedsMythicChance === 'number') CLASSIFIEDS_MYTHIC_CHANCE = Math.min(1, Math.max(0, config.classifiedsMythicChance));
   if (typeof config.deckSizeExact === 'number') DECK_SIZE_EXACT = config.deckSizeExact;
   if (typeof config.maxCopiesPerCard === 'number') MAX_COPIES_PER_CARD = config.maxCopiesPerCard;
   if (typeof config.maxEnhancedCardsPerDeck === 'number') MAX_ENHANCED_CARDS_PER_DECK = config.maxEnhancedCardsPerDeck;

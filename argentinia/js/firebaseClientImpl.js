@@ -24,6 +24,7 @@ import {
 import { getFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX } from './store.js';
+import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, localDateKey, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
@@ -147,7 +148,13 @@ export async function reserveInitialUsername(uid, username, usernameKey, profile
     let nextProfile;
     if (userSnap.exists()) {
       const current = userSnap.data();
-      if (current.usernameKey && current.usernameKey !== validated.usernameKey) {
+      // 23.13.26 — el criterio debe ser idéntico al del boot/UI. Perfiles históricos
+      // (especialmente Admin/debug) pueden tener usernameKey null, huérfano o una identidad
+      // parcial; eso NO cuenta como username configurado. Sólo bloqueamos una segunda alta
+      // gratis cuando ya existe username + usernameKey válidos.
+      const hasConfiguredIdentity = typeof current.username === 'string' && current.username.trim()
+        && typeof current.usernameKey === 'string' && current.usernameKey.trim();
+      if (hasConfiguredIdentity && current.usernameKey !== validated.usernameKey) {
         throw usernameError('USERNAME_ALREADY_CONFIGURED', 'La cuenta ya tiene un nombre configurado.');
       }
       tx.update(userRef, identityPatch);
@@ -436,7 +443,7 @@ async function fetchRewardDebugOffsetDays(uid) {
   }
 }
 
-export async function getAuthoritativeRewardNow(uid) {
+async function getAuthoritativeServerClock(uid) {
   const ref = doc(db, 'rewardClock', uid);
   try {
     // 23.13.14 — attestation de Rules: las Rules nuevas aceptan este campo versionado;
@@ -444,7 +451,7 @@ export async function getAuthoritativeRewardNow(uid) {
     await setDoc(ref, { now: serverTimestamp(), rulesVersion: REWARD_RULES_VERSION });
   } catch (error) {
     if (error?.code === 'permission-denied') {
-      console.error(`[DailyRewards ${REWARD_RULES_VERSION}] Rules incompatibles o no publicadas: el probe rewardClock fue rechazado.`);
+      console.error(`[ServerClock ${REWARD_RULES_VERSION}] Rules incompatibles o no publicadas: el probe rewardClock fue rechazado.`);
     }
     throw error;
   }
@@ -454,15 +461,25 @@ export async function getAuthoritativeRewardNow(uid) {
   if (clockData.rulesVersion !== REWARD_RULES_VERSION) {
     throw new Error(`RULES_VERSION_MISMATCH_${REWARD_RULES_VERSION.replaceAll('.', '_')}`);
   }
-  if (!raw || typeof raw.toDate !== 'function') throw new Error('No se pudo obtener la hora oficial de Recompensas.');
-  const serverNow = raw.toDate();
+  if (!raw || typeof raw.toDate !== 'function') throw new Error('No se pudo obtener la hora oficial del servidor.');
+  return { serverNow: raw.toDate(), rulesVersion: clockData.rulesVersion };
+}
+
+export async function getAuthoritativeRewardNow(uid) {
+  const clock = await getAuthoritativeServerClock(uid);
   const debugOffsetDays = await fetchRewardDebugOffsetDays(uid);
   return {
-    serverNow,
-    effectiveNow: new Date(serverNow.getTime() + debugOffsetDays * 86400000),
-    debugOffsetDays,
-    rulesVersion: clockData.rulesVersion
+    ...clock,
+    effectiveNow: new Date(clock.serverNow.getTime() + debugOffsetDays * 86400000),
+    debugOffsetDays
   };
+}
+
+// Clasificados SIEMPRE usa reloj real. El offset QA de Daily Rewards jamás puede adelantar
+// o retroceder la tienda semanal del Admin.
+export async function getAuthoritativeClassifiedsNow(uid) {
+  const clock = await getAuthoritativeServerClock(uid);
+  return { ...clock, effectiveNow: new Date(clock.serverNow.getTime()), debugOffsetDays: 0 };
 }
 
 export async function adminAdvanceDailyRewardDebugDay(uid) {
@@ -772,6 +789,233 @@ export async function deleteDeck(uid, deckId) {
     const updated = { decks: remaining };
     tx.update(ref, updated);
     return { ...data, ...updated };
+  });
+}
+
+// ============================================================================
+// 23.13.25 — AVISOS CLASIFICADOS: backend semanal + compra atómica.
+//
+// `gameConfig/classifiedsSchedule` es una cartelera pública pero de escritura Admin-only.
+// Contiene la semana actual y una ventana futura; así las siete cartas y sus precios quedan
+// congelados por semana y Firestore Rules puede validar la compra contra una fuente trusted.
+// ============================================================================
+const CLASSIFIEDS_SCHEDULE_DOCUMENT_ID = 'classifiedsSchedule';
+
+function isRuntimeAdmin() {
+  return auth.currentUser?.uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL;
+}
+
+function normalizeScheduleForClient(data) {
+  return data && typeof data === 'object' && !Array.isArray(data)
+    ? { ...data, weeks: data.weeks && typeof data.weeks === 'object' ? data.weeks : {} }
+    : null;
+}
+
+function sameScheduledWeekContent(a, b) {
+  if (!a || !b) return false;
+  const dateMs = value => {
+    if (value instanceof Date) return value.getTime();
+    if (typeof value?.toDate === 'function') return value.toDate().getTime();
+    if (typeof value?.seconds === 'number') return value.seconds * 1000 + Math.floor((Number(value.nanoseconds) || 0) / 1e6);
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? NaN : d.getTime();
+  };
+  return dateMs(a.weekStart) === dateMs(b.weekStart)
+    && JSON.stringify(a.cardIds || []) === JSON.stringify(b.cardIds || [])
+    && JSON.stringify(a.rarities || {}) === JSON.stringify(b.rarities || {})
+    && JSON.stringify(a.prices || {}) === JSON.stringify(b.prices || {})
+    && a.premiumRarity === b.premiumRarity
+    && a.poolFingerprint === b.poolFingerprint
+    && a.economyFingerprint === b.economyFingerprint
+    && Number(a.algorithmVersion) === Number(b.algorithmVersion);
+}
+
+// El Admin mantiene automáticamente una ventana móvil: 4 semanas históricas + actual +
+// 26 futuras. Si cambia el pool o la economía, la semana ACTUAL se preserva y sólo se
+// regeneran semanas futuras, evitando que una oferta cambie un jueves porque ajustamos un
+// precio o agregamos contenido.
+export async function ensureClassifiedsSchedule() {
+  if (!isRuntimeAdmin()) return { skipped: true, reason: 'not_admin' };
+  await cardDb.loadAll();
+  const clock = await getAuthoritativeClassifiedsNow(auth.currentUser.uid);
+  const currentWeekKey = classifiedsWeekKey(clock.serverNow);
+  const scheduleRef = doc(db, 'gameConfig', CLASSIFIEDS_SCHEDULE_DOCUMENT_ID);
+  const settingsRef = doc(db, 'gameConfig', 'settings');
+
+  return runTransaction(db, async tx => {
+    const scheduleSnap = await tx.get(scheduleRef);
+    const settingsSnap = await tx.get(settingsRef);
+    const previous = normalizeScheduleForClient(scheduleSnap.exists() ? scheduleSnap.data() : null) || { weeks: {} };
+    const settings = settingsSnap.exists() ? settingsSnap.data() : {};
+    const economy = getClassifiedsEconomySnapshot(settings);
+    const generated = buildClassifiedsScheduleWindow(cardDb.allCards, clock.serverNow, economy, {
+      historyWeeks: CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS,
+      horizonWeeks: CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS
+    });
+
+    const sourceChanged = Number(previous.schemaVersion) !== CLASSIFIEDS_SCHEMA_VERSION
+      || Number(previous.algorithmVersion) !== CLASSIFIEDS_ALGORITHM_VERSION
+      || previous.poolFingerprint !== generated.poolFingerprint
+      || previous.economyFingerprint !== generated.economyFingerprint;
+
+    const nextWeeks = {};
+    let changed = !scheduleSnap.exists();
+    for (const [weekKey, generatedWeek] of Object.entries(generated.weeks)) {
+      const oldWeek = previous.weeks?.[weekKey] || null;
+      const preservePublished = weekKey <= currentWeekKey && oldWeek && validateClassifiedsScheduleWeek(oldWeek, cardDb);
+      const selected = preservePublished ? oldWeek : ((sourceChanged || !oldWeek) ? generatedWeek : oldWeek);
+      nextWeeks[weekKey] = selected;
+      if (!sameScheduledWeekContent(oldWeek, selected)) changed = true;
+    }
+
+    const previousKeys = Object.keys(previous.weeks || {}).sort();
+    const nextKeys = Object.keys(nextWeeks).sort();
+    if (JSON.stringify(previousKeys) !== JSON.stringify(nextKeys)) changed = true;
+
+    if (!changed) {
+      return { skipped: false, changed: false, currentWeekKey, totalWeeks: nextKeys.length };
+    }
+
+    tx.set(scheduleRef, {
+      schemaVersion: CLASSIFIEDS_SCHEMA_VERSION,
+      algorithmVersion: CLASSIFIEDS_ALGORITHM_VERSION,
+      poolFingerprint: generated.poolFingerprint,
+      economyFingerprint: generated.economyFingerprint,
+      currentWeekKey,
+      weeks: nextWeeks,
+      updatedAt: serverTimestamp()
+    });
+    return { skipped: false, changed: true, currentWeekKey, totalWeeks: nextKeys.length };
+  });
+}
+
+export async function loadClassifiedsSchedule({ forceServer = false } = {}) {
+  const ref = doc(db, 'gameConfig', CLASSIFIEDS_SCHEDULE_DOCUMENT_ID);
+  const snap = forceServer ? await getDocFromServer(ref) : await getDoc(ref);
+  return normalizeScheduleForClient(snap.exists() ? snap.data() : null);
+}
+
+export async function fetchCurrentClassifieds(uid) {
+  await cardDb.loadAll();
+  const clock = await getAuthoritativeClassifiedsNow(uid);
+  const [schedule, profileSnap] = await Promise.all([
+    loadClassifiedsSchedule({ forceServer: true }),
+    getDocFromServer(doc(db, 'users', uid))
+  ]);
+  if (!profileSnap.exists()) throw new Error('No se encontró tu perfil.');
+  const week = getScheduledClassifiedsWeek(schedule, clock.serverNow);
+  if (!week || !validateClassifiedsScheduleWeek(week, cardDb)) {
+    const error = new Error('Los Avisos Clasificados de esta semana todavía no fueron publicados.');
+    error.code = 'CLASSIFIEDS_WEEK_NOT_PUBLISHED';
+    throw error;
+  }
+
+  const profile = normalizeProfileForClient(profileSnap.data());
+  const weeklyState = getClassifiedsProfileState(profile, week.weekKey);
+  const entries = week.cardIds.map((cardId, slot) => {
+    const rarity = week.rarities[cardId];
+    const price = week.prices?.[rarity] || { points: 0, fichas: 0 };
+    return {
+      slot,
+      cardId,
+      rarity,
+      points: Math.max(0, Math.floor(Number(price.points) || 0)),
+      fichas: Math.max(0, Math.floor(Number(price.fichas) || 0)),
+      ownedCount: countOwnedClassifiedCard(profile, cardId),
+      purchased: weeklyState.purchased.includes(cardId)
+    };
+  });
+
+  return {
+    schemaVersion: CLASSIFIEDS_SCHEMA_VERSION,
+    weekKey: week.weekKey,
+    weekStart: week.weekStart,
+    premiumRarity: week.premiumRarity,
+    serverNow: clock.serverNow,
+    entries,
+    purchased: weeklyState.purchased,
+    purchaseCounts: weeklyState.counts,
+    profile
+  };
+}
+
+function nextClassifiedsCounts(previous, rarity, reset = false) {
+  const counts = reset ? normalizeClassifiedsPurchaseCounts(null) : normalizeClassifiedsPurchaseCounts(previous);
+  if (!Object.hasOwn(counts, rarity)) throw new Error('CLASSIFIEDS_INVALID_RARITY');
+  counts[rarity] += 1;
+  if (counts.Common > 4 || counts.Uncommon > 2 || counts.Rare + counts.Mythic > 1) {
+    throw new Error('CLASSIFIEDS_SLOT_LIMIT_REACHED');
+  }
+  return counts;
+}
+
+// Una sola transacción sobre users/{uid}. Firestore reintenta si otra pestaña ganó la
+// carrera. Las Rules 23.13.25 validan además contra la semana trusted publicada en
+// gameConfig/classifiedsSchedule: cardId, rareza, precio, cupo semanal y append de colección.
+export async function purchaseClassifiedCard(uid, cardId) {
+  await cardDb.loadAll();
+  const clock = await getAuthoritativeClassifiedsNow(uid);
+  const schedule = await loadClassifiedsSchedule({ forceServer: true });
+  const week = getScheduledClassifiedsWeek(schedule, clock.serverNow);
+  if (!week || !validateClassifiedsScheduleWeek(week, cardDb)) {
+    const error = new Error('Los Avisos Clasificados de esta semana todavía no fueron publicados.');
+    error.code = 'CLASSIFIEDS_WEEK_NOT_PUBLISHED';
+    throw error;
+  }
+  if (!week.cardIds.includes(cardId)) {
+    const error = new Error('Esa carta no forma parte de los Avisos Clasificados de esta semana.');
+    error.code = 'CLASSIFIEDS_CARD_NOT_OFFERED';
+    throw error;
+  }
+
+  const rarity = week.rarities[cardId];
+  const price = week.prices?.[rarity];
+  if (!price || !Number.isInteger(price.points) || !Number.isInteger(price.fichas) || price.points < 0 || price.fichas < 0) {
+    throw new Error('CLASSIFIEDS_PRICE_INVALID');
+  }
+
+  const ref = doc(db, 'users', uid);
+  return runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
+    const data = snap.data();
+    const state = getClassifiedsProfileState(data, week.weekKey);
+    if (state.purchased.includes(cardId)) {
+      const error = new Error('Esa carta ya la compraste esta semana.');
+      error.code = 'CLASSIFIEDS_ALREADY_PURCHASED';
+      throw error;
+    }
+
+    const currentPoints = Math.max(0, Math.floor(Number(data.points) || 0));
+    const currentFichas = Math.max(0, Math.floor(Number(data.fichas) || 0));
+    if (currentPoints < price.points || currentFichas < price.fichas) {
+      const error = new Error('No te alcanzan los puntos o las Fichas para comprar esta carta.');
+      error.code = 'CLASSIFIEDS_INSUFFICIENT_FUNDS';
+      throw error;
+    }
+
+    const sameWeek = String(data.classifiedsWeekKey || '') === week.weekKey;
+    const purchased = sameWeek ? [...state.purchased, cardId] : [cardId];
+    const counts = nextClassifiedsCounts(data.classifiedsPurchaseCounts, rarity, !sameWeek);
+    const purchase = {
+      weekKey: week.weekKey,
+      cardId,
+      rarity,
+      pointsCost: price.points,
+      fichasCost: price.fichas
+    };
+    const updated = {
+      points: currentPoints - price.points,
+      fichas: currentFichas - price.fichas,
+      collection: [...(data.collection || []), cardId],
+      classifiedsWeekKey: week.weekKey,
+      classifiedsPurchased: purchased,
+      classifiedsPurchaseCounts: counts,
+      classifiedsLastPurchase: purchase,
+      classifiedsUpdatedAt: serverTimestamp()
+    };
+    tx.update(ref, updated);
+    return normalizeProfileForClient({ ...data, ...updated, classifiedsUpdatedAt: new Date() });
   });
 }
 

@@ -36,8 +36,8 @@ import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive } from './firebaseClient.js';
-import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, applyGameConfig, getDefaultGameConfig } from './store.js';
+import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, ensureClassifiedsSchedule, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive } from './firebaseClient.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, applyGameConfig, getDefaultGameConfig } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 import { recordTelemetryUiLog, captureTelemetryState } from './telemetry.js';
@@ -4401,6 +4401,15 @@ export function showAdminPanel(onBack) {
     { section: 'Sobres', id: 'packCost', label: 'Costo del sobre (puntos)', value: PACK_COST, step: '1' },
     { section: 'Sobres', id: 'mythicChancePercent', label: 'Probabilidad de carta mítica (%)', value: +(MYTHIC_CHANCE_IN_RARE_SLOT * 100).toFixed(2), step: '0.1' },
     { section: 'Fichas', id: 'fichasPerEnhancement', label: 'Fichas necesarias para craftear', value: FICHAS_PER_ENHANCEMENT, step: '1' },
+    { section: 'Avisos Clasificados', id: 'classifiedsCommonPoints', label: 'Common · puntos', value: CLASSIFIEDS_COMMON_POINTS, step: '1' },
+    { section: 'Avisos Clasificados', id: 'classifiedsCommonFichas', label: 'Common · Fichas', value: CLASSIFIEDS_COMMON_FICHAS, step: '1' },
+    { section: 'Avisos Clasificados', id: 'classifiedsUncommonPoints', label: 'Uncommon · puntos', value: CLASSIFIEDS_UNCOMMON_POINTS, step: '1' },
+    { section: 'Avisos Clasificados', id: 'classifiedsUncommonFichas', label: 'Uncommon · Fichas', value: CLASSIFIEDS_UNCOMMON_FICHAS, step: '1' },
+    { section: 'Avisos Clasificados', id: 'classifiedsRarePoints', label: 'Rare · puntos', value: CLASSIFIEDS_RARE_POINTS, step: '1' },
+    { section: 'Avisos Clasificados', id: 'classifiedsRareFichas', label: 'Rare · Fichas', value: CLASSIFIEDS_RARE_FICHAS, step: '1' },
+    { section: 'Avisos Clasificados', id: 'classifiedsMythicPoints', label: 'Mythic · puntos', value: CLASSIFIEDS_MYTHIC_POINTS, step: '1' },
+    { section: 'Avisos Clasificados', id: 'classifiedsMythicFichas', label: 'Mythic · Fichas', value: CLASSIFIEDS_MYTHIC_FICHAS, step: '1' },
+    { section: 'Avisos Clasificados', id: 'classifiedsMythicChancePercent', label: 'Chance Mythic en slot premium (%)', value: +(CLASSIFIEDS_MYTHIC_CHANCE * 100).toFixed(2), step: '0.1' },
     { section: 'Mazos', id: 'deckSizeExact', label: 'Cartas exactas por mazo', value: DECK_SIZE_EXACT, step: '1' },
     { section: 'Mazos', id: 'maxCopiesPerCard', label: 'Máximo de copias iguales por mazo', value: MAX_COPIES_PER_CARD, step: '1' },
     { section: 'Mazos', id: 'maxEnhancedCardsPerDeck', label: 'Máximo de cartas mejoradas por mazo', value: MAX_ENHANCED_CARDS_PER_DECK, step: '1' }
@@ -4970,6 +4979,15 @@ export function showAdminPanel(onBack) {
       packCost: readNumber('packCost'),
       mythicChance: readNumber('mythicChancePercent') / 100,
       fichasPerEnhancement: readNumber('fichasPerEnhancement'),
+      classifiedsCommonPoints: readNumber('classifiedsCommonPoints'),
+      classifiedsCommonFichas: readNumber('classifiedsCommonFichas'),
+      classifiedsUncommonPoints: readNumber('classifiedsUncommonPoints'),
+      classifiedsUncommonFichas: readNumber('classifiedsUncommonFichas'),
+      classifiedsRarePoints: readNumber('classifiedsRarePoints'),
+      classifiedsRareFichas: readNumber('classifiedsRareFichas'),
+      classifiedsMythicPoints: readNumber('classifiedsMythicPoints'),
+      classifiedsMythicFichas: readNumber('classifiedsMythicFichas'),
+      classifiedsMythicChance: readNumber('classifiedsMythicChancePercent') / 100,
       deckSizeExact: readNumber('deckSizeExact'),
       maxCopiesPerCard: readNumber('maxCopiesPerCard'),
       maxEnhancedCardsPerDeck: readNumber('maxEnhancedCardsPerDeck')
@@ -4979,8 +4997,15 @@ export function showAdminPanel(onBack) {
       errorBox.textContent = 'Todos los campos tienen que ser números válidos.';
       return;
     }
-    if (newConfig.deckSizeExact <= 0 || newConfig.maxCopiesPerCard <= 0 || newConfig.packCost < 0 || newConfig.fichasPerEnhancement <= 0) {
-      errorBox.textContent = 'Algún valor no tiene sentido (¿cero o negativo donde no correspondía?). Revisá antes de guardar.';
+    const classifiedsNonNegative = [
+      newConfig.classifiedsCommonPoints, newConfig.classifiedsCommonFichas,
+      newConfig.classifiedsUncommonPoints, newConfig.classifiedsUncommonFichas,
+      newConfig.classifiedsRarePoints, newConfig.classifiedsRareFichas,
+      newConfig.classifiedsMythicPoints, newConfig.classifiedsMythicFichas
+    ].every(value => value >= 0);
+    if (newConfig.deckSizeExact <= 0 || newConfig.maxCopiesPerCard <= 0 || newConfig.packCost < 0 || newConfig.fichasPerEnhancement <= 0
+      || !classifiedsNonNegative || newConfig.classifiedsMythicChance < 0 || newConfig.classifiedsMythicChance > 1) {
+      errorBox.textContent = 'Algún valor no tiene sentido (¿cero/negativo o un porcentaje fuera de 0–100?). Revisá antes de guardar.';
       return;
     }
 
@@ -4989,7 +5014,10 @@ export function showAdminPanel(onBack) {
     try {
       await saveGameConfig(newConfig);
       applyGameConfig(newConfig);
-      successBox.textContent = '✅ Guardado — ya está activo para todos los jugadores.';
+      // 23.13.25: la semana actual queda congelada; el scheduler Admin detecta el nuevo
+      // fingerprint económico y republica únicamente semanas futuras con estos valores.
+      await ensureClassifiedsSchedule();
+      successBox.textContent = '✅ Guardado — ya está activo; Clasificados conserva la semana actual y actualizó las futuras.';
     } catch (err) {
       console.error('No se pudo guardar la configuración:', err);
       errorBox.textContent = err.message || 'No se pudo guardar. Probá de nuevo.';
