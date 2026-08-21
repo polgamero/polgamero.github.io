@@ -9,6 +9,7 @@ import {
   validateUsername
 } from './usernames.js';
 import { FIRESTORE_RULES_VERSION } from './version.js';
+import { gameText } from './gameTexts.js';
 
 function injectUsernameStyles() {
   if (document.getElementById('username-flow-styles')) return;
@@ -53,16 +54,27 @@ function injectUsernameStyles() {
   document.head.appendChild(style);
 }
 
+function friendlyValidationError(validated) {
+  switch (validated?.code) {
+    case 'USERNAME_LENGTH': return gameText('username.validation.length', { min: USERNAME_MIN_LENGTH, max: USERNAME_MAX_LENGTH });
+    case 'USERNAME_CHARS': return gameText('username.validation.chars');
+    case 'USERNAME_KEY_LENGTH': return gameText('username.validation.keyLength', { min: USERNAME_MIN_LENGTH });
+    case 'USERNAME_RESERVED': return gameText('username.validation.reserved');
+    case 'USERNAME_BLOCKED': return gameText('username.validation.blocked');
+    default: return validated?.message || gameText('username.error.generic');
+  }
+}
+
 function friendlyPersistError(error) {
   const code = String(error?.code || '');
   if (code === 'USERNAME_TAKEN' || /USERNAME_TAKEN/.test(String(error?.message || ''))) {
-    return 'Ese nombre ya está usado. Probá con otro.';
+    return gameText('username.error.taken');
   }
-  if (code === 'USERNAME_ACTIVE_MATCH') return 'Terminá tu partida multiplayer antes de cambiar el nombre.';
-  if (code === 'USERNAME_NOT_ENOUGH_FICHAS') return `Necesitás ${USERNAME_RENAME_COST} Ficha para cambiar el nombre.`;
-  if (code === 'USERNAME_SAME') return 'Ese ya es tu nombre actual.';
-  if (code === 'permission-denied') return `Firestore rechazó el cambio. Verificá que estén publicadas las Rules ${FIRESTORE_RULES_VERSION}.`;
-  return error?.message || 'No se pudo guardar el nombre. Revisá tu conexión e intentá de nuevo.';
+  if (code === 'USERNAME_ACTIVE_MATCH') return gameText('username.error.activeMatch');
+  if (code === 'USERNAME_NOT_ENOUGH_FICHAS') return gameText('username.error.noFichas', { cost: USERNAME_RENAME_COST });
+  if (code === 'USERNAME_SAME') return gameText('username.error.same');
+  if (code === 'permission-denied') return gameText('username.error.permission', { rulesVersion: FIRESTORE_RULES_VERSION });
+  return error?.message || gameText('username.error.generic');
 }
 
 function createUsernameModal({ mode, currentUsername = '', fichas = 0, onSave, onCancel = null, onSignOut = null }) {
@@ -74,22 +86,22 @@ function createUsernameModal({ mode, currentUsername = '', fichas = 0, onSave, o
   overlay.className = 'username-overlay';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
+  const title = isSetup ? gameText('username.setup.title') : gameText('username.rename.title');
+  const subtitle = isSetup ? gameText('username.setup.subtitle') : gameText('username.rename.subtitle');
   overlay.innerHTML = `
     <div class="username-panel">
-      <h2 class="username-title">${isSetup ? 'Elegí tu nombre en Argentinia' : 'Cambiar nombre'}</h2>
-      <p class="username-subtitle">${isSetup
-        ? 'Este será el nombre que verán los demás jugadores. Es único en todo Argentinia.'
-        : 'El cambio se aplica a todo el juego y cuesta 1 Ficha.'}</p>
-      ${!isSetup ? `<div class="username-current">Nombre actual: <strong>${escapeText(currentUsername)}</strong></div>` : ''}
-      <input class="username-input" id="username-input" type="text" maxlength="${USERNAME_MAX_LENGTH}" autocomplete="off" spellcheck="false" placeholder="Tu nombre">
-      <div class="username-hint">${USERNAME_MIN_LENGTH}–${USERNAME_MAX_LENGTH} caracteres · letras, números, espacios o _</div>
-      ${!isSetup ? `<div class="username-cost">Disponibles: ${Math.max(0, Number(fichas) || 0)} Ficha(s) · Costo: ${USERNAME_RENAME_COST}</div>` : ''}
+      <h2 class="username-title">${escapeText(title)}</h2>
+      <p class="username-subtitle">${escapeText(subtitle)}</p>
+      ${!isSetup ? `<div class="username-current">${escapeText(gameText('username.rename.current', { username: currentUsername }))}</div>` : ''}
+      <input class="username-input" id="username-input" type="text" maxlength="${USERNAME_MAX_LENGTH}" autocomplete="off" spellcheck="false" placeholder="${escapeText(gameText('username.input.placeholder'))}">
+      <div class="username-hint">${escapeText(gameText('username.input.hint', { min: USERNAME_MIN_LENGTH, max: USERNAME_MAX_LENGTH }))}</div>
+      ${!isSetup ? `<div class="username-cost">${escapeText(gameText('username.rename.cost', { available: Math.max(0, Number(fichas) || 0), cost: USERNAME_RENAME_COST }))}</div>` : ''}
       <div class="username-error" id="username-error"></div>
       <div class="username-actions">
         ${isSetup
-          ? '<button class="username-btn secondary" id="username-exit">Cerrar sesión</button>'
-          : '<button class="username-btn secondary" id="username-cancel">Cancelar</button>'}
-        <button class="username-btn" id="username-save">${isSetup ? 'USAR ESTE NOMBRE' : 'CAMBIAR · 1 FICHA'}</button>
+          ? `<button class="username-btn secondary" id="username-exit">${escapeText(gameText('username.setup.exit'))}</button>`
+          : `<button class="username-btn secondary" id="username-cancel">${escapeText(gameText('username.rename.cancel'))}</button>`}
+        <button class="username-btn" id="username-save">${escapeText(isSetup ? gameText('username.setup.save') : gameText('username.rename.save', { cost: USERNAME_RENAME_COST }))}</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -106,7 +118,7 @@ function createUsernameModal({ mode, currentUsername = '', fichas = 0, onSave, o
     if (busy) return;
     const validated = validateUsername(input.value);
     if (!validated.ok) {
-      errorBox.textContent = validated.message;
+      errorBox.textContent = friendlyValidationError(validated);
       return;
     }
     busy = true;

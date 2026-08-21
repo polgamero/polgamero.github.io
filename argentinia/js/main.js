@@ -6,7 +6,7 @@ import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRu
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, loadGameConfig, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks } from './telemetry.js';
@@ -16,6 +16,7 @@ import { stampCardOwner, zoneForCardOwner } from './zoneOwnership.js';
 import { PRIVATE_ZONE_VISIBILITY, PRIVATE_ZONE_FILTERS, buildPrivateZoneOffer, resolvePrivateZoneSelection } from './privateZoneProtocol.js';
 import { isUsernameConfigured } from './usernames.js';
 import { showUsernameSetupModal } from './usernameUI.js';
+import { applyGameTextOverrides } from './gameTexts.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -901,6 +902,20 @@ async function boot() {
 
   markEngineBootState('ready', { engineVersion: ENGINE_VERSION });
   showMainMenu(startPlayFlow, startMultiplayerFlow);
+
+  // 23.13.29 — Textos del Juego se carga DESPUÉS de mostrar el primer menú. Es un doc
+  // público y opcional: jamás bloquea boot/Solitario/mobile. Al llegar, aplica overrides
+  // válidos y avisa a la UI para refrescar el menú que ya estaba visible.
+  void loadGameTextOverrides()
+    .then(documentData => {
+      applyGameTextOverrides(documentData);
+      try { window.dispatchEvent(new CustomEvent('argentinia:game-texts-updated')); } catch {}
+      globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('game_texts_loaded_after_first_menu');
+    })
+    .catch(error => {
+      console.error('No se pudieron cargar los Textos del Juego — se mantienen los originales locales:', error);
+    });
+
   // Firebase queda fuera del critical path, pero se precalienta cuando el menú ya está
   // visible. Así el click de Google puede abrir el popup dentro de la activación del usuario.
   scheduleMobileFirebasePrewarm();

@@ -36,7 +36,7 @@ import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, applyGameConfig, getDefaultGameConfig } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -55,6 +55,8 @@ import { openArtLayoutEditor } from './artLayoutEditor.js';
 import { USERNAME_RENAME_COST } from './usernames.js';
 import { showUsernameRenameModal } from './usernameUI.js';
 import { classifiedsNextRotationAt, getClassifiedsProfileState, countOwnedClassifiedCard } from './classifieds.js';
+import { gameText } from './gameTexts.js';
+import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -1750,6 +1752,14 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function gameTextHtml(key, variables = {}) {
+  return escapeHtml(gameText(key, variables));
+}
+
+function notifyGameTextsApplied() {
+  try { window.dispatchEvent(new CustomEvent('argentinia:game-texts-updated')); } catch {}
+}
+
 function formatAnnouncementDate(date) {
   if (!date) return '';
   const datePart = date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -1912,9 +1922,9 @@ export function showChestScreen(onBack) {
   overlay.id = 'chest-overlay';
   overlay.innerHTML = `
     <div class="reward-screen-header">
-      <button class="encyclopedia-back-btn" id="chest-back">← Volver</button>
-      <div class="reward-screen-title">Mi Cofre</div>
-      <div class="reward-screen-subtitle">Tus recompensas e items quedan guardados acá hasta que decidas usarlos.</div>
+      <button class="encyclopedia-back-btn" id="chest-back">← ${gameTextHtml('common.back')}</button>
+      <div class="reward-screen-title">${gameTextHtml('chest.title')}</div>
+      <div class="reward-screen-subtitle">${gameTextHtml('chest.subtitle')}</div>
     </div>
     <div class="reward-screen-body" id="chest-body"></div>`;
   document.body.appendChild(overlay);
@@ -1923,7 +1933,7 @@ export function showChestScreen(onBack) {
 
   function renderChest() {
     if (!state.currentUser || !state.userProfile) {
-      body.innerHTML = '<div class="chest-future">Iniciá sesión y completá tu perfil para usar Mi Cofre.</div>';
+      body.innerHTML = `<div class="chest-future">${gameTextHtml('chest.loginRequired')}</div>`;
       return;
     }
     const inventory = normalizeInventory(state.userProfile.inventory);
@@ -1934,26 +1944,26 @@ export function showChestScreen(onBack) {
     body.innerHTML = `
       <div class="chest-summary">
         <div class="chest-item">
-          <div class="chest-item-icon">${COIN_ICON_HTML}</div><div class="chest-item-title">Puntos</div><div class="chest-item-count">${points}</div>
-          <div class="chest-item-desc">Tu moneda para comprar sobres en la Tienda.</div>
+          <div class="chest-item-icon">${COIN_ICON_HTML}</div><div class="chest-item-title">${gameTextHtml('chest.points.title')}</div><div class="chest-item-count">${points}</div>
+          <div class="chest-item-desc">${gameTextHtml('chest.points.description')}</div>
         </div>
         <div class="chest-item">
-          <div class="chest-item-icon">${FICHA_ICON_HTML}</div><div class="chest-item-title">Fichas de mejora</div><div class="chest-item-count">${fichas}</div>
-          <div class="chest-item-desc">Usalas para mejorar permanentemente una carta de tu colección.</div>
-          <button class="reward-action-btn" id="chest-use-fichas" ${fichas < FICHAS_PER_ENHANCEMENT ? 'disabled' : ''}>MEJORAR CARTA</button>
+          <div class="chest-item-icon">${FICHA_ICON_HTML}</div><div class="chest-item-title">${gameTextHtml('chest.fichas.title')}</div><div class="chest-item-count">${fichas}</div>
+          <div class="chest-item-desc">${gameTextHtml('chest.fichas.description')}</div>
+          <button class="reward-action-btn" id="chest-use-fichas" ${fichas < FICHAS_PER_ENHANCEMENT ? 'disabled' : ''}>${gameTextHtml('chest.fichas.action')}</button>
         </div>
         <div class="chest-item">
-          <div class="chest-item-icon">${PACK_ICON_HTML}</div><div class="chest-item-title">Sobres</div><div class="chest-item-count">${packs}</div>
-          <div class="chest-item-desc">15 cartas + 1 Ficha al abrir. Comprados y regalados usan el mismo inventario.</div>
-          <button class="reward-action-btn" id="chest-open-pack" ${packs < 1 ? 'disabled' : ''}>ABRIR</button>
+          <div class="chest-item-icon">${PACK_ICON_HTML}</div><div class="chest-item-title">${gameTextHtml('chest.packs.title')}</div><div class="chest-item-count">${packs}</div>
+          <div class="chest-item-desc">${gameTextHtml('chest.packs.description')}</div>
+          <button class="reward-action-btn" id="chest-open-pack" ${packs < 1 ? 'disabled' : ''}>${gameTextHtml('chest.packs.action')}</button>
         </div>
         <div class="chest-item chest-mythic">
-          <div class="chest-item-icon">✦</div><div class="chest-item-title">Carta mítica asegurada</div><div class="chest-item-count">${mythics}</div>
-          <div class="chest-item-desc">Premio especial: al abrirlo recibís una mítica aleatoria real del pool.</div>
-          <button class="reward-action-btn" id="chest-open-mythic" ${mythics < 1 ? 'disabled' : ''}>REVELAR</button>
+          <div class="chest-item-icon">✦</div><div class="chest-item-title">${gameTextHtml('chest.mythic.title')}</div><div class="chest-item-count">${mythics}</div>
+          <div class="chest-item-desc">${gameTextHtml('chest.mythic.description')}</div>
+          <button class="reward-action-btn" id="chest-open-mythic" ${mythics < 1 ? 'disabled' : ''}>${gameTextHtml('chest.mythic.action')}</button>
         </div>
       </div>
-      <div class="chest-future">El Cofre ya usa un inventario extensible: futuros cosméticos, tickets, regalos de eventos u otros items pueden sumarse sin rediseñar colección/puntos.</div>`;
+      <div class="chest-future">${gameTextHtml('chest.future')}</div>`;
 
     body.querySelector('#chest-use-fichas')?.addEventListener('click', () => {
       overlay.remove();
@@ -2015,9 +2025,9 @@ export function showDailyRewardsScreen(onBack) {
   overlay.id = 'daily-rewards-overlay';
   overlay.innerHTML = `
     <div class="reward-screen-header">
-      <button class="encyclopedia-back-btn" id="daily-rewards-back">← Volver</button>
-      <div class="reward-screen-title">Recompensas diarias</div>
-      <div class="reward-screen-subtitle">Racha de 7 accesos consecutivos</div>
+      <button class="encyclopedia-back-btn" id="daily-rewards-back">← ${gameTextHtml('common.back')}</button>
+      <div class="reward-screen-title">${gameTextHtml('daily.title')}</div>
+      <div class="reward-screen-subtitle">${gameTextHtml('daily.subtitle')}</div>
     </div>
     <div class="reward-screen-body" id="daily-rewards-body"></div>`;
   document.body.appendChild(overlay);
@@ -2026,7 +2036,7 @@ export function showDailyRewardsScreen(onBack) {
 
   function renderRewards() {
     if (!state.currentUser || !state.userProfile) {
-      body.innerHTML = '<div class="chest-future">Iniciá sesión para participar del ciclo de recompensas.</div>';
+      body.innerHTML = `<div class="chest-future">${gameTextHtml('daily.loginRequired')}</div>`;
       return;
     }
     const daily = normalizeDailyRewardsState(state.userProfile.dailyRewards);
@@ -2037,19 +2047,19 @@ export function showDailyRewardsScreen(onBack) {
       const current = entry.day <= daily.streak;
       const classes = ['daily-reward-day', `day-${entry.day}`, claimed ? 'claimed' : '', unlocked ? 'unlocked' : '', current ? 'current-streak' : ''].filter(Boolean).join(' ');
       const icons = entry.rewards.map(rewardIconHTML).join('');
-      const status = claimed ? '✓ Reclamado' : unlocked ? 'Disponible' : entry.day <= daily.streak ? 'Desbloqueado' : 'Bloqueado';
+      const status = claimed ? gameText('daily.status.claimed') : unlocked ? gameText('daily.status.available') : entry.day <= daily.streak ? gameText('daily.status.unlocked') : gameText('daily.status.locked');
       return `<div class="${classes}" data-reward-day="${entry.day}">
-        <div class="daily-reward-label">Día ${entry.day}</div>
+        <div class="daily-reward-label">${gameTextHtml('daily.day', { day: entry.day })}</div>
         <div class="daily-reward-circle">${claimed ? '<span class="daily-reward-check">✓</span>' : ''}<div class="daily-reward-icons">${icons}</div></div>
         <div class="daily-reward-status">${status}</div>
-        ${unlocked ? `<button class="reward-action-btn" data-claim-day="${entry.day}">RECLAMAR</button>` : ''}
+        ${unlocked ? `<button class="reward-action-btn" data-claim-day="${entry.day}">${gameTextHtml('daily.claim')}</button>` : ''}
       </div>`;
     }).join('');
     body.innerHTML = `
       <div class="daily-pass-intro">
-        <div class="daily-pass-streak">🔥 Racha actual: ${daily.streak} / 7</div>
-        <div>Tu primer acceso es siempre el Día 1. Cada día consecutivo avanzás un escalón; si faltás un día, tu próximo acceso vuelve inmediatamente al Día 1.</div>
-        <div class="daily-pass-reset">Después de completar el Día 7, el acceso del día siguiente empieza un ciclo nuevo. ${pending.length ? `Tenés ${pending.length} premio${pending.length === 1 ? '' : 's'} para reclamar.` : 'Tu premio del día aparecerá automáticamente en tu próximo acceso válido.'}</div>
+        <div class="daily-pass-streak">${gameTextHtml('daily.streak', { streak: daily.streak })}</div>
+        <div>${gameTextHtml('daily.intro')}</div>
+        <div class="daily-pass-reset">${pending.length ? gameTextHtml('daily.cycle.pending', { count: pending.length }) : gameTextHtml('daily.cycle.none')}</div>
       </div>
       ${isAdminUser() ? `<div class="daily-admin-debug">
         <div><strong>🧪 ADMIN DEBUG</strong> · reloj oficial + <span id="daily-debug-offset">${Number(state.userProfile?.rewardDebugOffsetDays) || 0}</span> día(s)</div>
@@ -2057,7 +2067,7 @@ export function showDailyRewardsScreen(onBack) {
         <button class="reward-secondary-btn" id="daily-debug-reset">RESET</button>
       </div>` : ''}
       <div class="daily-rewards-scroll"><div class="daily-reward-track">${daysHTML}</div></div>
-      <div class="daily-rewards-help">El Día 6 entrega un sobre + 100 puntos. El Día 7 entrega una carta mítica aleatoria asegurada, guardada primero en Mi Cofre. La racha usa la fecha oficial de Firestore en Argentina/UTC−3, no el reloj del dispositivo.</div>`;
+      <div class="daily-rewards-help">${gameTextHtml('daily.help')}</div>`;
     body.querySelector('#daily-debug-next')?.addEventListener('click', async () => {
       const btn = body.querySelector('#daily-debug-next');
       btn.disabled = true;
@@ -2502,42 +2512,42 @@ export function showEncyclopedia(onBack) {
 
   overlay.innerHTML = `
     <div class="encyclopedia-header">
-      <button class="encyclopedia-back-btn" id="enc-back">← Volver</button>
-      <div class="encyclopedia-title">Enciclopedia</div>
+      <button class="encyclopedia-back-btn" id="enc-back">← ${gameTextHtml('common.back')}</button>
+      <div class="encyclopedia-title">${gameTextHtml('encyclopedia.title')}</div>
     </div>
     <div class="encyclopedia-tabs">${tabsHTML}</div>
     <div class="encyclopedia-body">
       <div class="encyclopedia-grid-box" id="enc-grid"></div>
       <div class="encyclopedia-filters">
-        <input type="text" class="encyclopedia-search-input" id="enc-search" placeholder="Buscar carta...">
-        <div class="card-browser-zoom" title="Cambiar tamaño de las cartas">
+        <input type="text" class="encyclopedia-search-input" id="enc-search" placeholder="${gameTextHtml('encyclopedia.search.placeholder')}">
+        <div class="card-browser-zoom" title="${gameTextHtml('encyclopedia.zoom.title')}">
           <span>🔍</span>
           <input type="range" id="enc-card-zoom" min="12" max="45" step="1" value="${defaultZoom}">
           <span id="enc-card-zoom-value">${defaultZoom}</span>
         </div>
-        <div class="encyclopedia-filter-section-title">Ordenar</div>
+        <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.sort')}</div>
         <div class="card-browser-sort">
           <select id="enc-sort-key" aria-label="Ordenar cartas por">${browserSortOptionsHTML(activeTab, 'cmc')}</select>
           <button type="button" id="enc-sort-direction" class="card-browser-sort-direction" aria-label="Orden creciente" title="Orden creciente">↑</button>
         </div>
-        <div class="encyclopedia-filter-section-title">Opciones</div>
+        <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.options')}</div>
         <label class="encyclopedia-filter-option">
           <input type="radio" name="enc-ownership" value="all" checked>
-          Mostrar todas
+          ${gameTextHtml('encyclopedia.filter.all')}
         </label>
         <label class="encyclopedia-filter-option">
           <input type="radio" name="enc-ownership" value="owned">
-          Solo cartas que poseo
+          ${gameTextHtml('encyclopedia.filter.owned')}
         </label>
         <label class="encyclopedia-filter-option">
           <input type="checkbox" id="enc-enhanced-only">
-          ✨ Solo mejoradas
+          ${gameTextHtml('encyclopedia.filter.enhanced')}
         </label>
-        <div class="encyclopedia-filter-section-title">Color</div>
+        <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.color')}</div>
         <div class="card-browser-filter-grid">${browserColorFiltersHTML('enc')}</div>
-        <div class="encyclopedia-filter-section-title">Rareza</div>
+        <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.rarity')}</div>
         <div class="card-browser-filter-grid">${rarityFiltersHTML}</div>
-        <div class="encyclopedia-filter-section-title">Arquetipo</div>
+        <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.archetype')}</div>
         <div class="card-browser-filter-grid archetypes">${browserArchetypeFiltersHTML('enc')}</div>
       </div>
     </div>
@@ -2610,7 +2620,7 @@ export function showEncyclopedia(onBack) {
     entry.pane.appendChild(fragment);
     entry.empty = document.createElement('div');
     entry.empty.className = 'encyclopedia-empty-msg';
-    entry.empty.textContent = 'No hay cartas que coincidan con estos filtros.';
+    entry.empty.textContent = gameText('encyclopedia.empty');
     entry.empty.hidden = true;
     entry.pane.appendChild(entry.empty);
     return entry;
@@ -2834,31 +2844,31 @@ function injectStoreStyles() {
       border: 1px solid rgba(116,172,223,0.5); background: rgba(4,17,22,0.65);
       color:#d8edf5; font-size:12px; font-weight:700; text-align:center;
     }
-    .classifieds-balance-row { margin-bottom: 14px; }
-    .classifieds-group {
-      background: rgba(9,16,12,0.58); border:1px solid rgba(212,175,55,0.22);
-      border-radius:12px; padding:14px; margin-bottom:14px;
+    .classifieds-balance-row { margin-bottom: 12px; }
+    /* 23.13.30 — una sola vidriera horizontal para las siete ofertas. Nada de separar
+       Common/Uncommon/Premium en bloques: la rareza queda sólo como acento visual del slot. */
+    .classifieds-strip-shell {
+      margin: 8px 0 14px; overflow: hidden; border-radius: 13px;
+      border: 1px solid rgba(212,175,55,0.24); background: rgba(9,16,12,0.58);
     }
-    .classifieds-group-premium {
-      border-color: rgba(212,175,55,0.58);
-      box-shadow: inset 0 0 24px rgba(212,175,55,0.05);
+    .classifieds-strip {
+      display:flex; flex-wrap:nowrap; align-items:flex-start; gap:18px; overflow-x:auto; overflow-y:hidden;
+      padding:16px 14px 18px; scroll-snap-type:x proximity; overscroll-behavior-x:contain;
+      -webkit-overflow-scrolling:touch; scrollbar-width:thin; scrollbar-color:rgba(212,175,55,.55) rgba(0,0,0,.18);
     }
-    .classifieds-group-title {
-      color:#f0e0b0; font-size:14px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
-      margin-bottom:10px; text-align:left;
-    }
-    .classifieds-grid {
-      display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:14px; align-items:start;
-    }
+    .classifieds-strip::-webkit-scrollbar { height:10px; }
+    .classifieds-strip::-webkit-scrollbar-track { background:rgba(0,0,0,.18); border-radius:999px; }
+    .classifieds-strip::-webkit-scrollbar-thumb { background:rgba(212,175,55,.55); border-radius:999px; }
     .classifieds-card-slot {
-      --card-w: 132px; position:relative; display:flex; flex-direction:column; align-items:center; gap:7px;
-      min-width:0; padding:10px 7px 11px; border-radius:11px;
-      background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.08);
+      --card-w: 180px; position:relative; display:flex; flex:0 0 198px; flex-direction:column; align-items:center; gap:8px;
+      min-width:198px; padding:11px 9px 12px; border-radius:11px; scroll-snap-align:start;
+      background:rgba(255,255,255,0.028); border:1px solid rgba(255,255,255,0.09);
     }
     .classifieds-card-slot.classifieds-purchased { opacity:.72; }
-    .classifieds-card-slot.classifieds-rarity-Mythic { box-shadow:0 0 18px rgba(230,126,34,0.18); }
-    .classifieds-card-slot.classifieds-rarity-Rare { box-shadow:0 0 15px rgba(212,175,55,0.12); }
-    .classifieds-card-slot .card { cursor:default; }
+    .classifieds-card-slot.classifieds-rarity-Mythic { box-shadow:0 0 20px rgba(230,126,34,0.22); border-color:rgba(230,126,34,.34); }
+    .classifieds-card-slot.classifieds-rarity-Rare { box-shadow:0 0 18px rgba(212,175,55,0.16); border-color:rgba(212,175,55,.27); }
+    .classifieds-card-slot .card { cursor:zoom-in; transition:transform .12s ease, box-shadow .12s ease; }
+    .classifieds-card-slot .card:hover { transform:translateY(-3px); box-shadow:0 8px 22px rgba(0,0,0,.55); }
     .classifieds-purchased-badge {
       position:absolute; z-index:4; top:5px; right:5px; padding:4px 7px; border-radius:999px;
       background:rgba(33,92,59,.94); border:1px solid rgba(125,220,160,.7);
@@ -2873,22 +2883,38 @@ function injectStoreStyles() {
     .classifieds-price :is(.coin-icon,.ficha-icon) { width:16px; height:16px; }
     .classifieds-buy-btn { width:100%; padding:8px 9px; font-size:12px; }
     .classifieds-card-error { min-height:14px; color:#e07a6b; font-size:10px; line-height:1.25; text-align:center; }
-    .classifieds-global-error { color:#eaa194; font-size:12px; margin:8px 0 14px; text-align:center; }
+    .classifieds-global-error { color:#eaa194; font-size:12px; margin:8px 0 10px; text-align:center; }
     .classifieds-refresh-row { text-align:center; margin-top:6px; }
+
+    .classifieds-preview-overlay {
+      position:fixed; inset:0; z-index:10060; display:flex; align-items:center; justify-content:center;
+      padding:20px; background:rgba(0,0,0,.82); backdrop-filter:blur(5px); cursor:zoom-out;
+    }
+    .classifieds-preview-panel {
+      --card-w:min(320px, calc(84vh * 5 / 7), 72vw); position:relative; display:flex; align-items:center; justify-content:center;
+      filter:drop-shadow(0 20px 38px rgba(0,0,0,.85)); cursor:default;
+    }
+    .classifieds-preview-panel .card { cursor:default !important; }
+    .classifieds-preview-close {
+      position:absolute; z-index:8; top:-14px; right:-14px; width:34px; height:34px; border-radius:50%;
+      border:1.5px solid rgba(212,175,55,.8); background:#10150f; color:#f0e0b0; font-size:22px; line-height:1;
+      display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 5px 16px rgba(0,0,0,.65);
+    }
 
     html.argentinia-mobile .classifieds-topbar { margin-bottom:8px; }
     html.argentinia-mobile .classifieds-week-title { font-size:15px; }
     html.argentinia-mobile .classifieds-week-subtitle { font-size:9px; }
     html.argentinia-mobile .classifieds-countdown { min-width:150px; padding:6px 9px; font-size:9px; }
-    html.argentinia-mobile .classifieds-group { padding:8px; margin-bottom:8px; }
-    html.argentinia-mobile .classifieds-group-title { font-size:10px; margin-bottom:6px; }
-    html.argentinia-mobile .classifieds-grid { grid-template-columns:repeat(auto-fit,minmax(92px,1fr)); gap:7px; }
-    html.argentinia-mobile .classifieds-card-slot { --card-w:min(16dvh,78px); padding:5px 4px 6px; gap:4px; }
+    html.argentinia-mobile .classifieds-strip { gap:10px; padding:10px 8px 12px; }
+    html.argentinia-mobile .classifieds-card-slot { --card-w:min(42dvh,160px); flex-basis:176px; min-width:176px; padding:7px 7px 8px; gap:5px; }
+    html.argentinia-mobile .classifieds-card-slot .card:hover { transform:none; box-shadow:2px 2px 5px rgba(0,0,0,0.5); }
     html.argentinia-mobile .classifieds-owned,
-    html.argentinia-mobile .classifieds-price { font-size:8px; min-height:11px; }
-    html.argentinia-mobile .classifieds-price :is(.coin-icon,.ficha-icon) { width:12px; height:12px; }
-    html.argentinia-mobile .classifieds-buy-btn { padding:5px 6px; font-size:8px; border-width:1px; }
-    html.argentinia-mobile .classifieds-card-error { font-size:7px; min-height:9px; }
+    html.argentinia-mobile .classifieds-price { font-size:9px; min-height:12px; }
+    html.argentinia-mobile .classifieds-price :is(.coin-icon,.ficha-icon) { width:13px; height:13px; }
+    html.argentinia-mobile .classifieds-buy-btn { padding:6px 7px; font-size:9px; border-width:1px; }
+    html.argentinia-mobile .classifieds-card-error { font-size:8px; min-height:10px; }
+    html.argentinia-mobile .classifieds-preview-overlay { padding:8px; }
+    html.argentinia-mobile .classifieds-preview-panel { --card-w:min(72vw, calc(84dvh * 5 / 7), 280px); }
   `;
   document.head.appendChild(style);
 }
@@ -2904,8 +2930,8 @@ export function showStoreScreen(onBack, options = {}) {
   overlay.id = 'store-overlay';
   overlay.innerHTML = `
     <div class="store-header">
-      <button class="encyclopedia-back-btn" id="store-back">← Volver</button>
-      <div class="store-title">Tienda</div>
+      <button class="encyclopedia-back-btn" id="store-back">← ${gameTextHtml('common.back')}</button>
+      <div class="store-title">${gameTextHtml('store.title')}</div>
     </div>
     <div class="store-body" id="store-body"></div>
   `;
@@ -2939,14 +2965,14 @@ export function showStoreScreen(onBack, options = {}) {
   // nunca queda desactualizado si se reajusta el balance más adelante.
   const pointsInfoHTML = `
     <div class="store-section store-points-info">
-      <div class="store-section-title">${COIN_ICON_HTML} Cómo conseguir puntos</div>
+      <div class="store-section-title">${COIN_ICON_HTML} ${gameTextHtml('store.pointsHow.title')}</div>
       <ul class="store-points-list">
-        <li>Ganarle al Tano en <strong>Difícil</strong> — <strong>${POINTS.winVsTanoDificil} puntos</strong></li>
-        <li>Ganarle al Tano en <strong>Fácil</strong> — <strong>${POINTS.winVsTanoFacil} puntos</strong></li>
-        <li>Perder una partida — <strong>${POINTS.lossVsTano} puntos</strong> igual, por animarte a jugar</li>
-        <li>Ganarle a un rival de verdad (Multijugador) — <strong>${POINTS.winVsHumano} puntos</strong></li>
-        <li>Perder contra un rival de verdad — <strong>${POINTS.lossVsHumano} puntos</strong> igual</li>
-        <li class="store-points-penalty">Abandonar a mitad de partida — <strong>${POINTS.abandonPenalty} puntos</strong></li>
+        <li>${gameTextHtml('store.pointsHow.winHard', { points: POINTS.winVsTanoDificil })}</li>
+        <li>${gameTextHtml('store.pointsHow.winEasy', { points: POINTS.winVsTanoFacil })}</li>
+        <li>${gameTextHtml('store.pointsHow.lossSolo', { points: POINTS.lossVsTano })}</li>
+        <li>${gameTextHtml('store.pointsHow.winPvp', { points: POINTS.winVsHumano })}</li>
+        <li>${gameTextHtml('store.pointsHow.lossPvp', { points: POINTS.lossVsHumano })}</li>
+        <li class="store-points-penalty">${gameTextHtml('store.pointsHow.abandon', { points: POINTS.abandonPenalty })}</li>
       </ul>
     </div>
   `;
@@ -2954,11 +2980,11 @@ export function showStoreScreen(onBack, options = {}) {
   function renderMainView() {
     leaveClassifiedsView();
     if (!state.currentUser) {
-      body.innerHTML = pointsInfoHTML + `<div class="store-section"><div class="store-section-desc">Iniciá sesión desde el menú principal para acceder a la Tienda — los puntos y la colección son por cuenta.</div></div>`;
+      body.innerHTML = pointsInfoHTML + `<div class="store-section"><div class="store-section-desc">${gameTextHtml('store.loginRequired')}</div></div>`;
       return;
     }
     if (!state.userProfile) {
-      body.innerHTML = pointsInfoHTML + `<div class="store-section"><div class="store-section-desc">Todavía no tenés un perfil guardado — jugá tu primera partida logueado para arrancar tu colección, y volvé acá.</div></div>`;
+      body.innerHTML = pointsInfoHTML + `<div class="store-section"><div class="store-section-desc">${gameTextHtml('store.profileMissing')}</div></div>`;
       return;
     }
 
@@ -2969,26 +2995,26 @@ export function showStoreScreen(onBack, options = {}) {
 
     body.innerHTML = pointsInfoHTML + `
       <div class="store-balance-row">
-        <div class="store-balance-chip"><div class="store-balance-value">${COIN_ICON_HTML} ${points}</div><div class="store-balance-label">Puntos</div></div>
-        <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${fichas}</div><div class="store-balance-label">Fichas</div></div>
+        <div class="store-balance-chip"><div class="store-balance-value">${COIN_ICON_HTML} ${points}</div><div class="store-balance-label">${gameTextHtml('store.balance.points')}</div></div>
+        <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${fichas}</div><div class="store-balance-label">${gameTextHtml('store.balance.fichas')}</div></div>
       </div>
       <div class="store-section store-classifieds-entry">
-        <div class="store-section-title">📰 Avisos Clasificados</div>
-        <div class="store-section-desc">Siete cartas cambian cada lunes: 4 Comunes, 2 Poco Comunes y 1 Rara o Mítica. Cada aviso se puede comprar una sola vez por semana.</div>
-        <button class="store-buy-btn" id="store-classifieds">Ver las 7 cartas de esta semana</button>
+        <div class="store-section-title">${gameTextHtml('store.classifieds.title')}</div>
+        <div class="store-section-desc">${gameTextHtml('store.classifieds.description')}</div>
+        <button class="store-buy-btn" id="store-classifieds">${gameTextHtml('store.classifieds.open')}</button>
       </div>
       <div class="store-section">
         <img class="store-pack-visual" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">
-        <div class="store-section-title">Sobre — ${PACK_COST} puntos</div>
-        <div class="store-section-desc">La compra ya no abre el sobre automáticamente: queda guardado en <strong>Mi Cofre</strong>. Al abrirlo recibís 15 cartas + 1 Ficha.</div>
-        <button class="store-buy-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>Comprar y guardar en Mi Cofre</button>
+        <div class="store-section-title">${gameTextHtml('store.pack.title', { cost: PACK_COST })}</div>
+        <div class="store-section-desc">${gameTextHtml('store.pack.description')}</div>
+        <button class="store-buy-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>${gameTextHtml('store.pack.buy')}</button>
         <div class="store-error-msg" id="store-buy-error"></div>
       </div>
       <div class="store-section">
         <div class="store-ficha-visual">${FICHA_ICON_HTML}</div>
-        <div class="store-section-title">Mejora permanente — ${FICHAS_PER_ENHANCEMENT} Fichas</div>
-        <div class="store-section-desc">Elegí una carta que ya tengas (que todavía no esté mejorada) y dale una keyword para siempre, solo en tu colección.</div>
-        <button class="store-buy-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? 'Craftear mejora' : `Te faltan ${FICHAS_PER_ENHANCEMENT - fichas} Ficha(s)`}</button>
+        <div class="store-section-title">${gameTextHtml('store.craft.title', { cost: FICHAS_PER_ENHANCEMENT })}</div>
+        <div class="store-section-desc">${gameTextHtml('store.craft.description')}</div>
+        <button class="store-buy-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? gameTextHtml('store.craft.action') : gameTextHtml('store.craft.missing', { count: FICHAS_PER_ENHANCEMENT - fichas })}</button>
       </div>
     `;
 
@@ -3008,10 +3034,10 @@ export function showStoreScreen(onBack, options = {}) {
         body.innerHTML = `
           <div class="store-section">
             <img class="store-pack-visual" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">
-            <div class="store-section-title">✅ Sobre comprado</div>
-            <div class="store-section-desc">No se abrió todavía: quedó guardado en <strong>Mi Cofre</strong> para que lo abras cuando quieras.</div>
-            <button class="store-buy-btn" id="store-go-chest">Ir a Mi Cofre</button>
-            <button class="store-back-link" id="store-buy-more">← Volver a la Tienda</button>
+            <div class="store-section-title">${gameTextHtml('store.pack.purchasedTitle')}</div>
+            <div class="store-section-desc">${gameTextHtml('store.pack.purchasedDescription')}</div>
+            <button class="store-buy-btn" id="store-go-chest">${gameTextHtml('store.pack.goChest')}</button>
+            <button class="store-back-link" id="store-buy-more">${gameTextHtml('store.pack.backStore')}</button>
           </div>`;
         body.querySelector('#store-go-chest').addEventListener('click', () => {
           overlay.remove();
@@ -3068,11 +3094,11 @@ export function showStoreScreen(onBack, options = {}) {
 
   function classifiedsFriendlyError(error) {
     switch (error?.code) {
-      case 'CLASSIFIEDS_ALREADY_PURCHASED': return 'Esa carta ya figura como comprada esta semana.';
-      case 'CLASSIFIEDS_INSUFFICIENT_FUNDS': return 'No te alcanzan los puntos o las Fichas.';
-      case 'CLASSIFIEDS_CARD_NOT_OFFERED': return 'La oferta cambió. Actualizando la semana vigente…';
-      case 'CLASSIFIEDS_WEEK_NOT_PUBLISHED': return 'Los Avisos Clasificados de esta semana todavía no fueron publicados.';
-      default: return error?.message || 'No se pudo completar la compra.';
+      case 'CLASSIFIEDS_ALREADY_PURCHASED': return gameText('classifieds.error.alreadyPurchased');
+      case 'CLASSIFIEDS_INSUFFICIENT_FUNDS': return gameText('classifieds.error.insufficientFunds');
+      case 'CLASSIFIEDS_CARD_NOT_OFFERED': return gameText('classifieds.error.offerChanged');
+      case 'CLASSIFIEDS_WEEK_NOT_PUBLISHED': return gameText('classifieds.error.notPublished');
+      default: return error?.message || gameText('classifieds.error.generic');
     }
   }
 
@@ -3092,6 +3118,41 @@ export function showStoreScreen(onBack, options = {}) {
     };
   }
 
+  function showClassifiedsCardPreview(card) {
+    if (!card) return;
+    document.querySelectorAll('.classifieds-preview-overlay').forEach(el => el.remove());
+    const preview = document.createElement('div');
+    preview.className = 'classifieds-preview-overlay';
+    preview.setAttribute('role', 'dialog');
+    preview.setAttribute('aria-modal', 'true');
+    preview.setAttribute('aria-label', `Vista ampliada de ${card.name || 'carta'}`);
+
+    const panel = document.createElement('div');
+    panel.className = 'classifieds-preview-panel';
+    panel.addEventListener('click', event => event.stopPropagation());
+    panel.appendChild(createCardElement(card, false, true, null, 'preview', null));
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'classifieds-preview-close';
+    close.textContent = '×';
+    close.setAttribute('aria-label', 'Cerrar vista ampliada');
+    panel.appendChild(close);
+    preview.appendChild(panel);
+    document.body.appendChild(preview);
+
+    const closePreview = () => {
+      document.removeEventListener('keydown', onKeyDown);
+      preview.remove();
+    };
+    const onKeyDown = event => {
+      if (event.key === 'Escape') closePreview();
+    };
+    preview.addEventListener('click', closePreview);
+    close.addEventListener('click', event => { event.stopPropagation(); closePreview(); });
+    document.addEventListener('keydown', onKeyDown);
+  }
+
   function renderClassifiedsOffer(offer, viewSerial) {
     if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
     stopClassifiedsTimer();
@@ -3109,8 +3170,8 @@ export function showStoreScreen(onBack, options = {}) {
     body.innerHTML = `
       <div class="classifieds-topbar">
         <div class="classifieds-week-info">
-          <div class="classifieds-week-title">📰 Avisos Clasificados</div>
-          <div class="classifieds-week-subtitle">Semana ${offer.weekKey} · 4 Comunes · 2 Poco Comunes · 1 ${premiumLabel}</div>
+          <div class="classifieds-week-title">${gameTextHtml('classifieds.title')}</div>
+          <div class="classifieds-week-subtitle">${gameTextHtml('classifieds.weekSubtitle', { weekKey: offer.weekKey, premium: premiumLabel })}</div>
         </div>
         <div class="classifieds-countdown" id="classifieds-countdown"></div>
       </div>
@@ -3119,21 +3180,12 @@ export function showStoreScreen(onBack, options = {}) {
         <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${fichas}</div><div class="store-balance-label">Fichas</div></div>
       </div>
       <div class="classifieds-global-error" id="classifieds-global-error"></div>
-      <div class="classifieds-group">
-        <div class="classifieds-group-title">Comunes · 4 avisos</div>
-        <div class="classifieds-grid" id="classifieds-common-grid"></div>
-      </div>
-      <div class="classifieds-group">
-        <div class="classifieds-group-title">Poco Comunes · 2 avisos</div>
-        <div class="classifieds-grid" id="classifieds-uncommon-grid"></div>
-      </div>
-      <div class="classifieds-group classifieds-group-premium">
-        <div class="classifieds-group-title">Destacada de la semana · ${premiumLabel}</div>
-        <div class="classifieds-grid" id="classifieds-premium-grid"></div>
+      <div class="classifieds-strip-shell">
+        <div class="classifieds-strip" id="classifieds-strip" aria-label="Siete Avisos Clasificados de esta semana"></div>
       </div>
       <div class="classifieds-refresh-row">
-        <button class="store-back-link" id="classifieds-back">← Volver a la Tienda</button>
-        <button class="store-back-link" id="classifieds-refresh">Actualizar avisos</button>
+        <button class="store-back-link" id="classifieds-back">${gameTextHtml('classifieds.backStore')}</button>
+        <button class="store-back-link" id="classifieds-refresh">${gameTextHtml('classifieds.refresh')}</button>
       </div>
     `;
 
@@ -3143,8 +3195,8 @@ export function showStoreScreen(onBack, options = {}) {
       const estimatedServerNow = serverAnchorMs + (Date.now() - localAnchorMs);
       const remaining = rotationAt.getTime() - estimatedServerNow;
       countdown.textContent = remaining > 0
-        ? `Renuevan en ${formatClassifiedsCountdown(remaining)} · ${formatClassifiedsRotationDate(rotationAt)}`
-        : 'La semana acaba de cambiar · actualizando…';
+        ? gameText('classifieds.countdown', { remaining: formatClassifiedsCountdown(remaining), rotation: formatClassifiedsRotationDate(rotationAt) })
+        : gameText('classifieds.rotating');
       if (remaining <= 0) {
         stopClassifiedsTimer();
         setTimeout(() => {
@@ -3155,11 +3207,7 @@ export function showStoreScreen(onBack, options = {}) {
     tick();
     classifiedsTimerId = window.setInterval(tick, 30000);
 
-    const targetGrid = rarity => rarity === 'Common'
-      ? body.querySelector('#classifieds-common-grid')
-      : rarity === 'Uncommon'
-        ? body.querySelector('#classifieds-uncommon-grid')
-        : body.querySelector('#classifieds-premium-grid');
+    const strip = body.querySelector('#classifieds-strip');
 
     (offer.entries || []).forEach(entry => {
       const card = cardDb.getById(entry.cardId);
@@ -3169,15 +3217,26 @@ export function showStoreScreen(onBack, options = {}) {
       if (entry.purchased) {
         const badge = document.createElement('div');
         badge.className = 'classifieds-purchased-badge';
-        badge.textContent = '✓ COMPRADA';
+        badge.textContent = gameText('classifieds.purchased');
         slot.appendChild(badge);
       }
 
-      slot.appendChild(createCardElement(card, false, true, null, 'encyclopedia', null));
+      const cardEl = createCardElement(card, false, true, null, 'encyclopedia', null);
+      cardEl.setAttribute('role', 'button');
+      cardEl.setAttribute('tabindex', '0');
+      cardEl.setAttribute('aria-label', `Ver ${card.name || 'carta'} en grande`);
+      cardEl.addEventListener('click', event => { event.stopPropagation(); showClassifiedsCardPreview(card); });
+      cardEl.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          showClassifiedsCardPreview(card);
+        }
+      });
+      slot.appendChild(cardEl);
 
       const owned = document.createElement('div');
       owned.className = 'classifieds-owned';
-      owned.textContent = entry.ownedCount > 0 ? `TENÉS: ${entry.ownedCount}` : '';
+      owned.textContent = entry.ownedCount > 0 ? gameText('classifieds.owned', { count: entry.ownedCount }) : '';
       slot.appendChild(owned);
 
       const price = document.createElement('div');
@@ -3190,7 +3249,7 @@ export function showStoreScreen(onBack, options = {}) {
       buy.className = 'store-buy-btn classifieds-buy-btn';
       const canAfford = points >= entry.points && fichas >= entry.fichas;
       buy.disabled = entry.purchased || !canAfford;
-      buy.textContent = entry.purchased ? '✓ COMPRADA' : (canAfford ? 'Comprar' : 'No te alcanza');
+      buy.textContent = entry.purchased ? gameText('classifieds.purchased') : (canAfford ? gameText('classifieds.buy') : gameText('classifieds.noFunds'));
       slot.appendChild(buy);
 
       const errorBox = document.createElement('div');
@@ -3203,7 +3262,7 @@ export function showStoreScreen(onBack, options = {}) {
           buy.disabled = true;
           errorBox.textContent = '';
           const oldLabel = buy.textContent;
-          buy.textContent = 'Comprando…';
+          buy.textContent = gameText('classifieds.buying');
           try {
             const updatedProfile = await purchaseClassifiedCard(state.currentUser.uid, entry.cardId);
             if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
@@ -3233,7 +3292,7 @@ export function showStoreScreen(onBack, options = {}) {
         });
       }
 
-      targetGrid(entry.rarity)?.appendChild(slot);
+      strip?.appendChild(slot);
     });
 
     body.querySelector('#classifieds-back').addEventListener('click', renderMainView);
@@ -3244,7 +3303,7 @@ export function showStoreScreen(onBack, options = {}) {
     if (!state.currentUser || !state.userProfile) return renderMainView();
     leaveClassifiedsView();
     const viewSerial = classifiedsViewSerial;
-    body.innerHTML = `<div class="store-section classifieds-loading">Cargando Avisos Clasificados de esta semana…</div>`;
+    body.innerHTML = `<div class="store-section classifieds-loading">${gameTextHtml('classifieds.loading')}</div>`;
     try {
       let offer;
       try {
@@ -3267,10 +3326,10 @@ export function showStoreScreen(onBack, options = {}) {
       if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
       body.innerHTML = `
         <div class="store-section">
-          <div class="store-section-title">Avisos Clasificados</div>
+          <div class="store-section-title">${gameTextHtml('classifieds.title')}</div>
           <div class="store-error-msg" id="classifieds-load-error"></div>
-          <button class="store-buy-btn" id="classifieds-retry">Reintentar</button>
-          <button class="store-back-link" id="classifieds-error-back">← Volver a la Tienda</button>
+          <button class="store-buy-btn" id="classifieds-retry">${gameTextHtml('common.retry')}</button>
+          <button class="store-back-link" id="classifieds-error-back">${gameTextHtml('classifieds.backStore')}</button>
         </div>`;
       body.querySelector('#classifieds-load-error').textContent = classifiedsFriendlyError(error);
       body.querySelector('#classifieds-retry').addEventListener('click', () => void renderClassifiedsView());
@@ -3306,8 +3365,8 @@ export function showStoreScreen(onBack, options = {}) {
     if (eligibleCards.length === 0) {
       body.innerHTML = `
         <div class="store-section">
-          <div class="store-section-desc">No te queda ninguna carta sin mejorar todavía en tu colección.</div>
-          <button class="store-back-link" id="store-craft-back">← Volver</button>
+          <div class="store-section-desc">${gameTextHtml('store.craft.noneEligible')}</div>
+          <button class="store-back-link" id="store-craft-back">← ${gameTextHtml('common.back')}</button>
         </div>
       `;
       body.querySelector('#store-craft-back').addEventListener('click', renderMainView);
@@ -3316,10 +3375,10 @@ export function showStoreScreen(onBack, options = {}) {
 
     body.innerHTML = `
       <div class="store-section">
-        <div class="store-section-title">Elegí qué carta mejorar</div>
-        <div class="store-section-desc">Esto gasta ${FICHAS_PER_ENHANCEMENT} Fichas y es permanente — solo en tu colección.</div>
+        <div class="store-section-title">${gameTextHtml('store.craft.chooseTitle')}</div>
+        <div class="store-section-desc">${gameTextHtml('store.craft.chooseDescription', { cost: FICHAS_PER_ENHANCEMENT })}</div>
         <div class="store-craft-list" id="store-craft-list"></div>
-        <button class="store-back-link" id="store-craft-cancel">← Cancelar</button>
+        <button class="store-back-link" id="store-craft-cancel">← ${gameTextHtml('common.cancel')}</button>
       </div>
     `;
 
@@ -4464,20 +4523,20 @@ function renderAccountBox(container, user) {
     // objeto de auth — puede no estar cargado todavía (recién logueado) o no existir aún
     // (nunca jugó una partida), así que se muestra solo cuando hay un número real.
     const pointsHTML = state.userProfile && typeof state.userProfile.points === 'number'
-      ? `<div class="main-menu-account-points">${COIN_ICON_HTML} ${state.userProfile.points} puntos</div>`
+      ? `<div class="main-menu-account-points">${COIN_ICON_HTML} ${gameTextHtml('account.points', { points: state.userProfile.points })}</div>`
       : '';
     // PANEL DE ADMIN: el botón solo se arma si el email logueado coincide EXACTO — para
     // cualquier otra cuenta, ni siquiera existe en el DOM (no es solo "oculto con CSS").
     const adminBtnHTML = user.email === ADMIN_EMAIL
-      ? `<button class="main-menu-admin-btn" id="menu-admin">🛠️ Admin</button>`
+      ? `<button class="main-menu-admin-btn" id="menu-admin">${gameTextHtml('account.admin')}</button>`
       : '';
     const inventory = normalizeInventory(state.userProfile?.inventory);
     const chestPending = inventory[CHEST_ITEM_KEYS.standardPack] + inventory[CHEST_ITEM_KEYS.guaranteedMythic];
     const rewardsPending = state.userProfile ? unclaimedUnlockedDays(state.userProfile.dailyRewards).length : 0;
     const rewardActionsHTML = `
       <div class="main-menu-account-actions">
-        <button class="main-menu-reward-btn" id="menu-chest">🎁 Mi Cofre${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
-        <button class="main-menu-reward-btn" id="menu-daily-rewards">🔥 Recompensas diarias${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
+        <button class="main-menu-reward-btn" id="menu-chest">${gameTextHtml('account.chest')}${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
+        <button class="main-menu-reward-btn" id="menu-daily-rewards">${gameTextHtml('account.dailyRewards')}${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
       </div>`;
     container.innerHTML = `
       ${adminBtnHTML}
@@ -4487,8 +4546,8 @@ function renderAccountBox(container, user) {
         <div>
           <div class="main-menu-account-name">${getLocalPlayerName()}</div>
           ${pointsHTML}
-          <button class="main-menu-rename-btn" id="menu-rename" ${state.userProfile ? '' : 'disabled'}>✏️ Cambiar nombre · ${USERNAME_RENAME_COST} Ficha</button>
-          <button class="main-menu-logout-btn" id="menu-logout">Cerrar sesión</button>
+          <button class="main-menu-rename-btn" id="menu-rename" ${state.userProfile ? '' : 'disabled'}>${gameTextHtml('account.rename', { cost: USERNAME_RENAME_COST })}</button>
+          <button class="main-menu-logout-btn" id="menu-logout">${gameTextHtml('account.logout')}</button>
         </div>
       </div>
     `;
@@ -4522,11 +4581,11 @@ function renderAccountBox(container, user) {
     container.querySelector('#menu-rename')?.addEventListener('click', () => {
       if (!state.currentUser || !state.userProfile) return;
       if (state.currentMatch || state.userProfile.activeMatchId) {
-        showSimpleAlertModal('Terminá tu partida multiplayer antes de cambiar el nombre.');
+        showSimpleAlertModal(gameText('account.renameActiveMatch'));
         return;
       }
       if ((Number(state.userProfile.fichas) || 0) < USERNAME_RENAME_COST) {
-        showSimpleAlertModal(`Necesitás ${USERNAME_RENAME_COST} Ficha para cambiar el nombre.`);
+        showSimpleAlertModal(gameText('account.renameNeedFichas', { cost: USERNAME_RENAME_COST }));
         return;
       }
       showUsernameRenameModal({
@@ -4542,8 +4601,11 @@ function renderAccountBox(container, user) {
           state.userProfile = updated;
           state.currentUser.username = updated.username;
           state.currentUser.usernameKey = updated.usernameKey;
-          renderAccountBox(container, state.currentUser);
-          updatePlayerIdentities();
+          // 23.13.30 — el rename ya fue confirmado por Firestore. Refrescamos la identidad
+          // visible usando el renderer REAL de cuenta/HUD. El helper anterior nunca existió
+          // en este módulo: lanzaba ReferenceError DESPUÉS del commit exitoso,
+          // dejando el modal abierto y pudiendo conservar copy/estado visual viejo.
+          updateAccountUI(state.currentUser);
           return updated;
         }
       });
@@ -4555,9 +4617,9 @@ function renderAccountBox(container, user) {
       });
     });
   } else {
-    container.innerHTML = `<button class="main-menu-login-btn" id="menu-login">🔵 Iniciar sesión con Google</button>`;
+    container.innerHTML = `<button class="main-menu-login-btn" id="menu-login">${gameTextHtml('account.loginGoogle')}</button>`;
     container.querySelector('#menu-login').addEventListener('click', () => {
-      container.innerHTML = `<button class="main-menu-login-btn" id="menu-login" disabled>Conectando…</button>`;
+      container.innerHTML = `<button class="main-menu-login-btn" id="menu-login" disabled>${gameTextHtml('account.connecting')}</button>`;
       signInWithGoogle().catch(err => {
         // El caso más común acá ni siquiera es un error real: el jugador cerró el popup
         // sin elegir cuenta (auth/popup-closed-by-user) — no hace falta asustarlo por eso.
@@ -4567,7 +4629,7 @@ function renderAccountBox(container, user) {
         errMsg.className = 'main-menu-account-error';
         errMsg.textContent = err.code === 'auth/popup-closed-by-user'
           ? ''
-          : 'No se pudo iniciar sesión. Probá de nuevo.';
+          : gameText('account.loginError');
         if (errMsg.textContent) container.appendChild(errMsg);
       });
     });
@@ -4591,9 +4653,39 @@ function updateMainMenuLoginGatedButtons(overlay) {
       btn.removeAttribute('data-tooltip');
     } else {
       btn.classList.add('main-menu-btn-disabled');
-      btn.setAttribute('data-tooltip', 'Iniciá sesión para acceder');
+      btn.setAttribute('data-tooltip', gameText('menu.loginRequiredTooltip'));
     }
   });
+}
+
+
+// 23.13.29 — el primer menú puede haberse dibujado antes de que llegue gameConfig/texts.
+// Cuando el documento remoto se aplica (o Admin guarda un override), refrescamos sólo la
+// copy visible del menú/cuenta; las demás pantallas consumirán gameText() al abrirse.
+function refreshVisibleGameTextCopy() {
+  const menu = document.getElementById('main-menu-overlay');
+  if (!menu) return;
+  const labels = {
+    'menu-play': 'menu.play',
+    'menu-multiplayer': 'menu.multiplayer',
+    'menu-mydecks': 'menu.myDecks',
+    'menu-encyclopedia': 'menu.encyclopedia',
+    'menu-store': 'menu.store',
+    'menu-options': 'menu.options'
+  };
+  Object.entries(labels).forEach(([id, key]) => {
+    const el = menu.querySelector(`#${id}`);
+    if (el) el.textContent = gameText(key);
+  });
+  const newsTitle = menu.querySelector('.main-menu-news-title');
+  if (newsTitle) newsTitle.textContent = gameText('menu.news.title');
+  const account = menu.querySelector('#main-menu-account');
+  if (account) renderAccountBox(account, state.currentUser);
+  updateMainMenuLoginGatedButtons(menu);
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('argentinia:game-texts-updated', refreshVisibleGameTextCopy);
 }
 
 // FASE 4 / HOTFIX 23.4.2: el documento público del match ya contiene el perfil
@@ -4836,6 +4928,7 @@ export function showAdminPanel(onBack) {
 
   const adminTabs = [
     { key: 'game', label: 'AJUSTES DEL JUEGO' },
+    { key: 'texts', label: 'TEXTOS DEL JUEGO' },
     { key: 'messages', label: 'MENSAJES Y USUARIOS' },
     { key: 'stats', label: 'ESTADÍSTICAS (a futuro)' },
     { key: 'debug', label: 'DEBUGGING' }
@@ -4860,6 +4953,10 @@ export function showAdminPanel(onBack) {
           <div class="store-error-msg" id="admin-error" style="text-align:center;"></div>
           <div class="admin-success-msg" id="admin-success"></div>
         </div>
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="texts">
+        <div id="admin-game-texts-root"></div>
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="messages">
@@ -4908,6 +5005,14 @@ export function showAdminPanel(onBack) {
     </div>
   `;
   document.body.appendChild(overlay);
+
+  const gameTextsAdminPane = createGameTextsAdminPane({
+    loadDocument: loadGameTextOverrides,
+    saveDocument: saveGameTextOverrides,
+    onApplied: notifyGameTextsApplied
+  });
+  overlay.querySelector('#admin-game-texts-root')?.appendChild(gameTextsAdminPane.element);
+  let gameTextsAdminLoaded = false;
 
   let debugLoaded = false;
   let debugLoading = false;
@@ -5147,6 +5252,10 @@ export function showAdminPanel(onBack) {
   function activateAdminTab(key) {
     overlay.querySelectorAll('[data-admin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === key));
     overlay.querySelectorAll('[data-admin-pane]').forEach(pane => pane.classList.toggle('hidden', pane.dataset.adminPane !== key));
+    if (key === 'texts' && !gameTextsAdminLoaded) {
+      gameTextsAdminLoaded = true;
+      void gameTextsAdminPane.load();
+    }
     if (key === 'debug') {
       if (!debugLoaded) reloadTelemetryHistory();
       if (!imageAuditLoaded) reloadImageAudit(false);
@@ -5559,8 +5668,8 @@ export function showMultiplayerLobby(onBack, onMatched) {
   overlay.id = 'multiplayer-overlay';
   overlay.innerHTML = `
     <div class="mp-header">
-      <button class="encyclopedia-back-btn" id="mp-back">← Volver</button>
-      <div class="mp-title">Multijugador</div>
+      <button class="encyclopedia-back-btn" id="mp-back">← ${gameTextHtml('common.back')}</button>
+      <div class="mp-title">${gameTextHtml('multiplayer.title')}</div>
     </div>
     <div class="mp-body" id="mp-body"></div>
   `;
@@ -5583,15 +5692,15 @@ export function showMultiplayerLobby(onBack, onMatched) {
     cleanup();
     body.innerHTML = `
       <div class="mp-section">
-        <div class="mp-section-title">Crear partida</div>
-        <div class="mp-section-desc">Genera un código de 6 caracteres para compartir con quien quieras que juegue.</div>
-        <button class="store-buy-btn" id="mp-create">Crear partida</button>
+        <div class="mp-section-title">${gameTextHtml('multiplayer.create.title')}</div>
+        <div class="mp-section-desc">${gameTextHtml('multiplayer.create.description')}</div>
+        <button class="store-buy-btn" id="mp-create">${gameTextHtml('multiplayer.create.action')}</button>
         <div class="store-error-msg" id="mp-create-error"></div>
       </div>
       <div class="mp-section">
-        <div class="mp-section-title">Unirse con un código</div>
-        <input type="text" class="encyclopedia-search-input" id="mp-code-input" placeholder="Código de 6 caracteres" maxlength="6">
-        <button class="store-buy-btn" id="mp-join">Unirse</button>
+        <div class="mp-section-title">${gameTextHtml('multiplayer.join.title')}</div>
+        <input type="text" class="encyclopedia-search-input" id="mp-code-input" placeholder="${gameTextHtml('multiplayer.join.placeholder')}" maxlength="6">
+        <button class="store-buy-btn" id="mp-join">${gameTextHtml('multiplayer.join.action')}</button>
         <div class="store-error-msg" id="mp-join-error"></div>
       </div>
     `;
@@ -5606,7 +5715,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
         renderWaitingRoom(match.code);
       } catch (err) {
         console.error('No se pudo crear la partida:', err);
-        errBox.textContent = err.message || 'No se pudo crear la partida. Probá de nuevo.';
+        errBox.textContent = err.message || gameText('multiplayer.create.error');
         btn.disabled = false;
       }
     });
@@ -5616,7 +5725,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
       const btn = body.querySelector('#mp-join');
       const errBox = body.querySelector('#mp-join-error');
       const code = input.value.trim();
-      if (!code) { errBox.textContent = 'Ingresá un código.'; return; }
+      if (!code) { errBox.textContent = gameText('multiplayer.join.empty'); return; }
       btn.disabled = true;
       errBox.textContent = '';
       try {
@@ -5624,7 +5733,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
         renderMatched(match);
       } catch (err) {
         console.error('No se pudo unir a la partida:', err);
-        errBox.textContent = err.message || 'No se pudo unir a la partida. Probá de nuevo.';
+        errBox.textContent = err.message || gameText('multiplayer.join.error');
         btn.disabled = false;
       }
     });
@@ -5635,10 +5744,10 @@ export function showMultiplayerLobby(onBack, onMatched) {
     body.innerHTML = `
       <div class="mp-section">
         <div class="mp-spinner">⏳</div>
-        <div class="mp-section-title">Esperando rival…</div>
+        <div class="mp-section-title">${gameTextHtml('multiplayer.waiting.title')}</div>
         <div class="mp-code-display">${code}</div>
-        <div class="mp-section-desc">Compartí este código con quien quieras que se una a la partida.</div>
-        <button class="store-back-link" id="mp-cancel">Cancelar</button>
+        <div class="mp-section-desc">${gameTextHtml('multiplayer.waiting.description')}</div>
+        <button class="store-back-link" id="mp-cancel">${gameTextHtml('common.cancel')}</button>
       </div>
     `;
 
@@ -5670,9 +5779,9 @@ export function showMultiplayerLobby(onBack, onMatched) {
     if (incompatible) {
       body.innerHTML = `
         <div class="mp-section">
-          <div class="mp-section-title">⚠️ Versiones incompatibles</div>
-          <div class="mp-section-desc">Esta notebook usa <b>${ENGINE_VERSION}</b>, pero la partida informa <b>${escapeHtml(remoteEngine || guestEngine || 'versión anterior/desconocida')}</b>.<br>Actualizá ambas pestañas antes de jugar.</div>
-          <button class="store-back-link" id="mp-incompatible-back">← Volver</button>
+          <div class="mp-section-title">${gameTextHtml('multiplayer.incompatible.title')}</div>
+          <div class="mp-section-desc">${gameTextHtml('multiplayer.incompatible.description', { localVersion: ENGINE_VERSION, remoteVersion: remoteEngine || guestEngine || 'versión anterior/desconocida' })}</div>
+          <button class="store-back-link" id="mp-incompatible-back">← ${gameTextHtml('common.back')}</button>
         </div>`;
       body.querySelector('#mp-incompatible-back').addEventListener('click', renderHome);
       return;
@@ -5691,14 +5800,14 @@ export function showMultiplayerLobby(onBack, onMatched) {
 
     body.innerHTML = `
       <div class="mp-section">
-        <div class="mp-section-title">🎉 ¡Emparejado con ${escapeHtml(rivalName)}!</div>
+        <div class="mp-section-title">${gameTextHtml('multiplayer.matched.title', { rival: rivalName })}</div>
         <div class="mp-versus-banner" aria-label="Enfrentamiento confirmado">
           ${multiplayerProfileBannerHTML(hostProfile, 'HOST', 'Host')}
           <div class="mp-versus-vs">VS.</div>
           ${multiplayerProfileBannerHTML(guestProfile, 'GUEST', 'Guest')}
         </div>
-        <div class="mp-section-desc">Elegí con qué mazo propio vas a jugar esta partida.<br><span style="color:#a99362;font-size:11px">Motor v${ENGINE_VERSION} · protocolo ${ENGINE_PROTOCOL_VERSION}</span></div>
-        <button class="store-buy-btn" id="mp-start">Elegir mazo y arrancar</button>
+        <div class="mp-section-desc">${gameTextHtml('multiplayer.matched.description')}<br><span style="color:#a99362;font-size:11px">Motor v${ENGINE_VERSION} · protocolo ${ENGINE_PROTOCOL_VERSION}</span></div>
+        <button class="store-buy-btn" id="mp-start">${gameTextHtml('multiplayer.matched.start')}</button>
       </div>
     `;
     body.querySelector('#mp-start').addEventListener('click', () => {
@@ -5724,17 +5833,17 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
       <img class="main-menu-logo" src="./assets/images/ui/logo.png" alt="Argentinia" onerror="this.style.display='none'">
     </div>
     <div class="main-menu-buttons">
-      <button class="main-menu-btn main-menu-btn-primary" id="menu-play">Jugar (Solitario)</button>
-      <button class="main-menu-btn" id="menu-multiplayer">Multijugador</button>
-      <button class="main-menu-btn" id="menu-mydecks">Mis Mazos</button>
-      <button class="main-menu-btn" id="menu-encyclopedia">Enciclopedia</button>
-      <button class="main-menu-btn" id="menu-store">Tienda</button>
-      <button class="main-menu-btn" id="menu-options">Opciones</button>
+      <button class="main-menu-btn main-menu-btn-primary" id="menu-play">${gameTextHtml('menu.play')}</button>
+      <button class="main-menu-btn" id="menu-multiplayer">${gameTextHtml('menu.multiplayer')}</button>
+      <button class="main-menu-btn" id="menu-mydecks">${gameTextHtml('menu.myDecks')}</button>
+      <button class="main-menu-btn" id="menu-encyclopedia">${gameTextHtml('menu.encyclopedia')}</button>
+      <button class="main-menu-btn" id="menu-store">${gameTextHtml('menu.store')}</button>
+      <button class="main-menu-btn" id="menu-options">${gameTextHtml('menu.options')}</button>
     </div>
     <div class="main-menu-news" id="main-menu-news">
-      <div class="main-menu-news-title">📰 Noticias</div>
+      <div class="main-menu-news-title">${gameTextHtml('menu.news.title')}</div>
       <div class="main-menu-news-list" id="main-menu-news-list">
-        <div class="main-menu-news-empty">Cargando…</div>
+        <div class="main-menu-news-empty">${gameTextHtml('menu.news.loading')}</div>
       </div>
     </div>
   `;
@@ -5748,7 +5857,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
   fetchAnnouncements()
     .then(announcements => {
       if (announcements.length === 0) {
-        newsListEl.innerHTML = '<div class="main-menu-news-empty">Sin noticias por ahora.</div>';
+        newsListEl.innerHTML = `<div class="main-menu-news-empty">${gameTextHtml('menu.news.empty')}</div>`;
         return;
       }
       newsListEl.innerHTML = announcements.map(a => `
@@ -5760,7 +5869,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
     })
     .catch(err => {
       console.error('No se pudieron cargar las noticias:', err);
-      newsListEl.innerHTML = '<div class="main-menu-news-empty">No se pudieron cargar las noticias.</div>';
+      newsListEl.innerHTML = `<div class="main-menu-news-empty">${gameTextHtml('menu.news.error')}</div>`;
     });
 
   overlay.querySelector('#menu-play').addEventListener('click', () => {
