@@ -1,6 +1,7 @@
 {
-  "engineVersion": "23.13.27",
+  "engineVersion": "23.13.28",
   "engineProtocolVersion": "mp-23.10.0",
-  "buildLabel": "Entrega 23.13.27 Classifieds UI + Weekly Purchase + Classifieds Backend + Economy + Admin Username Legacy Migration Hotfix + Pool 511",
-  "generatedFor": "GitHub Pages cache freshness check"
+  "buildLabel": "Entrega 23.13.28 Username Rules Router Hotfix + Classifieds UI + Backend + Economy + Pool 511",
+  "generatedFor": "GitHub Pages cache freshness check",
+  "firestoreRulesVersion": "23.13.28"
 }

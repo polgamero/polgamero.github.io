@@ -8,6 +8,7 @@ import {
   USERNAME_RENAME_COST,
   validateUsername
 } from './usernames.js';
+import { FIRESTORE_RULES_VERSION } from './version.js';
 
 function injectUsernameStyles() {
   if (document.getElementById('username-flow-styles')) return;
@@ -60,7 +61,7 @@ function friendlyPersistError(error) {
   if (code === 'USERNAME_ACTIVE_MATCH') return 'Terminá tu partida multiplayer antes de cambiar el nombre.';
   if (code === 'USERNAME_NOT_ENOUGH_FICHAS') return `Necesitás ${USERNAME_RENAME_COST} Ficha para cambiar el nombre.`;
   if (code === 'USERNAME_SAME') return 'Ese ya es tu nombre actual.';
-  if (code === 'permission-denied') return 'Firestore rechazó el cambio. Verificá que estén publicadas las Rules 23.13.24.';
+  if (code === 'permission-denied') return `Firestore rechazó el cambio. Verificá que estén publicadas las Rules ${FIRESTORE_RULES_VERSION}.`;
   return error?.message || 'No se pudo guardar el nombre. Revisá tu conexión e intentá de nuevo.';
 }
 
