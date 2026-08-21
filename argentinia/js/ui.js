@@ -50,6 +50,8 @@ import { announcePhaseTransition } from './phaseBanner.js';
 import { buildDeckComposition, formatManaValue } from './deckComposition.js';
 import { buildDeckStatistics, analyzeDeckHealth, simulateOpeningHands } from './deckStatistics.js';
 import { getCardBrowserSortOptions, normalizeCardBrowserSort, compareCardsForBrowser } from './cardBrowser.js';
+import { registerCardArtImage, hasCustomArtLayout, ensureArtLayoutsLoaded } from './artLayout.js';
+import { openArtLayoutEditor } from './artLayoutEditor.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -1247,7 +1249,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       <div class="card-header"><span class="card-title" style="font-size: clamp(4px, ${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
       <div class="card-art" style="position: relative; overflow: hidden;">
         <div style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;">${icon}</div>
-        ${card.image ? `<img src="./assets/images/cards/${card.image}" alt="${card.name}"${browserImageAttrs} style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
+        ${card.image ? `<img class="card-art-image" src="./assets/images/cards/${card.image}" alt="${card.name}"${browserImageAttrs} style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
       </div>
       <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(card.type, 16, 0.3)).toFixed(2)}cqw, 30px);">${card.type}</span><span class="rarity-icon">●</span></div>
       ${formattedTextHTML}
@@ -1256,6 +1258,12 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       ${auraBadgeHTML}
     </div>
   `;
+
+  // 23.13.23 — encuadre de arte NO destructivo. Sin layout personalizado no agrega ningún
+  // transform y conserva pixel-a-pixel el renderer histórico. La primera imagen visible
+  // dispara una carga lazy compartida de gameConfig/artLayouts; nunca bloquea createCardElement.
+  const cardArtImg = el.querySelector('.card-art-image');
+  if (cardArtImg && card.id) registerCardArtImage(cardArtImg, card.id);
 
   // El botón separado sólo hace falta en Combat, donde el click normal puede significar
   // declarar atacante/bloqueador. Support y Tierras ya tienen un click inequívoco y el
@@ -2373,8 +2381,19 @@ function injectEncyclopediaStyles() {
     align-content: flex-start;
     gap: 20px;
 }
-    .encyclopedia-card-slot { content-visibility: auto; contain-intrinsic-size: 180px 252px; }
+    .encyclopedia-card-slot { content-visibility: auto; contain-intrinsic-size: 180px 252px; position:relative; }
     .encyclopedia-card-slot .card-inner { border-width: 6px; }
+    .encyclopedia-art-edit-btn {
+      position:absolute; top:5px; right:5px; z-index:35; width:24px; height:24px; padding:0;
+      display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer;
+      border:1.5px solid rgba(212,175,55,.88); background:rgba(7,10,8,.90); color:#f0e0b0;
+      font-size:12px; line-height:1; box-shadow:0 2px 7px rgba(0,0,0,.62);
+      transition:transform .12s ease,background .12s ease,box-shadow .12s ease;
+    }
+    .encyclopedia-art-edit-btn:hover { transform:scale(1.12); background:rgba(67,55,17,.96); }
+    .encyclopedia-art-edit-btn.has-custom-layout {
+      background:#d4af37; color:#17120a; box-shadow:0 0 0 2px rgba(212,175,55,.25),0 2px 8px rgba(0,0,0,.72);
+    }
     :is(#encyclopedia-overlay,#deckbuilder-overlay,#mydecks-overlay) .card-inner {
       /* 23.12.2 — override más específico: el marco acompaña el zoom. El 6px histórico
          queda arriba para preservar el baseline, pero este selector con IDs manda en browser. */
@@ -2541,6 +2560,44 @@ export function showEncyclopedia(onBack) {
       const slot = document.createElement('div');
       slot.className = `encyclopedia-card-slot${owned ? '' : ' unowned'}`;
       slot.appendChild(createCardElement(card, false, true, null, 'encyclopedia', null));
+
+      // 23.13.23 — el editor existe EXCLUSIVAMENTE en Enciclopedia y sólo para Admin.
+      // La seguridad real del SAVE sigue en Firestore Rules; este gate es además UX.
+      if (isAdminUser() && card.image) {
+        const editArtBtn = document.createElement('button');
+        editArtBtn.type = 'button';
+        editArtBtn.className = `encyclopedia-art-edit-btn${hasCustomArtLayout(card.id) ? ' has-custom-layout' : ''}`;
+        editArtBtn.textContent = '✏️';
+        editArtBtn.title = hasCustomArtLayout(card.id)
+          ? 'Editar encuadre del arte (personalizado)'
+          : 'Editar encuadre del arte';
+        editArtBtn.setAttribute('aria-label', `Editar encuadre del arte de ${card.name}`);
+        editArtBtn.dataset.artCardId = card.id;
+        editArtBtn.addEventListener('click', async event => {
+          event.preventDefault();
+          event.stopPropagation();
+          editArtBtn.disabled = true;
+          try {
+            await openArtLayoutEditor({
+              card,
+              renderCard: previewCard => createCardElement(previewCard, false, true, null, 'preview', null),
+              onSaved: (_layout, meta) => {
+                editArtBtn.classList.toggle('has-custom-layout', !!meta?.custom);
+                editArtBtn.title = meta?.custom
+                  ? 'Editar encuadre del arte (personalizado)'
+                  : 'Editar encuadre del arte';
+              }
+            });
+          } catch (error) {
+            console.error('No se pudo abrir el editor de arte:', error);
+            window.alert(`No se pudo abrir el editor de arte: ${error?.message || error}`);
+          } finally {
+            if (editArtBtn.isConnected) editArtBtn.disabled = false;
+          }
+        });
+        slot.appendChild(editArtBtn);
+      }
+
       fragment.appendChild(slot);
       entry.records.push({ card, node: slot, owned, enhanced: enhancedIds.has(card.id) });
     });
@@ -2655,6 +2712,22 @@ export function showEncyclopedia(onBack) {
   });
 
   refreshGrid();
+
+  // Si el Admin entra desde un navegador sin cache, los botones pueden haberse creado antes
+  // de que llegue Firestore. Cuando termina la carga remota, sincronizamos sólo su indicador
+  // visual; las imágenes ya se actualizan globalmente desde artLayout.js.
+  if (isAdminUser()) {
+    ensureArtLayoutsLoaded().then(() => {
+      if (!overlay.isConnected) return;
+      overlay.querySelectorAll('.encyclopedia-art-edit-btn[data-art-card-id]').forEach(btn => {
+        const custom = hasCustomArtLayout(btn.dataset.artCardId || '');
+        btn.classList.toggle('has-custom-layout', custom);
+        btn.title = custom
+          ? 'Editar encuadre del arte (personalizado)'
+          : 'Editar encuadre del arte';
+      });
+    }).catch(() => {});
+  }
 }
 
 function injectStoreStyles() {

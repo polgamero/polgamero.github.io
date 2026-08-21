@@ -606,13 +606,50 @@ export async function deleteDeck(uid, deckId) {
 // firestore.rules del lado del servidor, que es lo que de verdad protege esto. El chequeo
 // de "sos vos, Pablo" que hace la UI (ver ui.js) es solo para no mostrar el botón, no es
 // seguridad real.
-export async function loadGameConfig() {
-  const snap = await getDoc(doc(db, 'gameConfig', 'settings'));
+const GAME_CONFIG_DOCUMENT_ID_RE = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
+
+function assertGameConfigDocumentId(documentId) {
+  const id = String(documentId || '').trim();
+  if (!GAME_CONFIG_DOCUMENT_ID_RE.test(id)) {
+    throw new Error('GAME_CONFIG_INVALID_DOCUMENT_ID');
+  }
+  return id;
+}
+
+// 23.13.22 — infraestructura común para configuración pública/admin. Mantiene los docs
+// separados (settings, texts, futuro artLayouts, etc.) y evita construir paths arbitrarios.
+// La SEGURIDAD real sigue en Firestore Rules: lectura pública, escritura sólo isAdmin().
+export async function loadPublicGameConfigDocument(documentId) {
+  const id = assertGameConfigDocumentId(documentId);
+  const snap = await getDoc(doc(db, 'gameConfig', id));
   return snap.exists() ? snap.data() : null;
 }
 
+export async function saveAdminGameConfigDocument(documentId, config) {
+  const id = assertGameConfigDocumentId(documentId);
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    throw new Error('GAME_CONFIG_INVALID_PAYLOAD');
+  }
+  await setDoc(doc(db, 'gameConfig', id), { ...config, updatedAt: serverTimestamp() });
+}
+
+// Wrappers históricos: settings conserva exactamente el contrato que ya usaba store.js/UI.
+export async function loadGameConfig() {
+  return loadPublicGameConfigDocument('settings');
+}
+
 export async function saveGameConfig(config) {
-  await setDoc(doc(db, 'gameConfig', 'settings'), { ...config, updatedAt: serverTimestamp() });
+  return saveAdminGameConfigDocument('settings', config);
+}
+
+// Cimiento de Textos del Juego. 23.13.22 NO lo carga durante boot ni migra copy existente;
+// estas funciones quedan preparadas para el panel/migraciones de las Etapas 5 y 6.
+export async function loadGameTextOverrides() {
+  return loadPublicGameConfigDocument('texts');
+}
+
+export async function saveGameTextOverrides(documentData) {
+  return saveAdminGameConfigDocument('texts', documentData);
 }
 
 // ============================================================================
