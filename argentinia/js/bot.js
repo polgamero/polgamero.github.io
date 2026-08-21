@@ -39,6 +39,7 @@ import { moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getActi
 
 import { assignBotBlockers, triggerCombatAbility, triggerAnyCreatureAttacks, queueDeclaredBlockTriggers, markDeclaredBlocks, checkDeaths } from './combatRules.js';
 import { addToStack, spellStack, isStackItemLegalCounterTarget, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
+import { gameText } from './gameTexts.js';
 
 // Punto 14: affordability de una ruta de casteo completa. La vía alternativa reemplaza
 // sólo el costo base; Kicker y additionalCost siguen sumándose. El piso de 5 de vida es
@@ -196,7 +197,7 @@ async function tryActivateBotPlaneswalkers() {
     }
 
     putLoyaltyAbilityOnStack(pwItem, ability, chosen.idx, false, targetObj);
-    logMsg(`🔮 El Tano puso "${ability.name}" de ${pwItem.card.name} en la pila.`);
+    logMsg(gameText('bot.loyaltyStack', { ability: ability.name, card: pwItem.card.name }));
     return true;
   }
   return false;
@@ -222,7 +223,7 @@ function tryPayWardForBotTarget(targetObj) {
     need -= (s.card.manaAmount || 1);
   }
   if (need > 0) {
-    logMsg(`🔶 ${targetObj.item.card.name} tenía Ward ${wardCost} y al Tano no le alcanzó el maná extra — el hechizo se pierde sin efecto.`);
+    logMsg(gameText('bot.ward.cantPay', { target: targetObj.item.card.name, cost: wardCost }));
     return false;
   }
   toTap.forEach(s => {
@@ -231,7 +232,7 @@ function tryPayWardForBotTarget(targetObj) {
     // pagar Ward también la sacrifica.
     if (s.card.sacrificeOnTap) performSacrifice(s, false);
   });
-  logMsg(`🔶 El Tano pagó Ward ${wardCost} para que su hechizo pase igual.`);
+  logMsg(gameText('bot.ward.paid', { cost: wardCost }));
   return true;
 }
 
@@ -323,7 +324,7 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
       if (gyIdx !== -1) state.rivalGraveyard.splice(gyIdx, 1);
     });
     state.rivalExile.push(...chosen);
-    logMsg(`🌀 El Tano exilió ${chosen.length} carta(s) de su cementerio para el Escape de ${card.name}.`);
+    logMsg(gameText('bot.escape.exile', { count: chosen.length, card: card.name }));
   }
 
   let stackType = 'spell';
@@ -339,7 +340,7 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
     castFrom: source
   };
   addToStack(castStackItem);
-  logMsg(`🔄 El Tano usó ${source === 'escape' ? 'Escape' : 'Flashback'} en ${card.name}.`);
+  logMsg(gameText('bot.graveCast', { ability: source === 'escape' ? 'Escape' : 'Flashback', card: card.name }));
   await triggerSpellCast(false, card, castStackItem);
   if (!tryPayWardForBotTarget(aiTargetObj)) {
     const stackIndex = spellStack.indexOf(castStackItem);
@@ -579,7 +580,7 @@ async function tryBotCombatTrick() {
   state.priorityPlayer = 'local';
   state.consecutivePasses = 0;
 
-  logMsg(`🔴 ¡El Tano respondió a tus atacantes con "${card.name}"!`);
+  logMsg(gameText('bot.instantAttack', { card: card.name }));
   render();
   return true;
 }
@@ -638,7 +639,7 @@ async function tryBotPostBlockTrick() {
 
     state.priorityPlayer = 'local';
     state.consecutivePasses = 0;
-    logMsg(`💪 ¡El Tano salvó a ${blocker.card.name} con "${pumpCard.name}" en medio del combate!`);
+    logMsg(gameText('bot.combatPump', { target: blocker.card.name, card: pumpCard.name }));
     render();
     return true;
   }
@@ -698,7 +699,7 @@ export async function checkRivalCounterOrResponse() {
       await triggerSpellCast(false, protectCard, castStackItem);
       state.priorityPlayer = 'local';
       state.consecutivePasses = 0;
-      logMsg(`🛡️ ¡El Tano protegió a ${savedCreature.card.name} con "${protectCard.name}" antes de que le hicieras algo!`);
+      logMsg(gameText('bot.protect', { target: savedCreature.card.name, card: protectCard.name }));
       render();
       return true;
     }
@@ -782,7 +783,7 @@ export async function checkRivalCounterOrResponse() {
     state.priorityPlayer = 'local';
     state.consecutivePasses = 0;    // -----------------------------------------------
     
-    logMsg(`🔴 ¡El Tano te respondió en velocidad instantánea con "${responseCard.name}"!`);
+    logMsg(gameText('bot.instantResponse', { card: responseCard.name }));
     render();
     return true;
   }
@@ -851,7 +852,7 @@ function tryBotCrewVehicle(vehicleItem, zoneType, ability = getActivatedAbilitie
   removed.summoningSickness = !!removed.enteredThisTurn;
   state.rivalCombat.push(removed);
 
-  logMsg(`🚗 El Tano tripuló a ${card.name} con ${chosen.length} criatura(s) suya(s) (${powerSoFar} de poder) — ahora es un ${card.baseStats.power}/${card.baseStats.toughness}.`);
+  logMsg(gameText('bot.crew.done', { card: card.name, count: chosen.length, power: powerSoFar, basePower: card.baseStats.power, baseToughness: card.baseStats.toughness }));
   return true;
 }
 
@@ -1005,7 +1006,7 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
 
       state.priorityPlayer = 'local';
       state.consecutivePasses = 0;
-      logMsg(`⚙️ El Tano activó una habilidad de ${card.name}. Tenés prioridad para responder.`);
+      logMsg(gameText('bot.ability.activated', { card: card.name }));
       render();
       return true;
     }
@@ -1131,7 +1132,7 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
 
       state.priorityPlayer = 'local';
       state.consecutivePasses = 0;
-      logMsg(`⚙️ El Tano usó la habilidad de ${sourceCard.name} con ${creatureItem.card.name}. Tenés prioridad para responder.`);
+      logMsg(gameText('bot.ability.usedWith', { source: sourceCard.name, target: creatureItem.card.name }));
       render();
       return true;
     }
@@ -1251,7 +1252,7 @@ export async function takeBotPriorityAction() {
     // ahora la IA sólo miraba cartas de la mano en esta ventana.
     if (tryActivateBotAbilities({ instantOnly: true })) return;
     if (tryActivateGrantedBotAbilities({ instantOnly: true })) return;
-    logMsg(`👁️ El Tano revisó su mano y sus habilidades, no tiene respuestas y pasa prioridad.`);
+    logMsg(gameText('bot.priority.noResponse'));
     passPriority('rival');
     return;
   }
@@ -1279,7 +1280,7 @@ export async function takeBotPriorityAction() {
       const landItem = { card: landCard, tapped: entersTapped };
       state.rivalLands.push(landItem); 
       state.rivalLandPlayedThisTurn = true;
-      logMsg(entersTapped ? `El Tano bajó una tierra: ${landCard.name} (entra girada).` : `El Tano bajó una tierra: ${landCard.name}.`); 
+      logMsg(entersTapped ? gameText('bot.land.playedTapped', { card: landCard.name }) : gameText('bot.land.played', { card: landCard.name })); 
       // PUNTO 2: el Tano dispara el mismo evento Landfall que el jugador humano.
       await triggerLandEtb(false, landCard, landItem);
       render(); 
@@ -1398,7 +1399,7 @@ export async function takeBotPriorityAction() {
         const modeIdx = chooseBotMode(cardToPlay);
         const chosenMode = cardToPlay.modes[modeIdx];
         cardToPlay = { ...cardToPlay, effect: chosenMode.effect, requiresTarget: chosenMode.requiresTarget, chosenModeText: chosenMode.text };
-        logMsg(`🔀 El Tano eligió el modo "${chosenMode.text}" para ${cardToPlay.name}.`);
+        logMsg(gameText('bot.mode', { mode: chosenMode.text, card: cardToPlay.name }));
       }
 
       // Punto 14: primero fija la vía de costo. El Tano conserva su preferencia histórica:
@@ -1418,7 +1419,7 @@ export async function takeBotPriorityAction() {
       let botKicked = false;
       if (cardToPlay.kicker && canBotPayCastRoute(cardToPlay, useAlternative, { kicked: true })) {
         botKicked = true;
-        logMsg(`💪 El Tano pagó también el Kicker de ${cardToPlay.name}.`);
+        logMsg(gameText('bot.kicker.paid', { card: cardToPlay.name }));
       }
 
       // 601.2b: X queda anunciado antes de objetivos y antes de activar fuentes.
@@ -1427,7 +1428,7 @@ export async function takeBotPriorityAction() {
       if (routeManaCost && routeManaCost.includes('{X}')) {
         const manaSourceCard = { ...cardToPlay, manaCost: routeManaCost };
         botXValue = chooseBotXValue(manaSourceCard);
-        logMsg(`✨ El Tano eligió X = ${botXValue} para ${cardToPlay.name}.`);
+        logMsg(gameText('bot.x.chosen', { x: botXValue, card: cardToPlay.name }));
       }
 
       const isPermanent = cardToPlay.type.includes('Artefacto') || (cardToPlay.type.includes('Encantamiento') && !cardToPlay.adjunta);
@@ -1468,7 +1469,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: true, item: chosen };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y no lo lanzó.`);
+            logMsg(gameText('bot.cast.noTargets', { card: cardToPlay.name }));
           }
         } else if (state.rivalCombat.length > 0) {
           // Mismo criterio que del lado del jugador: no le vuelvas a poner una habilidad que
@@ -1482,11 +1483,11 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: false, item: validSelfTargets[0] };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía ninguna criatura que se beneficiara de ${cardToPlay.name} y no lo lanzó.`);
+            logMsg(gameText('bot.cast.noBeneficialCreature', { card: cardToPlay.name }));
           }
         } else {
           validPlay = false;
-          logMsg(`El Tano no tenía criaturas para encantar con ${cardToPlay.name} y no lo lanzó.`);
+          logMsg(gameText('bot.cast.noAuraTarget', { card: cardToPlay.name }));
         }
       } else {
         stackType = cardToPlay.type.includes('Instantáneo') ? 'instant' : 'spell';
@@ -1501,7 +1502,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'multi', targets: chosenTargets };
           } else {
             validPlay = false;
-            logMsg(`El Tano no encontró objetivos válidos para todos los modos de ${cardToPlay.name} y no lo lanzó.`);
+            logMsg(gameText('bot.cast.noModalTargets', { card: cardToPlay.name }));
           }
         }
         else if (cardToPlay.effect && cardToPlay.effect.type === 'damage') {
@@ -1534,7 +1535,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: true, item: chosen };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y no lo lanzó.`);
+            logMsg(gameText('bot.cast.noTargets', { card: cardToPlay.name }));
           }
         }
         // LÓGICA NUEVA: REBOTE (Vuelto en Mano, etc.)
@@ -1548,7 +1549,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: true, item: chosen };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y no lo lanzó.`);
+            logMsg(gameText('bot.cast.noTargets', { card: cardToPlay.name }));
           }
         }
         // LÓGICA NUEVA: DESCARTE (Corralito, etc.)
@@ -1567,7 +1568,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'player', isLocal: true };
           } else {
             validPlay = false;
-            logMsg(`El Tano no encontró un cementerio que valiera la pena exiliar y no lanzó ${cardToPlay.name}.`);
+            logMsg(gameText('bot.cast.noGraveToExile', { card: cardToPlay.name }));
           }
         }
         // 23.9.3: impedir que UNA criatura ataque en el próximo turno de su controlador.
@@ -1580,7 +1581,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: true, item: chosen, index: state.localCombat.indexOf(chosen) };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía criaturas válidas para frenar con ${cardToPlay.name} y no lo lanzó.`);
+            logMsg(gameText('bot.cast.noPreventTarget', { card: cardToPlay.name }));
           }
         }
         // PREVENIR COMBATE GLOBAL (Cuarentena Total)
@@ -1597,7 +1598,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: false, item: chosen };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía criaturas para reforzar con ${cardToPlay.name} y no lo lanzó.`);
+            logMsg(gameText('bot.cast.noBuffTarget', { card: cardToPlay.name }));
           }
         }
         // LÓGICA NUEVA: CONTADOR PERMANENTE (+1/+1 propio, o -1/-1 al rival) — mismo criterio
@@ -1612,7 +1613,7 @@ export async function takeBotPriorityAction() {
               aiTargetObj = { type: 'creature', isLocal: true, item: chosen };
             } else {
               validPlay = false;
-              logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y no lo lanzó.`);
+              logMsg(gameText('bot.cast.noTargets', { card: cardToPlay.name }));
               }
           } else if (state.rivalCombat.length > 0) {
             const chosen = state.rivalCombat.reduce((prev, current) =>
@@ -1621,7 +1622,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: false, item: chosen };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía criaturas para reforzar con ${cardToPlay.name} y no lo lanzó.`);
+            logMsg(gameText('bot.cast.noBuffTarget', { card: cardToPlay.name }));
           }
         }
         // LÓGICA NUEVA: PROTECCIÓN TEMPORAL (A Cubierto, etc.) — protege a su criatura más grande
@@ -1633,7 +1634,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: false, item: chosen };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía criaturas para proteger con ${cardToPlay.name} y no lo lanzó.`);
+            logMsg(gameText('bot.cast.noProtectTarget', { card: cardToPlay.name }));
           }
         }
         // ETAPA 2 (Grupo C, Pelear del Tano): antes solo consideraba un cambio 100% gratis
@@ -1659,7 +1660,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'creature', isLocal: true, index: state.localCombat.indexOf(bestPair.theirs), item: bestPair.theirs, fightWithItem: bestPair.mine };
           } else {
             validPlay = false;
-            logMsg(`El Tano no encontró una pelea que le convenga con ${cardToPlay.name} y no lo lanzó.`);
+            logMsg(gameText('bot.cast.noGoodFight', { card: cardToPlay.name }));
           }
         }
         // LÓGICA NUEVA: DESTRUIR PERMANENTE (Piedrazo a la Vidriera / Yuyerío Salvaje)
@@ -1678,7 +1679,7 @@ export async function takeBotPriorityAction() {
             aiTargetObj = { type: 'permanent', isLocal: true, item: supportTargets[0] };
           } else {
             validPlay = false;
-            logMsg(`El Tano no tenía objetivos válidos para ${cardToPlay.name} y no lo lanzó.`);
+            logMsg(gameText('bot.cast.noTargets', { card: cardToPlay.name }));
           }
         }
       }
@@ -1712,7 +1713,7 @@ export async function takeBotPriorityAction() {
       } else {
         await payBotCastRoute(cardToPlay, useAlternative, { kicked: botKicked });
       }
-      if (useAlternative) logMsg(`🔀 El Tano pagó ${cardToPlay.name} por su costo alternativo.`);
+      if (useAlternative) logMsg(gameText('bot.cast.altPaid', { card: cardToPlay.name }));
 
       const castStackItem = {
         card: cardToPlay,
@@ -1737,7 +1738,7 @@ export async function takeBotPriorityAction() {
 
       state.priorityPlayer = 'local';
       state.consecutivePasses = 0;
-      logMsg(`⏳ El Tano puso ${cardToPlay.name} en la pila. Tenés la prioridad para responder.`);
+      logMsg(gameText('bot.stack.entered', { card: cardToPlay.name }));
       render();
       return;
     }
@@ -1763,7 +1764,7 @@ export async function takeBotPriorityAction() {
         effect.targetObjectId && effect.targetObjectId === unit._effectObjectId
       );
       if (attackLock) {
-        logMsg(`🚫 ${unit.card.name} no puede atacar en este combate por ${attackLock.sourceName || 'un efecto'}.`);
+        logMsg(gameText('bot.attackLocked', { card: unit.card.name, source: attackLock.sourceName || 'un efecto' }));
         continue;
       }
 
@@ -1777,7 +1778,7 @@ export async function takeBotPriorityAction() {
           triggerCombatAbility(unit, 'attackTrigger', false);
           attackCount++;
           if (unit.attackTarget) {
-            logMsg(`🔮 El Tano manda a ${unit.card.name} contra tu Planeswalker ${unit.attackTarget.card.name}.`);
+            logMsg(gameText('bot.attack.planeswalker', { card: unit.card.name, target: unit.attackTarget.card.name }));
           }
         } else {
           heldBackCount++;
@@ -1785,12 +1786,12 @@ export async function takeBotPriorityAction() {
       }
     }
 
-    if (heldBackCount > 0) logMsg(`🧠 El Tano decide guardar ${heldBackCount} criatura(s) atrás para defender.`);
+    if (heldBackCount > 0) logMsg(gameText('bot.attack.heldBack', { count: heldBackCount }));
     if (attackCount > 0) {
-      logMsg(`⚠️ ¡El Tano te ataca con ${attackCount} criatura(s)!`);
+      logMsg(gameText('bot.attack.count', { count: attackCount }));
       triggerAnyCreatureAttacks(false);
     }
-    else logMsg("El Tano no atacó con nada.");
+    else logMsg(gameText('bot.noAttack'));
     state.rivalAttackersDeclaredThisTurn = attackCount;
     
     render();

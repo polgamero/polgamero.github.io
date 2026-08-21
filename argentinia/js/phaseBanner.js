@@ -1,17 +1,18 @@
+import { gameText } from './gameTexts.js';
 // 23.13.7 — avisos visuales de macro-fase. Presentación pura: no avanza turnos ni toca prioridad.
 const MACRO_PHASES = {
-  untap: { key: 'untap', label: 'ENDEREZAR' },
-  upkeep: { key: 'upkeep', label: 'MANTENIMIENTO' },
-  draw: { key: 'draw', label: 'ROBO' },
-  main1: { key: 'main1', label: 'MAIN 1', major: true },
-  combat_begin: { key: 'combat', label: 'COMBATE', major: true },
-  combat_attackers: { key: 'combat', label: 'COMBATE', major: true },
-  combat_blockers: { key: 'combat', label: 'COMBATE', major: true },
-  combat_damage: { key: 'combat', label: 'COMBATE', major: true },
-  combat_end: { key: 'combat', label: 'COMBATE', major: true },
-  main2: { key: 'main2', label: 'MAIN 2', major: true },
-  end_step: { key: 'end', label: 'PASO FINAL' },
-  cleanup: { key: 'cleanup', label: 'LIMPIEZA' }
+  untap: { key: 'untap', textKey: 'phase.banner.untap' },
+  upkeep: { key: 'upkeep', textKey: 'phase.banner.upkeep' },
+  draw: { key: 'draw', textKey: 'phase.banner.draw' },
+  main1: { key: 'main1', textKey: 'phase.banner.main1', major: true },
+  combat_begin: { key: 'combat', textKey: 'phase.banner.combat', major: true },
+  combat_attackers: { key: 'combat', textKey: 'phase.banner.combat', major: true },
+  combat_blockers: { key: 'combat', textKey: 'phase.banner.combat', major: true },
+  combat_damage: { key: 'combat', textKey: 'phase.banner.combat', major: true },
+  combat_end: { key: 'combat', textKey: 'phase.banner.combat', major: true },
+  main2: { key: 'main2', textKey: 'phase.banner.main2', major: true },
+  end_step: { key: 'end', textKey: 'phase.banner.end' },
+  cleanup: { key: 'cleanup', textKey: 'phase.banner.cleanup' }
 };
 
 let lastBannerKey = null;
@@ -65,7 +66,7 @@ export function announcePhaseTransition({ phase, turnCount = 0, activePlayer = '
 
   const banner = document.createElement('div');
   banner.className = `phase-banner${info.major ? ' major' : ''}${info.key === 'combat' ? ' combat' : ''}`;
-  banner.innerHTML = `<span class="phase-banner-rule"></span><span class="phase-banner-label">${info.label}</span><span class="phase-banner-rule"></span>`;
+  banner.innerHTML = `<span class="phase-banner-rule"></span><span class="phase-banner-label">${gameText(info.textKey)}</span><span class="phase-banner-rule"></span>`;
   layer.appendChild(banner);
   // Reinsertar fuerza reinicio de la animación aun si dos macrofases cambian muy rápido.
   void banner.offsetWidth;

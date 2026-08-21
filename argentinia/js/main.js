@@ -16,7 +16,7 @@ import { stampCardOwner, zoneForCardOwner } from './zoneOwnership.js';
 import { PRIVATE_ZONE_VISIBILITY, PRIVATE_ZONE_FILTERS, buildPrivateZoneOffer, resolvePrivateZoneSelection } from './privateZoneProtocol.js';
 import { isUsernameConfigured } from './usernames.js';
 import { showUsernameSetupModal } from './usernameUI.js';
-import { applyGameTextOverrides } from './gameTexts.js';
+import { applyGameTextOverrides, gameText } from './gameTexts.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -425,7 +425,7 @@ function hookGameplayButtons() {
           if (state.currentUser) {
             awardPoints(state.currentUser.uid, POINTS.abandonPenalty)
               .then(newTotal => {
-                logMsg(`🏳️ Abandonaste la partida — te descontamos ${Math.abs(POINTS.abandonPenalty)} puntos. Te quedan ${newTotal} en total.`);
+                logMsg(gameText('game.abandon.self', { points: Math.abs(POINTS.abandonPenalty), total: newTotal }));
               })
               .catch(err => console.error('No se pudo aplicar la penalidad de abandono:', err))
               .finally(() => location.reload());
@@ -455,7 +455,7 @@ function hookGameplayButtons() {
 }
 
 async function initGame(deckSource) {
-  logMsg("Cargando el mazo...");
+  logMsg(gameText('game.loadingDeck'));
 
   await mobileSoloYield('before_board_layout');
   setupBoardLayout();
@@ -497,10 +497,10 @@ async function initGame(deckSource) {
       try {
         state.userProfile = await createUserProfile(state.currentUser.uid, state.currentUser, starterCardIds);
         await processDailyLoginRewards();
-        logMsg("🎁 ¡Se guardó tu colección inicial de 60 cartas en tu cuenta!");
+        logMsg(gameText('account.starter.saved60'));
       } catch (err) {
         console.error('No se pudo guardar la colección inicial:', err);
-        logMsg("⚠️ No se pudo guardar tu colección inicial — revisá tu conexión. Podés seguir jugando igual.");
+        logMsg(gameText('account.starter.saveErrorContinue'));
       }
     }
   }
@@ -519,8 +519,8 @@ async function initGame(deckSource) {
   const finishSetup = () => {
     hookGameplayButtons();
     render();
-    logMsg(`¡Arranca la partida! Jugás con "${deckLabel}".`);
-    logMsg("¡Tu turno! Bajá una tierra para empezar.");
+    logMsg(gameText('game.start.deck', { deck: deckLabel }));
+    logMsg(gameText('game.start.yourTurnHint'));
   };
 
   await mobileSoloYield('before_mulligan_ui', { local: state.localHand.length });
@@ -556,7 +556,7 @@ function resolveBotMulligan() {
         state.rivalDeck.unshift(c);
       }
     });
-    logMsg(`🃏 El Tano hizo mulligan ${count} vez(es) y dejó ${count} carta(s) al fondo de su mazo.`);
+    logMsg(gameText('game.mulligan.bot', { count }));
   }
 }
 
@@ -585,7 +585,7 @@ function startLocalMulliganFlow(onDone) {
       },
       onKeep: () => {
         if (mulliganCount === 0) {
-          logMsg("Te quedaste con tu mano inicial.");
+          logMsg(gameText('game.mulligan.keep'));
           onDone();
           return;
         }
@@ -601,7 +601,7 @@ function startLocalMulliganFlow(onDone) {
               state.localDeck.unshift(c);
             }
           });
-          logMsg(`Dejaste tu mano entera (${allCards.length} carta(s)) al fondo del mazo. Arrancás con 0 cartas en mano.`);
+          logMsg(gameText('game.mulligan.allBottom', { count: allCards.length }));
           onDone();
           return;
         }
@@ -613,7 +613,7 @@ function startLocalMulliganFlow(onDone) {
               state.localDeck.unshift(c);
             }
           });
-          logMsg(`Dejaste ${countToBottom} carta(s) al fondo del mazo. Mano final: ${state.localHand.length} cartas.`);
+          logMsg(gameText('game.mulligan.bottom', { bottom: countToBottom, hand: state.localHand.length }));
           onDone();
         });
       }
@@ -638,10 +638,10 @@ function promptStarterDeckSelection() {
       try {
         state.userProfile = await createUserProfile(state.currentUser.uid, state.currentUser, starterDeck.map(c => c.id));
         await processDailyLoginRewards();
-        logMsg(`🎁 ¡Tu colección inicial (${chosenIdentity.join('/')}) quedó guardada para siempre!`);
+        logMsg(gameText('account.starter.savedIdentity', { identity: chosenIdentity.join('/') }));
       } catch (err) {
         console.error('No se pudo guardar la colección inicial:', err);
-        logMsg("⚠️ No se pudo guardar tu colección inicial — revisá tu conexión. Volvé a entrar para reintentarlo.");
+        logMsg(gameText('account.starter.saveErrorRetry'));
       }
     },
     {
@@ -1059,8 +1059,8 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
       if (state.priorityPlayer === 'local') resetPriorityClock('match_start');
       render();
       recordTelemetryEvent('multiplayer_both_ready', { matchId, myRole, hostReady: true, guestReady: true });
-      logMsg(`¡Arranca la partida! Jugás con "${deckLabel}".`);
-      logMsg(state.activePlayer === 'local' ? "¡Tu turno! Bajá una tierra para empezar." : "Esperando a que tu rival juegue...");
+      logMsg(gameText('game.start.deck', { deck: deckLabel }));
+      logMsg(state.activePlayer === 'local' ? gameText('game.start.yourTurnHint') : gameText('game.start.waitingRival'));
     });
   };
 
@@ -1942,7 +1942,7 @@ function commitCastCompositeNonManaCosts(card, isLocal, prepared, useAlternative
     if (selectedDiscards.length) paid.push(`descartó ${selectedDiscards.map(c=>c.name).join(', ')}`);
     if (selectedSacrifices.length) paid.push(`sacrificó ${selectedSacrifices.map(i=>i.card.name).join(', ')}`);
     if (selectedGraveyard.length) paid.push(`exilió ${selectedGraveyard.map(c=>c.name).join(', ')} del cementerio`);
-    logMsg(`💳 ${card.name}: ${useAlternative ? 'costo alternativo' : 'costo adicional'} pagado (${paid.join('; ')}).`);
+    logMsg(gameText('cost.composite.paid', { card: card.name, route: useAlternative ? 'costo alternativo' : 'costo adicional', details: paid.join('; ') }));
   }
   return true;
 }
@@ -2261,8 +2261,8 @@ function handleIncomingDecisionRequest(decision) {
     }).then(result => {
       state.respondingToDecision = false;
       logMsg(result.discardedNames.length > 0
-        ? `🗑️ ${decision.cardName || 'Efecto rival'}: descartaste ${result.discardedNames.join(', ')}.`
-        : `🗑️ ${decision.cardName || 'Efecto rival'}: no descartaste ninguna carta.`);
+        ? gameText('discard.remote.chosen', { card: decision.cardName || 'Efecto rival', cards: result.discardedNames.join(', ') })
+        : gameText('discard.remote.none', { card: decision.cardName || 'Efecto rival' }));
       respondToDecision(decision.requestId, {
         completed: result.completed,
         discardedNames: result.discardedNames
@@ -2288,8 +2288,8 @@ function handleIncomingDecisionRequest(decision) {
       discardedNames.push(card.name);
     });
     logMsg(discardedNames.length > 0
-      ? `🗑️ ¡${decision.cardName} de tu rival te hizo descartar: ${discardedNames.join(', ')}!`
-      : `🗑️ ¡${decision.cardName} de tu rival intentó hacerte descartar, pero no tenías cartas!`);
+      ? gameText('discard.remote.random', { card: decision.cardName, cards: discardedNames.join(', ') })
+      : gameText('discard.remote.randomNone', { card: decision.cardName }));
     render(); // publica mi mano/cementerio REALES ya actualizados, por el sync normal de siempre
     respondToDecision(decision.requestId, { discardedNames });
   }
@@ -2563,7 +2563,7 @@ function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc, rivalNam
   hookGameplayButtons();
 
   render();
-  logMsg("🔄 Te reconectaste a tu partida en curso.");
+  logMsg(gameText('game.reconnected'));
 }
 
 // FASE 4, ETAPA 6: se llama apenas carga el perfil en boot() — si trae un activeMatchId,
@@ -2984,7 +2984,7 @@ function finishPendingResolvedEffectTarget(targetObj) {
   const pending = state.pendingResolvedEffectTargetChoice;
   if (!pending) return false;
   if (!isResolvedEffectTargetLegal(targetObj, pending.options)) {
-    logMsg(`Ese no es un objetivo válido para ${pending.cardName}.`);
+    logMsg(gameText('target.invalid.generic', { source: pending.cardName }));
     return true;
   }
   const resolver = pendingResolvedEffectTargetResolver;
@@ -3009,7 +3009,7 @@ async function chooseResolvedEffectTargetNow(options) {
 
   const candidates = getResolvedEffectTargetCandidates({ ...options, sourceCard, controllerIsLocal });
   if (candidates.length === 0) {
-    logMsg(`⚠️ ${cardName}: no hay objetivos legales.`);
+    logMsg(gameText('target.noneLegal', { source: cardName }));
     return null;
   }
   if (candidates.length === 1) return candidates[0];
@@ -3023,7 +3023,7 @@ async function chooseResolvedEffectTargetNow(options) {
     // Reutilizamos el resaltado/estado de targeting de UI, pero los handlers interceptan
     // pendingResolvedEffectTargetChoice ANTES del flujo normal de casteo.
     state.pendingTargetCard = cardLike;
-    logMsg(`🎯 ${cardName}: elegí un objetivo.`);
+    logMsg(gameText('target.choose', { source: cardName }));
     render();
     return new Promise(resolve => { pendingResolvedEffectTargetResolver = resolve; });
   }
@@ -3036,7 +3036,7 @@ async function chooseResolvedEffectTargetNow(options) {
     });
     const target = deserializeResolvedEffectTarget(response.target || null);
     if (!target || !isResolvedEffectTargetLegal(target, { ...options, sourceCard, controllerIsLocal })) {
-      logMsg(`⚠️ ${cardName}: el objetivo remoto dejó de ser legal.`);
+      logMsg(gameText('target.remoteBecameIllegal', { source: cardName }));
       return null;
     }
     return target;
@@ -3099,14 +3099,14 @@ export function performSacrifice(item, isLocal) {
       cleanupIfVehicle(item);
     }
     moveBattlefieldCardToZone(item.card, grave);
-    logMsg(`🔪 ¡Sacrificaste a ${item.card.name}!${item.card.isToken ? ' Al ser ficha, dejó de existir.' : ''}`);
+    logMsg(gameText('sacrifice.self', { card: item.card.name, token: item.card.isToken ? gameText('sacrifice.tokenSuffix') : '' }));
     if (isCreatureZone) {
       triggerCreatureDies(item, isLocal);
       triggerAnyCreatureDeath(item, isLocal);
     }
     return true;
   }
-  logMsg(`⚠️ No se pudo sacrificar a ${item.card.name}: ya no está en el campo.`);
+  logMsg(gameText('sacrifice.missing', { card: item.card.name }));
   return false;
 }
 
@@ -3145,7 +3145,7 @@ export function performSacrificeBatch(items, isLocal) {
     }
     moveBattlefieldCardToZone(item.card, grave);
     removed.push({ item, isCreature: isCreatureZone });
-    logMsg(`🔪 ¡Sacrificaste a ${item.card.name}!${item.card.isToken ? ' Al ser ficha, dejó de existir.' : ''}`);
+    logMsg(gameText('sacrifice.self', { card: item.card.name, token: item.card.isToken ? gameText('sacrifice.tokenSuffix') : '' }));
   }
 
   queueCreatureDeathBatch(
@@ -3298,7 +3298,7 @@ export async function triggerLandEtb(isLocal, landCard, landItem = null) {
       continue;
     }
 
-    logMsg(`🌿 Landfall — ${card.name} reaccionó a ${landCard?.name || 'una Tierra'}.`);
+    logMsg(gameText('trigger.landfall', { card: card.name, land: landCard?.name || 'una Tierra' }));
     entries.push({
       effect, sourceCard: card, sourceItem: item, isLocal, targetObj: implicitTarget,
       selfTarget: implicitSelfCreature, triggerType: 'land_etb', eventCard: landCard, eventItem: landItem
@@ -3369,7 +3369,7 @@ export async function triggerSpellCast(isLocal, castCard, stackItem = null) {
       continue;
     }
 
-    logMsg(`✨ Spellslinger — ${card.name} reaccionó a ${castCard.name}.`);
+    logMsg(gameText('trigger.spellslinger', { card: card.name, spell: castCard.name }));
     entries.push({
       effect, sourceCard: card, sourceItem: item, isLocal, targetObj: implicitTarget,
       selfTarget: implicitSelfCreature, triggerType: 'spell_cast', eventCard: castCard, eventItem: stackItem
@@ -3513,7 +3513,7 @@ export function detachEquipmentFrom(creatureItem, isLocal) {
   const supportZone = isLocal ? state.localSupport : state.rivalSupport;
   supportZone.forEach(s => {
     if (sameBattlefieldObject(s.attachedTo, creatureItem)) {
-      logMsg(`🗡️ ${s.card.name} se cae al piso, pero sigue en tu campo listo para volver a equiparse.`);
+      logMsg(gameText('attachment.equipment.detached', { equipment: s.card.name }));
       s.attachedTo = null;
     }
   });
@@ -3530,7 +3530,7 @@ export function sendAurasToGraveyard(unit, isLocal) {
     // 23.12.2 — el Aura va al cementerio de SU PROPIETARIO, no al del permanente
     // encantado. Esto importa especialmente para maldiciones propias sobre criaturas rivales.
     const grave = zoneForCardOwner(auraCard, state.localGraveyard, state.rivalGraveyard, isLocal, myRole);
-    logMsg(`💔 ${auraCard.name} se desprendió de ${unit.card.name} y fue al cementerio de su dueño.`);
+    logMsg(gameText('attachment.aura.detached', { aura: auraCard.name, creature: unit.card.name }));
     grave.push(auraCard);
   });
   unit.auras = [];
@@ -3553,7 +3553,7 @@ export function checkAuraLegality() {
       unit.auras.forEach(auraCard => {
         const illegalColor = getProtectionMatch(unit, auraCard.colors || []);
         if (illegalColor) {
-          logMsg(`💔 ¡${unit.card.name} tiene Protección de ${illegalColor} y ${auraCard.name} ya no puede seguir pegada! Se cae al cementerio de su dueño.`);
+          logMsg(gameText('attachment.aura.protection', { creature: unit.card.name, color: illegalColor, aura: auraCard.name }));
           zoneForCardOwner(auraCard, state.localGraveyard, state.rivalGraveyard, hostIsLocal, myRole).push(auraCard);
         } else {
           stillLegal.push(auraCard);
@@ -3578,7 +3578,7 @@ export function checkEquipmentLegality() {
       if (!item.attachedTo) return;
       const illegalColor = getProtectionMatch(item.attachedTo, item.card.colors || []);
       if (illegalColor) {
-        logMsg(`🛡️ ¡${item.attachedTo.card.name} tiene Protección de ${illegalColor} y ${item.card.name} ya no puede seguir puesto! Se cae, pero se queda en tu campo.`);
+        logMsg(gameText('attachment.equipment.protection', { creature: item.attachedTo.card.name, color: illegalColor, equipment: item.card.name }));
         item.attachedTo = null;
       }
     });
@@ -3639,7 +3639,7 @@ export function putLoyaltyAbilityOnStack(pwItem, ability, abilityIndex, isLocal,
   };
   addToStack(stackItem);
   state.consecutivePasses = 0;
-  logMsg(`🔮 ${pwItem.card.name} activó "${ability.name}" (Lealtad ahora: ${pwItem.loyalty}). La habilidad está en la pila.`);
+  logMsg(gameText('loyalty.activated', { card: pwItem.card.name, ability: ability.name, loyalty: pwItem.loyalty }));
 
   // SBA después de completar la activación: si el costo dejó al PW en 0, la fuente muere
   // pero el objeto de habilidad ya quedó independizado en la Stack.
@@ -3656,33 +3656,33 @@ export function putLoyaltyAbilityOnStack(pwItem, ability, abilityIndex, isLocal,
 export async function activateLoyaltyAbility(pwItem, abilityIndex, isLocal) {
   const controller = isLocal ? 'local' : 'rival';
   if (state.phase !== 'main1' && state.phase !== 'main2') {
-    logMsg("Las habilidades de Lealtad solo se pueden usar en tus Fases Principales.");
+    logMsg(gameText('loyalty.onlyMain'));
     return;
   }
   if (state.activePlayer !== controller) {
-    logMsg("Solo podés activar la habilidad de un Planeswalker en tu propio turno.");
+    logMsg(gameText('loyalty.onlyOwnTurn'));
     return;
   }
   if (state.priorityPlayer !== controller) {
-    logMsg("Necesitás tener prioridad para activar una habilidad de Lealtad.");
+    logMsg(gameText('loyalty.needPriority'));
     return;
   }
   if (spellStack.length > 0) {
-    logMsg("Las habilidades de Lealtad usan timing de conjuro: la pila tiene que estar vacía.");
+    logMsg(gameText('loyalty.stackEmpty'));
     return;
   }
   if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0 || state.pendingResolvedEffectTargetChoice || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.pendingRampChoice) {
-    logMsg("Terminá lo que tenés pendiente antes de activar esto.");
+    logMsg(gameText('loyalty.pending'));
     return;
   }
   if (pwItem.abilityUsedThisTurn) {
-    logMsg(`${pwItem.card.name} ya usó su habilidad de Lealtad este turno.`);
+    logMsg(gameText('loyalty.used', { card: pwItem.card.name }));
     return;
   }
   const ability = pwItem.card.loyaltyAbilities[abilityIndex];
   if (!ability || !ability.effect) return;
   if (ability.cost < 0 && pwItem.loyalty < Math.abs(ability.cost)) {
-    logMsg(`${pwItem.card.name} no tiene suficiente Lealtad para esa habilidad (tiene ${pwItem.loyalty}).`);
+    logMsg(gameText('loyalty.notEnough', { card: pwItem.card.name, loyalty: pwItem.loyalty }));
     return;
   }
 
@@ -3710,7 +3710,7 @@ export async function activateLoyaltyAbility(pwItem, abilityIndex, isLocal) {
       cardName: ability.name
     });
     if (candidates.length === 0) {
-      logMsg(`⚠️ ${pwItem.card.name}: "${ability.name}" no tiene ningún objetivo legal.`);
+      logMsg(gameText('loyalty.noTargets', { card: pwItem.card.name, ability: ability.name }));
       return;
     }
 
@@ -3732,7 +3732,7 @@ export async function activateLoyaltyAbility(pwItem, abilityIndex, isLocal) {
     if (state.gameOver || state.priorityPlayer !== controller || state.activePlayer !== controller ||
         (state.phase !== 'main1' && state.phase !== 'main2') || spellStack.length > 0 || pwItem.abilityUsedThisTurn ||
         (ability.cost < 0 && pwItem.loyalty < Math.abs(ability.cost))) {
-      logMsg(`⚠️ ${pwItem.card.name}: la activación dejó de ser legal antes de pagar la Lealtad.`);
+      logMsg(gameText('loyalty.becameIllegal', { card: pwItem.card.name }));
       render();
       return;
     }
@@ -3758,7 +3758,7 @@ export async function resolveLoyaltyTargetChoice(targetUnit, isTargetLocal) {
     controllerIsLocal: true
   });
   if (!legal) {
-    logMsg(`Ese no es un objetivo válido para "${ability.name}".`);
+    logMsg(gameText('loyalty.invalidTarget', { ability: ability.name }));
     render();
     return;
   }
@@ -3775,7 +3775,7 @@ export async function resolveLoyaltyTargetChoice(targetUnit, isTargetLocal) {
     source: { type: 'loyalty_activation', abilityIndex, sourceItem: pwItem, sourceCardId: pwItem.card.id || null }
   });
   state.consecutivePasses = 0;
-  logMsg(`🔮 "${ability.name}" de ${pwItem.card.name} retomó su activación legacy y quedó en la pila.`);
+  logMsg(gameText('loyalty.legacyResume', { ability: ability.name, card: pwItem.card.name }));
   checkPlaneswalkerDeaths();
   render();
   checkRivalCounterOrResponse();
@@ -3790,7 +3790,7 @@ export function checkPlaneswalkerDeaths() {
   ].forEach(({ zone, grave }) => {
     for (let i = zone.length - 1; i >= 0; i--) {
       if (zone[i].loyalty <= 0) {
-        logMsg(`💀 ¡${zone[i].card.name} se quedó sin Lealtad y murió!`);
+        logMsg(gameText('loyalty.died', { card: zone[i].card.name }));
         grave.push(zone[i].card);
         zone.splice(i, 1);
       }
@@ -3812,7 +3812,7 @@ export function handlePlaneswalkerClick(pwItem, isLocal, index) {
     const attacker = state.localCombat[state.pendingAttackRedirect.attackerIndex];
     if (attacker) {
       attacker.attackTarget = pwItem;
-      logMsg(`🔮 ¡${attacker.card.name} redirige su ataque a ${pwItem.card.name}!`);
+      logMsg(gameText('loyalty.redirectAttack', { attacker: attacker.card.name, planeswalker: pwItem.card.name }));
     }
     state.pendingAttackRedirect = null;
     render();
@@ -3827,7 +3827,7 @@ export function handlePlaneswalkerClick(pwItem, isLocal, index) {
     const rules = getTargetRules({ effect: spec.effect });
     const allowed = isLocal ? rules.allowLocalPlaneswalker : rules.allowRivalPlaneswalker;
     if (!allowed) {
-      logMsg("Ese no es un objetivo válido para este target del hechizo.");
+      logMsg(gameText('target.invalid.spellTarget'));
       return;
     }
     advanceMultiTargetChoice({ type: 'planeswalker', isLocal, item: pwItem });
@@ -3842,7 +3842,7 @@ export function handlePlaneswalkerClick(pwItem, isLocal, index) {
     const rules = getTargetRules(state.pendingTargetCard);
     const allowed = isLocal ? rules.allowLocalPlaneswalker : rules.allowRivalPlaneswalker;
     if (!allowed) {
-      logMsg(`Ese no es un objetivo válido para ${state.pendingTargetCard.name}.`);
+      logMsg(gameText('target.invalid.generic', { source: state.pendingTargetCard.name }));
       return;
     }
     executeSpellOnTarget({ type: 'planeswalker', isLocal, item: pwItem });
@@ -3880,13 +3880,13 @@ export function resolveScheduledReturns(isLocal) {
     if (hasKeyword(newUnit, 'haste')) newUnit.summoningSickness = false;
 
     combatZone.push(newUnit);
-    logMsg(`🌀 ¡${entry.card.name} volvió del Exilio, como si acabara de entrar al campo!`);
+    logMsg(gameText('exile.returned', { card: entry.card.name }));
     triggerCreatureEtb(isLocal, entry.card, newUnit);
 
     if (entry.card.type.includes('Legendaria')) {
       const duplicate = combatZone.find(u => u !== newUnit && u.card.name === entry.card.name);
       if (duplicate) {
-        logMsg(`⚖️ Regla de Leyenda: ya tenías a ${entry.card.name} en el campo. La que vuelve del Exilio se sacrifica.`);
+        logMsg(gameText('legend.returnedDuplicate', { card: entry.card.name }));
         performSacrifice(newUnit, isLocal);
       }
     }
@@ -3904,7 +3904,7 @@ export function attachAura(auraCard, creatureItem, ownerIsLocal = null) {
   if (ownerIsLocal !== null) stampCardOwner(auraCard, !!ownerIsLocal, state.currentMatch?.myRole || null);
   if (!creatureItem.auras) creatureItem.auras = [];
   creatureItem.auras.push(auraCard);
-  logMsg(`✨ ¡${auraCard.name} se pegó a ${creatureItem.card.name}!`);
+  logMsg(gameText('attachment.aura.attached', { aura: auraCard.name, creature: creatureItem.card.name }));
 }
 
 // Sistema real de contadores +1/+1 y -1/-1 (antes se simulaban con "auras falsas" que ni
@@ -3951,9 +3951,9 @@ export function getKeywordsGrantedByPendingSpell(pendingCard) {
 
 export function handleCombatClick(item, isLocal, index) {
   if (state.damageModalOpen) return;
-  if (state.pendingActivatedAbilityChoice) { logMsg("Elegí primero qué habilidad querés activar."); return; }
+  if (state.pendingActivatedAbilityChoice) { logMsg(gameText('pending.ability')); return; }
   if (state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0) {
-    logMsg("Terminá primero el descarte pendiente.");
+    logMsg(gameText('pending.discard'));
     return;
   }
 
@@ -3971,7 +3971,7 @@ export function handleCombatClick(item, isLocal, index) {
   // tiene que ser TUYA — la que va a pelear.
   if (state.pendingFightChoice) {
     if (!isLocal) {
-      logMsg("Elegí una criatura TUYA para que pelee.");
+      logMsg(gameText('target.chooseFightOwn'));
       return;
     }
     const fc = state.pendingFightChoice;
@@ -3988,11 +3988,11 @@ export function handleCombatClick(item, isLocal, index) {
     const allowed = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
     const matchesFilter = !rules.creatureFilter || item.card.type.includes(rules.creatureFilter);
     if (!allowed || !matchesFilter) {
-      logMsg("Ese no es un objetivo válido para esa habilidad.");
+      logMsg(gameText('target.invalid.ability'));
       return;
     }
     if (!isLocal && hasKeyword(item, 'hexproof')) {
-      logMsg(`🛡️ ${item.card.name} tiene Intocable. No podés elegirla.`);
+      logMsg(gameText('target.hexproof', { target: item.card.name }));
       return;
     }
     resolveLoyaltyTargetChoice(item, isLocal);
@@ -4008,11 +4008,11 @@ export function handleCombatClick(item, isLocal, index) {
     const allowed = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
     const matchesFilter = !rules.creatureFilter || item.card.type.includes(rules.creatureFilter);
     if (!allowed || !matchesFilter) {
-      logMsg("Ese no es un objetivo válido para este target del hechizo.");
+      logMsg(gameText('target.invalid.spellTarget'));
       return;
     }
     if (!isLocal && hasKeyword(item, 'hexproof')) {
-      logMsg(`🛡️ ${item.card.name} tiene Intocable. No podés elegirla.`);
+      logMsg(gameText('target.hexproof', { target: item.card.name }));
       return;
     }
     advanceMultiTargetChoice({ type: 'creature', isLocal, index, item });
@@ -4026,12 +4026,12 @@ export function handleCombatClick(item, isLocal, index) {
 
   if (state.pendingTargetCard) {
     if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type && state.pendingTargetCard.effect.type.startsWith('counter')) {
-      logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a una criatura.");
+      logMsg(gameText('target.counter.creature'));
       return;
     }
 
     if (!isLocal && hasKeyword(item, 'hexproof')) {
-      logMsg(`🛡️ ¡Epa! ${item.card.name} tiene Intocable. No podés seleccionarlo como objetivo.`);
+      logMsg(gameText('target.hexproof.emphatic', { target: item.card.name }));
       return;
     }
 
@@ -4042,7 +4042,7 @@ export function handleCombatClick(item, isLocal, index) {
     const sourceColors = state.pendingTargetCard.colors || [];
     const protectedColor = getProtectionMatch(item, sourceColors);
     if (protectedColor) {
-      logMsg(`🛡️ ¡Epa! ${item.card.name} tiene Protección de ${COLOR_LABELS[protectedColor] || protectedColor}. ${state.pendingTargetCard.name} no le puede hacer nada.`);
+      logMsg(gameText('target.protection', { target: item.card.name, color: COLOR_LABELS[protectedColor] || protectedColor, source: state.pendingTargetCard.name }));
       return;
     }
     
@@ -4051,7 +4051,7 @@ export function handleCombatClick(item, isLocal, index) {
     const matchesFilter = !rules.creatureFilter || item.card.type.includes(rules.creatureFilter);
 
     if (!allowed || !matchesFilter) {
-      logMsg(`Ese no es un objetivo válido para ${state.pendingTargetCard.name}.`);
+      logMsg(gameText('target.invalid.generic', { source: state.pendingTargetCard.name }));
       return;
     }
 
@@ -4060,7 +4060,7 @@ export function handleCombatClick(item, isLocal, index) {
     const grantedKeywords = getKeywordsGrantedByPendingSpell(state.pendingTargetCard);
     const redundant = grantedKeywords.find(k => hasKeyword(item, k));
     if (redundant) {
-      logMsg(`${item.card.name} ya tiene esa habilidad — no hace falta repetirla.`);
+      logMsg(gameText('ability.keyword.already', { card: item.card.name }));
       return;
     }
 
@@ -4072,7 +4072,7 @@ export function handleCombatClick(item, isLocal, index) {
     if (wardKw && !isLocal && !state.pendingCastTransaction && !state.pendingTargetSource) {
       const wardCost = parseInt(wardKw.split('_')[1], 10);
       state.pendingWardChoice = { targetObj: { type: 'creature', isLocal, index, item }, wardCost };
-      logMsg(`🔶 ¡${item.card.name} tiene Ward ${wardCost}! Pagá ${wardCost} de maná extra o tu hechizo se pierde sin efecto.`);
+      logMsg(gameText('ward.prompt', { card: item.card.name, cost: wardCost }));
       render();
       return;
     }
@@ -4083,7 +4083,7 @@ export function handleCombatClick(item, isLocal, index) {
     // Alberto Samid) no pasan por acá: para esas, "quién pelea" ya está claro de antemano.
     if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type === 'fight' && !state.pendingTargetSource) {
       state.pendingFightChoice = { opponentItem: item, opponentIndex: index, opponentIsLocal: isLocal };
-      logMsg(`Elegiste a ${item.card.name} como rival. Ahora elegí CUÁL de tus criaturas pelea contra ella.`);
+      logMsg(gameText('target.fightOpponentChosen', { target: item.card.name }));
       render();
       return;
     }
@@ -4095,15 +4095,15 @@ export function handleCombatClick(item, isLocal, index) {
  // Declarar atacantes solo en sub-paso de atacantes
   if (state.phase === 'combat_attackers' && isLocal && state.activePlayer === 'local' && state.priorityPlayer === 'local') {
     if ((state.localAttackersDeclaredThisTurn || 0) > 0) {
-      logMsg('⚔️ Los atacantes ya fueron declarados para este combate.');
+      logMsg(gameText('combat.local.attackersAlready'));
       return;
     }
     if (hasKeyword(item, 'defender')) {
-      logMsg(`🛡️ ${item.card.name} es Defensor y no puede atacar.`);
+      logMsg(gameText('combat.local.defender', { card: item.card.name }));
       return;
     }
     if (item.summoningSickness) {
-      logMsg(`Tu ${item.card.name} está mareado y no puede atacar este turno.`);
+      logMsg(gameText('combat.local.summoningSick', { card: item.card.name }));
       return;
     }
     const attackLock = (state.activeEffects || []).find(effect =>
@@ -4113,7 +4113,7 @@ export function handleCombatClick(item, isLocal, index) {
       effect.targetObjectId && effect.targetObjectId === item._effectObjectId
     );
     if (attackLock) {
-      logMsg(`🚫 ${item.card.name} no puede atacar en este combate por ${attackLock.sourceName || 'un efecto'}.`);
+      logMsg(gameText('combat.local.attackLocked', { card: item.card.name, source: attackLock.sourceName || 'un efecto' }));
       return;
     }
     if (item.tapped) return; 
@@ -4131,7 +4131,7 @@ export function handleCombatClick(item, isLocal, index) {
     // a la cara); un tercer click sobre la misma criatura la saca del combate.
     if (state.rivalPlaneswalkers.length > 0 && state.pendingAttackRedirect?.attackerIndex !== index) {
       state.pendingAttackRedirect = { attackerIndex: index };
-      logMsg(`Elegí un Planeswalker rival para redirigir el ataque de ${item.card.name}, o clickealo de nuevo para sacarlo del combate.`);
+      logMsg(gameText('combat.local.choosePlaneswalker', { card: item.card.name }));
       render();
       return;
     }
@@ -4143,27 +4143,27 @@ export function handleCombatClick(item, isLocal, index) {
   }
   else if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local') {
     if (state.localBlockersDeclaredThisCombat) {
-      logMsg('🛡️ Los bloqueadores ya fueron declarados para este combate.');
+      logMsg(gameText('combat.local.blockersAlready'));
       return;
     }
     if (isLocal) {
       if (item.tapped) {
-        logMsg("No podés bloquear con una criatura girada.");
+        logMsg(gameText('combat.local.tappedBlocker'));
         return;
       }
       state.pendingBlockerIndex = index;
-      logMsg(`Seleccionaste ${item.card.name}. Ahora hacé clic en el atacante de ${getRivalName()} que querés bloquear.`);
+      logMsg(gameText('combat.local.blockerSelected', { blocker: item.card.name, rival: getRivalName() }));
       render();
     } else {
       if (state.pendingBlockerIndex !== null && item.isAttacking) {
         const localUnit = state.localCombat[state.pendingBlockerIndex];
         if (!canBlock(item, localUnit)) {
-           logMsg(`❌ Bloqueo ilegal: ${item.card.name} tiene Volar. Tu ${localUnit.card.name} necesita Volar o Alcance.`);
+           logMsg(gameText('combat.local.flyingIllegal', { attacker: item.card.name, blocker: localUnit.card.name }));
            return;
         }
 
         state.localCombat[state.pendingBlockerIndex].blockingIndex = index;
-        logMsg(`Asignaste a ${state.localCombat[state.pendingBlockerIndex].card.name} a bloquear a ${item.card.name}.`);
+        logMsg(gameText('combat.local.blockAssigned', { blocker: state.localCombat[state.pendingBlockerIndex].card.name, attacker: item.card.name }));
         state.pendingBlockerIndex = null;
         render();
       }
@@ -4206,20 +4206,14 @@ export function canActivateActivatedAbilityNow(ability, isLocal = true) {
 
 function activatedTimingFailureMessage(ability) {
   const timing = getActivatedAbilityTiming(ability);
-  if (timing === 'invalid') return `⚠️ Timing de habilidad desconocido: "${ability?.timing}".`;
-  if ((ability?.crewCost !== undefined || ability?.effect?.type === 'crew_vehicle' || ability?.effect?.type === 'attach_equipment') && timing === 'instant') {
-    return '⚠️ Equipar/Tripular no pueden declararse con timing instantáneo.';
-  }
-  if (state.priorityPlayer !== 'local') return 'No tenés prioridad para activar esa habilidad.';
+  if (timing === 'invalid') return gameText('ability.timing.unknown', { timing: ability?.timing || '—' });
+  if ((ability?.crewCost !== undefined || ability?.effect?.type === 'crew_vehicle' || ability?.effect?.type === 'attach_equipment') && timing === 'instant') return gameText('ability.timing.intrinsicSorcery');
+  if (state.priorityPlayer !== 'local') return gameText('ability.timing.needPriority');
   const isEquip = ability?.effect?.type === 'attach_equipment';
-  if (isEquip && spellStack.length > 0) {
-    return 'Equipar usa timing de conjuro: primero tiene que quedar vacía la pila.';
-  }
-  if (isEquip && !(state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2'))) {
-    return 'Equipar sólo se puede activar en una de tus fases principales. Si el Equipo tiene Destello, Destello sólo cambia cuándo podés LANZAR la carta; no vuelve instantánea la habilidad de Equipar.';
-  }
-  if (timing === 'sorcery' && spellStack.length > 0) return 'Esa habilidad necesita timing de conjuro: la pila debe estar vacía.';
-  return 'Esa habilidad sólo se puede activar en una ventana válida para su timing.';
+  if (isEquip && spellStack.length > 0) return gameText('ability.timing.equipStack');
+  if (isEquip && !(state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2'))) return gameText('ability.timing.equipMain');
+  if (timing === 'sorcery' && spellStack.length > 0) return gameText('ability.timing.sorceryStack');
+  return gameText('ability.timing.sorceryTurn');
 }
 
 function buildCreatureActivatedAbilityOptions(creatureItem, isLocal, creatureIndex) {
@@ -4288,7 +4282,7 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
   }
 
   if (state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null) {
-    logMsg("Terminá el casteo o pago anterior antes de activar otra cosa.");
+    logMsg(gameText('ability.pendingPayment'));
     return true;
   }
 
@@ -4301,7 +4295,7 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
   }
 
   if (ability.effect?.type === 'attach_equipment' && state.localCombat.length === 0) {
-    logMsg(`⚠️ No tenés ninguna criatura para equipar con ${source.item.card.name}.`);
+    logMsg(gameText('ability.noEquipTarget', { card: source.item.card.name }));
     return true;
   }
 
@@ -4310,7 +4304,7 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
   const tapTarget = source.tapTarget || source.item;
 
   if (requiresTap && tapTarget.tapped) {
-    logMsg(`⏳ ${tapTarget.card.name} ya está girado.`);
+    logMsg(gameText('ability.tapAlready', { card: tapTarget.card.name }));
     return true;
   }
 
@@ -4318,7 +4312,7 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
   // exactamente la diferencia histórica entre habilidades propias de criatura y soporte.
   const combatZone = source.isLocal ? state.localCombat : state.rivalCombat;
   if (requiresTap && combatZone.includes(tapTarget) && tapTarget.summoningSickness) {
-    logMsg(`${tapTarget.card.name} tiene mareo de invocación: todavía no puede usar la habilidad de ${source.sourceName || displayName}.`);
+    logMsg(gameText('ability.summoningSick', { card: tapTarget.card.name, source: source.sourceName || displayName }));
     return true;
   }
 
@@ -4339,7 +4333,7 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
     state.pendingTargetCard = { ...card, effect: ability.effect, requiresTarget: true };
     state.pendingTargetSource = source;
     state.pendingCost = null;
-    logMsg(`🎯 Elegí un objetivo para la habilidad de ${card.name} antes de pagar.`);
+    logMsg(gameText('target.ability.beforePay', { card: card.name }));
     render();
     return true;
   }
@@ -4364,7 +4358,7 @@ function beginActivatedAbilityPayment(source) {
     checkPaymentComplete();
   } else {
     const prefix = source.chosenTarget ? 'Objetivo fijado. ' : '';
-    logMsg(`${prefix}Activando la habilidad de ${source.activationDisplayName || source.sourceName || source.item.card.name}. Elegí tierras para pagar el costo.`);
+    logMsg(gameText('ability.payPrompt', { prefix, source: source.activationDisplayName || source.sourceName || source.item.card.name }));
     render();
   }
   return true;
@@ -4373,7 +4367,7 @@ function beginActivatedAbilityPayment(source) {
 function presentActivatedAbilityChoice(displayName, options) {
   if (!options || options.length === 0) return false;
   if (state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null) {
-    logMsg("Terminá el casteo o pago anterior antes de activar otra cosa.");
+    logMsg(gameText('ability.pendingPayment'));
     return true;
   }
 
@@ -4405,7 +4399,7 @@ function presentActivatedAbilityChoice(displayName, options) {
 function tryActivateGrantedAbility(creatureItem, isLocal, creatureIndex) {
   const options = buildCreatureActivatedAbilityOptions(creatureItem, isLocal, creatureIndex);
   if (options.length === 0 && getActivatedAbilities(creatureItem.card).some(ab => ab.crewCost !== undefined)) {
-    logMsg(`${creatureItem.card.name} ya está tripulado — no hay una habilidad activada disponible desde Combate.`);
+    logMsg(gameText('ability.vehicleAlreadyCrewed', { card: creatureItem.card.name }));
     return true;
   }
   return presentActivatedAbilityChoice(creatureItem.card.name, options);
@@ -4449,7 +4443,7 @@ export function handleSupportTargetClick(item, isLocal, index) {
     const allowed = isLocal ? rules.allowLocalPermanent : rules.allowRivalPermanent;
     const matchesFilter = !rules.permanentFilter || item.card.type.includes(rules.permanentFilter);
     if (!allowed || !matchesFilter) {
-      logMsg("Ese no es un objetivo válido para este target del hechizo.");
+      logMsg(gameText('target.invalid.spellTarget'));
       return;
     }
     advanceMultiTargetChoice({ type: 'permanent', isLocal, index, item });
@@ -4459,7 +4453,7 @@ export function handleSupportTargetClick(item, isLocal, index) {
   if (!state.pendingTargetCard) return;
 
   if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type && state.pendingTargetCard.effect.type.startsWith('counter')) {
-    logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a un permanente.");
+    logMsg(gameText('target.counter.permanent'));
     return;
   }
 
@@ -4468,7 +4462,7 @@ export function handleSupportTargetClick(item, isLocal, index) {
   const matchesFilter = !rules.permanentFilter || item.card.type.includes(rules.permanentFilter);
 
   if (!allowed || !matchesFilter) {
-    logMsg(`Ese no es un objetivo válido para ${state.pendingTargetCard.name}.`);
+    logMsg(gameText('target.invalid.generic', { source: state.pendingTargetCard.name }));
     return;
   }
 
@@ -4489,11 +4483,11 @@ export function handlePlayerTargetClick(isLocal) {
     const spec = mtc.card.targets[mtc.currentIndex];
     const rules = getTargetRules({ effect: spec.effect });
     if (!rules.allowPlayer) {
-      logMsg("Este objetivo del hechizo necesita una criatura, no un jugador.");
+      logMsg(gameText('target.needCreature'));
       return;
     }
     if (spec.effect?.target === 'opponent_player' && isLocal) {
-      logMsg("Ese efecto debe apuntar al jugador rival.");
+      logMsg(gameText('target.mustRivalPlayer'));
       return;
     }
     advanceMultiTargetChoice({ type: 'player', isLocal });
@@ -4502,17 +4496,17 @@ export function handlePlayerTargetClick(isLocal) {
 
   if (state.pendingTargetCard) {
     if (state.pendingTargetCard.effect && state.pendingTargetCard.effect.type && state.pendingTargetCard.effect.type.startsWith('counter')) {
-      logMsg("¡Ojo! Un counterspell debe apuntar a la pila, no a un jugador.");
+      logMsg(gameText('target.counter.player'));
       return;
     }
     
     const rules = getTargetRules(state.pendingTargetCard);
     if (!rules.allowPlayer) {
-      logMsg(`${state.pendingTargetCard.name} necesita una criatura como objetivo, no un jugador.`);
+      logMsg(gameText('target.cardNeedCreature', { source: state.pendingTargetCard.name }));
       return;
     }
     if (state.pendingTargetCard.effect?.target === 'opponent_player' && isLocal) {
-      logMsg(`${state.pendingTargetCard.name} debe apuntar al jugador rival.`);
+      logMsg(gameText('target.cardMustRival', { source: state.pendingTargetCard.name }));
       return;
     }
     executeSpellOnTarget({ type: 'player', isLocal });
@@ -4528,14 +4522,14 @@ export function cancelPayment() {
     return;
   }
   if (state.pendingFightChoice) {
-    logMsg("Cancelaste la Pelea a mitad de camino.");
+    logMsg(gameText('target.fightCancel'));
     state.pendingFightChoice = null;
     // El hechizo sigue esperando su primer target — volvés a poder elegir a quién pelear.
     render();
     return;
   }
   if (state.pendingMultiTargetChoice) {
-    logMsg("Cancelaste la selección de objetivos — el hechizo vuelve atrás y el pago se revierte.");
+    logMsg(gameText('target.selectionCancel'));
     state.pendingMultiTargetChoice = null;
     state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
     restorePaymentManaSources();
@@ -4557,15 +4551,15 @@ export function cancelPayment() {
   // irrevocablemente comprometida — acá replicamos eso negando el cancelar y obligando a
   // terminar de elegir el objetivo (si la habilidad lo pide).
   if (state.pendingCompositeCostPayment) {
-    logMsg("⚠️ Terminá primero la selección de componentes del costo que está en curso.");
+    logMsg(gameText('payment.cancel.components'));
     return;
   }
   if (state.pendingAbilitySource && state.pendingAbilitySource.sacrificePaid) {
-    logMsg("⚠️ Ya pagaste el sacrificio de esta habilidad — no se puede cancelar. Tenés que terminar de elegir el objetivo.");
+    logMsg(gameText('payment.cancel.sacAbility'));
     return;
   }
   if (state.pendingSpellIndex !== null && state.pendingSpellCostsIrreversible) {
-    logMsg("⚠️ Ya pagaste un componente irreversible del costo de este hechizo — no se puede cancelar. Tenés que terminar de castearlo.");
+    logMsg(gameText('payment.cancel.irreversibleSpell'));
     return;
   }
 
@@ -4579,7 +4573,7 @@ export function cancelPayment() {
     const returningCard = state.localHand.splice(state.pendingSpellIndex, 1)[0];
     if (returningCard) {
       state.localGraveyard.push(returningCard);
-      logMsg(`${returningCard.name} vuelve a tu cementerio.`);
+      logMsg(gameText('exile.returnToGraveyard', { card: returningCard.name }));
     }
   }
 
@@ -4606,7 +4600,7 @@ export function cancelPayment() {
   state.paymentManaSourceRollbacks = [];
   state.pendingTargetCard = null;
   state.pendingTargetSource = null;
-  logMsg("Cancelaste la acción. Se revirtió el pago de maná (tierras/fuentes enderezadas y fuentes sacrificadas restauradas).");
+  logMsg(gameText('payment.cancel.reverted'));
   render();
 }
 
@@ -4691,7 +4685,7 @@ function abortCastTransaction(message = 'Cancelaste el casteo.') {
   const tx = state.pendingCastTransaction;
   if (!tx) return false;
   if (state.pendingSpellCostsIrreversible) {
-    logMsg('⚠️ Los costos irreversibles ya fueron comprometidos; este lanzamiento ya no puede cancelarse.');
+    logMsg(gameText('payment.cancel.irreversibleCommitted'));
     return true;
   }
   state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
@@ -4802,7 +4796,7 @@ export function confirmAlternativeCostChoice(useAlternative) {
   const tx = state.pendingCastTransaction;
   if (!tx || !state.pendingAlternativeCostChoice) return;
   if (useAlternative && !canPayCastCompositeNonManaCosts(tx.card, true, true, { excludeCard:tx.card })) {
-    logMsg(`⚠️ No tenés los recursos no-maná necesarios para el costo alternativo de ${tx.card.name}.`);
+    logMsg(gameText('cast.altNonManaUnavailable', { card: tx.card.name }));
     return;
   }
   tx.useAlternative = !!useAlternative;
@@ -4826,7 +4820,7 @@ function beginCastTargetDeclaration() {
 
   if (card.multiTarget && Array.isArray(card.targets) && card.targets.length > 0) {
     state.pendingMultiTargetChoice = { card, chosenTargets:[], currentIndex:0, castTransactionId:tx.id };
-    logMsg(`🎯 ${card.name}: declarando objetivo 1 de ${card.targets.length} antes de pagar.`);
+    logMsg(gameText('cast.targetAnnounce', { card: card.name, total: card.targets.length }));
     render();
     return;
   }
@@ -4837,7 +4831,7 @@ function beginCastTargetDeclaration() {
     let targetHint = `Elegí el objetivo de ${card.name} antes de pagar.`;
     if (card.adjunta) targetHint = `Elegí qué criatura va a encantar ${card.name} antes de pagar.`;
     else if (card.effect?.type?.startsWith('counter')) targetHint = `Elegí en la Pila qué va a contrarrestar ${card.name} antes de pagar.`;
-    logMsg(`🎯 ${targetHint}`);
+    logMsg(gameText('cast.targetHint', { hint: targetHint }));
     render();
     return;
   }
@@ -4891,7 +4885,7 @@ export async function completeCastTargetDeclaration(targetObj) {
   // costo completo y se eligen los objetos concretos de costos no-maná, todavía sin moverlos.
   const prepared = await prepareCastTransactionCosts(tx);
   if (!prepared) {
-    logMsg(`⚠️ No se pudo preparar el costo completo de ${tx.card.name}. El lanzamiento vuelve atrás sin pagar nada.`);
+    logMsg(gameText('cast.prepareCostFailed', { card: tx.card.name }));
     abortCastTransaction();
     return false;
   }
@@ -4925,7 +4919,7 @@ export async function completeCastTargetDeclaration(targetObj) {
     transactionId:tx.id, card:tx.card.name, targetCount:targetObj?.type === 'multi' ? targetObj.targets.length : (targetObj ? 1 : 0),
     manaCost:manaString || '{0}', xValue:tx.xValue || 0, kicked:!!tx.kicked, alternative:!!tx.useAlternative
   });
-  logMsg(`💳 ${tx.card.name}: objetivos fijados y costo bloqueado. Ahora activá fuentes de maná.`);
+  logMsg(gameText('cast.costLocked', { card: tx.card.name }));
   checkPaymentComplete();
   render();
   return true;
@@ -4940,13 +4934,13 @@ async function commitCastTransactionAfterMana() {
   // 601.2h — commit atómico de costos no-maná preparados. No hubo ninguna mutación antes
   // de que el maná llegara a cero; si una referencia quedó inválida, aborta/rollback.
   if (!commitCastCompositeNonManaCosts(tx.card, true, prepared, useAlternative)) {
-    logMsg(`⚠️ El costo de ${tx.card.name} dejó de ser pagable antes del commit. Se revierte el maná.`);
+    logMsg(gameText('cast.costBecameUnpayable', { card: tx.card.name }));
     abortCastTransaction();
     return false;
   }
   if (tx.escapeExiles?.length) {
     if (tx.escapeExiles.some(c => !state.localGraveyard.includes(c) || c === tx.card)) {
-      logMsg(`⚠️ El costo de Escape de ${tx.card.name} dejó de ser válido.`);
+      logMsg(gameText('cast.escapeBecameInvalid', { card: tx.card.name }));
       // A esta altura el costo compuesto podría haberse comprometido. No seguimos silenciosamente.
       state.pendingSpellCostsIrreversible = true;
       resetCastTransactionState();
@@ -4963,7 +4957,7 @@ async function commitCastTransactionAfterMana() {
 
   const cardIndex = state.localHand.indexOf(tx.card);
   if (cardIndex === -1) {
-    logMsg(`⚠️ ${tx.card.name} ya no está en la zona de lanzamiento. No se pudo completar el casteo.`);
+    logMsg(gameText('cast.originMissing', { card: tx.card.name }));
     resetCastTransactionState();
     render();
     return false;
@@ -4980,7 +4974,7 @@ async function commitCastTransactionAfterMana() {
   state.pendingCastFrom = null;
   state.tappedLandsThisSpell = [];
   state.paymentManaSourceRollbacks = [];
-  logMsg(`⏳ ${cardName} completó 601.2 y entró a la pila.`);
+  logMsg(gameText('cast.cr601Complete', { card: cardName }));
   recordTelemetryEvent('cast_transaction_committed', { transactionId:txId, card:cardName, stackId:stackItem.id || null });
   render();
   await triggerSpellCast(true, castCard, stackItem);
@@ -4990,7 +4984,7 @@ async function commitCastTransactionAfterMana() {
   // un objeto separado de Stack), pero su timing ya no viola 601.2.
   if (ward) {
     state.pendingWardChoice = { ...ward, stackId:stackItem.id, postCast:true };
-    logMsg(`🔶 ${ward.targetObj.item.card.name} disparó Ward ${ward.wardCost}. El hechizo YA está en la pila: pagá o será contrarrestado.`);
+    logMsg(gameText('ward.triggered', { target: ward.targetObj.item.card.name, cost: ward.wardCost }));
     render();
   } else {
     checkRivalCounterOrResponse();
@@ -5002,26 +4996,26 @@ export function playCard(index) {
   const card = state.localHand[index];
   
   if (!canPlayCard(card)) {
-    logMsg(`⚠️ No podés jugar ${card.name} en este momento.`);
+    logMsg(gameText('cast.cantPlay', { card: card.name }));
     return;
   }
 
   if (card.type.includes('Tierra')) {
-    if (state.localLandPlayedThisTurn) { logMsg("Ya bajaste una tierra en este turno."); return; }
+    if (state.localLandPlayedThisTurn) { logMsg(gameText('cast.landAlready')); return; }
     if (state.activePlayer !== 'local' || (state.phase !== 'main1' && state.phase !== 'main2')) {
-      logMsg("Solo podés bajar tierras en tus Fases Principales.");
+      logMsg(gameText('cast.landMainOnly'));
       return;
     }
     const entersTapped = !!card.entersTapped;
     const landItem = { card, tapped: entersTapped };
     state.localLands.push(landItem); state.localHand.splice(index, 1); state.localLandPlayedThisTurn = true;
-    logMsg(entersTapped ? `Bajaste la tierra: ${card.name} (entra girada).` : `Bajaste la tierra: ${card.name}.`);
+    logMsg(entersTapped ? gameText('cast.landPlayedTapped', { card: card.name }) : gameText('cast.landPlayed', { card: card.name }));
     // PUNTO 2: jugar una Tierra es una entrada real al campo y dispara Landfall. No esperamos
     // acá para conservar el contrato síncrono histórico de playCard(); triggerLandEtb se ocupa
     // de serializar internamente cualquier decisión interactiva y los flags bloquean la UI.
     triggerLandEtb(true, card, landItem).catch(err => {
       console.error('Error resolviendo Landfall al jugar una Tierra:', err);
-      logMsg(`⚠️ Ocurrió un error resolviendo Landfall por ${card.name}.`);
+      logMsg(gameText('trigger.landfallError', { card: card.name }));
       render();
     });
     resetPriorityClock('land_played');
@@ -5030,7 +5024,7 @@ export function playCard(index) {
 
   if (card.effect && card.effect.type && card.effect.type.startsWith('counter')) {
     if (!spellStack || spellStack.length === 0) {
-      logMsg(`⚠️ No hay ningún hechizo en la pila para contrarrestar.`);
+      logMsg(gameText('counter.noSpell'));
       return;
     }
   }
@@ -5051,7 +5045,7 @@ export function playCard(index) {
     if (proliferables.length === 0 && typeof window !== 'undefined' && typeof window.confirm === 'function') {
       const ok = window.confirm(`⚠️ ${card.name}: ahora mismo no se detecta ningún permanente o jugador con contadores. Proliferar puede elegir cero, así que el hechizo es legal pero podría no hacer nada. ¿Querés lanzarlo igual?`);
       if (!ok) {
-        logMsg(`Cancelaste ${card.name} antes de pagar: no había contadores proliferables visibles.`);
+        logMsg(gameText('proliferate.cancelNoCounters', { card: card.name }));
         return;
       }
     }
@@ -5078,16 +5072,16 @@ export function castFromGraveyard(card, isLocal) {
   const ability = source === 'flashback' ? card.flashback : card.escape;
   const abilityLabel = source === 'flashback' ? 'Flashback' : 'Escape';
 
-  if (state.gameOver || state.priorityPlayer !== 'local') { logMsg("No tenés prioridad ahora mismo."); return; }
+  if (state.gameOver || state.priorityPlayer !== 'local') { logMsg(gameText('cast.needPriority')); return; }
   if (state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.pendingRampChoice) {
-    logMsg(`Terminá lo que tenés pendiente antes de usar ${abilityLabel}.`);
+    logMsg(gameText('cast.pending', { ability: abilityLabel }));
     return;
   }
 
   // Punto 14: Flashback/Escape también pagan cualquier costo adicional compuesto. Como
   // la carta fuente todavía está en el cementerio, no hace falta excluirla de la mano.
   if (!canPayCastCompositeNonManaCosts(card, true, false)) {
-    logMsg(`⚠️ No tenés recursos suficientes para pagar el costo adicional de ${card.name}.`);
+    logMsg(gameText('cast.additionalInsufficient', { card: card.name }));
     return;
   }
 
@@ -5099,18 +5093,18 @@ export function castFromGraveyard(card, isLocal) {
     const extraCostExiles = getCastCompositeCostBundle(card, false).graveyardExiles.reduce((sum, spec) => sum + (spec.amount || 0), 0);
     const otherCount = state.localGraveyard.filter(c => c !== card).length;
     if (otherCount < exileCount + extraCostExiles) {
-      logMsg(`⚠️ Necesitás suficientes cartas distintas para Escape (${exileCount}) y otros costos de cementerio (${extraCostExiles}) de ${card.name}.`);
+      logMsg(gameText('cast.escapeOverlap', { escape: exileCount, extra: extraCostExiles, card: card.name }));
       return;
     }
   }
 
   const isInstant = card.type.includes('Instantáneo') || (card.keywords && card.keywords.includes('flash'));
   if (spellStack.length > 0 && !isInstant) {
-    logMsg("Solo instantáneos (o con Flash) se pueden lanzar con la pila ocupada.");
+    logMsg(gameText('cast.stackInstantOnly'));
     return;
   }
   if (!isInstant && !(state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2'))) {
-    logMsg(`Solo podés usar ${abilityLabel} en esta carta durante tu Fase Principal.`);
+    logMsg(gameText('cast.graveMainOnly', { ability: abilityLabel }));
     return;
   }
 
@@ -5122,7 +5116,7 @@ export function castFromGraveyard(card, isLocal) {
   const newIndex = state.localHand.length;
   state.localHand.push(card);
   state.pendingCastFrom = source;
-  logMsg(`🔄 ${card.name}: anunciando casteo con ${abilityLabel} (${ability.cost}).`);
+  logMsg(gameText('cast.graveAnnounce', { card: card.name, ability: abilityLabel, cost: ability.cost }));
   beginHumanCastTransaction(newIndex, card, { castFrom:source, baseOverride:ability.cost });
 }
 
@@ -5139,7 +5133,7 @@ export function payAdditionalCost(card, isLocal) {
   // API legacy preservada byte-semánticamente para callers externos y tests antiguos.
   if (ac.type === 'life') {
     if (isLocal) state.localHP -= ac.amount; else state.rivalHP -= ac.amount;
-    logMsg(`💉 ${card.name}: costo adicional pagado con ${ac.amount} de vida.`);
+    logMsg(gameText('cast.additionalLifePaid', { card: card.name, amount: ac.amount }));
     return null;
   }
   if (ac.type === 'discard') {
@@ -5153,7 +5147,7 @@ export function payAdditionalCost(card, isLocal) {
       excludeCard: isLocal ? card : null
     }).then(result => {
       if (!result.completed) throw new Error(`No hay suficientes cartas para pagar el costo adicional de ${card.name}.`);
-      if (result.discardedNames.length > 0) logMsg(`🗑️ ${card.name}: costo adicional pagado descartando ${result.discardedNames.join(', ')}.`);
+      if (result.discardedNames.length > 0) logMsg(gameText('cast.additionalDiscardPaid', { card: card.name, cards: result.discardedNames.join(', ') }));
       return result;
     });
   }
@@ -5257,11 +5251,11 @@ function tapSupportManaSource(item, isLocal) {
   if (state.pendingAbilitySource?.requiresTap) {
     const reservedTapTarget = state.pendingAbilitySource.tapTarget || state.pendingAbilitySource.item;
     if (reservedTapTarget === item) {
-      logMsg(`${item.card.name} está reservada para pagar el {T} de su propia habilidad; usá otra fuente para el maná.`);
+      logMsg(gameText('mana.sourceReservedTap', { card: item.card.name }));
       return;
     }
   }
-  if (item.tapped) { logMsg(`${item.card.name} ya está girado.`); return; }
+  if (item.tapped) { logMsg(gameText('mana.sourceAlreadyTapped', { card: item.card.name })); return; }
   const card = item.card;
 
   // 23.7.2: un mismo permanente no puede ser sacrificado dos veces para dos componentes
@@ -5273,7 +5267,7 @@ function tapSupportManaSource(item, isLocal) {
     const ownPermanents = [...state.localCombat, ...state.localSupport];
     const remainingCandidates = ownPermanents.filter(candidate => candidate !== item && isSacrificeCandidate(candidate, pendingSacrifice));
     if (isSacrificeCandidate(item, pendingSacrifice) && remainingCandidates.length === 0) {
-      logMsg(`⚠️ ${card.name} es tu único ${pendingSacrifice === 'artifact' ? 'artefacto' : 'permanente'} elegible para el otro componente del costo. No podés sacrificarlo para producir maná y sacrificarlo de nuevo.`);
+      logMsg(gameText('mana.sacrificeConflict', { card: card.name, kind: pendingSacrifice === 'artifact' ? 'artefacto' : 'permanente' }));
       return;
     }
   }
@@ -5290,7 +5284,7 @@ function tapSupportManaSource(item, isLocal) {
     }
     checkPaymentComplete();
   } else {
-    logMsg(`${card.name} no te sirve para pagar esto.`);
+    logMsg(gameText('mana.sourceDoesNotHelp', { card: card.name }));
   }
   render();
 }
@@ -5299,7 +5293,7 @@ export function startCrewing(item, isLocal, ability = getActivatedAbilities(item
   const required = ability?.crewCost;
   if (required === undefined) return;
   state.pendingCrew = { item, isLocal, required, selected: [], powerSoFar: 0 };
-  logMsg(`Elegí criaturas para tripular a ${item.card.name} (necesitás ${required} de poder total). Podés cancelar si te arrepentís.`);
+  logMsg(gameText('crew.choose', { card: item.card.name, required }));
   render();
 }
 
@@ -5312,7 +5306,7 @@ export function handleCrewClick(item, isLocal) {
   if (!pc) return false;
 
   if (!isLocal) {
-    logMsg("Solo tus propias criaturas pueden tripular.");
+    logMsg(gameText('crew.ownOnly'));
     return true;
   }
 
@@ -5326,14 +5320,14 @@ export function handleCrewClick(item, isLocal) {
   }
 
   if (item.tapped) {
-    logMsg(`${item.card.name} ya está girada — no puede sumar poder para tripular.`);
+    logMsg(gameText('crew.tapped', { card: item.card.name }));
     return true;
   }
 
   pc.selected.push(item);
   item.tapped = true;
   pc.powerSoFar += getEffectivePower(item);
-  logMsg(`${item.card.name} ayuda a tripular (${pc.powerSoFar}/${pc.required} de poder).`);
+  logMsg(gameText('crew.added', { card: item.card.name, power: pc.powerSoFar, required: pc.required }));
   if (pc.powerSoFar >= pc.required) {
     confirmCrew();
   } else {
@@ -5346,7 +5340,7 @@ export function confirmCrew() {
   const pc = state.pendingCrew;
   if (!pc) return;
   if (pc.powerSoFar < pc.required) {
-    logMsg(`Todavía falta poder para tripular ${pc.item.card.name} (${pc.powerSoFar}/${pc.required}).`);
+    logMsg(gameText('crew.needMore', { card: pc.item.card.name, power: pc.powerSoFar, required: pc.required }));
     return;
   }
 
@@ -5364,7 +5358,7 @@ export function confirmCrew() {
     fromLand = true;
   }
   if (vIdx === -1) {
-    logMsg(`⚠️ ${card.name} ya no está disponible.`);
+    logMsg(gameText('crew.unavailable', { card: card.name }));
     state.pendingCrew = null;
     render();
     return;
@@ -5378,7 +5372,7 @@ export function confirmCrew() {
   vehicleItem.summoningSickness = !!vehicleItem.enteredThisTurn;
   combatZone.push(vehicleItem);
 
-  logMsg(`🚗 ¡${card.name} fue tripulado (${pc.powerSoFar} de poder) y aceleró al campo de batalla como un ${card.baseStats.power}/${card.baseStats.toughness}!`);
+  logMsg(gameText('crew.complete', { card: card.name, power: pc.powerSoFar, stats: `${card.baseStats.power}/${card.baseStats.toughness}` }));
   state.pendingCrew = null;
   render();
 }
@@ -5387,7 +5381,7 @@ export function cancelCrew() {
   const pc = state.pendingCrew;
   if (!pc) return;
   pc.selected.forEach(item => { item.tapped = false; });
-  logMsg(`Cancelaste la tripulación de ${pc.item.card.name}.`);
+  logMsg(gameText('crew.cancel', { card: pc.item.card.name }));
   state.pendingCrew = null;
   render();
 }
@@ -5401,11 +5395,11 @@ export function payCounterTax() {
   if (!pc) return;
   const paid = tryAutoPayCounterTax(true, pc.amount);
   if (!paid) {
-    logMsg(`No tenés suficiente maná para pagar {${pc.amount}}. Tu hechizo se pierde.`);
+    logMsg(gameText('counterTax.noMana', { cost: `{${pc.amount}}` }));
     declineCounterTax();
     return;
   }
-  logMsg(`💰 Pagaste {${pc.amount}}. "${pc.targetCardName}" sigue en la pila, sin cambios.`);
+  logMsg(gameText('counterTax.paid', { cost: `{${pc.amount}}`, card: pc.targetCardName }));
   // El counterspell (Impuesto País, etc.) ya cumplió su función — se va a destino igual
   // que cualquier otro hechizo resuelto (antes esto se perdía sin ir a ningún lado).
   sendCounterspellAway(pc);
@@ -5423,7 +5417,7 @@ export function declineCounterTax() {
   const targetIndex = spellStack.findIndex(s => s.id === pc.targetStackId);
   if (targetIndex !== -1) {
     const counteredItem = spellStack.splice(targetIndex, 1)[0];
-    logMsg(`🚫 ¡No pagaste! "${counteredItem.card.name}" fue contrarrestado.`);
+    logMsg(gameText('counterTax.declined', { card: counteredItem.card.name }));
     // ETAPA MOTOR 2: Flashback contrarrestado se exilia; una habilidad contrarrestada no
     // manda su permanente fuente al cementerio. Misma regla que usa stackManager.js.
     moveCounteredStackItemToDestination(counteredItem, state);
@@ -5448,23 +5442,23 @@ function sendCounterspellAway(pc) {
 
 export function tapLocalLand(item) {
   if (state.gameOver) return;
-  if (state.pendingActivatedAbilityChoice) { logMsg("Elegí primero qué habilidad querés activar."); return; }
+  if (state.pendingActivatedAbilityChoice) { logMsg(gameText('pending.ability')); return; }
   if (state.pendingSacrificeChoice) return; // Una tierra no es una opción válida de sacrificio hoy
-  if (state.pendingCrew) { logMsg("Terminá de elegir criaturas para tripular, o cancelá, antes de otra cosa."); return; }
-  if (state.pendingWardChoice) { logMsg("Resolvé el Ward pendiente (pagar o dejarlo perder) antes de otra cosa."); return; }
-  if (state.pendingCounterUnlessPay) { logMsg("Resolvé el pago pendiente (pagar o dejarlo perder) antes de otra cosa."); return; }
-  if (state.pendingFightChoice) { logMsg("Elegí primero cuál de tus criaturas pelea."); return; }
-  if (state.pendingXChoice) { logMsg("Elegí primero el valor de X."); return; }
-  if (state.pendingModeChoice) { logMsg("Elegí primero un modo para el hechizo."); return; }
-  if (state.pendingLoyaltyTargetChoice) { logMsg("Elegí primero un objetivo para esa habilidad de Lealtad."); return; }
-  if (state.pendingMultiTargetChoice) { logMsg("Elegí primero todos los objetivos del hechizo."); return; }
-  if (state.pendingScrySurveilChoice) { logMsg("Terminá de elegir qué hacer con las cartas antes de otra cosa."); return; }
-  if (state.pendingProliferateChoice) { logMsg("Terminá de elegir qué proliferar antes de otra cosa."); return; }
-  if (state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0) { logMsg("Terminá primero el descarte pendiente."); return; }
-  if (state.pendingResolvedEffectTargetChoice || (state.resolvingResolvedEffectTargetChoices || 0) > 0) { logMsg("Elegí primero el objetivo del ETB que está resolviéndose."); return; }
-  if (state.pendingEscapeExileChoice) { logMsg("Terminá de elegir qué exiliar para el Escape antes de otra cosa."); return; }
-  if (state.pendingKickerChoice) { logMsg("Terminá de decidir el Kicker antes de otra cosa."); return; }
-  if (state.pendingRampChoice) { logMsg("Terminá de elegir el color de tierra antes de otra cosa."); return; }
+  if (state.pendingCrew) { logMsg(gameText('pending.crew')); return; }
+  if (state.pendingWardChoice) { logMsg(gameText('pending.ward')); return; }
+  if (state.pendingCounterUnlessPay) { logMsg(gameText('pending.counterTax')); return; }
+  if (state.pendingFightChoice) { logMsg(gameText('pending.fight')); return; }
+  if (state.pendingXChoice) { logMsg(gameText('pending.x')); return; }
+  if (state.pendingModeChoice) { logMsg(gameText('pending.mode')); return; }
+  if (state.pendingLoyaltyTargetChoice) { logMsg(gameText('pending.loyaltyTarget')); return; }
+  if (state.pendingMultiTargetChoice) { logMsg(gameText('pending.multiTarget')); return; }
+  if (state.pendingScrySurveilChoice) { logMsg(gameText('pending.scry')); return; }
+  if (state.pendingProliferateChoice) { logMsg(gameText('pending.proliferate')); return; }
+  if (state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0) { logMsg(gameText('pending.discard')); return; }
+  if (state.pendingResolvedEffectTargetChoice || (state.resolvingResolvedEffectTargetChoices || 0) > 0) { logMsg(gameText('pending.resolvedEtb')); return; }
+  if (state.pendingEscapeExileChoice) { logMsg(gameText('pending.escape')); return; }
+  if (state.pendingKickerChoice) { logMsg(gameText('pending.kicker')); return; }
+  if (state.pendingRampChoice) { logMsg(gameText('pending.ramp')); return; }
 
   // PUNTO 13 — TIERRA DE MANÁ + UTILIDAD. Todas las Tierras con habilidades pasan por
   // el mismo dispatcher de permanentes. Ahí el contexto decide sin ambigüedad:
@@ -5485,8 +5479,8 @@ export function tapLocalLand(item) {
   // target CR602. Eso NO significa que haya un costo abierto. Una tierra simple no puede
   // intentar aplicar maná hasta que pendingCost exista.
   if (!state.pendingCost) {
-    if (state.pendingAbilitySource && state.pendingTargetCard) logMsg("Elegí primero el objetivo de la habilidad; todavía no hay ningún costo para pagar.");
-    else logMsg("Seleccioná primero un hechizo o habilidad para pagar.");
+    if (state.pendingAbilitySource && state.pendingTargetCard) logMsg(gameText('pending.abilityTarget'));
+    else logMsg(gameText('pending.selectPayment'));
     return;
   }
   
@@ -5498,7 +5492,7 @@ export function tapLocalLand(item) {
   const used = applyManaToPendingCost(colorOrOptions, amount);
 
   if (used) { item.tapped = true; state.tappedLandsThisSpell.push(item); checkPaymentComplete(); } 
-  else { logMsg(`Esa yerba no te sirve para este hechizo.`); }
+  else { logMsg(gameText('mana.genericDoesNotHelp')); }
   render();
 }
 
@@ -5531,7 +5525,7 @@ export function confirmModeChoice(modeIndex) {
   state.pendingCost = parseManaCost(getCastingManaCostString(resolvedCard));
   state.tappedLandsThisSpell = [];
   state.paymentManaSourceRollbacks = [];
-  logMsg(`Elegiste el modo "${chosenMode.text}" para ${mc.card.name}. Seleccioná tierras para pagar.`);
+  logMsg(gameText('mode.chosen', { mode: chosenMode.text, card: mc.card.name }));
   checkPaymentComplete();
   render();
 }
@@ -5539,7 +5533,7 @@ export function confirmModeChoice(modeIndex) {
 export function cancelModeChoice() {
   if (!state.pendingModeChoice) return;
   if (state.pendingCastTransaction) { abortCastTransaction(`Cancelaste ${state.pendingModeChoice.card.name}.`); return; }
-  logMsg(`Cancelaste ${state.pendingModeChoice.card.name}.`);
+  logMsg(gameText('mode.cancel', { card: state.pendingModeChoice.card.name }));
   state.pendingModeChoice = null;
   render();
 }
@@ -5576,7 +5570,7 @@ export function confirmXValue(xValueRaw) {
   state.pendingCost = cost;
   state.tappedLandsThisSpell = [];
   state.paymentManaSourceRollbacks = [];
-  logMsg(`Elegiste X = ${xValue} para ${xc.card.name}. Seleccioná tierras para pagar (${xValue} de eso es solo por el X).`);
+  logMsg(gameText('x.chosen', { value: xValue, card: xc.card.name }));
   checkPaymentComplete();
   render();
 }
@@ -5584,7 +5578,7 @@ export function confirmXValue(xValueRaw) {
 export function cancelXChoice() {
   if (!state.pendingXChoice) return;
   if (state.pendingCastTransaction) { abortCastTransaction(`Cancelaste ${state.pendingXChoice.card.name}.`); return; }
-  logMsg(`Cancelaste ${state.pendingXChoice.card.name}.`);
+  logMsg(gameText('x.cancel', { card: state.pendingXChoice.card.name }));
   state.pendingXChoice = null;
   render();
 }
@@ -5615,9 +5609,9 @@ export function confirmKickerChoice(paidKicker) {
   state.pendingCompositeCostPayment = false;
   state.pendingCost = parseManaCost(getCastingManaCostString(card, { kicked: paidKicker }));
   if (paidKicker) {
-    logMsg(`💪 ${card.name}: pagando también el Kicker (${card.kicker.cost}). Seleccioná tierras para pagar todo junto.`);
+    logMsg(gameText('kicker.pay', { card: card.name, cost: card.kicker.cost }));
   } else {
-    logMsg(`${card.name}: sin Kicker. Seleccioná tierras para pagar.`);
+    logMsg(gameText('kicker.skip', { card: card.name }));
   }
 
   state.tappedLandsThisSpell = [];
@@ -5629,7 +5623,7 @@ export function confirmKickerChoice(paidKicker) {
 export function cancelKickerChoice() {
   if (!state.pendingKickerChoice) return;
   if (state.pendingCastTransaction) { abortCastTransaction(`Cancelaste ${state.pendingKickerChoice.card.name}.`); return; }
-  logMsg(`Cancelaste ${state.pendingKickerChoice.card.name}.`);
+  logMsg(gameText('kicker.cancel', { card: state.pendingKickerChoice.card.name }));
   state.pendingKickerChoice = null;
   render();
 }
@@ -5644,11 +5638,11 @@ export function payWithAlternativeCost() {
   const card = state.localHand[state.pendingSpellIndex];
   if (!card || !card.alternativeCost) return;
   if (state.pendingCastFrom) {
-    logMsg(`⚠️ ${card.name} ya se está lanzando mediante ${state.pendingCastFrom}; no podés elegir otra vía alternativa.`);
+    logMsg(gameText('alternative.alreadyRoute', { card: card.name, route: state.pendingCastFrom }));
     return;
   }
   if (!canPayCastCompositeNonManaCosts(card, true, true, { excludeCard: card })) {
-    logMsg(`⚠️ No tenés los recursos no-maná necesarios para el costo alternativo de ${card.name}.`);
+    logMsg(gameText('alternative.resources', { card: card.name }));
     return;
   }
 
@@ -5674,7 +5668,7 @@ export function payWithAlternativeCost() {
     state.pendingXValue = 0;
   }
 
-  logMsg(`🔀 Elegiste el costo alternativo de ${card.name}: ${describeCompositeCost(card.alternativeCost)}${state.pendingKicked ? ' + Kicker' : ''}.`);
+  logMsg(gameText('alternative.chosen', { card: card.name, cost: describeCompositeCost(card.alternativeCost), kicker: state.pendingKicked ? ' + Kicker' : '' }));
   checkPaymentComplete();
   render();
 }
@@ -5692,7 +5686,7 @@ async function finishCastingHandCard(card) {
   // en orden, y recién cuando están todos se manda el hechizo entero a la pila.
   if (card.multiTarget && card.targets && card.targets.length > 0) {
     state.pendingMultiTargetChoice = { card, chosenTargets: [], currentIndex: 0 };
-    logMsg(`¡Maná pagado! Elegí el objetivo 1 de ${card.targets.length} para ${card.name}.`);
+    logMsg(gameText('target.multi.firstPaid', { total: card.targets.length, card: card.name }));
     render();
     return;
   }
@@ -5708,7 +5702,7 @@ async function finishCastingHandCard(card) {
       targetHint = `Hacé clic en el hechizo de la Pila que querés contrarrestar.`;
     }
 
-    logMsg(`¡Maná pagado! ${targetHint}`);
+    logMsg(gameText('mana.paidTargetHint', { hint: targetHint }));
     render();
     return;
   }
@@ -5732,7 +5726,7 @@ async function finishCastingHandCard(card) {
   };
   addToStack(stackItem);
 
-  logMsg(`⏳ ${card.name} entró a la pila.`);
+  logMsg(gameText('cast.stackEntered', { card: card.name }));
 
   // --- LIMPIEZA DE ESTADO QUE FALTABA (espejo del CASO B) ---
   state.consecutivePasses = 0;
@@ -5762,7 +5756,7 @@ function continueCastingAfterAdditionalCosts(card) {
     const exileCount = card.escape.exileCount || 0;
     if (exileCount > 0) {
       state.pendingEscapeExileChoice = { card, exileCount };
-      logMsg(`🌀 Escape de ${card.name}: elegí ${exileCount} carta(s) de tu cementerio para exiliar.`);
+      logMsg(gameText('escape.choose', { card: card.name, count: exileCount }));
       render();
       void chooseGraveyardCards({
         zoneIsLocal: true, chooserIsLocal: true, filter: 'any', amount: exileCount,
@@ -5773,7 +5767,7 @@ function continueCastingAfterAdditionalCosts(card) {
           if (idx !== -1) state.localGraveyard.splice(idx, 1);
         });
         state.localExile.push(...chosenCards);
-        logMsg(`🌀 ${card.name} (Escape): se exiliaron ${chosenCards.length} carta(s) de tu cementerio.`);
+        logMsg(gameText('escape.exiled', { card: card.name, count: chosenCards.length }));
         state.pendingEscapeExileChoice = null;
         void finishCastingHandCard(card);
       }).catch(err => {
@@ -5798,7 +5792,7 @@ function checkPaymentComplete() {
     // pero si por algún motivo quedaran ambos pagos pendientes a la vez, mejor
     // frenar y avisar que resolver la carta equivocada.
     if (state.pendingSpellIndex !== null && state.pendingAbilitySource !== null) {
-      logMsg("⚠️ Se detectó un conflicto de pagos pendientes. Cancelando ambos por seguridad.");
+      logMsg(gameText('cast.paymentConflict'));
       cancelPayment();
       return;
     }
@@ -5834,7 +5828,7 @@ function checkPaymentComplete() {
         }).catch(err => {
           state.pendingCompositeCostPayment = false;
           console.error('No se pudo pagar el costo compuesto:', err);
-          logMsg(`⚠️ No se pudo pagar completamente el costo de ${card.name}; no se consumió ningún componente no-maná parcial.`);
+          logMsg(gameText('cast.partialCostFailed', { card: card.name }));
           cancelPayment();
         });
         return;
@@ -5869,7 +5863,7 @@ function checkPaymentComplete() {
         } else {
           // 'creature' o 'artifact': hay que elegir cuál. Pausamos acá.
           state.pendingSacrificeChoice = { source, ability, card, eligibleType: ability.sacrifice };
-          logMsg(`¡Maná pagado! Elegí qué ${ability.sacrifice === 'creature' ? 'criatura' : 'artefacto'} sacrificar para pagar el costo de ${card.name}.`);
+          logMsg(gameText('mana.paidChooseSacrifice', { kind: ability.sacrifice === 'creature' ? 'criatura' : 'artefacto', card: card.name }));
           render();
         }
         return;
@@ -5887,7 +5881,7 @@ function finalizeAbilityActivation(source, ability, card) {
   const isGranted = source.abilityKind === 'granted';
   const targetObj = ability.requiresTarget ? source.chosenTarget : null;
   if (ability.requiresTarget && !targetObj) {
-    logMsg(`⚠️ ${card.name}: faltó el objetivo declarado de la habilidad. Se cancela antes de entrar a la pila.`);
+    logMsg(gameText('target.ability.missing', { card: card.name }));
     cancelPayment();
     return;
   }
@@ -5903,7 +5897,7 @@ function finalizeAbilityActivation(source, ability, card) {
   };
   addToStack(stackItem);
 
-  logMsg(`Activaste la habilidad de ${card.name}.`);
+  logMsg(gameText('ability.activated', { card: card.name }));
   state.consecutivePasses = 0;
   state.pendingAbilitySource = null;
   state.pendingTargetCard = null;
@@ -5918,7 +5912,7 @@ function finalizeAbilityActivation(source, ability, card) {
   const ward = detectWardForDeclaredTarget(card, targetObj);
   if (ward) {
     state.pendingWardChoice = { ...ward, stackId: stackItem.id, postCast: true };
-    logMsg(`🔶 ${ward.targetObj.item.card.name} disparó Ward ${ward.wardCost}. La habilidad YA está en la pila: pagá o será contrarrestada.`);
+    logMsg(gameText('ward.triggered', { card: ward.targetObj.item.card.name, cost: ward.wardCost }));
     render();
     return;
   }
@@ -5934,7 +5928,7 @@ export function tryResolveSacrificeChoice(item, isLocal) {
   const pending = state.pendingSacrificeChoice;
   if (!pending) return false;
   if (!isLocal) {
-    logMsg("Solo podés sacrificar tus propios permanentes.");
+    logMsg(gameText('sacrifice.ownOnly'));
     return true;
   }
 
@@ -5942,7 +5936,7 @@ export function tryResolveSacrificeChoice(item, isLocal) {
   // Se valida el tipo real, compartiendo exactamente la misma regla con el resaltado de UI.
   const matchesType = isSacrificeCandidate(item, pending.eligibleType);
   if (!matchesType) {
-    logMsg(`Ese no es un ${pending.eligibleType === 'creature' ? 'criatura' : 'artefacto'} válido para sacrificar acá.`);
+    logMsg(gameText('sacrifice.invalid', { type: pending.eligibleType === 'creature' ? 'criatura' : 'artefacto' }));
     return true;
   }
 
@@ -5963,7 +5957,7 @@ async function advanceMultiTargetChoice(targetObj) {
   mtc.currentIndex++;
 
   if (mtc.currentIndex < mtc.card.targets.length) {
-    logMsg(`Elegí el objetivo ${mtc.currentIndex + 1} de ${mtc.card.targets.length} para ${mtc.card.name}.`);
+    logMsg(gameText('target.multi.next', { current: mtc.currentIndex + 1, total: mtc.card.targets.length, card: mtc.card.name }));
     render();
     return;
   }
@@ -5990,7 +5984,7 @@ async function advanceMultiTargetChoice(targetObj) {
   };
   addToStack(stackItem);
 
-  logMsg(`⏳ ${card.name} entró a la pila (todos los objetivos elegidos).`);
+  logMsg(gameText('cast.stackEnteredAllTargets', { card: card.name }));
   state.consecutivePasses = 0;
   state.pendingSpellIndex = null;
   state.pendingCost = null;
@@ -6126,7 +6120,7 @@ export function payWard() {
   }
 
   if (need > 0) {
-    logMsg(`No tenés suficiente maná disponible para pagar Ward ${wc.wardCost}. El hechizo se pierde sin efecto.`);
+    logMsg(gameText('ward.noMana', { cost: wc.wardCost }));
     declineWard();
     return;
   }
@@ -6136,7 +6130,7 @@ export function payWard() {
     // HOTFIX 1.1 — Ward también consume correctamente las fuentes con sacrificeOnTap.
     if (s.card.sacrificeOnTap) performSacrifice(s, true);
   });
-  logMsg(`💰 Pagaste Ward ${wc.wardCost}. El hechizo sigue su curso.`);
+  logMsg(gameText('ward.paid', { cost: wc.wardCost }));
   const targetObj = wc.targetObj;
   state.pendingWardChoice = null;
   if (wc.postCast && wc.stackId != null) {
@@ -6154,7 +6148,7 @@ export function payWard() {
 export function declineWard() {
   const wc = state.pendingWardChoice;
   if (!wc) return;
-  logMsg(`No pagaste Ward ${wc.wardCost} — el hechizo se pierde sin efecto.`);
+  logMsg(gameText('ward.declined', { cost: wc.wardCost }));
 
   // 23.10: si Ward disparó DESPUÉS del casteo, contrarresta el objeto real que ya está en
   // la pila. Esto reemplaza la vieja simulación que sacaba la carta directamente de mano.
@@ -6163,7 +6157,7 @@ export function declineWard() {
     if (idx !== -1) {
       const [countered] = spellStack.splice(idx, 1);
       moveCounteredStackItemToDestination(countered, state);
-      logMsg(`🛡️ Ward contrarrestó ${countered.card.name}.`);
+      logMsg(gameText('ward.countered', { card: countered.card.name }));
     }
     state.pendingWardChoice = null;
     render();
@@ -6207,14 +6201,14 @@ export function declineWard() {
 
 export function handleSupportClick(item, isLocal, index) {
   if (state.gameOver || !isLocal) return;
-  if (state.pendingActivatedAbilityChoice) { logMsg("Elegí primero qué habilidad querés activar."); return; }
+  if (state.pendingActivatedAbilityChoice) { logMsg(gameText('pending.ability')); return; }
 
   if (state.pendingResolvedEffectTargetChoice || (state.resolvingResolvedEffectTargetChoices || 0) > 0) {
-    logMsg("Elegí primero el objetivo del ETB que está resolviéndose.");
+    logMsg(gameText('pending.resolvedEtb'));
     return;
   }
   if (state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0) {
-    logMsg("Terminá primero el descarte pendiente.");
+    logMsg(gameText('pending.discard'));
     return;
   }
 
@@ -6226,55 +6220,55 @@ export function handleSupportClick(item, isLocal, index) {
   // Si hay una tripulación pendiente, ningún otro permanente hace nada hasta que se
   // resuelva (clickear una criatura sigue yendo a handleCombatClick/handleCrewClick).
   if (state.pendingCrew) {
-    logMsg("Terminá de elegir criaturas para tripular, o cancelá, antes de otra cosa.");
+    logMsg(gameText('pending.crew'));
     return;
   }
   if (state.pendingWardChoice) {
-    logMsg("Resolvé el Ward pendiente (pagar o dejarlo perder) antes de otra cosa.");
+    logMsg(gameText('pending.ward'));
     return;
   }
   if (state.pendingCounterUnlessPay) {
-    logMsg("Resolvé el pago pendiente (pagar o dejarlo perder) antes de otra cosa.");
+    logMsg(gameText('pending.counterTax'));
     return;
   }
   if (state.pendingFightChoice) {
-    logMsg("Elegí primero cuál de tus criaturas pelea.");
+    logMsg(gameText('pending.fight'));
     return;
   }
   if (state.pendingXChoice) {
-    logMsg("Elegí primero el valor de X.");
+    logMsg(gameText('pending.x'));
     return;
   }
   if (state.pendingModeChoice) {
-    logMsg("Elegí primero un modo para el hechizo.");
+    logMsg(gameText('pending.mode'));
     return;
   }
   if (state.pendingLoyaltyTargetChoice) {
-    logMsg("Elegí primero un objetivo para esa habilidad de Lealtad.");
+    logMsg(gameText('pending.loyaltyTarget'));
     return;
   }
   if (state.pendingMultiTargetChoice) {
-    logMsg("Elegí primero todos los objetivos del hechizo.");
+    logMsg(gameText('pending.multiTarget'));
     return;
   }
   if (state.pendingScrySurveilChoice) {
-    logMsg("Terminá de elegir qué hacer con las cartas antes de otra cosa.");
+    logMsg(gameText('pending.scry'));
     return;
   }
   if (state.pendingProliferateChoice) {
-    logMsg("Terminá de elegir qué proliferar antes de otra cosa.");
+    logMsg(gameText('pending.proliferate'));
     return;
   }
   if (state.pendingEscapeExileChoice) {
-    logMsg("Terminá de elegir qué exiliar para el Escape antes de otra cosa.");
+    logMsg(gameText('pending.escape'));
     return;
   }
   if (state.pendingKickerChoice) {
-    logMsg("Terminá de decidir el Kicker antes de otra cosa.");
+    logMsg(gameText('pending.kicker'));
     return;
   }
   if (state.pendingRampChoice) {
-    logMsg("Terminá de elegir el color de tierra antes de otra cosa.");
+    logMsg(gameText('pending.ramp'));
     return;
   }
 
@@ -6290,11 +6284,11 @@ export function handleSupportClick(item, isLocal, index) {
       return;
     }
     if (state.pendingAbilitySource && state.pendingTargetCard) {
-      logMsg("Elegí primero el objetivo de la habilidad; todavía no hay ningún costo para pagar.");
+      logMsg(gameText('pending.abilityTarget'));
       return;
     }
     if (abilityOptions.length === 0) {
-      logMsg("Seleccioná primero un hechizo o habilidad para pagar.");
+      logMsg(gameText('pending.selectPayment'));
       return;
     }
   }
@@ -6302,7 +6296,7 @@ export function handleSupportClick(item, isLocal, index) {
   // Punto 12: ya no hacemos un guard global de fase acá. Cada opción se valida por su
   // propio timing dentro de present/beginActivatedAbility. Las legacy siguen Main-only.
   if (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null) {
-    logMsg("Terminá de pagar lo anterior antes de activar otra cosa.");
+    logMsg(gameText('pending.payPrevious'));
     return;
   }
 

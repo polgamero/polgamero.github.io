@@ -256,11 +256,11 @@ export function showModalSpellChoice(card, onConfirm, onCancel) {
   modalOverlay.innerHTML = `
     <div class="gy-modal-content" style="max-width: 440px;">
       <div class="gy-modal-header">
-        <h3>🔀 ${card.name} — Elegí un modo</h3>
+        <h3>${gameTextHtml('modal.mode.title', { card: card.name })}</h3>
       </div>
       <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
         ${modesHTML}
-        <button id="modal-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">❌ Cancelar</button>
+        <button id="modal-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">${gameTextHtml('modal.mode.cancel')}</button>
       </div>
     </div>
   `;
@@ -296,15 +296,15 @@ export function showXValueModal(card, onConfirm, onCancel) {
       </div>
       <div style="padding: 20px; text-align: center;">
         <p style="color:#cfe0d4; font-size: 14px; margin-bottom: 14px;">${renderInlineGameSymbols(card.text || '')}</p>
-        <p style="color:#a89bb5; font-size: 12px; margin-bottom: 16px;">Maná disponible aprox.: podés pagar hasta X = ${roughMaxX} (con lo que tenés sin girar ahora).</p>
+        <p style="color:#a89bb5; font-size: 12px; margin-bottom: 16px;">${gameTextHtml('modal.x.approx', { max: roughMaxX })}</p>
         <div style="display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom: 20px;">
           <button id="x-minus" class="mulligan-btn mulligan-btn-mull" style="padding: 8px 16px;">−</button>
           <span id="x-value-display" style="font-size: 28px; font-weight: bold; color: var(--gold, #d4af37); min-width: 50px;">0</span>
           <button id="x-plus" class="mulligan-btn mulligan-btn-mull" style="padding: 8px 16px;">+</button>
         </div>
         <div class="mulligan-buttons">
-          <button id="x-cancel" class="mulligan-btn mulligan-btn-mull">❌ Cancelar</button>
-          <button id="x-confirm" class="mulligan-btn mulligan-btn-keep">Confirmar X</button>
+          <button id="x-cancel" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('modal.x.cancel')}</button>
+          <button id="x-confirm" class="mulligan-btn mulligan-btn-keep">${gameTextHtml('modal.x.confirm')}</button>
         </div>
       </div>
     </div>
@@ -350,15 +350,15 @@ export function showCounterTaxDecisionModal(amount, targetCardName, onPay, onDec
   modalOverlay.innerHTML = `
     <div class="gy-modal-content" style="max-width: 420px;">
       <div class="gy-modal-header">
-        <h3>💰 ¡Te amenazan con contrarrestar!</h3>
+        <h3>${gameTextHtml('modal.counterTax.title')}</h3>
       </div>
       <div style="padding: 20px; text-align: center;">
         <p style="color:#cfe0d4; font-size: 14px; margin-bottom: 18px;">
-          Tu rival quiere contrarrestar <strong>"${targetCardName}"</strong> a menos que pagues {${amount}}.
+          ${gameTextManaHtml('modal.counterTax.description', { card: targetCardName, cost: `{${amount}}` })}
         </p>
         <div class="mulligan-buttons">
-          <button id="counter-tax-decline" class="mulligan-btn mulligan-btn-mull">❌ No pagar</button>
-          <button id="counter-tax-pay" class="mulligan-btn mulligan-btn-keep">💰 Pagar {${amount}}</button>
+          <button id="counter-tax-decline" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('modal.counterTax.decline')}</button>
+          <button id="counter-tax-pay" class="mulligan-btn mulligan-btn-keep">${gameTextManaHtml('modal.counterTax.pay', { cost: `{${amount}}` })}</button>
         </div>
       </div>
     </div>
@@ -399,7 +399,7 @@ export function showRampLandChoiceModal(availableColors, cardName, onChoose) {
         <h3>🌱 ${cardName}</h3>
       </div>
       <div style="padding: 20px; text-align: center;">
-        <p style="color:#cfe0d4; font-size: 14px; margin-bottom: 18px;">¿Qué color de tierra básica buscás en tu mazo?</p>
+        <p style="color:#cfe0d4; font-size: 14px; margin-bottom: 18px;">${gameTextHtml('modal.ramp.prompt')}</p>
         <div class="deck-select-mono-row">${buttonsHTML}</div>
       </div>
     </div>
@@ -429,17 +429,17 @@ export function showKickerModal(card, onConfirm, onCancel) {
   modalOverlay.innerHTML = `
     <div class="gy-modal-content" style="max-width: 440px;">
       <div class="gy-modal-header">
-        <h3>💪 ${card.name} — Kicker</h3>
+        <h3>${gameTextHtml('modal.kicker.title', { card: card.name })}</h3>
       </div>
       <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
-        <p style="color:#cfe0d4; font-size: 13px; margin: 0 0 4px;">Podés pagar ${renderInlineGameSymbols(card.kicker.cost)} adicional. Si lo hacés: ${bonusText}.</p>
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0 0 4px;">${gameTextManaHtml('modal.kicker.description', { cost: card.kicker.cost, bonus: bonusText })}</p>
         <button class="loyalty-ability-btn" id="kicker-yes" style="justify-content: flex-start;">
-          <span class="loyalty-ability-text">💪 Sí, pagar Kicker ${renderInlineGameSymbols(card.kicker.cost)}</span>
+          <span class="loyalty-ability-text">${gameTextManaHtml('modal.kicker.yes', { cost: card.kicker.cost })}</span>
         </button>
         <button class="loyalty-ability-btn" id="kicker-no" style="justify-content: flex-start;">
-          <span class="loyalty-ability-text">➡️ No, lanzarlo sin Kicker</span>
+          <span class="loyalty-ability-text">${gameTextHtml('modal.kicker.no')}</span>
         </button>
-        <button id="modal-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">❌ Cancelar</button>
+        <button id="modal-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">${gameTextHtml('modal.mode.cancel')}</button>
       </div>
     </div>
   `;
@@ -468,12 +468,12 @@ export function showAlternativeCostModal(card, alternativeLabel, onConfirm, onCa
   modalOverlay.className = 'gy-modal-overlay';
   modalOverlay.innerHTML = `
     <div class="gy-modal-content" style="max-width: 460px;">
-      <div class="gy-modal-header"><h3>🔀 ${card.name} — Vía de casteo</h3></div>
+      <div class="gy-modal-header"><h3>${gameTextHtml('modal.castRoute.title', { card: card.name })}</h3></div>
       <div style="display:flex; flex-direction:column; gap:10px; padding:16px;">
-        <p style="color:#cfe0d4;font-size:13px;margin:0 0 4px;">Elegí el costo base antes de declarar objetivos.</p>
-        <button class="loyalty-ability-btn" id="cast-normal"><span class="loyalty-ability-text">💠 Normal: ${renderInlineGameSymbols(card.manaCost || '{0}')}</span></button>
-        <button class="loyalty-ability-btn" id="cast-alt"><span class="loyalty-ability-text">🔀 Alternativo: ${renderInlineGameSymbols(alternativeLabel)}</span></button>
-        <button id="cast-route-cancel" class="mulligan-btn mulligan-btn-mull">❌ Cancelar</button>
+        <p style="color:#cfe0d4;font-size:13px;margin:0 0 4px;">${gameTextHtml('modal.castRoute.description')}</p>
+        <button class="loyalty-ability-btn" id="cast-normal"><span class="loyalty-ability-text">${gameTextManaHtml('modal.castRoute.normal', { cost: card.manaCost || '{0}' })}</span></button>
+        <button class="loyalty-ability-btn" id="cast-alt"><span class="loyalty-ability-text">${gameTextManaHtml('modal.castRoute.alternative', { cost: alternativeLabel })}</span></button>
+        <button id="cast-route-cancel" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('modal.mode.cancel')}</button>
       </div>
     </div>`;
   document.body.appendChild(modalOverlay);
@@ -492,16 +492,16 @@ export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel 
   overlay.className = 'gy-modal-overlay';
   const amount = Math.max(0, Number(offer?.amount || 0));
   const chosen = new Set();
-  const zoneLabel = offer?.zone === 'deck' ? 'mazo rival' : 'mano rival';
+  const zoneLabel = offer?.zone === 'deck' ? gameText('selection.private.zoneDeck') : gameText('selection.private.zoneHand');
   overlay.innerHTML = `
     <div class="gy-modal-content" style="max-width:760px;">
-      <div class="gy-modal-header"><h3>🔐 ${cardName || 'Efecto'} — ${zoneLabel}</h3></div>
+      <div class="gy-modal-header"><h3>${gameTextHtml('selection.private.title', { card: cardName || gameText('selection.private.effectFallback'), zone: zoneLabel })}</h3></div>
       <div style="padding:16px;">
-        <p id="private-zone-hint" style="color:#cfe0d4;font-size:13px;">Elegí ${amount} carta${amount===1?'':'s'} · 0/${amount}</p>
+        <p id="private-zone-hint" style="color:#cfe0d4;font-size:13px;">${gameTextHtml('selection.chooseCount', { total: amount, selected: 0 })}</p>
         <div id="private-zone-row" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:16px 0;"></div>
         <div class="mulligan-buttons">
-          ${onCancel ? '<button id="private-zone-cancel" class="mulligan-btn mulligan-btn-mull">❌ Cancelar</button>' : ''}
-          <button id="private-zone-confirm" class="mulligan-btn mulligan-btn-keep" disabled>Confirmar elección</button>
+          ${onCancel ? `<button id="private-zone-cancel" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('modal.mode.cancel')}</button>` : ''}
+          <button id="private-zone-confirm" class="mulligan-btn mulligan-btn-keep" disabled>${gameTextHtml('selection.confirmChoice')}</button>
         </div>
       </div>
     </div>`;
@@ -517,20 +517,20 @@ export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel 
     if (entry.selectable === false) {
       btn.disabled = true;
       btn.style.opacity = '0.45';
-      btn.title = 'Esta carta fue revelada, pero no cumple la restricción de elección.';
+      btn.title = gameText('selection.private.invalid');
     }
     if (offer.visibility === 'reveal_candidates' && entry.card) {
-      btn.innerHTML = `<span class="loyalty-ability-text"><strong>${entry.card.name || 'Carta'}</strong><br><small>${entry.card.type || ''}</small></span>`;
+      btn.innerHTML = `<span class="loyalty-ability-text"><strong>${entry.card.name || gameText('selection.private.cardFallback')}</strong><br><small>${entry.card.type || ''}</small></span>`;
     } else {
-      btn.innerHTML = `<span class="loyalty-ability-text" style="font-size:30px;">🂠<br><small>Carta ${idx + 1}</small></span>`;
-      btn.title = 'Carta privada: identidad no revelada';
+      btn.innerHTML = `<span class="loyalty-ability-text" style="font-size:30px;">🂠<br><small>${gameTextHtml('selection.private.slot', { index: idx + 1 })}</small></span>`;
+      btn.title = gameText('selection.private.hidden');
     }
     btn.addEventListener('click', () => {
       if (entry.selectable === false) return;
       const token = entry.token;
       if (chosen.has(token)) { chosen.delete(token); btn.classList.remove('chosen'); }
       else if (chosen.size < amount) { chosen.add(token); btn.classList.add('chosen'); }
-      hint.textContent = `Elegí ${amount} carta${amount===1?'':'s'} · ${chosen.size}/${amount}`;
+      hint.textContent = gameText('selection.chooseCount', { total: amount, selected: chosen.size });
       confirm.disabled = chosen.size !== amount;
     });
     row.appendChild(btn);
@@ -555,14 +555,14 @@ export function showAbandonConfirmModal(onConfirm, onCancel) {
   modalOverlay.innerHTML = `
     <div class="gy-modal-content" style="max-width: 440px;">
       <div class="gy-modal-header">
-        <h3>🏳️ ¿Abandonar la partida?</h3>
+        <h3>${gameTextHtml('modal.abandon.title')}</h3>
       </div>
       <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
-        <p style="color:#cfe0d4; font-size: 13px; margin: 0 0 4px;">Vas a perder puntos por abandonar — más de lo que perderías si jugás hasta el final y perdés. Esto no se puede deshacer.</p>
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0 0 4px;">${gameTextHtml('modal.abandon.description')}</p>
         <button class="loyalty-ability-btn" id="abandon-yes" style="justify-content: flex-start;">
-          <span class="loyalty-ability-text">🏳️ Sí, abandonar de todos modos</span>
+          <span class="loyalty-ability-text">${gameTextHtml('modal.abandon.confirm')}</span>
         </button>
-        <button id="abandon-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">❌ Seguir jugando</button>
+        <button id="abandon-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">${gameTextHtml('modal.abandon.cancel')}</button>
       </div>
     </div>
   `;
@@ -586,26 +586,26 @@ export function showActivatedAbilityModal(cardName, options, onChoose, onCancel)
   const describeEffect = (ability) => {
     if (ability.name) return ability.name;
     if (ability.text) return ability.text;
-    if (ability.crewCost !== undefined) return `Tripular ${ability.crewCost}`;
+    if (ability.crewCost !== undefined) return gameText('ability.cost.crew', { cost: ability.crewCost });
     const effect = ability.effect || {};
-    const labels = {
-      draw: 'Robar cartas', heal: 'Ganar vida', damage: 'Hacer daño', drain: 'Drenar vida',
-      fight: 'Pelear', attach_equipment: 'Equipar', exile_creature: 'Exiliar criatura',
-      exile_and_return: 'Exiliar y devolver', ramp: 'Buscar tierra', create_tokens: 'Crear fichas',
-      grant_keyword_temp: 'Otorgar habilidad', draw_and_lose_life: 'Robar y perder vida',
-      discard: 'Descartar', sacrifice: 'Sacrificar', reanimate: 'Reanimar',
-      scry: 'Adivinar', surveil: 'Vigilar', proliferate: 'Proliferar'
+    const labelKeys = {
+      draw: 'ability.effect.draw', heal: 'ability.effect.heal', damage: 'ability.effect.damage', drain: 'ability.effect.drain',
+      fight: 'ability.effect.fight', attach_equipment: 'ability.effect.attach_equipment', exile_creature: 'ability.effect.exile_creature',
+      exile_and_return: 'ability.effect.exile_and_return', ramp: 'ability.effect.ramp', create_tokens: 'ability.effect.create_tokens',
+      grant_keyword_temp: 'ability.effect.grant_keyword_temp', draw_and_lose_life: 'ability.effect.draw_and_lose_life',
+      discard: 'ability.effect.discard', sacrifice: 'ability.effect.sacrifice', reanimate: 'ability.effect.reanimate',
+      scry: 'ability.effect.scry', surveil: 'ability.effect.surveil', proliferate: 'ability.effect.proliferate'
     };
-    const base = labels[effect.type] || effect.type || 'Habilidad';
+    const base = labelKeys[effect.type] ? gameText(labelKeys[effect.type]) : (effect.type || gameText('ability.effect.generic'));
     const amount = effect.amount !== undefined ? ` ${effect.amount}` : '';
     return `${base}${amount}`;
   };
   const describeCost = (ability) => {
-    if (ability.crewCost !== undefined) return `Tripular ${ability.crewCost}`;
+    if (ability.crewCost !== undefined) return gameText('ability.cost.crew', { cost: ability.crewCost });
     const bits = [];
     if (ability.cost) bits.push(ability.cost);
     if (ability.sacrifice) {
-      const sac = ability.sacrifice === 'self' ? 'Sacrificar esta carta' : `Sacrificar ${ability.sacrifice === 'creature' ? 'criatura' : 'artefacto'}`;
+      const sac = ability.sacrifice === 'self' ? gameText('ability.cost.sacSelf') : (ability.sacrifice === 'creature' ? gameText('ability.cost.sacCreature') : gameText('ability.cost.sacArtifact'));
       bits.push(sac);
     }
     return bits.join(', ') || '{0}';
@@ -614,7 +614,7 @@ export function showActivatedAbilityModal(cardName, options, onChoose, onCancel)
   const optionsHTML = options.map((option, idx) => {
     const sourceSuffix = option.sourceName && option.sourceName !== cardName ? ` — ${option.sourceName}` : '';
     const timing = getActivatedAbilityTiming(option.ability);
-    const timingSuffix = timing === 'instant' ? ' · ⚡ Instantánea' : (timing === 'sorcery' ? ' · ⏳ Conjuro' : '');
+    const timingSuffix = timing === 'instant' ? gameText('ability.timing.instantLabel') : (timing === 'sorcery' ? gameText('ability.timing.sorceryLabel') : '');
     return `
       <button class="loyalty-ability-btn" data-idx="${idx}">
         <span class="loyalty-cost" style="min-width:105px;">${renderInlineGameSymbols(describeCost(option.ability))}</span>
@@ -626,8 +626,8 @@ export function showActivatedAbilityModal(cardName, options, onChoose, onCancel)
   modalOverlay.innerHTML = `
     <div class="gy-modal-content" style="max-width: 520px;">
       <div class="gy-modal-header">
-        <h3>⚙️ ${cardName}: elegí una habilidad</h3>
-        <button class="gy-close-btn">Cerrar ✖</button>
+        <h3>${gameTextHtml('ability.modal.title', { card: cardName })}</h3>
+        <button class="gy-close-btn">${gameTextHtml('ability.modal.close')}</button>
       </div>
       <div style="display:flex; flex-direction:column; gap:10px; padding:16px;">
         ${optionsHTML}
@@ -672,11 +672,11 @@ export function showLoyaltyAbilityModal(pwItem, isLocal) {
   modalOverlay.innerHTML = `
     <div class="gy-modal-content" style="max-width: 480px;">
       <div class="gy-modal-header">
-        <h3>🔮 ${pwItem.card.name} (Lealtad: ${pwItem.loyalty})</h3>
-        <button class="gy-close-btn">Cerrar ✖</button>
+        <h3>${gameTextHtml('ability.modal.loyaltyTitle', { card: pwItem.card.name, loyalty: pwItem.loyalty })}</h3>
+        <button class="gy-close-btn">${gameTextHtml('ability.modal.close')}</button>
       </div>
       <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
-        ${alreadyUsed ? `<div style="color:#e67e22; font-style:italic;">Ya usaste una habilidad de Lealtad este turno.</div>` : ''}
+        ${alreadyUsed ? `<div style="color:#e67e22; font-style:italic;">${gameTextHtml('ability.modal.usedLoyalty')}</div>` : ''}
         ${abilitiesHTML}
       </div>
     </div>
@@ -1281,8 +1281,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const instantBtn = document.createElement('button');
     instantBtn.type = 'button';
     instantBtn.textContent = '⚡';
-    instantBtn.title = 'Activar habilidad instantánea';
-    instantBtn.setAttribute('aria-label', `Activar habilidad instantánea de ${card.name}`);
+    instantBtn.title = gameText('ability.instant.button');
+    instantBtn.setAttribute('aria-label', gameText('ability.instant.aria', { card: card.name }));
     instantBtn.classList.add('instant-ability-fab');
     instantBtn.addEventListener('click', (ev) => {
       ev.preventDefault();
@@ -1754,6 +1754,10 @@ function escapeHtml(str) {
 
 function gameTextHtml(key, variables = {}) {
   return escapeHtml(gameText(key, variables));
+}
+
+function gameTextManaHtml(key, variables = {}) {
+  return renderInlineGameSymbols(gameTextHtml(key, variables));
 }
 
 function notifyGameTextsApplied() {
@@ -5937,18 +5941,18 @@ export function showOptionsMenu(onBack) {
 
   overlay.innerHTML = `
     <div class="options-menu-panel">
-      <div class="options-menu-title">Opciones</div>
+      <div class="options-menu-title">${escapeHtml(gameText('options.title'))}</div>
       <div class="options-row">
-        <span class="options-label">Dificultad del Tano</span>
+        <span class="options-label">${escapeHtml(gameText('options.difficulty'))}</span>
         <button class="options-toggle-btn" id="opt-difficulty">${difficultyLabel()}</button>
       </div>
       <div class="options-row options-row-disabled">
-        <span class="options-label">Velocidad de animaciones</span>
-        <button class="options-toggle-btn" data-tooltip="Deshabilitado">Normal</button>
+        <span class="options-label">${escapeHtml(gameText('options.animationSpeed'))}</span>
+        <button class="options-toggle-btn" data-tooltip="${escapeHtml(gameText('options.disabled'))}">${escapeHtml(gameText('options.normal'))}</button>
       </div>
       <div class="options-row options-row-disabled">
-        <span class="options-label">Sonido</span>
-        <button class="options-toggle-btn" data-tooltip="Deshabilitado">Activado</button>
+        <span class="options-label">${escapeHtml(gameText('options.sound'))}</span>
+        <button class="options-toggle-btn" data-tooltip="${escapeHtml(gameText('options.disabled'))}">${escapeHtml(gameText('options.enabled'))}</button>
       </div>
       ${dangerZoneHTML}
       <button class="main-menu-btn" id="opt-back" style="margin-top: 24px;">Volver</button>
@@ -5960,7 +5964,7 @@ export function showOptionsMenu(onBack) {
   diffBtn.addEventListener('click', () => {
     state.botDifficulty = state.botDifficulty === 'easy' ? 'hard' : 'easy';
     diffBtn.textContent = difficultyLabel();
-    logMsg(`🎚️ Dificultad del Tano: ${difficultyLabel()}.`);
+    logMsg(gameText('options.difficulty.changed', { difficulty: difficultyLabel() }));
   });
 
   if (state.currentUser) {
@@ -5969,10 +5973,10 @@ export function showOptionsMenu(onBack) {
         try {
           await deleteUserProfile(state.currentUser.uid);
           state.userProfile = null;
-          logMsg("🗑️ Tu cuenta se borró — la próxima vez que juegues, arrancás de cero.");
+          logMsg(gameText('account.delete.success'));
         } catch (err) {
           console.error('No se pudo borrar la cuenta:', err);
-          logMsg("⚠️ No se pudo borrar la cuenta — revisá tu conexión e intentá de nuevo.");
+          logMsg(gameText('account.delete.error'));
         } finally {
           location.reload();
         }
@@ -6239,18 +6243,19 @@ export function showMulliganModal(hand, mulliganCount, canMulliganMore, callback
   overlay.id = 'mulligan-overlay';
 
   const keepLabel = mulliganCount > 0
-    ? `Quedarme (dejo ${mulliganCount} carta${mulliganCount > 1 ? 's' : ''} al fondo)`
-    : 'Quedarme con esta mano';
+    ? gameText('mulligan.keepWithBottom', { count: mulliganCount })
+    : gameText('mulligan.keep');
   const subtitle = canMulliganMore
-    ? '¿Te la quedás, o volvés a barajar y robás 7 de nuevo? Pasá el mouse por una carta para verla completa.'
-    : 'Ya llegaste al máximo de 7 mulligans — esta vez tenés que quedarte con lo que hay.';
+    ? gameText('mulligan.subtitle.can')
+    : gameText('mulligan.subtitle.max');
+  const mulliganAction = gameTextHtml('mulligan.action');
   const mulliganBtnHTML = canMulliganMore
-    ? `<button class="mulligan-btn mulligan-btn-mull" id="btn-do-mulligan">🔄 Mulligan</button>`
-    : `<button class="mulligan-btn mulligan-btn-mull" disabled>🔄 Mulligan</button>`;
+    ? `<button class="mulligan-btn mulligan-btn-mull" id="btn-do-mulligan">${mulliganAction}</button>`
+    : `<button class="mulligan-btn mulligan-btn-mull" disabled>${mulliganAction}</button>`;
 
   overlay.innerHTML = `
     <div class="mulligan-panel">
-      <div class="mulligan-title">${mulliganCount === 0 ? 'Tu mano inicial' : `Mano nueva (mulligan #${mulliganCount})`}</div>
+      <div class="mulligan-title">${gameTextHtml(mulliganCount === 0 ? 'mulligan.title.initial' : 'mulligan.title.repeat', { count: mulliganCount })}</div>
       <div class="mulligan-subtitle">${subtitle}</div>
       <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
@@ -6286,17 +6291,16 @@ export function showScrySurveilModal(cards, mode, onConfirm) {
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
 
-  const destino = mode === 'surveil' ? 'al cementerio' : 'al fondo del mazo';
-  const icono = mode === 'surveil' ? '👁️' : '🔮';
+  const isSurveil = mode === 'surveil';
   const chosen = new Set();
 
   overlay.innerHTML = `
     <div class="mulligan-panel">
-      <div class="mulligan-title">${icono} ${mode === 'surveil' ? 'Surveil' : 'Scry'} ${cards.length}</div>
-      <div class="mulligan-subtitle">Clickeá una carta para mandarla ${destino}. Las que no toques se quedan arriba, en el mismo orden.</div>
+      <div class="mulligan-title">${gameTextHtml(isSurveil ? 'surveil.title' : 'scry.title', { count: cards.length })}</div>
+      <div class="mulligan-subtitle">${gameTextHtml(isSurveil ? 'surveil.subtitle' : 'scry.subtitle')}</div>
       <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
-        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-scry">Confirmar</button>
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-scry">${gameTextHtml('selection.confirm')}</button>
       </div>
     </div>
   `;
@@ -6333,11 +6337,11 @@ export function showProliferateModal(eligible, onConfirm) {
 
   overlay.innerHTML = `
     <div class="mulligan-panel">
-      <div class="mulligan-title">🔵 Proliferar</div>
-      <div class="mulligan-subtitle">Clickeá cualquier cantidad de permanentes para sumarles un contador más de cada tipo que ya tengan. Podés no elegir ninguno.</div>
+      <div class="mulligan-title">${gameTextHtml('proliferate.title')}</div>
+      <div class="mulligan-subtitle">${gameTextHtml('proliferate.subtitle')}</div>
       <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
-        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-proliferate">Confirmar</button>
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-proliferate">${gameTextHtml('selection.confirm')}</button>
       </div>
     </div>
   `;
@@ -6366,8 +6370,8 @@ export function showProliferateModal(eligible, onConfirm) {
       cardEl.innerHTML = `
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:6px; color:#cfe0d4; text-align:center; padding: 8px;">
           <span style="font-size:28px;">☠️</span>
-          <span style="font-size:12px; font-weight:bold;">Veneno de ${entry.ownerIsLocal ? 'Vos' : getRivalName()}</span>
-          <span style="font-size:11px; color:#a89bb5;">(${poisonCount} actual)</span>
+          <span style="font-size:12px; font-weight:bold;">${gameTextHtml('proliferate.poison', { player: entry.ownerIsLocal ? 'Vos' : getRivalName() })}</span>
+          <span style="font-size:11px; color:#a89bb5;">${gameTextHtml('proliferate.poisonCurrent', { count: poisonCount })}</span>
         </div>
       `;
       cardEl.addEventListener('click', toggle);
@@ -6408,11 +6412,11 @@ export function showGraveyardChoiceModal(entries, countToChoose, cardName, filte
 
   overlay.innerHTML = `
     <div class="mulligan-panel">
-      <div class="mulligan-title">⚰️ ${cardName}: ${actionLabel || `elegí ${count} ${noun} del cementerio`}</div>
-      <div class="mulligan-subtitle" id="graveyard-choice-count-hint">${filterLabel ? `${filterLabel} · ` : ''}Seleccionadas: 0 / ${count}</div>
+      <div class="mulligan-title">${gameTextHtml('graveyard.choice.title', { card: cardName, action: actionLabel || gameText('graveyard.choice.defaultAction', { count, noun }) })}</div>
+      <div class="mulligan-subtitle" id="graveyard-choice-count-hint">${filterLabel ? `${escapeHtml(filterLabel)} · ` : ''}${gameTextHtml('selection.count', { selected: 0, total: count })}</div>
       <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
-        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-graveyard-choice" disabled>Confirmar elección</button>
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-graveyard-choice" disabled>${gameTextHtml('graveyard.choice.confirm')}</button>
       </div>
     </div>
   `;
@@ -6432,7 +6436,7 @@ export function showGraveyardChoiceModal(entries, countToChoose, cardName, filte
         chosenIndexes.add(entry.index);
         cardEl.classList.add('chosen');
       }
-      hint().textContent = `${filterLabel ? `${filterLabel} · ` : ''}Seleccionadas: ${chosenIndexes.size} / ${count}`;
+      hint().textContent = `${filterLabel ? `${filterLabel} · ` : ''}${gameText('selection.count', { selected: chosenIndexes.size, total: count })}`;
       confirmBtn().disabled = chosenIndexes.size !== count;
     };
     cardEl = createCardElement({ card: entry.card }, false, true, null, 'graveyard', toggle);
@@ -6461,8 +6465,8 @@ export function showEscapeExileModal(graveyardCards, exileCount, onConfirm) {
     entries,
     exileCount,
     'Escape',
-    'cualquier carta',
-    `elegí ${exileCount} carta${exileCount > 1 ? 's' : ''} de tu cementerio para exiliar`,
+    gameText('escape.choice.filter'),
+    gameText('escape.choice.action', { count: exileCount }),
     chosenIndexes => onConfirm(chosenIndexes.map(i => graveyardCards[i]).filter(Boolean))
   );
 }
@@ -6480,11 +6484,11 @@ export function showSacrificeEffectModal(candidates, countToSacrifice, cardName,
 
   overlay.innerHTML = `
     <div class="mulligan-panel">
-      <div class="mulligan-title">🔪 ${cardName}: sacrificá ${countToSacrifice} ${typeLabel}${countToSacrifice > 1 ? 's' : ''}</div>
-      <div class="mulligan-subtitle" id="sacrifice-effect-count-hint">Seleccionadas: 0 / ${countToSacrifice}</div>
+      <div class="mulligan-title">${gameTextHtml('sacrifice.choice.title', { card: cardName, count: countToSacrifice, type: `${typeLabel}${countToSacrifice > 1 ? 's' : ''}` })}</div>
+      <div class="mulligan-subtitle" id="sacrifice-effect-count-hint">${gameTextHtml('selection.count', { selected: 0, total: countToSacrifice })}</div>
       <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
-        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-sacrifice-effect" disabled>Confirmar sacrificio</button>
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-sacrifice-effect" disabled>${gameTextHtml('sacrifice.choice.confirm')}</button>
       </div>
     </div>
   `;
@@ -6504,7 +6508,7 @@ export function showSacrificeEffectModal(candidates, countToSacrifice, cardName,
         chosen.add(item);
         cardEl.classList.add('chosen');
       }
-      hint().textContent = `Seleccionadas: ${chosen.size} / ${countToSacrifice}`;
+      hint().textContent = gameText('selection.count', { selected: chosen.size, total: countToSacrifice });
       confirmBtn().disabled = chosen.size !== countToSacrifice;
     };
 
@@ -6539,11 +6543,11 @@ export function showHandDiscardChoiceModal(hand, countToDiscard, cardName, actio
   const chosenIndexes = new Set();
   overlay.innerHTML = `
     <div class="mulligan-panel">
-      <div class="mulligan-title">🃏 ${cardName}: ${actionLabel || 'Elegí qué descartar'}</div>
-      <div class="mulligan-subtitle" id="hand-discard-count-hint">Seleccionadas: 0 / ${countToDiscard}</div>
+      <div class="mulligan-title">${gameTextHtml('discard.choice.title', { card: cardName, action: actionLabel || gameText('discard.choice.defaultAction') })}</div>
+      <div class="mulligan-subtitle" id="hand-discard-count-hint">${gameTextHtml('selection.count', { selected: 0, total: countToDiscard })}</div>
       <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
-        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-hand-discard" disabled>Confirmar descarte</button>
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-hand-discard" disabled>${gameTextHtml('discard.choice.confirm')}</button>
       </div>
     </div>
   `;
@@ -6558,7 +6562,7 @@ export function showHandDiscardChoiceModal(hand, countToDiscard, cardName, actio
       chosenIndexes.add(cardIndex);
       cardEl.classList.add('chosen');
     }
-    hint().textContent = `Seleccionadas: ${chosenIndexes.size} / ${countToDiscard}`;
+    hint().textContent = gameText('selection.count', { selected: chosenIndexes.size, total: countToDiscard });
     confirmBtn().disabled = chosenIndexes.size !== countToDiscard;
   });
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
@@ -6574,8 +6578,8 @@ export function showHandDiscardChoiceModal(hand, countToDiscard, cardName, actio
 // Punto 4: Loot/Rummage conserva su API y textos, pero usa el selector genérico del Punto 8.
 export function showHandFilterDiscardModal(hand, countToDiscard, cardName, mode, onConfirm) {
   const actionLabel = mode === 'loot'
-    ? 'Después de robar, elegí qué descartar'
-    : 'Elegí qué descartar antes de robar';
+    ? gameText('discard.loot.action')
+    : gameText('discard.rummage.action');
   return showHandDiscardChoiceModal(hand, countToDiscard, cardName, actionLabel, onConfirm);
 }
 
@@ -6588,11 +6592,11 @@ export function showBottomCardsModal(hand, countToBottom, onConfirm) {
 
   overlay.innerHTML = `
     <div class="mulligan-panel">
-      <div class="mulligan-title">Elegí ${countToBottom} carta${countToBottom > 1 ? 's' : ''} para el fondo del mazo</div>
-      <div class="mulligan-subtitle" id="mulligan-count-hint">Seleccionadas: 0 / ${countToBottom}</div>
+      <div class="mulligan-title">${gameTextHtml('mulligan.bottom.title', { count: countToBottom })}</div>
+      <div class="mulligan-subtitle" id="mulligan-count-hint">${gameTextHtml('selection.count', { selected: 0, total: countToBottom })}</div>
       <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
-        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-bottom" disabled>Confirmar</button>
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-bottom" disabled>${gameTextHtml('selection.confirm')}</button>
       </div>
     </div>
   `;
@@ -6608,7 +6612,7 @@ export function showBottomCardsModal(hand, countToBottom, onConfirm) {
       chosen.add(card);
       cardEl.classList.add('chosen');
     }
-    hint().textContent = `Seleccionadas: ${chosen.size} / ${countToBottom}`;
+    hint().textContent = gameText('selection.count', { selected: chosen.size, total: countToBottom });
     confirmBtn().disabled = chosen.size !== countToBottom;
   });
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
@@ -6621,7 +6625,7 @@ export function showBottomCardsModal(hand, countToBottom, onConfirm) {
 }
 
 export function showGameOverOverlay(didWin) {
-  els.gameOverTitle.textContent = didWin ? `🏆 ¡Ganaste! Hiciste morder el polvo a ${getRivalName()}.` : `💀 Perdiste. ${getRivalName()} te ganó esta partida.`;
+  els.gameOverTitle.textContent = didWin ? gameText('game.over.overlayWin', { rival: getRivalName() }) : gameText('game.over.overlayLoss', { rival: getRivalName() });
   els.gameOverOverlay.classList.remove('hidden'); els.btnEndTurn.disabled = true;
 }
 
@@ -6721,14 +6725,14 @@ function getStackTopDisplayName() {
 }
 
 function getPriorityPauseLabel(activity) {
-  const labels = {
-    ready: 'SINCRONIZANDO', resolving: 'RESOLVIENDO', discarding: 'DESCARTANDO',
-    paying_mana: 'PAGANDO COSTE', choosing_target: 'ELIGIENDO OBJETIVO', choosing_ability: 'ELIGIENDO HABILIDAD',
-    choosing_sacrifice: 'ELIGIENDO SACRIFICIO', choosing_attackers: 'DECLARANDO ATACANTES', choosing_blockers: 'DECLARANDO BLOQUEADORES',
-    assigning_damage: 'ASIGNANDO DAÑO', remote_decision: 'DECISIÓN PENDIENTE', choosing_cards: 'SELECCIONANDO CARTAS',
-    choosing_mode: 'ELIGIENDO MODO', resolution_choice: 'ELECCIÓN DE RESOLUCIÓN', blocked: 'ACCIÓN OBLIGATORIA'
+  const keys = {
+    ready: 'priority.activity.ready.pause', resolving: 'priority.activity.resolving.pause', discarding: 'priority.activity.discarding.pause',
+    paying_mana: 'priority.activity.paying_mana.pause', choosing_target: 'priority.activity.choosing_target.pause', choosing_ability: 'priority.activity.choosing_ability.pause',
+    choosing_sacrifice: 'priority.activity.choosing_sacrifice.pause', choosing_attackers: 'priority.activity.choosing_attackers.pause', choosing_blockers: 'priority.activity.choosing_blockers.pause',
+    assigning_damage: 'priority.activity.assigning_damage.pause', remote_decision: 'priority.activity.remote_decision.pause', choosing_cards: 'priority.activity.choosing_cards.pause',
+    choosing_mode: 'priority.activity.choosing_mode.pause', resolution_choice: 'priority.activity.resolution_choice.pause', blocked: 'priority.activity.blocked.pause'
   };
-  return labels[activity] || String(activity || 'PAUSADO').replaceAll('_', ' ').toUpperCase();
+  return keys[activity] ? gameText(keys[activity]) : String(activity || 'PAUSADO').replaceAll('_', ' ').toUpperCase();
 }
 
 export function refreshTurnPriorityHudClock() {
@@ -6758,7 +6762,7 @@ export function refreshTurnPriorityHudClock() {
   els.priorityClock.classList.toggle('expired', running && remaining <= 0);
   if (els.priorityPauseLabel) {
     const reason = activity || state.priorityClockPauseReasonLocal;
-    els.priorityPauseLabel.textContent = `⏸ PAUSADO · ${getPriorityPauseLabel(reason)}`;
+    els.priorityPauseLabel.textContent = gameText('priority.pause.prefix', { reason: getPriorityPauseLabel(reason) });
     els.priorityPauseLabel.classList.toggle('hidden', !paused || !reason);
   }
 }
@@ -6811,11 +6815,11 @@ function renderPhaseProgress() {
 
   const combatDot = document.getElementById('dot-combat');
   if (combatDot) {
-    const labels = {
-      combat_begin: 'Combate · Inicio', combat_attackers: 'Combate · Atacantes',
-      combat_blockers: 'Combate · Bloqueadores', combat_damage: 'Combate · Daño', combat_end: 'Combate · Fin'
+    const keys = {
+      combat_begin: 'phase.tooltip.begin', combat_attackers: 'phase.tooltip.attackers',
+      combat_blockers: 'phase.tooltip.blockers', combat_damage: 'phase.tooltip.damage', combat_end: 'phase.tooltip.end'
     };
-    const label = labels[state.phase] || 'Combate';
+    const label = keys[state.phase] ? gameText(keys[state.phase]) : gameText('phase.tooltip.generic');
     combatDot.dataset.phaseLabel = label;
     combatDot.title = label;
     combatDot.setAttribute('aria-label', label);
@@ -6906,7 +6910,7 @@ export function render() {
       queueMicrotask(() => {
         state.autoZeroBlockersQueued = false;
         if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local' && !state.localBlockersDeclaredThisCombat) {
-          logMsg('🛡️ No tenés bloqueadores legales. Se declararon 0 bloqueadores automáticamente.');
+          logMsg(gameText('combat.autoZeroBlockers'));
           executeRivalAttack();
         }
       });
@@ -6919,7 +6923,7 @@ export function render() {
     if (attackersAlreadyDeclared) {
       // 23.7.1: tras resolver triggers de ataque, seguimos en este paso pero la declaración
       // ya ocurrió. El botón pasa prioridad; jamás vuelve a declarar/disparar el mismo ataque.
-      els.btnEndTurn.textContent = "Pasar Prioridad ➔";
+      els.btnEndTurn.textContent = gameText('priority.button.pass');
       els.btnEndTurn.onclick = () => passPriority('local');
       els.btnEndTurn.style.backgroundColor = "";
     } else {
@@ -6929,21 +6933,21 @@ export function render() {
     }
   } else if (state.phase === 'combat_blockers' && state.activePlayer === 'rival') {
     if (state.localBlockersDeclaredThisCombat) {
-      els.btnEndTurn.textContent = "Pasar Prioridad ➔";
+      els.btnEndTurn.textContent = gameText('priority.button.pass');
       els.btnEndTurn.onclick = () => passPriority('local');
       els.btnEndTurn.style.backgroundColor = "";
     } else if (autoZeroBlockersPending) {
-      els.btnEndTurn.textContent = "Sin bloqueadores — avanzando…";
+      els.btnEndTurn.textContent = gameText('priority.button.noBlockers');
       els.btnEndTurn.onclick = null;
       els.btnEndTurn.disabled = true;
       els.btnEndTurn.style.backgroundColor = "#3498db";
     } else {
-      els.btnEndTurn.textContent = "Confirmar Bloqueos 🛡️";
+      els.btnEndTurn.textContent = gameText('priority.button.confirmBlocks');
       els.btnEndTurn.onclick = executeRivalAttack;
       els.btnEndTurn.style.backgroundColor = "#3498db";
     }
   } else {
-    els.btnEndTurn.textContent = "Pasar Prioridad ➔";
+    els.btnEndTurn.textContent = gameText('priority.button.pass');
     els.btnEndTurn.onclick = () => passPriority('local');
     els.btnEndTurn.style.backgroundColor = ""; // Defecto
   }
@@ -6956,7 +6960,7 @@ export function render() {
     els.btnEndTurn.disabled = true;
     els.btnEndTurn.style.backgroundColor = "#665d39";
   } else if (state.priorityPlayer !== 'local' && !state.gameOver) {
-    els.btnEndTurn.textContent = `Esperando a ${getRivalName()}…`;
+    els.btnEndTurn.textContent = gameText('priority.button.waiting', { rival: getRivalName() });
     els.btnEndTurn.onclick = null;
     els.btnEndTurn.disabled = true;
     els.btnEndTurn.style.backgroundColor = "#34495e";
@@ -6983,26 +6987,26 @@ export function render() {
     const pendingCard = state.pendingCastTransaction?.card || (state.pendingSpellIndex !== null ? state.localHand[state.pendingSpellIndex] : null);
     let statusText;
     if (state.pendingCrew) {
-      statusText = `Tripulando ${state.pendingCrew.item.card.name}: ${state.pendingCrew.powerSoFar}/${state.pendingCrew.required} de poder — clickeá tus criaturas 🚗`;
+      statusText = gameText('payment.status.crew', { card: state.pendingCrew.item.card.name, power: state.pendingCrew.powerSoFar, required: state.pendingCrew.required });
     } else if (state.pendingWardChoice) {
-      statusText = `🔶 ¡${state.pendingWardChoice.targetObj.item.card.name} tiene Ward ${state.pendingWardChoice.wardCost}! Pagá o el hechizo se pierde.`;
+      statusText = gameText('payment.status.ward', { card: state.pendingWardChoice.targetObj.item.card.name, cost: state.pendingWardChoice.wardCost });
     } else if (state.pendingCounterUnlessPay) {
-      statusText = `💰 ¡"${state.pendingCounterUnlessPay.targetCardName}" va a ser contrarrestado! Pagá {${state.pendingCounterUnlessPay.amount}} o se pierde.`;
+      statusText = gameText('payment.status.counterTax', { card: state.pendingCounterUnlessPay.targetCardName, cost: `{${state.pendingCounterUnlessPay.amount}}` });
     } else if (state.pendingFightChoice) {
-      statusText = `🥊 Elegiste a ${state.pendingFightChoice.opponentItem.card.name} como rival. Ahora clickeá CUÁL de tus criaturas pelea.`;
+      statusText = gameText('payment.status.fight', { target: state.pendingFightChoice.opponentItem.card.name });
     } else {
-      statusText = state.pendingCastTransaction?.stage === 'targets' ? "🎯 Declarando objetivos — todavía no pagaste nada" : (state.pendingTargetCard ? "Elegí un objetivo brillante ✨" : "Falta: ");
+      statusText = state.pendingCastTransaction?.stage === 'targets' ? gameText('payment.status.targets') : (state.pendingTargetCard ? gameText('payment.status.chooseTarget') : gameText('payment.status.missing'));
       if (!state.pendingTargetCard && state.pendingCastTransaction?.stage !== 'targets') {
         // Defensa de UI: nunca asumir que pendingCost existe sólo porque hay alguna acción
         // pendiente. Un cancel/interacción solapada no debe poder tirar todo el render.
         const pendingCost = state.pendingCost || { W:0, U:0, B:0, R:0, G:0, generic:0 };
-        if (pendingCost.W > 0) statusText += `${pendingCost.W} Blanco `;
-        if (pendingCost.U > 0) statusText += `${pendingCost.U} Azul `;
-        if (pendingCost.B > 0) statusText += `${pendingCost.B} Negro `;
-        if (pendingCost.R > 0) statusText += `${pendingCost.R} Rojo `;
-        if (pendingCost.G > 0) statusText += `${pendingCost.G} Verde `;
-        if (pendingCost.generic > 0) statusText += `${pendingCost.generic} Genérico`;
-        if (state.pendingAlternativeCostChosen && pendingCard?.alternativeCost) statusText += ` [alternativo: ${describeCompositeCost(pendingCard.alternativeCost)}]`;
+        if (pendingCost.W > 0) statusText += gameText('payment.color.white', { amount: pendingCost.W });
+        if (pendingCost.U > 0) statusText += gameText('payment.color.blue', { amount: pendingCost.U });
+        if (pendingCost.B > 0) statusText += gameText('payment.color.black', { amount: pendingCost.B });
+        if (pendingCost.R > 0) statusText += gameText('payment.color.red', { amount: pendingCost.R });
+        if (pendingCost.G > 0) statusText += gameText('payment.color.green', { amount: pendingCost.G });
+        if (pendingCost.generic > 0) statusText += gameText('payment.color.generic', { amount: pendingCost.generic });
+        if (state.pendingAlternativeCostChosen && pendingCard?.alternativeCost) statusText += gameText('payment.altSuffix', { cost: describeCompositeCost(pendingCard.alternativeCost) });
       }
     }
     els.paymentStatus.textContent = statusText;
@@ -7015,21 +7019,21 @@ export function render() {
       !state.pendingCompositeCostPayment && canPayCastCompositeNonManaCosts(pendingCard, true, true, { excludeCard: pendingCard });
     if (canOfferAlt) {
       els.btnAltCost.classList.remove('hidden');
-      els.btnAltCost.textContent = `🔀 Pagar alternativo: ${describeCompositeCost(pendingCard.alternativeCost)}`;
+      els.btnAltCost.textContent = gameText('payment.button.alternative', { cost: describeCompositeCost(pendingCard.alternativeCost) });
     } else {
       els.btnAltCost.classList.add('hidden');
     }
 
     if (state.pendingWardChoice) {
       els.btnPayWard.classList.remove('hidden');
-      els.btnPayWard.textContent = `🔶 Pagar Ward ${state.pendingWardChoice.wardCost}`;
+      els.btnPayWard.textContent = gameText('payment.button.ward', { cost: state.pendingWardChoice.wardCost });
     } else {
       els.btnPayWard.classList.add('hidden');
     }
 
     if (state.pendingCounterUnlessPay) {
       els.btnPayCounterTax.classList.remove('hidden');
-      els.btnPayCounterTax.textContent = `💰 Pagar {${state.pendingCounterUnlessPay.amount}}`;
+      els.btnPayCounterTax.textContent = gameText('payment.button.counterTax', { cost: `{${state.pendingCounterUnlessPay.amount}}` });
     } else {
       els.btnPayCounterTax.classList.add('hidden');
     }
@@ -7124,12 +7128,14 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
 
   content.innerHTML = `
     <p style="margin-bottom: 1.2rem; font-size: 1.1rem; color: #eee;">
-      Tu <strong>${attacker.name}</strong> (Poder: ${totalDamage}) fue bloqueado.<br>
-      <span style="font-size: 0.85rem; color: #aaa;">¿Cómo querés resolver el daño?</span>
+      ${gameTextHtml('damage.modal.intro', { card: attacker.name, power: totalDamage })}<br>
+      <span style="font-size: 0.85rem; color: #aaa;">${gameTextHtml('damage.modal.question')}</span>
     </p>`;
   
   initialButtons.classList.remove('hidden');
   confirmContainer.classList.add('hidden');
+  if (btnAuto) btnAuto.textContent = gameText('damage.modal.auto');
+  if (btnManual) btnManual.textContent = gameText('damage.modal.manual');
   overlay.classList.remove('hidden');
   state.damageModalOpen = true; 
 
@@ -7146,7 +7152,7 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
   };
 
   function renderManualUI() {
-    let html = `<div style="margin-bottom: 15px; font-size: 1rem;">Daño restante para asignar: <strong id="dmg-unassigned" style="color: var(--gold); font-size: 1.6rem;">${unassigned}</strong></div>`;
+    let html = `<div style="margin-bottom: 15px; font-size: 1rem;">${gameTextHtml('damage.modal.remaining', { damage: unassigned }).replace(String(unassigned), `<strong id="dmg-unassigned" style="color: var(--gold); font-size: 1.6rem;">${unassigned}</strong>`)}</div>`;
 
     blockersArray.forEach((bItem, idx) => {
        const hp = bItem.card.toughness - (bItem.damageTaken || 0);
@@ -7157,7 +7163,7 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
            <div style="text-align: left; line-height: 1.2;">
              <strong style="font-size: 1.1rem;">${bItem.card.name}</strong><br>
              <span style="font-size: 0.8rem; color: ${met ? '#7ed6a5' : '#e67e22'};">
-               Resistencia actual: ${hp} ${needed > 0 ? `(letal: ${needed})` : '(ya no necesita más)'}
+               ${gameTextHtml('damage.modal.toughness', { toughness: hp })} ${needed > 0 ? gameTextHtml('damage.modal.lethal', { lethal: needed }) : gameTextHtml('damage.modal.noMore')}
              </span>
            </div>
            <div class="damage-controls">
@@ -7176,9 +7182,9 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
       html += `
          <div class="damage-row trample-row">
            <div style="text-align: left;">
-             <strong style="font-size: 1.1rem;">🐘 Arrollar ${trampleLabel}</strong><br>
+             <strong style="font-size: 1.1rem;">${gameTextHtml('damage.modal.trample', { target: trampleLabel })}</strong><br>
              <span style="font-size: 0.8rem; color: #aaa;">
-               ${allLethalMet ? `Se calcula automáticamente con lo que sobre (le come ${overflowNoun}).` : 'Asigná primero daño letal a todos los bloqueadores.'}
+               ${allLethalMet ? gameTextHtml('damage.modal.trampleAuto', { resource: overflowNoun }) : gameTextHtml('damage.modal.trampleNeedLethal')}
              </span>
            </div>
            <div class="damage-controls">
@@ -7228,9 +7234,9 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
     btnConfirm.disabled = !canConfirm;
     btnConfirm.style.opacity = canConfirm ? '1' : '0.5';
 
-    if (canConfirm) btnConfirm.textContent = 'Confirmar Distribución';
-    else if (!allLethalMet) btnConfirm.textContent = 'Asigná daño letal a todos los bloqueadores';
-    else btnConfirm.textContent = 'Asigná todo el daño restante';
+    if (canConfirm) btnConfirm.textContent = gameText('damage.modal.confirm');
+    else if (!allLethalMet) btnConfirm.textContent = gameText('damage.modal.needLethal');
+    else btnConfirm.textContent = gameText('damage.modal.needAll');
   }
 
   btnConfirm.onclick = () => {
@@ -7259,10 +7265,10 @@ export function showMultiplayerReadyBarrier(rivalName, localReady = true, rivalR
   const safeName = rivalName || 'tu rival';
   const title = overlay.querySelector('#mp-ready-title');
   const detail = overlay.querySelector('#mp-ready-detail');
-  if (title) title.textContent = rivalReady ? '¡Ambos listos!' : `Esperando a ${safeName}…`;
+  if (title) title.textContent = rivalReady ? gameText('multiplayer.ready.both') : gameText('multiplayer.ready.waiting', { rival: safeName });
   if (detail) detail.textContent = rivalReady
-    ? 'Sincronizando el primer turno…'
-    : (localReady ? 'Tu mazo y mulligan ya están confirmados. La partida se habilita cuando el otro jugador termine.' : 'Preparando tu partida…');
+    ? gameText('multiplayer.ready.sync')
+    : (localReady ? gameText('multiplayer.ready.localDone') : gameText('multiplayer.ready.preparing'));
   overlay.classList.remove('hidden');
 }
 

@@ -1,3 +1,4 @@
+import { gameText } from './gameTexts.js';
 // js/priorityUX.js
 // ENTREGA 23.9.1 — reglas PURAS del HUD compacto de turno/prioridad y del reloj multiplayer.
 // No importa main/ui/turnManager para evitar otro ciclo de módulos. Todos los módulos
@@ -23,6 +24,16 @@ export const PRIORITY_ACTIVITY_CHIPS = Object.freeze({
   resolution_choice: 'ELECCIÓN'
 });
 
+// Los códigos de actividad siguen siendo contrato técnico. Sólo la copy que se deriva de ellos
+// pasa por gameText(), para que un override jamás pueda alterar el estado de prioridad.
+const PRIORITY_ACTIVITY_TEXT_KEYS = Object.freeze({
+  ready: 'ready', resolving: 'resolving', discarding: 'discarding', paying_mana: 'paying_mana',
+  choosing_target: 'choosing_target', choosing_ability: 'choosing_ability', choosing_sacrifice: 'choosing_sacrifice',
+  choosing_attackers: 'choosing_attackers', choosing_blockers: 'choosing_blockers', assigning_damage: 'assigning_damage',
+  remote_decision: 'remote_decision', choosing_cards: 'choosing_cards', choosing_mode: 'choosing_mode',
+  resolution_choice: 'resolution_choice'
+});
+
 export const PRIORITY_ACTIVITY_LABELS = Object.freeze({
   ready: ['Sincronizando el inicio…', 'está sincronizando el inicio…'],
   resolving: ['Resolviendo la pila…', 'está resolviendo la pila…'],
@@ -40,14 +51,16 @@ export const PRIORITY_ACTIVITY_LABELS = Object.freeze({
   resolution_choice: ['Terminá la elección de resolución.', 'está resolviendo una elección…']
 });
 
+const PHASE_TEXT_KEYS = Object.freeze({
+  untap: 'phase.hud.untap', upkeep: 'phase.hud.upkeep', draw: 'phase.hud.draw', main1: 'phase.hud.main1',
+  combat_begin: 'phase.hud.combat_begin', combat_attackers: 'phase.hud.combat_attackers',
+  combat_blockers: 'phase.hud.combat_blockers', combat_damage: 'phase.hud.combat_damage', combat_end: 'phase.hud.combat_end',
+  main2: 'phase.hud.main2', end_step: 'phase.hud.end_step', cleanup: 'phase.hud.cleanup'
+});
+
 export function getPhaseUxLabel(phase) {
-  const labels = {
-    untap: 'ENDEREZAR', upkeep: 'MANTENIMIENTO', draw: 'ROBO', main1: 'MAIN 1',
-    combat_begin: 'INICIO DE COMBATE', combat_attackers: 'ATACANTES',
-    combat_blockers: 'BLOQUEADORES', combat_damage: 'DAÑO', combat_end: 'FIN DE COMBATE',
-    main2: 'MAIN 2', end_step: 'PASO FINAL', cleanup: 'LIMPIEZA'
-  };
-  return labels[phase] || String(phase || '').toUpperCase();
+  const key = PHASE_TEXT_KEYS[phase];
+  return key ? gameText(key) : String(phase || '').toUpperCase();
 }
 
 function hasAnyResolutionChoice(state) {
@@ -124,14 +137,18 @@ export function getPriorityUxCopy(state, localName, rivalName, stackTopName = ''
   const isMyTurn = state?.activePlayer === 'local';
   const isMyPriority = state?.priorityPlayer === 'local';
   const activity = getEffectivePriorityActivity(state);
-  const activityLabels = activity ? PRIORITY_ACTIVITY_LABELS[activity] : null;
+  const activityKey = activity ? PRIORITY_ACTIVITY_TEXT_KEYS[activity] : null;
+  const activityLabels = activityKey ? [
+    gameText(`priority.activity.${activityKey}.local`),
+    gameText(`priority.activity.${activityKey}.rival`)
+  ] : null;
   const safeLocal = localName || 'Vos';
   const safeRival = rivalName || 'tu rival';
   const resolving = (state?.consecutivePasses || 0) >= 2;
 
   // 23.9.1: la cabecera se divide en dueño del turno + badge de fase. Nunca vuelve a
   // concatenar un nombre largo con "MANTENIMIENTO" en una sola línea del sidebar.
-  const turnOwnerText = isMyTurn ? 'TU TURNO' : `TURNO DE ${safeRival.toUpperCase()}`;
+  const turnOwnerText = isMyTurn ? gameText('priority.turn.yours') : gameText('priority.turn.rival', { rival: safeRival.toUpperCase() });
   const turnText = `${turnOwnerText} · ${phase}`; // compatibilidad con contratos/telemetría previos.
 
   let priorityText;
@@ -140,31 +157,31 @@ export function getPriorityUxCopy(state, localName, rivalName, stackTopName = ''
   let stateChipKind;
 
   if (resolving) {
-    priorityText = '⚙️ RESOLVIENDO PILA';
-    contextText = stackTopName ? `Resolviendo ${stackTopName}…` : 'Ambos pasaron prioridad. Avanzando…';
-    stateChipText = 'RESOLVIENDO';
+    priorityText = gameText('priority.resolving');
+    contextText = stackTopName ? gameText('priority.context.resolvingTop', { stackTop: stackTopName }) : gameText('priority.context.bothPassed');
+    stateChipText = gameText('priority.state.resolving');
     stateChipKind = 'resolving';
   } else if (activityLabels) {
-    const chip = PRIORITY_ACTIVITY_CHIPS[activity] || 'ACCIÓN';
-    priorityText = isMyPriority ? `⏸ ${chip}` : `⏳ ESPERANDO A ${safeRival.toUpperCase()}`;
+    const chip = activityKey ? gameText(`priority.activity.${activityKey}.chip`) : gameText('priority.state.action');
+    priorityText = isMyPriority ? `⏸ ${chip}` : gameText('priority.waiting', { rival: safeRival.toUpperCase() });
     contextText = isMyPriority
       ? activityLabels[0]
       : `${safeRival} ${activityLabels[1]}`;
     stateChipText = chip;
     stateChipKind = 'activity';
   } else if (isMyPriority) {
-    priorityText = '⚡ TENÉS PRIORIDAD';
+    priorityText = gameText('priority.yours');
     contextText = stackTopName
-      ? `Respondé a ${stackTopName} o pasá prioridad.`
-      : 'Jugá una acción legal o pasá prioridad.';
-    stateChipText = 'TU PRIORIDAD';
+      ? gameText('priority.context.respond', { stackTop: stackTopName })
+      : gameText('priority.context.playOrPass');
+    stateChipText = gameText('priority.state.yours');
     stateChipKind = 'my-priority';
   } else {
-    priorityText = `⏳ ESPERANDO A ${safeRival.toUpperCase()}`;
+    priorityText = gameText('priority.waiting', { rival: safeRival.toUpperCase() });
     contextText = stackTopName
-      ? `Puede responder a ${stackTopName}.`
-      : 'Esperando que pase prioridad o juegue una acción.';
-    stateChipText = 'PRIORIDAD RIVAL';
+      ? gameText('priority.context.rivalCanRespond', { stackTop: stackTopName })
+      : gameText('priority.context.waitingAction');
+    stateChipText = gameText('priority.state.rival');
     stateChipKind = 'rival-priority';
   }
 

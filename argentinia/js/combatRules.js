@@ -26,6 +26,7 @@ import {
 } from './main.js';
 import { showDamageAssignmentModal } from './ui.js';
 import { recordTelemetryEvent } from './telemetry.js';
+import { gameText } from './gameTexts.js';
 
 // Habilidades disparadas de combate: ahora se APILAN en vez de resolver durante la
 // declaración/daño. `triggerKey` se traduce a una etiqueta estable para Stack/logs.
@@ -89,7 +90,7 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
   const cleanKill = legalBlockers.find(obj => kills(obj) && blockerSurvives(obj));
   if (cleanKill) {
     commitBlock(cleanKill, aIdx, availableBlockers);
-    logMsg(`🛡️ El Tano bloquea a tu ${att.card.name} con ${cleanKill.c.card.name} y se lo lleva puesto sin perder nada.`);
+    logMsg(gameText('bot.block.cleanKill', { attacker: att.card.name, blocker: cleanKill.c.card.name }));
     return;
   }
 
@@ -98,14 +99,14 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
     if (safeBlockers.length > 0) {
       const chosen = [...safeBlockers].sort((x, y) => valueOf(x) - valueOf(y))[0];
       commitBlock(chosen, aIdx, availableBlockers);
-      logMsg(`🛡️ El Tano frena a tu ${att.card.name} con ${chosen.c.card.name}: no arriesga nada, sobrevive tranquilo.`);
+      logMsg(gameText('bot.block.safe', { attacker: att.card.name, blocker: chosen.c.card.name }));
       return;
     }
 
     const tradeKill = legalBlockers.find(kills);
     if (tradeKill) {
       commitBlock(tradeKill, aIdx, availableBlockers);
-      logMsg(`🛡️ El Tano bloquea a tu ${att.card.name} con ${tradeKill.c.card.name}, cambio parejo.`);
+      logMsg(gameText('bot.block.trade', { attacker: att.card.name, blocker: tradeKill.c.card.name }));
       return;
     }
 
@@ -116,7 +117,7 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
       const pool = pureDefenders.length > 0 ? pureDefenders : legalBlockers;
       const chump = [...pool].sort((x, y) => valueOf(x) - valueOf(y))[0];
       commitBlock(chump, aIdx, availableBlockers);
-      logMsg(`🛡️ El Tano sacrifica a ${chump.c.card.name} para frenar el golpe de tu ${att.card.name}.`);
+      logMsg(gameText('bot.block.chump', { attacker: att.card.name, blocker: chump.c.card.name }));
     }
     return;
   }
@@ -140,11 +141,11 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
     gang.forEach(obj => commitBlock(obj, aIdx, availableBlockers));
     const names = gang.map(o => o.c.card.name).join(', ');
     if (willKillAttacker && willAbsorbAllTrample) {
-      logMsg(`🧠 El Tano gangea a tu ${att.card.name} con ${names}: lo mata y no pasa nada de Arrollar.`);
+      logMsg(gameText('bot.block.gangKillNoTrample', { attacker: att.card.name, blockers: names }));
     } else if (willKillAttacker) {
-      logMsg(`🧠 El Tano gangea a tu ${att.card.name} con ${names} para matarlo, aunque algo de Arrollar se filtre.`);
+      logMsg(gameText('bot.block.gangKillTrample', { attacker: att.card.name, blockers: names }));
     } else {
-      logMsg(`🧠 El Tano gangea a tu ${att.card.name} con ${names} para absorber todo el Arrollar, aunque no logre matarlo.`);
+      logMsg(gameText('bot.block.gangAbsorb', { attacker: att.card.name, blockers: names }));
     }
     return;
   }
@@ -154,7 +155,7 @@ function assignSmartBlock(att, aIdx, availableBlockers) {
   if (seriousHit || pureDefenders.length > 0) {
     const chump = pureDefenders.length > 0 ? pureDefenders[0] : sortedByValue[0];
     commitBlock(chump, aIdx, availableBlockers);
-    logMsg(`🛡️ El Tano sacrifica a ${chump.c.card.name} para amortiguar el Arrollar de tu ${att.card.name}.`);
+    logMsg(gameText('bot.block.trampleChump', { attacker: att.card.name, blocker: chump.c.card.name }));
   }
 }
 
@@ -199,13 +200,13 @@ export function assignBotBlockers() {
           let blockerObj = availableBlockers.splice(idx, 1)[0];
           state.rivalCombat[blockerObj.i].blockingIndex = aIdx;
         });
-        logMsg(`👥 ¡Amenaza! El Tano te bloquea en pandilla a ${att.card.name}.`);
+        logMsg(gameText('bot.block.menaceGang', { attacker: att.card.name }));
       }
       return;
     }
     assignSmartBlock(att, aIdx, availableBlockers);
   });
-  logMsg(`🛡️ El Tano ha asignado sus defensores.`);
+  logMsg(gameText('bot.block.done'));
 }
 
 // Conserva la información de "esta criatura fue bloqueada" aunque todos sus bloqueadores
@@ -231,7 +232,7 @@ export async function executeLocalAttack() {
   // vuelve al atacante, NO hay que volver a "confirmar" los mismos atacantes ni disparar
   // otra vez los triggers de ataque.
   if ((state.localAttackersDeclaredThisTurn || 0) > 0) {
-    logMsg('⚡ Los atacantes ya fueron declarados. Pasás prioridad.');
+    logMsg(gameText('combat.attackers.already'));
     passPriority('local');
     return;
   }
@@ -245,9 +246,9 @@ export async function executeLocalAttack() {
       triggerCombatAbility(a, 'attackTrigger', true);
     });
     triggerAnyCreatureAttacks(true);
-    logMsg(`🗡️ Declaraste ${attackers.length} atacantes.`);
+    logMsg(gameText('combat.attackers.count', { count: attackers.length }));
   } else {
-    logMsg(`🌅 Decidiste no atacar con nada.`);
+    logMsg(gameText('combat.attackers.none'));
   }
   render();
   passPriority('local'); // Pasamos la prioridad para avanzar la fase
@@ -257,7 +258,7 @@ export function executeRivalAttack() {
   // 23.9.3: declarar bloqueadores es idempotente, incluso si fueron CERO. La ventana
   // post-bloqueadores devuelve prioridad y NO debe volver a entrar a esta declaración.
   if (state.localBlockersDeclaredThisCombat) {
-    logMsg('🛡️ Los bloqueadores ya fueron declarados. Pasás prioridad.');
+    logMsg(gameText('combat.blockers.already'));
     passPriority('local');
     return;
   }
@@ -270,7 +271,7 @@ export function executeRivalAttack() {
       const blockersCount = state.localCombat.filter(d => d.blockingIndex == aIdx).length;
 
       if (blockersCount === 1) {
-        logMsg(`❌ ¡Epa! ${attacker.card.name} tiene Amenaza. Necesitás bloquearlo con 2 o más criaturas (o dejarlo pasar).`);
+        logMsg(gameText('combat.block.menaceIllegal', { attacker: attacker.card.name }));
         invalidBlocks = true;
       }
     }
@@ -278,7 +279,7 @@ export function executeRivalAttack() {
 
   if (invalidBlocks) {
     state.localCombat.forEach(c => c.blockingIndex = null);
-    logMsg("⚠️ Se anularon tus defensas por un movimiento ilegal. Volvé a asignar a tus defensores y confirmá.");
+    logMsg(gameText('combat.block.illegalReset'));
     render();
     return; // Detenemos para que el jugador corrija
   }
@@ -293,7 +294,7 @@ export function executeRivalAttack() {
     blockerCount: state.localCombat.filter(unit => unit.blockingIndex !== null && unit.blockingIndex !== undefined).length
   });
   queueDeclaredBlockTriggers(state.localCombat, true);
-  logMsg(`🛡️ Confirmaste tus bloqueos.`);
+  logMsg(gameText('combat.block.confirmed'));
   // La declaración de bloqueadores abre una ventana NUEVA. El jugador activo recibe
   // prioridad primero; no heredamos el pase que hizo para llegar a este paso ni salteamos
   // directo al daño cuando se declararon cero bloqueadores.
@@ -344,7 +345,7 @@ export async function resolveCombatDamage() {
   if (pendingCombatDamageContinuation) {
     const { combatPairs, isLocalAttacking, attackersArray, defendersArray } = pendingCombatDamageContinuation;
     pendingCombatDamageContinuation = null;
-    logMsg("⚔️ --- Paso de Daño Regular ---");
+    logMsg(gameText('combat.damage.regularStep'));
     await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInRegularStep);
     checkAllDeaths();
     finishCombatDamageStep(attackersArray, defendersArray);
@@ -369,7 +370,7 @@ export async function resolveCombatDamage() {
 
   // Fog: no hay daño; tampoco nacen combatDamageTrigger. Se limpian flags normalmente.
   if (state.combatDamagePrevented) {
-    logMsg("🌫️ El daño de combate de este turno queda prevenido por completo.");
+    logMsg(gameText('combat.damage.prevented'));
     finishCombatDamageStep(attackersArray, defendersArray);
     return;
   }
@@ -380,7 +381,7 @@ export async function resolveCombatDamage() {
 
   if (hayIniciativa) {
     const serialBefore = state.triggerStackSerial || 0;
-    logMsg("⚡ --- Paso de Daño de Iniciativa (Golpe Primero) ---");
+    logMsg(gameText('combat.damage.firstStrikeStep'));
     await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInFirstStrikeStep);
     checkAllDeaths();
 
@@ -389,10 +390,10 @@ export async function resolveCombatDamage() {
     // vacía y vuelvan a pasar, turnManager reingresa acá para ejecutar el daño regular.
     if ((state.triggerStackSerial || 0) > serialBefore) {
       pendingCombatDamageContinuation = { combatPairs, isLocalAttacking, attackersArray, defendersArray };
-      logMsg("⏸️ El daño regular espera: hay habilidades disparadas de iniciativa en la pila.");
+      logMsg(gameText('combat.damage.waitTriggers'));
       return;
     }
-    logMsg("⚔️ --- Paso de Daño Regular ---");
+    logMsg(gameText('combat.damage.regularStep'));
   }
 
   await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInRegularStep);
@@ -410,7 +411,7 @@ function dealCombatDamageToCreature(source, targetItem, amount) {
   if (amount <= 0) return;
   if (hasKeyword(source, 'infect')) {
     addCounters(targetItem, 'minusOne', amount);
-    logMsg(`☠️ ¡Infectar! ${targetItem.card.name} recibió ${amount} contador(es) -1/-1 de ${source.card.name}.`);
+    logMsg(gameText('combat.infect.creature', { target: targetItem.card.name, amount, source: source.card.name }));
   } else {
     targetItem.damageTaken = (targetItem.damageTaken || 0) + amount;
   }
@@ -421,7 +422,7 @@ function dealCombatDamageToPlayer(source, isTargetLocal, amount) {
   if (hasKeyword(source, 'infect')) {
     if (isTargetLocal) state.localPoison = (state.localPoison || 0) + amount;
     else state.rivalPoison = (state.rivalPoison || 0) + amount;
-    logMsg(`☠️ ¡Infectar! ${source.card.name} le puso ${amount} contador(es) de Veneno a ${isTargetLocal ? 'Vos' : getRivalName()}.`);
+    logMsg(gameText('combat.infect.player', { source: source.card.name, amount, target: isTargetLocal ? 'Vos' : getRivalName() }));
   } else {
     if (isTargetLocal) state.localHP -= amount;
     else state.rivalHP -= amount;
@@ -467,10 +468,10 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       if (blockerHasLifelink && bPower > 0) {
         if (isLocalAttacking) {
           state.rivalHP += bPower;
-          logMsg(`💚 Vínculo Vital: ${getRivalName()} recupera ${bPower} HP por la defensa de ${blocker.card.name}.`);
+          logMsg(gameText('combat.lifelink.defenderRival', { rival: getRivalName(), amount: bPower, card: blocker.card.name }));
         } else {
           state.localHP += bPower;
-          logMsg(`💚 Vínculo Vital: Recuperás ${bPower} HP por la defensa de ${blocker.card.name}.`);
+          logMsg(gameText('combat.lifelink.defenderLocal', { amount: bPower, card: blocker.card.name }));
         }
       }
       if (blockerHasDeathtouch && bPower > 0) {
@@ -494,10 +495,10 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         // jugador, y NO cuenta como "daño de combate al jugador" (no dispara
         // combatDamageTrigger — esa es específicamente sobre pegarle a un jugador).
         attacker.attackTarget.loyalty -= attackerPower;
-        logMsg(`🔮 ¡${attacker.card.name} atacó a ${attacker.attackTarget.card.name} y le sacó ${attackerPower} de Lealtad! (queda en ${attacker.attackTarget.loyalty})`);
+        logMsg(gameText('combat.attackPlaneswalker', { card: attacker.card.name, target: attacker.attackTarget.card.name, amount: attackerPower, loyalty: attacker.attackTarget.loyalty }));
         if (attackerHasLifelink && attackerPower > 0) {
           if (isLocalAttacking) state.localHP += attackerPower; else state.rivalHP += attackerPower;
-          logMsg(`💚 Vínculo Vital: ¡${attacker.card.name} te curó ${attackerPower} HP!`);
+          logMsg(gameText('combat.lifelink.attackLocal', { card: attacker.card.name, amount: attackerPower }));
         }
         checkPlaneswalkerDeaths();
         continue;
@@ -506,16 +507,16 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         dealCombatDamageToPlayer(attacker, false, attackerPower);
         if (attackerHasLifelink && attackerPower > 0) {
           state.localHP += attackerPower;
-          logMsg(`💚 Vínculo Vital: ¡${attacker.card.name} te curó ${attackerPower} HP!`);
+          logMsg(gameText('combat.lifelink.attackLocal', { card: attacker.card.name, amount: attackerPower }));
         }
       } else {
         dealCombatDamageToPlayer(attacker, true, attackerPower);
         if (attackerHasLifelink && attackerPower > 0) {
           state.rivalHP += attackerPower;
-          logMsg(`💚 Vínculo Vital: ¡${attacker.card.name} curó ${attackerPower} HP a ${getRivalName()}!`);
+          logMsg(gameText('combat.lifelink.attackRival', { card: attacker.card.name, amount: attackerPower, rival: getRivalName() }));
         }
       }
-      if (attackerPower > 0) logMsg(`💥 ${attacker.card.name} conectó el golpe! Hizo ${attackerPower} de daño.`);
+      if (attackerPower > 0) logMsg(gameText('combat.hit', { card: attacker.card.name, amount: attackerPower }));
       damageToPlayerThisStep += attackerPower;
       if (damageToPlayerThisStep > 0) {
         triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
@@ -527,7 +528,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       if (attackerHasTrample) {
         if (attacker.attackTarget) {
           attacker.attackTarget.loyalty -= attackerPower;
-          logMsg(`🔮 Arrollar: los bloqueadores de ${attacker.card.name} ya habían caído en Iniciativa, así que TODO su daño (${attackerPower}) le pega de lleno a ${attacker.attackTarget.card.name}.`);
+          logMsg(gameText('combat.trample.allPlaneswalker', { card: attacker.card.name, amount: attackerPower, target: attacker.attackTarget.card.name }));
           if (attackerHasLifelink && attackerPower > 0) {
             if (isLocalAttacking) state.localHP += attackerPower; else state.rivalHP += attackerPower;
           }
@@ -541,10 +542,10 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
           dealCombatDamageToPlayer(attacker, true, attackerPower);
           if (attackerHasLifelink && attackerPower > 0) state.rivalHP += attackerPower;
         }
-        logMsg(`🐘 Arrollar: los bloqueadores de ${attacker.card.name} ya habían caído en Iniciativa, así que TODO su daño (${attackerPower}) pasa de largo.`);
+        logMsg(gameText('combat.trample.allPlayer', { card: attacker.card.name, amount: attackerPower }));
         damageToPlayerThisStep += attackerPower;
       } else {
-        logMsg(`🛡️ ${attacker.card.name} sigue "bloqueado" (sus defensores cayeron en Iniciativa) y sin Arrollar no conecta nada.`);
+        logMsg(gameText('combat.blockedNoTrample', { card: attacker.card.name }));
       }
       if (damageToPlayerThisStep > 0) {
         triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
@@ -604,7 +605,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
           // el daño se previene entero al momento de aplicarse — mismo criterio que en
           // MTG real, la asignación ya ocurrió (no le "regala" ese poder a otro
           // bloqueador ni al jugador), simplemente ese daño puntual nunca llega a pasar.
-          logMsg(`🛡️ ¡${blocker.card.name} tiene Protección de ${COLOR_LABELS[blockerProtected] || blockerProtected}! El daño de ${attacker.card.name} fue prevenido.`);
+          logMsg(gameText('combat.protection.prevented', { blocker: blocker.card.name, color: COLOR_LABELS[blockerProtected] || blockerProtected, attacker: attacker.card.name }));
         } else {
           dealCombatDamageToCreature(attacker, blocker, damageToDeal);
           attackerLifelinkHeal += damageToDeal;
@@ -620,14 +621,14 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
           // ÉL, no a la cara del jugador — antes este camino (asignación manual) no
           // chequeaba attackTarget para nada y siempre le pegaba al jugador.
           attacker.attackTarget.loyalty -= manualPlayerDamage;
-          logMsg(`🐘 Arrollar (Asignado): ¡${attacker.card.name} le arrolló ${manualPlayerDamage} de daño a ${attacker.attackTarget.card.name}! (Lealtad: ${attacker.attackTarget.loyalty})`);
+          logMsg(gameText('combat.trample.manualPw', { card: attacker.card.name, amount: manualPlayerDamage, target: attacker.attackTarget.card.name, loyalty: attacker.attackTarget.loyalty }));
           attackerLifelinkHeal += manualPlayerDamage;
           checkPlaneswalkerDeaths();
         } else {
           if (isLocalAttacking) dealCombatDamageToPlayer(attacker, false, manualPlayerDamage);
           else dealCombatDamageToPlayer(attacker, true, manualPlayerDamage);
           attackerLifelinkHeal += manualPlayerDamage;
-          logMsg(`🐘 Arrollar (Asignado): ¡${attacker.card.name} arrolló con ${manualPlayerDamage} de daño!`);
+          logMsg(gameText('combat.trample.manualPlayer', { card: attacker.card.name, amount: manualPlayerDamage }));
           damageToPlayerThisStep += manualPlayerDamage;
         }
       }
@@ -635,17 +636,17 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       if (attacker.attackTarget) {
         // Mismo caso, para el reparto automático (sin asignación manual).
         attacker.attackTarget.loyalty -= remainingAttackerPower;
-        logMsg(`🐘 Arrollar: ¡${attacker.card.name} repartió daño letal a sus bloqueadores y le arrolló ${remainingAttackerPower} de daño a ${attacker.attackTarget.card.name}! (Lealtad: ${attacker.attackTarget.loyalty})`);
+        logMsg(gameText('combat.trample.autoPw', { card: attacker.card.name, amount: remainingAttackerPower, target: attacker.attackTarget.card.name, loyalty: attacker.attackTarget.loyalty }));
         attackerLifelinkHeal += remainingAttackerPower;
         checkPlaneswalkerDeaths();
       } else if (isLocalAttacking) {
         dealCombatDamageToPlayer(attacker, false, remainingAttackerPower);
-        logMsg(`🐘 Arrollar: ¡${attacker.card.name} repartió daño letal a los bloqueadores y arrolló con ${remainingAttackerPower} de daño a ${getRivalName()}!`);
+        logMsg(gameText('combat.trample.autoRival', { card: attacker.card.name, amount: remainingAttackerPower, rival: getRivalName() }));
         attackerLifelinkHeal += remainingAttackerPower;
         damageToPlayerThisStep += remainingAttackerPower;
       } else {
         dealCombatDamageToPlayer(attacker, true, remainingAttackerPower);
-        logMsg(`🐘 Arrollar: ¡El ${attacker.card.name} de ${getRivalName()} repartió daño letal a tus defensores y te arrolló con ${remainingAttackerPower} de daño!`);
+        logMsg(gameText('combat.trample.autoLocal', { card: attacker.card.name, rival: getRivalName(), amount: remainingAttackerPower }));
         attackerLifelinkHeal += remainingAttackerPower;
         damageToPlayerThisStep += remainingAttackerPower;
       }
@@ -658,15 +659,15 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
     if (attackerHasLifelink && attackerLifelinkHeal > 0) {
       if (isLocalAttacking) {
         state.localHP += attackerLifelinkHeal;
-        logMsg(`💚 Vínculo Vital: Recuperás ${attackerLifelinkHeal} HP por el ataque de ${attacker.card.name}.`);
+        logMsg(gameText('combat.lifelink.attackHealLocal', { amount: attackerLifelinkHeal, card: attacker.card.name }));
       } else {
         state.rivalHP += attackerLifelinkHeal;
-        logMsg(`💚 Vínculo Vital: ${getRivalName()} recupera ${attackerLifelinkHeal} HP por el ataque de ${attacker.card.name}.`);
+        logMsg(gameText('combat.lifelink.attackHealRival', { rival: getRivalName(), amount: attackerLifelinkHeal, card: attacker.card.name }));
       }
     }
 
     const blockNames = aliveBlockers.map(b => b.card.name).join(" y ");
-    logMsg(`⚔️ Choque: ${attacker.card.name} se enfrenta a ${blockNames}.`);
+    logMsg(gameText('combat.clash', { attacker: attacker.card.name, blockers: blockNames }));
   }
 }
 
@@ -688,8 +689,8 @@ function removeDeadCombatUnit(unit, isLocal) {
   if (idx === -1) return false;
 
   logMsg(unit.card.isToken
-    ? `💀 ${unit.card.name} de ${ownerName} murió; al ser ficha, deja de existir.`
-    : `💀 ${unit.card.name} de ${ownerName} murió y va al cementerio.`);
+    ? gameText('combat.death.token', { card: unit.card.name, owner: ownerName })
+    : gameText('combat.death.graveyard', { card: unit.card.name, owner: ownerName }));
   combatArray.splice(idx, 1);
   moveBattlefieldCardToZone(unit.card, graveyardArray);
   sendAurasToGraveyard(unit, isLocal);

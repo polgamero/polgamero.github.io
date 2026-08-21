@@ -9,6 +9,7 @@ import { hasKeyword, getProtectionMatch } from './keywords.js';
 const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
 import { passPriority, checkGameOver, resetPriorityClock } from './turnManager.js';
 import { recordTelemetryEvent } from './telemetry.js';
+import { gameText } from './gameTexts.js';
 
 // A qué le puede apuntar cada variante de "contrarrestar" — regla real de MTG (702.61 y
 // glosario de counterspells): un counterspell normal SOLO frena HECHIZOS en la pila, nunca
@@ -166,11 +167,11 @@ export function addToStack(item) {
   if (item.abilityKind === 'triggered') {
     const label = item.triggerLabel ? ` — ${item.triggerLabel}` : '';
     const provenance = triggerProvenance ? ` · ${triggerProvenance}` : '';
-    logMsg(`⚡ Habilidad disparada de "${item.card.name}"${label}${provenance} entró a la pila (ID: ${item.id}).`);
+    logMsg(gameText('stack.add.trigger', { card: item.card.name, label, provenance, id: item.id }));
   } else if (item.abilityKind === 'loyalty') {
-    logMsg(`🔮 Habilidad de Lealtad de "${item.card.name}" — ${item.ability?.name || 'Loyalty'} entró a la pila (ID: ${item.id}).`);
+    logMsg(gameText('stack.add.loyalty', { card: item.card.name, ability: item.ability?.name || 'Loyalty', id: item.id }));
   } else {
-    logMsg(`⚡ "${item.card.name}" entró a la pila (ID: ${item.id}).`);
+    logMsg(gameText('stack.add.spell', { card: item.card.name, id: item.id }));
   }
   if (state.currentMatch && item.isLocal) resetPriorityClock('stack_push');
   renderStack();
@@ -189,7 +190,7 @@ export async function resolveTopStackItem() {
     card: { id: item.card?.id ?? null, name: item.card?.name ?? null },
     stackDepthAfterPop: spellStack.length
   });
-  logMsg(`✨ Resolviendo de la pila: ${item.card.name}`);
+  logMsg(gameText('stack.resolve', { card: item.card.name }));
   
   await executeStackItem(item);
 
@@ -200,7 +201,7 @@ export async function resolveTopStackItem() {
   // curarse, drenar, etc. — el mismo vocabulario que ya entiende resolveEffectDirect), para
   // no necesitar una segunda selección de objetivo además de la del efecto base.
   if (item.kicked && item.card.kicker && item.card.kicker.bonusEffect) {
-    logMsg(`💪 ¡${item.card.name} fue Kickeado! Se suma el bonus.`);
+    logMsg(gameText('stack.kickerBonus', { card: item.card.name }));
     await resolveGameEffect(item.card.kicker.bonusEffect, {
       sourceCard: item.card, isLocal: item.isLocal, targetObj: null, stackItem: item, xValue: item.xValue || 0
     });
@@ -316,7 +317,7 @@ async function resolveCardFilterEffect(effect, cardName, isLocal) {
         amount,
         cardName
       });
-      logMsg(`🃏 ${cardName}: ${getRivalName()} completó su ${effect.type === 'loot' ? 'Loot' : 'Rummage'}.`);
+      logMsg(gameText('effect.lootRemote', { card: cardName, rival: getRivalName(), kind: effect.type === 'loot' ? 'Loot' : 'Rummage' }));
       return;
     }
 
@@ -384,7 +385,7 @@ async function resolveCardFilterEffect(effect, cardName, isLocal) {
 
     const names = discarded.map(c => c.name).join(', ');
     const orderText = effect.type === 'loot' ? 'robó y luego descartó' : 'descartó y luego robó';
-    logMsg(`🃏 ¡${cardName}! ${who} ${orderText}: robó ${drawn}; descartó ${discarded.length}${names ? ` (${names})` : ''}.`);
+    logMsg(gameText('effect.lootSummary', { card: cardName, who, order: orderText, drawn, discarded: discarded.length, names: names ? ` (${names})` : '' }));
     render();
   });
 }
@@ -436,15 +437,15 @@ async function resolveSacrificeEffect(effect, cardName, sourceIsLocal) {
       });
       const names = response.sacrificedNames || [];
       logMsg(names.length > 0
-        ? `🔪 ¡${cardName}! ${getRivalName()} sacrificó: ${names.join(', ')}.`
-        : `🔪 ¡${cardName}! ${getRivalName()} no tenía ${permanentType === 'creature' ? 'criaturas' : 'artefactos'} para sacrificar.`);
+        ? gameText('effect.sacrifice.remoteDone', { card: cardName, rival: getRivalName(), cards: names.join(', ') })
+        : gameText('effect.sacrifice.remoteNone', { card: cardName, rival: getRivalName(), kind: permanentType === 'creature' ? 'criaturas' : 'artefactos' }));
       return names;
     }
 
     const candidates = getSacrificeEffectCandidates(victimIsLocal, permanentType);
     const count = Math.min(amount, candidates.length);
     if (count === 0) {
-      logMsg(`🔪 ${cardName}: no había ${permanentType === 'creature' ? 'criaturas' : 'artefactos'} para sacrificar.`);
+      logMsg(gameText('effect.sacrifice.none', { card: cardName, kind: permanentType === 'creature' ? 'criaturas' : 'artefactos' }));
       return [];
     }
 
@@ -466,7 +467,7 @@ async function resolveSacrificeEffect(effect, cardName, sourceIsLocal) {
     const removed = performSacrificeBatch(chosen, victimIsLocal);
     if (removed.length > 0) {
       const who = victimIsLocal ? 'Vos' : getRivalName();
-      logMsg(`🔪 ¡${cardName}! ${who} ${victimIsLocal ? 'sacrificaste' : 'sacrificó'} ${removed.map(item => item.card.name).join(', ')}.`);
+      logMsg(gameText('effect.sacrifice.done', { card: cardName, who, verb: victimIsLocal ? 'sacrificaste' : 'sacrificó', cards: removed.map(item => item.card.name).join(', ') }));
     }
     return removed;
   });
@@ -480,31 +481,31 @@ async function resolveSimpleDirectEffect(effect, cardName, isLocal) {
       if(isLocal && state.localDeck.length > 0) state.localHand.push(state.localDeck.pop());
       if(!isLocal && state.rivalDeck.length > 0) state.rivalHand.push(state.rivalDeck.pop());
     }
-    logMsg(`🃏 ¡${cardName}! ${targetName} robó ${effect.amount} cartas extras.`);
+    logMsg(gameText('effect.drawExtra', { card: cardName, target: targetName, amount: effect.amount }));
   } else if (effect.type === 'loot' || effect.type === 'rummage') {
     await resolveCardFilterEffect(effect, cardName, isLocal);
   } else if (effect.type === 'sacrifice') {
     await resolveSacrificeEffect(effect, cardName, isLocal);
   } else if (effect.type === 'heal') {
     if (isLocal) state.localHP += effect.amount; else state.rivalHP += effect.amount;
-    logMsg(`💚 ¡${cardName}! ${targetName} recuperó ${effect.amount} de HP.`);
+    logMsg(gameText('effect.heal', { card: cardName, target: targetName, amount: effect.amount }));
   } else if (effect.type === 'damage') {
     if (isLocal) state.rivalHP -= effect.amount; else state.localHP -= effect.amount;
-    logMsg(`💥 ¡${cardName}! ${targetName} hizo ${effect.amount} de daño.`);
+    logMsg(gameText('effect.damage', { card: cardName, target: targetName, amount: effect.amount }));
   } else if (effect.type === 'fog') {
     state.combatDamagePrevented = true;
-    logMsg(`🌫️ ¡${cardName}! Se previene todo el daño de combate este turno.`);
+    logMsg(gameText('effect.fog', { card: cardName }));
   } else if (effect.type === 'draw_and_lose_life') {
     if (isLocal && state.localDeck.length > 0) state.localHand.push(state.localDeck.pop());
     if (!isLocal && state.rivalDeck.length > 0) state.rivalHand.push(state.rivalDeck.pop());
     if (isLocal) state.localHP -= effect.lifeLoss; else state.rivalHP -= effect.lifeLoss;
-    logMsg(`📖 ¡${cardName}! ${targetName} robó una carta y perdió ${effect.lifeLoss} de vida.`);
+    logMsg(gameText('effect.drawLoseLife', { card: cardName, target: targetName, life: effect.lifeLoss }));
   } else if (effect.type === 'drain') {
     // Genérico para cualquier disparador (diesTrigger, upkeepTrigger, etc.), no solo los
     // dos casos de muerte que ya tenían su propio código a mano.
     if (isLocal) { state.rivalHP -= effect.amount; state.localHP += effect.amount; }
     else { state.localHP -= effect.amount; state.rivalHP += effect.amount; }
-    logMsg(`🩸 ¡${cardName}! Drena ${effect.amount} de vida.`);
+    logMsg(gameText('effect.drain', { card: cardName, amount: effect.amount }));
   } else if (effect.type === 'discard') {
     // Punto 8: descarte sin target explícito (ETB/trigger) afecta al oponente del
     // controlador, pero QUIEN elige qué cartas soltar es el jugador afectado. `selection`
@@ -519,15 +520,15 @@ async function resolveSimpleDirectEffect(effect, cardName, isLocal) {
       reason: 'effect'
     });
     logMsg(result.discardedNames.length > 0
-      ? `🗑️ ¡${cardName}! ${opponentName} descartó: ${result.discardedNames.join(', ')}.`
-      : `🗑️ ¡${cardName}! ${opponentName} no tenía cartas para descartar.`);
+      ? gameText('effect.discard.done', { card: cardName, target: opponentName, cards: result.discardedNames.join(', ') })
+      : gameText('effect.discard.none', { card: cardName, target: opponentName }));
   } else if (effect.type === 'scry' || effect.type === 'surveil') {
     // Convención del mazo en este proyecto: pop() saca del FINAL del array, así que el
     // final = la cima del mazo. Sacamos las últimas N cartas y las damos vuelta para que
     // topCards[0] sea la más arriba de todas (más natural para mostrar en el modal).
     const deck = isLocal ? state.localDeck : state.rivalDeck;
     const amount = Math.min(effect.amount, deck.length);
-    if (amount === 0) { logMsg(`${cardName}: no hay cartas para mirar, el mazo está vacío.`); return; }
+    if (amount === 0) { logMsg(gameText('effect.look.empty', { card: cardName })); return; }
     const topCards = deck.splice(deck.length - amount, amount).reverse();
 
     const finishScrySurveil = (moved, kept) => {
@@ -541,7 +542,7 @@ async function resolveSimpleDirectEffect(effect, cardName, isLocal) {
         deck.unshift(...moved); // al fondo del array = al fondo del mazo
       }
       const destino = effect.type === 'surveil' ? 'al cementerio' : 'al fondo';
-      logMsg(`${effect.type === 'surveil' ? '👁️' : '🔮'} ${cardName}: ${kept.length} se quedaron arriba, ${moved.length} se fueron ${destino}.`);
+      logMsg(gameText('effect.look.summary', { icon: effect.type === 'surveil' ? '👁️' : '🔮', card: cardName, kept: kept.length, moved: moved.length, destination: destino }));
 
       // Recién ACÁ termina de resolverse de verdad — hacemos nosotros mismos lo que
       // resolveTopStackItem hace normalmente al final (se había frenado por el flag).
@@ -585,7 +586,7 @@ async function resolveSimpleDirectEffect(effect, cardName, isLocal) {
     });
 
     if (eligible.length === 0) {
-      logMsg(`${cardName}: no hay ningún contador en el campo para proliferar.`);
+      logMsg(gameText('effect.proliferate.none', { card: cardName }));
       return;
     }
 
@@ -593,17 +594,17 @@ async function resolveSimpleDirectEffect(effect, cardName, isLocal) {
       const { item, kind, ownerIsLocal } = entry;
       if (kind === 'planeswalker') {
         item.loyalty += 1;
-        logMsg(`🔮 ${item.card.name} ganó un contador de Lealtad (ahora: ${item.loyalty}).`);
+        logMsg(gameText('effect.proliferate.loyalty', { card: item.card.name, loyalty: item.loyalty }));
       } else if (kind === 'player_poison') {
         if (ownerIsLocal) state.localPoison += 1; else state.rivalPoison += 1;
-        logMsg(`☠️ ${ownerIsLocal ? 'Vos' : getRivalName()} ${ownerIsLocal ? 'recibiste' : 'recibió'} un contador de Veneno más (ahora: ${ownerIsLocal ? state.localPoison : state.rivalPoison}).`);
+        logMsg(gameText('effect.proliferate.poison', { owner: ownerIsLocal ? 'Vos' : getRivalName(), verb: ownerIsLocal ? 'recibiste' : 'recibió', poison: ownerIsLocal ? state.localPoison : state.rivalPoison }));
       } else {
         const types = (entry.counterTypes || Object.keys(item?.counters || {})).filter(type => Number(item?.counters?.[type]) > 0);
         types.forEach(type => {
           if (type === 'plusOne' || type === 'minusOne') addCounters(item, type, 1);
           else item.counters[type] = Number(item.counters[type] || 0) + 1;
         });
-        logMsg(`🔵 ${item.card.name} recibió otro contador de cada tipo que ya tenía.`);
+        logMsg(gameText('effect.proliferate.counters', { card: item.card.name }));
       }
     };
 
@@ -612,8 +613,8 @@ async function resolveSimpleDirectEffect(effect, cardName, isLocal) {
       // Un -1/-1 de más puede terminar de matar a alguna criatura (SBA).
       checkAllDeaths();
       logMsg(chosen.length > 0
-        ? `✨ ¡${cardName}! Se proliferaron ${chosen.length} contador(es).`
-        : `${cardName}: no se proliferó ningún contador.`);
+        ? gameText('effect.proliferate.done', { card: cardName, count: chosen.length })
+        : gameText('effect.proliferate.zero', { card: cardName }));
 
       state.pendingProliferateChoice = false;
       state.priorityPlayer = state.activePlayer;
@@ -658,7 +659,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
   if (enforceProtectionAll && targetObj.type === 'creature') {
     const protectedColor = getProtectionMatch(targetObj.item, card.colors || []);
     if (protectedColor) {
-      logMsg(`🛡️ ¡${targetObj.item.card.name} tiene Protección de ${COLOR_LABELS[protectedColor] || protectedColor}! ${card.name} no le hace nada.`);
+      logMsg(gameText('effect.protectionNoEffect', { target: targetObj.item.card.name, color: COLOR_LABELS[protectedColor] || protectedColor, card: card.name }));
       return;
     }
   }
@@ -668,11 +669,11 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
         if (effectToApply.type === 'damage') {
           if (targetObj.isLocal) state.localHP -= effectToApply.amount; 
           else state.rivalHP -= effectToApply.amount;
-          logMsg(`💥 ¡${card.name}! Le hizo ${effectToApply.amount} de daño a ${targetName}.`);
+          logMsg(gameText('effect.targetDamage', { card: card.name, amount: effectToApply.amount, target: targetName }));
         } else if (effectToApply.type === 'heal') {
           if (targetObj.isLocal) state.localHP += effectToApply.amount; 
           else state.rivalHP += effectToApply.amount;
-          logMsg(`💚 ¡${card.name}! Curó ${effectToApply.amount} de HP a ${targetName}.`);
+          logMsg(gameText('effect.targetHeal', { card: card.name, amount: effectToApply.amount, target: targetName }));
         }
         // LÓGICA NUEVA: VENENO DIRECTO (sin pasar por combate/Infectar) — solo existe para
         // jugadores, nunca para criaturas (regla real: los contadores de Veneno son de
@@ -683,7 +684,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           // BUGFIX: antes comparaba targetName === 'el Tano' (string fija) para decidir si
           // agregar "al Tano" al final — con un nombre real de rival, esa comparación
           // nunca daba true. Ahora usa targetObj.isLocal directo, sin depender del string.
-          logMsg(`☠️ ¡${card.name}! ${targetObj.isLocal ? 'Te' : 'Le'} puso ${effectToApply.amount} contador(es) de Veneno${targetObj.isLocal ? '' : ` a ${targetName}`}.`);
+          logMsg(gameText('effect.poison', { card: card.name, target: targetObj.isLocal ? 'Vos' : targetName, amount: effectToApply.amount }));
         }
         // PUNTO 8: DESCARTE ELEGIDO. Por default el jugador objetivo decide qué cartas
         // descarta. Una carta futura puede pedir explícitamente `selection:"random"`.
@@ -696,9 +697,9 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             reason: 'effect'
           });
           if (result.discardedNames.length > 0) {
-            logMsg(`🗑️ ¡${card.name}! ${targetName} descartó: ${result.discardedNames.join(', ')}.`);
+            logMsg(gameText('effect.discard.done', { card: card.name, target: targetName, cards: result.discardedNames.join(', ') }));
           } else {
-            logMsg(`🗑️ ¡${card.name}! ${targetName} no tenía cartas para descartar.`);
+            logMsg(gameText('effect.discard.none', { card: card.name, target: targetName }));
           }
         }
         // ENTREGA 23.10.1 — EFECTO SOBRE ZONA PRIVADA RIVAL.
@@ -722,9 +723,9 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           if (result.selectedCount > 0) {
             const publicNames = Array.isArray(result.movedNames) && result.movedNames.length
               ? `: ${result.movedNames.join(', ')}` : '';
-            logMsg(`🔐 ¡${card.name}! movió ${result.selectedCount} carta(s) de la zona privada de ${targetName}${publicNames}.`);
+            logMsg(gameText('effect.private.move', { card: card.name, count: result.selectedCount, target: targetName, names: publicNames }));
           } else {
-            logMsg(`🔐 ${card.name}: no había cartas elegibles en la zona privada de ${targetName}.`);
+            logMsg(gameText('effect.private.none', { card: card.name, target: targetName }));
           }
         }
         // LÓGICA NUEVA: EXILIAR CEMENTERIO ENTERO (odio de cementerio)
@@ -735,9 +736,9 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           if (count > 0) {
             targetExile.push(...targetGraveyard);
             targetGraveyard.length = 0;
-            logMsg(`🌀 ¡${card.name} exilió las ${count} carta(s) del cementerio de ${targetName}!`);
+            logMsg(gameText('effect.graveExile.done', { card: card.name, count, target: targetName }));
           } else {
-            logMsg(`${card.name}: el cementerio de ${targetName} ya estaba vacío.`);
+            logMsg(gameText('effect.graveExile.empty', { card: card.name, target: targetName }));
           }
         }
         // LÓGICA NUEVA: EFECTO GENÉRICO DE UNA SOLA APLICACIÓN (ej. Cuarentena Total)
@@ -749,17 +750,17 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             targetPlayer,
             sourceName: card.name
           });
-          logMsg(`🚫 ¡${card.name}! ${targetName} no va a poder atacar en su próxima fase de combate.`);
+          logMsg(gameText('effect.preventAttack.player', { card: card.name, target: targetName }));
         }
       } else if (targetObj.type === 'creature') {
         const targetUnit = targetObj.item;
         if (effectToApply.type === 'damage') {
           const protectedColor = getProtectionMatch(targetUnit, card.colors || []);
           if (protectedColor) {
-            logMsg(`🛡️ ¡${targetUnit.card.name} tiene Protección de ${COLOR_LABELS[protectedColor] || protectedColor}! El daño de ${card.name} fue prevenido.`);
+            logMsg(gameText('effect.damagePrevented', { target: targetUnit.card.name, color: COLOR_LABELS[protectedColor] || protectedColor, card: card.name }));
           } else {
             targetUnit.damageTaken += effectToApply.amount;
-            logMsg(`💥 ¡${card.name}! Le hizo ${effectToApply.amount} de daño a ${targetUnit.card.name}.`);
+            logMsg(gameText('effect.targetDamage', { card: card.name, amount: effectToApply.amount, target: targetUnit.card.name }));
             checkAllDeaths();
           }
         } 
@@ -770,7 +771,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
         else if (effectToApply.type === 'cant_attack_next_turn') {
           const board = targetObj.isLocal ? state.localCombat : state.rivalCombat;
           if (!board.includes(targetUnit)) {
-            logMsg(`⚠️ ${card.name} falló: la criatura objetivo ya no está en el campo.`);
+            logMsg(gameText('effect.targetGone', { card: card.name }));
           } else {
             const targetObjectId = ensureEffectObjectId(targetUnit);
             const targetPlayer = targetObj.isLocal ? 'local' : 'rival';
@@ -783,7 +784,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
               appliesThisCombat: false,
               sourceName: card.name
             });
-            logMsg(`🚫 ¡${card.name}! ${targetUnit.card.name} no podrá atacar durante el próximo turno de su controlador.`);
+            logMsg(gameText('effect.preventAttack.creature', { card: card.name, creature: targetUnit.card.name }));
           }
         }
         // LÓGICA NUEVA: EQUIPAR (real) — el Equipo que activó esta habilidad se adjunta a la criatura.
@@ -793,12 +794,12 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           const equipmentItem = item.sourceItem;
           const protectedColor = getProtectionMatch(targetUnit, card.colors || []);
           if (protectedColor) {
-            logMsg(`🛡️ ¡${targetUnit.card.name} tiene Protección de ${COLOR_LABELS[protectedColor] || protectedColor}! No se le puede equipar ${card.name}.`);
+            logMsg(gameText('effect.equipProtection', { target: targetUnit.card.name, color: COLOR_LABELS[protectedColor] || protectedColor, card: card.name }));
           } else if (equipmentItem) {
             equipmentItem.attachedTo = targetUnit;
-            logMsg(`⚔️ ¡${card.name} fue equipado a ${targetUnit.card.name}!`);
+            logMsg(gameText('effect.equip', { card: card.name, target: targetUnit.card.name }));
           } else {
-            logMsg(`⚠️ ${card.name} no pudo encontrar su propio permanente en la zona de soporte para equiparse.`);
+            logMsg(gameText('effect.equip.sourceMissing', { card: card.name }));
           }
         }
         // LÓGICA NUEVA: PELEAR — la criatura "atacante" (la que activó esto, o si viene de
@@ -837,31 +838,31 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             const selfProtectedFromTarget = getProtectionMatch(selfUnit, targetUnit.card.colors || []);
 
             if (targetProtectedFromSelf) {
-              logMsg(`🛡️ ¡${targetUnit.card.name} tiene Protección de ${COLOR_LABELS[targetProtectedFromSelf] || targetProtectedFromSelf}! No recibe daño de ${selfUnit.card.name}.`);
+              logMsg(gameText('effect.protection.prevent', { target: targetUnit.card.name, color: COLOR_LABELS[targetProtectedFromSelf] || targetProtectedFromSelf, source: selfUnit.card.name }));
             } else if (selfPower > 0) {
               targetUnit.damageTaken = (targetUnit.damageTaken || 0) + selfPower;
               if (selfHasDeathtouch) targetUnit.tookDeathtouch = true;
               if (selfHasLifelink) {
                 if (isLocal) state.localHP += selfPower; else state.rivalHP += selfPower;
-                logMsg(`💚 Vínculo Vital: ${selfUnit.card.name} le da ${selfPower} de vida a su controlador.`);
+                logMsg(gameText('effect.lifelink.controller', { card: selfUnit.card.name, amount: selfPower }));
               }
             }
 
             if (selfProtectedFromTarget) {
-              logMsg(`🛡️ ¡${selfUnit.card.name} tiene Protección de ${COLOR_LABELS[selfProtectedFromTarget] || selfProtectedFromTarget}! No recibe daño de ${targetUnit.card.name}.`);
+              logMsg(gameText('effect.protection.prevent', { target: selfUnit.card.name, color: COLOR_LABELS[selfProtectedFromTarget] || selfProtectedFromTarget, source: targetUnit.card.name }));
             } else if (targetPower > 0) {
               selfUnit.damageTaken = (selfUnit.damageTaken || 0) + targetPower;
               if (targetHasDeathtouch) selfUnit.tookDeathtouch = true;
               if (targetHasLifelink) {
                 if (isLocal) state.rivalHP += targetPower; else state.localHP += targetPower;
-                logMsg(`💚 Vínculo Vital: ${targetUnit.card.name} le da ${targetPower} de vida a su controlador.`);
+                logMsg(gameText('effect.lifelink.controller', { card: targetUnit.card.name, amount: targetPower }));
               }
             }
 
-            logMsg(`🥊 ¡${selfUnit.card.name} pelea contra ${targetUnit.card.name}! (${selfPower} vs ${targetPower} de daño)`);
+            logMsg(gameText('effect.fight', { a: selfUnit.card.name, b: targetUnit.card.name, pa: selfPower, pb: targetPower }));
             checkAllDeaths();
           } else {
-            logMsg(`⚠️ ${card.name} no tenía ninguna criatura tuya para pelear.`);
+            logMsg(gameText('effect.fight.none', { card: card.name }));
           }
         }
         // LÓGICA NUEVA: TRUCO DE COMBATE — +X/+X hasta el final del turno (ej. Fuerza de Toro)
@@ -869,7 +870,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
           targetUnit.tempEffects.push({ name: card.name, powerMod: effectToApply.powerMod, toughnessMod: effectToApply.toughnessMod });
           const pText = `${effectToApply.powerMod >= 0 ? '+' : ''}${effectToApply.powerMod}/${effectToApply.toughnessMod >= 0 ? '+' : ''}${effectToApply.toughnessMod}`;
-          logMsg(`💪 ¡${card.name}! ${targetUnit.card.name} obtiene ${pText} hasta el final del turno.`);
+          logMsg(gameText('effect.pump', { card: card.name, target: targetUnit.card.name, stats: pText }));
         }
         // LÓGICA NUEVA: CONTADOR PERMANENTE +1/+1 o -1/-1 — a diferencia de "pump" (temporal,
         // se borra en Limpieza), esto usa el mismo sistema real de contadores que ya tienen
@@ -880,14 +881,14 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           const amount = effectToApply.amount || 1;
           addCounters(targetUnit, counterType, amount);
           const signo = counterType === 'plusOne' ? '+' : '-';
-          logMsg(`🔵 ¡${card.name}! ${targetUnit.card.name} recibió ${amount} contador(es) ${signo}${amount}/${signo}${amount}.`);
+          logMsg(gameText('effect.counter', { card: card.name, target: targetUnit.card.name, amount, stats: `${signo}${amount}/${signo}${amount}` }));
           checkAllDeaths();
         }
         // LÓGICA NUEVA: PROTECCIÓN TEMPORAL — otorga una keyword hasta el final del turno (ej. A Cubierto)
         else if (effectToApply.type === 'grant_keyword_temp') {
           if (!targetUnit.tempEffects) targetUnit.tempEffects = [];
           targetUnit.tempEffects.push({ name: card.name, keywords: [effectToApply.keyword] });
-          logMsg(`🛡️ ¡${card.name}! ${targetUnit.card.name} gana ${effectToApply.keyword} hasta el final del turno.`);
+          logMsg(gameText('effect.keyword', { card: card.name, target: targetUnit.card.name, keyword: effectToApply.keyword }));
         }
         // PUNTO 10 PRE-500: destruir una unidad en Combat puede venir de removal de
         // criatura O de removal de artefacto si la unidad conserva tipo Artefacto
@@ -899,21 +900,21 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           const idx = board.indexOf(targetUnit);
           if (idx !== -1) {
             if (effectToApply.type === 'destroy_artifact' && !targetUnit.card.type.includes('Artefacto')) {
-              logMsg(`⚠️ ${card.name} falló: ${targetUnit.card.name} ya no es un Artefacto válido.`);
+              logMsg(gameText('effect.destroy.invalidArtifact', { card: card.name, target: targetUnit.card.name }));
             } else if (hasKeyword(targetUnit, 'indestructible')) {
-              logMsg(`🛡️ ${targetUnit.card.name} es Indestructible: ${card.name} no pudo hacer nada.`);
+              logMsg(gameText('effect.indestructible', { target: targetUnit.card.name, card: card.name }));
             } else {
               board.splice(idx, 1);
               detachEquipmentFrom(targetUnit, isTargetLocal);
               sendAurasToGraveyard(targetUnit, isTargetLocal);
               cleanupIfVehicle(targetUnit); // si era un Vehículo tripulado, saca el power/toughness "prestado"
               moveBattlefieldCardToZone(targetUnit.card, grave);
-              logMsg(`💀 ¡${card.name} destruyó a ${targetUnit.card.name}!${targetUnit.card.isToken ? ' Al ser ficha, dejó de existir.' : ''}`);
+              logMsg(gameText('effect.destroy', { card: card.name, target: targetUnit.card.name, token: targetUnit.card.isToken ? ' Al ser ficha, dejó de existir.' : '' }));
               triggerCreatureDies(targetUnit, isTargetLocal);
               triggerAnyCreatureDeath(targetUnit, isTargetLocal);
             }
           } else {
-            logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+            logMsg(gameText('effect.targetGone', { card: card.name }));
           }
         }
         // LÓGICA NUEVA: EXILIAR CRIATURA — a diferencia de destruir, el Exilio NO es
@@ -941,12 +942,12 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             const persisted = moveBattlefieldCardToZone(targetUnit.card, exileZone);
             if (persisted) {
               state.scheduledReturns.push({ card: targetUnit.card, isLocal: isTargetLocal });
-              logMsg(`🌀 ¡${card.name} exilió a ${targetUnit.card.name}! Vuelve al campo en el próximo Paso Final de su controlador.`);
+              logMsg(gameText('effect.exile.returnEnd', { card: card.name, target: targetUnit.card.name }));
             } else {
-              logMsg(`🌀 ¡${card.name}! ${targetUnit.card.name} dejó el campo y, al ser ficha, dejó de existir: no puede regresar.`);
+              logMsg(gameText('effect.exile.tokenGone', { card: card.name, target: targetUnit.card.name }));
             }
           } else {
-            logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+            logMsg(gameText('effect.targetGone', { card: card.name }));
           }
         }
         else if (effectToApply.type === 'exile_creature') {
@@ -961,10 +962,10 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             cleanupIfVehicle(targetUnit);
             moveBattlefieldCardToZone(targetUnit.card, exileZone);
             logMsg(targetUnit.card.isToken
-              ? `🌀 ¡${card.name}! ${targetUnit.card.name} dejó el campo y, al ser ficha, dejó de existir.`
-              : `🌀 ¡${card.name} exilió a ${targetUnit.card.name}! No va a poder volver del cementerio.`);
+              ? gameText('effect.exile.permanentTokenGone', { card: card.name, target: targetUnit.card.name })
+              : gameText('effect.exile.permanent', { card: card.name, target: targetUnit.card.name }));
           } else {
-            logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+            logMsg(gameText('effect.targetGone', { card: card.name }));
           }
         }
         // LÓGICA NUEVA: REBOTE A LA MANO
@@ -973,7 +974,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           const board = isTargetLocal ? state.localCombat : state.rivalCombat;
           const idx = board.indexOf(targetUnit);
           if (idx === -1) {
-            logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+            logMsg(gameText('effect.targetGone', { card: card.name }));
           } else if (state.currentMatch && !isTargetLocal) {
             // ENTREGA 23.7 — la mano rival es PRIVADA. No insertar jamás `targetUnit.card`
             // en state.rivalHand: eso era el HIDDEN_HAND_LEAK y además el dueño real nunca
@@ -987,10 +988,10 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             );
             if (response?.completed) {
               logMsg(response.tokenCeasedToExist
-                ? `🔄 ¡${card.name}! ${targetUnit.card.name} dejó el campo y, al ser ficha, dejó de existir.`
-                : `🔄 ¡${card.name} devolvió a ${targetUnit.card.name} a la mano de su dueño!`);
+                ? gameText('effect.bounce.tokenGone', { card: card.name, target: targetUnit.card.name })
+                : gameText('effect.bounce.done', { card: card.name, target: targetUnit.card.name }));
             } else {
-              logMsg(`⚠️ ${card.name} no pudo completar el rebote remoto de ${targetUnit.card.name}.`);
+              logMsg(gameText('effect.bounce.remoteFailed', { card: card.name, target: targetUnit.card.name }));
             }
           } else {
             // Local/single-player: la mano real está disponible en este mismo cliente.
@@ -1003,8 +1004,8 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             );
             moveBattlefieldCardToZone(targetUnit.card, ownerHand);
             logMsg(targetUnit.card.isToken
-              ? `🔄 ¡${card.name}! ${targetUnit.card.name} dejó el campo y, al ser ficha, dejó de existir.`
-              : `🔄 ¡${card.name} devolvió a ${targetUnit.card.name} a la mano de su dueño!`);
+              ? gameText('effect.bounce.tokenGone', { card: card.name, target: targetUnit.card.name })
+              : gameText('effect.bounce.done', { card: card.name, target: targetUnit.card.name }));
           }
         }
       }
@@ -1023,14 +1024,14 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
         if (matchesType && idx !== -1) {
           supportZone.splice(idx, 1);
           moveBattlefieldCardToZone(targetItem.card, grave);
-          logMsg(`💥 ¡${card.name} destruyó a ${targetItem.card.name}!`);
+          logMsg(gameText('effect.destroy.done', { card: card.name, target: targetItem.card.name }));
           // Si era un Encantamiento estático (ej. Fuerza de la Manada), alguna criatura
           // que dependía de ese +1/+1 para sobrevivir podría morir ahora.
           if (targetItem.card.staticEffect) {
             checkAllDeaths();
           }
         } else if (idx === -1) {
-          logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+          logMsg(gameText('effect.targetGone', { card: card.name }));
         }
       }
       // LÓGICA NUEVA (Cabo suelto #13): DAÑO A UN PLANESWALKER — un hechizo de daño a
@@ -1042,10 +1043,10 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
         const isTargetLocal = state.localPlaneswalkers.includes(pwItem);
         const zone = isTargetLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
         if (!zone.includes(pwItem)) {
-          logMsg(`⚠️ ${card.name} falló: el objetivo ya no está en el campo.`);
+          logMsg(gameText('effect.targetGone', { card: card.name }));
         } else if (effectToApply.type === 'damage') {
           pwItem.loyalty -= effectToApply.amount;
-          logMsg(`💥 ¡${card.name}! Le sacó ${effectToApply.amount} de Lealtad a ${pwItem.card.name} (queda en ${pwItem.loyalty}).`);
+          logMsg(gameText('effect.pwDamage', { card: card.name, amount: effectToApply.amount, target: pwItem.card.name, loyalty: pwItem.loyalty }));
           checkPlaneswalkerDeaths();
         }
       }
@@ -1137,7 +1138,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           vehicleItem.summoningSickness = !!vehicleItem.enteredThisTurn;
           
           combatZone.push(vehicleItem);
-          logMsg(`🚗 ¡${card.name} fue tripulado y aceleró al campo de batalla como un ${card.baseStats.power}/${card.baseStats.toughness}!`);
+          logMsg(gameText('effect.crew.done', { card: card.name, power: card.baseStats.power, toughness: card.baseStats.toughness }));
         }
       }
       // LÓGICA NUEVA: ARRASAR EL CAMPO (board wipe)
@@ -1169,7 +1170,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
         });
 
         queueCreatureDeathBatch(doomed, deathWatchersSnapshot);
-        logMsg(`💥 ¡${card.name} arrasó con todo! (${localCount} tuya(s) + ${rivalCount} de ${getRivalName()} fueron destruidas)`);
+        logMsg(gameText('effect.wrath', { card: card.name, local: localCount, rivalCount, rival: getRivalName() }));
       }
       // LÓGICA NUEVA: CREAR FICHAS
       else if (effectToApply.type === 'create_tokens') {
@@ -1200,7 +1201,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           board.push(newTokenUnit);
           triggerCreatureEtb(isLocal, tokenCard, newTokenUnit);
         }
-        logMsg(`✨ ¡${card.name} creó ${amount} ficha(s) de "${effectToApply.tokenName}"!`);
+        logMsg(gameText('effect.token.create', { card: card.name, amount, token: effectToApply.tokenName }));
       }
       // PUNTO 7: REANIMAR DESDE EL CEMENTERIO — ahora el controlador ELIGE qué
       // criatura vuelve usando el selector general del Punto 6. El JSON histórico no cambia:
@@ -1243,7 +1244,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           if (revivedCard.type.includes('Legendaria')) {
             const duplicate = board.find(u => u !== newUnit && u.card.name === revivedCard.name);
             if (duplicate) {
-              logMsg(`⚖️ Regla de Leyenda: ya tenías a ${revivedCard.name} en el campo. La reanimada se sacrifica.`);
+              logMsg(gameText('legend.reanimatedDuplicate', { card: revivedCard.name }));
               performSacrifice(newUnit, isLocal);
             }
           }
@@ -1273,16 +1274,16 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
                 triggerType: 'reanimate_etb'
               });
             } else {
-              logMsg(`⚠️ ${revivedCard.name}: su ETB no encontró un objetivo legal y no se apiló.`);
+              logMsg(gameText('effect.etb.noLegalTarget', { card: revivedCard.name }));
             }
           }
 
           revivedCount++;
         }
         if (revivedCount > 0) {
-          logMsg(`⚰️ ¡${card.name} devolvió ${revivedCount} criatura(s) del cementerio al campo de batalla!`);
+          logMsg(gameText('effect.reanimate.done', { card: card.name, count: revivedCount }));
         } else {
-          logMsg(`⚠️ ${card.name} no encontró ninguna criatura en el cementerio para revivir.`);
+          logMsg(gameText('effect.reanimate.none', { card: card.name }));
         }
       }
       // PUNTO 15 PRE-500: RECUPERAR CARTAS DEL CEMENTERIO A LA MANO.
@@ -1292,9 +1293,9 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
       else if (effectToApply.type === 'return_from_graveyard') {
         const returnedNames = await resolveReturnFromGraveyardEffect(effectToApply, card, isLocal);
         if (returnedNames.length > 0) {
-          logMsg(`♻️ ¡${card.name} devolvió a la mano: ${returnedNames.join(', ')}!`);
+          logMsg(gameText('effect.returnGrave.done', { card: card.name, cards: returnedNames.join(', ') }));
         } else {
-          logMsg(`⚠️ ${card.name} no encontró ninguna carta válida en el cementerio para devolver.`);
+          logMsg(gameText('effect.returnGrave.none', { card: card.name }));
         }
       }
       // LÓGICA NUEVA: BUSCAR TIERRAS (rampa de maná)
@@ -1303,7 +1304,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
         // pasar en la práctica — la rampa siempre busca en el propio mazo — pero por las
         // dudas, blindaje defensivo contra revisar propiedades de un valor vacío).
         if (isHiddenRivalZone(isLocal)) {
-          logMsg(`⚠️ ${card.name}: buscar en el mazo del rival todavía no se puede resolver en multiplayer (es privado).`);
+          logMsg(gameText('effect.ramp.privateRival', { card: card.name }));
         } else {
         const deck = isLocal ? state.localDeck : state.rivalDeck;
         const landZone = isLocal ? state.localLands : state.rivalLands;
@@ -1343,9 +1344,9 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           [deck[i], deck[j]] = [deck[j], deck[i]];
         }
         if (foundCount > 0) {
-          logMsg(`🌱 ¡${card.name} buscó ${foundCount} tierra(s) y la(s) puso en el campo de batalla!`);
+          logMsg(gameText('effect.ramp.done', { card: card.name, count: foundCount }));
         } else {
-          logMsg(`⚠️ ${card.name} no encontró tierras en el mazo.`);
+          logMsg(gameText('effect.ramp.none', { card: card.name }));
         }
         }
       }
@@ -1449,7 +1450,7 @@ async function executeStackItem(item) {
     if (type === 'ability') return;
     if (item.castFrom === 'flashback') {
       (isLocal ? state.localExile : state.rivalExile).push(card);
-      logMsg(`🌀 ${card.name} se exilía tras resolverse (Flashback ya usado).`);
+      logMsg(gameText('flashback.exileAfterResolve', { card: card.name }));
     } else {
       (isLocal ? state.localGraveyard : state.rivalGraveyard).push(card);
     }
@@ -1460,7 +1461,7 @@ async function executeStackItem(item) {
     const pwZone = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
     const newPw = { card, loyalty: card.loyalty, abilityUsedThisTurn: false };
     pwZone.push(newPw);
-    logMsg(`🔮 ¡${card.name} entró al campo de batalla con ${card.loyalty} de Lealtad!`);
+    logMsg(gameText('permanent.pw.enter', { card: card.name, loyalty: card.loyalty }));
     return;
   }
 
@@ -1480,7 +1481,7 @@ async function executeStackItem(item) {
       
       const board = isLocal ? state.localCombat : state.rivalCombat;
       board.push(newPermanentItem);
-      logMsg(`¡${card.name} entró al campo de batalla!`);
+      logMsg(gameText('permanent.creature.enter', { card: card.name }));
       triggerCreatureEtb(isLocal, card, newPermanentItem);
 
       // Regla de Leyenda: si ya tenías otra copia de esta misma Legendaria en el campo,
@@ -1489,7 +1490,7 @@ async function executeStackItem(item) {
       if (card.type.includes('Legendaria')) {
         const duplicate = board.find(u => u !== newPermanentItem && u.card.name === card.name);
         if (duplicate) {
-          logMsg(`⚖️ Regla de Leyenda: ya tenías a ${card.name} en el campo. La copia nueva se sacrifica.`);
+          logMsg(gameText('legend.newDuplicate', { card: card.name }));
           performSacrifice(newPermanentItem, isLocal);
         }
       }
@@ -1501,7 +1502,7 @@ async function executeStackItem(item) {
       if (card.equipment) newPermanentItem.attachedTo = null;
       const supportZone = isLocal ? state.localSupport : state.rivalSupport;
       supportZone.push(newPermanentItem);
-      logMsg(`¡${card.name} entró a la zona de soporte!`);
+      logMsg(gameText('permanent.support.enter', { card: card.name }));
 
       // Si es un Encantamiento estático que puede llevar resistencias a 0 (ej. Toque de
       // Queda), chequeamos muertes de inmediato, no solo tras el próximo daño de combate.
@@ -1549,7 +1550,7 @@ async function executeStackItem(item) {
     // Exilio. Mismo criterio de Flashback que el resto de los hechizos.
     if (item.castFrom === 'flashback') {
       (isLocal ? state.localExile : state.rivalExile).push(card);
-      logMsg(`🌀 ${card.name} se exilía tras resolverse (Flashback ya usado).`);
+      logMsg(gameText('flashback.exileAfterResolve', { card: card.name }));
     } else if (isLocal) {
       state.localGraveyard.push(card);
     } else {
@@ -1595,7 +1596,7 @@ async function executeStackItem(item) {
       if (!targetStillLegal) {
         const kindLabel = item.abilityKind === 'loyalty' ? 'habilidad de Lealtad' : 'habilidad disparada';
         const abilityLabel = item.abilityKind === 'loyalty' && item.ability?.name ? ` "${item.ability.name}"` : '';
-        logMsg(`⚠️ La ${kindLabel}${abilityLabel} de ${card.name} se resolvió sin efecto: su objetivo ya no es legal.`);
+        logMsg(gameText('stack.targetIllegalOnResolve', { kind: kindLabel, ability: abilityLabel, card: card.name }));
         return;
       }
     }
@@ -1631,7 +1632,7 @@ async function executeStackItem(item) {
             const reason = effectToApply.type === 'counter_instant'
               ? 'no es un hechizo instantáneo'
               : (targetIsAbility ? 'es una habilidad, no un hechizo' : 'no coincide con la restricción de este counter');
-            logMsg(`⚠️ ${card.name} no puede contrarrestar a "${targetItem.card.name}" — ${reason}.`);
+            logMsg(gameText('counter.illegal', { card: card.name, target: targetItem.card.name, reason }));
             sendResolvedCardAway();
             return;
           }
@@ -1650,32 +1651,32 @@ async function executeStackItem(item) {
               // payCounterTax/declineCounterTax lo puedan mandar a destino cuando
               // terminen de resolver esto — si no, se perdía sin ir a ningún lado.
               state.pendingCounterUnlessPay = { targetStackId: targetObj.stackId, amount, targetCardName: targetItem.card.name, counterCard: card, counterIsLocal: isLocal, counterCastFrom: item.castFrom };
-              logMsg(`💰 ¡${card.name} amenaza con contrarrestar "${targetItem.card.name}"! Pagá {${amount}} o se pierde.`);
+              logMsg(gameText('counter.tax.ask', { card: card.name, target: targetItem.card.name, cost: `{${amount}}` }));
               return;
             } else if (state.currentMatch) {
               const rivalRole = otherRole(state.currentMatch.myRole);
               const response = await requestRivalDecision('counter_unless_pay', rivalRole, { amount, targetCardName: targetItem.card.name });
               if (response.paid) {
-                logMsg(`💰 ${getRivalName()} pagó {${amount}} para que "${targetItem.card.name}" no se pierda.`);
+                logMsg(gameText('counter.tax.rivalPaid', { rival: getRivalName(), cost: `{${amount}}`, target: targetItem.card.name }));
                 sendResolvedCardAway();
                 return;
               }
-              logMsg(`🚫 ${getRivalName()} no pagó {${amount}} — "${targetItem.card.name}" se pierde.`);
+              logMsg(gameText('counter.tax.rivalDeclined', { rival: getRivalName(), cost: `{${amount}}`, target: targetItem.card.name }));
               // sigue de largo: se contrarresta de verdad, como cualquier counter normal
             } else {
               const paid = tryAutoPayCounterTax(false, amount);
               if (paid) {
-                logMsg(`💰 ${getRivalName()} pagó {${amount}} para que "${targetItem.card.name}" no se pierda.`);
+                logMsg(gameText('counter.tax.rivalPaid', { rival: getRivalName(), cost: `{${amount}}`, target: targetItem.card.name }));
                 sendResolvedCardAway();
                 return;
               }
-              logMsg(`🚫 ${getRivalName()} no pudo pagar {${amount}} — "${targetItem.card.name}" se pierde.`);
+              logMsg(gameText('counter.tax.rivalCantPay', { rival: getRivalName(), cost: `{${amount}}`, target: targetItem.card.name }));
               // sigue de largo: se contrarresta de verdad, como cualquier counter normal
             }
           }
 
           const counteredItem = spellStack.splice(targetIndex, 1)[0];
-          logMsg(`🚫 ¡${card.name} contrarrestó a "${counteredItem.card.name}"!`);
+          logMsg(gameText('counter.done', { card: card.name, target: counteredItem.card.name }));
           // ETAPA MOTOR 2: destino centralizado. Flashback -> Exilio; hechizo normal/Escape
           // -> Cementerio; habilidad -> ningún destino (la fuente permanece en el campo).
           moveCounteredStackItemToDestination(counteredItem, state);
@@ -1690,20 +1691,20 @@ async function executeStackItem(item) {
                 getEffectivePower(cur) + getEffectiveToughness(cur) > getEffectivePower(best) + getEffectiveToughness(best) ? cur : best
               );
               addCounters(buffTarget, 'plusOne', card.secondaryEffect.amount || 1);
-              logMsg(`💪 Además, ${card.name} le puso un contador +1/+1 a ${buffTarget.card.name}.`);
+              logMsg(gameText('counter.buff', { card: card.name, target: buffTarget.card.name }));
             }
           }
 
         } else {
-          logMsg(`⚠️ ${card.name} falló: el hechizo objetivo ya no está en la pila.`);
+          logMsg(gameText('counter.targetGone', { card: card.name }));
         }
       } else {
         if (spellStack.length > 0) {
           const counteredItem = spellStack.pop();
-          logMsg(`🚫 ¡${card.name} contrarrestó a "${counteredItem.card.name}"!`);
+          logMsg(gameText('counter.done', { card: card.name, target: counteredItem.card.name }));
           moveCounteredStackItemToDestination(counteredItem, state);
         } else {
-          logMsg(`⚠️ ${card.name} se resolvió sin efecto.`);
+          logMsg(gameText('stack.resolvedNoEffect', { card: card.name }));
         }
       }
     } 
@@ -1723,7 +1724,7 @@ async function executeStackItem(item) {
       // sigue yendo al cementerio como siempre.
       if (item.castFrom === 'flashback') {
         (isLocal ? state.localExile : state.rivalExile).push(card);
-        logMsg(`🌀 ${card.name} se exilía tras resolverse (Flashback ya usado).`);
+        logMsg(gameText('flashback.exileAfterResolve', { card: card.name }));
       } else if (isLocal) {
         state.localGraveyard.push(card);
       } else {
@@ -1743,29 +1744,29 @@ export async function handleStackCardClick(item) {
     const restriction = getCounterTargetRestriction(effectType);
 
     if (isAbility && !restriction.allowAbility) {
-      logMsg("❌ Esta carta solo puede contrarrestar HECHIZOS — no frena habilidades activadas ni disparadas.");
+      logMsg(gameText('stack.counter.onlySpells'));
       return;
     }
     if (!isAbility && !restriction.allowSpell) {
-      logMsg("❌ Esta carta solo puede contrarrestar HABILIDADES activadas o disparadas — no frena hechizos.");
+      logMsg(gameText('counter.onlyAbilities'));
       return;
     }
 
     const isCreatureSpell = item.type === 'summon' || item.card?.power !== undefined;
 
     if (effectType === 'counter_creature' && !isCreatureSpell) {
-      logMsg("❌ Esta carta solo puede contrarrestar hechizos de criatura.");
+      logMsg(gameText('counter.onlyCreature'));
       return;
     }
 
     if (effectType === 'counter_non_creature' && isCreatureSpell) {
-      logMsg("❌ Esta carta solo puede contrarrestar hechizos que no sean de criatura.");
+      logMsg(gameText('counter.onlyNonCreature'));
       return;
     }
 
     const isInstantSpell = !isAbility && (item.type === 'instant' || item.card?.type?.includes('Instantáneo'));
     if (effectType === 'counter_instant' && !isInstantSpell) {
-      logMsg("❌ Esta carta solo puede contrarrestar hechizos instantáneos.");
+      logMsg(gameText('counter.onlyInstant'));
       return;
     }
 
@@ -1799,7 +1800,7 @@ export async function handleStackCardClick(item) {
     state.pendingHybridLifePayment = null;
     state.tappedLandsThisSpell = [];
 
-    logMsg(`🎯 Apuntaste ${playedCard.name} hacia "${item.card.name}" en la pila.`);
+    logMsg(gameText('stack.targeted', { card: playedCard.name, target: item.card.name }));
     render();
     await triggerSpellCast(true, playedCard, castStackItem);
     // Este selector especial no vuelve por main.executeSpellOnTarget; reanudamos por el

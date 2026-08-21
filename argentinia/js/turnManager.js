@@ -8,6 +8,7 @@ import { awardPoints, clearActiveMatchId } from './firebaseClient.js';
 import { pointsForBotGameEnd, POINTS } from './store.js';
 import { recordTelemetryEvent } from './telemetry.js';
 import { PRIORITY_CLOCK_DURATION_MS, getEffectivePriorityActivity, canPriorityClockRun, getFrozenPriorityRemainingMs } from './priorityUX.js';
+import { gameText } from './gameTexts.js';
 
 export function checkGameOver() {
   // FASE 4, ETAPA 6: gameOver y abandonedBy llegan JUNTOS por sync en el mismo publish
@@ -19,7 +20,7 @@ export function checkGameOver() {
   if (state.abandonedBy === 'rival' && !state.abandonProcessedLocally) {
     state.abandonProcessedLocally = true;
     state.gameOver = true;
-    logMsg("🏳️ ¡Tu rival abandonó la partida! Ganaste.");
+    logMsg(gameText('game.over.abandonWin'));
     showGameOverOverlay(true);
     awardMatchEndPoints(true);
     return;
@@ -27,17 +28,17 @@ export function checkGameOver() {
 
   if (state.gameOver) return;
   if (state.localHP <= 0) {
-    state.gameOver = true; logMsg(`💀 Te quedaste sin HP. ¡Ganó ${getRivalName()}!`); showGameOverOverlay(false);
+    state.gameOver = true; logMsg(gameText('game.over.hpLoss', { rival: getRivalName() })); showGameOverOverlay(false);
     awardMatchEndPoints(false);
   } else if (state.rivalHP <= 0) {
-    state.gameOver = true; logMsg(`🏆 ¡VICTORIA! Hiciste morder el polvo a ${getRivalName()}.`); showGameOverOverlay(true);
+    state.gameOver = true; logMsg(gameText('game.over.hpWin', { rival: getRivalName() })); showGameOverOverlay(true);
     awardMatchEndPoints(true);
   } else if (state.localPoison >= 10) {
     // Condición de derrota ALTERNATIVA (regla 104.3c): no importa cuánto HP te quede.
-    state.gameOver = true; logMsg(`☠️ ¡Te llegaron 10 contadores de Veneno! El Infectar de ${getRivalName()} te venció.`); showGameOverOverlay(false);
+    state.gameOver = true; logMsg(gameText('game.over.poisonLoss', { rival: getRivalName() })); showGameOverOverlay(false);
     awardMatchEndPoints(false);
   } else if (state.rivalPoison >= 10) {
-    state.gameOver = true; logMsg(`☠️ ¡${getRivalName()} llegó a 10 contadores de Veneno! Se murió infectado.`); showGameOverOverlay(true);
+    state.gameOver = true; logMsg(gameText('game.over.poisonWin', { rival: getRivalName() })); showGameOverOverlay(true);
     awardMatchEndPoints(true);
   }
 }
@@ -67,14 +68,14 @@ function awardMatchEndPoints(won) {
       .then(newTotal => {
         if (state.userProfile) state.userProfile.points = newTotal;
         const msg = won
-          ? `🪙 ¡Le ganaste a tu rival! Sumaste ${delta} puntos de premio — llevás ${newTotal} en total.`
-          : `🪙 Perdiste esta vez, pero te llevás ${delta} puntos de recompensa igual — llevás ${newTotal} en total. ¡Mejor suerte la próxima!`;
+          ? gameText('game.points.pvpWin', { points: delta, total: newTotal })
+          : gameText('game.points.pvpLoss', { points: delta, total: newTotal });
         logMsg(msg);
         updateAccountUI(state.currentUser);
       })
       .catch(err => {
         console.error('No se pudieron guardar los puntos de esta partida:', err);
-        logMsg("⚠️ No se pudieron guardar los puntos de esta partida — revisá tu conexión.");
+        logMsg(gameText('game.points.saveError'));
       });
     return;
   }
@@ -88,14 +89,14 @@ function awardMatchEndPoints(won) {
       // de un genérico "+N puntos" — distingue victoria/derrota y menciona la dificultad,
       // que es justo lo que determina cuánto se ganó.
       const msg = won
-        ? `🪙 ¡Le ganaste al Tano en ${difficultyLabel}! Sumaste ${delta} puntos de premio — llevás ${newTotal} en total.`
-        : `🪙 Perdiste esta vez, pero te llevás ${delta} puntos de recompensa igual — llevás ${newTotal} en total. ¡Mejor suerte la próxima!`;
+        ? gameText('game.points.botWin', { difficulty: difficultyLabel, points: delta, total: newTotal })
+        : gameText('game.points.botLoss', { points: delta, total: newTotal });
       logMsg(msg);
       updateAccountUI(state.currentUser);
     })
     .catch(err => {
       console.error('No se pudieron guardar los puntos de esta partida:', err);
-      logMsg("⚠️ No se pudieron guardar los puntos de esta partida — revisá tu conexión.");
+      logMsg(gameText('game.points.saveError'));
     });
 }
 
@@ -160,7 +161,7 @@ export async function advanceStep() {
     const preventIdx = state.activeEffects.findIndex(e => e.effectType === 'prevent_attack' && e.targetPlayer === state.activePlayer);
     if (preventIdx !== -1) {
       const effect = state.activeEffects.splice(preventIdx, 1)[0]; // se consume una sola vez
-      logMsg(`🚫 ¡${effect.sourceName} sigue haciendo efecto! ${state.activePlayer === 'local' ? 'No podés' : `${getRivalName()} no puede`} declarar combate este turno.`);
+      logMsg(gameText('game.combat.prevented', { source: effect.sourceName, player: state.activePlayer === 'local' ? 'No podés' : `${getRivalName()} no puede` }));
       nextPhase = 'main2'; // Salta directo a la segunda fase principal
     }
   }
@@ -170,7 +171,7 @@ export async function advanceStep() {
     const activeBoard = state.activePlayer === 'local' ? state.localCombat : state.rivalCombat;
     const hasCreatures = activeBoard.some(c => !hasKeyword(c, 'defender'));
     if (!hasCreatures) {
-      logMsg(`⏩ Combate omitido automáticamente (sin criaturas para atacar).`);
+      logMsg(gameText('game.combat.skipped'));
       nextPhase = 'main2'; // Salta directo a la segunda fase principal
     }
   }
@@ -220,12 +221,12 @@ export async function advanceStep() {
   // main.js). En Solitario (sin currentMatch) esto nunca se activa — sigue siendo el mismo
   // único cliente de siempre, procesando todo de punta a punta sin parar acá.
   if (state.currentMatch && state.phase === 'untap' && state.activePlayer !== 'local') {
-    logMsg(`📌 --- Le toca el turno a tu rival. ---`);
+    logMsg(gameText('game.turn.rival'));
     render();
     return;
   }
 
-  logMsg(`📌 --- ${state.activePlayer === 'local' ? 'Tu' : `Turno de ${getRivalName()}`}: Paso de ${getPhaseName(state.phase)} ---`);
+  logMsg(gameText('game.turn.step', { owner: state.activePlayer === 'local' ? 'Tu' : `Turno de ${getRivalName()}`, phase: getPhaseName(state.phase) }));
 
   // Lógica de fases automáticas
   if (state.phase === 'untap') {
@@ -247,7 +248,7 @@ export async function advanceStep() {
   }
 
   if (state.phase === 'combat_damage') {
-    logMsg("⚔️ Resolviendo daño de combate...");
+    logMsg(gameText('game.combat.resolving'));
     // BUGFIX: faltaba este await — resolveCombatDamage() es async y tiene una pausa real
     // adentro (el modal de asignación de daño de Arrollar, cuando hay más de un
     // bloqueador). Sin el await, esta función seguía de largo (y render() corría) mientras
@@ -446,7 +447,7 @@ async function priorityClockTick() {
     priorityPlayer: state.priorityPlayer,
     stackDepth: spellStack.length
   }, 'warning');
-  logMsg('🔥 Se consumió la mecha: pasaste prioridad automáticamente.');
+  logMsg(gameText('priority.timeout'));
   priorityClockTickBusy = true;
   try {
     await passPriority('local');
@@ -476,7 +477,7 @@ export async function passPriority(player) {
 
   // NUEVO: Bloqueo de seguridad si hay que descartar
   if (state.isDiscarding) {
-    logMsg("⚠️ Tenés que descartar antes de poder pasar la prioridad.");
+    logMsg(gameText('priority.mustDiscard'));
     return; 
   }
   
@@ -496,7 +497,7 @@ export async function passPriority(player) {
       consecutivePasses: state.consecutivePasses,
       reason: 'already_two_passes'
     }, 'warning');
-    logMsg('⏳ Ambos jugadores ya pasaron prioridad. Esperando la resolución/sincronización...');
+    logMsg(gameText('priority.bothPassed.wait'));
     return;
   }
 
@@ -508,7 +509,7 @@ export async function passPriority(player) {
     priorityPlayer: state.priorityPlayer,
     consecutivePassesBefore: state.consecutivePasses
   });
-  logMsg(`💬 ${player === 'local' ? 'Pasaste' : `${getRivalName()} pasó`} prioridad.`);
+  logMsg(player === 'local' ? gameText('priority.passed.local') : gameText('priority.passed.rival', { rival: getRivalName() }));
   state.consecutivePasses = Math.min(2, (state.consecutivePasses || 0) + 1);
 
   if (state.consecutivePasses >= 2) {
@@ -553,7 +554,7 @@ export async function resolveBothPassed() {
   isResolvingBothPassed = true;
   try {
     if (spellStack.length > 0) {
-      logMsg("⚡ Ambos pasaron prioridad. Resolviendo la cima de la pila...");
+      logMsg(gameText('priority.bothPassed.resolve'));
       state.consecutivePasses = 0;
       state.stackResolutionAuthority = true;
       try {
@@ -600,7 +601,7 @@ function executeUntapStep() {
     state.rivalSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });
     state.rivalPlaneswalkers.forEach(pw => { pw.abilityUsedThisTurn = false; });
   }
-  logMsg(`🔄 Permanentes enderezados para ${isLocal ? getLocalPlayerName() : getRivalName()}.`);
+  logMsg(gameText('game.untap', { player: isLocal ? getLocalPlayerName() : getRivalName() }));
 }
 
 // Habilidad Disparada por fase (ej. "Al comienzo de tu mantenimiento, ganás 1 vida").
@@ -647,20 +648,20 @@ function executeDrawStep() {
   if (isLocal) {
     if (state.localDeck.length > 0) {
       state.localHand.push(state.localDeck.pop());
-      logMsg(`🃏 Robaste una carta.`);
+      logMsg(gameText('game.draw.local'));
     } else {
       // Regla real de MTG: intentar robar de una biblioteca vacía es una forma legítima
       // de perder la partida, no un "no pasa nada".
-      logMsg(`💀 ¡Intentaste robar de un mazo vacío! Te quedaste sin cartas para seguir jugando.`);
+      logMsg(gameText('game.deckout.local'));
       state.gameOver = true;
       showGameOverOverlay(false);
     }
   } else {
     if (state.rivalDeck.length > 0) {
       state.rivalHand.push(state.rivalDeck.pop());
-      logMsg(`🃏 El Tano robó una carta.`);
+      logMsg(gameText('game.draw.rival'));
     } else {
-      logMsg(`🏆 ¡El Tano intentó robar de un mazo vacío! Se quedó sin cartas para seguir jugando.`);
+      logMsg(gameText('game.deckout.rival'));
       state.gameOver = true;
       showGameOverOverlay(true);
     }
@@ -704,7 +705,7 @@ async function executeCleanupStep() {
     if (excess > 0) {
       state.isDiscarding = true;
       state.cardsToDiscard = excess;
-      logMsg(`⚠️ Tenés demasiadas cartas. Hacé clic en ${excess} carta(s) para descartar.`);
+      logMsg(gameText('game.handLimit.prompt', { count: excess }));
       render();
       return;
     }
@@ -714,7 +715,7 @@ async function executeCleanupStep() {
       const randomIndex = Math.floor(Math.random() * state.rivalHand.length);
       const discarded = state.rivalHand.splice(randomIndex, 1)[0];
       state.rivalGraveyard.push(discarded);
-      logMsg(`🗑️ El Tano descartó ${discarded.name} por límite de mano.`);
+      logMsg(gameText('game.handLimit.botDiscard', { card: discarded.name }));
     }
   }
 
@@ -733,7 +734,7 @@ export async function handleDiscardClick(index) {
   state.localGraveyard.push(discardedCard);
   state.cardsToDiscard--;
   
-  logMsg(`🗑️ Descartaste ${discardedCard.name}.`);
+  logMsg(gameText('game.handLimit.selfDiscard', { card: discardedCard.name }));
 
   if (state.cardsToDiscard <= 0) {
     state.isDiscarding = false;
@@ -766,10 +767,10 @@ export async function startLocalTurn() {
 
 function getPhaseName(phaseKey) {
   const MAP = {
-    untap: 'Enderezar', upkeep: 'Mantenimiento', draw: 'Robo', main1: '1ra Fase Principal',
-    combat_begin: 'Inicio de Combate', combat_attackers: 'Declarar Atacantes',
-    combat_blockers: 'Declarar Bloqueadores', combat_damage: 'Daño de Combate',
-    combat_end: 'Fin de Combate', main2: '2da Fase Principal', end_step: 'Paso Final', cleanup: 'Limpieza'
+    untap: 'phase.log.untap', upkeep: 'phase.log.upkeep', draw: 'phase.log.draw', main1: 'phase.log.main1',
+    combat_begin: 'phase.log.combat_begin', combat_attackers: 'phase.log.combat_attackers',
+    combat_blockers: 'phase.log.combat_blockers', combat_damage: 'phase.log.combat_damage',
+    combat_end: 'phase.log.combat_end', main2: 'phase.log.main2', end_step: 'phase.log.end_step', cleanup: 'phase.log.cleanup'
   };
-  return MAP[phaseKey] || phaseKey;
+  return MAP[phaseKey] ? gameText(MAP[phaseKey]) : phaseKey;
 }
