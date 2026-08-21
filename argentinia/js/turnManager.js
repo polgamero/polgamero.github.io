@@ -58,7 +58,9 @@ function awardMatchEndPoints(won) {
     // FASE 4, ETAPA 6: la partida ya terminó — borro el rastro para que un futuro reload no
     // ofrezca "reconectate" a algo que ya no está en curso. Mejor esfuerzo, no bloquea nada
     // si falla (revisa la próxima vez que arranque igual, ver fetchMatchForReconnect).
-    clearActiveMatchId(state.currentUser.uid).catch(() => {});
+    clearActiveMatchId(state.currentUser.uid)
+      .then(() => { if (state.userProfile) state.userProfile.activeMatchId = null; })
+      .catch(() => {});
 
     const delta = won ? POINTS.winVsHumano : POINTS.lossVsHumano;
     awardPoints(state.currentUser.uid, delta)

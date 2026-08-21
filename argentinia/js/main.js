@@ -6,7 +6,7 @@ import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRu
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, loadUserProfile, createUserProfile, registerDailyLogin, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, loadGameConfig, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks } from './telemetry.js';
@@ -14,6 +14,8 @@ import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_BUILD_LABEL, BUILD_MANI
 import { MULTIPLAYER_TEST_DECK_NAME, buildMultiplayerTestDeck } from './testDeck.js';
 import { stampCardOwner, zoneForCardOwner } from './zoneOwnership.js';
 import { PRIVATE_ZONE_VISIBILITY, PRIVATE_ZONE_FILTERS, buildPrivateZoneOffer, resolvePrivateZoneSelection } from './privateZoneProtocol.js';
+import { isUsernameConfigured } from './usernames.js';
+import { showUsernameSetupModal } from './usernameUI.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -111,7 +113,8 @@ export const state = {
 
   // Fase 0 del multiplayer: null si no hay nadie logueado (Solitario funciona igual, sin
   // persistencia — el login es opcional). Si hay sesión, es un objeto chico normalizado
-  // { uid, displayName, photoURL, email } — se actualiza solo desde onAuthChange en boot()
+  // { uid, displayName, photoURL, email, username?, usernameKey? } — Auth conserva los datos
+  // Google internamente, pero TODO nombre visible usa username Argentinia (23.13.24).
   // (main.js), nunca hay que tocarlo a mano desde otro lado.
   currentUser: null,
   // Fase 1: el documento de Firestore del jugador logueado (puntos, colección de cartas,
@@ -353,19 +356,21 @@ export const state = {
 // "El Gaucho" estaba hardcodeado suelto en varios mensajes distintos (el log de
 // enderezar, el cartel de "Turno de:", el nombre del HUD), y cuando se agregó el login
 // cada uno se actualizaba por separado (o se olvidaba). Ahora todo el juego pasa por acá:
-// devuelve SOLO el nombre de pila de Google si hay sesión (nunca el apellido completo, por
-// privacidad — no queremos doxear a nadie), o "El Gaucho" si no hay sesión.
+// devuelve el username Argentinia si hay sesión/perfil, un alias neutro mientras la identidad
+// todavía está cargando, o "El Gaucho" si no hay sesión. El displayName de Google no se muestra.
 export function getLocalPlayerName() {
-  if (state.currentUser && state.currentUser.displayName) {
-    const firstName = state.currentUser.displayName.trim().split(/\s+/)[0];
-    if (firstName) return firstName;
-  }
-  return 'El Gaucho';
+  const profileName = String(state.userProfile?.username || '').trim();
+  if (profileName) return profileName;
+  const authSessionName = String(state.currentUser?.username || '').trim();
+  if (authSessionName) return authSessionName;
+  // Desde 23.13.24 jamás mostramos el displayName de Google. Durante los milisegundos entre
+  // Auth y la carga/prompt de identidad usamos un alias neutro; sin sesión conserva Gaucho.
+  return state.currentUser ? 'Jugador' : 'El Gaucho';
 }
 
 // BUGFIX: nombre a mostrar para el RIVAL — "El Tano" en Solitario (el bot de siempre), o
-// el nombre de pila real del rival en una partida multiplayer (ya viene recortado a primer
-// nombre desde showMultiplayerLobby, ver renderMatched en ui.js). Reemplaza los mensajes
+// el username Argentinia del rival en una partida multiplayer (transportado en players{}).
+// Reemplaza los mensajes
 // que antes decían "El Tano" hardcodeado incluso jugando contra una persona de verdad.
 export function getRivalName() {
   if (state.currentMatch && state.currentMatch.rivalName) {
@@ -486,7 +491,7 @@ async function initGame(deckSource) {
   // existía un perfil (no hay forma de tener un mazo guardado sin uno).
   if (deckSource.type === 'random' && state.currentUser) {
     await userProfileLoadPromise;
-    if (!state.userProfile) {
+    if (!state.userProfile || state.userProfile.starterDeckPending === true) {
       const starterCardIds = state.localDeck.map(c => c.id);
       try {
         state.userProfile = await createUserProfile(state.currentUser.uid, state.currentUser, starterCardIds);
@@ -744,25 +749,56 @@ async function boot() {
     return;
   }
 
+  // 23.13.24 — cada login autenticado debe tener username Argentinia ANTES de Rewards,
+  // mazo inicial o reconnect. El modal es obligatorio; la única salida sin elegir es cerrar
+  // sesión. authIdentitySerial evita que una respuesta vieja escriba estado después de logout.
+  let authIdentitySerial = 0;
+  function applyUsernameIdentity(profile) {
+    if (!state.currentUser || !profile) return;
+    state.currentUser.username = profile.username || '';
+    state.currentUser.usernameKey = profile.usernameKey || '';
+  }
+  function requestMandatoryUsername(profile, serial) {
+    return new Promise((resolve) => {
+      showUsernameSetupModal({
+        onSave: async ({ username, usernameKey }) => {
+          const saved = await reserveInitialUsername(
+            state.currentUser.uid,
+            username,
+            usernameKey,
+            state.currentUser
+          );
+          if (serial !== authIdentitySerial) return saved;
+          resolve(saved);
+          return saved;
+        },
+        onSignOut: async () => {
+          resolve(null);
+          await signOutUser();
+        }
+      });
+    });
+  }
+
   // Fase 0 del multiplayer: se engancha UNA sola vez, apenas arranca la página, sin
   // importar qué pantalla esté mostrándose en ese momento (menú, Opciones, Enciclopedia, o
   // ya en medio de una partida) — updateAccountUI decide sola qué actualizar según qué haya
   // en el DOM en ese instante. Esto es lo que hace que loguearte desde cualquier lado
   // refresque el avatar y el widget de cuenta sin tener que reabrir nada a mano.
   onAuthChange((firebaseUser) => {
+    const serial = ++authIdentitySerial;
     state.currentUser = firebaseUser ? {
       uid: firebaseUser.uid,
-      displayName: firebaseUser.displayName,
+      displayName: firebaseUser.displayName, // dato Auth interno; NO se muestra como nombre de juego
       photoURL: firebaseUser.photoURL,
-      email: firebaseUser.email
+      email: firebaseUser.email,
+      username: '',
+      usernameKey: ''
     } : null;
+    state.userProfile = null;
     updateAccountUI(state.currentUser);
 
     if (state.currentUser) {
-      // 23.11.6 mobile: Firebase queda fuera del camino crítico hasta que el usuario
-      // activa explícitamente una función online (por ejemplo Login). Una vez que Auth
-      // ya cargó el SDK y entrega un usuario real, recuperamos también la configuración
-      // remota para recuperar paridad con desktop SIN volver a bloquear el primer menú.
       if (phoneBoot) {
         loadGameConfig()
           .then(config => {
@@ -774,29 +810,39 @@ async function boot() {
           });
       }
 
-      // Fase 1: apenas se loguea, buscamos si ya tiene perfil guardado. Si lo tiene, lo
-      // cargamos y le refrescamos la marca de última conexión; si no (primera vez de
-      // verdad, o la cuenta se acaba de borrar), le mostramos YA el modal de mazo inicial
-      // — no hace falta esperar a que apriete "Jugar".
-      userProfileLoadPromise = loadUserProfile(state.currentUser.uid)
-        .then(async profile => {
-          state.userProfile = profile;
-          if (profile) {
-            await processDailyLoginRewards();
-            // FASE 4, ETAPA 6: si el perfil trae una partida marcada como en curso, se la
-            // consultamos a Firestore para confirmar que sigue siendo real antes de
-            // ofrecer reconectar (ver offerReconnectIfStillActive).
-            if (profile.activeMatchId) {
-              offerReconnectIfStillActive(profile.activeMatchId);
-            }
-          } else {
-            promptStarterDeckSelection();
-          }
-        })
-        .catch(err => {
-          console.error('No se pudo cargar el perfil de Firestore:', err);
-          state.userProfile = null;
-        });
+      userProfileLoadPromise = (async () => {
+        let profile = await loadUserProfile(state.currentUser.uid);
+        if (serial !== authIdentitySerial || !state.currentUser) return null;
+
+        // Migración obligatoria y también alta de cuentas nuevas. reserveInitialUsername
+        // crea un perfil mínimo starterDeckPending cuando users/{uid} todavía no existe.
+        if (!isUsernameConfigured(profile)) {
+          profile = await requestMandatoryUsername(profile, serial);
+          if (!profile || serial !== authIdentitySerial || !state.currentUser) return null;
+        }
+
+        state.userProfile = profile;
+        applyUsernameIdentity(profile);
+        updateAccountUI(state.currentUser);
+
+        // Cuenta recién creada: primero termina la colección/mazo inicial. Si cerró la
+        // pestaña después del username, este flag permite retomar exactamente acá.
+        if (profile.starterDeckPending === true) {
+          promptStarterDeckSelection();
+          return profile;
+        }
+
+        await processDailyLoginRewards();
+        if (serial !== authIdentitySerial || !state.currentUser) return profile;
+        if (profile.activeMatchId) offerReconnectIfStillActive(profile.activeMatchId);
+        return profile;
+      })().catch(err => {
+        if (serial !== authIdentitySerial) return null;
+        console.error('No se pudo cargar/preparar el perfil de Firestore:', err);
+        state.userProfile = null;
+        updateAccountUI(state.currentUser);
+        return null;
+      });
     } else {
       state.userProfile = null;
       userProfileLoadPromise = Promise.resolve();
@@ -2506,7 +2552,9 @@ function offerReconnectIfStillActive(matchId) {
   fetchMatchForReconnect(matchId, state.currentUser.uid)
     .then(matchData => {
       if (!matchData) {
-        clearActiveMatchId(state.currentUser.uid).catch(() => {});
+        clearActiveMatchId(state.currentUser.uid)
+          .then(() => { if (state.userProfile) state.userProfile.activeMatchId = null; })
+          .catch(() => {});
         return;
       }
       if (matchData.incompatible) {
@@ -2515,11 +2563,10 @@ function offerReconnectIfStillActive(matchId) {
         return;
       }
       const myRole = matchData.publicDoc.hostUid === state.currentUser.uid ? 'host' : 'guest';
-      // BUGFIX: mismo criterio de privacidad de siempre — solo el nombre de pila.
+      // 23.13.24: identidad visible del rival = username Argentinia; displayName sólo fallback legacy.
       const rivalUid = myRole === 'host' ? matchData.publicDoc.guestUid : matchData.publicDoc.hostUid;
       const rivalProfile = (matchData.publicDoc.players && matchData.publicDoc.players[rivalUid]) || {};
-      const rivalFullName = rivalProfile.displayName || '';
-      const rivalName = (rivalFullName.trim().split(/\s+/)[0]) || 'tu rival';
+      const rivalName = String(rivalProfile.username || rivalProfile.displayName || '').trim() || 'tu rival';
       const rivalPhotoURL = rivalProfile.photoURL || '';
 
       showReconnectPrompt(
@@ -2534,7 +2581,9 @@ function offerReconnectIfStillActive(matchId) {
           if (state.currentUser) {
             awardPoints(state.currentUser.uid, POINTS.abandonPenalty).catch(() => {});
           }
-          clearActiveMatchId(state.currentUser.uid).catch(() => {});
+          clearActiveMatchId(state.currentUser.uid)
+            .then(() => { if (state.userProfile) state.userProfile.activeMatchId = null; })
+            .catch(() => {});
         }
       );
     })

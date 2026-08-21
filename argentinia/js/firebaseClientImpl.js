@@ -26,6 +26,7 @@ import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX } from './store.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, localDateKey, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
+import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAAvUAaZ35_sF9uCsecLPg7zqhB7mLa7yo",
@@ -47,6 +48,30 @@ export const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 const ADMIN_EMAIL = 'pablogamero1@gmail.com';
 const REWARD_RULES_VERSION = '23.13.14';
+
+function usernameError(code, message) {
+  const error = new Error(message || code);
+  error.code = code;
+  return error;
+}
+
+function assertValidUsernamePayload(username, usernameKey) {
+  const validated = validateUsername(username);
+  if (!validated.ok || validated.usernameKey !== usernameKey) {
+    throw usernameError(validated.code || 'USERNAME_INVALID', validated.message || 'Nombre inválido.');
+  }
+  return validated;
+}
+
+function normalizeProfileForClient(data) {
+  if (!data) return null;
+  return {
+    ...data,
+    starterDeckPending: data.starterDeckPending === true,
+    inventory: normalizeInventory(data.inventory),
+    dailyRewards: normalizeDailyRewardsState(data.dailyRewards)
+  };
+}
 
 // Devuelve una Promise que resuelve con el UserCredential de Firebase, o rechaza si el
 // jugador cerró el popup, lo bloqueó el navegador, o falló la red. Quien llama decide qué
@@ -94,46 +119,185 @@ export async function loadUserProfile(uid) {
   // 23.13.0 — migración lazy/no destructiva: perfiles históricos no tienen Mi Cofre ni
   // dailyRewards. Los normalizamos en memoria; la primera transacción posterior persiste
   // los campos nuevos sin tocar colección/mazos/economía existente.
-  return {
-    ...data,
-    inventory: normalizeInventory(data.inventory),
-    dailyRewards: normalizeDailyRewardsState(data.dailyRewards)
-  };
+  return normalizeProfileForClient(data);
 }
 
-// Se llama UNA sola vez por cuenta, la primera vez que alguien logueado termina de armar
-// su primer mazo random — ESE mazo (60 cartas, con copias) se convierte en su colección
-// inicial persistente. No se vuelve a llamar después: quien llama (initGame, main.js) ya
-// se asegura de eso comprobando que loadUserProfile haya devuelto null antes de invocarla.
+// 23.13.24 — reserva inicial de identidad. Se ejecuta ANTES del mazo inicial. Si todavía
+// no existe users/{uid}, crea un perfil mínimo starterDeckPending=true en la MISMA transacción
+// que reserva usernames/{usernameKey}; si el perfil ya existía (migración), sólo agrega los
+// campos username*. Las Rules 23.13.24 enlazan ambos documentos con getAfter().
+export async function reserveInitialUsername(uid, username, usernameKey, profileFields = {}) {
+  const validated = assertValidUsernamePayload(username, usernameKey);
+  const userRef = doc(db, 'users', uid);
+  const nameRef = doc(db, 'usernames', validated.usernameKey);
+
+  return runTransaction(db, async (tx) => {
+    const [userSnap, nameSnap] = await Promise.all([tx.get(userRef), tx.get(nameRef)]);
+    if (nameSnap.exists() && nameSnap.data()?.uid !== uid) {
+      throw usernameError('USERNAME_TAKEN', 'Ese nombre ya está usado.');
+    }
+
+    const now = serverTimestamp();
+    const identityPatch = {
+      username: validated.username,
+      usernameKey: validated.usernameKey,
+      usernameUpdatedAt: now
+    };
+
+    let nextProfile;
+    if (userSnap.exists()) {
+      const current = userSnap.data();
+      if (current.usernameKey && current.usernameKey !== validated.usernameKey) {
+        throw usernameError('USERNAME_ALREADY_CONFIGURED', 'La cuenta ya tiene un nombre configurado.');
+      }
+      tx.update(userRef, identityPatch);
+      nextProfile = { ...current, ...identityPatch };
+    } else {
+      nextProfile = {
+        displayName: profileFields.displayName || '',
+        photoURL: profileFields.photoURL || '',
+        email: profileFields.email || '',
+        ...identityPatch,
+        points: 0,
+        collection: [],
+        decks: [],
+        fichas: 0,
+        enhancements: {},
+        inventory: defaultInventory(),
+        dailyRewards: defaultDailyRewardsState(),
+        activeMatchId: null,
+        starterDeckPending: true,
+        createdAt: now,
+        lastSeenAt: now
+      };
+      tx.set(userRef, nextProfile);
+    }
+
+    const registryData = {
+      uid,
+      username: validated.username,
+      updatedAt: now,
+      ...(nameSnap.exists() ? {} : { createdAt: now })
+    };
+    tx.set(nameRef, registryData, { merge: nameSnap.exists() });
+    return normalizeProfileForClient(nextProfile);
+  });
+}
+
+export async function checkUsernameAvailability(username, usernameKey) {
+  const validated = assertValidUsernamePayload(username, usernameKey);
+  const snap = await getDoc(doc(db, 'usernames', validated.usernameKey));
+  if (!snap.exists()) return { available: true };
+  return { available: false };
+}
+
+// Rename real: nombre + reserva + Ficha forman una única transacción. No se permite con
+// activeMatchId para que un snapshot multiplayer nunca cambie de identidad a mitad de match.
+export async function renameUsername(uid, username, usernameKey, fichaCost = USERNAME_RENAME_COST) {
+  const validated = assertValidUsernamePayload(username, usernameKey);
+  const cost = Math.max(1, Math.floor(Number(fichaCost) || USERNAME_RENAME_COST));
+  const userRef = doc(db, 'users', uid);
+
+  return runTransaction(db, async (tx) => {
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists()) throw usernameError('USERNAME_PROFILE_MISSING', 'La cuenta no existe.');
+    const current = userSnap.data();
+    const oldKey = String(current.usernameKey || '');
+    const oldUsername = String(current.username || '');
+    if (!oldKey || !oldUsername) throw usernameError('USERNAME_NOT_CONFIGURED', 'Primero tenés que configurar tu nombre.');
+    if (current.activeMatchId) throw usernameError('USERNAME_ACTIVE_MATCH', 'Terminá tu partida multiplayer antes de cambiar el nombre.');
+    if ((Number(current.fichas) || 0) < cost) throw usernameError('USERNAME_NOT_ENOUGH_FICHAS', 'No tenés suficientes Fichas.');
+    if (oldUsername === validated.username) throw usernameError('USERNAME_SAME', 'Ese ya es tu nombre actual.');
+
+    const newNameRef = doc(db, 'usernames', validated.usernameKey);
+    const oldNameRef = doc(db, 'usernames', oldKey);
+    const refsToRead = validated.usernameKey === oldKey ? [newNameRef] : [newNameRef, oldNameRef];
+    const snaps = [];
+    for (const ref of refsToRead) snaps.push(await tx.get(ref));
+    const newNameSnap = snaps[0];
+    const oldNameSnap = validated.usernameKey === oldKey ? newNameSnap : snaps[1];
+
+    if (newNameSnap.exists() && newNameSnap.data()?.uid !== uid) {
+      throw usernameError('USERNAME_TAKEN', 'Ese nombre ya está usado.');
+    }
+    if (!oldNameSnap.exists() || oldNameSnap.data()?.uid !== uid) {
+      throw usernameError('USERNAME_REGISTRY_MISMATCH', 'La reserva del nombre actual está inconsistente.');
+    }
+
+    const now = serverTimestamp();
+    tx.update(userRef, {
+      username: validated.username,
+      usernameKey: validated.usernameKey,
+      usernameUpdatedAt: now,
+      fichas: (Number(current.fichas) || 0) - cost
+    });
+    tx.set(newNameRef, {
+      uid,
+      username: validated.username,
+      updatedAt: now,
+      ...(newNameSnap.exists() ? {} : { createdAt: now })
+    }, { merge: newNameSnap.exists() });
+    if (validated.usernameKey !== oldKey) tx.delete(oldNameRef);
+
+    return normalizeProfileForClient({
+      ...current,
+      username: validated.username,
+      usernameKey: validated.usernameKey,
+      usernameUpdatedAt: now,
+      fichas: (Number(current.fichas) || 0) - cost
+    });
+  });
+}
+
+// Se llama una sola vez por cuenta para completar el mazo/colección inicial. Desde
+// 23.13.24 normalmente users/{uid} YA existe como perfil mínimo starterDeckPending=true
+// porque el username se elige antes. Conserva fallback de creación defensiva si la reserva
+// existe pero el perfil todavía no llegó a escribirse por una ruta histórica.
 export async function createUserProfile(uid, profileFields, starterCardIds) {
-  const data = {
-    displayName: profileFields.displayName || '',
-    photoURL: profileFields.photoURL || '',
-    email: profileFields.email || '',
-    points: 0,
-    collection: starterCardIds,
-    // El mazo inicial random TAMBIÉN queda guardado como un mazo de verdad, no solo como
-    // colección suelta — así "Mis Mazos" ya tiene algo para mostrar desde el primer
-    // momento (Fase 3, Etapa 1). Usa Date.now() en vez de serverTimestamp() a propósito:
-    // los timestamps de servidor de Firestore NO se resuelven bien adentro de un array
-    // (quedan en null), así que un timestamp de cliente es lo correcto acá.
-    decks: [
-      { id: 'starter', name: 'Mazo 1', cardIds: starterCardIds, isDefault: true, createdAt: Date.now() }
-    ],
-    fichas: 0,
-    enhancements: {},
-    // 23.13.0 — Mi Cofre e historial del pase semanal. Se crean vacíos; el login actual
-    // se registra inmediatamente después desde main.js para mantener una única ruta.
-    inventory: defaultInventory(),
-    dailyRewards: defaultDailyRewardsState(),
-    // Fase 4, Etapa 6: null hasta que se crea/une a una partida multiplayer real —
-    // ver setActiveMatchId/clearActiveMatchId, más abajo en este archivo.
-    activeMatchId: null,
-    createdAt: serverTimestamp(),
-    lastSeenAt: serverTimestamp()
-  };
-  await setDoc(doc(db, 'users', uid), data);
-  return data;
+  const username = profileFields.username || '';
+  const usernameKey = profileFields.usernameKey || '';
+  const validated = assertValidUsernamePayload(username, usernameKey);
+  const userRef = doc(db, 'users', uid);
+  const nameRef = doc(db, 'usernames', validated.usernameKey);
+
+  return runTransaction(db, async (tx) => {
+    const [userSnap, nameSnap] = await Promise.all([tx.get(userRef), tx.get(nameRef)]);
+    if (!nameSnap.exists() || nameSnap.data()?.uid !== uid) {
+      throw usernameError('USERNAME_REQUIRED', 'Primero elegí tu nombre en Argentinia.');
+    }
+
+    const current = userSnap.exists() ? userSnap.data() : null;
+    if (current && current.starterDeckPending !== true) {
+      return normalizeProfileForClient(current);
+    }
+
+    const base = current || {
+      displayName: profileFields.displayName || '',
+      photoURL: profileFields.photoURL || '',
+      email: profileFields.email || '',
+      username: validated.username,
+      usernameKey: validated.usernameKey,
+      usernameUpdatedAt: serverTimestamp(),
+      points: 0,
+      fichas: 0,
+      enhancements: {},
+      inventory: defaultInventory(),
+      dailyRewards: defaultDailyRewardsState(),
+      activeMatchId: null,
+      createdAt: serverTimestamp()
+    };
+    const patch = {
+      collection: starterCardIds,
+      decks: [
+        { id: 'starter', name: 'Mazo 1', cardIds: starterCardIds, isDefault: true, createdAt: Date.now() }
+      ],
+      starterDeckPending: false,
+      lastSeenAt: serverTimestamp()
+    };
+    if (current) tx.update(userRef, patch);
+    else tx.set(userRef, { ...base, ...patch });
+    return normalizeProfileForClient({ ...base, ...patch });
+  });
 }
 
 // Actualiza SOLO la marca de última conexión, sin tocar el resto del documento (merge:true)
@@ -147,8 +311,21 @@ export function touchLastSeen(uid) {
 // SUYA — no hace falta un rol especial, las reglas de Firestore ya limitan esto a "tu
 // propio documento". La confirmación (escribir "ELIMINAR") vive en la UI, no acá — esta
 // función no vuelve a preguntar nada, ejecuta directo.
-export function deleteUserProfile(uid) {
-  return deleteDoc(doc(db, 'users', uid));
+export async function deleteUserProfile(uid) {
+  const userRef = doc(db, 'users', uid);
+  return runTransaction(db, async (tx) => {
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists()) return;
+    const usernameKey = String(userSnap.data()?.usernameKey || '');
+    let usernameRef = null;
+    let usernameSnap = null;
+    if (usernameKey) {
+      usernameRef = doc(db, 'usernames', usernameKey);
+      usernameSnap = await tx.get(usernameRef);
+    }
+    tx.delete(userRef);
+    if (usernameRef && usernameSnap?.exists() && usernameSnap.data()?.uid === uid) tx.delete(usernameRef);
+  });
 }
 
 // ============================================================================
@@ -691,7 +868,7 @@ export async function createMatch(uid, profileFields) {
       hostEngineVersion: ENGINE_VERSION,
       guestEngineVersion: null,
       players: {
-        [uid]: { displayName: profileFields.displayName || '', photoURL: profileFields.photoURL || '' }
+        [uid]: { username: profileFields.username || '', displayName: profileFields.username || '', photoURL: profileFields.photoURL || '' }
       },
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -728,7 +905,7 @@ export async function joinMatchByCode(uid, rawCode, profileFields) {
     guestEngineVersion: ENGINE_VERSION,
     players: {
       ...data.players,
-      [uid]: { displayName: profileFields.displayName || '', photoURL: profileFields.photoURL || '' }
+      [uid]: { username: profileFields.username || '', displayName: profileFields.username || '', photoURL: profileFields.photoURL || '' }
     },
     updatedAt: serverTimestamp()
   };
@@ -799,8 +976,26 @@ export function listenToMatch(code, onUpdate) {
 
 // Cancela/borra una partida propia — pensada para cuando el host se cansa de esperar antes
 // de que se una nadie. No tiene sentido dejar códigos de partidas abandonadas dando vueltas.
-export async function cancelMatch(code) {
-  await deleteDoc(doc(db, 'matches', code.trim().toUpperCase()));
+export async function cancelMatch(code, uid = null) {
+  const matchRef = doc(db, 'matches', code.trim().toUpperCase());
+  if (!uid) {
+    await deleteDoc(matchRef);
+    return;
+  }
+  const userRef = doc(db, 'users', uid);
+  await runTransaction(db, async (tx) => {
+    const matchSnap = await tx.get(matchRef);
+    if (matchSnap.exists()) {
+      const match = matchSnap.data() || {};
+      if (match.hostUid !== uid || match.status !== 'waiting' || match.guestUid != null) {
+        throw new Error('La sala ya no puede cancelarse desde este estado.');
+      }
+      tx.delete(matchRef);
+    }
+    // Se confirma en el mismo commit que el delete cuando el lobby existe. Si el documento
+    // ya desapareció, igualmente limpia un activeMatchId histórico/huérfano del propio perfil.
+    tx.update(userRef, { activeMatchId: null });
+  });
 }
 
 // ============================================================================

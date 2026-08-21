@@ -36,7 +36,7 @@ import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, createDeck, updateDeck, deleteDeck, saveGameConfig, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, applyGameConfig, getDefaultGameConfig } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -52,6 +52,8 @@ import { buildDeckStatistics, analyzeDeckHealth, simulateOpeningHands } from './
 import { getCardBrowserSortOptions, normalizeCardBrowserSort, compareCardsForBrowser } from './cardBrowser.js';
 import { registerCardArtImage, hasCustomArtLayout, ensureArtLayoutsLoaded } from './artLayout.js';
 import { openArtLayoutEditor } from './artLayoutEditor.js';
+import { USERNAME_RENAME_COST } from './usernames.js';
+import { showUsernameRenameModal } from './usernameUI.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -1608,6 +1610,9 @@ function injectMainMenuStyles() {
       cursor: pointer; text-decoration: underline; padding: 0; display: block;
     }
     .main-menu-logout-btn:hover { color: #f0e0b0; }
+    .main-menu-rename-btn { border:0; background:none; padding:0; color:#d6bd69; font-size:11px; cursor:pointer; text-align:left; }
+    .main-menu-rename-btn:hover { color:#f2d77c; text-decoration:underline; }
+    .main-menu-rename-btn:disabled { color:#756f62; cursor:not-allowed; text-decoration:none; }
     .main-menu-account-error { color: #e07a6b; font-size: 12px; max-width: 260px; text-align: right; }
 .main-menu-news {
     position: absolute;
@@ -4094,7 +4099,7 @@ export function showMyDecksScreen(onBack) {
 // (boot() en main.js) ahora pasa por acá primero. Jugar/Opciones son reales; Multijugador,
 // Mi Mazo y Enciclopedia quedan con el placeholder deshabilitado hasta que existan de
 // verdad (no tiene sentido prometer algo que todavía no está armado).
-// Fase 0 del multiplayer: widget de cuenta (login/logout con Google). Se usa en dos
+// Fase 0/23.13.24: widget de cuenta (Auth Google, identidad visible Username Argentinia). Se usa en dos
 // momentos distintos con la MISMA función — el render inicial dentro de showMainMenu, y
 // cada vez que cambia el estado de sesión (login/logout/recarga con sesión activa), vía
 // updateAccountUI más abajo, que ya está enganchado en boot() (main.js) apenas arranca la
@@ -4130,6 +4135,7 @@ function renderAccountBox(container, user) {
         <div>
           <div class="main-menu-account-name">${getLocalPlayerName()}</div>
           ${pointsHTML}
+          <button class="main-menu-rename-btn" id="menu-rename" ${state.userProfile ? '' : 'disabled'}>✏️ Cambiar nombre · ${USERNAME_RENAME_COST} Ficha</button>
           <button class="main-menu-logout-btn" id="menu-logout">Cerrar sesión</button>
         </div>
       </div>
@@ -4161,6 +4167,36 @@ function renderAccountBox(container, user) {
         });
       });
     }
+    container.querySelector('#menu-rename')?.addEventListener('click', () => {
+      if (!state.currentUser || !state.userProfile) return;
+      if (state.currentMatch || state.userProfile.activeMatchId) {
+        showSimpleAlertModal('Terminá tu partida multiplayer antes de cambiar el nombre.');
+        return;
+      }
+      if ((Number(state.userProfile.fichas) || 0) < USERNAME_RENAME_COST) {
+        showSimpleAlertModal(`Necesitás ${USERNAME_RENAME_COST} Ficha para cambiar el nombre.`);
+        return;
+      }
+      showUsernameRenameModal({
+        currentUsername: getLocalPlayerName(),
+        fichas: Number(state.userProfile.fichas) || 0,
+        onSave: async ({ username, usernameKey }) => {
+          const updated = await renameUsername(
+            state.currentUser.uid,
+            username,
+            usernameKey,
+            USERNAME_RENAME_COST
+          );
+          state.userProfile = updated;
+          state.currentUser.username = updated.username;
+          state.currentUser.usernameKey = updated.usernameKey;
+          renderAccountBox(container, state.currentUser);
+          updatePlayerIdentities();
+          return updated;
+        }
+      });
+    });
+
     container.querySelector('#menu-logout').addEventListener('click', () => {
       signOutUser().catch(err => {
         console.error('Error al cerrar sesión:', err);
@@ -4209,7 +4245,7 @@ function updateMainMenuLoginGatedButtons(overlay) {
 }
 
 // FASE 4 / HOTFIX 23.4.2: el documento público del match ya contiene el perfil
-// básico de ambos jugadores ({ displayName, photoURL }). La lógica de gameplay ya usaba
+// básico de ambos jugadores ({ username, displayName legacy, photoURL }). La lógica de gameplay usa
 // getRivalName(), pero el HUD superior seguía mostrando el fallback estático del HTML.
 // Esta función mantiene Solitario exactamente como siempre (El Tano + 🤠) y, si hay un
 // currentMatch real, pinta nombre de pila + foto Google del rival. No hace lecturas ni
@@ -4780,7 +4816,7 @@ export function showAdminPanel(onBack) {
   fetchAllUserProfiles()
     .then(profiles => {
       const options = ['<option value="ALL">Todos los usuarios</option>']
-        .concat(profiles.map(p => `<option value="${p.uid}">${p.displayName || p.email || p.uid}</option>`));
+        .concat(profiles.map(p => `<option value="${p.uid}">${escapeHtml(p.username || 'Sin username')} · ${escapeHtml(String(p.uid).slice(-6))}</option>`));
       recipientSelect.innerHTML = options.join('');
     })
     .catch(err => {
@@ -5086,17 +5122,16 @@ function injectMultiplayerMatchBannerStyles() {
 }
 
 function multiplayerProfileBannerHTML(profile, roleLabel, fallbackName) {
-  const fullName = String(profile?.displayName || '').trim();
-  const firstName = fullName.split(/\s+/)[0] || fallbackName;
+  const username = String(profile?.username || profile?.displayName || '').trim() || fallbackName;
   const photoURL = String(profile?.photoURL || '').trim();
   const avatar = photoURL
-    ? `<img class="mp-versus-avatar" src="${escapeHtml(photoURL)}" alt="${escapeHtml(firstName)}" onerror="this.outerHTML='<div class=&quot;mp-versus-avatar mp-versus-avatar-fallback&quot;>🤠</div>'">`
+    ? `<img class="mp-versus-avatar" src="${escapeHtml(photoURL)}" alt="${escapeHtml(username)}" onerror="this.outerHTML='<div class=&quot;mp-versus-avatar mp-versus-avatar-fallback&quot;>🤠</div>'">`
     : `<div class="mp-versus-avatar mp-versus-avatar-fallback">🤠</div>`;
   return `
     <div class="mp-versus-player">
       <div class="mp-versus-role">${escapeHtml(roleLabel)}</div>
       ${avatar}
-      <div class="mp-versus-name">${escapeHtml(firstName)}</div>
+      <div class="mp-versus-name">${escapeHtml(username)}</div>
     </div>
   `;
 }
@@ -5236,7 +5271,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
 
     body.querySelector('#mp-cancel').addEventListener('click', async () => {
       cleanup();
-      try { await cancelMatch(code); } catch (err) { console.error('No se pudo cancelar la partida:', err); }
+      try { await cancelMatch(code, state.currentUser?.uid || null); } catch (err) { console.error('No se pudo cancelar la partida:', err); }
       renderHome();
     });
   }
@@ -5265,12 +5300,11 @@ export function showMultiplayerLobby(onBack, onMatched) {
     const myUid = state.currentUser.uid;
     const myRole = match.hostUid === myUid ? 'host' : 'guest';
     const rivalUid = myRole === 'host' ? match.guestUid : match.hostUid;
-    // BUGFIX: mismo criterio de privacidad que getLocalPlayerName (main.js) — solo el
-    // nombre de pila, nunca el apellido completo de Google. Antes esto mostraba el
-    // displayName entero sin recortar.
+    // 23.13.24: el snapshot multiplayer transporta el username Argentinia. displayName
+    // queda sólo como fallback de compatibilidad y en builds nuevos contiene el MISMO alias,
+    // nunca el nombre Google.
     const rivalProfile = (match.players && match.players[rivalUid]) || {};
-    const rivalFullName = rivalProfile.displayName || '';
-    const rivalName = (rivalFullName.trim().split(/\s+/)[0]) || 'tu rival';
+    const rivalName = String(rivalProfile.username || rivalProfile.displayName || '').trim() || 'tu rival';
     const rivalPhotoURL = rivalProfile.photoURL || '';
     const hostProfile = (match.players && match.players[match.hostUid]) || {};
     const guestProfile = (match.players && match.players[match.guestUid]) || {};
