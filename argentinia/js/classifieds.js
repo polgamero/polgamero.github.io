@@ -12,7 +12,7 @@
 // publicación server-trusted de esas semanas vive en gameConfig/classifiedsSchedule y la
 // materializa únicamente el Admin; este módulo sólo define la matemática reproducible.
 
-import { rewardWeekStartStamp, weekKeyFromDate } from './rewards.js';
+import { REWARD_TIMEZONE_OFFSET_MINUTES, rewardWeekStartStamp, weekKeyFromDate } from './rewards.js';
 import {
   CLASSIFIEDS_COMMON_POINTS,
   CLASSIFIEDS_COMMON_FICHAS,
@@ -333,6 +333,18 @@ export function validateClassifiedsScheduleWeek(week, cardDbLike = null) {
     if (commonLands > CLASSIFIEDS_MAX_COMMON_LANDS) return false;
   }
   return true;
+}
+
+// Instante REAL de renovación: lunes 00:00 ART. rewardWeekStartStamp() representa
+// la fecha oficial como 00:00Z para cálculos calendarios; para UI necesitamos convertir
+// ese lunes local a su instante UTC real (ART = UTC-3 => 03:00Z).
+export function classifiedsNextRotationAt(date = new Date()) {
+  const weekStart = classifiedsWeekStartStamp(date);
+  return new Date(
+    weekStart.getTime()
+      + WEEK_MS
+      - REWARD_TIMEZONE_OFFSET_MINUTES * 60000
+  );
 }
 
 export function nextClassifiedsWeekDate(date = new Date()) {

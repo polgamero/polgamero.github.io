@@ -36,7 +36,7 @@ import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, ensureClassifiedsSchedule, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, applyGameConfig, getDefaultGameConfig } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -54,6 +54,7 @@ import { registerCardArtImage, hasCustomArtLayout, ensureArtLayoutsLoaded } from
 import { openArtLayoutEditor } from './artLayoutEditor.js';
 import { USERNAME_RENAME_COST } from './usernames.js';
 import { showUsernameRenameModal } from './usernameUI.js';
+import { classifiedsNextRotationAt, getClassifiedsProfileState, countOwnedClassifiedCard } from './classifieds.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -2812,6 +2813,82 @@ function injectStoreStyles() {
     .store-keyword-btn:hover { background: rgba(212,175,55,0.18); border-color: #f0e0b0; }
     .store-back-link { background: none; border: none; color: #b8adc4; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 10px; }
     .store-back-link:hover { color: #f0e0b0; }
+
+    /* 23.13.27 — Avisos Clasificados: UI únicamente. La economía/semana provienen del
+       backend 23.13.26 y la compra sigue validada por Firestore Rules. */
+    .store-classifieds-entry {
+      border-color: rgba(116,172,223,0.6);
+      background: linear-gradient(135deg, rgba(24,48,58,0.72), rgba(18,25,15,0.62));
+      box-shadow: inset 0 0 28px rgba(116,172,223,0.06);
+    }
+    .classifieds-loading { padding: 42px 18px; color: #cfe0d4; text-align: center; }
+    .classifieds-topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .classifieds-week-info { text-align: left; }
+    .classifieds-week-title { color:#f0e0b0; font-size:20px; font-weight:800; }
+    .classifieds-week-subtitle { color:#b8c9cf; font-size:12px; line-height:1.4; margin-top:3px; }
+    .classifieds-countdown {
+      min-width: 190px; padding: 9px 13px; border-radius: 10px;
+      border: 1px solid rgba(116,172,223,0.5); background: rgba(4,17,22,0.65);
+      color:#d8edf5; font-size:12px; font-weight:700; text-align:center;
+    }
+    .classifieds-balance-row { margin-bottom: 14px; }
+    .classifieds-group {
+      background: rgba(9,16,12,0.58); border:1px solid rgba(212,175,55,0.22);
+      border-radius:12px; padding:14px; margin-bottom:14px;
+    }
+    .classifieds-group-premium {
+      border-color: rgba(212,175,55,0.58);
+      box-shadow: inset 0 0 24px rgba(212,175,55,0.05);
+    }
+    .classifieds-group-title {
+      color:#f0e0b0; font-size:14px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+      margin-bottom:10px; text-align:left;
+    }
+    .classifieds-grid {
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:14px; align-items:start;
+    }
+    .classifieds-card-slot {
+      --card-w: 132px; position:relative; display:flex; flex-direction:column; align-items:center; gap:7px;
+      min-width:0; padding:10px 7px 11px; border-radius:11px;
+      background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.08);
+    }
+    .classifieds-card-slot.classifieds-purchased { opacity:.72; }
+    .classifieds-card-slot.classifieds-rarity-Mythic { box-shadow:0 0 18px rgba(230,126,34,0.18); }
+    .classifieds-card-slot.classifieds-rarity-Rare { box-shadow:0 0 15px rgba(212,175,55,0.12); }
+    .classifieds-card-slot .card { cursor:default; }
+    .classifieds-purchased-badge {
+      position:absolute; z-index:4; top:5px; right:5px; padding:4px 7px; border-radius:999px;
+      background:rgba(33,92,59,.94); border:1px solid rgba(125,220,160,.7);
+      color:#e6ffef; font-size:9px; font-weight:900; letter-spacing:.04em;
+    }
+    .classifieds-owned { min-height:16px; color:#a9c9b2; font-size:11px; font-weight:700; }
+    .classifieds-price {
+      display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;
+      color:#f0e0b0; font-size:12px; font-weight:800; min-height:21px;
+    }
+    .classifieds-price-part { display:inline-flex; align-items:center; gap:4px; }
+    .classifieds-price :is(.coin-icon,.ficha-icon) { width:16px; height:16px; }
+    .classifieds-buy-btn { width:100%; padding:8px 9px; font-size:12px; }
+    .classifieds-card-error { min-height:14px; color:#e07a6b; font-size:10px; line-height:1.25; text-align:center; }
+    .classifieds-global-error { color:#eaa194; font-size:12px; margin:8px 0 14px; text-align:center; }
+    .classifieds-refresh-row { text-align:center; margin-top:6px; }
+
+    html.argentinia-mobile .classifieds-topbar { margin-bottom:8px; }
+    html.argentinia-mobile .classifieds-week-title { font-size:15px; }
+    html.argentinia-mobile .classifieds-week-subtitle { font-size:9px; }
+    html.argentinia-mobile .classifieds-countdown { min-width:150px; padding:6px 9px; font-size:9px; }
+    html.argentinia-mobile .classifieds-group { padding:8px; margin-bottom:8px; }
+    html.argentinia-mobile .classifieds-group-title { font-size:10px; margin-bottom:6px; }
+    html.argentinia-mobile .classifieds-grid { grid-template-columns:repeat(auto-fit,minmax(92px,1fr)); gap:7px; }
+    html.argentinia-mobile .classifieds-card-slot { --card-w:min(16dvh,78px); padding:5px 4px 6px; gap:4px; }
+    html.argentinia-mobile .classifieds-owned,
+    html.argentinia-mobile .classifieds-price { font-size:8px; min-height:11px; }
+    html.argentinia-mobile .classifieds-price :is(.coin-icon,.ficha-icon) { width:12px; height:12px; }
+    html.argentinia-mobile .classifieds-buy-btn { padding:5px 6px; font-size:8px; border-width:1px; }
+    html.argentinia-mobile .classifieds-card-error { font-size:7px; min-height:9px; }
   `;
   document.head.appendChild(style);
 }
@@ -2834,12 +2911,27 @@ export function showStoreScreen(onBack, options = {}) {
   `;
   document.body.appendChild(overlay);
   overlay.querySelector('#store-back').addEventListener('click', () => {
+    leaveClassifiedsView();
     overlay.remove();
     onBack();
   });
 
   const body = overlay.querySelector('#store-body');
   let craftSelectedCardId = null;
+  let classifiedsTimerId = null;
+  let classifiedsViewSerial = 0;
+
+  function stopClassifiedsTimer() {
+    if (classifiedsTimerId !== null) {
+      clearInterval(classifiedsTimerId);
+      classifiedsTimerId = null;
+    }
+  }
+
+  function leaveClassifiedsView() {
+    classifiedsViewSerial += 1;
+    stopClassifiedsTimer();
+  }
 
   // BUGFIX: panel de "cómo conseguir puntos" — se muestra SIEMPRE, arriba de todo, sin
   // importar si hay sesión o no (así también le sirve a alguien que todavía no se logueó
@@ -2860,6 +2952,7 @@ export function showStoreScreen(onBack, options = {}) {
   `;
 
   function renderMainView() {
+    leaveClassifiedsView();
     if (!state.currentUser) {
       body.innerHTML = pointsInfoHTML + `<div class="store-section"><div class="store-section-desc">Iniciá sesión desde el menú principal para acceder a la Tienda — los puntos y la colección son por cuenta.</div></div>`;
       return;
@@ -2879,6 +2972,11 @@ export function showStoreScreen(onBack, options = {}) {
         <div class="store-balance-chip"><div class="store-balance-value">${COIN_ICON_HTML} ${points}</div><div class="store-balance-label">Puntos</div></div>
         <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${fichas}</div><div class="store-balance-label">Fichas</div></div>
       </div>
+      <div class="store-section store-classifieds-entry">
+        <div class="store-section-title">📰 Avisos Clasificados</div>
+        <div class="store-section-desc">Siete cartas cambian cada lunes: 4 Comunes, 2 Poco Comunes y 1 Rara o Mítica. Cada aviso se puede comprar una sola vez por semana.</div>
+        <button class="store-buy-btn" id="store-classifieds">Ver las 7 cartas de esta semana</button>
+      </div>
       <div class="store-section">
         <img class="store-pack-visual" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">
         <div class="store-section-title">Sobre — ${PACK_COST} puntos</div>
@@ -2893,6 +2991,10 @@ export function showStoreScreen(onBack, options = {}) {
         <button class="store-buy-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? 'Craftear mejora' : `Te faltan ${FICHAS_PER_ENHANCEMENT - fichas} Ficha(s)`}</button>
       </div>
     `;
+
+    body.querySelector('#store-classifieds').addEventListener('click', () => {
+      void renderClassifiedsView();
+    });
 
     body.querySelector('#store-buy-pack').addEventListener('click', async () => {
       const btn = body.querySelector('#store-buy-pack');
@@ -2925,6 +3027,254 @@ export function showStoreScreen(onBack, options = {}) {
 
     if (canCraft) {
       body.querySelector('#store-craft').addEventListener('click', () => renderCraftPickCardView());
+    }
+  }
+
+  function toClassifiedsDate(value) {
+    if (!value) return null;
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    if (typeof value?.toDate === 'function') {
+      const d = value.toDate();
+      return d instanceof Date && !Number.isNaN(d.getTime()) ? d : null;
+    }
+    if (typeof value?.seconds === 'number') {
+      const d = new Date(value.seconds * 1000 + Math.floor((Number(value.nanoseconds) || 0) / 1e6));
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  function formatClassifiedsCountdown(ms) {
+    const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const minutes = totalMinutes % 60;
+    return `${days}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`;
+  }
+
+  function formatClassifiedsRotationDate(date) {
+    const d = toClassifiedsDate(date);
+    if (!d) return 'próximo lunes a las 00:00';
+    try {
+      return new Intl.DateTimeFormat('es-AR', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
+      }).format(d);
+    } catch (_) {
+      return 'próximo lunes a las 00:00';
+    }
+  }
+
+  function classifiedsFriendlyError(error) {
+    switch (error?.code) {
+      case 'CLASSIFIEDS_ALREADY_PURCHASED': return 'Esa carta ya figura como comprada esta semana.';
+      case 'CLASSIFIEDS_INSUFFICIENT_FUNDS': return 'No te alcanzan los puntos o las Fichas.';
+      case 'CLASSIFIEDS_CARD_NOT_OFFERED': return 'La oferta cambió. Actualizando la semana vigente…';
+      case 'CLASSIFIEDS_WEEK_NOT_PUBLISHED': return 'Los Avisos Clasificados de esta semana todavía no fueron publicados.';
+      default: return error?.message || 'No se pudo completar la compra.';
+    }
+  }
+
+  function syncClassifiedsOfferWithProfile(offer, profile) {
+    if (!offer || !profile) return offer;
+    const weekly = getClassifiedsProfileState(profile, offer.weekKey);
+    return {
+      ...offer,
+      profile,
+      purchased: weekly.purchased,
+      purchaseCounts: weekly.counts,
+      entries: (offer.entries || []).map(entry => ({
+        ...entry,
+        ownedCount: countOwnedClassifiedCard(profile, entry.cardId),
+        purchased: weekly.purchased.includes(entry.cardId)
+      }))
+    };
+  }
+
+  function renderClassifiedsOffer(offer, viewSerial) {
+    if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
+    stopClassifiedsTimer();
+
+    state.userProfile = offer.profile || state.userProfile;
+    updateAccountUI(state.currentUser);
+    const points = Math.max(0, Math.floor(Number(state.userProfile?.points) || 0));
+    const fichas = Math.max(0, Math.floor(Number(state.userProfile?.fichas) || 0));
+    const serverNow = toClassifiedsDate(offer.serverNow) || new Date();
+    const rotationAt = toClassifiedsDate(offer.nextRotationAt) || classifiedsNextRotationAt(serverNow);
+    const serverAnchorMs = serverNow.getTime();
+    const localAnchorMs = Date.now();
+    const premiumLabel = offer.premiumRarity === 'Mythic' ? 'Mítica' : 'Rara';
+
+    body.innerHTML = `
+      <div class="classifieds-topbar">
+        <div class="classifieds-week-info">
+          <div class="classifieds-week-title">📰 Avisos Clasificados</div>
+          <div class="classifieds-week-subtitle">Semana ${offer.weekKey} · 4 Comunes · 2 Poco Comunes · 1 ${premiumLabel}</div>
+        </div>
+        <div class="classifieds-countdown" id="classifieds-countdown"></div>
+      </div>
+      <div class="store-balance-row classifieds-balance-row">
+        <div class="store-balance-chip"><div class="store-balance-value">${COIN_ICON_HTML} ${points}</div><div class="store-balance-label">Puntos</div></div>
+        <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${fichas}</div><div class="store-balance-label">Fichas</div></div>
+      </div>
+      <div class="classifieds-global-error" id="classifieds-global-error"></div>
+      <div class="classifieds-group">
+        <div class="classifieds-group-title">Comunes · 4 avisos</div>
+        <div class="classifieds-grid" id="classifieds-common-grid"></div>
+      </div>
+      <div class="classifieds-group">
+        <div class="classifieds-group-title">Poco Comunes · 2 avisos</div>
+        <div class="classifieds-grid" id="classifieds-uncommon-grid"></div>
+      </div>
+      <div class="classifieds-group classifieds-group-premium">
+        <div class="classifieds-group-title">Destacada de la semana · ${premiumLabel}</div>
+        <div class="classifieds-grid" id="classifieds-premium-grid"></div>
+      </div>
+      <div class="classifieds-refresh-row">
+        <button class="store-back-link" id="classifieds-back">← Volver a la Tienda</button>
+        <button class="store-back-link" id="classifieds-refresh">Actualizar avisos</button>
+      </div>
+    `;
+
+    const countdown = body.querySelector('#classifieds-countdown');
+    const tick = () => {
+      if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return stopClassifiedsTimer();
+      const estimatedServerNow = serverAnchorMs + (Date.now() - localAnchorMs);
+      const remaining = rotationAt.getTime() - estimatedServerNow;
+      countdown.textContent = remaining > 0
+        ? `Renuevan en ${formatClassifiedsCountdown(remaining)} · ${formatClassifiedsRotationDate(rotationAt)}`
+        : 'La semana acaba de cambiar · actualizando…';
+      if (remaining <= 0) {
+        stopClassifiedsTimer();
+        setTimeout(() => {
+          if (overlay.isConnected && viewSerial === classifiedsViewSerial) void renderClassifiedsView();
+        }, 250);
+      }
+    };
+    tick();
+    classifiedsTimerId = window.setInterval(tick, 30000);
+
+    const targetGrid = rarity => rarity === 'Common'
+      ? body.querySelector('#classifieds-common-grid')
+      : rarity === 'Uncommon'
+        ? body.querySelector('#classifieds-uncommon-grid')
+        : body.querySelector('#classifieds-premium-grid');
+
+    (offer.entries || []).forEach(entry => {
+      const card = cardDb.getById(entry.cardId);
+      if (!card) return;
+      const slot = document.createElement('div');
+      slot.className = `classifieds-card-slot classifieds-rarity-${entry.rarity}${entry.purchased ? ' classifieds-purchased' : ''}`;
+      if (entry.purchased) {
+        const badge = document.createElement('div');
+        badge.className = 'classifieds-purchased-badge';
+        badge.textContent = '✓ COMPRADA';
+        slot.appendChild(badge);
+      }
+
+      slot.appendChild(createCardElement(card, false, true, null, 'encyclopedia', null));
+
+      const owned = document.createElement('div');
+      owned.className = 'classifieds-owned';
+      owned.textContent = entry.ownedCount > 0 ? `TENÉS: ${entry.ownedCount}` : '';
+      slot.appendChild(owned);
+
+      const price = document.createElement('div');
+      price.className = 'classifieds-price';
+      price.innerHTML = `<span class="classifieds-price-part">${COIN_ICON_HTML} ${entry.points}</span><span>+</span><span class="classifieds-price-part">${FICHA_ICON_HTML} ${entry.fichas}</span>`;
+      slot.appendChild(price);
+
+      const buy = document.createElement('button');
+      buy.type = 'button';
+      buy.className = 'store-buy-btn classifieds-buy-btn';
+      const canAfford = points >= entry.points && fichas >= entry.fichas;
+      buy.disabled = entry.purchased || !canAfford;
+      buy.textContent = entry.purchased ? '✓ COMPRADA' : (canAfford ? 'Comprar' : 'No te alcanza');
+      slot.appendChild(buy);
+
+      const errorBox = document.createElement('div');
+      errorBox.className = 'classifieds-card-error';
+      slot.appendChild(errorBox);
+
+      if (!entry.purchased) {
+        buy.addEventListener('click', async () => {
+          if (!state.currentUser || buy.disabled) return;
+          buy.disabled = true;
+          errorBox.textContent = '';
+          const oldLabel = buy.textContent;
+          buy.textContent = 'Comprando…';
+          try {
+            const updatedProfile = await purchaseClassifiedCard(state.currentUser.uid, entry.cardId);
+            if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
+            state.userProfile = updatedProfile;
+            updateAccountUI(state.currentUser);
+            const synced = syncClassifiedsOfferWithProfile(offer, updatedProfile);
+            // Conserva el ancla temporal real: no reiniciamos el countdown al serverNow
+            // viejo cada vez que se compra una carta. También preservamos scroll para que
+            // comprar una oferta de abajo no te mande de vuelta al comienzo de la lista.
+            synced.serverNow = new Date(serverAnchorMs + (Date.now() - localAnchorMs));
+            synced.nextRotationAt = rotationAt;
+            const previousScrollTop = body.scrollTop;
+            renderClassifiedsOffer(synced, viewSerial);
+            body.scrollTop = previousScrollTop;
+          } catch (error) {
+            console.error('No se pudo comprar el Aviso Clasificado:', error);
+            if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
+            errorBox.textContent = classifiedsFriendlyError(error);
+            buy.textContent = oldLabel;
+            buy.disabled = !canAfford;
+            if (['CLASSIFIEDS_ALREADY_PURCHASED', 'CLASSIFIEDS_CARD_NOT_OFFERED', 'CLASSIFIEDS_WEEK_NOT_PUBLISHED'].includes(error?.code)) {
+              setTimeout(() => {
+                if (overlay.isConnected && viewSerial === classifiedsViewSerial) void renderClassifiedsView();
+              }, 500);
+            }
+          }
+        });
+      }
+
+      targetGrid(entry.rarity)?.appendChild(slot);
+    });
+
+    body.querySelector('#classifieds-back').addEventListener('click', renderMainView);
+    body.querySelector('#classifieds-refresh').addEventListener('click', () => void renderClassifiedsView());
+  }
+
+  async function renderClassifiedsView() {
+    if (!state.currentUser || !state.userProfile) return renderMainView();
+    leaveClassifiedsView();
+    const viewSerial = classifiedsViewSerial;
+    body.innerHTML = `<div class="store-section classifieds-loading">Cargando Avisos Clasificados de esta semana…</div>`;
+    try {
+      let offer;
+      try {
+        offer = await fetchCurrentClassifieds(state.currentUser.uid);
+      } catch (error) {
+        // El Admin puede haber desplegado una release nueva antes de que exista el primer
+        // calendario. Intentamos publicarlo una sola vez y reconsultamos; usuarios normales
+        // jamás reciben este privilegio porque ensureClassifiedsSchedule() retorna not_admin.
+        if (error?.code === 'CLASSIFIEDS_WEEK_NOT_PUBLISHED' && isAdminUser()) {
+          await ensureClassifiedsSchedule();
+          offer = await fetchCurrentClassifieds(state.currentUser.uid);
+        } else {
+          throw error;
+        }
+      }
+      if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
+      renderClassifiedsOffer(offer, viewSerial);
+    } catch (error) {
+      console.error('No se pudieron cargar los Avisos Clasificados:', error);
+      if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
+      body.innerHTML = `
+        <div class="store-section">
+          <div class="store-section-title">Avisos Clasificados</div>
+          <div class="store-error-msg" id="classifieds-load-error"></div>
+          <button class="store-buy-btn" id="classifieds-retry">Reintentar</button>
+          <button class="store-back-link" id="classifieds-error-back">← Volver a la Tienda</button>
+        </div>`;
+      body.querySelector('#classifieds-load-error').textContent = classifiedsFriendlyError(error);
+      body.querySelector('#classifieds-retry').addEventListener('click', () => void renderClassifiedsView());
+      body.querySelector('#classifieds-error-back').addEventListener('click', renderMainView);
     }
   }
 
@@ -3026,6 +3376,8 @@ export function showStoreScreen(onBack, options = {}) {
   renderMainView();
   if (options.initialView === 'craft' && state.userProfile && (state.userProfile.fichas || 0) >= FICHAS_PER_ENHANCEMENT) {
     renderCraftPickCardView();
+  } else if (options.initialView === 'classifieds' && state.userProfile) {
+    void renderClassifiedsView();
   }
 }
 
