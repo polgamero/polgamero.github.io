@@ -970,7 +970,8 @@
           "power": 1,
           "toughness": 1
         },
-        "tokenKeywords": []
+        "tokenKeywords": [],
+        "image": "token_camalote.png"
       },
       "requiresTarget": false,
       "timing": "sorcery"

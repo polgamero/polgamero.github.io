@@ -92,8 +92,10 @@ export function deriveLocalPriorityActivity(state) {
   if (state.pendingSpellIndex != null || state.pendingCastTransaction?.stage === 'payment' || state.pendingAbilitySource != null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingCompositeCostPayment) return 'paying_mana';
   if (hasAnyResolutionChoice(state)) return 'choosing_cards';
 
-  // Declaraciones obligatorias de combate NO son una ventana en la que un timeout pueda
-  // simplemente llamar passPriority(). El reloj se pausa hasta que se declare explícitamente.
+  // 23.13.36: declarar atacantes/bloqueadores sigue siendo una decisión obligatoria, pero
+  // NO puede pausar indefinidamente una partida multiplayer. La actividad se mantiene para
+  // UX/telemetría mientras la mecha corre; al vencer, turnManager confirma una declaración
+  // vacía (0 atacantes / 0 bloqueadores) en vez de dejar el juego congelado.
   if (state.phase === 'combat_attackers' && state.priorityPlayer === state.activePlayer) {
     const declared = state.activePlayer === 'local'
       ? (state.localAttackersDeclaredThisTurn || 0)
@@ -115,11 +117,14 @@ export function getEffectivePriorityActivity(state) {
   return state.priorityActivity || null;
 }
 
+const PRIORITY_ACTIVITY_CLOCK_CONTINUES = new Set(['choosing_attackers', 'choosing_blockers']);
+
 export function canPriorityClockRun(state) {
   if (!state?.currentMatch || state.gameOver || state.multiplayerWaitingForReady) return false;
   if (!['local', 'rival'].includes(state.priorityPlayer)) return false;
   if ((state.consecutivePasses || 0) >= 2) return false;
-  return !getEffectivePriorityActivity(state);
+  const activity = getEffectivePriorityActivity(state);
+  return !activity || PRIORITY_ACTIVITY_CLOCK_CONTINUES.has(activity);
 }
 
 

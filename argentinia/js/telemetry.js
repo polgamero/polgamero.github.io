@@ -547,6 +547,9 @@ function bugRootCauseKey(finding) {
     const reason = details?.reason?.message || details?.reason?.name || String(details?.reason || '');
     return `UNHANDLED_REJECTION|${reason}`;
   }
+  if (code === 'SYNC_PUBLISH_ERROR') {
+    return `SYNC_PUBLISH_ERROR|${details.errorName || ''}|${details.errorMessage || ''}`;
+  }
   if (code === 'SYNC_PUBLISH_OVERLAP' || code === 'POSSIBLE_SYNC_RENDER_STORM' || code === 'INVALID_PASS_COUNT' || code === 'BLOCKER_DECLARATION_LOOP' || code === 'BOT_PRIORITY_STALL') {
     return code;
   }
@@ -554,7 +557,7 @@ function bugRootCauseKey(finding) {
 }
 
 function shouldAggregateBug(finding) {
-  return new Set(['JS_ERROR', 'UNHANDLED_REJECTION', 'SYNC_PUBLISH_OVERLAP', 'POSSIBLE_SYNC_RENDER_STORM', 'INVALID_PASS_COUNT', 'BLOCKER_DECLARATION_LOOP', 'BOT_PRIORITY_STALL']).has(finding?.code);
+  return new Set(['JS_ERROR', 'UNHANDLED_REJECTION', 'SYNC_PUBLISH_OVERLAP', 'SYNC_PUBLISH_ERROR', 'POSSIBLE_SYNC_RENDER_STORM', 'INVALID_PASS_COUNT', 'BLOCKER_DECLARATION_LOOP', 'BOT_PRIORITY_STALL']).has(finding?.code);
 }
 
 function addBugCandidate(finding, eventSeq = null) {
@@ -708,6 +711,18 @@ export function recordTelemetryEvent(type, data = {}, severity = 'info') {
       }, event.seq);
     }
     if (type === 'sync_publish_ok') lastCompletedPublishStartSeq = Math.max(lastCompletedPublishStartSeq, startSeq);
+    if (type === 'sync_publish_error') {
+      addBugCandidate({
+        code: 'SYNC_PUBLISH_ERROR',
+        severity: 'error',
+        message: 'Falló una publicación de estado multiplayer a Firestore; los clientes pueden divergir.',
+        details: {
+          errorName: data?.error?.name || null,
+          errorMessage: data?.error?.message || String(data?.error || ''),
+          publishId: data.publishId || null
+        }
+      }, event.seq);
+    }
     networkPublishesInFlight.delete(data.publishId);
     networkPublishStartSeq.delete(data.publishId);
   }

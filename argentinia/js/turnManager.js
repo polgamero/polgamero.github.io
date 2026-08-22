@@ -2,7 +2,7 @@ import { logMsg, els, showGameOverOverlay, render, updateAccountUI, refreshTurnP
 import { state, queueTriggeredAbilities, resolveScheduledReturns, getLocalPlayerName, getRivalName } from './main.js';
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
-import { resolveCombatDamage, hasPendingCombatDamageContinuation } from './combatRules.js';
+import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { hasKeyword } from './keywords.js';
 import { awardPoints, clearActiveMatchId } from './firebaseClient.js';
 import { pointsForBotGameEnd, POINTS } from './store.js';
@@ -439,18 +439,25 @@ async function priorityClockTick() {
   if (priorityClockLastAutoPassSerial === state.priorityClockSerial) return;
 
   priorityClockLastAutoPassSerial = state.priorityClockSerial;
+  const timeoutActivity = getEffectivePriorityActivity(state);
   recordTelemetryEvent('priority_timeout_autopass', {
     serial: state.priorityClockSerial,
     turnCount: state.turnCount,
     phase: state.phase,
     activePlayer: state.activePlayer,
     priorityPlayer: state.priorityPlayer,
-    stackDepth: spellStack.length
+    stackDepth: spellStack.length,
+    activity: timeoutActivity || null
   }, 'warning');
   logMsg(gameText('priority.timeout'));
   priorityClockTickBusy = true;
   try {
-    await passPriority('local');
+    // 23.13.36: un timeout durante una declaración de combate no es un pass abstracto.
+    // Confirmamos 0 atacantes / 0 bloqueadores usando el MISMO carril que el botón humano,
+    // de modo que la fase pueda avanzar y nadie pause la partida indefinidamente.
+    if (timeoutActivity === 'choosing_attackers') await executeLocalAttack();
+    else if (timeoutActivity === 'choosing_blockers') executeRivalAttack();
+    else await passPriority('local');
   } finally {
     priorityClockTickBusy = false;
   }

@@ -873,7 +873,8 @@
         "power": 1,
         "toughness": 1
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_brote.png"
     }
   },
   {
@@ -1094,7 +1095,8 @@
         "power": 1,
         "toughness": 1
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_anima.png"
     }
   },
   {

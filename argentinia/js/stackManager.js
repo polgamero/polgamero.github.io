@@ -1182,7 +1182,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
             name: effectToApply.tokenName || 'Ficha',
             type: 'Criatura Token',
             manaCost: null,
-            image: effectToApply.image,
+            image: effectToApply.image ?? null,
             cmc: 0,
             rarity: 'Common',
             colors: card.colors || [],

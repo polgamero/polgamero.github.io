@@ -130,6 +130,52 @@ def load_pool_contract(root: Path) -> tuple[str, str, int, dict[str, int]]:
     return milestone, version, total, categories
 
 
+def collect_token_effects(cards):
+    """Collect every nested create_tokens effect from the 601-card JSON pool."""
+    found = []
+
+    def visit(node, *, category, card, path):
+        if isinstance(node, dict):
+            if node.get("type") == "create_tokens":
+                image = node.get("image")
+                found.append({
+                    "cardId": card.get("id"),
+                    "cardName": card.get("name"),
+                    "category": category,
+                    "path": ".".join(str(part) for part in path),
+                    "tokenName": node.get("tokenName") or "Ficha",
+                    "amount": node.get("amount", 1),
+                    "power": (node.get("tokenStats") or {}).get("power", 1),
+                    "toughness": (node.get("tokenStats") or {}).get("toughness", 1),
+                    "keywords": node.get("tokenKeywords") or [],
+                    "image": image.strip().replace("\\", "/") if isinstance(image, str) and image.strip() else None,
+                })
+            for key, value in node.items():
+                visit(value, category=category, card=card, path=path + [key])
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                visit(value, category=category, card=card, path=path + [index])
+
+    for category, card in cards:
+        visit(card, category=category, card=card, path=[])
+    return found
+
+
+def validate_token_image_ownership(token_effects) -> list[str]:
+    """A token art may be shared by producers only when they create the same named token."""
+    errors = []
+    image_names = defaultdict(set)
+    for entry in token_effects:
+        if entry.get("image"):
+            image_names[entry["image"]].add(entry["tokenName"])
+    for image, names in sorted(image_names.items()):
+        if len(names) > 1:
+            errors.append(
+                f'token image="{image}" está reutilizada por conceptos distintos: {sorted(names)}'
+            )
+    return errors
+
+
 def validate_image_ownership(cards) -> list[str]:
     errors = []
     owners = defaultdict(list)
@@ -265,6 +311,14 @@ def main() -> int:
             print(f"  - {item}", file=sys.stderr)
         return 4
 
+    token_effects = collect_token_effects(cards)
+    token_ownership_errors = validate_token_image_ownership(token_effects)
+    if token_ownership_errors:
+        print("ERROR: auditoría de ownership de imágenes de token falló:", file=sys.stderr)
+        for item in token_ownership_errors:
+            print(f"  - {item}", file=sys.stderr)
+        return 5
+
     existing_files = []
     for path in image_dir.rglob("*"):
         if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS:
@@ -296,6 +350,17 @@ def main() -> int:
 
     unique_referenced = sorted(set(referenced))
     missing.sort(key=lambda x: (x["category"], str(x["name"]), str(x["id"])))
+
+    token_effects_without_image = [entry for entry in token_effects if not entry.get("image")]
+    token_referenced = sorted({entry["image"] for entry in token_effects if entry.get("image")})
+    missing_token_images = []
+    for entry in token_effects:
+        image = entry.get("image")
+        if image and image not in existing_set:
+            missing_token_images.append(dict(entry))
+    missing_token_images.sort(key=lambda x: (str(x["tokenName"]), str(x["cardId"]), str(x["path"])))
+    unique_token_names = sorted({str(entry.get("tokenName") or "Ficha") for entry in token_effects})
+
     now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     sha = os.environ.get("GITHUB_SHA") or None
     run_id = os.environ.get("GITHUB_RUN_ID") or None
@@ -320,8 +385,20 @@ def main() -> int:
             "missingCardCount": len(missing),
             "cardsWithoutImageFieldCount": len(cards_without_image_field),
         },
+        "tokenImages": {
+            "producerEffectCount": len(token_effects),
+            "uniqueTokenNameCount": len(unique_token_names),
+            "assignedEffectCount": len(token_effects) - len(token_effects_without_image),
+            "unassignedEffectCount": len(token_effects_without_image),
+            "uniqueReferencedFileCount": len(token_referenced),
+            "missingEffectCount": len(missing_token_images),
+            "missingUniqueFileCount": len({entry["image"] for entry in missing_token_images}),
+        },
         "missing": missing,
         "cardsWithoutImageField": cards_without_image_field,
+        "tokenEffects": token_effects,
+        "tokenEffectsWithoutImage": token_effects_without_image,
+        "missingTokenImages": missing_token_images,
         "files": existing_files,
     }
 
@@ -332,13 +409,28 @@ def main() -> int:
     txt_lines = [entry["image"] for entry in missing]
     txt_path.write_text(("\n".join(txt_lines) + ("\n" if txt_lines else "")), encoding="utf-8")
 
+    token_txt_path = image_dir / "missing-token-images.txt"
+    token_txt_lines = sorted({entry["image"] for entry in missing_token_images})
+    token_txt_path.write_text(("\n".join(token_txt_lines) + ("\n" if token_txt_lines else "")), encoding="utf-8")
+
+    token_unassigned_path = image_dir / "unassigned-token-images.txt"
+    token_unassigned_lines = [
+        f'{entry["cardId"]} | {entry["cardName"]} | {entry["tokenName"]} | {entry["path"]}'
+        for entry in token_effects_without_image
+    ]
+    token_unassigned_path.write_text(("\n".join(token_unassigned_lines) + ("\n" if token_unassigned_lines else "")), encoding="utf-8")
+
     print(
         "IMAGE_MANIFEST_OK "
         f"milestone={milestone} pool={total} existing={len(existing_files)} "
-        f"missingCards={len(missing)} imageOwnership=OK"
+        f"missingCards={len(missing)} tokenEffects={len(token_effects)} "
+        f"tokenConcepts={len(unique_token_names)} tokenUnassigned={len(token_effects_without_image)} "
+        f"missingTokenFiles={len(token_txt_lines)} imageOwnership=OK tokenOwnership=OK"
     )
     print(f"Manifest: {manifest_path.relative_to(root)}")
-    print(f"TXT: {txt_path.relative_to(root)}")
+    print(f"Cards TXT: {txt_path.relative_to(root)}")
+    print(f"Tokens TXT: {token_txt_path.relative_to(root)}")
+    print(f"Unassigned token TXT: {token_unassigned_path.relative_to(root)}")
     return 0
 
 

@@ -2816,7 +2816,8 @@
         "power": 1,
         "toughness": 1
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_vecino.png"
     }
   },
   {
@@ -3198,7 +3199,8 @@
         "power": 1,
         "toughness": 1
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_brote.png"
     }
   },
   {
@@ -3332,7 +3334,8 @@
         "power": 1,
         "toughness": 1
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_peregrino.png"
     }
   },
   {
@@ -3362,7 +3365,8 @@
         "power": 1,
         "toughness": 1
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_anima.png"
     }
   },
   {
@@ -3443,7 +3447,8 @@
         "power": 1,
         "toughness": 1
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_murguero.png"
     }
   },
   {
@@ -3554,7 +3559,8 @@
         "power": 1,
         "toughness": 1
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_estudiante.png"
     }
   },
   {
@@ -3614,7 +3620,8 @@
       },
       "tokenKeywords": [
         "vigilance"
-      ]
+      ],
+      "image": "token_voluntario.png"
     }
   },
   {
@@ -4094,7 +4101,8 @@
       },
       "tokenKeywords": [
         "haste"
-      ]
+      ],
+      "image": "token_hincha.png"
     }
   },
   {
@@ -4489,7 +4497,8 @@
       },
       "tokenKeywords": [
         "haste"
-      ]
+      ],
+      "image": "token_bailarin.png"
     }
   },
   {
@@ -4592,7 +4601,8 @@
         "power": 1,
         "toughness": 1
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_anima_velorio.png"
     }
   },
   {
@@ -5173,7 +5183,8 @@
           "power": 1,
           "toughness": 1
         },
-        "tokenKeywords": []
+        "tokenKeywords": [],
+        "image": "token_vecino_madrugador.png"
       }
     }
   },
@@ -5204,7 +5215,8 @@
           "power": 1,
           "toughness": 1
         },
-        "tokenKeywords": []
+        "tokenKeywords": [],
+        "image": "token_sarmiento.png"
       }
     }
   },
@@ -5349,7 +5361,8 @@
         "power": 1,
         "toughness": 1
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_anima_bodega.png"
     }
   },
   {

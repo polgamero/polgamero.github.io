@@ -820,7 +820,8 @@
         "power": 1,
         "toughness": 1
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_vecino.png"
     }
   },
   {
@@ -960,7 +961,8 @@
         "power": 2,
         "toughness": 2
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_brote.png"
     }
   },
   {
@@ -987,7 +989,8 @@
       },
       "tokenKeywords": [
         "lifelink"
-      ]
+      ],
+      "image": "token_promesero.png"
     }
   },
   {
@@ -1133,7 +1136,8 @@
       },
       "tokenKeywords": [
         "haste"
-      ]
+      ],
+      "image": "token_murguero.png"
     }
   },
   {
@@ -1177,7 +1181,8 @@
         "power": 2,
         "toughness": 2
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_brote.png"
     }
   },
   {
@@ -1225,7 +1230,8 @@
       },
       "tokenKeywords": [
         "trample"
-      ]
+      ],
+      "image": "token_toro.png"
     }
   },
   {
@@ -1327,7 +1333,8 @@
         "power": 1,
         "toughness": 1
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_vecino_velorio.png"
     }
   },
   {
@@ -1436,7 +1443,8 @@
         "power": 1,
         "toughness": 1
       },
-      "tokenKeywords": []
+      "tokenKeywords": [],
+      "image": "token_bailarin_chacarera.png"
     },
     "flashback": {
       "cost": "{4}{W}"

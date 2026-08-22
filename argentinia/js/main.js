@@ -2331,20 +2331,16 @@ export function startListeningToMatch(matchId, myRole) {
       ? Math.round(receiveClientMs - serverCommittedAtMs)
       : null;
 
-    // El eco de MI propia escritura es un ACK de transporte, no una orden de gameplay.
-    // 23.6 frenó el re-publish del snapshot remoto; 23.7 además impide que un snapshot local
-    // viejo vuelva a aplicar consecutivePasses/phase sobre un estado que ya avanzó.
-    if ((writerClientId && writerClientId === matchSyncClientId) || (writerRole && writerRole === myRole)) {
-      lastKnownPublicWire = wireClone(publicDoc);
-      if (writerClientId && Number.isFinite(writerSeq)) lastAppliedWriterSeq.set(writerClientId, writerSeq);
-      recordTelemetryNetwork('sync_self_echo_ignored', {
-        matchId,
-        myRole,
-        writerRole,
-        writerClientId,
-        writerSeq: Number.isFinite(writerSeq) ? writerSeq : null,
-        reason: writerClientId === matchSyncClientId ? 'same_client' : 'same_role'
-      });
+    // El eco de MI propia escritura suele ser sólo un ACK. Pero Firestore entrega el
+    // DOCUMENTO mergeado completo: si el rival escribió otra key casi al mismo tiempo,
+    // nuestro snapshot con syncMeta propio puede traer también ese cambio remoto. Ignorar
+    // el snapshot entero hacía desaparecer esa key (caso real 23.13.35: host publicó
+    // priorityPlayer=host mientras el guest publicaba sólo priorityClockSerial/activity, y
+    // ambos terminaron viendo prioridad local).
+    const isSelfEcho = (writerClientId && writerClientId === matchSyncClientId) || (writerRole && writerRole === myRole);
+    let effectiveTouchedKeys = touchedKeys;
+    let coalescedRemoteKeys = null;
+    if (isSelfEcho) {
       if ((!touchedKeys || touchedKeys.has('priorityClockSerial')) && Number.isFinite(Number(publicDoc.priorityClockSerial))) {
         syncPriorityClockFromNetwork({
           serial: Number(publicDoc.priorityClockSerial),
@@ -2354,11 +2350,46 @@ export function startListeningToMatch(matchId, myRole) {
           serverCommittedAtMs
         });
       }
-      return;
+
+      // Con touchedKeys conocemos exactamente qué intentó escribir ESTE cliente. Cualquier
+      // otra key que difiera del baseline observado necesariamente llegó coalescida desde
+      // otro write y debe procesarse como remota antes de actualizar el baseline.
+      if (touchedKeys && lastKnownPublicWire && typeof lastKnownPublicWire === 'object') {
+        coalescedRemoteKeys = new Set();
+        Object.keys(publicDoc).forEach(key => {
+          if (key === 'syncMeta' || touchedKeys.has(key)) return;
+          if (!wireEqual(publicDoc[key], lastKnownPublicWire[key])) coalescedRemoteKeys.add(key);
+        });
+      }
+
+      if (!coalescedRemoteKeys || coalescedRemoteKeys.size === 0) {
+        lastKnownPublicWire = wireClone(publicDoc);
+        if (writerClientId && Number.isFinite(writerSeq)) lastAppliedWriterSeq.set(writerClientId, writerSeq);
+        recordTelemetryNetwork('sync_self_echo_ignored', {
+          matchId,
+          myRole,
+          writerRole,
+          writerClientId,
+          writerSeq: Number.isFinite(writerSeq) ? writerSeq : null,
+          reason: writerClientId === matchSyncClientId ? 'same_client' : 'same_role'
+        });
+        return;
+      }
+
+      effectiveTouchedKeys = coalescedRemoteKeys;
+      if (writerClientId && Number.isFinite(writerSeq)) lastAppliedWriterSeq.set(writerClientId, writerSeq);
+      recordTelemetryNetwork('sync_self_echo_coalesced_remote', {
+        matchId,
+        myRole,
+        writerRole,
+        writerClientId,
+        writerSeq: Number.isFinite(writerSeq) ? writerSeq : null,
+        coalescedKeys: [...coalescedRemoteKeys]
+      }, 'warning');
     }
 
     const writerKey = writerClientId || writerRole || null;
-    if (writerKey && Number.isFinite(writerSeq)) {
+    if (!isSelfEcho && writerKey && Number.isFinite(writerSeq)) {
       const previousSeq = lastAppliedWriterSeq.get(writerKey) || 0;
       if (writerSeq <= previousSeq) {
         recordTelemetryNetwork('sync_stale_snapshot_ignored', {
@@ -2374,21 +2405,21 @@ export function startListeningToMatch(matchId, myRole) {
       lastAppliedWriterSeq.set(writerKey, writerSeq);
     }
 
-    const writtenByRival = writerRole ? writerRole !== myRole : false;
+    const writtenByRival = isSelfEcho ? true : (writerRole ? writerRole !== myRole : false);
 
     const incoming = {
       // Si el ÚLTIMO write fue del rival, puede contener cambios autoritativos sobre MI
       // battlefield (daño, removal, bounce, etc.). Sólo importamos las keys que ese write
       // declaró haber tocado; nunca leemos de rebote campos viejos del documento mergeado.
-      ...(writtenByRival ? extractMyStateFromPublicDoc(publicDoc, myRole, touchedKeys) : {}),
-      ...extractRivalStateFromPublicDoc(publicDoc, myRole, touchedKeys),
-      ...extractSharedStateFromPublicDoc(publicDoc, myRole, touchedKeys)
+      ...(writtenByRival ? extractMyStateFromPublicDoc(publicDoc, myRole, effectiveTouchedKeys) : {}),
+      ...extractRivalStateFromPublicDoc(publicDoc, myRole, effectiveTouchedKeys),
+      ...extractSharedStateFromPublicDoc(publicDoc, myRole, effectiveTouchedKeys)
     };
 
     // ENTREGA 23.6: la Stack es parte del snapshot público, pero necesita traducción de
     // perspectiva host/guest <-> local/rival. Comparamos en formato canónico para que un
     // eco de nuestro propio publish no parezca un cambio sólo porque `isLocal` se invierte.
-    const hasIncomingStack = (!touchedKeys || touchedKeys.has('stackState')) && Object.prototype.hasOwnProperty.call(publicDoc, 'stackState') && Array.isArray(publicDoc.stackState);
+    const hasIncomingStack = (!effectiveTouchedKeys || effectiveTouchedKeys.has('stackState')) && Object.prototype.hasOwnProperty.call(publicDoc, 'stackState') && Array.isArray(publicDoc.stackState);
     const currentCanonicalStack = hasIncomingStack ? serializeStackForPublic(spellStack, state, myRole) : null;
     const stackChanged = hasIncomingStack && !wireEqual(currentCanonicalStack, publicDoc.stackState);
 
@@ -2411,6 +2442,7 @@ export function startListeningToMatch(matchId, myRole) {
       serverToReceiveApproxMs,
       snapshotFromCache: !!snapshotMeta.fromCache,
       snapshotHasPendingWrites: !!snapshotMeta.hasPendingWrites,
+      coalescedFromSelfEcho: !!isSelfEcho,
       turnCount: incoming.turnCount ?? state.turnCount,
       phase: incoming.phase ?? state.phase,
       activePlayer: incoming.activePlayer ?? state.activePlayer,
@@ -2434,13 +2466,13 @@ export function startListeningToMatch(matchId, myRole) {
     remoteSyncApplyDepth++;
     try {
       Object.assign(state, incoming);
-      if ((!touchedKeys || touchedKeys.has('priorityClockSerial')) && Number.isFinite(Number(publicDoc.priorityClockSerial))) {
+      if ((!effectiveTouchedKeys || effectiveTouchedKeys.has('priorityClockSerial')) && Number.isFinite(Number(publicDoc.priorityClockSerial))) {
         syncPriorityClockFromNetwork({
           serial: Number(publicDoc.priorityClockSerial),
           durationMs: Number(publicDoc.priorityClockDurationMs) || 15000,
           receivedAtClientMs: receiveClientMs,
-          source: 'remote_sync',
-          serverCommittedAtMs
+          source: isSelfEcho ? 'coalesced_remote' : 'remote_sync',
+          serverCommittedAtMs: isSelfEcho ? null : serverCommittedAtMs
         });
       }
       relinkEquipmentAttachments(state);

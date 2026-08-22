@@ -45,7 +45,8 @@
             "power": 2,
             "toughness": 2
           },
-          "tokenKeywords": []
+          "tokenKeywords": [],
+          "image": "token_vecino_barrio.png"
         }
       }
     ]
@@ -177,7 +178,8 @@
           },
           "tokenKeywords": [
             "haste"
-          ]
+          ],
+          "image": "token_incendiario.png"
         }
       },
       {
@@ -238,7 +240,8 @@
           },
           "tokenKeywords": [
             "trample"
-          ]
+          ],
+          "image": "token_bestia_delta.png"
         }
       }
     ]
@@ -388,7 +391,8 @@
           },
           "tokenKeywords": [
             "infect"
-          ]
+          ],
+          "image": "token_sarmiento_toxico.png"
         }
       }
     ]

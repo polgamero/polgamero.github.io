@@ -6747,7 +6747,8 @@ export function refreshTurnPriorityHudClock() {
   els.priorityClock.classList.remove('hidden');
   const activity = getEffectivePriorityActivity(state);
   const running = canPriorityClockRun(state);
-  const paused = !!(state.priorityClockPausedLocal || activity || !running);
+  // 23.13.36: ATACANTES/BLOQUEADORES pueden mostrar chip de actividad sin congelar la mecha.
+  const paused = !!(state.priorityClockPausedLocal || !running);
   const duration = Math.max(1000, Number(state.priorityClockDurationMs) || PRIORITY_CLOCK_DURATION_MS);
   const remaining = Math.max(0, Math.min(duration, Number(state.priorityClockRemainingMs ?? duration)));
   const fraction = Math.max(0, Math.min(1, remaining / duration));
