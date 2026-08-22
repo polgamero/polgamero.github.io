@@ -32,13 +32,15 @@ jobs:
         run: |
           test -d argentinia
           test -f argentinia/tools/generate_image_manifest.py
+          test -f argentinia/js/poolContract.js
           test -d argentinia/assets/data
           test -d argentinia/assets/images/cards
           echo "OK: polgamero.github.io/argentinia layout detected"
 
-      - name: Generate card image manifest and validate 511-card pool
+      - name: Generate card image manifest and validate active pool contract
         working-directory: ./argentinia
-        run: python tools/generate_image_manifest.py --root . --expected-total 511
+        # Cardinality comes from js/poolContract.js. Never hardcode 511/553/583/601 here.
+        run: python tools/generate_image_manifest.py --root .
 
       - name: Verify generated manifest
         run: |
