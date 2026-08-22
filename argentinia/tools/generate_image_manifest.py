@@ -26,15 +26,16 @@ CATEGORY_FILES = {
     "planeswalkers": "planeswalkers.json",
 }
 EXPECTED_COUNTS = {
-    "tierras": 55,
-    "artefactos": 44,
-    "criaturas": 210,
-    "instantaneos": 85,
-    "conjuros": 61,
-    "encantamientos": 50,
-    "planeswalkers": 6,
+    "tierras": 56,
+    "artefactos": 54,
+    "criaturas": 252,
+    "instantaneos": 105,
+    "conjuros": 70,
+    "encantamientos": 56,
+    "planeswalkers": 8,
 }
-EXPECTED_TOTAL = 511
+
+EXPECTED_TOTAL = 601
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"}
 
 # 23.13.16 — ownership/naming guard.
