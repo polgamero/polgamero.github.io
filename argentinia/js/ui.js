@@ -36,7 +36,7 @@ import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, applyGameConfig, getDefaultGameConfig } from './store.js';
 import { canBlock, hasKeyword } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -57,6 +57,9 @@ import { showUsernameRenameModal } from './usernameUI.js';
 import { classifiedsNextRotationAt, getClassifiedsProfileState, countOwnedClassifiedCard } from './classifieds.js';
 import { gameText } from './gameTexts.js';
 import { createGameTextsAdminPane } from './gameTextsAdmin.js';
+import { showGlobalRanking } from './rankingUI.js';
+import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate } from './statistics.js';
+import { POOL_BASELINE } from './poolContract.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -2368,6 +2371,8 @@ function injectEncyclopediaStyles() {
       font-size: 26px; font-weight: 700; color: #f0e0b0;
       text-shadow: 0 0 20px rgba(212,175,55,0.4);
     }
+    .encyclopedia-progress { margin-left:auto; color:#d6c99d; font-size:13px; font-weight:650; text-align:right; }
+    .encyclopedia-progress strong { color:#f0e0b0; }
     .encyclopedia-back-btn {
       background: linear-gradient(180deg, rgba(18,25,15,0.92), rgba(11,19,14,0.96));
       border: 2px solid var(--gold, #d4af37);
@@ -2518,6 +2523,7 @@ export function showEncyclopedia(onBack) {
     <div class="encyclopedia-header">
       <button class="encyclopedia-back-btn" id="enc-back">← ${gameTextHtml('common.back')}</button>
       <div class="encyclopedia-title">${gameTextHtml('encyclopedia.title')}</div>
+      <div class="encyclopedia-progress">Descubriste <strong>${state.userProfile ? new Set(state.userProfile.collection || []).size : 0}</strong> cartas de <strong>${POOL_BASELINE.total}</strong> totales</div>
     </div>
     <div class="encyclopedia-tabs">${tabsHTML}</div>
     <div class="encyclopedia-body">
@@ -4673,6 +4679,7 @@ function refreshVisibleGameTextCopy() {
     'menu-play': 'menu.play',
     'menu-multiplayer': 'menu.multiplayer',
     'menu-mydecks': 'menu.myDecks',
+    'menu-ranking': 'menu.ranking',
     'menu-encyclopedia': 'menu.encyclopedia',
     'menu-store': 'menu.store',
     'menu-options': 'menu.options'
@@ -4813,6 +4820,11 @@ function injectAdminPanelStyles() {
     .admin-debug-status { display:inline-block; padding:3px 7px; border-radius:999px; background:rgba(255,255,255,0.06); white-space:nowrap; }
     .admin-debug-status.completed { color:#81c784; }
     .admin-debug-status.running { color:#ffd166; }
+    .admin-stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(175px,1fr)); gap:10px; margin-top:12px; }
+    .admin-stat-card { border:1px solid rgba(176,106,212,.25); border-radius:10px; padding:12px; background:rgba(8,5,12,.45); }
+    .admin-stat-label { color:#a997b6; font-size:11px; text-transform:uppercase; letter-spacing:.45px; }
+    .admin-stat-value { color:#f1dfb4; font-size:24px; font-weight:800; margin-top:4px; }
+    .admin-stat-sub { color:#8f8298; font-size:10px; margin-top:3px; }
     .admin-debug-download { width:auto; margin:0; padding:7px 10px; font-size:12px; white-space:nowrap; }
     .admin-debug-empty { padding:30px; color:#a995b8; text-align:center; font-style:italic; }
     .admin-debug-error { padding:18px; color:#e07a6b; text-align:center; }
@@ -4934,7 +4946,7 @@ export function showAdminPanel(onBack) {
     { key: 'game', label: 'AJUSTES DEL JUEGO' },
     { key: 'texts', label: 'TEXTOS DEL JUEGO' },
     { key: 'messages', label: 'MENSAJES Y USUARIOS' },
-    { key: 'stats', label: 'ESTADÍSTICAS (a futuro)' },
+    { key: 'stats', label: 'ESTADÍSTICAS' },
     { key: 'debug', label: 'DEBUGGING' }
   ];
   const tabsHTML = adminTabs.map((tab, idx) =>
@@ -4971,10 +4983,17 @@ export function showAdminPanel(onBack) {
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="stats">
-        <div class="admin-section admin-future-box">
-          <span class="admin-future-icon">📊</span>
-          <div class="admin-section-title">Estadísticas</div>
-          <div>Esta solapa queda reservada para métricas agregadas del juego. No calcula ni publica nada todavía.</div>
+        <div class="admin-section">
+          <div class="admin-debug-toolbar">
+            <div><div class="admin-section-title">📊 Estadísticas globales</div><div class="admin-debug-summary" id="admin-stats-summary">Entrá a esta solapa para calcular métricas.</div></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+              <button class="admin-save-btn" id="admin-stats-sync">🔄 Sincronizar ranking</button>
+              <button class="admin-save-btn" id="admin-stats-refresh">↻ Actualizar</button>
+            </div>
+          </div>
+          <div id="admin-stats-cards" class="admin-stats-grid"></div>
+          <div class="admin-debug-table-wrap" id="admin-stats-detail" style="margin-top:14px;"></div>
+          <div class="admin-debug-summary" style="margin-top:10px;">Partidas y duración se reconstruyen del historial de telemetría, deduplicando multiplayer por matchId. Puntos/Fichas otorgados y sobres abiertos son acumuladores desde 23.13.37.</div>
         </div>
       </div>
 
@@ -5183,6 +5202,7 @@ export function showAdminPanel(onBack) {
         <tr>
           <td>${escapeHtml(formatTelemetryDate(date))}</td>
           <td><span class="admin-debug-mode">${escapeHtml(mode)}</span>${session.matchId ? `<div class="admin-debug-match" title="${escapeHtml(session.matchId)}">${escapeHtml(session.matchId)}</div>` : ''}</td>
+          <td>${session.endedAtClient ? escapeHtml(formatDuration(Math.max(0, Date.parse(session.endedAtClient) - Date.parse(session.startedAtClient || session.endedAtClient)))) : '—'}</td>
           <td><strong>${escapeHtml(localName)}</strong><br><span style="color:#9987a7;">vs ${escapeHtml(rivalName)}</span></td>
           <td><span class="admin-debug-mode">v${escapeHtml(session.telemetryVersion || meta.engineVersion || '?')}</span></td>
           <td${bugSplitTitle}><div class="admin-debug-bug-auto">⚙️ ${bugs.automatic} auto${bugs.automaticOccurrences > bugs.automatic ? ` · ${bugs.automaticOccurrences} ocurr.` : ''}</div><div class="admin-debug-bug-manual">🐞 ${bugs.manual} marcado${bugs.manual === 1 ? '' : 's'} · ${bugs.total} total</div></td>
@@ -5195,7 +5215,7 @@ export function showAdminPanel(onBack) {
 
     wrap.innerHTML = `
       <table class="admin-debug-table">
-        <thead><tr><th>Fecha y hora</th><th>Tipo</th><th>Quién jugó contra quién</th><th>Motor</th><th>Bugs</th><th>Eventos</th><th>Estado</th><th>Log</th></tr></thead>
+        <thead><tr><th>Fecha y hora</th><th>Tipo</th><th>Duración</th><th>Quién jugó contra quién</th><th>Motor</th><th>Bugs</th><th>Eventos</th><th>Estado</th><th>Log</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     `;
@@ -5253,6 +5273,75 @@ export function showAdminPanel(onBack) {
     }
   }
 
+  let statsLoaded = false;
+  let statsLoading = false;
+  let statsProfilesCache = [];
+  let statsSessionsCache = [];
+
+  function trackedTotals(publicRows) {
+    return (publicRows || []).reduce((acc, row) => {
+      for (const key of Object.keys(acc)) acc[key] += Number(row?.[key]) || 0;
+      return acc;
+    }, { pointsEarned: 0, pointsSpent: 0, pointsLost: 0, fichasEarned: 0, fichasSpent: 0, packsReceived: 0, packsOpened: 0, guaranteedMythicsOpened: 0 });
+  }
+
+  function renderAdminStatistics(profiles, sessions, publicRows) {
+    const profileStats = summarizeProfiles(profiles);
+    const games = summarizeGlobalTelemetry(sessions);
+    const tracked = trackedTotals(publicRows);
+    const cards = [
+      ['Jugadores registrados', profileStats.registeredPlayers, `Nuevos 7d: ${profileStats.new7d} · últimos 30d: ${profileStats.new30d}`],
+      ['Jugadores activos', profileStats.active24h, `24h · Activos 7d: ${profileStats.active7d} · 30d: ${profileStats.active30d}`],
+      ['Partidas totales', games.totalGames, `${games.soloGames} solo · ${games.multiplayerGames} multiplayer`],
+      ['Duración promedio', formatDuration(games.averageDurationMs), `Total jugado: ${formatDuration(games.totalDurationMs)} · Máx: ${formatDuration(games.longestDurationMs)}`],
+      ['Puntos otorgados*', tracked.pointsEarned.toLocaleString('es-AR'), `Gastados*: ${tracked.pointsSpent.toLocaleString('es-AR')} · Penalizados*: ${tracked.pointsLost.toLocaleString('es-AR')} · Circulación: ${profileStats.pointsInCirculation.toLocaleString('es-AR')}`],
+      ['Fichas otorgadas*', tracked.fichasEarned.toLocaleString('es-AR'), `Gastadas*: ${tracked.fichasSpent.toLocaleString('es-AR')} · Circulación: ${profileStats.fichasInCirculation.toLocaleString('es-AR')}`],
+      ['Sobres abiertos*', tracked.packsOpened.toLocaleString('es-AR'), `Recibidos*: ${tracked.packsReceived.toLocaleString('es-AR')} · Cofres: ${profileStats.packsInChests.toLocaleString('es-AR')} · Mythics*: ${tracked.guaranteedMythicsOpened.toLocaleString('es-AR')}`],
+      ['Cartas en colecciones', profileStats.cardsOwned.toLocaleString('es-AR'), `Comunidad descubrió: ${profileStats.communityUniqueCards} / ${POOL_BASELINE.total} · Promedio/jugador: ${profileStats.averageUniqueCards.toFixed(1)}`],
+      ['Abandonos detectados', games.abandonedGames.toLocaleString('es-AR'), `${games.completedSessions} sesiones completas de telemetría`]
+    ];
+    overlay.querySelector('#admin-stats-cards').innerHTML = cards.map(([label,value,sub]) => `<div class="admin-stat-card"><div class="admin-stat-label">${escapeHtml(label)}</div><div class="admin-stat-value">${escapeHtml(value)}</div><div class="admin-stat-sub">${escapeHtml(sub)}</div></div>`).join('');
+    overlay.querySelector('#admin-stats-summary').textContent = `Métricas calculadas sobre ${profiles.length} perfiles y ${sessions.length} sesiones de telemetría.`;
+    const rows = [...publicRows].sort((a,b)=>(Number(b.gamesPlayed)||0)-(Number(a.gamesPlayed)||0)).map(r=>`<tr><td><strong>${escapeHtml(r.username || 'Jugador')}</strong></td><td>${Number(r.gamesPlayed||0)}</td><td>${Number(r.soloGames||0)} / ${Number(r.multiplayerGames||0)}</td><td>${Number(r.wins||0)}</td><td>${winRate(r).toFixed(1)}%</td><td>${Number(r.pointsEarned||0)}</td><td>${Number(r.fichasEarned||0)}</td><td>${Number(r.packsOpened||0)}</td><td>${Number(r.uniqueCards||0)} / ${POOL_BASELINE.total}</td><td>${formatDuration(r.totalDurationMs||0)}</td></tr>`).join('');
+    overlay.querySelector('#admin-stats-detail').innerHTML = `<table class="admin-debug-table"><thead><tr><th>Jugador</th><th>Partidas</th><th>Solo / Multi</th><th>Victorias</th><th>Win%</th><th>Puntos ganados*</th><th>Fichas*</th><th>Sobres*</th><th>Descubiertas</th><th>Tiempo</th></tr></thead><tbody>${rows || '<tr><td colspan="10">Sin filas públicas todavía.</td></tr>'}</tbody></table>`;
+  }
+
+  async function reloadAdminStatistics() {
+    if (statsLoading) return;
+    statsLoading = true;
+    const refresh = overlay.querySelector('#admin-stats-refresh');
+    if (refresh) { refresh.disabled = true; refresh.textContent = '⏳ Cargando…'; }
+    try {
+      const [profiles, sessions, publicRows] = await Promise.all([fetchAllUserProfiles(), fetchTelemetrySessionsForAdmin(), fetchPublicPlayerStats()]);
+      statsProfilesCache = profiles;
+      statsSessionsCache = sessions;
+      renderAdminStatistics(profiles, sessions, publicRows);
+      statsLoaded = true;
+    } catch (err) {
+      console.error('No se pudieron cargar Estadísticas:', err);
+      overlay.querySelector('#admin-stats-summary').textContent = `Error: ${err?.message || err}`;
+    } finally {
+      statsLoading = false;
+      if (refresh) { refresh.disabled = false; refresh.textContent = '↻ Actualizar'; }
+    }
+  }
+
+  async function syncAdminRanking() {
+    const btn = overlay.querySelector('#admin-stats-sync');
+    btn.disabled = true; btn.textContent = '⏳ Sincronizando…';
+    try {
+      if (!statsProfilesCache.length && !statsSessionsCache.length) await reloadAdminStatistics();
+      const result = await adminSyncPublicPlayerStats(statsProfilesCache, statsSessionsCache);
+      btn.textContent = `✅ ${result.updated} jugadores`;
+      await reloadAdminStatistics();
+    } catch (err) {
+      console.error('No se pudo sincronizar Ranking:', err);
+      btn.textContent = '❌ Error';
+    } finally {
+      setTimeout(() => { if (btn.isConnected) { btn.disabled = false; btn.textContent = '🔄 Sincronizar ranking'; } }, 1600);
+    }
+  }
+
   function activateAdminTab(key) {
     overlay.querySelectorAll('[data-admin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === key));
     overlay.querySelectorAll('[data-admin-pane]').forEach(pane => pane.classList.toggle('hidden', pane.dataset.adminPane !== key));
@@ -5260,6 +5349,7 @@ export function showAdminPanel(onBack) {
       gameTextsAdminLoaded = true;
       void gameTextsAdminPane.load();
     }
+    if (key === 'stats' && !statsLoaded) reloadAdminStatistics();
     if (key === 'debug') {
       if (!debugLoaded) reloadTelemetryHistory();
       if (!imageAuditLoaded) reloadImageAudit(false);
@@ -5269,6 +5359,8 @@ export function showAdminPanel(onBack) {
   overlay.querySelectorAll('[data-admin-tab]').forEach(btn => {
     btn.addEventListener('click', () => activateAdminTab(btn.dataset.adminTab));
   });
+  overlay.querySelector('#admin-stats-refresh').addEventListener('click', reloadAdminStatistics);
+  overlay.querySelector('#admin-stats-sync').addEventListener('click', syncAdminRanking);
   overlay.querySelector('#admin-debug-refresh').addEventListener('click', reloadTelemetryHistory);
   overlay.querySelector('#admin-image-refresh').addEventListener('click', () => reloadImageAudit(true));
   overlay.querySelector('#admin-image-toggle').addEventListener('click', () => {
@@ -5840,6 +5932,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
       <button class="main-menu-btn main-menu-btn-primary" id="menu-play">${gameTextHtml('menu.play')}</button>
       <button class="main-menu-btn" id="menu-multiplayer">${gameTextHtml('menu.multiplayer')}</button>
       <button class="main-menu-btn" id="menu-mydecks">${gameTextHtml('menu.myDecks')}</button>
+      <button class="main-menu-btn" id="menu-ranking">${gameTextHtml('menu.ranking')}</button>
       <button class="main-menu-btn" id="menu-encyclopedia">${gameTextHtml('menu.encyclopedia')}</button>
       <button class="main-menu-btn" id="menu-store">${gameTextHtml('menu.store')}</button>
       <button class="main-menu-btn" id="menu-options">${gameTextHtml('menu.options')}</button>
@@ -5895,6 +5988,11 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
   // DESHABILITADAS de verdad sin sesión (mismo look que Multijugador), en vez de dejar
   // entrar y mostrar un cartel adentro — updateMainMenuLoginGatedButtons (más abajo) las
   // pinta como corresponde, y acá el click no hace nada si no hay sesión.
+  overlay.querySelector('#menu-ranking').addEventListener('click', () => {
+    overlay.style.display = 'none';
+    showGlobalRanking(() => { overlay.style.display = ''; });
+  });
+
   overlay.querySelector('#menu-encyclopedia').addEventListener('click', () => {
     if (!state.currentUser) return;
     overlay.style.display = 'none';

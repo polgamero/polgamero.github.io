@@ -4,9 +4,9 @@ import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { hasKeyword } from './keywords.js';
-import { awardPoints, clearActiveMatchId } from './firebaseClient.js';
+import { awardPoints, clearActiveMatchId, recordPlayerGameResult } from './firebaseClient.js';
 import { pointsForBotGameEnd, POINTS } from './store.js';
-import { recordTelemetryEvent } from './telemetry.js';
+import { recordTelemetryEvent, getTelemetryStatus } from './telemetry.js';
 import { PRIORITY_CLOCK_DURATION_MS, getEffectivePriorityActivity, canPriorityClockRun, getFrozenPriorityRemainingMs } from './priorityUX.js';
 import { gameText } from './gameTexts.js';
 
@@ -54,6 +54,19 @@ export function checkGameOver() {
 // actualiza el número una vez que Firestore responde).
 function awardMatchEndPoints(won) {
   if (!state.currentUser) return;
+
+  // 23.13.37 — una sesión de telemetría = una participación de jugador. El receipt por
+  // sessionId hace idempotente el contador aunque checkGameOver/render se invoque varias veces.
+  const telemetry = getTelemetryStatus();
+  if (telemetry.sessionId) {
+    void recordPlayerGameResult(state.currentUser.uid, {
+      sessionId: telemetry.sessionId,
+      mode: state.currentMatch ? 'multiplayer' : 'solo',
+      won: !!won,
+      abandoned: false,
+      durationMs: telemetry.elapsedMs || 0
+    }).catch(err => console.warn('No se pudieron registrar las estadísticas de la partida:', err));
+  }
 
   if (state.currentMatch) {
     // FASE 4, ETAPA 6: la partida ya terminó — borro el rastro para que un futuro reload no

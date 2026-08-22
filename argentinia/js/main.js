@@ -6,10 +6,10 @@ import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRu
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
-import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks } from './telemetry.js';
+import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks, getTelemetryStatus } from './telemetry.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_BUILD_LABEL, BUILD_MANIFEST_URL, isExactMultiplayerVersionCompatible } from './version.js';
 import { MULTIPLAYER_TEST_DECK_NAME, buildMultiplayerTestDeck } from './testDeck.js';
 import { stampCardOwner, zoneForCardOwner } from './zoneOwnership.js';
@@ -398,6 +398,19 @@ export function getRivalName() {
 // abajo), no solo al arrancar una nueva. Todo lo que toca acá ya es módulo/global (els,
 // state, funciones importadas) — nada de esto dependía de variables locales de initGame,
 // así que sacarlo de ahí no cambia el comportamiento en absoluto.
+function recordLocalAbandonStatsBestEffort() {
+  if (!state.currentUser) return;
+  const telemetry = getTelemetryStatus();
+  if (!telemetry.sessionId) return;
+  void recordPlayerGameResult(state.currentUser.uid, {
+    sessionId: telemetry.sessionId,
+    mode: state.currentMatch ? 'multiplayer' : 'solo',
+    won: false,
+    abandoned: true,
+    durationMs: telemetry.elapsedMs || 0
+  }).catch(err => console.warn('No se pudieron registrar las estadísticas del abandono:', err));
+}
+
 function hookGameplayButtons() {
   els.btnRestart.addEventListener('click', () => location.reload());
   els.rivalHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(false));
@@ -424,6 +437,7 @@ function hookGameplayButtons() {
             publishMatchState();
           }
           if (state.currentUser) {
+            recordLocalAbandonStatsBestEffort();
             awardPoints(state.currentUser.uid, POINTS.abandonPenalty)
               .then(newTotal => {
                 logMsg(gameText('game.abandon.self', { points: Math.abs(POINTS.abandonPenalty), total: newTotal }));
@@ -445,6 +459,7 @@ function hookGameplayButtons() {
   // solo una red de contención para cuando alguien cierra la pestaña sin pasar por él.
   window.addEventListener('beforeunload', () => {
     if (!state.gameOver && state.currentUser) {
+      recordLocalAbandonStatsBestEffort();
       awardPoints(state.currentUser.uid, POINTS.abandonPenalty).catch(() => {});
       // Mismo mejor esfuerzo para avisarle al rival, si había una partida multiplayer activa.
       if (state.currentMatch) {
@@ -826,6 +841,12 @@ async function boot() {
         state.userProfile = profile;
         applyUsernameIdentity(profile);
         updateAccountUI(state.currentUser);
+
+        // 23.13.37 — reconcilia historial propio + espejo público sin meter la consulta de
+        // telemetría en el camino crítico del login. Si falla, gameplay/auth siguen intactos.
+        void bootstrapPlayerStatistics(state.currentUser.uid).catch(statsErr => {
+          console.warn('No se pudieron preparar las estadísticas del jugador:', statsErr);
+        });
 
         // 23.13.25 — no bloquea el login ni el boot: para usuarios normales devuelve
         // inmediatamente `not_admin`; para Admin mantiene publicada una ventana semanal
@@ -2634,6 +2655,7 @@ function offerReconnectIfStillActive(matchId) {
           state.abandonedBy = 'local';
           publishMatchState().catch(() => {});
           if (state.currentUser) {
+            recordLocalAbandonStatsBestEffort();
             awardPoints(state.currentUser.uid, POINTS.abandonPenalty).catch(() => {});
           }
           clearActiveMatchId(state.currentUser.uid)

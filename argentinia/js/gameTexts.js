@@ -33,6 +33,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'menu.play': definition('Menú', 'Jugar (Solitario)', 'Botón principal para iniciar una partida contra el bot.'),
   'menu.multiplayer': definition('Menú', 'Multijugador', 'Botón de acceso al lobby multijugador.'),
   'menu.myDecks': definition('Menú', 'Mis Mazos', 'Botón de acceso a los mazos guardados.'),
+  'menu.ranking': definition('Menú', 'Ranking Global', 'Botón público de acceso al ranking global.'),
   'menu.encyclopedia': definition('Menú', 'Enciclopedia', 'Botón de acceso a la colección/enciclopedia.'),
   'menu.store': definition('Menú', 'Tienda', 'Botón de acceso a la Tienda.'),
   'menu.options': definition('Menú', 'Opciones', 'Botón de acceso a Opciones.'),

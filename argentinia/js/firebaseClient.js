@@ -185,3 +185,7 @@ export const deleteAnnouncement = asyncProxy('deleteAnnouncement');
 export const fetchTelemetrySessionsForAdmin = asyncProxy('fetchTelemetrySessionsForAdmin');
 export const fetchTelemetrySessionArchive = asyncProxy('fetchTelemetrySessionArchive');
 export const uploadTelemetrySession = asyncProxy('uploadTelemetrySession');
+export const bootstrapPlayerStatistics = asyncProxy('bootstrapPlayerStatistics');
+export const recordPlayerGameResult = asyncProxy('recordPlayerGameResult');
+export const fetchPublicPlayerStats = asyncProxy('fetchPublicPlayerStats');
+export const adminSyncPublicPlayerStats = asyncProxy('adminSyncPublicPlayerStats');

@@ -21,13 +21,14 @@ import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX } from './store.js';
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, localDateKey, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
+import { normalizePlayerStats, summarizePlayerTelemetry, PLAYER_GAME_BACKFILL_VERSION } from './statistics.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAAvUAaZ35_sF9uCsecLPg7zqhB7mLa7yo",
@@ -72,6 +73,196 @@ function normalizeProfileForClient(data) {
     inventory: normalizeInventory(data.inventory),
     dailyRewards: normalizeDailyRewardsState(data.dailyRewards)
   };
+}
+
+
+// ============================================================================
+// 23.13.37 — ESTADÍSTICAS / RANKING PÚBLICO.
+// playerStats/{uid} contiene exclusivamente datos sanitizados: username + saldos públicos
+// de juego + contadores agregados. Nunca email, photoURL, decks, cartas concretas ni mano.
+// Las mutaciones económicas originales siguen siendo autoritativas para el gameplay; si una
+// actualización estadística falla, NO revierte una compra/recompensa ya válida.
+// ============================================================================
+
+function playerStatsMirror(profile, statsValue = null) {
+  const stats = normalizePlayerStats(statsValue);
+  const collectionIds = Array.isArray(profile?.collection) ? profile.collection : [];
+  const inventory = normalizeInventory(profile?.inventory);
+  return {
+    ...stats,
+    uid: String(profile?.uid || ''),
+    username: String(profile?.username || 'Jugador'),
+    pointsCurrent: Math.max(0, Math.floor(Number(profile?.points) || 0)),
+    fichasCurrent: Math.max(0, Math.floor(Number(profile?.fichas) || 0)),
+    packsInChest: Math.max(0, Math.floor(Number(inventory[CHEST_ITEM_KEYS.standardPack]) || 0)),
+    cardsOwned: collectionIds.length,
+    uniqueCards: new Set(collectionIds).size,
+    updatedAt: serverTimestamp()
+  };
+}
+
+async function loadProfileRaw(uid) {
+  const snap = await getDoc(doc(db, 'users', uid));
+  return snap.exists() ? { uid, ...snap.data() } : null;
+}
+
+async function trackPlayerStats(uid, deltas = {}, options = {}) {
+  const userRef = doc(db, 'users', uid);
+  const statsRef = doc(db, 'playerStats', uid);
+  const receiptId = options.receiptId ? String(options.receiptId).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 300) : null;
+  const receiptRef = receiptId ? doc(db, 'playerGameReceipts', `${uid}_${receiptId}`) : null;
+  return runTransaction(db, async tx => {
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists()) return { applied: false, reason: 'missing_user' };
+    const statsSnap = await tx.get(statsRef);
+    let receiptSnap = null;
+    if (receiptRef) receiptSnap = await tx.get(receiptRef);
+    if (receiptSnap?.exists()) return { applied: false, reason: 'duplicate_receipt' };
+
+    const profile = { uid, ...userSnap.data() };
+    const stats = normalizePlayerStats(statsSnap.exists() ? statsSnap.data() : null);
+    const numericKeys = [
+      'gamesPlayed','soloGames','multiplayerGames','wins','losses','soloWins','soloLosses',
+      'multiplayerWins','multiplayerLosses','abandons','totalDurationMs','pointsEarned',
+      'pointsSpent','pointsLost','fichasEarned','fichasSpent','packsReceived','packsOpened',
+      'guaranteedMythicsOpened'
+    ];
+    for (const key of numericKeys) {
+      const delta = Math.floor(Number(deltas[key]) || 0);
+      if (delta) stats[key] = Math.max(0, (Number(stats[key]) || 0) + delta);
+    }
+    if (Number.isFinite(Number(options.gameBackfillVersion))) {
+      stats.gameBackfillVersion = Math.max(stats.gameBackfillVersion || 0, Math.floor(Number(options.gameBackfillVersion)));
+    }
+    tx.set(statsRef, playerStatsMirror(profile, stats), { merge: false });
+    if (receiptRef) {
+      tx.set(receiptRef, {
+        uid,
+        receiptId,
+        mode: options.mode || null,
+        result: options.result || null,
+        durationMs: Math.max(0, Math.floor(Number(options.durationMs) || 0)),
+        createdAt: serverTimestamp()
+      });
+    }
+    return { applied: true, stats };
+  });
+}
+
+function statsBestEffort(uid, deltas = {}, options = {}) {
+  return trackPlayerStats(uid, deltas, options).catch(error => {
+    console.warn('[Statistics 23.13.37] No se pudo actualizar playerStats:', error);
+    return { applied: false, error };
+  });
+}
+
+async function logEconomyEvent(event) {
+  const actorUid = auth.currentUser?.uid || null;
+  if (!actorUid) return false;
+  const targetUid = String(event?.targetUid || actorUid);
+  const ref = doc(collection(db, 'economyEvents'));
+  await setDoc(ref, {
+    actorUid,
+    targetUid,
+    source: String(event?.source || 'unknown'),
+    pointsDelta: Math.floor(Number(event?.pointsDelta) || 0),
+    fichasDelta: Math.floor(Number(event?.fichasDelta) || 0),
+    packsDelta: Math.floor(Number(event?.packsDelta) || 0),
+    cardsDelta: Math.floor(Number(event?.cardsDelta) || 0),
+    matchId: event?.matchId || null,
+    sessionId: event?.sessionId || null,
+    engineVersion: ENGINE_VERSION,
+    createdAt: serverTimestamp()
+  });
+  return true;
+}
+
+function economyLogBestEffort(event) {
+  return logEconomyEvent(event).catch(error => {
+    console.warn('[Statistics 23.13.37] No se pudo registrar economyEvent:', error);
+    return false;
+  });
+}
+
+export async function bootstrapPlayerStatistics(uid) {
+  const ownQuery = query(collection(db, 'telemetrySessions'), where('ownerUid', '==', uid));
+  const sessionsSnap = await getDocs(ownQuery);
+  const sessions = sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const history = summarizePlayerTelemetry(sessions);
+  const statsRef = doc(db, 'playerStats', uid);
+  const currentSnap = await getDoc(statsRef);
+  const current = normalizePlayerStats(currentSnap.exists() ? currentSnap.data() : null);
+  // Reconciliación permanente, no sólo migración one-shot: si un cierre de pestaña o una
+  // caída de red impidió grabar el receipt en vivo pero la telemetría sí quedó finalizada,
+  // el próximo login rellena el hueco. Nunca decrementa contadores ya registrados.
+  const gameKeys = ['gamesPlayed','soloGames','multiplayerGames','wins','losses','soloWins','soloLosses','multiplayerWins','multiplayerLosses','abandons'];
+  const deltas = {};
+  if ((Number(history.gamesPlayed) || 0) > (Number(current.gamesPlayed) || 0)) {
+    for (const key of gameKeys) deltas[key] = Math.max(0, Number(history[key]) || 0) - Math.max(0, Number(current[key]) || 0);
+  }
+  deltas.totalDurationMs = Math.max(0, (Number(history.totalDurationMs) || 0) - Math.max(0, Number(current.totalDurationMs) || 0));
+  await trackPlayerStats(uid, deltas, { gameBackfillVersion: PLAYER_GAME_BACKFILL_VERSION });
+  const refreshed = await getDoc(statsRef);
+  return refreshed.exists() ? { id: refreshed.id, ...refreshed.data() } : null;
+}
+
+export async function recordPlayerGameResult(uid, result = {}) {
+  const mode = String(result.mode || 'solo').toLowerCase().startsWith('multi') ? 'multiplayer' : 'solo';
+  const won = result.won === true;
+  const lost = result.won === false;
+  const deltas = {
+    gamesPlayed: 1,
+    soloGames: mode === 'solo' ? 1 : 0,
+    multiplayerGames: mode === 'multiplayer' ? 1 : 0,
+    wins: won ? 1 : 0,
+    losses: lost ? 1 : 0,
+    soloWins: mode === 'solo' && won ? 1 : 0,
+    soloLosses: mode === 'solo' && lost ? 1 : 0,
+    multiplayerWins: mode === 'multiplayer' && won ? 1 : 0,
+    multiplayerLosses: mode === 'multiplayer' && lost ? 1 : 0,
+    abandons: result.abandoned ? 1 : 0,
+    totalDurationMs: Math.max(0, Math.floor(Number(result.durationMs) || 0))
+  };
+  return trackPlayerStats(uid, deltas, {
+    receiptId: result.sessionId,
+    mode,
+    result: won ? 'win' : (lost ? 'loss' : 'unknown'),
+    durationMs: result.durationMs
+  });
+}
+
+export async function fetchPublicPlayerStats() {
+  const snap = await getDocs(collection(db, 'playerStats'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function adminSyncPublicPlayerStats(profiles = [], sessions = []) {
+  if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL) throw new Error('ADMIN_REQUIRED');
+  const byOwner = new Map();
+  for (const session of sessions) {
+    const uid = session?.ownerUid;
+    if (!uid) continue;
+    if (!byOwner.has(uid)) byOwner.set(uid, []);
+    byOwner.get(uid).push(session);
+  }
+  let updated = 0;
+  for (const profile of profiles) {
+    if (!profile?.uid) continue;
+    const statsRef = doc(db, 'playerStats', profile.uid);
+    const currentSnap = await getDoc(statsRef);
+    const current = normalizePlayerStats(currentSnap.exists() ? currentSnap.data() : null);
+    const history = summarizePlayerTelemetry(byOwner.get(profile.uid) || []);
+    let merged = { ...current, gameBackfillVersion: PLAYER_GAME_BACKFILL_VERSION };
+    if ((Number(history.gamesPlayed) || 0) > (Number(current.gamesPlayed) || 0)) {
+      for (const key of ['gamesPlayed','soloGames','multiplayerGames','wins','losses','soloWins','soloLosses','multiplayerWins','multiplayerLosses','abandons']) {
+        merged[key] = Number(history[key]) || 0;
+      }
+    }
+    merged.totalDurationMs = Math.max(Number(current.totalDurationMs) || 0, Number(history.totalDurationMs) || 0);
+    await setDoc(statsRef, playerStatsMirror(profile, merged), { merge: false });
+    updated++;
+  }
+  return { updated };
 }
 
 // Devuelve una Promise que resuelve con el UserCredential de Firebase, o rechaza si el
@@ -205,7 +396,7 @@ export async function renameUsername(uid, username, usernameKey, fichaCost = USE
   const cost = Math.max(1, Math.floor(Number(fichaCost) || USERNAME_RENAME_COST));
   const userRef = doc(db, 'users', uid);
 
-  return runTransaction(db, async (tx) => {
+  const profile = await runTransaction(db, async (tx) => {
     const userSnap = await tx.get(userRef);
     if (!userSnap.exists()) throw usernameError('USERNAME_PROFILE_MISSING', 'La cuenta no existe.');
     const current = userSnap.data();
@@ -254,6 +445,9 @@ export async function renameUsername(uid, username, usernameKey, fichaCost = USE
       fichas: (Number(current.fichas) || 0) - cost
     });
   });
+  await statsBestEffort(uid, { fichasSpent: cost });
+  void economyLogBestEffort({ targetUid: uid, source: 'username_rename', fichasDelta: -cost });
+  return profile;
 }
 
 // Se llama una sola vez por cuenta para completar el mazo/colección inicial. Desde
@@ -267,7 +461,7 @@ export async function createUserProfile(uid, profileFields, starterCardIds) {
   const userRef = doc(db, 'users', uid);
   const nameRef = doc(db, 'usernames', validated.usernameKey);
 
-  return runTransaction(db, async (tx) => {
+  const profile = await runTransaction(db, async (tx) => {
     const [userSnap, nameSnap] = await Promise.all([tx.get(userRef), tx.get(nameRef)]);
     if (!nameSnap.exists() || nameSnap.data()?.uid !== uid) {
       throw usernameError('USERNAME_REQUIRED', 'Primero elegí tu nombre en Argentinia.');
@@ -305,6 +499,8 @@ export async function createUserProfile(uid, profileFields, starterCardIds) {
     else tx.set(userRef, { ...base, ...patch });
     return normalizeProfileForClient({ ...base, ...patch });
   });
+  await statsBestEffort(uid, {});
+  return profile;
 }
 
 // Actualiza SOLO la marca de última conexión, sin tocar el resto del documento (merge:true)
@@ -320,6 +516,7 @@ export function touchLastSeen(uid) {
 // función no vuelve a preguntar nada, ejecuta directo.
 export async function deleteUserProfile(uid) {
   const userRef = doc(db, 'users', uid);
+  const statsRef = doc(db, 'playerStats', uid);
   return runTransaction(db, async (tx) => {
     const userSnap = await tx.get(userRef);
     if (!userSnap.exists()) return;
@@ -331,6 +528,7 @@ export async function deleteUserProfile(uid) {
       usernameSnap = await tx.get(usernameRef);
     }
     tx.delete(userRef);
+    tx.delete(statsRef);
     if (usernameRef && usernameSnap?.exists() && usernameSnap.data()?.uid === uid) tx.delete(usernameRef);
   });
 }
@@ -348,13 +546,17 @@ export async function deleteUserProfile(uid) {
 // Devuelve el total de puntos ya actualizado.
 export async function awardPoints(uid, delta) {
   const ref = doc(db, 'users', uid);
-  return runTransaction(db, async (tx) => {
+  const result = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     const current = snap.exists() ? (snap.data().points || 0) : 0;
     const next = Math.max(0, current + delta);
     tx.update(ref, { points: next });
-    return next;
+    return { current, next, appliedDelta: next - current };
   });
+  const applied = Number(result.appliedDelta) || 0;
+  await statsBestEffort(uid, applied >= 0 ? { pointsEarned: applied } : { pointsLost: Math.abs(applied) });
+  void economyLogBestEffort({ targetUid: uid, source: applied >= 0 ? 'game_reward' : 'abandon_penalty', pointsDelta: applied });
+  return result.next;
 }
 
 // 23.13.0 — Comprar ya NO abre el sobre. La transacción descuenta puntos y deposita una
@@ -362,7 +564,7 @@ export async function awardPoints(uid, delta) {
 // recompensas diarias y futuros regalos/admin bajo el mismo inventario persistente.
 export async function purchasePack(uid, cost) {
   const ref = doc(db, 'users', uid);
-  return runTransaction(db, async (tx) => {
+  const profile = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('No se encontró tu perfil.');
     const data = snap.data();
@@ -374,6 +576,9 @@ export async function purchasePack(uid, cost) {
     tx.update(ref, updated);
     return { ...data, ...updated, dailyRewards: normalizeDailyRewardsState(data.dailyRewards) };
   });
+  await statsBestEffort(uid, { pointsSpent: Math.max(0, Math.floor(Number(cost) || 0)), packsReceived: 1 });
+  void economyLogBestEffort({ targetUid: uid, source: 'pack_purchase', pointsDelta: -Math.max(0, Math.floor(Number(cost) || 0)), packsDelta: 1 });
+  return profile;
 }
 
 function validatePackCardIds(cardIds) {
@@ -390,7 +595,7 @@ function validatePackCardIds(cardIds) {
 export async function openInventoryPack(uid, newCardIds) {
   validatePackCardIds(newCardIds);
   const ref = doc(db, 'users', uid);
-  return runTransaction(db, async (tx) => {
+  const profile = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('No se encontró tu perfil.');
     const data = snap.data();
@@ -405,6 +610,9 @@ export async function openInventoryPack(uid, newCardIds) {
     tx.update(ref, updated);
     return { ...data, ...updated, dailyRewards: normalizeDailyRewardsState(data.dailyRewards) };
   });
+  await statsBestEffort(uid, { fichasEarned: 1, packsOpened: 1 });
+  void economyLogBestEffort({ targetUid: uid, source: 'pack_open', fichasDelta: 1, packsDelta: -1, cardsDelta: newCardIds.length });
+  return profile;
 }
 
 // Consume la recompensa final del pase y agrega exactamente UNA carta Mythic existente.
@@ -412,7 +620,7 @@ export async function openGuaranteedMythic(uid, cardId) {
   const card = cardDb.getById(cardId);
   if (!card || card.rarity !== 'Mythic') throw new Error('La recompensa mítica no es válida.');
   const ref = doc(db, 'users', uid);
-  return runTransaction(db, async (tx) => {
+  const profile = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('No se encontró tu perfil.');
     const data = snap.data();
@@ -423,6 +631,9 @@ export async function openGuaranteedMythic(uid, cardId) {
     tx.update(ref, updated);
     return { ...data, ...updated, dailyRewards: normalizeDailyRewardsState(data.dailyRewards) };
   });
+  await statsBestEffort(uid, { guaranteedMythicsOpened: 1 });
+  void economyLogBestEffort({ targetUid: uid, source: 'guaranteed_mythic_open', cardsDelta: 1 });
+  return profile;
 }
 
 // ============================================================================
@@ -602,7 +813,7 @@ export async function claimDailyReward(uid, day, nowMs = null) {
   const reward = rewardForDay(day);
   if (!reward) throw new Error('Ese premio diario no existe.');
   const ref = doc(db, 'users', uid);
-  return runTransaction(db, async (tx) => {
+  const profile = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('No se encontró tu perfil.');
     const data = snap.data();
@@ -625,6 +836,16 @@ export async function claimDailyReward(uid, day, nowMs = null) {
     tx.update(ref, updated);
     return { ...data, ...updated, dailyRewards: nextDaily };
   });
+  const rewardTotals = (reward.rewards || []).reduce((acc, item) => {
+    const amount = Math.max(0, Math.floor(Number(item?.amount) || 0));
+    if (item?.type === 'points') acc.points += amount;
+    else if (item?.type === 'fichas') acc.fichas += amount;
+    else if (item?.type === 'standardPack') acc.packs += amount;
+    return acc;
+  }, { points: 0, fichas: 0, packs: 0 });
+  await statsBestEffort(uid, { pointsEarned: rewardTotals.points, fichasEarned: rewardTotals.fichas, packsReceived: rewardTotals.packs });
+  void economyLogBestEffort({ targetUid: uid, source: 'daily_reward', pointsDelta: rewardTotals.points, fichasDelta: rewardTotals.fichas, packsDelta: rewardTotals.packs });
+  return profile;
 }
 
 // Craftea una mejora permanente: gasta `fichaCost` Fichas para taggear UNA carta que ya
@@ -632,7 +853,7 @@ export async function claimDailyReward(uid, day, nowMs = null) {
 // (ENHANCEMENT_KEYWORDS en store.js). Devuelve el perfil ya actualizado.
 export async function craftEnhancement(uid, cardId, keyword, fichaCost) {
   const ref = doc(db, 'users', uid);
-  return runTransaction(db, async (tx) => {
+  const profile = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('No se encontró tu perfil.');
     const data = snap.data();
@@ -649,6 +870,10 @@ export async function craftEnhancement(uid, cardId, keyword, fichaCost) {
     tx.update(ref, updated);
     return { ...data, ...updated };
   });
+  const spent = Math.max(0, Math.floor(Number(fichaCost) || 0));
+  await statsBestEffort(uid, { fichasSpent: spent });
+  void economyLogBestEffort({ targetUid: uid, source: 'enhancement_craft', fichasDelta: -spent });
+  return profile;
 }
 
 // FASE 3, ETAPA 2: crea un mazo nuevo (hasta 5 en total, contando el inicial). Todo
@@ -975,7 +1200,7 @@ export async function purchaseClassifiedCard(uid, cardId) {
   }
 
   const ref = doc(db, 'users', uid);
-  return runTransaction(db, async tx => {
+  const profile = await runTransaction(db, async tx => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('No se encontró tu perfil.');
     const data = snap.data();
@@ -1017,6 +1242,9 @@ export async function purchaseClassifiedCard(uid, cardId) {
     tx.update(ref, updated);
     return normalizeProfileForClient({ ...data, ...updated, classifiedsUpdatedAt: new Date() });
   });
+  await statsBestEffort(uid, { pointsSpent: price.points, fichasSpent: price.fichas });
+  void economyLogBestEffort({ targetUid: uid, source: 'classified_purchase', pointsDelta: -price.points, fichasDelta: -price.fichas, cardsDelta: 1 });
+  return profile;
 }
 
 // ============================================================================
@@ -1317,14 +1545,19 @@ export async function fetchAllUserProfiles() {
 // negativo, sea cual sea el monto pedido.
 export async function adminGrantCurrency(targetUid, currencyField, amount) {
   const ref = doc(db, 'users', targetUid);
-  return runTransaction(db, async (tx) => {
+  const result = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('Esa cuenta no existe.');
     const current = snap.data()[currencyField] || 0;
     const newValue = Math.max(0, current + amount);
     tx.update(ref, { [currencyField]: newValue });
-    return newValue;
+    return { current, newValue };
   });
+  const applied = result.newValue - result.current;
+  const statDelta = currencyField === 'points' ? { pointsEarned: Math.max(0, applied) } : { fichasEarned: Math.max(0, applied) };
+  await statsBestEffort(targetUid, statDelta);
+  void economyLogBestEffort({ targetUid, source: 'admin_grant', pointsDelta: currencyField === 'points' ? applied : 0, fichasDelta: currencyField === 'fichas' ? applied : 0 });
+  return result.newValue;
 }
 
 // Le da lo mismo a TODOS los usuarios — trae la lista completa y aplica adminGrantCurrency
@@ -1349,7 +1582,7 @@ export async function adminGrantPacks(targetUid, amount) {
   const delta = Math.floor(Number(amount) || 0);
   if (delta <= 0) throw new Error('La cantidad de sobres debe ser mayor que 0.');
   const ref = doc(db, 'users', targetUid);
-  return runTransaction(db, async tx => {
+  const total = await runTransaction(db, async tx => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('Esa cuenta no existe.');
     const data = snap.data();
@@ -1358,6 +1591,9 @@ export async function adminGrantPacks(targetUid, amount) {
     tx.update(ref, { inventory });
     return inventory[CHEST_ITEM_KEYS.standardPack];
   });
+  await statsBestEffort(targetUid, { packsReceived: delta });
+  void economyLogBestEffort({ targetUid, source: 'admin_pack_grant', packsDelta: delta });
+  return total;
 }
 
 export async function adminGrantPacksToAll(amount) {

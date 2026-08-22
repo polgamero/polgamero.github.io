@@ -1,7 +1,7 @@
 {
-  "engineVersion": "23.13.36",
+  "engineVersion": "23.13.37",
   "engineProtocolVersion": "mp-23.10.0",
-  "buildLabel": "Entrega 23.13.36 Multiplayer Sync + Token Safety",
+  "buildLabel": "Entrega 23.13.37 Statistics Foundation + Global Ranking",
   "generatedFor": "GitHub Pages cache freshness check",
-  "firestoreRulesVersion": "23.13.35-R1"
+  "firestoreRulesVersion": "23.13.37"
 }

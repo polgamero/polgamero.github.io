@@ -1542,6 +1542,8 @@ export function getTelemetryStatus() {
     installed,
     active: !!currentSession,
     sessionId: currentSession?.sessionId || null,
+    startedAt: currentSession?.startedAt || null,
+    elapsedMs: currentSession ? currentRelativeMs() : 0,
     eventCount: currentSession?.events.length || 0,
     bugCandidateCount: currentSession?.bugCandidates.length || 0,
     endedAt: currentSession?.endedAt || null,
