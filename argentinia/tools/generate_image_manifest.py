@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Generate Argentinia's card image manifest at deploy time.
 
-This script is intentionally standard-library only so GitHub Actions can run it
-without npm/pip dependencies. It NEVER makes network requests.
+Standard-library only; no network requests.
+
+The pool cardinality is NOT hardcoded here. The authoritative source is
+js/poolContract.js -> CURRENT_POOL_MILESTONE -> POOL_MILESTONES[milestone].
+This keeps GitHub Pages validation aligned with the runtime contract when the
+card pool grows.
 """
 from __future__ import annotations
 
@@ -25,17 +29,7 @@ CATEGORY_FILES = {
     "encantamientos": "encantamientos.json",
     "planeswalkers": "planeswalkers.json",
 }
-EXPECTED_COUNTS = {
-    "tierras": 56,
-    "artefactos": 54,
-    "criaturas": 252,
-    "instantaneos": 105,
-    "conjuros": 70,
-    "encantamientos": 56,
-    "planeswalkers": 8,
-}
 
-EXPECTED_TOTAL = 601
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif"}
 
 # 23.13.16 — ownership/naming guard.
@@ -46,8 +40,8 @@ LEGACY_SHARED_IMAGE_OWNERS = {
     "cacerolazo.png": {"inst_010", "conj_008"},
 }
 
-# The 23.13.16 pool is gapless in every family. Any future card must append
-# above these maxima and use the canonical filename derived from its own name.
+# The original/requisition baseline is gapless in every family. Any card above
+# these maxima must use the canonical filename derived from its own name.
 CANONICAL_IMAGE_BASELINE_MAX = {
     "art": 44,
     "conj": 61,
@@ -82,10 +76,63 @@ def parse_card_id(card_id: str):
     return match.group(1), int(match.group(2))
 
 
+def load_pool_contract(root: Path) -> tuple[str, str, int, dict[str, int]]:
+    """Read the active pool milestone from js/poolContract.js.
+
+    We intentionally parse the very small declarative contract rather than
+    duplicating totals in Python. Fail closed if its shape changes.
+    """
+    contract_path = root / "js" / "poolContract.js"
+    if not contract_path.is_file():
+        raise ValueError(f"falta {contract_path.relative_to(root)}")
+
+    text = contract_path.read_text(encoding="utf-8")
+    current_match = re.search(
+        r"export\s+const\s+CURRENT_POOL_MILESTONE\s*=\s*['\"]([^'\"]+)['\"]\s*;",
+        text,
+    )
+    if not current_match:
+        raise ValueError("no se pudo leer CURRENT_POOL_MILESTONE en js/poolContract.js")
+
+    milestone = current_match.group(1)
+    milestone_re = re.compile(
+        rf"\b{re.escape(milestone)}\s*:\s*makeMilestone\(\s*"
+        rf"['\"]([^'\"]+)['\"]\s*,\s*(\d+)\s*,\s*\{{(.*?)\}}\s*\)",
+        re.DOTALL,
+    )
+    milestone_match = milestone_re.search(text)
+    if not milestone_match:
+        raise ValueError(
+            f"CURRENT_POOL_MILESTONE={milestone!r} no tiene un makeMilestone legible"
+        )
+
+    version = milestone_match.group(1)
+    total = int(milestone_match.group(2))
+    category_block = milestone_match.group(3)
+    categories = {
+        key: int(value)
+        for key, value in re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(\d+)\b", category_block)
+    }
+
+    expected_keys = set(CATEGORY_FILES)
+    actual_keys = set(categories)
+    if actual_keys != expected_keys:
+        missing = sorted(expected_keys - actual_keys)
+        extra = sorted(actual_keys - expected_keys)
+        raise ValueError(
+            f"categorías de poolContract incompatibles; faltan={missing} extra={extra}"
+        )
+    if sum(categories.values()) != total:
+        raise ValueError(
+            f"poolContract inconsistente: suma categorías={sum(categories.values())} total={total}"
+        )
+
+    return milestone, version, total, categories
+
+
 def validate_image_ownership(cards) -> list[str]:
     errors = []
     owners = defaultdict(list)
-
     for category, card in cards:
         card_id = str(card.get("id") or "").strip()
         card_name = str(card.get("name") or "").strip()
@@ -94,9 +141,12 @@ def validate_image_ownership(cards) -> list[str]:
             continue
         image = image.strip().replace("\\", "/")
         owners[image].append((card_id, card_name, category))
-
         prefix, number = parse_card_id(card_id)
-        future_card = prefix in CANONICAL_IMAGE_BASELINE_MAX and number is not None and number > CANONICAL_IMAGE_BASELINE_MAX[prefix]
+        future_card = (
+            prefix in CANONICAL_IMAGE_BASELINE_MAX
+            and number is not None
+            and number > CANONICAL_IMAGE_BASELINE_MAX[prefix]
+        )
         if card_id in CANONICAL_IMAGE_REQUIRED_IDS or future_card:
             expected = canonical_card_image_name(card_name)
             if image != expected:
@@ -126,14 +176,38 @@ def load_json(path: Path):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default=".", help="Repository/site root")
-    ap.add_argument("--expected-total", type=int, default=EXPECTED_TOTAL)
-    ap.add_argument("--allow-count-drift", action="store_true", help="Generate even if category counts differ")
+    ap.add_argument(
+        "--expected-total",
+        type=int,
+        default=None,
+        help="Optional caller assertion. Must equal the active poolContract total.",
+    )
+    ap.add_argument(
+        "--allow-count-drift",
+        action="store_true",
+        help="Generate even if JSON category counts differ from poolContract (diagnostic only)",
+    )
     args = ap.parse_args()
 
     root = Path(args.root).resolve()
     data_dir = root / "assets" / "data"
     image_dir = root / "assets" / "images" / "cards"
     image_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        milestone, contract_version, expected_total, expected_counts = load_pool_contract(root)
+    except (OSError, ValueError) as exc:
+        print(f"ERROR: poolContract inválido: {exc}", file=sys.stderr)
+        return 2
+
+    if args.expected_total is not None and args.expected_total != expected_total:
+        print(
+            "ERROR: --expected-total está desactualizado respecto de js/poolContract.js. "
+            f"CLI={args.expected_total} contrato={expected_total} milestone={milestone}. "
+            "Actualizá/eliminá el hardcode del workflow.",
+            file=sys.stderr,
+        )
+        return 3
 
     cards = []
     counts = {}
@@ -169,11 +243,19 @@ def main() -> int:
         return 2
 
     if not args.allow_count_drift:
-        if counts != EXPECTED_COUNTS:
-            print(f"ERROR: distribución del pool inesperada. Esperado={EXPECTED_COUNTS} Actual={counts}", file=sys.stderr)
+        if counts != expected_counts:
+            print(
+                "ERROR: distribución del pool inesperada. "
+                f"Milestone={milestone} Esperado={expected_counts} Actual={counts}",
+                file=sys.stderr,
+            )
             return 3
-        if total != args.expected_total:
-            print(f"ERROR: total del pool inesperado. Esperado={args.expected_total} Actual={total}", file=sys.stderr)
+        if total != expected_total:
+            print(
+                "ERROR: total del pool inesperado. "
+                f"Milestone={milestone} Esperado={expected_total} Actual={total}",
+                file=sys.stderr,
+            )
             return 3
 
     ownership_errors = validate_image_ownership(cards)
@@ -224,6 +306,8 @@ def main() -> int:
         "gitSha": sha,
         "githubRunId": run_id,
         "pool": {
+            "milestone": milestone,
+            "contractVersion": contract_version,
             "total": total,
             "categories": counts,
             "uniqueIds": len(ids),
@@ -248,7 +332,11 @@ def main() -> int:
     txt_lines = [entry["image"] for entry in missing]
     txt_path.write_text(("\n".join(txt_lines) + ("\n" if txt_lines else "")), encoding="utf-8")
 
-    print(f"IMAGE_MANIFEST_OK pool={total} existing={len(existing_files)} missingCards={len(missing)} imageOwnership=OK")
+    print(
+        "IMAGE_MANIFEST_OK "
+        f"milestone={milestone} pool={total} existing={len(existing_files)} "
+        f"missingCards={len(missing)} imageOwnership=OK"
+    )
     print(f"Manifest: {manifest_path.relative_to(root)}")
     print(f"TXT: {txt_path.relative_to(root)}")
     return 0
