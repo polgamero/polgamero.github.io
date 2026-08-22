@@ -1,7 +1,7 @@
 {
-  "engineVersion": "23.13.38",
+  "engineVersion": "23.13.39",
   "engineProtocolVersion": "mp-23.10.0",
-  "buildLabel": "Entrega 23.13.38 Token Audit UI + Game Text Contract + Combat Map",
+  "buildLabel": "Entrega 23.13.39 Combat Map Correctness + Post-Block Priority + Abandon Exit",
   "generatedFor": "GitHub Pages cache freshness check",
   "firestoreRulesVersion": "23.13.37"
 }

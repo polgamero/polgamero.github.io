@@ -1,0 +1,13 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const source=fs.readFileSync(new URL('../js/bot.js', import.meta.url),'utf8');
+const marker="if (!state.rivalBlockersDeclaredThisCombat)";
+const start=source.indexOf(marker);
+assert.ok(start>=0,'No se encontró la rama de declaración de bloqueadores del bot');
+const end=source.indexOf("// Los trucos post-bloqueo",start);
+assert.ok(end>start,'No se encontró el fin de la rama de declaración');
+const branch=source.slice(start,end);
+assert.match(branch,/beginActivePlayerPriorityWindow\(\)/,'El bot debe abrir ventana NUEVA post-bloqueadores');
+assert.doesNotMatch(branch,/passPriority\(['\"]rival['\"]\)/,'Declarar bloqueadores no puede contarse como pase');
+assert.match(source,/if \(state\.priorityPlayer === 'rival'\)[\s\S]*tryBotPostBlockTrick/,'El truco post-bloqueo debe esperar prioridad real del bot');
+console.log('POST_BLOCK_PRIORITY_23_13_39_OK');

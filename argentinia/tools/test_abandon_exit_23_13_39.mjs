@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const main=fs.readFileSync(new URL('../js/main.js', import.meta.url),'utf8');
+const telemetry=fs.readFileSync(new URL('../js/telemetry.js', import.meta.url),'utf8');
+const start=main.indexOf("recordTelemetryEvent('abandon_cleanup_start'");
+const end=main.indexOf("location.reload();",start);
+assert.ok(start>=0 && end>start,'No se encontró el cleanup de abandono 23.13.39');
+const block=main.slice(start,end+40);
+assert.match(block,/Promise\.race\(\[settle, deadline\]\)/,'Abandono necesita deadline duro');
+assert.match(block,/sleep\(3000\)/,'Deadline esperado de 3 segundos');
+const telemetryEnd=block.indexOf("endTelemetrySession('abandon_local')");
+const race=block.indexOf('Promise.race');
+assert.ok(telemetryEnd>race,'Telemetría debe cerrarse después del cleanup/deadline, no antes');
+assert.match(telemetry,/ABANDON_CLEANUP_TIMEOUT/,'Un timeout de abandono debe quedar como bug automático');
+console.log('ABANDON_EXIT_23_13_39_OK');

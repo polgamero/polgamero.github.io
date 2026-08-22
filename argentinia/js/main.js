@@ -422,31 +422,51 @@ function hookGameplayButtons() {
     els.btnAbandonGame.addEventListener('click', () => {
       if (state.gameOver) return; // ya terminó de una forma normal, "abandonar" no tiene sentido
       showAbandonConfirmModal(
-        () => {
+        async () => {
           state.gameOver = true; // evita que checkGameOver procese esto como otra cosa
-          // ENTREGA 23: cerrar la caja negra ANTES de iniciar las escrituras de abandono /
-          // recarga. El upload final corre en paralelo mientras se aplica la penalidad.
-          endTelemetrySession('abandon_local');
-          // FASE 4, ETAPA 6: en multiplayer, el rival tiene que ENTERARSE de que abandoné —
-          // se publica ANTES de recargar, para que le llegue por sync incluso si mi
-          // pantalla ya se está yendo. Su propio checkGameOver() (turnManager.js) detecta
-          // abandonedBy:'rival' y se premia a sí mismo con la victoria — nunca puedo
-          // hacerlo yo por él (no tengo permiso de escritura sobre su cuenta).
+          recordTelemetryEvent('abandon_cleanup_start', {
+            mode: state.currentMatch ? 'multiplayer' : 'solo',
+            turnCount: state.turnCount,
+            phase: state.phase
+          });
+
+          // 23.13.39 — NO cerramos Telemetría antes de estas escrituras. En 23.13.38, si
+          // awardPoints()/Statistics quedaba pendiente, la pantalla parecía congelada y los
+          // eventos posteriores quedaban fuera del último upload final. Cerramos la caja negra
+          // recién al final y garantizamos salida con un deadline duro.
+          const cleanupTasks = [];
+
+          // FASE 4, ETAPA 6: en multiplayer, el rival tiene que ENTERARSE de que abandoné.
           if (state.currentMatch) {
             state.abandonedBy = 'local';
-            publishMatchState();
+            cleanupTasks.push(Promise.resolve(publishMatchState({ force: true })));
           }
+
           if (state.currentUser) {
             recordLocalAbandonStatsBestEffort();
-            awardPoints(state.currentUser.uid, POINTS.abandonPenalty)
-              .then(newTotal => {
-                logMsg(gameText('game.abandon.self', { points: Math.abs(POINTS.abandonPenalty), total: newTotal }));
-              })
-              .catch(err => console.error('No se pudo aplicar la penalidad de abandono:', err))
-              .finally(() => location.reload());
-          } else {
-            location.reload();
+            cleanupTasks.push(
+              awardPoints(state.currentUser.uid, POINTS.abandonPenalty)
+                .catch(err => {
+                  console.error('No se pudo aplicar la penalidad de abandono:', err);
+                  return null;
+                })
+            );
           }
+
+          let timedOut = false;
+          const settle = Promise.allSettled(cleanupTasks);
+          const deadline = sleep(3000).then(() => { timedOut = true; return null; });
+          await Promise.race([settle, deadline]);
+
+          recordTelemetryEvent('abandon_cleanup_end', {
+            timedOut,
+            taskCount: cleanupTasks.length
+          }, timedOut ? 'warning' : 'info');
+          endTelemetrySession('abandon_local');
+
+          // La salida nunca depende de que Firestore/Statistics terminen perfecto. Como máximo
+          // espera 3 s para darles oportunidad; después recarga sí o sí.
+          location.reload();
         },
         () => {} // "Seguir jugando": no hace falta hacer nada, el modal ya se cerró solo
       );

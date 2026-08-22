@@ -32,7 +32,8 @@ import {
   payCastCompositeNonManaCosts,
   getCastingManaCostString,
   getCastCompositeCostBundle,
-  passPriority // Importado del nuevo turnManager / main
+  passPriority, // Importado del nuevo turnManager / main
+  beginActivePlayerPriorityWindow
 } from './main.js';
 
 import { moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming } from './utils.js';
@@ -1812,14 +1813,22 @@ export async function takeBotPriorityAction() {
         blockerCount: state.rivalCombat.filter(unit => unit.blockingIndex !== null && unit.blockingIndex !== undefined).length
       });
       queueDeclaredBlockTriggers(state.rivalCombat, false);
-      render();
+
+      // 23.13.39 — declarar bloqueadores NO es un pase de prioridad. 23.13.38 heredaba el
+      // pase que el atacante había hecho para cederle el control al bot; el passPriority
+      // de abajo se convertía entonces en el segundo pase y saltaba directo al daño.
+      // Toda declaración (incluso 0 bloqueadores) abre una ventana NUEVA y empieza por el
+      // jugador activo. Esto además garantiza que el Combat Map tenga una ventana real.
+      beginActivePlayerPriorityWindow();
+      return;
     }
 
-    // ETAPA 1 (Grupo C, IA reactiva): con los bloqueos ya sobre la mesa, ¿hay alguno que
-    // el Tano pueda salvar con un pump antes de que se calcule el daño?
-    if (await tryBotPostBlockTrick()) return;
-
-    passPriority('rival');
+    // Los trucos post-bloqueo del Tano ocurren recién cuando RECIBE prioridad en esa nueva
+    // ventana, después de que el atacante haya podido responder a la declaración.
+    if (state.priorityPlayer === 'rival') {
+      if (await tryBotPostBlockTrick()) return;
+      passPriority('rival');
+    }
     return;
   }
 

@@ -18,7 +18,11 @@ export function captureCombatPairs(state) {
   const attackerSide = isLocalAttacking ? 'local' : 'rival';
   const defenderSide = isLocalAttacking ? 'rival' : 'local';
   return defenders.flatMap((blocker, blockerIndex) => {
-    const attackerIndex = Number(blocker?.blockingIndex);
+    // 23.13.39 — IMPORTANTE: Number(null) === 0. En 23.13.38 eso hacía que CADA
+    // criatura no bloqueadora (blockingIndex:null) se vinculara visualmente al atacante 0.
+    // La relación existe únicamente cuando blockingIndex fue asignado de verdad.
+    if (blocker?.blockingIndex === null || blocker?.blockingIndex === undefined) return [];
+    const attackerIndex = Number(blocker.blockingIndex);
     if (!Number.isInteger(attackerIndex) || attackerIndex < 0 || attackerIndex >= attackers.length) return [];
     const attacker = attackers[attackerIndex];
     if (!attacker?.isAttacking) return [];
@@ -73,7 +77,12 @@ export function buildCombatMapModel(state, helpers = {}) {
   const regularOnly = !!helpers.regularOnly;
   const stablePairs = Array.isArray(helpers.stablePairs) ? helpers.stablePairs : null;
 
-  if (!state || !['combat_blockers', 'combat_damage'].includes(state.phase)) return { visible: false, routes: [], flexible: false };
+  // El mapa normal vive en la ventana POST-bloqueadores. En combat_damage sólo puede
+  // reaparecer durante la continuación entre Primer Golpe y daño regular (regularOnly=true).
+  // Una vez resuelto el daño, desaparece inmediatamente.
+  const inPostBlockWindow = state?.phase === 'combat_blockers';
+  const inFirstStrikeContinuation = state?.phase === 'combat_damage' && regularOnly;
+  if (!state || (!inPostBlockWindow && !inFirstStrikeContinuation)) return { visible: false, routes: [], flexible: false };
 
   const isLocalAttacking = state.activePlayer === 'local';
   const attackers = isLocalAttacking ? (state.localCombat || []) : (state.rivalCombat || []);
@@ -257,14 +266,19 @@ function damageWidth(amount) {
   return Math.max(2.2, Math.min(14, 1.6 + n(amount) * 1.25));
 }
 
-function curveControl(start, end, index, kind) {
+export function combatCurveLane(activePlayer, kind) {
+  const attackerLane = activePlayer === 'local' ? -1 : 1;
+  return kind === 'attacker' ? attackerLane : -attackerLane;
+}
+
+function curveControl(start, end, index, kind, activePlayer) {
   const mx = (start.x + end.x) / 2, my = (start.y + end.y) / 2;
-  const dx = end.x - start.x, dy = end.y - start.y;
-  const len = Math.max(1, Math.hypot(dx, dy));
-  const px = -dy / len, py = dx / len;
-  const direction = kind === 'attacker' ? 1 : -1;
-  const magnitude = direction * (14 + (index % 4) * 5);
-  return { x: mx + px * magnitude, y: my + py * magnitude };
+  // 23.13.39 — dos carriles visuales estables. Si ataca el jugador inferior/local,
+  // ROJO se abre a la izquierda y CELESTE a la derecha. Si ataca el jugador superior/rival,
+  // se invierte. Así un intercambio 1v1 nunca dibuja ida y vuelta sobre la misma curva.
+  const lane = combatCurveLane(activePlayer, kind);
+  const magnitude = 28 + (index % 4) * 5;
+  return { x: mx + lane * magnitude, y: my };
 }
 
 function makeSvgEl(name, attrs = {}) {
@@ -338,7 +352,7 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
     const sr = sourceEl.getBoundingClientRect(), tr = targetEl.getBoundingClientRect();
     if (!sr.width || !sr.height || !tr.width || !tr.height) return null;
     const { start, end } = endpointBetween(sr, tr);
-    const control = curveControl(start, end, index, r.kind);
+    const control = curveControl(start, end, index, r.kind, state.activePlayer);
     return { ...r, index, start, end, control };
   }).filter(Boolean);
 
