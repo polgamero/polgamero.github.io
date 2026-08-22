@@ -1,7 +1,7 @@
 {
-  "engineVersion": "23.13.41",
+  "engineVersion": "23.13.42",
   "engineProtocolVersion": "mp-23.10.0",
-  "buildLabel": "Entrega 23.13.41 Combat Map Visual Polish",
+  "buildLabel": "Entrega 23.13.42 Combat Map Arrow Direction + Visual Refinement",
   "generatedFor": "GitHub Pages cache freshness check",
   "firestoreRulesVersion": "23.13.37"
 }

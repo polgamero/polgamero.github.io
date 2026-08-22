@@ -278,14 +278,17 @@ export function combatCurveLane(activePlayer, kind) {
   return kind === 'attacker' ? attackerLane : -attackerLane;
 }
 
-function curveControl(start, end, index, kind, activePlayer) {
-  const mx = (start.x + end.x) / 2, my = (start.y + end.y) / 2;
-  // 23.13.39 — dos carriles visuales estables. Si ataca el jugador inferior/local,
-  // ROJO se abre a la izquierda y CELESTE a la derecha. Si ataca el jugador superior/rival,
-  // se invierte. Así un intercambio 1v1 nunca dibuja ida y vuelta sobre la misma curva.
+function curveGeometry(start, end, index, kind, activePlayer) {
+  // 23.13.42 — la curva ya no usa un único control cuadrático porque eso podía hacer
+  // que la tangente final apuntara visualmente al revés. Con una cúbica de dos controles
+  // mantenemos carriles estables y una llegada elegante al objetivo.
   const lane = combatCurveLane(activePlayer, kind);
-  const magnitude = 28 + (index % 4) * 5;
-  return { x: mx + lane * magnitude, y: my };
+  const magnitude = 44 + (index % 4) * 7;
+  const dy = end.y - start.y;
+  const bendY = dy * 0.18;
+  const c1 = { x: start.x + lane * magnitude, y: start.y + bendY };
+  const c2 = { x: end.x + lane * magnitude, y: end.y - bendY };
+  return { lane, c1, c2 };
 }
 
 function makeSvgEl(name, attrs = {}) {
@@ -348,8 +351,9 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
   shadow.appendChild(makeSvgEl('feDropShadow', { dx: 0, dy: 2, stdDeviation: 2.2, 'flood-color': '#000000', 'flood-opacity': 0.35 }));
   defs.appendChild(shadow);
   const marker = (id, color) => {
-    const m = makeSvgEl('marker', { id, markerWidth: 17, markerHeight: 17, refX: 14.5, refY: 8.5, orient: 'auto', markerUnits: 'strokeWidth' });
-    m.appendChild(makeSvgEl('path', { d: 'M1.2,8.5 L8.4,1.6 L7.1,5.6 L16,8.5 L7.1,11.4 L8.4,15.4 z', fill: color, stroke: 'rgba(255,255,255,0.50)', 'stroke-width': 0.65, 'stroke-linejoin': 'round' }));
+    const m = makeSvgEl('marker', { id, markerWidth: 16, markerHeight: 16, refX: 12.4, refY: 8, orient: 'auto', markerUnits: 'strokeWidth' });
+    // Punta estilizada tipo lanza. Sin borde contrastado para que la cabeza continúe el trazo.
+    m.appendChild(makeSvgEl('path', { d: 'M0.8,8 L6.4,2.2 L5.6,5 L13.2,8 L5.6,11 L6.4,13.8 z', fill: color }));
     return m;
   };
   defs.appendChild(marker('combat-arrow-red', '#ff5a5a'));
@@ -362,19 +366,19 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
     const sr = sourceEl.getBoundingClientRect(), tr = targetEl.getBoundingClientRect();
     if (!sr.width || !sr.height || !tr.width || !tr.height) return null;
     const { start, end } = endpointBetween(sr, tr, r.source, r.target);
-    const control = curveControl(start, end, index, r.kind, state.activePlayer);
-    return { ...r, index, start, end, control };
+    const curve = curveGeometry(start, end, index, r.kind, state.activePlayer);
+    return { ...r, index, start, end, curve };
   }).filter(Boolean);
 
   validRoutes.forEach(r => {
     const color = r.kind === 'attacker' ? '#ff5a5a' : '#5ed2ff';
     const markerId = r.kind === 'attacker' ? 'combat-arrow-red' : 'combat-arrow-blue';
-    const d = `M ${r.start.x.toFixed(1)} ${r.start.y.toFixed(1)} Q ${r.control.x.toFixed(1)} ${r.control.y.toFixed(1)} ${r.end.x.toFixed(1)} ${r.end.y.toFixed(1)}`;
+    const d = `M ${r.start.x.toFixed(1)} ${r.start.y.toFixed(1)} C ${r.curve.c1.x.toFixed(1)} ${r.curve.c1.y.toFixed(1)} ${r.curve.c2.x.toFixed(1)} ${r.curve.c2.y.toFixed(1)} ${r.end.x.toFixed(1)} ${r.end.y.toFixed(1)}`;
     const width = r.flexible ? 2.6 : damageWidth(r.amount);
     const glow = makeSvgEl('path', {
       d, fill: 'none', stroke: color,
-      'stroke-width': width + 4.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-      opacity: r.prevented ? 0.10 : (r.flexible ? 0.16 : 0.18)
+      'stroke-width': width + 4.8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+      opacity: r.prevented ? 0.10 : (r.flexible ? 0.16 : 0.20)
     });
     if (r.flexible || r.prevented) glow.setAttribute('stroke-dasharray', r.flexible ? '8 7' : '3 6');
     svg.appendChild(glow);
@@ -392,15 +396,16 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
     svg.appendChild(path);
 
     const highlight = makeSvgEl('path', {
-      d, fill: 'none', stroke: 'rgba(255,255,255,0.28)',
-      'stroke-width': Math.max(1, width * 0.22), 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: r.flexible ? 0.18 : 0.26
+      d, fill: 'none', stroke: 'rgba(255,255,255,0.22)',
+      'stroke-width': Math.max(1, width * 0.18), 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: r.flexible ? 0.14 : 0.22
     });
     if (r.flexible || r.prevented) highlight.setAttribute('stroke-dasharray', r.flexible ? '8 7' : '3 6');
     svg.appendChild(highlight);
 
     const t = 0.5;
-    const lx = (1-t)*(1-t)*r.start.x + 2*(1-t)*t*r.control.x + t*t*r.end.x;
-    const ly = (1-t)*(1-t)*r.start.y + 2*(1-t)*t*r.control.y + t*t*r.end.y;
+    const mt = 1 - t;
+    const lx = mt*mt*mt*r.start.x + 3*mt*mt*t*r.curve.c1.x + 3*mt*t*t*r.curve.c2.x + t*t*t*r.end.x;
+    const ly = mt*mt*mt*r.start.y + 3*mt*mt*t*r.curve.c1.y + 3*mt*t*t*r.curve.c2.y + t*t*t*r.end.y;
     const label = r.flexible
       ? gameText('combat.map.pending')
       : r.prevented
@@ -412,7 +417,9 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
             : String(r.amount);
     if (!label) return;
     const group = makeSvgEl('g');
-    const text = makeSvgEl('text', { x: lx, y: ly, fill: '#fff', 'font-size': 12, 'font-weight': 800, 'text-anchor': 'middle', 'dominant-baseline': 'central' });
+    const labelX = lx + (r.curve?.lane || 0) * 4;
+    const labelY = ly - 12;
+    const text = makeSvgEl('text', { x: labelX, y: labelY, fill: '#fff', 'font-size': 12, 'font-weight': 800, 'text-anchor': 'middle', 'dominant-baseline': 'central' });
     text.textContent = label;
     group.appendChild(text);
     svg.appendChild(group);
