@@ -98,8 +98,8 @@
     "id": "inst_011",
     "name": "Mano de Dios",
     "type": "Instantáneo",
-    "manaCost": "{3}{R}",
-    "cmc": 4,
+    "manaCost": "{2}{R}",
+    "cmc": 3,
     "rarity": "Rare",
     "colors": [
       "R"
@@ -449,8 +449,8 @@
     "id": "inst_024",
     "name": "Sacrificio Ritual",
     "type": "Instantáneo",
-    "manaCost": "{B}",
-    "cmc": 1,
+    "manaCost": "{1}{B}",
+    "cmc": 2,
     "rarity": "Uncommon",
     "colors": [
       "B"
@@ -537,14 +537,14 @@
     "colors": [
       "B"
     ],
-    "text": "Podés pagar {1} y 1 Punto de Vida en vez del costo de maná de este hechizo. Destruye a la criatura objetivo.",
+    "text": "Podés pagar {1} y 5 Puntos de Vida en vez del costo de maná de este hechizo. Destruye a la criatura objetivo.",
     "flavorText": "Cuando no hay tiempo de juntar el mango, se firma con lo que hay: sangre.",
     "requiresTarget": true,
     "image": "pacto_desesperado.png",
     "alternativeCost": {
       "type": "hybrid",
       "manaCost": "{1}",
-      "life": 1
+      "life": 5
     },
     "effect": {
       "type": "destroy_creature"
@@ -584,14 +584,14 @@
     "colors": [
       "R"
     ],
-    "text": "Podés pagar {1} y 2 Puntos de Vida en vez del costo de maná de este hechizo. Le hace 4 de daño a cualquier objetivo.",
+    "text": "Podés pagar {1} y 6 Puntos de Vida en vez del costo de maná de este hechizo. Le hace 4 de daño a cualquier objetivo.",
     "flavorText": "Cuando no hay tiempo de juntar el mango, se paga con lo que hay.",
     "requiresTarget": true,
     "image": "trato_urgencia.png",
     "alternativeCost": {
       "type": "hybrid",
       "manaCost": "{1}",
-      "life": 2
+      "life": 6
     },
     "effect": {
       "type": "damage",
@@ -646,11 +646,11 @@
     "id": "inst_033",
     "name": "Impuesto de Guerra",
     "type": "Instantáneo",
-    "manaCost": "{2}{W}",
+    "manaCost": "{2}{U}",
     "cmc": 3,
     "rarity": "Uncommon",
     "colors": [
-      "W"
+      "U"
     ],
     "text": "Contrarresta el hechizo objetivo a menos que su controlador pague {3}.",
     "flavorText": "La guerra se paga siempre — cuestión de cuándo.",
@@ -1734,6 +1734,425 @@
       "range": "all",
       "filter": "any",
       "target": "opponent_player"
+    }
+  },
+  {
+    "id": "inst_086",
+    "name": "Polen de la Salamanca",
+    "type": "Instantáneo",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Proliferá.",
+    "flavorText": "Una pizca alcanza para que todo lo marcado crezca.",
+    "image": "polen_de_la_salamanca.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "inst_087",
+    "name": "Savia del Ceibo Mayor",
+    "type": "Instantáneo",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Poné dos contadores +1/+1 sobre la criatura objetivo.",
+    "flavorText": "La corteza se abre y adentro late algo más viejo que el monte.",
+    "image": "savia_del_ceibo_mayor.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "add_counter",
+      "counterType": "plusOne",
+      "amount": 2
+    }
+  },
+  {
+    "id": "inst_088",
+    "name": "Riff en el Garage",
+    "type": "Instantáneo",
+    "manaCost": "{U}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Robás una carta.",
+    "flavorText": "Dos acordes, una ventana abierta y el barrio entero de público.",
+    "image": "riff_en_el_garage.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "inst_089",
+    "name": "Chispa del Pogo",
+    "type": "Instantáneo",
+    "manaCost": "{R}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Hacé 1 de daño a cualquier objetivo.",
+    "flavorText": "El primero empuja. El segundo prende la mecha.",
+    "image": "chispa_del_pogo.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "inst_090",
+    "name": "Bis del Bandoneón",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Robás una carta. Flashback {3}{U}.",
+    "flavorText": "El público ya se fue, pero el fuelle todavía respira.",
+    "image": "bis_del_bandoneon.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "draw",
+      "amount": 1
+    },
+    "flashback": {
+      "cost": "{3}{U}"
+    }
+  },
+  {
+    "id": "inst_091",
+    "name": "Veneno en la Copa de Malbec",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "El jugador objetivo recibe un contador de Veneno.",
+    "flavorText": "El color no cambia. El final sí.",
+    "image": "veneno_en_la_copa_de_malbec.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "poison",
+      "amount": 1
+    }
+  },
+  {
+    "id": "inst_092",
+    "name": "Polen Negro del Viñedo",
+    "type": "Instantáneo",
+    "manaCost": "{2}{B}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "G"
+    ],
+    "text": "Proliferá.",
+    "flavorText": "La brisa cruza los parrales y deja marcas nuevas donde ya había una.",
+    "image": "polen_negro_del_vinedo.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "inst_093",
+    "name": "Microfilm de la Madrugada",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Mirá las dos primeras cartas del mazo rival y exiliá una.",
+    "flavorText": "Una foto borrosa puede cerrar un expediente entero.",
+    "image": "microfilm_de_la_madrugada.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "deck",
+      "amount": 1,
+      "visibility": "reveal_candidates",
+      "destination": "exile",
+      "range": "top_n",
+      "rangeCount": 2,
+      "filter": "any",
+      "target": "opponent_player"
+    }
+  },
+  {
+    "id": "inst_094",
+    "name": "Faconazo del Monte",
+    "type": "Instantáneo",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Tu criatura objetivo pelea contra la criatura rival objetivo.",
+    "flavorText": "No hay juez cuando el pasto llega a la cintura.",
+    "image": "faconazo_del_monte.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "fight"
+    }
+  },
+  {
+    "id": "inst_095",
+    "name": "Humo del Viñedo Negro",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Proliferá.",
+    "flavorText": "Se mete entre las hileras y deja cada marca un poco más profunda.",
+    "image": "humo_del_vinedo_negro.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "inst_096",
+    "name": "Eco Azul del Aljibe",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Proliferá.",
+    "flavorText": "Una gota cae. Todas las marcas responden.",
+    "image": "eco_azul_del_aljibe.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "inst_097",
+    "name": "Otra Vuelta de Bandoneón",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Robás una carta. Kicker {1}{U}. Si fue kickeado, robás una carta adicional.",
+    "flavorText": "El fuelle se cierra. Alguien grita otra.",
+    "image": "otra_vuelta_de_bandoneon.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "draw",
+      "amount": 1
+    },
+    "kicker": {
+      "cost": "{1}{U}",
+      "bonusText": "robás una carta adicional",
+      "bonusEffect": {
+        "type": "draw",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "inst_098",
+    "name": "Murmullo desde el Aljibe",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Robás una carta. Escape — {4}{U}{U}, exiliá cuatro cartas de tu cementerio.",
+    "flavorText": "La voz sube con el balde aunque el balde esté vacío.",
+    "image": "murmullo_desde_el_aljibe.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "draw",
+      "amount": 1
+    },
+    "escape": {
+      "cost": "{4}{U}{U}",
+      "exileCount": 4
+    }
+  },
+  {
+    "id": "inst_099",
+    "name": "Riff que Vuelve del Galpón",
+    "type": "Instantáneo",
+    "manaCost": "{R}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Hacé 1 de daño a cualquier objetivo. Flashback {3}{R}.",
+    "flavorText": "La última nota rebota una noche entera contra la chapa.",
+    "image": "riff_que_vuelve_del_galpon.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "damage",
+      "amount": 1
+    },
+    "flashback": {
+      "cost": "{3}{R}"
+    }
+  },
+  {
+    "id": "inst_100",
+    "name": "Eco del Bandoneón Mojado",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Adiviná 2. Flashback {3}{U}{U}.",
+    "flavorText": "El agua arruina el cuero, no la melodía.",
+    "image": "eco_del_bandoneon_mojado.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "scry",
+      "amount": 2
+    },
+    "flashback": {
+      "cost": "{3}{U}{U}"
+    }
+  },
+  {
+    "id": "inst_101",
+    "name": "Cruce de Caminos en la Pulpería",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}{W}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "W"
+    ],
+    "text": "Elegí uno — ganás 4 Puntos de Vida; o destruí la criatura objetivo.",
+    "flavorText": "Dos puertas, una sola noche para elegir.",
+    "image": "cruce_de_caminos_en_la_pulperia.png",
+    "requiresTarget": false,
+    "effect": null,
+    "modal": true,
+    "modes": [
+      {
+        "text": "Ganás 4 Puntos de Vida.",
+        "effect": {
+          "type": "heal",
+          "amount": 4
+        },
+        "requiresTarget": false
+      },
+      {
+        "text": "Destruí la criatura objetivo.",
+        "effect": {
+          "type": "destroy_creature"
+        },
+        "requiresTarget": true
+      }
+    ]
+  },
+  {
+    "id": "inst_102",
+    "name": "Chispa de la Tormenta de Verano",
+    "type": "Instantáneo",
+    "manaCost": "{X}{R}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Hacé X de daño a cualquier objetivo.",
+    "flavorText": "El cielo decide cuánto quiere cobrar.",
+    "image": "chispa_de_la_tormenta_de_verano.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "damage",
+      "amount": "X"
+    }
+  },
+  {
+    "id": "inst_103",
+    "name": "Agua Bendita al Motor",
+    "type": "Instantáneo",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Destruí el Artefacto objetivo.",
+    "flavorText": "El mecánico dijo que no. La abuela probó igual.",
+    "image": "agua_bendita_al_motor.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "destroy_artifact"
+    }
+  },
+  {
+    "id": "inst_104",
+    "name": "Machete contra la Enredadera",
+    "type": "Instantáneo",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Destruí el Encantamiento objetivo.",
+    "flavorText": "Si la maleza tiene runas, se corta dos veces.",
+    "image": "machete_contra_la_enredadera.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "destroy_enchantment"
+    }
+  },
+  {
+    "id": "inst_105",
+    "name": "Tonel de Malbec en Llamas",
+    "type": "Instantáneo",
+    "manaCost": "{5}{R}{R}",
+    "cmc": 7,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Hacé 8 de daño a cualquier objetivo.",
+    "flavorText": "La cosecha fue excelente. El incendio también.",
+    "image": "tonel_de_malbec_en_llamas.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "damage",
+      "amount": 8
     }
   }
 ]

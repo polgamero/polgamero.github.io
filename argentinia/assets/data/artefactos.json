@@ -272,8 +272,8 @@
     "id": "art_012",
     "name": "Billetera Vieja",
     "type": "Artefacto",
-    "manaCost": "{1}",
-    "cmc": 1,
+    "manaCost": "{2}",
+    "cmc": 2,
     "rarity": "Common",
     "colors": [],
     "text": "{T}: Agregá {1}.",
@@ -1026,6 +1026,250 @@
       },
       "requiresTarget": true,
       "timing": "instant"
+    }
+  },
+  {
+    "id": "art_045",
+    "name": "Fuente de Vino del Velorio",
+    "type": "Artefacto",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "{1}, sacrificá una criatura: el rival pierde 2 Puntos de Vida y vos ganás 2.",
+    "flavorText": "El sifón se vacía solo cada vez que alguien deja la mesa.",
+    "image": "fuente_de_vino_del_velorio.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}",
+      "sacrifice": "creature",
+      "effect": {
+        "type": "drain",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_046",
+    "name": "Motito del Reparto Nocturno",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Tripular 1. Se convierte en una criatura 1/2 hasta el final del turno.",
+    "flavorText": "Pasa a las tres de la mañana y el pedido siempre llega caliente.",
+    "image": "motito_del_reparto_nocturno.png",
+    "keywords": [],
+    "baseStats": {
+      "power": 1,
+      "toughness": 2
+    },
+    "activatedAbility": {
+      "crewCost": 1,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_047",
+    "name": "Sulky de Hierro Maldito",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Tripular 1. Se convierte en una criatura 3/2 hasta el final del turno.",
+    "flavorText": "Las ruedas no tocan del todo el camino.",
+    "image": "sulky_de_hierro_maldito.png",
+    "keywords": [],
+    "baseStats": {
+      "power": 3,
+      "toughness": 2
+    },
+    "activatedAbility": {
+      "crewCost": 1,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_048",
+    "name": "Avioneta del Correo Fantasma",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{4}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Tripular 2. Vuela.",
+    "flavorText": "Entrega cartas con sellos de pueblos que ya no figuran en el mapa.",
+    "image": "avioneta_del_correo_fantasma.png",
+    "keywords": [
+      "flying"
+    ],
+    "baseStats": {
+      "power": 4,
+      "toughness": 4
+    },
+    "activatedAbility": {
+      "crewCost": 2,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_049",
+    "name": "Torino de la Ruta de los Espectros",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{4}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Tripular 2. Prisa.",
+    "flavorText": "Las luces aparecen primero en el espejo. Después ya es tarde.",
+    "image": "torino_de_la_ruta_de_los_espectros.png",
+    "keywords": [
+      "haste"
+    ],
+    "baseStats": {
+      "power": 5,
+      "toughness": 4
+    },
+    "activatedAbility": {
+      "crewCost": 2,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_050",
+    "name": "Sifón de Soda Abollado",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}, sacrificá este artefacto: Agregá {C}.",
+    "flavorText": "Todavía conserva presión para una última mesa.",
+    "image": "sifon_de_soda_abollado.png",
+    "keywords": [],
+    "produces": "C",
+    "sacrificeOnTap": true
+  },
+  {
+    "id": "art_051",
+    "name": "Boleadoras de Alambre",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Equipar {1}. La criatura equipada obtiene +1/+0.",
+    "flavorText": "No son lindas. Alcanzan igual.",
+    "image": "boleadoras_de_alambre.png",
+    "keywords": [],
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedStats": {
+        "powerMod": 1,
+        "toughnessMod": 0
+      }
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_052",
+    "name": "Bandoneón de Bronce Encantado",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{3}, {T}: robás una carta.",
+    "flavorText": "Las teclas amarillas conocen canciones que nadie compuso.",
+    "image": "bandoneon_de_bronce_encantado.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "draw",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_053",
+    "name": "Radio Spica Poseída",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{1}, sacrificá un Artefacto: el rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Entre dos AM aparece una voz que pide piezas de repuesto.",
+    "image": "radio_spica_poseida.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}",
+      "sacrifice": "artifact",
+      "effect": {
+        "type": "drain",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_054",
+    "name": "Mate de Acero Inquebrantable",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Equipar {2}. La criatura equipada tiene Indestructible.",
+    "flavorText": "Abollado siete veces, roto ninguna.",
+    "image": "mate_de_acero_inquebrantable.png",
+    "keywords": [],
+    "equipment": {
+      "equipCost": "{2}",
+      "grantedKeywords": [
+        "indestructible"
+      ]
+    },
+    "activatedAbility": {
+      "cost": "{2}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
     }
   }
 ]

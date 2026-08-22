@@ -225,8 +225,8 @@
     "colors": [
       "U"
     ],
-    "power": 7,
-    "toughness": 7,
+    "power": 6,
+    "toughness": 6,
     "text": "Gigante del Lago: se necesitan 2 o más criaturas para bloquear al Nahuelito.",
     "flavorText": "La leyenda del sur vive.",
     "image": "nahuelito.png",
@@ -364,12 +364,10 @@
     ],
     "power": 5,
     "toughness": 8,
-    "text": "Intocable. Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, poné un contador +1/+1 sobre El Carpincho.",
+    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, poné un contador +1/+1 sobre El Carpincho.",
     "flavorText": "El verdadero dueño de la tierra.",
     "image": "carpincho.png",
-    "keywords": [
-      "hexproof"
-    ],
+    "keywords": [],
     "landEtbTrigger": {
       "type": "add_counter",
       "counterType": "plusOne",
@@ -456,7 +454,7 @@
       "R"
     ],
     "power": 8,
-    "toughness": 10,
+    "toughness": 8,
     "text": "Causa 3 de daño al entrar en juego.",
     "flavorText": "Probablemente este, sea tu último almuerzo.",
     "etbEffect": {
@@ -465,8 +463,6 @@
     },
     "image": "mirtha.png",
     "keywords": [
-      "deathtouch",
-      "lifelink",
       "trample"
     ]
   },
@@ -796,7 +792,7 @@
       "U"
     ],
     "power": 3,
-    "toughness": 2,
+    "toughness": 3,
     "keywords": [],
     "text": "Siempre que Contrabandista del Riachuelo le haga daño de combate al jugador, robás una carta.",
     "flavorText": "Cruza la frontera del barrio sin que nadie se entere.",
@@ -1549,12 +1545,13 @@
     "colors": [
       "G"
     ],
-    "power": 1,
-    "toughness": 1,
+    "power": 2,
+    "toughness": 2,
     "keywords": [
-      "infect"
+      "infect",
+      "trample"
     ],
-    "text": "Infectar (Esta criatura le da contadores de Veneno a los jugadores en vez de quitarles HP, y contadores -1/-1 a las criaturas en vez de dañarlas normalmente.)",
+    "text": "Infectar. Arrolla. (Esta criatura le da contadores de Veneno a los jugadores en vez de quitarles HP, y contadores -1/-1 a las criaturas en vez de dañarlas normalmente.)",
     "flavorText": "No hace ruido. No avisa. Ataca una sola vez, y alcanza.",
     "image": "yarara.png"
   },
@@ -3993,7 +3990,7 @@
     "flavorText": "Ve dos chapas rotas y enseguida imagina una sola que aguante.",
     "image": "soldador_del_astillero.png",
     "power": 3,
-    "toughness": 2,
+    "toughness": 3,
     "keywords": []
   },
   {
@@ -4548,5 +4545,910 @@
       "requiresTarget": true,
       "timing": "instant"
     }
+  },
+  {
+    "id": "crea_211",
+    "name": "Maestro de Mesa del Velorio",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{W}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W",
+      "B"
+    ],
+    "text": "Siempre que muera una criatura, ganás 1 Punto de Vida.",
+    "flavorText": "En su mesa hay lugar para vivos, muertos y alguno que todavía no decidió.",
+    "image": "maestro_de_mesa_del_velorio.png",
+    "power": 2,
+    "toughness": 3,
+    "keywords": [],
+    "anyCreatureDiesTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_212",
+    "name": "Tamalerita del Velorio",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "Cuando entra al campo de batalla, creá una ficha Ánima del Velorio 1/1.",
+    "flavorText": "Llega con la olla llena y se vuelve con una silla vacía.",
+    "image": "tamalerita_del_velorio.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [],
+    "etbEffect": {
+      "type": "create_tokens",
+      "amount": 1,
+      "tokenName": "Ánima del Velorio",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": []
+    }
+  },
+  {
+    "id": "crea_213",
+    "name": "Mecánica del Bajo Puente",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Vigilancia.",
+    "flavorText": "Puede arreglar un carburador con una horquilla y todavía llegar a la salida.",
+    "image": "mecanica_del_bajo_puente.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [
+      "vigilance"
+    ]
+  },
+  {
+    "id": "crea_214",
+    "name": "Pibe del Taller de Chacarita",
+    "type": "Criatura Artefacto — Constructo",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "",
+    "flavorText": "Jura que esa pieza era de un Torino. Nadie recuerda haber visto el Torino.",
+    "image": "pibe_del_taller_de_chacarita.png",
+    "power": 3,
+    "toughness": 3,
+    "keywords": []
+  },
+  {
+    "id": "crea_215",
+    "name": "Brote de Ceibo Montaraz",
+    "type": "Criatura — Planta",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Landfall — Siempre que una Tierra entre bajo tu control, poné un contador +1/+1 sobre esta criatura.",
+    "flavorText": "A la primera lluvia rompe el asfalto.",
+    "image": "brote_de_ceibo_montaraz.png",
+    "power": 1,
+    "toughness": 2,
+    "keywords": [],
+    "landEtbTrigger": {
+      "type": "add_counter",
+      "counterType": "plusOne",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_216",
+    "name": "Polinizador de la Salamanca",
+    "type": "Criatura — Espíritu",
+    "manaCost": "{1}{G}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G",
+      "U"
+    ],
+    "text": "Cuando entra al campo de batalla, Proliferá.",
+    "flavorText": "Trae polen de flores que sólo abren bajo tierra.",
+    "image": "polinizador_de_la_salamanca.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [],
+    "etbEffect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "crea_217",
+    "name": "Gigante de las Raíces del Paraná",
+    "type": "Criatura — Gigante",
+    "manaCost": "{4}{G}{G}",
+    "cmc": 6,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Arrolla. Landfall — Siempre que una Tierra entre bajo tu control, poné un contador +1/+1 sobre esta criatura.",
+    "flavorText": "Cada creciente le deja un anillo nuevo en el tronco.",
+    "image": "gigante_de_las_raices_del_parana.png",
+    "power": 5,
+    "toughness": 5,
+    "keywords": [
+      "trample"
+    ],
+    "landEtbTrigger": {
+      "type": "add_counter",
+      "counterType": "plusOne",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_218",
+    "name": "Bandoneonista del Apagón",
+    "type": "Criatura — Humano Músico",
+    "manaCost": "{1}{U}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "text": "Siempre que lances un Instantáneo o Conjuro, Adiviná 1.",
+    "flavorText": "Cuando se corta la luz, recién ahí empieza el repertorio.",
+    "image": "bandoneonista_del_apagon.png",
+    "power": 2,
+    "toughness": 3,
+    "keywords": [],
+    "spellCastTrigger": {
+      "filter": "instant_or_sorcery",
+      "effect": {
+        "type": "scry",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "crea_219",
+    "name": "Púa de Fuego, Guitarrista del Apagón",
+    "type": "Criatura Legendaria — Humano Músico",
+    "manaCost": "{3}{U}{R}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "text": "Siempre que lances un Instantáneo o Conjuro, hacé 1 de daño al rival.",
+    "flavorText": "El solo termina cuando vuelve la tensión o cuando no queda techo.",
+    "image": "pua_de_fuego_guitarrista_del_apagon.png",
+    "power": 3,
+    "toughness": 4,
+    "keywords": [],
+    "spellCastTrigger": {
+      "filter": "instant_or_sorcery",
+      "effect": {
+        "type": "damage",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "crea_220",
+    "name": "Lata Caminadora del Mercado",
+    "type": "Criatura Artefacto — Constructo",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "",
+    "flavorText": "Le pusieron dos resortes y desde entonces vuelve sola al puesto.",
+    "image": "lata_caminadora_del_mercado.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": []
+  },
+  {
+    "id": "crea_221",
+    "name": "Chatarrero del Sifón Azul",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "{1}, sacrificá un Artefacto: robás una carta.",
+    "flavorText": "Si tiene tornillo, cable o pico de sifón, él encuentra cómo venderlo.",
+    "image": "chatarrero_del_sifon_azul.png",
+    "power": 2,
+    "toughness": 3,
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}",
+      "sacrifice": "artifact",
+      "effect": {
+        "type": "draw",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "crea_222",
+    "name": "Avispa del Viñedo Tardío",
+    "type": "Criatura — Insecto",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Infectar.",
+    "flavorText": "Pica una uva y la cosecha entera aprende a tener miedo.",
+    "image": "avispa_del_vinedo_tardio.png",
+    "power": 1,
+    "toughness": 1,
+    "keywords": [
+      "infect"
+    ]
+  },
+  {
+    "id": "crea_223",
+    "name": "Comensal del Tamal Negro",
+    "type": "Criatura — Espíritu",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "Infectar.",
+    "flavorText": "Pidió otro. Nadie le avisó qué había adentro del primero.",
+    "image": "comensal_del_tamal_negro.png",
+    "power": 1,
+    "toughness": 2,
+    "keywords": [
+      "infect"
+    ]
+  },
+  {
+    "id": "crea_224",
+    "name": "Viñatero del Cementerio",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{G}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G",
+      "B"
+    ],
+    "text": "Infectar.",
+    "flavorText": "Poda de noche porque las vides muertas crecen mejor sin testigos.",
+    "image": "vinatero_del_cementerio.png",
+    "power": 2,
+    "toughness": 3,
+    "keywords": [
+      "infect"
+    ]
+  },
+  {
+    "id": "crea_225",
+    "name": "La Flor Negra del Ceibo",
+    "type": "Criatura Legendaria — Planta Horror",
+    "manaCost": "{3}{G}{G}{B}",
+    "cmc": 6,
+    "rarity": "Mythic",
+    "colors": [
+      "G",
+      "B"
+    ],
+    "text": "Infectar. Arrolla.",
+    "flavorText": "Florece una vez cada cien años. Con eso alcanza.",
+    "image": "la_flor_negra_del_ceibo.png",
+    "power": 5,
+    "toughness": 5,
+    "keywords": [
+      "infect",
+      "trample"
+    ]
+  },
+  {
+    "id": "crea_226",
+    "name": "El Tipo del Impermeable Gris",
+    "type": "Criatura — Humano Detective",
+    "manaCost": "{1}{U}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "text": "Siempre que le haga daño de combate al rival, Vigilá 1.",
+    "flavorText": "Nunca toma notas delante tuyo. Nunca olvida nada.",
+    "image": "el_tipo_del_impermeable_gris.png",
+    "power": 2,
+    "toughness": 3,
+    "keywords": [],
+    "combatDamageTrigger": {
+      "type": "surveil",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_227",
+    "name": "Inspectora del Archivo Sellado",
+    "type": "Criatura Legendaria — Humano Detective",
+    "manaCost": "{3}{U}{B}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "text": "Vuela. Cuando entra al campo de batalla, Vigilá 3.",
+    "flavorText": "Tiene llave de una puerta que oficialmente no existe.",
+    "image": "inspectora_del_archivo_sellado.png",
+    "power": 4,
+    "toughness": 4,
+    "keywords": [
+      "flying"
+    ],
+    "etbEffect": {
+      "type": "surveil",
+      "amount": 3
+    }
+  },
+  {
+    "id": "crea_228",
+    "name": "Guitarrista de Dos Púas",
+    "type": "Criatura — Humano Músico",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Doble golpe.",
+    "flavorText": "Una púa para el acorde y otra para lo que venga.",
+    "image": "guitarrista_de_dos_puas.png",
+    "power": 1,
+    "toughness": 1,
+    "keywords": [
+      "doublestrike"
+    ]
+  },
+  {
+    "id": "crea_229",
+    "name": "Bailarina de Dos Tacos",
+    "type": "Criatura — Humano Bailarín",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Doble golpe.",
+    "flavorText": "Marca el compás dos veces antes de que el piso lo entienda.",
+    "image": "bailarina_de_dos_tacos.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [
+      "doublestrike"
+    ]
+  },
+  {
+    "id": "crea_230",
+    "name": "Solo de Guitarra en Llamas",
+    "type": "Criatura — Elemental Músico",
+    "manaCost": "{2}{R}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Doble golpe.",
+    "flavorText": "El primer acorde rompe el vidrio. El segundo prende fuego la cortina.",
+    "image": "solo_de_guitarra_en_llamas.png",
+    "power": 3,
+    "toughness": 2,
+    "keywords": [
+      "doublestrike"
+    ]
+  },
+  {
+    "id": "crea_231",
+    "name": "Bombero del Último Piso",
+    "type": "Criatura — Humano",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Indestructible.",
+    "flavorText": "Sube cuando todos bajan.",
+    "image": "bombero_del_ultimo_piso.png",
+    "power": 3,
+    "toughness": 3,
+    "keywords": [
+      "indestructible"
+    ]
+  },
+  {
+    "id": "crea_232",
+    "name": "Sereno de la Usina Cerrada",
+    "type": "Criatura — Humano",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Ward {2}.",
+    "flavorText": "La planta cerró hace veinte años. Él todavía pide credencial.",
+    "image": "sereno_de_la_usina_cerrada.png",
+    "power": 3,
+    "toughness": 4,
+    "keywords": [
+      "ward_2"
+    ]
+  },
+  {
+    "id": "crea_233",
+    "name": "Ombú de la Tormenta Quieta",
+    "type": "Criatura — Planta",
+    "manaCost": "{3}{G}{G}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Ward {2}.",
+    "flavorText": "Los rayos caen alrededor como si supieran de quién es la sombra.",
+    "image": "ombu_de_la_tormenta_quieta.png",
+    "power": 4,
+    "toughness": 5,
+    "keywords": [
+      "ward_2"
+    ]
+  },
+  {
+    "id": "crea_234",
+    "name": "Viuda del Patio Interno",
+    "type": "Criatura — Espíritu",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Ward {2}.",
+    "flavorText": "Nadie toca el timbre dos veces.",
+    "image": "viuda_del_patio_interno.png",
+    "power": 2,
+    "toughness": 3,
+    "keywords": [
+      "ward_2"
+    ]
+  },
+  {
+    "id": "crea_235",
+    "name": "Custodia de la Capilla Blanca",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Protección contra Negro.",
+    "flavorText": "La vela que cuida no se apaga ni con la puerta abierta.",
+    "image": "custodia_de_la_capilla_blanca.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [
+      "protection_B"
+    ]
+  },
+  {
+    "id": "crea_236",
+    "name": "Deudor de la Noche Larga",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Protección contra Blanco.",
+    "flavorText": "Le debe a medio barrio y duerme igual.",
+    "image": "deudor_de_la_noche_larga.png",
+    "power": 3,
+    "toughness": 3,
+    "keywords": [
+      "protection_W"
+    ]
+  },
+  {
+    "id": "crea_237",
+    "name": "Yaguareté del Monte Quemado",
+    "type": "Criatura — Felino",
+    "manaCost": "{1}{G}{G}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Protección contra Rojo.",
+    "flavorText": "El incendio aprendió a rodearlo.",
+    "image": "yaguarete_del_monte_quemado.png",
+    "power": 3,
+    "toughness": 3,
+    "keywords": [
+      "protection_R"
+    ]
+  },
+  {
+    "id": "crea_238",
+    "name": "Toro de la Salamanca Baja",
+    "type": "Criatura — Toro",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "{1}{G}: esta criatura pelea contra la criatura rival objetivo. Activá sólo como Conjuro.",
+    "flavorText": "Lo soltaron una vez. Nadie encontró la tranquera.",
+    "image": "toro_de_la_salamanca_baja.png",
+    "power": 3,
+    "toughness": 3,
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{G}",
+      "effect": {
+        "type": "fight"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "crea_239",
+    "name": "Polinizador del Ceibo",
+    "type": "Criatura — Insecto",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Cuando entra al campo de batalla, Proliferá.",
+    "flavorText": "No distingue entre flor, cicatriz o maldición.",
+    "image": "polinizador_del_ceibo.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [],
+    "etbEffect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "crea_240",
+    "name": "Repartidora de Tamales del Alba",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Kicker {2}{W}. Si fue kickeada, creá una ficha Vecino Madrugador 1/1.",
+    "flavorText": "Siempre trae uno de más por si alguien aparece.",
+    "image": "repartidora_de_tamales_del_alba.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [],
+    "kicker": {
+      "cost": "{2}{W}",
+      "bonusText": "creá una ficha Vecino Madrugador 1/1",
+      "bonusEffect": {
+        "type": "create_tokens",
+        "amount": 1,
+        "tokenName": "Vecino Madrugador",
+        "tokenStats": {
+          "power": 1,
+          "toughness": 1
+        },
+        "tokenKeywords": []
+      }
+    }
+  },
+  {
+    "id": "crea_241",
+    "name": "Peón del Viñedo de Altura",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Kicker {2}{G}. Si fue kickeado, creá dos fichas Sarmiento 1/1.",
+    "flavorText": "Sube con dos cajones y baja con cuatro historias.",
+    "image": "peon_del_vinedo_de_altura.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [],
+    "kicker": {
+      "cost": "{2}{G}",
+      "bonusText": "creá dos fichas Sarmiento 1/1",
+      "bonusEffect": {
+        "type": "create_tokens",
+        "amount": 2,
+        "tokenName": "Sarmiento",
+        "tokenStats": {
+          "power": 1,
+          "toughness": 1
+        },
+        "tokenKeywords": []
+      }
+    }
+  },
+  {
+    "id": "crea_242",
+    "name": "Muerto de Hambre del Andén",
+    "type": "Criatura — Espíritu",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "Escape — {3}{B}, exiliá tres cartas de tu cementerio.",
+    "flavorText": "Pierde el último tren todas las noches y vuelve a esperarlo.",
+    "image": "muerto_de_hambre_del_anden.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [],
+    "escape": {
+      "cost": "{3}{B}",
+      "exileCount": 3
+    }
+  },
+  {
+    "id": "crea_243",
+    "name": "Cosechero de la Vendimia Muerta",
+    "type": "Criatura — Espíritu",
+    "manaCost": "{2}{B}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "G"
+    ],
+    "text": "Amenaza. Escape — {4}{B}{G}, exiliá tres cartas de tu cementerio.",
+    "flavorText": "Corta racimos de parras que nadie plantó.",
+    "image": "cosechero_de_la_vendimia_muerta.png",
+    "power": 4,
+    "toughness": 4,
+    "keywords": [
+      "menace"
+    ],
+    "escape": {
+      "cost": "{4}{B}{G}",
+      "exileCount": 3
+    }
+  },
+  {
+    "id": "crea_244",
+    "name": "La Sirena del Río de la Plata",
+    "type": "Criatura Legendaria — Sirena",
+    "manaCost": "{3}{U}{U}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [
+      "U"
+    ],
+    "text": "Hexproof. Cuando entra al campo de batalla, robás dos cartas.",
+    "flavorText": "Canta desde donde el agua marrón parece no terminar.",
+    "image": "la_sirena_del_rio_de_la_plata.png",
+    "power": 4,
+    "toughness": 4,
+    "keywords": [
+      "hexproof"
+    ],
+    "etbEffect": {
+      "type": "draw",
+      "amount": 2
+    }
+  },
+  {
+    "id": "crea_245",
+    "name": "Faro Vivo de Mar del Plata",
+    "type": "Criatura Legendaria — Espíritu",
+    "manaCost": "{4}{U}{U}",
+    "cmc": 6,
+    "rarity": "Mythic",
+    "colors": [
+      "U"
+    ],
+    "text": "Vuela. Al comienzo de tu mantenimiento, Adiviná 1. Cuando muera, robás dos cartas.",
+    "flavorText": "La luz gira incluso cuando la costa se queda sin electricidad.",
+    "image": "faro_vivo_de_mar_del_plata.png",
+    "power": 4,
+    "toughness": 6,
+    "keywords": [
+      "flying"
+    ],
+    "upkeepTrigger": {
+      "type": "scry",
+      "amount": 1
+    },
+    "diesTrigger": {
+      "type": "draw",
+      "amount": 2
+    }
+  },
+  {
+    "id": "crea_246",
+    "name": "Toro del Rodeo de Fuego",
+    "type": "Criatura — Toro",
+    "manaCost": "{4}{R}{R}",
+    "cmc": 6,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Prisa. Arrolla.",
+    "flavorText": "Sale del corral dejando las sogas encendidas.",
+    "image": "toro_del_rodeo_de_fuego.png",
+    "power": 5,
+    "toughness": 4,
+    "keywords": [
+      "haste",
+      "trample"
+    ]
+  },
+  {
+    "id": "crea_247",
+    "name": "Patrón de la Bodega Hundida",
+    "type": "Criatura — Espíritu",
+    "manaCost": "{4}{B}{B}",
+    "cmc": 6,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Amenaza. Cuando muera, creá dos fichas Ánima de Bodega 1/1.",
+    "flavorText": "La cava se inundó. Él siguió bajando a contar botellas.",
+    "image": "patron_de_la_bodega_hundida.png",
+    "power": 5,
+    "toughness": 5,
+    "keywords": [
+      "menace"
+    ],
+    "diesTrigger": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenName": "Ánima de Bodega",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": []
+    }
+  },
+  {
+    "id": "crea_248",
+    "name": "Toro Blanco de la Vendimia",
+    "type": "Criatura — Toro",
+    "manaCost": "{4}{W}{G}",
+    "cmc": 6,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "G"
+    ],
+    "text": "Arrolla. Vínculo vital.",
+    "flavorText": "Pisa la uva sin romper un solo racimo que no quiera romper.",
+    "image": "toro_blanco_de_la_vendimia.png",
+    "power": 5,
+    "toughness": 5,
+    "keywords": [
+      "trample",
+      "lifelink"
+    ]
+  },
+  {
+    "id": "crea_249",
+    "name": "Pibe del Pogo Temprano",
+    "type": "Criatura — Humano",
+    "manaCost": "{R}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Prisa.",
+    "flavorText": "Llega antes que la banda y ya está saltando.",
+    "image": "pibe_del_pogo_temprano.png",
+    "power": 1,
+    "toughness": 2,
+    "keywords": [
+      "haste"
+    ]
+  },
+  {
+    "id": "crea_250",
+    "name": "Gorrionera del Ceibo",
+    "type": "Criatura — Humano",
+    "manaCost": "{W}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Vigilancia.",
+    "flavorText": "Cuida el árbol como si el árbol pudiera irse.",
+    "image": "gorrionera_del_ceibo.png",
+    "power": 1,
+    "toughness": 2,
+    "keywords": [
+      "vigilance"
+    ]
+  },
+  {
+    "id": "crea_251",
+    "name": "Ratón de Bodega",
+    "type": "Criatura — Rata",
+    "manaCost": "{B}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "Cuando muera, el rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Conoce cada barrica y todos los secretos debajo.",
+    "image": "raton_de_bodega.png",
+    "power": 1,
+    "toughness": 1,
+    "keywords": [],
+    "diesTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_252",
+    "name": "Lagartija del Parral",
+    "type": "Criatura — Lagarto",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Alcance.",
+    "flavorText": "Caza mosquitos entre hojas más grandes que ella.",
+    "image": "lagartija_del_parral.png",
+    "power": 1,
+    "toughness": 2,
+    "keywords": [
+      "reach"
+    ]
   }
 ]

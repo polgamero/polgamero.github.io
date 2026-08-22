@@ -286,5 +286,111 @@
         }
       }
     ]
+  },
+  {
+    "id": "pw_007",
+    "name": "La Negra del Bandoneón Eléctrico",
+    "type": "Planeswalker — Bandoneonista",
+    "manaCost": "{2}{U}{R}",
+    "cmc": 4,
+    "rarity": "Mythic",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "text": "Planeswalker Legendario. Siempre que lances un Instantáneo o Conjuro, Adiviná 1.",
+    "flavorText": "El barrio se queda sin luz cada vez que llega al estribillo.",
+    "image": "la_negra_del_bandoneon_electrico.png",
+    "loyalty": 5,
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Afinar el Fuelle",
+        "text": "Robá una carta, luego descartá una carta.",
+        "effect": {
+          "type": "loot",
+          "amount": 1
+        }
+      },
+      {
+        "cost": -2,
+        "name": "-2: Acorde que Quema",
+        "text": "Hacé 3 de daño al objetivo.",
+        "requiresTarget": true,
+        "effect": {
+          "type": "damage",
+          "amount": 3
+        }
+      },
+      {
+        "cost": -7,
+        "name": "-7: Último Bis",
+        "text": "Robás cuatro cartas.",
+        "effect": {
+          "type": "draw",
+          "amount": 4
+        }
+      }
+    ],
+    "spellCastTrigger": {
+      "filter": "instant_or_sorcery",
+      "effect": {
+        "type": "scry",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "pw_008",
+    "name": "Doña Uva, Bruja de la Vendimia",
+    "type": "Planeswalker — Bruja",
+    "manaCost": "{2}{B}{G}",
+    "cmc": 4,
+    "rarity": "Mythic",
+    "colors": [
+      "B",
+      "G"
+    ],
+    "text": "Planeswalker Legendario.",
+    "flavorText": "Prueba el mosto con un dedo y sabe quién va a llegar vivo a marzo.",
+    "image": "dona_uva_bruja_de_la_vendimia.png",
+    "loyalty": 5,
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Fermentar la Marca",
+        "text": "Proliferá.",
+        "effect": {
+          "type": "proliferate"
+        }
+      },
+      {
+        "cost": -2,
+        "name": "-2: Copa Envenenada",
+        "text": "El jugador objetivo recibe un contador de Veneno.",
+        "requiresTarget": true,
+        "effect": {
+          "type": "poison",
+          "amount": 1
+        }
+      },
+      {
+        "cost": -7,
+        "name": "-7: Cosecha Negra",
+        "text": "Creá tres fichas Sarmiento Tóxico 2/2 con Infectar.",
+        "effect": {
+          "type": "create_tokens",
+          "amount": 3,
+          "tokenName": "Sarmiento Tóxico",
+          "tokenStats": {
+            "power": 2,
+            "toughness": 2
+          },
+          "tokenKeywords": [
+            "infect"
+          ]
+        }
+      }
+    ]
   }
 ]

@@ -1042,5 +1042,32 @@
       "requiresTarget": true,
       "timing": "instant"
     }
+  },
+  {
+    "id": "tier_056",
+    "name": "Viñedo de la Luna Muerta",
+    "type": "Tierra",
+    "manaCost": null,
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{2}: Viñedo de la Luna Muerta se convierte en una criatura 2/3 con Toque mortal hasta el final del turno. Sigue siendo una tierra.",
+    "flavorText": "Las hileras terminan justo donde empieza el cementerio.",
+    "image": "vinedo_de_la_luna_muerta.png",
+    "baseStats": {
+      "power": 2,
+      "toughness": 3
+    },
+    "keywords": [
+      "deathtouch"
+    ],
+    "activatedAbility": {
+      "cost": "{2}",
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "sorcery"
+    }
   }
 ]

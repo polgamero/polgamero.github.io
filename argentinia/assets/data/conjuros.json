@@ -22,8 +22,8 @@
     "id": "conj_002",
     "name": "La Picadita",
     "type": "Conjuro",
-    "manaCost": "{U}{U}",
-    "cmc": 2,
+    "manaCost": "{2}{U}",
+    "cmc": 3,
     "rarity": "Uncommon",
     "colors": [
       "U"
@@ -480,14 +480,14 @@
     "colors": [
       "B"
     ],
-    "text": "Podés pagar {1} y 2 Puntos de Vida en vez del costo de maná de este hechizo. El jugador rival pierde 3 Puntos de Vida y vos ganás 3.",
+    "text": "Podés pagar {1} y 4 Puntos de Vida en vez del costo de maná de este hechizo. El jugador rival pierde 3 Puntos de Vida y vos ganás 3.",
     "flavorText": "La sangre corta siempre alcanza para algo.",
     "requiresTarget": false,
     "image": "pacto_con_sangre.png",
     "alternativeCost": {
       "type": "hybrid",
       "manaCost": "{1}",
-      "life": 2
+      "life": 4
     },
     "effect": {
       "type": "drain",
@@ -1304,5 +1304,229 @@
       "filter": "any",
       "target": "opponent_player"
     }
+  },
+  {
+    "id": "conj_062",
+    "name": "Tamales para los Difuntos",
+    "type": "Conjuro",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Creá dos fichas de criatura Vecino del Velorio 1/1.",
+    "flavorText": "Se sirven calientes. Nadie pregunta para quién quedó el tercer plato.",
+    "image": "tamales_para_los_difuntos.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenName": "Vecino del Velorio",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": []
+    }
+  },
+  {
+    "id": "conj_063",
+    "name": "Brote tras la Lluvia",
+    "type": "Conjuro",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Poné un contador +1/+1 sobre la criatura objetivo.",
+    "flavorText": "El yuyo vuelve antes de que termines de barrer.",
+    "image": "brote_tras_la_lluvia.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "add_counter",
+      "counterType": "plusOne",
+      "amount": 1
+    }
+  },
+  {
+    "id": "conj_064",
+    "name": "Carpeta que Nadie Firmó",
+    "type": "Conjuro",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "El jugador rival descarta una carta.",
+    "flavorText": "La firma falta. El sello está. Eso es peor.",
+    "image": "carpeta_que_nadie_firmo.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "discard",
+      "amount": 1
+    }
+  },
+  {
+    "id": "conj_065",
+    "name": "Boleadoras del Corral Viejo",
+    "type": "Conjuro",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Tu criatura objetivo pelea contra la criatura rival objetivo.",
+    "flavorText": "Tres piedras, dos vueltas y una discusión terminada.",
+    "image": "boleadoras_del_corral_viejo.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "fight"
+    }
+  },
+  {
+    "id": "conj_066",
+    "name": "Vino Caliente en la Caldera",
+    "type": "Conjuro",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Hacé 2 de daño a cualquier objetivo. Kicker {3}{R}. Si fue kickeado, hacé 3 de daño adicional al rival.",
+    "flavorText": "No era la receta. Funcionó igual.",
+    "image": "vino_caliente_en_la_caldera.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "damage",
+      "amount": 2
+    },
+    "kicker": {
+      "cost": "{3}{R}",
+      "bonusText": "hacé 3 de daño adicional al rival",
+      "bonusEffect": {
+        "type": "damage",
+        "amount": 3
+      }
+    }
+  },
+  {
+    "id": "conj_067",
+    "name": "Otra Vuelta de Chacarera",
+    "type": "Conjuro",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Creá una ficha Bailarín de Chacarera 1/1. Flashback {4}{W}.",
+    "flavorText": "Cuando termina la segunda vuelta, siempre aparece una tercera pareja.",
+    "image": "otra_vuelta_de_chacarera.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 1,
+      "tokenName": "Bailarín de Chacarera",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": []
+    },
+    "flashback": {
+      "cost": "{4}{W}"
+    }
+  },
+  {
+    "id": "conj_068",
+    "name": "Silencio Después del Cacerolazo",
+    "type": "Conjuro",
+    "manaCost": "{3}{W}{W}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Destruí todas las criaturas.",
+    "flavorText": "Cuando se apaga el último balcón, la avenida queda limpia.",
+    "image": "silencio_despues_del_cacerolazo.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "destroy_all_creatures"
+    }
+  },
+  {
+    "id": "conj_069",
+    "name": "Inspección de la Sacristía",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Elegí uno — destruí el Artefacto objetivo; o destruí el Encantamiento objetivo.",
+    "flavorText": "Todo objeto raro termina tarde o temprano sobre esa mesa.",
+    "image": "inspeccion_de_la_sacristia.png",
+    "requiresTarget": false,
+    "effect": null,
+    "modal": true,
+    "modes": [
+      {
+        "text": "Destruí el Artefacto objetivo.",
+        "effect": {
+          "type": "destroy_artifact"
+        },
+        "requiresTarget": true
+      },
+      {
+        "text": "Destruí el Encantamiento objetivo.",
+        "effect": {
+          "type": "destroy_enchantment"
+        },
+        "requiresTarget": true
+      }
+    ]
+  },
+  {
+    "id": "conj_070",
+    "name": "Archivo del Muerto que Vuelve",
+    "type": "Conjuro",
+    "manaCost": "{4}{U}{B}",
+    "cmc": 6,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "text": "Elegí uno — devolvé una criatura de tu cementerio al campo de batalla; o robás tres cartas.",
+    "flavorText": "La carpeta tiene una foto nueva cada vez que se abre.",
+    "image": "archivo_del_muerto_que_vuelve.png",
+    "requiresTarget": false,
+    "effect": null,
+    "modal": true,
+    "modes": [
+      {
+        "text": "Devolvé una criatura de tu cementerio al campo de batalla.",
+        "effect": {
+          "type": "reanimate",
+          "amount": 1
+        },
+        "requiresTarget": false
+      },
+      {
+        "text": "Robás tres cartas.",
+        "effect": {
+          "type": "draw",
+          "amount": 3
+        },
+        "requiresTarget": false
+      }
+    ]
   }
 ]

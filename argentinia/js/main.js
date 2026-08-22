@@ -17,6 +17,7 @@ import { PRIVATE_ZONE_VISIBILITY, PRIVATE_ZONE_FILTERS, buildPrivateZoneOffer, r
 import { isUsernameConfigured } from './usernames.js';
 import { showUsernameSetupModal } from './usernameUI.js';
 import { applyGameTextOverrides, gameText } from './gameTexts.js';
+import { POOL_BASELINE } from './poolContract.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -893,7 +894,7 @@ async function boot() {
       : poolMismatch
         ? 'Argentinia se detuvo antes de jugar para evitar arrancar con cartas faltantes, duplicadas o de otra entrega.'
         : 'Revisá la conexión y la consola. El juego no habilitará gameplay con una carga parcial.';
-    document.body.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#08100b;color:#f0e0b0;font-family:system-ui;padding:24px"><div style="max-width:680px;border:2px solid #d4af37;border-radius:14px;padding:24px;text-align:center;background:#111a13"><h2>${title}</h2><p>${body}</p><p style="opacity:.8">Motor ${ENGINE_VERSION} · Pool esperado: 511 cartas.</p></div></div>`;
+    document.body.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#08100b;color:#f0e0b0;font-family:system-ui;padding:24px"><div style="max-width:680px;border:2px solid #d4af37;border-radius:14px;padding:24px;text-align:center;background:#111a13"><h2>${title}</h2><p>${body}</p><p style="opacity:.8">Motor ${ENGINE_VERSION} · Pool esperado: ${POOL_BASELINE.total} cartas.</p></div></div>`;
     return;
   } finally {
     const loadingOverlay = document.getElementById('boot-loading-overlay');
@@ -3378,6 +3379,21 @@ export async function triggerSpellCast(isLocal, castCard, stackItem = null) {
   return queueTriggeredAbilities(entries);
 }
 
+// 23.13.33 — anyCreatureDiesTrigger es un trigger de PERMANENTE, no sólo de criatura.
+// Los watchers criatura necesitan snapshot previo a las muertes; Soporte/Tierras/PW no salen
+// del campo por una muerte de criatura y se pueden recolectar directamente. Esto permite que
+// Encantamientos como Velorio bajo el Ceibo/Mesa Larga funcionen sin inventar schema nuevo.
+function getNonCreatureAnyDeathWatchers() {
+  return [
+    ...state.localSupport.map(unit => ({ unit, isLocal: true })),
+    ...state.rivalSupport.map(unit => ({ unit, isLocal: false })),
+    ...state.localLands.map(unit => ({ unit, isLocal: true })),
+    ...state.rivalLands.map(unit => ({ unit, isLocal: false })),
+    ...state.localPlaneswalkers.map(unit => ({ unit, isLocal: true })),
+    ...state.rivalPlaneswalkers.map(unit => ({ unit, isLocal: false }))
+  ].filter(({ unit }) => unit?.card?.anyCreatureDiesTrigger);
+}
+
 // Lote de muertes simultáneas. Todos los disparos del mismo evento se recolectan ANTES de
 // apilarse, usando el snapshot previo a las muertes. Esto evita que un Blood-Artist-like que
 // también murió deje de "ver" a las otras criaturas y, además, permite aplicar AP/NAP al
@@ -3391,6 +3407,7 @@ export function queueCreatureDeathBatch(deadEntries = [], watchersSnapshot = nul
     ...dead.filter(entry => !state.localCombat.includes(entry.unit) && !state.rivalCombat.includes(entry.unit))
   ];
   const entries = [];
+  const nonCreatureAnyDeathWatchers = getNonCreatureAnyDeathWatchers();
 
   for (const { unit, isLocal } of dead) {
     if (unit.card.diesTrigger) {
@@ -3424,6 +3441,12 @@ export function queueCreatureDeathBatch(deadEntries = [], watchersSnapshot = nul
 
     snapshot.forEach(({ unit: watcher, isLocal: watcherLocal }) => {
       if (!watcher?.card?.anyCreatureDiesTrigger) return;
+      entries.push({
+        effect: watcher.card.anyCreatureDiesTrigger, sourceCard: watcher.card, sourceItem: watcher,
+        isLocal: watcherLocal, triggerType: 'any_creature_dies', eventCard: unit.card, eventItem: unit
+      });
+    });
+    nonCreatureAnyDeathWatchers.forEach(({ unit: watcher, isLocal: watcherLocal }) => {
       entries.push({
         effect: watcher.card.anyCreatureDiesTrigger, sourceCard: watcher.card, sourceItem: watcher,
         isLocal: watcherLocal, triggerType: 'any_creature_dies', eventCard: unit.card, eventItem: unit
@@ -3480,6 +3503,12 @@ export function triggerAnyCreatureDeath(deadUnit, deadUnitIsLocal, watchersSnaps
     if (!trig) return;
     entries.push({
       effect: trig, sourceCard: unit.card, sourceItem: unit, isLocal,
+      triggerType: 'any_creature_dies', eventCard: deadUnit?.card, eventItem: deadUnit
+    });
+  });
+  getNonCreatureAnyDeathWatchers().forEach(({ unit, isLocal }) => {
+    entries.push({
+      effect: unit.card.anyCreatureDiesTrigger, sourceCard: unit.card, sourceItem: unit, isLocal,
       triggerType: 'any_creature_dies', eventCard: deadUnit?.card, eventItem: deadUnit
     });
   });

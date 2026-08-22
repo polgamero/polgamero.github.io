@@ -1071,5 +1071,132 @@
       "scope": "own",
       "keyword": "trample"
     }
+  },
+  {
+    "id": "ench_051",
+    "name": "Velorio bajo el Ceibo",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}{B}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "B"
+    ],
+    "text": "Siempre que muera una criatura, creá una ficha de criatura Ánima 1/1.",
+    "flavorText": "Las flores caen aunque no haya viento.",
+    "image": "velorio_bajo_el_ceibo.png",
+    "anyCreatureDiesTrigger": {
+      "type": "create_tokens",
+      "amount": 1,
+      "tokenName": "Ánima",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": []
+    }
+  },
+  {
+    "id": "ench_052",
+    "name": "Mesa Larga de la Última Noche",
+    "type": "Encantamiento",
+    "manaCost": "{3}{W}{B}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "B"
+    ],
+    "text": "Siempre que muera una criatura, el rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Cuando se termina el vino, empiezan a brindar los que no se ven.",
+    "image": "mesa_larga_de_la_ultima_noche.png",
+    "anyCreatureDiesTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_053",
+    "name": "Taller de la Medianoche",
+    "type": "Encantamiento",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Tus criaturas tienen Vigilancia.",
+    "flavorText": "Mientras quede una radio prendida, el taller no cierra.",
+    "image": "taller_de_la_medianoche.png",
+    "staticEffect": {
+      "type": "team_keyword",
+      "scope": "own",
+      "keyword": "vigilance"
+    }
+  },
+  {
+    "id": "ench_054",
+    "name": "Pogo Bajo la Tormenta",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "text": "Siempre que lances un Instantáneo o Conjuro, hacé 1 de daño al rival.",
+    "flavorText": "Cada relámpago cae justo a tiempo con la batería.",
+    "image": "pogo_bajo_la_tormenta.png",
+    "spellCastTrigger": {
+      "filter": "instant_or_sorcery",
+      "effect": {
+        "type": "damage",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "ench_055",
+    "name": "Expediente 147 Bis",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}{B}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "text": "Al comienzo de tu mantenimiento, Vigilá 1.",
+    "flavorText": "Lo archivaron tres veces. Las tres volvió al escritorio.",
+    "image": "expediente_147_bis.png",
+    "upkeepTrigger": {
+      "type": "surveil",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_056",
+    "name": "Promesa Atada al Algarrobo",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Encantar criatura que controlás. La criatura encantada tiene Indestructible.",
+    "flavorText": "La cinta se pudre. La promesa no.",
+    "image": "promesa_atada_al_algarrobo.png",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [
+        "indestructible"
+      ]
+    }
   }
 ]
