@@ -696,6 +696,20 @@ export function recordTelemetryEvent(type, data = {}, severity = 'info') {
     }, event.seq);
   }
 
+  // 23.13.40 — una excepción inesperada durante el cleanup también debe quedar en la caja negra.
+  if (type === 'abandon_cleanup_exception') {
+    addBugCandidate({
+      code: 'ABANDON_CLEANUP_EXCEPTION',
+      severity: 'error',
+      message: 'El cierre de abandono encontró una excepción; la salida continuó por finally.',
+      details: {
+        name: data?.name || 'Error',
+        message: data?.message || '',
+        taskCount: data?.taskCount || 0
+      }
+    }, event.seq);
+  }
+
   if (type === 'sync_publish_start' && data.publishId) {
     networkPublishesInFlight.add(data.publishId);
     networkPublishStartSeq.set(data.publishId, event.seq);
@@ -1554,7 +1568,7 @@ export function getTelemetryStatus() {
     active: !!currentSession,
     sessionId: currentSession?.sessionId || null,
     startedAt: currentSession?.startedAt || null,
-    elapsedMs: currentSession ? currentRelativeMs() : 0,
+    elapsedMs: currentSession ? eventRelativeMs() : 0,
     eventCount: currentSession?.events.length || 0,
     bugCandidateCount: currentSession?.bugCandidates.length || 0,
     endedAt: currentSession?.endedAt || null,

@@ -1,7 +1,7 @@
 {
-  "engineVersion": "23.13.39",
+  "engineVersion": "23.13.41",
   "engineProtocolVersion": "mp-23.10.0",
-  "buildLabel": "Entrega 23.13.39 Combat Map Correctness + Post-Block Priority + Abandon Exit",
+  "buildLabel": "Entrega 23.13.41 Combat Map Visual Polish",
   "generatedFor": "GitHub Pages cache freshness check",
   "firestoreRulesVersion": "23.13.37"
 }

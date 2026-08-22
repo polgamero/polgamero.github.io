@@ -216,16 +216,23 @@ export function buildCombatMapModel(state, helpers = {}) {
 
 function centerOf(rect) { return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }; }
 
-function endpointBetween(sourceRect, targetRect) {
+function projectPointToRectEdge(rect, toward, padding = 0) {
+  const c = centerOf(rect);
+  const dx = toward.x - c.x;
+  const dy = toward.y - c.y;
+  const halfW = Math.max(1, rect.width / 2 - padding);
+  const halfH = Math.max(1, rect.height / 2 - padding);
+  const scale = 1 / Math.max(Math.abs(dx) / halfW || 0, Math.abs(dy) / halfH || 0, 1e-6);
+  return { x: c.x + dx * scale, y: c.y + dy * scale };
+}
+
+function endpointBetween(sourceRect, targetRect, sourceRef = null, targetRef = null) {
   const a = centerOf(sourceRect), b = centerOf(targetRect);
-  const dx = b.x - a.x, dy = b.y - a.y;
-  const len = Math.max(1, Math.hypot(dx, dy));
-  const ux = dx / len, uy = dy / len;
-  const sourceInset = Math.min(sourceRect.width, sourceRect.height) * 0.38;
-  const targetInset = Math.min(targetRect.width, targetRect.height) * 0.38;
+  const sourcePadding = sourceRef?.type === 'player' ? 4 : 6;
+  const targetPadding = targetRef?.type === 'player' ? 1 : 6;
   return {
-    start: { x: a.x + ux * sourceInset, y: a.y + uy * sourceInset },
-    end: { x: b.x - ux * targetInset, y: b.y - uy * targetInset }
+    start: projectPointToRectEdge(sourceRect, b, sourcePadding),
+    end: projectPointToRectEdge(targetRect, a, targetPadding)
   };
 }
 
@@ -251,8 +258,8 @@ function resolveElement(ref) {
   }
   if (ref.type === 'player') {
     return ref.side === 'local'
-      ? (document.getElementById('local-player-name') || document.querySelector('.player-card.local-card'))
-      : (document.querySelector('.rival-card .player-info h3') || document.querySelector('.player-card.rival-card'));
+      ? (document.querySelector('.player-card.local-card') || document.getElementById('local-player-name'))
+      : (document.querySelector('.player-card.rival-card') || document.querySelector('.rival-card .player-info h3'));
   }
   if (ref.type === 'planeswalker') return findPlaneswalkerElement(ref.item, ref.side);
   return null;
@@ -337,13 +344,16 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
   svg.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:7000;pointer-events:none;overflow:visible;';
 
   const defs = makeSvgEl('defs');
+  const shadow = makeSvgEl('filter', { id: 'combat-arrow-shadow', x: '-20%', y: '-20%', width: '140%', height: '140%' });
+  shadow.appendChild(makeSvgEl('feDropShadow', { dx: 0, dy: 2, stdDeviation: 2.2, 'flood-color': '#000000', 'flood-opacity': 0.35 }));
+  defs.appendChild(shadow);
   const marker = (id, color) => {
-    const m = makeSvgEl('marker', { id, markerWidth: 9, markerHeight: 9, refX: 7.2, refY: 4.5, orient: 'auto', markerUnits: 'strokeWidth' });
-    m.appendChild(makeSvgEl('path', { d: 'M0,0 L9,4.5 L0,9 z', fill: color }));
+    const m = makeSvgEl('marker', { id, markerWidth: 17, markerHeight: 17, refX: 14.5, refY: 8.5, orient: 'auto', markerUnits: 'strokeWidth' });
+    m.appendChild(makeSvgEl('path', { d: 'M1.2,8.5 L8.4,1.6 L7.1,5.6 L16,8.5 L7.1,11.4 L8.4,15.4 z', fill: color, stroke: 'rgba(255,255,255,0.50)', 'stroke-width': 0.65, 'stroke-linejoin': 'round' }));
     return m;
   };
-  defs.appendChild(marker('combat-arrow-red', '#ef4444'));
-  defs.appendChild(marker('combat-arrow-blue', '#38bdf8'));
+  defs.appendChild(marker('combat-arrow-red', '#ff5a5a'));
+  defs.appendChild(marker('combat-arrow-blue', '#5ed2ff'));
   svg.appendChild(defs);
 
   const validRoutes = model.routes.map((r, index) => {
@@ -351,24 +361,42 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
     if (!sourceEl || !targetEl) return null;
     const sr = sourceEl.getBoundingClientRect(), tr = targetEl.getBoundingClientRect();
     if (!sr.width || !sr.height || !tr.width || !tr.height) return null;
-    const { start, end } = endpointBetween(sr, tr);
+    const { start, end } = endpointBetween(sr, tr, r.source, r.target);
     const control = curveControl(start, end, index, r.kind, state.activePlayer);
     return { ...r, index, start, end, control };
   }).filter(Boolean);
 
   validRoutes.forEach(r => {
-    const color = r.kind === 'attacker' ? '#ef4444' : '#38bdf8';
+    const color = r.kind === 'attacker' ? '#ff5a5a' : '#5ed2ff';
     const markerId = r.kind === 'attacker' ? 'combat-arrow-red' : 'combat-arrow-blue';
+    const d = `M ${r.start.x.toFixed(1)} ${r.start.y.toFixed(1)} Q ${r.control.x.toFixed(1)} ${r.control.y.toFixed(1)} ${r.end.x.toFixed(1)} ${r.end.y.toFixed(1)}`;
+    const width = r.flexible ? 2.6 : damageWidth(r.amount);
+    const glow = makeSvgEl('path', {
+      d, fill: 'none', stroke: color,
+      'stroke-width': width + 4.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+      opacity: r.prevented ? 0.10 : (r.flexible ? 0.16 : 0.18)
+    });
+    if (r.flexible || r.prevented) glow.setAttribute('stroke-dasharray', r.flexible ? '8 7' : '3 6');
+    svg.appendChild(glow);
+
     const path = makeSvgEl('path', {
-      d: `M ${r.start.x.toFixed(1)} ${r.start.y.toFixed(1)} Q ${r.control.x.toFixed(1)} ${r.control.y.toFixed(1)} ${r.end.x.toFixed(1)} ${r.end.y.toFixed(1)}`,
+      d,
       fill: 'none', stroke: color,
-      'stroke-width': r.flexible ? 2.2 : damageWidth(r.amount),
+      'stroke-width': width,
       'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-      opacity: r.prevented ? 0.42 : (r.flexible ? 0.72 : 0.88),
-      'marker-end': `url(#${markerId})`
+      opacity: r.prevented ? 0.52 : (r.flexible ? 0.76 : 0.96),
+      'marker-end': `url(#${markerId})`,
+      filter: 'url(#combat-arrow-shadow)'
     });
     if (r.flexible || r.prevented) path.setAttribute('stroke-dasharray', r.flexible ? '8 7' : '3 6');
     svg.appendChild(path);
+
+    const highlight = makeSvgEl('path', {
+      d, fill: 'none', stroke: 'rgba(255,255,255,0.28)',
+      'stroke-width': Math.max(1, width * 0.22), 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: r.flexible ? 0.18 : 0.26
+    });
+    if (r.flexible || r.prevented) highlight.setAttribute('stroke-dasharray', r.flexible ? '8 7' : '3 6');
+    svg.appendChild(highlight);
 
     const t = 0.5;
     const lx = (1-t)*(1-t)*r.start.x + 2*(1-t)*t*r.control.x + t*t*r.end.x;
@@ -378,9 +406,9 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
       : r.prevented
         ? gameText('combat.map.prevented', { damage: r.amount })
         : r.playerTarget
-          ? gameText('combat.map.playerDamage', { damage: r.amount, player: playerNameForSide(r.target.side, getLocalPlayerName, getRivalName) })
+          ? String(r.amount)
           : r.playerName
-            ? gameText('combat.map.playerDamage', { damage: r.amount, player: r.playerName })
+            ? String(r.amount)
             : String(r.amount);
     if (!label) return;
     const group = makeSvgEl('g');

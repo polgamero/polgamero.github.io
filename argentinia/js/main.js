@@ -399,16 +399,27 @@ export function getRivalName() {
 // state, funciones importadas) — nada de esto dependía de variables locales de initGame,
 // así que sacarlo de ahí no cambia el comportamiento en absoluto.
 function recordLocalAbandonStatsBestEffort() {
-  if (!state.currentUser) return;
-  const telemetry = getTelemetryStatus();
-  if (!telemetry.sessionId) return;
-  void recordPlayerGameResult(state.currentUser.uid, {
-    sessionId: telemetry.sessionId,
-    mode: state.currentMatch ? 'multiplayer' : 'solo',
-    won: false,
-    abandoned: true,
-    durationMs: telemetry.elapsedMs || 0
-  }).catch(err => console.warn('No se pudieron registrar las estadísticas del abandono:', err));
+  // 23.13.40 — este camino JAMÁS puede abortar la salida de la partida. 23.13.39
+  // consultaba getTelemetryStatus() fuera de un guard y un typo interno de Telemetría podía
+  // rechazar por completo el callback async de Abandonar antes de alcanzar el deadline/reload.
+  try {
+    if (!state.currentUser) return Promise.resolve(null);
+    const telemetry = getTelemetryStatus();
+    if (!telemetry.sessionId) return Promise.resolve(null);
+    return recordPlayerGameResult(state.currentUser.uid, {
+      sessionId: telemetry.sessionId,
+      mode: state.currentMatch ? 'multiplayer' : 'solo',
+      won: false,
+      abandoned: true,
+      durationMs: telemetry.elapsedMs || 0
+    }).catch(err => {
+      console.warn('No se pudieron registrar las estadísticas del abandono:', err);
+      return null;
+    });
+  } catch (err) {
+    console.warn('No se pudieron preparar las estadísticas del abandono:', err);
+    return Promise.resolve(null);
+  }
 }
 
 function hookGameplayButtons() {
@@ -424,49 +435,73 @@ function hookGameplayButtons() {
       showAbandonConfirmModal(
         async () => {
           state.gameOver = true; // evita que checkGameOver procese esto como otra cosa
-          recordTelemetryEvent('abandon_cleanup_start', {
-            mode: state.currentMatch ? 'multiplayer' : 'solo',
-            turnCount: state.turnCount,
-            phase: state.phase
-          });
-
-          // 23.13.39 — NO cerramos Telemetría antes de estas escrituras. En 23.13.38, si
-          // awardPoints()/Statistics quedaba pendiente, la pantalla parecía congelada y los
-          // eventos posteriores quedaban fuera del último upload final. Cerramos la caja negra
-          // recién al final y garantizamos salida con un deadline duro.
           const cleanupTasks = [];
-
-          // FASE 4, ETAPA 6: en multiplayer, el rival tiene que ENTERARSE de que abandoné.
-          if (state.currentMatch) {
-            state.abandonedBy = 'local';
-            cleanupTasks.push(Promise.resolve(publishMatchState({ force: true })));
-          }
-
-          if (state.currentUser) {
-            recordLocalAbandonStatsBestEffort();
-            cleanupTasks.push(
-              awardPoints(state.currentUser.uid, POINTS.abandonPenalty)
-                .catch(err => {
-                  console.error('No se pudo aplicar la penalidad de abandono:', err);
-                  return null;
-                })
-            );
-          }
-
           let timedOut = false;
-          const settle = Promise.allSettled(cleanupTasks);
-          const deadline = sleep(3000).then(() => { timedOut = true; return null; });
-          await Promise.race([settle, deadline]);
 
-          recordTelemetryEvent('abandon_cleanup_end', {
-            timedOut,
-            taskCount: cleanupTasks.length
-          }, timedOut ? 'warning' : 'info');
-          endTelemetrySession('abandon_local');
+          // 23.13.40 — cinturón de seguridad TOTAL: no alcanza con poner timeout a Promises.
+          // Cualquier excepción síncrona previa al Promise.race también debe terminar en finally
+          // para que Abandonar nunca pueda dejar la pantalla congelada.
+          try {
+            recordTelemetryEvent('abandon_cleanup_start', {
+              mode: state.currentMatch ? 'multiplayer' : 'solo',
+              turnCount: state.turnCount,
+              phase: state.phase
+            });
 
-          // La salida nunca depende de que Firestore/Statistics terminen perfecto. Como máximo
-          // espera 3 s para darles oportunidad; después recarga sí o sí.
-          location.reload();
+            // 23.13.39 — NO cerramos Telemetría antes de estas escrituras. En 23.13.38, si
+            // awardPoints()/Statistics quedaba pendiente, la pantalla parecía congelada y los
+            // eventos posteriores quedaban fuera del último upload final.
+
+            // FASE 4, ETAPA 6: en multiplayer, el rival tiene que ENTERARSE de que abandoné.
+            if (state.currentMatch) {
+              state.abandonedBy = 'local';
+              try {
+                cleanupTasks.push(Promise.resolve(publishMatchState({ force: true })));
+              } catch (err) {
+                cleanupTasks.push(Promise.reject(err));
+              }
+            }
+
+            if (state.currentUser) {
+              cleanupTasks.push(recordLocalAbandonStatsBestEffort());
+              try {
+                cleanupTasks.push(
+                  Promise.resolve(awardPoints(state.currentUser.uid, POINTS.abandonPenalty))
+                    .catch(err => {
+                      console.error('No se pudo aplicar la penalidad de abandono:', err);
+                      return null;
+                    })
+                );
+              } catch (err) {
+                console.error('No se pudo preparar la penalidad de abandono:', err);
+                cleanupTasks.push(Promise.resolve(null));
+              }
+            }
+
+            const settle = Promise.allSettled(cleanupTasks);
+            const deadline = sleep(3000).then(() => { timedOut = true; return null; });
+            await Promise.race([settle, deadline]);
+
+            recordTelemetryEvent('abandon_cleanup_end', {
+              timedOut,
+              taskCount: cleanupTasks.length
+            }, timedOut ? 'warning' : 'info');
+          } catch (err) {
+            console.error('Error inesperado durante el cleanup de abandono:', err);
+            try {
+              recordTelemetryEvent('abandon_cleanup_exception', {
+                name: err?.name || 'Error',
+                message: err?.message || String(err),
+                taskCount: cleanupTasks.length
+              }, 'error');
+            } catch {}
+          } finally {
+            try { endTelemetrySession('abandon_local'); } catch (err) {
+              console.error('No se pudo cerrar Telemetría al abandonar:', err);
+            }
+            // La salida NO depende de Firestore, Statistics, Telemetry ni de ninguna otra Promise.
+            location.reload();
+          }
         },
         () => {} // "Seguir jugando": no hace falta hacer nada, el modal ya se cerró solo
       );
