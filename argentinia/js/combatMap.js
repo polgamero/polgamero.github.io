@@ -216,6 +216,13 @@ export function buildCombatMapModel(state, helpers = {}) {
 
 function centerOf(rect) { return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }; }
 
+function pointOnRect(rect, xRatio, yRatio, dx = 0, dy = 0) {
+  return {
+    x: rect.left + rect.width * xRatio + dx,
+    y: rect.top + rect.height * yRatio + dy
+  };
+}
+
 function projectPointToRectEdge(rect, toward, padding = 0) {
   const c = centerOf(rect);
   const dx = toward.x - c.x;
@@ -226,14 +233,46 @@ function projectPointToRectEdge(rect, toward, padding = 0) {
   return { x: c.x + dx * scale, y: c.y + dy * scale };
 }
 
-function endpointBetween(sourceRect, targetRect, sourceRef = null, targetRef = null) {
-  const a = centerOf(sourceRect), b = centerOf(targetRect);
-  const sourcePadding = sourceRef?.type === 'player' ? 4 : 6;
-  const targetPadding = targetRef?.type === 'player' ? 1 : 6;
-  return {
-    start: projectPointToRectEdge(sourceRect, b, sourcePadding),
-    end: projectPointToRectEdge(targetRect, a, targetPadding)
-  };
+function routeEndpointBetween(sourceRect, targetRect, route, activePlayer, index = 0) {
+  const isLocalAttacking = activePlayer === 'local';
+  const attackLane = isLocalAttacking ? -1 : 1;
+  const lane = route.kind === 'attacker' ? attackLane : -attackLane;
+  const closeStack = Math.abs(centerOf(sourceRect).x - centerOf(targetRect).x) < 180 && Math.abs(centerOf(sourceRect).y - centerOf(targetRect).y) < 220;
+  const spread = (index % 3) * 7;
+
+  // Si la ruta va hacia un jugador, mantenemos un endpoint geométrico real al borde del badge.
+  if (route.target?.type === 'player' || route.source?.type === 'player') {
+    const a = centerOf(sourceRect), b = centerOf(targetRect);
+    const sourcePadding = route.source?.type === 'player' ? 1 : 6;
+    const targetPadding = route.target?.type === 'player' ? 1 : 6;
+    return {
+      start: projectPointToRectEdge(sourceRect, b, sourcePadding),
+      end: projectPointToRectEdge(targetRect, a, targetPadding),
+      lane,
+      closeStack: false
+    };
+  }
+
+  let start, end;
+  if (isLocalAttacking) {
+    if (route.kind === 'attacker') {
+      start = pointOnRect(sourceRect, 0.34, 0.10, lane * spread, -4);
+      end = pointOnRect(targetRect, 0.34, 0.90, lane * spread, 4);
+    } else {
+      start = pointOnRect(sourceRect, 0.66, 0.90, lane * spread, 4);
+      end = pointOnRect(targetRect, 0.66, 0.10, lane * spread, -4);
+    }
+  } else {
+    if (route.kind === 'attacker') {
+      start = pointOnRect(sourceRect, 0.66, 0.90, lane * spread, 4);
+      end = pointOnRect(targetRect, 0.66, 0.10, lane * spread, -4);
+    } else {
+      start = pointOnRect(sourceRect, 0.34, 0.10, lane * spread, -4);
+      end = pointOnRect(targetRect, 0.34, 0.90, lane * spread, 4);
+    }
+  }
+
+  return { start, end, lane, closeStack };
 }
 
 function findPlaneswalkerElement(item, side) {
@@ -278,17 +317,19 @@ export function combatCurveLane(activePlayer, kind) {
   return kind === 'attacker' ? attackerLane : -attackerLane;
 }
 
-function curveGeometry(start, end, index, kind, activePlayer) {
-  // 23.13.42 — la curva ya no usa un único control cuadrático porque eso podía hacer
-  // que la tangente final apuntara visualmente al revés. Con una cúbica de dos controles
-  // mantenemos carriles estables y una llegada elegante al objetivo.
-  const lane = combatCurveLane(activePlayer, kind);
-  const magnitude = 44 + (index % 4) * 7;
+function curveGeometry(start, end, index, kind, activePlayer, closeStack = false, laneOverride = null) {
+  // 23.13.43 — reencaminado más legible para choques de criaturas cercanas.
+  const lane = laneOverride ?? combatCurveLane(activePlayer, kind);
+  const dx = end.x - start.x;
   const dy = end.y - start.y;
-  const bendY = dy * 0.18;
-  const c1 = { x: start.x + lane * magnitude, y: start.y + bendY };
-  const c2 = { x: end.x + lane * magnitude, y: end.y - bendY };
-  return { lane, c1, c2 };
+  const dist = Math.max(1, Math.hypot(dx, dy));
+  const lateralBase = closeStack ? 62 : 42;
+  const lateral = lateralBase + Math.max(0, 140 - dist) * 0.16 + (index % 4) * 8;
+  const verticalLead = Math.max(22, Math.min(56, Math.abs(dy) * (closeStack ? 0.32 : 0.22)));
+  const directionY = dy >= 0 ? 1 : -1;
+  const c1 = { x: start.x + lane * lateral, y: start.y + directionY * verticalLead };
+  const c2 = { x: end.x + lane * lateral, y: end.y - directionY * verticalLead };
+  return { lane, c1, c2, labelOffsetX: lane * 6, labelOffsetY: closeStack ? -18 : -12 };
 }
 
 function makeSvgEl(name, attrs = {}) {
@@ -365,8 +406,9 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
     if (!sourceEl || !targetEl) return null;
     const sr = sourceEl.getBoundingClientRect(), tr = targetEl.getBoundingClientRect();
     if (!sr.width || !sr.height || !tr.width || !tr.height) return null;
-    const { start, end } = endpointBetween(sr, tr, r.source, r.target);
-    const curve = curveGeometry(start, end, index, r.kind, state.activePlayer);
+    const endpoints = routeEndpointBetween(sr, tr, r, state.activePlayer, index);
+    const { start, end } = endpoints;
+    const curve = curveGeometry(start, end, index, r.kind, state.activePlayer, endpoints.closeStack, endpoints.lane);
     return { ...r, index, start, end, curve };
   }).filter(Boolean);
 
@@ -417,8 +459,8 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
             : String(r.amount);
     if (!label) return;
     const group = makeSvgEl('g');
-    const labelX = lx + (r.curve?.lane || 0) * 4;
-    const labelY = ly - 12;
+    const labelX = lx + (r.curve?.labelOffsetX || 0);
+    const labelY = ly + (r.curve?.labelOffsetY || -12);
     const text = makeSvgEl('text', { x: labelX, y: labelY, fill: '#fff', 'font-size': 12, 'font-weight': 800, 'text-anchor': 'middle', 'dominant-baseline': 'central' });
     text.textContent = label;
     group.appendChild(text);
