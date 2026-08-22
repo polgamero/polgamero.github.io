@@ -46,7 +46,9 @@ jobs:
         run: |
           test -f argentinia/assets/images/cards/cards-image-manifest.json
           test -f argentinia/assets/images/cards/missing-card-images.txt
-          echo "OK: image manifest generated inside /argentinia"
+          test -f argentinia/assets/images/cards/missing-token-images.txt
+          test -f argentinia/assets/images/cards/unassigned-token-images.txt
+          echo "OK: card + token image manifest generated inside /argentinia"
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
