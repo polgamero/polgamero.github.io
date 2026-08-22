@@ -84,6 +84,14 @@ export const ENHANCEMENT_KEYWORDS = [
   { key: 'hexproof', label: 'Intocable' }
 ];
 
+// 23.13.37 craft hotfix — contrato único de elegibilidad. Las mejoras actuales son
+// keywords propias de criaturas, así que una carta debe ser criatura por tipo real. Esto
+// incluye correctamente a una "Artefacto — Criatura", pero excluye Vehículos, Tierras,
+// Planeswalkers, Artefactos no criatura, Encantamientos, Instantáneos y Conjuros.
+export function isEnhancementEligibleCard(card) {
+  return !!card && String(card.type || '').toLowerCase().includes('criatura');
+}
+
 // --- Reglas de armado de mazo (admin-editable) ---
 // Respetan las reglas oficiales de constructed de MTG, con UNA excepción de diseño
 // explícita: acá el tamaño de mazo es un límite RÍGIDO (ni más ni menos), no "60 o más"

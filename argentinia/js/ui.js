@@ -32,13 +32,13 @@ import {
   passPriority // Importado del nuevo sistema
 } from './main.js';
 
-import { executeLocalAttack, executeRivalAttack } from './combatRules.js';
+import { executeLocalAttack, executeRivalAttack, hasPendingCombatDamageContinuation } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
 import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
-import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, applyGameConfig, getDefaultGameConfig } from './store.js';
-import { canBlock, hasKeyword } from './keywords.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
+import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 import { recordTelemetryUiLog, captureTelemetryState } from './telemetry.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_VERSION_SHORT } from './version.js';
@@ -60,6 +60,7 @@ import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
 import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate } from './statistics.js';
 import { POOL_BASELINE } from './poolContract.js';
+import { scheduleCombatMapRender } from './combatMap.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -1083,6 +1084,13 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 
   // Agregamos bgClass a la lista de clases
   el.className = `card ${bgClass} ${card.rarity || 'Common'} ${isTapped ? 'tapped' : ''} ${isSick} ${isAttacking} ${isBlocking} ${isSelectedBlocker} ${targetClass} ${isCrewingSelected} ${manaPayableClass}`;
+
+  // 23.13.38 — identidad DOM presentation-only para el Combat Map. Nunca participa del sync.
+  el.dataset.cardId = card.id || '';
+  if (itemObj?._syncObjectId) el.dataset.syncObjectId = itemObj._syncObjectId;
+  if (index !== null && index !== undefined) el.dataset.zoneIndex = String(index);
+  el.dataset.zone = zone;
+  el.dataset.side = isLocal ? 'local' : 'rival';
 
   let icon = '🃏';
   for (const key in ICON_MAP) { if (card.name.includes(key)) icon = ICON_MAP[key]; }
@@ -2493,7 +2501,7 @@ export function showEncyclopedia(onBack) {
   injectEncyclopediaStyles();
 
   const ownedIds = getOwnedCardIds();
-  const enhancedIds = new Set(Object.keys((state.userProfile && state.userProfile.enhancements) || {}));
+  const enhancedIds = new Set(Object.keys((state.userProfile && state.userProfile.enhancements) || {}).filter(id => isEnhancementEligibleCard(cardDb.getById(id))));
   let activeTab = 'criaturas';
   let ownershipFilter = 'all'; // 'all' | 'owned'
   let enhancedOnly = false;
@@ -2523,7 +2531,7 @@ export function showEncyclopedia(onBack) {
     <div class="encyclopedia-header">
       <button class="encyclopedia-back-btn" id="enc-back">← ${gameTextHtml('common.back')}</button>
       <div class="encyclopedia-title">${gameTextHtml('encyclopedia.title')}</div>
-      <div class="encyclopedia-progress">Descubriste <strong>${state.userProfile ? new Set(state.userProfile.collection || []).size : 0}</strong> cartas de <strong>${POOL_BASELINE.total}</strong> totales</div>
+      <div class="encyclopedia-progress">${gameTextHtml('encyclopedia.progress', { owned: state.userProfile ? new Set(state.userProfile.collection || []).size : 0, total: POOL_BASELINE.total })}</div>
     </div>
     <div class="encyclopedia-tabs">${tabsHTML}</div>
     <div class="encyclopedia-body">
@@ -2818,11 +2826,13 @@ function injectStoreStyles() {
     .store-ficha-visual { font-size: 40px; }
     .store-craft-list {
       max-height: 50vh; overflow-y: auto;
-      display: flex; flex-wrap: wrap; justify-content: center; gap: 14px;
-      --card-w: 12vh;
+      display: flex; flex-wrap: wrap; justify-content: center; align-items:flex-start; gap: 14px;
+      --card-w: 14vh;
       padding: 10px;
     }
-    .store-craft-card-btn { cursor: pointer; border-radius: 8px; transition: transform 0.15s ease; background: none; border: none; padding: 0; }
+    .store-craft-zoom { max-width:520px; margin:0 auto 12px; }
+    .store-craft-card-btn { cursor: pointer; border-radius: 8px; transition: transform 0.15s ease; background: none; border: none; padding: 0; text-align:left; }
+    .store-craft-card-btn .card { text-align:left; }
     .store-craft-card-btn:hover { transform: translateY(-4px); }
     .store-keyword-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 16px 0; }
     .store-keyword-btn {
@@ -2954,6 +2964,8 @@ export function showStoreScreen(onBack, options = {}) {
 
   const body = overlay.querySelector('#store-body');
   let craftSelectedCardId = null;
+  // 23.13.37 craft hotfix — tamaño persistente dentro del selector de criaturas.
+  let craftCardZoom = document.documentElement.classList.contains('argentinia-mobile') ? 20 : 14;
   let classifiedsTimerId = null;
   let classifiedsViewSerial = 0;
 
@@ -3370,7 +3382,7 @@ export function showStoreScreen(onBack, options = {}) {
     const eligibleCards = ownedUnique
       .filter(id => !enhancements[id])
       .map(id => cardDb.getById(id))
-      .filter(Boolean);
+      .filter(card => isEnhancementEligibleCard(card));
 
     if (eligibleCards.length === 0) {
       body.innerHTML = `
@@ -3387,12 +3399,26 @@ export function showStoreScreen(onBack, options = {}) {
       <div class="store-section">
         <div class="store-section-title">${gameTextHtml('store.craft.chooseTitle')}</div>
         <div class="store-section-desc">${gameTextHtml('store.craft.chooseDescription', { cost: FICHAS_PER_ENHANCEMENT })}</div>
+        <div class="card-browser-zoom store-craft-zoom" title="Cambiar tamaño de las criaturas">
+          <span>🔍</span>
+          <input type="range" id="store-craft-card-zoom" min="8" max="40" step="1" value="${craftCardZoom}">
+          <span id="store-craft-card-zoom-value">${craftCardZoom}</span>
+        </div>
         <div class="store-craft-list" id="store-craft-list"></div>
         <button class="store-back-link" id="store-craft-cancel">← ${gameTextHtml('common.cancel')}</button>
       </div>
     `;
 
     const list = body.querySelector('#store-craft-list');
+    const zoomSlider = body.querySelector('#store-craft-card-zoom');
+    const zoomValue = body.querySelector('#store-craft-card-zoom-value');
+    const syncCraftZoom = () => {
+      craftCardZoom = setBrowserCardZoom(list, zoomSlider.value);
+      if (zoomValue) zoomValue.textContent = String(craftCardZoom);
+    };
+    zoomSlider.addEventListener('input', syncCraftZoom);
+    syncCraftZoom();
+
     eligibleCards.forEach(card => {
       const btn = document.createElement('button');
       btn.className = 'store-craft-card-btn';
@@ -3702,7 +3728,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 
   const ownedCounts = getDeckBuilderOwnedCounts();
   const enhancements = (state.userProfile && state.userProfile.enhancements) || {};
-  const enhancedIds = new Set(Object.keys(enhancements));
+  const enhancedIds = new Set(Object.keys(enhancements).filter(id => isEnhancementEligibleCard(cardDb.getById(id))));
 
   let activeTab = 'criaturas';
   let searchQuery = '';
@@ -4946,7 +4972,7 @@ export function showAdminPanel(onBack) {
     { key: 'game', label: 'AJUSTES DEL JUEGO' },
     { key: 'texts', label: 'TEXTOS DEL JUEGO' },
     { key: 'messages', label: 'MENSAJES Y USUARIOS' },
-    { key: 'stats', label: 'ESTADÍSTICAS' },
+    { key: 'stats', label: gameText('admin.tab.statistics') },
     { key: 'debug', label: 'DEBUGGING' }
   ];
   const tabsHTML = adminTabs.map((tab, idx) =>
@@ -4985,32 +5011,32 @@ export function showAdminPanel(onBack) {
       <div class="admin-tab-pane hidden" data-admin-pane="stats">
         <div class="admin-section">
           <div class="admin-debug-toolbar">
-            <div><div class="admin-section-title">📊 Estadísticas globales</div><div class="admin-debug-summary" id="admin-stats-summary">Entrá a esta solapa para calcular métricas.</div></div>
+            <div><div class="admin-section-title">${gameTextHtml('admin.stats.title')}</div><div class="admin-debug-summary" id="admin-stats-summary">${gameTextHtml('admin.stats.initial')}</div></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-              <button class="admin-save-btn" id="admin-stats-sync">🔄 Sincronizar ranking</button>
-              <button class="admin-save-btn" id="admin-stats-refresh">↻ Actualizar</button>
+              <button class="admin-save-btn" id="admin-stats-sync">${gameTextHtml('admin.stats.sync')}</button>
+              <button class="admin-save-btn" id="admin-stats-refresh">${gameTextHtml('admin.stats.refresh')}</button>
             </div>
           </div>
           <div id="admin-stats-cards" class="admin-stats-grid"></div>
           <div class="admin-debug-table-wrap" id="admin-stats-detail" style="margin-top:14px;"></div>
-          <div class="admin-debug-summary" style="margin-top:10px;">Partidas y duración se reconstruyen del historial de telemetría, deduplicando multiplayer por matchId. Puntos/Fichas otorgados y sobres abiertos son acumuladores desde 23.13.37.</div>
+          <div class="admin-debug-summary" style="margin-top:10px;">${gameTextHtml('admin.stats.methodNote')}</div>
         </div>
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="debug">
         <div class="admin-section">
-          <div class="admin-section-title">🖼️ Auditoría de imágenes</div>
+          <div class="admin-section-title">${gameTextHtml('admin.images.title')}</div>
           <div class="admin-debug-toolbar">
-            <div class="admin-debug-summary" id="admin-image-summary">Entrá a esta solapa para leer el manifiesto generado en el deploy.</div>
-            <button class="admin-save-btn admin-debug-refresh" id="admin-image-refresh">🔄 Actualizar</button>
+            <div class="admin-debug-summary" id="admin-image-summary">${gameTextHtml('admin.images.initial')}</div>
+            <button class="admin-save-btn admin-debug-refresh" id="admin-image-refresh">${gameTextHtml('admin.images.refresh')}</button>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;">
-            <button class="admin-save-btn" id="admin-image-toggle" style="display:none;">Ver todas</button>
-            <button class="admin-save-btn" id="admin-image-download-txt" disabled>⬇ TXT de PNG faltantes</button>
-            <button class="admin-save-btn" id="admin-image-download-json" disabled>⬇ JSON</button>
+            <button class="admin-save-btn" id="admin-image-toggle" style="display:none;">${gameTextHtml('admin.images.showAll')}</button>
+            <button class="admin-save-btn" id="admin-image-download-txt" disabled>${gameTextHtml('admin.images.downloadTxt')}</button>
+            <button class="admin-save-btn" id="admin-image-download-json" disabled>${gameTextHtml('admin.images.downloadJson')}</button>
           </div>
           <div class="admin-debug-table-wrap" id="admin-image-table-wrap">
-            <div class="admin-debug-empty">Cargando manifiesto…</div>
+            <div class="admin-debug-empty">${gameTextHtml('admin.images.initialLoading')}</div>
           </div>
         </div>
 
@@ -5098,37 +5124,74 @@ export function showAdminPanel(onBack) {
     const toggle = overlay.querySelector('#admin-image-toggle');
     const txtBtn = overlay.querySelector('#admin-image-download-txt');
     const jsonBtn = overlay.querySelector('#admin-image-download-json');
-    const missing = Array.isArray(audit?.missing) ? audit.missing : [];
-    const stats = audit?.images || {};
+    const missingCards = Array.isArray(audit?.missing) ? audit.missing : [];
+    const tokenManifestPresent = !!audit?.tokenImages && Array.isArray(audit?.missingTokenImages) && Array.isArray(audit?.tokenEffectsWithoutImage);
+    const missingTokenEffects = tokenManifestPresent ? audit.missingTokenImages : [];
+    const unassignedTokenEffects = tokenManifestPresent ? audit.tokenEffectsWithoutImage : [];
     const generated = audit?.generatedAt ? formatTelemetryDate(audit.generatedAt) : '—';
 
-    summary.textContent = `${missing.length} carta${missing.length === 1 ? '' : 's'} sin imagen · ${stats.existingFileCount ?? '?'} archivo${stats.existingFileCount === 1 ? '' : 's'} presente${stats.existingFileCount === 1 ? '' : 's'} · manifest ${generated}.`;
+    const tokenGroupsMap = new Map();
+    missingTokenEffects.forEach(entry => {
+      const key = `${entry.image || '—'}::${entry.tokenName || 'Ficha'}`;
+      if (!tokenGroupsMap.has(key)) tokenGroupsMap.set(key, { image: entry.image || '', tokenName: entry.tokenName || 'Ficha', entries: [] });
+      tokenGroupsMap.get(key).entries.push(entry);
+    });
+    const tokenGroups = [...tokenGroupsMap.values()].sort((a,b) => String(a.tokenName).localeCompare(String(b.tokenName), 'es-AR'));
+
+    summary.textContent = tokenManifestPresent
+      ? gameText('admin.images.summary', { cards: missingCards.length, tokenFiles: tokenGroups.length, tokenEffects: missingTokenEffects.length, unassigned: unassignedTokenEffects.length, generated })
+      : gameText('admin.images.legacySummary', { cards: missingCards.length, generated });
     txtBtn.disabled = false;
     jsonBtn.disabled = false;
 
-    if (!missing.length) {
-      toggle.style.display = 'none';
-      wrap.innerHTML = '<div class="admin-debug-empty">✅ Todas las cartas con campo image tienen su archivo presente.</div>';
-      return;
+    const blocks = [];
+    if (!tokenManifestPresent) blocks.push(`<div class="admin-debug-error">${escapeHtml(gameText('admin.images.oldManifest'))}</div>`);
+
+    if (missingCards.length) {
+      const visible = imageAuditShowAll ? missingCards : missingCards.slice(0, 20);
+      const rows = visible.map(entry => `
+        <tr><td><code>${escapeHtml(entry.id || '—')}</code></td><td>${escapeHtml(entry.name || '—')}</td><td>${escapeHtml(entry.category || '—')}</td><td><code>${escapeHtml(entry.image || '—')}</code></td></tr>
+      `).join('');
+      blocks.push(`
+        <div class="admin-section-title" style="font-size:13px;margin-top:8px;">${escapeHtml(gameText('admin.images.cardsTitle', { count: missingCards.length }))}</div>
+        <table class="admin-debug-table"><thead><tr><th>${escapeHtml(gameText('admin.images.col.id'))}</th><th>${escapeHtml(gameText('admin.images.col.card'))}</th><th>${escapeHtml(gameText('admin.images.col.category'))}</th><th>${escapeHtml(gameText('admin.images.col.png'))}</th></tr></thead><tbody>${rows}</tbody></table>
+        ${!imageAuditShowAll && missingCards.length > 20 ? `<div class="admin-debug-empty">${escapeHtml(gameText('admin.images.first20'))}</div>` : ''}
+      `);
     }
 
-    toggle.style.display = missing.length > 20 ? '' : 'none';
-    toggle.textContent = imageAuditShowAll ? 'Mostrar primeras 20' : `Ver todas (${missing.length})`;
-    const rows = (imageAuditShowAll ? missing : missing.slice(0, 20)).map(entry => `
-      <tr>
-        <td><code>${escapeHtml(entry.id || '—')}</code></td>
-        <td>${escapeHtml(entry.name || '—')}</td>
-        <td>${escapeHtml(entry.category || '—')}</td>
-        <td><code>${escapeHtml(entry.image || '—')}</code></td>
-      </tr>
-    `).join('');
-    wrap.innerHTML = `
-      <table class="admin-debug-table">
-        <thead><tr><th>ID</th><th>Carta</th><th>Categoría</th><th>PNG esperado</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      ${!imageAuditShowAll && missing.length > 20 ? `<div class="admin-debug-empty">Mostrando 20 de ${missing.length}. No se hicieron requests a las imágenes.</div>` : ''}
-    `;
+    if (tokenManifestPresent && tokenGroups.length) {
+      const visible = imageAuditShowAll ? tokenGroups : tokenGroups.slice(0, 20);
+      const rows = visible.map(group => {
+        const producers = group.entries.map(entry => `${entry.cardId || '—'} · ${entry.cardName || '—'}`).join(' / ');
+        const categories = [...new Set(group.entries.map(entry => entry.category || '—'))].join(' / ');
+        const amounts = [...new Set(group.entries.map(entry => Number(entry.amount) || 1))].join(' / ');
+        const paths = [...new Set(group.entries.map(entry => entry.path || '—'))].join(' / ');
+        return `<tr><td>${escapeHtml(group.tokenName)}</td><td>${escapeHtml(producers)}</td><td>${escapeHtml(categories)}</td><td>${escapeHtml(amounts)}</td><td><code>${escapeHtml(group.image)}</code></td><td><code>${escapeHtml(paths)}</code></td></tr>`;
+      }).join('');
+      blocks.push(`
+        <div class="admin-section-title" style="font-size:13px;margin-top:16px;">${escapeHtml(gameText('admin.images.tokensTitle', { files: tokenGroups.length, effects: missingTokenEffects.length }))}</div>
+        <table class="admin-debug-table"><thead><tr><th>${escapeHtml(gameText('admin.images.col.token'))}</th><th>${escapeHtml(gameText('admin.images.col.card'))}</th><th>${escapeHtml(gameText('admin.images.col.category'))}</th><th>${escapeHtml(gameText('admin.images.col.amount'))}</th><th>${escapeHtml(gameText('admin.images.col.png'))}</th><th>${escapeHtml(gameText('admin.images.col.path'))}</th></tr></thead><tbody>${rows}</tbody></table>
+        ${!imageAuditShowAll && tokenGroups.length > 20 ? `<div class="admin-debug-empty">${escapeHtml(gameText('admin.images.first20'))}</div>` : ''}
+      `);
+    }
+
+    if (tokenManifestPresent && unassignedTokenEffects.length) {
+      const visible = imageAuditShowAll ? unassignedTokenEffects : unassignedTokenEffects.slice(0, 20);
+      const rows = visible.map(entry => `<tr><td>${escapeHtml(entry.tokenName || 'Ficha')}</td><td><code>${escapeHtml(entry.cardId || '—')}</code> · ${escapeHtml(entry.cardName || '—')}</td><td><code>${escapeHtml(entry.path || '—')}</code></td></tr>`).join('');
+      blocks.push(`
+        <div class="admin-section-title" style="font-size:13px;margin-top:16px;color:#e6a46f;">${escapeHtml(gameText('admin.images.unassignedTitle', { count: unassignedTokenEffects.length }))}</div>
+        <table class="admin-debug-table"><thead><tr><th>${escapeHtml(gameText('admin.images.col.token'))}</th><th>${escapeHtml(gameText('admin.images.col.card'))}</th><th>${escapeHtml(gameText('admin.images.col.path'))}</th></tr></thead><tbody>${rows}</tbody></table>
+      `);
+    }
+
+    if (!missingCards.length && tokenManifestPresent && !tokenGroups.length && !unassignedTokenEffects.length) {
+      blocks.push(`<div class="admin-debug-empty">${escapeHtml(gameText('admin.images.allOk'))}</div>`);
+    }
+
+    const needToggle = missingCards.length > 20 || tokenGroups.length > 20 || unassignedTokenEffects.length > 20;
+    toggle.style.display = needToggle ? '' : 'none';
+    toggle.textContent = imageAuditShowAll ? gameText('admin.images.showFirst') : gameText('admin.images.showAll');
+    wrap.innerHTML = blocks.join('');
   }
 
   async function reloadImageAudit(force = false) {
@@ -5137,8 +5200,8 @@ export function showAdminPanel(onBack) {
     const refreshBtn = overlay.querySelector('#admin-image-refresh');
     const wrap = overlay.querySelector('#admin-image-table-wrap');
     refreshBtn.disabled = true;
-    refreshBtn.textContent = '⏳ Cargando…';
-    wrap.innerHTML = '<div class="admin-debug-empty">Leyendo un único cards-image-manifest.json…</div>';
+    refreshBtn.textContent = gameText('admin.images.refreshLoading');
+    wrap.innerHTML = `<div class="admin-debug-empty">${escapeHtml(gameText('admin.images.loading'))}</div>`;
     try {
       imageAudit = await cardDb.getImageAudit({ force });
       imageAuditLoaded = true;
@@ -5146,12 +5209,12 @@ export function showAdminPanel(onBack) {
     } catch (err) {
       console.error('No se pudo cargar el manifiesto de imágenes:', err);
       imageAuditLoaded = false;
-      overlay.querySelector('#admin-image-summary').textContent = 'Manifest no disponible.';
-      wrap.innerHTML = `<div class="admin-debug-error">No se encontró la auditoría automática de imágenes.<br>${escapeHtml(err?.message || String(err))}<br><br>En GitHub: Settings → Pages → Source: GitHub Actions. Luego hacé un deploy de esta versión.</div>`;
+      overlay.querySelector('#admin-image-summary').textContent = gameText('admin.images.unavailable');
+      wrap.innerHTML = `<div class="admin-debug-error">${escapeHtml(gameText('admin.images.loadError', { message: err?.message || String(err) }))}</div>`;
     } finally {
       imageAuditLoading = false;
       refreshBtn.disabled = false;
-      refreshBtn.textContent = '🔄 Actualizar';
+      refreshBtn.textContent = gameText('admin.images.refresh');
     }
   }
 
@@ -5215,7 +5278,7 @@ export function showAdminPanel(onBack) {
 
     wrap.innerHTML = `
       <table class="admin-debug-table">
-        <thead><tr><th>Fecha y hora</th><th>Tipo</th><th>Duración</th><th>Quién jugó contra quién</th><th>Motor</th><th>Bugs</th><th>Eventos</th><th>Estado</th><th>Log</th></tr></thead>
+        <thead><tr><th>Fecha y hora</th><th>Tipo</th><th>${escapeHtml(gameText('admin.debug.col.duration'))}</th><th>Quién jugó contra quién</th><th>Motor</th><th>Bugs</th><th>Eventos</th><th>Estado</th><th>Log</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     `;
@@ -5240,7 +5303,7 @@ export function showAdminPanel(onBack) {
           setTimeout(() => { if (btn.isConnected) btn.textContent = oldText; }, 1400);
         } catch (err) {
           console.error('No se pudo reconstruir el log de Firestore:', err);
-          btn.textContent = '❌ Error';
+          btn.textContent = gameText('admin.stats.error', { message: '' }).replace(/:\s*$/, '');
           window.alert(`No se pudo descargar este log: ${err?.message || err}`);
           setTimeout(() => { if (btn.isConnected) btn.textContent = oldText; }, 1800);
         } finally {
@@ -5256,7 +5319,7 @@ export function showAdminPanel(onBack) {
     const refreshBtn = overlay.querySelector('#admin-debug-refresh');
     const wrap = overlay.querySelector('#admin-debug-table-wrap');
     refreshBtn.disabled = true;
-    refreshBtn.textContent = '⏳ Cargando…';
+    refreshBtn.textContent = gameText('admin.images.refreshLoading');
     wrap.innerHTML = '<div class="admin-debug-empty">Leyendo telemetrySessions…</div>';
     try {
       debugSessions = await fetchTelemetrySessionsForAdmin();
@@ -5269,7 +5332,7 @@ export function showAdminPanel(onBack) {
     } finally {
       debugLoading = false;
       refreshBtn.disabled = false;
-      refreshBtn.textContent = '🔄 Actualizar';
+      refreshBtn.textContent = gameText('admin.images.refresh');
     }
   }
 
@@ -5290,27 +5353,31 @@ export function showAdminPanel(onBack) {
     const games = summarizeGlobalTelemetry(sessions);
     const tracked = trackedTotals(publicRows);
     const cards = [
-      ['Jugadores registrados', profileStats.registeredPlayers, `Nuevos 7d: ${profileStats.new7d} · últimos 30d: ${profileStats.new30d}`],
-      ['Jugadores activos', profileStats.active24h, `24h · Activos 7d: ${profileStats.active7d} · 30d: ${profileStats.active30d}`],
-      ['Partidas totales', games.totalGames, `${games.soloGames} solo · ${games.multiplayerGames} multiplayer`],
-      ['Duración promedio', formatDuration(games.averageDurationMs), `Total jugado: ${formatDuration(games.totalDurationMs)} · Máx: ${formatDuration(games.longestDurationMs)}`],
-      ['Puntos otorgados*', tracked.pointsEarned.toLocaleString('es-AR'), `Gastados*: ${tracked.pointsSpent.toLocaleString('es-AR')} · Penalizados*: ${tracked.pointsLost.toLocaleString('es-AR')} · Circulación: ${profileStats.pointsInCirculation.toLocaleString('es-AR')}`],
-      ['Fichas otorgadas*', tracked.fichasEarned.toLocaleString('es-AR'), `Gastadas*: ${tracked.fichasSpent.toLocaleString('es-AR')} · Circulación: ${profileStats.fichasInCirculation.toLocaleString('es-AR')}`],
-      ['Sobres abiertos*', tracked.packsOpened.toLocaleString('es-AR'), `Recibidos*: ${tracked.packsReceived.toLocaleString('es-AR')} · Cofres: ${profileStats.packsInChests.toLocaleString('es-AR')} · Mythics*: ${tracked.guaranteedMythicsOpened.toLocaleString('es-AR')}`],
-      ['Cartas en colecciones', profileStats.cardsOwned.toLocaleString('es-AR'), `Comunidad descubrió: ${profileStats.communityUniqueCards} / ${POOL_BASELINE.total} · Promedio/jugador: ${profileStats.averageUniqueCards.toFixed(1)}`],
-      ['Abandonos detectados', games.abandonedGames.toLocaleString('es-AR'), `${games.completedSessions} sesiones completas de telemetría`]
+      [gameText('admin.stats.registered.label'), profileStats.registeredPlayers, gameText('admin.stats.registered.sub', { new7d: profileStats.new7d, new30d: profileStats.new30d })],
+      [gameText('admin.stats.active.label'), profileStats.active24h, gameText('admin.stats.active.sub', { active7d: profileStats.active7d, active30d: profileStats.active30d })],
+      [gameText('admin.stats.games.label'), games.totalGames, gameText('admin.stats.games.sub', { solo: games.soloGames, multi: games.multiplayerGames })],
+      [gameText('admin.stats.duration.label'), formatDuration(games.averageDurationMs), gameText('admin.stats.duration.sub', { total: formatDuration(games.totalDurationMs), max: formatDuration(games.longestDurationMs) })],
+      [gameText('admin.stats.points.label'), tracked.pointsEarned.toLocaleString('es-AR'), gameText('admin.stats.points.sub', { spent: tracked.pointsSpent.toLocaleString('es-AR'), lost: tracked.pointsLost.toLocaleString('es-AR'), circulation: profileStats.pointsInCirculation.toLocaleString('es-AR') })],
+      [gameText('admin.stats.fichas.label'), tracked.fichasEarned.toLocaleString('es-AR'), gameText('admin.stats.fichas.sub', { spent: tracked.fichasSpent.toLocaleString('es-AR'), circulation: profileStats.fichasInCirculation.toLocaleString('es-AR') })],
+      [gameText('admin.stats.packs.label'), tracked.packsOpened.toLocaleString('es-AR'), gameText('admin.stats.packs.sub', { received: tracked.packsReceived.toLocaleString('es-AR'), chests: profileStats.packsInChests.toLocaleString('es-AR'), mythics: tracked.guaranteedMythicsOpened.toLocaleString('es-AR') })],
+      [gameText('admin.stats.collection.label'), profileStats.cardsOwned.toLocaleString('es-AR'), gameText('admin.stats.collection.sub', { unique: profileStats.communityUniqueCards, total: POOL_BASELINE.total, average: profileStats.averageUniqueCards.toFixed(1) })],
+      [gameText('admin.stats.abandons.label'), games.abandonedGames.toLocaleString('es-AR'), gameText('admin.stats.abandons.sub', { sessions: games.completedSessions })]
     ];
     overlay.querySelector('#admin-stats-cards').innerHTML = cards.map(([label,value,sub]) => `<div class="admin-stat-card"><div class="admin-stat-label">${escapeHtml(label)}</div><div class="admin-stat-value">${escapeHtml(value)}</div><div class="admin-stat-sub">${escapeHtml(sub)}</div></div>`).join('');
-    overlay.querySelector('#admin-stats-summary').textContent = `Métricas calculadas sobre ${profiles.length} perfiles y ${sessions.length} sesiones de telemetría.`;
-    const rows = [...publicRows].sort((a,b)=>(Number(b.gamesPlayed)||0)-(Number(a.gamesPlayed)||0)).map(r=>`<tr><td><strong>${escapeHtml(r.username || 'Jugador')}</strong></td><td>${Number(r.gamesPlayed||0)}</td><td>${Number(r.soloGames||0)} / ${Number(r.multiplayerGames||0)}</td><td>${Number(r.wins||0)}</td><td>${winRate(r).toFixed(1)}%</td><td>${Number(r.pointsEarned||0)}</td><td>${Number(r.fichasEarned||0)}</td><td>${Number(r.packsOpened||0)}</td><td>${Number(r.uniqueCards||0)} / ${POOL_BASELINE.total}</td><td>${formatDuration(r.totalDurationMs||0)}</td></tr>`).join('');
-    overlay.querySelector('#admin-stats-detail').innerHTML = `<table class="admin-debug-table"><thead><tr><th>Jugador</th><th>Partidas</th><th>Solo / Multi</th><th>Victorias</th><th>Win%</th><th>Puntos ganados*</th><th>Fichas*</th><th>Sobres*</th><th>Descubiertas</th><th>Tiempo</th></tr></thead><tbody>${rows || '<tr><td colspan="10">Sin filas públicas todavía.</td></tr>'}</tbody></table>`;
+    overlay.querySelector('#admin-stats-summary').textContent = gameText('admin.stats.summary', { profiles: profiles.length, sessions: sessions.length });
+    const rows = [...publicRows].sort((a,b)=>(Number(b.gamesPlayed)||0)-(Number(a.gamesPlayed)||0)).map(r=>`<tr><td><strong>${escapeHtml(r.username || gameText('ranking.playerFallback'))}</strong></td><td>${Number(r.gamesPlayed||0)}</td><td>${Number(r.soloGames||0)} / ${Number(r.multiplayerGames||0)}</td><td>${Number(r.wins||0)}</td><td>${winRate(r).toFixed(1)}%</td><td>${Number(r.pointsEarned||0)}</td><td>${Number(r.fichasEarned||0)}</td><td>${Number(r.packsOpened||0)}</td><td>${Number(r.uniqueCards||0)} / ${POOL_BASELINE.total}</td><td>${formatDuration(r.totalDurationMs||0)}</td></tr>`).join('');
+    const headers = [
+      'admin.stats.col.player','admin.stats.col.games','admin.stats.col.soloMulti','admin.stats.col.wins','admin.stats.col.winRate',
+      'admin.stats.col.points','admin.stats.col.fichas','admin.stats.col.packs','admin.stats.col.discovered','admin.stats.col.time'
+    ].map(key => `<th>${escapeHtml(gameText(key))}</th>`).join('');
+    overlay.querySelector('#admin-stats-detail').innerHTML = `<table class="admin-debug-table"><thead><tr>${headers}</tr></thead><tbody>${rows || `<tr><td colspan="10">${escapeHtml(gameText('admin.stats.empty'))}</td></tr>`}</tbody></table>`;
   }
 
   async function reloadAdminStatistics() {
     if (statsLoading) return;
     statsLoading = true;
     const refresh = overlay.querySelector('#admin-stats-refresh');
-    if (refresh) { refresh.disabled = true; refresh.textContent = '⏳ Cargando…'; }
+    if (refresh) { refresh.disabled = true; refresh.textContent = gameText('admin.stats.loading'); }
     try {
       const [profiles, sessions, publicRows] = await Promise.all([fetchAllUserProfiles(), fetchTelemetrySessionsForAdmin(), fetchPublicPlayerStats()]);
       statsProfilesCache = profiles;
@@ -5319,26 +5386,26 @@ export function showAdminPanel(onBack) {
       statsLoaded = true;
     } catch (err) {
       console.error('No se pudieron cargar Estadísticas:', err);
-      overlay.querySelector('#admin-stats-summary').textContent = `Error: ${err?.message || err}`;
+      overlay.querySelector('#admin-stats-summary').textContent = gameText('admin.stats.error', { message: err?.message || err });
     } finally {
       statsLoading = false;
-      if (refresh) { refresh.disabled = false; refresh.textContent = '↻ Actualizar'; }
+      if (refresh) { refresh.disabled = false; refresh.textContent = gameText('admin.stats.refresh'); }
     }
   }
 
   async function syncAdminRanking() {
     const btn = overlay.querySelector('#admin-stats-sync');
-    btn.disabled = true; btn.textContent = '⏳ Sincronizando…';
+    btn.disabled = true; btn.textContent = gameText('admin.stats.syncing');
     try {
       if (!statsProfilesCache.length && !statsSessionsCache.length) await reloadAdminStatistics();
       const result = await adminSyncPublicPlayerStats(statsProfilesCache, statsSessionsCache);
-      btn.textContent = `✅ ${result.updated} jugadores`;
+      btn.textContent = gameText('admin.stats.syncDone', { count: result.updated });
       await reloadAdminStatistics();
     } catch (err) {
       console.error('No se pudo sincronizar Ranking:', err);
-      btn.textContent = '❌ Error';
+      btn.textContent = gameText('admin.stats.syncError');
     } finally {
-      setTimeout(() => { if (btn.isConnected) { btn.disabled = false; btn.textContent = '🔄 Sincronizar ranking'; } }, 1600);
+      setTimeout(() => { if (btn.isConnected) { btn.disabled = false; btn.textContent = gameText('admin.stats.sync'); } }, 1600);
     }
   }
 
@@ -5370,7 +5437,15 @@ export function showAdminPanel(onBack) {
   overlay.querySelector('#admin-image-download-txt').addEventListener('click', () => {
     if (!imageAudit) return;
     const missing = Array.isArray(imageAudit.missing) ? imageAudit.missing : [];
-    downloadAdminText(missing.map(entry => entry.image).join('\n') + (missing.length ? '\n' : ''), `Argentinia_imagenes_faltantes_v${ENGINE_VERSION}.txt`);
+    const tokenMissing = Array.isArray(imageAudit.missingTokenImages) ? imageAudit.missingTokenImages : [];
+    const tokenUnassigned = Array.isArray(imageAudit.tokenEffectsWithoutImage) ? imageAudit.tokenEffectsWithoutImage : [];
+    const tokenFiles = [...new Set(tokenMissing.map(entry => entry.image).filter(Boolean))].sort();
+    const lines = [
+      '[CARTAS_SIN_PNG]', ...missing.map(entry => entry.image), '',
+      '[TOKENS_SIN_PNG]', ...tokenFiles, '',
+      '[TOKENS_SIN_FILENAME]', ...tokenUnassigned.map(entry => `${entry.cardId} | ${entry.cardName} | ${entry.tokenName} | ${entry.path}`), ''
+    ];
+    downloadAdminText(lines.join('\n'), `Argentinia_imagenes_faltantes_v${ENGINE_VERSION}.txt`);
   });
   overlay.querySelector('#admin-image-download-json').addEventListener('click', () => {
     if (!imageAudit) return;
@@ -6928,6 +7003,27 @@ function renderPhaseProgress() {
   // Un rerender por prioridad o por un hover nunca vuelve a disparar el aviso.
   announcePhaseTransition({ phase: state.phase, turnCount: state.turnCount, activePlayer: state.activePlayer });
 }
+function scheduleCurrentCombatMap() {
+  scheduleCombatMapRender({
+    state,
+    getPower: getEffectivePower,
+    getToughness: getEffectiveToughness,
+    hasKeyword,
+    getProtectionMatch,
+    getLocalPlayerName,
+    getRivalName,
+    regularOnly: state.phase === 'combat_damage' && hasPendingCombatDamageContinuation(),
+    gameText
+  });
+}
+
+// Un scroll horizontal del battlefield o un resize cambia las coordenadas aunque no cambie
+// el state. Recalculamos únicamente el SVG; no llama render() ni publica nada.
+window.addEventListener('resize', scheduleCurrentCombatMap, { passive: true });
+[els.localCombat, els.rivalCombat, els.localPlaneswalkers, els.rivalPlaneswalkers].forEach(zone => {
+  zone?.addEventListener('scroll', scheduleCurrentCombatMap, { passive: true });
+});
+
 export function render() {
   state.localHP = Math.max(0, Math.min(20, state.localHP));
   state.rivalHP = Math.max(0, Math.min(20, state.rivalHP));
@@ -6962,6 +7058,11 @@ export function render() {
 
   sizeAllRows();
   updatePilesUI();
+
+  // 23.13.38 — mapa derivado de combate. Se dibuja DESPUÉS de reconstruir el DOM,
+  // nunca toca estado ni Firestore. En la ventana entre iniciativa y daño regular filtramos
+  // quienes ya no vuelven a pegar salvo Daño Doble.
+  scheduleCurrentCombatMap();
 
   // El Veneno se muestra pegado al HP, y solo si tenés alguno (0 no ensucia el HUD). Con
   // 10 llegás a la derrota alternativa — checkGameOver() más abajo ya lo controla solo.

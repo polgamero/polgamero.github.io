@@ -23,7 +23,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { cardDb } from './cardLoader.js';
-import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX } from './store.js';
+import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, localDateKey, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
@@ -852,6 +852,13 @@ export async function claimDailyReward(uid, day, nowMs = null) {
 // tenés (y que todavía no esté mejorada) con una keyword de la lista curada
 // (ENHANCEMENT_KEYWORDS en store.js). Devuelve el perfil ya actualizado.
 export async function craftEnhancement(uid, cardId, keyword, fichaCost) {
+  // 23.13.37 craft hotfix — las mejoras actuales son exclusivamente keywords de criatura.
+  // No confiamos sólo en el filtro visual: cualquier caller interno que intente pasar una
+  // Tierra/Artefacto/etc. queda rechazado antes de tocar Fichas o Firestore.
+  const cardDef = cardDb.getById(cardId);
+  if (!isEnhancementEligibleCard(cardDef)) {
+    throw new Error('Por ahora sólo se pueden mejorar Criaturas.');
+  }
   const ref = doc(db, 'users', uid);
   const profile = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
@@ -935,6 +942,10 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
     }
   }
   for (const [baseId, count] of Object.entries(enhancedSlotCounts)) {
+    const enhancedCardDef = cardDb.getById(baseId);
+    if (!isEnhancementEligibleCard(enhancedCardDef)) {
+      throw new Error('Las mejoras permanentes sólo pueden aplicarse a Criaturas.');
+    }
     if (!enhancements[baseId]) throw new Error('Estás usando la copia mejorada de una carta que no tiene ninguna mejora crafteada.');
     if (count > 1) throw new Error('Solo puede haber una copia mejorada de la misma carta en el mazo.');
   }

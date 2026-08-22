@@ -199,6 +199,9 @@ html, body {
   overflow: hidden; /* clip: nada se escapa del marco redondeado, ni texto ni bloques internos */
   box-shadow: inset 0 0 12px rgba(0,0,0,0.4); /* Profundidad de marco */
   transition: transform 0.15s ease;
+  /* 23.13.37 craft hotfix — el texto de una carta no debe heredar text-align del contenedor
+     que la muestra (Tienda usa text-align:center). El renderer real siempre parte a izquierda. */
+  text-align: left;
 }
 
 /* CARTA GIRADA: .card ya reserva su footprint apaisado (JS le swapea width/height).

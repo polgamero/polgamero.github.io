@@ -174,7 +174,9 @@ class CardDatabase {
     const manifest = await this.loadImageManifest({ force });
     return {
       ...manifest,
-      missingPreview: manifest.missing.slice(0, 20)
+      missingPreview: manifest.missing.slice(0, 20),
+      missingTokenPreview: Array.isArray(manifest.missingTokenImages) ? manifest.missingTokenImages.slice(0, 20) : [],
+      tokenManifestAvailable: !!manifest.tokenImages && Array.isArray(manifest.missingTokenImages)
     };
   }
 
@@ -182,8 +184,13 @@ class CardDatabase {
     try {
       const audit = await this.getImageAudit();
       const imageStats = audit.images || {};
+      const tokenStats = audit.tokenImages || null;
       const missing = Array.isArray(audit.missing) ? audit.missing : [];
-      console.log(`[CardDatabase] Auditoría segura de imágenes: ${missing.length} carta(s) sin archivo; ${imageStats.existingFileCount ?? '?'} archivo(s) presentes. 1 manifest, 0 probes por carta.`);
+      const missingTokenEffects = Array.isArray(audit.missingTokenImages) ? audit.missingTokenImages : [];
+      const missingTokenFiles = new Set(missingTokenEffects.map(entry => entry?.image).filter(Boolean)).size;
+      const unassignedTokenEffects = Array.isArray(audit.tokenEffectsWithoutImage) ? audit.tokenEffectsWithoutImage.length : 0;
+      console.log(`[CardDatabase] Auditoría segura de imágenes: ${missing.length} carta(s) sin archivo; ${missingTokenFiles} PNG de token faltante(s) (${missingTokenEffects.length} productor(es)); ${unassignedTokenEffects} token(s) sin filename; ${imageStats.existingFileCount ?? '?'} archivo(s) presentes. 1 manifest, 0 probes por carta/token.`);
+      if (!tokenStats) console.warn('[CardDatabase] Manifest legacy: no contiene auditoría de imágenes de token.');
       if (missing.length) {
         console.groupCollapsed(`[CardDatabase] Primeras ${Math.min(20, missing.length)} imágenes faltantes de ${missing.length}`);
         console.table(missing.slice(0, 20).map(entry => ({
@@ -193,6 +200,17 @@ class CardDatabase {
           png: entry.image
         })));
         console.info('Lista completa: Admin → DEBUGGING → Auditoría de imágenes.');
+        console.groupEnd();
+      }
+      if (missingTokenEffects.length) {
+        console.groupCollapsed(`[CardDatabase] Tokens: ${missingTokenFiles} PNG faltantes / ${missingTokenEffects.length} efecto(s) productor(es)`);
+        console.table(missingTokenEffects.slice(0, 20).map(entry => ({
+          productor: entry.cardName,
+          token: entry.tokenName,
+          cantidad: entry.amount,
+          png: entry.image,
+          ruta: entry.path
+        })));
         console.groupEnd();
       }
     } catch (error) {

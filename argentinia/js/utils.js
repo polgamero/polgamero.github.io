@@ -1,5 +1,5 @@
 import { cardDb } from './cardLoader.js';
-import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT, ENHANCED_SUFFIX } from './store.js';
+import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
 
 export function shuffle(array) { 
   return array.sort(() => Math.random() - 0.5); 
@@ -360,7 +360,7 @@ export function buildDeckFromCardIds(cardIds, enhancements) {
       const cardDef = cardDb.getById(baseId);
       if (!cardDef) return null;
       const cloned = { ...cardDef };
-      if (isEnhancedSlot) {
+      if (isEnhancedSlot && isEnhancementEligibleCard(cardDef)) {
         const keyword = enhancements && enhancements[baseId];
         if (keyword) cloned.keywords = [...(cloned.keywords || []), keyword];
       }

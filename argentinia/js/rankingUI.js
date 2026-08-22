@@ -1,7 +1,9 @@
-// js/rankingUI.js — Entrega 23.13.37
+// js/rankingUI.js — Entrega 23.13.38
+// @game-text-surface strict
 import { fetchPublicPlayerStats } from './firebaseClient.js';
 import { POOL_BASELINE } from './poolContract.js';
 import { formatDuration, winRate } from './statistics.js';
+import { gameText } from './gameTexts.js';
 
 function esc(value) {
   const div = document.createElement('div');
@@ -37,17 +39,17 @@ function injectStyles() {
 }
 
 const columns = [
-  ['username','Jugador'],
-  ['pointsEarned','Puntos ganados*'],
-  ['fichasEarned','Fichas obtenidas*'],
-  ['packsOpened','Sobres abiertos*'],
-  ['uniqueCards','Cartas descubiertas'],
-  ['gamesPlayed','Partidas'],
-  ['wins','Victorias'],
-  ['winRate','% victorias'],
-  ['totalDurationMs','Tiempo jugado'],
-  ['pointsCurrent','Puntos actuales'],
-  ['fichasCurrent','Fichas actuales']
+  ['username','ranking.col.player'],
+  ['pointsEarned','ranking.col.pointsEarned'],
+  ['fichasEarned','ranking.col.fichasEarned'],
+  ['packsOpened','ranking.col.packsOpened'],
+  ['uniqueCards','ranking.col.uniqueCards'],
+  ['gamesPlayed','ranking.col.games'],
+  ['wins','ranking.col.wins'],
+  ['winRate','ranking.col.winRate'],
+  ['totalDurationMs','ranking.col.timePlayed'],
+  ['pointsCurrent','ranking.col.pointsCurrent'],
+  ['fichasCurrent','ranking.col.fichasCurrent']
 ];
 
 export function showGlobalRanking(onBack = () => {}) {
@@ -57,12 +59,12 @@ export function showGlobalRanking(onBack = () => {}) {
   overlay.id = 'global-ranking-overlay';
   overlay.innerHTML = `
     <div class="ranking-header">
-      <button class="ranking-back" id="ranking-back">← Volver</button>
-      <div class="ranking-title">🏆 Ranking Global</div>
-      <div class="ranking-subtitle">Coleccionismo · partidas · economía<br>Pool actual: ${POOL_BASELINE.total} cartas</div>
+      <button class="ranking-back" id="ranking-back">← ${esc(gameText('common.back'))}</button>
+      <div class="ranking-title">${esc(gameText('ranking.title'))}</div>
+      <div class="ranking-subtitle">${esc(gameText('ranking.subtitle', { total: POOL_BASELINE.total }))}</div>
     </div>
-    <div class="ranking-wrap" id="ranking-wrap"><div class="ranking-empty">Cargando ranking…</div></div>
-    <div class="ranking-note">* Puntos ganados, Fichas obtenidas y sobres abiertos son acumuladores confiables desde la versión 23.13.37. Partidas y tiempo pueden incluir historial anterior reconstruido desde telemetría.</div>
+    <div class="ranking-wrap" id="ranking-wrap"><div class="ranking-empty">${esc(gameText('ranking.loading'))}</div></div>
+    <div class="ranking-note">${esc(gameText('ranking.note'))}</div>
   `;
   document.body.appendChild(overlay);
   overlay.querySelector('#ranking-back').addEventListener('click', () => { overlay.remove(); onBack(); });
@@ -79,11 +81,11 @@ export function showGlobalRanking(onBack = () => {}) {
       return direction === 'asc' ? cmp : -cmp;
     });
     const wrap=overlay.querySelector('#ranking-wrap');
-    if (!sorted.length) { wrap.innerHTML='<div class="ranking-empty">Todavía no hay jugadores sincronizados al Ranking. Las cuentas se incorporan al volver a iniciar sesión; el Admin también puede sincronizar todas desde Estadísticas.</div>'; return; }
-    const headers=columns.map(([key,label])=>`<th data-sort="${key}">${esc(label)}${sortKey===key?(direction==='asc'?' ↑':' ↓'):''}</th>`).join('');
+    if (!sorted.length) { wrap.innerHTML=`<div class="ranking-empty">${esc(gameText('ranking.empty'))}</div>`; return; }
+    const headers=columns.map(([key,textKey])=>`<th data-sort="${key}">${esc(gameText(textKey))}${sortKey===key?(direction==='asc'?' ↑':' ↓'):''}</th>`).join('');
     const body=sorted.map((r,i)=>`<tr>
       <td class="ranking-rank">${i+1}</td>
-      <td class="ranking-player">${esc(r.username || 'Jugador')}</td>
+      <td class="ranking-player">${esc(r.username || gameText('ranking.playerFallback'))}</td>
       <td>${n(r.pointsEarned).toLocaleString('es-AR')}</td>
       <td>${n(r.fichasEarned).toLocaleString('es-AR')}</td>
       <td>${n(r.packsOpened).toLocaleString('es-AR')}</td>
@@ -98,5 +100,5 @@ export function showGlobalRanking(onBack = () => {}) {
     wrap.innerHTML=`<table class="ranking-table"><thead><tr><th>#</th>${headers}</tr></thead><tbody>${body}</tbody></table>`;
     wrap.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>{ const key=th.dataset.sort; if(sortKey===key) direction=direction==='asc'?'desc':'asc'; else {sortKey=key; direction=key==='username'?'asc':'desc';} render(); }));
   }
-  fetchPublicPlayerStats().then(data=>{ rows=Array.isArray(data)?data:[]; render(); }).catch(err=>{ console.error('No se pudo cargar Ranking Global:',err); overlay.querySelector('#ranking-wrap').innerHTML=`<div class="ranking-empty">No se pudo cargar el ranking.<br>${esc(err?.message||err)}</div>`; });
+  fetchPublicPlayerStats().then(data=>{ rows=Array.isArray(data)?data:[]; render(); }).catch(err=>{ console.error('No se pudo cargar Ranking Global:',err); overlay.querySelector('#ranking-wrap').innerHTML=`<div class="ranking-empty">${esc(gameText('ranking.error'))}<br>${esc(err?.message||err)}</div>`; });
 }
