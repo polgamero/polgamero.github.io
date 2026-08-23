@@ -233,84 +233,154 @@ function projectPointToRectEdge(rect, toward, padding = 0) {
   return { x: c.x + dx * scale, y: c.y + dy * scale };
 }
 
-function routeEndpointBetween(sourceRect, targetRect, route, activePlayer, index = 0) {
-  const isLocalAttacking = activePlayer === 'local';
-  const attackLane = isLocalAttacking ? -1 : 1;
-  const lane = route.kind === 'attacker' ? attackLane : -attackLane;
-  const a = centerOf(sourceRect);
-  const b = centerOf(targetRect);
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
+function normalizedVector(from, to) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
   const len = Math.max(1, Math.hypot(dx, dy));
-  const ux = dx / len;
-  const uy = dy / len;
-  const perp = { x: -uy, y: ux };
-  const closeStack = Math.abs(dx) < 190 && Math.abs(dy) < 230;
+  return { x: dx / len, y: dy / len, len };
+}
 
-  // Contra jugadores / badges mantenemos una llegada geométrica limpia al borde del panel.
-  if (route.target?.type === 'player' || route.source?.type === 'player') {
-    const sourcePadding = route.source?.type === 'player' ? 1 : 6;
-    const targetPadding = route.target?.type === 'player' ? 1 : 6;
-    const lateral = lane * 34;
-    const sourceEdge = projectPointToRectEdge(sourceRect, b, sourcePadding);
-    const targetEdge = projectPointToRectEdge(targetRect, a, targetPadding);
+function combatPairFrame(sourceRect, targetRect, route) {
+  const sourceCenter = centerOf(sourceRect);
+  const targetCenter = centerOf(targetRect);
+  const isPair = route?.source?.type === 'combat' && route?.target?.type === 'combat'
+    && (route?.kind === 'attacker' || route?.kind === 'blocker');
+
+  if (!isPair) {
+    const unit = normalizedVector(sourceCenter, targetCenter);
     return {
-      start: { x: sourceEdge.x + perp.x * lateral, y: sourceEdge.y + perp.y * lateral },
-      end: { x: targetEdge.x + perp.x * lateral, y: targetEdge.y + perp.y * lateral },
-      lane,
-      closeStack: false,
-      perp,
-      unit: { x: ux, y: uy }
+      isPair: false,
+      unit,
+      perp: { x: -unit.y, y: unit.x },
+      attackerCenter: route?.kind === 'attacker' ? sourceCenter : targetCenter,
+      blockerCenter: route?.kind === 'attacker' ? targetCenter : sourceCenter
     };
   }
 
-  const sourceEdge = projectPointToRectEdge(sourceRect, b, 4);
-  const targetEdge = projectPointToRectEdge(targetRect, a, 4);
-  const sourceDepth = Math.min(sourceRect.width, sourceRect.height) * 0.34;
-  const targetDepth = Math.min(targetRect.width, targetRect.height) * 0.34;
-  const laneBase = closeStack ? 70 : 50;
-  const lateral = lane * (laneBase + (index % 2) * 10);
-
+  // IMPORTANTE: ambas rutas del mismo 1v1 usan SIEMPRE la misma referencia geométrica:
+  // atacante -> bloqueador. La flecha celeste viaja en sentido contrario, pero NO recalcula
+  // su perpendicular desde blocker -> attacker. Eso evita la doble inversión que juntaba
+  // los dos carriles en 23.13.49.
+  const attackerCenter = route.kind === 'attacker' ? sourceCenter : targetCenter;
+  const blockerCenter = route.kind === 'attacker' ? targetCenter : sourceCenter;
+  const canonicalUnit = normalizedVector(attackerCenter, blockerCenter);
   return {
-    start: {
-      x: sourceEdge.x - ux * sourceDepth + perp.x * lateral,
-      y: sourceEdge.y - uy * sourceDepth + perp.y * lateral
-    },
-    end: {
-      x: targetEdge.x + ux * targetDepth + perp.x * lateral,
-      y: targetEdge.y + uy * targetDepth + perp.y * lateral
-    },
-    lane,
-    closeStack,
-    perp,
-    unit: { x: ux, y: uy }
+    isPair: true,
+    unit: canonicalUnit,
+    perp: { x: -canonicalUnit.y, y: canonicalUnit.x },
+    attackerCenter,
+    blockerCenter
   };
 }
 
-function curveGeometry(start, end, index, kind, activePlayer, closeStack = false, laneOverride = null, perpOverride = null) {
-  // 23.13.44 — flechas casi rectas, separadas por carriles, con una curvatura mínima.
+function routeEndpointBetween(sourceRect, targetRect, route, activePlayer, index = 0) {
+  const sourceCenter = centerOf(sourceRect);
+  const targetCenter = centerOf(targetRect);
+  const routeUnit = normalizedVector(sourceCenter, targetCenter);
+  const frame = combatPairFrame(sourceRect, targetRect, route);
+  const lane = combatCurveLane(activePlayer, route.kind);
+  const closeStack = Math.abs(targetCenter.x - sourceCenter.x) < 190
+    && Math.abs(targetCenter.y - sourceCenter.y) < 230;
+
+  // Daño a jugador/PW: no hay una ruta opuesta 1v1, así que usamos una desviación leve
+  // y conservamos la llegada limpia al borde del badge.
+  if (!frame.isPair) {
+    const sourcePadding = route.source?.type === 'player' ? 1 : 6;
+    const targetPadding = route.target?.type === 'player' ? 1 : 6;
+    const sourceEdge = projectPointToRectEdge(sourceRect, targetCenter, sourcePadding);
+    const targetEdge = projectPointToRectEdge(targetRect, sourceCenter, targetPadding);
+    const lateral = lane * (16 + (index % 3) * 4);
+    return {
+      start: { x: sourceEdge.x + frame.perp.x * lateral, y: sourceEdge.y + frame.perp.y * lateral },
+      end: { x: targetEdge.x + frame.perp.x * lateral, y: targetEdge.y + frame.perp.y * lateral },
+      lane,
+      closeStack: false,
+      canonicalPerp: frame.perp,
+      isPair: false
+    };
+  }
+
+  // Las puntas se meten ~30% dentro de cada carta, pero el desplazamiento lateral del
+  // ANCLA queda deliberadamente moderado para que el inicio/fin sigan dentro del rectángulo.
+  const sourceEdge = projectPointToRectEdge(sourceRect, targetCenter, 3);
+  const targetEdge = projectPointToRectEdge(targetRect, sourceCenter, 3);
+  const sourceDepth = Math.min(sourceRect.width, sourceRect.height) * 0.30;
+  const targetDepth = Math.min(targetRect.width, targetRect.height) * 0.30;
+  const minCard = Math.min(
+    sourceRect.width, sourceRect.height,
+    targetRect.width, targetRect.height
+  );
+  const anchorSeparation = Math.max(15, Math.min(24, minCard * 0.18));
+  const lateral = lane * anchorSeparation;
+
+  return {
+    start: {
+      x: sourceEdge.x - routeUnit.x * sourceDepth + frame.perp.x * lateral,
+      y: sourceEdge.y - routeUnit.y * sourceDepth + frame.perp.y * lateral
+    },
+    end: {
+      x: targetEdge.x + routeUnit.x * targetDepth + frame.perp.x * lateral,
+      y: targetEdge.y + routeUnit.y * targetDepth + frame.perp.y * lateral
+    },
+    lane,
+    closeStack,
+    canonicalPerp: frame.perp,
+    isPair: true
+  };
+}
+
+function curveGeometry(start, end, index, kind, activePlayer, closeStack = false, laneOverride = null, canonicalPerp = null, isPair = false) {
   const lane = laneOverride ?? combatCurveLane(activePlayer, kind);
   const dx = end.x - start.x;
   const dy = end.y - start.y;
   const dist = Math.max(1, Math.hypot(dx, dy));
-  const perp = perpOverride || { x: 0, y: -1 };
-  const curveOffset = lane * (closeStack ? 40 : 24);
+  const routeUnit = normalizedVector(start, end);
+  const perp = canonicalPerp || { x: -routeUnit.y, y: routeUnit.x };
+
+  // En un 1v1 los endpoints ya salen por lados distintos. La curva agrega la "panza"
+  // hacia AFUERA usando el mismo perpendicular canónico y signos opuestos por lane.
+  const outward = isPair
+    ? lane * (closeStack ? 42 : 30)
+    : lane * 10;
+
   const c1 = {
-    x: start.x + dx * 0.33 + perp.x * curveOffset,
-    y: start.y + dy * 0.33 + perp.y * curveOffset
+    x: start.x + dx * 0.33 + perp.x * outward,
+    y: start.y + dy * 0.33 + perp.y * outward
   };
   const c2 = {
-    x: start.x + dx * 0.67 + perp.x * curveOffset,
-    y: start.y + dy * 0.67 + perp.y * curveOffset
+    x: start.x + dx * 0.67 + perp.x * outward,
+    y: start.y + dy * 0.67 + perp.y * outward
   };
+
+  // La pill se aleja todavía un poco más hacia el MISMO lado que su propia flecha.
+  // Ya no existe el offset TOP/BOTTOM compartido que podía hacer parecer intercambiados
+  // los números rojo y celeste.
+  const labelOutward = isPair ? lane * 16 : lane * 10;
   return {
     lane,
     c1,
     c2,
-    labelOffsetX: perp.x * lane * 16,
-    labelOffsetY: perp.y * lane * 30 + (lane > 0 ? 12 : -12),
-    dist
+    labelOffsetX: perp.x * labelOutward,
+    labelOffsetY: perp.y * labelOutward,
+    dist,
+    canonicalPerp: perp
   };
+}
+
+export function computeCombatRouteGeometry({ sourceRect, targetRect, route, activePlayer = 'local', index = 0 } = {}) {
+  const endpoints = routeEndpointBetween(sourceRect, targetRect, route, activePlayer, index);
+  const curve = curveGeometry(
+    endpoints.start,
+    endpoints.end,
+    index,
+    route.kind,
+    activePlayer,
+    endpoints.closeStack,
+    endpoints.lane,
+    endpoints.canonicalPerp,
+    endpoints.isPair
+  );
+  return { ...endpoints, curve };
 }
 
 function findPlaneswalkerElement(item, side) {
@@ -428,10 +498,8 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
     if (!sourceEl || !targetEl) return null;
     const sr = sourceEl.getBoundingClientRect(), tr = targetEl.getBoundingClientRect();
     if (!sr.width || !sr.height || !tr.width || !tr.height) return null;
-    const endpoints = routeEndpointBetween(sr, tr, r, state.activePlayer, index);
-    const { start, end } = endpoints;
-    const curve = curveGeometry(start, end, index, r.kind, state.activePlayer, endpoints.closeStack, endpoints.lane, endpoints.perp);
-    return { ...r, index, start, end, curve };
+    const geometry = computeCombatRouteGeometry({ sourceRect: sr, targetRect: tr, route: r, activePlayer: state.activePlayer, index });
+    return { ...r, index, start: geometry.start, end: geometry.end, curve: geometry.curve };
   }).filter(Boolean);
 
   validRoutes.forEach(r => {
