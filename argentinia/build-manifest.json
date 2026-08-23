@@ -1,7 +1,7 @@
 {
-  "engineVersion": "23.13.45",
+  "engineVersion": "23.13.46",
   "engineProtocolVersion": "mp-23.10.0",
-  "buildLabel": "Entrega 23.13.45 Combat Map Arrow Size + Penetration Hotfix",
+  "buildLabel": "Entrega 23.13.46 Combat Map Lane Separation + Colored Damage Labels",
   "generatedFor": "GitHub Pages cache freshness check",
   "firestoreRulesVersion": "23.13.37"
 }

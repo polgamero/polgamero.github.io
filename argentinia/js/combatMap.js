@@ -268,8 +268,8 @@ function routeEndpointBetween(sourceRect, targetRect, route, activePlayer, index
   const targetEdge = projectPointToRectEdge(targetRect, a, 4);
   const sourceDepth = Math.min(sourceRect.width, sourceRect.height) * 0.34;
   const targetDepth = Math.min(targetRect.width, targetRect.height) * 0.34;
-  const laneBase = closeStack ? 24 : 18;
-  const lateral = lane * (laneBase + (index % 2) * 3);
+  const laneBase = closeStack ? 32 : 24;
+  const lateral = lane * (laneBase + (index % 2) * 5);
 
   return {
     start: {
@@ -307,8 +307,8 @@ function curveGeometry(start, end, index, kind, activePlayer, closeStack = false
     lane,
     c1,
     c2,
-    labelOffsetX: perp.x * 12,
-    labelOffsetY: perp.y * 12 - 10,
+    labelOffsetX: perp.x * 18,
+    labelOffsetY: perp.y * 16 - 10,
     dist
   };
 }
@@ -488,7 +488,7 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
     group.appendChild(text);
     svg.appendChild(group);
     const box = text.getBBox();
-    const bg = makeSvgEl('rect', { x: box.x - 5, y: box.y - 3, width: box.width + 10, height: box.height + 6, rx: 7, fill: 'rgba(4,8,6,.86)', stroke: color, 'stroke-width': 1 });
+    const bg = makeSvgEl('rect', { x: box.x - 5, y: box.y - 3, width: box.width + 10, height: box.height + 6, rx: 7, fill: color, 'fill-opacity': 0.90, stroke: 'rgba(255,255,255,0.35)', 'stroke-width': 0.8 });
     group.insertBefore(bg, text);
   });
 
