@@ -266,9 +266,9 @@ function routeEndpointBetween(sourceRect, targetRect, route, activePlayer, index
 
   const sourceEdge = projectPointToRectEdge(sourceRect, b, 4);
   const targetEdge = projectPointToRectEdge(targetRect, a, 4);
-  const sourceDepth = Math.min(sourceRect.width, sourceRect.height) * 0.30;
-  const targetDepth = Math.min(targetRect.width, targetRect.height) * 0.30;
-  const laneBase = closeStack ? 18 : 14;
+  const sourceDepth = Math.min(sourceRect.width, sourceRect.height) * 0.34;
+  const targetDepth = Math.min(targetRect.width, targetRect.height) * 0.34;
+  const laneBase = closeStack ? 24 : 18;
   const lateral = lane * (laneBase + (index % 2) * 3);
 
   return {
@@ -415,8 +415,8 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
   shadow.appendChild(makeSvgEl('feDropShadow', { dx: 0, dy: 2, stdDeviation: 2.0, 'flood-color': '#000000', 'flood-opacity': 0.30 }));
   defs.appendChild(shadow);
   const marker = (id, color) => {
-    const m = makeSvgEl('marker', { id, markerWidth: 9, markerHeight: 9, refX: 7.2, refY: 4.5, orient: 'auto', markerUnits: 'strokeWidth' });
-    m.appendChild(makeSvgEl('path', { d: 'M0,0 L9,4.5 L0,9 z', fill: color }));
+    const m = makeSvgEl('marker', { id, markerWidth: 5.5, markerHeight: 5.5, refX: 4.6, refY: 2.75, orient: 'auto', markerUnits: 'strokeWidth' });
+    m.appendChild(makeSvgEl('path', { d: 'M0,0 L5.5,2.75 L0,5.5 z', fill: color }));
     return m;
   };
   defs.appendChild(marker('combat-arrow-red', '#ef4444'));
@@ -441,8 +441,8 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
     const width = r.flexible ? 2.6 : damageWidth(r.amount);
     const glow = makeSvgEl('path', {
       d, fill: 'none', stroke: color,
-      'stroke-width': width + 3.0, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-      opacity: r.prevented ? 0.08 : (r.flexible ? 0.12 : 0.14)
+      'stroke-width': width + 2.0, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+      opacity: r.prevented ? 0.07 : (r.flexible ? 0.10 : 0.12)
     });
     if (r.flexible || r.prevented) glow.setAttribute('stroke-dasharray', r.flexible ? '8 7' : '3 6');
     svg.appendChild(glow);

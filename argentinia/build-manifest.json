@@ -1,7 +1,7 @@
 {
-  "engineVersion": "23.13.44",
+  "engineVersion": "23.13.45",
   "engineProtocolVersion": "mp-23.10.0",
-  "buildLabel": "Entrega 23.13.44 Combat Map Straight-Lane Reset",
+  "buildLabel": "Entrega 23.13.45 Combat Map Arrow Size + Penetration Hotfix",
   "generatedFor": "GitHub Pages cache freshness check",
   "firestoreRulesVersion": "23.13.37"
 }
