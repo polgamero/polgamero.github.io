@@ -29,6 +29,8 @@ import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normali
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { normalizePlayerStats, summarizePlayerTelemetry, PLAYER_GAME_BACKFILL_VERSION } from './statistics.js';
+import { chooseMultiplayerStartingRole } from './startingPlayer.js';
+import { buildCampaignSnapshot, validateEventPayload, validateAnnouncementPayload, effectivePackCost, effectiveMatchPoints, effectiveAllPoints, effectiveFichas } from './campaigns.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAAvUAaZ35_sF9uCsecLPg7zqhB7mLa7yo",
@@ -545,24 +547,29 @@ export async function deleteUserProfile(uid) {
 // tanto para premiar victorias/derrotas como para penalizar abandonos (delta negativo).
 // Devuelve el total de puntos ya actualizado.
 export async function awardPoints(uid, delta) {
+  const baseDelta = Math.floor(Number(delta) || 0);
+  const snapshot = baseDelta > 0 ? await getCampaignSnapshotForEconomy(uid) : buildCampaignSnapshot([], Date.now());
+  const effectiveDelta = baseDelta > 0 ? effectiveMatchPoints(baseDelta, snapshot) : baseDelta;
   const ref = doc(db, 'users', uid);
   const result = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     const current = snap.exists() ? (snap.data().points || 0) : 0;
-    const next = Math.max(0, current + delta);
+    const next = Math.max(0, current + effectiveDelta);
     tx.update(ref, { points: next });
     return { current, next, appliedDelta: next - current };
   });
   const applied = Number(result.appliedDelta) || 0;
   await statsBestEffort(uid, applied >= 0 ? { pointsEarned: applied } : { pointsLost: Math.abs(applied) });
   void economyLogBestEffort({ targetUid: uid, source: applied >= 0 ? 'game_reward' : 'abandon_penalty', pointsDelta: applied });
-  return result.next;
+  return { total: result.next, appliedDelta: applied, baseDelta, campaignSnapshot: snapshot };
 }
 
 // 23.13.0 — Comprar ya NO abre el sobre. La transacción descuenta puntos y deposita una
 // unidad en Mi Cofre; abrirlo es otra acción atómica. Esto unifica sobres comprados,
 // recompensas diarias y futuros regalos/admin bajo el mismo inventario persistente.
-export async function purchasePack(uid, cost) {
+export async function purchasePack(uid, baseCost) {
+  const snapshot = await getCampaignSnapshotForEconomy(uid);
+  const cost = effectivePackCost(baseCost, snapshot);
   const ref = doc(db, 'users', uid);
   const profile = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
@@ -576,9 +583,9 @@ export async function purchasePack(uid, cost) {
     tx.update(ref, updated);
     return { ...data, ...updated, dailyRewards: normalizeDailyRewardsState(data.dailyRewards) };
   });
-  await statsBestEffort(uid, { pointsSpent: Math.max(0, Math.floor(Number(cost) || 0)), packsReceived: 1 });
-  void economyLogBestEffort({ targetUid: uid, source: 'pack_purchase', pointsDelta: -Math.max(0, Math.floor(Number(cost) || 0)), packsDelta: 1 });
-  return profile;
+  await statsBestEffort(uid, { pointsSpent: cost, packsReceived: 1 });
+  void economyLogBestEffort({ targetUid: uid, source: 'pack_purchase', pointsDelta: -cost, packsDelta: 1 });
+  return { profile, effectiveCost: cost, baseCost: Math.max(0, Math.floor(Number(baseCost) || 0)), campaignSnapshot: snapshot };
 }
 
 function validatePackCardIds(cardIds) {
@@ -594,6 +601,8 @@ function validatePackCardIds(cardIds) {
 // exactamente igual que uno comprado.
 export async function openInventoryPack(uid, newCardIds) {
   validatePackCardIds(newCardIds);
+  const campaignSnapshot = await getCampaignSnapshotForEconomy(uid);
+  const fichasGain = effectiveFichas(1, campaignSnapshot, { packOpen: true });
   const ref = doc(db, 'users', uid);
   const profile = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
@@ -605,13 +614,13 @@ export async function openInventoryPack(uid, newCardIds) {
     const updated = {
       inventory,
       collection: [...(data.collection || []), ...newCardIds],
-      fichas: (data.fichas || 0) + 1
+      fichas: (data.fichas || 0) + fichasGain
     };
     tx.update(ref, updated);
     return { ...data, ...updated, dailyRewards: normalizeDailyRewardsState(data.dailyRewards) };
   });
-  await statsBestEffort(uid, { fichasEarned: 1, packsOpened: 1 });
-  void economyLogBestEffort({ targetUid: uid, source: 'pack_open', fichasDelta: 1, packsDelta: -1, cardsDelta: newCardIds.length });
+  await statsBestEffort(uid, { fichasEarned: fichasGain, packsOpened: 1 });
+  void economyLogBestEffort({ targetUid: uid, source: 'pack_open', fichasDelta: fichasGain, packsDelta: -1, cardsDelta: newCardIds.length });
   return profile;
 }
 
@@ -812,6 +821,16 @@ export async function claimDailyReward(uid, day, nowMs = null) {
   const now = clock.effectiveNow;
   const reward = rewardForDay(day);
   if (!reward) throw new Error('Ese premio diario no existe.');
+  const campaignSnapshot = buildCampaignSnapshot(await fetchCampaignEvents(100), clock.serverNow);
+  const effectiveReward = {
+    ...reward,
+    rewards: (reward.rewards || []).map(item => {
+      const amount = Math.max(0, Math.floor(Number(item?.amount) || 0));
+      if (item?.type === 'points') return { ...item, amount: effectiveAllPoints(amount, campaignSnapshot) };
+      if (item?.type === 'fichas') return { ...item, amount: effectiveFichas(amount, campaignSnapshot) };
+      return { ...item, amount };
+    })
+  };
   const ref = doc(db, 'users', uid);
   const profile = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
@@ -821,7 +840,7 @@ export async function claimDailyReward(uid, day, nowMs = null) {
     const dailyRewards = normalizeDailyRewardsState(data.dailyRewards, now);
     if (dailyRewards.lastLoginDate !== localDateKey(now)) throw new Error('Volvé a entrar hoy para activar tu recompensa diaria.');
     if (!isRewardClaimable(dailyRewards, day, now)) throw new Error('Ese premio no está disponible o ya fue reclamado.');
-    const rewarded = applyRewardToProfileData({ ...data, inventory: normalizeInventory(data.inventory) }, reward);
+    const rewarded = applyRewardToProfileData({ ...data, inventory: normalizeInventory(data.inventory) }, effectiveReward);
     const claimedDays = [...dailyRewards.claimedDays, Number(day)];
     const nextDaily = { ...dailyRewards, claimedDays, lastClaimedDay: Number(day) };
     const persistedDaily = serializeDailyRewardsForFirestore(nextDaily, now, serverTimestamp());
@@ -836,7 +855,7 @@ export async function claimDailyReward(uid, day, nowMs = null) {
     tx.update(ref, updated);
     return { ...data, ...updated, dailyRewards: nextDaily };
   });
-  const rewardTotals = (reward.rewards || []).reduce((acc, item) => {
+  const rewardTotals = (effectiveReward.rewards || []).reduce((acc, item) => {
     const amount = Math.max(0, Math.floor(Number(item?.amount) || 0));
     if (item?.type === 'points') acc.points += amount;
     else if (item?.type === 'fichas') acc.fichas += amount;
@@ -1340,9 +1359,13 @@ export async function createMatch(uid, profileFields) {
     const existing = await getDoc(ref);
     if (existing.exists()) continue; // choque rarísimo — probamos con otro código
 
+    const startingRole = chooseMultiplayerStartingRole();
     const data = {
       status: 'waiting', // 'waiting' | 'active' | 'cancelled'
       hostUid: uid,
+      // 23.13.52 — sorteo autoritativo del lobby. Se decide UNA sola vez al crear y el
+      // guest sólo lo lee; ambos clientes derivan local/rival desde este mismo valor.
+      startingRole,
       guestUid: null,
       hostReady: false,
       guestReady: false,
@@ -1622,6 +1645,132 @@ export async function logAdminAction(action) {
 }
 
 // ============================================================================
+// ENTREGA 23.13.53 — Campañas: Anuncios + Eventos temporales.
+// ============================================================================
+
+function campaignDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value.toDate === 'function') return value.toDate();
+  if (typeof value.seconds === 'number') return new Date(value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1e6));
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+function normalizeAnnouncementDoc(id, data = {}) {
+  const legacyText = String(data.text || '').trim();
+  const paragraphs = Array.isArray(data.paragraphs) ? data.paragraphs.map(x => String(x || '')).filter(Boolean) : (legacyText ? [legacyText] : []);
+  return {
+    id,
+    title: String(data.title || (legacyText ? 'Noticias de Argentinia' : '')).trim(),
+    subtitle: String(data.subtitle || '').trim(),
+    paragraphs,
+    text: paragraphs.join('\n\n'),
+    imageFilename: String(data.imageFilename || '').trim(),
+    showPopup: data.showPopup !== false && !legacyText,
+    showInNews: data.showInNews !== false,
+    dismissible: data.dismissible !== false,
+    adminUid: data.adminUid || null,
+    startAt: campaignDate(data.startAt) || campaignDate(data.createdAt),
+    endAt: campaignDate(data.endAt),
+    finalizedAt: campaignDate(data.finalizedAt),
+    createdAt: campaignDate(data.createdAt),
+    updatedAt: campaignDate(data.updatedAt)
+  };
+}
+
+function normalizeCampaignEventDoc(id, data = {}) {
+  return {
+    id,
+    name: String(data.name || '').trim(),
+    type: String(data.type || '').trim(),
+    value: Number(data.value) || 0,
+    adminUid: data.adminUid || null,
+    startAt: campaignDate(data.startAt),
+    endAt: campaignDate(data.endAt),
+    finalizedAt: campaignDate(data.finalizedAt),
+    createdAt: campaignDate(data.createdAt),
+    updatedAt: campaignDate(data.updatedAt)
+  };
+}
+
+export async function fetchCampaignEvents(maxCount = 100) {
+  const q = query(collection(db, 'campaignEvents'), orderBy('startAt', 'desc'), limit(maxCount));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => normalizeCampaignEventDoc(d.id, d.data()));
+}
+
+export async function fetchCampaignSnapshot(now = null) {
+  let effectiveNow = now;
+  if (effectiveNow == null && auth.currentUser?.uid) {
+    try { effectiveNow = (await getAuthoritativeClassifiedsNow(auth.currentUser.uid)).serverNow; } catch {}
+  }
+  if (effectiveNow == null) effectiveNow = Date.now();
+  const events = await fetchCampaignEvents(100);
+  return buildCampaignSnapshot(events, effectiveNow);
+}
+
+async function getCampaignSnapshotForEconomy(uid) {
+  let now = new Date();
+  try {
+    if (uid) now = (await getAuthoritativeClassifiedsNow(uid)).serverNow;
+  } catch (error) {
+    console.warn('[Campaigns] No se pudo obtener reloj autoritativo; se usa reloj local como fallback.', error);
+  }
+  return buildCampaignSnapshot(await fetchCampaignEvents(100), now);
+}
+
+export async function createCampaignEvent(adminUid, payload) {
+  const normalized = validateEventPayload(payload);
+  const ref = doc(collection(db, 'campaignEvents'));
+  await setDoc(ref, { ...normalized, adminUid, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), finalizedAt: null });
+  return ref.id;
+}
+
+export async function updateCampaignEvent(eventId, payload) {
+  const normalized = validateEventPayload(payload);
+  await setDoc(doc(db, 'campaignEvents', eventId), { ...normalized, updatedAt: serverTimestamp(), finalizedAt: null }, { merge: true });
+}
+
+export async function finalizeCampaignEvent(eventId) {
+  await setDoc(doc(db, 'campaignEvents', eventId), { finalizedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+}
+
+export async function deleteCampaignEvent(eventId) {
+  await deleteDoc(doc(db, 'campaignEvents', eventId));
+}
+
+export async function saveAnnouncement(adminUid, payload, announcementId = null) {
+  const normalized = validateAnnouncementPayload(payload);
+  const ref = announcementId ? doc(db, 'announcements', announcementId) : doc(collection(db, 'announcements'));
+  const base = { ...normalized, adminUid, updatedAt: serverTimestamp(), finalizedAt: null };
+  if (!announcementId) base.createdAt = serverTimestamp();
+  await setDoc(ref, base, { merge: !!announcementId });
+  return ref.id;
+}
+
+export async function updateAnnouncement(announcementId, adminUid, payload) {
+  return saveAnnouncement(adminUid, payload, announcementId);
+}
+
+export async function finalizeAnnouncement(announcementId) {
+  await setDoc(doc(db, 'announcements', announcementId), { finalizedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+}
+
+export async function isAnnouncementDismissed(uid, announcementId) {
+  if (!uid || !announcementId) return false;
+  const snap = await getDoc(doc(db, 'announcementDismissals', `${uid}_${announcementId}`));
+  return snap.exists();
+}
+
+export async function dismissAnnouncement(uid, announcementId) {
+  if (!uid || !announcementId) return;
+  await setDoc(doc(db, 'announcementDismissals', `${uid}_${announcementId}`), {
+    uid, announcementId, dismissedAt: serverTimestamp()
+  });
+}
+
+// ============================================================================
 // "Noticias" del menú principal — cualquiera puede leerlas (ver firestore.rules), solo el
 // admin puede publicar o borrar.
 // ============================================================================
@@ -1629,25 +1778,24 @@ export async function logAdminAction(action) {
 // Trae las últimas maxCount noticias, más recientes primero. Normaliza createdAt a un Date
 // real de JS (en vez de un Timestamp de Firestore) — así el resto del código nunca necesita
 // saber nada de Timestamps, solo trabaja con fechas de siempre.
-export async function fetchAnnouncements(maxCount = 15) {
+export async function fetchAnnouncements(maxCount = 50) {
   const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'), limit(maxCount));
   const snap = await getDocs(q);
-  return snap.docs.map(d => {
-    const data = d.data();
-    return {
-      id: d.id,
-      text: data.text,
-      adminUid: data.adminUid,
-      createdAt: data.createdAt && typeof data.createdAt.toDate === 'function' ? data.createdAt.toDate() : null
-    };
-  });
+  return snap.docs.map(d => normalizeAnnouncementDoc(d.id, d.data()));
 }
 
+// Compatibilidad con el formulario histórico: publica un anuncio simple en Noticias.
 export async function postAnnouncement(adminUid, text) {
-  await setDoc(doc(collection(db, 'announcements')), {
-    text: text.trim(),
-    adminUid,
-    createdAt: serverTimestamp()
+  return saveAnnouncement(adminUid, {
+    title: 'Noticias de Argentinia',
+    subtitle: '',
+    paragraphs: [String(text || '').trim()],
+    imageFilename: '',
+    startAt: new Date(),
+    endAt: null,
+    showPopup: false,
+    showInNews: true,
+    dismissible: true
   });
 }
 

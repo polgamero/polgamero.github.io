@@ -29,6 +29,7 @@ import {
   checkAuraLegality,
   checkEquipmentLegality,
   publishMatchState,
+  ensureMenuIdentityReady,
   passPriority // Importado del nuevo sistema
 } from './main.js';
 
@@ -36,7 +37,7 @@ import { executeLocalAttack, executeRivalAttack, hasPendingCombatDamageContinuat
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, postAnnouncement, deleteAnnouncement, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -60,6 +61,8 @@ import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
 import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate } from './statistics.js';
 import { POOL_BASELINE } from './poolContract.js';
+import { effectivePackCost, campaignStatus } from './campaigns.js';
+import { mountAdminCampaignsPane, maybeShowAnnouncementPopup, renderActiveEventsStrip } from './campaignsUI.js';
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 
@@ -3029,7 +3032,7 @@ export function showStoreScreen(onBack, options = {}) {
     </div>
   `;
 
-  function renderMainView() {
+  async function renderMainView() {
     leaveClassifiedsView();
     if (!state.currentUser) {
       body.innerHTML = pointsInfoHTML + `<div class="store-section"><div class="store-section-desc">${gameTextHtml('store.loginRequired')}</div></div>`;
@@ -3042,10 +3045,15 @@ export function showStoreScreen(onBack, options = {}) {
 
     const points = state.userProfile.points || 0;
     const fichas = state.userProfile.fichas || 0;
-    const canBuyPack = points >= PACK_COST;
+    let campaignSnapshot = null;
+    try { campaignSnapshot = await fetchCampaignSnapshot(); } catch {}
+    const effectiveCost = effectivePackCost(PACK_COST, campaignSnapshot);
+    const packDiscountActive = effectiveCost < PACK_COST;
+    const canBuyPack = points >= effectiveCost;
     const canCraft = fichas >= FICHAS_PER_ENHANCEMENT;
 
     body.innerHTML = pointsInfoHTML + `
+      <div id="store-active-events"></div>
       <div class="store-balance-row">
         <div class="store-balance-chip"><div class="store-balance-value">${COIN_ICON_HTML} ${points}</div><div class="store-balance-label">${gameTextHtml('store.balance.points')}</div></div>
         <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${fichas}</div><div class="store-balance-label">${gameTextHtml('store.balance.fichas')}</div></div>
@@ -3057,7 +3065,7 @@ export function showStoreScreen(onBack, options = {}) {
       </div>
       <div class="store-section">
         <img class="store-pack-visual" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">
-        <div class="store-section-title">${gameTextHtml('store.pack.title', { cost: PACK_COST })}</div>
+        <div class="store-section-title">${gameTextHtml('store.pack.title', { cost: effectiveCost })}${packDiscountActive ? ` <span style="font-size:11px;color:#f5d777">(${PACK_COST} → ${effectiveCost})</span>` : ''}</div>
         <div class="store-section-desc">${gameTextHtml('store.pack.description')}</div>
         <button class="store-buy-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>${gameTextHtml('store.pack.buy')}</button>
         <div class="store-error-msg" id="store-buy-error"></div>
@@ -3070,6 +3078,8 @@ export function showStoreScreen(onBack, options = {}) {
       </div>
     `;
 
+    void renderActiveEventsStrip(body.querySelector('#store-active-events'));
+
     body.querySelector('#store-classifieds').addEventListener('click', () => {
       void renderClassifiedsView();
     });
@@ -3080,8 +3090,8 @@ export function showStoreScreen(onBack, options = {}) {
       btn.disabled = true;
       errBox.textContent = '';
       try {
-        const updated = await purchasePack(state.currentUser.uid, PACK_COST);
-        state.userProfile = updated;
+        const purchase = await purchasePack(state.currentUser.uid, PACK_COST);
+        state.userProfile = purchase.profile;
         updateAccountUI(state.currentUser);
         body.innerHTML = `
           <div class="store-section">
@@ -4710,19 +4720,34 @@ function renderAccountBox(container, user) {
 // armar el menú Y cada vez que cambia el login (por si alguien se loguea con el menú ya
 // abierto, sin tener que cerrar y volver a entrar para que se note).
 function updateMainMenuLoginGatedButtons(overlay) {
-  const loggedIn = !!state.currentUser;
-  ['menu-multiplayer', 'menu-encyclopedia', 'menu-mydecks', 'menu-store'].forEach(id => {
+  const identityReady = state.authInitialResolved === true && state.authIdentityReady === true;
+  const loggedInReady = identityReady && !!state.currentUser && !!state.userProfile;
+  const guestReady = identityReady && !state.currentUser;
+
+  const setGate = (id, enabled, tooltip) => {
     const btn = overlay.querySelector(`#${id}`);
     if (!btn) return;
-    if (loggedIn) {
+    if (enabled) {
       btn.classList.remove('main-menu-btn-disabled');
       btn.removeAttribute('data-tooltip');
     } else {
       btn.classList.add('main-menu-btn-disabled');
-      btn.setAttribute('data-tooltip', gameText('menu.loginRequiredTooltip'));
+      btn.setAttribute('data-tooltip', tooltip);
     }
+  };
+
+  const authTooltip = identityReady
+    ? gameText('menu.loginRequiredTooltip')
+    : gameText('menu.authCheckingTooltip');
+
+  // Jugar puede ser guest, pero JAMÁS mientras todavía no sabemos si existe una sesión
+  // persistida. Las superficies privadas además exigen perfil Firestore listo.
+  setGate('menu-play', guestReady || loggedInReady, authTooltip);
+  ['menu-multiplayer', 'menu-encyclopedia', 'menu-mydecks', 'menu-store'].forEach(id => {
+    setGate(id, loggedInReady, authTooltip);
   });
 }
+
 
 
 // 23.13.29 — el primer menú puede haberse dibujado antes de que llegue gameConfig/texts.
@@ -4987,21 +5012,12 @@ export function showAdminPanel(onBack) {
     </div>
   `;
 
-  const announcementsHTML = `
-    <div class="admin-section">
-      <div class="admin-section-title">Anuncios (Noticias del menú principal)</div>
-      <textarea class="admin-field-input" id="announcement-text" placeholder="Escribí el anuncio…" rows="3" style="width:100%; box-sizing:border-box; text-align:left; resize:vertical;"></textarea>
-      <button class="admin-save-btn" id="announcement-post" style="margin-top:10px;">📢 Publicar anuncio</button>
-      <div class="store-error-msg" id="announcement-error" style="text-align:center;"></div>
-      <div class="admin-success-msg" id="announcement-success"></div>
-      <div id="announcement-list" style="margin-top:16px;"></div>
-    </div>
-  `;
 
   const adminTabs = [
     { key: 'game', label: 'AJUSTES DEL JUEGO' },
     { key: 'texts', label: 'TEXTOS DEL JUEGO' },
     { key: 'messages', label: 'MENSAJES Y USUARIOS' },
+    { key: 'campaigns', label: gameText('admin.tab.campaigns') },
     { key: 'stats', label: gameText('admin.tab.statistics') },
     { key: 'debug', label: 'DEBUGGING' }
   ];
@@ -5034,8 +5050,11 @@ export function showAdminPanel(onBack) {
       <div class="admin-tab-pane hidden" data-admin-pane="messages">
         <div class="admin-pane-narrow">
           ${grantHTML}
-          ${announcementsHTML}
         </div>
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="campaigns">
+        <div id="admin-campaigns-root"></div>
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="stats">
@@ -5548,72 +5567,7 @@ export function showAdminPanel(onBack) {
     }
   });
 
-  function renderAnnouncementList(announcements) {
-    const listEl = overlay.querySelector('#announcement-list');
-    if (announcements.length === 0) {
-      listEl.innerHTML = '<div class="admin-field-label">No hay anuncios publicados todavía.</div>';
-      return;
-    }
-    listEl.innerHTML = announcements.map(a => `
-      <div class="admin-field-row" data-announcement-id="${a.id}">
-        <span class="admin-field-label" style="flex:1; text-align:left;">
-          <strong>${formatAnnouncementDate(a.createdAt)}</strong> — ${escapeHtml(a.text)}
-        </span>
-        <button class="admin-announcement-delete" data-id="${a.id}" title="Borrar">🗑️</button>
-      </div>
-    `).join('');
-    listEl.querySelectorAll('.admin-announcement-delete').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        if (!window.confirm('¿Borrar este anuncio? No se puede deshacer.')) return;
-        btn.disabled = true;
-        try {
-          await deleteAnnouncement(btn.dataset.id);
-          await reloadAnnouncements();
-        } catch (err) {
-          console.error('No se pudo borrar el anuncio:', err);
-          btn.disabled = false;
-        }
-      });
-    });
-  }
-
-  function reloadAnnouncements() {
-    return fetchAnnouncements()
-      .then(renderAnnouncementList)
-      .catch(err => {
-        console.error('No se pudieron cargar los anuncios:', err);
-        overlay.querySelector('#announcement-list').innerHTML = '<div class="admin-field-label">No se pudieron cargar los anuncios.</div>';
-      });
-  }
-  reloadAnnouncements();
-
-  overlay.querySelector('#announcement-post').addEventListener('click', async () => {
-    const errorBox = overlay.querySelector('#announcement-error');
-    const successBox = overlay.querySelector('#announcement-success');
-    errorBox.textContent = '';
-    successBox.textContent = '';
-
-    const textarea = overlay.querySelector('#announcement-text');
-    const text = textarea.value.trim();
-    if (!text) {
-      errorBox.textContent = 'Escribí algo antes de publicar.';
-      return;
-    }
-
-    const postBtn = overlay.querySelector('#announcement-post');
-    postBtn.disabled = true;
-    try {
-      await postAnnouncement(state.currentUser.uid, text);
-      textarea.value = '';
-      successBox.textContent = '✅ Anuncio publicado — ya aparece en el menú principal.';
-      await reloadAnnouncements();
-    } catch (err) {
-      console.error('No se pudo publicar el anuncio:', err);
-      errorBox.textContent = err.message || 'No se pudo publicar. Probá de nuevo.';
-    } finally {
-      postBtn.disabled = false;
-    }
-  });
+  mountAdminCampaignsPane(overlay.querySelector('#admin-campaigns-root'), { currentUser: state.currentUser });
 
   overlay.querySelector('#admin-back').addEventListener('click', () => {
     overlay.remove();
@@ -6013,7 +5967,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
     `;
     body.querySelector('#mp-start').addEventListener('click', () => {
       overlay.remove();
-      onMatched(match.code, myRole, rivalName, rivalPhotoURL);
+      onMatched(match.code, myRole, rivalName, rivalPhotoURL, match.startingRole || 'host');
     });
   }
 
@@ -6042,6 +5996,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
       <button class="main-menu-btn" id="menu-store">${gameTextHtml('menu.store')}</button>
       <button class="main-menu-btn" id="menu-options">${gameTextHtml('menu.options')}</button>
     </div>
+    <div id="main-menu-active-events"></div>
     <div class="main-menu-news" id="main-menu-news">
       <div class="main-menu-news-title">${gameTextHtml('menu.news.title')}</div>
       <div class="main-menu-news-list" id="main-menu-news-list">
@@ -6052,20 +6007,24 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
   document.body.appendChild(overlay);
   renderAccountBox(overlay.querySelector('#main-menu-account'), state.currentUser);
   updateMainMenuLoginGatedButtons(overlay);
+  void renderActiveEventsStrip(overlay.querySelector('#main-menu-active-events'));
+  void maybeShowAnnouncementPopup({ currentUser: state.currentUser });
 
   // "Noticias": públicas para cualquiera, con o sin sesión (ver firestore.rules) — no
   // bloquea el resto del menú, que ya se ve de entrada mientras esto carga.
   const newsListEl = overlay.querySelector('#main-menu-news-list');
-  fetchAnnouncements()
-    .then(announcements => {
-      if (announcements.length === 0) {
+  Promise.all([fetchAnnouncements(), fetchCampaignSnapshot()])
+    .then(([announcements, campaignSnapshot]) => {
+      const now = campaignSnapshot?.now || new Date();
+      const visible = announcements.filter(a => a.showInNews !== false && campaignStatus(a, now) === 'active');
+      if (visible.length === 0) {
         newsListEl.innerHTML = `<div class="main-menu-news-empty">${gameTextHtml('menu.news.empty')}</div>`;
         return;
       }
-      newsListEl.innerHTML = announcements.map(a => `
+      newsListEl.innerHTML = visible.map(a => `
         <div class="main-menu-news-item">
-          <div class="main-menu-news-date">${formatAnnouncementDate(a.createdAt)}</div>
-          <div class="main-menu-news-text">${escapeHtml(a.text)}</div>
+          <div class="main-menu-news-date">${formatAnnouncementDate(a.startAt || a.createdAt)}</div>
+          <div class="main-menu-news-text"><strong>${escapeHtml(a.title || '')}</strong>${a.subtitle ? `<br>${escapeHtml(a.subtitle)}` : ''}${a.text ? `<br>${escapeHtml(a.text)}` : ''}</div>
         </div>
       `).join('');
     })
@@ -6074,19 +6033,39 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
       newsListEl.innerHTML = `<div class="main-menu-news-empty">${gameTextHtml('menu.news.error')}</div>`;
     });
 
-  overlay.querySelector('#menu-play').addEventListener('click', () => {
+  let menuIdentityActionPending = false;
+  async function awaitMenuIdentityOrStay() {
+    if (menuIdentityActionPending) return false;
+    menuIdentityActionPending = true;
+    try {
+      await ensureMenuIdentityReady();
+      updateMainMenuLoginGatedButtons(overlay);
+      return true;
+    } catch (err) {
+      menuIdentityActionPending = false;
+      console.error('No se pudo resolver la identidad antes de abrir el menú solicitado:', err);
+      window.alert(gameText('menu.profileUnavailable'));
+      updateMainMenuLoginGatedButtons(overlay);
+      return false;
+    }
+  }
+  const releaseMenuIdentityAction = () => { menuIdentityActionPending = false; };
+
+  overlay.querySelector('#menu-play').addEventListener('click', async () => {
+    if (!await awaitMenuIdentityOrStay()) return;
     overlay.remove();
-    onPlay();
+    await onPlay();
   });
 
   // FASE 4 (cierre del roadmap): Multijugador ya conecta con una partida jugable de
   // verdad — onMultiplayerMatched (pasado desde main.js) es quien arma el mazo/mano y
   // arranca la sincronización real, una vez emparejados. Mismo gateo por sesión que
   // Enciclopedia/Mis Mazos/Tienda: sin cuenta no hay con quién identificarte frente a un rival.
-  overlay.querySelector('#menu-multiplayer').addEventListener('click', () => {
-    if (!state.currentUser) return;
+  overlay.querySelector('#menu-multiplayer').addEventListener('click', async () => {
+    if (!await awaitMenuIdentityOrStay()) return;
+    if (!state.currentUser || !state.userProfile) { releaseMenuIdentityAction(); return; }
     overlay.style.display = 'none';
-    showMultiplayerLobby(() => { overlay.style.display = ''; }, onMultiplayerMatched);
+    showMultiplayerLobby(() => { overlay.style.display = ''; releaseMenuIdentityAction(); }, onMultiplayerMatched);
   });
 
   // BUGFIX (revisión post-Etapa 4): Enciclopedia/Mis Mazos/Tienda ahora quedan
@@ -6098,22 +6077,25 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
     showGlobalRanking(() => { overlay.style.display = ''; });
   });
 
-  overlay.querySelector('#menu-encyclopedia').addEventListener('click', () => {
-    if (!state.currentUser) return;
+  overlay.querySelector('#menu-encyclopedia').addEventListener('click', async () => {
+    if (!await awaitMenuIdentityOrStay()) return;
+    if (!state.currentUser || !state.userProfile) { releaseMenuIdentityAction(); return; }
     overlay.style.display = 'none';
-    showEncyclopedia(() => { overlay.style.display = ''; });
+    showEncyclopedia(() => { overlay.style.display = ''; releaseMenuIdentityAction(); });
   });
 
-  overlay.querySelector('#menu-mydecks').addEventListener('click', () => {
-    if (!state.currentUser) return;
+  overlay.querySelector('#menu-mydecks').addEventListener('click', async () => {
+    if (!await awaitMenuIdentityOrStay()) return;
+    if (!state.currentUser || !state.userProfile) { releaseMenuIdentityAction(); return; }
     overlay.style.display = 'none';
-    showMyDecksScreen(() => { overlay.style.display = ''; });
+    showMyDecksScreen(() => { overlay.style.display = ''; releaseMenuIdentityAction(); });
   });
 
-  overlay.querySelector('#menu-store').addEventListener('click', () => {
-    if (!state.currentUser) return;
+  overlay.querySelector('#menu-store').addEventListener('click', async () => {
+    if (!await awaitMenuIdentityOrStay()) return;
+    if (!state.currentUser || !state.userProfile) { releaseMenuIdentityAction(); return; }
     overlay.style.display = 'none';
-    showStoreScreen(() => { overlay.style.display = ''; });
+    showStoreScreen(() => { overlay.style.display = ''; releaseMenuIdentityAction(); });
   });
 
   overlay.querySelector('#menu-options').addEventListener('click', () => {

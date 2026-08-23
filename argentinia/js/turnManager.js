@@ -78,11 +78,13 @@ function awardMatchEndPoints(won) {
 
     const delta = won ? POINTS.winVsHumano : POINTS.lossVsHumano;
     awardPoints(state.currentUser.uid, delta)
-      .then(newTotal => {
+      .then(result => {
+        const newTotal = result?.total ?? state.userProfile?.points ?? 0;
+        const awarded = result?.appliedDelta ?? delta;
         if (state.userProfile) state.userProfile.points = newTotal;
         const msg = won
-          ? gameText('game.points.pvpWin', { points: delta, total: newTotal })
-          : gameText('game.points.pvpLoss', { points: delta, total: newTotal });
+          ? gameText('game.points.pvpWin', { points: awarded, total: newTotal })
+          : gameText('game.points.pvpLoss', { points: awarded, total: newTotal });
         logMsg(msg);
         updateAccountUI(state.currentUser);
       })
@@ -96,14 +98,16 @@ function awardMatchEndPoints(won) {
   const delta = pointsForBotGameEnd(won, state.botDifficulty);
   const difficultyLabel = state.botDifficulty === 'hard' ? 'Difícil' : 'Fácil';
   awardPoints(state.currentUser.uid, delta)
-    .then(newTotal => {
+    .then(result => {
+      const newTotal = result?.total ?? state.userProfile?.points ?? 0;
+      const awarded = result?.appliedDelta ?? delta;
       if (state.userProfile) state.userProfile.points = newTotal;
       // BUGFIX (revisión post-Fase 3): mensaje más claro sobre qué pasó y por qué, en vez
       // de un genérico "+N puntos" — distingue victoria/derrota y menciona la dificultad,
       // que es justo lo que determina cuánto se ganó.
       const msg = won
-        ? gameText('game.points.botWin', { difficulty: difficultyLabel, points: delta, total: newTotal })
-        : gameText('game.points.botLoss', { points: delta, total: newTotal });
+        ? gameText('game.points.botWin', { difficulty: difficultyLabel, points: awarded, total: newTotal })
+        : gameText('game.points.botLoss', { points: awarded, total: newTotal });
       logMsg(msg);
       updateAccountUI(state.currentUser);
     })

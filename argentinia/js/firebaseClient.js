@@ -10,6 +10,10 @@ let clientModule = null;
 let authBridgeStarted = false;
 let authInnerStop = null;
 const authSubscribers = new Set();
+let initialAuthResolved = false;
+let initialAuthUser = null;
+let resolveInitialAuth = null;
+const initialAuthPromise = new Promise(resolve => { resolveInitialAuth = resolve; });
 
 function diag(stage, detail = null) {
   try { globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.(stage, detail); } catch {}
@@ -45,6 +49,13 @@ function startAuthBridgeIfPossible(mod) {
       for (const cb of [...authSubscribers]) {
         try { cb(user); } catch (error) { console.error('Auth subscriber failed:', error); }
       }
+      // 23.13.52 — resolver DESPUÉS de notificar subscribers: main.js ya habrá
+      // asignado state.currentUser y userProfileLoadPromise cuando el await continúe.
+      if (!initialAuthResolved) {
+        initialAuthResolved = true;
+        initialAuthUser = user || null;
+        resolveInitialAuth?.(initialAuthUser);
+      }
     });
     diag('firebase_auth_bridge_ready');
   } catch (error) {
@@ -55,6 +66,14 @@ function startAuthBridgeIfPossible(mod) {
 }
 
 export function isFirebaseClientReady() { return clientReady; }
+export function isInitialAuthStateResolved() { return initialAuthResolved; }
+
+// 23.13.52 — puerta explícita contra F5 + click rápido. Importa Firebase si todavía no
+// estaba cargado y espera el PRIMER estado real de Auth (usuario persistido o null).
+export function waitForInitialAuthState() {
+  if (initialAuthResolved) return Promise.resolve(initialAuthUser);
+  return preloadFirebaseClient().then(() => initialAuthPromise);
+}
 
 export function onAuthChange(onChange) {
   if (typeof onChange !== 'function') return () => {};
@@ -182,6 +201,17 @@ export const logAdminAction = asyncProxy('logAdminAction');
 export const fetchAnnouncements = asyncProxy('fetchAnnouncements');
 export const postAnnouncement = asyncProxy('postAnnouncement');
 export const deleteAnnouncement = asyncProxy('deleteAnnouncement');
+export const saveAnnouncement = asyncProxy('saveAnnouncement');
+export const updateAnnouncement = asyncProxy('updateAnnouncement');
+export const finalizeAnnouncement = asyncProxy('finalizeAnnouncement');
+export const isAnnouncementDismissed = asyncProxy('isAnnouncementDismissed');
+export const dismissAnnouncement = asyncProxy('dismissAnnouncement');
+export const fetchCampaignEvents = asyncProxy('fetchCampaignEvents');
+export const fetchCampaignSnapshot = asyncProxy('fetchCampaignSnapshot');
+export const createCampaignEvent = asyncProxy('createCampaignEvent');
+export const updateCampaignEvent = asyncProxy('updateCampaignEvent');
+export const finalizeCampaignEvent = asyncProxy('finalizeCampaignEvent');
+export const deleteCampaignEvent = asyncProxy('deleteCampaignEvent');
 export const fetchTelemetrySessionsForAdmin = asyncProxy('fetchTelemetrySessionsForAdmin');
 export const fetchTelemetrySessionArchive = asyncProxy('fetchTelemetrySessionArchive');
 export const uploadTelemetrySession = asyncProxy('uploadTelemetrySession');

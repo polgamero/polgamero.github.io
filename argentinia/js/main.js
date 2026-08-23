@@ -1,12 +1,12 @@
 import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
-import { checkRivalCounterOrResponse } from './bot.js';
+import { checkRivalCounterOrResponse, takeBotPriorityAction } from './bot.js';
 import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal } from './ui.js';
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks, getTelemetryStatus } from './telemetry.js';
@@ -18,6 +18,8 @@ import { isUsernameConfigured } from './usernames.js';
 import { showUsernameSetupModal } from './usernameUI.js';
 import { applyGameTextOverrides, gameText } from './gameTexts.js';
 import { POOL_BASELINE } from './poolContract.js';
+import { chooseSoloStartingSide, normalizeStartingRole, startingSideForRole } from './startingPlayer.js';
+import { showStartingCoinToss } from './startingCoin.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -29,6 +31,13 @@ const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde'
 // todavía podría estar en null aunque YA tenga una cuenta real, y le pisaríamos la
 // colección/puntos existentes con una colección "inicial" nueva por error de timing.
 let userProfileLoadPromise = Promise.resolve();
+
+export async function ensureMenuIdentityReady() {
+  await waitForInitialAuthState();
+  if (state.currentUser) await userProfileLoadPromise;
+  if (state.currentUser && (!state.userProfile || state.userProfile.starterDeckPending === true)) throw new Error('AUTH_PROFILE_NOT_READY');
+  return { authenticated: !!state.currentUser, user: state.currentUser, profile: state.userProfile };
+}
 
 // 23.13.0 — una sola puerta para registrar el login diario después de tener un perfil real.
 // Firestore hace la operación idempotente, así que un callback duplicado/reload el mismo día
@@ -119,6 +128,10 @@ export const state = {
   // Google internamente, pero TODO nombre visible usa username Argentinia (23.13.24).
   // (main.js), nunca hay que tocarlo a mano desde otro lado.
   currentUser: null,
+  // 23.13.52 — identity bootstrap gate: no se decide guest vs. usuario real mientras
+  // Firebase Auth/perfil todavía están restaurando la sesión después de F5.
+  authInitialResolved: false,
+  authIdentityReady: false,
   // Fase 1: el documento de Firestore del jugador logueado (puntos, colección de cartas,
   // mazos) — null si no hay sesión, O si hay sesión pero todavía no se determinó si ya
   // existe (mientras se está cargando) o si es su primera vez (ver userProfileLoadPromise
@@ -545,6 +558,16 @@ async function initGame(deckSource) {
   state.rivalDeck = buildRandomDeck();
   await mobileSoloYield('rival_deck_ready', { count: state.rivalDeck.length });
 
+  // 23.13.52 — ya no existe el supuesto histórico "el humano siempre empieza".
+  // El resultado se fija una sola vez antes del mulligan para que esa información pueda
+  // influir en la decisión de quedarse o cambiar la mano, igual que en un TCG real.
+  const soloStartingSide = chooseSoloStartingSide();
+  state.activePlayer = soloStartingSide;
+  state.priorityPlayer = soloStartingSide;
+  state.consecutivePasses = 0;
+  state.phase = 'main1';
+  state.turnCount = 1;
+
   // ENTREGA 22: sesión diagnóstica aislada para esta partida contra el Tano. Se arranca
   // después de construir ambos mazos y ANTES de robar, así el log conserva el orden inicial
   // completo de las dos bibliotecas sin intervenir en ningún RNG ni regla.
@@ -552,6 +575,11 @@ async function initGame(deckSource) {
     mode: 'solo',
     difficulty: state.botDifficulty,
     deckLabel
+  });
+  recordTelemetryEvent('starting_player_selected', {
+    mode: 'solo',
+    startingSide: soloStartingSide,
+    winner: soloStartingSide === 'local' ? getLocalPlayerName() : 'El Tano'
   });
   recordTelemetryInitialDecks({ revealRival: true });
   await mobileSoloYield('telemetry_ready');
@@ -591,10 +619,20 @@ async function initGame(deckSource) {
     hookGameplayButtons();
     render();
     logMsg(gameText('game.start.deck', { deck: deckLabel }));
-    logMsg(gameText('game.start.yourTurnHint'));
+    if (state.activePlayer === 'local') {
+      logMsg(gameText('game.start.yourTurnHint'));
+    } else {
+      logMsg(gameText('game.start.waitingRival'));
+      setTimeout(() => { takeBotPriorityAction().catch(err => console.error('Falló el primer turno del Tano:', err)); }, 180);
+    }
   };
 
-  await mobileSoloYield('before_mulligan_ui', { local: state.localHand.length });
+  await showStartingCoinToss({
+    localName: getLocalPlayerName(),
+    rivalName: 'El Tano',
+    winnerSide: soloStartingSide
+  });
+  await mobileSoloYield('before_mulligan_ui', { local: state.localHand.length, startingSide: soloStartingSide });
   startLocalMulliganFlow(finishSetup);
   await mobileSoloYield('mulligan_ui_open');
 }
@@ -859,6 +897,8 @@ async function boot() {
   // refresque el avatar y el widget de cuenta sin tener que reabrir nada a mano.
   onAuthChange((firebaseUser) => {
     const serial = ++authIdentitySerial;
+    state.authInitialResolved = true;
+    state.authIdentityReady = !firebaseUser;
     state.currentUser = firebaseUser ? {
       uid: firebaseUser.uid,
       displayName: firebaseUser.displayName, // dato Auth interno; NO se muestra como nombre de juego
@@ -925,12 +965,17 @@ async function boot() {
         if (serial !== authIdentitySerial) return null;
         console.error('No se pudo cargar/preparar el perfil de Firestore:', err);
         state.userProfile = null;
-        updateAccountUI(state.currentUser);
         return null;
+      }).finally(() => {
+        if (serial !== authIdentitySerial || !state.currentUser) return;
+        state.authIdentityReady = !!state.userProfile;
+        updateAccountUI(state.currentUser);
       });
     } else {
       state.userProfile = null;
+      state.authIdentityReady = true;
       userProfileLoadPromise = Promise.resolve();
+      updateAccountUI(null);
     }
   });
 
@@ -1003,47 +1048,60 @@ async function boot() {
 // igual armar uno random si prefiere. Sin sesión, o con sesión pero sin ningún mazo
 // guardado todavía (no debería pasar en la práctica, pero por las dudas), el comportamiento
 // es EXACTAMENTE el de siempre: selector de identidad, mazo random.
-function startPlayFlow() {
+async function startPlayFlow() {
+  try {
+    await ensureMenuIdentityReady();
+  } catch (err) {
+    console.error('No se pudo iniciar Jugar sin una identidad resuelta:', err);
+    showMainMenu(startPlayFlow, startMultiplayerFlow);
+    return;
+  }
   const savedDecks = (state.currentUser && state.userProfile && state.userProfile.decks) || [];
-  // FEATURE (#9): logueado, siempre elegís uno de tus propios mazos — nunca la opción de
-  // mazo random, que solo tenía sentido para alguien sin cuenta (nada propio para armar).
-  // "Volver" te devuelve al menú principal en vez de dejarte sin salida.
-  if (state.currentUser && savedDecks.length > 0) {
+  // 23.13.52 — FAIL CLOSED: si Auth dice que sos usuario real, jamás caemos al camino
+  // random de invitado por falta/transición de perfil. Esa era exactamente la carrera F5.
+  if (state.currentUser) {
+    if (savedDecks.length <= 0) {
+      window.alert(gameText('menu.noDecksReady'));
+      showMainMenu(startPlayFlow, startMultiplayerFlow);
+      return;
+    }
     showPlayDeckPickerModal(
       (chosenDeck) => initGame({ type: 'saved', deck: chosenDeck }),
       null,
       () => showMainMenu(startPlayFlow, startMultiplayerFlow)
     );
-  } else {
-    showDeckSelectionModal(
-      (chosenIdentity) => initGame({ type: 'random', identity: chosenIdentity }),
-      {},
-      () => showMainMenu(startPlayFlow, startMultiplayerFlow)
-    );
+    return;
   }
+
+  // Sólo una identidad Auth resuelta explícitamente como null puede jugar como Gaucho/random.
+  showDeckSelectionModal(
+    (chosenIdentity) => initGame({ type: 'random', identity: chosenIdentity }),
+    {},
+    () => showMainMenu(startPlayFlow, startMultiplayerFlow)
+  );
 }
 
 // FASE 4 (CIERRE DEL ROADMAP): se llama desde showMultiplayerLobby (ui.js) apenas dos
 // jugadores se emparejan — elegís tu mazo exactamente con el mismo picker que Solitario. No
 // hace falta coordinar nada con el rival para esto: cada mazo/mano es privado por diseño,
 // así que cada cliente arma el suyo de forma totalmente independiente.
-function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '') {
+function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', startingRole = 'host') {
   // Multiplayer normal sigue sin mazos random. 23.8.1 agrega una ÚNICA excepción de QA:
   // "Mazo de pruebas", determinista y no persistente, visible al pie del picker.
   showPlayDeckPickerModal(
-    (chosenDeck) => startMultiplayerMatch(matchId, myRole, { type: 'saved', deck: chosenDeck }, rivalName, rivalPhotoURL),
+    (chosenDeck) => startMultiplayerMatch(matchId, myRole, { type: 'saved', deck: chosenDeck }, rivalName, rivalPhotoURL, startingRole),
     null,
     () => showMainMenu(startPlayFlow, startMultiplayerFlow),
-    () => startMultiplayerMatch(matchId, myRole, { type: 'test' }, rivalName, rivalPhotoURL)
+    () => startMultiplayerMatch(matchId, myRole, { type: 'test' }, rivalName, rivalPhotoURL, startingRole)
   );
 }
 
 // FASE 4 (CIERRE DEL ROADMAP): arranca una partida multiplayer real — cada cliente arma SU
 // PROPIO mazo/mano (el rival NUNCA se arma acá, es una persona de verdad del otro lado; su
-// mano/mazo llegan solos por sync una vez que publique lo suyo). "Quién arranca" se decide
-// con una regla FIJA que ambos clientes calculan por su cuenta con su propio myRole, sin
-// coordinar nada ni sortear nada: el host siempre juega primero.
-function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '') {
+// mano/mazo llegan solos por sync una vez que publique lo suyo). Desde 23.13.52 el lobby
+// trae un startingRole 50/50 decidido una sola vez al crearse; ambos clientes convierten
+// ese mismo rol compartido a su perspectiva local/rival.
+function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host') {
   // ENTREGA 23.8.5 — al entrar a gameplay no puede sobrevivir ningún overlay del flujo
   // menú/lobby/picker. Antes el menú quedaba oculto (display:none) debajo del tablero; con
   // el doble boot podía quedar una SEGUNDA copia visible y parecía que la partida explotaba.
@@ -1078,12 +1136,18 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
     state.localHand.push(state.localDeck.pop());
   }
 
+  // 23.13.52 — el lobby ya trae un resultado 50/50 persistido en Firestore. Ambos
+  // clientes convierten el MISMO startingRole a su perspectiva local/rival.
+  const startingRole = normalizeStartingRole(rawStartingRole);
+  const multiplayerStartingSide = startingSideForRole(startingRole, myRole);
+
   // BUGFIX: guardamos el nombre real del rival acá — getRivalName() (más arriba en este
   // archivo) lo usa en vez de "El Tano" en todos los mensajes que corren tanto en
   // Solitario como en multiplayer (motor de combate, efectos, turnos).
-  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '', engineVersion: ENGINE_VERSION, engineProtocolVersion: ENGINE_PROTOCOL_VERSION };
-  state.activePlayer = myRole === 'host' ? 'local' : 'rival';
+  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '', startingRole, engineVersion: ENGINE_VERSION, engineProtocolVersion: ENGINE_PROTOCOL_VERSION };
+  state.activePlayer = multiplayerStartingSide;
   state.priorityPlayer = state.activePlayer;
+  state.consecutivePasses = 0;
   state.phase = 'main1';
   state.turnCount = 1;
 
@@ -1095,6 +1159,13 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
     matchId,
     myRole,
     deckLabel
+  });
+  recordTelemetryEvent('starting_player_selected', {
+    mode: 'multiplayer',
+    startingRole,
+    myRole,
+    startingSide: multiplayerStartingSide,
+    winner: multiplayerStartingSide === 'local' ? getLocalPlayerName() : (rivalName || 'tu rival')
   });
   recordTelemetryInitialDecks({ revealRival: false, reconstructLocalOpeningHand: true });
 
@@ -1141,12 +1212,25 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
     });
   };
 
-  startLocalMulliganFlow(() => { finishSetup().catch(err => {
-    console.error('No se pudo completar la barrera de inicio multiplayer:', err);
-    state.multiplayerWaitingForReady = false;
-    hideMultiplayerReadyBarrier();
-    alert('No se pudo sincronizar el inicio de la partida. Volvé al menú e intentá nuevamente.');
-  }); });
+  showStartingCoinToss({
+    localName: getLocalPlayerName(),
+    rivalName: rivalName || 'tu rival',
+    winnerSide: multiplayerStartingSide
+  }).then(() => {
+    startLocalMulliganFlow(() => { finishSetup().catch(err => {
+      console.error('No se pudo completar la barrera de inicio multiplayer:', err);
+      state.multiplayerWaitingForReady = false;
+      hideMultiplayerReadyBarrier();
+      alert('No se pudo sincronizar el inicio de la partida. Volvé al menú e intentá nuevamente.');
+    }); });
+  }).catch(err => {
+    console.error('Falló la presentación del sorteo inicial; se continúa con el resultado ya fijado:', err);
+    startLocalMulliganFlow(() => { finishSetup().catch(setupErr => {
+      console.error('No se pudo completar la barrera de inicio multiplayer:', setupErr);
+      state.multiplayerWaitingForReady = false;
+      hideMultiplayerReadyBarrier();
+    }); });
+  });
 }
 
 // FASE 4, ETAPA 2: publica MI mitad del estado en Firestore — se llama desde render()
@@ -2650,7 +2734,7 @@ function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc, rivalNam
   if (mainMenuOverlay) mainMenuOverlay.remove();
 
   setupBoardLayout();
-  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '', engineVersion: ENGINE_VERSION, engineProtocolVersion: ENGINE_PROTOCOL_VERSION };
+  state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '', startingRole: normalizeStartingRole(publicDoc?.startingRole), engineVersion: ENGINE_VERSION, engineProtocolVersion: ENGINE_PROTOCOL_VERSION };
   reconstructStateFromMatch(publicDoc, privateDoc, myRole);
 
   // ENTREGA 22: un refresh corta la ejecución JS anterior, pero su backup queda exportable
