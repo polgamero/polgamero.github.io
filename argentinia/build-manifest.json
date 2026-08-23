@@ -1,7 +1,7 @@
 {
-  "engineVersion": "23.13.50",
+  "engineVersion": "23.13.51",
   "engineProtocolVersion": "mp-23.10.0",
-  "buildLabel": "Entrega 23.13.50 Combat Map Canonical Pair Geometry",
+  "buildLabel": "Entrega 23.13.51 Infect Player Labels + Centered Damage Pills",
   "generatedFor": "GitHub Pages cache freshness check",
   "firestoreRulesVersion": "23.13.37"
 }

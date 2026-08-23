@@ -109,6 +109,7 @@ export function buildCombatMapModel(state, helpers = {}) {
 
     const attackerDealsRegular = !regularOnly || !hasKeyword(attacker, 'firststrike') || hasKeyword(attacker, 'doublestrike');
     const attackerPower = attackerDealsRegular ? n(getPower(attacker)) : 0;
+    const attackerHasInfect = hasKeyword(attacker, 'infect');
     const wasBlocked = !!attacker.wasBlockedThisCombat || blockers.length > 0;
     const targetSide = isLocalAttacking ? 'rival' : 'local';
 
@@ -143,7 +144,7 @@ export function buildCombatMapModel(state, helpers = {}) {
           { type: 'combat', side: isLocalAttacking ? 'local' : 'rival', index: attackerIndex },
           { type: 'player', side: targetSide },
           attackerPower,
-          { playerTarget: true }
+          { playerTarget: true, infect: attackerHasInfect }
         ));
       }
       return;
@@ -160,7 +161,7 @@ export function buildCombatMapModel(state, helpers = {}) {
           { type: 'combat', side: isLocalAttacking ? 'local' : 'rival', index: attackerIndex },
           target,
           attackerPower,
-          { playerTarget: !attacker.attackTarget, playerName: attacker.attackTarget?.card?.name || '' }
+          { playerTarget: !attacker.attackTarget, playerName: attacker.attackTarget?.card?.name || '', infect: !attacker.attackTarget && attackerHasInfect }
         ));
       }
       return;
@@ -183,7 +184,7 @@ export function buildCombatMapModel(state, helpers = {}) {
           { type: 'combat', side: isLocalAttacking ? 'local' : 'rival', index: attackerIndex },
           attacker.attackTarget ? { type: 'planeswalker', side: targetSide, item: attacker.attackTarget } : { type: 'player', side: targetSide },
           0,
-          { flexible: true, playerTarget: !attacker.attackTarget, playerName: attacker.attackTarget?.card?.name || '' }
+          { flexible: true, playerTarget: !attacker.attackTarget, playerName: attacker.attackTarget?.card?.name || '', infect: !attacker.attackTarget && attackerHasInfect }
         ));
       }
       return;
@@ -206,7 +207,7 @@ export function buildCombatMapModel(state, helpers = {}) {
         { type: 'combat', side: isLocalAttacking ? 'local' : 'rival', index: attackerIndex },
         attacker.attackTarget ? { type: 'planeswalker', side: targetSide, item: attacker.attackTarget } : { type: 'player', side: targetSide },
         distribution.overflow,
-        { playerTarget: !attacker.attackTarget, playerName: attacker.attackTarget?.card?.name || '' }
+        { playerTarget: !attacker.attackTarget, playerName: attacker.attackTarget?.card?.name || '', infect: !attacker.attackTarget && attackerHasInfect }
       ));
     }
   });
@@ -543,14 +544,14 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
       : r.prevented
         ? gameText('combat.map.prevented', { damage: r.amount })
         : r.playerTarget
-          ? String(r.amount)
+          ? (r.infect ? `${r.amount} + ☠️` : String(r.amount))
           : r.playerName
             ? String(r.amount)
             : String(r.amount);
     if (!label) return;
     const group = makeSvgEl('g');
-    const labelX = lx + (r.curve?.labelOffsetX || 0);
-    const labelY = ly + (r.curve?.labelOffsetY || -12);
+    const labelX = lx;
+    const labelY = ly;
     const pillWidth = Math.max(18, 10 + String(label).length * 8);
     const pillHeight = 18;
     const bg = makeSvgEl('rect', {
