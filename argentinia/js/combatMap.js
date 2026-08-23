@@ -251,7 +251,7 @@ function routeEndpointBetween(sourceRect, targetRect, route, activePlayer, index
   if (route.target?.type === 'player' || route.source?.type === 'player') {
     const sourcePadding = route.source?.type === 'player' ? 1 : 6;
     const targetPadding = route.target?.type === 'player' ? 1 : 6;
-    const lateral = lane * 20;
+    const lateral = lane * 34;
     const sourceEdge = projectPointToRectEdge(sourceRect, b, sourcePadding);
     const targetEdge = projectPointToRectEdge(targetRect, a, targetPadding);
     return {
@@ -268,8 +268,8 @@ function routeEndpointBetween(sourceRect, targetRect, route, activePlayer, index
   const targetEdge = projectPointToRectEdge(targetRect, a, 4);
   const sourceDepth = Math.min(sourceRect.width, sourceRect.height) * 0.34;
   const targetDepth = Math.min(targetRect.width, targetRect.height) * 0.34;
-  const laneBase = closeStack ? 48 : 34;
-  const lateral = lane * (laneBase + (index % 2) * 8);
+  const laneBase = closeStack ? 70 : 50;
+  const lateral = lane * (laneBase + (index % 2) * 10);
 
   return {
     start: {
@@ -294,7 +294,7 @@ function curveGeometry(start, end, index, kind, activePlayer, closeStack = false
   const dy = end.y - start.y;
   const dist = Math.max(1, Math.hypot(dx, dy));
   const perp = perpOverride || { x: 0, y: -1 };
-  const curveOffset = lane * (closeStack ? 12 : 8);
+  const curveOffset = lane * (closeStack ? 40 : 24);
   const c1 = {
     x: start.x + dx * 0.33 + perp.x * curveOffset,
     y: start.y + dy * 0.33 + perp.y * curveOffset
@@ -307,8 +307,8 @@ function curveGeometry(start, end, index, kind, activePlayer, closeStack = false
     lane,
     c1,
     c2,
-    labelOffsetX: perp.x * 24,
-    labelOffsetY: perp.y * 22 - 10,
+    labelOffsetX: perp.x * lane * 16,
+    labelOffsetY: perp.y * lane * 30 + (lane > 0 ? 12 : -12),
     dist
   };
 }

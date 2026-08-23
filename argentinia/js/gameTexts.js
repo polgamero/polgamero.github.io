@@ -143,6 +143,11 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'encyclopedia.filter.rarity': definition('Enciclopedia', 'Rareza', 'Título del filtro de rareza.'),
   'encyclopedia.filter.archetype': definition('Enciclopedia', 'Arquetipo', 'Título del filtro de arquetipo.'),
   'encyclopedia.empty': definition('Enciclopedia', 'No hay cartas que coincidan con estos filtros.', 'Estado vacío de Enciclopedia.'),
+  'encyclopedia.tab.tokens': definition('Enciclopedia', 'TOKENS', 'Solapa Admin-only del catálogo visual de tokens.'),
+  'encyclopedia.tokens.type': definition('Enciclopedia', 'Criatura — Token', 'Línea de tipo usada por los tokens en la Enciclopedia Admin.'),
+  'encyclopedia.tokens.cardText': definition('Enciclopedia', 'Token de criatura.', 'Texto genérico del render visual de tokens en Enciclopedia Admin.'),
+  'encyclopedia.tokens.empty': definition('Enciclopedia', 'No hay tokens que coincidan con la búsqueda.', 'Estado vacío de la solapa Tokens.'),
+  'encyclopedia.tokens.search.placeholder': definition('Enciclopedia', 'Buscar token...', 'Placeholder del buscador en la solapa Admin TOKENS.'),
 
   // Cofre / Recompensas
   'chest.title': definition('Recompensas', 'Mi Cofre', 'Título de Mi Cofre.'),
@@ -951,7 +956,6 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'combat.map.legendFlexible': definition('Combate', 'Mapa de combate · punteado ? = reparto todavía no fijado · grosor = daño determinable', 'Leyenda cuando Arrollar/múltiples bloqueadores dejan reparto pendiente.'),
   'combat.map.pending': definition('Combate', '?', 'Etiqueta de una ruta de daño cuyo reparto aún no fue elegido.'),
   'combat.map.prevented': definition('Combate', '{damage}→0', 'Daño asignado que actualmente sería prevenido por Protección.'),
-  'combat.map.playerDamage': definition('Combate', '{damage} → {player}', 'Etiqueta de daño proyectado hacia jugador o Planeswalker.'),
 
 });
 

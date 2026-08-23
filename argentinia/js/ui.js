@@ -61,6 +61,7 @@ import { showGlobalRanking } from './rankingUI.js';
 import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate } from './statistics.js';
 import { POOL_BASELINE } from './poolContract.js';
 import { scheduleCombatMapRender } from './combatMap.js';
+import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -1279,7 +1280,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   // transform y conserva pixel-a-pixel el renderer histórico. La primera imagen visible
   // dispara una carga lazy compartida de gameConfig/artLayouts; nunca bloquea createCardElement.
   const cardArtImg = el.querySelector('.card-art-image');
-  if (cardArtImg && card.id) registerCardArtImage(cardArtImg, card.id);
+  const cardArtLayoutId = card?.isToken ? tokenArtLayoutId(card.image, card.name) : card?.id;
+  if (cardArtImg && cardArtLayoutId) registerCardArtImage(cardArtImg, cardArtLayoutId);
 
   // El botón separado sólo hace falta en Combat, donde el click normal puede significar
   // declarar atacante/bloqueador. Support y Tierras ya tienen un click inequívoco y el
@@ -2451,6 +2453,9 @@ function injectEncyclopediaStyles() {
     .encyclopedia-card-slot.unowned .card-art > div {
       visibility: hidden;
     }
+    .encyclopedia-token-slot .card-inner { box-shadow:0 0 0 1px rgba(212,175,55,.22), 0 10px 25px rgba(0,0,0,.25); }
+    #encyclopedia-overlay.encyclopedia-token-mode .encyclopedia-progress { display:none; }
+    #encyclopedia-overlay.encyclopedia-token-mode .encyclopedia-filters > :not(#enc-search):not(.card-browser-zoom) { display:none !important; }
     .encyclopedia-empty-msg { color: #5a5266; font-size: 14px; margin: auto; text-align: center; }
     .encyclopedia-filters {
       width: 260px; flex-shrink: 0;
@@ -2502,6 +2507,10 @@ export function showEncyclopedia(onBack) {
 
   const ownedIds = getOwnedCardIds();
   const enhancedIds = new Set(Object.keys((state.userProfile && state.userProfile.enhancements) || {}).filter(id => isEnhancementEligibleCard(cardDb.getById(id))));
+  const encyclopediaTabs = [
+    ...ENCYCLOPEDIA_TABS,
+    ...(isAdminUser() ? [{ key: 'tokens', label: gameText('encyclopedia.tab.tokens') }] : [])
+  ];
   let activeTab = 'criaturas';
   let ownershipFilter = 'all'; // 'all' | 'owned'
   let enhancedOnly = false;
@@ -2509,12 +2518,12 @@ export function showEncyclopedia(onBack) {
   const activeRarities = new Set(ENCYCLOPEDIA_RARITIES.map(r => r.key));
   const activeColors = new Set(CARD_BROWSER_COLORS.map(c => c.key));
   const activeArchetypes = new Set();
-  const sortByTab = new Map(ENCYCLOPEDIA_TABS.map(tab => [tab.key, { key: 'cmc', direction: 'asc' }]));
+  const sortByTab = new Map(encyclopediaTabs.map(tab => [tab.key, { key: 'cmc', direction: 'asc' }]));
 
   const overlay = document.createElement('div');
   overlay.id = 'encyclopedia-overlay';
 
-  const tabsHTML = ENCYCLOPEDIA_TABS.map(t =>
+  const tabsHTML = encyclopediaTabs.map(t =>
     `<button class="encyclopedia-tab${t.key === activeTab ? ' active' : ''}" data-tab="${t.key}">${t.label}</button>`
   ).join('');
 
@@ -2589,24 +2598,35 @@ export function showEncyclopedia(onBack) {
     if (entry.records.length || entry.empty) return entry;
 
     const fragment = document.createDocumentFragment();
-    cardDb.getByCategory(tabKey).forEach(card => {
-      const owned = ownedIds.has(card.id);
+    const isTokenTab = tabKey === 'tokens';
+    const sourceCards = isTokenTab
+      ? buildTokenCatalog(cardDb.allCards).map(token => ({
+          ...token,
+          type: gameText('encyclopedia.tokens.type'),
+          text: gameText('encyclopedia.tokens.cardText')
+        }))
+      : cardDb.getByCategory(tabKey);
+    sourceCards.forEach(card => {
+      // Tokens son una superficie Admin de assets, no objetos de colección: siempre se
+      // renderizan a pleno color y nunca participan del filtro "poseo".
+      const owned = isTokenTab ? true : ownedIds.has(card.id);
       const slot = document.createElement('div');
-      slot.className = `encyclopedia-card-slot${owned ? '' : ' unowned'}`;
+      slot.className = `encyclopedia-card-slot${owned ? '' : ' unowned'}${isTokenTab ? ' encyclopedia-token-slot' : ''}`;
       slot.appendChild(createCardElement(card, false, true, null, 'encyclopedia', null));
 
       // 23.13.23 — el editor existe EXCLUSIVAMENTE en Enciclopedia y sólo para Admin.
       // La seguridad real del SAVE sigue en Firestore Rules; este gate es además UX.
       if (isAdminUser() && card.image) {
+        const artLayoutId = card.isToken ? tokenArtLayoutId(card.image, card.name) : card.id;
         const editArtBtn = document.createElement('button');
         editArtBtn.type = 'button';
-        editArtBtn.className = `encyclopedia-art-edit-btn${hasCustomArtLayout(card.id) ? ' has-custom-layout' : ''}`;
+        editArtBtn.className = `encyclopedia-art-edit-btn${hasCustomArtLayout(artLayoutId) ? ' has-custom-layout' : ''}`;
         editArtBtn.textContent = '✏️';
-        editArtBtn.title = hasCustomArtLayout(card.id)
+        editArtBtn.title = hasCustomArtLayout(artLayoutId)
           ? 'Editar encuadre del arte (personalizado)'
           : 'Editar encuadre del arte';
         editArtBtn.setAttribute('aria-label', `Editar encuadre del arte de ${card.name}`);
-        editArtBtn.dataset.artCardId = card.id;
+        editArtBtn.dataset.artCardId = artLayoutId;
         editArtBtn.addEventListener('click', async event => {
           event.preventDefault();
           event.stopPropagation();
@@ -2633,7 +2653,7 @@ export function showEncyclopedia(onBack) {
       }
 
       fragment.appendChild(slot);
-      entry.records.push({ card, node: slot, owned, enhanced: enhancedIds.has(card.id) });
+      entry.records.push({ card, node: slot, owned, enhanced: isTokenTab ? false : enhancedIds.has(card.id), token: isTokenTab });
     });
     entry.pane.appendChild(fragment);
     entry.empty = document.createElement('div');
@@ -2656,18 +2676,28 @@ export function showEncyclopedia(onBack) {
     let visible = 0;
     entry.records.forEach(record => {
       const card = record.card;
-      const matches = activeRarities.has(card.rarity) &&
-        cardMatchesColorFilter(card, activeColors) &&
-        cardMatchesArchetypeFilter(card, activeArchetypes) &&
-        (ownershipFilter !== 'owned' || record.owned) &&
-        (!enhancedOnly || record.enhanced) &&
-        (!query || normalizeSearch(card.name).includes(query));
+      const matches = record.token
+        ? (!query || normalizeSearch(card.name).includes(query) || normalizeSearch(card.image).includes(query))
+        : activeRarities.has(card.rarity) &&
+          cardMatchesColorFilter(card, activeColors) &&
+          cardMatchesArchetypeFilter(card, activeArchetypes) &&
+          (ownershipFilter !== 'owned' || record.owned) &&
+          (!enhancedOnly || record.enhanced) &&
+          (!query || normalizeSearch(card.name).includes(query));
       record.node.hidden = !matches;
       if (matches) visible += 1;
       entry.pane.appendChild(record.node); // mueve el nodo existente; no recrea su <img>
     });
+    entry.empty.textContent = activeTab === 'tokens'
+      ? gameText('encyclopedia.tokens.empty')
+      : gameText('encyclopedia.empty');
     entry.empty.hidden = visible !== 0;
     entry.pane.appendChild(entry.empty);
+    overlay.classList.toggle('encyclopedia-token-mode', activeTab === 'tokens');
+    const searchInput = overlay.querySelector('#enc-search');
+    if (searchInput) searchInput.placeholder = activeTab === 'tokens'
+      ? gameText('encyclopedia.tokens.search.placeholder')
+      : gameText('encyclopedia.search.placeholder');
   }
 
   const debouncedSearch = debounce(value => {

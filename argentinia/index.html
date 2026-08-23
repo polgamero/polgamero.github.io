@@ -11,8 +11,8 @@
   <link rel="manifest" href="./assets/manifest.webmanifest">
   <link rel="icon" href="data:,">
   <title>ARGENTINIA - TCG Criollo</title>
-  <link rel="stylesheet" href="./css/style.css?v=23.13.47">
-  <link rel="stylesheet" href="./css/mobile.css?v=23.13.47">
+  <link rel="stylesheet" href="./css/style.css?v=23.13.49">
+  <link rel="stylesheet" href="./css/mobile.css?v=23.13.49">
   <style id="arg-mobile-boot-critical-style">
     /* 23.11.8: fallback CRÍTICO inline. No depende de style.css/mobile.css ni de módulos JS. */
     #arg-mobile-boot-fallback { display: none; }
@@ -64,7 +64,7 @@
     // 23.11.8 — "DevTools de emergencia" dentro del propio HTML. Funciona antes de
     // main.js/Firebase/mobileUI y captura fallos de carga que la telemetría normal no puede ver.
     (() => {
-      const VERSION = '23.13.47';
+      const VERSION = '23.13.49';
       const startedAt = Date.now();
       const events = [];
       let lastError = null;
@@ -451,9 +451,9 @@
             };
             await setStage('Etapa 1/3 — cargando interfaz táctil…', 'mobile_ui_module_import_start');
             // Mobile UI no participa del grafo circular del motor; puede versionarse.
-            await import('./js/mobileUI.js?v=23.13.47');
+            await import('./js/mobileUI.js?v=23.13.49');
             diag()?.mark?.('mobile_ui_module_loaded');
-            await import('./js/newsPanel.js?v=23.13.47');
+            await import('./js/newsPanel.js?v=23.13.49');
             diag()?.mark?.('news_panel_module_loaded');
             await setStage('Etapa 2/3 — cargando motor local (Firebase diferido en celular)…', 'main_module_import_start');
             // NO AGREGAR ?v=... acá. main.js debe conservar una sola identidad de módulo.
