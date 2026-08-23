@@ -251,7 +251,7 @@ function routeEndpointBetween(sourceRect, targetRect, route, activePlayer, index
   if (route.target?.type === 'player' || route.source?.type === 'player') {
     const sourcePadding = route.source?.type === 'player' ? 1 : 6;
     const targetPadding = route.target?.type === 'player' ? 1 : 6;
-    const lateral = lane * 10;
+    const lateral = lane * 20;
     const sourceEdge = projectPointToRectEdge(sourceRect, b, sourcePadding);
     const targetEdge = projectPointToRectEdge(targetRect, a, targetPadding);
     return {
@@ -268,8 +268,8 @@ function routeEndpointBetween(sourceRect, targetRect, route, activePlayer, index
   const targetEdge = projectPointToRectEdge(targetRect, a, 4);
   const sourceDepth = Math.min(sourceRect.width, sourceRect.height) * 0.34;
   const targetDepth = Math.min(targetRect.width, targetRect.height) * 0.34;
-  const laneBase = closeStack ? 32 : 24;
-  const lateral = lane * (laneBase + (index % 2) * 5);
+  const laneBase = closeStack ? 48 : 34;
+  const lateral = lane * (laneBase + (index % 2) * 8);
 
   return {
     start: {
@@ -307,8 +307,8 @@ function curveGeometry(start, end, index, kind, activePlayer, closeStack = false
     lane,
     c1,
     c2,
-    labelOffsetX: perp.x * 18,
-    labelOffsetY: perp.y * 16 - 10,
+    labelOffsetX: perp.x * 24,
+    labelOffsetY: perp.y * 22 - 10,
     dist
   };
 }
@@ -483,13 +483,24 @@ export function renderCombatMap({ state, getPower, getToughness, hasKeyword, get
     const group = makeSvgEl('g');
     const labelX = lx + (r.curve?.labelOffsetX || 0);
     const labelY = ly + (r.curve?.labelOffsetY || -12);
+    const pillWidth = Math.max(18, 10 + String(label).length * 8);
+    const pillHeight = 18;
+    const bg = makeSvgEl('rect', {
+      x: labelX - pillWidth / 2,
+      y: labelY - pillHeight / 2,
+      width: pillWidth,
+      height: pillHeight,
+      rx: 7,
+      fill: color,
+      'fill-opacity': 0.92,
+      stroke: 'rgba(255,255,255,0.38)',
+      'stroke-width': 0.9
+    });
     const text = makeSvgEl('text', { x: labelX, y: labelY, fill: '#fff', 'font-size': 12, 'font-weight': 800, 'text-anchor': 'middle', 'dominant-baseline': 'central' });
     text.textContent = label;
+    group.appendChild(bg);
     group.appendChild(text);
     svg.appendChild(group);
-    const box = text.getBBox();
-    const bg = makeSvgEl('rect', { x: box.x - 5, y: box.y - 3, width: box.width + 10, height: box.height + 6, rx: 7, fill: color, 'fill-opacity': 0.90, stroke: 'rgba(255,255,255,0.35)', 'stroke-width': 0.8 });
-    group.insertBefore(bg, text);
   });
 
   if (validRoutes.length) {
