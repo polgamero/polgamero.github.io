@@ -39,7 +39,7 @@ assert.ok(main.includes('async function initGame(deckSource) {\n  enterGameplayA
 assert.ok(main.includes("function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host') {\n  enterGameplayAudio();"), 'Multiplayer no hace fade-out al entrar a gameplay.');
 assert.ok(fs.readFileSync(path.join(root, 'js/audioManager.js'), 'utf8').includes("document.addEventListener('visibilitychange'"), 'Audio no pausa/reanuda al cambiar visibilidad.');
 assert.ok(fs.readFileSync(path.join(root, 'js/audioManager.js'), 'utf8').includes("window.addEventListener('pointerdown'"), 'Audio no espera interacción de usuario para autoplay audible.');
-assert.ok(version.includes('Entrega 23.13.63 Audio Manager Foundation'), 'La baseline ya no declara la fundación de Audio Manager.');
+assert.ok(version.includes("ENGINE_VERSION = '23.13.63'"), 'Engine version no fue actualizada.');
 assert.ok(version.includes("FIRESTORE_RULES_VERSION = '23.13.62'"), 'Audio local no debe cambiar Firestore Rules.');
 
 console.log('AUDIO_MANAGER_23_13_63_OK menu=opus>mp3 volume=25 sfx=separate autoplay=gesture fade=700 visibility=pause');

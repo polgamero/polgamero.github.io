@@ -22,6 +22,7 @@ import { chooseSoloStartingSide, normalizeStartingRole, startingSideForRole } fr
 import { showStartingCoinToss } from './startingCoin.js';
 import { createSoloGameId, beginSoloRecoverySession, activateResumedSoloRecovery, loadSoloRecoveryCandidate, isSoloRecoveryCompatible, isSoloRecoveryExpired, restoreSoloRecoveryState, checkpointSoloRecovery, clearSoloRecovery, finishSoloRecovery, getSoloEffectiveElapsedMs, getActiveSoloGameId, hasActiveSoloRecovery } from './soloRecovery.js';
 import { maybeShowAnnouncementPopup } from './campaignsUI.js';
+import { enterGameplayAudio } from './audioManager.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -580,6 +581,7 @@ function hookGameplayButtons() {
 }
 
 async function initGame(deckSource) {
+  enterGameplayAudio();
   logMsg(gameText('game.loadingDeck'));
 
   await mobileSoloYield('before_board_layout');
@@ -1333,6 +1335,7 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', st
 // trae un startingRole 50/50 decidido una sola vez al crearse; ambos clientes convierten
 // ese mismo rol compartido a su perspectiva local/rival.
 function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host') {
+  enterGameplayAudio();
   // ENTREGA 23.8.5 — al entrar a gameplay no puede sobrevivir ningún overlay del flujo
   // menú/lobby/picker. Antes el menú quedaba oculto (display:none) debajo del tablero; con
   // el doble boot podía quedar una SEGUNDA copia visible y parecía que la partida explotaba.

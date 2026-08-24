@@ -1863,3 +1863,24 @@ html.argentinia-mobile .deck-hand-dist-col {
 }
 html.argentinia-mobile .deck-hand-dist-bar-slot { height: 46px !important; }
 
+
+/* 23.13.63 — Audio Manager: quick mute + sliders reales dentro de Opciones. */
+html.argentinia-mobile .main-menu-music-btn {
+  min-width: 42px !important;
+  padding: 5px 10px !important;
+  font-size: 14px !important;
+}
+html.argentinia-mobile .options-audio-row {
+  align-items: flex-start !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+html.argentinia-mobile .options-audio-controls {
+  width: 100% !important;
+  min-width: 0 !important;
+  justify-content: space-between !important;
+}
+html.argentinia-mobile .options-volume-slider {
+  flex: 1 1 auto !important;
+  min-width: 100px !important;
+}
