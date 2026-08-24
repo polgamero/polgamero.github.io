@@ -2,11 +2,11 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal } from './ui.js';
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks, getTelemetryStatus } from './telemetry.js';
@@ -20,6 +20,7 @@ import { applyGameTextOverrides, gameText } from './gameTexts.js';
 import { POOL_BASELINE } from './poolContract.js';
 import { chooseSoloStartingSide, normalizeStartingRole, startingSideForRole } from './startingPlayer.js';
 import { showStartingCoinToss } from './startingCoin.js';
+import { createSoloGameId, beginSoloRecoverySession, activateResumedSoloRecovery, loadSoloRecoveryCandidate, isSoloRecoveryCompatible, isSoloRecoveryExpired, restoreSoloRecoveryState, checkpointSoloRecovery, clearSoloRecovery, finishSoloRecovery, getSoloEffectiveElapsedMs, getActiveSoloGameId, hasActiveSoloRecovery } from './soloRecovery.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -38,6 +39,31 @@ export async function ensureMenuIdentityReady() {
   if (state.currentUser && (!state.userProfile || state.userProfile.starterDeckPending === true)) throw new Error('AUTH_PROFILE_NOT_READY');
   return { authenticated: !!state.currentUser, user: state.currentUser, profile: state.userProfile };
 }
+
+
+let multiplayerPresenceTimer = null;
+function stopMultiplayerPresenceHeartbeat() {
+  if (multiplayerPresenceTimer !== null) clearInterval(multiplayerPresenceTimer);
+  multiplayerPresenceTimer = null;
+}
+function startMultiplayerPresenceHeartbeat(matchId, myRole) {
+  stopMultiplayerPresenceHeartbeat();
+  if (!matchId || !['host','guest'].includes(myRole)) return;
+  const beat = () => {
+    if (!state.currentMatch || state.currentMatch.matchId !== matchId || state.gameOver) {
+      stopMultiplayerPresenceHeartbeat();
+      return;
+    }
+    touchMatchPresence(matchId, myRole).catch(err => console.warn('No se pudo publicar heartbeat multiplayer:', err));
+  };
+  beat();
+  multiplayerPresenceTimer = setInterval(beat, 30000);
+}
+
+function currentSoloLifecycleDurationMs() {
+  return hasActiveSoloRecovery() ? getSoloEffectiveElapsedMs() : (getTelemetryStatus().elapsedMs || 0);
+}
+
 
 // 23.13.0 — una sola puerta para registrar el login diario después de tener un perfil real.
 // Firestore hace la operación idempotente, así que un callback duplicado/reload el mismo día
@@ -418,13 +444,15 @@ function recordLocalAbandonStatsBestEffort() {
   try {
     if (!state.currentUser) return Promise.resolve(null);
     const telemetry = getTelemetryStatus();
-    if (!telemetry.sessionId) return Promise.resolve(null);
+    const soloGameId = !state.currentMatch ? getActiveSoloGameId() : null;
+    const receiptId = soloGameId || telemetry.sessionId;
+    if (!receiptId) return Promise.resolve(null);
     return recordPlayerGameResult(state.currentUser.uid, {
-      sessionId: telemetry.sessionId,
+      sessionId: receiptId,
       mode: state.currentMatch ? 'multiplayer' : 'solo',
       won: false,
       abandoned: true,
-      durationMs: telemetry.elapsedMs || 0
+      durationMs: state.currentMatch ? (telemetry.elapsedMs || 0) : currentSoloLifecycleDurationMs()
     }).catch(err => {
       console.warn('No se pudieron registrar las estadísticas del abandono:', err);
       return null;
@@ -512,6 +540,8 @@ function hookGameplayButtons() {
             try { endTelemetrySession('abandon_local'); } catch (err) {
               console.error('No se pudo cerrar Telemetría al abandonar:', err);
             }
+            if (state.currentMatch) stopMultiplayerPresenceHeartbeat();
+            else finishSoloRecovery();
             // La salida NO depende de Firestore, Statistics, Telemetry ni de ninguna otra Promise.
             location.reload();
           }
@@ -521,19 +551,23 @@ function hookGameplayButtons() {
     });
   }
 
-  // Mejor esfuerzo, NO 100% confiable — es una limitación real de la plataforma web, no del
-  // código: los navegadores no garantizan que un pedido de red termine de completarse
-  // durante beforeunload. El mecanismo confiable de verdad es el botón de arriba; esto es
-  // solo una red de contención para cuando alguien cierra la pestaña sin pasar por él.
-  window.addEventListener('beforeunload', () => {
-    if (!state.gameOver && state.currentUser) {
-      recordLocalAbandonStatsBestEffort();
-      awardPoints(state.currentUser.uid, POINTS.abandonPenalty).catch(() => {});
-      // Mismo mejor esfuerzo para avisarle al rival, si había una partida multiplayer activa.
-      if (state.currentMatch) {
-        state.abandonedBy = 'local';
-        publishMatchState().catch(() => {});
-      }
+  // 23.13.54 — F5/cerrar pestaña YA NO equivale a abandono. Un unload puede ser refresh,
+  // crash, actualización o pérdida breve de conexión. Guardamos checkpoint Solo y dejamos
+  // el match multiplayer reanudable; la penalidad sólo ocurre ante Abandonar explícito o
+  // cuando un recovery Solo vence tras 24 h y el jugador vuelve.
+  window.addEventListener('beforeunload', (event) => {
+    if (state.gameOver) return;
+    if (hasActiveSoloRecovery()) {
+      checkpointSoloRecovery(state, spellStack, { telemetrySessionId: getTelemetryStatus().sessionId });
+    }
+    if (hasActiveSoloRecovery() || state.currentMatch) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  });
+  window.addEventListener('pagehide', () => {
+    if (!state.gameOver && hasActiveSoloRecovery()) {
+      checkpointSoloRecovery(state, spellStack, { telemetrySessionId: getTelemetryStatus().sessionId });
     }
   });
 }
@@ -571,10 +605,14 @@ async function initGame(deckSource) {
   // ENTREGA 22: sesión diagnóstica aislada para esta partida contra el Tano. Se arranca
   // después de construir ambos mazos y ANTES de robar, así el log conserva el orden inicial
   // completo de las dos bibliotecas sin intervenir en ningún RNG ni regla.
+  const soloGameId = createSoloGameId();
   startTelemetrySession({
     mode: 'solo',
     difficulty: state.botDifficulty,
-    deckLabel
+    deckLabel,
+    soloGameId,
+    segmentIndex: 1,
+    activeElapsedBaseMs: 0
   });
   recordTelemetryEvent('starting_player_selected', {
     mode: 'solo',
@@ -616,6 +654,18 @@ async function initGame(deckSource) {
   // El jugador humano decide el suyo de forma interactiva. La partida arranca de
   // verdad recién cuando termina de resolver su mano (finishSetup).
   const finishSetup = () => {
+    beginSoloRecoverySession({
+      soloGameId,
+      state,
+      stack: spellStack,
+      deckLabel,
+      ownerUid: state.currentUser?.uid || null,
+      playerName: getLocalPlayerName(),
+      telemetrySessionId: getTelemetryStatus().sessionId,
+      getState: () => state,
+      getStack: () => spellStack,
+      getTelemetrySessionId: () => getTelemetryStatus().sessionId
+    });
     hookGameplayButtons();
     render();
     logMsg(gameText('game.start.deck', { deck: deckLabel }));
@@ -635,6 +685,115 @@ async function initGame(deckSource) {
   await mobileSoloYield('before_mulligan_ui', { local: state.localHand.length, startingSide: soloStartingSide });
   startLocalMulliganFlow(finishSetup);
   await mobileSoloYield('mulligan_ui_open');
+}
+
+async function abandonRecoveredSolo(candidate, { expired = false } = {}) {
+  const durationMs = Math.max(0, Number(candidate?.activeElapsedMs) || 0);
+  const endedAtClient = candidate?.lastCheckpointAt || new Date().toISOString();
+  if (candidate?.telemetrySessionId && state.currentUser) {
+    try {
+      await finalizeTelemetryLifecycleSession(candidate.telemetrySessionId, {
+        status: 'completed',
+        endedAtClient,
+        endReason: expired ? 'abandon_recovery_expired' : 'abandon_recovery',
+        effectiveDurationMs: durationMs,
+        soloGameId: candidate.soloGameId,
+        segmentIndex: candidate.segmentIndex
+      });
+    } catch (err) {
+      console.warn('No se pudo cerrar la sesión de Telemetría recuperada:', err);
+    }
+  }
+  if (state.currentUser && (!candidate?.ownerUid || candidate.ownerUid === state.currentUser.uid)) {
+    try {
+      await recordPlayerGameResult(state.currentUser.uid, {
+        sessionId: candidate.soloGameId || candidate.telemetrySessionId,
+        mode: 'solo', won: false, abandoned: true, durationMs
+      });
+    } catch (err) { console.warn('No se pudieron registrar stats del recovery abandonado:', err); }
+    try {
+      const result = await awardPoints(state.currentUser.uid, POINTS.abandonPenalty);
+      if (state.userProfile && result?.total !== undefined) state.userProfile.points = result.total;
+      updateAccountUI(state.currentUser);
+    } catch (err) { console.warn('No se pudo aplicar penalidad del recovery abandonado:', err); }
+  }
+  clearSoloRecovery();
+  if (expired) window.alert(gameText('solo.recovery.expired'));
+}
+
+async function resumeSoloRecoveryGame(candidate) {
+  document.querySelectorAll('#main-menu-overlay, #solo-recovery-overlay').forEach(el => el.remove());
+  setupBoardLayout();
+
+  if (candidate.telemetrySessionId && state.currentUser) {
+    void finalizeTelemetryLifecycleSession(candidate.telemetrySessionId, {
+      status: 'interrupted',
+      endedAtClient: candidate.lastCheckpointAt,
+      endReason: 'interrupted_reconnected',
+      effectiveDurationMs: Math.max(0, Number(candidate.activeElapsedMs) || 0),
+      soloGameId: candidate.soloGameId,
+      segmentIndex: candidate.segmentIndex
+    }).catch(err => console.warn('No se pudo marcar el segmento anterior como interrumpido:', err));
+  }
+
+  const restoredStack = restoreSoloRecoveryState(candidate, state);
+  replaceSpellStackFromSync(restoredStack);
+  const nextSegment = Math.max(1, Number(candidate.segmentIndex) || 1) + 1;
+  startTelemetrySession({
+    mode: 'solo_reconnect',
+    difficulty: state.botDifficulty,
+    deckLabel: candidate.deckLabel || 'reconnect',
+    soloGameId: candidate.soloGameId,
+    segmentIndex: nextSegment,
+    activeElapsedBaseMs: Math.max(0, Number(candidate.activeElapsedMs) || 0)
+  });
+  recordTelemetryEvent('solo_reconnect_state_loaded', {
+    soloGameId: candidate.soloGameId,
+    previousSegment: candidate.segmentIndex,
+    segmentIndex: nextSegment,
+    activeElapsedBaseMs: Math.max(0, Number(candidate.activeElapsedMs) || 0),
+    turnCount: state.turnCount,
+    phase: state.phase,
+    stackDepth: spellStack.length
+  });
+  activateResumedSoloRecovery(candidate, {
+    state,
+    stack: spellStack,
+    telemetrySessionId: getTelemetryStatus().sessionId,
+    getState: () => state,
+    getStack: () => spellStack,
+    getTelemetrySessionId: () => getTelemetryStatus().sessionId
+  });
+  hookGameplayButtons();
+  render();
+  logMsg(gameText('solo.recovery.restored'));
+  if (!state.gameOver && state.priorityPlayer === 'rival') {
+    setTimeout(() => takeBotPriorityAction().catch(err => console.error('Falló la reanudación de prioridad del Tano:', err)), 180);
+  }
+}
+
+async function offerSoloRecoveryIfAvailable() {
+  const candidate = loadSoloRecoveryCandidate();
+  if (!candidate) return;
+  if (!isSoloRecoveryCompatible(candidate)) {
+    console.warn('Se descartó un recovery Solo incompatible con este motor.', { saved: candidate.engineVersion, current: ENGINE_VERSION });
+    clearSoloRecovery();
+    return;
+  }
+  // Una partida multiplayer persistida tiene prioridad para no superponer dos prompts.
+  if (state.userProfile?.activeMatchId) return;
+  if (candidate.ownerUid && candidate.ownerUid !== state.currentUser?.uid) return;
+  if (!candidate.ownerUid && state.currentUser) return;
+  if (isSoloRecoveryExpired(candidate)) {
+    await abandonRecoveredSolo(candidate, { expired: true });
+    return;
+  }
+  showSoloRecoveryPrompt(
+    candidate,
+    () => { void resumeSoloRecoveryGame(candidate); },
+    () => { void abandonRecoveredSolo(candidate); },
+    { penalty: state.currentUser ? POINTS.abandonPenalty : 0 }
+  );
 }
 
 // Mulligan de Londres simplificado: mientras la mano no tenga entre 2 y 5 tierras (una
@@ -1025,6 +1184,18 @@ async function boot() {
   markEngineBootState('ready', { engineVersion: ENGINE_VERSION });
   showMainMenu(startPlayFlow, startMultiplayerFlow);
 
+  // 23.13.54 — el prompt Solo se decide recién cuando Auth dejó de estar UNKNOWN, para
+  // no ofrecer un recovery de Gaucho a una cuenta que todavía se está restaurando.
+  void (async () => {
+    try {
+      await waitForInitialAuthState();
+      if (state.currentUser) await userProfileLoadPromise;
+      await offerSoloRecoveryIfAvailable();
+    } catch (err) {
+      console.warn('No se pudo revisar recovery Solo al arrancar:', err);
+    }
+  })();
+
   // 23.13.29 — Textos del Juego se carga DESPUÉS de mostrar el primer menú. Es un doc
   // público y opcional: jamás bloquea boot/Solitario/mobile. Al llegar, aplica overrides
   // válidos y avisa a la UI para refrescar el menú que ya estaba visible.
@@ -1145,6 +1316,7 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
   // archivo) lo usa en vez de "El Tano" en todos los mensajes que corren tanto en
   // Solitario como en multiplayer (motor de combate, efectos, turnos).
   state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '', startingRole, engineVersion: ENGINE_VERSION, engineProtocolVersion: ENGINE_PROTOCOL_VERSION };
+  startMultiplayerPresenceHeartbeat(matchId, myRole);
   state.activePlayer = multiplayerStartingSide;
   state.priorityPlayer = state.activePlayer;
   state.consecutivePasses = 0;
@@ -2735,6 +2907,7 @@ function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc, rivalNam
 
   setupBoardLayout();
   state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '', startingRole: normalizeStartingRole(publicDoc?.startingRole), engineVersion: ENGINE_VERSION, engineProtocolVersion: ENGINE_PROTOCOL_VERSION };
+  startMultiplayerPresenceHeartbeat(matchId, myRole);
   reconstructStateFromMatch(publicDoc, privateDoc, myRole);
 
   // ENTREGA 22: un refresh corta la ejecución JS anterior, pero su backup queda exportable

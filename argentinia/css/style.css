@@ -1425,6 +1425,34 @@ html, body {
   transform: scale(.90);
   transform-origin: top left;
 }
+/* 23.13.55 — REC colapsable universal. Desktop adopta exactamente el contrato mobile:
+   chip mínimo por defecto; el resto del HUD sólo existe visualmente al desplegar. */
+.telemetry-panel:not(.arg-mobile-telemetry-expanded) > :not(.arg-mobile-telemetry-toggle) {
+  display: none !important;
+}
+.arg-mobile-telemetry-toggle {
+  order: -100;
+  min-width: 48px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid rgba(255,104,104,.68);
+  border-radius: 8px;
+  background: rgba(35,11,11,.94);
+  color: #ffdddd;
+  box-shadow: 0 3px 12px rgba(0,0,0,.48);
+  font: 800 11px/1 system-ui,sans-serif;
+  letter-spacing: .3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.arg-mobile-telemetry-toggle:hover { background: rgba(73,19,19,.96); }
+.telemetry-panel.arg-mobile-telemetry-expanded {
+  flex-wrap: wrap;
+  background: rgba(12,12,12,.95);
+}
+.telemetry-panel.arg-mobile-telemetry-expanded .arg-mobile-telemetry-toggle {
+  background: rgba(73,19,19,.96);
+}
 .telemetry-status { min-width:64px; padding:0 4px; white-space:nowrap; }
 .telemetry-cloud { padding:2px 5px; border-radius:999px; background:rgba(255,255,255,.09); white-space:nowrap; }
 .telemetry-bugs { padding:2px 5px; border-radius:999px; background:#4b2727; white-space:nowrap; }

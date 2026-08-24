@@ -1099,6 +1099,9 @@ export function startTelemetrySession(meta = {}) {
       matchId: meta.matchId ?? state?.currentMatch?.matchId ?? null,
       myRole: meta.myRole ?? state?.currentMatch?.myRole ?? null,
       deckLabel: meta.deckLabel ?? null,
+      soloGameId: meta.soloGameId ?? null,
+      segmentIndex: Number.isFinite(Number(meta.segmentIndex)) ? Number(meta.segmentIndex) : null,
+      activeElapsedBaseMs: Math.max(0, Number(meta.activeElapsedBaseMs) || 0),
       engineVersion: ENGINE_VERSION,
       browser: typeof navigator !== 'undefined' ? navigator.userAgent : null,
       page: typeof location !== 'undefined' ? location.pathname : null,
@@ -1351,6 +1354,7 @@ function buildStats(session) {
     automaticBugCandidateCount,
     automaticBugOccurrenceCount,
     manualBugMarkerCount,
+    elapsedMs: Math.max(0, ...session.events.map(ev => Number(ev?.relativeMs) || 0)),
     byType,
     bySeverity,
     truncated: !!session.truncated
@@ -1494,6 +1498,23 @@ function buildPanel() {
   bugsEl = document.createElement('span');
   bugsEl.className = 'telemetry-bugs';
 
+  // ENTREGA 23.13.55: el REC usa el mismo patrón colapsable en desktop y mobile.
+  // El toggle nace acá (capa común), por lo que mobileUI sólo queda como fallback legacy
+  // y nunca crea un segundo botón si Telemetry ya construyó el control universal.
+  const recToggle = document.createElement('button');
+  recToggle.id = 'arg-mobile-telemetry-toggle';
+  recToggle.className = 'arg-mobile-telemetry-toggle';
+  recToggle.type = 'button';
+  recToggle.textContent = '🔴 REC';
+  recToggle.setAttribute('aria-expanded', 'false');
+  recToggle.setAttribute('aria-label', 'Desplegar panel de reporte de bugs');
+  recToggle.addEventListener('click', () => {
+    const expanded = panel.classList.toggle('arg-mobile-telemetry-expanded');
+    recToggle.textContent = expanded ? '✕ REC' : '🔴 REC';
+    recToggle.setAttribute('aria-expanded', String(expanded));
+    recToggle.setAttribute('aria-label', expanded ? 'Colapsar panel de reporte de bugs' : 'Desplegar panel de reporte de bugs');
+  });
+
   const markBtn = button('🐞 Marcar', 'Marcar este instante como bug observado y subir checkpoint inmediato', () => markTelemetryBug());
   uploadBtn = button('☁️ Subir ahora', 'Forzar un checkpoint remoto ahora mismo', () => {
     requestRemoteTelemetryUpload('hud_manual', { kind: 'latest', capture: true }).catch(() => {});
@@ -1502,7 +1523,7 @@ function buildPanel() {
   // ENTREGA 23.5.1: la descarga central vive en Admin > DEBUGGING. Conservamos
   // exportTelemetry()/recovery internamente como red de seguridad, pero quitamos los dos
   // controles redundantes del HUD para no tapar superficie de juego.
-  panel.append(statusEl, cloudEl, bugsEl, markBtn, uploadBtn);
+  panel.append(recToggle, statusEl, cloudEl, bugsEl, markBtn, uploadBtn);
   document.body.appendChild(panel);
   updatePanelStatus();
 }

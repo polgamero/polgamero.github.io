@@ -37,11 +37,12 @@ import { executeLocalAttack, executeRivalAttack, hasPendingCombatDamageContinuat
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
-import { recordTelemetryUiLog, captureTelemetryState } from './telemetry.js';
+import { recordTelemetryUiLog, captureTelemetryState, getTelemetryStatus } from './telemetry.js';
+import { checkpointSoloRecovery } from './soloRecovery.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_VERSION_SHORT } from './version.js';
 import { getPriorityUxCopy, getEffectivePriorityActivity, canPriorityClockRun, PRIORITY_CLOCK_DURATION_MS } from './priorityUX.js';
 import { DAILY_REWARD_SCHEDULE, normalizeInventory, normalizeDailyRewardsState, unclaimedUnlockedDays, CHEST_ITEM_KEYS, rewardForDay } from './rewards.js';
@@ -59,7 +60,7 @@ import { classifiedsNextRotationAt, getClassifiedsProfileState, countOwnedClassi
 import { gameText } from './gameTexts.js';
 import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
-import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate } from './statistics.js';
+import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate, telemetryDurationMs } from './statistics.js';
 import { POOL_BASELINE } from './poolContract.js';
 import { effectivePackCost, campaignStatus } from './campaigns.js';
 import { mountAdminCampaignsPane, maybeShowAnnouncementPopup, renderActiveEventsStrip } from './campaignsUI.js';
@@ -4901,6 +4902,7 @@ function injectAdminPanelStyles() {
     .admin-debug-status { display:inline-block; padding:3px 7px; border-radius:999px; background:rgba(255,255,255,0.06); white-space:nowrap; }
     .admin-debug-status.completed { color:#81c784; }
     .admin-debug-status.running { color:#ffd166; }
+    .admin-debug-status.interrupted { color:#ff9f6e; background:rgba(255,120,75,.10); }
     .admin-stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(175px,1fr)); gap:10px; margin-top:12px; }
     .admin-stat-card { border:1px solid rgba(176,106,212,.25); border-radius:10px; padding:12px; background:rgba(8,5,12,.45); }
     .admin-stat-label { color:#a997b6; font-size:11px; text-transform:uppercase; letter-spacing:.45px; }
@@ -5093,7 +5095,10 @@ export function showAdminPanel(onBack) {
           <div class="admin-section-title">Caja negra — historial de partidas</div>
           <div class="admin-debug-toolbar">
             <div class="admin-debug-summary" id="admin-debug-summary">Entrá a esta solapa para cargar los logs.</div>
-            <button class="admin-save-btn admin-debug-refresh" id="admin-debug-refresh">🔄 Actualizar</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+              <button class="admin-save-btn admin-debug-refresh" id="admin-debug-cleanup">${gameTextHtml('admin.debug.cleanupStale')}</button>
+              <button class="admin-save-btn admin-debug-refresh" id="admin-debug-refresh">🔄 Actualizar</button>
+            </div>
           </div>
           <div class="admin-debug-table-wrap" id="admin-debug-table-wrap">
             <div class="admin-debug-empty">Cargando historial…</div>
@@ -5291,6 +5296,24 @@ export function showAdminPanel(onBack) {
     };
   }
 
+  function adminTelemetryTimestampMs(value) {
+    if (!value) return 0;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value.seconds === 'number') return value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1e6);
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function telemetryAdminDisplayStatus(session) {
+    const persisted = String(session?.status || 'running');
+    if (persisted === 'completed') return { status: 'completed', label: 'Completo' };
+    if (persisted === 'interrupted') return { status: 'interrupted', label: gameText('admin.debug.status.interrupted') };
+    if (persisted === 'ended_unfinalized') return { status: 'partial', label: 'Parcial' };
+    const lastMs = adminTelemetryTimestampMs(session?.updatedAt) || Date.parse(session?.startedAtClient || '') || 0;
+    if (lastMs && Date.now() - lastMs > 120000) return { status: 'interrupted', label: gameText('admin.debug.status.interrupted') };
+    return { status: 'running', label: 'En curso' };
+  }
+
   function renderTelemetrySessions(sessions) {
     const wrap = overlay.querySelector('#admin-debug-table-wrap');
     const summary = overlay.querySelector('#admin-debug-summary');
@@ -5306,20 +5329,21 @@ export function showAdminPanel(onBack) {
       const localName = session.playerName || meta.localPlayerName || 'Jugador';
       const rivalName = meta.rivalName || (String(session.mode || '').startsWith('multi') ? 'Rival' : 'El Tano');
       const bugs = telemetryBugCounts(session);
-      const status = session.status || 'running';
-      const statusLabel = status === 'completed' ? 'Completo' : (status === 'running' ? 'En curso' : 'Parcial');
+      const displayStatus = telemetryAdminDisplayStatus(session);
+      const status = displayStatus.status;
+      const statusLabel = displayStatus.label;
       const date = session.startedAtClient || session.endedAtClient || null;
       const bugSplitTitle = bugs.exactSplit ? '' : ' title="Sesión legacy: el total es exacto; el desglose auto/manual puede ser parcial."';
       return `
         <tr>
           <td>${escapeHtml(formatTelemetryDate(date))}</td>
           <td><span class="admin-debug-mode">${escapeHtml(mode)}</span>${session.matchId ? `<div class="admin-debug-match" title="${escapeHtml(session.matchId)}">${escapeHtml(session.matchId)}</div>` : ''}</td>
-          <td>${session.endedAtClient ? escapeHtml(formatDuration(Math.max(0, Date.parse(session.endedAtClient) - Date.parse(session.startedAtClient || session.endedAtClient)))) : '—'}</td>
+          <td>${(session.endedAtClient || status === 'interrupted') ? escapeHtml(formatDuration(telemetryDurationMs(session) || Math.max(0, (adminTelemetryTimestampMs(session.updatedAt) || 0) - (Date.parse(session.startedAtClient || '') || 0)))) : '—'}</td>
           <td><strong>${escapeHtml(localName)}</strong><br><span style="color:#9987a7;">vs ${escapeHtml(rivalName)}</span></td>
           <td><span class="admin-debug-mode">v${escapeHtml(session.telemetryVersion || meta.engineVersion || '?')}</span></td>
           <td${bugSplitTitle}><div class="admin-debug-bug-auto">⚙️ ${bugs.automatic} auto${bugs.automaticOccurrences > bugs.automatic ? ` · ${bugs.automaticOccurrences} ocurr.` : ''}</div><div class="admin-debug-bug-manual">🐞 ${bugs.manual} marcado${bugs.manual === 1 ? '' : 's'} · ${bugs.total} total</div></td>
           <td>${Number(session.eventCount || 0).toLocaleString('es-AR')}</td>
-          <td><span class="admin-debug-status ${status === 'completed' ? 'completed' : 'running'}">${statusLabel}</span></td>
+          <td><span class="admin-debug-status ${status}">${statusLabel}</span></td>
           <td><button class="admin-save-btn admin-debug-download" data-telemetry-download="${escapeHtml(session.id || session.sessionId || '')}">⬇ JSON</button></td>
         </tr>
       `;
@@ -5478,6 +5502,19 @@ export function showAdminPanel(onBack) {
   overlay.querySelector('#admin-stats-refresh').addEventListener('click', reloadAdminStatistics);
   overlay.querySelector('#admin-stats-sync').addEventListener('click', syncAdminRanking);
   overlay.querySelector('#admin-debug-refresh').addEventListener('click', reloadTelemetryHistory);
+  overlay.querySelector('#admin-debug-cleanup').addEventListener('click', async () => {
+    if (!window.confirm(gameText('admin.debug.cleanupConfirm'))) return;
+    const btn = overlay.querySelector('#admin-debug-cleanup');
+    btn.disabled = true;
+    try {
+      const result = await adminCloseStaleTelemetrySessions(120000);
+      window.alert(gameText('admin.debug.cleanupDone', { count: result?.count || 0 }));
+      await reloadTelemetryHistory();
+    } catch (err) {
+      console.error('No se pudieron cerrar sesiones huérfanas:', err);
+      window.alert(err?.message || String(err));
+    } finally { btn.disabled = false; }
+  });
   overlay.querySelector('#admin-image-refresh').addEventListener('click', () => reloadImageAudit(true));
   overlay.querySelector('#admin-image-toggle').addEventListener('click', () => {
     imageAuditShowAll = !imageAuditShowAll;
@@ -5787,6 +5824,34 @@ function multiplayerProfileBannerHTML(profile, roleLabel, fallbackName) {
 // FASE 4, ETAPA 6: se muestra al arrancar SOLO si el perfil trae un activeMatchId con una
 // partida genuinamente en curso (main.js ya la validó con fetchMatchForReconnect antes de
 // llamar a esto — nunca se ofrece reconectar a algo que ya terminó o no existe más).
+export function showSoloRecoveryPrompt(recovery, onResume, onAbandon, options = {}) {
+  injectStoreStyles();
+  const overlay = document.createElement('div');
+  overlay.id = 'solo-recovery-overlay';
+  overlay.style.cssText = 'position:fixed; inset:0; z-index:10020; background:rgba(0,0,0,0.88); display:flex; align-items:center; justify-content:center; padding:18px;';
+  const activeMs = Math.max(0, Number(recovery?.activeElapsedMs) || 0);
+  const turn = Math.max(1, Number(recovery?.state?.turnCount) || 1);
+  const phase = recovery?.state?.phase ? String(recovery.state.phase) : '—';
+  const penalty = Number(options.penalty || 0);
+  const abandonLabel = penalty ? gameTextHtml('solo.recovery.abandon', { points: Math.abs(penalty) }) : gameTextHtml('solo.recovery.abandonGuest');
+  overlay.innerHTML = `
+    <div style="background:#16211a;border:2px solid rgba(212,175,55,.62);border-radius:16px;padding:30px;max-width:480px;width:min(92vw,480px);text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.7);">
+      <div style="font-size:21px;font-weight:800;color:#f0e0b0;margin-bottom:10px;">${gameTextHtml('solo.recovery.title')}</div>
+      <div style="color:#cfe0d4;font-size:14px;line-height:1.55;margin-bottom:14px;">${gameTextHtml('solo.recovery.description')}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 22px;">
+        <div style="background:rgba(255,255,255,.04);border-radius:9px;padding:9px;"><b style="color:#f0e0b0;">${gameTextHtml('solo.recovery.turn')}</b><br>${turn}</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:9px;padding:9px;"><b style="color:#f0e0b0;">${gameTextHtml('solo.recovery.phase')}</b><br>${escapeHtml(phase)}</div>
+        <div style="background:rgba(255,255,255,.04);border-radius:9px;padding:9px;"><b style="color:#f0e0b0;">${gameTextHtml('solo.recovery.played')}</b><br>${escapeHtml(formatDuration(activeMs))}</div>
+      </div>
+      <button class="store-buy-btn" id="solo-recovery-yes">${gameTextHtml('solo.recovery.resume')}</button>
+      <div style="height:10px"></div>
+      <button class="store-back-link" id="solo-recovery-no">${abandonLabel}</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#solo-recovery-yes').addEventListener('click', () => { overlay.remove(); onResume(); });
+  overlay.querySelector('#solo-recovery-no').addEventListener('click', () => { overlay.remove(); onAbandon(); });
+}
+
 export function showReconnectPrompt(onReconnect, onAbandon) {
   injectStoreStyles(); // reusa .store-buy-btn / .store-back-link
   const overlay = document.createElement('div');
@@ -7260,6 +7325,10 @@ export function render() {
 
   // ENTREGA 22+: snapshot diagnóstico del estado estabilizado por este render.
   captureTelemetryState('render');
+
+  // 23.13.54 — cada render Solo estabilizado es también un checkpoint reanudable.
+  // El módulo ignora multiplayer/gameOver/elecciones transitorias y no toca reglas.
+  checkpointSoloRecovery(state, spellStack, { telemetrySessionId: getTelemetryStatus().sessionId });
 
   // FASE 4, ETAPA 2: publica mi mitad del estado en Firestore después de CUALQUIER cambio
   // real al tablero — no se espera (render() es síncrona), y si no hay una partida

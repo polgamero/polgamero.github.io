@@ -9,6 +9,7 @@ import { pointsForBotGameEnd, POINTS } from './store.js';
 import { recordTelemetryEvent, getTelemetryStatus } from './telemetry.js';
 import { PRIORITY_CLOCK_DURATION_MS, getEffectivePriorityActivity, canPriorityClockRun, getFrozenPriorityRemainingMs } from './priorityUX.js';
 import { gameText } from './gameTexts.js';
+import { finishSoloRecovery } from './soloRecovery.js';
 
 export function checkGameOver() {
   // FASE 4, ETAPA 6: gameOver y abandonedBy llegan JUNTOS por sync en el mismo publish
@@ -53,18 +54,23 @@ export function checkGameOver() {
 // partida (el overlay de Fin de Partida ya se mostró arriba, esto pasa "en paralelo" y solo
 // actualiza el número una vez que Firestore responde).
 function awardMatchEndPoints(won) {
+  // 23.13.54 — una partida Solo finalizada deja de ser reanudable inmediatamente, incluso
+  // para Gaucho sin login. Guardamos antes su duración efectiva para Stats.
+  const soloRecovery = !state.currentMatch ? finishSoloRecovery() : null;
   if (!state.currentUser) return;
 
-  // 23.13.37 — una sesión de telemetría = una participación de jugador. El receipt por
+  // 23.13.37 — una sesión de telemetría = una participación de jugador. Desde 23.13.54,
+  // Solo usa soloGameId como receipt estable para sobrevivir a uno o más F5/reconnects.
   // sessionId hace idempotente el contador aunque checkGameOver/render se invoque varias veces.
   const telemetry = getTelemetryStatus();
-  if (telemetry.sessionId) {
+  const receiptId = soloRecovery?.soloGameId || telemetry.sessionId;
+  if (receiptId) {
     void recordPlayerGameResult(state.currentUser.uid, {
-      sessionId: telemetry.sessionId,
+      sessionId: receiptId,
       mode: state.currentMatch ? 'multiplayer' : 'solo',
       won: !!won,
       abandoned: false,
-      durationMs: telemetry.elapsedMs || 0
+      durationMs: soloRecovery?.durationMs ?? telemetry.elapsedMs ?? 0
     }).catch(err => console.warn('No se pudieron registrar las estadísticas de la partida:', err));
   }
 

@@ -49,10 +49,17 @@ export function normalizePlayerStats(value) {
 }
 
 export function telemetryDurationMs(session) {
+  const effective = Number(session?.effectiveDurationMs);
+  if (Number.isFinite(effective) && effective >= 0) return Math.floor(effective);
   const start = Date.parse(session?.startedAtClient || session?.startedAt || session?.meta?.startedAt || '');
   const end = Date.parse(session?.endedAtClient || session?.endedAt || '');
   if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return 0;
   return Math.max(0, end - start);
+}
+
+export function isTelemetryTerminalGame(session) {
+  const status = String(session?.status || 'running');
+  return (status === 'completed' || status === 'ended_unfinalized') && !!(session?.endedAtClient || session?.endedAt);
 }
 
 function parseJson(value, fallback = null) {
@@ -64,7 +71,7 @@ function parseJson(value, fallback = null) {
 
 export function telemetryOutcome(session) {
   const endReason = String(session?.endReason || '');
-  if (endReason === 'abandon_local') return { result: 'loss', abandoned: true };
+  if (endReason === 'abandon_local' || endReason.startsWith('abandon_recovery')) return { result: 'loss', abandoned: true };
   const snap = parseJson(session?.latestSnapshotJson, session?.finalSnapshot || null);
   const turn = snap?.turn || {};
   if (turn.abandonedBy === 'rival') return { result: 'win', abandoned: false };
@@ -80,7 +87,7 @@ export function summarizePlayerTelemetry(sessions = []) {
   const out = emptyPlayerStats();
   out.gameBackfillVersion = PLAYER_GAME_BACKFILL_VERSION;
   for (const session of sessions) {
-    if (!session || session.status === 'running' || !(session.endedAtClient || session.endedAt)) continue;
+    if (!session || !isTelemetryTerminalGame(session)) continue;
     const meta = parseJson(session.metaJson, session.meta || {}) || {};
     const modeRaw = String(session.mode || meta.mode || '').toLowerCase();
     const isMulti = modeRaw.startsWith('multi');
@@ -102,7 +109,7 @@ export function summarizePlayerTelemetry(sessions = []) {
 }
 
 export function summarizeGlobalTelemetry(sessions = []) {
-  const completed = sessions.filter(s => s && s.status !== 'running' && (s.endedAtClient || s.endedAt));
+  const completed = sessions.filter(isTelemetryTerminalGame);
   const soloGames = [];
   const multiGroups = new Map();
   for (const s of completed) {
@@ -113,18 +120,22 @@ export function summarizeGlobalTelemetry(sessions = []) {
       if (!multiGroups.has(key)) multiGroups.set(key, []);
       multiGroups.get(key).push(s);
     } else {
-      soloGames.push([s]);
+      const soloKey = String(s.soloGameId || meta.soloGameId || s.id || s.sessionId || 'unknown');
+      let group = soloGames.find(entry => entry.key === soloKey);
+      if (!group) { group = { key: soloKey, sessions: [] }; soloGames.push(group); }
+      group.sessions.push(s);
     }
   }
-  const gameGroups = [...soloGames, ...multiGroups.values()];
+  const gameGroups = [...soloGames.map(entry => entry.sessions), ...multiGroups.values()];
   let totalDurationMs = 0;
   let abandonedGames = 0;
   let longestDurationMs = 0;
   for (const group of gameGroups) {
     const starts = group.map(s => Date.parse(s.startedAtClient || s.startedAt || '')).filter(Number.isFinite);
     const ends = group.map(s => Date.parse(s.endedAtClient || s.endedAt || '')).filter(Number.isFinite);
-    let duration = 0;
-    if (starts.length && ends.length) duration = Math.max(0, Math.max(...ends) - Math.min(...starts));
+    const effectiveDurations = group.map(s => Number(s?.effectiveDurationMs)).filter(v => Number.isFinite(v) && v >= 0);
+    let duration = effectiveDurations.length ? Math.max(...effectiveDurations) : 0;
+    if (!effectiveDurations.length && starts.length && ends.length) duration = Math.max(0, Math.max(...ends) - Math.min(...starts));
     if (!duration) duration = Math.max(0, ...group.map(telemetryDurationMs));
     totalDurationMs += duration;
     longestDurationMs = Math.max(longestDurationMs, duration);

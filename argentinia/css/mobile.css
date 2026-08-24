@@ -1180,8 +1180,8 @@ html.argentinia-mobile .support-row .stack-badge {
   box-shadow: 0 2px 6px rgba(0,0,0,.95) !important;
 }
 
-/* 4) Telemetría/REC mobile: de forma predeterminada es un chip mínimo y sólo ocupa HUD
-      cuando el usuario decide desplegarlo. Desktop conserva el panel histórico completo. */
+/* 4) Telemetría/REC mobile: reutiliza el toggle universal creado por telemetry.js y
+      ajusta geometría/tamaño táctil para mobile. Desktop comparte la misma lógica colapsable. */
 html.argentinia-mobile .telemetry-panel {
   left: max(4px, var(--arg-safe-left)) !important;
   top: max(4px, var(--arg-safe-top)) !important;

@@ -1827,6 +1827,56 @@ function parseTelemetryJsonField(value, fallback) {
 // Devuelve TODAS las sesiones visibles para el admin. Ordenamos del lado del cliente para
 // no exigir índices nuevos de Firestore; con el volumen de QA de Argentinia esto es chico y
 // además garantiza que también aparezcan sesiones viejas/incompletas.
+export async function finalizeTelemetryLifecycleSession(sessionId, payload = {}) {
+  if (!sessionId) throw new Error('Falta sessionId para cerrar lifecycle de Telemetría.');
+  const status = String(payload.status || 'interrupted');
+  const allowed = new Set(['interrupted', 'completed']);
+  if (!allowed.has(status)) throw new Error('Estado de lifecycle inválido.');
+  const patch = {
+    status,
+    endedAtClient: payload.endedAtClient || new Date().toISOString(),
+    endReason: String(payload.endReason || (status === 'completed' ? 'completed_external' : 'interrupted')),
+    effectiveDurationMs: Math.max(0, Math.floor(Number(payload.effectiveDurationMs) || 0))
+  };
+  if (payload.soloGameId) patch.soloGameId = String(payload.soloGameId);
+  if (Number.isFinite(Number(payload.segmentIndex))) patch.segmentIndex = Number(payload.segmentIndex);
+  await setDoc(doc(db, 'telemetrySessions', sessionId), patch, { merge: true });
+  return patch;
+}
+
+export async function touchMatchPresence(matchId, role) {
+  if (!matchId || (role !== 'host' && role !== 'guest')) return null;
+  const field = role === 'host' ? 'hostLastSeenAt' : 'guestLastSeenAt';
+  await setDoc(doc(db, 'matches', matchId), { [field]: serverTimestamp() }, { merge: true });
+  return true;
+}
+
+export async function adminCloseStaleTelemetrySessions(staleAfterMs = 120000) {
+  if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL) throw new Error('ADMIN_REQUIRED');
+  const threshold = Math.max(30000, Number(staleAfterMs) || 120000);
+  const now = Date.now();
+  const snap = await getDocs(collection(db, 'telemetrySessions'));
+  const batch = writeBatch(db);
+  let count = 0;
+  for (const d of snap.docs) {
+    const data = d.data() || {};
+    if (String(data.status || 'running') !== 'running') continue;
+    const lastMs = firestoreTimestampMs(data.updatedAt) || Date.parse(data.startedAtClient || '') || 0;
+    if (!lastMs || now - lastMs <= threshold) continue;
+    const startMs = Date.parse(data.startedAtClient || '') || lastMs;
+    const durationMs = Math.max(0, lastMs - startMs);
+    batch.set(d.ref, {
+      status: 'interrupted',
+      endedAtClient: new Date(lastMs).toISOString(),
+      endReason: 'stale_timeout_admin',
+      effectiveDurationMs: durationMs
+    }, { merge: true });
+    count += 1;
+  }
+  if (count > 0) await batch.commit();
+  return { count, staleAfterMs: threshold };
+}
+
 export async function fetchTelemetrySessionsForAdmin() {
   const snap = await getDocs(collection(db, 'telemetrySessions'));
   return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => {
@@ -2013,6 +2063,9 @@ function telemetryIndexData(checkpoint, playerName, reason) {
     myRole: summary?.meta?.myRole || null,
     difficulty: summary?.meta?.difficulty || null,
     deckLabel: summary?.meta?.deckLabel || null,
+    soloGameId: summary?.meta?.soloGameId || null,
+    segmentIndex: Number.isFinite(Number(summary?.meta?.segmentIndex)) ? Number(summary.meta.segmentIndex) : null,
+    effectiveDurationMs: Math.max(0, (Number(summary?.meta?.activeElapsedBaseMs) || 0) + (Number(summary?.stats?.elapsedMs) || 0)),
     telemetryVersion: summary?.telemetryVersion || null,
     schemaVersion: summary?.schemaVersion || null,
     engineBaseline: summary?.engineBaseline || null,
