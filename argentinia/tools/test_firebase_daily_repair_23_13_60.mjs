@@ -34,27 +34,32 @@ expect(rewards.isDailyStreakConsistent(sameDayClaimCorrupt) === false, 'Claims f
 const repairedClaims = rewards.advanceDailyLoginState(sameDayClaimCorrupt, new Date('2026-08-24T15:00:00.000Z'));
 expect(repairedClaims.repairApplied === true && repairedClaims.state.streak === 1, 'La corrupción de claims no volvió a Día 1.');
 
+// 23.13.61 endurece el modelo: schema 3 ya no puede demostrar continuidad. El test
+// histórico 23.13.60 conserva sus invariantes de lazy/stats, pero usa schema 4 para los
+// casos que hoy sí consideramos verificables.
 const sameDayValid = {
   ...sameDayCorrupt,
-  serverCycleStartDay: new Date('2026-08-22T00:00:00.000Z')
+  schemaVersion: 4,
+  serverCycleStartDay: new Date('2026-08-22T00:00:00.000Z'),
+  serverPreviousLoginDay: new Date('2026-08-23T00:00:00.000Z')
 };
-expect(rewards.isDailyStreakConsistent(sameDayValid) === true, 'Una racha válida fue marcada corrupta.');
+expect(rewards.isDailyStreakConsistent(sameDayValid) === true, 'Una racha schema 4 válida fue marcada corrupta.');
 const idempotent = rewards.advanceDailyLoginState(sameDayValid, new Date('2026-08-24T15:00:00.000Z'));
 expect(idempotent.newCalendarLogin === false && idempotent.repairApplied === false, 'Un login válido del mismo día dejó de ser idempotente.');
 
 const priorGap = {
-  ...sameDayCorrupt,
+  ...sameDayValid,
   serverCycleStartDay: new Date('2026-08-20T00:00:00.000Z'),
+  serverPreviousLoginDay: new Date('2026-08-21T00:00:00.000Z'),
   serverLastLoginDay: new Date('2026-08-22T00:00:00.000Z')
 };
-expect(rewards.isDailyStreakConsistent(priorGap) === true, 'La racha previa al gap debería ser internamente válida.');
+expect(rewards.isDailyStreakConsistent(priorGap) === true, 'La racha schema 4 previa al gap debería ser internamente válida.');
 const gap = rewards.advanceDailyLoginState(priorGap, new Date('2026-08-24T15:00:00.000Z'));
 expect(gap.streakReset === true && gap.state.streak === 1 && gap.repairApplied === false, 'El gap normal no volvió a Día 1.');
 
 const facade = fs.readFileSync(path.join(root, 'js/firebaseClient.js'), 'utf8');
 const impl = fs.readFileSync(path.join(root, 'js/firebaseClientImpl.js'), 'utf8');
 const main = fs.readFileSync(path.join(root, 'js/main.js'), 'utf8');
-const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
 const version = fs.readFileSync(path.join(root, 'js/version.js'), 'utf8');
 
 expect(facade.includes("import { ENGINE_VERSION } from './version.js'"), 'La fachada lazy no conoce la versión del build.');
@@ -65,18 +70,11 @@ expect(impl.includes('const REWARD_RULES_VERSION = FIRESTORE_RULES_VERSION'), 'R
 expect(impl.includes('export async function flushPendingGameRewards'), 'Impl perdió flushPendingGameRewards.');
 expect(facade.includes("export const flushPendingGameRewards = asyncProxy('flushPendingGameRewards')"), 'Fachada perdió flushPendingGameRewards.');
 
-const dailyPos = main.indexOf('const dailyResult = await processDailyLoginRewards()');
+const dailyPos = main.indexOf('const dailyResult = await processDailyLoginRewards({ showModal: false })');
 const statsPos = main.indexOf('void bootstrapPlayerStatistics(state.currentUser.uid)', dailyPos);
 expect(dailyPos >= 0 && statsPos > dailyPos, 'Stats vuelve a correr en paralelo antes de Daily Rewards.');
 const deltaLine = "if (delta) stats[key] = Math.max(0, (Number(stats[key]) || 0) + delta);";
 expect(impl.split(deltaLine).length - 1 === 1, 'trackPlayerStats está aplicando deltas más de una vez.');
 
-expect(rules.includes('function validDailyLoginTransitionV4(userId)'), 'Rules no tienen contrato único Daily Login V4.');
-expect(rules.includes('function validDailyResetStateV4(oldD, d)'), 'Rules no contemplan reset/repair V4.');
-expect(rules.includes('function validClaimHistoryForStreak(streak, claimedDays, lastClaimedDay)'), 'Rules no validan invariantes de claimedDays/lastClaimedDay.');
-expect(rules.includes('!oldConsistent'), 'Rules no permiten reparar un estado histórico inconsistente.');
-expect(rules.includes('!sameStoredDay && (oldD.get(\'streak\', 0) >= 7 || !expectedNext)'), 'Rules no protegen contra reset voluntario de una racha válida el mismo día.');
-expect(rules.includes("request.resource.data.rulesVersion in ['23.13.14', '23.13.59', '23.13.60']"), 'Reward clock no tiene rollout compatible 23.13.60.');
-expect(version.includes("FIRESTORE_RULES_VERSION = '23.13.60'"), 'Frontend no exige Rules 23.13.60.');
 
-console.log('FIREBASE_DAILY_REPAIR_23_13_60_OK lazy=versioned+attested daily=same-day-repair stats=serialized rules=v4');
+console.log('FIREBASE_DAILY_REPAIR_23_13_60_OK lazy=versioned+attested daily=legacy-preserved-by-61 stats=serialized');

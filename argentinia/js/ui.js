@@ -63,7 +63,7 @@ import { showGlobalRanking } from './rankingUI.js';
 import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate, telemetryDurationMs } from './statistics.js';
 import { POOL_BASELINE } from './poolContract.js';
 import { effectivePackCost, campaignStatus } from './campaigns.js';
-import { mountAdminCampaignsPane, maybeShowAnnouncementPopup, renderActiveEventsStrip } from './campaignsUI.js';
+import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.js';
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 
@@ -2145,7 +2145,7 @@ export function showDailyRewardsScreen(onBack) {
 }
 
 export function showDailyLoginRewardModal(loginInfo) {
-  if (!loginInfo?.newCalendarLogin) return;
+  if (!loginInfo?.newCalendarLogin) return Promise.resolve('skipped');
   injectRewardsStyles();
   document.getElementById('daily-login-reward-modal')?.remove();
   const reward = rewardForDay(loginInfo.rewardDay);
@@ -2166,9 +2166,18 @@ export function showDailyLoginRewardModal(loginInfo) {
       </div>
     </div>`;
   document.body.appendChild(modal);
-  modal.querySelector('#daily-login-close').addEventListener('click', () => modal.remove());
-  modal.querySelector('#daily-login-view').addEventListener('click', () => {
+  let resolveClosed;
+  let closed = false;
+  const closedPromise = new Promise(resolve => { resolveClosed = resolve; });
+  const finish = reason => {
+    if (closed) return;
+    closed = true;
     modal.remove();
+    resolveClosed?.(reason);
+  };
+  modal.querySelector('#daily-login-close').addEventListener('click', () => finish('closed'));
+  modal.querySelector('#daily-login-view').addEventListener('click', () => {
+    finish('view_rewards');
     const menu = document.getElementById('main-menu-overlay');
     if (menu) menu.style.display = 'none';
     showDailyRewardsScreen(() => { if (menu) menu.style.display = ''; });
@@ -2188,6 +2197,7 @@ export function showDailyLoginRewardModal(loginInfo) {
       btn.disabled = false;
     }
   });
+  return closedPromise;
 }
 
 const ENCYCLOPEDIA_TABS = [
@@ -6073,7 +6083,6 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
   renderAccountBox(overlay.querySelector('#main-menu-account'), state.currentUser);
   updateMainMenuLoginGatedButtons(overlay);
   void renderActiveEventsStrip(overlay.querySelector('#main-menu-active-events'));
-  void maybeShowAnnouncementPopup({ currentUser: state.currentUser });
 
   // "Noticias": públicas para cualquiera, con o sin sesión (ver firestore.rules) — no
   // bloquea el resto del menú, que ya se ve de entrada mientras esto carga.

@@ -846,19 +846,32 @@ export async function registerDailyLogin(uid, nowMs = null) {
     // Schema 3: los estados semanales 23.13.0–23.13.2 no representan el nuevo concepto.
     // El primer acceso 23.13.3 empieza inmediatamente Día 1, sea el día calendario que sea.
     const sourceDaily = hasAuthoritativeDailyState(data.dailyRewards) ? data.dailyRewards : null;
-    const login = advanceDailyLoginState(sourceDaily, now);
-    const inventory = normalizeInventory(data.inventory);
     const previous = normalizeDailyRewardsState(data.dailyRewards, now);
+    const previousSchemaVersion = Math.max(0, Math.floor(Number(data.dailyRewards?.schemaVersion) || 0));
+    const legacyContinuityMigration = previousSchemaVersion > 0 && previousSchemaVersion < 4;
+    const login = advanceDailyLoginState(sourceDaily, now);
+    if (legacyContinuityMigration && previous.streak > 0) {
+      // No existe evidencia suficiente para distinguir una racha schema 3 válida de una
+      // que ya fue sellada incorrectamente atravesando un gap. La migración es deliberada:
+      // D1 limpio una sola vez y, desde schema 4, continuidad demostrable en cada salto.
+      login.streakReset = true;
+      login.cycleRestarted = true;
+      login.repairApplied = true;
+    }
+    const inventory = normalizeInventory(data.inventory);
     transitionDebug = {
-      schemaVersion: Number(data.dailyRewards?.schemaVersion) || 0,
+      schemaVersion: previousSchemaVersion,
       hasServerUpdatedAt: !!data.dailyRewards?.serverUpdatedAt,
       previousLastLoginDate: previous.lastLoginDate,
+      previousPreviousLoginDate: previous.previousLoginDate,
       previousCycleStartDate: previous.cycleStartDate,
       previousStreak: previous.streak,
       previousUnlockedDays: previous.unlockedDays.slice(),
       previousClaimedDays: previous.claimedDays.slice(),
       previousLastClaimedDay: previous.lastClaimedDay,
-      previousStateConsistent: isDailyStreakConsistent(sourceDaily, now),
+      previousStateConsistent: sourceDaily ? isDailyStreakConsistent(sourceDaily, now) : false,
+      previousAuthoritative: !!sourceDaily,
+      legacyMigration: legacyContinuityMigration,
       effectiveDate: localDateKey(now),
       requestedRewardDay: login.rewardDay,
       requestedStreak: login.state.streak,
@@ -876,6 +889,9 @@ export async function registerDailyLogin(uid, nowMs = null) {
       // exigir igualdad fuerte sin migrar/resetear perfiles existentes.
       if (sourceDaily && login.state.streak > 1 && data.dailyRewards?.serverCycleStartDay) {
         persistedDaily.serverCycleStartDay = data.dailyRewards.serverCycleStartDay;
+        // Schema 4: el eslabón anterior queda sellado con el timestamp exacto que estaba
+        // persistido como último login. Rules exige esta relación en cada continuidad.
+        persistedDaily.serverPreviousLoginDay = data.dailyRewards.serverLastLoginDay;
       }
       tx.update(ref, { dailyRewards: persistedDaily, lastSeenAt: serverTimestamp() });
     } else {
@@ -945,6 +961,7 @@ export async function claimDailyReward(uid, day, nowMs = null) {
     const nextDaily = { ...dailyRewards, claimedDays, lastClaimedDay: Number(day) };
     const persistedDaily = serializeDailyRewardsForFirestore(nextDaily, now, serverTimestamp());
     persistedDaily.serverLastLoginDay = data.dailyRewards.serverLastLoginDay;
+    persistedDaily.serverPreviousLoginDay = data.dailyRewards.serverPreviousLoginDay || null;
     persistedDaily.serverCycleStartDay = data.dailyRewards.serverCycleStartDay;
     const updated = {
       points: Number(rewarded.points) || 0,

@@ -21,6 +21,7 @@ import { POOL_BASELINE } from './poolContract.js';
 import { chooseSoloStartingSide, normalizeStartingRole, startingSideForRole } from './startingPlayer.js';
 import { showStartingCoinToss } from './startingCoin.js';
 import { createSoloGameId, beginSoloRecoverySession, activateResumedSoloRecovery, loadSoloRecoveryCandidate, isSoloRecoveryCompatible, isSoloRecoveryExpired, restoreSoloRecoveryState, checkpointSoloRecovery, clearSoloRecovery, finishSoloRecovery, getSoloEffectiveElapsedMs, getActiveSoloGameId, hasActiveSoloRecovery } from './soloRecovery.js';
+import { maybeShowAnnouncementPopup } from './campaignsUI.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -68,14 +69,16 @@ function currentSoloLifecycleDurationMs() {
 // 23.13.0 — una sola puerta para registrar el login diario después de tener un perfil real.
 // Firestore hace la operación idempotente, así que un callback duplicado/reload el mismo día
 // no duplica streak ni premio. La UI de claim aparece sólo en el primer login calendario.
-async function processDailyLoginRewards() {
+async function processDailyLoginRewards({ showModal = true } = {}) {
   if (!state.currentUser || !state.userProfile) return null;
   try {
     const result = await registerDailyLogin(state.currentUser.uid);
     state.userProfile = { ...result.profile, rewardDebugOffsetDays: result.login?.debugOffsetDays || 0 };
     updateAccountUI(state.currentUser);
-    if (result.login?.newCalendarLogin) {
-      setTimeout(() => showDailyLoginRewardModal(result.login), 0);
+    // En bootstrap 23.13.61 el modal se difiere deliberadamente para serializar overlays:
+    // Daily primero, anuncio después. Los otros callers conservan el comportamiento previo.
+    if (showModal && result.login?.newCalendarLogin) {
+      void showDailyLoginRewardModal(result.login);
     }
     return result;
   } catch (err) {
@@ -1125,10 +1128,10 @@ async function boot() {
             updateAccountUI(state.currentUser);
           }
           if (recoveredRewards?.attempted) {
-            console.info('[GameReward 23.13.60] Reconciliación de pendientes:', recoveredRewards);
+            console.info('[GameReward 23.13.61] Reconciliación de pendientes:', recoveredRewards);
           }
         } catch (rewardErr) {
-          console.warn('[GameReward 23.13.60] No se pudieron reconciliar premios pendientes; se reintentará luego:', rewardErr);
+          console.warn('[GameReward 23.13.61] No se pudieron reconciliar premios pendientes; se reintentará luego:', rewardErr);
         }
 
         // 23.13.60 — serializamos las escrituras de bootstrap sobre users/{uid}. Antes,
@@ -1136,16 +1139,28 @@ async function boot() {
         // perfil que Daily Rewards modificaba milisegundos después: Firestore reintentaba
         // con failed-precondition y ensuciaba consola/boot. Primero economía + daily; recién
         // después se reconcilia el espejo público.
-        const dailyResult = await processDailyLoginRewards();
+        const dailyResult = await processDailyLoginRewards({ showModal: false });
         profile = state.userProfile || profile;
-        if (dailyResult?.login?.newCalendarLogin) {
-          console.info('[DailyRewards 23.13.60] Sincronización diaria aplicada:', {
-            rewardDay: dailyResult.login.rewardDay,
-            streak: dailyResult.login.streak,
-            streakReset: !!dailyResult.login.streakReset,
-            repairApplied: !!dailyResult.login.repairApplied,
+        if (dailyResult) {
+          console.info('[DailyRewards 23.13.61] Decisión de bootstrap:', {
+            newCalendarLogin: !!dailyResult.login?.newCalendarLogin,
+            rewardDay: dailyResult.login?.rewardDay ?? null,
+            streak: dailyResult.login?.streak ?? null,
+            streakReset: !!dailyResult.login?.streakReset,
+            repairApplied: !!dailyResult.login?.repairApplied,
+            legacyMigration: !!dailyResult.diagnostics?.legacyMigration,
             previous: dailyResult.diagnostics || null
           });
+        }
+        // Startup overlay queue: Daily Rewards tiene prioridad. Sólo cuando el usuario
+        // termina con ese modal se evalúa el anuncio activo con la identidad real cargada.
+        // Así un usuario autenticado nunca ve el anuncio como "guest" ni se superponen overlays.
+        let dailyModalResult = null;
+        if (dailyResult?.login?.newCalendarLogin) {
+          dailyModalResult = await showDailyLoginRewardModal(dailyResult.login);
+        }
+        if (serial === authIdentitySerial && state.currentUser && dailyModalResult !== 'view_rewards') {
+          await maybeShowAnnouncementPopup({ currentUser: state.currentUser });
         }
         if (serial !== authIdentitySerial || !state.currentUser) return profile;
         void bootstrapPlayerStatistics(state.currentUser.uid).catch(statsErr => {
@@ -1216,6 +1231,18 @@ async function boot() {
 
   markEngineBootState('ready', { engineVersion: ENGINE_VERSION });
   showMainMenu(startPlayFlow, startMultiplayerFlow);
+
+  // 23.13.61 — el popup de anuncios ya no nace dentro de showMainMenu antes de que Auth
+  // resuelva. Para guest se muestra recién cuando sabemos que realmente NO hay usuario;
+  // para cuentas autenticadas lo muestra userProfileLoadPromise después de Daily Rewards.
+  void (async () => {
+    try {
+      await waitForInitialAuthState();
+      if (!state.currentUser) await maybeShowAnnouncementPopup({ currentUser: null });
+    } catch (err) {
+      console.warn('No se pudo revisar el anuncio de inicio:', err);
+    }
+  })();
 
   // 23.13.54 — el prompt Solo se decide recién cuando Auth dejó de estar UNKNOWN, para
   // no ofrecer un recovery de Gaucho a una cuenta que todavía se está restaurando.

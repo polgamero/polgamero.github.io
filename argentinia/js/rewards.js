@@ -6,7 +6,7 @@
 // El instante efectivo sigue viniendo de Firestore y se interpreta en ART/UTC-3.
 
 export const REWARD_TIMEZONE_OFFSET_MINUTES = -180;
-export const DAILY_REWARDS_SCHEMA_VERSION = 3;
+export const DAILY_REWARDS_SCHEMA_VERSION = 4;
 
 function timestampLikeToDate(value) {
   if (!value) return null;
@@ -84,10 +84,17 @@ export function calendarDayDiff(fromKey, toKey) {
 }
 
 export function hasAuthoritativeDailyState(raw) {
-  return !!(raw && typeof raw === 'object'
-    && Number(raw.schemaVersion) >= DAILY_REWARDS_SCHEMA_VERSION
-    && timestampLikeToDate(raw.serverCycleStartDay)
-    && timestampLikeToDate(raw.serverLastLoginDay));
+  if (!(raw && typeof raw === 'object')) return false;
+  if (Number(raw.schemaVersion) < DAILY_REWARDS_SCHEMA_VERSION) return false;
+  const cycle = timestampLikeToDate(raw.serverCycleStartDay);
+  const last = timestampLikeToDate(raw.serverLastLoginDay);
+  if (!cycle || !last) return false;
+  const streak = Math.max(0, Math.floor(Number(raw.streak) || 0));
+  // Schema 4 agrega evidencia explícita del salto anterior. D1 no tiene predecesor;
+  // D2..D7 deben conservar el día anterior real. Los schema 3 quedan deliberadamente
+  // no autoritativos y se migran una única vez a D1: no existe información suficiente
+  // para demostrar si una racha histórica atravesó o no un gap.
+  return streak <= 1 || !!timestampLikeToDate(raw.serverPreviousLoginDay);
 }
 
 export const CHEST_ITEM_KEYS = Object.freeze({
@@ -127,6 +134,7 @@ export function defaultDailyRewardsState(date = new Date()) {
   return {
     cycleStartDate: null,
     lastLoginDate: null,
+    previousLoginDate: null,
     streak: 0,
     unlockedDays: [],
     claimedDays: [],
@@ -150,16 +158,21 @@ export function normalizeDailyRewardsState(raw, date = new Date()) {
 
   const serverCycle = timestampLikeToDate(raw.serverCycleStartDay);
   const serverLast = timestampLikeToDate(raw.serverLastLoginDay);
+  const serverPrevious = timestampLikeToDate(raw.serverPreviousLoginDay);
   const derivedCycleKey = serverCycle
     ? `${serverCycle.getUTCFullYear()}-${pad2(serverCycle.getUTCMonth()+1)}-${pad2(serverCycle.getUTCDate())}`
     : null;
   const derivedLastKey = serverLast
     ? `${serverLast.getUTCFullYear()}-${pad2(serverLast.getUTCMonth()+1)}-${pad2(serverLast.getUTCDate())}`
     : null;
+  const derivedPreviousKey = serverPrevious
+    ? `${serverPrevious.getUTCFullYear()}-${pad2(serverPrevious.getUTCMonth()+1)}-${pad2(serverPrevious.getUTCDate())}`
+    : null;
 
   return {
     cycleStartDate: derivedCycleKey || (typeof raw.cycleStartDate === 'string' ? raw.cycleStartDate : null),
     lastLoginDate: derivedLastKey || (typeof raw.lastLoginDate === 'string' ? raw.lastLoginDate : null),
+    previousLoginDate: derivedPreviousKey || (typeof raw.previousLoginDate === 'string' ? raw.previousLoginDate : null),
     streak: Math.max(0, Math.min(7, Math.floor(Number(raw.streak) || 0))),
     unlockedDays,
     claimedDays,
@@ -170,6 +183,7 @@ export function normalizeDailyRewardsState(raw, date = new Date()) {
           : null),
     schemaVersion: Math.max(0, Math.floor(Number(raw.schemaVersion) || 0)),
     serverCycleStartDay: raw.serverCycleStartDay || null,
+    serverPreviousLoginDay: raw.serverPreviousLoginDay || null,
     serverLastLoginDay: raw.serverLastLoginDay || null,
     serverUpdatedAt: raw.serverUpdatedAt || null
   };
@@ -178,9 +192,11 @@ export function normalizeDailyRewardsState(raw, date = new Date()) {
 export function serializeDailyRewardsForFirestore(state, authoritativeNow, serverTimestampValue) {
   const normalized = normalizeDailyRewardsState(state, authoritativeNow);
   const cycleStart = dateKeyToStamp(normalized.cycleStartDate) || rewardDayStamp(authoritativeNow);
+  const previousLogin = dateKeyToStamp(normalized.previousLoginDate);
   return {
     schemaVersion: DAILY_REWARDS_SCHEMA_VERSION,
     serverCycleStartDay: cycleStart,
+    serverPreviousLoginDay: previousLogin,
     serverLastLoginDay: rewardDayStamp(authoritativeNow),
     serverUpdatedAt: serverTimestampValue,
     streak: normalized.streak,
@@ -205,6 +221,12 @@ export function isDailyStreakConsistent(raw, date = new Date()) {
   if (!state.lastLoginDate && state.streak === 0) return true;
   if (!state.cycleStartDate || !state.lastLoginDate || state.streak < 1 || state.streak > 7) return false;
   if (calendarDayDiff(state.cycleStartDate, state.lastLoginDate) !== state.streak - 1) return false;
+  // Schema 4 prueba el último eslabón de continuidad de forma explícita. Para D1 no debe
+  // existir predecesor; para D2..D7 el predecesor debe ser exactamente ayer. Como cada
+  // transición schema 4 es validada por Rules contra el documento anterior, esta evidencia
+  // no puede ser fabricada por el cliente sin atravesar una transición autorizada.
+  if (state.streak === 1 && state.previousLoginDate) return false;
+  if (state.streak > 1 && calendarDayDiff(state.previousLoginDate, state.lastLoginDate) !== 1) return false;
   const expectedUnlocked = Array.from({ length: state.streak }, (_, index) => index + 1);
   const unlocked = state.unlockedDays.slice().sort((a, b) => a - b);
   if (!sameNumberList(unlocked, expectedUnlocked)) return false;
@@ -243,6 +265,7 @@ export function advanceDailyLoginState(raw, date = new Date()) {
       ...defaultDailyRewardsState(date),
       cycleStartDate: todayKey,
       lastLoginDate: todayKey,
+      previousLoginDate: null,
       streak: 1,
       unlockedDays: [1],
       claimedDays: [],
@@ -274,6 +297,7 @@ export function advanceDailyLoginState(raw, date = new Date()) {
     const next = {
       ...state,
       cycleStartDate: state.cycleStartDate || state.lastLoginDate,
+      previousLoginDate: state.lastLoginDate,
       lastLoginDate: todayKey,
       streak: nextStreak,
       unlockedDays
