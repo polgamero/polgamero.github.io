@@ -97,7 +97,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'store.profileMissing': definition('Tienda', 'Todavía no tenés un perfil guardado — jugá tu primera partida logueado para arrancar tu colección, y volvé acá.', 'Mensaje de Tienda sin perfil completo.'),
   'store.balance.points': definition('Tienda', 'Puntos', 'Etiqueta del saldo de Puntos.'),
   'store.balance.fichas': definition('Tienda', 'Fichas', 'Etiqueta del saldo de Fichas.'),
-  'store.classifieds.title': definition('Tienda', '📰 Avisos Clasificados', 'Título del acceso a Clasificados.'),
+  'store.classifieds.title': definition('Tienda', 'Avisos Clasificados', 'Título del acceso a Clasificados.'),
   'store.classifieds.showcaseTitle': definition('Tienda', 'Avisos Clasificados', 'Título corto de Clasificados en la vidriera horizontal.'),
   'store.classifieds.showcaseCount': definition('Tienda', '7 cartas', 'Dato destacado de Clasificados en la vidriera horizontal.'),
   'store.classifieds.description': definition('Tienda', 'Siete cartas cambian cada lunes: 4 Comunes, 2 Poco Comunes y 1 Rara o Mítica. Cada aviso se puede comprar una sola vez por semana.', 'Explicación breve de Clasificados.'),
@@ -122,7 +122,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'store.craft.chooseDescription': definition('Tienda', 'Esto gasta {cost} Fichas y es permanente — solo en tu colección. Por ahora, las mejoras se aplican únicamente a Criaturas.', 'Explicación del selector de crafting.'),
 
   // Avisos Clasificados
-  'classifieds.title': definition('Clasificados', '📰 Avisos Clasificados', 'Título de la cartelera semanal.'),
+  'classifieds.title': definition('Clasificados', 'Avisos Clasificados', 'Título de la cartelera semanal.'),
   'classifieds.weekSubtitle': definition('Clasificados', 'Semana {weekKey} · 7 cartas · destacada {premium}', 'Resumen de la cartelera semanal.'),
   'classifieds.backStore': definition('Clasificados', '← Volver a la Tienda', 'Volver de Clasificados a Tienda.'),
   'classifieds.refresh': definition('Clasificados', 'Actualizar avisos', 'Refrescar oferta semanal.'),
@@ -174,6 +174,9 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'chest.mythic.title': definition('Recompensas', 'Carta mítica asegurada', 'Título de recompensa Mythic.'),
   'chest.mythic.description': definition('Recompensas', 'Premio especial: al abrirlo recibís una mítica aleatoria real del pool.', 'Descripción de Mythic garantizada.'),
   'chest.mythic.action': definition('Recompensas', 'REVELAR', 'Botón para revelar Mythic garantizada.'),
+  'chest.mythic.pendingDescription': definition('Recompensas', 'Hay una revelación pendiente protegida. Podés retomarla sin perder ni duplicar la carta.', 'Texto cuando una mítica quedó pendiente de visualización.'),
+  'chest.mythic.resumeAction': definition('Recompensas', 'REANUDAR REVELACIÓN', 'Botón para retomar una revelación mítica pendiente.'),
+  'chest.mythic.reconcileError': definition('Recompensas', 'No pudimos confirmar la revelación. No se perderá la recompensa: al volver a Mi Cofre se reconciliará automáticamente.', 'Mensaje cuando una revelación mítica queda en estado incierto por conexión.'),
   'chest.future': definition('Recompensas', 'El Cofre ya usa un inventario extensible: futuros cosméticos, tickets, regalos de eventos u otros items pueden sumarse sin rediseñar colección/puntos.', 'Nota explicativa del sistema de Cofre.'),
 
   'daily.title': definition('Recompensas', 'Recompensas diarias', 'Título de Recompensas diarias.'),

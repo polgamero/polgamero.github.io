@@ -318,6 +318,14 @@ export async function loadUserProfile(uid) {
   return normalizeProfileForClient(data);
 }
 
+// 23.13.67 — lectura explícita desde servidor usada únicamente para reconciliar el journal
+// visual de una Mythic después de F5/conexión perdida. No escribe nada y no cambia Rules.
+export async function loadUserProfileFromServer(uid) {
+  const snap = await getDocFromServer(doc(db, 'users', uid));
+  if (!snap.exists()) return null;
+  return normalizeProfileForClient(snap.data());
+}
+
 // 23.13.24 — reserva inicial de identidad. Se ejecuta ANTES del mazo inicial. Si todavía
 // no existe users/{uid}, crea un perfil mínimo starterDeckPending=true en la MISMA transacción
 // que reserva usernames/{usernameKey}; si el perfil ya existía (migración), sólo agrega los

@@ -4,7 +4,10 @@ import fs from 'node:fs';
 const coin = fs.readFileSync(new URL('../js/startingCoin.js', import.meta.url), 'utf8');
 const version = fs.readFileSync(new URL('../js/version.js', import.meta.url), 'utf8');
 
-assert.ok(version.includes("ENGINE_VERSION = '23.13.66'"));
+const versionMatch = version.match(/ENGINE_VERSION = '(\d+)\.(\d+)\.(\d+)'/);
+assert.ok(versionMatch, 'No se pudo leer ENGINE_VERSION.');
+const versionTuple = versionMatch.slice(1).map(Number);
+assert.ok(versionTuple[0] > 23 || (versionTuple[0] === 23 && (versionTuple[1] > 13 || (versionTuple[1] === 13 && versionTuple[2] >= 66))), 'El hotfix de moneda requiere 23.13.66 o posterior.');
 assert.match(coin, /COIN_THICKNESS_PX = 24/);
 assert.match(coin, /COIN_EDGE_SEGMENTS = 64/);
 assert.match(coin, /rotateX\(\$\{spinDegrees\}deg\)/);

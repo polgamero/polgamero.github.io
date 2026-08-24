@@ -37,7 +37,7 @@ import { executeLocalAttack, executeRivalAttack, hasPendingCombatDamageContinuat
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, loadUserProfileFromServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -47,6 +47,7 @@ import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_VERSION_SHORT } from '.
 import { getPriorityUxCopy, getEffectivePriorityActivity, canPriorityClockRun, PRIORITY_CLOCK_DURATION_MS } from './priorityUX.js';
 import { DAILY_REWARD_SCHEDULE, normalizeInventory, normalizeDailyRewardsState, unclaimedUnlockedDays, CHEST_ITEM_KEYS, rewardForDay } from './rewards.js';
 import { showPackOpeningExperience, showGuaranteedMythicExperience } from './packOpening.js';
+import { beginGuaranteedMythicReveal, getPendingGuaranteedMythicReveal, markGuaranteedMythicRevealCommitted, clearPendingGuaranteedMythicReveal, inferGuaranteedMythicRevealState } from './rewardRevealRecovery.js';
 import { applyCardZoom } from './cardZoom.js';
 import { announcePhaseTransition } from './phaseBanner.js';
 import { buildDeckComposition, formatManaValue } from './deckComposition.js';
@@ -1975,6 +1976,62 @@ export function showChestScreen(onBack) {
   document.body.appendChild(overlay);
   overlay.querySelector('#chest-back').addEventListener('click', () => { overlay.remove(); onBack?.(); });
   const body = overlay.querySelector('#chest-body');
+  let recoveryChecked = false;
+  let recoveryInFlight = false;
+
+  function showMythicReveal(card) {
+    if (!card) return;
+    showGuaranteedMythicExperience({
+      card,
+      renderCard: rewardCard => createCardElement(rewardCard, false, true, null, 'pack-opening', () => {}),
+      // El journal sólo se limpia cuando la carta llegó físicamente al frente. Si hay F5
+      // durante la carga audiovisual, la próxima entrada a Mi Cofre reanuda esta misma carta.
+      onReveal: revealedCard => {
+        clearPendingGuaranteedMythicReveal(state.currentUser?.uid, revealedCard?.id || card.id);
+      },
+      onClose: renderChest,
+      autoStart: true
+    });
+  }
+
+  async function reconcilePendingMythic({ autoResume = false } = {}) {
+    if (!state.currentUser || recoveryInFlight) return null;
+    const pending = getPendingGuaranteedMythicReveal(state.currentUser.uid);
+    if (!pending) return null;
+    recoveryInFlight = true;
+    try {
+      let profile = state.userProfile;
+      let status = inferGuaranteedMythicRevealState(profile, pending);
+      // Un journal "prepared" puede corresponder a una transacción cuyo response se perdió
+      // por F5/corte. Leemos servidor antes de volver a gastar el item: jamás adivinamos.
+      if (status !== 'committed') {
+        try {
+          const serverProfile = await loadUserProfileFromServer(state.currentUser.uid);
+          if (serverProfile) {
+            profile = serverProfile;
+            state.userProfile = serverProfile;
+            updateAccountUI(state.currentUser);
+          }
+          status = inferGuaranteedMythicRevealState(profile, pending);
+        } catch (err) {
+          console.warn('[RewardReveal 23.13.67] No se pudo reconciliar contra servidor:', err);
+        }
+      }
+      if (status === 'committed') {
+        markGuaranteedMythicRevealCommitted(state.currentUser.uid, pending.cardId);
+        const card = cardDb.getById(pending.cardId);
+        if (!card || card.rarity !== 'Mythic') {
+          clearPendingGuaranteedMythicReveal(state.currentUser.uid, pending.cardId);
+          return { committed: true, card: null, pending };
+        }
+        if (autoResume && document.body.contains(overlay)) showMythicReveal(card);
+        return { committed: true, card, pending };
+      }
+      return { committed: false, card: cardDb.getById(pending.cardId), pending };
+    } finally {
+      recoveryInFlight = false;
+    }
+  }
 
   function renderChest() {
     if (!state.currentUser || !state.userProfile) {
@@ -1986,6 +2043,12 @@ export function showChestScreen(onBack) {
     const fichas = Number(state.userProfile.fichas) || 0;
     const packs = inventory[CHEST_ITEM_KEYS.standardPack];
     const mythics = inventory[CHEST_ITEM_KEYS.guaranteedMythic];
+    const pendingMythic = getPendingGuaranteedMythicReveal(state.currentUser.uid);
+    const pendingState = pendingMythic ? inferGuaranteedMythicRevealState(state.userProfile, pendingMythic) : 'none';
+    const mythicActionLabel = pendingMythic && pendingState !== 'committed'
+      ? gameTextHtml('chest.mythic.resumeAction')
+      : gameTextHtml('chest.mythic.action');
+    const mythicButtonDisabled = mythics < 1 && !pendingMythic;
     body.innerHTML = `
       <div class="chest-summary">
         <div class="chest-item">
@@ -2004,8 +2067,8 @@ export function showChestScreen(onBack) {
         </div>
         <div class="chest-item chest-mythic">
           <div class="chest-item-icon">✦</div><div class="chest-item-title">${gameTextHtml('chest.mythic.title')}</div><div class="chest-item-count">${mythics}</div>
-          <div class="chest-item-desc">${gameTextHtml('chest.mythic.description')}</div>
-          <button class="reward-action-btn" id="chest-open-mythic" ${mythics < 1 ? 'disabled' : ''}>${gameTextHtml('chest.mythic.action')}</button>
+          <div class="chest-item-desc">${pendingMythic ? gameTextHtml('chest.mythic.pendingDescription') : gameTextHtml('chest.mythic.description')}</div>
+          <button class="reward-action-btn" id="chest-open-mythic" ${mythicButtonDisabled ? 'disabled' : ''}>${mythicActionLabel}</button>
         </div>
       </div>
       <div class="chest-future">${gameTextHtml('chest.future')}</div>`;
@@ -2042,24 +2105,50 @@ export function showChestScreen(onBack) {
       const btn = body.querySelector('#chest-open-mythic');
       btn.disabled = true;
       try {
-        const card = generateGuaranteedMythicCard();
+        let pending = getPendingGuaranteedMythicReveal(state.currentUser.uid);
+        if (pending) {
+          const reconciled = await reconcilePendingMythic({ autoResume: false });
+          if (reconciled?.committed && reconciled.card) {
+            showMythicReveal(reconciled.card);
+            return;
+          }
+          pending = reconciled?.pending || pending;
+        }
+
+        // Nuevo contrato 23.13.67: el click REVELAR elige la carta, deja journal ANTES del
+        // await y luego hace la transacción atómica. Todo lo que sigue es sólo experiencia.
+        let card = pending ? cardDb.getById(pending.cardId) : null;
+        if (!card || card.rarity !== 'Mythic') {
+          if (pending) clearPendingGuaranteedMythicReveal(state.currentUser.uid, pending.cardId);
+          card = generateGuaranteedMythicCard();
+          pending = beginGuaranteedMythicReveal(state.currentUser.uid, card.id, state.userProfile);
+        }
+        if (!pending) pending = beginGuaranteedMythicReveal(state.currentUser.uid, card.id, state.userProfile);
+
         state.userProfile = await openGuaranteedMythic(state.currentUser.uid, card.id);
+        markGuaranteedMythicRevealCommitted(state.currentUser.uid, card.id);
         updateAccountUI(state.currentUser);
-        // La Mythic del Día 7 comparte el lenguaje audiovisual del slot Mythic de un sobre,
-        // pero la carta ya está acreditada antes de iniciar la revelación.
-        showGuaranteedMythicExperience({
-          card,
-          renderCard: rewardCard => createCardElement(rewardCard, false, true, null, 'pack-opening', () => {}),
-          onClose: renderChest
-        });
+        // NO hay "PREPARAR REVELACIÓN". Entramos directamente en la cinemática.
+        showMythicReveal(card);
       } catch (err) {
         console.error('No se pudo revelar la recompensa mítica:', err);
-        showSimpleAlertModal(err.message || 'No se pudo abrir la recompensa mítica.');
+        // El journal se conserva deliberadamente: al volver a Mi Cofre primero se consulta
+        // el servidor para decidir si la transacción llegó a commit o hay que reintentar.
+        showSimpleAlertModal(gameText('chest.mythic.reconcileError'));
         renderChest();
       }
     });
   }
   renderChest();
+
+  // Si F5 ocurrió después del commit pero antes de ver la carta, Mi Cofre reabre la MISMA
+  // Mythic automáticamente. Un journal sólo "prepared" se verifica contra servidor primero.
+  if (!recoveryChecked && state.currentUser && getPendingGuaranteedMythicReveal(state.currentUser.uid)) {
+    recoveryChecked = true;
+    window.setTimeout(() => { void reconcilePendingMythic({ autoResume: true }).then(result => {
+      if (result && !result.committed) renderChest();
+    }); }, 0);
+  }
 }
 
 export function showDailyRewardsScreen(onBack) {
@@ -2920,7 +3009,7 @@ function injectStoreStyles() {
     .store-market-item .reward-action-btn { width:100%; min-height:42px; }
     .store-market-item .store-error-msg { min-height:16px; margin-top:7px; }
     .store-discount-note { display:inline-block; font-size:11px; color:#f5d777; margin-left:3px; }
-    .store-classifieds-icon { font-size:64px; filter:drop-shadow(0 5px 12px rgba(116,172,223,.24)); }
+    .store-classifieds-icon { width:120px; height:120px; object-fit:contain; filter:drop-shadow(0 5px 12px rgba(116,172,223,.24)); }
     .store-card-grid {
       display: flex; flex-wrap: wrap; justify-content: center; gap: 16px;
       --card-w: 14vh;
@@ -3032,6 +3121,7 @@ function injectStoreStyles() {
     html.argentinia-mobile .store-market-item { flex-basis:min(78vw,270px); min-width:min(78vw,270px); min-height:275px; padding:14px; }
     html.argentinia-mobile .store-market-item .chest-item-icon { min-height:92px; }
     html.argentinia-mobile .store-market-item .reward-pack-icon { width:96px; height:96px; }
+    html.argentinia-mobile .store-market-item .store-classifieds-icon { width:96px; height:96px; }
     html.argentinia-mobile .store-points-info { margin-top:-4px; padding:20px 16px 16px; }
     html.argentinia-mobile .classifieds-topbar { margin-bottom:8px; }
     html.argentinia-mobile .classifieds-week-title { font-size:15px; }
@@ -3163,7 +3253,7 @@ export function showStoreScreen(onBack, options = {}) {
             <button class="reward-action-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? gameTextHtml('store.craft.action') : gameTextHtml('store.craft.missing', { count: FICHAS_PER_ENHANCEMENT - fichas })}</button>
           </div>
           <div class="chest-item store-market-item store-classifieds-entry">
-            <div class="chest-item-icon store-classifieds-icon">📰</div>
+            <div class="chest-item-icon"><img class="store-classifieds-icon" src="./assets/images/ui/clasificados.png" alt="Avisos Clasificados"></div>
             <div class="chest-item-title">${gameTextHtml('store.classifieds.showcaseTitle')}</div>
             <div class="chest-item-count store-market-count store-market-count-classifieds">${gameTextHtml('store.classifieds.showcaseCount')}</div>
             <div class="chest-item-desc">${gameTextHtml('store.classifieds.description')}</div>

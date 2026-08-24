@@ -450,7 +450,7 @@ export function showPackOpeningExperience({ cards, renderCard, fichaTotal = null
   return { close, showSummary, sequence };
 }
 
-export function showGuaranteedMythicExperience({ card, renderCard, onClose = null }) {
+export function showGuaranteedMythicExperience({ card, renderCard, onClose = null, onReveal = null, autoStart = true }) {
   injectStyles();
   document.getElementById('pack-opening-overlay')?.remove();
   const overlay = document.createElement('div');
@@ -464,7 +464,7 @@ export function showGuaranteedMythicExperience({ card, renderCard, onClose = nul
       <div class="pack-opening-card-zone"><div class="pack-opening-halo"></div><div class="pack-opening-card-shell"><div class="pack-opening-face pack-opening-back"></div><div class="pack-opening-face pack-opening-front"></div></div></div>
       <div class="pack-opening-name"></div>
     </div>
-    <div class="pack-opening-controls"><button class="pack-opening-primary" type="button">PREPARAR REVELACIÓN</button><span class="pack-opening-hint">Tu carta ya está segura en la colección.</span></div>`;
+    <div class="pack-opening-controls"><button class="pack-opening-primary" type="button">REVELANDO…</button><span class="pack-opening-hint">Tu carta ya está segura en la colección.</span></div>`;
   document.body.appendChild(overlay);
   const shell = overlay.querySelector('.pack-opening-card-shell');
   const back = overlay.querySelector('.pack-opening-back');
@@ -497,6 +497,7 @@ export function showGuaranteedMythicExperience({ card, renderCard, onClose = nul
       if (hint) hint.textContent = 'Arrastrá la carta para inspeccionarla';
       revealed = true;
       charging = false;
+      try { onReveal?.(card); } catch (err) { console.warn('No se pudo confirmar visualmente la revelación Mythic:', err); }
     }, 1500);
   }
   function onKey(e) { if ((e.key === 'Enter' || e.key === ' ') && !charging) { e.preventDefault(); act(); } }
@@ -510,5 +511,12 @@ export function showGuaranteedMythicExperience({ card, renderCard, onClose = nul
     act();
   });
   window.addEventListener('keydown', onKey);
+  // 23.13.67 — el click REVELAR de Mi Cofre YA es la acción. No existe un segundo paso
+  // "PREPARAR REVELACIÓN": entramos directo en la carga audiovisual y luego mostramos la carta.
+  if (autoStart) requestAnimationFrame(() => act());
+  else {
+    btn.disabled = false;
+    btn.textContent = 'REVELAR';
+  }
   return { close };
 }

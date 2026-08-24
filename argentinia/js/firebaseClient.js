@@ -156,6 +156,7 @@ export function signInWithGoogle(...args) {
 }
 export const signOutUser = asyncProxy('signOutUser');
 export const loadUserProfile = asyncProxy('loadUserProfile');
+export const loadUserProfileFromServer = asyncProxy('loadUserProfileFromServer');
 export const createUserProfile = asyncProxy('createUserProfile');
 export const reserveInitialUsername = asyncProxy('reserveInitialUsername');
 export const checkUsernameAvailability = asyncProxy('checkUsernameAvailability');
