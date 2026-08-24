@@ -31,6 +31,7 @@ import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { normalizePlayerStats, summarizePlayerTelemetry, PLAYER_GAME_BACKFILL_VERSION } from './statistics.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
 import { buildCampaignSnapshot, validateEventPayload, validateAnnouncementPayload, effectivePackCost, effectiveMatchPoints, effectiveAllPoints, effectiveFichas } from './campaigns.js';
+import { queuePendingGameReward, pendingGameRewardsForUid, removePendingGameReward, normalizeGameRewardReceiptId } from './gameRewards.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAAvUAaZ35_sF9uCsecLPg7zqhB7mLa7yo",
@@ -51,7 +52,7 @@ export const db = getFirestore(app);
 // no hace falta pedir ningún permiso extra aparte, alcanza con el login estándar.
 const googleProvider = new GoogleAuthProvider();
 const ADMIN_EMAIL = 'pablogamero1@gmail.com';
-const REWARD_RULES_VERSION = '23.13.14';
+const REWARD_RULES_VERSION = '23.13.59';
 
 function usernameError(code, message) {
   const error = new Error(message || code);
@@ -564,6 +565,101 @@ export async function awardPoints(uid, delta) {
   return { total: result.next, appliedDelta: applied, baseDelta, campaignSnapshot: snapshot };
 }
 
+
+// 23.13.59 — premios de FIN DE PARTIDA durables e idempotentes.
+// `awardPoints()` sigue existiendo para ajustes/penalidades generales; gameplay terminal usa
+// este contrato con receipt estable. La cola local se crea antes de cualquier await y la
+// transacción acredita puntos + crea el receipt de manera atómica.
+async function settleGameRewardOnce(uid, reward = {}) {
+  const receiptId = normalizeGameRewardReceiptId(reward.receiptId);
+  const baseDelta = Math.max(0, Math.floor(Number(reward.baseDelta) || 0));
+  const mode = reward.mode === 'multiplayer' ? 'multiplayer' : 'solo';
+  const outcome = reward.outcome === 'loss' ? 'loss' : 'win';
+  if (!uid || !receiptId || baseDelta <= 0) throw new Error('GAME_REWARD_INVALID_REQUEST');
+
+  const snapshot = await getCampaignSnapshotForEconomy(uid);
+  const effectiveDelta = effectiveMatchPoints(baseDelta, snapshot);
+  const userRef = doc(db, 'users', uid);
+  const receiptRef = doc(db, 'gameRewardReceipts', `${uid}_${receiptId}`);
+  const result = await runTransaction(db, async tx => {
+    // Firestore exige todas las lecturas antes de las escrituras.
+    const receiptSnap = await tx.get(receiptRef);
+    const userSnap = await tx.get(userRef);
+    if (!userSnap.exists()) throw new Error('No se encontró tu perfil.');
+    const current = Math.max(0, Math.floor(Number(userSnap.data()?.points) || 0));
+    if (receiptSnap.exists()) {
+      const previous = receiptSnap.data() || {};
+      return {
+        duplicate: true,
+        current,
+        next: current,
+        appliedDelta: Number(previous.effectiveDelta) || 0,
+        effectiveDelta: Number(previous.effectiveDelta) || effectiveDelta
+      };
+    }
+    const next = current + effectiveDelta;
+    tx.update(userRef, { points: next });
+    tx.set(receiptRef, {
+      uid,
+      receiptId,
+      mode,
+      outcome,
+      baseDelta,
+      effectiveDelta,
+      resultingTotal: next,
+      engineVersion: ENGINE_VERSION,
+      createdAt: serverTimestamp()
+    });
+    return { duplicate: false, current, next, appliedDelta: effectiveDelta, effectiveDelta };
+  });
+
+  if (!result.duplicate) {
+    await statsBestEffort(uid, { pointsEarned: Math.max(0, Number(result.appliedDelta) || 0) });
+    void economyLogBestEffort({
+      targetUid: uid,
+      source: 'game_reward',
+      pointsDelta: Math.max(0, Number(result.appliedDelta) || 0),
+      sessionId: receiptId
+    });
+  }
+  return { ...result, total: result.next, baseDelta, receiptId, mode, outcome, campaignSnapshot: snapshot };
+}
+
+export async function awardGamePointsOnce(uid, reward = {}) {
+  const pending = queuePendingGameReward(uid, reward);
+  if (!pending) throw new Error('GAME_REWARD_INVALID_REQUEST');
+  try {
+    const result = await settleGameRewardOnce(uid, pending);
+    removePendingGameReward(uid, pending.receiptId);
+    return result;
+  } catch (error) {
+    // El pending queda deliberadamente persistido para el próximo boot/login.
+    throw error;
+  }
+}
+
+export async function flushPendingGameRewards(uid) {
+  const pending = pendingGameRewardsForUid(uid);
+  if (!pending.length) return { attempted: 0, settled: 0, failed: 0, latestTotal: null, results: [] };
+  const results = [];
+  let settled = 0;
+  let failed = 0;
+  let latestTotal = null;
+  for (const reward of pending) {
+    try {
+      const result = await settleGameRewardOnce(uid, reward);
+      removePendingGameReward(uid, reward.receiptId);
+      settled += 1;
+      if (Number.isFinite(Number(result?.total))) latestTotal = Number(result.total);
+      results.push({ receiptId: reward.receiptId, ok: true, duplicate: !!result?.duplicate, total: result?.total ?? null });
+    } catch (error) {
+      failed += 1;
+      results.push({ receiptId: reward.receiptId, ok: false, code: error?.code || error?.name || 'ERROR', message: error?.message || String(error) });
+    }
+  }
+  return { attempted: pending.length, settled, failed, latestTotal, results };
+}
+
 // 23.13.0 — Comprar ya NO abre el sobre. La transacción descuenta puntos y deposita una
 // unidad en Mi Cofre; abrirlo es otra acción atómica. Esto unifica sobres comprados,
 // recompensas diarias y futuros regalos/admin bajo el mismo inventario persistente.
@@ -666,7 +762,7 @@ async function fetchRewardDebugOffsetDays(uid) {
 async function getAuthoritativeServerClock(uid) {
   const ref = doc(db, 'rewardClock', uid);
   try {
-    // 23.13.14 — attestation de Rules: las Rules nuevas aceptan este campo versionado;
+    // 23.13.59 — attestation de Rules: las Rules nuevas aceptan este campo versionado;
     // una Rules vieja lo rechaza y nos permite distinguir deploy incompleto de bug lógico.
     await setDoc(ref, { now: serverTimestamp(), rulesVersion: REWARD_RULES_VERSION });
   } catch (error) {

@@ -4,12 +4,13 @@ import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { hasKeyword } from './keywords.js';
-import { awardPoints, clearActiveMatchId, recordPlayerGameResult } from './firebaseClient.js';
+import { awardGamePointsOnce, clearActiveMatchId, recordPlayerGameResult } from './firebaseClient.js';
 import { pointsForBotGameEnd, POINTS } from './store.js';
 import { recordTelemetryEvent, getTelemetryStatus } from './telemetry.js';
 import { PRIORITY_CLOCK_DURATION_MS, getEffectivePriorityActivity, canPriorityClockRun, getFrozenPriorityRemainingMs } from './priorityUX.js';
 import { gameText } from './gameTexts.js';
 import { finishSoloRecovery } from './soloRecovery.js';
+import { queuePendingGameReward } from './gameRewards.js';
 
 export function checkGameOver() {
   // FASE 4, ETAPA 6: gameOver y abandonedBy llegan JUNTOS por sync en el mismo publish
@@ -59,15 +60,19 @@ function awardMatchEndPoints(won) {
   const soloRecovery = !state.currentMatch ? finishSoloRecovery() : null;
   if (!state.currentUser) return;
 
-  // 23.13.37 — una sesión de telemetría = una participación de jugador. Desde 23.13.54,
-  // Solo usa soloGameId como receipt estable para sobrevivir a uno o más F5/reconnects.
-  // sessionId hace idempotente el contador aunque checkGameOver/render se invoque varias veces.
   const telemetry = getTelemetryStatus();
-  const receiptId = soloRecovery?.soloGameId || telemetry.sessionId;
+  // 23.13.59 — identidad durable del JUEGO, no del runtime. Solo conserva soloGameId a
+  // través de F5; Multiplayer usa matchId+role para que un reconnect tampoco pueda pagar
+  // dos veces ni duplicar la participación estadística.
+  const receiptId = state.currentMatch?.matchId
+    ? `match_${state.currentMatch.matchId}_${state.currentMatch.myRole || 'player'}`
+    : (soloRecovery?.soloGameId || telemetry.sessionId);
+  const mode = state.currentMatch ? 'multiplayer' : 'solo';
+
   if (receiptId) {
     void recordPlayerGameResult(state.currentUser.uid, {
       sessionId: receiptId,
-      mode: state.currentMatch ? 'multiplayer' : 'solo',
+      mode,
       won: !!won,
       abandoned: false,
       durationMs: soloRecovery?.durationMs ?? telemetry.elapsedMs ?? 0
@@ -75,51 +80,79 @@ function awardMatchEndPoints(won) {
   }
 
   if (state.currentMatch) {
-    // FASE 4, ETAPA 6: la partida ya terminó — borro el rastro para que un futuro reload no
-    // ofrezca "reconectate" a algo que ya no está en curso. Mejor esfuerzo, no bloquea nada
-    // si falla (revisa la próxima vez que arranque igual, ver fetchMatchForReconnect).
+    // La partida ya terminó — borro el rastro para que un futuro reload no ofrezca
+    // reconectarse a algo terminal. Mejor esfuerzo e independiente del settlement económico.
     clearActiveMatchId(state.currentUser.uid)
       .then(() => { if (state.userProfile) state.userProfile.activeMatchId = null; })
       .catch(() => {});
+  }
 
-    const delta = won ? POINTS.winVsHumano : POINTS.lossVsHumano;
-    awardPoints(state.currentUser.uid, delta)
-      .then(result => {
-        const newTotal = result?.total ?? state.userProfile?.points ?? 0;
-        const awarded = result?.appliedDelta ?? delta;
-        if (state.userProfile) state.userProfile.points = newTotal;
-        const msg = won
-          ? gameText('game.points.pvpWin', { points: awarded, total: newTotal })
-          : gameText('game.points.pvpLoss', { points: awarded, total: newTotal });
-        logMsg(msg);
-        updateAccountUI(state.currentUser);
-      })
-      .catch(err => {
-        console.error('No se pudieron guardar los puntos de esta partida:', err);
-        logMsg(gameText('game.points.saveError'));
-      });
+  const delta = state.currentMatch
+    ? (won ? POINTS.winVsHumano : POINTS.lossVsHumano)
+    : pointsForBotGameEnd(won, state.botDifficulty);
+  const difficultyLabel = state.botDifficulty === 'hard' ? 'Difícil' : 'Fácil';
+
+  if (!receiptId) {
+    console.error('[GameReward 23.13.59] Fin de partida sin receipt estable; no se acredita para evitar duplicados.');
+    logMsg(gameText('game.points.saveError'));
     return;
   }
 
-  const delta = pointsForBotGameEnd(won, state.botDifficulty);
-  const difficultyLabel = state.botDifficulty === 'hard' ? 'Difícil' : 'Fácil';
-  awardPoints(state.currentUser.uid, delta)
+  // CRÍTICO 23.13.59: la cola se escribe SINCRÓNICAMENTE antes de tocar Firebase. Si el
+  // navegador muere entre el game over y la respuesta remota, el próximo login reintenta.
+  queuePendingGameReward(state.currentUser.uid, {
+    receiptId,
+    baseDelta: delta,
+    mode,
+    outcome: won ? 'win' : 'loss'
+  });
+  recordTelemetryEvent('game_reward_queued', {
+    receiptId,
+    mode,
+    outcome: won ? 'win' : 'loss',
+    baseDelta: delta
+  });
+
+  awardGamePointsOnce(state.currentUser.uid, {
+    receiptId,
+    baseDelta: delta,
+    mode,
+    outcome: won ? 'win' : 'loss'
+  })
     .then(result => {
       const newTotal = result?.total ?? state.userProfile?.points ?? 0;
       const awarded = result?.appliedDelta ?? delta;
       if (state.userProfile) state.userProfile.points = newTotal;
-      // BUGFIX (revisión post-Fase 3): mensaje más claro sobre qué pasó y por qué, en vez
-      // de un genérico "+N puntos" — distingue victoria/derrota y menciona la dificultad,
-      // que es justo lo que determina cuánto se ganó.
-      const msg = won
-        ? gameText('game.points.botWin', { difficulty: difficultyLabel, points: awarded, total: newTotal })
-        : gameText('game.points.botLoss', { points: awarded, total: newTotal });
+      recordTelemetryEvent('game_reward_settled', {
+        receiptId,
+        mode,
+        outcome: won ? 'win' : 'loss',
+        baseDelta: delta,
+        appliedDelta: awarded,
+        total: newTotal,
+        duplicateReceipt: !!result?.duplicate
+      });
+      const msg = state.currentMatch
+        ? (won
+            ? gameText('game.points.pvpWin', { points: awarded, total: newTotal })
+            : gameText('game.points.pvpLoss', { points: awarded, total: newTotal }))
+        : (won
+            ? gameText('game.points.botWin', { difficulty: difficultyLabel, points: awarded, total: newTotal })
+            : gameText('game.points.botLoss', { points: awarded, total: newTotal }));
       logMsg(msg);
       updateAccountUI(state.currentUser);
     })
     .catch(err => {
-      console.error('No se pudieron guardar los puntos de esta partida:', err);
-      logMsg(gameText('game.points.saveError'));
+      console.error('[GameReward 23.13.59] Settlement diferido; queda en cola local:', err);
+      recordTelemetryEvent('game_reward_deferred', {
+        receiptId,
+        mode,
+        outcome: won ? 'win' : 'loss',
+        baseDelta: delta,
+        code: err?.code || err?.name || 'ERROR',
+        message: err?.message || String(err)
+      }, 'warning');
+      logMsg(gameText('game.points.deferred'));
     });
 }
 

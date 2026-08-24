@@ -6,7 +6,7 @@ import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRu
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, flushPendingGameRewards, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks, getTelemetryStatus } from './telemetry.js';
@@ -80,6 +80,10 @@ async function processDailyLoginRewards() {
     return result;
   } catch (err) {
     console.error('No se pudo registrar la recompensa diaria:', err);
+    recordTelemetryEvent('daily_login_reward_failed', {
+      code: err?.code || err?.name || 'ERROR',
+      message: err?.message || String(err)
+    }, 'warning');
     // No bloquea login ni gameplay: el usuario puede seguir jugando y reintentar al volver.
     return null;
   }
@@ -1114,6 +1118,23 @@ async function boot() {
         if (profile.starterDeckPending === true) {
           promptStarterDeckSelection();
           return profile;
+        }
+
+        // 23.13.59 — antes de abrir el menú, liquida cualquier premio de partida que haya
+        // quedado localmente pendiente por caída de red/cierre de pestaña. Si la transacción
+        // original sí había entrado, el receipt remoto lo vuelve un no-op idempotente.
+        try {
+          const recoveredRewards = await flushPendingGameRewards(state.currentUser.uid);
+          if (Number.isFinite(Number(recoveredRewards?.latestTotal))) {
+            state.userProfile.points = Number(recoveredRewards.latestTotal);
+            profile.points = Number(recoveredRewards.latestTotal);
+            updateAccountUI(state.currentUser);
+          }
+          if (recoveredRewards?.attempted) {
+            console.info('[GameReward 23.13.59] Reconciliación de pendientes:', recoveredRewards);
+          }
+        } catch (rewardErr) {
+          console.warn('[GameReward 23.13.59] No se pudieron reconciliar premios pendientes; se reintentará luego:', rewardErr);
         }
 
         await processDailyLoginRewards();

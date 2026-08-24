@@ -710,6 +710,29 @@ export function recordTelemetryEvent(type, data = {}, severity = 'info') {
     }, event.seq);
   }
 
+
+  // 23.13.59 — economía y racha no pueden volver a fallar silenciosamente. Estos eventos
+  // vienen de operaciones best-effort, pero quedan promovidos a bugCandidate automático.
+  if (type === 'daily_login_reward_failed') {
+    addBugCandidate({
+      code: 'DAILY_REWARD_LOGIN_FAILED',
+      severity: 'error',
+      message: 'Falló el registro autoritativo de la racha diaria.',
+      details: { code: data?.code || '', message: data?.message || '' }
+    }, event.seq);
+  }
+  if (type === 'game_reward_deferred') {
+    addBugCandidate({
+      code: 'GAME_REWARD_SETTLEMENT_DEFERRED',
+      severity: 'warning',
+      message: 'El premio de fin de partida no pudo liquidarse en el primer intento y quedó pendiente.',
+      details: {
+        receiptId: data?.receiptId || '', mode: data?.mode || '', outcome: data?.outcome || '',
+        baseDelta: data?.baseDelta || 0, code: data?.code || '', message: data?.message || ''
+      }
+    }, event.seq);
+  }
+
   if (type === 'sync_publish_start' && data.publishId) {
     networkPublishesInFlight.add(data.publishId);
     networkPublishStartSeq.set(data.publishId, event.seq);

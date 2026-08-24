@@ -1,4 +1,4 @@
-// js/campaignsUI.js — Entrega 23.13.53
+// js/campaignsUI.js — Entrega 23.13.58
 // UI de Anuncios/Eventos + popup público. No contiene lógica económica.
 // @game-text-surface strict
 
@@ -12,6 +12,17 @@ import { gameText } from './gameTexts.js';
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[ch]));
+}
+
+
+function announcementImageUrl(filename) {
+  const name = String(filename || '').trim();
+  if (!/^[A-Za-z0-9._-]+\.png$/i.test(name)) return '';
+  try {
+    return new URL(`assets/images/ui/${encodeURIComponent(name)}`, document.baseURI).href;
+  } catch {
+    return `./assets/images/ui/${encodeURIComponent(name)}`;
+  }
 }
 
 function asDateInput(value) {
@@ -62,12 +73,14 @@ function ensureCampaignStyles() {
     .campaign-table th,.campaign-table td{padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.09);text-align:left;vertical-align:middle}
     .campaign-status-active{color:#7ee787;font-weight:900}.campaign-status-future{color:#79c0ff;font-weight:900}.campaign-status-finalized{color:#9b9b9b;font-weight:800}
     .campaign-kind{font-size:10px;border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:2px 6px;white-space:nowrap}
-    .campaign-image-preview{height:90px;border-radius:9px;background-size:cover;background-position:center;border:1px solid rgba(255,255,255,.12);margin-top:8px;display:none}
+    .campaign-image-preview{height:90px;border-radius:9px;background:#09120d;border:1px solid rgba(255,255,255,.12);margin-top:8px;display:none;overflow:hidden;position:relative}
+    .campaign-image-preview img{display:block;width:100%;height:100%;object-fit:cover;object-position:center}
     .campaign-active-event-strip{border:1px solid rgba(212,175,55,.45);background:rgba(105,76,15,.24);border-radius:10px;padding:8px 10px;margin:8px 0;font-size:11px;color:#f4df9d}
     .campaign-popup-shell{position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,.76);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box}
-    .campaign-popup-card{position:relative;width:min(720px,94vw);max-height:88vh;overflow:auto;border:1px solid rgba(212,175,55,.55);border-radius:18px;background:#09120d;color:#f7f1e2;box-shadow:0 24px 80px rgba(0,0,0,.72);background-size:cover;background-position:center;isolation:isolate}
-    .campaign-popup-card::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,9,6,.64),rgba(4,9,6,.93));z-index:-1;border-radius:inherit}
-    .campaign-popup-content{padding:28px}
+    .campaign-popup-card{position:relative;width:min(720px,94vw);max-height:88vh;overflow:auto;border:1px solid rgba(212,175,55,.55);border-radius:18px;background:#09120d;color:#f7f1e2;box-shadow:0 24px 80px rgba(0,0,0,.72);isolation:isolate}
+    .campaign-popup-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0;pointer-events:none}
+    .campaign-popup-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,9,6,.48),rgba(4,9,6,.88));z-index:1;pointer-events:none}
+    .campaign-popup-content{position:relative;z-index:2;padding:28px}
     .campaign-popup-title{font-size:28px;font-weight:1000;color:#f5d777;margin:0 0 6px}
     .campaign-popup-subtitle{font-size:15px;color:#d8d3c4;margin-bottom:18px}
     .campaign-popup-paragraph{font-size:14px;line-height:1.55;margin:10px 0;color:#f3efe8;white-space:pre-wrap}
@@ -128,9 +141,16 @@ export function mountAdminCampaignsPane(root, { currentUser } = {}) {
   const q = sel => root.querySelector(sel);
   const preview = q('[data-ann-preview]');
   const refreshPreview = () => {
-    const name = q('[data-ann-image]').value.trim();
-    if (!name) { preview.style.display='none'; preview.style.backgroundImage=''; return; }
-    preview.style.display='block'; preview.style.backgroundImage=`url("./assets/images/ui/${name.replace(/["'()\\]/g,'')}")`;
+    const url = announcementImageUrl(q('[data-ann-image]').value);
+    if (!url) { preview.style.display='none'; preview.replaceChildren(); return; }
+    const img = document.createElement('img');
+    img.alt = '';
+    img.decoding = 'async';
+    img.onload = () => { preview.style.display='block'; };
+    img.onerror = () => { preview.style.display='none'; preview.replaceChildren(); };
+    preview.replaceChildren(img);
+    preview.style.display='none';
+    img.src = url;
   };
   q('[data-ann-image]').addEventListener('input', refreshPreview);
 
@@ -226,8 +246,10 @@ export async function maybeShowAnnouncementPopup({ currentUser } = {}) {
 
 function showAnnouncementPopup(ann,{currentUser}={}) {
   const shell=document.createElement('div'); shell.className='campaign-popup-shell';
-  const image=ann.imageFilename?`background-image:url("./assets/images/ui/${ann.imageFilename.replace(/["'()\\]/g,'')}")`:'';
-  shell.innerHTML=`<div class="campaign-popup-card" style="${image}"><div class="campaign-popup-content"><h2 class="campaign-popup-title">${esc(ann.title)}</h2>${ann.subtitle?`<div class="campaign-popup-subtitle">${esc(ann.subtitle)}</div>`:''}<div>${(ann.paragraphs||[]).map(p=>`<p class="campaign-popup-paragraph">${esc(p)}</p>`).join('')}</div><div class="campaign-popup-footer">${ann.dismissible?`<label class="campaign-popup-dismiss"><input type="checkbox" data-dismiss> ${esc(gameText('campaign.popup.dontShowAgain'))}</label>`:'<span></span>'}<button class="campaign-popup-close" data-close>${esc(gameText('campaign.popup.close'))}</button></div></div></div>`;
+  const imageUrl=announcementImageUrl(ann.imageFilename);
+  shell.innerHTML=`<div class="campaign-popup-card">${imageUrl?`<img class="campaign-popup-bg" data-ann-bg src="${esc(imageUrl)}" alt="">`:''}<div class="campaign-popup-overlay"></div><div class="campaign-popup-content"><h2 class="campaign-popup-title">${esc(ann.title)}</h2>${ann.subtitle?`<div class="campaign-popup-subtitle">${esc(ann.subtitle)}</div>`:''}<div>${(ann.paragraphs||[]).map(p=>`<p class="campaign-popup-paragraph">${esc(p)}</p>`).join('')}</div><div class="campaign-popup-footer">${ann.dismissible?`<label class="campaign-popup-dismiss"><input type="checkbox" data-dismiss> ${esc(gameText('campaign.popup.dontShowAgain'))}</label>`:'<span></span>'}<button class="campaign-popup-close" data-close>${esc(gameText('campaign.popup.close'))}</button></div></div></div>`;
+  const bg=shell.querySelector('[data-ann-bg]');
+  if(bg) bg.addEventListener('error',()=>bg.remove(),{once:true});
   const close=async()=>{const checked=!!shell.querySelector('[data-dismiss]')?.checked;if(checked){if(currentUser?.uid){try{await dismissAnnouncement(currentUser.uid,ann.id);}catch{}}else{try{localStorage.setItem(guestDismissKey(ann.id),'1');}catch{}}}shell.remove();};
   shell.querySelector('[data-close]').addEventListener('click',()=>void close()); document.body.appendChild(shell);
 }

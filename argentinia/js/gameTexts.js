@@ -235,6 +235,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'game.points.botWin': definition('Partida', '🪙 ¡Le ganaste al Tano en {difficulty}! Sumaste {points} puntos de premio — llevás {total} en total.', 'Premio por victoria contra el bot.'),
   'game.points.botLoss': definition('Partida', '🪙 Perdiste esta vez, pero te llevás {points} puntos de recompensa igual — llevás {total} en total. ¡Mejor suerte la próxima!', 'Premio por derrota contra el bot.'),
   'game.points.saveError': definition('Partida', '⚠️ No se pudieron guardar los puntos de esta partida — revisá tu conexión.', 'Error al guardar puntos de fin de partida.'),
+  'game.points.deferred': definition('Partida', '⏳ No pudimos acreditar los puntos ahora. Quedaron pendientes y se reintentarán automáticamente cuando vuelvas a conectar.', 'Premio de partida pendiente de settlement/reintento.'),
   'game.mulligan.bot': definition('Partida', '🃏 El Tano hizo mulligan {count} vez(es) y dejó {count} carta(s) al fondo de su mazo.', 'Resumen del mulligan del bot.'),
   'game.mulligan.keep': definition('Partida', 'Te quedaste con tu mano inicial.', 'Confirmación de mano inicial.'),
   'game.mulligan.allBottom': definition('Partida', 'Dejaste tu mano entera ({count} carta(s)) al fondo del mazo. Arrancás con 0 cartas en mano.', 'Resultado de mulligan extremo.'),

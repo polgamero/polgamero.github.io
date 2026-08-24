@@ -1,7 +1,7 @@
 {
-  "engineVersion": "23.13.56",
+  "engineVersion": "23.13.59",
   "engineProtocolVersion": "mp-23.10.0",
-  "buildLabel": "Entrega 23.13.56 Starting Coin Backface Hotfix",
+  "buildLabel": "Entrega 23.13.59 Durable Game Rewards + Daily Streak Gap Reset",
   "generatedFor": "GitHub Pages cache freshness check",
-  "firestoreRulesVersion": "23.13.54"
+  "firestoreRulesVersion": "23.13.59"
 }
