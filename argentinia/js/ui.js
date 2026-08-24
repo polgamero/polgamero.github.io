@@ -2093,9 +2093,9 @@ export function showDailyRewardsScreen(onBack) {
       const btn = body.querySelector('#daily-debug-next');
       btn.disabled = true;
       try {
-        const offset = await adminAdvanceDailyRewardDebugDay(state.currentUser.uid);
-        const result = await registerDailyLogin(state.currentUser.uid);
-        state.userProfile = { ...result.profile, rewardDebugOffsetDays: offset };
+        // 23.13.62 — +1 DÍA es atómico: reloj QA + Daily avanzan juntos o ninguno cambia.
+        const result = await adminAdvanceDailyRewardDebugDay(state.currentUser.uid);
+        state.userProfile = result.profile;
         updateAccountUI(state.currentUser);
         renderRewards();
         if (result.login?.newCalendarLogin) showDailyLoginRewardModal(result.login);
@@ -2109,12 +2109,9 @@ export function showDailyRewardsScreen(onBack) {
       const btn = body.querySelector('#daily-debug-reset');
       btn.disabled = true;
       try {
-        await adminResetDailyRewardDebug(state.currentUser.uid);
-        // 23.13.6 — RESET es una operación QA completa: además de volver el offset a 0,
-        // resincroniza inmediatamente la racha contra el día real del servidor. Si veníamos
-        // simulando fechas futuras, advanceDailyLoginState detecta el retroceso y vuelve a D1.
-        const result = await registerDailyLogin(state.currentUser.uid);
-        state.userProfile = { ...result.profile, rewardDebugOffsetDays: 0 };
+        // 23.13.62 — RESET también es atómico: offset=0 + resincronización D1 en una sola tx.
+        const result = await adminResetDailyRewardDebug(state.currentUser.uid);
+        state.userProfile = result.profile;
         updateAccountUI(state.currentUser);
         renderRewards();
         if (result.login?.newCalendarLogin) showDailyLoginRewardModal(result.login);

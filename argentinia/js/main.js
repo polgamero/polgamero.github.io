@@ -75,7 +75,7 @@ async function processDailyLoginRewards({ showModal = true } = {}) {
     const result = await registerDailyLogin(state.currentUser.uid);
     state.userProfile = { ...result.profile, rewardDebugOffsetDays: result.login?.debugOffsetDays || 0 };
     updateAccountUI(state.currentUser);
-    // En bootstrap 23.13.61 el modal se difiere deliberadamente para serializar overlays:
+    // En bootstrap 23.13.62 el modal se difiere deliberadamente para serializar overlays:
     // Daily primero, anuncio después. Los otros callers conservan el comportamiento previo.
     if (showModal && result.login?.newCalendarLogin) {
       void showDailyLoginRewardModal(result.login);
@@ -1128,10 +1128,10 @@ async function boot() {
             updateAccountUI(state.currentUser);
           }
           if (recoveredRewards?.attempted) {
-            console.info('[GameReward 23.13.61] Reconciliación de pendientes:', recoveredRewards);
+            console.info('[GameReward 23.13.62] Reconciliación de pendientes:', recoveredRewards);
           }
         } catch (rewardErr) {
-          console.warn('[GameReward 23.13.61] No se pudieron reconciliar premios pendientes; se reintentará luego:', rewardErr);
+          console.warn('[GameReward 23.13.62] No se pudieron reconciliar premios pendientes; se reintentará luego:', rewardErr);
         }
 
         // 23.13.60 — serializamos las escrituras de bootstrap sobre users/{uid}. Antes,
@@ -1142,7 +1142,7 @@ async function boot() {
         const dailyResult = await processDailyLoginRewards({ showModal: false });
         profile = state.userProfile || profile;
         if (dailyResult) {
-          console.info('[DailyRewards 23.13.61] Decisión de bootstrap:', {
+          console.info('[DailyRewards 23.13.62] Decisión de bootstrap:', {
             newCalendarLogin: !!dailyResult.login?.newCalendarLogin,
             rewardDay: dailyResult.login?.rewardDay ?? null,
             streak: dailyResult.login?.streak ?? null,

@@ -799,32 +799,110 @@ export async function getAuthoritativeClassifiedsNow(uid) {
   return { ...clock, effectiveNow: new Date(clock.serverNow.getTime()), debugOffsetDays: 0 };
 }
 
-export async function adminAdvanceDailyRewardDebugDay(uid) {
-  if (!(auth.currentUser?.uid === uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL)) {
-    throw new Error('Esta herramienta de debug es exclusiva del admin.');
+function isAdminDailyQaUser(uid) {
+  return auth.currentUser?.uid === uid
+    && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL;
+}
+
+function buildDailyLoginPlan(data, now, clock) {
+  const sourceDaily = hasAuthoritativeDailyState(data.dailyRewards) ? data.dailyRewards : null;
+  const previous = normalizeDailyRewardsState(data.dailyRewards, now);
+  const previousSchemaVersion = Math.max(0, Math.floor(Number(data.dailyRewards?.schemaVersion) || 0));
+  const legacyContinuityMigration = previousSchemaVersion > 0 && previousSchemaVersion < 4;
+  const login = advanceDailyLoginState(sourceDaily, now);
+  if (legacyContinuityMigration && previous.streak > 0) {
+    login.streakReset = true;
+    login.cycleRestarted = true;
+    login.repairApplied = true;
   }
+  const inventory = normalizeInventory(data.inventory);
+  const diagnostics = {
+    adminQa: isAdminDailyQaUser(data.uid || auth.currentUser?.uid),
+    schemaVersion: previousSchemaVersion,
+    hasServerUpdatedAt: !!data.dailyRewards?.serverUpdatedAt,
+    previousLastLoginDate: previous.lastLoginDate,
+    previousPreviousLoginDate: previous.previousLoginDate,
+    previousCycleStartDate: previous.cycleStartDate,
+    previousStreak: previous.streak,
+    previousUnlockedDays: previous.unlockedDays.slice(),
+    previousClaimedDays: previous.claimedDays.slice(),
+    previousLastClaimedDay: previous.lastClaimedDay,
+    previousStateConsistent: sourceDaily ? isDailyStreakConsistent(sourceDaily, now) : false,
+    previousAuthoritative: !!sourceDaily,
+    legacyMigration: legacyContinuityMigration,
+    effectiveDate: localDateKey(now),
+    requestedRewardDay: login.rewardDay,
+    requestedStreak: login.state.streak,
+    requestedUnlockedDays: login.state.unlockedDays.slice(),
+    requestedClaimedDays: login.state.claimedDays.slice(),
+    requestedLastClaimedDay: login.state.lastClaimedDay,
+    debugOffsetDays: clock.debugOffsetDays,
+    rulesVersion: clock.rulesVersion || null
+  };
+  return { sourceDaily, previous, previousSchemaVersion, login, inventory, diagnostics };
+}
+
+function serializeDailyLoginPlan(data, plan, now) {
+  const persistedDaily = serializeDailyRewardsForFirestore(plan.login.state, now, serverTimestamp());
+  if (plan.sourceDaily && plan.login.state.streak > 1 && data.dailyRewards?.serverCycleStartDay) {
+    persistedDaily.serverCycleStartDay = data.dailyRewards.serverCycleStartDay;
+    persistedDaily.serverPreviousLoginDay = data.dailyRewards.serverLastLoginDay;
+  }
+  return persistedDaily;
+}
+
+function dailyLoginResult(data, plan, clock, now, extraProfile = {}) {
+  return {
+    profile: { ...data, ...extraProfile, inventory: plan.inventory, dailyRewards: plan.login.state },
+    diagnostics: plan.diagnostics,
+    login: {
+      newCalendarLogin: plan.login.newCalendarLogin,
+      rewardDay: plan.login.rewardDay,
+      rewardUnlocked: plan.login.rewardUnlocked,
+      streakReset: plan.login.streakReset,
+      cycleRestarted: plan.login.cycleRestarted,
+      cycleCompleted: plan.login.cycleCompleted,
+      repairApplied: plan.login.repairApplied === true,
+      streak: plan.login.state.streak,
+      cycleStartDate: plan.login.state.cycleStartDate,
+      authoritative: true,
+      serverNowMs: clock.serverNow.getTime(),
+      effectiveNowMs: now.getTime(),
+      debugOffsetDays: clock.debugOffsetDays,
+      rulesVersion: clock.rulesVersion || null
+    }
+  };
+}
+
+async function applyAdminDailyDebugOffset(uid, mode) {
+  if (!isAdminDailyQaUser(uid)) throw new Error('Esta herramienta de debug es exclusiva del admin.');
+  const clock = await getAuthoritativeServerClock(uid);
   const ref = doc(db, 'users', uid);
   return runTransaction(db, async tx => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('No se encontró tu perfil admin.');
-    const current = Math.max(0, Math.floor(Number(snap.data().rewardDebugOffsetDays) || 0));
-    const next = Math.min(30, current + 1);
-    tx.update(ref, { rewardDebugOffsetDays: next });
-    return next;
+    const data = snap.data();
+    const current = Math.max(0, Math.min(30, Math.floor(Number(data.rewardDebugOffsetDays) || 0)));
+    const nextOffset = mode === 'reset' ? 0 : Math.min(30, current + 1);
+    if (mode === 'advance' && current >= 30) throw new Error('El reloj QA ya está en el máximo de +30 días.');
+    const now = new Date(clock.serverNow.getTime() + nextOffset * 86400000);
+    const effectiveClock = { ...clock, effectiveNow: now, debugOffsetDays: nextOffset };
+    const plan = buildDailyLoginPlan(data, now, effectiveClock);
+    const update = { rewardDebugOffsetDays: nextOffset, lastSeenAt: serverTimestamp() };
+    if (plan.login.newCalendarLogin) update.dailyRewards = serializeDailyLoginPlan(data, plan, now);
+    tx.update(ref, update);
+    return dailyLoginResult(data, plan, effectiveClock, now, { rewardDebugOffsetDays: nextOffset });
   });
 }
 
+// 23.13.62 — ADMIN QA ATÓMICO: el offset y la transición Daily se confirman juntos.
+// Si Firestore rechaza Daily, el offset tampoco avanza y no queda un reloj desincronizado.
+export async function adminAdvanceDailyRewardDebugDay(uid) {
+  return applyAdminDailyDebugOffset(uid, 'advance');
+}
+
 export async function adminResetDailyRewardDebug(uid) {
-  if (!(auth.currentUser?.uid === uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL)) {
-    throw new Error('Esta herramienta de debug es exclusiva del admin.');
-  }
-  const ref = doc(db, 'users', uid);
-  await runTransaction(db, async tx => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('No se encontró tu perfil admin.');
-    tx.update(ref, { rewardDebugOffsetDays: 0 });
-  });
-  return 0;
+  return applyAdminDailyDebugOffset(uid, 'reset');
 }
 
 // Registra como máximo UN login por fecha oficial ART. Primer acceso = Día 1. El día
@@ -833,91 +911,28 @@ export async function adminResetDailyRewardDebug(uid) {
 export async function registerDailyLogin(uid, nowMs = null) {
   const clock = nowMs == null
     ? await getAuthoritativeRewardNow(uid)
-    : { serverNow: new Date(nowMs), effectiveNow: new Date(nowMs), debugOffsetDays: 0 };
+    : { serverNow: new Date(nowMs), effectiveNow: new Date(nowMs), debugOffsetDays: 0, rulesVersion: null };
   const now = clock.effectiveNow;
   const ref = doc(db, 'users', uid);
   let transitionDebug = null;
   try {
     return await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
-    const data = snap.data();
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error('No se encontró tu perfil.');
+      const data = snap.data();
+      const plan = buildDailyLoginPlan(data, now, clock);
+      transitionDebug = plan.diagnostics;
 
-    // Schema 3: los estados semanales 23.13.0–23.13.2 no representan el nuevo concepto.
-    // El primer acceso 23.13.3 empieza inmediatamente Día 1, sea el día calendario que sea.
-    const sourceDaily = hasAuthoritativeDailyState(data.dailyRewards) ? data.dailyRewards : null;
-    const previous = normalizeDailyRewardsState(data.dailyRewards, now);
-    const previousSchemaVersion = Math.max(0, Math.floor(Number(data.dailyRewards?.schemaVersion) || 0));
-    const legacyContinuityMigration = previousSchemaVersion > 0 && previousSchemaVersion < 4;
-    const login = advanceDailyLoginState(sourceDaily, now);
-    if (legacyContinuityMigration && previous.streak > 0) {
-      // No existe evidencia suficiente para distinguir una racha schema 3 válida de una
-      // que ya fue sellada incorrectamente atravesando un gap. La migración es deliberada:
-      // D1 limpio una sola vez y, desde schema 4, continuidad demostrable en cada salto.
-      login.streakReset = true;
-      login.cycleRestarted = true;
-      login.repairApplied = true;
-    }
-    const inventory = normalizeInventory(data.inventory);
-    transitionDebug = {
-      schemaVersion: previousSchemaVersion,
-      hasServerUpdatedAt: !!data.dailyRewards?.serverUpdatedAt,
-      previousLastLoginDate: previous.lastLoginDate,
-      previousPreviousLoginDate: previous.previousLoginDate,
-      previousCycleStartDate: previous.cycleStartDate,
-      previousStreak: previous.streak,
-      previousUnlockedDays: previous.unlockedDays.slice(),
-      previousClaimedDays: previous.claimedDays.slice(),
-      previousLastClaimedDay: previous.lastClaimedDay,
-      previousStateConsistent: sourceDaily ? isDailyStreakConsistent(sourceDaily, now) : false,
-      previousAuthoritative: !!sourceDaily,
-      legacyMigration: legacyContinuityMigration,
-      effectiveDate: localDateKey(now),
-      requestedRewardDay: login.rewardDay,
-      requestedStreak: login.state.streak,
-      requestedUnlockedDays: login.state.unlockedDays.slice(),
-      requestedClaimedDays: login.state.claimedDays.slice(),
-      requestedLastClaimedDay: login.state.lastClaimedDay,
-      debugOffsetDays: clock.debugOffsetDays,
-      rulesVersion: clock.rulesVersion || null
-    };
-
-    if (login.newCalendarLogin) {
-      const persistedDaily = serializeDailyRewardsForFirestore(login.state, now, serverTimestamp());
-      // Continuidad D2..D7: el inicio del ciclo es un dato inmutable. Preservamos el
-      // Timestamp EXACTO almacenado, no sólo su fecha normalizada, para que Rules pueda
-      // exigir igualdad fuerte sin migrar/resetear perfiles existentes.
-      if (sourceDaily && login.state.streak > 1 && data.dailyRewards?.serverCycleStartDay) {
-        persistedDaily.serverCycleStartDay = data.dailyRewards.serverCycleStartDay;
-        // Schema 4: el eslabón anterior queda sellado con el timestamp exacto que estaba
-        // persistido como último login. Rules exige esta relación en cada continuidad.
-        persistedDaily.serverPreviousLoginDay = data.dailyRewards.serverLastLoginDay;
+      if (plan.login.newCalendarLogin) {
+        tx.update(ref, {
+          dailyRewards: serializeDailyLoginPlan(data, plan, now),
+          lastSeenAt: serverTimestamp()
+        });
+      } else {
+        tx.update(ref, { lastSeenAt: serverTimestamp() });
       }
-      tx.update(ref, { dailyRewards: persistedDaily, lastSeenAt: serverTimestamp() });
-    } else {
-      tx.update(ref, { lastSeenAt: serverTimestamp() });
-    }
 
-    return {
-      profile: { ...data, inventory, dailyRewards: login.state },
-      diagnostics: transitionDebug,
-      login: {
-        newCalendarLogin: login.newCalendarLogin,
-        rewardDay: login.rewardDay,
-        rewardUnlocked: login.rewardUnlocked,
-        streakReset: login.streakReset,
-        cycleRestarted: login.cycleRestarted,
-        cycleCompleted: login.cycleCompleted,
-        repairApplied: login.repairApplied === true,
-        streak: login.state.streak,
-        cycleStartDate: login.state.cycleStartDate,
-        authoritative: nowMs == null,
-        serverNowMs: clock.serverNow.getTime(),
-        effectiveNowMs: now.getTime(),
-        debugOffsetDays: clock.debugOffsetDays,
-      rulesVersion: clock.rulesVersion || null
-      }
-    };
+      return dailyLoginResult(data, plan, clock, now);
     });
   } catch (error) {
     if (error?.code === 'permission-denied') {
