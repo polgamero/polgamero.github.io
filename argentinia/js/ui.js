@@ -38,7 +38,7 @@ import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
 import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, loadUserProfileFromServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
-import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 import { recordTelemetryUiLog, captureTelemetryState, getTelemetryStatus } from './telemetry.js';
@@ -107,6 +107,7 @@ export const els = {
 
   gameOverOverlay: document.getElementById('game-over-overlay'),
   gameOverTitle: document.getElementById('game-over-title'),
+  gameOverRewardStatus: document.getElementById('game-over-reward-status'),
   btnRestart: document.getElementById('btn-restart'),
   btnAbandonGame: document.getElementById('btn-abandon-game'),
 
@@ -3198,6 +3199,7 @@ export function showStoreScreen(onBack, options = {}) {
         <li>${gameTextHtml('store.pointsHow.winPvp', { points: POINTS.winVsHumano })}</li>
         <li>${gameTextHtml('store.pointsHow.lossPvp', { points: POINTS.lossVsHumano })}</li>
         <li class="store-points-penalty">${gameTextHtml('store.pointsHow.abandon', { points: POINTS.abandonPenalty })}</li>
+        <li>${gameTextHtml('store.pointsHow.pvpLimits', { minutes: PVP_LIMITS.minRewardMinutes, turns: PVP_LIMITS.minCompletedTurns, matches: PVP_LIMITS.maxRewardedMatchesPerPairDaily, cap: PVP_LIMITS.maxPointsPerDay })}</li>
       </ul>
     </div>
   `;
@@ -5175,6 +5177,10 @@ export function showAdminPanel(onBack) {
     { section: 'Puntos', id: 'winVsHumano', label: 'Victoria vs Humano (PvP)', value: POINTS.winVsHumano, step: '1' },
     { section: 'Puntos', id: 'lossVsHumano', label: 'Derrota vs Humano (PvP)', value: POINTS.lossVsHumano, step: '1' },
     { section: 'Puntos', id: 'abandonPenalty', label: 'Penalidad por abandonar', value: POINTS.abandonPenalty, step: '1' },
+    { section: 'PUNTOS Y LÍMITES DIARIOS', id: 'pvpMinRewardMinutes', label: 'PvP · minutos mínimos para puntuar por abandono', value: PVP_LIMITS.minRewardMinutes, step: '1' },
+    { section: 'PUNTOS Y LÍMITES DIARIOS', id: 'pvpMinCompletedTurns', label: 'PvP · turnos completos mínimos para puntuar por abandono', value: PVP_LIMITS.minCompletedTurns, step: '1' },
+    { section: 'PUNTOS Y LÍMITES DIARIOS', id: 'pvpMaxRewardedMatchesPerPairDaily', label: 'PvP · máximo de partidas puntuadas por pareja de UID / día', value: PVP_LIMITS.maxRewardedMatchesPerPairDaily, step: '1' },
+    { section: 'PUNTOS Y LÍMITES DIARIOS', id: 'pvpMaxPointsPerDay', label: 'PvP · máximo de puntos por cuenta / día', value: PVP_LIMITS.maxPointsPerDay, step: '1' },
     { section: 'Sobres', id: 'packCost', label: 'Costo del sobre (puntos)', value: PACK_COST, step: '1' },
     { section: 'Sobres', id: 'mythicChancePercent', label: 'Probabilidad de carta mítica (%)', value: +(MYTHIC_CHANCE_IN_RARE_SLOT * 100).toFixed(2), step: '0.1' },
     { section: 'Fichas', id: 'fichasPerEnhancement', label: 'Fichas necesarias para craftear', value: FICHAS_PER_ENHANCEMENT, step: '1' },
@@ -5863,6 +5869,10 @@ export function showAdminPanel(onBack) {
       winVsHumano: readNumber('winVsHumano'),
       lossVsHumano: readNumber('lossVsHumano'),
       abandonPenalty: readNumber('abandonPenalty'),
+      pvpMinRewardMinutes: readNumber('pvpMinRewardMinutes'),
+      pvpMinCompletedTurns: readNumber('pvpMinCompletedTurns'),
+      pvpMaxRewardedMatchesPerPairDaily: readNumber('pvpMaxRewardedMatchesPerPairDaily'),
+      pvpMaxPointsPerDay: readNumber('pvpMaxPointsPerDay'),
       packCost: readNumber('packCost'),
       mythicChance: readNumber('mythicChancePercent') / 100,
       fichasPerEnhancement: readNumber('fichasPerEnhancement'),
@@ -5884,6 +5894,10 @@ export function showAdminPanel(onBack) {
       errorBox.textContent = 'Todos los campos tienen que ser números válidos.';
       return;
     }
+    const pvpIntegerFields = [
+      newConfig.pvpMinRewardMinutes, newConfig.pvpMinCompletedTurns,
+      newConfig.pvpMaxRewardedMatchesPerPairDaily, newConfig.pvpMaxPointsPerDay
+    ].every(Number.isInteger);
     const classifiedsNonNegative = [
       newConfig.classifiedsCommonPoints, newConfig.classifiedsCommonFichas,
       newConfig.classifiedsUncommonPoints, newConfig.classifiedsUncommonFichas,
@@ -5891,8 +5905,10 @@ export function showAdminPanel(onBack) {
       newConfig.classifiedsMythicPoints, newConfig.classifiedsMythicFichas
     ].every(value => value >= 0);
     if (newConfig.deckSizeExact <= 0 || newConfig.maxCopiesPerCard <= 0 || newConfig.packCost < 0 || newConfig.fichasPerEnhancement <= 0
+      || newConfig.pvpMinRewardMinutes < 0 || newConfig.pvpMinCompletedTurns < 0
+      || newConfig.pvpMaxRewardedMatchesPerPairDaily < 0 || newConfig.pvpMaxPointsPerDay < 0 || !pvpIntegerFields
       || !classifiedsNonNegative || newConfig.classifiedsMythicChance < 0 || newConfig.classifiedsMythicChance > 1) {
-      errorBox.textContent = 'Algún valor no tiene sentido (¿cero/negativo o un porcentaje fuera de 0–100?). Revisá antes de guardar.';
+      errorBox.textContent = 'Algún valor no tiene sentido (¿negativo, porcentaje fuera de 0–100 o un límite PvP no entero?). Revisá antes de guardar.';
       return;
     }
 
@@ -7162,7 +7178,19 @@ export function showBottomCardsModal(hand, countToBottom, onConfirm) {
 
 export function showGameOverOverlay(didWin) {
   els.gameOverTitle.textContent = didWin ? gameText('game.over.overlayWin', { rival: getRivalName() }) : gameText('game.over.overlayLoss', { rival: getRivalName() });
+  if (els.gameOverRewardStatus) {
+    els.gameOverRewardStatus.textContent = state.currentMatch && state.currentUser ? gameText('game.points.pvpChecking') : '';
+    els.gameOverRewardStatus.classList.toggle('hidden', !els.gameOverRewardStatus.textContent);
+  }
   els.gameOverOverlay.classList.remove('hidden'); els.btnEndTurn.disabled = true;
+}
+
+export function showGameRewardStatus(message, kind = 'info') {
+  if (!els.gameOverRewardStatus) return;
+  const text = String(message || '').trim();
+  els.gameOverRewardStatus.textContent = text;
+  els.gameOverRewardStatus.dataset.kind = kind;
+  els.gameOverRewardStatus.classList.toggle('hidden', !text);
 }
 
 function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {

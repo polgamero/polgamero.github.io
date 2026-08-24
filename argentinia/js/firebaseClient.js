@@ -192,6 +192,7 @@ export const saveGameTextOverrides = asyncProxy('saveGameTextOverrides');
 export const createMatch = asyncProxy('createMatch');
 export const joinMatchByCode = asyncProxy('joinMatchByCode');
 export const setMatchPlayerReady = asyncProxy('setMatchPlayerReady');
+export const sealMultiplayerOutcome = asyncProxy('sealMultiplayerOutcome');
 export const setActiveMatchId = asyncProxy('setActiveMatchId');
 export const clearActiveMatchId = asyncProxy('clearActiveMatchId');
 export const fetchMatchForReconnect = asyncProxy('fetchMatchForReconnect');

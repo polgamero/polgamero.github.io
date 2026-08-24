@@ -41,6 +41,8 @@ export function queuePendingGameReward(uid, reward = {}) {
     baseDelta,
     mode: reward.mode === 'multiplayer' ? 'multiplayer' : 'solo',
     outcome: reward.outcome === 'loss' ? 'loss' : 'win',
+    matchId: reward.mode === 'multiplayer' ? String(reward.matchId || '') : '',
+    myRole: reward.mode === 'multiplayer' && reward.myRole === 'guest' ? 'guest' : (reward.mode === 'multiplayer' ? 'host' : ''),
     queuedAtMs: Math.max(0, Math.floor(Number(reward.queuedAtMs) || Date.now()))
   };
   const all = safeReadAll();

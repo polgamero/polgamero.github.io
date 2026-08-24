@@ -32,6 +32,7 @@ import { normalizePlayerStats, summarizePlayerTelemetry, PLAYER_GAME_BACKFILL_VE
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
 import { buildCampaignSnapshot, validateEventPayload, validateAnnouncementPayload, effectivePackCost, effectiveMatchPoints, effectiveAllPoints, effectiveFichas } from './campaigns.js';
 import { queuePendingGameReward, pendingGameRewardsForUid, removePendingGameReward, normalizeGameRewardReceiptId } from './gameRewards.js';
+import { normalizePvpRewardLimits, evaluatePvpRewardEligibility, argentinaDayKeyFromMs, pvpPairKey, pvpCompletedTurns } from './pvpRewards.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAAvUAaZ35_sF9uCsecLPg7zqhB7mLa7yo",
@@ -579,22 +580,131 @@ export async function awardPoints(uid, delta) {
 // `awardPoints()` sigue existiendo para ajustes/penalidades generales; gameplay terminal usa
 // este contrato con receipt estable. La cola local se crea antes de cualquier await y la
 // transacción acredita puntos + crea el receipt de manera atómica.
-async function settleGameRewardOnce(uid, reward = {}) {
+function timestampMs(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function deriveTerminalOutcome(match) {
+  const hostDeadByHp = Number.isFinite(Number(match?.hostHP)) && Number(match.hostHP) <= 0;
+  const guestDeadByHp = Number.isFinite(Number(match?.guestHP)) && Number(match.guestHP) <= 0;
+  const hostDeadByPoison = Number(match?.hostPoison || 0) >= 10;
+  const guestDeadByPoison = Number(match?.guestPoison || 0) >= 10;
+  // Deck-out es terminal sólo al INTENTAR robar: el estado público queda en fase draw,
+  // con el jugador activo correspondiente y DeckCount=0. Tener 0 cartas fuera del draw no
+  // alcanza por sí solo para perder.
+  const hostDeckedOut = match?.gameOver === true && match?.phase === 'draw' && match?.activePlayer === 'host' && Number(match?.hostDeckCount || 0) <= 0;
+  const guestDeckedOut = match?.gameOver === true && match?.phase === 'draw' && match?.activePlayer === 'guest' && Number(match?.guestDeckCount || 0) <= 0;
+  const hostDefeated = hostDeadByHp || hostDeadByPoison || hostDeckedOut;
+  const guestDefeated = guestDeadByHp || guestDeadByPoison || guestDeckedOut;
+
+  if (match?.abandonedBy === 'host' || match?.abandonedBy === 'guest') {
+    return {
+      terminalKind: 'abandon',
+      loserRole: match.abandonedBy,
+      winnerRole: match.abandonedBy === 'host' ? 'guest' : 'host'
+    };
+  }
+  if (hostDefeated !== guestDefeated) {
+    return hostDefeated
+      ? { terminalKind: 'natural', loserRole: 'host', winnerRole: 'guest' }
+      : { terminalKind: 'natural', loserRole: 'guest', winnerRole: 'host' };
+  }
+  return null;
+}
+
+function matchIdFromReward(reward = {}) {
+  const explicit = String(reward.matchId || '').trim().toUpperCase();
+  if (explicit) return explicit;
+  const m = String(reward.receiptId || '').match(/^match_([A-Za-z0-9]+)_(?:host|guest)$/);
+  return m ? m[1].toUpperCase() : '';
+}
+
+// 23.13.68 — sella una sola vez el resultado terminal con hora de SERVIDOR. No decide
+// puntos: sólo congela evidencia que después usa el ledger económico PvP.
+export async function sealMultiplayerOutcome(matchId) {
+  const ref = doc(db, 'matches', String(matchId || '').trim().toUpperCase());
+  return runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('PVP_MATCH_NOT_FOUND');
+    const data = snap.data() || {};
+    if (data.endedAt && data.terminalKind && data.winnerRole) {
+      return {
+        terminalKind: data.terminalKind,
+        winnerRole: data.winnerRole,
+        turnCountAtEnd: Number(data.turnCountAtEnd || data.turnCount || 1)
+      };
+    }
+    const terminal = deriveTerminalOutcome(data);
+    if (!data.gameOver || !terminal) throw new Error('PVP_MATCH_NOT_TERMINAL');
+    if (!data.bothReadyAt && !(data.hostReady === true && data.guestReady === true)) throw new Error('PVP_MATCH_NOT_READY');
+    const turnCountAtEnd = Math.max(1, Math.floor(Number(data.turnCount) || 1));
+    const terminalPatch = {
+      terminalKind: terminal.terminalKind,
+      winnerRole: terminal.winnerRole,
+      turnCountAtEnd,
+      endedAt: serverTimestamp()
+    };
+    // Compat de deploy: matches creados antes de 23.13.68 pueden haber quedado con ambos
+    // Ready pero sin bothReadyAt. Lo sellamos ahora con hora de servidor. Un abandono legacy
+    // queda deliberadamente con duración 0 (no premio); un final natural igual es elegible.
+    if (!data.bothReadyAt) terminalPatch.bothReadyAt = serverTimestamp();
+    tx.update(ref, terminalPatch);
+    return { ...terminal, turnCountAtEnd };
+  });
+}
+
+async function settleSoloGameRewardOnce(uid, reward, snapshot, requestedEffectiveDelta) {
   const receiptId = normalizeGameRewardReceiptId(reward.receiptId);
   const baseDelta = Math.max(0, Math.floor(Number(reward.baseDelta) || 0));
-  const mode = reward.mode === 'multiplayer' ? 'multiplayer' : 'solo';
   const outcome = reward.outcome === 'loss' ? 'loss' : 'win';
-  if (!uid || !receiptId || baseDelta <= 0) throw new Error('GAME_REWARD_INVALID_REQUEST');
-
-  const snapshot = await getCampaignSnapshotForEconomy(uid);
-  const effectiveDelta = effectiveMatchPoints(baseDelta, snapshot);
   const userRef = doc(db, 'users', uid);
   const receiptRef = doc(db, 'gameRewardReceipts', `${uid}_${receiptId}`);
   const result = await runTransaction(db, async tx => {
-    // Firestore exige todas las lecturas antes de las escrituras.
     const receiptSnap = await tx.get(receiptRef);
     const userSnap = await tx.get(userRef);
     if (!userSnap.exists()) throw new Error('No se encontró tu perfil.');
+    const current = Math.max(0, Math.floor(Number(userSnap.data()?.points) || 0));
+    if (receiptSnap.exists()) {
+      const previous = receiptSnap.data() || {};
+      return { duplicate: true, current, next: current, appliedDelta: Number(previous.effectiveDelta) || 0, effectiveDelta: Number(previous.effectiveDelta) || requestedEffectiveDelta, rewardReason: 'duplicate' };
+    }
+    const next = current + requestedEffectiveDelta;
+    tx.update(userRef, { points: next });
+    tx.set(receiptRef, {
+      uid, receiptId, mode: 'solo', outcome, baseDelta,
+      effectiveDelta: requestedEffectiveDelta,
+      resultingTotal: next, engineVersion: ENGINE_VERSION, createdAt: serverTimestamp()
+    });
+    return { duplicate: false, current, next, appliedDelta: requestedEffectiveDelta, effectiveDelta: requestedEffectiveDelta, rewardReason: 'rewarded' };
+  });
+  return { ...result, total: result.next, baseDelta, receiptId, mode: 'solo', outcome, campaignSnapshot: snapshot };
+}
+
+async function settlePvpGameRewardOnce(uid, reward, snapshot, requestedEffectiveDelta) {
+  const receiptId = normalizeGameRewardReceiptId(reward.receiptId);
+  const baseDelta = Math.max(0, Math.floor(Number(reward.baseDelta) || 0));
+  const outcome = reward.outcome === 'loss' ? 'loss' : 'win';
+  const matchId = matchIdFromReward(reward);
+  if (!matchId) throw new Error('PVP_MATCH_ID_REQUIRED');
+
+  const userRef = doc(db, 'users', uid);
+  const receiptRef = doc(db, 'gameRewardReceipts', `${uid}_${receiptId}`);
+  const matchRef = doc(db, 'matches', matchId);
+  const settingsRef = doc(db, 'gameConfig', 'settings');
+
+  const result = await runTransaction(db, async tx => {
+    // Todas las lecturas antes de cualquier escritura.
+    const receiptSnap = await tx.get(receiptRef);
+    const userSnap = await tx.get(userRef);
+    const matchSnap = await tx.get(matchRef);
+    const settingsSnap = await tx.get(settingsRef);
+    if (!userSnap.exists()) throw new Error('No se encontró tu perfil.');
+    if (!matchSnap.exists()) throw new Error('PVP_MATCH_NOT_FOUND');
+
     const current = Math.max(0, Math.floor(Number(userSnap.data()?.points) || 0));
     if (receiptSnap.exists()) {
       const previous = receiptSnap.data() || {};
@@ -603,26 +713,153 @@ async function settleGameRewardOnce(uid, reward = {}) {
         current,
         next: current,
         appliedDelta: Number(previous.effectiveDelta) || 0,
-        effectiveDelta: Number(previous.effectiveDelta) || effectiveDelta
+        effectiveDelta: Number(previous.effectiveDelta) || 0,
+        requestedEffectiveDelta: Number(previous.requestedEffectiveDelta) || Number(previous.effectiveDelta) || requestedEffectiveDelta,
+        rewardReason: previous.rewardReason || 'duplicate',
+        terminalKind: previous.terminalKind || null,
+        durationMs: Number(previous.durationMs) || 0,
+        completedTurns: Number(previous.completedTurns) || 0,
+        pvpDayKey: previous.pvpDayKey || null,
+        pairCountAfter: Number(previous.pairCountAfter) || 0,
+        dailyPointsAfter: Number(previous.dailyPointsAfter) || 0,
+        limits: previous.limits || null
       };
     }
-    const next = current + effectiveDelta;
-    tx.update(userRef, { points: next });
+
+    const match = matchSnap.data() || {};
+    if (!match.endedAt || !match.terminalKind || !match.winnerRole) throw new Error('PVP_MATCH_NOT_SEALED');
+    const myRole = match.hostUid === uid ? 'host' : (match.guestUid === uid ? 'guest' : null);
+    if (!myRole) throw new Error('PVP_NOT_MATCH_PARTICIPANT');
+    const terminal = deriveTerminalOutcome(match);
+    if (!terminal || terminal.terminalKind !== match.terminalKind || terminal.winnerRole !== match.winnerRole) throw new Error('PVP_TERMINAL_EVIDENCE_MISMATCH');
+    const actualOutcome = match.winnerRole === myRole ? 'win' : 'loss';
+    if (actualOutcome !== outcome) throw new Error('PVP_OUTCOME_MISMATCH');
+
+    const limits = normalizePvpRewardLimits(settingsSnap.exists() ? settingsSnap.data() : {});
+    const endedAtMs = timestampMs(match.endedAt);
+    const bothReadyAtMs = timestampMs(match.bothReadyAt);
+    const durationMs = bothReadyAtMs > 0 && endedAtMs >= bothReadyAtMs ? endedAtMs - bothReadyAtMs : 0;
+    const turnCountAtEnd = Math.max(1, Math.floor(Number(match.turnCountAtEnd || match.turnCount) || 1));
+    const completedTurns = pvpCompletedTurns(turnCountAtEnd);
+    const dayKey = argentinaDayKeyFromMs(endedAtMs || Date.now());
+    const pairKey = pvpPairKey(match.hostUid, match.guestUid);
+    const pairRef = doc(db, 'pvpDailyPairs', `${dayKey}__${pairKey}`);
+    const dailyRef = doc(db, 'pvpDailyUsers', `${dayKey}__${uid}`);
+    const pairSnap = await tx.get(pairRef);
+    const dailySnap = await tx.get(dailyRef);
+    const pairData = pairSnap.exists() ? (pairSnap.data() || {}) : {};
+    const dailyData = dailySnap.exists() ? (dailySnap.data() || {}) : {};
+    const rewardedMatchIds = Array.isArray(pairData.rewardedMatchIds) ? pairData.rewardedMatchIds : [];
+    const pairAlreadyRewarded = rewardedMatchIds.includes(matchId);
+    const pairRewardedCount = Math.max(0, Math.floor(Number(pairData.rewardedMatches) || rewardedMatchIds.length));
+    const dailyPointsAwarded = Math.max(0, Math.floor(Number(dailyData.pointsAwarded) || 0));
+
+    const verdict = evaluatePvpRewardEligibility({
+      terminalKind: match.terminalKind,
+      durationMs,
+      turnCountAtEnd,
+      pairAlreadyRewarded,
+      pairRewardedCount,
+      dailyPointsAwarded,
+      requestedDelta: requestedEffectiveDelta,
+      limits
+    });
+
+    const passesEarlyGate = match.terminalKind !== 'abandon'
+      || (durationMs >= limits.minRewardMinutes * 60000 && completedTurns >= limits.minCompletedTurns);
+    const pairCanCount = pairAlreadyRewarded || pairRewardedCount < limits.maxRewardedMatchesPerPairDaily;
+    const shouldRegisterPairMatch = passesEarlyGate && pairCanCount && !pairAlreadyRewarded;
+    const pairCountAfter = pairRewardedCount + (shouldRegisterPairMatch ? 1 : 0);
+    const appliedDelta = Math.max(0, Math.floor(Number(verdict.appliedDelta) || 0));
+    const dailyPointsAfter = dailyPointsAwarded + appliedDelta;
+    const next = current + appliedDelta;
+
+    if (shouldRegisterPairMatch) {
+      tx.set(pairRef, {
+        schemaVersion: 1,
+        dayKey,
+        uidA: [String(match.hostUid), String(match.guestUid)].sort()[0],
+        uidB: [String(match.hostUid), String(match.guestUid)].sort()[1],
+        rewardedMatches: pairCountAfter,
+        rewardedMatchIds: rewardedMatchIds.concat([matchId]),
+        updatedAt: serverTimestamp()
+      });
+    }
+    if (appliedDelta > 0) {
+      tx.update(userRef, { points: next });
+      const priorReceipts = Array.isArray(dailyData.rewardReceiptIds) ? dailyData.rewardReceiptIds : [];
+      tx.set(dailyRef, {
+        schemaVersion: 1,
+        dayKey,
+        uid,
+        pointsAwarded: dailyPointsAfter,
+        rewardReceiptIds: priorReceipts.includes(receiptId) ? priorReceipts : priorReceipts.concat([receiptId]),
+        updatedAt: serverTimestamp()
+      });
+    }
+
     tx.set(receiptRef, {
       uid,
       receiptId,
-      mode,
+      mode: 'multiplayer',
       outcome,
       baseDelta,
-      effectiveDelta,
+      requestedEffectiveDelta,
+      effectiveDelta: appliedDelta,
       resultingTotal: next,
+      matchId,
+      terminalKind: match.terminalKind,
+      rewardReason: verdict.reason,
+      durationMs,
+      completedTurns,
+      pvpDayKey: dayKey,
+      pairKey,
+      pairCountAfter,
+      dailyPointsAfter,
+      limits,
       engineVersion: ENGINE_VERSION,
       createdAt: serverTimestamp()
     });
-    return { duplicate: false, current, next, appliedDelta: effectiveDelta, effectiveDelta };
+
+    return {
+      duplicate: false,
+      current,
+      next,
+      appliedDelta,
+      effectiveDelta: appliedDelta,
+      requestedEffectiveDelta,
+      rewardReason: verdict.reason,
+      terminalKind: match.terminalKind,
+      durationMs,
+      completedTurns,
+      pvpDayKey: dayKey,
+      pairCountAfter,
+      dailyPointsAfter,
+      limits
+    };
   });
 
-  if (!result.duplicate) {
+  return { ...result, total: result.next, baseDelta, receiptId, mode: 'multiplayer', outcome, matchId, campaignSnapshot: snapshot };
+}
+
+async function settleGameRewardOnce(uid, reward = {}) {
+  const receiptId = normalizeGameRewardReceiptId(reward.receiptId);
+  const baseDelta = Math.max(0, Math.floor(Number(reward.baseDelta) || 0));
+  const mode = reward.mode === 'multiplayer' ? 'multiplayer' : 'solo';
+  if (!uid || !receiptId || baseDelta <= 0) throw new Error('GAME_REWARD_INVALID_REQUEST');
+
+  if (mode === 'multiplayer') {
+    // También corre al reconciliar la cola después de F5: si el match ya quedó terminal
+    // pero la pestaña murió antes del sellado, lo completa antes de liquidar.
+    await sealMultiplayerOutcome(matchIdFromReward(reward));
+  }
+  const snapshot = await getCampaignSnapshotForEconomy(uid);
+  const requestedEffectiveDelta = effectiveMatchPoints(baseDelta, snapshot);
+  const result = mode === 'multiplayer'
+    ? await settlePvpGameRewardOnce(uid, reward, snapshot, requestedEffectiveDelta)
+    : await settleSoloGameRewardOnce(uid, reward, snapshot, requestedEffectiveDelta);
+
+  if (!result.duplicate && Number(result.appliedDelta) > 0) {
     await statsBestEffort(uid, { pointsEarned: Math.max(0, Number(result.appliedDelta) || 0) });
     void economyLogBestEffort({
       targetUid: uid,
@@ -631,7 +868,7 @@ async function settleGameRewardOnce(uid, reward = {}) {
       sessionId: receiptId
     });
   }
-  return { ...result, total: result.next, baseDelta, receiptId, mode, outcome, campaignSnapshot: snapshot };
+  return result;
 }
 
 export async function awardGamePointsOnce(uid, reward = {}) {
@@ -1509,6 +1746,11 @@ export async function createMatch(uid, profileFields) {
       guestUid: null,
       hostReady: false,
       guestReady: false,
+      bothReadyAt: null,
+      endedAt: null,
+      terminalKind: null,
+      winnerRole: null,
+      turnCountAtEnd: null,
       engineVersion: ENGINE_VERSION,
       engineProtocolVersion: ENGINE_PROTOCOL_VERSION,
       hostEngineVersion: ENGINE_VERSION,
@@ -1568,10 +1810,19 @@ export async function joinMatchByCode(uid, rawCode, profileFields) {
 // cartas ni información privada.
 export async function setMatchPlayerReady(matchId, role, ready = true) {
   if (role !== 'host' && role !== 'guest') throw new Error('Rol multiplayer inválido para readiness.');
-  await setDoc(doc(db, 'matches', matchId), {
-    [`${role}Ready`]: !!ready,
-    updatedAt: serverTimestamp()
-  }, { merge: true });
+  const ref = doc(db, 'matches', String(matchId || '').trim().toUpperCase());
+  return runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('La partida ya no existe.');
+    const data = snap.data() || {};
+    const patch = { [`${role}Ready`]: !!ready, updatedAt: serverTimestamp() };
+    const otherRole = role === 'host' ? 'guest' : 'host';
+    if (ready && data[`${otherRole}Ready`] === true && !data.bothReadyAt) {
+      patch.bothReadyAt = serverTimestamp();
+    }
+    tx.update(ref, patch);
+    return { bothReadyAtWasSet: !!patch.bothReadyAt };
+  });
 }
 
 export async function setActiveMatchId(uid, matchId) {

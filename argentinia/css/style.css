@@ -2108,3 +2108,19 @@ html, body {
   border-color: #e8ce7b;
   background: rgba(212,175,55,.12);
 }
+
+/* 23.13.68 — feedback económico PvP en Fin de Partida */
+.game-over-reward-status {
+  max-width: 520px;
+  margin: 10px auto 18px;
+  padding: 10px 14px;
+  border: 1px solid rgba(212,175,55,.38);
+  border-radius: 10px;
+  background: rgba(7,16,10,.72);
+  color: #e8ddb8;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+}
+.game-over-reward-status[data-kind="warning"] { border-color: rgba(224,122,107,.65); color:#f0c4bb; }
+.game-over-reward-status[data-kind="success"] { border-color: rgba(102,187,106,.55); color:#cce8ce; }

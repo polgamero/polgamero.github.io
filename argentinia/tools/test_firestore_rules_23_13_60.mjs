@@ -3,7 +3,8 @@ import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebas
 import { doc, runTransaction, serverTimestamp } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-argentinia-rules-231360';
-const rules = fs.readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
+const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || new URL('../../FIRESTORE_RULES_COMPLETAS_ENTREGA_23_13_68_PVP_ANTI_FARM.rules', import.meta.url);
+const rules = fs.readFileSync(rulesPath, 'utf8');
 const env = await initializeTestEnvironment({ projectId: PROJECT_ID, firestore: { rules } });
 
 function artTodayStamp() {

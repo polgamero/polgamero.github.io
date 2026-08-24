@@ -23,6 +23,18 @@ export const POINTS = {
   abandonPenalty: -30
 };
 
+
+// --- PvP anti-farming (admin-editable) ---
+// Estos cuatro valores se cargan desde gameConfig/settings y son la política económica
+// previa al futuro settlement server-side. El resultado competitivo de la partida queda
+// separado: una victoria puede registrarse aunque el premio económico sea 0.
+export const PVP_LIMITS = {
+  minRewardMinutes: 3,
+  minCompletedTurns: 4,
+  maxRewardedMatchesPerPairDaily: 5,
+  maxPointsPerDay: 1200
+};
+
 // Perder siempre da algo (no se castiga animarse a jugar y perder) — pero abandonar es
 // estrictamente peor que perder jugando hasta el final. Si no, la jugada "óptima" sería
 // cerrar la pestaña apenas vas perdiendo, y es justo lo que no queremos incentivar.
@@ -125,6 +137,10 @@ export function getDefaultGameConfig() {
     winVsHumano: 120,
     lossVsHumano: 20,
     abandonPenalty: -30,
+    pvpMinRewardMinutes: 3,
+    pvpMinCompletedTurns: 4,
+    pvpMaxRewardedMatchesPerPairDaily: 5,
+    pvpMaxPointsPerDay: 1200,
     packCost: 150,
     mythicChance: 1 / 7,
     fichasPerEnhancement: 3,
@@ -156,6 +172,10 @@ export function applyGameConfig(config) {
   if (typeof config.winVsHumano === 'number') POINTS.winVsHumano = config.winVsHumano;
   if (typeof config.lossVsHumano === 'number') POINTS.lossVsHumano = config.lossVsHumano;
   if (typeof config.abandonPenalty === 'number') POINTS.abandonPenalty = config.abandonPenalty;
+  if (typeof config.pvpMinRewardMinutes === 'number') PVP_LIMITS.minRewardMinutes = Math.max(0, Math.floor(config.pvpMinRewardMinutes));
+  if (typeof config.pvpMinCompletedTurns === 'number') PVP_LIMITS.minCompletedTurns = Math.max(0, Math.floor(config.pvpMinCompletedTurns));
+  if (typeof config.pvpMaxRewardedMatchesPerPairDaily === 'number') PVP_LIMITS.maxRewardedMatchesPerPairDaily = Math.max(0, Math.floor(config.pvpMaxRewardedMatchesPerPairDaily));
+  if (typeof config.pvpMaxPointsPerDay === 'number') PVP_LIMITS.maxPointsPerDay = Math.max(0, Math.floor(config.pvpMaxPointsPerDay));
   if (typeof config.packCost === 'number') PACK_COST = config.packCost;
   if (typeof config.mythicChance === 'number') MYTHIC_CHANCE_IN_RARE_SLOT = config.mythicChance;
   if (typeof config.fichasPerEnhancement === 'number') FICHAS_PER_ENHANCEMENT = config.fichasPerEnhancement;
