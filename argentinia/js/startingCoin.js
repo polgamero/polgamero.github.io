@@ -1,13 +1,17 @@
-// js/startingCoin.js — Entrega 23.13.57
+// js/startingCoin.js — Entrega 23.13.65
 // Presentación local del sorteo de inicio. El resultado llega decidido; este módulo sólo anima.
+// 23.13.65 abandona el "stack de discos" plano: moneda = dos caras físicas + pared cilíndrica segmentada.
 // @game-text-surface strict
 
 import { gameText } from './gameTexts.js';
+import { playSfx } from './audioManager.js';
 
-const COIN_RIM_HALF_PX = 7;
-const COIN_RIM_LAYERS = 15;
+const COIN_RADIUS_PX = 71;
+const COIN_THICKNESS_PX = 18;
+const COIN_EDGE_SEGMENTS = 56;
 const COIN_SPIN_MS = 3200;
 const COIN_RESULT_HOLD_MS = 2000;
+const COIN_TURNS = 8;
 
 function injectStartingCoinStyles() {
   if (document.getElementById('starting-coin-styles')) return;
@@ -17,16 +21,25 @@ function injectStartingCoinStyles() {
     .starting-coin-overlay{position:fixed;inset:0;z-index:13000;display:flex;align-items:center;justify-content:center;background:rgba(3,7,5,.80);backdrop-filter:blur(5px);}
     .starting-coin-panel{width:min(92vw,470px);padding:28px 24px 26px;text-align:center;border:1px solid rgba(212,175,55,.55);border-radius:20px;background:radial-gradient(circle at 50% 20%,rgba(93,72,20,.20),rgba(7,15,10,.97) 58%);box-shadow:0 22px 70px rgba(0,0,0,.58),inset 0 0 35px rgba(212,175,55,.06);}
     .starting-coin-title{font-size:22px;font-weight:900;color:#f2dda1;letter-spacing:.02em}.starting-coin-subtitle{margin-top:5px;color:#b9cbbf;font-size:13px}
-    .starting-coin-stage{height:226px;position:relative;display:flex;align-items:center;justify-content:center;perspective:1050px;perspective-origin:50% 46%;}
-    .starting-coin-flight{position:relative;width:150px;height:150px;display:flex;align-items:center;justify-content:center;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;}
-    .starting-coin{width:142px;height:142px;position:relative;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;will-change:transform;border-radius:50%;filter:drop-shadow(0 16px 20px rgba(0,0,0,.46));}
-    .starting-coin-rim-layer{position:absolute;inset:0;border-radius:50%;box-sizing:border-box;transform:translateZ(var(--coin-rim-z));background:radial-gradient(circle at 34% 27%,#e0b64f 0,#b17a18 45%,#74470b 78%,#482803 100%);border:5px solid #694009;box-shadow:inset 0 0 0 2px rgba(255,226,123,.12);backface-visibility:visible;-webkit-backface-visibility:visible;}
-    .starting-coin-face{position:absolute;inset:0;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:17px;box-sizing:border-box;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden;text-align:center;font-weight:950;font-size:16px;line-height:1.05;color:#241b08;border:5px double #7d5c12;background:radial-gradient(circle at 33% 28%,#fff5b6 0,#e8c759 22%,#bd8c20 58%,#74510e 100%);box-shadow:inset 0 0 0 3px rgba(255,244,170,.35),inset -9px -10px 18px rgba(72,43,4,.33),0 0 22px rgba(213,170,52,.24);}
+    .starting-coin-stage{height:226px;position:relative;display:flex;align-items:center;justify-content:center;perspective:920px;perspective-origin:50% 43%;}
+    .starting-coin-flight{position:relative;width:160px;height:160px;display:flex;align-items:center;justify-content:center;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;will-change:transform;}
+    .starting-coin{width:${COIN_RADIUS_PX*2}px;height:${COIN_RADIUS_PX*2}px;position:relative;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;will-change:transform;border-radius:50%;filter:drop-shadow(0 16px 20px rgba(0,0,0,.46));}
+
+    /* Pared lateral REAL del cilindro: 56 rectángulos tangenciales. Su eje corto queda en
+       Z; al pasar de canto forman una banda de ${COIN_THICKNESS_PX}px y dejan de verse como un disco flat. */
+    .starting-coin-edge-segment{position:absolute;left:50%;top:50%;width:8.8px;height:${COIN_THICKNESS_PX}px;margin-left:-4.4px;margin-top:-${COIN_THICKNESS_PX/2}px;box-sizing:border-box;transform-style:preserve-3d;-webkit-transform-style:preserve-3d;transform:rotateZ(var(--coin-edge-angle)) translateY(-${COIN_RADIUS_PX-4}px) rotateX(90deg);background:linear-gradient(180deg,#5d3506 0%,#a86f12 18%,#e0b64f 48%,#9b6510 76%,#4d2904 100%);border-left:1px solid rgba(255,226,123,.10);border-right:1px solid rgba(57,30,2,.22);backface-visibility:visible;-webkit-backface-visibility:visible;}
+    .starting-coin-edge-segment:nth-child(3n){filter:brightness(.82)}
+    .starting-coin-edge-segment:nth-child(4n){filter:brightness(1.12)}
+
+    .starting-coin-face{position:absolute;inset:0;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:17px;box-sizing:border-box;overflow:hidden;text-align:center;font-weight:950;font-size:16px;line-height:1.05;color:#241b08;border:5px double #7d5c12;background:radial-gradient(circle at 33% 28%,#fff5b6 0,#e8c759 22%,#bd8c20 58%,#74510e 100%);box-shadow:inset 0 0 0 3px rgba(255,244,170,.35),inset -9px -10px 18px rgba(72,43,4,.33),0 0 22px rgba(213,170,52,.24);backface-visibility:hidden;-webkit-backface-visibility:hidden;will-change:opacity;}
     .starting-coin-face::before{content:'';position:absolute;inset:10px;border:1px dashed rgba(91,61,5,.42);border-radius:50%}.starting-coin-face::after{content:'';position:absolute;inset:17px;border:1px solid rgba(255,239,158,.22);border-radius:50%}
     .starting-coin-face span{position:relative;z-index:1;max-width:96px;word-break:break-word;text-shadow:0 1px rgba(255,246,190,.45)}
-    .starting-coin-front{transform:translateZ(${COIN_RIM_HALF_PX + 1}px)}
-    .starting-coin-back{transform:rotateY(180deg) translateZ(${COIN_RIM_HALF_PX + 1}px);background:radial-gradient(circle at 67% 28%,#fff5b6 0,#e8c759 22%,#bd8c20 58%,#74510e 100%)}
-    .starting-coin-shadow{position:absolute;left:50%;bottom:24px;width:116px;height:22px;transform:translateX(-50%);border-radius:50%;background:rgba(0,0,0,.44);filter:blur(9px);opacity:.72;transition:opacity .28s ease,transform .28s ease;}
+    .starting-coin-front{transform:translateZ(${COIN_THICKNESS_PX/2}px)}
+    .starting-coin-back{transform:rotateX(180deg) translateZ(${COIN_THICKNESS_PX/2}px);background:radial-gradient(circle at 67% 72%,#fff5b6 0,#e8c759 22%,#bd8c20 58%,#74510e 100%)}
+    .starting-coin-face.is-camera-hidden{opacity:0!important;visibility:hidden;}
+    .starting-coin-face.is-camera-visible{opacity:1!important;visibility:visible;}
+
+    .starting-coin-shadow{position:absolute;left:50%;bottom:24px;width:116px;height:22px;transform:translateX(-50%);border-radius:50%;background:rgba(0,0,0,.44);filter:blur(9px);opacity:.72;}
     .starting-coin-result{min-height:32px;font-size:21px;font-weight:900;color:#f6e6ae;opacity:0;transform:translateY(6px);transition:opacity .30s ease,transform .30s ease}.starting-coin-result.is-visible{opacity:1;transform:none}
     .starting-coin.has-landed{filter:drop-shadow(0 12px 18px rgba(0,0,0,.42)) drop-shadow(0 0 13px rgba(231,189,67,.22));}
     @media (prefers-reduced-motion:reduce){.starting-coin,.starting-coin-flight{animation:none!important;transition:none!important}}
@@ -39,62 +52,101 @@ function safeName(name, fallback) {
   return clean || fallback;
 }
 
-function buildRimLayers() {
-  const step = (COIN_RIM_HALF_PX * 2) / Math.max(1, COIN_RIM_LAYERS - 1);
-  return Array.from({ length: COIN_RIM_LAYERS }, (_, index) => {
-    const z = -COIN_RIM_HALF_PX + step * index;
-    return `<i class="starting-coin-rim-layer" style="--coin-rim-z:${z.toFixed(2)}px"></i>`;
+function buildEdgeSegments() {
+  return Array.from({ length: COIN_EDGE_SEGMENTS }, (_, index) => {
+    const angle = (360 / COIN_EDGE_SEGMENTS) * index;
+    return `<i class="starting-coin-edge-segment" style="--coin-edge-angle:${angle.toFixed(3)}deg"></i>`;
   }).join('');
 }
 
-function animateCoinFlight({ coin, flight, shadow, winnerSide, reduced }) {
-  const duration = reduced ? 120 : COIN_SPIN_MS;
-  const turns = reduced ? 0 : 8;
-  // Evitamos terminar exactamente sobre el plano 180° para no dejar la decisión de backface
-  // en un punto numéricamente ambiguo del compositor 3D. La diferencia es subpixel/invisible.
-  const landingNudge = winnerSide === 'rival' ? 0.04 : 0.02;
-  const finalDegrees = turns * 360 + (winnerSide === 'rival' ? 180 : 0) + landingNudge;
-  const finalTransform = `rotateY(${finalDegrees}deg) rotateX(0deg)`;
+function normalizeDegrees(value) {
+  const n = Number(value) || 0;
+  return ((n % 360) + 360) % 360;
+}
 
-  if (reduced || typeof coin.animate !== 'function') {
-    coin.style.transition = reduced ? 'none' : `transform ${duration}ms cubic-bezier(.10,.72,.12,1)`;
-    coin.style.transform = finalTransform;
-    return { duration, finalTransform };
+// No confiamos la identidad de la cara únicamente a backface-visibility: Chrome ya nos
+// mostró que en ciertas composiciones 3D podía filtrar el reverso del frente. Durante TODO
+// el giro dejamos visible sólo la cara cuyo vector normal mira a cámara. No hay swapping de
+// nombres ni "implantación" al final: ambas caras existen desde el primer frame.
+function syncPhysicalFaceVisibility(frontFace, backFace, spinDegrees) {
+  const angle = normalizeDegrees(spinDegrees);
+  const facing = Math.cos(angle * Math.PI / 180);
+  const nearEdge = Math.abs(facing) < 0.075;
+  const frontVisible = !nearEdge && facing > 0;
+  const backVisible = !nearEdge && facing < 0;
+  frontFace?.classList.toggle('is-camera-visible', frontVisible);
+  frontFace?.classList.toggle('is-camera-hidden', !frontVisible);
+  backFace?.classList.toggle('is-camera-visible', backVisible);
+  backFace?.classList.toggle('is-camera-hidden', !backVisible);
+}
+
+function bezierCoord(t, p1, p2) {
+  const inv = 1 - t;
+  return 3 * inv * inv * t * p1 + 3 * inv * t * t * p2 + t * t * t;
+}
+
+function bezierDerivative(t, p1, p2) {
+  const inv = 1 - t;
+  return 3 * inv * inv * p1 + 6 * inv * t * (p2 - p1) + 3 * t * t * (1 - p2);
+}
+
+// Equivalente numérico a cubic-bezier(.10,.72,.12,1), que era el timing aprobado visualmente.
+function approvedSpinEase(progress) {
+  const x = Math.max(0, Math.min(1, progress));
+  let t = x;
+  for (let i = 0; i < 5; i += 1) {
+    const currentX = bezierCoord(t, .10, .12);
+    const dx = bezierDerivative(t, .10, .12);
+    if (Math.abs(dx) < 1e-5) break;
+    t = Math.max(0, Math.min(1, t - ((currentX - x) / dx)));
+  }
+  return bezierCoord(t, .72, 1);
+}
+
+function animateCoinFlight({ coin, flight, shadow, frontFace, backFace, winnerSide, reduced }) {
+  const duration = reduced ? 120 : COIN_SPIN_MS;
+  const finalDegrees = COIN_TURNS * 360 + (winnerSide === 'rival' ? 180 : 0);
+
+  if (reduced || typeof requestAnimationFrame !== 'function') {
+    coin.style.transform = `rotateX(${finalDegrees}deg) rotateY(0deg) rotateZ(0deg)`;
+    flight.style.transform = 'translateY(0)';
+    syncPhysicalFaceVisibility(frontFace, backFace, finalDegrees);
+    return { duration, finalDegrees };
   }
 
-  const spin = coin.animate([
-    { transform: 'rotateY(0deg) rotateX(8deg)', offset: 0 },
-    { transform: `rotateY(${finalDegrees * 0.34}deg) rotateX(-12deg)`, offset: 0.34 },
-    { transform: `rotateY(${finalDegrees * 0.67}deg) rotateX(9deg)`, offset: 0.67 },
-    { transform: `rotateY(${finalDegrees * 0.90}deg) rotateX(-4deg)`, offset: 0.90 },
-    { transform: finalTransform, offset: 1 }
-  ], {
-    duration,
-    easing: 'cubic-bezier(.10,.72,.12,1)',
-    fill: 'forwards'
-  });
+  const startedAt = performance.now();
+  const frame = (now) => {
+    const raw = Math.max(0, Math.min(1, (now - startedAt) / duration));
+    const eased = approvedSpinEase(raw);
+    const spinDegrees = finalDegrees * eased;
+    // Giro principal de "coin toss" alrededor de X. Y/Z sólo aportan volumen y wobble,
+    // pero se extinguen al aterrizar para que la cara ganadora quede perfectamente legible.
+    const wobbleEnvelope = Math.sin(Math.PI * raw);
+    const yaw = Math.sin(raw * Math.PI * 5) * 8 * wobbleEnvelope;
+    const roll = Math.sin(raw * Math.PI * 3) * 3.5 * wobbleEnvelope;
+    coin.style.transform = `rotateX(${spinDegrees}deg) rotateY(${yaw}deg) rotateZ(${roll}deg)`;
+    syncPhysicalFaceVisibility(frontFace, backFace, spinDegrees);
 
-  flight?.animate?.([
-    { transform: 'translateY(8px)', offset: 0 },
-    { transform: 'translateY(-24px)', offset: 0.30 },
-    { transform: 'translateY(-10px)', offset: 0.72 },
-    { transform: 'translateY(0)', offset: 1 }
-  ], { duration, easing: 'cubic-bezier(.18,.66,.20,1)', fill: 'forwards' });
+    const lift = -26 * Math.sin(Math.PI * raw);
+    flight.style.transform = `translateY(${lift.toFixed(2)}px)`;
+    const shadowScale = 1 - (0.28 * Math.sin(Math.PI * raw));
+    const shadowOpacity = .72 - (.40 * Math.sin(Math.PI * raw));
+    shadow.style.transform = `translateX(-50%) scale(${shadowScale.toFixed(3)})`;
+    shadow.style.opacity = String(Math.max(.26, shadowOpacity));
 
-  shadow?.animate?.([
-    { opacity: .72, transform: 'translateX(-50%) scale(1)', offset: 0 },
-    { opacity: .30, transform: 'translateX(-50%) scale(.72)', offset: 0.30 },
-    { opacity: .48, transform: 'translateX(-50%) scale(.86)', offset: 0.72 },
-    { opacity: .72, transform: 'translateX(-50%) scale(1)', offset: 1 }
-  ], { duration, easing: 'ease-out', fill: 'forwards' });
+    if (raw < 1) {
+      requestAnimationFrame(frame);
+      return;
+    }
 
-  // Persistimos exactamente la misma orientación final que produjo la animación. No se
-  // reemplazan caras, textos ni transforms: sólo se congela la moneda física donde cayó.
-  spin.finished.then(() => {
-    coin.style.transform = finalTransform;
-    spin.cancel();
-  }).catch(() => {});
-  return { duration, finalTransform };
+    coin.style.transform = `rotateX(${finalDegrees}deg) rotateY(0deg) rotateZ(0deg)`;
+    flight.style.transform = 'translateY(0)';
+    shadow.style.transform = 'translateX(-50%) scale(1)';
+    shadow.style.opacity = '.72';
+    syncPhysicalFaceVisibility(frontFace, backFace, finalDegrees);
+  };
+  requestAnimationFrame(frame);
+  return { duration, finalDegrees };
 }
 
 export function showStartingCoinToss({ localName, rivalName, winnerSide = 'local' } = {}) {
@@ -114,9 +166,9 @@ export function showStartingCoinToss({ localName, rivalName, winnerSide = 'local
         <div class="starting-coin-shadow" aria-hidden="true"></div>
         <div class="starting-coin-flight">
           <div class="starting-coin" aria-hidden="true">
-            ${buildRimLayers()}
-            <div class="starting-coin-face starting-coin-front"><span></span></div>
-            <div class="starting-coin-face starting-coin-back"><span></span></div>
+            ${buildEdgeSegments()}
+            <div class="starting-coin-face starting-coin-front is-camera-visible"><span></span></div>
+            <div class="starting-coin-face starting-coin-back is-camera-hidden"><span></span></div>
           </div>
         </div>
       </div>
@@ -134,8 +186,14 @@ export function showStartingCoinToss({ localName, rivalName, winnerSide = 'local
     const coin = overlay.querySelector('.starting-coin');
     const flight = overlay.querySelector('.starting-coin-flight');
     const shadow = overlay.querySelector('.starting-coin-shadow');
+    const frontFace = overlay.querySelector('.starting-coin-front');
+    const backFace = overlay.querySelector('.starting-coin-back');
     const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
-    const { duration } = animateCoinFlight({ coin, flight, shadow, winnerSide, reduced });
+
+    // EXACTAMENTE una reproducción por sorteo y justo antes del primer frame de animación.
+    // El Audio Manager elige moneda.opus y deja moneda.mp3 como fallback; respeta SFX ON/OFF y volumen.
+    playSfx('coinToss');
+    const { duration } = animateCoinFlight({ coin, flight, shadow, frontFace, backFace, winnerSide, reduced });
 
     setTimeout(() => {
       coin.classList.add('has-landed');

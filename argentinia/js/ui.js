@@ -1706,10 +1706,11 @@ function injectMainMenuStyles() {
     .options-volume-slider { width: 150px; accent-color: #d4af37; cursor: pointer; }
     .options-volume-value { width: 42px; text-align:right; color:#cfe0d4; font-size:12px; font-variant-numeric: tabular-nums; }
     .main-menu-music-btn {
-      align-self: center; margin-top: 2px; min-width: 48px; padding: 6px 12px;
-      border: 1px solid rgba(212,175,55,0.45); border-radius: 999px;
-      background: rgba(11,19,14,0.72); color:#f0e0b0; cursor:pointer;
-      font-size: 16px; line-height: 1; transition: background .15s ease, border-color .15s ease, opacity .15s ease;
+      flex:0 0 34px; width:34px; height:30px; min-width:34px; padding:0; margin:0; align-self:auto;
+      border: 1px solid rgba(212,175,55,0.45); border-radius: 8px;
+      background: rgba(11,19,14,0.82); color:#f0e0b0; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center;
+      font-size: 15px; line-height: 1; transition: background .15s ease, border-color .15s ease, opacity .15s ease;
     }
     .main-menu-music-btn:hover { background: rgba(212,175,55,0.14); border-color:#f0e0b0; }
     .main-menu-music-btn.is-muted { opacity: .62; }
@@ -4698,6 +4699,32 @@ export function showMyDecksScreen(onBack) {
 // cada vez que cambia el estado de sesión (login/logout/recarga con sesión activa), vía
 // updateAccountUI más abajo, que ya está enganchado en boot() (main.js) apenas arranca la
 // página, sin importar qué pantalla esté mostrándose en ese momento.
+function bindMainMenuMusicQuickButton(root) {
+  const musicQuickBtn = root?.querySelector?.('#menu-music-toggle');
+  if (!musicQuickBtn) return;
+  const refresh = () => {
+    const audio = getAudioSettings();
+    const pct = Math.round(audio.musicVolume * 100);
+    musicQuickBtn.textContent = audio.musicEnabled ? '🔊' : '🔇';
+    musicQuickBtn.classList.toggle('is-muted', !audio.musicEnabled);
+    musicQuickBtn.title = `${gameText('options.music')}: ${audio.musicEnabled ? gameText('options.enabled') : gameText('options.off')} · ${pct}%`;
+    musicQuickBtn.setAttribute('aria-pressed', audio.musicEnabled ? 'true' : 'false');
+  };
+  refresh();
+  musicQuickBtn.addEventListener('click', () => {
+    toggleMusic();
+    refresh();
+  });
+  const onAudioSettingsChanged = () => {
+    if (!musicQuickBtn.isConnected) {
+      window.removeEventListener('argentinia:audio-settings-changed', onAudioSettingsChanged);
+      return;
+    }
+    refresh();
+  };
+  window.addEventListener('argentinia:audio-settings-changed', onAudioSettingsChanged);
+}
+
 function renderAccountBox(container, user) {
   if (!container) return;
 
@@ -4720,6 +4747,7 @@ function renderAccountBox(container, user) {
       <div class="main-menu-account-actions">
         <button class="main-menu-reward-btn" id="menu-chest">${gameTextHtml('account.chest')}${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
         <button class="main-menu-reward-btn" id="menu-daily-rewards">${gameTextHtml('account.dailyRewards')}${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
+        <button class="main-menu-music-btn" id="menu-music-toggle" type="button" aria-label="Música">🔊</button>
       </div>`;
     container.innerHTML = `
       ${adminBtnHTML}
@@ -4734,6 +4762,7 @@ function renderAccountBox(container, user) {
         </div>
       </div>
     `;
+    bindMainMenuMusicQuickButton(container);
     container.querySelector('#menu-chest').addEventListener('click', () => {
       if (!state.userProfile) return;
       const mainMenuOverlay = document.getElementById('main-menu-overlay');
@@ -4976,6 +5005,15 @@ function injectAdminPanelStyles() {
       color: #f0e0b0; font-size: 14px; font-weight: 600; padding: 6px 10px; text-align: right;
     }
     .admin-field-input:focus { outline: none; border-color: #b06ad4; }
+    /* 23.13.65 — todos los SELECT dentro del Admin usan fondo oscuro Argentinia.
+       Conservamos tipografía gold pero eliminamos el popup blanco ilegible del navegador. */
+    #admin-panel-overlay select {
+      background-color:#0b130e !important; color:#f0d56a !important; color-scheme:dark;
+      border-color:rgba(212,175,55,.48);
+    }
+    #admin-panel-overlay select option, #admin-panel-overlay select optgroup {
+      background-color:#0b130e !important; color:#f0d56a !important;
+    }
     .admin-field-row-disabled .admin-field-label { opacity: 0.5; }
     .admin-field-row-disabled .admin-field-input { opacity: 0.4; cursor: not-allowed; }
     .admin-save-btn {
@@ -6166,7 +6204,6 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
       <button class="main-menu-btn" id="menu-encyclopedia">${gameTextHtml('menu.encyclopedia')}</button>
       <button class="main-menu-btn" id="menu-store">${gameTextHtml('menu.store')}</button>
       <button class="main-menu-btn" id="menu-options">${gameTextHtml('menu.options')}</button>
-      <button class="main-menu-music-btn" id="menu-music-toggle" type="button" aria-label="Música">🔊</button>
     </div>
     <div id="main-menu-active-events"></div>
     <div class="main-menu-news" id="main-menu-news">
@@ -6179,30 +6216,6 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
   document.body.appendChild(overlay);
   enterMenuAudio();
 
-  const musicQuickBtn = overlay.querySelector('#menu-music-toggle');
-  const refreshMusicQuickBtn = () => {
-    if (!musicQuickBtn) return;
-    const audio = getAudioSettings();
-    const pct = Math.round(audio.musicVolume * 100);
-    musicQuickBtn.textContent = audio.musicEnabled ? '🔊' : '🔇';
-    musicQuickBtn.classList.toggle('is-muted', !audio.musicEnabled);
-    musicQuickBtn.title = `${gameText('options.music')}: ${audio.musicEnabled ? gameText('options.enabled') : gameText('options.off')} · ${pct}%`;
-    musicQuickBtn.setAttribute('aria-pressed', audio.musicEnabled ? 'true' : 'false');
-  };
-  refreshMusicQuickBtn();
-  musicQuickBtn?.addEventListener('click', () => {
-    toggleMusic();
-    refreshMusicQuickBtn();
-  });
-  const onAudioSettingsChanged = () => {
-    if (!musicQuickBtn?.isConnected) {
-      window.removeEventListener('argentinia:audio-settings-changed', onAudioSettingsChanged);
-      return;
-    }
-    refreshMusicQuickBtn();
-  };
-  window.addEventListener('argentinia:audio-settings-changed', onAudioSettingsChanged);
-  const cleanupMenuAudioListener = () => window.removeEventListener('argentinia:audio-settings-changed', onAudioSettingsChanged);
 
   renderAccountBox(overlay.querySelector('#main-menu-account'), state.currentUser);
   updateMainMenuLoginGatedButtons(overlay);
@@ -6251,7 +6264,6 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
 
   overlay.querySelector('#menu-play').addEventListener('click', async () => {
     if (!await awaitMenuIdentityOrStay()) return;
-    cleanupMenuAudioListener();
     overlay.remove();
     await onPlay();
   });

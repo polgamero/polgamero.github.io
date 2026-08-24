@@ -7,22 +7,20 @@ const src = fs.readFileSync(new URL('../js/startingCoin.js', import.meta.url), '
 assert.match(src, /starting-coin-front span'\)\.textContent = local/);
 assert.match(src, /starting-coin-back span'\)\.textContent = rival/);
 assert.doesNotMatch(src, /winnerFace/);
-assert.doesNotMatch(src, /is-landed/);
-assert.doesNotMatch(src, /starting-coin-face:not\(\.is-winner\)/);
+assert.doesNotMatch(src, /is-winner/);
 
-// Dos caras reales + espesor multicapa.
-assert.match(src, /COIN_RIM_HALF_PX = 7/);
-assert.match(src, /COIN_RIM_LAYERS = 15/);
-assert.match(src, /buildRimLayers\(\)/);
-assert.match(src, /starting-coin-rim-layer/);
-assert.match(src, /backface-visibility:hidden/);
-assert.match(src, /-webkit-backface-visibility:hidden/);
-assert.match(src, /starting-coin-back\{transform:rotateY\(180deg\) translateZ/);
+// Contrato físico actual: dos caras + pared cilíndrica segmentada con espesor real.
+assert.match(src, /COIN_THICKNESS_PX = 18/);
+assert.match(src, /COIN_EDGE_SEGMENTS = 56/);
+assert.match(src, /buildEdgeSegments\(\)/);
+assert.match(src, /starting-coin-edge-segment/);
+assert.match(src, /starting-coin-back\{transform:rotateX\(180deg\) translateZ/);
+assert.match(src, /syncPhysicalFaceVisibility/);
 
-// El lado rival se obtiene por rotación física de 180°, no por swapping de DOM.
+// El lado rival se obtiene por media vuelta física; no hay swapping de texto al landing.
 assert.match(src, /winnerSide === 'rival' \? 180 : 0/);
-assert.match(src, /const finalTransform = `rotateY\(\$\{finalDegrees\}deg\) rotateX\(0deg\)`/);
-assert.match(src, /coin\.style\.transform = finalTransform/);
+assert.match(src, /rotateX\(\$\{finalDegrees\}deg\)/);
+assert.doesNotMatch(src, /textContent\s*=\s*winner/);
 
 // Ritmo deliberadamente legible: giro >3 s y resultado quieto >=2 s.
 const spin = Number(src.match(/COIN_SPIN_MS = (\d+)/)?.[1] || 0);

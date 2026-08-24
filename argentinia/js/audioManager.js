@@ -1,4 +1,4 @@
-// js/audioManager.js — Entrega 23.13.63 Audio Manager Foundation.
+// js/audioManager.js — Entrega 23.13.65 Audio Polish + Coin Toss SFX.
 // Un único dueño del audio de Argentinia: música de menú hoy, catálogo extensible para
 // nuevas canciones y SFX mañana. Todo es local al navegador; no toca Firestore.
 
@@ -16,9 +16,18 @@ export const AUDIO_CATALOG = Object.freeze({
       ])
     })
   }),
-  // Se deja preparado desde ahora. Para sumar un SFX alcanza con agregar una entrada
-  // { sources:[...]} y llamar playSfx('id'); volumen/mute ya existen en Opciones.
-  sfx: Object.freeze({})
+  // SFX viven separados de la música y respetan su propio ON/OFF + volumen de OPCIONES.
+  // Contrato de assets 23.13.65: no reorganizar cards/tokens; los efectos viven en sounds/sfx.
+  sfx: Object.freeze({
+    coinToss: Object.freeze({
+      id: 'coinToss',
+      loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/moneda.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/moneda.mp3', type: 'audio/mpeg' })
+      ])
+    })
+  })
 });
 
 const DEFAULT_SETTINGS = Object.freeze({
