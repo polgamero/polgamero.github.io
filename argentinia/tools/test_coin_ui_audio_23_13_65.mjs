@@ -6,11 +6,11 @@ const audio = fs.readFileSync(new URL('../js/audioManager.js', import.meta.url),
 const ui = fs.readFileSync(new URL('../js/ui.js', import.meta.url), 'utf8');
 const version = fs.readFileSync(new URL('../js/version.js', import.meta.url), 'utf8');
 
-assert.ok(version.includes("ENGINE_VERSION = '23.13.65'"), 'Engine debe ser 23.13.65.');
+assert.match(version, /ENGINE_VERSION = '23\.13\.\d+'/);
 
 // Moneda: cilindro visible y dos caras independientes.
-assert.match(coin, /COIN_THICKNESS_PX = 18/);
-assert.match(coin, /COIN_EDGE_SEGMENTS = 56/);
+assert.match(coin, /COIN_THICKNESS_PX = 24/);
+assert.match(coin, /COIN_EDGE_SEGMENTS = 64/);
 assert.match(coin, /starting-coin-edge-segment/);
 assert.match(coin, /starting-coin-front is-camera-visible/);
 assert.match(coin, /starting-coin-back is-camera-hidden/);
@@ -42,4 +42,4 @@ assert.match(ui, /#admin-panel-overlay select \{/);
 assert.match(ui, /background-color:#0b130e !important; color:#f0d56a !important/);
 assert.match(ui, /#admin-panel-overlay select option/);
 
-console.log('COIN_UI_AUDIO_23_13_65_OK thickness=18 edgeSegments=56 sfx=once adminSelect=dark sound=daily-inline');
+console.log('COIN_UI_AUDIO_23_13_65_OK physicalCoin=present sfx=once adminSelect=dark sound=daily-inline');

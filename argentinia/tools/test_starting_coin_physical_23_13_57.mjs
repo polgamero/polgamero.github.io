@@ -10,8 +10,8 @@ assert.doesNotMatch(src, /winnerFace/);
 assert.doesNotMatch(src, /is-winner/);
 
 // Contrato físico actual: dos caras + pared cilíndrica segmentada con espesor real.
-assert.match(src, /COIN_THICKNESS_PX = 18/);
-assert.match(src, /COIN_EDGE_SEGMENTS = 56/);
+assert.match(src, /COIN_THICKNESS_PX = 24/);
+assert.match(src, /COIN_EDGE_SEGMENTS = 64/);
 assert.match(src, /buildEdgeSegments\(\)/);
 assert.match(src, /starting-coin-edge-segment/);
 assert.match(src, /starting-coin-back\{transform:rotateX\(180deg\) translateZ/);
