@@ -66,6 +66,7 @@ import { effectivePackCost, campaignStatus } from './campaigns.js';
 import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.js';
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
+import { enterMenuAudio, getAudioSettings, toggleMusic, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -1696,6 +1697,28 @@ function injectMainMenuStyles() {
       transition: background 0.15s ease, border-color 0.15s ease;
     }
     .options-toggle-btn:hover { background: rgba(212,175,55,0.15); border-color: #f0e0b0; }
+    .options-section-title {
+      color: #d4af37; font-size: 11px; font-weight: 800; letter-spacing: 0.9px;
+      text-transform: uppercase; margin-top: 18px; padding: 0 4px 5px;
+    }
+    .options-audio-row { gap: 18px; }
+    .options-audio-controls { display:flex; align-items:center; justify-content:flex-end; gap:10px; min-width: 310px; }
+    .options-volume-slider { width: 150px; accent-color: #d4af37; cursor: pointer; }
+    .options-volume-value { width: 42px; text-align:right; color:#cfe0d4; font-size:12px; font-variant-numeric: tabular-nums; }
+    .main-menu-music-btn {
+      align-self: center; margin-top: 2px; min-width: 48px; padding: 6px 12px;
+      border: 1px solid rgba(212,175,55,0.45); border-radius: 999px;
+      background: rgba(11,19,14,0.72); color:#f0e0b0; cursor:pointer;
+      font-size: 16px; line-height: 1; transition: background .15s ease, border-color .15s ease, opacity .15s ease;
+    }
+    .main-menu-music-btn:hover { background: rgba(212,175,55,0.14); border-color:#f0e0b0; }
+    .main-menu-music-btn.is-muted { opacity: .62; }
+    @media (max-width: 620px) {
+      .options-menu-panel { padding: 24px 18px; }
+      .options-audio-row { align-items:flex-start; flex-direction:column; gap:8px; }
+      .options-audio-controls { width:100%; min-width:0; justify-content:space-between; }
+      .options-volume-slider { flex:1; min-width: 100px; }
+    }
     .options-row-disabled .options-label { opacity: 0.5; }
     .options-row-disabled .options-toggle-btn { opacity: 0.45; cursor: not-allowed; position: relative; }
     .options-row-disabled .options-toggle-btn:hover {
@@ -2859,6 +2882,44 @@ function injectStoreStyles() {
     .store-points-list li strong { color: #f0e0b0; }
     .store-points-list li.store-points-penalty { border-left-color: #e07a6b; }
     .store-points-list li.store-points-penalty strong { color: #e07a6b; }
+    .store-balance-points { position:relative; }
+    .store-points-how-link {
+      appearance:none; border:0; background:none; color:#d7c881; padding:5px 0 0; margin:2px 0 -3px;
+      font-size:11px; line-height:1.2; text-decoration:underline; text-underline-offset:2px; cursor:pointer;
+    }
+    .store-points-how-link:hover { color:#fff0b8; }
+    .store-points-info { position:relative; margin-top:-10px; }
+    .store-points-info[hidden] { display:none !important; }
+    .store-points-info-close {
+      position:absolute; top:8px; right:10px; width:30px; height:30px; border-radius:50%;
+      border:1px solid rgba(212,175,55,.48); background:rgba(8,14,10,.9); color:#f0e0b0;
+      font-size:21px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    }
+    .store-points-info-close:hover { border-color:#d4af37; box-shadow:0 0 14px rgba(212,175,55,.18); }
+    .store-market-strip-shell {
+      overflow:hidden; border-radius:16px; margin:0 0 20px;
+      border:1px solid rgba(212,175,55,.2); background:rgba(8,14,10,.34);
+    }
+    .store-market-strip {
+      display:flex; flex-wrap:nowrap; align-items:stretch; gap:14px; overflow-x:auto; overflow-y:hidden;
+      padding:14px; scroll-snap-type:x proximity; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch;
+      scrollbar-width:thin; scrollbar-color:rgba(212,175,55,.55) rgba(0,0,0,.18);
+    }
+    .store-market-strip::-webkit-scrollbar { height:10px; }
+    .store-market-strip::-webkit-scrollbar-track { background:rgba(0,0,0,.18); border-radius:999px; }
+    .store-market-strip::-webkit-scrollbar-thumb { background:rgba(212,175,55,.55); border-radius:999px; }
+    .store-market-item {
+      flex:1 0 270px; min-width:270px; max-width:330px; min-height:300px; scroll-snap-align:start;
+      justify-content:flex-start;
+    }
+    .store-market-item .chest-item-icon { min-height:112px; }
+    .store-market-item .chest-item-desc { flex:1; min-height:0; margin-top:2px; }
+    .store-market-count { font-size:23px; line-height:1.15; margin:5px 0 8px; white-space:normal; }
+    .store-market-count-classifieds { color:#8dc5e4; }
+    .store-market-item .reward-action-btn { width:100%; min-height:42px; }
+    .store-market-item .store-error-msg { min-height:16px; margin-top:7px; }
+    .store-discount-note { display:inline-block; font-size:11px; color:#f5d777; margin-left:3px; }
+    .store-classifieds-icon { font-size:64px; filter:drop-shadow(0 5px 12px rgba(116,172,223,.24)); }
     .store-card-grid {
       display: flex; flex-wrap: wrap; justify-content: center; gap: 16px;
       --card-w: 14vh;
@@ -2962,6 +3023,15 @@ function injectStoreStyles() {
       display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 5px 16px rgba(0,0,0,.65);
     }
 
+    html.argentinia-mobile .store-body { max-width:none; }
+    html.argentinia-mobile .store-balance-row { gap:8px; margin-bottom:18px; }
+    html.argentinia-mobile .store-balance-chip { min-width:0; flex:1; padding:10px 8px; }
+    html.argentinia-mobile .store-balance-value { font-size:20px; }
+    html.argentinia-mobile .store-market-strip { gap:10px; padding:10px 8px 12px; }
+    html.argentinia-mobile .store-market-item { flex-basis:min(78vw,270px); min-width:min(78vw,270px); min-height:275px; padding:14px; }
+    html.argentinia-mobile .store-market-item .chest-item-icon { min-height:92px; }
+    html.argentinia-mobile .store-market-item .reward-pack-icon { width:96px; height:96px; }
+    html.argentinia-mobile .store-points-info { margin-top:-4px; padding:20px 16px 16px; }
     html.argentinia-mobile .classifieds-topbar { margin-bottom:8px; }
     html.argentinia-mobile .classifieds-week-title { font-size:15px; }
     html.argentinia-mobile .classifieds-week-subtitle { font-size:9px; }
@@ -2986,6 +3056,7 @@ function injectStoreStyles() {
 // de juego real) — nada de esto necesitó inventar una forma nueva de mostrar una carta.
 export function showStoreScreen(onBack, options = {}) {
   injectStoreStyles();
+  injectRewardsStyles(); // 23.13.64 — reutiliza el lenguaje visual exacto de Mi Cofre en la vidriera horizontal.
   injectEncyclopediaStyles(); // .encyclopedia-back-btn: no depender del orden de navegación
   const overlay = document.createElement('div');
   overlay.id = 'store-overlay';
@@ -3022,12 +3093,12 @@ export function showStoreScreen(onBack, options = {}) {
     stopClassifiedsTimer();
   }
 
-  // BUGFIX: panel de "cómo conseguir puntos" — se muestra SIEMPRE, arriba de todo, sin
-  // importar si hay sesión o no (así también le sirve a alguien que todavía no se logueó
-  // y quiere entender el sistema antes de decidir). Lee los valores reales de store.js, así
-  // nunca queda desactualizado si se reajusta el balance más adelante.
-  const pointsInfoHTML = `
-    <div class="store-section store-points-info">
+  // 23.13.64 — "Cómo conseguir puntos" deja de ocupar una sección permanente de la Tienda.
+  // Se conserva EXACTAMENTE la misma lista/fuente de valores, pero vive en un panel desplegable
+  // asociado al saldo de Puntos. Esto evita duplicar reglas de economía o textos.
+  const pointsInfoPanelHTML = `
+    <div class="store-section store-points-info" id="store-points-info-panel" hidden>
+      <button class="store-points-info-close" id="store-points-info-close" type="button" aria-label="Cerrar">×</button>
       <div class="store-section-title">${COIN_ICON_HTML} ${gameTextHtml('store.pointsHow.title')}</div>
       <ul class="store-points-list">
         <li>${gameTextHtml('store.pointsHow.winHard', { points: POINTS.winVsTanoDificil })}</li>
@@ -3043,11 +3114,13 @@ export function showStoreScreen(onBack, options = {}) {
   async function renderMainView() {
     leaveClassifiedsView();
     if (!state.currentUser) {
-      body.innerHTML = pointsInfoHTML + `<div class="store-section"><div class="store-section-desc">${gameTextHtml('store.loginRequired')}</div></div>`;
+      body.innerHTML = `<div id="store-active-events"></div><div class="store-section"><div class="store-section-desc">${gameTextHtml('store.loginRequired')}</div></div>`;
+      void renderActiveEventsStrip(body.querySelector('#store-active-events'));
       return;
     }
     if (!state.userProfile) {
-      body.innerHTML = pointsInfoHTML + `<div class="store-section"><div class="store-section-desc">${gameTextHtml('store.profileMissing')}</div></div>`;
+      body.innerHTML = `<div id="store-active-events"></div><div class="store-section"><div class="store-section-desc">${gameTextHtml('store.profileMissing')}</div></div>`;
+      void renderActiveEventsStrip(body.querySelector('#store-active-events'));
       return;
     }
 
@@ -3060,33 +3133,59 @@ export function showStoreScreen(onBack, options = {}) {
     const canBuyPack = points >= effectiveCost;
     const canCraft = fichas >= FICHAS_PER_ENHANCEMENT;
 
-    body.innerHTML = pointsInfoHTML + `
+    body.innerHTML = `
       <div id="store-active-events"></div>
       <div class="store-balance-row">
-        <div class="store-balance-chip"><div class="store-balance-value">${COIN_ICON_HTML} ${points}</div><div class="store-balance-label">${gameTextHtml('store.balance.points')}</div></div>
+        <div class="store-balance-chip store-balance-points">
+          <div class="store-balance-value">${COIN_ICON_HTML} ${points}</div>
+          <div class="store-balance-label">${gameTextHtml('store.balance.points')}</div>
+          <button class="store-points-how-link" id="store-points-how-link" type="button">${gameTextHtml('store.pointsHow.link')}</button>
+        </div>
         <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${fichas}</div><div class="store-balance-label">${gameTextHtml('store.balance.fichas')}</div></div>
       </div>
-      <div class="store-section store-classifieds-entry">
-        <div class="store-section-title">${gameTextHtml('store.classifieds.title')}</div>
-        <div class="store-section-desc">${gameTextHtml('store.classifieds.description')}</div>
-        <button class="store-buy-btn" id="store-classifieds">${gameTextHtml('store.classifieds.open')}</button>
-      </div>
-      <div class="store-section">
-        <img class="store-pack-visual" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">
-        <div class="store-section-title">${gameTextHtml('store.pack.title', { cost: effectiveCost })}${packDiscountActive ? ` <span style="font-size:11px;color:#f5d777">(${PACK_COST} → ${effectiveCost})</span>` : ''}</div>
-        <div class="store-section-desc">${gameTextHtml('store.pack.description')}</div>
-        <button class="store-buy-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>${gameTextHtml('store.pack.buy')}</button>
-        <div class="store-error-msg" id="store-buy-error"></div>
-      </div>
-      <div class="store-section">
-        <div class="store-ficha-visual">${FICHA_ICON_HTML}</div>
-        <div class="store-section-title">${gameTextHtml('store.craft.title', { cost: FICHAS_PER_ENHANCEMENT })}</div>
-        <div class="store-section-desc">${gameTextHtml('store.craft.description')}</div>
-        <button class="store-buy-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? gameTextHtml('store.craft.action') : gameTextHtml('store.craft.missing', { count: FICHAS_PER_ENHANCEMENT - fichas })}</button>
+      ${pointsInfoPanelHTML}
+      <div class="store-market-strip-shell">
+        <div class="store-market-strip" aria-label="Opciones de la Tienda">
+          <div class="chest-item store-market-item store-market-pack">
+            <div class="chest-item-icon">${PACK_ICON_HTML}</div>
+            <div class="chest-item-title">${gameTextHtml('store.pack.showcaseTitle')}</div>
+            <div class="chest-item-count store-market-count">${gameTextHtml('store.pack.showcaseCost', { cost: effectiveCost })}${packDiscountActive ? ` <span class="store-discount-note">(${PACK_COST} → ${effectiveCost})</span>` : ''}</div>
+            <div class="chest-item-desc">${gameTextHtml('store.pack.description')}</div>
+            <button class="reward-action-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>${gameTextHtml('store.pack.buy')}</button>
+            <div class="store-error-msg" id="store-buy-error"></div>
+          </div>
+          <div class="chest-item store-market-item store-market-craft">
+            <div class="chest-item-icon">${FICHA_ICON_HTML}</div>
+            <div class="chest-item-title">${gameTextHtml('store.craft.showcaseTitle')}</div>
+            <div class="chest-item-count store-market-count">${gameTextHtml('store.craft.showcaseCost', { cost: FICHAS_PER_ENHANCEMENT })}</div>
+            <div class="chest-item-desc">${gameTextHtml('store.craft.description')}</div>
+            <button class="reward-action-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? gameTextHtml('store.craft.action') : gameTextHtml('store.craft.missing', { count: FICHAS_PER_ENHANCEMENT - fichas })}</button>
+          </div>
+          <div class="chest-item store-market-item store-classifieds-entry">
+            <div class="chest-item-icon store-classifieds-icon">📰</div>
+            <div class="chest-item-title">${gameTextHtml('store.classifieds.showcaseTitle')}</div>
+            <div class="chest-item-count store-market-count store-market-count-classifieds">${gameTextHtml('store.classifieds.showcaseCount')}</div>
+            <div class="chest-item-desc">${gameTextHtml('store.classifieds.description')}</div>
+            <button class="reward-action-btn" id="store-classifieds">${gameTextHtml('store.classifieds.open')}</button>
+          </div>
+        </div>
       </div>
     `;
 
     void renderActiveEventsStrip(body.querySelector('#store-active-events'));
+
+    const pointsPanel = body.querySelector('#store-points-info-panel');
+    const pointsLink = body.querySelector('#store-points-how-link');
+    const closePointsPanel = body.querySelector('#store-points-info-close');
+    const setPointsPanelOpen = open => {
+      if (!pointsPanel) return;
+      pointsPanel.hidden = !open;
+      pointsLink?.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) pointsPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+    pointsLink?.setAttribute('aria-expanded', 'false');
+    pointsLink?.addEventListener('click', () => setPointsPanelOpen(pointsPanel?.hidden !== false));
+    closePointsPanel?.addEventListener('click', () => setPointsPanelOpen(false));
 
     body.querySelector('#store-classifieds').addEventListener('click', () => {
       void renderClassifiedsView();
@@ -6067,6 +6166,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
       <button class="main-menu-btn" id="menu-encyclopedia">${gameTextHtml('menu.encyclopedia')}</button>
       <button class="main-menu-btn" id="menu-store">${gameTextHtml('menu.store')}</button>
       <button class="main-menu-btn" id="menu-options">${gameTextHtml('menu.options')}</button>
+      <button class="main-menu-music-btn" id="menu-music-toggle" type="button" aria-label="Música">🔊</button>
     </div>
     <div id="main-menu-active-events"></div>
     <div class="main-menu-news" id="main-menu-news">
@@ -6077,6 +6177,33 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
     </div>
   `;
   document.body.appendChild(overlay);
+  enterMenuAudio();
+
+  const musicQuickBtn = overlay.querySelector('#menu-music-toggle');
+  const refreshMusicQuickBtn = () => {
+    if (!musicQuickBtn) return;
+    const audio = getAudioSettings();
+    const pct = Math.round(audio.musicVolume * 100);
+    musicQuickBtn.textContent = audio.musicEnabled ? '🔊' : '🔇';
+    musicQuickBtn.classList.toggle('is-muted', !audio.musicEnabled);
+    musicQuickBtn.title = `${gameText('options.music')}: ${audio.musicEnabled ? gameText('options.enabled') : gameText('options.off')} · ${pct}%`;
+    musicQuickBtn.setAttribute('aria-pressed', audio.musicEnabled ? 'true' : 'false');
+  };
+  refreshMusicQuickBtn();
+  musicQuickBtn?.addEventListener('click', () => {
+    toggleMusic();
+    refreshMusicQuickBtn();
+  });
+  const onAudioSettingsChanged = () => {
+    if (!musicQuickBtn?.isConnected) {
+      window.removeEventListener('argentinia:audio-settings-changed', onAudioSettingsChanged);
+      return;
+    }
+    refreshMusicQuickBtn();
+  };
+  window.addEventListener('argentinia:audio-settings-changed', onAudioSettingsChanged);
+  const cleanupMenuAudioListener = () => window.removeEventListener('argentinia:audio-settings-changed', onAudioSettingsChanged);
+
   renderAccountBox(overlay.querySelector('#main-menu-account'), state.currentUser);
   updateMainMenuLoginGatedButtons(overlay);
   void renderActiveEventsStrip(overlay.querySelector('#main-menu-active-events'));
@@ -6124,6 +6251,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
 
   overlay.querySelector('#menu-play').addEventListener('click', async () => {
     if (!await awaitMenuIdentityOrStay()) return;
+    cleanupMenuAudioListener();
     overlay.remove();
     await onPlay();
   });
@@ -6175,15 +6303,17 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
   });
 }
 
-// Opciones: hoy solo Dificultad impacta de verdad en el juego (Grupo C, Etapas 1-4). Las
-// otras dos quedan como placeholder deshabilitado — están para mostrar hacia dónde va esto,
-// no porque hagan algo todavía (no hay sistema de sonido ni de animaciones configurables).
+// Opciones: Dificultad + Audio son settings reales. Audio vive enteramente en localStorage
+// y está separado en Música/SFX desde 23.13.63 para poder sumar pistas y efectos sin volver
+// a diseñar el menú ni mezclar volúmenes. Velocidad de animaciones sigue como placeholder.
 export function showOptionsMenu(onBack) {
   injectMainMenuStyles();
   const overlay = document.createElement('div');
   overlay.id = 'options-menu-overlay';
 
   const difficultyLabel = () => (state.botDifficulty === 'easy' ? 'Fácil' : 'Difícil');
+  const initialAudio = getAudioSettings();
+  const percent = value => Math.round(Number(value || 0) * 100);
 
   // Zona de Peligro: pensada para testing/desarrollo (reiniciar tu propia cuenta sin tener
   // que andar borrando el documento a mano en la consola de Firestore) — solo tiene sentido
@@ -6206,9 +6336,23 @@ export function showOptionsMenu(onBack) {
         <span class="options-label">${escapeHtml(gameText('options.animationSpeed'))}</span>
         <button class="options-toggle-btn" data-tooltip="${escapeHtml(gameText('options.disabled'))}">${escapeHtml(gameText('options.normal'))}</button>
       </div>
-      <div class="options-row options-row-disabled">
-        <span class="options-label">${escapeHtml(gameText('options.sound'))}</span>
-        <button class="options-toggle-btn" data-tooltip="${escapeHtml(gameText('options.disabled'))}">${escapeHtml(gameText('options.enabled'))}</button>
+
+      <div class="options-section-title">${escapeHtml(gameText('options.audio'))}</div>
+      <div class="options-row options-audio-row">
+        <span class="options-label">${escapeHtml(gameText('options.music'))}</span>
+        <div class="options-audio-controls">
+          <button class="options-toggle-btn" id="opt-music-toggle">${initialAudio.musicEnabled ? escapeHtml(gameText('options.enabled')) : escapeHtml(gameText('options.off'))}</button>
+          <input class="options-volume-slider" id="opt-music-volume" type="range" min="0" max="100" step="1" value="${percent(initialAudio.musicVolume)}" aria-label="${escapeHtml(gameText('options.musicVolume'))}">
+          <span class="options-volume-value" id="opt-music-value">${percent(initialAudio.musicVolume)}%</span>
+        </div>
+      </div>
+      <div class="options-row options-audio-row">
+        <span class="options-label">${escapeHtml(gameText('options.effects'))}</span>
+        <div class="options-audio-controls">
+          <button class="options-toggle-btn" id="opt-sfx-toggle">${initialAudio.sfxEnabled ? escapeHtml(gameText('options.enabled')) : escapeHtml(gameText('options.off'))}</button>
+          <input class="options-volume-slider" id="opt-sfx-volume" type="range" min="0" max="100" step="1" value="${percent(initialAudio.sfxVolume)}" aria-label="${escapeHtml(gameText('options.effectsVolume'))}">
+          <span class="options-volume-value" id="opt-sfx-value">${percent(initialAudio.sfxVolume)}%</span>
+        </div>
       </div>
       ${dangerZoneHTML}
       <button class="main-menu-btn" id="opt-back" style="margin-top: 24px;">Volver</button>
@@ -6221,6 +6365,40 @@ export function showOptionsMenu(onBack) {
     state.botDifficulty = state.botDifficulty === 'easy' ? 'hard' : 'easy';
     diffBtn.textContent = difficultyLabel();
     logMsg(gameText('options.difficulty.changed', { difficulty: difficultyLabel() }));
+  });
+
+  const musicToggle = overlay.querySelector('#opt-music-toggle');
+  const musicSlider = overlay.querySelector('#opt-music-volume');
+  const musicValue = overlay.querySelector('#opt-music-value');
+  const sfxToggle = overlay.querySelector('#opt-sfx-toggle');
+  const sfxSlider = overlay.querySelector('#opt-sfx-volume');
+  const sfxValue = overlay.querySelector('#opt-sfx-value');
+
+  const refreshAudioControls = () => {
+    const audio = getAudioSettings();
+    musicToggle.textContent = audio.musicEnabled ? gameText('options.enabled') : gameText('options.off');
+    musicSlider.value = String(percent(audio.musicVolume));
+    musicValue.textContent = `${percent(audio.musicVolume)}%`;
+    sfxToggle.textContent = audio.sfxEnabled ? gameText('options.enabled') : gameText('options.off');
+    sfxSlider.value = String(percent(audio.sfxVolume));
+    sfxValue.textContent = `${percent(audio.sfxVolume)}%`;
+  };
+
+  musicToggle.addEventListener('click', () => {
+    setMusicEnabled(!getAudioSettings().musicEnabled);
+    refreshAudioControls();
+  });
+  musicSlider.addEventListener('input', () => {
+    setMusicVolume(Number(musicSlider.value) / 100);
+    musicValue.textContent = `${musicSlider.value}%`;
+  });
+  sfxToggle.addEventListener('click', () => {
+    setSfxEnabled(!getAudioSettings().sfxEnabled);
+    refreshAudioControls();
+  });
+  sfxSlider.addEventListener('input', () => {
+    setSfxVolume(Number(sfxSlider.value) / 100);
+    sfxValue.textContent = `${sfxSlider.value}%`;
   });
 
   if (state.currentUser) {
