@@ -190,6 +190,29 @@ export function serializeDailyRewardsForFirestore(state, authoritativeNow, serve
   };
 }
 
+function sameNumberList(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  return a.every((value, index) => Number(value) === Number(b[index]));
+}
+
+// 23.13.60 — invariantes estructurales de una racha consecutiva. Esto permite reparar
+// perfiles históricos que quedaron con `serverLastLoginDay` ya movido a HOY pero con un
+// streak viejo (el caso que no puede detectar un simple "lastLoginDate === today"). En un
+// estado válido de N días, el último día siempre está exactamente N-1 días después del
+// inicio del ciclo y los días desbloqueados son [1..N]. Claims pueden ser parciales.
+export function isDailyStreakConsistent(raw, date = new Date()) {
+  const state = normalizeDailyRewardsState(raw, date);
+  if (!state.lastLoginDate && state.streak === 0) return true;
+  if (!state.cycleStartDate || !state.lastLoginDate || state.streak < 1 || state.streak > 7) return false;
+  if (calendarDayDiff(state.cycleStartDate, state.lastLoginDate) !== state.streak - 1) return false;
+  const expectedUnlocked = Array.from({ length: state.streak }, (_, index) => index + 1);
+  const unlocked = state.unlockedDays.slice().sort((a, b) => a - b);
+  if (!sameNumberList(unlocked, expectedUnlocked)) return false;
+  if (state.claimedDays.some(day => !expectedUnlocked.includes(Number(day)))) return false;
+  if (state.lastClaimedDay != null && !state.claimedDays.includes(Number(state.lastClaimedDay))) return false;
+  return true;
+}
+
 // Cualquier primer acceso es Día 1. El mismo día es idempotente. El día siguiente avanza
 // mientras la racha esté en 1..6. Un gap, un reloj que retrocede (QA) o el día siguiente a
 // completar Día 7 inicia un ciclo nuevo en Día 1 con premios nuevamente disponibles.
@@ -197,7 +220,12 @@ export function advanceDailyLoginState(raw, date = new Date()) {
   const todayKey = localDateKey(date);
   const state = normalizeDailyRewardsState(raw, date);
 
-  if (state.lastLoginDate === todayKey) {
+  const sameCalendarLogin = state.lastLoginDate === todayKey;
+  const inconsistentPriorState = !!state.lastLoginDate && !isDailyStreakConsistent(state, date);
+
+  // Un estado consistente procesado hoy sigue siendo idempotente. Si el perfil histórico
+  // ya dice HOY pero su ciclo/streak es imposible, no lo damos por bueno: lo reparamos a D1.
+  if (sameCalendarLogin && !inconsistentPriorState) {
     return {
       state,
       newCalendarLogin: false,
@@ -205,7 +233,30 @@ export function advanceDailyLoginState(raw, date = new Date()) {
       rewardUnlocked: false,
       streakReset: false,
       cycleRestarted: false,
-      cycleCompleted: false
+      cycleCompleted: false,
+      repairApplied: false
+    };
+  }
+
+  if (inconsistentPriorState) {
+    const repaired = {
+      ...defaultDailyRewardsState(date),
+      cycleStartDate: todayKey,
+      lastLoginDate: todayKey,
+      streak: 1,
+      unlockedDays: [1],
+      claimedDays: [],
+      lastClaimedDay: null
+    };
+    return {
+      state: repaired,
+      newCalendarLogin: true,
+      rewardDay: 1,
+      rewardUnlocked: true,
+      streakReset: true,
+      cycleRestarted: true,
+      cycleCompleted: false,
+      repairApplied: true
     };
   }
 
@@ -234,7 +285,8 @@ export function advanceDailyLoginState(raw, date = new Date()) {
       rewardUnlocked: true,
       streakReset: false,
       cycleRestarted: false,
-      cycleCompleted: false
+      cycleCompleted: false,
+      repairApplied: false
     };
   }
 
@@ -254,7 +306,8 @@ export function advanceDailyLoginState(raw, date = new Date()) {
     rewardUnlocked: true,
     streakReset,
     cycleRestarted: !!state.lastLoginDate,
-    cycleCompleted
+    cycleCompleted,
+    repairApplied: false
   };
 }
 

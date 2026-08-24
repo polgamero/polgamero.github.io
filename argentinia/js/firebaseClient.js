@@ -4,6 +4,8 @@
 // Multiplayer, Admin, Tienda o persistencia. En desktop main.js puede precargarla para
 // conservar exactamente el comportamiento histórico.
 
+import { ENGINE_VERSION } from './version.js';
+
 let clientPromise = null;
 let clientReady = false;
 let clientModule = null;
@@ -22,8 +24,12 @@ function diag(stage, detail = null) {
 export function preloadFirebaseClient() {
   if (!clientPromise) {
     diag('firebase_import_requested');
-    clientPromise = import('./firebaseClientImpl.js')
+    const implUrl = new URL(`./firebaseClientImpl.js?v=${encodeURIComponent(ENGINE_VERSION)}`, import.meta.url).href;
+    clientPromise = import(implUrl)
       .then(mod => {
+        if (mod?.FIREBASE_IMPL_VERSION !== ENGINE_VERSION) {
+          throw new Error(`FIREBASE_LAZY_BUILD_MISMATCH:${mod?.FIREBASE_IMPL_VERSION || 'missing'}!=${ENGINE_VERSION}`);
+        }
         clientReady = true;
         clientModule = mod;
         diag('firebase_import_loaded');

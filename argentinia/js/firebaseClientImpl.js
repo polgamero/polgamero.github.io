@@ -25,8 +25,8 @@ import { getFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc, runTran
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
-import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, localDateKey, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
-import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
+import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, isDailyStreakConsistent, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, localDateKey, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
+import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { normalizePlayerStats, summarizePlayerTelemetry, PLAYER_GAME_BACKFILL_VERSION } from './statistics.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
@@ -52,7 +52,8 @@ export const db = getFirestore(app);
 // no hace falta pedir ningún permiso extra aparte, alcanza con el login estándar.
 const googleProvider = new GoogleAuthProvider();
 const ADMIN_EMAIL = 'pablogamero1@gmail.com';
-const REWARD_RULES_VERSION = '23.13.59';
+export const FIREBASE_IMPL_VERSION = ENGINE_VERSION;
+const REWARD_RULES_VERSION = FIRESTORE_RULES_VERSION;
 
 function usernameError(code, message) {
   const error = new Error(message || code);
@@ -857,6 +858,7 @@ export async function registerDailyLogin(uid, nowMs = null) {
       previousUnlockedDays: previous.unlockedDays.slice(),
       previousClaimedDays: previous.claimedDays.slice(),
       previousLastClaimedDay: previous.lastClaimedDay,
+      previousStateConsistent: isDailyStreakConsistent(sourceDaily, now),
       effectiveDate: localDateKey(now),
       requestedRewardDay: login.rewardDay,
       requestedStreak: login.state.streak,
@@ -882,6 +884,7 @@ export async function registerDailyLogin(uid, nowMs = null) {
 
     return {
       profile: { ...data, inventory, dailyRewards: login.state },
+      diagnostics: transitionDebug,
       login: {
         newCalendarLogin: login.newCalendarLogin,
         rewardDay: login.rewardDay,
@@ -889,6 +892,7 @@ export async function registerDailyLogin(uid, nowMs = null) {
         streakReset: login.streakReset,
         cycleRestarted: login.cycleRestarted,
         cycleCompleted: login.cycleCompleted,
+        repairApplied: login.repairApplied === true,
         streak: login.state.streak,
         cycleStartDate: login.state.cycleStartDate,
         authoritative: nowMs == null,
@@ -901,7 +905,7 @@ export async function registerDailyLogin(uid, nowMs = null) {
     });
   } catch (error) {
     if (error?.code === 'permission-denied') {
-      console.error('[DailyRewards 23.13.14] Firestore rechazó registerDailyLogin.', transitionDebug || { effectiveDate: localDateKey(now) });
+      console.error(`[DailyRewards ${REWARD_RULES_VERSION}] Firestore rechazó registerDailyLogin.`, transitionDebug || { effectiveDate: localDateKey(now) });
     }
     throw error;
   }

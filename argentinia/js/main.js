@@ -1100,12 +1100,6 @@ async function boot() {
         applyUsernameIdentity(profile);
         updateAccountUI(state.currentUser);
 
-        // 23.13.37 — reconcilia historial propio + espejo público sin meter la consulta de
-        // telemetría en el camino crítico del login. Si falla, gameplay/auth siguen intactos.
-        void bootstrapPlayerStatistics(state.currentUser.uid).catch(statsErr => {
-          console.warn('No se pudieron preparar las estadísticas del jugador:', statsErr);
-        });
-
         // 23.13.25 — no bloquea el login ni el boot: para usuarios normales devuelve
         // inmediatamente `not_admin`; para Admin mantiene publicada una ventana semanal
         // trusted de Clasificados. cardDb.loadAll() es idempotente si aún estaba en curso.
@@ -1131,14 +1125,32 @@ async function boot() {
             updateAccountUI(state.currentUser);
           }
           if (recoveredRewards?.attempted) {
-            console.info('[GameReward 23.13.59] Reconciliación de pendientes:', recoveredRewards);
+            console.info('[GameReward 23.13.60] Reconciliación de pendientes:', recoveredRewards);
           }
         } catch (rewardErr) {
-          console.warn('[GameReward 23.13.59] No se pudieron reconciliar premios pendientes; se reintentará luego:', rewardErr);
+          console.warn('[GameReward 23.13.60] No se pudieron reconciliar premios pendientes; se reintentará luego:', rewardErr);
         }
 
-        await processDailyLoginRewards();
+        // 23.13.60 — serializamos las escrituras de bootstrap sobre users/{uid}. Antes,
+        // playerStats arrancaba en paralelo y su transacción verificaba una versión del
+        // perfil que Daily Rewards modificaba milisegundos después: Firestore reintentaba
+        // con failed-precondition y ensuciaba consola/boot. Primero economía + daily; recién
+        // después se reconcilia el espejo público.
+        const dailyResult = await processDailyLoginRewards();
+        profile = state.userProfile || profile;
+        if (dailyResult?.login?.newCalendarLogin) {
+          console.info('[DailyRewards 23.13.60] Sincronización diaria aplicada:', {
+            rewardDay: dailyResult.login.rewardDay,
+            streak: dailyResult.login.streak,
+            streakReset: !!dailyResult.login.streakReset,
+            repairApplied: !!dailyResult.login.repairApplied,
+            previous: dailyResult.diagnostics || null
+          });
+        }
         if (serial !== authIdentitySerial || !state.currentUser) return profile;
+        void bootstrapPlayerStatistics(state.currentUser.uid).catch(statsErr => {
+          console.warn('No se pudieron preparar las estadísticas del jugador:', statsErr);
+        });
         if (profile.activeMatchId) offerReconnectIfStillActive(profile.activeMatchId);
         return profile;
       })().catch(err => {

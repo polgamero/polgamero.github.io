@@ -1,7 +1,7 @@
 {
-  "engineVersion": "23.13.59",
+  "engineVersion": "23.13.60",
   "engineProtocolVersion": "mp-23.10.0",
-  "buildLabel": "Entrega 23.13.59 Durable Game Rewards + Daily Streak Gap Reset",
+  "buildLabel": "Entrega 23.13.60 Firebase Lazy Cache + Daily Streak Consistency Repair",
   "generatedFor": "GitHub Pages cache freshness check",
-  "firestoreRulesVersion": "23.13.59"
+  "firestoreRulesVersion": "23.13.60"
 }

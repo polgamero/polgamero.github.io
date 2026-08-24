@@ -1,0 +1,1226 @@
+rules_version = '2';
+
+// Entrega 23.13.37 — Statistics + Global Ranking sobre Firestore Rules 23.13.35-R1. Colección + economía (puntos,
+// sobres, Fichas) + configuración de balance editable + matchmaking/partidas multiplayer +
+// anuncios + usernames globalmente reservados. Daily Rewards conserva su attestation interna 23.13.14.
+//
+// Cómo usar: Firebase Console → Firestore Database → pestaña "Reglas" → pegar TODO este
+// archivo (reemplazando lo que haya) → "Publicar".
+//
+// 23.13.60: contrato Daily Login V4 + reparación de estados históricos inconsistentes.
+// La rama de login queda unificada: continuidad exacta o D1 limpio; además puede reparar un
+// perfil ya sellado HOY si ciclo/streak son matemáticamente incompatibles. Conserva el
+// settlement durable gameRewardReceipts introducido en 23.13.59.
+// 23.13.54: lifecycle de partidas: cleanup Admin de Telemetría huérfana y duración efectiva/recovery Solo.
+// Conserva playerStats, receipts y economyEvents de 23.13.37.
+// Conserva intacto 23.13.35-R1: restaura el contrato de join versionado. joinMatchByCode() escribe
+// guestEngineVersion y la rama de primer join debe autorizar exactamente ese campo,
+// exigiendo además que coincida con engineVersion del host. Sin cambios de runtime.
+//
+// Historial de esta revisión: Gemini encontró que la versión anterior tenía dos bloques
+// "service cloud.firestore" pegados (error de sintaxis fatal — Firestore ni compila un
+// archivo así) y una falla real en matches/{matchId}: la condición para "alguien se está
+// uniendo" (resource.data.guestUid == null) dejaba escribir CUALQUIER campo del documento a
+// cualquier cuenta logueada, no solo unirse — un tercero podría, mientras nadie se hubiera
+// unido, reescribir el hostUid o inventar estado de partida falso. Ese catch quedó
+// incorporado acá, pero cerrado del todo con diff().affectedKeys().hasOnly([...]) — la
+// condición de Gemini garantizaba que guestUid terminara en tu propio uid, pero no impedía
+// colar cambios a OTROS campos en la misma escritura.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ==================================================================
+    // HELPERS
+    // ==================================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    // El único punto donde vive el email del admin — cambiarlo a futuro es tocar una sola
+    // línea acá, no cazar el string suelto en cada regla.
+    function isAdmin() {
+      // 23.13.6 — identidad Admin server-side por UID inmutable. El email sigue siendo
+      // una comodidad de UI, pero las Rules no dependen de que el token exponga email.
+      return isAuthenticated() && request.auth.uid == 'yXZUclCVm9RCO1CWlqIse0iVtEo2';
+    }
+
+    // ================================================================
+    // 23.13.24 — USERNAMES. La clave canónica es lowercase y sin espacios; el cliente
+    // aplica además filtro de malas palabras/reservados. Las Rules garantizan la parte
+    // crítica: forma, correspondencia username↔key, unicidad y atomicidad perfil/registro.
+    // ================================================================
+    function validUsernameShape(username, usernameKey) {
+      return username is string
+        && usernameKey is string
+        && username.size() >= 3 && username.size() <= 18
+        && username.matches('^[A-Za-z0-9_ÁÉÍÓÚÜÑáéíóúüñ ]+$')
+        && username == username.trim()
+        && !username.matches('.*  .*')
+        && usernameKey.size() >= 3 && usernameKey.size() <= 18
+        && usernameKey == username.lower().replace(' ', '');
+    }
+    function validUsernamePolicy(username, usernameKey) {
+      // Defensa server-side equivalente al filtro normal de cliente para los reemplazos
+      // más obvios: acentos y leet numérico. Sigue siendo moderación defensiva, no una
+      // pretensión de cubrir infinitas variantes creativas.
+      let normalized = username.lower()
+        .replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o')
+        .replace('ú', 'u').replace('ü', 'u')
+        .replace('0', 'o').replace('1', 'i').replace('3', 'e')
+        .replace('4', 'a').replace('5', 's').replace('7', 't');
+      let padded = ' ' + normalized + ' ';
+      return validUsernameShape(username, usernameKey)
+        && usernameKey != 'admin'
+        && usernameKey != 'administrator'
+        && usernameKey != 'administrador'
+        && usernameKey != 'argentinia'
+        && usernameKey != 'soporte'
+        && usernameKey != 'support'
+        && usernameKey != 'sistema'
+        && usernameKey != 'system'
+        && usernameKey != 'moderador'
+        && usernameKey != 'moderator'
+        && usernameKey != 'eltano'
+        && usernameKey != 'tano'
+        && !padded.matches('.*[ _](puta|puto|putas|putos|mierda|mierdas|concha|conchas|orto|pija|pijas|verga|vergas|coger|cogida|cogido|pelotudo|pelotuda|pelotudos|pelotudas|boludo|boluda|boludos|boludas|forro|forra|forros|forras|gilipollas|idiota|idiotas|imbecil|imbeciles|mogolico|mogolica|mogolicos|mogolicas)[ _].*');
+    }
+    function usernameReservedAfterFor(userId, username, usernameKey) {
+      return existsAfter(/databases/$(database)/documents/usernames/$(usernameKey))
+        && getAfter(/databases/$(database)/documents/usernames/$(usernameKey)).data.uid == userId
+        && getAfter(/databases/$(database)/documents/usernames/$(usernameKey)).data.username == username;
+    }
+    function validUserCreateWithUsername(userId) {
+      return validUsernamePolicy(request.resource.data.username, request.resource.data.usernameKey)
+        && request.resource.data.usernameUpdatedAt == request.time
+        && usernameReservedAfterFor(userId, request.resource.data.username, request.resource.data.usernameKey);
+    }
+    function validInitialUsernameAssignment(userId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let oldUsername = resource.data.get('username', '');
+      let oldKey = resource.data.get('usernameKey', '');
+      // 23.13.26 — una identidad histórica incompleta (campo ausente, null, tipo legacy o
+      // string vacío) se considera todavía NO configurada, igual que isUsernameConfigured()
+      // en el cliente. Esto repara perfiles Admin/debug antiguos sin regalar un segundo
+      // alta a quien ya tiene username + usernameKey completos.
+      let alreadyConfigured = oldUsername is string && oldUsername != ''
+        && oldKey is string && oldKey != '';
+      return !alreadyConfigured
+        && changed.hasOnly(['username', 'usernameKey', 'usernameUpdatedAt'])
+        && validUsernamePolicy(request.resource.data.username, request.resource.data.usernameKey)
+        && request.resource.data.usernameUpdatedAt == request.time
+        && usernameReservedAfterFor(userId, request.resource.data.username, request.resource.data.usernameKey);
+    }
+    function validUsernameRename(userId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let oldKey = resource.data.usernameKey;
+      let newKey = request.resource.data.usernameKey;
+      return resource.data.keys().hasAll(['username', 'usernameKey', 'fichas'])
+        && resource.data.username is string && oldKey is string
+        && resource.data.get('activeMatchId', null) == null
+        && changed.hasOnly(['username', 'usernameKey', 'usernameUpdatedAt', 'fichas'])
+        && validUsernamePolicy(request.resource.data.username, newKey)
+        && request.resource.data.usernameUpdatedAt == request.time
+        && resource.data.fichas is int && resource.data.fichas >= 1
+        && request.resource.data.fichas == resource.data.fichas - 1
+        && usernameReservedAfterFor(userId, request.resource.data.username, newKey)
+        && (newKey == oldKey || !existsAfter(/databases/$(database)/documents/usernames/$(oldKey)));
+    }
+
+    // ================================================================
+    // 23.13.25 — AVISOS CLASIFICADOS. La selección semanal trusted vive en
+    // gameConfig/classifiedsSchedule (escritura Admin-only). Cada compra del usuario debe
+    // coincidir con ESA semana, ESA carta, SU rareza y SU precio congelado. Así doble click,
+    // dos pestañas o payloads alterados no pueden cobrar/entregar dos veces por el camino
+    // normal de Clasificados.
+    // ================================================================
+    function classifiedsZeroCounts() {
+      return {'Common': 0, 'Uncommon': 0, 'Rare': 0, 'Mythic': 0};
+    }
+    function officialClassifiedsNow() {
+      return request.time + duration.value(-3, 'h');
+    }
+    function officialClassifiedsWeekDate() {
+      let now = officialClassifiedsNow();
+      return (now - duration.value(now.dayOfWeek() - 1, 'd')).date();
+    }
+    function classifiedsBaseCounts(weekKey) {
+      return resource.data.get('classifiedsWeekKey', '') == weekKey
+        ? resource.data.get('classifiedsPurchaseCounts', classifiedsZeroCounts())
+        : classifiedsZeroCounts();
+    }
+    function validClassifiedsPurchaseCounts(p) {
+      let oldC = classifiedsBaseCounts(p.weekKey);
+      let nextC = request.resource.data.classifiedsPurchaseCounts;
+      return oldC is map
+        && nextC is map
+        && nextC.keys().hasOnly(['Common', 'Uncommon', 'Rare', 'Mythic'])
+        && nextC.Common is int && nextC.Uncommon is int && nextC.Rare is int && nextC.Mythic is int
+        && nextC.Common >= 0 && nextC.Common <= 4
+        && nextC.Uncommon >= 0 && nextC.Uncommon <= 2
+        && nextC.Rare >= 0 && nextC.Mythic >= 0 && nextC.Rare + nextC.Mythic <= 1
+        && (
+          (p.rarity == 'Common'
+            && nextC.Common == oldC.get('Common', 0) + 1
+            && nextC.Uncommon == oldC.get('Uncommon', 0)
+            && nextC.Rare == oldC.get('Rare', 0)
+            && nextC.Mythic == oldC.get('Mythic', 0))
+          || (p.rarity == 'Uncommon'
+            && nextC.Common == oldC.get('Common', 0)
+            && nextC.Uncommon == oldC.get('Uncommon', 0) + 1
+            && nextC.Rare == oldC.get('Rare', 0)
+            && nextC.Mythic == oldC.get('Mythic', 0))
+          || (p.rarity == 'Rare'
+            && nextC.Common == oldC.get('Common', 0)
+            && nextC.Uncommon == oldC.get('Uncommon', 0)
+            && nextC.Rare == oldC.get('Rare', 0) + 1
+            && nextC.Mythic == oldC.get('Mythic', 0))
+          || (p.rarity == 'Mythic'
+            && nextC.Common == oldC.get('Common', 0)
+            && nextC.Uncommon == oldC.get('Uncommon', 0)
+            && nextC.Rare == oldC.get('Rare', 0)
+            && nextC.Mythic == oldC.get('Mythic', 0) + 1)
+        );
+    }
+    function validCurrentClassifiedsOffer(p) {
+      let schedulePath = /databases/$(database)/documents/gameConfig/classifiedsSchedule;
+      let schedule = exists(schedulePath) ? get(schedulePath).data : {};
+      let week = schedule.get('weeks', {}).get(p.weekKey, {});
+      let price = week.get('prices', {}).get(p.rarity, {});
+      return schedule.get('schemaVersion', 0) == 1
+        && schedule.get('algorithmVersion', 0) == 1
+        && week.get('weekStart', null) is timestamp
+        && week.weekStart.date() == officialClassifiedsWeekDate()
+        && week.get('cardIds', []) is list
+        && p.cardId in week.cardIds
+        && week.get('rarities', {}) is map
+        && week.rarities.get(p.cardId, '') == p.rarity
+        && price is map
+        && price.get('points', -1) is int && price.get('points', -1) >= 0
+        && price.get('fichas', -1) is int && price.get('fichas', -1) >= 0
+        && p.pointsCost == price.points
+        && p.fichasCost == price.fichas;
+    }
+    function validClassifiedsPurchaseTransition(userId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let p = request.resource.data.classifiedsLastPurchase;
+      let sameWeek = resource.data.get('classifiedsWeekKey', '') == p.weekKey;
+      let oldPurchased = sameWeek ? resource.data.get('classifiedsPurchased', []) : [];
+      return isUser(userId)
+        && p is map
+        && p.keys().hasOnly(['weekKey', 'cardId', 'rarity', 'pointsCost', 'fichasCost'])
+        && p.weekKey is string && p.cardId is string && p.rarity is string
+        && p.pointsCost is int && p.pointsCost >= 0
+        && p.fichasCost is int && p.fichasCost >= 0
+        && validCurrentClassifiedsOffer(p)
+        && changed.hasOnly([
+          'points', 'fichas', 'collection', 'classifiedsWeekKey', 'classifiedsPurchased',
+          'classifiedsPurchaseCounts', 'classifiedsLastPurchase', 'classifiedsUpdatedAt'
+        ])
+        && resource.data.get('points', 0) is int && resource.data.get('fichas', 0) is int
+        && request.resource.data.points == resource.data.get('points', 0) - p.pointsCost
+        && request.resource.data.fichas == resource.data.get('fichas', 0) - p.fichasCost
+        && request.resource.data.points >= 0 && request.resource.data.fichas >= 0
+        && resource.data.get('collection', []) is list
+        && request.resource.data.collection == resource.data.get('collection', []).concat([p.cardId])
+        && oldPurchased is list
+        && !(p.cardId in oldPurchased)
+        && request.resource.data.classifiedsWeekKey == p.weekKey
+        && request.resource.data.classifiedsPurchased == oldPurchased.concat([p.cardId])
+        && request.resource.data.classifiedsPurchased.size() <= 7
+        && validClassifiedsPurchaseCounts(p)
+        && request.resource.data.classifiedsUpdatedAt == request.time;
+    }
+
+    // ================================================================
+    // 23.13.12 — DAY-BOUNDARY HARDENING: los stamps de día se comparan por .date(),
+    // no por timestamp exacto. Esto preserva D1/claims históricos aunque un stamp viejo
+    // contenga hora distinta de 00:00Z, sin resetear la racha ni aflojar el día oficial.
+    // 23.13.3 — racha autoritativa de 7 accesos, SIN semana calendario.
+    // Cualquier primer acceso es Día 1. Un día consecutivo avanza; un gap reinicia Día 1;
+    // después de Día 7, el acceso consecutivo siguiente inicia otro ciclo en Día 1.
+    // El día oficial se deriva de request.time en ART/UTC-3. El offset QA vive en el propio
+    // perfil y sólo se aplica/escribible para la cuenta admin autenticada.
+    // ================================================================
+    function officialRewardNow(userId) {
+      // Usuarios normales SIEMPRE se validan contra el reloj real de Firestore en ART.
+      // El reloj QA del Admin se valida por una rama separada más abajo, evitando que un
+      // offset viejo contamine la transición normal de su propio perfil.
+      return request.time + duration.value(-3, 'h');
+    }
+    function officialRewardDay(userId) {
+      return officialRewardNow(userId).date();
+    }
+    function oldDailyRewards() {
+      return resource.data.keys().hasAll(['dailyRewards']) && resource.data.dailyRewards is map
+        ? resource.data.dailyRewards
+        : {};
+    }
+    function hasDailyProgressState(data) {
+      // 23.13.13 — compatibilidad no destructiva: para validar la CONTINUIDAD de una racha
+      // no dependemos de que un documento histórico conserve serverUpdatedAt. Ese campo es
+      // metadata de auditoría; el nuevo write SÍ debe volver a fijarlo a request.time.
+      return data is map
+        && data.keys().hasAll([
+          'schemaVersion', 'serverCycleStartDay', 'serverLastLoginDay',
+          'streak', 'unlockedDays', 'claimedDays', 'lastClaimedDay'
+        ])
+        && data.schemaVersion == 3
+        && data.serverCycleStartDay is timestamp
+        && data.serverLastLoginDay is timestamp
+        && data.streak is int
+        && data.unlockedDays is list
+        && data.claimedDays is list;
+    }
+    function hasSecureDailyState(data) {
+      return hasDailyProgressState(data)
+        && data.keys().hasAll(['serverUpdatedAt'])
+        && data.serverUpdatedAt is timestamp;
+    }
+    function sameCalendarDay(a, b) {
+      return a is timestamp && b is timestamp
+        && a.year() == b.year()
+        && a.month() == b.month()
+        && a.day() == b.day();
+    }
+    function isPreviousOfficialRewardDay(stamp, userId) {
+      return sameCalendarDay(stamp, officialRewardDay(userId) - duration.value(1, 'd'));
+    }
+    function continuesDailyCycle(userId) {
+      return hasDailyProgressState(oldDailyRewards())
+        && isPreviousOfficialRewardDay(oldDailyRewards().serverLastLoginDay, userId)
+        && oldDailyRewards().streak >= 1
+        && oldDailyRewards().streak < 7;
+    }
+    function expectedDailyStreak(userId) {
+      return continuesDailyCycle(userId) ? oldDailyRewards().streak + 1 : 1;
+    }
+    function expectedCycleStartDay(userId) {
+      return continuesDailyCycle(userId) ? oldDailyRewards().serverCycleStartDay : officialRewardDay(userId);
+    }
+    function expectedUnlockedDays(userId) {
+      return continuesDailyCycle(userId)
+        ? oldDailyRewards().unlockedDays.concat([expectedDailyStreak(userId)])
+        : [1];
+    }
+    function expectedClaimedDaysAfterLogin(userId) {
+      return continuesDailyCycle(userId) ? oldDailyRewards().claimedDays : [];
+    }
+    function expectedLastClaimAfterLogin(userId) {
+      return continuesDailyCycle(userId) ? oldDailyRewards().lastClaimedDay : null;
+    }
+    function validLastClaimAfterLogin(userId, value) {
+      // 23.13.4+: estado nuevo/reiniciado = null. Durante el deploy toleramos 0 sólo como
+      // compatibilidad transitoria con el frontend 23.13.3, que convertía Number(null) a 0.
+      return continuesDailyCycle(userId)
+        ? value == oldDailyRewards().lastClaimedDay
+        : (value == null || value == 0);
+    }
+    function validDailyLoginTransition(userId) {
+      let d = request.resource.data.dailyRewards;
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dailyRewards', 'lastSeenAt'])
+        && d.keys().hasOnly([
+          'schemaVersion', 'serverCycleStartDay', 'serverLastLoginDay', 'serverUpdatedAt',
+          'streak', 'unlockedDays', 'claimedDays', 'lastClaimedDay'
+        ])
+        && d.schemaVersion == 3
+        && d.serverUpdatedAt == request.time
+        && sameCalendarDay(d.serverCycleStartDay, expectedCycleStartDay(userId))
+        && sameCalendarDay(d.serverLastLoginDay, officialRewardDay(userId))
+        && (!hasDailyProgressState(oldDailyRewards())
+            || !sameCalendarDay(oldDailyRewards().serverLastLoginDay, officialRewardDay(userId)))
+        && d.streak == expectedDailyStreak(userId)
+        && d.unlockedDays == expectedUnlockedDays(userId)
+        && d.claimedDays == expectedClaimedDaysAfterLogin(userId)
+        && validLastClaimAfterLogin(userId, d.lastClaimedDay);
+    }
+
+    function validConsecutiveDailyAdvance(userId) {
+      // 23.13.13 — rama de preservación explícita para Dn→D(n+1). Acepta estados schema 3
+      // históricos aunque falte serverUpdatedAt, pero NO permite alterar claims/economía ni
+      // saltar días: el nuevo día debe ser el oficial, el viejo exactamente el día anterior.
+      let oldD = oldDailyRewards();
+      let d = request.resource.data.dailyRewards;
+      return hasDailyProgressState(oldD)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dailyRewards', 'lastSeenAt'])
+        && d.keys().hasOnly([
+          'schemaVersion', 'serverCycleStartDay', 'serverLastLoginDay', 'serverUpdatedAt',
+          'streak', 'unlockedDays', 'claimedDays', 'lastClaimedDay'
+        ])
+        && d.schemaVersion == 3
+        && d.serverUpdatedAt == request.time
+        && sameCalendarDay(d.serverLastLoginDay, officialRewardDay(userId))
+        && isPreviousOfficialRewardDay(oldD.serverLastLoginDay, userId)
+        && oldD.streak >= 1 && oldD.streak < 7
+        && d.streak == oldD.streak + 1
+        && sameCalendarDay(d.serverCycleStartDay, oldD.serverCycleStartDay)
+        && d.claimedDays == oldD.claimedDays
+        && d.lastClaimedDay == oldD.lastClaimedDay
+        && (
+          (!(d.streak in oldD.unlockedDays) && d.unlockedDays == oldD.unlockedDays.concat([d.streak]))
+          || ((d.streak in oldD.unlockedDays) && d.unlockedDays == oldD.unlockedDays)
+        );
+    }
+
+    // 23.13.14 — FAST PATH DE CONTINUIDAD. El log de producción 23.13.13 demostró que
+    // D1→D2 llega con todos los valores de negocio correctos pero la rama compuesta seguía
+    // devolviendo false. Esta ruta valida la transición de forma directa y mínima, usando
+    // lastSeenAt=request.time como sello server-side y SIN depender de metadata nested vieja.
+    // No permite economía, claims ni ciclo alterados.
+    function validUnlockedDaysForStreak(streak, days) {
+      return (streak == 2 && days == [1, 2])
+        || (streak == 3 && days == [1, 2, 3])
+        || (streak == 4 && days == [1, 2, 3, 4])
+        || (streak == 5 && days == [1, 2, 3, 4, 5])
+        || (streak == 6 && days == [1, 2, 3, 4, 5, 6])
+        || (streak == 7 && days == [1, 2, 3, 4, 5, 6, 7]);
+    }
+    function validUnlockedDaysForAnyStreak(streak, days) {
+      return (streak == 1 && days == [1]) || validUnlockedDaysForStreak(streak, days);
+    }
+    function validClaimHistoryForStreak(streak, claimedDays, lastClaimedDay) {
+      let allowedDays = streak == 1 ? [1]
+        : streak == 2 ? [1, 2]
+        : streak == 3 ? [1, 2, 3]
+        : streak == 4 ? [1, 2, 3, 4]
+        : streak == 5 ? [1, 2, 3, 4, 5]
+        : streak == 6 ? [1, 2, 3, 4, 5, 6]
+        : streak == 7 ? [1, 2, 3, 4, 5, 6, 7]
+        : [];
+      let claimedSet = claimedDays is list ? claimedDays.toSet() : [].toSet();
+      return claimedDays is list
+        && claimedSet.size() == claimedDays.size()
+        && claimedSet.hasOnly(allowedDays)
+        && (lastClaimedDay == null || (lastClaimedDay is int && lastClaimedDay in claimedSet));
+    }
+    function dailyStreakStateConsistent(d) {
+      return hasDailyProgressState(d)
+        && validUnlockedDaysForAnyStreak(d.get('streak', 0), d.get('unlockedDays', []))
+        && validClaimHistoryForStreak(d.get('streak', 0), d.get('claimedDays', []), d.get('lastClaimedDay', null))
+        && (
+          (d.streak == 1 && sameCalendarDay(d.serverLastLoginDay, d.serverCycleStartDay))
+          || (d.streak == 2 && sameCalendarDay(d.serverLastLoginDay, d.serverCycleStartDay + duration.value(1, 'd')))
+          || (d.streak == 3 && sameCalendarDay(d.serverLastLoginDay, d.serverCycleStartDay + duration.value(2, 'd')))
+          || (d.streak == 4 && sameCalendarDay(d.serverLastLoginDay, d.serverCycleStartDay + duration.value(3, 'd')))
+          || (d.streak == 5 && sameCalendarDay(d.serverLastLoginDay, d.serverCycleStartDay + duration.value(4, 'd')))
+          || (d.streak == 6 && sameCalendarDay(d.serverLastLoginDay, d.serverCycleStartDay + duration.value(5, 'd')))
+          || (d.streak == 7 && sameCalendarDay(d.serverLastLoginDay, d.serverCycleStartDay + duration.value(6, 'd')))
+        );
+    }
+    function cleanDailyOneToday(d, userId) {
+      return d is map
+        && d.get('schemaVersion', 0) == 3
+        && d.get('serverCycleStartDay', null) is timestamp
+        && d.get('serverLastLoginDay', null) is timestamp
+        && d.get('serverUpdatedAt', null) == request.time
+        && d.serverLastLoginDay.date() == officialRewardDay(userId).date()
+        && d.serverCycleStartDay.date() == d.serverLastLoginDay.date()
+        && d.get('streak', 0) == 1
+        && d.get('unlockedDays', []) == [1]
+        && d.get('claimedDays', []) == []
+        && (d.get('lastClaimedDay', null) == null || d.get('lastClaimedDay', null) == 0);
+    }
+    // 23.13.60 — REPARACIÓN DE ESTADO HISTÓRICO. Cubre el caso en que una versión vieja
+    // ya dejó serverLastLoginDay=HOY pero el streak/ciclo quedó imposible (p.ej. streak 3
+    // atravesando un día salteado). Sólo puede REDUCIR el progreso a un D1 limpio, jamás
+    // toca puntos/Fichas/inventario. Un estado diario consistente no puede usar esta rama.
+    function validDailyDocumentShapeV4(d) {
+      return d is map
+        && d.keys().hasOnly([
+          'schemaVersion', 'serverCycleStartDay', 'serverLastLoginDay', 'serverUpdatedAt',
+          'streak', 'unlockedDays', 'claimedDays', 'lastClaimedDay'
+        ])
+        && d.get('schemaVersion', 0) == 3
+        && d.get('serverCycleStartDay', null) is timestamp
+        && d.get('serverLastLoginDay', null) is timestamp
+        && d.get('serverUpdatedAt', null) == request.time
+        && d.get('streak', 0) is int
+        && d.get('streak', 0) >= 1 && d.get('streak', 0) <= 7
+        && d.get('unlockedDays', []) is list
+        && d.get('claimedDays', []) is list
+        && (d.get('lastClaimedDay', null) == null || d.get('lastClaimedDay', null) is int);
+    }
+    function validDailyContinuationStateV4(oldD, d) {
+      return dailyStreakStateConsistent(oldD)
+        && oldD.streak < 7
+        && sameCalendarDay(d.serverLastLoginDay, oldD.serverLastLoginDay + duration.value(1, 'd'))
+        && d.streak == oldD.streak + 1
+        && d.serverCycleStartDay == oldD.serverCycleStartDay
+        && validUnlockedDaysForAnyStreak(d.streak, d.unlockedDays)
+        && d.claimedDays == oldD.claimedDays
+        && d.get('lastClaimedDay', null) == oldD.get('lastClaimedDay', null);
+    }
+    function validDailyResetStateV4(oldD, d) {
+      let oldConsistent = dailyStreakStateConsistent(oldD);
+      let sameStoredDay = hasDailyProgressState(oldD)
+        && sameCalendarDay(oldD.serverLastLoginDay, d.serverLastLoginDay);
+      let expectedNext = hasDailyProgressState(oldD)
+        && sameCalendarDay(oldD.serverLastLoginDay + duration.value(1, 'd'), d.serverLastLoginDay);
+      return d.streak == 1
+        && d.unlockedDays == [1]
+        && d.claimedDays == []
+        && (d.get('lastClaimedDay', null) == null || d.get('lastClaimedDay', null) == 0)
+        && sameCalendarDay(d.serverCycleStartDay, d.serverLastLoginDay)
+        && (
+          !oldConsistent
+          || (!sameStoredDay && (oldD.get('streak', 0) >= 7 || !expectedNext))
+        );
+    }
+    // 23.13.60 — contrato único de LOGIN diario para usuarios normales. Sustituye en el
+    // router a la acumulación histórica de fast-paths: continuidad exacta o D1 limpio.
+    // El mismo día sólo puede resetear si el estado anterior es demostrablemente inválido.
+    function validDailyLoginTransitionV4(userId) {
+      let oldD = oldDailyRewards();
+      let d = request.resource.data.dailyRewards;
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['dailyRewards', 'lastSeenAt'])
+        && request.resource.data.lastSeenAt == request.time
+        && validDailyDocumentShapeV4(d)
+        && d.serverLastLoginDay.date() == officialRewardDay(userId).date()
+        && (validDailyContinuationStateV4(oldD, d) || validDailyResetStateV4(oldD, d));
+    }
+    function validAdminDailyLoginTransitionV4(userId) {
+      let oldD = oldDailyRewards();
+      let d = request.resource.data.dailyRewards;
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return isAdmin() && isUser(userId)
+        && changed.hasOnly(['dailyRewards', 'lastSeenAt'])
+        && request.resource.data.lastSeenAt == request.time
+        && validDailyDocumentShapeV4(d)
+        && (validDailyContinuationStateV4(oldD, d) || validDailyResetStateV4(oldD, d));
+    }
+
+    function validDailyConsistencyRepairV4(userId) {
+      let oldD = oldDailyRewards();
+      let d = request.resource.data.dailyRewards;
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['dailyRewards', 'lastSeenAt'])
+        && request.resource.data.lastSeenAt == request.time
+        && oldD is map
+        && !dailyStreakStateConsistent(oldD)
+        && cleanDailyOneToday(d, userId);
+    }
+
+    function validAdminDailyConsistencyRepairV4(userId) {
+      let oldD = oldDailyRewards();
+      let d = request.resource.data.dailyRewards;
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return isAdmin() && isUser(userId)
+        && changed.hasOnly(['dailyRewards', 'lastSeenAt'])
+        && request.resource.data.lastSeenAt == request.time
+        && oldD is map
+        && !dailyStreakStateConsistent(oldD)
+        && d is map
+        && d.get('schemaVersion', 0) == 3
+        && d.get('serverCycleStartDay', null) is timestamp
+        && d.get('serverLastLoginDay', null) is timestamp
+        && d.get('serverUpdatedAt', null) == request.time
+        && d.serverCycleStartDay.date() == d.serverLastLoginDay.date()
+        && d.get('streak', 0) == 1
+        && d.get('unlockedDays', []) == [1]
+        && d.get('claimedDays', []) == []
+        && (d.get('lastClaimedDay', null) == null || d.get('lastClaimedDay', null) == 0);
+    }
+
+    function validConsecutiveDailyAdvanceV2(userId) {
+      let oldD = oldDailyRewards();
+      let d = request.resource.data.dailyRewards;
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['dailyRewards', 'lastSeenAt'])
+        && request.resource.data.lastSeenAt == request.time
+        && oldD is map && d is map
+        && oldD.get('schemaVersion', 0) == 3
+        && d.get('schemaVersion', 0) == 3
+        && oldD.get('serverLastLoginDay', null) is timestamp
+        && d.get('serverLastLoginDay', null) is timestamp
+        && oldD.get('serverCycleStartDay', null) is timestamp
+        && d.get('serverCycleStartDay', null) is timestamp
+        && d.serverLastLoginDay.date() == officialRewardDay(userId).date()
+        && oldD.serverLastLoginDay.date() == (d.serverLastLoginDay - duration.value(1, 'd')).date()
+        && oldD.get('streak', 0) >= 1 && oldD.get('streak', 0) < 7
+        && d.get('streak', 0) == oldD.get('streak', 0) + 1
+        && d.serverCycleStartDay == oldD.serverCycleStartDay
+        && validUnlockedDaysForStreak(d.streak, d.get('unlockedDays', []))
+        && d.get('claimedDays', []) == oldD.get('claimedDays', [])
+        && d.get('lastClaimedDay', null) == oldD.get('lastClaimedDay', null);
+    }
+    // 23.13.60 — FAST PATH DE RESET POR GAP. La lógica cliente ya producía D1 correcto,
+    // pero una transición compuesta rechazada dejaba visualmente la racha anterior porque
+    // el login es best-effort. Esta rama valida de forma cerrada el caso "faltó al menos
+    // un día" (o ciclo D7 completo) y exige un D1 totalmente limpio.
+    function validDailyGapResetV3(userId) {
+      let oldD = oldDailyRewards();
+      let d = request.resource.data.dailyRewards;
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['dailyRewards', 'lastSeenAt'])
+        && request.resource.data.lastSeenAt == request.time
+        && oldD is map && d is map
+        && oldD.get('schemaVersion', 0) == 3
+        && d.get('schemaVersion', 0) == 3
+        && oldD.get('serverLastLoginDay', null) is timestamp
+        && d.get('serverLastLoginDay', null) is timestamp
+        && d.get('serverCycleStartDay', null) is timestamp
+        && d.get('serverUpdatedAt', null) == request.time
+        && d.serverLastLoginDay.date() == officialRewardDay(userId).date()
+        && oldD.serverLastLoginDay.date() != d.serverLastLoginDay.date()
+        && (oldD.get('streak', 0) >= 7
+            || oldD.serverLastLoginDay.date() != (d.serverLastLoginDay - duration.value(1, 'd')).date())
+        && d.serverCycleStartDay.date() == d.serverLastLoginDay.date()
+        && d.get('streak', 0) == 1
+        && d.get('unlockedDays', []) == [1]
+        && d.get('claimedDays', []) == []
+        && (d.get('lastClaimedDay', null) == null || d.get('lastClaimedDay', null) == 0);
+    }
+
+    function validAdminDailyGapResetV3(userId) {
+      let oldD = oldDailyRewards();
+      let d = request.resource.data.dailyRewards;
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return isAdmin() && isUser(userId)
+        && changed.hasOnly(['dailyRewards', 'lastSeenAt'])
+        && request.resource.data.lastSeenAt == request.time
+        && oldD is map && d is map
+        && oldD.get('schemaVersion', 0) == 3
+        && d.get('schemaVersion', 0) == 3
+        && oldD.get('serverLastLoginDay', null) is timestamp
+        && d.get('serverLastLoginDay', null) is timestamp
+        && d.get('serverCycleStartDay', null) is timestamp
+        && d.get('serverUpdatedAt', null) == request.time
+        && oldD.serverLastLoginDay.date() != d.serverLastLoginDay.date()
+        && (oldD.get('streak', 0) >= 7
+            || oldD.serverLastLoginDay.date() != (d.serverLastLoginDay - duration.value(1, 'd')).date())
+        && d.serverCycleStartDay.date() == d.serverLastLoginDay.date()
+        && d.get('streak', 0) == 1
+        && d.get('unlockedDays', []) == [1]
+        && d.get('claimedDays', []) == []
+        && (d.get('lastClaimedDay', null) == null || d.get('lastClaimedDay', null) == 0);
+    }
+
+    // ---------------------------------------------------------------
+    // 23.13.6 — RAMA QA ADMIN AISLADA.
+    // La cuenta Admin ya tiene autoridad para regalar economía, por lo que su reloj de
+    // pruebas no debe atravesar la validación de fecha real destinada a jugadores normales.
+    // Seguimos validando forma, secuencia D1→D7, resets y premios EXACTOS; únicamente no
+    // exigimos que serverLastLoginDay coincida con request.time.
+    // ---------------------------------------------------------------
+    function validAdminDailyResetState(d) {
+      return d.serverCycleStartDay.date() == d.serverLastLoginDay.date()
+        && d.streak == 1
+        && d.unlockedDays == [1]
+        && d.claimedDays == []
+        && (d.lastClaimedDay == null || d.lastClaimedDay == 0);
+    }
+    function validAdminDailyContinueState(oldD, d) {
+      return sameCalendarDay(oldD.serverLastLoginDay + duration.value(1, 'd'), d.serverLastLoginDay)
+        && oldD.streak >= 1 && oldD.streak < 7
+        && sameCalendarDay(d.serverCycleStartDay, oldD.serverCycleStartDay)
+        && d.streak == oldD.streak + 1
+        && d.unlockedDays == oldD.unlockedDays.concat([oldD.streak + 1])
+        && d.claimedDays == oldD.claimedDays
+        && d.lastClaimedDay == oldD.lastClaimedDay;
+    }
+    function validAdminDailyLoginTransition(userId) {
+      let oldD = oldDailyRewards();
+      let d = request.resource.data.dailyRewards;
+      return isAdmin() && isUser(userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dailyRewards', 'lastSeenAt'])
+        && d.keys().hasOnly([
+          'schemaVersion', 'serverCycleStartDay', 'serverLastLoginDay', 'serverUpdatedAt',
+          'streak', 'unlockedDays', 'claimedDays', 'lastClaimedDay'
+        ])
+        && d.schemaVersion == 3
+        && d.serverUpdatedAt == request.time
+        && d.serverCycleStartDay is timestamp
+        && d.serverLastLoginDay is timestamp
+        && d.unlockedDays is list
+        && d.claimedDays is list
+        && (
+          (hasDailyProgressState(oldD)
+            && sameCalendarDay(oldD.serverLastLoginDay + duration.value(1, 'd'), d.serverLastLoginDay)
+            && oldD.streak < 7
+            && validAdminDailyContinueState(oldD, d))
+          || ((!hasDailyProgressState(oldD)
+                || !sameCalendarDay(oldD.serverLastLoginDay + duration.value(1, 'd'), d.serverLastLoginDay)
+                || oldD.streak >= 7)
+              && validAdminDailyResetState(d))
+        );
+    }
+
+    function validAdminConsecutiveDailyAdvanceV2(userId) {
+      let oldD = oldDailyRewards();
+      let d = request.resource.data.dailyRewards;
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return isAdmin() && isUser(userId)
+        && changed.hasOnly(['dailyRewards', 'lastSeenAt'])
+        && request.resource.data.lastSeenAt == request.time
+        && oldD is map && d is map
+        && oldD.get('schemaVersion', 0) == 3
+        && d.get('schemaVersion', 0) == 3
+        && oldD.get('serverLastLoginDay', null) is timestamp
+        && d.get('serverLastLoginDay', null) is timestamp
+        && oldD.get('serverCycleStartDay', null) is timestamp
+        && d.get('serverCycleStartDay', null) is timestamp
+        && oldD.serverLastLoginDay.date() == (d.serverLastLoginDay - duration.value(1, 'd')).date()
+        && oldD.get('streak', 0) >= 1 && oldD.get('streak', 0) < 7
+        && d.get('streak', 0) == oldD.get('streak', 0) + 1
+        && d.serverCycleStartDay == oldD.serverCycleStartDay
+        && validUnlockedDaysForStreak(d.streak, d.get('unlockedDays', []))
+        && d.get('claimedDays', []) == oldD.get('claimedDays', [])
+        && d.get('lastClaimedDay', null) == oldD.get('lastClaimedDay', null);
+    }
+
+    function oldPoints() {
+      return resource.data.keys().hasAll(['points']) ? resource.data.points : 0;
+    }
+    function oldFichas() {
+      return resource.data.keys().hasAll(['fichas']) ? resource.data.fichas : 0;
+    }
+    function oldStandardPacks() {
+      return resource.data.keys().hasAll(['inventory'])
+        && resource.data.inventory is map
+        && resource.data.inventory.keys().hasAll(['standardPacks'])
+        ? resource.data.inventory.standardPacks : 0;
+    }
+    function oldGuaranteedMythics() {
+      return resource.data.keys().hasAll(['inventory'])
+        && resource.data.inventory is map
+        && resource.data.inventory.keys().hasAll(['guaranteedMythics'])
+        ? resource.data.inventory.guaranteedMythics : 0;
+    }
+    function validClaimEconomy(day) {
+      let inv = request.resource.data.inventory;
+      let previousPoints = oldPoints();
+      let previousFichas = oldFichas();
+      let pointsGain = request.resource.data.points - previousPoints;
+      let fichasGain = request.resource.data.fichas - previousFichas;
+      // 23.13.60 — Eventos puede multiplicar "todos los puntos" o "todas las Fichas"
+      // hasta x10. Rules no puede consultar dinámicamente una lista de campañas activas,
+      // así que conserva el mínimo base y acota al máximo permitido por el Admin UI.
+      return inv is map
+        && request.resource.data.points is int
+        && request.resource.data.fichas is int
+        && inv.keys().hasAll(['standardPacks', 'guaranteedMythics'])
+        && (
+          ((day == 1 || day == 2 || day == 3)
+            && pointsGain >= 30 && pointsGain <= 300
+            && fichasGain == 0
+            && inv.standardPacks == oldStandardPacks()
+            && inv.guaranteedMythics == oldGuaranteedMythics())
+          || (day == 4
+            && pointsGain == 0
+            && fichasGain >= 1 && fichasGain <= 10
+            && inv.standardPacks == oldStandardPacks()
+            && inv.guaranteedMythics == oldGuaranteedMythics())
+          || (day == 5
+            && pointsGain >= 60 && pointsGain <= 600
+            && fichasGain == 0
+            && inv.standardPacks == oldStandardPacks()
+            && inv.guaranteedMythics == oldGuaranteedMythics())
+          || (day == 6
+            && pointsGain >= 100 && pointsGain <= 1000
+            && fichasGain == 0
+            && inv.standardPacks == oldStandardPacks() + 1
+            && inv.guaranteedMythics == oldGuaranteedMythics())
+          || (day == 7
+            && pointsGain == 0
+            && fichasGain == 0
+            && inv.standardPacks == oldStandardPacks()
+            && inv.guaranteedMythics == oldGuaranteedMythics() + 1)
+        );
+    }
+    function validDailyClaimTransition(userId) {
+      let oldD = oldDailyRewards();
+      let d = request.resource.data.dailyRewards;
+      let day = d.lastClaimedDay;
+      return hasSecureDailyState(oldD)
+        && oldD.serverLastLoginDay.date() == officialRewardDay(userId).date()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points', 'fichas', 'inventory', 'dailyRewards'])
+        && d.keys().hasOnly([
+          'schemaVersion', 'serverCycleStartDay', 'serverLastLoginDay', 'serverUpdatedAt',
+          'streak', 'unlockedDays', 'claimedDays', 'lastClaimedDay'
+        ])
+        && d.schemaVersion == 3
+        && d.serverUpdatedAt == request.time
+        && d.serverCycleStartDay.date() == oldD.serverCycleStartDay.date()
+        && d.serverLastLoginDay.date() == oldD.serverLastLoginDay.date()
+        && d.streak == oldD.streak
+        && d.unlockedDays == oldD.unlockedDays
+        && day is int && day >= 1 && day <= 7
+        && day in oldD.unlockedDays
+        && !(day in oldD.claimedDays)
+        && d.claimedDays == oldD.claimedDays.concat([day])
+        && validClaimEconomy(day);
+    }
+    function validAdminDailyClaimTransition(userId) {
+      let oldD = oldDailyRewards();
+      let d = request.resource.data.dailyRewards;
+      let day = d.lastClaimedDay;
+      return isAdmin() && isUser(userId)
+        && hasSecureDailyState(oldD)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points', 'fichas', 'inventory', 'dailyRewards'])
+        && d.keys().hasOnly([
+          'schemaVersion', 'serverCycleStartDay', 'serverLastLoginDay', 'serverUpdatedAt',
+          'streak', 'unlockedDays', 'claimedDays', 'lastClaimedDay'
+        ])
+        && d.schemaVersion == 3
+        && d.serverUpdatedAt == request.time
+        && d.serverCycleStartDay.date() == oldD.serverCycleStartDay.date()
+        && d.serverLastLoginDay.date() == oldD.serverLastLoginDay.date()
+        && d.streak == oldD.streak
+        && d.unlockedDays == oldD.unlockedDays
+        && day is int && day >= 1 && day <= 7
+        && day in oldD.unlockedDays
+        && !(day in oldD.claimedDays)
+        && d.claimedDays == oldD.claimedDays.concat([day])
+        && validClaimEconomy(day);
+    }
+
+    function validRewardDebugOffsetUpdate(userId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return isAdmin()
+        && isUser(userId)
+        && changed.hasOnly(['rewardDebugOffsetDays'])
+        && request.resource.data.rewardDebugOffsetDays is int
+        && request.resource.data.rewardDebugOffsetDays >= 0
+        && request.resource.data.rewardDebugOffsetDays <= 30;
+    }
+    function validOwnUserUpdate(userId) {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let touchesUsername = changed.hasAny(['username', 'usernameKey', 'usernameUpdatedAt']);
+      let touchesRewards = changed.hasAny(['dailyRewards', 'rewardDebugOffsetDays']);
+      let touchesClassifieds = changed.hasAny([
+        'classifiedsWeekKey', 'classifiedsPurchased', 'classifiedsPurchaseCounts',
+        'classifiedsLastPurchase', 'classifiedsUpdatedAt'
+      ]);
+
+      // 23.13.28 — ROUTER POR SUBSISTEMA. No evaluamos validadores de Rewards cuando el
+      // write sólo modifica Username (ni viceversa). Perfiles legacy pueden carecer de
+      // dailyRewards; acceder directamente a un campo ausente en Rules produce error y
+      // deniega toda la request. Cada rama queda además aislada: mezclar campos protegidos
+      // de dos subsistemas en el mismo update no puede colarse por una validación parcial.
+      return (!touchesUsername && !touchesRewards && !touchesClassifieds)
+        || (touchesUsername && !touchesRewards && !touchesClassifieds
+            && (validInitialUsernameAssignment(userId) || validUsernameRename(userId)))
+        || (touchesRewards && !touchesUsername && !touchesClassifieds
+            && (
+              validDailyLoginTransitionV4(userId)
+              || validAdminDailyLoginTransitionV4(userId)
+              || validDailyClaimTransition(userId)
+              || validAdminDailyClaimTransition(userId)
+              || validRewardDebugOffsetUpdate(userId)
+            ))
+        || (touchesClassifieds && !touchesUsername && !touchesRewards
+            && validClassifiedsPurchaseTransition(userId));
+    }
+    function validAdminCurrencyUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points', 'fichas']);
+    }
+    function validAdminPackGift() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let inv = request.resource.data.inventory;
+      return changed.hasOnly(['inventory'])
+        && inv is map
+        && inv.keys().hasAll(['standardPacks', 'guaranteedMythics'])
+        && inv.standardPacks > oldStandardPacks()
+        && inv.guaranteedMythics == oldGuaranteedMythics();
+    }
+
+
+    // ================================================================
+    // 23.13.37 — RANKING PÚBLICO SANITIZADO.
+    // El documento público refleja únicamente identidad de juego y números agregados. Los
+    // saldos actuales y tamaños de colección/inventario deben coincidir con users/{uid};
+    // nunca se expone email, photoURL, decks ni IDs concretos de cartas.
+    // ================================================================
+    function validPublicPlayerStats(userId) {
+      let uPath = /databases/$(database)/documents/users/$(userId);
+      let u = getAfter(uPath).data;
+      let inv = u.get('inventory', {});
+      let d = request.resource.data;
+      return existsAfter(uPath)
+        && d.keys().hasOnly([
+          'schemaVersion','trackingSinceVersion','gameBackfillVersion','uid','username',
+          'pointsCurrent','fichasCurrent','packsInChest','cardsOwned','uniqueCards',
+          'gamesPlayed','soloGames','multiplayerGames','wins','losses','soloWins','soloLosses',
+          'multiplayerWins','multiplayerLosses','abandons','totalDurationMs',
+          'pointsEarned','pointsSpent','pointsLost','fichasEarned','fichasSpent',
+          'packsReceived','packsOpened','guaranteedMythicsOpened','updatedAt'
+        ])
+        && d.schemaVersion == 1
+        && d.trackingSinceVersion == '23.13.37'
+        && d.gameBackfillVersion is int && d.gameBackfillVersion >= 0 && d.gameBackfillVersion <= 1
+        && d.uid == userId
+        && d.username == u.get('username', 'Jugador')
+        && d.pointsCurrent == u.get('points', 0)
+        && d.fichasCurrent == u.get('fichas', 0)
+        && d.packsInChest == inv.get('standardPacks', 0)
+        && d.cardsOwned == u.get('collection', []).size()
+        && d.uniqueCards is int && d.uniqueCards >= 0 && d.uniqueCards <= d.cardsOwned
+        && d.gamesPlayed is int && d.gamesPlayed >= 0
+        && d.soloGames is int && d.soloGames >= 0
+        && d.multiplayerGames is int && d.multiplayerGames >= 0
+        && d.gamesPlayed == d.soloGames + d.multiplayerGames
+        && d.wins is int && d.wins >= 0 && d.losses is int && d.losses >= 0
+        && d.wins + d.losses <= d.gamesPlayed
+        && d.soloWins is int && d.soloWins >= 0 && d.soloLosses is int && d.soloLosses >= 0
+        && d.multiplayerWins is int && d.multiplayerWins >= 0 && d.multiplayerLosses is int && d.multiplayerLosses >= 0
+        && d.soloWins + d.soloLosses <= d.soloGames
+        && d.multiplayerWins + d.multiplayerLosses <= d.multiplayerGames
+        && d.abandons is int && d.abandons >= 0 && d.abandons <= d.losses
+        && d.totalDurationMs is int && d.totalDurationMs >= 0
+        && d.pointsEarned is int && d.pointsEarned >= 0
+        && d.pointsSpent is int && d.pointsSpent >= 0
+        && d.pointsLost is int && d.pointsLost >= 0
+        && d.fichasEarned is int && d.fichasEarned >= 0
+        && d.fichasSpent is int && d.fichasSpent >= 0
+        && d.packsReceived is int && d.packsReceived >= 0
+        && d.packsOpened is int && d.packsOpened >= 0
+        && d.guaranteedMythicsOpened is int && d.guaranteedMythicsOpened >= 0
+        && d.updatedAt == request.time;
+    }
+
+    // ==================================================================
+    // users/{userId}: perfil, puntos, Fichas, colección, mazos.
+    //
+    // Cada jugador lee y escribe SU PROPIO documento — nunca el de otro, nunca sin sesión.
+    // Excepción, Panel de Admin ("regalar puntos/Fichas"): el admin puede LEER cualquier
+    // perfil (para el desplegable de destinatarios) y ACTUALIZAR cualquier perfil, pero
+    // SOLO points/fichas — nunca collection, decks, email, ni nada más. Esto lo garantiza
+    // Firestore mismo (diff().affectedKeys().hasOnly([...])), no la buena fe del código de
+    // la UI: aunque el panel tuviera un bug, o la sesión del admin se viera comprometida,
+    // esta regla es el techo real de lo que se puede tocar en la cuenta de otro.
+    // ==================================================================
+    match /users/{userId} {
+      allow read: if isUser(userId) || isAdmin();
+      allow create: if isUser(userId) && validUserCreateWithUsername(userId);
+      // Si el perfil tiene username, borrar la cuenta exige liberar la reserva en la MISMA
+      // transacción. Perfiles históricos sin username siguen pudiéndose borrar/migrar.
+      allow delete: if isUser(userId)
+        && (!resource.data.keys().hasAll(['usernameKey'])
+            || resource.data.usernameKey == ''
+            || !existsAfter(/databases/$(database)/documents/usernames/$(resource.data.usernameKey)));
+      allow update: if isUser(userId) && validOwnUserUpdate(userId);
+      allow update: if isAdmin() && (validAdminCurrencyUpdate() || validAdminPackGift());
+    }
+
+
+    // Ranking visible incluso sin login: sólo datos sanitizados. Escritura propia o Admin,
+    // pero siempre validada contra el perfil privado real.
+    match /playerStats/{userId} {
+      allow read: if true;
+      allow create, update: if (isUser(userId) || isAdmin()) && validPublicPlayerStats(userId);
+      allow delete: if isUser(userId) || isAdmin();
+    }
+
+    // Receipt de fin de partida por sesión: hace idempotente el contador del jugador.
+    match /playerGameReceipts/{receiptId} {
+      allow create: if isAuthenticated()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.receiptId is string
+        && receiptId == request.auth.uid + '_' + request.resource.data.receiptId
+        && request.resource.data.mode in ['solo', 'multiplayer']
+        && request.resource.data.result in ['win', 'loss', 'unknown']
+        && request.resource.data.durationMs is int && request.resource.data.durationMs >= 0
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.keys().hasOnly(['uid','receiptId','mode','result','durationMs','createdAt']);
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // 23.13.60 — Receipt ECONÓMICO de fin de partida. El cliente sólo puede crear el suyo,
+    // una vez, y el receipt debe coincidir con el salto de puntos del mismo transaction.
+    // El multiplicador máximo posible por Eventos es x10.
+    match /gameRewardReceipts/{rewardId} {
+      allow get: if isAdmin() || (isAuthenticated() && rewardId.matches('^' + request.auth.uid + '_.*'));
+      allow list: if isAdmin();
+      allow create: if isAuthenticated()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.receiptId is string
+        && rewardId == request.auth.uid + '_' + request.resource.data.receiptId
+        && request.resource.data.mode in ['solo', 'multiplayer']
+        && request.resource.data.outcome in ['win', 'loss']
+        && request.resource.data.baseDelta is int
+        && request.resource.data.effectiveDelta is int
+        && request.resource.data.resultingTotal is int
+        && request.resource.data.resultingTotal >= 0
+        && request.resource.data.engineVersion is string
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.baseDelta in [15, 20, 50, 100, 120]
+        && request.resource.data.effectiveDelta >= request.resource.data.baseDelta
+        && request.resource.data.effectiveDelta <= request.resource.data.baseDelta * 10
+        && ((request.resource.data.mode == 'solo'
+              && ((request.resource.data.outcome == 'win' && request.resource.data.baseDelta in [50, 100])
+                  || (request.resource.data.outcome == 'loss' && request.resource.data.baseDelta == 15)))
+            || (request.resource.data.mode == 'multiplayer'
+              && ((request.resource.data.outcome == 'win' && request.resource.data.baseDelta == 120)
+                  || (request.resource.data.outcome == 'loss' && request.resource.data.baseDelta == 20))))
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.points == request.resource.data.resultingTotal
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.points
+             == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.points + request.resource.data.effectiveDelta
+        && request.resource.data.keys().hasOnly([
+          'uid','receiptId','mode','outcome','baseDelta','effectiveDelta','resultingTotal','engineVersion','createdAt'
+        ]);
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // Ledger fechado para futuros gráficos diarios/mensuales. No es público; únicamente el
+    // Admin puede leerlo. El actor sólo registra eventos propios, salvo grants del Admin.
+    match /economyEvents/{eventId} {
+      allow create: if isAuthenticated()
+        && request.resource.data.actorUid == request.auth.uid
+        && (request.resource.data.targetUid == request.auth.uid || isAdmin())
+        && request.resource.data.source is string
+        && request.resource.data.pointsDelta is int
+        && request.resource.data.fichasDelta is int
+        && request.resource.data.packsDelta is int
+        && request.resource.data.cardsDelta is int
+        && request.resource.data.engineVersion is string
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.keys().hasOnly([
+          'actorUid','targetUid','source','pointsDelta','fichasDelta','packsDelta','cardsDelta',
+          'matchId','sessionId','engineVersion','createdAt'
+        ]);
+      allow read, delete: if isAdmin();
+      allow update: if false;
+    }
+
+    // ==================================================================
+    // usernames/{usernameKey}: índice global de reserva. `get` es público para permitir
+    // comprobar disponibilidad; `list` queda cerrado (salvo Admin) para no convertirlo en
+    // un directorio descargable de jugadores. Perfil y reserva se validan con getAfter().
+    // ==================================================================
+    match /usernames/{usernameKey} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasOnly(['uid', 'username', 'createdAt', 'updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && validUsernamePolicy(request.resource.data.username, usernameKey)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && existsAfter(/databases/$(database)/documents/users/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.usernameKey == usernameKey
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == request.resource.data.username;
+      allow update: if isAuthenticated()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'username', 'createdAt', 'updatedAt'])
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && validUsernamePolicy(request.resource.data.username, usernameKey)
+        && existsAfter(/databases/$(database)/documents/users/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.usernameKey == usernameKey
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == request.resource.data.username;
+      allow delete: if isAuthenticated()
+        && resource.data.uid == request.auth.uid
+        && (!existsAfter(/databases/$(database)/documents/users/$(request.auth.uid))
+            || getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.usernameKey != usernameKey);
+    }
+
+    // Reloj efímero: el cliente puede pedir "qué hora es" pero sólo escribiendo un
+    // serverTimestamp real. request.time == now impide fabricar el día desde DevTools.
+    match /rewardClock/{userId} {
+      allow read: if isUser(userId);
+      // 23.13.60: durante el rollout acepta la attestation histórica 23.13.14 y la nueva 23.13.60.
+      // El frontend 23.13.60 exige 23.13.60: si GitHub se actualiza antes de Rules, el probe
+      // falla de forma explícita en vez de confundirse con otro bug de racha.
+      allow create, update: if isUser(userId)
+        && request.resource.data.now == request.time
+        && (
+          request.resource.data.keys().hasOnly(['now'])
+          || (request.resource.data.keys().hasOnly(['now', 'rulesVersion'])
+              && request.resource.data.rulesVersion in ['23.13.14', '23.13.59', '23.13.60'])
+        );
+    }
+
+    // ==================================================================
+    // gameConfig/*: balance, textos, encuadres y calendario trusted de Clasificados.
+    // tamaño de mazo, etc.) — de lectura pública (todo el mundo necesita estos valores para
+    // jugar, esté logueado o no), de escritura exclusiva del admin.
+    // ==================================================================
+    match /gameConfig/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ==================================================================
+    // adminActions/{actionId}: registro liviano de cada vez que el admin regala puntos o
+    // Fichas — a quién, cuánto, por qué. Solo el admin necesita verlo.
+    // ==================================================================
+    match /adminActions/{actionId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ==================================================================
+    // 23.13.53 — Anuncios editoriales: lectura pública, CRUD exclusivo Admin.
+    // Incluyen scheduling, popup/news, imagen y estado finalizado.
+    // ==================================================================
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Eventos temporales de economía: todo cliente necesita leerlos para representar el
+    // precio/recompensa efectiva; sólo Admin puede crear, editar, finalizar o borrar.
+    match /campaignEvents/{eventId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // "No me lo muestres de nuevo": cada usuario sólo puede tocar sus propios receipts.
+    // El announcementId no expone ningún dato privado; la colección no es pública.
+    match /announcementDismissals/{dismissalId} {
+      allow get: if isAuthenticated() && dismissalId.matches('^' + request.auth.uid + '_.*');
+      allow list: if false;
+      allow create: if isAuthenticated()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.announcementId is string
+        && dismissalId == request.auth.uid + '_' + request.resource.data.announcementId
+        && request.resource.data.dismissedAt == request.time
+        && request.resource.data.keys().hasOnly(['uid','announcementId','dismissedAt']);
+      allow update: if false;
+      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+
+    // ==================================================================
+    // matches/{matchId}: matchmaking + la partida sincronizada en sí. Documento PÚBLICO:
+    // campo de batalla, vida, fase, turno, y la CANTIDAD de cartas en mano/mazo de cada uno
+    // — nunca el contenido (eso vive aparte, en private/{uid} de abajo).
+    //
+    // Update tiene 3 casos:
+    //   1) Sos el host.
+    //   2) Sos el guest ya unido.
+    //   3) Te estás uniendo recién ahora (nadie más lo hizo todavía): SOLO se permite si tu
+    //      escritura te asigna a VOS MISMO como guestUid, Y además esa escritura toca
+    //      ÚNICAMENTE los campos que un "unirse" real necesita tocar (status, guestUid,
+    //      players, updatedAt) — ni el hostUid, ni el tablero, ni nada más. Es la parte que
+    //      cerraba distinto la versión de Gemini: sin el hasOnly, alguien podría colarse un
+    //      guestUid válido Y de paso otro campo cualquiera en la misma escritura.
+    //
+    // Una vez que sos parte del match (casos 1 y 2), la escritura NO está restringida por
+    // campo — es la misma confianza-del-cliente que ya elegimos para toda la Fase 4 (ver la
+    // charla de arquitectura al arrancarla): el set de campos que se publican durante una
+    // partida real (buildMyPublicPatch, matchSync.js) crece con el motor, y atarlo a una
+    // lista fija acá sería frágil — se rompería cada vez que se agregue algo al juego.
+    // ==================================================================
+    match /matches/{matchId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.hostUid ||
+        request.auth.uid == resource.data.guestUid ||
+        (
+          resource.data.guestUid == null &&
+          request.resource.data.guestUid == request.auth.uid &&
+          request.resource.data.guestEngineVersion == resource.data.engineVersion &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'guestUid', 'guestEngineVersion', 'players', 'updatedAt'])
+        )
+      );
+      // 23.13.24 — cancelar una sala vacía debe liberar también activeMatchId. Sólo el host
+      // puede borrar SU lobby, exclusivamente mientras sigue esperando y antes de que entre
+      // un guest. Una partida ya emparejada/activa no puede eliminarse por esta vía.
+      allow delete: if isAuthenticated()
+        && request.auth.uid == resource.data.hostUid
+        && resource.data.status == 'waiting'
+        && resource.data.guestUid == null;
+
+      // matches/{matchId}/private/{uid}: acá vive la mano y el mazo REALES de cada
+      // jugador — SOLO esa cuenta puede leer o escribir su propio documento. Esta es la
+      // regla que de verdad protege que nadie le vea la mano al rival (confirmado con la
+      // Etapa 5 de auditoría: el documento público de arriba nunca contiene el contenido
+      // de ninguna mano ni mazo, solo la cantidad).
+      match /private/{uid} {
+        allow read, write: if isUser(uid);
+      }
+    }
+
+    // ==================================================================
+    // ENTREGA 23.1 — Telemetría incremental Firestore-only.
+    // Los bloques anteriores quedan exactamente como fueron provistos.
+    // ==================================================================
+    match /telemetrySessions/{sessionId} {
+      // Cada cliente sólo puede CREAR una sesión cuyo ownerUid sea su propia cuenta.
+      allow create: if isAuthenticated()
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.sessionId == sessionId
+                    && request.resource.data.keys().hasAll([
+                      'ownerUid', 'playerName', 'sessionId', 'status',
+                      'eventCount', 'bugCandidateCount', 'lastUploadedSeq',
+                      'lastUploadedBugCount', 'updatedAt'
+                    ])
+                    && request.resource.data.keys().hasOnly([
+                      'ownerUid', 'playerName', 'sessionId', 'matchId', 'mode', 'myRole',
+                      'difficulty', 'deckLabel', 'soloGameId', 'segmentIndex', 'effectiveDurationMs',
+                      'telemetryVersion', 'schemaVersion', 'engineBaseline', 'startedAtClient', 'endedAtClient', 'endReason',
+                      'status', 'eventCount', 'bugCandidateCount', 'errorCount', 'warningCount',
+                      'lastUploadedSeq', 'lastUploadedBugCount', 'lastUploadKind',
+                      'lastUploadReason', 'latestSnapshotJson', 'bugCandidatesJson',
+                      'statsJson', 'metaJson', 'truncated', 'checkpointIntervalMs',
+                      'updatedAt', 'finalizedAt'
+                    ]);
+    
+      // ownerUid y sessionId quedan INMUTABLES. El juego sólo actualiza campos diagnósticos.
+      allow update: if isAdmin() || (
+                    isAuthenticated()
+                    && resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.ownerUid == resource.data.ownerUid
+                    && request.resource.data.sessionId == resource.data.sessionId
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'playerName', 'matchId', 'mode', 'myRole', 'difficulty', 'deckLabel',
+                      'soloGameId', 'segmentIndex', 'effectiveDurationMs',
+                      'telemetryVersion', 'schemaVersion', 'engineBaseline', 'startedAtClient',
+                      'endedAtClient', 'endReason', 'status', 'eventCount',
+                      'bugCandidateCount', 'errorCount', 'warningCount', 'lastUploadedSeq',
+                      'lastUploadedBugCount', 'lastUploadKind', 'lastUploadReason',
+                      'latestSnapshotJson', 'bugCandidatesJson', 'statsJson', 'metaJson',
+                      'truncated', 'checkpointIntervalMs', 'updatedAt', 'finalizedAt'
+                    ])
+                  );
+    
+      // El tester ve sus propias sesiones. El admin puede auditar las de los tres testers.
+      allow read: if isAdmin()
+                  || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+    
+      // El cliente de juego no necesita borrar evidencia. Sólo el admin puede hacerlo.
+      allow delete: if isAdmin();
+    
+      match /chunks/{chunkId} {
+        allow create: if isAuthenticated()
+                      && request.resource.data.ownerUid == request.auth.uid
+                      && request.resource.data.sessionId == sessionId
+                      && request.resource.data.chunkId == chunkId
+                      && request.resource.data.payloadJson is string
+                      && request.resource.data.payloadJson.size() < 900000
+                      && request.resource.data.keys().hasAll([
+                        'ownerUid', 'sessionId', 'playerName', 'chunkId',
+                        'eventCount', 'bugCandidateCount', 'payloadJson', 'uploadedAt'
+                      ])
+                      && request.resource.data.keys().hasOnly([
+                        'ownerUid', 'sessionId', 'matchId', 'playerName', 'chunkId',
+                        'seqStart', 'seqEnd', 'eventCount', 'bugCandidateCount',
+                        'reason', 'final', 'payloadJson', 'uploadedAt'
+                      ]);
+    
+        // Reintentos idempotentes pueden volver a setear el MISMO chunk. Identidad inmutable.
+        allow update: if isAuthenticated()
+                      && resource.data.ownerUid == request.auth.uid
+                      && request.resource.data.ownerUid == resource.data.ownerUid
+                      && request.resource.data.sessionId == resource.data.sessionId
+                      && request.resource.data.chunkId == resource.data.chunkId
+                      && request.resource.data.payloadJson is string
+                      && request.resource.data.payloadJson.size() < 900000
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                        'matchId', 'playerName', 'seqStart', 'seqEnd', 'eventCount',
+                        'bugCandidateCount', 'reason', 'final', 'payloadJson', 'uploadedAt'
+                      ]);
+    
+        allow read: if isAdmin()
+                    || (isAuthenticated() && resource.data.ownerUid == request.auth.uid);
+        allow delete: if isAdmin();
+      }
+    }
+  }
+}
