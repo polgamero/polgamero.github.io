@@ -1,8 +1,11 @@
 import { sleep, moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getProliferateCandidates } from './utils.js';
-import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, triggerCreatureEtb, triggerLandEtb, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, cleanupIfVehicle, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal, completeCastTargetDeclaration, requestPrivateZoneChoice } from './main.js';
+import { isLandPermanent, isCreaturePermanent, isNonbasicLandPermanent, landMatchesFilter } from './permanentTypes.js';
+import { landMatchesEffectiveFilter } from './landCharacteristics.js';
+import { normalizeLandGraveyardReturnEffect, landGraveyardFilterMatches } from './landGraveyard.js';
+import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, triggerCreatureEtb, triggerLandEtb, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, cleanupIfVehicle, animateLandPermanent, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal, completeCastTargetDeclaration, requestPrivateZoneChoice, searchLibraryForLands, landEntersTappedForBattlefield } from './main.js';
 import { otherRole, serializeStackTarget, refreshStackItemBoardRefs } from './matchSync.js';
 import { stampCardOwner, zoneForCardOwner } from './zoneOwnership.js';
-import { logMsg, render, createCardElement, showRampLandChoiceModal, showScrySurveilModal, showProliferateModal, showHandFilterDiscardModal, showSacrificeEffectModal } from './ui.js';
+import { logMsg, render, createCardElement, showScrySurveilModal, showProliferateModal, showHandFilterDiscardModal, showSacrificeEffectModal } from './ui.js';
 import { checkDeaths, checkAllDeaths } from './combatRules.js';
 import { hasKeyword, getProtectionMatch } from './keywords.js';
 
@@ -1009,6 +1012,54 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           }
         }
       }
+      // LAND 2 — DESTRUCCIÓN DE TIERRAS. Una man-land animada puede estar visualmente
+      // en Combat pero conserva identidad Land; si es destruida mientras también es Criatura,
+      // además MUERE y dispara los triggers de muerte correspondientes.
+      else if (targetObj.type === 'land') {
+        const targetItem = targetObj.item;
+        const isTargetLocal = targetObj.isLocal;
+        const landZone = isTargetLocal ? state.localLands : state.rivalLands;
+        const combatZone = isTargetLocal ? state.localCombat : state.rivalCombat;
+        const grave = isTargetLocal ? state.localGraveyard : state.rivalGraveyard;
+        const inLandRow = landZone.includes(targetItem);
+        const inCombat = combatZone.includes(targetItem) && isLandPermanent(targetItem);
+        const stillLand = !!targetItem && (inLandRow || inCombat) && isLandPermanent(targetItem);
+        const filter = effectToApply.type === 'destroy_nonbasic_land' ? 'nonbasic' : (effectToApply.landFilter || 'any');
+
+        if (!stillLand) {
+          logMsg(gameText('effect.targetGone', { card: card.name }));
+        } else if (!landMatchesEffectiveFilter(state, targetItem, isTargetLocal, filter)) {
+          logMsg(gameText('land.destroy.invalid', { card: card.name, target: targetItem.card.name }));
+        } else if (isTargetLocal !== isLocal && hasKeyword(targetItem, 'hexproof')) {
+          // Si ganó Intocable después de ser targeteada, el objetivo ya no es legal al resolver.
+          logMsg(gameText('effect.targetGone', { card: card.name }));
+        } else {
+          const protectedColor = getProtectionMatch(targetItem, card.colors || []);
+          if (protectedColor) {
+            logMsg(gameText('effect.protectionNoEffect', { target: targetItem.card.name, color: COLOR_LABELS[protectedColor] || protectedColor, card: card.name }));
+            return;
+          }
+          if (hasKeyword(targetItem, 'indestructible')) {
+            logMsg(gameText('effect.indestructible', { target: targetItem.card.name, card: card.name }));
+          } else {
+            const wasCreature = inCombat && isCreaturePermanent(targetItem);
+            const zone = inCombat ? combatZone : landZone;
+            const idx = zone.indexOf(targetItem);
+            if (idx !== -1) zone.splice(idx, 1);
+            if (wasCreature) {
+              detachEquipmentFrom(targetItem, isTargetLocal);
+              sendAurasToGraveyard(targetItem, isTargetLocal);
+            }
+            moveBattlefieldCardToZone(targetItem.card, grave);
+            logMsg(gameText('land.destroy.done', { card: card.name, target: targetItem.card.name }));
+            recordTelemetryEvent('land_destroyed', { source: card.name, target: targetItem.card.name, nonbasic: isNonbasicLandPermanent(targetItem), animatedCreature: wasCreature, isTargetLocal });
+            if (wasCreature) {
+              triggerCreatureDies(targetItem, isTargetLocal);
+              triggerAnyCreatureDeath(targetItem, isTargetLocal);
+            }
+          }
+        }
+      }
       // LÓGICA NUEVA: DESTRUIR PERMANENTE (Artefacto / Encantamiento en la zona de soporte)
       else if (targetObj.type === 'permanent') {
         const targetItem = targetObj.item;
@@ -1100,46 +1151,66 @@ async function resolveReturnFromGraveyardEffect(effectToApply, card, isLocal) {
   return returnedNames;
 }
 
+
+async function resolveReturnLandsFromGraveyardEffect(effectToApply, card, isLocal) {
+  const spec = normalizeLandGraveyardReturnEffect(effectToApply);
+  const graveyard = isLocal ? state.localGraveyard : state.rivalGraveyard;
+  const lands = isLocal ? state.localLands : state.rivalLands;
+  const candidates = graveyard.filter(c => landGraveyardFilterMatches(c, spec.filter));
+  if (!candidates.length) return [];
+  const wanted = spec.all ? candidates.length : Math.min(spec.amount, candidates.length);
+  const chosenCards = spec.all
+    ? [...candidates]
+    : await chooseGraveyardCards({
+        zoneIsLocal: isLocal,
+        chooserIsLocal: isLocal,
+        filter: 'land',
+        landFilter: spec.filter,
+        amount: wanted,
+        cardName: card.name,
+        actionLabel: gameText('land.grave.returnAction', { count:wanted }),
+        botStrategy: 'highest_value'
+      });
+
+  const validChosenCards = chosenCards.filter(chosenCard =>
+    graveyard.includes(chosenCard) && landGraveyardFilterMatches(chosenCard, spec.filter)
+  );
+  // Snapshot de replacement effects ANTES de que entre ninguna carta del lote.
+  const entered = validChosenCards.map(chosenCard => ({
+    card:chosenCard,
+    item:{
+      card:chosenCard,
+      tapped:landEntersTappedForBattlefield(chosenCard, isLocal, spec.destination === 'battlefield_tapped'),
+      enteredThisTurn:true,
+      permanentTypes:['land']
+    }
+  }));
+  for (const chosenCard of validChosenCards) {
+    const gyIdx = graveyard.indexOf(chosenCard);
+    if (gyIdx !== -1) graveyard.splice(gyIdx, 1);
+  }
+  entered.forEach(entry => lands.push(entry.item));
+  // Las Tierras entraron simultáneamente; recién después encolamos Landfall por cada entrada.
+  // Así permanentes que entraron juntos pueden verse entre sí, como en MTG real.
+  for (const entry of entered) await triggerLandEtb(isLocal, entry.card, entry.item);
+  return entered.map(e => e.card.name);
+}
+
 async function resolveUntargetedGameEffect(effectToApply, context) {
   const { card, item, isLocal } = context;
 
-      // LÓGICA: TIERRAS-CRIATURA (man-lands). OJO: esto ya NO lo usan los Vehículos de
-      // verdad (Carreta Blindada, Rolls Royce, Caballo de San Martín) — esos ahora se
-      // tripulan girando poder de criaturas propias (ver startCrewing/confirmCrew en
-      // main.js, activatedAbility.crewCost), nunca con maná. Este camino sigue vivo
-      // solo para las tierras-criatura (Cancha de Potrero, Refugio de Montaña), que SÍ
-      // se animan pagando maná — como Mutavault en MTG real, es una mecánica distinta
-      // de Tripular aunque reutilice el mismo efecto interno "se vuelve criatura".
-      if (effectToApply.type === 'crew_vehicle') {
-        const supportZone = isLocal ? state.localSupport : state.rivalSupport;
-        const landsZone = isLocal ? state.localLands : state.rivalLands;
-        const combatZone = isLocal ? state.localCombat : state.rivalCombat;
-
-        // Los Vehículos normales viven en Soporte, pero una "tierra-criatura" (man-land)
-        // usa este MISMO mecanismo desde la zona de Tierras — buscamos en las dos.
-        let vehicleIndex = supportZone.findIndex(s => s.card.id === card.id);
-        let originZone = supportZone;
-        let fromLand = false;
-        if (vehicleIndex === -1) {
-          vehicleIndex = landsZone.findIndex(s => s.card.id === card.id);
-          originZone = landsZone;
-          fromLand = true;
+      // LAND 1 — man-land real: la fuente mantiene identidad Land + Creature.
+      if (effectToApply.type === 'animate_land') {
+        const sourceItem = item?.sourceItem || item?.source?.sourceItem || null;
+        if (sourceItem && animateLandPermanent(sourceItem, isLocal, effectToApply)) {
+          logMsg(gameText('land.animate.done', { card: card.name, power: effectToApply.power ?? card.baseStats?.power ?? 0, toughness: effectToApply.toughness ?? card.baseStats?.toughness ?? 0 }));
+        } else {
+          logMsg(gameText('land.animate.unavailable', { card: card.name }));
         }
-        if (vehicleIndex !== -1) {
-          const vehicleItem = originZone.splice(vehicleIndex, 1)[0];
-          
-          // Le pasamos los stats base para que se vuelva criatura temporal
-          vehicleItem.card.power = card.baseStats.power;
-          vehicleItem.card.toughness = card.baseStats.toughness;
-          vehicleItem.isVehicle = true; // Flag clave para devolverlo después
-          vehicleItem.wasLand = fromLand; // A qué zona devolverla: Tierras o Soporte
-          // Respeta el mareo de invocación: si el Vehículo entró este mismo turno, no puede
-          // atacar apenas se tripula, igual que cualquier criatura recién jugada.
-          vehicleItem.summoningSickness = !!vehicleItem.enteredThisTurn;
-          
-          combatZone.push(vehicleItem);
-          logMsg(gameText('effect.crew.done', { card: card.name, power: card.baseStats.power, toughness: card.baseStats.toughness }));
-        }
+      }
+      // Compatibilidad legacy: crew_vehicle ya no se usa para Tierras desde 23.14.2.
+      else if (effectToApply.type === 'crew_vehicle') {
+        logMsg(gameText('land.animate.legacy', { card: card.name }));
       }
       // LÓGICA NUEVA: ARRASAR EL CAMPO (board wipe)
       else if (effectToApply.type === 'destroy_all_creatures') {
@@ -1171,6 +1242,55 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
 
         queueCreatureDeathBatch(doomed, deathWatchersSnapshot);
         logMsg(gameText('effect.wrath', { card: card.name, local: localCount, rivalCount, rival: getRivalName() }));
+      }
+      // LAND 2 — DESTRUCCIÓN MASIVA DE TIERRAS. Por default afecta a ambos jugadores,
+      // pero `controller` puede ser self/opponent y `landFilter` permite futuras Ruination-style
+      // sin crear otro efecto ad hoc. Todo se destruye simultáneamente y respeta Indestructible.
+      else if (effectToApply.type === 'destroy_all_lands') {
+        const controller = effectToApply.controller || 'all';
+        const filter = effectToApply.landFilter || 'any';
+        const controllerAllows = (landIsLocal) => controller === 'all'
+          || (controller === 'self' && landIsLocal === isLocal)
+          || (controller === 'opponent' && landIsLocal !== isLocal);
+        const watchersSnapshot = [
+          ...state.localCombat.map(unit => ({ unit, isLocal: true })),
+          ...state.rivalCombat.map(unit => ({ unit, isLocal: false }))
+        ];
+        const doomed = [];
+        const seen = new Set();
+        for (const [landIsLocal, zones] of [[true, [state.localLands, state.localCombat]], [false, [state.rivalLands, state.rivalCombat]]]) {
+          if (!controllerAllows(landIsLocal)) continue;
+          for (const unit of zones.flat()) {
+            if (!unit || seen.has(unit) || !isLandPermanent(unit) || !landMatchesEffectiveFilter(state, unit, landIsLocal, filter)) continue;
+            seen.add(unit);
+            if (hasKeyword(unit, 'indestructible')) continue;
+            const inCombat = (landIsLocal ? state.localCombat : state.rivalCombat).includes(unit);
+            doomed.push({ unit, isLocal: landIsLocal, wasCreature: inCombat && isCreaturePermanent(unit) });
+          }
+        }
+
+        let localCount = 0, rivalCount = 0;
+        const deadCreatures = [];
+        for (const entry of doomed) {
+          const { unit, isLocal: landIsLocal, wasCreature } = entry;
+          const landZone = landIsLocal ? state.localLands : state.rivalLands;
+          const combatZone = landIsLocal ? state.localCombat : state.rivalCombat;
+          const grave = landIsLocal ? state.localGraveyard : state.rivalGraveyard;
+          const zone = combatZone.includes(unit) ? combatZone : landZone;
+          const idx = zone.indexOf(unit);
+          if (idx === -1) continue;
+          zone.splice(idx, 1);
+          if (wasCreature) {
+            detachEquipmentFrom(unit, landIsLocal);
+            sendAurasToGraveyard(unit, landIsLocal);
+            deadCreatures.push({ unit, isLocal: landIsLocal });
+          }
+          moveBattlefieldCardToZone(unit.card, grave);
+          if (landIsLocal) localCount += 1; else rivalCount += 1;
+        }
+        if (deadCreatures.length) queueCreatureDeathBatch(deadCreatures, watchersSnapshot);
+        logMsg(gameText('land.destroy.mass', { card: card.name, local: localCount, rivalCount, rival: getRivalName() }));
+        recordTelemetryEvent('lands_destroyed_mass', { source: card.name, localCount, rivalCount, filter, controller });
       }
       // LÓGICA NUEVA: CREAR FICHAS
       else if (effectToApply.type === 'create_tokens') {
@@ -1290,6 +1410,13 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
       // El selector del Punto 6 decide QUÉ carta(s); esta rama sólo compromete el movimiento.
       // No usa target externo: siempre recupera desde el cementerio del controlador hacia
       // su propia mano. En multiplayer remoto, el dueño real ejecuta el movimiento.
+      else if (effectToApply.type === 'return_lands_from_graveyard' || effectToApply.type === 'return_all_lands_from_graveyard') {
+        const returnedNames = await resolveReturnLandsFromGraveyardEffect(effectToApply, card, isLocal);
+        if (returnedNames.length > 0) logMsg(gameText('land.grave.returned', { card: card.name, count: returnedNames.length, cards: returnedNames.join(', ') }));
+        else logMsg(gameText('land.grave.noneToReturn', { card: card.name }));
+        recordTelemetryEvent('lands_returned_from_graveyard', { source:card.name, isLocal, count:returnedNames.length, type:effectToApply.type });
+      }
+      // PUNTO 15 PRE-500: RECUPERAR CARTAS DEL CEMENTERIO A LA MANO.
       else if (effectToApply.type === 'return_from_graveyard') {
         const returnedNames = await resolveReturnFromGraveyardEffect(effectToApply, card, isLocal);
         if (returnedNames.length > 0) {
@@ -1298,56 +1425,29 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           logMsg(gameText('effect.returnGrave.none', { card: card.name }));
         }
       }
-      // LÓGICA NUEVA: BUSCAR TIERRAS (rampa de maná)
-      else if (effectToApply.type === 'ramp') {
-        // FASE 4, ETAPA 5: si esto buscara en el mazo del RIVAL en multiplayer (no debería
-        // pasar en la práctica — la rampa siempre busca en el propio mazo — pero por las
-        // dudas, blindaje defensivo contra revisar propiedades de un valor vacío).
-        if (isHiddenRivalZone(isLocal)) {
-          logMsg(gameText('effect.ramp.privateRival', { card: card.name }));
+      // LAND 3 — tutor avanzado de Tierras. `ramp` legacy queda como alias de
+      // search_land(filter=basic,destination=battlefield) para que las cartas existentes
+      // usen el mismo selector por carta, privacidad multiplayer, Landfall y mareo.
+      else if (effectToApply.type === 'search_land' || effectToApply.type === 'ramp') {
+        const searchEffect = effectToApply.type === 'ramp'
+          ? {
+              type: 'search_land',
+              amount: effectToApply.amount || 1,
+              filter: effectToApply.filter || 'basic',
+              destination: effectToApply.destination || 'battlefield',
+              allowFewer: true,
+              reveal: false
+            }
+          : effectToApply;
+        const result = await searchLibraryForLands({ isLocal, effect: searchEffect, cardName: card.name });
+        if (result.selectedCount > 0) {
+          logMsg(gameText('land.search.done', {
+            card: card.name,
+            count: result.selectedCount,
+            cards: result.movedNames?.length ? result.movedNames.join(', ') : gameText('land.search.revealedFallback')
+          }));
         } else {
-        const deck = isLocal ? state.localDeck : state.rivalDeck;
-        const landZone = isLocal ? state.localLands : state.rivalLands;
-        const amount = effectToApply.amount || 1;
-        let foundCount = 0;
-        for (let i = 0; i < amount; i++) {
-          // BUG 2 (post-lanzamiento): antes tomaba directo la PRIMERA tierra básica que
-          // encontraba en el mazo (mezclado al azar, sin dejarte elegir). Ahora, si sos vos
-          // (con pantalla real), te deja elegir el COLOR entre los que de verdad tenés
-          // disponibles en el mazo — recién ahí buscamos una tierra de ese color puntual.
-          const availableColors = [...new Set(
-            deck.filter(c => c.type.includes('Tierra') && c.type.includes('básica')).map(c => c.produces)
-          )];
-          if (availableColors.length === 0) break;
-
-          // El Tano (isLocal:false, sin UI real detrás) no puede "elegir" en una pantalla —
-          // toma el primer color disponible, mismo comportamiento que antes tenía TODO el
-          // mundo. Solo el jugador con pantalla de verdad ve el modal.
-          const chosenColor = isLocal
-            ? await new Promise(resolve => showRampLandChoiceModal(availableColors, card.name, resolve))
-            : availableColors[0];
-
-          const idx = deck.findIndex(c => c.type.includes('Tierra') && c.type.includes('básica') && c.produces === chosenColor);
-          if (idx === -1) break; // no debería pasar (chosenColor salió de availableColors), defensivo
-          const landCard = deck.splice(idx, 1)[0];
-          const landItem = { card: landCard, tapped: !!landCard.entersTapped };
-          landZone.push(landItem);
-          foundCount++;
-          // PUNTO 2: Ramp PONE una Tierra en el campo, así que también dispara Landfall.
-          // Se espera cada entrada antes de buscar la siguiente: con Ramp 2, los triggers de
-          // la primera Tierra terminan antes de que la segunda entre, evitando solapamientos.
-          await triggerLandEtb(isLocal, landCard, landItem);
-        }
-        // Barajamos el resto del mazo tras buscar
-        for (let i = deck.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [deck[i], deck[j]] = [deck[j], deck[i]];
-        }
-        if (foundCount > 0) {
-          logMsg(gameText('effect.ramp.done', { card: card.name, count: foundCount }));
-        } else {
-          logMsg(gameText('effect.ramp.none', { card: card.name }));
-        }
+          logMsg(gameText('land.search.none', { card: card.name }));
         }
       }
       else {
@@ -1367,7 +1467,7 @@ export function canResolveGameEffectWithoutTarget(effectType) {
   return [
     'draw', 'loot', 'rummage', 'sacrifice', 'heal', 'damage', 'fog', 'draw_and_lose_life', 'drain', 'discard',
     'scry', 'surveil', 'proliferate', 'destroy_all_creatures', 'create_tokens',
-    'reanimate', 'return_from_graveyard', 'ramp'
+    'reanimate', 'return_from_graveyard', 'return_lands_from_graveyard', 'return_all_lands_from_graveyard', 'ramp', 'search_land', 'animate_land', 'destroy_all_lands'
   ].includes(effectType);
 }
 
@@ -1380,7 +1480,7 @@ export function canResolveGameEffectWithTarget(effectType) {
     'damage', 'heal', 'poison', 'discard', 'private_zone_move', 'exile_graveyard', 'prevent_attack', 'cant_attack_next_turn',
     'pump', 'grant_keyword_temp', 'attach_equipment', 'fight', 'add_counter',
     'destroy_creature', 'exile_creature', 'exile_and_return', 'bounce',
-    'destroy_artifact', 'destroy_enchantment'
+    'destroy_artifact', 'destroy_enchantment', 'destroy_land', 'destroy_nonbasic_land'
   ].includes(effectType);
 }
 
@@ -1395,8 +1495,8 @@ export function getEffectExecutionClass(effectType) {
     'scry', 'surveil', 'proliferate', 'poison', 'private_zone_move', 'exile_graveyard', 'prevent_attack', 'cant_attack_next_turn',
     'pump', 'grant_keyword_temp', 'attach_equipment', 'fight', 'add_counter',
     'destroy_creature', 'exile_creature', 'exile_and_return', 'bounce',
-    'destroy_artifact', 'destroy_enchantment', 'crew_vehicle',
-    'destroy_all_creatures', 'create_tokens', 'reanimate', 'return_from_graveyard', 'ramp'
+    'destroy_artifact', 'destroy_enchantment', 'destroy_land', 'destroy_nonbasic_land', 'crew_vehicle', 'animate_land',
+    'destroy_all_creatures', 'destroy_all_lands', 'create_tokens', 'reanimate', 'return_from_graveyard', 'return_lands_from_graveyard', 'return_all_lands_from_graveyard', 'ramp', 'search_land'
   ].includes(effectType)) return 'discrete';
   return 'unknown';
 }
@@ -1496,7 +1596,7 @@ async function executeStackItem(item) {
       }
     } else {
       // enteredThisTurn: para que un Vehículo recién jugado y tripulado en el mismo turno
-      // respete el mareo de invocación al convertirse en criatura (ver crew_vehicle abajo).
+      // respete el mareo de invocación al convertirse en criatura (ver animate_land / LAND 1).
       newPermanentItem = { card, tapped: false, enteredThisTurn: true };
       // Los Equipos entran al campo sin equipar a nadie todavía (se equipan pagando Equipar).
       if (card.equipment) newPermanentItem.attachedTo = null;

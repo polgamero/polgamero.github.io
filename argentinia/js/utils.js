@@ -1,3 +1,4 @@
+import { isCreaturePermanent, isArtifactPermanent, isLandPermanent } from './permanentTypes.js';
 import { cardDb } from './cardLoader.js';
 import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
 
@@ -56,8 +57,9 @@ export function isSacrificeCandidate(item, eligibleType) {
   if (!item) return false;
   const card = item.card || item;
   if (!card) return false;
-  if (eligibleType === 'creature') return card.power !== undefined || !!item.isVehicle;
-  if (eligibleType === 'artifact') return typeof card.type === 'string' && card.type.includes('Artefacto');
+  if (eligibleType === 'creature') return isCreaturePermanent(item);
+  if (eligibleType === 'artifact') return isArtifactPermanent(item);
+  if (eligibleType === 'land') return isLandPermanent(item);
   return false;
 }
 
@@ -371,7 +373,7 @@ export function buildDeckFromCardIds(cardIds, enhancements) {
 }
 
 export function parseManaCost(manaString) {
-  const cost = { W: 0, U: 0, B: 0, R: 0, G: 0, generic: 0 };
+  const cost = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0, generic: 0 };
   if (!manaString) return cost;
   const matches = manaString.match(/\{[^}]+\}/g);
   if (!matches) return cost;
@@ -379,7 +381,7 @@ export function parseManaCost(manaString) {
     const val = m.replace(/[{}]/g, '');
     if (val === 'X') return; // El valor de X se suma aparte, una vez que el jugador lo elige
                               // (no se sabe todavía en este punto — ver confirmXValue en main.js).
-    if (['W', 'U', 'B', 'R', 'G'].includes(val)) cost[val] += 1;
+    if (['W', 'U', 'B', 'R', 'G', 'C'].includes(val)) cost[val] += 1;
     else if (!isNaN(val)) cost.generic += parseInt(val, 10);
   });
   return cost;
@@ -394,6 +396,7 @@ export function sumManaCosts(a, b) {
     B: (a.B || 0) + (b.B || 0),
     R: (a.R || 0) + (b.R || 0),
     G: (a.G || 0) + (b.G || 0),
+    C: (a.C || 0) + (b.C || 0),
     generic: (a.generic || 0) + (b.generic || 0)
   };
 }
@@ -479,7 +482,7 @@ export function generateGuaranteedMythicCard() {
 //     manaCost: '{1}' | null,
 //     life: 1,
 //     discard: { amount:1, selection:'choice', color:'U' },
-//     sacrifice: { target:'own_creature'|'own_artifact', amount:1 },
+//     sacrifice: { target:'own_creature'|'own_artifact'|'own_land', amount:1 },
 //     exileFromGraveyard: { amount:2, filter:'any' }
 //   }
 // Un objeto puede combinar varios componentes. `manaCost:null` significa 0 maná.
@@ -570,7 +573,7 @@ export function describeCompositeCost(cost) {
     parts.push(`descartar ${c.discard.amount} carta${c.discard.amount > 1 ? 's' : ''}${color}`);
   }
   if (c.sacrifice && c.sacrifice.amount > 0) {
-    const what = c.sacrifice.target === 'own_artifact' ? 'artefacto' : c.sacrifice.target === 'own_creature' ? 'criatura' : 'permanente';
+    const what = c.sacrifice.target === 'own_artifact' ? 'artefacto' : c.sacrifice.target === 'own_creature' ? 'criatura' : c.sacrifice.target === 'own_land' ? 'tierra' : 'permanente';
     parts.push(`sacrificar ${c.sacrifice.amount} ${what}${c.sacrifice.amount > 1 ? 's' : ''}`);
   }
   if (c.exileFromGraveyard && c.exileFromGraveyard.amount > 0) {

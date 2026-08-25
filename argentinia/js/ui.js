@@ -16,6 +16,7 @@ import {
   handleInstantActivatedAbilityClick,
   handlePlaneswalkerClick,
   handleSupportTargetClick,
+  handleLandTargetClick,
   handlePlayerTargetClick,
   cancelPayment,
   payWithAlternativeCost,
@@ -25,11 +26,15 @@ import {
   activateLoyaltyAbility,
   castFromGraveyard,
   canManaSourcePayPendingCost,
+  canActivateLocalManaAbility,
+  spendLocalManaFromPool,
   checkGameOver,
   checkAuraLegality,
   checkEquipmentLegality,
   publishMatchState,
   ensureMenuIdentityReady,
+  hasLandPlayFromGraveyardPermission,
+  openLandFromGraveyardPlayChoice,
   passPriority // Importado del nuevo sistema
 } from './main.js';
 
@@ -68,6 +73,9 @@ import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 import { enterMenuAudio, getAudioSettings, toggleMusic, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
+import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
+import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
+import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandActivatedAbilities, describeLandTransformation } from './landCharacteristics.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -91,6 +99,8 @@ export const els = {
   localPlayerName: document.getElementById('local-player-name'),
   rivalAvatar: document.getElementById('rival-avatar'),
   rivalPlayerName: document.querySelector('.rival-card .player-info h3'),
+  localManaPool: document.getElementById('local-mana-pool'),
+  rivalManaPool: document.getElementById('rival-mana-pool'),
   localPlayerCard: document.querySelector('.player-card.local-card'),
   rivalPlayerCard: document.querySelector('.player-card.rival-card'),
   turnPriorityHud: document.getElementById('turn-priority-hud'),
@@ -216,6 +226,19 @@ export function updatePilesUI() {
     const topCard = state.localGraveyard[state.localGraveyard.length - 1];
     const cardEl = createCardElement(topCard, false, true, null, 'graveyard');
     localGYContent.appendChild(cardEl);
+    if (hasLandPlayFromGraveyardPermission(true)) {
+      const playLandBtn = document.createElement('button');
+      playLandBtn.type = 'button';
+      playLandBtn.className = 'graveyard-play-land-btn';
+      playLandBtn.textContent = '🌱';
+      playLandBtn.title = gameText('land.grave.buttonTitle');
+      playLandBtn.setAttribute('aria-label', gameText('land.grave.buttonAria'));
+      playLandBtn.addEventListener('click', (ev) => {
+        ev.preventDefault(); ev.stopPropagation();
+        openLandFromGraveyardPlayChoice();
+      });
+      localGYContent.appendChild(playLandBtn);
+    }
   } else {
     localGYContent.innerHTML = `<span style="font-size:10px; color:#7f8c8d;">Vacío</span>`;
   }
@@ -297,7 +320,7 @@ export function showXValueModal(card, onConfirm, onCancel) {
   const untappedRocks = state.localSupport.filter(s => !s.tapped && (s.card.produces || s.card.producesOptions)).length;
   const baseCost = { ...card };
   const restOfCostSymbols = (card.manaCost.match(/\{[^}]+\}/g) || []).filter(s => s !== '{X}').length;
-  const roughMaxX = Math.max(0, (untappedLands + untappedRocks) - restOfCostSymbols);
+  const roughMaxX = Math.max(0, manaPoolTotal(state.localManaPool) + untappedLands + untappedRocks - restOfCostSymbols);
 
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
@@ -384,6 +407,73 @@ export function showCounterTaxDecisionModal(amount, targetCardName, onPay, onDec
   modalOverlay.querySelector('#counter-tax-decline').addEventListener('click', () => {
     modalOverlay.remove();
     onDecline();
+  });
+}
+
+// LAND 3 — selector de biblioteca para tutores de Tierras. A diferencia del viejo Ramp
+// por color, muestra las cartas REALES que cumplen el filtro y permite encontrar menos
+// (incluso 0) cuando la búsqueda en zona oculta lo autoriza.
+export function showLandSearchModal(options, onConfirm) {
+  injectMulliganStyles();
+  const candidates = Array.isArray(options?.candidates) ? options.candidates : [];
+  const maxCount = Math.max(0, Math.floor(Number(options?.maxCount || 0)));
+  const allowFewer = options?.allowFewer !== false;
+  const cardName = options?.cardName || gameText('selection.private.effectFallback');
+  const chosen = new Set();
+  state.pendingLandSearchChoice = state.pendingLandSearchChoice || { cardName, maxCount };
+
+  const overlay = document.createElement('div');
+  overlay.id = 'mulligan-overlay';
+  overlay.innerHTML = `
+    <div class="mulligan-panel">
+      <div class="mulligan-title">${gameTextHtml('land.search.title', { card: cardName })}</div>
+      <div class="mulligan-subtitle" id="land-search-hint">${gameTextHtml('land.search.subtitle', {
+        count: maxCount,
+        filter: options?.filterLabel || gameText('land.search.filter.any'),
+        destination: options?.destinationLabel || gameText('land.search.destination.battlefield'),
+        selected: 0
+      })}</div>
+      <div class="mulligan-hand-row-slot"></div>
+      <div class="mulligan-buttons">
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-land-search">${gameTextHtml('land.search.confirm')}</button>
+      </div>
+    </div>`;
+
+  const hint = () => overlay.querySelector('#land-search-hint');
+  const confirm = () => overlay.querySelector('#btn-confirm-land-search');
+  const row = document.createElement('div');
+  row.className = 'mulligan-hand-row';
+  candidates.forEach(entry => {
+    let cardEl;
+    const toggle = () => {
+      if (chosen.has(entry.index)) {
+        chosen.delete(entry.index);
+        cardEl.classList.remove('chosen');
+      } else if (chosen.size < maxCount) {
+        chosen.add(entry.index);
+        cardEl.classList.add('chosen');
+      }
+      hint().textContent = gameText('land.search.subtitle', {
+        count: maxCount,
+        filter: options?.filterLabel || gameText('land.search.filter.any'),
+        destination: options?.destinationLabel || gameText('land.search.destination.battlefield'),
+        selected: chosen.size
+      });
+      confirm().disabled = !allowFewer && chosen.size !== maxCount;
+      confirm().textContent = chosen.size === 0 ? gameText('land.search.failToFind') : gameText('land.search.confirm');
+    };
+    cardEl = createCardElement({ card: entry.card }, false, true, null, 'mulligan-pick', toggle);
+    cardEl.classList.add('mulligan-card-slot', 'selectable');
+    row.appendChild(cardEl);
+  });
+  overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
+  document.body.appendChild(overlay);
+  confirm().disabled = !allowFewer && maxCount > 0;
+  confirm().textContent = gameText('land.search.failToFind');
+  confirm().addEventListener('click', () => {
+    if (!allowFewer && chosen.size !== maxCount) return;
+    overlay.remove();
+    onConfirm([...chosen]);
   });
 }
 
@@ -605,7 +695,9 @@ export function showActivatedAbilityModal(cardName, options, onChoose, onCancel)
       fight: 'ability.effect.fight', attach_equipment: 'ability.effect.attach_equipment', exile_creature: 'ability.effect.exile_creature',
       exile_and_return: 'ability.effect.exile_and_return', ramp: 'ability.effect.ramp', create_tokens: 'ability.effect.create_tokens',
       grant_keyword_temp: 'ability.effect.grant_keyword_temp', draw_and_lose_life: 'ability.effect.draw_and_lose_life',
-      discard: 'ability.effect.discard', sacrifice: 'ability.effect.sacrifice', reanimate: 'ability.effect.reanimate',
+      discard: 'ability.effect.discard', sacrifice: 'ability.effect.sacrifice', reanimate: 'ability.effect.reanimate', search_land: 'ability.effect.search_land',
+      destroy_land: 'ability.effect.destroy_land', destroy_nonbasic_land: 'ability.effect.destroy_nonbasic_land', animate_land: 'ability.effect.animate_land',
+      return_lands_from_graveyard: 'ability.effect.return_lands_from_graveyard',
       scry: 'ability.effect.scry', surveil: 'ability.effect.surveil', proliferate: 'ability.effect.proliferate'
     };
     const base = labelKeys[effect.type] ? gameText(labelKeys[effect.type]) : (effect.type || gameText('ability.effect.generic'));
@@ -617,7 +709,7 @@ export function showActivatedAbilityModal(cardName, options, onChoose, onCancel)
     const bits = [];
     if (ability.cost) bits.push(ability.cost);
     if (ability.sacrifice) {
-      const sac = ability.sacrifice === 'self' ? gameText('ability.cost.sacSelf') : (ability.sacrifice === 'creature' ? gameText('ability.cost.sacCreature') : gameText('ability.cost.sacArtifact'));
+      const sac = ability.sacrifice === 'self' ? gameText('ability.cost.sacSelf') : (ability.sacrifice === 'creature' ? gameText('ability.cost.sacCreature') : ability.sacrifice === 'land' ? gameText('ability.cost.sacLand') : gameText('ability.cost.sacArtifact'));
       bits.push(sac);
     }
     return bits.join(', ') || '{0}';
@@ -823,6 +915,82 @@ export function openExileModal(isLocal) {
   modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
 }
 
+export function showManaColorChoiceModal(cardName, options, onChoose) {
+  const normalized = [...new Set((options || []).filter(t => MANA_TYPES.includes(t)))];
+  if (!normalized.length) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'gy-modal-overlay';
+  const choices = normalized.map(type => `
+    <button class="mana-choice-btn" data-mana-type="${type}">
+      ${renderManaIcon(type, 'mana-icon-inline')}
+      <span>${gameText(`mana.color.${type}`)}</span>
+    </button>`).join('');
+  overlay.innerHTML = `
+    <div class="gy-modal-content mana-choice-modal">
+      <div class="gy-modal-header"><h3>${gameTextHtml('mana.chooseColor.title', { card: cardName })}</h3></div>
+      <div class="mana-choice-grid">${choices}</div>
+      <button class="mulligan-btn mulligan-btn-mull mana-choice-cancel">${gameTextHtml('common.cancel')}</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelectorAll('[data-mana-type]').forEach(btn => btn.addEventListener('click', () => {
+    const type = btn.dataset.manaType;
+    overlay.remove();
+    onChoose?.(type);
+  }));
+  const close = () => overlay.remove();
+  overlay.querySelector('.mana-choice-cancel').onclick = close;
+  overlay.onclick = e => { if (e.target === overlay) close(); };
+}
+
+export function showManaOrAbilityChoiceModal(cardName, onMana, onAbility) {
+  const overlay = document.createElement('div');
+  overlay.className = 'gy-modal-overlay';
+  overlay.innerHTML = `
+    <div class="gy-modal-content mana-choice-modal">
+      <div class="gy-modal-header"><h3>${gameTextHtml('mana.sourceChoice.title', { card: cardName })}</h3></div>
+      <div class="mana-source-choice-actions">
+        <button class="mulligan-btn mulligan-btn-keep" data-source-action="mana">${gameTextHtml('mana.sourceChoice.addMana')}</button>
+        <button class="mulligan-btn" data-source-action="ability">${gameTextHtml('mana.sourceChoice.ability')}</button>
+      </div>
+      <button class="mulligan-btn mulligan-btn-mull mana-choice-cancel">${gameTextHtml('common.cancel')}</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('[data-source-action="mana"]').onclick = () => { overlay.remove(); onMana?.(); };
+  overlay.querySelector('[data-source-action="ability"]').onclick = () => { overlay.remove(); onAbility?.(); };
+  const close = () => overlay.remove();
+  overlay.querySelector('.mana-choice-cancel').onclick = close;
+  overlay.onclick = e => { if (e.target === overlay) close(); };
+}
+
+function renderManaPoolHud() {
+  const renderOne = (container, pool, isLocal) => {
+    if (!container) return;
+    container.innerHTML = '';
+    const total = manaPoolTotal(pool);
+    container.classList.toggle('mana-pool-empty', total <= 0);
+    container.setAttribute('aria-label', isLocal ? gameText('mana.pool.localAria') : gameText('mana.pool.rivalAria'));
+    if (total <= 0) return;
+    for (const type of MANA_TYPES) {
+      const amount = Math.max(0, Number(pool?.[type]) || 0);
+      if (!amount) continue;
+      const chip = document.createElement(isLocal ? 'button' : 'span');
+      chip.className = `mana-pool-chip mana-pool-${type.toLowerCase()}${isLocal && state.pendingCost ? ' mana-pool-spendable' : ''}`;
+      chip.innerHTML = `${renderManaIcon(type, 'mana-icon-pool')}<span class="mana-pool-count">${amount}</span>`;
+      chip.title = isLocal
+        ? (state.pendingCost ? gameText('mana.pool.clickSpend', { mana:`{${type}}`, amount }) : gameText('mana.pool.floating', { mana:`{${type}}`, amount }))
+        : gameText('mana.pool.rivalFloating', { mana:`{${type}}`, amount });
+      if (isLocal) {
+        chip.type = 'button';
+        chip.disabled = !state.pendingCost;
+        chip.onclick = () => spendLocalManaFromPool(type);
+      }
+      container.appendChild(chip);
+    }
+  };
+  renderOne(els.localManaPool, state.localManaPool, true);
+  renderOne(els.rivalManaPool, state.rivalManaPool, false);
+}
+
 export function logMsg(msg) {
   recordTelemetryUiLog(msg);
   const entry = document.createElement('div');
@@ -911,6 +1079,23 @@ export function getTargetRules(card) {
   const firstActivated = Array.isArray(card.activatedAbilities) ? card.activatedAbilities[0] : card.activatedAbility;
   const firstGranted = Array.isArray(card.grantedAbilities) ? card.grantedAbilities[0] : card.grantedAbility;
   const effectType = card.effect?.type || firstActivated?.effect?.type || firstGranted?.effect?.type;
+
+  const effect = card.effect || firstActivated?.effect || firstGranted?.effect || {};
+  // LAND 1/2: contrato genérico de target Tierra + vocabulario nativo de destrucción.
+  // destroy_land apunta a cualquier Tierra; destroy_nonbasic_land fuerza el filtro nonbasic.
+  // targetController permite reutilizar la misma infraestructura para futuras habilidades propias/rivales.
+  if (effect.targetKind === 'land' || effectType === 'destroy_land' || effectType === 'destroy_nonbasic_land') {
+    const controller = effect.targetController || 'any';
+    const landFilter = effectType === 'destroy_nonbasic_land' ? 'nonbasic' : (effect.landFilter || 'any');
+    return {
+      allowPlayer: false, allowLocalCreature: false, allowRivalCreature: false,
+      allowLocalPermanent: false, allowRivalPermanent: false,
+      allowLocalLand: controller !== 'opponent',
+      allowRivalLand: controller !== 'self',
+      allowLocalPlaneswalker: false, allowRivalPlaneswalker: false,
+      landFilter
+    };
+  }
 
   if (effectType === 'destroy_artifact') {
     // PUNTO 10 PRE-500: un Artefacto sigue siendo Artefacto aunque esté representado en
@@ -1013,6 +1198,7 @@ function fitScaleByLength(len, idealChars, minScale = 0.55) {
 
 export function createCardElement(itemObj, isTapped = false, isLocal = true, index = null, zone = 'hand', customClick = null) {
   const card = itemObj.card || itemObj;
+  const isBattlefieldLand = !!itemObj?.card && isLandPermanent(itemObj) && (zone === 'land' || zone === 'combat' || zone === 'support');
   const el = document.createElement('div');
   
   const isSick = itemObj.summoningSickness ? 'sick' : '';
@@ -1024,13 +1210,18 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   if (state.pendingTargetCard) {
     const rules = getTargetRules(state.pendingTargetCard);
     if (zone === 'combat') {
-      const allowThisSide = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
-      const matchesFilter = !rules.creatureFilter || card.type.includes(rules.creatureFilter);
-      isTargetable = allowThisSide && matchesFilter;
+      const allowCreatureSide = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
+      const creatureMatch = allowCreatureSide && (!rules.creatureFilter || card.type.includes(rules.creatureFilter));
+      const allowLandSide = isLocal ? rules.allowLocalLand : rules.allowRivalLand;
+      const landMatch = isLandPermanent(itemObj) && !!allowLandSide && landMatchesEffectiveFilter(state, itemObj, isLocal, rules.landFilter || 'any');
+      isTargetable = creatureMatch || landMatch;
     } else if (zone === 'support') {
       const allowThisSide = isLocal ? rules.allowLocalPermanent : rules.allowRivalPermanent;
       const matchesFilter = !rules.permanentFilter || card.type.includes(rules.permanentFilter);
       isTargetable = allowThisSide && matchesFilter;
+    } else if (zone === 'land') {
+      const allowThisSide = isLocal ? rules.allowLocalLand : rules.allowRivalLand;
+      isTargetable = !!allowThisSide && landMatchesEffectiveFilter(state, itemObj, isLocal, rules.landFilter || 'any');
     } else if (zone === 'planeswalker') {
       // BUG ENCONTRADO Y ARREGLADO (Cabo suelto #13, parte visual): el click ya funcionaba
       // una vez arreglado en handlePlaneswalkerClick, pero el brillo dorado de "esto se
@@ -1043,7 +1234,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const { eligibleType } = state.pendingSacrificeChoice;
     // ETAPA MOTOR 1: el brillo usa la MISMA validación real que el click. Un Encantamiento
     // ya no puede disfrazarse de "artefacto", y un Vehículo tripulado sigue siendo Artefacto.
-    const zoneCanContainSacrifice = zone === 'combat' || zone === 'support';
+    const zoneCanContainSacrifice = zone === 'combat' || zone === 'support' || zone === 'land';
     if (zoneCanContainSacrifice && isSacrificeCandidate(itemObj, eligibleType)) isTargetable = true;
   } else if (state.pendingCrew && isLocal && zone === 'combat') {
     // Elegible si está sin girar, o si ya la elegiste (clickearla de nuevo la saca).
@@ -1061,12 +1252,12 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   // Si el motor aceptaría esta fuente para el costo pendiente, la UI la marca también.
   const isManaPayable = isLocal && !itemObj.tapped &&
     (zone === 'land' || zone === 'support') &&
-    canManaSourcePayPendingCost(card);
+    canManaSourcePayPendingCost(itemObj, isLocal);
   const manaPayableClass = isManaPayable ? 'mana-payable' : '';
 
   // Punto 12: acceso separado para habilidades instantáneas. En Combat el click normal puede
   // estar ocupado declarando ataque/bloqueo, así que un pequeño botón ⚡ evita ambigüedad.
-  const ownInstantAbility = getActivatedAbilities(card).some(ab => getActivatedAbilityTiming(ab) === 'instant');
+  const ownInstantAbility = (isBattlefieldLand ? getEffectiveLandActivatedAbilities(state, itemObj, isLocal) : getActivatedAbilities(card)).some(ab => getActivatedAbilityTiming(ab) === 'instant');
   const grantedInstantAbility = zone === 'combat' && isLocal && (getEquipmentOn(itemObj) || []).some(eq =>
     getGrantedAbilities(eq.card).some(ab => getActivatedAbilityTiming(ab) === 'instant')
   );
@@ -1125,9 +1316,18 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   } else {
     // 23.13.20 — la misma capa visual sirve para costes de habilidades y para el maná
     // declarado por Tierras. Los JSON siguen canónicos ({W}/{U}/{B}/{R}/{G}); sólo cambia UI.
+    const landTransformation = isBattlefieldLand ? describeLandTransformation(state, itemObj, isLocal) : null;
     let formattedText = card.text ? renderInlineGameSymbols(card.text) : '';
+    if (landTransformation?.printedAbilitiesSuppressed) {
+      const manaOptions = landTransformation.manaAbility?.options || [];
+      const manaText = manaOptions.map(m => `{${m}}`).join(' / ');
+      formattedText = manaText
+        ? renderInlineGameSymbols(gameText('land.transform.rulesText', { mana:manaText }))
+        : gameText('land.transform.noAbilities');
+    }
 
-    const effKeywords = card.power !== undefined ? getEffectiveKeywords(itemObj) : [];
+    const hasCreatureStats = isCreaturePermanent(itemObj);
+  const effKeywords = hasCreatureStats ? getEffectiveKeywords(itemObj) : [];
 
     const KEYWORD_LABELS = { 
       flying: '🕊️ Vuela', trample: '🐘 Arrolla', hexproof: '🛡️ Intocable', haste: '⚡ Prisa', 
@@ -1155,12 +1355,14 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     formattedTextHTML = `<div class="card-text-box" style="font-size: clamp(4px, ${(6 * textBoxScale).toFixed(2)}cqw, 26px);">${keywordsHTML}<i>${card.flavorText || ''}</i><br><strong>${formattedText}</strong></div>`;
   }
 
-  const effPower = card.power !== undefined ? getEffectivePower(itemObj) : undefined;
-  const effToughness = card.toughness !== undefined ? getEffectiveToughness(itemObj) : undefined;
-  const isBuffed = effPower !== undefined && (effPower !== card.power || effToughness !== card.toughness);
+  const effPower = hasCreatureStats ? getEffectivePower(itemObj) : undefined;
+  const effToughness = hasCreatureStats ? getEffectiveToughness(itemObj) : undefined;
+  const basePowerForUi = itemObj.animatedBasePower ?? card.power;
+  const baseToughnessForUi = itemObj.animatedBaseToughness ?? card.toughness;
+  const isBuffed = effPower !== undefined && (effPower !== basePowerForUi || effToughness !== baseToughnessForUi);
 
-  let ptText = card.power !== undefined ? `${effPower}/${effToughness}` : '';
-  if (itemObj.damageTaken > 0 && card.toughness !== undefined) {
+  let ptText = hasCreatureStats ? `${effPower}/${effToughness}` : '';
+  if (itemObj.damageTaken > 0 && hasCreatureStats) {
     ptText = `${effPower}/<span style="color:#e74c3c;">${effToughness - itemObj.damageTaken}</span>`;
   } else if (isBuffed) {
     ptText = `<span style="color:#27ae60;">${effPower}/${effToughness}</span>`;
@@ -1169,6 +1371,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   // Lealtad de un Planeswalker: mismo cuadrito que Poder/Resistencia, pero con su propio
   // color (violeta, como en las cartas reales) para diferenciarlo de un vistazo.
   const isPlaneswalker = card.type.includes('Planeswalker');
+  const effectiveLandType = isBattlefieldLand ? getEffectiveLandTypeLine(state, itemObj, isLocal) : card.type;
+  const displayType = itemObj.isAnimatedLand ? `${effectiveLandType} · Criatura` : effectiveLandType;
   const loyaltyText = isPlaneswalker ? `${itemObj.loyalty}` : '';
 
   const attachedAuras = itemObj.auras || [];
@@ -1275,9 +1479,9 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
         <div style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;">${icon}</div>
         ${card.image ? `<img class="card-art-image" src="./assets/images/cards/${card.image}" alt="${card.name}"${browserImageAttrs} style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
       </div>
-      <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(card.type, 16, 0.3)).toFixed(2)}cqw, 30px);">${card.type}</span><span class="rarity-icon">●</span></div>
+      <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(displayType, 16, 0.3)).toFixed(2)}cqw, 30px);">${displayType}</span><span class="rarity-icon">●</span></div>
       ${formattedTextHTML}
-      ${card.power !== undefined ? `<div class="card-pt">${ptText}</div>` : ''}
+      ${hasCreatureStats ? `<div class="card-pt">${ptText}</div>` : ''}
       ${isPlaneswalker ? `<div class="card-pt card-loyalty">${loyaltyText}</div>` : ''}
       ${auraBadgeHTML}
     </div>
@@ -1327,15 +1531,20 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
         if (state.isDiscarding) await handleDiscardClick(index);
         else playCard(index);
       });
-    } else if (zone === 'land' && isLocal && !state.gameOver) {
-      el.addEventListener('click', () => tapLocalLand(itemObj));
+    } else if (zone === 'land' && !state.gameOver) {
+      el.addEventListener('click', () => {
+        if (state.pendingTargetCard || state.pendingMultiTargetChoice || state.pendingResolvedEffectTargetChoice) {
+          handleLandTargetClick(itemObj, isLocal, index);
+          return;
+        }
+        if (isLocal) tapLocalLand(itemObj);
+      });
     } else if (zone === 'combat' && !state.gameOver) {
       el.addEventListener('click', () => handleCombatClick(itemObj, isLocal, index));
     } else if (zone === 'support' && isLocal && !state.gameOver && (
       (state.activePlayer === 'local' && state.phase.startsWith('main')) ||
       (state.priorityPlayer === 'local' && hasExplicitInstantAbility) ||
-      ((card.produces || card.producesOptions) && state.pendingCost &&
-       (state.pendingCost.W + state.pendingCost.U + state.pendingCost.B + state.pendingCost.R + state.pendingCost.G + state.pendingCost.generic) > 0)
+      (canActivateLocalManaAbility(itemObj))
     )) {
       // HOTFIX 1.1 — fuentes de maná de Soporte (ej. Fajo de Dólares Blue) también deben
       // poder clickearse mientras pagás un instantáneo fuera de tu propia fase principal.
@@ -6949,6 +7158,52 @@ export function showProliferateModal(eligible, onConfirm) {
 }
 
 
+// LAND 5 — Winter Orb-style: durante Enderezar no hay prioridad, pero el jugador activo
+// sí debe determinar QUÉ Tierras endereza cuando existe un límite. Este modal no permite
+// acciones paralelas y exige exactamente la cantidad que las reglas normales harían enderezar.
+export function showUntapLandChoiceModal(entries, countToChoose, onConfirm) {
+  injectMulliganStyles();
+  const overlay = document.createElement('div');
+  overlay.id = 'mulligan-overlay';
+  const chosenIndexes = new Set();
+  const count = Math.max(0, Math.min(Number(countToChoose) || 0, entries.length));
+  overlay.innerHTML = `
+    <div class="mulligan-panel">
+      <div class="mulligan-title">${gameTextHtml('land.stax.untap.title', { count })}</div>
+      <div class="mulligan-subtitle" id="land-untap-count-hint">${gameTextHtml('selection.count', { selected:0, total:count })}</div>
+      <div class="mulligan-hand-row-slot"></div>
+      <div class="mulligan-buttons">
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-land-untap" disabled>${gameTextHtml('land.stax.untap.confirm')}</button>
+      </div>
+    </div>`;
+  const row = document.createElement('div');
+  row.className = 'mulligan-hand-row';
+  entries.forEach(entry => {
+    let cardEl;
+    const toggle = () => {
+      if (chosenIndexes.has(entry.index)) {
+        chosenIndexes.delete(entry.index);
+        cardEl.classList.remove('chosen');
+      } else if (chosenIndexes.size < count) {
+        chosenIndexes.add(entry.index);
+        cardEl.classList.add('chosen');
+      }
+      overlay.querySelector('#land-untap-count-hint').textContent = gameText('selection.count', { selected:chosenIndexes.size, total:count });
+      overlay.querySelector('#btn-confirm-land-untap').disabled = chosenIndexes.size !== count;
+    };
+    cardEl = createCardElement(entry.item, true, true, null, 'land', toggle);
+    cardEl.classList.add('mulligan-card-slot', 'selectable');
+    row.appendChild(cardEl);
+  });
+  overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
+  document.body.appendChild(overlay);
+  overlay.querySelector('#btn-confirm-land-untap').addEventListener('click', () => {
+    if (chosenIndexes.size !== count) return;
+    overlay.remove();
+    onConfirm([...chosenIndexes].sort((a,b)=>a-b));
+  });
+}
+
 // Punto 6: selector GENERAL de Cementerio. Recibe entries {card, index} para que dos
 // copias idénticas sigan siendo distinguibles por slot. `filterLabel` y `actionLabel` son
 // puramente visuales; la validación real de elegibilidad vive en main.js. No hay Cancelar:
@@ -7032,7 +7287,7 @@ export function showSacrificeEffectModal(candidates, countToSacrifice, cardName,
   overlay.id = 'mulligan-overlay';
 
   const chosen = new Set();
-  const typeLabel = permanentType === 'artifact' ? 'artefacto' : 'criatura';
+  const typeLabel = permanentType === 'artifact' ? 'artefacto' : permanentType === 'land' ? 'tierra' : 'criatura';
 
   overlay.innerHTML = `
     <div class="mulligan-panel">
@@ -7218,9 +7473,16 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
     
     const customClick = () => {
       if (state.gameOver) return;
-      if (zoneType === 'land' && isLocal) {
-        const readyLand = group.ready[0];
-        if (readyLand) tapLocalLand(readyLand);
+      if (zoneType === 'land') {
+        const { item: targetItem, originalIndex } = group.items[0];
+        if (state.pendingTargetCard || state.pendingMultiTargetChoice || state.pendingResolvedEffectTargetChoice) {
+          handleLandTargetClick(targetItem, isLocal, originalIndex);
+          return;
+        }
+        if (isLocal) {
+          const readyLand = group.ready[0];
+          if (readyLand) tapLocalLand(readyLand);
+        }
       } else if (zoneType === 'support') {
         // 23.7.2 P0: si estamos eligiendo el artefacto de un costo de sacrificio, ESE click
         // tiene prioridad absoluta. Antes el renderer agrupado intentaba tratar al Fajo como
@@ -7241,7 +7503,7 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
             return;
           }
         }
-        const supportHasAbility = getActivatedAbilities(group.items[0].item.card).length > 0;
+        const supportHasAbility = (isLandPermanent(group.items[0].item) ? getEffectiveLandActivatedAbilities(state, group.items[0].item, true) : getActivatedAbilities(group.items[0].item.card)).length > 0;
         const supportCanPayNow = !!state.pendingCost &&
           group.ready.some(x => canManaSourcePayPendingCost(x.card));
         // 23.7.1: con prioridad dejamos que el click llegue al validador central de timing.
@@ -7419,6 +7681,7 @@ export function render() {
   state.localHP = Math.max(0, Math.min(20, state.localHP));
   state.rivalHP = Math.max(0, Math.min(20, state.rivalHP));
   updateRivalAccountUI();
+  renderManaPoolHud();
 
   els.localHand.innerHTML = ''; state.localHand.forEach((card, idx) => els.localHand.appendChild(createCardElement(card, false, true, idx, 'hand')));
   els.rivalHand.innerHTML = ''; state.rivalHand.forEach(() => {
@@ -7476,7 +7739,7 @@ export function render() {
   // menos que pagues, etc.) — arriesgando una condición de carrera con esa resolución.
   // Misma lista que ya usa canPlayCard (más pendingTargetCard/pendingSacrificeChoice/
   // pendingHybridLifePayment, que faltaban ahí también).
-  const anyPendingChoice = !!state.pendingCastTransaction || !!state.pendingAlternativeCostChoice || !!state.pendingPrivateZoneChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice !== null ||
+  const anyPendingChoice = !!state.pendingCastTransaction || !!state.pendingAlternativeCostChoice || !!state.pendingPrivateZoneChoice || !!state.pendingLandSearchChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice !== null ||
     state.pendingTargetCard !== null || state.pendingCrew !== null || state.pendingWardChoice !== null ||
     state.pendingCounterUnlessPay !== null || state.pendingHybridLifePayment !== null ||
     state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null ||
@@ -7590,12 +7853,13 @@ export function render() {
       if (!state.pendingTargetCard && state.pendingCastTransaction?.stage !== 'targets') {
         // Defensa de UI: nunca asumir que pendingCost existe sólo porque hay alguna acción
         // pendiente. Un cancel/interacción solapada no debe poder tirar todo el render.
-        const pendingCost = state.pendingCost || { W:0, U:0, B:0, R:0, G:0, generic:0 };
+        const pendingCost = state.pendingCost || { W:0, U:0, B:0, R:0, G:0, C:0, generic:0 };
         if (pendingCost.W > 0) statusText += gameText('payment.color.white', { amount: pendingCost.W });
         if (pendingCost.U > 0) statusText += gameText('payment.color.blue', { amount: pendingCost.U });
         if (pendingCost.B > 0) statusText += gameText('payment.color.black', { amount: pendingCost.B });
         if (pendingCost.R > 0) statusText += gameText('payment.color.red', { amount: pendingCost.R });
         if (pendingCost.G > 0) statusText += gameText('payment.color.green', { amount: pendingCost.G });
+        if (pendingCost.C > 0) statusText += gameText('payment.color.colorless', { amount: pendingCost.C });
         if (pendingCost.generic > 0) statusText += gameText('payment.color.generic', { amount: pendingCost.generic });
         if (state.pendingAlternativeCostChosen && pendingCard?.alternativeCost) statusText += gameText('payment.altSuffix', { cost: describeCompositeCost(pendingCard.alternativeCost) });
       }

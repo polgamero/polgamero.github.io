@@ -1536,5 +1536,129 @@
         "requiresTarget": false
       }
     ]
+  },
+  {
+    "id": "conj_071",
+    "name": "Lluvia de Cascotes en Laferrere",
+    "type": "Conjuro",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Destruí la Tierra objetivo.",
+    "flavorText": "Primero cayó una piedra. Después dejó de haber calle.",
+    "image": "lluvia_de_cascotes_en_laferrere.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "destroy_land"
+    }
+  },
+  {
+    "id": "conj_072",
+    "name": "Relevamiento del Delta de San Fernando",
+    "type": "Conjuro",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá en tu biblioteca una Tierra básica, ponela en el campo de batalla girada y luego barajá.",
+    "flavorText": "Cada canal nuevo termina dibujando otro camino.",
+    "image": "relevamiento_del_delta_de_san_fernando.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_land",
+      "amount": 1,
+      "filter": "basic",
+      "destination": "battlefield_tapped",
+      "allowFewer": true,
+      "reveal": false
+    }
+  },
+  {
+    "id": "conj_073",
+    "name": "Catastro del Conurbano",
+    "type": "Conjuro",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá en tu biblioteca hasta dos Tierras básicas, revelalas, ponelas en tu mano y luego barajá.",
+    "flavorText": "Hay planos viejos donde todavía aparece un lote que nadie recordaba.",
+    "image": "catastro_del_conurbano.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_land",
+      "amount": 2,
+      "filter": "basic",
+      "destination": "hand",
+      "allowFewer": true,
+      "reveal": true
+    }
+  },
+  {
+    "id": "conj_074",
+    "name": "Reconquista del Parque Costero del Sur",
+    "type": "Conjuro",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Devolvé todas las Tierras de tu cementerio al campo de batalla giradas.",
+    "flavorText": "El pastizal recupera cada metro que el abandono le dejó.",
+    "image": "reconquista_del_parque_costero_del_sur.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "return_all_lands_from_graveyard",
+      "filter": "any",
+      "destination": "battlefield_tapped"
+    }
+  },
+  {
+    "id": "conj_075",
+    "name": "Tierra Arrasada de Plaza Congreso",
+    "type": "Conjuro",
+    "manaCost": "{4}{W}{W}",
+    "cmc": 6,
+    "rarity": "Mythic",
+    "colors": [
+      "W"
+    ],
+    "text": "Destruí todas las Tierras.",
+    "flavorText": "Por un instante, no quedó territorio que pudiera reclamar ningún bando.",
+    "image": "tierra_arrasada_de_plaza_congreso.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "destroy_all_lands",
+      "controller": "all",
+      "landFilter": "any"
+    }
+  },
+  {
+    "id": "conj_076",
+    "name": "Ruina del Cordón Industrial",
+    "type": "Conjuro",
+    "manaCost": "{4}{R}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Destruí todas las Tierras no básicas.",
+    "flavorText": "Las chimeneas siguieron de pie. Todo lo que las alimentaba, no.",
+    "image": "ruina_del_cordon_industrial.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "destroy_all_lands",
+      "controller": "all",
+      "landFilter": "nonbasic"
+    }
   }
 ]

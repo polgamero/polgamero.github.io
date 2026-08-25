@@ -367,10 +367,16 @@
     "activatedAbility": {
       "cost": "{2}",
       "effect": {
-        "type": "crew_vehicle"
+        "type": "animate_land",
+        "power": 2,
+        "toughness": 2,
+        "duration": "end_of_turn",
+        "keywords": [
+          "haste"
+        ]
       },
       "requiresTarget": false,
-      "timing": "sorcery"
+      "timing": "instant"
     }
   },
   {
@@ -392,10 +398,14 @@
     "activatedAbility": {
       "cost": "{2}",
       "effect": {
-        "type": "crew_vehicle"
+        "type": "animate_land",
+        "power": 2,
+        "toughness": 4,
+        "duration": "end_of_turn",
+        "keywords": []
       },
       "requiresTarget": false,
-      "timing": "sorcery"
+      "timing": "instant"
     }
   },
   {
@@ -1065,10 +1075,212 @@
     "activatedAbility": {
       "cost": "{2}",
       "effect": {
-        "type": "crew_vehicle"
+        "type": "animate_land",
+        "power": 2,
+        "toughness": 3,
+        "duration": "end_of_turn",
+        "keywords": [
+          "deathtouch"
+        ]
       },
       "requiresTarget": false,
-      "timing": "sorcery"
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_057",
+    "name": "Puente de Márquez",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{T}: Agregá {C}. {2}, {T}, sacrificá Puente de Márquez: destruí la Tierra no básica objetivo.",
+    "flavorText": "El cruce aguanta siglos. Lo que se apoya alrededor, no siempre.",
+    "image": "puente_de_marquez.png",
+    "produces": "C",
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "sacrifice": "self",
+      "effect": {
+        "type": "destroy_nonbasic_land"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_058",
+    "name": "Campo de Caseros",
+    "type": "Tierra sagrada",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "Todas las Tierras son también Pantanos además de sus otros tipos.",
+    "flavorText": "Hay terrenos donde la historia no termina de retirarse.",
+    "image": "campo_de_caseros.png",
+    "staticEffect": {
+      "type": "land_type_add",
+      "scope": "all",
+      "addLandTypes": [
+        "Pantano"
+      ]
+    }
+  },
+  {
+    "id": "tier_059",
+    "name": "Parque Pereyra Iraola",
+    "type": "Tierra — Bosque",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Parque Pereyra Iraola entra al campo de batalla girado. {T}: Agregá {G}. {3}{G}: Parque Pereyra Iraola se convierte en una criatura 4/4 con Arrollar hasta el final del turno. Sigue siendo una Tierra.",
+    "flavorText": "Entre caminos y árboles viejos, el suelo todavía sabe defenderse.",
+    "image": "parque_pereyra_iraola.png",
+    "entersTapped": true,
+    "produces": "G",
+    "activatedAbility": {
+      "cost": "{3}{G}",
+      "effect": {
+        "type": "animate_land",
+        "power": 4,
+        "toughness": 4,
+        "duration": "end_of_turn",
+        "keywords": [
+          "trample"
+        ]
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_060",
+    "name": "Puerto de Olivos",
+    "type": "Tierra — Agua",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Puerto de Olivos entra al campo de batalla girado. {T}: Agregá {U}. {2}{U}: Puerto de Olivos se convierte en una criatura 2/3 con Volar hasta el final del turno. Sigue siendo una Tierra.",
+    "flavorText": "De noche, las luces del río parecen moverse contra la corriente.",
+    "image": "puerto_de_olivos.png",
+    "entersTapped": true,
+    "produces": "U",
+    "activatedAbility": {
+      "cost": "{2}{U}",
+      "effect": {
+        "type": "animate_land",
+        "power": 2,
+        "toughness": 3,
+        "duration": "end_of_turn",
+        "keywords": [
+          "flying"
+        ]
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_061",
+    "name": "Plaza Mitre de San Fernando",
+    "type": "Tierra — Planicie",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{T}: Agregá {W}. {2}{W}: Plaza Mitre de San Fernando se convierte en una criatura 2/2 con Vigilancia hasta el final del turno. Sigue siendo una Tierra.",
+    "flavorText": "Las veredas conocen cada regreso y cada guardia.",
+    "image": "plaza_mitre_de_san_fernando.png",
+    "produces": "W",
+    "activatedAbility": {
+      "cost": "{2}{W}",
+      "effect": {
+        "type": "animate_land",
+        "power": 2,
+        "toughness": 2,
+        "duration": "end_of_turn",
+        "keywords": [
+          "vigilance"
+        ]
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_062",
+    "name": "Parque Industrial de Pilar",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Parque Industrial de Pilar entra al campo de batalla girado. {T}: Agregá {R}. {2}{R}: Parque Industrial de Pilar se convierte en una criatura 3/2 con Amenaza hasta el final del turno. Sigue siendo una Tierra.",
+    "flavorText": "Cuando se encienden todos los galpones, la noche parece una fragua.",
+    "image": "parque_industrial_de_pilar.png",
+    "entersTapped": true,
+    "produces": "R",
+    "activatedAbility": {
+      "cost": "{2}{R}",
+      "effect": {
+        "type": "animate_land",
+        "power": 3,
+        "toughness": 2,
+        "duration": "end_of_turn",
+        "keywords": [
+          "menace"
+        ]
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_063",
+    "name": "Estación Haedo",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}, sacrificá Estación Haedo: buscá en tu biblioteca una Tierra básica, ponela en el campo de batalla girada y luego barajá.",
+    "flavorText": "Un andén se pierde y otro camino aparece.",
+    "image": "estacion_haedo.png",
+    "activatedAbility": {
+      "cost": "{T}",
+      "sacrifice": "self",
+      "effect": {
+        "type": "search_land",
+        "amount": 1,
+        "filter": "basic",
+        "destination": "battlefield_tapped",
+        "allowFewer": true,
+        "reveal": false
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_064",
+    "name": "Valle de la Luna",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{T}, sacrificá Valle de la Luna: agregá {C}{C}.",
+    "flavorText": "La piedra devuelve en un instante millones de años de silencio.",
+    "image": "valle_de_la_luna.png",
+    "manaAbility": {
+      "produces": "C",
+      "amount": 2,
+      "requiresTap": true,
+      "sacrificeSelf": true
     }
   }
 ]

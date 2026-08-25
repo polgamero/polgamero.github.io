@@ -1888,3 +1888,10 @@ html.argentinia-mobile .options-volume-slider {
   flex: 1 1 auto !important;
   min-width: 100px !important;
 }
+
+
+/* 23.14.1 — mana pool compacto en HUD mobile. */
+html.argentinia-mobile .mana-pool-hud { gap:2px !important; margin-bottom:2px !important; }
+html.argentinia-mobile .mana-pool-chip { min-width:24px !important; height:18px !important; padding:0 4px 0 1px !important; }
+html.argentinia-mobile .mana-icon-pool { width:14px !important; height:14px !important; flex-basis:14px !important; }
+html.argentinia-mobile .mana-pool-count { font-size:.60rem !important; }

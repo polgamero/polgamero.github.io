@@ -1,5 +1,5 @@
-import { logMsg, els, showGameOverOverlay, showGameRewardStatus, render, updateAccountUI, refreshTurnPriorityHudClock } from './ui.js';
-import { state, queueTriggeredAbilities, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState } from './main.js';
+import { logMsg, els, showGameOverOverlay, showGameRewardStatus, render, updateAccountUI, refreshTurnPriorityHudClock, showUntapLandChoiceModal } from './ui.js';
+import { state, queueTriggeredAbilities, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard } from './main.js';
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
@@ -11,6 +11,10 @@ import { PRIORITY_CLOCK_DURATION_MS, getEffectivePriorityActivity, canPriorityCl
 import { gameText } from './gameTexts.js';
 import { finishSoloRecovery } from './soloRecovery.js';
 import { queuePendingGameReward } from './gameRewards.js';
+import { clearManaPool, manaPoolTotal, emptyManaPool } from './manaPool.js';
+import { getLandUntapLimit, isLandPreventedFromUntapping, scoreLandForUntap } from './landStax.js';
+import { isLandPermanent } from './permanentTypes.js';
+import { landRulesTextSuppressed } from './landCharacteristics.js';
 
 export function checkGameOver() {
   // FASE 4, ETAPA 6: gameOver y abandonedBy llegan JUNTOS por sync en el mismo publish
@@ -218,6 +222,20 @@ export async function advanceStep() {
   if (state.gameOver) return;
 
   const phaseBefore = state.phase;
+
+  // CR 106.4 / 500.5 — el maná no sobrevive al final de NINGÚN paso ni fase. Esto se
+  // ejecuta antes de comprometer la transición; aplica a ambos jugadores porque el pool es
+  // información pública y estado de reglas, también en multiplayer.
+  if (!state.localManaPool) state.localManaPool = emptyManaPool();
+  if (!state.rivalManaPool) state.rivalManaPool = emptyManaPool();
+  const floatingBefore = manaPoolTotal(state.localManaPool) + manaPoolTotal(state.rivalManaPool);
+  if (floatingBefore > 0) {
+    clearManaPool(state.localManaPool);
+    clearManaPool(state.rivalManaPool);
+    logMsg(gameText('mana.pool.emptied'));
+    recordTelemetryEvent('mana_pools_emptied', { phase: phaseBefore, total: floatingBefore });
+  }
+
   const activeBefore = state.activePlayer;
   const turnBefore = state.turnCount;
   recordTelemetryEvent('advance_step_requested', {
@@ -328,7 +346,7 @@ export async function advanceStep() {
 
   // Lógica de fases automáticas
   if (state.phase === 'untap') {
-    executeUntapStep();
+    await executeUntapStep();
     await advanceStep();
     return;
   }
@@ -389,7 +407,7 @@ export async function advanceStep() {
 // es seguro llamarla de más por las dudas, nunca duplica el enderezar.
 export async function processMyTurnStart() {
   if (state.gameOver || state.phase !== 'untap' || state.activePlayer !== 'local') return;
-  executeUntapStep();
+  await executeUntapStep();
   await advanceStep();
 }
 
@@ -687,24 +705,63 @@ export async function resolveBothPassed() {
   }
 }
 
-function executeUntapStep() {
+async function executeUntapStep() {
   const isLocal = state.activePlayer === 'local';
+  const lands = isLocal ? state.localLands : state.rivalLands;
+  const tappedEntries = lands.map((item,index)=>({ item,index })).filter(entry => entry.item.tapped);
+  const untappableEntries = tappedEntries.filter(entry => !isLandPreventedFromUntapping(state, entry.item, isLocal));
+  const preventedCount = tappedEntries.length - untappableEntries.length;
+  const limit = getLandUntapLimit(state, isLocal);
+  const allowedCount = Number.isFinite(limit) ? Math.min(limit, untappableEntries.length) : untappableEntries.length;
+  let chosenIndexes = untappableEntries.map(entry => entry.index);
+
+  if (allowedCount < untappableEntries.length) {
+    if (allowedCount <= 0) {
+      chosenIndexes = [];
+    } else if (!isLocal) {
+      chosenIndexes = untappableEntries
+        .slice()
+        .sort((a,b)=>scoreLandForUntap(b.item, state, false)-scoreLandForUntap(a.item, state, false) || a.index-b.index)
+        .slice(0, allowedCount)
+        .map(entry=>entry.index);
+    } else {
+      state.pendingUntapLandChoice = { count:allowedCount, totalTapped:tappedEntries.length };
+      render();
+      chosenIndexes = await new Promise(resolve => {
+        showUntapLandChoiceModal(untappableEntries, allowedCount, indexes => resolve(indexes));
+      });
+      state.pendingUntapLandChoice = null;
+    }
+  }
+  const chosen = new Set(chosenIndexes);
+
+  // CR 502.3: la determinación se hace primero y luego todos los permanentes elegidos se
+  // enderezan simultáneamente. No mutamos nada mientras el modal de elección está abierto.
   if (isLocal) {
     state.localLandPlayedThisTurn = false;
     state.localAttackersDeclaredThisTurn = 0;
     state.localBlockersDeclaredThisCombat = false;
-    state.localLands.forEach(l => l.tapped = false);
-    state.localCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; c.attackTarget = null; });
+    state.localLands.forEach((l,index) => { if (!l.tapped || chosen.has(index)) l.tapped = false; l.enteredThisTurn = false; });
+    state.localCombat.forEach(c => { c.tapped = false; c.enteredThisTurn = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; c.attackTarget = null; });
     state.localSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });
     state.localPlaneswalkers.forEach(pw => { pw.abilityUsedThisTurn = false; });
   } else {
     state.rivalLandPlayedThisTurn = false;
     state.rivalAttackersDeclaredThisTurn = 0;
     state.rivalBlockersDeclaredThisCombat = false;
-    state.rivalLands.forEach(l => l.tapped = false);
-    state.rivalCombat.forEach(c => { c.tapped = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; c.attackTarget = null; });
+    state.rivalLands.forEach((l,index) => { if (!l.tapped || chosen.has(index)) l.tapped = false; l.enteredThisTurn = false; });
+    state.rivalCombat.forEach(c => { c.tapped = false; c.enteredThisTurn = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; c.attackTarget = null; });
     state.rivalSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });
     state.rivalPlaneswalkers.forEach(pw => { pw.abilityUsedThisTurn = false; });
+  }
+  if (allowedCount < untappableEntries.length || preventedCount > 0) {
+    logMsg(gameText('land.stax.untap.restricted', {
+      player:isLocal ? getLocalPlayerName() : getRivalName(), count:chosen.size, total:tappedEntries.length
+    }));
+    recordTelemetryEvent('land_untap_restricted', {
+      player:isLocal?'local':'rival', limit:Number.isFinite(limit)?limit:null,
+      tapped:tappedEntries.length, prevented:preventedCount, untapped:chosen.size
+    });
   }
   logMsg(gameText('game.untap', { player: isLocal ? getLocalPlayerName() : getRivalName() }));
 }
@@ -720,7 +777,7 @@ function executeUpkeepStep() {
   const planeswalkers = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
   queueTriggeredAbilities(
     [...combat, ...support, ...lands, ...planeswalkers]
-      .filter(item => item.card?.upkeepTrigger)
+      .filter(item => item.card?.upkeepTrigger && !(isLandPermanent(item) && landRulesTextSuppressed(state, item, isLocal)))
       .map(item => ({
         effect: item.card.upkeepTrigger, sourceCard: item.card, sourceItem: item, isLocal,
         triggerType: 'upkeep'
@@ -788,23 +845,35 @@ async function executeCleanupStep() {
   state.rivalCombat.forEach(c => c.tempEffects = []);
   state.combatDamagePrevented = false;
 
-  // LÓGICA NUEVA: Devolver vehículos (y tierras-criatura) a su zona de origen
-  const revertVehicles = (combatZone, supportZone, landsZone) => {
+  // LAND 1: man-lands y Vehículos son mecánicas distintas. Las man-lands vuelven a Lands
+  // conservando el mismo objeto; los Vehículos vuelven a Support.
+  const revertTemporaryCreatures = (combatZone, supportZone, landsZone) => {
     for (let i = combatZone.length - 1; i >= 0; i--) {
-      if (combatZone[i].isVehicle) {
+      const item = combatZone[i];
+      if (item.isAnimatedLand) {
+        combatZone.splice(i, 1);
+        const isLocalLand = landsZone === state.localLands;
+        // Equip solo puede quedar unido a criatura; las Auras actuales también encantan criatura.
+        // Al terminar la animación, el Equipo se desprende y esas Auras van al cementerio.
+        detachEquipmentFrom(item, isLocalLand);
+        sendAurasToGraveyard(item, isLocalLand);
+        revertAnimatedLandState(item);
+        landsZone.push(item);
+        continue;
+      }
+      if (item.isVehicle) {
         const v = combatZone.splice(i, 1)[0];
         v.isVehicle = false;
-        // Le borramos las estadísticas de criatura
         delete v.card.power;
         delete v.card.toughness;
-        (v.wasLand ? landsZone : supportZone).push(v);
         v.wasLand = false;
+        supportZone.push(v);
       }
     }
   };
 
-  revertVehicles(state.localCombat, state.localSupport, state.localLands);
-  revertVehicles(state.rivalCombat, state.rivalSupport, state.rivalLands);
+  revertTemporaryCreatures(state.localCombat, state.localSupport, state.localLands);
+  revertTemporaryCreatures(state.rivalCombat, state.rivalSupport, state.rivalLands);
 
   // Lógica de descarte habitual...
   if (isLocal) {

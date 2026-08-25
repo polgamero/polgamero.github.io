@@ -5463,5 +5463,255 @@
     "keywords": [
       "reach"
     ]
+  },
+  {
+    "id": "crea_253",
+    "name": "Jardinero del Parque Centenario",
+    "type": "Criatura — Humano Druida",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "power": 1,
+    "toughness": 1,
+    "text": "{T}: agregá {G}.",
+    "flavorText": "Sabe qué árbol da sombra y cuál guarda maná.",
+    "image": "jardinero_del_parque_centenario.png",
+    "keywords": [],
+    "manaAbility": {
+      "produces": "G",
+      "amount": 1,
+      "requiresTap": true,
+      "sacrificeSelf": false
+    }
+  },
+  {
+    "id": "crea_254",
+    "name": "Picaflor del Jardín Botánico",
+    "type": "Criatura — Ave",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "power": 0,
+    "toughness": 1,
+    "text": "Volar. {T}: agregá un maná de cualquier color.",
+    "flavorText": "Visita todas las flores y nunca vuelve con el mismo color.",
+    "image": "picaflor_del_jardin_botanico.png",
+    "keywords": [
+      "flying"
+    ],
+    "manaAbility": {
+      "producesOptions": [
+        "W",
+        "U",
+        "B",
+        "R",
+        "G"
+      ],
+      "amount": 1,
+      "requiresTap": true,
+      "sacrificeSelf": false
+    }
+  },
+  {
+    "id": "crea_255",
+    "name": "Autómata del Planetario",
+    "type": "Criatura Artefacto — Constructo",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "power": 2,
+    "toughness": 2,
+    "text": "{T}: agregá {C}{C}.",
+    "flavorText": "Calcula órbitas, eclipses y exactamente cuánto falta para pagar seis.",
+    "image": "automata_del_planetario.png",
+    "keywords": [],
+    "manaAbility": {
+      "produces": "C",
+      "amount": 2,
+      "requiresTap": true,
+      "sacrificeSelf": false
+    }
+  },
+  {
+    "id": "crea_256",
+    "name": "Excavador de Villa Domínico",
+    "type": "Criatura — Humano Explorador",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "power": 2,
+    "toughness": 3,
+    "text": "Podés jugar Tierras desde tu cementerio.",
+    "flavorText": "Todo lo que quedó enterrado alguna vez vuelve a tener lote.",
+    "image": "excavador_de_villa_dominico.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "play_lands_from_graveyard"
+    }
+  },
+  {
+    "id": "crea_257",
+    "name": "Gigante del Aconcagua",
+    "type": "Criatura — Gigante",
+    "manaCost": "{4}{G}{G}",
+    "cmc": 6,
+    "rarity": "Mythic",
+    "colors": [
+      "G"
+    ],
+    "power": 6,
+    "toughness": 6,
+    "text": "Arrollar. Cuando Gigante del Aconcagua entre al campo de batalla y siempre que ataque, podés buscar hasta dos Tierras en tu biblioteca, ponerlas en el campo de batalla giradas y luego barajar.",
+    "flavorText": "Cada paso abre dos senderos nuevos en la montaña.",
+    "image": "gigante_del_aconcagua.png",
+    "keywords": [
+      "trample"
+    ],
+    "etbEffect": {
+      "type": "search_land",
+      "amount": 2,
+      "filter": "any",
+      "destination": "battlefield_tapped",
+      "allowFewer": true,
+      "reveal": false
+    },
+    "attackTrigger": {
+      "type": "search_land",
+      "amount": 2,
+      "filter": "any",
+      "destination": "battlefield_tapped",
+      "allowFewer": true,
+      "reveal": false
+    }
+  },
+  {
+    "id": "crea_258",
+    "name": "Guardiana de Plaza San Martín",
+    "type": "Criatura — Humano Soldado",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "power": 3,
+    "toughness": 2,
+    "text": "Dañar primero. Las Tierras no básicas de tus oponentes entran al campo de batalla giradas.",
+    "flavorText": "Los accesos están abiertos. La velocidad, no.",
+    "image": "guardiana_de_plaza_san_martin.png",
+    "keywords": [
+      "firststrike"
+    ],
+    "staticEffect": {
+      "type": "lands_enter_tapped",
+      "scope": "opponent",
+      "landFilter": "nonbasic"
+    }
+  },
+  {
+    "id": "crea_259",
+    "name": "Interventor de la Avenida General Paz",
+    "type": "Criatura — Humano Funcionario",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "power": 2,
+    "toughness": 4,
+    "text": "Las Tierras no básicas de tus oponentes no se enderezan durante sus pasos de Enderezar.",
+    "flavorText": "El carril está habilitado. La circulación queda para otra resolución.",
+    "image": "interventor_de_la_avenida_general_paz.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "lands_dont_untap",
+      "scope": "opponent",
+      "landFilter": "nonbasic"
+    }
+  },
+  {
+    "id": "crea_260",
+    "name": "Fogonero de Dock Sud",
+    "type": "Criatura — Humano Obrero",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "power": 3,
+    "toughness": 3,
+    "text": "Siempre que un oponente gire una Tierra para obtener maná, Fogonero de Dock Sud le hace 1 de daño.",
+    "flavorText": "Cada válvula abierta tiene un precio en temperatura.",
+    "image": "fogonero_de_dock_sud.png",
+    "keywords": [],
+    "landManaTrigger": {
+      "scope": "opponent",
+      "effect": {
+        "type": "damage",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "crea_261",
+    "name": "Agrónoma de Parque Leloir",
+    "type": "Criatura — Humano Druida",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "power": 2,
+    "toughness": 4,
+    "text": "Las Tierras que controlás pueden producir {G} además de los tipos de maná que ya podían producir.",
+    "flavorText": "No cambia el terreno: encuentra el verde que ya estaba escondido.",
+    "image": "agronoma_de_parque_leloir.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "land_mana_add",
+      "scope": "own",
+      "produces": "G",
+      "amount": 1,
+      "requiresTap": true,
+      "sacrificeSelf": false
+    }
+  },
+  {
+    "id": "crea_262",
+    "name": "Agrimensora de Tandil",
+    "type": "Criatura — Humano Explorador",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "text": "Cuando Agrimensora de Tandil entre al campo de batalla, podés buscar en tu biblioteca una Tierra con subtipo Bosque, revelarla, ponerla en tu mano y luego barajar.",
+    "flavorText": "Mide lomas, arroyos y hasta dónde llega la sombra de cada bosque.",
+    "image": "agrimensora_de_tandil.png",
+    "keywords": [],
+    "etbEffect": {
+      "type": "search_land",
+      "amount": 1,
+      "filter": "subtype:Bosque",
+      "destination": "hand",
+      "allowFewer": true,
+      "reveal": true
+    }
   }
 ]

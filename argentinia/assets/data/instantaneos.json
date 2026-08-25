@@ -2154,5 +2154,115 @@
       "type": "damage",
       "amount": 8
     }
+  },
+  {
+    "id": "inst_106",
+    "name": "Rotación de Parcelas de Pereyra",
+    "type": "Instantáneo",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Como costo adicional para lanzar este hechizo, sacrificá una Tierra. Buscá en tu biblioteca una Tierra, ponela en el campo de batalla y luego barajá.",
+    "flavorText": "Lo que se pierde en una hectárea aparece del otro lado del alambrado.",
+    "image": "rotacion_de_parcelas_de_pereyra.png",
+    "requiresTarget": false,
+    "additionalCost": {
+      "sacrifice": {
+        "target": "own_land",
+        "amount": 1
+      }
+    },
+    "effect": {
+      "type": "search_land",
+      "amount": 1,
+      "filter": "any",
+      "destination": "battlefield",
+      "allowFewer": true,
+      "reveal": false
+    }
+  },
+  {
+    "id": "inst_107",
+    "name": "Corte en Puente La Noria",
+    "type": "Instantáneo",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Destruí la Tierra no básica objetivo.",
+    "flavorText": "Una salida cerrada alcanza para cambiar todo el mapa.",
+    "image": "corte_en_puente_la_noria.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "destroy_nonbasic_land"
+    }
+  },
+  {
+    "id": "inst_108",
+    "name": "Replanteo del Jardín Botánico",
+    "type": "Instantáneo",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá en tu biblioteca una Tierra no básica, revelala, ponela en tu mano y luego barajá.",
+    "flavorText": "Antes de plantar, alguien vuelve a medir el mundo.",
+    "image": "replanteo_del_jardin_botanico.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_land",
+      "amount": 1,
+      "filter": "nonbasic",
+      "destination": "hand",
+      "allowFewer": true,
+      "reveal": true
+    }
+  },
+  {
+    "id": "inst_109",
+    "name": "Rescate de la Ribera de Quilmes",
+    "type": "Instantáneo",
+    "manaCost": "{2}{B}{G}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "B",
+      "G"
+    ],
+    "text": "Devolvé hasta dos Tierras de tu cementerio al campo de batalla giradas.",
+    "flavorText": "El río devuelve lo que parecía perdido, pero nunca completamente seco.",
+    "image": "rescate_de_la_ribera_de_quilmes.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "return_lands_from_graveyard",
+      "amount": 2,
+      "filter": "any",
+      "destination": "battlefield_tapped"
+    }
+  },
+  {
+    "id": "inst_110",
+    "name": "Voladura en la Autopista Riccheri",
+    "type": "Instantáneo",
+    "manaCost": "{4}{R}",
+    "cmc": 5,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Destruí la Tierra objetivo.",
+    "flavorText": "El desvío llegó un segundo después de la explosión.",
+    "image": "voladura_en_la_autopista_riccheri.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "destroy_land"
+    }
   }
 ]

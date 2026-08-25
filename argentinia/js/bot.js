@@ -1,5 +1,7 @@
 import { hasKeyword, canBlock, predictDuel, getProtectionMatch } from './keywords.js';
 import { recordTelemetryEvent } from './telemetry.js';
+import { isCreaturePermanent, isArtifactPermanent, isLandPermanent, landMatchesFilter } from './permanentTypes.js';
+import { getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities, landMatchesEffectiveFilter } from './landCharacteristics.js';
 import {
   state,
   logMsg,
@@ -22,6 +24,8 @@ import {
   triggerCreatureDies,
   triggerAnyCreatureDeath,
   triggerLandEtb,
+  hasLandPlayFromGraveyardPermission,
+  playLandFromGraveyardByIndex,
   triggerSpellCast,
   chooseGraveyardCards,
   cardMatchesGraveyardFilter,
@@ -33,7 +37,11 @@ import {
   getCastingManaCostString,
   getCastCompositeCostBundle,
   passPriority, // Importado del nuevo turnManager / main
-  beginActivePlayerPriorityWindow
+  beginActivePlayerPriorityWindow,
+  landEntersTappedForBattlefield,
+  handleLandTappedForManaEvent,
+  captureLandTappedForManaEvent,
+  flushDeferredLandManaTriggers
 } from './main.js';
 
 import { moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming } from './utils.js';
@@ -41,6 +49,23 @@ import { moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getActi
 import { assignBotBlockers, triggerCombatAbility, triggerAnyCreatureAttacks, queueDeclaredBlockTriggers, markDeclaredBlocks, checkDeaths } from './combatRules.js';
 import { addToStack, spellStack, isStackItemLegalCounterTarget, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
 import { gameText } from './gameTexts.js';
+import { MANA_TYPES, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, spendAvailableTowardCost } from './manaPool.js';
+import { normalizeManaAbility, canActivateManaSourcePermanent } from './manaSources.js';
+
+
+function botEffectiveManaAbility(item, isLocal = false) {
+  if (!item?.card) return null;
+  const printed = normalizeManaAbility(item.card);
+  return isLandPermanent(item) ? getEffectiveLandManaAbility(state, item, isLocal, printed) : printed;
+}
+function botManaOptions(item, isLocal = false) { return botEffectiveManaAbility(item, isLocal)?.options || []; }
+function botManaAmount(item, isLocal = false) { return botEffectiveManaAbility(item, isLocal)?.amount || 0; }
+function botManaRequiresTap(item, isLocal = false) { return !!botEffectiveManaAbility(item, isLocal)?.requiresTap; }
+function botManaSacrifices(item, isLocal = false) { return !!botEffectiveManaAbility(item, isLocal)?.sacrificeSelf; }
+function botCanActivateMana(item, isLocal = false) {
+  const ability = botEffectiveManaAbility(item, isLocal);
+  return !!ability && canActivateManaSourcePermanent(item, { hasHaste:hasKeyword(item, 'haste'), ability });
+}
 
 // Punto 14: affordability de una ruta de casteo completa. La vía alternativa reemplaza
 // sólo el costo base; Kicker y additionalCost siguen sumándose. El piso de 5 de vida es
@@ -214,42 +239,88 @@ function tryPayWardForBotTarget(targetObj) {
   if (!wardKw) return true;
   const wardCost = parseInt(wardKw.split('_')[1], 10);
 
-  const sources = [...state.rivalLands, ...state.rivalSupport.filter(s => s.card.produces || s.card.producesOptions)]
-    .filter(s => !s.tapped);
-  let need = wardCost;
-  const toTap = [];
-  for (const s of sources) {
-    if (need <= 0) break;
-    toTap.push(s);
-    need -= (s.card.manaAmount || 1);
-  }
-  if (need > 0) {
+  const sources = getRivalManaSources().filter(item => botCanActivateMana(item, false));
+  const available = manaPoolTotal(state.rivalManaPool) + sources.reduce((sum,s) => sum + botManaAmount(s, false), 0);
+  if (available < wardCost) {
     logMsg(gameText('bot.ward.cantPay', { target: targetObj.item.card.name, cost: wardCost }));
     return false;
   }
-  toTap.forEach(s => {
-    s.tapped = true;
-    // HOTFIX 1.1 — misma regla que para el humano: si la fuente es de un solo uso,
-    // pagar Ward también la sacrifica.
-    if (s.card.sacrificeOnTap) performSacrifice(s, false);
-  });
+  const remaining = { W:0,U:0,B:0,R:0,G:0,C:0,generic:wardCost };
+  spendAvailableTowardCost(state.rivalManaPool, remaining);
+  for (const source of sources) {
+    if (remaining.generic <= 0) break;
+    const opts = botManaOptions(source, false);
+    const type = opts.find(t => MANA_TYPES.includes(t));
+    if (!type) continue;
+    const tappedForMana = botManaRequiresTap(source, false);
+    if (tappedForMana) source.tapped = true;
+    const landManaEventSnapshot = tappedForMana && isLandPermanent(source)
+      ? captureLandTappedForManaEvent(source, false, type) : null;
+    if (botManaSacrifices(source, false)) performSacrifice(source, false);
+    const producedAmount = botManaAmount(source, false);
+    addMana(state.rivalManaPool, type, producedAmount);
+    if (landManaEventSnapshot) handleLandTappedForManaEvent(source, false, type, producedAmount, { eventSnapshot:landManaEventSnapshot });
+    spendAvailableTowardCost(state.rivalManaPool, remaining);
+  }
   logMsg(gameText('bot.ward.paid', { cost: wardCost }));
   return true;
 }
 
-// Fuentes de maná del Tano: sus tierras + cualquier artefacto que produzca maná (mana
-// rocks / Treasures) que no esté ya girado. Un solo lugar para juntarlas evita repetir
+// Fuentes de maná del Tano: Tierras, mana rocks/Treasures y criaturas/artefactos-criatura
+// con manaAbility. `canActivateManaSourcePermanent` aplica {T}, tapped y mareo cuando corresponde.
+// Un solo lugar para juntarlas evita repetir
 // este filtro en cada función de abajo.
 function getRivalManaSources(excludeItems = []) {
   const excluded = new Set(excludeItems || []);
-  const artifacts = state.rivalSupport.filter(s => s.card.produces || s.card.producesOptions);
-  return [...state.rivalLands, ...artifacts].filter(item => !excluded.has(item));
+  return [...state.rivalLands, ...state.rivalSupport, ...state.rivalCombat]
+    .filter(item => !!botEffectiveManaAbility(item, false) && !excluded.has(item));
 }
 
 // Cuánto maná TOTAL (sumando todo lo que tiene sin girar) le queda disponible al Tano —
 // no descuenta nada todavía, es la base para calcular cuánto puede gastar en X.
 function getRivalTotalAvailableMana() {
-  return getRivalManaSources().filter(s => !s.tapped).reduce((sum, s) => sum + (s.card.manaAmount || 1), 0);
+  return manaPoolTotal(state.rivalManaPool) + getRivalManaSources().filter(item => botCanActivateMana(item, false)).reduce((sum, s) => sum + botManaAmount(s, false), 0);
+}
+
+// LAND 2: candidatos reales de destrucción de Tierras del oponente humano, incluyendo
+// man-lands animadas que estén visualmente en Combat. La heurística prioriza no básicas
+// y tierras utility/multicolor para no gastar Stone Rain-style removal en una básica si
+// existe un blanco estratégicamente más importante.
+function getBotLandDestructionTargets(effect = {}, sourceColors = []) {
+  const filter = effect.type === 'destroy_nonbasic_land' ? 'nonbasic' : (effect.landFilter || 'any');
+  const seen = new Set();
+  const candidates = [...state.localLands, ...state.localCombat].filter(item => {
+    if (!item || seen.has(item) || !isLandPermanent(item) || !landMatchesEffectiveFilter(state, item, true, filter)) return false;
+    seen.add(item);
+    if (hasKeyword(item, 'hexproof')) return false;
+    if (getProtectionMatch(item, sourceColors || [])) return false;
+    return true;
+  });
+  const score = item => {
+    const c = item.card || {};
+    return (landMatchesFilter(item, 'nonbasic') ? 100 : 0)
+      + (c.activatedAbility || c.activatedAbilities ? 20 : 0)
+      + (Array.isArray(c.producesOptions) ? c.producesOptions.length * 3 : 0)
+      + Math.max(1, Number(c.manaAmount) || 1);
+  };
+  return candidates.sort((a,b) => score(b) - score(a));
+}
+
+function countBotMassLandVictims(effect = {}, landIsLocal) {
+  const controller = effect.controller || 'all';
+  const sourceIsLocal = false; // esta heurística corre para el Tano
+  const controllerAllows = controller === 'all'
+    || (controller === 'self' && landIsLocal === sourceIsLocal)
+    || (controller === 'opponent' && landIsLocal !== sourceIsLocal);
+  if (!controllerAllows) return 0;
+  const filter = effect.landFilter || 'any';
+  const zones = landIsLocal ? [state.localLands, state.localCombat] : [state.rivalLands, state.rivalCombat];
+  const seen = new Set();
+  return zones.flat().filter(item => {
+    if (!item || seen.has(item) || !isLandPermanent(item) || !landMatchesEffectiveFilter(state, item, true, filter)) return false;
+    seen.add(item);
+    return !hasKeyword(item, 'indestructible');
+  }).length;
 }
 
 // Flashback o Escape desde el cementerio del Tano: busca la primera carta que tenga
@@ -280,6 +351,9 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
     if (c.effect && ['destroy_creature', 'exile_creature', 'bounce'].includes(c.effect.type)) {
       return state.localCombat.some(u => isValidBotTarget(u, c.colors));
     }
+    if (c.effect && ['destroy_land', 'destroy_nonbasic_land'].includes(c.effect.type)) {
+      return getBotLandDestructionTargets(c.effect, c.colors).length > 0;
+    }
     return true; // daño a la cara / robar / curarse siempre tienen destino válido
   };
 
@@ -307,6 +381,9 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
         (getEffectivePower(prev) + getEffectiveToughness(prev)) > (getEffectivePower(cur) + getEffectiveToughness(cur)) ? prev : cur
       );
       aiTargetObj = { type: 'creature', isLocal: true, item: best };
+    } else if (['destroy_land', 'destroy_nonbasic_land'].includes(card.effect.type)) {
+      const best = getBotLandDestructionTargets(card.effect, card.colors)[0];
+      if (best) aiTargetObj = { type: 'land', isLocal: true, item: best };
     }
   }
 
@@ -341,6 +418,7 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
     castFrom: source
   };
   addToStack(castStackItem);
+  flushDeferredLandManaTriggers();
   logMsg(gameText('bot.graveCast', { ability: source === 'escape' ? 'Escape' : 'Flashback', card: card.name }));
   await triggerSpellCast(false, card, castStackItem);
   if (!tryPayWardForBotTarget(aiTargetObj)) {
@@ -387,6 +465,9 @@ function chooseBotMultiTargets(card) {
       } else if (supportTargets.length > 0) {
         targetObj = { type: 'permanent', isLocal: true, item: supportTargets[0] };
       }
+    } else if (effect.type === 'destroy_land' || effect.type === 'destroy_nonbasic_land') {
+      const best = getBotLandDestructionTargets(effect, card.colors)[0];
+      if (best) targetObj = { type: 'land', isLocal: true, item: best };
     } else if (['destroy_creature', 'exile_creature', 'bounce', 'damage'].includes(effect.type)) {
       const validTargets = state.localCombat.filter(c => isValidBotTarget(c, card.colors));
       if (validTargets.length > 0) {
@@ -445,95 +526,65 @@ export function canRivalAfford(card, options = null) {
   const excludeItems = options?.excludeItems || [];
   if (!card.manaCost) return true;
   const cost = parseManaCost(card.manaCost);
+  const available = cloneManaPool(state.rivalManaPool);
+  const flexible = [];
 
-  const fixed = { W: 0, U: 0, B: 0, R: 0, G: 0 };
-  const duals = [];
-  let totalMana = 0;
-
-  getRivalManaSources(excludeItems).forEach(landItem => {
-    if (landItem.tapped) return;
-    // Tierras de utilidad sin `produces` ni `producesOptions` (ej. Biblioteca Nacional) no
-    // producen maná real — su {T} activa otra cosa. No cuentan para pagar hechizos.
-    if (!landItem.card.produces && !landItem.card.producesOptions) return;
-    const amount = landItem.card.manaAmount || 1;
-    totalMana += amount;
-    if (landItem.card.producesOptions) {
-      duals.push({ options: landItem.card.producesOptions, amount });
-    } else {
-      const color = getLandColor(landItem.card);
-      if (['W', 'U', 'B', 'R', 'G'].includes(color)) fixed[color] += amount;
-    }
+  getRivalManaSources(excludeItems).forEach(item => {
+    if (!botCanActivateMana(item, false)) return;
+    const amount = botManaAmount(item, false);
+    const opts = botManaOptions(item, false);
+    const legal = [...new Set(opts.filter(t => MANA_TYPES.includes(t)))];
+    if (legal.length === 1) addMana(available, legal[0], amount);
+    else if (legal.length > 1) flexible.push({ options: legal, amount });
   });
 
-  const colors = ['W', 'U', 'B', 'R', 'G'];
-  const remainingNeed = {};
-  colors.forEach(c => { remainingNeed[c] = Math.max(0, cost[c] - fixed[c]); });
+  // Pool + fuentes fijas cubren primero lo que puedan.
+  const remaining = { ...cost };
+  spendAvailableTowardCost(available, remaining);
 
-  // Asignación golosa: las duales con menos opciones (más específicas) se reparten primero,
-  // para no "gastar" una tierra flexible en un color que otra tierra menos flexible ya cubre.
-  [...duals].sort((a, b) => a.options.length - b.options.length).forEach(d => {
-    const need = colors.find(c => d.options.includes(c) && remainingNeed[c] > 0);
-    if (need) {
-      const take = Math.min(d.amount, remainingNeed[need]);
-      remainingNeed[need] -= take;
-    }
+  // Las fuentes flexibles se asignan primero a símbolos específicos que todavía falten.
+  flexible.sort((a,b) => a.options.length - b.options.length).forEach(src => {
+    let chosen = MANA_TYPES.find(t => src.options.includes(t) && (remaining[t] || 0) > 0);
+    if (!chosen && remaining.generic > 0) chosen = src.options[0];
+    if (!chosen) return;
+    addMana(available, chosen, src.amount);
+    spendAvailableTowardCost(available, remaining);
   });
-
-  if (colors.some(c => remainingNeed[c] > 0)) return false;
-
-  const remainingForGeneric = totalMana - (cost.W + cost.U + cost.B + cost.R + cost.G);
-  return remainingForGeneric >= cost.generic;
+  return manaCostTotal(remaining) === 0;
 }
 
 export function tapRivalLandsFor(card, options = null) {
   const excludeItems = options?.excludeItems || [];
   if (!card.manaCost) return;
-  const cost = parseManaCost(card.manaCost);
-  const colors = ['W', 'U', 'B', 'R', 'G'];
-  const sources = getRivalManaSources(excludeItems);
+  const remaining = parseManaCost(card.manaCost);
+  if (!state.rivalManaPool) state.rivalManaPool = { W:0,U:0,B:0,R:0,G:0,C:0 };
+  spendAvailableTowardCost(state.rivalManaPool, remaining);
+  if (manaCostTotal(remaining) === 0) return;
 
-  // 1) Primero cubrimos cada color con fuentes fijas (de un solo color)
-  colors.forEach(color => {
-    let needed = cost[color];
-    for (let i = 0; i < sources.length && needed > 0; i++) {
-      const land = sources[i];
-      if (!land.tapped && !land.card.producesOptions && getLandColor(land.card) === color) {
-        land.tapped = true;
-        needed -= (land.card.manaAmount || 1);
-        if (land.card.sacrificeOnTap) performSacrifice(land, false);
-      }
-    }
+  const sources = getRivalManaSources(excludeItems).filter(item => botCanActivateMana(item, false));
+  sources.sort((a,b) => {
+    const ao = botManaOptions(a, false).length;
+    const bo = botManaOptions(b, false).length;
+    return ao - bo;
   });
 
-  // 2) Lo que falte de cada color se cubre con fuentes duales (las más específicas primero)
-  const dualEntries = sources.filter(l => !l.tapped && l.card.producesOptions)
-    .sort((a, b) => a.card.producesOptions.length - b.card.producesOptions.length);
-
-  colors.forEach(color => {
-    let stillNeeded = cost[color] - sources
-      .filter(l => l.tapped && !l.card.producesOptions && getLandColor(l.card) === color)
-      .reduce((sum, l) => sum + (l.card.manaAmount || 1), 0);
-
-    for (const land of dualEntries) {
-      if (stillNeeded <= 0) break;
-      if (land.tapped) continue;
-      if (land.card.producesOptions.includes(color)) {
-        land.tapped = true;
-        stillNeeded -= (land.card.manaAmount || 1);
-        if (land.card.sacrificeOnTap) performSacrifice(land, false);
-      }
-    }
-  });
-
-  // 3) Genérico: cualquier fuente que todavía no se giró (y que produzca maná de verdad)
-  let genericNeeded = cost.generic;
-  for (let i = 0; i < sources.length && genericNeeded > 0; i++) {
-    const land = sources[i];
-    if (!land.tapped && (land.card.produces || land.card.producesOptions)) {
-      land.tapped = true;
-      genericNeeded -= (land.card.manaAmount || 1);
-      if (land.card.sacrificeOnTap) performSacrifice(land, false);
-    }
+  for (const source of sources) {
+    if (manaCostTotal(remaining) === 0) break;
+    const opts = botManaOptions(source, false);
+    const legal = [...new Set(opts.filter(t => MANA_TYPES.includes(t)))];
+    if (!legal.length) continue;
+    let chosen = MANA_TYPES.find(t => legal.includes(t) && (remaining[t] || 0) > 0);
+    if (!chosen && remaining.generic > 0) chosen = legal[0];
+    if (!chosen) continue;
+    const amount = botManaAmount(source, false);
+    const tappedForMana = botManaRequiresTap(source, false);
+    if (tappedForMana) source.tapped = true;
+    const landManaEventSnapshot = tappedForMana && isLandPermanent(source)
+      ? captureLandTappedForManaEvent(source, false, chosen) : null;
+    if (botManaSacrifices(source, false)) performSacrifice(source, false);
+    addMana(state.rivalManaPool, chosen, amount);
+    if (landManaEventSnapshot) handleLandTappedForManaEvent(source, false, chosen, amount, { forceDeferNormalTriggers:true, eventSnapshot:landManaEventSnapshot });
+    spendAvailableTowardCost(state.rivalManaPool, remaining);
   }
 }
 
@@ -572,6 +623,7 @@ async function tryBotCombatTrick() {
     type: 'instant'
   };
   addToStack(castStackItem);
+  flushDeferredLandManaTriggers();
   await triggerSpellCast(false, card, castStackItem);
   if (!tryPayWardForBotTarget(targetObj)) {
     const idx = spellStack.indexOf(castStackItem);
@@ -636,6 +688,7 @@ async function tryBotPostBlockTrick() {
       type: 'instant'
     };
     addToStack(castStackItem);
+    flushDeferredLandManaTriggers();
     await triggerSpellCast(false, pumpCard, castStackItem);
 
     state.priorityPlayer = 'local';
@@ -697,6 +750,7 @@ export async function checkRivalCounterOrResponse() {
         type: 'instant'
       };
       addToStack(castStackItem);
+      flushDeferredLandManaTriggers();
       await triggerSpellCast(false, protectCard, castStackItem);
       state.priorityPlayer = 'local';
       state.consecutivePasses = 0;
@@ -774,6 +828,7 @@ export async function checkRivalCounterOrResponse() {
           : 'instant'
     };
     addToStack(castStackItem);
+    flushDeferredLandManaTriggers();
     await triggerSpellCast(false, responseCard, castStackItem);
     if (!tryPayWardForBotTarget(targetObj)) {
       const idx = spellStack.indexOf(castStackItem);
@@ -863,7 +918,7 @@ function botAbilityTimingAllowed(ability, { instantOnly = false } = {}) {
   if (!ability || state.gameOver || state.priorityPlayer !== 'rival') return false;
   const timing = getActivatedAbilityTiming(ability);
   if (timing === 'invalid') return false;
-  const intrinsicSorceryOnly = ability.crewCost !== undefined || ability.effect?.type === 'crew_vehicle' || ability.effect?.type === 'attach_equipment';
+  const intrinsicSorceryOnly = ability.crewCost !== undefined || ability.effect?.type === 'attach_equipment';
   if (intrinsicSorceryOnly && timing === 'instant') return false;
   if (instantOnly && timing !== 'instant') return false;
   if (timing === 'instant') return true;
@@ -885,7 +940,7 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
   candidateLoop:
   for (const { item: supportItem, index: i, zoneType } of candidates) {
     const card = supportItem.card;
-    const abilities = getActivatedAbilities(card);
+    const abilities = isLandPermanent(supportItem) ? getEffectiveLandActivatedAbilities(state, supportItem, false) : getActivatedAbilities(card);
     if (abilities.length === 0) continue;
 
     // Punto 13: una Tierra puede producir maná Y tener habilidades utility. Ya no se
@@ -918,13 +973,19 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
       if (instantOnly && !requiresTap && !dummyCardForCost.manaCost && !ability.sacrifice) continue;
 
       if (ability.sacrifice === 'creature' && state.rivalCombat.length === 0) continue;
-      if (ability.sacrifice === 'artifact' && !state.rivalSupport.some(s => s.card.type.includes('Artefacto'))) continue;
+      if (ability.sacrifice === 'artifact' && ![...state.rivalSupport, ...state.rivalCombat, ...state.rivalLands].some(isArtifactPermanent)) continue;
+      if (ability.sacrifice === 'land' && ![...state.rivalLands, ...state.rivalCombat].some(isLandPermanent)) continue;
 
       let shouldActivate = false;
       let aiTargetObj = null;
       const effect = ability.effect || {};
 
-      if (effect.type === 'crew_vehicle') {
+      if (effect.type === 'animate_land') {
+        // En su Main 1 la anima para atacar; con prioridad instantánea durante bloqueadores
+        // también puede animarla para defender. No la activa por puro valor fuera de combate.
+        shouldActivate = state.phase === 'main1' || (timing === 'instant' && state.phase === 'combat_blockers' && state.activePlayer === 'local');
+      }
+      else if (effect.type === 'crew_vehicle') {
         if (state.phase === 'main1') shouldActivate = true;
       }
       else if (effect.type === 'attach_equipment') {
@@ -965,11 +1026,11 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
           shouldActivate = true;
         }
       }
-      else if (effect.type === 'ramp') {
-        if (state.phase === 'main1' && state.rivalLands.length < 6) shouldActivate = true;
+      else if (effect.type === 'ramp' || effect.type === 'search_land') {
+        if (state.phase === 'main1' && state.rivalDeck.some(c => landMatchesFilter(c, effect.type === 'ramp' ? 'basic' : (effect.filter || 'any')))) shouldActivate = true;
       }
-      else if (effect.type === 'return_from_graveyard') {
-        const hasCandidate = state.rivalGraveyard.some(c => cardMatchesGraveyardFilter(c, effect.filter || 'any'));
+      else if (effect.type === 'return_from_graveyard' || effect.type === 'return_lands_from_graveyard' || effect.type === 'return_all_lands_from_graveyard') {
+        const hasCandidate = state.rivalGraveyard.some(c => (effect.type === 'return_from_graveyard' ? cardMatchesGraveyardFilter(c, effect.filter || 'any') : String(c?.type || '').includes('Tierra')));
         if (hasCandidate && (state.phase === 'main2' || timing === 'instant')) shouldActivate = true;
       }
       else if (effect.type === 'draw_and_lose_life') {
@@ -989,8 +1050,12 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
         );
         performSacrifice(worst, false);
       } else if (ability.sacrifice === 'artifact') {
-        const artifacts = state.rivalSupport.filter(s => s.card.type.includes('Artefacto'));
+        const artifacts = [...state.rivalSupport, ...state.rivalCombat, ...state.rivalLands].filter(isArtifactPermanent);
         performSacrifice(artifacts[0], false);
+      } else if (ability.sacrifice === 'land') {
+        const lands = [...state.rivalLands, ...state.rivalCombat].filter(isLandPermanent);
+        const chosen = lands.sort((a,b) => (Number(a.card?.manaAmount)||1) - (Number(b.card?.manaAmount)||1))[0];
+        if (chosen) performSacrifice(chosen, false);
       }
 
       if (tryPayWardForBotTarget(aiTargetObj)) {
@@ -1004,6 +1069,7 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
           ability
         });
       }
+      flushDeferredLandManaTriggers();
 
       state.priorityPlayer = 'local';
       state.consecutivePasses = 0;
@@ -1027,7 +1093,7 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
     // Punto 11: la criatura conserva TODAS sus habilidades propias y además TODAS las
     // habilidades prestadas por cada Equipo. Tripular se omite porque un Vehículo ya está
     // en Combat y esa habilidad sólo se usa desde Support/Tierras.
-    getActivatedAbilities(creatureItem.card).forEach((ability, abilityIndex) => {
+    (isLandPermanent(creatureItem) ? getEffectiveLandActivatedAbilities(state, creatureItem, false) : getActivatedAbilities(creatureItem.card)).forEach((ability, abilityIndex) => {
       if (ability.crewCost !== undefined) return;
       options.push({ ability, abilityIndex, sourceCard: creatureItem.card, sourceItem: creatureItem, sourceIndex: i, abilityKind: 'own' });
     });
@@ -1052,7 +1118,8 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
       if (instantOnly && !requiresTap && !dummyCardForCost.manaCost && !ability.sacrifice) continue;
 
       if (ability.sacrifice === 'creature' && state.rivalCombat.filter(c => c !== creatureItem).length === 0) continue;
-      if (ability.sacrifice === 'artifact' && !state.rivalSupport.some(s => s.card.type.includes('Artefacto'))) continue;
+      if (ability.sacrifice === 'artifact' && ![...state.rivalSupport, ...state.rivalCombat, ...state.rivalLands].some(isArtifactPermanent)) continue;
+      if (ability.sacrifice === 'land' && ![...state.rivalLands, ...state.rivalCombat].some(isLandPermanent)) continue;
 
       let shouldActivate = false;
       let aiTargetObj = null;
@@ -1087,8 +1154,10 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
           aiTargetObj = { type: 'creature', isLocal: true, index: state.localCombat.indexOf(chosen), item: chosen };
           shouldActivate = true;
         }
-      } else if (effect.type === 'return_from_graveyard') {
-        const hasCandidate = state.rivalGraveyard.some(c => cardMatchesGraveyardFilter(c, effect.filter || 'any'));
+      } else if (effect.type === 'ramp' || effect.type === 'search_land') {
+        if (state.phase === 'main1' && state.rivalDeck.some(c => landMatchesFilter(c, effect.type === 'ramp' ? 'basic' : (effect.filter || 'any')))) shouldActivate = true;
+      } else if (effect.type === 'return_from_graveyard' || effect.type === 'return_lands_from_graveyard' || effect.type === 'return_all_lands_from_graveyard') {
+        const hasCandidate = state.rivalGraveyard.some(c => (effect.type === 'return_from_graveyard' ? cardMatchesGraveyardFilter(c, effect.filter || 'any') : String(c?.type || '').includes('Tierra')));
         if (hasCandidate && (state.phase === 'main2' || timing === 'instant')) shouldActivate = true;
       } else if (effect.type === 'fight') {
         const candidates = state.localCombat.filter(c => isValidBotTarget(c, creatureItem.card.colors));
@@ -1111,8 +1180,12 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
         );
         performSacrifice(worst, false);
       } else if (ability.sacrifice === 'artifact') {
-        const artifacts = state.rivalSupport.filter(s => s.card.type.includes('Artefacto'));
+        const artifacts = [...state.rivalSupport, ...state.rivalCombat, ...state.rivalLands].filter(isArtifactPermanent);
         performSacrifice(artifacts[0], false);
+      } else if (ability.sacrifice === 'land') {
+        const lands = [...state.rivalLands, ...state.rivalCombat].filter(isLandPermanent);
+        const chosen = lands.sort((a,b) => (Number(a.card?.manaAmount)||1) - (Number(b.card?.manaAmount)||1))[0];
+        if (chosen) performSacrifice(chosen, false);
       } else if (ability.sacrifice === 'self') {
         // Conserva la semántica histórica de una habilidad activada desde criatura:
         // "self" refiere a la criatura que está usando la habilidad.
@@ -1130,6 +1203,7 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
           ability
         });
       }
+      flushDeferredLandManaTriggers();
 
       state.priorityPlayer = 'local';
       state.consecutivePasses = 0;
@@ -1198,6 +1272,9 @@ function canBotBuildMainPhaseCastProposal(rawCard) {
   // Remoción/freno: su heurística sólo los usa sobre una criatura rival válida.
   if (['destroy_creature', 'exile_creature', 'exile_and_return', 'bounce', 'cant_attack_next_turn'].includes(effect.type)) {
     return state.localCombat.some(c => isValidBotTarget(c, card.colors));
+  }
+  if (effect.type === 'destroy_land' || effect.type === 'destroy_nonbasic_land') {
+    return getBotLandDestructionTargets(effect, card.colors).length > 0;
   }
 
   // Buff/protección: sólo sobre una criatura propia real.
@@ -1277,8 +1354,8 @@ export async function takeBotPriorityAction() {
     const landIndex = state.rivalHand.findIndex(c => c.type.includes('Tierra'));
     if (landIndex !== -1 && !state.rivalLandPlayedThisTurn) {
       const landCard = state.rivalHand.splice(landIndex, 1)[0];
-      const entersTapped = !!landCard.entersTapped;
-      const landItem = { card: landCard, tapped: entersTapped };
+      const entersTapped = landEntersTappedForBattlefield(landCard, false);
+      const landItem = { card: landCard, tapped: entersTapped, enteredThisTurn: true, permanentTypes: ['land'] };
       state.rivalLands.push(landItem); 
       state.rivalLandPlayedThisTurn = true;
       logMsg(entersTapped ? gameText('bot.land.playedTapped', { card: landCard.name }) : gameText('bot.land.played', { card: landCard.name })); 
@@ -1286,6 +1363,16 @@ export async function takeBotPriorityAction() {
       await triggerLandEtb(false, landCard, landItem);
       render(); 
       await sleep(800);
+    }
+
+    // LAND 4: si un permanente tipo Crucible/Ramunap le permite jugar Tierras desde su
+    // cementerio y todavía conserva el land drop, usa una Tierra de ahí cuando no bajó una de mano.
+    if (!state.rivalLandPlayedThisTurn && hasLandPlayFromGraveyardPermission(false)) {
+      const gyLandIndex = state.rivalGraveyard.findIndex(c => String(c?.type || '').includes('Tierra'));
+      if (gyLandIndex !== -1) {
+        await playLandFromGraveyardByIndex(gyLandIndex, false);
+        await sleep(600);
+      }
     }
 
     // Planeswalkers propios: si activa Loyalty, ahora entra a la Stack y el Tano corta acá
@@ -1364,11 +1451,23 @@ export async function takeBotPriorityAction() {
         // 23.11.3: una carta pagable no alcanza. Si no puede formar una propuesta legal/útil
         // con sus targets actuales, ni siquiera compite en la selección de Main.
         if (!canBotBuildMainPhaseCastProposal(c)) return;
+        if (c.effect && (c.effect.type === 'ramp' || c.effect.type === 'search_land')) {
+          const filter = c.effect.type === 'ramp' ? 'basic' : (c.effect.filter || 'any');
+          if (!state.rivalDeck.some(card => landMatchesFilter(card, filter))) return;
+        }
         // NUEVO: El Tano solo arrasa el campo si está en desventaja de poder
         if (c.effect && c.effect.type === 'destroy_all_creatures') {
           const localPower = state.localCombat.reduce((sum, u) => sum + getEffectivePower(u), 0);
           const rivalPower = state.rivalCombat.reduce((sum, u) => sum + getEffectivePower(u), 0);
           if (rivalPower >= localPower) return;
+        }
+        // LAND 2: un Armageddon-style no se castea porque sí. Si el efecto es unilateral
+        // contra el rival alcanza con que destruya algo; si afecta a ambos, el Tano exige
+        // destruir estrictamente más Tierras humanas que propias.
+        if (c.effect && c.effect.type === 'destroy_all_lands') {
+          const humanLost = countBotMassLandVictims(c.effect, true);
+          const botLost = countBotMassLandVictims(c.effect, false);
+          if (humanLost === 0 || (botLost > 0 && humanLost <= botLost)) return;
         }
         // NUEVO: no tiene sentido gastar Proliferar si no hay ni un solo contador en juego
         // (ni +1/+1, ni -1/-1, ni un Planeswalker con Lealtad) — se desperdiciaría entero.
@@ -1664,6 +1763,17 @@ export async function takeBotPriorityAction() {
             logMsg(gameText('bot.cast.noGoodFight', { card: cardToPlay.name }));
           }
         }
+        // LAND 2: destrucción puntual de Tierras. Incluye una man-land animada porque
+        // conserva identidad Land aun cuando esté visualmente en Combat.
+        else if (cardToPlay.effect && (cardToPlay.effect.type === 'destroy_land' || cardToPlay.effect.type === 'destroy_nonbasic_land')) {
+          const chosen = getBotLandDestructionTargets(cardToPlay.effect, cardToPlay.colors)[0];
+          if (chosen) {
+            aiTargetObj = { type: 'land', isLocal: true, item: chosen };
+          } else {
+            validPlay = false;
+            logMsg(gameText('bot.cast.noTargets', { card: cardToPlay.name }));
+          }
+        }
         // LÓGICA NUEVA: DESTRUIR PERMANENTE (Piedrazo a la Vidriera / Yuyerío Salvaje)
         else if (cardToPlay.effect && (cardToPlay.effect.type === 'destroy_artifact' || cardToPlay.effect.type === 'destroy_enchantment')) {
           const filterType = cardToPlay.effect.type === 'destroy_artifact' ? 'Artefacto' : 'Encantamiento';
@@ -1725,6 +1835,7 @@ export async function takeBotPriorityAction() {
         kicked: botKicked
       };
       addToStack(castStackItem);
+      flushDeferredLandManaTriggers();
       await triggerSpellCast(false, cardToPlay, castStackItem);
 
       // Ward es posterior al casteo. Aún se resuelve como prompt simplificado (no trigger

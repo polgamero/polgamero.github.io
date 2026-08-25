@@ -517,6 +517,51 @@ html, body {
   margin-bottom: 4px;
 }
 
+
+/* 23.14.1 — reserva de maná visible junto a cada jugador, estilo Arena. El pool es estado
+   de reglas real: el HUD sólo lo representa y permite gastar de a una unidad durante pagos. */
+.player-name-mana-row {
+  width:100%; display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+}
+.player-name-mana-row h3 { margin-right:auto; }
+.mana-pool-hud {
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 0 0 2px 0;
+}
+.mana-pool-hud.mana-pool-empty { min-height: 0; margin-bottom: 0; }
+.mana-pool-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 30px;
+  height: 22px;
+  padding: 1px 5px 1px 2px;
+  border-radius: 999px;
+  border: 1px solid rgba(230,205,120,.48);
+  background: rgba(8,12,10,.82);
+  color: #f4e8b8;
+  font: inherit;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0,0,0,.45);
+}
+button.mana-pool-chip { cursor: default; }
+button.mana-pool-chip.mana-pool-spendable { cursor: pointer; border-color: var(--gold, #d4af37); }
+button.mana-pool-chip.mana-pool-spendable:hover { transform: translateY(-1px) scale(1.04); }
+button.mana-pool-chip:disabled { opacity: 1; }
+.mana-icon-pool { width: 17px; height: 17px; flex: 0 0 17px; }
+.mana-pool-count { min-width: 9px; text-align: center; font-size: .72rem; }
+.mana-choice-modal { max-width: 390px; padding-bottom: 12px; }
+.mana-choice-grid { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; padding:18px; }
+.mana-choice-btn { display:flex; align-items:center; gap:7px; padding:9px 13px; border-radius:10px; border:1px solid #9d8440; background:#172019; color:#f4e8b8; cursor:pointer; font-weight:700; }
+.mana-choice-btn:hover { border-color:#e2c45c; transform:translateY(-1px); }
+.mana-source-choice-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:18px; }
+.mana-choice-cancel { display:block; width:calc(100% - 36px); margin:0 18px; }
+
 .hp-bar-container { 
   width: 100%; 
   max-width: 130px; /* Ancho máximo controlado */
@@ -2124,3 +2169,7 @@ html, body {
 }
 .game-over-reward-status[data-kind="warning"] { border-color: rgba(224,122,107,.65); color:#f0c4bb; }
 .game-over-reward-status[data-kind="success"] { border-color: rgba(102,187,106,.55); color:#cce8ce; }
+
+/* 23.14.5 LAND 4 — acceso visible a land play desde cementerio (Crucible/Ramunap-style). */
+.graveyard-play-land-btn{position:absolute;right:-5px;bottom:-5px;width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.55);background:rgba(16,66,36,.94);color:#fff;cursor:pointer;z-index:12;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.pile-content{position:relative}

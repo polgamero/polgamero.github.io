@@ -1200,5 +1200,160 @@
         "indestructible"
       ]
     }
+  },
+  {
+    "id": "ench_057",
+    "name": "Laberinto de Parque Chas",
+    "type": "Encantamiento",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Las Tierras entran al campo de batalla giradas.",
+    "flavorText": "Entrar es sencillo. Orientarse lleva un turno entero.",
+    "image": "laberinto_de_parque_chas.png",
+    "staticEffect": {
+      "type": "lands_enter_tapped",
+      "scope": "all",
+      "landFilter": "any"
+    }
+  },
+  {
+    "id": "ench_058",
+    "name": "Hora Pico en General Paz",
+    "type": "Encantamiento",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Las Tierras no básicas no se enderezan durante los pasos de Enderezar de sus controladores.",
+    "flavorText": "Todos avanzan. Nadie se mueve.",
+    "image": "hora_pico_en_general_paz.png",
+    "staticEffect": {
+      "type": "lands_dont_untap",
+      "scope": "all",
+      "landFilter": "nonbasic"
+    }
+  },
+  {
+    "id": "ench_059",
+    "name": "Cables Pelados de Dock Sud",
+    "type": "Encantamiento",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que un jugador gire una Tierra para obtener maná, Cables Pelados de Dock Sud le hace 1 de daño.",
+    "flavorText": "La energía llega. La aislación es otro asunto.",
+    "image": "cables_pelados_de_dock_sud.png",
+    "landManaTrigger": {
+      "scope": "all",
+      "effect": {
+        "type": "damage",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "ench_060",
+    "name": "Usina de Costanera Sur",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que un jugador gire una Tierra para obtener maná, agrega un maná adicional del tipo producido.",
+    "flavorText": "Cada turbina consigue sacar una vuelta más de la misma corriente.",
+    "image": "usina_de_costanera_sur.png",
+    "landManaBonus": {
+      "scope": "all",
+      "mode": "same_type",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_061",
+    "name": "Luna Roja sobre Avellaneda",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Las Tierras no básicas son Montañas.",
+    "flavorText": "Bajo esa luz, cada barrio parece hecho de la misma piedra caliente.",
+    "image": "luna_roja_sobre_avellaneda.png",
+    "staticEffect": {
+      "type": "land_type_set",
+      "scope": "all",
+      "landFilter": "nonbasic",
+      "setLandTypes": [
+        "Montaña"
+      ]
+    }
+  },
+  {
+    "id": "ench_062",
+    "name": "Jardines de Palermo",
+    "type": "Encantamiento",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Las Tierras que controlás son Planicies, Aguas, Pantanos, Montañas y Bosques además de sus otros tipos.",
+    "flavorText": "Cinco paisajes caben en la misma vuelta del sendero.",
+    "image": "jardines_de_palermo.png",
+    "staticEffect": {
+      "type": "land_type_add",
+      "scope": "own",
+      "addLandTypes": [
+        "Planicie",
+        "Agua",
+        "Pantano",
+        "Montaña",
+        "Bosque"
+      ]
+    }
+  },
+  {
+    "id": "ench_063",
+    "name": "Zona Franca de Ezeiza",
+    "type": "Encantamiento",
+    "manaCost": "{4}{U}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Las Tierras no básicas de tus oponentes pierden sus habilidades y tienen “{T}: agregá {C}”.",
+    "flavorText": "Todo cruza la frontera con menos atribuciones de las que tenía al llegar.",
+    "image": "zona_franca_de_ezeiza.png",
+    "staticEffects": [
+      {
+        "type": "land_abilities_remove",
+        "scope": "opponent",
+        "landFilter": "nonbasic"
+      },
+      {
+        "type": "land_mana_override",
+        "scope": "opponent",
+        "landFilter": "nonbasic",
+        "produces": "C",
+        "amount": 1,
+        "requiresTap": true,
+        "sacrificeSelf": false
+      }
+    ]
   }
 ]

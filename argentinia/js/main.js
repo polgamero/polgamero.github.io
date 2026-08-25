@@ -2,8 +2,9 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal } from './ui.js';
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
+import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
 import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, flushPendingGameRewards, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
@@ -23,10 +24,16 @@ import { showStartingCoinToss } from './startingCoin.js';
 import { createSoloGameId, beginSoloRecoverySession, activateResumedSoloRecovery, loadSoloRecoveryCandidate, isSoloRecoveryCompatible, isSoloRecoveryExpired, restoreSoloRecoveryState, checkpointSoloRecovery, clearSoloRecovery, finishSoloRecovery, getSoloEffectiveElapsedMs, getActiveSoloGameId, hasActiveSoloRecovery } from './soloRecovery.js';
 import { maybeShowAnnouncementPopup } from './campaignsUI.js';
 import { enterGameplayAudio } from './audioManager.js';
+import { emptyManaPool, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, spendOneMana, spendAvailableTowardCost } from './manaPool.js';
+import { normalizeManaAbility, isManaSourceCard, getManaSourceOptions, getManaSourceAmount, manaSourceRequiresTap, manaSourceSacrificesSelf, canActivateManaSourcePermanent } from './manaSources.js';
+import { isLandCard, landGraveyardFilterMatches, hasLandPlayFromGraveyardPermission as hasLandGYPermission, playableLandGraveyardEntries } from './landGraveyard.js';
+import { normalizeLandSearchEffect, getLandSearchCandidates, chooseBotLandSearchEntries, shuffleLibraryInPlace } from './landSearch.js';
+import { shouldLandEnterTapped, getLandManaTriggerEntries, getLandManaBonuses } from './landStax.js';
+import { getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities, getEffectiveLandPrintedKeywords, landRulesTextSuppressed, landMatchesEffectiveFilter, getEffectiveLandTypeLine, describeLandTransformation } from './landCharacteristics.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
-const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde' };
+const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde', C: 'Incoloro' };
 
 // Fase 1: rastrea la carga (asíncrona) del perfil de Firestore del usuario logueado.
 // initGame la espera ANTES de decidir si hay que crear una colección inicial — sin esto,
@@ -217,6 +224,9 @@ export const state = {
   localPlaneswalkers: [], // { card, loyalty, abilityUsedThisTurn } — no son criaturas, no
                            // atacan ni bloquean, pero SÍ se los puede atacar en su lugar.
   localLandPlayedThisTurn: false,
+  // 23.14.1 — reserva de maná pública y persistente sólo dentro del paso/fase actual.
+  // Se vacía al final de CADA paso y fase (CR 106.4 / 500.5).
+  localManaPool: emptyManaPool(),
 
   rivalHP: 20,
   rivalPoison: 0,
@@ -228,6 +238,7 @@ export const state = {
   rivalExile: [],
   rivalPlaneswalkers: [],
   rivalLandPlayedThisTurn: false,
+  rivalManaPool: emptyManaPool(),
 
   // ENTREGA 23.10: transacción de casteo 601.2. Guarda propuesta/elecciones/targets/costo
   // bloqueado ANTES de activar fuentes de maná. No viaja por Firestore.
@@ -243,6 +254,9 @@ export const state = {
   // Dólares Blue / Treasure-like). Si el jugador cancela ANTES de que el hechizo/habilidad
   // llegue a la pila, estas fuentes vuelven exactamente a la zona/posición de donde salieron.
   paymentManaSourceRollbacks: [],
+  // Snapshot de la reserva justo antes de la primera acción de pago. Cancelar un casteo
+  // restaura exactamente este pool además de enderezar/restaurar fuentes reversibles.
+  paymentManaPoolSnapshot: null,
   pendingTargetCard: null,
   pendingAbilitySource: null,
   // Punto 11: mientras se elige entre dos o más habilidades activadas del mismo permanente
@@ -294,6 +308,12 @@ export const state = {
   pendingAlternativeCostChosen: false,
   // True mientras se están seleccionando/preparando componentes no-maná de un costo de casteo.
   pendingCompositeCostPayment: false,
+  // LAND 3: selector de biblioteca para search_land/ramp. La elección ocurre sólo al resolver.
+  pendingLandSearchChoice: null,
+  // LAND 5: elección de Tierras a enderezar bajo Winter Orb-style y triggers de maná
+  // diferidos hasta que termine el casteo/activación que estaba pagando.
+  pendingUntapLandChoice: null,
+  deferredLandManaTriggers: [],
   // Una vez que vida/descarte/sacrificio/exilio se comprometieron, cancelar ya no puede
   // devolver sólo el maná dejando esos otros costos perdidos.
   pendingSpellCostsIrreversible: false,
@@ -587,6 +607,8 @@ async function initGame(deckSource) {
   await mobileSoloYield('before_board_layout');
   setupBoardLayout();
   replaceSpellStackFromSync([]);
+  state.localManaPool = emptyManaPool();
+  state.rivalManaPool = emptyManaPool();
   await mobileSoloYield('board_layout_ready');
 
   let deckLabel;
@@ -1352,6 +1374,8 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
 
   setupBoardLayout();
   replaceSpellStackFromSync([]);
+  state.localManaPool = emptyManaPool();
+  state.rivalManaPool = emptyManaPool();
   lastKnownPublicWire = null;
   lastKnownPrivateWire = null;
   lastAppliedWriterSeq.clear();
@@ -1919,6 +1943,151 @@ export async function requestPrivateZoneChoice(options = {}) {
   };
 }
 
+
+// =========================================================================
+// 23.14.4 LAND 3 — búsqueda avanzada de Tierras en biblioteca.
+// La elección de una carta concreta ocurre durante la RESOLUCIÓN, nunca durante el casteo.
+// `entries` conserva índices de slot para distinguir copias idénticas que compartan definición.
+// =========================================================================
+function landSearchFilterCopy(filter = 'any') {
+  if (filter === 'basic') return gameText('land.search.filter.basic');
+  if (filter === 'nonbasic') return gameText('land.search.filter.nonbasic');
+  if (String(filter).startsWith('subtype:')) return gameText('land.search.filter.subtype', { subtype: String(filter).slice(8).trim() });
+  return gameText('land.search.filter.any');
+}
+
+function landSearchDestinationCopy(destination = 'battlefield') {
+  if (destination === 'hand') return gameText('land.search.destination.hand');
+  if (destination === 'battlefield_tapped') return gameText('land.search.destination.battlefieldTapped');
+  return gameText('land.search.destination.battlefield');
+}
+
+async function chooseLandSearchEntries({ ownerIsLocal, chooserIsLocal, spec, cardName }) {
+  const deck = ownerIsLocal ? state.localDeck : state.rivalDeck;
+  const candidates = getLandSearchCandidates(deck, spec.filter);
+  const maxCount = Math.min(spec.amount, candidates.length);
+  if (maxCount <= 0) return [];
+
+  if (!chooserIsLocal) {
+    return chooseBotLandSearchEntries(deck, spec.filter, maxCount, spec.destination);
+  }
+
+  state.pendingLandSearchChoice = {
+    cardName,
+    amount: spec.amount,
+    maxCount,
+    filter: spec.filter,
+    destination: spec.destination
+  };
+  render();
+  return new Promise(resolve => {
+    showLandSearchModal({
+      candidates,
+      maxCount,
+      cardName,
+      filterLabel: landSearchFilterCopy(spec.filter),
+      destinationLabel: landSearchDestinationCopy(spec.destination),
+      allowFewer: spec.allowFewer
+    }, chosenIndexes => {
+      state.pendingLandSearchChoice = null;
+      render();
+      const byIndex = new Map(candidates.map(entry => [entry.index, entry]));
+      const unique = [...new Set((chosenIndexes || []).map(Number))]
+        .filter(Number.isInteger)
+        .map(index => byIndex.get(index))
+        .filter(Boolean)
+        .slice(0, maxCount);
+      resolve(unique);
+    });
+  });
+}
+
+async function commitLandSearchEntries({ ownerIsLocal, entries, spec, cardName }) {
+  const deck = ownerIsLocal ? state.localDeck : state.rivalDeck;
+  const hand = ownerIsLocal ? state.localHand : state.rivalHand;
+  const lands = ownerIsLocal ? state.localLands : state.rivalLands;
+
+  // Revalidar slots ANTES de mutar; la selección estuvo pausando resolución/prioridad.
+  const valid = (entries || []).filter(entry =>
+    Number.isInteger(entry?.index) && entry.index >= 0 && entry.index < deck.length &&
+    deck[entry.index] === entry.card && landMatchesFilter(entry.card, spec.filter)
+  );
+  const cardsInSelectionOrder = valid.map(entry => entry.card);
+
+  // Quitar desde índice mayor a menor para no desplazar slots todavía no retirados.
+  [...valid].sort((a, b) => b.index - a.index).forEach(entry => deck.splice(entry.index, 1));
+
+  const movedNames = cardsInSelectionOrder.map(card => card.name);
+  if (spec.destination === 'hand') {
+    cardsInSelectionOrder.forEach(landCard => hand.push(landCard));
+  } else {
+    // Si una instrucción encuentra varias Tierras, entran como un mismo evento. Determinamos
+    // TODOS los replacement effects antes de poner la primera en mesa; así una Tierra Stax
+    // que forma parte del mismo lote no empieza a modificar artificialmente a sus compañeras.
+    const entering = cardsInSelectionOrder.map(landCard => ({
+      card:landCard,
+      item:{
+        card:landCard,
+        tapped:landEntersTappedForBattlefield(landCard, ownerIsLocal, spec.destination === 'battlefield_tapped'),
+        enteredThisTurn:true,
+        permanentTypes:['land']
+      }
+    }));
+    entering.forEach(entry => lands.push(entry.item));
+    // Cada entrada genera su propio evento Landfall, pero todos los permanentes del lote ya
+    // están presentes cuando se detectan esos triggers.
+    for (const entry of entering) await triggerLandEtb(ownerIsLocal, entry.card, entry.item);
+  }
+
+  // El efecto dice "buscá ... luego barajá": también se baraja si se eligió encontrar 0.
+  shuffleLibraryInPlace(deck);
+  const identityIsPublic = spec.reveal || spec.destination !== 'hand';
+  const publicMovedNames = identityIsPublic ? movedNames : [];
+  recordTelemetryEvent('land_search_resolved', {
+    source: cardName,
+    filter: spec.filter,
+    destination: spec.destination,
+    selectedCount: movedNames.length,
+    selectedNames: publicMovedNames
+  });
+  render();
+  return { completed: true, selectedCount: movedNames.length, movedNames: publicMovedNames };
+}
+
+// API compartida por `search_land` y por el efecto legacy `ramp`. En multiplayer, si el
+// controlador es el rival, este cliente jamás inspecciona rivalDeck: el dueño real elige,
+// mueve y baraja en su propia pantalla. Sólo publica identidad si el efecto la revela o si
+// el destino es una zona pública como battlefield.
+export async function searchLibraryForLands({ isLocal = true, effect = {}, cardName = 'Efecto' } = {}) {
+  const spec = normalizeLandSearchEffect(effect);
+  if (spec.amount <= 0) return { completed: true, selectedCount: 0, movedNames: [] };
+
+  if (isHiddenRivalZone(isLocal)) {
+    const rivalRole = otherRole(state.currentMatch.myRole);
+    const response = await requestRivalDecision('self_search_land', rivalRole, {
+      amount: spec.amount,
+      filter: spec.filter,
+      destination: spec.destination,
+      allowFewer: spec.allowFewer,
+      reveal: spec.reveal,
+      cardName
+    });
+    return {
+      completed: response?.completed !== false,
+      selectedCount: Number(response?.selectedCount || 0),
+      movedNames: Array.isArray(response?.movedNames) ? response.movedNames : []
+    };
+  }
+
+  const entries = await chooseLandSearchEntries({
+    ownerIsLocal: isLocal,
+    chooserIsLocal: isLocal,
+    spec,
+    cardName
+  });
+  return commitLandSearchEntries({ ownerIsLocal: isLocal, entries, spec, cardName });
+}
+
 // BUGFIX (post-lanzamiento, Etapa 5 revisada): antes, un efecto que obligaba al RIVAL a
 // descartar en multiplayer simplemente se salteaba entero — ni una carta se iba a ningún
 // lado, con un aviso de "no se puede resolver". Esto era HONESTO (no fingía un resultado
@@ -2156,7 +2325,7 @@ export function canPayCastCompositeNonManaCosts(card, isLocal, useAlternative = 
   const battlefield = [...combat, ...support, ...lands];
   const sacrificeReqs = expandCostRequirements(bundle.sacrifices);
   if (!canAssignDistinctResources(battlefield, sacrificeReqs, (item, req) => {
-    const t = req.target === 'own_artifact' ? 'artifact' : req.target === 'own_creature' ? 'creature' : null;
+    const t = req.target === 'own_artifact' ? 'artifact' : req.target === 'own_creature' ? 'creature' : req.target === 'own_land' ? 'land' : null;
     return !!t && isSacrificeCandidate(item, t);
   })) return false;
 
@@ -2207,7 +2376,7 @@ function chooseHandCardsForCompositeCost(isLocal, spec, card, excludeCards = [])
 }
 
 function chooseSacrificeItemsForCompositeCost(isLocal, spec, card, excludeItems = []) {
-  const permanentType = spec.target === 'own_artifact' ? 'artifact' : spec.target === 'own_creature' ? 'creature' : null;
+  const permanentType = spec.target === 'own_artifact' ? 'artifact' : spec.target === 'own_creature' ? 'creature' : spec.target === 'own_land' ? 'land' : null;
   if (!permanentType) return Promise.resolve(null);
   const excluded = new Set(excludeItems.filter(Boolean));
   const candidates = getSacrificeEffectCandidates(isLocal, permanentType).filter(item => !excluded.has(item));
@@ -2566,6 +2735,7 @@ function handleIncomingDecisionRequest(decision) {
       zoneIsLocal: true,
       chooserIsLocal: true,
       filter: decision.filter || 'any',
+      landFilter: decision.landFilter || null,
       amount: decision.amount || 1,
       cardName: decision.cardName || 'Efecto rival',
       actionLabel: `elegí ${decision.amount || 1} carta${(decision.amount || 1) > 1 ? 's' : ''} para devolver a tu mano`,
@@ -2589,6 +2759,40 @@ function handleIncomingDecisionRequest(decision) {
       render();
       respondToDecision(decision.requestId, { completed: false, returnedNames: [] });
     });
+  } else if (decision.type === 'self_search_land') {
+    // LAND 3: una carta controlada por este jugador busca en SU biblioteca privada. El
+    // cliente remoto nunca recibe el mazo; sólo recibe nombres legalmente públicos (reveal explícito
+    // o destino battlefield). Una búsqueda a mano sin reveal mantiene la identidad privada.
+    state.respondingToDecision = true;
+    render();
+    const spec = normalizeLandSearchEffect({
+      amount: decision.amount,
+      filter: decision.filter,
+      destination: decision.destination,
+      allowFewer: decision.allowFewer,
+      reveal: decision.reveal
+    });
+    chooseLandSearchEntries({
+      ownerIsLocal: true,
+      chooserIsLocal: true,
+      spec,
+      cardName: decision.cardName || 'Efecto rival'
+    }).then(entries => commitLandSearchEntries({
+      ownerIsLocal: true,
+      entries,
+      spec,
+      cardName: decision.cardName || 'Efecto rival'
+    })).then(result => {
+      state.respondingToDecision = false;
+      render();
+      respondToDecision(decision.requestId, result);
+    }).catch(err => {
+      console.error('Error buscando Tierra remota en biblioteca:', err);
+      state.pendingLandSearchChoice = null;
+      state.respondingToDecision = false;
+      render();
+      respondToDecision(decision.requestId, { completed: false, selectedCount: 0, movedNames: [] });
+    });
   } else if (decision.type === 'graveyard_choice') {
     // Punto 6: el jugador remoto elige desde el cementerio indicado por rol fijo. Al llegar
     // a SU pantalla, ese rol se traduce otra vez a local/rival y el mismo selector general
@@ -2600,6 +2804,7 @@ function handleIncomingDecisionRequest(decision) {
       zoneIsLocal,
       chooserIsLocal: true,
       filter: decision.filter || 'any',
+      landFilter: decision.landFilter || null,
       amount: decision.amount || 1,
       cardName: decision.cardName || 'Efecto rival',
       actionLabel: decision.actionLabel || null,
@@ -2954,6 +3159,8 @@ export function reconstructStateFromMatch(publicDoc, privateDoc, myRole) {
   );
   state.localHand = privateDoc.hand || [];
   state.localDeck = privateDoc.deck || [];
+  if (!state.localManaPool) state.localManaPool = emptyManaPool();
+  if (!state.rivalManaPool) state.rivalManaPool = emptyManaPool();
   relinkEquipmentAttachments(state);
   lastKnownPublicWire = wireClone(publicDoc || {});
   lastKnownPrivateWire = wireClone(privateDoc || {});
@@ -3044,7 +3251,7 @@ function offerReconnectIfStillActive(matchId) {
 
 export function getEffectivePower(itemObj) {
   const card = itemObj.card || itemObj;
-  let p = card.power || 0;
+  let p = itemObj?.animatedBasePower ?? card.power ?? 0;
   p += getCounterStats(itemObj);
   (itemObj.auras || []).forEach(attached => {
     const mod = attached.auraEffect && attached.auraEffect.stats;
@@ -3075,7 +3282,7 @@ export function getEffectivePower(itemObj) {
 
 export function getEffectiveToughness(itemObj) {
   const card = itemObj.card || itemObj;
-  let t = card.toughness || 0;
+  let t = itemObj?.animatedBaseToughness ?? card.toughness ?? 0;
   t += getCounterStats(itemObj);
   (itemObj.auras || []).forEach(attached => {
     const mod = attached.auraEffect && attached.auraEffect.stats;
@@ -3101,19 +3308,26 @@ export function getEffectiveToughness(itemObj) {
 
 export function getEffectiveKeywords(itemObj) {
   const card = itemObj.card || itemObj;
-  const base = card.keywords || [];
+  const itemIsLocal = !!itemObj?.card && (state.localCombat.includes(itemObj) || state.localSupport.includes(itemObj) || state.localLands.includes(itemObj) || state.localPlaneswalkers.includes(itemObj));
+  const itemIsRival = !!itemObj?.card && (state.rivalCombat.includes(itemObj) || state.rivalSupport.includes(itemObj) || state.rivalLands.includes(itemObj) || state.rivalPlaneswalkers.includes(itemObj));
+  // LAND 6: Blood Moon-style elimina keywords/abilities impresas de una Tierra afectada,
+  // pero no borra habilidades concedidas por animación, Auras, Equipos o efectos posteriores.
+  const base = (itemIsLocal || itemIsRival)
+    ? getEffectiveLandPrintedKeywords(state, itemObj, itemIsLocal)
+    : (card.keywords || []);
   const fromAuras = (itemObj.auras || []).flatMap(a => (a.auraEffect && a.auraEffect.keywords) || []);
   const fromEquipment = getEquipmentOn(itemObj).flatMap(eq => (eq.card.equipment && eq.card.equipment.grantedKeywords) || []);
   const fromStatic = getStaticTeamModifiers(itemObj)
     .filter(m => m.type === 'team_keyword')
     .map(m => m.keyword);
   const fromTemp = (itemObj.tempEffects || []).flatMap(t => t.keywords || []);
+  const fromAnimation = itemObj?.isAnimatedLand ? (itemObj.animationKeywords || []) : [];
   // FASE 3 (revisión post-Etapa 4): la mejora por Fichas YA NO se busca acá dinámicamente
   // — antes esto aplicaba a CUALQUIER copia con el mismo ID, lo cual estaba mal (el pedido
   // es que sea UNA sola copia puntual, elegible). Ahora la keyword de la mejora se hornea
   // directo en card.keywords de esa copia específica al armar el mazo (ver
   // buildDeckFromCardIds en utils.js), así que ya viene incluida en `base` de acá arriba.
-  return [...new Set([...base, ...fromAuras, ...fromEquipment, ...fromStatic, ...fromTemp])];
+  return [...new Set([...base, ...fromAnimation, ...fromAuras, ...fromEquipment, ...fromStatic, ...fromTemp])];
 }
 
 // Punto 6: infraestructura GENERAL de selección de Cementerio. Separamos expresamente
@@ -3137,11 +3351,12 @@ export function cardMatchesGraveyardFilter(card, filter = 'any') {
   return false;
 }
 
-export function getGraveyardChoiceCandidates(zoneIsLocal, filter = 'any') {
+export function getGraveyardChoiceCandidates(zoneIsLocal, filter = 'any', landFilter = null) {
   const graveyard = zoneIsLocal ? state.localGraveyard : state.rivalGraveyard;
   return graveyard
     .map((card, index) => ({ card, index }))
-    .filter(entry => cardMatchesGraveyardFilter(entry.card, filter));
+    .filter(entry => cardMatchesGraveyardFilter(entry.card, filter))
+    .filter(entry => !landFilter || filter !== 'land' || landGraveyardFilterMatches(entry.card, landFilter));
 }
 
 function graveyardFilterLabel(filter) {
@@ -3169,14 +3384,15 @@ async function chooseGraveyardCardsNow(options) {
     amount = 1,
     cardName = 'Efecto',
     actionLabel = null,
-    botStrategy = 'highest_value'
+    botStrategy = 'highest_value',
+    landFilter = null
   } = options || {};
   if (!GRAVEYARD_FILTERS.includes(filter)) {
     logMsg(`⚠️ ${cardName}: filtro de cementerio desconocido "${filter}".`);
     return [];
   }
 
-  const candidates = getGraveyardChoiceCandidates(zoneIsLocal, filter);
+  const candidates = getGraveyardChoiceCandidates(zoneIsLocal, filter, landFilter);
   const count = Math.min(Math.max(0, Number(amount) || 0), candidates.length);
   if (count <= 0) return [];
 
@@ -3211,7 +3427,7 @@ async function chooseGraveyardCardsNow(options) {
     const myRole = state.currentMatch.myRole;
     const zoneOwnerRole = zoneIsLocal ? myRole : otherRole(myRole);
     const response = await requestRivalDecision('graveyard_choice', otherRole(myRole), {
-      zoneOwnerRole, filter, amount: count, cardName, actionLabel, botStrategy
+      zoneOwnerRole, filter, landFilter, amount: count, cardName, actionLabel, botStrategy
     });
     const graveyard = zoneIsLocal ? state.localGraveyard : state.rivalGraveyard;
     return (response.selectedIndexes || [])
@@ -3257,7 +3473,7 @@ function resolvedEffectTargetCard(sourceCard, effect, cardName) {
 function controllerAllowsTargetSide(rules, targetKind, targetIsLocal, controllerIsLocal) {
   if (targetKind === 'player') return !!rules.allowPlayer;
   const sameSide = targetIsLocal === controllerIsLocal;
-  const suffix = targetKind === 'creature' ? 'Creature' : targetKind === 'permanent' ? 'Permanent' : 'Planeswalker';
+  const suffix = targetKind === 'creature' ? 'Creature' : targetKind === 'permanent' ? 'Permanent' : targetKind === 'land' ? 'Land' : 'Planeswalker';
   return !!rules[`allow${sameSide ? 'Local' : 'Rival'}${suffix}`];
 }
 
@@ -3291,6 +3507,15 @@ export function isResolvedEffectTargetLegal(targetObj, options) {
     return !rules.permanentFilter || targetObj.item.card.type.includes(rules.permanentFilter);
   }
 
+  if (targetObj.type === 'land') {
+    const lands = targetObj.isLocal ? state.localLands : state.rivalLands;
+    const combat = targetObj.isLocal ? state.localCombat : state.rivalCombat;
+    if (!targetObj.item || (!lands.includes(targetObj.item) && !(combat.includes(targetObj.item) && isLandPermanent(targetObj.item)))) return false;
+    if (targetObj.isLocal !== controllerIsLocal && hasKeyword(targetObj.item, 'hexproof')) return false;
+    if (getProtectionMatch(targetObj.item, sourceCard.colors || [])) return false;
+    return landMatchesEffectiveFilter(state, targetObj.item, targetObj.isLocal, rules.landFilter || 'any');
+  }
+
   if (targetObj.type === 'planeswalker') {
     const zone = targetObj.isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
     return !!targetObj.item && zone.includes(targetObj.item);
@@ -3321,6 +3546,17 @@ export function getResolvedEffectTargetCandidates(options) {
     if (!controllerAllowsTargetSide(rules, 'permanent', isLocal, controllerIsLocal)) continue;
     zone.forEach((item, index) => {
       const target = { type: 'permanent', isLocal, index, item };
+      if (isResolvedEffectTargetLegal(target, options)) candidates.push(target);
+    });
+  }
+  for (const [isLocal, pair] of [[true, [state.localLands, state.localCombat]], [false, [state.rivalLands, state.rivalCombat]]]) {
+    if (!controllerAllowsTargetSide(rules, 'land', isLocal, controllerIsLocal)) continue;
+    const seen = new Set();
+    pair.flat().forEach(item => {
+      if (!isLandPermanent(item) || seen.has(item)) return;
+      seen.add(item);
+      const home = pair[0].includes(item) ? pair[0] : pair[1];
+      const target = { type: 'land', isLocal, index: home.indexOf(item), item };
       if (isResolvedEffectTargetLegal(target, options)) candidates.push(target);
     });
   }
@@ -3367,6 +3603,19 @@ function chooseBotResolvedEffectTarget(candidates, options) {
   if (effect.type === 'destroy_enchantment') {
     return strongest(candidates.filter(t => t.type === 'permanent' && opponent(t))) || candidates.find(opponent) || candidates[0];
   }
+  if (effect.type === 'destroy_land' || effect.type === 'destroy_nonbasic_land') {
+    const landScore = t => {
+      const item = t?.item || {};
+      const c = item.card || {};
+      // El Tano prioriza tierras no básicas/utility y, a igualdad, las fuentes de mayor producción.
+      return (landMatchesFilter(item, 'nonbasic') ? 100 : 0)
+        + (c.activatedAbility || c.activatedAbilities ? 20 : 0)
+        + (Array.isArray(c.producesOptions) ? c.producesOptions.length * 3 : 0)
+        + Math.max(1, Number(c.manaAmount) || 1);
+    };
+    const lands = candidates.filter(t => t.type === 'land' && opponent(t));
+    return lands.reduce((best, cur) => !best || landScore(cur) > landScore(best) ? cur : best, null) || candidates.find(opponent) || candidates[0];
+  }
   return candidates.find(opponent) || candidates[0];
 }
 
@@ -3379,12 +3628,17 @@ function serializeResolvedEffectTarget(targetObj) {
     ? (targetObj.isLocal ? state.localCombat : state.rivalCombat)
     : targetObj.type === 'permanent'
       ? (targetObj.isLocal ? state.localSupport : state.rivalSupport)
-      : (targetObj.isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers);
+      : targetObj.type === 'land'
+        ? ((targetObj.isLocal ? state.localLands : state.rivalLands).includes(targetObj.item)
+            ? (targetObj.isLocal ? state.localLands : state.rivalLands)
+            : (targetObj.isLocal ? state.localCombat : state.rivalCombat))
+        : (targetObj.isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers);
   const index = targetObj.index ?? zone.indexOf(targetObj.item);
   if (index < 0) return null;
   return {
     type: targetObj.type,
     ownerRole,
+    zone: targetObj.type === 'land' ? ((targetObj.isLocal ? state.localLands : state.rivalLands).includes(targetObj.item) ? 'lands' : 'combat') : undefined,
     index,
     cardId: targetObj.item?.card?.id || null,
     cardName: targetObj.item?.card?.name || null
@@ -3399,9 +3653,11 @@ function deserializeResolvedEffectTarget(descriptor) {
     ? (isLocal ? state.localCombat : state.rivalCombat)
     : descriptor.type === 'permanent'
       ? (isLocal ? state.localSupport : state.rivalSupport)
-      : descriptor.type === 'planeswalker'
-        ? (isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers)
-        : null;
+      : descriptor.type === 'land'
+        ? (descriptor.zone === 'combat' ? (isLocal ? state.localCombat : state.rivalCombat) : (isLocal ? state.localLands : state.rivalLands))
+        : descriptor.type === 'planeswalker'
+          ? (isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers)
+          : null;
   if (!zone) return null;
   const item = zone[descriptor.index];
   if (!item) return null;
@@ -3505,6 +3761,9 @@ export function getSacrificeEffectCandidates(isLocal, permanentType) {
     return [...combat, ...support, ...lands].filter(item =>
       item && item.card && typeof item.card.type === 'string' && item.card.type.includes('Artefacto')
     );
+  }
+  if (permanentType === 'land') {
+    return [...combat, ...lands].filter(item => isLandPermanent(item));
   }
   return [];
 }
@@ -3626,6 +3885,7 @@ const TRIGGER_LABELS = {
   dies: 'al morir', any_creature_dies: 'muerte de criatura', opponent_death: 'muerte rival',
   attack: 'al atacar', any_creature_attacks: 'ataque', block: 'al bloquear',
   combat_damage: 'daño de combate', upkeep: 'mantenimiento', end_step: 'paso final',
+  land_tapped_for_mana: gameText('land.stax.triggerLabel'),
   reanimate_etb: 'ETB reanimado', return_etb: 'ETB al volver'
 };
 
@@ -3714,7 +3974,11 @@ export async function triggerLandEtb(isLocal, landCard, landItem = null) {
     ...support.map(item => ({ card: item.card, item })),
     ...lands.map(item => ({ card: item.card, item })),
     ...planeswalkers.map(item => ({ card: item.card, item }))
-  ].filter(entry => entry.card && entry.card.landEtbTrigger);
+  ].filter(entry => {
+    if (!entry.card || !entry.card.landEtbTrigger) return false;
+    if (isLandPermanent(entry.item) && landRulesTextSuppressed(state, entry.item, isLocal)) return false;
+    return true;
+  });
 
   const entries = [];
   for (const { card, item } of watchers) {
@@ -3774,7 +4038,7 @@ export async function triggerSpellCast(isLocal, castCard, stackItem = null) {
     ...support.map(item => ({ card: item.card, item })),
     ...lands.map(item => ({ card: item.card, item })),
     ...planeswalkers.map(item => ({ card: item.card, item }))
-  ].filter(entry => entry.card && entry.card.spellCastTrigger);
+  ].filter(entry => entry.card && entry.card.spellCastTrigger && !(isLandPermanent(entry.item) && landRulesTextSuppressed(state, entry.item, isLocal)));
 
   const entries = [];
   for (const { card, item } of watchers) {
@@ -3820,7 +4084,7 @@ function getNonCreatureAnyDeathWatchers() {
     ...state.rivalLands.map(unit => ({ unit, isLocal: false })),
     ...state.localPlaneswalkers.map(unit => ({ unit, isLocal: true })),
     ...state.rivalPlaneswalkers.map(unit => ({ unit, isLocal: false }))
-  ].filter(({ unit }) => unit?.card?.anyCreatureDiesTrigger);
+  ].filter(({ unit, isLocal }) => unit?.card?.anyCreatureDiesTrigger && !(isLandPermanent(unit) && landRulesTextSuppressed(state, unit, isLocal)));
 }
 
 // Lote de muertes simultáneas. Todos los disparos del mismo evento se recolectan ANTES de
@@ -3839,7 +4103,7 @@ export function queueCreatureDeathBatch(deadEntries = [], watchersSnapshot = nul
   const nonCreatureAnyDeathWatchers = getNonCreatureAnyDeathWatchers();
 
   for (const { unit, isLocal } of dead) {
-    if (unit.card.diesTrigger) {
+    if (unit.card.diesTrigger && !(isLandPermanent(unit) && landRulesTextSuppressed(state, unit, isLocal))) {
       entries.push({
         effect: unit.card.diesTrigger, sourceCard: unit.card, sourceItem: unit, isLocal,
         triggerType: 'dies', eventCard: unit.card, eventItem: unit
@@ -3854,14 +4118,14 @@ export function queueCreatureDeathBatch(deadEntries = [], watchersSnapshot = nul
     const watcherLands = watcherIsLocal ? state.localLands : state.rivalLands;
     const watcherPlaneswalkers = watcherIsLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
     [...watcherSupport, ...watcherLands, ...watcherPlaneswalkers].forEach(item => {
-      if (!item.card?.opponentDeathTrigger) return;
+      if (!item.card?.opponentDeathTrigger || (isLandPermanent(item) && landRulesTextSuppressed(state, item, watcherIsLocal))) return;
       entries.push({
         effect: item.card.opponentDeathTrigger, sourceCard: item.card, sourceItem: item,
         isLocal: watcherIsLocal, triggerType: 'opponent_death', eventCard: unit.card, eventItem: unit
       });
     });
     snapshot.forEach(({ unit: watcher, isLocal: watcherLocal }) => {
-      if (watcherLocal !== watcherIsLocal || !watcher?.card?.opponentDeathTrigger) return;
+      if (watcherLocal !== watcherIsLocal || !watcher?.card?.opponentDeathTrigger || (isLandPermanent(watcher) && landRulesTextSuppressed(state, watcher, watcherLocal))) return;
       entries.push({
         effect: watcher.card.opponentDeathTrigger, sourceCard: watcher.card, sourceItem: watcher,
         isLocal: watcherLocal, triggerType: 'opponent_death', eventCard: unit.card, eventItem: unit
@@ -3869,7 +4133,7 @@ export function queueCreatureDeathBatch(deadEntries = [], watchersSnapshot = nul
     });
 
     snapshot.forEach(({ unit: watcher, isLocal: watcherLocal }) => {
-      if (!watcher?.card?.anyCreatureDiesTrigger) return;
+      if (!watcher?.card?.anyCreatureDiesTrigger || (isLandPermanent(watcher) && landRulesTextSuppressed(state, watcher, watcherLocal))) return;
       entries.push({
         effect: watcher.card.anyCreatureDiesTrigger, sourceCard: watcher.card, sourceItem: watcher,
         isLocal: watcherLocal, triggerType: 'any_creature_dies', eventCard: unit.card, eventItem: unit
@@ -3890,7 +4154,7 @@ export function queueCreatureDeathBatch(deadEntries = [], watchersSnapshot = nul
 // de triggerCreatureEtb, pero para la salida en vez de la entrada.
 export function triggerCreatureDies(unit, isLocal) {
   const trig = unit?.card?.diesTrigger;
-  if (!trig) return null;
+  if (!trig || (isLandPermanent(unit) && landRulesTextSuppressed(state, unit, isLocal))) return null;
   return queueTriggeredAbility({
     effect: trig, sourceCard: unit.card, sourceItem: unit, isLocal, triggerType: 'dies',
     eventCard: unit.card, eventItem: unit
@@ -3908,7 +4172,7 @@ export function triggerAnyCreatureDeath(deadUnit, deadUnitIsLocal, watchersSnaps
   const watcherPlaneswalkers = watcherIsLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
   [...watcherSupport, ...watcherLands, ...watcherPlaneswalkers].forEach(item => {
     const trig = item.card?.opponentDeathTrigger;
-    if (!trig) return;
+    if (!trig || (isLandPermanent(item) && landRulesTextSuppressed(state, item, watcherIsLocal))) return;
     entries.push({
       effect: trig, sourceCard: item.card, sourceItem: item, isLocal: watcherIsLocal,
       triggerType: 'opponent_death', eventCard: deadUnit?.card, eventItem: deadUnit
@@ -3923,13 +4187,13 @@ export function triggerAnyCreatureDeath(deadUnit, deadUnitIsLocal, watchersSnaps
   watchers.forEach(({ unit, isLocal }) => {
     if (isLocal === watcherIsLocal) {
       const opponentTrig = unit?.card?.opponentDeathTrigger;
-      if (opponentTrig) entries.push({
+      if (opponentTrig && !(isLandPermanent(unit) && landRulesTextSuppressed(state, unit, isLocal))) entries.push({
         effect: opponentTrig, sourceCard: unit.card, sourceItem: unit, isLocal,
         triggerType: 'opponent_death', eventCard: deadUnit?.card, eventItem: deadUnit
       });
     }
     const trig = unit?.card?.anyCreatureDiesTrigger;
-    if (!trig) return;
+    if (!trig || (isLandPermanent(unit) && landRulesTextSuppressed(state, unit, isLocal))) return;
     entries.push({
       effect: trig, sourceCard: unit.card, sourceItem: unit, isLocal,
       triggerType: 'any_creature_dies', eventCard: deadUnit?.card, eventItem: deadUnit
@@ -4051,8 +4315,49 @@ export function checkEquipmentLegality() {
 // criatura ACÁ, en el momento, o se queda pegado ese estado (ej. se vería con stats en el
 // cementerio o en la mano, como si siguiera siendo una criatura). Se llama junto con
 // sendAurasToGraveyard/detachEquipmentFrom en todos los caminos de salida del campo.
+export function revertAnimatedLandState(unit) {
+  if (!unit?.isAnimatedLand) return false;
+  unit.isAnimatedLand = false;
+  unit.permanentTypes = ['land'];
+  delete unit.animatedBasePower;
+  delete unit.animatedBaseToughness;
+  delete unit.animationKeywords;
+  delete unit.animationUntil;
+  unit.summoningSickness = false;
+  unit.isAttacking = false;
+  unit.blockingIndex = null;
+  unit.damageTaken = 0;
+  return true;
+}
+
+export function animateLandPermanent(unit, isLocal, effect = {}) {
+  if (!unit || !isLandPermanent(unit)) return false;
+  const lands = isLocal ? state.localLands : state.rivalLands;
+  const combat = isLocal ? state.localCombat : state.rivalCombat;
+  if (unit.isAnimatedLand && combat.includes(unit)) return true;
+  const idx = lands.indexOf(unit);
+  if (idx < 0) return false;
+  lands.splice(idx, 1);
+  unit.isAnimatedLand = true;
+  unit.permanentTypes = ['land', 'creature'];
+  unit.animatedBasePower = Number(effect.power ?? unit.card?.baseStats?.power ?? 0);
+  unit.animatedBaseToughness = Number(effect.toughness ?? unit.card?.baseStats?.toughness ?? 0);
+  unit.animationKeywords = [...new Set(effect.keywords || unit.card?.keywords || [])];
+  unit.animationUntil = effect.duration || 'end_of_turn';
+  unit.damageTaken = unit.damageTaken || 0;
+  unit.isAttacking = false;
+  unit.blockingIndex = null;
+  unit.summoningSickness = !!unit.enteredThisTurn && !unit.animationKeywords.includes('haste') && !hasKeyword(unit, 'haste');
+  combat.push(unit);
+  recordTelemetryEvent('land_animated', { card: unit.card?.name || null, isLocal, power: unit.animatedBasePower, toughness: unit.animatedBaseToughness, enteredThisTurn: !!unit.enteredThisTurn });
+  return true;
+}
+
+// Conservamos el nombre histórico porque muchos removals ya llaman este helper. Desde LAND 1
+// limpia cualquier estado temporal de "se volvió criatura", sea Vehículo o man-land.
 export function cleanupIfVehicle(unit) {
-  if (unit.isVehicle) {
+  if (unit?.isAnimatedLand) revertAnimatedLandState(unit);
+  if (unit?.isVehicle) {
     delete unit.card.power;
     delete unit.card.toughness;
     unit.isVehicle = false;
@@ -4416,7 +4721,10 @@ export function handleCombatClick(item, isLocal, index) {
   }
 
   if (state.pendingResolvedEffectTargetChoice) {
-    finishPendingResolvedEffectTarget({ type: 'creature', isLocal, index, item });
+    const pendingEffect = state.pendingResolvedEffectTargetChoice.effect;
+    const rules = pendingEffect ? getTargetRules({ effect: pendingEffect }) : null;
+    const landAllowed = item.isAnimatedLand && rules && (isLocal ? rules.allowLocalLand : rules.allowRivalLand);
+    finishPendingResolvedEffectTarget({ type: landAllowed ? 'land' : 'creature', isLocal, index, item });
     return;
   }
 
@@ -4463,9 +4771,9 @@ export function handleCombatClick(item, isLocal, index) {
     const mtc = state.pendingMultiTargetChoice;
     const spec = mtc.card.targets[mtc.currentIndex];
     const rules = getTargetRules({ effect: spec.effect });
-    const allowed = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
-    const matchesFilter = !rules.creatureFilter || item.card.type.includes(rules.creatureFilter);
-    if (!allowed || !matchesFilter) {
+    const landAllowed = item.isAnimatedLand && (isLocal ? rules.allowLocalLand : rules.allowRivalLand) && landMatchesEffectiveFilter(state, item, isLocal, rules.landFilter || 'any');
+    const creatureAllowed = (isLocal ? rules.allowLocalCreature : rules.allowRivalCreature) && (!rules.creatureFilter || item.card.type.includes(rules.creatureFilter));
+    if (!landAllowed && !creatureAllowed) {
       logMsg(gameText('target.invalid.spellTarget'));
       return;
     }
@@ -4473,7 +4781,7 @@ export function handleCombatClick(item, isLocal, index) {
       logMsg(gameText('target.hexproof', { target: item.card.name }));
       return;
     }
-    advanceMultiTargetChoice({ type: 'creature', isLocal, index, item });
+    advanceMultiTargetChoice({ type: landAllowed ? 'land' : 'creature', isLocal, index, item });
     return;
   }
 
@@ -4505,10 +4813,10 @@ export function handleCombatClick(item, isLocal, index) {
     }
     
     const rules = getTargetRules(state.pendingTargetCard);
-    const allowed = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
-    const matchesFilter = !rules.creatureFilter || item.card.type.includes(rules.creatureFilter);
+    const landAllowed = item.isAnimatedLand && (isLocal ? rules.allowLocalLand : rules.allowRivalLand) && landMatchesEffectiveFilter(state, item, isLocal, rules.landFilter || 'any');
+    const creatureAllowed = (isLocal ? rules.allowLocalCreature : rules.allowRivalCreature) && (!rules.creatureFilter || item.card.type.includes(rules.creatureFilter));
 
-    if (!allowed || !matchesFilter) {
+    if (!landAllowed && !creatureAllowed) {
       logMsg(gameText('target.invalid.generic', { source: state.pendingTargetCard.name }));
       return;
     }
@@ -4546,7 +4854,25 @@ export function handleCombatClick(item, isLocal, index) {
       return;
     }
 
-    executeSpellOnTarget({ type: 'creature', isLocal, index, item });
+    executeSpellOnTarget({ type: landAllowed ? 'land' : 'creature', isLocal, index, item });
+    return;
+  }
+
+  // LAND 4 — mana dorks / artefactos-criatura productores. Fuera de una declaración
+  // de combate pendiente, clickear una criatura fuente de maná activa su mana ability con
+  // las mismas reglas de LAND 0. Si requiere {T}, el mareo de invocación la bloquea.
+  const combatManaAbility = effectiveManaAbilityForItem(item, isLocal);
+  if (isLocal && combatManaAbility?.requiresTap && item.summoningSickness && state.priorityPlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2') && !getEffectiveKeywords(item).some(k => String(k).toLowerCase() === 'haste')) {
+    logMsg(gameText('mana.source.summoningSick', { card:item.card.name }));
+    return;
+  }
+  if (isLocal && combatManaAbility && canActivateLocalManaAbility(item)) {
+    const ownAbilities = (isLandPermanent(item) ? getEffectiveLandActivatedAbilities(state, item, isLocal) : getActivatedAbilities(item.card)).filter(ab => ab?.effect?.type !== 'animate_land');
+    if (ownAbilities.length > 0) {
+      showManaOrAbilityChoiceModal(item.card.name, () => chooseAndProduceMana(item, true), () => presentActivatedAbilityChoice(item.card.name, buildCreatureActivatedAbilityOptions(item, true, index)));
+    } else {
+      chooseAndProduceMana(item, true);
+    }
     return;
   }
 
@@ -4649,7 +4975,7 @@ export function canActivateActivatedAbilityNow(ability, isLocal = true) {
   if (timing === 'invalid') return false;
 
   const ownMain = state.activePlayer === controller && (state.phase === 'main1' || state.phase === 'main2');
-  const intrinsicSorceryOnly = ability.crewCost !== undefined || ability.effect?.type === 'crew_vehicle' || ability.effect?.type === 'attach_equipment';
+  const intrinsicSorceryOnly = ability.crewCost !== undefined || ability.effect?.type === 'attach_equipment';
 
   // Equipar/Tripular son acciones que este motor modela como sorcery-speed por naturaleza.
   // Marcar una de ellas como `timing:"instant"` es un contrato inválido, no una forma de
@@ -4682,6 +5008,7 @@ function buildCreatureActivatedAbilityOptions(creatureItem, isLocal, creatureInd
     // habilidad sólo existe mientras el Vehículo está en Support/Tierras. Si además tiene
     // otra habilidad propia, ESA sí debe seguir disponible en Combat.
     if (ability.crewCost !== undefined) return;
+    if (creatureItem.isAnimatedLand && ability.effect?.type === 'animate_land') return;
     options.push({
       ability,
       abilityIndex,
@@ -4715,7 +5042,8 @@ function buildCreatureActivatedAbilityOptions(creatureItem, isLocal, creatureInd
 }
 
 function buildPermanentActivatedAbilityOptions(item, isLocal, index) {
-  return getActivatedAbilities(item.card).map((ability, abilityIndex) => ({
+  const ownAbilities = isLandPermanent(item) ? getEffectiveLandActivatedAbilities(state, item, isLocal) : getActivatedAbilities(item.card);
+  return ownAbilities.map((ability, abilityIndex) => ({
     ability,
     abilityIndex,
     abilityKind: 'own',
@@ -4730,6 +5058,14 @@ function buildPermanentActivatedAbilityOptions(item, isLocal, index) {
 function beginActivatedAbility(source, displayName = source.sourceName || source.item.card.name) {
   const ability = source.ability;
   if (!ability) return false;
+
+  // LAND 6: un modal pudo abrirse y luego entrar un Blood Moon-style antes de confirmar.
+  // Si la habilidad impresa de esa Tierra ya no existe, no se pagan costes ni se usa Stack.
+  if (isLandPermanent(source.item) && !getEffectiveLandActivatedAbilities(state, source.item, source.isLocal).includes(ability)) {
+    logMsg(gameText('land.transform.abilityGone', { card:source.item?.card?.name || displayName }));
+    render();
+    return true;
+  }
 
   // Revalidación al confirmar: el modal puede haber estado abierto mientras cambió el estado
   // por sync. Nunca pagamos/giramos nada si el timing ya no es legal.
@@ -4755,6 +5091,15 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
   if (ability.effect?.type === 'attach_equipment' && state.localCombat.length === 0) {
     logMsg(gameText('ability.noEquipTarget', { card: source.item.card.name }));
     return true;
+  }
+
+  if (ability.sacrifice && ability.sacrifice !== 'self') {
+    const candidates = getSacrificeEffectCandidates(source.isLocal, ability.sacrifice);
+    if (candidates.length === 0) {
+      const kind = ability.sacrifice === 'creature' ? gameText('sacrifice.kind.creature') : ability.sacrifice === 'land' ? gameText('sacrifice.kind.land') : gameText('sacrifice.kind.artifact');
+      logMsg(gameText('ability.noSacrificeCandidate', { card: source.item.card.name, kind }));
+      return true;
+    }
   }
 
   const costStr = ability.cost || "";
@@ -4811,7 +5156,7 @@ function beginActivatedAbilityPayment(source) {
   state.tappedLandsThisSpell = [];
   state.paymentManaSourceRollbacks = [];
 
-  const totalMana = manaCost.W + manaCost.U + manaCost.B + manaCost.R + manaCost.G + manaCost.generic;
+  const totalMana = manaCost.W + manaCost.U + manaCost.B + manaCost.R + manaCost.G + (manaCost.C || 0) + manaCost.generic;
   if (totalMana === 0) {
     checkPaymentComplete();
   } else {
@@ -4881,6 +5226,41 @@ export function handleInstantActivatedAbilityClick(item, isLocal, index, zoneTyp
   const instantOptions = options.filter(option => getActivatedAbilityTiming(option.ability) === 'instant');
   if (instantOptions.length === 0) return false;
   return presentActivatedAbilityChoice(item.card.name, instantOptions);
+}
+
+export function handleLandTargetClick(item, isLocal, index) {
+  if (state.damageModalOpen || !item || !isLandPermanent(item)) return;
+  if (state.pendingResolvedEffectTargetChoice) {
+    finishPendingResolvedEffectTarget({ type: 'land', isLocal, index, item });
+    return;
+  }
+  if (state.pendingMultiTargetChoice) {
+    const mtc = state.pendingMultiTargetChoice;
+    const spec = mtc.card.targets[mtc.currentIndex];
+    const rules = getTargetRules({ effect: spec.effect });
+    const allowed = isLocal ? rules.allowLocalLand : rules.allowRivalLand;
+    if (!allowed || !landMatchesEffectiveFilter(state, item, isLocal, rules.landFilter || 'any')) { logMsg(gameText('target.invalid.spellTarget')); return; }
+    advanceMultiTargetChoice({ type: 'land', isLocal, index, item });
+    return;
+  }
+  if (!state.pendingTargetCard) return;
+  const rules = getTargetRules(state.pendingTargetCard);
+  const allowed = isLocal ? rules.allowLocalLand : rules.allowRivalLand;
+  if (!allowed || !landMatchesEffectiveFilter(state, item, isLocal, rules.landFilter || 'any')) {
+    logMsg(gameText('target.invalid.generic', { source: state.pendingTargetCard.name }));
+    return;
+  }
+  // LAND 2: las Tierras usan las mismas reglas de targeting que cualquier otro permanente.
+  if (!isLocal && hasKeyword(item, 'hexproof')) {
+    logMsg(gameText('target.hexproof', { target: item.card.name }));
+    return;
+  }
+  const protectedColor = getProtectionMatch(item, state.pendingTargetCard.colors || []);
+  if (protectedColor) {
+    logMsg(gameText('target.protection', { target: item.card.name, color: COLOR_LABELS[protectedColor] || protectedColor, source: state.pendingTargetCard.name }));
+    return;
+  }
+  executeSpellOnTarget({ type: 'land', isLocal, index, item });
 }
 
 export function handleSupportTargetClick(item, isLocal, index) {
@@ -4991,6 +5371,7 @@ export function cancelPayment() {
     state.pendingMultiTargetChoice = null;
     state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
     restorePaymentManaSources();
+    restoreManaPaymentSnapshot();
     state.tappedLandsThisSpell = [];
     state.paymentManaSourceRollbacks = [];
     state.pendingSpellIndex = null;
@@ -5023,6 +5404,7 @@ export function cancelPayment() {
 
   state.tappedLandsThisSpell.forEach(land => land.tapped = false);
   restorePaymentManaSources();
+  restoreManaPaymentSnapshot();
 
   // Si esto era un Flashback/Escape a mitad de pago (o esperando target), la carta está
   // "prestada" en la mano — hay que devolverla a su cementerio, no dejarla ahí pegada como
@@ -5062,18 +5444,68 @@ export function cancelPayment() {
   render();
 }
 
+// LAND 4 — permisos tipo Crucible/Ramunap. Jugar una Tierra desde cementerio NO es
+// lanzar un hechizo: usa el land drop normal, exige timing normal de Tierra y no usa Stack.
+export function hasLandPlayFromGraveyardPermission(isLocal = true) {
+  const battlefield = isLocal
+    ? [...state.localCombat, ...state.localSupport, ...state.localLands, ...state.localPlaneswalkers]
+    : [...state.rivalCombat, ...state.rivalSupport, ...state.rivalLands, ...state.rivalPlaneswalkers];
+  return hasLandGYPermission(battlefield);
+}
+
+export function canPlayLandFromGraveyard(card, isLocal = true) {
+  if (!isLandCard(card) || !hasLandPlayFromGraveyardPermission(isLocal)) return false;
+  const controller = isLocal ? 'local' : 'rival';
+  if (state.gameOver || state.activePlayer !== controller || state.priorityPlayer !== controller) return false;
+  if (state.phase !== 'main1' && state.phase !== 'main2') return false;
+  if (spellStack.length > 0) return false;
+  if (isLocal ? state.localLandPlayedThisTurn : state.rivalLandPlayedThisTurn) return false;
+  if (state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingTargetCard || state.pendingGraveyardChoice || state.pendingLandSearchChoice) return false;
+  return true;
+}
+
+export async function playLandFromGraveyardByIndex(index, isLocal = true) {
+  const graveyard = isLocal ? state.localGraveyard : state.rivalGraveyard;
+  const lands = isLocal ? state.localLands : state.rivalLands;
+  const card = graveyard[index];
+  if (!card || !canPlayLandFromGraveyard(card, isLocal)) return false;
+  graveyard.splice(index, 1);
+  const landItem = { card, tapped: landEntersTappedForBattlefield(card, isLocal), enteredThisTurn: true, permanentTypes:['land'] };
+  lands.push(landItem);
+  if (isLocal) state.localLandPlayedThisTurn = true; else state.rivalLandPlayedThisTurn = true;
+  logMsg(gameText('land.grave.played', { card: card.name }));
+  recordTelemetryEvent('land_played_from_graveyard', { card:card.name, isLocal, tapped:!!landItem.tapped });
+  await triggerLandEtb(isLocal, card, landItem);
+  resetPriorityClock('land_played_from_graveyard');
+  render();
+  return true;
+}
+
+export function openLandFromGraveyardPlayChoice() {
+  if (!hasLandPlayFromGraveyardPermission(true)) { logMsg(gameText('land.grave.noPermission')); return false; }
+  const entries = playableLandGraveyardEntries(state.localGraveyard).filter(entry => canPlayLandFromGraveyard(entry.card, true));
+  if (!entries.length) { logMsg(gameText('land.grave.nonePlayable')); return false; }
+  state.pendingGraveyardChoice = { zoneIsLocal:true, filter:'land', amount:1, cardName:gameText('land.grave.playTitle') };
+  render();
+  showGraveyardChoiceModal(entries, 1, gameText('land.grave.playTitle'), gameText('land.grave.filter'), gameText('land.grave.action'), async (indexes) => {
+    state.pendingGraveyardChoice = null;
+    const index = indexes?.[0];
+    if (Number.isInteger(index)) await playLandFromGraveyardByIndex(index, true);
+    else render();
+  });
+  return true;
+}
+
 export function canPlayCard(card) {
-  if (state.gameOver || state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice || state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || state.pendingCompositeCostPayment || (state.resolvingCardFilterEffects || 0) > 0 || (state.resolvingDiscardEffects || 0) > 0 || (state.resolvingSacrificeEffects || 0) > 0 || (state.resolvingGraveyardChoices || 0) > 0 || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen || state.pendingRampChoice || state.awaitingRivalDecision || state.respondingToDecision) return false;
+  if (state.gameOver || state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingLandSearchChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice || state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || state.pendingCompositeCostPayment || (state.resolvingCardFilterEffects || 0) > 0 || (state.resolvingDiscardEffects || 0) > 0 || (state.resolvingSacrificeEffects || 0) > 0 || (state.resolvingGraveyardChoices || 0) > 0 || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen || state.pendingRampChoice || state.awaitingRivalDecision || state.respondingToDecision) return false;
   if (state.priorityPlayer !== 'local') return false; // Solo si poseés prioridad
 
-  // Punto 8 legacy: preservamos esta prevalidación explícita para el schema histórico.
-  if (card.additionalCost && card.additionalCost.type === 'discard') {
-    const needed = Math.max(0, Math.floor(Number(card.additionalCost.amount || 1)));
-    const available = state.localHand.filter(c => c !== card).length;
-    if (available < needed) return false;
-  }
-  // Punto 14: los costos compuestos nuevos prevalidan TODOS sus componentes no-maná.
-  if (card.additionalCost && !card.additionalCost.type && !canPayCastCompositeNonManaCosts(card, true, false, { excludeCard: card })) return false;
+  // LAND 3 / Punto 14: cualquier costo adicional no-maná, tanto schema legacy
+  // (`type:'discard'`, `type:'sacrifice'`) como compuesto, se prevalida ANTES de anunciar.
+  // Esto permite que un Crop Rotation-style con `type:'sacrifice', target:'own_land'`
+  // sea directamente incasteable si no controlás una Tierra sacrificable.
+  if (card.additionalCost && compositeCostHasNonMana(card.additionalCost) &&
+      !canPayCastCompositeNonManaCosts(card, true, false, { excludeCard: card })) return false;
   
   // Flash: un permanente con esta keyword se puede jugar como si fuera un instantáneo,
   // aunque su tipo real sea Artefacto/Criatura/Encantamiento (no cambia qué ES la carta,
@@ -5114,6 +5546,7 @@ function buildCastStackType(card) {
 function castNeedsTarget(card) {
   return !!(card.adjunta || (card.requiresTarget ?? (card.effect && (
     card.effect.type === 'damage' || card.effect.type === 'heal' || card.effect.type.startsWith('counter')
+    || card.effect.type === 'destroy_land' || card.effect.type === 'destroy_nonbasic_land'
   ))));
 }
 
@@ -5137,6 +5570,7 @@ function resetCastTransactionState() {
   state.pendingHybridLifePayment = null;
   state.pendingEscapeExileChoice = null;
   state.pendingFightChoice = null;
+  state.paymentManaPoolSnapshot = null;
 }
 
 function abortCastTransaction(message = 'Cancelaste el casteo.') {
@@ -5148,6 +5582,7 @@ function abortCastTransaction(message = 'Cancelaste el casteo.') {
   }
   state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
   restorePaymentManaSources();
+  restoreManaPaymentSnapshot();
   state.tappedLandsThisSpell = [];
   state.paymentManaSourceRollbacks = [];
 
@@ -5298,7 +5733,9 @@ function beginCastTargetDeclaration() {
 }
 
 function detectWardForDeclaredTarget(card, targetObj) {
-  if (!targetObj || targetObj.type !== 'creature' || targetObj.isLocal) return null;
+  // LAND 2: Ward es una habilidad de PERMANENTE, no de criatura. Una Tierra con Ward futura
+  // debe disparar igual que una criatura, un artefacto o un planeswalker al ser objetivo rival.
+  if (!targetObj || !targetObj.item || targetObj.isLocal) return null;
   const item = targetObj.item;
   const wardKw = (getEffectiveKeywords(item) || []).find(k => k.startsWith('ward_'));
   if (!wardKw) return null;
@@ -5423,6 +5860,7 @@ async function commitCastTransactionAfterMana() {
   state.localHand.splice(cardIndex, 1);
   const stackItem = { ...tx.proposedStackItem, card:tx.card };
   addToStack(stackItem);
+  flushDeferredLandManaTriggers();
   state.consecutivePasses = 0;
   const ward = tx.ward;
   const txId = tx.id;
@@ -5464,8 +5902,8 @@ export function playCard(index) {
       logMsg(gameText('cast.landMainOnly'));
       return;
     }
-    const entersTapped = !!card.entersTapped;
-    const landItem = { card, tapped: entersTapped };
+    const entersTapped = landEntersTappedForBattlefield(card, true);
+    const landItem = { card, tapped: entersTapped, enteredThisTurn: true, permanentTypes: ['land'] };
     state.localLands.push(landItem); state.localHand.splice(index, 1); state.localLandPlayedThisTurn = true;
     logMsg(entersTapped ? gameText('cast.landPlayedTapped', { card: card.name }) : gameText('cast.landPlayed', { card: card.name }));
     // PUNTO 2: jugar una Tierra es una entrada real al campo y dispara Landfall. No esperamos
@@ -5531,7 +5969,7 @@ export function castFromGraveyard(card, isLocal) {
   const abilityLabel = source === 'flashback' ? 'Flashback' : 'Escape';
 
   if (state.gameOver || state.priorityPlayer !== 'local') { logMsg(gameText('cast.needPriority')); return; }
-  if (state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.pendingRampChoice) {
+  if (state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingLandSearchChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.pendingRampChoice) {
     logMsg(gameText('cast.pending', { ability: abilityLabel }));
     return;
   }
@@ -5613,67 +6051,260 @@ export function payAdditionalCost(card, isLocal) {
   return payCastCompositeNonManaCosts(card, isLocal, false);
 }
 
-// Aplica hasta `amount` de maná (de un color fijo, o eligiendo automáticamente entre
-// varias opciones si es dual) al pago pendiente — el sobrante de un color siempre puede
-// cubrir el costo genérico, como en MTG real. La comparten tierras y artefactos que
-// producen maná, para no duplicar esta cuenta en dos lugares.
-function applyManaToPendingCost(colorOrOptions, amount) {
-  let remaining = amount;
-  let used = false;
-
-  if (Array.isArray(colorOrOptions)) {
-    const bestColor = colorOrOptions.find(c => (state.pendingCost[c] || 0) > 0) || colorOrOptions[0];
-    const takeFromColor = Math.min(remaining, state.pendingCost[bestColor] || 0);
-    if (takeFromColor > 0) { state.pendingCost[bestColor] -= takeFromColor; remaining -= takeFromColor; used = true; }
-  } else if (['W', 'U', 'B', 'R', 'G'].includes(colorOrOptions)) {
-    const takeFromColor = Math.min(remaining, state.pendingCost[colorOrOptions] || 0);
-    if (takeFromColor > 0) { state.pendingCost[colorOrOptions] -= takeFromColor; remaining -= takeFromColor; used = true; }
-  }
-  // maná genérico puro (ej. Billetera Vieja "{T}: Agregá {1}"), o el sobrante de arriba
-  if (remaining > 0 && state.pendingCost.generic > 0) {
-    const takeGeneric = Math.min(remaining, state.pendingCost.generic);
-    state.pendingCost.generic -= takeGeneric;
-    remaining -= takeGeneric;
-    used = true;
-  }
-  return used;
+// LAND 5 — puerta única para reemplazos de entrada de Tierras. Todas las rutas (mano,
+// tutor, cementerio, bot) deben consultar esta función para que Root Maze/Thalia-style no
+// dependa del origen desde el que la Tierra llegó.
+export function landEntersTappedForBattlefield(card, isLocal = true, forcedTapped = false) {
+  return shouldLandEnterTapped(state, card, isLocal, forcedTapped);
 }
 
-function manaDescriptorCanPayPendingCost(colorOrOptions, amount = 1) {
-  const cost = state.pendingCost;
-  if (!cost || amount <= 0 || !colorOrOptions) return false;
-  const genericNeeded = (cost.generic || 0) > 0;
-
-  if (Array.isArray(colorOrOptions)) {
-    if (colorOrOptions.some(color => (cost[color] || 0) > 0)) return true;
-    return genericNeeded && colorOrOptions.length > 0;
-  }
-  if (['W', 'U', 'B', 'R', 'G'].includes(colorOrOptions)) {
-    return (cost[colorOrOptions] || 0) > 0 || genericNeeded;
-  }
-  // Fuente incolora/genérica: sólo sirve para el componente genérico.
-  return genericNeeded;
+function shouldDeferLandManaTriggers() {
+  return !!(state.pendingCost || state.pendingCastTransaction || state.pendingSpellIndex !== null ||
+    state.pendingAbilitySource || state.pendingWardChoice || state.pendingCounterUnlessPay ||
+    state.pendingCompositeCostPayment);
 }
 
-// Fuente única para lógica + UI: si esto devuelve true, el click real también puede gastar
-// al menos 1 maná del costo pendiente. Evita el caso observado donde Fajo funcionaba al
-// clickearlo pero no recibía el halo amarillo de "fuente utilizable".
-export function canManaSourcePayPendingCost(card) {
-  if (!card) return false;
-  const isLand = typeof card.type === 'string' && card.type.toLowerCase().includes('tierra');
-  const colorOrOptions = card.producesOptions || card.produces || (isLand ? getLandColor(card) : null);
-  return manaDescriptorCanPayPendingCost(colorOrOptions, card.manaAmount || 1);
+export function flushDeferredLandManaTriggers() {
+  const pending = Array.isArray(state.deferredLandManaTriggers) ? state.deferredLandManaTriggers.splice(0) : [];
+  if (!pending.length) return [];
+  const queued = queueTriggeredAbilities(pending);
+  recordTelemetryEvent('land_mana_triggers_flushed', { count:queued.length });
+  return queued;
 }
 
-function rememberManaSourceRollback(item, isLocal) {
-  if (!item?.card || !item.card.sacrificeOnTap) return;
+// Captura el evento EN EL MOMENTO DEL TAP, antes de que un coste adicional pueda sacrificar
+// la propia Tierra. Eso preserva LKI suficiente para que una fuente que dispara por su propio
+// tap no pierda el trigger simplemente porque también se sacrificó para producir maná.
+export function captureLandTappedForManaEvent(item, isLocal, producedType) {
+  if (!item?.card || !isLandPermanent(item)) return { bonuses:[], triggers:[] };
+  return {
+    bonuses:getLandManaBonuses(state, isLocal, item, producedType),
+    triggers:getLandManaTriggerEntries(state, isLocal, item)
+  };
+}
+
+// Evento central "una Tierra fue girada para maná". Mana Flare-style bonus es una triggered
+// mana ability y resuelve YA; Manabarbs-style es un trigger normal y usa Stack. Si el evento
+// nació durante 601/602, ese trigger normal se difiere hasta que el objeto pagado esté en Stack.
+export function handleLandTappedForManaEvent(item, isLocal, producedType, producedAmount = 1, options = {}) {
+  if (!item?.card || !isLandPermanent(item)) return { bonuses:[], triggers:[] };
+  const pool = isLocal ? state.localManaPool : state.rivalManaPool;
+  const snapshot = options?.eventSnapshot || captureLandTappedForManaEvent(item, isLocal, producedType);
+  const bonuses = snapshot.bonuses || [];
+  for (const bonus of bonuses) {
+    addMana(pool, bonus.type, bonus.amount);
+    logMsg(gameText('land.stax.manaBonus', { card:bonus.sourceCard?.name || gameText('land.stax.unknownSource'), amount:bonus.amount, mana:`{${bonus.type}}` }));
+  }
+  const entries = snapshot.triggers || [];
+  const deferNormalTriggers = options?.forceDeferNormalTriggers === true || shouldDeferLandManaTriggers();
+  if (entries.length) {
+    if (deferNormalTriggers) state.deferredLandManaTriggers.push(...entries);
+    else queueTriggeredAbilities(entries);
+  }
+  recordTelemetryEvent('land_tapped_for_mana', {
+    player:isLocal?'local':'rival', card:item.card.name, producedType, producedAmount,
+    bonusMana:bonuses.reduce((n,b)=>n+b.amount,0), triggerCount:entries.length,
+    deferred:entries.length > 0 && deferNormalTriggers
+  });
+  return { bonuses, triggers:entries };
+}
+
+// 23.14.1 — MANA POOL REAL. Toda fuente primero AGREGA maná a la reserva; pagar es una
+// acción separada sobre los símbolos del pool. Esto permite flotar maná, conservar sobrantes
+// de fuentes multi-maná y usar maná producido antes de empezar a castear.
+function ensureManaPaymentSnapshot() {
+  if (!state.pendingCost || state.paymentManaPoolSnapshot) return;
+  state.paymentManaPoolSnapshot = cloneManaPool(state.localManaPool);
+}
+
+function restoreManaPaymentSnapshot() {
+  if (!state.paymentManaPoolSnapshot) return;
+  state.localManaPool = cloneManaPool(state.paymentManaPoolSnapshot);
+  state.paymentManaPoolSnapshot = null;
+  // Cancelar/rehacer un pago revierte las mana abilities activadas durante ese intento. Los
+  // triggers normales LAND 5 capturados por esos taps deben revertirse junto con ellas; de
+  // lo contrario un casteo cancelado podría dejar un Manabarbs fantasma para el próximo spell.
+  if (Array.isArray(state.deferredLandManaTriggers)) state.deferredLandManaTriggers.splice(0);
+}
+
+function commitManaPaymentSnapshot() {
+  state.paymentManaPoolSnapshot = null;
+}
+
+function effectiveManaAbilityForItem(item, isLocal = true) {
+  if (!item?.card) return null;
+  const printed = normalizeManaAbility(item.card);
+  return isLandPermanent(item) ? getEffectiveLandManaAbility(state, item, isLocal, printed) : printed;
+}
+
+function manaSourceOptions(source, isLocal = true) {
+  if (source?.card) return effectiveManaAbilityForItem(source, isLocal)?.options || [];
+  return getManaSourceOptions(source);
+}
+
+function manaSourceAmount(source, isLocal = true) {
+  if (source?.card) return effectiveManaAbilityForItem(source, isLocal)?.amount || 0;
+  return getManaSourceAmount(source);
+}
+
+function manaSourceRequiresTapEffective(source, isLocal = true) {
+  if (source?.card) return !!effectiveManaAbilityForItem(source, isLocal)?.requiresTap;
+  return manaSourceRequiresTap(source);
+}
+
+function manaSourceSacrificesEffective(source, isLocal = true) {
+  if (source?.card) return !!effectiveManaAbilityForItem(source, isLocal)?.sacrificeSelf;
+  return manaSourceSacrificesSelf(source);
+}
+
+export function canActivateLocalManaAbility(item) {
+  if (!item?.card || state.gameOver) return false;
+  if (!canActivateManaSourcePermanent(item, { hasHaste: getEffectiveKeywords(item).some(k => String(k).toLowerCase() === 'haste'), ability: effectiveManaAbilityForItem(item, true) })) return false;
+  // CR 605.3a: durante 601/602 una mana ability puede activarse en la ventana de pago aun
+  // sin prioridad. Fuera de un pago requiere prioridad; Enderezar/Limpieza no la conceden
+  // en el modelo normal de Argentinia.
+  if (state.pendingCost && (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCastTransaction?.stage === 'payment')) return true;
+  // CR 605.3a también habilita mana abilities cuando una regla/efecto pide un pago durante
+  // resolución. Ward y "contrarrestar a menos que pagues" son las ventanas reales que hoy
+  // existen en el pool; no requieren que el jugador tenga prioridad en ese instante.
+  if (state.pendingWardChoice || state.pendingCounterUnlessPay) return true;
+  if (state.priorityPlayer !== 'local') return false;
+  if (state.phase === 'untap' || state.phase === 'cleanup') return false;
+  // Declarar atacantes/bloqueadores es una acción basada en turno ANTES de que se otorgue
+  // prioridad en ese paso. El HUD del motor comparte la pantalla con esa selección, así que
+  // cerramos la ventana de maná hasta que la declaración quede confirmada. Si alguna futura
+  // regla exige pagar PARA declarar, entrará por la excepción de pago de arriba (CR 605.3a).
+  if (state.phase === 'combat_attackers' && state.activePlayer === 'local' && (state.localAttackersDeclaredThisTurn || 0) === 0) return false;
+  if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && !state.localBlockersDeclaredThisCombat) return false;
+  if (state.multiplayerWaitingForReady || state.damageModalOpen || state.awaitingRivalDecision || state.respondingToDecision) return false;
+  // No se abre una mana ability a mitad de otra elección 601/602 anterior a la ventana 601.2g.
+  if (state.pendingTargetCard || state.pendingModeChoice || state.pendingXChoice || state.pendingKickerChoice ||
+      state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice ||
+      state.pendingProliferateChoice || state.pendingDiscardChoice || state.pendingSacrificeChoice ||
+      state.pendingResolvedEffectTargetChoice || state.pendingRampChoice || state.pendingCrew) return false;
+  return true;
+}
+
+function produceManaFromSource(item, isLocal, chosenType) {
+  if (!item?.card || !canActivateManaSourcePermanent(item, { hasHaste: getEffectiveKeywords(item).some(k => String(k).toLowerCase() === 'haste'), ability: effectiveManaAbilityForItem(item, isLocal) })) return false;
+  const options = manaSourceOptions(item, isLocal);
+  const type = chosenType || (options.length === 1 ? options[0] : null);
+  if (!type || !options.includes(type)) return false;
+  if (isLocal) {
+    if (!canActivateLocalManaAbility(item)) {
+      logMsg(gameText('mana.noWindow'));
+      return false;
+    }
+    if (state.pendingCost) ensureManaPaymentSnapshot();
+  }
+  const pool = isLocal ? state.localManaPool : state.rivalManaPool;
+  const ability = effectiveManaAbilityForItem(item, isLocal);
+  const amount = manaSourceAmount(item, isLocal);
+  const wasTapped = !!item.tapped;
+  // CR 602/605: primero se pagan los costes de la habilidad ({T}, sacrificar, etc.) y
+  // recién después su efecto agrega maná. Como es una mana ability, todo ocurre sin Stack
+  // ni ventana de respuesta entre costo y producción.
+  if (ability.sacrificeSelf && isLocal && state.pendingCost) rememberManaSourceRollback(item, isLocal, wasTapped, ability);
+  if (ability.requiresTap) item.tapped = true;
+  if (isLocal && state.pendingCost && ability.requiresTap) state.tappedLandsThisSpell.push(item);
+  const landManaEventSnapshot = ability.requiresTap && isLandPermanent(item)
+    ? captureLandTappedForManaEvent(item, isLocal, type) : null;
+  if (ability.sacrificeSelf) performSacrifice(item, isLocal);
+  addMana(pool, type, amount);
+  const landManaEvent = landManaEventSnapshot
+    ? handleLandTappedForManaEvent(item, isLocal, type, amount, { eventSnapshot:landManaEventSnapshot })
+    : { bonuses:[] };
+
+  // UX tipo Arena + regla real: durante 601.2g/602, clickear una fuente puede pagar el
+  // coste directamente. La producción COMPLETA entra primero al pool; consumimos como máximo
+  // lo que esa activación acaba de producir y todo excedente queda flotando. El maná que ya
+  // estaba en el pool antes de clickear la fuente NO se auto-gasta: el jugador lo elige desde
+  // los iconos del HUD.
+  let autoSpent = 0;
+  if (isLocal && state.pendingCost) {
+    for (let i = 0; i < amount; i += 1) {
+      const spent = spendOneMana(pool, state.pendingCost, type);
+      if (!spent) break;
+      autoSpent += 1;
+    }
+    for (const bonus of landManaEvent.bonuses || []) {
+      for (let i = 0; i < bonus.amount; i += 1) {
+        const spent = spendOneMana(pool, state.pendingCost, bonus.type);
+        if (!spent) break;
+        autoSpent += 1;
+      }
+    }
+  }
+
+  logMsg(gameText('mana.added', { card: item.card.name, amount, mana: `{${type}}` }));
+  recordTelemetryEvent('mana_added_to_pool', { player: isLocal ? 'local' : 'rival', card:item.card.name, type, amount, autoSpent, duringPayment:!!state.pendingCost });
+  if (isLocal && autoSpent > 0) checkPaymentComplete();
+  render();
+  return true;
+}
+
+function chooseAndProduceMana(item, isLocal) {
+  const options = manaSourceOptions(item, isLocal);
+  if (options.length <= 1) return produceManaFromSource(item, isLocal, options[0]);
+  if (!isLocal) return produceManaFromSource(item, false, options[0]);
+  showManaColorChoiceModal(item.card.name, options, (type) => {
+    produceManaFromSource(item, true, type);
+  });
+  return true;
+}
+
+// Click de un símbolo real del HUD: sirve para gastar maná que ya estaba flotando o que
+// sobró de una fuente. Consume exactamente UNA unidad. Maná de color paga primero su pip
+// específico y después genérico; {C} paga {C} o genérico.
+export function spendLocalManaFromPool(type) {
+  if (!state.pendingCost) {
+    logMsg(gameText('mana.pool.noPayment'));
+    return false;
+  }
+  ensureManaPaymentSnapshot();
+  const spent = spendOneMana(state.localManaPool, state.pendingCost, type);
+  if (!spent) {
+    logMsg(gameText('mana.pool.cannotSpend', { mana:`{${type}}` }));
+    render();
+    return false;
+  }
+  recordTelemetryEvent('mana_spent_from_pool', { type, paid:spent.paid, remaining:manaPoolTotal(state.localManaPool) });
+  checkPaymentComplete();
+  render();
+  return true;
+}
+
+export function activateLocalManaSource(item) {
+  if (!canActivateLocalManaAbility(item)) {
+    logMsg(item?.tapped ? gameText('mana.sourceAlreadyTapped', { card:item?.card?.name || 'La fuente' }) : gameText('mana.noWindow'));
+    return false;
+  }
+  return chooseAndProduceMana(item, true);
+}
+
+// Para automatismos/IA: agrega al pool rival con el color elegido y no usa la Stack.
+export function activateRivalManaSource(item, chosenType = null) {
+  return produceManaFromSource(item, false, chosenType || manaSourceOptions(item, false)[0]);
+}
+
+export function getManaSourceProductionOptions(card) { return manaSourceOptions(card); }
+
+// Nombre legacy conservado para UI/tests: en 23.14.1 una fuente de maná ya no "paga"
+// directamente el coste; si hay un pago abierto, cualquier fuente real puede activarse y
+// agregar su producción completa al pool, incluso si queda maná sobrante.
+export function canManaSourcePayPendingCost(source, isLocal = true) {
+  return !!state.pendingCost && manaSourceOptions(source, isLocal).length > 0;
+}
+
+function rememberManaSourceRollback(item, isLocal, originalTapped = false, effectiveAbility = null) {
+  if (!item?.card || !(effectiveAbility?.sacrificeSelf ?? manaSourceSacrificesEffective(item, isLocal))) return;
   const zones = isLocal
     ? [['combat', state.localCombat], ['support', state.localSupport], ['lands', state.localLands]]
     : [['combat', state.rivalCombat], ['support', state.rivalSupport], ['lands', state.rivalLands]];
   for (const [zoneName, zone] of zones) {
     const index = zone.indexOf(item);
     if (index === -1) continue;
-    state.paymentManaSourceRollbacks.push({ item, card: item.card, isLocal, zoneName, index });
+    state.paymentManaSourceRollbacks.push({ item, card: item.card, isLocal, zoneName, index, originalTapped:!!originalTapped });
     return;
   }
 }
@@ -5691,7 +6322,7 @@ function restorePaymentManaSources() {
     if (!zone || zone.includes(entry.item)) return;
     const graveIdx = grave.indexOf(entry.card);
     if (graveIdx !== -1) grave.splice(graveIdx, 1);
-    entry.item.tapped = false;
+    entry.item.tapped = !!entry.originalTapped;
     zone.splice(Math.max(0, Math.min(entry.index, zone.length)), 0, entry.item);
   });
   state.paymentManaSourceRollbacks = [];
@@ -5702,9 +6333,9 @@ function restorePaymentManaSources() {
 // debe reservar su propio giro para {T}; las otras tierras pagan el {2}. La misma regla
 // sirve defensivamente para mana rocks con habilidad propia.
 //
-// Fuentes de maná de mesa (Tierras o mana rocks / Treasures). Sólo producen maná cuando
-// existe un pago pendiente: este motor no mantiene una mana pool flotante. Si además
-// `sacrificeOnTap` es true (estilo Treasure), se sacrifica apenas rinde el maná.
+// Fuentes de maná de mesa (Tierras o mana rocks / Treasures). Desde 23.14.1 producen
+// maná hacia una reserva flotante real aun fuera de un pago cuando CR 605.3a lo permite.
+// Si `sacrificeOnTap` es true (estilo Treasure), se sacrifica apenas rinde el maná.
 function tapSupportManaSource(item, isLocal) {
   if (state.pendingAbilitySource?.requiresTap) {
     const reservedTapTarget = state.pendingAbilitySource.tapTarget || state.pendingAbilitySource.item;
@@ -5721,7 +6352,7 @@ function tapSupportManaSource(item, isLocal) {
   // Fajo es el ÚNICO artefacto elegible, consumirlo como mana source dejaría el costo
   // imposible. Lo frenamos antes de mutar nada; con otro artefacto presente sí es legal.
   const pendingSacrifice = state.pendingAbilitySource?.ability?.sacrifice;
-  if (card.sacrificeOnTap && pendingSacrifice && pendingSacrifice !== 'self') {
+  if (manaSourceSacrificesSelf(card) && pendingSacrifice && pendingSacrifice !== 'self') {
     const ownPermanents = [...state.localCombat, ...state.localSupport];
     const remainingCandidates = ownPermanents.filter(candidate => candidate !== item && isSacrificeCandidate(candidate, pendingSacrifice));
     if (isSacrificeCandidate(item, pendingSacrifice) && remainingCandidates.length === 0) {
@@ -5729,22 +6360,9 @@ function tapSupportManaSource(item, isLocal) {
       return;
     }
   }
-  const amount = card.manaAmount || 1;
-  const colorOrOptions = card.producesOptions || card.produces;
-  const used = applyManaToPendingCost(colorOrOptions, amount);
-
-  if (used) {
-    item.tapped = true;
-    state.tappedLandsThisSpell.push(item); // mismo array: si se cancela el pago, se des-gira
-    if (card.sacrificeOnTap) {
-      rememberManaSourceRollback(item, isLocal);
-      performSacrifice(item, isLocal);
-    }
-    checkPaymentComplete();
-  } else {
-    logMsg(gameText('mana.sourceDoesNotHelp', { card: card.name }));
-  }
-  render();
+  // 23.14.1: producir y pagar son acciones distintas. La fuente puede generar de sobra;
+  // todo entra primero al pool y el sobrante permanece hasta el final del paso/fase.
+  chooseAndProduceMana(item, isLocal);
 }
 
 export function startCrewing(item, isLocal, ability = getActivatedAbilities(item.card).find(ab => ab.crewCost !== undefined)) {
@@ -5862,6 +6480,7 @@ export function payCounterTax() {
   // que cualquier otro hechizo resuelto (antes esto se perdía sin ir a ningún lado).
   sendCounterspellAway(pc);
   state.pendingCounterUnlessPay = null;
+  flushDeferredLandManaTriggers();
   state.priorityPlayer = state.activePlayer;
   state.consecutivePasses = 0;
   render();
@@ -5882,6 +6501,7 @@ export function declineCounterTax() {
   }
   sendCounterspellAway(pc);
   state.pendingCounterUnlessPay = null;
+  flushDeferredLandManaTriggers();
   state.priorityPlayer = state.activePlayer;
   state.consecutivePasses = 0;
   render();
@@ -5901,10 +6521,18 @@ function sendCounterspellAway(pc) {
 export function tapLocalLand(item) {
   if (state.gameOver) return;
   if (state.pendingActivatedAbilityChoice) { logMsg(gameText('pending.ability')); return; }
-  if (state.pendingSacrificeChoice) return; // Una tierra no es una opción válida de sacrificio hoy
+  if (state.pendingSacrificeChoice) { tryResolveSacrificeChoice(item, true); return; }
   if (state.pendingCrew) { logMsg(gameText('pending.crew')); return; }
-  if (state.pendingWardChoice) { logMsg(gameText('pending.ward')); return; }
-  if (state.pendingCounterUnlessPay) { logMsg(gameText('pending.counterTax')); return; }
+  if (state.pendingWardChoice) {
+    if (manaSourceOptions(item, true).length > 0) chooseAndProduceMana(item, true);
+    else logMsg(gameText('pending.ward'));
+    return;
+  }
+  if (state.pendingCounterUnlessPay) {
+    if (manaSourceOptions(item, true).length > 0) chooseAndProduceMana(item, true);
+    else logMsg(gameText('pending.counterTax'));
+    return;
+  }
   if (state.pendingFightChoice) { logMsg(gameText('pending.fight')); return; }
   if (state.pendingXChoice) { logMsg(gameText('pending.x')); return; }
   if (state.pendingModeChoice) { logMsg(gameText('pending.mode')); return; }
@@ -5916,42 +6544,46 @@ export function tapLocalLand(item) {
   if (state.pendingResolvedEffectTargetChoice || (state.resolvingResolvedEffectTargetChoices || 0) > 0) { logMsg(gameText('pending.resolvedEtb')); return; }
   if (state.pendingEscapeExileChoice) { logMsg(gameText('pending.escape')); return; }
   if (state.pendingKickerChoice) { logMsg(gameText('pending.kicker')); return; }
+  if (state.pendingLandSearchChoice) { logMsg(gameText('pending.landSearch')); return; }
   if (state.pendingRampChoice) { logMsg(gameText('pending.ramp')); return; }
 
   // PUNTO 13 — TIERRA DE MANÁ + UTILIDAD. Todas las Tierras con habilidades pasan por
   // el mismo dispatcher de permanentes. Ahí el contexto decide sin ambigüedad:
   //   - si estamos PAGANDO algo y la Tierra produce maná -> produce maná;
   //   - si no hay pago pendiente -> ofrece sus habilidades utility según timing.
-  // No existe mana pool flotante en este motor, así que fuera de un pago "producir maná"
-  // no es una segunda acción útil que necesite modal. Una Tierra simple sin habilidades
-  // conserva exactamente el click histórico de fuente de maná durante pagos.
-  if (getActivatedAbilities(item.card).length > 0) {
+  // Desde 23.14.1 sí existe reserva flotante: fuera de un pago, una Tierra que también tiene
+  // habilidad utility ofrece una elección explícita entre producir maná o activar esa habilidad.
+  const landAbilities = getEffectiveLandActivatedAbilities(state, item, true);
+  const hasMana = manaSourceOptions(item, true).length > 0;
+  if (item.tapped) { logMsg(gameText('mana.sourceAlreadyTapped', { card:item.card.name })); return; }
+
+  // Durante 601.2g/602 el click de una fuente productora significa maná. Fuera de un pago,
+  // una Tierra que además tiene habilidad utility ofrece la elección explícita Arena-like.
+  if (state.pendingCost && hasMana) {
+    chooseAndProduceMana(item, true);
+    return;
+  }
+  if (landAbilities.length > 0 && hasMana && canActivateLocalManaAbility(item)) {
+    const index = state.localLands.indexOf(item);
+    showManaOrAbilityChoiceModal(item.card.name, () => chooseAndProduceMana(item, true), () => presentActivatedAbilityChoice(item.card.name, buildPermanentActivatedAbilityOptions(item, true, index)));
+    return;
+  }
+  if (landAbilities.length > 0) {
     const index = state.localLands.indexOf(item);
     handleSupportClick(item, true, index);
     return;
   }
-
-  if (item.tapped) return;
-
-  // 23.11.13: pendingAbilitySource puede existir mientras todavía estamos declarando el
-  // target CR602. Eso NO significa que haya un costo abierto. Una tierra simple no puede
-  // intentar aplicar maná hasta que pendingCost exista.
-  if (!state.pendingCost) {
-    if (state.pendingAbilitySource && state.pendingTargetCard) logMsg(gameText('pending.abilityTarget'));
-    else logMsg(gameText('pending.selectPayment'));
+  if (!hasMana) return;
+  if (!canActivateLocalManaAbility(item)) {
+    logMsg(gameText('mana.noWindow'));
     return;
   }
-  
-  // Soporte genérico para tierras que eventualmente produzcan más de 1 maná. Las duales
-  // actuales (Constancia/Malvinas/Selva) usan producesOptions y rinden 1; el excedente de
-  // cualquier fuente multi-maná futura puede cubrir costo genérico, como en MTG real.
-  const amount = item.card.manaAmount || 1;
-  const colorOrOptions = item.card.producesOptions || getLandColor(item.card);
-  const used = applyManaToPendingCost(colorOrOptions, amount);
 
-  if (used) { item.tapped = true; state.tappedLandsThisSpell.push(item); checkPaymentComplete(); } 
-  else { logMsg(gameText('mana.genericDoesNotHelp')); }
-  render();
+  // 23.14.1: una Tierra simple puede activar su habilidad de maná siempre que exista una
+  // ventana legal. Fuera de un pago, todo queda flotando. Durante 601.2g/602, su producción
+  // recién agregada se aplica automáticamente sólo hasta cubrir lo útil y cualquier exceso
+  // permanece en el pool; el maná que ya flotaba de antes se elige desde el HUD.
+  chooseAndProduceMana(item, true);
 }
 
 // Confirmar el modo elegido de un hechizo modal: "resolvemos" la carta reemplazándola en
@@ -6108,6 +6740,7 @@ export function payWithAlternativeCost() {
   // conservan. Cualquier tierra que hubieras girado probando la vía normal se devuelve.
   state.tappedLandsThisSpell.forEach(land => { land.tapped = false; });
   restorePaymentManaSources();
+  restoreManaPaymentSnapshot();
   state.tappedLandsThisSpell = [];
   state.paymentManaSourceRollbacks = [];
   state.pendingAlternativeCostChosen = true;
@@ -6183,6 +6816,7 @@ async function finishCastingHandCard(card) {
     kicked: state.pendingKicked
   };
   addToStack(stackItem);
+  flushDeferredLandManaTriggers();
 
   logMsg(gameText('cast.stackEntered', { card: card.name }));
 
@@ -6199,6 +6833,7 @@ async function finishCastingHandCard(card) {
   state.pendingHybridLifePayment = null;
   state.tappedLandsThisSpell = [];
   state.paymentManaSourceRollbacks = [];
+  commitManaPaymentSnapshot();
   render();
 
   // PUNTO 3: el spell ya está casteado y en la pila. Sus watchers disparan AHORA, antes
@@ -6244,7 +6879,7 @@ function checkPaymentComplete() {
   const cost = state.pendingCost;
   if (!cost) return;
  
-  if ((cost.W + cost.U + cost.B + cost.R + cost.G + cost.generic) === 0) {
+  if ((cost.W + cost.U + cost.B + cost.R + cost.G + (cost.C || 0) + cost.generic) === 0) {
 
     // SALVAGUARDA: esto no debería poder pasar nunca (canPlayCard ya lo previene),
     // pero si por algún motivo quedaran ambos pagos pendientes a la vez, mejor
@@ -6321,7 +6956,7 @@ function checkPaymentComplete() {
         } else {
           // 'creature' o 'artifact': hay que elegir cuál. Pausamos acá.
           state.pendingSacrificeChoice = { source, ability, card, eligibleType: ability.sacrifice };
-          logMsg(gameText('mana.paidChooseSacrifice', { kind: ability.sacrifice === 'creature' ? 'criatura' : 'artefacto', card: card.name }));
+          logMsg(gameText('mana.paidChooseSacrifice', { kind: ability.sacrifice === 'creature' ? 'criatura' : ability.sacrifice === 'land' ? 'tierra' : 'artefacto', card: card.name }));
           render();
         }
         return;
@@ -6354,6 +6989,7 @@ function finalizeAbilityActivation(source, ability, card) {
     ability
   };
   addToStack(stackItem);
+  flushDeferredLandManaTriggers();
 
   logMsg(gameText('ability.activated', { card: card.name }));
   state.consecutivePasses = 0;
@@ -6363,6 +6999,7 @@ function finalizeAbilityActivation(source, ability, card) {
   state.pendingCost = null;
   state.tappedLandsThisSpell = [];
   state.paymentManaSourceRollbacks = [];
+  commitManaPaymentSnapshot();
 
   // Igual que el pipeline 601: Ward se observa después de que el objeto targeteado ya está
   // realmente en la Stack. El prompt sigue siendo la simplificación histórica del motor,
@@ -6394,7 +7031,7 @@ export function tryResolveSacrificeChoice(item, isLocal) {
   // Se valida el tipo real, compartiendo exactamente la misma regla con el resaltado de UI.
   const matchesType = isSacrificeCandidate(item, pending.eligibleType);
   if (!matchesType) {
-    logMsg(gameText('sacrifice.invalid', { type: pending.eligibleType === 'creature' ? 'criatura' : 'artefacto' }));
+    logMsg(gameText('sacrifice.invalid', { type: pending.eligibleType === 'creature' ? 'criatura' : pending.eligibleType === 'land' ? 'tierra' : 'artefacto' }));
     return true;
   }
 
@@ -6441,6 +7078,7 @@ async function advanceMultiTargetChoice(targetObj) {
     castFrom: state.pendingCastFrom
   };
   addToStack(stackItem);
+  flushDeferredLandManaTriggers();
 
   logMsg(gameText('cast.stackEnteredAllTargets', { card: card.name }));
   state.consecutivePasses = 0;
@@ -6454,6 +7092,7 @@ async function advanceMultiTargetChoice(targetObj) {
   state.pendingHybridLifePayment = null;
   state.tappedLandsThisSpell = [];
   state.paymentManaSourceRollbacks = [];
+  commitManaPaymentSnapshot();
   render();
   await triggerSpellCast(true, card, stackItem);
   checkRivalCounterOrResponse();
@@ -6505,6 +7144,7 @@ async function executeSpellOnTarget(targetObj) {
       kicked: state.pendingKicked
     };
     addToStack(castStackItem);
+    flushDeferredLandManaTriggers();
 
     state.pendingSpellIndex = null;
     state.pendingCost = null;
@@ -6517,6 +7157,7 @@ async function executeSpellOnTarget(targetObj) {
     state.pendingHybridLifePayment = null;
     state.tappedLandsThisSpell = [];
     state.paymentManaSourceRollbacks = [];
+    commitManaPaymentSnapshot();
   }
 
   state.consecutivePasses = 0;
@@ -6540,57 +7181,57 @@ async function executeSpellOnTarget(targetObj) {
 // entre tierras y artefactos que produzcan (siempre genérico, no importa el color) y lo
 // gira automáticamente — mismo criterio que Ward, reusable para el jugador humano y para
 // la decisión automática del Tano.
-export function tryAutoPayCounterTax(isLocal, amount) {
+function autoPayGenericManaCost(isLocal, amount) {
+  const pool = isLocal ? state.localManaPool : state.rivalManaPool;
   const lands = isLocal ? state.localLands : state.rivalLands;
   const support = isLocal ? state.localSupport : state.rivalSupport;
-  const sources = [...lands, ...support.filter(s => s.card.produces || s.card.producesOptions)].filter(s => !s.tapped);
+  const combat = isLocal ? state.localCombat : state.rivalCombat;
+  const sources = [...lands, ...support, ...combat]
+    .filter(s => {
+      const ability = effectiveManaAbilityForItem(s, isLocal);
+      return !!ability && canActivateManaSourcePermanent(s, { hasHaste: getEffectiveKeywords(s).some(k => String(k).toLowerCase() === 'haste'), ability });
+    });
+  const required = Math.max(0, Math.floor(Number(amount) || 0));
+  const available = manaPoolTotal(pool) + sources.reduce((sum,s) => sum + manaSourceAmount(s, isLocal), 0);
+  if (available < required) return false;
 
-  let need = amount;
-  const toTap = [];
-  for (const s of sources) {
-    if (need <= 0) break;
-    toTap.push(s);
-    need -= (s.card.manaAmount || 1);
+  const remaining = { W:0,U:0,B:0,R:0,G:0,C:0,generic:required };
+  spendAvailableTowardCost(pool, remaining);
+  for (const source of sources) {
+    if (remaining.generic <= 0) break;
+    const options = manaSourceOptions(source, isLocal);
+    if (!options.length) continue;
+    const type = options[0]; // El coste es genérico; cualquier elección legal es equivalente.
+    const produced = manaSourceAmount(source, isLocal);
+    const tappedForMana = manaSourceRequiresTapEffective(source, isLocal);
+    if (tappedForMana) source.tapped = true;
+    const landManaEventSnapshot = tappedForMana && isLandPermanent(source)
+      ? captureLandTappedForManaEvent(source, isLocal, type) : null;
+    if (manaSourceSacrificesEffective(source, isLocal)) performSacrifice(source, isLocal);
+    addMana(pool, type, produced);
+    if (landManaEventSnapshot) handleLandTappedForManaEvent(source, isLocal, type, produced, { eventSnapshot:landManaEventSnapshot });
+    spendAvailableTowardCost(pool, remaining);
   }
-  if (need > 0) return false;
-  toTap.forEach(s => {
-    s.tapped = true;
-    // HOTFIX 1.1 — una fuente de un solo uso (Fajo de Dólares Blue / Treasure-like)
-    // paga el impuesto Y se sacrifica, igual que cuando se usa en el pago normal.
-    if (s.card.sacrificeOnTap) performSacrifice(s, isLocal);
-  });
-  return true;
+  return remaining.generic === 0;
+}
+
+export function tryAutoPayCounterTax(isLocal, amount) {
+  return autoPayGenericManaCost(isLocal, amount);
 }
 
 export function payWard() {
   const wc = state.pendingWardChoice;
   if (!wc) return;
 
-  const sources = [...state.localLands, ...state.localSupport.filter(s => s.card.produces || s.card.producesOptions)]
-    .filter(s => !s.tapped);
-
-  let need = wc.wardCost;
-  const toTap = [];
-  for (const s of sources) {
-    if (need <= 0) break;
-    toTap.push(s);
-    need -= (s.card.manaAmount || 1);
-  }
-
-  if (need > 0) {
+  if (!autoPayGenericManaCost(true, wc.wardCost)) {
     logMsg(gameText('ward.noMana', { cost: wc.wardCost }));
     declineWard();
     return;
   }
-
-  toTap.forEach(s => {
-    s.tapped = true;
-    // HOTFIX 1.1 — Ward también consume correctamente las fuentes con sacrificeOnTap.
-    if (s.card.sacrificeOnTap) performSacrifice(s, true);
-  });
   logMsg(gameText('ward.paid', { cost: wc.wardCost }));
   const targetObj = wc.targetObj;
   state.pendingWardChoice = null;
+  flushDeferredLandManaTriggers();
   if (wc.postCast && wc.stackId != null) {
     render();
     checkRivalCounterOrResponse();
@@ -6618,6 +7259,7 @@ export function declineWard() {
       logMsg(gameText('ward.countered', { card: countered.card.name }));
     }
     state.pendingWardChoice = null;
+    flushDeferredLandManaTriggers();
     render();
     checkRivalCounterOrResponse();
     return;
@@ -6651,6 +7293,7 @@ export function declineWard() {
   }
 
   state.pendingWardChoice = null;
+  flushDeferredLandManaTriggers();
   state.pendingTargetCard = null;
   state.pendingTargetSource = null;
   state.pendingAbilitySource = null;
@@ -6682,11 +7325,13 @@ export function handleSupportClick(item, isLocal, index) {
     return;
   }
   if (state.pendingWardChoice) {
-    logMsg(gameText('pending.ward'));
+    if (manaSourceOptions(item, true).length > 0) chooseAndProduceMana(item, true);
+    else logMsg(gameText('pending.ward'));
     return;
   }
   if (state.pendingCounterUnlessPay) {
-    logMsg(gameText('pending.counterTax'));
+    if (manaSourceOptions(item, true).length > 0) chooseAndProduceMana(item, true);
+    else logMsg(gameText('pending.counterTax'));
     return;
   }
   if (state.pendingFightChoice) {
@@ -6736,8 +7381,8 @@ export function handleSupportClick(item, isLocal, index) {
   // Punto 13: cualquier permanente que produzca maná (mana rock O Tierra) conserva
   // prioridad de fuente de maná mientras ya estamos pagando algo. Fuera de un pago, si
   // además tiene habilidades activadas, esas habilidades utility quedan disponibles.
-  if (card.produces || card.producesOptions) {
-    if (state.pendingCost && (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null)) {
+  if (isManaSourceCard(card)) {
+    if (state.pendingCost && (state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCastTransaction?.stage === 'payment')) {
       tapSupportManaSource(item, isLocal);
       return;
     }
@@ -6745,10 +7390,12 @@ export function handleSupportClick(item, isLocal, index) {
       logMsg(gameText('pending.abilityTarget'));
       return;
     }
-    if (abilityOptions.length === 0) {
-      logMsg(gameText('pending.selectPayment'));
+    if (isLocal && canActivateLocalManaAbility(item)) {
+      if (abilityOptions.length === 0) { chooseAndProduceMana(item, true); return; }
+      showManaOrAbilityChoiceModal(card.name, () => chooseAndProduceMana(item, true), () => presentActivatedAbilityChoice(card.name, abilityOptions));
       return;
     }
+    if (abilityOptions.length === 0) { logMsg(gameText('mana.noWindow')); return; }
   }
 
   // Punto 12: ya no hacemos un guard global de fase acá. Cada opción se valida por su

@@ -9,7 +9,7 @@
 import { deriveLocalPriorityActivity } from './priorityUX.js';
 
 export const PER_PLAYER_FIELDS = [
-  'HP', 'Poison', 'Lands', 'Combat', 'Graveyard', 'Exile', 'Support', 'Planeswalkers',
+  'HP', 'Poison', 'ManaPool', 'Lands', 'Combat', 'Graveyard', 'Exile', 'Support', 'Planeswalkers',
   'LandPlayedThisTurn', 'AttackersDeclaredThisTurn', 'BlockersDeclaredThisCombat'
 ];
 
@@ -121,6 +121,7 @@ export function deserializeBoardItemRef(ref, state, myRole) {
 function targetZoneName(type) {
   if (type === 'creature') return 'combat';
   if (type === 'permanent') return 'support';
+  if (type === 'land') return 'lands';
   if (type === 'planeswalker') return 'planeswalkers';
   return null;
 }
@@ -135,9 +136,14 @@ export function serializeStackTarget(targetObj, state, myRole) {
     return { type: 'player', ownerRole: targetObj.isLocal ? myRole : otherRole(myRole) };
   }
 
-  const zoneName = targetZoneName(targetObj.type);
+  let zoneName = targetZoneName(targetObj.type);
   if (!zoneName) return null;
   const isLocal = !!targetObj.isLocal;
+  if (targetObj.type === 'land') {
+    const lands = zoneArray(state, 'lands', isLocal) || [];
+    const combat = zoneArray(state, 'combat', isLocal) || [];
+    if (!lands.includes(targetObj.item) && combat.includes(targetObj.item)) zoneName = 'combat';
+  }
   const zone = zoneArray(state, zoneName, isLocal) || [];
   let index = Number.isInteger(targetObj.index) ? targetObj.index : zone.indexOf(targetObj.item);
   if (index < 0 && targetObj._syncDescriptor && Number.isInteger(targetObj._syncDescriptor.index)) {

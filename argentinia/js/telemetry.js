@@ -39,7 +39,7 @@ const PENDING_KEYS = [
   'preparingCompositeCastCosts', 'pendingFightChoice', 'pendingXChoice', 'pendingModeChoice',
   'pendingLoyaltyTargetChoice', 'pendingMultiTargetChoice', 'pendingScrySurveilChoice',
   'pendingProliferateChoice', 'pendingHandFilterChoice', 'pendingDiscardChoice',
-  'pendingSacrificeEffectChoice', 'pendingGraveyardChoice', 'pendingResolvedEffectTargetChoice',
+  'pendingSacrificeEffectChoice', 'pendingGraveyardChoice', 'pendingResolvedEffectTargetChoice', 'pendingLandSearchChoice',
   'pendingDecision', 'decisionResponse', 'awaitingRivalDecision', 'isDiscarding',
   'cardsToDiscard', 'damageModalOpen', 'resolvingDiscardEffects', 'resolvingSacrificeEffects'
 ];
@@ -219,7 +219,7 @@ function permanentSummary(item) {
   };
   [
     'tapped', 'summoningSickness', 'isAttacking', 'blockingIndex', 'damageTaken',
-    'enteredThisTurn', 'isVehicle', 'wasLand', 'loyalty', 'abilityUsedThisTurn',
+    'enteredThisTurn', 'isVehicle', 'wasLand', 'isAnimatedLand', 'permanentTypes', 'animatedBasePower', 'animatedBaseToughness', 'animationKeywords', 'loyalty', 'abilityUsedThisTurn',
     'attackTarget'
   ].forEach(key => {
     if (item[key] !== undefined && item[key] !== null && item[key] !== false) {
@@ -321,6 +321,7 @@ function buildSnapshot(state, stack) {
     local: {
       hp: state.localHP,
       poison: state.localPoison,
+      manaPool: state.localManaPool || {W:0,U:0,B:0,R:0,G:0,C:0},
       deck: hiddenZoneSummary(state.localDeck, false),
       hand: hiddenZoneSummary(state.localHand, true),
       lands: zoneSummary(state.localLands, 'permanent'),
@@ -335,6 +336,7 @@ function buildSnapshot(state, stack) {
     rival: {
       hp: state.rivalHP,
       poison: state.rivalPoison,
+      manaPool: state.rivalManaPool || {W:0,U:0,B:0,R:0,G:0,C:0},
       deck: hiddenZoneSummary(state.rivalDeck, revealRivalHidden),
       hand: hiddenZoneSummary(state.rivalHand, revealRivalHidden),
       lands: zoneSummary(state.rivalLands, 'permanent'),
@@ -452,6 +454,20 @@ function invariantFindings(state, stack) {
   ['localPoison', 'rivalPoison'].forEach(key => {
     if (Number.isFinite(state[key]) && (state[key] < 0 || !Number.isInteger(state[key]))) {
       push('INVALID_POISON', `${key} inválido`, { key, value: state[key] });
+    }
+  });
+
+  ['localManaPool', 'rivalManaPool'].forEach(key => {
+    const pool = state[key];
+    if (!pool || typeof pool !== 'object' || Array.isArray(pool)) {
+      push('INVALID_MANA_POOL', `${key} no es un mapa de maná`, { key, value: pool }, 'error');
+      return;
+    }
+    for (const type of ['W','U','B','R','G','C']) {
+      const amount = pool[type];
+      if (!Number.isInteger(amount) || amount < 0) {
+        push('INVALID_MANA_POOL', `${key}.${type} inválido`, { key, type, amount }, 'error');
+      }
     }
   });
 

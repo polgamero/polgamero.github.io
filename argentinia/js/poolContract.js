@@ -1,7 +1,7 @@
 // js/poolContract.js
-// 23.13.35 — cierre de expansión estructural: 583 -> 601.
-// POOL_BASELINE queda fail-closed en el baseline final de 601 cartas.
-// Los milestones 511/553/583 se preservan como historia auditable, pero el runtime actual exige 601.
+// 23.14.8 — LAND Expansion I: 601 -> 643.
+// POOL_BASELINE queda fail-closed en el pool 643 que materializa LAND 0–6 con 42 cartas nuevas.
+// Los milestones anteriores se preservan como historia auditable; el runtime actual exige 643.
 const makeMilestone = (version, total, categories) => Object.freeze({
   version,
   total,
@@ -44,8 +44,17 @@ export const POOL_MILESTONES = Object.freeze({
     conjuros: 70,
     encantamientos: 56,
     planeswalkers: 8
+  }),
+  land_expansion_643: makeMilestone('23.14.8', 643, {
+    tierras: 64,
+    artefactos: 60,
+    criaturas: 262,
+    instantaneos: 110,
+    conjuros: 76,
+    encantamientos: 63,
+    planeswalkers: 8
   })
 });
 
-export const CURRENT_POOL_MILESTONE = 'structural_601';
+export const CURRENT_POOL_MILESTONE = 'land_expansion_643';
 export const POOL_BASELINE = POOL_MILESTONES[CURRENT_POOL_MILESTONE];

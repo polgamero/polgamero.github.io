@@ -1271,5 +1271,142 @@
       "requiresTarget": true,
       "timing": "sorcery"
     }
+  },
+  {
+    "id": "art_055",
+    "name": "Pétalo del Rosedal",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Sacrificá Pétalo del Rosedal: agregá un maná de cualquier color.",
+    "flavorText": "Dura menos que una tarde y alcanza para abrir una puerta.",
+    "image": "petalo_del_rosedal.png",
+    "keywords": [],
+    "manaAbility": {
+      "producesOptions": [
+        "W",
+        "U",
+        "B",
+        "R",
+        "G"
+      ],
+      "amount": 1,
+      "requiresTap": false,
+      "sacrificeSelf": true
+    }
+  },
+  {
+    "id": "art_056",
+    "name": "Loto del Jardín Japonés",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "{T}, sacrificá Loto del Jardín Japonés: agregá tres manás de un color a elección.",
+    "flavorText": "Florece una sola vez. El resto del duelo recuerda cuándo.",
+    "image": "loto_del_jardin_japones.png",
+    "keywords": [],
+    "manaAbility": {
+      "producesOptions": [
+        "W",
+        "U",
+        "B",
+        "R",
+        "G"
+      ],
+      "amount": 3,
+      "requiresTap": true,
+      "sacrificeSelf": true
+    }
+  },
+  {
+    "id": "art_057",
+    "name": "Globo del Planetario",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: agregá un maná de cualquier color.",
+    "flavorText": "Gira despacio, pero siempre señala algún mundo.",
+    "image": "globo_del_planetario.png",
+    "keywords": [],
+    "manaAbility": {
+      "producesOptions": [
+        "W",
+        "U",
+        "B",
+        "R",
+        "G"
+      ],
+      "amount": 1,
+      "requiresTap": true,
+      "sacrificeSelf": false
+    }
+  },
+  {
+    "id": "art_058",
+    "name": "Mapa del Camino de los Siete Lagos",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{2}, {T}, sacrificá Mapa del Camino de los Siete Lagos: buscá en tu biblioteca una Tierra, revelala, ponela en tu mano y luego barajá.",
+    "flavorText": "No dice dónde termina el viaje; sólo dónde vuelve a empezar.",
+    "image": "mapa_del_camino_de_los_siete_lagos.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "sacrifice": "self",
+      "effect": {
+        "type": "search_land",
+        "amount": 1,
+        "filter": "any",
+        "destination": "hand",
+        "allowFewer": true,
+        "reveal": true
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_059",
+    "name": "Crisol del Parque Nacional Los Glaciares",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Podés jugar Tierras desde tu cementerio.",
+    "flavorText": "El hielo guarda el camino incluso después de que el camino desaparece.",
+    "image": "crisol_del_parque_nacional_los_glaciares.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "play_lands_from_graveyard"
+    }
+  },
+  {
+    "id": "art_060",
+    "name": "Esfera Helada del Nahuel Huapi",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Mientras Esfera Helada del Nahuel Huapi esté enderezada, cada jugador no puede enderezar más de una Tierra durante su paso de Enderezar.",
+    "flavorText": "Cuando el lago se queda quieto, hasta los caminos dudan en moverse.",
+    "image": "esfera_helada_del_nahuel_huapi.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "land_untap_limit",
+      "scope": "all",
+      "max": 1,
+      "whileSourceUntapped": true
+    }
   }
 ]

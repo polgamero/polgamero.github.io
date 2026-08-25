@@ -23,7 +23,7 @@ const TRANSIENT_KEYS = new Set([
   'pendingXChoice','pendingModeChoice','pendingLoyaltyTargetChoice','pendingMultiTargetChoice',
   'pendingScrySurveilChoice','pendingProliferateChoice','pendingHandFilterChoice','pendingDiscardChoice',
   'pendingSacrificeEffectChoice','pendingGraveyardChoice','pendingResolvedEffectTargetChoice',
-  'pendingEscapeExileChoice','pendingKickerChoice','pendingRampChoice','damageModalOpen','awaitingRivalDecision',
+  'pendingEscapeExileChoice','pendingKickerChoice','pendingRampChoice','pendingLandSearchChoice','damageModalOpen','awaitingRivalDecision',
   'respondingToDecision','pendingDecision','decisionResponse','isDiscarding','cardsToDiscard',
   'resolvingDiscardEffects','resolvingSacrificeEffects','resolvingCardFilterEffects','resolvingGraveyardChoices','resolvingResolvedEffectTargetChoices'
 ]);

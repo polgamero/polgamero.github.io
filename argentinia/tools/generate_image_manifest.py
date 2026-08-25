@@ -131,7 +131,7 @@ def load_pool_contract(root: Path) -> tuple[str, str, int, dict[str, int]]:
 
 
 def collect_token_effects(cards):
-    """Collect every nested create_tokens effect from the 601-card JSON pool."""
+    """Collect every nested create_tokens effect from the active JSON card pool."""
     found = []
 
     def visit(node, *, category, card, path):
