@@ -10,7 +10,7 @@
       "W"
     ],
     "loyalty": 5,
-    "text": "Planeswalker Legendario.",
+    "text": "",
     "flavorText": "Nadie entra ni sale del barrio sin que él se entere.",
     "image": "cacique_barrio.png",
     "loyaltyAbilities": [
@@ -49,7 +49,8 @@
           "image": "token_vecino_barrio.png"
         }
       }
-    ]
+    ],
+    "legendary": true
   },
   {
     "id": "pw_002",
@@ -62,7 +63,7 @@
       "U"
     ],
     "loyalty": 4,
-    "text": "Planeswalker Legendario.",
+    "text": "",
     "flavorText": "Lee las cartas antes de que el barco termine de atracar.",
     "image": "bruja_puerto.png",
     "loyaltyAbilities": [
@@ -93,7 +94,8 @@
           "amount": 4
         }
       }
-    ]
+    ],
+    "legendary": true
   },
   {
     "id": "pw_003",
@@ -106,7 +108,7 @@
       "B"
     ],
     "loyalty": 5,
-    "text": "Planeswalker Legendario.",
+    "text": "",
     "flavorText": "Ya cavó tu pozo. Solo pregunta cuándo.",
     "image": "el_enterrador.png",
     "loyaltyAbilities": [
@@ -138,7 +140,8 @@
           "amount": 2
         }
       }
-    ]
+    ],
+    "legendary": true
   },
   {
     "id": "pw_004",
@@ -151,7 +154,7 @@
       "R"
     ],
     "loyalty": 4,
-    "text": "Planeswalker Legendario.",
+    "text": "",
     "flavorText": "Cada esquina arde en su propio fuego.",
     "image": "piromantico_callejero.png",
     "loyaltyAbilities": [
@@ -191,7 +194,8 @@
           "amount": 7
         }
       }
-    ]
+    ],
+    "legendary": true
   },
   {
     "id": "pw_005",
@@ -204,7 +208,7 @@
       "G"
     ],
     "loyalty": 6,
-    "text": "Planeswalker Legendario.",
+    "text": "",
     "flavorText": "El delta entero respira cuando ella lo permite.",
     "image": "guardiana_delta.png",
     "loyaltyAbilities": [
@@ -244,7 +248,8 @@
           "image": "token_bestia_delta.png"
         }
       }
-    ]
+    ],
+    "legendary": true
   },
   {
     "id": "pw_006",
@@ -258,7 +263,7 @@
       "B"
     ],
     "loyalty": 5,
-    "text": "Planeswalker Legendario.",
+    "text": "",
     "flavorText": "En su comisaría, la ley se aplica antes de leerse.",
     "image": "comisario.png",
     "loyaltyAbilities": [
@@ -288,7 +293,8 @@
           "type": "destroy_all_creatures"
         }
       }
-    ]
+    ],
+    "legendary": true
   },
   {
     "id": "pw_007",
@@ -301,7 +307,7 @@
       "U",
       "R"
     ],
-    "text": "Planeswalker Legendario. Siempre que lances un Instantáneo o Conjuro, Adiviná 1.",
+    "text": "Siempre que lances un Instantáneo o Conjuro, Adiviná 1.",
     "flavorText": "El barrio se queda sin luz cada vez que llega al estribillo.",
     "image": "la_negra_del_bandoneon_electrico.png",
     "loyalty": 5,
@@ -341,7 +347,8 @@
         "type": "scry",
         "amount": 1
       }
-    }
+    },
+    "legendary": true
   },
   {
     "id": "pw_008",
@@ -354,7 +361,7 @@
       "B",
       "G"
     ],
-    "text": "Planeswalker Legendario.",
+    "text": "",
     "flavorText": "Prueba el mosto con un dedo y sabe quién va a llegar vivo a marzo.",
     "image": "dona_uva_bruja_de_la_vendimia.png",
     "loyalty": 5,
@@ -395,6 +402,7 @@
           "image": "token_sarmiento_toxico.png"
         }
       }
-    ]
+    ],
+    "legendary": true
   }
 ]

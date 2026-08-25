@@ -9,7 +9,7 @@
     "colors": [
       "W"
     ],
-    "text": "Con Chimichurri: Te cura 3 de HP al instante.",
+    "text": "Ganás 3 Puntos de Vida.",
     "flavorText": "Infaltable a la salida de la cancha.",
     "requiresTarget": false,
     "image": "choripan.png",
@@ -28,7 +28,7 @@
     "colors": [
       "U"
     ],
-    "text": "Queso y Salame: Robás 2 cartas.",
+    "text": "Robá dos cartas.",
     "flavorText": "Para picar mientras esperamos el asado.",
     "requiresTarget": false,
     "image": "picadita.png",
@@ -47,7 +47,7 @@
     "colors": [
       "R"
     ],
-    "text": "Estruendo Festivo: Causa 3 de daño al jugador o criatura objetivo.",
+    "text": "Causa 3 de daño al jugador o criatura objetivo.",
     "flavorText": "Luces y estruendos en todo el barrio.",
     "requiresTarget": true,
     "image": "festejos.png",
@@ -66,7 +66,7 @@
     "colors": [
       "R"
     ],
-    "text": "Corte de Ruta: Causa 4 de daño por el humo de las gomas quemadas.",
+    "text": "Causa 4 de daño al jugador o criatura objetivo.",
     "flavorText": "Corte total en la autopista.",
     "requiresTarget": true,
     "image": "piquete.png",
@@ -86,7 +86,7 @@
       "B",
       "R"
     ],
-    "text": "Devaluación: Causa 5 de daño al jugador o criatura objetivo.",
+    "text": "Causa 5 de daño al jugador o criatura objetivo.",
     "flavorText": "¡Subió otro escalón!",
     "requiresTarget": true,
     "image": "dolar_blue.png",
@@ -105,7 +105,7 @@
     "colors": [
       "U"
     ],
-    "text": "Temporal Pampeano: Robás 3 cartas.",
+    "text": "Robá tres cartas.",
     "flavorText": "Llega puntual a fines de agosto.",
     "requiresTarget": false,
     "image": "santa_rosa.png",
@@ -124,7 +124,7 @@
     "colors": [
       "W"
     ],
-    "text": "Banquete Familiar: Te cura 8 de HP al instante.",
+    "text": "Ganás 8 Puntos de Vida.",
     "flavorText": "Sobró achura para toda la semana.",
     "requiresTarget": false,
     "image": "asado.png",
@@ -143,7 +143,7 @@
     "colors": [
       "B"
     ],
-    "text": "Ruido de Fondo: Destruye todas las criaturas en el campo de batalla.",
+    "text": "Destruye todas las criaturas en el campo de batalla.",
     "flavorText": "Cuando el pueblo sale a la calle con la cacerola, no queda títere con cabeza.",
     "requiresTarget": false,
     "image": "cacerolazo.png",
@@ -161,7 +161,7 @@
     "colors": [
       "W"
     ],
-    "text": "Se juntan en la esquina: Creás dos fichas de criatura 1/1 Vecino Movilizado.",
+    "text": "Creás dos fichas de criatura 1/1 Vecino Movilizado.",
     "flavorText": "La cuadra entera se junta a discutir el problema... y a resolverlo a los codazos.",
     "requiresTarget": false,
     "image": "asamblea.png",
@@ -187,7 +187,7 @@
     "colors": [
       "W"
     ],
-    "text": "Aislamiento Obligatorio: Las criaturas del jugador objetivo no pueden atacar en su próximo turno.",
+    "text": "Las criaturas del jugador objetivo no pueden atacar en su próximo turno.",
     "flavorText": "Quedate en tu casa, no se puede circular.",
     "requiresTarget": true,
     "image": "cuarentena.png",
@@ -206,7 +206,7 @@
     "colors": [
       "U"
     ],
-    "text": "Devolución: Volvé la criatura objetivo a la mano de su dueño.",
+    "text": "Volvé la criatura objetivo a la mano de su dueño.",
     "flavorText": "Éste no era el cambio que pediste, andate por donde viniste.",
     "requiresTarget": true,
     "image": "vuelto.png",
@@ -224,7 +224,7 @@
     "colors": [
       "B"
     ],
-    "text": "Congelamiento: El jugador objetivo descarta 2 cartas.",
+    "text": "El jugador objetivo descarta 2 cartas.",
     "flavorText": "Tu plata quedó atrapada del otro lado del mostrador.",
     "requiresTarget": true,
     "image": "corralito.png",
@@ -243,7 +243,7 @@
     "colors": [
       "B"
     ],
-    "text": "Brebaje Maldito: Destruí la criatura objetivo.",
+    "text": "Destruí la criatura objetivo.",
     "flavorText": "Un té mal preparado y no contás el cuento.",
     "requiresTarget": true,
     "image": "yuyo_del_loco.png",
@@ -261,7 +261,7 @@
     "colors": [
       "B"
     ],
-    "text": "Milagro Campestre: Devolvé una criatura de tu cementerio al campo de batalla.",
+    "text": "Devolvé una criatura de tu cementerio al campo de batalla.",
     "flavorText": "Le prendés una vela y te devuelve el favor desde el más allá.",
     "requiresTarget": false,
     "image": "difunta_correa.png",
@@ -280,7 +280,7 @@
     "colors": [
       "G"
     ],
-    "text": "Buena Cosecha: Buscá una tierra básica en tu mazo y ponela en el campo de batalla.",
+    "text": "Buscá una tierra básica en tu mazo y ponela en el campo de batalla.",
     "flavorText": "El campo siempre da una mano más.",
     "requiresTarget": false,
     "image": "siembra_otono.png",
@@ -299,7 +299,7 @@
     "colors": [
       "G"
     ],
-    "text": "Maleza Descontrolada: Destruí el encantamiento objetivo.",
+    "text": "Destruí el encantamiento objetivo.",
     "flavorText": "La maleza no respeta bendiciones ni maleficios.",
     "requiresTarget": true,
     "image": "yuyerio.png",
@@ -317,7 +317,7 @@
     "colors": [
       "R"
     ],
-    "text": "Mensaje Contundente: Destruí el artefacto objetivo.",
+    "text": "Destruí el artefacto objetivo.",
     "flavorText": "A veces el mensaje se manda con una piedra.",
     "requiresTarget": true,
     "image": "piedrazo.png",
@@ -627,7 +627,7 @@
     "colors": [
       "G"
     ],
-    "text": "Brote Nuevo: La criatura objetivo que controlás recibe un contador +1/+1.",
+    "text": "La criatura objetivo que controlás recibe un contador +1/+1.",
     "flavorText": "El ceibo prende de cualquier gajo, si lo plantás con ganas.",
     "requiresTarget": true,
     "image": "injerto_ceibo.png",
@@ -1659,6 +1659,95 @@
       "type": "destroy_all_lands",
       "controller": "all",
       "landFilter": "nonbasic"
+    }
+  },
+  {
+    "id": "conj_077",
+    "name": "Te la Expropio",
+    "type": "Conjuro",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Enderezá la criatura objetivo que controla un oponente. Ganá su control hasta el final del turno. Gana Prisa hasta el final del turno.",
+    "flavorText": "La escritura sigue siendo tuya. La llave, por hoy, no.",
+    "image": "te_la_expropio.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "gain_control_until_eot",
+      "targetKind": "creature",
+      "targetController": "opponent",
+      "untap": true,
+      "grantHaste": true
+    }
+  },
+  {
+    "id": "conj_078",
+    "name": "Intervención Federal",
+    "type": "Conjuro",
+    "manaCost": "{4}{U}{U}",
+    "cmc": 6,
+    "rarity": "Mythic",
+    "colors": [
+      "U"
+    ],
+    "text": "Ganá el control del permanente objetivo que controla un oponente.",
+    "flavorText": "La administración cambió antes de que terminara de secarse la tinta.",
+    "image": "intervencion_federal.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "gain_control",
+      "targetKind": "any_permanent",
+      "targetController": "opponent"
+    }
+  },
+  {
+    "id": "conj_079",
+    "name": "Asamblea en la Plaza",
+    "type": "Conjuro",
+    "manaCost": "{4}{W}{W}",
+    "cmc": 6,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Convocar. Creá tres fichas de criatura Vecino 1/1.",
+    "flavorText": "Una silla trae otra. Después nadie recuerda quién convocó a la primera.",
+    "image": "asamblea_en_la_plaza.png",
+    "requiresTarget": false,
+    "convoke": true,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 3,
+      "tokenName": "Vecino",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": [],
+      "image": "token_vecino.png"
+    }
+  },
+  {
+    "id": "conj_080",
+    "name": "Inventario del Taller",
+    "type": "Conjuro",
+    "manaCost": "{4}{U}",
+    "cmc": 5,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Afinidad por artefactos. Robá dos cartas.",
+    "flavorText": "Lo que parecía desorden era un sistema que sólo el encargado entendía.",
+    "image": "inventario_del_taller.png",
+    "requiresTarget": false,
+    "affinity": "artifact",
+    "effect": {
+      "type": "draw",
+      "amount": 2
     }
   }
 ]

@@ -9,7 +9,7 @@
     "colors": [
       "U"
     ],
-    "text": "Esquiva la Patada: Robás 1 carta rápido.",
+    "text": "Robá una carta.",
     "flavorText": "Pasa como si fuera invisible.",
     "requiresTarget": false,
     "image": "gambeta.png",
@@ -28,7 +28,7 @@
     "colors": [
       "W"
     ],
-    "text": "Trago Cordobés: Te cura 4 puntos de vida del alma.",
+    "text": "Ganás 4 Puntos de Vida.",
     "flavorText": "70/30 en una botella cortada.",
     "requiresTarget": false,
     "image": "fernet.png",
@@ -47,7 +47,7 @@
     "colors": [
       "W"
     ],
-    "text": "Salvar las Papas: Te cura 2 puntos de vida.",
+    "text": "Ganás 2 Puntos de Vida.",
     "flavorText": "Hoy por ti, mañana por mí.",
     "requiresTarget": false,
     "image": "gauchada.png",
@@ -66,7 +66,7 @@
     "colors": [
       "U"
     ],
-    "text": "Saludo Amistoso: Robás 1 carta.",
+    "text": "Robá una carta.",
     "flavorText": "¡Hola che! ¿Cómo andás?",
     "requiresTarget": false,
     "image": "beso_mejilla.png",
@@ -85,7 +85,7 @@
     "colors": [
       "R"
     ],
-    "text": "Ruido Ensordecedor: 2 de daño al jugador objetivo.",
+    "text": "Causa 2 de daño al jugador objetivo.",
     "flavorText": "Se escucha en todos los balcones.",
     "requiresTarget": true,
     "image": "cacerolazo.png",
@@ -104,7 +104,7 @@
     "colors": [
       "R"
     ],
-    "text": "Jugada Clandestina: Metés un gol directo de 4 de daño al jugador o criatura objetivo.",
+    "text": "Causa 4 de daño al jugador o criatura objetivo.",
     "flavorText": "Un poco con la cabeza y un poco con la mano.",
     "requiresTarget": true,
     "image": "mano_dios.png",
@@ -824,7 +824,7 @@
       "B"
     ],
     "modal": true,
-    "text": "Elegí uno — • Contrarresta la habilidad activada o disparada objetivo. • Surveil 3.",
+    "text": "Elegí uno — • Contrarresta la habilidad activada o disparada objetivo. • Vigilá 3.",
     "flavorText": "Uno frena lo que ya empezó. El otro decide qué queda y qué se pudre.",
     "image": "pacto_sombras.png",
     "modes": [
@@ -855,7 +855,7 @@
     "colors": [
       "B"
     ],
-    "text": "Doble o Nada: Elegí cualquier cantidad de permanentes y/o Planeswalkers que ya tengan un contador. Cada uno elegido recibe un contador más de cada tipo que ya tenga.",
+    "text": "Elegí cualquier cantidad de permanentes y/o Planeswalkers que ya tengan un contador. Cada uno elegido recibe un contador más de cada tipo que ya tenga.",
     "flavorText": "En el truco, quien pide retruco no está agrandando la apuesta — está agrandando lo que ya tenías en la mano.",
     "requiresTarget": false,
     "image": "quiero_retruco.png",
@@ -873,7 +873,7 @@
     "colors": [
       "B"
     ],
-    "text": "Grano Podrido: La criatura objetivo recibe un contador -1/-1.",
+    "text": "La criatura objetivo recibe un contador -1/-1.",
     "flavorText": "Lo que se guardó húmedo, nunca más vuelve a servir.",
     "requiresTarget": true,
     "image": "plaga_silo.png",
@@ -893,7 +893,7 @@
     "colors": [
       "U"
     ],
-    "text": "Saber Prohibido: Robás una carta. Escape—{3}{U}{U}, exiliar dos cartas de tu cementerio.",
+    "text": "Robás una carta. Escape—{3}{U}{U}, exiliar dos cartas de tu cementerio.",
     "flavorText": "Cada medianoche, alguien vuelve a pedir el mismo trato.",
     "requiresTarget": false,
     "image": "pacto_salamanca.png",
@@ -916,7 +916,7 @@
     "colors": [
       "R"
     ],
-    "text": "Le hace 2 de daño a cualquier objetivo. Kicker {2}{R} (Podés pagar {2}{R} adicional al lanzar este hechizo). Si fue Kickeada, le hacés 2 de daño adicional al jugador rival.",
+    "text": "Le hace 2 de daño a cualquier objetivo. Kicker {2}{R}. Si pagaste el coste de Kicker, le hacés 2 de daño adicional al jugador rival.",
     "flavorText": "Uno más nunca sobra.",
     "requiresTarget": true,
     "image": "petardos_ano_nuevo.png",
@@ -2263,6 +2263,109 @@
     "requiresTarget": true,
     "effect": {
       "type": "destroy_land"
+    }
+  },
+  {
+    "id": "inst_111",
+    "name": "Parte Médico Sellado",
+    "type": "Instantáneo",
+    "manaCost": "{W}{W/P}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Previene los próximos 3 daños que fueran a recibir la criatura o jugador objetivo este turno.",
+    "flavorText": "Con firma, sello y fecha, hasta el dolor tiene expediente.",
+    "image": "parte_medico_sellado.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "prevent_damage",
+      "amount": 3
+    }
+  },
+  {
+    "id": "inst_112",
+    "name": "Cadena Humana",
+    "type": "Instantáneo",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Convocar. Previene los próximos 5 daños que fueran a recibir la criatura o jugador objetivo este turno.",
+    "flavorText": "Cuando no alcanza una mano, aparecen veinte.",
+    "image": "cadena_humana.png",
+    "requiresTarget": true,
+    "convoke": true,
+    "effect": {
+      "type": "prevent_damage",
+      "amount": 5
+    }
+  },
+  {
+    "id": "inst_113",
+    "name": "Expediente Bajo Tierra",
+    "type": "Instantáneo",
+    "manaCost": "{5}{B}",
+    "cmc": 6,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Excavar. Robá dos cartas y perdé 2 vidas.",
+    "flavorText": "Lo enterraron para que nadie lo leyera. Ese fue el primer error.",
+    "image": "expediente_bajo_tierra.png",
+    "requiresTarget": false,
+    "delve": true,
+    "effect": {
+      "type": "draw_and_lose_life",
+      "amount": 2,
+      "lifeLoss": 2
+    }
+  },
+  {
+    "id": "inst_114",
+    "name": "Interferencia de Línea",
+    "type": "Instantáneo",
+    "manaCost": "{U}{U/P}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Contrarrestá el hechizo objetivo a menos que su controlador pague {2}.",
+    "flavorText": "La llamada entró perfecta. La respuesta nunca llegó.",
+    "image": "interferencia_de_linea.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "counter_unless_pay",
+      "amount": 2
+    }
+  },
+  {
+    "id": "inst_115",
+    "name": "Envión del Terraplén",
+    "type": "Instantáneo",
+    "manaCost": "{R/G}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "R",
+      "G"
+    ],
+    "text": "La criatura objetivo obtiene +2/+0 y gana Arrolla hasta el final del turno.",
+    "flavorText": "La pendiente hace la mitad. El resto lo pone el que viene corriendo.",
+    "image": "envion_del_terraplen.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "pump",
+      "powerMod": 2,
+      "toughnessMod": 0,
+      "keywords": [
+        "trample"
+      ]
     }
   }
 ]

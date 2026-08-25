@@ -116,7 +116,7 @@
     "cmc": 3,
     "rarity": "Rare",
     "colors": [],
-    "text": "Tripular {2} (Pagá {2} para que este Vehículo se convierta en una criatura 4/4 hasta el final del turno).",
+    "text": "Tripular 2.",
     "flavorText": "A prueba de flechas, lanzas y luz mala.",
     "image": "carreta.png",
     "baseStats": {
@@ -129,7 +129,7 @@
         "type": "crew_vehicle"
       },
       "requiresTarget": false,
-      "timing": "sorcery"
+      "timing": "instant"
     }
   },
   {
@@ -140,7 +140,7 @@
     "cmc": 4,
     "rarity": "Rare",
     "colors": [],
-    "text": "Tripular {3} (Pagá {3} para que este Vehículo se convierta en una criatura 6/6 hasta el final del turno).",
+    "text": "Tripular 3.",
     "flavorText": "Yo no manejo el rating, yo manejo esto.",
     "image": "rolls_royce_ricky.png",
     "baseStats": {
@@ -153,7 +153,7 @@
         "type": "crew_vehicle"
       },
       "requiresTarget": false,
-      "timing": "sorcery"
+      "timing": "instant"
     }
   },
   {
@@ -164,7 +164,7 @@
     "cmc": 2,
     "rarity": "Uncommon",
     "colors": [],
-    "text": "Tripular {1} (Pagá {1} para que este Vehículo se convierta en una criatura 3/4 con Arrollar hasta el final del turno).",
+    "text": "Tripular 1.",
     "flavorText": "Cruzó los Andes sin quejarse una sola vez.",
     "image": "caballo_san_martin.png",
     "keywords": [
@@ -180,7 +180,7 @@
         "type": "crew_vehicle"
       },
       "requiresTarget": false,
-      "timing": "sorcery"
+      "timing": "instant"
     }
   },
   {
@@ -290,7 +290,7 @@
     "cmc": 2,
     "rarity": "Uncommon",
     "colors": [],
-    "text": "Prisa Repentina: podés jugar esta carta como si tuviera Destello. {T}: Agregá {W} o {U}.",
+    "text": "{T}: Agregá {W} o {U}.",
     "flavorText": "Marca la hora justo cuando menos lo esperás.",
     "image": "reloj_abuelo.png",
     "keywords": [
@@ -332,7 +332,7 @@
     "colors": [],
     "power": 2,
     "toughness": 4,
-    "text": "Armado con lo que había en el galpón.",
+    "text": "",
     "flavorText": "Le falta una tuerca, pero aguanta los golpes.",
     "image": "robotito_chatarra.png",
     "keywords": []
@@ -362,7 +362,7 @@
     "cmc": 3,
     "rarity": "Rare",
     "colors": [],
-    "text": "Efecto estático: Tus criaturas obtienen +1/+0.",
+    "text": "Tus criaturas obtienen +1/+0.",
     "flavorText": "Se planta en la vereda y ya cambia cómo camina toda la cuadra.",
     "image": "bandera_cuadra.png",
     "keywords": [],
@@ -399,7 +399,7 @@
     "cmc": 1,
     "rarity": "Rare",
     "colors": [],
-    "text": "Prisa Repentina: podés jugar esta carta como si tuviera Destello. Equipar {1}. La criatura equipada tiene Toque Mortal.",
+    "text": "Equipar {1}. La criatura equipada tiene Toque mortal.",
     "flavorText": "Nadie ve el filo hasta que ya es tarde.",
     "image": "daga_escondida.png",
     "keywords": [
@@ -451,7 +451,7 @@
     "cmc": 1,
     "rarity": "Uncommon",
     "colors": [],
-    "text": "Prisa Repentina: podés jugar esta carta como si tuviera Destello. {1}, {T}: La criatura objetivo que controlás gana Intocable hasta el final del turno.",
+    "text": "{1}, {T}: La criatura objetivo que controlás gana Intocable hasta el final del turno.",
     "flavorText": "Se arma en un segundo, pero aguanta lo que haga falta.",
     "image": "refugio_improvisado.png",
     "keywords": [
@@ -730,7 +730,7 @@
     "cmc": 3,
     "rarity": "Uncommon",
     "colors": [],
-    "text": "Amenaza. Tripular {2} (Pagá {2} para que este Vehículo se convierta en una criatura 4/4 hasta el final del turno).",
+    "text": "Tripular 2.",
     "flavorText": "No figura en ninguna aplicación, pero siempre hay alguien esperando que pase.",
     "image": "colectivo_linea_fantasma.png",
     "keywords": [
@@ -746,7 +746,7 @@
         "type": "crew_vehicle"
       },
       "requiresTarget": false,
-      "timing": "sorcery"
+      "timing": "instant"
     }
   },
   {
@@ -899,7 +899,7 @@
     "cmc": 3,
     "rarity": "Uncommon",
     "colors": [],
-    "text": "Vigilancia. Tripular {2}.",
+    "text": "Tripular 2.",
     "flavorText": "No tiene horario. Tiene un patrón que sabe cuándo hace falta pasar.",
     "image": "lancha_colectiva_del_delta.png",
     "keywords": [
@@ -915,7 +915,7 @@
         "type": "crew_vehicle"
       },
       "requiresTarget": false,
-      "timing": "sorcery"
+      "timing": "instant"
     }
   },
   {
@@ -926,7 +926,7 @@
     "cmc": 4,
     "rarity": "Rare",
     "colors": [],
-    "text": "Arrolla. Tripular {3}.",
+    "text": "Tripular 3.",
     "flavorText": "Entrega cartas en pueblos donde hace años cerró el correo.",
     "image": "rastrojero_del_correo.png",
     "keywords": [
@@ -942,7 +942,7 @@
         "type": "crew_vehicle"
       },
       "requiresTarget": false,
-      "timing": "sorcery"
+      "timing": "instant"
     }
   },
   {
@@ -1061,7 +1061,7 @@
     "cmc": 1,
     "rarity": "Common",
     "colors": [],
-    "text": "Tripular 1. Se convierte en una criatura 1/2 hasta el final del turno.",
+    "text": "Tripular 1.",
     "flavorText": "Pasa a las tres de la mañana y el pedido siempre llega caliente.",
     "image": "motito_del_reparto_nocturno.png",
     "keywords": [],
@@ -1075,7 +1075,7 @@
         "type": "crew_vehicle"
       },
       "requiresTarget": false,
-      "timing": "sorcery"
+      "timing": "instant"
     }
   },
   {
@@ -1086,7 +1086,7 @@
     "cmc": 2,
     "rarity": "Common",
     "colors": [],
-    "text": "Tripular 1. Se convierte en una criatura 3/2 hasta el final del turno.",
+    "text": "Tripular 1.",
     "flavorText": "Las ruedas no tocan del todo el camino.",
     "image": "sulky_de_hierro_maldito.png",
     "keywords": [],
@@ -1100,7 +1100,7 @@
         "type": "crew_vehicle"
       },
       "requiresTarget": false,
-      "timing": "sorcery"
+      "timing": "instant"
     }
   },
   {
@@ -1111,7 +1111,7 @@
     "cmc": 4,
     "rarity": "Uncommon",
     "colors": [],
-    "text": "Tripular 2. Vuela.",
+    "text": "Tripular 2.",
     "flavorText": "Entrega cartas con sellos de pueblos que ya no figuran en el mapa.",
     "image": "avioneta_del_correo_fantasma.png",
     "keywords": [
@@ -1127,7 +1127,7 @@
         "type": "crew_vehicle"
       },
       "requiresTarget": false,
-      "timing": "sorcery"
+      "timing": "instant"
     }
   },
   {
@@ -1138,7 +1138,7 @@
     "cmc": 4,
     "rarity": "Uncommon",
     "colors": [],
-    "text": "Tripular 2. Prisa.",
+    "text": "Tripular 2.",
     "flavorText": "Las luces aparecen primero en el espejo. Después ya es tarde.",
     "image": "torino_de_la_ruta_de_los_espectros.png",
     "keywords": [
@@ -1154,7 +1154,7 @@
         "type": "crew_vehicle"
       },
       "requiresTarget": false,
-      "timing": "sorcery"
+      "timing": "instant"
     }
   },
   {
@@ -1407,6 +1407,57 @@
       "scope": "all",
       "max": 1,
       "whileSourceUntapped": true
+    }
+  },
+  {
+    "id": "art_061",
+    "name": "Servidor Reciclado",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agregá {C}.",
+    "flavorText": "Tiene tres ventiladores, dos gabinetes y una contraseña escrita con fibrón.",
+    "image": "servidor_reciclado.png",
+    "keywords": [],
+    "produces": "C"
+  },
+  {
+    "id": "art_062",
+    "name": "Peaje de la Ruta 2",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Todos los hechizos cuestan {1} más.",
+    "flavorText": "No importa hacia dónde vayas: primero hay que pasar por la cabina.",
+    "image": "peaje_de_la_ruta_2.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "spell_cost_modifier",
+      "mode": "increase",
+      "scope": "all",
+      "amount": 1
+    }
+  },
+  {
+    "id": "art_063",
+    "name": "Fotocopiadora del Centro Cultural",
+    "type": "Artefacto",
+    "manaCost": "{5}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Si fueras a crear una o más fichas, creá el doble de esas fichas en vez de eso.",
+    "flavorText": "Cada original vuelve con una copia de más y un tóner de menos.",
+    "image": "fotocopiadora_del_centro_cultural.png",
+    "keywords": [],
+    "replacementEffect": {
+      "event": "token_create",
+      "scope": "own",
+      "multiplyAmount": 2
     }
   }
 ]

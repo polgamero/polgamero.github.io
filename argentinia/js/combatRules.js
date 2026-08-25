@@ -18,42 +18,82 @@ import {
   queueCreatureDeathBatch,
   queueTriggeredAbility,
   queueTriggeredAbilities,
+  buildGenericEventTriggerEntries,
+  dispatchGameEvent,
   cleanupIfVehicle,
   checkPlaneswalkerDeaths,
   addCounters,
   getRivalName,
-  waitForDiscardEffects
+  waitForDiscardEffects,
+  runStateBasedActions
 } from './main.js';
 import { showDamageAssignmentModal } from './ui.js';
 import { recordTelemetryEvent } from './telemetry.js';
 import { gameText } from './gameTexts.js';
+import { resolveReplacementEvent } from './replacementEngine.js';
 
 // Habilidades disparadas de combate: ahora se APILAN en vez de resolver durante la
 // declaración/daño. `triggerKey` se traduce a una etiqueta estable para Stack/logs.
-export function triggerCombatAbility(unit, triggerKey, isLocal) {
-  const trig = unit?.card?.[triggerKey];
-  if (!trig) return null;
+function buildCombatAbilityTriggerEntries(unit, triggerKey, isLocal, eventData = {}) {
+  if (!unit?.card) return [];
+  const trig = unit.card?.[triggerKey];
   const triggerType = triggerKey === 'attackTrigger' ? 'attack'
     : triggerKey === 'blockTrigger' ? 'block'
     : triggerKey === 'combatDamageTrigger' ? 'combat_damage'
     : triggerKey;
-  return queueTriggeredAbility({
-    effect: trig, sourceCard: unit.card, sourceItem: unit, isLocal, triggerType
-  });
+  const entries=[];
+  if (trig) entries.push({ effect:trig, sourceCard:unit.card, sourceItem:unit, isLocal, triggerType });
+  const eventType = triggerKey === 'attackTrigger' ? 'attack_declared'
+    : triggerKey === 'blockTrigger' ? 'block_declared'
+    : triggerKey === 'combatDamageTrigger' ? 'combat_damage_dealt'
+    : null;
+  if (eventType) entries.push(...buildGenericEventTriggerEntries({
+    type:eventType, controllerIsLocal:isLocal, actorIsLocal:isLocal,
+    card:unit.card, item:unit, sourceCard:unit.card, sourceItem:unit, combat:true, amount:eventData.amount ?? null,
+    sourceControllerIsLocal:isLocal, targetPlayerIsLocal:eventData.targetPlayerIsLocal ?? null,
+    metadata:eventData.metadata || null, zoneFrom:'battlefield', zoneTo:'battlefield'
+  }));
+  return entries;
+}
+
+export function triggerCombatAbility(unit, triggerKey, isLocal, eventData = {}) {
+  return queueTriggeredAbilities(buildCombatAbilityTriggerEntries(unit, triggerKey, isLocal, eventData));
 }
 
 // Encantamientos/Artefactos que reaccionan a que una criatura ataque. Snapshot + batch para
 // que todos los watchers del mismo evento entren juntos a la Stack.
-export function triggerAnyCreatureAttacks(isLocal) {
+function buildAnyCreatureAttacksTriggerEntries(isLocal) {
   const support = isLocal ? state.localSupport : state.rivalSupport;
-  return queueTriggeredAbilities(
-    support
-      .filter(s => s.card?.anyCreatureAttacksTrigger)
-      .map(s => ({
-        effect: s.card.anyCreatureAttacksTrigger, sourceCard: s.card, sourceItem: s, isLocal,
-        triggerType: 'any_creature_attacks'
-      }))
-  );
+  return support
+    .filter(s => s.card?.anyCreatureAttacksTrigger)
+    .map(s => ({
+      effect: s.card.anyCreatureAttacksTrigger, sourceCard: s.card, sourceItem: s, isLocal,
+      triggerType: 'any_creature_attacks'
+    }));
+}
+
+export function triggerAnyCreatureAttacks(isLocal) {
+  return queueTriggeredAbilities(buildAnyCreatureAttacksTriggerEntries(isLocal));
+}
+
+// Declarar atacantes es un único evento de turno. El tap por atacar y todos los triggers de
+// ataque de esas criaturas deben entrar juntos al mismo batch AP/NAP; si los encolamos uno a
+// uno el jugador pierde la elección correcta de orden entre "cuando se gira" y "cuando ataca".
+export function queueDeclaredAttackTriggers(attackers, isLocal) {
+  const entries=[];
+  for (const unit of attackers || []) {
+    if (!unit?.card) continue;
+    const wasTapped=!!unit.tapped;
+    if (!hasKeyword(unit, 'vigilance')) unit.tapped=true;
+    if (!wasTapped && unit.tapped) entries.push(...buildGenericEventTriggerEntries({
+      type:'permanent_tapped', controllerIsLocal:isLocal, actorIsLocal:isLocal,
+      card:unit.card, item:unit, sourceCard:unit.card, sourceItem:unit,
+      zoneFrom:'battlefield', zoneTo:'battlefield', cause:'attack', combat:true
+    }));
+    entries.push(...buildCombatAbilityTriggerEntries(unit,'attackTrigger',isLocal));
+  }
+  if ((attackers || []).length) entries.push(...buildAnyCreatureAttacksTriggerEntries(isLocal));
+  return queueTriggeredAbilities(entries);
 }
 
 // Los blockTrigger deben dispararse al DECLARAR/confirmar bloqueadores, no al empezar el
@@ -70,6 +110,10 @@ export function queueDeclaredBlockTriggers(defenders, defenderIsLocal) {
         isLocal: defenderIsLocal, triggerType: 'block'
       });
     }
+    entries.push(...buildGenericEventTriggerEntries({
+      type:'block_declared', controllerIsLocal:defenderIsLocal, actorIsLocal:defenderIsLocal,
+      card:unit.card, item:unit, combat:true, zoneFrom:'battlefield', zoneTo:'battlefield'
+    }));
   });
   return queueTriggeredAbilities(entries);
 }
@@ -241,11 +285,7 @@ export async function executeLocalAttack() {
   state.localAttackersDeclaredThisTurn = attackers.length;
   
   if (attackers.length > 0) {
-    attackers.forEach(a => {
-      if (!hasKeyword(a, 'vigilance')) a.tapped = true;
-      triggerCombatAbility(a, 'attackTrigger', true);
-    });
-    triggerAnyCreatureAttacks(true);
+    queueDeclaredAttackTriggers(attackers, true);
     logMsg(gameText('combat.attackers.count', { count: attackers.length }));
   } else {
     logMsg(gameText('combat.attackers.none'));
@@ -347,7 +387,7 @@ export async function resolveCombatDamage() {
     pendingCombatDamageContinuation = null;
     logMsg(gameText('combat.damage.regularStep'));
     await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInRegularStep);
-    checkAllDeaths();
+    await runStateBasedActions({ reason:'combat_damage_regular' });
     finishCombatDamageStep(attackersArray, defendersArray);
     return;
   }
@@ -383,7 +423,7 @@ export async function resolveCombatDamage() {
     const serialBefore = state.triggerStackSerial || 0;
     logMsg(gameText('combat.damage.firstStrikeStep'));
     await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInFirstStrikeStep);
-    checkAllDeaths();
+    await runStateBasedActions({ reason:'combat_damage_first_strike' });
 
     // Si iniciativa produjo combatDamage/dies/anyDies/etc., no seguimos de largo: esas
     // habilidades quedan en Stack y ambos jugadores pueden responder. Cuando la pila quede
@@ -397,7 +437,7 @@ export async function resolveCombatDamage() {
   }
 
   await resolveDamageSubStep(combatPairs, isLocalAttacking, dealsInRegularStep);
-  checkAllDeaths();
+  await runStateBasedActions({ reason:'combat_damage_regular' });
   finishCombatDamageStep(attackersArray, defendersArray);
 }
 
@@ -407,26 +447,60 @@ export async function resolveCombatDamage() {
 // el mismo sistema que ya usa Proliferar y Lealtad); a un jugador, en vez de bajarle HP, le
 // pone contadores de Veneno. A un Planeswalker NO le cambia nada: sigue siendo pérdida de
 // Lealtad normal, como en MTG real (Infectar solo altera daño a jugadores y a criaturas).
+function gainLifeFromCombat(isLocal, amount, sourceItem = null) {
+  const n=Math.max(0,Number(amount)||0); if(n<=0) return;
+  if(isLocal) state.localHP += n; else state.rivalHP += n;
+  dispatchGameEvent({type:'life_gained',controllerIsLocal:isLocal,actorIsLocal:isLocal,sourceControllerIsLocal:isLocal,sourceCard:sourceItem?.card||null,sourceItem,amount:n,cause:'lifelink',combat:true});
+}
+
 function dealCombatDamageToCreature(source, targetItem, amount) {
-  if (amount <= 0) return;
+  if (amount <= 0) return 0;
+  const sourceIsLocal=state.localCombat.includes(source);
+  const targetIsLocal=state.localCombat.includes(targetItem);
+  const replacement=resolveReplacementEvent(state,{type:'damage',amount,affectedIsLocal:targetIsLocal,targetIsLocal,card:targetItem.card,item:targetItem,targetCard:targetItem.card,targetItem,sourceCard:source.card,sourceItem:source,combat:true,cause:'combat'});
+  const finalAmount=Math.max(0,Number(replacement.event.amount)||0);
+  if(finalAmount<=0){ logMsg(gameText('replacement.damage.prevented',{target:targetItem.card.name})); return 0; }
   if (hasKeyword(source, 'infect')) {
-    addCounters(targetItem, 'minusOne', amount);
-    logMsg(gameText('combat.infect.creature', { target: targetItem.card.name, amount, source: source.card.name }));
+    addCounters(targetItem, 'minusOne', finalAmount);
+    logMsg(gameText('combat.infect.creature', { target: targetItem.card.name, amount:finalAmount, source: source.card.name }));
   } else {
-    targetItem.damageTaken = (targetItem.damageTaken || 0) + amount;
+    targetItem.damageTaken = (targetItem.damageTaken || 0) + finalAmount;
   }
+  dispatchGameEvent({type:'combat_damage_dealt',controllerIsLocal:targetIsLocal,actorIsLocal:sourceIsLocal,sourceControllerIsLocal:sourceIsLocal,targetControllerIsLocal:targetIsLocal,card:targetItem.card,item:targetItem,sourceCard:source.card,sourceItem:source,targetCard:targetItem.card,targetItem,amount:finalAmount,combat:true,cause:'combat'});
+  return finalAmount;
 }
 
 function dealCombatDamageToPlayer(source, isTargetLocal, amount) {
-  if (amount <= 0) return;
+  if (amount <= 0) return 0;
+  const sourceIsLocal=state.localCombat.includes(source);
+  const replacement=resolveReplacementEvent(state,{type:'damage',amount,affectedIsLocal:isTargetLocal,targetIsLocal:isTargetLocal,sourceCard:source.card,sourceItem:source,combat:true,cause:'combat'});
+  const finalAmount=Math.max(0,Number(replacement.event.amount)||0);
+  if(finalAmount<=0){ logMsg(gameText('replacement.damage.prevented',{target:isTargetLocal?'Vos':getRivalName()})); return 0; }
   if (hasKeyword(source, 'infect')) {
-    if (isTargetLocal) state.localPoison = (state.localPoison || 0) + amount;
-    else state.rivalPoison = (state.rivalPoison || 0) + amount;
-    logMsg(gameText('combat.infect.player', { source: source.card.name, amount, target: isTargetLocal ? 'Vos' : getRivalName() }));
+    if (isTargetLocal) state.localPoison = (state.localPoison || 0) + finalAmount;
+    else state.rivalPoison = (state.rivalPoison || 0) + finalAmount;
+    logMsg(gameText('combat.infect.player', { source: source.card.name, amount:finalAmount, target: isTargetLocal ? 'Vos' : getRivalName() }));
   } else {
-    if (isTargetLocal) state.localHP -= amount;
-    else state.rivalHP -= amount;
+    if (isTargetLocal) state.localHP -= finalAmount;
+    else state.rivalHP -= finalAmount;
+    dispatchGameEvent({type:'life_lost',controllerIsLocal:isTargetLocal,actorIsLocal:sourceIsLocal,sourceControllerIsLocal:sourceIsLocal,targetPlayerIsLocal:isTargetLocal,sourceCard:source.card,sourceItem:source,amount:finalAmount,cause:'combat_damage',combat:true});
   }
+  return finalAmount;
+}
+
+function dealCombatDamageToPlaneswalker(source, targetItem, amount) {
+  if (amount <= 0 || !targetItem) return 0;
+  const targetIsLocal=state.localPlaneswalkers.includes(targetItem);
+  const targetIsRival=state.rivalPlaneswalkers.includes(targetItem);
+  if (!targetIsLocal && !targetIsRival) return 0;
+  const sourceIsLocal=state.localCombat.includes(source);
+  const replacement=resolveReplacementEvent(state,{type:'damage',amount,affectedIsLocal:targetIsLocal,targetIsLocal,card:targetItem.card,item:targetItem,targetCard:targetItem.card,targetItem,sourceCard:source.card,sourceItem:source,combat:true,cause:'combat'});
+  const finalAmount=Math.max(0,Number(replacement.event.amount)||0);
+  if(finalAmount<=0){ logMsg(gameText('replacement.damage.prevented',{target:targetItem.card.name})); return 0; }
+  targetItem.loyalty -= finalAmount;
+  dispatchGameEvent({type:'combat_damage_dealt',controllerIsLocal:targetIsLocal,actorIsLocal:sourceIsLocal,sourceControllerIsLocal:sourceIsLocal,targetControllerIsLocal:targetIsLocal,card:targetItem.card,item:targetItem,sourceCard:source.card,sourceItem:source,targetCard:targetItem.card,targetItem,amount:finalAmount,combat:true,cause:'combat'});
+  checkPlaneswalkerDeaths();
+  return finalAmount;
 }
 
 async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
@@ -463,18 +537,18 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       // Se aplica POR bloqueador (no como un total acumulado) para que un bloqueo múltiple
       // con bloqueadores mezclados (algunos con Infectar, otros sin) redirija cada parte
       // por separado — cada uno decide su propio destino (contador -1/-1 o daño normal).
-      dealCombatDamageToCreature(blocker, attacker, bPower);
+      const blockerDamageDealt = dealCombatDamageToCreature(blocker, attacker, bPower);
 
-      if (blockerHasLifelink && bPower > 0) {
+      if (blockerHasLifelink && blockerDamageDealt > 0) {
         if (isLocalAttacking) {
-          state.rivalHP += bPower;
-          logMsg(gameText('combat.lifelink.defenderRival', { rival: getRivalName(), amount: bPower, card: blocker.card.name }));
+          gainLifeFromCombat(false,blockerDamageDealt,blocker);
+          logMsg(gameText('combat.lifelink.defenderRival', { rival: getRivalName(), amount: blockerDamageDealt, card: blocker.card.name }));
         } else {
-          state.localHP += bPower;
-          logMsg(gameText('combat.lifelink.defenderLocal', { amount: bPower, card: blocker.card.name }));
+          gainLifeFromCombat(true,blockerDamageDealt,blocker);
+          logMsg(gameText('combat.lifelink.defenderLocal', { amount: blockerDamageDealt, card: blocker.card.name }));
         }
       }
-      if (blockerHasDeathtouch && bPower > 0) {
+      if (blockerHasDeathtouch && blockerDamageDealt > 0) {
         attacker.tookDeathtouch = true;
       }
     });
@@ -494,32 +568,24 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         // Redirigido a un Planeswalker: el daño le resta Lealtad directo, nunca golpea al
         // jugador, y NO cuenta como "daño de combate al jugador" (no dispara
         // combatDamageTrigger — esa es específicamente sobre pegarle a un jugador).
-        attacker.attackTarget.loyalty -= attackerPower;
-        logMsg(gameText('combat.attackPlaneswalker', { card: attacker.card.name, target: attacker.attackTarget.card.name, amount: attackerPower, loyalty: attacker.attackTarget.loyalty }));
-        if (attackerHasLifelink && attackerPower > 0) {
-          if (isLocalAttacking) state.localHP += attackerPower; else state.rivalHP += attackerPower;
-          logMsg(gameText('combat.lifelink.attackLocal', { card: attacker.card.name, amount: attackerPower }));
+        const damageDealt = dealCombatDamageToPlaneswalker(attacker, attacker.attackTarget, attackerPower);
+        if (damageDealt > 0) logMsg(gameText('combat.attackPlaneswalker', { card: attacker.card.name, target: attacker.attackTarget.card.name, amount: damageDealt, loyalty: attacker.attackTarget.loyalty }));
+        if (attackerHasLifelink && damageDealt > 0) {
+          gainLifeFromCombat(isLocalAttacking,damageDealt,attacker);
+          logMsg(gameText('combat.lifelink.attackLocal', { card: attacker.card.name, amount: damageDealt }));
         }
-        checkPlaneswalkerDeaths();
         continue;
       }
-      if (isLocalAttacking) {
-        dealCombatDamageToPlayer(attacker, false, attackerPower);
-        if (attackerHasLifelink && attackerPower > 0) {
-          state.localHP += attackerPower;
-          logMsg(gameText('combat.lifelink.attackLocal', { card: attacker.card.name, amount: attackerPower }));
-        }
-      } else {
-        dealCombatDamageToPlayer(attacker, true, attackerPower);
-        if (attackerHasLifelink && attackerPower > 0) {
-          state.rivalHP += attackerPower;
-          logMsg(gameText('combat.lifelink.attackRival', { card: attacker.card.name, amount: attackerPower, rival: getRivalName() }));
-        }
+      const damageDealt = dealCombatDamageToPlayer(attacker, !isLocalAttacking, attackerPower);
+      if (attackerHasLifelink && damageDealt > 0) {
+        gainLifeFromCombat(isLocalAttacking,damageDealt,attacker);
+        if (isLocalAttacking) logMsg(gameText('combat.lifelink.attackLocal', { card: attacker.card.name, amount: damageDealt }));
+        else logMsg(gameText('combat.lifelink.attackRival', { card: attacker.card.name, amount: damageDealt, rival: getRivalName() }));
       }
-      if (attackerPower > 0) logMsg(gameText('combat.hit', { card: attacker.card.name, amount: attackerPower }));
-      damageToPlayerThisStep += attackerPower;
+      if (damageDealt > 0) logMsg(gameText('combat.hit', { card: attacker.card.name, amount: damageDealt }));
+      damageToPlayerThisStep += damageDealt;
       if (damageToPlayerThisStep > 0) {
-        triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
+        triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking, { amount:damageToPlayerThisStep, targetPlayerIsLocal:!isLocalAttacking });
       }
       continue;
     }
@@ -527,28 +593,20 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
     if (aliveBlockers.length === 0) {
       if (attackerHasTrample) {
         if (attacker.attackTarget) {
-          attacker.attackTarget.loyalty -= attackerPower;
-          logMsg(gameText('combat.trample.allPlaneswalker', { card: attacker.card.name, amount: attackerPower, target: attacker.attackTarget.card.name }));
-          if (attackerHasLifelink && attackerPower > 0) {
-            if (isLocalAttacking) state.localHP += attackerPower; else state.rivalHP += attackerPower;
-          }
-          checkPlaneswalkerDeaths();
+          const damageDealt = dealCombatDamageToPlaneswalker(attacker, attacker.attackTarget, attackerPower);
+          if (damageDealt > 0) logMsg(gameText('combat.trample.allPlaneswalker', { card: attacker.card.name, amount: damageDealt, target: attacker.attackTarget.card.name }));
+          if (attackerHasLifelink && damageDealt > 0) gainLifeFromCombat(isLocalAttacking,damageDealt,attacker);
           continue;
         }
-        if (isLocalAttacking) {
-          dealCombatDamageToPlayer(attacker, false, attackerPower);
-          if (attackerHasLifelink && attackerPower > 0) state.localHP += attackerPower;
-        } else {
-          dealCombatDamageToPlayer(attacker, true, attackerPower);
-          if (attackerHasLifelink && attackerPower > 0) state.rivalHP += attackerPower;
-        }
-        logMsg(gameText('combat.trample.allPlayer', { card: attacker.card.name, amount: attackerPower }));
-        damageToPlayerThisStep += attackerPower;
+        const damageDealt = dealCombatDamageToPlayer(attacker, !isLocalAttacking, attackerPower);
+        if (attackerHasLifelink && damageDealt > 0) gainLifeFromCombat(isLocalAttacking,damageDealt,attacker);
+        if (damageDealt > 0) logMsg(gameText('combat.trample.allPlayer', { card: attacker.card.name, amount: damageDealt }));
+        damageToPlayerThisStep += damageDealt;
       } else {
         logMsg(gameText('combat.blockedNoTrample', { card: attacker.card.name }));
       }
       if (damageToPlayerThisStep > 0) {
-        triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
+        triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking, { amount:damageToPlayerThisStep, targetPlayerIsLocal:!isLocalAttacking });
       }
       continue;
     }
@@ -607,9 +665,9 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
           // bloqueador ni al jugador), simplemente ese daño puntual nunca llega a pasar.
           logMsg(gameText('combat.protection.prevented', { blocker: blocker.card.name, color: COLOR_LABELS[blockerProtected] || blockerProtected, attacker: attacker.card.name }));
         } else {
-          dealCombatDamageToCreature(attacker, blocker, damageToDeal);
-          attackerLifelinkHeal += damageToDeal;
-          if (attackerHasDeathtouch) blocker.tookDeathtouch = true;
+          const actualDamage = dealCombatDamageToCreature(attacker, blocker, damageToDeal);
+          attackerLifelinkHeal += actualDamage;
+          if (attackerHasDeathtouch && actualDamage > 0) blocker.tookDeathtouch = true;
         }
       }
     });
@@ -620,48 +678,45 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
           // Arrollar redirigido a un Planeswalker: el sobrante también le come Lealtad a
           // ÉL, no a la cara del jugador — antes este camino (asignación manual) no
           // chequeaba attackTarget para nada y siempre le pegaba al jugador.
-          attacker.attackTarget.loyalty -= manualPlayerDamage;
-          logMsg(gameText('combat.trample.manualPw', { card: attacker.card.name, amount: manualPlayerDamage, target: attacker.attackTarget.card.name, loyalty: attacker.attackTarget.loyalty }));
-          attackerLifelinkHeal += manualPlayerDamage;
-          checkPlaneswalkerDeaths();
+          const actualDamage = dealCombatDamageToPlaneswalker(attacker, attacker.attackTarget, manualPlayerDamage);
+          if (actualDamage > 0) logMsg(gameText('combat.trample.manualPw', { card: attacker.card.name, amount: actualDamage, target: attacker.attackTarget.card.name, loyalty: attacker.attackTarget.loyalty }));
+          attackerLifelinkHeal += actualDamage;
         } else {
-          if (isLocalAttacking) dealCombatDamageToPlayer(attacker, false, manualPlayerDamage);
-          else dealCombatDamageToPlayer(attacker, true, manualPlayerDamage);
-          attackerLifelinkHeal += manualPlayerDamage;
-          logMsg(gameText('combat.trample.manualPlayer', { card: attacker.card.name, amount: manualPlayerDamage }));
-          damageToPlayerThisStep += manualPlayerDamage;
+          const actualDamage = dealCombatDamageToPlayer(attacker, !isLocalAttacking, manualPlayerDamage);
+          attackerLifelinkHeal += actualDamage;
+          if (actualDamage > 0) logMsg(gameText('combat.trample.manualPlayer', { card: attacker.card.name, amount: actualDamage }));
+          damageToPlayerThisStep += actualDamage;
         }
       }
     } else if (attackerHasTrample && remainingAttackerPower > 0) {
       if (attacker.attackTarget) {
         // Mismo caso, para el reparto automático (sin asignación manual).
-        attacker.attackTarget.loyalty -= remainingAttackerPower;
-        logMsg(gameText('combat.trample.autoPw', { card: attacker.card.name, amount: remainingAttackerPower, target: attacker.attackTarget.card.name, loyalty: attacker.attackTarget.loyalty }));
-        attackerLifelinkHeal += remainingAttackerPower;
-        checkPlaneswalkerDeaths();
+        const actualDamage = dealCombatDamageToPlaneswalker(attacker, attacker.attackTarget, remainingAttackerPower);
+        if (actualDamage > 0) logMsg(gameText('combat.trample.autoPw', { card: attacker.card.name, amount: actualDamage, target: attacker.attackTarget.card.name, loyalty: attacker.attackTarget.loyalty }));
+        attackerLifelinkHeal += actualDamage;
       } else if (isLocalAttacking) {
-        dealCombatDamageToPlayer(attacker, false, remainingAttackerPower);
-        logMsg(gameText('combat.trample.autoRival', { card: attacker.card.name, amount: remainingAttackerPower, rival: getRivalName() }));
-        attackerLifelinkHeal += remainingAttackerPower;
-        damageToPlayerThisStep += remainingAttackerPower;
+        const actualDamage = dealCombatDamageToPlayer(attacker, false, remainingAttackerPower);
+        if (actualDamage > 0) logMsg(gameText('combat.trample.autoRival', { card: attacker.card.name, amount: actualDamage, rival: getRivalName() }));
+        attackerLifelinkHeal += actualDamage;
+        damageToPlayerThisStep += actualDamage;
       } else {
-        dealCombatDamageToPlayer(attacker, true, remainingAttackerPower);
-        logMsg(gameText('combat.trample.autoLocal', { card: attacker.card.name, rival: getRivalName(), amount: remainingAttackerPower }));
-        attackerLifelinkHeal += remainingAttackerPower;
-        damageToPlayerThisStep += remainingAttackerPower;
+        const actualDamage = dealCombatDamageToPlayer(attacker, true, remainingAttackerPower);
+        if (actualDamage > 0) logMsg(gameText('combat.trample.autoLocal', { card: attacker.card.name, rival: getRivalName(), amount: actualDamage }));
+        attackerLifelinkHeal += actualDamage;
+        damageToPlayerThisStep += actualDamage;
       }
     }
 
     if (damageToPlayerThisStep > 0) {
-      triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking);
+      triggerCombatAbility(attacker, 'combatDamageTrigger', isLocalAttacking, { amount:damageToPlayerThisStep, targetPlayerIsLocal:!isLocalAttacking });
     }
 
     if (attackerHasLifelink && attackerLifelinkHeal > 0) {
       if (isLocalAttacking) {
-        state.localHP += attackerLifelinkHeal;
+        gainLifeFromCombat(true,attackerLifelinkHeal,attacker);
         logMsg(gameText('combat.lifelink.attackHealLocal', { amount: attackerLifelinkHeal, card: attacker.card.name }));
       } else {
-        state.rivalHP += attackerLifelinkHeal;
+        gainLifeFromCombat(false,attackerLifelinkHeal,attacker);
         logMsg(gameText('combat.lifelink.attackHealRival', { rival: getRivalName(), amount: attackerLifelinkHeal, card: attacker.card.name }));
       }
     }
@@ -671,64 +726,12 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
   }
 }
 
-function unitDiesToStateBasedDamage(unit) {
-  const dmg = unit.damageTaken || 0;
-  const toughness = getEffectiveToughness(unit);
-  const indestructible = hasKeyword(unit, 'indestructible');
-  const diesToZeroToughness = toughness <= 0;
-  const diesToLethalDamage = !indestructible && toughness > 0 && dmg >= toughness;
-  const diesToDeathtouch = !indestructible && unit.tookDeathtouch && dmg > 0;
-  return diesToZeroToughness || diesToLethalDamage || diesToDeathtouch;
-}
-
-function removeDeadCombatUnit(unit, isLocal) {
-  const combatArray = isLocal ? state.localCombat : state.rivalCombat;
-  const graveyardArray = isLocal ? state.localGraveyard : state.rivalGraveyard;
-  const ownerName = isLocal ? 'Vos' : getRivalName();
-  const idx = combatArray.indexOf(unit);
-  if (idx === -1) return false;
-
-  logMsg(unit.card.isToken
-    ? gameText('combat.death.token', { card: unit.card.name, owner: ownerName })
-    : gameText('combat.death.graveyard', { card: unit.card.name, owner: ownerName }));
-  combatArray.splice(idx, 1);
-  moveBattlefieldCardToZone(unit.card, graveyardArray);
-  sendAurasToGraveyard(unit, isLocal);
-  cleanupIfVehicle(unit);
-  detachEquipmentFrom(unit, isLocal);
-  return true;
-}
-
-// Trigger Stack: las acciones basadas en estado posteriores a un mismo bloque de daño se
-// aplican simultáneamente a AMBOS lados. Primero fotografiamos todos los watchers, luego
-// retiramos todos los muertos y recién después apilamos el lote completo de disparos.
 export function checkAllDeaths() {
-  const watchersSnapshot = [
-    ...state.localCombat.map(unit => ({ unit, isLocal: true })),
-    ...state.rivalCombat.map(unit => ({ unit, isLocal: false }))
-  ];
-  const doomed = [
-    ...state.localCombat.filter(unitDiesToStateBasedDamage).map(unit => ({ unit, isLocal: true })),
-    ...state.rivalCombat.filter(unitDiesToStateBasedDamage).map(unit => ({ unit, isLocal: false }))
-  ];
-  if (doomed.length === 0) return [];
-
-  const removed = doomed.filter(({ unit, isLocal }) => removeDeadCombatUnit(unit, isLocal));
-  queueCreatureDeathBatch(removed, watchersSnapshot);
-  return removed.map(entry => entry.unit);
+  void runStateBasedActions({ reason:'legacy_check_all_deaths' });
+  return [];
 }
 
-// API histórica para chequeos puntuales de una sola zona. El runtime nuevo usa
-// checkAllDeaths() cuando ambas mitades pueden morir por el mismo evento; conservamos este
-// wrapper para caminos/fixtures antiguos que verdaderamente inspeccionan una sola zona.
 export function checkDeaths(combatArray, graveyardArray, ownerName) {
-  const isLocal = combatArray === state.localCombat || ownerName === 'Vos';
-  const watchersSnapshot = [
-    ...state.localCombat.map(unit => ({ unit, isLocal: true })),
-    ...state.rivalCombat.map(unit => ({ unit, isLocal: false }))
-  ];
-  const doomed = combatArray.filter(unitDiesToStateBasedDamage).map(unit => ({ unit, isLocal }));
-  const removed = doomed.filter(({ unit, isLocal: ownerIsLocal }) => removeDeadCombatUnit(unit, ownerIsLocal));
-  queueCreatureDeathBatch(removed, watchersSnapshot);
-  return removed.map(entry => entry.unit);
+  void runStateBasedActions({ reason:'legacy_check_deaths' });
+  return [];
 }

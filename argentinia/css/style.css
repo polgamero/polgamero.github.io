@@ -295,36 +295,94 @@ html, body {
   text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
 }
 
-/* CAJA DE TEXTO (Se mantiene color pergamino para máxima legibilidad, igual que en MTG) */
+/* CAJA DE TEXTO — 23.15.5.3: jerarquía MTG-like, reglas legibles y flavor al final. */
 .card-text-box {
-  height: 42cqh; padding: 2cqw 3cqw; font-size: 6cqw; line-height: 1.15;
-  background-color: rgba(253, 251, 247, 0.92);
+  height: 42cqh;
+  padding: 2cqw 3cqw;
+  font-size: 6cqw;
+  line-height: 1.14;
+  background-color: rgba(253, 251, 247, 0.94);
   background-image: url('https://www.transparenttextures.com/patterns/cream-paper.png');
-  color: #111; overflow: hidden;
+  color: #111;
+  overflow: hidden;
   flex-shrink: 0;
   box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
 }
 
-/* Antes no tenían NINGÚN estilo propio (heredaban el default del navegador: un <div> a lo
-   ancho completo por cada keyword), lo que empujaba el resto del texto fuera de la caja.
-   Ahora son etiquetas chicas en fila que se acomodan solas. */
-.keyword-strip {
+.card-text-box-structured {
   display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  margin-bottom: 2px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.28em;
 }
-.keyword-tag {
-  display: inline-block;
-  font-size: 0.85em;
-  font-weight: bold;
-  background: rgba(0,0,0,0.12);
-  border: 1px solid rgba(0,0,0,0.3);
-  border-radius: 3px;
-  padding: 0px 3px;
-  line-height: 1.3;
-  white-space: nowrap;
+
+/* Keywords impresas/efectivas primero, en texto normal: no chips, emojis ni bold arbitrario. */
+.card-keyword-line {
+  font-weight: 500;
+  font-style: normal;
+  line-height: 1.12;
+  margin: 0 0 0.08em 0;
 }
+
+.card-keyword-reminder {
+  font-size: 0.82em;
+  line-height: 1.12;
+  color: rgba(20,20,20,0.82);
+  margin: -0.05em 0 0.08em 0;
+}
+
+.card-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.31em;
+  min-height: 0;
+}
+
+.card-rule-paragraph {
+  margin: 0;
+  padding: 0;
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1.14;
+}
+
+.card-mode-header {
+  margin-bottom: -0.08em;
+}
+
+.card-mode-option {
+  padding-left: 0.85em;
+  text-indent: -0.68em;
+}
+
+/* Ability words (Landfall y nombres temáticos del mismo patrón) sí son itálicas, como en MTG. */
+.card-ability-word {
+  font-style: italic;
+  font-weight: 400;
+}
+
+.card-reminder-text {
+  font-size: 0.88em;
+  font-weight: 400;
+  font-style: normal;
+  color: rgba(25,25,25,0.82);
+}
+
+/* Flavor siempre último y exclusivamente itálico. La separación fina evita confundirlo con reglas. */
+.card-flavor-text {
+  margin-top: auto;
+  padding-top: 0.36em;
+  border-top: 1px solid rgba(60,45,30,0.24);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.12;
+  color: rgba(20,20,20,0.88);
+}
+
+/* Clases legacy conservadas sin decoración agresiva por compatibilidad con snapshots viejos. */
+.keyword-strip { display: block; margin: 0; }
+.keyword-tag { display: inline; font-size: 1em; font-weight: 400; background: none; border: 0; padding: 0; }
+.keyword-tag + .keyword-tag::before { content: ', '; }
 
 .card-cost { 
   display: flex;

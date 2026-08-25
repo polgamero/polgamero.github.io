@@ -11,8 +11,8 @@
   <link rel="manifest" href="./assets/manifest.webmanifest">
   <link rel="icon" href="data:,">
   <title>ARGENTINIA - TCG Criollo</title>
-  <link rel="stylesheet" href="./css/style.css?v=23.14.9">
-  <link rel="stylesheet" href="./css/mobile.css?v=23.14.9">
+  <link rel="stylesheet" href="./css/style.css?v=23.15.5.5">
+  <link rel="stylesheet" href="./css/mobile.css?v=23.15.5.5">
   <style id="arg-mobile-boot-critical-style">
     /* 23.11.8: fallback CRÍTICO inline. No depende de style.css/mobile.css ni de módulos JS. */
     #arg-mobile-boot-fallback { display: none; }
@@ -64,7 +64,7 @@
     // 23.11.8 — "DevTools de emergencia" dentro del propio HTML. Funciona antes de
     // main.js/Firebase/mobileUI y captura fallos de carga que la telemetría normal no puede ver.
     (() => {
-      const VERSION = '23.14.9';
+      const VERSION = '23.15.5.5';
       const startedAt = Date.now();
       const events = [];
       let lastError = null;
@@ -366,6 +366,7 @@
           <button id="btn-alt-cost" class="btn-reset hidden" style="width: 100%; background: #6c3483; border-color: #9b59b6; margin-bottom: 5px;">💉 Pagar con vida en vez de maná</button>
           <button id="btn-pay-ward" class="btn-reset hidden" style="width: 100%; background: #d68910; border-color: #f39c12; margin-bottom: 5px;">🔶 Pagar Ward</button>
           <button id="btn-pay-counter-tax" class="btn-reset hidden" style="width: 100%; background: #2874a6; border-color: #3498db; margin-bottom: 5px;">💰 Pagar el impuesto</button>
+          <button id="btn-confirm-crew" class="btn-reset hidden" style="width: 100%; background: #7d6608; border-color: #d4ac0d; margin-bottom: 5px;">⚙️ Confirmar Tripular</button>
           <button id="btn-cancel-spell" class="btn-reset" style="width: 100%; background: #c0392b; border-color: #e74c3c;">❌ Cancelar (ESC)</button>
         </div>
         <div class="turn-controls">
@@ -458,9 +459,9 @@
             };
             await setStage('Etapa 1/3 — cargando interfaz táctil…', 'mobile_ui_module_import_start');
             // Mobile UI no participa del grafo circular del motor; puede versionarse.
-            await import('./js/mobileUI.js?v=23.14.9');
+            await import('./js/mobileUI.js?v=23.15.5.5');
             diag()?.mark?.('mobile_ui_module_loaded');
-            await import('./js/newsPanel.js?v=23.14.9');
+            await import('./js/newsPanel.js?v=23.15.5.5');
             diag()?.mark?.('news_panel_module_loaded');
             await setStage('Etapa 2/3 — cargando motor local (Firebase diferido en celular)…', 'main_module_import_start');
             // NO AGREGAR ?v=... acá. main.js debe conservar una sola identidad de módulo.

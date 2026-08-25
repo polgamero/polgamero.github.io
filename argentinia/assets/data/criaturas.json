@@ -9,7 +9,7 @@
     "colors": [],
     "power": 1,
     "toughness": 2,
-    "text": "Lealtad de la calle.",
+    "text": "",
     "flavorText": "Te sigue hasta la parada del colectivo.",
     "image": "firulais.png",
     "keywords": []
@@ -26,7 +26,7 @@
     ],
     "power": 2,
     "toughness": 1,
-    "text": "¡Diario, diario!: Robá una carta al entrar al campo.",
+    "text": "Cuando El Canillita entre al campo de batalla, robá una carta.",
     "flavorText": "Se vienen las últimas noticias del barrio.",
     "etbEffect": {
       "type": "draw",
@@ -64,7 +64,7 @@
     "colors": [],
     "power": 1,
     "toughness": 3,
-    "text": "Servicio Rápido.",
+    "text": "",
     "flavorText": "Marcha una de napolitana con fritas.",
     "image": "mozo_bodegon.png",
     "keywords": []
@@ -100,7 +100,7 @@
     ],
     "power": 2,
     "toughness": 1,
-    "text": "Peaje Barrial.",
+    "text": "",
     "flavorText": "A la vuelta te lo cuido, jefe.",
     "image": "trapito.png",
     "keywords": []
@@ -153,7 +153,7 @@
     "colors": [],
     "power": 2,
     "toughness": 2,
-    "text": "Chipá Calientito.",
+    "text": "",
     "flavorText": "¡Calientito el chipá!",
     "image": "vendedora_chipa.png",
     "keywords": []
@@ -189,7 +189,7 @@
     ],
     "power": 3,
     "toughness": 3,
-    "text": "Mordiscón Sorpresa: cura a tu jugador por el daño que realice.",
+    "text": "",
     "flavorText": "Guarda que muerde si le pisás la cola.",
     "image": "perro_plaza.png",
     "keywords": [
@@ -227,7 +227,7 @@
     ],
     "power": 6,
     "toughness": 6,
-    "text": "Gigante del Lago: se necesitan 2 o más criaturas para bloquear al Nahuelito.",
+    "text": "",
     "flavorText": "La leyenda del sur vive.",
     "image": "nahuelito.png",
     "keywords": [
@@ -270,7 +270,7 @@
     ],
     "power": 5,
     "toughness": 5,
-    "text": "Amenaza. ¡Basta Chicos! — Siempre que El Comandante ataque, Scry 1.",
+    "text": "Amenaza. ¡Basta Chicos! — Siempre que El Comandante ataque, Adiviná 1.",
     "flavorText": "Yo no manejo el ráting, yo manejo un Rolls-Royce.",
     "image": "comandante_ricky.png",
     "keywords": [
@@ -317,7 +317,7 @@
     ],
     "power": 3,
     "toughness": 5,
-    "text": "Protección del Camino: Cura 5 vidas a tu héroe al entrar.",
+    "text": "Cuando Gauchito Gil entre al campo de batalla, ganás 5 Puntos de Vida.",
     "flavorText": "Con la cinta roja siempre en el corazón.",
     "etbEffect": {
       "type": "heal",
@@ -410,7 +410,7 @@
     ],
     "power": 4,
     "toughness": 6,
-    "text": "Siempre que muera una criatura, Scry 1.",
+    "text": "Siempre que muera una criatura, Adiviná 1.",
     "flavorText": "El único héroe es el héroe en grupo.",
     "image": "eternauta.png",
     "keywords": [],
@@ -432,7 +432,7 @@
     ],
     "power": 5,
     "toughness": 5,
-    "text": "Payada Furiosa: Inflige 3 de daño directo al oponente al entrar.",
+    "text": "Cuando Martín Fierro entre al campo de batalla, causa 3 de daño al jugador rival.",
     "flavorText": "Los hermanos sean unidos.",
     "etbEffect": {
       "type": "damage",
@@ -520,7 +520,7 @@
     ],
     "power": 1,
     "toughness": 2,
-    "text": "Pincelada de Sangre: Siempre que Marta Minujín u otra criatura muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+    "text": "Siempre que Marta Minujín u otra criatura muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
     "flavorText": "Ya no pinta con óleo. Cada obra necesita su propio rojo, y el campo de batalla nunca deja de proveerlo.",
     "image": "marta_minujin.png",
     "keywords": [],
@@ -1262,7 +1262,7 @@
     "keywords": [
       "ward_2"
     ],
-    "text": "Ward 2 (Cuando esta criatura pasa a ser el objetivo de un hechizo o habilidad de un rival, contrarrestalo a menos que ese jugador pague 2 de maná extra).",
+    "text": "",
     "flavorText": "Quien le apunta sin pagar peaje, se queda con las manos vacías.",
     "image": "bruja_callejon.png"
   },
@@ -1458,7 +1458,7 @@
     "power": 2,
     "toughness": 2,
     "keywords": [],
-    "text": "Cuando Scout Precisa entra al campo de batalla, Vigila 2. (Mira las dos primeras cartas de tu biblioteca. Pon X de ellas en tu cementerio y el resto en la parte superior de tu mazo en cualquier orden.)",
+    "text": "Cuando Scout Precisa entra al campo de batalla, Vigilá 2.",
     "flavorText": "Sabe exactamente qué merece vivir, y qué no.",
     "image": "scout_precisa.png",
     "etbEffect": {
@@ -1502,7 +1502,7 @@
     "keywords": [
       "deathtouch"
     ],
-    "text": "Toque Mortal. Escape—{3}{B}{B}, exiliar tres cartas de tu cementerio. (Podés lanzar esta carta desde tu cementerio pagando su costo de Escape en vez de su costo de maná.)",
+    "text": "Toque Mortal. Escape—{3}{B}{B}, exiliá tres cartas de tu cementerio.",
     "flavorText": "Cada año pide su parte. Cada año, vuelve a buscarla.",
     "image": "el_familiar.png",
     "escape": {
@@ -1523,7 +1523,7 @@
     "power": 1,
     "toughness": 2,
     "keywords": [],
-    "text": "Kicker {2}{U} (Podés pagar {2}{U} adicional al lanzar este hechizo). Si fue Kickeada, robás una carta al entrar al campo de batalla.",
+    "text": "Kicker {2}{U}. Si pagaste el coste de Kicker, robás una carta al entrar al campo de batalla.",
     "flavorText": "«¿Le interesa uno para el amigo también?»",
     "image": "vendedor_ambulante.png",
     "kicker": {
@@ -1551,7 +1551,7 @@
       "infect",
       "trample"
     ],
-    "text": "Infectar. Arrolla. (Esta criatura le da contadores de Veneno a los jugadores en vez de quitarles HP, y contadores -1/-1 a las criaturas en vez de dañarlas normalmente.)",
+    "text": "",
     "flavorText": "No hace ruido. No avisa. Ataca una sola vez, y alcanza.",
     "image": "yarara.png"
   },
@@ -1964,7 +1964,7 @@
     ],
     "power": 4,
     "toughness": 3,
-    "text": "Criatura de las zanjas.",
+    "text": "",
     "flavorText": "Crece con lo que nadie pregunta dónde termina.",
     "image": "gusano_matadero.png",
     "keywords": []
@@ -2058,7 +2058,7 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "Trabaja cerca de la chispa.",
+    "text": "",
     "flavorText": "Si no arranca con llave, arranca a las puteadas.",
     "image": "foguista_taller.png",
     "keywords": []
@@ -2134,7 +2134,7 @@
     ],
     "power": 3,
     "toughness": 3,
-    "text": "Siempre listo.",
+    "text": "",
     "flavorText": "Cuando suena la sirena, nadie pregunta quién paga el combustible.",
     "image": "bombero_voluntario.png",
     "keywords": []
@@ -2151,7 +2151,7 @@
     ],
     "power": 4,
     "toughness": 3,
-    "text": "Criatura del hormigón.",
+    "text": "",
     "flavorText": "Se alimenta del eco de los camiones y de lo que cae de los bolsillos.",
     "image": "bestia_bajo_puente.png",
     "keywords": []
@@ -2263,7 +2263,7 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "Dura como banquina seca.",
+    "text": "",
     "flavorText": "Cruza cuando quiere y siempre llega del otro lado.",
     "image": "mulita_camino.png",
     "keywords": []
@@ -2280,7 +2280,7 @@
     ],
     "power": 3,
     "toughness": 3,
-    "text": "Corre hasta donde termina el horizonte.",
+    "text": "",
     "flavorText": "No vuela porque nunca necesitó hacerlo.",
     "image": "nandu_llanura.png",
     "keywords": []
@@ -2316,7 +2316,7 @@
     ],
     "power": 4,
     "toughness": 4,
-    "text": "Depredador del estero.",
+    "text": "",
     "flavorText": "Parece un tronco hasta que deja de parecerlo.",
     "image": "yacare_banado.png",
     "keywords": []
@@ -2715,7 +2715,7 @@
     "colors": [],
     "power": 3,
     "toughness": 3,
-    "text": "Construcción de piedra porteña.",
+    "text": "",
     "flavorText": "Cada baldosa floja estaba juntando bronca para esto.",
     "image": "golem_adoquines.png",
     "keywords": []
@@ -2747,7 +2747,7 @@
     "colors": [],
     "power": 4,
     "toughness": 4,
-    "text": "Cuerpo de hierro y alambre.",
+    "text": "",
     "flavorText": "Lo armaron para tapar un hueco. Aprendió a defender todo el campo.",
     "image": "monigote_alambrado.png",
     "keywords": []
@@ -5713,5 +5713,338 @@
       "allowFewer": true,
       "reveal": true
     }
+  },
+  {
+    "id": "crea_263",
+    "name": "Cadete del Palacio Barolo",
+    "type": "Criatura — Humano Soldado",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "power": 1,
+    "toughness": 2,
+    "text": "Siempre que otra criatura entre al campo de batalla bajo tu control, ganás 1 vida.",
+    "flavorText": "Aprendió a hacer guardia mirando las agujas del Barolo antes que un reloj.",
+    "image": "cadete_del_palacio_barolo.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "creature_entered",
+        "filter": {
+          "controller": "you",
+          "notSelf": true
+        },
+        "effect": {
+          "type": "heal",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "crea_264",
+    "name": "Freestyler del Subte B",
+    "type": "Criatura — Humano Músico",
+    "manaCost": "{U/R}{U/R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "text": "Siempre que casteás un hechizo que no sea de criatura, Freestyler del Subte B obtiene +1/+1 hasta el final del turno.",
+    "flavorText": "Improvisa entre estación y estación; el eco hace el resto.",
+    "image": "freestyler_del_subte_b.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "spell_cast",
+        "filter": {
+          "controller": "you",
+          "cardType": "noncreature"
+        },
+        "effect": {
+          "type": "pump",
+          "powerMod": 1,
+          "toughnessMod": 1
+        },
+        "target": "self"
+      }
+    ]
+  },
+  {
+    "id": "crea_265",
+    "name": "Contador del Club de Barrio",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "text": "Siempre que ganás vida, poné un contador +1/+1 sobre Contador del Club de Barrio.",
+    "flavorText": "Anota cada cuota, cada favor y cada milagro que mantiene abierta la persiana.",
+    "image": "contador_del_club_de_barrio.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "life_gained",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "add_counter",
+          "counterType": "plusOne",
+          "amount": 1
+        },
+        "target": "self"
+      }
+    ]
+  },
+  {
+    "id": "crea_266",
+    "name": "Sepulturero de Chacarita",
+    "type": "Criatura — Humano",
+    "manaCost": "{4}{B}",
+    "cmc": 5,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "power": 3,
+    "toughness": 3,
+    "text": "Excavar. Siempre que otra criatura que controlás muera, Vigilá 1.",
+    "flavorText": "Sabe qué tierra fue removida ayer y qué secreto quedó debajo.",
+    "image": "sepulturero_de_chacarita.png",
+    "keywords": [],
+    "delve": true,
+    "triggers": [
+      {
+        "event": "creature_died",
+        "filter": {
+          "controller": "you",
+          "notSelf": true
+        },
+        "effect": {
+          "type": "surveil",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "crea_267",
+    "name": "Chatarrero de Gerli",
+    "type": "Criatura — Humano Artífice",
+    "manaCost": "{1}{B/R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "B",
+      "R"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "text": "Siempre que sacrifiques otro permanente, Chatarrero de Gerli le hace 1 de daño a tu oponente.",
+    "flavorText": "Nada termina en la chatarra: sólo cambia de dueño, de forma o de precio.",
+    "image": "chatarrero_de_gerli.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "permanent_sacrificed",
+        "filter": {
+          "controller": "you",
+          "notSelf": true
+        },
+        "effect": {
+          "type": "damage",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "crea_268",
+    "name": "Sereno del Mercado de Frutos",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{U/G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U",
+      "G"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "text": "Destello, Ward {1}.",
+    "flavorText": "Cuando el galpón queda vacío, escucha pasos que nadie más oyó.",
+    "image": "sereno_del_mercado_de_frutos.png",
+    "keywords": [
+      "flash",
+      "ward_1"
+    ]
+  },
+  {
+    "id": "crea_269",
+    "name": "Preparador Físico de Inferiores",
+    "type": "Criatura — Humano",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "power": 2,
+    "toughness": 4,
+    "text": "Si fueran a ponerse uno o más contadores +1/+1 sobre una criatura que controlás, se ponen el doble de esos contadores en vez de eso.",
+    "flavorText": "Una repetición más. Después otra. El resultado aparece cuando nadie mira.",
+    "image": "preparador_fisico_de_inferiores.png",
+    "keywords": [],
+    "replacementEffect": {
+      "event": "counter_add",
+      "scope": "own",
+      "filter": {
+        "cardType": "creature",
+        "counterType": "plusOne"
+      },
+      "multiplyAmount": 2
+    }
+  },
+  {
+    "id": "crea_270",
+    "name": "Gestora del Monotributo",
+    "type": "Criatura — Humano",
+    "manaCost": "{W}{W/P}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "text": "Los hechizos que no sean de criatura que castean tus oponentes cuestan {1} más.",
+    "flavorText": "El trámite es simple. Lo que nunca es simple es llegar al final.",
+    "image": "gestora_del_monotributo.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "spell_cost_modifier",
+      "mode": "increase",
+      "scope": "opponent",
+      "amount": 1,
+      "filter": {
+        "cardType": "noncreature"
+      }
+    }
+  },
+  {
+    "id": "crea_271",
+    "name": "Brigadista de las Sierras",
+    "type": "Criatura — Humano Soldado",
+    "manaCost": "{3}{W/G}{W/G}",
+    "cmc": 5,
+    "rarity": "Common",
+    "colors": [
+      "W",
+      "G"
+    ],
+    "power": 4,
+    "toughness": 4,
+    "text": "Vigilancia, Convocar.",
+    "flavorText": "Cuando el humo tapa el sendero, la fila avanza igual.",
+    "image": "brigadista_de_las_sierras.png",
+    "keywords": [
+      "vigilance"
+    ],
+    "convoke": true
+  },
+  {
+    "id": "crea_272",
+    "name": "Gólem de Chatarra Ferroviaria",
+    "type": "Criatura Artefacto — Gólem",
+    "manaCost": "{7}",
+    "cmc": 7,
+    "rarity": "Common",
+    "colors": [],
+    "power": 4,
+    "toughness": 4,
+    "text": "Afinidad por artefactos.",
+    "flavorText": "Cada taller cerró dejando una pieza. Alguien terminó armándolo.",
+    "image": "golem_de_chatarra_ferroviaria.png",
+    "keywords": [],
+    "affinity": "artifact"
+  },
+  {
+    "id": "crea_273",
+    "name": "Productor de Sala de Ensayo",
+    "type": "Criatura — Humano Músico",
+    "manaCost": "{U}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "power": 2,
+    "toughness": 2,
+    "text": "Tus hechizos de Instantáneo y Conjuro cuestan {1} menos.",
+    "flavorText": "Sabe exactamente qué cable desenchufar para que todo suene más barato.",
+    "image": "productor_de_sala_de_ensayo.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "spell_cost_modifier",
+      "mode": "reduce",
+      "scope": "own",
+      "amount": 1,
+      "filter": {
+        "cardType": "instant_or_sorcery"
+      }
+    }
+  },
+  {
+    "id": "crea_274",
+    "name": "Cobrador del Sanatorio",
+    "type": "Criatura — Humano",
+    "manaCost": "{B}{B/P}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "power": 2,
+    "toughness": 1,
+    "text": "Cuando Cobrador del Sanatorio entre al campo de batalla, tu oponente pierde 1 vida y vos ganás 1 vida.",
+    "flavorText": "La salud mejora. La cuenta también.",
+    "image": "cobrador_del_sanatorio.png",
+    "keywords": [],
+    "etbEffect": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "crea_275",
+    "name": "Mensajero de la Autopista",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{R}{R/P}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "power": 3,
+    "toughness": 1,
+    "text": "Prisa.",
+    "flavorText": "No sabe qué lleva el sobre. Sí sabe cuánto tarda en llegar.",
+    "image": "mensajero_de_la_autopista.png",
+    "keywords": [
+      "haste"
+    ]
   }
 ]

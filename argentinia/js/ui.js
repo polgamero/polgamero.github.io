@@ -19,6 +19,7 @@ import {
   handleLandTargetClick,
   handlePlayerTargetClick,
   cancelPayment,
+  confirmCrew,
   payWithAlternativeCost,
   canPayCastCompositeNonManaCosts,
   payWard,
@@ -31,6 +32,7 @@ import {
   checkGameOver,
   checkAuraLegality,
   checkEquipmentLegality,
+  runStateBasedActions,
   publishMatchState,
   ensureMenuIdentityReady,
   hasLandPlayFromGraveyardPermission,
@@ -67,6 +69,8 @@ import { gameText } from './gameTexts.js';
 import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
 import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate, telemetryDurationMs } from './statistics.js';
+import { buildCardTextLayout } from './cardTextFormatter.js';
+import { MANA_ICON_URLS, manaIconKeyForSymbol } from './manaSymbolCatalog.js';
 import { POOL_BASELINE } from './poolContract.js';
 import { effectivePackCost, campaignStatus } from './campaigns.js';
 import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.js';
@@ -127,6 +131,7 @@ export const els = {
   btnAltCost : document.getElementById('btn-alt-cost'),
   btnPayWard : document.getElementById('btn-pay-ward'),
   btnPayCounterTax : document.getElementById('btn-pay-counter-tax'),
+  btnConfirmCrew : document.getElementById('btn-confirm-crew'),
 
   rivalDeckPile: null,
   rivalGYPile: null,
@@ -1003,29 +1008,10 @@ export function logMsg(msg) {
 // 23.13.21 — set visual completo de símbolos de maná, ahora también {0} e incoloro {C}. IMPORTANTE: estas URLs son relativas
 // al DOCUMENTO, no al archivo js/ui.js. En GitHub Pages, si la app vive en /argentinia/,
 // `./assets/...` resuelve correctamente a /argentinia/assets/... sin asumir el root del dominio.
-const MANA_ICON_URLS = Object.freeze({
-  W: './assets/images/ui/mana_blanco.png',
-  U: './assets/images/ui/mana_azul.png',
-  B: './assets/images/ui/mana_negro.png',
-  R: './assets/images/ui/mana_rojo.png',
-  G: './assets/images/ui/mana_verde.png',
-  '0': './assets/images/ui/mana_0.png',
-  '1': './assets/images/ui/mana_1.png',
-  '2': './assets/images/ui/mana_2.png',
-  '3': './assets/images/ui/mana_3.png',
-  '4': './assets/images/ui/mana_4.png',
-  '5': './assets/images/ui/mana_5.png',
-  '6': './assets/images/ui/mana_6.png',
-  '7': './assets/images/ui/mana_7.png',
-  '8': './assets/images/ui/mana_8.png',
-  '9': './assets/images/ui/mana_9.png',
-  C: './assets/images/ui/mana_incoloro.png',
-  X: './assets/images/ui/mana_x.png',
-  T: './assets/images/ui/girar.png'
-});
-
+// 23.15.5.3 — catálogo de símbolos centralizado en manaSymbolCatalog.js.
 function renderManaIcon(symbol, extraClass = '') {
-  const src = MANA_ICON_URLS[symbol];
+  const key = manaIconKeyForSymbol(symbol);
+  const src = MANA_ICON_URLS[key];
   if (!src) return '';
   const cls = extraClass ? `mana-icon ${extraClass}` : 'mana-icon';
   return `<img class="${cls}" src="${src}" alt="{${symbol}}" draggable="false" decoding="async">`;
@@ -1037,28 +1023,39 @@ export function renderManaSymbols(manaCostStr) {
   if (!matches) return '';
   return matches.map(m => {
     const val = m.replace(/[{}]/g, '').toUpperCase();
-    if (MANA_ICON_URLS[val]) return renderManaIcon(val, 'mana-icon-card-cost');
+    const key = manaIconKeyForSymbol(val);
+    if (MANA_ICON_URLS[key]) return renderManaIcon(val, 'mana-icon-card-cost');
 
-    // Fallback para símbolos sin PNG propio (hoy principalmente genéricos >9).
+    // Fallback para símbolos sin PNG propio (principalmente genéricos >9).
     const innerText = val;
     const fontSize = innerText.length >= 2 ? '3.2cqw' : '4.6cqw';
     return `<span class="mana-symbol mana-c" style="font-size:${fontSize};">${innerText}</span>`;
   }).join('');
 }
 
-// Para reglas, tierras y modales: W/U/B/R/G, 0..9, C, X y T usan PNG.
-// Cualquier genérico sin asset propio (>9) conserva el círculo CSS; otros símbolos permanecen textuales.
+// Para reglas, tierras, modales y reminder text. Todos los símbolos conocidos usan PNG;
+// cualquier genérico sin asset propio conserva el círculo CSS.
 export function renderInlineGameSymbols(text) {
   if (text === null || text === undefined) return '';
   return String(text).replace(/\{([^}]+)\}/g, (match, raw) => {
     const val = String(raw).toUpperCase();
-    if (MANA_ICON_URLS[val]) return renderManaIcon(val, 'mana-icon-inline');
+    const key = manaIconKeyForSymbol(val);
+    if (MANA_ICON_URLS[key]) return renderManaIcon(val, 'mana-icon-inline');
     if (/^(?:\d+|C)$/.test(val)) {
       const wide = val.length >= 2 ? ' mana-symbol-inline-wide' : '';
       return `<span class="mana-symbol mana-c mana-symbol-inline${wide}">${val}</span>`;
     }
     return match;
   });
+}
+
+function escapeCardTextHtml(text) {
+  return String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 export function getTargetRules(card) {
@@ -1094,6 +1091,23 @@ export function getTargetRules(card) {
       allowRivalLand: controller !== 'self',
       allowLocalPlaneswalker: false, allowRivalPlaneswalker: false,
       landFilter
+    };
+  }
+
+  if (effectType === 'gain_control' || effectType === 'gain_control_until_eot') {
+    const controller = effect.targetController || 'opponent';
+    const anyPermanent = effect.targetKind === 'any_permanent';
+    const creatureOnly = !anyPermanent && (effect.targetKind === 'creature' || !effect.targetKind);
+    return {
+      allowPlayer:false,
+      allowLocalCreature: creatureOnly ? controller !== 'opponent' : controller !== 'opponent',
+      allowRivalCreature: creatureOnly ? controller !== 'self' : controller !== 'self',
+      allowLocalPermanent: anyPermanent && controller !== 'opponent',
+      allowRivalPermanent: anyPermanent && controller !== 'self',
+      allowLocalLand: anyPermanent && controller !== 'opponent',
+      allowRivalLand: anyPermanent && controller !== 'self',
+      allowLocalPlaneswalker: anyPermanent && controller !== 'opponent',
+      allowRivalPlaneswalker: anyPermanent && controller !== 'self'
     };
   }
 
@@ -1238,7 +1252,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     if (zoneCanContainSacrifice && isSacrificeCandidate(itemObj, eligibleType)) isTargetable = true;
   } else if (state.pendingCrew && isLocal && zone === 'combat') {
     // Elegible si está sin girar, o si ya la elegiste (clickearla de nuevo la saca).
-    isTargetable = !itemObj.tapped || state.pendingCrew.selected.includes(itemObj);
+    // El propio Vehicle que origina Crew nunca puede pagarse a sí mismo.
+    isTargetable = itemObj !== state.pendingCrew.item && (!itemObj.tapped || state.pendingCrew.selected.includes(itemObj));
   }
 
   const isCrewingSelected = (state.pendingCrew && state.pendingCrew.selected.includes(itemObj)) ? 'crewing-selected' : '';
@@ -1304,9 +1319,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     if (card.type.includes('Bosque')) landSymbolImg = 'bosque.png';
   }
 
-  // 23.14.9 — debe existir para TODAS las ramas de render, incluidas Tierras básicas.
-  // Antes estaba declarado dentro del `else` de texto normal y luego se usaba fuera,
-  // provocando ReferenceError al renderizar la Enciclopedia con una Tierra básica.
+  // 23.15.3.1 — scope hotfix: este dato se usa después de ambas ramas de render.
+  // Debe existir también cuando la carta usa la rama especial de Tierra básica.
   const hasCreatureStats = isCreaturePermanent(itemObj);
 
   let formattedTextHTML = '';
@@ -1319,44 +1333,64 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
         <img class="basic-land-symbol-main" src="${landSymbolUrl}" alt="Símbolo de maná" style="width:100%; height:100%; object-fit:cover; object-position:center;" onerror="this.style.display='none'">
       </div>`;
   } else {
-    // 23.13.20 — la misma capa visual sirve para costes de habilidades y para el maná
-    // declarado por Tierras. Los JSON siguen canónicos ({W}/{U}/{B}/{R}/{G}); sólo cambia UI.
+    // 23.15.5.3 — el rules box ya no concatena flavor + texto en bold. Se construye una
+    // jerarquía presentation-only: keywords -> reglas/habilidades -> flavor al final.
     const landTransformation = isBattlefieldLand ? describeLandTransformation(state, itemObj, isLocal) : null;
-    let formattedText = card.text ? renderInlineGameSymbols(card.text) : '';
+    let rulesTextOverride = null;
     if (landTransformation?.printedAbilitiesSuppressed) {
       const manaOptions = landTransformation.manaAbility?.options || [];
       const manaText = manaOptions.map(m => `{${m}}`).join(' / ');
-      formattedText = manaText
-        ? renderInlineGameSymbols(gameText('land.transform.rulesText', { mana:manaText }))
+      rulesTextOverride = manaText
+        ? gameText('land.transform.rulesText', { mana:manaText })
         : gameText('land.transform.noAbilities');
     }
 
-    const effKeywords = hasCreatureStats ? getEffectiveKeywords(itemObj) : [];
+    // En criaturas usamos keywords efectivas (Auras/Equipment/buffs); en permanentes que
+    // todavía no son criatura —especialmente Vehículos— mostramos sus keywords impresas.
+    const effKeywords = hasCreatureStats
+      ? getEffectiveKeywords(itemObj)
+      : [...(Array.isArray(card.keywords) ? card.keywords : [])];
+    const textLayout = buildCardTextLayout(card, {
+      effectiveKeywords: effKeywords,
+      rulesTextOverride
+    });
 
-    const KEYWORD_LABELS = { 
-      flying: '🕊️ Vuela', trample: '🐘 Arrolla', hexproof: '🛡️ Intocable', haste: '⚡ Prisa', 
-      menace: '👥 Amenaza', vigilance: '👁️ Vigilancia', reach: '🏹 Alcance', defender: '🧱 Defensora',
-      lifelink: '❤️ Vínculo vital', deathtouch: '💀 Toque mortal', firststrike: '🗡️ Primer golpe', doublestrike: '⚔️ Doble golpe', indestructible: '💎 Indestructible',
-      protection_W: '🛡️ Protección de Blanco', protection_U: '🛡️ Protección de Azul', protection_B: '🛡️ Protección de Negro',
-      protection_R: '🛡️ Protección de Rojo', protection_G: '🛡️ Protección de Verde'
-    };
-      
-    // Ward N es dinámico (el número varía carta por carta), no puede vivir en el
-    // diccionario fijo de arriba — se resuelve al vuelo acá.
-    const labelFor = (k) => {
-      if (k.startsWith('ward_')) return `🔶 Ward ${k.split('_')[1]}`;
-      return KEYWORD_LABELS[k] || k;
-    };
-    const keywordsHTML = effKeywords.length > 0
-      ? `<div class="keyword-strip">${effKeywords.map(k => `<span class="keyword-tag">${labelFor(k)}</span>`).join('')}</div>`
+    const keywordsHTML = textLayout.keywordLabels.length
+      ? `<div class="card-keyword-line">${textLayout.keywordLabels.map(escapeCardTextHtml).join(', ')}</div>`
       : '';
 
-    // Cartas con mucho texto (flavor + reglas + varias keywords) achican la letra para
-    // entrar en la caja fija, en vez de desbordarse por abajo.
-    const totalTextLen = (card.flavorText || '').length + (card.text || '').length + (effKeywords.length * 10);
-    const textBoxScale = fitScaleByLength(totalTextLen, 90);
+    const keywordReminderHTML = textLayout.keywordReminders.map(entry =>
+      `<div class="card-keyword-reminder">(${renderInlineGameSymbols(escapeCardTextHtml(entry.text))})</div>`
+    ).join('');
 
-    formattedTextHTML = `<div class="card-text-box" style="font-size: clamp(4px, ${(6 * textBoxScale).toFixed(2)}cqw, 26px);">${keywordsHTML}<i>${card.flavorText || ''}</i><br><strong>${formattedText}</strong></div>`;
+    const rulesHTML = textLayout.paragraphs.map(entry => {
+      const abilityWord = entry.abilityWord
+        ? `<span class="card-ability-word">${escapeCardTextHtml(entry.abilityWord)} — </span>`
+        : '';
+      const rule = renderInlineGameSymbols(escapeCardTextHtml(entry.text));
+      const reminder = entry.reminder
+        ? ` <span class="card-reminder-text">(${renderInlineGameSymbols(escapeCardTextHtml(entry.reminder))})</span>`
+        : '';
+      const kindClass = entry.kind === 'mode-option' ? ' card-mode-option' : entry.kind === 'mode-header' ? ' card-mode-header' : '';
+      return `<div class="card-rule-paragraph${kindClass}">${abilityWord}${rule}${reminder}</div>`;
+    }).join('');
+
+    const flavorHTML = textLayout.flavorText
+      ? `<div class="card-flavor-text">${escapeCardTextHtml(textLayout.flavorText)}</div>`
+      : '';
+
+    // El fit considera reminder text y separación real en párrafos. No altera el contenido;
+    // sólo reduce tipografía cuando hace falta para conservar la caja fija de la carta.
+    const reminderLen = textLayout.paragraphs.reduce((n, p) => n + (p.reminder || '').length, 0)
+      + textLayout.keywordReminders.reduce((n, p) => n + p.text.length, 0);
+    const totalTextLen = textLayout.flavorText.length
+      + textLayout.paragraphs.reduce((n, p) => n + p.text.length + (p.abilityWord || '').length, 0)
+      + textLayout.keywordLabels.join(', ').length
+      + Math.round(reminderLen * 0.72)
+      + (textLayout.paragraphs.length * 14);
+    const textBoxScale = fitScaleByLength(totalTextLen, 115);
+
+    formattedTextHTML = `<div class="card-text-box card-text-box-structured" style="font-size: clamp(4px, ${(6 * textBoxScale).toFixed(2)}cqw, 26px);">${keywordsHTML}${keywordReminderHTML}<div class="card-rules-list">${rulesHTML}</div>${flavorHTML}</div>`;
   }
 
   const effPower = hasCreatureStats ? getEffectivePower(itemObj) : undefined;
@@ -2575,7 +2609,7 @@ function collectCardMechanics(card) {
     'landEtbTrigger','upkeepTrigger','spellCastTrigger','creatureEtbTrigger','staticEffect',
     'equipment','auraEffect','activatedAbility','activatedAbilities','loyaltyAbilities',
     'blockTrigger','anyCreatureDiesTrigger','anyCreatureAttacksTrigger','opponentDeathTrigger',
-    'endStepTrigger','grantedAbility'
+    'endStepTrigger','grantedAbility','triggers','genericTriggers'
   ].forEach(key => visit(card?.[key]));
   return effectTypes;
 }
@@ -7346,6 +7380,102 @@ export function showSacrificeEffectModal(candidates, countToSacrifice, cardName,
 // Usa ÍNDICES de slot, no Set(card): dos copias idénticas tienen que seguir siendo dos
 // elecciones distintas. No hay botón Cancelar porque, cuando aparece, una instrucción o
 // un costo ya está a mitad de resolución.
+
+// 23.15.4 — Phyrexian mana se decide antes de abrir fuentes: cada símbolo elegido se
+// prepara como 2 de vida; los no elegidos permanecen en pendingCost y pueden pagarse con
+// maná del color correspondiente (o Convoke). No muta vida hasta el commit 601.2h.
+export function showPhyrexianCostChoiceModal(symbols, cardName, maxLifePayments = Infinity) {
+  const list=Array.isArray(symbols)?symbols:[];
+  if(!list.length||maxLifePayments<=0) return Promise.resolve([]);
+  injectMulliganStyles();
+  const overlay=document.createElement('div');
+  overlay.id='mulligan-overlay';
+  const chosen=new Set();
+  const max=Math.min(list.length,Math.max(0,Math.floor(Number(maxLifePayments)||0)));
+  overlay.innerHTML=`
+    <div class="mulligan-panel">
+      <div class="mulligan-title">${gameTextHtml('cost.phyrexian.choice.title',{card:cardName})}</div>
+      <div class="mulligan-subtitle" id="phyrexian-choice-hint">${gameTextHtml('cost.phyrexian.choice.count',{selected:0,max})}</div>
+      <div class="mulligan-hand-row" id="phyrexian-symbol-row"></div>
+      <div class="mulligan-buttons">
+        <button class="mulligan-btn mulligan-btn-mull" id="btn-phyrexian-none">${gameTextHtml('cost.phyrexian.choice.none')}</button>
+        <button class="mulligan-btn mulligan-btn-keep" id="btn-phyrexian-confirm">${gameTextHtml('cost.phyrexian.choice.confirm')}</button>
+      </div>
+    </div>`;
+  const row=overlay.querySelector('#phyrexian-symbol-row');
+  list.forEach((color,index)=>{
+    const btn=document.createElement('button');
+    btn.type='button'; btn.className='mulligan-btn';
+    btn.textContent=`{${color}/P} → 2 vida`;
+    btn.addEventListener('click',()=>{
+      if(chosen.has(index)){chosen.delete(index);btn.classList.remove('chosen');}
+      else if(chosen.size<max){chosen.add(index);btn.classList.add('chosen');}
+      overlay.querySelector('#phyrexian-choice-hint').textContent=gameText('cost.phyrexian.choice.count',{selected:chosen.size,max});
+    });
+    row.appendChild(btn);
+  });
+  document.body.appendChild(overlay);
+  return new Promise(resolve=>{
+    overlay.querySelector('#btn-phyrexian-none').addEventListener('click',()=>{overlay.remove();resolve([]);});
+    overlay.querySelector('#btn-phyrexian-confirm').addEventListener('click',()=>{overlay.remove();resolve([...chosen].sort((a,b)=>a-b));});
+  });
+}
+
+// 23.15.4 — selector opcional de recursos de pago (Convoke/Delve). A diferencia de los
+// selectores de costos obligatorios, permite confirmar 0..máximo y por eso siempre ofrece
+// "seguir sin usar". No muta permanentes/zonas: sólo devuelve la selección preparada.
+export function showCostPaymentResourceModal(entries, options = {}) {
+  injectMulliganStyles();
+  const list = Array.isArray(entries) ? entries : [];
+  const max = Math.max(0, Math.min(list.length, Math.floor(Number(options.max) || 0)));
+  if (max === 0 || list.length === 0) return Promise.resolve([]);
+  const mode = options.mode === 'delve' ? 'delve' : 'convoke';
+  const cardName = options.cardName || 'Hechizo';
+  const chosen = new Set();
+  const overlay = document.createElement('div');
+  overlay.id = 'mulligan-overlay';
+  const titleKey = mode === 'delve' ? 'cost.delve.choice.title' : 'cost.convoke.choice.title';
+  const confirmKey = mode === 'delve' ? 'cost.delve.choice.confirm' : 'cost.convoke.choice.confirm';
+  overlay.innerHTML = `
+    <div class="mulligan-panel">
+      <div class="mulligan-title">${gameTextHtml(titleKey, { card:cardName, max })}</div>
+      <div class="mulligan-subtitle" id="cost-resource-count-hint">${gameTextHtml('cost.resource.choice.count', { selected:0, max })}</div>
+      <div class="mulligan-hand-row-slot"></div>
+      <div class="mulligan-buttons">
+        <button class="mulligan-btn mulligan-btn-mull" id="btn-skip-cost-resource">${gameTextHtml('cost.resource.choice.skip')}</button>
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-cost-resource">${gameTextHtml(confirmKey)}</button>
+      </div>
+    </div>`;
+  const row = document.createElement('div');
+  row.className = 'mulligan-hand-row';
+  const hint = () => overlay.querySelector('#cost-resource-count-hint');
+  list.forEach(entry => {
+    const value = entry?.item || entry?.card || entry;
+    let cardEl;
+    const toggle = () => {
+      if (chosen.has(value)) { chosen.delete(value); cardEl.classList.remove('chosen'); }
+      else if (chosen.size < max) { chosen.add(value); cardEl.classList.add('chosen'); }
+      hint().textContent = gameText('cost.resource.choice.count', { selected:chosen.size, max });
+    };
+    if (mode === 'convoke') {
+      const item = value;
+      const zone = state.localCombat.includes(item) ? 'combat' : state.localSupport.includes(item) ? 'support' : state.localLands.includes(item) ? 'land' : 'combat';
+      cardEl = createCardElement(item, !!item?.tapped, true, null, zone, toggle);
+    } else {
+      const card = value?.card || value;
+      cardEl = createCardElement(card, false, true, null, 'graveyard', toggle);
+    }
+    cardEl.classList.add('mulligan-card-slot','selectable');
+    row.appendChild(cardEl);
+  });
+  overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
+  document.body.appendChild(overlay);
+  return new Promise(resolve => {
+    overlay.querySelector('#btn-skip-cost-resource').addEventListener('click',()=>{ overlay.remove(); resolve([]); });
+    overlay.querySelector('#btn-confirm-cost-resource').addEventListener('click',()=>{ overlay.remove(); resolve([...chosen]); });
+  });
+}
+
 export function showHandDiscardChoiceModal(hand, countToDiscard, cardName, actionLabel, onConfirm) {
   injectMulliganStyles();
   const overlay = document.createElement('div');
@@ -7864,6 +7994,8 @@ export function render() {
         if (pendingCost.R > 0) statusText += gameText('payment.color.red', { amount: pendingCost.R });
         if (pendingCost.G > 0) statusText += gameText('payment.color.green', { amount: pendingCost.G });
         if (pendingCost.C > 0) statusText += gameText('payment.color.colorless', { amount: pendingCost.C });
+        if (Array.isArray(pendingCost.hybrid)) pendingCost.hybrid.forEach(symbol=>{ statusText += gameText('payment.color.hybrid',{symbol:`{${symbol.join('/')}}`}); });
+        if (Array.isArray(pendingCost.phyrexian)) pendingCost.phyrexian.forEach(color=>{ statusText += gameText('payment.color.phyrexian',{symbol:`{${color}/P}`}); });
         if (pendingCost.generic > 0) statusText += gameText('payment.color.generic', { amount: pendingCost.generic });
         if (state.pendingAlternativeCostChosen && pendingCard?.alternativeCost) statusText += gameText('payment.altSuffix', { cost: describeCompositeCost(pendingCard.alternativeCost) });
       }
@@ -7896,13 +8028,24 @@ export function render() {
     } else {
       els.btnPayCounterTax.classList.add('hidden');
     }
+
+    if (state.pendingCrew) {
+      els.btnConfirmCrew.classList.remove('hidden');
+      els.btnConfirmCrew.disabled = state.pendingCrew.powerSoFar < state.pendingCrew.required;
+      els.btnConfirmCrew.textContent = gameText('payment.button.crew', {
+        power: state.pendingCrew.powerSoFar,
+        required: state.pendingCrew.required
+      });
+    } else {
+      els.btnConfirmCrew.classList.add('hidden');
+      els.btnConfirmCrew.disabled = false;
+    }
   } else {
     els.paymentControls.classList.add('hidden'); els.btnEndTurn.classList.remove('hidden');
     els.localHand.classList.remove('paying-mode'); els.localLands.classList.remove('paying-mode'); els.localSupport.classList.remove('paying-mode');
   }
   renderStack();
-  checkAuraLegality();
-  checkEquipmentLegality();
+  void runStateBasedActions({ reason:'render' });
   checkGameOver();
 
   // ENTREGA 22+: snapshot diagnóstico del estado estabilizado por este render.
@@ -7922,11 +8065,12 @@ els.btnCancelSpell.addEventListener('click', cancelPayment);
 els.btnAltCost.addEventListener('click', payWithAlternativeCost);
 els.btnPayWard.addEventListener('click', payWard);
 els.btnPayCounterTax.addEventListener('click', payCounterTax);
+els.btnConfirmCrew.addEventListener('click', confirmCrew);
 
 // ACTUALIZADO: Controles de teclado globales (Escape y Barra Espaciadora)
 document.addEventListener('keydown', (e) => { 
   // Cancelar pagos pendientes
-  if (e.key === 'Escape' && (state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null)) {
+  if (e.key === 'Escape' && (state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew)) {
     cancelPayment(); 
   }
 
@@ -8138,4 +8282,27 @@ export function showMultiplayerReadyBarrier(rivalName, localReady = true, rivalR
 export function hideMultiplayerReadyBarrier() {
   const overlay = document.getElementById('multiplayer-ready-barrier');
   if (overlay) overlay.remove();
+}
+
+
+// 23.15.1 — Regla de Leyenda: decisión sin prioridad.
+export function showLegendRuleChoiceModal(entries = [], cardName = 'Permanente legendario') {
+  return new Promise(resolve => {
+    const overlay=document.createElement('div'); overlay.className='gy-modal-overlay';
+    overlay.innerHTML=`<div class="gy-modal-content"><div class="gy-modal-header"><h3>${gameTextHtml('sba.legend.title')}</h3></div><div style="margin:8px 0 14px">${gameTextHtml('sba.legend.subtitle',{card:cardName})}</div><div class="legend-choice-grid"></div></div>`;
+    document.body.appendChild(overlay); const grid=overlay.querySelector('.legend-choice-grid');
+    entries.forEach((entry,index)=>{ const btn=document.createElement('button'); btn.className='mulligan-btn'; btn.textContent=gameText('sba.legend.confirm',{card:entry.card?.name||cardName}); btn.onclick=()=>{overlay.remove();resolve(entry)}; grid.appendChild(btn); });
+  });
+}
+
+// UI expresa orden de RESOLUCIÓN (arriba resuelve primero); triggerOrdering.js lo convierte a LIFO.
+export function showTriggerOrderModal(entries = []) {
+  return new Promise(resolve => {
+    if(entries.length<=1){resolve(entries);return;}
+    const ordered=[...entries]; const overlay=document.createElement('div'); overlay.className='gy-modal-overlay';
+    overlay.innerHTML=`<div class="gy-modal-content"><div class="gy-modal-header"><h3>${gameTextHtml('trigger.order.title')}</h3></div><div style="margin-bottom:12px">${gameTextHtml('trigger.order.subtitle')}</div><div class="trigger-order-list"></div><button class="mulligan-btn mulligan-btn-keep trigger-order-confirm">${gameTextHtml('trigger.order.confirm')}</button></div>`;
+    document.body.appendChild(overlay); const list=overlay.querySelector('.trigger-order-list');
+    const draw=()=>{ list.innerHTML=''; ordered.forEach((entry,i)=>{const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;align-items:center;margin:6px 0';row.innerHTML=`<div style="flex:1">${escapeHtml(entry.sourceCard?.name||'Habilidad')} · ${escapeHtml(entry.triggerType||'trigger')}</div><button data-up="${i}">${gameTextHtml('trigger.order.up')}</button><button data-down="${i}">${gameTextHtml('trigger.order.down')}</button>`;list.appendChild(row)}); list.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{const i=+b.dataset.up;if(i>0){[ordered[i-1],ordered[i]]=[ordered[i],ordered[i-1]];draw()}});list.querySelectorAll('[data-down]').forEach(b=>b.onclick=()=>{const i=+b.dataset.down;if(i<ordered.length-1){[ordered[i+1],ordered[i]]=[ordered[i],ordered[i+1]];draw()}});};
+    draw(); overlay.querySelector('.trigger-order-confirm').onclick=()=>{overlay.remove();resolve(ordered)};
+  });
 }

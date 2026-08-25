@@ -20,7 +20,7 @@ const TRANSIENT_KEYS = new Set([
   'pendingAbilitySource','pendingActivatedAbilityChoice','pendingBlockerIndex','pendingTargetSource',
   'pendingSacrificeChoice','pendingCrew','pendingAttackRedirect','pendingWardChoice','pendingCounterUnlessPay',
   'pendingHybridLifePayment','pendingCompositeCostPayment','pendingSpellCostsIrreversible','pendingFightChoice',
-  'pendingXChoice','pendingModeChoice','pendingLoyaltyTargetChoice','pendingMultiTargetChoice',
+  'pendingLegendChoice','pendingTriggerOrderChoice','pendingXChoice','pendingModeChoice','pendingLoyaltyTargetChoice','pendingMultiTargetChoice',
   'pendingScrySurveilChoice','pendingProliferateChoice','pendingHandFilterChoice','pendingDiscardChoice',
   'pendingSacrificeEffectChoice','pendingGraveyardChoice','pendingResolvedEffectTargetChoice',
   'pendingEscapeExileChoice','pendingKickerChoice','pendingRampChoice','pendingLandSearchChoice','damageModalOpen','awaitingRivalDecision',

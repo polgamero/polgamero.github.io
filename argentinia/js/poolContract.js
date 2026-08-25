@@ -1,7 +1,7 @@
 // js/poolContract.js
-// 23.14.8 — LAND Expansion I: 601 -> 643.
-// POOL_BASELINE queda fail-closed en el pool 643 que materializa LAND 0–6 con 42 cartas nuevas.
-// Los milestones anteriores se preservan como historia auditable; el runtime actual exige 643.
+// 23.15.5.5 — POOL EXPANSION I: 643 -> 673.
+// Materializa en cartas reales Control + Event + Cost + Replacement/Prevention sin abrir
+// motores nuevos. Los milestones anteriores se preservan como historia auditable.
 const makeMilestone = (version, total, categories) => Object.freeze({
   version,
   total,
@@ -53,8 +53,17 @@ export const POOL_MILESTONES = Object.freeze({
     conjuros: 76,
     encantamientos: 63,
     planeswalkers: 8
+  }),
+  pool_expansion_i_673: makeMilestone('23.15.5.5', 673, {
+    tierras: 64,
+    artefactos: 63,
+    criaturas: 275,
+    instantaneos: 115,
+    conjuros: 80,
+    encantamientos: 68,
+    planeswalkers: 8
   })
 });
 
-export const CURRENT_POOL_MILESTONE = 'land_expansion_643';
+export const CURRENT_POOL_MILESTONE = 'pool_expansion_i_673';
 export const POOL_BASELINE = POOL_MILESTONES[CURRENT_POOL_MILESTONE];

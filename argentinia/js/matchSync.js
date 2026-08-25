@@ -7,6 +7,7 @@
 //   2) la Stack viaja como estado público canónico y se rehidrata desde la perspectiva
 //      de cada cliente, incluyendo targets y fuentes de habilidades.
 import { deriveLocalPriorityActivity } from './priorityUX.js';
+import { controllerRoleForSide } from './controlEngine.js';
 
 export const PER_PLAYER_FIELDS = [
   'HP', 'Poison', 'ManaPool', 'Lands', 'Combat', 'Graveyard', 'Exile', 'Support', 'Planeswalkers',
@@ -64,8 +65,8 @@ function ensureItemSyncId(item, ownerRole) {
 export function ensureBoardItemSyncIds(state, myRole) {
   if (!state || !myRole) return;
   for (const [, localKey, rivalKey] of BOARD_ZONE_SPECS) {
-    (Array.isArray(state[localKey]) ? state[localKey] : []).forEach(item => ensureItemSyncId(item, myRole));
-    (Array.isArray(state[rivalKey]) ? state[rivalKey] : []).forEach(item => ensureItemSyncId(item, otherRole(myRole)));
+    (Array.isArray(state[localKey]) ? state[localKey] : []).forEach(item => ensureItemSyncId(item, item?.card?._ownerRole || myRole));
+    (Array.isArray(state[rivalKey]) ? state[rivalKey] : []).forEach(item => ensureItemSyncId(item, item?.card?._ownerRole || otherRole(myRole)));
   }
 }
 
@@ -89,12 +90,16 @@ export function serializeBoardItemRef(item, state, myRole) {
       if (index < 0) index = zone.indexOf(item);
       if (index !== -1) {
         const liveItem = zone[index];
-        const ownerRole = isLocal ? myRole : otherRole(myRole);
+        const controllerRole = isLocal ? myRole : otherRole(myRole);
+        const cardOwnerRole = liveItem?.card?._ownerRole || controllerRole;
         return {
-          ownerRole,
+          // ownerRole queda como alias legacy del lado/controlador para snapshots viejos.
+          ownerRole: controllerRole,
+          controllerRole,
+          cardOwnerRole,
           zone: zoneName,
           index,
-          syncObjectId: ensureItemSyncId(liveItem, ownerRole),
+          syncObjectId: ensureItemSyncId(liveItem, cardOwnerRole),
           cardId: liveItem?.card?.id || item?.card?.id || null,
           cardName: liveItem?.card?.name || item?.card?.name || null
         };
@@ -106,11 +111,18 @@ export function serializeBoardItemRef(item, state, myRole) {
 
 export function deserializeBoardItemRef(ref, state, myRole) {
   if (!ref || !state) return null;
-  const isLocal = ref.ownerRole === myRole;
-  const zone = zoneArray(state, ref.zone, isLocal);
+  const descriptorControllerRole = ref.controllerRole || ref.ownerRole;
+  let isLocal = descriptorControllerRole === myRole;
+  let zone = zoneArray(state, ref.zone, isLocal);
   if (!zone) return null;
   let item = null;
   if (ref.syncObjectId) item = zone.find(candidate => candidate?._syncObjectId === ref.syncObjectId) || null;
+  // 23.15.2: un permanente targeteado puede haber cambiado de controlador desde que se creó el descriptor.
+  if (!item && ref.syncObjectId) {
+    const opposite = zoneArray(state, ref.zone, !isLocal) || [];
+    item = opposite.find(candidate => candidate?._syncObjectId === ref.syncObjectId) || null;
+    if (item) { isLocal = !isLocal; zone = opposite; }
+  }
   if (!item) item = zone[Number(ref.index)];
   if (!item) return null;
   if (ref.cardId && item?.card?.id && ref.cardId !== item.card.id) return null;
@@ -150,13 +162,16 @@ export function serializeStackTarget(targetObj, state, myRole) {
     index = targetObj._syncDescriptor.index;
   }
   const item = targetObj.item || (index >= 0 ? zone[index] : null);
-  const ownerRole = isLocal ? myRole : otherRole(myRole);
+  const controllerRole = isLocal ? myRole : otherRole(myRole);
+  const cardOwnerRole = item?.card?._ownerRole || controllerRole;
   const descriptor = {
     type: targetObj.type,
-    ownerRole,
+    ownerRole: controllerRole, // legacy locator
+    controllerRole,
+    cardOwnerRole,
     zone: zoneName,
     index,
-    syncObjectId: item ? ensureItemSyncId(item, ownerRole) : (targetObj._syncDescriptor?.syncObjectId || null),
+    syncObjectId: item ? ensureItemSyncId(item, cardOwnerRole) : (targetObj._syncDescriptor?.syncObjectId || null),
     cardId: item?.card?.id || targetObj._syncDescriptor?.cardId || null,
     cardName: item?.card?.name || targetObj._syncDescriptor?.cardName || null,
     cardSnapshot: item?.card ? {
@@ -177,15 +192,20 @@ export function deserializeStackTarget(descriptor, state, myRole) {
   if (descriptor.type === 'multi') {
     return { type: 'multi', targets: (descriptor.targets || []).map(t => deserializeStackTarget(t, state, myRole)) };
   }
-  const isLocal = descriptor.ownerRole === myRole;
+  let isLocal = (descriptor.controllerRole || descriptor.ownerRole) === myRole;
   if (descriptor.type === 'player') return { type: 'player', isLocal };
 
   const zoneName = descriptor.zone || targetZoneName(descriptor.type);
-  const zone = zoneArray(state, zoneName, isLocal) || [];
+  let zone = zoneArray(state, zoneName, isLocal) || [];
   const index = Number(descriptor.index);
   let item = descriptor.syncObjectId
     ? (zone.find(candidate => candidate?._syncObjectId === descriptor.syncObjectId) || null)
     : null;
+  if (!item && descriptor.syncObjectId) {
+    const opposite = zoneArray(state, zoneName, !isLocal) || [];
+    item = opposite.find(candidate => candidate?._syncObjectId === descriptor.syncObjectId) || null;
+    if (item) { isLocal = !isLocal; zone = opposite; }
+  }
   if (!item) item = Number.isInteger(index) && index >= 0 ? zone[index] : null;
   if (item && descriptor.cardId && item?.card?.id && descriptor.cardId !== item.card.id) item = null;
   if (item && !descriptor.cardId && descriptor.cardName && item?.card?.name !== descriptor.cardName) item = null;
@@ -438,17 +458,16 @@ export function refreshStackBoardRefs(stack, state, myRole) {
 // viva usando _syncObjectId. Si la criatura ya no existe, el Equipo queda desadjuntado.
 export function relinkEquipmentAttachments(state) {
   if (!state) return state;
-  const relink = (supportZone, combatZone) => {
-    const support = Array.isArray(supportZone) ? supportZone : [];
-    const combat = Array.isArray(combatZone) ? combatZone : [];
-    support.forEach(item => {
-      if (!item?.attachedTo) return;
-      const targetId = item.attachedTo?._syncObjectId || item.attachedTo?._syncDescriptor?.syncObjectId || null;
-      if (!targetId) return;
-      item.attachedTo = combat.find(unit => unit?._syncObjectId === targetId) || null;
+  // 23.15.2: ganar control de una criatura no mueve los Equipos que ya tenía adjuntos.
+  // Por eso el Equipo puede vivir en un Support y apuntar a una criatura del Combat opuesto.
+  const allCombat=[...(state.localCombat||[]),...(state.rivalCombat||[])];
+  for (const support of [[...(state.localSupport||[])],[...(state.rivalSupport||[])]]) {
+    support.forEach(item=>{
+      if(!item?.attachedTo) return;
+      const targetId=item.attachedTo?._syncObjectId || item.attachedTo?._syncDescriptor?.syncObjectId || null;
+      if(!targetId) return;
+      item.attachedTo=allCombat.find(unit=>unit?._syncObjectId===targetId)||null;
     });
-  };
-  relink(state.localSupport, state.localCombat);
-  relink(state.rivalSupport, state.rivalCombat);
+  }
   return state;
 }

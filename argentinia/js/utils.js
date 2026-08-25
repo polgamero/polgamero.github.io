@@ -1,5 +1,7 @@
 import { isCreaturePermanent, isArtifactPermanent, isLandPermanent } from './permanentTypes.js';
 import { cardDb } from './cardLoader.js';
+import { resolveReplacementEvent } from './replacementEngine.js';
+import { zoneForCardOwner } from './zoneOwnership.js';
 import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
 
 export function shuffle(array) { 
@@ -89,13 +91,27 @@ export function moveCounteredStackItemToDestination(stackItem, gameState) {
   if (stackItem.type === 'ability') return 'ability';
 
   const isLocal = !!stackItem.isLocal;
+  // Flashback ya contiene su propio replacement de reglas: si el hechizo fuera a dejar la
+  // Stack por cualquier motivo se exilia. Conservamos esa precedencia histórica.
   if (stackItem.castFrom === 'flashback') {
-    (isLocal ? gameState.localExile : gameState.rivalExile).push(stackItem.card);
+    zoneForCardOwner(stackItem.card, gameState.localExile, gameState.rivalExile, isLocal, gameState.currentMatch?.myRole || null).push(stackItem.card);
     return 'exile';
   }
 
-  (isLocal ? gameState.localGraveyard : gameState.rivalGraveyard).push(stackItem.card);
-  return 'graveyard';
+  // 23.15.5 — un hechizo normal/Escape contrarrestado intenta ir Stack -> Cementerio y
+  // atraviesa el mismo Replacement Engine que cualquier otro cambio de zona. Esto permite
+  // efectos tipo Rest in Peace sin hardcodear counterspells.
+  const result = resolveReplacementEvent(gameState, {
+    type:'zone_change', affectedIsLocal:isLocal, targetIsLocal:isLocal,
+    card:stackItem.card, targetCard:stackItem.card, item:stackItem, targetItem:stackItem,
+    zoneFrom:'stack', zoneTo:'graveyard', cause:'countered'
+  });
+  const zoneTo = result.event.zoneTo || 'graveyard';
+  const destination = zoneTo === 'exile'
+    ? zoneForCardOwner(stackItem.card, gameState.localExile, gameState.rivalExile, isLocal, gameState.currentMatch?.myRole || null)
+    : zoneForCardOwner(stackItem.card, gameState.localGraveyard, gameState.rivalGraveyard, isLocal, gameState.currentMatch?.myRole || null);
+  destination.push(stackItem.card);
+  return zoneTo;
 }
 
 
@@ -378,11 +394,20 @@ export function parseManaCost(manaString) {
   const matches = manaString.match(/\{[^}]+\}/g);
   if (!matches) return cost;
   matches.forEach(m => {
-    const val = m.replace(/[{}]/g, '');
-    if (val === 'X') return; // El valor de X se suma aparte, una vez que el jugador lo elige
-                              // (no se sabe todavía en este punto — ver confirmXValue en main.js).
-    if (['W', 'U', 'B', 'R', 'G', 'C'].includes(val)) cost[val] += 1;
-    else if (!isNaN(val)) cost.generic += parseInt(val, 10);
+    const val = m.replace(/[{}]/g, '').toUpperCase();
+    if (val === 'X') return; // El valor de X se suma aparte.
+    if (['W', 'U', 'B', 'R', 'G', 'C'].includes(val)) { cost[val] += 1; return; }
+    if (!isNaN(val)) { cost.generic += parseInt(val, 10); return; }
+    const parts = val.split('/').map(x=>x.trim()).filter(Boolean);
+    if (parts.length === 2 && parts[1] === 'P' && ['W','U','B','R','G'].includes(parts[0])) {
+      if (!Array.isArray(cost.phyrexian)) cost.phyrexian = [];
+      cost.phyrexian.push(parts[0]);
+      return;
+    }
+    if (parts.length === 2 && parts.every(x=>['W','U','B','R','G','C'].includes(x))) {
+      if (!Array.isArray(cost.hybrid)) cost.hybrid = [];
+      cost.hybrid.push(parts);
+    }
   });
   return cost;
 }
@@ -390,15 +415,17 @@ export function parseManaCost(manaString) {
 // Suma dos costos YA PARSEADOS símbolo por símbolo — usado por Kicker para combinar el
 // costo base de la carta + el costo adicional opcional del Kicker en un solo total a pagar.
 export function sumManaCosts(a, b) {
-  return {
-    W: (a.W || 0) + (b.W || 0),
-    U: (a.U || 0) + (b.U || 0),
-    B: (a.B || 0) + (b.B || 0),
-    R: (a.R || 0) + (b.R || 0),
-    G: (a.G || 0) + (b.G || 0),
-    C: (a.C || 0) + (b.C || 0),
+  const out = {
+    W: (a.W || 0) + (b.W || 0), U: (a.U || 0) + (b.U || 0),
+    B: (a.B || 0) + (b.B || 0), R: (a.R || 0) + (b.R || 0),
+    G: (a.G || 0) + (b.G || 0), C: (a.C || 0) + (b.C || 0),
     generic: (a.generic || 0) + (b.generic || 0)
   };
+  const hybrid=[...(a.hybrid||[]),...(b.hybrid||[])];
+  const phyrexian=[...(a.phyrexian||[]),...(b.phyrexian||[])];
+  if(hybrid.length) out.hybrid=hybrid;
+  if(phyrexian.length) out.phyrexian=phyrexian;
+  return out;
 }
 
 export function getLandColor(card) {

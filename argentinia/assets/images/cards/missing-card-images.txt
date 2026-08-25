@@ -28,6 +28,7 @@ esfera_helada_del_nahuel_huapi.png
 facon.png
 fajo_dolares.png
 farol_kerosen.png
+fotocopiadora_del_centro_cultural.png
 fuente_de_vino_del_velorio.png
 generador_a_nafta.png
 globo_del_planetario.png
@@ -43,6 +44,7 @@ mate_de_acero_inquebrantable.png
 motito_del_reparto_nocturno.png
 maquina_fichar.png
 parrilla_portatil.png
+peaje_de_la_ruta_2.png
 poncho_diamante.png
 proyector_del_cine_cerrado.png
 petalo_del_rosedal.png
@@ -53,6 +55,7 @@ refugio_improvisado.png
 reloj_cucu.png
 reloj_abuelo.png
 robotito_chatarra.png
+servidor_reciclado.png
 sifon_de_soda_abollado.png
 sulky_de_hierro_maldito.png
 termo_sagrado.png
@@ -69,6 +72,7 @@ archivo_del_muerto_que_vuelve.png
 arreo_salvaje.png
 asado.png
 asamblea_vecinos.png
+asamblea_en_la_plaza.png
 banda_de_bombos.png
 bendicion_vieja.png
 boleadoras_del_corral_viejo.png
@@ -97,6 +101,8 @@ incendio_del_galpon.png
 injerto_ceibo.png
 inspeccion_de_la_sacristia.png
 instinto_caceria.png
+intervencion_federal.png
+inventario_del_taller.png
 invocacion_urgencia.png
 justicia_impartida.png
 picadita.png
@@ -123,6 +129,7 @@ siembra_emergencia.png
 siembra_otono.png
 silencio_despues_del_cacerolazo.png
 tamales_para_los_difuntos.png
+te_la_expropio.png
 tierra_arrasada_de_plaza_congreso.png
 santa_rosa.png
 turno_de_exhumacion.png
@@ -160,6 +167,7 @@ bombero_del_ultimo_piso.png
 bombista_murga.png
 bombista_cancha.png
 bombista_de_la_tribuna_vieja.png
+brigadista_de_las_sierras.png
 brote_de_ceibo_montaraz.png
 bruja_callejon.png
 buceadora_del_canal_beagle.png
@@ -167,6 +175,7 @@ buzo_costanera.png
 buzo_rio_turbio.png
 barbaro_antimago.png
 caballo_desfile.png
+cadete_del_palacio_barolo.png
 calderero_tren_quemado.png
 campanera_procesion.png
 capataz_caravana.png
@@ -179,12 +188,15 @@ cazadora_reserva.png
 centinela_encantada.png
 charly_garcia.png
 chatarrero.png
+chatarrero_de_gerli.png
 chatarrero_del_sifon_azul.png
 chispero_taller.png
+cobrador_del_sanatorio.png
 coipo_del_arroyo_chico.png
 colectivero.png
 domador_incendios.png
 comensal_del_tamal_negro.png
+contador_del_club_de_barrio.png
 contadora_puerto.png
 contrabandista_sombras.png
 contrabandista_del_puerto_seco.png
@@ -246,9 +258,11 @@ florista_del_cementerio_sur.png
 fogonero_de_dock_sud.png
 fogonero_del_tren_nocturno.png
 foguista_taller.png
+freestyler_del_subte_b.png
 gato_tejado_caliente.png
 gauchito_gil.png
 gaviota_del_puerto_sur.png
+gestora_del_monotributo.png
 gigante_quebrada.png
 gigante_de_las_raices_del_parana.png
 gigante_del_aconcagua.png
@@ -265,6 +279,7 @@ guardian_santuario_vial.png
 guitarrista_de_dos_puas.png
 gusano_matadero.png
 golem_adoquines.png
+golem_de_chatarra_ferroviaria.png
 hachero_del_litoral.png
 hornero_alambrado.png
 ilusionista_de_la_costanera.png
@@ -294,6 +309,7 @@ martin_fierro.png
 mecanica_del_bajo_puente.png
 mecanico_ruta_40.png
 mecanico_del_viaducto.png
+mensajero_de_la_autopista.png
 mirtha.png
 monigote_alambrado.png
 moria_casan.png
@@ -334,6 +350,8 @@ polinizador_del_ceibo.png
 portador_peste_banado.png
 portera_feria.png
 portera_santuario.png
+preparador_fisico_de_inferiores.png
+productor_de_sala_de_ensayo.png
 promesera_de_lujan.png
 puma_precordillera.png
 puma_de_la_quebrada_alta.png
@@ -356,12 +374,14 @@ roberto_giordano.png
 san_martin.png
 saqueador_del_cementerio_de_trenes.png
 scout_precisa.png
+sepulturero_de_chacarita.png
 sepulturero_turno.png
 sereno_morgue.png
 sereno_estacion.png
 sereno_de_la_usina_cerrada.png
 sereno_faro_viejo.png
 sereno_del_hospital_viejo.png
+sereno_del_mercado_de_frutos.png
 soldador_del_astillero.png
 solo_de_guitarra_en_llamas.png
 sombra_pasillo.png
@@ -398,16 +418,20 @@ angel_descampado.png
 nandu_llanura.png
 aguante_fondo.png
 alarma_vecinal.png
+alarma_de_fabrica.png
 alpargatas.png
+archivo_de_causas_cerradas.png
 asfalto_hirviendo.png
 bengala_cancha.png
 brotacion_terraplen.png
 bufanda_tribuna.png
 cables_pelados_de_dock_sud.png
+cambio_de_administracion.png
 campanas_del_velorio.png
 campera_prestada.png
 cinta_promesa.png
 consejo_cuadra.png
+cooperativa_del_puente_pueyrredon.png
 corriente_subterranea.png
 cuaderno_sepulturero.png
 cumbia.png
@@ -458,6 +482,7 @@ usina_de_costanera_sur.png
 velo_bruma.png
 velorio_bajo_el_ceibo.png
 viento_pampero.png
+vivero_experimental_de_escobar.png
 zona_franca_de_ezeiza.png
 a_cubierto.png
 a_las_chapas.png
@@ -470,6 +495,7 @@ bengala_repuesto.png
 beso_mejilla.png
 bis_del_bandoneon.png
 cacerolazo.png
+cadena_humana.png
 cadena_favores.png
 cambio_de_frecuencia.png
 campanazo_de_alerta.png
@@ -504,6 +530,8 @@ eco_del_bandoneon_mojado.png
 embate_alambrado.png
 enredar_las_ruedas.png
 entre_lineas.png
+envion_del_terraplen.png
+expediente_bajo_tierra.png
 explosion_bengalas.png
 faconazo_del_monte.png
 fernet.png
@@ -516,6 +544,7 @@ impuesto_pais.png
 impuesto_guerra.png
 instinto_desesperado.png
 instinto_manada.png
+interferencia_de_linea.png
 juramento_medias.png
 latigazo_selva.png
 machete_contra_la_enredadera.png
@@ -532,6 +561,7 @@ pacto_desesperado.png
 pacto_final.png
 pacto_salamanca.png
 pacto_sombras.png
+parte_medico_sellado.png
 para_ahi.png
 peaje_rio.png
 petardos_ano_nuevo.png

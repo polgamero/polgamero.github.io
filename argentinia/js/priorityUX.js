@@ -65,7 +65,7 @@ export function getPhaseUxLabel(phase) {
 
 function hasAnyResolutionChoice(state) {
   return !!(
-    state.pendingFightChoice || state.pendingXChoice || state.pendingLoyaltyTargetChoice ||
+    state.pendingLegendChoice || state.pendingTriggerOrderChoice || state.pendingFightChoice || state.pendingXChoice || state.pendingLoyaltyTargetChoice ||
     state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice ||
     state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice ||
     state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || state.pendingEscapeExileChoice ||

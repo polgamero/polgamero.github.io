@@ -1,5 +1,5 @@
 import { logMsg, els, showGameOverOverlay, showGameRewardStatus, render, updateAccountUI, refreshTurnPriorityHudClock, showUntapLandChoiceModal } from './ui.js';
-import { state, queueTriggeredAbilities, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard } from './main.js';
+import { state, queueTriggeredAbilities, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects } from './main.js';
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
@@ -15,6 +15,18 @@ import { clearManaPool, manaPoolTotal, emptyManaPool } from './manaPool.js';
 import { getLandUntapLimit, isLandPreventedFromUntapping, scoreLandForUntap } from './landStax.js';
 import { isLandPermanent } from './permanentTypes.js';
 import { landRulesTextSuppressed } from './landCharacteristics.js';
+import { resolveReplacementEvent } from './replacementEngine.js';
+import { zoneForCardOwner, cardOwnerIsLocal } from './zoneOwnership.js';
+
+function cleanupDiscardDestination(card,isLocal) {
+  const ownerIsLocal=cardOwnerIsLocal(card,!!isLocal,state.currentMatch?.myRole||null);
+  const result=resolveReplacementEvent(state,{type:'zone_change',affectedIsLocal:ownerIsLocal,targetIsLocal:ownerIsLocal,card,targetCard:card,zoneFrom:'hand',zoneTo:'graveyard',cause:'cleanup_discard'});
+  const zoneTo=result.event.zoneTo || 'graveyard';
+  const destination=zoneTo==='exile'
+    ? zoneForCardOwner(card,state.localExile,state.rivalExile,!!isLocal,state.currentMatch?.myRole||null)
+    : zoneForCardOwner(card,state.localGraveyard,state.rivalGraveyard,!!isLocal,state.currentMatch?.myRole||null);
+  return {zoneTo,destination,ownerIsLocal};
+}
 
 export function checkGameOver() {
   // FASE 4, ETAPA 6: gameOver y abandonedBy llegan JUNTOS por sync en el mismo publish
@@ -203,6 +215,10 @@ function awardMatchEndPoints(won) {
 }
 
 // SECUENCIA OFICIAL DE PASOS Y FASES MTG
+// 23.15.3 — los triggers que nacen durante Untap no pueden ir a la pila allí.
+// Se retienen y se agregan al mismo lote AP/NAP que los triggers de comienzo de Upkeep.
+let deferredBeginningPhaseTriggerEntries = [];
+
 const PHASE_SEQUENCE = [
   'untap',
   'upkeep',
@@ -247,6 +263,12 @@ export async function advanceStep() {
   const currentIdx = PHASE_SEQUENCE.indexOf(state.phase);
   let nextPhase = PHASE_SEQUENCE[(currentIdx + 1) % PHASE_SEQUENCE.length];
 
+  // Prevention shields temporales ("previene los próximos N daños") expiran en Cleanup
+  // aunque no hayan llegado a consumirse por completo.
+  if (state.phase === 'cleanup') {
+    state.activeEffects = (state.activeEffects || []).filter(effect => !(effect.effectType === 'prevent_damage' && effect.expiresAtCleanup !== false));
+  }
+
   // Si terminamos cleanup, rotamos el jugador activo al siguiente
   if (state.phase === 'cleanup') {
     state.activePlayer = state.activePlayer === 'local' ? 'rival' : 'local';
@@ -272,23 +294,15 @@ export async function advanceStep() {
     });
   }
 
-  // --- Efecto activo: prevenir el combate completo de este jugador (ej. Cuarentena Total) ---
-  if (nextPhase === 'combat_begin') {
+  // CR 506 — Comienzo de Combate siempre existe, incluso con cero atacantes posibles.
+  // Cuarentena Total impide DECLARAR ataques, no borra la ventana de prioridad de comienzo
+  // de combate. Se consume al intentar pasar de combat_begin a declarar atacantes.
+  if (state.phase === 'combat_begin' && nextPhase === 'combat_attackers') {
     const preventIdx = state.activeEffects.findIndex(e => e.effectType === 'prevent_attack' && e.targetPlayer === state.activePlayer);
     if (preventIdx !== -1) {
-      const effect = state.activeEffects.splice(preventIdx, 1)[0]; // se consume una sola vez
+      const effect = state.activeEffects.splice(preventIdx, 1)[0];
       logMsg(gameText('game.combat.prevented', { source: effect.sourceName, player: state.activePlayer === 'local' ? 'No podés' : `${getRivalName()} no puede` }));
-      nextPhase = 'main2'; // Salta directo a la segunda fase principal
-    }
-  }
-
-  // --- ARREGLO BUG 2: Saltear combate si no hay criaturas viables ---
-  if (nextPhase === 'combat_begin') {
-    const activeBoard = state.activePlayer === 'local' ? state.localCombat : state.rivalCombat;
-    const hasCreatures = activeBoard.some(c => !hasKeyword(c, 'defender'));
-    if (!hasCreatures) {
-      logMsg(gameText('game.combat.skipped'));
-      nextPhase = 'main2'; // Salta directo a la segunda fase principal
+      nextPhase = 'combat_end';
     }
   }
 
@@ -345,6 +359,14 @@ export async function advanceStep() {
   logMsg(gameText('game.turn.step', { owner: state.activePlayer === 'local' ? 'Tu' : `Turno de ${getRivalName()}`, phase: getPhaseName(state.phase) }));
 
   // Lógica de fases automáticas
+  if (state.phase === 'combat_begin') {
+    const isLocal = state.activePlayer === 'local';
+    queueTriggeredAbilities(buildGenericEventTriggerEntries({
+      type:'combat_started', controllerIsLocal:isLocal, actorIsLocal:isLocal,
+      activePlayerIsLocal:isLocal, phase:'combat_begin', cause:'phase_begin'
+    }));
+  }
+
   if (state.phase === 'untap') {
     await executeUntapStep();
     await advanceStep();
@@ -598,6 +620,11 @@ export function beginActivePlayerPriorityWindow() {
 export async function passPriority(player) {
   if (state.gameOver) return;
 
+  // 23.15.1 — las State-Based Actions y sus decisiones reglamentarias ocurren antes de
+  // que cualquier jugador reciba prioridad. No aceptar pases mientras el kernel/los
+  // selectores de Leyenda/orden de triggers estén estabilizando el estado.
+  if (state.pendingLegendChoice || state.pendingTriggerOrderChoice || state.sbaKernelRunning) return;
+
   // NUEVO: Bloqueo de seguridad si hay que descartar
   if (state.isDiscarding) {
     logMsg(gameText('priority.mustDiscard'));
@@ -708,6 +735,15 @@ export async function resolveBothPassed() {
 async function executeUntapStep() {
   const isLocal = state.activePlayer === 'local';
   const lands = isLocal ? state.localLands : state.rivalLands;
+  const combat = isLocal ? state.localCombat : state.rivalCombat;
+  const support = isLocal ? state.localSupport : state.rivalSupport;
+
+  // Beginning-of-turn y untap sí pueden disparar habilidades, pero CR no entrega prioridad
+  // durante Untap. Construimos ahora los entries y recién los apilamos al comenzar Upkeep.
+  deferredBeginningPhaseTriggerEntries = buildGenericEventTriggerEntries({
+    type:'turn_started', controllerIsLocal:isLocal, actorIsLocal:isLocal,
+    activePlayerIsLocal:isLocal, phase:'untap', cause:'turn_begin'
+  });
   const tappedEntries = lands.map((item,index)=>({ item,index })).filter(entry => entry.item.tapped);
   const untappableEntries = tappedEntries.filter(entry => !isLandPreventedFromUntapping(state, entry.item, isLocal));
   const preventedCount = tappedEntries.length - untappableEntries.length;
@@ -734,6 +770,11 @@ async function executeUntapStep() {
     }
   }
   const chosen = new Set(chosenIndexes);
+  const untappedPermanents = [
+    ...lands.map((item,index) => ({ item, willUntap:!!item?.tapped && chosen.has(index) })),
+    ...combat.map(item => ({ item, willUntap:!!item?.tapped })),
+    ...support.map(item => ({ item, willUntap:!!item?.tapped }))
+  ].filter(entry => entry.willUntap && entry.item?.card);
 
   // CR 502.3: la determinación se hace primero y luego todos los permanentes elegidos se
   // enderezan simultáneamente. No mutamos nada mientras el modal de elección está abierto.
@@ -754,6 +795,13 @@ async function executeUntapStep() {
     state.rivalSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });
     state.rivalPlaneswalkers.forEach(pw => { pw.abilityUsedThisTurn = false; });
   }
+  for (const { item } of untappedPermanents) {
+    deferredBeginningPhaseTriggerEntries.push(...buildGenericEventTriggerEntries({
+      type:'permanent_untapped', controllerIsLocal:isLocal, actorIsLocal:isLocal,
+      card:item.card, item, zoneFrom:'battlefield', zoneTo:'battlefield', cause:'untap_step'
+    }));
+  }
+
   if (allowedCount < untappableEntries.length || preventedCount > 0) {
     logMsg(gameText('land.stax.untap.restricted', {
       player:isLocal ? getLocalPlayerName() : getRivalName(), count:chosen.size, total:tappedEntries.length
@@ -775,14 +823,19 @@ function executeUpkeepStep() {
   const support = isLocal ? state.localSupport : state.rivalSupport;
   const lands = isLocal ? state.localLands : state.rivalLands;
   const planeswalkers = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
-  queueTriggeredAbilities(
-    [...combat, ...support, ...lands, ...planeswalkers]
-      .filter(item => item.card?.upkeepTrigger && !(isLandPermanent(item) && landRulesTextSuppressed(state, item, isLocal)))
-      .map(item => ({
-        effect: item.card.upkeepTrigger, sourceCard: item.card, sourceItem: item, isLocal,
-        triggerType: 'upkeep'
-      }))
-  );
+  const entries=[...deferredBeginningPhaseTriggerEntries];
+  deferredBeginningPhaseTriggerEntries = [];
+  entries.push(...[...combat, ...support, ...lands, ...planeswalkers]
+    .filter(item => item.card?.upkeepTrigger && !(isLandPermanent(item) && landRulesTextSuppressed(state, item, isLocal)))
+    .map(item => ({
+      effect: item.card.upkeepTrigger, sourceCard: item.card, sourceItem: item, isLocal,
+      triggerType: 'upkeep'
+    })));
+  entries.push(...buildGenericEventTriggerEntries({
+    type:'upkeep_started', controllerIsLocal:isLocal, actorIsLocal:isLocal,
+    activePlayerIsLocal:isLocal, phase:'upkeep'
+  }));
+  queueTriggeredAbilities(entries);
 }
 
 // Habilidad Disparada por fase con condición opcional (ej. Hinchada Fervorosa: "si atacaste con
@@ -802,6 +855,10 @@ function executeEndStep() {
     if (trig.condition === 'attacked_with_two_or_more' && attackersCount < 2) return;
     entries.push({ effect: trig, sourceCard: item.card, sourceItem: item, isLocal, triggerType: 'end_step' });
   });
+  entries.push(...buildGenericEventTriggerEntries({
+    type:'end_step_started', controllerIsLocal:isLocal, actorIsLocal:isLocal,
+    activePlayerIsLocal:isLocal, phase:'end_step', metadata:{ attackersDeclaredThisTurn:attackersCount }
+  }));
   queueTriggeredAbilities(entries);
 }
 
@@ -809,7 +866,8 @@ function executeDrawStep() {
   const isLocal = state.activePlayer === 'local';
   if (isLocal) {
     if (state.localDeck.length > 0) {
-      state.localHand.push(state.localDeck.pop());
+      const drawnCard=state.localDeck.pop(); state.localHand.push(drawnCard);
+      dispatchGameEvent({type:'card_drawn',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:true,card:drawnCard,zoneFrom:'library',zoneTo:'hand',cause:'draw_step'});
       logMsg(gameText('game.draw.local'));
     } else {
       // Regla real de MTG: intentar robar de una biblioteca vacía es una forma legítima
@@ -821,7 +879,8 @@ function executeDrawStep() {
     }
   } else {
     if (state.rivalDeck.length > 0) {
-      state.rivalHand.push(state.rivalDeck.pop());
+      const drawnCard=state.rivalDeck.pop(); state.rivalHand.push(drawnCard);
+      dispatchGameEvent({type:'card_drawn',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:false,card:drawnCard,zoneFrom:'library',zoneTo:'hand',cause:'draw_step'});
       logMsg(gameText('game.draw.rival'));
     } else {
       logMsg(gameText('game.deckout.rival'));
@@ -863,6 +922,11 @@ async function executeCleanupStep() {
       }
       if (item.isVehicle) {
         const v = combatZone.splice(i, 1)[0];
+        const isLocalVehicle = supportZone === state.localSupport;
+        // Equipment/Auras actuales sólo pueden anexarse a criatura. Cuando el Vehículo deja
+        // de ser criatura en Cleanup, esas anexiones pasan a ser ilegales (CR 704.5m/n).
+        detachEquipmentFrom(v, isLocalVehicle);
+        sendAurasToGraveyard(v, isLocalVehicle);
         v.isVehicle = false;
         delete v.card.power;
         delete v.card.toughness;
@@ -874,6 +938,9 @@ async function executeCleanupStep() {
 
   revertTemporaryCreatures(state.localCombat, state.localSupport, state.localLands);
   revertTemporaryCreatures(state.rivalCombat, state.rivalSupport, state.rivalLands);
+
+  // 23.15.2: los cambios de control 'hasta el final del turno' terminan en Limpieza.
+  expireTemporaryControlEffects();
 
   // Lógica de descarte habitual...
   if (isLocal) {
@@ -889,8 +956,11 @@ async function executeCleanupStep() {
     const rivalExcess = state.rivalHand.length - 7;
     for (let i = 0; i < rivalExcess; i++) {
       const randomIndex = Math.floor(Math.random() * state.rivalHand.length);
-      const discarded = state.rivalHand.splice(randomIndex, 1)[0];
-      state.rivalGraveyard.push(discarded);
+      const discarded = state.rivalHand.splice(randomIndex,1)[0];
+      const plan=cleanupDiscardDestination(discarded,false);
+      plan.destination.push(discarded);
+      dispatchGameEvent({type:'card_discarded',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card:discarded,zoneFrom:'hand',zoneTo:plan.zoneTo,cause:'cleanup_discard'});
+      if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card:discarded,zoneFrom:'hand',zoneTo:'exile',cause:'cleanup_discard'});
       logMsg(gameText('game.handLimit.botDiscard', { card: discarded.name }));
     }
   }
@@ -906,8 +976,11 @@ async function executeCleanupStep() {
 }
 
 export async function handleDiscardClick(index) {
-  const discardedCard = state.localHand.splice(index, 1)[0];
-  state.localGraveyard.push(discardedCard);
+  const discardedCard=state.localHand.splice(index,1)[0];
+  const plan=cleanupDiscardDestination(discardedCard,true);
+  plan.destination.push(discardedCard);
+  dispatchGameEvent({type:'card_discarded',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:plan.ownerIsLocal,card:discardedCard,zoneFrom:'hand',zoneTo:plan.zoneTo,cause:'cleanup_discard'});
+  if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:plan.ownerIsLocal,card:discardedCard,zoneFrom:'hand',zoneTo:'exile',cause:'cleanup_discard'});
   state.cardsToDiscard--;
   
   logMsg(gameText('game.handLimit.selfDiscard', { card: discardedCard.name }));

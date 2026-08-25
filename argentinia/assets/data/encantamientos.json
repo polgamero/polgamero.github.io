@@ -9,7 +9,7 @@
     "colors": [
       "G"
     ],
-    "text": "Ritmo Sabroso: Siempre que una criatura entre al campo de batalla bajo tu control, ganás 1 Punto de Vida.",
+    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, ganás 1 Punto de Vida.",
     "flavorText": "¡Con la fuerza del acordeón!",
     "requiresTarget": false,
     "adjunta": false,
@@ -30,7 +30,7 @@
       "B",
       "W"
     ],
-    "text": "Tango Fatal: Siempre que una criatura que controla tu oponente muera, ese jugador pierde 1 Punto de Vida y vos ganás 1.",
+    "text": "Siempre que una criatura que controla tu oponente muera, ese jugador pierde 1 Punto de Vida y vos ganás 1.",
     "flavorText": "El tango te espera si das un paso en falso.",
     "requiresTarget": false,
     "adjunta": false,
@@ -48,7 +48,7 @@
     "cmc": 2,
     "rarity": "Rare",
     "colors": [],
-    "text": "Recaudación Popular: Al comienzo de tu paso final, si atacaste con dos o más criaturas este turno, robás una carta.",
+    "text": "Al comienzo de tu paso final, si atacaste con dos o más criaturas este turno, robás una carta.",
     "flavorText": "La gente siempre apoya... si hay espectáculo.",
     "requiresTarget": false,
     "adjunta": false,
@@ -70,7 +70,7 @@
       "W",
       "R"
     ],
-    "text": "Elijo Creer: Al comienzo de tu paso de Mantenimiento, robás una carta.",
+    "text": "Al comienzo de tu paso de Mantenimiento, robás una carta.",
     "flavorText": "Hermoso mañana, ¿verdad?",
     "requiresTarget": false,
     "adjunta": false,
@@ -90,7 +90,7 @@
     "colors": [
       "G"
     ],
-    "text": "Efecto estático: Tus criaturas obtienen +1/+1.",
+    "text": "Tus criaturas obtienen +1/+1.",
     "flavorText": "Ninguna fiera del monte anda sola.",
     "requiresTarget": false,
     "adjunta": false,
@@ -112,7 +112,7 @@
     "colors": [
       "U"
     ],
-    "text": "Efecto estático: Tus criaturas tienen Vuela.",
+    "text": "Tus criaturas tienen Vuela.",
     "flavorText": "La llanura entera se levanta con vos.",
     "requiresTarget": false,
     "adjunta": false,
@@ -133,7 +133,7 @@
     "colors": [
       "W"
     ],
-    "text": "Efecto estático: Las criaturas del rival obtienen -1/-1.",
+    "text": "Las criaturas del rival obtienen -1/-1.",
     "flavorText": "A las diez de la noche, que no quede nadie en la calle.",
     "requiresTarget": false,
     "adjunta": false,
@@ -317,7 +317,7 @@
     "colors": [
       "B"
     ],
-    "text": "Efecto estático: Tus criaturas obtienen +0/+1.",
+    "text": "Tus criaturas obtienen +0/+1.",
     "flavorText": "Los del fondo son los que más joden.",
     "image": "aguante_fondo.png",
     "keywords": [],
@@ -357,7 +357,7 @@
     "colors": [
       "R"
     ],
-    "text": "Efecto estático: Tus criaturas obtienen +1/+0.",
+    "text": "Tus criaturas obtienen +1/+0.",
     "flavorText": "Un solo grito, y la valentía se hace realidad.",
     "image": "grito_guerra.png",
     "keywords": [],
@@ -519,7 +519,7 @@
     "colors": [
       "U"
     ],
-    "text": "Siempre que lances un hechizo Instantáneo o Conjuro, Scry 1.",
+    "text": "Siempre que lances un hechizo Instantáneo o Conjuro, Adiviná 1.",
     "flavorText": "Fluye por debajo de todo, sin que nadie la vea pasar.",
     "image": "corriente_subterranea.png",
     "keywords": [],
@@ -1355,5 +1355,127 @@
         "sacrificeSelf": false
       }
     ]
+  },
+  {
+    "id": "ench_064",
+    "name": "Cambio de Administración",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{2}{U}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Encantar criatura que controla un oponente. Controlás la criatura encantada.",
+    "flavorText": "El cartel de la puerta es el mismo. El que firma abajo, no.",
+    "image": "cambio_de_administracion.png",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_rival",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [],
+      "controlAttachedCreature": true
+    }
+  },
+  {
+    "id": "ench_065",
+    "name": "Alarma de Fábrica",
+    "type": "Encantamiento",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que casteás un hechizo que no sea de criatura, Alarma de Fábrica le hace 1 de daño a tu oponente.",
+    "flavorText": "Suena por humo, por chispa y por cualquier cosa que se parezca a una idea.",
+    "image": "alarma_de_fabrica.png",
+    "triggers": [
+      {
+        "event": "spell_cast",
+        "filter": {
+          "controller": "you",
+          "cardType": "noncreature"
+        },
+        "effect": {
+          "type": "damage",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_066",
+    "name": "Vivero Experimental de Escobar",
+    "type": "Encantamiento",
+    "manaCost": "{1}{G}{G/P}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Siempre que otra criatura entre al campo de batalla bajo tu control, poné un contador +1/+1 sobre esa criatura.",
+    "flavorText": "Cada brote sale con una etiqueta distinta y ninguno respeta el tamaño del catálogo.",
+    "image": "vivero_experimental_de_escobar.png",
+    "triggers": [
+      {
+        "event": "creature_entered",
+        "filter": {
+          "controller": "you",
+          "notSelf": true
+        },
+        "effect": {
+          "type": "add_counter",
+          "counterType": "plusOne",
+          "amount": 1
+        },
+        "target": "event"
+      }
+    ]
+  },
+  {
+    "id": "ench_067",
+    "name": "Archivo de Causas Cerradas",
+    "type": "Encantamiento",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Si una carta o ficha fuera a ir a un cementerio desde cualquier parte, exiliala en vez de eso.",
+    "flavorText": "Una vez archivado, el expediente deja de circular incluso entre los muertos.",
+    "image": "archivo_de_causas_cerradas.png",
+    "replacementEffect": {
+      "event": "zone_change_to_graveyard",
+      "scope": "all",
+      "action": "redirect_zone",
+      "replaceZoneTo": "exile"
+    }
+  },
+  {
+    "id": "ench_068",
+    "name": "Cooperativa del Puente Pueyrredón",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Si una fuente fuera a hacerle daño a una criatura que controlás, previene 1 de ese daño.",
+    "flavorText": "Uno sostiene el tablón. Otro sostiene al que sostiene el tablón.",
+    "image": "cooperativa_del_puente_pueyrredon.png",
+    "replacementEffect": {
+      "event": "damage",
+      "scope": "own",
+      "filter": {
+        "cardType": "creature"
+      },
+      "preventAmount": 1
+    }
   }
 ]

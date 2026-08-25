@@ -2,18 +2,18 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal } from './ui.js';
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
 import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, flushPendingGameRewards, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
-import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
+import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks, getTelemetryStatus } from './telemetry.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_BUILD_LABEL, BUILD_MANIFEST_URL, isExactMultiplayerVersionCompatible } from './version.js';
 import { MULTIPLAYER_TEST_DECK_NAME, buildMultiplayerTestDeck } from './testDeck.js';
-import { stampCardOwner, zoneForCardOwner } from './zoneOwnership.js';
+import { stampCardOwner, zoneForCardOwner, cardOwnerIsLocal } from './zoneOwnership.js';
 import { PRIVATE_ZONE_VISIBILITY, PRIVATE_ZONE_FILTERS, buildPrivateZoneOffer, resolvePrivateZoneSelection } from './privateZoneProtocol.js';
 import { isUsernameConfigured } from './usernames.js';
 import { showUsernameSetupModal } from './usernameUI.js';
@@ -30,6 +30,12 @@ import { isLandCard, landGraveyardFilterMatches, hasLandPlayFromGraveyardPermiss
 import { normalizeLandSearchEffect, getLandSearchCandidates, chooseBotLandSearchEntries, shuffleLibraryInPlace } from './landSearch.js';
 import { shouldLandEnterTapped, getLandManaTriggerEntries, getLandManaBonuses } from './landStax.js';
 import { getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities, getEffectiveLandPrintedKeywords, landRulesTextSuppressed, landMatchesEffectiveFilter, getEffectiveLandTypeLine, describeLandTransformation } from './landCharacteristics.js';
+import { evaluateStateBasedActions, hasMechanicalStateActions, SBA_MAX_PASSES } from './rulesKernel.js';
+import { buildApnapTriggerGroups, stackPlacementFromResolutionOrders } from './triggerOrdering.js';
+import { controllerRoleForSide, stampPermanentController, permanentControllerRole, makeControlEffect, addControlEffect, expireEndOfTurnControlEffects, removeSourceBoundControlEffects, deriveNextControlEffectSerial } from './controlEngine.js';
+import { normalizeGameEvent, collectGenericEventMatches } from './eventEngine.js';
+import { applySpellCostModifiers, getSpellPaymentMethods, getConvokeCandidates, applyConvokeToCost, applyDelveToCost, applyPhyrexianLifeToCost, planAutomaticPaymentMethods, parsedManaTotal, costEngineSummary } from './costEngine.js';
+import { resolveReplacementEvent, replacementEngineSummary } from './replacementEngine.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -128,6 +134,152 @@ function scheduleMobileFirebasePrewarm() {
 
 export { logMsg, render } from './ui.js';
 export { parseManaCost, getLandColor, sleep } from './utils.js';
+
+
+function battlefieldControllerRole(isLocal) {
+  return controllerRoleForSide(!!isLocal, state.currentMatch?.myRole || null);
+}
+
+function findBattlefieldItemLocation(item) {
+  const specs = [
+    ['combat', true, state.localCombat], ['combat', false, state.rivalCombat],
+    ['support', true, state.localSupport], ['support', false, state.rivalSupport],
+    ['land', true, state.localLands], ['land', false, state.rivalLands],
+    ['planeswalker', true, state.localPlaneswalkers], ['planeswalker', false, state.rivalPlaneswalkers]
+  ];
+  for (const [zoneName,isLocal,zone] of specs) {
+    const index = zone.indexOf(item);
+    if (index >= 0) return { zoneName, isLocal, zone, index };
+  }
+  return null;
+}
+
+function battlefieldZoneForController(zoneName, isLocal) {
+  if (zoneName === 'combat') return isLocal ? state.localCombat : state.rivalCombat;
+  if (zoneName === 'support') return isLocal ? state.localSupport : state.rivalSupport;
+  if (zoneName === 'land') return isLocal ? state.localLands : state.rivalLands;
+  if (zoneName === 'planeswalker') return isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
+  return null;
+}
+
+function repairCombatLinksAfterControllerMove({ fromIsLocal, fromIndex, zoneName }) {
+  if (zoneName !== 'combat' || fromIndex == null || fromIndex < 0) return;
+  // blockingIndex siempre apunta al índice del atacante del bando activo. Si el permanente
+  // removido pertenecía a ese array, los bloqueadores que lo señalaban dejan de bloquearlo
+  // y los índices mayores se corren una posición por el splice.
+  const removedFromActiveAttackers = (state.activePlayer === 'local' && fromIsLocal) || (state.activePlayer === 'rival' && !fromIsLocal);
+  if (!removedFromActiveAttackers) return;
+  const defenders = fromIsLocal ? state.rivalCombat : state.localCombat;
+  for (const defender of defenders) {
+    const idx = defender?.blockingIndex;
+    if (idx === null || idx === undefined) continue;
+    if (idx === fromIndex) defender.blockingIndex = null;
+    else if (idx > fromIndex) defender.blockingIndex = idx - 1;
+  }
+}
+
+function isRoleLocal(role) {
+  const myRole = state.currentMatch?.myRole || null;
+  if (myRole === 'host' || myRole === 'guest') return role === myRole;
+  return role !== 'rival';
+}
+
+function ensureControlEffectSerialAfterHydration() {
+  const current = Math.max(1, Number(state.controlEffectSerial) || 1);
+  const derived = deriveNextControlEffectSerial(state);
+  state.controlEffectSerial = Math.max(current, derived);
+  return state.controlEffectSerial;
+}
+
+export function changePermanentController(item, toIsLocal, options = {}) {
+  const loc = findBattlefieldItemLocation(item);
+  if (!loc) return false;
+  const myRole = state.currentMatch?.myRole || null;
+  stampCardOwner(item.card, loc.isLocal, myRole);
+  stampPermanentController(item, loc.isLocal, myRole);
+  const previousRole = permanentControllerRole(item, loc.isLocal, myRole);
+  const newRole = battlefieldControllerRole(!!toIsLocal);
+  const effect = makeControlEffect({
+    controllerRole: newRole,
+    duration: options.duration || 'indefinite',
+    sourceId: options.sourceId || null,
+    expiresAtTurn: options.expiresAtTurn ?? (options.duration === 'until_end_of_turn' ? state.turnCount : null),
+    serial: state.controlEffectSerial++
+  });
+  addControlEffect(item, effect);
+  if (loc.isLocal !== !!toIsLocal) {
+    loc.zone.splice(loc.index, 1);
+    repairCombatLinksAfterControllerMove({ fromIsLocal: loc.isLocal, fromIndex: loc.index, zoneName: loc.zoneName });
+    const destination = battlefieldZoneForController(loc.zoneName, !!toIsLocal);
+    destination.push(item);
+  }
+  // 302.6 / LAND 1 — cambiar de controlador reinicia el reloj de control continuo.
+  // `enteredThisTurn` es también el flag histórico que consultan man-lands/Vehículos al
+  // convertirse en criatura; por eso una Tierra/Vehicle robada no puede atacar de inmediato.
+  if (loc.isLocal !== !!toIsLocal) item.enteredThisTurn = true;
+  // 506.4: un permanente que cambia de controlador deja de atacar/bloquear.
+  if (loc.zoneName === 'combat' && loc.isLocal !== !!toIsLocal) {
+    item.isAttacking = false;
+    item.blockingIndex = null;
+    item.attackTarget = null;
+    item.summoningSickness = !hasKeyword(item, 'haste');
+  }
+  if (options.untap) item.tapped = false;
+  if (options.grantHaste && loc.zoneName === 'combat') {
+    item.tempEffects = Array.isArray(item.tempEffects) ? item.tempEffects : [];
+    item.tempEffects.push({ type:'keyword', keyword:'haste', until:'end_of_turn', sourceName: options.sourceName || 'Cambio de control' });
+    item.summoningSickness = false;
+  }
+  item._controllerRole = newRole;
+  logMsg(gameText('control.gained', { card:item.card?.name || gameText('control.permanentFallback'), controller: toIsLocal ? getLocalPlayerName() : getRivalName() }));
+  recordTelemetryEvent('permanent_control_changed', { card:item.card?.name || null, previousRole, newRole, duration:effect.duration, zone:loc.zoneName });
+  return true;
+}
+
+function relocatePermanentToEffectiveController(item) {
+  const loc = findBattlefieldItemLocation(item);
+  if (!loc) return false;
+  const role = permanentControllerRole(item, loc.isLocal, state.currentMatch?.myRole || null);
+  const shouldLocal = isRoleLocal(role);
+  if (shouldLocal === loc.isLocal) return false;
+  loc.zone.splice(loc.index,1);
+  repairCombatLinksAfterControllerMove({ fromIsLocal: loc.isLocal, fromIndex: loc.index, zoneName: loc.zoneName });
+  battlefieldZoneForController(loc.zoneName, shouldLocal).push(item);
+  item.enteredThisTurn = true;
+  if (loc.zoneName === 'combat') {
+    item.isAttacking=false;
+    item.blockingIndex=null;
+    item.attackTarget=null;
+    item.summoningSickness = !hasKeyword(item,'haste');
+  }
+  return true;
+}
+
+export function removeControlEffectFromPermanent(item, sourceId, { silent = false } = {}) {
+  const before = findBattlefieldItemLocation(item);
+  if (!before) return false;
+  const removed = removeSourceBoundControlEffects(item, sourceId);
+  if (!removed.length) return false;
+  const moved = relocatePermanentToEffectiveController(item);
+  if (!silent) logMsg(gameText('control.auraEnded', { card:item.card?.name || gameText('control.permanentFallback') }));
+  return moved || true;
+}
+
+export function expireTemporaryControlEffects() {
+  const all=[...state.localCombat,...state.rivalCombat,...state.localSupport,...state.rivalSupport,...state.localLands,...state.rivalLands,...state.localPlaneswalkers,...state.rivalPlaneswalkers];
+  const unique=[...new Set(all)];
+  let changed=0;
+  for (const item of unique) {
+    const beforeRole = permanentControllerRole(item, !!findBattlefieldItemLocation(item)?.isLocal, state.currentMatch?.myRole || null);
+    const removed=expireEndOfTurnControlEffects(item,state.turnCount);
+    if (!removed.length) continue;
+    const moved=relocatePermanentToEffectiveController(item);
+    const after=findBattlefieldItemLocation(item);
+    if (moved && after) logMsg(gameText('control.returned', { card:item.card?.name || gameText('control.permanentFallback'), controller: after.isLocal ? getLocalPlayerName() : getRivalName() }));
+    if (beforeRole !== permanentControllerRole(item, after?.isLocal ?? true, state.currentMatch?.myRole || null)) changed++;
+  }
+  return changed;
+}
 export { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, beginActivePlayerPriorityWindow } from './turnManager.js';
 
 export const state = {
@@ -207,6 +359,13 @@ export const state = {
   // 23.7.2: barrera puramente local hasta que ambos clientes terminaron deck+mulligan.
   multiplayerWaitingForReady: false,
   autoZeroBlockersQueued: false,
+  // 23.15.1 — decisiones reglamentarias sin prioridad.
+  pendingLegendChoice: null,
+  pendingTriggerOrderChoice: null,
+  sbaKernelRunning: false,
+  sbaHeldTriggerBatches: [],
+  // 23.15.2.1 — serial local monotónico; tras hydrate/F5 se eleva por encima de todos los efectos persistidos.
+  controlEffectSerial: 1,
 
   localHP: 20,
   // Veneno (regla real 104.3c, junto a Infectar en 702.90): condición de derrota
@@ -330,6 +489,7 @@ export const state = {
   // el que viaja con el ítem de la pila para saber, al resolver, si hay que aplicar el
   // bonus del Kicker.
   pendingKickerChoice: null,
+  pendingKickerResolutionContinuation: null,
   pendingKicked: null,
   // Flashback/Escape: 'flashback' o 'escape' mientras se está pagando una carta lanzada
   // desde el cementerio por esa vía — se adjunta al ítem de la pila para saber, al resolver,
@@ -768,6 +928,7 @@ async function resumeSoloRecoveryGame(candidate) {
   }
 
   const restoredStack = restoreSoloRecoveryState(candidate, state);
+  ensureControlEffectSerialAfterHydration();
   replaceSpellStackFromSync(restoredStack);
   const nextSegment = Math.max(1, Number(candidate.segmentIndex) || 1) + 1;
   startTelemetrySession({
@@ -2024,15 +2185,17 @@ async function commitLandSearchEntries({ ownerIsLocal, entries, spec, cardName }
     // Si una instrucción encuentra varias Tierras, entran como un mismo evento. Determinamos
     // TODOS los replacement effects antes de poner la primera en mesa; así una Tierra Stax
     // que forma parte del mismo lote no empieza a modificar artificialmente a sus compañeras.
-    const entering = cardsInSelectionOrder.map(landCard => ({
-      card:landCard,
-      item:{
+    const entering = cardsInSelectionOrder.map(landCard => {
+      stampCardOwner(landCard, ownerIsLocal, state.currentMatch?.myRole || null);
+      const landItem = {
         card:landCard,
         tapped:landEntersTappedForBattlefield(landCard, ownerIsLocal, spec.destination === 'battlefield_tapped'),
         enteredThisTurn:true,
         permanentTypes:['land']
-      }
-    }));
+      };
+      stampPermanentController(landItem, ownerIsLocal, state.currentMatch?.myRole || null);
+      return { card:landCard, item:landItem };
+    });
     entering.forEach(entry => lands.push(entry.item));
     // Cada entrada genera su propio evento Landfall, pero todos los permanentes del lote ya
     // están presentes cuando se detectan esos triggers.
@@ -2229,7 +2392,18 @@ async function discardCardsFromHandNow(options) {
   // el array y las mecánicas que miran "lo más reciente" conservan un orden determinista.
   removed.sort((a, b) => a.originalIndex - b.originalIndex);
   const discardedCards = removed.map(entry => entry.card);
-  graveyard.push(...discardedCards);
+  for (const discardedCard of discardedCards) {
+    const plan=replacementCardZonePlan(discardedCard,victimIsLocal,'hand','graveyard',reason);
+    plan.destination.push(discardedCard);
+    dispatchGameEvent({
+      type:'card_discarded', controllerIsLocal:victimIsLocal, actorIsLocal:victimIsLocal,
+      ownerIsLocal:plan.ownerIsLocal, card:discardedCard, zoneFrom:'hand', zoneTo:plan.zoneTo, cause:reason
+    });
+    if(plan.zoneTo==='exile') dispatchGameEvent({
+      type:'card_exiled',controllerIsLocal:victimIsLocal,actorIsLocal:victimIsLocal,ownerIsLocal:plan.ownerIsLocal,
+      card:discardedCard,zoneFrom:'hand',zoneTo:'exile',cause:reason
+    });
+  }
   return { completed: !requireExact || discardedCards.length === amount, discardedCards, discardedNames: discardedCards.map(c => c.name) };
 }
 
@@ -2280,6 +2454,20 @@ export function getCastingManaCostString(card, options = {}) {
   const base = useAlternative ? (alt?.manaCost || null) : (baseOverride ?? card?.manaCost ?? null);
   const kicker = kicked ? card?.kicker?.cost : null;
   return combineManaCostStrings(base, kicker, add?.manaCost || null);
+}
+
+
+// 23.15.4 — CR 601.2f. El string anterior describe base/alternativa + Kicker + adicionales;
+// esta función convierte esa ruta en el coste FINAL bloqueable, incluyendo X y todos los
+// aumentos/reducciones/floors activos del battlefield. Es la única frontera que humano/Tano
+// deben consultar antes de decidir cómo pagarlo.
+export function getFinalCastingManaCost(card, options = {}) {
+  const manaString = getCastingManaCostString(card, options);
+  const baseCost = parseManaCost(manaString);
+  if (manaString?.includes('{X}')) baseCost.generic += Math.max(0, Math.floor(Number(options.xValue) || 0));
+  const casterIsLocal = options.isLocal !== false;
+  const result = applySpellCostModifiers(state, card, casterIsLocal, baseCost, options);
+  return { ...result, manaString, baseCost };
 }
 
 function canAssignDistinctResources(resources, requirements, matches) {
@@ -2477,6 +2665,7 @@ function commitCastCompositeNonManaCosts(card, isLocal, prepared, useAlternative
 
   if (bundle.life > 0) {
     if (isLocal) state.localHP -= bundle.life; else state.rivalHP -= bundle.life;
+    dispatchGameEvent({type:'life_lost',controllerIsLocal:isLocal,actorIsLocal:isLocal,targetPlayerIsLocal:isLocal,amount:bundle.life,cause:'cost'});
   }
 
   if (selectedDiscards.length) {
@@ -2484,7 +2673,18 @@ function commitCastCompositeNonManaCosts(card, isLocal, prepared, useAlternative
     const removed = [];
     entries.forEach(e => { if (e.index >= 0) removed.push({ card:hand.splice(e.index,1)[0], index:e.index }); });
     removed.sort((a,b) => a.index-b.index);
-    grave.push(...removed.map(e => e.card));
+    removed.forEach(({card:discardedCard}) => {
+      const plan=replacementCardZonePlan(discardedCard,isLocal,'hand','graveyard','cost');
+      plan.destination.push(discardedCard);
+      dispatchGameEvent({
+        type:'card_discarded',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:plan.ownerIsLocal,
+        card:discardedCard,zoneFrom:'hand',zoneTo:plan.zoneTo,cause:'cost'
+      },{forceDeferNormalTriggers:true});
+      if(plan.zoneTo==='exile') dispatchGameEvent({
+        type:'card_exiled',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:plan.ownerIsLocal,
+        card:discardedCard,zoneFrom:'hand',zoneTo:'exile',cause:'cost'
+      },{forceDeferNormalTriggers:true});
+    });
   }
 
   // Exilio antes que sacrificio: performSacrificeBatch puede disparar triggers de muerte
@@ -2496,6 +2696,10 @@ function commitCastCompositeNonManaCosts(card, isLocal, prepared, useAlternative
       if (idx !== -1) grave.splice(idx,1);
     });
     exile.push(...selectedGraveyard);
+    selectedGraveyard.forEach(exiledCard => dispatchGameEvent({
+      type:'card_exiled',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,
+      card:exiledCard,zoneFrom:'graveyard',zoneTo:'exile',cause:'cost'
+    }));
   }
 
   if (selectedSacrifices.length) performSacrificeBatch(selectedSacrifices, isLocal);
@@ -2543,7 +2747,33 @@ function chooseLocalSacrificeForEffect(permanentType, amount, cardName) {
 // según el tipo. El patrón (aplicar/mostrar lo que corresponda, y al final llamar a
 // respondToDecision) es el mismo para cualquier tipo nuevo.
 function handleIncomingDecisionRequest(decision) {
-  if (decision.type === 'private_zone_offer') {
+  if (decision.type === 'legend_choice') {
+    state.respondingToDecision = true;
+    (async()=>{
+      try {
+        const all=[...state.localCombat,...state.localSupport,...state.localLands,...state.localPlaneswalkers];
+        const candidates=all.filter(item=>item?.card?.name===decision.cardName);
+        const entries=candidates.map(item=>{ const loc=findBattlefieldItemLocation(item); return {item,card:item.card,zone:loc?.zoneName||'combat',index:loc?.index??-1,isLocal:true}; });
+        const chosen=entries.length>1 ? await showLegendRuleChoiceModal(entries,decision.cardName) : entries[0];
+        const responseIndex=Math.max(0,entries.indexOf(chosen));
+        state.respondingToDecision=false; render();
+        respondToDecision(decision.requestId,{completed:true,index:responseIndex,syncObjectId:chosen?.item?._syncObjectId||null});
+      }catch(err){ state.respondingToDecision=false; render(); respondToDecision(decision.requestId,{completed:false,index:0}); }
+    })();
+  } else if (decision.type === 'trigger_order') {
+    state.respondingToDecision=true;
+    (async()=>{
+      const entries=(decision.entries||[]).map((entry,index)=>({
+        _remoteIndex:Number(entry.id ?? index), isLocal:true,
+        sourceCard:{name:entry.sourceName||'Habilidad'}, triggerType:entry.triggerLabel||'trigger', effect:{type:'noop'}
+      }));
+      try{
+        const ordered=entries.length>1 ? await showTriggerOrderModal(entries) : entries;
+        state.respondingToDecision=false; render();
+        respondToDecision(decision.requestId,{completed:true,order:ordered.map(e=>e._remoteIndex)});
+      }catch(err){ state.respondingToDecision=false; render(); respondToDecision(decision.requestId,{completed:false,order:entries.map(e=>e._remoteIndex)}); }
+    })();
+  } else if (decision.type === 'private_zone_offer') {
     state.respondingToDecision = true;
     render();
     (async () => {
@@ -2690,8 +2920,9 @@ function handleIncomingDecisionRequest(decision) {
     try {
       const target = deserializeStackTarget(decision.target, state, state.currentMatch?.myRole);
       const targetItem = target?.item || null;
-      const idx = targetItem ? state.localCombat.indexOf(targetItem) : -1;
-      if (idx === -1 || target?.type !== 'creature' || target?.isLocal !== true || targetItem?._syncTombstone) {
+      const loc = targetItem ? findBattlefieldItemLocation(targetItem) : null;
+      const ownerIsLocal = targetItem ? cardOwnerIsLocal(targetItem.card, loc?.isLocal ?? true, state.currentMatch?.myRole || null) : false;
+      if (!loc || target?.type !== 'creature' || !ownerIsLocal || targetItem?._syncTombstone) {
         state.respondingToDecision = false;
         render();
         respondToDecision(decision.requestId, {
@@ -2702,9 +2933,10 @@ function handleIncomingDecisionRequest(decision) {
         return;
       }
 
-      state.localCombat.splice(idx, 1);
-      detachEquipmentFrom(targetItem, true);
-      sendAurasToGraveyard(targetItem, true);
+      loc.zone.splice(loc.index, 1);
+      repairCombatLinksAfterControllerMove({ fromIsLocal: loc.isLocal, fromIndex: loc.index, zoneName: loc.zoneName });
+      detachEquipmentFrom(targetItem, loc.isLocal);
+      sendAurasToGraveyard(targetItem, loc.isLocal);
       cleanupIfVehicle(targetItem);
       const movedCard = targetItem.card;
       if (!movedCard?.isToken) state.localHand.push(movedCard);
@@ -2885,8 +3117,11 @@ function handleIncomingDecisionRequest(decision) {
     const discarded = removeRandomCardsFromHand(state.localHand, decision.amount);
     const discardedNames = [];
     discarded.forEach(card => {
-      state.localGraveyard.push(card);
+      const plan=replacementCardZonePlan(card,true,'hand','graveyard','forced_discard');
+      plan.destination.push(card);
       discardedNames.push(card.name);
+      dispatchGameEvent({type:'card_discarded',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:plan.ownerIsLocal,card,zoneFrom:'hand',zoneTo:plan.zoneTo,cause:'forced_discard'});
+      if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:plan.ownerIsLocal,card,zoneFrom:'hand',zoneTo:'exile',cause:'forced_discard'});
     });
     logMsg(discardedNames.length > 0
       ? gameText('discard.remote.random', { card: decision.cardName, cards: discardedNames.join(', ') })
@@ -3066,6 +3301,7 @@ export function startListeningToMatch(matchId, myRole) {
     remoteSyncApplyDepth++;
     try {
       Object.assign(state, incoming);
+      ensureControlEffectSerialAfterHydration();
       if ((!effectiveTouchedKeys || effectiveTouchedKeys.has('priorityClockSerial')) && Number.isFinite(Number(publicDoc.priorityClockSerial))) {
         syncPriorityClockFromNetwork({
           serial: Number(publicDoc.priorityClockSerial),
@@ -3161,6 +3397,7 @@ export function reconstructStateFromMatch(publicDoc, privateDoc, myRole) {
   state.localDeck = privateDoc.deck || [];
   if (!state.localManaPool) state.localManaPool = emptyManaPool();
   if (!state.rivalManaPool) state.rivalManaPool = emptyManaPool();
+  ensureControlEffectSerialAfterHydration();
   relinkEquipmentAttachments(state);
   lastKnownPublicWire = wireClone(publicDoc || {});
   lastKnownPrivateWire = wireClone(privateDoc || {});
@@ -3478,10 +3715,10 @@ function controllerAllowsTargetSide(rules, targetKind, targetIsLocal, controller
 }
 
 export function isResolvedEffectTargetLegal(targetObj, options) {
-  if (!targetObj || !options?.effect) return false;
+  if (!targetObj || (!options?.effect && !options?.cardLike)) return false;
   const controllerIsLocal = options.controllerIsLocal !== false;
-  const sourceCard = options.sourceCard || { name: options.cardName || 'Efecto', colors: [] };
-  const cardLike = resolvedEffectTargetCard(sourceCard, options.effect, options.cardName);
+  const sourceCard = options.sourceCard || options.cardLike || { name: options.cardName || 'Efecto', colors: [] };
+  const cardLike = options.cardLike || resolvedEffectTargetCard(sourceCard, options.effect, options.cardName);
   const rules = getTargetRules(cardLike);
 
   if (!controllerAllowsTargetSide(rules, targetObj.type, targetObj.isLocal, controllerIsLocal)) return false;
@@ -3497,13 +3734,15 @@ export function isResolvedEffectTargetLegal(targetObj, options) {
     if (targetObj.isLocal !== controllerIsLocal && hasKeyword(unit, 'hexproof')) return false;
     if (getProtectionMatch(unit, sourceCard.colors || [])) return false;
     if (rules.creatureFilter && !unit.card.type.includes(rules.creatureFilter)) return false;
-    if (options.effect.type === 'grant_keyword_temp' && options.effect.keyword && hasKeyword(unit, options.effect.keyword)) return false;
+    if (options.effect?.type === 'grant_keyword_temp' && options.effect.keyword && hasKeyword(unit, options.effect.keyword)) return false;
     return true;
   }
 
   if (targetObj.type === 'permanent') {
     const zone = targetObj.isLocal ? state.localSupport : state.rivalSupport;
     if (!targetObj.item || !zone.includes(targetObj.item)) return false;
+    if (targetObj.isLocal !== controllerIsLocal && hasKeyword(targetObj.item, 'hexproof')) return false;
+    if (getProtectionMatch(targetObj.item, sourceCard.colors || [])) return false;
     return !rules.permanentFilter || targetObj.item.card.type.includes(rules.permanentFilter);
   }
 
@@ -3518,7 +3757,10 @@ export function isResolvedEffectTargetLegal(targetObj, options) {
 
   if (targetObj.type === 'planeswalker') {
     const zone = targetObj.isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
-    return !!targetObj.item && zone.includes(targetObj.item);
+    if (!targetObj.item || !zone.includes(targetObj.item)) return false;
+    if (targetObj.isLocal !== controllerIsLocal && hasKeyword(targetObj.item, 'hexproof')) return false;
+    if (getProtectionMatch(targetObj.item, sourceCard.colors || [])) return false;
+    return true;
   }
 
   return targetObj.type === 'player';
@@ -3622,48 +3864,32 @@ function chooseBotResolvedEffectTarget(candidates, options) {
 function serializeResolvedEffectTarget(targetObj) {
   if (!targetObj || !state.currentMatch) return null;
   const myRole = state.currentMatch.myRole;
-  const ownerRole = targetObj.isLocal ? myRole : otherRole(myRole);
-  if (targetObj.type === 'player') return { type: 'player', ownerRole };
-  const zone = targetObj.type === 'creature'
-    ? (targetObj.isLocal ? state.localCombat : state.rivalCombat)
-    : targetObj.type === 'permanent'
-      ? (targetObj.isLocal ? state.localSupport : state.rivalSupport)
-      : targetObj.type === 'land'
-        ? ((targetObj.isLocal ? state.localLands : state.rivalLands).includes(targetObj.item)
-            ? (targetObj.isLocal ? state.localLands : state.rivalLands)
-            : (targetObj.isLocal ? state.localCombat : state.rivalCombat))
-        : (targetObj.isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers);
-  const index = targetObj.index ?? zone.indexOf(targetObj.item);
-  if (index < 0) return null;
-  return {
-    type: targetObj.type,
-    ownerRole,
-    zone: targetObj.type === 'land' ? ((targetObj.isLocal ? state.localLands : state.rivalLands).includes(targetObj.item) ? 'lands' : 'combat') : undefined,
-    index,
-    cardId: targetObj.item?.card?.id || null,
-    cardName: targetObj.item?.card?.name || null
-  };
+  if (targetObj.type === 'player') {
+    return { type:'player', ownerRole: targetObj.isLocal ? myRole : otherRole(myRole) };
+  }
+  const ref = serializeBoardItemRef(targetObj.item, state, myRole);
+  if (!ref) return null;
+  return { ...ref, type: targetObj.type };
 }
 
 function deserializeResolvedEffectTarget(descriptor) {
   if (!descriptor || !state.currentMatch) return null;
-  const isLocal = descriptor.ownerRole === state.currentMatch.myRole;
-  if (descriptor.type === 'player') return { type: 'player', isLocal };
-  const zone = descriptor.type === 'creature'
-    ? (isLocal ? state.localCombat : state.rivalCombat)
-    : descriptor.type === 'permanent'
-      ? (isLocal ? state.localSupport : state.rivalSupport)
-      : descriptor.type === 'land'
-        ? (descriptor.zone === 'combat' ? (isLocal ? state.localCombat : state.rivalCombat) : (isLocal ? state.localLands : state.rivalLands))
-        : descriptor.type === 'planeswalker'
-          ? (isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers)
-          : null;
-  if (!zone) return null;
-  const item = zone[descriptor.index];
+  const myRole = state.currentMatch.myRole;
+  if (descriptor.type === 'player') return { type:'player', isLocal: descriptor.ownerRole === myRole };
+
+  // Compatibilidad con descriptors 23.15.2 que todavía omitían `zone` salvo en Tierras.
+  const normalized = { ...descriptor };
+  if (!normalized.zone) {
+    if (normalized.type === 'creature') normalized.zone = 'combat';
+    else if (normalized.type === 'permanent') normalized.zone = 'support';
+    else if (normalized.type === 'planeswalker') normalized.zone = 'planeswalkers';
+    else if (normalized.type === 'land') normalized.zone = descriptor.zone === 'combat' ? 'combat' : 'lands';
+  }
+  const item = deserializeBoardItemRef(normalized, state, myRole);
   if (!item) return null;
-  if (descriptor.cardId && item.card?.id && descriptor.cardId !== item.card.id) return null;
-  if (!descriptor.cardId && descriptor.cardName && item.card?.name !== descriptor.cardName) return null;
-  return { type: descriptor.type, isLocal, index: descriptor.index, item };
+  const loc = findBattlefieldItemLocation(item);
+  if (!loc) return null;
+  return { type: descriptor.type, isLocal: loc.isLocal, index: loc.index, item };
 }
 
 function finishPendingResolvedEffectTarget(targetObj) {
@@ -3772,26 +3998,42 @@ export function getSacrificeEffectCandidates(isLocal, permanentType) {
 // API histórica: un solo permanente. Se mantiene independiente para no cambiar ninguna
 // ruta preexistente; comparte exactamente las reglas de salida con el nuevo batch.
 export function performSacrifice(item, isLocal) {
+  const genericWatchersSnapshot=genericBattlefieldWatchers();
   const zones = isLocal
     ? [state.localCombat, state.localSupport, state.localLands]
     : [state.rivalCombat, state.rivalSupport, state.rivalLands];
-  const grave = isLocal ? state.localGraveyard : state.rivalGraveyard;
 
   for (const zone of zones) {
     const idx = zone.indexOf(item);
     if (idx === -1) continue;
     const isCreatureZone = (zone === state.localCombat || zone === state.rivalCombat);
+    const exitPlan = replacementExitPlan(item,isLocal,'sacrifice','graveyard');
     zone.splice(idx, 1);
     if (isCreatureZone) {
       detachEquipmentFrom(item, isLocal);
       sendAurasToGraveyard(item, isLocal);
       cleanupIfVehicle(item);
     }
-    moveBattlefieldCardToZone(item.card, grave);
+    moveBattlefieldCardToZone(item.card, exitPlan.destination);
     logMsg(gameText('sacrifice.self', { card: item.card.name, token: item.card.isToken ? gameText('sacrifice.tokenSuffix') : '' }));
-    if (isCreatureZone) {
-      triggerCreatureDies(item, isLocal);
-      triggerAnyCreatureDeath(item, isLocal);
+    const sacrificeEntries = buildGenericEventTriggerEntries({
+      type:'permanent_sacrificed', controllerIsLocal:isLocal, actorIsLocal:isLocal,
+      ownerIsLocal:cardOwnerIsLocal(item.card,isLocal,state.currentMatch?.myRole||null),
+      card:item.card, item, zoneFrom:'battlefield', zoneTo:exitPlan.zoneTo, cause:'sacrifice'
+    }, {watchersSnapshot:genericWatchersSnapshot});
+    if (exitPlan.zoneTo==='exile') sacrificeEntries.push(...buildGenericEventTriggerEntries({
+      type:'card_exiled',controllerIsLocal:isLocal,actorIsLocal:isLocal,
+      ownerIsLocal:cardOwnerIsLocal(item.card,isLocal,state.currentMatch?.myRole||null),
+      card:item.card,item,zoneFrom:'battlefield',zoneTo:'exile',cause:'replacement'
+    }, {watchersSnapshot:genericWatchersSnapshot}));
+    if (isCreatureZone && exitPlan.zoneTo==='graveyard') {
+      const deathWatchersSnapshot = genericWatchersSnapshot
+        .filter(entry => state.localCombat.includes(entry.item) || state.rivalCombat.includes(entry.item) || entry.item === item)
+        .map(entry => ({ unit: entry.item, isLocal: entry.isLocal }));
+      queueCreatureDeathBatch([{ unit:item, isLocal }], deathWatchersSnapshot, sacrificeEntries);
+    } else if (sacrificeEntries.length) {
+      if (shouldDeferLandManaTriggers()) state.deferredLandManaTriggers.push(...sacrificeEntries);
+      else queueTriggeredAbilities(sacrificeEntries);
     }
     return true;
   }
@@ -3809,38 +4051,55 @@ export function performSacrificeBatch(items, isLocal) {
     ? [state.localCombat, state.localSupport, state.localLands]
     : [state.rivalCombat, state.rivalSupport, state.rivalLands];
   const combat = isLocal ? state.localCombat : state.rivalCombat;
-  const grave = isLocal ? state.localGraveyard : state.rivalGraveyard;
   const deathWatchersSnapshot = [
     ...state.localCombat.map(unit => ({ unit, isLocal: true })),
     ...state.rivalCombat.map(unit => ({ unit, isLocal: false }))
   ];
+  const genericWatchersSnapshot=genericBattlefieldWatchers();
+  const sacrificeTriggerEntries=[];
+
+  // Los replacement effects de una instrucción simultánea se determinan antes de mover
+  // el primer permanente, para que una fuente que también se sacrifica vea todo el lote.
+  const planned=[];
+  for (const item of uniqueItems) {
+    let foundZone=null, idx=-1;
+    for (const zone of zones) { idx=zone.indexOf(item); if(idx!==-1){foundZone=zone;break;} }
+    if(!foundZone) continue;
+    planned.push({item,foundZone,isCreature:foundZone===combat,exitPlan:replacementExitPlan(item,isLocal,'sacrifice','graveyard')});
+  }
 
   const removed = [];
-  for (const item of uniqueItems) {
-    let foundZone = null;
-    let idx = -1;
-    for (const zone of zones) {
-      idx = zone.indexOf(item);
-      if (idx !== -1) { foundZone = zone; break; }
-    }
-    if (!foundZone) continue;
-
-    const isCreatureZone = foundZone === combat;
-    foundZone.splice(idx, 1);
-    if (isCreatureZone) {
+  for (const plan of planned) {
+    const {item,foundZone,isCreature,exitPlan}=plan;
+    const idx=foundZone.indexOf(item); if(idx===-1) continue;
+    foundZone.splice(idx,1);
+    if (isCreature) {
       detachEquipmentFrom(item, isLocal);
       sendAurasToGraveyard(item, isLocal);
       cleanupIfVehicle(item);
     }
-    moveBattlefieldCardToZone(item.card, grave);
-    removed.push({ item, isCreature: isCreatureZone });
+    moveBattlefieldCardToZone(item.card, exitPlan.destination);
+    removed.push({ item, isCreature, zoneTo:exitPlan.zoneTo });
     logMsg(gameText('sacrifice.self', { card: item.card.name, token: item.card.isToken ? gameText('sacrifice.tokenSuffix') : '' }));
+    sacrificeTriggerEntries.push(...buildGenericEventTriggerEntries({
+      type:'permanent_sacrificed', controllerIsLocal:isLocal, actorIsLocal:isLocal,
+      ownerIsLocal:cardOwnerIsLocal(item.card,isLocal,state.currentMatch?.myRole||null),
+      card:item.card, item, zoneFrom:'battlefield', zoneTo:exitPlan.zoneTo, cause:'sacrifice'
+    }, {watchersSnapshot:genericWatchersSnapshot}));
+    if(exitPlan.zoneTo==='exile') sacrificeTriggerEntries.push(...buildGenericEventTriggerEntries({
+      type:'card_exiled',controllerIsLocal:isLocal,actorIsLocal:isLocal,
+      ownerIsLocal:cardOwnerIsLocal(item.card,isLocal,state.currentMatch?.myRole||null),
+      card:item.card,item,zoneFrom:'battlefield',zoneTo:'exile',cause:'replacement'
+    }, {watchersSnapshot:genericWatchersSnapshot}));
   }
 
-  queueCreatureDeathBatch(
-    removed.filter(entry => entry.isCreature).map(entry => ({ unit: entry.item, isLocal })),
-    deathWatchersSnapshot
-  );
+  const deadEntries = removed.filter(entry => entry.isCreature && entry.zoneTo==='graveyard').map(entry => ({ unit: entry.item, isLocal }));
+  if (deadEntries.length) {
+    queueCreatureDeathBatch(deadEntries, deathWatchersSnapshot, sacrificeTriggerEntries);
+  } else if (sacrificeTriggerEntries.length) {
+    if (shouldDeferLandManaTriggers()) state.deferredLandManaTriggers.push(...sacrificeTriggerEntries);
+    else queueTriggeredAbilities(sacrificeTriggerEntries);
+  }
   return removed.map(entry => entry.item);
 }
 
@@ -3886,47 +4145,440 @@ const TRIGGER_LABELS = {
   attack: 'al atacar', any_creature_attacks: 'ataque', block: 'al bloquear',
   combat_damage: 'daño de combate', upkeep: 'mantenimiento', end_step: 'paso final',
   land_tapped_for_mana: gameText('land.stax.triggerLabel'),
-  reanimate_etb: 'ETB reanimado', return_etb: 'ETB al volver'
+  reanimate_etb: 'ETB reanimado', return_etb: 'ETB al volver',
+  permanent_entered: 'entrada de permanente', creature_entered: 'entrada de criatura',
+  land_entered: 'entrada de Tierra', creature_died: 'muerte de criatura',
+  spell_cast_generic: 'hechizo casteado', attack_declared: 'ataque declarado',
+  block_declared: 'bloqueo declarado', combat_damage_dealt: 'daño de combate',
+  upkeep_started: 'mantenimiento', end_step_started: 'paso final',
+  card_drawn: 'robo de carta', card_discarded: 'descarte', permanent_sacrificed: 'sacrificio',
+  life_gained: 'vida ganada', life_lost: 'vida perdida', counter_added: 'contador agregado',
+  token_created: 'ficha creada', permanent_tapped: 'permanente girado', spell_countered: 'hechizo contrarrestado'
 };
 
-export function queueTriggeredAbility({
-  effect, sourceCard, sourceItem = null, isLocal = true, triggerType = 'trigger',
-  targetObj = null, selfTarget = false, eventCard = null, eventItem = null
-} = {}) {
-  if (!effect || !effect.type || !sourceCard) return null;
+let triggerOrderingChain = Promise.resolve();
+let sbaLegendChoiceMemory = new Map();
+
+function enqueueTriggerStackItem(entry) {
+  if (!entry?.effect || !entry?.sourceCard) return null;
+  const triggerType = entry.triggerType || 'trigger';
   const triggerLabel = TRIGGER_LABELS[triggerType] || triggerType;
   const stackItem = {
-    card: sourceCard,
-    isLocal,
-    targetObj,
-    type: 'ability',
-    abilityKind: 'triggered',
-    triggerType,
-    triggerLabel,
-    ability: { effect: { ...effect } },
+    card: entry.sourceCard,
+    isLocal: entry.isLocal !== false,
+    targetObj: entry.targetObj || null,
+    type: 'ability', abilityKind: 'triggered', triggerType, triggerLabel,
+    ability: { effect: { ...entry.effect } },
     source: {
-      type: 'triggered', triggerType, sourceItem, sourceCardId: sourceCard.id || null,
-      selfTarget: !!selfTarget, eventCard: eventCard || null, eventItem: eventItem || null
+      type:'triggered', triggerType, sourceItem:entry.sourceItem || null,
+      sourceCardId:entry.sourceCard.id || null, selfTarget:!!entry.selfTarget,
+      eventCard:entry.eventCard || null, eventItem:entry.eventItem || null
     }
   };
   addToStack(stackItem);
-  state.triggerStackSerial = (state.triggerStackSerial || 0) + 1;
-  // Un trigger nuevo invalida pases previos: nadie puede haber pasado respecto de un objeto
-  // que todavía no existía. Esto es crítico cuando los bloqueadores se declararon tras un pase.
-  state.consecutivePasses = 0;
+  state.triggerStackSerial=(state.triggerStackSerial||0)+1;
+  state.consecutivePasses=0;
   return stackItem;
 }
 
-// AP/NAP simplificado para un lote detectado como simultáneo: el jugador activo coloca
-// primero sus disparos y el no-activo después, por lo que los del no-activo quedan arriba.
-// Como la Stack es LIFO, invertimos cada grupo al INSERTAR para que, sin UI manual de orden,
-// la resolución dentro de cada controlador conserve el orden histórico del snapshot.
+function humanControlsEntry(entry) {
+  return entry?.isLocal === true;
+}
+
+async function chooseTriggerResolutionOrder(entries, label = '') {
+  if (!Array.isArray(entries) || entries.length <= 1) return entries || [];
+  // En multiplayer, si las habilidades pertenecen al rival, su cliente ordena el lote.
+  if (state.currentMatch && entries.every(e => !humanControlsEntry(e))) {
+    const response = await requestRivalDecision('trigger_order', otherRole(state.currentMatch.myRole), {
+      entries: entries.map((e,i)=>({ id:i, sourceName:e.sourceCard?.name || 'Habilidad', triggerLabel:TRIGGER_LABELS[e.triggerType] || e.triggerType || 'trigger' })),
+      label
+    });
+    const order=Array.isArray(response?.order) ? response.order : entries.map((_,i)=>i);
+    return order.map(i=>entries[Number(i)]).filter(Boolean);
+  }
+  if (entries.some(humanControlsEntry)) {
+    state.pendingTriggerOrderChoice={ count:entries.length, label };
+    try { return await showTriggerOrderModal(entries); }
+    finally { state.pendingTriggerOrderChoice=null; }
+  }
+  // Tano: orden estable. La heurística estratégica puede vivir luego en Bot 2.0.
+  return entries;
+}
+
+async function processTriggerBatch(entries = []) {
+  const valid=entries.filter(e=>e?.effect && e?.sourceCard);
+  if (!valid.length) return [];
+  const activeIsLocal=state.activePlayer==='local';
+  const groups=buildApnapTriggerGroups(valid,activeIsLocal);
+  const activeOrder=await chooseTriggerResolutionOrder(groups.active,'AP');
+  const nonActiveOrder=await chooseTriggerResolutionOrder(groups.nonActive,'NAP');
+  const placement=stackPlacementFromResolutionOrders(activeOrder,nonActiveOrder);
+  return placement.map(enqueueTriggerStackItem).filter(Boolean);
+}
+
+export function waitForTriggerOrdering() { return triggerOrderingChain; }
+
+export function queueTriggeredAbility(entry = {}) {
+  if (!entry.effect || !entry.effect.type || !entry.sourceCard) return null;
+  if (state.sbaKernelRunning) {
+    state.sbaHeldTriggerBatches.push([entry]);
+    return { held:true, sourceCard:entry.sourceCard };
+  }
+  triggerOrderingChain=triggerOrderingChain.then(()=>processTriggerBatch([entry])).catch(err=>{ console.error('Trigger ordering:',err); });
+  return { queued:true, sourceCard:entry.sourceCard };
+}
+
 export function queueTriggeredAbilities(entries = []) {
-  const valid = entries.filter(e => e && e.effect && e.sourceCard);
-  const activeIsLocal = state.activePlayer === 'local';
-  const activeEntries = valid.filter(e => !!e.isLocal === activeIsLocal).reverse();
-  const nonActiveEntries = valid.filter(e => !!e.isLocal !== activeIsLocal).reverse();
-  return [...activeEntries, ...nonActiveEntries].map(queueTriggeredAbility).filter(Boolean);
+  const valid=entries.filter(e=>e?.effect && e?.sourceCard);
+  if (!valid.length) return [];
+  if (state.sbaKernelRunning) {
+    state.sbaHeldTriggerBatches.push(valid);
+    return valid.map(entry=>({held:true,sourceCard:entry.sourceCard}));
+  }
+  triggerOrderingChain=triggerOrderingChain.then(()=>processTriggerBatch(valid)).catch(err=>{ console.error('Trigger ordering:',err); });
+  return valid;
+}
+
+export async function flushSbaHeldTriggers() {
+  const batches=state.sbaHeldTriggerBatches.splice(0);
+  for (const batch of batches) await processTriggerBatch(batch);
+  await waitForTriggerOrdering();
+}
+
+
+function genericBattlefieldWatchers(extraSnapshot = null) {
+  const out = [
+    ...state.localCombat.map(item => ({ item, isLocal:true })),
+    ...state.rivalCombat.map(item => ({ item, isLocal:false })),
+    ...state.localSupport.map(item => ({ item, isLocal:true })),
+    ...state.rivalSupport.map(item => ({ item, isLocal:false })),
+    ...state.localLands.map(item => ({ item, isLocal:true })),
+    ...state.rivalLands.map(item => ({ item, isLocal:false })),
+    ...state.localPlaneswalkers.map(item => ({ item, isLocal:true })),
+    ...state.rivalPlaneswalkers.map(item => ({ item, isLocal:false }))
+  ];
+  for (const entry of extraSnapshot || []) {
+    const item=entry?.item || entry?.unit || null;
+    if(!item?.card) continue;
+    const id=item._syncObjectId || item._effectObjectId || null;
+    if(out.some(w => w.item===item || (id && (w.item?._syncObjectId===id || w.item?._effectObjectId===id)))) continue;
+    out.push({ item, isLocal:entry.isLocal===true });
+  }
+  return out;
+}
+
+function genericItemTarget(item) {
+  if(!item) return null;
+  const loc=findBattlefieldItemLocation(item);
+  if(!loc) return null;
+  if(loc.zoneName==='combat') return { type:'creature', isLocal:loc.isLocal, item };
+  if(loc.zoneName==='land') return { type:'land', isLocal:loc.isLocal, item };
+  if(loc.zoneName==='planeswalker') return { type:'planeswalker', isLocal:loc.isLocal, item };
+  return { type:'permanent', isLocal:loc.isLocal, item };
+}
+
+// Targets ligados al propio evento no requieren abrir una elección: permiten expresar
+// "poné un contador sobre ESTA criatura que entró", "hacé daño a ESE jugador", etc.
+// Los targets realmente elegibles ("cualquier objetivo") siguen usando la UX de target
+// existente y quedan fuera del contrato declarativo de 23.15.3.
+function genericDeclaredTarget(match, event) {
+  const raw=match?.spec?.target;
+  const relation=typeof raw==='string' ? raw : raw?.relation;
+  const key=String(relation || '').trim().toLowerCase().replace(/[\s-]+/g,'_');
+  if(!key && match?.spec?.selfTarget!==true) return null;
+  if(match?.spec?.selfTarget===true || ['self','source','this'].includes(key)) return genericItemTarget(match.sourceItem);
+  if(['event','event_item','event_permanent','subject'].includes(key)) return genericItemTarget(event.item);
+  if(['event_source','damage_source'].includes(key)) return genericItemTarget(event.sourceItem);
+  if(['event_target','damaged_permanent'].includes(key)) return genericItemTarget(event.targetItem);
+  if(['controller','you','your_player','controller_player'].includes(key)) return { type:'player', isLocal:match.sourceIsLocal };
+  if(['opponent','opponent_player','rival_player'].includes(key)) return { type:'player', isLocal:!match.sourceIsLocal };
+  if(['event_player','target_player'].includes(key) && (event.targetPlayerIsLocal===true || event.targetPlayerIsLocal===false)) {
+    return { type:'player', isLocal:event.targetPlayerIsLocal };
+  }
+  return null;
+}
+
+// 23.15.3 — bridge entre el Event Engine puro y la Trigger Stack existente. Las cartas
+// nuevas pueden declarar `triggers:[{event,filter,effect}]`; las 643 legacy conservan sus
+// campos históricos. Ambos caminos terminan en los mismos queue/AP-NAP/SBA contracts.
+export function buildGenericEventTriggerEntries(rawEvent = {}, { watchersSnapshot=null } = {}) {
+  const event=normalizeGameEvent({
+    ...rawEvent,
+    activePlayerIsLocal: rawEvent.activePlayerIsLocal ?? (state.activePlayer==='local'),
+    phase: rawEvent.phase || state.phase,
+    turnCount: rawEvent.turnCount ?? state.turnCount
+  });
+  const matches=collectGenericEventMatches({
+    event,
+    watchers:genericBattlefieldWatchers(watchersSnapshot),
+    isSuppressed:(item,isLocal)=>isLandPermanent(item) && landRulesTextSuppressed(state,item,isLocal)
+  });
+  const entries=[];
+  for(const match of matches){
+    const effect=match.spec.effect;
+    const hasTargetDeclaration=match.spec.target!=null || match.spec.selfTarget===true;
+    const targetObj=genericDeclaredTarget(match,event);
+    if(!targetObj && !canResolveGameEffectWithoutTarget(effect.type)){
+      // 23.15.3 auto-liga self/event/player cuando el schema lo declara. No inventa una
+      // elección para "cualquier objetivo": eso debe seguir pasando por la UX legal existente.
+      const reason=hasTargetDeclaration ? 'no pudo resolver el objetivo declarado' : 'necesita un objetivo no declarado';
+      logMsg(`⚠️ ${match.sourceCard.name}: trigger genérico ${match.spec.event} usa "${effect.type}" y ${reason}.`);
+      continue;
+    }
+    if(targetObj && !canResolveGameEffectWithTarget(effect.type) && !canResolveGameEffectWithoutTarget(effect.type)){
+      logMsg(`⚠️ ${match.sourceCard.name}: trigger genérico ${match.spec.event} usa "${effect.type}" sin resolver compatible.`);
+      continue;
+    }
+    entries.push({
+      effect, sourceCard:match.sourceCard, sourceItem:match.sourceItem, isLocal:match.sourceIsLocal,
+      targetObj, selfTarget:!!targetObj && (match.spec.selfTarget===true || ['self','source','this'].includes(String(typeof match.spec.target==='string'?match.spec.target:match.spec.target?.relation || '').toLowerCase())),
+      triggerType:match.spec.label || match.spec.event,
+      eventCard:event.card || null, eventItem:event.item || null,
+      genericEvent:event, genericTriggerIndex:match.spec._index
+    });
+  }
+  return entries;
+}
+
+export function dispatchGameEvent(rawEvent = {}, options = {}) {
+  const entries=buildGenericEventTriggerEntries(rawEvent,options);
+  const eventType=normalizeGameEvent(rawEvent).type;
+  if(!entries.length) return [];
+  // Triggers que nacen mientras se pagan costes (601/602, Ward, taxes) existen, pero no
+  // pueden ponerse en Stack en mitad del pago. Reusamos la cola diferida histórica de LAND 5
+  // —que ya se vacía justo después de comprometer el hechizo/habilidad— para cualquier trigger
+  // genérico surgido durante esa ventana. `forceImmediate` queda para eventos que explícitamente
+  // deban ignorar este diferimiento.
+  const defer = options.forceDeferNormalTriggers === true ||
+    (options.forceImmediate !== true && shouldDeferLandManaTriggers());
+  if(defer){
+    state.deferredLandManaTriggers.push(...entries);
+    recordTelemetryEvent('generic_event_triggers_deferred',{event:eventType,count:entries.length});
+    return entries.map(entry=>({deferred:true,sourceCard:entry.sourceCard}));
+  }
+  recordTelemetryEvent('generic_event_triggers_queued',{event:eventType,count:entries.length});
+  return queueTriggeredAbilities(entries);
+}
+
+function ownerGraveForItem(item, fallbackIsLocal) {
+  return zoneForCardOwner(item?.card, state.localGraveyard, state.rivalGraveyard, !!fallbackIsLocal, state.currentMatch?.myRole || null);
+}
+
+function ownerExileForItem(item, fallbackIsLocal) {
+  return zoneForCardOwner(item?.card, state.localExile, state.rivalExile, !!fallbackIsLocal, state.currentMatch?.myRole || null);
+}
+
+function replacementCardZonePlan(card, fallbackIsLocal, zoneFrom, zoneTo='graveyard', cause='effect', extra={}) {
+  const ownerIsLocal=cardOwnerIsLocal(card,!!fallbackIsLocal,state.currentMatch?.myRole||null);
+  const result=resolveReplacementEvent(state,{
+    type:'zone_change', affectedIsLocal:ownerIsLocal, targetIsLocal:ownerIsLocal,
+    card:card || null, targetCard:card || null,
+    item:extra.item || null, targetItem:extra.item || null,
+    sourceCard:extra.sourceCard || null, sourceIsLocal:extra.sourceIsLocal,
+    zoneFrom, zoneTo, cause
+  });
+  const finalZone=result.event.zoneTo || zoneTo;
+  const destination=finalZone==='exile'
+    ? zoneForCardOwner(card,state.localExile,state.rivalExile,!!fallbackIsLocal,state.currentMatch?.myRole||null)
+    : zoneForCardOwner(card,state.localGraveyard,state.rivalGraveyard,!!fallbackIsLocal,state.currentMatch?.myRole||null);
+  return {result,zoneTo:finalZone,destination,ownerIsLocal};
+}
+
+function replacementExitPlan(item, fallbackIsLocal, cause='effect', zoneTo='graveyard') {
+  return replacementCardZonePlan(item?.card, fallbackIsLocal, 'battlefield', zoneTo, cause, {item});
+}
+
+function replacementDestroyExitPlan(item, fallbackIsLocal, cause='destroy') {
+  const destroyResult=resolveReplacementEvent(state,{
+    type:'destroy', affectedIsLocal:!!fallbackIsLocal, targetIsLocal:!!fallbackIsLocal,
+    card:item?.card || null, targetCard:item?.card || null, item, targetItem:item,
+    zoneFrom:'battlefield', zoneTo:'graveyard', cause
+  });
+  if(destroyResult.prevented) return {prevented:true,result:destroyResult,zoneTo:'battlefield',destination:null};
+  const exitPlan=replacementExitPlan(item,fallbackIsLocal,cause,destroyResult.event.zoneTo || 'graveyard');
+  return {...exitPlan,prevented:false,result:{...exitPlan.result,applied:[...(destroyResult.applied||[]),...(exitPlan.result.applied||[])]}};
+}
+
+function removeSbaCreature(entry, watchersSnapshot) {
+  const { item, isLocal, reason }=entry;
+  const zone=isLocal ? state.localCombat : state.rivalCombat;
+  const idx=zone.indexOf(item); if(idx<0) return {removed:false};
+  // Resistencia <=0 no es destrucción; daño letal/Toque mortal sí. Luego, en ambos casos,
+  // el movimiento al cementerio puede ser reemplazado por otra zona.
+  const plan=(reason==='lethal_damage' || reason==='deathtouch')
+    ? replacementDestroyExitPlan(item,isLocal,reason)
+    : replacementExitPlan(item,isLocal,reason,'graveyard');
+  if(plan.prevented) return {removed:false,prevented:true};
+  zone.splice(idx,1);
+  detachEquipmentFrom(item,isLocal); sendAurasToGraveyard(item,isLocal); cleanupIfVehicle(item);
+  moveBattlefieldCardToZone(item.card,plan.destination);
+  logMsg(gameText(`sba.${reason}`,{card:item.card?.name || 'Criatura'}));
+  return {removed:true,died:plan.zoneTo==='graveyard',zoneTo:plan.zoneTo,item,isLocal};
+}
+
+function removeSbaPlaneswalker(entry) {
+  const zone=entry.isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
+  const idx=zone.indexOf(entry.item); if(idx<0) return {removed:false};
+  const plan=replacementExitPlan(entry.item,entry.isLocal,'planeswalker_zero','graveyard');
+  zone.splice(idx,1); moveBattlefieldCardToZone(entry.item.card,plan.destination);
+  logMsg(gameText('sba.planeswalkerZero',{card:entry.item.card?.name || 'Planeswalker'}));
+  return {removed:true,zoneTo:plan.zoneTo,item:entry.item,isLocal:entry.isLocal};
+}
+
+async function chooseLegendKeeper(group) {
+  if (!group?.entries?.length) return null;
+  const remembered=sbaLegendChoiceMemory.get(group.key);
+  if (remembered) {
+    const hit=group.entries.find(e=>e.item?._syncObjectId===remembered);
+    if(hit) return hit;
+  }
+  if (group.isLocal) {
+    state.pendingLegendChoice={ groupKey:group.key, cardName:group.name, count:group.entries.length };
+    try {
+      const chosen=await showLegendRuleChoiceModal(group.entries,group.name);
+      if(chosen?.item?._syncObjectId) sbaLegendChoiceMemory.set(group.key,chosen.item._syncObjectId);
+      return chosen || group.entries[0];
+    } finally { state.pendingLegendChoice=null; }
+  }
+  if (state.currentMatch) {
+    const response=await requestRivalDecision('legend_choice',otherRole(state.currentMatch.myRole),{
+      cardName:group.name,
+      entries:group.entries.map((e,i)=>({index:i,syncObjectId:e.item?._syncObjectId || null,zone:e.zone}))
+    });
+    return group.entries[Number(response?.index)] || group.entries[0];
+  }
+  return group.entries[0];
+}
+
+function removeLegendEntry(entry, watchersSnapshot) {
+  const loc=findBattlefieldItemLocation(entry.item); if(!loc) return {removed:false};
+  const wasCreature=loc.zoneName==='combat';
+  const plan=replacementExitPlan(entry.item,loc.isLocal,'legend_rule','graveyard');
+  loc.zone.splice(loc.index,1);
+  if(wasCreature){ detachEquipmentFrom(entry.item,loc.isLocal); sendAurasToGraveyard(entry.item,loc.isLocal); cleanupIfVehicle(entry.item); }
+  moveBattlefieldCardToZone(entry.item.card,plan.destination);
+  logMsg(gameText('sba.legend.moved',{card:entry.item.card?.name || 'Legendaria'}));
+  return {removed:true,died:wasCreature && plan.zoneTo==='graveyard',zoneTo:plan.zoneTo,item:entry.item,isLocal:loc.isLocal,wasCreature};
+}
+
+export function hasStateBasedActionsToProcess() {
+  const snap=evaluateStateBasedActions(state,{getEffectiveToughness,hasKeyword,getProtectionMatch});
+  return hasMechanicalStateActions(snap) || (snap.legends||[]).length>0;
+}
+
+export async function runStateBasedActions({ reason='rules_check' }={}) {
+  if(state.sbaKernelRunning) return false;
+  state.sbaKernelRunning=true;
+  let changed=false;
+  try {
+    for(let pass=0; pass<SBA_MAX_PASSES; pass++){
+      const snap=evaluateStateBasedActions(state,{getEffectiveToughness,hasKeyword,getProtectionMatch});
+      const legends=snap.legends||[];
+      if(!hasMechanicalStateActions(snap) && legends.length===0) break;
+      const watchersSnapshot=[...state.localCombat.map(unit=>({unit,isLocal:true})),...state.rivalCombat.map(unit=>({unit,isLocal:false}))];
+      const genericWatchersSnapshot=genericBattlefieldWatchers();
+      const deaths=[];
+      const nonCreatureLeaveEntries=[];
+      // Legend rule choices are decisions made before this SBA batch is applied.
+      for(const group of legends){
+        const keeper=await chooseLegendKeeper(group);
+        for(const entry of group.entries){
+          if(entry===keeper) continue;
+          const result=removeLegendEntry(entry,watchersSnapshot);
+          if(!result.removed) continue;
+          changed=true;
+          if(result.died) deaths.push({unit:result.item,isLocal:result.isLocal});
+          else nonCreatureLeaveEntries.push(...buildGenericEventTriggerEntries({
+            type:'permanent_left_battlefield',controllerIsLocal:result.isLocal,actorIsLocal:result.isLocal,
+            ownerIsLocal:cardOwnerIsLocal(result.item.card,result.isLocal,state.currentMatch?.myRole||null),
+            card:result.item.card,item:result.item,zoneFrom:'battlefield',zoneTo:result.zoneTo,cause:'legend_rule'
+          }, {watchersSnapshot:genericWatchersSnapshot}));
+          if(result.zoneTo==='exile') nonCreatureLeaveEntries.push(...buildGenericEventTriggerEntries({
+            type:'card_exiled',controllerIsLocal:result.isLocal,actorIsLocal:result.isLocal,
+            ownerIsLocal:cardOwnerIsLocal(result.item.card,result.isLocal,state.currentMatch?.myRole||null),
+            card:result.item.card,item:result.item,zoneFrom:'battlefield',zoneTo:'exile',cause:'replacement'
+          }, {watchersSnapshot:genericWatchersSnapshot}));
+        }
+      }
+      for(const entry of snap.creatures||[]){
+        if(!findBattlefieldItemLocation(entry.item)) continue;
+        const result=removeSbaCreature(entry,watchersSnapshot);
+        if(!result.removed) continue;
+        changed=true;
+        if(result.died) deaths.push({unit:entry.item,isLocal:entry.isLocal});
+        else {
+          nonCreatureLeaveEntries.push(...buildGenericEventTriggerEntries({
+            type:'permanent_left_battlefield',controllerIsLocal:entry.isLocal,actorIsLocal:entry.isLocal,
+            ownerIsLocal:cardOwnerIsLocal(entry.item.card,entry.isLocal,state.currentMatch?.myRole||null),
+            card:entry.item.card,item:entry.item,zoneFrom:'battlefield',zoneTo:result.zoneTo,cause:entry.reason
+          }, {watchersSnapshot:genericWatchersSnapshot}));
+          if(result.zoneTo==='exile') nonCreatureLeaveEntries.push(...buildGenericEventTriggerEntries({
+            type:'card_exiled',controllerIsLocal:entry.isLocal,actorIsLocal:entry.isLocal,
+            ownerIsLocal:cardOwnerIsLocal(entry.item.card,entry.isLocal,state.currentMatch?.myRole||null),
+            card:entry.item.card,item:entry.item,zoneFrom:'battlefield',zoneTo:'exile',cause:'replacement'
+          }, {watchersSnapshot:genericWatchersSnapshot}));
+        }
+      }
+      for(const entry of snap.planeswalkers||[]){
+        if(!findBattlefieldItemLocation(entry.item)) continue;
+        const result=removeSbaPlaneswalker(entry);
+        if(!result.removed) continue;
+        changed=true;
+        nonCreatureLeaveEntries.push(...buildGenericEventTriggerEntries({
+          type:'permanent_left_battlefield',controllerIsLocal:entry.isLocal,actorIsLocal:entry.isLocal,
+          ownerIsLocal:cardOwnerIsLocal(entry.item.card,entry.isLocal,state.currentMatch?.myRole||null),
+          card:entry.item.card,item:entry.item,zoneFrom:'battlefield',zoneTo:result.zoneTo,cause:'planeswalker_zero'
+        }, {watchersSnapshot:genericWatchersSnapshot}));
+        if(result.zoneTo==='exile') nonCreatureLeaveEntries.push(...buildGenericEventTriggerEntries({
+          type:'card_exiled',controllerIsLocal:entry.isLocal,actorIsLocal:entry.isLocal,
+          ownerIsLocal:cardOwnerIsLocal(entry.item.card,entry.isLocal,state.currentMatch?.myRole||null),
+          card:entry.item.card,item:entry.item,zoneFrom:'battlefield',zoneTo:'exile',cause:'replacement'
+        }, {watchersSnapshot:genericWatchersSnapshot}));
+      }
+      for(const action of snap.counterCancellations||[]){
+        const c=action.item.counters||{}; c.plusOne=Math.max(0,Number(c.plusOne||0)-action.amount); c.minusOne=Math.max(0,Number(c.minusOne||0)-action.amount); action.item.counters=c; changed=true;
+        logMsg(gameText('sba.counterCancel',{card:action.item.card?.name || 'Permanente',count:action.amount}));
+      }
+      // Remove tokens from hidden/public nonbattlefield zones back-to-front.
+      const byZone=new Map(); for(const action of snap.tokenCeases||[]){ if(!byZone.has(action.zone))byZone.set(action.zone,[]);byZone.get(action.zone).push(action); }
+      for(const [zone,actions] of byZone){ actions.sort((a,b)=>b.index-a.index).forEach(a=>{ if(zone[a.index]?.isToken){zone.splice(a.index,1);changed=true;logMsg(gameText('sba.tokenCeases',{card:a.card?.name||'Ficha'}));} }); }
+      if(deaths.length) queueCreatureDeathBatch(deaths,watchersSnapshot,nonCreatureLeaveEntries);
+      else if(nonCreatureLeaveEntries.length) queueTriggeredAbilities(nonCreatureLeaveEntries);
+      // Attachments are SBA too; these helpers are idempotent and may mutate.
+      if (checkAuraLegality() > 0) changed = true;
+      if (checkEquipmentLegality() > 0) changed = true;
+    }
+  } finally {
+    state.sbaKernelRunning=false;
+  }
+  await flushSbaHeldTriggers();
+  recordTelemetryEvent('sba_stabilized',{reason,changed});
+  return changed;
+}
+
+export async function waitForStateBasedActions(){
+  while(state.sbaKernelRunning || state.pendingLegendChoice || state.pendingTriggerOrderChoice) await sleep(10);
+  await waitForTriggerOrdering();
+}
+
+// Multiplayer helper name retained as explicit contract: the local client is always the
+// authority for its own non-priority Legend Rule choice.
+export async function applyLocalLegendChoiceForMultiplayer(group){ return chooseLegendKeeper(group); }
+
+export function triggerCreatureEtbBatch(isLocal, entries = []) {
+  const combat=isLocal?state.localCombat:state.rivalCombat, support=isLocal?state.localSupport:state.rivalSupport,
+    lands=isLocal?state.localLands:state.rivalLands, pws=isLocal?state.localPlaneswalkers:state.rivalPlaneswalkers;
+  const watchers=[...combat,...support,...lands,...pws].filter(item=>item?.card?.creatureEtbTrigger);
+  const queued=entries.flatMap(({card,item})=>watchers.map(w=>({effect:w.card.creatureEtbTrigger,sourceCard:w.card,sourceItem:w,isLocal,triggerType:'creature_etb',eventCard:card,eventItem:item})));
+  for(const {card,item} of entries) queued.push(...buildGenericEventTriggerEntries({ type:'creature_entered', controllerIsLocal:isLocal, ownerIsLocal:cardOwnerIsLocal(card,isLocal,state.currentMatch?.myRole||null), card, item, zoneFrom:'unknown', zoneTo:'battlefield' }));
+  return queueTriggeredAbilities(queued);
+}
+export function triggerLandEtbBatch(isLocal, entries = []) {
+  const all=[...(isLocal?state.localCombat:state.rivalCombat),...(isLocal?state.localSupport:state.rivalSupport),...(isLocal?state.localLands:state.rivalLands),...(isLocal?state.localPlaneswalkers:state.rivalPlaneswalkers)];
+  const watchers=all.filter(item=>item?.card?.landEtbTrigger && !(isLandPermanent(item)&&landRulesTextSuppressed(state,item,isLocal)));
+  const queued=entries.flatMap(({card,item})=>watchers.map(w=>({effect:w.card.landEtbTrigger,sourceCard:w.card,sourceItem:w,isLocal,triggerType:'land_etb',eventCard:card,eventItem:item})));
+  for(const {card,item} of entries) queued.push(...buildGenericEventTriggerEntries({ type:'land_entered', controllerIsLocal:isLocal, ownerIsLocal:cardOwnerIsLocal(card,isLocal,state.currentMatch?.myRole||null), card, item, zoneFrom:'unknown', zoneTo:'battlefield' }));
+  return queueTriggeredAbilities(queued);
 }
 
 // "Siempre que una criatura entre bajo tu control". Detecta y APILA; no resuelve.
@@ -3940,12 +4592,16 @@ export function triggerCreatureEtb(isLocal, enteredCard = null, enteredItem = nu
   const planeswalkers = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
   const watchers = [...combat, ...support, ...lands, ...planeswalkers]
     .filter(item => item?.card?.creatureEtbTrigger);
-  return queueTriggeredAbilities(
-    watchers.map(item => ({
-      effect: item.card.creatureEtbTrigger, sourceCard: item.card, sourceItem: item, isLocal,
-      triggerType: 'creature_etb', eventCard: enteredCard, eventItem: enteredItem
-    }))
-  );
+  const entries=watchers.map(item => ({
+    effect: item.card.creatureEtbTrigger, sourceCard: item.card, sourceItem: item, isLocal,
+    triggerType: 'creature_etb', eventCard: enteredCard, eventItem: enteredItem
+  }));
+  entries.push(...buildGenericEventTriggerEntries({
+    type:'creature_entered', controllerIsLocal:isLocal,
+    ownerIsLocal:cardOwnerIsLocal(enteredCard,isLocal,state.currentMatch?.myRole||null),
+    card:enteredCard, item:enteredItem, zoneFrom:'unknown', zoneTo:'battlefield'
+  }));
+  return queueTriggeredAbilities(entries);
 }
 
 // PUNTO 2 PRE-500 — LANDFALL / "cuando una Tierra entre bajo tu control".
@@ -3998,6 +4654,11 @@ export async function triggerLandEtb(isLocal, landCard, landItem = null) {
       selfTarget: implicitSelfCreature, triggerType: 'land_etb', eventCard: landCard, eventItem: landItem
     });
   }
+  entries.push(...buildGenericEventTriggerEntries({
+    type:'land_entered', controllerIsLocal:isLocal,
+    ownerIsLocal:cardOwnerIsLocal(landCard,isLocal,state.currentMatch?.myRole||null),
+    card:landCard, item:landItem, zoneFrom:'unknown', zoneTo:'battlefield'
+  }));
   return queueTriggeredAbilities(entries);
 }
 
@@ -4069,6 +4730,13 @@ export async function triggerSpellCast(isLocal, castCard, stackItem = null) {
       selfTarget: implicitSelfCreature, triggerType: 'spell_cast', eventCard: castCard, eventItem: stackItem
     });
   }
+  entries.push(...buildGenericEventTriggerEntries({
+    type:'spell_cast', controllerIsLocal:isLocal,
+    ownerIsLocal:cardOwnerIsLocal(castCard,isLocal,state.currentMatch?.myRole||null),
+    card:castCard, item:stackItem,
+    zoneFrom:['flashback','escape'].includes(stackItem?.castFrom) ? 'graveyard' : (stackItem?.castFrom==='exile' ? 'exile' : 'hand'),
+    zoneTo:'stack', cause:stackItem?.castFrom || 'normal_cast'
+  }));
   return queueTriggeredAbilities(entries);
 }
 
@@ -4091,15 +4759,15 @@ function getNonCreatureAnyDeathWatchers() {
 // apilarse, usando el snapshot previo a las muertes. Esto evita que un Blood-Artist-like que
 // también murió deje de "ver" a las otras criaturas y, además, permite aplicar AP/NAP al
 // conjunto completo en vez de apilar muerte por muerte según el orden accidental de arrays.
-export function queueCreatureDeathBatch(deadEntries = [], watchersSnapshot = null) {
+export function queueCreatureDeathBatch(deadEntries = [], watchersSnapshot = null, extraEntries = []) {
   const dead = (deadEntries || []).filter(entry => entry?.unit?.card);
-  if (dead.length === 0) return [];
+  if (dead.length === 0) return (extraEntries || []).length ? queueTriggeredAbilities(extraEntries) : [];
   const snapshot = watchersSnapshot || [
     ...state.localCombat.map(unit => ({ unit, isLocal: true })),
     ...state.rivalCombat.map(unit => ({ unit, isLocal: false })),
     ...dead.filter(entry => !state.localCombat.includes(entry.unit) && !state.rivalCombat.includes(entry.unit))
   ];
-  const entries = [];
+  const entries = [...(extraEntries || [])];
   const nonCreatureAnyDeathWatchers = getNonCreatureAnyDeathWatchers();
 
   for (const { unit, isLocal } of dead) {
@@ -4145,6 +4813,15 @@ export function queueCreatureDeathBatch(deadEntries = [], watchersSnapshot = nul
         isLocal: watcherLocal, triggerType: 'any_creature_dies', eventCard: unit.card, eventItem: unit
       });
     });
+    entries.push(...buildGenericEventTriggerEntries({
+      type:'creature_died', controllerIsLocal:isLocal,
+      ownerIsLocal:cardOwnerIsLocal(unit.card,isLocal,state.currentMatch?.myRole||null),
+      card:unit.card, item:unit, zoneFrom:'battlefield', zoneTo:'graveyard', cause:'death'
+    }, { watchersSnapshot:snapshot }));
+  }
+  if (shouldDeferLandManaTriggers()) {
+    state.deferredLandManaTriggers.push(...entries);
+    return entries.map(entry=>({deferred:true,sourceCard:entry.sourceCard}));
   }
   return queueTriggeredAbilities(entries);
 }
@@ -4153,12 +4830,19 @@ export function queueCreatureDeathBatch(deadEntries = [], watchersSnapshot = nul
 // cómo haya muerto — combate, un removal, o el día de mañana un sacrificio). Es la contraparte
 // de triggerCreatureEtb, pero para la salida en vez de la entrada.
 export function triggerCreatureDies(unit, isLocal) {
-  const trig = unit?.card?.diesTrigger;
-  if (!trig || (isLandPermanent(unit) && landRulesTextSuppressed(state, unit, isLocal))) return null;
-  return queueTriggeredAbility({
+  if (!unit?.card) return null;
+  const entries=[];
+  const trig = unit.card.diesTrigger;
+  if (trig && !(isLandPermanent(unit) && landRulesTextSuppressed(state, unit, isLocal))) entries.push({
     effect: trig, sourceCard: unit.card, sourceItem: unit, isLocal, triggerType: 'dies',
     eventCard: unit.card, eventItem: unit
   });
+  entries.push(...buildGenericEventTriggerEntries({
+    type:'creature_died', controllerIsLocal:isLocal,
+    ownerIsLocal:cardOwnerIsLocal(unit.card,isLocal,state.currentMatch?.myRole||null),
+    card:unit.card, item:unit, zoneFrom:'battlefield', zoneTo:'graveyard', cause:'death'
+  }, { watchersSnapshot:[{unit,isLocal}] }));
+  return queueTriggeredAbilities(entries);
 }
 
 // "Muere cualquier criatura" / "muere criatura rival". El snapshot preserva watchers de
@@ -4220,20 +4904,17 @@ function sameBattlefieldObject(a, b) {
 }
 
 export function getEquipmentOn(itemObj) {
-  const localCombat = Array.isArray(state.localCombat) ? state.localCombat : [];
-  const isLocal = localCombat.some(unit => sameBattlefieldObject(unit, itemObj));
-  const supportZone = isLocal
-    ? (Array.isArray(state.localSupport) ? state.localSupport : [])
-    : (Array.isArray(state.rivalSupport) ? state.rivalSupport : []);
-  return supportZone.filter(s => s && sameBattlefieldObject(s.attachedTo, itemObj));
+  // 23.15.2: cambiar el control de una criatura NO cambia el control de sus Equipos.
+  // Por eso un Equipo puede estar en la zona de soporte del otro jugador y seguir adjunto.
+  return [...(state.localSupport||[]),...(state.rivalSupport||[])]
+    .filter(s => s && sameBattlefieldObject(s.attachedTo, itemObj));
 }
 
 // Cuando una criatura sale del campo de batalla por cualquier vía (muerte, rebote,
 // destrucción, arrasada), el Equipo que tuviera puesto se cae y se queda en tu campo:
 // nunca va al cementerio con la criatura.
 export function detachEquipmentFrom(creatureItem, isLocal) {
-  const supportZone = isLocal ? state.localSupport : state.rivalSupport;
-  supportZone.forEach(s => {
+  [...(state.localSupport||[]),...(state.rivalSupport||[])].forEach(s => {
     if (sameBattlefieldObject(s.attachedTo, creatureItem)) {
       logMsg(gameText('attachment.equipment.detached', { equipment: s.card.name }));
       s.attachedTo = null;
@@ -4251,9 +4932,11 @@ export function sendAurasToGraveyard(unit, isLocal) {
   unit.auras.forEach(auraCard => {
     // 23.12.2 — el Aura va al cementerio de SU PROPIETARIO, no al del permanente
     // encantado. Esto importa especialmente para maldiciones propias sobre criaturas rivales.
-    const grave = zoneForCardOwner(auraCard, state.localGraveyard, state.rivalGraveyard, isLocal, myRole);
+    if (auraCard?._controlEffectId) removeControlEffectFromPermanent(unit, auraCard._controlEffectId, { silent:true });
+    const plan=replacementCardZonePlan(auraCard,isLocal,'battlefield','graveyard','aura_detached',{item:null});
     logMsg(gameText('attachment.aura.detached', { aura: auraCard.name, creature: unit.card.name }));
-    grave.push(auraCard);
+    plan.destination.push(auraCard);
+    if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:plan.ownerIsLocal,card:auraCard,zoneFrom:'battlefield',zoneTo:'exile',cause:'aura_detached'});
   });
   unit.auras = [];
 }
@@ -4267,25 +4950,32 @@ export function sendAurasToGraveyard(unit, isLocal) {
 // cambiar recién más tarde. Se corre junto a checkGameOver en cada render(), como el resto
 // de las state-based actions de este motor.
 export function checkAuraLegality() {
-  const myRole = state.currentMatch?.myRole || null;
-  const checkZone = (combatArray, hostIsLocal) => {
-    combatArray.forEach(unit => {
-      if (!unit.auras || unit.auras.length === 0) return;
+  let changed = 0;
+  const checkZone = (zone, hostIsLocal) => {
+    for (const unit of [...(zone||[])]) {
+      if (!unit?.auras || unit.auras.length === 0) continue;
       const stillLegal = [];
-      unit.auras.forEach(auraCard => {
+      for (const auraCard of [...unit.auras]) {
         const illegalColor = getProtectionMatch(unit, auraCard.colors || []);
-        if (illegalColor) {
-          logMsg(gameText('attachment.aura.protection', { creature: unit.card.name, color: illegalColor, aura: auraCard.name }));
-          zoneForCardOwner(auraCard, state.localGraveyard, state.rivalGraveyard, hostIsLocal, myRole).push(auraCard);
-        } else {
-          stillLegal.push(auraCard);
-        }
-      });
+        const illegalTargetType = !isCreaturePermanent(unit); // contrato actual: todas encantan criatura
+        if (illegalColor || illegalTargetType) {
+          if (auraCard?._controlEffectId) removeControlEffectFromPermanent(unit, auraCard._controlEffectId, { silent:false });
+          if(illegalColor) logMsg(gameText('attachment.aura.protection', { creature: unit.card.name, color: illegalColor, aura: auraCard.name }));
+          else logMsg(gameText('attachment.aura.detached', { aura:auraCard.name, creature:unit.card.name }));
+          const plan=replacementCardZonePlan(auraCard,hostIsLocal,'battlefield','graveyard','illegal_attachment');
+          plan.destination.push(auraCard);
+          if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:hostIsLocal,actorIsLocal:hostIsLocal,ownerIsLocal:plan.ownerIsLocal,card:auraCard,zoneFrom:'battlefield',zoneTo:'exile',cause:'illegal_attachment'});
+          changed++;
+        } else stillLegal.push(auraCard);
+      }
       unit.auras = stillLegal;
-    });
+    }
   };
-  checkZone(state.localCombat, true);
-  checkZone(state.rivalCombat, false);
+  for(const [zone,isLocal] of [
+    [state.localCombat,true],[state.rivalCombat,false],[state.localSupport,true],[state.rivalSupport,false],
+    [state.localLands,true],[state.rivalLands,false],[state.localPlaneswalkers,true],[state.rivalPlaneswalkers,false]
+  ]) checkZone(zone,isLocal);
+  return changed;
 }
 
 // SBA (regla real 704.5m — el caso simétrico de checkAuraLegality de arriba, pero para
@@ -4295,18 +4985,24 @@ export function checkAuraLegality() {
 // desprende solo y se queda como permanente en tu campo, listo para volver a equiparse en
 // otra criatura apenas puedas pagar el costo de Equipar de nuevo.
 export function checkEquipmentLegality() {
+  let changed = 0;
   const checkZone = (supportZone) => {
-    supportZone.forEach(item => {
-      if (!item.attachedTo) return;
-      const illegalColor = getProtectionMatch(item.attachedTo, item.card.colors || []);
-      if (illegalColor) {
-        logMsg(gameText('attachment.equipment.protection', { creature: item.attachedTo.card.name, color: illegalColor, equipment: item.card.name }));
+    for (const item of [...supportZone]) {
+      if (!item.attachedTo) continue;
+      const loc=findBattlefieldItemLocation(item.attachedTo);
+      const illegalTargetType = !loc || !isCreaturePermanent(item.attachedTo);
+      const illegalColor = !illegalTargetType ? getProtectionMatch(item.attachedTo, item.card.colors || []) : null;
+      if (illegalColor || illegalTargetType) {
+        if(illegalColor) logMsg(gameText('attachment.equipment.protection', { creature: item.attachedTo.card.name, color: illegalColor, equipment: item.card.name }));
+        else logMsg(gameText('attachment.equipment.detached', { equipment:item.card.name }));
         item.attachedTo = null;
+        changed++;
       }
-    });
+    }
   };
   checkZone(state.localSupport);
   checkZone(state.rivalSupport);
+  return changed;
 }
 
 // Si un Vehículo tripulado (que "es una criatura hasta el final del turno") sale del campo
@@ -4546,20 +5242,7 @@ export async function resolveLoyaltyTargetChoice(targetUnit, isTargetLocal) {
 
 // Regla de estado: un Planeswalker con Lealtad 0 o menos muere — se revisa después de
 // activar una habilidad (puede costar lealtad) y después de recibir daño de combate.
-export function checkPlaneswalkerDeaths() {
-  [
-    { zone: state.localPlaneswalkers, grave: state.localGraveyard },
-    { zone: state.rivalPlaneswalkers, grave: state.rivalGraveyard }
-  ].forEach(({ zone, grave }) => {
-    for (let i = zone.length - 1; i >= 0; i--) {
-      if (zone[i].loyalty <= 0) {
-        logMsg(gameText('loyalty.died', { card: zone[i].card.name }));
-        grave.push(zone[i].card);
-        zone.splice(i, 1);
-      }
-    }
-  });
-}
+export function checkPlaneswalkerDeaths() { void runStateBasedActions({ reason:'legacy_planeswalker_deaths' }); return []; }
 
 export function handlePlaneswalkerClick(pwItem, isLocal, index) {
   if (state.gameOver) return;
@@ -4646,14 +5329,6 @@ export function resolveScheduledReturns(isLocal) {
     logMsg(gameText('exile.returned', { card: entry.card.name }));
     triggerCreatureEtb(isLocal, entry.card, newUnit);
 
-    if (entry.card.type.includes('Legendaria')) {
-      const duplicate = combatZone.find(u => u !== newUnit && u.card.name === entry.card.name);
-      if (duplicate) {
-        logMsg(gameText('legend.returnedDuplicate', { card: entry.card.name }));
-        performSacrifice(newUnit, isLocal);
-      }
-    }
-
     if (entry.card.etbEffect && !entry.card.requiresTarget) {
       queueTriggeredAbility({
         effect: entry.card.etbEffect, sourceCard: entry.card, sourceItem: newUnit, isLocal,
@@ -4667,6 +5342,13 @@ export function attachAura(auraCard, creatureItem, ownerIsLocal = null) {
   if (ownerIsLocal !== null) stampCardOwner(auraCard, !!ownerIsLocal, state.currentMatch?.myRole || null);
   if (!creatureItem.auras) creatureItem.auras = [];
   creatureItem.auras.push(auraCard);
+  // Control Magic-style: el Aura conserva su propio controlador; mientras siga adjunta,
+  // ese efecto de control compite por timestamp con otros cambios de control.
+  if (auraCard?.auraEffect?.controlAttachedCreature || auraCard?.controlAttachedCreature) {
+    const auraControllerIsLocal = ownerIsLocal !== null ? !!ownerIsLocal : true;
+    auraCard._controlEffectId = auraCard._controlEffectId || `aura_control_${auraCard.id || Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+    changePermanentController(creatureItem, auraControllerIsLocal, { duration:'while_source', sourceId:auraCard._controlEffectId, sourceName:auraCard.name });
+  }
   logMsg(gameText('attachment.aura.attached', { aura: auraCard.name, creature: creatureItem.card.name }));
 }
 
@@ -4676,16 +5358,30 @@ export function attachAura(auraCard, creatureItem, ownerIsLocal = null) {
 // Viven directo acá, en el item de combate: cuando la criatura muere, el item se saca del
 // array y los contadores desaparecen solos con él — no van a ningún lado, como en MTG real.
 export function addCounters(item, type, amount) {
-  if (!item.counters) item.counters = { plusOne: 0, minusOne: 0 };
-  item.counters[type] = (item.counters[type] || 0) + amount;
-
-  // Regla de estado: un contador +1/+1 y uno -1/-1 en la misma criatura se cancelan de a
-  // pares (no pueden convivir).
-  const cancel = Math.min(item.counters.plusOne, item.counters.minusOne);
-  if (cancel > 0) {
-    item.counters.plusOne -= cancel;
-    item.counters.minusOne -= cancel;
+  const loc=findBattlefieldItemLocation(item);
+  let finalAmount=Number(amount)||0;
+  // 23.15.5: poner contadores es un evento reemplazable ANTES del commit. Esto habilita
+  // Doubling Season-style sin duplicar lógica en Proliferar, Planeswalkers o efectos.
+  if(loc && finalAmount>0){
+    const replacement=resolveReplacementEvent(state,{
+      type:'counter_add', amount:finalAmount, counterType:type,
+      affectedIsLocal:loc.isLocal, targetIsLocal:loc.isLocal,
+      card:item.card, targetCard:item.card, item, targetItem:item,
+      zoneFrom:'battlefield', zoneTo:'battlefield'
+    });
+    finalAmount=Math.max(0,Number(replacement.event.amount)||0);
   }
+  if (!item.counters) item.counters = { plusOne: 0, minusOne: 0 };
+  item.counters[type] = (item.counters[type] || 0) + finalAmount;
+  if(loc && finalAmount!==0) dispatchGameEvent({
+    type:finalAmount>0 ? 'counter_added' : 'counter_removed',
+    controllerIsLocal:loc.isLocal, actorIsLocal:loc.isLocal,
+    ownerIsLocal:cardOwnerIsLocal(item.card,loc.isLocal,state.currentMatch?.myRole||null),
+    card:item.card, item, amount:Math.abs(finalAmount),
+    metadata:{ counterType:type }
+  });
+
+  // 23.15.1: +1/+1 y -1/-1 pueden coexistir durante una resolución; el Rules Kernel los cancela como SBA.
 }
 
 export function getCounterStats(itemObj) {
@@ -4975,11 +5671,10 @@ export function canActivateActivatedAbilityNow(ability, isLocal = true) {
   if (timing === 'invalid') return false;
 
   const ownMain = state.activePlayer === controller && (state.phase === 'main1' || state.phase === 'main2');
-  const intrinsicSorceryOnly = ability.crewCost !== undefined || ability.effect?.type === 'attach_equipment';
+  const intrinsicSorceryOnly = ability.effect?.type === 'attach_equipment';
 
-  // Equipar/Tripular son acciones que este motor modela como sorcery-speed por naturaleza.
-  // Marcar una de ellas como `timing:"instant"` es un contrato inválido, no una forma de
-  // esquivar esa regla especial.
+  // Equipar conserva su restricción especial de velocidad de conjuro. Tripular, en cambio,
+  // es una habilidad activada normal: puede activarse en cualquier ventana de prioridad.
   if (intrinsicSorceryOnly && timing === 'instant') return false;
 
   if (timing === 'instant') return true;
@@ -4991,7 +5686,7 @@ export function canActivateActivatedAbilityNow(ability, isLocal = true) {
 function activatedTimingFailureMessage(ability) {
   const timing = getActivatedAbilityTiming(ability);
   if (timing === 'invalid') return gameText('ability.timing.unknown', { timing: ability?.timing || '—' });
-  if ((ability?.crewCost !== undefined || ability?.effect?.type === 'crew_vehicle' || ability?.effect?.type === 'attach_equipment') && timing === 'instant') return gameText('ability.timing.intrinsicSorcery');
+  if (ability?.effect?.type === 'attach_equipment' && timing === 'instant') return gameText('ability.timing.intrinsicSorcery');
   if (state.priorityPlayer !== 'local') return gameText('ability.timing.needPriority');
   const isEquip = ability?.effect?.type === 'attach_equipment';
   if (isEquip && spellStack.length > 0) return gameText('ability.timing.equipStack');
@@ -5080,11 +5775,10 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
     return true;
   }
 
-  // Tripular sigue siendo una acción especial (se paga girando criaturas, no maná ni pila),
-  // pero ahora puede convivir en el MISMO permanent con otras habilidades del array.
+  // Tripular usa una selección especial para pagar el coste de girar criaturas, pero la
+  // habilidad resultante SÍ entra en la Stack como cualquier habilidad activada.
   if (ability.crewCost !== undefined) {
-    if (state.phase !== 'main1' && state.phase !== 'main2') return true;
-    startCrewing(source.item, source.isLocal, ability);
+    startCrewing(source.item, source.isLocal, ability, source.abilityIndex);
     return true;
   }
 
@@ -5470,7 +6164,9 @@ export async function playLandFromGraveyardByIndex(index, isLocal = true) {
   const card = graveyard[index];
   if (!card || !canPlayLandFromGraveyard(card, isLocal)) return false;
   graveyard.splice(index, 1);
+  stampCardOwner(card, isLocal, state.currentMatch?.myRole || null);
   const landItem = { card, tapped: landEntersTappedForBattlefield(card, isLocal), enteredThisTurn: true, permanentTypes:['land'] };
+  stampPermanentController(landItem, isLocal, state.currentMatch?.myRole || null);
   lands.push(landItem);
   if (isLocal) state.localLandPlayedThisTurn = true; else state.rivalLandPlayedThisTurn = true;
   logMsg(gameText('land.grave.played', { card: card.name }));
@@ -5743,7 +6439,110 @@ function detectWardForDeclaredTarget(card, targetObj) {
   return Number.isFinite(wardCost) && wardCost > 0 ? { wardCost, targetObj } : null;
 }
 
-async function prepareCastTransactionCosts(tx) {
+async function prepareOptionalCastPaymentMethods(tx, determinedCost, preparedComposite, escapeExiles) {
+  let cost = { ...determinedCost };
+  const plan = { convoke:[], convokePayments:[], delve:[], phyrexianLife:[], phyrexianLifeAmount:0 };
+  const methods = getSpellPaymentMethods(tx.card);
+
+  // Phyrexian no es un paymentMethod de carta: es semántica del propio símbolo. La elección
+  // de vida se prepara antes de Convoke para que los símbolos restantes todavía puedan ser
+  // pagados por criaturas del color correcto.
+  if (Array.isArray(cost.phyrexian) && cost.phyrexian.length) {
+    const mandatoryLife = Math.max(0, Number(preparedComposite?.bundle?.life) || 0);
+    const availableForPhyrexian = Math.max(0, state.localHP - mandatoryLife);
+    const maxLifePayments = Math.floor(availableForPhyrexian / 2);
+    if (maxLifePayments > 0) {
+      const chosenIndexes = await showPhyrexianCostChoiceModal(cost.phyrexian, tx.card.name, maxLifePayments);
+      const applied = applyPhyrexianLifeToCost(cost, chosenIndexes || []);
+      cost = applied.cost;
+      plan.phyrexianLife = applied.paidSymbols;
+      plan.phyrexianLifeAmount = applied.life;
+    }
+  }
+
+  if (methods.some(m=>m.type === 'convoke') && parsedManaTotal(cost) > (cost.C || 0)) {
+    const excludedItems = preparedComposite?.selectedSacrifices || [];
+    const candidates = getConvokeCandidates(state, true, excludedItems);
+    const payableSymbols = Math.max(0, parsedManaTotal(cost) - (cost.C || 0));
+    if (candidates.length && payableSymbols > 0) {
+      const selected = await showCostPaymentResourceModal(candidates, {
+        mode:'convoke', cardName:tx.card.name, max:Math.min(candidates.length,payableSymbols)
+      });
+      const applied = applyConvokeToCost(cost, selected || []);
+      cost = applied.cost;
+      plan.convoke = applied.usedItems;
+      plan.convokePayments = applied.payments;
+    }
+  }
+
+  if (methods.some(m=>m.type === 'delve') && cost.generic > 0) {
+    const excludedCards = new Set([tx.card, ...(preparedComposite?.selectedGraveyard || []), ...(escapeExiles || [])].filter(Boolean));
+    const candidates = state.localGraveyard.filter(card=>card && !excludedCards.has(card));
+    if (candidates.length) {
+      const selected = await showCostPaymentResourceModal(candidates, {
+        mode:'delve', cardName:tx.card.name, max:Math.min(candidates.length,cost.generic)
+      });
+      const applied = applyDelveToCost(cost, selected || []);
+      cost = applied.cost;
+      plan.delve = applied.usedCards;
+    }
+  }
+  return { cost, plan };
+}
+
+function validatePreparedCastPaymentMethods(plan) {
+  if (!plan) return true;
+  if ((plan.convoke || []).some(item => !state.localCombat.includes(item) || item.tapped || !isCreaturePermanent(item))) return false;
+  if ((plan.delve || []).some(card => !state.localGraveyard.includes(card))) return false;
+  return true;
+}
+
+function commitPreparedCastPaymentMethods(card, plan) {
+  if (!plan) return true;
+  let irreversible = false;
+  const phyrexianLife=Math.max(0,Number(plan.phyrexianLifeAmount)||0);
+  if (phyrexianLife > state.localHP) return false;
+  for (const item of plan.convoke || []) {
+    if (!state.localCombat.includes(item) || item.tapped || !isCreaturePermanent(item)) return false;
+  }
+  for (const graveCard of plan.delve || []) if (!state.localGraveyard.includes(graveCard)) return false;
+
+  if (phyrexianLife > 0) {
+    state.localHP -= phyrexianLife;
+    dispatchGameEvent({type:'life_lost',controllerIsLocal:true,actorIsLocal:true,targetPlayerIsLocal:true,amount:phyrexianLife,cause:'phyrexian_cost'});
+    logMsg(gameText('cost.phyrexian.paid',{card:card.name,life:phyrexianLife,count:plan.phyrexianLife?.length||0}));
+    irreversible = true;
+  }
+
+  for (const item of plan.convoke || []) {
+    item.tapped = true;
+    dispatchGameEvent({
+      type:'permanent_tapped', controllerIsLocal:true, actorIsLocal:true,
+      ownerIsLocal:cardOwnerIsLocal(item.card,true,state.currentMatch?.myRole||null),
+      card:item.card,item,zoneFrom:'battlefield',zoneTo:'battlefield',cause:'convoke_cost'
+    });
+    irreversible = true;
+  }
+  if ((plan.convoke || []).length) logMsg(gameText('cost.convoke.paid',{card:card.name,count:plan.convoke.length}));
+
+  if ((plan.delve || []).length) {
+    for (const graveCard of plan.delve) {
+      const idx=state.localGraveyard.indexOf(graveCard);
+      if(idx>=0) state.localGraveyard.splice(idx,1);
+    }
+    state.localExile.push(...plan.delve);
+    plan.delve.forEach(exiledCard=>dispatchGameEvent({
+      type:'card_exiled',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:true,
+      card:exiledCard,zoneFrom:'graveyard',zoneTo:'exile',cause:'delve_cost'
+    }));
+    logMsg(gameText('cost.delve.paid',{card:card.name,count:plan.delve.length}));
+    irreversible = true;
+  }
+  if (irreversible) state.pendingSpellCostsIrreversible = true;
+  return true;
+}
+
+async function prepareCastTransactionCosts(tx, determinedCost) {
   const useAlternative = !!tx.useAlternative;
   if (!canPayCastCompositeNonManaCosts(tx.card, true, useAlternative, { excludeCard:tx.card })) return false;
   state.pendingCompositeCostPayment = true;
@@ -5759,10 +6558,14 @@ async function prepareCastTransactionCosts(tx) {
     state.pendingEscapeExileChoice = null;
     if (!escapeExiles) { state.pendingCompositeCostPayment = false; return false; }
   }
+
+  const optional = await prepareOptionalCastPaymentMethods(tx, determinedCost, preparedComposite, escapeExiles);
   state.pendingCompositeCostPayment = false;
   tx.preparedComposite = preparedComposite;
   tx.escapeExiles = escapeExiles;
-  state.pendingPreparedCastCosts = { preparedComposite, escapeExiles };
+  tx.preparedPaymentMethods = optional.plan;
+  tx.payableManaCost = optional.cost;
+  state.pendingPreparedCastCosts = { preparedComposite, escapeExiles, paymentMethods:optional.plan };
   return true;
 }
 
@@ -5776,23 +6579,31 @@ export async function completeCastTargetDeclaration(targetObj) {
   state.pendingFightChoice = null;
   tx.stage = 'cost_lock';
 
-  // 601.2e/f — ya no hay decisiones de target abiertas. Ahora se determina y BLOQUEA el
-  // costo completo y se eligen los objetos concretos de costos no-maná, todavía sin moverlos.
-  const prepared = await prepareCastTransactionCosts(tx);
+  // 601.2f — primero se determina el coste final COMPLETO: base/alternativa + Kicker +
+  // adicionales + X, luego aumentos, reducciones y floors. Recién con ese número cerrado se
+  // preparan recursos opcionales de pago como Convoke/Delve; ninguno se muta todavía.
+  const finalCost = getFinalCastingManaCost(tx.card, {
+    useAlternative:!!tx.useAlternative,
+    kicked:!!tx.kicked,
+    baseOverride:tx.baseOverride,
+    xValue:tx.xValue,
+    isLocal:true
+  });
+  tx.lockedManaCost = { ...finalCost.cost };
+  tx.costModifierTrace = finalCost.trace || [];
+  tx.costManaString = finalCost.manaString;
+  if (tx.costModifierTrace.length) {
+    logMsg(gameText('cost.modified',{card:tx.card.name,cost:costEngineSummary(finalCost),modifiers:tx.costModifierTrace.length}));
+  }
+  const prepared = await prepareCastTransactionCosts(tx, finalCost.cost);
   if (!prepared) {
     logMsg(gameText('cast.prepareCostFailed', { card: tx.card.name }));
     abortCastTransaction();
     return false;
   }
 
-  const manaString = getCastingManaCostString(tx.card, {
-    useAlternative:!!tx.useAlternative,
-    kicked:!!tx.kicked,
-    baseOverride:tx.baseOverride
-  });
-  const cost = parseManaCost(manaString);
-  if (manaString?.includes('{X}')) cost.generic += Math.max(0, Number(tx.xValue) || 0);
-  tx.lockedManaCost = { ...cost };
+  const manaString = finalCost.manaString;
+  const cost = { ...(tx.payableManaCost || finalCost.cost) };
   tx.stage = 'payment';
   tx.proposedStackItem = {
     card:tx.card,
@@ -5812,7 +6623,9 @@ export async function completeCastTargetDeclaration(targetObj) {
   state.paymentManaSourceRollbacks = [];
   recordTelemetryEvent('cast_cost_locked', {
     transactionId:tx.id, card:tx.card.name, targetCount:targetObj?.type === 'multi' ? targetObj.targets.length : (targetObj ? 1 : 0),
-    manaCost:manaString || '{0}', xValue:tx.xValue || 0, kicked:!!tx.kicked, alternative:!!tx.useAlternative
+    manaCost:manaString || '{0}', finalManaCost:costEngineSummary({cost}), modifierCount:tx.costModifierTrace?.length||0,
+    convokeCount:tx.preparedPaymentMethods?.convoke?.length||0, delveCount:tx.preparedPaymentMethods?.delve?.length||0,
+    xValue:tx.xValue || 0, kicked:!!tx.kicked, alternative:!!tx.useAlternative
   });
   logMsg(gameText('cast.costLocked', { card: tx.card.name }));
   checkPaymentComplete();
@@ -5826,6 +6639,16 @@ async function commitCastTransactionAfterMana() {
   const prepared = tx.preparedComposite;
   const useAlternative = !!tx.useAlternative;
 
+  // 23.15.4 — validar TODOS los recursos preparados antes de mutar ninguno. Convoke/Delve
+  // son costos reales, no descuentos: si una criatura se giró por otra vía o una carta dejó
+  // el cementerio durante el intento, el lanzamiento se revierte mientras todavía sea posible.
+  if (!validatePreparedCastPaymentMethods(tx.preparedPaymentMethods) ||
+      (tx.escapeExiles?.length && tx.escapeExiles.some(c => !state.localGraveyard.includes(c) || c === tx.card))) {
+    logMsg(gameText('cast.costBecameUnpayable', { card: tx.card.name }));
+    abortCastTransaction();
+    return false;
+  }
+
   // 601.2h — commit atómico de costos no-maná preparados. No hubo ninguna mutación antes
   // de que el maná llegara a cero; si una referencia quedó inválida, aborta/rollback.
   if (!commitCastCompositeNonManaCosts(tx.card, true, prepared, useAlternative)) {
@@ -5834,20 +6657,24 @@ async function commitCastTransactionAfterMana() {
     return false;
   }
   if (tx.escapeExiles?.length) {
-    if (tx.escapeExiles.some(c => !state.localGraveyard.includes(c) || c === tx.card)) {
-      logMsg(gameText('cast.escapeBecameInvalid', { card: tx.card.name }));
-      // A esta altura el costo compuesto podría haberse comprometido. No seguimos silenciosamente.
-      state.pendingSpellCostsIrreversible = true;
-      resetCastTransactionState();
-      render();
-      return false;
-    }
     tx.escapeExiles.forEach(c => {
       const idx = state.localGraveyard.indexOf(c);
       if (idx >= 0) state.localGraveyard.splice(idx, 1);
     });
     state.localExile.push(...tx.escapeExiles);
+    tx.escapeExiles.forEach(exiledCard => dispatchGameEvent({
+      type:'card_exiled',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:true,
+      card:exiledCard,zoneFrom:'graveyard',zoneTo:'exile',cause:'escape_cost'
+    }));
     state.pendingSpellCostsIrreversible = true;
+  }
+
+  if (!commitPreparedCastPaymentMethods(tx.card, tx.preparedPaymentMethods)) {
+    // La validación previa debería hacer este camino inalcanzable salvo mutación reentrante.
+    state.pendingSpellCostsIrreversible = true;
+    resetCastTransactionState();
+    render();
+    return false;
   }
 
   const cardIndex = state.localHand.indexOf(tx.card);
@@ -5903,7 +6730,9 @@ export function playCard(index) {
       return;
     }
     const entersTapped = landEntersTappedForBattlefield(card, true);
+    stampCardOwner(card, true, state.currentMatch?.myRole || null);
     const landItem = { card, tapped: entersTapped, enteredThisTurn: true, permanentTypes: ['land'] };
+    stampPermanentController(landItem, true, state.currentMatch?.myRole || null);
     state.localLands.push(landItem); state.localHand.splice(index, 1); state.localLandPlayedThisTurn = true;
     logMsg(entersTapped ? gameText('cast.landPlayedTapped', { card: card.name }) : gameText('cast.landPlayed', { card: card.name }));
     // PUNTO 2: jugar una Tierra es una entrada real al campo y dispara Landfall. No esperamos
@@ -6060,7 +6889,7 @@ export function landEntersTappedForBattlefield(card, isLocal = true, forcedTappe
 
 function shouldDeferLandManaTriggers() {
   return !!(state.pendingCost || state.pendingCastTransaction || state.pendingSpellIndex !== null ||
-    state.pendingAbilitySource || state.pendingWardChoice || state.pendingCounterUnlessPay ||
+    state.pendingAbilitySource || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay ||
     state.pendingCompositeCostPayment);
 }
 
@@ -6159,6 +6988,7 @@ function manaSourceSacrificesEffective(source, isLocal = true) {
 
 export function canActivateLocalManaAbility(item) {
   if (!item?.card || state.gameOver) return false;
+  if (state.pendingCastTransaction?.preparedPaymentMethods?.convoke?.includes(item)) return false;
   if (!canActivateManaSourcePermanent(item, { hasHaste: getEffectiveKeywords(item).some(k => String(k).toLowerCase() === 'haste'), ability: effectiveManaAbilityForItem(item, true) })) return false;
   // CR 605.3a: durante 601/602 una mana ability puede activarse en la ventana de pago aun
   // sin prioridad. Fuera de un pago requiere prioridad; Enderezar/Limpieza no la conceden
@@ -6205,7 +7035,10 @@ function produceManaFromSource(item, isLocal, chosenType) {
   // recién después su efecto agrega maná. Como es una mana ability, todo ocurre sin Stack
   // ni ventana de respuesta entre costo y producción.
   if (ability.sacrificeSelf && isLocal && state.pendingCost) rememberManaSourceRollback(item, isLocal, wasTapped, ability);
-  if (ability.requiresTap) item.tapped = true;
+  if (ability.requiresTap) {
+    item.tapped = true;
+    if(!wasTapped) dispatchGameEvent({type:'permanent_tapped',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:cardOwnerIsLocal(item.card,isLocal,state.currentMatch?.myRole||null),card:item.card,item,zoneFrom:'battlefield',zoneTo:'battlefield',cause:'mana_ability'});
+  }
   if (isLocal && state.pendingCost && ability.requiresTap) state.tappedLandsThisSpell.push(item);
   const landManaEventSnapshot = ability.requiresTap && isLandPermanent(item)
     ? captureLandTappedForManaEvent(item, isLocal, type) : null;
@@ -6365,10 +7198,11 @@ function tapSupportManaSource(item, isLocal) {
   chooseAndProduceMana(item, isLocal);
 }
 
-export function startCrewing(item, isLocal, ability = getActivatedAbilities(item.card).find(ab => ab.crewCost !== undefined)) {
+export function startCrewing(item, isLocal, ability = getActivatedAbilities(item.card).find(ab => ab.crewCost !== undefined), abilityIndex = null) {
   const required = ability?.crewCost;
   if (required === undefined) return;
-  state.pendingCrew = { item, isLocal, required, selected: [], powerSoFar: 0 };
+  if (abilityIndex === null || abilityIndex === undefined) abilityIndex = Math.max(0, getActivatedAbilities(item.card).indexOf(ability));
+  state.pendingCrew = { item, isLocal, required, ability, abilityIndex, selected: [], powerSoFar: 0 };
   logMsg(gameText('crew.choose', { card: item.card.name, required }));
   render();
 }
@@ -6383,6 +7217,14 @@ export function handleCrewClick(item, isLocal) {
 
   if (!isLocal) {
     logMsg(gameText('crew.ownOnly'));
+    return true;
+  }
+
+  // Desde NEO/CR 702.122: un Vehicle no puede pagar su propia habilidad de Crew.
+  // Esto importa si ya es criatura (por Crew previo u otra animación) y por eso aparece
+  // entre los candidatos del Combat.
+  if (item === pc.item) {
+    logMsg(gameText('crew.selfNotAllowed', { card: item.card.name }));
     return true;
   }
 
@@ -6402,13 +7244,14 @@ export function handleCrewClick(item, isLocal) {
 
   pc.selected.push(item);
   item.tapped = true;
+  // La selección de Crew es reversible hasta confirmar. El evento real de tap se emite en
+  // confirmCrew(), para que quitar una criatura de la selección o cancelar no genere triggers fantasma.
   pc.powerSoFar += getEffectivePower(item);
   logMsg(gameText('crew.added', { card: item.card.name, power: pc.powerSoFar, required: pc.required }));
-  if (pc.powerSoFar >= pc.required) {
-    confirmCrew();
-  } else {
-    render();
-  }
+  // Crew permite girar CUALQUIER cantidad de criaturas cuya fuerza total alcance el coste.
+  // No auto-confirmamos al llegar a N: el jugador puede elegir tripulantes adicionales y
+  // compromete el coste recién al pulsar «Confirmar Tripular».
+  render();
   return true;
 }
 
@@ -6420,37 +7263,45 @@ export function confirmCrew() {
     return;
   }
 
-  const card = pc.item.card;
-  const supportZone = pc.isLocal ? state.localSupport : state.rivalSupport;
-  const landsZone = pc.isLocal ? state.localLands : state.rivalLands;
-  const combatZone = pc.isLocal ? state.localCombat : state.rivalCombat;
-
-  let originZone = supportZone;
-  let vIdx = supportZone.indexOf(pc.item);
-  let fromLand = false;
-  if (vIdx === -1) {
-    vIdx = landsZone.indexOf(pc.item);
-    originZone = landsZone;
-    fromLand = true;
-  }
-  if (vIdx === -1) {
-    logMsg(gameText('crew.unavailable', { card: card.name }));
-    state.pendingCrew = null;
-    render();
+  // Revalidación final antes de comprometer el coste: la fuente debe seguir en battlefield
+  // bajo nuestro control y debemos conservar prioridad. Las criaturas elegidas ya están
+  // giradas provisionalmente; si esto falla, cancelCrew() las devuelve a su estado previo.
+  const sourceLocation = findBattlefieldItemLocation(pc.item);
+  const expectedController = pc.isLocal ? 'local' : 'rival';
+  if (!sourceLocation || (sourceLocation.isLocal ? 'local' : 'rival') !== expectedController || state.priorityPlayer !== expectedController) {
+    logMsg(gameText('crew.unavailable', { card: pc.item.card.name }));
+    cancelCrew();
     return;
   }
 
-  const vehicleItem = originZone.splice(vIdx, 1)[0];
-  vehicleItem.card.power = card.baseStats.power;
-  vehicleItem.card.toughness = card.baseStats.toughness;
-  vehicleItem.isVehicle = true;
-  vehicleItem.wasLand = fromLand;
-  vehicleItem.summoningSickness = !!vehicleItem.enteredThisTurn;
-  combatZone.push(vehicleItem);
+  // Girar criaturas es el COSTE de Crew. Los triggers que nazcan por esos taps se difieren
+  // hasta que la habilidad de Crew haya sido puesta en la Stack; después se apilan encima.
+  for (const crewItem of pc.selected) {
+    dispatchGameEvent({
+      type:'permanent_tapped', controllerIsLocal:pc.isLocal!==false, actorIsLocal:pc.isLocal!==false,
+      ownerIsLocal:cardOwnerIsLocal(crewItem.card,pc.isLocal!==false,state.currentMatch?.myRole||null),
+      card:crewItem.card, item:crewItem, zoneFrom:'battlefield', zoneTo:'battlefield', cause:'crew'
+    });
+  }
 
-  logMsg(gameText('crew.complete', { card: card.name, power: pc.powerSoFar, stats: `${card.baseStats.power}/${card.baseStats.toughness}` }));
+  const ability = pc.ability || getActivatedAbilities(pc.item.card).find(ab => ab.crewCost !== undefined);
+  const stackItem = {
+    card: pc.item.card,
+    isLocal: pc.isLocal,
+    targetObj: null,
+    type: 'ability',
+    abilityKind: 'own',
+    ability: { ...ability, effect: { ...(ability?.effect || {}), type:'crew_vehicle' } },
+    sourceItem: pc.item,
+    source: { type:'crew_activation', abilityIndex: pc.abilityIndex ?? 0, sourceItem:pc.item }
+  };
+  addToStack(stackItem);
   state.pendingCrew = null;
+  flushDeferredLandManaTriggers();
+  state.consecutivePasses = 0;
+  logMsg(gameText('crew.activated', { card: pc.item.card.name, power: pc.powerSoFar, required: pc.required }));
   render();
+  if (pc.isLocal) checkRivalCounterOrResponse();
 }
 
 export function cancelCrew() {
@@ -6484,6 +7335,7 @@ export function payCounterTax() {
   state.priorityPlayer = state.activePlayer;
   state.consecutivePasses = 0;
   render();
+  resumeAfterInteractiveEffect();
 }
 
 // No pagar: el hechizo amenazado se contrarresta de verdad y se saca de la pila.
@@ -6497,7 +7349,9 @@ export function declineCounterTax() {
     logMsg(gameText('counterTax.declined', { card: counteredItem.card.name }));
     // ETAPA MOTOR 2: Flashback contrarrestado se exilia; una habilidad contrarrestada no
     // manda su permanente fuente al cementerio. Misma regla que usa stackManager.js.
-    moveCounteredStackItemToDestination(counteredItem, state);
+    const destination=moveCounteredStackItemToDestination(counteredItem,state);
+    dispatchGameEvent({type:'spell_countered',controllerIsLocal:counteredItem.isLocal!==false,actorIsLocal:pc.counterIsLocal!==false,card:counteredItem.card,item:counteredItem,zoneFrom:'stack',zoneTo:destination,cause:'counter_tax'});
+    if(destination==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:counteredItem.isLocal!==false,actorIsLocal:pc.counterIsLocal!==false,ownerIsLocal:cardOwnerIsLocal(counteredItem.card,counteredItem.isLocal!==false,state.currentMatch?.myRole||null),card:counteredItem.card,item:counteredItem,zoneFrom:'stack',zoneTo:'exile',cause:counteredItem.castFrom==='flashback'?'countered_flashback':'countered_replacement'});
   }
   sendCounterspellAway(pc);
   state.pendingCounterUnlessPay = null;
@@ -6505,6 +7359,7 @@ export function declineCounterTax() {
   state.priorityPlayer = state.activePlayer;
   state.consecutivePasses = 0;
   render();
+  resumeAfterInteractiveEffect();
 }
 
 // El counterspell que armó la amenaza también tiene que ir a destino (cementerio, o
@@ -6512,9 +7367,12 @@ export function declineCounterTax() {
 function sendCounterspellAway(pc) {
   if (!pc.counterCard) return;
   if (pc.counterCastFrom === 'flashback') {
-    (pc.counterIsLocal ? state.localExile : state.rivalExile).push(pc.counterCard);
+    zoneForCardOwner(pc.counterCard,state.localExile,state.rivalExile,!!pc.counterIsLocal,state.currentMatch?.myRole||null).push(pc.counterCard);
+    dispatchGameEvent({type:'card_exiled',controllerIsLocal:!!pc.counterIsLocal,actorIsLocal:!!pc.counterIsLocal,ownerIsLocal:cardOwnerIsLocal(pc.counterCard,!!pc.counterIsLocal,state.currentMatch?.myRole||null),card:pc.counterCard,zoneFrom:'stack',zoneTo:'exile',cause:'flashback'});
   } else {
-    (pc.counterIsLocal ? state.localGraveyard : state.rivalGraveyard).push(pc.counterCard);
+    const plan=replacementCardZonePlan(pc.counterCard,!!pc.counterIsLocal,'stack','graveyard','resolved_counterspell');
+    plan.destination.push(pc.counterCard);
+    if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:!!pc.counterIsLocal,actorIsLocal:!!pc.counterIsLocal,ownerIsLocal:plan.ownerIsLocal,card:pc.counterCard,zoneFrom:'stack',zoneTo:'exile',cause:'resolved_counterspell'});
   }
 }
 
@@ -6860,6 +7718,10 @@ function continueCastingAfterAdditionalCosts(card) {
           if (idx !== -1) state.localGraveyard.splice(idx, 1);
         });
         state.localExile.push(...chosenCards);
+        chosenCards.forEach(exiledCard => dispatchGameEvent({
+          type:'card_exiled',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:true,
+          card:exiledCard,zoneFrom:'graveyard',zoneTo:'exile',cause:'escape_cost'
+        }));
         logMsg(gameText('escape.exiled', { card: card.name, count: chosenCards.length }));
         state.pendingEscapeExileChoice = null;
         void finishCastingHandCard(card);
@@ -6879,7 +7741,7 @@ function checkPaymentComplete() {
   const cost = state.pendingCost;
   if (!cost) return;
  
-  if ((cost.W + cost.U + cost.B + cost.R + cost.G + (cost.C || 0) + cost.generic) === 0) {
+  if (manaCostTotal(cost) === 0) {
 
     // SALVAGUARDA: esto no debería poder pasar nunca (canPlayCard ya lo previene),
     // pero si por algún motivo quedaran ambos pagos pendientes a la vez, mejor
@@ -6941,7 +7803,9 @@ function checkPaymentComplete() {
       // Si el pago incluía {T}, giramos a quien corresponda (el permanente mismo,
       // o la criatura equipada si la habilidad viene de un Equipo).
       if (source.requiresTap) {
+        const wasTapped=!!tapTarget.tapped;
         tapTarget.tapped = true;
+        if(!wasTapped) dispatchGameEvent({type:'permanent_tapped',controllerIsLocal:source.isLocal!==false,actorIsLocal:source.isLocal!==false,ownerIsLocal:cardOwnerIsLocal(tapTarget.card,source.isLocal!==false,state.currentMatch?.myRole||null),card:tapTarget.card,item:tapTarget,zoneFrom:'battlefield',zoneTo:'battlefield',cause:'activated_ability'});
       }
 
       // Si el costo incluye Sacrificar, se paga acá, antes de que la habilidad llegue
@@ -7204,7 +8068,11 @@ function autoPayGenericManaCost(isLocal, amount) {
     const type = options[0]; // El coste es genérico; cualquier elección legal es equivalente.
     const produced = manaSourceAmount(source, isLocal);
     const tappedForMana = manaSourceRequiresTapEffective(source, isLocal);
-    if (tappedForMana) source.tapped = true;
+    if (tappedForMana) {
+      const wasTapped=!!source.tapped;
+      source.tapped = true;
+      if(!wasTapped) dispatchGameEvent({type:'permanent_tapped',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:cardOwnerIsLocal(source.card,isLocal,state.currentMatch?.myRole||null),card:source.card,item:source,zoneFrom:'battlefield',zoneTo:'battlefield',cause:'mana_ability'});
+    }
     const landManaEventSnapshot = tappedForMana && isLandPermanent(source)
       ? captureLandTappedForManaEvent(source, isLocal, type) : null;
     if (manaSourceSacrificesEffective(source, isLocal)) performSacrifice(source, isLocal);
@@ -7255,7 +8123,9 @@ export function declineWard() {
     const idx = spellStack.findIndex(item => item.id === wc.stackId);
     if (idx !== -1) {
       const [countered] = spellStack.splice(idx, 1);
-      moveCounteredStackItemToDestination(countered, state);
+      const destination=moveCounteredStackItemToDestination(countered,state);
+      dispatchGameEvent({type:'spell_countered',controllerIsLocal:countered.isLocal!==false,actorIsLocal:false,card:countered.card,item:countered,zoneFrom:'stack',zoneTo:destination,cause:'ward'});
+      if(destination==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:countered.isLocal!==false,actorIsLocal:false,ownerIsLocal:cardOwnerIsLocal(countered.card,countered.isLocal!==false,state.currentMatch?.myRole||null),card:countered.card,item:countered,zoneFrom:'stack',zoneTo:'exile',cause:countered.castFrom==='flashback'?'ward_flashback':'ward_replacement'});
       logMsg(gameText('ward.countered', { card: countered.card.name }));
     }
     state.pendingWardChoice = null;
@@ -7272,12 +8142,14 @@ export function declineWard() {
       // AUDITORÍA PRE-FASE 3: Ward contrarresta ANTES de que esta ruta llegue a addToStack,
       // pero el destino es exactamente el mismo que si el objeto ya estuviera en la pila:
       // Flashback -> Exilio; Escape/normal -> Cementerio.
-      moveCounteredStackItemToDestination({
-        card,
-        isLocal: true,
-        type: 'spell',
-        castFrom: state.pendingCastFrom
-      }, state);
+      if(state.pendingCastFrom==='flashback') {
+        zoneForCardOwner(card,state.localExile,state.rivalExile,true,state.currentMatch?.myRole||null).push(card);
+        dispatchGameEvent({type:'card_exiled',controllerIsLocal:true,actorIsLocal:false,ownerIsLocal:cardOwnerIsLocal(card,true,state.currentMatch?.myRole||null),card,zoneFrom:'hand',zoneTo:'exile',cause:'ward_flashback'});
+      } else {
+        const plan=replacementCardZonePlan(card,true,'hand','graveyard','ward');
+        plan.destination.push(card);
+        if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:true,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card,zoneFrom:'hand',zoneTo:'exile',cause:'ward_replacement'});
+      }
     }
     state.pendingSpellIndex = null;
     state.pendingCost = null;
@@ -7434,10 +8306,34 @@ export function resolveEffectDirect(effect, cardName, isLocal, sourceCard = null
 // Proliferate). Mantiene el mismo comportamiento anterior sin crear una dependencia
 // stackManager -> bot adicional: stackManager ya depende de main.js y este wrapper
 // conserva el borde existente main -> bot.
-export function resumeAfterInteractiveEffect() {
-  // Con Trigger Stack cada watcher es un objeto independiente: un modal pertenece a la
-  // habilidad que está resolviendo y, cuando termina, la prioridad vuelve normalmente.
-  checkRivalCounterOrResponse();
+let interactiveResolutionResumeRunning = false;
+export async function resumeAfterInteractiveEffect() {
+  if (interactiveResolutionResumeRunning) return;
+  interactiveResolutionResumeRunning = true;
+  try {
+    // 23.15.5.1: si el efecto base de un hechizo con Kicker abrió una decisión asíncrona
+    // (Scry/Surveil/Proliferate/counter-tax), el bonus NO puede adelantarse ni perderse.
+    // resolveTopStackItem guarda esta continuación y el último modal la retoma acá.
+    const pending = state.pendingKickerResolutionContinuation;
+    if (pending && !state.pendingCounterUnlessPay && !state.pendingScrySurveilChoice && !state.pendingProliferateChoice) {
+      state.pendingKickerResolutionContinuation = null;
+      logMsg(gameText('stack.kickerBonus', { card: pending.card.name }));
+      await resolveGameEffect(pending.bonusEffect, {
+        sourceCard: pending.card, isLocal: pending.isLocal, targetObj: null,
+        stackItem: pending.stackItem || null, xValue: pending.xValue || 0
+      });
+      await runStateBasedActions({ reason:'kicker_bonus_resolved' });
+      await waitForStateBasedActions();
+      // El propio bonus puede abrir otra decisión interactiva. En ese caso ese modal volverá
+      // a llamar esta función al terminar y recién entonces se entrega prioridad.
+      if (state.pendingCounterUnlessPay || state.pendingScrySurveilChoice || state.pendingProliferateChoice) return;
+    }
+    state.priorityPlayer = state.activePlayer;
+    state.consecutivePasses = 0;
+    checkRivalCounterOrResponse();
+  } finally {
+    interactiveResolutionResumeRunning = false;
+  }
 }
 
 
