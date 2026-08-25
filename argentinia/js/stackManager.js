@@ -1634,7 +1634,6 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           stampPermanentController(newUnit, isLocal, state.currentMatch?.myRole || null);
           board.push(newUnit);
           triggerCreatureEtb(isLocal, revivedCard, newUnit);
-          }
 
           if (revivedCard.etbEffect) {
             let etbTarget = null;
