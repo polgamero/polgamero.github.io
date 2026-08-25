@@ -1304,6 +1304,11 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     if (card.type.includes('Bosque')) landSymbolImg = 'bosque.png';
   }
 
+  // 23.14.9 — debe existir para TODAS las ramas de render, incluidas Tierras básicas.
+  // Antes estaba declarado dentro del `else` de texto normal y luego se usaba fuera,
+  // provocando ReferenceError al renderizar la Enciclopedia con una Tierra básica.
+  const hasCreatureStats = isCreaturePermanent(itemObj);
+
   let formattedTextHTML = '';
   if (isBasicLand && landSymbolImg) {
     const landSymbolUrl = `./assets/images/${landSymbolImg}`;
@@ -1326,8 +1331,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
         : gameText('land.transform.noAbilities');
     }
 
-    const hasCreatureStats = isCreaturePermanent(itemObj);
-  const effKeywords = hasCreatureStats ? getEffectiveKeywords(itemObj) : [];
+    const effKeywords = hasCreatureStats ? getEffectiveKeywords(itemObj) : [];
 
     const KEYWORD_LABELS = { 
       flying: '🕊️ Vuela', trample: '🐘 Arrolla', hexproof: '🛡️ Intocable', haste: '⚡ Prisa', 
