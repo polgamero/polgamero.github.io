@@ -2367,5 +2367,133 @@
         "trample"
       ]
     }
+  },
+  {
+    "id": "inst_116",
+    "name": "Dato de Último Momento",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Mirá las cuatro primeras cartas de tu biblioteca. Poné una de ellas en tu mano y el resto en el fondo de tu biblioteca.",
+    "flavorText": "La primicia dura exactamente hasta que alguien la reenvía.",
+    "image": "dato_de_ultimo_momento.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "look_at_top",
+      "lookCount": 4,
+      "amount": 1,
+      "filter": {
+        "cardType": "any"
+      },
+      "destination": "hand",
+      "remainderDestination": "bottom",
+      "shuffle": false,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "inst_117",
+    "name": "Carpeta con Fojas Faltantes",
+    "type": "Instantáneo",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Mirá las cinco primeras cartas de tu biblioteca. Podés mostrar una carta de criatura de entre ellas y ponerla en tu mano. Poné el resto en tu cementerio.",
+    "flavorText": "Lo raro no es que falten páginas. Lo raro es que justo falten ésas.",
+    "image": "carpeta_con_fojas_faltantes.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "look_at_top",
+      "lookCount": 5,
+      "amount": 1,
+      "filter": {
+        "cardType": "creature"
+      },
+      "destination": "hand",
+      "remainderDestination": "graveyard",
+      "reveal": true,
+      "shuffle": false,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "inst_118",
+    "name": "Inspección Ocular",
+    "type": "Instantáneo",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Creá dos fichas de artefacto Comprobante.",
+    "flavorText": "Nada se toca hasta que alguien le saque una foto.",
+    "image": "inspeccion_ocular.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenPreset": "clue",
+      "token": {
+        "name": "Comprobante",
+        "image": "token_comprobante.png"
+      }
+    }
+  },
+  {
+    "id": "inst_119",
+    "name": "Vuelto en Dólares",
+    "type": "Instantáneo",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Creá dos fichas de artefacto Dólar Blue.",
+    "flavorText": "No era lo acordado, pero nadie pidió recibo.",
+    "image": "vuelto_en_dolares.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenPreset": "treasure",
+      "token": {
+        "name": "Dólar Blue",
+        "image": "token_dolar_blue.png"
+      }
+    }
+  },
+  {
+    "id": "inst_120",
+    "name": "Mancha en el Mantel",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B/R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "B",
+      "R"
+    ],
+    "text": "Creá dos fichas de artefacto Mancha de Malbec.",
+    "flavorText": "Hay reuniones que dejan acta. Otras dejan esto.",
+    "image": "mancha_en_el_mantel.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenPreset": "blood",
+      "token": {
+        "name": "Mancha de Malbec",
+        "image": "token_mancha_de_malbec.png"
+      }
+    }
   }
 ]

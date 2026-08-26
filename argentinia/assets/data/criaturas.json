@@ -6046,5 +6046,285 @@
     "keywords": [
       "haste"
     ]
+  },
+  {
+    "id": "crea_276",
+    "name": "Inspectora de Consorcio",
+    "type": "Criatura — Humano Detective",
+    "manaCost": "{W}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Cuando Inspectora de Consorcio entre al campo de batalla, creá una ficha de artefacto Comprobante.",
+    "flavorText": "En el edificio todos tienen una versión. Ella tiene las actas.",
+    "image": "inspectora_de_consorcio.png",
+    "power": 1,
+    "toughness": 2,
+    "keywords": [],
+    "etbEffect": {
+      "type": "create_tokens",
+      "amount": 1,
+      "tokenPreset": "clue",
+      "token": {
+        "name": "Comprobante",
+        "image": "token_comprobante.png"
+      }
+    }
+  },
+  {
+    "id": "crea_277",
+    "name": "Bibliotecaria del Palacio Legislativo",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Cuando Bibliotecaria del Palacio Legislativo entre al campo de batalla, podés buscar en tu biblioteca una carta de criatura con valor de maná de 2 o menos, mostrarla, ponerla en tu mano y barajar.",
+    "flavorText": "Los expedientes pequeños suelen esconder los problemas más grandes.",
+    "image": "bibliotecaria_del_palacio_legislativo.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [],
+    "etbEffect": {
+      "type": "search_library",
+      "amount": 1,
+      "filter": {
+        "cardType": "creature",
+        "maxManaValue": 2
+      },
+      "destination": "hand",
+      "reveal": true,
+      "shuffle": true,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "crea_278",
+    "name": "Pasante del Archivo General",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Cuando Pasante del Archivo General entre al campo de batalla, mirá las cuatro primeras cartas de tu biblioteca. Podés mostrar una carta de instantáneo o conjuro de entre ellas y ponerla en tu mano. Poné el resto en el fondo de tu biblioteca.",
+    "flavorText": "Le dijeron que ordenara por fecha. Descubrió que nadie sabía de qué año eran.",
+    "image": "pasante_del_archivo_general.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [],
+    "etbEffect": {
+      "type": "look_at_top",
+      "lookCount": 4,
+      "amount": 1,
+      "filter": {
+        "cardType": "instant_or_sorcery"
+      },
+      "destination": "hand",
+      "remainderDestination": "bottom",
+      "reveal": true,
+      "shuffle": false,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "crea_279",
+    "name": "Perito de Sistemas del RENAPER",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que crees una ficha, Adiviná 1.",
+    "flavorText": "Una inconsistencia en la base alcanza para encontrar a alguien que juraba no existir.",
+    "image": "perito_de_sistemas_del_renaper.png",
+    "power": 1,
+    "toughness": 3,
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "token_created",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "scry",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "crea_280",
+    "name": "Sommelier de Guardia",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "Cuando Sommelier de Guardia entre al campo de batalla, creá una ficha de artefacto Mancha de Malbec.",
+    "flavorText": "Nunca tira una botella sin antes rescatar la última evidencia.",
+    "image": "sommelier_de_guardia.png",
+    "power": 2,
+    "toughness": 1,
+    "keywords": [],
+    "etbEffect": {
+      "type": "create_tokens",
+      "amount": 1,
+      "tokenPreset": "blood",
+      "token": {
+        "name": "Mancha de Malbec",
+        "image": "token_mancha_de_malbec.png"
+      }
+    }
+  },
+  {
+    "id": "crea_281",
+    "name": "Gestor de Expedientes Reservados",
+    "type": "Criatura — Humano",
+    "manaCost": "{3}{B}{B}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Cuando Gestor de Expedientes Reservados entre al campo de batalla, podés buscar una carta en tu biblioteca, ponerla en tu mano y barajar.",
+    "flavorText": "No pregunta por qué la necesitás. Sólo cuánto apuro tenés.",
+    "image": "gestor_de_expedientes_reservados.png",
+    "power": 3,
+    "toughness": 3,
+    "keywords": [],
+    "etbEffect": {
+      "type": "search_library",
+      "amount": 1,
+      "filter": {
+        "cardType": "any"
+      },
+      "destination": "hand",
+      "reveal": false,
+      "shuffle": true,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "crea_282",
+    "name": "Arbolito de Florida",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Cuando Arbolito de Florida entre al campo de batalla, creá una ficha de artefacto Dólar Blue.",
+    "flavorText": "No grita. Apenas mueve los labios y ya sabés el precio.",
+    "image": "arbolito_de_florida.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [],
+    "etbEffect": {
+      "type": "create_tokens",
+      "amount": 1,
+      "tokenPreset": "treasure",
+      "token": {
+        "name": "Dólar Blue",
+        "image": "token_dolar_blue.png"
+      }
+    }
+  },
+  {
+    "id": "crea_283",
+    "name": "Cajera del Bingo",
+    "type": "Criatura — Humano",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que crees una ficha, Cajera del Bingo le hace 1 de daño a tu oponente.",
+    "flavorText": "Cada cartón nuevo viene acompañado por una campanita y una discusión.",
+    "image": "cajera_del_bingo.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "token_created",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "damage",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "crea_284",
+    "name": "Abuela del Tupper",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Cuando Abuela del Tupper entre al campo de batalla, creá una ficha de artefacto Tupper.",
+    "flavorText": "No importa cuánto comiste. Siempre hay uno más para llevar.",
+    "image": "abuela_del_tupper.png",
+    "power": 1,
+    "toughness": 3,
+    "keywords": [],
+    "etbEffect": {
+      "type": "create_tokens",
+      "amount": 1,
+      "tokenPreset": "food",
+      "token": {
+        "name": "Tupper",
+        "image": "token_tupper.png"
+      }
+    }
+  },
+  {
+    "id": "crea_285",
+    "name": "Despachante de Aduana",
+    "type": "Criatura — Humano",
+    "manaCost": "{1}{W}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W",
+      "U"
+    ],
+    "text": "Cuando Despachante de Aduana entre al campo de batalla, mirá las cinco primeras cartas de tu biblioteca. Podés mostrar una carta de artefacto de entre ellas y ponerla en tu mano. Poné el resto en el fondo de tu biblioteca.",
+    "flavorText": "Todo entra al país. La pregunta es por qué ventanilla.",
+    "image": "despachante_de_aduana.png",
+    "power": 2,
+    "toughness": 3,
+    "keywords": [],
+    "etbEffect": {
+      "type": "look_at_top",
+      "lookCount": 5,
+      "amount": 1,
+      "filter": {
+        "cardType": "artifact"
+      },
+      "destination": "hand",
+      "remainderDestination": "bottom",
+      "reveal": true,
+      "shuffle": false,
+      "allowFewer": true
+    }
   }
 ]

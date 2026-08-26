@@ -1477,5 +1477,98 @@
       },
       "preventAmount": 1
     }
+  },
+  {
+    "id": "ench_069",
+    "name": "Mesa de Entradas",
+    "type": "Encantamiento",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Siempre que crees una ficha, ganás 1 vida.",
+    "flavorText": "Cada número entregado es una pequeña victoria administrativa.",
+    "image": "mesa_de_entradas.png",
+    "triggers": [
+      {
+        "event": "token_created",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "heal",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_070",
+    "name": "Mercado Paralelo",
+    "type": "Encantamiento",
+    "manaCost": "{1}{B}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "R"
+    ],
+    "text": "Siempre que sacrifiques un permanente que no sea artefacto, creá una ficha de artefacto Dólar Blue.",
+    "flavorText": "Todo tiene un precio. Algunas cosas además tienen dos.",
+    "image": "mercado_paralelo.png",
+    "triggers": [
+      {
+        "event": "permanent_sacrificed",
+        "filter": {
+          "controller": "you",
+          "excludeCardType": "artifact"
+        },
+        "effect": {
+          "type": "create_tokens",
+          "amount": 1,
+          "tokenPreset": "treasure",
+          "token": {
+            "name": "Dólar Blue",
+            "image": "token_dolar_blue.png"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_071",
+    "name": "Archivo Bajo Llave",
+    "type": "Encantamiento",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Al comienzo de tu mantenimiento, mirá las tres primeras cartas de tu biblioteca. Podés poner una carta que no sea Tierra de entre ellas en tu mano. Poné el resto en el fondo de tu biblioteca.",
+    "flavorText": "La llave no protege el archivo. Protege a quienes todavía no saben qué contiene.",
+    "image": "archivo_bajo_llave.png",
+    "triggers": [
+      {
+        "event": "upkeep_started",
+        "filter": {
+          "activePlayer": "you"
+        },
+        "effect": {
+          "type": "look_at_top",
+          "lookCount": 3,
+          "amount": 1,
+          "filter": {
+            "cardType": "nonland"
+          },
+          "destination": "hand",
+          "remainderDestination": "bottom",
+          "shuffle": false,
+          "allowFewer": true
+        }
+      }
+    ]
   }
 ]

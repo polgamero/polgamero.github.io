@@ -1749,5 +1749,132 @@
       "type": "draw",
       "amount": 2
     }
+  },
+  {
+    "id": "conj_081",
+    "name": "Dato Reservado",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Buscá una carta en tu biblioteca, ponela en tu mano y barajá.",
+    "flavorText": "Si está marcado como confidencial, alguien ya hizo una copia.",
+    "image": "dato_reservado.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_library",
+      "amount": 1,
+      "filter": {
+        "cardType": "any"
+      },
+      "destination": "hand",
+      "reveal": false,
+      "shuffle": true,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "conj_082",
+    "name": "Revisión de Inventario",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Buscá una carta de artefacto en tu biblioteca, mostrá esa carta, ponela en tu mano y barajá.",
+    "flavorText": "Siempre falta una caja. Siempre sobra una explicación.",
+    "image": "revision_de_inventario.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_library",
+      "amount": 1,
+      "filter": {
+        "cardType": "artifact"
+      },
+      "destination": "hand",
+      "reveal": true,
+      "shuffle": true,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "conj_083",
+    "name": "Convocatoria Barrial",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Buscá una carta de criatura con valor de maná de 2 o menos en tu biblioteca, mostrá esa carta, ponela en tu mano y barajá.",
+    "flavorText": "Cuando el volante dice urgente, aparecen hasta los que nunca bajan.",
+    "image": "convocatoria_barrial.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_library",
+      "amount": 1,
+      "filter": {
+        "cardType": "creature",
+        "maxManaValue": 2
+      },
+      "destination": "hand",
+      "reveal": true,
+      "shuffle": true,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "conj_084",
+    "name": "Viandas del Club",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Creá dos fichas de artefacto Tupper.",
+    "flavorText": "La bandeja alcanza para todos porque alguien siempre trae otra.",
+    "image": "viandas_del_club.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenPreset": "food",
+      "token": {
+        "name": "Tupper",
+        "image": "token_tupper.png"
+      }
+    }
+  },
+  {
+    "id": "conj_085",
+    "name": "Pacto Bajo la Mesa",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Creá dos fichas de encantamiento Contrato Firmado.",
+    "flavorText": "Nadie vio la lapicera. Todos reconocieron la firma.",
+    "image": "pacto_bajo_la_mesa.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "token": {
+        "name": "Contrato Firmado",
+        "type": "Encantamiento — Pacto",
+        "image": "token_contrato_firmado.png"
+      }
+    }
   }
 ]

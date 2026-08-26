@@ -2,7 +2,7 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal } from './ui.js';
 import { buildRandomDeck, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
@@ -28,6 +28,7 @@ import { emptyManaPool, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, sp
 import { normalizeManaAbility, isManaSourceCard, getManaSourceOptions, getManaSourceAmount, manaSourceRequiresTap, manaSourceSacrificesSelf, canActivateManaSourcePermanent } from './manaSources.js';
 import { isLandCard, landGraveyardFilterMatches, hasLandPlayFromGraveyardPermission as hasLandGYPermission, playableLandGraveyardEntries } from './landGraveyard.js';
 import { normalizeLandSearchEffect, getLandSearchCandidates, chooseBotLandSearchEntries, shuffleLibraryInPlace } from './landSearch.js';
+import { normalizeLibraryEffect, getLibraryWindowEntries, getLibraryEligibleEntries, chooseBotLibraryEntries, libraryCardMatchesFilter, libraryCardCanMoveToDestination } from './libraryEngine.js';
 import { shouldLandEnterTapped, getLandManaTriggerEntries, getLandManaBonuses } from './landStax.js';
 import { getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities, getEffectiveLandPrintedKeywords, landRulesTextSuppressed, landMatchesEffectiveFilter, getEffectiveLandTypeLine, describeLandTransformation } from './landCharacteristics.js';
 import { evaluateStateBasedActions, hasMechanicalStateActions, SBA_MAX_PASSES } from './rulesKernel.js';
@@ -469,6 +470,8 @@ export const state = {
   pendingCompositeCostPayment: false,
   // LAND 3: selector de biblioteca para search_land/ramp. La elección ocurre sólo al resolver.
   pendingLandSearchChoice: null,
+  // 23.15.6: selector universal de biblioteca para search_library / look_at_top.
+  pendingLibraryChoice: null,
   // LAND 5: elección de Tierras a enderezar bajo Winter Orb-style y triggers de maná
   // diferidos hasta que termine el casteo/activación que estaba pagando.
   pendingUntapLandChoice: null,
@@ -2251,6 +2254,233 @@ export async function searchLibraryForLands({ isLocal = true, effect = {}, cardN
   return commitLandSearchEntries({ ownerIsLocal: isLocal, entries, spec, cardName });
 }
 
+
+// =========================================================================
+// 23.15.6 — GENERIC LIBRARY / TUTOR / LOOK-AT-N.
+// El mazo usa pop() para robar, por lo que deck[deck.length - 1] es la cima. El motor puro
+// vive en libraryEngine.js; acá sólo hacemos selección privada, commits y ETB reales.
+// =========================================================================
+function libraryFilterCopy(filter = {}) {
+  const f=filter || {};
+  const parts=[];
+  const typeLabels={
+    any:'carta',spell:'hechizo',permanent:'permanente',land:'Tierra',nonland:'carta que no sea Tierra',
+    creature:'criatura',noncreature:'carta que no sea criatura',instant:'instantáneo',sorcery:'conjuro',
+    instant_or_sorcery:'instantáneo o conjuro',artifact:'artefacto',enchantment:'encantamiento',planeswalker:'Planeswalker'
+  };
+  parts.push(typeLabels[f.cardType] || 'carta');
+  if(Array.isArray(f.subtypes) && f.subtypes.length) parts.push(`con subtipo ${f.subtypes.join('/')}`);
+  if(Array.isArray(f.colors) && f.colors.length) parts.push(`de color ${f.colors.join('/')}`);
+  if(f.exactManaValue!==null && f.exactManaValue!==undefined) parts.push(`con valor de maná ${f.exactManaValue}`);
+  else {
+    if(f.minManaValue!==null && f.minManaValue!==undefined) parts.push(`con valor de maná ${f.minManaValue} o más`);
+    if(f.maxManaValue!==null && f.maxManaValue!==undefined) parts.push(`con valor de maná ${f.maxManaValue} o menos`);
+  }
+  if(f.landKind==='basic') parts.push('básica');
+  if(f.landKind==='nonbasic') parts.push('no básica');
+  if(f.legendary===true) parts.push('legendaria');
+  return parts.join(' ');
+}
+
+function libraryDestinationCopy(destination='hand') {
+  const labels={
+    hand:'poner en tu mano',battlefield:'poner en el campo de batalla',battlefield_tapped:'poner girada en el campo de batalla',
+    graveyard:'poner en tu cementerio',exile:'exiliar',top:'poner en la cima',bottom:'poner en el fondo'
+  };
+  return labels[destination] || destination;
+}
+
+async function chooseLibraryEntries({ ownerIsLocal, chooserIsLocal, spec, cardName }) {
+  const deck=ownerIsLocal ? state.localDeck : state.rivalDeck;
+  const windowEntries=getLibraryWindowEntries(deck,spec).map(entry=>({
+    ...entry,
+    selectable: libraryCardMatchesFilter(entry.card,spec.filter) && libraryCardCanMoveToDestination(entry.card,spec.destination)
+  }));
+  const eligible=windowEntries.filter(entry=>entry.selectable);
+  const maxCount=Math.min(spec.amount,eligible.length);
+  if(maxCount<=0) return [];
+  if(!chooserIsLocal) return chooseBotLibraryEntries(deck,spec).slice(0,maxCount);
+
+  state.pendingLibraryChoice={cardName,amount:spec.amount,maxCount,range:spec.range,rangeCount:spec.rangeCount,destination:spec.destination};
+  render();
+  return new Promise(resolve=>{
+    showLibrarySearchModal({
+      candidates:windowEntries,
+      maxCount,
+      cardName,
+      filterLabel:libraryFilterCopy(spec.filter),
+      destinationLabel:libraryDestinationCopy(spec.destination),
+      allowFewer:spec.allowFewer,
+      lookCount:spec.range==='top_n' ? spec.rangeCount : null
+    }, chosenIndexes=>{
+      state.pendingLibraryChoice=null;
+      render();
+      const byIndex=new Map(windowEntries.map(entry=>[entry.index,entry]));
+      const unique=[...new Set((chosenIndexes||[]).map(Number))]
+        .filter(Number.isInteger)
+        .map(index=>byIndex.get(index))
+        .filter(entry=>entry?.selectable)
+        .slice(0,maxCount);
+      resolve(unique);
+    });
+  });
+}
+
+async function buildOwnEtbAfterLibraryEntry(card,item,isLocal) {
+  if(!card?.etbEffect) return null;
+  let etbTarget=null;
+  if(card.requiresTarget){
+    etbTarget=await chooseResolvedEffectTarget({
+      effect:card.etbEffect,sourceCard:card,sourceItem:item,cardName:`ETB de ${card.name}`,
+      controllerIsLocal:isLocal,chooserIsLocal:isLocal
+    });
+  }
+  if(!card.requiresTarget || etbTarget){
+    return {effect:card.etbEffect,sourceCard:card,sourceItem:item,isLocal,targetObj:etbTarget,triggerType:'library_etb'};
+  }
+  logMsg(gameText('effect.etb.noLegalTarget',{card:card.name}));
+  return null;
+}
+
+async function putLibraryCardsOntoBattlefield(cards, ownerIsLocal, tappedByInstruction=false) {
+  const prepared=[];
+  for(const card of cards||[]){
+    if(!libraryCardCanMoveToDestination(card,'battlefield')) continue;
+    stampCardOwner(card,ownerIsLocal,state.currentMatch?.myRole||null);
+    const type=String(card.type||'');
+    let item,kind;
+    if(isLandPermanent(card)){
+      item={card,tapped:landEntersTappedForBattlefield(card,ownerIsLocal,!!tappedByInstruction),enteredThisTurn:true,permanentTypes:['land']}; kind='land';
+    } else if(card.power!==undefined || type.includes('Criatura')){
+      item={card,tapped:!!tappedByInstruction,summoningSickness:true,isAttacking:false,blockingIndex:null,damageTaken:0,auras:[]};
+      if(hasKeyword(item,'haste')) item.summoningSickness=false; kind='creature';
+    } else if(type.includes('Planeswalker')){
+      item={card,loyalty:Math.max(0,Number(card.loyalty)||0),abilityUsedThisTurn:false,tapped:!!tappedByInstruction}; kind='planeswalker';
+    } else {
+      item={card,tapped:!!tappedByInstruction,enteredThisTurn:true}; if(card.equipment) item.attachedTo=null; kind='support';
+    }
+    stampPermanentController(item,ownerIsLocal,state.currentMatch?.myRole||null);
+    prepared.push({card,item,kind});
+  }
+
+  // Todos entran físicamente antes de detectar el primer ETB: una instrucción que pone
+  // varias cartas en battlefield representa un único evento simultáneo de entrada.
+  for(const entry of prepared){
+    const zone=entry.kind==='land' ? (ownerIsLocal?state.localLands:state.rivalLands)
+      : entry.kind==='creature' ? (ownerIsLocal?state.localCombat:state.rivalCombat)
+      : entry.kind==='planeswalker' ? (ownerIsLocal?state.localPlaneswalkers:state.rivalPlaneswalkers)
+      : (ownerIsLocal?state.localSupport:state.rivalSupport);
+    zone.push(entry.item);
+  }
+  // Todos los ETB nacidos del mismo movimiento se agrupan antes de tocar la Stack.
+  // Esto preserva simultaneidad + AP/NAP incluso si el lote mezcla Tierras, criaturas y Support/PW.
+  const triggerEntries=[];
+  const creatureEntries=prepared.filter(entry=>entry.kind==='creature').map(({card,item})=>({card,item}));
+  const landEntries=prepared.filter(entry=>entry.kind==='land').map(({card,item})=>({card,item}));
+  if(creatureEntries.length) triggerEntries.push(...collectCreatureEtbBatchEntries(ownerIsLocal,creatureEntries));
+  if(landEntries.length) triggerEntries.push(...collectLandEtbBatchEntries(ownerIsLocal,landEntries));
+  for(const entry of prepared.filter(entry=>entry.kind!=='creature' && entry.kind!=='land')){
+    triggerEntries.push(...buildGenericEventTriggerEntries({type:'permanent_entered',controllerIsLocal:ownerIsLocal,actorIsLocal:ownerIsLocal,ownerIsLocal,card:entry.card,item:entry.item,zoneFrom:'library',zoneTo:'battlefield',cause:'library'}));
+  }
+  for(const entry of prepared){
+    const own=await buildOwnEtbAfterLibraryEntry(entry.card,entry.item,ownerIsLocal);
+    if(own) triggerEntries.push(own);
+  }
+  if(triggerEntries.length) queueTriggeredAbilities(triggerEntries);
+  if(prepared.some(entry=>entry.card.staticEffect || entry.card.replacementEffect)){
+    await runStateBasedActions({reason:'library_permanent_batch_entered'}); await waitForStateBasedActions();
+  }
+  return prepared.map(entry=>entry.item);
+}
+
+function placeCardsAtLibraryTop(deck,cardsTopFirst){ cardsTopFirst.slice().reverse().forEach(card=>deck.push(card)); }
+function placeCardsAtLibraryBottom(deck,cardsTopFirst){ deck.unshift(...cardsTopFirst); }
+
+function moveLibraryCardToPublicZone(card,ownerIsLocal,destination,sourceCardName,sourceIsLocal=ownerIsLocal){
+  if(destination==='graveyard'){
+    const plan=replacementCardZonePlan(card,ownerIsLocal,'library','graveyard','library_effect',{sourceCard:{name:sourceCardName},sourceIsLocal});
+    plan.destination.push(card);
+    if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:ownerIsLocal,actorIsLocal:ownerIsLocal,ownerIsLocal:plan.ownerIsLocal,card,zoneFrom:'library',zoneTo:'exile',cause:'library_effect'});
+    return plan.zoneTo;
+  }
+  if(destination==='exile'){
+    (ownerIsLocal?state.localExile:state.rivalExile).push(card);
+    dispatchGameEvent({type:'card_exiled',controllerIsLocal:ownerIsLocal,actorIsLocal:ownerIsLocal,ownerIsLocal,card,zoneFrom:'library',zoneTo:'exile',cause:'library_effect'});
+    return 'exile';
+  }
+  return destination;
+}
+
+async function commitLibraryEntries({ownerIsLocal,sourceIsLocal=ownerIsLocal,entries,spec,cardName}){
+  const deck=ownerIsLocal?state.localDeck:state.rivalDeck;
+  const hand=ownerIsLocal?state.localHand:state.rivalHand;
+  const window=getLibraryWindowEntries(deck,spec);
+  const byIndex=new Map(window.map(e=>[e.index,e]));
+  const selected=(entries||[]).map(original=>{ const current=byIndex.get(original?.index); return current && current.card===original.card ? current : null; }).filter(e=>e && libraryCardMatchesFilter(e.card,spec.filter) && libraryCardCanMoveToDestination(e.card,spec.destination));
+  const selectedCards=[...new Set(selected.map(e=>e.card))].slice(0,spec.amount);
+  const selectedSet=new Set(selectedCards);
+  const remainderCards=spec.range==='top_n' ? window.map(e=>e.card).filter(c=>!selectedSet.has(c)) : [];
+
+  // Retirar primero la ventana/selección completa para que índices y orden no se corrompan.
+  if(spec.range==='top_n'){
+    const n=Math.min(deck.length,Math.max(0,Number(spec.rangeCount)||0));
+    deck.splice(deck.length-n,n);
+  } else {
+    [...selected].sort((a,b)=>b.index-a.index).forEach(e=>{ const idx=deck.indexOf(e.card); if(idx>=0) deck.splice(idx,1); });
+  }
+
+  // Una búsqueda de biblioteca baraja el resto antes de colocar un tutor a top/bottom.
+  if(spec.shuffle) shuffleLibraryInPlace(deck);
+
+  // Resolver primero el resto del look-at-N; luego las seleccionadas tienen precedencia
+  // visual cuando ambas instrucciones usan top/bottom.
+  if(remainderCards.length){
+    if(spec.remainderDestination==='top' || spec.remainderDestination==='stay') placeCardsAtLibraryTop(deck,remainderCards);
+    else if(spec.remainderDestination==='bottom') placeCardsAtLibraryBottom(deck,remainderCards);
+    else if(spec.remainderDestination==='graveyard' || spec.remainderDestination==='exile') {
+      remainderCards.forEach(c=>moveLibraryCardToPublicZone(c,ownerIsLocal,spec.remainderDestination,cardName,sourceIsLocal));
+    }
+  }
+
+  const movedNames=selectedCards.map(card=>card.name);
+  if(spec.destination==='top') placeCardsAtLibraryTop(deck,selectedCards);
+  else if(spec.destination==='bottom') placeCardsAtLibraryBottom(deck,selectedCards);
+  else if(spec.destination==='battlefield' || spec.destination==='battlefield_tapped') {
+    await putLibraryCardsOntoBattlefield(selectedCards,ownerIsLocal,spec.destination==='battlefield_tapped');
+  } else {
+    for(const card of selectedCards){
+      if(spec.destination==='hand') hand.push(card);
+      else if(spec.destination==='graveyard' || spec.destination==='exile') moveLibraryCardToPublicZone(card,ownerIsLocal,spec.destination,cardName,sourceIsLocal);
+    }
+  }
+
+  const identityPublic=spec.reveal || ['battlefield','battlefield_tapped','graveyard','exile'].includes(spec.destination);
+  recordTelemetryEvent('library_effect_resolved',{
+    source:cardName,effectType:spec.type,range:spec.range,rangeCount:spec.rangeCount,
+    destination:spec.destination,remainderDestination:spec.remainderDestination,selectedCount:selectedCards.length,
+    selectedNames:identityPublic?movedNames:[]
+  });
+  render();
+  return {completed:true,selectedCount:selectedCards.length,movedNames:identityPublic?movedNames:[]};
+}
+
+export async function resolveLibraryEffect({isLocal=true,effect={},cardName='Efecto'}={}){
+  const spec=normalizeLibraryEffect(effect);
+  if(spec.amount<=0) return {completed:true,selectedCount:0,movedNames:[]};
+  const ownerIsLocal=spec.owner==='opponent' ? !isLocal : isLocal;
+  // 23.15.6 soporta que el DUEÑO de la biblioteca haga la elección. Efectos futuros donde
+  // el controlador mira/elije en la biblioteca rival deben usar el protocolo privado 23.10
+  // y se mantienen fail-closed hasta declarar explícitamente esa visibilidad.
+  if(spec.chooser!=='owner') throw new Error('library_chooser_not_supported');
+  if(isHiddenRivalZone(ownerIsLocal)){
+    const ownerRole=otherRole(state.currentMatch.myRole);
+    const response=await requestRivalDecision('self_library_action',ownerRole,{spec,cardName,sourceControllerRole:state.currentMatch?.myRole||null});
+    return {completed:response?.completed!==false,selectedCount:Number(response?.selectedCount||0),movedNames:Array.isArray(response?.movedNames)?response.movedNames:[],reason:response?.reason||null};
+  }
+  const entries=await chooseLibraryEntries({ownerIsLocal,chooserIsLocal:ownerIsLocal,spec,cardName});
+  return commitLibraryEntries({ownerIsLocal,sourceIsLocal:isLocal,entries,spec,cardName});
+}
+
 // BUGFIX (post-lanzamiento, Etapa 5 revisada): antes, un efecto que obligaba al RIVAL a
 // descartar en multiplayer simplemente se salteaba entero — ni una carta se iba a ningún
 // lado, con un aviso de "no se puede resolver". Esto era HONESTO (no fingía un resultado
@@ -2416,6 +2646,31 @@ export function discardCardsFromHand(options) {
     state.resolvingDiscardEffects = Math.max(0, (state.resolvingDiscardEffects || 1) - 1);
     if (state.resolvingDiscardEffects === 0) render();
   });
+}
+
+// 23.15.7 — contraparte síncrona para Tano. En Solo la mano rival es real y local al
+// proceso, así que no necesita modal ni canal remoto. Se usa exclusivamente como COSTO
+// activado y conserva replacements + eventos igual que el helper humano.
+export function payBotActivatedDiscardCost(amount = 1, cardName = 'Habilidad') {
+  const count=Math.max(0,Math.floor(Number(amount)||0));
+  if(count===0) return true;
+  const entries=state.rivalHand.map((card,index)=>({card,index})).filter(e=>e.card);
+  if(entries.length<count) return false;
+  const chosen=chooseBotDiscardEntries(entries,count).sort((a,b)=>b.index-a.index);
+  const removed=[];
+  for(const entry of chosen){
+    const idx=state.rivalHand.indexOf(entry.card); if(idx===-1) return false;
+    removed.push({card:state.rivalHand.splice(idx,1)[0],index:entry.index});
+  }
+  removed.sort((a,b)=>a.index-b.index);
+  for(const {card} of removed){
+    const plan=replacementCardZonePlan(card,false,'hand','graveyard','activated_cost');
+    plan.destination.push(card);
+    dispatchGameEvent({type:'card_discarded',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card,zoneFrom:'hand',zoneTo:plan.zoneTo,cause:'activated_cost'}, {forceDeferNormalTriggers:true});
+    if(plan.zoneTo==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:plan.ownerIsLocal,card,zoneFrom:'hand',zoneTo:'exile',cause:'activated_cost'}, {forceDeferNormalTriggers:true});
+  }
+  logMsg(gameText('ability.additionalDiscard.botPaid',{card:cardName,count:removed.length}));
+  return removed.length===count;
 }
 
 // Punto 8: frontera reutilizable para rutas históricas de triggers directos que no esperan
@@ -3025,6 +3280,22 @@ function handleIncomingDecisionRequest(decision) {
       render();
       respondToDecision(decision.requestId, { completed: false, selectedCount: 0, movedNames: [] });
     });
+  } else if (decision.type === 'self_library_action') {
+    // 23.15.6: una carta controlada por este jugador opera sobre SU biblioteca privada.
+    // El cliente contrario sólo recibe nombres si la propia instrucción hace pública la identidad.
+    state.respondingToDecision=true;
+    render();
+    const spec=normalizeLibraryEffect(decision.spec || {});
+    chooseLibraryEntries({ownerIsLocal:true,chooserIsLocal:true,spec,cardName:decision.cardName||'Efecto rival'})
+      .then(entries=>commitLibraryEntries({ownerIsLocal:true,sourceIsLocal:decision.sourceControllerRole===state.currentMatch?.myRole,entries,spec,cardName:decision.cardName||'Efecto rival'}))
+      .then(result=>{ state.respondingToDecision=false; render(); respondToDecision(decision.requestId,result); })
+      .catch(err=>{
+        console.error('Error resolviendo acción remota de biblioteca:',err);
+        state.pendingLibraryChoice=null;
+        state.respondingToDecision=false;
+        render();
+        respondToDecision(decision.requestId,{completed:false,selectedCount:0,movedNames:[],reason:String(err?.message||err)});
+      });
   } else if (decision.type === 'graveyard_choice') {
     // Punto 6: el jugador remoto elige desde el cementerio indicado por rol fijo. Al llegar
     // a SU pantalla, ese rol se traduce otra vez a local/rival y el mismo selector general
@@ -4565,20 +4836,26 @@ export async function waitForStateBasedActions(){
 // authority for its own non-priority Legend Rule choice.
 export async function applyLocalLegendChoiceForMultiplayer(group){ return chooseLegendKeeper(group); }
 
-export function triggerCreatureEtbBatch(isLocal, entries = []) {
+export function collectCreatureEtbBatchEntries(isLocal, entries = []) {
   const combat=isLocal?state.localCombat:state.rivalCombat, support=isLocal?state.localSupport:state.rivalSupport,
     lands=isLocal?state.localLands:state.rivalLands, pws=isLocal?state.localPlaneswalkers:state.rivalPlaneswalkers;
   const watchers=[...combat,...support,...lands,...pws].filter(item=>item?.card?.creatureEtbTrigger);
   const queued=entries.flatMap(({card,item})=>watchers.map(w=>({effect:w.card.creatureEtbTrigger,sourceCard:w.card,sourceItem:w,isLocal,triggerType:'creature_etb',eventCard:card,eventItem:item})));
   for(const {card,item} of entries) queued.push(...buildGenericEventTriggerEntries({ type:'creature_entered', controllerIsLocal:isLocal, ownerIsLocal:cardOwnerIsLocal(card,isLocal,state.currentMatch?.myRole||null), card, item, zoneFrom:'unknown', zoneTo:'battlefield' }));
-  return queueTriggeredAbilities(queued);
+  return queued;
 }
-export function triggerLandEtbBatch(isLocal, entries = []) {
+export function triggerCreatureEtbBatch(isLocal, entries = []) {
+  return queueTriggeredAbilities(collectCreatureEtbBatchEntries(isLocal,entries));
+}
+export function collectLandEtbBatchEntries(isLocal, entries = []) {
   const all=[...(isLocal?state.localCombat:state.rivalCombat),...(isLocal?state.localSupport:state.rivalSupport),...(isLocal?state.localLands:state.rivalLands),...(isLocal?state.localPlaneswalkers:state.rivalPlaneswalkers)];
   const watchers=all.filter(item=>item?.card?.landEtbTrigger && !(isLandPermanent(item)&&landRulesTextSuppressed(state,item,isLocal)));
   const queued=entries.flatMap(({card,item})=>watchers.map(w=>({effect:w.card.landEtbTrigger,sourceCard:w.card,sourceItem:w,isLocal,triggerType:'land_etb',eventCard:card,eventItem:item})));
   for(const {card,item} of entries) queued.push(...buildGenericEventTriggerEntries({ type:'land_entered', controllerIsLocal:isLocal, ownerIsLocal:cardOwnerIsLocal(card,isLocal,state.currentMatch?.myRole||null), card, item, zoneFrom:'unknown', zoneTo:'battlefield' }));
-  return queueTriggeredAbilities(queued);
+  return queued;
+}
+export function triggerLandEtbBatch(isLocal, entries = []) {
+  return queueTriggeredAbilities(collectLandEtbBatchEntries(isLocal,entries));
 }
 
 // "Siempre que una criatura entre bajo tu control". Detecta y APILA; no resuelve.
@@ -5770,6 +6047,29 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
     return true;
   }
 
+  // 23.15.7 — las habilidades activadas pueden declarar un `additionalCost` de descarte.
+  // Es la pieza que permite representar una ficha Sangre real. Se valida ANTES de abrir
+  // el pago de maná para no consumir recursos si la mano no puede completar el costo.
+  const abilityAdditionalCost = normalizeCompositeCost(ability.additionalCost);
+  if (abilityAdditionalCost) {
+    const unsupported = abilityAdditionalCost.life > 0 || !!abilityAdditionalCost.sacrifice || !!abilityAdditionalCost.exileFromGraveyard || !!abilityAdditionalCost.manaCost;
+    if (unsupported) {
+      logMsg(`⚠️ ${displayName}: additionalCost activado no soportado en 23.15.7 (sólo discard).`);
+      return true;
+    }
+    if (abilityAdditionalCost.discard?.amount > 0) {
+      if (abilityAdditionalCost.discard.color) {
+        logMsg(`⚠️ ${displayName}: el descarte de habilidad activada todavía no admite filtro de color.`);
+        return true;
+      }
+      const hand = source.isLocal ? state.localHand : state.rivalHand;
+      if ((hand?.length || 0) < abilityAdditionalCost.discard.amount) {
+        logMsg(gameText('ability.additionalDiscard.missing', { card:displayName, count:abilityAdditionalCost.discard.amount }));
+        return true;
+      }
+    }
+  }
+
   if (state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew !== null) {
     logMsg(gameText('ability.pendingPayment'));
     return true;
@@ -6154,7 +6454,7 @@ export function canPlayLandFromGraveyard(card, isLocal = true) {
   if (state.phase !== 'main1' && state.phase !== 'main2') return false;
   if (spellStack.length > 0) return false;
   if (isLocal ? state.localLandPlayedThisTurn : state.rivalLandPlayedThisTurn) return false;
-  if (state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingTargetCard || state.pendingGraveyardChoice || state.pendingLandSearchChoice) return false;
+  if (state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingTargetCard || state.pendingGraveyardChoice || state.pendingLandSearchChoice || state.pendingLibraryChoice) return false;
   return true;
 }
 
@@ -6193,7 +6493,7 @@ export function openLandFromGraveyardPlayChoice() {
 }
 
 export function canPlayCard(card) {
-  if (state.gameOver || state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingLandSearchChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice || state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || state.pendingCompositeCostPayment || (state.resolvingCardFilterEffects || 0) > 0 || (state.resolvingDiscardEffects || 0) > 0 || (state.resolvingSacrificeEffects || 0) > 0 || (state.resolvingGraveyardChoices || 0) > 0 || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen || state.pendingRampChoice || state.awaitingRivalDecision || state.respondingToDecision) return false;
+  if (state.gameOver || state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingLandSearchChoice || state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice || state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || state.pendingCompositeCostPayment || (state.resolvingCardFilterEffects || 0) > 0 || (state.resolvingDiscardEffects || 0) > 0 || (state.resolvingSacrificeEffects || 0) > 0 || (state.resolvingGraveyardChoices || 0) > 0 || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen || state.pendingRampChoice || state.awaitingRivalDecision || state.respondingToDecision) return false;
   if (state.priorityPlayer !== 'local') return false; // Solo si poseés prioridad
 
   // LAND 3 / Punto 14: cualquier costo adicional no-maná, tanto schema legacy
@@ -6798,7 +7098,7 @@ export function castFromGraveyard(card, isLocal) {
   const abilityLabel = source === 'flashback' ? 'Flashback' : 'Escape';
 
   if (state.gameOver || state.priorityPlayer !== 'local') { logMsg(gameText('cast.needPriority')); return; }
-  if (state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingLandSearchChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.pendingRampChoice) {
+  if (state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingLandSearchChoice || state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingFightChoice || state.pendingXChoice || state.pendingModeChoice || state.pendingLoyaltyTargetChoice || state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.pendingRampChoice) {
     logMsg(gameText('cast.pending', { ability: abilityLabel }));
     return;
   }
@@ -7403,6 +7703,7 @@ export function tapLocalLand(item) {
   if (state.pendingEscapeExileChoice) { logMsg(gameText('pending.escape')); return; }
   if (state.pendingKickerChoice) { logMsg(gameText('pending.kicker')); return; }
   if (state.pendingLandSearchChoice) { logMsg(gameText('pending.landSearch')); return; }
+  if (state.pendingLibraryChoice) { logMsg(gameText('pending.library')); return; }
   if (state.pendingRampChoice) { logMsg(gameText('pending.ramp')); return; }
 
   // PUNTO 13 — TIERRA DE MANÁ + UTILIDAD. Todas las Tierras con habilidades pasan por
@@ -7799,6 +8100,39 @@ function checkPaymentComplete() {
       const isGranted = source.abilityKind === 'granted';
       const ability = source.ability || (isGranted ? getGrantedAbilities(card)[0] : getActivatedAbilities(card)[0]);
       const tapTarget = source.tapTarget || source.item;
+
+      // 23.15.7 — coste adicional de descarte para habilidades activadas (Blood-like).
+      // El maná ya está pagado, pero todavía no se giró/sacrificó la fuente ni entró la
+      // habilidad en Stack. El modal no ofrece cancelación parcial: o paga exactamente N
+      // o se aborta la activación. Replacement/Events de descarte siguen funcionando.
+      const abilityAdditionalCost = normalizeCompositeCost(ability.additionalCost);
+      if (abilityAdditionalCost?.discard?.amount > 0 && !source.additionalDiscardPaid) {
+        if (source.additionalDiscardPending) return;
+        source.additionalDiscardPending = true;
+        render();
+        void discardCardsFromHand({
+          victimIsLocal: source.isLocal !== false,
+          amount: abilityAdditionalCost.discard.amount,
+          selection: abilityAdditionalCost.discard.selection || 'choice',
+          cardName: source.activationDisplayName || card.name,
+          reason: 'activated_cost',
+          requireExact: true
+        }).then(result => {
+          source.additionalDiscardPending = false;
+          if (!result.completed) {
+            logMsg(gameText('ability.additionalDiscard.failed', { card:source.activationDisplayName || card.name }));
+            cancelPayment();
+            return;
+          }
+          source.additionalDiscardPaid = true;
+          checkPaymentComplete();
+        }).catch(err => {
+          console.error('No se pudo pagar descarte de habilidad activada:', err);
+          source.additionalDiscardPending = false;
+          cancelPayment();
+        });
+        return;
+      }
       
       // Si el pago incluía {T}, giramos a quien corresponda (el permanente mismo,
       // o la criatura equipada si la habilidad viene de un Equipo).

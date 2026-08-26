@@ -33,6 +33,7 @@ fuente_de_vino_del_velorio.png
 generador_a_nafta.png
 globo_del_planetario.png
 guitarra_criolla_encantada.png
+heladera_del_club.png
 imprenta.png
 lancha_colectiva_del_delta.png
 lectora_de_microfilm.png
@@ -41,10 +42,13 @@ loto_del_jardin_japones.png
 mapa_rutero.png
 mapa_del_camino_de_los_siete_lagos.png
 mate_de_acero_inquebrantable.png
+montacargas_del_deposito_fiscal.png
 motito_del_reparto_nocturno.png
 maquina_fichar.png
+maquina_de_tickets.png
 parrilla_portatil.png
 peaje_de_la_ruta_2.png
+plano_maestro_de_loteo.png
 poncho_diamante.png
 proyector_del_cine_cerrado.png
 petalo_del_rosedal.png
@@ -82,9 +86,11 @@ carpeta_que_nadie_firmo.png
 catastro_del_conurbano.png
 cenizas_al_viento.png
 choripan.png
+convocatoria_barrial.png
 corralito.png
 corriente_datos.png
 cuarentena.png
+dato_reservado.png
 desmonte_con_permiso.png
 deuda_vencida.png
 dolar_blue.png
@@ -113,6 +119,7 @@ pacto_con_sangre.png
 olla_popular.png
 operativo_de_rescate.png
 otra_vuelta_de_chacarera.png
+pacto_bajo_la_mesa.png
 piedrazo.png
 piquete.png
 planos_puerto.png
@@ -122,6 +129,7 @@ reabrir_el_caso.png
 reconquista_del_parque_costero_del_sur.png
 reforestar_la_banquina.png
 relevamiento_del_delta_de_san_fernando.png
+revision_de_inventario.png
 ruina_del_cordon_industrial.png
 saqueo_ruinas.png
 se_armo.png
@@ -136,18 +144,21 @@ turno_de_exhumacion.png
 turno_morgue.png
 asamblea.png
 difunta_correa.png
+viandas_del_club.png
 vigilia_de_los_ausentes.png
 vino_caliente_en_la_caldera.png
 vuelto.png
 yuyerio.png
 yuyo_del_loco.png
 abanderado_barrio.png
+abuela_del_tupper.png
 acechador_banado_negro.png
 agrimensora_de_tandil.png
 agronoma_de_parque_leloir.png
 alberto_samid.png
 alma_en_pena.png
 arana_galpon.png
+arbolito_de_florida.png
 archivista_cafe.png
 archivista_del_congreso.png
 arriero_cuesta_roja.png
@@ -159,6 +170,7 @@ bandoneonista_del_apagon.png
 baquiana_esteros.png
 barquero_delta.png
 bestia_bajo_puente.png
+bibliotecaria_del_palacio_legislativo.png
 bicho_luz_gigante.png
 biologa_de_los_humedales.png
 biologa_estuario.png
@@ -176,6 +188,7 @@ buzo_rio_turbio.png
 barbaro_antimago.png
 caballo_desfile.png
 cadete_del_palacio_barolo.png
+cajera_del_bingo.png
 calderero_tren_quemado.png
 campanera_procesion.png
 capataz_caravana.png
@@ -216,6 +229,7 @@ custodio_del_archivo_general.png
 custodio_club.png
 custodio_mas_alla.png
 custodios_fiesta_patronal.png
+despachante_de_aduana.png
 detective_de_la_ribera_oscura.png
 deudor_de_la_noche_larga.png
 devorador_pantano.png
@@ -262,6 +276,7 @@ freestyler_del_subte_b.png
 gato_tejado_caliente.png
 gauchito_gil.png
 gaviota_del_puerto_sur.png
+gestor_de_expedientes_reservados.png
 gestora_del_monotributo.png
 gigante_quebrada.png
 gigante_de_las_raices_del_parana.png
@@ -283,6 +298,7 @@ golem_de_chatarra_ferroviaria.png
 hachero_del_litoral.png
 hornero_alambrado.png
 ilusionista_de_la_costanera.png
+inspectora_de_consorcio.png
 inspectora_del_archivo_sellado.png
 interventor_de_la_avenida_general_paz.png
 jabali_cardales.png
@@ -329,7 +345,9 @@ paladin_ombu.png
 paloma_plaza.png
 paloma_de_la_plaza_vacia.png
 parrillero_de_la_terminal.png
+pasante_del_archivo_general.png
 patron_de_la_bodega_hundida.png
+perito_de_sistemas_del_renaper.png
 perito_morgue_fluvial.png
 perro_plaza.png
 perro_anden.png
@@ -385,6 +403,7 @@ sereno_del_mercado_de_frutos.png
 soldador_del_astillero.png
 solo_de_guitarra_en_llamas.png
 sombra_pasillo.png
+sommelier_de_guardia.png
 susana_gimenez.png
 tamalerita_del_velorio.png
 telegrafista_de_ushuaia.png
@@ -420,6 +439,7 @@ aguante_fondo.png
 alarma_vecinal.png
 alarma_de_fabrica.png
 alpargatas.png
+archivo_bajo_llave.png
 archivo_de_causas_cerradas.png
 asfalto_hirviendo.png
 bengala_cancha.png
@@ -458,7 +478,9 @@ libro_actas_negras.png
 luna_roja_sobre_avellaneda.png
 maldicion_yaguarete.png
 marea_de_fondo.png
+mercado_paralelo.png
 mesa_larga_de_la_ultima_noche.png
+mesa_de_entradas.png
 milonga.png
 murga_en_la_avenida.png
 pacto_sangre.png
@@ -499,6 +521,7 @@ cadena_humana.png
 cadena_favores.png
 cambio_de_frecuencia.png
 campanazo_de_alerta.png
+carpeta_con_fojas_faltantes.png
 che_volve.png
 chispa_de_la_tormenta_de_verano.png
 chispa_del_pogo.png
@@ -518,6 +541,7 @@ cortocircuito_del_transformador.png
 cruce_de_caminos_en_la_pulperia.png
 cubrir_la_retaguardia.png
 dale_que_va.png
+dato_de_ultimo_momento.png
 decision_ultimo_momento.png
 dnu.png
 derecho_admision.png
@@ -542,12 +566,14 @@ golpe_furia.png
 humo_del_vinedo_negro.png
 impuesto_pais.png
 impuesto_guerra.png
+inspeccion_ocular.png
 instinto_desesperado.png
 instinto_manada.png
 interferencia_de_linea.png
 juramento_medias.png
 latigazo_selva.png
 machete_contra_la_enredadera.png
+mancha_en_el_mantel.png
 mano_dios.png
 manotazo_a_ciegas.png
 mauro_viale.png
@@ -596,6 +622,7 @@ veneno_en_la_copa_de_malbec.png
 veto_absoluto.png
 vision_puerto.png
 voladura_en_la_autopista_riccheri.png
+vuelto_en_dolares.png
 yuyo_protector.png
 quiero_retruco.png
 ultima_voluntad.png

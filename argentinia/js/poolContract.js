@@ -1,7 +1,7 @@
 // js/poolContract.js
-// 23.15.5.5 — POOL EXPANSION I: 643 -> 673.
-// Materializa en cartas reales Control + Event + Cost + Replacement/Prevention sin abrir
-// motores nuevos. Los milestones anteriores se preservan como historia auditable.
+// 23.15.7.2 — POOL EXPANSION II: 673 -> 700.
+// Estrena en contenido real Generic Library / Look-at-N + Generic Permanent Tokens,
+// manteniendo los milestones anteriores como historia auditable.
 const makeMilestone = (version, total, categories) => Object.freeze({
   version,
   total,
@@ -62,8 +62,17 @@ export const POOL_MILESTONES = Object.freeze({
     conjuros: 80,
     encantamientos: 68,
     planeswalkers: 8
-  })
+  }),
+  pool_expansion_ii_700: makeMilestone('23.15.7.2', 700, {
+    tierras: 64,
+    artefactos: 67,
+    criaturas: 285,
+    instantaneos: 120,
+    conjuros: 85,
+    encantamientos: 71,
+    planeswalkers: 8
+  }),
 });
 
-export const CURRENT_POOL_MILESTONE = 'pool_expansion_i_673';
+export const CURRENT_POOL_MILESTONE = 'pool_expansion_ii_700';
 export const POOL_BASELINE = POOL_MILESTONES[CURRENT_POOL_MILESTONE];

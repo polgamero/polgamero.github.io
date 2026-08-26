@@ -130,6 +130,35 @@ def load_pool_contract(root: Path) -> tuple[str, str, int, dict[str, int]]:
     return milestone, version, total, categories
 
 
+
+TOKEN_PRESETS = {
+    "treasure": {"name": "Tesoro", "type": "Artefacto — Tesoro"},
+    "clue": {"name": "Pista", "type": "Artefacto — Pista"},
+    "food": {"name": "Comida", "type": "Artefacto — Comida"},
+    "blood": {"name": "Sangre", "type": "Artefacto — Sangre"},
+}
+
+def normalize_token_effect(node, card):
+    nested = node.get("token") if isinstance(node.get("token"), dict) else {}
+    preset_key = str(node.get("tokenPreset") or nested.get("preset") or "").strip().lower()
+    if preset_key and preset_key not in TOKEN_PRESETS:
+        raise ValueError(f'tokenPreset desconocido: {preset_key}')
+    preset = TOKEN_PRESETS.get(preset_key, {})
+    merged = {**preset, **nested}
+    stats = node.get("tokenStats") if isinstance(node.get("tokenStats"), dict) else {}
+    token_type = str(merged.get("type") or node.get("tokenType") or "Criatura — Token")
+    is_creature = "Criatura" in token_type or "power" in merged or "power" in stats
+    image = merged.get("image", node.get("image"))
+    return {
+        "tokenName": merged.get("name") or node.get("tokenName") or "Ficha",
+        "tokenType": token_type,
+        "amount": node.get("amount", 1),
+        "power": merged.get("power", stats.get("power", 1 if is_creature else None)),
+        "toughness": merged.get("toughness", stats.get("toughness", 1 if is_creature else None)),
+        "keywords": merged.get("keywords", node.get("tokenKeywords") or []),
+        "image": image.strip().replace("\\", "/") if isinstance(image, str) and image.strip() else None,
+    }
+
 def collect_token_effects(cards):
     """Collect every nested create_tokens effect from the active JSON card pool."""
     found = []
@@ -137,18 +166,13 @@ def collect_token_effects(cards):
     def visit(node, *, category, card, path):
         if isinstance(node, dict):
             if node.get("type") == "create_tokens":
-                image = node.get("image")
+                spec = normalize_token_effect(node, card)
                 found.append({
                     "cardId": card.get("id"),
                     "cardName": card.get("name"),
                     "category": category,
                     "path": ".".join(str(part) for part in path),
-                    "tokenName": node.get("tokenName") or "Ficha",
-                    "amount": node.get("amount", 1),
-                    "power": (node.get("tokenStats") or {}).get("power", 1),
-                    "toughness": (node.get("tokenStats") or {}).get("toughness", 1),
-                    "keywords": node.get("tokenKeywords") or [],
-                    "image": image.strip().replace("\\", "/") if isinstance(image, str) and image.strip() else None,
+                    **spec,
                 })
             for key, value in node.items():
                 visit(value, category=category, card=card, path=path + [key])
@@ -167,7 +191,7 @@ def validate_token_image_ownership(token_effects) -> list[str]:
     image_names = defaultdict(set)
     for entry in token_effects:
         if entry.get("image"):
-            image_names[entry["image"]].add(entry["tokenName"])
+            image_names[entry["image"]].add(f'{entry["tokenName"]}::{entry.get("tokenType") or ""}')
     for image, names in sorted(image_names.items()):
         if len(names) > 1:
             errors.append(

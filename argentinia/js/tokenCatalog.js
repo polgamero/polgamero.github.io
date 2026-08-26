@@ -1,4 +1,6 @@
-// js/tokenCatalog.js — Entrega 23.13.48
+// js/tokenCatalog.js — Entrega 23.15.7 · Generic Permanent Tokens
+import { normalizeTokenSpec, buildTokenCard } from './tokenEngine.js';
+
 // Catálogo visual derivado de los efectos create_tokens. NO forma parte del pool canónico,
 // colección, sobres ni deckbuilder. Su objetivo es dar identidad estable al arte de cada
 // token para Enciclopedia Admin + Art Framing sin contaminar gameplay/protocolo.
@@ -52,29 +54,15 @@ export function collectTokenProducerEffects(cards = []) {
 export function buildTokenCatalog(cards = []) {
   const byVisualId = new Map();
   collectTokenProducerEffects(cards).forEach(({ cardId, cardName, cardColors, path, effect }) => {
-    const tokenName = String(effect?.tokenName || 'Ficha');
-    const image = typeof effect?.image === 'string' && effect.image.trim() ? effect.image.trim() : null;
-    const id = tokenArtLayoutId(image, tokenName);
-    const stats = effect?.tokenStats || {};
-    const keywords = Array.isArray(effect?.tokenKeywords) ? effect.tokenKeywords : [];
+    const spec = normalizeTokenSpec(effect, { colors:cardColors });
+    const tokenName = spec.name;
+    const image = spec.image;
+    const id = tokenArtLayoutId(image, image ? tokenName : `${tokenName}_${spec.type}`);
     let entry = byVisualId.get(id);
     if (!entry) {
       entry = {
-        id,
+        ...buildTokenCard(spec, { id }),
         artLayoutId: id,
-        name: tokenName,
-        type: 'Criatura — Token',
-        manaCost: null,
-        image,
-        cmc: 0,
-        rarity: 'Common',
-        colors: [],
-        power: stats.power ?? 1,
-        toughness: stats.toughness ?? 1,
-        text: 'Token de criatura.',
-        flavorText: '',
-        keywords: [...keywords],
-        isToken: true,
         tokenProducerCount: 0,
         tokenProducerNames: [],
         tokenProducerRefs: []

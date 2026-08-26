@@ -43,10 +43,11 @@ import {
   handleLandTappedForManaEvent,
   captureLandTappedForManaEvent,
   flushDeferredLandManaTriggers,
+  payBotActivatedDiscardCost,
   dispatchGameEvent
 } from './main.js';
 
-import { moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming } from './utils.js';
+import { moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost } from './utils.js';
 
 import { assignBotBlockers, queueDeclaredAttackTriggers, queueDeclaredBlockTriggers, markDeclaredBlocks, checkDeaths } from './combatRules.js';
 import { addToStack, spellStack, isStackItemLegalCounterTarget, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
@@ -55,6 +56,7 @@ import { MANA_TYPES, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, spend
 import { normalizeManaAbility, canActivateManaSourcePermanent } from './manaSources.js';
 import { cardOwnerIsLocal } from './zoneOwnership.js';
 import { getSpellPaymentMethods, getConvokeCandidates, applyConvokeToCost, applyDelveToCost, applyPhyrexianLifeToCost, parsedManaTotal } from './costEngine.js';
+import { normalizeLibraryEffect, libraryCardMatchesFilter } from './libraryEngine.js';
 
 
 function botEffectiveManaAbility(item, isLocal = false) {
@@ -1082,6 +1084,9 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
       if (ability.sacrifice === 'creature' && state.rivalCombat.length === 0) continue;
       if (ability.sacrifice === 'artifact' && ![...state.rivalSupport, ...state.rivalCombat, ...state.rivalLands].some(isArtifactPermanent)) continue;
       if (ability.sacrifice === 'land' && ![...state.rivalLands, ...state.rivalCombat].some(isLandPermanent)) continue;
+      const abilityAdditional = normalizeCompositeCost(ability.additionalCost);
+      if (abilityAdditional && (abilityAdditional.life > 0 || abilityAdditional.manaCost || abilityAdditional.sacrifice || abilityAdditional.exileFromGraveyard || abilityAdditional.discard?.color)) continue;
+      if ((abilityAdditional?.discard?.amount || 0) > state.rivalHand.length) continue;
 
       let shouldActivate = false;
       let aiTargetObj = null;
@@ -1136,6 +1141,10 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
       else if (effect.type === 'ramp' || effect.type === 'search_land') {
         if (state.phase === 'main1' && state.rivalDeck.some(c => landMatchesFilter(c, effect.type === 'ramp' ? 'basic' : (effect.filter || 'any')))) shouldActivate = true;
       }
+      else if (effect.type === 'search_library' || effect.type === 'look_at_top') {
+        const spec=normalizeLibraryEffect(effect);
+        if (state.rivalDeck.length > 0 && (effect.type === 'look_at_top' || state.rivalDeck.some(c=>libraryCardMatchesFilter(c,spec.filter)))) shouldActivate = true;
+      }
       else if (effect.type === 'return_from_graveyard' || effect.type === 'return_lands_from_graveyard' || effect.type === 'return_all_lands_from_graveyard') {
         const hasCandidate = state.rivalGraveyard.some(c => (effect.type === 'return_from_graveyard' ? cardMatchesGraveyardFilter(c, effect.filter || 'any') : String(c?.type || '').includes('Tierra')));
         if (hasCandidate && (state.phase === 'main2' || timing === 'instant')) shouldActivate = true;
@@ -1146,6 +1155,7 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
 
       if (!shouldActivate) continue;
 
+      if (abilityAdditional?.discard?.amount > 0 && !payBotActivatedDiscardCost(abilityAdditional.discard.amount, card.name)) continue;
       if (dummyCardForCost.manaCost) tapRivalLandsFor(dummyCardForCost, { excludeItems: reservedManaSources });
       if (requiresTap) {
         const wasTapped=!!supportItem.tapped;
@@ -1231,6 +1241,9 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
       if (ability.sacrifice === 'creature' && state.rivalCombat.filter(c => c !== creatureItem).length === 0) continue;
       if (ability.sacrifice === 'artifact' && ![...state.rivalSupport, ...state.rivalCombat, ...state.rivalLands].some(isArtifactPermanent)) continue;
       if (ability.sacrifice === 'land' && ![...state.rivalLands, ...state.rivalCombat].some(isLandPermanent)) continue;
+      const abilityAdditional = normalizeCompositeCost(ability.additionalCost);
+      if (abilityAdditional && (abilityAdditional.life > 0 || abilityAdditional.manaCost || abilityAdditional.sacrifice || abilityAdditional.exileFromGraveyard || abilityAdditional.discard?.color)) continue;
+      if ((abilityAdditional?.discard?.amount || 0) > state.rivalHand.length) continue;
 
       let shouldActivate = false;
       let aiTargetObj = null;
@@ -1267,6 +1280,9 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
         }
       } else if (effect.type === 'ramp' || effect.type === 'search_land') {
         if (state.phase === 'main1' && state.rivalDeck.some(c => landMatchesFilter(c, effect.type === 'ramp' ? 'basic' : (effect.filter || 'any')))) shouldActivate = true;
+      } else if (effect.type === 'search_library' || effect.type === 'look_at_top') {
+        const spec=normalizeLibraryEffect(effect);
+        if (state.rivalDeck.length > 0 && (effect.type === 'look_at_top' || state.rivalDeck.some(c=>libraryCardMatchesFilter(c,spec.filter)))) shouldActivate = true;
       } else if (effect.type === 'return_from_graveyard' || effect.type === 'return_lands_from_graveyard' || effect.type === 'return_all_lands_from_graveyard') {
         const hasCandidate = state.rivalGraveyard.some(c => (effect.type === 'return_from_graveyard' ? cardMatchesGraveyardFilter(c, effect.filter || 'any') : String(c?.type || '').includes('Tierra')));
         if (hasCandidate && (state.phase === 'main2' || timing === 'instant')) shouldActivate = true;
@@ -1281,6 +1297,7 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
 
       if (!shouldActivate) continue;
 
+      if (abilityAdditional?.discard?.amount > 0 && !payBotActivatedDiscardCost(abilityAdditional.discard.amount, sourceCard.name)) continue;
       if (dummyCardForCost.manaCost) tapRivalLandsFor(dummyCardForCost);
       if (requiresTap) {
         const wasTapped=!!creatureItem.tapped;
@@ -1569,6 +1586,11 @@ export async function takeBotPriorityAction() {
         if (c.effect && (c.effect.type === 'ramp' || c.effect.type === 'search_land')) {
           const filter = c.effect.type === 'ramp' ? 'basic' : (c.effect.filter || 'any');
           if (!state.rivalDeck.some(card => landMatchesFilter(card, filter))) return;
+        }
+        if (c.effect && (c.effect.type === 'search_library' || c.effect.type === 'look_at_top')) {
+          const spec=normalizeLibraryEffect(c.effect);
+          if (state.rivalDeck.length===0) return;
+          if (c.effect.type==='search_library' && !state.rivalDeck.some(card=>libraryCardMatchesFilter(card,spec.filter))) return;
         }
         // NUEVO: El Tano solo arrasa el campo si está en desventaja de poder
         if (c.effect && c.effect.type === 'destroy_all_creatures') {

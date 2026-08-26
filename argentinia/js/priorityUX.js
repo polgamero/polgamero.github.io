@@ -69,7 +69,7 @@ function hasAnyResolutionChoice(state) {
     state.pendingMultiTargetChoice || state.pendingScrySurveilChoice || state.pendingProliferateChoice ||
     state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice ||
     state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || state.pendingEscapeExileChoice ||
-    state.pendingRampChoice || state.pendingLandSearchChoice || state.pendingKickerChoice || state.pendingHybridLifePayment || state.pendingPrivateZoneChoice ||
+    state.pendingRampChoice || state.pendingLandSearchChoice || state.pendingLibraryChoice || state.pendingKickerChoice || state.pendingHybridLifePayment || state.pendingPrivateZoneChoice ||
     (state.resolvingSacrificeEffects || 0) > 0 || (state.resolvingCardFilterEffects || 0) > 0 ||
     (state.resolvingDiscardEffects || 0) > 0 || (state.resolvingGraveyardChoices || 0) > 0 ||
     (state.resolvingResolvedEffectTargetChoices || 0) > 0

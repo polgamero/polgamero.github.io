@@ -482,6 +482,62 @@ export function showLandSearchModal(options, onConfirm) {
   });
 }
 
+
+// 23.15.6 — selector universal de biblioteca. Para look-at-N muestra también las cartas
+// no elegibles (porque el efecto autoriza mirarlas) pero las deshabilita visualmente.
+export function showLibrarySearchModal(options, onConfirm) {
+  injectMulliganStyles();
+  const candidates=Array.isArray(options?.candidates)?options.candidates:[];
+  const maxCount=Math.max(0,Math.floor(Number(options?.maxCount||0)));
+  const allowFewer=options?.allowFewer!==false;
+  const cardName=options?.cardName || gameText('selection.private.effectFallback');
+  const chosen=new Set();
+  state.pendingLibraryChoice=state.pendingLibraryChoice || {cardName,maxCount};
+  const isLook=Number(options?.lookCount)>0;
+
+  const overlay=document.createElement('div');
+  overlay.id='mulligan-overlay';
+  overlay.innerHTML=`
+    <div class="mulligan-panel">
+      <div class="mulligan-title">${gameTextHtml(isLook?'library.look.title':'library.search.title',{card:cardName,count:options?.lookCount||0})}</div>
+      <div class="mulligan-subtitle" id="library-search-hint">${gameTextHtml('library.search.subtitle',{
+        count:maxCount,filter:options?.filterLabel||gameText('library.filter.any'),destination:options?.destinationLabel||gameText('library.destination.hand'),selected:0
+      })}</div>
+      <div class="mulligan-hand-row-slot"></div>
+      <div class="mulligan-buttons">
+        <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-library-search">${gameTextHtml('library.search.confirm')}</button>
+      </div>
+    </div>`;
+  const hint=()=>overlay.querySelector('#library-search-hint');
+  const confirm=()=>overlay.querySelector('#btn-confirm-library-search');
+  const row=document.createElement('div'); row.className='mulligan-hand-row';
+  candidates.forEach(entry=>{
+    let cardEl;
+    const selectable=entry.selectable!==false;
+    const toggle=()=>{
+      if(!selectable) return;
+      if(chosen.has(entry.index)){ chosen.delete(entry.index); cardEl.classList.remove('chosen'); }
+      else if(chosen.size<maxCount){ chosen.add(entry.index); cardEl.classList.add('chosen'); }
+      hint().textContent=gameText('library.search.subtitle',{count:maxCount,filter:options?.filterLabel||gameText('library.filter.any'),destination:options?.destinationLabel||gameText('library.destination.hand'),selected:chosen.size});
+      confirm().disabled=!allowFewer && chosen.size!==maxCount;
+      confirm().textContent=chosen.size===0 && allowFewer ? gameText('library.search.chooseNone') : gameText('library.search.confirm');
+    };
+    cardEl=createCardElement({card:entry.card},false,true,null,'mulligan-pick',toggle);
+    cardEl.classList.add('mulligan-card-slot');
+    if(selectable) cardEl.classList.add('selectable');
+    else { cardEl.classList.add('disabled'); cardEl.style.opacity='0.46'; cardEl.title=gameText('library.search.ineligible'); }
+    row.appendChild(cardEl);
+  });
+  overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
+  document.body.appendChild(overlay);
+  confirm().disabled=!allowFewer && maxCount>0;
+  confirm().textContent=allowFewer?gameText('library.search.chooseNone'):gameText('library.search.confirm');
+  confirm().addEventListener('click',()=>{
+    if(!allowFewer && chosen.size!==maxCount) return;
+    overlay.remove(); onConfirm([...chosen]);
+  });
+}
+
 export function showRampLandChoiceModal(availableColors, cardName, onChoose) {
   injectMulliganStyles();
   injectDeckSelectionStyles();
@@ -701,6 +757,7 @@ export function showActivatedAbilityModal(cardName, options, onChoose, onCancel)
       exile_and_return: 'ability.effect.exile_and_return', ramp: 'ability.effect.ramp', create_tokens: 'ability.effect.create_tokens',
       grant_keyword_temp: 'ability.effect.grant_keyword_temp', draw_and_lose_life: 'ability.effect.draw_and_lose_life',
       discard: 'ability.effect.discard', sacrifice: 'ability.effect.sacrifice', reanimate: 'ability.effect.reanimate', search_land: 'ability.effect.search_land',
+      search_library: 'ability.effect.search_library', look_at_top: 'ability.effect.look_at_top',
       destroy_land: 'ability.effect.destroy_land', destroy_nonbasic_land: 'ability.effect.destroy_nonbasic_land', animate_land: 'ability.effect.animate_land',
       return_lands_from_graveyard: 'ability.effect.return_lands_from_graveyard',
       scry: 'ability.effect.scry', surveil: 'ability.effect.surveil', proliferate: 'ability.effect.proliferate'
@@ -2972,11 +3029,7 @@ export function showEncyclopedia(onBack) {
     const fragment = document.createDocumentFragment();
     const isTokenTab = tabKey === 'tokens';
     const sourceCards = isTokenTab
-      ? buildTokenCatalog(cardDb.allCards).map(token => ({
-          ...token,
-          type: gameText('encyclopedia.tokens.type'),
-          text: gameText('encyclopedia.tokens.cardText')
-        }))
+      ? buildTokenCatalog(cardDb.allCards)
       : cardDb.getByCategory(tabKey);
     sourceCards.forEach(card => {
       // Tokens son una superficie Admin de assets, no objetos de colección: siempre se
@@ -7873,7 +7926,7 @@ export function render() {
   // menos que pagues, etc.) — arriesgando una condición de carrera con esa resolución.
   // Misma lista que ya usa canPlayCard (más pendingTargetCard/pendingSacrificeChoice/
   // pendingHybridLifePayment, que faltaban ahí también).
-  const anyPendingChoice = !!state.pendingCastTransaction || !!state.pendingAlternativeCostChoice || !!state.pendingPrivateZoneChoice || !!state.pendingLandSearchChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice !== null ||
+  const anyPendingChoice = !!state.pendingCastTransaction || !!state.pendingAlternativeCostChoice || !!state.pendingPrivateZoneChoice || !!state.pendingLandSearchChoice || !!state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice !== null ||
     state.pendingTargetCard !== null || state.pendingCrew !== null || state.pendingWardChoice !== null ||
     state.pendingCounterUnlessPay !== null || state.pendingHybridLifePayment !== null ||
     state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null ||

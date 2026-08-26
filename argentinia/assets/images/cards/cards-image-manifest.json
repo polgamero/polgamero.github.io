@@ -1,39 +1,39 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-25T20:43:42Z",
+  "generatedAt": "2026-08-26T00:01:53Z",
   "gitSha": null,
   "githubRunId": null,
   "pool": {
-    "milestone": "pool_expansion_i_673",
-    "contractVersion": "23.15.5.5",
-    "total": 673,
+    "milestone": "pool_expansion_ii_700",
+    "contractVersion": "23.15.7.2",
+    "total": 700,
     "categories": {
       "tierras": 64,
-      "artefactos": 63,
-      "criaturas": 275,
-      "instantaneos": 115,
-      "conjuros": 80,
-      "encantamientos": 68,
+      "artefactos": 67,
+      "criaturas": 285,
+      "instantaneos": 120,
+      "conjuros": 85,
+      "encantamientos": 71,
       "planeswalkers": 8
     },
-    "uniqueIds": 673
+    "uniqueIds": 700
   },
   "images": {
     "directory": "assets/images/cards",
     "existingFileCount": 0,
-    "referencedCardCount": 673,
-    "uniqueReferencedFileCount": 672,
-    "missingCardCount": 673,
+    "referencedCardCount": 700,
+    "uniqueReferencedFileCount": 699,
+    "missingCardCount": 700,
     "cardsWithoutImageFieldCount": 0
   },
   "tokenImages": {
-    "producerEffectCount": 33,
-    "uniqueTokenNameCount": 25,
-    "assignedEffectCount": 33,
+    "producerEffectCount": 46,
+    "uniqueTokenNameCount": 31,
+    "assignedEffectCount": 46,
     "unassignedEffectCount": 0,
-    "uniqueReferencedFileCount": 25,
-    "missingEffectCount": 33,
-    "missingUniqueFileCount": 25
+    "uniqueReferencedFileCount": 31,
+    "missingEffectCount": 46,
+    "missingUniqueFileCount": 31
   },
   "missing": [
     {
@@ -247,6 +247,12 @@
       "image": "guitarra_criolla_encantada.png"
     },
     {
+      "id": "art_065",
+      "name": "Heladera del Club",
+      "category": "artefactos",
+      "image": "heladera_del_club.png"
+    },
+    {
       "id": "art_002",
       "name": "Imprenta Clandestina",
       "category": "artefactos",
@@ -295,6 +301,12 @@
       "image": "mate_de_acero_inquebrantable.png"
     },
     {
+      "id": "art_066",
+      "name": "Montacargas del Depósito Fiscal",
+      "category": "artefactos",
+      "image": "montacargas_del_deposito_fiscal.png"
+    },
+    {
       "id": "art_046",
       "name": "Motito del Reparto Nocturno",
       "category": "artefactos",
@@ -307,6 +319,12 @@
       "image": "maquina_fichar.png"
     },
     {
+      "id": "art_064",
+      "name": "Máquina de Tickets",
+      "category": "artefactos",
+      "image": "maquina_de_tickets.png"
+    },
+    {
       "id": "art_026",
       "name": "Parrilla Portátil",
       "category": "artefactos",
@@ -317,6 +335,12 @@
       "name": "Peaje de la Ruta 2",
       "category": "artefactos",
       "image": "peaje_de_la_ruta_2.png"
+    },
+    {
+      "id": "art_067",
+      "name": "Plano Maestro de Loteo",
+      "category": "artefactos",
+      "image": "plano_maestro_de_loteo.png"
     },
     {
       "id": "art_004",
@@ -541,6 +565,12 @@
       "image": "choripan.png"
     },
     {
+      "id": "conj_083",
+      "name": "Convocatoria Barrial",
+      "category": "conjuros",
+      "image": "convocatoria_barrial.png"
+    },
+    {
       "id": "conj_012",
       "name": "Corralito",
       "category": "conjuros",
@@ -557,6 +587,12 @@
       "name": "Cuarentena Total",
       "category": "conjuros",
       "image": "cuarentena.png"
+    },
+    {
+      "id": "conj_081",
+      "name": "Dato Reservado",
+      "category": "conjuros",
+      "image": "dato_reservado.png"
     },
     {
       "id": "conj_045",
@@ -727,6 +763,12 @@
       "image": "otra_vuelta_de_chacarera.png"
     },
     {
+      "id": "conj_085",
+      "name": "Pacto Bajo la Mesa",
+      "category": "conjuros",
+      "image": "pacto_bajo_la_mesa.png"
+    },
+    {
       "id": "conj_017",
       "name": "Piedrazo a la Vidriera",
       "category": "conjuros",
@@ -779,6 +821,12 @@
       "name": "Relevamiento del Delta de San Fernando",
       "category": "conjuros",
       "image": "relevamiento_del_delta_de_san_fernando.png"
+    },
+    {
+      "id": "conj_082",
+      "name": "Revisión de Inventario",
+      "category": "conjuros",
+      "image": "revision_de_inventario.png"
     },
     {
       "id": "conj_076",
@@ -865,6 +913,12 @@
       "image": "difunta_correa.png"
     },
     {
+      "id": "conj_084",
+      "name": "Viandas del Club",
+      "category": "conjuros",
+      "image": "viandas_del_club.png"
+    },
+    {
       "id": "conj_057",
       "name": "Vigilia de los Ausentes",
       "category": "conjuros",
@@ -901,6 +955,12 @@
       "image": "abanderado_barrio.png"
     },
     {
+      "id": "crea_284",
+      "name": "Abuela del Tupper",
+      "category": "criaturas",
+      "image": "abuela_del_tupper.png"
+    },
+    {
       "id": "crea_129",
       "name": "Acechador del Bañado Negro",
       "category": "criaturas",
@@ -935,6 +995,12 @@
       "name": "Araña del Galpón",
       "category": "criaturas",
       "image": "arana_galpon.png"
+    },
+    {
+      "id": "crea_282",
+      "name": "Arbolito de Florida",
+      "category": "criaturas",
+      "image": "arbolito_de_florida.png"
     },
     {
       "id": "crea_087",
@@ -1001,6 +1067,12 @@
       "name": "Bestia del Bajo Puente",
       "category": "criaturas",
       "image": "bestia_bajo_puente.png"
+    },
+    {
+      "id": "crea_277",
+      "name": "Bibliotecaria del Palacio Legislativo",
+      "category": "criaturas",
+      "image": "bibliotecaria_del_palacio_legislativo.png"
     },
     {
       "id": "crea_120",
@@ -1103,6 +1175,12 @@
       "name": "Cadete del Palacio Barolo",
       "category": "criaturas",
       "image": "cadete_del_palacio_barolo.png"
+    },
+    {
+      "id": "crea_283",
+      "name": "Cajera del Bingo",
+      "category": "criaturas",
+      "image": "cajera_del_bingo.png"
     },
     {
       "id": "crea_157",
@@ -1343,6 +1421,12 @@
       "name": "Custodios de la Fiesta Patronal",
       "category": "criaturas",
       "image": "custodios_fiesta_patronal.png"
+    },
+    {
+      "id": "crea_285",
+      "name": "Despachante de Aduana",
+      "category": "criaturas",
+      "image": "despachante_de_aduana.png"
     },
     {
       "id": "crea_201",
@@ -1621,6 +1705,12 @@
       "image": "gaviota_del_puerto_sur.png"
     },
     {
+      "id": "crea_281",
+      "name": "Gestor de Expedientes Reservados",
+      "category": "criaturas",
+      "image": "gestor_de_expedientes_reservados.png"
+    },
+    {
       "id": "crea_270",
       "name": "Gestora del Monotributo",
       "category": "criaturas",
@@ -1745,6 +1835,12 @@
       "name": "Ilusionista de la Costanera",
       "category": "criaturas",
       "image": "ilusionista_de_la_costanera.png"
+    },
+    {
+      "id": "crea_276",
+      "name": "Inspectora de Consorcio",
+      "category": "criaturas",
+      "image": "inspectora_de_consorcio.png"
     },
     {
       "id": "crea_227",
@@ -2023,10 +2119,22 @@
       "image": "parrillero_de_la_terminal.png"
     },
     {
+      "id": "crea_278",
+      "name": "Pasante del Archivo General",
+      "category": "criaturas",
+      "image": "pasante_del_archivo_general.png"
+    },
+    {
       "id": "crea_247",
       "name": "Patrón de la Bodega Hundida",
       "category": "criaturas",
       "image": "patron_de_la_bodega_hundida.png"
+    },
+    {
+      "id": "crea_279",
+      "name": "Perito de Sistemas del RENAPER",
+      "category": "criaturas",
+      "image": "perito_de_sistemas_del_renaper.png"
     },
     {
       "id": "crea_156",
@@ -2359,6 +2467,12 @@
       "image": "sombra_pasillo.png"
     },
     {
+      "id": "crea_280",
+      "name": "Sommelier de Guardia",
+      "category": "criaturas",
+      "image": "sommelier_de_guardia.png"
+    },
+    {
       "id": "crea_032",
       "name": "Susana Giménez",
       "category": "criaturas",
@@ -2567,6 +2681,12 @@
       "name": "Alpargatas Aladas",
       "category": "encantamientos",
       "image": "alpargatas.png"
+    },
+    {
+      "id": "ench_071",
+      "name": "Archivo Bajo Llave",
+      "category": "encantamientos",
+      "image": "archivo_bajo_llave.png"
     },
     {
       "id": "ench_067",
@@ -2797,10 +2917,22 @@
       "image": "marea_de_fondo.png"
     },
     {
+      "id": "ench_070",
+      "name": "Mercado Paralelo",
+      "category": "encantamientos",
+      "image": "mercado_paralelo.png"
+    },
+    {
       "id": "ench_052",
       "name": "Mesa Larga de la Última Noche",
       "category": "encantamientos",
       "image": "mesa_larga_de_la_ultima_noche.png"
+    },
+    {
+      "id": "ench_069",
+      "name": "Mesa de Entradas",
+      "category": "encantamientos",
+      "image": "mesa_de_entradas.png"
     },
     {
       "id": "ench_002",
@@ -3043,6 +3175,12 @@
       "image": "campanazo_de_alerta.png"
     },
     {
+      "id": "inst_117",
+      "name": "Carpeta con Fojas Faltantes",
+      "category": "instantaneos",
+      "image": "carpeta_con_fojas_faltantes.png"
+    },
+    {
       "id": "inst_016",
       "name": "Che, Volvé",
       "category": "instantaneos",
@@ -3155,6 +3293,12 @@
       "name": "Dale que Va",
       "category": "instantaneos",
       "image": "dale_que_va.png"
+    },
+    {
+      "id": "inst_116",
+      "name": "Dato de Último Momento",
+      "category": "instantaneos",
+      "image": "dato_de_ultimo_momento.png"
     },
     {
       "id": "inst_037",
@@ -3301,6 +3445,12 @@
       "image": "impuesto_guerra.png"
     },
     {
+      "id": "inst_118",
+      "name": "Inspección Ocular",
+      "category": "instantaneos",
+      "image": "inspeccion_ocular.png"
+    },
+    {
       "id": "inst_031",
       "name": "Instinto Desesperado",
       "category": "instantaneos",
@@ -3335,6 +3485,12 @@
       "name": "Machete contra la Enredadera",
       "category": "instantaneos",
       "image": "machete_contra_la_enredadera.png"
+    },
+    {
+      "id": "inst_120",
+      "name": "Mancha en el Mantel",
+      "category": "instantaneos",
+      "image": "mancha_en_el_mantel.png"
     },
     {
       "id": "inst_011",
@@ -3623,6 +3779,12 @@
       "name": "Voladura en la Autopista Riccheri",
       "category": "instantaneos",
       "image": "voladura_en_la_autopista_riccheri.png"
+    },
+    {
+      "id": "inst_119",
+      "name": "Vuelto en Dólares",
+      "category": "instantaneos",
+      "image": "vuelto_en_dolares.png"
     },
     {
       "id": "inst_065",
@@ -4083,6 +4245,7 @@
       "category": "tierras",
       "path": "activatedAbility.effect",
       "tokenName": "Camalote",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4090,11 +4253,51 @@
       "image": "token_camalote.png"
     },
     {
+      "cardId": "art_064",
+      "cardName": "Máquina de Tickets",
+      "category": "artefactos",
+      "path": "activatedAbility.effect",
+      "tokenName": "Comprobante",
+      "tokenType": "Artefacto — Pista",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_comprobante.png"
+    },
+    {
+      "cardId": "art_065",
+      "cardName": "Heladera del Club",
+      "category": "artefactos",
+      "path": "activatedAbility.effect",
+      "tokenName": "Tupper",
+      "tokenType": "Artefacto — Comida",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_tupper.png"
+    },
+    {
+      "cardId": "art_067",
+      "cardName": "Plano Maestro de Loteo",
+      "category": "artefactos",
+      "path": "etbEffect",
+      "tokenName": "Lote Baldío",
+      "tokenType": "Tierra — Lote",
+      "amount": 3,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_lote_baldio.png"
+    },
+    {
       "cardId": "crea_137",
       "cardName": "Voluntaria del Club de Barrio",
       "category": "criaturas",
       "path": "etbEffect",
       "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4107,6 +4310,7 @@
       "category": "criaturas",
       "path": "landEtbTrigger",
       "tokenName": "Brote",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4119,6 +4323,7 @@
       "category": "criaturas",
       "path": "attackTrigger",
       "tokenName": "Peregrino",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4131,6 +4336,7 @@
       "category": "criaturas",
       "path": "opponentDeathTrigger",
       "tokenName": "Ánima",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4143,6 +4349,7 @@
       "category": "criaturas",
       "path": "attackTrigger",
       "tokenName": "Murguero",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4155,6 +4362,7 @@
       "category": "criaturas",
       "path": "etbEffect",
       "tokenName": "Estudiante",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4167,6 +4375,7 @@
       "category": "criaturas",
       "path": "attackTrigger",
       "tokenName": "Voluntario",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4181,6 +4390,7 @@
       "category": "criaturas",
       "path": "attackTrigger",
       "tokenName": "Hincha",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4195,6 +4405,7 @@
       "category": "criaturas",
       "path": "attackTrigger",
       "tokenName": "Bailarín",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4209,6 +4420,7 @@
       "category": "criaturas",
       "path": "etbEffect",
       "tokenName": "Ánima del Velorio",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4221,6 +4433,7 @@
       "category": "criaturas",
       "path": "kicker.bonusEffect",
       "tokenName": "Vecino Madrugador",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4233,6 +4446,7 @@
       "category": "criaturas",
       "path": "kicker.bonusEffect",
       "tokenName": "Sarmiento",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4245,6 +4459,7 @@
       "category": "criaturas",
       "path": "diesTrigger",
       "tokenName": "Ánima de Bodega",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4252,11 +4467,103 @@
       "image": "token_anima_bodega.png"
     },
     {
+      "cardId": "crea_276",
+      "cardName": "Inspectora de Consorcio",
+      "category": "criaturas",
+      "path": "etbEffect",
+      "tokenName": "Comprobante",
+      "tokenType": "Artefacto — Pista",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_comprobante.png"
+    },
+    {
+      "cardId": "crea_280",
+      "cardName": "Sommelier de Guardia",
+      "category": "criaturas",
+      "path": "etbEffect",
+      "tokenName": "Mancha de Malbec",
+      "tokenType": "Artefacto — Sangre",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_mancha_de_malbec.png"
+    },
+    {
+      "cardId": "crea_282",
+      "cardName": "Arbolito de Florida",
+      "category": "criaturas",
+      "path": "etbEffect",
+      "tokenName": "Dólar Blue",
+      "tokenType": "Artefacto — Tesoro",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_dolar_blue.png"
+    },
+    {
+      "cardId": "crea_284",
+      "cardName": "Abuela del Tupper",
+      "category": "criaturas",
+      "path": "etbEffect",
+      "tokenName": "Tupper",
+      "tokenType": "Artefacto — Comida",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_tupper.png"
+    },
+    {
+      "cardId": "inst_118",
+      "cardName": "Inspección Ocular",
+      "category": "instantaneos",
+      "path": "effect",
+      "tokenName": "Comprobante",
+      "tokenType": "Artefacto — Pista",
+      "amount": 2,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_comprobante.png"
+    },
+    {
+      "cardId": "inst_119",
+      "cardName": "Vuelto en Dólares",
+      "category": "instantaneos",
+      "path": "effect",
+      "tokenName": "Dólar Blue",
+      "tokenType": "Artefacto — Tesoro",
+      "amount": 2,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_dolar_blue.png"
+    },
+    {
+      "cardId": "inst_120",
+      "cardName": "Mancha en el Mantel",
+      "category": "instantaneos",
+      "path": "effect",
+      "tokenName": "Mancha de Malbec",
+      "tokenType": "Artefacto — Sangre",
+      "amount": 2,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_mancha_de_malbec.png"
+    },
+    {
       "cardId": "conj_009",
       "cardName": "Vecinos en Asamblea",
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Vecino Movilizado",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4269,6 +4576,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Jugador Libre",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4281,6 +4589,7 @@
       "category": "conjuros",
       "path": "modes.1.effect",
       "tokenName": "Vecino Movilizado",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4293,6 +4602,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Pibe de la Esquina",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4307,6 +4617,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
       "amount": 3,
       "power": 1,
       "toughness": 1,
@@ -4319,6 +4630,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Brote",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 2,
       "toughness": 2,
@@ -4331,6 +4643,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Promesero",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4345,6 +4658,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Murguero",
+      "tokenType": "Criatura — Token",
       "amount": 3,
       "power": 1,
       "toughness": 1,
@@ -4359,6 +4673,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Brote",
+      "tokenType": "Criatura — Token",
       "amount": 3,
       "power": 2,
       "toughness": 2,
@@ -4371,6 +4686,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Toro",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 3,
       "toughness": 3,
@@ -4385,6 +4701,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Vecino del Velorio",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4397,6 +4714,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Bailarín de Chacarera",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4409,6 +4727,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
       "amount": 3,
       "power": 1,
       "toughness": 1,
@@ -4416,11 +4735,38 @@
       "image": "token_vecino.png"
     },
     {
+      "cardId": "conj_084",
+      "cardName": "Viandas del Club",
+      "category": "conjuros",
+      "path": "effect",
+      "tokenName": "Tupper",
+      "tokenType": "Artefacto — Comida",
+      "amount": 2,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_tupper.png"
+    },
+    {
+      "cardId": "conj_085",
+      "cardName": "Pacto Bajo la Mesa",
+      "category": "conjuros",
+      "path": "effect",
+      "tokenName": "Contrato Firmado",
+      "tokenType": "Encantamiento — Pacto",
+      "amount": 2,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_contrato_firmado.png"
+    },
+    {
       "cardId": "ench_040",
       "cardName": "Brotación del Terraplén",
       "category": "encantamientos",
       "path": "landEtbTrigger",
       "tokenName": "Brote",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4433,6 +4779,7 @@
       "category": "encantamientos",
       "path": "anyCreatureDiesTrigger",
       "tokenName": "Ánima",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4440,11 +4787,25 @@
       "image": "token_anima.png"
     },
     {
+      "cardId": "ench_070",
+      "cardName": "Mercado Paralelo",
+      "category": "encantamientos",
+      "path": "triggers.0.effect",
+      "tokenName": "Dólar Blue",
+      "tokenType": "Artefacto — Tesoro",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_dolar_blue.png"
+    },
+    {
       "cardId": "pw_001",
       "cardName": "El Cacique del Barrio",
       "category": "planeswalkers",
       "path": "loyaltyAbilities.2.effect",
       "tokenName": "Vecino del Barrio",
+      "tokenType": "Criatura — Token",
       "amount": 4,
       "power": 2,
       "toughness": 2,
@@ -4457,6 +4818,7 @@
       "category": "planeswalkers",
       "path": "loyaltyAbilities.1.effect",
       "tokenName": "Incendiario",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4471,6 +4833,7 @@
       "category": "planeswalkers",
       "path": "loyaltyAbilities.2.effect",
       "tokenName": "Bestia del Delta",
+      "tokenType": "Criatura — Token",
       "amount": 3,
       "power": 3,
       "toughness": 3,
@@ -4485,6 +4848,7 @@
       "category": "planeswalkers",
       "path": "loyaltyAbilities.2.effect",
       "tokenName": "Sarmiento Tóxico",
+      "tokenType": "Criatura — Token",
       "amount": 3,
       "power": 2,
       "toughness": 2,
@@ -4502,6 +4866,7 @@
       "category": "criaturas",
       "path": "attackTrigger",
       "tokenName": "Bailarín",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4516,6 +4881,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Bailarín de Chacarera",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4528,6 +4894,7 @@
       "category": "planeswalkers",
       "path": "loyaltyAbilities.2.effect",
       "tokenName": "Bestia del Delta",
+      "tokenType": "Criatura — Token",
       "amount": 3,
       "power": 3,
       "toughness": 3,
@@ -4542,6 +4909,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Brote",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 2,
       "toughness": 2,
@@ -4554,6 +4922,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Brote",
+      "tokenType": "Criatura — Token",
       "amount": 3,
       "power": 2,
       "toughness": 2,
@@ -4566,6 +4935,7 @@
       "category": "criaturas",
       "path": "landEtbTrigger",
       "tokenName": "Brote",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4578,6 +4948,7 @@
       "category": "encantamientos",
       "path": "landEtbTrigger",
       "tokenName": "Brote",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4590,6 +4961,7 @@
       "category": "tierras",
       "path": "activatedAbility.effect",
       "tokenName": "Camalote",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4597,11 +4969,103 @@
       "image": "token_camalote.png"
     },
     {
+      "cardId": "art_064",
+      "cardName": "Máquina de Tickets",
+      "category": "artefactos",
+      "path": "activatedAbility.effect",
+      "tokenName": "Comprobante",
+      "tokenType": "Artefacto — Pista",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_comprobante.png"
+    },
+    {
+      "cardId": "crea_276",
+      "cardName": "Inspectora de Consorcio",
+      "category": "criaturas",
+      "path": "etbEffect",
+      "tokenName": "Comprobante",
+      "tokenType": "Artefacto — Pista",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_comprobante.png"
+    },
+    {
+      "cardId": "inst_118",
+      "cardName": "Inspección Ocular",
+      "category": "instantaneos",
+      "path": "effect",
+      "tokenName": "Comprobante",
+      "tokenType": "Artefacto — Pista",
+      "amount": 2,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_comprobante.png"
+    },
+    {
+      "cardId": "conj_085",
+      "cardName": "Pacto Bajo la Mesa",
+      "category": "conjuros",
+      "path": "effect",
+      "tokenName": "Contrato Firmado",
+      "tokenType": "Encantamiento — Pacto",
+      "amount": 2,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_contrato_firmado.png"
+    },
+    {
+      "cardId": "crea_282",
+      "cardName": "Arbolito de Florida",
+      "category": "criaturas",
+      "path": "etbEffect",
+      "tokenName": "Dólar Blue",
+      "tokenType": "Artefacto — Tesoro",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_dolar_blue.png"
+    },
+    {
+      "cardId": "ench_070",
+      "cardName": "Mercado Paralelo",
+      "category": "encantamientos",
+      "path": "triggers.0.effect",
+      "tokenName": "Dólar Blue",
+      "tokenType": "Artefacto — Tesoro",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_dolar_blue.png"
+    },
+    {
+      "cardId": "inst_119",
+      "cardName": "Vuelto en Dólares",
+      "category": "instantaneos",
+      "path": "effect",
+      "tokenName": "Dólar Blue",
+      "tokenType": "Artefacto — Tesoro",
+      "amount": 2,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_dolar_blue.png"
+    },
+    {
       "cardId": "crea_168",
       "cardName": "Maestra de Escuela Rural",
       "category": "criaturas",
       "path": "etbEffect",
       "tokenName": "Estudiante",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4614,6 +5078,7 @@
       "category": "criaturas",
       "path": "attackTrigger",
       "tokenName": "Hincha",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4628,6 +5093,7 @@
       "category": "planeswalkers",
       "path": "loyaltyAbilities.1.effect",
       "tokenName": "Incendiario",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4642,6 +5108,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Jugador Libre",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4649,11 +5116,51 @@
       "image": "jugador_libre.png"
     },
     {
+      "cardId": "art_067",
+      "cardName": "Plano Maestro de Loteo",
+      "category": "artefactos",
+      "path": "etbEffect",
+      "tokenName": "Lote Baldío",
+      "tokenType": "Tierra — Lote",
+      "amount": 3,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_lote_baldio.png"
+    },
+    {
+      "cardId": "crea_280",
+      "cardName": "Sommelier de Guardia",
+      "category": "criaturas",
+      "path": "etbEffect",
+      "tokenName": "Mancha de Malbec",
+      "tokenType": "Artefacto — Sangre",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_mancha_de_malbec.png"
+    },
+    {
+      "cardId": "inst_120",
+      "cardName": "Mancha en el Mantel",
+      "category": "instantaneos",
+      "path": "effect",
+      "tokenName": "Mancha de Malbec",
+      "tokenType": "Artefacto — Sangre",
+      "amount": 2,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_mancha_de_malbec.png"
+    },
+    {
       "cardId": "conj_054",
       "cardName": "Banda de Bombos",
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Murguero",
+      "tokenType": "Criatura — Token",
       "amount": 3,
       "power": 1,
       "toughness": 1,
@@ -4668,6 +5175,7 @@
       "category": "criaturas",
       "path": "attackTrigger",
       "tokenName": "Murguero",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4680,6 +5188,7 @@
       "category": "criaturas",
       "path": "attackTrigger",
       "tokenName": "Peregrino",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4692,6 +5201,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Pibe de la Esquina",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4706,6 +5216,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Promesero",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4720,6 +5231,7 @@
       "category": "criaturas",
       "path": "kicker.bonusEffect",
       "tokenName": "Sarmiento",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4732,6 +5244,7 @@
       "category": "planeswalkers",
       "path": "loyaltyAbilities.2.effect",
       "tokenName": "Sarmiento Tóxico",
+      "tokenType": "Criatura — Token",
       "amount": 3,
       "power": 2,
       "toughness": 2,
@@ -4746,6 +5259,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Toro",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 3,
       "toughness": 3,
@@ -4755,11 +5269,51 @@
       "image": "token_toro.png"
     },
     {
+      "cardId": "art_065",
+      "cardName": "Heladera del Club",
+      "category": "artefactos",
+      "path": "activatedAbility.effect",
+      "tokenName": "Tupper",
+      "tokenType": "Artefacto — Comida",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_tupper.png"
+    },
+    {
+      "cardId": "conj_084",
+      "cardName": "Viandas del Club",
+      "category": "conjuros",
+      "path": "effect",
+      "tokenName": "Tupper",
+      "tokenType": "Artefacto — Comida",
+      "amount": 2,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_tupper.png"
+    },
+    {
+      "cardId": "crea_284",
+      "cardName": "Abuela del Tupper",
+      "category": "criaturas",
+      "path": "etbEffect",
+      "tokenName": "Tupper",
+      "tokenType": "Artefacto — Comida",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_tupper.png"
+    },
+    {
       "cardId": "conj_039",
       "cardName": "Olla Popular",
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
       "amount": 3,
       "power": 1,
       "toughness": 1,
@@ -4772,6 +5326,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
       "amount": 3,
       "power": 1,
       "toughness": 1,
@@ -4784,6 +5339,7 @@
       "category": "criaturas",
       "path": "etbEffect",
       "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4796,6 +5352,7 @@
       "category": "criaturas",
       "path": "kicker.bonusEffect",
       "tokenName": "Vecino Madrugador",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4808,6 +5365,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Vecino Movilizado",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4820,6 +5378,7 @@
       "category": "conjuros",
       "path": "modes.1.effect",
       "tokenName": "Vecino Movilizado",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4832,6 +5391,7 @@
       "category": "planeswalkers",
       "path": "loyaltyAbilities.2.effect",
       "tokenName": "Vecino del Barrio",
+      "tokenType": "Criatura — Token",
       "amount": 4,
       "power": 2,
       "toughness": 2,
@@ -4844,6 +5404,7 @@
       "category": "conjuros",
       "path": "effect",
       "tokenName": "Vecino del Velorio",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4856,6 +5417,7 @@
       "category": "criaturas",
       "path": "attackTrigger",
       "tokenName": "Voluntario",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4870,6 +5432,7 @@
       "category": "criaturas",
       "path": "opponentDeathTrigger",
       "tokenName": "Ánima",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4882,6 +5445,7 @@
       "category": "encantamientos",
       "path": "anyCreatureDiesTrigger",
       "tokenName": "Ánima",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,
@@ -4894,6 +5458,7 @@
       "category": "criaturas",
       "path": "diesTrigger",
       "tokenName": "Ánima de Bodega",
+      "tokenType": "Criatura — Token",
       "amount": 2,
       "power": 1,
       "toughness": 1,
@@ -4906,6 +5471,7 @@
       "category": "criaturas",
       "path": "etbEffect",
       "tokenName": "Ánima del Velorio",
+      "tokenType": "Criatura — Token",
       "amount": 1,
       "power": 1,
       "toughness": 1,

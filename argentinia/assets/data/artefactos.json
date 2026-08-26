@@ -1459,5 +1459,113 @@
       "scope": "own",
       "multiplyAmount": 2
     }
+  },
+  {
+    "id": "art_064",
+    "name": "Máquina de Tickets",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Creá una ficha de artefacto Comprobante.",
+    "flavorText": "Imprime un número distinto para la misma espera.",
+    "image": "maquina_de_tickets.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "create_tokens",
+        "amount": 1,
+        "tokenPreset": "clue",
+        "token": {
+          "name": "Comprobante",
+          "image": "token_comprobante.png"
+        }
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_065",
+    "name": "Heladera del Club",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Creá una ficha de artefacto Tupper.",
+    "flavorText": "El estante de arriba dice “no tocar”. Nadie recuerda quién lo escribió.",
+    "image": "heladera_del_club.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "create_tokens",
+        "amount": 1,
+        "tokenPreset": "food",
+        "token": {
+          "name": "Tupper",
+          "image": "token_tupper.png"
+        }
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_066",
+    "name": "Montacargas del Depósito Fiscal",
+    "type": "Artefacto",
+    "manaCost": "{4}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Cuando Montacargas del Depósito Fiscal entre al campo de batalla, podés buscar en tu biblioteca una carta de artefacto con valor de maná de 3 o menos, mostrarla, ponerla en el campo de batalla girada y barajar.",
+    "flavorText": "Sube lo declarado, lo observado y alguna caja que no figura en ninguna lista.",
+    "image": "montacargas_del_deposito_fiscal.png",
+    "keywords": [],
+    "etbEffect": {
+      "type": "search_library",
+      "amount": 1,
+      "filter": {
+        "cardType": "artifact",
+        "maxManaValue": 3
+      },
+      "destination": "battlefield_tapped",
+      "reveal": true,
+      "shuffle": true,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "art_067",
+    "name": "Plano Maestro de Loteo",
+    "type": "Artefacto",
+    "manaCost": "{6}",
+    "cmc": 6,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "Cuando Plano Maestro de Loteo entre al campo de batalla, creá tres fichas de Tierra — Lote Baldío giradas con “{T}: Agregá {C}.”",
+    "flavorText": "Primero aparece la cuadrícula. Después las calles. Al final alguien pregunta quién era el dueño.",
+    "image": "plano_maestro_de_loteo.png",
+    "keywords": [],
+    "etbEffect": {
+      "type": "create_tokens",
+      "amount": 3,
+      "token": {
+        "name": "Lote Baldío",
+        "type": "Tierra — Lote",
+        "image": "token_lote_baldio.png",
+        "tapped": true,
+        "text": "{T}: Agregá {C}.",
+        "manaAbility": {
+          "produces": "C",
+          "amount": 1,
+          "requiresTap": true
+        }
+      }
+    }
   }
 ]

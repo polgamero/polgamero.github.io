@@ -7,9 +7,14 @@ token_bailarin_chacarera.png
 token_bestia_delta.png
 token_brote.png
 token_camalote.png
+token_comprobante.png
+token_contrato_firmado.png
+token_dolar_blue.png
 token_estudiante.png
 token_hincha.png
 token_incendiario.png
+token_lote_baldio.png
+token_mancha_de_malbec.png
 token_murguero.png
 token_peregrino.png
 token_pibe_esquina.png
@@ -17,6 +22,7 @@ token_promesero.png
 token_sarmiento.png
 token_sarmiento_toxico.png
 token_toro.png
+token_tupper.png
 token_vecino.png
 token_vecino_barrio.png
 token_vecino_madrugador.png

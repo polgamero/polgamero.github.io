@@ -1,8 +1,9 @@
 import { sleep, moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, isNonbasicLandPermanent, landMatchesFilter } from './permanentTypes.js';
+import { normalizeTokenSpec, buildTokenCard, buildTokenPermanentItem, tokenBattlefieldKind } from './tokenEngine.js';
 import { landMatchesEffectiveFilter } from './landCharacteristics.js';
 import { normalizeLandGraveyardReturnEffect, landGraveyardFilterMatches } from './landGraveyard.js';
-import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, queueTriggeredAbilities, buildGenericEventTriggerEntries, triggerCreatureEtb, triggerLandEtb, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, cleanupIfVehicle, animateLandPermanent, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal, completeCastTargetDeclaration, requestPrivateZoneChoice, searchLibraryForLands, landEntersTappedForBattlefield, runStateBasedActions, waitForStateBasedActions, changePermanentController, dispatchGameEvent } from './main.js';
+import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, queueTriggeredAbilities, buildGenericEventTriggerEntries, triggerCreatureEtb, triggerLandEtb, collectCreatureEtbBatchEntries, collectLandEtbBatchEntries, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, cleanupIfVehicle, animateLandPermanent, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal, completeCastTargetDeclaration, requestPrivateZoneChoice, searchLibraryForLands, resolveLibraryEffect, landEntersTappedForBattlefield, runStateBasedActions, waitForStateBasedActions, changePermanentController, dispatchGameEvent } from './main.js';
 import { otherRole, serializeStackTarget, refreshStackItemBoardRefs } from './matchSync.js';
 import { stampCardOwner, zoneForCardOwner, cardOwnerIsLocal } from './zoneOwnership.js';
 import { stampPermanentController } from './controlEngine.js';
@@ -1560,44 +1561,73 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
         logMsg(gameText('land.destroy.mass', { card: card.name, local: localCount, rivalCount, rival: getRivalName() }));
         recordTelemetryEvent('lands_destroyed_mass', { source: card.name, localCount, rivalCount, filter, controller });
       }
-      // LÓGICA NUEVA: CREAR FICHAS
+      // 23.15.7 — GENERIC PERMANENT TOKENS. El contrato legacy sigue siendo válido,
+      // pero `token:{type,...}` puede materializar Artefactos/Encantamientos/Tierras/PW además
+      // de criaturas. El replacement de creación ve las características del token ANTES de
+      // modificar la cantidad, de modo que filtros por cardType funcionen correctamente.
       else if (effectToApply.type === 'create_tokens') {
-        const board = isLocal ? state.localCombat : state.rivalCombat;
+        let tokenSpec, prototype;
+        try {
+          tokenSpec = normalizeTokenSpec(effectToApply, card);
+          prototype = buildTokenCard(tokenSpec, { id:`token_prototype_${card.id || 'effect'}`, sourceCard:card });
+        } catch (err) {
+          console.error('create_tokens inválido:', err);
+          logMsg(`⚠️ ${card.name}: no se pudo crear la ficha (${err?.message || err}).`);
+          return;
+        }
         const tokenReplacement = resolveReplacementEvent(state, {
           type:'token_create', amount:Math.max(0,Number(effectToApply.amount || 1)),
           affectedIsLocal:isLocal, targetIsLocal:isLocal, sourceCard:card,
-          card:null, zoneFrom:'none', zoneTo:'battlefield', cause:'effect'
+          card:prototype, targetCard:prototype, zoneFrom:'none', zoneTo:'battlefield', cause:'effect'
         });
         const amount = Math.max(0,Math.floor(Number(tokenReplacement.event.amount)||0));
+        const created=[];
+        const stamp=`${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
+
+        // Todos los objetos físicos se materializan primero. Así un lote de N fichas es un
+        // único evento simultáneo y ninguna ficha que recién entró altera replacements de sus hermanas.
         for (let i = 0; i < amount; i++) {
-          const tokenCard = {
-            id: `token_${card.id}_${Date.now()}_${i}`,
-            name: effectToApply.tokenName || 'Ficha',
-            type: 'Criatura Token',
-            manaCost: null,
-            image: effectToApply.image ?? null,
-            cmc: 0,
-            rarity: 'Common',
-            colors: card.colors || [],
-            power: effectToApply.tokenStats?.power ?? 1,
-            toughness: effectToApply.tokenStats?.toughness ?? 1,
-            text: 'Token de criatura.',
-            flavorText: '',
-            keywords: effectToApply.tokenKeywords || [],
-            isToken: true
-          };
-          stampCardOwner(tokenCard, isLocal, state.currentMatch?.myRole || null);
-          const newTokenUnit = {
-            card: tokenCard, tapped: false, summoningSickness: true, isAttacking: false,
-            blockingIndex: null, damageTaken: 0, auras: []
-          };
-          stampPermanentController(newTokenUnit, isLocal, state.currentMatch?.myRole || null);
-          if (hasKeyword(newTokenUnit, 'haste')) newTokenUnit.summoningSickness = false;
-          board.push(newTokenUnit);
-          dispatchGameEvent({type:'token_created',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card:tokenCard,item:newTokenUnit,amount:1,zoneFrom:'none',zoneTo:'battlefield',cause:'effect'});
-          triggerCreatureEtb(isLocal, tokenCard, newTokenUnit);
+          const tokenCard=buildTokenCard(tokenSpec,{id:`token_${card.id || 'effect'}_${stamp}_${i}`,sourceCard:card});
+          stampCardOwner(tokenCard,isLocal,state.currentMatch?.myRole||null);
+          const kind=tokenBattlefieldKind(tokenCard);
+          const forcedTapped = !!tokenSpec.tapped;
+          const tapped = kind==='land' ? landEntersTappedForBattlefield(tokenCard,isLocal,forcedTapped) : forcedTapped;
+          const item=buildTokenPermanentItem(tokenCard,{tapped});
+          stampPermanentController(item,isLocal,state.currentMatch?.myRole||null);
+          if(kind==='creature' && hasKeyword(item,'haste')) item.summoningSickness=false;
+          const zone=kind==='creature' ? (isLocal?state.localCombat:state.rivalCombat)
+            : kind==='land' ? (isLocal?state.localLands:state.rivalLands)
+            : kind==='planeswalker' ? (isLocal?state.localPlaneswalkers:state.rivalPlaneswalkers)
+            : (isLocal?state.localSupport:state.rivalSupport);
+          zone.push(item);
+          created.push({card:tokenCard,item,kind});
         }
-        logMsg(gameText('effect.token.create', { card: card.name, amount, token: effectToApply.tokenName }));
+
+        // Token-created + ETB del mismo lote entran juntos a AP/NAP. Los watchers se toman
+        // después de materializar el lote completo, como exige la simultaneidad del evento.
+        const triggerEntries=[];
+        for(const entry of created){
+          triggerEntries.push(...buildGenericEventTriggerEntries({
+            type:'token_created',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,
+            card:entry.card,item:entry.item,amount:1,zoneFrom:'none',zoneTo:'battlefield',cause:'effect',sourceCard:card
+          }));
+        }
+        const creatures=created.filter(e=>e.kind==='creature').map(({card,item})=>({card,item}));
+        const lands=created.filter(e=>e.kind==='land').map(({card,item})=>({card,item}));
+        if(creatures.length) triggerEntries.push(...collectCreatureEtbBatchEntries(isLocal,creatures));
+        if(lands.length) triggerEntries.push(...collectLandEtbBatchEntries(isLocal,lands));
+        for(const entry of created.filter(e=>e.kind!=='creature' && e.kind!=='land')){
+          triggerEntries.push(...buildGenericEventTriggerEntries({
+            type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,
+            card:entry.card,item:entry.item,zoneFrom:'none',zoneTo:'battlefield',cause:'token',sourceCard:card
+          }));
+        }
+        if(triggerEntries.length) queueTriggeredAbilities(triggerEntries);
+        if(created.some(entry=>entry.card.staticEffect || entry.card.replacementEffect)) {
+          await runStateBasedActions({reason:'token_permanent_batch_entered'});
+          await waitForStateBasedActions();
+        }
+        logMsg(gameText('effect.token.create', { card: card.name, amount:created.length, token: tokenSpec.name }));
       }
       // PUNTO 7: REANIMAR DESDE EL CEMENTERIO — ahora el controlador ELIGE qué
       // criatura vuelve usando el selector general del Punto 6. El JSON histórico no cambia:
@@ -1716,6 +1746,17 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           logMsg(gameText('land.search.none', { card: card.name }));
         }
       }
+      // 23.15.6 — tutor/biblioteca universal. search_library recorre toda la biblioteca
+      // y baraja por default; look_at_top sólo abre una ventana top-N y permite mandar el
+      // resto arriba/abajo/cementerio/exilio según el contrato declarativo.
+      else if (effectToApply.type === 'search_library' || effectToApply.type === 'look_at_top') {
+        const result=await resolveLibraryEffect({isLocal,effect:effectToApply,cardName:card.name});
+        if(result.selectedCount>0){
+          logMsg(gameText('library.effect.done',{card:card.name,count:result.selectedCount,cards:result.movedNames?.length?result.movedNames.join(', '):gameText('library.effect.hidden')}));
+        } else {
+          logMsg(gameText('library.effect.none',{card:card.name}));
+        }
+      }
       else {
         await resolveSimpleDirectEffect(effectToApply, card, isLocal);
       }
@@ -1733,7 +1774,7 @@ export function canResolveGameEffectWithoutTarget(effectType) {
   return [
     'draw', 'loot', 'rummage', 'sacrifice', 'heal', 'damage', 'fog', 'draw_and_lose_life', 'drain', 'discard',
     'scry', 'surveil', 'proliferate', 'destroy_all_creatures', 'create_tokens',
-    'reanimate', 'return_from_graveyard', 'return_lands_from_graveyard', 'return_all_lands_from_graveyard', 'ramp', 'search_land', 'animate_land', 'destroy_all_lands'
+    'reanimate', 'return_from_graveyard', 'return_lands_from_graveyard', 'return_all_lands_from_graveyard', 'ramp', 'search_land', 'search_library', 'look_at_top', 'animate_land', 'destroy_all_lands'
   ].includes(effectType);
 }
 
@@ -1762,7 +1803,7 @@ export function getEffectExecutionClass(effectType) {
     'pump', 'grant_keyword_temp', 'attach_equipment', 'fight', 'add_counter',
     'destroy_creature', 'exile_creature', 'exile_and_return', 'bounce',
     'destroy_artifact', 'destroy_enchantment', 'destroy_land', 'destroy_nonbasic_land', 'crew_vehicle', 'animate_land',
-    'destroy_all_creatures', 'destroy_all_lands', 'create_tokens', 'reanimate', 'return_from_graveyard', 'return_lands_from_graveyard', 'return_all_lands_from_graveyard', 'ramp', 'search_land'
+    'destroy_all_creatures', 'destroy_all_lands', 'create_tokens', 'reanimate', 'return_from_graveyard', 'return_lands_from_graveyard', 'return_all_lands_from_graveyard', 'ramp', 'search_land', 'search_library', 'look_at_top'
   ].includes(effectType)) return 'discrete';
   return 'unknown';
 }

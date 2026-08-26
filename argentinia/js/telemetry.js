@@ -39,7 +39,7 @@ const PENDING_KEYS = [
   'preparingCompositeCastCosts', 'pendingFightChoice', 'pendingXChoice', 'pendingModeChoice',
   'pendingLoyaltyTargetChoice', 'pendingMultiTargetChoice', 'pendingScrySurveilChoice',
   'pendingProliferateChoice', 'pendingHandFilterChoice', 'pendingDiscardChoice',
-  'pendingSacrificeEffectChoice', 'pendingGraveyardChoice', 'pendingResolvedEffectTargetChoice', 'pendingLandSearchChoice',
+  'pendingSacrificeEffectChoice', 'pendingGraveyardChoice', 'pendingResolvedEffectTargetChoice', 'pendingLandSearchChoice', 'pendingLibraryChoice',
   'pendingDecision', 'decisionResponse', 'awaitingRivalDecision', 'isDiscarding',
   'cardsToDiscard', 'damageModalOpen', 'resolvingDiscardEffects', 'resolvingSacrificeEffects'
 ];
