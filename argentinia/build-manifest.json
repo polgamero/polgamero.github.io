@@ -1,7 +1,8 @@
 {
-  "engineVersion": "23.15.7.2",
-  "engineProtocolVersion": "mp-23.10.0",
-  "buildLabel": "Entrega 23.15.7.2 POOL EXPANSION II · Pool 700",
-  "generatedFor": "GitHub Pages cache freshness check",
-  "firestoreRulesVersion": "23.13.68"
+  "engineVersion": "23.17.3.1",
+  "protocolVersion": "mp-23.10.0",
+  "firestoreRulesVersion": "23.13.69",
+  "poolMilestone": "pool_expansion_viii_880",
+  "pool": 880,
+  "label": "Prebuilt Purchase Integrity Hotfix"
 }

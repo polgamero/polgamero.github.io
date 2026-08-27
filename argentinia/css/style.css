@@ -297,10 +297,10 @@ html, body {
 
 /* CAJA DE TEXTO — 23.15.5.3: jerarquía MTG-like, reglas legibles y flavor al final. */
 .card-text-box {
-  height: 42cqh;
+  height: var(--card-text-box-height, 42cqh);
   padding: 2cqw 3cqw;
   font-size: 6cqw;
-  line-height: 1.14;
+  line-height: var(--card-text-line-height, 1.14);
   background-color: rgba(253, 251, 247, 0.94);
   background-image: url('https://www.transparenttextures.com/patterns/cream-paper.png');
   color: #111;
@@ -343,7 +343,7 @@ html, body {
   padding: 0;
   font-weight: 400;
   font-style: normal;
-  line-height: 1.14;
+  line-height: var(--card-text-line-height, 1.14);
 }
 
 .card-mode-header {
@@ -371,12 +371,20 @@ html, body {
 /* Flavor siempre último y exclusivamente itálico. La separación fina evita confundirlo con reglas. */
 .card-flavor-text {
   margin-top: auto;
-  padding-top: 0.36em;
+  padding-top: var(--card-flavor-gap, 0.36em);
   border-top: 1px solid rgba(60,45,30,0.24);
   font-style: italic;
   font-weight: 400;
-  line-height: 1.12;
+  font-size: var(--card-flavor-font-size, 1em);
+  line-height: var(--card-flavor-line-height, 1.12);
   color: rgba(20,20,20,0.88);
+}
+
+/* 23.15.10 — guard global: flavor nunca queda escondido debajo de P/T o Lealtad.
+   Se reserva sólo la esquina inferior derecha del flavor (no todo el rules box), así el
+   texto de reglas conserva el ancho completo y el arreglo no exige editar cientos de cartas. */
+.card-text-box-stat-reserve .card-flavor-text {
+  padding-right: 27cqw;
 }
 
 /* Clases legacy conservadas sin decoración agresiva por compatibilidad con snapshots viejos. */
@@ -457,6 +465,77 @@ html, body {
   border: 2px solid #222; border-radius: 3px; padding: 1cqw 5cqw;
   font-weight: bold; font-size: 9cqw; color: #000;
   box-shadow: -1px -1px 2px rgba(0,0,0,0.3);
+}
+
+.counter-badge {
+  position: absolute; top: 4px; right: 4px; z-index: 5;
+  background: rgba(12,16,18,0.88); color: #fff;
+  border: 1px solid rgba(255,255,255,0.75); border-radius: 999px;
+  padding: 1cqw 3cqw; font-weight: 700; font-size: 5.7cqw;
+  line-height: 1.15; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,0.65);
+}
+
+/* 23.16.1 — Sagas: guía visual compacta de capítulos sobre el arte. El contador Lore
+   sigue siendo el estado canónico; esta pista sólo hace legible qué capítulos existen y
+   cuáles ya fueron alcanzados, sin competir con el textbox ni con P/T. */
+.saga-chapter-track {
+  position: absolute; left: 4px; bottom: 4px; z-index: 5;
+  display: flex; gap: 1.2cqw; align-items: center;
+  padding: 1cqw 2cqw; border-radius: 999px;
+  background: rgba(246,239,215,0.9); border: 1px solid rgba(62,45,25,0.75);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.55);
+}
+.saga-chapter-pill {
+  min-width: 7cqw; height: 7cqw; padding: 0 1cqw; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px; border: 1px solid rgba(70,55,35,0.8);
+  color: #4b3a25; background: rgba(255,255,255,0.55);
+  font-weight: 800; font-size: 4.4cqw; line-height: 1;
+}
+.saga-chapter-pill.reached { background: #d8c07c; color: #221b11; }
+.saga-chapter-pill.current { outline: 2px solid rgba(255,245,190,0.95); outline-offset: 1px; }
+.saga-chapter-track[data-tooltip]:hover::after {
+  content: attr(data-tooltip); position: absolute; bottom: 125%; left: 0;
+  background: rgba(10,14,10,0.97); color: #f0e8d0;
+  border: 1px solid var(--gold, #d4af37); border-radius: 6px;
+  padding: 5px 8px; font-size: 11px; font-weight: normal;
+  white-space: nowrap; z-index: 5000; pointer-events: none;
+}
+
+/* 23.16.4 — TDFC: indicador compacto de cara física actual. */
+.dfc-face-badge {
+  position:absolute; left:4px; top:4px; z-index:6;
+  min-width:23px; height:20px; padding:0 5px; box-sizing:border-box;
+  display:inline-flex; align-items:center; justify-content:center; gap:2px;
+  border-radius:999px; border:1px solid rgba(255,255,255,.78);
+  background:rgba(22,25,31,.9); color:#f4e7a8;
+  font-weight:800; font-size:5.2cqw; line-height:1; box-shadow:0 1px 4px rgba(0,0,0,.65);
+}
+.dfc-face-badge[data-tooltip]:hover::after {
+  content:attr(data-tooltip); position:absolute; top:130%; left:0;
+  background:rgba(10,14,10,.97); color:#f0e8d0;
+  border:1px solid var(--gold,#d4af37); border-radius:6px;
+  padding:6px 10px; font-size:11px; font-weight:normal; white-space:nowrap;
+  z-index:5000; pointer-events:none; box-shadow:0 4px 14px rgba(0,0,0,.7);
+}
+/* 23.16.5 Typal Engine — tipo de criatura elegido en permanentes públicos. */
+.typal-choice-badge {
+  position:absolute; left:4%; bottom:4%; z-index:7;
+  max-width:58%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  padding:.18em .45em; border-radius:.55em; font-size:clamp(5px,4.1cqw,16px);
+  background:rgba(20,24,28,.86); color:#f5f6fa; border:1px solid rgba(255,255,255,.28);
+  box-shadow:0 1px 3px rgba(0,0,0,.45); pointer-events:auto;
+}
+.typal-choice-badge[data-tooltip]:hover::after { content:attr(data-tooltip); position:absolute; left:0; bottom:120%; min-width:150px; padding:6px 8px; border-radius:6px; background:#111; color:#fff; font-size:11px; white-space:normal; z-index:40; }
+
+
+.counter-badge[data-tooltip]:hover::after {
+  content: attr(data-tooltip); position: absolute; top: 130%; right: 0;
+  background: rgba(10,14,10,0.97); color: #f0e8d0;
+  border: 1px solid var(--gold, #d4af37); border-radius: 6px;
+  padding: 6px 10px; font-size: 11px; font-weight: normal;
+  white-space: pre-line; width: max-content; max-width: 260px;
+  z-index: 5000; pointer-events: none; box-shadow: 0 4px 14px rgba(0,0,0,0.7);
 }
 
 /* BADGE DE AURA/EQUIPO: se muestra en la criatura que tiene un Encantamiento — Aura o un

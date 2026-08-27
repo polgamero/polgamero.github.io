@@ -2495,5 +2495,616 @@
         "image": "token_mancha_de_malbec.png"
       }
     }
+  },
+  {
+    "id": "inst_121",
+    "name": "Cobertura de Guardia",
+    "type": "Instantáneo",
+    "manaCost": "{W}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Poné un contador de Escudo sobre la criatura objetivo que controlás.",
+    "flavorText": "Un segundo alcanza si el cuerpo correcto se pone adelante.",
+    "image": "cobertura_de_guardia.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "add_counter",
+      "counterType": "shield",
+      "amount": 1,
+      "targetKind": "creature",
+      "targetController": "self"
+    }
+  },
+  {
+    "id": "inst_122",
+    "name": "Cordón Sanitario",
+    "type": "Instantáneo",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Poné un contador de Escudo sobre el permanente objetivo que controlás.",
+    "flavorText": "La cinta no detiene nada. La gente detrás de ella, sí.",
+    "image": "cordon_sanitario.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "add_counter",
+      "counterType": "shield",
+      "amount": 1,
+      "targetKind": "any_permanent",
+      "targetController": "self"
+    }
+  },
+  {
+    "id": "inst_123",
+    "name": "Demora en la Línea D",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Poné un contador de Aturdimiento sobre la criatura objetivo que controla un oponente.",
+    "flavorText": "Próximo tren: cuando el cartel deje de mentir.",
+    "image": "demora_en_la_linea_d.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "add_counter",
+      "counterType": "stun",
+      "amount": 1,
+      "targetKind": "creature",
+      "targetController": "opponent"
+    }
+  },
+  {
+    "id": "inst_124",
+    "name": "Señal Fuera de Servicio",
+    "type": "Instantáneo",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Poné dos contadores de Aturdimiento sobre la criatura objetivo que controla un oponente.",
+    "flavorText": "La luz se apagó. La espera no.",
+    "image": "senal_fuera_de_servicio.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "add_counter",
+      "counterType": "stun",
+      "amount": 2,
+      "targetKind": "creature",
+      "targetController": "opponent"
+    }
+  },
+  {
+    "id": "inst_125",
+    "name": "Carga de Emergencia",
+    "type": "Instantáneo",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Poné un contador de Carga sobre el permanente objetivo que controlás.",
+    "flavorText": "No es estable. Solamente tiene que durar hasta que llegue el repuesto.",
+    "image": "carga_de_emergencia.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "add_counter",
+      "counterType": "charge",
+      "amount": 1,
+      "targetKind": "any_permanent",
+      "targetController": "self"
+    }
+  },
+  {
+    "id": "inst_126",
+    "name": "Arrancar el Blindaje",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Remové un contador de Escudo del permanente objetivo que controla un oponente.",
+    "flavorText": "Toda protección tiene una costura.",
+    "image": "arrancar_el_blindaje.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "remove_counter",
+      "counterType": "shield",
+      "amount": 1,
+      "targetKind": "any_permanent",
+      "targetController": "opponent"
+    }
+  },
+  {
+    "id": "inst_127",
+    "name": "Nota al Margen",
+    "type": "Instantáneo",
+    "manaCost": "{U}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Poné un contador de Lore sobre la Saga objetivo que controlás.",
+    "flavorText": "Una línea alcanza para cambiar la lectura de todo lo anterior.",
+    "image": "nota_al_margen.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "add_counter",
+      "counterType": "lore",
+      "amount": 1,
+      "targetKind": "support",
+      "targetController": "self",
+      "permanentFilter": "Saga"
+    }
+  },
+  {
+    "id": "inst_128",
+    "name": "Eco del Capítulo",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Copiá la habilidad objetivo. Podés elegir nuevos objetivos para la copia.",
+    "flavorText": "La segunda versión siempre encuentra un oído distinto.",
+    "image": "eco_del_capitulo.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "copy_ability",
+      "stackFilter": "ability",
+      "mayChooseNewTargets": true
+    }
+  },
+  {
+    "id": "inst_129",
+    "name": "Ventana de Cinco Minutos",
+    "type": "Instantáneo",
+    "manaCost": "{R}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Exiliá la carta superior de tu biblioteca. Podés jugarla hasta el final del turno.",
+    "flavorText": "Cinco minutos alcanzan para entrar, salir y negar que la puerta estuvo abierta.",
+    "image": "ventana_de_cinco_minutos.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 1,
+      "permission": {
+        "duration": "until_end_of_turn",
+        "playMode": "any",
+        "timing": "normal",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "inst_130",
+    "name": "Antes de que Cierre",
+    "type": "Instantáneo",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Exiliá la carta superior de tu biblioteca. Podés jugarla hasta el final de tu próximo turno.",
+    "flavorText": "La persiana ya bajó hasta la mitad. Todavía cuenta como abierto.",
+    "image": "antes_de_que_cierre.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 1,
+      "permission": {
+        "duration": "until_end_of_next_turn",
+        "playMode": "any",
+        "timing": "normal",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "inst_131",
+    "name": "Señal Intermitente",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "text": "Exiliá la carta superior de tu biblioteca. Podés jugarla este turno. Si es un hechizo, podés castearlo como si tuviera Destello.",
+    "flavorText": "La frecuencia aparece una vez. Si dudás, vuelve al ruido.",
+    "image": "senal_intermitente.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 1,
+      "permission": {
+        "duration": "until_end_of_turn",
+        "playMode": "any",
+        "timing": "any_time",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "inst_132",
+    "name": "Oferta por Tiempo Limitado",
+    "type": "Instantáneo",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Exiliá las dos cartas superiores de tu biblioteca. Podés jugarlas hasta el final del turno.",
+    "flavorText": "El precio dura menos que la explicación.",
+    "image": "oferta_por_tiempo_limitado.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 2,
+      "permission": {
+        "duration": "until_end_of_turn",
+        "playMode": "any",
+        "timing": "normal",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "inst_133",
+    "name": "Clave Prestada",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "text": "Exiliá la carta superior de la biblioteca de tu oponente. Si es un hechizo, podés castearlo pagando {2} en vez de su coste de maná hasta el final de tu próximo turno.",
+    "flavorText": "No abre todas las puertas. Sólo las que alguien juró haber cerrado.",
+    "image": "clave_prestada.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 1,
+      "owner": "opponent",
+      "controller": "self",
+      "permission": {
+        "duration": "until_end_of_next_turn",
+        "playMode": "spell",
+        "timing": "normal",
+        "costMode": "custom",
+        "cost": "{2}",
+        "allowKicker": false
+      }
+    }
+  },
+  {
+    "id": "inst_134",
+    "name": "Abrir en Otra Pestaña",
+    "type": "Instantáneo",
+    "manaCost": "{2}{R}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Exiliá la carta superior de tu biblioteca. Si es un hechizo, podés castearlo este turno sin pagar su coste de maná.",
+    "flavorText": "La primera pantalla sigue ahí. La segunda ya está haciendo otra cosa.",
+    "image": "abrir_en_otra_pestana.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 1,
+      "permission": {
+        "duration": "until_end_of_turn",
+        "playMode": "spell",
+        "timing": "any_time",
+        "costMode": "without_paying_mana_cost",
+        "allowKicker": false
+      }
+    }
+  },
+  {
+    "id": "inst_135",
+    "name": "Adelantar el Reloj",
+    "type": "Instantáneo",
+    "manaCost": "{U}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Remové un contador de Tiempo de una carta suspendida que poseés.",
+    "flavorText": "Un minuto menos puede ser un turno entero.",
+    "image": "adelantar_el_reloj.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "remove_time_counter_suspended",
+      "owner": "self",
+      "amount": 1
+    }
+  },
+  {
+    "id": "inst_136",
+    "name": "Demora Administrativa",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Poné un contador de Tiempo sobre una carta suspendida que posea un oponente.",
+    "flavorText": "El expediente está listo. Sólo falta que vuelva la persona que sabe dónde está.",
+    "image": "demora_administrativa.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "add_time_counter_suspended",
+      "owner": "opponent",
+      "amount": 1
+    }
+  },
+  {
+    "id": "inst_137",
+    "name": "Cortar la Espera",
+    "type": "Instantáneo",
+    "manaCost": "{R}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Remové hasta dos contadores de Tiempo de una carta suspendida que poseés.",
+    "flavorText": "Hay gente que espera su turno. Hay gente que patea la puerta.",
+    "image": "cortar_la_espera.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "remove_time_counter_suspended",
+      "owner": "self",
+      "amount": 2
+    }
+  },
+  {
+    "id": "inst_138",
+    "name": "Pedido de Prórroga",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Poné dos contadores de Tiempo sobre una carta suspendida.",
+    "flavorText": "La nueva fecha es definitiva. Hasta que llegue la próxima nota.",
+    "image": "pedido_de_prorroga.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "add_time_counter_suspended",
+      "owner": "any",
+      "amount": 2
+    }
+  },
+  {
+    "id": "inst_139",
+    "name": "Respuesta que Llegó Tarde",
+    "type": "Instantáneo",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Robá dos cartas. Suspender 2 — {U}.",
+    "flavorText": "El mensaje era urgente cuando salió. Sigue siendo útil cuando llega.",
+    "image": "respuesta_que_llego_tarde.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "draw",
+      "amount": 2
+    },
+    "suspend": {
+      "time": 2,
+      "cost": "{U}"
+    }
+  },
+  {
+    "id": "inst_140",
+    "name": "Golpe Anunciado",
+    "type": "Instantáneo",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Golpe Anunciado hace 3 de daño a cualquier objetivo. Suspender 2 — {R}.",
+    "flavorText": "Se vio venir desde dos cuadras. Eso no lo hizo menos fuerte.",
+    "image": "golpe_anunciado.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "damage",
+      "amount": 3
+    },
+    "suspend": {
+      "time": 2,
+      "cost": "{R}"
+    }
+  },
+  {
+    "id": "inst_141",
+    "name": "Cambio de Perspectiva",
+    "type": "Instantáneo",
+    "manaCost": "{U}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Transformá la criatura transformable objetivo que controlás.",
+    "flavorText": "A veces alcanza con mirar el mismo problema desde el reverso.",
+    "image": "cambio_de_perspectiva.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "transform",
+      "targetKind": "creature",
+      "targetController": "self"
+    }
+  },
+  {
+    "id": "inst_142",
+    "name": "Noche Repentina",
+    "type": "Instantáneo",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Transformá la criatura transformable objetivo que controla un oponente.",
+    "flavorText": "El sol se fue detrás de un edificio y volvió algo completamente distinto.",
+    "image": "noche_repentina.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "transform",
+      "targetKind": "creature",
+      "targetController": "opponent"
+    }
+  },
+  {
+    "id": "inst_143",
+    "name": "Mudar de Piel",
+    "type": "Instantáneo",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Transformá el permanente transformable objetivo que controlás.",
+    "flavorText": "La naturaleza nunca firmó que una forma tuviera que ser definitiva.",
+    "image": "mudar_de_piel.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "transform",
+      "targetKind": "any_permanent",
+      "targetController": "self"
+    }
+  },
+  {
+    "id": "inst_144",
+    "name": "Dar Vuelta la Historia",
+    "type": "Instantáneo",
+    "manaCost": "{1}{U}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "text": "Transformá el permanente transformable objetivo.",
+    "flavorText": "Una versión de los hechos basta hasta que alguien encuentra la otra cara.",
+    "image": "dar_vuelta_la_historia.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "transform",
+      "targetKind": "any_permanent",
+      "targetController": "any"
+    }
+  },
+  {
+    "id": "inst_145",
+    "name": "Ensayo General",
+    "type": "Instantáneo",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "La criatura Músico objetivo que controlás obtiene +3/+0 hasta el final del turno.",
+    "flavorText": "La última pasada siempre termina siendo la primera función.",
+    "image": "ensayo_general.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "pump",
+      "powerMod": 3,
+      "toughnessMod": 0,
+      "targetKind": "creature",
+      "targetController": "self",
+      "targetSubtype": "Músico"
+    }
+  },
+  {
+    "id": "inst_146",
+    "name": "Alas en Formación",
+    "type": "Instantáneo",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "La criatura Ave objetivo que controlás obtiene +2/+2 hasta el final del turno.",
+    "flavorText": "Una sola sombra avisa. Una bandada tapa el sol.",
+    "image": "alas_en_formacion.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "pump",
+      "powerMod": 2,
+      "toughnessMod": 2,
+      "targetKind": "creature",
+      "targetController": "self",
+      "targetSubtype": "Ave"
+    }
+  },
+  {
+    "id": "inst_147",
+    "name": "Aullar a la Medianoche",
+    "type": "Instantáneo",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "La criatura Canino objetivo que controlás gana Toque mortal hasta el final del turno.",
+    "flavorText": "Primero responde un patio. Después todos los demás.",
+    "image": "aullar_a_la_medianoche.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "grant_keyword_temp",
+      "keyword": "deathtouch",
+      "targetKind": "creature",
+      "targetController": "self",
+      "targetSubtype": "Canino"
+    }
   }
 ]

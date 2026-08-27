@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { ENGINE_VERSION, FIRESTORE_RULES_VERSION, ENGINE_PROTOCOL_VERSION } from '../js/version.js';
+import { PREBUILT_DECKS_VERSION } from '../js/prebuiltDecks.js';
+
+const __dirname=path.dirname(fileURLToPath(import.meta.url));
+const root=path.resolve(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+assert.equal(ENGINE_VERSION,'23.17.3.1');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.69');
+assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.10.0');
+assert.equal(PREBUILT_DECKS_VERSION,'23.17.3','el catálogo congelado no cambia en el hotfix');
+const fb=read('js/firebaseClientImpl.js');
+assert.ok(fb.includes('await getAuthoritativeServerClock(uid)'), 'purchase debe fail-close contra Rules viejas');
+assert.ok(fb.includes("error.code='PREBUILT_RULES_STALE'"));
+assert.ok(fb.includes('prebuiltDeckPurchases:receipts'));
+const ui=read('js/ui.js');
+assert.ok(ui.includes("case 'PREBUILT_RULES_STALE': return gameText('prebuilt.error.rulesStale')"));
+const texts=read('js/gameTexts.js');
+assert.ok(texts.includes("'prebuilt.error.rulesStale'"));
+const manifest=JSON.parse(read('build-manifest.json'));
+assert.equal(manifest.engineVersion,'23.17.3.1');
+assert.equal(manifest.firestoreRulesVersion,'23.13.69');
+console.log('PASS test_prebuilt_purchase_integrity_23_17_3_1.mjs · fail-closed Rules attestation · catalog remains 23.17.3 · pool unchanged');

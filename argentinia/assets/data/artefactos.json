@@ -1567,5 +1567,658 @@
         }
       }
     }
+  },
+  {
+    "id": "art_068",
+    "name": "Batería de Emergencia",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Al comienzo de tu mantenimiento, poné un contador de Carga sobre Batería de Emergencia.",
+    "flavorText": "La etiqueta dice seis horas. Nadie pregunta de qué año.",
+    "image": "bateria_de_emergencia.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "upkeep_started",
+        "filter": {
+          "activePlayer": "you"
+        },
+        "effect": {
+          "type": "add_counter",
+          "counterType": "charge",
+          "amount": 1
+        },
+        "target": "self"
+      }
+    ]
+  },
+  {
+    "id": "art_069",
+    "name": "Banco de Capacitores",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{1}, {T}: Remové un contador de Carga del permanente objetivo que controlás. Siempre que se remueva uno o más contadores de Carga de un permanente que controlás, ganás 1 vida.",
+    "flavorText": "Guarda lo que sobra hasta que alguien se anime a soltarlo.",
+    "image": "banco_de_capacitores.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "remove_counter",
+        "counterType": "charge",
+        "amount": 1,
+        "targetKind": "any_permanent",
+        "targetController": "self"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    },
+    "triggers": [
+      {
+        "event": "counter_removed",
+        "filter": {
+          "controller": "you",
+          "counterType": "charge",
+          "minAmount": 1
+        },
+        "effect": {
+          "type": "heal",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "art_070",
+    "name": "Odómetro de la Ruta 40",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Al comienzo de tu mantenimiento, poné un contador de Kilómetro sobre Odómetro de la Ruta 40. {2}, {T}: Remové un contador de Kilómetro del permanente objetivo que controlás. Siempre que se remueva un contador de Kilómetro de Odómetro de la Ruta 40, robá una carta.",
+    "flavorText": "El paisaje cambia. El número insiste.",
+    "image": "odometro_de_la_ruta_40.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "upkeep_started",
+        "filter": {
+          "activePlayer": "you"
+        },
+        "effect": {
+          "type": "add_counter",
+          "counterType": "Kilómetro",
+          "amount": 1
+        },
+        "target": "self"
+      },
+      {
+        "event": "counter_removed",
+        "filter": {
+          "self": true,
+          "counterType": "Kilómetro"
+        },
+        "effect": {
+          "type": "draw",
+          "amount": 1
+        }
+      }
+    ],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "remove_counter",
+        "counterType": "Kilómetro",
+        "amount": 1,
+        "targetKind": "any_permanent",
+        "targetController": "self"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_071",
+    "name": "Tablero Sinóptico de Atucha",
+    "type": "Artefacto",
+    "manaCost": "{5}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "Si fueran a ponerse uno o más contadores sobre un Artefacto que controlás, se ponen el doble de esos contadores en vez de eso. {4}, {T}: Proliferá.",
+    "flavorText": "Cada luz del tablero cuenta una historia. Encendidas todas juntas cuentan otra.",
+    "image": "tablero_sinoptico_de_atucha.png",
+    "keywords": [],
+    "replacementEffect": {
+      "event": "counter_add",
+      "scope": "own",
+      "filter": {
+        "cardType": "artifact"
+      },
+      "multiplyAmount": 2
+    },
+    "activatedAbility": {
+      "cost": "{4}{T}",
+      "effect": {
+        "type": "proliferate"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_072",
+    "name": "Campana del Cabildo",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{2}, {T}: Poné un contador de Lore sobre la Saga objetivo que controlás.",
+    "flavorText": "Un golpe llama a la plaza. Dos golpes llaman a la historia.",
+    "image": "campana_del_cabildo.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "add_counter",
+        "counterType": "lore",
+        "amount": 1,
+        "targetKind": "support",
+        "targetController": "self",
+        "permanentFilter": "Saga"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_073",
+    "name": "Archivo de Historias Orales",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Siempre que una Saga que controlás sea sacrificada, robá dos cartas.",
+    "flavorText": "La cinta termina. La voz, nunca.",
+    "image": "archivo_de_historias_orales.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "permanent_sacrificed",
+        "filter": {
+          "controller": "you",
+          "subtype": "Saga"
+        },
+        "effect": {
+          "type": "draw",
+          "amount": 2
+        }
+      }
+    ]
+  },
+  {
+    "id": "art_074",
+    "name": "Ticket de Acceso Temporal",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Exiliá la carta superior de tu biblioteca. Podés jugarla hasta el final del turno.",
+    "flavorText": "Válido por una entrada, una salida y ninguna explicación.",
+    "image": "ticket_de_acceso_temporal.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "exile_top_with_permission",
+        "amount": 1,
+        "permission": {
+          "duration": "until_end_of_turn",
+          "playMode": "any",
+          "timing": "normal",
+          "costMode": "normal",
+          "allowKicker": true
+        }
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_075",
+    "name": "Terminal de Autogestión",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{3}, {T}: Exiliá la carta superior de tu biblioteca. Podés jugarla hasta el final de tu próximo turno.",
+    "flavorText": "La fila desapareció. El trámite aprendió a perseguirte.",
+    "image": "terminal_de_autogestion.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "exile_top_with_permission",
+        "amount": 1,
+        "permission": {
+          "duration": "until_end_of_next_turn",
+          "playMode": "any",
+          "timing": "normal",
+          "costMode": "normal",
+          "allowKicker": true
+        }
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_076",
+    "name": "Módem de Emergencia",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Siempre que casteés un hechizo desde el Exilio, adiviná 1.",
+    "flavorText": "Dos luces verdes son servicio. Tres luces verdes son esperanza.",
+    "image": "modem_de_emergencia.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "cast_from_exile",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "scry",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "art_077",
+    "name": "Pasaporte de la República Invisible",
+    "type": "Artefacto Legendario",
+    "manaCost": "{5}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "{4}, {T}: Exiliá la carta superior de tu biblioteca. Si es un hechizo, podés castearlo este turno sin pagar su coste de maná.",
+    "flavorText": "Tiene sellos de fronteras que todavía no fueron dibujadas.",
+    "image": "pasaporte_de_la_republica_invisible.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{4}{T}",
+      "effect": {
+        "type": "exile_top_with_permission",
+        "amount": 1,
+        "permission": {
+          "duration": "until_end_of_turn",
+          "playMode": "spell",
+          "timing": "normal",
+          "costMode": "without_paying_mana_cost",
+          "allowKicker": false
+        }
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_078",
+    "name": "Reloj de Fichar",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{1}, {T}: Remové un contador de Tiempo de una carta suspendida que poseés.",
+    "flavorText": "Marca entrada, salida y, si insistís, también el futuro.",
+    "image": "reloj_de_fichar.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "remove_time_counter_suspended",
+        "owner": "self",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_079",
+    "name": "Sello de Prórroga",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{1}, {T}: Poné un contador de Tiempo sobre una carta suspendida.",
+    "flavorText": "Una tinta azul alcanza para mover una fecha semanas enteras.",
+    "image": "sello_de_prorroga.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "add_time_counter_suspended",
+        "owner": "any",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_080",
+    "name": "Cronómetro del Banco Nación",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{3}, {T}: Remové dos contadores de Tiempo de una carta suspendida que poseés.",
+    "flavorText": "No acelera el trámite. Acelera todo lo demás alrededor.",
+    "image": "cronometro_del_banco_nacion.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "remove_time_counter_suspended",
+        "owner": "self",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_081",
+    "name": "Reloj Monumental de Retiro",
+    "type": "Artefacto Legendario",
+    "manaCost": "{5}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "{2}, {T}: Remové dos contadores de Tiempo de una carta suspendida que poseés. Siempre que se remueva el último contador de Tiempo de una carta suspendida que poseés, robá dos cartas.",
+    "flavorText": "Miles lo miran para saber cuánto falta. Una vez por noche, responde cuánto falta de verdad.",
+    "image": "reloj_monumental_de_retiro.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "remove_time_counter_suspended",
+        "owner": "self",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    },
+    "triggers": [
+      {
+        "event": "counter_removed",
+        "filter": {
+          "owner": "you",
+          "counterType": "time",
+          "metadata": {
+            "suspended": true,
+            "lastRemoved": true
+          }
+        },
+        "effect": {
+          "type": "draw",
+          "amount": 2
+        }
+      }
+    ]
+  },
+  {
+    "id": "art_082",
+    "name": "Televisor de Tubo Encendido",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{2}{U}{R}, {T}: Transformá Televisor de Tubo Encendido.",
+    "flavorText": "Entre dos canales aparece una señal que no pertenece a esta casa.",
+    "image": "televisor_de_tubo_encendido.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{U}{R}{T}",
+      "effect": {
+        "type": "transform"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    },
+    "dfc": {
+      "kind": "transform",
+      "backFace": {
+        "name": "Portal de Interferencia",
+        "type": "Artefacto",
+        "image": "portal_de_interferencia.png",
+        "text": "La estática era una puerta. El tubo sólo estaba tratando de abrirla.",
+        "colors": [],
+        "keywords": [],
+        "triggers": [
+          {
+            "event": "spell_cast",
+            "filter": {
+              "controller": "you",
+              "cardType": "noncreature"
+            },
+            "effect": {
+              "type": "damage",
+              "amount": 1
+            }
+          }
+        ],
+        "activatedAbility": {
+          "cost": "{2}{T}",
+          "effect": {
+            "type": "transform"
+          },
+          "requiresTarget": false,
+          "timing": "instant"
+        }
+      }
+    }
+  },
+  {
+    "id": "art_083",
+    "name": "Mate de Madrugada",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{1}, {T}: Transformá Mate de Madrugada.",
+    "flavorText": "A la cuarta cebada ya nadie recuerda quién lo llenó primero.",
+    "image": "mate_de_madrugada.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "transform"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    },
+    "dfc": {
+      "kind": "transform",
+      "backFace": {
+        "name": "Mate que No Se Vacía",
+        "type": "Artefacto",
+        "image": "mate_que_no_se_vacia.png",
+        "text": "El agua se termina. La charla no.",
+        "colors": [],
+        "keywords": [],
+        "triggers": [
+          {
+            "event": "upkeep_started",
+            "filter": {
+              "activePlayer": "you"
+            },
+            "effect": {
+              "type": "heal",
+              "amount": 1
+            }
+          }
+        ],
+        "activatedAbility": {
+          "cost": "{1}{T}",
+          "effect": {
+            "type": "transform"
+          },
+          "requiresTarget": false,
+          "timing": "instant"
+        }
+      }
+    }
+  },
+  {
+    "id": "art_084",
+    "name": "Espejo de Vestuario",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Transformá el permanente transformable objetivo que controlás.",
+    "flavorText": "Devuelve exactamente lo que sos, salvo cuando decide mostrar lo que falta.",
+    "image": "espejo_de_vestuario.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "transform",
+        "targetKind": "any_permanent",
+        "targetController": "self"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_085",
+    "name": "Interruptor de Dos Posiciones",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{3}, {T}: Transformá el permanente transformable objetivo.",
+    "flavorText": "Una posición dice “normal”. La otra no tiene etiqueta.",
+    "image": "interruptor_de_dos_posiciones.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "transform",
+        "targetKind": "any_permanent",
+        "targetController": "any"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_086",
+    "name": "Fichero de Socios del Club",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Cuando Fichero de Socios del Club entre al campo de batalla, elegí un tipo de criatura. {2}, {T}: buscá en tu biblioteca una carta de criatura del tipo elegido, mostrala, ponela en tu mano y barajá.",
+    "flavorText": "La ficha correcta siempre está dos cajones más abajo de donde debería.",
+    "image": "fichero_de_socios_del_club.png",
+    "keywords": [],
+    "etbEffect": {
+      "type": "choose_creature_type"
+    },
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "search_library",
+        "amount": 1,
+        "filter": {
+          "cardType": "creature",
+          "subtype": "$chosen"
+        },
+        "destination": "hand",
+        "reveal": true,
+        "shuffle": true,
+        "allowFewer": true
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_087",
+    "name": "Censo Nacional de Criaturas",
+    "type": "Artefacto Legendario",
+    "manaCost": "{5}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "Cuando Censo Nacional de Criaturas entre al campo de batalla, elegí un tipo de criatura. Las criaturas del tipo elegido que controlás obtienen +1/+1. Tus hechizos de criatura del tipo elegido cuestan {1} menos. Siempre que una criatura del tipo elegido entre al campo de batalla bajo tu control, adiviná 1.",
+    "flavorText": "La planilla tenía una casilla que decía “otros”. Fue la primera en quedarse sin espacio.",
+    "image": "censo_nacional_de_criaturas.png",
+    "keywords": [],
+    "legendary": true,
+    "etbEffect": {
+      "type": "choose_creature_type"
+    },
+    "staticEffects": [
+      {
+        "type": "team_buff",
+        "scope": "own",
+        "powerMod": 1,
+        "toughnessMod": 1,
+        "filter": {
+          "subtype": "$chosen"
+        }
+      },
+      {
+        "type": "spell_cost_modifier",
+        "mode": "reduce",
+        "scope": "own",
+        "amount": 1,
+        "filter": {
+          "subtype": "$chosen",
+          "cardType": "creature"
+        }
+      }
+    ],
+    "triggers": [
+      {
+        "event": "creature_entered",
+        "filter": {
+          "controller": "you",
+          "subtype": "$chosen"
+        },
+        "effect": {
+          "type": "scry",
+          "amount": 1
+        }
+      }
+    ]
   }
 ]

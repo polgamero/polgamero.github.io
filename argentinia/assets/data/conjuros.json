@@ -1876,5 +1876,539 @@
         "image": "token_contrato_firmado.png"
       }
     }
+  },
+  {
+    "id": "conj_086",
+    "name": "Inspección del Tablero de Señales",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Proliferá.",
+    "flavorText": "Una marca prende otra. Después nadie recuerda cuál fue la primera.",
+    "image": "inspeccion_del_tablero_de_senales.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "conj_087",
+    "name": "Sobrecarga del Transformador",
+    "type": "Conjuro",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Poné dos contadores de Carga sobre el permanente objetivo que controlás.",
+    "flavorText": "El medidor llegó al rojo y siguió subiendo.",
+    "image": "sobrecarga_del_transformador.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "add_counter",
+      "counterType": "charge",
+      "amount": 2,
+      "targetKind": "any_permanent",
+      "targetController": "self"
+    }
+  },
+  {
+    "id": "conj_088",
+    "name": "Operativo de Escudos Barriales",
+    "type": "Conjuro",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "multiTarget": true,
+    "text": "Poné un contador de Escudo sobre dos criaturas objetivo que controlás.",
+    "flavorText": "Dos esquinas cubiertas alcanzan para cambiar toda la cuadra.",
+    "image": "operativo_de_escudos_barriales.png",
+    "targets": [
+      {
+        "effect": {
+          "type": "add_counter",
+          "counterType": "shield",
+          "amount": 1,
+          "targetKind": "creature",
+          "targetController": "self"
+        }
+      },
+      {
+        "effect": {
+          "type": "add_counter",
+          "counterType": "shield",
+          "amount": 1,
+          "targetKind": "creature",
+          "targetController": "self"
+        }
+      }
+    ]
+  },
+  {
+    "id": "conj_089",
+    "name": "Propagación del Vivero",
+    "type": "Conjuro",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Proliferá.",
+    "flavorText": "Una etiqueta nueva en cada maceta y el invernadero ya parece otro.",
+    "image": "propagacion_del_vivero.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "conj_090",
+    "name": "Revisar la Cronología",
+    "type": "Conjuro",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Remové un contador de Lore de la Saga objetivo.",
+    "flavorText": "Mover una fecha un casillero alcanza para retrasar una conclusión.",
+    "image": "revisar_la_cronologia.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "remove_counter",
+      "counterType": "lore",
+      "amount": 1,
+      "targetKind": "support",
+      "targetController": "any",
+      "permanentFilter": "Saga"
+    }
+  },
+  {
+    "id": "conj_091",
+    "name": "Edición Ampliada",
+    "type": "Conjuro",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Proliferá.",
+    "flavorText": "La misma historia vuelve con una página que nadie había visto.",
+    "image": "edicion_ampliada.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "conj_092",
+    "name": "Adelanto de Cartelera",
+    "type": "Conjuro",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Exiliá las dos cartas superiores de tu biblioteca. Podés jugarlas hasta el final del turno.",
+    "flavorText": "Mañana empieza hoy, pero sólo hasta que apaguen las luces.",
+    "image": "adelanto_de_cartelera.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 2,
+      "permission": {
+        "duration": "until_end_of_turn",
+        "playMode": "any",
+        "timing": "normal",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "conj_093",
+    "name": "Dos por Uno del Kiosco",
+    "type": "Conjuro",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Exiliá las dos cartas superiores de tu biblioteca. Podés jugarlas hasta el final de tu próximo turno.",
+    "flavorText": "La segunda siempre parece gratis hasta que mirás cuánto tiempo te queda.",
+    "image": "dos_por_uno_del_kiosco.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 2,
+      "permission": {
+        "duration": "until_end_of_next_turn",
+        "playMode": "any",
+        "timing": "normal",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "conj_094",
+    "name": "Promoción de Medianoche",
+    "type": "Conjuro",
+    "manaCost": "{4}{R}",
+    "cmc": 5,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Exiliá las tres cartas superiores de tu biblioteca. Podés jugarlas hasta el final de tu próximo turno.",
+    "flavorText": "Después de las doce, el stock y las reglas se vuelven aproximaciones.",
+    "image": "promocion_de_medianoche.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 3,
+      "permission": {
+        "duration": "until_end_of_next_turn",
+        "playMode": "any",
+        "timing": "normal",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "conj_095",
+    "name": "Hackeo del Expediente",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}{B}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "text": "Exiliá las dos cartas superiores de la biblioteca de tu oponente. Podés jugar esas cartas hasta el final de tu próximo turno pagando sus costes normalmente.",
+    "flavorText": "No roba el archivo. Convence al sistema de que siempre estuvo autorizado.",
+    "image": "hackeo_del_expediente.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 2,
+      "owner": "opponent",
+      "controller": "self",
+      "permission": {
+        "duration": "until_end_of_next_turn",
+        "playMode": "any",
+        "timing": "normal",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "conj_096",
+    "name": "Pase Libre",
+    "type": "Conjuro",
+    "manaCost": "{4}{R}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Exiliá la carta superior de tu biblioteca. Si es un hechizo, podés castearlo este turno sin pagar su coste de maná.",
+    "flavorText": "Por una vez, nadie pregunta cuánto cuesta entrar.",
+    "image": "pase_libre.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 1,
+      "permission": {
+        "duration": "until_end_of_turn",
+        "playMode": "spell",
+        "timing": "normal",
+        "costMode": "without_paying_mana_cost",
+        "allowKicker": false
+      }
+    }
+  },
+  {
+    "id": "conj_097",
+    "name": "Menú Oculto",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}{R}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "text": "Exiliá las dos cartas superiores de tu biblioteca. Podés jugarlas este turno. Si son hechizos, podés castearlos como si tuvieran Destello.",
+    "flavorText": "No figura en la carta, pero todos los habitués saben dónde tocar.",
+    "image": "menu_oculto.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 2,
+      "permission": {
+        "duration": "until_end_of_turn",
+        "playMode": "any",
+        "timing": "any_time",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "conj_098",
+    "name": "Licencia en Trámite",
+    "type": "Conjuro",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Creá dos fichas de criatura Vecino 1/1. Suspender 2 — {W}.",
+    "flavorText": "La aprobación tarda. Los vecinos llegan antes.",
+    "image": "licencia_en_tramite.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenName": "Vecino",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": [],
+      "image": "token_vecino.png"
+    },
+    "suspend": {
+      "time": 2,
+      "cost": "{W}"
+    }
+  },
+  {
+    "id": "conj_099",
+    "name": "Turno para Dentro de Tres Meses",
+    "type": "Conjuro",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Robá dos cartas. Suspender 3 — {U}.",
+    "flavorText": "Su turno fue asignado con precisión: entre abril y el fin de los tiempos.",
+    "image": "turno_para_dentro_de_tres_meses.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "draw",
+      "amount": 2
+    },
+    "suspend": {
+      "time": 3,
+      "cost": "{U}"
+    }
+  },
+  {
+    "id": "conj_100",
+    "name": "Expediente que Vuelve",
+    "type": "Conjuro",
+    "manaCost": "{4}{B}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Regresá una carta de criatura de tu cementerio al campo de batalla. Suspender 3 — {1}{B}.",
+    "flavorText": "Archivado no significa terminado. A veces significa que aprendió a volver solo.",
+    "image": "expediente_que_vuelve.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "reanimate",
+      "amount": 1
+    },
+    "suspend": {
+      "time": 3,
+      "cost": "{1}{B}"
+    }
+  },
+  {
+    "id": "conj_101",
+    "name": "Plan de Obras a Largo Plazo",
+    "type": "Conjuro",
+    "manaCost": "{4}{G}",
+    "cmc": 5,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá hasta dos tierras básicas en tu biblioteca y ponelas en el campo de batalla. Suspender 3 — {1}{G}.",
+    "flavorText": "El cartel promete futuro. La tierra, mientras tanto, ya empezó a moverse.",
+    "image": "plan_de_obras_a_largo_plazo.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "ramp",
+      "amount": 2
+    },
+    "suspend": {
+      "time": 3,
+      "cost": "{1}{G}"
+    }
+  },
+  {
+    "id": "conj_102",
+    "name": "Cobro Retroactivo",
+    "type": "Conjuro",
+    "manaCost": "{3}{B}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Tu oponente descarta dos cartas. Suspender 2 — {B}.",
+    "flavorText": "La deuda apareció hoy con fecha de hace seis meses.",
+    "image": "cobro_retroactivo.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "discard",
+      "amount": 2,
+      "selection": "choice"
+    },
+    "suspend": {
+      "time": 2,
+      "cost": "{B}"
+    }
+  },
+  {
+    "id": "conj_103",
+    "name": "Desatar la Segunda Naturaleza",
+    "type": "Conjuro",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Transformá el permanente transformable objetivo que controlás.",
+    "flavorText": "No era una maldición. Era una puerta que llevaba años esperando.",
+    "image": "desatar_la_segunda_naturaleza.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "transform",
+      "targetKind": "any_permanent",
+      "targetController": "self"
+    }
+  },
+  {
+    "id": "conj_104",
+    "name": "Reescribir el Retrato",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Transformá el permanente transformable objetivo.",
+    "flavorText": "El pintor corrigió una sonrisa y el modelo despertó con otra vida.",
+    "image": "reescribir_el_retrato.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "transform",
+      "targetKind": "any_permanent",
+      "targetController": "any"
+    }
+  },
+  {
+    "id": "conj_105",
+    "name": "Noche de Metamorfosis",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "R"
+    ],
+    "text": "Transformá el permanente transformable objetivo que controla un oponente.",
+    "flavorText": "A la mañana siguiente, todos juraron reconocer el edificio. Ninguno describió el mismo.",
+    "image": "noche_de_metamorfosis.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "transform",
+      "targetKind": "any_permanent",
+      "targetController": "opponent"
+    }
+  },
+  {
+    "id": "conj_106",
+    "name": "Rastreo del Iberá",
+    "type": "Conjuro",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá en tu biblioteca una carta de criatura Bestia, mostrá esa carta, ponela en tu mano y barajá.",
+    "flavorText": "Las marcas desaparecen bajo el agua. El baqueano sabe dónde vuelven a empezar.",
+    "image": "rastreo_del_ibera.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_library",
+      "amount": 1,
+      "filter": {
+        "cardType": "creature",
+        "subtype": "Bestia"
+      },
+      "destination": "hand",
+      "reveal": true,
+      "shuffle": true,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "conj_107",
+    "name": "Audición de la Banda",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Mirá las cinco primeras cartas de tu biblioteca. Podés mostrar una carta de criatura Músico de entre ellas y ponerla en tu mano. Poné el resto en el fondo de tu biblioteca.",
+    "flavorText": "Cinco temas alcanzan para saber quién escucha a los demás.",
+    "image": "audicion_de_la_banda.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "look_at_top",
+      "lookCount": 5,
+      "amount": 1,
+      "filter": {
+        "cardType": "creature",
+        "subtype": "Músico"
+      },
+      "destination": "hand",
+      "remainderDestination": "bottom",
+      "reveal": true,
+      "shuffle": false,
+      "allowFewer": true
+    }
   }
 ]

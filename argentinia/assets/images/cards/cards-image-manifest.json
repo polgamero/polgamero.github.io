@@ -1,38 +1,40 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-26T00:01:53Z",
+  "generatedAt": "2026-08-27T14:53:38Z",
   "gitSha": null,
   "githubRunId": null,
   "pool": {
-    "milestone": "pool_expansion_ii_700",
-    "contractVersion": "23.15.7.2",
-    "total": 700,
+    "milestone": "pool_expansion_viii_880",
+    "contractVersion": "23.16.5.1",
+    "total": 880,
     "categories": {
-      "tierras": 64,
-      "artefactos": 67,
-      "criaturas": 285,
-      "instantaneos": 120,
-      "conjuros": 85,
-      "encantamientos": 71,
+      "tierras": 68,
+      "artefactos": 87,
+      "criaturas": 355,
+      "instantaneos": 147,
+      "conjuros": 107,
+      "encantamientos": 108,
       "planeswalkers": 8
     },
-    "uniqueIds": 700
+    "uniqueIds": 880
   },
   "images": {
     "directory": "assets/images/cards",
     "existingFileCount": 0,
-    "referencedCardCount": 700,
-    "uniqueReferencedFileCount": 699,
-    "missingCardCount": 700,
+    "referencedCardCount": 880,
+    "referencedFaceCount": 896,
+    "doubleFacedCardCount": 16,
+    "uniqueReferencedFileCount": 895,
+    "missingCardCount": 896,
     "cardsWithoutImageFieldCount": 0
   },
   "tokenImages": {
-    "producerEffectCount": 46,
+    "producerEffectCount": 56,
     "uniqueTokenNameCount": 31,
-    "assignedEffectCount": 46,
+    "assignedEffectCount": 56,
     "unassignedEffectCount": 0,
     "uniqueReferencedFileCount": 31,
-    "missingEffectCount": 46,
+    "missingEffectCount": 56,
     "missingUniqueFileCount": 31
   },
   "missing": [
@@ -40,4200 +42,6272 @@
       "id": "art_009",
       "name": "Alfajor de la Fortuna",
       "category": "artefactos",
+      "face": "front",
       "image": "alfajor_fortuna.png"
     },
     {
       "id": "art_011",
       "name": "Altar de las Ofrendas",
       "category": "artefactos",
+      "face": "front",
       "image": "altar_ofrendas.png"
     },
     {
       "id": "art_023",
       "name": "Amuleto Bendito",
       "category": "artefactos",
+      "face": "front",
       "image": "amuleto_bendito.png"
+    },
+    {
+      "id": "art_073",
+      "name": "Archivo de Historias Orales",
+      "category": "artefactos",
+      "face": "front",
+      "image": "archivo_de_historias_orales.png"
     },
     {
       "id": "art_024",
       "name": "Atado con Alambre",
       "category": "artefactos",
+      "face": "front",
       "image": "atado_con_alambre.png"
     },
     {
       "id": "art_048",
       "name": "Avioneta del Correo Fantasma",
       "category": "artefactos",
+      "face": "front",
       "image": "avioneta_del_correo_fantasma.png"
+    },
+    {
+      "id": "art_069",
+      "name": "Banco de Capacitores",
+      "category": "artefactos",
+      "face": "front",
+      "image": "banco_de_capacitores.png"
     },
     {
       "id": "art_017",
       "name": "Bandera de la Cuadra",
       "category": "artefactos",
+      "face": "front",
       "image": "bandera_cuadra.png"
     },
     {
       "id": "art_052",
       "name": "Bandoneón de Bronce Encantado",
       "category": "artefactos",
+      "face": "front",
       "image": "bandoneon_de_bronce_encantado.png"
+    },
+    {
+      "id": "art_068",
+      "name": "Batería de Emergencia",
+      "category": "artefactos",
+      "face": "front",
+      "image": "bateria_de_emergencia.png"
     },
     {
       "id": "art_012",
       "name": "Billetera Vieja",
       "category": "artefactos",
+      "face": "front",
       "image": "billetera_vieja.png"
     },
     {
       "id": "art_051",
       "name": "Boleadoras de Alambre",
       "category": "artefactos",
+      "face": "front",
       "image": "boleadoras_de_alambre.png"
     },
     {
       "id": "art_029",
       "name": "Botiquín de Ruta",
       "category": "artefactos",
+      "face": "front",
       "image": "botiquin_ruta.png"
     },
     {
       "id": "art_037",
       "name": "Botiquín del Parador",
       "category": "artefactos",
+      "face": "front",
       "image": "botiquin_del_parador.png"
     },
     {
       "id": "art_025",
       "name": "Caja de Herramientas",
       "category": "artefactos",
+      "face": "front",
       "image": "caja_herramientas.png"
     },
     {
       "id": "art_032",
       "name": "Caja de Repuestos",
       "category": "artefactos",
+      "face": "front",
       "image": "caja_repuestos.png"
+    },
+    {
+      "id": "art_072",
+      "name": "Campana del Cabildo",
+      "category": "artefactos",
+      "face": "front",
+      "image": "campana_del_cabildo.png"
     },
     {
       "id": "art_016",
       "name": "Campanario del Barrio",
       "category": "artefactos",
+      "face": "front",
       "image": "campanario.png"
     },
     {
       "id": "art_005",
       "name": "Carreta Blindada",
       "category": "artefactos",
+      "face": "front",
       "image": "carreta.png"
     },
     {
       "id": "art_036",
       "name": "Casco de Bombero Voluntario",
       "category": "artefactos",
+      "face": "front",
       "image": "casco_de_bombero_voluntario.png"
     },
     {
       "id": "art_010",
       "name": "Cassette Pirata",
       "category": "artefactos",
+      "face": "front",
       "image": "cassette_pirata.png"
+    },
+    {
+      "id": "art_087",
+      "name": "Censo Nacional de Criaturas",
+      "category": "artefactos",
+      "face": "front",
+      "image": "censo_nacional_de_criaturas.png"
     },
     {
       "id": "art_042",
       "name": "Central Telefónica Abandonada",
       "category": "artefactos",
+      "face": "front",
       "image": "central_telefonica_abandonada.png"
     },
     {
       "id": "art_033",
       "name": "Colectivo de la Línea Fantasma",
       "category": "artefactos",
+      "face": "front",
       "image": "colectivo_linea_fantasma.png"
     },
     {
       "id": "art_059",
       "name": "Crisol del Parque Nacional Los Glaciares",
       "category": "artefactos",
+      "face": "front",
       "image": "crisol_del_parque_nacional_los_glaciares.png"
+    },
+    {
+      "id": "art_080",
+      "name": "Cronómetro del Banco Nación",
+      "category": "artefactos",
+      "face": "front",
+      "image": "cronometro_del_banco_nacion.png"
     },
     {
       "id": "art_038",
       "name": "Cámara Súper 8 Maldita",
       "category": "artefactos",
+      "face": "front",
       "image": "camara_super_8_maldita.png"
     },
     {
       "id": "art_019",
       "name": "Daga Escondida",
       "category": "artefactos",
+      "face": "front",
       "image": "daga_escondida.png"
     },
     {
       "id": "art_020",
       "name": "Depósito de Chatarra",
       "category": "artefactos",
+      "face": "front",
       "image": "deposito_chatarra.png"
     },
     {
       "id": "art_007",
       "name": "El Caballo de San Martín",
       "category": "artefactos",
+      "face": "front",
       "image": "caballo_san_martin.png"
     },
     {
       "id": "art_001",
       "name": "El Mate de Calabaza",
       "category": "artefactos",
+      "face": "front",
       "image": "mate.png"
     },
     {
       "id": "art_006",
       "name": "El Rolls Royce de Ricky",
       "category": "artefactos",
+      "face": "front",
       "image": "rolls_royce_ricky.png"
     },
     {
       "id": "art_060",
       "name": "Esfera Helada del Nahuel Huapi",
       "category": "artefactos",
+      "face": "front",
       "image": "esfera_helada_del_nahuel_huapi.png"
+    },
+    {
+      "id": "art_084",
+      "name": "Espejo de Vestuario",
+      "category": "artefactos",
+      "face": "front",
+      "image": "espejo_de_vestuario.png"
     },
     {
       "id": "art_003",
       "name": "Facón de Plata",
       "category": "artefactos",
+      "face": "front",
       "image": "facon.png"
     },
     {
       "id": "art_014",
       "name": "Fajo de Dólares Blue",
       "category": "artefactos",
+      "face": "front",
       "image": "fajo_dolares.png"
     },
     {
       "id": "art_028",
       "name": "Farol a Kerosén",
       "category": "artefactos",
+      "face": "front",
       "image": "farol_kerosen.png"
+    },
+    {
+      "id": "art_086",
+      "name": "Fichero de Socios del Club",
+      "category": "artefactos",
+      "face": "front",
+      "image": "fichero_de_socios_del_club.png"
     },
     {
       "id": "art_063",
       "name": "Fotocopiadora del Centro Cultural",
       "category": "artefactos",
+      "face": "front",
       "image": "fotocopiadora_del_centro_cultural.png"
     },
     {
       "id": "art_045",
       "name": "Fuente de Vino del Velorio",
       "category": "artefactos",
+      "face": "front",
       "image": "fuente_de_vino_del_velorio.png"
     },
     {
       "id": "art_039",
       "name": "Generador a Nafta",
       "category": "artefactos",
+      "face": "front",
       "image": "generador_a_nafta.png"
     },
     {
       "id": "art_057",
       "name": "Globo del Planetario",
       "category": "artefactos",
+      "face": "front",
       "image": "globo_del_planetario.png"
     },
     {
       "id": "art_035",
       "name": "Guitarra Criolla Encantada",
       "category": "artefactos",
+      "face": "front",
       "image": "guitarra_criolla_encantada.png"
     },
     {
       "id": "art_065",
       "name": "Heladera del Club",
       "category": "artefactos",
+      "face": "front",
       "image": "heladera_del_club.png"
     },
     {
       "id": "art_002",
       "name": "Imprenta Clandestina",
       "category": "artefactos",
+      "face": "front",
       "image": "imprenta.png"
+    },
+    {
+      "id": "art_085",
+      "name": "Interruptor de Dos Posiciones",
+      "category": "artefactos",
+      "face": "front",
+      "image": "interruptor_de_dos_posiciones.png"
     },
     {
       "id": "art_040",
       "name": "Lancha Colectiva del Delta",
       "category": "artefactos",
+      "face": "front",
       "image": "lancha_colectiva_del_delta.png"
     },
     {
       "id": "art_044",
       "name": "Lectora de Microfilm",
       "category": "artefactos",
+      "face": "front",
       "image": "lectora_de_microfilm.png"
     },
     {
       "id": "art_034",
       "name": "Linterna del Sereno",
       "category": "artefactos",
+      "face": "front",
       "image": "linterna_del_sereno.png"
     },
     {
       "id": "art_056",
       "name": "Loto del Jardín Japonés",
       "category": "artefactos",
+      "face": "front",
       "image": "loto_del_jardin_japones.png"
     },
     {
       "id": "art_027",
       "name": "Mapa Rutero",
       "category": "artefactos",
+      "face": "front",
       "image": "mapa_rutero.png"
     },
     {
       "id": "art_058",
       "name": "Mapa del Camino de los Siete Lagos",
       "category": "artefactos",
+      "face": "front",
       "image": "mapa_del_camino_de_los_siete_lagos.png"
     },
     {
       "id": "art_054",
       "name": "Mate de Acero Inquebrantable",
       "category": "artefactos",
+      "face": "front",
       "image": "mate_de_acero_inquebrantable.png"
+    },
+    {
+      "id": "art_083",
+      "name": "Mate de Madrugada",
+      "category": "artefactos",
+      "face": "front",
+      "image": "mate_de_madrugada.png"
+    },
+    {
+      "id": "art_083",
+      "name": "Mate que No Se Vacía",
+      "category": "artefactos",
+      "face": "back",
+      "image": "mate_que_no_se_vacia.png"
     },
     {
       "id": "art_066",
       "name": "Montacargas del Depósito Fiscal",
       "category": "artefactos",
+      "face": "front",
       "image": "montacargas_del_deposito_fiscal.png"
     },
     {
       "id": "art_046",
       "name": "Motito del Reparto Nocturno",
       "category": "artefactos",
+      "face": "front",
       "image": "motito_del_reparto_nocturno.png"
     },
     {
       "id": "art_031",
       "name": "Máquina de Fichar",
       "category": "artefactos",
+      "face": "front",
       "image": "maquina_fichar.png"
     },
     {
       "id": "art_064",
       "name": "Máquina de Tickets",
       "category": "artefactos",
+      "face": "front",
       "image": "maquina_de_tickets.png"
+    },
+    {
+      "id": "art_076",
+      "name": "Módem de Emergencia",
+      "category": "artefactos",
+      "face": "front",
+      "image": "modem_de_emergencia.png"
+    },
+    {
+      "id": "art_070",
+      "name": "Odómetro de la Ruta 40",
+      "category": "artefactos",
+      "face": "front",
+      "image": "odometro_de_la_ruta_40.png"
     },
     {
       "id": "art_026",
       "name": "Parrilla Portátil",
       "category": "artefactos",
+      "face": "front",
       "image": "parrilla_portatil.png"
+    },
+    {
+      "id": "art_077",
+      "name": "Pasaporte de la República Invisible",
+      "category": "artefactos",
+      "face": "front",
+      "image": "pasaporte_de_la_republica_invisible.png"
     },
     {
       "id": "art_062",
       "name": "Peaje de la Ruta 2",
       "category": "artefactos",
+      "face": "front",
       "image": "peaje_de_la_ruta_2.png"
     },
     {
       "id": "art_067",
       "name": "Plano Maestro de Loteo",
       "category": "artefactos",
+      "face": "front",
       "image": "plano_maestro_de_loteo.png"
     },
     {
       "id": "art_004",
       "name": "Poncho de Diamante",
       "category": "artefactos",
+      "face": "front",
       "image": "poncho_diamante.png"
+    },
+    {
+      "id": "art_082",
+      "name": "Portal de Interferencia",
+      "category": "artefactos",
+      "face": "back",
+      "image": "portal_de_interferencia.png"
     },
     {
       "id": "art_043",
       "name": "Proyector del Cine Cerrado",
       "category": "artefactos",
+      "face": "front",
       "image": "proyector_del_cine_cerrado.png"
     },
     {
       "id": "art_055",
       "name": "Pétalo del Rosedal",
       "category": "artefactos",
+      "face": "front",
       "image": "petalo_del_rosedal.png"
     },
     {
       "id": "art_053",
       "name": "Radio Spica Poseída",
       "category": "artefactos",
+      "face": "front",
       "image": "radio_spica_poseida.png"
     },
     {
       "id": "art_030",
       "name": "Radio a Válvulas",
       "category": "artefactos",
+      "face": "front",
       "image": "radio_valvulas.png"
     },
     {
       "id": "art_041",
       "name": "Rastrojero del Correo",
       "category": "artefactos",
+      "face": "front",
       "image": "rastrojero_del_correo.png"
     },
     {
       "id": "art_021",
       "name": "Refugio Improvisado",
       "category": "artefactos",
+      "face": "front",
       "image": "refugio_improvisado.png"
     },
     {
       "id": "art_018",
       "name": "Reloj Descompuesto",
       "category": "artefactos",
+      "face": "front",
       "image": "reloj_cucu.png"
+    },
+    {
+      "id": "art_081",
+      "name": "Reloj Monumental de Retiro",
+      "category": "artefactos",
+      "face": "front",
+      "image": "reloj_monumental_de_retiro.png"
     },
     {
       "id": "art_013",
       "name": "Reloj de Bolsillo",
       "category": "artefactos",
+      "face": "front",
       "image": "reloj_abuelo.png"
+    },
+    {
+      "id": "art_078",
+      "name": "Reloj de Fichar",
+      "category": "artefactos",
+      "face": "front",
+      "image": "reloj_de_fichar.png"
     },
     {
       "id": "art_015",
       "name": "Robotito de Chatarra",
       "category": "artefactos",
+      "face": "front",
       "image": "robotito_chatarra.png"
+    },
+    {
+      "id": "art_079",
+      "name": "Sello de Prórroga",
+      "category": "artefactos",
+      "face": "front",
+      "image": "sello_de_prorroga.png"
     },
     {
       "id": "art_061",
       "name": "Servidor Reciclado",
       "category": "artefactos",
+      "face": "front",
       "image": "servidor_reciclado.png"
     },
     {
       "id": "art_050",
       "name": "Sifón de Soda Abollado",
       "category": "artefactos",
+      "face": "front",
       "image": "sifon_de_soda_abollado.png"
     },
     {
       "id": "art_047",
       "name": "Sulky de Hierro Maldito",
       "category": "artefactos",
+      "face": "front",
       "image": "sulky_de_hierro_maldito.png"
+    },
+    {
+      "id": "art_071",
+      "name": "Tablero Sinóptico de Atucha",
+      "category": "artefactos",
+      "face": "front",
+      "image": "tablero_sinoptico_de_atucha.png"
+    },
+    {
+      "id": "art_082",
+      "name": "Televisor de Tubo Encendido",
+      "category": "artefactos",
+      "face": "front",
+      "image": "televisor_de_tubo_encendido.png"
+    },
+    {
+      "id": "art_075",
+      "name": "Terminal de Autogestión",
+      "category": "artefactos",
+      "face": "front",
+      "image": "terminal_de_autogestion.png"
     },
     {
       "id": "art_008",
       "name": "Termo Sagrado",
       "category": "artefactos",
+      "face": "front",
       "image": "termo_sagrado.png"
+    },
+    {
+      "id": "art_074",
+      "name": "Ticket de Acceso Temporal",
+      "category": "artefactos",
+      "face": "front",
+      "image": "ticket_de_acceso_temporal.png"
     },
     {
       "id": "art_049",
       "name": "Torino de la Ruta de los Espectros",
       "category": "artefactos",
+      "face": "front",
       "image": "torino_de_la_ruta_de_los_espectros.png"
     },
     {
       "id": "art_022",
       "name": "Trampa para Fantasmas",
       "category": "artefactos",
+      "face": "front",
       "image": "trampa_fantasmas.png"
     },
     {
       "id": "conj_055",
       "name": "Abrir Picada",
       "category": "conjuros",
+      "face": "front",
       "image": "abrir_picada.png"
     },
     {
       "id": "conj_038",
       "name": "Abrir el Surco",
       "category": "conjuros",
+      "face": "front",
       "image": "abrir_surco.png"
+    },
+    {
+      "id": "conj_092",
+      "name": "Adelanto de Cartelera",
+      "category": "conjuros",
+      "face": "front",
+      "image": "adelanto_de_cartelera.png"
     },
     {
       "id": "conj_061",
       "name": "Al Fondo del Cajón",
       "category": "conjuros",
+      "face": "front",
       "image": "al_fondo_del_cajon.png"
     },
     {
       "id": "conj_059",
       "name": "Allanamiento de Madrugada",
       "category": "conjuros",
+      "face": "front",
       "image": "allanamiento_de_madrugada.png"
     },
     {
       "id": "conj_043",
       "name": "Apagón Programado",
       "category": "conjuros",
+      "face": "front",
       "image": "apagon_programado.png"
     },
     {
       "id": "conj_060",
       "name": "Archivo Clasificado",
       "category": "conjuros",
+      "face": "front",
       "image": "archivo_clasificado.png"
     },
     {
       "id": "conj_040",
       "name": "Archivo Desclasificado",
       "category": "conjuros",
+      "face": "front",
       "image": "archivo_desclasificado.png"
     },
     {
       "id": "conj_070",
       "name": "Archivo del Muerto que Vuelve",
       "category": "conjuros",
+      "face": "front",
       "image": "archivo_del_muerto_que_vuelve.png"
     },
     {
       "id": "conj_058",
       "name": "Arreo Salvaje",
       "category": "conjuros",
+      "face": "front",
       "image": "arreo_salvaje.png"
     },
     {
       "id": "conj_007",
       "name": "Asadito con amigos",
       "category": "conjuros",
+      "face": "front",
       "image": "asado.png"
     },
     {
       "id": "conj_026",
       "name": "Asamblea de Vecinos",
       "category": "conjuros",
+      "face": "front",
       "image": "asamblea_vecinos.png"
     },
     {
       "id": "conj_079",
       "name": "Asamblea en la Plaza",
       "category": "conjuros",
+      "face": "front",
       "image": "asamblea_en_la_plaza.png"
+    },
+    {
+      "id": "conj_107",
+      "name": "Audición de la Banda",
+      "category": "conjuros",
+      "face": "front",
+      "image": "audicion_de_la_banda.png"
     },
     {
       "id": "conj_054",
       "name": "Banda de Bombos",
       "category": "conjuros",
+      "face": "front",
       "image": "banda_de_bombos.png"
     },
     {
       "id": "conj_022",
       "name": "Bendición de la vieja",
       "category": "conjuros",
+      "face": "front",
       "image": "bendicion_vieja.png"
     },
     {
       "id": "conj_065",
       "name": "Boleadoras del Corral Viejo",
       "category": "conjuros",
+      "face": "front",
       "image": "boleadoras_del_corral_viejo.png"
     },
     {
       "id": "conj_063",
       "name": "Brote tras la Lluvia",
       "category": "conjuros",
+      "face": "front",
       "image": "brote_tras_la_lluvia.png"
     },
     {
       "id": "conj_008",
       "name": "Cacerolazo General",
       "category": "conjuros",
+      "face": "front",
       "image": "cacerolazo.png"
     },
     {
       "id": "conj_064",
       "name": "Carpeta que Nadie Firmó",
       "category": "conjuros",
+      "face": "front",
       "image": "carpeta_que_nadie_firmo.png"
     },
     {
       "id": "conj_073",
       "name": "Catastro del Conurbano",
       "category": "conjuros",
+      "face": "front",
       "image": "catastro_del_conurbano.png"
     },
     {
       "id": "conj_044",
       "name": "Cenizas al Viento",
       "category": "conjuros",
+      "face": "front",
       "image": "cenizas_al_viento.png"
     },
     {
       "id": "conj_001",
       "name": "Choripán de Costanera",
       "category": "conjuros",
+      "face": "front",
       "image": "choripan.png"
+    },
+    {
+      "id": "conj_102",
+      "name": "Cobro Retroactivo",
+      "category": "conjuros",
+      "face": "front",
+      "image": "cobro_retroactivo.png"
     },
     {
       "id": "conj_083",
       "name": "Convocatoria Barrial",
       "category": "conjuros",
+      "face": "front",
       "image": "convocatoria_barrial.png"
     },
     {
       "id": "conj_012",
       "name": "Corralito",
       "category": "conjuros",
+      "face": "front",
       "image": "corralito.png"
     },
     {
       "id": "conj_018",
       "name": "Corriente de Datos",
       "category": "conjuros",
+      "face": "front",
       "image": "corriente_datos.png"
     },
     {
       "id": "conj_010",
       "name": "Cuarentena Total",
       "category": "conjuros",
+      "face": "front",
       "image": "cuarentena.png"
     },
     {
       "id": "conj_081",
       "name": "Dato Reservado",
       "category": "conjuros",
+      "face": "front",
       "image": "dato_reservado.png"
+    },
+    {
+      "id": "conj_103",
+      "name": "Desatar la Segunda Naturaleza",
+      "category": "conjuros",
+      "face": "front",
+      "image": "desatar_la_segunda_naturaleza.png"
     },
     {
       "id": "conj_045",
       "name": "Desmonte con Permiso",
       "category": "conjuros",
+      "face": "front",
       "image": "desmonte_con_permiso.png"
     },
     {
       "id": "conj_034",
       "name": "Deuda Vencida",
       "category": "conjuros",
+      "face": "front",
       "image": "deuda_vencida.png"
+    },
+    {
+      "id": "conj_093",
+      "name": "Dos por Uno del Kiosco",
+      "category": "conjuros",
+      "face": "front",
+      "image": "dos_por_uno_del_kiosco.png"
     },
     {
       "id": "conj_005",
       "name": "Dólar Blue Desbocado",
       "category": "conjuros",
+      "face": "front",
       "image": "dolar_blue.png"
+    },
+    {
+      "id": "conj_091",
+      "name": "Edición Ampliada",
+      "category": "conjuros",
+      "face": "front",
+      "image": "edicion_ampliada.png"
     },
     {
       "id": "conj_024",
       "name": "El equipo sale a la cancha",
       "category": "conjuros",
+      "face": "front",
       "image": "equipo_cancha.png"
     },
     {
       "id": "conj_037",
       "name": "Engorde de Invierno",
       "category": "conjuros",
+      "face": "front",
       "image": "engorde_invierno.png"
     },
     {
       "id": "conj_019",
       "name": "Espejismo Colectivo",
       "category": "conjuros",
+      "face": "front",
       "image": "espejismo_colectivo.png"
     },
     {
       "id": "conj_023",
       "name": "Estampida Verde",
       "category": "conjuros",
+      "face": "front",
       "image": "estampida_verde.png"
+    },
+    {
+      "id": "conj_100",
+      "name": "Expediente que Vuelve",
+      "category": "conjuros",
+      "face": "front",
+      "image": "expediente_que_vuelve.png"
     },
     {
       "id": "conj_003",
       "name": "Fin de Año",
       "category": "conjuros",
+      "face": "front",
       "image": "festejos.png"
     },
     {
       "id": "conj_031",
       "name": "Flores en la Vereda",
       "category": "conjuros",
+      "face": "front",
       "image": "flores_vereda.png"
     },
     {
       "id": "conj_036",
       "name": "Fogonazo de Taller",
       "category": "conjuros",
+      "face": "front",
       "image": "fogonazo_taller.png"
     },
     {
       "id": "conj_051",
       "name": "Fosa Común",
       "category": "conjuros",
+      "face": "front",
       "image": "fosa_comun.png"
     },
     {
       "id": "conj_033",
       "name": "Fumigación del Bañado",
       "category": "conjuros",
+      "face": "front",
       "image": "fumigacion_banado.png"
+    },
+    {
+      "id": "conj_095",
+      "name": "Hackeo del Expediente",
+      "category": "conjuros",
+      "face": "front",
+      "image": "hackeo_del_expediente.png"
     },
     {
       "id": "conj_053",
       "name": "Incendio del Galpón",
       "category": "conjuros",
+      "face": "front",
       "image": "incendio_del_galpon.png"
     },
     {
       "id": "conj_030",
       "name": "Injerto de Ceibo",
       "category": "conjuros",
+      "face": "front",
       "image": "injerto_ceibo.png"
     },
     {
       "id": "conj_069",
       "name": "Inspección de la Sacristía",
       "category": "conjuros",
+      "face": "front",
       "image": "inspeccion_de_la_sacristia.png"
+    },
+    {
+      "id": "conj_086",
+      "name": "Inspección del Tablero de Señales",
+      "category": "conjuros",
+      "face": "front",
+      "image": "inspeccion_del_tablero_de_senales.png"
     },
     {
       "id": "conj_028",
       "name": "Instinto de Cacería",
       "category": "conjuros",
+      "face": "front",
       "image": "instinto_caceria.png"
     },
     {
       "id": "conj_078",
       "name": "Intervención Federal",
       "category": "conjuros",
+      "face": "front",
       "image": "intervencion_federal.png"
     },
     {
       "id": "conj_080",
       "name": "Inventario del Taller",
       "category": "conjuros",
+      "face": "front",
       "image": "inventario_del_taller.png"
     },
     {
       "id": "conj_021",
       "name": "Invocación de Urgencia",
       "category": "conjuros",
+      "face": "front",
       "image": "invocacion_urgencia.png"
     },
     {
       "id": "conj_027",
       "name": "Justicia Impartida",
       "category": "conjuros",
+      "face": "front",
       "image": "justicia_impartida.png"
     },
     {
       "id": "conj_002",
       "name": "La Picadita",
       "category": "conjuros",
+      "face": "front",
       "image": "picadita.png"
+    },
+    {
+      "id": "conj_098",
+      "name": "Licencia en Trámite",
+      "category": "conjuros",
+      "face": "front",
+      "image": "licencia_en_tramite.png"
     },
     {
       "id": "conj_042",
       "name": "Limpieza del Baldío",
       "category": "conjuros",
+      "face": "front",
       "image": "limpieza_baldio.png"
     },
     {
       "id": "conj_071",
       "name": "Lluvia de Cascotes en Laferrere",
       "category": "conjuros",
+      "face": "front",
       "image": "lluvia_de_cascotes_en_laferrere.png"
     },
     {
       "id": "conj_049",
       "name": "Mapa de Corrientes",
       "category": "conjuros",
+      "face": "front",
       "image": "mapa_de_corrientes.png"
+    },
+    {
+      "id": "conj_097",
+      "name": "Menú Oculto",
+      "category": "conjuros",
+      "face": "front",
+      "image": "menu_oculto.png"
     },
     {
       "id": "conj_025",
       "name": "No hay Pacto sin Sangre",
       "category": "conjuros",
+      "face": "front",
       "image": "pacto_con_sangre.png"
+    },
+    {
+      "id": "conj_105",
+      "name": "Noche de Metamorfosis",
+      "category": "conjuros",
+      "face": "front",
+      "image": "noche_de_metamorfosis.png"
     },
     {
       "id": "conj_039",
       "name": "Olla Popular",
       "category": "conjuros",
+      "face": "front",
       "image": "olla_popular.png"
+    },
+    {
+      "id": "conj_088",
+      "name": "Operativo de Escudos Barriales",
+      "category": "conjuros",
+      "face": "front",
+      "image": "operativo_de_escudos_barriales.png"
     },
     {
       "id": "conj_048",
       "name": "Operativo de Rescate",
       "category": "conjuros",
+      "face": "front",
       "image": "operativo_de_rescate.png"
     },
     {
       "id": "conj_067",
       "name": "Otra Vuelta de Chacarera",
       "category": "conjuros",
+      "face": "front",
       "image": "otra_vuelta_de_chacarera.png"
     },
     {
       "id": "conj_085",
       "name": "Pacto Bajo la Mesa",
       "category": "conjuros",
+      "face": "front",
       "image": "pacto_bajo_la_mesa.png"
+    },
+    {
+      "id": "conj_096",
+      "name": "Pase Libre",
+      "category": "conjuros",
+      "face": "front",
+      "image": "pase_libre.png"
     },
     {
       "id": "conj_017",
       "name": "Piedrazo a la Vidriera",
       "category": "conjuros",
+      "face": "front",
       "image": "piedrazo.png"
     },
     {
       "id": "conj_004",
       "name": "Piquete Nacional",
       "category": "conjuros",
+      "face": "front",
       "image": "piquete.png"
+    },
+    {
+      "id": "conj_101",
+      "name": "Plan de Obras a Largo Plazo",
+      "category": "conjuros",
+      "face": "front",
+      "image": "plan_de_obras_a_largo_plazo.png"
     },
     {
       "id": "conj_032",
       "name": "Planos del Puerto",
       "category": "conjuros",
+      "face": "front",
       "image": "planos_puerto.png"
     },
     {
       "id": "conj_047",
       "name": "Procesión de Madrugada",
       "category": "conjuros",
+      "face": "front",
       "image": "procesion_de_madrugada.png"
+    },
+    {
+      "id": "conj_094",
+      "name": "Promoción de Medianoche",
+      "category": "conjuros",
+      "face": "front",
+      "image": "promocion_de_medianoche.png"
+    },
+    {
+      "id": "conj_089",
+      "name": "Propagación del Vivero",
+      "category": "conjuros",
+      "face": "front",
+      "image": "propagacion_del_vivero.png"
     },
     {
       "id": "conj_029",
       "name": "Purga del Pantano",
       "category": "conjuros",
+      "face": "front",
       "image": "purga_pantano.png"
+    },
+    {
+      "id": "conj_106",
+      "name": "Rastreo del Iberá",
+      "category": "conjuros",
+      "face": "front",
+      "image": "rastreo_del_ibera.png"
     },
     {
       "id": "conj_050",
       "name": "Reabrir el Caso",
       "category": "conjuros",
+      "face": "front",
       "image": "reabrir_el_caso.png"
     },
     {
       "id": "conj_074",
       "name": "Reconquista del Parque Costero del Sur",
       "category": "conjuros",
+      "face": "front",
       "image": "reconquista_del_parque_costero_del_sur.png"
+    },
+    {
+      "id": "conj_104",
+      "name": "Reescribir el Retrato",
+      "category": "conjuros",
+      "face": "front",
+      "image": "reescribir_el_retrato.png"
     },
     {
       "id": "conj_056",
       "name": "Reforestar la Banquina",
       "category": "conjuros",
+      "face": "front",
       "image": "reforestar_la_banquina.png"
     },
     {
       "id": "conj_072",
       "name": "Relevamiento del Delta de San Fernando",
       "category": "conjuros",
+      "face": "front",
       "image": "relevamiento_del_delta_de_san_fernando.png"
+    },
+    {
+      "id": "conj_090",
+      "name": "Revisar la Cronología",
+      "category": "conjuros",
+      "face": "front",
+      "image": "revisar_la_cronologia.png"
     },
     {
       "id": "conj_082",
       "name": "Revisión de Inventario",
       "category": "conjuros",
+      "face": "front",
       "image": "revision_de_inventario.png"
     },
     {
       "id": "conj_076",
       "name": "Ruina del Cordón Industrial",
       "category": "conjuros",
+      "face": "front",
       "image": "ruina_del_cordon_industrial.png"
     },
     {
       "id": "conj_020",
       "name": "Saqueo entre Ruinas",
       "category": "conjuros",
+      "face": "front",
       "image": "saqueo_ruinas.png"
     },
     {
       "id": "conj_035",
       "name": "Se Armó",
       "category": "conjuros",
+      "face": "front",
       "image": "se_armo.png"
     },
     {
       "id": "conj_046",
       "name": "Siembra de Emergencia",
       "category": "conjuros",
+      "face": "front",
       "image": "siembra_emergencia.png"
     },
     {
       "id": "conj_015",
       "name": "Siembra de Otoño",
       "category": "conjuros",
+      "face": "front",
       "image": "siembra_otono.png"
     },
     {
       "id": "conj_068",
       "name": "Silencio Después del Cacerolazo",
       "category": "conjuros",
+      "face": "front",
       "image": "silencio_despues_del_cacerolazo.png"
+    },
+    {
+      "id": "conj_087",
+      "name": "Sobrecarga del Transformador",
+      "category": "conjuros",
+      "face": "front",
+      "image": "sobrecarga_del_transformador.png"
     },
     {
       "id": "conj_062",
       "name": "Tamales para los Difuntos",
       "category": "conjuros",
+      "face": "front",
       "image": "tamales_para_los_difuntos.png"
     },
     {
       "id": "conj_077",
       "name": "Te la Expropio",
       "category": "conjuros",
+      "face": "front",
       "image": "te_la_expropio.png"
     },
     {
       "id": "conj_075",
       "name": "Tierra Arrasada de Plaza Congreso",
       "category": "conjuros",
+      "face": "front",
       "image": "tierra_arrasada_de_plaza_congreso.png"
     },
     {
       "id": "conj_006",
       "name": "Tormenta Santa Rosa",
       "category": "conjuros",
+      "face": "front",
       "image": "santa_rosa.png"
     },
     {
       "id": "conj_052",
       "name": "Turno de Exhumación",
       "category": "conjuros",
+      "face": "front",
       "image": "turno_de_exhumacion.png"
     },
     {
       "id": "conj_041",
       "name": "Turno en la Morgue",
       "category": "conjuros",
+      "face": "front",
       "image": "turno_morgue.png"
+    },
+    {
+      "id": "conj_099",
+      "name": "Turno para Dentro de Tres Meses",
+      "category": "conjuros",
+      "face": "front",
+      "image": "turno_para_dentro_de_tres_meses.png"
     },
     {
       "id": "conj_009",
       "name": "Vecinos en Asamblea",
       "category": "conjuros",
+      "face": "front",
       "image": "asamblea.png"
     },
     {
       "id": "conj_014",
       "name": "Vela a la Difunta Correa",
       "category": "conjuros",
+      "face": "front",
       "image": "difunta_correa.png"
     },
     {
       "id": "conj_084",
       "name": "Viandas del Club",
       "category": "conjuros",
+      "face": "front",
       "image": "viandas_del_club.png"
     },
     {
       "id": "conj_057",
       "name": "Vigilia de los Ausentes",
       "category": "conjuros",
+      "face": "front",
       "image": "vigilia_de_los_ausentes.png"
     },
     {
       "id": "conj_066",
       "name": "Vino Caliente en la Caldera",
       "category": "conjuros",
+      "face": "front",
       "image": "vino_caliente_en_la_caldera.png"
     },
     {
       "id": "conj_011",
       "name": "Vuelto en Mano",
       "category": "conjuros",
+      "face": "front",
       "image": "vuelto.png"
     },
     {
       "id": "conj_016",
       "name": "Yuyerío Salvaje",
       "category": "conjuros",
+      "face": "front",
       "image": "yuyerio.png"
     },
     {
       "id": "conj_013",
       "name": "Yuyo del Loco",
       "category": "conjuros",
+      "face": "front",
       "image": "yuyo_del_loco.png"
     },
     {
       "id": "crea_080",
       "name": "Abanderado del Barrio",
       "category": "criaturas",
+      "face": "front",
       "image": "abanderado_barrio.png"
+    },
+    {
+      "id": "crea_331",
+      "name": "Abuela de la Capilla del Barrio",
+      "category": "criaturas",
+      "face": "front",
+      "image": "abuela_de_la_capilla_del_barrio.png"
     },
     {
       "id": "crea_284",
       "name": "Abuela del Tupper",
       "category": "criaturas",
+      "face": "front",
       "image": "abuela_del_tupper.png"
     },
     {
       "id": "crea_129",
       "name": "Acechador del Bañado Negro",
       "category": "criaturas",
+      "face": "front",
       "image": "acechador_banado_negro.png"
     },
     {
       "id": "crea_262",
       "name": "Agrimensora de Tandil",
       "category": "criaturas",
+      "face": "front",
       "image": "agrimensora_de_tandil.png"
     },
     {
       "id": "crea_261",
       "name": "Agrónoma de Parque Leloir",
       "category": "criaturas",
+      "face": "front",
       "image": "agronoma_de_parque_leloir.png"
     },
     {
       "id": "crea_031",
       "name": "Alberto Samid",
       "category": "criaturas",
+      "face": "front",
       "image": "alberto_samid.png"
     },
     {
       "id": "crea_025",
       "name": "Alma en Pena",
       "category": "criaturas",
+      "face": "front",
       "image": "alma_en_pena.png"
     },
     {
       "id": "crea_109",
       "name": "Araña del Galpón",
       "category": "criaturas",
+      "face": "front",
       "image": "arana_galpon.png"
     },
     {
       "id": "crea_282",
       "name": "Arbolito de Florida",
       "category": "criaturas",
+      "face": "front",
       "image": "arbolito_de_florida.png"
+    },
+    {
+      "id": "crea_299",
+      "name": "Archivera de Hemeroteca",
+      "category": "criaturas",
+      "face": "front",
+      "image": "archivera_de_hemeroteca.png"
+    },
+    {
+      "id": "crea_309",
+      "name": "Archivista de Ventana Emergente",
+      "category": "criaturas",
+      "face": "front",
+      "image": "archivista_de_ventana_emergente.png"
     },
     {
       "id": "crea_087",
       "name": "Archivista del Café",
       "category": "criaturas",
+      "face": "front",
       "image": "archivista_cafe.png"
     },
     {
       "id": "crea_176",
       "name": "Archivista del Congreso",
       "category": "criaturas",
+      "face": "front",
       "image": "archivista_del_congreso.png"
     },
     {
       "id": "crea_158",
       "name": "Arriero de la Cuesta Roja",
       "category": "criaturas",
+      "face": "front",
       "image": "arriero_cuesta_roja.png"
     },
     {
       "id": "crea_203",
       "name": "Arriero del Paso Colorado",
       "category": "criaturas",
+      "face": "front",
       "image": "arriero_del_paso_colorado.png"
+    },
+    {
+      "id": "crea_351",
+      "name": "Autómata del Astillero Río Santiago",
+      "category": "criaturas",
+      "face": "front",
+      "image": "automata_del_astillero_rio_santiago.png"
     },
     {
       "id": "crea_255",
       "name": "Autómata del Planetario",
       "category": "criaturas",
+      "face": "front",
       "image": "automata_del_planetario.png"
+    },
+    {
+      "id": "crea_329",
+      "name": "Avalancha de Tribuna",
+      "category": "criaturas",
+      "face": "back",
+      "image": "avalancha_de_tribuna.png"
+    },
+    {
+      "id": "crea_332",
+      "name": "Avatar de la Argentina Secreta",
+      "category": "criaturas",
+      "face": "back",
+      "image": "avatar_de_la_argentina_secreta.png"
     },
     {
       "id": "crea_222",
       "name": "Avispa del Viñedo Tardío",
       "category": "criaturas",
+      "face": "front",
       "image": "avispa_del_vinedo_tardio.png"
     },
     {
       "id": "crea_229",
       "name": "Bailarina de Dos Tacos",
       "category": "criaturas",
+      "face": "front",
       "image": "bailarina_de_dos_tacos.png"
+    },
+    {
+      "id": "crea_348",
+      "name": "Bandada del Delta",
+      "category": "criaturas",
+      "face": "front",
+      "image": "bandada_del_delta.png"
     },
     {
       "id": "crea_218",
       "name": "Bandoneonista del Apagón",
       "category": "criaturas",
+      "face": "front",
       "image": "bandoneonista_del_apagon.png"
     },
     {
       "id": "crea_164",
       "name": "Baquiana de los Esteros",
       "category": "criaturas",
+      "face": "front",
       "image": "baquiana_esteros.png"
     },
     {
       "id": "crea_043",
       "name": "Barquero del Delta",
       "category": "criaturas",
+      "face": "front",
       "image": "barquero_delta.png"
+    },
+    {
+      "id": "crea_339",
+      "name": "Baterista del Galpón de Lanús",
+      "category": "criaturas",
+      "face": "front",
+      "image": "baterista_del_galpon_de_lanus.png"
     },
     {
       "id": "crea_104",
       "name": "Bestia del Bajo Puente",
       "category": "criaturas",
+      "face": "front",
       "image": "bestia_bajo_puente.png"
+    },
+    {
+      "id": "crea_325",
+      "name": "Bestia del Espinillo",
+      "category": "criaturas",
+      "face": "back",
+      "image": "bestia_del_espinillo.png"
     },
     {
       "id": "crea_277",
       "name": "Bibliotecaria del Palacio Legislativo",
       "category": "criaturas",
+      "face": "front",
       "image": "bibliotecaria_del_palacio_legislativo.png"
     },
     {
       "id": "crea_120",
       "name": "Bicho de Luz Gigante",
       "category": "criaturas",
+      "face": "front",
       "image": "bicho_luz_gigante.png"
     },
     {
       "id": "crea_209",
       "name": "Bióloga de los Humedales",
       "category": "criaturas",
+      "face": "front",
       "image": "biologa_de_los_humedales.png"
     },
     {
       "id": "crea_084",
       "name": "Bióloga del Estuario",
       "category": "criaturas",
+      "face": "front",
       "image": "biologa_estuario.png"
     },
     {
       "id": "crea_103",
       "name": "Bombero Voluntario",
       "category": "criaturas",
+      "face": "front",
       "image": "bombero_voluntario.png"
     },
     {
       "id": "crea_231",
       "name": "Bombero del Último Piso",
       "category": "criaturas",
+      "face": "front",
       "image": "bombero_del_ultimo_piso.png"
     },
     {
       "id": "crea_163",
       "name": "Bombista de Murga",
       "category": "criaturas",
+      "face": "front",
       "image": "bombista_murga.png"
     },
     {
       "id": "crea_148",
       "name": "Bombista de la Cancha",
       "category": "criaturas",
+      "face": "front",
       "image": "bombista_cancha.png"
     },
     {
       "id": "crea_191",
       "name": "Bombista de la Tribuna Vieja",
       "category": "criaturas",
+      "face": "front",
       "image": "bombista_de_la_tribuna_vieja.png"
     },
     {
       "id": "crea_271",
       "name": "Brigadista de las Sierras",
       "category": "criaturas",
+      "face": "front",
       "image": "brigadista_de_las_sierras.png"
     },
     {
       "id": "crea_215",
       "name": "Brote de Ceibo Montaraz",
       "category": "criaturas",
+      "face": "front",
       "image": "brote_de_ceibo_montaraz.png"
     },
     {
       "id": "crea_059",
       "name": "Bruja del Callejón",
       "category": "criaturas",
+      "face": "front",
       "image": "bruja_callejon.png"
     },
     {
       "id": "crea_175",
       "name": "Buceadora del Canal Beagle",
       "category": "criaturas",
+      "face": "front",
       "image": "buceadora_del_canal_beagle.png"
     },
     {
       "id": "crea_036",
       "name": "Buzo de la Costanera",
       "category": "criaturas",
+      "face": "front",
       "image": "buzo_costanera.png"
+    },
+    {
+      "id": "crea_328",
+      "name": "Buzo del Canal Beagle",
+      "category": "criaturas",
+      "face": "front",
+      "image": "buzo_del_canal_beagle.png"
     },
     {
       "id": "crea_139",
       "name": "Buzo del Río Turbio",
       "category": "criaturas",
+      "face": "front",
       "image": "buzo_rio_turbio.png"
     },
     {
       "id": "crea_058",
       "name": "Bárbaro Anti-Mago",
       "category": "criaturas",
+      "face": "front",
       "image": "barbaro_antimago.png"
     },
     {
       "id": "crea_081",
       "name": "Caballo de Desfile",
       "category": "criaturas",
+      "face": "front",
       "image": "caballo_desfile.png"
+    },
+    {
+      "id": "crea_312",
+      "name": "Cadete de Guardia Diferida",
+      "category": "criaturas",
+      "face": "front",
+      "image": "cadete_de_guardia_diferida.png"
     },
     {
       "id": "crea_263",
       "name": "Cadete del Palacio Barolo",
       "category": "criaturas",
+      "face": "front",
       "image": "cadete_del_palacio_barolo.png"
+    },
+    {
+      "id": "crea_323",
+      "name": "Cadete del Servicio Meteorológico",
+      "category": "criaturas",
+      "face": "front",
+      "image": "cadete_del_servicio_meteorologico.png"
     },
     {
       "id": "crea_283",
       "name": "Cajera del Bingo",
       "category": "criaturas",
+      "face": "front",
       "image": "cajera_del_bingo.png"
     },
     {
       "id": "crea_157",
       "name": "Calderero del Tren Quemado",
       "category": "criaturas",
+      "face": "front",
       "image": "calderero_tren_quemado.png"
     },
     {
       "id": "crea_136",
       "name": "Campanera de la Procesión",
       "category": "criaturas",
+      "face": "front",
       "image": "campanera_procesion.png"
+    },
+    {
+      "id": "crea_338",
+      "name": "Cantora de Peña Itinerante",
+      "category": "criaturas",
+      "face": "front",
+      "image": "cantora_de_pena_itinerante.png"
     },
     {
       "id": "crea_130",
       "name": "Capataz de la Caravana",
       "category": "criaturas",
+      "face": "front",
       "image": "capataz_caravana.png"
     },
     {
       "id": "crea_170",
       "name": "Capitana de Bomberos Voluntarios",
       "category": "criaturas",
+      "face": "front",
       "image": "capitana_de_bomberos_voluntarios.png"
     },
     {
       "id": "crea_039",
       "name": "Capitana del Aguante",
       "category": "criaturas",
+      "face": "front",
       "image": "capitana_aguante.png"
     },
     {
       "id": "crea_066",
       "name": "Capitán al Mando",
       "category": "criaturas",
+      "face": "front",
       "image": "segundo_al_mando.png"
+    },
+    {
+      "id": "crea_346",
+      "name": "Carancho de la General Paz",
+      "category": "criaturas",
+      "face": "front",
+      "image": "carancho_de_la_general_paz.png"
     },
     {
       "id": "crea_179",
       "name": "Carancho del Matadero",
       "category": "criaturas",
+      "face": "front",
       "image": "carancho_del_matadero.png"
+    },
+    {
+      "id": "crea_344",
+      "name": "Carpincho de la Reserva",
+      "category": "criaturas",
+      "face": "front",
+      "image": "carpincho_de_la_reserva.png"
     },
     {
       "id": "crea_123",
       "name": "Cartógrafa de la Bajante",
       "category": "criaturas",
+      "face": "front",
       "image": "cartografa_bajante.png"
     },
     {
       "id": "crea_042",
       "name": "Cazadora de la Reserva",
       "category": "criaturas",
+      "face": "front",
       "image": "cazadora_reserva.png"
+    },
+    {
+      "id": "crea_353",
+      "name": "Censista de Fauna Fantástica",
+      "category": "criaturas",
+      "face": "front",
+      "image": "censista_de_fauna_fantastica.png"
     },
     {
       "id": "crea_060",
       "name": "Centinela Encantada",
       "category": "criaturas",
+      "face": "front",
       "image": "centinela_encantada.png"
     },
     {
       "id": "crea_028",
       "name": "Charly García",
       "category": "criaturas",
+      "face": "front",
       "image": "charly_garcia.png"
     },
     {
       "id": "crea_035",
       "name": "Chatarrero con megáfono",
       "category": "criaturas",
+      "face": "front",
       "image": "chatarrero.png"
     },
     {
       "id": "crea_267",
       "name": "Chatarrero de Gerli",
       "category": "criaturas",
+      "face": "front",
       "image": "chatarrero_de_gerli.png"
     },
     {
       "id": "crea_221",
       "name": "Chatarrero del Sifón Azul",
       "category": "criaturas",
+      "face": "front",
       "image": "chatarrero_del_sifon_azul.png"
     },
     {
       "id": "crea_102",
       "name": "Chispero de Taller",
       "category": "criaturas",
+      "face": "front",
       "image": "chispero_taller.png"
+    },
+    {
+      "id": "crea_314",
+      "name": "Cobrador de Deudas Vencidas",
+      "category": "criaturas",
+      "face": "front",
+      "image": "cobrador_de_deudas_vencidas.png"
     },
     {
       "id": "crea_274",
       "name": "Cobrador del Sanatorio",
       "category": "criaturas",
+      "face": "front",
       "image": "cobrador_del_sanatorio.png"
     },
     {
       "id": "crea_193",
       "name": "Coipo del Arroyo Chico",
       "category": "criaturas",
+      "face": "front",
       "image": "coipo_del_arroyo_chico.png"
     },
     {
       "id": "crea_012",
       "name": "Colectivero Apurado",
       "category": "criaturas",
+      "face": "front",
       "image": "colectivero.png"
     },
     {
       "id": "crea_054",
       "name": "Combate Incendios",
       "category": "criaturas",
+      "face": "front",
       "image": "domador_incendios.png"
     },
     {
       "id": "crea_223",
       "name": "Comensal del Tamal Negro",
       "category": "criaturas",
+      "face": "front",
       "image": "comensal_del_tamal_negro.png"
     },
     {
       "id": "crea_265",
       "name": "Contador del Club de Barrio",
       "category": "criaturas",
+      "face": "front",
       "image": "contador_del_club_de_barrio.png"
     },
     {
       "id": "crea_065",
       "name": "Contadora del Puerto",
       "category": "criaturas",
+      "face": "front",
       "image": "contadora_puerto.png"
     },
     {
       "id": "crea_046",
       "name": "Contrabandista de Sombras",
       "category": "criaturas",
+      "face": "front",
       "image": "contrabandista_sombras.png"
     },
     {
       "id": "crea_183",
       "name": "Contrabandista del Puerto Seco",
       "category": "criaturas",
+      "face": "front",
       "image": "contrabandista_del_puerto_seco.png"
     },
     {
       "id": "crea_038",
       "name": "Contrabandista del Riachuelo",
       "category": "criaturas",
+      "face": "front",
       "image": "contrabandista_riachuelo.png"
     },
     {
       "id": "crea_105",
       "name": "Corredor del Picado",
       "category": "criaturas",
+      "face": "front",
       "image": "corredor_picado.png"
     },
     {
       "id": "crea_188",
       "name": "Corredor del TC Zonal",
       "category": "criaturas",
+      "face": "front",
       "image": "corredor_del_tc_zonal.png"
     },
     {
       "id": "crea_044",
       "name": "Cortejo Fúnebre",
       "category": "criaturas",
+      "face": "front",
       "image": "cortejo_funebre.png"
     },
     {
       "id": "crea_243",
       "name": "Cosechero de la Vendimia Muerta",
       "category": "criaturas",
+      "face": "front",
       "image": "cosechero_de_la_vendimia_muerta.png"
     },
     {
       "id": "crea_196",
       "name": "Criancera de la Precordillera",
       "category": "criaturas",
+      "face": "front",
       "image": "criancera_de_la_precordillera.png"
+    },
+    {
+      "id": "crea_334",
+      "name": "Cronista de la Doble Vida",
+      "category": "criaturas",
+      "face": "front",
+      "image": "cronista_de_la_doble_vida.png"
+    },
+    {
+      "id": "crea_298",
+      "name": "Cronista de la Plaza",
+      "category": "criaturas",
+      "face": "front",
+      "image": "cronista_de_la_plaza.png"
     },
     {
       "id": "crea_161",
       "name": "Cronista del Temporal",
       "category": "criaturas",
+      "face": "front",
       "image": "cronista_temporal.png"
     },
     {
       "id": "crea_182",
       "name": "Cuidador de Mausoleo",
       "category": "criaturas",
+      "face": "front",
       "image": "cuidador_de_mausoleo.png"
+    },
+    {
+      "id": "crea_302",
+      "name": "Curadora del Archivo General",
+      "category": "criaturas",
+      "face": "front",
+      "image": "curadora_del_archivo_general.png"
     },
     {
       "id": "crea_117",
       "name": "Curandero de Monte",
       "category": "criaturas",
+      "face": "front",
       "image": "curandero_monte.png"
     },
     {
       "id": "crea_138",
       "name": "Custodia de la Basílica",
       "category": "criaturas",
+      "face": "front",
       "image": "custodia_basilica.png"
     },
     {
       "id": "crea_235",
       "name": "Custodia de la Capilla Blanca",
       "category": "criaturas",
+      "face": "front",
       "image": "custodia_de_la_capilla_blanca.png"
+    },
+    {
+      "id": "crea_342",
+      "name": "Custodio de la Capilla Abandonada",
+      "category": "criaturas",
+      "face": "front",
+      "image": "custodio_de_la_capilla_abandonada.png"
     },
     {
       "id": "crea_064",
       "name": "Custodio de la Reserva",
       "category": "criaturas",
+      "face": "front",
       "image": "custodio_reserva.png"
     },
     {
       "id": "crea_169",
       "name": "Custodio del Archivo General",
       "category": "criaturas",
+      "face": "front",
       "image": "custodio_del_archivo_general.png"
     },
     {
       "id": "crea_076",
       "name": "Custodio del Club",
       "category": "criaturas",
+      "face": "front",
       "image": "custodio_club.png"
     },
     {
       "id": "crea_055",
       "name": "Custodio del Más Allá",
       "category": "criaturas",
+      "face": "front",
       "image": "custodio_mas_alla.png"
     },
     {
       "id": "crea_126",
       "name": "Custodios de la Fiesta Patronal",
       "category": "criaturas",
+      "face": "front",
       "image": "custodios_fiesta_patronal.png"
+    },
+    {
+      "id": "crea_340",
+      "name": "Dama de la Ruta Vieja",
+      "category": "criaturas",
+      "face": "front",
+      "image": "dama_de_la_ruta_vieja.png"
+    },
+    {
+      "id": "crea_336",
+      "name": "Delegada del Registro de Asociaciones",
+      "category": "criaturas",
+      "face": "front",
+      "image": "delegada_del_registro_de_asociaciones.png"
     },
     {
       "id": "crea_285",
       "name": "Despachante de Aduana",
       "category": "criaturas",
+      "face": "front",
       "image": "despachante_de_aduana.png"
     },
     {
       "id": "crea_201",
       "name": "Detective de la Ribera Oscura",
       "category": "criaturas",
+      "face": "front",
       "image": "detective_de_la_ribera_oscura.png"
     },
     {
       "id": "crea_236",
       "name": "Deudor de la Noche Larga",
       "category": "criaturas",
+      "face": "front",
       "image": "deudor_de_la_noche_larga.png"
     },
     {
       "id": "crea_056",
       "name": "Devorador del Pantano",
       "category": "criaturas",
+      "face": "front",
       "image": "devorador_pantano.png"
     },
     {
       "id": "crea_150",
       "name": "Diablo de la Salamanca",
       "category": "criaturas",
+      "face": "front",
       "image": "diablo_salamanca.png"
     },
     {
       "id": "crea_106",
       "name": "Diablo del Salitral",
       "category": "criaturas",
+      "face": "front",
       "image": "diablo_salitral.png"
+    },
+    {
+      "id": "crea_337",
+      "name": "Director de la Orquesta Municipal",
+      "category": "criaturas",
+      "face": "front",
+      "image": "director_de_la_orquesta_municipal.png"
+    },
+    {
+      "id": "crea_349",
+      "name": "Dogo del Taller Mecánico",
+      "category": "criaturas",
+      "face": "front",
+      "image": "dogo_del_taller_mecanico.png"
     },
     {
       "id": "crea_068",
       "name": "Domador de Toros",
       "category": "criaturas",
+      "face": "front",
       "image": "domador_toros.png"
     },
     {
       "id": "crea_100",
       "name": "Duende del Semáforo",
       "category": "criaturas",
+      "face": "front",
       "image": "duende_semaforo.png"
     },
     {
       "id": "crea_002",
       "name": "El Canillita",
       "category": "criaturas",
+      "face": "front",
       "image": "canillita.png"
     },
     {
       "id": "crea_019",
       "name": "El Carpincho",
       "category": "criaturas",
+      "face": "front",
       "image": "carpincho.png"
     },
     {
       "id": "crea_045",
       "name": "El Centinela de Chatarra",
       "category": "criaturas",
+      "face": "front",
       "image": "centinela_chatarra.png"
     },
     {
       "id": "crea_015",
       "name": "El Comandante",
       "category": "criaturas",
+      "face": "front",
       "image": "comandante_ricky.png"
     },
     {
       "id": "crea_014",
       "name": "El Diego del '86",
       "category": "criaturas",
+      "face": "front",
       "image": "diego_86.png"
     },
     {
       "id": "crea_021",
       "name": "El Eternauta",
       "category": "criaturas",
+      "face": "front",
       "image": "eternauta.png"
     },
     {
       "id": "crea_071",
       "name": "El Familiar",
       "category": "criaturas",
+      "face": "front",
       "image": "el_familiar.png"
     },
     {
       "id": "crea_185",
       "name": "El Familiar del Ingenio",
       "category": "criaturas",
+      "face": "front",
       "image": "el_familiar_del_ingenio.png"
     },
     {
       "id": "crea_001",
       "name": "El Firulais",
       "category": "criaturas",
+      "face": "front",
       "image": "firulais.png"
     },
     {
       "id": "crea_027",
       "name": "El Flaco Spinetta",
       "category": "criaturas",
+      "face": "front",
       "image": "spinetta.png"
     },
     {
       "id": "crea_003",
       "name": "El Gaucho",
       "category": "criaturas",
+      "face": "front",
       "image": "gaucho.png"
     },
     {
       "id": "crea_178",
       "name": "El Hombre Pez del Paraná",
       "category": "criaturas",
+      "face": "front",
       "image": "el_hombre_pez_del_parana.png"
     },
     {
       "id": "crea_192",
       "name": "El Jinete de la Ruta Quemada",
       "category": "criaturas",
+      "face": "front",
       "image": "el_jinete_de_la_ruta_quemada.png"
     },
     {
       "id": "crea_146",
       "name": "El Lobizón de la Séptima Noche",
       "category": "criaturas",
+      "face": "front",
       "image": "lobizon_septima_noche.png"
     },
     {
       "id": "crea_013",
       "name": "El Nahuelito",
       "category": "criaturas",
+      "face": "front",
       "image": "nahuelito.png"
     },
     {
       "id": "crea_020",
       "name": "El Pombero",
       "category": "criaturas",
+      "face": "front",
       "image": "pombero.png"
     },
     {
       "id": "crea_034",
       "name": "El Recaudador Implacable",
       "category": "criaturas",
+      "face": "front",
       "image": "recaudador.png"
     },
     {
       "id": "crea_226",
       "name": "El Tipo del Impermeable Gris",
       "category": "criaturas",
+      "face": "front",
       "image": "el_tipo_del_impermeable_gris.png"
     },
     {
       "id": "crea_006",
       "name": "El Trapito",
       "category": "criaturas",
+      "face": "front",
       "image": "trapito.png"
     },
     {
       "id": "crea_199",
       "name": "El Ucumar de la Quebrada",
       "category": "criaturas",
+      "face": "front",
       "image": "el_ucumar_de_la_quebrada.png"
+    },
+    {
+      "id": "crea_291",
+      "name": "Electricista de Dock Sud",
+      "category": "criaturas",
+      "face": "front",
+      "image": "electricista_de_dock_sud.png"
     },
     {
       "id": "crea_077",
       "name": "Enfermera de Guardia",
       "category": "criaturas",
+      "face": "front",
       "image": "enfermera_guardia.png"
     },
     {
       "id": "crea_119",
       "name": "Escarabajo del Estero",
       "category": "criaturas",
+      "face": "front",
       "image": "escarabajo_estero.png"
     },
     {
       "id": "crea_133",
       "name": "Espantapájaros de Chapa",
       "category": "criaturas",
+      "face": "front",
       "image": "espantapajaros_chapa.png"
+    },
+    {
+      "id": "crea_328",
+      "name": "Espectro de las Aguas Australes",
+      "category": "criaturas",
+      "face": "back",
+      "image": "espectro_de_las_aguas_australes.png"
     },
     {
       "id": "crea_095",
       "name": "Espectro del Último Colectivo",
       "category": "criaturas",
+      "face": "front",
       "image": "espectro_ultimo_colectivo.png"
     },
     {
       "id": "crea_088",
       "name": "Espíritu de la Bruma Austral",
       "category": "criaturas",
+      "face": "front",
       "image": "espiritu_bruma_austral.png"
     },
     {
       "id": "crea_116",
       "name": "Espíritu del Ceibal",
       "category": "criaturas",
+      "face": "front",
       "image": "espiritu_ceibal.png"
+    },
+    {
+      "id": "crea_327",
+      "name": "Espíritu del Salto Eterno",
+      "category": "criaturas",
+      "face": "back",
+      "image": "espiritu_del_salto_eterno.png"
     },
     {
       "id": "crea_256",
       "name": "Excavador de Villa Domínico",
       "category": "criaturas",
+      "face": "front",
       "image": "excavador_de_villa_dominico.png"
     },
     {
       "id": "crea_204",
       "name": "Familia de la Fiesta Patronal",
       "category": "criaturas",
+      "face": "front",
       "image": "familia_de_la_fiesta_patronal.png"
     },
     {
       "id": "crea_141",
       "name": "Fantasma de la Hemeroteca",
       "category": "criaturas",
+      "face": "front",
       "image": "fantasma_hemeroteca.png"
+    },
+    {
+      "id": "crea_317",
+      "name": "Fantasma del Andén Cerrado",
+      "category": "criaturas",
+      "face": "front",
+      "image": "fantasma_del_anden_cerrado.png"
     },
     {
       "id": "crea_085",
       "name": "Fantasma del Subte",
       "category": "criaturas",
+      "face": "front",
       "image": "fantasma_subte.png"
     },
     {
       "id": "crea_245",
       "name": "Faro Vivo de Mar del Plata",
       "category": "criaturas",
+      "face": "front",
       "image": "faro_vivo_de_mar_del_plata.png"
     },
     {
       "id": "crea_205",
       "name": "Florista del Cementerio Sur",
       "category": "criaturas",
+      "face": "front",
       "image": "florista_del_cementerio_sur.png"
     },
     {
       "id": "crea_260",
       "name": "Fogonero de Dock Sud",
       "category": "criaturas",
+      "face": "front",
       "image": "fogonero_de_dock_sud.png"
     },
     {
       "id": "crea_202",
       "name": "Fogonero del Tren Nocturno",
       "category": "criaturas",
+      "face": "front",
       "image": "fogonero_del_tren_nocturno.png"
     },
     {
       "id": "crea_099",
       "name": "Foguista de Taller",
       "category": "criaturas",
+      "face": "front",
       "image": "foguista_taller.png"
+    },
+    {
+      "id": "crea_333",
+      "name": "Fotógrafa de Antes y Después",
+      "category": "criaturas",
+      "face": "front",
+      "image": "fotografa_de_antes_y_despues.png"
     },
     {
       "id": "crea_264",
       "name": "Freestyler del Subte B",
       "category": "criaturas",
+      "face": "front",
       "image": "freestyler_del_subte_b.png"
     },
     {
       "id": "crea_098",
       "name": "Gato del Tejado Caliente",
       "category": "criaturas",
+      "face": "front",
       "image": "gato_tejado_caliente.png"
     },
     {
       "id": "crea_017",
       "name": "Gauchito Gil",
       "category": "criaturas",
+      "face": "front",
       "image": "gauchito_gil.png"
     },
     {
       "id": "crea_173",
       "name": "Gaviota del Puerto Sur",
       "category": "criaturas",
+      "face": "front",
       "image": "gaviota_del_puerto_sur.png"
+    },
+    {
+      "id": "crea_355",
+      "name": "Genealogista del Archivo Provincial",
+      "category": "criaturas",
+      "face": "front",
+      "image": "genealogista_del_archivo_provincial.png"
+    },
+    {
+      "id": "crea_320",
+      "name": "Gestor de Cronogramas",
+      "category": "criaturas",
+      "face": "front",
+      "image": "gestor_de_cronogramas.png"
     },
     {
       "id": "crea_281",
       "name": "Gestor de Expedientes Reservados",
       "category": "criaturas",
+      "face": "front",
       "image": "gestor_de_expedientes_reservados.png"
+    },
+    {
+      "id": "crea_295",
+      "name": "Gestora de Moratorias",
+      "category": "criaturas",
+      "face": "front",
+      "image": "gestora_de_moratorias.png"
+    },
+    {
+      "id": "crea_305",
+      "name": "Gestora de Turnos Online",
+      "category": "criaturas",
+      "face": "front",
+      "image": "gestora_de_turnos_online.png"
     },
     {
       "id": "crea_270",
       "name": "Gestora del Monotributo",
       "category": "criaturas",
+      "face": "front",
       "image": "gestora_del_monotributo.png"
     },
     {
       "id": "crea_121",
       "name": "Gigante de la Quebrada",
       "category": "criaturas",
+      "face": "front",
       "image": "gigante_quebrada.png"
     },
     {
       "id": "crea_217",
       "name": "Gigante de las Raíces del Paraná",
       "category": "criaturas",
+      "face": "front",
       "image": "gigante_de_las_raices_del_parana.png"
     },
     {
       "id": "crea_257",
       "name": "Gigante del Aconcagua",
       "category": "criaturas",
+      "face": "front",
       "image": "gigante_del_aconcagua.png"
+    },
+    {
+      "id": "crea_316",
+      "name": "Gigante del Embalse Demorado",
+      "category": "criaturas",
+      "face": "front",
+      "image": "gigante_del_embalse_demorado.png"
     },
     {
       "id": "crea_250",
       "name": "Gorrionera del Ceibo",
       "category": "criaturas",
+      "face": "front",
       "image": "gorrionera_del_ceibo.png"
     },
     {
       "id": "crea_052",
       "name": "Guardabosque Veterano",
       "category": "criaturas",
+      "face": "front",
       "image": "guardabosque_veterano.png"
     },
     {
       "id": "crea_195",
       "name": "Guardafauna del Chaco",
       "category": "criaturas",
+      "face": "front",
       "image": "guardafauna_del_chaco.png"
     },
     {
       "id": "crea_152",
       "name": "Guardaparque del Iberá",
       "category": "criaturas",
+      "face": "front",
       "image": "guardaparque_ibera.png"
+    },
+    {
+      "id": "crea_293",
+      "name": "Guardaparque del Lanín",
+      "category": "criaturas",
+      "face": "front",
+      "image": "guardaparque_del_lanin.png"
+    },
+    {
+      "id": "crea_287",
+      "name": "Guardavidas de Playa Grande",
+      "category": "criaturas",
+      "face": "front",
+      "image": "guardavidas_de_playa_grande.png"
     },
     {
       "id": "crea_258",
       "name": "Guardiana de Plaza San Martín",
       "category": "criaturas",
+      "face": "front",
       "image": "guardiana_de_plaza_san_martin.png"
     },
     {
       "id": "crea_155",
       "name": "Guardiana del Archivo Náutico",
       "category": "criaturas",
+      "face": "front",
       "image": "guardiana_archivo_nautico.png"
     },
     {
       "id": "crea_070",
       "name": "Guardiana del Faro",
       "category": "criaturas",
+      "face": "front",
       "image": "guardiana_faro.png"
     },
     {
       "id": "crea_047",
       "name": "Guardiana del Umbral",
       "category": "criaturas",
+      "face": "front",
       "image": "guardiana_umbral.png"
+    },
+    {
+      "id": "crea_322",
+      "name": "Guardián del Andén Vacío",
+      "category": "criaturas",
+      "face": "back",
+      "image": "guardian_del_anden_vacio.png"
     },
     {
       "id": "crea_115",
       "name": "Guardián del Quebrachal",
       "category": "criaturas",
+      "face": "front",
       "image": "guardian_quebrachal.png"
     },
     {
       "id": "crea_083",
       "name": "Guardián del Santuario Vial",
       "category": "criaturas",
+      "face": "front",
       "image": "guardian_santuario_vial.png"
     },
     {
       "id": "crea_228",
       "name": "Guitarrista de Dos Púas",
       "category": "criaturas",
+      "face": "front",
       "image": "guitarrista_de_dos_puas.png"
     },
     {
       "id": "crea_094",
       "name": "Gusano del Matadero",
       "category": "criaturas",
+      "face": "front",
       "image": "gusano_matadero.png"
+    },
+    {
+      "id": "crea_307",
+      "name": "Guía de Ruta Alternativa",
+      "category": "criaturas",
+      "face": "front",
+      "image": "guia_de_ruta_alternativa.png"
+    },
+    {
+      "id": "crea_300",
+      "name": "Guía del Museo Histórico",
+      "category": "criaturas",
+      "face": "front",
+      "image": "guia_del_museo_historico.png"
     },
     {
       "id": "crea_132",
       "name": "Gólem de Adoquines",
       "category": "criaturas",
+      "face": "front",
       "image": "golem_adoquines.png"
     },
     {
       "id": "crea_272",
       "name": "Gólem de Chatarra Ferroviaria",
       "category": "criaturas",
+      "face": "front",
       "image": "golem_de_chatarra_ferroviaria.png"
     },
     {
       "id": "crea_194",
       "name": "Hachero del Litoral",
       "category": "criaturas",
+      "face": "front",
       "image": "hachero_del_litoral.png"
+    },
+    {
+      "id": "crea_329",
+      "name": "Hincha de Popular",
+      "category": "criaturas",
+      "face": "front",
+      "image": "hincha_de_popular.png"
     },
     {
       "id": "crea_151",
       "name": "Hornero del Alambrado",
       "category": "criaturas",
+      "face": "front",
       "image": "hornero_alambrado.png"
     },
     {
       "id": "crea_177",
       "name": "Ilusionista de la Costanera",
       "category": "criaturas",
+      "face": "front",
       "image": "ilusionista_de_la_costanera.png"
+    },
+    {
+      "id": "crea_335",
+      "name": "Ingeniero de Metamorfosis",
+      "category": "criaturas",
+      "face": "front",
+      "image": "ingeniero_de_metamorfosis.png"
+    },
+    {
+      "id": "crea_310",
+      "name": "Inspector de Aduana Paralela",
+      "category": "criaturas",
+      "face": "front",
+      "image": "inspector_de_aduana_paralela.png"
+    },
+    {
+      "id": "crea_321",
+      "name": "Inspector de Prórrogas",
+      "category": "criaturas",
+      "face": "front",
+      "image": "inspector_de_prorrogas.png"
     },
     {
       "id": "crea_276",
       "name": "Inspectora de Consorcio",
       "category": "criaturas",
+      "face": "front",
       "image": "inspectora_de_consorcio.png"
     },
     {
       "id": "crea_227",
       "name": "Inspectora del Archivo Sellado",
       "category": "criaturas",
+      "face": "front",
       "image": "inspectora_del_archivo_sellado.png"
     },
     {
       "id": "crea_259",
       "name": "Interventor de la Avenida General Paz",
       "category": "criaturas",
+      "face": "front",
       "image": "interventor_de_la_avenida_general_paz.png"
     },
     {
       "id": "crea_114",
       "name": "Jabalí de los Cardales",
       "category": "criaturas",
+      "face": "front",
       "image": "jabali_cardales.png"
     },
     {
       "id": "crea_041",
       "name": "Jabalí del Descampado",
       "category": "criaturas",
+      "face": "front",
       "image": "jabali_descampado.png"
+    },
+    {
+      "id": "crea_292",
+      "name": "Jardinera de la República de los Niños",
+      "category": "criaturas",
+      "face": "front",
+      "image": "jardinera_de_la_republica_de_los_ninos.png"
     },
     {
       "id": "crea_253",
       "name": "Jardinero del Parque Centenario",
       "category": "criaturas",
+      "face": "front",
       "image": "jardinero_del_parque_centenario.png"
+    },
+    {
+      "id": "crea_297",
+      "name": "Jefa de Señalamiento Ferroviario",
+      "category": "criaturas",
+      "face": "front",
+      "image": "jefa_de_senalamiento_ferroviario.png"
     },
     {
       "id": "crea_208",
       "name": "Jefa de la Comparsa",
       "category": "criaturas",
+      "face": "front",
       "image": "jefa_de_la_comparsa.png"
     },
     {
       "id": "crea_078",
       "name": "Jinete de la Peregrinación",
       "category": "criaturas",
+      "face": "front",
       "image": "jinete_peregrinacion.png"
     },
     {
       "id": "crea_107",
       "name": "Jinete del Viento Zonda",
       "category": "criaturas",
+      "face": "front",
       "image": "jinete_viento_zonda.png"
     },
     {
       "id": "crea_171",
       "name": "La Dama Blanca del Kilómetro Cero",
       "category": "criaturas",
+      "face": "front",
       "image": "la_dama_blanca_del_kilometro_cero.png"
     },
     {
       "id": "crea_225",
       "name": "La Flor Negra del Ceibo",
       "category": "criaturas",
+      "face": "front",
       "image": "la_flor_negra_del_ceibo.png"
     },
     {
       "id": "crea_040",
       "name": "La Forjadora de Escudos",
       "category": "criaturas",
+      "face": "front",
       "image": "escudera_vecinal.png"
     },
     {
       "id": "crea_018",
       "name": "La Luz Mala",
       "category": "criaturas",
+      "face": "front",
       "image": "luz_mala.png"
     },
     {
       "id": "crea_244",
       "name": "La Sirena del Río de la Plata",
       "category": "criaturas",
+      "face": "front",
       "image": "la_sirena_del_rio_de_la_plata.png"
     },
     {
       "id": "crea_252",
       "name": "Lagartija del Parral",
       "category": "criaturas",
+      "face": "front",
       "image": "lagartija_del_parral.png"
     },
     {
       "id": "crea_108",
       "name": "Lagarto de las Vías",
       "category": "criaturas",
+      "face": "front",
       "image": "lagarto_vias.png"
     },
     {
       "id": "crea_220",
       "name": "Lata Caminadora del Mercado",
       "category": "criaturas",
+      "face": "front",
       "image": "lata_caminadora_del_mercado.png"
+    },
+    {
+      "id": "crea_326",
+      "name": "Lobizón de Medianoche",
+      "category": "criaturas",
+      "face": "back",
+      "image": "lobizon_de_medianoche.png"
     },
     {
       "id": "crea_005",
       "name": "Loro Hablador",
       "category": "criaturas",
+      "face": "front",
       "image": "loro_hablador.png"
     },
     {
       "id": "crea_154",
       "name": "Madre del Monte",
       "category": "criaturas",
+      "face": "front",
       "image": "madre_del_monte.png"
+    },
+    {
+      "id": "crea_330",
+      "name": "Madre del Monte Desatada",
+      "category": "criaturas",
+      "face": "back",
+      "image": "madre_del_monte_desatada.png"
     },
     {
       "id": "crea_168",
       "name": "Maestra de Escuela Rural",
       "category": "criaturas",
+      "face": "front",
       "image": "maestra_de_escuela_rural.png"
     },
     {
       "id": "crea_211",
       "name": "Maestro de Mesa del Velorio",
       "category": "criaturas",
+      "face": "front",
       "image": "maestro_de_mesa_del_velorio.png"
     },
     {
       "id": "crea_147",
       "name": "Malabarista del Semáforo",
       "category": "criaturas",
+      "face": "front",
       "image": "malabarista_semaforo.png"
     },
     {
       "id": "crea_026",
       "name": "Marta Minujín",
       "category": "criaturas",
+      "face": "front",
       "image": "marta_minujin.png"
     },
     {
       "id": "crea_022",
       "name": "Martín Fierro",
       "category": "criaturas",
+      "face": "front",
       "image": "martin_fierro.png"
     },
     {
       "id": "crea_213",
       "name": "Mecánica del Bajo Puente",
       "category": "criaturas",
+      "face": "front",
       "image": "mecanica_del_bajo_puente.png"
+    },
+    {
+      "id": "crea_324",
+      "name": "Mecánico de Taller Nocturno",
+      "category": "criaturas",
+      "face": "front",
+      "image": "mecanico_de_taller_nocturno.png"
     },
     {
       "id": "crea_149",
       "name": "Mecánico de la Ruta 40",
       "category": "criaturas",
+      "face": "front",
       "image": "mecanico_ruta_40.png"
     },
     {
       "id": "crea_190",
       "name": "Mecánico del Viaducto",
       "category": "criaturas",
+      "face": "front",
       "image": "mecanico_del_viaducto.png"
     },
     {
       "id": "crea_275",
       "name": "Mensajero de la Autopista",
       "category": "criaturas",
+      "face": "front",
       "image": "mensajero_de_la_autopista.png"
+    },
+    {
+      "id": "crea_311",
+      "name": "Mensajero de Última Hora",
+      "category": "criaturas",
+      "face": "front",
+      "image": "mensajero_de_ultima_hora.png"
     },
     {
       "id": "crea_023",
       "name": "Mirth LaGrande",
       "category": "criaturas",
+      "face": "front",
       "image": "mirtha.png"
+    },
+    {
+      "id": "crea_352",
+      "name": "Molino Caminante de la Pampa",
+      "category": "criaturas",
+      "face": "front",
+      "image": "molino_caminante_de_la_pampa.png"
     },
     {
       "id": "crea_134",
       "name": "Monigote de Alambrado",
       "category": "criaturas",
+      "face": "front",
       "image": "monigote_alambrado.png"
     },
     {
       "id": "crea_029",
       "name": "Moria Casán",
       "category": "criaturas",
+      "face": "front",
       "image": "moria_casan.png"
     },
     {
       "id": "crea_097",
       "name": "Mosquito del Estero Negro",
       "category": "criaturas",
+      "face": "front",
       "image": "mosquito_estero_negro.png"
     },
     {
       "id": "crea_143",
       "name": "Mosquito del Riachuelo",
       "category": "criaturas",
+      "face": "front",
       "image": "mosquito_riachuelo.png"
     },
     {
       "id": "crea_101",
       "name": "Motociclista del Conurbano",
       "category": "criaturas",
+      "face": "front",
       "image": "motociclista_conurbano.png"
+    },
+    {
+      "id": "crea_315",
+      "name": "Motoquero del Último Turno",
+      "category": "criaturas",
+      "face": "front",
+      "image": "motoquero_del_ultimo_turno.png"
+    },
+    {
+      "id": "crea_324",
+      "name": "Motorista de Fierro Vivo",
+      "category": "criaturas",
+      "face": "back",
+      "image": "motorista_de_fierro_vivo.png"
     },
     {
       "id": "crea_004",
       "name": "Mozo de Bodegón",
       "category": "criaturas",
+      "face": "front",
       "image": "mozo_bodegon.png"
     },
     {
       "id": "crea_242",
       "name": "Muerto de Hambre del Andén",
       "category": "criaturas",
+      "face": "front",
       "image": "muerto_de_hambre_del_anden.png"
     },
     {
       "id": "crea_110",
       "name": "Mulita del Camino",
       "category": "criaturas",
+      "face": "front",
       "image": "mulita_camino.png"
+    },
+    {
+      "id": "crea_296",
+      "name": "Murguera de Boedo",
+      "category": "criaturas",
+      "face": "front",
+      "image": "murguera_de_boedo.png"
     },
     {
       "id": "crea_142",
       "name": "Nahuelito, Sombra del Lago",
       "category": "criaturas",
+      "face": "front",
       "image": "nahuelito_sombra_lago.png"
     },
     {
       "id": "crea_198",
       "name": "Ombú Caminante",
       "category": "criaturas",
+      "face": "front",
       "image": "ombu_caminante.png"
     },
     {
       "id": "crea_233",
       "name": "Ombú de la Tormenta Quieta",
       "category": "criaturas",
+      "face": "front",
       "image": "ombu_de_la_tormenta_quieta.png"
     },
     {
       "id": "crea_206",
       "name": "Operador de Radio Pirata",
       "category": "criaturas",
+      "face": "front",
       "image": "operador_de_radio_pirata.png"
+    },
+    {
+      "id": "crea_304",
+      "name": "Operador del Centro de Monitoreo",
+      "category": "criaturas",
+      "face": "front",
+      "image": "operador_del_centro_de_monitoreo.png"
     },
     {
       "id": "crea_140",
       "name": "Operador del Radar Costero",
       "category": "criaturas",
+      "face": "front",
       "image": "operador_radar_costero.png"
+    },
+    {
+      "id": "crea_313",
+      "name": "Operadora de Línea Saturada",
+      "category": "criaturas",
+      "face": "front",
+      "image": "operadora_de_linea_saturada.png"
     },
     {
       "id": "crea_159",
       "name": "Organizadora de la Peregrinación",
       "category": "criaturas",
+      "face": "front",
       "image": "organizadora_peregrinacion.png"
+    },
+    {
+      "id": "crea_323",
+      "name": "Oráculo de la Sudestada",
+      "category": "criaturas",
+      "face": "back",
+      "image": "oraculo_de_la_sudestada.png"
     },
     {
       "id": "crea_082",
       "name": "Paladín del Ombú",
       "category": "criaturas",
+      "face": "front",
       "image": "paladin_ombu.png"
     },
     {
       "id": "crea_008",
       "name": "Paloma de Plaza",
       "category": "criaturas",
+      "face": "front",
       "image": "paloma_plaza.png"
     },
     {
       "id": "crea_166",
       "name": "Paloma de la Plaza Vacía",
       "category": "criaturas",
+      "face": "front",
       "image": "paloma_de_la_plaza_vacia.png"
+    },
+    {
+      "id": "crea_286",
+      "name": "Paramédica del Hospital Posadas",
+      "category": "criaturas",
+      "face": "front",
+      "image": "paramedica_del_hospital_posadas.png"
     },
     {
       "id": "crea_186",
       "name": "Parrillero de la Terminal",
       "category": "criaturas",
+      "face": "front",
       "image": "parrillero_de_la_terminal.png"
     },
     {
       "id": "crea_278",
       "name": "Pasante del Archivo General",
       "category": "criaturas",
+      "face": "front",
       "image": "pasante_del_archivo_general.png"
     },
     {
       "id": "crea_247",
       "name": "Patrón de la Bodega Hundida",
       "category": "criaturas",
+      "face": "front",
       "image": "patron_de_la_bodega_hundida.png"
     },
     {
       "id": "crea_279",
       "name": "Perito de Sistemas del RENAPER",
       "category": "criaturas",
+      "face": "front",
       "image": "perito_de_sistemas_del_renaper.png"
     },
     {
       "id": "crea_156",
       "name": "Perito de la Morgue Fluvial",
       "category": "criaturas",
+      "face": "front",
       "image": "perito_morgue_fluvial.png"
     },
     {
       "id": "crea_011",
       "name": "Perro de la Plaza",
       "category": "criaturas",
+      "face": "front",
       "image": "perro_plaza.png"
     },
     {
       "id": "crea_074",
       "name": "Perro del Andén",
       "category": "criaturas",
+      "face": "front",
       "image": "perro_anden.png"
     },
     {
       "id": "crea_091",
       "name": "Perro del Cementerio",
       "category": "criaturas",
+      "face": "front",
       "image": "perro_cementerio.png"
     },
     {
       "id": "crea_135",
       "name": "Perro del Cuartel",
       "category": "criaturas",
+      "face": "front",
       "image": "perro_cuartel.png"
+    },
+    {
+      "id": "crea_350",
+      "name": "Perro del Último Colectivo",
+      "category": "criaturas",
+      "face": "front",
+      "image": "perro_del_ultimo_colectivo.png"
     },
     {
       "id": "crea_086",
       "name": "Pescador de la Sudestada",
       "category": "criaturas",
+      "face": "front",
       "image": "pescador_sudestada.png"
     },
     {
       "id": "crea_024",
       "name": "Petardo Ambulante",
       "category": "criaturas",
+      "face": "front",
       "image": "petardo_ambulante.png"
     },
     {
       "id": "crea_180",
       "name": "Peón del Cementerio Ferroviario",
       "category": "criaturas",
+      "face": "front",
       "image": "peon_del_cementerio_ferroviario.png"
+    },
+    {
+      "id": "crea_325",
+      "name": "Peón del Monte Cerrado",
+      "category": "criaturas",
+      "face": "front",
+      "image": "peon_del_monte_cerrado.png"
     },
     {
       "id": "crea_241",
       "name": "Peón del Viñedo de Altura",
       "category": "criaturas",
+      "face": "front",
       "image": "peon_del_vinedo_de_altura.png"
     },
     {
       "id": "crea_010",
       "name": "Pibe de la Cuadra",
       "category": "criaturas",
+      "face": "front",
       "image": "pibe_cuadra.png"
+    },
+    {
+      "id": "crea_332",
+      "name": "Pibe del Barrio Imposible",
+      "category": "criaturas",
+      "face": "front",
+      "image": "pibe_del_barrio_imposible.png"
     },
     {
       "id": "crea_249",
       "name": "Pibe del Pogo Temprano",
       "category": "criaturas",
+      "face": "front",
       "image": "pibe_del_pogo_temprano.png"
     },
     {
       "id": "crea_214",
       "name": "Pibe del Taller de Chacarita",
       "category": "criaturas",
+      "face": "front",
       "image": "pibe_del_taller_de_chacarita.png"
     },
     {
       "id": "crea_254",
       "name": "Picaflor del Jardín Botánico",
       "category": "criaturas",
+      "face": "front",
       "image": "picaflor_del_jardin_botanico.png"
     },
     {
       "id": "crea_053",
       "name": "Piromaníaco de Feria",
       "category": "criaturas",
+      "face": "front",
       "image": "piromaniaco_feria.png"
     },
     {
       "id": "crea_189",
       "name": "Pirotécnica de la Fiesta Chica",
       "category": "criaturas",
+      "face": "front",
       "image": "pirotecnica_de_la_fiesta_chica.png"
     },
     {
       "id": "crea_216",
       "name": "Polinizador de la Salamanca",
       "category": "criaturas",
+      "face": "front",
       "image": "polinizador_de_la_salamanca.png"
     },
     {
       "id": "crea_239",
       "name": "Polinizador del Ceibo",
       "category": "criaturas",
+      "face": "front",
       "image": "polinizador_del_ceibo.png"
     },
     {
       "id": "crea_096",
       "name": "Portador de la Peste del Bañado",
       "category": "criaturas",
+      "face": "front",
       "image": "portador_peste_banado.png"
     },
     {
       "id": "crea_067",
       "name": "Portera de la Feria",
       "category": "criaturas",
+      "face": "front",
       "image": "portera_feria.png"
     },
     {
       "id": "crea_049",
       "name": "Portera del Santuario",
       "category": "criaturas",
+      "face": "front",
       "image": "portera_santuario.png"
     },
     {
       "id": "crea_269",
       "name": "Preparador Físico de Inferiores",
       "category": "criaturas",
+      "face": "front",
       "image": "preparador_fisico_de_inferiores.png"
     },
     {
       "id": "crea_273",
       "name": "Productor de Sala de Ensayo",
       "category": "criaturas",
+      "face": "front",
       "image": "productor_de_sala_de_ensayo.png"
+    },
+    {
+      "id": "crea_354",
+      "name": "Programadora del Padrón Imposible",
+      "category": "criaturas",
+      "face": "front",
+      "image": "programadora_del_padron_imposible.png"
     },
     {
       "id": "crea_167",
       "name": "Promesera de Luján",
       "category": "criaturas",
+      "face": "front",
       "image": "promesera_de_lujan.png"
+    },
+    {
+      "id": "crea_308",
+      "name": "Puestero de Feria Nocturna",
+      "category": "criaturas",
+      "face": "front",
+      "image": "puestero_de_feria_nocturna.png"
     },
     {
       "id": "crea_153",
       "name": "Puma de la Precordillera",
       "category": "criaturas",
+      "face": "front",
       "image": "puma_precordillera.png"
     },
     {
       "id": "crea_197",
       "name": "Puma de la Quebrada Alta",
       "category": "criaturas",
+      "face": "front",
       "image": "puma_de_la_quebrada_alta.png"
     },
     {
       "id": "crea_051",
       "name": "Puma de la Sierra",
       "category": "criaturas",
+      "face": "front",
       "image": "puma_sierra.png"
     },
     {
       "id": "crea_112",
       "name": "Puma del Pedemonte",
       "category": "criaturas",
+      "face": "front",
       "image": "puma_pedemonte.png"
     },
     {
       "id": "crea_057",
       "name": "Purificador de la Fe",
       "category": "criaturas",
+      "face": "front",
       "image": "purificador_fe.png"
     },
     {
       "id": "crea_219",
       "name": "Púa de Fuego, Guitarrista del Apagón",
       "category": "criaturas",
+      "face": "front",
       "image": "pua_de_fuego_guitarrista_del_apagon.png"
     },
     {
       "id": "crea_124",
       "name": "Quemero de la Quema",
       "category": "criaturas",
+      "face": "front",
       "image": "quemero_quema.png"
     },
     {
       "id": "crea_128",
       "name": "Radioaficionado del Temporal",
       "category": "criaturas",
+      "face": "front",
       "image": "radioaficionado_temporal.png"
     },
     {
       "id": "crea_131",
       "name": "Rastreador de las Islas",
       "category": "criaturas",
+      "face": "front",
       "image": "rastreador_islas.png"
     },
     {
       "id": "crea_089",
       "name": "Rata del Galpón",
       "category": "criaturas",
+      "face": "front",
       "image": "rata_galpon.png"
     },
     {
       "id": "crea_251",
       "name": "Ratón de Bodega",
       "category": "criaturas",
+      "face": "front",
       "image": "raton_de_bodega.png"
     },
     {
       "id": "crea_207",
       "name": "Recolector del Bañado Negro",
       "category": "criaturas",
+      "face": "front",
       "image": "recolector_del_banado_negro.png"
     },
     {
       "id": "crea_145",
       "name": "Recolector del Crematorio",
       "category": "criaturas",
+      "face": "front",
       "image": "recolector_crematorio.png"
+    },
+    {
+      "id": "crea_306",
+      "name": "Recuperador del Parque Industrial",
+      "category": "criaturas",
+      "face": "front",
+      "image": "recuperador_del_parque_industrial.png"
+    },
+    {
+      "id": "crea_301",
+      "name": "Relator de Radio Nacional",
+      "category": "criaturas",
+      "face": "front",
+      "image": "relator_de_radio_nacional.png"
+    },
+    {
+      "id": "crea_319",
+      "name": "Relojera de Retiro",
+      "category": "criaturas",
+      "face": "front",
+      "image": "relojera_de_retiro.png"
     },
     {
       "id": "crea_240",
       "name": "Repartidora de Tamales del Alba",
       "category": "criaturas",
+      "face": "front",
       "image": "repartidora_de_tamales_del_alba.png"
     },
     {
       "id": "crea_200",
       "name": "Restauradora del Teatro Viejo",
       "category": "criaturas",
+      "face": "front",
       "image": "restauradora_del_teatro_viejo.png"
     },
     {
       "id": "crea_210",
       "name": "Revisor de Terminal",
       "category": "criaturas",
+      "face": "front",
       "image": "revisor_de_terminal.png"
     },
     {
       "id": "crea_030",
       "name": "Ricardo Iorio",
       "category": "criaturas",
+      "face": "front",
       "image": "ricardo_iorio.png"
     },
     {
       "id": "crea_033",
       "name": "Roberto Giordano",
       "category": "criaturas",
+      "face": "front",
       "image": "roberto_giordano.png"
     },
     {
       "id": "crea_016",
       "name": "San Martín",
       "category": "criaturas",
+      "face": "front",
       "image": "san_martin.png"
+    },
+    {
+      "id": "crea_331",
+      "name": "Santa del Patio Encendido",
+      "category": "criaturas",
+      "face": "back",
+      "image": "santa_del_patio_encendido.png"
     },
     {
       "id": "crea_184",
       "name": "Saqueador del Cementerio de Trenes",
       "category": "criaturas",
+      "face": "front",
       "image": "saqueador_del_cementerio_de_trenes.png"
     },
     {
       "id": "crea_069",
       "name": "Scout Precisa",
       "category": "criaturas",
+      "face": "front",
       "image": "scout_precisa.png"
     },
     {
       "id": "crea_266",
       "name": "Sepulturero de Chacarita",
       "category": "criaturas",
+      "face": "front",
       "image": "sepulturero_de_chacarita.png"
     },
     {
       "id": "crea_062",
       "name": "Sepulturero de Turno",
       "category": "criaturas",
+      "face": "front",
       "image": "sepulturero_turno.png"
     },
     {
       "id": "crea_093",
       "name": "Sereno de Morgue",
       "category": "criaturas",
+      "face": "front",
       "image": "sereno_morgue.png"
     },
     {
       "id": "crea_075",
       "name": "Sereno de la Estación",
       "category": "criaturas",
+      "face": "front",
       "image": "sereno_estacion.png"
     },
     {
       "id": "crea_232",
       "name": "Sereno de la Usina Cerrada",
       "category": "criaturas",
+      "face": "front",
       "image": "sereno_de_la_usina_cerrada.png"
     },
     {
       "id": "crea_122",
       "name": "Sereno del Faro Viejo",
       "category": "criaturas",
+      "face": "front",
       "image": "sereno_faro_viejo.png"
     },
     {
       "id": "crea_165",
       "name": "Sereno del Hospital Viejo",
       "category": "criaturas",
+      "face": "front",
       "image": "sereno_del_hospital_viejo.png"
     },
     {
       "id": "crea_268",
       "name": "Sereno del Mercado de Frutos",
       "category": "criaturas",
+      "face": "front",
       "image": "sereno_del_mercado_de_frutos.png"
+    },
+    {
+      "id": "crea_322",
+      "name": "Sereno del Último Tren",
+      "category": "criaturas",
+      "face": "front",
+      "image": "sereno_del_ultimo_tren.png"
+    },
+    {
+      "id": "crea_288",
+      "name": "Señalero de Plaza Constitución",
+      "category": "criaturas",
+      "face": "front",
+      "image": "senalero_de_plaza_constitucion.png"
     },
     {
       "id": "crea_187",
       "name": "Soldador del Astillero",
       "category": "criaturas",
+      "face": "front",
       "image": "soldador_del_astillero.png"
     },
     {
       "id": "crea_230",
       "name": "Solo de Guitarra en Llamas",
       "category": "criaturas",
+      "face": "front",
       "image": "solo_de_guitarra_en_llamas.png"
     },
     {
       "id": "crea_090",
       "name": "Sombra del Pasillo",
       "category": "criaturas",
+      "face": "front",
       "image": "sombra_pasillo.png"
     },
     {
       "id": "crea_280",
       "name": "Sommelier de Guardia",
       "category": "criaturas",
+      "face": "front",
       "image": "sommelier_de_guardia.png"
+    },
+    {
+      "id": "crea_289",
+      "name": "Supervisora de Señales de Retiro",
+      "category": "criaturas",
+      "face": "front",
+      "image": "supervisora_de_senales_de_retiro.png"
     },
     {
       "id": "crea_032",
       "name": "Susana Giménez",
       "category": "criaturas",
+      "face": "front",
       "image": "susana_gimenez.png"
+    },
+    {
+      "id": "crea_326",
+      "name": "Séptimo Hijo del Barrio",
+      "category": "criaturas",
+      "face": "front",
+      "image": "septimo_hijo_del_barrio.png"
     },
     {
       "id": "crea_212",
       "name": "Tamalerita del Velorio",
       "category": "criaturas",
+      "face": "front",
       "image": "tamalerita_del_velorio.png"
+    },
+    {
+      "id": "crea_294",
+      "name": "Tasador de Chacarita",
+      "category": "criaturas",
+      "face": "front",
+      "image": "tasador_de_chacarita.png"
     },
     {
       "id": "crea_174",
       "name": "Telegrafista de Ushuaia",
       "category": "criaturas",
+      "face": "front",
       "image": "telegrafista_de_ushuaia.png"
+    },
+    {
+      "id": "crea_347",
+      "name": "Tero Centinela de la Cancha",
+      "category": "criaturas",
+      "face": "front",
+      "image": "tero_centinela_de_la_cancha.png"
+    },
+    {
+      "id": "crea_318",
+      "name": "Topadora del Obrador Infinito",
+      "category": "criaturas",
+      "face": "front",
+      "image": "topadora_del_obrador_infinito.png"
     },
     {
       "id": "crea_248",
       "name": "Toro Blanco de la Vendimia",
       "category": "criaturas",
+      "face": "front",
       "image": "toro_blanco_de_la_vendimia.png"
     },
     {
       "id": "crea_238",
       "name": "Toro de la Salamanca Baja",
       "category": "criaturas",
+      "face": "front",
       "image": "toro_de_la_salamanca_baja.png"
+    },
+    {
+      "id": "crea_345",
+      "name": "Toro del Corral de Piedra",
+      "category": "criaturas",
+      "face": "front",
+      "image": "toro_del_corral_de_piedra.png"
     },
     {
       "id": "crea_125",
       "name": "Toro del Pedregal",
       "category": "criaturas",
+      "face": "front",
       "image": "toro_pedregal.png"
     },
     {
       "id": "crea_246",
       "name": "Toro del Rodeo de Fuego",
       "category": "criaturas",
+      "face": "front",
       "image": "toro_del_rodeo_de_fuego.png"
     },
     {
       "id": "crea_063",
       "name": "Trepadora del Cerro",
       "category": "criaturas",
+      "face": "front",
       "image": "trepadora_cerro.png"
+    },
+    {
+      "id": "crea_327",
+      "name": "Turista de Cataratas",
+      "category": "criaturas",
+      "face": "front",
+      "image": "turista_de_cataratas.png"
+    },
+    {
+      "id": "crea_290",
+      "name": "Técnico de Atucha II",
+      "category": "criaturas",
+      "face": "front",
+      "image": "tecnico_de_atucha_ii.png"
     },
     {
       "id": "crea_007",
       "name": "Vecina Chismosa",
       "category": "criaturas",
+      "face": "front",
       "image": "vecina_chismosa.png"
     },
     {
       "id": "crea_079",
       "name": "Vecina de la Cooperadora",
       "category": "criaturas",
+      "face": "front",
       "image": "vecina_cooperadora.png"
     },
     {
       "id": "crea_037",
       "name": "Vecino Metiche",
       "category": "criaturas",
+      "face": "front",
       "image": "vecina_metiche.png"
     },
     {
       "id": "crea_127",
       "name": "Velador del Cementerio Viejo",
       "category": "criaturas",
+      "face": "front",
       "image": "velador_cementerio_viejo.png"
     },
     {
       "id": "crea_160",
       "name": "Veladora del Santuario Gris",
       "category": "criaturas",
+      "face": "front",
       "image": "veladora_santuario_gris.png"
     },
     {
       "id": "crea_072",
       "name": "Vendedor Ambulante",
       "category": "criaturas",
+      "face": "front",
       "image": "vendedor_ambulante.png"
     },
     {
       "id": "crea_009",
       "name": "Vendedora de Chipá",
       "category": "criaturas",
+      "face": "front",
       "image": "vendedora_chipa.png"
+    },
+    {
+      "id": "crea_303",
+      "name": "Vendedora del Andén Nueve",
+      "category": "criaturas",
+      "face": "front",
+      "image": "vendedora_del_anden_nueve.png"
     },
     {
       "id": "crea_061",
       "name": "Verdulera del Mercado",
       "category": "criaturas",
+      "face": "front",
       "image": "verdulera_mercado.png"
     },
     {
       "id": "crea_048",
       "name": "Vigía de la Niebla",
       "category": "criaturas",
+      "face": "front",
       "image": "vigia_niebla.png"
     },
     {
       "id": "crea_172",
       "name": "Vigía del Radar Costero",
       "category": "criaturas",
+      "face": "front",
       "image": "vigia_del_radar_costero.png"
     },
     {
       "id": "crea_092",
       "name": "Viuda del Callejón",
       "category": "criaturas",
+      "face": "front",
       "image": "viuda_callejon.png"
     },
     {
       "id": "crea_181",
       "name": "Viuda del Hotel Cerrado",
       "category": "criaturas",
+      "face": "front",
       "image": "viuda_del_hotel_cerrado.png"
     },
     {
       "id": "crea_144",
       "name": "Viuda del Kilómetro 9",
       "category": "criaturas",
+      "face": "front",
       "image": "viuda_kilometro_9.png"
     },
     {
       "id": "crea_234",
       "name": "Viuda del Patio Interno",
       "category": "criaturas",
+      "face": "front",
       "image": "viuda_del_patio_interno.png"
     },
     {
       "id": "crea_224",
       "name": "Viñatero del Cementerio",
       "category": "criaturas",
+      "face": "front",
       "image": "vinatero_del_cementerio.png"
     },
     {
       "id": "crea_137",
       "name": "Voluntaria del Club de Barrio",
       "category": "criaturas",
+      "face": "front",
       "image": "voluntaria_club_barrio.png"
     },
     {
       "id": "crea_118",
       "name": "Víbora del Pajonal",
       "category": "criaturas",
+      "face": "front",
       "image": "vibora_pajonal.png"
     },
     {
       "id": "crea_113",
       "name": "Yacaré del Bañado",
       "category": "criaturas",
+      "face": "front",
       "image": "yacare_banado.png"
+    },
+    {
+      "id": "crea_343",
+      "name": "Yaguareté del Iberá Profundo",
+      "category": "criaturas",
+      "face": "front",
+      "image": "yaguarete_del_ibera_profundo.png"
     },
     {
       "id": "crea_237",
       "name": "Yaguareté del Monte Quemado",
       "category": "criaturas",
+      "face": "front",
       "image": "yaguarete_del_monte_quemado.png"
     },
     {
       "id": "crea_073",
       "name": "Yarará",
       "category": "criaturas",
+      "face": "front",
       "image": "yarara.png"
+    },
+    {
+      "id": "crea_330",
+      "name": "Yuyera de Traslasierra",
+      "category": "criaturas",
+      "face": "front",
+      "image": "yuyera_de_traslasierra.png"
     },
     {
       "id": "crea_162",
       "name": "Yuyero del Bañado",
       "category": "criaturas",
+      "face": "front",
       "image": "yuyero_banado.png"
     },
     {
       "id": "crea_050",
       "name": "Ángel del Descampado",
       "category": "criaturas",
+      "face": "front",
       "image": "angel_descampado.png"
+    },
+    {
+      "id": "crea_341",
+      "name": "Ánima del Último Tren",
+      "category": "criaturas",
+      "face": "front",
+      "image": "anima_del_ultimo_tren.png"
     },
     {
       "id": "crea_111",
       "name": "Ñandú de la Llanura",
       "category": "criaturas",
+      "face": "front",
       "image": "nandu_llanura.png"
     },
     {
       "id": "ench_015",
       "name": "Aguante del Fondo",
       "category": "encantamientos",
+      "face": "front",
       "image": "aguante_fondo.png"
     },
     {
       "id": "ench_019",
       "name": "Alarma Vecinal",
       "category": "encantamientos",
+      "face": "front",
       "image": "alarma_vecinal.png"
     },
     {
       "id": "ench_065",
       "name": "Alarma de Fábrica",
       "category": "encantamientos",
+      "face": "front",
       "image": "alarma_de_fabrica.png"
     },
     {
       "id": "ench_010",
       "name": "Alpargatas Aladas",
       "category": "encantamientos",
+      "face": "front",
       "image": "alpargatas.png"
     },
     {
       "id": "ench_071",
       "name": "Archivo Bajo Llave",
       "category": "encantamientos",
+      "face": "front",
       "image": "archivo_bajo_llave.png"
+    },
+    {
+      "id": "ench_096",
+      "name": "Archivo Provisorio",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "archivo_provisorio.png"
     },
     {
       "id": "ench_067",
       "name": "Archivo de Causas Cerradas",
       "category": "encantamientos",
+      "face": "front",
       "image": "archivo_de_causas_cerradas.png"
+    },
+    {
+      "id": "ench_105",
+      "name": "Archivo de Metamorfosis",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "archivo_de_metamorfosis.png"
     },
     {
       "id": "ench_039",
       "name": "Asfalto Hirviendo",
       "category": "encantamientos",
+      "face": "front",
       "image": "asfalto_hirviendo.png"
+    },
+    {
+      "id": "ench_073",
+      "name": "Barreras Bajas de Constitución",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "barreras_bajas_de_constitucion.png"
     },
     {
       "id": "ench_016",
       "name": "Bengala de Cancha",
       "category": "encantamientos",
+      "face": "front",
       "image": "bengala_cancha.png"
     },
     {
       "id": "ench_040",
       "name": "Brotación del Terraplén",
       "category": "encantamientos",
+      "face": "front",
       "image": "brotacion_terraplen.png"
     },
     {
       "id": "ench_031",
       "name": "Bufanda de la Tribuna",
       "category": "encantamientos",
+      "face": "front",
       "image": "bufanda_tribuna.png"
     },
     {
       "id": "ench_059",
       "name": "Cables Pelados de Dock Sud",
       "category": "encantamientos",
+      "face": "front",
       "image": "cables_pelados_de_dock_sud.png"
+    },
+    {
+      "id": "ench_101",
+      "name": "Calendario Oficial",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "calendario_oficial.png"
+    },
+    {
+      "id": "ench_098",
+      "name": "Calendario de Pared",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "calendario_de_pared.png"
     },
     {
       "id": "ench_064",
       "name": "Cambio de Administración",
       "category": "encantamientos",
+      "face": "front",
       "image": "cambio_de_administracion.png"
     },
     {
       "id": "ench_045",
       "name": "Campanas del Velorio",
       "category": "encantamientos",
+      "face": "front",
       "image": "campanas_del_velorio.png"
     },
     {
       "id": "ench_029",
       "name": "Campera Prestada",
       "category": "encantamientos",
+      "face": "front",
       "image": "campera_prestada.png"
+    },
+    {
+      "id": "ench_103",
+      "name": "Cielo Después del Rayo",
+      "category": "encantamientos",
+      "face": "back",
+      "image": "cielo_despues_del_rayo.png"
     },
     {
       "id": "ench_028",
       "name": "Cinta de la Promesa",
       "category": "encantamientos",
+      "face": "front",
       "image": "cinta_promesa.png"
+    },
+    {
+      "id": "ench_106",
+      "name": "Club de la Misma Camiseta",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "club_de_la_misma_camiseta.png"
     },
     {
       "id": "ench_022",
       "name": "Consejo de la Cuadra",
       "category": "encantamientos",
+      "face": "front",
       "image": "consejo_cuadra.png"
     },
     {
       "id": "ench_068",
       "name": "Cooperativa del Puente Pueyrredón",
       "category": "encantamientos",
+      "face": "front",
       "image": "cooperativa_del_puente_pueyrredon.png"
     },
     {
       "id": "ench_025",
       "name": "Corriente Subterránea",
       "category": "encantamientos",
+      "face": "front",
       "image": "corriente_subterranea.png"
     },
     {
       "id": "ench_036",
       "name": "Cuaderno del Sepulturero",
       "category": "encantamientos",
+      "face": "front",
       "image": "cuaderno_sepulturero.png"
     },
     {
       "id": "ench_001",
       "name": "Cumbia Santafesina",
       "category": "encantamientos",
+      "face": "front",
       "image": "cumbia.png"
     },
     {
       "id": "ench_024",
       "name": "Custodia del titán",
       "category": "encantamientos",
+      "face": "front",
       "image": "custodia_titan.png"
     },
     {
       "id": "ench_026",
       "name": "Ecos del Puerto",
       "category": "encantamientos",
+      "face": "front",
       "image": "ecos_puerto.png"
+    },
+    {
+      "id": "ench_077",
+      "name": "El Cabildo Abre sus Puertas",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "el_cabildo_abre_sus_puertas.png"
+    },
+    {
+      "id": "ench_084",
+      "name": "El Cordobazo",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "el_cordobazo.png"
+    },
+    {
+      "id": "ench_089",
+      "name": "El Cruce de los Andes",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "el_cruce_de_los_andes.png"
+    },
+    {
+      "id": "ench_100",
+      "name": "El Día Finalmente Llega",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "el_dia_finalmente_llega.png"
+    },
+    {
+      "id": "ench_083",
+      "name": "El Pacto de la Salamanca",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "el_pacto_de_la_salamanca.png"
+    },
+    {
+      "id": "ench_085",
+      "name": "El Rock Nacional Sale a la Calle",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "el_rock_nacional_sale_a_la_calle.png"
+    },
+    {
+      "id": "ench_088",
+      "name": "El Éxodo Jujeño",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "el_exodo_jujeno.png"
     },
     {
       "id": "ench_032",
       "name": "Espuelas de Chispa",
       "category": "encantamientos",
+      "face": "front",
       "image": "espuelas_chispa.png"
     },
     {
       "id": "ench_023",
       "name": "Espíritu del Monte",
       "category": "encantamientos",
+      "face": "front",
       "image": "espiritu_monte.png"
     },
     {
       "id": "ench_055",
       "name": "Expediente 147 Bis",
       "category": "encantamientos",
+      "face": "front",
       "image": "expediente_147_bis.png"
+    },
+    {
+      "id": "ench_097",
+      "name": "Feria de Ventana Abierta",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "feria_de_ventana_abierta.png"
     },
     {
       "id": "ench_018",
       "name": "Fogón de la Previa",
       "category": "encantamientos",
+      "face": "front",
       "image": "fogon_previa.png"
     },
     {
       "id": "ench_034",
       "name": "Frecuencia Fantasma",
       "category": "encantamientos",
+      "face": "front",
       "image": "frecuencia_fantasma.png"
     },
     {
       "id": "ench_044",
       "name": "Frecuencia Intervenida",
       "category": "encantamientos",
+      "face": "front",
       "image": "frecuencia_intervenida.png"
+    },
+    {
+      "id": "ench_107",
+      "name": "Frecuencia de la Misma Banda",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "frecuencia_de_la_misma_banda.png"
     },
     {
       "id": "ench_005",
       "name": "Fuerza de la Manada",
       "category": "encantamientos",
+      "face": "front",
       "image": "fuerza_manada.png"
     },
     {
       "id": "ench_017",
       "name": "Grito de Guerra",
       "category": "encantamientos",
+      "face": "front",
       "image": "grito_guerra.png"
     },
     {
       "id": "ench_003",
       "name": "Hinchada Fervorosa",
       "category": "encantamientos",
+      "face": "front",
       "image": "hinchada.png"
     },
     {
       "id": "ench_058",
       "name": "Hora Pico en General Paz",
       "category": "encantamientos",
+      "face": "front",
       "image": "hora_pico_en_general_paz.png"
     },
     {
       "id": "ench_030",
       "name": "Humedad del Sótano",
       "category": "encantamientos",
+      "face": "front",
       "image": "humedad_sotano.png"
     },
     {
       "id": "ench_062",
       "name": "Jardines de Palermo",
       "category": "encantamientos",
+      "face": "front",
       "image": "jardines_de_palermo.png"
+    },
+    {
+      "id": "ench_092",
+      "name": "La Argentina de las Mil Historias",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "la_argentina_de_las_mil_historias.png"
+    },
+    {
+      "id": "ench_078",
+      "name": "La Crecida del Paraná",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "la_crecida_del_parana.png"
+    },
+    {
+      "id": "ench_086",
+      "name": "La Final del Ochenta y Seis",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "la_final_del_ochenta_y_seis.png"
+    },
+    {
+      "id": "ench_081",
+      "name": "La Luz Mala Cruza el Camino",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "la_luz_mala_cruza_el_camino.png"
+    },
+    {
+      "id": "ench_090",
+      "name": "La Nieve Cubre Buenos Aires",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "la_nieve_cubre_buenos_aires.png"
+    },
+    {
+      "id": "ench_079",
+      "name": "La Noche del Gran Apagón",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "la_noche_del_gran_apagon.png"
+    },
+    {
+      "id": "ench_091",
+      "name": "La Reconquista de Buenos Aires",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "la_reconquista_de_buenos_aires.png"
+    },
+    {
+      "id": "ench_075",
+      "name": "La Revolución de Mayo",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "la_revolucion_de_mayo.png"
+    },
+    {
+      "id": "ench_080",
+      "name": "La Ruta 40 de Punta a Punta",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "la_ruta_40_de_punta_a_punta.png"
+    },
+    {
+      "id": "ench_102",
+      "name": "La Salamanca Despierta",
+      "category": "encantamientos",
+      "face": "back",
+      "image": "la_salamanca_despierta.png"
     },
     {
       "id": "ench_004",
       "name": "La Scaloneta",
       "category": "encantamientos",
+      "face": "front",
       "image": "scaloneta.png"
+    },
+    {
+      "id": "ench_082",
+      "name": "La Séptima Noche del Lobizón",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "la_septima_noche_del_lobizon.png"
+    },
+    {
+      "id": "ench_087",
+      "name": "La Vendimia Comienza",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "la_vendimia_comienza.png"
+    },
+    {
+      "id": "ench_076",
+      "name": "La Vuelta de Obligado",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "la_vuelta_de_obligado.png"
     },
     {
       "id": "ench_057",
       "name": "Laberinto de Parque Chas",
       "category": "encantamientos",
+      "face": "front",
       "image": "laberinto_de_parque_chas.png"
     },
     {
       "id": "ench_014",
       "name": "Letanía del Cementerio",
       "category": "encantamientos",
+      "face": "front",
       "image": "letania_cementerio.png"
     },
     {
       "id": "ench_050",
       "name": "Ley del Monte",
       "category": "encantamientos",
+      "face": "front",
       "image": "ley_del_monte.png"
+    },
+    {
+      "id": "ench_102",
+      "name": "Leyenda Susurrada en la Salamanca",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "leyenda_susurrada_en_la_salamanca.png"
     },
     {
       "id": "ench_046",
       "name": "Libro Negro de Turnos",
       "category": "encantamientos",
+      "face": "front",
       "image": "libro_negro_de_turnos.png"
     },
     {
       "id": "ench_037",
       "name": "Libro de Actas Negras",
       "category": "encantamientos",
+      "face": "front",
       "image": "libro_actas_negras.png"
     },
     {
       "id": "ench_061",
       "name": "Luna Roja sobre Avellaneda",
       "category": "encantamientos",
+      "face": "front",
       "image": "luna_roja_sobre_avellaneda.png"
     },
     {
       "id": "ench_012",
       "name": "Maldición del Yaguareté",
       "category": "encantamientos",
+      "face": "front",
       "image": "maldicion_yaguarete.png"
     },
     {
       "id": "ench_035",
       "name": "Marea de Fondo",
       "category": "encantamientos",
+      "face": "front",
       "image": "marea_de_fondo.png"
+    },
+    {
+      "id": "ench_093",
+      "name": "Memoria Colectiva",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "memoria_colectiva.png"
     },
     {
       "id": "ench_070",
       "name": "Mercado Paralelo",
       "category": "encantamientos",
+      "face": "front",
       "image": "mercado_paralelo.png"
+    },
+    {
+      "id": "ench_095",
+      "name": "Mercado de Oportunidades",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "mercado_de_oportunidades.png"
     },
     {
       "id": "ench_052",
       "name": "Mesa Larga de la Última Noche",
       "category": "encantamientos",
+      "face": "front",
       "image": "mesa_larga_de_la_ultima_noche.png"
     },
     {
       "id": "ench_069",
       "name": "Mesa de Entradas",
       "category": "encantamientos",
+      "face": "front",
       "image": "mesa_de_entradas.png"
     },
     {
       "id": "ench_002",
       "name": "Milonga de Medianoche",
       "category": "encantamientos",
+      "face": "front",
       "image": "milonga.png"
     },
     {
       "id": "ench_047",
       "name": "Murga en la Avenida",
       "category": "encantamientos",
+      "face": "front",
       "image": "murga_en_la_avenida.png"
     },
     {
       "id": "ench_013",
       "name": "Pacto de Sangre",
       "category": "encantamientos",
+      "face": "front",
       "image": "pacto_sangre.png"
+    },
+    {
+      "id": "ench_094",
+      "name": "Pantalla de Salidas",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "pantalla_de_salidas.png"
     },
     {
       "id": "ench_054",
       "name": "Pogo Bajo la Tormenta",
       "category": "encantamientos",
+      "face": "front",
       "image": "pogo_bajo_la_tormenta.png"
     },
     {
       "id": "ench_009",
       "name": "Poncho del Paisano",
       "category": "encantamientos",
+      "face": "front",
       "image": "poncho.png"
     },
     {
       "id": "ench_056",
       "name": "Promesa Atada al Algarrobo",
       "category": "encantamientos",
+      "face": "front",
       "image": "promesa_atada_al_algarrobo.png"
     },
     {
       "id": "ench_042",
       "name": "Promesa Cumplida",
       "category": "encantamientos",
+      "face": "front",
       "image": "promesa_cumplida.png"
     },
     {
       "id": "ench_038",
       "name": "Radio a Todo Volumen",
       "category": "encantamientos",
+      "face": "front",
       "image": "radio_todo_volumen.png"
     },
     {
       "id": "ench_021",
       "name": "Raíces de la Terraza",
       "category": "encantamientos",
+      "face": "front",
       "image": "raices_terraza.png"
     },
     {
       "id": "ench_011",
       "name": "Rebenque Filoso",
       "category": "encantamientos",
+      "face": "front",
       "image": "rebenque.png"
     },
     {
       "id": "ench_049",
       "name": "Reserva Cercada",
       "category": "encantamientos",
+      "face": "front",
       "image": "reserva_cercada.png"
     },
     {
       "id": "ench_008",
       "name": "Rezo de la Abuela",
       "category": "encantamientos",
+      "face": "front",
       "image": "rezo_abuela.png"
+    },
+    {
+      "id": "ench_072",
+      "name": "Sala de Guardia del Posadas",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "sala_de_guardia_del_posadas.png"
     },
     {
       "id": "ench_043",
       "name": "Sala de Monitoreo",
       "category": "encantamientos",
+      "face": "front",
       "image": "sala_de_monitoreo.png"
+    },
+    {
+      "id": "ench_108",
+      "name": "Santuario de las Ánimas",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "santuario_de_las_animas.png"
     },
     {
       "id": "ench_033",
       "name": "Savia del Ombú",
       "category": "encantamientos",
+      "face": "front",
       "image": "savia_ombu.png"
+    },
+    {
+      "id": "ench_104",
+      "name": "Segunda Naturaleza",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "segunda_naturaleza.png"
     },
     {
       "id": "ench_048",
       "name": "Sirena de Fábrica",
       "category": "encantamientos",
+      "face": "front",
       "image": "sirena_de_fabrica.png"
     },
     {
       "id": "ench_020",
       "name": "Susurro del Río",
       "category": "encantamientos",
+      "face": "front",
       "image": "susurro_rio.png"
+    },
+    {
+      "id": "ench_074",
+      "name": "Taller de Bobinas de Dock Sud",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "taller_de_bobinas_de_dock_sud.png"
     },
     {
       "id": "ench_053",
       "name": "Taller de la Medianoche",
       "category": "encantamientos",
+      "face": "front",
       "image": "taller_de_la_medianoche.png"
     },
     {
       "id": "ench_007",
       "name": "Toque de Queda",
       "category": "encantamientos",
+      "face": "front",
       "image": "toque_de_queda.png"
+    },
+    {
+      "id": "ench_103",
+      "name": "Tormenta sobre la Pampa",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "tormenta_sobre_la_pampa.png"
+    },
+    {
+      "id": "ench_099",
+      "name": "Trámite sin Fin",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "tramite_sin_fin.png"
     },
     {
       "id": "ench_041",
       "name": "Turno de Guardia",
       "category": "encantamientos",
+      "face": "front",
       "image": "turno_de_guardia.png"
     },
     {
       "id": "ench_060",
       "name": "Usina de Costanera Sur",
       "category": "encantamientos",
+      "face": "front",
       "image": "usina_de_costanera_sur.png"
     },
     {
       "id": "ench_027",
       "name": "Velo de Bruma",
       "category": "encantamientos",
+      "face": "front",
       "image": "velo_bruma.png"
     },
     {
       "id": "ench_051",
       "name": "Velorio bajo el Ceibo",
       "category": "encantamientos",
+      "face": "front",
       "image": "velorio_bajo_el_ceibo.png"
     },
     {
       "id": "ench_006",
       "name": "Viento Pampero",
       "category": "encantamientos",
+      "face": "front",
       "image": "viento_pampero.png"
     },
     {
       "id": "ench_066",
       "name": "Vivero Experimental de Escobar",
       "category": "encantamientos",
+      "face": "front",
       "image": "vivero_experimental_de_escobar.png"
     },
     {
       "id": "ench_063",
       "name": "Zona Franca de Ezeiza",
       "category": "encantamientos",
+      "face": "front",
       "image": "zona_franca_de_ezeiza.png"
     },
     {
       "id": "inst_013",
       "name": "A Cubierto",
       "category": "instantaneos",
+      "face": "front",
       "image": "a_cubierto.png"
     },
     {
       "id": "inst_053",
       "name": "A las Chapas",
       "category": "instantaneos",
+      "face": "front",
       "image": "a_las_chapas.png"
+    },
+    {
+      "id": "inst_134",
+      "name": "Abrir en Otra Pestaña",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "abrir_en_otra_pestana.png"
+    },
+    {
+      "id": "inst_135",
+      "name": "Adelantar el Reloj",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "adelantar_el_reloj.png"
     },
     {
       "id": "inst_050",
       "name": "Agarrá Viento",
       "category": "instantaneos",
+      "face": "front",
       "image": "agarra_viento.png"
     },
     {
       "id": "inst_103",
       "name": "Agua Bendita al Motor",
       "category": "instantaneos",
+      "face": "front",
       "image": "agua_bendita_al_motor.png"
+    },
+    {
+      "id": "inst_146",
+      "name": "Alas en Formación",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "alas_en_formacion.png"
     },
     {
       "id": "inst_003",
       "name": "Amparo Judicial",
       "category": "instantaneos",
+      "face": "front",
       "image": "amparo.png"
+    },
+    {
+      "id": "inst_130",
+      "name": "Antes de que Cierre",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "antes_de_que_cierre.png"
     },
     {
       "id": "inst_052",
       "name": "Apagón del Pasillo",
       "category": "instantaneos",
+      "face": "front",
       "image": "apagon_pasillo.png"
+    },
+    {
+      "id": "inst_126",
+      "name": "Arrancar el Blindaje",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "arrancar_el_blindaje.png"
+    },
+    {
+      "id": "inst_147",
+      "name": "Aullar a la Medianoche",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "aullar_a_la_medianoche.png"
     },
     {
       "id": "inst_047",
       "name": "Bancá la Parada",
       "category": "instantaneos",
+      "face": "front",
       "image": "banca_parada.png"
     },
     {
       "id": "inst_039",
       "name": "Bengala de Repuesto",
       "category": "instantaneos",
+      "face": "front",
       "image": "bengala_repuesto.png"
     },
     {
       "id": "inst_009",
       "name": "Beso en la Mejilla",
       "category": "instantaneos",
+      "face": "front",
       "image": "beso_mejilla.png"
     },
     {
       "id": "inst_090",
       "name": "Bis del Bandoneón",
       "category": "instantaneos",
+      "face": "front",
       "image": "bis_del_bandoneon.png"
     },
     {
       "id": "inst_010",
       "name": "Cacerolazo de Barrio",
       "category": "instantaneos",
+      "face": "front",
       "image": "cacerolazo.png"
     },
     {
       "id": "inst_112",
       "name": "Cadena Humana",
       "category": "instantaneos",
+      "face": "front",
       "image": "cadena_humana.png"
     },
     {
       "id": "inst_058",
       "name": "Cadena de Favores",
       "category": "instantaneos",
+      "face": "front",
       "image": "cadena_favores.png"
     },
     {
       "id": "inst_077",
       "name": "Cambio de Frecuencia",
       "category": "instantaneos",
+      "face": "front",
       "image": "cambio_de_frecuencia.png"
+    },
+    {
+      "id": "inst_141",
+      "name": "Cambio de Perspectiva",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "cambio_de_perspectiva.png"
     },
     {
       "id": "inst_068",
       "name": "Campanazo de Alerta",
       "category": "instantaneos",
+      "face": "front",
       "image": "campanazo_de_alerta.png"
+    },
+    {
+      "id": "inst_125",
+      "name": "Carga de Emergencia",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "carga_de_emergencia.png"
     },
     {
       "id": "inst_117",
       "name": "Carpeta con Fojas Faltantes",
       "category": "instantaneos",
+      "face": "front",
       "image": "carpeta_con_fojas_faltantes.png"
     },
     {
       "id": "inst_016",
       "name": "Che, Volvé",
       "category": "instantaneos",
+      "face": "front",
       "image": "che_volve.png"
     },
     {
       "id": "inst_102",
       "name": "Chispa de la Tormenta de Verano",
       "category": "instantaneos",
+      "face": "front",
       "image": "chispa_de_la_tormenta_de_verano.png"
     },
     {
       "id": "inst_089",
       "name": "Chispa del Pogo",
       "category": "instantaneos",
+      "face": "front",
       "image": "chispa_del_pogo.png"
     },
     {
       "id": "inst_063",
       "name": "Chispa del Transformador",
       "category": "instantaneos",
+      "face": "front",
       "image": "chispa_transformador.png"
     },
     {
       "id": "inst_023",
       "name": "Chispazo",
       "category": "instantaneos",
+      "face": "front",
       "image": "chispazo.png"
     },
     {
       "id": "inst_057",
       "name": "Cierre de Persiana",
       "category": "instantaneos",
+      "face": "front",
       "image": "cierre_persiana.png"
+    },
+    {
+      "id": "inst_133",
+      "name": "Clave Prestada",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "clave_prestada.png"
+    },
+    {
+      "id": "inst_121",
+      "name": "Cobertura de Guardia",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "cobertura_de_guardia.png"
     },
     {
       "id": "inst_072",
       "name": "Cobro Pendiente",
       "category": "instantaneos",
+      "face": "front",
       "image": "cobro_pendiente.png"
     },
     {
       "id": "inst_078",
       "name": "Cobro con Intereses",
       "category": "instantaneos",
+      "face": "front",
       "image": "cobro_con_intereses.png"
     },
     {
       "id": "inst_061",
       "name": "Cobro por Adelantado",
       "category": "instantaneos",
+      "face": "front",
       "image": "cobro_adelantado.png"
     },
     {
       "id": "inst_015",
       "name": "Codazo Bajo el Agua",
       "category": "instantaneos",
+      "face": "front",
       "image": "codazo_bajo_el_agua.png"
     },
     {
       "id": "inst_046",
       "name": "Colmillo de Yarará",
       "category": "instantaneos",
+      "face": "front",
       "image": "colmillo_yarara.png"
+    },
+    {
+      "id": "inst_122",
+      "name": "Cordón Sanitario",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "cordon_sanitario.png"
     },
     {
       "id": "inst_001",
       "name": "Corta la Bocha",
       "category": "instantaneos",
+      "face": "front",
       "image": "corta_bocha.png"
+    },
+    {
+      "id": "inst_137",
+      "name": "Cortar la Espera",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "cortar_la_espera.png"
     },
     {
       "id": "inst_018",
       "name": "Corte de Manga",
       "category": "instantaneos",
+      "face": "front",
       "image": "corte_de_manga.png"
     },
     {
       "id": "inst_059",
       "name": "Corte de Señal",
       "category": "instantaneos",
+      "face": "front",
       "image": "corte_senal.png"
     },
     {
       "id": "inst_107",
       "name": "Corte en Puente La Noria",
       "category": "instantaneos",
+      "face": "front",
       "image": "corte_en_puente_la_noria.png"
     },
     {
       "id": "inst_073",
       "name": "Cortocircuito del Transformador",
       "category": "instantaneos",
+      "face": "front",
       "image": "cortocircuito_del_transformador.png"
     },
     {
       "id": "inst_101",
       "name": "Cruce de Caminos en la Pulpería",
       "category": "instantaneos",
+      "face": "front",
       "image": "cruce_de_caminos_en_la_pulperia.png"
     },
     {
       "id": "inst_067",
       "name": "Cubrir la Retaguardia",
       "category": "instantaneos",
+      "face": "front",
       "image": "cubrir_la_retaguardia.png"
     },
     {
       "id": "inst_055",
       "name": "Dale que Va",
       "category": "instantaneos",
+      "face": "front",
       "image": "dale_que_va.png"
+    },
+    {
+      "id": "inst_144",
+      "name": "Dar Vuelta la Historia",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "dar_vuelta_la_historia.png"
     },
     {
       "id": "inst_116",
       "name": "Dato de Último Momento",
       "category": "instantaneos",
+      "face": "front",
       "image": "dato_de_ultimo_momento.png"
     },
     {
       "id": "inst_037",
       "name": "Decisión de Último Momento",
       "category": "instantaneos",
+      "face": "front",
       "image": "decision_ultimo_momento.png"
     },
     {
       "id": "inst_004",
       "name": "Decreto de Urgencia (DNU)",
       "category": "instantaneos",
+      "face": "front",
       "image": "dnu.png"
+    },
+    {
+      "id": "inst_136",
+      "name": "Demora Administrativa",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "demora_administrativa.png"
+    },
+    {
+      "id": "inst_123",
+      "name": "Demora en la Línea D",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "demora_en_la_linea_d.png"
     },
     {
       "id": "inst_005",
       "name": "Derecho de Admisión",
       "category": "instantaneos",
+      "face": "front",
       "image": "derecho_admision.png"
     },
     {
       "id": "inst_036",
       "name": "Descarga Callejera",
       "category": "instantaneos",
+      "face": "front",
       "image": "descarga_callejera.png"
     },
     {
       "id": "inst_019",
       "name": "Destierro del barrio",
       "category": "instantaneos",
+      "face": "front",
       "image": "destierro.png"
     },
     {
       "id": "inst_069",
       "name": "Desviar la Señal",
       "category": "instantaneos",
+      "face": "front",
       "image": "desviar_la_senal.png"
     },
     {
       "id": "inst_079",
       "name": "Desvío por el Humedal",
       "category": "instantaneos",
+      "face": "front",
       "image": "desvio_por_el_humedal.png"
     },
     {
       "id": "inst_096",
       "name": "Eco Azul del Aljibe",
       "category": "instantaneos",
+      "face": "front",
       "image": "eco_azul_del_aljibe.png"
     },
     {
       "id": "inst_100",
       "name": "Eco del Bandoneón Mojado",
       "category": "instantaneos",
+      "face": "front",
       "image": "eco_del_bandoneon_mojado.png"
+    },
+    {
+      "id": "inst_128",
+      "name": "Eco del Capítulo",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "eco_del_capitulo.png"
     },
     {
       "id": "inst_066",
       "name": "Embate del Alambrado",
       "category": "instantaneos",
+      "face": "front",
       "image": "embate_alambrado.png"
     },
     {
       "id": "inst_075",
       "name": "Enredar las Ruedas",
       "category": "instantaneos",
+      "face": "front",
       "image": "enredar_las_ruedas.png"
+    },
+    {
+      "id": "inst_145",
+      "name": "Ensayo General",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "ensayo_general.png"
     },
     {
       "id": "inst_049",
       "name": "Entre Líneas",
       "category": "instantaneos",
+      "face": "front",
       "image": "entre_lineas.png"
     },
     {
       "id": "inst_115",
       "name": "Envión del Terraplén",
       "category": "instantaneos",
+      "face": "front",
       "image": "envion_del_terraplen.png"
     },
     {
       "id": "inst_113",
       "name": "Expediente Bajo Tierra",
       "category": "instantaneos",
+      "face": "front",
       "image": "expediente_bajo_tierra.png"
     },
     {
       "id": "inst_022",
       "name": "Explosión de Bengalas",
       "category": "instantaneos",
+      "face": "front",
       "image": "explosion_bengalas.png"
     },
     {
       "id": "inst_094",
       "name": "Faconazo del Monte",
       "category": "instantaneos",
+      "face": "front",
       "image": "faconazo_del_monte.png"
     },
     {
       "id": "inst_007",
       "name": "Fernet con Cola",
       "category": "instantaneos",
+      "face": "front",
       "image": "fernet.png"
     },
     {
       "id": "inst_012",
       "name": "Fuerza de Toro",
       "category": "instantaneos",
+      "face": "front",
       "image": "fuerza_de_toro.png"
     },
     {
       "id": "inst_076",
       "name": "Fuerza del Ombú",
       "category": "instantaneos",
+      "face": "front",
       "image": "fuerza_del_ombu.png"
     },
     {
       "id": "inst_006",
       "name": "Gambeta Diabólica",
       "category": "instantaneos",
+      "face": "front",
       "image": "gambeta.png"
+    },
+    {
+      "id": "inst_140",
+      "name": "Golpe Anunciado",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "golpe_anunciado.png"
     },
     {
       "id": "inst_027",
       "name": "Golpe de Furia",
       "category": "instantaneos",
+      "face": "front",
       "image": "golpe_furia.png"
     },
     {
       "id": "inst_095",
       "name": "Humo del Viñedo Negro",
       "category": "instantaneos",
+      "face": "front",
       "image": "humo_del_vinedo_negro.png"
     },
     {
       "id": "inst_002",
       "name": "Impuesto País",
       "category": "instantaneos",
+      "face": "front",
       "image": "impuesto_pais.png"
     },
     {
       "id": "inst_033",
       "name": "Impuesto de Guerra",
       "category": "instantaneos",
+      "face": "front",
       "image": "impuesto_guerra.png"
     },
     {
       "id": "inst_118",
       "name": "Inspección Ocular",
       "category": "instantaneos",
+      "face": "front",
       "image": "inspeccion_ocular.png"
     },
     {
       "id": "inst_031",
       "name": "Instinto Desesperado",
       "category": "instantaneos",
+      "face": "front",
       "image": "instinto_desesperado.png"
     },
     {
       "id": "inst_026",
       "name": "Instinto de Manada",
       "category": "instantaneos",
+      "face": "front",
       "image": "instinto_manada.png"
     },
     {
       "id": "inst_114",
       "name": "Interferencia de Línea",
       "category": "instantaneos",
+      "face": "front",
       "image": "interferencia_de_linea.png"
     },
     {
       "id": "inst_029",
       "name": "Juramento a Medias",
       "category": "instantaneos",
+      "face": "front",
       "image": "juramento_medias.png"
     },
     {
       "id": "inst_025",
       "name": "Latigazo de la Selva",
       "category": "instantaneos",
+      "face": "front",
       "image": "latigazo_selva.png"
     },
     {
       "id": "inst_104",
       "name": "Machete contra la Enredadera",
       "category": "instantaneos",
+      "face": "front",
       "image": "machete_contra_la_enredadera.png"
     },
     {
       "id": "inst_120",
       "name": "Mancha en el Mantel",
       "category": "instantaneos",
+      "face": "front",
       "image": "mancha_en_el_mantel.png"
     },
     {
       "id": "inst_011",
       "name": "Mano de Dios",
       "category": "instantaneos",
+      "face": "front",
       "image": "mano_dios.png"
     },
     {
       "id": "inst_085",
       "name": "Manotazo a Ciegas",
       "category": "instantaneos",
+      "face": "front",
       "image": "manotazo_a_ciegas.png"
     },
     {
       "id": "inst_017",
       "name": "Mauro Viale",
       "category": "instantaneos",
+      "face": "front",
       "image": "mauro_viale.png"
     },
     {
       "id": "inst_093",
       "name": "Microfilm de la Madrugada",
       "category": "instantaneos",
+      "face": "front",
       "image": "microfilm_de_la_madrugada.png"
     },
     {
       "id": "inst_051",
       "name": "Mordida Ponzoñosa",
       "category": "instantaneos",
+      "face": "front",
       "image": "mordida_ponzonosa.png"
+    },
+    {
+      "id": "inst_143",
+      "name": "Mudar de Piel",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "mudar_de_piel.png"
     },
     {
       "id": "inst_098",
       "name": "Murmullo desde el Aljibe",
       "category": "instantaneos",
+      "face": "front",
       "image": "murmullo_desde_el_aljibe.png"
     },
     {
       "id": "inst_048",
       "name": "No Pasás",
       "category": "instantaneos",
+      "face": "front",
       "image": "no_pasas.png"
+    },
+    {
+      "id": "inst_142",
+      "name": "Noche Repentina",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "noche_repentina.png"
+    },
+    {
+      "id": "inst_127",
+      "name": "Nota al Margen",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "nota_al_margen.png"
+    },
+    {
+      "id": "inst_132",
+      "name": "Oferta por Tiempo Limitado",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "oferta_por_tiempo_limitado.png"
     },
     {
       "id": "inst_060",
       "name": "Ola de Retorno",
       "category": "instantaneos",
+      "face": "front",
       "image": "ola_retorno.png"
     },
     {
       "id": "inst_097",
       "name": "Otra Vuelta de Bandoneón",
       "category": "instantaneos",
+      "face": "front",
       "image": "otra_vuelta_de_bandoneon.png"
     },
     {
       "id": "inst_028",
       "name": "Pacto Desesperado",
       "category": "instantaneos",
+      "face": "front",
       "image": "pacto_desesperado.png"
     },
     {
       "id": "inst_020",
       "name": "Pacto Final",
       "category": "instantaneos",
+      "face": "front",
       "image": "pacto_final.png"
     },
     {
       "id": "inst_044",
       "name": "Pacto en la Salamanca",
       "category": "instantaneos",
+      "face": "front",
       "image": "pacto_salamanca.png"
     },
     {
       "id": "inst_041",
       "name": "Pacto entre Sombras",
       "category": "instantaneos",
+      "face": "front",
       "image": "pacto_sombras.png"
     },
     {
       "id": "inst_111",
       "name": "Parte Médico Sellado",
       "category": "instantaneos",
+      "face": "front",
       "image": "parte_medico_sellado.png"
     },
     {
       "id": "inst_080",
       "name": "Pará Ahí",
       "category": "instantaneos",
+      "face": "front",
       "image": "para_ahi.png"
     },
     {
       "id": "inst_032",
       "name": "Peaje del Río",
       "category": "instantaneos",
+      "face": "front",
       "image": "peaje_rio.png"
+    },
+    {
+      "id": "inst_138",
+      "name": "Pedido de Prórroga",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "pedido_de_prorroga.png"
     },
     {
       "id": "inst_045",
       "name": "Petardos de Año Nuevo",
       "category": "instantaneos",
+      "face": "front",
       "image": "petardos_ano_nuevo.png"
     },
     {
       "id": "inst_083",
       "name": "Pinchazo de Archivo",
       "category": "instantaneos",
+      "face": "front",
       "image": "pinchazo_de_archivo.png"
     },
     {
       "id": "inst_043",
       "name": "Plaga del Silo",
       "category": "instantaneos",
+      "face": "front",
       "image": "plaga_silo.png"
     },
     {
       "id": "inst_092",
       "name": "Polen Negro del Viñedo",
       "category": "instantaneos",
+      "face": "front",
       "image": "polen_negro_del_vinedo.png"
     },
     {
       "id": "inst_086",
       "name": "Polen de la Salamanca",
       "category": "instantaneos",
+      "face": "front",
       "image": "polen_de_la_salamanca.png"
     },
     {
       "id": "inst_082",
       "name": "Precinto de Evidencia",
       "category": "instantaneos",
+      "face": "front",
       "image": "precinto_de_evidencia.png"
     },
     {
       "id": "inst_021",
       "name": "Purga del Panteón",
       "category": "instantaneos",
+      "face": "front",
       "image": "purga_panteon.png"
     },
     {
       "id": "inst_014",
       "name": "Que Pare Todo",
       "category": "instantaneos",
+      "face": "front",
       "image": "que_pare_todo.png"
     },
     {
       "id": "inst_074",
       "name": "Quemar los Papeles",
       "category": "instantaneos",
+      "face": "front",
       "image": "quemar_los_papeles.png"
     },
     {
       "id": "inst_056",
       "name": "Ramazo",
       "category": "instantaneos",
+      "face": "front",
       "image": "ramazo.png"
     },
     {
       "id": "inst_070",
       "name": "Releer el Expediente",
       "category": "instantaneos",
+      "face": "front",
       "image": "releer_el_expediente.png"
     },
     {
       "id": "inst_108",
       "name": "Replanteo del Jardín Botánico",
       "category": "instantaneos",
+      "face": "front",
       "image": "replanteo_del_jardin_botanico.png"
     },
     {
       "id": "inst_081",
       "name": "Requisa Relámpago",
       "category": "instantaneos",
+      "face": "front",
       "image": "requisa_relampago.png"
     },
     {
       "id": "inst_109",
       "name": "Rescate de la Ribera de Quilmes",
       "category": "instantaneos",
+      "face": "front",
       "image": "rescate_de_la_ribera_de_quilmes.png"
+    },
+    {
+      "id": "inst_139",
+      "name": "Respuesta que Llegó Tarde",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "respuesta_que_llego_tarde.png"
     },
     {
       "id": "inst_064",
       "name": "Revolver la Guantera",
       "category": "instantaneos",
+      "face": "front",
       "image": "revolver_guantera.png"
     },
     {
       "id": "inst_088",
       "name": "Riff en el Garage",
       "category": "instantaneos",
+      "face": "front",
       "image": "riff_en_el_garage.png"
     },
     {
       "id": "inst_099",
       "name": "Riff que Vuelve del Galpón",
       "category": "instantaneos",
+      "face": "front",
       "image": "riff_que_vuelve_del_galpon.png"
     },
     {
       "id": "inst_106",
       "name": "Rotación de Parcelas de Pereyra",
       "category": "instantaneos",
+      "face": "front",
       "image": "rotacion_de_parcelas_de_pereyra.png"
     },
     {
       "id": "inst_024",
       "name": "Sacrificio Ritual",
       "category": "instantaneos",
+      "face": "front",
       "image": "sacrificio_ritual.png"
     },
     {
       "id": "inst_054",
       "name": "Saltó la Térmica",
       "category": "instantaneos",
+      "face": "front",
       "image": "salto_termica.png"
     },
     {
       "id": "inst_087",
       "name": "Savia del Ceibo Mayor",
       "category": "instantaneos",
+      "face": "front",
       "image": "savia_del_ceibo_mayor.png"
     },
     {
       "id": "inst_084",
       "name": "Secuestro de Carpeta",
       "category": "instantaneos",
+      "face": "front",
       "image": "secuestro_de_carpeta.png"
     },
     {
       "id": "inst_040",
       "name": "Segunda Lectura",
       "category": "instantaneos",
+      "face": "front",
       "image": "segunda_lectura.png"
+    },
+    {
+      "id": "inst_124",
+      "name": "Señal Fuera de Servicio",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "senal_fuera_de_servicio.png"
+    },
+    {
+      "id": "inst_131",
+      "name": "Señal Intermitente",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "senal_intermitente.png"
     },
     {
       "id": "inst_034",
       "name": "Silencio de Biblioteca",
       "category": "instantaneos",
+      "face": "front",
       "image": "silencio_biblioteca.png"
     },
     {
       "id": "inst_062",
       "name": "Tierra sobre el Cajón",
       "category": "instantaneos",
+      "face": "front",
       "image": "tierra_sobre_cajon.png"
     },
     {
       "id": "inst_105",
       "name": "Tonel de Malbec en Llamas",
       "category": "instantaneos",
+      "face": "front",
       "image": "tonel_de_malbec_en_llamas.png"
     },
     {
       "id": "inst_030",
       "name": "Trato de Urgencia",
       "category": "instantaneos",
+      "face": "front",
       "image": "trato_urgencia.png"
     },
     {
       "id": "inst_008",
       "name": "Una Gauchada",
       "category": "instantaneos",
+      "face": "front",
       "image": "gauchada.png"
     },
     {
       "id": "inst_091",
       "name": "Veneno en la Copa de Malbec",
       "category": "instantaneos",
+      "face": "front",
       "image": "veneno_en_la_copa_de_malbec.png"
+    },
+    {
+      "id": "inst_129",
+      "name": "Ventana de Cinco Minutos",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "ventana_de_cinco_minutos.png"
     },
     {
       "id": "inst_035",
       "name": "Veto Absoluto",
       "category": "instantaneos",
+      "face": "front",
       "image": "veto_absoluto.png"
     },
     {
       "id": "inst_038",
       "name": "Visión del Puerto",
       "category": "instantaneos",
+      "face": "front",
       "image": "vision_puerto.png"
     },
     {
       "id": "inst_110",
       "name": "Voladura en la Autopista Riccheri",
       "category": "instantaneos",
+      "face": "front",
       "image": "voladura_en_la_autopista_riccheri.png"
     },
     {
       "id": "inst_119",
       "name": "Vuelto en Dólares",
       "category": "instantaneos",
+      "face": "front",
       "image": "vuelto_en_dolares.png"
     },
     {
       "id": "inst_065",
       "name": "Yuyo Protector",
       "category": "instantaneos",
+      "face": "front",
       "image": "yuyo_protector.png"
     },
     {
       "id": "inst_042",
       "name": "¡Quiero Retruco!",
       "category": "instantaneos",
+      "face": "front",
       "image": "quiero_retruco.png"
     },
     {
       "id": "inst_071",
       "name": "Última Voluntad",
       "category": "instantaneos",
+      "face": "front",
       "image": "ultima_voluntad.png"
     },
     {
       "id": "pw_008",
       "name": "Doña Uva, Bruja de la Vendimia",
       "category": "planeswalkers",
+      "face": "front",
       "image": "dona_uva_bruja_de_la_vendimia.png"
     },
     {
       "id": "pw_001",
       "name": "El Cacique del Barrio",
       "category": "planeswalkers",
+      "face": "front",
       "image": "cacique_barrio.png"
     },
     {
       "id": "pw_006",
       "name": "El Comisario",
       "category": "planeswalkers",
+      "face": "front",
       "image": "comisario.png"
     },
     {
       "id": "pw_003",
       "name": "El Enterrador",
       "category": "planeswalkers",
+      "face": "front",
       "image": "el_enterrador.png"
     },
     {
       "id": "pw_004",
       "name": "El Piromaníaco Callejero",
       "category": "planeswalkers",
+      "face": "front",
       "image": "piromantico_callejero.png"
     },
     {
       "id": "pw_002",
       "name": "La Bruja del Puerto",
       "category": "planeswalkers",
+      "face": "front",
       "image": "bruja_puerto.png"
     },
     {
       "id": "pw_005",
       "name": "La Guardiana del Delta",
       "category": "planeswalkers",
+      "face": "front",
       "image": "guardiana_delta.png"
     },
     {
       "id": "pw_007",
       "name": "La Negra del Bandoneón Eléctrico",
       "category": "planeswalkers",
+      "face": "front",
       "image": "la_negra_del_bandoneon_electrico.png"
+    },
+    {
+      "id": "tier_067",
+      "name": "Andén de Espera de Constitución",
+      "category": "tierras",
+      "face": "front",
+      "image": "anden_de_espera_de_constitucion.png"
     },
     {
       "id": "tier_019",
       "name": "Barrio Chino",
       "category": "tierras",
+      "face": "front",
       "image": "barrio_chino.png"
     },
     {
       "id": "tier_029",
       "name": "Basílica de Luján",
       "category": "tierras",
+      "face": "front",
       "image": "basilica_lujan.png"
     },
     {
       "id": "tier_027",
       "name": "Bañados del Pilcomayo",
       "category": "tierras",
+      "face": "front",
       "image": "banados_pilcomayo.png"
     },
     {
       "id": "tier_015",
       "name": "Biblioteca Nacional",
       "category": "tierras",
+      "face": "front",
       "image": "biblioteca_nacional.png"
     },
     {
       "id": "tier_058",
       "name": "Campo de Caseros",
       "category": "tierras",
+      "face": "front",
       "image": "campo_de_caseros.png"
     },
     {
       "id": "tier_053",
       "name": "Cancha Bajo la Autopista",
       "category": "tierras",
+      "face": "front",
       "image": "cancha_bajo_la_autopista.png"
     },
     {
       "id": "tier_044",
       "name": "Cantera Abandonada",
       "category": "tierras",
+      "face": "front",
       "image": "cantera_abandonada.png"
     },
     {
       "id": "tier_037",
       "name": "Capilla del Camino",
       "category": "tierras",
+      "face": "front",
       "image": "capilla_camino.png"
     },
     {
       "id": "tier_010",
       "name": "Cementerio de la Recoleta",
       "category": "tierras",
+      "face": "front",
       "image": "cementerio_recoleta.png"
     },
     {
       "id": "tier_005",
       "name": "Cerro Siete Colores",
       "category": "tierras",
+      "face": "front",
       "image": "cerro_siete_colores.png"
     },
     {
       "id": "tier_018",
       "name": "Cordillera de los Andes",
       "category": "tierras",
+      "face": "front",
       "image": "cordillera_andes.png"
     },
     {
       "id": "tier_048",
       "name": "Crematorio del Oeste",
       "category": "tierras",
+      "face": "front",
       "image": "crematorio_del_oeste.png"
     },
     {
       "id": "tier_013",
       "name": "Delta del Tigre",
       "category": "tierras",
+      "face": "front",
       "image": "delta_tigre.png"
     },
     {
       "id": "tier_030",
       "name": "Dársena Sur",
       "category": "tierras",
+      "face": "front",
       "image": "darsena_sur.png"
     },
     {
       "id": "tier_047",
       "name": "Dársena de Niebla",
       "category": "tierras",
+      "face": "front",
       "image": "darsena_de_niebla.png"
     },
     {
       "id": "tier_021",
       "name": "El Chaltén",
       "category": "tierras",
+      "face": "front",
       "image": "el_chalten.png"
     },
     {
       "id": "tier_004",
       "name": "El Monumental",
       "category": "tierras",
+      "face": "front",
       "image": "monumental.png"
     },
     {
       "id": "tier_002",
       "name": "El Obelisco",
       "category": "tierras",
+      "face": "front",
       "image": "obelisco.png"
     },
     {
       "id": "tier_009",
       "name": "El Riachuelo",
       "category": "tierras",
+      "face": "front",
       "image": "riachuelo.png"
     },
     {
       "id": "tier_063",
       "name": "Estación Haedo",
       "category": "tierras",
+      "face": "front",
       "image": "estacion_haedo.png"
+    },
+    {
+      "id": "tier_065",
+      "name": "Estación Transformadora de Ezeiza",
+      "category": "tierras",
+      "face": "front",
+      "image": "estacion_transformadora_de_ezeiza.png"
     },
     {
       "id": "tier_042",
       "name": "Estación de Servicio 24 Horas",
       "category": "tierras",
+      "face": "front",
       "image": "estacion_servicio_24h.png"
     },
     {
       "id": "tier_008",
       "name": "Esteros del Iberá",
       "category": "tierras",
+      "face": "front",
       "image": "esteros_ibera.png"
     },
     {
       "id": "tier_025",
       "name": "Feria Americana",
       "category": "tierras",
+      "face": "front",
       "image": "feria_americana.png"
     },
     {
       "id": "tier_020",
       "name": "Feria de Mataderos",
       "category": "tierras",
+      "face": "front",
       "image": "feria_mataderos.png"
+    },
+    {
+      "id": "tier_068",
+      "name": "Galpón Abandonado de Barracas",
+      "category": "tierras",
+      "face": "front",
+      "image": "galpon_abandonado_de_barracas.png"
     },
     {
       "id": "tier_054",
       "name": "Galpón del Ferrocarril",
       "category": "tierras",
+      "face": "front",
       "image": "galpon_del_ferrocarril.png"
     },
     {
       "id": "tier_003",
       "name": "Glaciar Perito Moreno",
       "category": "tierras",
+      "face": "front",
       "image": "glaciar_perito_moreno.png"
     },
     {
       "id": "tier_052",
       "name": "Islote de Camalotes",
       "category": "tierras",
+      "face": "front",
       "image": "islote_de_camalotes.png"
     },
     {
       "id": "tier_001",
       "name": "La Bombonera",
       "category": "tierras",
+      "face": "front",
       "image": "bombonera.png"
     },
     {
       "id": "tier_011",
       "name": "La Constancia",
       "category": "tierras",
+      "face": "front",
       "image": "constancia.png"
     },
     {
       "id": "tier_007",
       "name": "La Pampa Húmeda",
       "category": "tierras",
+      "face": "front",
       "image": "pampa_humeda.png"
     },
     {
       "id": "tier_028",
       "name": "Laguna del Diamante",
       "category": "tierras",
+      "face": "front",
       "image": "laguna_diamante.png"
     },
     {
       "id": "tier_012",
       "name": "Las Malvinas",
       "category": "tierras",
+      "face": "front",
       "image": "malvinas.png"
     },
     {
       "id": "tier_036",
       "name": "Mar Argentino",
       "category": "tierras",
+      "face": "front",
       "image": "mar_argentino.png"
+    },
+    {
+      "id": "tier_066",
+      "name": "Mirador de la Costanera",
+      "category": "tierras",
+      "face": "front",
+      "image": "mirador_de_la_costanera.png"
     },
     {
       "id": "tier_038",
       "name": "Observatorio Costero",
       "category": "tierras",
+      "face": "front",
       "image": "observatorio_costero.png"
     },
     {
       "id": "tier_039",
       "name": "Panteón Municipal",
       "category": "tierras",
+      "face": "front",
       "image": "panteon_municipal.png"
     },
     {
       "id": "tier_062",
       "name": "Parque Industrial de Pilar",
       "category": "tierras",
+      "face": "front",
       "image": "parque_industrial_de_pilar.png"
     },
     {
       "id": "tier_059",
       "name": "Parque Pereyra Iraola",
       "category": "tierras",
+      "face": "front",
       "image": "parque_pereyra_iraola.png"
     },
     {
       "id": "tier_051",
       "name": "Paso Fronterizo Nevado",
       "category": "tierras",
+      "face": "front",
       "image": "paso_fronterizo_nevado.png"
     },
     {
       "id": "tier_043",
       "name": "Peaje Fantasma",
       "category": "tierras",
+      "face": "front",
       "image": "peaje_fantasma.png"
     },
     {
       "id": "tier_061",
       "name": "Plaza Mitre de San Fernando",
       "category": "tierras",
+      "face": "front",
       "image": "plaza_mitre_de_san_fernando.png"
     },
     {
       "id": "tier_035",
       "name": "Plaza del Cabildo",
       "category": "tierras",
+      "face": "front",
       "image": "plaza_cabildo.png"
     },
     {
       "id": "tier_023",
       "name": "Puente Alsina",
       "category": "tierras",
+      "face": "front",
       "image": "puente_alsina.png"
     },
     {
       "id": "tier_017",
       "name": "Puente Pueyrredón",
       "category": "tierras",
+      "face": "front",
       "image": "puente_pueyrredon.png"
     },
     {
       "id": "tier_057",
       "name": "Puente de Márquez",
       "category": "tierras",
+      "face": "front",
       "image": "puente_de_marquez.png"
     },
     {
       "id": "tier_033",
       "name": "Puerto Madryn",
       "category": "tierras",
+      "face": "front",
       "image": "puerto_madryn.png"
     },
     {
       "id": "tier_060",
       "name": "Puerto de Olivos",
       "category": "tierras",
+      "face": "front",
       "image": "puerto_de_olivos.png"
     },
     {
       "id": "tier_014",
       "name": "Puerto de Ushuaia",
       "category": "tierras",
+      "face": "front",
       "image": "puerto_ushuaia.png"
     },
     {
       "id": "tier_024",
       "name": "Refugio Jakob",
       "category": "tierras",
+      "face": "front",
       "image": "refugio_jakob.png"
     },
     {
       "id": "tier_041",
       "name": "Reserva del Humedal",
       "category": "tierras",
+      "face": "front",
       "image": "reserva_humedal.png"
     },
     {
       "id": "tier_006",
       "name": "Ruta 40",
       "category": "tierras",
+      "face": "front",
       "image": "ruta_40.png"
     },
     {
       "id": "tier_055",
       "name": "Salar de la Puna",
       "category": "tierras",
+      "face": "front",
       "image": "salar_de_la_puna.png"
     },
     {
       "id": "tier_034",
       "name": "Salinas Grandes",
       "category": "tierras",
+      "face": "front",
       "image": "salinas_grandes.png"
     },
     {
       "id": "tier_046",
       "name": "Santuario de la Banquina",
       "category": "tierras",
+      "face": "front",
       "image": "santuario_de_la_banquina.png"
     },
     {
       "id": "tier_026",
       "name": "Selva Misionera",
       "category": "tierras",
+      "face": "front",
       "image": "selva_misionera.png"
     },
     {
       "id": "tier_016",
       "name": "Sendero de las cataratas",
       "category": "tierras",
+      "face": "front",
       "image": "sendero_delta.png"
     },
     {
       "id": "tier_049",
       "name": "Taller Bajo el Puente",
       "category": "tierras",
+      "face": "front",
       "image": "taller_bajo_el_puente.png"
     },
     {
       "id": "tier_022",
       "name": "Termas de Río Hondo",
       "category": "tierras",
+      "face": "front",
       "image": "termas_rio_hondo.png"
     },
     {
       "id": "tier_045",
       "name": "Terminal de Ómnibus Vacía",
       "category": "tierras",
+      "face": "front",
       "image": "terminal_omnibus_vacia.png"
     },
     {
       "id": "tier_040",
       "name": "Usina Abandonada",
       "category": "tierras",
+      "face": "front",
       "image": "usina_abandonada.png"
+    },
+    {
+      "id": "tier_068",
+      "name": "Usina Fantasma de Barracas",
+      "category": "tierras",
+      "face": "back",
+      "image": "usina_fantasma_de_barracas.png"
     },
     {
       "id": "tier_032",
       "name": "Vaca Muerta",
       "category": "tierras",
+      "face": "front",
       "image": "vaca_muerta.png"
     },
     {
       "id": "tier_031",
       "name": "Valle de Calamuchita",
       "category": "tierras",
+      "face": "front",
       "image": "valle_calamuchita.png"
     },
     {
       "id": "tier_064",
       "name": "Valle de la Luna",
       "category": "tierras",
+      "face": "front",
       "image": "valle_de_la_luna.png"
     },
     {
       "id": "tier_050",
       "name": "Vivero Provincial",
       "category": "tierras",
+      "face": "front",
       "image": "vivero_provincial.png"
     },
     {
       "id": "tier_056",
       "name": "Viñedo de la Luna Muerta",
       "category": "tierras",
+      "face": "front",
       "image": "vinedo_de_la_luna_muerta.png"
     }
   ],
@@ -4761,6 +6835,19 @@
       "image": "token_contrato_firmado.png"
     },
     {
+      "cardId": "conj_098",
+      "cardName": "Licencia en Trámite",
+      "category": "conjuros",
+      "path": "effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 2,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
       "cardId": "ench_040",
       "cardName": "Brotación del Terraplén",
       "category": "encantamientos",
@@ -4798,6 +6885,123 @@
       "toughness": null,
       "keywords": [],
       "image": "token_dolar_blue.png"
+    },
+    {
+      "cardId": "ench_075",
+      "cardName": "La Revolución de Mayo",
+      "category": "encantamientos",
+      "path": "saga.chapters.1.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_075",
+      "cardName": "La Revolución de Mayo",
+      "category": "encantamientos",
+      "path": "saga.chapters.2.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 2,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_076",
+      "cardName": "La Vuelta de Obligado",
+      "category": "encantamientos",
+      "path": "saga.chapters.1.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 2,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_077",
+      "cardName": "El Cabildo Abre sus Puertas",
+      "category": "encantamientos",
+      "path": "saga.chapters.1.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_086",
+      "cardName": "La Final del Ochenta y Seis",
+      "category": "encantamientos",
+      "path": "saga.chapters.0.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 2,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_091",
+      "cardName": "La Reconquista de Buenos Aires",
+      "category": "encantamientos",
+      "path": "saga.chapters.0.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_092",
+      "cardName": "La Argentina de las Mil Historias",
+      "category": "encantamientos",
+      "path": "saga.chapters.0.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 2,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_093",
+      "cardName": "Memoria Colectiva",
+      "category": "encantamientos",
+      "path": "triggers.0.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_097",
+      "cardName": "Feria de Ventana Abierta",
+      "category": "encantamientos",
+      "path": "triggers.0.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
     },
     {
       "cardId": "pw_001",
@@ -5334,10 +7538,140 @@
       "image": "token_vecino.png"
     },
     {
+      "cardId": "conj_098",
+      "cardName": "Licencia en Trámite",
+      "category": "conjuros",
+      "path": "effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 2,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
       "cardId": "crea_137",
       "cardName": "Voluntaria del Club de Barrio",
       "category": "criaturas",
       "path": "etbEffect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_075",
+      "cardName": "La Revolución de Mayo",
+      "category": "encantamientos",
+      "path": "saga.chapters.1.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_075",
+      "cardName": "La Revolución de Mayo",
+      "category": "encantamientos",
+      "path": "saga.chapters.2.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 2,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_076",
+      "cardName": "La Vuelta de Obligado",
+      "category": "encantamientos",
+      "path": "saga.chapters.1.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 2,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_077",
+      "cardName": "El Cabildo Abre sus Puertas",
+      "category": "encantamientos",
+      "path": "saga.chapters.1.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_086",
+      "cardName": "La Final del Ochenta y Seis",
+      "category": "encantamientos",
+      "path": "saga.chapters.0.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 2,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_091",
+      "cardName": "La Reconquista de Buenos Aires",
+      "category": "encantamientos",
+      "path": "saga.chapters.0.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_092",
+      "cardName": "La Argentina de las Mil Historias",
+      "category": "encantamientos",
+      "path": "saga.chapters.0.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 2,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_093",
+      "cardName": "Memoria Colectiva",
+      "category": "encantamientos",
+      "path": "triggers.0.effect",
+      "tokenName": "Vecino",
+      "tokenType": "Criatura — Token",
+      "amount": 1,
+      "power": 1,
+      "toughness": 1,
+      "keywords": [],
+      "image": "token_vecino.png"
+    },
+    {
+      "cardId": "ench_097",
+      "cardName": "Feria de Ventana Abierta",
+      "category": "encantamientos",
+      "path": "triggers.0.effect",
       "tokenName": "Vecino",
       "tokenType": "Criatura — Token",
       "amount": 1,

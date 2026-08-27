@@ -1282,5 +1282,120 @@
       "requiresTap": true,
       "sacrificeSelf": true
     }
+  },
+  {
+    "id": "tier_065",
+    "name": "Estación Transformadora de Ezeiza",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{T}: Agregá {C}. {2}, {T}: Poné un contador de Carga sobre el permanente objetivo que controlás.",
+    "flavorText": "La red entera pasa por un zumbido que nadie escucha hasta que falta.",
+    "image": "estacion_transformadora_de_ezeiza.png",
+    "produces": "C",
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "add_counter",
+        "counterType": "charge",
+        "amount": 1,
+        "targetKind": "any_permanent",
+        "targetController": "self"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_066",
+    "name": "Mirador de la Costanera",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{T}: Agregá {C}. Siempre que juegues una carta desde el Exilio, ganás 1 vida.",
+    "flavorText": "Desde arriba se ve la ciudad, el río y todo lo que quedó momentáneamente afuera.",
+    "image": "mirador_de_la_costanera.png",
+    "produces": "C",
+    "triggers": [
+      {
+        "event": "card_played_from_exile",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "heal",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "tier_067",
+    "name": "Andén de Espera de Constitución",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{T}: Agregá {C}. {3}, {T}: Remové un contador de Tiempo de una carta suspendida que poseés.",
+    "flavorText": "Todos preguntan cuánto falta. El andén responde con otro anuncio.",
+    "image": "anden_de_espera_de_constitucion.png",
+    "produces": "C",
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "remove_time_counter_suspended",
+        "owner": "self",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "tier_068",
+    "name": "Galpón Abandonado de Barracas",
+    "type": "Tierra",
+    "manaCost": "",
+    "cmc": 0,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{T}: Agregá {C}. {3}, {T}: Transformá Galpón Abandonado de Barracas.",
+    "flavorText": "Las ventanas están rotas, pero algunas noches brilla desde adentro.",
+    "image": "galpon_abandonado_de_barracas.png",
+    "produces": "C",
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "transform"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    },
+    "dfc": {
+      "kind": "transform",
+      "backFace": {
+        "name": "Usina Fantasma de Barracas",
+        "type": "Tierra",
+        "image": "usina_fantasma_de_barracas.png",
+        "text": "{T}: Agregá {R}. {2}, {T}: Transformá Usina Fantasma de Barracas.",
+        "colors": [],
+        "keywords": [],
+        "produces": "R",
+        "flavorText": "Las turbinas no están conectadas a nada y, sin embargo, toda la cuadra tiembla.",
+        "activatedAbility": {
+          "cost": "{2}{T}",
+          "effect": {
+            "type": "transform"
+          },
+          "requiresTarget": false,
+          "timing": "instant"
+        }
+      }
+    }
   }
 ]

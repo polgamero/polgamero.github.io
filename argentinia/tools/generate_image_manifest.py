@@ -200,29 +200,58 @@ def validate_token_image_ownership(token_effects) -> list[str]:
     return errors
 
 
+def iter_card_face_images(cards):
+    """Yield front/back image references for physical cards.
+
+    23.16.4: a TDFC owns two independent art assets under the same card id.
+    Back-face images participate in canonical naming, ownership and missing-file CI.
+    """
+    for category, card in cards:
+        yield {
+            "category": category, "card": card, "cardId": str(card.get("id") or "").strip(),
+            "cardName": str(card.get("name") or "").strip(), "face": "front",
+            "faceName": str(card.get("name") or "").strip(), "image": card.get("image"),
+        }
+        dfc = card.get("dfc") if isinstance(card.get("dfc"), dict) else None
+        back = dfc.get("backFace") if dfc and isinstance(dfc.get("backFace"), dict) else None
+        if dfc and dfc.get("kind") == "transform" and back:
+            yield {
+                "category": category, "card": card, "cardId": str(card.get("id") or "").strip(),
+                "cardName": str(card.get("name") or "").strip(), "face": "back",
+                "faceName": str(back.get("name") or "").strip(), "image": back.get("image"),
+            }
+
+
 def validate_image_ownership(cards) -> list[str]:
     errors = []
     owners = defaultdict(list)
-    for category, card in cards:
-        card_id = str(card.get("id") or "").strip()
-        card_name = str(card.get("name") or "").strip()
-        image = card.get("image")
+    for entry in iter_card_face_images(cards):
+        card_id = entry["cardId"]
+        card_name = entry["cardName"]
+        face_name = entry["faceName"]
+        face = entry["face"]
+        category = entry["category"]
+        image = entry.get("image")
         if not isinstance(image, str) or not image.strip():
             continue
         image = image.strip().replace("\\", "/")
-        owners[image].append((card_id, card_name, category))
+        owners[image].append((card_id, card_name, category, face, face_name))
         prefix, number = parse_card_id(card_id)
         future_card = (
             prefix in CANONICAL_IMAGE_BASELINE_MAX
             and number is not None
             and number > CANONICAL_IMAGE_BASELINE_MAX[prefix]
         )
-        if card_id in CANONICAL_IMAGE_REQUIRED_IDS or future_card:
-            expected = canonical_card_image_name(card_name)
+        # Front keeps the historical 23.13.16 contract; TDFC backs always use the
+        # canonical filename derived from the back-face name.
+        canonical_required = face == "back" or card_id in CANONICAL_IMAGE_REQUIRED_IDS or future_card
+        if canonical_required:
+            expected = canonical_card_image_name(face_name)
             if image != expected:
+                label = f"{card_id} {face}" if face == "back" else card_id
                 errors.append(
-                    f'{card_id} "{card_name}" usa image="{image}", esperado="{expected}" '
-                    f'({"carta corregida 23.13.16" if card_id in CANONICAL_IMAGE_REQUIRED_IDS else "carta nueva"})'
+                    f'{label} "{face_name}" usa image="{image}", esperado="{expected}" '
+                    f'({"cara posterior TDFC" if face == "back" else ("carta corregida 23.13.16" if card_id in CANONICAL_IMAGE_REQUIRED_IDS else "carta nueva")})'
                 )
 
     for image, entries in sorted(owners.items()):
@@ -230,9 +259,11 @@ def validate_image_ownership(cards) -> list[str]:
             continue
         ids = {entry[0] for entry in entries}
         allowed = LEGACY_SHARED_IMAGE_OWNERS.get(image)
-        if allowed is not None and ids == allowed:
+        if allowed is not None and ids == allowed and all(entry[3] == "front" for entry in entries):
             continue
-        rendered = ", ".join(f'{card_id} "{name}"' for card_id, name, _ in entries)
+        rendered = ", ".join(
+            f'{card_id} [{face}] "{face_name}"' for card_id, _card_name, _category, face, face_name in entries
+        )
         errors.append(f'image="{image}" está reutilizada por: {rendered}')
 
     return errors
@@ -353,22 +384,24 @@ def main() -> int:
     referenced = []
     missing = []
     cards_without_image_field = []
-    for category, card in cards:
-        image = card.get("image")
+    for entry in iter_card_face_images(cards):
+        image = entry.get("image")
         if not isinstance(image, str) or not image.strip():
             cards_without_image_field.append({
-                "id": card.get("id"),
-                "name": card.get("name"),
-                "category": category,
+                "id": entry["cardId"],
+                "name": entry["faceName"],
+                "category": entry["category"],
+                "face": entry["face"],
             })
             continue
         image = image.strip().replace("\\", "/")
         referenced.append(image)
         if image not in existing_set:
             missing.append({
-                "id": card.get("id"),
-                "name": card.get("name"),
-                "category": category,
+                "id": entry["cardId"],
+                "name": entry["faceName"],
+                "category": entry["category"],
+                "face": entry["face"],
                 "image": image,
             })
 
@@ -404,7 +437,9 @@ def main() -> int:
         "images": {
             "directory": "assets/images/cards",
             "existingFileCount": len(existing_files),
-            "referencedCardCount": len(referenced),
+            "referencedCardCount": len(cards) - sum(1 for entry in cards_without_image_field if entry.get("face") == "front"),
+            "referencedFaceCount": len(referenced),
+            "doubleFacedCardCount": sum(1 for _category, card in cards if isinstance(card.get("dfc"), dict) and card.get("dfc", {}).get("kind") == "transform"),
             "uniqueReferencedFileCount": len(unique_referenced),
             "missingCardCount": len(missing),
             "cardsWithoutImageFieldCount": len(cards_without_image_field),
