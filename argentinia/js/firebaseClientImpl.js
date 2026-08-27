@@ -1160,15 +1160,12 @@ export async function registerDailyLogin(uid, nowMs = null) {
     : { serverNow: new Date(nowMs), effectiveNow: new Date(nowMs), debugOffsetDays: 0, rulesVersion: null };
   const now = clock.effectiveNow;
   const ref = doc(db, 'users', uid);
-  let transitionDebug = null;
   try {
     return await runTransaction(db, async (tx) => {
       const snap = await tx.get(ref);
       if (!snap.exists()) throw new Error('No se encontró tu perfil.');
       const data = snap.data();
       const plan = buildDailyLoginPlan(data, now, clock);
-      transitionDebug = plan.diagnostics;
-
       if (plan.login.newCalendarLogin) {
         tx.update(ref, {
           dailyRewards: serializeDailyLoginPlan(data, plan, now),
@@ -1181,9 +1178,8 @@ export async function registerDailyLogin(uid, nowMs = null) {
       return dailyLoginResult(data, plan, clock, now);
     });
   } catch (error) {
-    if (error?.code === 'permission-denied') {
-      console.error(`[DailyRewards ${REWARD_RULES_VERSION}] Firestore rechazó registerDailyLogin.`, transitionDebug || { effectiveDate: localDateKey(now) });
-    }
+    // 23.17.3.3 — los diagnósticos detallados de Daily quedan en telemetry, no en consola.
+    // El caller conserva un error conciso si la operación realmente falla.
     throw error;
   }
 }
@@ -1396,11 +1392,11 @@ export async function purchasePrebuiltDeck(uid, productId, deckName) {
   if (cleanName.length>30) { const error=new Error('El nombre del mazo no puede tener más de 30 caracteres.'); error.code='PREBUILT_NAME_TOO_LONG'; throw error; }
 
   // 23.17.3.1 — fail closed: antes de tocar economía, exigimos que Firestore acepte la
-  // attestation 23.13.69. Con Rules 23.13.68 el probe es rechazado y la compra NO ocurre.
+  // attestation 23.13.70. Con Rules anteriores el probe es rechazado y la compra NO ocurre.
   try {
     await getAuthoritativeServerClock(uid);
   } catch (cause) {
-    const error=new Error('La compra segura de Mazos Prearmados requiere Firestore Rules 23.13.69 publicadas.');
+    const error=new Error('La compra segura de Mazos Prearmados requiere Firestore Rules 23.13.70 publicadas.');
     error.code='PREBUILT_RULES_STALE'; error.cause=cause; throw error;
   }
 

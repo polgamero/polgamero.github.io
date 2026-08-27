@@ -1,9 +1,9 @@
 {
-  "engineVersion": "23.17.3.2",
+  "engineVersion": "23.17.3.3",
   "engineProtocolVersion": "mp-23.10.0",
   "protocolVersion": "mp-23.10.0",
-  "firestoreRulesVersion": "23.13.69",
+  "firestoreRulesVersion": "23.13.70",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Build Manifest Freshness Hotfix"
+  "label": "Normal Profile + Daily Rewards Recovery Hotfix"
 }

@@ -124,17 +124,14 @@ class CardDatabase {
       nextAllCards.push(...results[index]);
     });
 
-    const counts = validateLoadedPool(nextByCategory, nextAllCards);
+    validateLoadedPool(nextByCategory, nextAllCards);
 
     this.cardsByCategory = nextByCategory;
     this.allCards = nextAllCards;
     this.isLoaded = true;
 
-    console.log(`[CardDatabase] Pool validado: ${this.allCards.length}/${POOL_BASELINE.total} cartas.`, counts);
-
-    // Conserva la tabla útil de imágenes faltantes, pero con UNA sola request al manifest
-    // generado por GitHub Actions. Es fire-and-forget: jamás bloquea el arranque del juego.
-    void this.reportMissingImagesFromManifest();
+    // La auditoría de imágenes queda disponible bajo demanda desde Admin/DEBUGGING.
+    // 23.17.3.3: no imprime ni precarga diagnósticos del pool/imágenes durante el boot normal.
 
     return this.allCards;
   }

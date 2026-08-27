@@ -1331,9 +1331,9 @@ async function boot() {
         // original sí había entrado, el receipt remoto lo vuelve un no-op idempotente.
         try {
           const recoveredRewards = await flushPendingGameRewards(state.currentUser.uid);
-          if (Number.isFinite(Number(recoveredRewards?.latestTotal))) {
-            state.userProfile.points = Number(recoveredRewards.latestTotal);
-            profile.points = Number(recoveredRewards.latestTotal);
+          if (typeof recoveredRewards?.latestTotal === 'number' && Number.isFinite(recoveredRewards.latestTotal)) {
+            state.userProfile.points = recoveredRewards.latestTotal;
+            profile.points = recoveredRewards.latestTotal;
             updateAccountUI(state.currentUser);
           }
           if (recoveredRewards?.attempted) {
@@ -1350,17 +1350,6 @@ async function boot() {
         // después se reconcilia el espejo público.
         const dailyResult = await processDailyLoginRewards({ showModal: false });
         profile = state.userProfile || profile;
-        if (dailyResult) {
-          console.info('[DailyRewards 23.13.62] Decisión de bootstrap:', {
-            newCalendarLogin: !!dailyResult.login?.newCalendarLogin,
-            rewardDay: dailyResult.login?.rewardDay ?? null,
-            streak: dailyResult.login?.streak ?? null,
-            streakReset: !!dailyResult.login?.streakReset,
-            repairApplied: !!dailyResult.login?.repairApplied,
-            legacyMigration: !!dailyResult.diagnostics?.legacyMigration,
-            previous: dailyResult.diagnostics || null
-          });
-        }
         // Startup overlay queue: Daily Rewards tiene prioridad. Sólo cuando el usuario
         // termina con ese modal se evalúa el anuncio activo con la identidad real cargada.
         // Así un usuario autenticado nunca ve el anuncio como "guest" ni se superponen overlays.
