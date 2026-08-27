@@ -1006,26 +1006,68 @@ async function fetchRewardDebugOffsetDays(uid) {
   }
 }
 
-async function getAuthoritativeServerClock(uid) {
-  const ref = doc(db, 'rewardClock', uid);
-  try {
-    // 23.13.59 — attestation de Rules: las Rules nuevas aceptan este campo versionado;
-    // una Rules vieja lo rechaza y nos permite distinguir deploy incompleto de bug lógico.
-    await setDoc(ref, { now: serverTimestamp(), rulesVersion: REWARD_RULES_VERSION });
-  } catch (error) {
-    if (error?.code === 'permission-denied') {
-      console.error(`[ServerClock ${REWARD_RULES_VERSION}] Rules incompatibles o no publicadas: el probe rewardClock fue rechazado.`);
-    }
-    throw error;
+const authoritativeClockInFlight = new Map();
+
+function firestoreTimestampLikeToDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : new Date(value.getTime());
+  if (typeof value?.toDate === 'function') {
+    const d = value.toDate();
+    return d instanceof Date && !Number.isNaN(d.getTime()) ? d : null;
   }
+  if (typeof value?.seconds === 'number') {
+    const d = new Date(value.seconds * 1000 + Math.floor((Number(value.nanoseconds) || 0) / 1e6));
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+async function readAuthoritativeServerClockOnce(uid) {
+  const ref = doc(db, 'rewardClock', uid);
+  // 23.17.3.4 — un único probe sirve a Daily y Clasificados. El write queda sellado por
+  // Rules con request.time; la lectura posterior sólo acepta la misma attestation.
+  await setDoc(ref, { now: serverTimestamp(), rulesVersion: REWARD_RULES_VERSION });
   const snap = await getDocFromServer(ref);
   const clockData = snap.exists() ? snap.data() : {};
-  const raw = clockData.now || null;
   if (clockData.rulesVersion !== REWARD_RULES_VERSION) {
     throw new Error(`RULES_VERSION_MISMATCH_${REWARD_RULES_VERSION.replaceAll('.', '_')}`);
   }
-  if (!raw || typeof raw.toDate !== 'function') throw new Error('No se pudo obtener la hora oficial del servidor.');
-  return { serverNow: raw.toDate(), rulesVersion: clockData.rulesVersion };
+  const serverNow = firestoreTimestampLikeToDate(clockData.now);
+  if (!serverNow) {
+    const error = new Error('SERVER_CLOCK_UNRESOLVED');
+    error.code = 'SERVER_CLOCK_UNRESOLVED';
+    throw error;
+  }
+  return { serverNow, rulesVersion: clockData.rulesVersion };
+}
+
+async function getAuthoritativeServerClock(uid) {
+  if (!uid) throw new Error('SERVER_CLOCK_UID_REQUIRED');
+  const existing = authoritativeClockInFlight.get(uid);
+  if (existing) return existing;
+
+  const task = (async () => {
+    let lastError = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await readAuthoritativeServerClockOnce(uid);
+      } catch (error) {
+        lastError = error;
+        // permission-denied / rules mismatch no son transitorios: fallar inmediatamente.
+        if (error?.code === 'permission-denied' || String(error?.message || '').startsWith('RULES_VERSION_MISMATCH_')) throw error;
+        if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 60 * (attempt + 1)));
+      }
+    }
+    throw lastError || new Error('SERVER_CLOCK_UNAVAILABLE');
+  })();
+
+  authoritativeClockInFlight.set(uid, task);
+  try {
+    return await task;
+  } finally {
+    if (authoritativeClockInFlight.get(uid) === task) authoritativeClockInFlight.delete(uid);
+  }
 }
 
 export async function getAuthoritativeRewardNow(uid) {
@@ -1088,8 +1130,8 @@ function buildDailyLoginPlan(data, now, clock) {
   return { sourceDaily, previous, previousSchemaVersion, login, inventory, diagnostics };
 }
 
-function serializeDailyLoginPlan(data, plan, now) {
-  const persistedDaily = serializeDailyRewardsForFirestore(plan.login.state, now, serverTimestamp());
+function serializeDailyLoginPlan(data, plan, now, serverUpdatedAt = serverTimestamp()) {
+  const persistedDaily = serializeDailyRewardsForFirestore(plan.login.state, now, serverUpdatedAt);
   if (plan.sourceDaily && plan.login.state.streak > 1 && data.dailyRewards?.serverCycleStartDay) {
     persistedDaily.serverCycleStartDay = data.dailyRewards.serverCycleStartDay;
     persistedDaily.serverPreviousLoginDay = data.dailyRewards.serverLastLoginDay;
@@ -1154,33 +1196,45 @@ export async function adminResetDailyRewardDebug(uid) {
 // Registra como máximo UN login por fecha oficial ART. Primer acceso = Día 1. El día
 // siguiente avanza hasta Día 7; un gap reinicia Día 1; después de Día 7, el siguiente día
 // consecutivo empieza un ciclo nuevo. La operación es idempotente el mismo día.
-export async function registerDailyLogin(uid, nowMs = null) {
+const dailyLoginInFlight = new Map();
+
+async function registerDailyLoginOnce(uid, nowMs = null) {
   const clock = nowMs == null
     ? await getAuthoritativeRewardNow(uid)
     : { serverNow: new Date(nowMs), effectiveNow: new Date(nowMs), debugOffsetDays: 0, rulesVersion: null };
   const now = clock.effectiveNow;
   const ref = doc(db, 'users', uid);
-  try {
-    return await runTransaction(db, async (tx) => {
-      const snap = await tx.get(ref);
-      if (!snap.exists()) throw new Error('No se encontró tu perfil.');
-      const data = snap.data();
-      const plan = buildDailyLoginPlan(data, now, clock);
-      if (plan.login.newCalendarLogin) {
-        tx.update(ref, {
-          dailyRewards: serializeDailyLoginPlan(data, plan, now),
-          lastSeenAt: serverTimestamp()
-        });
-      } else {
-        tx.update(ref, { lastSeenAt: serverTimestamp() });
-      }
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
+    const data = snap.data();
+    const plan = buildDailyLoginPlan(data, now, clock);
+    if (plan.login.newCalendarLogin) {
+      tx.update(ref, {
+        // 23.17.3.4: serverUpdatedAt es metadata tomada del rewardClock ya resuelto. Evitamos
+        // un transform anidado dentro de dailyRewards; la autorización vive en lastSeenAt=request.time.
+        dailyRewards: serializeDailyLoginPlan(data, plan, now, clock.serverNow),
+        lastSeenAt: serverTimestamp()
+      });
+    } else {
+      tx.update(ref, { lastSeenAt: serverTimestamp() });
+    }
+    return dailyLoginResult(data, plan, clock, now);
+  });
+}
 
-      return dailyLoginResult(data, plan, clock, now);
-    });
-  } catch (error) {
-    // 23.17.3.3 — los diagnósticos detallados de Daily quedan en telemetry, no en consola.
-    // El caller conserva un error conciso si la operación realmente falla.
-    throw error;
+export async function registerDailyLogin(uid, nowMs = null) {
+  // En producción el callback de Auth puede repetirse durante popup/F5. No ejecutamos dos
+  // transacciones Daily paralelas para la misma cuenta. Los tests con nowMs siguen aislados.
+  if (nowMs != null) return registerDailyLoginOnce(uid, nowMs);
+  const existing = dailyLoginInFlight.get(uid);
+  if (existing) return existing;
+  const task = registerDailyLoginOnce(uid, null);
+  dailyLoginInFlight.set(uid, task);
+  try {
+    return await task;
+  } finally {
+    if (dailyLoginInFlight.get(uid) === task) dailyLoginInFlight.delete(uid);
   }
 }
 
@@ -1216,7 +1270,9 @@ export async function claimDailyReward(uid, day, nowMs = null) {
     const rewarded = applyRewardToProfileData({ ...data, inventory: normalizeInventory(data.inventory) }, effectiveReward);
     const claimedDays = [...dailyRewards.claimedDays, Number(day)];
     const nextDaily = { ...dailyRewards, claimedDays, lastClaimedDay: Number(day) };
-    const persistedDaily = serializeDailyRewardsForFirestore(nextDaily, now, serverTimestamp());
+    // 23.17.3.4: misma simplificación que login. serverUpdatedAt conserva hora de servidor
+    // obtenida del rewardClock; sólo lastSeenAt usa transform de request.time como sello de Rules.
+    const persistedDaily = serializeDailyRewardsForFirestore(nextDaily, now, clock.serverNow);
     persistedDaily.serverLastLoginDay = data.dailyRewards.serverLastLoginDay;
     persistedDaily.serverPreviousLoginDay = data.dailyRewards.serverPreviousLoginDay || null;
     persistedDaily.serverCycleStartDay = data.dailyRewards.serverCycleStartDay;
@@ -1224,7 +1280,8 @@ export async function claimDailyReward(uid, day, nowMs = null) {
       points: Number(rewarded.points) || 0,
       fichas: Number(rewarded.fichas) || 0,
       inventory: normalizeInventory(rewarded.inventory),
-      dailyRewards: persistedDaily
+      dailyRewards: persistedDaily,
+      lastSeenAt: serverTimestamp()
     };
     tx.update(ref, updated);
     return { ...data, ...updated, dailyRewards: nextDaily };
@@ -1392,11 +1449,11 @@ export async function purchasePrebuiltDeck(uid, productId, deckName) {
   if (cleanName.length>30) { const error=new Error('El nombre del mazo no puede tener más de 30 caracteres.'); error.code='PREBUILT_NAME_TOO_LONG'; throw error; }
 
   // 23.17.3.1 — fail closed: antes de tocar economía, exigimos que Firestore acepte la
-  // attestation 23.13.70. Con Rules anteriores el probe es rechazado y la compra NO ocurre.
+  // attestation 23.13.71. Con Rules anteriores el probe es rechazado y la compra NO ocurre.
   try {
     await getAuthoritativeServerClock(uid);
   } catch (cause) {
-    const error=new Error('La compra segura de Mazos Prearmados requiere Firestore Rules 23.13.70 publicadas.');
+    const error=new Error('La compra segura de Mazos Prearmados requiere Firestore Rules 23.13.71 publicadas.');
     error.code='PREBUILT_RULES_STALE'; error.cause=cause; throw error;
   }
 
@@ -1532,7 +1589,9 @@ function sameScheduledWeekContent(a, b) {
 // 26 futuras. Si cambia el pool o la economía, la semana ACTUAL se preserva y sólo se
 // regeneran semanas futuras, evitando que una oferta cambie un jueves porque ajustamos un
 // precio o agregamos contenido.
-export async function ensureClassifiedsSchedule() {
+let classifiedsScheduleEnsureInFlight = null;
+
+async function ensureClassifiedsScheduleOnce() {
   if (!isRuntimeAdmin()) return { skipped: true, reason: 'not_admin' };
   await cardDb.loadAll();
   const clock = await getAuthoritativeClassifiedsNow(auth.currentUser.uid);
@@ -1585,6 +1644,18 @@ export async function ensureClassifiedsSchedule() {
     });
     return { skipped: false, changed: true, currentWeekKey, totalWeeks: nextKeys.length };
   });
+}
+
+export async function ensureClassifiedsSchedule() {
+  if (!isRuntimeAdmin()) return { skipped: true, reason: 'not_admin' };
+  if (classifiedsScheduleEnsureInFlight) return classifiedsScheduleEnsureInFlight;
+  const task = ensureClassifiedsScheduleOnce();
+  classifiedsScheduleEnsureInFlight = task;
+  try {
+    return await task;
+  } finally {
+    if (classifiedsScheduleEnsureInFlight === task) classifiedsScheduleEnsureInFlight = null;
+  }
 }
 
 export async function loadClassifiedsSchedule({ forceServer = false } = {}) {
