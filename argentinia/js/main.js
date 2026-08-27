@@ -1170,7 +1170,8 @@ async function checkBuildFreshness() {
     const response = await fetchBuildManifestWithTimeout(url);
     if (!response.ok) return { ok: true, unverifiable: true };
     const manifest = await response.json();
-    const ok = manifest?.engineVersion === ENGINE_VERSION && manifest?.engineProtocolVersion === ENGINE_PROTOCOL_VERSION;
+    const manifestProtocolVersion = manifest?.engineProtocolVersion ?? manifest?.protocolVersion ?? null;
+    const ok = manifest?.engineVersion === ENGINE_VERSION && manifestProtocolVersion === ENGINE_PROTOCOL_VERSION;
     if (!ok) {
       console.error('BUILD_MISMATCH', { loaded: ENGINE_VERSION, manifest });
       return { ok: false, manifest };
