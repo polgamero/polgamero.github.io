@@ -2,7 +2,7 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardForBot } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal } from './ui.js';
 import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
@@ -1329,6 +1329,7 @@ async function boot() {
         // 23.13.59 — antes de abrir el menú, liquida cualquier premio de partida que haya
         // quedado localmente pendiente por caída de red/cierre de pestaña. Si la transacción
         // original sí había entrado, el receipt remoto lo vuelve un no-op idempotente.
+        let recoveredRewardNotice = null;
         try {
           const recoveredRewards = await flushPendingGameRewards(state.currentUser.uid);
           if (typeof recoveredRewards?.latestTotal === 'number' && Number.isFinite(recoveredRewards.latestTotal)) {
@@ -1336,11 +1337,23 @@ async function boot() {
             profile.points = recoveredRewards.latestTotal;
             updateAccountUI(state.currentUser);
           }
-          if (recoveredRewards?.attempted) {
-            console.info('[GameReward 23.13.62] Reconciliación de pendientes:', recoveredRewards);
+          // 23.17.4.2 — el flush es durable pero captura errores por receipt. Por eso el boot
+          // debe inspeccionar el resultado y, además del diagnóstico técnico, dar feedback visible:
+          // una liquidación que terminó en 0 por anti-farming también debe "cerrarse" ante el usuario.
+          const settledItems = (recoveredRewards?.results || []).filter(item => item?.ok);
+          const failedItems = (recoveredRewards?.results || []).filter(item => !item?.ok);
+          if (Number(recoveredRewards?.failed) > 0) {
+            console.warn('[GameReward 23.17.4.2] Quedaron liquidaciones pendientes después del login:', failedItems);
+            recoveredRewardNotice = gameText('game.points.recoveryPending', { count: failedItems.length });
+          } else if (Number(recoveredRewards?.settled) > 0) {
+            const recoveredPoints = settledItems.reduce((sum, item) => sum + Math.max(0, Number(item?.appliedDelta) || 0), 0);
+            recoveredRewardNotice = recoveredPoints > 0
+              ? gameText('game.points.recovered', { points: recoveredPoints, total: recoveredRewards.latestTotal ?? profile.points ?? 0 })
+              : gameText('game.points.recoveredZero');
           }
         } catch (rewardErr) {
-          console.warn('[GameReward 23.13.62] No se pudieron reconciliar premios pendientes; se reintentará luego:', rewardErr);
+          console.warn('[GameReward 23.17.4.2] No se pudieron reconciliar liquidaciones pendientes; se reintentará luego:', rewardErr);
+          recoveredRewardNotice = gameText('game.points.recoveryPending', { count: 1 });
         }
 
         // 23.13.60 — serializamos las escrituras de bootstrap sobre users/{uid}. Antes,
@@ -1361,6 +1374,7 @@ async function boot() {
           await maybeShowAnnouncementPopup({ currentUser: state.currentUser });
         }
         if (serial !== authIdentitySerial || !state.currentUser) return profile;
+        if (recoveredRewardNotice) showSimpleAlertModal(recoveredRewardNotice);
         void bootstrapPlayerStatistics(state.currentUser.uid).catch(statsErr => {
           console.warn('No se pudieron preparar las estadísticas del jugador:', statsErr);
         });

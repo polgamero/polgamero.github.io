@@ -898,7 +898,14 @@ export async function flushPendingGameRewards(uid) {
       removePendingGameReward(uid, reward.receiptId);
       settled += 1;
       if (Number.isFinite(Number(result?.total))) latestTotal = Number(result.total);
-      results.push({ receiptId: reward.receiptId, ok: true, duplicate: !!result?.duplicate, total: result?.total ?? null });
+      results.push({
+        receiptId: reward.receiptId,
+        ok: true,
+        duplicate: !!result?.duplicate,
+        total: result?.total ?? null,
+        appliedDelta: Number(result?.appliedDelta) || 0,
+        rewardReason: result?.rewardReason || 'rewarded'
+      });
     } catch (error) {
       failed += 1;
       results.push({ receiptId: reward.receiptId, ok: false, code: error?.code || error?.name || 'ERROR', message: error?.message || String(error) });
@@ -1884,6 +1891,11 @@ export async function createMatch(uid, profileFields) {
       hostReady: false,
       guestReady: false,
       bothReadyAt: null,
+      // 23.17.4.2 — los campos terminales neutrales nacen en el lobby. Antes gameOver y
+      // abandonedBy no existían hasta el primer publish del motor; Rules los veía como un
+      // cambio protegido (missing→false/null) y rechazaba TODO snapshot vivo inicial.
+      gameOver: false,
+      abandonedBy: null,
       endedAt: null,
       terminalKind: null,
       winnerRole: null,
