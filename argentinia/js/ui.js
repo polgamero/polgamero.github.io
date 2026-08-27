@@ -2946,6 +2946,47 @@ function setBrowserCardZoom(overlay, value) {
   return applyCardZoom(overlay, value, { cssVar: '--card-w', unit: 'vh', min: 8, max: 50, fallback: 12 });
 }
 
+// 23.17.4 — UX desktop: las superficies largas siguen usando wheel nativo, pero además
+// permiten click + drag sobre zonas no interactivas. En touch no interferimos con el scroll
+// del navegador ni con cartas/botones/inputs.
+function enableDesktopDragScroll(container, { axis = 'y' } = {}) {
+  if (!container || window.matchMedia?.('(pointer: coarse)')?.matches) return;
+  let active = false;
+  let startX = 0;
+  let startY = 0;
+  let startLeft = 0;
+  let startTop = 0;
+  const interactive = 'button, a, input, select, textarea, .card, [role="button"], [contenteditable="true"]';
+  const end = (event) => {
+    if (!active) return;
+    active = false;
+    container.classList.remove('drag-scroll-active');
+    try { if (event?.pointerId != null && container.hasPointerCapture?.(event.pointerId)) container.releasePointerCapture(event.pointerId); } catch {}
+  };
+  container.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || event.target?.closest?.(interactive)) return;
+    active = true;
+    startX = event.clientX;
+    startY = event.clientY;
+    startLeft = container.scrollLeft;
+    startTop = container.scrollTop;
+    container.classList.add('drag-scroll-active');
+    try { container.setPointerCapture?.(event.pointerId); } catch {}
+  });
+  container.addEventListener('pointermove', (event) => {
+    if (!active) return;
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
+    if (Math.abs(dx) + Math.abs(dy) < 3) return;
+    if (axis !== 'y') container.scrollLeft = startLeft - dx;
+    if (axis !== 'x') container.scrollTop = startTop - dy;
+    event.preventDefault();
+  });
+  container.addEventListener('pointerup', end);
+  container.addEventListener('pointercancel', end);
+  container.addEventListener('lostpointercapture', end);
+}
+
 function browserSortOptionsHTML(categoryKey, selectedKey = 'cmc') {
   return getCardBrowserSortOptions(categoryKey)
     .map(option => `<option value="${option.key}"${option.key === selectedKey ? ' selected' : ''}>${option.label}</option>`)
@@ -3530,16 +3571,34 @@ function injectStoreStyles() {
       display: flex; flex-direction: column;
       padding: 24px 32px;
     }
-    .store-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
-    .store-title { font-size: 26px; font-weight: 700; color: #f0e0b0; text-shadow: 0 0 20px rgba(212,175,55,0.4); }
-    .store-body { flex: 1; overflow-y: auto; max-width: 900px; width: 100%; margin: 0 auto; }
-    .store-balance-row { display: flex; gap: 24px; margin-bottom: 28px; justify-content: center; }
-    .store-balance-chip {
-      background: rgba(18,25,15,0.7); border: 2px solid var(--gold, #d4af37); border-radius: 12px;
-      padding: 14px 28px; text-align: center; min-width: 160px;
+    .store-header {
+      display:flex; align-items:center; gap:16px; margin-bottom:16px; flex-shrink:0; flex-wrap:wrap;
+      min-height:48px;
     }
-    .store-balance-value { color: #f0e0b0; font-size: 26px; font-weight: 700; }
-    .store-balance-label { color: #b8adc4; font-size: 12px; margin-top: 2px; }
+    .store-title { font-size:26px; font-weight:700; color:#f0e0b0; text-shadow:0 0 20px rgba(212,175,55,0.4); white-space:nowrap; }
+    .store-header-wallet {
+      display:flex; align-items:center; gap:12px; min-width:0; flex-wrap:wrap;
+      margin-left:4px;
+    }
+    .store-header-wallet[hidden] { display:none !important; }
+    .store-header-wallet-item {
+      display:inline-flex; align-items:center; gap:6px; color:#f0e0b0; font-size:18px; font-weight:850; white-space:nowrap;
+    }
+    .store-header-wallet-item :is(.coin-icon,.ficha-icon) { width:34px; height:34px; object-fit:contain; }
+    .store-header-points-link {
+      appearance:none; border:0; background:none; color:#d7c881; padding:4px 0; margin:0;
+      font-size:11px; line-height:1.2; text-decoration:underline; text-underline-offset:3px; cursor:pointer; white-space:nowrap;
+    }
+    .store-header-points-link:hover { color:#fff0b8; }
+    .store-body { flex:1; overflow-y:auto; overflow-x:hidden; max-width:1220px; width:100%; margin:0 auto; padding:2px 3px 24px; overscroll-behavior:contain; }
+    .store-body.drag-scroll-active { user-select:none; cursor:grabbing; }
+    .store-balance-row { display:flex; gap:12px; margin-bottom:18px; justify-content:center; }
+    .store-balance-chip {
+      background:rgba(18,25,15,0.7); border:1px solid rgba(212,175,55,.55); border-radius:10px;
+      padding:9px 14px; text-align:center; min-width:120px;
+    }
+    .store-balance-value { color:#f0e0b0; font-size:20px; font-weight:700; }
+    .store-balance-label { color:#b8adc4; font-size:10px; margin-top:1px; }
     .store-section {
       background: rgba(18,25,15,0.5); border: 2px solid rgba(212,175,55,0.3); border-radius: 14px;
       padding: 24px; margin-bottom: 20px; text-align: center;
@@ -3587,22 +3646,12 @@ function injectStoreStyles() {
       font-size:21px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center;
     }
     .store-points-info-close:hover { border-color:#d4af37; box-shadow:0 0 14px rgba(212,175,55,.18); }
-    .store-market-strip-shell {
-      overflow:hidden; border-radius:16px; margin:0 0 20px;
-      border:1px solid rgba(212,175,55,.2); background:rgba(8,14,10,.34);
-    }
+    .store-market-strip-shell { overflow:visible; margin:0 0 20px; background:transparent; border:0; }
     .store-market-strip {
-      display:flex; flex-wrap:nowrap; align-items:stretch; gap:14px; overflow-x:auto; overflow-y:hidden;
-      padding:14px; scroll-snap-type:x proximity; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch;
-      scrollbar-width:thin; scrollbar-color:rgba(212,175,55,.55) rgba(0,0,0,.18);
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(245px,1fr)); align-items:stretch; gap:16px;
+      overflow:visible; padding:0;
     }
-    .store-market-strip::-webkit-scrollbar { height:10px; }
-    .store-market-strip::-webkit-scrollbar-track { background:rgba(0,0,0,.18); border-radius:999px; }
-    .store-market-strip::-webkit-scrollbar-thumb { background:rgba(212,175,55,.55); border-radius:999px; }
-    .store-market-item {
-      flex:1 0 270px; min-width:270px; max-width:330px; min-height:300px; scroll-snap-align:start;
-      justify-content:flex-start;
-    }
+    .store-market-item { min-width:0; max-width:none; min-height:300px; justify-content:flex-start; }
     .store-market-item .chest-item-icon { min-height:112px; }
     .store-market-item .chest-item-desc { flex:1; min-height:0; margin-top:2px; }
     .store-market-count { font-size:23px; line-height:1.15; margin:5px 0 8px; white-space:normal; }
@@ -3634,8 +3683,14 @@ function injectStoreStyles() {
       transition: background 0.15s ease, border-color 0.15s ease;
     }
     .store-keyword-btn:hover { background: rgba(212,175,55,0.18); border-color: #f0e0b0; }
-    .store-back-link { background: none; border: none; color: #b8adc4; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 10px; }
-    .store-back-link:hover { color: #f0e0b0; }
+    .store-back-link {
+      appearance:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+      background:linear-gradient(180deg,rgba(212,175,55,.10),rgba(8,14,10,.78));
+      border:1px solid rgba(212,175,55,.48); border-radius:8px; color:#e7d9af;
+      font-size:12px; font-weight:750; line-height:1; cursor:pointer; text-decoration:none;
+      min-height:34px; padding:8px 13px; margin-top:10px; transition:background .14s ease,border-color .14s ease,transform .14s ease;
+    }
+    .store-back-link:hover { color:#fff0c4; border-color:#d4af37; background:rgba(212,175,55,.15); transform:translateY(-1px); }
 
     /* 23.13.27 — Avisos Clasificados: UI únicamente. La economía/semana provienen del
        backend 23.13.26 y la compra sigue validada por Firestore Rules. */
@@ -3660,21 +3715,14 @@ function injectStoreStyles() {
     .classifieds-balance-row { margin-bottom: 12px; }
     /* 23.13.30 — una sola vidriera horizontal para las siete ofertas. Nada de separar
        Common/Uncommon/Premium en bloques: la rareza queda sólo como acento visual del slot. */
-    .classifieds-strip-shell {
-      margin: 8px 0 14px; overflow: hidden; border-radius: 13px;
-      border: 1px solid rgba(212,175,55,0.24); background: rgba(9,16,12,0.58);
-    }
+    .classifieds-strip-shell { margin:8px 0 14px; overflow:visible; border:0; background:transparent; }
     .classifieds-strip {
-      display:flex; flex-wrap:nowrap; align-items:flex-start; gap:18px; overflow-x:auto; overflow-y:hidden;
-      padding:16px 14px 18px; scroll-snap-type:x proximity; overscroll-behavior-x:contain;
-      -webkit-overflow-scrolling:touch; scrollbar-width:thin; scrollbar-color:rgba(212,175,55,.55) rgba(0,0,0,.18);
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(205px,1fr)); align-items:start; gap:16px;
+      overflow:visible; padding:0;
     }
-    .classifieds-strip::-webkit-scrollbar { height:10px; }
-    .classifieds-strip::-webkit-scrollbar-track { background:rgba(0,0,0,.18); border-radius:999px; }
-    .classifieds-strip::-webkit-scrollbar-thumb { background:rgba(212,175,55,.55); border-radius:999px; }
     .classifieds-card-slot {
-      --card-w: 180px; position:relative; display:flex; flex:0 0 198px; flex-direction:column; align-items:center; gap:8px;
-      min-width:198px; padding:11px 9px 12px; border-radius:11px; scroll-snap-align:start;
+      --card-w:min(180px,100%); position:relative; display:flex; width:100%; min-width:0; box-sizing:border-box;
+      flex-direction:column; align-items:center; gap:8px; padding:11px 9px 12px; border-radius:11px;
       background:rgba(255,255,255,0.028); border:1px solid rgba(255,255,255,0.09);
     }
     .classifieds-card-slot.classifieds-purchased { opacity:.72; }
@@ -3714,12 +3762,19 @@ function injectStoreStyles() {
       display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 5px 16px rgba(0,0,0,.65);
     }
 
-    html.argentinia-mobile .store-body { max-width:none; }
-    html.argentinia-mobile .store-balance-row { gap:8px; margin-bottom:18px; }
-    html.argentinia-mobile .store-balance-chip { min-width:0; flex:1; padding:10px 8px; }
-    html.argentinia-mobile .store-balance-value { font-size:20px; }
-    html.argentinia-mobile .store-market-strip { gap:10px; padding:10px 8px 12px; }
-    html.argentinia-mobile .store-market-item { flex-basis:min(78vw,270px); min-width:min(78vw,270px); min-height:275px; padding:14px; }
+    html.argentinia-mobile #store-overlay { padding:14px 12px; }
+    html.argentinia-mobile .store-header { gap:8px 10px; margin-bottom:10px; }
+    html.argentinia-mobile .store-title { font-size:19px; }
+    html.argentinia-mobile .store-header-wallet { gap:7px; flex:1 1 100%; padding-left:2px; }
+    html.argentinia-mobile .store-header-wallet-item { font-size:14px; gap:4px; }
+    html.argentinia-mobile .store-header-wallet-item :is(.coin-icon,.ficha-icon) { width:25px; height:25px; }
+    html.argentinia-mobile .store-header-points-link { font-size:9px; }
+    html.argentinia-mobile .store-body { max-width:none; padding-bottom:16px; }
+    html.argentinia-mobile .store-balance-row { gap:8px; margin-bottom:12px; }
+    html.argentinia-mobile .store-balance-chip { min-width:0; flex:1; padding:8px 6px; }
+    html.argentinia-mobile .store-balance-value { font-size:17px; }
+    html.argentinia-mobile .store-market-strip { grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr)); gap:10px; padding:0; }
+    html.argentinia-mobile .store-market-item { min-width:0; min-height:260px; padding:14px; }
     html.argentinia-mobile .store-market-item .chest-item-icon { min-height:92px; }
     html.argentinia-mobile .store-market-item .reward-pack-icon { width:96px; height:96px; }
     html.argentinia-mobile .store-market-item .store-classifieds-icon { width:96px; height:96px; }
@@ -3728,8 +3783,8 @@ function injectStoreStyles() {
     html.argentinia-mobile .classifieds-week-title { font-size:15px; }
     html.argentinia-mobile .classifieds-week-subtitle { font-size:9px; }
     html.argentinia-mobile .classifieds-countdown { min-width:150px; padding:6px 9px; font-size:9px; }
-    html.argentinia-mobile .classifieds-strip { gap:10px; padding:10px 8px 12px; }
-    html.argentinia-mobile .classifieds-card-slot { --card-w:min(42dvh,160px); flex-basis:176px; min-width:176px; padding:7px 7px 8px; gap:5px; }
+    html.argentinia-mobile .classifieds-strip { grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:9px; padding:0; }
+    html.argentinia-mobile .classifieds-card-slot { --card-w:min(40dvh,154px); width:100%; min-width:0; padding:7px 7px 8px; gap:5px; }
     html.argentinia-mobile .classifieds-card-slot .card:hover { transform:none; box-shadow:2px 2px 5px rgba(0,0,0,0.5); }
     html.argentinia-mobile .classifieds-owned,
     html.argentinia-mobile .classifieds-price { font-size:9px; min-height:12px; }
@@ -3738,11 +3793,17 @@ function injectStoreStyles() {
     html.argentinia-mobile .classifieds-card-error { font-size:8px; min-height:10px; }
     html.argentinia-mobile .classifieds-preview-overlay { padding:8px; }
     html.argentinia-mobile .classifieds-preview-panel { --card-w:min(72vw, calc(84dvh * 5 / 7), 280px); }
+    .store-section-compact { padding:14px 18px; margin-bottom:14px; }
+    .store-section-compact .store-section-desc { margin-bottom:0; }
+    .store-nav-row { display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin:12px 0 4px; }
+    .store-nav-row .store-back-link { margin-top:0; }
     .store-prebuilt-entry { border-color:rgba(112,184,135,.3); }
+    .store-prebuilt-icon-wrap { width:120px; height:120px; display:flex; align-items:center; justify-content:center; }
+    .store-prebuilt-icon-wrap.image-missing::after { content:'🃏'; font-size:72px; line-height:1; }
     .store-prebuilt-icon { width:120px; height:120px; object-fit:contain; filter:drop-shadow(0 5px 12px rgba(112,184,135,.28)); }
-    .prebuilt-strip-shell { overflow:hidden; margin-top:10px; }
-    .prebuilt-strip { display:flex; gap:14px; overflow-x:auto; padding:12px 8px 16px; scroll-snap-type:x proximity; }
-    .prebuilt-product { flex:0 0 250px; min-width:250px; border:1px solid rgba(212,175,55,.24); border-radius:13px; background:rgba(8,5,12,.62); padding:13px; scroll-snap-align:start; display:flex; flex-direction:column; gap:7px; }
+    .prebuilt-strip-shell { overflow:visible; margin-top:10px; }
+    .prebuilt-strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(235px,1fr)); gap:16px; overflow:visible; padding:6px 0 8px; }
+    .prebuilt-product { min-width:0; width:100%; box-sizing:border-box; border:1px solid rgba(212,175,55,.24); border-radius:13px; background:rgba(8,5,12,.62); padding:13px; display:flex; flex-direction:column; gap:7px; }
     .prebuilt-product.purchased { opacity:.68; }
     .prebuilt-product-image { width:100%; aspect-ratio:4/3; object-fit:contain; border-radius:9px; background:rgba(0,0,0,.22); }
     .prebuilt-product-title { color:#f0e0b0; font-size:16px; font-weight:800; line-height:1.15; }
@@ -3761,8 +3822,10 @@ function injectStoreStyles() {
     .prebuilt-name-input { width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid rgba(212,175,55,.35); background:#100b14; color:#f4e7c5; font-size:15px; }
     .prebuilt-actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
     .prebuilt-actions .store-buy-btn { flex:1; min-width:170px; }
-    html.argentinia-mobile .store-prebuilt-icon { width:96px; height:96px; }
-    html.argentinia-mobile .prebuilt-product { flex-basis:min(78vw,260px); min-width:min(78vw,260px); }
+    html.argentinia-mobile .store-prebuilt-icon-wrap, html.argentinia-mobile .store-prebuilt-icon { width:96px; height:96px; }
+    html.argentinia-mobile .store-prebuilt-icon-wrap.image-missing::after { font-size:58px; }
+    html.argentinia-mobile .prebuilt-strip { grid-template-columns:repeat(auto-fit,minmax(205px,1fr)); gap:10px; }
+    html.argentinia-mobile .prebuilt-product { min-width:0; width:100%; }
     html.argentinia-mobile .prebuilt-preview-top { grid-template-columns:1fr; }
   `;
   document.head.appendChild(style);
@@ -3781,7 +3844,8 @@ export function showStoreScreen(onBack, options = {}) {
   overlay.innerHTML = `
     <div class="store-header">
       <button class="encyclopedia-back-btn" id="store-back">← ${gameTextHtml('common.back')}</button>
-      <div class="store-title">${gameTextHtml('store.title')}</div>
+      <div class="store-title" id="store-title">${gameTextHtml('store.title')}</div>
+      <div class="store-header-wallet" id="store-header-wallet" hidden></div>
     </div>
     <div class="store-body" id="store-body"></div>
   `;
@@ -3793,6 +3857,31 @@ export function showStoreScreen(onBack, options = {}) {
   });
 
   const body = overlay.querySelector('#store-body');
+  const storeTitle = overlay.querySelector('#store-title');
+  const storeWallet = overlay.querySelector('#store-header-wallet');
+  enableDesktopDragScroll(body, { axis: 'y' });
+
+  function renderStoreHeader(title = gameText('store.title'), { showWallet = true } = {}) {
+    if (storeTitle) storeTitle.textContent = title;
+    if (!storeWallet) return;
+    if (!showWallet || !state.currentUser || !state.userProfile) {
+      storeWallet.hidden = true;
+      storeWallet.replaceChildren();
+      return;
+    }
+    const points = Math.max(0, Math.floor(Number(state.userProfile.points) || 0));
+    const fichas = Math.max(0, Math.floor(Number(state.userProfile.fichas) || 0));
+    storeWallet.hidden = false;
+    storeWallet.innerHTML = `
+      <span class="store-header-wallet-item" title="Puntos">${COIN_ICON_HTML}<strong>${points}</strong></span>
+      <span class="store-header-wallet-item" title="Fichas">${FICHA_ICON_HTML}<strong>${fichas}</strong></span>
+      <button class="store-header-points-link" id="store-header-points-how" type="button">${gameTextHtml('store.pointsHow.link')}</button>
+    `;
+    storeWallet.querySelector('#store-header-points-how')?.addEventListener('click', () => {
+      void renderMainView({ openPointsInfo: true });
+    });
+  }
+
   let craftSelectedCardId = null;
   // 23.13.37 craft hotfix — tamaño persistente dentro del selector de criaturas.
   let craftCardZoom = document.documentElement.classList.contains('argentinia-mobile') ? 20 : 14;
@@ -3831,8 +3920,9 @@ export function showStoreScreen(onBack, options = {}) {
     </div>
   `;
 
-  async function renderMainView() {
+  async function renderMainView({ openPointsInfo = false } = {}) {
     leaveClassifiedsView();
+    renderStoreHeader(gameText('store.title'), { showWallet: !!state.userProfile });
     if (!state.currentUser) {
       body.innerHTML = `<div id="store-active-events"></div><div class="store-section"><div class="store-section-desc">${gameTextHtml('store.loginRequired')}</div></div>`;
       void renderActiveEventsStrip(body.querySelector('#store-active-events'));
@@ -3855,14 +3945,6 @@ export function showStoreScreen(onBack, options = {}) {
 
     body.innerHTML = `
       <div id="store-active-events"></div>
-      <div class="store-balance-row">
-        <div class="store-balance-chip store-balance-points">
-          <div class="store-balance-value">${COIN_ICON_HTML} ${points}</div>
-          <div class="store-balance-label">${gameTextHtml('store.balance.points')}</div>
-          <button class="store-points-how-link" id="store-points-how-link" type="button">${gameTextHtml('store.pointsHow.link')}</button>
-        </div>
-        <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${fichas}</div><div class="store-balance-label">${gameTextHtml('store.balance.fichas')}</div></div>
-      </div>
       ${pointsInfoPanelHTML}
       <div class="store-market-strip-shell">
         <div class="store-market-strip" aria-label="Opciones de la Tienda">
@@ -3882,7 +3964,7 @@ export function showStoreScreen(onBack, options = {}) {
             <button class="reward-action-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? gameTextHtml('store.craft.action') : gameTextHtml('store.craft.missing', { count: FICHAS_PER_ENHANCEMENT - fichas })}</button>
           </div>
           <div class="chest-item store-market-item store-prebuilt-entry">
-            <div class="chest-item-icon"><div class="store-prebuilt-icon" aria-hidden="true" style="font-size:78px;display:flex;align-items:center;justify-content:center">🃏</div></div>
+            <div class="chest-item-icon"><div class="store-prebuilt-icon-wrap"><img class="store-prebuilt-icon" src="./assets/images/ui/mazos_prearmados.png" alt="Mazos Prearmados" onerror="this.parentElement.classList.add('image-missing');this.remove()"></div></div>
             <div class="chest-item-title">${gameTextHtml('store.prebuilt.showcaseTitle')}</div>
             <div class="chest-item-count store-market-count">${gameTextHtml('store.prebuilt.showcaseCount')}</div>
             <div class="chest-item-desc">${gameTextHtml('store.prebuilt.description')}</div>
@@ -3902,17 +3984,14 @@ export function showStoreScreen(onBack, options = {}) {
     void renderActiveEventsStrip(body.querySelector('#store-active-events'));
 
     const pointsPanel = body.querySelector('#store-points-info-panel');
-    const pointsLink = body.querySelector('#store-points-how-link');
     const closePointsPanel = body.querySelector('#store-points-info-close');
     const setPointsPanelOpen = open => {
       if (!pointsPanel) return;
       pointsPanel.hidden = !open;
-      pointsLink?.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) pointsPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (open) pointsPanel.scrollIntoView({ behavior:'smooth', block:'nearest' });
     };
-    pointsLink?.setAttribute('aria-expanded', 'false');
-    pointsLink?.addEventListener('click', () => setPointsPanelOpen(pointsPanel?.hidden !== false));
     closePointsPanel?.addEventListener('click', () => setPointsPanelOpen(false));
+    if (openPointsInfo) requestAnimationFrame(() => setPointsPanelOpen(true));
 
     body.querySelector('#store-prebuilt')?.addEventListener('click', () => {
       void renderPrebuiltDecksView();
@@ -3931,6 +4010,7 @@ export function showStoreScreen(onBack, options = {}) {
         const purchase = await purchasePack(state.currentUser.uid, PACK_COST);
         state.userProfile = purchase.profile;
         updateAccountUI(state.currentUser);
+        renderStoreHeader(gameText('store.title'));
         body.innerHTML = `
           <div class="store-section">
             <img class="store-pack-visual" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">
@@ -4035,6 +4115,7 @@ export function showStoreScreen(onBack, options = {}) {
         const result=await purchasePrebuiltDeck(state.currentUser.uid,product.id,name);
         state.userProfile=result.profile;
         updateAccountUI(state.currentUser);
+        renderStoreHeader(gameText('prebuilt.title'));
         panel.innerHTML=`<div class="prebuilt-preview-title">${gameTextHtml('prebuilt.success')}</div>
           <div class="prebuilt-preview-sub">${escapeHtml(result.deck?.name||name)}</div>
           <div class="prebuilt-actions"><button class="store-buy-btn" id="prebuilt-go-decks">${gameTextHtml('prebuilt.goDecks')}</button><button class="store-back-link" id="prebuilt-success-close">${gameTextHtml('prebuilt.backStore')}</button></div>`;
@@ -4050,22 +4131,18 @@ export function showStoreScreen(onBack, options = {}) {
 
   async function renderPrebuiltDecksView() {
     leaveClassifiedsView();
+    renderStoreHeader(gameText('prebuilt.title'));
     body.innerHTML=`<div class="store-section classifieds-loading">${gameTextHtml('common.loading')}</div>`;
     try {
       await cardDb.loadAll();
       const catalog=await loadPrebuiltDeckCatalog();
       const purchasedIds=new Set(getPrebuiltPurchaseIds(state.userProfile));
       body.innerHTML=`
-        <div class="store-section">
-          <div class="store-section-title">${gameTextHtml('prebuilt.title')}</div>
+        <div class="store-section store-section-compact">
           <div class="store-section-desc">${gameTextHtml('prebuilt.subtitle')}</div>
-          <div class="store-balance-row">
-            <div class="store-balance-chip"><div class="store-balance-value">${COIN_ICON_HTML} ${Number(state.userProfile?.points)||0}</div><div class="store-balance-label">${gameTextHtml('store.balance.points')}</div></div>
-            <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${Number(state.userProfile?.fichas)||0}</div><div class="store-balance-label">${gameTextHtml('store.balance.fichas')}</div></div>
-          </div>
-          <div class="prebuilt-strip-shell"><div class="prebuilt-strip" id="prebuilt-strip"></div></div>
-          <button class="store-back-link" id="prebuilt-back">${gameTextHtml('prebuilt.backStore')}</button>
-        </div>`;
+        </div>
+        <div class="prebuilt-strip-shell"><div class="prebuilt-strip" id="prebuilt-strip"></div></div>
+        <div class="store-nav-row"><button class="store-back-link" id="prebuilt-back">${gameTextHtml('prebuilt.backStore')}</button></div>`;
       const strip=body.querySelector('#prebuilt-strip');
       for(const product of catalog.products) {
         const purchased=purchasedIds.has(product.id);
@@ -4198,25 +4275,21 @@ export function showStoreScreen(onBack, options = {}) {
     const localAnchorMs = Date.now();
     const premiumLabel = offer.premiumRarity === 'Mythic' ? 'Mítica' : 'Rara';
 
+    renderStoreHeader(gameText('classifieds.title'));
     body.innerHTML = `
       <div class="classifieds-topbar">
         <div class="classifieds-week-info">
-          <div class="classifieds-week-title">${gameTextHtml('classifieds.title')}</div>
           <div class="classifieds-week-subtitle">${gameTextHtml('classifieds.weekSubtitle', { weekKey: offer.weekKey, premium: premiumLabel })}</div>
         </div>
         <div class="classifieds-countdown" id="classifieds-countdown"></div>
-      </div>
-      <div class="store-balance-row classifieds-balance-row">
-        <div class="store-balance-chip"><div class="store-balance-value">${COIN_ICON_HTML} ${points}</div><div class="store-balance-label">Puntos</div></div>
-        <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${fichas}</div><div class="store-balance-label">Fichas</div></div>
       </div>
       <div class="classifieds-global-error" id="classifieds-global-error"></div>
       <div class="classifieds-strip-shell">
         <div class="classifieds-strip" id="classifieds-strip" aria-label="Siete Avisos Clasificados de esta semana"></div>
       </div>
-      <div class="classifieds-refresh-row">
+      <div class="classifieds-refresh-row store-nav-row">
         <button class="store-back-link" id="classifieds-back">${gameTextHtml('classifieds.backStore')}</button>
-        <button class="store-back-link" id="classifieds-refresh">${gameTextHtml('classifieds.refresh')}</button>
+        <button class="store-back-link" id="classifieds-refresh">↻ ${gameTextHtml('classifieds.refresh')}</button>
       </div>
     `;
 
@@ -4299,6 +4372,7 @@ export function showStoreScreen(onBack, options = {}) {
             if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
             state.userProfile = updatedProfile;
             updateAccountUI(state.currentUser);
+            renderStoreHeader(gameText('classifieds.title'));
             const synced = syncClassifiedsOfferWithProfile(offer, updatedProfile);
             // Conserva el ancla temporal real: no reiniciamos el countdown al serverNow
             // viejo cada vez que se compra una carta. También preservamos scroll para que
@@ -4333,6 +4407,7 @@ export function showStoreScreen(onBack, options = {}) {
   async function renderClassifiedsView() {
     if (!state.currentUser || !state.userProfile) return renderMainView();
     leaveClassifiedsView();
+    renderStoreHeader(gameText('classifieds.title'));
     const viewSerial = classifiedsViewSerial;
     body.innerHTML = `<div class="store-section classifieds-loading">${gameTextHtml('classifieds.loading')}</div>`;
     try {
@@ -4501,7 +4576,8 @@ function injectMyDecksStyles() {
     }
     .mydecks-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
     .mydecks-title { font-size: 26px; font-weight: 700; color: #f0e0b0; text-shadow: 0 0 20px rgba(212,175,55,0.4); }
-    .mydecks-body { flex: 1; overflow-y: auto; max-width: 900px; width: 100%; margin: 0 auto; }
+    .mydecks-body { flex:1; overflow-y:auto; max-width:1180px; width:100%; margin:0 auto; padding:2px 3px 24px; overscroll-behavior:contain; }
+    .mydecks-body.drag-scroll-active { user-select:none; cursor:grabbing; }
     .mydecks-slots-grid {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px;
     }
@@ -4528,8 +4604,16 @@ function injectMyDecksStyles() {
       transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
     .mydecks-slot-empty:hover { background: rgba(212,175,55,0.08); border-color: #f0e0b0; color: #f0e0b0; }
-    .mydecks-detail-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
-    .mydecks-detail-title { color: #f0e0b0; font-size: 18px; font-weight: 700; }
+    .mydecks-detail-header { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+    .mydecks-detail-title { color:#f0e0b0; font-size:18px; font-weight:700; flex:1 1 260px; }
+    .mydecks-detail-zoom { width:min(280px,100%); margin:0; flex:0 1 280px; }
+    @media (max-width:700px) {
+      #mydecks-overlay { padding:14px 12px; }
+      .mydecks-header { gap:10px; margin-bottom:12px; }
+      .mydecks-title { font-size:20px; }
+      .mydecks-detail-title { flex-basis:100%; order:-1; }
+      .mydecks-detail-zoom { flex:1 1 100%; width:100%; }
+    }
   `;
   document.head.appendChild(style);
 }
@@ -5419,6 +5503,8 @@ export function showMyDecksScreen(onBack) {
   });
 
   const body = overlay.querySelector('#mydecks-body');
+  enableDesktopDragScroll(body, { axis:'y' });
+  let myDecksDetailZoom = document.documentElement.classList.contains('argentinia-mobile') ? 20 : 14;
   const MAX_DECKS = MAX_SAVED_DECKS;
 
   function renderListView() {
@@ -5500,6 +5586,11 @@ export function showMyDecksScreen(onBack) {
       <div class="mydecks-detail-header">
         <button class="store-back-link" id="mydecks-detail-back">← Mis Mazos</button>
         <div class="mydecks-detail-title">${deck.name} — ${cards.length} cartas</div>
+        <div class="card-browser-zoom mydecks-detail-zoom" title="Cambiar tamaño de las cartas">
+          <span>🔍</span>
+          <input type="range" id="mydecks-detail-zoom" min="8" max="40" step="1" value="${myDecksDetailZoom}">
+          <span id="mydecks-detail-zoom-value">${myDecksDetailZoom}</span>
+        </div>
         <button class="admin-save-btn" id="mydecks-detail-edit" style="width:auto; padding:8px 18px;">✏️ Editar</button>
         <button class="delete-confirm-btn" id="mydecks-detail-delete" style="width:auto; padding:8px 18px;">🗑️ Eliminar</button>
       </div>
@@ -5534,6 +5625,16 @@ export function showMyDecksScreen(onBack) {
     });
 
     const grid = body.querySelector('#mydecks-detail-grid');
+    const detailZoom = body.querySelector('#mydecks-detail-zoom');
+    const detailZoomValue = body.querySelector('#mydecks-detail-zoom-value');
+    const syncDetailZoom = () => {
+      if (!detailZoom) return;
+      myDecksDetailZoom = setBrowserCardZoom(grid, detailZoom.value);
+      if (detailZoomValue) detailZoomValue.textContent = String(myDecksDetailZoom);
+    };
+    detailZoom?.addEventListener('input', syncDetailZoom);
+    syncDetailZoom();
+
     cards.forEach(({ displayCard, isEnhanced }) => {
       const slot = document.createElement('div');
       slot.className = 'encyclopedia-card-slot';

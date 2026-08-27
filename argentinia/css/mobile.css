@@ -1410,6 +1410,17 @@ html.argentinia-mobile .arg-mobile-telemetry-toggle {
   border-radius: 5px !important;
   font-size: 8px !important;
 }
+html.argentinia-mobile .telemetry-panel:not(.arg-mobile-telemetry-expanded) .arg-mobile-telemetry-toggle {
+  min-width: 26px !important;
+  width: 26px !important;
+  height: 17px !important;
+  padding: 0 1px !important;
+  border-radius: 4px !important;
+  font-size: 0 !important;
+}
+html.argentinia-mobile .telemetry-panel:not(.arg-mobile-telemetry-expanded) .arg-mobile-telemetry-toggle::before {
+  font-size: 6px !important;
+}
 
 /* E) Noticias mobile colapsa físicamente en SU esquina inferior derecha, no por clip
       de la esquina superior izquierda. Expandido conserva la huella 23.11.11. */

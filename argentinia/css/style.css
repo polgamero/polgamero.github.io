@@ -1628,6 +1628,13 @@ button.mana-pool-chip:disabled { opacity: 1; }
   white-space: nowrap;
 }
 .arg-mobile-telemetry-toggle:hover { background: rgba(73,19,19,.96); }
+/* 23.17.4 — cerrado ocupa menos pantalla; al expandir recupera exactamente la huella previa. */
+.telemetry-panel:not(.arg-mobile-telemetry-expanded) .arg-mobile-telemetry-toggle {
+  min-width:36px; width:36px; height:24px; padding:0 4px; border-radius:6px; font-size:0; letter-spacing:0; overflow:hidden;
+}
+.telemetry-panel:not(.arg-mobile-telemetry-expanded) .arg-mobile-telemetry-toggle::before {
+  content:'● REC'; color:#ff8b8b; font:800 8px/1 system-ui,sans-serif; letter-spacing:0;
+}
 .telemetry-panel.arg-mobile-telemetry-expanded {
   flex-wrap: wrap;
   background: rgba(12,12,12,.95);
