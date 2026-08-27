@@ -129,7 +129,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'prebuilt.error.alreadyPurchased': definition('Tienda', 'Ese mazo ya fue comprado por esta cuenta.', 'Error de recompra.'),
   'prebuilt.error.insufficientFunds': definition('Tienda', 'No te alcanzan los puntos o las Fichas.', 'Error de saldo.'),
   'prebuilt.error.deckLimit': definition('Tienda', 'Alcanzaste el máximo de mazos guardados. Liberá un espacio desde Mis Mazos.', 'Error de límite de slots.'),
-  'prebuilt.error.rulesStale': definition('Tienda', 'La Tienda segura necesita Firestore Rules 23.13.71. Publicalas antes de comprar.', 'Bloqueo fail-closed si el frontend nuevo quedó delante de las Rules.'),
+  'prebuilt.error.rulesStale': definition('Tienda', 'La Tienda segura necesita Firestore Rules 23.13.72. Publicalas antes de comprar.', 'Bloqueo fail-closed si el frontend nuevo quedó delante de las Rules.'),
   'prebuilt.error.generic': definition('Tienda', 'No se pudo comprar el mazo. Probá de nuevo.', 'Error genérico de compra.'),
   'store.pack.title': definition('Tienda', 'Sobre — {cost} puntos', 'Título de compra de sobre.'),
   'store.pack.showcaseTitle': definition('Tienda', 'Sobres', 'Título corto de Sobres en la vidriera horizontal.'),
