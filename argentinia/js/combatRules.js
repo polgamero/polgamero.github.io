@@ -20,6 +20,7 @@ import {
   queueTriggeredAbilities,
   buildGenericEventTriggerEntries,
   dispatchGameEvent,
+  dispatchReplacementCounterRemoval,
   cleanupIfVehicle,
   checkPlaneswalkerDeaths,
   addCounters,
@@ -31,6 +32,8 @@ import { showDamageAssignmentModal } from './ui.js';
 import { recordTelemetryEvent } from './telemetry.js';
 import { gameText } from './gameTexts.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
+import { botHasCapability } from './botDifficulty.js';
+import { chooseHardBlockPlan, COMBAT_BOT_2_VERSION } from './combatBot2.js';
 
 // Habilidades disparadas de combate: ahora se APILAN en vez de resolver durante la
 // declaración/daño. `triggerKey` se traduce a una etiqueta estable para Stack/logs.
@@ -213,6 +216,33 @@ function commitBlock(blockerItem, aIdx, availableBlockers) {
 export function assignBotBlockers() {
   const attackers = state.localCombat.filter(c => c.isAttacking);
   if (attackers.length === 0) return;
+
+  // 23.17.2 — Difícil usa Combat Bot 2.0: evalúa la asignación COMPLETA de
+  // bloqueadores en vez de resolver atacante por atacante de manera greedy. Medio conserva
+  // exactamente assignSmartBlock(), que era el viejo comportamiento Difícil.
+  if (botHasCapability(state.botDifficulty, 'combat2')) {
+    const attackerRefs = state.localCombat.map((unit,index)=>({unit,index})).filter(x=>x.unit.isAttacking);
+    const blockerRefs = state.rivalCombat.map((unit,index)=>({unit,index})).filter(x=>!x.unit.tapped);
+    const helpers={
+      getPower:getEffectivePower, getToughness:getEffectiveToughness,
+      hasKeyword, canBlock, predictDuel
+    };
+    const plan=chooseHardBlockPlan({
+      attackers:attackerRefs, blockers:blockerRefs,
+      botLife:state.rivalHP, opponentLife:state.localHP, helpers
+    });
+    blockerRefs.forEach((ref,b)=>{
+      const localAttackIndex=plan.assignment[b];
+      ref.unit.blockingIndex = localAttackIndex >= 0 ? attackerRefs[localAttackIndex].index : null;
+    });
+    const used=blockerRefs.filter((_,b)=>plan.assignment[b]>=0).length;
+    logMsg(gameText('bot.block.combat2', { count:used }));
+    recordTelemetryEvent('bot_combat2_block_plan', {
+      version:COMBAT_BOT_2_VERSION, utility:plan.utility, expectedDamage:plan.damage,
+      blockerCount:used, attackerCount:attackerRefs.length
+    });
+    return;
+  }
 
   let availableBlockers = state.rivalCombat.map((c, i) => ({c, i})).filter(obj => !obj.c.tapped);
 
@@ -458,6 +488,7 @@ function dealCombatDamageToCreature(source, targetItem, amount) {
   const sourceIsLocal=state.localCombat.includes(source);
   const targetIsLocal=state.localCombat.includes(targetItem);
   const replacement=resolveReplacementEvent(state,{type:'damage',amount,affectedIsLocal:targetIsLocal,targetIsLocal,card:targetItem.card,item:targetItem,targetCard:targetItem.card,targetItem,sourceCard:source.card,sourceItem:source,combat:true,cause:'combat'});
+  dispatchReplacementCounterRemoval(replacement,targetItem,{controllerIsLocal:targetIsLocal,actorIsLocal:targetIsLocal});
   const finalAmount=Math.max(0,Number(replacement.event.amount)||0);
   if(finalAmount<=0){ logMsg(gameText('replacement.damage.prevented',{target:targetItem.card.name})); return 0; }
   if (hasKeyword(source, 'infect')) {
@@ -495,6 +526,7 @@ function dealCombatDamageToPlaneswalker(source, targetItem, amount) {
   if (!targetIsLocal && !targetIsRival) return 0;
   const sourceIsLocal=state.localCombat.includes(source);
   const replacement=resolveReplacementEvent(state,{type:'damage',amount,affectedIsLocal:targetIsLocal,targetIsLocal,card:targetItem.card,item:targetItem,targetCard:targetItem.card,targetItem,sourceCard:source.card,sourceItem:source,combat:true,cause:'combat'});
+  dispatchReplacementCounterRemoval(replacement,targetItem,{controllerIsLocal:targetIsLocal,actorIsLocal:targetIsLocal});
   const finalAmount=Math.max(0,Number(replacement.event.amount)||0);
   if(finalAmount<=0){ logMsg(gameText('replacement.damage.prevented',{target:targetItem.card.name})); return 0; }
   targetItem.loyalty -= finalAmount;

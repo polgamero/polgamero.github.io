@@ -1,4 +1,5 @@
 import { isCreaturePermanent } from './permanentTypes.js';
+import { isSagaCard, shouldSacrificeSaga, getSagaFinalChapter, getSagaLoreCount } from './sagaEngine.js';
 // Argentinia 23.15.2.1 — Rules Kernel / State-Based Actions 2.0 hardening
 // ---------------------------------------------------------------------------
 // Este módulo NO muta el juego. Toma un snapshot del estado público de battlefield y
@@ -101,6 +102,23 @@ export function collectPlaneswalkerStateActions(state) {
   return out;
 }
 
+
+export function collectSagaStateActions(state, { hasPendingSagaChapter } = {}) {
+  const out = [];
+  for (const isLocal of [true, false]) {
+    for (const entry of battlefieldEntriesForSide(state, isLocal)) {
+      if (!isSagaCard(entry.card)) continue;
+      const pending = !!hasPendingSagaChapter?.(entry.item);
+      if (!shouldSacrificeSaga(entry.item, { hasPendingChapter: pending })) continue;
+      out.push({
+        item:entry.item, card:entry.card, isLocal, zone:entry.zone, index:entry.index,
+        reason:'saga_complete', lore:getSagaLoreCount(entry.item), finalChapter:getSagaFinalChapter(entry.card)
+      });
+    }
+  }
+  return out;
+}
+
 export function collectCounterCancellationActions(state) {
   const out = [];
   const scan = (zone, isLocal, zoneName) => {
@@ -184,6 +202,7 @@ export function evaluateStateBasedActions(state, helpers = {}) {
     legends: collectLegendGroups(state),
     creatures: collectCreatureStateActions(state, helpers),
     planeswalkers: collectPlaneswalkerStateActions(state),
+    sagas: collectSagaStateActions(state, helpers),
     counterCancellations: collectCounterCancellationActions(state),
     tokenCeases: collectTokenCeaseActions(state),
     attachments: collectAttachmentStateActions(state, helpers)
@@ -192,6 +211,6 @@ export function evaluateStateBasedActions(state, helpers = {}) {
 
 export function hasMechanicalStateActions(snapshot) {
   if (!snapshot) return false;
-  return ['creatures', 'planeswalkers', 'counterCancellations', 'tokenCeases', 'attachments']
+  return ['creatures', 'planeswalkers', 'sagas', 'counterCancellations', 'tokenCeases', 'attachments']
     .some(key => Array.isArray(snapshot[key]) && snapshot[key].length > 0);
 }

@@ -1,7 +1,9 @@
 import { hasKeyword, canBlock, predictDuel, getProtectionMatch } from './keywords.js';
 import { recordTelemetryEvent } from './telemetry.js';
 import { isCreaturePermanent, isArtifactPermanent, isLandPermanent, landMatchesFilter } from './permanentTypes.js';
+import { getProliferateCandidates } from './utils.js';
 import { getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities, landMatchesEffectiveFilter } from './landCharacteristics.js';
+import { cardHasSubtype, cardsShareCreatureType, resolveSubtypeReference } from './typalEngine.js';
 import {
   state,
   logMsg,
@@ -26,6 +28,8 @@ import {
   triggerLandEtb,
   hasLandPlayFromGraveyardPermission,
   playLandFromGraveyardByIndex,
+  canPlayCardFromExile,
+  getExilePlayPermissionForCard,
   triggerSpellCast,
   chooseGraveyardCards,
   cardMatchesGraveyardFilter,
@@ -50,13 +54,18 @@ import {
 import { moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost } from './utils.js';
 
 import { assignBotBlockers, queueDeclaredAttackTriggers, queueDeclaredBlockTriggers, markDeclaredBlocks, checkDeaths } from './combatRules.js';
-import { addToStack, spellStack, isStackItemLegalCounterTarget, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
+import { addToStack, spellStack, isStackItemLegalCounterTarget, isStackItemLegalCopyTarget, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
 import { gameText } from './gameTexts.js';
 import { MANA_TYPES, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, spendAvailableTowardCost } from './manaPool.js';
 import { normalizeManaAbility, canActivateManaSourcePermanent } from './manaSources.js';
 import { cardOwnerIsLocal } from './zoneOwnership.js';
 import { getSpellPaymentMethods, getConvokeCandidates, applyConvokeToCost, applyDelveToCost, applyPhyrexianLifeToCost, parsedManaTotal } from './costEngine.js';
 import { normalizeLibraryEffect, libraryCardMatchesFilter } from './libraryEngine.js';
+import { permissionBaseManaOverride, consumeExilePlayPermission, clearExilePlayStateOnLeave, EXILE_PLAY_ENGINE_VERSION } from './exilePlayEngine.js';
+import { SUSPEND_ENGINE_VERSION, clearSuspendState } from './suspendEngine.js';
+import { canTransformPermanent } from './transformEngine.js';
+import { botHasCapability } from './botDifficulty.js';
+import { chooseHardAttackPlan, COMBAT_BOT_2_VERSION } from './combatBot2.js';
 
 
 function botEffectiveManaAbility(item, isLocal = false) {
@@ -214,7 +223,7 @@ function evaluateFight(mine, theirs) {
   // pena SOLO si el rival "pesa" más que la mía (cambio a favor, no solo parejo o peor).
   // Grupo C, Etapa 4: en Fácil, ni se evalúa esto — solo pelea si es gratis (evaluación
   // vieja, de antes de la Etapa 2).
-  if (state.botDifficulty !== 'hard') return null;
+  if (!botHasCapability(state.botDifficulty, 'fightTrades')) return null;
   const myValue = myPower + myTough;
   const theirValue = theirPower + theirTough;
   return theirValue > myValue ? 'trade' : null;
@@ -241,7 +250,8 @@ function bestFightTargetFor(mine, candidates) {
 // rematar al que tenga MENOS Lealtad, pero solo si el golpe alcanza para matarlo de una
 // (no desperdicia ataques en un Planeswalker que va a sobrevivir igual) — si no hay un
 // remate limpio disponible, ataca a la cara, que sigue siendo el objetivo principal.
-function chooseBotAttackTarget(attackerItem) {
+function chooseBotAttackTarget(attackerItem, { forceFace=false } = {}) {
+  if (forceFace) return null;
   if (state.localPlaneswalkers.length === 0) return null;
   const power = getEffectivePower(attackerItem);
   const weakest = [...state.localPlaneswalkers].sort((a, b) => a.loyalty - b.loyalty)[0];
@@ -686,11 +696,15 @@ function isCounterSpell(card) {
   return card.effect && card.effect.type && card.effect.type.startsWith('counter');
 }
 
+function isStackCopySpell(card) {
+  return ['copy_spell','copy_ability','copy_stack_object'].includes(card?.effect?.type);
+}
+
 // NUEVO: El Tano usa un instantáneo de daño como truco de combate cuando VOS declarás
 // atacantes — antes de esto, el Tano jamás consideraba instantáneos salvo que hubiera algo
 // en la pila para responder, así que nunca defendía proactivamente con una quema.
 async function tryBotCombatTrick() {
-  if (state.botDifficulty !== 'hard') return false; // Grupo C, Etapa 4: en Fácil, sin trucos reactivos
+  if (!botHasCapability(state.botDifficulty, 'combatTricks')) return false; // Fácil sin trucos; Medio conserva el viejo Difícil
   if (!(state.activePlayer === 'local' && state.phase === 'combat_attackers')) return false;
 
   const attackingUnits = state.localCombat.filter(c => c.isAttacking);
@@ -738,7 +752,7 @@ async function tryBotCombatTrick() {
 // pasar prioridad. Antes de esto, el Tano bloqueaba "bien" (assignSmartBlock ya es
 // inteligente) pero nunca consideraba que podía MEJORAR un bloqueo ya hecho con un truco.
 async function tryBotPostBlockTrick() {
-  if (state.botDifficulty !== 'hard') return false; // Grupo C, Etapa 4: en Fácil, sin trucos reactivos
+  if (!botHasCapability(state.botDifficulty, 'combatTricks')) return false; // Fácil sin trucos; Medio conserva el viejo Difícil
   const blockingPairs = state.rivalCombat.filter(c => c.blockingIndex !== null && c.blockingIndex !== undefined);
 
   for (const blocker of blockingPairs) {
@@ -805,7 +819,7 @@ export async function checkRivalCounterOrResponse() {
   // Grupo C, Etapa 4: en Fácil, el Tano nunca juega en velocidad instantánea — ni
   // contrarresta, ni se defiende, ni responde a nada. Pasa prioridad y ya (comportamiento
   // de base, sin ningún truco reactivo, viejo o nuevo).
-  if (state.botDifficulty !== 'hard') return false;
+  if (!botHasCapability(state.botDifficulty, 'reactiveStack')) return false;
 
   await sleep(600);
 
@@ -863,8 +877,11 @@ export async function checkRivalCounterOrResponse() {
       // menos que la carta lo diga explícitamente — misma regla real de MTG.
       return spellStack.some(s => s.isLocal && isStackItemLegalCounterTarget(c.effect.type, s));
     }
+    if (isStackCopySpell(c)) {
+      return spellStack.some(s => isStackItemLegalCopyTarget(c.effect.type,s,c.effect));
+    }
 
-    // Fuera de counters, solo consideramos jugarla en respuesta si no necesita objetivo,
+    // Fuera de counters/copy, solo consideramos jugarla en respuesta si no necesita objetivo,
     // o si es un tipo que sabemos targetear bien acá abajo. Si no, la dejamos afuera del
     // camino reactivo (igual la puede jugar en su propia fase principal, donde SÍ sabe
     // targetear pump/fight/etc.) — mejor no jugarla que jugarla y que fallezca sin efecto.
@@ -885,9 +902,13 @@ export async function checkRivalCounterOrResponse() {
     let targetObj = null;
     if (isCounterSpell(responseCard)) {
       const topLocalSpell = [...spellStack].reverse().find(s => s.isLocal && isStackItemLegalCounterTarget(responseCard.effect.type, s));
-      if (topLocalSpell) {
-        targetObj = { type: 'stack', stackId: topLocalSpell.id };
-      }
+      if (topLocalSpell) targetObj = { type:'stack', stackId:topLocalSpell.id };
+    } else if (isStackCopySpell(responseCard)) {
+      // Copy Engine: el Tano prioriza una copia legal del objeto de mayor MV. No discrimina
+      // dueño porque a veces duplicar su propio removal/truco es la mejor respuesta.
+      const copyable=spellStack.filter(obj=>isStackItemLegalCopyTarget(responseCard.effect.type,obj,responseCard.effect));
+      const chosen=copyable.reduce((best,obj)=>!best || Number(obj.card?.cmc||0)>Number(best.card?.cmc||0) ? obj : best,null);
+      if(chosen) targetObj={type:'stack',stackId:chosen.id};
     } else if (responseCard.effect?.type === 'damage') {
       // Preferimos rematar una criatura vulnerable; si no hay, pegamos a la cara
       const vulnerable = state.localCombat.find(c =>
@@ -1113,6 +1134,14 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
           }
         }
       }
+      else if (effect.type === 'transform') {
+        if (ability.requiresTarget) {
+          const candidates=getResolvedEffectTargetCandidates({effect,sourceCard:card,controllerIsLocal:false,chooserIsLocal:false,cardName:card.name});
+          if (candidates.length > 0) { aiTargetObj=candidates[0]; shouldActivate=true; }
+        } else if (canTransformPermanent(supportItem)) {
+          shouldActivate = state.phase === 'main1' || state.phase === 'main2' || timing === 'instant';
+        }
+      }
       else if (effect.type === 'heal' || effect.type === 'draw') {
         const instantReason = timing === 'instant' && (
           (effect.type === 'heal' && state.rivalHP <= 12) ||
@@ -1260,6 +1289,13 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
           aiTargetObj = ability.requiresTarget ? { type: 'player', isLocal: true } : null;
           shouldActivate = true;
         }
+      } else if (effect.type === 'transform') {
+        if (ability.requiresTarget) {
+          const candidates=getResolvedEffectTargetCandidates({effect,sourceCard,controllerIsLocal:false,chooserIsLocal:false,cardName:sourceCard.name});
+          if (candidates.length > 0) { aiTargetObj=candidates[0]; shouldActivate=true; }
+        } else if (canTransformPermanent(creatureItem)) {
+          shouldActivate = state.phase === 'main1' || state.phase === 'main2' || timing === 'instant';
+        }
       } else if (effect.type === 'heal' || effect.type === 'draw') {
         const instantReason = timing === 'instant' && (
           (effect.type === 'heal' && state.rivalHP <= 12) ||
@@ -1395,6 +1431,13 @@ function canBotBuildMainPhaseCastProposal(rawCard) {
   if (!card.requiresTarget) return true;
   const effect = card.effect || {};
 
+  if (['copy_spell','copy_ability','copy_stack_object'].includes(effect.type)) {
+    return spellStack.some(obj=>isStackItemLegalCopyTarget(effect.type,obj,effect));
+  }
+  if (effect.type === 'create_token_copy' || effect.type === 'become_copy') {
+    return getResolvedEffectTargetCandidates({effect,sourceCard:card,controllerIsLocal:false,chooserIsLocal:false,cardName:card.name}).length > 0;
+  }
+
   // Efectos cuyo target siempre puede ser un jugador adecuado.
   if (['damage', 'heal', 'poison', 'discard', 'private_zone_move', 'prevent_attack', 'prevent_damage'].includes(effect.type)) return true;
 
@@ -1411,9 +1454,8 @@ function canBotBuildMainPhaseCastProposal(rawCard) {
 
   // Buff/protección: sólo sobre una criatura propia real.
   if (effect.type === 'pump' || effect.type === 'grant_keyword_temp') return state.rivalCombat.length > 0;
-  if (effect.type === 'add_counter') {
-    if (effect.counterType === 'minusOne') return state.localCombat.some(c => isValidBotTarget(c, card.colors));
-    return state.rivalCombat.length > 0;
+  if (effect.type === 'add_counter' || effect.type === 'remove_counter') {
+    return getResolvedEffectTargetCandidates({effect,sourceCard:card,controllerIsLocal:false,chooserIsLocal:false,cardName:card.name}).length > 0;
   }
 
   // Fight agrega una condición estratégica: no basta con que haya dos criaturas; tiene que
@@ -1442,6 +1484,170 @@ function canBotBuildMainPhaseCastProposal(rawCard) {
   }).length > 0;
 }
 
+
+// 23.16.2 — Cast-from-Exile para Tano. Reusa Cost Engine, target universal y la misma Stack;
+// no mueve la carta a la mano privada durante la propuesta.
+async function tryBotCastFromExile({ instantOnly = false } = {}) {
+  const entries=[
+    ...state.rivalExile.map((card,index)=>({card,index,zone:state.rivalExile,zoneIsLocal:false})),
+    ...state.localExile.map((card,index)=>({card,index,zone:state.localExile,zoneIsLocal:true}))
+  ].filter(entry=>getExilePlayPermissionForCard(entry.card,false) && canPlayCardFromExile(entry.card,false));
+  if(!entries.length) return false;
+
+  for(const entry of entries){
+    const original=entry.card;
+    const permission=getExilePlayPermissionForCard(original,false);
+    if(!permission) continue;
+    const isLand=String(original.type||'').includes('Tierra');
+    if(instantOnly && isLand) continue;
+    if(instantOnly && permission.timing!=='any_time' && !original.type?.includes('Instantáneo') && !original.keywords?.includes('flash')) continue;
+
+    if(isLand){
+      if(state.rivalLandPlayedThisTurn || state.activePlayer!=='rival' || !['main1','main2'].includes(state.phase) || spellStack.length) continue;
+      const liveIndex=entry.zone.indexOf(original); if(liveIndex<0) continue;
+      entry.zone.splice(liveIndex,1);
+      consumeExilePlayPermission(original,permission.permissionId); clearExilePlayStateOnLeave(original);
+      const landItem={card:original,tapped:landEntersTappedForBattlefield(original,false),enteredThisTurn:true,permanentTypes:['land']};
+      state.rivalLands.push(landItem); state.rivalLandPlayedThisTurn=true;
+      dispatchGameEvent({type:'card_played_from_exile',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:cardOwnerIsLocal(original,false,state.currentMatch?.myRole||null),card:original,item:landItem,zoneFrom:'exile',zoneTo:'battlefield',cause:'exile_permission',metadata:{isLand:true}});
+      await triggerLandEtb(false,original,landItem);
+      logMsg(gameText('bot.land.played',{card:original.name})); render(); return true;
+    }
+
+    let card=original;
+    if(card.modal && card.modes?.length){
+      const modeIdx=chooseBotMode(card); const chosen=card.modes[modeIdx];
+      card={...card,effect:chosen.effect,requiresTarget:chosen.requiresTarget,chosenModeText:chosen.text};
+    }
+    const baseOverride=permissionBaseManaOverride(permission);
+    let useAlternative=false;
+    if(baseOverride===null){
+      useAlternative=chooseBotCastRoute(card,{baseOverride:null});
+      if(useAlternative===null) continue;
+    } else if(!canBotPayCastRoute(card,false,{baseOverride})) continue;
+
+    let botKicked=false;
+    if(permission.allowKicker!==false && card.kicker && canBotPayCastRoute(card,useAlternative,{baseOverride,kicked:true})) botKicked=true;
+    const routeManaCost=getCastingManaCostString(card,{useAlternative,kicked:botKicked,baseOverride});
+    let botXValue=0;
+    if(routeManaCost?.includes('{X}')){
+      botXValue=chooseBotXValue({...card,manaCost:routeManaCost});
+      while(botXValue>0 && !canBotPayCastRoute(card,useAlternative,{baseOverride,kicked:botKicked,xValue:botXValue})) botXValue--;
+      if(!canBotPayCastRoute(card,useAlternative,{baseOverride,kicked:botKicked,xValue:botXValue})) continue;
+    }
+
+    let targetObj=null;
+    if(card.multiTarget && Array.isArray(card.targets) && card.targets.length){
+      const targets=[]; let legal=true;
+      for(const targetSpec of card.targets){
+        const chosen=await chooseResolvedEffectTarget({effect:targetSpec.effect||targetSpec,sourceCard:card,controllerIsLocal:false,chooserIsLocal:false,cardName:card.name});
+        if(!chosen){legal=false;break;} targets.push(chosen);
+      }
+      if(!legal) continue;
+      targetObj={type:'multi',targets};
+    } else if(card.effect?.type?.startsWith('counter')){
+      const target=[...spellStack].reverse().find(item=>item.isLocal && isStackItemLegalCounterTarget(card.effect.type,item));
+      if(!target) continue;
+      targetObj={type:'stack',stackId:target.id};
+    } else if(card.adjunta){
+      if(card.alcance==='criatura_rival'){
+        const validTargets=state.localCombat.filter(c=>isValidBotTarget(c,card.colors));
+        if(!validTargets.length) continue;
+        const chosen=validTargets.reduce((prev,current)=>getEffectivePower(prev)>getEffectivePower(current)?prev:current);
+        targetObj={type:'creature',isLocal:true,item:chosen};
+      } else {
+        const grantedKeywords=getKeywordsGrantedByPendingSpell(card);
+        const validSelfTargets=state.rivalCombat.filter(c=>!grantedKeywords.some(k=>hasKeyword(c,k)));
+        if(!validSelfTargets.length) continue;
+        targetObj={type:'creature',isLocal:false,item:validSelfTargets[0]};
+      }
+    } else if(card.requiresTarget){
+      const chosen=await chooseResolvedEffectTarget({effect:card.effect,sourceCard:card,controllerIsLocal:false,chooserIsLocal:false,cardName:card.name});
+      if(!chosen) continue;
+      targetObj=chosen;
+    }
+
+    await payBotCastRoute(card,useAlternative,{baseOverride,kicked:botKicked,xValue:botXValue});
+    const liveIndex=entry.zone.indexOf(original); if(liveIndex<0) continue;
+    entry.zone.splice(liveIndex,1);
+    consumeExilePlayPermission(original,permission.permissionId); clearExilePlayStateOnLeave(original);
+    let stackType='spell';
+    if(card.power!==undefined) stackType='summon';
+    else if(card.type?.includes('Planeswalker')) stackType='planeswalker';
+    else if(card.type?.includes('Artefacto') || (card.type?.includes('Encantamiento')&&!card.adjunta)) stackType='permanent';
+    else if(card.type?.includes('Instantáneo')) stackType='instant';
+    else if(card.adjunta) stackType='aura';
+    const stackItem={card,isLocal:false,targetObj,type:stackType,xValue:botXValue,kicked:botKicked,castFrom:'exile',exilePermissionId:permission.permissionId,exilePlayEngineVersion:EXILE_PLAY_ENGINE_VERSION};
+    addToStack(stackItem); flushDeferredLandManaTriggers();
+    await triggerSpellCast(false,card,stackItem);
+    if(!tryPayWardForBotTarget(targetObj)){
+      const i=spellStack.indexOf(stackItem); if(i>=0) moveBotCounteredSpell(spellStack.splice(i,1)[0],'ward');
+    }
+    state.priorityPlayer='local'; state.consecutivePasses=0;
+    logMsg(gameText('bot.stack.entered',{card:card.name})); render(); return true;
+  }
+  return false;
+}
+
+
+// 23.16.3 — resolución del trigger del último Time para Tano. El casteo es opcional;
+// la IA acepta si puede pagar los adicionales y declarar objetivos legales. El coste base
+// queda {0}, X=0 y nunca se selecciona un coste alternativo.
+export async function castSuspendedCardForBot(original) {
+  if(!original) return false;
+  const entry=[
+    ...state.rivalExile.map((card,index)=>({card,index,zone:state.rivalExile})),
+    ...state.localExile.map((card,index)=>({card,index,zone:state.localExile}))
+  ].find(e=>e.card===original);
+  if(!entry) return false;
+  let card=original;
+  if(card.modal && card.modes?.length){
+    const modeIdx=chooseBotMode(card); const chosen=card.modes[modeIdx];
+    card={...card,effect:chosen.effect,requiresTarget:chosen.requiresTarget,chosenModeText:chosen.text};
+  }
+  const baseOverride='{0}';
+  let botKicked=false;
+  if(card.kicker && canBotPayCastRoute(card,false,{baseOverride,kicked:true,xValue:0,excludeCard:original})) botKicked=true;
+  if(!canBotPayCastRoute(card,false,{baseOverride,kicked:botKicked,xValue:0,excludeCard:original})) return false;
+
+  let targetObj=null;
+  if(card.multiTarget && Array.isArray(card.targets) && card.targets.length){
+    const targets=[];
+    for(const targetSpec of card.targets){
+      const chosen=await chooseResolvedEffectTarget({effect:targetSpec.effect||targetSpec,sourceCard:card,controllerIsLocal:false,chooserIsLocal:false,cardName:card.name});
+      if(!chosen) return false; targets.push(chosen);
+    }
+    targetObj={type:'multi',targets};
+  } else if(card.effect?.type?.startsWith('counter')){
+    const target=[...spellStack].reverse().find(item=>item.isLocal && isStackItemLegalCounterTarget(card.effect.type,item));
+    if(!target) return false; targetObj={type:'stack',stackId:target.id};
+  } else if(card.adjunta){
+    const candidates=card.alcance==='criatura_rival' ? state.localCombat : state.rivalCombat;
+    const valid=candidates.filter(c=>isValidBotTarget(c,card.colors)); if(!valid.length) return false;
+    targetObj={type:'creature',isLocal:card.alcance==='criatura_rival',item:valid[0]};
+  } else if(card.requiresTarget){
+    const chosen=await chooseResolvedEffectTarget({effect:card.effect,sourceCard:card,controllerIsLocal:false,chooserIsLocal:false,cardName:card.name});
+    if(!chosen) return false; targetObj=chosen;
+  }
+
+  try { await payBotCastRoute(card,false,{baseOverride,kicked:botKicked,xValue:0,excludeCard:original}); }
+  catch { return false; }
+  const liveIndex=entry.zone.indexOf(original); if(liveIndex<0) return false;
+  entry.zone.splice(liveIndex,1); clearExilePlayStateOnLeave(original); clearSuspendState(original);
+  if(card!==original){ clearExilePlayStateOnLeave(card); clearSuspendState(card); }
+  let stackType='spell';
+  if(card.power!==undefined) stackType='summon';
+  else if(card.type?.includes('Planeswalker')) stackType='planeswalker';
+  else if(card.type?.includes('Artefacto') || (card.type?.includes('Encantamiento')&&!card.adjunta)) stackType='permanent';
+  else if(card.type?.includes('Instantáneo')) stackType='instant';
+  else if(card.adjunta) stackType='aura';
+  const stackItem={card,isLocal:false,targetObj,type:stackType,xValue:0,kicked:botKicked,castFrom:'suspend',suspendEngineVersion:SUSPEND_ENGINE_VERSION,suspendHaste:card.power!==undefined};
+  addToStack(stackItem); flushDeferredLandManaTriggers(); await triggerSpellCast(false,card,stackItem);
+  if(!tryPayWardForBotTarget(targetObj)){ const i=spellStack.indexOf(stackItem); if(i>=0) moveBotCounteredSpell(spellStack.splice(i,1)[0],'ward'); }
+  state.priorityPlayer='local'; state.consecutivePasses=0;
+  logMsg(gameText('bot.stack.entered',{card:card.name})); render(); return true;
+}
+
 // NUEVO: SISTEMA DE PRIORIDAD DEL BOT (Remplaza startRivalTurn)
 export async function takeBotPriorityAction() {
   // FASE 4, ETAPA 4: mismo criterio que checkRivalCounterOrResponse acá arriba — durante
@@ -1462,6 +1668,7 @@ export async function takeBotPriorityAction() {
     // ahora la IA sólo miraba cartas de la mano en esta ventana.
     if (tryActivateBotAbilities({ instantOnly: true })) return;
     if (tryActivateGrantedBotAbilities({ instantOnly: true })) return;
+    if (await tryBotCastFromExile({ instantOnly:true })) return;
     logMsg(gameText('bot.priority.noResponse'));
     passPriority('rival');
     return;
@@ -1519,6 +1726,9 @@ export async function takeBotPriorityAction() {
     // Lealtad), así que cortamos acá para esperar a que resuelva.
     if (await tryFlashbackOrEscapeFromBotGraveyard()) return;
 
+    // 23.16.2: después del cementerio, aprovecha permisos públicos desde Exilio.
+    if (await tryBotCastFromExile()) return;
+
     // --- NUEVO: Intentar activar habilidades de artefactos primero ---
     const abilityActivated = tryActivateBotAbilities();
     if (abilityActivated) return; // Si activó algo, la función corta y espera resolución
@@ -1542,7 +1752,7 @@ export async function takeBotPriorityAction() {
 
       // Grupo C, Etapa 4: en Fácil, directo la primera que puede pagar — sin ningún nivel
       // de prioridad (el comportamiento de base, antes de la Etapa 3).
-      if (state.botDifficulty !== 'hard') return affordableIndexes[0];
+      if (!botHasCapability(state.botDifficulty, 'strategicMainPhase')) return affordableIndexes[0];
 
       // Nivel 1: hay una amenaza grande de tu lado (poder+resistencia por encima de un piso
       // razonable) y el Tano tiene algo de remoción — la prioriza por sobre cualquier otra cosa.
@@ -1609,11 +1819,7 @@ export async function takeBotPriorityAction() {
         // NUEVO: no tiene sentido gastar Proliferar si no hay ni un solo contador en juego
         // (ni +1/+1, ni -1/-1, ni un Planeswalker con Lealtad) — se desperdiciaría entero.
         if (c.effect && c.effect.type === 'proliferate') {
-          const hasCreatureCounters = [...state.localCombat, ...state.rivalCombat].some(u =>
-            u.counters && ((u.counters.plusOne || 0) > 0 || (u.counters.minusOne || 0) > 0)
-          );
-          const hasPlaneswalkers = state.localPlaneswalkers.length > 0 || state.rivalPlaneswalkers.length > 0;
-          if (!hasCreatureCounters && !hasPlaneswalkers) return;
+          if (getProliferateCandidates(state).length === 0) return;
         }
         indexes.push(i);
       });
@@ -1750,6 +1956,18 @@ export async function takeBotPriorityAction() {
             logMsg(gameText('bot.cast.noModalTargets', { card: cardToPlay.name }));
           }
         }
+        else if (cardToPlay.effect && (cardToPlay.effect.targetSubtype || cardToPlay.effect.targetSubtypes || cardToPlay.effect.sharedCreatureTypeWithSource || cardToPlay.effect.sharesCreatureTypeWithSource)) {
+          const eff=cardToPlay.effect;
+          const beneficial=['pump','grant_keyword_temp','add_counter'].includes(eff.type);
+          const side=eff.targetController==='self' ? false : eff.targetController==='opponent' ? true : !beneficial;
+          const pool=side ? state.localCombat : state.rivalCombat;
+          const wanted=resolveSubtypeReference(eff.targetSubtype ?? eff.targetSubtypes?.[0],{sourceCard:cardToPlay});
+          const candidates=pool.filter(unit=>(!wanted || cardHasSubtype(unit.card,wanted)) && (!(eff.sharedCreatureTypeWithSource||eff.sharesCreatureTypeWithSource) || cardsShareCreatureType(unit.card,cardToPlay)) && (side===false || isValidBotTarget(unit,cardToPlay.colors)));
+          if(candidates.length){
+            const chosen=candidates.reduce((a,b)=>(getEffectivePower(a)+getEffectiveToughness(a)) >= (getEffectivePower(b)+getEffectiveToughness(b)) ? a : b);
+            aiTargetObj={type:'creature',isLocal:side,item:chosen};
+          } else { validPlay=false; logMsg(gameText('bot.cast.noTargets',{card:cardToPlay.name})); }
+        }
         else if (cardToPlay.effect && cardToPlay.effect.type === 'damage') {
           // LÓGICA NUEVA (Cabo suelto #13): mismo criterio que ya usa en combate
           // (chooseBotAttackTarget) — si con esto remata un Planeswalker tuyo, lo prioriza
@@ -1874,26 +2092,15 @@ export async function takeBotPriorityAction() {
         }
         // LÓGICA NUEVA: CONTADOR PERMANENTE (+1/+1 propio, o -1/-1 al rival) — mismo criterio
         // que pump (+1/+1 a su mejor criatura) y destroy_creature (-1/-1 a la más grande tuya).
-        else if (cardToPlay.effect && cardToPlay.effect.type === 'add_counter') {
-          if (cardToPlay.effect.counterType === 'minusOne') {
-            const validTargets = state.localCombat.filter(c => isValidBotTarget(c, cardToPlay.colors));
-            if (validTargets.length > 0) {
-              const chosen = validTargets.reduce((prev, current) =>
-                (getEffectivePower(prev) + getEffectiveToughness(prev)) > (getEffectivePower(current) + getEffectiveToughness(current)) ? prev : current
-              );
-              aiTargetObj = { type: 'creature', isLocal: true, item: chosen };
-            } else {
-              validPlay = false;
-              logMsg(gameText('bot.cast.noTargets', { card: cardToPlay.name }));
-              }
-          } else if (state.rivalCombat.length > 0) {
-            const chosen = state.rivalCombat.reduce((prev, current) =>
-              getEffectivePower(prev) > getEffectivePower(current) ? prev : current
-            );
-            aiTargetObj = { type: 'creature', isLocal: false, item: chosen };
-          } else {
-            validPlay = false;
-            logMsg(gameText('bot.cast.noBuffTarget', { card: cardToPlay.name }));
+        else if (cardToPlay.effect && ['add_counter','remove_counter'].includes(cardToPlay.effect.type)) {
+          const chosen = await chooseResolvedEffectTarget({
+            effect:cardToPlay.effect, sourceCard:cardToPlay,
+            controllerIsLocal:false, chooserIsLocal:false, cardName:cardToPlay.name
+          });
+          if (chosen) aiTargetObj=chosen;
+          else {
+            validPlay=false;
+            logMsg(gameText('bot.cast.noTargets',{card:cardToPlay.name}));
           }
         }
         // LÓGICA NUEVA: PROTECCIÓN TEMPORAL (A Cubierto, etc.) — protege a su criatura más grande
@@ -2031,26 +2238,55 @@ export async function takeBotPriorityAction() {
       return;
     }
 
+    const attackLockFor = (unit) => (state.activeEffects || []).find(effect =>
+      effect.effectType === 'cant_attack_next_turn' &&
+      effect.targetPlayer === 'rival' &&
+      effect.appliesThisCombat === true &&
+      effect.targetObjectId && effect.targetObjectId === unit._effectObjectId
+    );
+
+    // Combat Bot 2.0 sólo mira información pública: battlefield + vidas + keywords.
+    // No inspecciona mano ni biblioteca humanas para decidir atacantes.
+    let hardAttackIndexes = null;
+    let hardAttackPlan = null;
+    if (botHasCapability(state.botDifficulty, 'combat2')) {
+      const eligibleAttackers=state.rivalCombat
+        .map((unit,index)=>({unit,index}))
+        .filter(({unit})=>!hasKeyword(unit,'defender') && !unit.tapped && !unit.summoningSickness && !attackLockFor(unit));
+      const publicDefenders=state.localCombat
+        .map((unit,index)=>({unit,index}))
+        .filter(({unit})=>!unit.tapped);
+      hardAttackPlan=chooseHardAttackPlan({
+        eligibleAttackers, defenders:publicDefenders,
+        botLife:state.rivalHP, opponentLife:state.localHP,
+        helpers:{ getPower:getEffectivePower, getToughness:getEffectiveToughness, hasKeyword, canBlock, predictDuel }
+      });
+      hardAttackIndexes=new Set(hardAttackPlan.indexes);
+      recordTelemetryEvent('bot_combat2_attack_plan', {
+        version:COMBAT_BOT_2_VERSION, utility:hardAttackPlan.utility, expectedDamage:hardAttackPlan.damage,
+        attackPower:hardAttackPlan.attackPower || 0, crackBack:hardAttackPlan.crackBack || 0,
+        attackerCount:hardAttackPlan.indexes.length, reason:hardAttackPlan.reason
+      });
+    }
+
     let attackCount = 0;
     let heldBackCount = 0;
     const declaredAttackers = [];
-    for (const unit of state.rivalCombat) {
+    for (let unitIndex=0; unitIndex<state.rivalCombat.length; unitIndex++) {
+      const unit=state.rivalCombat[unitIndex];
       if (hasKeyword(unit, 'defender')) continue;
-      const attackLock = (state.activeEffects || []).find(effect =>
-        effect.effectType === 'cant_attack_next_turn' &&
-        effect.targetPlayer === 'rival' &&
-        effect.appliesThisCombat === true &&
-        effect.targetObjectId && effect.targetObjectId === unit._effectObjectId
-      );
+      const attackLock = attackLockFor(unit);
       if (attackLock) {
         logMsg(gameText('bot.attackLocked', { card: unit.card.name, source: attackLock.sourceName || 'un efecto' }));
         continue;
       }
 
       if (!unit.tapped && !unit.summoningSickness) {
-        if (shouldRivalAttackWith(unit)) {
+        const shouldAttack = hardAttackIndexes ? hardAttackIndexes.has(unitIndex) : shouldRivalAttackWith(unit);
+        if (shouldAttack) {
           unit.isAttacking = true;
-          unit.attackTarget = chooseBotAttackTarget(unit);
+          // Si Combat 2.0 encontró lethal esperado, no desvía daño a un Planeswalker.
+          unit.attackTarget = chooseBotAttackTarget(unit, { forceFace: !!hardAttackPlan && hardAttackPlan.damage >= state.localHP });
           declaredAttackers.push(unit);
           attackCount++;
           if (unit.attackTarget) {
@@ -2062,6 +2298,7 @@ export async function takeBotPriorityAction() {
       }
     }
 
+    if (hardAttackPlan) logMsg(gameText('bot.attack.combat2', { count:attackCount }));
     if (heldBackCount > 0) logMsg(gameText('bot.attack.heldBack', { count: heldBackCount }));
     if (attackCount > 0) {
       queueDeclaredAttackTriggers(declaredAttackers, false);

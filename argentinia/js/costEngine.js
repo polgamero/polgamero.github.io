@@ -7,6 +7,7 @@ import { maximumBipartiteAssignment } from './flexibleMatching.js';
 import { isCreaturePermanent, isArtifactPermanent, isLandPermanent, getPermanentTypes } from './permanentTypes.js';
 import { cardStaticEffects, scopeApplies } from './landStax.js';
 import { landRulesTextSuppressed } from './landCharacteristics.js';
+import { cardHasSubtype, resolveSubtypeReference, countBySubtype } from './typalEngine.js';
 
 export const COST_ENGINE_VERSION = '23.15.4';
 const MANA_TYPES = Object.freeze(['W','U','B','R','G','C']);
@@ -117,11 +118,10 @@ function typeFilterMatches(card, wanted) {
   return list.some(v => tokens.has(String(v).toLowerCase()));
 }
 
-function subtypeMatches(card,wanted) {
+function subtypeMatches(card,wanted,context={}) {
   if (!wanted) return true;
-  const type = String(card?.type || '').toLowerCase();
   const list = Array.isArray(wanted) ? wanted : [wanted];
-  return list.some(s => type.includes(String(s).toLowerCase()));
+  return list.map(s=>resolveSubtypeReference(s,context)).filter(Boolean).some(s => cardHasSubtype(card,s));
 }
 
 function colorMatches(card,wanted) {
@@ -131,11 +131,11 @@ function colorMatches(card,wanted) {
   return list.some(c => colors.includes(c));
 }
 
-export function spellCostFilterMatches(card, filter = {}) {
+export function spellCostFilterMatches(card, filter = {}, context = {}) {
   if (!filter || typeof filter !== 'object') return true;
   if (!typeFilterMatches(card, filter.cardType || filter.type)) return false;
   if (filter.excludeCardType && typeFilterMatches(card, filter.excludeCardType)) return false;
-  if (!subtypeMatches(card, filter.subtype || filter.subtypes)) return false;
+  if (!subtypeMatches(card, filter.subtype || filter.subtypes, context)) return false;
   if (!colorMatches(card, filter.color || filter.colors)) return false;
   if (filter.multicolor === true && (card?.colors || []).length < 2) return false;
   if (filter.monocolor === true && (card?.colors || []).length !== 1) return false;
@@ -158,10 +158,15 @@ function countForPer(state, casterIsLocal, per, card) {
   else if (kind === 'matching_permanent_you_control' || kind === 'matching_permanents_you_control') {
     n = battlefieldEntries(state).filter(e=>e.isLocal===casterIsLocal).filter(e=>{
       if(per.permanentType && !getPermanentTypes(e.item).includes(String(per.permanentType).toLowerCase())) return false;
-      if(per.subtype && !String(e.card?.type||'').toLowerCase().includes(String(per.subtype).toLowerCase())) return false;
+      const wantedSubtype=resolveSubtypeReference(per.subtype,{sourceItem:per.sourceItem||null,sourceCard:per.sourceCard||null});
+      if(wantedSubtype && !cardHasSubtype(e.card,wantedSubtype)) return false;
       if(per.color && !(e.card?.colors||[]).includes(per.color)) return false;
       return true;
     }).length;
+  }
+  else if (kind === 'creature_type_you_control' || kind === 'creatures_of_subtype_you_control' || kind === 'creatures_you_control_of_subtype') {
+    const entries=battlefieldEntries(state);
+    n=countBySubtype(entries,per.subtype || per.creatureType,{controllerIsLocal:casterIsLocal,sourceItem:per.sourceItem||null});
   }
   else if (kind === 'card_in_your_graveyard' || kind === 'cards_in_your_graveyard') n = (casterIsLocal ? state?.localGraveyard : state?.rivalGraveyard)?.length || 0;
   else if (kind === 'card_in_your_hand' || kind === 'cards_in_your_hand') n = (casterIsLocal ? state?.localHand : state?.rivalHand)?.length || 0;
@@ -191,7 +196,7 @@ function normalizeModifier(spec, source = {}) {
   if (typeof rawMana === 'string') manaCost = parseSimpleManaString(rawMana);
   else if (rawMana && typeof rawMana === 'object') manaCost = normalizeParsedManaCost(rawMana);
   else manaCost = { ...emptyParsedManaCost(), generic:Math.max(0,Math.floor(Number(spec.amount) || 0)) };
-  const per = spec.per && typeof spec.per === 'object' ? spec.per : null;
+  const per = spec.per && typeof spec.per === 'object' ? { ...spec.per, sourceItem:source.sourceItem || null, sourceCard:source.sourceCard || null } : null;
   return {
     mode,
     scope:spec.scope || 'own',
@@ -229,7 +234,7 @@ export function collectSpellCostModifiers(state, card, casterIsLocal) {
   // estar en battlefield y siempre se evalúan para su controlador.
   for (const spec of directCardModifiers(card)) {
     const n = normalizeModifier(spec,{sourceCard:card,sourceIsLocal:casterIsLocal,sourceKind:'spell'});
-    if (n && spellCostFilterMatches(card,n.filter)) out.push(n);
+    if (n && spellCostFilterMatches(card,n.filter,{sourceItem:null,sourceCard:card})) out.push(n);
   }
   for (const entry of battlefieldEntries(state)) {
     if (isLandPermanent(entry.item) && landRulesTextSuppressed(state,entry.item,entry.isLocal)) continue;
@@ -237,7 +242,7 @@ export function collectSpellCostModifiers(state, card, casterIsLocal) {
       if (effect?.type !== 'spell_cost_modifier' || !sourceEffectActive(entry.item,effect)) continue;
       if (!scopeApplies(effect.scope || 'own',entry.isLocal,casterIsLocal)) continue;
       const n = normalizeModifier(effect,{sourceItem:entry.item,sourceCard:entry.card,sourceIsLocal:entry.isLocal,sourceKind:'battlefield'});
-      if (n && spellCostFilterMatches(card,n.filter)) out.push(n);
+      if (n && spellCostFilterMatches(card,n.filter,{sourceItem:entry.item,sourceCard:entry.card})) out.push(n);
     }
   }
   return out;

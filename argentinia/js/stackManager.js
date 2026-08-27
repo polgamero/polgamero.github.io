@@ -1,13 +1,15 @@
 import { sleep, moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, isNonbasicLandPermanent, landMatchesFilter } from './permanentTypes.js';
 import { normalizeTokenSpec, buildTokenCard, buildTokenPermanentItem, tokenBattlefieldKind } from './tokenEngine.js';
+import { buildCopiedCard, buildStackCopy, buildPermanentCopyToken, buildBecameCopyCard, isCopyableStackItem, cloneStackTarget } from './copyEngine.js';
+import { initializeTransformPermanentItem, transformPermanent, canTransformPermanent, currentTransformFace } from './transformEngine.js';
 import { landMatchesEffectiveFilter } from './landCharacteristics.js';
 import { normalizeLandGraveyardReturnEffect, landGraveyardFilterMatches } from './landGraveyard.js';
-import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, queueTriggeredAbilities, buildGenericEventTriggerEntries, triggerCreatureEtb, triggerLandEtb, collectCreatureEtbBatchEntries, collectLandEtbBatchEntries, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, cleanupIfVehicle, animateLandPermanent, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal, completeCastTargetDeclaration, requestPrivateZoneChoice, searchLibraryForLands, resolveLibraryEffect, landEntersTappedForBattlefield, runStateBasedActions, waitForStateBasedActions, changePermanentController, dispatchGameEvent } from './main.js';
+import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, queueTriggeredAbilities, buildGenericEventTriggerEntries, triggerCreatureEtb, triggerLandEtb, collectCreatureEtbBatchEntries, collectLandEtbBatchEntries, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, removeCounters, cleanupIfVehicle, animateLandPermanent, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal, completeCastTargetDeclaration, requestPrivateZoneChoice, searchLibraryForLands, resolveLibraryEffect, landEntersTappedForBattlefield, runStateBasedActions, waitForStateBasedActions, changePermanentController, dispatchGameEvent, dispatchReplacementCounterRemoval, exileTopCardsWithPlayPermission, resolveSuspendRemoveTimeEffect, resolveSuspendCastFromExile, adjustSuspendedTimeCounters, handleCounteredSuspendTrigger, chooseCreatureTypeForEffect } from './main.js';
 import { otherRole, serializeStackTarget, refreshStackItemBoardRefs } from './matchSync.js';
 import { stampCardOwner, zoneForCardOwner, cardOwnerIsLocal } from './zoneOwnership.js';
 import { stampPermanentController } from './controlEngine.js';
-import { logMsg, render, createCardElement, showScrySurveilModal, showProliferateModal, showHandFilterDiscardModal, showSacrificeEffectModal } from './ui.js';
+import { logMsg, render, createCardElement, showScrySurveilModal, showProliferateModal, showHandFilterDiscardModal, showSacrificeEffectModal, showCopyRetargetModal, showStackObjectChoiceModal } from './ui.js';
 import { checkDeaths, checkAllDeaths } from './combatRules.js';
 import { hasKeyword, getProtectionMatch } from './keywords.js';
 
@@ -16,6 +18,8 @@ import { passPriority, checkGameOver, resetPriorityClock } from './turnManager.j
 import { recordTelemetryEvent } from './telemetry.js';
 import { gameText } from './gameTexts.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
+import { normalizeCounterType, getCounterDefinition } from './counterEngine.js';
+import { resolveSubtypeReference } from './typalEngine.js';
 
 
 function replacementDamageAmount({ amount, targetItem = null, targetIsLocal, sourceCard = null, sourceIsLocal = true, combat = false, cause = 'effect' }) {
@@ -26,6 +30,7 @@ function replacementDamageAmount({ amount, targetItem = null, targetIsLocal, sou
     item:targetItem, targetItem, sourceCard,
     sourceIsLocal:!!sourceIsLocal, combat:!!combat, cause
   });
+  if(targetItem) dispatchReplacementCounterRemoval(result,targetItem,{controllerIsLocal:!!targetIsLocal,actorIsLocal:!!targetIsLocal});
   return { amount:Math.max(0,Number(result.event.amount)||0), result };
 }
 
@@ -36,6 +41,7 @@ function replacementDestroyOutcome(targetItem, targetIsLocal, sourceCard, source
     item:targetItem, targetItem, sourceCard,
     sourceIsLocal:!!sourceIsLocal, zoneFrom:'battlefield', zoneTo:'graveyard', cause
   });
+  dispatchReplacementCounterRemoval(destroyResult,targetItem,{controllerIsLocal:!!targetIsLocal,actorIsLocal:!!targetIsLocal});
   if(destroyResult.prevented) return destroyResult;
   const zoneResult=resolveReplacementEvent(state, {
     ...destroyResult.event, type:'zone_change', zoneFrom:'battlefield', zoneTo:destroyResult.event.zoneTo || 'graveyard', cause
@@ -61,6 +67,8 @@ function replacementCardZoneOutcome(card, fallbackIsLocal, zoneFrom, zoneTo='gra
 }
 
 function moveResolvedSpellCard(card, item, isLocal) {
+  // 23.15.9: una copia de hechizo no es una carta física y deja de existir al salir de Stack.
+  if(item?.isCopy) return 'copy_ceased';
   if(item?.castFrom==='flashback') {
     ownerDestinationZone(card,isLocal,'exile').push(card);
     dispatchGameEvent({type:'card_exiled',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:cardOwnerIsLocal(card,isLocal,state.currentMatch?.myRole||null),card,zoneFrom:'stack',zoneTo:'exile',cause:'flashback'});
@@ -103,6 +111,137 @@ export function isStackItemLegalCounterTarget(effectType, item) {
   if (effectType === 'counter_non_creature') return !isCreatureSpell;
   if (effectType === 'counter_instant') return !!isInstantSpell;
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// 23.15.9 — COPY ENGINE · Stack targeting / retarget
+// ---------------------------------------------------------------------------
+const STACK_COPY_EFFECTS = new Set(['copy_spell','copy_ability','copy_stack_object']);
+
+function copyStackFilter(effectType, effect = {}) {
+  if (effect?.stackFilter) return effect.stackFilter;
+  if (effectType === 'copy_ability') return 'ability';
+  if (effectType === 'copy_spell') return 'spell';
+  return 'any';
+}
+
+export function isStackItemLegalCopyTarget(effectType, item, effect = {}) {
+  if (!STACK_COPY_EFFECTS.has(effectType) || !item) return false;
+  return isCopyableStackItem(item, copyStackFilter(effectType, effect));
+}
+
+function stackObjectEffect(stackItem) {
+  if (!stackItem) return null;
+  if (stackItem.type === 'ability') return stackItem.ability?.effect || stackItem.card?.effect || null;
+  return stackItem.card?.effect || null;
+}
+
+function stackTargetLabel(target) {
+  if (!target) return 'sin objetivo';
+  if (target.type === 'player') return target.isLocal ? 'Vos' : getRivalName();
+  if (target.type === 'stack') {
+    const obj=spellStack.find(s=>s.id===target.stackId);
+    return obj?.card?.name || `objeto #${target.stackId}`;
+  }
+  return target.item?.card?.name || 'objetivo';
+}
+
+function askCopyRetarget(controllerIsLocal, copiedName, targetLabel) {
+  if (controllerIsLocal) {
+    return new Promise(resolve => showCopyRetargetModal(copiedName,targetLabel,()=>resolve(false),()=>resolve(true)));
+  }
+  if (state.currentMatch) {
+    return requestRivalDecision('copy_retarget_decision', otherRole(state.currentMatch.myRole), {
+      cardName:copiedName, targetLabel
+    }).then(response=>!!response?.changeTargets);
+  }
+  // Tano: si la instrucción permite nuevos objetivos, intenta optimizarlos.
+  return Promise.resolve(true);
+}
+
+function legalTargetsForCopiedStackTarget(copiedItem, originalTargetStackId = null) {
+  const effect=stackObjectEffect(copiedItem);
+  return spellStack.filter(candidate=>{
+    if (!candidate?.card) return false;
+    if (effect?.type?.startsWith('counter')) return isStackItemLegalCounterTarget(effect.type,candidate);
+    if (STACK_COPY_EFFECTS.has(effect?.type)) return isStackItemLegalCopyTarget(effect.type,candidate,effect);
+    // Contrato defensivo para futuros efectos que targeteen Stack sin ser counter/copy.
+    return candidate.id !== copiedItem.id || candidate.id === originalTargetStackId;
+  });
+}
+
+async function chooseStackTargetForCopy(copiedItem, controllerIsLocal, originalTarget) {
+  const candidates=legalTargetsForCopiedStackTarget(copiedItem, originalTarget?.stackId);
+  if (!candidates.length) return cloneStackTarget(originalTarget);
+  if (controllerIsLocal) {
+    return new Promise(resolve=>showStackObjectChoiceModal(
+      candidates.map(obj=>({id:obj.id,cardName:obj.card?.name,label:`#${obj.id} · ${obj.card?.name || 'Objeto'}${obj.type==='ability'?' · habilidad':''}`})),
+      gameText('copy.stackChoice.title'),
+      entry=>resolve(entry ? {type:'stack',stackId:entry.id} : cloneStackTarget(originalTarget)),
+      ()=>resolve(cloneStackTarget(originalTarget))
+    ));
+  }
+  if (state.currentMatch) {
+    const response=await requestRivalDecision('copy_stack_target',otherRole(state.currentMatch.myRole),{
+      cardName:copiedItem.card?.name || 'Copia',
+      candidateIds:candidates.map(obj=>obj.id),
+      candidates:candidates.map(obj=>({id:obj.id,name:obj.card?.name || 'Objeto',kind:obj.type==='ability'?'ability':'spell'}))
+    });
+    const chosen=candidates.find(obj=>obj.id===response?.stackId);
+    return chosen ? {type:'stack',stackId:chosen.id} : cloneStackTarget(originalTarget);
+  }
+  // Tano: prioriza el objeto de mayor valor de maná, manteniendo el original como fallback.
+  const chosen=candidates.reduce((best,obj)=>!best || Number(obj.card?.cmc||0)>Number(best.card?.cmc||0) ? obj : best,null);
+  return chosen ? {type:'stack',stackId:chosen.id} : cloneStackTarget(originalTarget);
+}
+
+async function chooseNewTargetsForStackCopy(original, controllerIsLocal, copyEffect) {
+  const originalTarget=cloneStackTarget(original.targetObj);
+  if (!originalTarget || copyEffect?.mayChooseNewTargets !== true) return originalTarget;
+  const copiedPreview=buildStackCopy(original,{controllerIsLocal,targetObj:originalTarget});
+
+  const retargetOne=async (target,effect)=>{
+    if (!target) return target;
+    const change=await askCopyRetarget(controllerIsLocal,original.card?.name || 'Copia',stackTargetLabel(target));
+    if (!change) return cloneStackTarget(target);
+    if (target.type==='stack') return chooseStackTargetForCopy(copiedPreview,controllerIsLocal,target);
+    const chosen=await chooseResolvedEffectTarget({
+      effect:effect || stackObjectEffect(original), sourceCard:original.card,
+      cardName:`Copia de ${original.card?.name || 'objeto'}`,
+      controllerIsLocal, chooserIsLocal:controllerIsLocal
+    });
+    return chosen || cloneStackTarget(target);
+  };
+
+  if (originalTarget.type==='multi') {
+    const specs=Array.isArray(original.card?.targets) ? original.card.targets : [];
+    const targets=[];
+    for (let i=0;i<(originalTarget.targets||[]).length;i++) {
+      targets.push(await retargetOne(originalTarget.targets[i],specs[i]?.effect || stackObjectEffect(original)));
+    }
+    return {...originalTarget,targets};
+  }
+  return retargetOne(originalTarget,stackObjectEffect(original));
+}
+
+async function resolveStackCopyEffect(effect,targetObj,context) {
+  const {card,isLocal}=context;
+  const targetIndex=spellStack.findIndex(obj=>obj.id===targetObj?.stackId);
+  if(targetIndex<0){ logMsg(gameText('copy.stack.targetGone',{card:card.name})); return null; }
+  const original=spellStack[targetIndex];
+  if(!isStackItemLegalCopyTarget(effect.type,original,effect)){
+    logMsg(gameText('copy.stack.illegal',{card:card.name,target:original.card?.name || 'objeto'}));
+    return null;
+  }
+  const newTargets=await chooseNewTargetsForStackCopy(original,isLocal,effect);
+  const copy=buildStackCopy(original,{controllerIsLocal:isLocal,targetObj:newTargets,sourceCardId:card.id});
+  addToStack(copy);
+  dispatchGameEvent({
+    type:copy.copyKind==='ability'?'ability_copied':'spell_copied',controllerIsLocal:isLocal,actorIsLocal:isLocal,
+    card:copy.card,item:copy,sourceCard:card,targetCard:original.card,targetItem:original,cause:'copy'
+  });
+  logMsg(gameText('copy.stack.created',{card:card.name,target:original.card?.name || 'objeto'}));
+  return copy;
 }
 
 // Sustituye el valor de X en un efecto, en TODOS los campos donde podría aparecer como
@@ -705,20 +844,15 @@ async function resolveSimpleDirectEffect(effect, sourceCard, isLocal) {
 
     const applyProliferate = (entry) => {
       const { item, kind, ownerIsLocal } = entry;
-      if (kind === 'planeswalker') {
-        item.loyalty += 1;
-        logMsg(gameText('effect.proliferate.loyalty', { card: item.card.name, loyalty: item.loyalty }));
-      } else if (kind === 'player_poison') {
+      if (kind === 'player_poison') {
         if (ownerIsLocal) state.localPoison += 1; else state.rivalPoison += 1;
         logMsg(gameText('effect.proliferate.poison', { owner: ownerIsLocal ? 'Vos' : getRivalName(), verb: ownerIsLocal ? 'recibiste' : 'recibió', poison: ownerIsLocal ? state.localPoison : state.rivalPoison }));
-      } else {
-        const types = (entry.counterTypes || Object.keys(item?.counters || {})).filter(type => Number(item?.counters?.[type]) > 0);
-        types.forEach(type => {
-          if (type === 'plusOne' || type === 'minusOne') addCounters(item, type, 1);
-          else item.counters[type] = Number(item.counters[type] || 0) + 1;
-        });
-        logMsg(gameText('effect.proliferate.counters', { card: item.card.name }));
+        return;
       }
+      const types = (entry.counterTypes || Object.keys(item?.counters || {})).filter(type => type==='loyalty' ? Number(item?.loyalty)>0 : Number(item?.counters?.[type])>0);
+      types.forEach(type => addCounters(item,type,1));
+      if(kind==='planeswalker') logMsg(gameText('effect.proliferate.loyalty', { card:item.card.name, loyalty:item.loyalty }));
+      else logMsg(gameText('effect.proliferate.counters', { card:item.card.name }));
     };
 
     const finishProliferate = (chosen) => {
@@ -748,15 +882,121 @@ async function resolveSimpleDirectEffect(effect, sourceCard, isLocal) {
       const chosen = eligible.filter(e => {
         if (e.kind === 'planeswalker') return !e.ownerIsLocal;
         if (e.kind === 'player_poison') return e.ownerIsLocal;
-        const c = e.item?.counters || {};
-        if (e.ownerIsLocal) return (c.minusOne || 0) > 0; // rival debilitado: le conviene profundizar -1/-1
-        // En sus propios permanentes, cualquier contador modelado salvo -1/-1 se presume beneficioso.
-        return (e.counterTypes || []).some(type => type !== 'minusOne');
+        const types=e.counterTypes || [];
+        if(e.ownerIsLocal) return types.some(type => getCounterDefinition(type).polarity === 'negative');
+        return types.some(type => getCounterDefinition(type).polarity === 'positive');
       });
       finishProliferate(chosen);
     }
   }
 
+}
+
+function applyTargetedCounterMutation(effect, targetItem, context) {
+  if (!['add_counter','remove_counter'].includes(effect?.type)) return { handled:false, amount:0 };
+  if (!targetItem?.card) return { handled:true, amount:0 };
+  const counterType=normalizeCounterType(effect.counterType || 'plusOne');
+  const amount=Math.max(1,Math.floor(Number(effect.amount)||1));
+  const changed=effect.type==='add_counter'
+    ? addCounters(targetItem,counterType,amount)
+    : removeCounters(targetItem,counterType,amount,{cause:'effect',actorIsLocal:context.isLocal});
+  const def=getCounterDefinition(counterType);
+  logMsg(gameText(effect.type==='add_counter'?'effect.counterGeneric.add':'effect.counterGeneric.remove',{
+    card:context.card.name,target:targetItem.card.name,count:changed,counter:def.label
+  }));
+  if (counterType==='plusOne' || counterType==='minusOne') checkAllDeaths();
+  if (counterType==='loyalty') checkPlaneswalkerDeaths();
+  return {handled:true,amount:changed,counterType};
+}
+
+function findCopyBattlefieldLocation(item) {
+  const zones=[
+    ['combat',true,state.localCombat],['combat',false,state.rivalCombat],
+    ['support',true,state.localSupport],['support',false,state.rivalSupport],
+    ['land',true,state.localLands],['land',false,state.rivalLands],
+    ['planeswalker',true,state.localPlaneswalkers],['planeswalker',false,state.rivalPlaneswalkers]
+  ];
+  for(const [kind,isLocal,zone] of zones){ const index=zone.indexOf(item); if(index>=0) return {kind,isLocal,zone,index}; }
+  return null;
+}
+
+function copyBattlefieldZone(kind,isLocal){
+  if(kind==='creature') return isLocal?state.localCombat:state.rivalCombat;
+  if(kind==='land') return isLocal?state.localLands:state.rivalLands;
+  if(kind==='planeswalker') return isLocal?state.localPlaneswalkers:state.rivalPlaneswalkers;
+  return isLocal?state.localSupport:state.rivalSupport;
+}
+
+function repairCopyCombatDeparture(loc,item){
+  if(loc?.kind!=='combat') return;
+  const removedWasActiveAttacker=(state.activePlayer==='local' && loc.isLocal) || (state.activePlayer==='rival' && !loc.isLocal);
+  if(removedWasActiveAttacker){
+    const defenders=loc.isLocal?state.rivalCombat:state.localCombat;
+    for(const defender of defenders){
+      const idx=defender?.blockingIndex;
+      if(idx==null) continue;
+      if(idx===loc.index) defender.blockingIndex=null;
+      else if(idx>loc.index) defender.blockingIndex=idx-1;
+    }
+  }
+  item.isAttacking=false;
+  item.blockingIndex=null;
+  item.attackTarget=null;
+}
+
+// 23.16.4 — una transformación cambia sólo las características de la cara visible; el
+// objeto físico, controlador, counters, daño, tap, mareo y attachments permanecen. La UI
+// separa las zonas por tipo, así que si la nueva cara cambia de clase movemos LA MISMA
+// referencia entre Combat/Support/Lands/Planeswalkers sin generar leave/enter events.
+async function transformBattlefieldItem(subject,{actorIsLocal=true,sourceCard=null,cause='transform'}={}){
+  const loc=subject ? findCopyBattlefieldLocation(subject) : null;
+  if(!loc || !canTransformPermanent(subject)) return {transformed:false,reason:'not_transformable'};
+  const beforeCard=subject.card;
+  const beforeKind=tokenBattlefieldKind(beforeCard);
+  const result=transformPermanent(subject);
+  if(!result.transformed) return result;
+  const newKind=tokenBattlefieldKind(subject.card);
+  if(newKind==='invalid'){
+    // El schema 23.16.4 sólo admite caras posteriores permanentes. Defensa fail-safe:
+    // volver a la cara anterior si un JSON futuro rompe ese contrato.
+    transformPermanent(subject);
+    return {transformed:false,reason:'invalid_back_face'};
+  }
+
+  const destination=copyBattlefieldZone(newKind,loc.isLocal);
+  if(loc.zone!==destination){
+    if(loc.kind==='combat' && newKind!=='creature'){
+      repairCopyCombatDeparture(loc,subject);
+      // El motor actual sólo modela Auras/Equipos anexables a criaturas. Si deja de ser
+      // criatura, esos attachments se vuelven ilegales inmediatamente.
+      detachEquipmentFrom(subject,loc.isLocal);
+      sendAurasToGraveyard(subject,loc.isLocal);
+    }
+    loc.zone.splice(loc.index,1);
+    destination.push(subject);
+  }
+
+  if(newKind==='creature'){
+    if(subject.damageTaken==null) subject.damageTaken=0;
+    if(!Array.isArray(subject.auras)) subject.auras=[];
+    if(subject.isAttacking==null) subject.isAttacking=false;
+    if(subject.blockingIndex===undefined) subject.blockingIndex=null;
+    // Transformar NO es entrar al campo: no reinicia mareo. Si el objeto ya estaba bajo
+    // control desde el comienzo del turno, enteredThisTurn/summoningSickness lo reflejan.
+    if(subject.summoningSickness==null) subject.summoningSickness=!!subject.enteredThisTurn && !hasKeyword(subject,'haste');
+  }
+
+  dispatchGameEvent({
+    type:'permanent_transformed',controllerIsLocal:loc.isLocal,actorIsLocal,
+    ownerIsLocal:cardOwnerIsLocal(subject.card,loc.isLocal,state.currentMatch?.myRole||null),
+    card:subject.card,item:subject,sourceCard:sourceCard || beforeCard,targetCard:subject.card,targetItem:subject,
+    zoneFrom:'battlefield',zoneTo:'battlefield',cause,
+    metadata:{fromFace:result.fromFace,toFace:result.toFace,beforeName:beforeCard?.name||null,afterName:subject.card?.name||null,beforeKind,newKind}
+  });
+  logMsg(`🔄 ${beforeCard?.name || 'Permanente'} se transforma en ${subject.card?.name || 'su otra cara'}.`);
+  await runStateBasedActions({reason:'permanent_transformed'});
+  await waitForStateBasedActions();
+  return {...result,newKind};
 }
 
 // Resolución de un efecto con objetivo explícito. Es el MISMO bloque que usaba
@@ -786,6 +1026,124 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
       logMsg(gameText('effect.protectionNoEffect', { target: targetObj.item.card.name, color: COLOR_LABELS[protectedColor] || protectedColor, card: card.name }));
       return;
     }
+  }
+
+  // 23.15.9 — Copiar un objeto que YA está en la Stack. Se resuelve antes de las ramas de
+  // battlefield porque el target es un descriptor {type:'stack',stackId}. La copia entra
+  // como un objeto NUEVO y por eso puede recibir respuesta/prioridad normalmente.
+  if (STACK_COPY_EFFECTS.has(effectToApply.type) && targetObj?.type === 'stack') {
+    await resolveStackCopyEffect(effectToApply,targetObj,context);
+    return;
+  }
+
+  // 23.16.4 — transformar un permanente objetivo. La legalidad de targeting ya exige una
+  // TDFC física; revalidamos igualmente en resolución por si cambió de zona/cara.
+  if (effectToApply.type === 'transform') {
+    const targetItem=targetObj?.item || null;
+    await transformBattlefieldItem(targetItem,{actorIsLocal:isLocal,sourceCard:card,cause:'effect'});
+    return;
+  }
+
+  // Crear ficha que sea copia de un permanente. El target es el MOLDE; su estado runtime
+  // no se copia. Token-doublers atraviesan el replacement token_create con el prototipo ya
+  // copiado, por lo que filtros por tipo/color ven las características correctas.
+  if (effectToApply.type === 'create_token_copy') {
+    const templateItem=targetObj?.item || null;
+    if(!templateItem?.card){ logMsg(gameText('copy.permanent.targetGone',{card:card.name})); return; }
+    const amountBase=Math.max(0,Math.floor(Number(effectToApply.amount)||1));
+    let prototype;
+    try {
+      prototype=buildPermanentCopyToken(templateItem,{id:`copy_token_prototype_${card.id||'effect'}`,overrides:effectToApply.overrides||null}).card;
+    } catch(err){ console.error('create_token_copy inválido:',err); return; }
+    const replacement=resolveReplacementEvent(state,{
+      type:'token_create',amount:amountBase,affectedIsLocal:isLocal,targetIsLocal:isLocal,
+      sourceCard:card,card:prototype,targetCard:prototype,zoneFrom:'none',zoneTo:'battlefield',cause:'copy'
+    });
+    const amount=Math.max(0,Math.floor(Number(replacement.event.amount)||0));
+    const created=[];
+    const stamp=`${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
+    for(let i=0;i<amount;i++){
+      const built=buildPermanentCopyToken(templateItem,{
+        id:`copytoken_${card.id||'effect'}_${stamp}_${i}`,
+        overrides:effectToApply.overrides||null,
+        tapped:!!effectToApply.tapped
+      });
+      const tokenCard=built.card;
+      stampCardOwner(tokenCard,isLocal,state.currentMatch?.myRole||null);
+      const tapped=built.kind==='land' ? landEntersTappedForBattlefield(tokenCard,isLocal,!!effectToApply.tapped) : !!effectToApply.tapped;
+      built.item.tapped=tapped;
+      stampPermanentController(built.item,isLocal,state.currentMatch?.myRole||null);
+      if(built.kind==='creature' && hasKeyword(built.item,'haste')) built.item.summoningSickness=false;
+      copyBattlefieldZone(built.kind,isLocal).push(built.item);
+      created.push(built);
+    }
+    const entries=[];
+    for(const entry of created){
+      entries.push(...buildGenericEventTriggerEntries({
+        type:'token_created',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,
+        card:entry.card,item:entry.item,amount:1,zoneFrom:'none',zoneTo:'battlefield',cause:'copy',sourceCard:card
+      }));
+    }
+    const creatures=created.filter(e=>e.kind==='creature').map(({card,item})=>({card,item}));
+    const lands=created.filter(e=>e.kind==='land').map(({card,item})=>({card,item}));
+    if(creatures.length) entries.push(...collectCreatureEtbBatchEntries(isLocal,creatures));
+    if(lands.length) entries.push(...collectLandEtbBatchEntries(isLocal,lands));
+    for(const entry of created.filter(e=>e.kind!=='creature' && e.kind!=='land')){
+      entries.push(...buildGenericEventTriggerEntries({
+        type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,
+        card:entry.card,item:entry.item,zoneFrom:'none',zoneTo:'battlefield',cause:'copy',sourceCard:card
+      }));
+    }
+    if(entries.length) queueTriggeredAbilities(entries);
+    if(created.some(e=>e.card.staticEffect||e.card.replacementEffect)){
+      await runStateBasedActions({reason:'copy_token_batch_entered'});
+      await waitForStateBasedActions();
+    }
+    logMsg(gameText('copy.permanent.token',{card:card.name,amount:created.length,target:templateItem.card.name}));
+    return;
+  }
+
+  // Un permanente se vuelve copia SIN abandonar battlefield. Dos formas declarativas:
+  // default: la fuente de la habilidad se vuelve copia del target;
+  // copyFrom:'source_permanent': el target se vuelve copia de la fuente.
+  if (effectToApply.type === 'become_copy') {
+    const sourceItem=item?.sourceItem || item?.source?.sourceItem || null;
+    const targetItem=targetObj?.item || null;
+    const targetCopiesSource=effectToApply.copyFrom==='source_permanent';
+    const subject=targetCopiesSource ? targetItem : sourceItem;
+    const template=targetCopiesSource ? sourceItem : targetItem;
+    const loc=subject ? findCopyBattlefieldLocation(subject) : null;
+    const templateLoc=template ? findCopyBattlefieldLocation(template) : null;
+    if(!loc){ logMsg(gameText('copy.permanent.sourceGone',{card:card.name})); return; }
+    if(!template?.card || !templateLoc){ logMsg(gameText('copy.permanent.targetGone',{card:card.name})); return; }
+    const oldName=subject.card?.name || card.name;
+    const oldLoyalty=Number.isFinite(Number(subject.loyalty)) ? Number(subject.loyalty) : null;
+    subject.card=buildBecameCopyCard(subject.card,template.card,{overrides:effectToApply.overrides||null});
+    const newKind=tokenBattlefieldKind(subject.card);
+    if(newKind==='invalid'){ logMsg(gameText('copy.permanent.targetGone',{card:card.name})); return; }
+    if(loc.zone!==copyBattlefieldZone(newKind,loc.isLocal)){
+      if(loc.kind==='combat' && newKind!=='creature') repairCopyCombatDeparture(loc,subject);
+      loc.zone.splice(loc.index,1);
+      copyBattlefieldZone(newKind,loc.isLocal).push(subject);
+    }
+    // Estado físico: no se copia, pero inicializamos campos que la NUEVA clase necesita.
+    if(newKind==='creature'){
+      if(subject.damageTaken==null) subject.damageTaken=0;
+      if(!Array.isArray(subject.auras)) subject.auras=[];
+      if(subject.isAttacking==null) subject.isAttacking=false;
+      if(subject.blockingIndex===undefined) subject.blockingIndex=null;
+      if(subject.summoningSickness==null) subject.summoningSickness=!!subject.enteredThisTurn && !hasKeyword(subject,'haste');
+    }
+    if(newKind==='planeswalker') subject.loyalty=oldLoyalty==null ? 0 : oldLoyalty;
+    stampPermanentController(subject,loc.isLocal,state.currentMatch?.myRole||null);
+    dispatchGameEvent({
+      type:'permanent_became_copy',controllerIsLocal:loc.isLocal,actorIsLocal:isLocal,
+      card:subject.card,item:subject,sourceCard:card,targetCard:template.card,targetItem:template,cause:'copy'
+    });
+    logMsg(gameText('copy.permanent.became',{source:oldName,target:template.card.name}));
+    await runStateBasedActions({reason:'permanent_became_copy'});
+    await waitForStateBasedActions();
+    return;
   }
 
       if (targetObj.type === 'player') {
@@ -1037,13 +1395,8 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
         // se borra en Limpieza), esto usa el mismo sistema real de contadores que ya tienen
         // los Planeswalkers (addCounters), así que se queda mientras la criatura viva Y
         // Proliferar lo puede multiplicar más adelante.
-        else if (effectToApply.type === 'add_counter') {
-          const counterType = effectToApply.counterType === 'minusOne' ? 'minusOne' : 'plusOne';
-          const amount = effectToApply.amount || 1;
-          addCounters(targetUnit, counterType, amount);
-          const signo = counterType === 'plusOne' ? '+' : '-';
-          logMsg(gameText('effect.counter', { card: card.name, target: targetUnit.card.name, amount, stats: `${signo}${amount}/${signo}${amount}` }));
-          checkAllDeaths();
+        else if (effectToApply.type === 'add_counter' || effectToApply.type === 'remove_counter') {
+          applyTargetedCounterMutation(effectToApply,targetUnit,{card,isLocal});
         }
         // LÓGICA NUEVA: PROTECCIÓN TEMPORAL — otorga una keyword hasta el final del turno (ej. A Cubierto)
         else if (effectToApply.type === 'grant_keyword_temp') {
@@ -1114,7 +1467,11 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             const persisted = moveBattlefieldCardToZone(targetUnit.card, exileZone);
             dispatchGameEvent({type:'card_exiled',aliases:['permanent_left_battlefield'],controllerIsLocal:isTargetLocal,actorIsLocal:isLocal,sourceControllerIsLocal:isLocal,targetControllerIsLocal:isTargetLocal,ownerIsLocal:cardOwnerIsLocal(targetUnit.card,isTargetLocal,state.currentMatch?.myRole||null),card:targetUnit.card,item:targetUnit,sourceCard:card,targetCard:targetUnit.card,targetItem:targetUnit,zoneFrom:'battlefield',zoneTo:'exile',cause:'exile_and_return'}, {watchersSnapshot:[{item:targetUnit,isLocal:isTargetLocal}]});
             if (persisted) {
-              state.scheduledReturns.push({ card: targetUnit.card, isLocal: cardOwnerIsLocal(targetUnit.card, isTargetLocal, state.currentMatch?.myRole || null) });
+              // moveBattlefieldCardToZone normaliza TDFC a su cara frontal fuera del campo.
+              // El scheduled return debe guardar ESA carta física, no el snapshot de la cara
+              // que estaba visible justo antes de exiliarla.
+              const physicalCard=exileZone[exileZone.length-1];
+              state.scheduledReturns.push({ card: physicalCard, isLocal: cardOwnerIsLocal(physicalCard, isTargetLocal, state.currentMatch?.myRole || null) });
               logMsg(gameText('effect.exile.returnEnd', { card: card.name, target: targetUnit.card.name }));
             } else {
               logMsg(gameText('effect.exile.tokenGone', { card: card.name, target: targetUnit.card.name }));
@@ -1201,6 +1558,8 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
 
         if (!stillLand) {
           logMsg(gameText('effect.targetGone', { card: card.name }));
+        } else if (effectToApply.type === 'add_counter' || effectToApply.type === 'remove_counter') {
+          applyTargetedCounterMutation(effectToApply,targetItem,{card,isLocal});
         } else if (!landMatchesEffectiveFilter(state, targetItem, isTargetLocal, filter)) {
           logMsg(gameText('land.destroy.invalid', { card: card.name, target: targetItem.card.name }));
         } else if (isTargetLocal !== isLocal && hasKeyword(targetItem, 'hexproof')) {
@@ -1253,7 +1612,9 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           : effectToApply.type === 'destroy_enchantment'
             ? targetItem.card.type.includes('Encantamiento')
             : false;
-        if (matchesType && idx !== -1) {
+        if ((effectToApply.type === 'add_counter' || effectToApply.type === 'remove_counter') && idx !== -1) {
+          applyTargetedCounterMutation(effectToApply,targetItem,{card,isLocal});
+        } else if (matchesType && idx !== -1) {
           const replacement = replacementDestroyOutcome(targetItem, isTargetLocal, card, isLocal);
           if (replacement.prevented) {
             logReplacementPrevented('destroy', targetItem.card.name);
@@ -1282,6 +1643,8 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
         const zone = isTargetLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
         if (!zone.includes(pwItem)) {
           logMsg(gameText('effect.targetGone', { card: card.name }));
+        } else if (effectToApply.type === 'add_counter' || effectToApply.type === 'remove_counter') {
+          applyTargetedCounterMutation(effectToApply,pwItem,{card,isLocal});
         } else if (effectToApply.type === 'damage') {
           const damage = replacementDamageAmount({ amount:effectToApply.amount, targetItem:pwItem, targetIsLocal:isTargetLocal, sourceCard:card, sourceIsLocal:isLocal, combat:false, cause:'spell_or_ability' });
           if (damage.amount <= 0) logReplacementPrevented('damage', pwItem.card.name);
@@ -1380,6 +1743,7 @@ async function resolveReturnLandsFromGraveyardEffect(effectToApply, card, isLoca
       enteredThisTurn:true,
       permanentTypes:['land']
     };
+    initializeTransformPermanentItem(landItem,chosenCard,{face:'front'});
     stampPermanentController(landItem, isLocal, state.currentMatch?.myRole || null);
     return { card:chosenCard, item:landItem };
   });
@@ -1397,8 +1761,14 @@ async function resolveReturnLandsFromGraveyardEffect(effectToApply, card, isLoca
 async function resolveUntargetedGameEffect(effectToApply, context) {
   const { card, item, isLocal } = context;
 
+      // 23.16.4 — forma canónica de "transformate" para ETB/triggers/habilidades de la
+      // propia TDFC. No targetea: la fuente debe seguir siendo ese mismo objeto de campo.
+      if (effectToApply.type === 'transform') {
+        const sourceItem = item?.sourceItem || item?.source?.sourceItem || null;
+        await transformBattlefieldItem(sourceItem,{actorIsLocal:isLocal,sourceCard:card,cause:'self_transform'});
+      }
       // LAND 1 — man-land real: la fuente mantiene identidad Land + Creature.
-      if (effectToApply.type === 'animate_land') {
+      else if (effectToApply.type === 'animate_land') {
         const sourceItem = item?.sourceItem || item?.source?.sourceItem || null;
         if (sourceItem && animateLandPermanent(sourceItem, isLocal, effectToApply)) {
           logMsg(gameText('land.animate.done', { card: card.name, power: effectToApply.power ?? card.baseStats?.power ?? 0, toughness: effectToApply.toughness ?? card.baseStats?.toughness ?? 0 }));
@@ -1660,6 +2030,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
             card: revivedCard, tapped: false, summoningSickness: true, isAttacking: false,
             blockingIndex: null, damageTaken: 0, auras: []
           };
+          initializeTransformPermanentItem(newUnit,revivedCard,{face:effectToApply.transformed===true?'back':'front'});
           if (hasKeyword(newUnit, 'haste')) newUnit.summoningSickness = false;
           stampPermanentController(newUnit, isLocal, state.currentMatch?.myRole || null);
           board.push(newUnit);
@@ -1746,11 +2117,33 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           logMsg(gameText('land.search.none', { card: card.name }));
         }
       }
+      // 23.16.2 — Impulse/Exile foundation. Exilia cartas superiores y adjunta un
+      // permiso real de play/cast. Suspend 23.16.3 mantiene una ruta dedicada: el último
+      // Time genera su propio trigger y reutiliza CR601 sin pasar por este productor.
+      else if (effectToApply.type === 'exile_top_with_permission') {
+        const exileOwnerIsLocal=effectToApply.owner==='opponent' ? !isLocal : isLocal;
+        const permissionControllerIsLocal=effectToApply.controller==='owner' ? exileOwnerIsLocal
+          : effectToApply.controller==='opponent' ? !isLocal : isLocal;
+        const moved=exileTopCardsWithPlayPermission({
+          ownerIsLocal:exileOwnerIsLocal,
+          controllerIsLocal:permissionControllerIsLocal,
+          amount:effectToApply.amount || 1,
+          permission:effectToApply.permission || effectToApply.playPermission || {},
+          sourceCard:card
+        });
+        if(moved.length) logMsg(gameText('exilePlay.exiledTop',{card:card.name,count:moved.length,cards:moved.map(e=>e.card.name).join(', ')}));
+        else logMsg(gameText('exilePlay.exiledNone',{card:card.name}));
+      }
       // 23.15.6 — tutor/biblioteca universal. search_library recorre toda la biblioteca
       // y baraja por default; look_at_top sólo abre una ventana top-N y permite mandar el
       // resto arriba/abajo/cementerio/exilio según el contrato declarativo.
       else if (effectToApply.type === 'search_library' || effectToApply.type === 'look_at_top') {
-        const result=await resolveLibraryEffect({isLocal,effect:effectToApply,cardName:card.name});
+        let libraryEffect=effectToApply;
+        const sourceItem=item?.sourceItem || item?.source?.sourceItem || null;
+        const rawSubtype=effectToApply.filter?.subtype ?? effectToApply.filter?.subtypes?.[0] ?? null;
+        const resolvedSubtype=resolveSubtypeReference(rawSubtype,{sourceItem,sourceCard:card});
+        if(rawSubtype && resolvedSubtype) libraryEffect={...effectToApply,filter:{...(effectToApply.filter||{}),subtype:resolvedSubtype,subtypes:undefined}};
+        const result=await resolveLibraryEffect({isLocal,effect:libraryEffect,cardName:card.name});
         if(result.selectedCount>0){
           logMsg(gameText('library.effect.done',{card:card.name,count:result.selectedCount,cards:result.movedNames?.length?result.movedNames.join(', '):gameText('library.effect.hidden')}));
         } else {
@@ -1774,7 +2167,7 @@ export function canResolveGameEffectWithoutTarget(effectType) {
   return [
     'draw', 'loot', 'rummage', 'sacrifice', 'heal', 'damage', 'fog', 'draw_and_lose_life', 'drain', 'discard',
     'scry', 'surveil', 'proliferate', 'destroy_all_creatures', 'create_tokens',
-    'reanimate', 'return_from_graveyard', 'return_lands_from_graveyard', 'return_all_lands_from_graveyard', 'ramp', 'search_land', 'search_library', 'look_at_top', 'animate_land', 'destroy_all_lands'
+    'reanimate', 'return_from_graveyard', 'return_lands_from_graveyard', 'return_all_lands_from_graveyard', 'ramp', 'search_land', 'search_library', 'look_at_top', 'exile_top_with_permission', 'animate_land', 'transform', 'destroy_all_lands', 'suspend_remove_time', 'suspend_cast_from_exile', 'add_time_counter_suspended', 'remove_time_counter_suspended'
   ].includes(effectType);
 }
 
@@ -1785,9 +2178,10 @@ export function canResolveGameEffectWithoutTarget(effectType) {
 export function canResolveGameEffectWithTarget(effectType) {
   return [
     'damage', 'heal', 'prevent_damage', 'poison', 'discard', 'private_zone_move', 'exile_graveyard', 'prevent_attack', 'cant_attack_next_turn', 'gain_control', 'gain_control_until_eot',
-    'pump', 'grant_keyword_temp', 'attach_equipment', 'fight', 'add_counter',
+    'pump', 'grant_keyword_temp', 'attach_equipment', 'fight', 'add_counter', 'remove_counter',
     'destroy_creature', 'exile_creature', 'exile_and_return', 'bounce',
-    'destroy_artifact', 'destroy_enchantment', 'destroy_land', 'destroy_nonbasic_land'
+    'destroy_artifact', 'destroy_enchantment', 'destroy_land', 'destroy_nonbasic_land',
+    'copy_spell', 'copy_ability', 'copy_stack_object', 'create_token_copy', 'become_copy', 'transform'
   ].includes(effectType);
 }
 
@@ -1800,10 +2194,11 @@ export function getEffectExecutionClass(effectType) {
   if ([
     'draw', 'loot', 'rummage', 'sacrifice', 'heal', 'damage', 'fog', 'draw_and_lose_life', 'drain', 'discard',
     'scry', 'surveil', 'proliferate', 'poison', 'prevent_damage', 'private_zone_move', 'exile_graveyard', 'prevent_attack', 'cant_attack_next_turn', 'gain_control', 'gain_control_until_eot',
-    'pump', 'grant_keyword_temp', 'attach_equipment', 'fight', 'add_counter',
+    'pump', 'grant_keyword_temp', 'attach_equipment', 'fight', 'add_counter', 'remove_counter',
     'destroy_creature', 'exile_creature', 'exile_and_return', 'bounce',
     'destroy_artifact', 'destroy_enchantment', 'destroy_land', 'destroy_nonbasic_land', 'crew_vehicle', 'animate_land',
-    'destroy_all_creatures', 'destroy_all_lands', 'create_tokens', 'reanimate', 'return_from_graveyard', 'return_lands_from_graveyard', 'return_all_lands_from_graveyard', 'ramp', 'search_land', 'search_library', 'look_at_top'
+    'copy_spell', 'copy_ability', 'copy_stack_object', 'create_token_copy', 'become_copy', 'transform',
+    'destroy_all_creatures', 'destroy_all_lands', 'create_tokens', 'reanimate', 'return_from_graveyard', 'return_lands_from_graveyard', 'return_all_lands_from_graveyard', 'ramp', 'search_land', 'search_library', 'look_at_top', 'exile_top_with_permission', 'suspend_remove_time', 'suspend_cast_from_exile', 'add_time_counter_suspended', 'remove_time_counter_suspended', 'choose_creature_type'
   ].includes(effectType)) return 'discrete';
   return 'unknown';
 }
@@ -1832,6 +2227,15 @@ export async function resolveGameEffect(effect, context) {
     return { handled: false, reason: executionClass };
   }
 
+  if (effectToApply.type === 'suspend_remove_time') { await resolveSuspendRemoveTimeEffect(effectToApply,isLocal); return {handled:true}; }
+  if (effectToApply.type === 'suspend_cast_from_exile') { await resolveSuspendCastFromExile(effectToApply,isLocal); return {handled:true}; }
+  if (['add_time_counter_suspended','remove_time_counter_suspended'].includes(effectToApply.type)) { await adjustSuspendedTimeCounters(effectToApply,isLocal); return {handled:true}; }
+  if (effectToApply.type === 'choose_creature_type') {
+    const sourceItem=context.sourceItem || item?.sourceItem || item?.source?.sourceItem || null;
+    const chosen=await chooseCreatureTypeForEffect(effectToApply,isLocal,sourceItem,card);
+    return {handled:true,chosenType:chosen};
+  }
+
   if (targetObj) {
     // CR 608.2b — puerta única de revalidación al resolver para TODOS los efectos discretos
     // con objetivo, no sólo triggered/loyalty. Si ganó Intocable/Protección, cambió de zona
@@ -1853,7 +2257,17 @@ export async function resolveGameEffect(effect, context) {
 }
 
 async function executeStackItem(item) {
-  const { card, isLocal, targetObj, type } = item;
+  let { card, isLocal, targetObj, type } = item;
+
+  // Si copiamos un HECHIZO DE PERMANENTE, la copia que se resuelve entra al campo como
+  // ficha. Conserva los valores copiables impresos/resueltos del hechizo (incluido coste),
+  // pero recibe identidad física propia recién ahora.
+  if (item.isCopy && ['summon','permanent','planeswalker','aura'].includes(type)) {
+    card=buildCopiedCard(card,{
+      id:`stackcopy_perm_${item.id}_${Date.now().toString(36)}`,isToken:true,originKind:'permanent_spell_copy'
+    });
+    item.card=card;
+  }
 
   // Mandar la carta que se está resolviendo a donde corresponda (cementerio normal, o
   // Exilio si vino por Flashback) — se llama en cada lugar donde el hechizo termina de
@@ -1864,7 +2278,7 @@ async function executeStackItem(item) {
     // Una habilidad (activada o disparada) no es una carta física en la Stack: al terminar
     // o fallar, su fuente permanece donde esté. Este guard también protege futuras
     // habilidades disparadas que controlen la pila.
-    if (type === 'ability') return;
+    if (type === 'ability' || item.isCopy) return;
     if (item.castFrom === 'flashback') {
       (isLocal ? state.localExile : state.rivalExile).push(card);
       dispatchGameEvent({type:'card_exiled',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card,zoneFrom:'stack',zoneTo:'exile',cause:'flashback'});
@@ -1878,6 +2292,7 @@ async function executeStackItem(item) {
     stampCardOwner(card, isLocal, state.currentMatch?.myRole || null);
     const pwZone = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
     const newPw = { card, loyalty: card.loyalty, abilityUsedThisTurn: false };
+    initializeTransformPermanentItem(newPw,card,{face:'front'});
     stampPermanentController(newPw, isLocal, state.currentMatch?.myRole || null);
     pwZone.push(newPw);
     dispatchGameEvent({type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card,item:newPw,zoneFrom:'stack',zoneTo:'battlefield',cause:'resolve'});
@@ -1894,8 +2309,10 @@ async function executeStackItem(item) {
         card, tapped: false, summoningSickness: true, isAttacking: false, 
         blockingIndex: null, damageTaken: 0, auras: [] 
       };
+      initializeTransformPermanentItem(newPermanentItem,card,{face:'front'});
 
-      if (hasKeyword(newPermanentItem, 'haste')) {
+      if (item.suspendHaste) newPermanentItem._suspendHaste = true;
+      if (hasKeyword(newPermanentItem, 'haste') || item.suspendHaste) {
         newPermanentItem.summoningSickness = false;
       }
       
@@ -1909,6 +2326,7 @@ async function executeStackItem(item) {
       // enteredThisTurn: para que un Vehículo recién jugado y tripulado en el mismo turno
       // respete el mareo de invocación al convertirse en criatura (ver animate_land / LAND 1).
       newPermanentItem = { card, tapped: false, enteredThisTurn: true };
+      initializeTransformPermanentItem(newPermanentItem,card,{face:'front'});
       // Los Equipos entran al campo sin equipar a nadie todavía (se equipan pagando Equipar).
       if (card.equipment) newPermanentItem.attachedTo = null;
       stampPermanentController(newPermanentItem, isLocal, state.currentMatch?.myRole || null);
@@ -2091,6 +2509,7 @@ async function executeStackItem(item) {
           }
 
           const counteredItem = spellStack.splice(targetIndex, 1)[0];
+          handleCounteredSuspendTrigger(counteredItem);
           logMsg(gameText('counter.done', { card: card.name, target: counteredItem.card.name }));
           // 23.15.5: primero resolvemos el destino real; luego el evento spell_countered
           // publica esa zona final (incluido un replacement Cementerio -> Exilio).
@@ -2121,6 +2540,7 @@ async function executeStackItem(item) {
       } else {
         if (spellStack.length > 0) {
           const counteredItem = spellStack.pop();
+          handleCounteredSuspendTrigger(counteredItem);
           logMsg(gameText('counter.done', { card: card.name, target: counteredItem.card.name }));
           const counterDestination=moveCounteredStackItemToDestination(counteredItem,state);
           dispatchGameEvent({type:'spell_countered',controllerIsLocal:counteredItem.isLocal!==false,actorIsLocal:isLocal,card:counteredItem.card,item:counteredItem,zoneFrom:'stack',zoneTo:counterDestination,cause:'counter'});
@@ -2224,6 +2644,38 @@ export async function handleStackCardClick(item) {
     // Este selector especial no vuelve por main.executeSpellOnTarget; reanudamos por el
     // wrapper existente recién DESPUÉS de completar todos los triggers de casteo.
     resumeAfterInteractiveEffect();
+    return;
+  }
+
+  if (STACK_COPY_EFFECTS.has(effectType)) {
+    const effect=state.pendingTargetCard.effect || {};
+    if(!isStackItemLegalCopyTarget(effectType,item,effect)){
+      logMsg(gameText(effectType==='copy_ability'?'copy.stack.onlyAbility':'copy.stack.onlySpell'));
+      return;
+    }
+    if (state.pendingCastTransaction?.stage === 'targets') {
+      await completeCastTargetDeclaration({type:'stack',stackId:item.id});
+      return;
+    }
+
+    const spellIndex=state.pendingSpellIndex;
+    const playedCard=state.localHand.splice(spellIndex,1)[0];
+    if(!playedCard) return;
+    const cardTypeText=String(playedCard.type||'').toLowerCase();
+    const castStackItem={
+      card:playedCard,isLocal:true,targetObj:{type:'stack',stackId:item.id},
+      type:cardTypeText.includes('instant')?'instant':'spell',castFrom:state.pendingCastFrom,kicked:state.pendingKicked
+    };
+    addToStack(castStackItem);
+    state.consecutivePasses=0;
+    state.pendingSpellIndex=null; state.pendingCost=null; state.pendingTargetCard=null;
+    state.pendingCastFrom=null; state.pendingKicked=null; state.pendingAlternativeCostChosen=false;
+    state.pendingCompositeCostPayment=false; state.pendingSpellCostsIrreversible=false;
+    state.pendingHybridLifePayment=null; state.tappedLandsThisSpell=[];
+    logMsg(gameText('stack.targeted',{card:playedCard.name,target:item.card?.name || 'objeto'}));
+    render();
+    await triggerSpellCast(true,playedCard,castStackItem);
+    resumeAfterInteractiveEffect();
   }
 }
 
@@ -2295,11 +2747,11 @@ export function renderStack() {
     if (pendingEffect && pendingEffect.startsWith('counter')) {
       const restriction = getCounterTargetRestriction(pendingEffect);
       const typeAllowed = isAbilityItem ? restriction.allowAbility : restriction.allowSpell;
-      if (typeAllowed) {
-        isTargetingCounter = isStackItemLegalCounterTarget(pendingEffect, item);
-      }
+      if (typeAllowed) isTargetingCounter = isStackItemLegalCounterTarget(pendingEffect,item);
     }
-    const targetableClass = isTargetingCounter ? 'targetable-stack' : '';
+    const isTargetingCopy = STACK_COPY_EFFECTS.has(pendingEffect)
+      && isStackItemLegalCopyTarget(pendingEffect,item,state.pendingTargetCard?.effect || {});
+    const targetableClass = (isTargetingCounter || isTargetingCopy) ? 'targetable-stack' : '';
 
     cardDiv.className = `stack-item-card ${item.isLocal ? 'local' : 'rival'} ${isTop ? 'top-item' : ''} ${targetableClass}`;
     
@@ -2343,7 +2795,7 @@ export function renderStack() {
       <div class="stack-item-meta">${targetText}</div>
     `;
 
-    if (isTargetingCounter) {
+    if (isTargetingCounter || isTargetingCopy) {
       cardDiv.addEventListener('click', () => handleStackCardClick(item));
     }
 

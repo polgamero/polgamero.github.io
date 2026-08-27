@@ -1,5 +1,5 @@
 import { logMsg, els, showGameOverOverlay, showGameRewardStatus, render, updateAccountUI, refreshTurnPriorityHudClock, showUntapLandChoiceModal } from './ui.js';
-import { state, queueTriggeredAbilities, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects } from './main.js';
+import { state, queueTriggeredAbilities, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects, advanceSagaLoreForPrecombatMainPhase, expireExilePlayPermissionsForCleanup, collectSuspendUpkeepTriggers } from './main.js';
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
@@ -17,6 +17,8 @@ import { isLandPermanent } from './permanentTypes.js';
 import { landRulesTextSuppressed } from './landCharacteristics.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
 import { zoneForCardOwner, cardOwnerIsLocal } from './zoneOwnership.js';
+import { resolveUntapAttempt } from './counterEngine.js';
+import { botDifficultyLabel } from './botDifficulty.js';
 
 function cleanupDiscardDestination(card,isLocal) {
   const ownerIsLocal=cardOwnerIsLocal(card,!!isLocal,state.currentMatch?.myRole||null);
@@ -129,7 +131,7 @@ function awardMatchEndPoints(won) {
   const delta = state.currentMatch
     ? (won ? POINTS.winVsHumano : POINTS.lossVsHumano)
     : pointsForBotGameEnd(won, state.botDifficulty);
-  const difficultyLabel = state.botDifficulty === 'hard' ? 'Difícil' : 'Fácil';
+  const difficultyLabel = botDifficultyLabel(state.botDifficulty);
 
   if (!receiptId) {
     console.error('[GameReward 23.13.68] Fin de partida sin receipt estable; no se acredita para evitar duplicados.');
@@ -357,6 +359,11 @@ export async function advanceStep() {
   }
 
   logMsg(gameText('game.turn.step', { owner: state.activePlayer === 'local' ? 'Tu' : `Turno de ${getRivalName()}`, phase: getPhaseName(state.phase) }));
+
+  // Sagas: acción de turno al comenzar la primera fase principal, antes de prioridad.
+  if (state.phase === 'main1') {
+    await advanceSagaLoreForPrecombatMainPhase(state.activePlayer === 'local');
+  }
 
   // Lógica de fases automáticas
   if (state.phase === 'combat_begin') {
@@ -737,6 +744,7 @@ async function executeUntapStep() {
   const lands = isLocal ? state.localLands : state.rivalLands;
   const combat = isLocal ? state.localCombat : state.rivalCombat;
   const support = isLocal ? state.localSupport : state.rivalSupport;
+  const planeswalkers = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
 
   // Beginning-of-turn y untap sí pueden disparar habilidades, pero CR no entrega prioridad
   // durante Untap. Construimos ahora los entries y recién los apilamos al comenzar Upkeep.
@@ -770,36 +778,54 @@ async function executeUntapStep() {
     }
   }
   const chosen = new Set(chosenIndexes);
-  const untappedPermanents = [
-    ...lands.map((item,index) => ({ item, willUntap:!!item?.tapped && chosen.has(index) })),
-    ...combat.map(item => ({ item, willUntap:!!item?.tapped })),
-    ...support.map(item => ({ item, willUntap:!!item?.tapped }))
-  ].filter(entry => entry.willUntap && entry.item?.card);
+  // CR 502 + Stun: primero se determina qué permanentes intentarían enderezarse. Luego,
+  // para cada intento, Aturdimiento reemplaza ese enderezar removiendo UN counter. Como no
+  // hay prioridad durante Untap, tanto counter_removed como permanent_untapped se difieren a Upkeep.
+  const untapAttempts = [
+    ...lands.map((item,index) => ({ item, shouldAttempt:!!item?.tapped && chosen.has(index), kind:'land' })),
+    ...combat.map(item => ({ item, shouldAttempt:!!item?.tapped, kind:'combat' })),
+    ...support.map(item => ({ item, shouldAttempt:!!item?.tapped, kind:'support' })),
+    ...planeswalkers.map(item => ({ item, shouldAttempt:!!item?.tapped, kind:'planeswalker' }))
+  ].filter(entry => entry.shouldAttempt && entry.item?.card);
 
-  // CR 502.3: la determinación se hace primero y luego todos los permanentes elegidos se
-  // enderezan simultáneamente. No mutamos nada mientras el modal de elección está abierto.
+  const actualUntapped=[];
+  let stunConsumedCount=0;
+  for (const { item } of untapAttempts) {
+    const result=resolveUntapAttempt(item);
+    if(result.stunConsumed){
+      stunConsumedCount++;
+      deferredBeginningPhaseTriggerEntries.push(...buildGenericEventTriggerEntries({
+        type:'counter_removed', controllerIsLocal:isLocal, actorIsLocal:isLocal,
+        card:item.card,item,amount:1,zoneFrom:'battlefield',zoneTo:'battlefield',
+        cause:'stun_untap_replacement',metadata:{counterType:'stun'}
+      }));
+      logMsg(gameText('counter.stun.consumed',{card:item.card.name}));
+    } else if(result.untapped){
+      actualUntapped.push(item);
+      deferredBeginningPhaseTriggerEntries.push(...buildGenericEventTriggerEntries({
+        type:'permanent_untapped', controllerIsLocal:isLocal, actorIsLocal:isLocal,
+        card:item.card,item,zoneFrom:'battlefield',zoneTo:'battlefield',cause:'untap_step'
+      }));
+    }
+  }
+
+  // Reseteos de turno independientes de si Stun reemplazó el enderezar.
   if (isLocal) {
     state.localLandPlayedThisTurn = false;
     state.localAttackersDeclaredThisTurn = 0;
     state.localBlockersDeclaredThisCombat = false;
-    state.localLands.forEach((l,index) => { if (!l.tapped || chosen.has(index)) l.tapped = false; l.enteredThisTurn = false; });
-    state.localCombat.forEach(c => { c.tapped = false; c.enteredThisTurn = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; c.attackTarget = null; });
-    state.localSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });
+    state.localLands.forEach(l => { l.enteredThisTurn = false; });
+    state.localCombat.forEach(c => { c.enteredThisTurn = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; c.attackTarget = null; });
+    state.localSupport.forEach(s => { s.enteredThisTurn = false; });
     state.localPlaneswalkers.forEach(pw => { pw.abilityUsedThisTurn = false; });
   } else {
     state.rivalLandPlayedThisTurn = false;
     state.rivalAttackersDeclaredThisTurn = 0;
     state.rivalBlockersDeclaredThisCombat = false;
-    state.rivalLands.forEach((l,index) => { if (!l.tapped || chosen.has(index)) l.tapped = false; l.enteredThisTurn = false; });
-    state.rivalCombat.forEach(c => { c.tapped = false; c.enteredThisTurn = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; c.attackTarget = null; });
-    state.rivalSupport.forEach(s => { s.tapped = false; s.enteredThisTurn = false; });
+    state.rivalLands.forEach(l => { l.enteredThisTurn = false; });
+    state.rivalCombat.forEach(c => { c.enteredThisTurn = false; c.summoningSickness = false; c.isAttacking = false; c.blockingIndex = null; c.damageTaken = 0; c.attackTarget = null; });
+    state.rivalSupport.forEach(s => { s.enteredThisTurn = false; });
     state.rivalPlaneswalkers.forEach(pw => { pw.abilityUsedThisTurn = false; });
-  }
-  for (const { item } of untappedPermanents) {
-    deferredBeginningPhaseTriggerEntries.push(...buildGenericEventTriggerEntries({
-      type:'permanent_untapped', controllerIsLocal:isLocal, actorIsLocal:isLocal,
-      card:item.card, item, zoneFrom:'battlefield', zoneTo:'battlefield', cause:'untap_step'
-    }));
   }
 
   if (allowedCount < untappableEntries.length || preventedCount > 0) {
@@ -808,7 +834,7 @@ async function executeUntapStep() {
     }));
     recordTelemetryEvent('land_untap_restricted', {
       player:isLocal?'local':'rival', limit:Number.isFinite(limit)?limit:null,
-      tapped:tappedEntries.length, prevented:preventedCount, untapped:chosen.size
+      tapped:tappedEntries.length, prevented:preventedCount, stunConsumed:stunConsumedCount, untapped:actualUntapped.filter(item=>lands.includes(item)).length
     });
   }
   logMsg(gameText('game.untap', { player: isLocal ? getLocalPlayerName() : getRivalName() }));
@@ -825,6 +851,7 @@ function executeUpkeepStep() {
   const planeswalkers = isLocal ? state.localPlaneswalkers : state.rivalPlaneswalkers;
   const entries=[...deferredBeginningPhaseTriggerEntries];
   deferredBeginningPhaseTriggerEntries = [];
+  entries.push(...collectSuspendUpkeepTriggers(isLocal));
   entries.push(...[...combat, ...support, ...lands, ...planeswalkers]
     .filter(item => item.card?.upkeepTrigger && !(isLandPermanent(item) && landRulesTextSuppressed(state, item, isLocal)))
     .map(item => ({
@@ -893,6 +920,11 @@ function executeDrawStep() {
 
 async function executeCleanupStep() {
   const isLocal = state.activePlayer === 'local';
+
+  // 23.16.2: los permisos de Cast-from-Exile tienen duración de reglas y expiran en
+  // Cleanup, antes de pasar el turno. `until_end_of_next_turn` sólo consume cierres del
+  // controlador autorizado; `while_exiled` permanece hasta que la carta abandona Exilio.
+  expireExilePlayPermissionsForCleanup(isLocal);
   
   // Limpiamos el daño residual
   state.localCombat.forEach(c => c.damageTaken = 0);

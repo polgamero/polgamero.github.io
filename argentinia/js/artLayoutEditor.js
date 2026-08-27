@@ -1,4 +1,4 @@
-// js/artLayoutEditor.js — Entrega 23.13.23
+// js/artLayoutEditor.js — Entrega 23.16.5.2 · DFC face-aware editor
 // Editor visual Admin-only (la UI decide si mostrar el botón; Firestore Rules protegen el
 // write real). Arrastrar mueve el arte y la rueda +/- controla el zoom. SAVE persiste sólo
 // scale/x/y; nunca altera ni reexporta el PNG.
@@ -118,8 +118,9 @@ function frameCoversContainer(container, img) {
     i.right >= c.right - tolerance && i.bottom >= c.bottom - tolerance;
 }
 
-export async function openArtLayoutEditor({ card, renderCard, onSaved = null } = {}) {
+export async function openArtLayoutEditor({ card, renderCard, layoutId = null, onSaved = null } = {}) {
   if (!card?.id || typeof renderCard !== 'function') throw new Error('ART_LAYOUT_EDITOR_INVALID_ARGUMENTS');
+  const layoutKey = String(layoutId || card.id);
   injectStyles();
 
   document.getElementById('art-layout-editor-overlay')?.remove();
@@ -182,12 +183,12 @@ export async function openArtLayoutEditor({ card, renderCard, onSaved = null } =
   const grid = overlay.querySelector('.art-layout-editor-grid');
   const previewHost = overlay.querySelector('#art-layout-preview');
   const subtitle = overlay.querySelector('.art-layout-editor-subtitle');
-  const initial = getArtLayout(card.id);
+  const initial = getArtLayout(layoutKey);
   let draft = { ...initial };
   let saveInFlight = false;
   let frameValid = true;
 
-  subtitle.innerHTML = `${String(card.id)}${hasCustomArtLayout(card.id) ? ' <span class="art-layout-custom-chip">encuadre personalizado guardado</span>' : ''}`;
+  subtitle.innerHTML = `${layoutKey}${hasCustomArtLayout(layoutKey) ? ' <span class="art-layout-custom-chip">encuadre personalizado guardado</span>' : ''}`;
 
   const previewCard = renderCard(card);
   previewCard.classList.add('art-layout-editor-card-preview');
@@ -227,7 +228,7 @@ export async function openArtLayoutEditor({ card, renderCard, onSaved = null } =
 
   function renderDraft() {
     draft = normalizeArtLayout(draft);
-    applyArtLayoutToImage(artImg, card.id, draft);
+    applyArtLayoutToImage(artImg, layoutKey, draft);
     zoomInput.value = String(draft.scale);
     zoomLabel.textContent = percent(draft.scale);
     vScale.textContent = percent(draft.scale);
@@ -306,7 +307,7 @@ export async function openArtLayoutEditor({ card, renderCard, onSaved = null } =
     saveBtn.textContent = '⏳ Guardando…';
     errorEl.textContent = '';
     try {
-      const saved = await saveArtLayout(card.id, draft);
+      const saved = await saveArtLayout(layoutKey, draft);
       if (typeof onSaved === 'function') onSaved(saved, { custom: !layoutsEqual(saved, ART_LAYOUT_DEFAULT) });
       saveBtn.textContent = '✅ Guardado';
       setTimeout(() => { if (overlay.isConnected) close(); }, 350);

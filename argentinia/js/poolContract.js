@@ -1,7 +1,6 @@
 // js/poolContract.js
-// 23.15.7.2 — POOL EXPANSION II: 673 -> 700.
-// Estrena en contenido real Generic Library / Look-at-N + Generic Permanent Tokens,
-// manteniendo los milestones anteriores como historia auditable.
+// 23.16.5.1 — POOL EXPANSION VIII — Typal. Pool canónico 850 → 880.
+// Estrena 30 cartas de contenido Typal sobre el motor Typal 23.16.5.
 const makeMilestone = (version, total, categories) => Object.freeze({
   version,
   total,
@@ -72,7 +71,61 @@ export const POOL_MILESTONES = Object.freeze({
     encantamientos: 71,
     planeswalkers: 8
   }),
+  pool_expansion_iii_730: makeMilestone('23.15.8.1', 730, {
+    tierras: 65,
+    artefactos: 71,
+    criaturas: 297,
+    instantaneos: 126,
+    conjuros: 89,
+    encantamientos: 74,
+    planeswalkers: 8
+  }),
+  pool_expansion_iv_760: makeMilestone('23.16.1.1', 760, {
+    tierras: 65,
+    artefactos: 73,
+    criaturas: 302,
+    instantaneos: 128,
+    conjuros: 91,
+    encantamientos: 93,
+    planeswalkers: 8
+  }),
+  pool_expansion_v_790: makeMilestone('23.16.2.1', 790, {
+    tierras: 66,
+    artefactos: 77,
+    criaturas: 311,
+    instantaneos: 134,
+    conjuros: 97,
+    encantamientos: 97,
+    planeswalkers: 8
+  }),
+  pool_expansion_vi_820: makeMilestone('23.16.3.1', 820, {
+    tierras: 67,
+    artefactos: 81,
+    criaturas: 321,
+    instantaneos: 140,
+    conjuros: 102,
+    encantamientos: 101,
+    planeswalkers: 8
+  }),
+  pool_expansion_vii_850: makeMilestone('23.16.4.1', 850, {
+    tierras: 68,
+    artefactos: 85,
+    criaturas: 335,
+    instantaneos: 144,
+    conjuros: 105,
+    encantamientos: 105,
+    planeswalkers: 8
+  }),
+  pool_expansion_viii_880: makeMilestone('23.16.5.1', 880, {
+    tierras: 68,
+    artefactos: 87,
+    criaturas: 355,
+    instantaneos: 147,
+    conjuros: 107,
+    encantamientos: 108,
+    planeswalkers: 8
+  }),
 });
 
-export const CURRENT_POOL_MILESTONE = 'pool_expansion_ii_700';
+export const CURRENT_POOL_MILESTONE = 'pool_expansion_viii_880';
 export const POOL_BASELINE = POOL_MILESTONES[CURRENT_POOL_MILESTONE];

@@ -1,21 +1,22 @@
+import { cardHasSubtype, cardHasAllSubtypes, cardsShareCreatureType, resolveSubtypeReference } from './typalEngine.js';
 // Argentinia 23.15.3 — Generic Event Engine + Trigger Predicate System
 // Pure rules/data layer: it does not import state, UI, Stack or multiplayer code.
 // Callers provide the event and battlefield watchers; this module normalizes the
 // declarative contract and returns matching trigger descriptors.
 
-export const GENERIC_EVENT_ENGINE_VERSION = '23.15.5.1';
+export const GENERIC_EVENT_ENGINE_VERSION = '23.16.5';
 
 export const GAME_EVENT_TYPES = Object.freeze([
-  'spell_cast',
+  'spell_cast', 'cast_from_exile', 'card_played_from_exile',
   'permanent_entered', 'creature_entered', 'land_entered',
   'permanent_left_battlefield', 'creature_died', 'permanent_sacrificed', 'card_exiled',
   'card_drawn', 'card_discarded',
   'life_gained', 'life_lost',
   'damage_dealt', 'combat_damage_dealt',
-  'counter_added', 'counter_removed',
+  'counter_added', 'counter_removed', 'saga_chapter_triggered',
   'token_created',
   'permanent_tapped', 'permanent_untapped',
-  'spell_countered',
+  'spell_countered', 'spell_copied', 'ability_copied', 'permanent_became_copy', 'permanent_transformed', 'creature_type_chosen',
   'attack_declared', 'block_declared',
   'turn_started', 'upkeep_started', 'combat_started', 'end_step_started'
 ]);
@@ -217,13 +218,13 @@ export function eventFilterMatches(rawFilter = {}, rawEvent = {}, context = {}) 
   const excludedTypes = arr(filter.excludeCardType ?? filter.notCardType).filter(Boolean);
   if (excludedTypes.some(token => cardMatchesTypeToken(eventCard, token))) return false;
 
-  const subtypes = arr(filter.subtype ?? filter.subtypes).map(text).filter(Boolean);
+  const subtypes = arr(filter.subtype ?? filter.subtypes).map(v => resolveSubtypeReference(v,{sourceItem,sourceCard})).filter(Boolean);
   if (subtypes.length) {
-    const subtypeText = cardSubtypeText(eventCard);
     const mode = text(filter.subtypeMode || 'any');
-    const matches = subtypes.map(st => subtypeText.includes(st));
+    const matches = subtypes.map(st => cardHasSubtype(eventCard,st));
     if (mode === 'all' ? matches.some(v => !v) : matches.every(v => !v)) return false;
   }
+  if ((filter.sharedCreatureTypeWithSource === true || filter.sharesCreatureTypeWithSource === true) && !cardsShareCreatureType(eventCard,sourceCard)) return false;
 
   const wantedColors = arr(filter.color ?? filter.colors).map(v => String(v).toUpperCase()).filter(Boolean);
   if (wantedColors.length) {
@@ -262,11 +263,10 @@ export function eventFilterMatches(rawFilter = {}, rawEvent = {}, context = {}) 
   if (eventSourceTypes.length && !eventSourceTypes.some(token => cardMatchesTypeToken(event.sourceCard, token))) return false;
   const targetTypes = arr(filter.targetCardType).filter(Boolean);
   if (targetTypes.length && !targetTypes.some(token => cardMatchesTypeToken(event.targetCard, token))) return false;
-  const sourceSubtypes = arr(filter.sourceSubtype).map(text).filter(Boolean);
-  if (sourceSubtypes.length) {
-    const sourceSubtypeText = cardSubtypeText(sourceCard);
-    if (sourceSubtypes.every(st => !sourceSubtypeText.includes(st))) return false;
-  }
+  const sourceSubtypes = arr(filter.sourceSubtype).map(v => resolveSubtypeReference(v,{sourceItem,sourceCard})).filter(Boolean);
+  if (sourceSubtypes.length && sourceSubtypes.every(st => !cardHasSubtype(sourceCard,st))) return false;
+  const targetSubtypes = arr(filter.targetSubtype).map(v => resolveSubtypeReference(v,{sourceItem,sourceCard})).filter(Boolean);
+  if (targetSubtypes.length && targetSubtypes.every(st => !cardHasSubtype(event.targetCard,st))) return false;
 
   return true;
 }

@@ -177,6 +177,7 @@ export const ensureClassifiedsSchedule = asyncProxy('ensureClassifiedsSchedule')
 export const loadClassifiedsSchedule = asyncProxy('loadClassifiedsSchedule');
 export const fetchCurrentClassifieds = asyncProxy('fetchCurrentClassifieds');
 export const purchaseClassifiedCard = asyncProxy('purchaseClassifiedCard');
+export const purchasePrebuiltDeck = asyncProxy('purchasePrebuiltDeck');
 export const adminAdvanceDailyRewardDebugDay = asyncProxy('adminAdvanceDailyRewardDebugDay');
 export const adminResetDailyRewardDebug = asyncProxy('adminResetDailyRewardDebug');
 export const craftEnhancement = asyncProxy('craftEnhancement');

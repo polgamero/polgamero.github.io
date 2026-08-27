@@ -189,12 +189,15 @@ class CardDatabase {
       const missingTokenEffects = Array.isArray(audit.missingTokenImages) ? audit.missingTokenImages : [];
       const missingTokenFiles = new Set(missingTokenEffects.map(entry => entry?.image).filter(Boolean)).size;
       const unassignedTokenEffects = Array.isArray(audit.tokenEffectsWithoutImage) ? audit.tokenEffectsWithoutImage.length : 0;
-      console.log(`[CardDatabase] Auditoría segura de imágenes: ${missing.length} carta(s) sin archivo; ${missingTokenFiles} PNG de token faltante(s) (${missingTokenEffects.length} productor(es)); ${unassignedTokenEffects} token(s) sin filename; ${imageStats.existingFileCount ?? '?'} archivo(s) presentes. 1 manifest, 0 probes por carta/token.`);
+      const missingBacks = missing.filter(entry => entry?.face === 'back').length;
+      const missingFronts = missing.length - missingBacks;
+      console.log(`[CardDatabase] Auditoría segura de imágenes: ${missingFronts} frente(s) y ${missingBacks} reverso(s) DFC sin archivo; ${missingTokenFiles} PNG de token faltante(s) (${missingTokenEffects.length} productor(es)); ${unassignedTokenEffects} token(s) sin filename; ${imageStats.existingFileCount ?? '?'} archivo(s) presentes. 1 manifest, 0 probes por cara/token.`);
       if (!tokenStats) console.warn('[CardDatabase] Manifest legacy: no contiene auditoría de imágenes de token.');
       if (missing.length) {
         console.groupCollapsed(`[CardDatabase] Primeras ${Math.min(20, missing.length)} imágenes faltantes de ${missing.length}`);
         console.table(missing.slice(0, 20).map(entry => ({
           id: entry.id,
+          cara: entry.face === 'back' ? 'Reverso' : 'Frente',
           carta: entry.name,
           categoria: entry.category,
           png: entry.image

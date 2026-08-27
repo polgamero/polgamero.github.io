@@ -14,7 +14,8 @@
 
 export const POINTS = {
   winVsTanoFacil: 50,
-  winVsTanoDificil: 100,
+  winVsTanoMedio: 100,
+  winVsTanoDificil: 200,
   lossVsTano: 15,
   // PvP real desde la Fase 4 (Etapas 1 a 6 del roadmap de sincronización) — ya no es "a
   // futuro", se usan de verdad en cada partida multiplayer que termina.
@@ -39,8 +40,10 @@ export const PVP_LIMITS = {
 // estrictamente peor que perder jugando hasta el final. Si no, la jugada "óptima" sería
 // cerrar la pestaña apenas vas perdiendo, y es justo lo que no queremos incentivar.
 export function pointsForBotGameEnd(won, difficulty) {
-  if (won) return difficulty === 'hard' ? POINTS.winVsTanoDificil : POINTS.winVsTanoFacil;
-  return POINTS.lossVsTano;
+  if (!won) return POINTS.lossVsTano;
+  if (difficulty === 'hard') return POINTS.winVsTanoDificil;
+  if (difficulty === 'medium') return POINTS.winVsTanoMedio;
+  return POINTS.winVsTanoFacil;
 }
 
 // --- Sobres (admin-editable: costo y chance de mítica) ---
@@ -122,6 +125,11 @@ export let MAX_COPIES_PER_CARD = 4; // no aplica a Tierras básicas (sin límite
 // romper el balance del todo — 3 es el default pedido explícitamente.
 export let MAX_ENHANCED_CARDS_PER_DECK = 3;
 
+// 23.17.3 — Mazos Prearmados. Precio global y capacidad de Mis Mazos, editables en Admin.
+export let PREBUILT_DECK_POINTS = 1500;
+export let PREBUILT_DECK_FICHAS = 3;
+export let MAX_SAVED_DECKS = 12;
+
 // ============================================================================
 // PANEL DE ADMIN: puente entre Firestore y estos valores en memoria.
 // ============================================================================
@@ -132,7 +140,8 @@ export let MAX_ENHANCED_CARDS_PER_DECK = 3;
 export function getDefaultGameConfig() {
   return {
     winVsTanoFacil: 50,
-    winVsTanoDificil: 100,
+    winVsTanoMedio: 100,
+    winVsTanoDificil: 200,
     lossVsTano: 15,
     winVsHumano: 120,
     lossVsHumano: 20,
@@ -155,7 +164,10 @@ export function getDefaultGameConfig() {
     classifiedsMythicChance: 1 / 7,
     deckSizeExact: 60,
     maxCopiesPerCard: 4,
-    maxEnhancedCardsPerDeck: 3
+    maxEnhancedCardsPerDeck: 3,
+    prebuiltDeckPoints: 1500,
+    prebuiltDeckFichas: 3,
+    maxSavedDecks: 12
   };
 }
 
@@ -167,7 +179,15 @@ export function getDefaultGameConfig() {
 export function applyGameConfig(config) {
   if (!config) return;
   if (typeof config.winVsTanoFacil === 'number') POINTS.winVsTanoFacil = config.winVsTanoFacil;
-  if (typeof config.winVsTanoDificil === 'number') POINTS.winVsTanoDificil = config.winVsTanoDificil;
+  // Migración 23.17.2: en documentos legacy, winVsTanoDificil era el premio del viejo
+  // Difícil, que ahora se llama Medio. Si todavía no existe winVsTanoMedio, preservamos
+  // ese valor como Medio y dejamos el nuevo Difícil en su default 200.
+  if (typeof config.winVsTanoMedio === 'number') {
+    POINTS.winVsTanoMedio = config.winVsTanoMedio;
+    if (typeof config.winVsTanoDificil === 'number') POINTS.winVsTanoDificil = config.winVsTanoDificil;
+  } else if (typeof config.winVsTanoDificil === 'number') {
+    POINTS.winVsTanoMedio = config.winVsTanoDificil;
+  }
   if (typeof config.lossVsTano === 'number') POINTS.lossVsTano = config.lossVsTano;
   if (typeof config.winVsHumano === 'number') POINTS.winVsHumano = config.winVsHumano;
   if (typeof config.lossVsHumano === 'number') POINTS.lossVsHumano = config.lossVsHumano;
@@ -191,4 +211,7 @@ export function applyGameConfig(config) {
   if (typeof config.deckSizeExact === 'number') DECK_SIZE_EXACT = config.deckSizeExact;
   if (typeof config.maxCopiesPerCard === 'number') MAX_COPIES_PER_CARD = config.maxCopiesPerCard;
   if (typeof config.maxEnhancedCardsPerDeck === 'number') MAX_ENHANCED_CARDS_PER_DECK = config.maxEnhancedCardsPerDeck;
+  if (typeof config.prebuiltDeckPoints === 'number') PREBUILT_DECK_POINTS = Math.max(0, Math.floor(config.prebuiltDeckPoints));
+  if (typeof config.prebuiltDeckFichas === 'number') PREBUILT_DECK_FICHAS = Math.max(0, Math.floor(config.prebuiltDeckFichas));
+  if (typeof config.maxSavedDecks === 'number') MAX_SAVED_DECKS = Math.max(1, Math.floor(config.maxSavedDecks));
 }

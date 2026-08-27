@@ -1,3 +1,6 @@
+import { getCounterCount, consumeCounter } from './counterEngine.js';
+import { cardHasSubtype } from './typalEngine.js';
+
 // js/replacementEngine.js — Argentinia 23.15.5 · Replacement + Prevention Engine
 // Pipeline puro para eventos que todavía NO ocurrieron. Recibe state explícito y devuelve
 // el evento final a commitear. No importa main/Stack/UI para evitar un segundo rules loop.
@@ -61,10 +64,7 @@ function cardMatchesFilter(card,filter={}){
     if(!wanted.some(x=>cardMatchesTypeToken(card,x))) return false;
   }
   if(filter.excludeCardType && cardMatchesTypeToken(card,filter.excludeCardType)) return false;
-  if(filter.subtype){
-    const hay=`${type} ${(card?.subtypes||[]).join(' ')}`.toLowerCase();
-    if(!hay.includes(String(filter.subtype).toLowerCase())) return false;
-  }
+  if(filter.subtype && !cardHasSubtype(card,filter.subtype)) return false;
   if(filter.color){
     const colors=card?.colors || [];
     if(!colors.includes(filter.color)) return false;
@@ -145,8 +145,9 @@ function collectActivePrevention(state,event){
 
 function collectShieldCounter(state,event){
   const item=event.item || event.targetItem;
-  if(!item?.counters?.shield || Number(item.counters.shield)<=0) return [];
+  if(getCounterCount(item,'shield')<=0) return [];
   if(event.type!=='damage' && event.type!=='destroy') return [];
+  if(event.type==='damage' && Math.max(0,Number(event.amount)||0)<=0) return [];
   return [{kind:'shield_counter',id:`shield:${item._syncObjectId || item._effectObjectId || item.card?.id || 'item'}`,spec:{priority:1000},sourceItem:item,priority:1000}];
 }
 
@@ -179,8 +180,19 @@ function applyStaticSpec(event,spec){
 function applyCandidate(state,event,candidate){
   if(candidate.kind==='shield_counter'){
     const item=candidate.sourceItem;
-    item.counters.shield=Math.max(0,Number(item.counters.shield||0)-1);
-    return {...event,amount:event.type==='damage'?0:event.amount,prevented:true,shieldCounterConsumed:true};
+    const change=consumeCounter(item,'shield',1);
+    const removed=Math.max(0,Number(change?.removed)||0);
+    return {
+      ...event,
+      amount:event.type==='damage'?0:event.amount,
+      prevented:true,
+      shieldCounterConsumed:removed>0,
+      counterRemovedByReplacement:removed>0 ? {
+        counterType:'shield',
+        amount:removed,
+        cause:event.type==='damage' ? 'shield_damage_replacement' : 'shield_destroy_replacement'
+      } : null
+    };
   }
   if(candidate.kind==='active_prevention'){
     const effect=(state.activeEffects||[])[candidate.activeIndex];

@@ -26,6 +26,11 @@ import {
   payCounterTax,
   activateLoyaltyAbility,
   castFromGraveyard,
+  playCardFromExile,
+  canPlayCardFromExile,
+  suspendCardFromHand,
+  canSuspendCardFromHand,
+  getExilePlayPermissionForCard,
   canManaSourcePayPendingCost,
   canActivateLocalManaAbility,
   spendLocalManaFromPool,
@@ -39,13 +44,17 @@ import {
   openLandFromGraveyardPlayChoice,
   passPriority // Importado del nuevo sistema
 } from './main.js';
+import { canTransformPermanent, isTransformingDoubleFacedCard, currentTransformFace, normalizeTransformSpec, buildTransformFaceCard, transformFaceLayoutId } from './transformEngine.js';
+import { cardHasSubtype, cardsShareCreatureType, resolveSubtypeReference, getChosenCreatureType } from './typalEngine.js';
 
 import { executeLocalAttack, executeRivalAttack, hasPendingCombatDamageContinuation } from './combatRules.js';
 import { renderStack, spellStack } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
+import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
+import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, loadUserProfileFromServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
-import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
+import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, loadUserProfileFromServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 import { recordTelemetryUiLog, captureTelemetryState, getTelemetryStatus } from './telemetry.js';
@@ -62,9 +71,12 @@ import { buildDeckStatistics, analyzeDeckHealth, simulateOpeningHands } from './
 import { getCardBrowserSortOptions, normalizeCardBrowserSort, compareCardsForBrowser } from './cardBrowser.js';
 import { registerCardArtImage, hasCustomArtLayout, ensureArtLayoutsLoaded } from './artLayout.js';
 import { openArtLayoutEditor } from './artLayoutEditor.js';
+import { registerCardTextBox, hasCustomCardTextLayout, ensureCardTextLayoutsLoaded } from './textLayout.js';
+import { openCardTextLayoutEditor } from './textLayoutEditor.js';
 import { USERNAME_RENAME_COST } from './usernames.js';
 import { showUsernameRenameModal } from './usernameUI.js';
 import { classifiedsNextRotationAt, getClassifiedsProfileState, countOwnedClassifiedCard } from './classifieds.js';
+import { loadPrebuiltDeckCatalog, summarizePrebuiltDeck, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { gameText } from './gameTexts.js';
 import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
@@ -80,6 +92,8 @@ import { enterMenuAudio, getAudioSettings, toggleMusic, setMusicEnabled, setMusi
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
 import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandActivatedAbilities, describeLandTransformation } from './landCharacteristics.js';
+import { isSagaCard, sagaUiState } from './sagaEngine.js';
+import { botDifficultyLabel, nextBotDifficulty, normalizeBotDifficulty } from './botDifficulty.js';
 
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
@@ -966,15 +980,95 @@ export function openExileModal(isLocal) {
     gridContent.innerHTML = `<div style="color:#bdc3c7; font-style:italic; padding:40px;">No hay cartas exiliadas todavía.</div>`;
   } else {
     exileArray.forEach((cardObj, idx) => {
+      const wrapper=document.createElement('div');
+      wrapper.style.display='flex';
+      wrapper.style.flexDirection='column';
+      wrapper.style.alignItems='center';
+      wrapper.style.gap='4px';
       const cardEl = createCardElement(cardObj, false, isLocal, idx, 'modal');
       cardEl.style.width = '120px';
       cardEl.style.height = '168px';
-      gridContent.appendChild(cardEl);
+      wrapper.appendChild(cardEl);
+
+      // 23.16.2: el permiso pertenece al CONTROLADOR autorizado, no necesariamente al
+      // propietario de la zona. Por eso incluso una carta en Exilio rival puede ofrecer
+      // botón si un efecto futuro explícitamente nos permite jugarla.
+      const timeCount=suspendedTimeCount(cardObj);
+      if(cardObj?._suspendState){
+        const status=document.createElement('div');
+        status.className='suspend-exile-status';
+        status.style.cssText='font-size:11px;font-weight:700;color:#f7d774;text-align:center;max-width:126px;';
+        status.textContent=timeCount>0 ? `⏳ Suspendida · ${timeCount} Tiempo${timeCount===1?'':'s'}` : '⏳ Suspend · esperando casteo';
+        wrapper.appendChild(status);
+      }
+      const permission=getExilePlayPermissionForCard(cardObj,true);
+      if(permission && !cardObj?._suspendState){
+        const playBtn=document.createElement('button');
+        playBtn.className='mulligan-btn mulligan-btn-keep';
+        playBtn.style.fontSize='11px';
+        playBtn.style.padding='4px 8px';
+        const isLand=String(cardObj.type||'').includes('Tierra');
+        playBtn.innerHTML=isLand ? '▶ Jugar desde Exilio' : '✨ Castear desde Exilio';
+        playBtn.disabled=!canPlayCardFromExile(cardObj,true);
+        const duration=permission.duration==='until_end_of_next_turn' ? 'hasta fin de tu próximo turno'
+          : permission.duration==='while_exiled' ? 'mientras siga exiliada' : 'hasta fin de turno';
+        playBtn.title=`Permiso ${duration}`;
+        playBtn.addEventListener('click',()=>{
+          modalOverlay.remove();
+          void playCardFromExile(cardObj,true);
+        });
+        wrapper.appendChild(playBtn);
+      }
+      gridContent.appendChild(wrapper);
     });
   }
 
   modalOverlay.querySelector('.gy-close-btn').onclick = () => modalOverlay.remove();
   modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
+}
+
+
+export function showSuspendCastModal(card) {
+  return new Promise(resolve=>{
+    injectMulliganStyles();
+    const overlay=document.createElement('div'); overlay.className='gy-modal-overlay suspend-cast-modal';
+    overlay.innerHTML=`<div class="gy-modal-content" style="max-width:460px"><div class="gy-modal-header"><h3>⏳ Suspend — último contador de Tiempo</h3></div><div style="padding:18px;display:flex;gap:16px;align-items:center"><div id="suspend-card-preview"></div><div style="flex:1"><p><b>${card.name}</b> está lista para salir de Suspend.</p><p style="font-size:13px;color:#bdc3c7">Podés castear este hechizo ahora sin pagar su coste de maná. Los costes adicionales siguen aplicando.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="mulligan-btn mulligan-btn-keep" data-choice="cast">✨ Castear gratis</button><button class="mulligan-btn" data-choice="leave">Dejar en Exilio</button></div></div></div></div>`;
+    document.body.appendChild(overlay);
+    const preview=overlay.querySelector('#suspend-card-preview');
+    const cardEl=createCardElement(card,false,true,null,'preview',()=>{}); cardEl.style.width='120px';cardEl.style.height='168px'; preview.appendChild(cardEl);
+    const finish=value=>{ overlay.remove(); resolve(value); };
+    overlay.querySelector('[data-choice="cast"]').onclick=()=>finish(true);
+    overlay.querySelector('[data-choice="leave"]').onclick=()=>finish(false);
+  });
+}
+
+export function showSuspendedCardChoiceModal(entries,{title='Elegí una carta suspendida'}={}) {
+  return new Promise(resolve=>{
+    injectMulliganStyles();
+    const overlay=document.createElement('div'); overlay.className='gy-modal-overlay';
+    overlay.innerHTML=`<div class="gy-modal-content"><div class="gy-modal-header"><h3>⏳ ${title}</h3><button class="gy-close-btn">Cancelar ✖</button></div><div class="gy-modal-grid" data-grid></div></div>`;
+    document.body.appendChild(overlay); const grid=overlay.querySelector('[data-grid]');
+    const finish=value=>{overlay.remove();resolve(value)};
+    entries.forEach(entry=>{
+      const wrap=document.createElement('button'); wrap.type='button'; wrap.style.cssText='background:transparent;border:1px solid #596275;border-radius:8px;padding:6px;color:white;cursor:pointer;';
+      const ce=createCardElement(entry.card,false,entry.zoneIsLocal,null,'preview',()=>{}); ce.style.width='105px';ce.style.height='147px';wrap.appendChild(ce);
+      const label=document.createElement('div');label.textContent=`⏳ ${entry.time}`;label.style.cssText='font-weight:700;margin-top:4px';wrap.appendChild(label);
+      wrap.onclick=()=>finish(entry);grid.appendChild(wrap);
+    });
+    overlay.querySelector('.gy-close-btn').onclick=()=>finish(null);
+    overlay.onclick=e=>{if(e.target===overlay)finish(null)};
+  });
+}
+
+export function showCreatureTypeChoiceModal(options,{title='Elegí un tipo de criatura',cardName=''}={},onChoose,onCancel) {
+  const list=(options||[]).map(x=>typeof x==='string'?{name:x,count:null}:x).filter(x=>x?.name);
+  const overlay=document.createElement('div'); overlay.className='gy-modal-overlay typal-choice-modal';
+  const buttons=list.map((entry,i)=>`<button class="mulligan-btn" data-typal-index="${i}">${escapeHtml(entry.name)}${entry.count!=null?` <span style="opacity:.65">(${entry.count})</span>`:''}</button>`).join('');
+  overlay.innerHTML=`<div class="gy-modal-content" style="max-width:560px"><div class="gy-modal-header"><h3>🧬 ${escapeHtml(title)}</h3></div>${cardName?`<p style="padding:0 18px">${escapeHtml(cardName)}</p>`:''}<div style="display:flex;gap:8px;flex-wrap:wrap;padding:16px;max-height:55vh;overflow:auto">${buttons}</div><button class="mulligan-btn mulligan-btn-mull typal-cancel">Cancelar</button></div>`;
+  document.body.appendChild(overlay);
+  const finish=value=>{overlay.remove(); if(value) onChoose?.(value); else onCancel?.();};
+  overlay.querySelectorAll('[data-typal-index]').forEach(btn=>btn.onclick=()=>finish(list[Number(btn.dataset.typalIndex)]?.name||null));
+  overlay.querySelector('.typal-cancel').onclick=()=>finish(null); overlay.onclick=e=>{if(e.target===overlay)finish(null)};
 }
 
 export function showManaColorChoiceModal(cardName, options, onChoose) {
@@ -1132,9 +1226,27 @@ export function getTargetRules(card) {
   // una habilidad activada (source de tablero) — buscamos el effect en cualquiera de los dos lugares.
   const firstActivated = Array.isArray(card.activatedAbilities) ? card.activatedAbilities[0] : card.activatedAbility;
   const firstGranted = Array.isArray(card.grantedAbilities) ? card.grantedAbilities[0] : card.grantedAbility;
-  const effectType = card.effect?.type || firstActivated?.effect?.type || firstGranted?.effect?.type;
+  const effectType = card.effect?.type || card.etbEffect?.type || firstActivated?.effect?.type || firstGranted?.effect?.type;
 
-  const effect = card.effect || firstActivated?.effect || firstGranted?.effect || {};
+  const effect = card.effect || card.etbEffect || firstActivated?.effect || firstGranted?.effect || {};
+  // 23.16.5 Typal: cualquier efecto puede acotar su target por subtipo exacto o por
+  // compartir tipo de criatura con la fuente sin inventar una rama por effect.type.
+  if (effect.targetSubtype || effect.targetSubtypes || effect.sharedCreatureTypeWithSource || effect.sharesCreatureTypeWithSource) {
+    const controller=effect.targetController || 'any';
+    const allowLocal=controller!=='opponent', allowRival=controller!=='self';
+    const targetKind=effect.targetKind || 'creature';
+    const anyPermanent=['any_permanent','permanent'].includes(targetKind);
+    return {
+      allowPlayer:false,
+      allowLocalCreature:(targetKind==='creature'||anyPermanent)&&allowLocal, allowRivalCreature:(targetKind==='creature'||anyPermanent)&&allowRival,
+      allowLocalPermanent:(targetKind==='support'||anyPermanent)&&allowLocal, allowRivalPermanent:(targetKind==='support'||anyPermanent)&&allowRival,
+      allowLocalLand:(targetKind==='land'||anyPermanent)&&allowLocal, allowRivalLand:(targetKind==='land'||anyPermanent)&&allowRival,
+      allowLocalPlaneswalker:(targetKind==='planeswalker'||anyPermanent)&&allowLocal, allowRivalPlaneswalker:(targetKind==='planeswalker'||anyPermanent)&&allowRival,
+      subtypeFilter:resolveSubtypeReference(effect.targetSubtype ?? effect.targetSubtypes?.[0],{sourceCard:card}),
+      sharedCreatureTypeWithSource:effect.sharedCreatureTypeWithSource===true || effect.sharesCreatureTypeWithSource===true,
+      typalSourceCard:card
+    };
+  }
   // LAND 1/2: contrato genérico de target Tierra + vocabulario nativo de destrucción.
   // destroy_land apunta a cualquier Tierra; destroy_nonbasic_land fuerza el filtro nonbasic.
   // targetController permite reutilizar la misma infraestructura para futuras habilidades propias/rivales.
@@ -1148,6 +1260,54 @@ export function getTargetRules(card) {
       allowRivalLand: controller !== 'self',
       allowLocalPlaneswalker: false, allowRivalPlaneswalker: false,
       landFilter
+    };
+  }
+
+  if (effectType === 'transform') {
+    // 23.16.4 — Transform sólo puede apuntar a una TDFC física que pueda transformarse.
+    // El filtro se vuelve a validar en main/Stack al resolver para no depender sólo del brillo UI.
+    const controller = effect.targetController || 'any';
+    const allowLocal = controller !== 'opponent';
+    const allowRival = controller !== 'self';
+    const targetKind = effect.targetKind || 'any_permanent';
+    const anyPermanent = ['any_permanent','permanent'].includes(targetKind);
+    return {
+      allowPlayer:false,
+      allowLocalCreature:(targetKind==='creature' || anyPermanent) && allowLocal,
+      allowRivalCreature:(targetKind==='creature' || anyPermanent) && allowRival,
+      allowLocalPermanent:(targetKind==='support' || anyPermanent) && allowLocal,
+      allowRivalPermanent:(targetKind==='support' || anyPermanent) && allowRival,
+      allowLocalLand:(targetKind==='land' || anyPermanent) && allowLocal,
+      allowRivalLand:(targetKind==='land' || anyPermanent) && allowRival,
+      allowLocalPlaneswalker:(targetKind==='planeswalker' || anyPermanent) && allowLocal,
+      allowRivalPlaneswalker:(targetKind==='planeswalker' || anyPermanent) && allowRival,
+      transformableOnly:true
+    };
+  }
+
+  if (['copy_spell','copy_ability','copy_stack_object'].includes(effectType)) {
+    // Estos efectos targetean un objeto de la STACK; el battlefield no debe brillar ni
+    // aceptar clicks mientras se declara ese objetivo.
+    return {allowPlayer:false,allowLocalCreature:false,allowRivalCreature:false,allowLocalPermanent:false,allowRivalPermanent:false,allowLocalLand:false,allowRivalLand:false,allowLocalPlaneswalker:false,allowRivalPlaneswalker:false};
+  }
+  if (effectType === 'create_token_copy' || effectType === 'become_copy') {
+    // 23.15.9 — el objeto elegido es el MOLDE que se copia. Por default puede ser cualquier
+    // permanente de cualquier lado; targetKind/targetController permiten acotar el contrato.
+    const targetKind = effect.targetKind || 'any_permanent';
+    const controller = effect.targetController || 'any';
+    const allowLocal = controller !== 'opponent';
+    const allowRival = controller !== 'self';
+    const anyPermanent = ['any_permanent','permanent'].includes(targetKind);
+    return {
+      allowPlayer:false,
+      allowLocalCreature:(targetKind==='creature' || anyPermanent) && allowLocal,
+      allowRivalCreature:(targetKind==='creature' || anyPermanent) && allowRival,
+      allowLocalPermanent:(targetKind==='support' || anyPermanent) && allowLocal,
+      allowRivalPermanent:(targetKind==='support' || anyPermanent) && allowRival,
+      allowLocalLand:(targetKind==='land' || anyPermanent) && allowLocal,
+      allowRivalLand:(targetKind==='land' || anyPermanent) && allowRival,
+      allowLocalPlaneswalker:(targetKind==='planeswalker' || anyPermanent) && allowLocal,
+      allowRivalPlaneswalker:(targetKind==='planeswalker' || anyPermanent) && allowRival
     };
   }
 
@@ -1236,14 +1396,35 @@ export function getTargetRules(card) {
   if (effectType === 'destroy_creature' || effectType === 'bounce') {
     return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
   }
-  if (effectType === 'add_counter') {
-    // Contador permanente: +1/+1 solo tiene sentido en tu propia criatura (como "pump").
-    // -1/-1 es remoción, así que puede apuntar a cualquier lado (como "destroy_creature").
-    const counterType = card.effect?.counterType || firstActivated?.effect?.counterType || firstGranted?.effect?.counterType;
-    if (counterType === 'minusOne') {
-      return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: true, allowLocalPermanent: false, allowRivalPermanent: false };
-    }
-    return { allowPlayer: false, allowLocalCreature: true, allowRivalCreature: false, allowLocalPermanent: false, allowRivalPermanent: false };
+  if (effectType === 'add_counter' || effectType === 'remove_counter') {
+    // 23.15.8 — counters genéricos. Legacy +1/+1/-1/-1 conserva su targeting histórico;
+    // contenido nuevo puede declarar targetKind:any_permanent|creature|support|land|planeswalker
+    // y targetController:self|opponent|any sin inventar una rama por tipo de contador.
+    const rawCounterType = effect.counterType;
+    const counterType = normalizeCounterType(rawCounterType);
+    const targetKind = effect.targetKind || 'creature';
+    const polarity=getCounterDefinition(counterType).polarity;
+    const defaultController = effectType === 'remove_counter' ? 'any' : (polarity === 'negative' ? 'opponent' : 'self');
+    const controller = effect.targetController || defaultController;
+    const allowLocal = controller !== 'opponent';
+    const allowRival = controller !== 'self';
+    const anyPermanent = ['any_permanent','permanent'].includes(targetKind);
+    return {
+      allowPlayer:false,
+      allowLocalCreature:(targetKind==='creature' || anyPermanent) && allowLocal,
+      allowRivalCreature:(targetKind==='creature' || anyPermanent) && allowRival,
+      allowLocalPermanent:(targetKind==='support' || anyPermanent) && allowLocal,
+      allowRivalPermanent:(targetKind==='support' || anyPermanent) && allowRival,
+      allowLocalLand:(targetKind==='land' || anyPermanent) && allowLocal,
+      allowRivalLand:(targetKind==='land' || anyPermanent) && allowRival,
+      allowLocalPlaneswalker:(targetKind==='planeswalker' || anyPermanent) && allowLocal,
+      allowRivalPlaneswalker:(targetKind==='planeswalker' || anyPermanent) && allowRival,
+      // 23.16.1.1 — POOL EXPANSION IV: filtro declarativo fino para counters de
+      // permanentes. Permite, por ejemplo, que Lore apunte realmente a una Saga y no a
+      // cualquier objeto de Support. La legalidad al resolver ya consume permanentFilter.
+      permanentFilter: effect.permanentFilter || null,
+      creatureFilter: effect.creatureFilter || null
+    };
   }
   if (effectType === 'exile_graveyard') {
     // Odio de cementerio: el objetivo es el JUGADOR (se exilia TODO su cementerio), nunca
@@ -1282,23 +1463,23 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const rules = getTargetRules(state.pendingTargetCard);
     if (zone === 'combat') {
       const allowCreatureSide = isLocal ? rules.allowLocalCreature : rules.allowRivalCreature;
-      const creatureMatch = allowCreatureSide && (!rules.creatureFilter || card.type.includes(rules.creatureFilter));
+      const creatureMatch = allowCreatureSide && (!rules.creatureFilter || card.type.includes(rules.creatureFilter)) && (!rules.subtypeFilter || cardHasSubtype(card,rules.subtypeFilter)) && (!rules.sharedCreatureTypeWithSource || cardsShareCreatureType(card,rules.typalSourceCard)) && (!rules.transformableOnly || canTransformPermanent(itemObj));
       const allowLandSide = isLocal ? rules.allowLocalLand : rules.allowRivalLand;
-      const landMatch = isLandPermanent(itemObj) && !!allowLandSide && landMatchesEffectiveFilter(state, itemObj, isLocal, rules.landFilter || 'any');
+      const landMatch = isLandPermanent(itemObj) && !!allowLandSide && landMatchesEffectiveFilter(state, itemObj, isLocal, rules.landFilter || 'any') && (!rules.transformableOnly || canTransformPermanent(itemObj));
       isTargetable = creatureMatch || landMatch;
     } else if (zone === 'support') {
       const allowThisSide = isLocal ? rules.allowLocalPermanent : rules.allowRivalPermanent;
-      const matchesFilter = !rules.permanentFilter || card.type.includes(rules.permanentFilter);
-      isTargetable = allowThisSide && matchesFilter;
+      const matchesFilter = (!rules.permanentFilter || card.type.includes(rules.permanentFilter)) && (!rules.subtypeFilter || cardHasSubtype(card,rules.subtypeFilter)) && (!rules.sharedCreatureTypeWithSource || cardsShareCreatureType(card,rules.typalSourceCard));
+      isTargetable = allowThisSide && matchesFilter && (!rules.transformableOnly || canTransformPermanent(itemObj));
     } else if (zone === 'land') {
       const allowThisSide = isLocal ? rules.allowLocalLand : rules.allowRivalLand;
-      isTargetable = !!allowThisSide && landMatchesEffectiveFilter(state, itemObj, isLocal, rules.landFilter || 'any');
+      isTargetable = !!allowThisSide && landMatchesEffectiveFilter(state, itemObj, isLocal, rules.landFilter || 'any') && (!rules.transformableOnly || canTransformPermanent(itemObj));
     } else if (zone === 'planeswalker') {
       // BUG ENCONTRADO Y ARREGLADO (Cabo suelto #13, parte visual): el click ya funcionaba
       // una vez arreglado en handlePlaneswalkerClick, pero el brillo dorado de "esto se
       // puede targetear" nunca se prendía acá — el jugador no tenía forma de SABER que un
       // Planeswalker era una opción válida sin adivinarlo.
-      isTargetable = isLocal ? rules.allowLocalPlaneswalker : rules.allowRivalPlaneswalker;
+      isTargetable = (isLocal ? rules.allowLocalPlaneswalker : rules.allowRivalPlaneswalker) && (!rules.transformableOnly || canTransformPermanent(itemObj));
     }
   } else if (state.pendingSacrificeChoice && isLocal) {
     // Resaltamos qué se puede elegir para pagar un costo de Sacrificar.
@@ -1379,6 +1560,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   // 23.15.3.1 — scope hotfix: este dato se usa después de ambas ramas de render.
   // Debe existir también cuando la carta usa la rama especial de Tierra básica.
   const hasCreatureStats = isCreaturePermanent(itemObj);
+  const hasCornerStat = hasCreatureStats || card.type.includes('Planeswalker');
 
   let formattedTextHTML = '';
   if (isBasicLand && landSymbolImg) {
@@ -1447,7 +1629,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       + (textLayout.paragraphs.length * 14);
     const textBoxScale = fitScaleByLength(totalTextLen, 115);
 
-    formattedTextHTML = `<div class="card-text-box card-text-box-structured" style="font-size: clamp(4px, ${(6 * textBoxScale).toFixed(2)}cqw, 26px);">${keywordsHTML}${keywordReminderHTML}<div class="card-rules-list">${rulesHTML}</div>${flavorHTML}</div>`;
+    formattedTextHTML = `<div class="card-text-box card-text-box-structured${hasCornerStat ? ' card-text-box-stat-reserve' : ''}" data-auto-text-cqw="${(6 * textBoxScale).toFixed(2)}" style="--card-text-effective-size:${(6 * textBoxScale).toFixed(2)}cqw; font-size:clamp(3px, var(--card-text-effective-size), 26px);">${keywordsHTML}${keywordReminderHTML}<div class="card-rules-list">${rulesHTML}</div>${flavorHTML}</div>`;
   }
 
   const effPower = hasCreatureStats ? getEffectivePower(itemObj) : undefined;
@@ -1474,7 +1656,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const attachedEquipment = (zone === 'combat' && card.power !== undefined) ? getEquipmentOn(itemObj) : [];
   const staticMods = (zone === 'combat' && card.power !== undefined) ? getStaticTeamModifiers(itemObj) : [];
   const tempMods = (zone === 'combat' && card.power !== undefined) ? (itemObj.tempEffects || []) : [];
-  const counters = (zone === 'combat' && card.power !== undefined) ? itemObj.counters : null;
+  const counters = ['combat','support','land','planeswalker'].includes(zone) ? itemObj.counters : null;
 
   // Describe en criollo qué hace cada modificador (no solo su nombre), para el tooltip
   // de abajo — "Facón de Plata: {T}: 2 de daño", "Poncho del Paisano: +1/+1",
@@ -1537,26 +1719,47 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   // Un solo badge combinado (evita amontonar iconos distintos en las esquinas de una
   // carta chica). Muestra los iconos de lo que esté activo, y el tooltip lista cada
   // modificador por separado con su propio icono adelante.
-  const counterLine = (counters && ((counters.plusOne || 0) > 0 || (counters.minusOne || 0) > 0))
-    ? [`🔵 Contadores: ${(counters.plusOne||0) > 0 ? `+${counters.plusOne}/+${counters.plusOne}` : `-${counters.minusOne}/-${counters.minusOne}`}`]
+  const counterEntries = counters ? listCounters(itemObj) : [];
+  const counterLine = counterEntries.length > 0
+    ? [`🔵 Contadores: ${counterEntries.map(c => `${c.label} ×${c.amount}`).join(' · ')}`]
     : [];
   const modifierLines = [
-    ...counterLine,
     ...attachedAuras.map(a => `✨ ${a.name}: ${describeAura(a)}`),
     ...attachedEquipment.map(e => `⚔️ ${e.card.name}: ${describeEquipment(e)}`),
     ...staticMods.map(m => `🌐 ${m.sourceName}: ${describeStaticMod(m)} (mientras esté en el campo)`),
     ...tempMods.map(t => `⏳ ${t.name || 'Efecto'}: ${describeTempMod(t)} (hasta fin de turno)`)
   ];
   const modifierIcons = [
-    counterLine.length > 0 ? '🔵' : '',
     attachedAuras.length > 0 ? '✨' : '',
     attachedEquipment.length > 0 ? '⚔️' : '',
     staticMods.length > 0 ? '🌐' : '',
     tempMods.length > 0 ? '⏳' : ''
   ].join('');
 
+  const counterBadgeHTML = counterEntries.length > 0
+    ? `<div class="counter-badge" data-tooltip="${counterTooltipLines(itemObj).join('\n').replace(/"/g, '&quot;')}">${compactCounterText(itemObj)}</div>`
+    : '';
+
   const auraBadgeHTML = modifierLines.length > 0
     ? `<div class="aura-badge" data-tooltip="${modifierLines.join('\n').replace(/"/g, '&quot;')}">${modifierIcons}</div>`
+    : '';
+
+  // 23.16.4 — indicador presentation-only de TDFC. En Battlefield muestra la cara
+  // física actual; fuera de Battlefield el objeto canónico vuelve a ser siempre la frontal.
+  const dfcSpec = normalizeTransformSpec(itemObj);
+  const dfcFace = dfcSpec ? currentTransformFace(itemObj) : null;
+  const dfcBackName = dfcSpec?.backFace?.name || 'cara posterior';
+  const dfcBadgeHTML = dfcSpec
+    ? `<div class="dfc-face-badge" data-tooltip="${(dfcFace === 'back' ? `Cara posterior · ${card.name}` : `Transforma en ${dfcBackName}`).replace(/"/g, '&quot;')}">↻ ${dfcFace === 'back' ? 'B' : 'A'}</div>`
+    : '';
+  const chosenCreatureType=getChosenCreatureType(itemObj);
+  const typalChoiceBadgeHTML=chosenCreatureType
+    ? `<div class="typal-choice-badge" data-tooltip="Tipo de criatura elegido: ${String(chosenCreatureType).replace(/"/g,'&quot;')}">🧬 ${String(chosenCreatureType).replace(/</g,'&lt;')}</div>`
+    : '';
+
+  const sagaState = isSagaCard(card) ? sagaUiState(itemObj) : null;
+  const sagaChapterHTML = sagaState && sagaState.chapters.length > 0
+    ? `<div class="saga-chapter-track" data-tooltip="Lore ${sagaState.lore}/${sagaState.finalChapter}">${sagaState.chapters.map(ch => `<span class="saga-chapter-pill${sagaState.lore >= ch.number ? ' reached' : ''}${sagaState.lore === ch.number ? ' current' : ''}">${ch.roman}</span>`).join('')}</div>`
     : '';
 
   // 23.12.0 — las vistas catálogo/deckbuilder pueden mostrar cientos de cartas. Sus
@@ -1573,6 +1776,10 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       <div class="card-art" style="position: relative; overflow: hidden;">
         <div style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;">${icon}</div>
         ${card.image ? `<img class="card-art-image" src="./assets/images/cards/${card.image}" alt="${card.name}"${browserImageAttrs} style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
+        ${counterBadgeHTML}
+        ${sagaChapterHTML}
+        ${dfcBadgeHTML}
+        ${typalChoiceBadgeHTML}
       </div>
       <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(displayType, 16, 0.3)).toFixed(2)}cqw, 30px);">${displayType}</span><span class="rarity-icon">●</span></div>
       ${formattedTextHTML}
@@ -1586,8 +1793,14 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   // transform y conserva pixel-a-pixel el renderer histórico. La primera imagen visible
   // dispara una carga lazy compartida de gameConfig/artLayouts; nunca bloquea createCardElement.
   const cardArtImg = el.querySelector('.card-art-image');
-  const cardArtLayoutId = card?.isToken ? tokenArtLayoutId(card.image, card.name) : card?.id;
+  const cardArtLayoutId = card?.isToken ? tokenArtLayoutId(card.image, card.name) : transformFaceLayoutId(itemObj);
   if (cardArtImg && cardArtLayoutId) registerCardArtImage(cardArtImg, cardArtLayoutId);
+
+  // 23.15.10 — ajuste presentation-only del texto persistido por card.id. La carga
+  // remota es lazy y el contenido de reglas/flavor sigue perteneciendo a los JSON.
+  const cardTextBox = el.querySelector('.card-text-box');
+  const cardTextLayoutId = transformFaceLayoutId(itemObj);
+  if (cardTextBox && cardTextLayoutId) registerCardTextBox(cardTextBox, cardTextLayoutId);
 
   // El botón separado sólo hace falta en Combat, donde el click normal puede significar
   // declarar atacante/bloqueador. Support y Tierras ya tienen un click inequívoco y el
@@ -1609,6 +1822,22 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       handleInstantActivatedAbilityClick(itemObj, true, index, zone);
     });
     el.appendChild(instantBtn);
+  }
+
+
+  // 23.16.3 — Suspend es una acción especial desde la mano. Tiene un control propio porque
+  // puede ser legal aunque la carta no pueda castearse normalmente (por coste/targets), y no
+  // usa la Stack. El botón sólo aparece en la mano del jugador que controla la UI.
+  if (zone === 'hand' && isLocal && hasSuspend(card) && !state.gameOver) {
+    const spec=normalizeSuspendSpec(card);
+    const suspendBtn=document.createElement('button');
+    suspendBtn.type='button'; suspendBtn.className='suspend-action-fab';
+    suspendBtn.textContent='⏳'; suspendBtn.title=`Suspender ${spec?.time || ''} — ${spec?.cost || '{0}'}`;
+    suspendBtn.style.cssText='position:absolute;left:4px;bottom:4px;z-index:20;width:26px;height:26px;border-radius:50%;border:1px solid #f7d774;background:#2c3e50;color:#f7d774;font-size:14px;cursor:pointer;box-shadow:0 1px 4px #000;';
+    suspendBtn.disabled=!canSuspendCardFromHand(card);
+    suspendBtn.style.opacity=suspendBtn.disabled?'0.42':'1';
+    suspendBtn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();suspendCardFromHand(index);});
+    el.querySelector('.card-inner')?.appendChild(suspendBtn);
   }
 
   if (customClick) {
@@ -2858,6 +3087,17 @@ function injectEncyclopediaStyles() {
     .encyclopedia-art-edit-btn.has-custom-layout {
       background:#d4af37; color:#17120a; box-shadow:0 0 0 2px rgba(212,175,55,.25),0 2px 8px rgba(0,0,0,.72);
     }
+    .encyclopedia-text-edit-btn {
+      position:absolute; top:4px; right:4px; z-index:12; width:22px; height:22px; padding:0;
+      display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer;
+      border:1.5px solid rgba(60,45,30,.72); background:rgba(253,251,247,.94); color:#2a2118;
+      font-size:11px; line-height:1; box-shadow:0 2px 6px rgba(0,0,0,.32);
+      transition:transform .12s ease,background .12s ease,box-shadow .12s ease;
+    }
+    .encyclopedia-text-edit-btn:hover { transform:scale(1.12); background:#fff8df; }
+    .encyclopedia-text-edit-btn.has-custom-layout {
+      background:#d4af37; color:#17120a; box-shadow:0 0 0 2px rgba(212,175,55,.22),0 2px 7px rgba(0,0,0,.45);
+    }
     :is(#encyclopedia-overlay,#deckbuilder-overlay,#mydecks-overlay) .card-inner {
       /* 23.12.2 — override más específico: el marco acompaña el zoom. El 6px histórico
          queda arriba para preservar el baseline, pero este selector con IDs manda en browser. */
@@ -2883,8 +3123,9 @@ function injectEncyclopediaStyles() {
       visibility: hidden;
     }
     .encyclopedia-token-slot .card-inner { box-shadow:0 0 0 1px rgba(212,175,55,.22), 0 10px 25px rgba(0,0,0,.25); }
-    #encyclopedia-overlay.encyclopedia-token-mode .encyclopedia-progress { display:none; }
-    #encyclopedia-overlay.encyclopedia-token-mode .encyclopedia-filters > :not(#enc-search):not(.card-browser-zoom) { display:none !important; }
+    #encyclopedia-overlay.encyclopedia-asset-mode .encyclopedia-progress { display:none; }
+    #encyclopedia-overlay.encyclopedia-asset-mode .encyclopedia-filters > :not(#enc-search):not(.card-browser-zoom) { display:none !important; }
+    .encyclopedia-dfc-back-slot .card-inner { box-shadow:0 0 0 1px rgba(120,190,255,.28), 0 10px 25px rgba(0,0,0,.25); }
     .encyclopedia-empty-msg { color: #5a5266; font-size: 14px; margin: auto; text-align: center; }
     .encyclopedia-filters {
       width: 260px; flex-shrink: 0;
@@ -2938,7 +3179,10 @@ export function showEncyclopedia(onBack) {
   const enhancedIds = new Set(Object.keys((state.userProfile && state.userProfile.enhancements) || {}).filter(id => isEnhancementEligibleCard(cardDb.getById(id))));
   const encyclopediaTabs = [
     ...ENCYCLOPEDIA_TABS,
-    ...(isAdminUser() ? [{ key: 'tokens', label: gameText('encyclopedia.tab.tokens') }] : [])
+    ...(isAdminUser() ? [
+      { key: 'dfc-backs', label: gameText('encyclopedia.tab.dfcBacks') },
+      { key: 'tokens', label: gameText('encyclopedia.tab.tokens') }
+    ] : [])
   ];
   let activeTab = 'criaturas';
   let ownershipFilter = 'all'; // 'all' | 'owned'
@@ -2964,6 +3208,7 @@ export function showEncyclopedia(onBack) {
   ).join('');
 
   const defaultZoom = document.documentElement.classList.contains('argentinia-mobile') ? 24 : 32;
+  const encyclopediaMinZoom = 16;
 
   overlay.innerHTML = `
     <div class="encyclopedia-header">
@@ -2978,7 +3223,7 @@ export function showEncyclopedia(onBack) {
         <input type="text" class="encyclopedia-search-input" id="enc-search" placeholder="${gameTextHtml('encyclopedia.search.placeholder')}">
         <div class="card-browser-zoom" title="${gameTextHtml('encyclopedia.zoom.title')}">
           <span>🔍</span>
-          <input type="range" id="enc-card-zoom" min="12" max="45" step="1" value="${defaultZoom}">
+          <input type="range" id="enc-card-zoom" min="${encyclopediaMinZoom}" max="45" step="1" value="${defaultZoom}">
           <span id="enc-card-zoom-value">${defaultZoom}</span>
         </div>
         <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.sort')}</div>
@@ -3009,7 +3254,7 @@ export function showEncyclopedia(onBack) {
     </div>
   `;
   document.body.appendChild(overlay);
-  setBrowserCardZoom(overlay, defaultZoom);
+  applyCardZoom(overlay, defaultZoom, { cssVar: '--card-w', unit: 'vh', min: encyclopediaMinZoom, max: 50, fallback: defaultZoom });
 
   const gridBox = overlay.querySelector('#enc-grid');
 
@@ -3028,21 +3273,25 @@ export function showEncyclopedia(onBack) {
 
     const fragment = document.createDocumentFragment();
     const isTokenTab = tabKey === 'tokens';
+    const isDfcBackTab = tabKey === 'dfc-backs';
+    const isAssetTab = isTokenTab || isDfcBackTab;
     const sourceCards = isTokenTab
       ? buildTokenCatalog(cardDb.allCards)
-      : cardDb.getByCategory(tabKey);
+      : isDfcBackTab
+        ? cardDb.allCards.filter(isTransformingDoubleFacedCard).map(card => buildTransformFaceCard(card, 'back'))
+        : cardDb.getByCategory(tabKey);
     sourceCards.forEach(card => {
-      // Tokens son una superficie Admin de assets, no objetos de colección: siempre se
-      // renderizan a pleno color y nunca participan del filtro "poseo".
-      const owned = isTokenTab ? true : ownedIds.has(card.id);
+      // Tokens y reversos DFC son superficies Admin de assets, no objetos adicionales de
+      // colección: siempre se renderizan a pleno color y no participan de "poseo".
+      const owned = isAssetTab ? true : ownedIds.has(card.id);
       const slot = document.createElement('div');
-      slot.className = `encyclopedia-card-slot${owned ? '' : ' unowned'}${isTokenTab ? ' encyclopedia-token-slot' : ''}`;
+      slot.className = `encyclopedia-card-slot${owned ? '' : ' unowned'}${isTokenTab ? ' encyclopedia-token-slot' : ''}${isDfcBackTab ? ' encyclopedia-dfc-back-slot' : ''}`;
       slot.appendChild(createCardElement(card, false, true, null, 'encyclopedia', null));
 
       // 23.13.23 — el editor existe EXCLUSIVAMENTE en Enciclopedia y sólo para Admin.
       // La seguridad real del SAVE sigue en Firestore Rules; este gate es además UX.
       if (isAdminUser() && card.image) {
-        const artLayoutId = card.isToken ? tokenArtLayoutId(card.image, card.name) : card.id;
+        const artLayoutId = card.isToken ? tokenArtLayoutId(card.image, card.name) : transformFaceLayoutId(card);
         const editArtBtn = document.createElement('button');
         editArtBtn.type = 'button';
         editArtBtn.className = `encyclopedia-art-edit-btn${hasCustomArtLayout(artLayoutId) ? ' has-custom-layout' : ''}`;
@@ -3059,6 +3308,7 @@ export function showEncyclopedia(onBack) {
           try {
             await openArtLayoutEditor({
               card,
+              layoutId: artLayoutId,
               renderCard: previewCard => createCardElement(previewCard, false, true, null, 'preview', null),
               onSaved: (_layout, meta) => {
                 editArtBtn.classList.toggle('has-custom-layout', !!meta?.custom);
@@ -3077,8 +3327,51 @@ export function showEncyclopedia(onBack) {
         slot.appendChild(editArtBtn);
       }
 
+      // 23.15.10 — lápiz DENTRO del rules box. Sólo Admin y sólo presentación: no toca
+      // el contenido de los JSON. El ajuste se guarda por card.id igual que el encuadre.
+      if (isAdminUser()) {
+        const textBox = slot.querySelector('.card-text-box');
+        const textLayoutId = transformFaceLayoutId(card);
+        if (textBox && textLayoutId) {
+          textBox.style.position = 'relative';
+          const editTextBtn = document.createElement('button');
+          editTextBtn.type = 'button';
+          editTextBtn.className = `encyclopedia-text-edit-btn${hasCustomCardTextLayout(textLayoutId) ? ' has-custom-layout' : ''}`;
+          editTextBtn.textContent = '✏️';
+          editTextBtn.title = hasCustomCardTextLayout(textLayoutId)
+            ? 'Ajustar texto de la carta (personalizado)'
+            : 'Ajustar texto de la carta';
+          editTextBtn.setAttribute('aria-label', `Ajustar presentación del texto de ${card.name}`);
+          editTextBtn.dataset.textCardId = textLayoutId;
+          editTextBtn.addEventListener('click', async event => {
+            event.preventDefault();
+            event.stopPropagation();
+            editTextBtn.disabled = true;
+            try {
+              await openCardTextLayoutEditor({
+                card,
+                layoutId: textLayoutId,
+                renderCard: previewCard => createCardElement(previewCard, false, true, null, 'preview', null),
+                onSaved: (_layout, meta) => {
+                  editTextBtn.classList.toggle('has-custom-layout', !!meta?.custom);
+                  editTextBtn.title = meta?.custom
+                    ? 'Ajustar texto de la carta (personalizado)'
+                    : 'Ajustar texto de la carta';
+                }
+              });
+            } catch (error) {
+              console.error('No se pudo abrir el editor de texto:', error);
+              window.alert(`No se pudo abrir el editor de texto: ${error?.message || error}`);
+            } finally {
+              if (editTextBtn.isConnected) editTextBtn.disabled = false;
+            }
+          });
+          textBox.appendChild(editTextBtn);
+        }
+      }
+
       fragment.appendChild(slot);
-      entry.records.push({ card, node: slot, owned, enhanced: isTokenTab ? false : enhancedIds.has(card.id), token: isTokenTab });
+      entry.records.push({ card, node: slot, owned, enhanced: isAssetTab ? false : enhancedIds.has(card.id), token: isTokenTab, dfcBack: isDfcBackTab, assetOnly: isAssetTab });
     });
     entry.pane.appendChild(fragment);
     entry.empty = document.createElement('div');
@@ -3101,8 +3394,8 @@ export function showEncyclopedia(onBack) {
     let visible = 0;
     entry.records.forEach(record => {
       const card = record.card;
-      const matches = record.token
-        ? (!query || normalizeSearch(card.name).includes(query) || normalizeSearch(card.image).includes(query))
+      const matches = record.assetOnly
+        ? (!query || normalizeSearch(card.name).includes(query) || normalizeSearch(card.image).includes(query) || normalizeSearch(card.id).includes(query))
         : activeRarities.has(card.rarity) &&
           cardMatchesColorFilter(card, activeColors) &&
           cardMatchesArchetypeFilter(card, activeArchetypes) &&
@@ -3115,14 +3408,18 @@ export function showEncyclopedia(onBack) {
     });
     entry.empty.textContent = activeTab === 'tokens'
       ? gameText('encyclopedia.tokens.empty')
-      : gameText('encyclopedia.empty');
+      : activeTab === 'dfc-backs'
+        ? gameText('encyclopedia.dfcBacks.empty')
+        : gameText('encyclopedia.empty');
     entry.empty.hidden = visible !== 0;
     entry.pane.appendChild(entry.empty);
-    overlay.classList.toggle('encyclopedia-token-mode', activeTab === 'tokens');
+    overlay.classList.toggle('encyclopedia-asset-mode', activeTab === 'tokens' || activeTab === 'dfc-backs');
     const searchInput = overlay.querySelector('#enc-search');
     if (searchInput) searchInput.placeholder = activeTab === 'tokens'
       ? gameText('encyclopedia.tokens.search.placeholder')
-      : gameText('encyclopedia.search.placeholder');
+      : activeTab === 'dfc-backs'
+        ? gameText('encyclopedia.dfcBacks.search.placeholder')
+        : gameText('encyclopedia.search.placeholder');
   }
 
   const debouncedSearch = debounce(value => {
@@ -3132,8 +3429,8 @@ export function showEncyclopedia(onBack) {
   overlay.querySelector('#enc-search').addEventListener('input', (e) => debouncedSearch(e.target.value));
 
   overlay.querySelector('#enc-card-zoom').addEventListener('input', e => {
-    setBrowserCardZoom(overlay, e.target.value);
-    overlay.querySelector('#enc-card-zoom-value').textContent = e.target.value;
+    const zoom = applyCardZoom(overlay, e.target.value, { cssVar: '--card-w', unit: 'vh', min: encyclopediaMinZoom, max: 50, fallback: defaultZoom });
+    overlay.querySelector('#enc-card-zoom-value').textContent = zoom;
   });
 
   overlay.querySelector('#enc-sort-key').addEventListener('change', e => {
@@ -3202,18 +3499,21 @@ export function showEncyclopedia(onBack) {
 
   refreshGrid();
 
-  // Si el Admin entra desde un navegador sin cache, los botones pueden haberse creado antes
-  // de que llegue Firestore. Cuando termina la carga remota, sincronizamos sólo su indicador
-  // visual; las imágenes ya se actualizan globalmente desde artLayout.js.
+  // Si el Admin entra desde un navegador sin cache, los lápices pueden haberse creado antes
+  // de que llegue Firestore. Al completar ambas cargas remotas sincronizamos los indicadores
+  // dorados; arte y texto ya actualizan sus superficies visibles desde sus propios módulos.
   if (isAdminUser()) {
-    ensureArtLayoutsLoaded().then(() => {
+    Promise.allSettled([ensureArtLayoutsLoaded(), ensureCardTextLayoutsLoaded()]).then(() => {
       if (!overlay.isConnected) return;
       overlay.querySelectorAll('.encyclopedia-art-edit-btn[data-art-card-id]').forEach(btn => {
         const custom = hasCustomArtLayout(btn.dataset.artCardId || '');
         btn.classList.toggle('has-custom-layout', custom);
-        btn.title = custom
-          ? 'Editar encuadre del arte (personalizado)'
-          : 'Editar encuadre del arte';
+        btn.title = custom ? 'Editar encuadre del arte (personalizado)' : 'Editar encuadre del arte';
+      });
+      overlay.querySelectorAll('.encyclopedia-text-edit-btn[data-text-card-id]').forEach(btn => {
+        const custom = hasCustomCardTextLayout(btn.dataset.textCardId || '');
+        btn.classList.toggle('has-custom-layout', custom);
+        btn.title = custom ? 'Ajustar texto de la carta (personalizado)' : 'Ajustar texto de la carta';
       });
     }).catch(() => {});
   }
@@ -3438,6 +3738,32 @@ function injectStoreStyles() {
     html.argentinia-mobile .classifieds-card-error { font-size:8px; min-height:10px; }
     html.argentinia-mobile .classifieds-preview-overlay { padding:8px; }
     html.argentinia-mobile .classifieds-preview-panel { --card-w:min(72vw, calc(84dvh * 5 / 7), 280px); }
+    .store-prebuilt-entry { border-color:rgba(112,184,135,.3); }
+    .store-prebuilt-icon { width:120px; height:120px; object-fit:contain; filter:drop-shadow(0 5px 12px rgba(112,184,135,.28)); }
+    .prebuilt-strip-shell { overflow:hidden; margin-top:10px; }
+    .prebuilt-strip { display:flex; gap:14px; overflow-x:auto; padding:12px 8px 16px; scroll-snap-type:x proximity; }
+    .prebuilt-product { flex:0 0 250px; min-width:250px; border:1px solid rgba(212,175,55,.24); border-radius:13px; background:rgba(8,5,12,.62); padding:13px; scroll-snap-align:start; display:flex; flex-direction:column; gap:7px; }
+    .prebuilt-product.purchased { opacity:.68; }
+    .prebuilt-product-image { width:100%; aspect-ratio:4/3; object-fit:contain; border-radius:9px; background:rgba(0,0,0,.22); }
+    .prebuilt-product-title { color:#f0e0b0; font-size:16px; font-weight:800; line-height:1.15; }
+    .prebuilt-product-meta { color:#a9c9b2; font-size:11px; min-height:16px; }
+    .prebuilt-price { display:flex; gap:8px; align-items:center; color:#e9d9ad; font-size:12px; }
+    .prebuilt-price :is(.coin-icon,.ficha-icon){ width:16px; height:16px; }
+    .prebuilt-preview-overlay { position:fixed; inset:0; z-index:12000; background:rgba(0,0,0,.78); display:flex; align-items:center; justify-content:center; padding:18px; }
+    .prebuilt-preview-panel { width:min(760px,96vw); max-height:92dvh; overflow:auto; background:linear-gradient(180deg,#191220,#0d0911); border:1px solid rgba(212,175,55,.45); border-radius:16px; padding:20px; box-shadow:0 20px 60px rgba(0,0,0,.65); }
+    .prebuilt-preview-top { display:grid; grid-template-columns:minmax(180px,280px) 1fr; gap:20px; align-items:start; }
+    .prebuilt-preview-title { color:#f0e0b0; font-size:24px; font-weight:900; }
+    .prebuilt-preview-sub { color:#b8c9cf; margin:4px 0 12px; }
+    .prebuilt-summary-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 12px; font-size:12px; color:#d7cadb; }
+    .prebuilt-summary-grid strong { color:#f0e0b0; }
+    .prebuilt-mechanics { margin-top:12px; color:#a9c9b2; font-size:12px; }
+    .prebuilt-name-step { margin-top:16px; padding-top:14px; border-top:1px solid rgba(212,175,55,.2); }
+    .prebuilt-name-input { width:100%; box-sizing:border-box; padding:10px 12px; border-radius:8px; border:1px solid rgba(212,175,55,.35); background:#100b14; color:#f4e7c5; font-size:15px; }
+    .prebuilt-actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+    .prebuilt-actions .store-buy-btn { flex:1; min-width:170px; }
+    html.argentinia-mobile .store-prebuilt-icon { width:96px; height:96px; }
+    html.argentinia-mobile .prebuilt-product { flex-basis:min(78vw,260px); min-width:min(78vw,260px); }
+    html.argentinia-mobile .prebuilt-preview-top { grid-template-columns:1fr; }
   `;
   document.head.appendChild(style);
 }
@@ -3494,6 +3820,7 @@ export function showStoreScreen(onBack, options = {}) {
       <div class="store-section-title">${COIN_ICON_HTML} ${gameTextHtml('store.pointsHow.title')}</div>
       <ul class="store-points-list">
         <li>${gameTextHtml('store.pointsHow.winHard', { points: POINTS.winVsTanoDificil })}</li>
+        <li>${gameTextHtml('store.pointsHow.winMedium', { points: POINTS.winVsTanoMedio })}</li>
         <li>${gameTextHtml('store.pointsHow.winEasy', { points: POINTS.winVsTanoFacil })}</li>
         <li>${gameTextHtml('store.pointsHow.lossSolo', { points: POINTS.lossVsTano })}</li>
         <li>${gameTextHtml('store.pointsHow.winPvp', { points: POINTS.winVsHumano })}</li>
@@ -3554,6 +3881,13 @@ export function showStoreScreen(onBack, options = {}) {
             <div class="chest-item-desc">${gameTextHtml('store.craft.description')}</div>
             <button class="reward-action-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? gameTextHtml('store.craft.action') : gameTextHtml('store.craft.missing', { count: FICHAS_PER_ENHANCEMENT - fichas })}</button>
           </div>
+          <div class="chest-item store-market-item store-prebuilt-entry">
+            <div class="chest-item-icon"><div class="store-prebuilt-icon" aria-hidden="true" style="font-size:78px;display:flex;align-items:center;justify-content:center">🃏</div></div>
+            <div class="chest-item-title">${gameTextHtml('store.prebuilt.showcaseTitle')}</div>
+            <div class="chest-item-count store-market-count">${gameTextHtml('store.prebuilt.showcaseCount')}</div>
+            <div class="chest-item-desc">${gameTextHtml('store.prebuilt.description')}</div>
+            <button class="reward-action-btn" id="store-prebuilt">${gameTextHtml('store.prebuilt.open')}</button>
+          </div>
           <div class="chest-item store-market-item store-classifieds-entry">
             <div class="chest-item-icon"><img class="store-classifieds-icon" src="./assets/images/ui/clasificados.png" alt="Avisos Clasificados"></div>
             <div class="chest-item-title">${gameTextHtml('store.classifieds.showcaseTitle')}</div>
@@ -3579,6 +3913,10 @@ export function showStoreScreen(onBack, options = {}) {
     pointsLink?.setAttribute('aria-expanded', 'false');
     pointsLink?.addEventListener('click', () => setPointsPanelOpen(pointsPanel?.hidden !== false));
     closePointsPanel?.addEventListener('click', () => setPointsPanelOpen(false));
+
+    body.querySelector('#store-prebuilt')?.addEventListener('click', () => {
+      void renderPrebuiltDecksView();
+    });
 
     body.querySelector('#store-classifieds').addEventListener('click', () => {
       void renderClassifiedsView();
@@ -3615,6 +3953,137 @@ export function showStoreScreen(onBack, options = {}) {
 
     if (canCraft) {
       body.querySelector('#store-craft').addEventListener('click', () => renderCraftPickCardView());
+    }
+  }
+
+
+  function prebuiltColorLabel(colors=[]) {
+    const icons={W:'⚪',U:'🔵',B:'⚫',R:'🔴',G:'🟢'};
+    return colors.map(c=>icons[c]||c).join('');
+  }
+
+  function prebuiltFriendlyError(error) {
+    switch(error?.code) {
+      case 'PREBUILT_ALREADY_PURCHASED': return gameText('prebuilt.error.alreadyPurchased');
+      case 'PREBUILT_INSUFFICIENT_FUNDS': return gameText('prebuilt.error.insufficientFunds');
+      case 'PREBUILT_DECK_LIMIT': return gameText('prebuilt.error.deckLimit');
+      case 'PREBUILT_RULES_STALE': return gameText('prebuilt.error.rulesStale');
+      default: return error?.message || gameText('prebuilt.error.generic');
+    }
+  }
+
+  function prebuiltLandSummary(summary) {
+    const labels={W:'⚪',U:'🔵',B:'⚫',R:'🔴',G:'🟢',C:'◇',Other:'↔'};
+    const parts=Object.entries(summary.landColors||{}).filter(([,n])=>n>0).map(([c,n])=>`${labels[c]||c} ${n}`);
+    return parts.length?parts.join(' · '):String(summary.lands||0);
+  }
+
+  function openPrebuiltDeckModal(product, summary, purchased) {
+    document.querySelectorAll('.prebuilt-preview-overlay').forEach(el=>el.remove());
+    const modal=document.createElement('div');
+    modal.className='prebuilt-preview-overlay';
+    const panel=document.createElement('div'); panel.className='prebuilt-preview-panel';
+    const other=Math.max(0,summary.total-summary.lands-summary.creatures);
+    const commonLike=(summary.rarity.Common||0);
+    const themes=(summary.topThemes||[]).map(t=>t.name).join(' · ') || product.archetypeLabel;
+    panel.innerHTML=`
+      <div class="prebuilt-preview-top">
+        <img class="prebuilt-product-image" src="./assets/images/ui/${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" onerror="this.style.display='none'">
+        <div>
+          <div class="prebuilt-preview-title">${escapeHtml(product.name)}</div>
+          <div class="prebuilt-preview-sub">${prebuiltColorLabel(product.colors)} · ${escapeHtml(product.archetypeLabel||product.archetypeId)}</div>
+          <div class="prebuilt-summary-grid">
+            <div><strong>${gameTextHtml('prebuilt.deckSize',{count:summary.total})}</strong></div>
+            <div>${gameTextHtml('prebuilt.summary.curve',{average:summary.averageManaValue})}</div>
+            <div>${gameTextHtml('prebuilt.summary.types',{lands:summary.lands,creatures:summary.creatures,other})}</div>
+            <div>${gameTextHtml('prebuilt.summary.rarity',{mythic:summary.rarity.Mythic||0,rare:summary.rarity.Rare||0,uncommon:summary.rarity.Uncommon||0,common:commonLike})}</div>
+            <div style="grid-column:1/-1">${gameTextHtml('prebuilt.summary.lands',{lands:prebuiltLandSummary(summary)})}</div>
+          </div>
+          <div class="prebuilt-mechanics">${gameTextHtml('prebuilt.summary.mechanics',{themes})}</div>
+          <div class="prebuilt-price">${COIN_ICON_HTML} ${PREBUILT_DECK_POINTS} <span>+</span> ${FICHA_ICON_HTML} ${PREBUILT_DECK_FICHAS}</div>
+          <div class="prebuilt-actions">
+            <button class="store-buy-btn" id="prebuilt-buy" ${purchased?'disabled':''}>${purchased?gameTextHtml('prebuilt.purchased'):gameTextHtml('prebuilt.buy')}</button>
+            <button class="store-back-link" id="prebuilt-close">${gameTextHtml('common.close')}</button>
+          </div>
+          <div class="store-error-msg" id="prebuilt-modal-error"></div>
+          <div class="prebuilt-name-step" id="prebuilt-name-step" hidden>
+            <label for="prebuilt-name"><strong>${gameTextHtml('prebuilt.nameLabel')}</strong></label>
+            <input id="prebuilt-name" class="prebuilt-name-input" maxlength="30" value="${escapeHtml(product.name)}">
+            <div class="store-section-desc">${gameTextHtml('prebuilt.nameHint')}</div>
+            <button class="store-buy-btn" id="prebuilt-confirm">${gameTextHtml('prebuilt.confirm')}</button>
+          </div>
+        </div>
+      </div>`;
+    modal.appendChild(panel); document.body.appendChild(modal);
+    const close=()=>modal.remove();
+    panel.querySelector('#prebuilt-close').addEventListener('click',close);
+    modal.addEventListener('click',e=>{if(e.target===modal)close();});
+    const buy=panel.querySelector('#prebuilt-buy');
+    buy?.addEventListener('click',()=>{
+      panel.querySelector('#prebuilt-name-step').hidden=false;
+      panel.querySelector('#prebuilt-name')?.focus();
+      buy.hidden=true;
+    });
+    panel.querySelector('#prebuilt-confirm')?.addEventListener('click',async()=>{
+      const confirm=panel.querySelector('#prebuilt-confirm');
+      const err=panel.querySelector('#prebuilt-modal-error');
+      const input=panel.querySelector('#prebuilt-name');
+      const name=String(input?.value||'').trim();
+      if(!name){ err.textContent=gameText('prebuilt.nameLabel'); return; }
+      confirm.disabled=true; confirm.textContent=gameText('prebuilt.buying'); err.textContent='';
+      try {
+        const result=await purchasePrebuiltDeck(state.currentUser.uid,product.id,name);
+        state.userProfile=result.profile;
+        updateAccountUI(state.currentUser);
+        panel.innerHTML=`<div class="prebuilt-preview-title">${gameTextHtml('prebuilt.success')}</div>
+          <div class="prebuilt-preview-sub">${escapeHtml(result.deck?.name||name)}</div>
+          <div class="prebuilt-actions"><button class="store-buy-btn" id="prebuilt-go-decks">${gameTextHtml('prebuilt.goDecks')}</button><button class="store-back-link" id="prebuilt-success-close">${gameTextHtml('prebuilt.backStore')}</button></div>`;
+        panel.querySelector('#prebuilt-go-decks').addEventListener('click',()=>{ modal.remove(); overlay.remove(); showMyDecksScreen(()=>showStoreScreen(onBack,{initialView:'prebuilt'})); });
+        panel.querySelector('#prebuilt-success-close').addEventListener('click',()=>{ modal.remove(); void renderPrebuiltDecksView(); });
+      } catch(error) {
+        console.error('No se pudo comprar el mazo prearmado:',error);
+        err.textContent=prebuiltFriendlyError(error);
+        confirm.disabled=false; confirm.textContent=gameText('prebuilt.confirm');
+      }
+    });
+  }
+
+  async function renderPrebuiltDecksView() {
+    leaveClassifiedsView();
+    body.innerHTML=`<div class="store-section classifieds-loading">${gameTextHtml('common.loading')}</div>`;
+    try {
+      await cardDb.loadAll();
+      const catalog=await loadPrebuiltDeckCatalog();
+      const purchasedIds=new Set(getPrebuiltPurchaseIds(state.userProfile));
+      body.innerHTML=`
+        <div class="store-section">
+          <div class="store-section-title">${gameTextHtml('prebuilt.title')}</div>
+          <div class="store-section-desc">${gameTextHtml('prebuilt.subtitle')}</div>
+          <div class="store-balance-row">
+            <div class="store-balance-chip"><div class="store-balance-value">${COIN_ICON_HTML} ${Number(state.userProfile?.points)||0}</div><div class="store-balance-label">${gameTextHtml('store.balance.points')}</div></div>
+            <div class="store-balance-chip"><div class="store-balance-value">${FICHA_ICON_HTML} ${Number(state.userProfile?.fichas)||0}</div><div class="store-balance-label">${gameTextHtml('store.balance.fichas')}</div></div>
+          </div>
+          <div class="prebuilt-strip-shell"><div class="prebuilt-strip" id="prebuilt-strip"></div></div>
+          <button class="store-back-link" id="prebuilt-back">${gameTextHtml('prebuilt.backStore')}</button>
+        </div>`;
+      const strip=body.querySelector('#prebuilt-strip');
+      for(const product of catalog.products) {
+        const purchased=purchasedIds.has(product.id);
+        const summary=summarizePrebuiltDeck(product,cardDb.allCards);
+        const card=document.createElement('div'); card.className=`prebuilt-product${purchased?' purchased':''}`;
+        card.innerHTML=`<img class="prebuilt-product-image" src="./assets/images/ui/${escapeHtml(product.image)}" alt="${escapeHtml(product.name)}" onerror="this.style.visibility='hidden'">
+          <div class="prebuilt-product-title">${escapeHtml(product.name)}</div>
+          <div class="prebuilt-product-meta">${prebuiltColorLabel(product.colors)} · ${escapeHtml(product.archetypeLabel||product.archetypeId)} · ${summary.lands} Tierras</div>
+          <div class="prebuilt-price">${COIN_ICON_HTML} ${PREBUILT_DECK_POINTS} <span>+</span> ${FICHA_ICON_HTML} ${PREBUILT_DECK_FICHAS}</div>
+          <button class="store-buy-btn prebuilt-view">${purchased?gameTextHtml('prebuilt.purchased'):gameTextHtml('prebuilt.view')}</button>`;
+        card.querySelector('.prebuilt-view').addEventListener('click',()=>openPrebuiltDeckModal(product,summary,purchased));
+        strip.appendChild(card);
+      }
+      body.querySelector('#prebuilt-back').addEventListener('click',renderMainView);
+    } catch(error) {
+      console.error('No se pudo cargar Mazos Prearmados:',error);
+      body.innerHTML=`<div class="store-section"><div class="store-section-title">${gameTextHtml('prebuilt.title')}</div><div class="store-error-msg">${escapeHtml(error?.message||gameText('prebuilt.error.generic'))}</div><button class="store-back-link" id="prebuilt-error-back">${gameTextHtml('prebuilt.backStore')}</button></div>`;
+      body.querySelector('#prebuilt-error-back').addEventListener('click',renderMainView);
     }
   }
 
@@ -4013,6 +4482,8 @@ export function showStoreScreen(onBack, options = {}) {
     renderCraftPickCardView();
   } else if (options.initialView === 'classifieds' && state.userProfile) {
     void renderClassifiedsView();
+  } else if (options.initialView === 'prebuilt' && state.userProfile) {
+    void renderPrebuiltDecksView();
   }
 }
 
@@ -4842,9 +5313,9 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   renderList();
 }
 
-// FASE 3: "Mis Mazos" — lista tus hasta 5 mazos (arranca con 1: el mazo inicial random,
-// marcado como default), te deja ver el contenido de cada uno (Etapa 1), y crear los 4
-// restantes armándolos 100% desde tu colección real (Etapa 2, showDeckBuilderScreen más
+// FASE 3: "Mis Mazos" — lista los mazos guardados hasta el límite admin-editable
+// (default 12; arranca con 1: el mazo inicial random, marcado como default), permite crear
+// los restantes armándolos 100% desde tu colección real (Etapa 2, showDeckBuilderScreen más
 // abajo). Reusa createCardElement y hasta el mismo .encyclopedia-grid-box que la
 // Enciclopedia para la vista de detalle — la reutilización de UI que veníamos buscando.
 // FASE 3, ETAPA 4: elegir con qué mazo jugar — se muestra en vez del selector random de
@@ -4948,7 +5419,7 @@ export function showMyDecksScreen(onBack) {
   });
 
   const body = overlay.querySelector('#mydecks-body');
-  const MAX_DECKS = 5;
+  const MAX_DECKS = MAX_SAVED_DECKS;
 
   function renderListView() {
     if (!state.currentUser) {
@@ -5472,6 +5943,7 @@ export function showAdminPanel(onBack) {
 
   const fields = [
     { section: 'Puntos', id: 'winVsTanoFacil', label: 'Victoria vs Tano (Fácil)', value: POINTS.winVsTanoFacil, step: '1' },
+    { section: 'Puntos', id: 'winVsTanoMedio', label: 'Victoria vs Tano (Medio)', value: POINTS.winVsTanoMedio, step: '1' },
     { section: 'Puntos', id: 'winVsTanoDificil', label: 'Victoria vs Tano (Difícil)', value: POINTS.winVsTanoDificil, step: '1' },
     { section: 'Puntos', id: 'lossVsTano', label: 'Derrota vs Tano', value: POINTS.lossVsTano, step: '1' },
     { section: 'Puntos', id: 'winVsHumano', label: 'Victoria vs Humano (PvP)', value: POINTS.winVsHumano, step: '1' },
@@ -5495,7 +5967,10 @@ export function showAdminPanel(onBack) {
     { section: 'Avisos Clasificados', id: 'classifiedsMythicChancePercent', label: 'Chance Mythic en slot premium (%)', value: +(CLASSIFIEDS_MYTHIC_CHANCE * 100).toFixed(2), step: '0.1' },
     { section: 'Mazos', id: 'deckSizeExact', label: 'Cartas exactas por mazo', value: DECK_SIZE_EXACT, step: '1' },
     { section: 'Mazos', id: 'maxCopiesPerCard', label: 'Máximo de copias iguales por mazo', value: MAX_COPIES_PER_CARD, step: '1' },
-    { section: 'Mazos', id: 'maxEnhancedCardsPerDeck', label: 'Máximo de cartas mejoradas por mazo', value: MAX_ENHANCED_CARDS_PER_DECK, step: '1' }
+    { section: 'Mazos', id: 'maxEnhancedCardsPerDeck', label: 'Máximo de cartas mejoradas por mazo', value: MAX_ENHANCED_CARDS_PER_DECK, step: '1' },
+    { section: 'Mazos', id: 'maxSavedDecks', label: 'Máximo de mazos guardados por cuenta', value: MAX_SAVED_DECKS, step: '1' },
+    { section: 'Mazos Prearmados', id: 'prebuiltDeckPoints', label: 'Costo global · puntos', value: PREBUILT_DECK_POINTS, step: '1' },
+    { section: 'Mazos Prearmados', id: 'prebuiltDeckFichas', label: 'Costo global · Fichas', value: PREBUILT_DECK_FICHAS, step: '1' }
   ];
 
   const sections = [...new Set(fields.map(f => f.section))];
@@ -5719,6 +6194,8 @@ export function showAdminPanel(onBack) {
     const txtBtn = overlay.querySelector('#admin-image-download-txt');
     const jsonBtn = overlay.querySelector('#admin-image-download-json');
     const missingCards = Array.isArray(audit?.missing) ? audit.missing : [];
+    const missingFronts = missingCards.filter(entry => entry?.face !== 'back');
+    const missingBacks = missingCards.filter(entry => entry?.face === 'back');
     const tokenManifestPresent = !!audit?.tokenImages && Array.isArray(audit?.missingTokenImages) && Array.isArray(audit?.tokenEffectsWithoutImage);
     const missingTokenEffects = tokenManifestPresent ? audit.missingTokenImages : [];
     const unassignedTokenEffects = tokenManifestPresent ? audit.tokenEffectsWithoutImage : [];
@@ -5733,7 +6210,7 @@ export function showAdminPanel(onBack) {
     const tokenGroups = [...tokenGroupsMap.values()].sort((a,b) => String(a.tokenName).localeCompare(String(b.tokenName), 'es-AR'));
 
     summary.textContent = tokenManifestPresent
-      ? gameText('admin.images.summary', { cards: missingCards.length, tokenFiles: tokenGroups.length, tokenEffects: missingTokenEffects.length, unassigned: unassignedTokenEffects.length, generated })
+      ? gameText('admin.images.summary', { fronts: missingFronts.length, backs: missingBacks.length, tokenFiles: tokenGroups.length, tokenEffects: missingTokenEffects.length, unassigned: unassignedTokenEffects.length, generated })
       : gameText('admin.images.legacySummary', { cards: missingCards.length, generated });
     txtBtn.disabled = false;
     jsonBtn.disabled = false;
@@ -5741,17 +6218,20 @@ export function showAdminPanel(onBack) {
     const blocks = [];
     if (!tokenManifestPresent) blocks.push(`<div class="admin-debug-error">${escapeHtml(gameText('admin.images.oldManifest'))}</div>`);
 
-    if (missingCards.length) {
-      const visible = imageAuditShowAll ? missingCards : missingCards.slice(0, 20);
+    const pushCardFaceBlock = (entries, titleKey, faceLabel) => {
+      if (!entries.length) return;
+      const visible = imageAuditShowAll ? entries : entries.slice(0, 20);
       const rows = visible.map(entry => `
-        <tr><td><code>${escapeHtml(entry.id || '—')}</code></td><td>${escapeHtml(entry.name || '—')}</td><td>${escapeHtml(entry.category || '—')}</td><td><code>${escapeHtml(entry.image || '—')}</code></td></tr>
+        <tr><td><code>${escapeHtml(entry.id || '—')}</code></td><td>${escapeHtml(entry.name || '—')}</td><td>${escapeHtml(faceLabel)}</td><td>${escapeHtml(entry.category || '—')}</td><td><code>${escapeHtml(entry.image || '—')}</code></td></tr>
       `).join('');
       blocks.push(`
-        <div class="admin-section-title" style="font-size:13px;margin-top:8px;">${escapeHtml(gameText('admin.images.cardsTitle', { count: missingCards.length }))}</div>
-        <table class="admin-debug-table"><thead><tr><th>${escapeHtml(gameText('admin.images.col.id'))}</th><th>${escapeHtml(gameText('admin.images.col.card'))}</th><th>${escapeHtml(gameText('admin.images.col.category'))}</th><th>${escapeHtml(gameText('admin.images.col.png'))}</th></tr></thead><tbody>${rows}</tbody></table>
-        ${!imageAuditShowAll && missingCards.length > 20 ? `<div class="admin-debug-empty">${escapeHtml(gameText('admin.images.first20'))}</div>` : ''}
+        <div class="admin-section-title" style="font-size:13px;margin-top:8px;">${escapeHtml(gameText(titleKey, { count: entries.length }))}</div>
+        <table class="admin-debug-table"><thead><tr><th>${escapeHtml(gameText('admin.images.col.id'))}</th><th>${escapeHtml(gameText('admin.images.col.card'))}</th><th>${escapeHtml(gameText('admin.images.col.face'))}</th><th>${escapeHtml(gameText('admin.images.col.category'))}</th><th>${escapeHtml(gameText('admin.images.col.png'))}</th></tr></thead><tbody>${rows}</tbody></table>
+        ${!imageAuditShowAll && entries.length > 20 ? `<div class="admin-debug-empty">${escapeHtml(gameText('admin.images.first20'))}</div>` : ''}
       `);
-    }
+    };
+    pushCardFaceBlock(missingFronts, 'admin.images.frontsTitle', 'Frente');
+    pushCardFaceBlock(missingBacks, 'admin.images.backsTitle', 'Reverso');
 
     if (tokenManifestPresent && tokenGroups.length) {
       const visible = imageAuditShowAll ? tokenGroups : tokenGroups.slice(0, 20);
@@ -5782,7 +6262,7 @@ export function showAdminPanel(onBack) {
       blocks.push(`<div class="admin-debug-empty">${escapeHtml(gameText('admin.images.allOk'))}</div>`);
     }
 
-    const needToggle = missingCards.length > 20 || tokenGroups.length > 20 || unassignedTokenEffects.length > 20;
+    const needToggle = missingFronts.length > 20 || missingBacks.length > 20 || tokenGroups.length > 20 || unassignedTokenEffects.length > 20;
     toggle.style.display = needToggle ? '' : 'none';
     toggle.textContent = imageAuditShowAll ? gameText('admin.images.showFirst') : gameText('admin.images.showAll');
     wrap.innerHTML = blocks.join('');
@@ -6066,8 +6546,11 @@ export function showAdminPanel(onBack) {
     const tokenMissing = Array.isArray(imageAudit.missingTokenImages) ? imageAudit.missingTokenImages : [];
     const tokenUnassigned = Array.isArray(imageAudit.tokenEffectsWithoutImage) ? imageAudit.tokenEffectsWithoutImage : [];
     const tokenFiles = [...new Set(tokenMissing.map(entry => entry.image).filter(Boolean))].sort();
+    const fronts = missing.filter(entry => entry?.face !== 'back');
+    const backs = missing.filter(entry => entry?.face === 'back');
     const lines = [
-      '[CARTAS_SIN_PNG]', ...missing.map(entry => entry.image), '',
+      '[CARAS_FRONTALES_SIN_PNG]', ...fronts.map(entry => entry.image), '',
+      '[CARAS_DFC_REVERSO_SIN_PNG]', ...backs.map(entry => `${entry.id} | ${entry.name} | ${entry.image}`), '',
       '[TOKENS_SIN_PNG]', ...tokenFiles, '',
       '[TOKENS_SIN_FILENAME]', ...tokenUnassigned.map(entry => `${entry.cardId} | ${entry.cardName} | ${entry.tokenName} | ${entry.path}`), ''
     ];
@@ -6164,6 +6647,7 @@ export function showAdminPanel(onBack) {
 
     const newConfig = {
       winVsTanoFacil: readNumber('winVsTanoFacil'),
+      winVsTanoMedio: readNumber('winVsTanoMedio'),
       winVsTanoDificil: readNumber('winVsTanoDificil'),
       lossVsTano: readNumber('lossVsTano'),
       winVsHumano: readNumber('winVsHumano'),
@@ -6187,7 +6671,10 @@ export function showAdminPanel(onBack) {
       classifiedsMythicChance: readNumber('classifiedsMythicChancePercent') / 100,
       deckSizeExact: readNumber('deckSizeExact'),
       maxCopiesPerCard: readNumber('maxCopiesPerCard'),
-      maxEnhancedCardsPerDeck: readNumber('maxEnhancedCardsPerDeck')
+      maxEnhancedCardsPerDeck: readNumber('maxEnhancedCardsPerDeck'),
+      maxSavedDecks: readNumber('maxSavedDecks'),
+      prebuiltDeckPoints: readNumber('prebuiltDeckPoints'),
+      prebuiltDeckFichas: readNumber('prebuiltDeckFichas')
     };
 
     if (Object.values(newConfig).some(v => typeof v !== 'number' || Number.isNaN(v))) {
@@ -6204,7 +6691,10 @@ export function showAdminPanel(onBack) {
       newConfig.classifiedsRarePoints, newConfig.classifiedsRareFichas,
       newConfig.classifiedsMythicPoints, newConfig.classifiedsMythicFichas
     ].every(value => value >= 0);
-    if (newConfig.deckSizeExact <= 0 || newConfig.maxCopiesPerCard <= 0 || newConfig.packCost < 0 || newConfig.fichasPerEnhancement <= 0
+    if (newConfig.deckSizeExact <= 0 || newConfig.maxCopiesPerCard <= 0 || newConfig.maxSavedDecks <= 0
+      || !Number.isInteger(newConfig.maxSavedDecks) || newConfig.prebuiltDeckPoints < 0 || newConfig.prebuiltDeckFichas < 0
+      || !Number.isInteger(newConfig.prebuiltDeckPoints) || !Number.isInteger(newConfig.prebuiltDeckFichas)
+      || newConfig.packCost < 0 || newConfig.fichasPerEnhancement <= 0
       || newConfig.pvpMinRewardMinutes < 0 || newConfig.pvpMinCompletedTurns < 0
       || newConfig.pvpMaxRewardedMatchesPerPairDaily < 0 || newConfig.pvpMaxPointsPerDay < 0 || !pvpIntegerFields
       || !classifiedsNonNegative || newConfig.classifiedsMythicChance < 0 || newConfig.classifiedsMythicChance > 1) {
@@ -6729,7 +7219,7 @@ export function showOptionsMenu(onBack) {
   const overlay = document.createElement('div');
   overlay.id = 'options-menu-overlay';
 
-  const difficultyLabel = () => (state.botDifficulty === 'easy' ? 'Fácil' : 'Difícil');
+  const difficultyLabel = () => botDifficultyLabel(state.botDifficulty);
   const initialAudio = getAudioSettings();
   const percent = value => Math.round(Number(value || 0) * 100);
 
@@ -6780,7 +7270,7 @@ export function showOptionsMenu(onBack) {
 
   const diffBtn = overlay.querySelector('#opt-difficulty');
   diffBtn.addEventListener('click', () => {
-    state.botDifficulty = state.botDifficulty === 'easy' ? 'hard' : 'easy';
+    state.botDifficulty = nextBotDifficulty(normalizeBotDifficulty(state.botDifficulty));
     diffBtn.textContent = difficultyLabel();
     logMsg(gameText('options.difficulty.changed', { difficulty: difficultyLabel() }));
   });
@@ -7618,6 +8108,46 @@ export function showBottomCardsModal(hand, countToBottom, onConfirm) {
   });
 }
 
+// 23.15.9 — Copy Engine. Antes de retargetear una copia, el controlador puede
+// conservar el target copiado. El modal es deliberadamente pequeño y reutiliza el shell
+// visual de las selecciones de Mulligan para no sumar otra familia de overlays.
+export function showCopyRetargetModal(cardName, targetLabel, onKeep, onChange) {
+  injectMulliganStyles();
+  const overlay=document.createElement('div');
+  overlay.id='mulligan-overlay';
+  overlay.innerHTML=`
+    <div class="mulligan-panel">
+      <div class="mulligan-title">${gameTextHtml('copy.retarget.title')}</div>
+      <div class="mulligan-subtitle">${gameTextHtml('copy.retarget.subtitle',{card:cardName||'objeto',target:targetLabel||'objetivo'})}</div>
+      <div class="mulligan-buttons">
+        <button class="mulligan-btn" data-copy-keep>${gameTextHtml('copy.retarget.keep')}</button>
+        <button class="mulligan-btn mulligan-btn-keep" data-copy-change>${gameTextHtml('copy.retarget.change')}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const finish=cb=>{ overlay.remove(); cb?.(); };
+  overlay.querySelector('[data-copy-keep]').onclick=()=>finish(onKeep);
+  overlay.querySelector('[data-copy-change]').onclick=()=>finish(onChange);
+}
+
+export function showStackObjectChoiceModal(entries = [], title = null, onConfirm, onCancel = null) {
+  injectMulliganStyles();
+  const overlay=document.createElement('div');
+  overlay.id='mulligan-overlay';
+  const rows=entries.map((entry,i)=>`<button class="mulligan-btn" data-stack-choice="${i}" style="width:100%;margin:4px 0;">${escapeCardTextHtml(entry.label||entry.cardName||`Objeto #${entry.id}`)}</button>`).join('');
+  overlay.innerHTML=`
+    <div class="mulligan-panel">
+      <div class="mulligan-title">${escapeCardTextHtml(title || gameText('copy.stackChoice.title'))}</div>
+      <div class="mulligan-subtitle">${rows || 'No hay objetos legales.'}</div>
+      <div class="mulligan-buttons"><button class="mulligan-btn" data-stack-cancel>${gameTextHtml('common.cancel')}</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelectorAll('[data-stack-choice]').forEach(btn=>btn.onclick=()=>{
+    const entry=entries[Number(btn.dataset.stackChoice)]; overlay.remove(); onConfirm?.(entry || null);
+  });
+  overlay.querySelector('[data-stack-cancel]').onclick=()=>{ overlay.remove(); onCancel?.(); };
+}
+
 export function showGameOverOverlay(didWin) {
   els.gameOverTitle.textContent = didWin ? gameText('game.over.overlayWin', { rival: getRivalName() }) : gameText('game.over.overlayLoss', { rival: getRivalName() });
   if (els.gameOverRewardStatus) {
@@ -7683,7 +8213,7 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
         if (state.pendingTargetCard) {
           const rules = getTargetRules(state.pendingTargetCard);
           const allowThisSide = isLocal ? rules.allowLocalPermanent : rules.allowRivalPermanent;
-          const matchesFilter = !rules.permanentFilter || group.items[0].item.card.type.includes(rules.permanentFilter);
+          const matchesFilter = (!rules.permanentFilter || group.items[0].item.card.type.includes(rules.permanentFilter)) && (!rules.subtypeFilter || cardHasSubtype(group.items[0].item.card,rules.subtypeFilter)) && (!rules.sharedCreatureTypeWithSource || cardsShareCreatureType(group.items[0].item.card,rules.typalSourceCard)) && (!rules.transformableOnly || canTransformPermanent(group.items[0].item));
           if (allowThisSide && matchesFilter) {
             const { item: targetItem, originalIndex } = group.items[0];
             handleSupportTargetClick(targetItem, isLocal, originalIndex);
@@ -7926,7 +8456,7 @@ export function render() {
   // menos que pagues, etc.) — arriesgando una condición de carrera con esa resolución.
   // Misma lista que ya usa canPlayCard (más pendingTargetCard/pendingSacrificeChoice/
   // pendingHybridLifePayment, que faltaban ahí también).
-  const anyPendingChoice = !!state.pendingCastTransaction || !!state.pendingAlternativeCostChoice || !!state.pendingPrivateZoneChoice || !!state.pendingLandSearchChoice || !!state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice !== null ||
+  const anyPendingChoice = !!state.pendingSuspendTransaction || !!state.pendingCastTransaction || !!state.pendingAlternativeCostChoice || !!state.pendingPrivateZoneChoice || !!state.pendingLandSearchChoice || !!state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice !== null ||
     state.pendingTargetCard !== null || state.pendingCrew !== null || state.pendingWardChoice !== null ||
     state.pendingCounterUnlessPay !== null || state.pendingHybridLifePayment !== null ||
     state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null ||
@@ -8011,7 +8541,7 @@ export function render() {
   if (state.isDiscarding) els.localHand.classList.add('discard-warning');
   else els.localHand.classList.remove('discard-warning');
 
-  if (state.pendingSpellIndex !== null || state.pendingCastTransaction?.stage === 'targets' || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay) {
+  if (state.pendingSuspendTransaction || state.pendingSpellIndex !== null || state.pendingCastTransaction?.stage === 'targets' || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay) {
     els.paymentControls.classList.remove('hidden'); els.btnEndTurn.classList.add('hidden'); 
     els.localHand.classList.add('paying-mode');
     if (!state.pendingCrew && !state.pendingWardChoice && !state.pendingCounterUnlessPay) {
@@ -8025,9 +8555,11 @@ export function render() {
       if (pendingCardEl) pendingCardEl.classList.add('paying');
     }
     
-    const pendingCard = state.pendingCastTransaction?.card || (state.pendingSpellIndex !== null ? state.localHand[state.pendingSpellIndex] : null);
+    const pendingCard = state.pendingSuspendTransaction?.card || state.pendingCastTransaction?.card || (state.pendingSpellIndex !== null ? state.localHand[state.pendingSpellIndex] : null);
     let statusText;
-    if (state.pendingCrew) {
+    if (state.pendingSuspendTransaction) {
+      statusText = `⏳ Suspendiendo ${state.pendingSuspendTransaction.card.name} — pagá ${state.pendingSuspendTransaction.spec.cost}`;
+    } else if (state.pendingCrew) {
       statusText = gameText('payment.status.crew', { card: state.pendingCrew.item.card.name, power: state.pendingCrew.powerSoFar, required: state.pendingCrew.required });
     } else if (state.pendingWardChoice) {
       statusText = gameText('payment.status.ward', { card: state.pendingWardChoice.targetObj.item.card.name, cost: state.pendingWardChoice.wardCost });
@@ -8082,7 +8614,9 @@ export function render() {
       els.btnPayCounterTax.classList.add('hidden');
     }
 
-    if (state.pendingCrew) {
+    if (state.pendingSuspendTransaction) {
+      statusText = `⏳ Suspendiendo ${state.pendingSuspendTransaction.card.name} — pagá ${state.pendingSuspendTransaction.spec.cost}`;
+    } else if (state.pendingCrew) {
       els.btnConfirmCrew.classList.remove('hidden');
       els.btnConfirmCrew.disabled = state.pendingCrew.powerSoFar < state.pendingCrew.required;
       els.btnConfirmCrew.textContent = gameText('payment.button.crew', {
@@ -8123,7 +8657,7 @@ els.btnConfirmCrew.addEventListener('click', confirmCrew);
 // ACTUALIZADO: Controles de teclado globales (Escape y Barra Espaciadora)
 document.addEventListener('keydown', (e) => { 
   // Cancelar pagos pendientes
-  if (e.key === 'Escape' && (state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew)) {
+  if (e.key === 'Escape' && (state.pendingSuspendTransaction || state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCrew)) {
     cancelPayment(); 
   }
 

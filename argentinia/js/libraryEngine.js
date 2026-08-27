@@ -1,3 +1,4 @@
+import { cardHasSubtype } from './typalEngine.js';
 // js/libraryEngine.js — Argentinia 23.15.6 · Generic Library / Tutor / Look-at-N
 // Capa pura y determinista para seleccionar cartas de biblioteca. No conoce DOM, state ni Firestore.
 // El commit real sobre zonas privadas vive en main.js; este módulo sólo normaliza contratos,
@@ -83,8 +84,7 @@ export function libraryCardMatchesFilter(card, rawFilter = {}) {
   if(!types.has(filter.cardType)) return false;
   if(filter.excludeCardType && types.has(filter.excludeCardType)) return false;
   if(filter.subtypes.length){
-    const typeText=normText(card.type);
-    if(!filter.subtypes.some(s=>typeText.includes(s))) return false;
+    if(!filter.subtypes.some(s=>cardHasSubtype(card,s))) return false;
   }
   const colors=new Set(arr(card.colors || card.color).map(v=>String(v).toUpperCase()));
   if(filter.colors.length){
@@ -194,7 +194,7 @@ export function libraryEngineSummary(){
     version:LIBRARY_ENGINE_VERSION,
     effects:['search_library','look_at_top'],
     destinations:[...LIBRARY_DESTINATIONS],
-    filters:['type','excludeType','subtype','color','legendary','manaValue','basic/nonbasic'],
+    filters:['type','excludeType','subtype(exact typal)','color','legendary','manaValue','basic/nonbasic'],
     notes:['library top = deck[deck.length-1]','Aura-to-battlefield intentionally fail-closed']
   };
 }

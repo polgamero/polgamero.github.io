@@ -89,7 +89,7 @@ export function deriveLocalPriorityActivity(state) {
   if (state.pendingActivatedAbilityChoice) return 'choosing_ability';
   if (state.pendingSacrificeChoice || state.pendingSacrificeEffectChoice) return 'choosing_sacrifice';
   if (state.pendingModeChoice || state.pendingAlternativeCostChoice) return 'choosing_mode';
-  if (state.pendingSpellIndex != null || state.pendingCastTransaction?.stage === 'payment' || state.pendingAbilitySource != null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingCompositeCostPayment) return 'paying_mana';
+  if (state.pendingSuspendTransaction || state.pendingSpellIndex != null || state.pendingCastTransaction?.stage === 'payment' || state.pendingAbilitySource != null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay || state.pendingCompositeCostPayment) return 'paying_mana';
   if (hasAnyResolutionChoice(state)) return 'choosing_cards';
 
   // 23.13.36: declarar atacantes/bloqueadores sigue siendo una decisión obligatoria, pero

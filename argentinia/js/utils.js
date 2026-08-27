@@ -2,7 +2,9 @@ import { isCreaturePermanent, isArtifactPermanent, isLandPermanent } from './per
 import { cardDb } from './cardLoader.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
 import { zoneForCardOwner } from './zoneOwnership.js';
+import { cardForNonBattlefieldZone } from './transformEngine.js';
 import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
+import { buildCompetitiveDeck } from './deckIntelligence.js';
 
 export function shuffle(array) { 
   return array.sort(() => Math.random() - 0.5); 
@@ -48,7 +50,10 @@ export function getActivatedAbilityTiming(ability) {
 export function moveBattlefieldCardToZone(card, destinationZone) {
   if (!card || !Array.isArray(destinationZone)) return false;
   if (card.isToken) return false;
-  destinationZone.push(card);
+  // 23.16.4 — una TDFC que abandona el battlefield vuelve a existir como su cara frontal.
+  // Esto además elimina el estado de cara/copy-overlay runtime antes de entrar a mano,
+  // cementerio o Exilio, sin obligar a cada removal/blink/SBA a conocer Transform Engine.
+  destinationZone.push(cardForNonBattlefieldZone(card));
   return true;
 }
 
@@ -89,6 +94,9 @@ export function removeRandomCardsFromHand(hand, amount, randomFn = Math.random) 
 export function moveCounteredStackItemToDestination(stackItem, gameState) {
   if (!stackItem || !stackItem.card || !gameState) return 'none';
   if (stackItem.type === 'ability') return 'ability';
+  // 23.15.9 — una copia de hechizo no es una carta física. Si es contrarrestada
+  // simplemente deja de existir al abandonar la Stack; nunca toca Cementerio/Exilio.
+  if (stackItem.isCopy) return 'copy_ceased';
 
   const isLocal = !!stackItem.isLocal;
   // Flashback ya contiene su propio replacement de reglas: si el hechizo fuera a dejar la
@@ -176,186 +184,48 @@ export function createRemoteDecisionQueue({ onActivate = () => {}, onIdle = () =
   };
 }
 
-// --- ARMADO DE MAZO "DE VERDAD" ---
-// Antes, buildRandomDeck elegía cartas 100% al azar de TODO el pool: mazos de 5 colores,
-// sin curva, con manos que muchas veces no tenían nada jugable. Ahora el mazo arranca
-// eligiendo una identidad de color real de MTG (mono o un par de guild) y arma tierras y
-// hechizos respetando esa identidad, con curva de maná y un piso de criaturas.
+// --- ARMADO DE MAZO COMPETITIVO 23.17.1 ---
+// La UI continúa eligiendo únicamente uno o dos colores. El conocimiento de arquetipos,
+// roles, curva, sinergia, manabase y goldfish vive en deckIntelligence.js; utils conserva
+// este wrapper retrocompatible para no obligar a gameplay/account bootstrap a conocerlo.
 
 const ALL_COLORS = ['W', 'U', 'B', 'R', 'G'];
-
-// Los 10 pares de 2 colores reales de MTG (guilds de Ravnica).
 const GUILD_PAIRS = [
   ['W', 'U'], ['U', 'B'], ['B', 'R'], ['R', 'G'], ['G', 'W'],
   ['W', 'B'], ['U', 'R'], ['B', 'G'], ['R', 'W'], ['G', 'U']
 ];
-
-// Se exportan para que el modal de selección de mazo (ui.js) pueda listar las mismas
-// opciones que el generador realmente entiende — una sola fuente de verdad.
 export { ALL_COLORS, GUILD_PAIRS };
 
-const MAX_COPIES_SPELL = 4;       // límite de copias de una misma carta no-tierra, como en MTG real
-const MAX_COPIES_NONBASIC_LAND = 2;
-const NONBASIC_LAND_BUDGET = 6;   // de las 24 tierras, cuántas como máximo son "especiales" (duales, etc.)
-const CREATURE_RATIO = 0.55;      // % de los hechizos que apuntamos a que sean criaturas
-
 function pickDeckIdentity() {
-  // 70% un par de 2 colores (el mazo "real" más típico), 30% mono-color.
-  if (Math.random() < 0.7) {
-    return [...GUILD_PAIRS[Math.floor(Math.random() * GUILD_PAIRS.length)]];
-  }
+  if (Math.random() < 0.7) return [...GUILD_PAIRS[Math.floor(Math.random() * GUILD_PAIRS.length)]];
   return [ALL_COLORS[Math.floor(Math.random() * ALL_COLORS.length)]];
 }
 
-// Una carta "entra" en la identidad del mazo si todos sus colores están contemplados.
-// Las incoloras (colors: []) siempre entran, en cualquier mazo.
-function matchesIdentity(card, identity) {
-  const cols = card.colors || [];
-  if (cols.length === 0) return true;
-  return cols.every(c => identity.includes(c));
+let lastRandomDeckReport = null;
+export function getLastRandomDeckReport() {
+  return lastRandomDeckReport ? JSON.parse(JSON.stringify(lastRandomDeckReport)) : null;
 }
 
-// Las cartas baratas pesan más que las caras, para que el mazo tenga curva y no termine
-// siendo puros bombazos de cmc alto que nunca llegás a tirar.
-function curveWeight(cmc) {
-  return Math.max(1, 7 - (cmc || 0));
-}
-
-// Muestreo ponderado por curva, respetando un máximo de copias por carta (como en MTG real).
-function weightedSample(pool, count, maxCopies) {
-  const remaining = pool.map(card => ({ card, left: maxCopies }));
-  const result = [];
-  while (result.length < count) {
-    const eligible = remaining.filter(r => r.left > 0);
-    if (eligible.length === 0) break;
-    const totalWeight = eligible.reduce((sum, r) => sum + curveWeight(r.card.cmc), 0);
-    let roll = Math.random() * totalWeight;
-    let picked = eligible[eligible.length - 1];
-    for (const r of eligible) {
-      roll -= curveWeight(r.card.cmc);
-      if (roll <= 0) { picked = r; break; }
-    }
-    picked.left -= 1;
-    result.push({ ...picked.card });
-  }
-  return result;
-}
-
-function buildSpellSection(identity, targetTotal) {
-  const eligible = cardDb.allCards.filter(c => !c.type.includes('Tierra') && matchesIdentity(c, identity));
-  const creatures = eligible.filter(c => c.type.includes('Criatura'));
-  const others = eligible.filter(c => !c.type.includes('Criatura'));
-
-  const targetCreatures = Math.round(targetTotal * CREATURE_RATIO);
-  const targetOthers = targetTotal - targetCreatures;
-
-  let picks = [
-    ...weightedSample(creatures, targetCreatures, MAX_COPIES_SPELL),
-    ...weightedSample(others, targetOthers, MAX_COPIES_SPELL)
-  ];
-
-  // Relleno de seguridad: si la identidad elegida tiene un pool angosto y no llegamos al
-  // total pedido, completamos con lo que haya (aflojando el límite de copias).
-  if (picks.length < targetTotal && eligible.length > 0) {
-    const extra = weightedSample(eligible, targetTotal - picks.length, MAX_COPIES_SPELL * 3);
-    picks = [...picks, ...extra];
-  }
-
-  return picks;
-}
-
-// Cuenta cuántos símbolos de cada color piden los hechizos ya elegidos, para repartir las
-// tierras básicas en esa misma proporción (si el mazo casi no usa un color, no le sobran
-// tierras de ese color por las dudas).
-function countColorPips(cards) {
-  const pips = { W: 0, U: 0, B: 0, R: 0, G: 0 };
-  cards.forEach(c => {
-    const cost = parseManaCost(c.manaCost);
-    ALL_COLORS.forEach(col => pips[col] += cost[col]);
-  });
-  return pips;
-}
-
-function buildLandSection(identity, spellSection, targetTotal) {
-  const allLands = cardDb.allCards.filter(c => c.type.includes('Tierra'));
-  const basics = allLands.filter(c => c.type.includes('básica') && c.produces && identity.includes(c.produces));
-
-  // Tierras no básicas que producen maná real (duales, "entra girada", etc.) y calzan 100%
-  // con la identidad del mazo. Las de utilidad sin maná (ej. Biblioteca Nacional) quedan
-  // afuera del armado automático a propósito: restan consistencia, no la suman.
-  const nonBasicManaLands = allLands.filter(c => {
-    if (c.type.includes('básica')) return false;
-    const cols = c.produces ? [c.produces] : (c.producesOptions || []);
-    if (cols.length === 0) return false;
-    return cols.every(col => identity.includes(col));
-  });
-
-  const nonBasicPicks = weightedSample(nonBasicManaLands, Math.min(NONBASIC_LAND_BUDGET, targetTotal), MAX_COPIES_NONBASIC_LAND);
-  const basicsNeeded = targetTotal - nonBasicPicks.length;
-  let basicPicks = [];
-
-  if (identity.length === 1) {
-    const only = basics.filter(b => b.produces === identity[0]);
-    for (let i = 0; i < basicsNeeded; i++) {
-      if (only.length === 0) break;
-      basicPicks.push({ ...only[Math.floor(Math.random() * only.length)] });
-    }
-  } else {
-    // Repartimos las básicas en proporción a cuánto pide cada color en los hechizos elegidos,
-    // con un piso del 30% para el color minoritario, para no quedar sin fuente de ese color.
-    const pips = countColorPips(spellSection);
-    const [colorA, colorB] = identity;
-    const totalPips = pips[colorA] + pips[colorB];
-    let ratioA = totalPips > 0 ? pips[colorA] / totalPips : 0.5;
-    ratioA = Math.min(0.7, Math.max(0.3, ratioA));
-
-    const needA = Math.round(basicsNeeded * ratioA);
-    const needB = basicsNeeded - needA;
-    const poolA = basics.filter(b => b.produces === colorA);
-    const poolB = basics.filter(b => b.produces === colorB);
-
-    for (let i = 0; i < needA; i++) {
-      if (poolA.length === 0) break;
-      basicPicks.push({ ...poolA[Math.floor(Math.random() * poolA.length)] });
-    }
-    for (let i = 0; i < needB; i++) {
-      if (poolB.length === 0) break;
-      basicPicks.push({ ...poolB[Math.floor(Math.random() * poolB.length)] });
-    }
-  }
-
-  let landPicks = [...nonBasicPicks, ...basicPicks];
-
-  // Relleno de seguridad por si algún color se quedó sin básicas disponibles.
-  if (landPicks.length < targetTotal && basics.length > 0) {
-    const shortfall = targetTotal - landPicks.length;
-    for (let i = 0; i < shortfall; i++) {
-      landPicks.push({ ...basics[Math.floor(Math.random() * basics.length)] });
-    }
-  }
-
-  return landPicks;
-}
-
-export function buildRandomDeck(forcedIdentity) {
-  const TOTAL_LANDS = 24;
-  const TOTAL_SPELLS = 36;
-
-  // Si viene una identidad forzada (el jugador humano la eligió en el modal inicial), la
-  // usamos tal cual. Si no (el Tano siempre llama sin argumento), se sortea como siempre.
+// options.quality: starter | competitive | good | strong | elite.
+// Sin argumento conserva la firma histórica y devuelve SIEMPRE sólo el array de 60 cartas.
+export function buildRandomDeck(forcedIdentity, options = {}) {
   const identity = forcedIdentity || pickDeckIdentity();
-  console.log(`[buildRandomDeck] Identidad elegida: ${identity.join('/')}`);
-
-  const spellSection = buildSpellSection(identity, TOTAL_SPELLS);
-  const landSection = buildLandSection(identity, spellSection, TOTAL_LANDS);
-
-  return shuffle([...landSection, ...spellSection]);
+  const quality = options.quality || 'competitive';
+  const result = buildCompetitiveDeck(cardDb.allCards, identity, { ...options, quality });
+  lastRandomDeckReport = result.report;
+  console.log(
+    `[Deck Intelligence ${result.report.engineVersion}] ${identity.join('/')} · ` +
+    `${result.report.archetypeLabel} · ${result.report.qualityLabel} · ` +
+    `score ${result.report.selectedScore}/${result.report.bestScore} · ` +
+    `${result.report.landCount} tierras · MV ${result.report.averageManaValue}`
+  );
+  return shuffle(result.deck);
 }
 
 // FASE 3, ETAPA 4 (revisión): convierte el cardIds guardado de un mazo real ("Mis Mazos")
 // en cartas de juego de verdad, listas para barajar y jugar. Clona cada carta con
-// {...cardDef} en vez de reusar la misma referencia — mismo criterio que weightedSample de
-// acá arriba: cada copia necesita ser un objeto DISTINTO, aunque sean 4 copias de la misma
+// {...cardDef} en vez de reusar la misma referencia — mismo criterio que usa Deck Intelligence:
+// cada copia necesita ser un objeto DISTINTO, aunque sean 4 copias de la misma
 // carta, porque el motor le va a ir pegando estado propio (girada, contadores, etc.) a cada
 // instancia por separado.
 //
@@ -637,10 +507,14 @@ export function getProliferateCandidates(state) {
   scanCounterZone(state.rivalLands, false, 'land');
 
   (Array.isArray(state.localPlaneswalkers) ? state.localPlaneswalkers : []).forEach(item => {
-    if (Number(item?.loyalty) > 0) out.push({ item, ownerIsLocal: true, kind: 'planeswalker', counterTypes: ['loyalty'] });
+    const extra=Object.keys(item?.counters||{}).filter(type=>Number(item.counters[type])>0);
+    const types=Number(item?.loyalty)>0 ? ['loyalty',...extra] : extra;
+    if(types.length) out.push({ item, ownerIsLocal:true, kind:'planeswalker', counterTypes:[...new Set(types)] });
   });
   (Array.isArray(state.rivalPlaneswalkers) ? state.rivalPlaneswalkers : []).forEach(item => {
-    if (Number(item?.loyalty) > 0) out.push({ item, ownerIsLocal: false, kind: 'planeswalker', counterTypes: ['loyalty'] });
+    const extra=Object.keys(item?.counters||{}).filter(type=>Number(item.counters[type])>0);
+    const types=Number(item?.loyalty)>0 ? ['loyalty',...extra] : extra;
+    if(types.length) out.push({ item, ownerIsLocal:false, kind:'planeswalker', counterTypes:[...new Set(types)] });
   });
 
   if (Number(state.localPoison) > 0) out.push({ item: null, ownerIsLocal: true, kind: 'player_poison', counterTypes: ['poison'] });

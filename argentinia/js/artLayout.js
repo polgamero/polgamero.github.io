@@ -1,4 +1,4 @@
-// js/artLayout.js — Entrega 23.13.23
+// js/artLayout.js — Entrega 23.16.5.2 · DFC face-aware layout keys
 // Encuadre NO destructivo del arte de las cartas. Los PNG originales nunca se modifican:
 // por cardId sólo persistimos scale/x/y y createCardElement aplica ese transform al <img>.
 //
@@ -23,7 +23,7 @@ export const ART_LAYOUT_LIMITS = Object.freeze({
   maxOffset: 45
 });
 
-const CARD_ID_RE = /^[A-Za-z0-9_-]{1,80}$/;
+const CARD_ID_RE = /^[A-Za-z0-9_-]{1,80}(?:::(?:front|back))?$/;
 const EPSILON = 0.0005;
 
 let activeLayouts = Object.freeze({});
@@ -114,14 +114,22 @@ export function getArtLayoutsSnapshot() {
   return Object.fromEntries(Object.entries(activeLayouts).map(([id, layout]) => [id, { ...layout }]));
 }
 
+function legacyFrontLayoutId(id) {
+  return String(id || '').endsWith('::front') ? String(id).slice(0, -7) : '';
+}
+
 export function getArtLayout(cardId) {
   const id = String(cardId || '');
-  const layout = activeLayouts[id];
-  return layout ? { ...layout } : { ...ART_LAYOUT_DEFAULT };
+  const explicit = activeLayouts[id];
+  if (explicit) return { ...explicit };
+  const legacyId = legacyFrontLayoutId(id);
+  const legacy = legacyId ? activeLayouts[legacyId] : null;
+  return legacy ? { ...legacy } : { ...ART_LAYOUT_DEFAULT };
 }
 
 export function hasCustomArtLayout(cardId) {
-  return !!activeLayouts[String(cardId || '')];
+  const id = String(cardId || '');
+  return !!activeLayouts[id] || !!(legacyFrontLayoutId(id) && activeLayouts[legacyFrontLayoutId(id)]);
 }
 
 export function buildArtLayoutsDocument(layouts = activeLayouts) {
@@ -243,6 +251,8 @@ export async function saveArtLayout(cardId, layoutOrNull) {
 
   const next = { ...baseLayouts };
   const normalized = layoutOrNull == null ? { ...ART_LAYOUT_DEFAULT } : normalizeArtLayout(layoutOrNull);
+  const legacyId = legacyFrontLayoutId(id);
+  if (legacyId) delete next[legacyId];
   if (isDefaultArtLayout(normalized)) delete next[id];
   else next[id] = normalized;
 

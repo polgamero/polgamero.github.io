@@ -23,7 +23,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { cardDb } from './cardLoader.js';
-import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
+import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_SAVED_DECKS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
+import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, isDailyStreakConsistent, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, localDateKey, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
@@ -1279,7 +1280,7 @@ export async function craftEnhancement(uid, cardId, keyword, fichaCost) {
   return profile;
 }
 
-// FASE 3, ETAPA 2: crea un mazo nuevo (hasta 5 en total, contando el inicial). Todo
+// FASE 3, ETAPA 2: crea un mazo nuevo (límite global admin-editable, contando el inicial). Todo
 // validado DENTRO de la transacción — no confía en que el cliente ya haya chequeado esto,
 // lo vuelve a comprobar del lado "servidor": máximo de mazos, nombre no vacío, al menos
 // una carta, y que ninguna carta use más copias de las que realmente están en tu colección.
@@ -1362,7 +1363,7 @@ export async function createDeck(uid, name, cardIds) {
     const data = snap.data();
     const decks = data.decks || [];
 
-    if (decks.length >= 5) throw new Error('Ya tenés el máximo de 5 mazos.');
+    if (decks.length >= MAX_SAVED_DECKS) throw new Error(`Ya tenés el máximo de ${MAX_SAVED_DECKS} mazos.`);
     validateDeckCards(data, name, cardIds, {
       allowVirtualAdminPool: auth.currentUser?.uid === uid && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL
     });
@@ -1372,6 +1373,75 @@ export async function createDeck(uid, name, cardIds) {
     tx.update(ref, updated);
     return { ...data, ...updated };
   });
+}
+
+
+// 23.17.3.1 — compra atómica + attestation server-side de un Mazo Prearmado oficial.
+// Lee el catálogo bundled y la configuración pública actual antes de entrar a la transacción;
+// dentro de la transacción vuelve a leer gameConfig/settings para que precio/cupo sean los
+// valores autoritativos publicados por Admin en ese instante.
+export async function purchasePrebuiltDeck(uid, productId, deckName) {
+  await cardDb.loadAll();
+  const catalog = await loadPrebuiltDeckCatalog();
+  const product = catalog.products.find(entry => entry.id === String(productId || ''));
+  if (!product) {
+    const error = new Error('Ese mazo prearmado no existe.'); error.code='PREBUILT_NOT_FOUND'; throw error;
+  }
+  const legal = validatePrebuiltDeckProduct(product, cardDb.allCards);
+  if (!legal.ok) {
+    const error = new Error(`El mazo oficial no supera su contrato de legalidad: ${legal.errors.join(', ')}`); error.code='PREBUILT_INVALID_PRODUCT'; throw error;
+  }
+  const cleanName=String(deckName||'').trim();
+  if (!cleanName) { const error=new Error('Elegí un nombre para el mazo.'); error.code='PREBUILT_NAME_REQUIRED'; throw error; }
+  if (cleanName.length>30) { const error=new Error('El nombre del mazo no puede tener más de 30 caracteres.'); error.code='PREBUILT_NAME_TOO_LONG'; throw error; }
+
+  // 23.17.3.1 — fail closed: antes de tocar economía, exigimos que Firestore acepte la
+  // attestation 23.13.69. Con Rules 23.13.68 el probe es rechazado y la compra NO ocurre.
+  try {
+    await getAuthoritativeServerClock(uid);
+  } catch (cause) {
+    const error=new Error('La compra segura de Mazos Prearmados requiere Firestore Rules 23.13.69 publicadas.');
+    error.code='PREBUILT_RULES_STALE'; error.cause=cause; throw error;
+  }
+
+  const userRef=doc(db,'users',uid);
+  const settingsRef=doc(db,'gameConfig','settings');
+  const result=await runTransaction(db, async tx => {
+    const [userSnap,settingsSnap]=await Promise.all([tx.get(userRef),tx.get(settingsRef)]);
+    if(!userSnap.exists()) throw new Error('No se encontró tu perfil.');
+    const data=userSnap.data();
+    const settings=settingsSnap.exists()?settingsSnap.data():{};
+    const pointsCost=Math.max(0,Math.floor(Number(settings.prebuiltDeckPoints ?? PREBUILT_DECK_POINTS)||0));
+    const fichasCost=Math.max(0,Math.floor(Number(settings.prebuiltDeckFichas ?? PREBUILT_DECK_FICHAS)||0));
+    const maxDecks=Math.max(1,Math.floor(Number(settings.maxSavedDecks ?? MAX_SAVED_DECKS)||MAX_SAVED_DECKS));
+    const decks=Array.isArray(data.decks)?data.decks:[];
+    if(decks.length>=maxDecks){ const error=new Error(`Ya tenés el máximo de ${maxDecks} mazos.`); error.code='PREBUILT_DECK_LIMIT'; throw error; }
+    const purchased=getPrebuiltPurchaseIds(data);
+    if(purchased.includes(product.id)){ const error=new Error('Ese mazo prearmado ya fue comprado por esta cuenta.'); error.code='PREBUILT_ALREADY_PURCHASED'; throw error; }
+    const points=Math.max(0,Math.floor(Number(data.points)||0));
+    const fichas=Math.max(0,Math.floor(Number(data.fichas)||0));
+    if(points<pointsCost || fichas<fichasCost){ const error=new Error('No te alcanzan los puntos o las Fichas.'); error.code='PREBUILT_INSUFFICIENT_FUNDS'; throw error; }
+
+    const collection=[...(Array.isArray(data.collection)?data.collection:[]),...product.cardIds];
+    const synthetic={...data,collection};
+    validateDeckCards(synthetic,cleanName,product.cardIds,{allowVirtualAdminPool:false});
+    const now=Date.now();
+    const newDeck={id:`prebuilt_${product.id}_${now}`,name:cleanName,cardIds:[...product.cardIds],isDefault:false,createdAt:now,prebuiltProductId:product.id};
+    const receipt={productId:product.id,purchasedAt:now,deckId:newDeck.id,pointsCost,fichasCost};
+    const receipts={...(data.prebuiltDeckPurchases&&typeof data.prebuiltDeckPurchases==='object'&&!Array.isArray(data.prebuiltDeckPurchases)?data.prebuiltDeckPurchases:{}),[product.id]:receipt};
+    const updated={
+      points:points-pointsCost,
+      fichas:fichas-fichasCost,
+      collection,
+      decks:[...decks,newDeck],
+      prebuiltDeckPurchases:receipts
+    };
+    tx.update(userRef,updated);
+    return {profile:normalizeProfileForClient({...data,...updated}),pointsCost,fichasCost,cardsGranted:product.cardIds.length,deck:newDeck};
+  });
+  await statsBestEffort(uid,{pointsSpent:result.pointsCost,fichasSpent:result.fichasCost});
+  void economyLogBestEffort({targetUid:uid,source:'prebuilt_deck_purchase',pointsDelta:-result.pointsCost,fichasDelta:-result.fichasCost,cardsDelta:result.cardsGranted});
+  return result;
 }
 
 // Edita un mazo YA GUARDADO — mismas reglas que crear uno nuevo (mismo validateDeckCards),
