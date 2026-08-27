@@ -1609,7 +1609,7 @@ button.mana-pool-chip:disabled { opacity: 1; }
 }
 /* 23.13.55 — REC colapsable universal. Desktop adopta exactamente el contrato mobile:
    chip mínimo por defecto; el resto del HUD sólo existe visualmente al desplegar. */
-.telemetry-panel:not(.arg-mobile-telemetry-expanded) > :not(.arg-mobile-telemetry-toggle) {
+.telemetry-panel:not(.arg-mobile-telemetry-expanded) > :not(.arg-mobile-telemetry-toggle):not(.arg-game-music-toggle) {
   display: none !important;
 }
 .arg-mobile-telemetry-toggle {
@@ -1628,6 +1628,30 @@ button.mana-pool-chip:disabled { opacity: 1; }
   white-space: nowrap;
 }
 .arg-mobile-telemetry-toggle:hover { background: rgba(73,19,19,.96); }
+/* 23.17.5 — mute/unmute de música de partida, siempre pegado a la derecha de REC. */
+.arg-game-music-toggle {
+  order: -99;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid rgba(222,193,112,.58);
+  border-radius: 8px;
+  background: rgba(29,26,16,.94);
+  color: #f5e8b3;
+  box-shadow: 0 3px 12px rgba(0,0,0,.42);
+  font: 700 15px/1 system-ui,sans-serif;
+  cursor: pointer;
+}
+.arg-game-music-toggle:hover { background: rgba(61,51,22,.97); }
+.arg-game-music-toggle[hidden] { display: none !important; }
+.telemetry-panel:not(.arg-mobile-telemetry-expanded) .arg-game-music-toggle {
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 12px;
+}
 /* 23.17.4 — cerrado ocupa menos pantalla; al expandir recupera exactamente la huella previa. */
 .telemetry-panel:not(.arg-mobile-telemetry-expanded) .arg-mobile-telemetry-toggle {
   min-width:36px; width:36px; height:24px; padding:0 4px; border-radius:6px; font-size:0; letter-spacing:0; overflow:hidden;

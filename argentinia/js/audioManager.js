@@ -1,6 +1,6 @@
-// js/audioManager.js — Entrega 23.13.65 Audio Polish + Coin Toss SFX.
-// Un único dueño del audio de Argentinia: música de menú hoy, catálogo extensible para
-// nuevas canciones y SFX mañana. Todo es local al navegador; no toca Firestore.
+// js/audioManager.js — Entrega 23.17.5 Gameplay Music.
+// Un único dueño del audio de Argentinia: música por escena (menú / Tano / multiplayer)
+// con Opus primero y MP3 fallback, más SFX separados. Todo es local al navegador.
 
 export const AUDIO_SETTINGS_STORAGE_KEY = 'argentinia.audio.v1';
 
@@ -13,6 +13,24 @@ export const AUDIO_CATALOG = Object.freeze({
       sources: Object.freeze([
         Object.freeze({ src: './assets/sounds/music/menu.opus', type: 'audio/ogg; codecs="opus"' }),
         Object.freeze({ src: './assets/sounds/music/menu.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    solo: Object.freeze({
+      id: 'solo',
+      loop: true,
+      preload: 'metadata',
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/music/solo.opus', type: 'audio/ogg; codecs="opus"' }),
+        Object.freeze({ src: './assets/sounds/music/solo.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    multiplayer: Object.freeze({
+      id: 'multiplayer',
+      loop: true,
+      preload: 'metadata',
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/music/multiplayer.opus', type: 'audio/ogg; codecs="opus"' }),
+        Object.freeze({ src: './assets/sounds/music/multiplayer.mp3', type: 'audio/mpeg' })
       ])
     })
   }),
@@ -69,7 +87,9 @@ function loadStoredSettings() {
 let settings = loadStoredSettings();
 let musicElement = null;
 let currentMusicTrackId = null;
-let desiredScene = 'silent'; // 'menu' | 'game' | 'silent'
+export const MUSIC_SCENE_TRACKS = Object.freeze({ menu: 'menu', solo: 'solo', multiplayer: 'multiplayer' });
+
+let desiredScene = 'silent'; // 'menu' | 'solo' | 'multiplayer' | 'silent'
 let audioUnlockedByGesture = false;
 let pausedForVisibility = false;
 let fadeSerial = 0;
@@ -82,6 +102,11 @@ function persistSettings() {
 function emitSettingsChanged() {
   if (typeof window === 'undefined' || typeof CustomEvent === 'undefined') return;
   try { window.dispatchEvent(new CustomEvent('argentinia:audio-settings-changed', { detail: getAudioSettings() })); } catch {}
+}
+
+function emitSceneChanged() {
+  if (typeof window === 'undefined' || typeof CustomEvent === 'undefined') return;
+  try { window.dispatchEvent(new CustomEvent('argentinia:audio-scene-changed', { detail: getAudioRuntimeStatus() })); } catch {}
 }
 
 export function getAudioSettings() {
@@ -166,7 +191,8 @@ function fadeMusicTo(targetVolume, durationMs = 700, pauseAtEnd = false) {
 }
 
 async function syncMusicToDesiredScene({ fadeMs = 700 } = {}) {
-  const shouldPlay = desiredScene === 'menu'
+  const trackId = MUSIC_SCENE_TRACKS[desiredScene] || null;
+  const shouldPlay = !!trackId
     && settings.musicEnabled
     && audioUnlockedByGesture
     && (typeof document === 'undefined' || !document.hidden);
@@ -176,7 +202,7 @@ async function syncMusicToDesiredScene({ fadeMs = 700 } = {}) {
     return false;
   }
 
-  const audio = ensureMusicElement('menu');
+  const audio = ensureMusicElement(trackId);
   if (!audio) return false;
 
   try {
@@ -208,7 +234,7 @@ if (typeof window !== 'undefined') {
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-      pausedForVisibility = !!musicElement && !musicElement.paused && desiredScene === 'menu';
+      pausedForVisibility = !!musicElement && !musicElement.paused && !!MUSIC_SCENE_TRACKS[desiredScene];
       if (musicElement && !musicElement.paused) musicElement.pause();
       return;
     }
@@ -224,16 +250,20 @@ export function enterMenuAudio() {
   // Crear el elemento ya permite preload=metadata sin violar autoplay; el play audible
   // sigue bloqueado hasta el primer gesto válido.
   ensureMusicElement('menu');
+  emitSceneChanged();
   void syncMusicToDesiredScene({ fadeMs: 700 });
 }
 
-export function enterGameplayAudio() {
-  desiredScene = 'game';
-  if (musicElement && !musicElement.paused) fadeMusicTo(0, 700, true);
+export function enterGameplayAudio(mode = 'solo') {
+  desiredScene = mode === 'multiplayer' ? 'multiplayer' : 'solo';
+  ensureMusicElement(MUSIC_SCENE_TRACKS[desiredScene]);
+  emitSceneChanged();
+  void syncMusicToDesiredScene({ fadeMs: 650 });
 }
 
 export function silenceAudio() {
   desiredScene = 'silent';
+  emitSceneChanged();
   if (musicElement && !musicElement.paused) fadeMusicTo(0, 350, true);
 }
 
@@ -254,7 +284,7 @@ export function setMusicVolume(volume) {
   settings = { ...settings, musicVolume: clamp01(volume, settings.musicVolume) };
   persistSettings();
   emitSettingsChanged();
-  if (musicElement && !musicElement.paused && desiredScene === 'menu' && settings.musicEnabled) {
+  if (musicElement && !musicElement.paused && !!MUSIC_SCENE_TRACKS[desiredScene] && settings.musicEnabled) {
     fadeMusicTo(settings.musicVolume, 100, false);
   }
   return settings.musicVolume;

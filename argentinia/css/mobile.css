@@ -1195,7 +1195,7 @@ html.argentinia-mobile .telemetry-panel {
   border-radius: 9px !important;
   z-index: 2147482050 !important;
 }
-html.argentinia-mobile .telemetry-panel:not(.arg-mobile-telemetry-expanded) > :not(.arg-mobile-telemetry-toggle) {
+html.argentinia-mobile .telemetry-panel:not(.arg-mobile-telemetry-expanded) > :not(.arg-mobile-telemetry-toggle):not(.arg-game-music-toggle) {
   display: none !important;
 }
 html.argentinia-mobile .arg-mobile-telemetry-toggle {
@@ -1420,6 +1420,21 @@ html.argentinia-mobile .telemetry-panel:not(.arg-mobile-telemetry-expanded) .arg
 }
 html.argentinia-mobile .telemetry-panel:not(.arg-mobile-telemetry-expanded) .arg-mobile-telemetry-toggle::before {
   font-size: 6px !important;
+}
+html.argentinia-mobile .arg-game-music-toggle {
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  border-radius: 5px !important;
+  font-size: 10px !important;
+}
+html.argentinia-mobile .telemetry-panel:not(.arg-mobile-telemetry-expanded) .arg-game-music-toggle {
+  width: 17px !important;
+  min-width: 17px !important;
+  height: 17px !important;
+  border-radius: 4px !important;
+  font-size: 8px !important;
 }
 
 /* E) Noticias mobile colapsa físicamente en SU esquina inferior derecha, no por clip

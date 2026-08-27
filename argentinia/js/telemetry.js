@@ -17,6 +17,7 @@
 // igual que en el motor: la telemetría no intenta saltarse la privacidad de Firestore.
 
 import { ENGINE_VERSION, ENGINE_VERSION_SHORT, ENGINE_BASELINE } from './version.js';
+import { getAudioRuntimeStatus, toggleMusic } from './audioManager.js';
 
 export const TELEMETRY_SCHEMA_VERSION = 4;
 export const TELEMETRY_VERSION = ENGINE_VERSION;
@@ -63,6 +64,7 @@ let statusEl = null;
 let cloudEl = null;
 let bugsEl = null;
 let uploadBtn = null;
+let gameplayMusicToggleEl = null;
 let remoteCheckpointTimer = null;
 let botPriorityWatchdogTimer = null;
 let botPriorityStallSince = null;
@@ -1524,6 +1526,17 @@ function button(label, title, onClick) {
   return b;
 }
 
+function refreshGameplayMusicToggle() {
+  if (!gameplayMusicToggleEl) return;
+  const audio = getAudioRuntimeStatus();
+  const inGameplay = audio.desiredScene === 'solo' || audio.desiredScene === 'multiplayer';
+  gameplayMusicToggleEl.hidden = !inGameplay;
+  gameplayMusicToggleEl.textContent = audio.musicEnabled ? '🔊' : '🔇';
+  gameplayMusicToggleEl.setAttribute('aria-pressed', String(!audio.musicEnabled));
+  gameplayMusicToggleEl.setAttribute('aria-label', audio.musicEnabled ? 'Silenciar música de la partida' : 'Activar música de la partida');
+  gameplayMusicToggleEl.title = audio.musicEnabled ? 'Silenciar música' : 'Activar música';
+}
+
 function buildPanel() {
   if (typeof document === 'undefined' || !document.body || panel) return;
   panel = document.createElement('div');
@@ -1554,6 +1567,20 @@ function buildPanel() {
     recToggle.setAttribute('aria-label', expanded ? 'Colapsar panel de reporte de bugs' : 'Desplegar panel de reporte de bugs');
   });
 
+  // 23.17.5 — segunda superficie del MISMO musicEnabled persistente de OPCIONES.
+  // Sólo aparece durante partidas y queda inmediatamente a la derecha de REC.
+  gameplayMusicToggleEl = document.createElement('button');
+  gameplayMusicToggleEl.id = 'arg-game-music-toggle';
+  gameplayMusicToggleEl.className = 'arg-game-music-toggle';
+  gameplayMusicToggleEl.type = 'button';
+  gameplayMusicToggleEl.addEventListener('click', () => {
+    toggleMusic();
+    refreshGameplayMusicToggle();
+  });
+  window.addEventListener('argentinia:audio-settings-changed', refreshGameplayMusicToggle);
+  window.addEventListener('argentinia:audio-scene-changed', refreshGameplayMusicToggle);
+  refreshGameplayMusicToggle();
+
   const markBtn = button('🐞 Marcar', 'Marcar este instante como bug observado y subir checkpoint inmediato', () => markTelemetryBug());
   uploadBtn = button('☁️ Subir ahora', 'Forzar un checkpoint remoto ahora mismo', () => {
     requestRemoteTelemetryUpload('hud_manual', { kind: 'latest', capture: true }).catch(() => {});
@@ -1562,13 +1589,14 @@ function buildPanel() {
   // ENTREGA 23.5.1: la descarga central vive en Admin > DEBUGGING. Conservamos
   // exportTelemetry()/recovery internamente como red de seguridad, pero quitamos los dos
   // controles redundantes del HUD para no tapar superficie de juego.
-  panel.append(recToggle, statusEl, cloudEl, bugsEl, markBtn, uploadBtn);
+  panel.append(recToggle, gameplayMusicToggleEl, statusEl, cloudEl, bugsEl, markBtn, uploadBtn);
   document.body.appendChild(panel);
   updatePanelStatus();
 }
 
 function updatePanelStatus() {
   if (!statusEl || !bugsEl) return;
+  refreshGameplayMusicToggle();
   if (!currentSession) {
     statusEl.textContent = `🧪 v${ENGINE_VERSION_SHORT}`;
     bugsEl.textContent = '🐞 0';

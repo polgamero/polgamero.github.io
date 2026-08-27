@@ -780,7 +780,7 @@ function hookGameplayButtons() {
 }
 
 async function initGame(deckSource) {
-  enterGameplayAudio();
+  enterGameplayAudio('solo');
   logMsg(gameText('game.loadingDeck'));
 
   await mobileSoloYield('before_board_layout');
@@ -936,6 +936,7 @@ async function abandonRecoveredSolo(candidate, { expired = false } = {}) {
 }
 
 async function resumeSoloRecoveryGame(candidate) {
+  enterGameplayAudio('solo');
   document.querySelectorAll('#main-menu-overlay, #solo-recovery-overlay').forEach(el => el.remove());
   setupBoardLayout();
 
@@ -1545,7 +1546,7 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', st
 // trae un startingRole 50/50 decidido una sola vez al crearse; ambos clientes convierten
 // ese mismo rol compartido a su perspectiva local/rival.
 function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host') {
-  enterGameplayAudio();
+  enterGameplayAudio('multiplayer');
   // ENTREGA 23.8.5 — al entrar a gameplay no puede sobrevivir ningún overlay del flujo
   // menú/lobby/picker. Antes el menú quedaba oculto (display:none) debajo del tablero; con
   // el doble boot podía quedar una SEGUNDA copia visible y parecía que la partida explotaba.
@@ -3765,6 +3766,7 @@ export function reconstructStateFromMatch(publicDoc, privateDoc, myRole) {
 // mazos nuevos y hacer mulligan, reconstruye TODO desde lo último publicado en Firestore
 // (reconstructStateFromMatch) y arranca la escucha en tiempo real donde había quedado.
 function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc, rivalName, rivalPhotoURL = '') {
+  enterGameplayAudio('multiplayer');
   const mainMenuOverlay = document.getElementById('main-menu-overlay');
   if (mainMenuOverlay) mainMenuOverlay.remove();
 
