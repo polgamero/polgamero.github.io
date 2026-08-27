@@ -1,9 +1,9 @@
 {
-  "engineVersion": "23.17.4",
+  "engineVersion": "23.17.4.1",
   "engineProtocolVersion": "mp-23.10.0",
   "protocolVersion": "mp-23.10.0",
   "firestoreRulesVersion": "23.13.72",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Store + Navigation UX Responsive Polish"
+  "label": "My Decks Click Hotfix"
 }

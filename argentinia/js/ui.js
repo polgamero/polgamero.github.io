@@ -4582,6 +4582,7 @@ function injectMyDecksStyles() {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px;
     }
     .mydecks-slot {
+      appearance:none; -webkit-appearance:none; width:100%; font:inherit; color:inherit;
       border-radius: 12px; padding: 20px; text-align: center; min-height: 100px;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
     }
@@ -5423,11 +5424,11 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, on
   const decks = (state.userProfile && state.userProfile.decks) || [];
 
   const slotsHTML = decks.map(deck => `
-    <div class="mydecks-slot mydecks-slot-filled" data-deck-id="${deck.id}">
-      <div class="mydecks-slot-name">${deck.name}</div>
+    <button type="button" class="mydecks-slot mydecks-slot-filled" data-deck-id="${deck.id}">
+      <span class="mydecks-slot-name">${deck.name}</span>
       ${deck.isDefault ? '<span class="mydecks-slot-badge">Default</span>' : ''}
-      <div class="mydecks-slot-count">${(deck.cardIds || []).length} cartas</div>
-    </div>
+      <span class="mydecks-slot-count">${(deck.cardIds || []).length} cartas</span>
+    </button>
   `).join('');
 
   overlay.innerHTML = `
@@ -5522,17 +5523,17 @@ export function showMyDecksScreen(onBack) {
 
     decks.forEach(deck => {
       slotsHTML.push(`
-        <div class="mydecks-slot mydecks-slot-filled" data-deck-id="${deck.id}">
-          <div class="mydecks-slot-name">${deck.name}</div>
+        <button type="button" class="mydecks-slot mydecks-slot-filled" data-deck-id="${deck.id}">
+          <span class="mydecks-slot-name">${deck.name}</span>
           ${deck.isDefault ? '<span class="mydecks-slot-badge">Default</span>' : ''}
-          <div class="mydecks-slot-count">${(deck.cardIds || []).length} cartas</div>
-        </div>
+          <span class="mydecks-slot-count">${(deck.cardIds || []).length} cartas</span>
+        </button>
       `);
     });
 
     for (let i = decks.length; i < MAX_DECKS; i++) {
       slotsHTML.push(`
-        <div class="mydecks-slot mydecks-slot-empty">+ Crear mazo</div>
+        <button type="button" class="mydecks-slot mydecks-slot-empty">+ Crear mazo</button>
       `);
     }
 
