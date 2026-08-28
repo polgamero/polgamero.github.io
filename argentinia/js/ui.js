@@ -7054,23 +7054,27 @@ export function showSoloRecoveryPrompt(recovery, onResume, onAbandon, options = 
   overlay.querySelector('#solo-recovery-no').addEventListener('click', () => { overlay.remove(); onAbandon(); });
 }
 
-export function showReconnectPrompt(onReconnect, onAbandon) {
+export function showReconnectPrompt(onReconnect, onAbandon, options = {}) {
   injectStoreStyles(); // reusa .store-buy-btn / .store-back-link
+  const canReconnect = options.canReconnect !== false;
   const overlay = document.createElement('div');
   overlay.id = 'reconnect-overlay';
   overlay.style.cssText = 'position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center;';
   overlay.innerHTML = `
-    <div style="background:#16211a; border:2px solid rgba(212,175,55,0.5); border-radius:16px; padding:32px; max-width:420px; text-align:center;">
+    <div style="background:#16211a; border:2px solid rgba(212,175,55,0.5); border-radius:16px; padding:32px; max-width:460px; text-align:center;">
       <div style="font-size:20px; font-weight:700; color:#f0e0b0; margin-bottom:12px;">🔄 Tenés una partida en curso</div>
-      <div style="color:#cfe0d4; font-size:14px; margin-bottom:24px; line-height:1.5;">Parece que recargaste la página a mitad de una partida multiplayer. ¿Querés volver a ella?</div>
-      <button class="store-buy-btn" id="reconnect-yes">Reconectarme</button>
+      <div id="reconnect-detail" style="color:#cfe0d4; font-size:14px; margin-bottom:24px; line-height:1.5;"></div>
+      <button class="store-buy-btn" id="reconnect-yes" ${canReconnect ? '' : 'disabled'}>${canReconnect ? 'Reconectarme' : 'Reconexión no segura'}</button>
       <br><br>
       <button class="store-back-link" id="reconnect-no">Abandonarla</button>
     </div>
   `;
   document.body.appendChild(overlay);
+  const detail = overlay.querySelector('#reconnect-detail');
+  if (detail) detail.textContent = options.message || 'Parece que recargaste la página a mitad de una partida multiplayer. ¿Querés volver a ella?';
 
-  overlay.querySelector('#reconnect-yes').addEventListener('click', () => {
+  const yes = overlay.querySelector('#reconnect-yes');
+  if (canReconnect) yes.addEventListener('click', () => {
     overlay.remove();
     onReconnect();
   });
@@ -8816,13 +8820,14 @@ export function render() {
     state.pendingKickerChoice || state.pendingRampChoice || state.pendingSacrificeChoice !== null ||
     state.damageModalOpen || state.awaitingRivalDecision || state.respondingToDecision;
 
-  els.btnEndTurn.disabled = (!!state.multiplayerWaitingForReady || state.priorityPlayer !== 'local' || state.gameOver || state.isDiscarding || anyPendingChoice || (state.consecutivePasses || 0) >= 2);
+  const multiplayerInteractionBlocked = !!state.currentMatch && (state.multiplayerSyncBlocked || state.multiplayerSessionSuperseded);
+  els.btnEndTurn.disabled = (multiplayerInteractionBlocked || !!state.multiplayerWaitingForReady || state.priorityPlayer !== 'local' || state.gameOver || state.isDiscarding || anyPendingChoice || (state.consecutivePasses || 0) >= 2);
 
   // 23.7.2: si el defensor no tiene NINGÚN bloqueador legal, declarar cero es
   // automático. No salteamos el paso: executeRivalAttack abre la ventana post-bloqueadores,
   // así instantáneos/habilidades antes del daño siguen existiendo.
   let autoZeroBlockersPending = false;
-  if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local' && (state.consecutivePasses || 0) === 1 && !state.localBlockersDeclaredThisCombat) {
+  if (!multiplayerInteractionBlocked && state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local' && (state.consecutivePasses || 0) === 1 && !state.localBlockersDeclaredThisCombat) {
     const attackers = state.rivalCombat.filter(attacker => attacker.isAttacking);
     const hasLegalBlocker = state.localCombat.some(defender => !defender.tapped && attackers.some(attacker => canBlock(attacker, defender)));
     autoZeroBlockersPending = !hasLegalBlocker;
@@ -9219,6 +9224,35 @@ export function showMultiplayerReadyBarrier(rivalName, localReady = true, rivalR
 
 export function hideMultiplayerReadyBarrier() {
   const overlay = document.getElementById('multiplayer-ready-barrier');
+  if (overlay) overlay.remove();
+}
+
+// 23.19.1 — barrera FAIL-CLOSED para una partición de red local o una sesión duplicada.
+// No modifica el state del juego: sólo impide input humano mientras main.js intenta volver
+// a confirmar el snapshot. En HEADLESS no existe interacción humana que bloquear.
+export function showMultiplayerSyncBarrier(kind = 'reconnecting') {
+  if (HEADLESS_ENGINE || typeof document === 'undefined') return;
+  let overlay = document.getElementById('multiplayer-sync-barrier');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'multiplayer-sync-barrier';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(4,7,6,.88);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;pointer-events:auto;';
+    overlay.innerHTML = '<div style="min-width:min(520px,86vw);max-width:720px;padding:26px 30px;border:2px solid var(--gold,#d4af37);border-radius:16px;background:linear-gradient(180deg,rgba(18,25,15,.99),rgba(8,14,10,.99));box-shadow:0 14px 50px rgba(0,0,0,.68);text-align:center;color:#f0e0b0;font-family:system-ui,sans-serif"><div id="mp-sync-icon" style="font-size:30px;margin-bottom:8px">🔄</div><div id="mp-sync-title" style="font-size:22px;font-weight:800;letter-spacing:.4px"></div><div id="mp-sync-detail" style="margin-top:10px;color:#cfe0d4;font-size:14px;line-height:1.5"></div></div>';
+    document.body.appendChild(overlay);
+  }
+  const icon = overlay.querySelector('#mp-sync-icon');
+  const title = overlay.querySelector('#mp-sync-title');
+  const detail = overlay.querySelector('#mp-sync-detail');
+  const superseded = kind === 'session_superseded';
+  if (icon) icon.textContent = superseded ? '🔒' : '🔄';
+  if (title) title.textContent = superseded ? gameText('multiplayer.session.superseded') : gameText('multiplayer.sync.reconnecting');
+  if (detail) detail.textContent = superseded ? gameText('multiplayer.session.supersededDetail') : gameText('multiplayer.sync.reconnectingDetail');
+  overlay.dataset.kind = kind;
+}
+
+export function hideMultiplayerSyncBarrier() {
+  if (typeof document === 'undefined') return;
+  const overlay = document.getElementById('multiplayer-sync-barrier');
   if (overlay) overlay.remove();
 }
 

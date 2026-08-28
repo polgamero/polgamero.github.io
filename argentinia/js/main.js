@@ -2,12 +2,12 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardForBot } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal } from './ui.js';
 import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, flushPendingGameRewards, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMyPublicState, publishMyPrivateState, listenToMatch, fetchMatchForReconnect, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, flushPendingGameRewards, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks, getTelemetryStatus } from './telemetry.js';
@@ -45,6 +45,7 @@ import { SUSPEND_ENGINE_VERSION, normalizeSuspendSpec, hasSuspend, markCardSuspe
 import { initializeTransformPermanentItem, canTransformPermanent } from './transformEngine.js';
 import { cardHasSubtype, cardsShareCreatureType, typalFilterMatches, buildCreatureTypeCatalog, chooseBestCreatureType, setChosenCreatureType } from './typalEngine.js';
 import { botDeckQuality, normalizeBotDifficulty } from './botDifficulty.js';
+import { normalizeSyncRevision, deriveEffectiveTouchedKeys, classifySnapshotRevision, syncRetryDelayMs, isRetryableSyncError, classifyRivalPresence, fieldRevisionDeltaKeys, markFieldRevisionsApplied, SYNC_RETRY_MAX_ATTEMPTS, SYNC_RECOVERY_RETRY_MS, MULTIPLAYER_READY_TIMEOUT_MS, MULTIPLAYER_CLIENT_SESSION_ID, validateRoleSession } from './multiplayerReliability.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -78,7 +79,14 @@ function startMultiplayerPresenceHeartbeat(matchId, myRole) {
       stopMultiplayerPresenceHeartbeat();
       return;
     }
-    touchMatchPresence(matchId, myRole).catch(err => console.warn('No se pudo publicar heartbeat multiplayer:', err));
+    touchMatchPresence(matchId, myRole).catch(err => {
+      if (isSessionSupersededError(err)) {
+        setMultiplayerSyncBlocked('session_superseded', { permanent:true });
+        stopMultiplayerPresenceHeartbeat();
+        return;
+      }
+      console.warn('No se pudo publicar heartbeat multiplayer:', err);
+    });
   };
   beat();
   multiplayerPresenceTimer = setInterval(beat, 30000);
@@ -384,6 +392,15 @@ export const state = {
   // Firestore ni bloquea por sí solo acciones encadenadas del motor (render() suele publicar
   // en mitad de una misma acción síncrona).
   matchSyncBusy: false,
+  // 23.19.1 — FAIL-CLOSED local. Si un commit gameplay no puede confirmarse, la UI deja
+  // de aceptar acciones hasta que una escritura de recuperación vuelva a ser ACK del servidor.
+  // sessionSuperseded es permanente para esta instancia: otra pestaña reclamó el mismo rol.
+  multiplayerSyncBlocked: false,
+  multiplayerSyncBlockReason: null,
+  multiplayerSessionSuperseded: false,
+  // 23.19.1 — marca DURABLE de una resolución autoritativa async. Se publica/ACK antes
+  // de resolver y se limpia/ACK al terminar; un F5 del authority en el medio queda detectable.
+  multiplayerResolutionMarker: null,
   // 23.7.2: barrera puramente local hasta que ambos clientes terminaron deck+mulligan.
   multiplayerWaitingForReady: false,
   autoZeroBlockersQueued: false,
@@ -819,8 +836,10 @@ async function initGame(deckSource) {
   state.botDifficulty = normalizeBotDifficulty(state.botDifficulty);
   const botQuality = botDeckQuality(state.botDifficulty);
   state.rivalDeck = buildRandomDeck(undefined, { quality: botQuality });
-  state.rivalDeckBuildReport = getLastRandomDeckReport();
-  await mobileSoloYield('rival_deck_ready', { count: state.rivalDeck.length, archetype: state.rivalDeckBuildReport?.archetypeId, quality: botQuality });
+  // 23.19 — no persistir ni exponer el arquetipo generado del Tano en diagnósticos de runtime.
+  // El cliente necesita el mazo para jugar, pero la instrumentación no debe spoilearlo.
+  state.rivalDeckBuildReport = null;
+  await mobileSoloYield('rival_deck_ready', { count: state.rivalDeck.length, quality: botQuality });
 
   // 23.13.52 — ya no existe el supuesto histórico "el humano siempre empieza".
   // El resultado se fija una sola vez antes del mulligan para que esa información pueda
@@ -1592,6 +1611,15 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
   state.rivalManaPool = emptyManaPool();
   lastKnownPublicWire = null;
   lastKnownPrivateWire = null;
+  lastAppliedServerRevision = 0;
+  lastAppliedFieldRevisions.clear();
+  rivalPresenceStatus = 'unknown';
+  resetMatchPublishRetry();
+  state.multiplayerSyncBlocked = false;
+  state.multiplayerSyncBlockReason = null;
+  state.multiplayerSessionSuperseded = false;
+  state.multiplayerResolutionMarker = null;
+  hideMultiplayerSyncBarrier();
   lastAppliedWriterSeq.clear();
 
   const deckLabel = isTestDeck ? MULTIPLAYER_TEST_DECK_NAME : deckSource.deck.name;
@@ -1653,15 +1681,54 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
     // después levantamos nuestro ready. Así "ready" significa de verdad "ya podés leer mi
     // estado inicial consistente", no simplemente "cerré el modal".
     render();
-    await publishMatchState({ force: true });
+    const initialSyncConfirmed = await publishMatchState({ force: true });
+    // 23.19: la barrera ready no puede levantarse si el commit público/privado inicial
+    // falló. El retry general puede seguir siendo útil durante gameplay, pero acá preferimos
+    // abortar el inicio antes que declarar ready con una mano/mazo que el rival aún no puede
+    // reconstruir de manera consistente.
+    if (!initialSyncConfirmed) {
+      resetMatchPublishRetry();
+      throw new Error('MULTIPLAYER_INITIAL_SYNC_NOT_CONFIRMED');
+    }
     await setMatchPlayerReady(matchId, myRole, true);
 
-    const stopReadyListener = listenToMatch(matchId, (doc) => {
-      if (!doc) return;
+    // 23.19.1 — la ready barrier tampoco puede quedar viva para siempre si onSnapshot
+    // termina con error o si el otro cliente nunca completa el arranque. Cinco minutos es
+    // deliberadamente generoso para no castigar un mulligan lento; pasado ese límite el
+    // inicio falla explícitamente en lugar de dejar una pantalla eterna.
+    let readyBarrierDone = false;
+    let stopReadyListener = () => {};
+    let readyBarrierTimer = null;
+    const failReadyBarrier = (reason, error = null) => {
+      if (readyBarrierDone) return;
+      readyBarrierDone = true;
+      if (readyBarrierTimer !== null) clearTimeout(readyBarrierTimer);
+      try { stopReadyListener(); } catch {}
+      state.multiplayerWaitingForReady = false;
+      hideMultiplayerReadyBarrier();
+      recordTelemetryNetwork('multiplayer_ready_barrier_failed', { matchId, myRole, reason, error }, 'error');
+      if (reason === 'session_superseded') {
+        setMultiplayerSyncBlocked('session_superseded', { permanent:true });
+        stopMultiplayerPresenceHeartbeat();
+        return;
+      }
+      alert(gameText('multiplayer.ready.failed'));
+    };
+    readyBarrierTimer = setTimeout(() => failReadyBarrier('timeout'), MULTIPLAYER_READY_TIMEOUT_MS);
+
+    stopReadyListener = listenToMatch(matchId, (doc) => {
+      if (!doc || readyBarrierDone) return;
+      const session = validateRoleSession(doc, myRole, MULTIPLAYER_CLIENT_SESSION_ID);
+      if (!session.ok) {
+        failReadyBarrier('session_superseded');
+        return;
+      }
       const bothReady = doc.hostReady === true && doc.guestReady === true;
       showMultiplayerReadyBarrier(rivalName || 'tu rival', true, bothReady);
       if (!bothReady) return;
 
+      readyBarrierDone = true;
+      if (readyBarrierTimer !== null) clearTimeout(readyBarrierTimer);
       stopReadyListener();
       // El snapshot que confirmó bothReady ya contiene el estado inicial post-mulligan de
       // ambos. Lo aplicamos ANTES de quitar el overlay: así el host nunca puede actuar en
@@ -1673,6 +1740,9 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
       relinkEquipmentAttachments(state);
       if (Array.isArray(doc.stackState)) replaceSpellStackFromSync(deserializeStackFromPublic(doc.stackState, state, myRole));
       lastKnownPublicWire = wireClone(doc);
+      lastAppliedServerRevision = normalizeSyncRevision(doc.syncRevision);
+      lastAppliedFieldRevisions.clear();
+      markFieldRevisionsApplied(lastAppliedFieldRevisions, doc.syncFieldRevisions);
 
       state.multiplayerWaitingForReady = false;
       hideMultiplayerReadyBarrier();
@@ -1683,7 +1753,7 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
       recordTelemetryEvent('multiplayer_both_ready', { matchId, myRole, hostReady: true, guestReady: true });
       logMsg(gameText('game.start.deck', { deck: deckLabel }));
       logMsg(state.activePlayer === 'local' ? gameText('game.start.yourTurnHint') : gameText('game.start.waitingRival'));
-    });
+    }, (error) => failReadyBarrier('listener_error', error));
   };
 
   showStartingCoinToss({
@@ -1739,10 +1809,17 @@ let remoteSyncApplyDepth = 0;
 // cuando termine la actual, publicamos UNA sola vez el estado más fresco disponible.
 let matchPublishInFlight = null;
 let matchPublishQueued = false;
+let matchPublishRetryTimer = null;
+let matchPublishRecoveryTimer = null;
+let matchPublishRetryAttempt = 0;
 let matchSyncWriterSeq = 0;
-const matchSyncClientId = `cli_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+// 23.19.1: writerClientId y session fencing comparten la misma identidad por pestaña.
+const matchSyncClientId = MULTIPLAYER_CLIENT_SESSION_ID;
 let lastKnownPublicWire = null;
 let lastKnownPrivateWire = null;
+let lastAppliedServerRevision = 0;
+const lastAppliedFieldRevisions = new Map();
+let rivalPresenceStatus = 'unknown';
 const lastAppliedWriterSeq = new Map();
 
 function wireClone(value) {
@@ -1794,7 +1871,86 @@ function mergeWireBaseline(baseline, patch) {
   return { ...(baseline || {}), ...(wireClone(patch) || {}) };
 }
 
+function isSessionSupersededError(error) {
+  return String(error?.message || error?.code || error || '').includes('MULTIPLAYER_SESSION_SUPERSEDED');
+}
+
+export function isMultiplayerInteractionBlocked() {
+  return !!state.currentMatch && (state.multiplayerSyncBlocked || state.multiplayerSessionSuperseded);
+}
+
+function setMultiplayerSyncBlocked(reason = 'transport', { permanent = false } = {}) {
+  if (!state.currentMatch || state.gameOver) return;
+  state.multiplayerSyncBlocked = true;
+  state.multiplayerSyncBlockReason = reason;
+  if (permanent || reason === 'session_superseded') state.multiplayerSessionSuperseded = true;
+  try { if (els?.btnEndTurn) els.btnEndTurn.disabled = true; } catch {}
+  showMultiplayerSyncBarrier(state.multiplayerSessionSuperseded ? 'session_superseded' : 'reconnecting');
+}
+
+function clearMultiplayerSyncBlocked() {
+  if (state.multiplayerSessionSuperseded) return;
+  const wasBlocked = state.multiplayerSyncBlocked;
+  state.multiplayerSyncBlocked = false;
+  state.multiplayerSyncBlockReason = null;
+  hideMultiplayerSyncBarrier();
+  if (wasBlocked) {
+    recordTelemetryNetwork('sync_fail_closed_restored', { matchId:state.currentMatch?.matchId || null, myRole:state.currentMatch?.myRole || null });
+    logMsg(gameText('multiplayer.sync.restored'));
+  }
+}
+
+function resetMatchPublishRetry() {
+  if (matchPublishRetryTimer !== null) clearTimeout(matchPublishRetryTimer);
+  if (matchPublishRecoveryTimer !== null) clearTimeout(matchPublishRecoveryTimer);
+  matchPublishRetryTimer = null;
+  matchPublishRecoveryTimer = null;
+  matchPublishRetryAttempt = 0;
+}
+
+function scheduleSlowMatchRecovery(error, publishId) {
+  if (!isRetryableSyncError(error) || !state.currentMatch || !state.currentUser || state.gameOver || state.multiplayerSessionSuperseded) return false;
+  const retryMatchId = state.currentMatch.matchId;
+  if (matchPublishRecoveryTimer !== null) return true;
+  matchPublishRecoveryTimer = setTimeout(() => {
+    matchPublishRecoveryTimer = null;
+    if (!state.currentMatch || state.currentMatch.matchId !== retryMatchId || state.gameOver || state.multiplayerSessionSuperseded) return;
+    matchPublishQueued = true;
+    publishMatchState({ force:true, recovery:true }).catch(() => {});
+  }, SYNC_RECOVERY_RETRY_MS);
+  recordTelemetryNetwork('sync_publish_recovery_watch_scheduled', {
+    publishId, matchId:retryMatchId, delayMs:SYNC_RECOVERY_RETRY_MS,
+    code:error?.code || error?.name || null
+  }, 'warning');
+  return true;
+}
+
+function scheduleMatchPublishRetry(error, publishId) {
+  if (!isRetryableSyncError(error) || !state.currentMatch || !state.currentUser || state.multiplayerSessionSuperseded) return false;
+  if (matchPublishRetryAttempt >= SYNC_RETRY_MAX_ATTEMPTS) return scheduleSlowMatchRecovery(error, publishId);
+  matchPublishRetryAttempt++;
+  const attempt = matchPublishRetryAttempt;
+  const delayMs = syncRetryDelayMs(attempt);
+  const retryMatchId = state.currentMatch.matchId;
+  if (matchPublishRetryTimer !== null) clearTimeout(matchPublishRetryTimer);
+  matchPublishRetryTimer = setTimeout(() => {
+    matchPublishRetryTimer = null;
+    if (!state.currentMatch || state.currentMatch.matchId !== retryMatchId || state.gameOver || state.multiplayerSessionSuperseded) return;
+    matchPublishQueued = true;
+    publishMatchState({ force: true, retry: true }).catch(() => {});
+  }, delayMs);
+  recordTelemetryNetwork('sync_publish_retry_scheduled', {
+    publishId,
+    matchId: retryMatchId,
+    attempt,
+    delayMs,
+    code: error?.code || error?.name || null
+  }, 'warning');
+  return true;
+}
+
 async function drainMatchPublishQueue() {
+  let allPublishesConfirmed = true;
   while (matchPublishQueued && state.currentMatch && state.currentUser) {
     matchPublishQueued = false;
     const { matchId, myRole } = state.currentMatch;
@@ -1807,24 +1963,20 @@ async function drainMatchPublishQueue() {
     const privateKeys = Object.keys(privatePatch);
     if (publicKeys.length === 0 && privateKeys.length === 0) continue;
 
-    // Metadato de transporte: como el documento usa merge:true, un listener no puede saber
-    // qué campos pertenecen AL ÚLTIMO write mirando sólo el snapshot final. Guardamos la
-    // lista exacta de keys tocadas y el rol que escribió. Así el rival puede aceptar cambios
-    // legítimos sobre SU propio battlefield (daño/removal resuelto por el jugador activo)
-    // sin confundir campos viejos que simplemente quedaron almacenados en el documento.
+    // 23.19: syncMeta existe incluso cuando el único delta real es privado. El commit
+    // atómico necesita tocar el documento público para asignar syncRevision y sellar la
+    // revisión privada correspondiente.
     const writerSeq = ++matchSyncWriterSeq;
     const publishId = `pub_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    if (publicKeys.length > 0) {
-      publicPatch.syncMeta = {
-        writerRole: myRole,
-        writerClientId: matchSyncClientId,
-        writerSeq,
-        publishId,
-        engineVersion: ENGINE_VERSION,
-        engineProtocolVersion: ENGINE_PROTOCOL_VERSION,
-        touchedKeys: [...publicKeys]
-      };
-    }
+    publicPatch.syncMeta = {
+      writerRole: myRole,
+      writerClientId: matchSyncClientId,
+      writerSeq,
+      publishId,
+      engineVersion: ENGINE_VERSION,
+      engineProtocolVersion: ENGINE_PROTOCOL_VERSION,
+      touchedKeys: [...publicKeys]
+    };
 
     const startedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
 
@@ -1857,36 +2009,68 @@ async function drainMatchPublishQueue() {
 
     state.matchSyncBusy = true;
     try {
-      const writes = [];
-      if (publicKeys.length > 0) writes.push(publishMyPublicState(matchId, publicPatch));
-      if (privateKeys.length > 0) writes.push(publishMyPrivateState(matchId, state.currentUser.uid, privatePatch));
-      await Promise.all(writes);
-      if (publicKeys.length > 0) lastKnownPublicWire = mergeWireBaseline(lastKnownPublicWire, publicPatch);
-      if (privateKeys.length > 0) lastKnownPrivateWire = mergeWireBaseline(lastKnownPrivateWire, privatePatch);
+      const commit = await publishMatchStateAtomic(
+        matchId,
+        state.currentUser.uid,
+        myRole,
+        publicPatch,
+        privatePatch
+      );
+
+      const publicBaselinePatch = {
+        ...publicPatch,
+        syncRevision: commit.syncRevision,
+        syncFieldRevisions: commit.syncFieldRevisions
+      };
+      if (privateKeys.length > 0) publicBaselinePatch[`${myRole}PrivateRevision`] = commit.privateRevision;
+      lastKnownPublicWire = mergeWireBaseline(lastKnownPublicWire, publicBaselinePatch);
+      if (privateKeys.length > 0) {
+        lastKnownPrivateWire = mergeWireBaseline(lastKnownPrivateWire, {
+          ...privatePatch,
+          _syncRevision: commit.privateRevision
+        });
+      }
+      markFieldRevisionsApplied(lastAppliedFieldRevisions, commit.syncFieldRevisions, publicKeys);
+
+      resetMatchPublishRetry();
+      clearMultiplayerSyncBlocked();
       const endedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
       recordTelemetryNetwork('sync_publish_ok', {
         publishId,
-        durationMs: Math.round(endedAt - startedAt)
+        durationMs: Math.round(endedAt - startedAt),
+        syncRevision: commit.syncRevision,
+        privateRevision: commit.privateRevision
       });
     } catch (err) {
+      allPublishesConfirmed = false;
       const endedAt = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
       recordTelemetryNetwork('sync_publish_error', {
         publishId,
         durationMs: Math.round(endedAt - startedAt),
-        error: err
+        error: err,
+        retryable: isRetryableSyncError(err)
       }, 'error');
       console.error('No se pudo publicar el estado de la partida:', err);
-      // No hacemos loop apretado ante una caída de red. El próximo cambio real/render o
-      // checkpoint de gameplay volverá a pedir publish; el fingerprint no se confirma si
-      // este write falló.
+      if (isSessionSupersededError(err)) {
+        setMultiplayerSyncBlocked('session_superseded', { permanent:true });
+        stopMultiplayerPresenceHeartbeat();
+        recordTelemetryNetwork('sync_session_superseded', { publishId, matchId, myRole, writerClientId:matchSyncClientId }, 'error');
+      } else if (!state.gameOver) {
+        // 23.19.1 — una escritura gameplay no confirmada congela input local. Los 3 retries
+        // rápidos siguen existiendo y, agotados, pasan a un recovery watch lento de 5 s.
+        setMultiplayerSyncBlocked('transport');
+        scheduleMatchPublishRetry(err, publishId);
+      }
     } finally {
       state.matchSyncBusy = false;
     }
   }
+  return allPublishesConfirmed;
 }
 
 export function publishMatchState(options = {}) {
   if (!state.currentMatch || !state.currentUser) return Promise.resolve(false);
+  if (state.multiplayerSessionSuperseded) return Promise.resolve(false);
   if (remoteSyncApplyDepth > 0 && !options.force) return Promise.resolve(false);
 
   matchPublishQueued = true;
@@ -3536,6 +3720,23 @@ export function startListeningToMatch(matchId, myRole) {
     const receivePerfStarted = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     const receiveClientMs = Number(snapshotMeta.receivedAtClientMs || Date.now());
 
+    // 23.19.1 — antes de mirar revisiones, verificamos que esta instancia siga siendo
+    // la dueña del rol. El guard de lobby ya impide host==guest; esto cubre otra cosa:
+    // una segunda pestaña/reconexión con el MISMO uid y el MISMO rol.
+    const session = validateRoleSession(publicDoc, myRole, MULTIPLAYER_CLIENT_SESSION_ID);
+    if (!session.ok) {
+      if (!state.multiplayerSessionSuperseded) {
+        recordTelemetryNetwork('sync_session_superseded_snapshot', {
+          matchId, myRole, reason:session.reason,
+          expectedSessionId:session.expected || null,
+          localSessionId:MULTIPLAYER_CLIENT_SESSION_ID
+        }, 'error');
+      }
+      setMultiplayerSyncBlocked('session_superseded', { permanent:true });
+      stopMultiplayerPresenceHeartbeat();
+      return;
+    }
+
     const syncMeta = publicDoc.syncMeta && typeof publicDoc.syncMeta === 'object' ? publicDoc.syncMeta : null;
     const touchedKeys = syncMeta && Array.isArray(syncMeta.touchedKeys) ? new Set(syncMeta.touchedKeys) : null;
     const writerRole = syncMeta?.writerRole || null;
@@ -3549,15 +3750,90 @@ export function startListeningToMatch(matchId, myRole) {
       ? Math.round(receiveClientMs - serverCommittedAtMs)
       : null;
 
-    // El eco de MI propia escritura suele ser sólo un ACK. Pero Firestore entrega el
-    // DOCUMENTO mergeado completo: si el rival escribió otra key casi al mismo tiempo,
-    // nuestro snapshot con syncMeta propio puede traer también ese cambio remoto. Ignorar
-    // el snapshot entero hacía desaparecer esa key (caso real 23.13.35: host publicó
-    // priorityPlayer=host mientras el guest publicaba sólo priorityClockSerial/activity, y
-    // ambos terminaron viendo prioridad local).
-    const isSelfEcho = (writerClientId && writerClientId === matchSyncClientId) || (writerRole && writerRole === myRole);
-    let effectiveTouchedKeys = touchedKeys;
-    let coalescedRemoteKeys = null;
+    const hasGlobalRevision = Object.prototype.hasOwnProperty.call(publicDoc, 'syncRevision');
+    const revisionInfo = classifySnapshotRevision(publicDoc.syncRevision, lastAppliedServerRevision);
+
+    if (hasGlobalRevision && revisionInfo.kind === 'stale') {
+      recordTelemetryNetwork('sync_stale_revision_ignored', {
+        matchId,
+        myRole,
+        incomingRevision: revisionInfo.incoming,
+        lastAppliedRevision: revisionInfo.last,
+        writerRole,
+        writerClientId,
+        writerSeq: Number.isFinite(writerSeq) ? writerSeq : null
+      }, 'warning');
+      return;
+    }
+    if (hasGlobalRevision && revisionInfo.kind === 'new' && revisionInfo.gap > 0) {
+      recordTelemetryNetwork('sync_revision_gap_recovered', {
+        matchId,
+        myRole,
+        incomingRevision: revisionInfo.incoming,
+        previousRevision: revisionInfo.last,
+        skippedRevisions: revisionInfo.gap
+      }, 'warning');
+    }
+
+    // 23.19 — presencia observable. Nuestro propio heartbeat también provoca snapshots, por
+    // lo que aun si el rival deja de escribir seguimos teniendo oportunidades para detectar
+    // que su lastSeen quedó viejo y para anunciar una recuperación cuando vuelve.
+    const rivalPresenceField = myRole === 'host' ? 'guestLastSeenAt' : 'hostLastSeenAt';
+    const presence = classifyRivalPresence(publicDoc[rivalPresenceField], receiveClientMs);
+    if (presence.status !== 'unknown' && presence.status !== rivalPresenceStatus) {
+      const previousPresence = rivalPresenceStatus;
+      rivalPresenceStatus = presence.status;
+      if (presence.status === 'stale') {
+        recordTelemetryNetwork('multiplayer_presence_stale', {
+          matchId,
+          myRole,
+          ageMs: presence.ageMs
+        }, 'warning');
+        logMsg(gameText('multiplayer.connection.stale'));
+      } else if (previousPresence === 'stale') {
+        recordTelemetryNetwork('multiplayer_presence_restored', {
+          matchId,
+          myRole,
+          ageMs: presence.ageMs
+        });
+        logMsg(gameText('multiplayer.connection.restored'));
+      }
+    }
+
+    // 23.19 — cada campo gameplay lleva su propia revisión dentro de
+    // syncFieldRevisions. Ésta es la garantía fuerte: aunque el baseline de documento haya
+    // avanzado por un eco propio viejo mientras el state local ya iba más adelante, una
+    // modificación remota posterior de ESA key trae una revisión mayor y vuelve a aplicarse.
+    // El delta contra baseline queda como fallback para documentos diagnósticos legacy.
+    const isSelfEcho = !!writerClientId && writerClientId === matchSyncClientId;
+    const hasFieldRevisions = publicDoc.syncFieldRevisions && typeof publicDoc.syncFieldRevisions === 'object';
+    let effectiveTouchedKeys;
+    let coalescedRemoteKeys = new Set();
+
+    if (hasFieldRevisions) {
+      const revisionKeys = fieldRevisionDeltaKeys(publicDoc.syncFieldRevisions, lastAppliedFieldRevisions);
+      effectiveTouchedKeys = new Set(revisionKeys);
+      if (isSelfEcho && touchedKeys) {
+        // Las keys declaradas por este propio write ya existen en nuestro state de forma
+        // optimista. No las rebobinamos si el jugador hizo otra acción antes de recibir el
+        // ACK; sí conservamos cualquier key de revisión nueva que vino coalescida del rival.
+        touchedKeys.forEach(key => effectiveTouchedKeys.delete(key));
+        coalescedRemoteKeys = new Set(effectiveTouchedKeys);
+      }
+    } else {
+      const declaredForDerivation = hasGlobalRevision && revisionInfo.kind === 'same' && lastKnownPublicWire
+        ? new Set()
+        : touchedKeys;
+      const derivedTouch = deriveEffectiveTouchedKeys({
+        publicDoc,
+        baseline: lastKnownPublicWire,
+        declaredTouchedKeys: declaredForDerivation,
+        isSelfEcho
+      });
+      effectiveTouchedKeys = derivedTouch.effectiveTouchedKeys;
+      coalescedRemoteKeys = derivedTouch.coalescedRemoteKeys;
+    }
+
     if (isSelfEcho) {
       if ((!touchedKeys || touchedKeys.has('priorityClockSerial')) && Number.isFinite(Number(publicDoc.priorityClockSerial))) {
         syncPriorityClockFromNetwork({
@@ -3569,19 +3845,17 @@ export function startListeningToMatch(matchId, myRole) {
         });
       }
 
-      // Con touchedKeys conocemos exactamente qué intentó escribir ESTE cliente. Cualquier
-      // otra key que difiera del baseline observado necesariamente llegó coalescida desde
-      // otro write y debe procesarse como remota antes de actualizar el baseline.
-      if (touchedKeys && lastKnownPublicWire && typeof lastKnownPublicWire === 'object') {
-        coalescedRemoteKeys = new Set();
-        Object.keys(publicDoc).forEach(key => {
-          if (key === 'syncMeta' || touchedKeys.has(key)) return;
-          if (!wireEqual(publicDoc[key], lastKnownPublicWire[key])) coalescedRemoteKeys.add(key);
-        });
+      // Incluso si no aplicamos nuestras propias keys, su revisión ya quedó confirmada en
+      // el servidor. Marcarlas evita que otro snapshot acumulativo las confunda con cambios
+      // remotos pendientes. Si el state local ya avanzó más, el próximo commit tendrá una
+      // revisión mayor y no se pierde esa intención.
+      if (hasFieldRevisions && touchedKeys) {
+        markFieldRevisionsApplied(lastAppliedFieldRevisions, publicDoc.syncFieldRevisions, touchedKeys);
       }
 
       if (!coalescedRemoteKeys || coalescedRemoteKeys.size === 0) {
         lastKnownPublicWire = wireClone(publicDoc);
+        if (hasGlobalRevision && revisionInfo.kind === 'new') lastAppliedServerRevision = revisionInfo.incoming;
         if (writerClientId && Number.isFinite(writerSeq)) lastAppliedWriterSeq.set(writerClientId, writerSeq);
         recordTelemetryNetwork('sync_self_echo_ignored', {
           matchId,
@@ -3589,12 +3863,12 @@ export function startListeningToMatch(matchId, myRole) {
           writerRole,
           writerClientId,
           writerSeq: Number.isFinite(writerSeq) ? writerSeq : null,
-          reason: writerClientId === matchSyncClientId ? 'same_client' : 'same_role'
+          syncRevision: hasGlobalRevision ? revisionInfo.incoming : null,
+          reason: 'same_client'
         });
         return;
       }
 
-      effectiveTouchedKeys = coalescedRemoteKeys;
       if (writerClientId && Number.isFinite(writerSeq)) lastAppliedWriterSeq.set(writerClientId, writerSeq);
       recordTelemetryNetwork('sync_self_echo_coalesced_remote', {
         matchId,
@@ -3602,12 +3876,15 @@ export function startListeningToMatch(matchId, myRole) {
         writerRole,
         writerClientId,
         writerSeq: Number.isFinite(writerSeq) ? writerSeq : null,
+        syncRevision: hasGlobalRevision ? revisionInfo.incoming : null,
         coalescedKeys: [...coalescedRemoteKeys]
       }, 'warning');
     }
 
+    // Fallback legacy para documentos sin syncRevision. En 23.19 los matches compatibles
+    // siempre tienen revisión global, pero conservamos el guard por robustez diagnóstica.
     const writerKey = writerClientId || writerRole || null;
-    if (!isSelfEcho && writerKey && Number.isFinite(writerSeq)) {
+    if (!hasGlobalRevision && !isSelfEcho && writerKey && Number.isFinite(writerSeq)) {
       const previousSeq = lastAppliedWriterSeq.get(writerKey) || 0;
       if (writerSeq <= previousSeq) {
         recordTelemetryNetwork('sync_stale_snapshot_ignored', {
@@ -3644,8 +3921,18 @@ export function startListeningToMatch(matchId, myRole) {
     const changedKeys = Object.keys(incoming).filter(key => !wireEqual(state[key], incoming[key]));
     if (stackChanged) changedKeys.push('spellStack');
     // El documento completo recién observado pasa a ser el baseline de deltas incluso si
-    // no cambió ningún campo que este cliente materializa en `state`.
+    // no cambió ningún campo que este cliente materializa en `state`. La revisión global se
+    // confirma junto con ese baseline; una revisión posterior puede entonces saltarse
+    // snapshots intermedios porque deriveEffectiveTouchedKeys recupera el delta acumulado.
     lastKnownPublicWire = wireClone(publicDoc);
+    if (hasGlobalRevision && revisionInfo.kind === 'new') lastAppliedServerRevision = revisionInfo.incoming;
+    // Aunque los valores ya coincidan con nuestro state optimista, esta snapshot confirmó
+    // qué revisión de cada key ya observamos. Marcarlo ANTES del early-return evita
+    // reprocesar eternamente la misma revisión y mantiene correcta la frontera de futuras
+    // snapshots coalescidas.
+    if (hasFieldRevisions && effectiveTouchedKeys) {
+      markFieldRevisionsApplied(lastAppliedFieldRevisions, publicDoc.syncFieldRevisions, effectiveTouchedKeys);
+    }
     if (changedKeys.length === 0) return;
 
     recordTelemetryNetwork('sync_receive', {
@@ -3656,6 +3943,8 @@ export function startListeningToMatch(matchId, myRole) {
       writerClientId,
       writerSeq: Number.isFinite(writerSeq) ? writerSeq : null,
       publishId: syncPublishId,
+      syncRevision: hasGlobalRevision ? revisionInfo.incoming : null,
+      revisionGapRecovered: hasGlobalRevision ? revisionInfo.gap : 0,
       serverCommittedAtMs: Number.isFinite(serverCommittedAtMs) ? serverCommittedAtMs : null,
       serverToReceiveApproxMs,
       snapshotFromCache: !!snapshotMeta.fromCache,
@@ -3758,6 +4047,14 @@ export function startListeningToMatch(matchId, myRole) {
     if (!state.gameOver && state.activePlayer === 'local' && state.phase === 'untap') {
       processMyTurnStart();
     }
+  }, (error) => {
+    recordTelemetryNetwork('sync_listener_error', {
+      matchId,
+      myRole,
+      code: error?.code || error?.name || null,
+      message: error?.message || String(error || '')
+    }, 'error');
+    console.error('La escucha multiplayer se interrumpió:', error);
   });
 }
 
@@ -3784,6 +4081,11 @@ export function reconstructStateFromMatch(publicDoc, privateDoc, myRole) {
   relinkEquipmentAttachments(state);
   lastKnownPublicWire = wireClone(publicDoc || {});
   lastKnownPrivateWire = wireClone(privateDoc || {});
+  lastAppliedServerRevision = normalizeSyncRevision(publicDoc?.syncRevision);
+  lastAppliedFieldRevisions.clear();
+  markFieldRevisionsApplied(lastAppliedFieldRevisions, publicDoc?.syncFieldRevisions);
+  rivalPresenceStatus = 'unknown';
+  resetMatchPublishRetry();
   replaceSpellStackFromSync(deserializeStackFromPublic(publicDoc.stackState || [], state, myRole));
 }
 
@@ -3797,6 +4099,12 @@ function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc, rivalNam
   if (mainMenuOverlay) mainMenuOverlay.remove();
 
   setupBoardLayout();
+  resetMatchPublishRetry();
+  state.multiplayerSyncBlocked = false;
+  state.multiplayerSyncBlockReason = null;
+  state.multiplayerSessionSuperseded = false;
+  state.multiplayerResolutionMarker = null;
+  hideMultiplayerSyncBarrier();
   state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '', startingRole: normalizeStartingRole(publicDoc?.startingRole), engineVersion: ENGINE_VERSION, engineProtocolVersion: ENGINE_PROTOCOL_VERSION };
   startMultiplayerPresenceHeartbeat(matchId, myRole);
   reconstructStateFromMatch(publicDoc, privateDoc, myRole);
@@ -3841,6 +4149,11 @@ function offerReconnectIfStillActive(matchId) {
         window.alert(`La partida guardada usa ${remote} y esta pestaña usa ${ENGINE_VERSION}. No se puede reconectar con motores distintos. Actualizá ambas notebooks.`);
         return;
       }
+      if (matchData.integrityError) {
+        console.error('Reconnect multiplayer rechazado por integridad de revisión:', matchData);
+        window.alert('No se pudo reconstruir la partida de forma segura porque el estado público y tu mano/mazo no pertenecen al mismo commit. Recargá e intentá nuevamente; la partida no fue modificada.');
+        return;
+      }
       const myRole = matchData.publicDoc.hostUid === state.currentUser.uid ? 'host' : 'guest';
       // 23.13.24: identidad visible del rival = username Argentinia; displayName sólo fallback legacy.
       const rivalUid = myRole === 'host' ? matchData.publicDoc.guestUid : matchData.publicDoc.hostUid;
@@ -3848,23 +4161,64 @@ function offerReconnectIfStillActive(matchId) {
       const rivalName = String(rivalProfile.username || rivalProfile.displayName || '').trim() || 'tu rival';
       const rivalPhotoURL = rivalProfile.photoURL || '';
 
+      const reconnectIsSafe = matchData.reconnectSafety?.ok !== false;
+      const reconnectMessage = reconnectIsSafe
+        ? 'Parece que recargaste la página a mitad de una partida multiplayer. ¿Querés volver a ella?'
+        : `${gameText('multiplayer.reconnect.unsafe')} Podés abandonar la partida desde acá sin reconstruir ese estado.`;
+
       showReconnectPrompt(
-        () => resumeReconnectedMatch(matchId, myRole, matchData.publicDoc, matchData.privateDoc, rivalName, rivalPhotoURL),
-        () => {
-          // "Abandonarla": mismo efecto que el botón de abandonar de siempre, pero sin
-          // necesidad de volver a entrar a la partida primero — le avisamos al rival igual.
-          state.currentMatch = { matchId, myRole, rivalName, rivalPhotoURL };
-          Object.assign(state, extractSharedStateFromPublicDoc(matchData.publicDoc, myRole));
-          state.abandonedBy = 'local';
-          publishMatchState().catch(() => {});
-          if (state.currentUser) {
-            recordLocalAbandonStatsBestEffort();
-            awardPoints(state.currentUser.uid, POINTS.abandonPenalty).catch(() => {});
+        async () => {
+          try {
+            // Recién al confirmar el usuario esta pestaña reclama el rol. Una pestaña abierta
+            // en segundo plano NO expulsa a la primera por el solo hecho de cargar el menú.
+            await claimMatchRoleSession(matchId, state.currentUser.uid, myRole);
+            const fresh = await fetchMatchForReconnect(matchId, state.currentUser.uid);
+            if (!fresh || fresh.incompatible || fresh.integrityError || fresh.reconnectSafety?.ok === false) {
+              throw new Error(fresh?.reconnectSafety?.reason ? `MULTIPLAYER_RECONNECT_UNSAFE:${fresh.reconnectSafety.reason}` : 'MULTIPLAYER_RECONNECT_REFRESH_FAILED');
+            }
+            resumeReconnectedMatch(matchId, myRole, fresh.publicDoc, fresh.privateDoc, rivalName, rivalPhotoURL);
+          } catch (err) {
+            console.error('No se pudo reclamar/reconstruir la sesión multiplayer:', err);
+            window.alert(String(err?.message || '').includes('MULTIPLAYER_RECONNECT_UNSAFE')
+              ? gameText('multiplayer.reconnect.unsafe')
+              : 'No se pudo recuperar la partida de forma segura. Recargá e intentá nuevamente.');
           }
-          clearActiveMatchId(state.currentUser.uid)
-            .then(() => { if (state.userProfile) state.userProfile.activeMatchId = null; })
-            .catch(() => {});
-        }
+        },
+        async () => {
+          // Abandonar desde una pestaña nueva también necesita reclamar primero el rol: así
+          // la instancia vieja queda cercada y no puede escribir después del abandono.
+          // El cleanup local/económico ocurre SOLAMENTE si Firestore confirmó el abandono;
+          // nunca fingimos que la partida cerró mientras el rival sigue viendo un match vivo.
+          try {
+            await claimMatchRoleSession(matchId, state.currentUser.uid, myRole, { allowUnsafe:true });
+            const fresh = await fetchMatchForReconnect(matchId, state.currentUser.uid);
+            if (!fresh?.publicDoc || !fresh?.privateDoc) throw new Error('MULTIPLAYER_RECONNECT_REFRESH_FAILED');
+            state.multiplayerSyncBlocked = false;
+            state.multiplayerSyncBlockReason = null;
+            state.multiplayerSessionSuperseded = false;
+            state.currentMatch = { matchId, myRole, rivalName, rivalPhotoURL, engineVersion:ENGINE_VERSION, engineProtocolVersion:ENGINE_PROTOCOL_VERSION };
+            reconstructStateFromMatch(fresh.publicDoc, fresh.privateDoc, myRole);
+            lastKnownPublicWire = wireClone(fresh.publicDoc);
+            lastKnownPrivateWire = wireClone(fresh.privateDoc);
+            lastAppliedServerRevision = normalizeSyncRevision(fresh.publicDoc.syncRevision);
+            lastAppliedFieldRevisions.clear();
+            markFieldRevisionsApplied(lastAppliedFieldRevisions, fresh.publicDoc.syncFieldRevisions);
+            state.abandonedBy = 'local';
+            const abandonConfirmed = await publishMatchState({ force:true });
+            if (!abandonConfirmed) throw new Error('MULTIPLAYER_ABANDON_NOT_CONFIRMED');
+
+            if (state.currentUser) {
+              recordLocalAbandonStatsBestEffort();
+              awardPoints(state.currentUser.uid, POINTS.abandonPenalty).catch(() => {});
+            }
+            await clearActiveMatchId(state.currentUser.uid);
+            if (state.userProfile) state.userProfile.activeMatchId = null;
+          } catch (err) {
+            console.error('No se pudo confirmar el abandono desde reconnect:', err);
+            window.alert('No se pudo confirmar el abandono con el servidor. La partida sigue guardada; recargá e intentá nuevamente.');
+          }
+        },
+        { canReconnect:reconnectIsSafe, message:reconnectMessage }
       );
     })
     .catch(err => console.error('No se pudo revisar la partida en curso:', err));
@@ -5836,6 +6190,7 @@ export async function resolveLoyaltyTargetChoice(targetUnit, isTargetLocal) {
 export function checkPlaneswalkerDeaths() { void runStateBasedActions({ reason:'legacy_planeswalker_deaths' }); return []; }
 
 export function handlePlaneswalkerClick(pwItem, isLocal, index) {
+  if (isMultiplayerInteractionBlocked()) return;
   if (state.gameOver) return;
 
   if (state.pendingResolvedEffectTargetChoice) {
@@ -6112,6 +6467,7 @@ export function getKeywordsGrantedByPendingSpell(pendingCard) {
 }
 
 export function handleCombatClick(item, isLocal, index) {
+  if (isMultiplayerInteractionBlocked()) return;
   if (state.damageModalOpen) return;
   if (state.pendingActivatedAbilityChoice) { logMsg(gameText('pending.ability')); return; }
   if (state.pendingDiscardChoice || (state.resolvingDiscardEffects || 0) > 0) {
@@ -6634,6 +6990,7 @@ function tryActivateGrantedAbility(creatureItem, isLocal, creatureIndex) {
 // bloqueadores, el click principal de la criatura ya tiene otro significado; el botón ⚡
 // llama acá y evita que activar una habilidad cambie accidentalmente la declaración de combate.
 export function handleInstantActivatedAbilityClick(item, isLocal, index, zoneType = 'combat') {
+  if (isMultiplayerInteractionBlocked()) return;
   if (state.gameOver || !isLocal) return false;
   let resolvedIndex = index;
   let options = [];
@@ -6651,6 +7008,7 @@ export function handleInstantActivatedAbilityClick(item, isLocal, index, zoneTyp
 }
 
 export function handleLandTargetClick(item, isLocal, index) {
+  if (isMultiplayerInteractionBlocked()) return;
   if (state.damageModalOpen || !item || !isLandPermanent(item)) return;
   if (state.pendingResolvedEffectTargetChoice) {
     finishPendingResolvedEffectTarget({ type: 'land', isLocal, index, item });
@@ -6686,6 +7044,7 @@ export function handleLandTargetClick(item, isLocal, index) {
 }
 
 export function handleSupportTargetClick(item, isLocal, index) {
+  if (isMultiplayerInteractionBlocked()) return;
   if (state.damageModalOpen) return;
 
   if (state.pendingResolvedEffectTargetChoice) {
@@ -6730,6 +7089,7 @@ export function handleSupportTargetClick(item, isLocal, index) {
 }
 
 export function handlePlayerTargetClick(isLocal) {
+  if (isMultiplayerInteractionBlocked()) return;
   if (state.damageModalOpen) return;
 
   if (state.pendingResolvedEffectTargetChoice) {
@@ -7103,6 +7463,7 @@ function suspendTimingAllows(card) {
 }
 
 export function canSuspendCardFromHand(card) {
+  if (isMultiplayerInteractionBlocked()) return false;
   if (!hasSuspend(card) || !state.localHand.includes(card)) return false;
   if (state.pendingSuspendTransaction || state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCompositeCostPayment || state.awaitingRivalDecision || state.respondingToDecision) return false;
   return suspendTimingAllows(card);
@@ -7259,6 +7620,7 @@ export async function resolveSuspendCastFromExile(effect,isLocal) {
 }
 
 export function canPlayCard(card) {
+  if (isMultiplayerInteractionBlocked()) return false;
   if (state.gameOver || state.pendingSuspendTransaction || state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingLandSearchChoice || state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice || state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || state.pendingCompositeCostPayment || (state.resolvingCardFilterEffects || 0) > 0 || (state.resolvingDiscardEffects || 0) > 0 || (state.resolvingSacrificeEffects || 0) > 0 || (state.resolvingGraveyardChoices || 0) > 0 || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen || state.pendingRampChoice || state.awaitingRivalDecision || state.respondingToDecision) return false;
   if (state.priorityPlayer !== 'local') return false; // Solo si poseés prioridad
 
@@ -8356,6 +8718,7 @@ export function startCrewing(item, isLocal, ability = getActivatedAbilities(item
 // tripular NO es "usar la habilidad de la criatura" ni "atacar", así que el mareo no aplica
 // acá (regla 302.6) — una criatura recién bajada SÍ puede ayudar a tripular.
 export function handleCrewClick(item, isLocal) {
+  if (isMultiplayerInteractionBlocked()) return;
   const pc = state.pendingCrew;
   if (!pc) return false;
 
@@ -9353,6 +9716,7 @@ export function declineWard() {
 }
 
 export function handleSupportClick(item, isLocal, index) {
+  if (isMultiplayerInteractionBlocked()) return;
   if (state.gameOver || !isLocal) return;
   if (state.pendingActivatedAbilityChoice) { logMsg(gameText('pending.ability')); return; }
 

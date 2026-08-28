@@ -34,6 +34,7 @@ import { chooseMultiplayerStartingRole } from './startingPlayer.js';
 import { buildCampaignSnapshot, validateEventPayload, validateAnnouncementPayload, effectivePackCost, effectiveMatchPoints, effectiveAllPoints, effectiveFichas } from './campaigns.js';
 import { queuePendingGameReward, pendingGameRewardsForUid, removePendingGameReward, normalizeGameRewardReceiptId } from './gameRewards.js';
 import { normalizePvpRewardLimits, evaluatePvpRewardEligibility, argentinaDayKeyFromMs, pvpPairKey, pvpCompletedTurns } from './pvpRewards.js';
+import { privateRevisionField, validateReconnectRevisionPair, normalizeSyncRevision, MULTIPLAYER_CLIENT_SESSION_ID, roleSessionField, validateRoleSession, classifyReconnectSafety } from './multiplayerReliability.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAAvUAaZ35_sF9uCsecLPg7zqhB7mLa7yo",
@@ -1896,6 +1897,17 @@ export async function createMatch(uid, profileFields) {
       // cambio protegido (missing→false/null) y rechazaba TODO snapshot vivo inicial.
       gameOver: false,
       abandonedBy: null,
+      // 23.19 — revisión global del documento + revisión del último commit privado de
+      // cada participante. Los cambios gameplay incrementan syncRevision en una transacción
+      // atómica que puede incluir también private/{uid}; reconnect verifica la pareja.
+      syncRevision: 0,
+      syncFieldRevisions: {},
+      hostPrivateRevision: 0,
+      guestPrivateRevision: 0,
+      // 23.19.1 — fencing por instancia. Evita que dos pestañas con el mismo uid
+      // controlen simultáneamente el mismo rol; NO reemplaza el guard host!=guest.
+      hostSessionId: MULTIPLAYER_CLIENT_SESSION_ID,
+      guestSessionId: null,
       endedAt: null,
       terminalKind: null,
       winnerRole: null,
@@ -1940,6 +1952,7 @@ export async function joinMatchByCode(uid, rawCode, profileFields) {
     status: 'active',
     guestUid: uid,
     guestEngineVersion: ENGINE_VERSION,
+    guestSessionId: MULTIPLAYER_CLIENT_SESSION_ID,
     players: {
       ...data.players,
       [uid]: { username: profileFields.username || '', displayName: profileFields.username || '', photoURL: profileFields.photoURL || '' }
@@ -1964,6 +1977,11 @@ export async function setMatchPlayerReady(matchId, role, ready = true) {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('La partida ya no existe.');
     const data = snap.data() || {};
+    const uid = auth.currentUser?.uid || null;
+    const expectedUid = role === 'host' ? data.hostUid : data.guestUid;
+    if (!uid || expectedUid !== uid) throw new Error('MULTIPLAYER_ROLE_UID_MISMATCH');
+    const session = validateRoleSession(data, role, MULTIPLAYER_CLIENT_SESSION_ID);
+    if (!session.ok) throw new Error('MULTIPLAYER_SESSION_SUPERSEDED');
     const patch = { [`${role}Ready`]: !!ready, updatedAt: serverTimestamp() };
     const otherRole = role === 'host' ? 'guest' : 'host';
     if (ready && data[`${otherRole}Ready`] === true && !data.bothReadyAt) {
@@ -1987,29 +2005,79 @@ export async function clearActiveMatchId(uid) {
 // los dos ya no existe, o si la partida ya terminó — no tiene sentido ofrecer reconectarse
 // a algo que ya no está en curso.
 export async function fetchMatchForReconnect(matchId, uid) {
-  const [publicSnap, privateSnap] = await Promise.all([
-    getDoc(doc(db, 'matches', matchId)),
-    getDoc(doc(db, 'matches', matchId, 'private', uid))
-  ]);
-  if (!publicSnap.exists() || !privateSnap.exists()) return null;
-  const publicDoc = publicSnap.data();
-  if (publicDoc.gameOver) return null;
-  if (!isExactMultiplayerVersionCompatible(publicDoc.engineVersion, publicDoc.engineProtocolVersion)) {
-    return {
-      incompatible: true,
-      engineVersion: publicDoc.engineVersion || null,
-      engineProtocolVersion: publicDoc.engineProtocolVersion || null,
-      publicDoc,
-      privateDoc: privateSnap.data()
-    };
-  }
-  return { publicDoc, privateDoc: privateSnap.data() };
+  const normalizedMatchId = String(matchId || '').trim().toUpperCase();
+  const publicRef = doc(db, 'matches', normalizedMatchId);
+  const privateRef = doc(db, 'matches', normalizedMatchId, 'private', uid);
+
+  // 23.19 — lectura consistente. Promise.all(getDoc,getDoc) podía observar el documento
+  // público antes de un commit y el privado después (o al revés). Una transacción de sólo
+  // lectura toma ambos desde el mismo snapshot lógico de Firestore.
+  return runTransaction(db, async tx => {
+    const publicSnap = await tx.get(publicRef);
+    const privateSnap = await tx.get(privateRef);
+    if (!publicSnap.exists() || !privateSnap.exists()) return null;
+
+    const publicDoc = publicSnap.data();
+    const privateDoc = privateSnap.data();
+    if (publicDoc.gameOver) return null;
+    if (!isExactMultiplayerVersionCompatible(publicDoc.engineVersion, publicDoc.engineProtocolVersion)) {
+      return {
+        incompatible: true,
+        engineVersion: publicDoc.engineVersion || null,
+        engineProtocolVersion: publicDoc.engineProtocolVersion || null,
+        publicDoc,
+        privateDoc
+      };
+    }
+
+    const role = publicDoc.hostUid === uid ? 'host' : (publicDoc.guestUid === uid ? 'guest' : null);
+    if (!role) return null;
+    const revisionIntegrity = validateReconnectRevisionPair(publicDoc, privateDoc, role);
+    if (!revisionIntegrity.ok) {
+      return {
+        integrityError: true,
+        integrityReason: revisionIntegrity.reason,
+        expectedPrivateRevision: revisionIntegrity.expected,
+        actualPrivateRevision: revisionIntegrity.actual,
+        publicDoc,
+        privateDoc
+      };
+    }
+    const reconnectSafety = classifyReconnectSafety(publicDoc, role);
+    return { publicDoc, privateDoc, reconnectSafety };
+  });
+}
+
+// 23.19.1 — al ACEPTAR un reconnect, la nueva instancia reclama el rol. Abrir otra
+// pestaña por sí solo no desplaza a la actual: el fencing cambia recién cuando el usuario
+// decide reconectarse. El cliente viejo verá el sessionId distinto y quedará fail-closed.
+export async function claimMatchRoleSession(matchId, uid, role, options = {}) {
+  if (!matchId || !uid) throw new Error('MULTIPLAYER_SESSION_IDENTITY_REQUIRED');
+  if (role !== 'host' && role !== 'guest') throw new Error('MULTIPLAYER_ROLE_INVALID');
+  const ref = doc(db, 'matches', String(matchId).trim().toUpperCase());
+  return runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('MULTIPLAYER_MATCH_NOT_FOUND');
+    const data = snap.data() || {};
+    const expectedUid = role === 'host' ? data.hostUid : data.guestUid;
+    if (expectedUid !== uid) throw new Error('MULTIPLAYER_ROLE_UID_MISMATCH');
+    if (data.gameOver) throw new Error('MULTIPLAYER_MATCH_FINISHED');
+    if (!isExactMultiplayerVersionCompatible(data.engineVersion, data.engineProtocolVersion)) {
+      throw new Error('MULTIPLAYER_ENGINE_MISMATCH');
+    }
+    const safety = classifyReconnectSafety(data, role);
+    if (!safety.ok && options.allowUnsafe !== true) throw new Error(`MULTIPLAYER_RECONNECT_UNSAFE:${safety.reason}`);
+    const field = roleSessionField(role);
+    const previousSessionId = data[field] || null;
+    tx.update(ref, { [field]: MULTIPLAYER_CLIENT_SESSION_ID, updatedAt: serverTimestamp() });
+    return { role, field, sessionId: MULTIPLAYER_CLIENT_SESSION_ID, previousSessionId };
+  });
 }
 
 // Escucha cambios en tiempo real de una partida — así la sala de espera se entera sola
 // apenas alguien se une, sin tener que refrescar nada a mano. Devuelve la función de
 // unsubscribe (cortar la escucha al salir de la pantalla, para no dejarla corriendo de más).
-export function listenToMatch(code, onUpdate) {
+export function listenToMatch(code, onUpdate, onError = null) {
   const ref = doc(db, 'matches', code.trim().toUpperCase());
   return onSnapshot(ref, { includeMetadataChanges: true }, (snap) => {
     onUpdate(snap.exists() ? snap.data() : null, {
@@ -2017,6 +2085,9 @@ export function listenToMatch(code, onUpdate) {
       fromCache: !!snap.metadata?.fromCache,
       receivedAtClientMs: Date.now()
     });
+  }, (error) => {
+    if (typeof onError === 'function') onError(error);
+    else console.error('Listener multiplayer interrumpido:', error);
   });
 }
 
@@ -2051,50 +2122,134 @@ export async function cancelMatch(code, uid = null) {
 // del documento (players, status, etc.) que no forma parte de este patch.
 // ============================================================================
 
-// Escribe mi mitad del estado PÚBLICO de la partida (mi campo de batalla, vida, fase,
-// turno — todo lo que el rival puede ver legítimamente, pero NUNCA el contenido de mi mano
-// ni mi mazo, solo la cantidad — ver buildMyPublicPatch).
-export async function publishMyPublicState(matchId, publicPatch) {
-  // 23.8: serverCommittedAt es un reloj COMÚN a ambas notebooks. `serverTimestamp()` se
-  // resuelve en el backend; el listener rival recibe el Timestamp real ya confirmado.
-  const patch = { ...publicPatch };
-  if (publicPatch?.syncMeta && typeof publicPatch.syncMeta === 'object') {
-    patch.syncMeta = {
-      ...publicPatch.syncMeta,
-      serverCommittedAt: serverTimestamp(),
-      engineVersion: ENGINE_VERSION,
-      engineProtocolVersion: ENGINE_PROTOCOL_VERSION
+// 23.19 — COMMIT ATÓMICO gameplay. Public + private viajan en la misma transacción y
+// cada commit recibe una revisión global monotónica. Esto elimina el reconnect "partido"
+// (mano privada de una jugada con board público de otra) y permite al listener descartar
+// snapshots viejos sin perder cambios acumulados.
+export async function publishMatchStateAtomic(matchId, uid, role, publicPatch = {}, privatePatch = {}) {
+  if (!matchId || !uid) throw new Error('MULTIPLAYER_COMMIT_IDENTITY_REQUIRED');
+  if (role !== 'host' && role !== 'guest') throw new Error('MULTIPLAYER_ROLE_INVALID');
+
+  const matchRef = doc(db, 'matches', String(matchId).trim().toUpperCase());
+  const privateRef = doc(db, 'matches', String(matchId).trim().toUpperCase(), 'private', uid);
+
+  return runTransaction(db, async tx => {
+    const matchSnap = await tx.get(matchRef);
+    if (!matchSnap.exists()) throw new Error('MULTIPLAYER_MATCH_NOT_FOUND');
+    const current = matchSnap.data() || {};
+    const expectedUid = role === 'host' ? current.hostUid : current.guestUid;
+    if (expectedUid !== uid) throw new Error('MULTIPLAYER_ROLE_UID_MISMATCH');
+    if (!isExactMultiplayerVersionCompatible(current.engineVersion, current.engineProtocolVersion)) {
+      throw new Error('MULTIPLAYER_ENGINE_MISMATCH');
+    }
+    const session = validateRoleSession(current, role, MULTIPLAYER_CLIENT_SESSION_ID);
+    if (!session.ok) throw new Error('MULTIPLAYER_SESSION_SUPERSEDED');
+
+    const nextRevision = normalizeSyncRevision(current.syncRevision) + 1;
+    const publicKeys = Object.keys(publicPatch || {}).filter(key => key !== 'syncMeta');
+    const privateKeys = Object.keys(privatePatch || {});
+    const meta = publicPatch?.syncMeta && typeof publicPatch.syncMeta === 'object' ? publicPatch.syncMeta : {};
+    const nextFieldRevisions = {
+      ...(current.syncFieldRevisions && typeof current.syncFieldRevisions === 'object' ? current.syncFieldRevisions : {})
     };
-  }
-  await setDoc(doc(db, 'matches', matchId), patch, { merge: true });
+    publicKeys.forEach(key => { nextFieldRevisions[key] = nextRevision; });
+    const publicWrite = {
+      ...(publicPatch || {}),
+      syncRevision: nextRevision,
+      syncFieldRevisions: nextFieldRevisions,
+      syncMeta: {
+        ...meta,
+        serverRevision: nextRevision,
+        serverCommittedAt: serverTimestamp(),
+        engineVersion: ENGINE_VERSION,
+        engineProtocolVersion: ENGINE_PROTOCOL_VERSION,
+        touchedKeys: Array.isArray(meta.touchedKeys) ? meta.touchedKeys : publicKeys,
+        privateTouchedKeys: privateKeys
+      }
+    };
+
+    let privateWrite = null;
+    if (privateKeys.length > 0) {
+      const revisionField = privateRevisionField(role);
+      publicWrite[revisionField] = nextRevision;
+      privateWrite = { ...(privatePatch || {}), _syncRevision: nextRevision };
+    }
+
+    tx.set(matchRef, publicWrite, { merge: true });
+    if (privateWrite) tx.set(privateRef, privateWrite, { merge: true });
+    return {
+      syncRevision: nextRevision,
+      syncFieldRevisions: nextFieldRevisions,
+      privateRevision: privateWrite ? nextRevision : null,
+      publicKeys,
+      privateKeys
+    };
+  });
 }
 
-// Escribe mi mano y mazo REALES en mi documento privado — el único que solo yo puedo leer
-// (ver firestore.rules: matches/{matchId}/private/{uid}).
-export async function publishMyPrivateState(matchId, uid, privatePatch) {
-  await setDoc(doc(db, 'matches', matchId, 'private', uid), privatePatch, { merge: true });
-}
-
+// 23.19.1 — rutas legacy publishMyPublicState/publishMyPrivateState eliminadas.
+// Gameplay multiplayer sólo puede escribir mediante publishMatchStateAtomic().
 
 // ENTREGA 23.10 — CANAL EFÍMERO PARTICIPANT-ONLY PARA SELECCIONES PRIVADAS.
 // A diferencia del documento público matches/{matchId}, estos documentos sólo pueden ser
-// leídos/escritos por host o guest del match (ver reglas 23.10). Nunca son la fuente de verdad
+// leídos/escritos por host o guest del match (ver Rules 23.13.76). Nunca son la fuente de verdad
 // de mano/mazo: contienen únicamente una OFERTA saneada (tokens opacos o descriptores que el
 // propio efecto permite revelar). La zona real sigue viviendo exclusivamente en private/{uid}.
+function validateCurrentMatchSessionForUid(matchData, uid) {
+  const role = matchData?.hostUid === uid ? 'host' : (matchData?.guestUid === uid ? 'guest' : null);
+  if (!role) throw new Error('MULTIPLAYER_ROLE_UID_MISMATCH');
+  const session = validateRoleSession(matchData, role, MULTIPLAYER_CLIENT_SESSION_ID);
+  if (!session.ok) throw new Error('MULTIPLAYER_SESSION_SUPERSEDED');
+  return role;
+}
+
 export async function publishPrivateSelectionOffer(matchId, requestId, offer) {
-  await setDoc(doc(db, 'matches', matchId, 'privateSelections', requestId), {
-    ...offer,
-    updatedAt: serverTimestamp()
+  const uid = auth.currentUser?.uid || null;
+  if (!uid) throw new Error('MULTIPLAYER_SESSION_IDENTITY_REQUIRED');
+  const normalizedMatchId = String(matchId || '').trim().toUpperCase();
+  const matchRef = doc(db, 'matches', normalizedMatchId);
+  const offerRef = doc(db, 'matches', normalizedMatchId, 'privateSelections', requestId);
+  await runTransaction(db, async tx => {
+    const matchSnap = await tx.get(matchRef);
+    if (!matchSnap.exists()) throw new Error('MULTIPLAYER_MATCH_NOT_FOUND');
+    const matchData = matchSnap.data() || {};
+    const role = validateCurrentMatchSessionForUid(matchData, uid);
+    if (offer?.ownerRole !== role) throw new Error('MULTIPLAYER_PRIVATE_SELECTION_OWNER_MISMATCH');
+    tx.set(offerRef, {
+      ...offer,
+      ownerSessionId: MULTIPLAYER_CLIENT_SESSION_ID,
+      updatedAt: serverTimestamp()
+    });
   });
 }
 
 export async function fetchPrivateSelectionOffer(matchId, requestId) {
-  const snap = await getDoc(doc(db, 'matches', matchId, 'privateSelections', requestId));
-  return snap.exists() ? snap.data() : null;
+  const uid = auth.currentUser?.uid || null;
+  if (!uid) throw new Error('MULTIPLAYER_SESSION_IDENTITY_REQUIRED');
+  const normalizedMatchId = String(matchId || '').trim().toUpperCase();
+  const matchRef = doc(db, 'matches', normalizedMatchId);
+  const offerRef = doc(db, 'matches', normalizedMatchId, 'privateSelections', requestId);
+  return runTransaction(db, async tx => {
+    const matchSnap = await tx.get(matchRef);
+    if (!matchSnap.exists()) throw new Error('MULTIPLAYER_MATCH_NOT_FOUND');
+    validateCurrentMatchSessionForUid(matchSnap.data() || {}, uid);
+    const snap = await tx.get(offerRef);
+    return snap.exists() ? snap.data() : null;
+  });
 }
 
 export async function deletePrivateSelectionOffer(matchId, requestId) {
-  await deleteDoc(doc(db, 'matches', matchId, 'privateSelections', requestId));
+  const uid = auth.currentUser?.uid || null;
+  if (!uid) throw new Error('MULTIPLAYER_SESSION_IDENTITY_REQUIRED');
+  const normalizedMatchId = String(matchId || '').trim().toUpperCase();
+  const matchRef = doc(db, 'matches', normalizedMatchId);
+  const offerRef = doc(db, 'matches', normalizedMatchId, 'privateSelections', requestId);
+  await runTransaction(db, async tx => {
+    const matchSnap = await tx.get(matchRef);
+    if (!matchSnap.exists()) throw new Error('MULTIPLAYER_MATCH_NOT_FOUND');
+    validateCurrentMatchSessionForUid(matchSnap.data() || {}, uid);
+    tx.delete(offerRef);
+  });
 }
 
 // ============================================================================
@@ -2386,9 +2541,20 @@ export async function finalizeTelemetryLifecycleSession(sessionId, payload = {})
 
 export async function touchMatchPresence(matchId, role) {
   if (!matchId || (role !== 'host' && role !== 'guest')) return null;
+  const ref = doc(db, 'matches', String(matchId).trim().toUpperCase());
   const field = role === 'host' ? 'hostLastSeenAt' : 'guestLastSeenAt';
-  await setDoc(doc(db, 'matches', matchId), { [field]: serverTimestamp() }, { merge: true });
-  return true;
+  return runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('MULTIPLAYER_MATCH_NOT_FOUND');
+    const data = snap.data() || {};
+    const uid = auth.currentUser?.uid || null;
+    const expectedUid = role === 'host' ? data.hostUid : data.guestUid;
+    if (!uid || expectedUid !== uid) throw new Error('MULTIPLAYER_ROLE_UID_MISMATCH');
+    const session = validateRoleSession(data, role, MULTIPLAYER_CLIENT_SESSION_ID);
+    if (!session.ok) throw new Error('MULTIPLAYER_SESSION_SUPERSEDED');
+    tx.update(ref, { [field]: serverTimestamp() });
+    return true;
+  });
 }
 
 export async function adminCloseStaleTelemetrySessions(staleAfterMs = 120000) {

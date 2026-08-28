@@ -1,5 +1,5 @@
 import { logMsg, els, showGameOverOverlay, showGameRewardStatus, render, updateAccountUI, refreshTurnPriorityHudClock, showUntapLandChoiceModal } from './ui.js';
-import { state, queueTriggeredAbilities, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects, advanceSagaLoreForPrecombatMainPhase, expireExilePlayPermissionsForCleanup, collectSuspendUpkeepTriggers } from './main.js';
+import { state, queueTriggeredAbilities, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects, advanceSagaLoreForPrecombatMainPhase, expireExilePlayPermissionsForCleanup, collectSuspendUpkeepTriggers, isMultiplayerInteractionBlocked } from './main.js';
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
@@ -542,6 +542,7 @@ function pausePriorityClock(activity) {
 }
 
 async function priorityClockTick() {
+  if (isMultiplayerInteractionBlocked()) { refreshTurnPriorityHudClock(); return; }
   if (priorityClockTickBusy) return;
   if (!state.currentMatch || state.gameOver || state.multiplayerWaitingForReady) {
     refreshTurnPriorityHudClock();
@@ -631,7 +632,7 @@ export function beginActivePlayerPriorityWindow() {
 }
 
 export async function passPriority(player) {
-  if (state.gameOver) return;
+  if (state.gameOver || isMultiplayerInteractionBlocked()) return;
 
   // 23.15.1 — las State-Based Actions y sus decisiones reglamentarias ocurren antes de
   // que cualquier jugador reciba prioridad. No aceptar pases mientras el kernel/los
@@ -715,7 +716,36 @@ export async function resolveBothPassed() {
   }
 
   isResolvingBothPassed = true;
+  let durableResolutionMarkerStarted = false;
   try {
+    // 23.19.1 — SAFE-POINT CONTRACT. El cliente que tiene autoridad publica y CONFIRMA
+    // primero una marca durable. Si muere/F5 durante cualquier await de la resolución, el
+    // reconnect puede distinguir "snapshot estable" de "proceso JS perdido a mitad de efecto".
+    if (state.currentMatch) {
+      state.multiplayerResolutionMarker = {
+        authorityRole: state.currentMatch.myRole,
+        kind: topStackItem ? 'stack_resolution' : (state.phase === 'combat_damage' ? 'combat_damage_continuation' : 'step_advance'),
+        stackId: topStackItem?.id || null,
+        turnCount: Number(state.turnCount || 0),
+        phase: state.phase || null,
+        startedAtClientMs: Date.now()
+      };
+      render();
+      const markerConfirmed = await publishMatchState({ force:true });
+      if (!markerConfirmed) {
+        state.multiplayerResolutionMarker = null;
+        render();
+        return;
+      }
+      durableResolutionMarkerStarted = true;
+      recordTelemetryEvent('multiplayer_resolution_marker_confirmed', {
+        kind:state.multiplayerResolutionMarker.kind,
+        stackId:state.multiplayerResolutionMarker.stackId,
+        turnCount:state.turnCount,
+        phase:state.phase
+      });
+    }
+
     if (spellStack.length > 0) {
       logMsg(gameText('priority.bothPassed.resolve'));
       state.consecutivePasses = 0;
@@ -741,6 +771,21 @@ export async function resolveBothPassed() {
       await advanceStep();
     }
   } finally {
+    if (durableResolutionMarkerStarted && state.currentMatch) {
+      state.multiplayerResolutionMarker = null;
+      render();
+      // No abrimos una nueva ventana de juego hasta que el servidor confirme que volvimos
+      // a un safe point. Si este ACK falla, 23.19.1 congela input y el recovery watch lo limpia.
+      const safePointConfirmed = await publishMatchState({ force:true });
+      recordTelemetryEvent(
+        safePointConfirmed ? 'multiplayer_resolution_safe_point_confirmed' : 'multiplayer_resolution_safe_point_pending_recovery',
+        { turnCount:state.turnCount, phase:state.phase, stackDepth:spellStack.length },
+        safePointConfirmed ? 'info' : 'warning'
+      );
+    } else if (state.multiplayerResolutionMarker?.authorityRole === state.currentMatch?.myRole) {
+      state.multiplayerResolutionMarker = null;
+      render();
+    }
     isResolvingBothPassed = false;
   }
 }

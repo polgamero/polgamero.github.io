@@ -116,6 +116,10 @@ export function listenToMatch(...args) {
     if (cancelled && typeof innerStop === 'function') innerStop();
   }).catch(error => {
     diag('firebase_listen_match_failed', { message: error?.message || String(error) });
+    const onError = args[2];
+    if (typeof onError === 'function') {
+      try { onError(error); } catch {}
+    }
   });
   return () => {
     cancelled = true;
@@ -197,9 +201,9 @@ export const sealMultiplayerOutcome = asyncProxy('sealMultiplayerOutcome');
 export const setActiveMatchId = asyncProxy('setActiveMatchId');
 export const clearActiveMatchId = asyncProxy('clearActiveMatchId');
 export const fetchMatchForReconnect = asyncProxy('fetchMatchForReconnect');
+export const claimMatchRoleSession = asyncProxy('claimMatchRoleSession');
 export const cancelMatch = asyncProxy('cancelMatch');
-export const publishMyPublicState = asyncProxy('publishMyPublicState');
-export const publishMyPrivateState = asyncProxy('publishMyPrivateState');
+export const publishMatchStateAtomic = asyncProxy('publishMatchStateAtomic');
 export const publishPrivateSelectionOffer = asyncProxy('publishPrivateSelectionOffer');
 export const fetchPrivateSelectionOffer = asyncProxy('fetchPrivateSelectionOffer');
 export const deletePrivateSelectionOffer = asyncProxy('deletePrivateSelectionOffer');

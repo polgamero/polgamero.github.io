@@ -220,12 +220,8 @@ export function buildRandomDeck(forcedIdentity, options = {}) {
   const replayRng = options.rng || (() => gameRandom('deck_intelligence'));
   const result = buildCompetitiveDeck(cardDb.allCards, identity, { ...options, quality, rng: replayRng });
   lastRandomDeckReport = result.report;
-  console.log(
-    `[Deck Intelligence ${result.report.engineVersion}] ${identity.join('/')} · ` +
-    `${result.report.archetypeLabel} · ${result.report.qualityLabel} · ` +
-    `score ${result.report.selectedScore}/${result.report.bestScore} · ` +
-    `${result.report.landCount} tierras · MV ${result.report.averageManaValue}`
-  );
+  // 23.19 — privacidad de juego Solo: el mazo del Tano es información oculta.
+  // No imprimir identidad, arquetipo, score ni curva del mazo generado en consola.
   return shuffle(result.deck, replayRng);
 }
 

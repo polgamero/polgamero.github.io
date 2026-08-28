@@ -1,9 +1,9 @@
 {
-  "engineVersion": "23.18.3",
-  "engineProtocolVersion": "mp-23.10.0",
-  "protocolVersion": "mp-23.10.0",
-  "firestoreRulesVersion": "23.13.75",
+  "engineVersion": "23.19.1",
+  "engineProtocolVersion": "mp-23.19.1",
+  "protocolVersion": "mp-23.19.1",
+  "firestoreRulesVersion": "23.13.76",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Mana Pool UX + Vanilla Creature Rebalance"
+  "label": "Multiplayer Reliability Hardening"
 }

@@ -17,7 +17,7 @@ export const PER_PLAYER_FIELDS = [
 export const SHARED_FIELDS = [
   'turnCount', 'phase', 'gameOver', 'consecutivePasses', 'combatDamagePrevented',
   'activeEffects', 'scheduledReturns',
-  'pendingDecision', 'decisionResponse',
+  'pendingDecision', 'decisionResponse', 'multiplayerResolutionMarker',
   'priorityClockSerial', 'priorityClockDurationMs', 'priorityActivity'
 ];
 
