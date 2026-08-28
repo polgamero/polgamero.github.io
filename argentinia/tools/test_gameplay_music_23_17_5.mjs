@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import { AUDIO_CATALOG, MUSIC_SCENE_TRACKS, enterGameplayAudio, getAudioRuntimeStatus } from '../js/audioManager.js';
 import { ENGINE_VERSION, FIRESTORE_RULES_VERSION } from '../js/version.js';
 
-assert.equal(ENGINE_VERSION, '23.19.1');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.76');
+assert.equal(ENGINE_VERSION, '23.19.2');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.77');
 assert.deepEqual(MUSIC_SCENE_TRACKS, { menu:'menu', solo:'solo', multiplayer:'multiplayer' });
 
 const sources = (id) => AUDIO_CATALOG.music[id].sources.map(x => x.src);

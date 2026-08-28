@@ -13,10 +13,10 @@ const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || path.resolve(root,'.
 const rules = fs.existsSync(rulesPath) ? fs.readFileSync(rulesPath,'utf8') : '';
 const manifest = JSON.parse(fs.readFileSync(path.join(root,'build-manifest.json'),'utf8'));
 
-assert.equal(ENGINE_VERSION, '23.19.1');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.76');
-assert.equal(manifest.engineVersion,'23.19.1');
-assert.equal(manifest.firestoreRulesVersion,'23.13.76');
+assert.equal(ENGINE_VERSION, '23.19.2');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.77');
+assert.equal(manifest.engineVersion,'23.19.2');
+assert.equal(manifest.firestoreRulesVersion,'23.13.77');
 
 const day = n => new Date(Date.UTC(2026,7,27+n,15,30,0));
 const d1 = advanceDailyLoginState(null, day(0));
@@ -64,7 +64,7 @@ if (rules) {
   assert.ok(rules.includes("request.resource.data.get('lastSeenAt', null) == request.time"));
   assert.ok(rules.includes('function validDailyRoutedUpdate(userId)'));
   assert.ok(rules.includes('validAdminDailyLoginTransitionV4(userId)'));
-  assert.ok(rules.includes("'23.13.76'"));
+  assert.ok(rules.includes("'23.13.77'"));
   const v6 = rules.slice(rules.indexOf('function validNormalDailyCommonShapeV6'), rules.indexOf('// 23.13.62 — ADMIN DAILY QA CONTRACT'));
   assert.ok(v6.includes("d.get('serverUpdatedAt', null) is timestamp"));
   assert.ok(!v6.includes('serverUpdatedAt == request.time'), 'Normal V6 volvió a depender del nested transform para autorizar.');
@@ -73,4 +73,4 @@ if (rules) {
   assert.ok(claim.includes("request.resource.data.get('lastSeenAt', null) == request.time"));
 }
 
-console.log('DAILY_CLOCK_RUNTIME_HARDENING_23_17_3_4_OK normal=D1+D2+gap clock=singleflight+retry claim=topLevelSeal rules=23.13.76');
+console.log('DAILY_CLOCK_RUNTIME_HARDENING_23_17_3_4_OK normal=D1+D2+gap clock=singleflight+retry claim=topLevelSeal rules=23.13.77');

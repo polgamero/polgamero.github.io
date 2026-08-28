@@ -22,9 +22,9 @@ const stax = fs.readFileSync(new URL('../js/landStax.js', import.meta.url), 'utf
 const texts = fs.readFileSync(new URL('../js/gameTexts.js', import.meta.url), 'utf8');
 const workflow = fs.readFileSync(new URL('../../.github/workflows/pages.yml', import.meta.url), 'utf8');
 
-assert.ok((version.includes("ENGINE_VERSION = '23.18.3'") || version.includes("ENGINE_VERSION = '23.19.1'")) || (()=>{ try { if (!(version.includes("ENGINE_VERSION = '23.18.3'") || version.includes("ENGINE_VERSION = '23.19.1'"))) return /ENGINE_VERSION = '(?:23\.14\.(?:[7-9]|[1-9][0-9]+)|23\.(?:1[5-9]|[2-9][0-9])\.\d+(?:\.\d+)?|(?:2[4-9]|[3-9]\d)\.\d+\.\d+)'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/.test(version); } catch { return false; } })());
-if (!(version.includes("ENGINE_VERSION = '23.18.3'") || version.includes("ENGINE_VERSION = '23.19.1'"))) assert.match(version, /FIRESTORE_RULES_VERSION = '23\.13\.68'/);
-if (!(version.includes("ENGINE_VERSION = '23.18.3'") || version.includes("ENGINE_VERSION = '23.19.1'"))) assert.match(version, /ENGINE_PROTOCOL_VERSION = 'mp-23\.10\.0'/);
+assert.ok((version.includes("ENGINE_VERSION = '23.18.3'") || version.includes("ENGINE_VERSION = '23.19.2'")) || (()=>{ try { if (!(version.includes("ENGINE_VERSION = '23.18.3'") || version.includes("ENGINE_VERSION = '23.19.2'"))) return /ENGINE_VERSION = '(?:23\.14\.(?:[7-9]|[1-9][0-9]+)|23\.(?:1[5-9]|[2-9][0-9])\.\d+(?:\.\d+)?|(?:2[4-9]|[3-9]\d)\.\d+\.\d+)'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/.test(version); } catch { return false; } })());
+if (!(version.includes("ENGINE_VERSION = '23.18.3'") || version.includes("ENGINE_VERSION = '23.19.2'"))) assert.match(version, /FIRESTORE_RULES_VERSION = '23\.13\.68'/);
+if (!(version.includes("ENGINE_VERSION = '23.18.3'") || version.includes("ENGINE_VERSION = '23.19.2'"))) assert.match(version, /ENGINE_PROTOCOL_VERSION = 'mp-23\.10\.0'/);
 
 function emptyState() {
   return {

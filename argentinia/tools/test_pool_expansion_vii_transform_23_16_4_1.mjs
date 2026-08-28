@@ -21,10 +21,10 @@ const fileMap={
 const byCategory=Object.fromEntries(Object.entries(fileMap).map(([k,f])=>[k,json(`assets/data/${f}`)]));
 const cards=Object.values(byCategory).flat();
 
-assert.ok(['23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.1'].includes(ENGINE_VERSION));
+assert.ok(['23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2'].includes(ENGINE_VERSION));
 assert.equal(TRANSFORM_ENGINE_VERSION,'23.16.4','content release reuses the canonical 23.16.4 Transform Engine');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.1'].includes(ENGINE_PROTOCOL_VERSION));
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.76');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.77');
 assert.ok(['pool_expansion_vii_850','pool_expansion_viii_880'].includes(CURRENT_POOL_MILESTONE));
 assert.ok(POOL_BASELINE.total>=850);
 assert.equal(POOL_MILESTONES.pool_expansion_vi_820.total,820,'previous Pool VI milestone must remain frozen');
