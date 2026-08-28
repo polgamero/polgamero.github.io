@@ -133,6 +133,6 @@ assert.match(main,/spellCastTrigger/);
 assert.match(main,/diesTrigger/);
 assert.match(combatJs,/attackTrigger/);
 assert.match(turn,/upkeepTrigger/);
-if (!(version.includes("ENGINE_VERSION = '23.18.3'") || version.includes("ENGINE_VERSION = '23.19.2'"))) assert.match(version,/23\.15\.3/);
+if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.3'")))) assert.match(version,/23\.15\.3/);
 
 console.log('EVENT_ENGINE_23_15_3_OK events=25 predicates=controller+owner+self+type+subtype+color+zone+cause+amount+source-target payment-defer+attack-tap+crew-confirm legacy=compatible');

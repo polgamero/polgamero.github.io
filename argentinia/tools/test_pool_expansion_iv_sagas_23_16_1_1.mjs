@@ -23,7 +23,7 @@ const byFile=Object.fromEntries(dataFiles.map(f=>[f,collect(json(`assets/data/${
 const cards=Object.values(byFile).flat();
 const byId=new Map(cards.map(c=>[c.id,c]));
 
-assert.ok(['23.16.1.1','23.16.2','23.16.2.1','23.16.3','23.16.3.1','23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2'].includes(ENGINE_VERSION),'Pool IV contract must survive later releases');
+assert.ok(['23.16.1.1','23.16.2','23.16.2.1','23.16.3','23.16.3.1','23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.3'].includes(ENGINE_VERSION),'Pool IV contract must survive later releases');
 assert.equal(SAGA_ENGINE_VERSION,'23.16.1');
 assert.ok(['pool_expansion_iv_760','pool_expansion_v_790','pool_expansion_vi_820','pool_expansion_vii_850','pool_expansion_viii_880'].includes(CURRENT_POOL_MILESTONE));
 assert.ok(POOL_BASELINE.total>=760);
