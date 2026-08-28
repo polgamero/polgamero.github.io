@@ -1750,7 +1750,10 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const dfcFace = dfcSpec ? currentTransformFace(itemObj) : null;
   const dfcBackName = dfcSpec?.backFace?.name || 'cara posterior';
   const dfcBadgeHTML = dfcSpec
-    ? `<div class="dfc-face-badge" data-tooltip="${(dfcFace === 'back' ? `Cara posterior · ${card.name}` : `Transforma en ${dfcBackName}`).replace(/"/g, '&quot;')}">↻ ${dfcFace === 'back' ? 'B' : 'A'}</div>`
+    // 23.17.5.2 — title nativo a propósito: el badge vive sobre un área de arte recortada
+    // y un ::after interno siempre puede ser clippeado por overflow. El tooltip del browser
+    // escapa de ese stacking context y nunca queda cortado por la carta.
+    ? `<div class="dfc-face-badge" title="${(dfcFace === 'back' ? `Cara posterior · ${card.name}` : `Transforma en ${dfcBackName}`).replace(/"/g, '&quot;')}" aria-label="${(dfcFace === 'back' ? `Cara posterior · ${card.name}` : `Transforma en ${dfcBackName}`).replace(/"/g, '&quot;')}">↻ ${dfcFace === 'back' ? 'B' : 'A'}</div>`
     : '';
   const chosenCreatureType=getChosenCreatureType(itemObj);
   const typalChoiceBadgeHTML=chosenCreatureType
@@ -1774,7 +1777,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     <div class="card-inner">
       <div class="card-header"><span class="card-title" style="font-size: clamp(4px, ${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
       <div class="card-art" style="position: relative; overflow: hidden;">
-        <div style="position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;">${icon}</div>
+        <div class="card-art-fallback" aria-hidden="true">${icon}</div>
         ${card.image ? `<img class="card-art-image" src="./assets/images/cards/${card.image}" alt="${card.name}"${browserImageAttrs} style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
         ${counterBadgeHTML}
         ${sagaChapterHTML}
@@ -7602,7 +7605,82 @@ export function showDeckSelectionModal(onChoose, titleOverrides = {}, onCancel) 
   });
 }
 
+let mulliganScrollInteractionsInstalled = false;
+let mulliganScrollGesture = null;
+
+function installMulliganScrollInteractions() {
+  if (mulliganScrollInteractionsInstalled || typeof document === 'undefined') return;
+  mulliganScrollInteractionsInstalled = true;
+
+  const rowFromEvent = (event) => event?.target?.closest?.('.mulligan-hand-row') || null;
+  const hasHorizontalOverflow = (row) => !!row && row.scrollWidth > row.clientWidth + 2;
+
+  // Desktop: una rueda vertical normal desplaza horizontalmente los selectores de cartas.
+  // Trackpads que ya entregan deltaX conservan su desplazamiento nativo.
+  document.addEventListener('wheel', (event) => {
+    const row = rowFromEvent(event);
+    if (!hasHorizontalOverflow(row)) return;
+    if (Math.abs(event.deltaX) >= Math.abs(event.deltaY) || Math.abs(event.deltaY) < 1) return;
+    event.preventDefault();
+    row.scrollLeft += event.deltaY;
+  }, { passive: false, capture: true });
+
+  // Desktop: click+drag sobre las cartas/fondo. Un click corto sigue seleccionando la carta;
+  // sólo a partir de 7 px se convierte en gesto de scroll y se suprime el click posterior.
+  document.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || event.pointerType === 'touch') return; // touch usa pan-x nativo
+    const row = rowFromEvent(event);
+    if (!hasHorizontalOverflow(row)) return;
+    if (event.target?.closest?.('button,a,input,select,textarea,label')) return;
+    mulliganScrollGesture = {
+      row,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScrollLeft: row.scrollLeft,
+      dragging: false
+    };
+  }, true);
+
+  document.addEventListener('pointermove', (event) => {
+    const g = mulliganScrollGesture;
+    if (!g || g.pointerId !== event.pointerId) return;
+    const dx = event.clientX - g.startX;
+    if (!g.dragging && Math.abs(dx) < 7) return;
+    if (!g.dragging) {
+      g.dragging = true;
+      g.row.classList.add('dragging');
+      try { g.row.setPointerCapture?.(event.pointerId); } catch {}
+    }
+    event.preventDefault();
+    g.row.scrollLeft = g.startScrollLeft - dx;
+  }, { passive: false, capture: true });
+
+  const finishDrag = (event) => {
+    const g = mulliganScrollGesture;
+    if (!g || g.pointerId !== event.pointerId) return;
+    if (g.dragging) {
+      g.row.dataset.suppressSelectionClickUntil = String(Date.now() + 260);
+      g.row.classList.remove('dragging');
+      try { g.row.releasePointerCapture?.(event.pointerId); } catch {}
+    }
+    mulliganScrollGesture = null;
+  };
+  document.addEventListener('pointerup', finishDrag, true);
+  document.addEventListener('pointercancel', finishDrag, true);
+
+  document.addEventListener('click', (event) => {
+    const row = rowFromEvent(event);
+    if (!row) return;
+    const until = Number(row.dataset.suppressSelectionClickUntil || 0);
+    if (until > Date.now()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
+}
+
 function injectMulliganStyles() {
+  installMulliganScrollInteractions();
   if (document.getElementById('mulligan-styles')) return;
   const style = document.createElement('style');
   style.id = 'mulligan-styles';
@@ -7613,7 +7691,7 @@ function injectMulliganStyles() {
       display: flex; align-items: center; justify-content: center;
     }
     .mulligan-panel {
-      max-width: 980px; width: 95%; max-height: 90vh; overflow: visible;
+      max-width: 980px; width: 95%; max-height: 90vh; overflow-x: hidden; overflow-y: auto;
       background: linear-gradient(180deg, rgba(18,25,15,0.97), rgba(11,19,14,0.99));
       border: 2px solid var(--gold, #d4af37);
       border-radius: 16px;
@@ -7626,9 +7704,16 @@ function injectMulliganStyles() {
     }
     .mulligan-subtitle { text-align: center; font-size: 14px; color: #cfe0d4; margin-bottom: 22px; }
     .mulligan-hand-row {
-      display: flex; justify-content: center; gap: 8px; flex-wrap: nowrap; margin-bottom: 26px;
-      min-height: 154px;
+      display: flex; justify-content: flex-start; gap: 8px; flex-wrap: nowrap; margin: -68px 0 -58px;
+      min-height: 154px; width: 100%; max-width: 100%; box-sizing: border-box;
+      padding: 72px 8px 76px; overflow-x: auto; overflow-y: hidden;
+      scrollbar-width: thin; scrollbar-color: var(--gold, #d4af37) rgba(0,0,0,.2);
+      overscroll-behavior-x: contain; touch-action: pan-x; scroll-behavior: smooth;
     }
+    .mulligan-hand-row::-webkit-scrollbar { height: 9px; }
+    .mulligan-hand-row::-webkit-scrollbar-track { background: rgba(0,0,0,.18); border-radius: 999px; }
+    .mulligan-hand-row::-webkit-scrollbar-thumb { background: var(--gold, #d4af37); border-radius: 999px; }
+    .mulligan-hand-row.dragging { cursor: grabbing; user-select: none; scroll-behavior: auto; }
     .mulligan-card-slot {
       width: 100px !important; height: 140px !important;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
@@ -8985,13 +9070,99 @@ export function showLegendRuleChoiceModal(entries = [], cardName = 'Permanente l
 }
 
 // UI expresa orden de RESOLUCIÓN (arriba resuelve primero); triggerOrdering.js lo convierte a LIFO.
+const TRIGGER_ORDER_LABELS = Object.freeze({
+  etb:'entrada al campo', creature_etb:'entrada de criatura', land_etb:'Landfall', spell_cast:'hechizo lanzado',
+  dies:'al morir', any_creature_dies:'muerte de criatura', opponent_death:'muerte rival', attack:'al atacar',
+  any_creature_attacks:'ataque', block:'al bloquear', combat_damage:'daño de combate', upkeep:'mantenimiento',
+  end_step:'paso final', permanent_entered:'entrada de permanente', creature_entered:'entrada de criatura',
+  land_entered:'entrada de Tierra', creature_died:'muerte de criatura', spell_cast_generic:'hechizo lanzado',
+  attack_declared:'ataque declarado', block_declared:'bloqueo declarado', combat_damage_dealt:'daño de combate',
+  card_drawn:'robo de carta', card_discarded:'descarte', permanent_sacrificed:'sacrificio', life_gained:'vida ganada',
+  life_lost:'vida perdida', counter_added:'contador agregado', counter_removed:'contador removido', token_created:'ficha creada',
+  permanent_tapped:'permanente girado', spell_countered:'hechizo contrarrestado', spell_copied:'hechizo copiado',
+  ability_copied:'habilidad copiada', permanent_became_copy:'permanente copiado', permanent_transformed:'transformación',
+  saga_chapter:'capítulo de Saga', suspend_tick:'Suspend — Tiempo', suspend_cast:'Suspend — último Tiempo'
+});
+
+function triggerOrderEffectSummary(effect = {}) {
+  const labels = {
+    draw:'Robá', heal:'Ganás vida', damage:'Hacé daño', drain:'Drená vida', fight:'Peleá', ramp:'Buscá una Tierra',
+    create_tokens:'Creá fichas', discard:'Descartá', sacrifice:'Sacrificá', reanimate:'Reanimá', search_land:'Buscá una Tierra',
+    search_library:'Buscá en tu biblioteca', look_at_top:'Mirá la parte superior', scry:'Adiviná', surveil:'Vigilá', proliferate:'Proliferá'
+  };
+  const base = labels[effect?.type] || String(effect?.type || 'Habilidad disparada').replaceAll('_',' ');
+  const amount = effect?.amount !== undefined ? ` ${effect.amount}` : '';
+  return `${base}${amount}`.trim();
+}
+
+function triggerOrderDescription(entry = {}) {
+  const text = String(entry.sourceCard?.text || '').trim();
+  if (text) {
+    const pieces = text.split(/(?<=[.!?])\s+/).map(x=>x.trim()).filter(Boolean);
+    const matcher = {
+      any_creature_dies: /muera una criatura|criatura[^.]*muera/i,
+      dies: /cuando[^.]*muera|al morir/i,
+      attack: /siempre que[^.]*ataque|cuando[^.]*ataque/i,
+      block: /siempre que[^.]*bloquee|cuando[^.]*bloquee/i,
+      upkeep: /mantenimiento/i,
+      end_step: /paso final|final de tu turno/i,
+      etb: /entre al campo|entra al campo/i,
+      creature_etb: /criatura[^.]*entre al campo|criatura[^.]*entra al campo/i
+    }[entry.triggerType];
+    const matched = matcher ? pieces.find(piece=>matcher.test(piece)) : null;
+    const chosen = matched || pieces[0] || text;
+    return chosen.length > 220 ? `${chosen.slice(0,217)}…` : chosen;
+  }
+  const label = TRIGGER_ORDER_LABELS[entry.triggerType] || String(entry.triggerType || 'habilidad').replaceAll('_',' ');
+  return `${label} — ${triggerOrderEffectSummary(entry.effect)}`;
+}
+
+function triggerOrderEventSummary(entry = {}) {
+  if (!entry.eventCard?.name) return '';
+  const role = entry.eventCard?._ownerRole || null;
+  const myRole = state.currentMatch?.myRole || null;
+  const own = myRole === 'host' || myRole === 'guest'
+    ? role === myRole
+    : role === 'local';
+  const rival = myRole === 'host' || myRole === 'guest'
+    ? (role === 'host' || role === 'guest') && role !== myRole
+    : role === 'rival';
+  const key = own ? 'trigger.order.eventOwn' : (rival ? 'trigger.order.eventRival' : 'trigger.order.event');
+  return gameText(key, { event: entry.eventCard.name });
+}
+
 export function showTriggerOrderModal(entries = []) {
   return new Promise(resolve => {
     if(entries.length<=1){resolve(entries);return;}
-    const ordered=[...entries]; const overlay=document.createElement('div'); overlay.className='gy-modal-overlay';
-    overlay.innerHTML=`<div class="gy-modal-content"><div class="gy-modal-header"><h3>${gameTextHtml('trigger.order.title')}</h3></div><div style="margin-bottom:12px">${gameTextHtml('trigger.order.subtitle')}</div><div class="trigger-order-list"></div><button class="mulligan-btn mulligan-btn-keep trigger-order-confirm">${gameTextHtml('trigger.order.confirm')}</button></div>`;
-    document.body.appendChild(overlay); const list=overlay.querySelector('.trigger-order-list');
-    const draw=()=>{ list.innerHTML=''; ordered.forEach((entry,i)=>{const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;align-items:center;margin:6px 0';row.innerHTML=`<div style="flex:1">${escapeHtml(entry.sourceCard?.name||'Habilidad')} · ${escapeHtml(entry.triggerType||'trigger')}</div><button data-up="${i}">${gameTextHtml('trigger.order.up')}</button><button data-down="${i}">${gameTextHtml('trigger.order.down')}</button>`;list.appendChild(row)}); list.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{const i=+b.dataset.up;if(i>0){[ordered[i-1],ordered[i]]=[ordered[i],ordered[i-1]];draw()}});list.querySelectorAll('[data-down]').forEach(b=>b.onclick=()=>{const i=+b.dataset.down;if(i<ordered.length-1){[ordered[i+1],ordered[i]]=[ordered[i],ordered[i+1]];draw()}});};
-    draw(); overlay.querySelector('.trigger-order-confirm').onclick=()=>{overlay.remove();resolve(ordered)};
+    const ordered=[...entries];
+    const overlay=document.createElement('div');
+    overlay.className='gy-modal-overlay trigger-order-overlay';
+    overlay.innerHTML=`<div class="gy-modal-content trigger-order-modal"><div class="gy-modal-header"><h3>${gameTextHtml('trigger.order.title')}</h3></div><div class="trigger-order-subtitle">${gameTextHtml('trigger.order.subtitle')}</div><div class="trigger-order-list"></div><button class="mulligan-btn mulligan-btn-keep trigger-order-confirm">${gameTextHtml('trigger.order.confirm')}</button></div>`;
+    document.body.appendChild(overlay);
+    const list=overlay.querySelector('.trigger-order-list');
+    const draw=()=>{
+      list.innerHTML='';
+      ordered.forEach((entry,i)=>{
+        const row=document.createElement('div');
+        row.className='trigger-order-row';
+        const eventSummary=triggerOrderEventSummary(entry);
+        row.innerHTML=`
+          <div class="trigger-order-rank">${i+1}</div>
+          <div class="trigger-order-copy">
+            <div class="trigger-order-source">${escapeHtml(entry.sourceCard?.name||'Habilidad')}</div>
+            <div class="trigger-order-description">${escapeHtml(triggerOrderDescription(entry))}</div>
+            ${eventSummary ? `<div class="trigger-order-event">${escapeHtml(eventSummary)}</div>` : ''}
+          </div>
+          <div class="trigger-order-controls">
+            <button type="button" class="trigger-order-arrow" data-up="${i}" aria-label="${escapeHtml(gameText('trigger.order.upAria'))}" title="${escapeHtml(gameText('trigger.order.up'))}" ${i===0?'disabled':''}>↑</button>
+            <button type="button" class="trigger-order-arrow" data-down="${i}" aria-label="${escapeHtml(gameText('trigger.order.downAria'))}" title="${escapeHtml(gameText('trigger.order.down'))}" ${i===ordered.length-1?'disabled':''}>↓</button>
+          </div>`;
+        list.appendChild(row);
+      });
+      list.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{const i=+b.dataset.up;if(i>0){[ordered[i-1],ordered[i]]=[ordered[i],ordered[i-1]];draw();}});
+      list.querySelectorAll('[data-down]').forEach(b=>b.onclick=()=>{const i=+b.dataset.down;if(i<ordered.length-1){[ordered[i+1],ordered[i]]=[ordered[i],ordered[i+1]];draw();}});
+    };
+    draw();
+    overlay.querySelector('.trigger-order-confirm').onclick=()=>{overlay.remove();resolve(ordered);};
   });
 }

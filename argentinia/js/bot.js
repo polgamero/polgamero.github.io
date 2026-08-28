@@ -527,6 +527,11 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
   }
   state.priorityPlayer = 'local';
   state.consecutivePasses = 0;
+  // 23.17.5.1 — CRÍTICO: esta era la única ruta de casteo del Tano que devolvía la
+  // prioridad internamente pero no renderizaba la nueva ventana. El hechizo quedaba en
+  // Stack y el DOM seguía mostrando prioridad rival, por lo que Space/click parecían
+  // muertos. Exile/Suspend/casteo normal ya hacen este render al entregar prioridad.
+  render();
   return true;
 }
 

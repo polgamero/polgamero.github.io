@@ -211,6 +211,9 @@ export function keywordReminder(keyword) {
   if (k === 'infect') {
     return 'Esta criatura hace daño a criaturas en forma de contadores -1/-1 y a jugadores en forma de contadores de Veneno.';
   }
+  if (k === 'menace') {
+    return 'Esta criatura no puede ser bloqueada excepto por dos o más criaturas.';
+  }
   if (k.startsWith('ward_')) {
     const n = Math.max(0, Number(k.slice(5)) || 0);
     return `Siempre que este permanente sea objetivo de un hechizo o habilidad de un oponente, contrarrestalo a menos que ese jugador pague {${n}}.`;

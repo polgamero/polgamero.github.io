@@ -293,6 +293,11 @@ export function expireTemporaryControlEffects() {
 }
 export { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, beginActivePlayerPriorityWindow } from './turnManager.js';
 
+// 23.17.5.1 — el watchdog del Tano sólo debe correr cuando el mulligan/setup terminó.
+// Antes Telemetría empezaba a contar desde que se construían los mazos y podía denunciar un
+// stall falso mientras el jugador todavía estaba mirando su mano inicial.
+let soloGameplayReady = false;
+
 export const state = {
   turnCount: 1,
   isPlayerTurn: true,
@@ -780,6 +785,7 @@ function hookGameplayButtons() {
 }
 
 async function initGame(deckSource) {
+  soloGameplayReady = false;
   enterGameplayAudio('solo');
   logMsg(gameText('game.loadingDeck'));
 
@@ -868,6 +874,7 @@ async function initGame(deckSource) {
   // El jugador humano decide el suyo de forma interactiva. La partida arranca de
   // verdad recién cuando termina de resolver su mano (finishSetup).
   const finishSetup = () => {
+    soloGameplayReady = true;
     beginSoloRecoverySession({
       soloGameId,
       state,
@@ -936,6 +943,7 @@ async function abandonRecoveredSolo(candidate, { expired = false } = {}) {
 }
 
 async function resumeSoloRecoveryGame(candidate) {
+  soloGameplayReady = true;
   enterGameplayAudio('solo');
   document.querySelectorAll('#main-menu-overlay, #solo-recovery-overlay').forEach(el => el.remove());
   setupBoardLayout();
@@ -1211,6 +1219,7 @@ async function boot() {
     getLocalPlayerName,
     getRivalName,
     getCurrentUser: () => state.currentUser,
+    isSoloGameplayReady: () => soloGameplayReady,
     uploadRemote: uploadTelemetrySession
   });
 
@@ -6739,6 +6748,17 @@ export function handlePlayerTargetClick(isLocal) {
 }
 
 export function cancelPayment() {
+  // 23.17.5.2 — Suspend usa la misma superficie de pago reversible que un casteo, pero
+  // NO crea pendingCastTransaction/pendingSpellIndex. El botón Cancelar y ESC llegaban
+  // correctamente acá y luego caían en el guard de abajo sin hacer nada. Tratamos la
+  // acción especial explícitamente y restauramos pool/fuentes exactamente al snapshot.
+  if (state.pendingSuspendTransaction) {
+    const cardName = state.pendingSuspendTransaction.card?.name || 'la carta';
+    clearSuspendPaymentState({ rollback: true });
+    logMsg(gameText('suspend.cancelled', { card: cardName }));
+    render();
+    return;
+  }
   if (state.pendingCrew) { cancelCrew(); return; }
   if (state.pendingWardChoice) { declineWard(); return; }
   if (state.pendingCounterUnlessPay) { declineCounterTax(); return; }
@@ -9464,7 +9484,20 @@ export async function resumeAfterInteractiveEffect() {
     }
     state.priorityPlayer = state.activePlayer;
     state.consecutivePasses = 0;
-    checkRivalCounterOrResponse();
+    resetPriorityClock('interactive_effect_finished');
+    render();
+
+    // 23.17.5.2 — una resolución interactiva (Scry/Surveil/Proliferar/counter-tax, etc.)
+    // puede terminar con otra habilidad todavía en la Stack. Antes sólo preguntábamos si
+    // el Tano quería RESPONDER; si no tenía respuesta, checkRivalCounterOrResponse() daba
+    // false y nadie ejecutaba el paso obligatorio de PASAR prioridad. El estado quedaba
+    // legalmente en rival pero sin ningún loop que lo consumiera. El driver completo es
+    // takeBotPriorityAction(): responde si puede y, si no, pasa prioridad.
+    if (!state.currentMatch && !state.gameOver && state.priorityPlayer === 'rival') {
+      setTimeout(() => {
+        takeBotPriorityAction().catch(err => console.error('Falló la reanudación del Tano tras una resolución interactiva:', err));
+      }, 180);
+    }
   } finally {
     interactiveResolutionResumeRunning = false;
   }

@@ -334,22 +334,26 @@ export function executeRivalAttack() {
   }
 
   // --- VALIDACIÓN DE AMENAZA (JUGADOR DEFIENDE) ---
-  let invalidBlocks = false;
+  // 23.17.5.2 — no escondemos la causa detrás de un segundo mensaje genérico. Si una
+  // Amenaza quedó con exactamente un bloqueador, explicamos la regla y que reiniciamos
+  // TODAS las asignaciones para que el jugador pueda reconstruir una declaración legal.
+  const menaceViolations = [];
 
   state.rivalCombat.forEach((attacker, aIdx) => {
     if (attacker.isAttacking && hasKeyword(attacker, 'menace')) {
       const blockersCount = state.localCombat.filter(d => d.blockingIndex == aIdx).length;
-
-      if (blockersCount === 1) {
-        logMsg(gameText('combat.block.menaceIllegal', { attacker: attacker.card.name }));
-        invalidBlocks = true;
-      }
+      if (blockersCount === 1) menaceViolations.push({ attacker, blockersCount });
     }
   });
 
-  if (invalidBlocks) {
+  if (menaceViolations.length) {
     state.localCombat.forEach(c => c.blockingIndex = null);
-    logMsg(gameText('combat.block.illegalReset'));
+    menaceViolations.forEach(({ attacker, blockersCount }) => {
+      logMsg(gameText('combat.block.menaceIllegal', {
+        attacker: attacker.card.name,
+        count: blockersCount
+      }));
+    });
     render();
     return; // Detenemos para que el jugador corrija
   }

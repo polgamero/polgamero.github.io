@@ -33,6 +33,12 @@ const VALID_PHASES = new Set([
   'main2', 'end_step', 'cleanup'
 ]);
 const PENDING_KEYS = [
+  // 23.17.5.2 — decisiones reglamentarias/UI sin prioridad también cuentan como pending.
+  // Si no están acá, el watchdog puede acusar al Tano mientras en realidad está esperando
+  // que el humano ordene triggers, resuelva Leyenda, elija Kicker/Suspend, etc.
+  'pendingLegendChoice', 'pendingTriggerOrderChoice', 'pendingSuspendTransaction',
+  'pendingCastTransaction', 'pendingAlternativeCostChoice', 'pendingPrivateZoneChoice',
+  'pendingUntapLandChoice', 'pendingKickerChoice', 'pendingEscapeExileChoice', 'pendingRampChoice',
   'pendingSpellIndex', 'pendingCost', 'pendingTargetCard', 'pendingAbilitySource',
   'pendingActivatedAbilityChoice', 'pendingBlockerIndex', 'pendingTargetSource',
   'pendingSacrificeChoice', 'pendingCrew', 'pendingAttackRedirect', 'pendingWardChoice',
@@ -51,6 +57,7 @@ let providers = {
   getLocalPlayerName: null,
   getRivalName: null,
   getCurrentUser: null,
+  isSoloGameplayReady: null,
   uploadRemote: null
 };
 let currentSession = null;
@@ -838,7 +845,18 @@ function stopBotPriorityWatchdog() {
 }
 
 function pollBotPriorityWatchdog() {
-  if (!currentSession || currentSession.endedAt || currentSession.meta?.mode !== 'solo' || typeof providers.getState !== 'function') {
+  const soloMode = currentSession?.meta?.mode === 'solo' || currentSession?.meta?.mode === 'solo_reconnect';
+  if (!currentSession || currentSession.endedAt || !soloMode || typeof providers.getState !== 'function') {
+    resetBotPriorityWatchdogWindow();
+    return;
+  }
+  // 23.17.5.1 — no hay una ventana de prioridad jugable mientras el humano todavía está
+  // resolviendo mulligan/setup. El estado ya contiene active/priority player para poder
+  // decidir quién empieza, pero el Tano no debe actuar hasta finishSetup().
+  const gameplayReady = typeof providers.isSoloGameplayReady === 'function'
+    ? providers.isSoloGameplayReady() !== false
+    : true;
+  if (!gameplayReady) {
     resetBotPriorityWatchdogWindow();
     return;
   }
