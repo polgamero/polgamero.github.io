@@ -64,10 +64,12 @@
     "colors": [],
     "power": 1,
     "toughness": 3,
-    "text": "",
+    "text": "Vigilancia.",
     "flavorText": "Marcha una de napolitana con fritas.",
     "image": "mozo_bodegon.png",
-    "keywords": []
+    "keywords": [
+      "vigilance"
+    ]
   },
   {
     "id": "crea_005",
@@ -100,10 +102,12 @@
     ],
     "power": 2,
     "toughness": 1,
-    "text": "",
+    "text": "Amenaza.",
     "flavorText": "A la vuelta te lo cuido, jefe.",
     "image": "trapito.png",
-    "keywords": []
+    "keywords": [
+      "menace"
+    ]
   },
   {
     "id": "crea_007",
@@ -153,10 +157,14 @@
     "colors": [],
     "power": 2,
     "toughness": 2,
-    "text": "",
+    "text": "Cuando Vendedora de Chipá entre al campo de batalla, ganás 1 Punto de Vida.",
     "flavorText": "¡Calientito el chipá!",
     "image": "vendedora_chipa.png",
-    "keywords": []
+    "keywords": [],
+    "etbEffect": {
+      "type": "heal",
+      "amount": 1
+    }
   },
   {
     "id": "crea_010",
@@ -1964,10 +1972,12 @@
     ],
     "power": 4,
     "toughness": 3,
-    "text": "",
+    "text": "Amenaza.",
     "flavorText": "Crece con lo que nadie pregunta dónde termina.",
     "image": "gusano_matadero.png",
-    "keywords": []
+    "keywords": [
+      "menace"
+    ]
   },
   {
     "id": "crea_095",
@@ -2058,10 +2068,12 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "",
+    "text": "Prisa.",
     "flavorText": "Si no arranca con llave, arranca a las puteadas.",
     "image": "foguista_taller.png",
-    "keywords": []
+    "keywords": [
+      "haste"
+    ]
   },
   {
     "id": "crea_100",
@@ -2134,10 +2146,12 @@
     ],
     "power": 3,
     "toughness": 3,
-    "text": "",
+    "text": "Dañar primero.",
     "flavorText": "Cuando suena la sirena, nadie pregunta quién paga el combustible.",
     "image": "bombero_voluntario.png",
-    "keywords": []
+    "keywords": [
+      "firststrike"
+    ]
   },
   {
     "id": "crea_104",
@@ -2151,10 +2165,12 @@
     ],
     "power": 4,
     "toughness": 3,
-    "text": "",
+    "text": "Arrolla.",
     "flavorText": "Se alimenta del eco de los camiones y de lo que cae de los bolsillos.",
     "image": "bestia_bajo_puente.png",
-    "keywords": []
+    "keywords": [
+      "trample"
+    ]
   },
   {
     "id": "crea_105",
@@ -2263,10 +2279,12 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "",
+    "text": "Vigilancia.",
     "flavorText": "Cruza cuando quiere y siempre llega del otro lado.",
     "image": "mulita_camino.png",
-    "keywords": []
+    "keywords": [
+      "vigilance"
+    ]
   },
   {
     "id": "crea_111",
@@ -2280,10 +2298,12 @@
     ],
     "power": 3,
     "toughness": 3,
-    "text": "",
+    "text": "Vigilancia.",
     "flavorText": "No vuela porque nunca necesitó hacerlo.",
     "image": "nandu_llanura.png",
-    "keywords": []
+    "keywords": [
+      "vigilance"
+    ]
   },
   {
     "id": "crea_112",
@@ -2316,10 +2336,12 @@
     ],
     "power": 4,
     "toughness": 4,
-    "text": "",
+    "text": "Arrolla.",
     "flavorText": "Parece un tronco hasta que deja de parecerlo.",
     "image": "yacare_banado.png",
-    "keywords": []
+    "keywords": [
+      "trample"
+    ]
   },
   {
     "id": "crea_114",
@@ -2715,10 +2737,12 @@
     "colors": [],
     "power": 3,
     "toughness": 3,
-    "text": "",
+    "text": "Ward {1}.",
     "flavorText": "Cada baldosa floja estaba juntando bronca para esto.",
     "image": "golem_adoquines.png",
-    "keywords": []
+    "keywords": [
+      "ward_1"
+    ]
   },
   {
     "id": "crea_133",
@@ -2747,10 +2771,12 @@
     "colors": [],
     "power": 4,
     "toughness": 4,
-    "text": "",
+    "text": "Alcance.",
     "flavorText": "Lo armaron para tapar un hueco. Aprendió a defender todo el campo.",
     "image": "monigote_alambrado.png",
-    "keywords": []
+    "keywords": [
+      "reach"
+    ]
   },
   {
     "id": "crea_135",
@@ -3993,12 +4019,14 @@
     "colors": [
       "R"
     ],
-    "text": "",
+    "text": "Amenaza.",
     "flavorText": "Ve dos chapas rotas y enseguida imagina una sola que aguante.",
     "image": "soldador_del_astillero.png",
     "power": 3,
     "toughness": 3,
-    "keywords": []
+    "keywords": [
+      "menace"
+    ]
   },
   {
     "id": "crea_188",
@@ -4139,12 +4167,14 @@
     "colors": [
       "G"
     ],
-    "text": "",
+    "text": "Alcance.",
     "flavorText": "Si encuentra agua, encuentra casa.",
     "image": "coipo_del_arroyo_chico.png",
     "power": 2,
     "toughness": 3,
-    "keywords": []
+    "keywords": [
+      "reach"
+    ]
   },
   {
     "id": "crea_194",
@@ -4156,12 +4186,14 @@
     "colors": [
       "G"
     ],
-    "text": "",
+    "text": "Arrolla.",
     "flavorText": "Mide el árbol dos veces y el silencio una sola.",
     "image": "hachero_del_litoral.png",
     "power": 3,
     "toughness": 3,
-    "keywords": []
+    "keywords": [
+      "trample"
+    ]
   },
   {
     "id": "crea_195",
@@ -4630,12 +4662,14 @@
     "cmc": 3,
     "rarity": "Uncommon",
     "colors": [],
-    "text": "",
+    "text": "Prisa.",
     "flavorText": "Jura que esa pieza era de un Torino. Nadie recuerda haber visto el Torino.",
     "image": "pibe_del_taller_de_chacarita.png",
     "power": 3,
     "toughness": 3,
-    "keywords": []
+    "keywords": [
+      "haste"
+    ]
   },
   {
     "id": "crea_215",
@@ -4762,12 +4796,14 @@
     "cmc": 2,
     "rarity": "Common",
     "colors": [],
-    "text": "",
+    "text": "Vigilancia.",
     "flavorText": "Le pusieron dos resortes y desde entonces vuelve sola al puesto.",
     "image": "lata_caminadora_del_mercado.png",
     "power": 2,
     "toughness": 2,
-    "keywords": []
+    "keywords": [
+      "vigilance"
+    ]
   },
   {
     "id": "crea_221",
