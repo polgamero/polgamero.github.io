@@ -13,8 +13,8 @@ const impl = fs.readFileSync(path.join(root,'js/firebaseClientImpl.js'),'utf8');
 const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || path.resolve(root,'../../rules/FIRESTORE_RULES_COMPLETAS_ENTREGA_23_13_72_RULE_BUDGET_ROUTER_HOTFIX.rules');
 const rules = fs.existsSync(rulesPath) ? fs.readFileSync(rulesPath,'utf8') : '';
 
-assert.equal(ENGINE_VERSION, '23.18.3');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.75');
+assert.equal(ENGINE_VERSION, '23.19.1');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.76');
 
 // Perfil sin Daily previo: dominio puro debe producir un D1 limpio.
 const d1 = advanceDailyLoginState(null, new Date('2026-08-27T15:55:44.000Z'));
@@ -38,8 +38,8 @@ if (rules) {
   assert.ok(rules.includes('function validDailyRoutedUpdate(userId)'));
   assert.ok(rules.includes('validNormalDailyCleanD1V6(d, userId)'));
   assert.ok(rules.includes('// 23.13.72 — DAILY ROUTER por forma del diff'));
-  assert.ok(rules.includes("'23.13.75'"));
+  assert.ok(rules.includes("'23.13.76'"));
   assert.ok(rules.includes('validAdminDailyLoginTransitionV4(userId)'));
 }
 
-console.log('NORMAL_PROFILE_DAILY_RECOVERY_23_17_3_3_OK normalD1=explicit admin=separate latestTotal=null-preserved console=quiet rules=23.13.75');
+console.log('NORMAL_PROFILE_DAILY_RECOVERY_23_17_3_3_OK normalD1=explicit admin=separate latestTotal=null-preserved console=quiet rules=23.13.76');

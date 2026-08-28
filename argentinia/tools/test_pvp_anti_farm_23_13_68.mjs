@@ -55,7 +55,7 @@ assert.ok(fb.includes('terminalPatch.bothReadyAt = serverTimestamp()'), 'falta c
 assert.ok(fb.includes('hostDeckedOut') && fb.includes('guestDeckedOut'), 'deck-out no está incluido como final natural');
 assert.ok(turn.includes("game.deckout.local") && turn.includes('awardMatchEndPoints(false)'));
 assert.ok(turn.includes('RESULTADO y RECOMPENSA'));
-assert.match(version, /ENGINE_VERSION = '23\.(?:13\.(?:6[8-9]|[7-9]\d)|1[4-7]\.\d+|18(?:\.\d+)?|1[9]\.\d+)(?:\.\d+)?'/, 'el contrato anti-farming debe sobrevivir en 23.13.68+');
-assert.ok(version.includes("FIRESTORE_RULES_VERSION = '23.13.75'"));
+assert.match(version, /ENGINE_VERSION = '23\.(?:13\.(?:6[8-9]|[7-9]\d)|1[4-7]\.\d+|18(?:\.\d+)?|19(?:\.\d+)?)(?:\.\d+)?'/, 'el contrato anti-farming debe sobrevivir en 23.13.68+');
+assert.ok(version.includes("FIRESTORE_RULES_VERSION = '23.13.76'"));
 
 console.log('PVP_ANTI_FARM_23_13_68_OK natural=always early=3m+4turn pair=5 daily=1200 server=bothReadyAt+endedAt');

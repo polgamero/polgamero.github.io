@@ -11,8 +11,8 @@ const ui = fs.readFileSync(new URL('../js/ui.js', import.meta.url), 'utf8');
 const texts = fs.readFileSync(new URL('../js/gameTexts.js', import.meta.url), 'utf8');
 const bot = fs.readFileSync(new URL('../js/bot.js', import.meta.url), 'utf8');
 
-assert.ok(version.includes("ENGINE_VERSION = '23.18'") || (()=>{ try { if (!version.includes("ENGINE_VERSION = '23.18'")) return /ENGINE_VERSION = '(?:23\.14\.(?:[4-9]|[1-9][0-9]+)|23\.(?:1[5-9]|[2-9][0-9])\.\d+(?:\.\d+)?|(?:2[4-9]|[3-9]\d)\.\d+\.\d+)'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/.test(version); } catch { return false; } })());
-if (!version.includes("ENGINE_VERSION = '23.18'")) assert.match(version, /FIRESTORE_RULES_VERSION = '23\.13\.68'/);
+assert.ok((version.includes("ENGINE_VERSION = '23.18.3'") || version.includes("ENGINE_VERSION = '23.19.1'")) || (()=>{ try { if (!(version.includes("ENGINE_VERSION = '23.18.3'") || version.includes("ENGINE_VERSION = '23.19.1'"))) return /ENGINE_VERSION = '(?:23\.14\.(?:[4-9]|[1-9][0-9]+)|23\.(?:1[5-9]|[2-9][0-9])\.\d+(?:\.\d+)?|(?:2[4-9]|[3-9]\d)\.\d+\.\d+)'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/.test(version); } catch { return false; } })());
+if (!(version.includes("ENGINE_VERSION = '23.18.3'") || version.includes("ENGINE_VERSION = '23.19.1'"))) assert.match(version, /FIRESTORE_RULES_VERSION = '23\.13\.68'/);
 
 const forest = { id:'land_forest', name:'Bosque', type:'Tierra básica — Bosque', produces:'G' };
 const swamp = { id:'land_swamp', name:'Pantano', type:'Tierra básica — Pantano', produces:'B' };

@@ -8,10 +8,10 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
 const rulesPath=process.env.ARGENTINIA_FIRESTORE_RULES || path.resolve(root,'../../FIRESTORE_RULES_COMPLETAS_ENTREGA_23_13_72_RULE_BUDGET_ROUTER_HOTFIX.rules');
 const manifest=JSON.parse(fs.readFileSync(path.join(root,'build-manifest.json'),'utf8'));
-assert.equal(ENGINE_VERSION, '23.18.3');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.75');
-assert.equal(manifest.engineVersion,'23.18.3');
-assert.equal(manifest.firestoreRulesVersion,'23.13.75');
+assert.equal(ENGINE_VERSION, '23.19.1');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.76');
+assert.equal(manifest.engineVersion,'23.19.1');
+assert.equal(manifest.firestoreRulesVersion,'23.13.76');
 
 if (fs.existsSync(rulesPath)) {
   const rules=fs.readFileSync(rulesPath,'utf8');
@@ -25,7 +25,7 @@ if (fs.existsSync(rulesPath)) {
   const userMatch=rules.slice(rules.indexOf('match /users/{userId}'), rules.indexOf('// Ranking visible', rules.indexOf('match /users/{userId}')));
   assert.equal((userMatch.match(/^\s*allow update:/gm)||[]).length,1,'users/{uid} volvió a tener múltiples árboles allow update');
   assert.ok(userMatch.includes('request.auth.uid == userId && validOwnUserUpdate(userId)'));
-  assert.ok(rules.includes("'23.13.75'"));
+  assert.ok(rules.includes("'23.13.76'"));
 }
 
-console.log('FIRESTORE_RULE_BUDGET_ROUTER_23_17_3_5_OK dispatcher=single-branch daily=V6 consistency=compact usersUpdate=single-allow rules=23.13.75');
+console.log('FIRESTORE_RULE_BUDGET_ROUTER_23_17_3_5_OK dispatcher=single-branch daily=V6 consistency=compact usersUpdate=single-allow rules=23.13.76');

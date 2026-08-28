@@ -68,7 +68,8 @@ assert.match(layout.keywordReminders.find(x=>x.keyword==='infect').text,/-1\/\-1
 const cards=allCards();
 assert.ok(cards.length>=643,'cumulative source must preserve the historical 643-card pool from 23.15.5.3');
 const byId=new Map(cards.map(c=>[c.id,c]));
-assert.equal(byId.get('crea_004')?.text,'','Mozo de Bodegón must not expose fake rule text');
+assert.ok(byId.get('crea_004')?.keywords?.includes('vigilance'),'Mozo de Bodegón 23.18.3 rebalance must be real metadata, not fake prose');
+assert.match(byId.get('crea_004')?.text||'',/Vigilancia/i,'Mozo de Bodegón visible text must match the real keyword');
 assert.equal(byId.get('art_015')?.text,'','Robotito de Chatarra atmospheric copy belongs only in flavor');
 for(const pw of cards.filter(c=>String(c.id).startsWith('pw_'))){
   assert.equal(pw.legendary,true,`${pw.name}: Planeswalker legend status must be metadata`);
