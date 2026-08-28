@@ -659,31 +659,94 @@ export async function sealMultiplayerOutcome(matchId) {
   });
 }
 
+function normalizeSoloRewardDifficulty(value) {
+  const key = String(value || '').trim().toLowerCase();
+  return ['easy','medium','hard'].includes(key) ? key : null;
+}
+
+// Mantiene exactamente la migración 23.17.2 de store.js también en la capa de settlement:
+// si winVsTanoMedio todavía no existe, el viejo winVsTanoDificil representa a Medio y el
+// nuevo Difícil conserva 200 como default.
+function normalizeSoloRewardConfig(settings = {}) {
+  const intOr = (value, fallback) => Number.isFinite(Number(value)) ? Math.max(0, Math.floor(Number(value))) : fallback;
+  const hasMedium = Number.isFinite(Number(settings?.winVsTanoMedio));
+  const hasLegacyDifficult = Number.isFinite(Number(settings?.winVsTanoDificil));
+  return {
+    easy: intOr(settings?.winVsTanoFacil, 50),
+    medium: hasMedium ? intOr(settings.winVsTanoMedio, 100) : (hasLegacyDifficult ? intOr(settings.winVsTanoDificil, 100) : 100),
+    hard: hasMedium && hasLegacyDifficult ? intOr(settings.winVsTanoDificil, 200) : 200,
+    loss: intOr(settings?.lossVsTano, 15)
+  };
+}
+
+function expectedSoloRewardBase(config, outcome, difficulty) {
+  if (outcome === 'loss') return config.loss;
+  if (difficulty === 'hard') return config.hard;
+  if (difficulty === 'medium') return config.medium;
+  if (difficulty === 'easy') return config.easy;
+  return null;
+}
+
+function legacySoloRewardMatchesConfig(config, outcome, baseDelta) {
+  if (outcome === 'loss') return baseDelta === config.loss;
+  return [config.easy, config.medium, config.hard].includes(baseDelta);
+}
+
 async function settleSoloGameRewardOnce(uid, reward, snapshot, requestedEffectiveDelta) {
   const receiptId = normalizeGameRewardReceiptId(reward.receiptId);
   const baseDelta = Math.max(0, Math.floor(Number(reward.baseDelta) || 0));
   const outcome = reward.outcome === 'loss' ? 'loss' : 'win';
+  const requestedDifficulty = normalizeSoloRewardDifficulty(reward.difficulty);
   const userRef = doc(db, 'users', uid);
   const receiptRef = doc(db, 'gameRewardReceipts', `${uid}_${receiptId}`);
+  const settingsRef = doc(db, 'gameConfig', 'settings');
   const result = await runTransaction(db, async tx => {
+    // Todas las lecturas antes de cualquier escritura: Firestore transactions lo exigen y
+    // además la configuración que valida el premio queda congelada para este settlement.
     const receiptSnap = await tx.get(receiptRef);
     const userSnap = await tx.get(userRef);
+    const settingsSnap = await tx.get(settingsRef);
     if (!userSnap.exists()) throw new Error('No se encontró tu perfil.');
     const current = Math.max(0, Math.floor(Number(userSnap.data()?.points) || 0));
     if (receiptSnap.exists()) {
       const previous = receiptSnap.data() || {};
-      return { duplicate: true, current, next: current, appliedDelta: Number(previous.effectiveDelta) || 0, effectiveDelta: Number(previous.effectiveDelta) || requestedEffectiveDelta, rewardReason: 'duplicate' };
+      return {
+        duplicate: true,
+        current,
+        next: current,
+        appliedDelta: Number(previous.effectiveDelta) || 0,
+        effectiveDelta: Number(previous.effectiveDelta) || requestedEffectiveDelta,
+        rewardReason: previous.rewardReason || 'duplicate',
+        difficulty: previous.difficulty || requestedDifficulty || null
+      };
     }
+
+    const rewardConfig = normalizeSoloRewardConfig(settingsSnap.exists() ? settingsSnap.data() : {});
+    const exactExpected = expectedSoloRewardBase(rewardConfig, outcome, requestedDifficulty);
+    const validBase = requestedDifficulty
+      ? baseDelta === exactExpected
+      : legacySoloRewardMatchesConfig(rewardConfig, outcome, baseDelta);
+    if (!validBase) throw new Error('SOLO_REWARD_CONFIG_MISMATCH');
+
+    const storedDifficulty = requestedDifficulty || 'legacy';
     const next = current + requestedEffectiveDelta;
     tx.update(userRef, { points: next });
     tx.set(receiptRef, {
-      uid, receiptId, mode: 'solo', outcome, baseDelta,
+      uid, receiptId, mode: 'solo', outcome, difficulty: storedDifficulty, baseDelta,
       effectiveDelta: requestedEffectiveDelta,
       resultingTotal: next, engineVersion: ENGINE_VERSION, createdAt: serverTimestamp()
     });
-    return { duplicate: false, current, next, appliedDelta: requestedEffectiveDelta, effectiveDelta: requestedEffectiveDelta, rewardReason: 'rewarded' };
+    return {
+      duplicate: false,
+      current,
+      next,
+      appliedDelta: requestedEffectiveDelta,
+      effectiveDelta: requestedEffectiveDelta,
+      rewardReason: 'rewarded',
+      difficulty: storedDifficulty
+    };
   });
-  return { ...result, total: result.next, baseDelta, receiptId, mode: 'solo', outcome, campaignSnapshot: snapshot };
+  return { ...result, total: result.next, baseDelta, receiptId, mode: 'solo', outcome, difficulty: result.difficulty || requestedDifficulty || null, campaignSnapshot: snapshot };
 }
 
 async function settlePvpGameRewardOnce(uid, reward, snapshot, requestedEffectiveDelta) {
@@ -2581,6 +2644,137 @@ export async function adminCloseStaleTelemetrySessions(staleAfterMs = 120000) {
   }
   if (count > 0) await batch.commit();
   return { count, staleAfterMs: threshold };
+}
+
+// 23.19.2 — Vista económica autoritativa para Caja Negra. A diferencia de Telemetría,
+// estos documentos prueban si la transacción de puntos realmente se confirmó: el receipt
+// económico y el salto de users.points nacen atómicamente.
+export async function fetchGameRewardAuditForAdmin() {
+  if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL) throw new Error('ADMIN_REQUIRED');
+  const [gameResultsSnap, rewardsSnap] = await Promise.all([
+    getDocs(collection(db, 'playerGameReceipts')),
+    getDocs(collection(db, 'gameRewardReceipts'))
+  ]);
+  return {
+    playerGameReceipts: gameResultsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+    gameRewardReceipts: rewardsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+  };
+}
+
+function adminRewardRepairSafeId(value) {
+  return String(value || '').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 180);
+}
+
+// Reparación excepcional, explícita e idempotente. Hoy se habilita únicamente para Solo:
+// en PvP existen anti-farming, ledger por pareja y tope diario, por lo que "sumar el premio"
+// sin reconstruir todos esos ledgers sería conceptualmente incorrecto.
+export async function adminRepairSoloGameReward(payload = {}) {
+  const adminUid = auth.currentUser?.uid || '';
+  if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL || !adminUid) throw new Error('ADMIN_REQUIRED');
+
+  const targetUid = String(payload.targetUid || '').trim();
+  const receiptId = normalizeGameRewardReceiptId(payload.receiptId);
+  const telemetrySessionId = String(payload.telemetrySessionId || '').trim();
+  if (!targetUid || !receiptId || !telemetrySessionId) throw new Error('ADMIN_REWARD_REPAIR_INVALID_REQUEST');
+
+  const userRef = doc(db, 'users', targetUid);
+  const gameResultRef = doc(db, 'playerGameReceipts', `${targetUid}_${receiptId}`);
+  const rewardRef = doc(db, 'gameRewardReceipts', `${targetUid}_${receiptId}`);
+  const telemetryRef = doc(db, 'telemetrySessions', telemetrySessionId);
+  const settingsRef = doc(db, 'gameConfig', 'settings');
+  const auditSuffix = adminRewardRepairSafeId(`${targetUid}_${receiptId}`);
+  const actionRef = doc(db, 'adminActions', `reward_repair_${auditSuffix}`);
+  const economyRef = doc(db, 'economyEvents', `reward_repair_${auditSuffix}`);
+
+  const result = await runTransaction(db, async tx => {
+    // Reads primero: además de ser requisito de Firestore, evita que el botón confíe en la UI.
+    const rewardSnap = await tx.get(rewardRef);
+    const userSnap = await tx.get(userRef);
+    const resultSnap = await tx.get(gameResultRef);
+    const telemetrySnap = await tx.get(telemetryRef);
+    const settingsSnap = await tx.get(settingsRef);
+
+    if (!userSnap.exists()) throw new Error('ADMIN_REWARD_REPAIR_USER_NOT_FOUND');
+    const current = Math.max(0, Math.floor(Number(userSnap.data()?.points) || 0));
+    if (rewardSnap.exists()) {
+      const previous = rewardSnap.data() || {};
+      return {
+        duplicate: true,
+        appliedDelta: 0,
+        creditedDelta: Math.max(0, Math.floor(Number(previous.effectiveDelta) || 0)),
+        total: current,
+        reward: previous
+      };
+    }
+    if (!resultSnap.exists()) throw new Error('ADMIN_REWARD_REPAIR_RESULT_RECEIPT_MISSING');
+    if (!telemetrySnap.exists()) throw new Error('ADMIN_REWARD_REPAIR_TELEMETRY_MISSING');
+
+    const gameResult = resultSnap.data() || {};
+    const telemetry = telemetrySnap.data() || {};
+    const outcome = gameResult.result === 'loss' ? 'loss' : (gameResult.result === 'win' ? 'win' : null);
+    const difficulty = normalizeSoloRewardDifficulty(telemetry.difficulty);
+    if (gameResult.uid !== targetUid || gameResult.receiptId !== receiptId || gameResult.mode !== 'solo' || !outcome) {
+      throw new Error('ADMIN_REWARD_REPAIR_RESULT_EVIDENCE_MISMATCH');
+    }
+    const telemetryReceipt = String(telemetry.soloGameId || telemetry.sessionId || '');
+    if (telemetry.ownerUid !== targetUid || telemetry.mode !== 'solo' || telemetry.status !== 'completed' || telemetryReceipt !== receiptId || !difficulty) {
+      throw new Error('ADMIN_REWARD_REPAIR_TELEMETRY_EVIDENCE_MISMATCH');
+    }
+
+    const rewardConfig = normalizeSoloRewardConfig(settingsSnap.exists() ? settingsSnap.data() : {});
+    const baseDelta = expectedSoloRewardBase(rewardConfig, outcome, difficulty);
+    if (!Number.isFinite(baseDelta) || baseDelta <= 0) throw new Error('ADMIN_REWARD_REPAIR_CONFIG_INVALID');
+    const next = current + baseDelta;
+
+    tx.update(userRef, { points: next });
+    tx.set(rewardRef, {
+      uid: targetUid,
+      receiptId,
+      mode: 'solo',
+      outcome,
+      difficulty,
+      baseDelta,
+      effectiveDelta: baseDelta,
+      resultingTotal: next,
+      rewardReason: 'admin_repair',
+      adminRepair: true,
+      repairAdminUid: adminUid,
+      telemetrySessionId,
+      engineVersion: ENGINE_VERSION,
+      createdAt: serverTimestamp()
+    });
+    tx.set(actionRef, {
+      type: 'game_reward_manual_repair',
+      adminUid,
+      targetUid,
+      telemetrySessionId,
+      receiptId,
+      outcome,
+      difficulty,
+      pointsDelta: baseDelta,
+      reason: String(payload.reason || 'Caja Negra: liquidación faltante confirmada').slice(0, 240),
+      createdAt: serverTimestamp()
+    });
+    tx.set(economyRef, {
+      actorUid: adminUid,
+      targetUid,
+      source: 'game_reward_admin_repair',
+      pointsDelta: baseDelta,
+      fichasDelta: 0,
+      packsDelta: 0,
+      cardsDelta: 0,
+      matchId: null,
+      sessionId: receiptId,
+      engineVersion: ENGINE_VERSION,
+      createdAt: serverTimestamp()
+    });
+    return { duplicate: false, appliedDelta: baseDelta, creditedDelta: baseDelta, total: next, outcome, difficulty };
+  });
+
+  if (!result.duplicate && result.appliedDelta > 0) {
+    await statsBestEffort(targetUid, { pointsEarned: result.appliedDelta });
+  }
+  return result;
 }
 
 export async function fetchTelemetrySessionsForAdmin() {

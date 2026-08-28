@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, loadUserProfileFromServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, loadUserProfileFromServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -80,7 +80,7 @@ import { loadPrebuiltDeckCatalog, summarizePrebuiltDeck, getPrebuiltPurchaseIds 
 import { gameText } from './gameTexts.js';
 import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
-import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate, telemetryDurationMs } from './statistics.js';
+import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate, telemetryDurationMs, telemetryOutcome } from './statistics.js';
 import { buildCardTextLayout } from './cardTextFormatter.js';
 import { MANA_ICON_URLS, manaIconKeyForSymbol } from './manaSymbolCatalog.js';
 import { POOL_BASELINE } from './poolContract.js';
@@ -6072,6 +6072,15 @@ function injectAdminPanelStyles() {
     .admin-debug-status.completed { color:#81c784; }
     .admin-debug-status.running { color:#ffd166; }
     .admin-debug-status.interrupted { color:#ff9f6e; background:rgba(255,120,75,.10); }
+    .admin-debug-result { display:inline-block; font-weight:800; white-space:nowrap; }
+    .admin-debug-result.win { color:#8fd29a; }
+    .admin-debug-result.loss { color:#e49388; }
+    .admin-debug-reward { display:inline-block; font-weight:700; white-space:nowrap; }
+    .admin-debug-reward.ok { color:#8fd29a; }
+    .admin-debug-reward.missing { color:#ff9f6e; }
+    .admin-debug-reward.unknown { color:#8f8298; }
+    .admin-debug-reward-note { color:#aa95b8; font-size:10px; margin-top:3px; white-space:nowrap; }
+    .admin-debug-reward-repair { width:auto; margin:6px 0 0; padding:6px 9px; font-size:10px; border-color:#e89042; color:#ffd5a6; white-space:nowrap; }
     .admin-stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(175px,1fr)); gap:10px; margin-top:12px; }
     .admin-stat-card { border:1px solid rgba(176,106,212,.25); border-radius:10px; padding:12px; background:rgba(8,5,12,.45); }
     .admin-stat-label { color:#a997b6; font-size:11px; text-transform:uppercase; letter-spacing:.45px; }
@@ -6297,6 +6306,7 @@ export function showAdminPanel(onBack) {
   let debugLoaded = false;
   let debugLoading = false;
   let debugSessions = [];
+  let debugRewardAudit = { playerGameReceipts: [], gameRewardReceipts: [] };
   let imageAuditLoaded = false;
   let imageAuditLoading = false;
   let imageAuditShowAll = false;
@@ -6496,6 +6506,85 @@ export function showAdminPanel(onBack) {
     return { status: 'running', label: 'En curso' };
   }
 
+  function adminRewardReceiptIdForSession(session, meta = {}) {
+    const ownerUid = String(session?.ownerUid || '');
+    if (!ownerUid) return { ownerUid: '', receiptId: '', key: '' };
+    const rawMode = String(session?.mode || meta?.mode || '').toLowerCase();
+    let receiptId = '';
+    if (rawMode.startsWith('multi')) {
+      const matchId = String(session?.matchId || meta?.matchId || '').trim().toUpperCase();
+      const role = String(session?.myRole || meta?.myRole || '').toLowerCase();
+      if (matchId && ['host','guest'].includes(role)) receiptId = `match_${matchId}_${role}`;
+    } else {
+      receiptId = String(session?.soloGameId || meta?.soloGameId || session?.sessionId || session?.id || '');
+    }
+    return { ownerUid, receiptId, key: ownerUid && receiptId ? `${ownerUid}_${receiptId}` : '' };
+  }
+
+  function adminRewardMaps() {
+    return {
+      gameResults: new Map((debugRewardAudit?.playerGameReceipts || []).map(row => [String(row.id || ''), row])),
+      rewards: new Map((debugRewardAudit?.gameRewardReceipts || []).map(row => [String(row.id || ''), row]))
+    };
+  }
+
+  function adminExpectedSoloBaseDelta(session, meta, outcome) {
+    if (outcome === 'loss') return Math.max(0, Math.floor(Number(POINTS.lossVsTano) || 0));
+    const difficulty = String(session?.difficulty || meta?.difficulty || '').toLowerCase();
+    if (difficulty === 'hard') return Math.max(0, Math.floor(Number(POINTS.winVsTanoDificil) || 0));
+    if (difficulty === 'medium') return Math.max(0, Math.floor(Number(POINTS.winVsTanoMedio) || 0));
+    if (difficulty === 'easy') return Math.max(0, Math.floor(Number(POINTS.winVsTanoFacil) || 0));
+    return 0;
+  }
+
+  function adminTelemetryOutcome(session, gameResult) {
+    const authoritative = String(gameResult?.result || '');
+    if (authoritative === 'win' || authoritative === 'loss') return { result: authoritative, authoritative: true };
+    const fallback = telemetryOutcome(session)?.result || 'unknown';
+    return { result: fallback, authoritative: false };
+  }
+
+  function adminRewardCells(session, meta, localName, rivalName, maps) {
+    const identity = adminRewardReceiptIdForSession(session, meta);
+    const gameResult = identity.key ? maps.gameResults.get(identity.key) : null;
+    const reward = identity.key ? maps.rewards.get(identity.key) : null;
+    const outcome = adminTelemetryOutcome(session, gameResult);
+    const winner = outcome.result === 'win' ? localName : (outcome.result === 'loss' ? rivalName : '—');
+    const resultHtml = outcome.result === 'unknown'
+      ? '<span class="admin-debug-reward unknown">—</span>'
+      : `<span class="admin-debug-result ${outcome.result}" title="${outcome.authoritative ? 'Registrado en playerGameReceipt' : 'Inferido desde snapshot final'}">${outcome.result === 'win' ? '🏆' : '💀'} ${escapeHtml(winner)}</span>`;
+
+    if (reward) {
+      const effective = Math.max(0, Math.floor(Number(reward.effectiveDelta) || 0));
+      const reason = String(reward.rewardReason || (reward.adminRepair ? 'admin_repair' : 'rewarded'));
+      const repair = reward.adminRepair === true ? ' · reparación Admin' : '';
+      const label = effective > 0 ? `✅ +${effective} acreditados${repair}` : `✅ 0 pts · ${reason}`;
+      return { resultHtml, rewardHtml: `<span class="admin-debug-reward ok" title="Receipt económico ${escapeHtml(identity.receiptId)}">${escapeHtml(label)}</span>` };
+    }
+
+    if (outcome.result === 'win' || outcome.result === 'loss') {
+      const modeRaw = String(session?.mode || meta?.mode || '').toLowerCase();
+      const isMulti = modeRaw.startsWith('multi');
+      const expected = isMulti
+        ? Math.max(0, Math.floor(Number(outcome.result === 'win' ? POINTS.winVsHumano : POINTS.lossVsHumano) || 0))
+        : adminExpectedSoloBaseDelta(session, meta, outcome.result);
+      const authoritativeNote = gameResult ? '' : '<div class="admin-debug-reward-note">Sin playerGameReceipt registrado</div>';
+      const sessionCompleted = telemetryAdminDisplayStatus(session).status === 'completed';
+      const canRepair = sessionCompleted && !isMulti && !!gameResult && !!identity.ownerUid && !!identity.receiptId && expected > 0;
+      const repairButton = canRepair
+        ? `<button class="admin-save-btn admin-debug-reward-repair" data-reward-repair="${escapeHtml(identity.receiptId)}" data-reward-owner="${escapeHtml(identity.ownerUid)}" data-reward-session="${escapeHtml(session.id || session.sessionId || '')}" data-reward-expected="${expected}">Acreditar manualmente</button>`
+        : '';
+      const expectedText = expected > 0 ? ` · base actual +${expected}` : '';
+      const missingLabel = isMulti ? '❌ Sin receipt económico' : '❌ No acreditada';
+      return {
+        resultHtml,
+        rewardHtml: `<div><span class="admin-debug-reward missing">${missingLabel}${escapeHtml(expectedText)}</span>${authoritativeNote}${repairButton}</div>`
+      };
+    }
+
+    return { resultHtml, rewardHtml: '<span class="admin-debug-reward unknown">—</span>' };
+  }
+
   function renderTelemetrySessions(sessions) {
     const wrap = overlay.querySelector('#admin-debug-table-wrap');
     const summary = overlay.querySelector('#admin-debug-summary');
@@ -6505,6 +6594,7 @@ export function showAdminPanel(onBack) {
       return;
     }
 
+    const rewardMaps = adminRewardMaps();
     const rows = sessions.map(session => {
       const meta = parseAdminJson(session.metaJson, {});
       const mode = normalizeTelemetryMode(session.mode || meta.mode);
@@ -6516,12 +6606,15 @@ export function showAdminPanel(onBack) {
       const statusLabel = displayStatus.label;
       const date = session.startedAtClient || session.endedAtClient || null;
       const bugSplitTitle = bugs.exactSplit ? '' : ' title="Sesión legacy: el total es exacto; el desglose auto/manual puede ser parcial."';
+      const rewardCells = adminRewardCells(session, meta, localName, rivalName, rewardMaps);
       return `
         <tr>
           <td>${escapeHtml(formatTelemetryDate(date))}</td>
           <td><span class="admin-debug-mode">${escapeHtml(mode)}</span>${session.matchId ? `<div class="admin-debug-match" title="${escapeHtml(session.matchId)}">${escapeHtml(session.matchId)}</div>` : ''}</td>
           <td>${(session.endedAtClient || status === 'interrupted') ? escapeHtml(formatDuration(telemetryDurationMs(session) || Math.max(0, (adminTelemetryTimestampMs(session.updatedAt) || 0) - (Date.parse(session.startedAtClient || '') || 0)))) : '—'}</td>
           <td><strong>${escapeHtml(localName)}</strong><br><span style="color:#9987a7;">vs ${escapeHtml(rivalName)}</span></td>
+          <td>${rewardCells.resultHtml}</td>
+          <td>${rewardCells.rewardHtml}</td>
           <td><span class="admin-debug-mode">v${escapeHtml(session.telemetryVersion || meta.engineVersion || '?')}</span></td>
           <td${bugSplitTitle}><div class="admin-debug-bug-auto">⚙️ ${bugs.automatic} auto${bugs.automaticOccurrences > bugs.automatic ? ` · ${bugs.automaticOccurrences} ocurr.` : ''}</div><div class="admin-debug-bug-manual">🐞 ${bugs.manual} marcado${bugs.manual === 1 ? '' : 's'} · ${bugs.total} total</div></td>
           <td>${Number(session.eventCount || 0).toLocaleString('es-AR')}</td>
@@ -6533,7 +6626,7 @@ export function showAdminPanel(onBack) {
 
     wrap.innerHTML = `
       <table class="admin-debug-table">
-        <thead><tr><th>Fecha y hora</th><th>Tipo</th><th>${escapeHtml(gameText('admin.debug.col.duration'))}</th><th>Quién jugó contra quién</th><th>Motor</th><th>Bugs</th><th>Eventos</th><th>Estado</th><th>Log</th></tr></thead>
+        <thead><tr><th>Fecha y hora</th><th>Tipo</th><th>${escapeHtml(gameText('admin.debug.col.duration'))}</th><th>Quién jugó contra quién</th><th>Resultado</th><th>Recompensa</th><th>Motor</th><th>Bugs</th><th>Eventos</th><th>Estado</th><th>Log</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     `;
@@ -6566,6 +6659,53 @@ export function showAdminPanel(onBack) {
         }
       });
     });
+
+
+    wrap.querySelectorAll('[data-reward-repair]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const receiptId = btn.dataset.rewardRepair || '';
+        const targetUid = btn.dataset.rewardOwner || '';
+        const telemetrySessionId = btn.dataset.rewardSession || '';
+        const expected = Math.max(0, Math.floor(Number(btn.dataset.rewardExpected) || 0));
+        const session = debugSessions.find(row => (row.id || row.sessionId) === telemetrySessionId);
+        const meta = parseAdminJson(session?.metaJson, {});
+        const player = session?.playerName || meta.localPlayerName || 'Jugador';
+        const difficulty = botDifficultyLabel(session?.difficulty || meta?.difficulty || 'medium');
+        const ok = window.confirm(
+          `¿Acreditar manualmente +${expected} puntos a ${player}?
+
+` +
+          `Solo · ${difficulty}
+Receipt: ${receiptId}
+
+` +
+          'Se volverá a verificar en Firestore que la sesión esté completa, exista el resultado registrado y que NO exista ya un receipt económico. La operación es idempotente, queda auditada y acredita el premio base actual (sin reconstruir multiplicadores históricos de eventos).'
+        );
+        if (!ok) return;
+        const oldText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Verificando…';
+        try {
+          const result = await adminRepairSoloGameReward({
+            targetUid,
+            receiptId,
+            telemetrySessionId,
+            reason: 'Caja Negra: liquidación faltante confirmada por Admin'
+          });
+          if (result?.duplicate) {
+            window.alert(`No se acreditó nada: el receipt económico ya existía. Total actual: ${Number(result.total || 0).toLocaleString('es-AR')} puntos.`);
+          } else {
+            window.alert(`✅ Reparación confirmada. Se acreditaron +${Number(result.appliedDelta || 0).toLocaleString('es-AR')} puntos a ${player}. Total: ${Number(result.total || 0).toLocaleString('es-AR')}.`);
+          }
+          await reloadTelemetryHistory();
+        } catch (err) {
+          console.error('No se pudo reparar la recompensa desde Caja Negra:', err);
+          window.alert(`No se acreditaron puntos. Firestore rechazó o no pudo verificar la reparación: ${err?.message || err}`);
+          btn.disabled = false;
+          btn.textContent = oldText;
+        }
+      });
+    });
   }
 
   async function reloadTelemetryHistory() {
@@ -6577,7 +6717,12 @@ export function showAdminPanel(onBack) {
     refreshBtn.textContent = gameText('admin.images.refreshLoading');
     wrap.innerHTML = '<div class="admin-debug-empty">Leyendo telemetrySessions…</div>';
     try {
-      debugSessions = await fetchTelemetrySessionsForAdmin();
+      const [sessions, rewardAudit] = await Promise.all([
+        fetchTelemetrySessionsForAdmin(),
+        fetchGameRewardAuditForAdmin()
+      ]);
+      debugSessions = sessions;
+      debugRewardAudit = rewardAudit || { playerGameReceipts: [], gameRewardReceipts: [] };
       debugLoaded = true;
       renderTelemetrySessions(debugSessions);
     } catch (err) {
@@ -6843,6 +6988,13 @@ export function showAdminPanel(onBack) {
       errorBox.textContent = 'Todos los campos tienen que ser números válidos.';
       return;
     }
+    const pointIntegerFields = [
+      newConfig.winVsTanoFacil, newConfig.winVsTanoMedio, newConfig.winVsTanoDificil,
+      newConfig.lossVsTano, newConfig.winVsHumano, newConfig.lossVsHumano, newConfig.abandonPenalty
+    ];
+    const pointsAreValidIntegers = pointIntegerFields.every(value => Number.isInteger(value))
+      && [newConfig.winVsTanoFacil, newConfig.winVsTanoMedio, newConfig.winVsTanoDificil,
+          newConfig.lossVsTano, newConfig.winVsHumano, newConfig.lossVsHumano].every(value => value >= 0);
     const pvpIntegerFields = [
       newConfig.pvpMinRewardMinutes, newConfig.pvpMinCompletedTurns,
       newConfig.pvpMaxRewardedMatchesPerPairDaily, newConfig.pvpMaxPointsPerDay
@@ -6856,11 +7008,11 @@ export function showAdminPanel(onBack) {
     if (newConfig.deckSizeExact <= 0 || newConfig.maxCopiesPerCard <= 0 || newConfig.maxSavedDecks <= 0
       || !Number.isInteger(newConfig.maxSavedDecks) || newConfig.prebuiltDeckPoints < 0 || newConfig.prebuiltDeckFichas < 0
       || !Number.isInteger(newConfig.prebuiltDeckPoints) || !Number.isInteger(newConfig.prebuiltDeckFichas)
-      || newConfig.packCost < 0 || newConfig.fichasPerEnhancement <= 0
+      || newConfig.packCost < 0 || newConfig.fichasPerEnhancement <= 0 || !pointsAreValidIntegers
       || newConfig.pvpMinRewardMinutes < 0 || newConfig.pvpMinCompletedTurns < 0
       || newConfig.pvpMaxRewardedMatchesPerPairDaily < 0 || newConfig.pvpMaxPointsPerDay < 0 || !pvpIntegerFields
       || !classifiedsNonNegative || newConfig.classifiedsMythicChance < 0 || newConfig.classifiedsMythicChance > 1) {
-      errorBox.textContent = 'Algún valor no tiene sentido (¿negativo, porcentaje fuera de 0–100 o un límite PvP no entero?). Revisá antes de guardar.';
+      errorBox.textContent = 'Algún valor no tiene sentido (¿puntos/límites no enteros, negativo o porcentaje fuera de 0–100?). Revisá antes de guardar.';
       return;
     }
 

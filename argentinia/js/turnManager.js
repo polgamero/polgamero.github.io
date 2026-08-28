@@ -145,6 +145,7 @@ function awardMatchEndPoints(won) {
     baseDelta: delta,
     mode,
     outcome: won ? 'win' : 'loss',
+    difficulty: mode === 'solo' ? String(state.botDifficulty || 'medium') : '',
     matchId,
     myRole
   };
@@ -152,7 +153,9 @@ function awardMatchEndPoints(won) {
   // Durable antes del primer await: un F5 puede reintentar exactamente este settlement.
   queuePendingGameReward(state.currentUser.uid, rewardPayload);
   recordTelemetryEvent('game_reward_queued', {
-    receiptId, mode, outcome: won ? 'win' : 'loss', baseDelta: delta, matchId: matchId || null
+    receiptId, mode, outcome: won ? 'win' : 'loss', baseDelta: delta,
+    difficulty: mode === 'solo' ? String(state.botDifficulty || 'medium') : null,
+    matchId: matchId || null
   });
 
   const settlePromise = state.currentMatch

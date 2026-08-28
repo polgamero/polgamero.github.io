@@ -1,4 +1,4 @@
-// js/gameRewards.js — Entrega 23.13.59
+// js/gameRewards.js — Entrega 23.19.2 · Reward Settlement Integrity
 // Cola local mínima y sin Firebase para premios de fin de partida.
 // Se escribe SINCRÓNICAMENTE antes de disparar la transacción remota: si la pestaña muere,
 // el próximo login puede reintentar el mismo receipt sin duplicar puntos.
@@ -41,6 +41,14 @@ export function queuePendingGameReward(uid, reward = {}) {
     baseDelta,
     mode: reward.mode === 'multiplayer' ? 'multiplayer' : 'solo',
     outcome: reward.outcome === 'loss' ? 'loss' : 'win',
+    // 23.19.2 — la dificultad forma parte de la evidencia durable para que Rules pueda
+    // validar el premio Solo contra gameConfig. Pendientes legacy no la tienen y siguen
+    // siendo recuperables por compatibilidad server-side.
+    difficulty: reward.mode === 'multiplayer'
+      ? ''
+      : (['easy','medium','hard'].includes(String(reward.difficulty || '').toLowerCase())
+          ? String(reward.difficulty).toLowerCase()
+          : ''),
     matchId: reward.mode === 'multiplayer' ? String(reward.matchId || '') : '',
     myRole: reward.mode === 'multiplayer' && reward.myRole === 'guest' ? 'guest' : (reward.mode === 'multiplayer' ? 'host' : ''),
     queuedAtMs: Math.max(0, Math.floor(Number(reward.queuedAtMs) || Date.now()))
