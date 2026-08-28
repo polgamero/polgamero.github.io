@@ -66,7 +66,7 @@ import { SUSPEND_ENGINE_VERSION, clearSuspendState } from './suspendEngine.js';
 import { canTransformPermanent } from './transformEngine.js';
 import { botHasCapability } from './botDifficulty.js';
 import { chooseHardAttackPlan, COMBAT_BOT_2_VERSION } from './combatBot2.js';
-import { isCreatureReservedByBotStack } from './botTargetReservation.js';
+import { isCreatureReservedByBotStack, isStackObjectReservedByBotCounter } from './botTargetReservation.js';
 import { getCounterCount } from './counterEngine.js';
 
 
@@ -717,6 +717,18 @@ function isReservedReactiveCreatureTarget(item) {
   return isCreatureReservedByBotStack(item, spellStack, botTargetReservationHelpers());
 }
 
+function isReservedBotCounterTarget(stackItem) {
+  return isStackObjectReservedByBotCounter(stackItem, spellStack, botTargetReservationHelpers());
+}
+
+function legalBotCounterTargets(effectType) {
+  return spellStack.filter(item =>
+    item?.isLocal === true
+    && isStackItemLegalCounterTarget(effectType, item)
+    && !isReservedBotCounterTarget(item)
+  );
+}
+
 function legalReactiveRemovalTargets(card) {
   return state.localCombat.filter(item =>
     isValidBotTarget(item, card?.colors)
@@ -899,7 +911,7 @@ export async function checkRivalCounterOrResponse() {
     if (isCounterSpell(c)) {
       // Un counter normal solo le sirve al Tano contra HECHIZOS (nunca habilidades) a
       // menos que la carta lo diga explícitamente — misma regla real de MTG.
-      return spellStack.some(s => s.isLocal && isStackItemLegalCounterTarget(c.effect.type, s));
+      return legalBotCounterTargets(c.effect.type).length > 0;
     }
     if (isStackCopySpell(c)) {
       return spellStack.some(s => isStackItemLegalCopyTarget(c.effect.type,s,c.effect));
@@ -925,7 +937,7 @@ export async function checkRivalCounterOrResponse() {
     // CR 601: targetear la Stack/campo ANTES de comprometer carta, fuentes o costos.
     let targetObj = null;
     if (isCounterSpell(responseCard)) {
-      const topLocalSpell = [...spellStack].reverse().find(s => s.isLocal && isStackItemLegalCounterTarget(responseCard.effect.type, s));
+      const topLocalSpell = legalBotCounterTargets(responseCard.effect.type).at(-1);
       if (topLocalSpell) targetObj = { type:'stack', stackId:topLocalSpell.id };
     } else if (isStackCopySpell(responseCard)) {
       // Copy Engine: el Tano prioriza una copia legal del objeto de mayor MV. No discrimina
@@ -1590,7 +1602,7 @@ async function tryBotCastFromExile({ instantOnly = false } = {}) {
       if(!legal) continue;
       targetObj={type:'multi',targets};
     } else if(card.effect?.type?.startsWith('counter')){
-      const target=[...spellStack].reverse().find(item=>item.isLocal && isStackItemLegalCounterTarget(card.effect.type,item));
+      const target=legalBotCounterTargets(card.effect.type).at(-1);
       if(!target) continue;
       targetObj={type:'stack',stackId:target.id};
     } else if(card.adjunta){
@@ -1663,7 +1675,7 @@ export async function castSuspendedCardForBot(original) {
     }
     targetObj={type:'multi',targets};
   } else if(card.effect?.type?.startsWith('counter')){
-    const target=[...spellStack].reverse().find(item=>item.isLocal && isStackItemLegalCounterTarget(card.effect.type,item));
+    const target=legalBotCounterTargets(card.effect.type).at(-1);
     if(!target) return false; targetObj={type:'stack',stackId:target.id};
   } else if(card.adjunta){
     const candidates=card.alcance==='criatura_rival' ? state.localCombat : state.rivalCombat;

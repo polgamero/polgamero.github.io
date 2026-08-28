@@ -1495,7 +1495,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const isSick = itemObj.summoningSickness ? 'sick' : '';
   const isAttacking = itemObj.isAttacking === true ? 'attacking' : '';
   const isBlocking = (itemObj.blockingIndex !== null && itemObj.blockingIndex !== undefined) ? 'blocking' : '';
-  const isSelectedBlocker = (state.pendingBlockerIndex === index && zone === 'combat' && isLocal) ? 'selected-blocker' : '';
+  const isSelectedBlocker = (index !== null && index !== undefined && state.pendingBlockerIndex === index && zone === 'combat' && isLocal) ? 'selected-blocker' : '';
 
   let isTargetable = false;
   if (state.pendingTargetCard) {
@@ -1803,11 +1803,12 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     : '';
 
   const sagaState = isSagaCard(card) ? sagaUiState(itemObj) : null;
+  const sagaRomanDisplay = (roman) => ({ I:'Ⅰ', II:'Ⅱ', III:'Ⅲ', IV:'Ⅳ', V:'Ⅴ', VI:'Ⅵ', VII:'Ⅶ', VIII:'Ⅷ', IX:'Ⅸ', X:'Ⅹ' }[roman] || roman);
   const sagaTooltipText = sagaState && sagaState.chapters.length > 0
     ? `Lore ${sagaState.lore}/${sagaState.finalChapter} · ${sagaState.chapters.map(ch => `${ch.roman}: ${ch.label || ''}`.trim()).join(' · ')}`
     : '';
   const sagaChapterHTML = sagaState && sagaState.chapters.length > 0
-    ? `<div class="saga-chapter-track" title="${escapeHtml(sagaTooltipText)}" aria-label="${escapeHtml(sagaTooltipText)}">${sagaState.chapters.map(ch => `<span class="saga-chapter-pill${sagaState.lore >= ch.number ? ' reached' : ''}${sagaState.lore === ch.number ? ' current' : ''}"><span class="saga-chapter-pill-label">${ch.roman}</span></span>`).join('')}</div>`
+    ? `<div class="saga-chapter-track" title="${escapeHtml(sagaTooltipText)}" aria-label="${escapeHtml(sagaTooltipText)}">${sagaState.chapters.map(ch => `<span class="saga-chapter-pill${sagaState.lore >= ch.number ? ' reached' : ''}${sagaState.lore === ch.number ? ' current' : ''}"><span class="saga-chapter-pill-label">${sagaRomanDisplay(ch.roman)}</span></span>`).join('')}</div>`
     : '';
 
   // 23.12.0 — las vistas catálogo/deckbuilder pueden mostrar cientos de cartas. Sus
@@ -5996,7 +5997,61 @@ export function updateAccountUI(user) {
   if (mainMenuOverlay) updateMainMenuLoginGatedButtons(mainMenuOverlay);
 }
 
+let adminDebugScrollGesture = null;
+let adminDebugScrollInteractionsInstalled = false;
+
+function installAdminDebugScrollInteractions() {
+  if (adminDebugScrollInteractionsInstalled || typeof document === 'undefined') return;
+  adminDebugScrollInteractionsInstalled = true;
+  const wrapFromEvent = (event) => event?.target?.closest?.('.admin-debug-table-wrap') || null;
+  const hasOverflow = (wrap) => !!wrap && wrap.scrollWidth > wrap.clientWidth + 2;
+
+  document.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || event.pointerType === 'touch') return;
+    const wrap = wrapFromEvent(event);
+    if (!hasOverflow(wrap)) return;
+    if (event.target?.closest?.('button,a,input,select,textarea,label')) return;
+    adminDebugScrollGesture = { wrap, pointerId:event.pointerId, startX:event.clientX, startScrollLeft:wrap.scrollLeft, dragging:false };
+  }, true);
+
+  document.addEventListener('pointermove', (event) => {
+    const g = adminDebugScrollGesture;
+    if (!g || g.pointerId !== event.pointerId) return;
+    const dx = event.clientX - g.startX;
+    if (!g.dragging && Math.abs(dx) < 7) return;
+    if (!g.dragging) {
+      g.dragging = true;
+      g.wrap.classList.add('dragging');
+      try { g.wrap.setPointerCapture?.(event.pointerId); } catch {}
+    }
+    event.preventDefault();
+    g.wrap.scrollLeft = g.startScrollLeft - dx;
+  }, { passive:false, capture:true });
+
+  const finish = (event) => {
+    const g = adminDebugScrollGesture;
+    if (!g || g.pointerId !== event.pointerId) return;
+    if (g.dragging) {
+      g.wrap.dataset.suppressAdminClickUntil = String(Date.now() + 240);
+      g.wrap.classList.remove('dragging');
+      try { g.wrap.releasePointerCapture?.(event.pointerId); } catch {}
+    }
+    adminDebugScrollGesture = null;
+  };
+  document.addEventListener('pointerup', finish, true);
+  document.addEventListener('pointercancel', finish, true);
+  document.addEventListener('click', (event) => {
+    const wrap = wrapFromEvent(event);
+    if (!wrap) return;
+    if (Number(wrap.dataset.suppressAdminClickUntil || 0) > Date.now()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
+}
+
 function injectAdminPanelStyles() {
+  installAdminDebugScrollInteractions();
   if (document.getElementById('admin-panel-styles')) return;
   const style = document.createElement('style');
   style.id = 'admin-panel-styles';
@@ -6009,7 +6064,7 @@ function injectAdminPanelStyles() {
     }
     .admin-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
     .admin-title { font-size: 26px; font-weight: 700; color: #e8d4f5; text-shadow: 0 0 20px rgba(176,106,212,0.4); }
-    .admin-body { flex: 1; overflow-y: auto; max-width: 1180px; width: 100%; margin: 0 auto; padding-bottom: 40px; }
+    .admin-body { flex: 1; overflow-y: auto; max-width: 1600px; width: 100%; margin: 0 auto; padding-bottom: 40px; }
     .admin-section {
       background: rgba(30,20,45,0.5); border: 2px solid rgba(176,106,212,0.3); border-radius: 14px;
       padding: 20px 24px; margin-bottom: 18px;
@@ -6058,10 +6113,26 @@ function injectAdminPanelStyles() {
     .admin-debug-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
     .admin-debug-summary { color:#cdb9dc; font-size:13px; }
     .admin-debug-refresh { width:auto; margin:0; padding:8px 14px; font-size:13px; }
-    .admin-debug-table-wrap { overflow:auto; border:1px solid rgba(176,106,212,0.25); border-radius:10px; background:rgba(8,5,12,0.45); }
+    .admin-debug-table-wrap { overflow:auto; border:1px solid rgba(176,106,212,0.25); border-radius:10px; background:rgba(8,5,12,0.45); cursor:grab; scrollbar-gutter:stable; }
+    .admin-debug-table-wrap.dragging { cursor:grabbing; user-select:none; }
     .admin-debug-table { width:100%; border-collapse:collapse; min-width:920px; font-size:12px; }
     .admin-debug-table th { position:sticky; top:0; z-index:2; background:#24162f; color:#ead9f4; text-align:left; padding:10px 9px; border-bottom:1px solid rgba(176,106,212,0.35); white-space:nowrap; }
     .admin-debug-table td { padding:9px; border-bottom:1px solid rgba(176,106,212,0.13); color:#d9cce2; vertical-align:middle; }
+    .admin-debug-table.black-box-table { min-width:1120px; table-layout:auto; }
+    .black-box-table th:nth-child(1), .black-box-table td:nth-child(1) { width:108px; max-width:108px; }
+    .black-box-table th:nth-child(2), .black-box-table td:nth-child(2) { width:82px; max-width:105px; }
+    .black-box-table th:nth-child(3), .black-box-table td:nth-child(3) { width:70px; white-space:nowrap; }
+    .black-box-table th:nth-child(4), .black-box-table td:nth-child(4) { width:145px; max-width:160px; }
+    .black-box-table th:nth-child(5), .black-box-table td:nth-child(5) { width:105px; }
+    .black-box-table th:nth-child(6), .black-box-table td:nth-child(6) { min-width:178px; max-width:230px; }
+    .black-box-table th:nth-child(7), .black-box-table td:nth-child(7) { width:78px; }
+    .black-box-table th:nth-child(8), .black-box-table td:nth-child(8) { width:125px; }
+    .black-box-table th:nth-child(9), .black-box-table td:nth-child(9) { width:70px; text-align:right; }
+    .black-box-table th:nth-child(10), .black-box-table td:nth-child(10) { width:90px; }
+    .black-box-table th:last-child { position:sticky; right:0; z-index:5; background:#24162f; box-shadow:-8px 0 12px rgba(8,5,12,.62); }
+    .black-box-table td:last-child { position:sticky; right:0; z-index:3; background:#120b1a; box-shadow:-8px 0 12px rgba(8,5,12,.45); }
+    .black-box-table tbody tr:hover td:last-child { background:#1b1025; }
+
     .admin-debug-table tr:last-child td { border-bottom:none; }
     .admin-debug-table tbody tr:hover { background:rgba(176,106,212,0.07); }
     .admin-debug-mode { display:inline-block; border:1px solid rgba(212,175,55,0.45); border-radius:999px; padding:3px 7px; color:#f0e0b0; white-space:nowrap; }
@@ -6625,8 +6696,8 @@ export function showAdminPanel(onBack) {
     }).join('');
 
     wrap.innerHTML = `
-      <table class="admin-debug-table">
-        <thead><tr><th>Fecha y hora</th><th>Tipo</th><th>${escapeHtml(gameText('admin.debug.col.duration'))}</th><th>Quién jugó contra quién</th><th>Resultado</th><th>Recompensa</th><th>Motor</th><th>Bugs</th><th>Eventos</th><th>Estado</th><th>Log</th></tr></thead>
+      <table class="admin-debug-table black-box-table">
+        <thead><tr><th>Fecha y hora</th><th>Tipo</th><th>${escapeHtml(gameText('admin.debug.col.duration'))}</th><th>Jugadores</th><th>Resultado</th><th>Recompensa</th><th>Motor</th><th>Bugs</th><th>Eventos</th><th>Estado</th><th>Log</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     `;
@@ -8013,7 +8084,11 @@ function injectMulliganStyles() {
       transition: none !important; filter: none !important;
     }
     .mulligan-card-slot.chosen {
-      box-shadow: 0 0 0 3px #e74c3c, 0 0 16px rgba(231,76,60,0.6);
+      box-shadow: 0 0 0 3px #e74c3c, 0 0 16px rgba(231,76,60,0.6) !important;
+      outline: 2px solid rgba(255,210,205,.92) !important; outline-offset: 2px;
+    }
+    .proliferate-selection-count {
+      margin-top:-14px; margin-bottom:12px; color:#f0d56a; font-weight:800;
     }
     .mulligan-buttons { display: flex; justify-content: center; gap: 14px; }
     .mulligan-btn {
@@ -8152,11 +8227,23 @@ export function showProliferateModal(eligible, onConfirm) {
   overlay.id = 'mulligan-overlay';
 
   const chosen = new Set();
+  const updateSelectionCount = () => {
+    const hint = overlay.querySelector('#proliferate-selection-count');
+    if (hint) hint.textContent = gameText('proliferate.selectionCount', { selected: chosen.size, total: eligible.length });
+  };
+  const sanitizeChoiceCard = (cardEl) => {
+    // Un clon modal no debe heredar halos de interacción del tablero. En 23.19.2, como
+    // index=null y pendingBlockerIndex=null, todas las criaturas se pintaban además como
+    // selected-blocker; ese azul !important tapaba visualmente el rojo de .chosen.
+    cardEl?.classList?.remove('selected-blocker', 'crewing-selected', 'targetable', 'mana-payable', 'paying', 'attacking', 'blocking');
+    return cardEl;
+  };
 
   overlay.innerHTML = `
     <div class="mulligan-panel">
       <div class="mulligan-title">${gameTextHtml('proliferate.title')}</div>
       <div class="mulligan-subtitle">${gameTextHtml('proliferate.subtitle')}</div>
+      <div class="mulligan-subtitle proliferate-selection-count" id="proliferate-selection-count">${gameTextHtml('proliferate.selectionCount', { selected: 0, total: eligible.length })}</div>
       <div class="mulligan-hand-row-slot"></div>
       <div class="mulligan-buttons">
         <button class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" id="btn-confirm-proliferate">${gameTextHtml('selection.confirm')}</button>
@@ -8176,6 +8263,7 @@ export function showProliferateModal(eligible, onConfirm) {
         chosen.add(entry);
         cardEl.classList.add('chosen');
       }
+      updateSelectionCount();
     };
 
     if (entry.kind === 'player_poison') {
@@ -8201,8 +8289,10 @@ export function showProliferateModal(eligible, onConfirm) {
       : entry.kind === 'support' ? 'support'
       : entry.kind === 'land' ? 'land'
       : 'combat';
-    cardEl = createCardElement(entry.item, !!entry.item.tapped, entry.ownerIsLocal, null, modalZone, toggle);
-    cardEl.classList.add('mulligan-card-slot', 'selectable');
+    cardEl = sanitizeChoiceCard(createCardElement(entry.item, !!entry.item.tapped, entry.ownerIsLocal, null, modalZone, toggle));
+    cardEl.classList.add('mulligan-card-slot', 'selectable', 'proliferate-choice-card');
+    const counterLabels = (entry.counterTypes || []).map(type => ({ plusOne:'+1/+1', minusOne:'-1/-1', shield:'Escudo', stun:'Aturdimiento', lore:'Lore', loyalty:'Lealtad' }[type] || type));
+    if (counterLabels.length) cardEl.title = `Proliferar agrega 1 de: ${counterLabels.join(', ')}`;
     row.appendChild(cardEl);
   });
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
@@ -8418,6 +8508,7 @@ export function showPhyrexianCostChoiceModal(symbols, cardName, maxLifePayments 
   overlay.innerHTML=`
     <div class="mulligan-panel">
       <div class="mulligan-title">${gameTextHtml('cost.phyrexian.choice.title',{card:cardName})}</div>
+      <div class="mulligan-subtitle" style="margin-bottom:8px;">${gameTextHtml('cost.phyrexian.choice.explain')}</div>
       <div class="mulligan-subtitle" id="phyrexian-choice-hint">${gameTextHtml('cost.phyrexian.choice.count',{selected:0,max})}</div>
       <div class="mulligan-hand-row" id="phyrexian-symbol-row"></div>
       <div class="mulligan-buttons">
@@ -8429,7 +8520,7 @@ export function showPhyrexianCostChoiceModal(symbols, cardName, maxLifePayments 
   list.forEach((color,index)=>{
     const btn=document.createElement('button');
     btn.type='button'; btn.className='mulligan-btn';
-    btn.textContent=`{${color}/P} → 2 vida`;
+    btn.textContent=`{${color}/P} → PAGAR 2 VIDAS`;
     btn.addEventListener('click',()=>{
       if(chosen.has(index)){chosen.delete(index);btn.classList.remove('chosen');}
       else if(chosen.size<max){chosen.add(index);btn.classList.add('chosen');}
@@ -9089,6 +9180,8 @@ export function render() {
         if (Array.isArray(pendingCost.hybrid)) pendingCost.hybrid.forEach(symbol=>{ statusText += gameText('payment.color.hybrid',{symbol:`{${symbol.join('/')}}`}); });
         if (Array.isArray(pendingCost.phyrexian)) pendingCost.phyrexian.forEach(color=>{ statusText += gameText('payment.color.phyrexian',{symbol:`{${color}/P}`}); });
         if (pendingCost.generic > 0) statusText += gameText('payment.color.generic', { amount: pendingCost.generic });
+        const phyrexianLifeReserved = Math.max(0, Number(state.pendingCastTransaction?.preparedPaymentMethods?.phyrexianLifeAmount) || 0);
+        if (phyrexianLifeReserved > 0) statusText += gameText('cost.phyrexian.lifeReserved', { life: phyrexianLifeReserved });
         if (state.pendingAlternativeCostChosen && pendingCard?.alternativeCost) statusText += gameText('payment.altSuffix', { cost: describeCompositeCost(pendingCard.alternativeCost) });
       }
     }

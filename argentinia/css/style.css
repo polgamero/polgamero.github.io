@@ -494,18 +494,19 @@ html, body {
   box-shadow: 0 1px 4px rgba(0,0,0,0.55);
 }
 .saga-chapter-pill {
-  min-width: 7cqw; height: 7cqw; padding: 0 1cqw; box-sizing: border-box;
-  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 8.4cqw; height: 8.4cqw; padding: 0 1.15cqw; box-sizing: border-box;
+  display: inline-grid; place-items: center;
   border-radius: 999px; border: 1px solid rgba(70,55,35,0.8);
   color: #4b3a25; background: rgba(255,255,255,0.55);
-  font-weight: 800; font-size: 4.4cqw; line-height: 1;
+  font-weight: 800; font-size: 5.2cqw; line-height: 1;
   font-family: Georgia,'Times New Roman',serif;
+  font-variant-numeric: lining-nums;
 }
 .saga-chapter-pill-label {
-  display:block;
-  position:relative;
-  top:-0.38cqw;
+  display:grid; place-items:center;
+  width:100%; height:100%;
   line-height:1;
+  transform:translateY(-0.02em);
 }
 .saga-chapter-pill.reached { background: #d8c07c; color: #221b11; }
 .saga-chapter-pill.current { outline: 2px solid rgba(255,245,190,0.95); outline-offset: 1px; }

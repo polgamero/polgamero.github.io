@@ -820,7 +820,7 @@ async function resolveSimpleDirectEffect(effect, sourceCard, isLocal) {
       finishScrySurveil(moved, kept);
     }
   } else if (effect.type === 'proliferate') {
-    // Proliferar (regla real 701.30): elegís CUALQUIER cantidad de permanentes (acá:
+    // Proliferar (CR 701.34): elegís CUALQUIER cantidad de permanentes (acá:
     // criaturas con contadores +1/+1 o -1/-1, y Planeswalkers, que siempre tienen Lealtad)
     // y a cada uno elegido le sumás UN contador más de CADA tipo que ya tenga. No es un
     // target de verdad (por eso Intocable/Protección no lo frenan, a diferencia de todo lo

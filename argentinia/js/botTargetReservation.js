@@ -84,3 +84,27 @@ export function isCreatureReservedByBotStack(target, stack = [], helpers = {}) {
   if (!target) return false;
   return stack.some(stackItem => botStackItemReservesCreatureTarget(stackItem, target, stack, helpers));
 }
+// 23.19.3 — Reserva equivalente para OBJETOS DE PILA. El hotfix 23.17.5.6 cerró
+// la duplicación de removal sobre una misma criatura, pero no la variante de dos counters
+// propios apuntando al mismo hechizo rival. Un counter pendiente ya cubre ese stackId; el
+// Tano conserva la segunda respuesta para otro objeto o para defender el primer counter.
+export function botStackItemReservesStackTarget(stackItem, targetStackItem, stack = [], helpers = {}) {
+  if (!stackItem || stackItem.isLocal !== false || !targetStackItem?.id) return false;
+  if (stackItem?.targetObj?.type !== 'stack' || stackItem.targetObj.stackId !== targetStackItem.id) return false;
+
+  const isCounterSpell = typeof helpers.isCounterSpell === 'function' ? helpers.isCounterSpell : () => false;
+  if (!isCounterSpell(stackItem.card)) return false;
+
+  // Si el counter del Tano ya está siendo contrarrestado por una respuesta humana, dejamos
+  // de tratar su cobertura como segura. En la práctica el selector suele preferir ese nuevo
+  // counter humano por estar arriba en la pila, pero este detalle mantiene la semántica de
+  // reserva alineada con la de permanentes.
+  if (isPendingBotStackItemCountered(stackItem, stack, isCounterSpell)) return false;
+  return true;
+}
+
+export function isStackObjectReservedByBotCounter(targetStackItem, stack = [], helpers = {}) {
+  if (!targetStackItem?.id) return false;
+  return stack.some(stackItem => botStackItemReservesStackTarget(stackItem, targetStackItem, stack, helpers));
+}
+
