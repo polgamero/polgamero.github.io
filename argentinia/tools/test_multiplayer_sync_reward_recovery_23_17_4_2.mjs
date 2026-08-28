@@ -8,7 +8,7 @@ const main = fs.readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
 const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || new URL('../../FIRESTORE_RULES_COMPLETAS_ENTREGA_23_13_75_PVP_SETTLEMENT_BUDGET_V2.rules', import.meta.url);
 const rules = fs.existsSync(rulesPath) ? fs.readFileSync(rulesPath, 'utf8') : '';
 
-assert.match(version, /ENGINE_VERSION = '23\.17\.4\.2'/);
+assert.match(version, /Entrega 23\.17\.4\.2 Multiplayer Sync \+ PvP Reward Recovery Hotfix/);
 assert.match(version, /FIRESTORE_RULES_VERSION = '23\.13\.75'/);
 assert.ok(impl.includes('gameOver: false,'), 'createMatch debe sembrar gameOver:false.');
 assert.ok(impl.includes('abandonedBy: null,'), 'createMatch debe sembrar abandonedBy:null.');
