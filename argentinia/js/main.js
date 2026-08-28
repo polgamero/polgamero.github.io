@@ -23,6 +23,7 @@ import { chooseSoloStartingSide, normalizeStartingRole, startingSideForRole } fr
 import { showStartingCoinToss } from './startingCoin.js';
 import { createSoloGameId, beginSoloRecoverySession, activateResumedSoloRecovery, loadSoloRecoveryCandidate, isSoloRecoveryCompatible, isSoloRecoveryExpired, restoreSoloRecoveryState, checkpointSoloRecovery, clearSoloRecovery, finishSoloRecovery, getSoloEffectiveElapsedMs, getActiveSoloGameId, hasActiveSoloRecovery } from './soloRecovery.js';
 import { maybeShowAnnouncementPopup } from './campaignsUI.js';
+import { beginGameRngSession, gameRandom, gameSeedFromLocation, getGameRngSnapshot } from './gameRng.js';
 import { enterGameplayAudio } from './audioManager.js';
 import { emptyManaPool, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, spendOneMana, spendAvailableTowardCost } from './manaPool.js';
 import { normalizeManaAbility, isManaSourceCard, getManaSourceOptions, getManaSourceAmount, manaSourceRequiresTap, manaSourceSacrificesSelf, canActivateManaSourcePermanent } from './manaSources.js';
@@ -170,12 +171,14 @@ function battlefieldZoneForController(zoneName, isLocal) {
   return null;
 }
 
-function repairCombatLinksAfterControllerMove({ fromIsLocal, fromIndex, zoneName }) {
+export function repairCombatLinksAfterZoneRemoval({ fromIsLocal, fromIndex, zoneName = 'combat' }) {
   if (zoneName !== 'combat' || fromIndex == null || fromIndex < 0) return;
-  // blockingIndex siempre apunta al índice del atacante del bando activo. Si el permanente
-  // removido pertenecía a ese array, los bloqueadores que lo señalaban dejan de bloquearlo
-  // y los índices mayores se corren una posición por el splice.
-  const removedFromActiveAttackers = (state.activePlayer === 'local' && fromIsLocal) || (state.activePlayer === 'rival' && !fromIsLocal);
+  // 23.18.1 — blockingIndex referencia la posición del atacante en el array del jugador
+  // activo. Si ese array se compacta por muerte/exilio/bounce/sacrificio/control-change,
+  // todos los bloqueadores deben rebasarse inmediatamente. Si no, un blocker puede quedar
+  // apuntando a un índice inexistente o, peor, al atacante equivocado después del splice.
+  const removedFromActiveAttackers = (state.activePlayer === 'local' && fromIsLocal)
+    || (state.activePlayer === 'rival' && !fromIsLocal);
   if (!removedFromActiveAttackers) return;
   const defenders = fromIsLocal ? state.rivalCombat : state.localCombat;
   for (const defender of defenders) {
@@ -184,6 +187,10 @@ function repairCombatLinksAfterControllerMove({ fromIsLocal, fromIndex, zoneName
     if (idx === fromIndex) defender.blockingIndex = null;
     else if (idx > fromIndex) defender.blockingIndex = idx - 1;
   }
+}
+
+function repairCombatLinksAfterControllerMove(args) {
+  repairCombatLinksAfterZoneRemoval(args);
 }
 
 function isRoleLocal(role) {
@@ -297,6 +304,8 @@ export { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, st
 // Antes Telemetría empezaba a contar desde que se construían los mazos y podía denunciar un
 // stall falso mientras el jugador todavía estaba mirando su mano inicial.
 let soloGameplayReady = false;
+// 23.18.1 — ID local determinista: sirve para replay/hash y no participa de seguridad/red.
+let castTransactionSerial = 1;
 
 export const state = {
   turnCount: 1,
@@ -786,6 +795,7 @@ function hookGameplayButtons() {
 
 async function initGame(deckSource) {
   soloGameplayReady = false;
+  beginGameRngSession({ seed: gameSeedFromLocation(), label: 'solo' });
   enterGameplayAudio('solo');
   logMsg(gameText('game.loadingDeck'));
 
@@ -832,7 +842,8 @@ async function initGame(deckSource) {
     deckLabel,
     soloGameId,
     segmentIndex: 1,
-    activeElapsedBaseMs: 0
+    activeElapsedBaseMs: 0,
+    replayRng: getGameRngSnapshot()
   });
   recordTelemetryEvent('starting_player_selected', {
     mode: 'solo',
@@ -969,7 +980,8 @@ async function resumeSoloRecoveryGame(candidate) {
     deckLabel: candidate.deckLabel || 'reconnect',
     soloGameId: candidate.soloGameId,
     segmentIndex: nextSegment,
-    activeElapsedBaseMs: Math.max(0, Number(candidate.activeElapsedMs) || 0)
+    activeElapsedBaseMs: Math.max(0, Number(candidate.activeElapsedMs) || 0),
+    replayRng: getGameRngSnapshot()
   });
   recordTelemetryEvent('solo_reconnect_state_loaded', {
     soloGameId: candidate.soloGameId,
@@ -1555,6 +1567,10 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', st
 // trae un startingRole 50/50 decidido una sola vez al crearse; ambos clientes convierten
 // ese mismo rol compartido a su perspectiva local/rival.
 function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host') {
+  // Multiplayer must never accept the reproducibility URL seed: allowing a player to
+  // choose its shuffle seed would make deck order controllable/predictable. We still record
+  // the generated session seed in telemetry for post-match diagnostics.
+  beginGameRngSession({ label: `multiplayer:${myRole || 'unknown'}` });
   enterGameplayAudio('multiplayer');
   // ENTREGA 23.8.5 — al entrar a gameplay no puede sobrevivir ningún overlay del flujo
   // menú/lobby/picker. Antes el menú quedaba oculto (display:none) debajo del tablero; con
@@ -1615,7 +1631,8 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
     mode: 'multiplayer',
     matchId,
     myRole,
-    deckLabel
+    deckLabel,
+    replayRng: getGameRngSnapshot()
   });
   recordTelemetryEvent('starting_player_selected', {
     mode: 'multiplayer',
@@ -2059,7 +2076,7 @@ function choosePrivateZoneOfferForBot(offer, tokenMap) {
     const pool = [...candidates];
     const picked = [];
     while (picked.length < amount && pool.length) {
-      picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0].token);
+      picked.push(pool.splice(Math.floor(gameRandom('private_zone_opaque_pick') * pool.length), 1)[0].token);
     }
     return picked;
   }
@@ -2578,7 +2595,7 @@ function chooseRandomDiscardEntries(entries, count) {
   const pool = [...entries];
   const chosen = [];
   while (chosen.length < count && pool.length > 0) {
-    const idx = Math.floor(Math.random() * pool.length);
+    const idx = Math.floor(gameRandom('random_discard_choice') * pool.length);
     chosen.push(pool.splice(idx, 1)[0]);
   }
   return chosen;
@@ -4394,6 +4411,7 @@ export function performSacrifice(item, isLocal) {
     const isCreatureZone = (zone === state.localCombat || zone === state.rivalCombat);
     const exitPlan = replacementExitPlan(item,isLocal,'sacrifice','graveyard');
     zone.splice(idx, 1);
+    if (isCreatureZone) repairCombatLinksAfterZoneRemoval({ fromIsLocal:isLocal, fromIndex:idx });
     if (isCreatureZone) {
       detachEquipmentFrom(item, isLocal);
       sendAurasToGraveyard(item, isLocal);
@@ -4458,6 +4476,7 @@ export function performSacrificeBatch(items, isLocal) {
     const {item,foundZone,isCreature,exitPlan}=plan;
     const idx=foundZone.indexOf(item); if(idx===-1) continue;
     foundZone.splice(idx,1);
+    if (isCreature) repairCombatLinksAfterZoneRemoval({ fromIsLocal:isLocal, fromIndex:idx });
     if (isCreature) {
       detachEquipmentFrom(item, isLocal);
       sendAurasToGraveyard(item, isLocal);
@@ -4921,6 +4940,7 @@ function removeSbaCreature(entry, watchersSnapshot) {
     : replacementExitPlan(item,isLocal,reason,'graveyard');
   if(plan.prevented) return {removed:false,prevented:true};
   zone.splice(idx,1);
+  repairCombatLinksAfterZoneRemoval({ fromIsLocal:isLocal, fromIndex:idx });
   detachEquipmentFrom(item,isLocal); sendAurasToGraveyard(item,isLocal); cleanupIfVehicle(item);
   moveBattlefieldCardToZone(item.card,plan.destination);
   logMsg(gameText(`sba.${reason}`,{card:item.card?.name || 'Criatura'}));
@@ -4942,6 +4962,7 @@ function removeSbaSaga(entry, watchersSnapshot) {
   const isCreature=loc.zoneName==='combat';
   const plan=replacementExitPlan(entry.item,loc.isLocal,'saga_complete','graveyard');
   loc.zone.splice(loc.index,1);
+  if(isCreature) repairCombatLinksAfterZoneRemoval({ fromIsLocal:loc.isLocal, fromIndex:loc.index });
   if(isCreature){ detachEquipmentFrom(entry.item,loc.isLocal); sendAurasToGraveyard(entry.item,loc.isLocal); cleanupIfVehicle(entry.item); }
   moveBattlefieldCardToZone(entry.item.card,plan.destination);
   logMsg(gameText('saga.completed',{card:entry.item.card?.name || 'Saga',lore:entry.lore,chapter:entry.finalChapter}));
@@ -4988,6 +5009,7 @@ function removeLegendEntry(entry, watchersSnapshot) {
   const wasCreature=loc.zoneName==='combat';
   const plan=replacementExitPlan(entry.item,loc.isLocal,'legend_rule','graveyard');
   loc.zone.splice(loc.index,1);
+  if(wasCreature) repairCombatLinksAfterZoneRemoval({ fromIsLocal:loc.isLocal, fromIndex:loc.index });
   if(wasCreature){ detachEquipmentFrom(entry.item,loc.isLocal); sendAurasToGraveyard(entry.item,loc.isLocal); cleanupIfVehicle(entry.item); }
   moveBattlefieldCardToZone(entry.item.card,plan.destination);
   logMsg(gameText('sba.legend.moved',{card:entry.item.card?.name || 'Legendaria'}));
@@ -7355,7 +7377,7 @@ function castRouteContainsX(tx) {
 }
 
 function beginHumanCastTransaction(index, card, options = {}) {
-  const txId = `cast_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const txId = `cast_${castTransactionSerial++}`;
   state.pendingAlternativeCostChosen = false;
   state.pendingCompositeCostPayment = false;
   state.pendingSpellCostsIrreversible = false;
@@ -9510,4 +9532,4 @@ export function resolveSpellDirect(card, isLocal) { return resolveEffectDirect(c
 // Todos los módulos internos que importan './main.js' resuelven exactamente la misma URL,
 // por lo que existe un único singleton de state. El guard global de boot es una segunda
 // barrera defensiva ante HTML viejo/cacheado o futuras entradas accidentales duplicadas.
-boot();
+if (globalThis.__ARGENTINIA_HEADLESS_ENGINE__ !== true) boot();

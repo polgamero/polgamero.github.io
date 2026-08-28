@@ -1,6 +1,8 @@
 // js/startingPlayer.js — Entrega 23.13.52
 // Sorteo binario compartido por Solitario y Multiplayer. No toca estado ni DOM.
 
+import { gameRandom } from './gameRng.js';
+
 export function secureCoinBit() {
   try {
     const cryptoObj = globalThis.crypto;
@@ -14,7 +16,7 @@ export function secureCoinBit() {
 }
 
 export function chooseSoloStartingSide() {
-  return secureCoinBit() === 0 ? 'local' : 'rival';
+  return gameRandom('solo_starting_player') < 0.5 ? 'local' : 'rival';
 }
 
 export function chooseMultiplayerStartingRole() {

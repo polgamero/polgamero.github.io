@@ -3,6 +3,7 @@
 // este módulo sólo normaliza filtros/destinos y selecciona candidatos para humano/bot.
 
 import { landMatchesFilter, isLandPermanent } from './permanentTypes.js';
+import { gameRandom } from './gameRng.js';
 
 export const LAND_SEARCH_DESTINATIONS = Object.freeze(['hand', 'battlefield', 'battlefield_tapped']);
 
@@ -49,7 +50,7 @@ export function chooseBotLandSearchEntries(deck, filter = 'any', amount = 1, des
     .slice(0, max);
 }
 
-export function shuffleLibraryInPlace(deck, randomFn = Math.random) {
+export function shuffleLibraryInPlace(deck, randomFn = gameRandom) {
   if (!Array.isArray(deck)) return deck;
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(randomFn() * (i + 1));

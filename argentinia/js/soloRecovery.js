@@ -4,8 +4,9 @@
 
 import { ENGINE_VERSION } from './version.js';
 import { serializeStackForPublic, deserializeStackFromPublic } from './matchSync.js';
+import { getGameRngSnapshot, restoreGameRngSession } from './gameRng.js';
 
-export const SOLO_RECOVERY_SCHEMA_VERSION = 1;
+export const SOLO_RECOVERY_SCHEMA_VERSION = 2;
 export const SOLO_RECOVERY_STORAGE_KEY = 'argentinia.solo.activeGame.v1';
 export const SOLO_RECOVERY_HEARTBEAT_MS = 15_000;
 export const SOLO_RECOVERY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -132,6 +133,7 @@ export function checkpointSoloRecovery(state, stack, options = {}) {
     lastCheckpointAt: iso(checkpointAtMs),
     activeElapsedMs: getSoloEffectiveElapsedMs(checkpointAtMs),
     telemetrySessionId: options.telemetrySessionId || active.telemetrySessionId || null,
+    rngState: getGameRngSnapshot(),
     state: serializableGameState(state),
     stackState: serializeStackForPublic(stack || [], state, 'host')
   };
@@ -246,6 +248,7 @@ export function restoreSoloRecoveryState(candidate, state) {
   state.priorityClockDeadlineLocalMs = 0;
   state.priorityClockPausedLocal = true;
   state.priorityClockPauseReasonLocal = 'solo_recovery';
+  if (candidate.rngState) restoreGameRngSession(candidate.rngState);
   return deserializeStackFromPublic(candidate.stackState || [], state, 'host');
 }
 

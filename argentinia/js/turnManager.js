@@ -19,6 +19,7 @@ import { resolveReplacementEvent } from './replacementEngine.js';
 import { zoneForCardOwner, cardOwnerIsLocal } from './zoneOwnership.js';
 import { resolveUntapAttempt } from './counterEngine.js';
 import { botDifficultyLabel } from './botDifficulty.js';
+import { gameRandom } from './gameRng.js';
 
 function cleanupDiscardDestination(card,isLocal) {
   const ownerIsLocal=cardOwnerIsLocal(card,!!isLocal,state.currentMatch?.myRole||null);
@@ -422,7 +423,7 @@ export async function advanceStep() {
   // Si le toca la prioridad al Tano, le notificamos a su IA (solo en Solitario — en
   // multiplayer, bot.js ya se blinda solo, pero evitamos hasta el setTimeout de más).
   if (!state.currentMatch && state.priorityPlayer === 'rival') {
-    setTimeout(takeBotPriorityAction, 600);
+    scheduleSoloBotPriority(600);
   }
 }
 
@@ -613,6 +614,11 @@ async function priorityClockTick() {
 const priorityClockInterval = setInterval(() => { priorityClockTick().catch(err => console.error('Priority clock tick:', err)); }, 125);
 if (priorityClockInterval && typeof priorityClockInterval.unref === 'function') priorityClockInterval.unref();
 
+function scheduleSoloBotPriority(delayMs = 600) {
+  if (globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true) return;
+  setTimeout(takeBotPriorityAction, delayMs);
+}
+
 export function beginActivePlayerPriorityWindow() {
   if (state.gameOver) return;
   state.priorityPlayer = state.activePlayer;
@@ -620,7 +626,7 @@ export function beginActivePlayerPriorityWindow() {
   resetPriorityClock('active_player_priority_window');
   render();
   if (!state.currentMatch && state.priorityPlayer === 'rival') {
-    setTimeout(takeBotPriorityAction, 600);
+    scheduleSoloBotPriority(600);
   }
 }
 
@@ -681,7 +687,7 @@ export async function passPriority(player) {
   render();
 
   if (!state.currentMatch && state.priorityPlayer === 'rival') {
-    setTimeout(takeBotPriorityAction, 600);
+    scheduleSoloBotPriority(600);
   }
 }
 
@@ -720,7 +726,7 @@ export async function resolveBothPassed() {
       } finally {
         state.stackResolutionAuthority = false;
       }
-      if (!state.currentMatch && state.priorityPlayer === 'rival') setTimeout(takeBotPriorityAction, 600);
+      if (!state.currentMatch && state.priorityPlayer === 'rival') scheduleSoloBotPriority(600);
     } else if (state.phase === 'combat_damage' && hasPendingCombatDamageContinuation()) {
       // Trigger Stack: si el daño de iniciativa produjo triggers, el daño regular se pausó
       // hasta que esa pila se vaciara. Ambos vuelven a pasar con Stack vacía => continuar.
@@ -729,7 +735,7 @@ export async function resolveBothPassed() {
       state.priorityPlayer = state.activePlayer;
       resetPriorityClock('combat_damage_continuation');
       render();
-      if (!state.currentMatch && state.priorityPlayer === 'rival') setTimeout(takeBotPriorityAction, 600);
+      if (!state.currentMatch && state.priorityPlayer === 'rival') scheduleSoloBotPriority(600);
     } else {
       // Si la pila está vacía y no hay una continuación interna -> avanzamos de paso.
       await advanceStep();
@@ -987,7 +993,7 @@ async function executeCleanupStep() {
   } else {
     const rivalExcess = state.rivalHand.length - 7;
     for (let i = 0; i < rivalExcess; i++) {
-      const randomIndex = Math.floor(Math.random() * state.rivalHand.length);
+      const randomIndex = Math.floor(gameRandom('cleanup_random_discard') * state.rivalHand.length);
       const discarded = state.rivalHand.splice(randomIndex,1)[0];
       const plan=cleanupDiscardDestination(discarded,false);
       plan.destination.push(discarded);

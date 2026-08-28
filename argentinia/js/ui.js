@@ -95,6 +95,8 @@ import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandA
 import { isSagaCard, sagaUiState } from './sagaEngine.js';
 import { botDifficultyLabel, nextBotDifficulty, normalizeBotDifficulty } from './botDifficulty.js';
 
+const HEADLESS_ENGINE = globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true;
+
 const ICON_MAP = {
   'Diego': '⚽', 'San Martín': '🐎', 'Ricky': '🍫', 'Gauchito': '🚩', 'Mate': '🧉', 'Parrilla': '🥩', 'Tierra': '⛰️', 'Estancia': '🏡', 'Obelisco': '🏙️', 'Perro': '🐕', 'Luz Mala': '👻', 'Carpincho': '🐹', 'Colectivo': '🚌', 'Asado': '🥩', 'Dólar': '💵', 'Pombero': '👺'
 };
@@ -1149,6 +1151,7 @@ function renderManaPoolHud() {
 
 export function logMsg(msg) {
   recordTelemetryUiLog(msg);
+  if (HEADLESS_ENGINE) { globalThis.__ARGENTINIA_HEADLESS_LOG__?.push?.(String(msg)); return; }
   const entry = document.createElement('div');
   entry.className = 'log-entry';
   entry.textContent = msg;
@@ -1818,13 +1821,13 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   if (isLocal && instantButtonAllowedZone && hasExplicitInstantAbility && state.priorityPlayer === 'local' && !state.gameOver) {
     // La acción instantánea sigue anclada a la carta, pero visualmente queda fuera del
     // contenido: pequeña, centrada y debajo de todo para no tapar texto/PT.
-    el.classList.add('card-with-instant-action');
+    el.classList.add('card-with-bottom-fab');
     const instantBtn = document.createElement('button');
     instantBtn.type = 'button';
     instantBtn.textContent = '⚡';
     instantBtn.title = gameText('ability.instant.button');
     instantBtn.setAttribute('aria-label', gameText('ability.instant.aria', { card: card.name }));
-    instantBtn.classList.add('instant-ability-fab');
+    instantBtn.classList.add('card-bottom-fab', 'instant-ability-fab');
     instantBtn.addEventListener('click', (ev) => {
       ev.preventDefault();
       ev.stopPropagation();
@@ -1836,17 +1839,20 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 
   // 23.16.3 — Suspend es una acción especial desde la mano. Tiene un control propio porque
   // puede ser legal aunque la carta no pueda castearse normalmente (por coste/targets), y no
-  // usa la Stack. El botón sólo aparece en la mano del jugador que controla la UI.
+  // usa la Stack. Usa el mismo tratamiento visual mínimo del botón ⚡: centrado abajo y fuera
+  // del contenido de la carta para no tapar texto ni crecer con hover interno.
   if (zone === 'hand' && isLocal && hasSuspend(card) && !state.gameOver) {
     const spec=normalizeSuspendSpec(card);
     const suspendBtn=document.createElement('button');
-    suspendBtn.type='button'; suspendBtn.className='suspend-action-fab';
-    suspendBtn.textContent='⏳'; suspendBtn.title=`Suspender ${spec?.time || ''} — ${spec?.cost || '{0}'}`;
-    suspendBtn.style.cssText='position:absolute;left:4px;bottom:4px;z-index:20;width:26px;height:26px;border-radius:50%;border:1px solid #f7d774;background:#2c3e50;color:#f7d774;font-size:14px;cursor:pointer;box-shadow:0 1px 4px #000;';
+    suspendBtn.type='button';
+    suspendBtn.textContent='⏳';
+    suspendBtn.title=`Suspender ${spec?.time || ''} — ${spec?.cost || '{0}'}`;
+    suspendBtn.setAttribute('aria-label', `Suspender ${card.name} por ${spec?.time || 0} Tiempo pagando ${spec?.cost || '{0}'}`);
+    suspendBtn.classList.add('card-bottom-fab', 'suspend-action-fab');
     suspendBtn.disabled=!canSuspendCardFromHand(card);
-    suspendBtn.style.opacity=suspendBtn.disabled?'0.42':'1';
     suspendBtn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();suspendCardFromHand(index);});
-    el.querySelector('.card-inner')?.appendChild(suspendBtn);
+    el.classList.add('card-with-bottom-fab');
+    el.appendChild(suspendBtn);
   }
 
   if (customClick) {
@@ -5893,10 +5899,24 @@ if (typeof window !== 'undefined') {
 // FASE 4 / HOTFIX 23.4.2: el documento público del match ya contiene el perfil
 // básico de ambos jugadores ({ username, displayName legacy, photoURL }). La lógica de gameplay usa
 // getRivalName(), pero el HUD superior seguía mostrando el fallback estático del HTML.
-// Esta función mantiene Solitario exactamente como siempre (El Tano + 🤠) y, si hay un
-// currentMatch real, pinta nombre de pila + foto Google del rival. No hace lecturas ni
-// escrituras extra: usa únicamente los datos que ya llegaron durante el matchmaking o la
-// reconexión y quedaron guardados en state.currentMatch.
+// 23.17.5.7: Solitario usa una imagen propia del Tano desde assets/images/ui/tano.png sin
+// cambiar la geometría histórica del avatar (el círculo sigue midiendo 2.4rem). Multiplayer
+// conserva foto de perfil del rival y emoji sólo como fallback si esa foto no existe/falla.
+const TANO_AVATAR_SRC = 'assets/images/ui/tano.png';
+
+function setAvatarImageOrFallback(container, src, fallbackText, className='') {
+  if (!container) return;
+  container.textContent = '';
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = '';
+  if (className) img.className = className;
+  img.addEventListener('error', () => {
+    container.textContent = fallbackText;
+  }, { once: true });
+  container.appendChild(img);
+}
+
 function updateRivalAccountUI() {
   if (!els.rivalAvatar && !els.rivalPlayerName) return;
 
@@ -5909,18 +5929,13 @@ function updateRivalAccountUI() {
   }
 
   if (els.rivalAvatar) {
-    const identityKey = `${multiplayer ? 'mp' : 'solo'}|${rivalPhotoURL}`;
+    const identityKey = multiplayer ? `mp|${rivalPhotoURL}` : `solo|${TANO_AVATAR_SRC}`;
     if (els.rivalAvatar.dataset.identityKey !== identityKey) {
       els.rivalAvatar.dataset.identityKey = identityKey;
-      els.rivalAvatar.textContent = '';
-      if (rivalPhotoURL) {
-        const img = document.createElement('img');
-        img.src = rivalPhotoURL;
-        img.alt = '';
-        img.addEventListener('error', () => {
-          els.rivalAvatar.textContent = '🤠';
-        }, { once: true });
-        els.rivalAvatar.appendChild(img);
+      if (!multiplayer) {
+        setAvatarImageOrFallback(els.rivalAvatar, TANO_AVATAR_SRC, '🤠', 'tano-avatar-img');
+      } else if (rivalPhotoURL) {
+        setAvatarImageOrFallback(els.rivalAvatar, rivalPhotoURL, '🤠');
       } else {
         els.rivalAvatar.textContent = '🤠';
       }
@@ -8417,6 +8432,7 @@ export function showStackObjectChoiceModal(entries = [], title = null, onConfirm
 }
 
 export function showGameOverOverlay(didWin) {
+  if (HEADLESS_ENGINE) { globalThis.__ARGENTINIA_HEADLESS_GAME_OVER__ = { didWin: !!didWin, at: Date.now() }; return; }
   els.gameOverTitle.textContent = didWin ? gameText('game.over.overlayWin', { rival: getRivalName() }) : gameText('game.over.overlayLoss', { rival: getRivalName() });
   if (els.gameOverRewardStatus) {
     els.gameOverRewardStatus.textContent = state.currentMatch && state.currentUser ? gameText('game.points.pvpChecking') : '';
@@ -8433,6 +8449,18 @@ export function showGameRewardStatus(message, kind = 'info') {
   els.gameOverRewardStatus.classList.toggle('hidden', !text);
 }
 
+function zoneGroupingKey(item, idx, zoneType) {
+  const baseKey = item?.card?.id || item?.card?.name || `item_${idx}`;
+  // 23.17.5.5 — las Sagas iguales NO se apilan visualmente: dos copias con capítulos
+  // distintos deben verse como instancias separadas para poder seguir su progreso real.
+  // La identidad estable prioriza _syncObjectId; si no existe aún, caemos a instance/id+idx.
+  if (zoneType === 'support' && isSagaCard(item?.card)) {
+    const sagaInstanceKey = item?._syncObjectId || item?.card?.instanceId || item?._effectObjectId || `${baseKey}_${idx}`;
+    return `saga_${sagaInstanceKey}`;
+  }
+  return baseKey;
+}
+
 function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
   containerEl.innerHTML = '';
   const groups = {};
@@ -8444,8 +8472,9 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
     // ninguna garantía de cuál era, dando de maná lo que le tocara a esa (y el contador del
     // badge no reflejaba bien la mezcla). Agrupar por identidad de carta (id) es siempre
     // correcto: junta copias de la MISMA carta (ej. 3 tierras básicas iguales) y nunca mezcla
-    // cartas mecánicamente distintas, aunque compartan color.
-    let key = item.card.id || item.card.name;
+    // cartas mecánicamente distintas, aunque compartan color. Excepción: Sagas, que se separan
+    // por instancia para preservar visiblemente sus capítulos independientes.
+    const key = zoneGroupingKey(item, idx, zoneType);
     if (!groups[key]) groups[key] = { items: [], ready: [], tapped: [] };
     groups[key].items.push({ item, originalIndex: idx });
     if (item.tapped) groups[key].tapped.push(item);
@@ -8663,6 +8692,12 @@ window.addEventListener('resize', scheduleCurrentCombatMap, { passive: true });
 });
 
 export function render() {
+  if (HEADLESS_ENGINE) {
+    state.localHP = Math.max(0, Math.min(20, state.localHP));
+    state.rivalHP = Math.max(0, Math.min(20, state.rivalHP));
+    try { captureTelemetryState('headless_render'); } catch {}
+    return;
+  }
   state.localHP = Math.max(0, Math.min(20, state.localHP));
   state.rivalHP = Math.max(0, Math.min(20, state.rivalHP));
   updateRivalAccountUI();
@@ -8960,6 +8995,7 @@ window.addEventListener('resize', () => {
 
 // --- PANEL MANUAL DE ASIGNACIÓN DE DAÑO (INTACTO) ---
 export function showDamageAssignmentModal(attackerItem, blockersArray, totalDamage, onAuto, onConfirmManual) {
+  if (HEADLESS_ENGINE) { onAuto?.(); return; }
   const overlay = document.getElementById('damage-modal-overlay');
   const content = document.getElementById('damage-modal-content');
   const btnAuto = document.getElementById('btn-dmg-auto');

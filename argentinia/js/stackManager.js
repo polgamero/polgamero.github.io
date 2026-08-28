@@ -5,7 +5,7 @@ import { buildCopiedCard, buildStackCopy, buildPermanentCopyToken, buildBecameCo
 import { initializeTransformPermanentItem, transformPermanent, canTransformPermanent, currentTransformFace } from './transformEngine.js';
 import { landMatchesEffectiveFilter } from './landCharacteristics.js';
 import { normalizeLandGraveyardReturnEffect, landGraveyardFilterMatches } from './landGraveyard.js';
-import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, queueTriggeredAbilities, buildGenericEventTriggerEntries, triggerCreatureEtb, triggerLandEtb, collectCreatureEtbBatchEntries, collectLandEtbBatchEntries, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, removeCounters, cleanupIfVehicle, animateLandPermanent, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal, completeCastTargetDeclaration, requestPrivateZoneChoice, searchLibraryForLands, resolveLibraryEffect, landEntersTappedForBattlefield, runStateBasedActions, waitForStateBasedActions, changePermanentController, dispatchGameEvent, dispatchReplacementCounterRemoval, exileTopCardsWithPlayPermission, resolveSuspendRemoveTimeEffect, resolveSuspendCastFromExile, adjustSuspendedTimeCounters, handleCounteredSuspendTrigger, chooseCreatureTypeForEffect } from './main.js';
+import { state, resumeAfterInteractiveEffect, attachAura, cancelPayment, detachEquipmentFrom, sendAurasToGraveyard, queueTriggeredAbility, queueTriggeredAbilities, buildGenericEventTriggerEntries, triggerCreatureEtb, triggerLandEtb, collectCreatureEtbBatchEntries, collectLandEtbBatchEntries, triggerSpellCast, triggerCreatureDies, triggerAnyCreatureDeath, queueCreatureDeathBatch, getEffectivePower, getEffectiveToughness, performSacrifice, performSacrificeBatch, getSacrificeEffectCandidates, chooseGraveyardCards, chooseResolvedEffectTarget, addCounters, removeCounters, cleanupIfVehicle, animateLandPermanent, tryAutoPayCounterTax, checkPlaneswalkerDeaths, isHiddenRivalZone, getRivalName, requestRivalDecision, discardCardsFromHand, waitForDiscardEffects, isResolvedEffectTargetLegal, completeCastTargetDeclaration, requestPrivateZoneChoice, searchLibraryForLands, resolveLibraryEffect, landEntersTappedForBattlefield, runStateBasedActions, waitForStateBasedActions, changePermanentController, repairCombatLinksAfterZoneRemoval, dispatchGameEvent, dispatchReplacementCounterRemoval, exileTopCardsWithPlayPermission, resolveSuspendRemoveTimeEffect, resolveSuspendCastFromExile, adjustSuspendedTimeCounters, handleCounteredSuspendTrigger, chooseCreatureTypeForEffect } from './main.js';
 import { otherRole, serializeStackTarget, refreshStackItemBoardRefs } from './matchSync.js';
 import { stampCardOwner, zoneForCardOwner, cardOwnerIsLocal } from './zoneOwnership.js';
 import { stampPermanentController } from './controlEngine.js';
@@ -19,6 +19,7 @@ import { recordTelemetryEvent } from './telemetry.js';
 import { gameText } from './gameTexts.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
 import { normalizeCounterType, getCounterDefinition } from './counterEngine.js';
+import { gameRandom } from './gameRng.js';
 import { resolveSubtypeReference } from './typalEngine.js';
 
 
@@ -502,7 +503,7 @@ function chooseBotCardFilterDiscardIndexes(hand, count) {
     const pool = hand.map((_, i) => i);
     const chosen = [];
     while (chosen.length < wanted && pool.length > 0) {
-      const pick = Math.floor(Math.random() * pool.length);
+      const pick = Math.floor(gameRandom('bot_card_filter_discard') * pool.length);
       chosen.push(pool.splice(pick, 1)[0]);
     }
     return chosen;
@@ -612,7 +613,7 @@ function chooseBotSacrificeCandidates(candidates, count, permanentType) {
   const pool = [...candidates];
   if (state.botDifficulty === 'easy') {
     for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(gameRandom('bot_sacrifice_shuffle') * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
     return pool.slice(0, count);
@@ -1424,6 +1425,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
               } else {
                 const zoneTo = replacement.event.zoneTo || 'graveyard';
                 board.splice(idx, 1);
+                repairCombatLinksAfterZoneRemoval({ fromIsLocal:isTargetLocal, fromIndex:idx });
                 detachEquipmentFrom(targetUnit, isTargetLocal);
                 sendAurasToGraveyard(targetUnit, isTargetLocal);
                 cleanupIfVehicle(targetUnit); // si era un Vehículo tripulado, saca el power/toughness "prestado"
@@ -1461,6 +1463,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           const idx = board.indexOf(targetUnit);
           if (idx !== -1) {
             board.splice(idx, 1);
+            repairCombatLinksAfterZoneRemoval({ fromIsLocal:isTargetLocal, fromIndex:idx });
             detachEquipmentFrom(targetUnit, isTargetLocal);
             sendAurasToGraveyard(targetUnit, isTargetLocal);
             cleanupIfVehicle(targetUnit);
@@ -1487,6 +1490,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           const idx = board.indexOf(targetUnit);
           if (idx !== -1) {
             board.splice(idx, 1);
+            repairCombatLinksAfterZoneRemoval({ fromIsLocal:isTargetLocal, fromIndex:idx });
             detachEquipmentFrom(targetUnit, isTargetLocal);
             sendAurasToGraveyard(targetUnit, isTargetLocal);
             cleanupIfVehicle(targetUnit);
@@ -1528,6 +1532,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           } else {
             // Local/single-player: la mano real está disponible en este mismo cliente.
             board.splice(idx, 1);
+            repairCombatLinksAfterZoneRemoval({ fromIsLocal:isTargetLocal, fromIndex:idx });
             detachEquipmentFrom(targetUnit, isTargetLocal);
             sendAurasToGraveyard(targetUnit, isTargetLocal);
             cleanupIfVehicle(targetUnit); // si era un Vehículo tripulado, saca el power/toughness "prestado"
@@ -1582,7 +1587,10 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
               const wasCreature = inCombat && isCreaturePermanent(targetItem);
               const zone = inCombat ? combatZone : landZone;
               const idx = zone.indexOf(targetItem);
-              if (idx !== -1) zone.splice(idx, 1);
+              if (idx !== -1) {
+                zone.splice(idx, 1);
+                if (inCombat) repairCombatLinksAfterZoneRemoval({ fromIsLocal:isTargetLocal, fromIndex:idx });
+              }
               if (wasCreature) {
                 detachEquipmentFrom(targetItem, isTargetLocal);
                 sendAurasToGraveyard(targetItem, isTargetLocal);
@@ -1843,6 +1851,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           const idx = combatZone.indexOf(unit);
           if (idx === -1) continue;
           combatZone.splice(idx, 1);
+          repairCombatLinksAfterZoneRemoval({ fromIsLocal:isLocalZone, fromIndex:idx });
           detachEquipmentFrom(unit, isLocalZone);
           sendAurasToGraveyard(unit, isLocalZone);
           cleanupIfVehicle(unit);
@@ -1905,6 +1914,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           const idx = zone.indexOf(unit);
           if (idx === -1) continue;
           zone.splice(idx, 1);
+          if (zone === combatZone) repairCombatLinksAfterZoneRemoval({ fromIsLocal:landIsLocal, fromIndex:idx });
           if (wasCreature) {
             detachEquipmentFrom(unit, landIsLocal);
             sendAurasToGraveyard(unit, landIsLocal);

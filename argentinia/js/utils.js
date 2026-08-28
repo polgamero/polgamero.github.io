@@ -5,9 +5,15 @@ import { zoneForCardOwner } from './zoneOwnership.js';
 import { cardForNonBattlefieldZone } from './transformEngine.js';
 import { PACK_COMMONS, PACK_UNCOMMONS, PACK_LANDS, MYTHIC_CHANCE_IN_RARE_SLOT, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
 import { buildCompetitiveDeck } from './deckIntelligence.js';
+import { gameRandom } from './gameRng.js';
 
-export function shuffle(array) { 
-  return array.sort(() => Math.random() - 0.5); 
+export function shuffle(array, randomFn = gameRandom) {
+  if (!Array.isArray(array)) return array;
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(randomFn('shuffle') * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
 }
 
 // Punto 11 pre-500: contrato retrocompatible para habilidades activadas múltiples.
@@ -72,7 +78,7 @@ export function isSacrificeCandidate(item, eligibleType) {
 
 // Descarte automático al azar sobre una mano REAL. La función acepta randomFn para poder
 // regresionarla de forma determinista en Node, pero el juego usa Math.random por defecto.
-export function removeRandomCardsFromHand(hand, amount, randomFn = Math.random) {
+export function removeRandomCardsFromHand(hand, amount, randomFn = gameRandom) {
   if (!Array.isArray(hand) || amount <= 0) return [];
   const removed = [];
   const n = Math.min(amount, hand.length);
@@ -197,8 +203,8 @@ const GUILD_PAIRS = [
 export { ALL_COLORS, GUILD_PAIRS };
 
 function pickDeckIdentity() {
-  if (Math.random() < 0.7) return [...GUILD_PAIRS[Math.floor(Math.random() * GUILD_PAIRS.length)]];
-  return [ALL_COLORS[Math.floor(Math.random() * ALL_COLORS.length)]];
+  if (gameRandom('deck_identity_kind') < 0.7) return [...GUILD_PAIRS[Math.floor(gameRandom('deck_identity_pair') * GUILD_PAIRS.length)]];
+  return [ALL_COLORS[Math.floor(gameRandom('deck_identity_color') * ALL_COLORS.length)]];
 }
 
 let lastRandomDeckReport = null;
@@ -211,7 +217,8 @@ export function getLastRandomDeckReport() {
 export function buildRandomDeck(forcedIdentity, options = {}) {
   const identity = forcedIdentity || pickDeckIdentity();
   const quality = options.quality || 'competitive';
-  const result = buildCompetitiveDeck(cardDb.allCards, identity, { ...options, quality });
+  const replayRng = options.rng || (() => gameRandom('deck_intelligence'));
+  const result = buildCompetitiveDeck(cardDb.allCards, identity, { ...options, quality, rng: replayRng });
   lastRandomDeckReport = result.report;
   console.log(
     `[Deck Intelligence ${result.report.engineVersion}] ${identity.join('/')} · ` +
@@ -219,7 +226,7 @@ export function buildRandomDeck(forcedIdentity, options = {}) {
     `score ${result.report.selectedScore}/${result.report.bestScore} · ` +
     `${result.report.landCount} tierras · MV ${result.report.averageManaValue}`
   );
-  return shuffle(result.deck);
+  return shuffle(result.deck, replayRng);
 }
 
 // FASE 3, ETAPA 4 (revisión): convierte el cardIds guardado de un mazo real ("Mis Mazos")

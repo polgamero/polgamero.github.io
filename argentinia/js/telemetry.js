@@ -18,8 +18,10 @@
 
 import { ENGINE_VERSION, ENGINE_VERSION_SHORT, ENGINE_BASELINE } from './version.js';
 import { getAudioRuntimeStatus, toggleMusic } from './audioManager.js';
+import { getGameRngSnapshot } from './gameRng.js';
+import { REPLAY_FORMAT_VERSION, REPLAY_HASH_ALGORITHM, replayHash, buildReplayActionJournal } from './replayKernel.js';
 
-export const TELEMETRY_SCHEMA_VERSION = 4;
+export const TELEMETRY_SCHEMA_VERSION = 5;
 export const TELEMETRY_VERSION = ENGINE_VERSION;
 
 const STORAGE_CURRENT = 'argentinia.telemetry.current.v1';
@@ -192,6 +194,23 @@ function safeClone(value, depth = 0, seen = new WeakSet()) {
     }
   });
   return out;
+}
+
+function deepJsonClone(value) {
+  if (value === undefined) return undefined;
+  try { return JSON.parse(JSON.stringify(value)); } catch { return safeClone(value); }
+}
+
+function cloneTelemetryEvent(event) {
+  if (!event || typeof event !== 'object') return safeClone(event);
+  // state_change nace exclusivamente de buildSnapshot/diffSnapshots: no contiene DOM,
+  // funciones ni ciclos. Para Replay no puede sufrir el maxDepth del safeClone genérico.
+  if (event.type === 'state_change') return deepJsonClone(event);
+  return safeClone(event);
+}
+
+function cloneTelemetryEvents(events) {
+  return (Array.isArray(events) ? events : []).map(cloneTelemetryEvent);
 }
 
 function cardSummary(card) {
@@ -371,8 +390,31 @@ function buildSnapshot(state, stack) {
   };
 }
 
+function recordReplayCheckpoint(reason, eventSeq, snapshot, stateHash) {
+  if (!currentSession?.replay || !snapshot) return;
+  const replay = currentSession.replay;
+  replay.stateChangeCount = Math.max(0, Number(replay.stateChangeCount || 0));
+  const important = reason === 'session_start' || reason === 'manual_bug_marker' || reason === 'session_end' || reason === 'export' || String(reason || '').startsWith('remote_');
+  if (!important && replay.stateChangeCount % 50 !== 0) return;
+  const checkpoint = {
+    seq: Number(eventSeq || currentSession._seq || 0),
+    reason: reason || null,
+    stateHash,
+    rng: getGameRngSnapshot(),
+    snapshotJson: JSON.stringify(snapshot)
+  };
+  const previous = replay.checkpoints[replay.checkpoints.length - 1];
+  if (previous?.seq === checkpoint.seq && previous?.stateHash === checkpoint.stateHash) return;
+  replay.checkpoints.push(checkpoint);
+  if (replay.checkpoints.length > 40) replay.checkpoints.splice(0, replay.checkpoints.length - 40);
+}
+
 function valuesEqual(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
+}
+
+export function buildReplaySnapshot(stateArg, stackArg) {
+  return buildSnapshot(stateArg, stackArg);
 }
 
 function diffSnapshots(before, after, path = '', out = []) {
@@ -433,6 +475,23 @@ function collectPhysicalZoneRefs(state) {
     });
   });
   return refs;
+}
+
+function collectStableBattlefieldObjectIds(state) {
+  const zones = ['localLands','localCombat','localSupport','localPlaneswalkers','rivalLands','rivalCombat','rivalSupport','rivalPlaneswalkers'];
+  const ids = new Map();
+  for (const zoneName of zones) {
+    const zone = state?.[zoneName];
+    if (!Array.isArray(zone)) continue;
+    zone.forEach((item, index) => {
+      const id = item?._syncObjectId || item?._effectObjectId || null;
+      if (!id) return;
+      const list = ids.get(id) || [];
+      list.push(`${zoneName}[${index}]`);
+      ids.set(id, list);
+    });
+  }
+  return ids;
 }
 
 function invariantFindings(state, stack) {
@@ -548,6 +607,26 @@ function invariantFindings(state, stack) {
     }
   }
 
+  // 23.18 — después de hydrate/sync dos objetos JS distintos pueden representar por error
+  // el mismo permanente público. El chequeo histórico por referencia no lo ve; la identidad
+  // estable sí. Esto es especialmente valioso para detectar duplicaciones multiplayer.
+  const stableIds = collectStableBattlefieldObjectIds(state);
+  for (const [objectId, paths] of stableIds.entries()) {
+    if (paths.length > 1) {
+      push('STABLE_OBJECT_IN_MULTIPLE_ZONES', 'El mismo _syncObjectId/_effectObjectId aparece simultáneamente en más de una zona de battlefield.', {
+        objectId,
+        paths
+      }, 'error');
+    }
+  }
+
+  if (state.gameOver) {
+    const pending = pendingSummary(state);
+    if (Object.keys(pending).length > 0) {
+      push('GAME_OVER_WITH_PENDING_DECISION', 'La partida terminó pero quedó una decisión/transacción interactiva pendiente.', { pending }, 'warning');
+    }
+  }
+
   if (Array.isArray(stack)) {
     const ids = new Set();
     stack.forEach((item, index) => {
@@ -560,6 +639,10 @@ function invariantFindings(state, stack) {
   }
 
   return findings;
+}
+
+export function evaluateRuntimeInvariants(stateArg, stackArg) {
+  return invariantFindings(stateArg, stackArg);
 }
 
 function bugRootCauseKey(finding) {
@@ -670,7 +753,7 @@ export function recordTelemetryEvent(type, data = {}, severity = 'info') {
     relativeMs: eventRelativeMs(),
     type,
     severity,
-    data: safeClone(data)
+    data: type === 'state_change' ? deepJsonClone(data) : safeClone(data)
   };
   currentSession.events.push(event);
 
@@ -979,7 +1062,7 @@ function cloneRemoteDeltaList(items) {
   // Un delta REMOTO no puede usar ese límite: perder un evento y después adelantar
   // lastUploadedSeq lo vuelve irrecuperable. Clonamos cada entrada por separado (cada evento
   // sigue teniendo sus propios límites internos), pero nunca truncamos la lista exterior.
-  return (Array.isArray(items) ? items : []).map(item => safeClone(item, 0, new WeakSet()));
+  return (Array.isArray(items) ? items : []).map(item => item?.type === 'state_change' ? deepJsonClone(item) : safeClone(item, 0, new WeakSet()));
 }
 
 function buildRemoteCheckpoint(session, kind, reason) {
@@ -1165,10 +1248,25 @@ export function startTelemetrySession(meta = {}) {
       browser: typeof navigator !== 'undefined' ? navigator.userAgent : null,
       page: typeof location !== 'undefined' ? location.pathname : null,
       localPlayerName: typeof providers.getLocalPlayerName === 'function' ? providers.getLocalPlayerName() : null,
-      rivalName: typeof providers.getRivalName === 'function' ? providers.getRivalName() : null
+      rivalName: typeof providers.getRivalName === 'function' ? providers.getRivalName() : null,
+      replayRng: safeClone(meta.replayRng || getGameRngSnapshot())
     },
     events: [],
     bugCandidates: [],
+    replay: {
+      formatVersion: REPLAY_FORMAT_VERSION,
+      hashAlgorithm: REPLAY_HASH_ALGORITHM,
+      mode: 'event-sourced-deterministic-foundation',
+      rngAtSessionStart: getGameRngSnapshot(),
+      checkpoints: [],
+      stateChangeCount: 0,
+      coverage: {
+        stateReconstruction: true,
+        rngState: true,
+        semanticActionJournal: true,
+        engineReexecution: 'foundation-v1'
+      }
+    },
     truncated: false,
     finalSnapshot: null,
     stats: null,
@@ -1233,11 +1331,22 @@ export function captureTelemetryState(reason = 'render') {
 
   let event = null;
   if (snapshotJson !== lastSnapshotJson) {
+    const beforeHash = lastSnapshot ? replayHash(lastSnapshot) : null;
+    const afterHash = replayHash(snapshot);
     const changes = lastSnapshot ? diffSnapshots(lastSnapshot, snapshot) : [{ path: '$', before: null, after: snapshot }];
     event = recordTelemetryEvent('state_change', {
       reason,
-      changes
+      changes,
+      beforeHash,
+      afterHash,
+      rng: getGameRngSnapshot()
     });
+    if (currentSession?.replay) {
+      currentSession.replay.stateChangeCount = Math.max(0, Number(currentSession.replay.stateChangeCount || 0)) + 1;
+      currentSession.replay.latestStateHash = afterHash;
+      currentSession.replay.latestRng = getGameRngSnapshot();
+      recordReplayCheckpoint(reason, event?.seq, snapshot, afterHash);
+    }
     lastSnapshot = snapshot;
     lastSnapshotJson = snapshotJson;
   }
@@ -1385,6 +1494,7 @@ function humanSummary(session) {
     `Sesión: ${session.sessionId}`,
     `Motor base: ${session.engineBaseline}`,
     `Telemetría: ${session.telemetryVersion} / schema ${session.schemaVersion}`,
+    session.replay ? `Replay: v${session.replay.formatVersion} · ${session.replay.hashAlgorithm} · seed ${session.replay.rngAtSessionStart?.seedHex || session.replay.rngAtSessionStart?.seed || '?'}` : null,
     `Inicio: ${session.startedAt}`,
     `Fin: ${session.endedAt || '(sesión todavía abierta)'}`,
     `Modo: ${session.meta.mode || '?'}`,
@@ -1436,7 +1546,13 @@ function exportableSession(session) {
     humanSummary: humanSummary(session),
     bugCandidates: safeClone(session.bugCandidates),
     finalSnapshot: safeClone(session.finalSnapshot),
-    events: safeClone(session.events),
+    replay: session.replay ? {
+      ...safeClone(session.replay),
+      actionJournal: buildReplayActionJournal(session.events || []),
+      finalStateHash: session.finalSnapshot ? replayHash(session.finalSnapshot) : null,
+      rngAtExport: getGameRngSnapshot()
+    } : null,
+    events: cloneTelemetryEvents(session.events),
     truncated: !!session.truncated
   };
   return clean;
@@ -1511,8 +1627,14 @@ export function markTelemetryBug(note = null) {
   }
   const event = recordTelemetryEvent('manual_bug_marker', {
     note: String(finalNote || '').trim() || '(sin descripción)',
-    snapshotTurn: lastSnapshot?.turn || null
+    snapshotTurn: lastSnapshot?.turn || null,
+    replay: {
+      cursorSeq: currentSession._seq + 1,
+      stateHash: lastSnapshot ? replayHash(lastSnapshot) : null,
+      rng: getGameRngSnapshot()
+    }
   }, 'warning');
+  if (lastSnapshot) recordReplayCheckpoint('manual_bug_marker', event?.seq, lastSnapshot, replayHash(lastSnapshot));
   addBugCandidate({
     code: 'MANUAL_BUG_MARKER',
     severity: 'warning',
@@ -1679,6 +1801,12 @@ export function getTelemetryStatus() {
     bugCandidateCount: currentSession?.bugCandidates.length || 0,
     endedAt: currentSession?.endedAt || null,
     recoveredAvailable: !!recoveredSession,
+    replay: currentSession?.replay ? {
+      formatVersion: currentSession.replay.formatVersion,
+      stateHash: currentSession.replay.latestStateHash || null,
+      rng: getGameRngSnapshot(),
+      checkpointCount: currentSession.replay.checkpoints?.length || 0
+    } : null,
     remote: remoteExportSummary()
   };
 }
@@ -1686,6 +1814,8 @@ export function getTelemetryStatus() {
 // Exportadas para tests de contrato sin necesitar DOM.
 export const __telemetryTest = {
   safeClone,
+  deepJsonClone,
+  cloneTelemetryEvents,
   cardSummary,
   buildSnapshot,
   diffSnapshots,
@@ -1693,6 +1823,9 @@ export const __telemetryTest = {
   exportableSession,
   remoteExportSummary,
   buildRemoteCheckpoint,
+  replayHash,
+  recordReplayCheckpoint,
+  collectStableBattlefieldObjectIds,
   bugRootCauseKey,
   addBugCandidate,
   getCurrentSession: () => currentSession

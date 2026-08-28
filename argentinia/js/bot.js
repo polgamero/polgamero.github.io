@@ -66,7 +66,11 @@ import { SUSPEND_ENGINE_VERSION, clearSuspendState } from './suspendEngine.js';
 import { canTransformPermanent } from './transformEngine.js';
 import { botHasCapability } from './botDifficulty.js';
 import { chooseHardAttackPlan, COMBAT_BOT_2_VERSION } from './combatBot2.js';
+import { isCreatureReservedByBotStack } from './botTargetReservation.js';
+import { getCounterCount } from './counterEngine.js';
 
+
+const botThinkDelay = (ms) => globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true ? Promise.resolve() : sleep(ms);
 
 function botEffectiveManaAbility(item, isLocal = false) {
   if (!item?.card) return null;
@@ -705,6 +709,21 @@ function isStackCopySpell(card) {
   return ['copy_spell','copy_ability','copy_stack_object'].includes(card?.effect?.type);
 }
 
+function botTargetReservationHelpers() {
+  return { isCounterSpell, hasKeyword, getCounterCount, getEffectiveToughness };
+}
+
+function isReservedReactiveCreatureTarget(item) {
+  return isCreatureReservedByBotStack(item, spellStack, botTargetReservationHelpers());
+}
+
+function legalReactiveRemovalTargets(card) {
+  return state.localCombat.filter(item =>
+    isValidBotTarget(item, card?.colors)
+    && !isReservedReactiveCreatureTarget(item)
+  );
+}
+
 // NUEVO: El Tano usa un instantáneo de daño como truco de combate cuando VOS declarás
 // atacantes — antes de esto, el Tano jamás consideraba instantáneos salvo que hubiera algo
 // en la pila para responder, así que nunca defendía proactivamente con una quema.
@@ -826,7 +845,7 @@ export async function checkRivalCounterOrResponse() {
   // de base, sin ningún truco reactivo, viejo o nuevo).
   if (!botHasCapability(state.botDifficulty, 'reactiveStack')) return false;
 
-  await sleep(600);
+  await botThinkDelay(600);
 
   // ETAPA 1 (Grupo C, IA reactiva): si algo en la pila amenaza con destruir/exiliar/matar
   // (de daño letal) a una criatura del Tano, y tiene un instantáneo que le dé Intocable
@@ -893,7 +912,7 @@ export async function checkRivalCounterOrResponse() {
     if (!c.requiresTarget) return true;
     if (c.effect?.type === 'damage') return true;
     if (c.effect?.type === 'destroy_creature' || c.effect?.type === 'bounce' || c.effect?.type === 'exile_creature' || c.effect?.type === 'exile_and_return') {
-      return state.localCombat.some(u => isValidBotTarget(u, c.colors));
+      return legalReactiveRemovalTargets(c).length > 0;
     }
     return false;
   });
@@ -915,16 +934,22 @@ export async function checkRivalCounterOrResponse() {
       const chosen=copyable.reduce((best,obj)=>!best || Number(obj.card?.cmc||0)>Number(best.card?.cmc||0) ? obj : best,null);
       if(chosen) targetObj={type:'stack',stackId:chosen.id};
     } else if (responseCard.effect?.type === 'damage') {
-      // Preferimos rematar una criatura vulnerable; si no hay, pegamos a la cara
+      // Preferimos rematar una criatura vulnerable, pero nunca duplicamos daño letal sobre
+      // una instancia que ya está cubierta por una respuesta propia pendiente. Si no hay
+      // criatura útil, la quema sigue pudiendo ir a la cara.
       const vulnerable = state.localCombat.find(c =>
-        isValidBotTarget(c, responseCard.colors) && getEffectiveToughness(c) <= responseCard.effect.amount
+        isValidBotTarget(c, responseCard.colors)
+        && !isReservedReactiveCreatureTarget(c)
+        && getEffectiveToughness(c) - (c.damageTaken || 0) <= responseCard.effect.amount
       );
       targetObj = vulnerable
         ? { type: 'creature', isLocal: true, index: state.localCombat.indexOf(vulnerable), item: vulnerable }
         : { type: 'player', isLocal: true };
     } else if (responseCard.effect?.type === 'destroy_creature' || responseCard.effect?.type === 'bounce' || responseCard.effect?.type === 'exile_creature' || responseCard.effect?.type === 'exile_and_return') {
-      // La criatura tuya con más poder efectivo (la más peligrosa)
-      const candidates = state.localCombat.filter(c => isValidBotTarget(c, responseCard.colors));
+      // La criatura tuya con más poder efectivo (la más peligrosa), EXCLUYENDO permanentes
+      // ya cubiertos por removal propio pendiente. La reserva es por instancia física, nunca
+      // por card.id/nombre, así dos criaturas iguales distintas siguen siendo objetivos válidos.
+      const candidates = legalReactiveRemovalTargets(responseCard);
       if (candidates.length > 0) {
         const chosen = candidates.reduce((prev, cur) => getEffectivePower(prev) > getEffectivePower(cur) ? prev : cur);
         targetObj = { type: 'creature', isLocal: true, index: state.localCombat.indexOf(chosen), item: chosen };
@@ -1063,6 +1088,15 @@ function botAbilityTimingAllowed(ability, { instantOnly = false } = {}) {
   return true;
 }
 
+function hasPendingAnimateLandActivation(sourceItem) {
+  if (!sourceItem) return false;
+  return spellStack.some(entry =>
+    entry?.type === 'ability' &&
+    entry?.effect?.type === 'animate_land' &&
+    (entry?.sourceItem === sourceItem || (sourceItem._syncObjectId && entry?.sourceItem?._syncObjectId === sourceItem._syncObjectId))
+  );
+}
+
 // NUEVO: Evaluación táctica para activar artefactos y soporte
 export function tryActivateBotAbilities({ instantOnly = false } = {}) {
   // Recorremos artefactos Y tierras de utilidad del Tano. Cada permanente puede exponer
@@ -1119,6 +1153,11 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
       const effect = ability.effect || {};
 
       if (effect.type === 'animate_land') {
+        // 23.17.5.5 — si la misma Tierra ya está animada o ya tiene una activación de
+        // animación esperando en la pila, volver a activarla no aporta nada y puede dejarla
+        // girada al autopagarse el coste. El caso reportado de Plaza Mitre era una doble
+        // activación redundante antes de la fase de combate.
+        if (supportItem.isAnimatedLand || hasPendingAnimateLandActivation(supportItem)) continue;
         // En su Main 1 la anima para atacar; con prioridad instantánea durante bloqueadores
         // también puede animarla para defender. No la activa por puro valor fuera de combate.
         shouldActivate = state.phase === 'main1' || (timing === 'instant' && state.phase === 'combat_blockers' && state.activePlayer === 'local');
@@ -1663,7 +1702,7 @@ export async function takeBotPriorityAction() {
   if (state.currentMatch) return;
   if (state.gameOver || state.priorityPlayer !== 'rival') return;
 
-  await sleep(600); // El Tano "piensa"
+  await botThinkDelay(600); // El Tano "piensa"
 
   // 1. Responder a la pila
   if (spellStack.length > 0) {
@@ -1706,7 +1745,7 @@ export async function takeBotPriorityAction() {
       // PUNTO 2: el Tano dispara el mismo evento Landfall que el jugador humano.
       await triggerLandEtb(false, landCard, landItem);
       render(); 
-      await sleep(800);
+      await botThinkDelay(800);
     }
 
     // LAND 4: si un permanente tipo Crucible/Ramunap le permite jugar Tierras desde su
@@ -1715,7 +1754,7 @@ export async function takeBotPriorityAction() {
       const gyLandIndex = state.rivalGraveyard.findIndex(c => String(c?.type || '').includes('Tierra'));
       if (gyLandIndex !== -1) {
         await playLandFromGraveyardByIndex(gyLandIndex, false);
-        await sleep(600);
+        await botThinkDelay(600);
       }
     }
 
