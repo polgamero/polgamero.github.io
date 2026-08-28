@@ -1736,12 +1736,14 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     tempMods.length > 0 ? '⏳' : ''
   ].join('');
 
+  const counterTooltipText = counterTooltipLines(itemObj).join(' · ');
   const counterBadgeHTML = counterEntries.length > 0
-    ? `<div class="counter-badge" data-tooltip="${counterTooltipLines(itemObj).join('\n').replace(/"/g, '&quot;')}">${compactCounterText(itemObj)}</div>`
+    ? `<div class="counter-badge" title="${escapeHtml(counterTooltipText)}" aria-label="${escapeHtml(counterTooltipText)}">${compactCounterText(itemObj)}</div>`
     : '';
 
+  const auraTooltipText = modifierLines.join(' · ');
   const auraBadgeHTML = modifierLines.length > 0
-    ? `<div class="aura-badge" data-tooltip="${modifierLines.join('\n').replace(/"/g, '&quot;')}">${modifierIcons}</div>`
+    ? `<div class="aura-badge" title="${escapeHtml(auraTooltipText)}" aria-label="${escapeHtml(auraTooltipText)}">${modifierIcons}</div>`
     : '';
 
   // 23.16.4 — indicador presentation-only de TDFC. En Battlefield muestra la cara
@@ -1756,13 +1758,17 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     ? `<div class="dfc-face-badge" title="${(dfcFace === 'back' ? `Cara posterior · ${card.name}` : `Transforma en ${dfcBackName}`).replace(/"/g, '&quot;')}" aria-label="${(dfcFace === 'back' ? `Cara posterior · ${card.name}` : `Transforma en ${dfcBackName}`).replace(/"/g, '&quot;')}">↻ ${dfcFace === 'back' ? 'B' : 'A'}</div>`
     : '';
   const chosenCreatureType=getChosenCreatureType(itemObj);
+  const typalTooltipText = chosenCreatureType ? `Tipo de criatura elegido: ${String(chosenCreatureType)}` : '';
   const typalChoiceBadgeHTML=chosenCreatureType
-    ? `<div class="typal-choice-badge" data-tooltip="Tipo de criatura elegido: ${String(chosenCreatureType).replace(/"/g,'&quot;')}">🧬 ${String(chosenCreatureType).replace(/</g,'&lt;')}</div>`
+    ? `<div class="typal-choice-badge" title="${escapeHtml(typalTooltipText)}" aria-label="${escapeHtml(typalTooltipText)}">🧬 ${String(chosenCreatureType).replace(/</g,'&lt;')}</div>`
     : '';
 
   const sagaState = isSagaCard(card) ? sagaUiState(itemObj) : null;
+  const sagaTooltipText = sagaState && sagaState.chapters.length > 0
+    ? `Lore ${sagaState.lore}/${sagaState.finalChapter} · ${sagaState.chapters.map(ch => `${ch.roman}: ${ch.label || ''}`.trim()).join(' · ')}`
+    : '';
   const sagaChapterHTML = sagaState && sagaState.chapters.length > 0
-    ? `<div class="saga-chapter-track" data-tooltip="Lore ${sagaState.lore}/${sagaState.finalChapter}">${sagaState.chapters.map(ch => `<span class="saga-chapter-pill${sagaState.lore >= ch.number ? ' reached' : ''}${sagaState.lore === ch.number ? ' current' : ''}">${ch.roman}</span>`).join('')}</div>`
+    ? `<div class="saga-chapter-track" title="${escapeHtml(sagaTooltipText)}" aria-label="${escapeHtml(sagaTooltipText)}">${sagaState.chapters.map(ch => `<span class="saga-chapter-pill${sagaState.lore >= ch.number ? ' reached' : ''}${sagaState.lore === ch.number ? ' current' : ''}"><span class="saga-chapter-pill-label">${ch.roman}</span></span>`).join('')}</div>`
     : '';
 
   // 23.12.0 — las vistas catálogo/deckbuilder pueden mostrar cientos de cartas. Sus
@@ -7607,31 +7613,98 @@ export function showDeckSelectionModal(onChoose, titleOverrides = {}, onCancel) 
 
 let mulliganScrollInteractionsInstalled = false;
 let mulliganScrollGesture = null;
+let mulliganHoverPreview = null;
+let mulliganHoverSource = null;
+
+function clearMulliganHoverPreview() {
+  mulliganHoverPreview?.remove?.();
+  mulliganHoverPreview = null;
+  mulliganHoverSource = null;
+}
+
+function showMulliganHoverPreview(cardEl) {
+  if (!cardEl || typeof document === 'undefined') return;
+  if (!window.matchMedia?.('(hover: hover) and (pointer: fine)')?.matches) return;
+  if (mulliganScrollGesture?.dragging) return;
+  if (mulliganHoverSource === cardEl && mulliganHoverPreview?.isConnected) return;
+  clearMulliganHoverPreview();
+
+  const rect = cardEl.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const scale = 2;
+  const pad = 12;
+  const displayW = rect.width * scale;
+  const displayH = rect.height * scale;
+  const maxLeft = Math.max(pad, window.innerWidth - displayW - pad);
+  const maxTop = Math.max(pad, window.innerHeight - displayH - pad);
+  const left = Math.min(maxLeft, Math.max(pad, rect.left - rect.width / 2));
+  const top = Math.min(maxTop, Math.max(pad, rect.top - rect.height / 2));
+
+  const preview = cardEl.cloneNode(true);
+  preview.querySelectorAll?.('[id]').forEach?.(node => node.removeAttribute('id'));
+  preview.classList.remove('selectable', 'chosen', 'disabled');
+  preview.classList.add('mulligan-card-hover-preview');
+  preview.setAttribute('aria-hidden', 'true');
+  preview.style.left = `${left}px`;
+  preview.style.top = `${top}px`;
+  preview.style.width = `${rect.width}px`;
+  preview.style.height = `${rect.height}px`;
+  preview.querySelectorAll?.('img').forEach?.(img => { img.draggable = false; });
+  document.body.appendChild(preview);
+  mulliganHoverPreview = preview;
+  mulliganHoverSource = cardEl;
+}
 
 function installMulliganScrollInteractions() {
   if (mulliganScrollInteractionsInstalled || typeof document === 'undefined') return;
   mulliganScrollInteractionsInstalled = true;
 
   const rowFromEvent = (event) => event?.target?.closest?.('.mulligan-hand-row') || null;
+  const cardFromEvent = (event) => event?.target?.closest?.('.mulligan-card-slot') || null;
   const hasHorizontalOverflow = (row) => !!row && row.scrollWidth > row.clientWidth + 2;
+
+  // Browser-native image drag produces a ghost card and steals pointermove from our scroller.
+  // These modal rows own the drag gesture, so native drag is always disabled inside them.
+  document.addEventListener('dragstart', (event) => {
+    if (!rowFromEvent(event)) return;
+    event.preventDefault();
+  }, true);
+
+  // Desktop hover preview lives OUTSIDE the scroll viewport. This avoids the unavoidable
+  // clipping caused by overflow-x:auto while keeping the real row safely scrollable.
+  document.addEventListener('pointerover', (event) => {
+    const cardEl = cardFromEvent(event);
+    if (!cardEl || event.pointerType === 'touch') return;
+    if (cardEl.contains(event.relatedTarget)) return;
+    showMulliganHoverPreview(cardEl);
+  }, true);
+  document.addEventListener('pointerout', (event) => {
+    const cardEl = cardFromEvent(event);
+    if (!cardEl || cardEl !== mulliganHoverSource) return;
+    if (cardEl.contains(event.relatedTarget)) return;
+    clearMulliganHoverPreview();
+  }, true);
+  document.addEventListener('scroll', clearMulliganHoverPreview, true);
 
   // Desktop: una rueda vertical normal desplaza horizontalmente los selectores de cartas.
   // Trackpads que ya entregan deltaX conservan su desplazamiento nativo.
   document.addEventListener('wheel', (event) => {
     const row = rowFromEvent(event);
     if (!hasHorizontalOverflow(row)) return;
+    clearMulliganHoverPreview();
     if (Math.abs(event.deltaX) >= Math.abs(event.deltaY) || Math.abs(event.deltaY) < 1) return;
     event.preventDefault();
     row.scrollLeft += event.deltaY;
   }, { passive: false, capture: true });
 
-  // Desktop: click+drag sobre las cartas/fondo. Un click corto sigue seleccionando la carta;
-  // sólo a partir de 7 px se convierte en gesto de scroll y se suprime el click posterior.
+  // Desktop: click+drag puede comenzar SOBRE una carta. Un click corto sigue seleccionándola;
+  // sólo a partir de 7 px se convierte en scroll y se suprime el click posterior.
   document.addEventListener('pointerdown', (event) => {
     if (event.button !== 0 || event.pointerType === 'touch') return; // touch usa pan-x nativo
     const row = rowFromEvent(event);
     if (!hasHorizontalOverflow(row)) return;
     if (event.target?.closest?.('button,a,input,select,textarea,label')) return;
+    clearMulliganHoverPreview();
     mulliganScrollGesture = {
       row,
       pointerId: event.pointerId,
@@ -7648,6 +7721,7 @@ function installMulliganScrollInteractions() {
     if (!g.dragging && Math.abs(dx) < 7) return;
     if (!g.dragging) {
       g.dragging = true;
+      clearMulliganHoverPreview();
       g.row.classList.add('dragging');
       try { g.row.setPointerCapture?.(event.pointerId); } catch {}
     }
@@ -7704,29 +7778,33 @@ function injectMulliganStyles() {
     }
     .mulligan-subtitle { text-align: center; font-size: 14px; color: #cfe0d4; margin-bottom: 22px; }
     .mulligan-hand-row {
-      display: flex; justify-content: flex-start; gap: 8px; flex-wrap: nowrap; margin: -68px 0 -58px;
-      min-height: 154px; width: 100%; max-width: 100%; box-sizing: border-box;
-      padding: 72px 8px 76px; overflow-x: auto; overflow-y: hidden;
+      display: flex; justify-content: flex-start; gap: 8px; flex-wrap: nowrap; margin: -8px 0 2px;
+      min-height: 174px; width: 100%; max-width: 100%; box-sizing: border-box;
+      padding: 16px 8px 20px; overflow-x: auto; overflow-y: hidden;
       scrollbar-width: thin; scrollbar-color: var(--gold, #d4af37) rgba(0,0,0,.2);
       overscroll-behavior-x: contain; touch-action: pan-x; scroll-behavior: smooth;
+      user-select: none; -webkit-user-select: none; cursor: grab;
+    }
+    #mulligan-overlay.mulligan-flow-overlay .mulligan-hand-row {
+      justify-content: safe center;
     }
     .mulligan-hand-row::-webkit-scrollbar { height: 9px; }
     .mulligan-hand-row::-webkit-scrollbar-track { background: rgba(0,0,0,.18); border-radius: 999px; }
     .mulligan-hand-row::-webkit-scrollbar-thumb { background: var(--gold, #d4af37); border-radius: 999px; }
     .mulligan-hand-row.dragging { cursor: grabbing; user-select: none; scroll-behavior: auto; }
+    .mulligan-hand-row img, .mulligan-card-slot img { -webkit-user-drag: none; user-drag: none; }
     .mulligan-card-slot {
       width: 100px !important; height: 140px !important;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      transition: box-shadow 0.15s ease, filter 0.15s ease;
       flex-shrink: 0;
     }
-    /* Las cartas del modal no tenían NINGÚN hover-zoom: las reglas de zoom del resto del
-       juego están atadas a #local-hand / .field-row específicamente, y esta fila no es
-       ninguna de esas dos. Le damos su propia regla, mismo criterio (bottom center). */
-    .mulligan-card-slot:hover {
-      transform: scale(2.0);
-      z-index: 20;
+    .mulligan-card-slot:hover { z-index: 2; filter: brightness(1.04); }
+    .mulligan-card-hover-preview {
+      position: fixed !important; z-index: 10020 !important; margin: 0 !important;
+      pointer-events: none !important; transform: scale(2) !important; transform-origin: top left !important;
+      box-shadow: 0 18px 48px rgba(0,0,0,.62), 0 0 0 1px rgba(212,175,55,.55) !important;
+      transition: none !important; filter: none !important;
     }
-    .mulligan-card-slot.selectable:hover { transform: scale(2.0) translateY(-6px); z-index: 20; }
     .mulligan-card-slot.chosen {
       box-shadow: 0 0 0 3px #e74c3c, 0 0 16px rgba(231,76,60,0.6);
     }
@@ -7754,6 +7832,7 @@ function buildMulliganCardRow(hand, selectable, onCardClick) {
   hand.forEach((card, cardIndex) => {
     const cardEl = createCardElement(card, false, true, null, 'mulligan-pick', null);
     cardEl.classList.add('mulligan-card-slot');
+    cardEl.querySelectorAll?.('img').forEach?.(img => { img.draggable = false; });
     if (selectable) {
       cardEl.classList.add('selectable');
       cardEl.addEventListener('click', () => onCardClick(card, cardEl, cardIndex));
@@ -7770,6 +7849,7 @@ export function showMulliganModal(hand, mulliganCount, canMulliganMore, callback
   injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
+  overlay.classList.add('mulligan-flow-overlay');
 
   const keepLabel = mulliganCount > 0
     ? gameText('mulligan.keepWithBottom', { count: mulliganCount })
@@ -8258,6 +8338,7 @@ export function showBottomCardsModal(hand, countToBottom, onConfirm) {
   injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
+  overlay.classList.add('mulligan-flow-overlay');
 
   const chosen = new Set();
 

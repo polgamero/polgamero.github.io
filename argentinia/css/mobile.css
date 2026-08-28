@@ -1921,3 +1921,9 @@ html.argentinia-mobile .mana-pool-hud { gap:2px !important; margin-bottom:2px !i
 html.argentinia-mobile .mana-pool-chip { min-width:24px !important; height:18px !important; padding:0 4px 0 1px !important; }
 html.argentinia-mobile .mana-icon-pool { width:14px !important; height:14px !important; flex-basis:14px !important; }
 html.argentinia-mobile .mana-pool-count { font-size:.60rem !important; }
+
+/* 23.17.5.3 — el Mulligan real vuelve a centrar la mano cuando entra completa.
+   `safe center` cae a inicio automáticamente si alguna vez la fila necesita overflow. */
+html.argentinia-mobile #mulligan-overlay.mulligan-flow-overlay .mulligan-hand-row {
+  justify-content: safe center !important;
+}
