@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { buildTokenCatalog, collectTokenProducerEffects, tokenArtLayoutId } from '../js/tokenCatalog.js';
+import { POOL_BASELINE } from '../js/poolContract.js';
 
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const dataDir = path.join(root, 'assets', 'data');
@@ -10,9 +11,9 @@ const cards = files.flatMap(name => JSON.parse(fs.readFileSync(path.join(dataDir
 const effects = collectTokenProducerEffects(cards);
 const catalog = buildTokenCatalog(cards);
 
-assert.equal(cards.length, 601, 'El catálogo de tokens no debe alterar el pool 601');
-assert.equal(effects.length, 32, 'Esperábamos 32 efectos create_tokens');
-assert.equal(catalog.length, 25, 'Esperábamos 25 identidades visuales de token');
+assert.equal(cards.length, POOL_BASELINE.total, `El catálogo de tokens no debe alterar el pool activo ${POOL_BASELINE.total}`);
+assert.ok(effects.length >= 32, 'El pool acumulativo debe preservar al menos los 32 productores históricos');
+assert.ok(catalog.length >= 25, 'El pool acumulativo debe preservar al menos las 25 identidades visuales históricas de token');
 assert.equal(new Set(catalog.map(t => t.id)).size, catalog.length, 'IDs visuales de token duplicados');
 assert.equal(catalog.filter(t => !t.image).length, 0, 'Todo token canónico debe tener filename');
 for (const token of catalog) {

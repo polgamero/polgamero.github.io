@@ -5,7 +5,7 @@ import { ENGINE_VERSION, FIRESTORE_RULES_VERSION } from '../js/version.js';
 const ui = fs.readFileSync(new URL('../js/ui.js', import.meta.url), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(new URL('../build-manifest.json', import.meta.url), 'utf8'));
 
-assert.equal(ENGINE_VERSION, '23.17.5.2');
+assert.equal(ENGINE_VERSION, '23.18.1');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.75');
 assert.equal(manifest.engineVersion, ENGINE_VERSION);
 assert.equal(manifest.firestoreRulesVersion, FIRESTORE_RULES_VERSION);

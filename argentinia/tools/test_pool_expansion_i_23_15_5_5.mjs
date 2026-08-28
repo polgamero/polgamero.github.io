@@ -28,13 +28,12 @@ const ids=[
 assert.equal(ids.length,30);
 ids.forEach(id=>assert.ok(byId.has(id),`falta ${id}`));
 
-// Cardinalidad canónica 643 -> 673.
-assert.equal(all.length,673);
-assert.deepEqual(Object.fromEntries(Object.entries(pools).map(([k,v])=>[k,v.length])),{
-  criaturas:275,instantaneos:115,conjuros:80,encantamientos:68,artefactos:63,tierras:64,planeswalkers:8
-});
-const rarity={}; for(const c of all) rarity[c.rarity]=(rarity[c.rarity]||0)+1;
-assert.deepEqual(rarity,{Common:231,Uncommon:226,Rare:170,Mythic:46});
+// Milestone histórico 643 -> 673: el pool acumulativo puede crecer, pero nunca encogerse.
+assert.ok(all.length>=673);
+const minimum={criaturas:275,instantaneos:115,conjuros:80,encantamientos:68,artefactos:63,tierras:64,planeswalkers:8};
+for(const [k,n] of Object.entries(minimum)) assert.ok(pools[k].length>=n,`${k} no puede caer por debajo de Pool Expansion I`);
+const addedRarity={}; for(const id of ids){ const r=byId.get(id).rarity; addedRarity[r]=(addedRarity[r]||0)+1; }
+assert.deepEqual(addedRarity,{Common:10,Uncommon:12,Rare:7,Mythic:1});
 
 // IDs e imágenes: una identidad y un arte por carta, sin reutilización.
 assert.equal(new Set(all.map(c=>c.id)).size,all.length,'IDs duplicados');
@@ -139,10 +138,11 @@ const poolContract=fs.readFileSync(path.join(root,'js/poolContract.js'),'utf8');
 const version=fs.readFileSync(path.join(root,'js/version.js'),'utf8');
 const workflow=fs.readFileSync(path.join(root,'../.github/workflows/pages.yml'),'utf8');
 assert.match(poolContract,/pool_expansion_i_673:\s*makeMilestone\('23\.15\.5\.5',\s*673,/, 'milestone 673 debe existir');
-assert.match(poolContract,/CURRENT_POOL_MILESTONE = 'pool_expansion_i_673'/);
-assert.match(version,/ENGINE_VERSION = '23\.15\.5\.5'/);
-assert.match(workflow,/regression_legacy_23_15_5_4\.zip/);
-assert.match(workflow,/ci_regression_manifest_23_15_5_5\.txt/);
-assert.match(workflow,/test_pool_expansion_i_23_15_5_5\.mjs/);
+assert.match(poolContract,/pool_expansion_i_673:\s*makeMilestone\('23\.15\.5\.5',\s*673,/);
+if (!version.includes("ENGINE_VERSION = '23.18'")) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:[6-9]|[1-9]\d+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
+assert.match(workflow,/regression_legacy_23_(?:15|16|17)_[0-9_]+\.zip/);
+assert.match(workflow,/ci_regression_manifest_23_(?:15|16|17)_[0-9_]+\.txt/);
+const manifest=fs.readdirSync(path.join(root,'tools')).find(x=>/^ci_regression_manifest_23_(?:15|16|17)_.*\.txt$/.test(x));
+assert.ok(manifest && fs.readFileSync(path.join(root,'tools',manifest),'utf8').includes('test_pool_expansion_i_23_15_5_5.mjs'));
 
 console.log('PASS test_pool_expansion_i_23_15_5_5 pool=673 new=30 events=7 control=3 convoke=3 delve=2 affinity=2 replacements=4');

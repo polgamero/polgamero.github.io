@@ -8,7 +8,7 @@ const mobile = fs.readFileSync(new URL('../js/mobileUI.js', import.meta.url), 'u
 assert.ok(telemetry.includes("recToggle.id = 'arg-mobile-telemetry-toggle'"), 'telemetry común debe crear el toggle REC');
 assert.ok(telemetry.includes("panel.classList.toggle('arg-mobile-telemetry-expanded')"), 'toggle debe abrir/cerrar el mismo panel');
 assert.ok(telemetry.includes("recToggle.textContent = expanded ? '✕ REC' : '🔴 REC'"), 'toggle debe reflejar estado visual');
-assert.ok(telemetry.includes('panel.append(recToggle, statusEl, cloudEl, bugsEl, markBtn, uploadBtn)'), 'toggle debe ser parte del panel común');
+assert.ok(telemetry.includes('panel.append(recToggle, gameplayMusicToggleEl, statusEl, cloudEl, bugsEl, markBtn, uploadBtn)'), 'toggle debe ser parte del panel común');
 assert.ok(style.includes('.telemetry-panel:not(.arg-mobile-telemetry-expanded) > :not(.arg-mobile-telemetry-toggle)'), 'desktop debe ocultar contenido cuando REC está cerrado');
 assert.ok(style.includes('.telemetry-panel.arg-mobile-telemetry-expanded'), 'desktop debe tener estado expandido explícito');
 assert.ok(mobile.includes("panel.querySelector('#arg-mobile-telemetry-toggle')"), 'mobile debe reutilizar el toggle común sin duplicarlo');

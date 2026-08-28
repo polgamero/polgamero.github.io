@@ -35,11 +35,11 @@ assert.ok(ui.includes('enterMenuAudio();'), 'Menú principal no arma la escena m
 assert.ok(ui.includes("id=\"opt-music-volume\""), 'Opciones no incluye slider de Música.');
 assert.ok(ui.includes("id=\"opt-sfx-volume\""), 'Opciones no incluye slider separado de Efectos.');
 assert.ok(ui.includes("id=\"menu-music-toggle\""), 'Menú no incluye mute rápido de música.');
-assert.ok(main.includes('async function initGame(deckSource) {\n  enterGameplayAudio();'), 'Solitario no hace fade-out al entrar a gameplay.');
-assert.ok(main.includes("function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host') {\n  enterGameplayAudio();"), 'Multiplayer no hace fade-out al entrar a gameplay.');
+assert.match(main, /async function initGame\(deckSource\) \{[\s\S]{0,220}enterGameplayAudio\('solo'\);/, 'Solitario no selecciona la pista gameplay solo.');
+assert.match(main, /function startMultiplayerMatch\(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host'\) \{[\s\S]{0,700}enterGameplayAudio\('multiplayer'\);/, 'Multiplayer no selecciona la pista gameplay multiplayer.');
 assert.ok(fs.readFileSync(path.join(root, 'js/audioManager.js'), 'utf8').includes("document.addEventListener('visibilitychange'"), 'Audio no pausa/reanuda al cambiar visibilidad.');
 assert.ok(fs.readFileSync(path.join(root, 'js/audioManager.js'), 'utf8').includes("window.addEventListener('pointerdown'"), 'Audio no espera interacción de usuario para autoplay audible.');
 assert.ok(version.includes('Entrega 23.13.63 Audio Manager Foundation'), 'La baseline ya no declara la fundación de Audio Manager.');
-assert.ok(version.includes("FIRESTORE_RULES_VERSION = '23.13.68'"), 'El contrato de audio debe convivir con las Rules actuales.');
+assert.ok(version.includes("FIRESTORE_RULES_VERSION = '23.13.75'"), 'El contrato de audio debe convivir con las Rules actuales.');
 
 console.log('AUDIO_MANAGER_23_13_63_OK menu=opus>mp3 volume=25 sfx=separate autoplay=gesture fade=700 visibility=pause');

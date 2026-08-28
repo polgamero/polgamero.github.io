@@ -598,15 +598,19 @@ html, body {
   overflow: hidden;
 }
 
-/* Fase 0 del multiplayer: si el jugador local está logueado con Google, el avatar muestra
-   su foto de perfil real en vez del emoji 🧉 — ver updateAccountUI en ui.js. El avatar del
-   Tano nunca cambia (es la IA, no tiene cuenta de Google). */
+/* Fase 0 del multiplayer: las fotos de perfil y, desde 23.17.5.7, tano.png comparten
+   exactamente el MISMO círculo fijo de 2.4rem. La imagen jamás puede agrandar el HUD. */
 .avatar img {
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   border-radius: 50%;
   object-fit: cover;
   display: block;
+}
+.avatar img.tano-avatar-img {
+  object-fit: cover;
 }
 
 .player-info {
@@ -1564,8 +1568,8 @@ button.mana-pool-chip:disabled { opacity: 1; }
 
 /* Pedido explícito posterior al baseline: botón de habilidad instantánea mínimo,
    centrado y debajo de la carta, sin alterar el footprint ni .card-inner. */
-.card-with-instant-action { position: relative; }
-.instant-ability-fab {
+.card-with-bottom-fab { position: relative; }
+.card-bottom-fab {
   position: absolute;
   left: 50%;
   right: auto;
@@ -1585,6 +1589,15 @@ button.mana-pool-chip:disabled { opacity: 1; }
   text-align: center;
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(0,0,0,.65);
+}
+.instant-ability-fab,
+.suspend-action-fab {
+  appearance: none;
+  -webkit-appearance: none;
+}
+.suspend-action-fab:disabled {
+  opacity: .42;
+  cursor: default;
 }
 
 /* Telemetría diagnóstica: pegada al origen de la pantalla.
