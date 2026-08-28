@@ -94,6 +94,7 @@ import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './perma
 import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandActivatedAbilities, describeLandTransformation } from './landCharacteristics.js';
 import { isSagaCard, sagaUiState } from './sagaEngine.js';
 import { botDifficultyLabel, nextBotDifficulty, normalizeBotDifficulty } from './botDifficulty.js';
+import * as headlessChoice from './headlessChoiceEngine.js';
 
 const HEADLESS_ENGINE = globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true;
 
@@ -121,6 +122,7 @@ export const els = {
   rivalPlayerName: document.querySelector('.rival-card .player-info h3'),
   localManaPool: document.getElementById('local-mana-pool'),
   rivalManaPool: document.getElementById('rival-mana-pool'),
+  localManaPoolHint: document.getElementById('local-mana-pool-hint'),
   localPlayerCard: document.querySelector('.player-card.local-card'),
   rivalPlayerCard: document.querySelector('.player-card.rival-card'),
   turnPriorityHud: document.getElementById('turn-priority-hud'),
@@ -299,6 +301,7 @@ export function updatePilesUI() {
 // mostrando su texto completo — se elige ANTES de pagar nada, así que acá no hay ningún
 // chequeo de maná ni de targets todavía (eso viene después, ya con el modo fijado).
 export function showModalSpellChoice(card, onConfirm, onCancel) {
+  if (HEADLESS_ENGINE) { const idx=headlessChoice.chooseModeIndex(card); if(idx===null) onCancel?.(); else onConfirm?.(idx); return; }
   injectMulliganStyles(); // BUGFIX: blindaje defensivo, ver el comentario en showDeckNameModal
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
@@ -336,6 +339,7 @@ export function showModalSpellChoice(card, onConfirm, onCancel) {
 }
 
 export function showXValueModal(card, onConfirm, onCancel) {
+  if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseXValue()); return; }
   injectMulliganStyles();
   const untappedLands = state.localLands.filter(l => !l.tapped).length;
   const untappedRocks = state.localSupport.filter(s => !s.tapped && (s.card.produces || s.card.producesOptions)).length;
@@ -399,6 +403,7 @@ export function showXValueModal(card, onConfirm, onCancel) {
 // propias tierras si elegís pagar — a diferencia de antes, donde el cliente del rival
 // decidía esto por vos sin preguntarte nada.
 export function showCounterTaxDecisionModal(amount, targetCardName, onPay, onDecline) {
+  if (HEADLESS_ENGINE) { headlessChoice.chooseCounterTax()==='pay' ? onPay?.() : onDecline?.(); return; }
   injectMulliganStyles();
 
   const modalOverlay = document.createElement('div');
@@ -435,6 +440,7 @@ export function showCounterTaxDecisionModal(amount, targetCardName, onPay, onDec
 // por color, muestra las cartas REALES que cumplen el filtro y permite encontrar menos
 // (incluso 0) cuando la búsqueda en zona oculta lo autoriza.
 export function showLandSearchModal(options, onConfirm) {
+  if (HEADLESS_ENGINE) { const c=Array.isArray(options?.candidates)?options.candidates:[]; onConfirm?.(headlessChoice.chooseLandSearchIndexes(c,options?.maxCount,{allowFewer:options?.allowFewer!==false})); return; }
   injectMulliganStyles();
   const candidates = Array.isArray(options?.candidates) ? options.candidates : [];
   const maxCount = Math.max(0, Math.floor(Number(options?.maxCount || 0)));
@@ -502,6 +508,7 @@ export function showLandSearchModal(options, onConfirm) {
 // 23.15.6 — selector universal de biblioteca. Para look-at-N muestra también las cartas
 // no elegibles (porque el efecto autoriza mirarlas) pero las deshabilita visualmente.
 export function showLibrarySearchModal(options, onConfirm) {
+  if (HEADLESS_ENGINE) { const c=Array.isArray(options?.candidates)?options.candidates:[]; onConfirm?.(headlessChoice.chooseLibraryIndexes(c,options?.maxCount,{allowFewer:options?.allowFewer!==false})); return; }
   injectMulliganStyles();
   const candidates=Array.isArray(options?.candidates)?options.candidates:[];
   const maxCount=Math.max(0,Math.floor(Number(options?.maxCount||0)));
@@ -555,6 +562,7 @@ export function showLibrarySearchModal(options, onConfirm) {
 }
 
 export function showRampLandChoiceModal(availableColors, cardName, onChoose) {
+  if (HEADLESS_ENGINE) { const c=headlessChoice.chooseRampColor(availableColors); state.pendingRampChoice=false; if(c!==null) onChoose?.(c); return; }
   injectMulliganStyles();
   injectDeckSelectionStyles();
   state.pendingRampChoice = true;
@@ -599,6 +607,7 @@ export function showRampLandChoiceModal(availableColors, cardName, onChoose) {
 // varios modos), acá es sí/no sobre pagar más por un bonus extra, y el efecto base se
 // lanza de todos modos elijas lo que elijas. Mismo esqueleto visual que showModalSpellChoice.
 export function showKickerModal(card, onConfirm, onCancel) {
+  if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseKicker(card)); return; }
   injectMulliganStyles();
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
@@ -642,6 +651,7 @@ export function showKickerModal(card, onConfirm, onCancel) {
 // ENTREGA 23.10 — elegir VÍA de casteo antes de targets/pago. Una alternativa es una
 // decisión de 601.2b, no un botón que aparece cuando ya empezaste a girar tierras.
 export function showAlternativeCostModal(card, alternativeLabel, onConfirm, onCancel) {
+  if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseAlternativeCost(card)); return; }
   injectMulliganStyles();
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
@@ -666,6 +676,7 @@ export function showAlternativeCostModal(card, alternativeLabel, onConfirm, onCa
 // regla futura dice explícitamente "mirá/revelá", reveal_candidates puede mostrar sólo los
 // descriptores temporales autorizados sin materializar rivalHand/rivalDeck.
 export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel = null) {
+  if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.choosePrivateZoneTokens(offer)); return; }
   injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.className = 'gy-modal-overlay';
@@ -1120,6 +1131,19 @@ export function showManaOrAbilityChoiceModal(cardName, onMana, onAbility) {
   overlay.onclick = e => { if (e.target === overlay) close(); };
 }
 
+let lastRenderedLocalManaPoolTotal = 0;
+let lastManaPoolEducationTurn = null;
+let manaPoolEducationTimer = null;
+
+function showManaPoolEducationHint() {
+  const hint = els.localManaPoolHint;
+  if (!hint || HEADLESS_ENGINE) return;
+  hint.textContent = gameText('mana.pool.educationHint');
+  hint.classList.remove('hidden');
+  if (manaPoolEducationTimer) clearTimeout(manaPoolEducationTimer);
+  manaPoolEducationTimer = setTimeout(() => hint.classList.add('hidden'), 5200);
+}
+
 function renderManaPoolHud() {
   const renderOne = (container, pool, isLocal) => {
     if (!container) return;
@@ -1145,8 +1169,20 @@ function renderManaPoolHud() {
       container.appendChild(chip);
     }
   };
+  const localTotal = manaPoolTotal(state.localManaPool);
   renderOne(els.localManaPool, state.localManaPool, true);
   renderOne(els.rivalManaPool, state.rivalManaPool, false);
+
+  // Tutorial contextual: sólo cuando el pool pasa de vacío a no-vacío FUERA de un pago y
+  // como máximo una vez por turno. Enseña el concepto sin spamear cada land tap.
+  if (localTotal > 0 && lastRenderedLocalManaPoolTotal <= 0 && !state.pendingCost && lastManaPoolEducationTurn !== state.turnCount) {
+    lastManaPoolEducationTurn = state.turnCount;
+    showManaPoolEducationHint();
+  }
+  if (localTotal <= 0 && els.localManaPoolHint && !els.localManaPoolHint.classList.contains('hidden')) {
+    els.localManaPoolHint.classList.add('hidden');
+  }
+  lastRenderedLocalManaPoolTotal = localTotal;
 }
 
 export function logMsg(msg) {
@@ -7911,6 +7947,7 @@ export function showMulliganModal(hand, mulliganCount, canMulliganMore, callback
 // Confirmar SIEMPRE está habilitado (a diferencia de "elegir para el fondo" del Mulligan,
 // acá 0 cartas elegidas es perfectamente legal — significa "todas se quedan arriba").
 export function showScrySurveilModal(cards, mode, onConfirm) {
+  if (HEADLESS_ENGINE) { const x=headlessChoice.chooseScrySurveil(cards,mode); onConfirm?.(x.moved,x.kept); return; }
   injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
@@ -7953,6 +7990,7 @@ export function showScrySurveilModal(cards, mode, onConfirm) {
 // del permanente y un customClick propio; por lo tanto el selector nunca dispara la acción
 // normal de esa carta en el tablero.
 export function showProliferateModal(eligible, onConfirm) {
+  if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseProliferate(eligible)); return; }
   injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
@@ -8025,6 +8063,7 @@ export function showProliferateModal(eligible, onConfirm) {
 // sí debe determinar QUÉ Tierras endereza cuando existe un límite. Este modal no permite
 // acciones paralelas y exige exactamente la cantidad que las reglas normales harían enderezar.
 export function showUntapLandChoiceModal(entries, countToChoose, onConfirm) {
+  if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseUntapIndexes(entries,countToChoose)); return; }
   injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
@@ -8072,6 +8111,7 @@ export function showUntapLandChoiceModal(entries, countToChoose, onConfirm) {
 // puramente visuales; la validación real de elegibilidad vive en main.js. No hay Cancelar:
 // cuando se abre, la selección forma parte de una instrucción que ya está resolviéndose.
 export function showGraveyardChoiceModal(entries, countToChoose, cardName, filterLabel, actionLabel, onConfirm) {
+  if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseGraveyardIndexes(entries,countToChoose)); return; }
   injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
@@ -8145,6 +8185,7 @@ export function showEscapeExileModal(graveyardCards, exileCount, onConfirm) {
 // No hay Cancelar: el efecto ya está resolviéndose. Recibe items de battlefield reales,
 // por eso varias copias idénticas siguen siendo seleccionables como objetos distintos.
 export function showSacrificeEffectModal(candidates, countToSacrifice, cardName, permanentType, onConfirm) {
+  if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseSacrificeEntries(candidates,countToSacrifice)); return; }
   injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
@@ -8210,6 +8251,7 @@ export function showSacrificeEffectModal(candidates, countToSacrifice, cardName,
 // prepara como 2 de vida; los no elegidos permanecen en pendingCost y pueden pagarse con
 // maná del color correspondiente (o Convoke). No muta vida hasta el commit 601.2h.
 export function showPhyrexianCostChoiceModal(symbols, cardName, maxLifePayments = Infinity) {
+  if (HEADLESS_ENGINE) return Promise.resolve([]);
   const list=Array.isArray(symbols)?symbols:[];
   if(!list.length||maxLifePayments<=0) return Promise.resolve([]);
   injectMulliganStyles();
@@ -8250,6 +8292,7 @@ export function showPhyrexianCostChoiceModal(symbols, cardName, maxLifePayments 
 // selectores de costos obligatorios, permite confirmar 0..máximo y por eso siempre ofrece
 // "seguir sin usar". No muta permanentes/zonas: sólo devuelve la selección preparada.
 export function showCostPaymentResourceModal(entries, options = {}) {
+  if (HEADLESS_ENGINE) return Promise.resolve([]);
   injectMulliganStyles();
   const list = Array.isArray(entries) ? entries : [];
   const max = Math.max(0, Math.min(list.length, Math.floor(Number(options.max) || 0)));
@@ -8302,6 +8345,7 @@ export function showCostPaymentResourceModal(entries, options = {}) {
 }
 
 export function showHandDiscardChoiceModal(hand, countToDiscard, cardName, actionLabel, onConfirm) {
+  if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.chooseHandIndexes(hand,countToDiscard)); return; }
   injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
@@ -8350,6 +8394,7 @@ export function showHandFilterDiscardModal(hand, countToDiscard, cardName, mode,
 }
 
 export function showBottomCardsModal(hand, countToBottom, onConfirm) {
+  if (HEADLESS_ENGINE) { const idx=headlessChoice.chooseHandIndexes(hand,countToBottom); onConfirm?.(idx.map(i=>hand[i]).filter(Boolean)); return; }
   injectMulliganStyles();
   const overlay = document.createElement('div');
   overlay.id = 'mulligan-overlay';
@@ -8395,6 +8440,7 @@ export function showBottomCardsModal(hand, countToBottom, onConfirm) {
 // conservar el target copiado. El modal es deliberadamente pequeño y reutiliza el shell
 // visual de las selecciones de Mulligan para no sumar otra familia de overlays.
 export function showCopyRetargetModal(cardName, targetLabel, onKeep, onChange) {
+  if (HEADLESS_ENGINE) { headlessChoice.chooseCopyRetarget()==='keep' ? onKeep?.() : onChange?.(); return; }
   injectMulliganStyles();
   const overlay=document.createElement('div');
   overlay.id='mulligan-overlay';
@@ -8414,6 +8460,7 @@ export function showCopyRetargetModal(cardName, targetLabel, onKeep, onChange) {
 }
 
 export function showStackObjectChoiceModal(entries = [], title = null, onConfirm, onCancel = null) {
+  if (HEADLESS_ENGINE) { const x=headlessChoice.chooseStackEntry(entries); x ? onConfirm?.(x) : onCancel?.(); return; }
   injectMulliganStyles();
   const overlay=document.createElement('div');
   overlay.id='mulligan-overlay';
@@ -9178,6 +9225,7 @@ export function hideMultiplayerReadyBarrier() {
 
 // 23.15.1 — Regla de Leyenda: decisión sin prioridad.
 export function showLegendRuleChoiceModal(entries = [], cardName = 'Permanente legendario') {
+  if (HEADLESS_ENGINE) return Promise.resolve(headlessChoice.chooseLegendEntry(entries));
   return new Promise(resolve => {
     const overlay=document.createElement('div'); overlay.className='gy-modal-overlay';
     overlay.innerHTML=`<div class="gy-modal-content"><div class="gy-modal-header"><h3>${gameTextHtml('sba.legend.title')}</h3></div><div style="margin:8px 0 14px">${gameTextHtml('sba.legend.subtitle',{card:cardName})}</div><div class="legend-choice-grid"></div></div>`;
@@ -9249,6 +9297,7 @@ function triggerOrderEventSummary(entry = {}) {
 }
 
 export function showTriggerOrderModal(entries = []) {
+  if (HEADLESS_ENGINE) return Promise.resolve(headlessChoice.chooseTriggerOrder(entries));
   return new Promise(resolve => {
     if(entries.length<=1){resolve(entries);return;}
     const ordered=[...entries];

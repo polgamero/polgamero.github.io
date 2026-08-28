@@ -1,11 +1,14 @@
-// Argentinia 23.18.1 — helpers puros del Headless Full Game Lab.
+// Argentinia 23.18.2 — helpers puros del Headless Coverage 2.0 + Full Game Lab.
 // El worker Node importa el motor REAL (main/turnManager/bot/combatRules) y usa estas piezas
 // sólo para preparar mazos seguros, decidir acciones locales y auditar progreso.
 import { createSeededRng } from './gameRng.js';
 import { replayHash, snapshotInvariantFindings } from './replayKernel.js';
+import { classifyHeadlessCard } from './headlessCoverage.js';
 
-export const HEADLESS_LAB_VERSION = '23.18.1-full-engine-v1';
+export const HEADLESS_LAB_VERSION = '23.18.2-full-engine-v2';
 export const HEADLESS_SAFE_PROFILE = 'core-combat-v1';
+export const HEADLESS_COVERAGE_PROFILE = 'coverage-v2';
+export const HEADLESS_PROBE_PROFILE = 'pool-probe-v2';
 
 const COLOR_SYMBOLS = ['W','U','B','R','G'];
 
@@ -35,6 +38,61 @@ export function isHeadlessSafeCreature(card, identity = ['R','G']) {
 
 function cloneCard(card, instanceId) {
   return { ...structuredClone(card), instanceId };
+}
+
+export function isHeadlessCoverageFullCard(card, identity = ['R','G']) {
+  if (!card || String(card.type || '').includes('Tierra')) return false;
+  if (classifyHeadlessCard(card).level !== 'FULL') return false;
+  const allowed=new Set(identity);
+  return manaColorsFromCard(card).every(c=>allowed.has(c));
+}
+
+export function buildHeadlessCoverageDeck({ cards = [], lands = [], identity = ['R','G'], seed = 'lab', side = 'local' } = {}) {
+  const rng=createSeededRng(`${seed}|${side}|coverage-deck`);
+  const candidates=cards.filter(c=>isHeadlessCoverageFullCard(c,identity))
+    .sort((a,b)=>Number(a.cmc||0)-Number(b.cmc||0)||String(a.id).localeCompare(String(b.id)));
+  if(candidates.length<24) throw new Error(`HEADLESS_COVERAGE_POOL_TOO_SMALL:${candidates.length}`);
+  const basicByColor=new Map();
+  for(const color of identity){
+    const basics=lands.filter(c=>String(c.type||'').toLowerCase().includes('básica')&&String(c.produces||'')===color);
+    if(!basics.length) throw new Error(`HEADLESS_BASIC_LAND_MISSING:${color}`);
+    basicByColor.set(color,basics);
+  }
+  const deck=[]; let serial=1;
+  for(let i=0;i<24;i++){ const color=identity[i%identity.length]; const opts=basicByColor.get(color); const base=opts[Math.floor(rng()*opts.length)]; deck.push(cloneCard(base,`lab2_${side}_${serial++}`)); }
+  const curveBuckets=[
+    candidates.filter(c=>Number(c.cmc||0)<=2),
+    candidates.filter(c=>Number(c.cmc||0)>=3&&Number(c.cmc||0)<=4),
+    candidates.filter(c=>Number(c.cmc||0)>=5)
+  ];
+  for(let i=0;i<36;i++){
+    const preferred=curveBuckets[i%3].length?curveBuckets[i%3]:candidates;
+    const base=preferred[Math.floor(rng()*preferred.length)];
+    deck.push(cloneCard(base,`lab2_${side}_${serial++}`));
+  }
+  for(let i=deck.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
+  return {deck,coverageCandidateCount:candidates.length,identity:[...identity],rng:rng.snapshot()};
+}
+
+
+export function isHeadlessProbeCard(card, identity = ['R','G']) {
+  if (!card || String(card.type || '').includes('Tierra')) return false;
+  if (classifyHeadlessCard(card).level === 'UNSUPPORTED') return false;
+  const allowed=new Set(identity);
+  return manaColorsFromCard(card).every(c=>allowed.has(c));
+}
+
+export function buildHeadlessProbeDeck({ cards = [], lands = [], identity = ['R','G'], seed = 'lab', side = 'local' } = {}) {
+  const rng=createSeededRng(`${seed}|${side}|probe-deck`);
+  const candidates=cards.filter(c=>isHeadlessProbeCard(c,identity)).sort((a,b)=>Number(a.cmc||0)-Number(b.cmc||0)||String(a.id).localeCompare(String(b.id)));
+  if(candidates.length<24) throw new Error(`HEADLESS_PROBE_POOL_TOO_SMALL:${candidates.length}`);
+  const basicByColor=new Map();
+  for(const color of identity){ const basics=lands.filter(c=>String(c.type||'').toLowerCase().includes('básica')&&String(c.produces||'')===color); if(!basics.length) throw new Error(`HEADLESS_BASIC_LAND_MISSING:${color}`); basicByColor.set(color,basics); }
+  const deck=[]; let serial=1;
+  for(let i=0;i<24;i++){const color=identity[i%identity.length];const opts=basicByColor.get(color);deck.push(cloneCard(opts[Math.floor(rng()*opts.length)],`probe_${side}_${serial++}`));}
+  for(let i=0;i<36;i++){ const base=candidates[Math.floor(rng()*candidates.length)]; deck.push(cloneCard(base,`probe_${side}_${serial++}`)); }
+  for(let i=deck.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}
+  return {deck,probeCandidateCount:candidates.length,identity:[...identity],rng:rng.snapshot()};
 }
 
 export function buildHeadlessSafeDeck({ creatures = [], lands = [], identity = ['R','G'], seed = 'lab', side = 'local' } = {}) {
@@ -79,7 +137,7 @@ export function buildHeadlessSafeDeck({ creatures = [], lands = [], identity = [
 
 export function pendingChoiceKeys(state) {
   const keys = [
-    'pendingLegendChoice','pendingTriggerOrderChoice','pendingCastTransaction','pendingSuspendTransaction','pendingAlternativeCostChoice',
+    'pendingLegendChoice','pendingTriggerOrderChoice','pendingTargetCard','pendingCastTransaction','pendingSuspendTransaction','pendingAlternativeCostChoice',
     'pendingPrivateZoneChoice','pendingLandSearchChoice','pendingLibraryChoice','pendingAbilitySource','pendingActivatedAbilityChoice','pendingCrew',
     'pendingWardChoice','pendingCounterUnlessPay','pendingFightChoice','pendingXChoice','pendingModeChoice','pendingLoyaltyTargetChoice',
     'pendingMultiTargetChoice','pendingScrySurveilChoice','pendingProliferateChoice','pendingHandFilterChoice','pendingDiscardChoice',
@@ -116,9 +174,9 @@ export function auditHeadlessSnapshot(snapshot) {
   return findings;
 }
 
-export function summarizeHeadlessRun({ seed, difficulty, steps, snapshot, actions, unsupported = [], invariantFindings = [], status, reason, traceHash }) {
+export function summarizeHeadlessRun({ seed, difficulty, profile = HEADLESS_SAFE_PROFILE, steps, snapshot, actions, unsupported = [], invariantFindings = [], status, reason, traceHash }) {
   return {
-    labVersion:HEADLESS_LAB_VERSION, safeProfile:HEADLESS_SAFE_PROFILE, seed, difficulty, status, reason,
+    labVersion:HEADLESS_LAB_VERSION, safeProfile:profile, seed, difficulty, status, reason,
     steps, turns:Number(snapshot?.turn?.turnCount || 0), winner:snapshot?.turn?.gameOver ? (snapshot?.local?.hp<=0 || snapshot?.local?.poison>=10 ? 'rival' : snapshot?.rival?.hp<=0 || snapshot?.rival?.poison>=10 ? 'local' : 'terminal') : null,
     finalHash:snapshot ? replayHash(snapshot) : null, traceHash,
     final:{localHP:snapshot?.local?.hp,rivalHP:snapshot?.rival?.hp,localPoison:snapshot?.local?.poison,rivalPoison:snapshot?.rival?.poison,stackDepth:snapshot?.stack?.length||0},

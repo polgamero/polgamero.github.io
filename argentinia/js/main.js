@@ -4327,6 +4327,10 @@ async function chooseResolvedEffectTargetNow(options) {
     return null;
   }
   if (candidates.length === 1) return candidates[0];
+  // 23.18.2 — en Headless el Automated Choice Engine necesita poder atravesar targets
+  // nacidos DURANTE resolución (ETB/Saga/triggers). Primera opción legal = determinista;
+  // nunca saltea la validación de candidatos del motor real.
+  if (chooserIsLocal && globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true) return candidates[0];
 
   if (chooserIsLocal) {
     const cardLike = resolvedEffectTargetCard(sourceCard, effect, cardName);
@@ -8209,7 +8213,7 @@ function produceManaFromSource(item, isLocal, chosenType) {
     }
   }
 
-  logMsg(gameText('mana.added', { card: item.card.name, amount, mana: `{${type}}` }));
+  logMsg(gameText(isLocal ? 'mana.added.local' : 'mana.added.rival', { card: item.card.name, amount, mana: `{${type}}` }));
   recordTelemetryEvent('mana_added_to_pool', { player: isLocal ? 'local' : 'rival', card:item.card.name, type, amount, autoSpent, duringPayment:!!state.pendingCost });
   if (isLocal && autoSpent > 0) checkPaymentComplete();
   render();

@@ -51,7 +51,8 @@ let runtime = {
   state: 0,
   draws: 0,
   label: null,
-  tagCounts: Object.create(null)
+  tagCounts: Object.create(null),
+  idSerial: 0
 };
 
 let observer = null;
@@ -79,7 +80,8 @@ export function beginGameRngSession(options = {}) {
     state: seed,
     draws: 0,
     label: options.label ? String(options.label) : null,
-    tagCounts: Object.create(null)
+    tagCounts: Object.create(null),
+    idSerial: 0
   };
   return getGameRngSnapshot();
 }
@@ -93,7 +95,8 @@ export function restoreGameRngSession(snapshot) {
     state: normalizeGameSeed(snapshot.state ?? seed),
     draws: Math.max(0, Math.floor(Number(snapshot.draws) || 0)),
     label: snapshot.label ? String(snapshot.label) : null,
-    tagCounts: { ...(snapshot.tagCounts || {}) }
+    tagCounts: { ...(snapshot.tagCounts || {}) },
+    idSerial: Math.max(0, Math.floor(Number(snapshot.idSerial) || 0))
   };
   return true;
 }
@@ -128,8 +131,17 @@ export function getGameRngSnapshot() {
     state: runtime.state >>> 0,
     draws: runtime.draws,
     label: runtime.label,
-    tagCounts: { ...runtime.tagCounts }
+    tagCounts: { ...runtime.tagCounts },
+    idSerial: runtime.idSerial || 0
   };
+}
+
+
+export function gameDeterministicId(prefix = 'gid') {
+  const safePrefix=String(prefix||'gid').replace(/[^a-z0-9_-]+/gi,'_');
+  if (!runtime.active) return `${safePrefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
+  runtime.idSerial = Math.max(0, Number(runtime.idSerial) || 0) + 1;
+  return `${safePrefix}_${(runtime.seed>>>0).toString(36)}_${runtime.idSerial.toString(36)}`;
 }
 
 export function createSeededRng(seed) {

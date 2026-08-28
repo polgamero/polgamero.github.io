@@ -19,7 +19,7 @@ import { recordTelemetryEvent } from './telemetry.js';
 import { gameText } from './gameTexts.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
 import { normalizeCounterType, getCounterDefinition } from './counterEngine.js';
-import { gameRandom } from './gameRng.js';
+import { gameRandom, gameDeterministicId } from './gameRng.js';
 import { resolveSubtypeReference } from './typalEngine.js';
 
 
@@ -266,7 +266,7 @@ let nextEffectObjectId = 1;
 function ensureEffectObjectId(unit) {
   if (!unit || typeof unit !== 'object') return null;
   if (!unit._effectObjectId) {
-    unit._effectObjectId = `fxobj_${Date.now().toString(36)}_${(nextEffectObjectId++).toString(36)}`;
+    unit._effectObjectId = `${gameDeterministicId('fxobj')}_${(nextEffectObjectId++).toString(36)}`;
   }
   return unit._effectObjectId;
 }
@@ -1062,7 +1062,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
     });
     const amount=Math.max(0,Math.floor(Number(replacement.event.amount)||0));
     const created=[];
-    const stamp=`${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
+    const stamp=gameDeterministicId('copytoken');
     for(let i=0;i<amount;i++){
       const built=buildPermanentCopyToken(templateItem,{
         id:`copytoken_${card.id||'effect'}_${stamp}_${i}`,
@@ -1962,7 +1962,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
         });
         const amount = Math.max(0,Math.floor(Number(tokenReplacement.event.amount)||0));
         const created=[];
-        const stamp=`${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
+        const stamp=gameDeterministicId('token');
 
         // Todos los objetos físicos se materializan primero. Así un lote de N fichas es un
         // único evento simultáneo y ninguna ficha que recién entró altera replacements de sus hermanas.
@@ -2274,7 +2274,7 @@ async function executeStackItem(item) {
   // pero recibe identidad física propia recién ahora.
   if (item.isCopy && ['summon','permanent','planeswalker','aura'].includes(type)) {
     card=buildCopiedCard(card,{
-      id:`stackcopy_perm_${item.id}_${Date.now().toString(36)}`,isToken:true,originKind:'permanent_spell_copy'
+      id:`stackcopy_perm_${item.id}_${gameDeterministicId('permcopy')}`,isToken:true,originKind:'permanent_spell_copy'
     });
     item.card=card;
   }

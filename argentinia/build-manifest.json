@@ -1,9 +1,9 @@
 {
-  "engineVersion": "23.18.1",
+  "engineVersion": "23.18.3",
   "engineProtocolVersion": "mp-23.10.0",
   "protocolVersion": "mp-23.10.0",
   "firestoreRulesVersion": "23.13.75",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Deterministic Action Re-executor + Headless Full Game Lab"
+  "label": "Mana Pool UX + Vanilla Creature Rebalance"
 }

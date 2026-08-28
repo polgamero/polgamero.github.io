@@ -566,6 +566,8 @@ html, body {
 
 /* --- HUD SIDEBAR COMPACTO --- */
 .player-card { 
+  position: relative;
+  overflow: visible;
   background: rgba(255, 255, 255, 0.05); 
   border: 1px solid rgba(255, 255, 255, 0.1); 
   border-radius: 10px; 
@@ -626,21 +628,75 @@ html, body {
 }
 
 
-/* 23.14.1 — reserva de maná visible junto a cada jugador, estilo Arena. El pool es estado
-   de reglas real: el HUD sólo lo representa y permite gastar de a una unidad durante pagos. */
+/* 23.18.3 — Mana Pool UX. La reserva sale del interior del badge y vive en un dock
+   independiente flotando a su izquierda. Cementerio/Exilio NO se mueven. El dock sólo
+   existe visualmente cuando hay maná flotante; local puede wrappear, rival siempre compacto. */
 .player-name-mana-row {
   width:100%; display:flex; align-items:center; gap:6px; flex-wrap:wrap;
 }
 .player-name-mana-row h3 { margin-right:auto; }
 .mana-pool-hud {
-  min-height: 22px;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 3px;
-  margin: 0 0 2px 0;
+  margin: 0;
 }
-.mana-pool-hud.mana-pool-empty { min-height: 0; margin-bottom: 0; }
+.mana-pool-hud.mana-pool-empty { display:none; }
+.mana-pool-dock {
+  position:absolute;
+  right:calc(100% + 10px);
+  z-index:420;
+  width:max-content;
+  max-width:min(220px, calc(100vw - var(--sidebar-width) - 30px));
+  min-height:30px;
+  padding:4px 6px;
+  border:1px solid rgba(230,205,120,.58);
+  border-radius:10px;
+  background:linear-gradient(180deg, rgba(14,20,17,.96), rgba(5,9,7,.94));
+  box-shadow:0 4px 14px rgba(0,0,0,.58), 0 0 10px rgba(212,175,55,.10);
+  backdrop-filter:blur(3px);
+}
+.mana-pool-dock-local {
+  bottom:0;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.mana-pool-dock-rival {
+  top:0;
+  min-height:24px;
+  padding:2px 5px;
+  flex-wrap:nowrap;
+  justify-content:flex-end;
+}
+.rival-card .mana-pool-chip { min-width:26px; height:18px; padding:0 4px 0 1px; }
+.rival-card .mana-icon-pool { width:14px; height:14px; flex:0 0 14px; }
+.rival-card .mana-pool-count { font-size:.62rem; }
+.mana-pool-education-hint {
+  position:absolute;
+  right:calc(100% + 10px);
+  bottom:42px;
+  z-index:430;
+  width:min(285px, calc(100vw - var(--sidebar-width) - 34px));
+  padding:8px 10px;
+  border:1px solid rgba(244,215,116,.78);
+  border-radius:9px;
+  background:rgba(8,14,11,.97);
+  color:#f8edc4;
+  font-size:.72rem;
+  font-weight:650;
+  line-height:1.35;
+  box-shadow:0 6px 18px rgba(0,0,0,.66), 0 0 12px rgba(212,175,55,.16);
+  pointer-events:none;
+}
+.mana-pool-education-hint::after {
+  content:"";
+  position:absolute;
+  right:18px;
+  top:100%;
+  border:7px solid transparent;
+  border-top-color:rgba(244,215,116,.78);
+}
+.mana-pool-education-hint.hidden { display:none; }
 .mana-pool-chip {
   display: inline-flex;
   align-items: center;

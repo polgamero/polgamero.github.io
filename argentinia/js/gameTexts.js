@@ -872,7 +872,9 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'counter.noSpell': definition('Stack y prioridad', '⚠️ No hay ningún hechizo en la pila para contrarrestar.', 'No hay hechizo legal para counter.'),
   'proliferate.cancelNoCounters': definition('Selecciones', 'Cancelaste {card} antes de pagar: no había contadores proliferables visibles.', 'Proliferar sin candidatos antes de pago.'),
   // 23.14.1 — Mana Pool Foundation. Todo copy visible del nuevo HUD/modal queda editable desde Admin.
-  'mana.added': definition('Habilidades y costos', '{card} produce {amount} {mana}.', 'Log al resolver una habilidad de maná; el excedente queda en la reserva.'),
+  'mana.added.local': definition('Habilidades y costos', '💧 {card} agregó {amount} {mana} a tu pool de maná.', 'Log explícito al agregar maná al pool local.'),
+  'mana.added.rival': definition('Habilidades y costos', '💧 {card} agregó {amount} {mana} al pool de maná rival.', 'Log explícito al agregar maná al pool rival.'),
+  'mana.pool.educationHint': definition('Habilidades y costos', 'Tu maná fue agregado al pool, usalo clickeando directamente acá. Recordá que si pasás de fase/turno se pierde.', 'Callout educativo al flotar maná por primera vez en el turno.'),
   'mana.noWindow': definition('Habilidades y costos', 'No podés activar esa habilidad de maná en este momento.', 'Intento de activar maná fuera de una ventana legal.'),
   'mana.pool.noPayment': definition('Habilidades y costos', 'Ese maná queda flotando hasta que tengas un coste que pagar o termine el paso/fase.', 'Click en el pool sin un pago abierto.'),
   'mana.pool.cannotSpend': definition('Habilidades y costos', '{mana} no puede pagar ningún componente pendiente de este coste.', 'El símbolo elegido no sirve para el coste restante.'),

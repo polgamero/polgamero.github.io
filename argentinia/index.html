@@ -312,11 +312,11 @@
     <!-- HUD LATERAL DERECHO -->
     <aside id="sidebar-hud">
       <div class="player-card rival-card">
+        <div id="rival-mana-pool" class="mana-pool-hud mana-pool-dock mana-pool-dock-rival mana-pool-empty" aria-label="Reserva de maná rival"></div>
         <div class="avatar" id="rival-avatar">🤠</div>
         <div class="player-info">
           <div class="player-name-mana-row">
             <h3>El Tano (TU RIVAL)</h3>
-            <div id="rival-mana-pool" class="mana-pool-hud mana-pool-empty" aria-label="Reserva de maná rival"></div>
           </div>
           <div class="hp-bar-container">
             <div id="rival-hp-bar" class="hp-fill" style="width: 100%;"></div>
@@ -376,11 +376,12 @@
       </div>
 
       <div class="player-card local-card">
+        <div id="local-mana-pool" class="mana-pool-hud mana-pool-dock mana-pool-dock-local mana-pool-empty" aria-label="Tu reserva de maná" aria-live="polite"></div>
+        <div id="local-mana-pool-hint" class="mana-pool-education-hint hidden" role="status" aria-live="polite"></div>
         <div class="avatar" id="local-avatar">🧉</div>
         <div class="player-info">
           <div class="player-name-mana-row">
             <h3 id="local-player-name">El Gaucho (VOS)</h3>
-            <div id="local-mana-pool" class="mana-pool-hud mana-pool-empty" aria-label="Tu reserva de maná"></div>
           </div>
           <div class="hp-bar-container">
             <div id="local-hp-bar" class="hp-fill" style="width: 100%;"></div>
