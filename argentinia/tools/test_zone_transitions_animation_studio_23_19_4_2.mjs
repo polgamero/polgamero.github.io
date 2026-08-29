@@ -14,13 +14,13 @@ const main = read('js/main.js');
 const stack = read('js/stackManager.js');
 const ui = read('js/ui.js');
 
-assert.equal(ENGINE_VERSION, '23.19.4.4');
-assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.1');
+assert.equal(ENGINE_VERSION, '23.19.4.5');
+assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
-assert.equal(manifest.engineVersion, '23.19.4.4');
+assert.equal(manifest.engineVersion, '23.19.4.5');
 assert.equal(manifest.firestoreRulesVersion, '23.13.79');
 assert.equal(manifest.pool, 880);
-assert.equal(manifest.label, 'Animation Tuning Matrix + Draggable Test Console');
+assert.ok(['Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics'].includes(manifest.label));
 
 // Director remains presentation-only and exposes the generic zone bridge.
 for (const token of [
@@ -97,4 +97,4 @@ console.log('ZONE_TRANSITIONS_ANIMATION_STUDIO_23_19_4_2_OK');
 console.log('zones=counter+exile+bounce+draw+discard+sacrifice+graveyard+reanimate');
 console.log('studio=height-fix+real-zone-anchors+speed-override');
 console.log('sfx=16-families opus+mp3');
-console.log('rules=23.13.79 unchanged protocol=mp-23.19.1 pool=880');
+console.log('rules=23.13.79 unchanged protocol=mp-23.19.2 pool=880');

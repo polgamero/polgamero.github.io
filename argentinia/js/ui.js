@@ -6255,12 +6255,14 @@ export function showAdminPanel(onBack) {
   const animationTuningCatalog = getAnimationTuningCatalog();
   const initialAnimationTunings = normalizeAnimationTunings(initialAnimationPolicy.animationTunings || {});
   const animationTuningRowsHTML = animationTuningCatalog.map(def => {
-    const tuning = initialAnimationTunings[def.key] || { relativeSpeed:1, sfxTiming:def.defaultSfxTiming || 'start' };
+    const tuning = initialAnimationTunings[def.key] || { relativeSpeed:1, sfxMoment:def.defaultSfxMoment || 'start', sfxCadence:def.sfxCadence || 'single' };
+    const cadenceLabel=(tuning.sfxCadence || def.sfxCadence)==='per_impact' ? 'Por impacto' : '1 vez';
     return `<tr data-animation-tuning-row="${def.key}">
       <td class="admin-animation-name">${escapeHtml(def.label)}</td>
       <td><input type="number" class="admin-animation-tuning-speed" data-animation-tuning-speed="${def.key}" value="${Number(tuning.relativeSpeed || 1).toFixed(2)}" min="0.25" max="3" step="0.05"></td>
-      <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-timing="${def.key}" data-timing="start" ${tuning.sfxTiming === 'start' ? 'checked' : ''} aria-label="SFX al inicio para ${escapeHtml(def.label)}"></td>
-      <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-timing="${def.key}" data-timing="end" ${tuning.sfxTiming === 'end' ? 'checked' : ''} aria-label="SFX al fin para ${escapeHtml(def.label)}"></td>
+      <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="start" ${tuning.sfxMoment === 'start' ? 'checked' : ''} aria-label="SFX al inicio para ${escapeHtml(def.label)}"></td>
+      <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="key" ${tuning.sfxMoment === 'key' ? 'checked' : ''} aria-label="SFX en el momento clave para ${escapeHtml(def.label)}"></td>
+      <td class="admin-animation-cadence">${cadenceLabel}</td>
     </tr>`;
   }).join('');
   const animationAdminHTML = `
@@ -6281,12 +6283,12 @@ export function showAdminPanel(onBack) {
       </div>
       <div class="admin-animation-reference-help">Estos tres valores son la referencia central que usa <b>Velocidad de animaciones</b> en Opciones. 1.00 = duración base; 1.35 = 35% más lenta; 0.68 = 32% más rápida. Rango seguro: 0.25–3.00.</div>
       <div class="admin-section-title" style="margin-top:18px;">Ajuste por animación</div>
-      <div class="admin-animation-reference-help"><b>Velocidad relativa</b> multiplica la velocidad de esa animación sobre la referencia global elegida por el usuario. Ejemplo: <b>0.75</b> = 75% de velocidad, por lo tanto esa animación dura ≈33% más. <b>1.00</b> no altera la referencia global. En SFX, Inicio y Fin son excluyentes.</div>
+      <div class="admin-animation-reference-help"><b>Velocidad relativa</b> multiplica la velocidad de esa animación sobre la referencia global elegida por el usuario. Ejemplo: <b>0.75</b> = 75% de velocidad, por lo tanto esa animación dura ≈33% más. <b>1.00</b> no altera la referencia global. En SFX, <b>Inicio</b> y <b>Momento clave</b> son excluyentes. La <b>Cadencia</b> es canónica: las escenas de combate disparan un SFX por cada impacto real; Tierra y transiciones lo hacen una sola vez.</div>
       <div class="admin-animation-tuning-wrap">
         <table class="admin-animation-tuning-table">
           <thead>
-            <tr><th rowspan="2">Animación</th><th rowspan="2">Velocidad relativa</th><th colspan="2" style="text-align:center;">Ejecución del SFX</th></tr>
-            <tr><th>Inicio</th><th>Fin</th></tr>
+            <tr><th rowspan="2">Animación</th><th rowspan="2">Velocidad relativa</th><th colspan="2" style="text-align:center;">Ejecución del SFX</th><th rowspan="2">Cadencia</th></tr>
+            <tr><th>Inicio</th><th>Momento clave</th></tr>
           </thead>
           <tbody>${animationTuningRowsHTML}</tbody>
         </table>
@@ -7039,14 +7041,14 @@ Receipt: ${receiptId}
   const adminAnimationError = overlay.querySelector('#admin-animation-error');
   const adminAnimationSuccess = overlay.querySelector('#admin-animation-success');
   const animationTuningSpeedInputs = [...overlay.querySelectorAll('[data-animation-tuning-speed]')];
-  const animationSfxTimingChecks = [...overlay.querySelectorAll('[data-animation-sfx-timing]')];
+  const animationSfxMomentChecks = [...overlay.querySelectorAll('[data-animation-sfx-moment]')];
   const readAnimationMultiplier = (input, fallback) => {
     const n=Number(input?.value);
     return Number.isFinite(n) ? Math.max(.25,Math.min(3,Math.round(n*100)/100)) : fallback;
   };
-  animationSfxTimingChecks.forEach(check => check.addEventListener('change', () => {
-    const key=check.dataset.animationSfxTiming;
-    const peers=animationSfxTimingChecks.filter(candidate => candidate.dataset.animationSfxTiming===key);
+  animationSfxMomentChecks.forEach(check => check.addEventListener('change', () => {
+    const key=check.dataset.animationSfxMoment;
+    const peers=animationSfxMomentChecks.filter(candidate => candidate.dataset.animationSfxMoment===key);
     if (check.checked) peers.forEach(candidate => { if(candidate!==check) candidate.checked=false; });
     else if (!peers.some(candidate => candidate.checked)) check.checked=true;
   }));
@@ -7054,10 +7056,10 @@ Receipt: ${receiptId}
     const raw={};
     for (const def of animationTuningCatalog) {
       const speedInput=animationTuningSpeedInputs.find(input => input.dataset.animationTuningSpeed===def.key);
-      const checked=animationSfxTimingChecks.find(input => input.dataset.animationSfxTiming===def.key && input.checked);
+      const checked=animationSfxMomentChecks.find(input => input.dataset.animationSfxMoment===def.key && input.checked);
       raw[def.key]={
         relativeSpeed:readAnimationMultiplier(speedInput,def.defaultRelativeSpeed || 1),
-        sfxTiming:checked?.dataset.timing==='end' ? 'end' : 'start'
+        sfxMoment:checked?.dataset.moment==='key' ? 'key' : 'start'
       };
     }
     return normalizeAnimationTunings(raw);
@@ -7102,8 +7104,8 @@ Receipt: ${receiptId}
       const tuning=tunings[def.key];
       const speedInput=animationTuningSpeedInputs.find(input => input.dataset.animationTuningSpeed===def.key);
       if(speedInput && document.activeElement!==speedInput) speedInput.value=Number(tuning.relativeSpeed || 1).toFixed(2);
-      animationSfxTimingChecks.filter(input => input.dataset.animationSfxTiming===def.key).forEach(input => {
-        if(document.activeElement!==input) input.checked=input.dataset.timing===tuning.sfxTiming;
+      animationSfxMomentChecks.filter(input => input.dataset.animationSfxMoment===def.key).forEach(input => {
+        if(document.activeElement!==input) input.checked=input.dataset.moment===tuning.sfxMoment;
       });
     }
   };

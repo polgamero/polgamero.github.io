@@ -20,10 +20,10 @@ const fileMap={
 const byCategory=Object.fromEntries(Object.entries(fileMap).map(([k,f])=>[k,json(`assets/data/${f}`)]));
 const cards=Object.values(byCategory).flat();
 
-assert.ok(['23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.4.4'].includes(ENGINE_VERSION));
+assert.ok(['23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.4.5'].includes(ENGINE_VERSION));
 assert.equal(TYPAL_ENGINE_VERSION,'23.16.5');
 assert.equal(GENERIC_EVENT_ENGINE_VERSION,'23.16.5');
-assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.1'].includes(ENGINE_PROTOCOL_VERSION));
+assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.equal(CURRENT_POOL_MILESTONE,'pool_expansion_viii_880');
 assert.equal(POOL_BASELINE.total,880);

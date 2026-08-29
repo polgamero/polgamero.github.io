@@ -1,4 +1,4 @@
-// js/animationDirector.js — Entrega 23.19.4.4 Animation Tuning Matrix + Draggable Test Console.
+// js/animationDirector.js — Entrega 23.19.4.5 Animation Actor Parity + SFX Cue Semantics.
 // Capa VISUAL descartable: jamás muta state ni decide reglas. El engine captura geometría,
 // confirma el resultado mecánico y encola una escena. Con animaciones OFF, Admin OFF o
 // prefers-reduced-motion, todas las APIs se convierten en no-op seguro.
@@ -9,24 +9,24 @@ export const ANIMATION_SETTINGS_STORAGE_KEY = 'argentinia.animations.v1';
 export const ANIMATION_SPEEDS = Object.freeze(['slow', 'normal', 'fast']);
 export const ANIMATION_SPEED_MULTIPLIERS = Object.freeze({ slow: 1.35, normal: 1, fast: 0.68 });
 export const ANIMATION_TUNING_CATALOG = Object.freeze([
-  Object.freeze({ key:'land', label:'Tierra', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
-  Object.freeze({ key:'clash', label:'Impacto 1 vs 1', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
-  Object.freeze({ key:'multi', label:'Combate Multi ×3', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
-  Object.freeze({ key:'trample', label:'Arrollar', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
-  Object.freeze({ key:'first', label:'Iniciativa', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
-  Object.freeze({ key:'double', label:'Doble golpe', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
-  Object.freeze({ key:'shield', label:'Escudo', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
-  Object.freeze({ key:'deathtouch', label:'Toque mortal', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
-  Object.freeze({ key:'indestructible', label:'Indestructible', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
-  Object.freeze({ key:'player', label:'Daño al jugador', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
-  Object.freeze({ key:'counter', label:'Counter', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
-  Object.freeze({ key:'exile', label:'Exilio', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
-  Object.freeze({ key:'bounce', label:'Volver a mano', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
-  Object.freeze({ key:'draw', label:'Robo', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
-  Object.freeze({ key:'discard', label:'Descarte', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
-  Object.freeze({ key:'sacrifice', label:'Sacrificio', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
-  Object.freeze({ key:'graveyard', label:'Cementerio', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
-  Object.freeze({ key:'reanimate', label:'Reanimar', defaultRelativeSpeed:1, defaultSfxTiming:'start' })
+  Object.freeze({ key:'land', label:'Tierra', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
+  Object.freeze({ key:'clash', label:'Impacto 1 vs 1', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
+  Object.freeze({ key:'multi', label:'Combate Multi ×3', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
+  Object.freeze({ key:'trample', label:'Arrollar', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
+  Object.freeze({ key:'first', label:'Iniciativa', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
+  Object.freeze({ key:'double', label:'Doble golpe', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
+  Object.freeze({ key:'shield', label:'Escudo', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
+  Object.freeze({ key:'deathtouch', label:'Toque mortal', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
+  Object.freeze({ key:'indestructible', label:'Indestructible', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
+  Object.freeze({ key:'player', label:'Daño al jugador', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
+  Object.freeze({ key:'counter', label:'Counter', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
+  Object.freeze({ key:'exile', label:'Exilio', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
+  Object.freeze({ key:'bounce', label:'Volver a mano', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
+  Object.freeze({ key:'draw', label:'Robo', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
+  Object.freeze({ key:'discard', label:'Descarte', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
+  Object.freeze({ key:'sacrifice', label:'Sacrificio', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
+  Object.freeze({ key:'graveyard', label:'Cementerio', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
+  Object.freeze({ key:'reanimate', label:'Reanimar', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' })
 ]);
 
 const DEFAULT_SETTINGS = Object.freeze({ enabled: true, speed: 'normal' });
@@ -51,6 +51,7 @@ let completedCount = 0;
 let skippedCount = 0;
 let cloneCount = 0;
 let lastEvent = null;
+let presentationCueEmitter = null;
 
 function normalizeSpeed(value) {
   const speed = String(value || '').toLowerCase();
@@ -85,9 +86,12 @@ export function normalizeAnimationTunings(raw = {}) {
     const relativeSpeed = Number.isFinite(n)
       ? Math.max(RELATIVE_SPEED_MIN, Math.min(RELATIVE_SPEED_MAX, Math.round(n * 100) / 100))
       : def.defaultRelativeSpeed;
+    const legacyMoment = entry?.sfxTiming === 'end' ? 'key' : entry?.sfxTiming;
     normalized[def.key] = {
       relativeSpeed,
-      sfxTiming: entry?.sfxTiming === 'end' ? 'end' : entry?.sfxTiming === 'start' ? 'start' : def.defaultSfxTiming
+      sfxMoment: entry?.sfxMoment === 'key' ? 'key' : entry?.sfxMoment === 'start' ? 'start'
+        : legacyMoment === 'key' ? 'key' : legacyMoment === 'start' ? 'start' : def.defaultSfxMoment,
+      sfxCadence: def.sfxCadence
     };
   }
   return normalized;
@@ -193,7 +197,8 @@ export function getAnimationTuning(key) {
   const current = serverPolicy.animationTunings?.[def.key] || {};
   return {
     relativeSpeed: Number(current.relativeSpeed) || def.defaultRelativeSpeed,
-    sfxTiming: current.sfxTiming === 'end' ? 'end' : current.sfxTiming === 'start' ? 'start' : def.defaultSfxTiming
+    sfxMoment: current.sfxMoment === 'key' ? 'key' : current.sfxMoment === 'start' ? 'start' : def.defaultSfxMoment,
+    sfxCadence: def.sfxCadence
   };
 }
 
@@ -226,13 +231,33 @@ function withAnimationTuning(payload, tuningKey) {
   return payload?.animationTuningKey ? payload : { ...(payload || {}), animationTuningKey:tuningKey };
 }
 
-function animationSfxTiming(tuningKey) {
-  return getAnimationTuning(tuningKey).sfxTiming;
+function animationSfxMoment(tuningKey) {
+  return getAnimationTuning(tuningKey).sfxMoment;
 }
 
-function playAnimationSfx(id, tuningKey, phase) {
-  if (animationSfxTiming(tuningKey) !== phase) return null;
+function playAnimationSfx(id, tuningKey, moment) {
+  if (animationSfxMoment(tuningKey) !== moment) return null;
   return playSfx(id);
+}
+
+export function setPresentationCueEmitter(emitter) {
+  presentationCueEmitter = typeof emitter === 'function' ? emitter : null;
+}
+
+function emitPresentationCue(cue, options = {}) {
+  if (options?.broadcast === false || options?.remoteCue === true || !presentationCueEmitter || !cue?.kind) return false;
+  try { return presentationCueEmitter(cue) === true; } catch { return false; }
+}
+
+function cueVisualRef(snapshot) {
+  if (!snapshot) return null;
+  return {
+    kind: snapshot.kind || 'card',
+    syncObjectId: snapshot.syncObjectId || null,
+    stackId: snapshot.stackId ?? null,
+    cardId: snapshot.cardId || null,
+    cardName: snapshot.cardName || null
+  };
 }
 
 function resolveCombatTuningKey(payload, defenders = []) {
@@ -605,7 +630,7 @@ async function animateCombatSequence(payload) {
     ],{duration:durationFor(payload,legBase),easing:'cubic-bezier(.2,.78,.18,1)'});
     await sleepMs(durationFor(payload,Math.round(legBase*.83)));
     if(animationEventCancelled(payload)){removeNode(attacker);defenderClones.forEach(x=>removeNode(x.node));removeNode(stepLabel);return false;}
-    playAnimationSfx(impactSfx,impactTuningKey,'end');
+    playAnimationSfx(impactSfx,impactTuningKey,'key');
     const impact=center(entry.snapshot.rect);
     const variant=entry.deathtouchHit?'deathtouch':payload?.stepKind==='first_strike'?'first_strike':'normal';
     void impactBurst(impact.x,impact.y,payload,variant);
@@ -629,7 +654,7 @@ async function animateCombatSequence(payload) {
     const move=runWebAnimation(attacker,[{transform:currentTransform},{transform:recoil},{transform:hit}],{duration:durationFor(payload,520),easing:'cubic-bezier(.2,.78,.2,1)'});
     await sleepMs(durationFor(payload,435));
     if(!animationEventCancelled(payload)) {
-      playAnimationSfx('playerImpact',playerImpactTuningKey,'end');
+      playAnimationSfx('playerImpact',playerImpactTuningKey,'key');
       updatePlayerHpPresentation(playerSnap,payload?.playerHpAfter);
       const impact=center(playerSnap.rect);void impactBurst(impact.x,impact.y,payload,payload?.stepKind==='first_strike'?'first_strike':'normal');
       const playerEl=playerSnap.element;
@@ -666,7 +691,7 @@ async function animatePlayerImpact(payload) {
   ],{duration:durationFor(payload,560),easing:'cubic-bezier(.2,.78,.2,1)'});
   await sleepMs(durationFor(payload,475));
   if (animationEventCancelled(payload)) { removeNode(attacker); return false; }
-  playAnimationSfx('playerImpact','player','end'); updatePlayerHpPresentation(pSnap,payload?.playerHpAfter); void impactBurst(impact.x,impact.y,payload,payload?.stepKind==='first_strike'?'first_strike':'normal');
+  playAnimationSfx('playerImpact','player','key'); updatePlayerHpPresentation(pSnap,payload?.playerHpAfter); void impactBurst(impact.x,impact.y,payload,payload?.stepKind==='first_strike'?'first_strike':'normal');
   const playerEl=pSnap.element;
   try { playerEl?.classList?.add('arg-player-hit'); } catch {}
   const damage=document.createElement('div'); damage.className='arg-anim-damage-number'; damage.textContent=`-${Math.max(0,Number(payload?.amount)||0)}`;
@@ -701,7 +726,7 @@ async function animateLandTap(payload) {
   ],{duration:durationFor(payload,470),easing:'cubic-bezier(.28,.72,.18,1)'});
   await anim;
   if (animationEventCancelled(payload)) { removeNode(card); return false; }
-  playAnimationSfx('landTap','land','end');
+  playAnimationSfx('landTap','land','key');
   await runWebAnimation(card,[{opacity:1},{opacity:0}],{duration:durationFor(payload,100)}); removeNode(card); return true;
 }
 
@@ -802,10 +827,10 @@ async function animateZoneTransition(payload){
   playAnimationSfx(sfx,zoneTuningKey,'start');
   void zonePulse(kind==='reanimate'?targetRect:source.rect,kind,payload);
   const move=runWebAnimation(card,frames,{duration:durationFor(payload,duration),easing:kind==='bounce'?'cubic-bezier(.2,.72,.18,1)':'cubic-bezier(.25,.7,.2,1)'});
-  if(animationSfxTiming(zoneTuningKey)==='end') {
+  if(animationSfxMoment(zoneTuningKey)==='key') {
     await sleepMs(durationFor(payload,Math.round(duration*.86)));
     if(animationEventCancelled(payload)){removeNode(card);return false;}
-    playAnimationSfx(sfx,zoneTuningKey,'end');
+    playAnimationSfx(sfx,zoneTuningKey,'key');
   }
   await move;
   removeNode(card);return true;
@@ -825,29 +850,99 @@ function enqueue(type, payload, runner, { force = false, speedOverride = null } 
   queueTail=queueTail.then(task,task); return queueTail;
 }
 
-export function queueCombatImpactAnimation(payload, options) { return enqueue('combat_card_impact',payload,animateCombatImpact,options); }
-export function queueCombatSequenceAnimation(payload, options) { return enqueue('combat_sequence',payload,animateCombatSequence,options); }
-export function queuePlayerDamageAnimation(payload, options) { return enqueue('combat_player_impact',payload,animatePlayerImpact,options); }
-export function queueLandTapAnimation(payload, options) { return enqueue('land_tap',payload,animateLandTap,options); }
-export function queueZoneTransitionAnimation(payload, options) { return enqueue(`zone_${payload?.transition||'move'}`,payload,animateZoneTransition,options); }
+function emitCombatSequenceCue(payload, options = {}) {
+  const sourceIsLocal = payload?.attackerIsLocal !== false;
+  return emitPresentationCue({
+    kind:'combat_sequence',
+    sourceIsLocal,
+    targetIsLocal:!sourceIsLocal,
+    attacker:cueVisualRef(payload?.attackerSnapshot),
+    defenders:(Array.isArray(payload?.defenders)?payload.defenders:[]).map(entry=>({
+      ref:cueVisualRef(entry?.snapshot),
+      died:!!entry?.died,
+      shieldConsumed:!!entry?.shieldConsumed,
+      indestructibleSurvived:!!entry?.indestructibleSurvived,
+      deathtouchHit:!!entry?.deathtouchHit,
+      damageDealt:Math.max(0,Number(entry?.damageDealt)||0)
+    })),
+    playerDamage:Math.max(0,Number(payload?.playerDamage)||0),
+    playerHpBefore:Number.isFinite(Number(payload?.playerHpBefore)) ? Number(payload.playerHpBefore) : null,
+    playerHpAfter:Number.isFinite(Number(payload?.playerHpAfter)) ? Number(payload.playerHpAfter) : null,
+    attackerDied:!!payload?.attackerDied,
+    stepKind:payload?.stepKind || 'regular',
+    doubleStrikePass:!!payload?.doubleStrikePass,
+    animationTuningKey:payload?.animationTuningKey || null
+  },options);
+}
+
+export function queueCombatImpactAnimation(payload, options={}) {
+  const sourceIsLocal=payload?.attackerIsLocal !== false;
+  emitPresentationCue({
+    kind:'combat_impact',sourceIsLocal,targetIsLocal:!sourceIsLocal,
+    attacker:cueVisualRef(payload?.attackerSnapshot),defender:cueVisualRef(payload?.defenderSnapshot),
+    defenderDied:!!payload?.defenderDied,attackerDied:!!payload?.attackerDied,
+    shieldConsumed:!!payload?.shieldConsumed,indestructibleSurvived:!!payload?.indestructibleSurvived,
+    deathtouchHit:!!payload?.deathtouchHit,animationTuningKey:payload?.animationTuningKey||null
+  },options);
+  return enqueue('combat_card_impact',payload,animateCombatImpact,options);
+}
+export function queueCombatSequenceAnimation(payload, options={}) {
+  emitCombatSequenceCue(payload,options);
+  return enqueue('combat_sequence',payload,animateCombatSequence,options);
+}
+export function queuePlayerDamageAnimation(payload, options={}) {
+  const sourceIsLocal=payload?.attackerIsLocal !== false;
+  emitPresentationCue({
+    kind:'player_impact',sourceIsLocal,targetIsLocal:!sourceIsLocal,
+    attacker:cueVisualRef(payload?.attackerSnapshot),amount:Math.max(0,Number(payload?.amount)||0),
+    playerHpBefore:Number.isFinite(Number(payload?.playerHpBefore)) ? Number(payload.playerHpBefore) : null,
+    playerHpAfter:Number.isFinite(Number(payload?.playerHpAfter)) ? Number(payload.playerHpAfter) : null,
+    stepKind:payload?.stepKind || 'regular',animationTuningKey:payload?.animationTuningKey||null
+  },options);
+  return enqueue('combat_player_impact',payload,animatePlayerImpact,options);
+}
+export function queueLandTapAnimation(payload, options={}) {
+  emitPresentationCue({
+    kind:'land_tap',sourceIsLocal:payload?.isLocal !== false,source:cueVisualRef(payload?.snapshot),animationTuningKey:'land'
+  },options);
+  return enqueue('land_tap',payload,animateLandTap,options);
+}
+export function queueZoneTransitionAnimation(payload, options={}) {
+  const controllerIsLocal=payload?.controllerIsLocal !== false;
+  const zoneFrom=String(payload?.zoneFrom||'');
+  const zoneTo=String(payload?.zoneTo||payload?.targetSnapshot?.zone||'');
+  const privateIdentity = zoneFrom === 'library' && zoneTo === 'hand';
+  const card=privateIdentity ? null : (payload?.card ? {id:payload.card.id||null,name:payload.card.name||null} : null);
+  const sourceRef=privateIdentity ? {kind:payload?.sourceSnapshot?.kind||'proxy',syncObjectId:null,stackId:null,cardId:null,cardName:null} : cueVisualRef(payload?.sourceSnapshot);
+  emitPresentationCue({
+    kind:'zone_transition',sourceIsLocal:controllerIsLocal,targetIsLocal:controllerIsLocal,
+    transition:String(payload?.transition||'graveyard'),zoneFrom,zoneTo,source:sourceRef,card,
+    animationTuningKey:payload?.animationTuningKey||null
+  },options);
+  return enqueue(`zone_${payload?.transition||'move'}`,payload,animateZoneTransition,options);
+}
 
 export function queuePermanentExitAnimation({item,isLocal,transition='graveyard',destinationZone='graveyard',card=null}, options={}) {
   const sourceSnapshot=captureCardVisual(item,isLocal?'local':'rival',options);
   const targetSnapshot=captureZoneAnchor(destinationZone,isLocal,options);
   if(!sourceSnapshot)return Promise.resolve(false);
-  return queueZoneTransitionAnimation({sourceSnapshot,targetSnapshot,transition,card:card||item?.card||null},options);
+  return queueZoneTransitionAnimation({sourceSnapshot,targetSnapshot,transition,card:card||item?.card||null,controllerIsLocal:isLocal,zoneFrom:'battlefield',zoneTo:destinationZone},options);
 }
 
 export function queueReanimateAnimation({card,isLocal}, options={}) {
   const from=captureZoneAnchor('graveyard',isLocal,options);const to=captureZoneAnchor('battlefield',isLocal,options);
   if(!from?.rect||!to?.rect)return Promise.resolve(false);
   const startRect={left:from.rect.left+from.rect.width*.08,top:from.rect.top+from.rect.height*.08,width:Math.max(48,Math.min(86,from.rect.width*.84)),height:Math.max(68,Math.min(120,from.rect.height*.84))};
-  return queueZoneTransitionAnimation({sourceSnapshot:proxySnapshot(card,startRect),targetSnapshot:to,transition:'reanimate',card},options);
+  return queueZoneTransitionAnimation({sourceSnapshot:proxySnapshot(card,startRect),targetSnapshot:to,transition:'reanimate',card,controllerIsLocal:isLocal,zoneFrom:'graveyard',zoneTo:'battlefield'},options);
 }
 
 export function queueGameEventAnimation(event={}, options={}) {
   if(!event?.type)return Promise.resolve(false);
   const type=String(event.type);const isLocal=event.controllerIsLocal!==false;
+  if(type==='permanent_tapped' && event.cause==='mana_ability' && event.item && event.card) {
+    const snapshot=captureCardVisual(event.item,isLocal?'local':'rival',options);
+    return snapshot ? queueLandTapAnimation({snapshot,isLocal},options) : Promise.resolve(false);
+  }
   let transition=null;
   if(type==='card_drawn') transition='draw';
   else if(type==='card_discarded') transition=event.zoneTo==='exile' ? 'exile' : 'discard';
@@ -864,7 +959,81 @@ export function queueGameEventAnimation(event={}, options={}) {
   if(!sourceSnapshot)return Promise.resolve(false);
   const destination=transition==='draw'||transition==='bounce'?'hand':transition==='exile'?'exile':event.zoneTo==='exile'?'exile':'graveyard';
   const targetSnapshot=captureZoneAnchor(destination,isLocal,options);
-  return queueZoneTransitionAnimation({sourceSnapshot,targetSnapshot,transition,card:event.card||event.item?.card||null},options);
+  return queueZoneTransitionAnimation({sourceSnapshot,targetSnapshot,transition,card:event.card||event.item?.card||null,controllerIsLocal:isLocal,zoneFrom:event.zoneFrom||'',zoneTo:destination},options);
+}
+
+function cueCardObject(ref, fallbackCard=null) {
+  const id=ref?.cardId || fallbackCard?.id || null;
+  const name=ref?.cardName || fallbackCard?.name || null;
+  return id || name ? {id,name} : null;
+}
+
+function captureCueCard(ref, isLocal, { force=false } = {}) {
+  if(!ref)return null;
+  if(ref.kind==='stack' && ref.stackId!=null) return captureStackVisual({id:ref.stackId,card:cueCardObject(ref)}, {force});
+  if(ref.syncObjectId || ref.cardId) return captureCardVisual({_syncObjectId:ref.syncObjectId||null,card:cueCardObject(ref)},isLocal?'local':'rival',{force});
+  return null;
+}
+
+export function preparePresentationCuePlayback(cue, myRole, options={}) {
+  if(!cue?.id || !cue?.kind || !myRole)return null;
+  const sourceIsLocal=cue.sourceRole===myRole;
+  const targetIsLocal=cue.targetRole===myRole;
+  const playbackOptions={...options,broadcast:false,remoteCue:true};
+  if(cue.kind==='land_tap') {
+    const snapshot=captureCueCard(cue.source,sourceIsLocal,options);
+    if(!snapshot)return null;
+    return ()=>queueLandTapAnimation({snapshot,isLocal:sourceIsLocal,animationTuningKey:'land'},playbackOptions);
+  }
+  if(cue.kind==='player_impact') {
+    const attackerSnapshot=captureCueCard(cue.attacker,sourceIsLocal,options);
+    const playerSnapshot=capturePlayerVisual(targetIsLocal,options);
+    if(!attackerSnapshot||!playerSnapshot)return null;
+    return ()=>{
+      if(Number.isFinite(Number(cue.playerHpBefore))) updatePlayerHpPresentation(playerSnapshot,Number(cue.playerHpBefore));
+      return queuePlayerDamageAnimation({attackerSnapshot,playerSnapshot,amount:cue.amount||0,attackerIsLocal:sourceIsLocal,
+        playerHpBefore:cue.playerHpBefore,playerHpAfter:cue.playerHpAfter,stepKind:cue.stepKind||'regular',animationTuningKey:cue.animationTuningKey||'player'},playbackOptions);
+    };
+  }
+  if(cue.kind==='combat_impact') {
+    const attackerSnapshot=captureCueCard(cue.attacker,sourceIsLocal,options);
+    const defenderSnapshot=captureCueCard(cue.defender,targetIsLocal,options);
+    if(!attackerSnapshot||!defenderSnapshot)return null;
+    return ()=>queueCombatImpactAnimation({attackerSnapshot,defenderSnapshot,attackerIsLocal:sourceIsLocal,defenderDied:!!cue.defenderDied,attackerDied:!!cue.attackerDied,
+      shieldConsumed:!!cue.shieldConsumed,indestructibleSurvived:!!cue.indestructibleSurvived,deathtouchHit:!!cue.deathtouchHit,animationTuningKey:cue.animationTuningKey||'clash'},playbackOptions);
+  }
+  if(cue.kind==='combat_sequence') {
+    const attackerSnapshot=captureCueCard(cue.attacker,sourceIsLocal,options);
+    const defenders=(Array.isArray(cue.defenders)?cue.defenders:[]).map(entry=>({
+      snapshot:captureCueCard(entry?.ref,targetIsLocal,options),died:!!entry?.died,shieldConsumed:!!entry?.shieldConsumed,
+      indestructibleSurvived:!!entry?.indestructibleSurvived,deathtouchHit:!!entry?.deathtouchHit,damageDealt:Math.max(0,Number(entry?.damageDealt)||0)
+    })).filter(entry=>entry.snapshot);
+    const playerSnapshot=Number(cue.playerDamage)>0 ? capturePlayerVisual(targetIsLocal,options) : null;
+    if(!attackerSnapshot || (!defenders.length && !playerSnapshot))return null;
+    return ()=>{
+      if(playerSnapshot && Number.isFinite(Number(cue.playerHpBefore))) updatePlayerHpPresentation(playerSnapshot,Number(cue.playerHpBefore));
+      return queueCombatSequenceAnimation({attackerSnapshot,defenders,playerSnapshot,playerDamage:Math.max(0,Number(cue.playerDamage)||0),
+        playerHpBefore:cue.playerHpBefore,playerHpAfter:cue.playerHpAfter,attackerDied:!!cue.attackerDied,attackerIsLocal:sourceIsLocal,
+        stepKind:cue.stepKind||'regular',doubleStrikePass:!!cue.doubleStrikePass,animationTuningKey:cue.animationTuningKey||null},playbackOptions);
+    };
+  }
+  if(cue.kind==='zone_transition') {
+    const controllerIsLocal=sourceIsLocal;
+    const card=cue.card || cueCardObject(cue.source);
+    let sourceSnapshot=captureCueCard(cue.source,controllerIsLocal,options);
+    if(!sourceSnapshot){
+      if(cue.zoneFrom==='hand' && controllerIsLocal && card) sourceSnapshot=captureHandCardVisual(card,true,options);
+      if(!sourceSnapshot){
+        const from=captureZoneAnchor(cue.zoneFrom||'graveyard',controllerIsLocal,options);
+        if(from?.rect) sourceSnapshot=proxySnapshot(card,from.rect,{faceDown:cue.zoneFrom==='library'||(!controllerIsLocal&&cue.zoneFrom==='hand')});
+      }
+    }
+    if(!sourceSnapshot)return null;
+    const destination=cue.zoneTo||((cue.transition==='draw'||cue.transition==='bounce')?'hand':cue.transition==='exile'?'exile':'graveyard');
+    const targetSnapshot=captureZoneAnchor(destination,controllerIsLocal,options);
+    return ()=>queueZoneTransitionAnimation({sourceSnapshot,targetSnapshot,transition:cue.transition||'graveyard',card,controllerIsLocal,zoneFrom:cue.zoneFrom||'',zoneTo:destination,animationTuningKey:cue.animationTuningKey||null},playbackOptions);
+  }
+  return null;
 }
 
 export function clearAnimationLayer(reason = 'manual') {

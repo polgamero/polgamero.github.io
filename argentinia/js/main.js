@@ -25,7 +25,7 @@ import { createSoloGameId, beginSoloRecoverySession, activateResumedSoloRecovery
 import { maybeShowAnnouncementPopup } from './campaignsUI.js';
 import { beginGameRngSession, gameRandom, gameSeedFromLocation, getGameRngSnapshot } from './gameRng.js';
 import { enterGameplayAudio } from './audioManager.js';
-import { applyServerAnimationPolicy, captureCardVisual, queueLandTapAnimation, queueGameEventAnimation, queuePermanentExitAnimation } from './animationDirector.js';
+import { applyServerAnimationPolicy, captureCardVisual, queueGameEventAnimation, queuePermanentExitAnimation, setPresentationCueEmitter, preparePresentationCuePlayback } from './animationDirector.js';
 import { emptyManaPool, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, spendOneMana, spendAvailableTowardCost } from './manaPool.js';
 import { normalizeManaAbility, isManaSourceCard, getManaSourceOptions, getManaSourceAmount, manaSourceRequiresTap, manaSourceSacrificesSelf, canActivateManaSourcePermanent } from './manaSources.js';
 import { isLandCard, landGraveyardFilterMatches, hasLandPlayFromGraveyardPermission as hasLandGYPermission, playableLandGraveyardEntries } from './landGraveyard.js';
@@ -419,6 +419,11 @@ export const state = {
   // 23.19.1 — marca DURABLE de una resolución autoritativa async. Se publica/ACK antes
   // de resolver y se limpia/ACK al terminar; un F5 del authority en el medio queda detectable.
   multiplayerResolutionMarker: null,
+  // 23.19.4.5 — ring buffers presentation-only por cliente. Viajan como hostPresentationCues /
+  // guestPresentationCues y nunca contienen identidad privada de una carta robada. No son reglas:
+  // sólo permiten que ambos navegadores reproduzcan la misma película sin inferirla del diff.
+  localPresentationCues: [],
+  rivalPresentationCues: [],
   // 23.7.2: barrera puramente local hasta que ambos clientes terminaron deck+mulligan.
   multiplayerWaitingForReady: false,
   autoZeroBlockersQueued: false,
@@ -648,6 +653,49 @@ export const state = {
   localBlockersDeclaredThisCombat: false,
   rivalBlockersDeclaredThisCombat: false
 };
+
+const PRESENTATION_CUE_RING_LIMIT = 24;
+let presentationCueSerial = 0;
+
+function presentationRoleForSide(isLocal, myRole) {
+  return isLocal === false ? otherRole(myRole) : myRole;
+}
+
+function presentationCueToWire(draft, myRole) {
+  if (!draft?.kind || !myRole) return null;
+  const sourceRole = presentationRoleForSide(draft.sourceIsLocal, myRole);
+  const targetRole = presentationRoleForSide(draft.targetIsLocal ?? draft.sourceIsLocal, myRole);
+  const cue = {
+    ...draft,
+    id:`pc_${myRole}_${Date.now().toString(36)}_${(++presentationCueSerial).toString(36)}_${Math.random().toString(36).slice(2,7)}`,
+    emitterRole:myRole,
+    sourceRole,
+    targetRole,
+    createdAtClientMs:Date.now()
+  };
+  delete cue.sourceIsLocal;
+  delete cue.targetIsLocal;
+  // Robar es una transición privada library -> hand. El cue público puede mostrar un dorso
+  // moviéndose, jamás el id/nombre real de la carta antes de que su dueño la revele.
+  if (cue.kind === 'zone_transition' && cue.zoneFrom === 'library' && cue.zoneTo === 'hand') {
+    cue.card = null;
+    cue.source = cue.source ? { kind:cue.source.kind || 'proxy', syncObjectId:null, stackId:null, cardId:null, cardName:null } : null;
+  }
+  return cue;
+}
+
+setPresentationCueEmitter((draft) => {
+  if (!state.currentMatch?.myRole || !state.currentMatch?.matchId) return false;
+  const cue = presentationCueToWire(draft,state.currentMatch.myRole);
+  if (!cue) return false;
+  const ring = Array.isArray(state.localPresentationCues) ? state.localPresentationCues.slice() : [];
+  ring.push(cue);
+  state.localPresentationCues = ring.slice(-PRESENTATION_CUE_RING_LIMIT);
+  recordTelemetryEvent('presentation_cue_emitted',{
+    cueId:cue.id,kind:cue.kind,emitterRole:cue.emitterRole,sourceRole:cue.sourceRole,targetRole:cue.targetRole
+  });
+  return true;
+});
 
 // BUGFIX (revisión post-Fase 3): nombre del jugador local, en UN solo lugar — antes
 // "El Gaucho" estaba hardcodeado suelto en varios mensajes distintos (el log de
@@ -3733,6 +3781,9 @@ export function startListeningToMatch(matchId, myRole) {
   // no relacionado mientras pendingDecision sigue siendo la misma — sin esto, podría
   // mostrarse el modal de "Pagar/No pagar" repetido.
   const handledDecisionIds = new Set();
+  // Reconnect/late-listener: todo cue que ya estaba materializado en state es baseline histórico,
+  // no una película pendiente. Sólo reproducimos IDs nuevos que lleguen desde ahora.
+  const handledPresentationCueIds = new Set((Array.isArray(state.rivalPresentationCues) ? state.rivalPresentationCues : []).map(cue=>cue?.id).filter(Boolean));
 
   return listenToMatch(matchId, (publicDoc, snapshotMeta = {}) => {
     if (!publicDoc) return;
@@ -3937,6 +3988,17 @@ export function startListeningToMatch(matchId, myRole) {
     const currentCanonicalStack = hasIncomingStack ? serializeStackForPublic(spellStack, state, myRole) : null;
     const stackChanged = hasIncomingStack && !wireEqual(currentCanonicalStack, publicDoc.stackState);
 
+    const remoteCueWires=(Array.isArray(incoming.rivalPresentationCues) ? incoming.rivalPresentationCues : [])
+      .filter(cue=>cue?.id && !handledPresentationCueIds.has(cue.id));
+    // Capturamos geometría sobre el DOM VIEJO. Después Object.assign/render puede borrar una
+    // criatura muerta; el playback conserva el clon y cuenta la misma película igualmente.
+    const pendingPresentationPlaybacks=remoteCueWires.map(cue=>{
+      handledPresentationCueIds.add(cue.id);
+      const playback=preparePresentationCuePlayback(cue,myRole);
+      recordTelemetryEvent('presentation_cue_received',{cueId:cue.id,kind:cue.kind,emitterRole:cue.emitterRole||null,playable:!!playback});
+      return playback;
+    }).filter(Boolean);
+
     const changedKeys = Object.keys(incoming).filter(key => !wireEqual(state[key], incoming[key]));
     if (stackChanged) changedKeys.push('spellStack');
     // El documento completo recién observado pasa a ser el baseline de deltas incluso si
@@ -4009,6 +4071,9 @@ export function startListeningToMatch(matchId, myRole) {
         refreshStackBoardRefs(spellStack, state, myRole);
       }
       render();
+      // El estado autoritativo ya está aplicado; ahora reproducimos los cues remotos serializados
+      // por Animation Director. Cada playback lleva broadcast:false, por lo que jamás hace eco.
+      pendingPresentationPlaybacks.forEach(playback=>{ try { void playback(); } catch {} });
       const renderEnded = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
       recordTelemetryNetwork('sync_render_applied', {
         matchId,
@@ -8565,8 +8630,6 @@ function produceManaFromSource(item, isLocal, chosenType) {
   // recién después su efecto agrega maná. Como es una mana ability, todo ocurre sin Stack
   // ni ventana de respuesta entre costo y producción.
   if (ability.sacrificeSelf && isLocal && state.pendingCost) rememberManaSourceRollback(item, isLocal, wasTapped, ability);
-  const landTapAnimationSnapshot = ability.requiresTap && !wasTapped && isLandPermanent(item)
-    ? captureCardVisual(item, isLocal ? 'local' : 'rival') : null;
   if (ability.requiresTap) {
     item.tapped = true;
     if(!wasTapped) dispatchGameEvent({type:'permanent_tapped',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:cardOwnerIsLocal(item.card,isLocal,state.currentMatch?.myRole||null),card:item.card,item,zoneFrom:'battlefield',zoneTo:'battlefield',cause:'mana_ability'});
@@ -8579,10 +8642,6 @@ function produceManaFromSource(item, isLocal, chosenType) {
   const landManaEvent = landManaEventSnapshot
     ? handleLandTappedForManaEvent(item, isLocal, type, amount, { eventSnapshot:landManaEventSnapshot })
     : { bonuses:[] };
-  if (landTapAnimationSnapshot) {
-    void queueLandTapAnimation({ snapshot:landTapAnimationSnapshot, isLocal });
-  }
-
   // UX tipo Arena + regla real: durante 601.2g/602, clickear una fuente puede pagar el
   // coste directamente. La producción COMPLETA entra primero al pool; consumimos como máximo
   // lo que esa activación acaba de producir y todo excedente queda flotando. El maná que ya

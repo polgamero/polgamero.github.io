@@ -366,6 +366,10 @@ export function buildMyPublicPatch(state, myRole, stack = []) {
   });
   patch[`${myRole}HandCount`] = Array.isArray(state.localHand) ? state.localHand.length : 0;
   patch[`${myRole}DeckCount`] = Array.isArray(state.localDeck) ? state.localDeck.length : 0;
+  // 23.19.4.5 — cada cliente publica EXCLUSIVAMENTE su ring de cues de presentación.
+  // Nunca serializamos `rivalPresentationCues` desde la autoridad: un snapshot atrasado del
+  // host no debe poder pisar cues más nuevos emitidos por el guest (ni viceversa).
+  patch[`${myRole}PresentationCues`] = Array.isArray(state.localPresentationCues) ? state.localPresentationCues : [];
 
   if (hasAuthority) {
     PER_PLAYER_FIELDS.forEach(field => {
@@ -420,6 +424,11 @@ export function extractRivalStateFromPublicDoc(publicDoc, myRole, touchedKeys = 
   if (touchedAllows(touchedKeys, handKey) && hasOwn(publicDoc, handKey)) result.rivalHand = Array(Math.max(0, Number(publicDoc[handKey]) || 0)).fill(null);
   if (touchedAllows(touchedKeys, deckKey) && hasOwn(publicDoc, deckKey)) result.rivalDeck = Array(Math.max(0, Number(publicDoc[deckKey]) || 0)).fill(null);
 
+  const cueKey = `${rivalRole}PresentationCues`;
+  if (touchedAllows(touchedKeys, cueKey) && hasOwn(publicDoc, cueKey) && Array.isArray(publicDoc[cueKey])) {
+    result.rivalPresentationCues = publicDoc[cueKey];
+  }
+
   return result;
 }
 
@@ -429,6 +438,10 @@ export function extractMyStateFromPublicDoc(publicDoc, myRole, touchedKeys = nul
     const key = `${myRole}${field}`;
     if (touchedAllows(touchedKeys, key) && hasOwn(publicDoc, key) && publicDoc[key] !== undefined) result[`local${field}`] = publicDoc[key];
   });
+  const cueKey = `${myRole}PresentationCues`;
+  if (touchedAllows(touchedKeys, cueKey) && hasOwn(publicDoc, cueKey) && Array.isArray(publicDoc[cueKey])) {
+    result.localPresentationCues = publicDoc[cueKey];
+  }
   return result;
 }
 

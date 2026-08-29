@@ -4,11 +4,11 @@ import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION } from
 import { applyPhyrexianLifeToCost } from '../js/costEngine.js';
 import { isStackObjectReservedByBotCounter } from '../js/botTargetReservation.js';
 
-assert.equal(ENGINE_VERSION, '23.19.4.4');
-assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.1');
+assert.equal(ENGINE_VERSION, '23.19.4.5');
+assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
 const manifest=JSON.parse(fs.readFileSync(new URL('../build-manifest.json',import.meta.url),'utf8'));
-assert.equal(manifest.engineVersion,'23.19.4.4');
+assert.equal(manifest.engineVersion,'23.19.4.5');
 assert.equal(manifest.pool,880);
 
 // Repro mínimo del log real: Cobertura #34 ya está cubierta por Pará Ahí #35.
@@ -52,4 +52,4 @@ assert.match(ui,/<th>Jugadores<\/th>/);
 assert.match(ui,/installAdminDebugScrollInteractions/);
 assert.match(ui,/\.black-box-table th:last-child \{ position:sticky; right:0/);
 
-console.log('GAMEPLAY_SEMANTIC_UX_HARDENING_23_19_3_OK counterReservation=PASS phyrexian=CR107.4f+UX proliferate=CR701.34+selection sagaPills=PASS blackBox=wide+drag+stickyLog pool=880 rules=23.13.79 protocol=mp-23.19.1');
+console.log('GAMEPLAY_SEMANTIC_UX_HARDENING_23_19_3_OK counterReservation=PASS phyrexian=CR107.4f+UX proliferate=CR701.34+selection sagaPills=PASS blackBox=wide+drag+stickyLog pool=880 rules=23.13.79 protocol=mp-23.19.2');

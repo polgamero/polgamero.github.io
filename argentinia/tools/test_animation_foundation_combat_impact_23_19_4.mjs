@@ -18,8 +18,8 @@ const root = path.resolve(here, '..');
 const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 const need = (cond, msg) => { if (!cond) throw new Error(`ANIMATION_23_19_4_FAIL:${msg}`); };
 
-need(ENGINE_VERSION === '23.19.4.4', `engine=${ENGINE_VERSION}`);
-need(ENGINE_PROTOCOL_VERSION === 'mp-23.19.1', `protocol=${ENGINE_PROTOCOL_VERSION}`);
+need(ENGINE_VERSION === '23.19.4.5', `engine=${ENGINE_VERSION}`);
+need(ENGINE_PROTOCOL_VERSION === 'mp-23.19.2', `protocol=${ENGINE_PROTOCOL_VERSION}`);
 need(FIRESTORE_RULES_VERSION === '23.13.79', `rules=${FIRESTORE_RULES_VERSION}`);
 need(POOL_BASELINE.total === 880, `pool=${POOL_BASELINE.total}`);
 
@@ -56,7 +56,7 @@ need(director.includes('ghostNodes'), 'ghost-diagnostics');
 need(director.includes('arg-game-animation-layer'), 'isolated-layer');
 need(director.includes('mountAnimationLab') && director.includes('arg-animation-lab-board-shell'), 'admin-animation-studio');
 
-need(main.includes('captureCardVisual(item') && main.includes('queueLandTapAnimation'), 'land-tap-hook');
+need(main.includes("type:'permanent_tapped'") && director.includes("event.cause==='mana_ability'") && director.includes('queueLandTapAnimation({snapshot,isLocal}'), 'land-tap-hook-semantic-bridge');
 need(combat.includes('combatVisual.defenders') && combat.includes('queueCombatSequenceAnimation'), 'combat-multi-sequence');
 need(combat.includes('shieldConsumed') && combat.includes('indestructibleSurvived') && combat.includes('deathtouchHit'), 'combat-keyword-visuals');
 need(combat.includes("stepKind === 'regular' && hasKeyword(attacker,'doublestrike')"), 'double-strike-pass');
@@ -74,11 +74,11 @@ need(ui.includes('opt-animations-toggle') && ui.includes('opt-animation-speed'),
 need(texts.includes("'options.animations.serverOff'"), 'options-server-off-copy');
 
 need(firebaseImpl.includes("loadPublicGameConfigDocument('animations')"), 'animation-policy-document');
-need(firebaseImpl.includes('speedMultipliers') && (firebaseImpl.includes('schemaVersion: 2') || firebaseImpl.includes('schemaVersion: 3')), 'animation-policy-speed-schema');
+need(firebaseImpl.includes('speedMultipliers') && /schemaVersion:\s*[234]/.test(firebaseImpl), 'animation-policy-speed-schema');
 need(firebaseImpl.includes("doc(db, 'gameConfig', 'animations')") && firebaseImpl.includes('onSnapshot'), 'animation-policy-live-listener');
 need(firebaseFacade.includes('listenAnimationPolicy') && firebaseFacade.includes('saveAnimationPolicy'), 'animation-policy-lazy-facade');
 
-need(manifest.engineVersion === '23.19.4.4' && manifest.firestoreRulesVersion === '23.13.79' && manifest.pool === 880, 'build-manifest');
+need(manifest.engineVersion === '23.19.4.5' && manifest.firestoreRulesVersion === '23.13.79' && manifest.pool === 880, 'build-manifest');
 
 console.log('ANIMATION_FOUNDATION_COMBAT_IMPACT_23_19_4_OK');
 console.log('director=isolated+queue+cleanup+server-speed-references');
@@ -86,4 +86,4 @@ console.log('settings=user-toggle+speed+server-live-kill-switch+reduced-motion')
 console.log('combat=1v1+multi+trample+first/double+shield+deathtouch+indestructible');
 console.log('land=tap-force+dust');
 console.log('admin=dedicated-animation-tab+full-board-dummy+lab-speed-selector');
-console.log('pool=880 protocol=mp-23.19.1 rules=23.13.79');
+console.log('pool=880 protocol=mp-23.19.2 rules=23.13.79');

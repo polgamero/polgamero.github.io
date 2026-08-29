@@ -1923,9 +1923,11 @@ export async function saveAnimationPolicy(config = {}) {
   const animationTunings = {};
   for (const [key, value] of Object.entries(rawTunings)) {
     if (!/^[a-z][a-z0-9_]{0,31}$/.test(key) || !value || typeof value !== 'object' || Array.isArray(value)) continue;
+    const legacyMoment = value.sfxTiming === 'end' ? 'key' : value.sfxTiming;
     animationTunings[key] = {
       relativeSpeed: clampMultiplier(value.relativeSpeed, 1),
-      sfxTiming: value.sfxTiming === 'end' ? 'end' : 'start'
+      sfxMoment: value.sfxMoment === 'key' ? 'key' : value.sfxMoment === 'start' ? 'start'
+        : legacyMoment === 'key' ? 'key' : 'start'
     };
   }
   return saveAdminGameConfigDocument('animations', {
@@ -1936,7 +1938,7 @@ export async function saveAnimationPolicy(config = {}) {
       fast: clampMultiplier(rawSpeeds.fast, 0.68)
     },
     animationTunings,
-    schemaVersion: 3,
+    schemaVersion: 4,
     engineVersion: ENGINE_VERSION
   });
 }

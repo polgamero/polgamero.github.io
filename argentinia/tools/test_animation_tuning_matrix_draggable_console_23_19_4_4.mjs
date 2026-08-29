@@ -20,13 +20,13 @@ const firebase=read('js/firebaseClientImpl.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 const workflow=fs.readFileSync(path.join(root,'..','.github','workflows','pages.yml'),'utf8');
 
-assert.equal(ENGINE_VERSION,'23.19.4.4');
-assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.1');
+assert.ok(/^23\.19\.4\.(?:4|[5-9]|[1-9]\d+)$/.test(ENGINE_VERSION),`23.19.4.4+ cumulative engine expected, got ${ENGINE_VERSION}`);
+assert.ok(/^mp-23\.19\.(?:1|[2-9]|[1-9]\d+)$/.test(ENGINE_PROTOCOL_VERSION),`mp-23.19.1+ expected, got ${ENGINE_PROTOCOL_VERSION}`);
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(manifest.engineVersion,'23.19.4.4');
+assert.equal(manifest.engineVersion,ENGINE_VERSION);
 assert.equal(manifest.firestoreRulesVersion,'23.13.79');
 assert.equal(manifest.pool,880);
-assert.equal(manifest.label,'Animation Tuning Matrix + Draggable Test Console');
+assert.ok(['Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics'].includes(manifest.label));
 assert.ok(workflow.includes('test_animation_tuning_matrix_draggable_console_23_19_4_4.mjs'),'CI must retain and execute the 23.19.4.4 contract');
 assert.ok(workflow.includes('Validate Animation Tuning Matrix + Draggable Test Console 23.19.4.4'),'CI gate label');
 
@@ -38,48 +38,48 @@ for(const key of ['land','clash','multi','trample','first','double','shield','de
 }
 
 const defaults=normalizeAnimationTunings({});
-assert.deepEqual(defaults.land,{relativeSpeed:1,sfxTiming:'start'});
-assert.deepEqual(defaults.clash,{relativeSpeed:1,sfxTiming:'end'});
-assert.deepEqual(defaults.player,{relativeSpeed:1,sfxTiming:'end'});
-assert.deepEqual(defaults.exile,{relativeSpeed:1,sfxTiming:'start'});
+assert.deepEqual(defaults.land,{relativeSpeed:1,sfxMoment:'start',sfxCadence:'single'});
+assert.deepEqual(defaults.clash,{relativeSpeed:1,sfxMoment:'key',sfxCadence:'per_impact'});
+assert.deepEqual(defaults.player,{relativeSpeed:1,sfxMoment:'key',sfxCadence:'per_impact'});
+assert.deepEqual(defaults.exile,{relativeSpeed:1,sfxMoment:'start',sfxCadence:'single'});
 const clamped=normalizeAnimationTunings({land:{relativeSpeed:.1,sfxTiming:'end'},clash:{relativeSpeed:8,sfxTiming:'start'}});
 assert.equal(clamped.land.relativeSpeed,.25);
-assert.equal(clamped.land.sfxTiming,'end');
+assert.equal(clamped.land.sfxMoment,'key','legacy end migrates to key moment');
 assert.equal(clamped.clash.relativeSpeed,3);
-assert.equal(clamped.clash.sfxTiming,'start');
+assert.equal(clamped.clash.sfxMoment,'start');
 
 applyServerAnimationPolicy({
   enabled:true,
   speedMultipliers:{slow:1.35,normal:1,fast:.68},
   animationTunings:{
-    land:{relativeSpeed:.75,sfxTiming:'start'},
-    clash:{relativeSpeed:1.25,sfxTiming:'end'}
+    land:{relativeSpeed:.75,sfxMoment:'start'},
+    clash:{relativeSpeed:1.25,sfxMoment:'key'}
   }
 },'qa-23.19.4.4');
-assert.deepEqual(getAnimationTuning('land'),{relativeSpeed:.75,sfxTiming:'start'});
-assert.deepEqual(getAnimationTuning('clash'),{relativeSpeed:1.25,sfxTiming:'end'});
+assert.deepEqual(getAnimationTuning('land'),{relativeSpeed:.75,sfxMoment:'start',sfxCadence:'single'});
+assert.deepEqual(getAnimationTuning('clash'),{relativeSpeed:1.25,sfxMoment:'key',sfxCadence:'per_impact'});
 assert.equal(animationTunedDuration(1000,'land','normal'),1333,'0.75 relative speed must be slower, not shorter');
 assert.equal(animationTunedDuration(1000,'clash','normal'),800,'1.25 relative speed must be faster');
 
 // Admin matrix: one canonical table, 18 rows, exclusive Inicio/Fin checkboxes, saved in same policy document.
-for(const token of ['Ajuste por animación','Velocidad relativa','Ejecución del SFX','>Inicio<','>Fin<']) assert.ok(ui.includes(token),`admin table:${token}`);
+for(const token of ['Ajuste por animación','Velocidad relativa','Ejecución del SFX','>Inicio<','>Momento clave<']) assert.ok(ui.includes(token),`admin table:${token}`);
 assert.ok(ui.includes('data-animation-tuning-speed='),'relative speed input');
-assert.ok(ui.includes('data-animation-sfx-timing='),'sfx timing input');
+assert.ok(ui.includes('data-animation-sfx-moment='),'sfx moment input');
 assert.ok(ui.includes("if (check.checked) peers.forEach"),'exclusive timing checkbox logic');
 assert.ok(ui.includes('const animationTunings = readAnimationTunings()'),'admin reads tuning matrix');
 assert.ok(ui.includes('saveAnimationPolicy({ enabled, speedMultipliers, animationTunings })'),'admin saves tuning matrix');
 assert.ok(firebase.includes('animationTunings,'),'policy writes per-animation tuning');
-assert.ok(firebase.includes('schemaVersion: 3'),'policy schema v3');
-assert.ok(firebase.includes("sfxTiming: value.sfxTiming === 'end' ? 'end' : 'start'"),'timing sanitizer');
+assert.ok(/schemaVersion:\s*[34]/.test(firebase),'policy schema v3+');
+assert.ok(firebase.includes("sfxMoment: value.sfxMoment === 'key' ? 'key'"),'moment sanitizer');
 
 // Runtime mapping: relative speed divides global duration; SFX can fire at start or contact/end.
 assert.ok(director.includes('globalDuration / Math.max(RELATIVE_SPEED_MIN, relativeSpeed || 1)'),'relative speed semantics');
 assert.ok(director.includes("playAnimationSfx('landTap','land','start')"),'land-start hook');
-assert.ok(director.includes("playAnimationSfx('landTap','land','end')"),'land-end hook');
+assert.ok(director.includes("playAnimationSfx('landTap','land','key')"),'land-key hook');
 assert.ok(director.includes("playAnimationSfx(impactSfx,impactTuningKey,'start')"),'combat-start hook');
-assert.ok(director.includes("playAnimationSfx(impactSfx,impactTuningKey,'end')"),'combat-end hook');
+assert.ok(director.includes("playAnimationSfx(impactSfx,impactTuningKey,'key')"),'combat-key hook');
 assert.ok(director.includes("playAnimationSfx(sfx,zoneTuningKey,'start')"),'zone-start hook');
-assert.ok(director.includes("playAnimationSfx(sfx,zoneTuningKey,'end')"),'zone-end hook');
+assert.ok(director.includes("playAnimationSfx(sfx,zoneTuningKey,'key')"),'zone-key hook');
 
 // Test Lab controls now live on top of the board and are draggable with Pointer Events.
 assert.ok(director.includes('arg-animation-lab-floating-controls'),'floating console');
@@ -96,6 +96,6 @@ assert.ok(director.includes('<button data-test="all">Secuencia completa</button>
 assert.ok(director.includes('<button data-test="clear">Limpiar</button>'),'clear inside console');
 
 console.log('ANIMATION_TUNING_MATRIX_DRAGGABLE_CONSOLE_23_19_4_4_OK');
-console.log('admin=18-row-tuning-matrix relative-speed=speed-factor sfx=start-or-end');
+console.log('admin=18-row-tuning-matrix relative-speed=speed-factor sfx=start-or-key cumulative-compatible');
 console.log('lab=floating-draggable-console pointer-events full-chain+clear');
-console.log('pool=880 protocol=mp-23.19.1 rules=23.13.79 unchanged');
+console.log(`pool=880 protocol=${ENGINE_PROTOCOL_VERSION} rules=23.13.79 unchanged`);
