@@ -20,6 +20,7 @@ import { gameText } from './gameTexts.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
 import { normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { gameRandom, gameDeterministicId } from './gameRng.js';
+import { queuePermanentExitAnimation, queueReanimateAnimation } from './animationDirector.js';
 import { resolveSubtypeReference } from './typalEngine.js';
 
 
@@ -1424,6 +1425,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
                 logReplacementPrevented('destroy', targetUnit.card.name);
               } else {
                 const zoneTo = replacement.event.zoneTo || 'graveyard';
+                if (zoneTo === 'graveyard') void queuePermanentExitAnimation({item:targetUnit,isLocal:isTargetLocal,transition:'graveyard',destinationZone:'graveyard',card:targetUnit.card});
                 board.splice(idx, 1);
                 repairCombatLinksAfterZoneRemoval({ fromIsLocal:isTargetLocal, fromIndex:idx });
                 detachEquipmentFrom(targetUnit, isTargetLocal);
@@ -1588,6 +1590,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
               const zone = inCombat ? combatZone : landZone;
               const idx = zone.indexOf(targetItem);
               if (idx !== -1) {
+                if (wasCreature && zoneTo === 'graveyard') void queuePermanentExitAnimation({item:targetItem,isLocal:isTargetLocal,transition:'graveyard',destinationZone:'graveyard',card:targetItem.card});
                 zone.splice(idx, 1);
                 if (inCombat) repairCombatLinksAfterZoneRemoval({ fromIsLocal:isTargetLocal, fromIndex:idx });
               }
@@ -2034,6 +2037,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           // puede reanimarse dos veces.
           const targetIdx = graveyard.indexOf(revivedCard);
           if (targetIdx === -1 || revivedCard.isToken || revivedCard.power === undefined) continue;
+          void queueReanimateAnimation({card:revivedCard,isLocal});
           graveyard.splice(targetIdx, 1);
 
           const newUnit = {
@@ -2764,6 +2768,8 @@ export function renderStack() {
     const targetableClass = (isTargetingCounter || isTargetingCopy) ? 'targetable-stack' : '';
 
     cardDiv.className = `stack-item-card ${item.isLocal ? 'local' : 'rival'} ${isTop ? 'top-item' : ''} ${targetableClass}`;
+    cardDiv.dataset.stackId = String(item.id);
+    cardDiv.dataset.side = item.isLocal ? 'local' : 'rival';
     
     let targetText = 'Sin objetivo';
     if (item.targetObj) {

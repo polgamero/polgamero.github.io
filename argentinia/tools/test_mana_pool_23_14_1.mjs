@@ -82,8 +82,8 @@ const versionMatch = version.match(/ENGINE_VERSION = '(\d+)\.(\d+)(?:\.(\d+))?(?
 assert.ok(versionMatch, 'ENGINE_VERSION debe existir');
 const [,maj,min,patch] = versionMatch.map(v => Number(v || 0));
 assert.ok(maj > 23 || (maj === 23 && (min > 14 || (min === 14 && patch >= 1))), 'LAND 0 debe sobrevivir en 23.14.1+');
-assert.ok(version.includes("FIRESTORE_RULES_VERSION = '23.13.78'"));
+assert.ok(version.includes("FIRESTORE_RULES_VERSION = '23.13.79'"));
 assert.match(manifest.engineVersion, /^23\.(?:14\.(?:[1-9]|\d{2,})|1[5-7]\.\d+(?:\.\d+)?|18(?:\.\d+)?|19(?:\.\d+){1,2}|[2-9]\d\.\d+(?:\.\d+)?)$/);
-assert.equal(manifest.firestoreRulesVersion, '23.13.78');
+assert.equal(manifest.firestoreRulesVersion, '23.13.79');
 
 console.log('MANA_POOL_23_14_1_OK pool=WUBRGC excess=floats clear=end-step-phase sync=public bot=shared-model');

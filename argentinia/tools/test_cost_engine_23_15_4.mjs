@@ -121,7 +121,7 @@ assert.equal(spellCostFilterMatches({type:'Criatura — Músico',colors:['U']},{
   const workflow=fs.readFileSync(path.join(here,'../../.github/workflows/pages.yml'),'utf8');
   const bot=fs.readFileSync(path.join(here,'../js/bot.js'),'utf8');
   const ui=fs.readFileSync(path.join(here,'../js/ui.js'),'utf8');
-  if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.1'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:[4-9]|[1-9][0-9]+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
+  if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.2'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:[4-9]|[1-9][0-9]+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
   assert.match(workflow,/regression_legacy_23_(?:15|16|17)_[0-9_]+\.zip/);
   assert.match(workflow,/ci_regression_manifest_23_(?:15|16|17)_[0-9_]+\.txt/);
   assert.match(main,/getFinalCastingManaCost\(tx\.card/);

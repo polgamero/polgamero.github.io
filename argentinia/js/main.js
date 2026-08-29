@@ -25,7 +25,7 @@ import { createSoloGameId, beginSoloRecoverySession, activateResumedSoloRecovery
 import { maybeShowAnnouncementPopup } from './campaignsUI.js';
 import { beginGameRngSession, gameRandom, gameSeedFromLocation, getGameRngSnapshot } from './gameRng.js';
 import { enterGameplayAudio } from './audioManager.js';
-import { applyServerAnimationPolicy, captureCardVisual, queueLandTapAnimation } from './animationDirector.js';
+import { applyServerAnimationPolicy, captureCardVisual, queueLandTapAnimation, queueGameEventAnimation, queuePermanentExitAnimation } from './animationDirector.js';
 import { emptyManaPool, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, spendOneMana, spendAvailableTowardCost } from './manaPool.js';
 import { normalizeManaAbility, isManaSourceCard, getManaSourceOptions, getManaSourceAmount, manaSourceRequiresTap, manaSourceSacrificesSelf, canActivateManaSourcePermanent } from './manaSources.js';
 import { isLandCard, landGraveyardFilterMatches, hasLandPlayFromGraveyardPermission as hasLandGYPermission, playableLandGraveyardEntries } from './landGraveyard.js';
@@ -4787,6 +4787,7 @@ export function performSacrifice(item, isLocal) {
     if (idx === -1) continue;
     const isCreatureZone = (zone === state.localCombat || zone === state.rivalCombat);
     const exitPlan = replacementExitPlan(item,isLocal,'sacrifice','graveyard');
+    void queuePermanentExitAnimation({item,isLocal,transition:'sacrifice',destinationZone:exitPlan.zoneTo,card:item.card});
     zone.splice(idx, 1);
     if (isCreatureZone) repairCombatLinksAfterZoneRemoval({ fromIsLocal:isLocal, fromIndex:idx });
     if (isCreatureZone) {
@@ -4852,6 +4853,7 @@ export function performSacrificeBatch(items, isLocal) {
   for (const plan of planned) {
     const {item,foundZone,isCreature,exitPlan}=plan;
     const idx=foundZone.indexOf(item); if(idx===-1) continue;
+    void queuePermanentExitAnimation({item,isLocal,transition:'sacrifice',destinationZone:exitPlan.zoneTo,card:item.card});
     foundZone.splice(idx,1);
     if (isCreature) repairCombatLinksAfterZoneRemoval({ fromIsLocal:isLocal, fromIndex:idx });
     if (isCreature) {
@@ -5261,6 +5263,9 @@ function queueGeneratedTriggerEntries(entries = [], eventType = 'event', options
 }
 
 export function dispatchGameEvent(rawEvent = {}, options = {}) {
+  // 23.19.4.2 — bridge visual descartable. Captura la geometría ANTES del próximo render,
+  // pero nunca muta state ni altera triggers: si falla o está OFF, gameplay sigue igual.
+  try { void queueGameEventAnimation(rawEvent); } catch {}
   const entries=buildGenericEventTriggerEntries(rawEvent,options);
   const eventType=normalizeGameEvent(rawEvent).type;
   return queueGeneratedTriggerEntries(entries,eventType,options);

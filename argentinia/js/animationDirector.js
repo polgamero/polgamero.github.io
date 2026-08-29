@@ -1,4 +1,4 @@
-// js/animationDirector.js — Entrega 23.19.4.1 Combat Impact II + Admin Animation Studio.
+// js/animationDirector.js — Entrega 23.19.4.2 Zone Transitions + Animation Studio 2.1.
 // Capa VISUAL descartable: jamás muta state ni decide reglas. El engine captura geometría,
 // confirma el resultado mecánico y encola una escena. Con animaciones OFF, Admin OFF o
 // prefers-reduced-motion, todas las APIs se convierten en no-op seguro.
@@ -171,6 +171,11 @@ function injectAnimationStyles() {
     .arg-anim-step-label{position:fixed;z-index:6;padding:5px 9px;border:1px solid rgba(255,232,133,.85);border-radius:999px;background:rgba(20,18,12,.88);color:#ffe883;font:900 10px/1 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;pointer-events:none;box-shadow:0 0 12px rgba(255,207,63,.35);}
     .arg-anim-shield-burst{position:fixed;z-index:4;border:3px solid rgba(104,211,255,.94);border-radius:50%;pointer-events:none;box-shadow:0 0 24px rgba(70,185,255,.85),inset 0 0 18px rgba(170,235,255,.45);}
     .arg-anim-indestructible-burst{position:fixed;z-index:4;border:3px solid rgba(255,220,91,.96);border-radius:10px;pointer-events:none;box-shadow:0 0 26px rgba(255,188,40,.82),inset 0 0 18px rgba(255,247,180,.55);}
+    .arg-anim-zone-proxy{position:fixed;z-index:2;border:2px solid rgba(20,20,20,.96);border-radius:7px;background:linear-gradient(150deg,#d8c690,#6d5a39);color:#15110b;display:flex;align-items:center;justify-content:center;text-align:center;padding:6px;font:900 10px/1.15 system-ui,sans-serif;box-shadow:0 7px 18px rgba(0,0,0,.58);overflow:hidden;will-change:transform,opacity,filter;}
+    .arg-anim-zone-proxy.back{background:#17100d url('./assets/images/card_back.png') center/cover no-repeat;color:transparent;border-color:#80652f;}
+    .arg-anim-zone-rift{position:fixed;z-index:4;border-radius:50%;border:2px solid rgba(196,224,255,.85);box-shadow:0 0 28px rgba(117,185,255,.72),inset 0 0 18px rgba(232,246,255,.55);pointer-events:none;}
+    .arg-anim-zone-grave{position:fixed;z-index:4;width:30px;height:9px;border-radius:50%;background:rgba(5,4,4,.86);box-shadow:0 0 20px rgba(0,0,0,.9);pointer-events:none;}
+    .arg-anim-zone-revive{position:fixed;z-index:4;border-radius:12px;border:2px solid rgba(136,255,155,.88);box-shadow:0 0 30px rgba(74,230,108,.78),inset 0 0 20px rgba(202,255,211,.42);pointer-events:none;}
     .player-card.arg-player-hit,.arg-animation-lab-player.arg-player-hit{filter:brightness(1.22) saturate(1.25);box-shadow:0 0 0 2px rgba(255,70,60,.85),0 0 24px rgba(255,40,40,.75)!important;}
 
     .arg-animation-lab{width:100%;color:#e8eadf;}
@@ -178,9 +183,9 @@ function injectAnimationStyles() {
     .arg-animation-lab-control{display:flex;flex-direction:column;gap:5px;color:#bcaeca;font:700 11px/1.2 system-ui;}
     .arg-animation-lab-control select{min-width:150px;padding:8px 10px;border-radius:8px;border:1px solid rgba(212,175,55,.55);background:#0c1511;color:#f0d56a;font-weight:800;}
     .arg-animation-lab-speed-note{color:#9e91aa;font:11px/1.35 system-ui;min-width:190px;text-align:right;}
-    .arg-animation-lab-board-shell{position:relative;width:100%;aspect-ratio:16/9;min-height:480px;max-height:76vh;border:2px solid rgba(212,175,55,.55);border-radius:14px;overflow:hidden;background:#0b130e url('./assets/images/ui/fondo.png') center/100% 100% no-repeat;box-shadow:0 18px 50px rgba(0,0,0,.45);}
+    .arg-animation-lab-board-shell{position:relative;width:100%;aspect-ratio:16/9;min-height:760px;max-height:none;border:2px solid rgba(212,175,55,.55);border-radius:14px;overflow:hidden;background:#0b130e url('./assets/images/ui/fondo.png') center/100% 100% no-repeat;box-shadow:0 18px 50px rgba(0,0,0,.45);}
     .arg-animation-lab-game{position:absolute;inset:0;display:grid;grid-template-columns:minmax(0,1fr) 19%;}
-    .arg-animation-lab-board{position:relative;display:grid;grid-template-rows:7% 33.5% 33.5% 20%;gap:.8%;padding:1% 1.2%;min-width:0;}
+    .arg-animation-lab-board{position:relative;display:grid;grid-template-rows:16% 32% 32% 16%;gap:1%;padding:1% 1.2%;min-width:0;}
     .arg-animation-lab-hand,.arg-animation-lab-field-half{position:relative;display:flex;align-items:center;justify-content:center;min-height:0;}
     .arg-animation-lab-field-half{flex-direction:column;gap:4%;}
     .arg-animation-lab-zone-row{position:relative;width:100%;display:flex;align-items:center;justify-content:center;gap:1.1%;min-height:0;flex:1;}
@@ -192,6 +197,7 @@ function injectAnimationStyles() {
     .arg-animation-lab-card.land{background:linear-gradient(145deg,#b58a62,#65442e);color:#fff2d6;}
     .arg-animation-lab-card.back{background:linear-gradient(145deg,#442f24,#17100d);color:#d4af37;border-color:#7d6531;}
     .arg-animation-lab-card small{display:block;margin-top:4px;font-size:.8em;font-weight:700;opacity:.72;}
+    .arg-animation-lab-field-half .arg-animation-lab-card{height:84%;width:auto;max-width:104px;max-height:142px;}
     .arg-animation-lab-sidebar{position:relative;background:linear-gradient(180deg,rgba(9,17,12,.88),rgba(4,9,6,.94));border-left:1px solid rgba(212,175,55,.3);padding:2.2% 4%;display:flex;flex-direction:column;justify-content:space-between;gap:10px;}
     .arg-animation-lab-player{position:relative;border:1px solid rgba(212,175,55,.55);border-radius:10px;background:rgba(22,25,23,.96);padding:10px 8px;color:white;text-align:center;font:800 clamp(8px,.75vw,12px)/1.25 system-ui;box-shadow:0 4px 14px rgba(0,0,0,.45);}
     .arg-animation-lab-player .hp{display:block;color:#8fda91;margin-top:4px;}
@@ -200,7 +206,12 @@ function injectAnimationStyles() {
     .arg-animation-lab-actions button{padding:8px 11px;border-radius:8px;border:1px solid #d4af37;background:#202d26;color:#f4e5b9;font-weight:800;cursor:pointer;font-size:11px;}
     .arg-animation-lab-actions button:hover{box-shadow:0 0 14px rgba(212,175,55,.28);}
     .arg-animation-lab-status{margin-top:9px;text-align:center;color:#a99bb5;font:11px/1.35 system-ui;}
-    @media(max-width:1000px){.arg-animation-lab-board-shell{min-height:390px}.arg-animation-lab-game{grid-template-columns:minmax(0,1fr) 22%}.arg-animation-lab-card{width:clamp(45px,7vw,78px)}}
+    .arg-animation-lab-piles{position:absolute;display:flex;gap:7px;z-index:8;}
+    .arg-animation-lab-piles.rival{left:1.2%;top:18%;}
+    .arg-animation-lab-piles.local{left:1.2%;bottom:18%;}
+    .arg-animation-lab-pile{width:52px;height:70px;border:1px solid rgba(212,175,55,.5);border-radius:7px;background:rgba(10,15,12,.9);color:#e6cf83;display:flex;align-items:center;justify-content:center;text-align:center;font:900 8px/1.1 system-ui;box-shadow:0 3px 12px rgba(0,0,0,.45);}
+    .arg-animation-lab-stack-dummy{position:absolute;right:2%;top:45%;width:86px;height:112px;border:2px solid #d7b84e;border-radius:8px;background:linear-gradient(145deg,#2b3040,#11141d);color:#f4e7bd;display:flex;align-items:center;justify-content:center;text-align:center;font:900 9px/1.15 system-ui;z-index:9;box-shadow:0 5px 16px rgba(0,0,0,.55);}
+    @media(max-width:1000px){.arg-animation-lab-board-shell{min-height:680px}.arg-animation-lab-game{grid-template-columns:minmax(0,1fr) 22%}.arg-animation-lab-card{width:clamp(45px,7vw,78px)}.arg-animation-lab-field-half .arg-animation-lab-card{height:82%;width:auto;max-height:104px}}
   `;
   document.head.appendChild(style);
 }
@@ -279,6 +290,67 @@ export function capturePlayerVisual(isLocal, { force = false } = {}) {
   const el = document.querySelector(isLocal ? '.player-card.local-card' : '.player-card.rival-card');
   const rect = rectSnapshot(el);
   return el && rect ? { kind:'player', element:el, rect, isLocal:!!isLocal } : null;
+}
+
+function cssAttr(value) {
+  return String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"');
+}
+
+export function captureStackVisual(stackItem, { force = false } = {}) {
+  if (!animationsEffectivelyEnabled({ force }) || typeof document === 'undefined' || !stackItem) return null;
+  const stackId=stackItem.id ?? stackItem.stackId;
+  const el=stackId!=null ? document.querySelector(`.stack-item-card[data-stack-id="${cssAttr(stackId)}"]`) : null;
+  const rect=rectSnapshot(el);
+  if(!el || !rect) return null;
+  return {kind:'stack',clone:el.cloneNode(true),rect,stackId,cardId:stackItem?.card?.id||null,cardName:stackItem?.card?.name||null};
+}
+
+export function captureZoneAnchor(zone, isLocal, { force = false } = {}) {
+  if (!animationsEffectivelyEnabled({ force }) || typeof document === 'undefined') return null;
+  const side=isLocal?'local':'rival';
+  const selectors={
+    library:`.side-pile[data-animation-zone="library"][data-animation-side="${side}"]`,
+    graveyard:`.side-pile[data-animation-zone="graveyard"][data-animation-side="${side}"]`,
+    exile:`.side-pile[data-animation-zone="exile"][data-animation-side="${side}"]`,
+    hand:isLocal?'#local-hand':'#rival-hand',
+    battlefield:isLocal?'#local-combat':'#rival-combat',
+    combat:isLocal?'#local-combat':'#rival-combat',
+    support:isLocal?'#local-support':'#rival-support',
+    land:isLocal?'#local-lands':'#rival-lands'
+  };
+  const el=document.querySelector(selectors[zone]||'');
+  const rect=rectSnapshot(el);
+  return el&&rect?{kind:'zone',element:el,rect,zone,isLocal:!!isLocal}:null;
+}
+
+export function captureHandCardVisual(card, isLocal, { force = false } = {}) {
+  if (!animationsEffectivelyEnabled({ force }) || typeof document === 'undefined' || !card) return null;
+  const side=isLocal?'local':'rival';
+  const id=card.id||'';
+  const el=document.querySelector(`[data-card-id="${cssAttr(id)}"][data-zone="hand"][data-side="${side}"]`);
+  const rect=rectSnapshot(el);
+  return el&&rect?{kind:'card',clone:el.cloneNode(true),rect,cardId:id,cardName:card.name||null}:null;
+}
+
+function proxySnapshot(card, rect, { faceDown=false } = {}) {
+  if(typeof document==='undefined' || !rect) return null;
+  const el=document.createElement('div');
+  el.className=`arg-anim-zone-proxy${faceDown?' back':''}`;
+  if(!faceDown) el.textContent=card?.name || 'CARTA';
+  return {kind:'proxy',clone:el,rect:{...rect},cardId:card?.id||null,cardName:card?.name||null};
+}
+
+function sourceSnapshotForEvent(event, { force=false } = {}) {
+  const side=event?.controllerIsLocal!==false;
+  const zone=String(event?.zoneFrom||'').toLowerCase();
+  if(zone==='stack') return captureStackVisual(event?.item,{force});
+  if(zone==='battlefield') return captureCardVisual(event?.item,side? 'local':'rival',{force});
+  if(zone==='hand') return captureHandCardVisual(event?.card,side,{force});
+  const anchor=captureZoneAnchor(zone==='library'?'library':zone,side,{force});
+  if(!anchor?.rect) return null;
+  return proxySnapshot(event?.card, anchor.rect, {faceDown:zone==='library' || (!side && zone==='hand')});
 }
 
 function runWebAnimation(el, keyframes, options) {
@@ -401,7 +473,13 @@ async function animateCombatSequence(payload) {
     ],{duration:durationFor(payload,legBase),easing:'cubic-bezier(.2,.78,.18,1)'});
     await sleepMs(durationFor(payload,Math.round(legBase*.83)));
     if(animationEventCancelled(payload)){removeNode(attacker);defenderClones.forEach(x=>removeNode(x.node));removeNode(stepLabel);return false;}
-    playSfx('cardImpact');
+    const impactSfx=entry.shieldConsumed ? 'shieldImpact'
+      : entry.indestructibleSurvived ? 'indestructibleImpact'
+      : entry.deathtouchHit ? 'deathtouchImpact'
+      : payload?.doubleStrikePass ? 'doubleStrike'
+      : payload?.stepKind==='first_strike' ? 'firstStrike'
+      : 'cardImpact';
+    playSfx(impactSfx);
     const impact=center(entry.snapshot.rect);
     const variant=entry.deathtouchHit?'deathtouch':payload?.stepKind==='first_strike'?'first_strike':'normal';
     void impactBurst(impact.x,impact.y,payload,variant);
@@ -493,6 +571,106 @@ async function animateLandTap(payload) {
   await runWebAnimation(card,[{opacity:1},{opacity:0}],{duration:durationFor(payload,100)}); removeNode(card); return true;
 }
 
+function targetDelta(sourceRect,targetRect){
+  const a=center(sourceRect),b=center(targetRect);return {dx:b.x-a.x,dy:b.y-a.y};
+}
+
+async function zonePulse(rect, kind, payload={}){
+  if(!rect||typeof document==='undefined')return;
+  const layer=ensureAnimationLayer();if(!layer)return;
+  const cls=kind==='reanimate'?'arg-anim-zone-revive':kind==='graveyard'||kind==='sacrifice'?'arg-anim-zone-grave':'arg-anim-zone-rift';
+  const el=document.createElement('div');el.className=cls;
+  if(cls==='arg-anim-zone-grave') Object.assign(el.style,{left:`${rect.left+rect.width/2-15}px`,top:`${rect.top+rect.height/2-4}px`});
+  else Object.assign(el.style,{left:`${rect.left-6}px`,top:`${rect.top-6}px`,width:`${rect.width+12}px`,height:`${rect.height+12}px`});
+  layer.appendChild(el);
+  const frames=cls==='arg-anim-zone-grave'
+    ? [{transform:'scale(.35)',opacity:0},{transform:'scale(1.25)',opacity:.9},{transform:'scale(1.7)',opacity:0}]
+    : [{transform:'scale(.75)',opacity:0},{transform:'scale(1.02)',opacity:1},{transform:'scale(1.22)',opacity:0}];
+  await runWebAnimation(el,frames,{duration:durationFor(payload,420),easing:'ease-out'});removeNode(el);
+}
+
+async function animateZoneTransition(payload){
+  const source=payload?.sourceSnapshot,target=payload?.targetSnapshot;
+  if(!source?.rect)return false;
+  const card=freezeClone(source);if(!card)return false;
+  const kind=String(payload?.transition||'graveyard');
+  const targetRect=target?.rect||source.rect;
+  const {dx,dy}=targetDelta(source.rect,targetRect);
+  let sfx='cardToGraveyard';
+  let frames=[];
+  let duration=560;
+  if(kind==='counter'){
+    sfx='spellCountered';duration=520;
+    frames=[
+      {transform:'translate3d(0,0,0) scale(1)',filter:'brightness(1) saturate(1)',opacity:1},
+      {transform:'translate3d(-4px,0,0) rotate(-2deg) scale(1.02)',filter:'brightness(1.65) saturate(.7)',opacity:1},
+      {transform:'translate3d(5px,0,0) rotate(2deg) scale(.96)',filter:'brightness(1.2) saturate(.35) blur(1px)',opacity:.82},
+      {transform:`translate3d(${dx*.22}px,${dy*.22}px,0) rotate(8deg) scale(.08)`,filter:'brightness(2) saturate(0) blur(6px)',opacity:0}
+    ];
+  } else if(kind==='exile'){
+    sfx='cardExiled';duration=650;
+    frames=[
+      {transform:'translate3d(0,0,0) scale(1)',filter:'brightness(1) saturate(1)',opacity:1},
+      {transform:'translate3d(0,-12px,0) scale(1.04)',filter:'brightness(1.45) saturate(.65)',opacity:.94},
+      {transform:`translate3d(${dx*.55}px,${dy*.55-18}px,0) rotate(4deg) scale(.78)`,filter:'brightness(1.8) saturate(.25) blur(1px)',opacity:.62},
+      {transform:`translate3d(${dx}px,${dy}px,0) rotate(10deg) scale(.3)`,filter:'brightness(2.2) saturate(0) blur(7px)',opacity:0}
+    ];
+  } else if(kind==='bounce'){
+    sfx='cardBounced';duration=610;
+    frames=[
+      {transform:'translate3d(0,0,0) rotate(0deg) scale(1)',opacity:1},
+      {transform:`translate3d(${dx*.28}px,${dy*.18-35}px,0) rotate(-7deg) scale(1.05)`,opacity:1},
+      {transform:`translate3d(${dx*.72}px,${dy*.62-48}px,0) rotate(6deg) scale(.82)`,opacity:.86},
+      {transform:`translate3d(${dx}px,${dy}px,0) rotate(0deg) scale(.35)`,opacity:0}
+    ];
+  } else if(kind==='draw'){
+    sfx='cardDrawn';duration=520;
+    frames=[
+      {transform:'translate3d(0,0,0) rotate(0deg) scale(.82)',opacity:.15},
+      {transform:`translate3d(${dx*.35}px,${dy*.18-28}px,0) rotate(-8deg) scale(1.02)`,opacity:1},
+      {transform:`translate3d(${dx*.78}px,${dy*.72-18}px,0) rotate(5deg) scale(.9)`,opacity:1},
+      {transform:`translate3d(${dx}px,${dy}px,0) rotate(0deg) scale(.55)`,opacity:0}
+    ];
+  } else if(kind==='discard'){
+    sfx='cardDiscarded';duration=580;
+    frames=[
+      {transform:'translate3d(0,0,0) rotate(0deg) scale(1)',opacity:1},
+      {transform:`translate3d(${dx*.25}px,${dy*.12-12}px,0) rotate(12deg) scale(.96)`,opacity:.96},
+      {transform:`translate3d(${dx*.75}px,${dy*.72}px,0) rotate(25deg) scale(.64)`,filter:'brightness(.65)',opacity:.72},
+      {transform:`translate3d(${dx}px,${dy}px,0) rotate(32deg) scale(.28)`,filter:'brightness(.4) blur(2px)',opacity:0}
+    ];
+  } else if(kind==='sacrifice'){
+    sfx='cardSacrificed';duration=610;
+    frames=[
+      {transform:'translate3d(0,0,0) scale(1)',filter:'brightness(1)',opacity:1},
+      {transform:'translate3d(-3px,1px,0) rotate(-2deg) scale(1.03)',filter:'brightness(.7) saturate(.65)',opacity:1},
+      {transform:'translate3d(4px,-1px,0) rotate(2deg) scale(.94)',filter:'brightness(.45) saturate(.35)',opacity:.86},
+      {transform:`translate3d(${dx}px,${dy}px,0) rotate(-16deg) scale(.18)`,filter:'brightness(.2) saturate(0) blur(5px)',opacity:0}
+    ];
+  } else if(kind==='reanimate'){
+    sfx='cardReanimated';duration=720;
+    frames=[
+      {transform:'translate3d(0,0,0) scale(.25)',filter:'brightness(.35) saturate(.3) blur(4px)',opacity:0},
+      {transform:`translate3d(${dx*.32}px,${dy*.22-30}px,0) scale(.68)`,filter:'brightness(1.5) saturate(1.3)',opacity:.72},
+      {transform:`translate3d(${dx*.78}px,${dy*.7-18}px,0) scale(1.08)`,filter:'brightness(1.25) saturate(1.1)',opacity:1},
+      {transform:`translate3d(${dx}px,${dy}px,0) scale(1)`,filter:'brightness(1)',opacity:0}
+    ];
+  } else {
+    sfx='cardToGraveyard';duration=560;
+    frames=[
+      {transform:'translate3d(0,0,0) rotate(0deg) scale(1)',filter:'brightness(1)',opacity:1},
+      {transform:`translate3d(${dx*.28}px,${dy*.16}px,0) rotate(-4deg) scale(.92)`,filter:'brightness(.62)',opacity:.92},
+      {transform:`translate3d(${dx}px,${dy}px,0) rotate(9deg) scale(.3)`,filter:'brightness(.3) saturate(.35) blur(3px)',opacity:0}
+    ];
+  }
+  await sleepMs(durationFor(payload,Math.round(duration*.28)));
+  if(animationEventCancelled(payload)){removeNode(card);return false;}
+  playSfx(sfx);
+  void zonePulse(kind==='reanimate'?targetRect:source.rect,kind,payload);
+  await runWebAnimation(card,frames,{duration:durationFor(payload,duration),easing:kind==='bounce'?'cubic-bezier(.2,.72,.18,1)':'cubic-bezier(.25,.7,.2,1)'});
+  removeNode(card);return true;
+}
+
 function enqueue(type, payload, runner, { force = false, speedOverride = null } = {}) {
   if (!animationsEffectivelyEnabled({ force }) || !payload) { skippedCount += 1; return Promise.resolve(false); }
   const serial=++animationSerial; queuedCount += 1; lastEvent={serial,type,queuedAt:Date.now(),speedOverride:speedOverride||null};
@@ -511,6 +689,43 @@ export function queueCombatImpactAnimation(payload, options) { return enqueue('c
 export function queueCombatSequenceAnimation(payload, options) { return enqueue('combat_sequence',payload,animateCombatSequence,options); }
 export function queuePlayerDamageAnimation(payload, options) { return enqueue('combat_player_impact',payload,animatePlayerImpact,options); }
 export function queueLandTapAnimation(payload, options) { return enqueue('land_tap',payload,animateLandTap,options); }
+export function queueZoneTransitionAnimation(payload, options) { return enqueue(`zone_${payload?.transition||'move'}`,payload,animateZoneTransition,options); }
+
+export function queuePermanentExitAnimation({item,isLocal,transition='graveyard',destinationZone='graveyard',card=null}, options={}) {
+  const sourceSnapshot=captureCardVisual(item,isLocal?'local':'rival',options);
+  const targetSnapshot=captureZoneAnchor(destinationZone,isLocal,options);
+  if(!sourceSnapshot)return Promise.resolve(false);
+  return queueZoneTransitionAnimation({sourceSnapshot,targetSnapshot,transition,card:card||item?.card||null},options);
+}
+
+export function queueReanimateAnimation({card,isLocal}, options={}) {
+  const from=captureZoneAnchor('graveyard',isLocal,options);const to=captureZoneAnchor('battlefield',isLocal,options);
+  if(!from?.rect||!to?.rect)return Promise.resolve(false);
+  const startRect={left:from.rect.left+from.rect.width*.08,top:from.rect.top+from.rect.height*.08,width:Math.max(48,Math.min(86,from.rect.width*.84)),height:Math.max(68,Math.min(120,from.rect.height*.84))};
+  return queueZoneTransitionAnimation({sourceSnapshot:proxySnapshot(card,startRect),targetSnapshot:to,transition:'reanimate',card},options);
+}
+
+export function queueGameEventAnimation(event={}, options={}) {
+  if(!event?.type)return Promise.resolve(false);
+  const type=String(event.type);const isLocal=event.controllerIsLocal!==false;
+  let transition=null;
+  if(type==='card_drawn') transition='draw';
+  else if(type==='card_discarded') transition=event.zoneTo==='exile' ? 'exile' : 'discard';
+  else if(type==='spell_countered') transition='counter';
+  else if(type==='permanent_left_battlefield' && event.cause==='bounce') transition='bounce';
+  else if(type==='permanent_left_battlefield' && event.cause==='destroy' && event.zoneTo==='graveyard') transition='graveyard';
+  else if(type==='card_exiled') {
+    if(event.zoneFrom==='hand' && ['cleanup_discard','forced_discard','cost','activated_cost'].includes(String(event.cause||''))) return Promise.resolve(false);
+    if(event.zoneFrom==='stack' && String(event.cause||'').startsWith('countered_')) return Promise.resolve(false);
+    transition='exile';
+  }
+  if(!transition)return Promise.resolve(false);
+  const sourceSnapshot=sourceSnapshotForEvent(event,options);
+  if(!sourceSnapshot)return Promise.resolve(false);
+  const destination=transition==='draw'||transition==='bounce'?'hand':transition==='exile'?'exile':event.zoneTo==='exile'?'exile':'graveyard';
+  const targetSnapshot=captureZoneAnchor(destination,isLocal,options);
+  return queueZoneTransitionAnimation({sourceSnapshot,targetSnapshot,transition,card:event.card||event.item?.card||null},options);
+}
 
 export function clearAnimationLayer(reason = 'manual') {
   cancelSerial += 1;
@@ -549,7 +764,18 @@ function animationLabMarkup() {
       <div class="arg-animation-lab-board-shell">
         <div class="arg-animation-lab-game">
           <div class="arg-animation-lab-board">
-            <div class="arg-animation-lab-hand">
+            <div class="arg-animation-lab-piles rival">
+              <div class="arg-animation-lab-pile" data-lab-zone="rival-library">MAZO</div>
+              <div class="arg-animation-lab-pile" data-lab-zone="rival-graveyard">GY</div>
+              <div class="arg-animation-lab-pile" data-lab-zone="rival-exile">EX</div>
+            </div>
+            <div class="arg-animation-lab-piles local">
+              <div class="arg-animation-lab-pile" data-lab-zone="local-library">MAZO</div>
+              <div class="arg-animation-lab-pile" data-lab-zone="local-graveyard">GY</div>
+              <div class="arg-animation-lab-pile" data-lab-zone="local-exile">EX</div>
+            </div>
+            <div class="arg-animation-lab-stack-dummy" data-lab-stack>HECHIZO<br>EN PILA</div>
+            <div class="arg-animation-lab-hand" data-lab-zone="rival-hand">
               <div class="arg-animation-lab-card back">DORSO</div><div class="arg-animation-lab-card back">DORSO</div><div class="arg-animation-lab-card back">DORSO</div>
             </div>
             <div class="arg-animation-lab-field-half">
@@ -557,14 +783,14 @@ function animationLabMarkup() {
                 <div class="arg-animation-lab-card land rival" data-lab-card="rival-land">TIERRA RIVAL<small>Isla</small></div>
                 <div class="arg-animation-lab-card rival">SOPORTE<small>Artefacto</small></div>
               </div>
-              <div class="arg-animation-lab-zone-row arg-animation-lab-combat-row">
+              <div class="arg-animation-lab-zone-row arg-animation-lab-combat-row" data-lab-zone="rival-battlefield">
                 <div class="arg-animation-lab-card rival" data-lab-card="defender-1">DEFENSOR A<small>2/2</small></div>
                 <div class="arg-animation-lab-card rival" data-lab-card="defender-2">DEFENSOR B<small>3/3</small></div>
                 <div class="arg-animation-lab-card rival" data-lab-card="defender-3">DEFENSOR C<small>1/1</small></div>
               </div>
             </div>
             <div class="arg-animation-lab-field-half">
-              <div class="arg-animation-lab-zone-row arg-animation-lab-combat-row">
+              <div class="arg-animation-lab-zone-row arg-animation-lab-combat-row" data-lab-zone="local-battlefield">
                 <div class="arg-animation-lab-card local" data-lab-card="attacker">ATACANTE<small>6/6</small></div>
                 <div class="arg-animation-lab-card local">ALIADO<small>2/3</small></div>
               </div>
@@ -573,13 +799,13 @@ function animationLabMarkup() {
                 <div class="arg-animation-lab-card land local">TIERRA<small>Planicie</small></div>
               </div>
             </div>
-            <div class="arg-animation-lab-hand">
-              <div class="arg-animation-lab-card local">MANO</div><div class="arg-animation-lab-card local">MANO</div><div class="arg-animation-lab-card local">MANO</div>
+            <div class="arg-animation-lab-hand" data-lab-zone="local-hand">
+              <div class="arg-animation-lab-card local" data-lab-card="hand-card">MANO<small>Carta local</small></div><div class="arg-animation-lab-card local">MANO</div><div class="arg-animation-lab-card local">MANO</div>
             </div>
           </div>
           <div class="arg-animation-lab-sidebar">
             <div class="arg-animation-lab-player" data-lab-player="rival">🤠 TANO DUMMY<span class="hp">20 / 20 HP</span></div>
-            <div class="arg-animation-lab-log" data-animation-lab-log>Animation Studio 23.19.4.1\nEl tablero es un dummy geométrico del board real.\nLos tests no tocan state ni Firestore.</div>
+            <div class="arg-animation-lab-log" data-animation-lab-log>Animation Studio 23.19.4.2\nDummy del tablero real + Zone Transitions.\nLos tests no tocan state ni Firestore.</div>
             <div class="arg-animation-lab-player" data-lab-player="local">🧉 VOS DUMMY<span class="hp">20 / 20 HP</span></div>
           </div>
         </div>
@@ -595,6 +821,14 @@ function animationLabMarkup() {
         <button data-test="deathtouch">Toque mortal</button>
         <button data-test="indestructible">Indestructible</button>
         <button data-test="player">Daño jugador</button>
+        <button data-test="counter">Counter</button>
+        <button data-test="exile">Exilio</button>
+        <button data-test="bounce">Volver a mano</button>
+        <button data-test="draw">Robo</button>
+        <button data-test="discard">Descarte</button>
+        <button data-test="sacrifice">Sacrificio</button>
+        <button data-test="graveyard">Cementerio</button>
+        <button data-test="reanimate">Reanimar</button>
         <button data-test="all">Secuencia completa</button>
         <button data-test="clear">Limpiar</button>
       </div>
@@ -617,6 +851,10 @@ export function mountAnimationLab(root) {
   const def=(n)=>labCapture(root.querySelector(`[data-lab-card="defender-${n}"]`));
   const player=()=>labPlayerSnapshot(root.querySelector('[data-lab-player="rival"]'),false);
   const land=()=>labCapture(root.querySelector('[data-lab-card="local-land"]'));
+  const labZone=(zone,isLocal=true)=>{const el=root.querySelector(`[data-lab-zone="${isLocal?'local':'rival'}-${zone}"]`);const rect=rectSnapshot(el);return rect?{kind:'zone',element:el,rect,zone,isLocal}:null;};
+  const handCard=()=>labCapture(root.querySelector('[data-lab-card="hand-card"]'));
+  const stackCard=()=>labCapture(root.querySelector('[data-lab-stack]'));
+  const proxyAt=(zone,isLocal,cardName,faceDown=false)=>{const z=labZone(zone,isLocal);return z?.rect?proxySnapshot({name:cardName}, {left:z.rect.left+4,top:z.rect.top+4,width:Math.max(44,Math.min(78,z.rect.width-8)),height:Math.max(62,Math.min(110,z.rect.height-8))},{faceDown}):null;};
   const speed=()=>normalizeSpeed(speedSelect?.value || 'normal');
   const options=()=>({force:true,speedOverride:speed()});
   const updateSpeedNote=()=>{
@@ -639,9 +877,17 @@ export function mountAnimationLab(root) {
     shield:async()=>{note('Escudo: absorbe el impacto y no desvanece la criatura.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:false,shieldConsumed:true}],attackerDied:false,stepKind:'regular'});},
     deathtouch:async()=>{note('Toque mortal: impacto violeta y muerte con 1+ daño.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:true,deathtouchHit:true}],attackerDied:false,stepKind:'regular'});},
     indestructible:async()=>{note('Indestructible: impacto letal visual, destello dorado, sin fade.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:false,indestructibleSurvived:true}],attackerDied:false,stepKind:'regular'});},
-    player:async()=>{note('Daño directo: embestida al badge y -5.');await queuePlayerDamageAnimation({attackerSnapshot:attacker(),playerSnapshot:player(),amount:5},options());}
+    player:async()=>{note('Daño directo: embestida al badge y -5.');await queuePlayerDamageAnimation({attackerSnapshot:attacker(),playerSnapshot:player(),amount:5},options());},
+    counter:async()=>{note('Counter: el hechizo colapsa y desaparece de la pila.');await queueZoneTransitionAnimation({sourceSnapshot:stackCard(),targetSnapshot:labZone('graveyard',true),transition:'counter',card:{name:'Hechizo en pila'}},options());},
+    exile:async()=>{note('Exilio: disolución luminosa hacia EX rival.');await queueZoneTransitionAnimation({sourceSnapshot:def(2),targetSnapshot:labZone('exile',false),transition:'exile',card:{name:'Defensor B'}},options());},
+    bounce:async()=>{note('Volver a mano: arco desde battlefield hacia la mano rival.');await queueZoneTransitionAnimation({sourceSnapshot:def(2),targetSnapshot:labZone('hand',false),transition:'bounce',card:{name:'Defensor B'}},options());},
+    draw:async()=>{note('Robo: carta desde MAZO local hacia MANO local.');await queueZoneTransitionAnimation({sourceSnapshot:proxyAt('library',true,'Carta robada',true),targetSnapshot:labZone('hand',true),transition:'draw',card:{name:'Carta robada'}},options());},
+    discard:async()=>{note('Descarte: carta de mano cae al cementerio local.');await queueZoneTransitionAnimation({sourceSnapshot:handCard(),targetSnapshot:labZone('graveyard',true),transition:'discard',card:{name:'Carta local'}},options());},
+    sacrifice:async()=>{note('Sacrificio: colapso oscuro desde battlefield al cementerio.');await queueZoneTransitionAnimation({sourceSnapshot:attacker(),targetSnapshot:labZone('graveyard',true),transition:'sacrifice',card:{name:'Atacante'}},options());},
+    graveyard:async()=>{note('Cementerio: salida normal de permanente hacia GY.');await queueZoneTransitionAnimation({sourceSnapshot:def(1),targetSnapshot:labZone('graveyard',false),transition:'graveyard',card:{name:'Defensor A'}},options());},
+    reanimate:async()=>{note('Reanimar: una carta emerge del GY local al battlefield.');await queueZoneTransitionAnimation({sourceSnapshot:proxyAt('graveyard',true,'Criatura reanimada'),targetSnapshot:labZone('battlefield',true),transition:'reanimate',card:{name:'Criatura reanimada'}},options());}
   };
-  scenarios.all=async()=>{for(const key of ['land','clash','multi','trample','first','double','shield','deathtouch','indestructible','player'])await scenarios[key]();};
+  scenarios.all=async()=>{for(const key of ['land','clash','multi','trample','first','double','shield','deathtouch','indestructible','player','counter','exile','bounce','draw','discard','sacrifice','graveyard','reanimate'])await scenarios[key]();};
   const onClick=async(event)=>{
     const btn=event.target.closest?.('button[data-test]');if(!btn)return;
     const kind=btn.dataset.test;
@@ -662,7 +908,7 @@ export async function runAnimationDebugShowcase() {
   document.getElementById('arg-animation-debug-overlay')?.remove();
   const overlay=document.createElement('div');overlay.id='arg-animation-debug-overlay';
   Object.assign(overlay.style,{position:'fixed',inset:'0',zIndex:'30000',background:'rgba(4,7,8,.94)',padding:'18px',overflow:'auto'});
-  overlay.innerHTML='<div style="max-width:1500px;margin:0 auto"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font:900 20px system-ui;color:#f0cf64">🎬 Animation Studio 23.19.4.1</div><button data-overlay-close style="padding:8px 14px;border-radius:8px;border:1px solid #d4af37;background:#202d26;color:#f4e5b9;font-weight:800">Cerrar</button></div><div data-overlay-lab></div></div>';
+  overlay.innerHTML='<div style="max-width:1500px;margin:0 auto"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font:900 20px system-ui;color:#f0cf64">🎬 Animation Studio 23.19.4.2</div><button data-overlay-close style="padding:8px 14px;border-radius:8px;border:1px solid #d4af37;background:#202d26;color:#f4e5b9;font-weight:800">Cerrar</button></div><div data-overlay-lab></div></div>';
   document.body.appendChild(overlay);
   const cleanup=mountAnimationLab(overlay.querySelector('[data-overlay-lab]'));
   overlay.querySelector('[data-overlay-close]')?.addEventListener('click',()=>{cleanup();overlay.remove();});

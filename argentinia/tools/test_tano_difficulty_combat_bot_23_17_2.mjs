@@ -15,10 +15,10 @@ const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 
-assert.ok(['23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.4.1'].includes(ENGINE_VERSION));
+assert.ok(['23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.4.2'].includes(ENGINE_VERSION));
 assert.equal(COMBAT_BOT_2_VERSION,'23.17.2');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.1'].includes(ENGINE_PROTOCOL_VERSION));
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.78');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.equal(CURRENT_POOL_MILESTONE,'pool_expansion_viii_880');
 assert.equal(POOL_BASELINE.total,880);
 

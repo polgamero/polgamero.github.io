@@ -174,9 +174,12 @@ export function setupBoardLayout() {
   rivalWrapper.parentNode.insertBefore(rivalRowContainer, rivalWrapper);
 
   els.rivalDeckPile = createPileElement('MAZO');
+  els.rivalDeckPile.dataset.animationZone = 'library'; els.rivalDeckPile.dataset.animationSide = 'rival';
   els.rivalGYPile = createPileElement('CEMENTERIO');
+  els.rivalGYPile.dataset.animationZone = 'graveyard'; els.rivalGYPile.dataset.animationSide = 'rival';
   els.rivalGYPile.addEventListener('click', () => openGraveyardModal(false));
   els.rivalExilePile = createPileElement('EXILIO');
+  els.rivalExilePile.dataset.animationZone = 'exile'; els.rivalExilePile.dataset.animationSide = 'rival';
   els.rivalExilePile.addEventListener('click', () => openExileModal(false));
 
   const rivalCenterZone = document.createElement('div');
@@ -193,9 +196,12 @@ export function setupBoardLayout() {
   localWrapper.parentNode.insertBefore(localRowContainer, localWrapper);
 
   els.localDeckPile = createPileElement('MAZO');
+  els.localDeckPile.dataset.animationZone = 'library'; els.localDeckPile.dataset.animationSide = 'local';
   els.localGYPile = createPileElement('CEMENTERIO');
+  els.localGYPile.dataset.animationZone = 'graveyard'; els.localGYPile.dataset.animationSide = 'local';
   els.localGYPile.addEventListener('click', () => openGraveyardModal(true));
   els.localExilePile = createPileElement('EXILIO');
+  els.localExilePile.dataset.animationZone = 'exile'; els.localExilePile.dataset.animationSide = 'local';
   els.localExilePile.addEventListener('click', () => openExileModal(true));
 
   const localCenterZone = document.createElement('div');

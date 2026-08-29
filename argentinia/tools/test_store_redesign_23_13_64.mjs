@@ -9,7 +9,7 @@ const version = fs.readFileSync(path.join(root, 'js/version.js'), 'utf8');
 
 assert.ok(version.includes('Entrega 23.13.64 Store Horizontal Showcase Redesign'), 'La baseline debe conservar la entrega 23.13.64.');
 assert.ok(version.includes('Entrega 23.17.4 Store + Navigation UX Responsive Polish'), 'El layout horizontal 23.13.64 debe declarar su supersesión responsive 23.17.4.');
-assert.ok(version.includes("FIRESTORE_RULES_VERSION = '23.13.78'"), 'El contrato de Tienda debe convivir con las Rules actuales.');
+assert.ok(version.includes("FIRESTORE_RULES_VERSION = '23.13.79'"), 'El contrato de Tienda debe convivir con las Rules actuales.');
 assert.ok(texts.includes("'store.pointsHow.link': definition('Tienda', '¿cómo conseguir puntos?'"), 'Falta el link configurable de cómo conseguir puntos.');
 assert.ok(texts.includes("'store.pack.showcaseTitle': definition('Tienda', 'Sobres'"), 'La primera tarjeta debe titularse Sobres.');
 assert.ok(texts.includes("'store.craft.showcaseTitle': definition('Tienda', 'Fichas'"), 'La segunda tarjeta debe titularse Fichas.');

@@ -18,10 +18,10 @@ const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const json=p=>JSON.parse(read(p));
 
-assert.equal(ENGINE_VERSION, '23.19.4.1');
+assert.equal(ENGINE_VERSION, '23.19.4.2');
 assert.equal(PREBUILT_DECKS_VERSION,'23.17.3');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.1');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.78');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.equal(CURRENT_POOL_MILESTONE,'pool_expansion_viii_880');
 assert.equal(POOL_BASELINE.total,880);
 

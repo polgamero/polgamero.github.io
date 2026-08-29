@@ -12,10 +12,10 @@ const version = read('js/version.js');
 const manifest = JSON.parse(read('build-manifest.json'));
 const creatures = JSON.parse(read('assets/data/criaturas.json'));
 
-assert.ok((version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.1'")), 'engine 23.19');
-assert.equal(manifest.engineVersion, '23.19.4.1');
+assert.ok((version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.2'")), 'engine 23.19');
+assert.equal(manifest.engineVersion, '23.19.4.2');
 assert.equal(manifest.pool, 880);
-assert.equal(manifest.firestoreRulesVersion, '23.13.78');
+assert.equal(manifest.firestoreRulesVersion, '23.13.79');
 
 // Mana pool: independent docks outside the player-name row, no cemetery/exile relocation.
 assert.match(html, /player-card rival-card[\s\S]{0,220}id="rival-mana-pool" class="mana-pool-hud mana-pool-dock mana-pool-dock-rival mana-pool-empty"/);
@@ -68,4 +68,4 @@ const chipa = creatures.find(c => c.id === 'crea_009');
 assert.deepEqual(chipa?.etbEffect, { type:'heal', amount:1 }, 'Vendedora de Chipá gets low-impact flavorful ETB');
 assert.match(chipa?.text || '', /ganás 1 Punto de Vida/);
 
-console.log(`MANA_POOL_UX_VANILLA_REBALANCE_23_18_3_OK pool=880 vanillaMV2plus=${bad.length} trueVanilla=${allVanilla.length} upgraded=17 rules=23.13.78`);
+console.log(`MANA_POOL_UX_VANILLA_REBALANCE_23_18_3_OK pool=880 vanillaMV2plus=${bad.length} trueVanilla=${allVanilla.length} upgraded=17 rules=23.13.79`);

@@ -1,4 +1,4 @@
-// js/audioManager.js — Entrega 23.17.5 Gameplay Music.
+// js/audioManager.js — Entrega 23.19.4.2 Zone Transitions + Animation Studio 2.1.
 // Un único dueño del audio de Argentinia: música por escena (menú / Tano / multiplayer)
 // con Opus primero y MP3 fallback, más SFX separados. Todo es local al navegador.
 
@@ -64,6 +64,97 @@ export const AUDIO_CATALOG = Object.freeze({
       sources: Object.freeze([
         Object.freeze({ src: './assets/sounds/sfx/tierra.opus', type: 'audio/ogg; codecs=\"opus\"' }),
         Object.freeze({ src: './assets/sounds/sfx/tierra.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    firstStrike: Object.freeze({
+      id: 'firstStrike', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/iniciativa.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/iniciativa.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    doubleStrike: Object.freeze({
+      id: 'doubleStrike', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/doble_golpe.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/doble_golpe.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    shieldImpact: Object.freeze({
+      id: 'shieldImpact', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/escudo.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/escudo.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    deathtouchImpact: Object.freeze({
+      id: 'deathtouchImpact', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/toque_mortal.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/toque_mortal.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    indestructibleImpact: Object.freeze({
+      id: 'indestructibleImpact', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/indestructible.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/indestructible.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    spellCountered: Object.freeze({
+      id: 'spellCountered', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/counter.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/counter.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    cardExiled: Object.freeze({
+      id: 'cardExiled', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/exilio.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/exilio.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    cardBounced: Object.freeze({
+      id: 'cardBounced', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/volver_mano.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/volver_mano.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    cardDrawn: Object.freeze({
+      id: 'cardDrawn', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/robo.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/robo.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    cardDiscarded: Object.freeze({
+      id: 'cardDiscarded', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/descarte.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/descarte.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    cardSacrificed: Object.freeze({
+      id: 'cardSacrificed', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/sacrificio.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/sacrificio.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    cardToGraveyard: Object.freeze({
+      id: 'cardToGraveyard', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/cementerio.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/cementerio.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    cardReanimated: Object.freeze({
+      id: 'cardReanimated', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/reanimar.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/reanimar.mp3', type: 'audio/mpeg' })
       ])
     })
   })

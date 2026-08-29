@@ -1,9 +1,9 @@
 {
-  "engineVersion": "23.19.4.1",
+  "engineVersion": "23.19.4.2",
   "engineProtocolVersion": "mp-23.19.1",
   "protocolVersion": "mp-23.19.1",
-  "firestoreRulesVersion": "23.13.78",
+  "firestoreRulesVersion": "23.13.79",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Combat Impact II + Admin Animation Studio"
+  "label": "Zone Transitions + Animation Studio 2.1"
 }
