@@ -71,7 +71,7 @@ assert.match(stack,/effectToApply\.type === 'search_library' \|\| effectToApply\
 assert.match(stack,/canResolveGameEffectWithoutTarget[\s\S]*'search_library'[\s\S]*'look_at_top'/);
 assert.match(bot,/normalizeLibraryEffect/);
 assert.match(ui,/export function showLibrarySearchModal/);
-if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.3'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:[6-9]|[1-9]\d+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
+if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:[6-9]|[1-9]\d+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
 assert.match(poolContract,/pool_expansion_i_673:[\s\S]*?23\.15\.5\.5[\s\S]*?673/,'milestone 673 debe seguir auditable');
 assert.match(workflow,/regression_legacy_23_(?:15|16|17)_[0-9_]+\.zip/);
 assert.match(workflow,/ci_regression_manifest_23_(?:15|16|17)_[0-9_]+\.txt/);

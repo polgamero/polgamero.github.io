@@ -13,7 +13,7 @@ const impl = fs.readFileSync(path.join(root,'js/firebaseClientImpl.js'),'utf8');
 const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || path.resolve(root,'../../rules/FIRESTORE_RULES_COMPLETAS_ENTREGA_23_13_72_RULE_BUDGET_ROUTER_HOTFIX.rules');
 const rules = fs.existsSync(rulesPath) ? fs.readFileSync(rulesPath,'utf8') : '';
 
-assert.equal(ENGINE_VERSION, '23.19.3');
+assert.equal(ENGINE_VERSION, '23.19.4');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.77');
 
 // Perfil sin Daily previo: dominio puro debe producir un D1 limpio.

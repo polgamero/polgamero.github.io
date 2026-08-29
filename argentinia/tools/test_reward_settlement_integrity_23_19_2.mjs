@@ -15,10 +15,10 @@ const proxy = read('js/firebaseClient.js');
 const ui = read('js/ui.js');
 const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || '';
 
-assert.equal(ENGINE_VERSION, '23.19.3');
+assert.equal(ENGINE_VERSION, '23.19.4');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.1');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.77');
-assert.equal(manifest.engineVersion, '23.19.3');
+assert.equal(manifest.engineVersion, '23.19.4');
 assert.equal(manifest.engineProtocolVersion, 'mp-23.19.1');
 assert.equal(manifest.firestoreRulesVersion, '23.13.77');
 assert.equal(manifest.pool, 880);

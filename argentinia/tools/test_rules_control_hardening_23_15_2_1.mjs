@@ -68,7 +68,7 @@ function blankState() {
   assert.equal(deserializeBoardItemRef(ref,s,'host'),item,'_syncObjectId debe seguir al permanente aunque cambie de controlador');
 }
 
-if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.3'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:2\.1|[3-9]|[1-9][0-9]+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
+if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:2\.1|[3-9]|[1-9][0-9]+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
 assert.ok(main.includes("evaluateStateBasedActions(state,{getEffectiveToughness,hasKeyword,getProtectionMatch,hasPendingSagaChapter})") || main.includes("evaluateStateBasedActions(state,{getEffectiveToughness,hasKeyword,getProtectionMatch})"));
 assert.ok(main.includes('if (checkAuraLegality() > 0) changed = true;'));
 assert.ok(main.includes('if (checkEquipmentLegality() > 0) changed = true;'));
