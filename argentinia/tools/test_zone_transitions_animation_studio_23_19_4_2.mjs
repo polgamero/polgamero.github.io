@@ -20,7 +20,7 @@ assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
 assert.equal(manifest.engineVersion, '23.19.4.5');
 assert.equal(manifest.firestoreRulesVersion, '23.13.79');
 assert.equal(manifest.pool, 880);
-assert.ok(['Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics'].includes(manifest.label));
+assert.ok(['Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics','Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets'].includes(manifest.label));
 
 // Director remains presentation-only and exposes the generic zone bridge.
 for (const token of [

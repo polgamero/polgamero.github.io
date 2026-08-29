@@ -3,30 +3,30 @@
 // confirma el resultado mecánico y encola una escena. Con animaciones OFF, Admin OFF o
 // prefers-reduced-motion, todas las APIs se convierten en no-op seguro.
 
-import { playSfx } from './audioManager.js';
+import { AUDIO_CATALOG, playSfx } from './audioManager.js';
 
 export const ANIMATION_SETTINGS_STORAGE_KEY = 'argentinia.animations.v1';
 export const ANIMATION_SPEEDS = Object.freeze(['slow', 'normal', 'fast']);
 export const ANIMATION_SPEED_MULTIPLIERS = Object.freeze({ slow: 1.35, normal: 1, fast: 0.68 });
 export const ANIMATION_TUNING_CATALOG = Object.freeze([
-  Object.freeze({ key:'land', label:'Tierra', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
-  Object.freeze({ key:'clash', label:'Impacto 1 vs 1', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
-  Object.freeze({ key:'multi', label:'Combate Multi ×3', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
-  Object.freeze({ key:'trample', label:'Arrollar', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
-  Object.freeze({ key:'first', label:'Iniciativa', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
-  Object.freeze({ key:'double', label:'Doble golpe', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
-  Object.freeze({ key:'shield', label:'Escudo', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
-  Object.freeze({ key:'deathtouch', label:'Toque mortal', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
-  Object.freeze({ key:'indestructible', label:'Indestructible', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
-  Object.freeze({ key:'player', label:'Daño al jugador', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact' }),
-  Object.freeze({ key:'counter', label:'Counter', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
-  Object.freeze({ key:'exile', label:'Exilio', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
-  Object.freeze({ key:'bounce', label:'Volver a mano', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
-  Object.freeze({ key:'draw', label:'Robo', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
-  Object.freeze({ key:'discard', label:'Descarte', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
-  Object.freeze({ key:'sacrifice', label:'Sacrificio', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
-  Object.freeze({ key:'graveyard', label:'Cementerio', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' }),
-  Object.freeze({ key:'reanimate', label:'Reanimar', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single' })
+  Object.freeze({ key:'land', label:'Tierra', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['landTap']) }),
+  Object.freeze({ key:'clash', label:'Impacto 1 vs 1', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['cardImpact']) }),
+  Object.freeze({ key:'multi', label:'Combate Multi ×3', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['cardImpact']) }),
+  Object.freeze({ key:'trample', label:'Arrollar', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['cardImpact','playerImpact']) }),
+  Object.freeze({ key:'first', label:'Iniciativa', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['firstStrike']) }),
+  Object.freeze({ key:'double', label:'Doble golpe', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['doubleStrike']) }),
+  Object.freeze({ key:'shield', label:'Escudo', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['shieldImpact']) }),
+  Object.freeze({ key:'deathtouch', label:'Toque mortal', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['deathtouchImpact']) }),
+  Object.freeze({ key:'indestructible', label:'Indestructible', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['indestructibleImpact']) }),
+  Object.freeze({ key:'player', label:'Daño al jugador', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['playerImpact']) }),
+  Object.freeze({ key:'counter', label:'Counter', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['spellCountered']) }),
+  Object.freeze({ key:'exile', label:'Exilio', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['cardExiled']) }),
+  Object.freeze({ key:'bounce', label:'Volver a mano', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['cardBounced']) }),
+  Object.freeze({ key:'draw', label:'Robo', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['cardDrawn']) }),
+  Object.freeze({ key:'discard', label:'Descarte', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['cardDiscarded']) }),
+  Object.freeze({ key:'sacrifice', label:'Sacrificio', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['cardSacrificed']) }),
+  Object.freeze({ key:'graveyard', label:'Cementerio', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['cardToGraveyard']) }),
+  Object.freeze({ key:'reanimate', label:'Reanimar', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['cardReanimated']) })
 ]);
 
 const DEFAULT_SETTINGS = Object.freeze({ enabled: true, speed: 'normal' });
@@ -97,8 +97,30 @@ export function normalizeAnimationTunings(raw = {}) {
   return normalized;
 }
 
+function audioAssetFilename(src) {
+  const clean=String(src || '').split(/[?#]/)[0];
+  return clean.split('/').filter(Boolean).pop() || clean;
+}
+
+function animationAudioTargets(def) {
+  return (Array.isArray(def?.sfxIds) ? def.sfxIds : []).map(id => {
+    const sources=AUDIO_CATALOG?.sfx?.[id]?.sources || [];
+    const opus=sources.find(source => String(source?.src || '').toLowerCase().endsWith('.opus'));
+    const mp3=sources.find(source => String(source?.src || '').toLowerCase().endsWith('.mp3'));
+    return Object.freeze({
+      id,
+      opus:audioAssetFilename(opus?.src),
+      mp3:audioAssetFilename(mp3?.src)
+    });
+  });
+}
+
 export function getAnimationTuningCatalog() {
-  return ANIMATION_TUNING_CATALOG.map(def => ({ ...def }));
+  return ANIMATION_TUNING_CATALOG.map(def => ({
+    ...def,
+    sfxIds:[...(def.sfxIds || [])],
+    audioTargets:animationAudioTargets(def).map(target => ({ ...target }))
+  }));
 }
 
 export function normalizeAnimationSettings(raw = {}) {

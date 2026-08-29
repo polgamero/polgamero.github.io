@@ -25,7 +25,7 @@ assert.equal(manifest.engineProtocolVersion,'mp-23.19.2');
 assert.equal(manifest.protocolVersion,'mp-23.19.2');
 assert.equal(manifest.firestoreRulesVersion,'23.13.79');
 assert.equal(manifest.pool,880);
-assert.equal(manifest.label,'Animation Actor Parity + SFX Cue Semantics');
+assert.equal(manifest.label,'Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets');
 
 // Admin semantics: the old "Fin" is migrated to the actual cue meaning, "Momento clave".
 const catalog=getAnimationTuningCatalog();
@@ -46,7 +46,32 @@ assert.equal(migrated.land.sfxMoment,'start');
 assert.equal(migrated.land.sfxCadence,'single');
 assert.ok(ui.includes('>Momento clave<'),'Admin names the semantic cue, not a fake animation end');
 assert.ok(ui.includes('>Cadencia<'),'Admin exposes canonical cadence');
+assert.ok(ui.includes('>OPUS<'),'Admin exposes OPUS target column');
+assert.ok(ui.includes('>fallback MP3<'),'Admin exposes MP3 fallback target column');
 assert.ok(ui.includes("'per_impact' ? 'Por impacto' : '1 vez'"),'Admin labels per-impact cadence');
+
+// Admin audio targets are derived from the same AUDIO_CATALOG used by runtime, never handwritten filenames in UI.
+const audioTargets=Object.fromEntries(catalog.map(def => [def.key,(def.audioTargets || []).map(target => [target.opus,target.mp3])]));
+assert.deepEqual(audioTargets.land,[['tierra.opus','tierra.mp3']]);
+assert.deepEqual(audioTargets.clash,[['choque.opus','choque.mp3']]);
+assert.deepEqual(audioTargets.multi,[['choque.opus','choque.mp3']]);
+assert.deepEqual(audioTargets.trample,[['choque.opus','choque.mp3'],['golpe_jugador.opus','golpe_jugador.mp3']]);
+assert.deepEqual(audioTargets.first,[['iniciativa.opus','iniciativa.mp3']]);
+assert.deepEqual(audioTargets.double,[['doble_golpe.opus','doble_golpe.mp3']]);
+assert.deepEqual(audioTargets.shield,[['escudo.opus','escudo.mp3']]);
+assert.deepEqual(audioTargets.deathtouch,[['toque_mortal.opus','toque_mortal.mp3']]);
+assert.deepEqual(audioTargets.indestructible,[['indestructible.opus','indestructible.mp3']]);
+assert.deepEqual(audioTargets.player,[['golpe_jugador.opus','golpe_jugador.mp3']]);
+assert.deepEqual(audioTargets.counter,[['counter.opus','counter.mp3']]);
+assert.deepEqual(audioTargets.exile,[['exilio.opus','exilio.mp3']]);
+assert.deepEqual(audioTargets.bounce,[['volver_mano.opus','volver_mano.mp3']]);
+assert.deepEqual(audioTargets.draw,[['robo.opus','robo.mp3']]);
+assert.deepEqual(audioTargets.discard,[['descarte.opus','descarte.mp3']]);
+assert.deepEqual(audioTargets.sacrifice,[['sacrificio.opus','sacrificio.mp3']]);
+assert.deepEqual(audioTargets.graveyard,[['cementerio.opus','cementerio.mp3']]);
+assert.deepEqual(audioTargets.reanimate,[['reanimar.opus','reanimar.mp3']]);
+assert.ok(director.includes("import { AUDIO_CATALOG, playSfx } from './audioManager.js';"),'Animation catalog resolves display targets from runtime audio catalog');
+assert.ok(ui.includes('def.audioTargets'),'UI renders canonical audio targets from Animation Director');
 assert.ok(firebase.includes('schemaVersion: 4'),'Animation policy schema v4');
 assert.ok(firebase.includes("sfxMoment: value.sfxMoment === 'key' ? 'key'"),'Firestore policy sanitizes key/start moment');
 
@@ -97,5 +122,5 @@ assert.ok(workflow.includes('Validate Animation Actor Parity + SFX Cue Semantics
 
 console.log('ANIMATION_ACTOR_PARITY_SFX_CUES_23_19_4_5_OK');
 console.log('actors=player+tano+host+guest presentation-cues=role-owned-deduped-no-echo');
-console.log('sfx=start-or-key cadence=single-or-per-impact multi-xN=N-key-cues');
+console.log('sfx=start-or-key cadence=single-or-per-impact multi-xN=N-key-cues audio-targets=runtime-catalog-opus+mp3');
 console.log('pool=880 protocol=mp-23.19.2 rules=23.13.79 unchanged');

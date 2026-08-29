@@ -6172,16 +6172,19 @@ function injectAdminPanelStyles() {
     .admin-animation-speed-grid input { width:100%; background:rgba(255,255,255,.06); border:1.5px solid rgba(176,106,212,.4); border-radius:7px; color:#f0e0b0; font-size:14px; font-weight:800; padding:8px 10px; }
     .admin-animation-reference-help { color:#9e8aac; font-size:11px; line-height:1.5; margin:8px 0 12px; }
     .admin-animation-tuning-wrap { overflow:auto; border:1px solid rgba(176,106,212,.28); border-radius:10px; margin:12px 0; background:rgba(8,5,12,.28); }
-    .admin-animation-tuning-table { width:100%; min-width:640px; border-collapse:collapse; font-size:12px; }
+    .admin-animation-tuning-table { width:100%; min-width:980px; border-collapse:collapse; font-size:12px; }
     .admin-animation-tuning-table th,.admin-animation-tuning-table td { padding:9px 10px; border-bottom:1px solid rgba(176,106,212,.16); text-align:left; }
     .admin-animation-tuning-table thead th { color:#e5d2ef; background:#1b1123; font-weight:800; }
     .admin-animation-tuning-table thead tr:nth-child(2) th { text-align:center; color:#c9b2d8; font-size:11px; }
     .admin-animation-tuning-table tbody tr:last-child td { border-bottom:none; }
     .admin-animation-tuning-table tbody tr:hover { background:rgba(176,106,212,.06); }
-    .admin-animation-tuning-table td:nth-child(3),.admin-animation-tuning-table td:nth-child(4) { text-align:center; width:90px; }
+    .admin-animation-tuning-table td:nth-child(5),.admin-animation-tuning-table td:nth-child(6) { text-align:center; width:90px; }
     .admin-animation-tuning-speed { width:110px; background:rgba(255,255,255,.06); border:1.5px solid rgba(176,106,212,.4); border-radius:7px; color:#f0e0b0; font-size:13px; font-weight:800; padding:7px 9px; }
     .admin-animation-sfx-check { width:18px; height:18px; accent-color:#d4af37; cursor:pointer; }
     .admin-animation-name { color:#f1dfb4; font-weight:800; white-space:nowrap; }
+    .admin-animation-audio { min-width:145px; color:#cbb8d8; }
+    .admin-animation-audio code { display:block; width:max-content; max-width:210px; margin:2px 0; padding:2px 5px; border-radius:5px; background:rgba(255,255,255,.05); color:#e8d9ef; font-size:10.5px; white-space:nowrap; }
+    .admin-animation-audio-empty { color:#74677d; font-style:italic; }
     .admin-animation-studio-section { padding-left:16px; padding-right:16px; }
     @media(max-width:900px){.admin-animation-speed-grid{grid-template-columns:1fr}.admin-animation-studio-section{padding-left:8px;padding-right:8px}}
   `;
@@ -6257,8 +6260,17 @@ export function showAdminPanel(onBack) {
   const animationTuningRowsHTML = animationTuningCatalog.map(def => {
     const tuning = initialAnimationTunings[def.key] || { relativeSpeed:1, sfxMoment:def.defaultSfxMoment || 'start', sfxCadence:def.sfxCadence || 'single' };
     const cadenceLabel=(tuning.sfxCadence || def.sfxCadence)==='per_impact' ? 'Por impacto' : '1 vez';
+    const audioTargets=Array.isArray(def.audioTargets) ? def.audioTargets : [];
+    const opusHTML=audioTargets.length
+      ? audioTargets.map(target => `<code>${escapeHtml(target.opus || '—')}</code>`).join('')
+      : '<span class="admin-animation-audio-empty">—</span>';
+    const mp3HTML=audioTargets.length
+      ? audioTargets.map(target => `<code>${escapeHtml(target.mp3 || '—')}</code>`).join('')
+      : '<span class="admin-animation-audio-empty">—</span>';
     return `<tr data-animation-tuning-row="${def.key}">
       <td class="admin-animation-name">${escapeHtml(def.label)}</td>
+      <td class="admin-animation-audio" data-animation-audio-opus="${def.key}">${opusHTML}</td>
+      <td class="admin-animation-audio" data-animation-audio-mp3="${def.key}">${mp3HTML}</td>
       <td><input type="number" class="admin-animation-tuning-speed" data-animation-tuning-speed="${def.key}" value="${Number(tuning.relativeSpeed || 1).toFixed(2)}" min="0.25" max="3" step="0.05"></td>
       <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="start" ${tuning.sfxMoment === 'start' ? 'checked' : ''} aria-label="SFX al inicio para ${escapeHtml(def.label)}"></td>
       <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="key" ${tuning.sfxMoment === 'key' ? 'checked' : ''} aria-label="SFX en el momento clave para ${escapeHtml(def.label)}"></td>
@@ -6283,11 +6295,11 @@ export function showAdminPanel(onBack) {
       </div>
       <div class="admin-animation-reference-help">Estos tres valores son la referencia central que usa <b>Velocidad de animaciones</b> en Opciones. 1.00 = duración base; 1.35 = 35% más lenta; 0.68 = 32% más rápida. Rango seguro: 0.25–3.00.</div>
       <div class="admin-section-title" style="margin-top:18px;">Ajuste por animación</div>
-      <div class="admin-animation-reference-help"><b>Velocidad relativa</b> multiplica la velocidad de esa animación sobre la referencia global elegida por el usuario. Ejemplo: <b>0.75</b> = 75% de velocidad, por lo tanto esa animación dura ≈33% más. <b>1.00</b> no altera la referencia global. En SFX, <b>Inicio</b> y <b>Momento clave</b> son excluyentes. La <b>Cadencia</b> es canónica: las escenas de combate disparan un SFX por cada impacto real; Tierra y transiciones lo hacen una sola vez.</div>
+      <div class="admin-animation-reference-help"><b>Velocidad relativa</b> multiplica la velocidad de esa animación sobre la referencia global elegida por el usuario. Ejemplo: <b>0.75</b> = 75% de velocidad, por lo tanto esa animación dura ≈33% más. <b>1.00</b> no altera la referencia global. En SFX, <b>Inicio</b> y <b>Momento clave</b> son excluyentes. La <b>Cadencia</b> es canónica: las escenas de combate disparan un SFX por cada impacto real; Tierra y transiciones lo hacen una sola vez. Las columnas <b>OPUS</b> y <b>fallback MP3</b> son informativas y salen del mismo catálogo de audio que usa el runtime; cuando una escena puede disparar más de un SFX (por ejemplo Arrollar), se muestran todos.</div>
       <div class="admin-animation-tuning-wrap">
         <table class="admin-animation-tuning-table">
           <thead>
-            <tr><th rowspan="2">Animación</th><th rowspan="2">Velocidad relativa</th><th colspan="2" style="text-align:center;">Ejecución del SFX</th><th rowspan="2">Cadencia</th></tr>
+            <tr><th rowspan="2">Animación</th><th rowspan="2">OPUS</th><th rowspan="2">fallback MP3</th><th rowspan="2">Velocidad relativa</th><th colspan="2" style="text-align:center;">Ejecución del SFX</th><th rowspan="2">Cadencia</th></tr>
             <tr><th>Inicio</th><th>Momento clave</th></tr>
           </thead>
           <tbody>${animationTuningRowsHTML}</tbody>

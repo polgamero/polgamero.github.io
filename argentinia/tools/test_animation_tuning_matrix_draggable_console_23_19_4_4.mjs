@@ -26,7 +26,7 @@ assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.equal(manifest.engineVersion,ENGINE_VERSION);
 assert.equal(manifest.firestoreRulesVersion,'23.13.79');
 assert.equal(manifest.pool,880);
-assert.ok(['Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics'].includes(manifest.label));
+assert.ok(['Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics','Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets'].includes(manifest.label));
 assert.ok(workflow.includes('test_animation_tuning_matrix_draggable_console_23_19_4_4.mjs'),'CI must retain and execute the 23.19.4.4 contract');
 assert.ok(workflow.includes('Validate Animation Tuning Matrix + Draggable Test Console 23.19.4.4'),'CI gate label');
 
