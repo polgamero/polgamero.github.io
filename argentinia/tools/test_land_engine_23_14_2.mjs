@@ -54,6 +54,6 @@ const versionMatch = version.match(/ENGINE_VERSION = '(\d+)\.(\d+)(?:\.(\d+))?(?
 assert.ok(versionMatch);
 const versionTuple = versionMatch.slice(1).map(v => Number(v || 0));
 assert.ok(versionTuple[0] > 23 || (versionTuple[0] === 23 && (versionTuple[1] > 14 || (versionTuple[1] === 14 && versionTuple[2] >= 2))), 'LAND 1 requiere engine 23.14.2 o posterior');
-assert.match(manifest.engineVersion,/^23\.(?:14\.(?:[2-9]|\d{2,})|1[5-7]\.\d+(?:\.\d+)?|18(?:\.\d+)?|19(?:\.\d+)?|[2-9]\d\.\d+(?:\.\d+)?)$/);
-assert.equal(manifest.firestoreRulesVersion,'23.13.77');
+assert.match(manifest.engineVersion,/^23\.(?:14\.(?:[2-9]|\d{2,})|1[5-7]\.\d+(?:\.\d+)?|18(?:\.\d+)?|19(?:\.\d+){1,2}|[2-9]\d\.\d+(?:\.\d+)?)$/);
+assert.equal(manifest.firestoreRulesVersion,'23.13.78');
 console.log('LAND_ENGINE_23_14_2_OK targets=land basic/nonbasic manlands=animate_land dualIdentity=land+creature sickness=tracked cleanup=eot multiplayer=serialized');

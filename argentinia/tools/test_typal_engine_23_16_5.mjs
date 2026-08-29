@@ -19,11 +19,11 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const files=['criaturas','instantaneos','conjuros','encantamientos','artefactos','tierras','planeswalkers'];
 const cards=files.flatMap(x=>JSON.parse(read(`assets/data/${x}.json`)));
 
-assert.ok(['23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.4'].includes(ENGINE_VERSION));
+assert.ok(['23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.4.1'].includes(ENGINE_VERSION));
 assert.equal(TYPAL_ENGINE_VERSION,'23.16.5');
 assert.equal(GENERIC_EVENT_ENGINE_VERSION,'23.16.5');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.1'].includes(ENGINE_PROTOCOL_VERSION));
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.77');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.78');
 assert.ok(['pool_expansion_vii_850','pool_expansion_viii_880'].includes(CURRENT_POOL_MILESTONE));
 assert.ok(POOL_BASELINE.total>=850);
 assert.ok(cards.length>=850,'Typal Engine contract survives later Typal content');
