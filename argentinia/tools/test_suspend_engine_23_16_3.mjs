@@ -19,7 +19,7 @@ const dataFiles=['criaturas.json','instantaneos.json','conjuros.json','encantami
 const collect=(v,out=[])=>{ if(Array.isArray(v)) v.forEach(x=>collect(x,out)); else if(v&&typeof v==='object'){ if(v.id&&v.name&&v.type) out.push(v); else Object.values(v).forEach(x=>collect(x,out)); } return out; };
 const cards=dataFiles.flatMap(f=>collect(json(`assets/data/${f}`)));
 
-assert.ok(['23.16.3','23.16.3.1','23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.3'].includes(ENGINE_VERSION));
+assert.ok(['23.16.3','23.16.3.1','23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.4'].includes(ENGINE_VERSION));
 assert.equal(SUSPEND_ENGINE_VERSION,'23.16.3');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.1'].includes(ENGINE_PROTOCOL_VERSION));
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.77');
