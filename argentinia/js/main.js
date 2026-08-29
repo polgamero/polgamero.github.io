@@ -5263,7 +5263,7 @@ function queueGeneratedTriggerEntries(entries = [], eventType = 'event', options
 }
 
 export function dispatchGameEvent(rawEvent = {}, options = {}) {
-  // 23.19.4.2 — bridge visual descartable. Captura la geometría ANTES del próximo render,
+  // 23.19.4.3 — bridge visual descartable. Captura la geometría ANTES del próximo render,
   // pero nunca muta state ni altera triggers: si falla o está OFF, gameplay sigue igual.
   try { void queueGameEventAnimation(rawEvent); } catch {}
   const entries=buildGenericEventTriggerEntries(rawEvent,options);

@@ -572,6 +572,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       ? {
           attackerSnapshot:captureCardVisual(attacker, isLocalAttacking ? 'local' : 'rival'),
           playerSnapshot:attackerHasTrample && !attacker.attackTarget ? capturePlayerVisual(!isLocalAttacking) : null,
+          playerHpBefore:!attacker.attackTarget ? (isLocalAttacking ? state.rivalHP : state.localHP) : null,
           defenders:aliveBlockers.map(blocker => ({
             item:blocker,
             snapshot:captureCardVisual(blocker, isLocalAttacking ? 'rival' : 'local'),
@@ -643,9 +644,13 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         attackerSnapshot:captureCardVisual(attacker, isLocalAttacking ? 'local' : 'rival'),
         playerSnapshot:capturePlayerVisual(!isLocalAttacking)
       };
+      const hpBefore = isLocalAttacking ? state.rivalHP : state.localHP;
+      const infectHit = hasKeyword(attacker, 'infect');
       const damageDealt = dealCombatDamageToPlayer(attacker, !isLocalAttacking, attackerPower);
+      const hpAfter = isLocalAttacking ? state.rivalHP : state.localHP;
       if (damageDealt > 0 && directHitVisual.attackerSnapshot && directHitVisual.playerSnapshot) {
-        void queuePlayerDamageAnimation({ ...directHitVisual, amount:damageDealt, attackerIsLocal:isLocalAttacking });
+        await queuePlayerDamageAnimation({ ...directHitVisual, amount:damageDealt, attackerIsLocal:isLocalAttacking,
+          playerHpBefore:infectHit?null:hpBefore, playerHpAfter:infectHit?null:hpAfter });
       }
       if (attackerHasLifelink && damageDealt > 0) {
         gainLifeFromCombat(isLocalAttacking,damageDealt,attacker);
@@ -672,12 +677,17 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
           attackerSnapshot:captureCardVisual(attacker, isLocalAttacking ? 'local' : 'rival'),
           playerSnapshot:capturePlayerVisual(!isLocalAttacking)
         };
+        const hpBefore = isLocalAttacking ? state.rivalHP : state.localHP;
+        const infectHit = hasKeyword(attacker, 'infect');
         const damageDealt = dealCombatDamageToPlayer(attacker, !isLocalAttacking, attackerPower);
+        const hpAfter = isLocalAttacking ? state.rivalHP : state.localHP;
         if (damageDealt > 0 && trampleAllVisual.attackerSnapshot && trampleAllVisual.playerSnapshot) {
-          void queuePlayerDamageAnimation({
+          await queuePlayerDamageAnimation({
             ...trampleAllVisual,
             amount:damageDealt,
             attackerIsLocal:isLocalAttacking,
+            playerHpBefore:infectHit?null:hpBefore,
+            playerHpAfter:infectHit?null:hpAfter,
             stepKind:stepFilter === dealsInFirstStrikeStep ? 'first_strike' : 'regular'
           });
         }
@@ -806,7 +816,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
 
     if (combatVisual?.attackerSnapshot && combatVisual.defenders.some(entry => entry.snapshot)) {
       const stepKind = stepFilter === dealsInFirstStrikeStep ? 'first_strike' : 'regular';
-      void queueCombatSequenceAnimation({
+      await queueCombatSequenceAnimation({
         attackerSnapshot:combatVisual.attackerSnapshot,
         defenders:combatVisual.defenders.map(entry => {
           const shieldAfter=Math.max(0,Number(entry.item?.counters?.shield)||0);
@@ -825,6 +835,8 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         }),
         playerSnapshot:damageToPlayerThisStep > 0 ? combatVisual.playerSnapshot : null,
         playerDamage:damageToPlayerThisStep,
+        playerHpBefore:hasKeyword(attacker,'infect')?null:combatVisual.playerHpBefore,
+        playerHpAfter:hasKeyword(attacker,'infect')?null:(isLocalAttacking ? state.rivalHP : state.localHP),
         attackerDied:willCreatureLeaveFromCombatLethal(attacker),
         attackerIsLocal:isLocalAttacking,
         stepKind,

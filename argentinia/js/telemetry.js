@@ -1183,9 +1183,9 @@ async function performRemoteTelemetryUpload(session, user, kind, reason) {
     updatePanelStatus();
     const pending = remoteFinalPending;
     remoteFinalPending = null;
-    if (pending && pending.session === currentSession && remoteFinalUploadedSessionId !== pending.session.sessionId) {
+    if (pending && pending.session === currentSession && (pending.forceFinalRefresh || remoteFinalUploadedSessionId !== pending.session.sessionId)) {
       setTimeout(() => {
-        requestRemoteTelemetryUpload(pending.reason, { kind: 'final', capture: false }).catch(() => {});
+        requestRemoteTelemetryUpload(pending.reason, { kind: 'final', capture: false, forceFinalRefresh:!!pending.forceFinalRefresh }).catch(() => {});
       }, 0);
     }
   }
@@ -1198,7 +1198,7 @@ export async function requestRemoteTelemetryUpload(reason = 'manual', options = 
   if (options.capture !== false) captureTelemetryState(`remote_${reason}`);
   let kind = options.kind === 'final' ? 'final' : 'latest';
   if (session.endedAt) kind = 'final';
-  if (kind === 'final' && remoteFinalUploadedSessionId === session.sessionId) return true;
+  if (kind === 'final' && remoteFinalUploadedSessionId === session.sessionId && !options.forceFinalRefresh) return true;
 
   const user = typeof providers.getCurrentUser === 'function' ? providers.getCurrentUser() : null;
   if (!user?.uid) {
@@ -1210,7 +1210,7 @@ export async function requestRemoteTelemetryUpload(reason = 'manual', options = 
 
   if (remoteUploadInFlight) {
     if (kind === 'final') {
-      remoteFinalPending = { session, reason };
+      remoteFinalPending = { session, reason, forceFinalRefresh:!!options.forceFinalRefresh };
       remoteState.status = 'final_pending';
       updatePanelStatus();
     }
@@ -1218,6 +1218,11 @@ export async function requestRemoteTelemetryUpload(reason = 'manual', options = 
   }
 
   return performRemoteTelemetryUpload(session, user, kind, reason);
+}
+
+export function refreshFinalTelemetryAfterTerminalEvent(reason = 'terminal_event') {
+  if (!currentSession?.endedAt) return Promise.resolve(false);
+  return requestRemoteTelemetryUpload(reason, { kind:'final', capture:false, forceFinalRefresh:true });
 }
 
 export function startTelemetrySession(meta = {}) {
@@ -1644,7 +1649,7 @@ export function markTelemetryBug(note = null) {
   flashPanel('🐞 Marcado');
   // El bug manual es el instante de mayor valor diagnóstico: además del ciclo de 30 s,
   // fuerza un checkpoint Firestore inmediato para no perder ese contexto si la pestaña muere después.
-  requestRemoteTelemetryUpload('manual_bug_marker', { kind: 'latest', capture: false }).catch(() => {});
+  requestRemoteTelemetryUpload('manual_bug_marker', { kind: currentSession?.endedAt ? 'final' : 'latest', capture: false, forceFinalRefresh: !!currentSession?.endedAt }).catch(() => {});
   return true;
 }
 

@@ -1919,6 +1919,15 @@ export async function saveAnimationPolicy(config = {}) {
     return Math.max(0.25, Math.min(3, Math.round(n * 100) / 100));
   };
   const rawSpeeds = config?.speedMultipliers && typeof config.speedMultipliers === 'object' ? config.speedMultipliers : {};
+  const rawTunings = config?.animationTunings && typeof config.animationTunings === 'object' ? config.animationTunings : {};
+  const animationTunings = {};
+  for (const [key, value] of Object.entries(rawTunings)) {
+    if (!/^[a-z][a-z0-9_]{0,31}$/.test(key) || !value || typeof value !== 'object' || Array.isArray(value)) continue;
+    animationTunings[key] = {
+      relativeSpeed: clampMultiplier(value.relativeSpeed, 1),
+      sfxTiming: value.sfxTiming === 'end' ? 'end' : 'start'
+    };
+  }
   return saveAdminGameConfigDocument('animations', {
     enabled: config?.enabled !== false,
     speedMultipliers: {
@@ -1926,7 +1935,8 @@ export async function saveAnimationPolicy(config = {}) {
       normal: clampMultiplier(rawSpeeds.normal, 1),
       fast: clampMultiplier(rawSpeeds.fast, 0.68)
     },
-    schemaVersion: 2,
+    animationTunings,
+    schemaVersion: 3,
     engineVersion: ENGINE_VERSION
   });
 }

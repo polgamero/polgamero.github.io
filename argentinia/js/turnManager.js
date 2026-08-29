@@ -6,7 +6,7 @@ import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAt
 import { hasKeyword } from './keywords.js';
 import { awardGamePointsOnce, clearActiveMatchId, recordPlayerGameResult, sealMultiplayerOutcome } from './firebaseClient.js';
 import { pointsForBotGameEnd, POINTS } from './store.js';
-import { recordTelemetryEvent, getTelemetryStatus } from './telemetry.js';
+import { recordTelemetryEvent, getTelemetryStatus, refreshFinalTelemetryAfterTerminalEvent } from './telemetry.js';
 import { PRIORITY_CLOCK_DURATION_MS, getEffectivePriorityActivity, canPriorityClockRun, getFrozenPriorityRemainingMs } from './priorityUX.js';
 import { gameText } from './gameTexts.js';
 import { finishSoloRecovery } from './soloRecovery.js';
@@ -102,6 +102,7 @@ function awardMatchEndPoints(won) {
   // para Gaucho sin login. Guardamos antes su duración efectiva para Stats.
   const soloRecovery = !state.currentMatch ? finishSoloRecovery() : null;
   if (!state.currentUser) return;
+  if (!state.currentMatch) showGameRewardStatus(gameText('game.points.botChecking'), 'info');
 
   const telemetry = getTelemetryStatus();
   const matchId = state.currentMatch?.matchId || '';
@@ -201,8 +202,10 @@ function awardMatchEndPoints(won) {
         const msg = won
           ? gameText('game.points.botWin', { difficulty: difficultyLabel, points: awarded, total: newTotal })
           : gameText('game.points.botLoss', { points: awarded, total: newTotal });
+        showGameRewardStatus(msg, 'success');
         logMsg(msg);
       }
+      void refreshFinalTelemetryAfterTerminalEvent('game_reward_settled').catch(()=>{});
       updateAccountUI(state.currentUser);
     })
     .catch(err => {
@@ -215,8 +218,9 @@ function awardMatchEndPoints(won) {
         code: err?.code || err?.name || 'ERROR',
         message: err?.message || String(err)
       }, 'warning');
-      if (mode === 'multiplayer') showGameRewardStatus(gameText('game.points.deferred'), 'warning');
+      showGameRewardStatus(gameText('game.points.deferred'), 'warning');
       logMsg(gameText('game.points.deferred'));
+      void refreshFinalTelemetryAfterTerminalEvent('game_reward_deferred').catch(()=>{});
     });
 }
 

@@ -89,7 +89,7 @@ import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 import { enterMenuAudio, getAudioSettings, toggleMusic, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
-import { getAnimationSettings, getServerAnimationPolicy, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer } from './animationDirector.js';
+import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer } from './animationDirector.js';
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
 import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandActivatedAbilities, describeLandTransformation } from './landCharacteristics.js';
@@ -6171,6 +6171,17 @@ function injectAdminPanelStyles() {
     .admin-animation-speed-grid label { display:flex; flex-direction:column; gap:6px; color:#d8c4e8; font-size:12px; font-weight:700; }
     .admin-animation-speed-grid input { width:100%; background:rgba(255,255,255,.06); border:1.5px solid rgba(176,106,212,.4); border-radius:7px; color:#f0e0b0; font-size:14px; font-weight:800; padding:8px 10px; }
     .admin-animation-reference-help { color:#9e8aac; font-size:11px; line-height:1.5; margin:8px 0 12px; }
+    .admin-animation-tuning-wrap { overflow:auto; border:1px solid rgba(176,106,212,.28); border-radius:10px; margin:12px 0; background:rgba(8,5,12,.28); }
+    .admin-animation-tuning-table { width:100%; min-width:640px; border-collapse:collapse; font-size:12px; }
+    .admin-animation-tuning-table th,.admin-animation-tuning-table td { padding:9px 10px; border-bottom:1px solid rgba(176,106,212,.16); text-align:left; }
+    .admin-animation-tuning-table thead th { color:#e5d2ef; background:#1b1123; font-weight:800; }
+    .admin-animation-tuning-table thead tr:nth-child(2) th { text-align:center; color:#c9b2d8; font-size:11px; }
+    .admin-animation-tuning-table tbody tr:last-child td { border-bottom:none; }
+    .admin-animation-tuning-table tbody tr:hover { background:rgba(176,106,212,.06); }
+    .admin-animation-tuning-table td:nth-child(3),.admin-animation-tuning-table td:nth-child(4) { text-align:center; width:90px; }
+    .admin-animation-tuning-speed { width:110px; background:rgba(255,255,255,.06); border:1.5px solid rgba(176,106,212,.4); border-radius:7px; color:#f0e0b0; font-size:13px; font-weight:800; padding:7px 9px; }
+    .admin-animation-sfx-check { width:18px; height:18px; accent-color:#d4af37; cursor:pointer; }
+    .admin-animation-name { color:#f1dfb4; font-weight:800; white-space:nowrap; }
     .admin-animation-studio-section { padding-left:16px; padding-right:16px; }
     @media(max-width:900px){.admin-animation-speed-grid{grid-template-columns:1fr}.admin-animation-studio-section{padding-left:8px;padding-right:8px}}
   `;
@@ -6241,6 +6252,17 @@ export function showAdminPanel(onBack) {
 
   const initialAnimationPolicy = getServerAnimationPolicy();
   const initialAnimationRefs = initialAnimationPolicy.speedMultipliers || { slow:1.35, normal:1, fast:0.68 };
+  const animationTuningCatalog = getAnimationTuningCatalog();
+  const initialAnimationTunings = normalizeAnimationTunings(initialAnimationPolicy.animationTunings || {});
+  const animationTuningRowsHTML = animationTuningCatalog.map(def => {
+    const tuning = initialAnimationTunings[def.key] || { relativeSpeed:1, sfxTiming:def.defaultSfxTiming || 'start' };
+    return `<tr data-animation-tuning-row="${def.key}">
+      <td class="admin-animation-name">${escapeHtml(def.label)}</td>
+      <td><input type="number" class="admin-animation-tuning-speed" data-animation-tuning-speed="${def.key}" value="${Number(tuning.relativeSpeed || 1).toFixed(2)}" min="0.25" max="3" step="0.05"></td>
+      <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-timing="${def.key}" data-timing="start" ${tuning.sfxTiming === 'start' ? 'checked' : ''} aria-label="SFX al inicio para ${escapeHtml(def.label)}"></td>
+      <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-timing="${def.key}" data-timing="end" ${tuning.sfxTiming === 'end' ? 'checked' : ''} aria-label="SFX al fin para ${escapeHtml(def.label)}"></td>
+    </tr>`;
+  }).join('');
   const animationAdminHTML = `
     <div class="admin-section">
       <div class="admin-section-title">Política global y velocidades de referencia</div>
@@ -6258,7 +6280,18 @@ export function showAdminPanel(onBack) {
         <label><span>Rápida · multiplicador</span><input type="number" id="cfg-animation-speed-fast" value="${Number(initialAnimationRefs.fast || 0.68).toFixed(2)}" min="0.25" max="3" step="0.05"></label>
       </div>
       <div class="admin-animation-reference-help">Estos tres valores son la referencia central que usa <b>Velocidad de animaciones</b> en Opciones. 1.00 = duración base; 1.35 = 35% más lenta; 0.68 = 32% más rápida. Rango seguro: 0.25–3.00.</div>
-      <button class="admin-save-btn" id="admin-animation-policy-save">🎬 Guardar política y velocidades</button>
+      <div class="admin-section-title" style="margin-top:18px;">Ajuste por animación</div>
+      <div class="admin-animation-reference-help"><b>Velocidad relativa</b> multiplica la velocidad de esa animación sobre la referencia global elegida por el usuario. Ejemplo: <b>0.75</b> = 75% de velocidad, por lo tanto esa animación dura ≈33% más. <b>1.00</b> no altera la referencia global. En SFX, Inicio y Fin son excluyentes.</div>
+      <div class="admin-animation-tuning-wrap">
+        <table class="admin-animation-tuning-table">
+          <thead>
+            <tr><th rowspan="2">Animación</th><th rowspan="2">Velocidad relativa</th><th colspan="2" style="text-align:center;">Ejecución del SFX</th></tr>
+            <tr><th>Inicio</th><th>Fin</th></tr>
+          </thead>
+          <tbody>${animationTuningRowsHTML}</tbody>
+        </table>
+      </div>
+      <button class="admin-save-btn" id="admin-animation-policy-save">🎬 Guardar política, velocidades y animaciones</button>
       <div class="store-error-msg" id="admin-animation-error" style="text-align:center;"></div>
       <div class="admin-success-msg" id="admin-animation-success"></div>
     </div>
@@ -7005,9 +7038,29 @@ Receipt: ${receiptId}
   const adminAnimationFast = overlay.querySelector('#cfg-animation-speed-fast');
   const adminAnimationError = overlay.querySelector('#admin-animation-error');
   const adminAnimationSuccess = overlay.querySelector('#admin-animation-success');
+  const animationTuningSpeedInputs = [...overlay.querySelectorAll('[data-animation-tuning-speed]')];
+  const animationSfxTimingChecks = [...overlay.querySelectorAll('[data-animation-sfx-timing]')];
   const readAnimationMultiplier = (input, fallback) => {
     const n=Number(input?.value);
     return Number.isFinite(n) ? Math.max(.25,Math.min(3,Math.round(n*100)/100)) : fallback;
+  };
+  animationSfxTimingChecks.forEach(check => check.addEventListener('change', () => {
+    const key=check.dataset.animationSfxTiming;
+    const peers=animationSfxTimingChecks.filter(candidate => candidate.dataset.animationSfxTiming===key);
+    if (check.checked) peers.forEach(candidate => { if(candidate!==check) candidate.checked=false; });
+    else if (!peers.some(candidate => candidate.checked)) check.checked=true;
+  }));
+  const readAnimationTunings = () => {
+    const raw={};
+    for (const def of animationTuningCatalog) {
+      const speedInput=animationTuningSpeedInputs.find(input => input.dataset.animationTuningSpeed===def.key);
+      const checked=animationSfxTimingChecks.find(input => input.dataset.animationSfxTiming===def.key && input.checked);
+      raw[def.key]={
+        relativeSpeed:readAnimationMultiplier(speedInput,def.defaultRelativeSpeed || 1),
+        sfxTiming:checked?.dataset.timing==='end' ? 'end' : 'start'
+      };
+    }
+    return normalizeAnimationTunings(raw);
   };
   overlay.querySelector('#admin-animation-policy-save')?.addEventListener('click', async () => {
     adminAnimationError.textContent = '';
@@ -7018,18 +7071,19 @@ Receipt: ${receiptId}
       normal:readAnimationMultiplier(adminAnimationNormal,1),
       fast:readAnimationMultiplier(adminAnimationFast,.68)
     };
+    const animationTunings = readAnimationTunings();
     if (!(speedMultipliers.slow >= speedMultipliers.normal && speedMultipliers.normal >= speedMultipliers.fast)) {
       adminAnimationError.textContent = 'La referencia debe mantener Lenta ≥ Normal ≥ Rápida.';
       return;
     }
     try {
-      await saveAnimationPolicy({ enabled, speedMultipliers });
-      applyServerAnimationPolicy({ enabled, speedMultipliers }, 'admin_local_commit');
+      await saveAnimationPolicy({ enabled, speedMultipliers, animationTunings });
+      applyServerAnimationPolicy({ enabled, speedMultipliers, animationTunings }, 'admin_local_commit');
       adminAnimationSlow.value=speedMultipliers.slow.toFixed(2);
       adminAnimationNormal.value=speedMultipliers.normal.toFixed(2);
       adminAnimationFast.value=speedMultipliers.fast.toFixed(2);
       adminAnimationSuccess.textContent = enabled
-        ? `✅ Política guardada · Lenta ×${speedMultipliers.slow.toFixed(2)} · Normal ×${speedMultipliers.normal.toFixed(2)} · Rápida ×${speedMultipliers.fast.toFixed(2)}.`
+        ? `✅ Política guardada · Lenta ×${speedMultipliers.slow.toFixed(2)} · Normal ×${speedMultipliers.normal.toFixed(2)} · Rápida ×${speedMultipliers.fast.toFixed(2)} · ${animationTuningCatalog.length} animaciones ajustables.`
         : '✅ Kill switch aplicado: animaciones globales deshabilitadas. Las referencias quedaron guardadas.';
     } catch (err) {
       console.error('No se pudo guardar la política global de animaciones:', err);
@@ -7043,6 +7097,15 @@ Receipt: ${receiptId}
     if(document.activeElement!==adminAnimationSlow && Number.isFinite(Number(refs.slow))) adminAnimationSlow.value=Number(refs.slow).toFixed(2);
     if(document.activeElement!==adminAnimationNormal && Number.isFinite(Number(refs.normal))) adminAnimationNormal.value=Number(refs.normal).toFixed(2);
     if(document.activeElement!==adminAnimationFast && Number.isFinite(Number(refs.fast))) adminAnimationFast.value=Number(refs.fast).toFixed(2);
+    const tunings=normalizeAnimationTunings(detail?.animationTunings || {});
+    for (const def of animationTuningCatalog) {
+      const tuning=tunings[def.key];
+      const speedInput=animationTuningSpeedInputs.find(input => input.dataset.animationTuningSpeed===def.key);
+      if(speedInput && document.activeElement!==speedInput) speedInput.value=Number(tuning.relativeSpeed || 1).toFixed(2);
+      animationSfxTimingChecks.filter(input => input.dataset.animationSfxTiming===def.key).forEach(input => {
+        if(document.activeElement!==input) input.checked=input.dataset.timing===tuning.sfxTiming;
+      });
+    }
   };
   window.addEventListener('argentinia:animation-policy-changed', onAdminAnimationPolicyChanged);
 
@@ -8874,7 +8937,7 @@ export function showGameOverOverlay(didWin) {
   if (HEADLESS_ENGINE) { globalThis.__ARGENTINIA_HEADLESS_GAME_OVER__ = { didWin: !!didWin, at: Date.now() }; return; }
   els.gameOverTitle.textContent = didWin ? gameText('game.over.overlayWin', { rival: getRivalName() }) : gameText('game.over.overlayLoss', { rival: getRivalName() });
   if (els.gameOverRewardStatus) {
-    els.gameOverRewardStatus.textContent = state.currentMatch && state.currentUser ? gameText('game.points.pvpChecking') : '';
+    els.gameOverRewardStatus.textContent = state.currentUser ? (state.currentMatch ? gameText('game.points.pvpChecking') : gameText('game.points.botChecking')) : '';
     els.gameOverRewardStatus.classList.toggle('hidden', !els.gameOverRewardStatus.textContent);
   }
   els.gameOverOverlay.classList.remove('hidden'); els.btnEndTurn.disabled = true;
@@ -9130,6 +9193,35 @@ window.addEventListener('resize', scheduleCurrentCombatMap, { passive: true });
   zone?.addEventListener('scroll', scheduleCurrentCombatMap, { passive: true });
 });
 
+function resolvedEffectTargetInstruction(choice) {
+  const card=choice?.cardName || choice?.options?.cardName || choice?.options?.sourceCard?.name || 'Esta habilidad';
+  const effect=choice?.options?.effect || choice?.effect || {};
+  const type=String(effect?.type||'');
+  if(type==='exile_creature' || type==='exile') return gameText('target.resolved.exileCreature',{card});
+  if(type==='destroy' || type==='destroy_creature') return gameText('target.resolved.destroyCreature',{card});
+  if(type==='damage' || type==='deal_damage') return gameText('target.resolved.damage',{card});
+  if(type==='bounce' || type==='return_to_hand') return gameText('target.resolved.bounce',{card});
+  if(type==='add_counter') return gameText('target.resolved.addCounter',{card});
+  return gameText('target.resolved.generic',{card});
+}
+
+function renderResolvedEffectTargetHint() {
+  if (typeof document === 'undefined') return;
+  let el=document.getElementById('resolved-effect-target-hint');
+  const choice=state.pendingResolvedEffectTargetChoice;
+  if(!choice){el?.remove();return;}
+  if(!el){
+    el=document.createElement('div');el.id='resolved-effect-target-hint';el.setAttribute('role','status');el.setAttribute('aria-live','polite');
+    el.style.cssText='position:fixed;left:50%;bottom:112px;transform:translateX(-50%);z-index:7003;pointer-events:none;max-width:min(760px,82vw);background:rgba(4,8,6,.92);border:1px solid rgba(255,187,52,.55);border-radius:999px;padding:8px 16px;color:#fff2cf;font-size:12px;font-weight:800;text-align:center;box-shadow:0 5px 20px rgba(0,0,0,.42);';
+    document.body.appendChild(el);
+  }
+  el.textContent=resolvedEffectTargetInstruction(choice);
+  const type=String(choice?.options?.effect?.type||choice?.effect?.type||'');
+  const destructive=['exile_creature','exile','destroy','destroy_creature','damage','deal_damage','bounce','return_to_hand'].includes(type);
+  el.style.borderColor=destructive?'rgba(255,92,92,.72)':'rgba(255,187,52,.55)';
+  el.style.color=destructive?'#ffd8d8':'#fff2cf';
+}
+
 export function render() {
   if (HEADLESS_ENGINE) {
     state.localHP = Math.max(0, Math.min(20, state.localHP));
@@ -9183,6 +9275,7 @@ export function render() {
   const rivalPoisonText = state.rivalPoison > 0 ? ` ☠️${state.rivalPoison}` : '';
   els.localHpText.textContent = `${state.localHP} / 20 HP${localPoisonText}`; els.rivalHpText.textContent = `${state.rivalHP} / 20 HP${rivalPoisonText}`;
   els.localHpBar.style.width = `${(state.localHP / 20) * 100}%`; els.rivalHpBar.style.width = `${(state.rivalHP / 20) * 100}%`;
+  renderResolvedEffectTargetHint();
 
   // --- 1. GESTIÓN VISUAL DEL HUD Y FASES ---
   renderTurnPriorityHud();

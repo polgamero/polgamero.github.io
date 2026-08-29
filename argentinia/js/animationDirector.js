@@ -1,4 +1,4 @@
-// js/animationDirector.js — Entrega 23.19.4.2 Zone Transitions + Animation Studio 2.1.
+// js/animationDirector.js — Entrega 23.19.4.4 Animation Tuning Matrix + Draggable Test Console.
 // Capa VISUAL descartable: jamás muta state ni decide reglas. El engine captura geometría,
 // confirma el resultado mecánico y encola una escena. Con animaciones OFF, Admin OFF o
 // prefers-reduced-motion, todas las APIs se convierten en no-op seguro.
@@ -8,14 +8,37 @@ import { playSfx } from './audioManager.js';
 export const ANIMATION_SETTINGS_STORAGE_KEY = 'argentinia.animations.v1';
 export const ANIMATION_SPEEDS = Object.freeze(['slow', 'normal', 'fast']);
 export const ANIMATION_SPEED_MULTIPLIERS = Object.freeze({ slow: 1.35, normal: 1, fast: 0.68 });
+export const ANIMATION_TUNING_CATALOG = Object.freeze([
+  Object.freeze({ key:'land', label:'Tierra', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
+  Object.freeze({ key:'clash', label:'Impacto 1 vs 1', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
+  Object.freeze({ key:'multi', label:'Combate Multi ×3', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
+  Object.freeze({ key:'trample', label:'Arrollar', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
+  Object.freeze({ key:'first', label:'Iniciativa', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
+  Object.freeze({ key:'double', label:'Doble golpe', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
+  Object.freeze({ key:'shield', label:'Escudo', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
+  Object.freeze({ key:'deathtouch', label:'Toque mortal', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
+  Object.freeze({ key:'indestructible', label:'Indestructible', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
+  Object.freeze({ key:'player', label:'Daño al jugador', defaultRelativeSpeed:1, defaultSfxTiming:'end' }),
+  Object.freeze({ key:'counter', label:'Counter', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
+  Object.freeze({ key:'exile', label:'Exilio', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
+  Object.freeze({ key:'bounce', label:'Volver a mano', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
+  Object.freeze({ key:'draw', label:'Robo', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
+  Object.freeze({ key:'discard', label:'Descarte', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
+  Object.freeze({ key:'sacrifice', label:'Sacrificio', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
+  Object.freeze({ key:'graveyard', label:'Cementerio', defaultRelativeSpeed:1, defaultSfxTiming:'start' }),
+  Object.freeze({ key:'reanimate', label:'Reanimar', defaultRelativeSpeed:1, defaultSfxTiming:'start' })
+]);
 
 const DEFAULT_SETTINGS = Object.freeze({ enabled: true, speed: 'normal' });
 const SPEED_MIN = 0.25;
 const SPEED_MAX = 3;
+const RELATIVE_SPEED_MIN = 0.25;
+const RELATIVE_SPEED_MAX = 3;
 let localSettings = loadStoredSettings();
 let serverPolicy = {
   enabled: true,
   speedMultipliers: { ...ANIMATION_SPEED_MULTIPLIERS },
+  animationTunings: normalizeAnimationTunings(),
   source: 'default',
   updatedAt: null
 };
@@ -49,6 +72,29 @@ export function normalizeAnimationSpeedMultipliers(raw = {}) {
     normal: clampSpeedMultiplier(source?.normal ?? source?.normalMultiplier, ANIMATION_SPEED_MULTIPLIERS.normal),
     fast: clampSpeedMultiplier(source?.fast ?? source?.fastMultiplier, ANIMATION_SPEED_MULTIPLIERS.fast)
   };
+}
+
+export function normalizeAnimationTunings(raw = {}) {
+  const source = raw?.animationTunings && typeof raw.animationTunings === 'object'
+    ? raw.animationTunings
+    : raw;
+  const normalized = {};
+  for (const def of ANIMATION_TUNING_CATALOG) {
+    const entry = source?.[def.key] && typeof source[def.key] === 'object' ? source[def.key] : {};
+    const n = Number(entry?.relativeSpeed ?? entry?.speedMultiplier ?? def.defaultRelativeSpeed);
+    const relativeSpeed = Number.isFinite(n)
+      ? Math.max(RELATIVE_SPEED_MIN, Math.min(RELATIVE_SPEED_MAX, Math.round(n * 100) / 100))
+      : def.defaultRelativeSpeed;
+    normalized[def.key] = {
+      relativeSpeed,
+      sfxTiming: entry?.sfxTiming === 'end' ? 'end' : entry?.sfxTiming === 'start' ? 'start' : def.defaultSfxTiming
+    };
+  }
+  return normalized;
+}
+
+export function getAnimationTuningCatalog() {
+  return ANIMATION_TUNING_CATALOG.map(def => ({ ...def }));
 }
 
 export function normalizeAnimationSettings(raw = {}) {
@@ -115,6 +161,7 @@ export function applyServerAnimationPolicy(raw = {}, source = 'firestore') {
   serverPolicy = {
     enabled: raw?.enabled !== false,
     speedMultipliers: normalizeAnimationSpeedMultipliers(raw),
+    animationTunings: normalizeAnimationTunings(raw),
     source,
     updatedAt: raw?.updatedAt || null
   };
@@ -126,11 +173,28 @@ export function applyServerAnimationPolicy(raw = {}, source = 'firestore') {
 }
 
 export function getServerAnimationPolicy() {
-  return { ...serverPolicy, speedMultipliers:{ ...serverPolicy.speedMultipliers } };
+  return {
+    ...serverPolicy,
+    speedMultipliers:{ ...serverPolicy.speedMultipliers },
+    animationTunings:Object.fromEntries(Object.entries(serverPolicy.animationTunings || {}).map(([key,value]) => [key,{ ...value }]))
+  };
 }
 
 export function getEffectiveAnimationSpeedMultipliers() {
   return { ...serverPolicy.speedMultipliers };
+}
+
+export function getEffectiveAnimationTunings() {
+  return Object.fromEntries(Object.entries(serverPolicy.animationTunings || {}).map(([key,value]) => [key,{ ...value }]));
+}
+
+export function getAnimationTuning(key) {
+  const def = ANIMATION_TUNING_CATALOG.find(entry => entry.key === key) || ANIMATION_TUNING_CATALOG[0];
+  const current = serverPolicy.animationTunings?.[def.key] || {};
+  return {
+    relativeSpeed: Number(current.relativeSpeed) || def.defaultRelativeSpeed,
+    sfxTiming: current.sfxTiming === 'end' ? 'end' : current.sfxTiming === 'start' ? 'start' : def.defaultSfxTiming
+  };
 }
 
 export function animationsEffectivelyEnabled({ force = false } = {}) {
@@ -148,8 +212,39 @@ export function animationDuration(baseMs, speedOverride = null) {
   return Math.max(1, Math.round(base * multiplier));
 }
 
-function durationFor(payload, baseMs) {
-  return animationDuration(baseMs, payload?.speedOverride || null);
+export function animationTunedDuration(baseMs, tuningKey, speedOverride = null) {
+  const globalDuration = animationDuration(baseMs, speedOverride || null);
+  const relativeSpeed = tuningKey ? getAnimationTuning(tuningKey).relativeSpeed : 1;
+  return Math.max(1, Math.round(globalDuration / Math.max(RELATIVE_SPEED_MIN, relativeSpeed || 1)));
+}
+
+function durationFor(payload, baseMs, tuningKey = null) {
+  return animationTunedDuration(baseMs, tuningKey || payload?.animationTuningKey || null, payload?.speedOverride || null);
+}
+
+function withAnimationTuning(payload, tuningKey) {
+  return payload?.animationTuningKey ? payload : { ...(payload || {}), animationTuningKey:tuningKey };
+}
+
+function animationSfxTiming(tuningKey) {
+  return getAnimationTuning(tuningKey).sfxTiming;
+}
+
+function playAnimationSfx(id, tuningKey, phase) {
+  if (animationSfxTiming(tuningKey) !== phase) return null;
+  return playSfx(id);
+}
+
+function resolveCombatTuningKey(payload, defenders = []) {
+  if (payload?.animationTuningKey) return payload.animationTuningKey;
+  if (defenders.some(({entry}) => entry?.shieldConsumed) || defenders.some(entry => entry?.shieldConsumed)) return 'shield';
+  if (defenders.some(({entry}) => entry?.indestructibleSurvived) || defenders.some(entry => entry?.indestructibleSurvived)) return 'indestructible';
+  if (defenders.some(({entry}) => entry?.deathtouchHit) || defenders.some(entry => entry?.deathtouchHit)) return 'deathtouch';
+  if (payload?.doubleStrikePass) return 'double';
+  if (payload?.stepKind === 'first_strike') return 'first';
+  if (Number(payload?.playerDamage) > 0 && defenders.length) return 'trample';
+  if (defenders.length > 1) return 'multi';
+  return 'clash';
 }
 
 function sleepMs(ms) {
@@ -202,16 +297,22 @@ function injectAnimationStyles() {
     .arg-animation-lab-player{position:relative;border:1px solid rgba(212,175,55,.55);border-radius:10px;background:rgba(22,25,23,.96);padding:10px 8px;color:white;text-align:center;font:800 clamp(8px,.75vw,12px)/1.25 system-ui;box-shadow:0 4px 14px rgba(0,0,0,.45);}
     .arg-animation-lab-player .hp{display:block;color:#8fda91;margin-top:4px;}
     .arg-animation-lab-log{min-height:42%;border:1px solid rgba(212,175,55,.18);border-radius:8px;background:rgba(3,7,4,.68);padding:8px;color:#9dafa4;font:9px/1.35 ui-monospace,monospace;overflow:hidden;}
-    .arg-animation-lab-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px;}
-    .arg-animation-lab-actions button{padding:8px 11px;border-radius:8px;border:1px solid #d4af37;background:#202d26;color:#f4e5b9;font-weight:800;cursor:pointer;font-size:11px;}
+    .arg-animation-lab-floating-controls{position:absolute;z-index:40;top:14px;right:14px;width:min(340px,42%);max-height:calc(100% - 28px);overflow:auto;border:1px solid rgba(212,175,55,.72);border-radius:11px;background:rgba(8,13,10,.94);box-shadow:0 12px 32px rgba(0,0,0,.62);backdrop-filter:blur(4px);}
+    .arg-animation-lab-drag-handle{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid rgba(212,175,55,.25);color:#f0d56a;font:900 11px/1.2 system-ui;letter-spacing:.04em;cursor:grab;user-select:none;touch-action:none;background:rgba(39,45,33,.96);position:sticky;top:0;z-index:2;}
+    .arg-animation-lab-drag-handle:active{cursor:grabbing;}
+    .arg-animation-lab-drag-handle span{color:#9e91aa;font-weight:700;font-size:9px;letter-spacing:0;}
+    .arg-animation-lab-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-start;padding:9px;margin:0;}
+    .arg-animation-lab-actions button{padding:7px 9px;border-radius:8px;border:1px solid #d4af37;background:#202d26;color:#f4e5b9;font-weight:800;cursor:pointer;font-size:10px;}
     .arg-animation-lab-actions button:hover{box-shadow:0 0 14px rgba(212,175,55,.28);}
-    .arg-animation-lab-status{margin-top:9px;text-align:center;color:#a99bb5;font:11px/1.35 system-ui;}
+    .arg-animation-lab-actions button[data-test="all"]{border-color:#7dd2ff;color:#cceeff;}
+    .arg-animation-lab-actions button[data-test="clear"]{border-color:#e68779;color:#ffd3cc;}
+    .arg-animation-lab-status{padding:0 9px 9px;text-align:left;color:#a99bb5;font:10px/1.35 system-ui;}
     .arg-animation-lab-piles{position:absolute;display:flex;gap:7px;z-index:8;}
     .arg-animation-lab-piles.rival{left:1.2%;top:18%;}
     .arg-animation-lab-piles.local{left:1.2%;bottom:18%;}
     .arg-animation-lab-pile{width:52px;height:70px;border:1px solid rgba(212,175,55,.5);border-radius:7px;background:rgba(10,15,12,.9);color:#e6cf83;display:flex;align-items:center;justify-content:center;text-align:center;font:900 8px/1.1 system-ui;box-shadow:0 3px 12px rgba(0,0,0,.45);}
     .arg-animation-lab-stack-dummy{position:absolute;right:2%;top:45%;width:86px;height:112px;border:2px solid #d7b84e;border-radius:8px;background:linear-gradient(145deg,#2b3040,#11141d);color:#f4e7bd;display:flex;align-items:center;justify-content:center;text-align:center;font:900 9px/1.15 system-ui;z-index:9;box-shadow:0 5px 16px rgba(0,0,0,.55);}
-    @media(max-width:1000px){.arg-animation-lab-board-shell{min-height:680px}.arg-animation-lab-game{grid-template-columns:minmax(0,1fr) 22%}.arg-animation-lab-card{width:clamp(45px,7vw,78px)}.arg-animation-lab-field-half .arg-animation-lab-card{height:82%;width:auto;max-height:104px}}
+    @media(max-width:1000px){.arg-animation-lab-board-shell{min-height:680px}.arg-animation-lab-game{grid-template-columns:minmax(0,1fr) 22%}.arg-animation-lab-card{width:clamp(45px,7vw,78px)}.arg-animation-lab-field-half .arg-animation-lab-card{height:82%;width:auto;max-height:104px}.arg-animation-lab-floating-controls{width:min(320px,56%)}}
   `;
   document.head.appendChild(style);
 }
@@ -282,7 +383,7 @@ export function captureCardVisual(item, sideHint = null, { force = false } = {})
   const el = findCardElement(item, sideHint);
   const rect = rectSnapshot(el);
   if (!el || !rect || typeof el.cloneNode !== 'function') return null;
-  return { kind:'card', clone:el.cloneNode(true), rect, syncObjectId:item?._syncObjectId || null, cardId:item?.card?.id || null, cardName:item?.card?.name || null };
+  return { kind:'card', clone:el.cloneNode(true), element:el, rect, syncObjectId:item?._syncObjectId || null, cardId:item?.card?.id || null, cardName:item?.card?.name || null };
 }
 
 export function capturePlayerVisual(isLocal, { force = false } = {}) {
@@ -430,6 +531,22 @@ async function fadeCombatClone(node, died, transform, payload) {
   }
 }
 
+function hideOriginalVisual(snapshot) {
+  try { snapshot?.element?.classList?.add('arg-anim-source-hidden'); } catch {}
+}
+
+function updatePlayerHpPresentation(playerSnapshot, hpValue) {
+  if (!playerSnapshot?.element || !Number.isFinite(Number(hpValue))) return;
+  const hp=Math.max(0,Math.min(20,Number(hpValue)));
+  const text=playerSnapshot.element.querySelector('.hp-text');
+  const bar=playerSnapshot.element.querySelector('.hp-fill');
+  if (text) {
+    const suffix=(String(text.textContent||'').match(/HP(.*)$/)?.[1] || '');
+    text.textContent=`${hp} / 20 HP${suffix}`;
+  }
+  if (bar) bar.style.width=`${(hp/20)*100}%`;
+}
+
 async function animateCombatImpact(payload) {
   const aSnap=payload?.attackerSnapshot, dSnap=payload?.defenderSnapshot;
   if(!aSnap||!dSnap) return false;
@@ -449,6 +566,8 @@ async function animateCombatSequence(payload) {
   const aSnap=payload?.attackerSnapshot;
   const defenders=(Array.isArray(payload?.defenders)?payload.defenders:[]).filter(entry=>entry?.snapshot?.rect);
   const playerSnap=payload?.playerSnapshot?.rect ? payload.playerSnapshot : null;
+  const combatTuningKey=resolveCombatTuningKey(payload,defenders);
+  payload=withAnimationTuning(payload,combatTuningKey);
   if(!aSnap || (!defenders.length && !playerSnap)) return false;
   const attacker=freezeClone(aSnap); if(!attacker)return false;
   const defenderClones=defenders.map(entry=>({entry,node:freezeClone(entry.snapshot),fadeStarted:false}));
@@ -465,6 +584,19 @@ async function animateCombatSequence(payload) {
     const recoil=`translate3d(${-v.nx*recoilBase}px,${-v.ny*recoilBase}px,0) rotate(${v.angle*.18}deg) scale(.98)`;
     const aim=`translate3d(${-v.nx*8}px,${-v.ny*8}px,0) rotate(${v.angle}deg) scale(1)`;
     const hit=`translate3d(${hitX}px,${hitY}px,0) rotate(${v.angle}deg) scale(1.055)`;
+    const impactTuningKey=entry.shieldConsumed ? 'shield'
+      : entry.indestructibleSurvived ? 'indestructible'
+      : entry.deathtouchHit ? 'deathtouch'
+      : payload?.doubleStrikePass ? 'double'
+      : payload?.stepKind==='first_strike' ? 'first'
+      : combatTuningKey;
+    const impactSfx=entry.shieldConsumed ? 'shieldImpact'
+      : entry.indestructibleSurvived ? 'indestructibleImpact'
+      : entry.deathtouchHit ? 'deathtouchImpact'
+      : payload?.doubleStrikePass ? 'doubleStrike'
+      : payload?.stepKind==='first_strike' ? 'firstStrike'
+      : 'cardImpact';
+    playAnimationSfx(impactSfx,impactTuningKey,'start');
     const move=runWebAnimation(attacker,[
       {transform:currentTransform,offset:0},
       {transform:recoil,offset:.26},
@@ -473,13 +605,7 @@ async function animateCombatSequence(payload) {
     ],{duration:durationFor(payload,legBase),easing:'cubic-bezier(.2,.78,.18,1)'});
     await sleepMs(durationFor(payload,Math.round(legBase*.83)));
     if(animationEventCancelled(payload)){removeNode(attacker);defenderClones.forEach(x=>removeNode(x.node));removeNode(stepLabel);return false;}
-    const impactSfx=entry.shieldConsumed ? 'shieldImpact'
-      : entry.indestructibleSurvived ? 'indestructibleImpact'
-      : entry.deathtouchHit ? 'deathtouchImpact'
-      : payload?.doubleStrikePass ? 'doubleStrike'
-      : payload?.stepKind==='first_strike' ? 'firstStrike'
-      : 'cardImpact';
-    playSfx(impactSfx);
+    playAnimationSfx(impactSfx,impactTuningKey,'end');
     const impact=center(entry.snapshot.rect);
     const variant=entry.deathtouchHit?'deathtouch':payload?.stepKind==='first_strike'?'first_strike':'normal';
     void impactBurst(impact.x,impact.y,payload,variant);
@@ -488,7 +614,7 @@ async function animateCombatSequence(payload) {
     if(entry.indestructibleSurvived) void indestructibleBurst(entry.snapshot.rect,payload);
     await move;
     currentTransform=`translate3d(${hitX-v.nx*12}px,${hitY-v.ny*12}px,0) rotate(${v.angle}deg) scale(1)`;
-    if(entry.died){defenderVisual.fadeStarted=true;void fadeCombatClone(node,true,'',payload).then(()=>removeNode(node));} else if(i < defenderClones.length-1 || playerSnap) void runWebAnimation(node,[{opacity:1},{opacity:.35}],{duration:durationFor(payload,110)});
+    if(entry.died){hideOriginalVisual(entry.snapshot);defenderVisual.fadeStarted=true;void fadeCombatClone(node,true,'',payload).then(()=>removeNode(node));} else if(i < defenderClones.length-1 || playerSnap) void runWebAnimation(node,[{opacity:1},{opacity:.35}],{duration:durationFor(payload,110)});
     if(i < defenderClones.length-1 || playerSnap) await sleepMs(durationFor(payload,95));
   }
 
@@ -498,10 +624,13 @@ async function animateCombatSequence(payload) {
     const hitX=v.nx*stop,hitY=v.ny*stop;
     const recoil=`translate3d(${-v.nx*20}px,${-v.ny*20}px,0) rotate(${v.angle*.18}deg) scale(.98)`;
     const hit=`translate3d(${hitX}px,${hitY}px,0) rotate(${v.angle}deg) scale(1.04)`;
+    const playerImpactTuningKey=combatTuningKey==='trample' ? 'trample' : 'player';
+    playAnimationSfx('playerImpact',playerImpactTuningKey,'start');
     const move=runWebAnimation(attacker,[{transform:currentTransform},{transform:recoil},{transform:hit}],{duration:durationFor(payload,520),easing:'cubic-bezier(.2,.78,.2,1)'});
     await sleepMs(durationFor(payload,435));
     if(!animationEventCancelled(payload)) {
-      playSfx('playerImpact');
+      playAnimationSfx('playerImpact',playerImpactTuningKey,'end');
+      updatePlayerHpPresentation(playerSnap,payload?.playerHpAfter);
       const impact=center(playerSnap.rect);void impactBurst(impact.x,impact.y,payload,payload?.stepKind==='first_strike'?'first_strike':'normal');
       const playerEl=playerSnap.element;
       try{playerEl?.classList?.add('arg-player-hit');}catch{}
@@ -516,17 +645,20 @@ async function animateCombatSequence(payload) {
 
   const cleanup=[];
   defenderClones.forEach(({entry,node,fadeStarted})=>{if(node?.isConnected&&!fadeStarted)cleanup.push(fadeCombatClone(node,!!entry.died,'',payload));});
+  if(payload?.attackerDied) hideOriginalVisual(aSnap);
   cleanup.push(fadeCombatClone(attacker,!!payload?.attackerDied,currentTransform,payload));
   await Promise.all(cleanup);
   removeNode(attacker);defenderClones.forEach(x=>removeNode(x.node));removeNode(stepLabel);return true;
 }
 
 async function animatePlayerImpact(payload) {
+  payload=withAnimationTuning(payload,'player');
   const aSnap=payload?.attackerSnapshot, pSnap=payload?.playerSnapshot;
   if(!aSnap||!pSnap) return false;
   const attacker=freezeClone(aSnap); if(!attacker) return false;
   const v=vectorBetween(aSnap.rect,pSnap.rect); const recoil=22; const stop=Math.max(20,v.d - Math.max(42,pSnap.rect.width*.32));
   const hitX=v.nx*stop, hitY=v.ny*stop; const impact=center(pSnap.rect);
+  playAnimationSfx('playerImpact','player','start');
   const move=runWebAnimation(attacker,[
     {transform:'translate3d(0,0,0) rotate(0deg)'},
     {transform:`translate3d(${-v.nx*recoil}px,${-v.ny*recoil}px,0) rotate(${v.angle*.2}deg)`},
@@ -534,7 +666,7 @@ async function animatePlayerImpact(payload) {
   ],{duration:durationFor(payload,560),easing:'cubic-bezier(.2,.78,.2,1)'});
   await sleepMs(durationFor(payload,475));
   if (animationEventCancelled(payload)) { removeNode(attacker); return false; }
-  playSfx('playerImpact'); void impactBurst(impact.x,impact.y,payload,payload?.stepKind==='first_strike'?'first_strike':'normal');
+  playAnimationSfx('playerImpact','player','end'); updatePlayerHpPresentation(pSnap,payload?.playerHpAfter); void impactBurst(impact.x,impact.y,payload,payload?.stepKind==='first_strike'?'first_strike':'normal');
   const playerEl=pSnap.element;
   try { playerEl?.classList?.add('arg-player-hit'); } catch {}
   const damage=document.createElement('div'); damage.className='arg-anim-damage-number'; damage.textContent=`-${Math.max(0,Number(payload?.amount)||0)}`;
@@ -548,6 +680,7 @@ async function animatePlayerImpact(payload) {
 }
 
 async function animateLandTap(payload) {
+  payload=withAnimationTuning(payload,'land');
   const snap=payload?.snapshot; if(!snap) return false;
   const card=freezeClone(snap); if(!card) return false;
   const r=snap.rect; const dustOrigin={x:r.left+r.width*.52,y:r.top+r.height*.82};
@@ -558,6 +691,7 @@ async function animateLandTap(payload) {
     const dx=(i-3.5)*7,dy=-12-(i%4)*5;
     void runWebAnimation(p,[{transform:'translate(0,0) scale(.7)',opacity:0},{transform:`translate(${dx*.3}px,${dy*.35}px) scale(1)`,opacity:.75},{transform:`translate(${dx}px,${dy}px) scale(1.5)`,opacity:0}],{duration:durationFor(payload,520),easing:'ease-out'}).then(()=>removeNode(p));
   }
+  playAnimationSfx('landTap','land','start');
   const anim=runWebAnimation(card,[
     {transform:'rotate(0deg) translateX(0)',filter:'brightness(1)'},
     {transform:'rotate(-4deg) translateX(-2px)',filter:'brightness(.96)'},
@@ -565,9 +699,9 @@ async function animateLandTap(payload) {
     {transform:'rotate(94deg) translateX(0)',filter:'brightness(1.08)'},
     {transform:'rotate(90deg)',filter:'brightness(1)',opacity:1}
   ],{duration:durationFor(payload,470),easing:'cubic-bezier(.28,.72,.18,1)'});
-  await sleepMs(durationFor(payload,215));
+  await anim;
   if (animationEventCancelled(payload)) { removeNode(card); return false; }
-  playSfx('landTap'); await anim;
+  playAnimationSfx('landTap','land','end');
   await runWebAnimation(card,[{opacity:1},{opacity:0}],{duration:durationFor(payload,100)}); removeNode(card); return true;
 }
 
@@ -594,6 +728,8 @@ async function animateZoneTransition(payload){
   if(!source?.rect)return false;
   const card=freezeClone(source);if(!card)return false;
   const kind=String(payload?.transition||'graveyard');
+  const zoneTuningKey=ANIMATION_TUNING_CATALOG.some(def=>def.key===kind) ? kind : 'graveyard';
+  payload=withAnimationTuning(payload,zoneTuningKey);
   const targetRect=target?.rect||source.rect;
   const {dx,dy}=targetDelta(source.rect,targetRect);
   let sfx='cardToGraveyard';
@@ -663,11 +799,15 @@ async function animateZoneTransition(payload){
       {transform:`translate3d(${dx}px,${dy}px,0) rotate(9deg) scale(.3)`,filter:'brightness(.3) saturate(.35) blur(3px)',opacity:0}
     ];
   }
-  await sleepMs(durationFor(payload,Math.round(duration*.28)));
-  if(animationEventCancelled(payload)){removeNode(card);return false;}
-  playSfx(sfx);
+  playAnimationSfx(sfx,zoneTuningKey,'start');
   void zonePulse(kind==='reanimate'?targetRect:source.rect,kind,payload);
-  await runWebAnimation(card,frames,{duration:durationFor(payload,duration),easing:kind==='bounce'?'cubic-bezier(.2,.72,.18,1)':'cubic-bezier(.25,.7,.2,1)'});
+  const move=runWebAnimation(card,frames,{duration:durationFor(payload,duration),easing:kind==='bounce'?'cubic-bezier(.2,.72,.18,1)':'cubic-bezier(.25,.7,.2,1)'});
+  if(animationSfxTiming(zoneTuningKey)==='end') {
+    await sleepMs(durationFor(payload,Math.round(duration*.86)));
+    if(animationEventCancelled(payload)){removeNode(card);return false;}
+    playAnimationSfx(sfx,zoneTuningKey,'end');
+  }
+  await move;
   removeNode(card);return true;
 }
 
@@ -729,7 +869,10 @@ export function queueGameEventAnimation(event={}, options={}) {
 
 export function clearAnimationLayer(reason = 'manual') {
   cancelSerial += 1;
-  if (typeof document !== 'undefined') removeNode(document.getElementById('arg-game-animation-layer'));
+  if (typeof document !== 'undefined') {
+    removeNode(document.getElementById('arg-game-animation-layer'));
+    document.querySelectorAll('.arg-anim-source-hidden').forEach(el=>el.classList.remove('arg-anim-source-hidden'));
+  }
   lastEvent = lastEvent ? { ...lastEvent, clearedReason:reason } : null;
 }
 
@@ -762,6 +905,32 @@ function animationLabMarkup() {
         <div class="arg-animation-lab-speed-note" data-animation-lab-speed-note></div>
       </div>
       <div class="arg-animation-lab-board-shell">
+        <div class="arg-animation-lab-floating-controls" data-animation-lab-floating-controls>
+          <div class="arg-animation-lab-drag-handle" data-animation-lab-drag-handle>🎛 CONTROLES DE PRUEBA <span>arrastrar por el tablero</span></div>
+          <div class="arg-animation-lab-actions">
+            <button data-test="land">Tierra</button>
+            <button data-test="clash">1 vs 1</button>
+            <button data-test="multi">Multi ×3</button>
+            <button data-test="trample">Arrollar</button>
+            <button data-test="first">Iniciativa</button>
+            <button data-test="double">Doble golpe</button>
+            <button data-test="shield">Escudo</button>
+            <button data-test="deathtouch">Toque mortal</button>
+            <button data-test="indestructible">Indestructible</button>
+            <button data-test="player">Daño jugador</button>
+            <button data-test="counter">Counter</button>
+            <button data-test="exile">Exilio</button>
+            <button data-test="bounce">Volver a mano</button>
+            <button data-test="draw">Robo</button>
+            <button data-test="discard">Descarte</button>
+            <button data-test="sacrifice">Sacrificio</button>
+            <button data-test="graveyard">Cementerio</button>
+            <button data-test="reanimate">Reanimar</button>
+            <button data-test="all">Secuencia completa</button>
+            <button data-test="clear">Limpiar</button>
+          </div>
+          <div class="arg-animation-lab-status" data-animation-lab-status></div>
+        </div>
         <div class="arg-animation-lab-game">
           <div class="arg-animation-lab-board">
             <div class="arg-animation-lab-piles rival">
@@ -805,35 +974,57 @@ function animationLabMarkup() {
           </div>
           <div class="arg-animation-lab-sidebar">
             <div class="arg-animation-lab-player" data-lab-player="rival">🤠 TANO DUMMY<span class="hp">20 / 20 HP</span></div>
-            <div class="arg-animation-lab-log" data-animation-lab-log>Animation Studio 23.19.4.2\nDummy del tablero real + Zone Transitions.\nLos tests no tocan state ni Firestore.</div>
+            <div class="arg-animation-lab-log" data-animation-lab-log>Animation Studio 23.19.4.4\nDummy del tablero real + Zone Transitions.\nLos tests no tocan state ni Firestore.</div>
             <div class="arg-animation-lab-player" data-lab-player="local">🧉 VOS DUMMY<span class="hp">20 / 20 HP</span></div>
           </div>
         </div>
       </div>
-      <div class="arg-animation-lab-actions">
-        <button data-test="land">Tierra</button>
-        <button data-test="clash">1 vs 1</button>
-        <button data-test="multi">Multi ×3</button>
-        <button data-test="trample">Arrollar</button>
-        <button data-test="first">Iniciativa</button>
-        <button data-test="double">Doble golpe</button>
-        <button data-test="shield">Escudo</button>
-        <button data-test="deathtouch">Toque mortal</button>
-        <button data-test="indestructible">Indestructible</button>
-        <button data-test="player">Daño jugador</button>
-        <button data-test="counter">Counter</button>
-        <button data-test="exile">Exilio</button>
-        <button data-test="bounce">Volver a mano</button>
-        <button data-test="draw">Robo</button>
-        <button data-test="discard">Descarte</button>
-        <button data-test="sacrifice">Sacrificio</button>
-        <button data-test="graveyard">Cementerio</button>
-        <button data-test="reanimate">Reanimar</button>
-        <button data-test="all">Secuencia completa</button>
-        <button data-test="clear">Limpiar</button>
-      </div>
-      <div class="arg-animation-lab-status" data-animation-lab-status></div>
     </div>`;
+}
+
+function makeAnimationLabControlsDraggable(root) {
+  const panel=root?.querySelector?.('[data-animation-lab-floating-controls]');
+  const handle=root?.querySelector?.('[data-animation-lab-drag-handle]');
+  const shell=root?.querySelector?.('.arg-animation-lab-board-shell');
+  if(!panel||!handle||!shell) return ()=>{};
+  let drag=null;
+  const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
+  const onDown=(event)=>{
+    if(event.button!=null&&event.button!==0)return;
+    const panelRect=panel.getBoundingClientRect();
+    const shellRect=shell.getBoundingClientRect();
+    drag={pointerId:event.pointerId,offsetX:event.clientX-panelRect.left,offsetY:event.clientY-panelRect.top};
+    panel.style.left=`${panelRect.left-shellRect.left}px`;
+    panel.style.top=`${panelRect.top-shellRect.top}px`;
+    panel.style.right='auto';
+    try{handle.setPointerCapture?.(event.pointerId);}catch{}
+    event.preventDefault();
+  };
+  const onMove=(event)=>{
+    if(!drag||event.pointerId!==drag.pointerId)return;
+    const shellRect=shell.getBoundingClientRect();
+    const panelRect=panel.getBoundingClientRect();
+    const maxLeft=Math.max(0,shellRect.width-panelRect.width);
+    const maxTop=Math.max(0,shellRect.height-panelRect.height);
+    panel.style.left=`${clamp(event.clientX-shellRect.left-drag.offsetX,0,maxLeft)}px`;
+    panel.style.top=`${clamp(event.clientY-shellRect.top-drag.offsetY,0,maxTop)}px`;
+    event.preventDefault();
+  };
+  const onUp=(event)=>{
+    if(!drag||event.pointerId!==drag.pointerId)return;
+    try{handle.releasePointerCapture?.(event.pointerId);}catch{}
+    drag=null;
+  };
+  handle.addEventListener('pointerdown',onDown);
+  handle.addEventListener('pointermove',onMove);
+  handle.addEventListener('pointerup',onUp);
+  handle.addEventListener('pointercancel',onUp);
+  return ()=>{
+    handle.removeEventListener('pointerdown',onDown);
+    handle.removeEventListener('pointermove',onMove);
+    handle.removeEventListener('pointerup',onUp);
+    handle.removeEventListener('pointercancel',onUp);
+  };
 }
 
 export function mountAnimationLab(root) {
@@ -843,6 +1034,7 @@ export function mountAnimationLab(root) {
   const labLayer=ensureAnimationLayer();
   if(labLayer)labLayer.style.zIndex='31010';
   root.innerHTML=animationLabMarkup();
+  const cleanupDrag=makeAnimationLabControlsDraggable(root);
   const speedSelect=root.querySelector('[data-animation-lab-speed]');
   const speedNote=root.querySelector('[data-animation-lab-speed-note]');
   const status=root.querySelector('[data-animation-lab-status]');
@@ -868,16 +1060,16 @@ export function mountAnimationLab(root) {
   const note=(text)=>{if(log)log.textContent=`${text}\n\n${log.textContent.split('\n').slice(0,7).join('\n')}`;updateStatus(text);};
   const seq=(payload)=>queueCombatSequenceAnimation(payload,options());
   const scenarios={
-    land:async()=>{note('Tierra: resistencia + giro + polvo.');await queueLandTapAnimation({snapshot:land()},options());},
-    clash:async()=>{note('1 vs 1: choque clásico; defensor muere.');await queueCombatImpactAnimation({attackerSnapshot:attacker(),defenderSnapshot:def(2),defenderDied:true,attackerDied:false},options());},
-    multi:async()=>{note('Multi ×3: el atacante recorre el orden de bloqueadores.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(1),died:true},{snapshot:def(2),died:false},{snapshot:def(3),died:true}],attackerDied:false,stepKind:'regular'});},
-    trample:async()=>{note('Arrollar: bloqueadores y luego badge rival.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(1),died:true},{snapshot:def(3),died:true}],playerSnapshot:player(),playerDamage:3,attackerDied:false,stepKind:'regular'});},
-    first:async()=>{note('Iniciativa: pase visual acelerado y etiqueta.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:true}],attackerDied:false,stepKind:'first_strike'});},
-    double:async()=>{note('Doble golpe: iniciativa y segundo impacto regular.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:false}],attackerDied:false,stepKind:'first_strike'});await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:true}],attackerDied:false,stepKind:'regular',doubleStrikePass:true});},
-    shield:async()=>{note('Escudo: absorbe el impacto y no desvanece la criatura.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:false,shieldConsumed:true}],attackerDied:false,stepKind:'regular'});},
-    deathtouch:async()=>{note('Toque mortal: impacto violeta y muerte con 1+ daño.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:true,deathtouchHit:true}],attackerDied:false,stepKind:'regular'});},
-    indestructible:async()=>{note('Indestructible: impacto letal visual, destello dorado, sin fade.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:false,indestructibleSurvived:true}],attackerDied:false,stepKind:'regular'});},
-    player:async()=>{note('Daño directo: embestida al badge y -5.');await queuePlayerDamageAnimation({attackerSnapshot:attacker(),playerSnapshot:player(),amount:5},options());},
+    land:async()=>{note('Tierra: resistencia + giro + polvo.');await queueLandTapAnimation({snapshot:land(),animationTuningKey:'land'},options());},
+    clash:async()=>{note('1 vs 1: choque clásico; defensor muere.');await queueCombatImpactAnimation({attackerSnapshot:attacker(),defenderSnapshot:def(2),defenderDied:true,attackerDied:false,animationTuningKey:'clash'},options());},
+    multi:async()=>{note('Multi ×3: el atacante recorre el orden de bloqueadores.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(1),died:true},{snapshot:def(2),died:false},{snapshot:def(3),died:true}],attackerDied:false,stepKind:'regular',animationTuningKey:'multi'});},
+    trample:async()=>{note('Arrollar: bloqueadores y luego badge rival.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(1),died:true},{snapshot:def(3),died:true}],playerSnapshot:player(),playerDamage:3,attackerDied:false,stepKind:'regular',animationTuningKey:'trample'});},
+    first:async()=>{note('Iniciativa: pase visual acelerado y etiqueta.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:true}],attackerDied:false,stepKind:'first_strike',animationTuningKey:'first'});},
+    double:async()=>{note('Doble golpe: iniciativa y segundo impacto regular.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:false}],attackerDied:false,stepKind:'first_strike',animationTuningKey:'double'});await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:true}],attackerDied:false,stepKind:'regular',doubleStrikePass:true,animationTuningKey:'double'});},
+    shield:async()=>{note('Escudo: absorbe el impacto y no desvanece la criatura.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:false,shieldConsumed:true}],attackerDied:false,stepKind:'regular',animationTuningKey:'shield'});},
+    deathtouch:async()=>{note('Toque mortal: impacto violeta y muerte con 1+ daño.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:true,deathtouchHit:true}],attackerDied:false,stepKind:'regular',animationTuningKey:'deathtouch'});},
+    indestructible:async()=>{note('Indestructible: impacto letal visual, destello dorado, sin fade.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:false,indestructibleSurvived:true}],attackerDied:false,stepKind:'regular',animationTuningKey:'indestructible'});},
+    player:async()=>{note('Daño directo: embestida al badge y -5.');await queuePlayerDamageAnimation({attackerSnapshot:attacker(),playerSnapshot:player(),amount:5,animationTuningKey:'player'},options());},
     counter:async()=>{note('Counter: el hechizo colapsa y desaparece de la pila.');await queueZoneTransitionAnimation({sourceSnapshot:stackCard(),targetSnapshot:labZone('graveyard',true),transition:'counter',card:{name:'Hechizo en pila'}},options());},
     exile:async()=>{note('Exilio: disolución luminosa hacia EX rival.');await queueZoneTransitionAnimation({sourceSnapshot:def(2),targetSnapshot:labZone('exile',false),transition:'exile',card:{name:'Defensor B'}},options());},
     bounce:async()=>{note('Volver a mano: arco desde battlefield hacia la mano rival.');await queueZoneTransitionAnimation({sourceSnapshot:def(2),targetSnapshot:labZone('hand',false),transition:'bounce',card:{name:'Defensor B'}},options());},
@@ -898,7 +1090,7 @@ export function mountAnimationLab(root) {
   root.addEventListener('click',onClick);
   speedSelect?.addEventListener('change',updateSpeedNote);
   updateSpeedNote();updateStatus('Lab listo');
-  return ()=>{root.removeEventListener('click',onClick);clearAnimationLayer('animation_lab_unmount');};
+  return ()=>{cleanupDrag();root.removeEventListener('click',onClick);clearAnimationLayer('animation_lab_unmount');};
 }
 
 // Compatibilidad para el botón/labs históricos: ahora abre el mismo Studio completo en overlay.
@@ -908,7 +1100,7 @@ export async function runAnimationDebugShowcase() {
   document.getElementById('arg-animation-debug-overlay')?.remove();
   const overlay=document.createElement('div');overlay.id='arg-animation-debug-overlay';
   Object.assign(overlay.style,{position:'fixed',inset:'0',zIndex:'30000',background:'rgba(4,7,8,.94)',padding:'18px',overflow:'auto'});
-  overlay.innerHTML='<div style="max-width:1500px;margin:0 auto"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font:900 20px system-ui;color:#f0cf64">🎬 Animation Studio 23.19.4.2</div><button data-overlay-close style="padding:8px 14px;border-radius:8px;border:1px solid #d4af37;background:#202d26;color:#f4e5b9;font-weight:800">Cerrar</button></div><div data-overlay-lab></div></div>';
+  overlay.innerHTML='<div style="max-width:1500px;margin:0 auto"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font:900 20px system-ui;color:#f0cf64">🎬 Animation Studio 23.19.4.4</div><button data-overlay-close style="padding:8px 14px;border-radius:8px;border:1px solid #d4af37;background:#202d26;color:#f4e5b9;font-weight:800">Cerrar</button></div><div data-overlay-lab></div></div>';
   document.body.appendChild(overlay);
   const cleanup=mountAnimationLab(overlay.querySelector('[data-overlay-lab]'));
   overlay.querySelector('[data-overlay-close]')?.addEventListener('click',()=>{cleanup();overlay.remove();});

@@ -1109,6 +1109,19 @@ function hasPendingAnimateLandActivation(sourceItem) {
   );
 }
 
+function sameBotAbilitySource(a,b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  return !!(a._syncObjectId && b._syncObjectId && a._syncObjectId === b._syncObjectId);
+}
+
+function hasPendingBotActivatedAbility(sourceItem, abilityIndex) {
+  if (!sourceItem) return false;
+  return spellStack.some(entry => entry?.isLocal === false && entry?.type === 'ability'
+    && sameBotAbilitySource(entry?.sourceItem, sourceItem)
+    && Number(entry?.source?.abilityIndex) === Number(abilityIndex));
+}
+
 // NUEVO: Evaluación táctica para activar artefactos y soporte
 export function tryActivateBotAbilities({ instantOnly = false } = {}) {
   // Recorremos artefactos Y tierras de utilidad del Tano. Cada permanente puede exponer
@@ -1132,6 +1145,7 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
       const ability = abilities[abilityIndex];
       if (!ability) continue;
       if (!botAbilityTimingAllowed(ability, { instantOnly })) continue;
+      if (hasPendingBotActivatedAbility(supportItem, abilityIndex)) continue;
 
       if (ability.crewCost !== undefined) {
         const crewed = tryBotCrewVehicle(supportItem, zoneType, ability);
@@ -1313,6 +1327,7 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
     for (const option of options) {
       const { ability, abilityIndex, sourceCard, sourceItem, sourceIndex, abilityKind } = option;
       if (!botAbilityTimingAllowed(ability, { instantOnly })) continue;
+      if (hasPendingBotActivatedAbility(sourceItem, abilityIndex)) continue;
       const costStr = ability.cost || '';
       const requiresTap = costStr.includes('{T}');
       if (requiresTap && (creatureItem.tapped || creatureItem.summoningSickness)) continue;

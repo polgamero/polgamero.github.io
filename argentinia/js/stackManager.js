@@ -2334,7 +2334,23 @@ async function executeStackItem(item) {
       const board = isLocal ? state.localCombat : state.rivalCombat;
       board.push(newPermanentItem);
       logMsg(gameText('permanent.creature.enter', { card: card.name }));
-      triggerCreatureEtb(isLocal, card, newPermanentItem);
+
+      // 23.19.4.3 — CR 603.3b: todas las habilidades que dispararon por la MISMA
+      // entrada deben llegar juntas al ordenamiento AP/NAP. Antes `triggerCreatureEtb()`
+      // encolaba los watchers y, unas líneas después, el ETB propio se encolaba aparte;
+      // el jugador nunca veía el modal aunque controlara ambas.
+      const simultaneousCreatureEtb = collectCreatureEtbBatchEntries(isLocal, [{ card, item:newPermanentItem }]);
+      if (card.etbEffect) {
+        simultaneousCreatureEtb.push({
+          effect: card.etbEffect,
+          sourceCard: card,
+          sourceItem: newPermanentItem,
+          isLocal,
+          targetObj: card.requiresTarget ? targetObj : null,
+          triggerType: 'etb'
+        });
+      }
+      if (simultaneousCreatureEtb.length) queueTriggeredAbilities(simultaneousCreatureEtb);
 
     } else {
       // enteredThisTurn: para que un Vehículo recién jugado y tripulado en el mismo turno
@@ -2356,7 +2372,7 @@ async function executeStackItem(item) {
       }
     }
 
-    if (card.etbEffect) {
+    if (card.etbEffect && card.power === undefined) {
       queueTriggeredAbility({
         effect: card.etbEffect,
         sourceCard: card,

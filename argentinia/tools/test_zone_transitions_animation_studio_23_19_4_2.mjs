@@ -14,13 +14,13 @@ const main = read('js/main.js');
 const stack = read('js/stackManager.js');
 const ui = read('js/ui.js');
 
-assert.equal(ENGINE_VERSION, '23.19.4.2');
+assert.equal(ENGINE_VERSION, '23.19.4.4');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.1');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
-assert.equal(manifest.engineVersion, '23.19.4.2');
+assert.equal(manifest.engineVersion, '23.19.4.4');
 assert.equal(manifest.firestoreRulesVersion, '23.13.79');
 assert.equal(manifest.pool, 880);
-assert.equal(manifest.label, 'Zone Transitions + Animation Studio 2.1');
+assert.equal(manifest.label, 'Animation Tuning Matrix + Draggable Test Console');
 
 // Director remains presentation-only and exposes the generic zone bridge.
 for (const token of [

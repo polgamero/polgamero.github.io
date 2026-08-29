@@ -1,4 +1,4 @@
-// js/audioManager.js — Entrega 23.19.4.2 Zone Transitions + Animation Studio 2.1.
+// js/audioManager.js — Entrega 23.19.4.4 Animation Tuning Matrix + Draggable Test Console.
 // Un único dueño del audio de Argentinia: música por escena (menú / Tano / multiplayer)
 // con Opus primero y MP3 fallback, más SFX separados. Todo es local al navegador.
 
