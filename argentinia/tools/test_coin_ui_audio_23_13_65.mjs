@@ -6,7 +6,7 @@ const audio = fs.readFileSync(new URL('../js/audioManager.js', import.meta.url),
 const ui = fs.readFileSync(new URL('../js/ui.js', import.meta.url), 'utf8');
 const version = fs.readFileSync(new URL('../js/version.js', import.meta.url), 'utf8');
 
-assert.ok((version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4'"))) || (()=>{ try { if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4'")))) return /ENGINE_VERSION = '23\.(?:13\.\d+|1[4-9]\.\d+|[2-9]\d\.\d+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/.test(version); } catch { return false; } })());
+assert.ok((version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.1'"))) || (()=>{ try { if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.1'")))) return /ENGINE_VERSION = '23\.(?:13\.\d+|1[4-9]\.\d+|[2-9]\d\.\d+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/.test(version); } catch { return false; } })());
 
 // Moneda: cilindro visible y dos caras independientes.
 assert.match(coin, /COIN_THICKNESS_PX = 24/);
