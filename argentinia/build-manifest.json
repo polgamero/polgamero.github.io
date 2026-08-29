@@ -1,9 +1,9 @@
 {
-  "engineVersion": "23.19.4",
+  "engineVersion": "23.19.4.1",
   "engineProtocolVersion": "mp-23.19.1",
   "protocolVersion": "mp-23.19.1",
-  "firestoreRulesVersion": "23.13.77",
+  "firestoreRulesVersion": "23.13.78",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Animation Foundation + Combat Impact I"
+  "label": "Combat Impact II + Admin Animation Studio"
 }

@@ -1913,9 +1913,20 @@ export async function loadAnimationPolicy() {
 }
 
 export async function saveAnimationPolicy(config = {}) {
+  const clampMultiplier = (value, fallback) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(0.25, Math.min(3, Math.round(n * 100) / 100));
+  };
+  const rawSpeeds = config?.speedMultipliers && typeof config.speedMultipliers === 'object' ? config.speedMultipliers : {};
   return saveAdminGameConfigDocument('animations', {
     enabled: config?.enabled !== false,
-    schemaVersion: 1,
+    speedMultipliers: {
+      slow: clampMultiplier(rawSpeeds.slow, 1.35),
+      normal: clampMultiplier(rawSpeeds.normal, 1),
+      fast: clampMultiplier(rawSpeeds.fast, 0.68)
+    },
+    schemaVersion: 2,
     engineVersion: ENGINE_VERSION
   });
 }

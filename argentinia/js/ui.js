@@ -89,7 +89,7 @@ import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 import { enterMenuAudio, getAudioSettings, toggleMusic, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
-import { getAnimationSettings, getServerAnimationPolicy, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, runAnimationDebugShowcase, clearAnimationLayer } from './animationDirector.js';
+import { getAnimationSettings, getServerAnimationPolicy, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer } from './animationDirector.js';
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
 import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandActivatedAbilities, describeLandTransformation } from './landCharacteristics.js';
@@ -6161,6 +6161,12 @@ function injectAdminPanelStyles() {
     .admin-debug-download { width:auto; margin:0; padding:7px 10px; font-size:12px; white-space:nowrap; }
     .admin-debug-empty { padding:30px; color:#a995b8; text-align:center; font-style:italic; }
     .admin-debug-error { padding:18px; color:#e07a6b; text-align:center; }
+    .admin-animation-speed-grid { display:grid; grid-template-columns:repeat(3,minmax(150px,1fr)); gap:12px; margin:10px 0; }
+    .admin-animation-speed-grid label { display:flex; flex-direction:column; gap:6px; color:#d8c4e8; font-size:12px; font-weight:700; }
+    .admin-animation-speed-grid input { width:100%; background:rgba(255,255,255,.06); border:1.5px solid rgba(176,106,212,.4); border-radius:7px; color:#f0e0b0; font-size:14px; font-weight:800; padding:8px 10px; }
+    .admin-animation-reference-help { color:#9e8aac; font-size:11px; line-height:1.5; margin:8px 0 12px; }
+    .admin-animation-studio-section { padding-left:16px; padding-right:16px; }
+    @media(max-width:900px){.admin-animation-speed-grid{grid-template-columns:1fr}.admin-animation-studio-section{padding-left:8px;padding-right:8px}}
   `;
   document.head.appendChild(style);
 }
@@ -6227,23 +6233,33 @@ export function showAdminPanel(onBack) {
     return `<div class="admin-section"><div class="admin-section-title">${sectionName}</div>${rowsHTML}</div>`;
   }).join('');
 
-  const animationPolicyHTML = `
+  const initialAnimationPolicy = getServerAnimationPolicy();
+  const initialAnimationRefs = initialAnimationPolicy.speedMultipliers || { slow:1.35, normal:1, fast:0.68 };
+  const animationAdminHTML = `
     <div class="admin-section">
-      <div class="admin-section-title">Animaciones de partida</div>
+      <div class="admin-section-title">Política global y velocidades de referencia</div>
       <div class="admin-field-row">
         <span class="admin-field-label">Habilitadas globalmente</span>
         <label style="display:flex;align-items:center;gap:8px;color:#dcc8e7;font-size:12px;">
-          <input type="checkbox" id="cfg-animations-enabled" ${getServerAnimationPolicy().enabled ? 'checked' : ''}>
+          <input type="checkbox" id="cfg-animations-enabled" ${initialAnimationPolicy.enabled ? 'checked' : ''}>
           <span>Kill switch remoto</span>
         </label>
       </div>
-      <div style="color:#9e8aac;font-size:10px;line-height:1.45;margin:6px 0 10px;">OFF apaga la capa visual para todos los clientes conectados sin tocar reglas, state ni resultados. Cada jugador conserva además su propio OFF local.</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="admin-save-btn" id="admin-animation-policy-save" style="margin:0;">🎬 Aplicar política global</button>
-        <button class="admin-save-btn" id="admin-animation-test" style="margin:0;">🧪 Test de animaciones</button>
+      <div style="color:#9e8aac;font-size:11px;line-height:1.5;margin:6px 0 14px;">OFF apaga la capa visual para todos los clientes conectados sin tocar reglas, state ni resultados. Cada jugador conserva además su propio OFF local.</div>
+      <div class="admin-animation-speed-grid">
+        <label><span>Lenta · multiplicador</span><input type="number" id="cfg-animation-speed-slow" value="${Number(initialAnimationRefs.slow || 1.35).toFixed(2)}" min="0.25" max="3" step="0.05"></label>
+        <label><span>Normal · multiplicador</span><input type="number" id="cfg-animation-speed-normal" value="${Number(initialAnimationRefs.normal || 1).toFixed(2)}" min="0.25" max="3" step="0.05"></label>
+        <label><span>Rápida · multiplicador</span><input type="number" id="cfg-animation-speed-fast" value="${Number(initialAnimationRefs.fast || 0.68).toFixed(2)}" min="0.25" max="3" step="0.05"></label>
       </div>
+      <div class="admin-animation-reference-help">Estos tres valores son la referencia central que usa <b>Velocidad de animaciones</b> en Opciones. 1.00 = duración base; 1.35 = 35% más lenta; 0.68 = 32% más rápida. Rango seguro: 0.25–3.00.</div>
+      <button class="admin-save-btn" id="admin-animation-policy-save">🎬 Guardar política y velocidades</button>
       <div class="store-error-msg" id="admin-animation-error" style="text-align:center;"></div>
       <div class="admin-success-msg" id="admin-animation-success"></div>
+    </div>
+    <div class="admin-section admin-animation-studio-section">
+      <div class="admin-section-title">Animation Test Lab · dummy del tablero real</div>
+      <div class="admin-debug-summary" style="margin-bottom:12px;">Playtest aislado con fondo, proporciones, zonas de combate/tierras/manos y badges equivalentes al tablero. Elegí la velocidad dentro del propio lab: no cambia tu preferencia de Opciones.</div>
+      <div id="admin-animation-lab-root"></div>
     </div>
   `;
 
@@ -6295,6 +6311,7 @@ export function showAdminPanel(onBack) {
 
   const adminTabs = [
     { key: 'game', label: 'AJUSTES DEL JUEGO' },
+    { key: 'animations', label: 'ANIMACIONES' },
     { key: 'texts', label: 'TEXTOS DEL JUEGO' },
     { key: 'messages', label: 'MENSAJES Y USUARIOS' },
     { key: 'campaigns', label: gameText('admin.tab.campaigns') },
@@ -6316,12 +6333,15 @@ export function showAdminPanel(onBack) {
       <div class="admin-tab-pane" data-admin-pane="game">
         <div class="admin-pane-narrow">
           ${sectionsHTML}
-          ${animationPolicyHTML}
           ${placeholdersHTML}
           <button class="admin-save-btn" id="admin-save">💾 Guardar cambios</button>
           <div class="store-error-msg" id="admin-error" style="text-align:center;"></div>
           <div class="admin-success-msg" id="admin-success"></div>
         </div>
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="animations">
+        ${animationAdminHTML}
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="texts">
@@ -6902,6 +6922,17 @@ Receipt: ${receiptId}
     }
   }
 
+  let animationLabCleanup = null;
+  let animationLabMounted = false;
+
+  function ensureAdminAnimationLab() {
+    if (animationLabMounted) return;
+    const root = overlay.querySelector('#admin-animation-lab-root');
+    if (!root) return;
+    animationLabCleanup = mountAnimationLab(root);
+    animationLabMounted = true;
+  }
+
   function activateAdminTab(key) {
     overlay.querySelectorAll('[data-admin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === key));
     overlay.querySelectorAll('[data-admin-pane]').forEach(pane => pane.classList.toggle('hidden', pane.dataset.adminPane !== key));
@@ -6910,6 +6941,7 @@ Receipt: ${receiptId}
       void gameTextsAdminPane.load();
     }
     if (key === 'stats' && !statsLoaded) reloadAdminStatistics();
+    if (key === 'animations') ensureAdminAnimationLab();
     if (key === 'debug') {
       if (!debugLoaded) reloadTelemetryHistory();
       if (!imageAuditLoaded) reloadImageAudit(false);
@@ -6962,28 +6994,49 @@ Receipt: ${receiptId}
   });
 
   const adminAnimationCheckbox = overlay.querySelector('#cfg-animations-enabled');
+  const adminAnimationSlow = overlay.querySelector('#cfg-animation-speed-slow');
+  const adminAnimationNormal = overlay.querySelector('#cfg-animation-speed-normal');
+  const adminAnimationFast = overlay.querySelector('#cfg-animation-speed-fast');
   const adminAnimationError = overlay.querySelector('#admin-animation-error');
   const adminAnimationSuccess = overlay.querySelector('#admin-animation-success');
+  const readAnimationMultiplier = (input, fallback) => {
+    const n=Number(input?.value);
+    return Number.isFinite(n) ? Math.max(.25,Math.min(3,Math.round(n*100)/100)) : fallback;
+  };
   overlay.querySelector('#admin-animation-policy-save')?.addEventListener('click', async () => {
     adminAnimationError.textContent = '';
     adminAnimationSuccess.textContent = '';
     const enabled = !!adminAnimationCheckbox.checked;
+    const speedMultipliers = {
+      slow:readAnimationMultiplier(adminAnimationSlow,1.35),
+      normal:readAnimationMultiplier(adminAnimationNormal,1),
+      fast:readAnimationMultiplier(adminAnimationFast,.68)
+    };
+    if (!(speedMultipliers.slow >= speedMultipliers.normal && speedMultipliers.normal >= speedMultipliers.fast)) {
+      adminAnimationError.textContent = 'La referencia debe mantener Lenta ≥ Normal ≥ Rápida.';
+      return;
+    }
     try {
-      await saveAnimationPolicy({ enabled });
-      applyServerAnimationPolicy({ enabled }, 'admin_local_commit');
+      await saveAnimationPolicy({ enabled, speedMultipliers });
+      applyServerAnimationPolicy({ enabled, speedMultipliers }, 'admin_local_commit');
+      adminAnimationSlow.value=speedMultipliers.slow.toFixed(2);
+      adminAnimationNormal.value=speedMultipliers.normal.toFixed(2);
+      adminAnimationFast.value=speedMultipliers.fast.toFixed(2);
       adminAnimationSuccess.textContent = enabled
-        ? '✅ Animaciones globales habilitadas.'
-        : '✅ Kill switch aplicado: animaciones globales deshabilitadas.';
+        ? `✅ Política guardada · Lenta ×${speedMultipliers.slow.toFixed(2)} · Normal ×${speedMultipliers.normal.toFixed(2)} · Rápida ×${speedMultipliers.fast.toFixed(2)}.`
+        : '✅ Kill switch aplicado: animaciones globales deshabilitadas. Las referencias quedaron guardadas.';
     } catch (err) {
       console.error('No se pudo guardar la política global de animaciones:', err);
-      adminAnimationError.textContent = err?.message || 'No se pudo aplicar el kill switch.';
+      adminAnimationError.textContent = err?.message || 'No se pudo aplicar la política de animaciones.';
     }
   });
-  overlay.querySelector('#admin-animation-test')?.addEventListener('click', () => {
-    void runAnimationDebugShowcase();
-  });
   const onAdminAnimationPolicyChanged = (event) => {
-    if (document.activeElement !== adminAnimationCheckbox) adminAnimationCheckbox.checked = event?.detail?.enabled !== false;
+    const detail=event?.detail || getServerAnimationPolicy();
+    if (document.activeElement !== adminAnimationCheckbox) adminAnimationCheckbox.checked = detail?.enabled !== false;
+    const refs=detail?.speedMultipliers || {};
+    if(document.activeElement!==adminAnimationSlow && Number.isFinite(Number(refs.slow))) adminAnimationSlow.value=Number(refs.slow).toFixed(2);
+    if(document.activeElement!==adminAnimationNormal && Number.isFinite(Number(refs.normal))) adminAnimationNormal.value=Number(refs.normal).toFixed(2);
+    if(document.activeElement!==adminAnimationFast && Number.isFinite(Number(refs.fast))) adminAnimationFast.value=Number(refs.fast).toFixed(2);
   };
   window.addEventListener('argentinia:animation-policy-changed', onAdminAnimationPolicyChanged);
 
@@ -7057,6 +7110,7 @@ Receipt: ${receiptId}
 
   overlay.querySelector('#admin-back').addEventListener('click', () => {
     window.removeEventListener('argentinia:animation-policy-changed', onAdminAnimationPolicyChanged);
+    try { animationLabCleanup?.(); } catch {}
     overlay.remove();
     onBack();
   });

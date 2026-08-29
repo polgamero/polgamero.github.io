@@ -34,7 +34,7 @@ import { gameText } from './gameTexts.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
 import { botHasCapability } from './botDifficulty.js';
 import { chooseHardBlockPlan, COMBAT_BOT_2_VERSION } from './combatBot2.js';
-import { captureCardVisual, capturePlayerVisual, queueCombatImpactAnimation, queuePlayerDamageAnimation } from './animationDirector.js';
+import { captureCardVisual, capturePlayerVisual, queueCombatSequenceAnimation, queuePlayerDamageAnimation } from './animationDirector.js';
 
 // Habilidades disparadas de combate: ahora se APILAN en vez de resolver durante la
 // declaración/daño. `triggerKey` se traduce a una etiqueta estable para Stack/logs.
@@ -564,14 +564,20 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
     const attackerHasTrample = hasKeyword(attacker, 'trample');
 
     const aliveBlockers = blockers.filter(b => isUnitStillOnBattlefield(b) && !isCreatureDead(b));
-    // 23.19.4 — snapshot visual ANTES de mutar daño. Sólo 1v1 sin Arrollar entra en la
-    // primera fase; múltiple bloqueo/trample quedan para Combat Impact II. La copia visual
-    // es descartable y nunca participa de reglas.
-    const oneVsOneVisual = attackerDealsThisStep && aliveBlockers.length === 1 && !attackerHasTrample
+    // 23.19.4.1 — Combat Impact II captura TODA la escena antes de mutar daño: atacante,
+    // bloqueadores en su orden real y, si hay Arrollar, el badge del jugador. La película
+    // sigue siendo puramente narrativa: el engine resuelve simultaneidad / First Strike /
+    // Double Strike / Shield / Deathtouch / Indestructible antes de encolarla.
+    const combatVisual = attackerDealsThisStep && aliveBlockers.length > 0
       ? {
           attackerSnapshot:captureCardVisual(attacker, isLocalAttacking ? 'local' : 'rival'),
-          defenderSnapshot:captureCardVisual(aliveBlockers[0], isLocalAttacking ? 'rival' : 'local'),
-          defender:aliveBlockers[0]
+          playerSnapshot:attackerHasTrample && !attacker.attackTarget ? capturePlayerVisual(!isLocalAttacking) : null,
+          defenders:aliveBlockers.map(blocker => ({
+            item:blocker,
+            snapshot:captureCardVisual(blocker, isLocalAttacking ? 'rival' : 'local'),
+            shieldBefore:Math.max(0, Number(blocker?.counters?.shield) || 0),
+            damageDealt:0
+          }))
         }
       : null;
 
@@ -662,7 +668,19 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
           if (attackerHasLifelink && damageDealt > 0) gainLifeFromCombat(isLocalAttacking,damageDealt,attacker);
           continue;
         }
+        const trampleAllVisual = {
+          attackerSnapshot:captureCardVisual(attacker, isLocalAttacking ? 'local' : 'rival'),
+          playerSnapshot:capturePlayerVisual(!isLocalAttacking)
+        };
         const damageDealt = dealCombatDamageToPlayer(attacker, !isLocalAttacking, attackerPower);
+        if (damageDealt > 0 && trampleAllVisual.attackerSnapshot && trampleAllVisual.playerSnapshot) {
+          void queuePlayerDamageAnimation({
+            ...trampleAllVisual,
+            amount:damageDealt,
+            attackerIsLocal:isLocalAttacking,
+            stepKind:stepFilter === dealsInFirstStrikeStep ? 'first_strike' : 'regular'
+          });
+        }
         if (attackerHasLifelink && damageDealt > 0) gainLifeFromCombat(isLocalAttacking,damageDealt,attacker);
         if (damageDealt > 0) logMsg(gameText('combat.trample.allPlayer', { card: attacker.card.name, amount: damageDealt }));
         damageToPlayerThisStep += damageDealt;
@@ -731,6 +749,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         } else {
           const actualDamage = dealCombatDamageToCreature(attacker, blocker, damageToDeal);
           attackerLifelinkHeal += actualDamage;
+          if (combatVisual?.defenders?.[bIdx]) combatVisual.defenders[bIdx].damageDealt += actualDamage;
           if (attackerHasDeathtouch && actualDamage > 0) blocker.tookDeathtouch = true;
         }
       }
@@ -785,13 +804,31 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       }
     }
 
-    if (oneVsOneVisual?.attackerSnapshot && oneVsOneVisual?.defenderSnapshot) {
-      void queueCombatImpactAnimation({
-        attackerSnapshot:oneVsOneVisual.attackerSnapshot,
-        defenderSnapshot:oneVsOneVisual.defenderSnapshot,
+    if (combatVisual?.attackerSnapshot && combatVisual.defenders.some(entry => entry.snapshot)) {
+      const stepKind = stepFilter === dealsInFirstStrikeStep ? 'first_strike' : 'regular';
+      void queueCombatSequenceAnimation({
+        attackerSnapshot:combatVisual.attackerSnapshot,
+        defenders:combatVisual.defenders.map(entry => {
+          const shieldAfter=Math.max(0,Number(entry.item?.counters?.shield)||0);
+          const died=willCreatureLeaveFromCombatLethal(entry.item);
+          const toughness=getEffectiveToughness(entry.item);
+          const indestructibleSurvived=hasKeyword(entry.item,'indestructible') && !died && entry.damageDealt>0
+            && (toughness > 0 && ((entry.item.damageTaken||0) >= toughness || !!entry.item.tookDeathtouch));
+          return {
+            snapshot:entry.snapshot,
+            died,
+            shieldConsumed:entry.shieldBefore > shieldAfter,
+            indestructibleSurvived,
+            deathtouchHit:attackerHasDeathtouch && entry.damageDealt > 0,
+            damageDealt:entry.damageDealt
+          };
+        }),
+        playerSnapshot:damageToPlayerThisStep > 0 ? combatVisual.playerSnapshot : null,
+        playerDamage:damageToPlayerThisStep,
         attackerDied:willCreatureLeaveFromCombatLethal(attacker),
-        defenderDied:willCreatureLeaveFromCombatLethal(oneVsOneVisual.defender),
-        attackerIsLocal:isLocalAttacking
+        attackerIsLocal:isLocalAttacking,
+        stepKind,
+        doubleStrikePass:stepKind === 'regular' && hasKeyword(attacker,'doublestrike')
       });
     }
     const blockNames = aliveBlockers.map(b => b.card.name).join(" y ");
