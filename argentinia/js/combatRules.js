@@ -34,6 +34,7 @@ import { gameText } from './gameTexts.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
 import { botHasCapability } from './botDifficulty.js';
 import { chooseHardBlockPlan, COMBAT_BOT_2_VERSION } from './combatBot2.js';
+import { captureCardVisual, capturePlayerVisual, queueCombatImpactAnimation, queuePlayerDamageAnimation } from './animationDirector.js';
 
 // Habilidades disparadas de combate: ahora se APILAN en vez de resolver durante la
 // declaración/daño. `triggerKey` se traduce a una etiqueta estable para Stack/logs.
@@ -381,6 +382,16 @@ function isCreatureDead(item) {
   return dmg >= getEffectiveToughness(item) || (item.tookDeathtouch && dmg > 0);
 }
 
+// Sólo para la película visual: Indestructible evita destrucción por daño letal/deathtouch,
+// pero NO salva una resistencia efectiva <= 0 (p. ej. Infectar / contadores -1/-1).
+function willCreatureLeaveFromCombatLethal(item) {
+  const toughness = getEffectiveToughness(item);
+  if (toughness <= 0) return true;
+  const dmg = item.damageTaken || 0;
+  const lethalByDamage = dmg >= toughness || (item.tookDeathtouch && dmg > 0);
+  return lethalByDamage && !hasKeyword(item, 'indestructible');
+}
+
 function dealsInFirstStrikeStep(item) {
   return hasKeyword(item, 'firststrike') || hasKeyword(item, 'doublestrike');
 }
@@ -553,6 +564,16 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
     const attackerHasTrample = hasKeyword(attacker, 'trample');
 
     const aliveBlockers = blockers.filter(b => isUnitStillOnBattlefield(b) && !isCreatureDead(b));
+    // 23.19.4 — snapshot visual ANTES de mutar daño. Sólo 1v1 sin Arrollar entra en la
+    // primera fase; múltiple bloqueo/trample quedan para Combat Impact II. La copia visual
+    // es descartable y nunca participa de reglas.
+    const oneVsOneVisual = attackerDealsThisStep && aliveBlockers.length === 1 && !attackerHasTrample
+      ? {
+          attackerSnapshot:captureCardVisual(attacker, isLocalAttacking ? 'local' : 'rival'),
+          defenderSnapshot:captureCardVisual(aliveBlockers[0], isLocalAttacking ? 'rival' : 'local'),
+          defender:aliveBlockers[0]
+        }
+      : null;
 
     aliveBlockers.forEach(blocker => {
       if (!stepFilter(blocker)) return; 
@@ -612,7 +633,14 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         }
         continue;
       }
+      const directHitVisual = {
+        attackerSnapshot:captureCardVisual(attacker, isLocalAttacking ? 'local' : 'rival'),
+        playerSnapshot:capturePlayerVisual(!isLocalAttacking)
+      };
       const damageDealt = dealCombatDamageToPlayer(attacker, !isLocalAttacking, attackerPower);
+      if (damageDealt > 0 && directHitVisual.attackerSnapshot && directHitVisual.playerSnapshot) {
+        void queuePlayerDamageAnimation({ ...directHitVisual, amount:damageDealt, attackerIsLocal:isLocalAttacking });
+      }
       if (attackerHasLifelink && damageDealt > 0) {
         gainLifeFromCombat(isLocalAttacking,damageDealt,attacker);
         if (isLocalAttacking) logMsg(gameText('combat.lifelink.attackLocal', { card: attacker.card.name, amount: damageDealt }));
@@ -757,6 +785,15 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       }
     }
 
+    if (oneVsOneVisual?.attackerSnapshot && oneVsOneVisual?.defenderSnapshot) {
+      void queueCombatImpactAnimation({
+        attackerSnapshot:oneVsOneVisual.attackerSnapshot,
+        defenderSnapshot:oneVsOneVisual.defenderSnapshot,
+        attackerDied:willCreatureLeaveFromCombatLethal(attacker),
+        defenderDied:willCreatureLeaveFromCombatLethal(oneVsOneVisual.defender),
+        attackerIsLocal:isLocalAttacking
+      });
+    }
     const blockNames = aliveBlockers.map(b => b.card.name).join(" y ");
     logMsg(gameText('combat.clash', { attacker: attacker.card.name, blockers: blockNames }));
   }

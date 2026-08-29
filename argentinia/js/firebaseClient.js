@@ -127,6 +127,26 @@ export function listenToMatch(...args) {
   };
 }
 
+export function listenAnimationPolicy(...args) {
+  let cancelled = false;
+  let innerStop = null;
+  preloadFirebaseClient().then(mod => {
+    if (cancelled) return;
+    innerStop = mod.listenAnimationPolicy(...args);
+    if (cancelled && typeof innerStop === 'function') innerStop();
+  }).catch(error => {
+    diag('firebase_animation_policy_listen_failed', { message: error?.message || String(error) });
+    const onError = args[1];
+    if (typeof onError === 'function') {
+      try { onError(error); } catch {}
+    }
+  });
+  return () => {
+    cancelled = true;
+    if (typeof innerStop === 'function') innerStop();
+  };
+}
+
 function persistAuthError(error) {
   const detail = { code: error?.code || null, name: error?.name || null, message: error?.message || String(error), at: Date.now() };
   diag('google_signin_failed', detail);
@@ -192,6 +212,8 @@ export const loadPublicGameConfigDocument = asyncProxy('loadPublicGameConfigDocu
 export const saveAdminGameConfigDocument = asyncProxy('saveAdminGameConfigDocument');
 export const loadGameConfig = asyncProxy('loadGameConfig');
 export const saveGameConfig = asyncProxy('saveGameConfig');
+export const loadAnimationPolicy = asyncProxy('loadAnimationPolicy');
+export const saveAnimationPolicy = asyncProxy('saveAnimationPolicy');
 export const loadGameTextOverrides = asyncProxy('loadGameTextOverrides');
 export const saveGameTextOverrides = asyncProxy('saveGameTextOverrides');
 export const createMatch = asyncProxy('createMatch');

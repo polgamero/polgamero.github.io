@@ -1,9 +1,9 @@
 {
-  "engineVersion": "23.19.3",
+  "engineVersion": "23.19.4",
   "engineProtocolVersion": "mp-23.19.1",
   "protocolVersion": "mp-23.19.1",
   "firestoreRulesVersion": "23.13.77",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Gameplay Semantic + UX Hardening"
+  "label": "Animation Foundation + Combat Impact I"
 }

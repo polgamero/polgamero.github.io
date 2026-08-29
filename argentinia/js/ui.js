@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { generatePackCards, generateGuaranteedMythicCard, isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, loadUserProfileFromServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, openInventoryPack, openGuaranteedMythic, loadUserProfileFromServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -89,6 +89,7 @@ import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 import { enterMenuAudio, getAudioSettings, toggleMusic, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
+import { getAnimationSettings, getServerAnimationPolicy, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, runAnimationDebugShowcase, clearAnimationLayer } from './animationDirector.js';
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
 import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandActivatedAbilities, describeLandTransformation } from './landCharacteristics.js';
@@ -6226,6 +6227,26 @@ export function showAdminPanel(onBack) {
     return `<div class="admin-section"><div class="admin-section-title">${sectionName}</div>${rowsHTML}</div>`;
   }).join('');
 
+  const animationPolicyHTML = `
+    <div class="admin-section">
+      <div class="admin-section-title">Animaciones de partida</div>
+      <div class="admin-field-row">
+        <span class="admin-field-label">Habilitadas globalmente</span>
+        <label style="display:flex;align-items:center;gap:8px;color:#dcc8e7;font-size:12px;">
+          <input type="checkbox" id="cfg-animations-enabled" ${getServerAnimationPolicy().enabled ? 'checked' : ''}>
+          <span>Kill switch remoto</span>
+        </label>
+      </div>
+      <div style="color:#9e8aac;font-size:10px;line-height:1.45;margin:6px 0 10px;">OFF apaga la capa visual para todos los clientes conectados sin tocar reglas, state ni resultados. Cada jugador conserva además su propio OFF local.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="admin-save-btn" id="admin-animation-policy-save" style="margin:0;">🎬 Aplicar política global</button>
+        <button class="admin-save-btn" id="admin-animation-test" style="margin:0;">🧪 Test de animaciones</button>
+      </div>
+      <div class="store-error-msg" id="admin-animation-error" style="text-align:center;"></div>
+      <div class="admin-success-msg" id="admin-animation-success"></div>
+    </div>
+  `;
+
   const placeholdersHTML = `
     <div class="admin-section">
       <div class="admin-section-title">Próximamente</div>
@@ -6295,6 +6316,7 @@ export function showAdminPanel(onBack) {
       <div class="admin-tab-pane" data-admin-pane="game">
         <div class="admin-pane-narrow">
           ${sectionsHTML}
+          ${animationPolicyHTML}
           ${placeholdersHTML}
           <button class="admin-save-btn" id="admin-save">💾 Guardar cambios</button>
           <div class="store-error-msg" id="admin-error" style="text-align:center;"></div>
@@ -6939,6 +6961,32 @@ Receipt: ${receiptId}
     downloadAdminJson(imageAudit, `Argentinia_auditoria_imagenes_v${ENGINE_VERSION}.json`);
   });
 
+  const adminAnimationCheckbox = overlay.querySelector('#cfg-animations-enabled');
+  const adminAnimationError = overlay.querySelector('#admin-animation-error');
+  const adminAnimationSuccess = overlay.querySelector('#admin-animation-success');
+  overlay.querySelector('#admin-animation-policy-save')?.addEventListener('click', async () => {
+    adminAnimationError.textContent = '';
+    adminAnimationSuccess.textContent = '';
+    const enabled = !!adminAnimationCheckbox.checked;
+    try {
+      await saveAnimationPolicy({ enabled });
+      applyServerAnimationPolicy({ enabled }, 'admin_local_commit');
+      adminAnimationSuccess.textContent = enabled
+        ? '✅ Animaciones globales habilitadas.'
+        : '✅ Kill switch aplicado: animaciones globales deshabilitadas.';
+    } catch (err) {
+      console.error('No se pudo guardar la política global de animaciones:', err);
+      adminAnimationError.textContent = err?.message || 'No se pudo aplicar el kill switch.';
+    }
+  });
+  overlay.querySelector('#admin-animation-test')?.addEventListener('click', () => {
+    void runAnimationDebugShowcase();
+  });
+  const onAdminAnimationPolicyChanged = (event) => {
+    if (document.activeElement !== adminAnimationCheckbox) adminAnimationCheckbox.checked = event?.detail?.enabled !== false;
+  };
+  window.addEventListener('argentinia:animation-policy-changed', onAdminAnimationPolicyChanged);
+
   // Carga la lista real de usuarios de forma asíncrona — no bloquea el resto del panel.
   const recipientSelect = overlay.querySelector('#grant-recipient');
   fetchAllUserProfiles()
@@ -7008,6 +7056,7 @@ Receipt: ${receiptId}
   mountAdminCampaignsPane(overlay.querySelector('#admin-campaigns-root'), { currentUser: state.currentUser });
 
   overlay.querySelector('#admin-back').addEventListener('click', () => {
+    window.removeEventListener('argentinia:animation-policy-changed', onAdminAnimationPolicyChanged);
     overlay.remove();
     onBack();
   });
@@ -7469,6 +7518,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
 }
 
 export function showMainMenu(onPlay, onMultiplayerMatched) {
+  clearAnimationLayer('main_menu');
   injectMainMenuStyles();
   injectRewardsStyles();
   // ENTREGA 23.8.5 — el menú principal es singleton DOM. Aunque un flujo viejo o una
@@ -7610,6 +7660,8 @@ export function showOptionsMenu(onBack) {
 
   const difficultyLabel = () => botDifficultyLabel(state.botDifficulty);
   const initialAudio = getAudioSettings();
+  const initialAnimations = getAnimationSettings();
+  const initialServerAnimationPolicy = getServerAnimationPolicy();
   const percent = value => Math.round(Number(value || 0) * 100);
 
   // Zona de Peligro: pensada para testing/desarrollo (reiniciar tu propia cuenta sin tener
@@ -7629,10 +7681,16 @@ export function showOptionsMenu(onBack) {
         <span class="options-label">${escapeHtml(gameText('options.difficulty'))}</span>
         <button class="options-toggle-btn" id="opt-difficulty">${difficultyLabel()}</button>
       </div>
-      <div class="options-row options-row-disabled">
-        <span class="options-label">${escapeHtml(gameText('options.animationSpeed'))}</span>
-        <button class="options-toggle-btn" data-tooltip="${escapeHtml(gameText('options.disabled'))}">${escapeHtml(gameText('options.normal'))}</button>
+      <div class="options-section-title">${escapeHtml(gameText('options.animations'))}</div>
+      <div class="options-row">
+        <span class="options-label">${escapeHtml(gameText('options.animations'))}</span>
+        <button class="options-toggle-btn" id="opt-animations-toggle">${initialAnimations.enabled ? escapeHtml(gameText('options.enabled')) : escapeHtml(gameText('options.off'))}</button>
       </div>
+      <div class="options-row" id="opt-animation-speed-row">
+        <span class="options-label">${escapeHtml(gameText('options.animationSpeed'))}</span>
+        <button class="options-toggle-btn" id="opt-animation-speed">${escapeHtml(animationSpeedLabel(initialAnimations.speed))}</button>
+      </div>
+      <div id="opt-animation-server-note" style="${initialServerAnimationPolicy.enabled ? 'display:none;' : ''}margin:-2px 0 12px;color:#d99b6b;font-size:11px;line-height:1.4;">${escapeHtml(gameText('options.animations.serverOff'))}</div>
 
       <div class="options-section-title">${escapeHtml(gameText('options.audio'))}</div>
       <div class="options-row options-audio-row">
@@ -7663,6 +7721,32 @@ export function showOptionsMenu(onBack) {
     diffBtn.textContent = difficultyLabel();
     logMsg(gameText('options.difficulty.changed', { difficulty: difficultyLabel() }));
   });
+
+  const animationsToggle = overlay.querySelector('#opt-animations-toggle');
+  const animationSpeedBtn = overlay.querySelector('#opt-animation-speed');
+  const animationSpeedRow = overlay.querySelector('#opt-animation-speed-row');
+  const animationServerNote = overlay.querySelector('#opt-animation-server-note');
+  const refreshAnimationControls = () => {
+    const anim = getAnimationSettings();
+    const server = getServerAnimationPolicy();
+    animationsToggle.textContent = anim.enabled ? gameText('options.enabled') : gameText('options.off');
+    animationSpeedBtn.textContent = animationSpeedLabel(anim.speed);
+    animationSpeedBtn.disabled = !anim.enabled || !server.enabled;
+    animationSpeedRow.classList.toggle('options-row-disabled', !anim.enabled || !server.enabled);
+    animationServerNote.style.display = server.enabled ? 'none' : '';
+  };
+  animationsToggle.addEventListener('click', () => {
+    const enabled = setAnimationsEnabled(!getAnimationSettings().enabled);
+    logMsg(gameText('options.animations.changed', { state: enabled ? gameText('options.enabled') : gameText('options.off') }));
+    refreshAnimationControls();
+  });
+  animationSpeedBtn.addEventListener('click', () => {
+    const speed = cycleAnimationSpeed();
+    logMsg(gameText('options.animationSpeed.changed', { speed: animationSpeedLabel(speed) }));
+    refreshAnimationControls();
+  });
+  const onAnimationPolicyChanged = () => refreshAnimationControls();
+  window.addEventListener('argentinia:animation-policy-changed', onAnimationPolicyChanged);
 
   const musicToggle = overlay.querySelector('#opt-music-toggle');
   const musicSlider = overlay.querySelector('#opt-music-volume');
@@ -7716,6 +7800,7 @@ export function showOptionsMenu(onBack) {
   }
 
   overlay.querySelector('#opt-back').addEventListener('click', () => {
+    window.removeEventListener('argentinia:animation-policy-changed', onAnimationPolicyChanged);
     overlay.remove();
     onBack();
   });

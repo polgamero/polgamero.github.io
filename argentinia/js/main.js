@@ -7,7 +7,7 @@ import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseMa
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, flushPendingGameRewards, loadGameConfig, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks, getTelemetryStatus } from './telemetry.js';
@@ -25,6 +25,7 @@ import { createSoloGameId, beginSoloRecoverySession, activateResumedSoloRecovery
 import { maybeShowAnnouncementPopup } from './campaignsUI.js';
 import { beginGameRngSession, gameRandom, gameSeedFromLocation, getGameRngSnapshot } from './gameRng.js';
 import { enterGameplayAudio } from './audioManager.js';
+import { applyServerAnimationPolicy, captureCardVisual, queueLandTapAnimation } from './animationDirector.js';
 import { emptyManaPool, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, spendOneMana, spendAvailableTowardCost } from './manaPool.js';
 import { normalizeManaAbility, isManaSourceCard, getManaSourceOptions, getManaSourceAmount, manaSourceRequiresTap, manaSourceSacrificesSelf, canActivateManaSourcePermanent } from './manaSources.js';
 import { isLandCard, landGraveyardFilterMatches, hasLandPlayFromGraveyardPermission as hasLandGYPermission, playableLandGraveyardEntries } from './landGraveyard.js';
@@ -65,6 +66,23 @@ export async function ensureMenuIdentityReady() {
   return { authenticated: !!state.currentUser, user: state.currentUser, profile: state.userProfile };
 }
 
+
+let animationPolicyStop = null;
+function startAnimationPolicyBridge() {
+  // 23.19.4 — no bloquea el boot: el kill switch remoto llega en background y después
+  // queda live por onSnapshot. Si Firebase no está disponible, el default seguro es ON y
+  // el usuario conserva además su propio opt-out local.
+  loadAnimationPolicy().then(policy => {
+    applyServerAnimationPolicy(policy || { enabled:true }, policy ? 'firestore_initial' : 'default_missing');
+  }).catch(err => {
+    console.warn('No se pudo cargar la política global de animaciones; se mantiene el default local:', err);
+  });
+  if (!animationPolicyStop) {
+    animationPolicyStop = listenAnimationPolicy(policy => {
+      applyServerAnimationPolicy(policy || { enabled:true }, policy ? 'firestore_live' : 'default_missing');
+    }, err => console.warn('Se perdió el listener de política de animaciones:', err));
+  }
+}
 
 let multiplayerPresenceTimer = null;
 function stopMultiplayerPresenceHeartbeat() {
@@ -1484,6 +1502,7 @@ async function boot() {
 
   markEngineBootState('ready', { engineVersion: ENGINE_VERSION });
   showMainMenu(startPlayFlow, startMultiplayerFlow);
+  startAnimationPolicyBridge();
 
   // 23.13.61 — el popup de anuncios ya no nace dentro de showMainMenu antes de que Auth
   // resuelva. Para guest se muestra recién cuando sabemos que realmente NO hay usuario;
@@ -8541,6 +8560,8 @@ function produceManaFromSource(item, isLocal, chosenType) {
   // recién después su efecto agrega maná. Como es una mana ability, todo ocurre sin Stack
   // ni ventana de respuesta entre costo y producción.
   if (ability.sacrificeSelf && isLocal && state.pendingCost) rememberManaSourceRollback(item, isLocal, wasTapped, ability);
+  const landTapAnimationSnapshot = ability.requiresTap && !wasTapped && isLandPermanent(item)
+    ? captureCardVisual(item, isLocal ? 'local' : 'rival') : null;
   if (ability.requiresTap) {
     item.tapped = true;
     if(!wasTapped) dispatchGameEvent({type:'permanent_tapped',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:cardOwnerIsLocal(item.card,isLocal,state.currentMatch?.myRole||null),card:item.card,item,zoneFrom:'battlefield',zoneTo:'battlefield',cause:'mana_ability'});
@@ -8553,6 +8574,9 @@ function produceManaFromSource(item, isLocal, chosenType) {
   const landManaEvent = landManaEventSnapshot
     ? handleLandTappedForManaEvent(item, isLocal, type, amount, { eventSnapshot:landManaEventSnapshot })
     : { bonuses:[] };
+  if (landTapAnimationSnapshot) {
+    void queueLandTapAnimation({ snapshot:landTapAnimationSnapshot, isLocal });
+  }
 
   // UX tipo Arena + regla real: durante 601.2g/602, clickear una fuente puede pagar el
   // coste directamente. La producción COMPLETA entra primero al pool; consumimos como máximo

@@ -1906,6 +1906,27 @@ export async function saveGameConfig(config) {
   return saveAdminGameConfigDocument('settings', config);
 }
 
+// 23.19.4 — kill switch visual independiente del balance/economía. Vive en su propio
+// documento para que apagar animaciones nunca reescriba settings ni altere una partida.
+export async function loadAnimationPolicy() {
+  return loadPublicGameConfigDocument('animations');
+}
+
+export async function saveAnimationPolicy(config = {}) {
+  return saveAdminGameConfigDocument('animations', {
+    enabled: config?.enabled !== false,
+    schemaVersion: 1,
+    engineVersion: ENGINE_VERSION
+  });
+}
+
+export function listenAnimationPolicy(onChange, onError = null) {
+  const ref = doc(db, 'gameConfig', 'animations');
+  return onSnapshot(ref, snap => {
+    if (typeof onChange === 'function') onChange(snap.exists() ? snap.data() : null);
+  }, err => { if (typeof onError === 'function') onError(err); });
+}
+
 // Cimiento de Textos del Juego. 23.13.22 NO lo carga durante boot ni migra copy existente;
 // estas funciones quedan preparadas para el panel/migraciones de las Etapas 5 y 6.
 export async function loadGameTextOverrides() {

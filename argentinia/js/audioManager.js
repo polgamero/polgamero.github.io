@@ -44,6 +44,27 @@ export const AUDIO_CATALOG = Object.freeze({
         Object.freeze({ src: './assets/sounds/sfx/moneda.opus', type: 'audio/ogg; codecs=\"opus\"' }),
         Object.freeze({ src: './assets/sounds/sfx/moneda.mp3', type: 'audio/mpeg' })
       ])
+    }),
+    cardImpact: Object.freeze({
+      id: 'cardImpact', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/choque.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/choque.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    playerImpact: Object.freeze({
+      id: 'playerImpact', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/golpe_jugador.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/golpe_jugador.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    landTap: Object.freeze({
+      id: 'landTap', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/tierra.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/tierra.mp3', type: 'audio/mpeg' })
+      ])
     })
   })
 });
