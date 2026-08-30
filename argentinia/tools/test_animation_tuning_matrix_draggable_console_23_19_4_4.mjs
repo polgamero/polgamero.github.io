@@ -26,7 +26,7 @@ assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.equal(manifest.engineVersion,ENGINE_VERSION);
 assert.equal(manifest.firestoreRulesVersion,'23.13.79');
 assert.equal(manifest.pool,880);
-assert.ok(['Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics','Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets'].includes(manifest.label));
+assert.ok(['Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics','Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets','Rules Integrity + Combat UX + Bot Tactical Hotfix'].includes(manifest.label));
 assert.ok(workflow.includes('test_animation_tuning_matrix_draggable_console_23_19_4_4.mjs'),'CI must retain and execute the 23.19.4.4 contract');
 assert.ok(workflow.includes('Validate Animation Tuning Matrix + Draggable Test Console 23.19.4.4'),'CI gate label');
 
@@ -38,10 +38,10 @@ for(const key of ['land','clash','multi','trample','first','double','shield','de
 }
 
 const defaults=normalizeAnimationTunings({});
-assert.deepEqual(defaults.land,{relativeSpeed:1,sfxMoment:'start',sfxCadence:'single'});
-assert.deepEqual(defaults.clash,{relativeSpeed:1,sfxMoment:'key',sfxCadence:'per_impact'});
-assert.deepEqual(defaults.player,{relativeSpeed:1,sfxMoment:'key',sfxCadence:'per_impact'});
-assert.deepEqual(defaults.exile,{relativeSpeed:1,sfxMoment:'start',sfxCadence:'single'});
+assert.deepEqual(defaults.land,{relativeSpeed:1,relativeVolume:1,sfxMoment:'start',sfxCadence:'single'});
+assert.deepEqual(defaults.clash,{relativeSpeed:1,relativeVolume:1,sfxMoment:'key',sfxCadence:'per_impact'});
+assert.deepEqual(defaults.player,{relativeSpeed:1,relativeVolume:1,sfxMoment:'key',sfxCadence:'per_impact'});
+assert.deepEqual(defaults.exile,{relativeSpeed:1,relativeVolume:1,sfxMoment:'start',sfxCadence:'single'});
 const clamped=normalizeAnimationTunings({land:{relativeSpeed:.1,sfxTiming:'end'},clash:{relativeSpeed:8,sfxTiming:'start'}});
 assert.equal(clamped.land.relativeSpeed,.25);
 assert.equal(clamped.land.sfxMoment,'key','legacy end migrates to key moment');
@@ -56,8 +56,8 @@ applyServerAnimationPolicy({
     clash:{relativeSpeed:1.25,sfxMoment:'key'}
   }
 },'qa-23.19.4.4');
-assert.deepEqual(getAnimationTuning('land'),{relativeSpeed:.75,sfxMoment:'start',sfxCadence:'single'});
-assert.deepEqual(getAnimationTuning('clash'),{relativeSpeed:1.25,sfxMoment:'key',sfxCadence:'per_impact'});
+assert.deepEqual(getAnimationTuning('land'),{relativeSpeed:.75,relativeVolume:1,sfxMoment:'start',sfxCadence:'single'});
+assert.deepEqual(getAnimationTuning('clash'),{relativeSpeed:1.25,relativeVolume:1,sfxMoment:'key',sfxCadence:'per_impact'});
 assert.equal(animationTunedDuration(1000,'land','normal'),1333,'0.75 relative speed must be slower, not shorter');
 assert.equal(animationTunedDuration(1000,'clash','normal'),800,'1.25 relative speed must be faster');
 
@@ -69,7 +69,7 @@ assert.ok(ui.includes("if (check.checked) peers.forEach"),'exclusive timing chec
 assert.ok(ui.includes('const animationTunings = readAnimationTunings()'),'admin reads tuning matrix');
 assert.ok(ui.includes('saveAnimationPolicy({ enabled, speedMultipliers, animationTunings })'),'admin saves tuning matrix');
 assert.ok(firebase.includes('animationTunings,'),'policy writes per-animation tuning');
-assert.ok(/schemaVersion:\s*[34]/.test(firebase),'policy schema v3+');
+assert.ok(/schemaVersion:\s*[345]/.test(firebase),'policy schema v3+');
 assert.ok(firebase.includes("sfxMoment: value.sfxMoment === 'key' ? 'key'"),'moment sanitizer');
 
 // Runtime mapping: relative speed divides global duration; SFX can fire at start or contact/end.

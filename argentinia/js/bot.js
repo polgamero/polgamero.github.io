@@ -64,10 +64,11 @@ import { normalizeLibraryEffect, libraryCardMatchesFilter } from './libraryEngin
 import { permissionBaseManaOverride, consumeExilePlayPermission, clearExilePlayStateOnLeave, EXILE_PLAY_ENGINE_VERSION } from './exilePlayEngine.js';
 import { SUSPEND_ENGINE_VERSION, clearSuspendState } from './suspendEngine.js';
 import { canTransformPermanent } from './transformEngine.js';
-import { botHasCapability } from './botDifficulty.js';
+import { botHasCapability, normalizeBotDifficulty } from './botDifficulty.js';
 import { chooseHardAttackPlan, COMBAT_BOT_2_VERSION } from './combatBot2.js';
 import { isCreatureReservedByBotStack, isStackObjectReservedByBotCounter } from './botTargetReservation.js';
 import { getCounterCount } from './counterEngine.js';
+import { previewReplacementEvent } from './replacementEngine.js';
 
 
 const botThinkDelay = (ms) => globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true ? Promise.resolve() : sleep(ms);
@@ -213,23 +214,60 @@ function isValidBotTarget(creatureItem, sourceColors) {
 // fuera un cambio parejo obviamente bueno (matar algo mucho más grande a cambio de perder
 // algo chico). Un jugador real SÍ consideraría ese trade. Devuelve 'clean' (gratis), 'trade'
 // (cambio que vale la pena) o null (ni siquiera vale pelear).
+function previewFightDamage(sourceItem, targetItem, sourceIsLocal, targetIsLocal) {
+  const sourcePower=Math.max(0,getEffectivePower(sourceItem)||0);
+  const protection=getProtectionMatch(targetItem, sourceItem?.card?.colors || []);
+  if (protection || sourcePower<=0) return 0;
+  const preview=previewReplacementEvent(state,{
+    type:'damage', amount:sourcePower, affectedIsLocal:!!targetIsLocal, targetIsLocal:!!targetIsLocal,
+    card:targetItem?.card || null, targetCard:targetItem?.card || null, item:targetItem, targetItem,
+    sourceCard:sourceItem?.card || null, sourceIsLocal:!!sourceIsLocal, combat:false, cause:'fight_preview'
+  });
+  return Math.max(0,Number(preview?.event?.amount)||0);
+}
+
+function fightCreatureDies(item, incomingDamage, sourceHasDeathtouch) {
+  if (!item) return false;
+  if (hasKeyword(item,'indestructible')) return false;
+  const dealt=Math.max(0,Number(incomingDamage)||0);
+  const totalMarked=Math.max(0,Number(item.damageTaken)||0)+dealt;
+  if (sourceHasDeathtouch && dealt>0) return true;
+  return totalMarked >= Math.max(1,getEffectiveToughness(item)||1);
+}
+
+// 23.19.4.6 — mismo modelo de daño/replacement que Fight real, pero en preview puro.
+// Esto evita que el Tano "vea" un 3/3 vs 4/3 como trade si el 4/3 tiene Shield, prevención,
+// Protección o Indestructible. El preview jamás consume el recurso real.
+function predictFightOutcome(mine, theirs) {
+  const toTheirs=previewFightDamage(mine,theirs,false,true);
+  const toMine=previewFightDamage(theirs,mine,true,false);
+  const theirsDies=fightCreatureDies(theirs,toTheirs,hasKeyword(mine,'deathtouch'));
+  const mineDies=fightCreatureDies(mine,toMine,hasKeyword(theirs,'deathtouch'));
+  return {
+    toTheirs,toMine,theirsDies,mineDies,
+    shieldStopsTheirs:toTheirs===0 && getCounterCount(theirs,'shield')>0 && getEffectivePower(mine)>0,
+    shieldStopsMine:toMine===0 && getCounterCount(mine,'shield')>0 && getEffectivePower(theirs)>0
+  };
+}
+
 function evaluateFight(mine, theirs) {
-  const myPower = getEffectivePower(mine);
-  const myTough = getEffectiveToughness(mine);
-  const theirPower = getEffectivePower(theirs);
-  const theirTough = getEffectiveToughness(theirs);
+  const outcome=predictFightOutcome(mine,theirs);
+  recordTelemetryEvent('bot_fight_evaluation',{
+    source:mine?.card?.name || null,target:theirs?.card?.name || null,
+    sourceDamage:outcome.toTheirs,targetDamage:outcome.toMine,
+    sourceDies:outcome.mineDies,targetDies:outcome.theirsDies,
+    targetShieldPrevented:outcome.shieldStopsTheirs,sourceShieldPrevented:outcome.shieldStopsMine
+  });
 
-  if (myPower < theirTough) return null; // ni la mata: nunca vale la pena pelear así
-  if (theirPower < myTough) return 'clean'; // la mata y sobrevive: el mejor caso posible
+  if (!outcome.theirsDies) return null; // si la pelea no retira el objetivo, no la propone
+  if (!outcome.mineDies) return 'clean';
 
-  // La mata, pero también muere (o queda deathtouched — predictDuel ya lo maneja bien para
-  // combate; acá, fight es más simple: siempre daño simultáneo, sin sub-pasos). Vale la
-  // pena SOLO si el rival "pesa" más que la mía (cambio a favor, no solo parejo o peor).
-  // Grupo C, Etapa 4: en Fácil, ni se evalúa esto — solo pelea si es gratis (evaluación
-  // vieja, de antes de la Etapa 2).
+  // Si ambos mueren, sólo acepta un trade favorable y únicamente en dificultades que ya
+  // habilitan fightTrades. La valoración usa stats efectivos, pero la supervivencia viene
+  // del Replacement Engine real (preview), no de una aproximación aritmética.
   if (!botHasCapability(state.botDifficulty, 'fightTrades')) return null;
-  const myValue = myPower + myTough;
-  const theirValue = theirPower + theirTough;
+  const myValue = getEffectivePower(mine) + getEffectiveToughness(mine);
+  const theirValue = getEffectivePower(theirs) + getEffectiveToughness(theirs);
   return theirValue > myValue ? 'trade' : null;
 }
 
@@ -333,8 +371,8 @@ async function tryActivateBotPlaneswalkers() {
 // es "un rival" desde su perspectiva), tiene que pagar el costo extra o el hechizo se
 // pierde. Se llama una sola vez, justo antes de cada addToStack que targetee una criatura
 // — así no hace falta meter esto en cada una de las ramas que arman targetObj más arriba.
-function tryPayWardForBotTarget(targetObj) {
-  if (!targetObj || targetObj.type !== 'creature' || !targetObj.isLocal) return true; // no aplica
+export function tryPayWardForBotTarget(targetObj) {
+  if (!targetObj?.item || !targetObj.isLocal) return true; // Ward sólo contra permanentes del oponente humano
   const wardKw = (getEffectiveKeywords(targetObj.item) || []).find(k => k.startsWith('ward_'));
   if (!wardKw) return true;
   const wardCost = parseInt(wardKw.split('_')[1], 10);
@@ -458,7 +496,8 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
     if (c.effect && ['destroy_land', 'destroy_nonbasic_land'].includes(c.effect.type)) {
       return getBotLandDestructionTargets(c.effect, c.colors).length > 0;
     }
-    return true; // daño a la cara / robar / curarse siempre tienen destino válido
+    if (c.effect?.type === 'heal') return shouldBotActivateHealing(c.effect, 'main2');
+    return true;
   };
 
   const idx = state.rivalGraveyard.findIndex(isUsable);
@@ -699,6 +738,17 @@ export function tapRivalLandsFor(card, options = null) {
     if (landManaEventSnapshot) handleLandTappedForManaEvent(source, false, chosen, amount, { forceDeferNormalTriggers:true, eventSnapshot:landManaEventSnapshot });
     spendAvailableTowardCost(state.rivalManaPool, remaining);
   }
+}
+
+function shouldBotActivateHealing(effect, timing = 'legacy') {
+  const hp=Math.max(0,Number(state.rivalHP)||0);
+  const amount=Math.max(1,Number(effect?.amount)||1);
+  // 23.19.4.6 — curarse por encima de 20 es legal, pero gastar un recurso de healing estando
+  // sano no es automáticamente correcto. Guardamos Tuppers/activaciones salvo daño relevante.
+  // En instantáneo la urgencia es mayor; en Main 2 aceptamos una ventana algo más amplia.
+  const urgentFloor=Math.max(8,Math.min(12,amount*3));
+  if(timing==='instant' && hp<=urgentFloor) return true;
+  return state.phase==='main2' && hp<=16;
 }
 
 function isCounterSpell(card) {
@@ -1213,11 +1263,10 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
         }
       }
       else if (effect.type === 'heal' || effect.type === 'draw') {
-        const instantReason = timing === 'instant' && (
-          (effect.type === 'heal' && state.rivalHP <= 12) ||
-          (effect.type === 'draw' && state.rivalHand.length <= 3)
-        );
-        if (state.phase === 'main2' || instantReason) {
+        const useful = effect.type === 'heal'
+          ? shouldBotActivateHealing(effect,timing)
+          : (state.phase === 'main2' || (timing === 'instant' && state.rivalHand.length <= 3));
+        if (useful) {
           aiTargetObj = ability.requiresTarget ? { type: 'player', isLocal: false } : null;
           shouldActivate = true;
         }
@@ -1368,11 +1417,10 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
           shouldActivate = state.phase === 'main1' || state.phase === 'main2' || timing === 'instant';
         }
       } else if (effect.type === 'heal' || effect.type === 'draw') {
-        const instantReason = timing === 'instant' && (
-          (effect.type === 'heal' && state.rivalHP <= 12) ||
-          (effect.type === 'draw' && state.rivalHand.length <= 3)
-        );
-        if (state.phase === 'main2' || instantReason) {
+        const useful = effect.type === 'heal'
+          ? shouldBotActivateHealing(effect,timing)
+          : (state.phase === 'main2' || (timing === 'instant' && state.rivalHand.length <= 3));
+        if (useful) {
           aiTargetObj = ability.requiresTarget ? { type: 'player', isLocal: false } : null;
           shouldActivate = true;
         }
@@ -1861,6 +1909,10 @@ export async function takeBotPriorityAction() {
         // componentes no-maná; si el normal no alcanza, contempla la vía alternativa.
         if (chooseBotCastRoute(c, { excludeCard: c }) === null) return;
         if (isCounterSpell(c)) return;
+        // 23.19.4.6 — 20 es vida INICIAL, no máxima; aun así, una carta cuyo único valor
+        // es curar no se gasta automáticamente estando sano. Mismo criterio health-aware
+        // que Tuppers y otras habilidades activadas.
+        if (c.effect?.type === 'heal' && !shouldBotActivateHealing(c.effect, 'main2')) return;
         // 23.11.3: una carta pagable no alcanza. Si no puede formar una propuesta legal/útil
         // con sus targets actuales, ni siquiera compite en la selección de Main.
         if (!canBotBuildMainPhaseCastProposal(c)) return;
@@ -2320,24 +2372,32 @@ export async function takeBotPriorityAction() {
     // No inspecciona mano ni biblioteca humanas para decidir atacantes.
     let hardAttackIndexes = null;
     let hardAttackPlan = null;
-    if (botHasCapability(state.botDifficulty, 'combat2')) {
-      const eligibleAttackers=state.rivalCombat
-        .map((unit,index)=>({unit,index}))
-        .filter(({unit})=>!hasKeyword(unit,'defender') && !unit.tapped && !unit.summoningSickness && !attackLockFor(unit));
-      const publicDefenders=state.localCombat
-        .map((unit,index)=>({unit,index}))
-        .filter(({unit})=>!unit.tapped);
+    const eligibleAttackers=state.rivalCombat
+      .map((unit,index)=>({unit,index}))
+      .filter(({unit})=>!hasKeyword(unit,'defender') && !unit.tapped && !unit.summoningSickness && !attackLockFor(unit));
+    const publicDefenders=state.localCombat
+      .map((unit,index)=>({unit,index}))
+      .filter(({unit})=>!unit.tapped);
+    const hardCombat=botHasCapability(state.botDifficulty, 'combat2');
+    // 23.19.4.6 — Medio conserva su identidad, pero en boards anchos deja de evaluar cada
+    // atacante contra el MISMO mejor bloqueador imaginario. Cuando hay más atacantes que
+    // bloqueadores usa el evaluador global público sólo para capturar saturación real.
+    const mediumWideBoard=!hardCombat && normalizeBotDifficulty(state.botDifficulty)==='medium'
+      && eligibleAttackers.length>publicDefenders.length && eligibleAttackers.length>=3;
+    if (hardCombat || mediumWideBoard) {
       hardAttackPlan=chooseHardAttackPlan({
         eligibleAttackers, defenders:publicDefenders,
         botLife:state.rivalHP, opponentLife:state.localHP,
         helpers:{ getPower:getEffectivePower, getToughness:getEffectiveToughness, hasKeyword, canBlock, predictDuel }
       });
       hardAttackIndexes=new Set(hardAttackPlan.indexes);
-      recordTelemetryEvent('bot_combat2_attack_plan', {
-        version:COMBAT_BOT_2_VERSION, utility:hardAttackPlan.utility, expectedDamage:hardAttackPlan.damage,
+      const telemetry={
+        version:hardCombat?COMBAT_BOT_2_VERSION:'23.19.4.6-medium-wide', utility:hardAttackPlan.utility, expectedDamage:hardAttackPlan.damage,
         attackPower:hardAttackPlan.attackPower || 0, crackBack:hardAttackPlan.crackBack || 0,
-        attackerCount:hardAttackPlan.indexes.length, reason:hardAttackPlan.reason
-      });
+        attackerCount:hardAttackPlan.indexes.length, eligibleAttackers:eligibleAttackers.length, defenders:publicDefenders.length, reason:hardAttackPlan.reason
+      };
+      if (hardCombat) recordTelemetryEvent('bot_combat2_attack_plan',telemetry);
+      else recordTelemetryEvent('bot_attack_plan',telemetry);
     }
 
     let attackCount = 0;

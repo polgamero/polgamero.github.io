@@ -34,6 +34,8 @@ const SPEED_MIN = 0.25;
 const SPEED_MAX = 3;
 const RELATIVE_SPEED_MIN = 0.25;
 const RELATIVE_SPEED_MAX = 3;
+const RELATIVE_VOLUME_MIN = 0.25;
+const RELATIVE_VOLUME_MAX = 2;
 let localSettings = loadStoredSettings();
 let serverPolicy = {
   enabled: true,
@@ -87,8 +89,13 @@ export function normalizeAnimationTunings(raw = {}) {
       ? Math.max(RELATIVE_SPEED_MIN, Math.min(RELATIVE_SPEED_MAX, Math.round(n * 100) / 100))
       : def.defaultRelativeSpeed;
     const legacyMoment = entry?.sfxTiming === 'end' ? 'key' : entry?.sfxTiming;
+    const v = Number(entry?.relativeVolume ?? entry?.volumeMultiplier ?? 1);
+    const relativeVolume = Number.isFinite(v)
+      ? Math.max(RELATIVE_VOLUME_MIN, Math.min(RELATIVE_VOLUME_MAX, Math.round(v * 100) / 100))
+      : 1;
     normalized[def.key] = {
       relativeSpeed,
+      relativeVolume,
       sfxMoment: entry?.sfxMoment === 'key' ? 'key' : entry?.sfxMoment === 'start' ? 'start'
         : legacyMoment === 'key' ? 'key' : legacyMoment === 'start' ? 'start' : def.defaultSfxMoment,
       sfxCadence: def.sfxCadence
@@ -219,6 +226,7 @@ export function getAnimationTuning(key) {
   const current = serverPolicy.animationTunings?.[def.key] || {};
   return {
     relativeSpeed: Number(current.relativeSpeed) || def.defaultRelativeSpeed,
+    relativeVolume: Number.isFinite(Number(current.relativeVolume)) ? Number(current.relativeVolume) : 1,
     sfxMoment: current.sfxMoment === 'key' ? 'key' : current.sfxMoment === 'start' ? 'start' : def.defaultSfxMoment,
     sfxCadence: def.sfxCadence
   };
@@ -259,7 +267,7 @@ function animationSfxMoment(tuningKey) {
 
 function playAnimationSfx(id, tuningKey, moment) {
   if (animationSfxMoment(tuningKey) !== moment) return null;
-  return playSfx(id);
+  return playSfx(id,{ volumeMultiplier:getAnimationTuning(tuningKey).relativeVolume });
 }
 
 export function setPresentationCueEmitter(emitter) {
@@ -584,14 +592,14 @@ function hideOriginalVisual(snapshot) {
 
 function updatePlayerHpPresentation(playerSnapshot, hpValue) {
   if (!playerSnapshot?.element || !Number.isFinite(Number(hpValue))) return;
-  const hp=Math.max(0,Math.min(20,Number(hpValue)));
+  const hp=Math.max(0,Number(hpValue));
   const text=playerSnapshot.element.querySelector('.hp-text');
   const bar=playerSnapshot.element.querySelector('.hp-fill');
   if (text) {
     const suffix=(String(text.textContent||'').match(/HP(.*)$/)?.[1] || '');
-    text.textContent=`${hp} / 20 HP${suffix}`;
+    text.textContent=`${hp} HP${suffix}`;
   }
-  if (bar) bar.style.width=`${(hp/20)*100}%`;
+  if (bar) bar.style.width=`${Math.min(100,(hp/20)*100)}%`;
 }
 
 async function animateCombatImpact(payload) {

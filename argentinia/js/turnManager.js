@@ -3,7 +3,7 @@ import { state, queueTriggeredAbilities, buildGenericEventTriggerEntries, dispat
 import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
-import { hasKeyword } from './keywords.js';
+import { hasKeyword, canBlock } from './keywords.js';
 import { awardGamePointsOnce, clearActiveMatchId, recordPlayerGameResult, sealMultiplayerOutcome } from './firebaseClient.js';
 import { pointsForBotGameEnd, POINTS } from './store.js';
 import { recordTelemetryEvent, getTelemetryStatus, refreshFinalTelemetryAfterTerminalEvent } from './telemetry.js';
@@ -691,6 +691,23 @@ export async function passPriority(player) {
   // Rotar prioridad al otro jugador
   state.priorityPlayer = state.priorityPlayer === 'local' ? 'rival' : 'local';
   state.priorityActivity = null;
+
+  // 23.19.4.6 — render() es presentación, no motor. La vieja auto-declaración de CERO
+  // bloqueadores vivía dentro de ui.render() y podía mutar gameplay sólo por dibujar.
+  // Ahora ocurre en la transición semántica exacta: el atacante pasó prioridad y el
+  // defensor acaba de recibir la ventana de declarar bloqueadores. Si no existe NINGÚN
+  // bloqueo legal, declaramos cero por el carril normal y abrimos la ventana post-bloqueo.
+  if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local' &&
+      !state.localBlockersDeclaredThisCombat) {
+    const attackers=state.rivalCombat.filter(attacker=>attacker.isAttacking);
+    const hasLegalBlocker=state.localCombat.some(defender=>!defender.tapped && attackers.some(attacker=>canBlock(attacker,defender)));
+    if(!hasLegalBlocker){
+      logMsg(gameText('combat.autoZeroBlockers'));
+      executeRivalAttack();
+      return;
+    }
+  }
+
   resetPriorityClock('priority_passed');
   render();
 

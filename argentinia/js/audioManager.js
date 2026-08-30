@@ -416,13 +416,15 @@ export function setSfxVolume(volume) {
   return settings.sfxVolume;
 }
 
-export function playSfx(id) {
+export function playSfx(id, options = {}) {
   if (!settings.sfxEnabled || settings.sfxVolume <= 0 || typeof document === 'undefined') return null;
   const def = AUDIO_CATALOG.sfx[id];
   if (!def) return null;
   const audio = document.createElement('audio');
   audio.preload = 'auto';
-  audio.volume = settings.sfxVolume;
+  const relativeVolumeRaw=Number(options?.volumeMultiplier ?? options?.relativeVolume ?? 1);
+  const relativeVolume=Number.isFinite(relativeVolumeRaw) ? Math.max(0,Math.min(2,relativeVolumeRaw)) : 1;
+  audio.volume = Math.max(0,Math.min(1,settings.sfxVolume * relativeVolume));
   audio.setAttribute('playsinline', '');
   for (const sourceDef of def.sources || []) {
     const source = document.createElement('source');

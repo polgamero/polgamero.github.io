@@ -13,7 +13,7 @@ const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(__dirname,'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 
-assert.ok(['23.15.10','23.16.1','23.16.1.1','23.16.2','23.16.2.1','23.16.3','23.16.3.1','23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.4.5'].includes(ENGINE_VERSION),'Card Text Layout contract must survive later engine-only releases');
+assert.ok(['23.15.10','23.16.1','23.16.1.1','23.16.2','23.16.2.1','23.16.3','23.16.3.1','23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.4.6'].includes(ENGINE_VERSION),'Card Text Layout contract must survive later engine-only releases');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.ok(['pool_expansion_iii_730','pool_expansion_iv_760','pool_expansion_v_790','pool_expansion_vi_820','pool_expansion_vii_850','pool_expansion_viii_880'].includes(CURRENT_POOL_MILESTONE));

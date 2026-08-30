@@ -1926,6 +1926,7 @@ export async function saveAnimationPolicy(config = {}) {
     const legacyMoment = value.sfxTiming === 'end' ? 'key' : value.sfxTiming;
     animationTunings[key] = {
       relativeSpeed: clampMultiplier(value.relativeSpeed, 1),
+      relativeVolume: Math.max(0.25, Math.min(2, Math.round((Number.isFinite(Number(value.relativeVolume)) ? Number(value.relativeVolume) : 1) * 100) / 100)),
       sfxMoment: value.sfxMoment === 'key' ? 'key' : value.sfxMoment === 'start' ? 'start'
         : legacyMoment === 'key' ? 'key' : 'start'
     };
@@ -1938,7 +1939,7 @@ export async function saveAnimationPolicy(config = {}) {
       fast: clampMultiplier(rawSpeeds.fast, 0.68)
     },
     animationTunings,
-    schemaVersion: 4,
+    schemaVersion: 5,
     engineVersion: ENGINE_VERSION
   });
 }

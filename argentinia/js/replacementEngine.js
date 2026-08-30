@@ -210,6 +210,34 @@ function applyCandidate(state,event,candidate){
   return applyStaticSpec(event,candidate.spec || {});
 }
 
+
+function cloneReplacementPreviewTarget(item){
+  if(!item || typeof item!=='object') return item;
+  return {
+    ...item,
+    counters:item.counters && typeof item.counters==='object' ? {...item.counters} : item.counters,
+    card:item.card
+  };
+}
+
+// 23.19.4.6 — simulación PURA del mismo pipeline de replacement/prevention.
+// El bot la usa para evaluar Fight sin consumir Escudos ni prevention effects reales.
+// Sólo clonamos las piezas que el Replacement Engine puede mutar durante una resolución:
+// el target y activeEffects. Las demás fuentes estáticas son de sólo lectura.
+export function previewReplacementEvent(state,rawEvent={},options={}){
+  const originalTarget=rawEvent.item || rawEvent.targetItem || null;
+  const previewTarget=cloneReplacementPreviewTarget(originalTarget);
+  const shadow={
+    ...state,
+    activeEffects:Array.isArray(state?.activeEffects) ? state.activeEffects.map(effect=>effect && typeof effect==='object' ? {...effect} : effect) : []
+  };
+  for(const key of ['localCombat','localSupport','localLands','localPlaneswalkers','rivalCombat','rivalSupport','rivalLands','rivalPlaneswalkers']){
+    const zone=Array.isArray(state?.[key]) ? state[key] : [];
+    shadow[key]=zone.map(entry=>entry===originalTarget ? previewTarget : entry);
+  }
+  return resolveReplacementEvent(shadow,{...rawEvent,item:previewTarget,targetItem:previewTarget},options);
+}
+
 export function resolveReplacementEvent(state,rawEvent={},options={}){
   let event={...rawEvent};
   const applied=[];

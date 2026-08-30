@@ -1,8 +1,8 @@
 import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, canResolveGameEffectWithoutTarget, canResolveGameEffectWithTarget } from './stackManager.js';
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
-import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardForBot } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal } from './ui.js';
+import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardForBot, tryPayWardForBotTarget } from './bot.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal } from './ui.js';
 import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
@@ -528,6 +528,9 @@ export const state = {
   // Ward: se activa la primera vez que un hechizo/habilidad de un RIVAL apunta a algo con
   // esta keyword — pausa el casteo hasta que el que targeteó decida pagar o dejarlo perder.
   pendingWardChoice: null,
+  // Ward puede dispararse varias veces al colocar un lote simultáneo de triggers. Se
+  // serializan prompts sin perder ninguno; cada entrada ya apunta al stackId real.
+  pendingWardQueue: [],
   // "Contrarresta a menos que pague" (Impuesto País, etc.): pausa la resolución del
   // counterspell hasta que el CONTROLADOR del hechizo amenazado decida pagar o perderlo.
   pendingCounterUnlessPay: null,
@@ -3445,6 +3448,20 @@ function handleIncomingDecisionRequest(decision) {
       if(source) setChosenCreatureType(source,chosen);
       state.respondingToDecision=false; render(); respondToDecision(decision.requestId,{chosenType:chosen});
     },()=>{state.respondingToDecision=false;render();respondToDecision(decision.requestId,{chosenType:null});});
+  } else if (decision.type === 'ward_pay') {
+    state.respondingToDecision = true;
+    render();
+    const amount=Math.max(1,Math.floor(Number(decision.amount)||1));
+    showWardDecisionModal(amount, decision.targetCardName || 'permanente con Ward', decision.sourceCardName || 'hechizo o habilidad',
+      () => {
+        const paid=tryAutoPayCounterTax(true,amount);
+        state.respondingToDecision=false;
+        if(paid) recordTelemetryEvent('ward_paid',{caster:'local',cost:amount,target:decision.targetCardName || null,source:decision.sourceCardName || null,remoteDecision:true});
+        render();
+        respondToDecision(decision.requestId,{paid});
+      },
+      () => { state.respondingToDecision=false; render(); respondToDecision(decision.requestId,{paid:false}); }
+    );
   } else if (decision.type === 'counter_unless_pay') {
     state.respondingToDecision = true;
     // ETAPA MOTOR 3: actualizar la UI ANTES de abrir el modal. El listener hizo render()
@@ -4861,7 +4878,7 @@ export function performSacrifice(item, isLocal) {
       cleanupIfVehicle(item);
     }
     moveBattlefieldCardToZone(item.card, exitPlan.destination);
-    logMsg(gameText('sacrifice.self', { card: item.card.name, token: item.card.isToken ? gameText('sacrifice.tokenSuffix') : '' }));
+    logMsg(gameText(isLocal ? 'sacrifice.self' : 'sacrifice.self.bot', { card: item.card.name, token: item.card.isToken ? gameText('sacrifice.tokenSuffix') : '' }));
     const sacrificeEntries = buildGenericEventTriggerEntries({
       type:'permanent_sacrificed', controllerIsLocal:isLocal, actorIsLocal:isLocal,
       ownerIsLocal:cardOwnerIsLocal(item.card,isLocal,state.currentMatch?.myRole||null),
@@ -4928,7 +4945,7 @@ export function performSacrificeBatch(items, isLocal) {
     }
     moveBattlefieldCardToZone(item.card, exitPlan.destination);
     removed.push({ item, isCreature, zoneTo:exitPlan.zoneTo });
-    logMsg(gameText('sacrifice.self', { card: item.card.name, token: item.card.isToken ? gameText('sacrifice.tokenSuffix') : '' }));
+    logMsg(gameText(isLocal ? 'sacrifice.self' : 'sacrifice.self.bot', { card: item.card.name, token: item.card.isToken ? gameText('sacrifice.tokenSuffix') : '' }));
     sacrificeTriggerEntries.push(...buildGenericEventTriggerEntries({
       type:'permanent_sacrificed', controllerIsLocal:isLocal, actorIsLocal:isLocal,
       ownerIsLocal:cardOwnerIsLocal(item.card,isLocal,state.currentMatch?.myRole||null),
@@ -5145,7 +5162,10 @@ async function processTriggerBatch(entries = []) {
     const prepared=await prepareTriggeredEntry(entry);
     if(!prepared) continue;
     const stackItem=enqueueTriggerStackItem(prepared);
-    if(stackItem) stacked.push(stackItem);
+    if(stackItem){
+      const survivedWard=await settleWardForCommittedStackItem(stackItem,prepared.isLocal!==false);
+      if(survivedWard) stacked.push(stackItem);
+    }
   }
   return stacked;
 }
@@ -5299,6 +5319,8 @@ export function dispatchReplacementCounterRemoval(result, item, { controllerIsLo
   const side=(controllerIsLocal===true || controllerIsLocal===false) ? controllerIsLocal : loc?.isLocal;
   if(side!==true && side!==false) return false;
   const actor=(actorIsLocal===true || actorIsLocal===false) ? actorIsLocal : side;
+  const counterType=normalizeCounterType(info.counterType);
+  const removalCause=cause || info.cause || 'replacement_counter_removed';
   dispatchGameEvent({
     type:'counter_removed',
     controllerIsLocal:side,
@@ -5307,9 +5329,14 @@ export function dispatchReplacementCounterRemoval(result, item, { controllerIsLo
     card:item.card,
     item,
     amount,
-    cause:cause || info.cause || 'replacement_counter_removed',
-    metadata:{counterType:normalizeCounterType(info.counterType)}
+    cause:removalCause,
+    metadata:{counterType}
   });
+  if(counterType==='shield'){
+    const remaining=getCounterCount(item,'shield');
+    recordTelemetryEvent('shield_consumed',{card:item.card.name || null,controller:side?'local':'rival',amount,remaining,cause:removalCause});
+    logMsg(gameText('replacement.shield.consumed',{card:item.card.name || gameText('control.permanentFallback'),remaining}));
+  }
   return true;
 }
 
@@ -6139,10 +6166,13 @@ export function putLoyaltyAbilityOnStack(pwItem, ability, abilityIndex, isLocal,
   checkPlaneswalkerDeaths();
   render();
 
-  // En Solitario, el Tano recibe su ventana normal para responder. En multiplayer esta
-  // función ya no simula al rival: checkRivalCounterOrResponse sale inmediatamente y el
-  // otro cliente ve el objeto por el Stack sync público.
-  if (isLocal) checkRivalCounterOrResponse();
+  // Ward se chequea sobre el objeto de Loyalty YA comprometido en Stack. En Solo el Tano
+  // paga automáticamente si es suyo; para el humano local se abre el prompt normal.
+  void settleWardForCommittedStackItem(stackItem,isLocal);
+
+  // En Solitario, el Tano recibe su ventana normal para responder sólo si Ward no abrió
+  // una decisión pendiente. En multiplayer esta función no simula al rival.
+  if (isLocal && !state.pendingWardChoice) checkRivalCounterOrResponse();
   return stackItem;
 }
 
@@ -6779,6 +6809,23 @@ export function handleCombatClick(item, isLocal, index) {
     if (isLocal) {
       if (item.tapped) {
         logMsg(gameText('combat.local.tappedBlocker'));
+        return;
+      }
+      // 23.19.4.6 — declaración editable hasta Confirmar bloqueadores. Si ya estaba
+      // asignado, clickear el propio bloqueador lo desasigna; después puede volver a
+      // seleccionarse y reasignarse a otro atacante. Simétrico al toggle de atacantes.
+      if (item.blockingIndex !== null && item.blockingIndex !== undefined) {
+        item.blockingIndex = null;
+        if (state.pendingBlockerIndex === index) state.pendingBlockerIndex = null;
+        logMsg(gameText('combat.local.blockRemoved', { blocker:item.card.name }));
+        render();
+        return;
+      }
+      // Un segundo click sobre el bloqueador seleccionado cancela la selección incluso
+      // antes de haber elegido atacante.
+      if (state.pendingBlockerIndex === index) {
+        state.pendingBlockerIndex = null;
+        render();
         return;
       }
       state.pendingBlockerIndex = index;
@@ -7956,15 +8003,101 @@ function beginCastTargetDeclaration() {
   void completeCastTargetDeclaration(null);
 }
 
-function detectWardForDeclaredTarget(card, targetObj) {
-  // LAND 2: Ward es una habilidad de PERMANENTE, no de criatura. Una Tierra con Ward futura
-  // debe disparar igual que una criatura, un artefacto o un planeswalker al ser objetivo rival.
-  if (!targetObj || !targetObj.item || targetObj.isLocal) return null;
-  const item = targetObj.item;
-  const wardKw = (getEffectiveKeywords(item) || []).find(k => k.startsWith('ward_'));
-  if (!wardKw) return null;
-  const wardCost = parseInt(wardKw.split('_')[1], 10);
-  return Number.isFinite(wardCost) && wardCost > 0 ? { wardCost, targetObj } : null;
+function flattenDeclaredTargets(targetObj) {
+  if (!targetObj) return [];
+  if (targetObj.type === 'multi' && Array.isArray(targetObj.targets)) {
+    return targetObj.targets.flatMap(flattenDeclaredTargets);
+  }
+  return [targetObj];
+}
+
+function collectWardsForDeclaredTarget(card, targetObj, sourceIsLocal = true) {
+  // Ward es una habilidad de PERMANENTE. 23.19.4.6: depende de CONTROLADORES, no de
+  // una dirección hardcodeada local→rival. Cubre también hechizos multi-target: cada
+  // permanente rival objetivo dispara su propio Ward y debe pagarse por separado.
+  const wards=[];
+  for (const declared of flattenDeclaredTargets(targetObj)) {
+    if (!declared?.item || declared.isLocal === !!sourceIsLocal) continue;
+    const item=declared.item;
+    const wardKw=(getEffectiveKeywords(item)||[]).find(k=>k.startsWith('ward_'));
+    if(!wardKw) continue;
+    const wardCost=parseInt(wardKw.split('_')[1],10);
+    if(Number.isFinite(wardCost) && wardCost>0){
+      wards.push({wardCost,targetObj:declared,sourceIsLocal:!!sourceIsLocal,sourceCard:card||null});
+    }
+  }
+  return wards;
+}
+
+function detectWardForDeclaredTarget(card, targetObj, sourceIsLocal = true) {
+  return collectWardsForDeclaredTarget(card,targetObj,sourceIsLocal)[0] || null;
+}
+
+function counterStackItemByWard(stackId, actorIsLocal = false) {
+  const idx=spellStack.findIndex(item=>item.id===stackId);
+  if(idx===-1) return false;
+  const [countered]=spellStack.splice(idx,1);
+  const destination=moveCounteredStackItemToDestination(countered,state);
+  dispatchGameEvent({type:'spell_countered',controllerIsLocal:countered.isLocal!==false,actorIsLocal:!!actorIsLocal,card:countered.card,item:countered,zoneFrom:'stack',zoneTo:destination,cause:'ward'});
+  if(destination==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:countered.isLocal!==false,actorIsLocal:!!actorIsLocal,ownerIsLocal:cardOwnerIsLocal(countered.card,countered.isLocal!==false,state.currentMatch?.myRole||null),card:countered.card,item:countered,zoneFrom:'stack',zoneTo:'exile',cause:countered.castFrom==='flashback'?'ward_flashback':'ward_replacement'});
+  logMsg(gameText('ward.countered',{card:countered.card?.name || 'Habilidad'}));
+  recordTelemetryEvent('ward_countered',{stackId,caster:countered.isLocal!==false?'local':'rival',source:countered.card?.name || null});
+  if (Array.isArray(state.pendingWardQueue)) state.pendingWardQueue=state.pendingWardQueue.filter(w=>w?.stackId!==stackId);
+  return true;
+}
+
+function activateNextWardPrompt() {
+  if(state.pendingWardChoice || !Array.isArray(state.pendingWardQueue) || state.pendingWardQueue.length===0) return false;
+  state.pendingWardChoice=state.pendingWardQueue.shift();
+  const wc=state.pendingWardChoice;
+  logMsg(gameText('ward.triggered',{target:wc.targetObj?.item?.card?.name || 'permanente',cost:wc.wardCost}));
+  render();
+  return true;
+}
+
+function queueLocalWardPrompt(ward, stackItem) {
+  if(!ward || !stackItem?.id) return false;
+  const prompt={...ward,stackId:stackItem.id,postCast:true,sourceName:stackItem.card?.name || ward.sourceCard?.name || null};
+  recordTelemetryEvent('ward_triggered',{stackId:stackItem.id,caster:'local',target:ward.targetObj?.item?.card?.name || null,cost:ward.wardCost,source:prompt.sourceName});
+  if(state.pendingWardChoice) state.pendingWardQueue.push(prompt);
+  else { state.pendingWardChoice=prompt; logMsg(gameText('ward.triggered',{target:ward.targetObj?.item?.card?.name || 'permanente',cost:ward.wardCost})); render(); }
+  return true;
+}
+
+// Frontera única para objetos que YA existen en Stack y YA fijaron target.
+// Humano local: prompt normal. Tano: paga estratégicamente con sus fuentes reales.
+// Multiplayer remoto: el dueño de la habilidad paga en su propio cliente mediante decisión
+// privada; este cliente sólo conserva el resultado público (objeto sigue o es contrarrestado).
+export async function settleWardForCommittedStackItem(stackItem, sourceIsLocal = stackItem?.isLocal !== false) {
+  const wards=collectWardsForDeclaredTarget(stackItem?.card,stackItem?.targetObj,sourceIsLocal);
+  if(!wards.length || !stackItem?.id) return true;
+
+  if(sourceIsLocal){
+    for(const ward of wards) queueLocalWardPrompt(ward,stackItem);
+    return true;
+  }
+
+  for(const ward of wards){
+    recordTelemetryEvent('ward_triggered',{stackId:stackItem.id,caster:'rival',target:ward.targetObj?.item?.card?.name || null,cost:ward.wardCost,source:stackItem.card?.name || null});
+    if(state.currentMatch){
+      const response=await requestRivalDecision('ward_pay',otherRole(state.currentMatch.myRole),{amount:ward.wardCost,targetCardName:ward.targetObj?.item?.card?.name || 'permanente',sourceCardName:stackItem.card?.name || 'habilidad'});
+      if(response?.paid){
+        recordTelemetryEvent('ward_paid',{stackId:stackItem.id,caster:'rival',cost:ward.wardCost,target:ward.targetObj?.item?.card?.name || null});
+        continue;
+      }
+      counterStackItemByWard(stackItem.id,true);
+      return false;
+    }
+
+    const paid=tryPayWardForBotTarget(ward.targetObj);
+    if(paid){
+      recordTelemetryEvent('ward_paid',{stackId:stackItem.id,caster:'rival',cost:ward.wardCost,target:ward.targetObj?.item?.card?.name || null});
+      continue;
+    }
+    counterStackItemByWard(stackItem.id,true);
+    return false;
+  }
+  return true;
 }
 
 async function prepareOptionalCastPaymentMethods(tx, determinedCost, preparedComposite, escapeExiles) {
@@ -8101,7 +8234,7 @@ export async function completeCastTargetDeclaration(targetObj) {
   const tx = state.pendingCastTransaction;
   if (!tx || tx.stage !== 'targets') return false;
   tx.targetObj = targetObj;
-  tx.ward = detectWardForDeclaredTarget(tx.card, targetObj);
+  tx.ward = null; // Ward se calcula al comprometer el objeto en Stack (incluye multi-target).
   state.pendingTargetCard = null;
   state.pendingMultiTargetChoice = null;
   state.pendingFightChoice = null;
@@ -8257,7 +8390,6 @@ async function commitCastTransactionAfterMana() {
   addToStack(stackItem);
   flushDeferredLandManaTriggers();
   state.consecutivePasses = 0;
-  const ward = tx.ward;
   const txId = tx.id;
   const cardName = tx.card.name;
   const castCard = tx.card;
@@ -8274,13 +8406,9 @@ async function commitCastTransactionAfterMana() {
   // Ward ya NO interrumpe la declaración/pago. Se dispara después de que el hechizo está
   // realmente casteado. Sigue siendo un prompt simplificado (la habilidad Ward aún no es
   // un objeto separado de Stack), pero su timing ya no viola 601.2.
-  if (ward) {
-    state.pendingWardChoice = { ...ward, stackId:stackItem.id, postCast:true };
-    logMsg(gameText('ward.triggered', { target: ward.targetObj.item.card.name, cost: ward.wardCost }));
-    render();
-  } else {
-    checkRivalCounterOrResponse();
-  }
+  const committedWards=collectWardsForDeclaredTarget(stackItem.card,stackItem.targetObj,true);
+  if (committedWards.length) committedWards.forEach(ward=>queueLocalWardPrompt(ward,stackItem));
+  else checkRivalCounterOrResponse();
   return true;
 }
 
@@ -9499,11 +9627,9 @@ function finalizeAbilityActivation(source, ability, card) {
   // Igual que el pipeline 601: Ward se observa después de que el objeto targeteado ya está
   // realmente en la Stack. El prompt sigue siendo la simplificación histórica del motor,
   // pero target y costo de la habilidad ya respetan el orden de activación.
-  const ward = detectWardForDeclaredTarget(card, targetObj);
-  if (ward) {
-    state.pendingWardChoice = { ...ward, stackId: stackItem.id, postCast: true };
-    logMsg(gameText('ward.triggered', { card: ward.targetObj.item.card.name, cost: ward.wardCost }));
-    render();
+  const wards = collectWardsForDeclaredTarget(card,targetObj,source.isLocal!==false);
+  if (wards.length) {
+    wards.forEach(ward=>queueLocalWardPrompt(ward,stackItem));
     return;
   }
 
@@ -9728,12 +9854,12 @@ export function payWard() {
     return;
   }
   logMsg(gameText('ward.paid', { cost: wc.wardCost }));
+  recordTelemetryEvent('ward_paid',{stackId:wc.stackId ?? null,caster:'local',cost:wc.wardCost,target:wc.targetObj?.item?.card?.name || null,source:wc.sourceName || null});
   const targetObj = wc.targetObj;
   state.pendingWardChoice = null;
   flushDeferredLandManaTriggers();
   if (wc.postCast && wc.stackId != null) {
-    render();
-    checkRivalCounterOrResponse();
+    if(!activateNextWardPrompt()) { render(); checkRivalCounterOrResponse(); }
     return;
   }
   executeSpellOnTarget(targetObj);
@@ -9751,18 +9877,10 @@ export function declineWard() {
   // 23.10: si Ward disparó DESPUÉS del casteo, contrarresta el objeto real que ya está en
   // la pila. Esto reemplaza la vieja simulación que sacaba la carta directamente de mano.
   if (wc.postCast && wc.stackId != null) {
-    const idx = spellStack.findIndex(item => item.id === wc.stackId);
-    if (idx !== -1) {
-      const [countered] = spellStack.splice(idx, 1);
-      const destination=moveCounteredStackItemToDestination(countered,state);
-      dispatchGameEvent({type:'spell_countered',controllerIsLocal:countered.isLocal!==false,actorIsLocal:false,card:countered.card,item:countered,zoneFrom:'stack',zoneTo:destination,cause:'ward'});
-      if(destination==='exile') dispatchGameEvent({type:'card_exiled',controllerIsLocal:countered.isLocal!==false,actorIsLocal:false,ownerIsLocal:cardOwnerIsLocal(countered.card,countered.isLocal!==false,state.currentMatch?.myRole||null),card:countered.card,item:countered,zoneFrom:'stack',zoneTo:'exile',cause:countered.castFrom==='flashback'?'ward_flashback':'ward_replacement'});
-      logMsg(gameText('ward.countered', { card: countered.card.name }));
-    }
+    counterStackItemByWard(wc.stackId,false);
     state.pendingWardChoice = null;
     flushDeferredLandManaTriggers();
-    render();
-    checkRivalCounterOrResponse();
+    if(!activateNextWardPrompt()) { render(); checkRivalCounterOrResponse(); }
     return;
   }
 

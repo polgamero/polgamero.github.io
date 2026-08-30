@@ -443,6 +443,28 @@ export function showCounterTaxDecisionModal(amount, targetCardName, onPay, onDec
   });
 }
 
+
+export function showWardDecisionModal(amount, targetCardName, sourceCardName, onPay, onDecline) {
+  if (HEADLESS_ENGINE) { headlessChoice.chooseCounterTax()==='pay' ? onPay?.() : onDecline?.(); return; }
+  injectMulliganStyles();
+  const modalOverlay=document.createElement('div');
+  modalOverlay.className='gy-modal-overlay';
+  modalOverlay.innerHTML=`
+    <div class="gy-modal-content" style="max-width: 420px;">
+      <div class="gy-modal-header"><h3>${gameTextHtml('modal.ward.title')}</h3></div>
+      <div style="padding:20px;text-align:center;">
+        <p style="color:#cfe0d4;font-size:14px;margin-bottom:18px;">${gameTextManaHtml('modal.ward.description',{source:sourceCardName || 'hechizo o habilidad',target:targetCardName || 'permanente',cost:`{${amount}}`})}</p>
+        <div class="mulligan-buttons">
+          <button id="ward-decline" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('modal.ward.decline')}</button>
+          <button id="ward-pay" class="mulligan-btn mulligan-btn-keep">${gameTextManaHtml('modal.ward.pay',{cost:`{${amount}}`})}</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modalOverlay);
+  modalOverlay.querySelector('#ward-pay').addEventListener('click',()=>{modalOverlay.remove();onPay?.();});
+  modalOverlay.querySelector('#ward-decline').addEventListener('click',()=>{modalOverlay.remove();onDecline?.();});
+}
+
 // LAND 3 — selector de biblioteca para tutores de Tierras. A diferencia del viejo Ramp
 // por color, muestra las cartas REALES que cumplen el filtro y permite encontrar menos
 // (incluso 0) cuando la búsqueda en zona oculta lo autoriza.
@@ -6258,7 +6280,7 @@ export function showAdminPanel(onBack) {
   const animationTuningCatalog = getAnimationTuningCatalog();
   const initialAnimationTunings = normalizeAnimationTunings(initialAnimationPolicy.animationTunings || {});
   const animationTuningRowsHTML = animationTuningCatalog.map(def => {
-    const tuning = initialAnimationTunings[def.key] || { relativeSpeed:1, sfxMoment:def.defaultSfxMoment || 'start', sfxCadence:def.sfxCadence || 'single' };
+    const tuning = initialAnimationTunings[def.key] || { relativeSpeed:1, relativeVolume:1, sfxMoment:def.defaultSfxMoment || 'start', sfxCadence:def.sfxCadence || 'single' };
     const cadenceLabel=(tuning.sfxCadence || def.sfxCadence)==='per_impact' ? 'Por impacto' : '1 vez';
     const audioTargets=Array.isArray(def.audioTargets) ? def.audioTargets : [];
     const opusHTML=audioTargets.length
@@ -6272,6 +6294,7 @@ export function showAdminPanel(onBack) {
       <td class="admin-animation-audio" data-animation-audio-opus="${def.key}">${opusHTML}</td>
       <td class="admin-animation-audio" data-animation-audio-mp3="${def.key}">${mp3HTML}</td>
       <td><input type="number" class="admin-animation-tuning-speed" data-animation-tuning-speed="${def.key}" value="${Number(tuning.relativeSpeed || 1).toFixed(2)}" min="0.25" max="3" step="0.05"></td>
+      <td><input type="number" class="admin-animation-tuning-volume" data-animation-tuning-volume="${def.key}" value="${Number(tuning.relativeVolume || 1).toFixed(2)}" min="0.25" max="2" step="0.05"></td>
       <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="start" ${tuning.sfxMoment === 'start' ? 'checked' : ''} aria-label="SFX al inicio para ${escapeHtml(def.label)}"></td>
       <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="key" ${tuning.sfxMoment === 'key' ? 'checked' : ''} aria-label="SFX en el momento clave para ${escapeHtml(def.label)}"></td>
       <td class="admin-animation-cadence">${cadenceLabel}</td>
@@ -6295,11 +6318,11 @@ export function showAdminPanel(onBack) {
       </div>
       <div class="admin-animation-reference-help">Estos tres valores son la referencia central que usa <b>Velocidad de animaciones</b> en Opciones. 1.00 = duración base; 1.35 = 35% más lenta; 0.68 = 32% más rápida. Rango seguro: 0.25–3.00.</div>
       <div class="admin-section-title" style="margin-top:18px;">Ajuste por animación</div>
-      <div class="admin-animation-reference-help"><b>Velocidad relativa</b> multiplica la velocidad de esa animación sobre la referencia global elegida por el usuario. Ejemplo: <b>0.75</b> = 75% de velocidad, por lo tanto esa animación dura ≈33% más. <b>1.00</b> no altera la referencia global. En SFX, <b>Inicio</b> y <b>Momento clave</b> son excluyentes. La <b>Cadencia</b> es canónica: las escenas de combate disparan un SFX por cada impacto real; Tierra y transiciones lo hacen una sola vez. Las columnas <b>OPUS</b> y <b>fallback MP3</b> son informativas y salen del mismo catálogo de audio que usa el runtime; cuando una escena puede disparar más de un SFX (por ejemplo Arrollar), se muestran todos.</div>
+      <div class="admin-animation-reference-help"><b>Velocidad relativa</b> multiplica la velocidad de esa animación sobre la referencia global elegida por el usuario. Ejemplo: <b>0.75</b> = 75% de velocidad, por lo tanto esa animación dura ≈33% más. <b>1.00</b> no altera la referencia global. En SFX, <b>Inicio</b> y <b>Momento clave</b> son excluyentes. La <b>Cadencia</b> es canónica: las escenas de combate disparan un SFX por cada impacto real; Tierra y transiciones lo hacen una sola vez. <b>Volumen relativo</b> multiplica el volumen SFX definido en OPCIONES para esa animación (1.00 = igual, 1.20 = +20%, sujeto al techo seguro del navegador). Las columnas <b>OPUS</b> y <b>fallback MP3</b> son informativas y salen del mismo catálogo de audio que usa el runtime; cuando una escena puede disparar más de un SFX (por ejemplo Arrollar), se muestran todos.</div>
       <div class="admin-animation-tuning-wrap">
         <table class="admin-animation-tuning-table">
           <thead>
-            <tr><th rowspan="2">Animación</th><th rowspan="2">OPUS</th><th rowspan="2">fallback MP3</th><th rowspan="2">Velocidad relativa</th><th colspan="2" style="text-align:center;">Ejecución del SFX</th><th rowspan="2">Cadencia</th></tr>
+            <tr><th rowspan="2">Animación</th><th rowspan="2">OPUS</th><th rowspan="2">fallback MP3</th><th rowspan="2">Velocidad relativa</th><th rowspan="2">Volumen relativo</th><th colspan="2" style="text-align:center;">Ejecución del SFX</th><th rowspan="2">Cadencia</th></tr>
             <tr><th>Inicio</th><th>Momento clave</th></tr>
           </thead>
           <tbody>${animationTuningRowsHTML}</tbody>
@@ -7053,10 +7076,15 @@ Receipt: ${receiptId}
   const adminAnimationError = overlay.querySelector('#admin-animation-error');
   const adminAnimationSuccess = overlay.querySelector('#admin-animation-success');
   const animationTuningSpeedInputs = [...overlay.querySelectorAll('[data-animation-tuning-speed]')];
+  const animationTuningVolumeInputs = [...overlay.querySelectorAll('[data-animation-tuning-volume]')];
   const animationSfxMomentChecks = [...overlay.querySelectorAll('[data-animation-sfx-moment]')];
   const readAnimationMultiplier = (input, fallback) => {
     const n=Number(input?.value);
     return Number.isFinite(n) ? Math.max(.25,Math.min(3,Math.round(n*100)/100)) : fallback;
+  };
+  const readAnimationVolume = (input, fallback=1) => {
+    const n=Number(input?.value);
+    return Number.isFinite(n) ? Math.max(.25,Math.min(2,Math.round(n*100)/100)) : fallback;
   };
   animationSfxMomentChecks.forEach(check => check.addEventListener('change', () => {
     const key=check.dataset.animationSfxMoment;
@@ -7068,9 +7096,11 @@ Receipt: ${receiptId}
     const raw={};
     for (const def of animationTuningCatalog) {
       const speedInput=animationTuningSpeedInputs.find(input => input.dataset.animationTuningSpeed===def.key);
+      const volumeInput=animationTuningVolumeInputs.find(input => input.dataset.animationTuningVolume===def.key);
       const checked=animationSfxMomentChecks.find(input => input.dataset.animationSfxMoment===def.key && input.checked);
       raw[def.key]={
         relativeSpeed:readAnimationMultiplier(speedInput,def.defaultRelativeSpeed || 1),
+        relativeVolume:readAnimationVolume(volumeInput,1),
         sfxMoment:checked?.dataset.moment==='key' ? 'key' : 'start'
       };
     }
@@ -7116,6 +7146,8 @@ Receipt: ${receiptId}
       const tuning=tunings[def.key];
       const speedInput=animationTuningSpeedInputs.find(input => input.dataset.animationTuningSpeed===def.key);
       if(speedInput && document.activeElement!==speedInput) speedInput.value=Number(tuning.relativeSpeed || 1).toFixed(2);
+      const volumeInput=animationTuningVolumeInputs.find(input => input.dataset.animationTuningVolume===def.key);
+      if(volumeInput && document.activeElement!==volumeInput) volumeInput.value=Number(tuning.relativeVolume || 1).toFixed(2);
       animationSfxMomentChecks.filter(input => input.dataset.animationSfxMoment===def.key).forEach(input => {
         if(document.activeElement!==input) input.checked=input.dataset.moment===tuning.sfxMoment;
       });
@@ -9238,13 +9270,9 @@ function renderResolvedEffectTargetHint() {
 
 export function render() {
   if (HEADLESS_ENGINE) {
-    state.localHP = Math.max(0, Math.min(20, state.localHP));
-    state.rivalHP = Math.max(0, Math.min(20, state.rivalHP));
     try { captureTelemetryState('headless_render'); } catch {}
     return;
   }
-  state.localHP = Math.max(0, Math.min(20, state.localHP));
-  state.rivalHP = Math.max(0, Math.min(20, state.rivalHP));
   updateRivalAccountUI();
   renderManaPoolHud();
 
@@ -9287,8 +9315,9 @@ export function render() {
   // 10 llegás a la derrota alternativa — checkGameOver() más abajo ya lo controla solo.
   const localPoisonText = state.localPoison > 0 ? ` ☠️${state.localPoison}` : '';
   const rivalPoisonText = state.rivalPoison > 0 ? ` ☠️${state.rivalPoison}` : '';
-  els.localHpText.textContent = `${state.localHP} / 20 HP${localPoisonText}`; els.rivalHpText.textContent = `${state.rivalHP} / 20 HP${rivalPoisonText}`;
-  els.localHpBar.style.width = `${(state.localHP / 20) * 100}%`; els.rivalHpBar.style.width = `${(state.rivalHP / 20) * 100}%`;
+  const localLife=Math.max(0,Number(state.localHP)||0), rivalLife=Math.max(0,Number(state.rivalHP)||0);
+  els.localHpText.textContent = `${localLife} HP${localPoisonText}`; els.rivalHpText.textContent = `${rivalLife} HP${rivalPoisonText}`;
+  els.localHpBar.style.width = `${Math.min(100,(localLife / 20) * 100)}%`; els.rivalHpBar.style.width = `${Math.min(100,(rivalLife / 20) * 100)}%`;
   renderResolvedEffectTargetHint();
 
   // --- 1. GESTIÓN VISUAL DEL HUD Y FASES ---
@@ -9318,24 +9347,14 @@ export function render() {
   const multiplayerInteractionBlocked = !!state.currentMatch && (state.multiplayerSyncBlocked || state.multiplayerSessionSuperseded);
   els.btnEndTurn.disabled = (multiplayerInteractionBlocked || !!state.multiplayerWaitingForReady || state.priorityPlayer !== 'local' || state.gameOver || state.isDiscarding || anyPendingChoice || (state.consecutivePasses || 0) >= 2);
 
-  // 23.7.2: si el defensor no tiene NINGÚN bloqueador legal, declarar cero es
-  // automático. No salteamos el paso: executeRivalAttack abre la ventana post-bloqueadores,
-  // así instantáneos/habilidades antes del daño siguen existiendo.
+  // 23.19.4.6 — lectura pura para UX. La auto-declaración de cero bloqueadores ya
+  // NO vive en render(): turnManager la ejecuta al entregar esta ventana de prioridad.
+  // Acá sólo calculamos el estado visual por si un snapshot intermedio llega a pantalla.
   let autoZeroBlockersPending = false;
   if (!multiplayerInteractionBlocked && state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local' && (state.consecutivePasses || 0) === 1 && !state.localBlockersDeclaredThisCombat) {
     const attackers = state.rivalCombat.filter(attacker => attacker.isAttacking);
     const hasLegalBlocker = state.localCombat.some(defender => !defender.tapped && attackers.some(attacker => canBlock(attacker, defender)));
     autoZeroBlockersPending = !hasLegalBlocker;
-    if (!hasLegalBlocker && !state.autoZeroBlockersQueued) {
-      state.autoZeroBlockersQueued = true;
-      queueMicrotask(() => {
-        state.autoZeroBlockersQueued = false;
-        if (state.phase === 'combat_blockers' && state.activePlayer === 'rival' && state.priorityPlayer === 'local' && !state.localBlockersDeclaredThisCombat) {
-          logMsg(gameText('combat.autoZeroBlockers'));
-          executeRivalAttack();
-        }
-      });
-    }
   }
 
   if (state.phase === 'combat_attackers' && state.activePlayer === 'local') {

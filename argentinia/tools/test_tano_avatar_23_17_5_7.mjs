@@ -10,8 +10,8 @@ const bot = read('js/bot.js');
 
 function ok(cond, msg) { if (!cond) throw new Error(msg); }
 
-ok((version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.5'")), 'engine 23.17.5.7');
-ok(manifest.engineVersion === '23.19.4.5', 'manifest 23.17.5.7');
+ok((version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.6'")), 'engine 23.17.5.7');
+ok(manifest.engineVersion === '23.19.4.6', 'manifest 23.17.5.7');
 ok(manifest.firestoreRulesVersion === '23.13.79', 'rules unchanged');
 ok(ui.includes("const TANO_AVATAR_SRC = 'assets/images/ui/tano.png';"), 'canonical tano.png path');
 ok(ui.includes("setAvatarImageOrFallback(els.rivalAvatar, TANO_AVATAR_SRC"), 'solo uses tano.png');
