@@ -14,13 +14,13 @@ const main = read('js/main.js');
 const stack = read('js/stackManager.js');
 const ui = read('js/ui.js');
 
-assert.equal(ENGINE_VERSION, '23.19.4.6');
+assert.equal(ENGINE_VERSION, '23.19.4.8');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
-assert.equal(manifest.engineVersion, '23.19.4.6');
+assert.equal(manifest.engineVersion, '23.19.4.8');
 assert.equal(manifest.firestoreRulesVersion, '23.13.79');
 assert.equal(manifest.pool, 880);
-assert.ok(['Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics','Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets','Rules Integrity + Combat UX + Bot Tactical Hotfix'].includes(manifest.label));
+assert.ok(['Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics','Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets','Rules Integrity + Combat UX + Bot Tactical Hotfix','Core Gameplay Feedback Expansion','Mass Event Cinematics + High-Impact Feedback'].includes(manifest.label));
 
 // Director remains presentation-only and exposes the generic zone bridge.
 for (const token of [
@@ -28,8 +28,8 @@ for (const token of [
   'queueZoneTransitionAnimation', 'queuePermanentExitAnimation',
   'queueReanimateAnimation', 'queueGameEventAnimation'
 ]) assert.ok(director.includes(`function ${token}`) || director.includes(`function ${token}(`) || director.includes(`export function ${token}`), `director:${token}`);
-assert.ok(director.includes("if(type==='card_drawn') transition='draw'"), 'event:draw');
-assert.ok(director.includes("else if(type==='card_discarded') transition=event.zoneTo==='exile' ? 'exile' : 'discard'"), 'event:discard/replacement-exile');
+assert.ok(director.includes("type==='card_drawn'") && director.includes("transition='draw'"), 'event:draw');
+assert.ok(director.includes("type==='card_discarded'") && director.includes("transition=event.zoneTo==='exile' ? 'exile' : 'discard'"), 'event:discard/replacement-exile');
 assert.ok(director.includes("else if(type==='spell_countered') transition='counter'"), 'event:counter');
 assert.ok(director.includes("event.cause==='bounce'"), 'event:bounce');
 assert.ok(director.includes("transition='graveyard'"), 'event:graveyard');

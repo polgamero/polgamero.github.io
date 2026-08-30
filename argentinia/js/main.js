@@ -25,7 +25,7 @@ import { createSoloGameId, beginSoloRecoverySession, activateResumedSoloRecovery
 import { maybeShowAnnouncementPopup } from './campaignsUI.js';
 import { beginGameRngSession, gameRandom, gameSeedFromLocation, getGameRngSnapshot } from './gameRng.js';
 import { enterGameplayAudio } from './audioManager.js';
-import { applyServerAnimationPolicy, captureCardVisual, queueGameEventAnimation, queuePermanentExitAnimation, setPresentationCueEmitter, preparePresentationCuePlayback } from './animationDirector.js';
+import { applyServerAnimationPolicy, captureCardVisual, queueGameEventAnimation, queuePermanentExitAnimation, queueLibraryShuffleAnimation, queueControlChangeAnimation, setPresentationCueEmitter, preparePresentationCuePlayback } from './animationDirector.js';
 import { emptyManaPool, cloneManaPool, addMana, manaPoolTotal, manaCostTotal, spendOneMana, spendAvailableTowardCost } from './manaPool.js';
 import { normalizeManaAbility, isManaSourceCard, getManaSourceOptions, getManaSourceAmount, manaSourceRequiresTap, manaSourceSacrificesSelf, canActivateManaSourcePermanent } from './manaSources.js';
 import { isLandCard, landGraveyardFilterMatches, hasLandPlayFromGraveyardPermission as hasLandGYPermission, playableLandGraveyardEntries } from './landGraveyard.js';
@@ -235,6 +235,7 @@ function ensureControlEffectSerialAfterHydration() {
 export function changePermanentController(item, toIsLocal, options = {}) {
   const loc = findBattlefieldItemLocation(item);
   if (!loc) return false;
+  const controlVisualSnapshot = loc.isLocal !== !!toIsLocal ? captureCardVisual(item,loc.isLocal?'local':'rival') : null;
   const myRole = state.currentMatch?.myRole || null;
   stampCardOwner(item.card, loc.isLocal, myRole);
   stampPermanentController(item, loc.isLocal, myRole);
@@ -277,6 +278,7 @@ export function changePermanentController(item, toIsLocal, options = {}) {
   item._controllerRole = newRole;
   logMsg(gameText('control.gained', { card:item.card?.name || gameText('control.permanentFallback'), controller: toIsLocal ? getLocalPlayerName() : getRivalName() }));
   recordTelemetryEvent('permanent_control_changed', { card:item.card?.name || null, previousRole, newRole, duration:effect.duration, zone:loc.zoneName });
+  if(controlVisualSnapshot && loc.isLocal !== !!toIsLocal) void queueControlChangeAnimation({item,fromIsLocal:loc.isLocal,toIsLocal:!!toIsLocal,zoneName:loc.zoneName,sourceSnapshot:controlVisualSnapshot});
   return true;
 }
 
@@ -286,6 +288,12 @@ function relocatePermanentToEffectiveController(item) {
   const role = permanentControllerRole(item, loc.isLocal, state.currentMatch?.myRole || null);
   const shouldLocal = isRoleLocal(role);
   if (shouldLocal === loc.isLocal) return false;
+  // 23.19.4.8 — capturamos la geometría ANTES del movimiento autoritativo para que tanto
+  // la ganancia como la devolución/expiración de control tengan la misma película. La
+  // animación es presentation-only y se encola recién después de mover el permanente.
+  const controlVisualSnapshot = captureCardVisual(item,loc.isLocal?'local':'rival');
+  const fromIsLocal = loc.isLocal;
+  const zoneName = loc.zoneName;
   loc.zone.splice(loc.index,1);
   repairCombatLinksAfterControllerMove({ fromIsLocal: loc.isLocal, fromIndex: loc.index, zoneName: loc.zoneName });
   battlefieldZoneForController(loc.zoneName, shouldLocal).push(item);
@@ -296,6 +304,7 @@ function relocatePermanentToEffectiveController(item) {
     item.attackTarget=null;
     item.summoningSickness = !hasKeyword(item,'haste');
   }
+  if (controlVisualSnapshot) void queueControlChangeAnimation({item,fromIsLocal,toIsLocal:shouldLocal,zoneName,sourceSnapshot:controlVisualSnapshot});
   return true;
 }
 
@@ -2538,11 +2547,12 @@ async function commitLandSearchEntries({ ownerIsLocal, entries, spec, cardName }
     entering.forEach(entry => lands.push(entry.item));
     // Cada entrada genera su propio evento Landfall, pero todos los permanentes del lote ya
     // están presentes cuando se detectan esos triggers.
-    for (const entry of entering) await triggerLandEtb(ownerIsLocal, entry.card, entry.item);
+    for (const entry of entering) await triggerLandEtb(ownerIsLocal, entry.card, entry.item, 'library');
   }
 
   // El efecto dice "buscá ... luego barajá": también se baraja si se eligió encontrar 0.
   shuffleLibraryInPlace(deck);
+  await queueLibraryShuffleAnimation({isLocal:ownerIsLocal});
   const identityIsPublic = spec.reveal || spec.destination !== 'hand';
   const publicMovedNames = identityIsPublic ? movedNames : [];
   recordTelemetryEvent('land_search_resolved', {
@@ -2708,6 +2718,12 @@ async function putLibraryCardsOntoBattlefield(cards, ownerIsLocal, tappedByInstr
       : (ownerIsLocal?state.localSupport:state.rivalSupport);
     zone.push(entry.item);
   }
+  // Feedback de entrada desde Biblioteca. No usa dispatchGameEvent para no duplicar los
+  // triggers AP/NAP que se agrupan justo debajo; sólo consume el bridge visual descartable.
+  for(const entry of prepared){
+    const targetKind=entry.kind==='creature'?'creature':entry.kind;
+    try { void queueGameEventAnimation({type:entry.kind==='land'?'land_entered':'permanent_entered',controllerIsLocal:ownerIsLocal,actorIsLocal:ownerIsLocal,ownerIsLocal,card:entry.card,item:entry.item,zoneFrom:'library',zoneTo:'battlefield',cause:'library',metadata:{targetKind}}); } catch {}
+  }
   // Todos los ETB nacidos del mismo movimiento se agrupan antes de tocar la Stack.
   // Esto preserva simultaneidad + AP/NAP incluso si el lote mezcla Tierras, criaturas y Support/PW.
   const triggerEntries=[];
@@ -2766,7 +2782,8 @@ async function commitLibraryEntries({ownerIsLocal,sourceIsLocal=ownerIsLocal,ent
   }
 
   // Una búsqueda de biblioteca baraja el resto antes de colocar un tutor a top/bottom.
-  if(spec.shuffle) shuffleLibraryInPlace(deck);
+  const didShuffle=!!spec.shuffle;
+  if(didShuffle) shuffleLibraryInPlace(deck);
 
   // Resolver primero el resto del look-at-N; luego las seleccionadas tienen precedencia
   // visual cuando ambas instrucciones usan top/bottom.
@@ -2790,6 +2807,7 @@ async function commitLibraryEntries({ownerIsLocal,sourceIsLocal=ownerIsLocal,ent
     }
   }
 
+  if(didShuffle) await queueLibraryShuffleAnimation({isLocal:ownerIsLocal});
   const identityPublic=spec.reveal || ['battlefield','battlefield_tapped','graveyard','exile'].includes(spec.destination);
   recordTelemetryEvent('library_effect_resolved',{
     source:cardName,effectType:spec.type,range:spec.range,rangeCount:spec.rangeCount,
@@ -5668,7 +5686,8 @@ export function triggerCreatureEtb(isLocal, enteredCard = null, enteredItem = nu
 // el resolver universal sabe ejecutar SIN objetivo (draw, drain, tokens, ramp, scry, etc.).
 // Si algún JSON futuro intenta usar un efecto que exige target, lo rechazamos con log explícito
 // en vez de fallar silenciosamente.
-export async function triggerLandEtb(isLocal, landCard, landItem = null) {
+export async function triggerLandEtb(isLocal, landCard, landItem = null, sourceZone = 'unknown') {
+  try { void queueGameEventAnimation({type:'land_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:cardOwnerIsLocal(landCard,isLocal,state.currentMatch?.myRole||null),card:landCard,item:landItem,zoneFrom:sourceZone,zoneTo:'land',cause:'land_entry'}); } catch {}
   const combat = isLocal ? state.localCombat : state.rivalCombat;
   const support = isLocal ? state.localSupport : state.rivalSupport;
   const lands = isLocal ? state.localLands : state.rivalLands;
@@ -6107,6 +6126,7 @@ export function animateLandPermanent(unit, isLocal, effect = {}) {
   unit.summoningSickness = !!unit.enteredThisTurn && !unit.animationKeywords.includes('haste') && !hasKeyword(unit, 'haste');
   combat.push(unit);
   recordTelemetryEvent('land_animated', { card: unit.card?.name || null, isLocal, power: unit.animatedBasePower, toughness: unit.animatedBaseToughness, enteredThisTurn: !!unit.enteredThisTurn });
+  dispatchGameEvent({type:'permanent_animated',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:cardOwnerIsLocal(unit.card,isLocal,state.currentMatch?.myRole||null),card:unit.card,item:unit,zoneFrom:'battlefield',zoneTo:'battlefield',cause:'animate_land',metadata:{power:unit.animatedBasePower,toughness:unit.animatedBaseToughness}});
   return true;
 }
 
@@ -6415,8 +6435,8 @@ export function resolveScheduledReturns(isLocal) {
     else (isLocal?state.localSupport:state.rivalSupport).push(newItem);
 
     logMsg(gameText('exile.returned', { card: entry.card.name }));
-    if(kind==='creature') triggerCreatureEtb(isLocal,newItem.card,newItem);
-    else if(kind==='land') triggerLandEtb(isLocal,newItem.card,newItem);
+    if(kind==='creature') { try { void queueGameEventAnimation({type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card:newItem.card,item:newItem,zoneFrom:'exile',zoneTo:'battlefield',cause:'exile_and_return',metadata:{targetKind:'creature'}}); } catch {} triggerCreatureEtb(isLocal,newItem.card,newItem); }
+    else if(kind==='land') triggerLandEtb(isLocal,newItem.card,newItem,'exile');
     else dispatchGameEvent({type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card:newItem.card,item:newItem,zoneFrom:'exile',zoneTo:'battlefield',cause:'exile_and_return'});
 
     const etbCard=newItem.card;
@@ -7407,7 +7427,7 @@ export async function playLandFromGraveyardByIndex(index, isLocal = true) {
   if (isLocal) state.localLandPlayedThisTurn = true; else state.rivalLandPlayedThisTurn = true;
   logMsg(gameText('land.grave.played', { card: card.name }));
   recordTelemetryEvent('land_played_from_graveyard', { card:card.name, isLocal, tapped:!!landItem.tapped });
-  await triggerLandEtb(isLocal, card, landItem);
+  await triggerLandEtb(isLocal, card, landItem, 'graveyard');
   resetPriorityClock('land_played_from_graveyard');
   render();
   return true;
@@ -7531,7 +7551,7 @@ export async function playCardFromExile(card, controllerIsLocal = true) {
     });
     logMsg(gameText('exilePlay.landPlayed', { card:card.name }));
     recordTelemetryEvent('land_played_from_exile',{cardId:card.id||null,cardName:card.name,permissionId:permission.permissionId});
-    await triggerLandEtb(true, card, landItem);
+    await triggerLandEtb(true, card, landItem, 'exile');
     resetPriorityClock('land_played_from_exile');
     render();
     return true;
@@ -8436,7 +8456,7 @@ export function playCard(index) {
     // PUNTO 2: jugar una Tierra es una entrada real al campo y dispara Landfall. No esperamos
     // acá para conservar el contrato síncrono histórico de playCard(); triggerLandEtb se ocupa
     // de serializar internamente cualquier decisión interactiva y los flags bloquean la UI.
-    triggerLandEtb(true, card, landItem).catch(err => {
+    triggerLandEtb(true, card, landItem, 'hand').catch(err => {
       console.error('Error resolviendo Landfall al jugar una Tierra:', err);
       logMsg(gameText('trigger.landfallError', { card: card.name }));
       render();

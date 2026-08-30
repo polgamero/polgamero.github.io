@@ -94,7 +94,7 @@ const poolContract=fs.readFileSync(path.join(root,'js','poolContract.js'),'utf8'
 const version=fs.readFileSync(path.join(root,'js','version.js'),'utf8');
 const stack=fs.readFileSync(path.join(root,'js','stackManager.js'),'utf8');
 assert.match(poolContract,/pool_expansion_ii_700:[\s\S]*?23\.15\.7\.2[\s\S]*?700/);
-if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.6'")))) assert.match(version,/ENGINE_BASELINE = '[^']*23\.15\.7\.2 POOL EXPANSION II/);
+if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.8'")))) assert.match(version,/ENGINE_BASELINE = '[^']*23\.15\.7\.2 POOL EXPANSION II/);
 assert.doesNotMatch(stack,/triggerCreatureEtb\(isLocal, revivedCard, newUnit\);\s*}\s*if \(revivedCard\.etbEffect\)/);
 
 console.log('PASS test_pool_expansion_ii_23_15_7_2 milestone=700 added=27 names=unique library=11 tokens=13+');

@@ -1,4 +1,4 @@
-// js/animationDirector.js — Entrega 23.19.4.5 Animation Actor Parity + SFX Cue Semantics.
+// js/animationDirector.js — Entrega 23.19.4.8 Mass Event Cinematics + High-Impact Feedback.
 // Capa VISUAL descartable: jamás muta state ni decide reglas. El engine captura geometría,
 // confirma el resultado mecánico y encola una escena. Con animaciones OFF, Admin OFF o
 // prefers-reduced-motion, todas las APIs se convierten en no-op seguro.
@@ -26,7 +26,24 @@ export const ANIMATION_TUNING_CATALOG = Object.freeze([
   Object.freeze({ key:'discard', label:'Descarte', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['cardDiscarded']) }),
   Object.freeze({ key:'sacrifice', label:'Sacrificio', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['cardSacrificed']) }),
   Object.freeze({ key:'graveyard', label:'Cementerio', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['cardToGraveyard']) }),
-  Object.freeze({ key:'reanimate', label:'Reanimar', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['cardReanimated']) })
+  Object.freeze({ key:'reanimate', label:'Reanimar', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['cardReanimated']) }),
+  Object.freeze({ key:'land_play', label:'Bajar Tierra', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['landPlayed']) }),
+  Object.freeze({ key:'creature_enter', label:'Entrada de Criatura', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['permanentEntered']) }),
+  Object.freeze({ key:'support_enter', label:'Entrada a Support', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['permanentEntered']) }),
+  Object.freeze({ key:'planeswalker_enter', label:'Entrada de Planeswalker', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['permanentEntered']) }),
+  Object.freeze({ key:'fight', label:'Pelear', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['cardImpact']) }),
+  Object.freeze({ key:'shuffle', label:'Barajar biblioteca', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['libraryShuffle']) }),
+  Object.freeze({ key:'tokens', label:'Crear fichas', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_batch', sfxIds:Object.freeze(['tokenCreated']) }),
+  Object.freeze({ key:'transform', label:'Transformar DFC', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['permanentTransformed']) }),
+  Object.freeze({ key:'animate_land', label:'Animar Tierra', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['permanentTransformed']) }),
+  Object.freeze({ key:'spell_cast', label:'Castear Instantáneo / Conjuro', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['spellCast']) }),
+  Object.freeze({ key:'wipe_creatures', label:'Wipe de criaturas', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['massDestruction']) }),
+  Object.freeze({ key:'wipe_lands', label:'Wipe de Tierras', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['massDestruction']) }),
+  Object.freeze({ key:'graveyard_purge', label:'Purga de cementerio', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['graveyardPurge']) }),
+  Object.freeze({ key:'mass_land_return', label:'Retorno masivo de Tierras', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['massLandReturn']) }),
+  Object.freeze({ key:'fog_global', label:'Fog / Prevenir todo daño de combate', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['fogGlobal']) }),
+  Object.freeze({ key:'proliferate', label:'Proliferar', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['proliferatePulse']) }),
+  Object.freeze({ key:'control_change', label:'Cambio de control', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['controlChange']) })
 ]);
 
 const DEFAULT_SETTINGS = Object.freeze({ enabled: true, speed: 'normal' });
@@ -233,6 +250,9 @@ export function getAnimationTuning(key) {
 }
 
 export function animationsEffectivelyEnabled({ force = false } = {}) {
+  // Headless tests exercise rules/state, never presentation timing. Keeping the director
+  // completely inert here prevents fake DOM shims from becoming part of gameplay progress.
+  if (globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true) return false;
   if (force) return typeof document !== 'undefined';
   return typeof document !== 'undefined'
     && localSettings.enabled
@@ -325,6 +345,10 @@ function injectAnimationStyles() {
     .arg-anim-zone-proxy.back{background:#17100d url('./assets/images/card_back.png') center/cover no-repeat;color:transparent;border-color:#80652f;}
     .arg-anim-zone-rift{position:fixed;z-index:4;border-radius:50%;border:2px solid rgba(196,224,255,.85);box-shadow:0 0 28px rgba(117,185,255,.72),inset 0 0 18px rgba(232,246,255,.55);pointer-events:none;}
     .arg-anim-zone-grave{position:fixed;z-index:4;width:30px;height:9px;border-radius:50%;background:rgba(5,4,4,.86);box-shadow:0 0 20px rgba(0,0,0,.9);pointer-events:none;}
+    .arg-anim-global-flash{position:fixed;inset:-8%;z-index:1;pointer-events:none;opacity:0;will-change:opacity,transform,filter;background:radial-gradient(circle at 50% 52%,rgba(255,245,207,.94) 0%,rgba(255,116,52,.82) 18%,rgba(63,19,10,.74) 50%,rgba(0,0,0,0) 74%);mix-blend-mode:screen;}
+    .arg-anim-global-flash.land-wipe{background:radial-gradient(circle at 50% 58%,rgba(255,239,183,.94) 0%,rgba(176,106,48,.88) 24%,rgba(50,31,19,.68) 58%,rgba(0,0,0,0) 78%);}
+    .arg-anim-global-fog{position:fixed;inset:-10%;z-index:1;pointer-events:none;opacity:0;background:radial-gradient(ellipse at 50% 50%,rgba(238,244,240,.9),rgba(170,185,180,.65) 42%,rgba(70,80,77,.22) 68%,rgba(0,0,0,0) 82%);filter:blur(8px);will-change:opacity,transform;}
+    .arg-anim-global-proliferate{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,rgba(202,255,185,.72),rgba(108,215,181,.35) 35%,rgba(0,0,0,0) 72%);will-change:opacity,transform;}
     .arg-anim-zone-revive{position:fixed;z-index:4;border-radius:12px;border:2px solid rgba(136,255,155,.88);box-shadow:0 0 30px rgba(74,230,108,.78),inset 0 0 20px rgba(202,255,211,.42);pointer-events:none;}
     .player-card.arg-player-hit,.arg-animation-lab-player.arg-player-hit{filter:brightness(1.22) saturate(1.25);box-shadow:0 0 0 2px rgba(255,70,60,.85),0 0 24px rgba(255,40,40,.75)!important;}
 
@@ -474,11 +498,26 @@ export function captureZoneAnchor(zone, isLocal, { force = false } = {}) {
     battlefield:isLocal?'#local-combat':'#rival-combat',
     combat:isLocal?'#local-combat':'#rival-combat',
     support:isLocal?'#local-support':'#rival-support',
-    land:isLocal?'#local-lands':'#rival-lands'
+    land:isLocal?'#local-lands':'#rival-lands',
+    planeswalker:isLocal?'#local-planeswalkers':'#rival-planeswalkers',
+    stack:'#stack-container'
   };
   const el=document.querySelector(selectors[zone]||'');
   const rect=rectSnapshot(el);
-  return el&&rect?{kind:'zone',element:el,rect,zone,isLocal:!!isLocal}:null;
+  if(el&&rect&&rect.width>1&&rect.height>1) return {kind:'zone',element:el,rect,zone,isLocal:!!isLocal};
+  // El Stack puede estar vacío/oculto justo antes de aplicar un snapshot remoto.
+  // Conservamos un destino presentation-only estable sin depender del objeto futuro.
+  if(zone==='stack') {
+    const board=document.querySelector('#game-board, .game-board, main');
+    const boardRect=rectSnapshot(board);
+    const vw=Math.max(320,Number(globalThis?.innerWidth)||1280);
+    const vh=Math.max(240,Number(globalThis?.innerHeight)||720);
+    const width=78,height=110;
+    const cx=boardRect ? boardRect.left+boardRect.width*.5 : vw*.5;
+    const cy=boardRect ? boardRect.top+boardRect.height*.48 : vh*.46;
+    return {kind:'zone',element:board||null,rect:{left:cx-width/2,top:cy-height/2,width,height,right:cx+width/2,bottom:cy+height/2},zone,isLocal:!!isLocal,synthetic:true};
+  }
+  return null;
 }
 
 export function captureHandCardVisual(card, isLocal, { force = false } = {}) {
@@ -501,9 +540,15 @@ function proxySnapshot(card, rect, { faceDown=false } = {}) {
 function sourceSnapshotForEvent(event, { force=false } = {}) {
   const side=event?.controllerIsLocal!==false;
   const zone=String(event?.zoneFrom||'').toLowerCase();
-  if(zone==='stack') return captureStackVisual(event?.item,{force});
+  if(zone==='stack') return captureStackVisual(event?.sourceStackItem || event?.item,{force});
   if(zone==='battlefield') return captureCardVisual(event?.item,side? 'local':'rival',{force});
-  if(zone==='hand') return captureHandCardVisual(event?.card,side,{force});
+  if(zone==='hand') {
+    const handCard=captureHandCardVisual(event?.card,side,{force});
+    if(handCard) return handCard;
+    const handAnchor=captureZoneAnchor('hand',side,{force});
+    if(handAnchor?.rect) return proxySnapshot(event?.card,handAnchor.rect,{faceDown:!side});
+    return null;
+  }
   const anchor=captureZoneAnchor(zone==='library'?'library':zone,side,{force});
   if(!anchor?.rect) return null;
   return proxySnapshot(event?.card, anchor.rect, {faceDown:zone==='library' || (!side && zone==='hand')});
@@ -783,14 +828,22 @@ async function animateZoneTransition(payload){
   if(!source?.rect)return false;
   const card=freezeClone(source);if(!card)return false;
   const kind=String(payload?.transition||'graveyard');
-  const zoneTuningKey=ANIMATION_TUNING_CATALOG.some(def=>def.key===kind) ? kind : 'graveyard';
+  const explicitTuning=payload?.animationTuningKey;
+  const zoneTuningKey=explicitTuning || (ANIMATION_TUNING_CATALOG.some(def=>def.key===kind) ? kind : 'graveyard');
   payload=withAnimationTuning(payload,zoneTuningKey);
   const targetRect=target?.rect||source.rect;
   const {dx,dy}=targetDelta(source.rect,targetRect);
   let sfx='cardToGraveyard';
   let frames=[];
   let duration=560;
-  if(kind==='counter'){
+  if(kind==='land_play' || kind==='permanent_enter' || kind==='spell_cast'){
+    sfx=kind==='land_play'?'landPlayed':kind==='spell_cast'?'spellCast':'permanentEntered';duration=kind==='spell_cast'?520:620;
+    frames=[
+      {transform:'translate3d(0,0,0) rotate(0deg) scale(.72)',filter:'brightness(1.35)',opacity:.15},
+      {transform:`translate3d(${dx*.55}px,${dy*.45-18}px,0) rotate(${kind==='land_play'?-4:3}deg) scale(1.05)`,filter:'brightness(1.4)',opacity:1},
+      {transform:`translate3d(${dx}px,${dy}px,0) rotate(0deg) scale(1)`,filter:'brightness(1)',opacity:0}
+    ];
+  } else if(kind==='counter'){
     sfx='spellCountered';duration=520;
     frames=[
       {transform:'translate3d(0,0,0) scale(1)',filter:'brightness(1) saturate(1)',opacity:1},
@@ -864,6 +917,124 @@ async function animateZoneTransition(payload){
   }
   await move;
   removeNode(card);return true;
+}
+
+
+async function animateFight(payload){
+  const a=payload?.sourceSnapshot,b=payload?.targetSnapshot;
+  if(!a?.rect||!b?.rect)return false;
+  payload=withAnimationTuning(payload,'fight');
+  const ca=freezeClone(a),cb=freezeClone(b); if(!ca||!cb){removeNode(ca);removeNode(cb);return false;}
+  const va=vectorBetween(a.rect,b.rect),vb=vectorBetween(b.rect,a.rect);
+  const travel=Math.min(64,Math.max(24,va.d*.34));
+  const d=durationFor(payload,620);
+  playAnimationSfx('cardImpact','fight','start');
+  const pa=runWebAnimation(ca,[{transform:'translate3d(0,0,0) scale(1)'},{transform:`translate3d(${va.nx*travel}px,${va.ny*travel}px,0) scale(1.05)`},{transform:'translate3d(0,0,0) scale(1)'}],{duration:d,easing:'cubic-bezier(.2,.75,.2,1)'});
+  const pb=runWebAnimation(cb,[{transform:'translate3d(0,0,0) scale(1)'},{transform:`translate3d(${vb.nx*travel}px,${vb.ny*travel}px,0) scale(1.05)`},{transform:'translate3d(0,0,0) scale(1)'}],{duration:d,easing:'cubic-bezier(.2,.75,.2,1)'});
+  await sleepMs(Math.round(d*.48));
+  if(animationEventCancelled(payload)){removeNode(ca);removeNode(cb);return false;}
+  const mid={x:(center(a.rect).x+center(b.rect).x)/2,y:(center(a.rect).y+center(b.rect).y)/2};
+  playAnimationSfx('cardImpact','fight','key'); void impactBurst(mid.x,mid.y,payload,'normal');
+  await Promise.all([pa,pb]); removeNode(ca);removeNode(cb);return true;
+}
+
+async function animateLibraryShuffle(payload){
+  const anchor=payload?.librarySnapshot;if(!anchor?.rect||typeof document==='undefined')return false;
+  payload=withAnimationTuning(payload,'shuffle');const layer=ensureAnimationLayer();if(!layer)return false;
+  const cards=[];const rect=anchor.rect;const w=Math.max(42,Math.min(70,rect.width*.72));const h=Math.max(60,Math.min(98,rect.height*.72));
+  for(let i=0;i<4;i++){const el=document.createElement('div');el.className='arg-anim-zone-proxy back';Object.assign(el.style,{left:`${rect.left+rect.width/2-w/2}px`,top:`${rect.top+rect.height/2-h/2}px`,width:`${w}px`,height:`${h}px`,transform:`translate(${(i-1.5)*3}px,${-i*2}px)`});layer.appendChild(el);cards.push(el);}
+  const d=durationFor(payload,720);playAnimationSfx('libraryShuffle','shuffle','start');
+  const jobs=cards.map((el,i)=>runWebAnimation(el,[{transform:`translate3d(${(i-1.5)*3}px,${-i*2}px,0) rotate(0deg)`},{transform:`translate3d(${(i%2?1:-1)*(28+i*5)}px,${-10-i*3}px,0) rotate(${i%2?8:-8}deg)`},{transform:`translate3d(${(i-1.5)*3}px,${-i*2}px,0) rotate(0deg)`}],{duration:d,easing:'ease-in-out'}));
+  await sleepMs(Math.round(d*.45));playAnimationSfx('libraryShuffle','shuffle','key');
+  await Promise.all(jobs);cards.forEach(removeNode);return true;
+}
+
+async function animateTokenBatch(payload){
+  const target=payload?.targetSnapshot;if(!target?.rect||typeof document==='undefined')return false;
+  payload=withAnimationTuning(payload,'tokens');const layer=ensureAnimationLayer();if(!layer)return false;
+  const count=Math.max(1,Math.min(8,Math.floor(Number(payload?.count)||1)));const d=durationFor(payload,520);
+  playAnimationSfx('tokenCreated','tokens','start');
+  const jobs=[];
+  for(let i=0;i<count;i++){const el=document.createElement('div');el.className='arg-anim-zone-proxy';el.textContent=payload?.tokenName||'FICHA';const w=58,h=82;const x=target.rect.left+target.rect.width/2-w/2+(i-(count-1)/2)*Math.min(20,110/Math.max(1,count-1));const y=target.rect.top+target.rect.height/2-h/2;Object.assign(el.style,{left:`${x}px`,top:`${y}px`,width:`${w}px`,height:`${h}px`});layer.appendChild(el);jobs.push((async()=>{await sleepMs(durationFor(payload,i*55));await runWebAnimation(el,[{transform:'scale(.12) translateY(18px)',opacity:0},{transform:'scale(1.12) translateY(-5px)',opacity:1},{transform:'scale(1)',opacity:0}],{duration:d,easing:'cubic-bezier(.2,.8,.2,1)'});removeNode(el);})());}
+  await sleepMs(Math.round(d*.38));playAnimationSfx('tokenCreated','tokens','key');await Promise.all(jobs);return true;
+}
+
+async function animateTransformCue(payload){
+  const source=payload?.sourceSnapshot;if(!source?.rect)return false;
+  const key=payload?.animationTuningKey||'transform';payload=withAnimationTuning(payload,key);const card=freezeClone(source);if(!card)return false;
+  card.style.transformOrigin='50% 50%';const d=durationFor(payload,680);playAnimationSfx('permanentTransformed',key,'start');
+  const first=runWebAnimation(card,[{transform:'perspective(700px) rotateY(0deg) scale(1)',filter:'brightness(1)'},{transform:'perspective(700px) rotateY(90deg) scale(1.06)',filter:'brightness(1.8)'}],{duration:Math.round(d*.5),easing:'ease-in'});
+  await first;if(payload?.afterName){card.querySelectorAll?.('.card-name,.name')?.forEach?.(el=>{el.textContent=payload.afterName;});}
+  playAnimationSfx('permanentTransformed',key,'key');
+  await runWebAnimation(card,[{transform:'perspective(700px) rotateY(-90deg) scale(1.06)',filter:'brightness(1.8)'},{transform:'perspective(700px) rotateY(0deg) scale(1)',filter:'brightness(1)'}],{duration:Math.round(d*.5),easing:'ease-out'});removeNode(card);return true;
+}
+
+
+function boardCenterPoint(){
+  if(typeof window!=='undefined') return {x:Math.max(0,window.innerWidth||0)/2,y:Math.max(0,window.innerHeight||0)/2};
+  return {x:0,y:0};
+}
+
+async function animateMassWipe(payload){
+  if(typeof document==='undefined')return false;
+  const key=payload?.animationTuningKey || (payload?.wipeKind==='lands'?'wipe_lands':'wipe_creatures');
+  payload=withAnimationTuning(payload,key);
+  const layer=ensureAnimationLayer();if(!layer)return false;
+  const flash=document.createElement('div');flash.className=`arg-anim-global-flash${payload?.wipeKind==='lands'?' land-wipe':''}`;layer.appendChild(flash);
+  const entries=Array.isArray(payload?.entries)?payload.entries:[];
+  const clones=entries.map(entry=>freezeClone(entry?.snapshot)).filter(Boolean);
+  const d=durationFor(payload,payload?.wipeKind==='lands'?980:900);
+  playAnimationSfx('massDestruction',key,'start');
+  const flashJob=runWebAnimation(flash,[{opacity:0,transform:'scale(.82)',filter:'brightness(.8)'},{opacity:.92,transform:'scale(1.08)',filter:'brightness(1.65)'},{opacity:.18,transform:'scale(1.22)',filter:'brightness(.75)'},{opacity:0,transform:'scale(1.34)',filter:'brightness(.45)'}],{duration:d,easing:'cubic-bezier(.2,.7,.2,1)'});
+  const cloneJobs=clones.map((el,i)=>runWebAnimation(el,[
+    {transform:'translate3d(0,0,0) rotate(0deg) scale(1)',filter:'brightness(1)',opacity:1},
+    {transform:`translate3d(${i%2?5:-5}px,${i%3?2:-3}px,0) rotate(${i%2?2:-2}deg) scale(1.03)`,filter:'brightness(1.8)',opacity:1,offset:.34},
+    {transform:`translate3d(${i%2?18:-18}px,${payload?.wipeKind==='lands'?34:20}px,0) rotate(${i%2?10:-10}deg) scale(.18)`,filter:'brightness(.45) grayscale(1) blur(2px)',opacity:0}
+  ],{duration:d,easing:'cubic-bezier(.25,.65,.2,1)'}));
+  await sleepMs(Math.round(d*.38));
+  playAnimationSfx('massDestruction',key,'key');
+  const c=boardCenterPoint();void impactBurst(c.x,c.y,payload,'normal');
+  await Promise.all([flashJob,...cloneJobs]);
+  clones.forEach(removeNode);removeNode(flash);return true;
+}
+
+async function animateGraveyardPurge(payload){
+  const from=payload?.graveyardSnapshot,to=payload?.exileSnapshot;if(!from?.rect||!to?.rect||typeof document==='undefined')return false;
+  payload=withAnimationTuning(payload,'graveyard_purge');const layer=ensureAnimationLayer();if(!layer)return false;
+  const count=Math.max(1,Math.min(8,Number(payload?.count)||1));const proxies=[];const d=durationFor(payload,760);
+  const a=center(from.rect),b=center(to.rect),dx=b.x-a.x,dy=b.y-a.y;
+  for(let i=0;i<count;i++){const el=document.createElement('div');el.className='arg-anim-zone-proxy';el.textContent='GY';Object.assign(el.style,{left:`${a.x-25+(i%4)*3}px`,top:`${a.y-36-(i%3)*2}px`,width:'50px',height:'72px'});layer.appendChild(el);proxies.push(el);}
+  playAnimationSfx('graveyardPurge','graveyard_purge','start');
+  const jobs=proxies.map((el,i)=>runWebAnimation(el,[{transform:`translate3d(0,0,0) rotate(${i%2?-5:5}deg) scale(1)`,opacity:.92},{transform:`translate3d(${dx*.52}px,${dy*.45-18}px,0) rotate(${i%2?14:-14}deg) scale(.62)`,filter:'brightness(1.6)',opacity:1},{transform:`translate3d(${dx}px,${dy}px,0) rotate(${i%2?26:-26}deg) scale(.15)`,filter:'brightness(2) blur(2px)',opacity:0}],{duration:d,easing:'cubic-bezier(.25,.7,.2,1)'}));
+  await sleepMs(Math.round(d*.5));playAnimationSfx('graveyardPurge','graveyard_purge','key');await Promise.all(jobs);proxies.forEach(removeNode);return true;
+}
+
+async function animateMassLandReturn(payload){
+  const from=payload?.graveyardSnapshot,to=payload?.landSnapshot;if(!from?.rect||!to?.rect||typeof document==='undefined')return false;
+  payload=withAnimationTuning(payload,'mass_land_return');const layer=ensureAnimationLayer();if(!layer)return false;
+  const count=Math.max(1,Math.min(8,Number(payload?.count)||1));const a=center(from.rect),b=center(to.rect),d=durationFor(payload,900);const proxies=[];
+  playAnimationSfx('massLandReturn','mass_land_return','start');
+  for(let i=0;i<count;i++){const el=document.createElement('div');el.className='arg-anim-zone-proxy';el.textContent='TIERRA';Object.assign(el.style,{left:`${a.x-29}px`,top:`${a.y-41}px`,width:'58px',height:'82px'});layer.appendChild(el);proxies.push(el);}
+  const jobs=proxies.map((el,i)=>runWebAnimation(el,[{transform:'translate3d(0,0,0) scale(.35)',opacity:0},{transform:`translate3d(${(b.x-a.x)*.52+(i-(count-1)/2)*10}px,${(b.y-a.y)*.36-24}px,0) rotate(${i%2?5:-5}deg) scale(1.05)`,opacity:1,offset:.58},{transform:`translate3d(${b.x-a.x+(i-(count-1)/2)*12}px,${b.y-a.y}px,0) rotate(0deg) scale(.82)`,opacity:0}],{duration:d+i*28,easing:'cubic-bezier(.2,.75,.2,1)'}));
+  await sleepMs(Math.round(d*.52));playAnimationSfx('massLandReturn','mass_land_return','key');await Promise.all(jobs);proxies.forEach(removeNode);return true;
+}
+
+async function animateGlobalPulse(payload){
+  if(typeof document==='undefined')return false;
+  const kind=payload?.pulseKind==='proliferate'?'proliferate':'fog';const key=kind==='proliferate'?'proliferate':'fog_global';const sfx=kind==='proliferate'?'proliferatePulse':'fogGlobal';
+  payload=withAnimationTuning(payload,key);const layer=ensureAnimationLayer();if(!layer)return false;
+  const el=document.createElement('div');el.className=kind==='proliferate'?'arg-anim-global-proliferate':'arg-anim-global-fog';layer.appendChild(el);const d=durationFor(payload,kind==='proliferate'?650:900);
+  playAnimationSfx(sfx,key,'start');
+  const job=runWebAnimation(el,kind==='proliferate'?[{opacity:0,transform:'scale(.78)'},{opacity:.85,transform:'scale(1.03)'},{opacity:0,transform:'scale(1.22)'}]:[{opacity:0,transform:'translate3d(-4%,0,0) scale(1.04)'},{opacity:.86,transform:'translate3d(0,0,0) scale(1.08)'},{opacity:.38,transform:'translate3d(3%,0,0) scale(1.12)'},{opacity:0,transform:'translate3d(6%,0,0) scale(1.16)'}],{duration:d,easing:'ease-in-out'});
+  await sleepMs(Math.round(d*.45));playAnimationSfx(sfx,key,'key');await job;removeNode(el);return true;
+}
+
+async function animateControlChange(payload){
+  const source=payload?.sourceSnapshot,target=payload?.targetSnapshot;if(!source?.rect||!target?.rect)return false;
+  payload=withAnimationTuning(payload,'control_change');const clone=freezeClone(source);if(!clone)return false;const a=center(source.rect),b=center(target.rect),dx=b.x-a.x,dy=b.y-a.y,d=durationFor(payload,760);
+  playAnimationSfx('controlChange','control_change','start');
+  const job=runWebAnimation(clone,[{transform:'translate3d(0,0,0) rotate(0deg) scale(1)',filter:'brightness(1)'},{transform:`translate3d(${dx*.5}px,${dy*.38-30}px,0) rotate(8deg) scale(1.12)`,filter:'brightness(1.7)',opacity:1},{transform:`translate3d(${dx}px,${dy}px,0) rotate(0deg) scale(.92)`,filter:'brightness(1)',opacity:0}],{duration:d,easing:'cubic-bezier(.2,.75,.2,1)'});
+  await sleepMs(Math.round(d*.5));playAnimationSfx('controlChange','control_change','key');await job;removeNode(clone);return true;
 }
 
 function enqueue(type, payload, runner, { force = false, speedOverride = null } = {}) {
@@ -966,16 +1137,86 @@ export function queueReanimateAnimation({card,isLocal}, options={}) {
   return queueZoneTransitionAnimation({sourceSnapshot:proxySnapshot(card,startRect),targetSnapshot:to,transition:'reanimate',card,controllerIsLocal:isLocal,zoneFrom:'graveyard',zoneTo:'battlefield'},options);
 }
 
+
+export function queueFightAnimation(payload,options={}){
+  const sourceIsLocal=payload?.sourceIsLocal!==false;
+  emitPresentationCue({kind:'fight',sourceIsLocal,targetIsLocal:!sourceIsLocal,source:cueVisualRef(payload?.sourceSnapshot),target:cueVisualRef(payload?.targetSnapshot),animationTuningKey:'fight'},options);
+  return enqueue('fight',withAnimationTuning(payload,'fight'),animateFight,options);
+}
+
+export function queueLibraryShuffleAnimation({isLocal=true}={},options={}){
+  const librarySnapshot=captureZoneAnchor('library',isLocal,options);if(!librarySnapshot)return Promise.resolve(false);
+  emitPresentationCue({kind:'library_shuffle',sourceIsLocal:isLocal,targetIsLocal:isLocal},options);
+  return enqueue('library_shuffle',{librarySnapshot,isLocal,animationTuningKey:'shuffle'},animateLibraryShuffle,options);
+}
+
+export function queueTokenBatchAnimation({isLocal=true,count=1,tokenName='Ficha',targetZone='battlefield'}={},options={}){
+  const targetSnapshot=captureZoneAnchor(targetZone,isLocal,options);if(!targetSnapshot)return Promise.resolve(false);
+  emitPresentationCue({kind:'token_batch',sourceIsLocal:isLocal,targetIsLocal:isLocal,count:Math.max(1,Math.floor(Number(count)||1)),tokenName:String(tokenName||'Ficha'),targetZone},options);
+  return enqueue('token_batch',{targetSnapshot,isLocal,count,tokenName,animationTuningKey:'tokens'},animateTokenBatch,options);
+}
+
+export function queueTransformAnimation({item,isLocal=true,afterName=null,animationTuningKey='transform'}={},options={}){
+  const sourceSnapshot=captureCardVisual(item,isLocal?'local':'rival',options);if(!sourceSnapshot)return Promise.resolve(false);
+  emitPresentationCue({kind:'transform',sourceIsLocal:isLocal,targetIsLocal:isLocal,source:cueVisualRef(sourceSnapshot),afterName:afterName||item?.card?.name||null,animationTuningKey},options);
+  return enqueue('transform',{sourceSnapshot,isLocal,afterName:afterName||item?.card?.name||null,animationTuningKey},animateTransformCue,options);
+}
+
+export function queueMassWipeAnimation({wipeKind='creatures',entries=[],sourceIsLocal=true,sourceCard=null}={},options={}){
+  const key=wipeKind==='lands'?'wipe_lands':'wipe_creatures';
+  const normalized=(entries||[]).map(entry=>({snapshot:entry?.snapshot||captureCardVisual(entry?.item,entry?.isLocal===false?'rival':'local',options),isLocal:entry?.isLocal!==false})).filter(entry=>entry.snapshot);
+  emitPresentationCue({kind:'mass_wipe',sourceIsLocal,targetIsLocal:sourceIsLocal,wipeKind,sourceCard:sourceCard?{id:sourceCard.id||null,name:sourceCard.name||null}:null,entries:normalized.map(entry=>({sourceSide:entry.isLocal===(sourceIsLocal!==false),ref:cueVisualRef(entry.snapshot)})),animationTuningKey:key},options);
+  return enqueue('mass_wipe',{wipeKind,entries:normalized,sourceIsLocal,sourceCard,animationTuningKey:key},animateMassWipe,options);
+}
+
+export function queueGraveyardPurgeAnimation({targetIsLocal=true,actorIsLocal=true,count=1}={},options={}){
+  const graveyardSnapshot=captureZoneAnchor('graveyard',targetIsLocal,options),exileSnapshot=captureZoneAnchor('exile',targetIsLocal,options);if(!graveyardSnapshot||!exileSnapshot)return Promise.resolve(false);
+  emitPresentationCue({kind:'graveyard_purge',sourceIsLocal:actorIsLocal,targetIsLocal,count:Math.max(0,Number(count)||0)},options);
+  return enqueue('graveyard_purge',{graveyardSnapshot,exileSnapshot,targetIsLocal,count,animationTuningKey:'graveyard_purge'},animateGraveyardPurge,options);
+}
+
+export function queueMassLandReturnAnimation({isLocal=true,count=1}={},options={}){
+  const graveyardSnapshot=captureZoneAnchor('graveyard',isLocal,options),landSnapshot=captureZoneAnchor('land',isLocal,options);if(!graveyardSnapshot||!landSnapshot)return Promise.resolve(false);
+  emitPresentationCue({kind:'mass_land_return',sourceIsLocal:isLocal,targetIsLocal:isLocal,count:Math.max(0,Number(count)||0)},options);
+  return enqueue('mass_land_return',{graveyardSnapshot,landSnapshot,isLocal,count,animationTuningKey:'mass_land_return'},animateMassLandReturn,options);
+}
+
+export function queueGlobalBoardEffectAnimation({kind='fog',isLocal=true}={},options={}){
+  const pulseKind=kind==='proliferate'?'proliferate':'fog';
+  emitPresentationCue({kind:'global_board_effect',sourceIsLocal:isLocal,targetIsLocal:isLocal,pulseKind},options);
+  return enqueue('global_board_effect',{pulseKind,isLocal,animationTuningKey:pulseKind==='proliferate'?'proliferate':'fog_global'},animateGlobalPulse,options);
+}
+
+export function queueControlChangeAnimation({item,fromIsLocal=true,toIsLocal=false,zoneName='combat',sourceSnapshot=null}={},options={}){
+  const source=sourceSnapshot||captureCardVisual(item,fromIsLocal?'local':'rival',options);const targetZone=zoneName==='lands'?'land':zoneName==='planeswalkers'?'planeswalker':zoneName==='support'?'support':'battlefield';const target=captureZoneAnchor(targetZone,toIsLocal,options);if(!source||!target)return Promise.resolve(false);
+  emitPresentationCue({kind:'control_change',sourceIsLocal:fromIsLocal,targetIsLocal:toIsLocal,source:cueVisualRef(source),zoneName},options);
+  return enqueue('control_change',{sourceSnapshot:source,targetSnapshot:target,fromIsLocal,toIsLocal,zoneName,animationTuningKey:'control_change'},animateControlChange,options);
+}
+
 export function queueGameEventAnimation(event={}, options={}) {
   if(!event?.type)return Promise.resolve(false);
   const type=String(event.type);const isLocal=event.controllerIsLocal!==false;
+  if(type==='card_exiled' && event.cause==='graveyard_purge') return Promise.resolve(false);
+  if(type==='land_entered' && event.zoneFrom==='graveyard_mass') return Promise.resolve(false);
   if(type==='permanent_tapped' && event.cause==='mana_ability' && event.item && event.card) {
     const snapshot=captureCardVisual(event.item,isLocal?'local':'rival',options);
     return snapshot ? queueLandTapAnimation({snapshot,isLocal},options) : Promise.resolve(false);
   }
+  if(type==='permanent_transformed' && event.item) return queueTransformAnimation({item:event.item,isLocal,afterName:event.metadata?.afterName||event.card?.name||null,animationTuningKey:'transform'},options);
+  if(type==='permanent_animated' && event.item) return queueTransformAnimation({item:event.item,isLocal,afterName:event.card?.name||null,animationTuningKey:'animate_land'},options);
   let transition=null;
-  if(type==='card_drawn') transition='draw';
-  else if(type==='card_discarded') transition=event.zoneTo==='exile' ? 'exile' : 'discard';
+  let tuningKey=null;
+  let destination=null;
+  if(type==='land_entered') { transition='land_play'; tuningKey='land_play'; destination='land'; }
+  else if(type==='permanent_entered') {
+    transition='permanent_enter';
+    const targetKind=event?.metadata?.targetKind || (String(event?.card?.type||'').includes('Planeswalker')?'planeswalker':(event?.card?.power!==undefined||String(event?.card?.type||'').includes('Criatura'))?'combat':'support');
+    destination=targetKind==='creature'?'combat':targetKind;
+    tuningKey=destination==='combat'?'creature_enter':destination==='planeswalker'?'planeswalker_enter':'support_enter';
+  }
+  else if(type==='spell_cast_visual') { transition='spell_cast'; tuningKey='spell_cast'; destination='stack'; }
+  if(!transition && type==='card_drawn') transition='draw';
+  else if(!transition && type==='card_discarded') transition=event.zoneTo==='exile' ? 'exile' : 'discard';
   else if(type==='spell_countered') transition='counter';
   else if(type==='permanent_left_battlefield' && event.cause==='bounce') transition='bounce';
   else if(type==='permanent_left_battlefield' && event.cause==='destroy' && event.zoneTo==='graveyard') transition='graveyard';
@@ -987,9 +1228,10 @@ export function queueGameEventAnimation(event={}, options={}) {
   if(!transition)return Promise.resolve(false);
   const sourceSnapshot=sourceSnapshotForEvent(event,options);
   if(!sourceSnapshot)return Promise.resolve(false);
-  const destination=transition==='draw'||transition==='bounce'?'hand':transition==='exile'?'exile':event.zoneTo==='exile'?'exile':'graveyard';
-  const targetSnapshot=captureZoneAnchor(destination,isLocal,options);
-  return queueZoneTransitionAnimation({sourceSnapshot,targetSnapshot,transition,card:event.card||event.item?.card||null,controllerIsLocal:isLocal,zoneFrom:event.zoneFrom||'',zoneTo:destination},options);
+  destination=destination || (transition==='draw'||transition==='bounce'?'hand':transition==='exile'?'exile':event.zoneTo==='exile'?'exile':'graveyard');
+  const targetSnapshot=transition==='spell_cast' ? captureStackVisual(event?.sourceStackItem||event?.item,options) : captureZoneAnchor(destination,isLocal,options);
+  if(!targetSnapshot)return Promise.resolve(false);
+  return queueZoneTransitionAnimation({sourceSnapshot,targetSnapshot,transition,card:event.card||event.item?.card||null,controllerIsLocal:isLocal,zoneFrom:event.zoneFrom||'',zoneTo:destination,animationTuningKey:tuningKey},options);
 }
 
 function cueCardObject(ref, fallbackCard=null) {
@@ -1047,6 +1289,28 @@ export function preparePresentationCuePlayback(cue, myRole, options={}) {
         stepKind:cue.stepKind||'regular',doubleStrikePass:!!cue.doubleStrikePass,animationTuningKey:cue.animationTuningKey||null},playbackOptions);
     };
   }
+  if(cue.kind==='fight') {
+    const sourceSnapshot=captureCueCard(cue.source,sourceIsLocal,options);const targetSnapshot=captureCueCard(cue.target,targetIsLocal,options);
+    if(!sourceSnapshot||!targetSnapshot)return null;
+    return ()=>queueFightAnimation({sourceSnapshot,targetSnapshot,sourceIsLocal,animationTuningKey:'fight'},playbackOptions);
+  }
+  if(cue.kind==='library_shuffle') return ()=>queueLibraryShuffleAnimation({isLocal:sourceIsLocal},playbackOptions);
+  if(cue.kind==='token_batch') return ()=>queueTokenBatchAnimation({isLocal:sourceIsLocal,count:cue.count||1,tokenName:cue.tokenName||'Ficha',targetZone:cue.targetZone||'battlefield'},playbackOptions);
+  if(cue.kind==='transform') {
+    const sourceSnapshot=captureCueCard(cue.source,sourceIsLocal,options);if(!sourceSnapshot)return null;
+    return ()=>enqueue('transform',{sourceSnapshot,isLocal:sourceIsLocal,afterName:cue.afterName||null,animationTuningKey:cue.animationTuningKey||'transform'},animateTransformCue,playbackOptions);
+  }
+  if(cue.kind==='mass_wipe') {
+    const entries=(Array.isArray(cue.entries)?cue.entries:[]).map(entry=>{const isLocal=entry?.sourceSide?sourceIsLocal:!sourceIsLocal;return {snapshot:captureCueCard(entry?.ref,isLocal,options),isLocal};}).filter(entry=>entry.snapshot);
+    return ()=>queueMassWipeAnimation({wipeKind:cue.wipeKind||'creatures',entries,sourceIsLocal,sourceCard:cue.sourceCard||null},playbackOptions);
+  }
+  if(cue.kind==='graveyard_purge') return ()=>queueGraveyardPurgeAnimation({targetIsLocal,actorIsLocal:sourceIsLocal,count:cue.count||1},playbackOptions);
+  if(cue.kind==='mass_land_return') return ()=>queueMassLandReturnAnimation({isLocal:sourceIsLocal,count:cue.count||1},playbackOptions);
+  if(cue.kind==='global_board_effect') return ()=>queueGlobalBoardEffectAnimation({kind:cue.pulseKind||'fog',isLocal:sourceIsLocal},playbackOptions);
+  if(cue.kind==='control_change') {
+    const sourceSnapshot=captureCueCard(cue.source,sourceIsLocal,options);if(!sourceSnapshot)return null;
+    return ()=>queueControlChangeAnimation({sourceSnapshot,fromIsLocal:sourceIsLocal,toIsLocal:targetIsLocal,zoneName:cue.zoneName||'combat'},playbackOptions);
+  }
   if(cue.kind==='zone_transition') {
     const controllerIsLocal=sourceIsLocal;
     const card=cue.card || cueCardObject(cue.source);
@@ -1061,6 +1325,7 @@ export function preparePresentationCuePlayback(cue, myRole, options={}) {
     if(!sourceSnapshot)return null;
     const destination=cue.zoneTo||((cue.transition==='draw'||cue.transition==='bounce')?'hand':cue.transition==='exile'?'exile':'graveyard');
     const targetSnapshot=captureZoneAnchor(destination,controllerIsLocal,options);
+    if(!targetSnapshot)return null;
     return ()=>queueZoneTransitionAnimation({sourceSnapshot,targetSnapshot,transition:cue.transition||'graveyard',card,controllerIsLocal,zoneFrom:cue.zoneFrom||'',zoneTo:destination,animationTuningKey:cue.animationTuningKey||null},playbackOptions);
   }
   return null;
@@ -1125,6 +1390,23 @@ function animationLabMarkup() {
             <button data-test="sacrifice">Sacrificio</button>
             <button data-test="graveyard">Cementerio</button>
             <button data-test="reanimate">Reanimar</button>
+            <button data-test="landPlay">Bajar Tierra</button>
+            <button data-test="creatureEnter">Entrada criatura</button>
+            <button data-test="supportEnter">Entrada Support</button>
+            <button data-test="planeswalkerEnter">Entrada PW</button>
+            <button data-test="fight">Pelear</button>
+            <button data-test="shuffle">Barajar</button>
+            <button data-test="tokens">Crear fichas</button>
+            <button data-test="transform">Transformar</button>
+            <button data-test="animateLand">Animar Tierra</button>
+            <button data-test="spellCast">Instant/Conjuro</button>
+            <button data-test="wipeCreatures">Wipe criaturas</button>
+            <button data-test="wipeLands">Wipe Tierras</button>
+            <button data-test="graveyardPurge">Purga cementerio</button>
+            <button data-test="massLandReturn">Retorno Tierras</button>
+            <button data-test="fogGlobal">Fog global</button>
+            <button data-test="proliferate">Proliferar</button>
+            <button data-test="controlChange">Cambio control</button>
             <button data-test="all">Secuencia completa</button>
             <button data-test="clear">Limpiar</button>
           </div>
@@ -1173,7 +1455,7 @@ function animationLabMarkup() {
           </div>
           <div class="arg-animation-lab-sidebar">
             <div class="arg-animation-lab-player" data-lab-player="rival">🤠 TANO DUMMY<span class="hp">20 / 20 HP</span></div>
-            <div class="arg-animation-lab-log" data-animation-lab-log>Animation Studio 23.19.4.4\nDummy del tablero real + Zone Transitions.\nLos tests no tocan state ni Firestore.</div>
+            <div class="arg-animation-lab-log" data-animation-lab-log>Animation Studio 23.19.4.8\nDummy del tablero real + Zone Transitions.\nLos tests no tocan state ni Firestore.</div>
             <div class="arg-animation-lab-player" data-lab-player="local">🧉 VOS DUMMY<span class="hp">20 / 20 HP</span></div>
           </div>
         </div>
@@ -1276,9 +1558,26 @@ export function mountAnimationLab(root) {
     discard:async()=>{note('Descarte: carta de mano cae al cementerio local.');await queueZoneTransitionAnimation({sourceSnapshot:handCard(),targetSnapshot:labZone('graveyard',true),transition:'discard',card:{name:'Carta local'}},options());},
     sacrifice:async()=>{note('Sacrificio: colapso oscuro desde battlefield al cementerio.');await queueZoneTransitionAnimation({sourceSnapshot:attacker(),targetSnapshot:labZone('graveyard',true),transition:'sacrifice',card:{name:'Atacante'}},options());},
     graveyard:async()=>{note('Cementerio: salida normal de permanente hacia GY.');await queueZoneTransitionAnimation({sourceSnapshot:def(1),targetSnapshot:labZone('graveyard',false),transition:'graveyard',card:{name:'Defensor A'}},options());},
-    reanimate:async()=>{note('Reanimar: una carta emerge del GY local al battlefield.');await queueZoneTransitionAnimation({sourceSnapshot:proxyAt('graveyard',true,'Criatura reanimada'),targetSnapshot:labZone('battlefield',true),transition:'reanimate',card:{name:'Criatura reanimada'}},options());}
+    reanimate:async()=>{note('Reanimar: una carta emerge del GY local al battlefield.');await queueZoneTransitionAnimation({sourceSnapshot:proxyAt('graveyard',true,'Criatura reanimada'),targetSnapshot:labZone('battlefield',true),transition:'reanimate',card:{name:'Criatura reanimada'}},options());},
+    landPlay:async()=>{note('Bajar Tierra: desde mano hacia la fila de Tierras.');await queueZoneTransitionAnimation({sourceSnapshot:handCard(),targetSnapshot:labZone('land',true),transition:'land_play',card:{name:'Tierra jugada'},animationTuningKey:'land_play'},options());},
+    creatureEnter:async()=>{note('Entrada criatura: Stack hacia Combat.');await queueZoneTransitionAnimation({sourceSnapshot:stackCard(),targetSnapshot:labZone('battlefield',true),transition:'permanent_enter',card:{name:'Criatura'},animationTuningKey:'creature_enter'},options());},
+    supportEnter:async()=>{note('Entrada Support: Stack hacia Support.');await queueZoneTransitionAnimation({sourceSnapshot:stackCard(),targetSnapshot:labZone('support',true),transition:'permanent_enter',card:{name:'Artefacto'},animationTuningKey:'support_enter'},options());},
+    planeswalkerEnter:async()=>{note('Entrada Planeswalker: Stack hacia su zona.');await queueZoneTransitionAnimation({sourceSnapshot:stackCard(),targetSnapshot:labZone('support',true),transition:'permanent_enter',card:{name:'Planeswalker'},animationTuningKey:'planeswalker_enter'},options());},
+    fight:async()=>{note('Pelear: choque simultáneo fuera de combate.');await queueFightAnimation({sourceSnapshot:attacker(),targetSnapshot:def(2),sourceIsLocal:true},options());},
+    shuffle:async()=>{note('Barajar: feedback público sin revelar cartas.');await queueLibraryShuffleAnimation({isLocal:true},options());},
+    tokens:async()=>{note('Fichas: 4 materializaciones, un solo SFX por lote.');await queueTokenBatchAnimation({isLocal:true,count:4,tokenName:'Vecino',targetZone:'battlefield'},options());},
+    transform:async()=>{note('Transformar: flip 3D en el mismo permanente.');await enqueue('transform',{sourceSnapshot:def(2),afterName:'Otra cara',animationTuningKey:'transform'},animateTransformCue,options());},
+    animateLand:async()=>{note('Animar Tierra: transformación visual de Tierra a criatura.');await enqueue('transform',{sourceSnapshot:land(),afterName:'Tierra animada',animationTuningKey:'animate_land'},animateTransformCue,options());},
+    spellCast:async()=>{note('Instant/Conjuro: mano hacia Stack.');await queueZoneTransitionAnimation({sourceSnapshot:handCard(),targetSnapshot:stackCard(),transition:'spell_cast',card:{name:'Hechizo'},animationTuningKey:'spell_cast'},options());},
+    wipeCreatures:async()=>{note('Wipe criaturas: explosión única de mesa; no un SFX por muerte.');await queueMassWipeAnimation({wipeKind:'creatures',sourceIsLocal:true,entries:[{snapshot:attacker(),isLocal:true},{snapshot:def(1),isLocal:false},{snapshot:def(2),isLocal:false},{snapshot:def(3),isLocal:false}]},options());},
+    wipeLands:async()=>{note('Wipe Tierras: colapso global de la base de maná.');await queueMassWipeAnimation({wipeKind:'lands',sourceIsLocal:true,entries:[{snapshot:land(),isLocal:true},{snapshot:def(1),isLocal:false}]},options());},
+    graveyardPurge:async()=>{note('Purga: cementerio completo colapsa hacia Exilio con un solo SFX.');await queueGraveyardPurgeAnimation({targetIsLocal:true,actorIsLocal:true,count:6},options());},
+    massLandReturn:async()=>{note('Retorno masivo: varias Tierras emergen del cementerio como un lote.');await queueMassLandReturnAnimation({isLocal:true,count:5},options());},
+    fogGlobal:async()=>{note('Fog global: niebla cubre el tablero una sola vez por resolución.');await queueGlobalBoardEffectAnimation({kind:'fog',isLocal:true},options());},
+    proliferate:async()=>{note('Proliferar: pulso global único, no un sonido por contador.');await queueGlobalBoardEffectAnimation({kind:'proliferate',isLocal:true},options());},
+    controlChange:async()=>{note('Cambio de control: el permanente cruza visualmente al otro lado.');await queueControlChangeAnimation({sourceSnapshot:def(2),fromIsLocal:false,toIsLocal:true,zoneName:'combat'},options());}
   };
-  scenarios.all=async()=>{for(const key of ['land','clash','multi','trample','first','double','shield','deathtouch','indestructible','player','counter','exile','bounce','draw','discard','sacrifice','graveyard','reanimate'])await scenarios[key]();};
+  scenarios.all=async()=>{for(const key of ['land','clash','multi','trample','first','double','shield','deathtouch','indestructible','player','counter','exile','bounce','draw','discard','sacrifice','graveyard','reanimate','landPlay','creatureEnter','supportEnter','planeswalkerEnter','fight','shuffle','tokens','transform','animateLand','spellCast','wipeCreatures','wipeLands','graveyardPurge','massLandReturn','fogGlobal','proliferate','controlChange'])await scenarios[key]();};
   const onClick=async(event)=>{
     const btn=event.target.closest?.('button[data-test]');if(!btn)return;
     const kind=btn.dataset.test;
@@ -1299,7 +1598,7 @@ export async function runAnimationDebugShowcase() {
   document.getElementById('arg-animation-debug-overlay')?.remove();
   const overlay=document.createElement('div');overlay.id='arg-animation-debug-overlay';
   Object.assign(overlay.style,{position:'fixed',inset:'0',zIndex:'30000',background:'rgba(4,7,8,.94)',padding:'18px',overflow:'auto'});
-  overlay.innerHTML='<div style="max-width:1500px;margin:0 auto"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font:900 20px system-ui;color:#f0cf64">🎬 Animation Studio 23.19.4.4</div><button data-overlay-close style="padding:8px 14px;border-radius:8px;border:1px solid #d4af37;background:#202d26;color:#f4e5b9;font-weight:800">Cerrar</button></div><div data-overlay-lab></div></div>';
+  overlay.innerHTML='<div style="max-width:1500px;margin:0 auto"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font:900 20px system-ui;color:#f0cf64">🎬 Animation Studio 23.19.4.8</div><button data-overlay-close style="padding:8px 14px;border-radius:8px;border:1px solid #d4af37;background:#202d26;color:#f4e5b9;font-weight:800">Cerrar</button></div><div data-overlay-lab></div></div>';
   document.body.appendChild(overlay);
   const cleanup=mountAnimationLab(overlay.querySelector('[data-overlay-lab]'));
   overlay.querySelector('[data-overlay-close]')?.addEventListener('click',()=>{cleanup();overlay.remove();});

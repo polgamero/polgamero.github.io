@@ -6281,7 +6281,8 @@ export function showAdminPanel(onBack) {
   const initialAnimationTunings = normalizeAnimationTunings(initialAnimationPolicy.animationTunings || {});
   const animationTuningRowsHTML = animationTuningCatalog.map(def => {
     const tuning = initialAnimationTunings[def.key] || { relativeSpeed:1, relativeVolume:1, sfxMoment:def.defaultSfxMoment || 'start', sfxCadence:def.sfxCadence || 'single' };
-    const cadenceLabel=(tuning.sfxCadence || def.sfxCadence)==='per_impact' ? 'Por impacto' : '1 vez';
+    const cadence=(tuning.sfxCadence || def.sfxCadence);
+    const cadenceLabel=cadence==='per_impact' ? 'Por impacto' : cadence==='per_batch' ? '1 vez por lote' : '1 vez';
     const audioTargets=Array.isArray(def.audioTargets) ? def.audioTargets : [];
     const opusHTML=audioTargets.length
       ? audioTargets.map(target => `<code>${escapeHtml(target.opus || '—')}</code>`).join('')
@@ -6318,7 +6319,7 @@ export function showAdminPanel(onBack) {
       </div>
       <div class="admin-animation-reference-help">Estos tres valores son la referencia central que usa <b>Velocidad de animaciones</b> en Opciones. 1.00 = duración base; 1.35 = 35% más lenta; 0.68 = 32% más rápida. Rango seguro: 0.25–3.00.</div>
       <div class="admin-section-title" style="margin-top:18px;">Ajuste por animación</div>
-      <div class="admin-animation-reference-help"><b>Velocidad relativa</b> multiplica la velocidad de esa animación sobre la referencia global elegida por el usuario. Ejemplo: <b>0.75</b> = 75% de velocidad, por lo tanto esa animación dura ≈33% más. <b>1.00</b> no altera la referencia global. En SFX, <b>Inicio</b> y <b>Momento clave</b> son excluyentes. La <b>Cadencia</b> es canónica: las escenas de combate disparan un SFX por cada impacto real; Tierra y transiciones lo hacen una sola vez. <b>Volumen relativo</b> multiplica el volumen SFX definido en OPCIONES para esa animación (1.00 = igual, 1.20 = +20%, sujeto al techo seguro del navegador). Las columnas <b>OPUS</b> y <b>fallback MP3</b> son informativas y salen del mismo catálogo de audio que usa el runtime; cuando una escena puede disparar más de un SFX (por ejemplo Arrollar), se muestran todos.</div>
+      <div class="admin-animation-reference-help"><b>Velocidad relativa</b> multiplica la velocidad de esa animación sobre la referencia global elegida por el usuario. Ejemplo: <b>0.75</b> = 75% de velocidad, por lo tanto esa animación dura ≈33% más. <b>1.00</b> no altera la referencia global. En SFX, <b>Inicio</b> y <b>Momento clave</b> son excluyentes. La <b>Cadencia</b> es canónica: las escenas de combate disparan un SFX por cada impacto real; las fichas usan <b>1 vez por lote</b>; Tierra y transiciones simples lo hacen una sola vez. <b>Volumen relativo</b> multiplica el volumen SFX definido en OPCIONES para esa animación (1.00 = igual, 1.20 = +20%, sujeto al techo seguro del navegador). Las columnas <b>OPUS</b> y <b>fallback MP3</b> son informativas y salen del mismo catálogo de audio que usa el runtime; cuando una escena puede disparar más de un SFX (por ejemplo Arrollar), se muestran todos.</div>
       <div class="admin-animation-tuning-wrap">
         <table class="admin-animation-tuning-table">
           <thead>

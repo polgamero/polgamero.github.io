@@ -18,7 +18,7 @@ const root = path.resolve(here, '..');
 const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 const need = (cond, msg) => { if (!cond) throw new Error(`ANIMATION_23_19_4_FAIL:${msg}`); };
 
-need(ENGINE_VERSION === '23.19.4.6', `engine=${ENGINE_VERSION}`);
+need(ENGINE_VERSION === '23.19.4.8', `engine=${ENGINE_VERSION}`);
 need(ENGINE_PROTOCOL_VERSION === 'mp-23.19.2', `protocol=${ENGINE_PROTOCOL_VERSION}`);
 need(FIRESTORE_RULES_VERSION === '23.13.79', `rules=${FIRESTORE_RULES_VERSION}`);
 need(POOL_BASELINE.total === 880, `pool=${POOL_BASELINE.total}`);
@@ -74,11 +74,11 @@ need(ui.includes('opt-animations-toggle') && ui.includes('opt-animation-speed'),
 need(texts.includes("'options.animations.serverOff'"), 'options-server-off-copy');
 
 need(firebaseImpl.includes("loadPublicGameConfigDocument('animations')"), 'animation-policy-document');
-need(firebaseImpl.includes('speedMultipliers') && /schemaVersion:\s*[2345]/.test(firebaseImpl), 'animation-policy-speed-schema');
+need(firebaseImpl.includes('speedMultipliers') && /schemaVersion:\s*[234567]/.test(firebaseImpl), 'animation-policy-speed-schema');
 need(firebaseImpl.includes("doc(db, 'gameConfig', 'animations')") && firebaseImpl.includes('onSnapshot'), 'animation-policy-live-listener');
 need(firebaseFacade.includes('listenAnimationPolicy') && firebaseFacade.includes('saveAnimationPolicy'), 'animation-policy-lazy-facade');
 
-need(manifest.engineVersion === '23.19.4.6' && manifest.firestoreRulesVersion === '23.13.79' && manifest.pool === 880, 'build-manifest');
+need(manifest.engineVersion === '23.19.4.8' && manifest.firestoreRulesVersion === '23.13.79' && manifest.pool === 880, 'build-manifest');
 
 console.log('ANIMATION_FOUNDATION_COMBAT_IMPACT_23_19_4_OK');
 console.log('director=isolated+queue+cleanup+server-speed-references');

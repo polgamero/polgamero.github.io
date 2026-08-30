@@ -1,4 +1,4 @@
-// js/audioManager.js — Entrega 23.19.4.4 Animation Tuning Matrix + Draggable Test Console.
+// js/audioManager.js — Entrega 23.19.4.8 Mass Event Cinematics + High-Impact Feedback.
 // Un único dueño del audio de Argentinia: música por escena (menú / Tano / multiplayer)
 // con Opus primero y MP3 fallback, más SFX separados. Todo es local al navegador.
 
@@ -155,6 +155,90 @@ export const AUDIO_CATALOG = Object.freeze({
       sources: Object.freeze([
         Object.freeze({ src: './assets/sounds/sfx/reanimar.opus', type: 'audio/ogg; codecs=\"opus\"' }),
         Object.freeze({ src: './assets/sounds/sfx/reanimar.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    landPlayed: Object.freeze({
+      id: 'landPlayed', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/bajar_tierra.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/bajar_tierra.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    permanentEntered: Object.freeze({
+      id: 'permanentEntered', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/permanente.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/permanente.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    libraryShuffle: Object.freeze({
+      id: 'libraryShuffle', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/barajar.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/barajar.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    tokenCreated: Object.freeze({
+      id: 'tokenCreated', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/ficha.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/ficha.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    permanentTransformed: Object.freeze({
+      id: 'permanentTransformed', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/transformar.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/transformar.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    spellCast: Object.freeze({
+      id: 'spellCast', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/hechizo.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/hechizo.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    massDestruction: Object.freeze({
+      id: 'massDestruction', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/wipe.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/wipe.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    graveyardPurge: Object.freeze({
+      id: 'graveyardPurge', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/purga_cementerio.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/purga_cementerio.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    massLandReturn: Object.freeze({
+      id: 'massLandReturn', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/retorno_tierras.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/retorno_tierras.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    fogGlobal: Object.freeze({
+      id: 'fogGlobal', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/niebla.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/niebla.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    proliferatePulse: Object.freeze({
+      id: 'proliferatePulse', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/proliferar.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/proliferar.mp3', type: 'audio/mpeg' })
+      ])
+    }),
+    controlChange: Object.freeze({
+      id: 'controlChange', loop: false,
+      sources: Object.freeze([
+        Object.freeze({ src: './assets/sounds/sfx/control.opus', type: 'audio/ogg; codecs=\"opus\"' }),
+        Object.freeze({ src: './assets/sounds/sfx/control.mp3', type: 'audio/mpeg' })
       ])
     })
   })

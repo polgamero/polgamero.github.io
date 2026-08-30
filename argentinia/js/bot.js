@@ -1629,7 +1629,7 @@ async function tryBotCastFromExile({ instantOnly = false } = {}) {
       const landItem={card:original,tapped:landEntersTappedForBattlefield(original,false),enteredThisTurn:true,permanentTypes:['land']};
       state.rivalLands.push(landItem); state.rivalLandPlayedThisTurn=true;
       dispatchGameEvent({type:'card_played_from_exile',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:cardOwnerIsLocal(original,false,state.currentMatch?.myRole||null),card:original,item:landItem,zoneFrom:'exile',zoneTo:'battlefield',cause:'exile_permission',metadata:{isLand:true}});
-      await triggerLandEtb(false,original,landItem);
+      await triggerLandEtb(false,original,landItem,'exile');
       logMsg(gameText('bot.land.played',{card:original.name})); render(); return true;
     }
 
@@ -1818,7 +1818,7 @@ export async function takeBotPriorityAction() {
       state.rivalLandPlayedThisTurn = true;
       logMsg(entersTapped ? gameText('bot.land.playedTapped', { card: landCard.name }) : gameText('bot.land.played', { card: landCard.name })); 
       // PUNTO 2: el Tano dispara el mismo evento Landfall que el jugador humano.
-      await triggerLandEtb(false, landCard, landItem);
+      await triggerLandEtb(false, landCard, landItem, 'hand');
       render(); 
       await botThinkDelay(800);
     }

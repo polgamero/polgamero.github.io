@@ -1939,7 +1939,7 @@ export async function saveAnimationPolicy(config = {}) {
       fast: clampMultiplier(rawSpeeds.fast, 0.68)
     },
     animationTunings,
-    schemaVersion: 5,
+    schemaVersion: 7,
     engineVersion: ENGINE_VERSION
   });
 }

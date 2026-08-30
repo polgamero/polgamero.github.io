@@ -9,9 +9,9 @@ const root = path.resolve(here, '..');
 const impl = fs.readFileSync(path.join(root, 'js/firebaseClientImpl.js'), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'build-manifest.json'), 'utf8'));
 
-assert.equal(ENGINE_VERSION, '23.19.4.6');
+assert.equal(ENGINE_VERSION, '23.19.4.8');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
-assert.equal(manifest.engineVersion, '23.19.4.6');
+assert.equal(manifest.engineVersion, '23.19.4.8');
 assert.equal(manifest.firestoreRulesVersion, '23.13.79');
 
 // Production shape that triggered the incident: nested serverUpdatedAt is a resolved
@@ -63,4 +63,4 @@ if (rulesPath && fs.existsSync(rulesPath)) {
     'Normal users must not regress to nested request.time equality.');
 }
 
-console.log('ADMIN_DAILY_RUNTIME_PARITY_23_19_4_OK engine=23.19.4.6 rules=23.13.79 admin=nested-clock-metadata+top-level-seal normal=unchanged-v6');
+console.log('ADMIN_DAILY_RUNTIME_PARITY_23_19_4_OK engine=23.19.4.8 rules=23.13.79 admin=nested-clock-metadata+top-level-seal normal=unchanged-v6');

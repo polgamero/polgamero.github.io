@@ -26,13 +26,13 @@ assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.equal(manifest.engineVersion,ENGINE_VERSION);
 assert.equal(manifest.firestoreRulesVersion,'23.13.79');
 assert.equal(manifest.pool,880);
-assert.ok(['Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics','Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets','Rules Integrity + Combat UX + Bot Tactical Hotfix'].includes(manifest.label));
+assert.ok(['Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics','Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets','Rules Integrity + Combat UX + Bot Tactical Hotfix','Core Gameplay Feedback Expansion','Mass Event Cinematics + High-Impact Feedback'].includes(manifest.label));
 assert.ok(workflow.includes('test_animation_tuning_matrix_draggable_console_23_19_4_4.mjs'),'CI must retain and execute the 23.19.4.4 contract');
 assert.ok(workflow.includes('Validate Animation Tuning Matrix + Draggable Test Console 23.19.4.4'),'CI gate label');
 
 const catalog=getAnimationTuningCatalog();
-assert.equal(catalog.length,18,'all current Animation Studio scenarios must be tuneable');
-assert.equal(new Set(catalog.map(entry=>entry.key)).size,18,'tuning keys unique');
+assert.ok(catalog.length>=18,'all historical Animation Studio scenarios must remain tuneable');
+assert.equal(new Set(catalog.map(entry=>entry.key)).size,catalog.length,'tuning keys unique');
 for(const key of ['land','clash','multi','trample','first','double','shield','deathtouch','indestructible','player','counter','exile','bounce','draw','discard','sacrifice','graveyard','reanimate']) {
   assert.ok(catalog.some(entry=>entry.key===key),`catalog:${key}`);
 }
@@ -69,7 +69,7 @@ assert.ok(ui.includes("if (check.checked) peers.forEach"),'exclusive timing chec
 assert.ok(ui.includes('const animationTunings = readAnimationTunings()'),'admin reads tuning matrix');
 assert.ok(ui.includes('saveAnimationPolicy({ enabled, speedMultipliers, animationTunings })'),'admin saves tuning matrix');
 assert.ok(firebase.includes('animationTunings,'),'policy writes per-animation tuning');
-assert.ok(/schemaVersion:\s*[345]/.test(firebase),'policy schema v3+');
+assert.ok(/schemaVersion:\s*[34567]/.test(firebase),'policy schema v3+');
 assert.ok(firebase.includes("sfxMoment: value.sfxMoment === 'key' ? 'key'"),'moment sanitizer');
 
 // Runtime mapping: relative speed divides global duration; SFX can fire at start or contact/end.

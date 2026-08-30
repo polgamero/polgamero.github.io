@@ -20,7 +20,7 @@ import { gameText } from './gameTexts.js';
 import { resolveReplacementEvent } from './replacementEngine.js';
 import { normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { gameRandom, gameDeterministicId } from './gameRng.js';
-import { queuePermanentExitAnimation, queueReanimateAnimation } from './animationDirector.js';
+import { queuePermanentExitAnimation, queueReanimateAnimation, queueGameEventAnimation, queueFightAnimation, queueTokenBatchAnimation, queueMassWipeAnimation, queueGraveyardPurgeAnimation, queueMassLandReturnAnimation, queueGlobalBoardEffectAnimation, captureCardVisual } from './animationDirector.js';
 import { resolveSubtypeReference } from './typalEngine.js';
 
 
@@ -383,6 +383,13 @@ export function addToStack(item) {
   }
   if (state.currentMatch && item.isLocal) resetPriorityClock('stack_push');
   renderStack();
+  // 23.19.4.7 — Instantáneos/Conjuros tienen feedback al entrar a Stack. Permanentes no:
+  // su feedback principal ocurre al RESOLVER y entrar al battlefield, evitando doble ruido.
+  const printedType=String(item?.card?.type||'');
+  if(!item?.isCopy && item?.type!=='ability' && (printedType.includes('Instantáneo') || printedType.includes('Conjuro'))) {
+    const zoneFrom=['flashback','escape'].includes(item?.castFrom)?'graveyard':['exile','suspend'].includes(item?.castFrom)?'exile':'hand';
+    try { void queueGameEventAnimation({type:'spell_cast_visual',controllerIsLocal:item.isLocal!==false,actorIsLocal:item.isLocal!==false,card:item.card,item,sourceStackItem:item,zoneFrom,zoneTo:'stack',cause:item?.castFrom||'normal_cast'}); } catch {}
+  }
 }
 
 export async function resolveTopStackItem() {
@@ -729,6 +736,7 @@ async function resolveSimpleDirectEffect(effect, sourceCard, isLocal) {
     }
   } else if (effect.type === 'fog') {
     state.combatDamagePrevented = true;
+    await queueGlobalBoardEffectAnimation({kind:'fog',isLocal});
     logMsg(gameText('effect.fog', { card: cardName }));
   } else if (effect.type === 'draw_and_lose_life') {
     // El vocabulario ya declaraba `amount`, pero históricamente esta rama robaba sólo una
@@ -860,6 +868,7 @@ async function resolveSimpleDirectEffect(effect, sourceCard, isLocal) {
 
     const finishProliferate = (chosen) => {
       chosen.forEach(applyProliferate);
+      if(chosen.length>0) void queueGlobalBoardEffectAnimation({kind:'proliferate',isLocal});
       // Un -1/-1 de más puede terminar de matar a alguna criatura (SBA).
       checkAllDeaths();
       logMsg(chosen.length > 0
@@ -1080,6 +1089,10 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
       copyBattlefieldZone(built.kind,isLocal).push(built.item);
       created.push(built);
     }
+    if(created.length){
+      const firstKind=created[0].kind; const targetZone=firstKind==='land'?'land':firstKind==='support'?'support':firstKind==='planeswalker'?'planeswalker':'battlefield';
+      await queueTokenBatchAnimation({isLocal,count:created.length,tokenName:created[0].card?.name||'Ficha',targetZone});
+    }
     const entries=[];
     for(const entry of created){
       entries.push(...buildGenericEventTriggerEntries({
@@ -1235,8 +1248,9 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             targetGraveyard.length = 0;
             exiledCards.forEach(exiledCard => dispatchGameEvent({
               type:'card_exiled',controllerIsLocal:targetObj.isLocal,actorIsLocal:isLocal,ownerIsLocal:targetObj.isLocal,
-              sourceControllerIsLocal:isLocal,card:exiledCard,sourceCard:card,zoneFrom:'graveyard',zoneTo:'exile',cause:'effect'
+              sourceControllerIsLocal:isLocal,card:exiledCard,sourceCard:card,zoneFrom:'graveyard',zoneTo:'exile',cause:'graveyard_purge'
             }));
+            await queueGraveyardPurgeAnimation({targetIsLocal:targetObj.isLocal,actorIsLocal:isLocal,count});
             logMsg(gameText('effect.graveExile.done', { card: card.name, count, target: targetName }));
           } else {
             logMsg(gameText('effect.graveExile.empty', { card: card.name, target: targetName }));
@@ -1330,6 +1344,8 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             }
           }
           if (selfUnit) {
+            const fightSourceSnapshot=captureCardVisual(selfUnit,isLocal?'local':'rival');
+            const fightTargetSnapshot=captureCardVisual(targetUnit,targetObj.isLocal?'local':'rival');
             // Pelear (fight) NO es daño de combate — son reglas propias (regla 701.12 y
             // el comprehensive rules glossary de "fight"). Repasado contra las reglas
             // oficiales: Primer Golpe, Doble Golpe y Arrollar NO participan (el daño
@@ -1382,6 +1398,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             }
 
             logMsg(gameText('effect.fight', { a: selfUnit.card.name, b: targetUnit.card.name, pa: selfPower, pb: targetPower }));
+            if(fightSourceSnapshot && fightTargetSnapshot) await queueFightAnimation({sourceSnapshot:fightSourceSnapshot,targetSnapshot:fightTargetSnapshot,sourceIsLocal:isLocal});
             checkAllDeaths();
           } else {
             logMsg(gameText('effect.fight.none', { card: card.name }));
@@ -1766,7 +1783,9 @@ async function resolveReturnLandsFromGraveyardEffect(effectToApply, card, isLoca
   entered.forEach(entry => lands.push(entry.item));
   // Las Tierras entraron simultáneamente; recién después encolamos Landfall por cada entrada.
   // Así permanentes que entraron juntos pueden verse entre sí, como en MTG real.
-  for (const entry of entered) await triggerLandEtb(isLocal, entry.card, entry.item);
+  const sourceZoneForEtb=spec.all?'graveyard_mass':'graveyard';
+  if(spec.all && entered.length>0) await queueMassLandReturnAnimation({isLocal,count:entered.length});
+  for (const entry of entered) await triggerLandEtb(isLocal, entry.card, entry.item, sourceZoneForEtb);
   return entered.map(e => e.card.name);
 }
 
@@ -1838,7 +1857,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
 
         // Resolver TODOS los replacements antes de mover el primer objeto preserva la foto
         // simultánea del wipe (una fuente que también muere puede afectar a sus compañeros).
-        const planned = doomed.map(({unit,isLocal:isLocalZone}) => ({unit,isLocal:isLocalZone,replacement:replacementDestroyOutcome(unit,isLocalZone,card,isLocal)}));
+        const planned = doomed.map(({unit,isLocal:isLocalZone}) => ({unit,isLocal:isLocalZone,replacement:replacementDestroyOutcome(unit,isLocalZone,card,isLocal),snapshot:captureCardVisual(unit,isLocalZone?'local':'rival')}));
         const genericWatchersSnapshot = [
           ...state.localCombat.map(item=>({item,isLocal:true})), ...state.rivalCombat.map(item=>({item,isLocal:false})),
           ...state.localSupport.map(item=>({item,isLocal:true})), ...state.rivalSupport.map(item=>({item,isLocal:false})),
@@ -1848,7 +1867,8 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
         let localCount = 0, rivalCount = 0;
         const actualDeaths=[];
         const extraEntries=[];
-        for (const {unit,isLocal:isLocalZone,replacement} of planned) {
+        const wipeVisualEntries=[];
+        for (const {unit,isLocal:isLocalZone,replacement,snapshot} of planned) {
           if (replacement.prevented) continue;
           const zoneTo=replacement.event.zoneTo || 'graveyard';
           const combatZone = isLocalZone ? state.localCombat : state.rivalCombat;
@@ -1860,6 +1880,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           sendAurasToGraveyard(unit, isLocalZone);
           cleanupIfVehicle(unit);
           moveBattlefieldCardToZone(unit.card, ownerDestinationZone(unit.card,isLocalZone,zoneTo));
+          wipeVisualEntries.push({item:unit,isLocal:isLocalZone,snapshot});
           if(zoneTo==='graveyard') actualDeaths.push({unit,isLocal:isLocalZone});
           else {
             extraEntries.push(...buildGenericEventTriggerEntries({type:'permanent_left_battlefield',controllerIsLocal:isLocalZone,actorIsLocal:isLocal,sourceControllerIsLocal:isLocal,ownerIsLocal:cardOwnerIsLocal(unit.card,isLocalZone,state.currentMatch?.myRole||null),card:unit.card,item:unit,sourceCard:card,zoneFrom:'battlefield',zoneTo,cause:'destroy'}, {watchersSnapshot:genericWatchersSnapshot}));
@@ -1868,6 +1889,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           if (isLocalZone) localCount++; else rivalCount++;
         }
 
+        if(wipeVisualEntries.length) await queueMassWipeAnimation({wipeKind:'creatures',entries:wipeVisualEntries,sourceIsLocal:isLocal,sourceCard:card});
         if(actualDeaths.length) queueCreatureDeathBatch(actualDeaths, deathWatchersSnapshot, extraEntries);
         else if(extraEntries.length) queueTriggeredAbilities(extraEntries);
         logMsg(gameText('effect.wrath', { card: card.name, local: localCount, rivalCount, rival: getRivalName() }));
@@ -1904,12 +1926,13 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           }
         }
 
-        const plannedDoomed=doomed.map(entry=>({...entry,replacement:replacementDestroyOutcome(entry.unit,entry.isLocal,card,isLocal)}));
+        const plannedDoomed=doomed.map(entry=>({...entry,replacement:replacementDestroyOutcome(entry.unit,entry.isLocal,card,isLocal),snapshot:captureCardVisual(entry.unit,entry.isLocal?'local':'rival')}));
         let localCount = 0, rivalCount = 0;
         const deadCreatures = [];
         const nonCreatureLeaveEntries = [];
+        const landWipeVisualEntries = [];
         for (const entry of plannedDoomed) {
-          const { unit, isLocal: landIsLocal, wasCreature, replacement } = entry;
+          const { unit, isLocal: landIsLocal, wasCreature, replacement, snapshot } = entry;
           if(replacement.prevented) continue;
           const zoneTo=replacement.event.zoneTo || 'graveyard';
           const landZone = landIsLocal ? state.localLands : state.rivalLands;
@@ -1925,6 +1948,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
             if(zoneTo==='graveyard') deadCreatures.push({ unit, isLocal: landIsLocal });
           }
           moveBattlefieldCardToZone(unit.card, ownerDestinationZone(unit.card,landIsLocal,zoneTo));
+          landWipeVisualEntries.push({item:unit,isLocal:landIsLocal,snapshot});
           if (!wasCreature || zoneTo!=='graveyard') nonCreatureLeaveEntries.push(...buildGenericEventTriggerEntries({
             type:'permanent_left_battlefield',controllerIsLocal:landIsLocal,actorIsLocal:isLocal,
             sourceControllerIsLocal:isLocal,ownerIsLocal:cardOwnerIsLocal(unit.card,landIsLocal,state.currentMatch?.myRole||null),
@@ -1936,6 +1960,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           }, {watchersSnapshot:genericWatchersSnapshot}));
           if (landIsLocal) localCount += 1; else rivalCount += 1;
         }
+        if (landWipeVisualEntries.length) await queueMassWipeAnimation({wipeKind:'lands',entries:landWipeVisualEntries,sourceIsLocal:isLocal,sourceCard:card});
         if (deadCreatures.length) {
           // Legacy LAND 2 contract marker: queueCreatureDeathBatch(deadCreatures, watchersSnapshot)
           // 23.15.3 agrega nonCreatureLeaveEntries al mismo batch AP/NAP sin perder simultaneidad.
@@ -1987,6 +2012,11 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
           created.push({card:tokenCard,item,kind});
         }
 
+        // Presentation 23.19.4.7: N fichas se materializan escalonadas pero emiten UN solo SFX por lote.
+        if(created.length){
+          const firstKind=created[0].kind; const targetZone=firstKind==='land'?'land':firstKind==='support'?'support':firstKind==='planeswalker'?'planeswalker':'battlefield';
+          await queueTokenBatchAnimation({isLocal,count:created.length,tokenName:created[0].card?.name||tokenSpec.name||'Ficha',targetZone});
+        }
         // Token-created + ETB del mismo lote entran juntos a AP/NAP. Los watchers se toman
         // después de materializar el lote completo, como exige la simultaneidad del evento.
         const triggerEntries=[];
@@ -2310,7 +2340,7 @@ async function executeStackItem(item) {
     initializeTransformPermanentItem(newPw,card,{face:'front'});
     stampPermanentController(newPw, isLocal, state.currentMatch?.myRole || null);
     pwZone.push(newPw);
-    dispatchGameEvent({type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card,item:newPw,zoneFrom:'stack',zoneTo:'battlefield',cause:'resolve'});
+    dispatchGameEvent({type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card,item:newPw,sourceStackItem:item,zoneFrom:'stack',zoneTo:'battlefield',cause:'resolve',metadata:{targetKind:'planeswalker'}});
     logMsg(gameText('permanent.pw.enter', { card: card.name, loyalty: card.loyalty }));
     return;
   }
@@ -2335,6 +2365,7 @@ async function executeStackItem(item) {
       const board = isLocal ? state.localCombat : state.rivalCombat;
       board.push(newPermanentItem);
       logMsg(gameText('permanent.creature.enter', { card: card.name }));
+      try { void queueGameEventAnimation({type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card,item:newPermanentItem,sourceStackItem:item,zoneFrom:'stack',zoneTo:'battlefield',cause:'resolve',metadata:{targetKind:'creature'}}); } catch {}
 
       // 23.19.4.3 — CR 603.3b: todas las habilidades que dispararon por la MISMA
       // entrada deben llegar juntas al ordenamiento AP/NAP. Antes `triggerCreatureEtb()`
@@ -2363,7 +2394,7 @@ async function executeStackItem(item) {
       stampPermanentController(newPermanentItem, isLocal, state.currentMatch?.myRole || null);
       const supportZone = isLocal ? state.localSupport : state.rivalSupport;
       supportZone.push(newPermanentItem);
-      dispatchGameEvent({type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card,item:newPermanentItem,zoneFrom:'stack',zoneTo:'battlefield',cause:'resolve'});
+      dispatchGameEvent({type:'permanent_entered',controllerIsLocal:isLocal,actorIsLocal:isLocal,ownerIsLocal:isLocal,card,item:newPermanentItem,sourceStackItem:item,zoneFrom:'stack',zoneTo:'battlefield',cause:'resolve',metadata:{targetKind:'support'}});
       logMsg(gameText('permanent.support.enter', { card: card.name }));
 
       // Si es un Encantamiento estático que puede llevar resistencias a 0 (ej. Toque de

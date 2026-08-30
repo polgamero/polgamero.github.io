@@ -8,7 +8,7 @@ import { PREBUILT_DECKS_VERSION } from '../js/prebuiltDecks.js';
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
-assert.equal(ENGINE_VERSION, '23.19.4.6');
+assert.equal(ENGINE_VERSION, '23.19.4.8');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(PREBUILT_DECKS_VERSION,'23.17.3','el catálogo congelado no cambia en el hotfix');
@@ -21,6 +21,6 @@ assert.ok(ui.includes("case 'PREBUILT_RULES_STALE': return gameText('prebuilt.er
 const texts=read('js/gameTexts.js');
 assert.ok(texts.includes("'prebuilt.error.rulesStale'"));
 const manifest=JSON.parse(read('build-manifest.json'));
-assert.equal(manifest.engineVersion,'23.19.4.6');
+assert.equal(manifest.engineVersion,'23.19.4.8');
 assert.equal(manifest.firestoreRulesVersion,'23.13.79');
 console.log('PASS test_prebuilt_purchase_integrity_23_17_3_1.mjs · fail-closed Rules attestation · catalog remains 23.17.3 · pool unchanged');
