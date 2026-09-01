@@ -129,7 +129,7 @@ export function spendCostAutomatically(pool, cost) {
 }
 
 // Consume todo el maná YA flotante que pueda contribuir a un coste, aunque no alcance para
-// pagarlo entero. Es útil para IA, Ward/impuestos y otros pagos automáticos; nunca inventa
+// pagarlo entero. Es útil para IA, Impuesto/impuestos y otros pagos automáticos; nunca inventa
 // maná ni consume un color que no pueda satisfacer un pip específico o genérico.
 function bestHybridPaymentAssignment(pool, symbols) {
   const list=(symbols||[]).map((options,index)=>({options:[...options],index}));

@@ -40,13 +40,13 @@ export function choosePrivateZoneTokens(offer = {}) {
 }
 
 export function chooseScrySurveil(cards = [], mode = 'scry') {
-  // Keep-all es legal, estable y no exige valorar cartas. Para Surveil también evita mover
+  // Keep-all es legal, estable y no exige valorar cartas. Para Chusmeá también evita mover
   // cartas por una heurística artificial que contaminaría el test de reglas.
   return { moved: [], kept: [...cards], mode };
 }
 
 export function chooseProliferate(eligible = []) {
-  // Proliferar permite elegir cualquier cantidad. Elegimos todos los objetos elegibles para
+  // Amplificar permite elegir cualquier cantidad. Elegimos todos los objetos elegibles para
   // maximizar cobertura de tipos de contador sin introducir scoring estratégico.
   return [...eligible];
 }

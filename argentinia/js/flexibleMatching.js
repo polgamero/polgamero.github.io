@@ -1,6 +1,6 @@
 // js/flexibleMatching.js — Argentinia 23.15.5.1
 // Matching bipartito determinista para recursos flexibles de pago.
-// Mantiene una sola implementación para Convoke y símbolos híbridos/Phyrexian.
+// Mantiene una sola implementación para Vaquita y símbolos híbridos/Phyrexian.
 
 export function maximumBipartiteAssignment(resources = [], demands = [], canMatch = null) {
   const resourceList = Array.isArray(resources) ? resources : [];

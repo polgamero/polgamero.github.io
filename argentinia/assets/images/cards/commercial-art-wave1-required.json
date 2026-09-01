@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 2,
+  "waveVersion": "23.19.4.9",
+  "acceptedInVersion": "23.19.4.12",
+  "status": "ART_ACCEPTED",
+  "review": "16/16 clean-room replacements visually accepted; no obvious original-person/character/brand blocker retained. Final counsel/provenance still applies.",
+  "required": [
+    {
+      "image": "metalero_de_las_sierras.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "ecc2cd3c6193c04d891ff3c67fd39370dee12e7e2081f8c962e3fc7ae941bae6",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "estilista_del_futuro.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "7c9940bcf5af2d40ce644ef20e31020278cf0f5a0bb3ad33762824dca934cc79",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "conductora_del_living_dorado.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "a86f353c2968c86a6c3c3aa8e9e2f9642f44e18ccefa69c1f5ae9388831665ec",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "limusina_del_magnate.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "d9b2cf9b8a5492010b27434c472de8b8203029aa05fca7ee6e8d7711f182ed5d",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "la_diva_magnetica.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "c2b58aa7db7f004a1d1ea729209312bc04de82eedb90faec1a7b1c13a60665db",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "anfitriona_del_banquete_eterno.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "d73003cee3b71963579f615c685289988c546dcafe176344931ff76c87896086",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "jugada_prohibida.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "39170b99dd56ad4e72c81b238f9d3a183384fffbc3de902431153e3ca332d425",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "artista_de_la_instalacion_imposible.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "18a455f4eb2cfa8121445725e0dc9f2662d2dc2ab8aecc25fc16d83786868d0a",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "poeta_del_rock_celeste.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "383204cafe6cc950aab2699e62e3fbba6662d58d47ed7d77b16d0a8189234741",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "equipo_de_los_once_suenos.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "c59ffb8bfe99568a4a466b6399a4f78089b9e46f789d72dae91dc6b30ff35ab6",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "cronista_de_ultimo_momento.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "c242a0877e9b1e234082830dd69cd025b3c2df6b9a8a381bf3dc9e45fc13250b",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "magnate_del_show_infinito.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "b0af90124f64b6a477718108fcb705cda7e441836506bb40b1b9a51a410199bc",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "rey_del_frigorifico.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "7f622893c129a15eabf6622f51bf891fb412143059b0f37947c8fee9b586eb19",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "caminante_del_fin_del_mundo.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "8c0de78bd26e635e20ad83a4e81a92b88f692b0f4c08181a785292dbfc1187fa",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "idolo_del_potrero_imposible.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "3b40058d24e4482a73e615c81e5713f17029f59d4132cd8b2a2dba35be0b6bac",
+      "source": "user clean-room Wave1"
+    },
+    {
+      "image": "pianista_del_apagon_eterno.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "ce5a6574b6de8c718c94d623391c7af08a99715c97dcd78f1a35b3fa82616cd5",
+      "source": "user clean-room Wave1"
+    }
+  ]
+}

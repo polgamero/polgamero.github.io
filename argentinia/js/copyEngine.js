@@ -163,7 +163,7 @@ export function buildStackCopy(original, options = {}) {
     isCopy: true,
     wasCast: false,
     // El origen de casteo es historia del objeto original, no un valor copiable. Una copia de
-    // un hechizo casteado desde Exilio/Flashback/Escape nunca fue casteada desde esa zona.
+    // un hechizo casteado desde Exilio/Otra vuelta/Zafar nunca fue casteada desde esa zona.
     castFrom: null,
     exilePermissionId: null,
     exilePlayEngineVersion: null,

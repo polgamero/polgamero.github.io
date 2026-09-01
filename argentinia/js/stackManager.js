@@ -87,7 +87,7 @@ function logReplacementPrevented(kind, targetName) {
   logMsg(gameText(kind === 'destroy' ? 'replacement.destroy.prevented' : 'replacement.damage.prevented', { target: targetName || 'objetivo' }));
 }
 
-// A qué le puede apuntar cada variante de "contrarrestar" — regla real de MTG (702.61 y
+// A qué le puede apuntar cada variante de "contrarrestar" — regla canónica de Argentinia (702.61 y
 // glosario de counterspells): un counterspell normal SOLO frena HECHIZOS en la pila, nunca
 // habilidades activadas ni disparadas, a menos que la carta lo diga explícitamente (como
 // Stifle/Tale's End, que hacen lo contrario — solo habilidades — o Disallow, que hace las
@@ -411,7 +411,7 @@ export async function resolveTopStackItem() {
   await runStateBasedActions({ reason:'stack_item_resolved' });
   await waitForStateBasedActions();
 
-  // Si el efecto BASE abrió una decisión asíncrona, el bonus de Kicker debe esperar.
+  // Si el efecto BASE abrió una decisión asíncrona, el bonus de Yapa debe esperar.
   // Guardamos una continuación explícita porque este objeto YA fue retirado de la Stack:
   // un simple `return` antes del bonus lo perdería para siempre.
   const basePendingInteractive = state.pendingCounterUnlessPay || state.pendingScrySurveilChoice || state.pendingProliferateChoice;
@@ -422,7 +422,7 @@ export async function resolveTopStackItem() {
     };
   }
 
-  // Kicker: si no hay una decisión base pendiente, el bonus se aplica ahora. Si la hay,
+  // Yapa: si no hay una decisión base pendiente, el bonus se aplica ahora. Si la hay,
   // resumeAfterInteractiveEffect() ejecutará exactamente este bonus cuando termine.
   if (!basePendingInteractive && item.kicked && item.card.kicker?.bonusEffect) {
     logMsg(gameText('stack.kickerBonus', { card: item.card.name }));
@@ -441,18 +441,18 @@ export async function resolveTopStackItem() {
     return;
   }
 
-  // BUG ENCONTRADO Y ARREGLADO: Scry/Surveil abría el modal para elegir qué hacer con las
+  // BUG ENCONTRADO Y ARREGLADO: Scry/Chusmeá abría el modal para elegir qué hacer con las
   // cartas, pero nunca pausaba el resto del juego — la prioridad se reseteaba igual y el
   // Tano podía tomar otra acción mientras el humano todavía estaba decidiendo, chocando
   // contra un estado a medio terminar y rompiendo el juego. Mismo criterio que el pago de
-  // Ward/CounterTax: no seguimos hasta que se resuelva (finishScrySurveil en main.js hace
+  // Impuesto/CounterTax: no seguimos hasta que se resuelva (finishScrySurveil en main.js hace
   // el reseteo de prioridad ella misma al terminar).
   if (state.pendingScrySurveilChoice) {
     recordTelemetryEvent('stack_resolve_paused', { stackId: item.id ?? null, card: item.card?.name ?? null, reason: 'pendingScrySurveilChoice' });
     return;
   }
 
-  // Mismo criterio: Proliferar abre su propio modal (elegir permanentes) y no puede seguir
+  // Mismo criterio: Amplificar abre su propio modal (elegir permanentes) y no puede seguir
   // de largo hasta que se confirme — finishProliferate en main.js resetea la prioridad ella
   // misma al terminar.
   if (state.pendingProliferateChoice) {
@@ -489,7 +489,7 @@ export async function resolveTopStackItem() {
 // Aplica UN efecto a UN target puntual (criatura o jugador) — extraído para reusarlo en
 // objetivos múltiples, donde cada target de la carta tiene su propio efecto. Replica
 // exactamente los mismos pasos que ya usa la resolución de un target único (girar
-// Indestructible, sacar Equipos/Auras, avisar Vehículos) para no tener dos reglas
+// Irrompible, sacar Equipos/Auras, avisar Vehículos) para no tener dos reglas
 // distintas para lo mismo.
 // La antigua applyEffectToSingleTarget fue absorbida por resolveGameEffect.
 // Esto evita mantener dos implementaciones distintas de daño/remoción/targets.
@@ -830,8 +830,8 @@ async function resolveSimpleDirectEffect(effect, sourceCard, isLocal) {
       finishScrySurveil(moved, kept);
     }
   } else if (effect.type === 'proliferate') {
-    // Proliferar (CR 701.34): elegís CUALQUIER cantidad de permanentes (acá:
-    // criaturas con contadores +1/+1 o -1/-1, y Planeswalkers, que siempre tienen Lealtad)
+    // Amplificar (CR 701.34): elegís CUALQUIER cantidad de permanentes (acá:
+    // criaturas con contadores +1/+1 o -1/-1, y Planeswalkers, que siempre tienen Creencia)
     // y a cada uno elegido le sumás UN contador más de CADA tipo que ya tenga. No es un
     // target de verdad (por eso Intocable/Protección no lo frenan, a diferencia de todo lo
     // demás que se resuelve en esta función).
@@ -1184,7 +1184,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           state.activeEffects.push({ id:nextEffectId++, effectType:'prevent_damage', targetPlayer:targetObj.isLocal?'local':'rival', remaining:effectToApply.amount ?? 'all', combatOnly:!!effectToApply.combatOnly, noncombatOnly:!!effectToApply.noncombatOnly, sourceName:card.name, expiresAtCleanup:effectToApply.expiresAtCleanup!==false });
           logMsg(gameText('replacement.prevention.created', { card:card.name, target:targetName, amount:effectToApply.amount ?? 'todo' }));
         }
-        // LÓGICA NUEVA: VENENO DIRECTO (sin pasar por combate/Infectar) — solo existe para
+        // LÓGICA NUEVA: VENENO DIRECTO (sin pasar por combate/Contagio) — solo existe para
         // jugadores, nunca para criaturas (regla real: los contadores de Veneno son de
         // jugador, distinto de los -1/-1 que sí van en criaturas).
         else if (effectToApply.type === 'poison') {
@@ -1333,7 +1333,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
         else if (effectToApply.type === 'fight') {
           // Prioridad: la criatura que el jugador ELIGIÓ manualmente (targetObj.fightWithItem,
           // ver el paso 2 de selección en handleCombatClick) > la fuente de una habilidad
-          // propia (ej. Alberto Samid, donde "quién pelea" ya está claro de antemano) > el
+          // propia (ej. Rey del Frigorífico, donde "quién pelea" ya está claro de antemano) > el
           // viejo fallback de auto-elegir tu criatura más fuerte, por si algo llega sin
           // ninguna de las dos anteriores.
           let selfUnit = targetObj.fightWithItem || item.sourceItem;
@@ -1350,8 +1350,8 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
             // el comprehensive rules glossary de "fight"). Repasado contra las reglas
             // oficiales: Primer Golpe, Doble Golpe y Arrollar NO participan (el daño
             // siempre es simultáneo, una sola vez, y nunca hay jugador de por medio) — por
-            // eso ninguno de los dos se chequea acá abajo. Toque Mortal, Vínculo Vital,
-            // Indestructible y Protección SÍ participan igual que en combate normal.
+            // eso ninguno de los dos se chequea acá abajo. Letal, Absorción,
+            // Irrompible y Protección SÍ participan igual que en combate normal.
             const selfPower = getEffectivePower(selfUnit);
             const targetPower = getEffectivePower(targetUnit);
             const selfHasDeathtouch = hasKeyword(selfUnit, 'deathtouch');
@@ -1414,7 +1414,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
         // LÓGICA NUEVA: CONTADOR PERMANENTE +1/+1 o -1/-1 — a diferencia de "pump" (temporal,
         // se borra en Limpieza), esto usa el mismo sistema real de contadores que ya tienen
         // los Planeswalkers (addCounters), así que se queda mientras la criatura viva Y
-        // Proliferar lo puede multiplicar más adelante.
+        // Amplificar lo puede multiplicar más adelante.
         else if (effectToApply.type === 'add_counter' || effectToApply.type === 'remove_counter') {
           applyTargetedCounterMutation(effectToApply,targetUnit,{card,isLocal});
         }
@@ -1465,7 +1465,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
           }
         }
         // LÓGICA NUEVA: EXILIAR CRIATURA — a diferencia de destruir, el Exilio NO es
-        // "destrucción" en las reglas reales: Indestructible NO lo frena. Tampoco cuenta
+        // "destrucción" en las reglas reales: Irrompible NO lo frena. Tampoco cuenta
         // como que la criatura "murió" (morir = ir al cementerio desde el campo), así que
         // NO dispara triggerCreatureDies ni triggerAnyCreatureDeath ("cuando muera una
         // criatura..."). Y como no pasa por el cementerio, cartas como Reanimar no la
@@ -1474,8 +1474,8 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
         // Paso Final DEL CONTROLADOR (no necesariamente el que viene ahora mismo: si se
         // tira en el turno rival, vuelve recién en tu próximo turno). Al volver entra como
         // un objeto totalmente nuevo — sin auras, sin equipos, sin contadores, con mareo de
-        // invocación fresco — tal cual la regla real de MTG. Como pasa por el Exilio,
-        // Indestructible tampoco frena esto.
+        // invocación fresco — tal cual la regla canónica de Argentinia. Como pasa por el Exilio,
+        // Irrompible tampoco frena esto.
         else if (effectToApply.type === 'exile_and_return') {
           const isTargetLocal = state.localCombat.includes(targetUnit);
           const board = isTargetLocal ? state.localCombat : state.rivalCombat;
@@ -1664,7 +1664,7 @@ async function resolveTargetedGameEffect(effectToApply, targetObj, context) {
       }
       // LÓGICA NUEVA (Cabo suelto #13): DAÑO A UN PLANESWALKER — un hechizo de daño a
       // "cualquier objetivo" ahora también puede apuntarle a uno (regla real moderna). Le
-      // resta Lealtad en vez de HP; el resto de los tipos de efecto no tiene sentido acá
+      // resta Creencia en vez de HP; el resto de los tipos de efecto no tiene sentido acá
       // (curar/robar/etc. son cosas de jugador, no de Planeswalker) así que no se listan.
       else if (targetObj.type === 'planeswalker') {
         const pwItem = targetObj.item;
@@ -1781,8 +1781,8 @@ async function resolveReturnLandsFromGraveyardEffect(effectToApply, card, isLoca
     if (gyIdx !== -1) graveyard.splice(gyIdx, 1);
   }
   entered.forEach(entry => lands.push(entry.item));
-  // Las Tierras entraron simultáneamente; recién después encolamos Landfall por cada entrada.
-  // Así permanentes que entraron juntos pueden verse entre sí, como en MTG real.
+  // Las Tierras entraron simultáneamente; recién después encolamos Arraigo por cada entrada.
+  // Así permanentes que entraron juntos pueden verse entre sí, como en el contrato canónico de Argentinia.
   const sourceZoneForEtb=spec.all?'graveyard_mass':'graveyard';
   if(spec.all && entered.length>0) await queueMassLandReturnAnimation({isLocal,count:entered.length});
   for (const entry of entered) await triggerLandEtb(isLocal, entry.card, entry.item, sourceZoneForEtb);
@@ -1896,7 +1896,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
       }
       // LAND 2 — DESTRUCCIÓN MASIVA DE TIERRAS. Por default afecta a ambos jugadores,
       // pero `controller` puede ser self/opponent y `landFilter` permite futuras Ruination-style
-      // sin crear otro efecto ad hoc. Todo se destruye simultáneamente y respeta Indestructible.
+      // sin crear otro efecto ad hoc. Todo se destruye simultáneamente y respeta Irrompible.
       else if (effectToApply.type === 'destroy_all_lands') {
         const controller = effectToApply.controller || 'all';
         const filter = effectToApply.landFilter || 'any';
@@ -2139,7 +2139,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
       }
       // LAND 3 — tutor avanzado de Tierras. `ramp` legacy queda como alias de
       // search_land(filter=basic,destination=battlefield) para que las cartas existentes
-      // usen el mismo selector por carta, privacidad multiplayer, Landfall y mareo.
+      // usen el mismo selector por carta, privacidad multiplayer, Arraigo y mareo.
       else if (effectToApply.type === 'search_land' || effectToApply.type === 'ramp') {
         const searchEffect = effectToApply.type === 'ramp'
           ? {
@@ -2163,7 +2163,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
         }
       }
       // 23.16.2 — Impulse/Exile foundation. Exilia cartas superiores y adjunta un
-      // permiso real de play/cast. Suspend 23.16.3 mantiene una ruta dedicada: el último
+      // permiso real de play/cast. En espera 23.16.3 mantiene una ruta dedicada: el último
       // Time genera su propio trigger y reutiliza CR601 sin pasar por este productor.
       else if (effectToApply.type === 'exile_top_with_permission') {
         const exileOwnerIsLocal=effectToApply.owner==='opponent' ? !isLocal : isLocal;
@@ -2205,7 +2205,7 @@ async function resolveUntargetedGameEffect(effectToApply, context) {
 // los JSON y el motor, y más adelante la va a reutilizar el validador formal del Card DB.
 // Los efectos continuos (team_buff/team_keyword) no "resuelven" una vez: se consultan
 // dinámicamente mientras el permanente está en mesa. Los counter* son control de la pila.
-// Introspección del resolver para triggers SIN objetivo (Landfall hoy; el validador de
+// Introspección del resolver para triggers SIN objetivo (Arraigo hoy; el validador de
 // Card DB podrá reutilizarla más adelante). No agrega un vocabulario paralelo: enumera los
 // efectos discretos cuya semántica actual ya está definida sin target explícito.
 export function canResolveGameEffectWithoutTarget(effectType) {
@@ -2219,7 +2219,7 @@ export function canResolveGameEffectWithoutTarget(effectType) {
 // Complemento del contrato anterior: efectos que tienen una implementación REAL con
 // targetObj en resolveTargetedGameEffect. Esto evita que una UI ofrezca `requiresTarget`
 // sobre un tipo que el resolver sólo sabe ejecutar sin objetivo (p. ej. create_tokens).
-// También lo reutilizan las habilidades de Lealtad del Punto 9 y el futuro validador JSON.
+// También lo reutilizan las habilidades de Creencia del Punto 9 y el futuro validador JSON.
 export function canResolveGameEffectWithTarget(effectType) {
   return [
     'damage', 'heal', 'prevent_damage', 'poison', 'discard', 'private_zone_move', 'exile_graveyard', 'prevent_attack', 'cant_attack_next_turn', 'gain_control', 'gain_control_until_eot',
@@ -2315,7 +2315,7 @@ async function executeStackItem(item) {
   }
 
   // Mandar la carta que se está resolviendo a donde corresponda (cementerio normal, o
-  // Exilio si vino por Flashback) — se llama en cada lugar donde el hechizo termina de
+  // Exilio si vino por Otra vuelta) — se llama en cada lugar donde el hechizo termina de
   // resolverse ANTES de llegar al final natural de la función (contrarrestar algo mal
   // targeteado, pagar/no pagar un "contrarresta a menos que", etc.), para que la carta
   // nunca desaparezca del juego sin ir a ningún lado.
@@ -2449,7 +2449,7 @@ async function executeStackItem(item) {
     }
     // BUG encontrado y arreglado: esto hacía return sin mandar la carta a ningún lado —
     // un hechizo multi-target resuelto desaparecía del juego entero, ni cementerio ni
-    // Exilio. Mismo criterio de Flashback que el resto de los hechizos.
+    // Exilio. Mismo criterio de Otra vuelta que el resto de los hechizos.
     moveResolvedSpellCard(card,item,isLocal);
     return;
   }
@@ -2489,7 +2489,7 @@ async function executeStackItem(item) {
         cardName: card.name
       });
       if (!targetStillLegal) {
-        const kindLabel = item.abilityKind === 'loyalty' ? 'habilidad de Lealtad' : 'habilidad disparada';
+        const kindLabel = item.abilityKind === 'loyalty' ? 'habilidad de Creencia' : 'habilidad disparada';
         const abilityLabel = item.abilityKind === 'loyalty' && item.ability?.name ? ` "${item.ability.name}"` : '';
         logMsg(gameText('stack.targetIllegalOnResolve', { kind: kindLabel, ability: abilityLabel, card: card.name }));
         return;
@@ -2626,8 +2626,8 @@ async function executeStackItem(item) {
     }
     
     if (type !== 'ability') {
-      // Flashback: al resolver, se exilía en vez de volver al cementerio (regla real de
-      // Flashback — "úsala una vez, después se va del todo"). Cualquier otro casteo normal
+      // Otra vuelta: al resolver, se exilía en vez de volver al cementerio (regla real de
+      // Otra vuelta — "úsala una vez, después se va del todo"). Cualquier otro casteo normal
       // sigue yendo al cementerio como siempre.
       moveResolvedSpellCard(card,item,isLocal);
     }
@@ -2838,13 +2838,13 @@ export function renderStack() {
     const itemTitle = isTriggeredAbility
       ? `${item.card.name} — ${item.triggerLabel || 'Habilidad disparada'}`
       : isLoyaltyAbility
-        ? `${item.card.name} — ${item.ability?.name || 'Habilidad de Lealtad'}`
+        ? `${item.card.name} — ${item.ability?.name || 'Habilidad de Creencia'}`
         : item.card.name;
     const ownerLabel = (isTriggeredAbility || isLoyaltyAbility) ? 'Controlada por' : 'Lanzado por';
     const kindText = isTriggeredAbility
       ? '<div class="stack-item-meta"><strong>Habilidad disparada</strong></div>'
       : isLoyaltyAbility
-        ? '<div class="stack-item-meta"><strong>Habilidad de Lealtad</strong></div>'
+        ? '<div class="stack-item-meta"><strong>Habilidad de Creencia</strong></div>'
         : '';
     const triggerProvenance = isTriggeredAbility ? getTriggerProvenance(item) : '';
     const provenanceText = triggerProvenance

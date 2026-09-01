@@ -96,7 +96,7 @@ function moveBotCounteredSpell(stackItem, cause='ward') {
 }
 
 // Punto 14: affordability de una ruta de casteo completa. La vía alternativa reemplaza
-// sólo el costo base; Kicker y additionalCost siguen sumándose. El piso de 5 de vida es
+// sólo el costo base; Yapa y additionalCost siguen sumándose. El piso de 5 de vida es
 // estrategia del Tano, NO una regla del motor.
 function botPaymentMethodPlan(card, cost, options = {}) {
   const bundle = getCastCompositeCostBundle(card, !!options.useAlternative);
@@ -237,7 +237,7 @@ function fightCreatureDies(item, incomingDamage, sourceHasDeathtouch) {
 
 // 23.19.4.6 — mismo modelo de daño/replacement que Fight real, pero en preview puro.
 // Esto evita que el Tano "vea" un 3/3 vs 4/3 como trade si el 4/3 tiene Shield, prevención,
-// Protección o Indestructible. El preview jamás consume el recurso real.
+// Protección o Irrompible. El preview jamás consume el recurso real.
 function predictFightOutcome(mine, theirs) {
   const toTheirs=previewFightDamage(mine,theirs,false,true);
   const toMine=previewFightDamage(theirs,mine,true,false);
@@ -289,7 +289,7 @@ function bestFightTargetFor(mine, candidates) {
 }
 
 // A quién ataca cada criatura del Tano: si tenés Planeswalkers en el campo, prioriza
-// rematar al que tenga MENOS Lealtad, pero solo si el golpe alcanza para matarlo de una
+// rematar al que tenga MENOS Creencia, pero solo si el golpe alcanza para matarlo de una
 // (no desperdicia ataques en un Planeswalker que va a sobrevivir igual) — si no hay un
 // remate limpio disponible, ataca a la cara, que sigue siendo el objetivo principal.
 function chooseBotAttackTarget(attackerItem, { forceFace=false } = {}) {
@@ -303,7 +303,7 @@ function chooseBotAttackTarget(attackerItem, { forceFace=false } = {}) {
 
 // 23.9.2 — el Tano usa el MISMO carril de Stack que el humano para Loyalty. Conserva su
 // criterio de elección, pero la habilidad ya no resuelve "de costado": fija target, paga
-// Lealtad, entra como abilityKind:"loyalty" y corta su turno para abrir prioridad.
+// Creencia, entra como abilityKind:"loyalty" y corta su turno para abrir prioridad.
 async function tryActivateBotPlaneswalkers() {
   if (state.phase !== 'main1' && state.phase !== 'main2') return false;
   if (state.activePlayer !== 'rival' || state.priorityPlayer !== 'rival' || spellStack.length > 0) return false;
@@ -367,12 +367,12 @@ async function tryActivateBotPlaneswalkers() {
   return false;
 }
 
-// Ward: si el objetivo que el Tano eligió tiene esta keyword y te pertenece a vos (o sea,
+// Impuesto: si el objetivo que el Tano eligió tiene esta keyword y te pertenece a vos (o sea,
 // es "un rival" desde su perspectiva), tiene que pagar el costo extra o el hechizo se
 // pierde. Se llama una sola vez, justo antes de cada addToStack que targetee una criatura
 // — así no hace falta meter esto en cada una de las ramas que arman targetObj más arriba.
 export function tryPayWardForBotTarget(targetObj) {
-  if (!targetObj?.item || !targetObj.isLocal) return true; // Ward sólo contra permanentes del oponente humano
+  if (!targetObj?.item || !targetObj.isLocal) return true; // Impuesto sólo contra permanentes del oponente humano
   const wardKw = (getEffectiveKeywords(targetObj.item) || []).find(k => k.startsWith('ward_'));
   if (!wardKw) return true;
   const wardCost = parseInt(wardKw.split('_')[1], 10);
@@ -465,11 +465,11 @@ function countBotMassLandVictims(effect = {}, landIsLocal) {
   }).length;
 }
 
-// Flashback o Escape desde el cementerio del Tano: busca la primera carta que tenga
-// cualquiera de las dos, le alcance el maná (y si es Escape, le alcancen las cartas de
+// Otra vuelta o Zafar desde el cementerio del Tano: busca la primera carta que tenga
+// cualquiera de las dos, le alcance el maná (y si es Zafar, le alcancen las cartas de
 // cementerio para exiliar), y si necesita target de remoción tenga un blanco válido — recién
 // ahí se compromete, para no desperdiciar la carta sacándola sin necesidad. A diferencia de
-// antes, ahora también contempla CRIATURAS (el uso más común de Escape en MTG real — un
+// antes, ahora también contempla CRIATURAS (el uso más común de Zafar en el contrato canónico de Argentinia — un
 // cuerpo que vuelve una y otra vez), no solo hechizos/instantáneos.
 async function tryFlashbackOrEscapeFromBotGraveyard() {
   if (state.phase !== 'main1') return false;
@@ -533,12 +533,12 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
   // Objetivo fijado: recién ahora fuentes y pago.
   await payBotCastRoute(card, false, { baseOverride: ability.cost });
 
-  // Escape paga su exilio como parte del commit de costos, después de fijar objetivos.
+  // Zafar paga su exilio como parte del commit de costos, después de fijar objetivos.
   if (source === 'escape') {
     const exileCount = ability.exileCount || 0;
     const chosen = await chooseGraveyardCards({
       zoneIsLocal: false, chooserIsLocal: false, filter: 'any', amount: exileCount,
-      cardName: card.name, actionLabel: 'elegí cartas para pagar Escape', botStrategy: 'last'
+      cardName: card.name, actionLabel: 'elegí cartas para pagar Zafar', botStrategy: 'last'
     });
     chosen.forEach(c => {
       const gyIdx = state.rivalGraveyard.indexOf(c);
@@ -562,7 +562,7 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
   };
   addToStack(castStackItem);
   flushDeferredLandManaTriggers();
-  logMsg(gameText('bot.graveCast', { ability: source === 'escape' ? 'Escape' : 'Flashback', card: card.name }));
+  logMsg(gameText('bot.graveCast', { ability: source === 'escape' ? 'Zafar' : 'Otra vuelta', card: card.name }));
   await triggerSpellCast(false, card, castStackItem);
   if (!tryPayWardForBotTarget(aiTargetObj)) {
     const stackIndex = spellStack.indexOf(castStackItem);
@@ -573,7 +573,7 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
   // 23.17.5.1 — CRÍTICO: esta era la única ruta de casteo del Tano que devolvía la
   // prioridad internamente pero no renderizaba la nueva ventana. El hechizo quedaba en
   // Stack y el DOM seguía mostrando prioridad rival, por lo que Space/click parecían
-  // muertos. Exile/Suspend/casteo normal ya hacen este render al entregar prioridad.
+  // muertos. Exile/En espera/casteo normal ya hacen este render al entregar prioridad.
   render();
   return true;
 }
@@ -744,7 +744,7 @@ function shouldBotActivateHealing(effect, timing = 'legacy') {
   const hp=Math.max(0,Number(state.rivalHP)||0);
   const amount=Math.max(1,Number(effect?.amount)||1);
   // 23.19.4.6 — curarse por encima de 20 es legal, pero gastar un recurso de healing estando
-  // sano no es automáticamente correcto. Guardamos Tuppers/activaciones salvo daño relevante.
+  // sano no es automáticamente correcto. Guardamos Envases herméticos/activaciones salvo daño relevante.
   // En instantáneo la urgencia es mayor; en Main 2 aceptamos una ventana algo más amplia.
   const urgentFloor=Math.max(8,Math.min(12,amount*3));
   if(timing==='instant' && hp<=urgentFloor) return true;
@@ -960,7 +960,7 @@ export async function checkRivalCounterOrResponse() {
 
     if (isCounterSpell(c)) {
       // Un counter normal solo le sirve al Tano contra HECHIZOS (nunca habilidades) a
-      // menos que la carta lo diga explícitamente — misma regla real de MTG.
+      // menos que la carta lo diga explícitamente — misma regla canónica de Argentinia.
       return legalBotCounterTargets(c.effect.type).length > 0;
     }
     if (isStackCopySpell(c)) {
@@ -1817,7 +1817,7 @@ export async function takeBotPriorityAction() {
       state.rivalLands.push(landItem); 
       state.rivalLandPlayedThisTurn = true;
       logMsg(entersTapped ? gameText('bot.land.playedTapped', { card: landCard.name }) : gameText('bot.land.played', { card: landCard.name })); 
-      // PUNTO 2: el Tano dispara el mismo evento Landfall que el jugador humano.
+      // PUNTO 2: el Tano dispara el mismo evento Arraigo que el jugador humano.
       await triggerLandEtb(false, landCard, landItem, 'hand');
       render(); 
       await botThinkDelay(800);
@@ -1840,9 +1840,9 @@ export async function takeBotPriorityAction() {
       return;
     }
 
-    // Flashback o Escape desde su propio cementerio: si tiene algo pagable, lo usa antes de
+    // Otra vuelta o Zafar desde su propio cementerio: si tiene algo pagable, lo usa antes de
     // seguir con el resto de sus decisiones — esto SÍ pasa por la pila (a diferencia de
-    // Lealtad), así que cortamos acá para esperar a que resuelva.
+    // Creencia), así que cortamos acá para esperar a que resuelva.
     if (await tryFlashbackOrEscapeFromBotGraveyard()) return;
 
     // 23.16.2: después del cementerio, aprovecha permisos públicos desde Exilio.
@@ -1911,7 +1911,7 @@ export async function takeBotPriorityAction() {
         if (isCounterSpell(c)) return;
         // 23.19.4.6 — 20 es vida INICIAL, no máxima; aun así, una carta cuyo único valor
         // es curar no se gasta automáticamente estando sano. Mismo criterio health-aware
-        // que Tuppers y otras habilidades activadas.
+        // que Envases herméticos y otras habilidades activadas.
         if (c.effect?.type === 'heal' && !shouldBotActivateHealing(c.effect, 'main2')) return;
         // 23.11.3: una carta pagable no alcanza. Si no puede formar una propuesta legal/útil
         // con sus targets actuales, ni siquiera compite en la selección de Main.
@@ -1939,8 +1939,8 @@ export async function takeBotPriorityAction() {
           const botLost = countBotMassLandVictims(c.effect, false);
           if (humanLost === 0 || (botLost > 0 && humanLost <= botLost)) return;
         }
-        // NUEVO: no tiene sentido gastar Proliferar si no hay ni un solo contador en juego
-        // (ni +1/+1, ni -1/-1, ni un Planeswalker con Lealtad) — se desperdiciaría entero.
+        // NUEVO: no tiene sentido gastar Amplificar si no hay ni un solo contador en juego
+        // (ni +1/+1, ni -1/-1, ni un Planeswalker con Creencia) — se desperdiciaría entero.
         if (c.effect && c.effect.type === 'proliferate') {
           if (getProliferateCandidates(state).length === 0) return;
         }
@@ -1953,7 +1953,7 @@ export async function takeBotPriorityAction() {
     
     if (affordableIndex !== -1) {
       // 23.10 / CR 601: se aparta conceptualmente la carta al anunciarla, pero no se
-      // activan fuentes ni se pagan costos hasta fijar modo/ruta/X/Kicker y objetivos.
+      // activan fuentes ni se pagan costos hasta fijar modo/ruta/X/Yapa y objetivos.
       const originalCardToPlay = state.rivalHand[affordableIndex];
       let cardToPlay = originalCardToPlay;
 
@@ -1980,8 +1980,8 @@ export async function takeBotPriorityAction() {
         return;
       }
 
-      // Kicker sigue siendo ADICIONAL a cualquiera de las dos vías. Antes elegir alternativa
-      // podía borrar accidentalmente el Kicker; ahora se prueba contra la ruta ya elegida.
+      // Yapa sigue siendo ADICIONAL a cualquiera de las dos vías. Antes elegir alternativa
+      // podía borrar accidentalmente el Yapa; ahora se prueba contra la ruta ya elegida.
       let botKicked = false;
       if (cardToPlay.kicker && canBotPayCastRoute(cardToPlay, useAlternative, { kicked: true })) {
         botKicked = true;
@@ -1994,7 +1994,7 @@ export async function takeBotPriorityAction() {
       if (routeManaCost && routeManaCost.includes('{X}')) {
         const manaSourceCard = { ...cardToPlay, manaCost: routeManaCost };
         botXValue = chooseBotXValue(manaSourceCard);
-        // 23.15.4: el estimador histórico no conocía taxes/reducciones/Convoke/Delve.
+        // 23.15.4: el estimador histórico no conocía taxes/reducciones/Vaquita/Rebuscar.
         // Ajustamos X hacia abajo hasta una ruta realmente pagable por el Cost Engine final.
         while (botXValue > 0 && !canBotPayCastRoute(cardToPlay,useAlternative,{kicked:botKicked,xValue:botXValue})) botXValue -= 1;
         if (!canBotPayCastRoute(cardToPlay,useAlternative,{kicked:botKicked,xValue:botXValue})) {
@@ -2111,7 +2111,7 @@ export async function takeBotPriorityAction() {
           const validTargets = state.localCombat.filter(c => isValidBotTarget(c, cardToPlay.colors));
           if (validTargets.length > 0) {
             // El Tano apunta a tu criatura más grande (poder + resistencia) — si es
-            // Exilio, además prioriza una Indestructible (a esa, "destruir" no le sirve
+            // Exilio, además prioriza una Irrompible (a esa, "destruir" no le sirve
             // de nada, pero Exilio no le pregunta nada).
             const indestructibleTargets = validTargets.filter(c => hasKeyword(c, 'indestructible'));
             const pool = ((cardToPlay.effect.type === 'exile_creature' || cardToPlay.effect.type === 'exile_and_return') && indestructibleTargets.length > 0) ? indestructibleTargets : validTargets;
@@ -2334,7 +2334,7 @@ export async function takeBotPriorityAction() {
       flushDeferredLandManaTriggers();
       await triggerSpellCast(false, cardToPlay, castStackItem);
 
-      // Ward es posterior al casteo. Aún se resuelve como prompt simplificado (no trigger
+      // Impuesto es posterior al casteo. Aún se resuelve como prompt simplificado (no trigger
       // separado en Stack), pero ya no evita que el hechizo haya sido casteado primero.
       if (!tryPayWardForBotTarget(aiTargetObj)) {
         const stackIndex = spellStack.indexOf(castStackItem);

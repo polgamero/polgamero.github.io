@@ -82,6 +82,7 @@ import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
 import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate, telemetryDurationMs, telemetryOutcome } from './statistics.js';
 import { buildCardTextLayout } from './cardTextFormatter.js';
+import { publicKeywordLabel, publicCardTypeLine, publicTerminologyText } from './publicTerminology.js';
 import { MANA_ICON_URLS, manaIconKeyForSymbol } from './manaSymbolCatalog.js';
 import { POOL_BASELINE } from './poolContract.js';
 import { effectivePackCost, campaignStatus } from './campaigns.js';
@@ -296,9 +297,9 @@ export function updatePilesUI() {
   }
 }
 
-// Menú de habilidades de Lealtad de un Planeswalker: se abre al clickear el tuyo propio.
+// Menú de habilidades de Creencia de un Planeswalker: se abre al clickear el tuyo propio.
 // Cada botón muestra el costo (+N/-N/0) y el texto de la habilidad; se deshabilita solo si
-// ya usó su habilidad este turno, o si el costo es negativo y no tiene Lealtad suficiente
+// ya usó su habilidad este turno, o si el costo es negativo y no tiene Creencia suficiente
 // — el resto de las restricciones (fase, turno) las valida activateLoyaltyAbility al elegir,
 // así que acá alcanza con un chequeo simple para no ofrecer botones obviamente inválidos.
 // Elegir el valor de X (regla 107.3/601.2b: se anuncia y se fija ANTES de pagar nada). El
@@ -632,7 +633,7 @@ export function showRampLandChoiceModal(availableColors, cardName, onChoose) {
   });
 }
 
-// Kicker: costo ADICIONAL y OPCIONAL — a diferencia de un hechizo modal (elegís UNO de
+// Yapa: costo ADICIONAL y OPCIONAL — a diferencia de un hechizo modal (elegís UNO de
 // varios modos), acá es sí/no sobre pagar más por un bonus extra, y el efecto base se
 // lanza de todos modos elijas lo que elijas. Mismo esqueleto visual que showModalSpellChoice.
 export function showKickerModal(card, onConfirm, onCancel) {
@@ -739,7 +740,7 @@ export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel 
       btn.title = gameText('selection.private.invalid');
     }
     if (offer.visibility === 'reveal_candidates' && entry.card) {
-      btn.innerHTML = `<span class="loyalty-ability-text"><strong>${entry.card.name || gameText('selection.private.cardFallback')}</strong><br><small>${entry.card.type || ''}</small></span>`;
+      btn.innerHTML = `<span class="loyalty-ability-text"><strong>${entry.card.name || gameText('selection.private.cardFallback')}</strong><br><small>${publicCardTypeLine(entry.card.type || '')}</small></span>`;
     } else {
       btn.innerHTML = `<span class="loyalty-ability-text" style="font-size:30px;">🂠<br><small>${gameTextHtml('selection.private.slot', { index: idx + 1 })}</small></span>`;
       btn.title = gameText('selection.private.hidden');
@@ -955,13 +956,13 @@ export function openGraveyardModal(isLocal) {
       cardEl.style.height = '168px';
       wrapper.appendChild(cardEl);
 
-      // Flashback: solo en TU cementerio, solo si la carta lo tiene.
+      // Otra vuelta: solo en TU cementerio, solo si la carta lo tiene.
       if (isLocal && cardObj.flashback) {
         const fbBtn = document.createElement('button');
         fbBtn.className = 'mulligan-btn mulligan-btn-keep';
         fbBtn.style.fontSize = '11px';
         fbBtn.style.padding = '4px 8px';
-        fbBtn.innerHTML = `🔄 Flashback ${renderInlineGameSymbols(cardObj.flashback.cost)}`;
+        fbBtn.innerHTML = `🔄 Otra vuelta ${renderInlineGameSymbols(cardObj.flashback.cost)}`;
         fbBtn.addEventListener('click', () => {
           modalOverlay.remove();
           castFromGraveyard(cardObj, isLocal);
@@ -969,7 +970,7 @@ export function openGraveyardModal(isLocal) {
         wrapper.appendChild(fbBtn);
       }
 
-      // Escape: solo en TU cementerio, solo si la carta lo tiene. Mostramos el costo de
+      // Zafar: solo en TU cementerio, solo si la carta lo tiene. Mostramos el costo de
       // maná Y cuántas cartas más hay que exiliar, para que sepas de entrada si te alcanza
       // el cementerio antes de siquiera intentarlo.
       if (isLocal && cardObj.escape) {
@@ -980,7 +981,7 @@ export function openGraveyardModal(isLocal) {
         escBtn.style.background = '#6c3483';
         escBtn.style.borderColor = '#9b59b6';
         const exileCount = cardObj.escape.exileCount || 0;
-        escBtn.innerHTML = `🌀 Escape ${renderInlineGameSymbols(cardObj.escape.cost)} + exiliar ${exileCount}`;
+        escBtn.innerHTML = `🌀 Zafar ${renderInlineGameSymbols(cardObj.escape.cost)} + exiliar ${exileCount}`;
         escBtn.addEventListener('click', () => {
           modalOverlay.remove();
           castFromGraveyard(cardObj, isLocal);
@@ -1040,7 +1041,7 @@ export function openExileModal(isLocal) {
         const status=document.createElement('div');
         status.className='suspend-exile-status';
         status.style.cssText='font-size:11px;font-weight:700;color:#f7d774;text-align:center;max-width:126px;';
-        status.textContent=timeCount>0 ? `⏳ Suspendida · ${timeCount} Tiempo${timeCount===1?'':'s'}` : '⏳ Suspend · esperando casteo';
+        status.textContent=timeCount>0 ? `⏳ En espera · ${timeCount} Tiempo${timeCount===1?'':'s'}` : '⏳ En espera · esperando casteo';
         wrapper.appendChild(status);
       }
       const permission=getExilePlayPermissionForCard(cardObj,true);
@@ -1074,7 +1075,7 @@ export function showSuspendCastModal(card) {
   return new Promise(resolve=>{
     injectMulliganStyles();
     const overlay=document.createElement('div'); overlay.className='gy-modal-overlay suspend-cast-modal';
-    overlay.innerHTML=`<div class="gy-modal-content" style="max-width:460px"><div class="gy-modal-header"><h3>⏳ Suspend — último contador de Tiempo</h3></div><div style="padding:18px;display:flex;gap:16px;align-items:center"><div id="suspend-card-preview"></div><div style="flex:1"><p><b>${card.name}</b> está lista para salir de Suspend.</p><p style="font-size:13px;color:#bdc3c7">Podés castear este hechizo ahora sin pagar su coste de maná. Los costes adicionales siguen aplicando.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="mulligan-btn mulligan-btn-keep" data-choice="cast">✨ Castear gratis</button><button class="mulligan-btn" data-choice="leave">Dejar en Exilio</button></div></div></div></div>`;
+    overlay.innerHTML=`<div class="gy-modal-content" style="max-width:460px"><div class="gy-modal-header"><h3>⏳ En espera — último contador de Tiempo</h3></div><div style="padding:18px;display:flex;gap:16px;align-items:center"><div id="suspend-card-preview"></div><div style="flex:1"><p><b>${card.name}</b> está lista para salir de En espera.</p><p style="font-size:13px;color:#bdc3c7">Podés castear este hechizo ahora sin pagar su coste de maná. Los costes adicionales siguen aplicando.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="mulligan-btn mulligan-btn-keep" data-choice="cast">✨ Castear gratis</button><button class="mulligan-btn" data-choice="leave">Dejar en Exilio</button></div></div></div></div>`;
     document.body.appendChild(overlay);
     const preview=overlay.querySelector('#suspend-card-preview');
     const cardEl=createCardElement(card,false,true,null,'preview',()=>{}); cardEl.style.width='120px';cardEl.style.height='168px'; preview.appendChild(cardEl);
@@ -1084,7 +1085,7 @@ export function showSuspendCastModal(card) {
   });
 }
 
-export function showSuspendedCardChoiceModal(entries,{title='Elegí una carta suspendida'}={}) {
+export function showSuspendedCardChoiceModal(entries,{title='Elegí una carta en espera'}={}) {
   return new Promise(resolve=>{
     injectMulliganStyles();
     const overlay=document.createElement('div'); overlay.className='gy-modal-overlay';
@@ -1215,11 +1216,12 @@ function renderManaPoolHud() {
 }
 
 export function logMsg(msg) {
-  recordTelemetryUiLog(msg);
-  if (HEADLESS_ENGINE) { globalThis.__ARGENTINIA_HEADLESS_LOG__?.push?.(String(msg)); return; }
+  const publicMsg = publicTerminologyText(msg);
+  recordTelemetryUiLog(publicMsg);
+  if (HEADLESS_ENGINE) { globalThis.__ARGENTINIA_HEADLESS_LOG__?.push?.(String(publicMsg)); return; }
   const entry = document.createElement('div');
   entry.className = 'log-entry';
-  entry.textContent = msg;
+  entry.textContent = publicMsg;
   els.gameLogBox.appendChild(entry);
   els.gameLogBox.scrollTop = els.gameLogBox.scrollHeight;
 }
@@ -1411,8 +1413,8 @@ export function getTargetRules(card) {
   if (effectType === 'damage') {
     // BUG ENCONTRADO Y ARREGLADO (Cabo suelto #13): "cualquier objetivo" caía en el default
     // de más abajo, que solo contemplaba jugador o criatura — un Planeswalker (regla real
-    // moderna: el daño no discrimina) ni aparecía como opción. Ahora sí: le resta Lealtad
-    // en vez de HP, mismo criterio que la habilidad de Lealtad con target (item 12).
+    // moderna: el daño no discrimina) ni aparecía como opción. Ahora sí: le resta Creencia
+    // en vez de HP, mismo criterio que la habilidad de Creencia con target (item 12).
     return { allowPlayer: true, allowLocalCreature: true, allowRivalCreature: true, allowLocalPlaneswalker: true, allowRivalPlaneswalker: true, allowLocalPermanent: false, allowRivalPermanent: false };
   }
   if (effectType === 'destroy_enchantment') {
@@ -1488,7 +1490,7 @@ export function getTargetRules(card) {
       allowLocalPlaneswalker:(targetKind==='planeswalker' || anyPermanent) && allowLocal,
       allowRivalPlaneswalker:(targetKind==='planeswalker' || anyPermanent) && allowRival,
       // 23.16.1.1 — POOL EXPANSION IV: filtro declarativo fino para counters de
-      // permanentes. Permite, por ejemplo, que Lore apunte realmente a una Saga y no a
+      // permanentes. Permite, por ejemplo, que Capítulo apunte realmente a una Saga y no a
       // cualquier objeto de Support. La legalidad al resolver ya consume permanentFilter.
       permanentFilter: effect.permanentFilter || null,
       creatureFilter: effect.creatureFilter || null
@@ -1506,7 +1508,7 @@ export function getTargetRules(card) {
 // El tamaño de letra de la carta usa cqw (proporcional al ancho de LA CARTA), así que
 // agrandar la carta no alcanza para que un nombre largo entre — el texto escala junto con
 // la carta, mantiene la misma proporción relativa. Esto reduce la fuente según el largo del
-// texto, para que "El Flaco Spinetta" entre igual de bien que "El Firulais".
+// texto, para que "Poeta del Rock Celeste" entre igual de bien que "El Firulais".
 function fitScale(text, idealChars, minScale = 0.55) {
   if (!text) return 1;
   return fitScaleByLength(text.length, idealChars, minScale);
@@ -1584,7 +1586,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   );
   const hasExplicitInstantAbility = ownInstantAbility || grantedInstantAbility;
   
-  // --- NUEVA LÓGICA DE COLORES MTG ---
+  // --- NUEVA LÓGICA DE COLORES Argentinia ---
   let bgClass = 'bg-colorless'; // Default para incoloras y artefactos
   
   if (card.type && card.type.toLowerCase().includes('tierra')) {
@@ -1713,11 +1715,11 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     ptText = `<span style="color:#27ae60;">${effPower}/${effToughness}</span>`;
   }
 
-  // Lealtad de un Planeswalker: mismo cuadrito que Poder/Resistencia, pero con su propio
+  // Creencia de un Planeswalker: mismo cuadrito que Poder/Resistencia, pero con su propio
   // color (violeta, como en las cartas reales) para diferenciarlo de un vistazo.
   const isPlaneswalker = card.type.includes('Planeswalker');
   const effectiveLandType = isBattlefieldLand ? getEffectiveLandTypeLine(state, itemObj, isLocal) : card.type;
-  const displayType = itemObj.isAnimatedLand ? `${effectiveLandType} · Criatura` : effectiveLandType;
+  const displayType = publicCardTypeLine(itemObj.isAnimatedLand ? `${effectiveLandType} · Criatura` : effectiveLandType);
   const loyaltyText = isPlaneswalker ? `${itemObj.loyalty}` : '';
 
   const attachedAuras = itemObj.auras || [];
@@ -1729,18 +1731,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   // Describe en criollo qué hace cada modificador (no solo su nombre), para el tooltip
   // de abajo — "Facón de Plata: {T}: 2 de daño", "Poncho del Paisano: +1/+1",
   // "Fuerza de la Manada: +1/+1 (mientras esté en el campo)", "Fuerza de Toro: +3/+3 (hasta fin de turno)".
-  const KEYWORD_LABELS_SHORT = {
-    flying: 'Vuela', trample: 'Arrolla', hexproof: 'Intocable', haste: 'Prisa',
-    menace: 'Amenaza', vigilance: 'Vigilancia', reach: 'Alcance', defender: 'Defensora',
-    lifelink: 'Vínculo vital', deathtouch: 'Toque mortal', firststrike: 'Primer golpe',
-    doublestrike: 'Doble golpe', indestructible: 'Indestructible',
-    protection_W: 'Protección de Blanco', protection_U: 'Protección de Azul', protection_B: 'Protección de Negro',
-    protection_R: 'Protección de Rojo', protection_G: 'Protección de Verde'
-  };
-  const shortLabelFor = (k) => {
-    if (k.startsWith('ward_')) return `Ward ${k.split('_')[1]}`;
-    return KEYWORD_LABELS_SHORT[k] || k;
-  };
+  const shortLabelFor = (k) => publicKeywordLabel(k);
   const describeStats = (stats) => {
     if (!stats) return '';
     const p = stats.powerMod !== undefined ? stats.powerMod : (stats.cantidad ? (stats.signo === '-' ? -stats.cantidad : stats.cantidad) : 0);
@@ -1773,7 +1764,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   };
   const describeStaticMod = (m) => {
     if (m.type === 'team_buff') return describeStats({ powerMod: m.powerMod, toughnessMod: m.toughnessMod });
-    if (m.type === 'team_keyword') return KEYWORD_LABELS_SHORT[m.keyword] || m.keyword;
+    if (m.type === 'team_keyword') return publicKeywordLabel(m.keyword);
     return '';
   };
   const describeTempMod = (t) => {
@@ -1834,7 +1825,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const sagaState = isSagaCard(card) ? sagaUiState(itemObj) : null;
   const sagaRomanDisplay = (roman) => ({ I:'Ⅰ', II:'Ⅱ', III:'Ⅲ', IV:'Ⅳ', V:'Ⅴ', VI:'Ⅵ', VII:'Ⅶ', VIII:'Ⅷ', IX:'Ⅸ', X:'Ⅹ' }[roman] || roman);
   const sagaTooltipText = sagaState && sagaState.chapters.length > 0
-    ? `Lore ${sagaState.lore}/${sagaState.finalChapter} · ${sagaState.chapters.map(ch => `${ch.roman}: ${ch.label || ''}`.trim()).join(' · ')}`
+    ? `Capítulo ${sagaState.lore}/${sagaState.finalChapter} · ${sagaState.chapters.map(ch => `${ch.roman}: ${ch.label || ''}`.trim()).join(' · ')}`
     : '';
   const sagaChapterHTML = sagaState && sagaState.chapters.length > 0
     ? `<div class="saga-chapter-track" title="${escapeHtml(sagaTooltipText)}" aria-label="${escapeHtml(sagaTooltipText)}">${sagaState.chapters.map(ch => `<span class="saga-chapter-pill${sagaState.lore >= ch.number ? ' reached' : ''}${sagaState.lore === ch.number ? ' current' : ''}"><span class="saga-chapter-pill-label">${sagaRomanDisplay(ch.roman)}</span></span>`).join('')}</div>`
@@ -1903,7 +1894,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   }
 
 
-  // 23.16.3 — Suspend es una acción especial desde la mano. Tiene un control propio porque
+  // 23.16.3 — En espera es una acción especial desde la mano. Tiene un control propio porque
   // puede ser legal aunque la carta no pueda castearse normalmente (por coste/targets), y no
   // usa la Stack. Usa el mismo tratamiento visual mínimo del botón ⚡: centrado abajo y fuera
   // del contenido de la carta para no tapar texto ni crecer con hover interno.
@@ -1912,8 +1903,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const suspendBtn=document.createElement('button');
     suspendBtn.type='button';
     suspendBtn.textContent='⏳';
-    suspendBtn.title=`Suspender ${spec?.time || ''} — ${spec?.cost || '{0}'}`;
-    suspendBtn.setAttribute('aria-label', `Suspender ${card.name} por ${spec?.time || 0} Tiempo pagando ${spec?.cost || '{0}'}`);
+    suspendBtn.title=`En espera ${spec?.time || ''} — ${spec?.cost || '{0}'}`;
+    suspendBtn.setAttribute('aria-label', `Poner ${card.name} en espera por ${spec?.time || 0} Tiempo pagando ${spec?.cost || '{0}'}`);
     suspendBtn.classList.add('card-bottom-fab', 'suspend-action-fab');
     suspendBtn.disabled=!canSuspendCardFromHand(card);
     suspendBtn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();suspendCardFromHand(index);});
@@ -2931,7 +2922,7 @@ const ENCYCLOPEDIA_TABS = [
   { key: 'conjuros', label: 'Conjuros' },
   { key: 'encantamientos', label: 'Encantamientos' },
   { key: 'artefactos', label: 'Artefactos' },
-  { key: 'planeswalkers', label: 'Planeswalkers' },
+  { key: 'planeswalkers', label: 'Semidioses' },
   { key: 'tierras', label: 'Tierras' }
 ];
 
@@ -8427,8 +8418,8 @@ export function showMulliganModal(hand, mulliganCount, canMulliganMore, callback
 }
 
 // Paso 2 (solo si mulliganeaste al menos una vez): elegir qué cartas van al fondo del mazo.
-// Scry N / Surveil N: mirás las N cartas de arriba del mazo y decidís, una por una, si se
-// quedan arriba o se van — al fondo del mazo (Scry) o al cementerio (Surveil). Reusa el
+// Scry N / Chusmeá N: mirás las N cartas de arriba del mazo y decidís, una por una, si se
+// quedan arriba o se van — al fondo del mazo (Scry) o al cementerio (Chusmeá). Reusa el
 // mismo armado de fila de cartas seleccionables que ya usa el Mulligan. El botón de
 // Confirmar SIEMPRE está habilitado (a diferencia de "elegir para el fondo" del Mulligan,
 // acá 0 cartas elegidas es perfectamente legal — significa "todas se quedan arriba").
@@ -8470,7 +8461,7 @@ export function showScrySurveilModal(cards, mode, onConfirm) {
   });
 }
 
-// Proliferar: a diferencia de Scry/Surveil (cartas de la mano/mazo), acá elegimos entre
+// Amplificar: a diferencia de Scry/Chusmeá (cartas de la mano/mazo), acá elegimos entre
 // CUALQUIER permanente/jugador que ya tenga contadores: criaturas, Support, Tierras,
 // Planeswalkers y Veneno, de ambos jugadores. Reusamos createCardElement con la zona REAL
 // del permanente y un customClick propio; por lo tanto el selector nunca dispara la acción
@@ -8546,8 +8537,8 @@ export function showProliferateModal(eligible, onConfirm) {
       : 'combat';
     cardEl = sanitizeChoiceCard(createCardElement(entry.item, !!entry.item.tapped, entry.ownerIsLocal, null, modalZone, toggle));
     cardEl.classList.add('mulligan-card-slot', 'selectable', 'proliferate-choice-card');
-    const counterLabels = (entry.counterTypes || []).map(type => ({ plusOne:'+1/+1', minusOne:'-1/-1', shield:'Escudo', stun:'Aturdimiento', lore:'Lore', loyalty:'Lealtad' }[type] || type));
-    if (counterLabels.length) cardEl.title = `Proliferar agrega 1 de: ${counterLabels.join(', ')}`;
+    const counterLabels = (entry.counterTypes || []).map(type => ({ plusOne:'+1/+1', minusOne:'-1/-1', shield:'Escudo', stun:'Aturdimiento', lore:'Capítulo', loyalty:'Creencia' }[type] || type));
+    if (counterLabels.length) cardEl.title = `Amplificar agrega 1 de: ${counterLabels.join(', ')}`;
     row.appendChild(cardEl);
   });
   overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
@@ -8665,17 +8656,17 @@ export function showGraveyardChoiceModal(entries, countToChoose, cardName, filte
   });
 }
 
-// Escape: elegir N cartas del cementerio para exiliar como costo adicional. Mismo
+// Zafar: elegir N cartas del cementerio para exiliar como costo adicional. Mismo
 // esqueleto exacto que showBottomCardsModal (selección hasta llegar a la cantidad exacta,
 // confirmar deshabilitado hasta entonces) — reusamos buildMulliganCardRow porque acá los
-// elegibles SON cartas de verdad (del cementerio), a diferencia de Proliferar que elige
+// elegibles SON cartas de verdad (del cementerio), a diferencia de Amplificar que elige
 // permanentes del campo.
 export function showEscapeExileModal(graveyardCards, exileCount, onConfirm) {
   const entries = graveyardCards.map((card, index) => ({ card, index }));
   showGraveyardChoiceModal(
     entries,
     exileCount,
-    'Escape',
+    'Zafar',
     gameText('escape.choice.filter'),
     gameText('escape.choice.action', { count: exileCount }),
     chosenIndexes => onConfirm(chosenIndexes.map(i => graveyardCards[i]).filter(Boolean))
@@ -8750,7 +8741,7 @@ export function showSacrificeEffectModal(candidates, countToSacrifice, cardName,
 
 // 23.15.4 — Phyrexian mana se decide antes de abrir fuentes: cada símbolo elegido se
 // prepara como 2 de vida; los no elegidos permanecen en pendingCost y pueden pagarse con
-// maná del color correspondiente (o Convoke). No muta vida hasta el commit 601.2h.
+// maná del color correspondiente (o Vaquita). No muta vida hasta el commit 601.2h.
 export function showPhyrexianCostChoiceModal(symbols, cardName, maxLifePayments = Infinity) {
   if (HEADLESS_ENGINE) return Promise.resolve([]);
   const list=Array.isArray(symbols)?symbols:[];
@@ -8790,7 +8781,7 @@ export function showPhyrexianCostChoiceModal(symbols, cardName, maxLifePayments 
   });
 }
 
-// 23.15.4 — selector opcional de recursos de pago (Convoke/Delve). A diferencia de los
+// 23.15.4 — selector opcional de recursos de pago (Vaquita/Rebuscar). A diferencia de los
 // selectores de costos obligatorios, permite confirmar 0..máximo y por eso siempre ofrece
 // "seguir sin usar". No muta permanentes/zonas: sólo devuelve la selección preparada.
 export function showCostPaymentResourceModal(entries, options = {}) {
@@ -9071,7 +9062,7 @@ function groupAndRenderZone(zoneArray, containerEl, isLocal, zoneType) {
           group.ready.some(x => canManaSourcePayPendingCost(x.card));
         // 23.7.1: con prioridad dejamos que el click llegue al validador central de timing.
         // Antes la UI tragaba silenciosamente clicks sobre Equipar/sorcery-speed en turno
-        // rival, por eso Daga Escondida no explicaba que Destello sólo permite lanzarla.
+        // rival, por eso Daga Escondida no explicaba que Al toque sólo permite lanzarla.
         const supportTimingAllowsClick = supportCanPayNow ||
           (state.activePlayer === 'local' && (state.phase === 'main1' || state.phase === 'main2')) ||
           (state.priorityPlayer === 'local' && supportHasAbility);
@@ -9330,8 +9321,8 @@ export function render() {
   // --- 2. GESTIÓN DEL BOTÓN DE ACCIÓN / PASAR PRIORIDAD ---
   // BUGFIX: antes solo chequeaba damageModalOpen/pendingRampChoice — "Pasar Prioridad"
   // (botón O el atajo de la barra espaciadora) se podía disparar mientras CUALQUIER otra
-  // elección a medio resolver seguía esperando tu click (tripular, pagar Ward, elegir
-  // modo, elegir objetivos, Scry/Surveil, Proliferar, Escape, Kicker, contrarrestar a
+  // elección a medio resolver seguía esperando tu click (tripular, pagar Impuesto, elegir
+  // modo, elegir objetivos, Scry/Chusmeá, Amplificar, Zafar, Yapa, contrarrestar a
   // menos que pagues, etc.) — arriesgando una condición de carrera con esa resolución.
   // Misma lista que ya usa canPlayCard (más pendingTargetCard/pendingSacrificeChoice/
   // pendingHybridLifePayment, que faltaban ahí también).
@@ -9428,7 +9419,7 @@ export function render() {
     const pendingCard = state.pendingSuspendTransaction?.card || state.pendingCastTransaction?.card || (state.pendingSpellIndex !== null ? state.localHand[state.pendingSpellIndex] : null);
     let statusText;
     if (state.pendingSuspendTransaction) {
-      statusText = `⏳ Suspendiendo ${state.pendingSuspendTransaction.card.name} — pagá ${state.pendingSuspendTransaction.spec.cost}`;
+      statusText = `⏳ Poniendo en espera ${state.pendingSuspendTransaction.card.name} — pagá ${state.pendingSuspendTransaction.spec.cost}`;
     } else if (state.pendingCrew) {
       statusText = gameText('payment.status.crew', { card: state.pendingCrew.item.card.name, power: state.pendingCrew.powerSoFar, required: state.pendingCrew.required });
     } else if (state.pendingWardChoice) {
@@ -9460,7 +9451,7 @@ export function render() {
     els.paymentStatus.textContent = statusText;
 
     // Punto 14: el costo alternativo puede combinar maná/vida/descarte/sacrificio/exilio.
-    // Sólo se ofrece antes de comprometer una vía, nunca sobre Flashback/Escape, y sólo si
+    // Sólo se ofrece antes de comprometer una vía, nunca sobre Otra vuelta/Zafar, y sólo si
     // los componentes no-maná son legalmente pagables (el maná se elige manualmente después).
     const canOfferAlt = pendingCard && !state.pendingCastTransaction && pendingCard.alternativeCost && !state.pendingAlternativeCostChosen && !state.pendingCastFrom &&
       !state.pendingTargetCard && !state.pendingCrew && !state.pendingWardChoice && !state.pendingCounterUnlessPay &&
@@ -9487,7 +9478,7 @@ export function render() {
     }
 
     if (state.pendingSuspendTransaction) {
-      statusText = `⏳ Suspendiendo ${state.pendingSuspendTransaction.card.name} — pagá ${state.pendingSuspendTransaction.spec.cost}`;
+      statusText = `⏳ Poniendo en espera ${state.pendingSuspendTransaction.card.name} — pagá ${state.pendingSuspendTransaction.spec.cost}`;
     } else if (state.pendingCrew) {
       els.btnConfirmCrew.classList.remove('hidden');
       els.btnConfirmCrew.disabled = state.pendingCrew.powerSoFar < state.pendingCrew.required;
@@ -9645,7 +9636,7 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
     if (canTrample) {
       const allLethalMet = blockersArray.every((b, i) => currentDistribution[i] >= lethalNeeded(b));
       const overflow = allLethalMet ? unassigned : 0;
-      const overflowNoun = attackerItem.attackTarget ? 'Lealtad' : 'HP';
+      const overflowNoun = attackerItem.attackTarget ? 'Creencia' : 'HP';
       html += `
          <div class="damage-row trample-row">
            <div style="text-align: left;">
@@ -9787,7 +9778,7 @@ export function showLegendRuleChoiceModal(entries = [], cardName = 'Permanente l
 
 // UI expresa orden de RESOLUCIÓN (arriba resuelve primero); triggerOrdering.js lo convierte a LIFO.
 const TRIGGER_ORDER_LABELS = Object.freeze({
-  etb:'entrada al campo', creature_etb:'entrada de criatura', land_etb:'Landfall', spell_cast:'hechizo lanzado',
+  etb:'entrada al campo', creature_etb:'entrada de criatura', land_etb:'Arraigo', spell_cast:'hechizo lanzado',
   dies:'al morir', any_creature_dies:'muerte de criatura', opponent_death:'muerte rival', attack:'al atacar',
   any_creature_attacks:'ataque', block:'al bloquear', combat_damage:'daño de combate', upkeep:'mantenimiento',
   end_step:'paso final', permanent_entered:'entrada de permanente', creature_entered:'entrada de criatura',
@@ -9797,14 +9788,14 @@ const TRIGGER_ORDER_LABELS = Object.freeze({
   life_lost:'vida perdida', counter_added:'contador agregado', counter_removed:'contador removido', token_created:'ficha creada',
   permanent_tapped:'permanente girado', spell_countered:'hechizo contrarrestado', spell_copied:'hechizo copiado',
   ability_copied:'habilidad copiada', permanent_became_copy:'permanente copiado', permanent_transformed:'transformación',
-  saga_chapter:'capítulo de Saga', suspend_tick:'Suspend — Tiempo', suspend_cast:'Suspend — último Tiempo'
+  saga_chapter:'capítulo de Crónica', suspend_tick:'En espera — Tiempo', suspend_cast:'En espera — último Tiempo'
 });
 
 function triggerOrderEffectSummary(effect = {}) {
   const labels = {
     draw:'Robá', heal:'Ganás vida', damage:'Hacé daño', drain:'Drená vida', fight:'Peleá', ramp:'Buscá una Tierra',
     create_tokens:'Creá fichas', discard:'Descartá', sacrifice:'Sacrificá', reanimate:'Reanimá', search_land:'Buscá una Tierra',
-    search_library:'Buscá en tu biblioteca', look_at_top:'Mirá la parte superior', scry:'Adiviná', surveil:'Vigilá', proliferate:'Proliferá'
+    search_library:'Buscá en tu biblioteca', look_at_top:'Mirá la parte superior', scry:'Anticipá', surveil:'Chusmeá', proliferate:'Amplificá'
   };
   const base = labels[effect?.type] || String(effect?.type || 'Habilidad disparada').replaceAll('_',' ');
   const amount = effect?.amount !== undefined ? ` ${effect.amount}` : '';

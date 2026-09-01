@@ -1419,7 +1419,7 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
   // tarjeta del mazo en "Mis Mazos" (se salía de la caja).
   if (name.trim().length > 30) throw new Error('El nombre del mazo no puede tener más de 30 caracteres.');
   // FASE 3, ETAPA 3: tamaño de mazo rígido — ni de más, ni de menos. (Sí, en el
-  // reglamento real de MTG 60 es un PISO, no un tope — acá se decidió a propósito que sea
+  // reglamento canónico de Argentinia 60 es un PISO, no un tope — acá se decidió a propósito que sea
   // exacto para esta versión del juego.)
   if (!cardIds || cardIds.length !== DECK_SIZE_EXACT) {
     throw new Error(`El mazo tiene que tener exactamente ${DECK_SIZE_EXACT} cartas (tiene ${cardIds ? cardIds.length : 0}).`);
@@ -1455,7 +1455,7 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
   for (const [baseId, count] of Object.entries(requestedCounts)) {
     if (count > (ownedCounts[baseId] || 0)) throw new Error('Estás usando más copias de una carta de las que tenés.');
     // Regla oficial 100.2a: máximo 4 copias de una misma carta, salvo Tierras básicas
-    // (esas no tienen límite, ni acá ni en MTG real).
+    // (esas no tienen límite, ni acá ni en el contrato canónico de Argentinia).
     const cardDef = cardDb.getById(baseId);
     const isBasicLand = cardDef && cardDef.type.includes('básica');
     if (!isBasicLand && count > MAX_COPIES_PER_CARD) {

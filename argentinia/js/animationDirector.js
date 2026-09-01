@@ -14,10 +14,10 @@ export const ANIMATION_TUNING_CATALOG = Object.freeze([
   Object.freeze({ key:'multi', label:'Combate Multi ×3', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['cardImpact']) }),
   Object.freeze({ key:'trample', label:'Arrollar', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['cardImpact','playerImpact']) }),
   Object.freeze({ key:'first', label:'Iniciativa', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['firstStrike']) }),
-  Object.freeze({ key:'double', label:'Doble golpe', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['doubleStrike']) }),
+  Object.freeze({ key:'double', label:'Dos golpes', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['doubleStrike']) }),
   Object.freeze({ key:'shield', label:'Escudo', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['shieldImpact']) }),
-  Object.freeze({ key:'deathtouch', label:'Toque mortal', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['deathtouchImpact']) }),
-  Object.freeze({ key:'indestructible', label:'Indestructible', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['indestructibleImpact']) }),
+  Object.freeze({ key:'deathtouch', label:'Letal', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['deathtouchImpact']) }),
+  Object.freeze({ key:'indestructible', label:'Irrompible', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['indestructibleImpact']) }),
   Object.freeze({ key:'player', label:'Daño al jugador', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_impact', sfxIds:Object.freeze(['playerImpact']) }),
   Object.freeze({ key:'counter', label:'Counter', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['spellCountered']) }),
   Object.freeze({ key:'exile', label:'Exilio', defaultRelativeSpeed:1, defaultSfxMoment:'start', sfxCadence:'single', sfxIds:Object.freeze(['cardExiled']) }),
@@ -30,7 +30,7 @@ export const ANIMATION_TUNING_CATALOG = Object.freeze([
   Object.freeze({ key:'land_play', label:'Bajar Tierra', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['landPlayed']) }),
   Object.freeze({ key:'creature_enter', label:'Entrada de Criatura', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['permanentEntered']) }),
   Object.freeze({ key:'support_enter', label:'Entrada a Support', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['permanentEntered']) }),
-  Object.freeze({ key:'planeswalker_enter', label:'Entrada de Planeswalker', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['permanentEntered']) }),
+  Object.freeze({ key:'planeswalker_enter', label:'Entrada de Semidiós', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['permanentEntered']) }),
   Object.freeze({ key:'fight', label:'Pelear', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['cardImpact']) }),
   Object.freeze({ key:'shuffle', label:'Barajar biblioteca', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['libraryShuffle']) }),
   Object.freeze({ key:'tokens', label:'Crear fichas', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'per_batch', sfxIds:Object.freeze(['tokenCreated']) }),
@@ -42,7 +42,7 @@ export const ANIMATION_TUNING_CATALOG = Object.freeze([
   Object.freeze({ key:'graveyard_purge', label:'Purga de cementerio', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['graveyardPurge']) }),
   Object.freeze({ key:'mass_land_return', label:'Retorno masivo de Tierras', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['massLandReturn']) }),
   Object.freeze({ key:'fog_global', label:'Fog / Prevenir todo daño de combate', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['fogGlobal']) }),
-  Object.freeze({ key:'proliferate', label:'Proliferar', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['proliferatePulse']) }),
+  Object.freeze({ key:'proliferate', label:'Amplificar', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['proliferatePulse']) }),
   Object.freeze({ key:'control_change', label:'Cambio de control', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['controlChange']) })
 ]);
 
@@ -613,7 +613,7 @@ function addStepLabel(snapshot, payload) {
   if (!snapshot?.rect || !payload?.stepKind || typeof document === 'undefined') return null;
   if (payload.stepKind !== 'first_strike' && !payload.doubleStrikePass) return null;
   const label=document.createElement('div');label.className='arg-anim-step-label';
-  label.textContent=payload.stepKind==='first_strike' ? 'INICIATIVA' : 'DOBLE GOLPE';
+  label.textContent=payload.stepKind==='first_strike' ? 'INICIATIVA' : 'DOS GOLPES';
   Object.assign(label.style,{left:`${snapshot.rect.left}px`,top:`${Math.max(4,snapshot.rect.top-24)}px`});ensureAnimationLayer()?.appendChild(label);
   return label;
 }
@@ -1377,10 +1377,10 @@ function animationLabMarkup() {
             <button data-test="multi">Multi ×3</button>
             <button data-test="trample">Arrollar</button>
             <button data-test="first">Iniciativa</button>
-            <button data-test="double">Doble golpe</button>
+            <button data-test="double">Dos golpes</button>
             <button data-test="shield">Escudo</button>
-            <button data-test="deathtouch">Toque mortal</button>
-            <button data-test="indestructible">Indestructible</button>
+            <button data-test="deathtouch">Letal</button>
+            <button data-test="indestructible">Irrompible</button>
             <button data-test="player">Daño jugador</button>
             <button data-test="counter">Counter</button>
             <button data-test="exile">Exilio</button>
@@ -1393,7 +1393,7 @@ function animationLabMarkup() {
             <button data-test="landPlay">Bajar Tierra</button>
             <button data-test="creatureEnter">Entrada criatura</button>
             <button data-test="supportEnter">Entrada Support</button>
-            <button data-test="planeswalkerEnter">Entrada PW</button>
+            <button data-test="planeswalkerEnter">Entrada Semidiós</button>
             <button data-test="fight">Pelear</button>
             <button data-test="shuffle">Barajar</button>
             <button data-test="tokens">Crear fichas</button>
@@ -1405,7 +1405,7 @@ function animationLabMarkup() {
             <button data-test="graveyardPurge">Purga cementerio</button>
             <button data-test="massLandReturn">Retorno Tierras</button>
             <button data-test="fogGlobal">Fog global</button>
-            <button data-test="proliferate">Proliferar</button>
+            <button data-test="proliferate">Amplificar</button>
             <button data-test="controlChange">Cambio control</button>
             <button data-test="all">Secuencia completa</button>
             <button data-test="clear">Limpiar</button>
@@ -1546,10 +1546,10 @@ export function mountAnimationLab(root) {
     multi:async()=>{note('Multi ×3: el atacante recorre el orden de bloqueadores.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(1),died:true},{snapshot:def(2),died:false},{snapshot:def(3),died:true}],attackerDied:false,stepKind:'regular',animationTuningKey:'multi'});},
     trample:async()=>{note('Arrollar: bloqueadores y luego badge rival.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(1),died:true},{snapshot:def(3),died:true}],playerSnapshot:player(),playerDamage:3,attackerDied:false,stepKind:'regular',animationTuningKey:'trample'});},
     first:async()=>{note('Iniciativa: pase visual acelerado y etiqueta.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:true}],attackerDied:false,stepKind:'first_strike',animationTuningKey:'first'});},
-    double:async()=>{note('Doble golpe: iniciativa y segundo impacto regular.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:false}],attackerDied:false,stepKind:'first_strike',animationTuningKey:'double'});await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:true}],attackerDied:false,stepKind:'regular',doubleStrikePass:true,animationTuningKey:'double'});},
+    double:async()=>{note('Dos golpes: iniciativa y segundo impacto regular.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:false}],attackerDied:false,stepKind:'first_strike',animationTuningKey:'double'});await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:true}],attackerDied:false,stepKind:'regular',doubleStrikePass:true,animationTuningKey:'double'});},
     shield:async()=>{note('Escudo: absorbe el impacto y no desvanece la criatura.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:false,shieldConsumed:true}],attackerDied:false,stepKind:'regular',animationTuningKey:'shield'});},
-    deathtouch:async()=>{note('Toque mortal: impacto violeta y muerte con 1+ daño.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:true,deathtouchHit:true}],attackerDied:false,stepKind:'regular',animationTuningKey:'deathtouch'});},
-    indestructible:async()=>{note('Indestructible: impacto letal visual, destello dorado, sin fade.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:false,indestructibleSurvived:true}],attackerDied:false,stepKind:'regular',animationTuningKey:'indestructible'});},
+    deathtouch:async()=>{note('Letal: impacto violeta y muerte con 1+ daño.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:true,deathtouchHit:true}],attackerDied:false,stepKind:'regular',animationTuningKey:'deathtouch'});},
+    indestructible:async()=>{note('Irrompible: impacto letal visual, destello dorado, sin fade.');await seq({attackerSnapshot:attacker(),defenders:[{snapshot:def(2),died:false,indestructibleSurvived:true}],attackerDied:false,stepKind:'regular',animationTuningKey:'indestructible'});},
     player:async()=>{note('Daño directo: embestida al badge y -5.');await queuePlayerDamageAnimation({attackerSnapshot:attacker(),playerSnapshot:player(),amount:5,animationTuningKey:'player'},options());},
     counter:async()=>{note('Counter: el hechizo colapsa y desaparece de la pila.');await queueZoneTransitionAnimation({sourceSnapshot:stackCard(),targetSnapshot:labZone('graveyard',true),transition:'counter',card:{name:'Hechizo en pila'}},options());},
     exile:async()=>{note('Exilio: disolución luminosa hacia EX rival.');await queueZoneTransitionAnimation({sourceSnapshot:def(2),targetSnapshot:labZone('exile',false),transition:'exile',card:{name:'Defensor B'}},options());},
@@ -1562,7 +1562,7 @@ export function mountAnimationLab(root) {
     landPlay:async()=>{note('Bajar Tierra: desde mano hacia la fila de Tierras.');await queueZoneTransitionAnimation({sourceSnapshot:handCard(),targetSnapshot:labZone('land',true),transition:'land_play',card:{name:'Tierra jugada'},animationTuningKey:'land_play'},options());},
     creatureEnter:async()=>{note('Entrada criatura: Stack hacia Combat.');await queueZoneTransitionAnimation({sourceSnapshot:stackCard(),targetSnapshot:labZone('battlefield',true),transition:'permanent_enter',card:{name:'Criatura'},animationTuningKey:'creature_enter'},options());},
     supportEnter:async()=>{note('Entrada Support: Stack hacia Support.');await queueZoneTransitionAnimation({sourceSnapshot:stackCard(),targetSnapshot:labZone('support',true),transition:'permanent_enter',card:{name:'Artefacto'},animationTuningKey:'support_enter'},options());},
-    planeswalkerEnter:async()=>{note('Entrada Planeswalker: Stack hacia su zona.');await queueZoneTransitionAnimation({sourceSnapshot:stackCard(),targetSnapshot:labZone('support',true),transition:'permanent_enter',card:{name:'Planeswalker'},animationTuningKey:'planeswalker_enter'},options());},
+    planeswalkerEnter:async()=>{note('Entrada Semidiós: Stack hacia su zona.');await queueZoneTransitionAnimation({sourceSnapshot:stackCard(),targetSnapshot:labZone('support',true),transition:'permanent_enter',card:{name:'Semidiós'},animationTuningKey:'planeswalker_enter'},options());},
     fight:async()=>{note('Pelear: choque simultáneo fuera de combate.');await queueFightAnimation({sourceSnapshot:attacker(),targetSnapshot:def(2),sourceIsLocal:true},options());},
     shuffle:async()=>{note('Barajar: feedback público sin revelar cartas.');await queueLibraryShuffleAnimation({isLocal:true},options());},
     tokens:async()=>{note('Fichas: 4 materializaciones, un solo SFX por lote.');await queueTokenBatchAnimation({isLocal:true,count:4,tokenName:'Vecino',targetZone:'battlefield'},options());},
@@ -1574,7 +1574,7 @@ export function mountAnimationLab(root) {
     graveyardPurge:async()=>{note('Purga: cementerio completo colapsa hacia Exilio con un solo SFX.');await queueGraveyardPurgeAnimation({targetIsLocal:true,actorIsLocal:true,count:6},options());},
     massLandReturn:async()=>{note('Retorno masivo: varias Tierras emergen del cementerio como un lote.');await queueMassLandReturnAnimation({isLocal:true,count:5},options());},
     fogGlobal:async()=>{note('Fog global: niebla cubre el tablero una sola vez por resolución.');await queueGlobalBoardEffectAnimation({kind:'fog',isLocal:true},options());},
-    proliferate:async()=>{note('Proliferar: pulso global único, no un sonido por contador.');await queueGlobalBoardEffectAnimation({kind:'proliferate',isLocal:true},options());},
+    proliferate:async()=>{note('Amplificar: pulso global único, no un sonido por contador.');await queueGlobalBoardEffectAnimation({kind:'proliferate',isLocal:true},options());},
     controlChange:async()=>{note('Cambio de control: el permanente cruza visualmente al otro lado.');await queueControlChangeAnimation({sourceSnapshot:def(2),fromIsLocal:false,toIsLocal:true,zoneName:'combat'},options());}
   };
   scenarios.all=async()=>{for(const key of ['land','clash','multi','trample','first','double','shield','deathtouch','indestructible','player','counter','exile','bounce','draw','discard','sacrifice','graveyard','reanimate','landPlay','creatureEnter','supportEnter','planeswalkerEnter','fight','shuffle','tokens','transform','animateLand','spellCast','wipeCreatures','wipeLands','graveyardPurge','massLandReturn','fogGlobal','proliferate','controlChange'])await scenarios[key]();};

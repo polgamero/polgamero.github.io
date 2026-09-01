@@ -224,7 +224,7 @@ function awardMatchEndPoints(won) {
     });
 }
 
-// SECUENCIA OFICIAL DE PASOS Y FASES MTG
+// SECUENCIA OFICIAL DE PASOS Y FASES Argentinia
 // 23.15.3 — los triggers que nacen durante Untap no pueden ir a la pila allí.
 // Se retienen y se agregan al mismo lote AP/NAP que los triggers de comienzo de Upkeep.
 let deferredBeginningPhaseTriggerEntries = [];
@@ -972,7 +972,7 @@ function executeDrawStep() {
       dispatchGameEvent({type:'card_drawn',controllerIsLocal:true,actorIsLocal:true,ownerIsLocal:true,card:drawnCard,zoneFrom:'library',zoneTo:'hand',cause:'draw_step'});
       logMsg(gameText('game.draw.local'));
     } else {
-      // Regla real de MTG: intentar robar de una biblioteca vacía es una forma legítima
+      // Regla real de Argentinia: intentar robar de una biblioteca vacía es una forma legítima
       // de perder la partida, no un "no pasa nada".
       logMsg(gameText('game.deckout.local'));
       state.gameOver = true;

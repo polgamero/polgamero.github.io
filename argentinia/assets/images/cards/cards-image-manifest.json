@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-28T20:11:12Z",
+  "generatedAt": "2026-09-01T03:11:20Z",
   "gitSha": null,
   "githubRunId": null,
   "pool": {
@@ -151,6 +151,13 @@
       "image": "caja_repuestos.png"
     },
     {
+      "id": "art_041",
+      "name": "Camioneta del Correo Fantasma",
+      "category": "artefactos",
+      "face": "front",
+      "image": "camioneta_del_correo_fantasma.png"
+    },
+    {
       "id": "art_072",
       "name": "Campana del Cabildo",
       "category": "artefactos",
@@ -215,10 +222,17 @@
     },
     {
       "id": "art_080",
-      "name": "Cronómetro del Banco Nación",
+      "name": "Cronómetro de la Bóveda Dorada",
       "category": "artefactos",
       "face": "front",
-      "image": "cronometro_del_banco_nacion.png"
+      "image": "cronometro_de_la_boveda_dorada.png"
+    },
+    {
+      "id": "art_049",
+      "name": "Cupé de la Ruta de los Espectros",
+      "category": "artefactos",
+      "face": "front",
+      "image": "cupe_de_la_ruta_de_los_espectros.png"
     },
     {
       "id": "art_038",
@@ -254,13 +268,6 @@
       "category": "artefactos",
       "face": "front",
       "image": "mate.png"
-    },
-    {
-      "id": "art_006",
-      "name": "El Rolls Royce de Ricky",
-      "category": "artefactos",
-      "face": "front",
-      "image": "rolls_royce_ricky.png"
     },
     {
       "id": "art_060",
@@ -375,6 +382,13 @@
       "image": "lectora_de_microfilm.png"
     },
     {
+      "id": "art_006",
+      "name": "Limusina del Magnate",
+      "category": "artefactos",
+      "face": "front",
+      "image": "limusina_del_magnate.png"
+    },
+    {
       "id": "art_034",
       "name": "Linterna del Sereno",
       "category": "artefactos",
@@ -383,10 +397,10 @@
     },
     {
       "id": "art_056",
-      "name": "Loto del Jardín Japonés",
+      "name": "Loto del Jardín Oriental",
       "category": "artefactos",
       "face": "front",
-      "image": "loto_del_jardin_japones.png"
+      "image": "loto_del_jardin_oriental.png"
     },
     {
       "id": "art_027",
@@ -523,10 +537,10 @@
     },
     {
       "id": "art_053",
-      "name": "Radio Spica Poseída",
+      "name": "Radio Portátil Poseída",
       "category": "artefactos",
       "face": "front",
-      "image": "radio_spica_poseida.png"
+      "image": "radio_portatil_poseida.png"
     },
     {
       "id": "art_030",
@@ -534,13 +548,6 @@
       "category": "artefactos",
       "face": "front",
       "image": "radio_valvulas.png"
-    },
-    {
-      "id": "art_041",
-      "name": "Rastrojero del Correo",
-      "category": "artefactos",
-      "face": "front",
-      "image": "rastrojero_del_correo.png"
     },
     {
       "id": "art_021",
@@ -614,10 +621,10 @@
     },
     {
       "id": "art_071",
-      "name": "Tablero Sinóptico de Atucha",
+      "name": "Tablero Sinóptico de la Central Fantasma",
       "category": "artefactos",
       "face": "front",
-      "image": "tablero_sinoptico_de_atucha.png"
+      "image": "tablero_sinoptico_de_la_central_fantasma.png"
     },
     {
       "id": "art_082",
@@ -646,13 +653,6 @@
       "category": "artefactos",
       "face": "front",
       "image": "ticket_de_acceso_temporal.png"
-    },
-    {
-      "id": "art_049",
-      "name": "Torino de la Ruta de los Espectros",
-      "category": "artefactos",
-      "face": "front",
-      "image": "torino_de_la_ruta_de_los_espectros.png"
     },
     {
       "id": "art_022",
@@ -1426,10 +1426,10 @@
     },
     {
       "id": "crea_284",
-      "name": "Abuela del Tupper",
+      "name": "Abuela del Envase Hermético",
       "category": "criaturas",
       "face": "front",
-      "image": "abuela_del_tupper.png"
+      "image": "abuela_del_envase_hermetico.png"
     },
     {
       "id": "crea_129",
@@ -1453,18 +1453,18 @@
       "image": "agronoma_de_parque_leloir.png"
     },
     {
-      "id": "crea_031",
-      "name": "Alberto Samid",
-      "category": "criaturas",
-      "face": "front",
-      "image": "alberto_samid.png"
-    },
-    {
       "id": "crea_025",
       "name": "Alma en Pena",
       "category": "criaturas",
       "face": "front",
       "image": "alma_en_pena.png"
+    },
+    {
+      "id": "crea_023",
+      "name": "Anfitriona del Banquete Eterno",
+      "category": "criaturas",
+      "face": "front",
+      "image": "anfitriona_del_banquete_eterno.png"
     },
     {
       "id": "crea_109",
@@ -1521,6 +1521,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "arriero_del_paso_colorado.png"
+    },
+    {
+      "id": "crea_026",
+      "name": "Artista de la Instalación Imposible",
+      "category": "criaturas",
+      "face": "front",
+      "image": "artista_de_la_instalacion_imposible.png"
     },
     {
       "id": "crea_351",
@@ -1747,18 +1754,18 @@
       "image": "cadete_de_guardia_diferida.png"
     },
     {
+      "id": "crea_323",
+      "name": "Cadete del Observatorio Meteorológico",
+      "category": "criaturas",
+      "face": "front",
+      "image": "cadete_del_observatorio_meteorologico.png"
+    },
+    {
       "id": "crea_263",
       "name": "Cadete del Palacio Barolo",
       "category": "criaturas",
       "face": "front",
       "image": "cadete_del_palacio_barolo.png"
-    },
-    {
-      "id": "crea_323",
-      "name": "Cadete del Servicio Meteorológico",
-      "category": "criaturas",
-      "face": "front",
-      "image": "cadete_del_servicio_meteorologico.png"
     },
     {
       "id": "crea_283",
@@ -1773,6 +1780,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "calderero_tren_quemado.png"
+    },
+    {
+      "id": "crea_021",
+      "name": "Caminante del Fin del Mundo",
+      "category": "criaturas",
+      "face": "front",
+      "image": "caminante_del_fin_del_mundo.png"
     },
     {
       "id": "crea_136",
@@ -1866,13 +1880,6 @@
       "image": "centinela_encantada.png"
     },
     {
-      "id": "crea_028",
-      "name": "Charly García",
-      "category": "criaturas",
-      "face": "front",
-      "image": "charly_garcia.png"
-    },
-    {
       "id": "crea_035",
       "name": "Chatarrero con megáfono",
       "category": "criaturas",
@@ -1941,6 +1948,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "comensal_del_tamal_negro.png"
+    },
+    {
+      "id": "crea_032",
+      "name": "Conductora del Living Dorado",
+      "category": "criaturas",
+      "face": "front",
+      "image": "conductora_del_living_dorado.png"
     },
     {
       "id": "crea_265",
@@ -2216,27 +2230,6 @@
       "image": "centinela_chatarra.png"
     },
     {
-      "id": "crea_015",
-      "name": "El Comandante",
-      "category": "criaturas",
-      "face": "front",
-      "image": "comandante_ricky.png"
-    },
-    {
-      "id": "crea_014",
-      "name": "El Diego del '86",
-      "category": "criaturas",
-      "face": "front",
-      "image": "diego_86.png"
-    },
-    {
-      "id": "crea_021",
-      "name": "El Eternauta",
-      "category": "criaturas",
-      "face": "front",
-      "image": "eternauta.png"
-    },
-    {
       "id": "crea_071",
       "name": "El Familiar",
       "category": "criaturas",
@@ -2256,13 +2249,6 @@
       "category": "criaturas",
       "face": "front",
       "image": "firulais.png"
-    },
-    {
-      "id": "crea_027",
-      "name": "El Flaco Spinetta",
-      "category": "criaturas",
-      "face": "front",
-      "image": "spinetta.png"
     },
     {
       "id": "crea_003",
@@ -2396,6 +2382,13 @@
       "category": "criaturas",
       "face": "back",
       "image": "espiritu_del_salto_eterno.png"
+    },
+    {
+      "id": "crea_033",
+      "name": "Estilista del Futuro",
+      "category": "criaturas",
+      "face": "front",
+      "image": "estilista_del_futuro.png"
     },
     {
       "id": "crea_256",
@@ -2791,10 +2784,10 @@
     },
     {
       "id": "crea_292",
-      "name": "Jardinera de la República de los Niños",
+      "name": "Jardinera de la Ciudad en Miniatura",
       "category": "criaturas",
       "face": "front",
-      "image": "jardinera_de_la_republica_de_los_ninos.png"
+      "image": "jardinera_de_la_ciudad_en_miniatura.png"
     },
     {
       "id": "crea_253",
@@ -2837,6 +2830,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "la_dama_blanca_del_kilometro_cero.png"
+    },
+    {
+      "id": "crea_029",
+      "name": "La Diva Magnética",
+      "category": "criaturas",
+      "face": "front",
+      "image": "la_diva_magnetica.png"
     },
     {
       "id": "crea_225",
@@ -2930,18 +2930,18 @@
       "image": "maestro_de_mesa_del_velorio.png"
     },
     {
+      "id": "crea_015",
+      "name": "Magnate del Show Infinito",
+      "category": "criaturas",
+      "face": "front",
+      "image": "magnate_del_show_infinito.png"
+    },
+    {
       "id": "crea_147",
       "name": "Malabarista del Semáforo",
       "category": "criaturas",
       "face": "front",
       "image": "malabarista_semaforo.png"
-    },
-    {
-      "id": "crea_026",
-      "name": "Marta Minujín",
-      "category": "criaturas",
-      "face": "front",
-      "image": "marta_minujin.png"
     },
     {
       "id": "crea_022",
@@ -2993,11 +2993,11 @@
       "image": "mensajero_de_ultima_hora.png"
     },
     {
-      "id": "crea_023",
-      "name": "Mirth LaGrande",
+      "id": "crea_030",
+      "name": "Metalero de las Sierras",
       "category": "criaturas",
       "face": "front",
-      "image": "mirtha.png"
+      "image": "metalero_de_las_sierras.png"
     },
     {
       "id": "crea_352",
@@ -3012,13 +3012,6 @@
       "category": "criaturas",
       "face": "front",
       "image": "monigote_alambrado.png"
-    },
-    {
-      "id": "crea_029",
-      "name": "Moria Casán",
-      "category": "criaturas",
-      "face": "front",
-      "image": "moria_casan.png"
     },
     {
       "id": "crea_097",
@@ -3169,10 +3162,10 @@
     },
     {
       "id": "crea_286",
-      "name": "Paramédica del Hospital Posadas",
+      "name": "Paramédica de la Guardia Infinita",
       "category": "criaturas",
       "face": "front",
-      "image": "paramedica_del_hospital_posadas.png"
+      "image": "paramedica_de_la_guardia_infinita.png"
     },
     {
       "id": "crea_186",
@@ -3196,18 +3189,18 @@
       "image": "patron_de_la_bodega_hundida.png"
     },
     {
-      "id": "crea_279",
-      "name": "Perito de Sistemas del RENAPER",
-      "category": "criaturas",
-      "face": "front",
-      "image": "perito_de_sistemas_del_renaper.png"
-    },
-    {
       "id": "crea_156",
       "name": "Perito de la Morgue Fluvial",
       "category": "criaturas",
       "face": "front",
       "image": "perito_morgue_fluvial.png"
+    },
+    {
+      "id": "crea_279",
+      "name": "Perito del Registro Fantasma",
+      "category": "criaturas",
+      "face": "front",
+      "image": "perito_del_registro_fantasma.png"
     },
     {
       "id": "crea_011",
@@ -3280,6 +3273,13 @@
       "image": "peon_del_vinedo_de_altura.png"
     },
     {
+      "id": "crea_028",
+      "name": "Pianista del Apagón Eterno",
+      "category": "criaturas",
+      "face": "front",
+      "image": "pianista_del_apagon_eterno.png"
+    },
+    {
       "id": "crea_010",
       "name": "Pibe de la Cuadra",
       "category": "criaturas",
@@ -3327,6 +3327,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "pirotecnica_de_la_fiesta_chica.png"
+    },
+    {
+      "id": "crea_027",
+      "name": "Poeta del Rock Celeste",
+      "category": "criaturas",
+      "face": "front",
+      "image": "poeta_del_rock_celeste.png"
     },
     {
       "id": "crea_216",
@@ -3498,10 +3505,10 @@
     },
     {
       "id": "crea_301",
-      "name": "Relator de Radio Nacional",
+      "name": "Relator de la Radio de las Mil Historias",
       "category": "criaturas",
       "face": "front",
-      "image": "relator_de_radio_nacional.png"
+      "image": "relator_de_la_radio_de_las_mil_historias.png"
     },
     {
       "id": "crea_319",
@@ -3532,18 +3539,11 @@
       "image": "revisor_de_terminal.png"
     },
     {
-      "id": "crea_030",
-      "name": "Ricardo Iorio",
+      "id": "crea_031",
+      "name": "Rey del Frigorífico",
       "category": "criaturas",
       "face": "front",
-      "image": "ricardo_iorio.png"
-    },
-    {
-      "id": "crea_033",
-      "name": "Roberto Giordano",
-      "category": "criaturas",
-      "face": "front",
-      "image": "roberto_giordano.png"
+      "image": "rey_del_frigorifico.png"
     },
     {
       "id": "crea_016",
@@ -3679,13 +3679,6 @@
       "image": "supervisora_de_senales_de_retiro.png"
     },
     {
-      "id": "crea_032",
-      "name": "Susana Giménez",
-      "category": "criaturas",
-      "face": "front",
-      "image": "susana_gimenez.png"
-    },
-    {
       "id": "crea_326",
       "name": "Séptimo Hijo del Barrio",
       "category": "criaturas",
@@ -3778,10 +3771,10 @@
     },
     {
       "id": "crea_290",
-      "name": "Técnico de Atucha II",
+      "name": "Técnico de la Usina de Medianoche",
       "category": "criaturas",
       "face": "front",
-      "image": "tecnico_de_atucha_ii.png"
+      "image": "tecnico_de_la_usina_de_medianoche.png"
     },
     {
       "id": "crea_007",
@@ -3964,6 +3957,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "anima_del_ultimo_tren.png"
+    },
+    {
+      "id": "crea_014",
+      "name": "Ídolo del Potrero Imposible",
+      "category": "criaturas",
+      "face": "front",
+      "image": "idolo_del_potrero_imposible.png"
     },
     {
       "id": "crea_111",
@@ -4204,6 +4204,13 @@
       "image": "el_dia_finalmente_llega.png"
     },
     {
+      "id": "ench_004",
+      "name": "El Equipo de los Once Sueños",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "equipo_de_los_once_suenos.png"
+    },
+    {
       "id": "ench_083",
       "name": "El Pacto de la Salamanca",
       "category": "encantamientos",
@@ -4338,10 +4345,10 @@
     },
     {
       "id": "ench_086",
-      "name": "La Final del Ochenta y Seis",
+      "name": "La Final de los Once Sueños",
       "category": "encantamientos",
       "face": "front",
-      "image": "la_final_del_ochenta_y_seis.png"
+      "image": "la_final_de_los_once_suenos.png"
     },
     {
       "id": "ench_081",
@@ -4391,13 +4398,6 @@
       "category": "encantamientos",
       "face": "back",
       "image": "la_salamanca_despierta.png"
-    },
-    {
-      "id": "ench_004",
-      "name": "La Scaloneta",
-      "category": "encantamientos",
-      "face": "front",
-      "image": "scaloneta.png"
     },
     {
       "id": "ench_082",
@@ -4611,10 +4611,10 @@
     },
     {
       "id": "ench_072",
-      "name": "Sala de Guardia del Posadas",
+      "name": "Sala de Guardia Infinita",
       "category": "encantamientos",
       "face": "front",
-      "image": "sala_de_guardia_del_posadas.png"
+      "image": "sala_de_guardia_infinita.png"
     },
     {
       "id": "ench_043",
@@ -5051,6 +5051,13 @@
       "image": "cortocircuito_del_transformador.png"
     },
     {
+      "id": "inst_017",
+      "name": "Cronista de Último Momento",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "cronista_de_ultimo_momento.png"
+    },
+    {
       "id": "inst_101",
       "name": "Cruce de Caminos en la Pulpería",
       "category": "instantaneos",
@@ -5317,6 +5324,13 @@
       "image": "interferencia_de_linea.png"
     },
     {
+      "id": "inst_011",
+      "name": "Jugada Prohibida",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "jugada_prohibida.png"
+    },
+    {
       "id": "inst_029",
       "name": "Juramento a Medias",
       "category": "instantaneos",
@@ -5345,25 +5359,11 @@
       "image": "mancha_en_el_mantel.png"
     },
     {
-      "id": "inst_011",
-      "name": "Mano de Dios",
-      "category": "instantaneos",
-      "face": "front",
-      "image": "mano_dios.png"
-    },
-    {
       "id": "inst_085",
       "name": "Manotazo a Ciegas",
       "category": "instantaneos",
       "face": "front",
       "image": "manotazo_a_ciegas.png"
-    },
-    {
-      "id": "inst_017",
-      "name": "Mauro Viale",
-      "category": "instantaneos",
-      "face": "front",
-      "image": "mauro_viale.png"
     },
     {
       "id": "inst_093",
@@ -5857,10 +5857,10 @@
     },
     {
       "id": "tier_015",
-      "name": "Biblioteca Nacional",
+      "name": "Biblioteca de la República Invisible",
       "category": "tierras",
       "face": "front",
-      "image": "biblioteca_nacional.png"
+      "image": "biblioteca_de_la_republica_invisible.png"
     },
     {
       "id": "tier_058",
@@ -5905,6 +5905,13 @@
       "image": "cerro_siete_colores.png"
     },
     {
+      "id": "tier_004",
+      "name": "Coloso de la Avenida",
+      "category": "tierras",
+      "face": "front",
+      "image": "coloso_de_la_avenida.png"
+    },
+    {
       "id": "tier_018",
       "name": "Cordillera de los Andes",
       "category": "tierras",
@@ -5945,13 +5952,6 @@
       "category": "tierras",
       "face": "front",
       "image": "el_chalten.png"
-    },
-    {
-      "id": "tier_004",
-      "name": "El Monumental",
-      "category": "tierras",
-      "face": "front",
-      "image": "monumental.png"
     },
     {
       "id": "tier_002",
@@ -6036,13 +6036,6 @@
       "category": "tierras",
       "face": "front",
       "image": "islote_de_camalotes.png"
-    },
-    {
-      "id": "tier_001",
-      "name": "La Bombonera",
-      "category": "tierras",
-      "face": "front",
-      "image": "bombonera.png"
     },
     {
       "id": "tier_011",
@@ -6248,6 +6241,13 @@
       "image": "taller_bajo_el_puente.png"
     },
     {
+      "id": "tier_001",
+      "name": "Templo de la Ribera",
+      "category": "tierras",
+      "face": "front",
+      "image": "templo_de_la_ribera.png"
+    },
+    {
       "id": "tier_022",
       "name": "Termas de Río Hondo",
       "category": "tierras",
@@ -6344,13 +6344,13 @@
       "cardName": "Heladera del Club",
       "category": "artefactos",
       "path": "activatedAbility.effect",
-      "tokenName": "Tupper",
+      "tokenName": "Envase hermético",
       "tokenType": "Artefacto — Comida",
       "amount": 1,
       "power": null,
       "toughness": null,
       "keywords": [],
-      "image": "token_tupper.png"
+      "image": "token_envase_hermetico.png"
     },
     {
       "cardId": "art_067",
@@ -6581,16 +6581,16 @@
     },
     {
       "cardId": "crea_284",
-      "cardName": "Abuela del Tupper",
+      "cardName": "Abuela del Envase Hermético",
       "category": "criaturas",
       "path": "etbEffect",
-      "tokenName": "Tupper",
+      "tokenName": "Envase hermético",
       "tokenType": "Artefacto — Comida",
       "amount": 1,
       "power": null,
       "toughness": null,
       "keywords": [],
-      "image": "token_tupper.png"
+      "image": "token_envase_hermetico.png"
     },
     {
       "cardId": "inst_118",
@@ -6813,13 +6813,13 @@
       "cardName": "Viandas del Club",
       "category": "conjuros",
       "path": "effect",
-      "tokenName": "Tupper",
+      "tokenName": "Envase hermético",
       "tokenType": "Artefacto — Comida",
       "amount": 2,
       "power": null,
       "toughness": null,
       "keywords": [],
-      "image": "token_tupper.png"
+      "image": "token_envase_hermetico.png"
     },
     {
       "cardId": "conj_085",
@@ -6940,7 +6940,7 @@
     },
     {
       "cardId": "ench_086",
-      "cardName": "La Final del Ochenta y Seis",
+      "cardName": "La Final de los Once Sueños",
       "category": "encantamientos",
       "path": "saga.chapters.0.effect",
       "tokenName": "Vecino",
@@ -7264,6 +7264,45 @@
       "image": "token_dolar_blue.png"
     },
     {
+      "cardId": "art_065",
+      "cardName": "Heladera del Club",
+      "category": "artefactos",
+      "path": "activatedAbility.effect",
+      "tokenName": "Envase hermético",
+      "tokenType": "Artefacto — Comida",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_envase_hermetico.png"
+    },
+    {
+      "cardId": "conj_084",
+      "cardName": "Viandas del Club",
+      "category": "conjuros",
+      "path": "effect",
+      "tokenName": "Envase hermético",
+      "tokenType": "Artefacto — Comida",
+      "amount": 2,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_envase_hermetico.png"
+    },
+    {
+      "cardId": "crea_284",
+      "cardName": "Abuela del Envase Hermético",
+      "category": "criaturas",
+      "path": "etbEffect",
+      "tokenName": "Envase hermético",
+      "tokenType": "Artefacto — Comida",
+      "amount": 1,
+      "power": null,
+      "toughness": null,
+      "keywords": [],
+      "image": "token_envase_hermetico.png"
+    },
+    {
       "cardId": "crea_168",
       "cardName": "Maestra de Escuela Rural",
       "category": "criaturas",
@@ -7473,45 +7512,6 @@
       "image": "token_toro.png"
     },
     {
-      "cardId": "art_065",
-      "cardName": "Heladera del Club",
-      "category": "artefactos",
-      "path": "activatedAbility.effect",
-      "tokenName": "Tupper",
-      "tokenType": "Artefacto — Comida",
-      "amount": 1,
-      "power": null,
-      "toughness": null,
-      "keywords": [],
-      "image": "token_tupper.png"
-    },
-    {
-      "cardId": "conj_084",
-      "cardName": "Viandas del Club",
-      "category": "conjuros",
-      "path": "effect",
-      "tokenName": "Tupper",
-      "tokenType": "Artefacto — Comida",
-      "amount": 2,
-      "power": null,
-      "toughness": null,
-      "keywords": [],
-      "image": "token_tupper.png"
-    },
-    {
-      "cardId": "crea_284",
-      "cardName": "Abuela del Tupper",
-      "category": "criaturas",
-      "path": "etbEffect",
-      "tokenName": "Tupper",
-      "tokenType": "Artefacto — Comida",
-      "amount": 1,
-      "power": null,
-      "toughness": null,
-      "keywords": [],
-      "image": "token_tupper.png"
-    },
-    {
       "cardId": "conj_039",
       "cardName": "Olla Popular",
       "category": "conjuros",
@@ -7617,7 +7617,7 @@
     },
     {
       "cardId": "ench_086",
-      "cardName": "La Final del Ochenta y Seis",
+      "cardName": "La Final de los Once Sueños",
       "category": "encantamientos",
       "path": "saga.chapters.0.effect",
       "tokenName": "Vecino",

@@ -336,7 +336,7 @@ export function executeRivalAttack() {
 
   // --- VALIDACIÓN DE AMENAZA (JUGADOR DEFIENDE) ---
   // 23.17.5.2 — no escondemos la causa detrás de un segundo mensaje genérico. Si una
-  // Amenaza quedó con exactamente un bloqueador, explicamos la regla y que reiniciamos
+  // Intimidante quedó con exactamente un bloqueador, explicamos la regla y que reiniciamos
   // TODAS las asignaciones para que el jugador pueda reconstruir una declaración legal.
   const menaceViolations = [];
 
@@ -382,8 +382,8 @@ function isCreatureDead(item) {
   return dmg >= getEffectiveToughness(item) || (item.tookDeathtouch && dmg > 0);
 }
 
-// Sólo para la película visual: Indestructible evita destrucción por daño letal/deathtouch,
-// pero NO salva una resistencia efectiva <= 0 (p. ej. Infectar / contadores -1/-1).
+// Sólo para la película visual: Irrompible evita destrucción por daño letal/deathtouch,
+// pero NO salva una resistencia efectiva <= 0 (p. ej. Contagio / contadores -1/-1).
 function willCreatureLeaveFromCombatLethal(item) {
   const toughness = getEffectiveToughness(item);
   if (toughness <= 0) return true;
@@ -486,12 +486,12 @@ export async function resolveCombatDamage() {
   finishCombatDamageStep(attackersArray, defendersArray);
 }
 
-// Infectar (regla real 702.90): una criatura con Infectar hace TODO su daño de combate de
+// Contagio (regla real 702.90): una criatura con Contagio hace TODO su daño de combate de
 // forma alternativa — a otra criatura, en vez de dañarla normalmente, le pone contadores
 // -1/-1 (que además YA reducen su resistencia efectiva sola, vía getEffectiveToughness —
-// el mismo sistema que ya usa Proliferar y Lealtad); a un jugador, en vez de bajarle HP, le
+// el mismo sistema que ya usa Amplificar y Creencia); a un jugador, en vez de bajarle HP, le
 // pone contadores de Veneno. A un Planeswalker NO le cambia nada: sigue siendo pérdida de
-// Lealtad normal, como en MTG real (Infectar solo altera daño a jugadores y a criaturas).
+// Creencia normal, como en el contrato canónico de Argentinia (Contagio solo altera daño a jugadores y a criaturas).
 function gainLifeFromCombat(isLocal, amount, sourceItem = null) {
   const n=Math.max(0,Number(amount)||0); if(n<=0) return;
   if(isLocal) state.localHP += n; else state.rivalHP += n;
@@ -567,7 +567,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
     // 23.19.4.1 — Combat Impact II captura TODA la escena antes de mutar daño: atacante,
     // bloqueadores en su orden real y, si hay Arrollar, el badge del jugador. La película
     // sigue siendo puramente narrativa: el engine resuelve simultaneidad / First Strike /
-    // Double Strike / Shield / Deathtouch / Indestructible antes de encolarla.
+    // Double Strike / Shield / Deathtouch / Irrompible antes de encolarla.
     const combatVisual = attackerDealsThisStep && aliveBlockers.length > 0
       ? {
           attackerSnapshot:captureCardVisual(attacker, isLocalAttacking ? 'local' : 'rival'),
@@ -591,7 +591,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
 
       // Protección de [color]: si el atacante tiene Protección del color de ESTE
       // bloqueador, ese bloqueador en particular no le hace nada — ni daño, ni Toque
-      // Mortal, ni le da Vínculo Vital a su controlador (sin daño real, no hay nada que
+      // Mortal, ni le da Absorción a su controlador (sin daño real, no hay nada que
       // curar). Caso raro (normalmente canBlock ya frena el bloqueo de entrada), pero
       // cubre situaciones donde el atacante gana Protección recién después de bloquearse.
       if (getProtectionMatch(attacker, blocker.card.colors || [])) {
@@ -599,7 +599,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
       }
 
       // Se aplica POR bloqueador (no como un total acumulado) para que un bloqueo múltiple
-      // con bloqueadores mezclados (algunos con Infectar, otros sin) redirija cada parte
+      // con bloqueadores mezclados (algunos con Contagio, otros sin) redirija cada parte
       // por separado — cada uno decide su propio destino (contador -1/-1 o daño normal).
       const blockerDamageDealt = dealCombatDamageToCreature(blocker, attacker, bPower);
 
@@ -629,7 +629,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
 
     if (!wasBlocked) {
       if (attacker.attackTarget) {
-        // Redirigido a un Planeswalker: el daño le resta Lealtad directo, nunca golpea al
+        // Redirigido a un Planeswalker: el daño le resta Creencia directo, nunca golpea al
         // jugador, y NO cuenta como "daño de combate al jugador" (no dispara
         // combatDamageTrigger — esa es específicamente sobre pegarle a un jugador).
         const damageDealt = dealCombatDamageToPlaneswalker(attacker, attacker.attackTarget, attackerPower);
@@ -753,7 +753,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
         if (blockerProtected) {
           // Protección de [color]: SÍ podía elegir bloquear (eso no se lo prohíbe), pero
           // el daño se previene entero al momento de aplicarse — mismo criterio que en
-          // MTG real, la asignación ya ocurrió (no le "regala" ese poder a otro
+          // Argentinia canónico, la asignación ya ocurrió (no le "regala" ese poder a otro
           // bloqueador ni al jugador), simplemente ese daño puntual nunca llega a pasar.
           logMsg(gameText('combat.protection.prevented', { blocker: blocker.card.name, color: COLOR_LABELS[blockerProtected] || blockerProtected, attacker: attacker.card.name }));
         } else {
@@ -768,7 +768,7 @@ async function resolveDamageSubStep(combatPairs, isLocalAttacking, stepFilter) {
     if (useManual) {
       if (manualPlayerDamage > 0) {
         if (attacker.attackTarget) {
-          // Arrollar redirigido a un Planeswalker: el sobrante también le come Lealtad a
+          // Arrollar redirigido a un Planeswalker: el sobrante también le come Creencia a
           // ÉL, no a la cara del jugador — antes este camino (asignación manual) no
           // chequeaba attackTarget para nada y siempre le pegaba al jugador.
           const actualDamage = dealCombatDamageToPlaneswalker(attacker, attacker.attackTarget, manualPlayerDamage);

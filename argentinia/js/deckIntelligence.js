@@ -28,7 +28,7 @@ const ARCHETYPES = Object.freeze({
   typal:      { label:'Typal', lands:24, themes:['typal'], roleTargets:{ lord:4, threat:17, interaction:5, cardAdvantage:3 }, curve:{1:3,2:9,3:10,4:7,5:4,'6+':2} },
   artifacts:  { label:'Artefactos', lands:24, themes:['artifacts'], roleTargets:{ enabler:6, payoff:5, threat:13, interaction:5, cardAdvantage:3 }, curve:{1:3,2:8,3:9,4:7,5:5,'6+':3} },
   spells:     { label:'Spells', lands:23, themes:['spells'], roleTargets:{ interaction:8, cardAdvantage:5, threat:10, payoff:4 }, curve:{1:4,2:10,3:9,4:6,5:3,'6+':2} },
-  suspend:    { label:'Suspend / Tiempo', lands:24, themes:['suspend','exile'], roleTargets:{ enabler:6, payoff:4, threat:12, interaction:5, cardAdvantage:3 }, curve:{1:2,2:8,3:9,4:7,5:5,'6+':3} },
+  suspend:    { label:'En espera / Tiempo', lands:24, themes:['suspend','exile'], roleTargets:{ enabler:6, payoff:4, threat:12, interaction:5, cardAdvantage:3 }, curve:{1:2,2:8,3:9,4:7,5:5,'6+':3} },
   transform:  { label:'Transform', lands:24, themes:['transform'], roleTargets:{ enabler:5, payoff:4, threat:15, interaction:5 }, curve:{1:2,2:8,3:9,4:8,5:5,'6+':3} },
   ramp:       { label:'Ramp', lands:25, themes:['ramp'], roleTargets:{ ramp:7, threat:13, interaction:5, finisher:5 }, curve:{1:1,2:6,3:8,4:7,5:6,'6+':8} }
 });

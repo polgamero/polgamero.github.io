@@ -23,7 +23,7 @@ assert.ok(ui.includes("effectType === 'destroy_land'"));
 assert.ok(ui.includes("effectType === 'destroy_nonbasic_land'"));
 assert.ok(ui.includes("landFilter = effectType === 'destroy_nonbasic_land' ? 'nonbasic'"));
 assert.ok(main.includes("targetObj.type === 'land'"));
-assert.ok(main.includes("Ward es una habilidad de PERMANENTE"));
+assert.ok(main.includes("Impuesto es una habilidad de PERMANENTE"));
 assert.ok(main.includes("effect.type === 'destroy_land' || effect.type === 'destroy_nonbasic_land'"));
 assert.ok(main.includes("card.effect.type === 'destroy_land' || card.effect.type === 'destroy_nonbasic_land'"), 'casteo debe inferir target Tierra aunque requiresTarget se omita');
 assert.ok(stack.includes("effectToApply.type === 'destroy_nonbasic_land'"));

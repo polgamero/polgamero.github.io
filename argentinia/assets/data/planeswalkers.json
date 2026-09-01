@@ -170,7 +170,7 @@
       {
         "cost": -2,
         "name": "-2: Fogonazo",
-        "text": "Creá dos fichas de criatura Incendiario 1/1 con Prisa.",
+        "text": "Creá dos fichas de criatura Incendiario 1/1 con Apuro.",
         "effect": {
           "type": "create_tokens",
           "amount": 2,
@@ -233,7 +233,7 @@
       {
         "cost": -8,
         "name": "-8: Renacer del Delta",
-        "text": "Creá tres fichas de criatura Bestia del Delta 3/3 con Arrollar.",
+        "text": "Creá tres fichas de criatura Bestia del Delta 3/3 con Arrolla.",
         "effect": {
           "type": "create_tokens",
           "amount": 3,
@@ -307,7 +307,7 @@
       "U",
       "R"
     ],
-    "text": "Siempre que lances un Instantáneo o Conjuro, Adiviná 1.",
+    "text": "Siempre que lances un Instantáneo o Conjuro, Anticipá 1.",
     "flavorText": "El barrio se queda sin luz cada vez que llega al estribillo.",
     "image": "la_negra_del_bandoneon_electrico.png",
     "loyalty": 5,
@@ -369,7 +369,7 @@
       {
         "cost": 1,
         "name": "+1: Fermentar la Marca",
-        "text": "Proliferá.",
+        "text": "Amplificá.",
         "effect": {
           "type": "proliferate"
         }
@@ -387,7 +387,7 @@
       {
         "cost": -7,
         "name": "-7: Cosecha Negra",
-        "text": "Creá tres fichas Sarmiento Tóxico 2/2 con Infectar.",
+        "text": "Creá tres fichas Sarmiento Tóxico 2/2 con Contagio.",
         "effect": {
           "type": "create_tokens",
           "amount": 3,

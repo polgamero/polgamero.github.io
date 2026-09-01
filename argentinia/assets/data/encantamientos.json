@@ -61,7 +61,7 @@
   },
   {
     "id": "ench_004",
-    "name": "La Scaloneta",
+    "name": "El Equipo de los Once Sueños",
     "type": "Encantamiento Legendario",
     "manaCost": "{3}{W}{R}",
     "cmc": 5,
@@ -71,10 +71,10 @@
       "R"
     ],
     "text": "Al comienzo de tu paso de Mantenimiento, robás una carta.",
-    "flavorText": "Hermoso mañana, ¿verdad?",
+    "flavorText": "Once entran a la cancha. Todo el barrio sueña el mismo partido.",
     "requiresTarget": false,
     "adjunta": false,
-    "image": "scaloneta.png",
+    "image": "equipo_de_los_once_suenos.png",
     "upkeepTrigger": {
       "type": "draw",
       "amount": 1
@@ -436,7 +436,7 @@
     "colors": [
       "G"
     ],
-    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, ganás 1 Punto de Vida.",
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, ganás 1 Punto de Vida.",
     "flavorText": "Se agarran fuerte de donde pueden, y no las mueve nadie.",
     "image": "raices_terraza.png",
     "keywords": [],
@@ -494,7 +494,7 @@
     "colors": [
       "G"
     ],
-    "text": "Encantar criatura. La criatura encantada tiene Ward {2}.",
+    "text": "Encantar criatura. La criatura encantada tiene Impuesto {2}.",
     "flavorText": "El clan entero responde si alguien se atreve a tocarla.",
     "effect": null,
     "requiresTarget": true,
@@ -519,7 +519,7 @@
     "colors": [
       "U"
     ],
-    "text": "Siempre que lances un hechizo Instantáneo o Conjuro, Adiviná 1.",
+    "text": "Siempre que lances un hechizo Instantáneo o Conjuro, Anticipá 1.",
     "flavorText": "Fluye por debajo de todo, sin que nadie la vea pasar.",
     "image": "corriente_subterranea.png",
     "keywords": [],
@@ -585,7 +585,7 @@
     "colors": [
       "W"
     ],
-    "text": "Encantar criatura que controlás. La criatura encantada obtiene +1/+1 y tiene Vigilancia.",
+    "text": "Encantar criatura que controlás. La criatura encantada obtiene +1/+1 y tiene Alerta.",
     "flavorText": "Se ata una vez. Se recuerda cada vez que toca salir.",
     "effect": null,
     "requiresTarget": true,
@@ -665,7 +665,7 @@
     "colors": [
       "R"
     ],
-    "text": "Encantar criatura que controlás. La criatura encantada tiene Amenaza.",
+    "text": "Encantar criatura que controlás. La criatura encantada tiene Intimidante.",
     "flavorText": "Se usa aunque hagan treinta grados.",
     "effect": null,
     "requiresTarget": true,
@@ -690,7 +690,7 @@
     "colors": [
       "R"
     ],
-    "text": "Encantar criatura que controlás. La criatura encantada obtiene +1/+1 y tiene Prisa.",
+    "text": "Encantar criatura que controlás. La criatura encantada obtiene +1/+1 y tiene Apuro.",
     "flavorText": "No hace al caballo más rápido. Le recuerda que tiene apuro.",
     "effect": null,
     "requiresTarget": true,
@@ -744,7 +744,7 @@
     "colors": [
       "U"
     ],
-    "text": "Al comienzo de tu paso de Mantenimiento, Adiviná 1.",
+    "text": "Al comienzo de tu paso de Mantenimiento, Anticipá 1.",
     "flavorText": "La radio no está enchufada, pero todas las noches alguien pide una canción.",
     "image": "frecuencia_fantasma.png",
     "keywords": [],
@@ -763,7 +763,7 @@
     "colors": [
       "U"
     ],
-    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, Adiviná 1.",
+    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, Anticipá 1.",
     "flavorText": "Todo lo que llega a la costa mueve algo que no se ve.",
     "image": "marea_de_fondo.png",
     "keywords": [],
@@ -782,7 +782,7 @@
     "colors": [
       "B"
     ],
-    "text": "Al comienzo de tu paso de Mantenimiento, Vigilá 1.",
+    "text": "Al comienzo de tu paso de Mantenimiento, Chusmeá 1.",
     "flavorText": "Los nombres están en orden. Las fechas, no siempre.",
     "image": "cuaderno_sepulturero.png",
     "keywords": [],
@@ -842,7 +842,7 @@
     "colors": [
       "R"
     ],
-    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, le hacés 1 de daño al jugador rival.",
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, le hacés 1 de daño al jugador rival.",
     "flavorText": "A la siesta hasta la sombra quema.",
     "image": "asfalto_hirviendo.png",
     "keywords": [],
@@ -861,7 +861,7 @@
     "colors": [
       "G"
     ],
-    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, creá una ficha de criatura Brote 1/1.",
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, creá una ficha de criatura Brote 1/1.",
     "flavorText": "Le tiraron tierra encima. Lo tomó como una invitación.",
     "image": "brotacion_terraplen.png",
     "keywords": [],
@@ -887,7 +887,7 @@
     "colors": [
       "W"
     ],
-    "text": "Tus criaturas tienen Vigilancia.",
+    "text": "Tus criaturas tienen Alerta.",
     "flavorText": "En la cuadra siempre hay una ventana con la luz prendida.",
     "image": "turno_de_guardia.png",
     "keywords": [],
@@ -926,7 +926,7 @@
     "colors": [
       "U"
     ],
-    "text": "Al comienzo de tu mantenimiento, Adiviná 2.",
+    "text": "Al comienzo de tu mantenimiento, Anticipá 2.",
     "flavorText": "Doce pantallas, una silla y alguien que nunca pestañea.",
     "image": "sala_de_monitoreo.png",
     "keywords": [],
@@ -967,7 +967,7 @@
     "colors": [
       "B"
     ],
-    "text": "Siempre que muera una criatura, Vigilá 1.",
+    "text": "Siempre que muera una criatura, Chusmeá 1.",
     "flavorText": "Suena una vez por cada silla que queda vacía.",
     "image": "campanas_del_velorio.png",
     "keywords": [],
@@ -1044,7 +1044,7 @@
     "colors": [
       "G"
     ],
-    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, ganás 2 Puntos de Vida.",
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, ganás 2 Puntos de Vida.",
     "flavorText": "El alambrado marca el límite. Los animales nunca lo leyeron.",
     "image": "reserva_cercada.png",
     "keywords": [],
@@ -1126,7 +1126,7 @@
     "cmc": 3,
     "rarity": "Rare",
     "colors": [],
-    "text": "Tus criaturas tienen Vigilancia.",
+    "text": "Tus criaturas tienen Alerta.",
     "flavorText": "Mientras quede una radio prendida, el taller no cierra.",
     "image": "taller_de_la_medianoche.png",
     "staticEffect": {
@@ -1168,7 +1168,7 @@
       "U",
       "B"
     ],
-    "text": "Al comienzo de tu mantenimiento, Vigilá 1.",
+    "text": "Al comienzo de tu mantenimiento, Chusmeá 1.",
     "flavorText": "Lo archivaron tres veces. Las tres volvió al escritorio.",
     "image": "expediente_147_bis.png",
     "upkeepTrigger": {
@@ -1186,7 +1186,7 @@
     "colors": [
       "B"
     ],
-    "text": "Encantar criatura que controlás. La criatura encantada tiene Indestructible.",
+    "text": "Encantar criatura que controlás. La criatura encantada tiene Irrompible.",
     "flavorText": "La cinta se pudre. La promesa no.",
     "image": "promesa_atada_al_algarrobo.png",
     "effect": null,
@@ -1573,7 +1573,7 @@
   },
   {
     "id": "ench_072",
-    "name": "Sala de Guardia del Posadas",
+    "name": "Sala de Guardia Infinita",
     "type": "Encantamiento",
     "manaCost": "{2}{W}",
     "cmc": 3,
@@ -1583,7 +1583,7 @@
     ],
     "text": "Si fueran a ponerse uno o más contadores de Escudo sobre una criatura que controlás, se ponen el doble de esos contadores en vez de eso.",
     "flavorText": "Nadie entra solo a una emergencia.",
-    "image": "sala_de_guardia_del_posadas.png",
+    "image": "sala_de_guardia_infinita.png",
     "replacementEffect": {
       "event": "counter_add",
       "scope": "own",
@@ -1830,7 +1830,7 @@
     "colors": [
       "U"
     ],
-    "text": "I — Adiviná 1. II — Devolvé la criatura objetivo a la mano de su propietario. III — Robá una carta.",
+    "text": "I — Anticipá 1. II — Devolvé la criatura objetivo a la mano de su propietario. III — Robá una carta.",
     "flavorText": "Primero sube un centímetro. Después el río decide dónde termina la costa.",
     "image": "la_crecida_del_parana.png",
     "keywords": [],
@@ -1838,7 +1838,7 @@
       "chapters": [
         {
           "number": 1,
-          "text": "Adiviná 1.",
+          "text": "Anticipá 1.",
           "effect": {
             "type": "scry",
             "amount": 1
@@ -1921,7 +1921,7 @@
       "G",
       "U"
     ],
-    "text": "I — Buscá en tu biblioteca una Tierra, mostrála, ponela en tu mano y luego barajá. II — Robá una carta. III — Proliferá.",
+    "text": "I — Buscá en tu biblioteca una Tierra, mostrála, ponela en tu mano y luego barajá. II — Robá una carta. III — Amplificá.",
     "flavorText": "Cada kilómetro parece distinto hasta que el mismo horizonte vuelve a aparecer.",
     "image": "la_ruta_40_de_punta_a_punta.png",
     "keywords": [],
@@ -1951,7 +1951,7 @@
         },
         {
           "number": 3,
-          "text": "Proliferá.",
+          "text": "Amplificá.",
           "effect": {
             "type": "proliferate"
           },
@@ -1970,7 +1970,7 @@
     "colors": [
       "B"
     ],
-    "text": "I — Vigilá 1. II — Tu oponente descarta una carta. III — Tu oponente pierde 1 vida y vos ganás 1 vida.",
+    "text": "I — Chusmeá 1. II — Tu oponente descarta una carta. III — Tu oponente pierde 1 vida y vos ganás 1 vida.",
     "flavorText": "Nunca se acerca del todo. Nunca queda lo bastante lejos.",
     "image": "la_luz_mala_cruza_el_camino.png",
     "keywords": [],
@@ -1978,7 +1978,7 @@
       "chapters": [
         {
           "number": 1,
-          "text": "Vigilá 1.",
+          "text": "Chusmeá 1.",
           "effect": {
             "type": "surveil",
             "amount": 1
@@ -2017,7 +2017,7 @@
     "colors": [
       "B"
     ],
-    "text": "I — Vigilá 2. II — Tu oponente pierde 1 vida y vos ganás 1 vida. III — Regresá una carta de criatura de tu cementerio al campo de batalla.",
+    "text": "I — Chusmeá 2. II — Tu oponente pierde 1 vida y vos ganás 1 vida. III — Regresá una carta de criatura de tu cementerio al campo de batalla.",
     "flavorText": "Seis noches son superstición. La séptima deja huellas.",
     "image": "la_septima_noche_del_lobizon.png",
     "keywords": [],
@@ -2025,7 +2025,7 @@
       "chapters": [
         {
           "number": 1,
-          "text": "Vigilá 2.",
+          "text": "Chusmeá 2.",
           "effect": {
             "type": "surveil",
             "amount": 2
@@ -2201,7 +2201,7 @@
   },
   {
     "id": "ench_086",
-    "name": "La Final del Ochenta y Seis",
+    "name": "La Final de los Once Sueños",
     "type": "Encantamiento — Saga",
     "manaCost": "{3}{R}{W}",
     "cmc": 5,
@@ -2210,9 +2210,9 @@
       "R",
       "W"
     ],
-    "text": "I — Creá dos fichas de criatura Vecino 1/1. II — La criatura objetivo que controlás obtiene +3/+3 hasta el final del turno. III — La Final del Ochenta y Seis hace 3 de daño a cualquier objetivo.",
-    "flavorText": "Durante noventa minutos el país tuvo una sola conversación.",
-    "image": "la_final_del_ochenta_y_seis.png",
+    "text": "I — Creá dos fichas de criatura Vecino 1/1. II — La criatura objetivo que controlás obtiene +3/+3 hasta el final del turno. III — La Final de los Once Sueños hace 3 de daño a cualquier objetivo.",
+    "flavorText": "Durante noventa minutos, hasta las ventanas del barrio miraron la misma cancha.",
+    "image": "la_final_de_los_once_suenos.png",
     "keywords": [],
     "saga": {
       "chapters": [
@@ -2245,7 +2245,7 @@
         },
         {
           "number": 3,
-          "text": "La Final del Ochenta y Seis hace 3 de daño a cualquier objetivo.",
+          "text": "La Final de los Once Sueños hace 3 de daño a cualquier objetivo.",
           "effect": {
             "type": "damage",
             "amount": 3
@@ -2266,7 +2266,7 @@
     "colors": [
       "G"
     ],
-    "text": "I — Ganás 2 vidas. II — Poné un contador +1/+1 sobre la criatura objetivo que controlás. III — Proliferá.",
+    "text": "I — Ganás 2 vidas. II — Poné un contador +1/+1 sobre la criatura objetivo que controlás. III — Amplificá.",
     "flavorText": "Primero una tijera. Después un canasto. Al final todo el valle huele a cosecha.",
     "image": "la_vendimia_comienza.png",
     "keywords": [],
@@ -2296,7 +2296,7 @@
         },
         {
           "number": 3,
-          "text": "Proliferá.",
+          "text": "Amplificá.",
           "effect": {
             "type": "proliferate"
           },
@@ -2424,7 +2424,7 @@
     "colors": [
       "U"
     ],
-    "text": "I — Adiviná 1. II — Poné un contador de Aturdimiento sobre la criatura objetivo que controla un oponente. III — Robá una carta.",
+    "text": "I — Anticipá 1. II — Poné un contador de Aturdimiento sobre la criatura objetivo que controla un oponente. III — Robá una carta.",
     "flavorText": "Por unas horas la ciudad dejó de parecerse a sí misma.",
     "image": "la_nieve_cubre_buenos_aires.png",
     "keywords": [],
@@ -2432,7 +2432,7 @@
       "chapters": [
         {
           "number": 1,
-          "text": "Adiviná 1.",
+          "text": "Anticipá 1.",
           "effect": {
             "type": "scry",
             "amount": 1
@@ -2533,7 +2533,7 @@
       "R",
       "G"
     ],
-    "text": "I — Creá dos fichas de criatura Vecino 1/1. II — Robá dos cartas. III — Regresá una carta de criatura de tu cementerio al campo de batalla. IV — La Argentina de las Mil Historias hace 4 de daño a cualquier objetivo. V — Proliferá.",
+    "text": "I — Creá dos fichas de criatura Vecino 1/1. II — Robá dos cartas. III — Regresá una carta de criatura de tu cementerio al campo de batalla. IV — La Argentina de las Mil Historias hace 4 de daño a cualquier objetivo. V — Amplificá.",
     "flavorText": "Cinco voces empiezan separadas. La última página descubre que siempre fueron la misma canción.",
     "image": "la_argentina_de_las_mil_historias.png",
     "keywords": [],
@@ -2585,7 +2585,7 @@
         },
         {
           "number": 5,
-          "text": "Proliferá.",
+          "text": "Amplificá.",
           "effect": {
             "type": "proliferate"
           },
@@ -2605,7 +2605,7 @@
     "colors": [
       "W"
     ],
-    "text": "Siempre que una Saga que controlás sea sacrificada, creá una ficha de criatura Vecino 1/1.",
+    "text": "Siempre que una Crónica que controlás sea sacrificada, creá una ficha de criatura Vecino 1/1.",
     "flavorText": "Lo que una página cierra, otra mesa vuelve a contar.",
     "image": "memoria_colectiva.png",
     "keywords": [],
@@ -2640,7 +2640,7 @@
     "colors": [
       "U"
     ],
-    "text": "Siempre que casteés un hechizo desde el Exilio, adiviná 1.",
+    "text": "Siempre que casteés un hechizo desde el Exilio, Anticipá 1.",
     "flavorText": "Cada destino cambia antes de que termine de parpadear.",
     "image": "pantalla_de_salidas.png",
     "triggers": [
@@ -2751,7 +2751,7 @@
     "colors": [
       "U"
     ],
-    "text": "Siempre que se remueva un contador de Tiempo de una carta suspendida que poseés, adiviná 1.",
+    "text": "Siempre que se remueva un contador de Tiempo de una carta en espera que poseés, Anticipá 1.",
     "flavorText": "Cada día tachado acerca algo. Nadie asegura qué.",
     "image": "calendario_de_pared.png",
     "keywords": [],
@@ -2782,7 +2782,7 @@
     "colors": [
       "B"
     ],
-    "text": "Siempre que se ponga uno o más contadores de Tiempo sobre una carta suspendida que posea un oponente, ese jugador pierde 1 vida y vos ganás 1 vida.",
+    "text": "Siempre que se ponga uno o más contadores de Tiempo sobre una carta en espera que posea un oponente, ese jugador pierde 1 vida y vos ganás 1 vida.",
     "flavorText": "El formulario vuelve por una ventanilla distinta y cobra peaje en cada vuelta.",
     "image": "tramite_sin_fin.png",
     "keywords": [],
@@ -2814,7 +2814,7 @@
       "W",
       "U"
     ],
-    "text": "Siempre que se remueva el último contador de Tiempo de una carta suspendida que poseés, robá una carta.",
+    "text": "Siempre que se remueva el último contador de Tiempo de una carta en espera que poseés, robá una carta.",
     "flavorText": "El reloj no suena fuerte. El mundo igual cambia de página.",
     "image": "el_dia_finalmente_llega.png",
     "keywords": [],
@@ -2847,7 +2847,7 @@
       "U",
       "R"
     ],
-    "text": "Al comienzo de tu mantenimiento, remové un contador de Tiempo de una carta suspendida que poseés.",
+    "text": "Al comienzo de tu mantenimiento, remové un contador de Tiempo de una carta en espera que poseés.",
     "flavorText": "Las fechas oficiales tienen una virtud: alguien puede cambiarlas oficialmente.",
     "image": "calendario_oficial.png",
     "keywords": [],
@@ -3057,7 +3057,7 @@
     "colors": [
       "W"
     ],
-    "text": "Cuando Club de la Misma Camiseta entre al campo de batalla, elegí un tipo de criatura. Las criaturas del tipo elegido que controlás obtienen +0/+1 y tienen Vigilancia.",
+    "text": "Cuando Club de la Misma Camiseta entre al campo de batalla, elegí un tipo de criatura. Las criaturas del tipo elegido que controlás obtienen +0/+1 y tienen Alerta.",
     "flavorText": "No importa de dónde vinieron. Una vez adentro, todos cuidan la misma puerta.",
     "image": "club_de_la_misma_camiseta.png",
     "etbEffect": {

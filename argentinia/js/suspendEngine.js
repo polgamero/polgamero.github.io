@@ -1,5 +1,5 @@
-// js/suspendEngine.js — Argentinia 23.16.3 · Suspend + Time Counters Engine
-// Capa pura: schema de Suspend, identidad en Exilio, Time counters y descriptores de
+// js/suspendEngine.js — Argentinia 23.16.3 · En espera + Time Counters Engine
+// Capa pura: schema de En espera, identidad en Exilio, Time counters y descriptores de
 // las dos habilidades disparadas que funcionan desde Exilio. UI/Stack/costos/sync viven
 // en main/turnManager/stackManager.
 import { getCounterCount, setCounterCount, changeCounterCount } from './counterEngine.js';
@@ -73,7 +73,7 @@ export function buildSuspendUpkeepTrigger(card,isLocal) {
     sourceItem:null,
     isLocal:isLocal!==false,
     triggerType:'suspend_tick',
-    triggerLabel:'Suspend — remover Tiempo',
+    triggerLabel:'En espera — remover Tiempo',
     eventCard:card
   };
 }
@@ -110,7 +110,7 @@ export function buildSuspendCastTrigger(card,isLocal,options={}) {
     sourceItem:null,
     isLocal:isLocal!==false,
     triggerType:'suspend_cast',
-    triggerLabel:'Suspend — jugar carta',
+    triggerLabel:'En espera — jugar carta',
     eventCard:card,
     cause:options.cause || 'last_time_removed'
   };

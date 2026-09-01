@@ -4,11 +4,11 @@ import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION } from
 import { applyPhyrexianLifeToCost } from '../js/costEngine.js';
 import { isStackObjectReservedByBotCounter } from '../js/botTargetReservation.js';
 
-assert.equal(ENGINE_VERSION, '23.19.4.8');
+assert.equal(ENGINE_VERSION, '23.19.4.14');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
 const manifest=JSON.parse(fs.readFileSync(new URL('../build-manifest.json',import.meta.url),'utf8'));
-assert.equal(manifest.engineVersion,'23.19.4.8');
+assert.equal(manifest.engineVersion,'23.19.4.14');
 assert.equal(manifest.pool,880);
 
 // Repro mínimo del log real: Cobertura #34 ya está cubierta por Pará Ahí #35.
@@ -39,8 +39,8 @@ assert.match(ui,/index !== null && index !== undefined && state\.pendingBlockerI
 assert.match(ui,/proliferate\.selectionCount/);
 assert.match(ui,/classList\?\.remove\('selected-blocker'.*'blocking'\)/s);
 assert.match(ui,/mulligan-card-slot\.chosen[\s\S]*!important/);
-assert.match(texts,/Las Sagás con Lore también son válidas/);
-assert.match(stack,/Proliferar \(CR 701\.34\)/);
+assert.match(texts,/Las Crónicas con contadores de Capítulo también son válidas/);
+assert.match(stack,/Amplificar \(CR 701\.34\)/);
 assert.match(texts,/2 vidas cada uno/);
 assert.match(texts,/Elegir vida reemplaza sólo ese símbolo/);
 assert.match(ui,/phyrexianLifeReserved/);

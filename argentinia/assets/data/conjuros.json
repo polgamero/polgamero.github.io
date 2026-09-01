@@ -666,7 +666,7 @@
     "colors": [
       "U"
     ],
-    "text": "Vigilá 2.",
+    "text": "Chusmeá 2.",
     "flavorText": "Hay muelles que sólo aparecen en los mapas viejos.",
     "requiresTarget": false,
     "image": "planos_puerto.png",
@@ -685,7 +685,7 @@
     "colors": [
       "B"
     ],
-    "text": "Proliferá.",
+    "text": "Amplificá.",
     "flavorText": "Una nube baja pasa sobre el agua. Después todo tiene una marca más.",
     "requiresTarget": false,
     "image": "fumigacion_banado.png",
@@ -722,7 +722,7 @@
     "colors": [
       "R"
     ],
-    "text": "Creás dos fichas de criatura 1/1 Pibe de la Esquina con Prisa.",
+    "text": "Creás dos fichas de criatura 1/1 Pibe de la Esquina con Apuro.",
     "flavorText": "Uno gritó desde la otra cuadra y aparecieron cinco.",
     "requiresTarget": false,
     "image": "se_armo.png",
@@ -975,7 +975,7 @@
     "colors": [
       "W"
     ],
-    "text": "Creá dos fichas de criatura Promesero 1/1 con Vínculo Vital.",
+    "text": "Creá dos fichas de criatura Promesero 1/1 con Absorción.",
     "flavorText": "A esa hora la calle todavía es noche, pero ya viene llena.",
     "image": "procesion_de_madrugada.png",
     "requiresTarget": false,
@@ -1023,7 +1023,7 @@
     "colors": [
       "U"
     ],
-    "text": "Adiviná 3.",
+    "text": "Anticipá 3.",
     "flavorText": "Los remolinos también son caminos si alguien se toma el trabajo de dibujarlos.",
     "image": "mapa_de_corrientes.png",
     "requiresTarget": false,
@@ -1101,7 +1101,7 @@
     "colors": [
       "R"
     ],
-    "text": "Destruye el Artefacto objetivo. Flashback {5}{R}.",
+    "text": "Destruye el Artefacto objetivo. Otra vuelta {5}{R}.",
     "flavorText": "Cuando llegaron los bomberos, las máquinas ya eran siluetas negras.",
     "image": "incendio_del_galpon.png",
     "requiresTarget": true,
@@ -1122,7 +1122,7 @@
     "colors": [
       "R"
     ],
-    "text": "Creá tres fichas de criatura Murguero 1/1 con Prisa.",
+    "text": "Creá tres fichas de criatura Murguero 1/1 con Apuro.",
     "flavorText": "Entran desordenados y salen siendo una sola cosa.",
     "image": "banda_de_bombos.png",
     "requiresTarget": false,
@@ -1404,7 +1404,7 @@
     "colors": [
       "R"
     ],
-    "text": "Hacé 2 de daño a cualquier objetivo. Kicker {3}{R}. Si fue kickeado, hacé 3 de daño adicional al rival.",
+    "text": "Hacé 2 de daño a cualquier objetivo. Yapa {3}{R}. Si pagaste la Yapa, hacé 3 de daño adicional al rival.",
     "flavorText": "No era la receta. Funcionó igual.",
     "image": "vino_caliente_en_la_caldera.png",
     "requiresTarget": true,
@@ -1431,7 +1431,7 @@
     "colors": [
       "W"
     ],
-    "text": "Creá una ficha Bailarín de Chacarera 1/1. Flashback {4}{W}.",
+    "text": "Creá una ficha Bailarín de Chacarera 1/1. Otra vuelta {4}{W}.",
     "flavorText": "Cuando termina la segunda vuelta, siempre aparece una tercera pareja.",
     "image": "otra_vuelta_de_chacarera.png",
     "requiresTarget": false,
@@ -1671,7 +1671,7 @@
     "colors": [
       "R"
     ],
-    "text": "Enderezá la criatura objetivo que controla un oponente. Ganá su control hasta el final del turno. Gana Prisa hasta el final del turno.",
+    "text": "Enderezá la criatura objetivo que controla un oponente. Ganá su control hasta el final del turno. Gana Apuro hasta el final del turno.",
     "flavorText": "La escritura sigue siendo tuya. La llave, por hoy, no.",
     "image": "te_la_expropio.png",
     "requiresTarget": true,
@@ -1713,7 +1713,7 @@
     "colors": [
       "W"
     ],
-    "text": "Convocar. Creá tres fichas de criatura Vecino 1/1.",
+    "text": "Vaquita. Creá tres fichas de criatura Vecino 1/1.",
     "flavorText": "Una silla trae otra. Después nadie recuerda quién convocó a la primera.",
     "image": "asamblea_en_la_plaza.png",
     "requiresTarget": false,
@@ -1740,7 +1740,7 @@
     "colors": [
       "U"
     ],
-    "text": "Afinidad por artefactos. Robá dos cartas.",
+    "text": "Conexión con artefactos. Robá dos cartas.",
     "flavorText": "Lo que parecía desorden era un sistema que sólo el encargado entendía.",
     "image": "inventario_del_taller.png",
     "requiresTarget": false,
@@ -1839,7 +1839,7 @@
     "colors": [
       "W"
     ],
-    "text": "Creá dos fichas de artefacto Tupper.",
+    "text": "Creá dos fichas de artefacto Envase hermético.",
     "flavorText": "La bandeja alcanza para todos porque alguien siempre trae otra.",
     "image": "viandas_del_club.png",
     "requiresTarget": false,
@@ -1848,8 +1848,8 @@
       "amount": 2,
       "tokenPreset": "food",
       "token": {
-        "name": "Tupper",
-        "image": "token_tupper.png"
+        "name": "Envase hermético",
+        "image": "token_envase_hermetico.png"
       }
     }
   },
@@ -1887,7 +1887,7 @@
     "colors": [
       "U"
     ],
-    "text": "Proliferá.",
+    "text": "Amplificá.",
     "flavorText": "Una marca prende otra. Después nadie recuerda cuál fue la primera.",
     "image": "inspeccion_del_tablero_de_senales.png",
     "requiresTarget": false,
@@ -1962,7 +1962,7 @@
     "colors": [
       "G"
     ],
-    "text": "Proliferá.",
+    "text": "Amplificá.",
     "flavorText": "Una etiqueta nueva en cada maceta y el invernadero ya parece otro.",
     "image": "propagacion_del_vivero.png",
     "requiresTarget": false,
@@ -1980,7 +1980,7 @@
     "colors": [
       "B"
     ],
-    "text": "Remové un contador de Lore de la Saga objetivo.",
+    "text": "Remové un contador de Capítulo de la Crónica objetivo.",
     "flavorText": "Mover una fecha un casillero alcanza para retrasar una conclusión.",
     "image": "revisar_la_cronologia.png",
     "requiresTarget": true,
@@ -2003,7 +2003,7 @@
     "colors": [
       "G"
     ],
-    "text": "Proliferá.",
+    "text": "Amplificá.",
     "flavorText": "La misma historia vuelve con una página que nadie había visto.",
     "image": "edicion_ampliada.png",
     "requiresTarget": false,
@@ -2155,7 +2155,7 @@
       "U",
       "R"
     ],
-    "text": "Exiliá las dos cartas superiores de tu biblioteca. Podés jugarlas este turno. Si son hechizos, podés castearlos como si tuvieran Destello.",
+    "text": "Exiliá las dos cartas superiores de tu biblioteca. Podés jugarlas este turno. Si son hechizos, podés castearlos como si tuvieran Al toque.",
     "flavorText": "No figura en la carta, pero todos los habitués saben dónde tocar.",
     "image": "menu_oculto.png",
     "requiresTarget": false,
@@ -2181,7 +2181,7 @@
     "colors": [
       "W"
     ],
-    "text": "Creá dos fichas de criatura Vecino 1/1. Suspender 2 — {W}.",
+    "text": "Creá dos fichas de criatura Vecino 1/1. En espera 2 — {W}.",
     "flavorText": "La aprobación tarda. Los vecinos llegan antes.",
     "image": "licencia_en_tramite.png",
     "requiresTarget": false,
@@ -2211,7 +2211,7 @@
     "colors": [
       "U"
     ],
-    "text": "Robá dos cartas. Suspender 3 — {U}.",
+    "text": "Robá dos cartas. En espera 3 — {U}.",
     "flavorText": "Su turno fue asignado con precisión: entre abril y el fin de los tiempos.",
     "image": "turno_para_dentro_de_tres_meses.png",
     "requiresTarget": false,
@@ -2234,7 +2234,7 @@
     "colors": [
       "B"
     ],
-    "text": "Regresá una carta de criatura de tu cementerio al campo de batalla. Suspender 3 — {1}{B}.",
+    "text": "Regresá una carta de criatura de tu cementerio al campo de batalla. En espera 3 — {1}{B}.",
     "flavorText": "Archivado no significa terminado. A veces significa que aprendió a volver solo.",
     "image": "expediente_que_vuelve.png",
     "requiresTarget": false,
@@ -2257,7 +2257,7 @@
     "colors": [
       "G"
     ],
-    "text": "Buscá hasta dos tierras básicas en tu biblioteca y ponelas en el campo de batalla. Suspender 3 — {1}{G}.",
+    "text": "Buscá hasta dos tierras básicas en tu biblioteca y ponelas en el campo de batalla. En espera 3 — {1}{G}.",
     "flavorText": "El cartel promete futuro. La tierra, mientras tanto, ya empezó a moverse.",
     "image": "plan_de_obras_a_largo_plazo.png",
     "requiresTarget": false,
@@ -2280,7 +2280,7 @@
     "colors": [
       "B"
     ],
-    "text": "Tu oponente descarta dos cartas. Suspender 2 — {B}.",
+    "text": "Tu oponente descarta dos cartas. En espera 2 — {B}.",
     "flavorText": "La deuda apareció hoy con fecha de hace seis meses.",
     "image": "cobro_retroactivo.png",
     "requiresTarget": false,

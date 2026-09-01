@@ -1,47 +1,27 @@
+import { PUBLIC_KEYWORD_LABELS, publicKeywordLabel, publicTerminologyText } from './publicTerminology.js';
 // js/cardTextFormatter.js — Argentinia 23.15.5.3
 // Normalización de presentation text para cards. No altera reglas ni estado de juego.
-// Convierte el texto legacy de cada JSON en una jerarquía visual MTG-like:
+// Convierte el texto legacy de cada JSON en una jerarquía visual propia de Argentinia:
 // keywords impresas/efectivas -> habilidades/reglas en párrafos -> flavor al final.
 
-export const CARD_KEYWORD_LABELS = Object.freeze({
-  flying: 'Vuela',
-  trample: 'Arrolla',
-  hexproof: 'Intocable',
-  haste: 'Prisa',
-  menace: 'Amenaza',
-  vigilance: 'Vigilancia',
-  reach: 'Alcance',
-  defender: 'Defensora',
-  lifelink: 'Vínculo vital',
-  deathtouch: 'Toque mortal',
-  firststrike: 'Primer golpe',
-  doublestrike: 'Doble golpe',
-  indestructible: 'Indestructible',
-  flash: 'Destello',
-  infect: 'Infectar',
-  protection_W: 'Protección de Blanco',
-  protection_U: 'Protección de Azul',
-  protection_B: 'Protección de Negro',
-  protection_R: 'Protección de Rojo',
-  protection_G: 'Protección de Verde'
-});
+export const CARD_KEYWORD_LABELS = PUBLIC_KEYWORD_LABELS;
 
 const KEYWORD_TEXT_ALIASES = Object.freeze({
   flying: ['Vuela', 'Volar'],
   trample: ['Arrolla', 'Arrollar'],
   hexproof: ['Intocable'],
-  haste: ['Prisa'],
-  menace: ['Amenaza'],
-  vigilance: ['Vigilancia'],
+  haste: ['Apuro', 'Prisa'],
+  menace: ['Intimidante', 'Amenaza'],
+  vigilance: ['Alerta', 'Vigilancia'],
   reach: ['Alcance'],
-  defender: ['Defensora', 'Defensor'],
-  lifelink: ['Vínculo vital'],
-  deathtouch: ['Toque Mortal', 'Toque mortal'],
-  firststrike: ['Primer golpe'],
-  doublestrike: ['Doble golpe'],
-  indestructible: ['Indestructible'],
-  flash: ['Destello'],
-  infect: ['Infectar'],
+  defender: ['Muralla', 'Defensora', 'Defensor'],
+  lifelink: ['Absorción', 'Vínculo vital'],
+  deathtouch: ['Letal', 'Toque Mortal', 'Toque mortal'],
+  firststrike: ['Iniciativa', 'Primer golpe'],
+  doublestrike: ['Dos golpes', 'Doble golpe'],
+  indestructible: ['Irrompible', 'Indestructible'],
+  flash: ['Al toque', 'Destello'],
+  infect: ['Contagio', 'Infectar'],
   protection_W: ['Protección de Blanco'],
   protection_U: ['Protección de Azul'],
   protection_B: ['Protección de Negro'],
@@ -50,9 +30,7 @@ const KEYWORD_TEXT_ALIASES = Object.freeze({
 });
 
 export function cardKeywordLabel(keyword) {
-  const k = String(keyword || '');
-  if (k.startsWith('ward_')) return `Ward ${k.slice(5)}`;
-  return CARD_KEYWORD_LABELS[k] || k;
+  return publicKeywordLabel(keyword);
 }
 
 function escapeRegExp(value) {
@@ -68,7 +46,7 @@ export function stripDuplicatedLeadingKeywords(text, keywords = []) {
     const k = String(keyword || '');
     if (k.startsWith('ward_')) {
       const n = escapeRegExp(k.slice(5));
-      aliases.push(`Ward\\s*\\{?${n}\\}?`);
+      aliases.push(`(?:Impuesto|Ward)\\s*\\{?${n}\\}?`);
       continue;
     }
     for (const label of KEYWORD_TEXT_ALIASES[k] || []) aliases.push(escapeRegExp(label));
@@ -147,7 +125,7 @@ function parseAbilityWord(text) {
   const rest = m[2].trim();
   // Landfall y los nombres de habilidades temáticas existentes son presentation-only.
   // Escape usa guion como sintaxis de coste y no es ability word.
-  if (/^Escape$/i.test(word) || /^Elegí uno$/i.test(word)) return { text: String(text || '') };
+  if (/^(?:Escape|Zafar)$/i.test(word) || /^Elegí uno$/i.test(word)) return { text: String(text || '') };
   return { abilityWord: word, text: rest };
 }
 
@@ -159,47 +137,47 @@ function reminderForRulesText(text) {
   const value = String(text || '');
   if (hasParentheticalReminder(value)) return '';
 
-  let m = value.match(/\b(?:Adiviná|Adivina|Scry)\s+(\d+)\b/i);
+  let m = value.match(/\b(?:Anticipá|Anticipa|Adiviná|Adivina|Scry)\s+(\d+)\b/i);
   if (m) {
     const n = Number(m[1]);
     return `Mirá ${n === 1 ? 'la primera carta' : `las ${n} primeras cartas`} de tu biblioteca. Poné cualquier cantidad de ellas en el fondo de tu biblioteca y el resto arriba en cualquier orden.`;
   }
 
-  m = value.match(/\b(?:Vigilá|Vigila|Surveil)\s+(\d+)\b/i);
+  m = value.match(/\b(?:Chusmeá|Chusmea|Vigilá|Vigila|Surveil)\s+(\d+)\b/i);
   if (m) {
     const n = Number(m[1]);
     return `Mirá ${n === 1 ? 'la primera carta' : `las ${n} primeras cartas`} de tu biblioteca. Podés poner cualquier cantidad de ellas en tu cementerio y el resto arriba en cualquier orden.`;
   }
 
-  if (/Prolifer(?:á|a)/i.test(value)) {
+  if (/(?:Amplific(?:á|a)|Prolifer(?:á|a))/i.test(value)) {
     return 'Elegí cualquier cantidad de permanentes y/o jugadores con contadores. Poné sobre cada uno otro contador de cada tipo que ya tenga.';
   }
 
   m = value.match(/\bTripular\s*\{?(\d+)\}?\b/i);
   if (m) {
     const n = Number(m[1]);
-    return `Girás cualquier cantidad de otras criaturas enderezadas que controlás con fuerza total de ${n} o más: este Vehículo se convierte en una criatura artefacto hasta el final del turno.`;
+    return `Girás cualquier cantidad de otras criaturas enderezadas que controlás con fuerza total de ${n} o más: este Transporte se convierte en una criatura artefacto hasta el final del turno.`;
   }
 
-  m = value.match(/\bKicker\s+((?:\{[^}]+\})+)/i);
+  m = value.match(/\b(?:Yapa|Kicker)\s+((?:\{[^}]+\})+)/i);
   if (m) return `Podés pagar ${m[1]} adicional al lanzar este hechizo.`;
 
-  m = value.match(/\bFlashback\s+((?:\{[^}]+\})+)/i);
+  m = value.match(/\b(?:Otra vuelta|Flashback)\s+((?:\{[^}]+\})+)/i);
   if (m) return `Podés lanzar esta carta desde tu cementerio pagando ${m[1]} en vez de su coste de maná. Luego exiliala.`;
 
-  if (/\bEscape\b/i.test(value)) {
-    return 'Podés lanzar esta carta desde tu cementerio pagando su coste de Escape y exiliando las cartas indicadas.';
+  if (/\b(?:Zafar|Escape)\b/i.test(value)) {
+    return 'Podés lanzar esta carta desde tu cementerio pagando su coste de Zafar y exiliando las cartas indicadas.';
   }
 
-  if (/\b(?:Convoke|Convocar)\b/i.test(value)) {
+  if (/\b(?:Vaquita|Convoke|Convocar)\b/i.test(value)) {
     return 'Tus criaturas pueden ayudar a lanzar este hechizo. Cada criatura que gires al lanzarlo paga {1} o un maná de uno de sus colores.';
   }
 
-  if (/\b(?:Delve|Excavar)\b/i.test(value)) {
+  if (/\b(?:Rebuscar|Delve|Excavar)\b/i.test(value)) {
     return 'Cada carta que exilies de tu cementerio al lanzar este hechizo paga {1} de su coste genérico.';
   }
 
-  if (/\b(?:Affinity|Afinidad)\b/i.test(value)) {
+  if (/\b(?:Conexión|Affinity|Afinidad)\b/i.test(value)) {
     return 'Este hechizo cuesta {1} menos por cada permanente del tipo indicado que controlás.';
   }
 
@@ -227,8 +205,8 @@ export function buildCardTextLayout(card, { effectiveKeywords = null, rulesTextO
     : [...(Array.isArray(card?.keywords) ? card.keywords : [])];
 
   const originalRules = rulesTextOverride !== null && rulesTextOverride !== undefined
-    ? String(rulesTextOverride)
-    : String(card?.text || '');
+    ? publicTerminologyText(String(rulesTextOverride))
+    : publicTerminologyText(String(card?.text || ''));
   const stripped = stripDuplicatedLeadingKeywords(originalRules, keywords);
 
   let paragraphs = normalizeModalText(stripped);

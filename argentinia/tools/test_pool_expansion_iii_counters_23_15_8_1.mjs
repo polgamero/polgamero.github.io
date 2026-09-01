@@ -24,7 +24,7 @@ const byFile={};
 for(const [file] of defs) byFile[file]=JSON.parse(fs.readFileSync(path.join(dataDir,file),'utf8'));
 const all=Object.values(byFile).flat();
 
-assert.ok(['23.15.8.1','23.15.9','23.15.10','23.16.1','23.16.1.1','23.16.2','23.16.2.1','23.16.3','23.16.3.1','23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.4.8'].includes(ENGINE_VERSION),'Pool III contract must survive later engine-only releases');
+assert.ok(['23.15.8.1','23.15.9','23.15.10','23.16.1','23.16.1.1','23.16.2','23.16.2.1','23.16.3','23.16.3.1','23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.4.14'].includes(ENGINE_VERSION),'Pool III contract must survive later engine-only releases');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 const historical730=POOL_MILESTONES.pool_expansion_iii_730;

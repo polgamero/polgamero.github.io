@@ -106,7 +106,7 @@ html, body {
 }
 
 /* ===================================================
-   VARIABLES DE COLOR DE CARTA (Paleta MTG)
+   VARIABLES DE COLOR DE CARTA (Paleta Argentinia)
 =================================================== */
 .card.bg-w { --card-bg: #F2E4B8; --card-text: #111; }
 .card.bg-u { --card-bg: #6FAEDE; --card-text: #111; }
@@ -118,12 +118,12 @@ html, body {
 .card.bg-land { --card-bg: #A0785A; --card-text: #f5f5f5; }
 
 /* ===================================================
-   CARTA MTG: TAMAÑO FIJO Y COHERENTE EN TODAS LAS ZONAS
+   CARTA ARGENTINIA: TAMAÑO FIJO Y COHERENTE EN TODAS LAS ZONAS
 =================================================== */
 .card {
   width: var(--card-w);
   aspect-ratio: 5 / 7;
-  /* El borde negro clásico de MTG ahora vive TODO en .card-inner (3px) — este elemento
+  /* El borde negro clásico de Argentinia ahora vive TODO en .card-inner (3px) — este elemento
      dejaba de mostrarse en el hover de una girada (rota .card-inner, no .card, así que
      acá ya no hace falta ni conviene declarar un borde propio: simplifica y arregla el
      problema de raíz). */
@@ -303,7 +303,7 @@ html, body {
   text-shadow: 1px 1px 3px rgba(0,0,0,0.9);
 }
 
-/* CAJA DE TEXTO — 23.15.5.3: jerarquía MTG-like, reglas legibles y flavor al final. */
+/* CAJA DE TEXTO — 23.15.5.3: jerarquía propia de Argentinia, reglas legibles y flavor al final. */
 .card-text-box {
   height: var(--card-text-box-height, 42cqh);
   padding: 2cqw 3cqw;
@@ -363,7 +363,7 @@ html, body {
   text-indent: -0.68em;
 }
 
-/* Ability words (Landfall y nombres temáticos del mismo patrón) sí son itálicas, como en MTG. */
+/* Ability words (Landfall y nombres temáticos del mismo patrón) sí son itálicas, como en Argentinia. */
 .card-ability-word {
   font-style: italic;
   font-weight: 400;

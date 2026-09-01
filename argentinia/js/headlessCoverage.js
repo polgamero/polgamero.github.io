@@ -43,7 +43,7 @@ export function classifyHeadlessCard(card = {}) {
 
   const partial=[];
   for (const key of PARTIAL_KEYS) if (card[key]) partial.push(`DECISION_${key}`);
-  // 23.18.2 Automated Choice Engine cubre Modal/X/Kicker/Legend Rule y targets que nacen
+  // 23.18.2 Automated Choice Engine cubre Modal/X/Yapa/Legend Rule y targets que nacen
   // durante resolución. Los effect types son reportados, pero no degradan por sí solos la
   // cobertura: el criterio FULL es "la carta puede atravesar el motor con una política legal".
   const effectTypes=[...collectEffectTypes(card)];

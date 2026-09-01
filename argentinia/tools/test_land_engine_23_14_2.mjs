@@ -43,7 +43,7 @@ assert.ok(main.includes("targetObj.type === 'land'"));
 assert.ok(main.includes('export function handleLandTargetClick'));
 assert.ok(ui.includes("effect.targetKind === 'land'") || ui.includes("effect.targetKind === 'land'"));
 assert.ok(ui.includes('rules.allowLocalLand'));
-assert.ok(ui.includes('displayType = itemObj.isAnimatedLand'));
+assert.ok(ui.includes('displayType = publicCardTypeLine(itemObj.isAnimatedLand'));
 assert.ok(stack.includes("effectToApply.type === 'animate_land'"));
 assert.ok(sync.includes("if (type === 'land') return 'lands'"));
 assert.ok(sync.includes("if (targetObj.type === 'land')"));

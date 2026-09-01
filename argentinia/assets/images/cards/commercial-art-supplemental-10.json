@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "acceptedInVersion": "23.19.4.12",
+  "status": "VISUAL_ACCEPTED_PRELIMINARY",
+  "note": "10 additional missing-card assets supplied by product owner. Their visual review remains valid. Jardinera de la Ciudad en Miniatura was genericized in Wave 3, so the prior naming-only YELLOW issue is resolved at the data level.",
+  "assets": [
+    {
+      "image": "jefa_de_senalamiento_ferroviario.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "99578a23fd9be29a6b547e3e996da0d39488eb6863dd12121cba3ce5c87e6eff",
+      "source": "user supplemental missing art"
+    },
+    {
+      "image": "murguera_de_boedo.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "b8fc2e744f8c6f662670c747b9fada0fcba6cf98203c67f1848ba27748d81f65",
+      "source": "user supplemental missing art"
+    },
+    {
+      "image": "operador_del_centro_de_monitoreo.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "cf93245e6591051aebe83fe7da41af4b936779f447e0a91b5c7f559f845336fb",
+      "source": "user supplemental missing art"
+    },
+    {
+      "image": "motoquero_del_ultimo_turno.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "00481084c3a5614611179412e3ffd38d1d7d098e74490daf2edf1c46eb46c37e",
+      "source": "user supplemental missing art"
+    },
+    {
+      "image": "mensajero_de_ultima_hora.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "b15e0e5fbb9bde19d7cec614abdfe6ca79a0a9323cefa0a31186b7b23f759607",
+      "source": "user supplemental missing art"
+    },
+    {
+      "image": "molino_caminante_de_la_pampa.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "a3094efaac38c59a13019db66e6d11a4ccebd92fc1ff935e77d7e35cce0280f2",
+      "source": "user supplemental missing art"
+    },
+    {
+      "image": "mecanico_de_taller_nocturno.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "3cccc193eba1ade56f6982b854fc6d284b73413321770767d1ee005caa8d0546",
+      "source": "user supplemental missing art"
+    },
+    {
+      "image": "mensajero_de_la_autopista.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "35e6ddd8d3dd251468c8b9115053cb689c9b1ccda830fed193878337f32b1d4f",
+      "source": "user supplemental missing art"
+    },
+    {
+      "image": "inspectora_de_consorcio.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "3071ab595fb81b2862721d759032032dbdcd83f07ac113776b0e5be1a1adeba9",
+      "source": "user supplemental missing art"
+    },
+    {
+      "image": "jardinera_de_la_republica_de_los_ninos.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "dbff3d105aadd29ea46fe7d02de3de5ec27fc2caa98aa812f634af7f7f5ebd5f",
+      "source": "user supplemental missing art"
+    }
+  ],
+  "resolvedNamingInVersion": "23.19.4.12"
+}

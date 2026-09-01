@@ -94,7 +94,7 @@ export function removeRandomCardsFromHand(hand, amount, randomFn = gameRandom) {
 // ETAPA MOTOR 2 — destino correcto de objetos contrarrestados
 // =========================================================================
 // Contrarrestar una HABILIDAD solo la saca de la pila: el permanente que la originó sigue
-// donde estaba. Para hechizos, Flashback reemplaza el destino normal por Exilio; Escape y
+// donde estaba. Para hechizos, Otra vuelta reemplaza el destino normal por Exilio; Zafar y
 // los casteos normales vuelven al Cementerio si son contrarrestados.
 // Devuelve el destino aplicado para facilitar logs/tests sin duplicar esta regla.
 export function moveCounteredStackItemToDestination(stackItem, gameState) {
@@ -105,14 +105,14 @@ export function moveCounteredStackItemToDestination(stackItem, gameState) {
   if (stackItem.isCopy) return 'copy_ceased';
 
   const isLocal = !!stackItem.isLocal;
-  // Flashback ya contiene su propio replacement de reglas: si el hechizo fuera a dejar la
+  // Otra vuelta ya contiene su propio replacement de reglas: si el hechizo fuera a dejar la
   // Stack por cualquier motivo se exilia. Conservamos esa precedencia histórica.
   if (stackItem.castFrom === 'flashback') {
     zoneForCardOwner(stackItem.card, gameState.localExile, gameState.rivalExile, isLocal, gameState.currentMatch?.myRole || null).push(stackItem.card);
     return 'exile';
   }
 
-  // 23.15.5 — un hechizo normal/Escape contrarrestado intenta ir Stack -> Cementerio y
+  // 23.15.5 — un hechizo normal/Zafar contrarrestado intenta ir Stack -> Cementerio y
   // atraviesa el mismo Replacement Engine que cualquier otro cambio de zona. Esto permite
   // efectos tipo Rest in Peace sin hardcodear counterspells.
   const result = resolveReplacementEvent(gameState, {
@@ -285,8 +285,8 @@ export function parseManaCost(manaString) {
   return cost;
 }
 
-// Suma dos costos YA PARSEADOS símbolo por símbolo — usado por Kicker para combinar el
-// costo base de la carta + el costo adicional opcional del Kicker en un solo total a pagar.
+// Suma dos costos YA PARSEADOS símbolo por símbolo — usado por Yapa para combinar el
+// costo base de la carta + el costo adicional opcional del Yapa en un solo total a pagar.
 export function sumManaCosts(a, b) {
   const out = {
     W: (a.W || 0) + (b.W || 0), U: (a.U || 0) + (b.U || 0),
@@ -330,7 +330,7 @@ export function sleep(ms) {
 }
 
 // --- FASE 2: SOBRES ---
-// Arma el contenido de un sobre — misma estructura que un booster real de MTG (comunes +
+// Arma el contenido de un sobre — misma estructura que un booster real de Argentinia (comunes +
 // poco comunes + una rara garantizada, con chance de mítica en su lugar + una tierra).
 // Puramente aleatorio del lado del cliente: aceptable para un proyecto de este tamaño sin
 // backend propio, mismo criterio de confianza que ya usa buildRandomDeck de acá arriba —
@@ -486,9 +486,9 @@ export function combineManaCostStrings(...parts) {
   return parts.filter(p => typeof p === 'string' && p.trim()).join('') || null;
 }
 
-// ENTREGA 23.7.2 — una sola fuente de verdad para Proliferar. Reglas: puede elegir
+// ENTREGA 23.7.2 — una sola fuente de verdad para Amplificar. Reglas: puede elegir
 // CUALQUIER permanente/jugador que ya tenga uno o más contadores, incluso del rival.
-// El motor hoy modela contadores genéricos en `item.counters`, Lealtad separada en PW y
+// El motor hoy modela contadores genéricos en `item.counters`, Creencia separada en PW y
 // Veneno en el jugador. Escaneamos todas las zonas de permanentes, no sólo criaturas.
 export function getProliferateCandidates(state) {
   const out = [];

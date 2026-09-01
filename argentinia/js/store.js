@@ -48,7 +48,7 @@ export function pointsForBotGameEnd(won, difficulty) {
 
 // --- Sobres (admin-editable: costo y chance de mítica) ---
 export let PACK_COST = 150;
-// Misma estructura que un booster real de MTG: 9 comunes + 4 poco comunes + 1 rara
+// Misma estructura que un booster real de Argentinia: 9 comunes + 4 poco comunes + 1 rara
 // (garantizada, con chance de salir mítica en su lugar) + 1 tierra = 15 cartas + 1 Ficha.
 // La composición fija (9/4/1) no es admin-editable por ahora — solo el costo y la chance de
 // mítica, que son los dos números que realmente mueven el balance económico.
@@ -82,19 +82,19 @@ export let CLASSIFIEDS_MYTHIC_CHANCE = 1 / 7;
 export const ENHANCED_SUFFIX = '::enhanced';
 
 // Lista curada de keywords para la mejora permanente por Fichas — deja afuera a propósito
-// lo más rompedor (Indestructible, Ward alto): es un premio de colección divertido, no un
+// lo más rompedor (Irrompible, Impuesto alto): es un premio de colección divertido, no un
 // multiplicador de poder sin techo. Cada carta (por ID) solo se puede mejorar una vez. Es
 // contenido fijo, no admin-editable (cambiar esta lista es una decisión de diseño de
 // contenido, no un ajuste de balance numérico).
 export const ENHANCEMENT_KEYWORDS = [
   { key: 'flying', label: 'Vuela' },
   { key: 'trample', label: 'Arrolla' },
-  { key: 'vigilance', label: 'Vigilancia' },
-  { key: 'haste', label: 'Prisa' },
-  { key: 'lifelink', label: 'Vínculo Vital' },
-  { key: 'deathtouch', label: 'Toque Mortal' },
+  { key: 'vigilance', label: 'Alerta' },
+  { key: 'haste', label: 'Apuro' },
+  { key: 'lifelink', label: 'Absorción' },
+  { key: 'deathtouch', label: 'Letal' },
   { key: 'firststrike', label: 'Primer Golpe' },
-  { key: 'menace', label: 'Amenaza' },
+  { key: 'menace', label: 'Intimidante' },
   { key: 'reach', label: 'Alcance' },
   { key: 'hexproof', label: 'Intocable' }
 ];
@@ -108,17 +108,17 @@ export function isEnhancementEligibleCard(card) {
 }
 
 // --- Reglas de armado de mazo (admin-editable) ---
-// Respetan las reglas oficiales de constructed de MTG, con UNA excepción de diseño
+// Respetan las reglas canónicas de construcción de Argentinia, con UNA excepción de diseño
 // explícita: acá el tamaño de mazo es un límite RÍGIDO (ni más ni menos), no "60 o más"
 // como en el reglamento real — así lo pidió el usuario. El máximo de copias iguales por
 // default SÍ es 100% el oficial (regla 100.2a): 4 copias de cualquier carta que no sea
-// Tierra básica — las básicas no tienen límite, ni acá ni en MTG real.
+// Tierra básica — las básicas no tienen límite, ni acá ni en el contrato canónico de Argentinia.
 //
 // La colección (lo que te toca en los sobres) NUNCA tiene límite de copias — eso es
 // intencional y no cambia con esto: los topes de acá abajo solo aplican al ARMAR un mazo,
 // no a cuánto podés juntar.
 export let DECK_SIZE_EXACT = 60;
-export let MAX_COPIES_PER_CARD = 4; // no aplica a Tierras básicas (sin límite, como en MTG real)
+export let MAX_COPIES_PER_CARD = 4; // no aplica a Tierras básicas (sin límite, como en el contrato canónico de Argentinia)
 
 // Cuántas cartas CON mejora por Fichas podés meter en el mismo mazo, como máximo. Sin este
 // tope, un jugador con muchas Fichas podría armar un mazo entero de bombas mejoradas y

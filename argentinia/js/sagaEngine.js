@@ -1,5 +1,5 @@
 // js/sagaEngine.js — Argentinia 23.16.1 · Sagas Engine
-// Capa pura para identidad Saga, schema de capítulos, transiciones de Lore y condición
+// Capa pura para identidad Saga, schema de capítulos, transiciones de Capítulo y condición
 // de sacrificio final. No conoce state/DOM/Firestore/Stack: los callers aportan esa capa.
 
 import { getCounterCount } from './counterEngine.js';
@@ -82,9 +82,9 @@ export function getSagaLoreCount(item) {
   return getCounterCount(item, 'lore');
 }
 
-// CR Saga: cuando uno o más Lore se agregan, dispara cada habilidad cuyo número de capítulo
+// CR Saga: cuando uno o más Capítulo se agregan, dispara cada habilidad cuyo número de capítulo
 // era mayor al contador anterior y es <= al contador nuevo. Si se salta de I a III, II y III
-// disparan; remover Lore nunca "des-dispara" capítulos ya generados.
+// disparan; remover Capítulo nunca "des-dispara" capítulos ya generados.
 export function sagaChaptersCrossed(card, beforeLore, afterLore) {
   const before = Math.max(0, Math.floor(Number(beforeLore) || 0));
   const after = Math.max(0, Math.floor(Number(afterLore) || 0));

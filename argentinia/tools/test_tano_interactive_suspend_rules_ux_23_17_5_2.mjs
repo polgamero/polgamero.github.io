@@ -11,7 +11,7 @@ const combat = fs.readFileSync(new URL('../js/combatRules.js', import.meta.url),
 const texts = fs.readFileSync(new URL('../js/gameTexts.js', import.meta.url), 'utf8');
 const creatures = JSON.parse(fs.readFileSync(new URL('../assets/data/criaturas.json', import.meta.url), 'utf8'));
 
-assert.equal(ENGINE_VERSION, '23.19.4.8');
+assert.equal(ENGINE_VERSION, '23.19.4.14');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
 
 // RCA real turno 26: tras cerrar un efecto interactivo, el driver COMPLETO del bot debe
@@ -47,12 +47,12 @@ assert.match(ui, /e\.key === 'Escape' && \(state\.pendingSuspendTransaction/,
 assert.equal(keywordReminder('menace'), 'Esta criatura no puede ser bloqueada excepto por dos o más criaturas.');
 assert.match(combat, /const menaceViolations = \[\]/);
 assert.match(combat, /gameText\('combat\.block\.menaceIllegal',[\s\S]*count: blockersCount/);
-assert.match(texts, /Bloqueo cancelado: \{attacker\} tiene Amenaza[\s\S]*Amenaza exige 2 o más bloqueadores/);
+assert.match(texts, /Bloqueo cancelado: \{attacker\} tiene Intimidante[\s\S]*Intimidante exige 2 o más bloqueadores/);
 
 // Orden de triggers: no exponer enums internos; mostrar texto de la carta, procedencia y
 // botones de flecha accesibles.
 const eternal = creatures.find(c => c.id === 'crea_021');
-assert.equal(eternal?.text, 'Siempre que muera una criatura, Adiviná 1.');
+assert.equal(eternal?.text, 'Siempre que muera una criatura, Anticipá 1.');
 assert.match(ui, /function triggerOrderDescription\(entry = \{\}\)[\s\S]*entry\.sourceCard\?\.text/);
 assert.match(ui, /any_creature_dies: \/muera una criatura/);
 assert.match(ui, /trigger-order-event/);

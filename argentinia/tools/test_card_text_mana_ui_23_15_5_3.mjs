@@ -50,7 +50,7 @@ assert.equal(layout.paragraphs[2].kind,'mode-option');
 
 // 5) Ability words are distinct, italicizable metadata instead of bold pseudo-headings.
 layout=buildCardTextLayout({text:'Landfall — Siempre que una Tierra entre bajo tu control, Adiviná 1.',flavorText:'',keywords:[]});
-assert.equal(layout.paragraphs[0].abilityWord,'Landfall');
+assert.equal(layout.paragraphs[0].abilityWord,'Arraigo');
 assert.match(layout.paragraphs[0].reminder,/biblioteca/i);
 
 // 6) Reminder texts: Surveil, Proliferate, Crew, Ward and Infect.
@@ -69,14 +69,14 @@ const cards=allCards();
 assert.ok(cards.length>=643,'cumulative source must preserve the historical 643-card pool from 23.15.5.3');
 const byId=new Map(cards.map(c=>[c.id,c]));
 assert.ok(byId.get('crea_004')?.keywords?.includes('vigilance'),'Mozo de Bodegón 23.18.3 rebalance must be real metadata, not fake prose');
-assert.match(byId.get('crea_004')?.text||'',/Vigilancia/i,'Mozo de Bodegón visible text must match the real keyword');
+assert.match(byId.get('crea_004')?.text||'',/Alerta/i,'Mozo de Bodegón visible text must match the owner-approved public keyword');
 assert.equal(byId.get('art_015')?.text,'','Robotito de Chatarra atmospheric copy belongs only in flavor');
 for(const pw of cards.filter(c=>String(c.id).startsWith('pw_'))){
   assert.equal(pw.legendary,true,`${pw.name}: Planeswalker legend status must be metadata`);
   assert.doesNotMatch(pw.text||'',/Planeswalker Legendario/i);
 }
-assert.equal(cards.filter(c=>/\bScry\b/i.test(c.text||'')).length,0,'visible rules text should use Adiviná');
-assert.equal(cards.filter(c=>/\bSurveil\b/i.test(c.text||'')).length,0,'visible rules text should use Vigilá');
+assert.equal(cards.filter(c=>/\bScry\b/i.test(c.text||'')).length,0,'visible rules text should use Anticipá');
+assert.equal(cards.filter(c=>/\bSurveil\b/i.test(c.text||'')).length,0,'visible rules text should use Chusmeá');
 assert.equal(cards.filter(c=>/Prisa Repentina:|Efecto estático:/i.test(c.text||'')).length,0,'legacy pseudo-headings must be removed');
 
 // The renderer is ready for Phyrexian-hybrid artwork, but Cost Engine 23.15.4 currently

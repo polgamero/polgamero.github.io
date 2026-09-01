@@ -9,8 +9,8 @@ const DEFINITIONS = Object.freeze({
   stun: Object.freeze({ key:'stun', label:'Aturdimiento', short:'Atur', icon:'⏸️', order:40, polarity:'negative', semantic:'stun', reminder:'Si este permanente fuera a enderezarse, remové un contador de Aturdimiento de él en vez de eso.' }),
   charge: Object.freeze({ key:'charge', label:'Carga', short:'Carga', icon:'⚡', order:50, polarity:'neutral' }),
   time: Object.freeze({ key:'time', label:'Tiempo', short:'Tiempo', icon:'⏳', order:60, polarity:'neutral' }),
-  lore: Object.freeze({ key:'lore', label:'Sabiduría', short:'Lore', icon:'📖', order:70, polarity:'positive' }),
-  loyalty: Object.freeze({ key:'loyalty', label:'Lealtad', short:'Lealtad', icon:'🔮', order:80, polarity:'positive' }),
+  lore: Object.freeze({ key:'lore', label:'Capítulo', short:'Cap.', icon:'📖', order:70, polarity:'positive' }),
+  loyalty: Object.freeze({ key:'loyalty', label:'Creencia', short:'Creencia', icon:'🔮', order:80, polarity:'positive' }),
 });
 
 const ALIASES = Object.freeze({
@@ -20,8 +20,8 @@ const ALIASES = Object.freeze({
   stun_counter:'stun', aturdimiento:'stun',
   charge_counter:'charge', carga:'charge',
   time_counter:'time', tiempo:'time',
-  lore_counter:'lore', sabiduria:'lore',
-  loyalty_counter:'loyalty', lealtad:'loyalty',
+  lore_counter:'lore', sabiduria:'lore', capitulo:'lore', capítulo:'lore',
+  loyalty_counter:'loyalty', lealtad:'loyalty', creencia:'loyalty',
 });
 
 function ascii(value='') {

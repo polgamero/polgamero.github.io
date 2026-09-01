@@ -64,7 +64,7 @@
     "colors": [],
     "power": 1,
     "toughness": 3,
-    "text": "Vigilancia.",
+    "text": "Alerta.",
     "flavorText": "Marcha una de napolitana con fritas.",
     "image": "mozo_bodegon.png",
     "keywords": [
@@ -102,7 +102,7 @@
     ],
     "power": 2,
     "toughness": 1,
-    "text": "Amenaza.",
+    "text": "Intimidante.",
     "flavorText": "A la vuelta te lo cuido, jefe.",
     "image": "trapito.png",
     "keywords": [
@@ -244,7 +244,7 @@
   },
   {
     "id": "crea_014",
-    "name": "El Diego del '86",
+    "name": "Ídolo del Potrero Imposible",
     "type": "Criatura Legendaria",
     "manaCost": "{3}{R}{R}",
     "cmc": 5,
@@ -254,9 +254,9 @@
     ],
     "power": 8,
     "toughness": 7,
-    "text": "Alcance. La Gambeta Eterna — Siempre que El Diego del '86 ataque, le hace 2 de daño al jugador rival.",
-    "flavorText": "Barrilete cósmico, ¿de qué planeta viniste?",
-    "image": "diego_86.png",
+    "text": "Alcance. La Gambeta Eterna — Siempre que Ídolo del Potrero Imposible ataque, le hace 2 de daño al jugador rival.",
+    "flavorText": "Aprendió a gambetear antes de aprender dónde terminaba la cancha.",
+    "image": "idolo_del_potrero_imposible.png",
     "keywords": [
       "reach"
     ],
@@ -267,7 +267,7 @@
   },
   {
     "id": "crea_015",
-    "name": "El Comandante",
+    "name": "Magnate del Show Infinito",
     "type": "Criatura Legendaria",
     "manaCost": "{2}{W}{U}",
     "cmc": 4,
@@ -278,9 +278,9 @@
     ],
     "power": 5,
     "toughness": 5,
-    "text": "Amenaza. ¡Basta Chicos! — Siempre que El Comandante ataque, Adiviná 1.",
-    "flavorText": "Yo no manejo el ráting, yo manejo un Rolls-Royce.",
-    "image": "comandante_ricky.png",
+    "text": "Intimidante. El Show Sigue — Siempre que Magnate del Show Infinito ataque, Anticipá 1.",
+    "flavorText": "Tiene un escenario para cada capricho y un capricho para cada noche.",
+    "image": "magnate_del_show_infinito.png",
     "keywords": [
       "menace"
     ],
@@ -301,7 +301,7 @@
     ],
     "power": 7,
     "toughness": 8,
-    "text": "Arrollar. Cruce de los Andes — Siempre que San Martín ataque, ganás 2 Puntos de Vida.",
+    "text": "Arrolla. Cruce de los Andes — Siempre que San Martín ataque, ganás 2 Puntos de Vida.",
     "flavorText": "Serás lo que debas ser o no serás nada.",
     "image": "san_martin.png",
     "keywords": [
@@ -372,7 +372,7 @@
     ],
     "power": 5,
     "toughness": 8,
-    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, poné un contador +1/+1 sobre El Carpincho.",
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, poné un contador +1/+1 sobre El Carpincho.",
     "flavorText": "El verdadero dueño de la tierra.",
     "image": "carpincho.png",
     "keywords": [],
@@ -395,7 +395,7 @@
     ],
     "power": 3,
     "toughness": 4,
-    "text": "Vigilancia. Siempre que El Pombero haga daño de combate al jugador rival, ese jugador descarta una carta.",
+    "text": "Alerta. Siempre que El Pombero haga daño de combate al jugador rival, ese jugador descarta una carta.",
     "flavorText": "Se escucha un silbido entre la siesta...",
     "image": "pombero.png",
     "keywords": [
@@ -408,7 +408,7 @@
   },
   {
     "id": "crea_021",
-    "name": "El Eternauta",
+    "name": "Caminante del Fin del Mundo",
     "type": "Criatura Legendaria",
     "manaCost": "{2}{U}{U}",
     "cmc": 4,
@@ -418,9 +418,9 @@
     ],
     "power": 4,
     "toughness": 6,
-    "text": "Siempre que muera una criatura, Adiviná 1.",
-    "flavorText": "El único héroe es el héroe en grupo.",
-    "image": "eternauta.png",
+    "text": "Siempre que muera una criatura, Anticipá 1.",
+    "flavorText": "Aprendió a leer el desastre antes de que llegara la próxima ola.",
+    "image": "caminante_del_fin_del_mundo.png",
     "keywords": [],
     "anyCreatureDiesTrigger": {
       "type": "scry",
@@ -453,7 +453,7 @@
   },
   {
     "id": "crea_023",
-    "name": "Mirth LaGrande",
+    "name": "Anfitriona del Banquete Eterno",
     "type": "Criatura Legendaria",
     "manaCost": "{3}{R}{R}{R}",
     "cmc": 6,
@@ -464,12 +464,12 @@
     "power": 8,
     "toughness": 8,
     "text": "Causa 3 de daño al entrar en juego.",
-    "flavorText": "Probablemente este, sea tu último almuerzo.",
+    "flavorText": "Todos reciben una invitación. Muy pocos llegan al postre.",
     "etbEffect": {
       "type": "damage",
       "amount": 3
     },
-    "image": "mirtha.png",
+    "image": "anfitriona_del_banquete_eterno.png",
     "keywords": [
       "trample"
     ]
@@ -518,7 +518,7 @@
   },
   {
     "id": "crea_026",
-    "name": "Marta Minujín",
+    "name": "Artista de la Instalación Imposible",
     "type": "Criatura Legendaria — Espíritu Artista",
     "manaCost": "{1}{B}",
     "cmc": 2,
@@ -528,9 +528,9 @@
     ],
     "power": 1,
     "toughness": 2,
-    "text": "Siempre que Marta Minujín u otra criatura muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
-    "flavorText": "Ya no pinta con óleo. Cada obra necesita su propio rojo, y el campo de batalla nunca deja de proveerlo.",
-    "image": "marta_minujin.png",
+    "text": "Siempre que Artista de la Instalación Imposible u otra criatura muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Cada obra dura una noche. Las consecuencias, bastante más.",
+    "image": "artista_de_la_instalacion_imposible.png",
     "keywords": [],
     "anyCreatureDiesTrigger": {
       "type": "drain",
@@ -539,7 +539,7 @@
   },
   {
     "id": "crea_027",
-    "name": "El Flaco Spinetta",
+    "name": "Poeta del Rock Celeste",
     "type": "Criatura Legendaria — Artista",
     "manaCost": "{2}{W}{W}",
     "cmc": 4,
@@ -549,9 +549,9 @@
     ],
     "power": 3,
     "toughness": 4,
-    "text": "Doblegolpe. Siempre que El Flaco Spinetta haga daño de combate al jugador rival, ganás 1 Punto de Vida.",
-    "flavorText": "Toca cada acorde dos veces: una para vos, otra para el que escucha en silencio.",
-    "image": "spinetta.png",
+    "text": "Doblegolpe. Siempre que Poeta del Rock Celeste haga daño de combate al jugador rival, ganás 1 Punto de Vida.",
+    "flavorText": "Cada acorde abre dos caminos: uno hacia la multitud y otro hacia adentro.",
+    "image": "poeta_del_rock_celeste.png",
     "keywords": [
       "doublestrike"
     ],
@@ -562,7 +562,7 @@
   },
   {
     "id": "crea_028",
-    "name": "Charly García",
+    "name": "Pianista del Apagón Eterno",
     "type": "Criatura Legendaria — Artista",
     "manaCost": "{3}{W}",
     "cmc": 4,
@@ -572,9 +572,9 @@
     ],
     "power": 3,
     "toughness": 4,
-    "text": "Indestructible. Siempre que Charly García bloquee, ganás 2 Puntos de Vida.",
-    "flavorText": "Se cayó de un noveno piso y siguió tocando el piano.",
-    "image": "charly_garcia.png",
+    "text": "Irrompible. Siempre que Pianista del Apagón Eterno bloquee, ganás 2 Puntos de Vida.",
+    "flavorText": "Cuando se corta la luz, él recién empieza.",
+    "image": "pianista_del_apagon_eterno.png",
     "keywords": [
       "indestructible"
     ],
@@ -585,7 +585,7 @@
   },
   {
     "id": "crea_029",
-    "name": "Moria Casán",
+    "name": "La Diva Magnética",
     "type": "Criatura Legendaria — Diva",
     "manaCost": "{2}{B}{B}",
     "cmc": 4,
@@ -595,9 +595,9 @@
     ],
     "power": 3,
     "toughness": 4,
-    "text": "Indestructible. Cuando Moria Casán entre al campo de batalla, el jugador rival descarta una carta.",
-    "flavorText": "¿Qué le vas a hacer? Es la one.",
-    "image": "moria_casan.png",
+    "text": "Irrompible. Cuando La Diva Magnética entre al campo de batalla, el jugador rival descarta una carta.",
+    "flavorText": "Entra al escenario y hasta las sombras se acomodan para mirarla.",
+    "image": "la_diva_magnetica.png",
     "keywords": [
       "indestructible"
     ],
@@ -608,7 +608,7 @@
   },
   {
     "id": "crea_030",
-    "name": "Ricardo Iorio",
+    "name": "Metalero de las Sierras",
     "type": "Criatura Legendaria — Metalero",
     "manaCost": "{1}{R}{R}",
     "cmc": 3,
@@ -618,9 +618,9 @@
     ],
     "power": 3,
     "toughness": 2,
-    "text": "Prisa. Siempre que Ricardo Iorio ataque, le hace 1 de daño al jugador rival.",
-    "flavorText": "No negocia. Entra tocando desde el primer riff.",
-    "image": "ricardo_iorio.png",
+    "text": "Apuro. Siempre que Metalero de las Sierras ataque, le hace 1 de daño al jugador rival.",
+    "flavorText": "Cuando la tormenta baja de las sierras, él sube el amplificador.",
+    "image": "metalero_de_las_sierras.png",
     "keywords": [
       "haste"
     ],
@@ -631,7 +631,7 @@
   },
   {
     "id": "crea_031",
-    "name": "Alberto Samid",
+    "name": "Rey del Frigorífico",
     "type": "Criatura Legendaria — Empresario",
     "manaCost": "{2}{G}",
     "cmc": 3,
@@ -642,8 +642,8 @@
     "power": 3,
     "toughness": 3,
     "text": "{1}{G}: Pelea contra la criatura objetivo (cada una le hace daño a la otra igual a su fuerza).",
-    "flavorText": "Nunca dice las cosas con vueltas.",
-    "image": "alberto_samid.png",
+    "flavorText": "En su reino todo se discute cara a cara.",
+    "image": "rey_del_frigorifico.png",
     "keywords": [],
     "activatedAbility": {
       "cost": "{1}{G}",
@@ -656,7 +656,7 @@
   },
   {
     "id": "crea_032",
-    "name": "Susana Giménez",
+    "name": "Conductora del Living Dorado",
     "type": "Criatura Legendaria — Diva",
     "manaCost": "{2}{B}",
     "cmc": 3,
@@ -667,8 +667,8 @@
     "power": 2,
     "toughness": 3,
     "text": "Cuando esta criatura entre al campo de batalla, el jugador rival descarta una carta.",
-    "flavorText": "¿Vos me querés decir a mí lo que tengo que hacer?",
-    "image": "susana_gimenez.png",
+    "flavorText": "Una pregunta, una pausa y de golpe nadie recuerda qué venía a decir.",
+    "image": "conductora_del_living_dorado.png",
     "keywords": [],
     "etbEffect": {
       "type": "discard",
@@ -677,7 +677,7 @@
   },
   {
     "id": "crea_033",
-    "name": "Roberto Giordano",
+    "name": "Estilista del Futuro",
     "type": "Criatura Legendaria — Místico",
     "manaCost": "{1}{B}{B}",
     "cmc": 3,
@@ -688,8 +688,8 @@
     "power": 2,
     "toughness": 2,
     "text": "Cuando esta criatura entre al campo de batalla, robás una carta y perdés 1 Punto de Vida.",
-    "flavorText": "Vio tu futuro. No le gustó lo que vio.",
-    "image": "roberto_giordano.png",
+    "flavorText": "Te corta el pelo como si ya hubiera visto la foto de mañana.",
+    "image": "estilista_del_futuro.png",
     "keywords": [],
     "etbEffect": {
       "type": "draw_and_lose_life",
@@ -825,7 +825,7 @@
     "keywords": [
       "vigilance"
     ],
-    "text": "Vigilancia. Siempre que Capitana del Aguante ataque, ganás 1 Punto de Vida.",
+    "text": "Alerta. Siempre que Capitana del Aguante ataque, ganás 1 Punto de Vida.",
     "flavorText": "La que siempre está, en las buenas y en las malas.",
     "image": "capitana_aguante.png",
     "attackTrigger": {
@@ -940,7 +940,7 @@
     "keywords": [
       "deathtouch"
     ],
-    "text": "Toque Mortal. Siempre que Cortejo Fúnebre del Barrio le haga daño de combate al jugador, ese jugador pierde 1 Punto de Vida y vos ganás 1.",
+    "text": "Letal. Siempre que Cortejo Fúnebre del Barrio le haga daño de combate al jugador, ese jugador pierde 1 Punto de Vida y vos ganás 1.",
     "flavorText": "Caminan despacio, pero nunca se detienen.",
     "image": "cortejo_funebre.png",
     "combatDamageTrigger": {
@@ -961,7 +961,7 @@
     "keywords": [
       "defender"
     ],
-    "text": "Defensora. Siempre que El Centinela de Chatarra bloquee, le hace 2 de daño al jugador rival.",
+    "text": "Muralla. Siempre que El Centinela de Chatarra bloquee, le hace 2 de daño al jugador rival.",
     "flavorText": "Armado con chapa de auto viejo y una alarma que nunca se calla.",
     "image": "centinela_chatarra.png",
     "blockTrigger": {
@@ -1051,7 +1051,7 @@
     "keywords": [
       "vigilance"
     ],
-    "text": "Vigilancia. Siempre que Portera del Santuario bloquee, ganás 1 Punto de Vida.",
+    "text": "Alerta. Siempre que Portera del Santuario bloquee, ganás 1 Punto de Vida.",
     "flavorText": "No se mueve de la puerta, pase lo que pase adentro.",
     "image": "portera_santuario.png",
     "blockTrigger": {
@@ -1133,7 +1133,7 @@
     "keywords": [
       "haste"
     ],
-    "text": "Prisa. Siempre que lances un hechizo Instantáneo o Conjuro, le hacés 1 de daño al jugador rival.",
+    "text": "Apuro. Siempre que lances un hechizo Instantáneo o Conjuro, le hacés 1 de daño al jugador rival.",
     "flavorText": "Le encanta el fuego. Le encanta demasiado el fuego.",
     "image": "piromaniaco_feria.png",
     "spellCastTrigger": {
@@ -1209,7 +1209,7 @@
     "keywords": [
       "deathtouch"
     ],
-    "text": "Toque Mortal. Cuando Devorador del Pantano muera, el jugador rival pierde 2 Puntos de Vida y vos ganás 2.",
+    "text": "Letal. Cuando Devorador del Pantano muera, el jugador rival pierde 2 Puntos de Vida y vos ganás 2.",
     "flavorText": "Lo que se hunde en el pantano, no vuelve a salir.",
     "image": "devorador_pantano.png",
     "diesTrigger": {
@@ -1290,7 +1290,7 @@
       "flying",
       "ward_1"
     ],
-    "text": "Vuela. Ward 1.",
+    "text": "Vuela. Impuesto 1.",
     "flavorText": "Flota tan tranquila que nadie se anima a molestarla gratis.",
     "image": "centinela_encantada.png"
   },
@@ -1371,7 +1371,7 @@
     "keywords": [
       "vigilance"
     ],
-    "text": "Vigilancia.",
+    "text": "Alerta.",
     "flavorText": "No se pierde nada de lo que pasa en el monte.",
     "image": "custodio_reserva.png"
   },
@@ -1430,7 +1430,7 @@
     "keywords": [
       "defender"
     ],
-    "text": "Defensora.",
+    "text": "Muralla.",
     "flavorText": "No deja pasar a nadie sin pagar la entrada.",
     "image": "portera_feria.png"
   },
@@ -1449,7 +1449,7 @@
     "keywords": [
       "haste"
     ],
-    "text": "Prisa.",
+    "text": "Apuro.",
     "flavorText": "Llega, agarra los cuernos, y ya está peleando.",
     "image": "domador_toros.png"
   },
@@ -1466,7 +1466,7 @@
     "power": 2,
     "toughness": 2,
     "keywords": [],
-    "text": "Cuando Scout Precisa entra al campo de batalla, Vigilá 2.",
+    "text": "Cuando Scout Precisa entra al campo de batalla, Chusmeá 2.",
     "flavorText": "Sabe exactamente qué merece vivir, y qué no.",
     "image": "scout_precisa.png",
     "etbEffect": {
@@ -1491,7 +1491,7 @@
       "vigilance",
       "ward_1"
     ],
-    "text": "Vigilancia, Ward {1}.",
+    "text": "Alerta, Impuesto {1}.",
     "flavorText": "El que se le acerca sin permiso, paga con su sangre.",
     "image": "guardiana_faro.png"
   },
@@ -1510,7 +1510,7 @@
     "keywords": [
       "deathtouch"
     ],
-    "text": "Toque Mortal. Escape—{3}{B}{B}, exiliá tres cartas de tu cementerio.",
+    "text": "Letal. Zafar — {3}{B}{B}, exiliá tres cartas de tu cementerio.",
     "flavorText": "Cada año pide su parte. Cada año, vuelve a buscarla.",
     "image": "el_familiar.png",
     "escape": {
@@ -1531,7 +1531,7 @@
     "power": 1,
     "toughness": 2,
     "keywords": [],
-    "text": "Kicker {2}{U}. Si pagaste el coste de Kicker, robás una carta al entrar al campo de batalla.",
+    "text": "Yapa {2}{U}. Si pagaste la Yapa, robás una carta al entrar al campo de batalla.",
     "flavorText": "«¿Le interesa uno para el amigo también?»",
     "image": "vendedor_ambulante.png",
     "kicker": {
@@ -1575,7 +1575,7 @@
     ],
     "power": 1,
     "toughness": 2,
-    "text": "Vigilancia.",
+    "text": "Alerta.",
     "flavorText": "Se sabe todos los horarios aunque nadie se los haya enseñado.",
     "image": "perro_anden.png",
     "keywords": [
@@ -1594,7 +1594,7 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "Vigilancia.",
+    "text": "Alerta.",
     "flavorText": "Mientras quede una luz prendida, alguien está cuidando.",
     "image": "sereno_estacion.png",
     "keywords": [
@@ -1613,7 +1613,7 @@
     ],
     "power": 1,
     "toughness": 4,
-    "text": "Defensora.",
+    "text": "Muralla.",
     "flavorText": "La cuota puede esperar. La puerta, no.",
     "image": "custodio_club.png",
     "keywords": [
@@ -1653,7 +1653,7 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "Vínculo Vital.",
+    "text": "Absorción.",
     "flavorText": "Caballo cansado, promesa intacta.",
     "image": "jinete_peregrinacion.png",
     "keywords": [
@@ -1693,7 +1693,7 @@
     ],
     "power": 3,
     "toughness": 3,
-    "text": "Vigilancia.",
+    "text": "Alerta.",
     "flavorText": "La bandera pesa más cuando la lleva uno solo.",
     "image": "abanderado_barrio.png",
     "keywords": [
@@ -1712,7 +1712,7 @@
     ],
     "power": 3,
     "toughness": 2,
-    "text": "Primer Golpe.",
+    "text": "Iniciativa.",
     "flavorText": "No corre: marcha. Y nadie se le cruza.",
     "image": "caballo_desfile.png",
     "keywords": [
@@ -1731,7 +1731,7 @@
     ],
     "power": 3,
     "toughness": 4,
-    "text": "Vigilancia. Ward 1.",
+    "text": "Alerta. Impuesto 1.",
     "flavorText": "Juró que mientras el ombú dé sombra, nadie pelea solo.",
     "image": "paladin_ombu.png",
     "keywords": [
@@ -1751,7 +1751,7 @@
     ],
     "power": 4,
     "toughness": 5,
-    "text": "Vuela. Ward 1.",
+    "text": "Vuela. Impuesto 1.",
     "flavorText": "Aparece donde la ruta se queda sin luces y sobran promesas.",
     "image": "guardian_santuario_vial.png",
     "keywords": [
@@ -1771,7 +1771,7 @@
     ],
     "power": 1,
     "toughness": 3,
-    "text": "Cuando Bióloga del Estuario entra al campo de batalla, Adiviná 1.",
+    "text": "Cuando Bióloga del Estuario entra al campo de batalla, Anticipá 1.",
     "flavorText": "Mide la marea con una libreta que nunca se moja.",
     "image": "biologa_estuario.png",
     "keywords": [],
@@ -1811,7 +1811,7 @@
     ],
     "power": 2,
     "toughness": 1,
-    "text": "Siempre que Pescador de la Sudestada haga daño de combate al jugador rival, Adiviná 1.",
+    "text": "Siempre que Pescador de la Sudestada haga daño de combate al jugador rival, Anticipá 1.",
     "flavorText": "Si el río se pone bravo, él mira mejor.",
     "image": "pescador_sudestada.png",
     "keywords": [],
@@ -1853,7 +1853,7 @@
     ],
     "power": 3,
     "toughness": 3,
-    "text": "Vuela. Ward 1.",
+    "text": "Vuela. Impuesto 1.",
     "flavorText": "En el sur, algunas nubes aprendieron a elegir por dónde pasar.",
     "image": "espiritu_bruma_austral.png",
     "keywords": [
@@ -1873,7 +1873,7 @@
     ],
     "power": 1,
     "toughness": 1,
-    "text": "Toque Mortal.",
+    "text": "Letal.",
     "flavorText": "Donde queda una bolsa rota, ella ya estaba antes.",
     "image": "rata_galpon.png",
     "keywords": [
@@ -1913,7 +1913,7 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "Amenaza.",
+    "text": "Intimidante.",
     "flavorText": "No ladra a los vivos.",
     "image": "perro_cementerio.png",
     "keywords": [
@@ -1932,7 +1932,7 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "Toque Mortal.",
+    "text": "Letal.",
     "flavorText": "Todos conocen su ventana. Nadie la mira dos veces.",
     "image": "viuda_callejon.png",
     "keywords": [
@@ -1972,7 +1972,7 @@
     ],
     "power": 4,
     "toughness": 3,
-    "text": "Amenaza.",
+    "text": "Intimidante.",
     "flavorText": "Crece con lo que nadie pregunta dónde termina.",
     "image": "gusano_matadero.png",
     "keywords": [
@@ -2010,7 +2010,7 @@
     ],
     "power": 1,
     "toughness": 2,
-    "text": "Infectar.",
+    "text": "Contagio.",
     "flavorText": "El barro le llega a los tobillos; la fiebre, mucho más arriba.",
     "image": "portador_peste_banado.png",
     "keywords": [
@@ -2029,7 +2029,7 @@
     ],
     "power": 1,
     "toughness": 1,
-    "text": "Vuela. Infectar.",
+    "text": "Vuela. Contagio.",
     "flavorText": "Un zumbido alcanza para arruinarte la noche y la sangre.",
     "image": "mosquito_estero_negro.png",
     "keywords": [
@@ -2049,7 +2049,7 @@
     ],
     "power": 1,
     "toughness": 1,
-    "text": "Amenaza.",
+    "text": "Intimidante.",
     "flavorText": "De día duerme. De noche discute con media cuadra.",
     "image": "gato_tejado_caliente.png",
     "keywords": [
@@ -2068,7 +2068,7 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "Prisa.",
+    "text": "Apuro.",
     "flavorText": "Si no arranca con llave, arranca a las puteadas.",
     "image": "foguista_taller.png",
     "keywords": [
@@ -2087,7 +2087,7 @@
     ],
     "power": 2,
     "toughness": 1,
-    "text": "Amenaza.",
+    "text": "Intimidante.",
     "flavorText": "Cambia a rojo justo cuando venías embalado.",
     "image": "duende_semaforo.png",
     "keywords": [
@@ -2106,7 +2106,7 @@
     ],
     "power": 3,
     "toughness": 2,
-    "text": "Prisa.",
+    "text": "Apuro.",
     "flavorText": "El espejo retrovisor es apenas una sugerencia.",
     "image": "motociclista_conurbano.png",
     "keywords": [
@@ -2184,7 +2184,7 @@
     ],
     "power": 2,
     "toughness": 1,
-    "text": "Primer Golpe.",
+    "text": "Iniciativa.",
     "flavorText": "La pelota puede no estar. El codazo llega igual.",
     "image": "corredor_picado.png",
     "keywords": [
@@ -2222,7 +2222,7 @@
     ],
     "power": 3,
     "toughness": 3,
-    "text": "Prisa.",
+    "text": "Apuro.",
     "flavorText": "No persigue al viento. Lo monta.",
     "image": "jinete_viento_zonda.png",
     "keywords": [
@@ -2241,7 +2241,7 @@
     ],
     "power": 4,
     "toughness": 2,
-    "text": "Amenaza.",
+    "text": "Intimidante.",
     "flavorText": "Toma sol sobre el riel y se enoja con cualquier cosa que tenga horario.",
     "image": "lagarto_vias.png",
     "keywords": [
@@ -2279,7 +2279,7 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "Vigilancia.",
+    "text": "Alerta.",
     "flavorText": "Cruza cuando quiere y siempre llega del otro lado.",
     "image": "mulita_camino.png",
     "keywords": [
@@ -2298,7 +2298,7 @@
     ],
     "power": 3,
     "toughness": 3,
-    "text": "Vigilancia.",
+    "text": "Alerta.",
     "flavorText": "No vuela porque nunca necesitó hacerlo.",
     "image": "nandu_llanura.png",
     "keywords": [
@@ -2433,7 +2433,7 @@
     ],
     "power": 1,
     "toughness": 2,
-    "text": "Infectar.",
+    "text": "Contagio.",
     "flavorText": "La ves después. Primero sentís el pinchazo.",
     "image": "vibora_pajonal.png",
     "keywords": [
@@ -2452,7 +2452,7 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "Infectar.",
+    "text": "Contagio.",
     "flavorText": "Carga barro, podredumbre y una paciencia que da miedo.",
     "image": "escarabajo_estero.png",
     "keywords": [
@@ -2510,7 +2510,7 @@
     ],
     "power": 2,
     "toughness": 4,
-    "text": "Vuela. Ward 1.",
+    "text": "Vuela. Impuesto 1.",
     "flavorText": "Cuando la linterna se apaga, él sigue mirando desde arriba.",
     "image": "sereno_faro_viejo.png",
     "keywords": [
@@ -2531,7 +2531,7 @@
     ],
     "power": 2,
     "toughness": 3,
-    "text": "Vuela. Cuando Cartógrafa de la Bajante entra al campo de batalla, Vigilá 2.",
+    "text": "Vuela. Cuando Cartógrafa de la Bajante entra al campo de batalla, Chusmeá 2.",
     "flavorText": "Dibuja caminos que sólo aparecen cuando el río retrocede.",
     "image": "cartografa_bajante.png",
     "keywords": [
@@ -2555,7 +2555,7 @@
     ],
     "power": 3,
     "toughness": 2,
-    "text": "Amenaza. Cuando Quemero de la Quema muera, le hacés 2 de daño al jugador rival.",
+    "text": "Intimidante. Cuando Quemero de la Quema muera, le hacés 2 de daño al jugador rival.",
     "flavorText": "Donde otros ven descarte, él ve combustible.",
     "image": "quemero_quema.png",
     "keywords": [
@@ -2607,7 +2607,7 @@
     ],
     "power": 3,
     "toughness": 4,
-    "text": "Vigilancia. Vínculo Vital.",
+    "text": "Alerta. Absorción.",
     "flavorText": "Uno lleva la imagen. El otro mira quién se acerca demasiado.",
     "image": "custodios_fiesta_patronal.png",
     "keywords": [
@@ -2650,7 +2650,7 @@
     ],
     "power": 2,
     "toughness": 3,
-    "text": "Destello. Siempre que lances un hechizo Instantáneo o Conjuro, Adiviná 1.",
+    "text": "Al toque. Siempre que lances un hechizo Instantáneo o Conjuro, Anticipá 1.",
     "flavorText": "Escucha tormentas antes de que las nubes sepan que vienen.",
     "image": "radioaficionado_temporal.png",
     "keywords": [
@@ -2677,7 +2677,7 @@
     ],
     "power": 2,
     "toughness": 3,
-    "text": "Infectar.",
+    "text": "Contagio.",
     "flavorText": "El agua se mueve antes que él. Después ya es tarde.",
     "image": "acechador_banado_negro.png",
     "keywords": [
@@ -2697,7 +2697,7 @@
     ],
     "power": 3,
     "toughness": 3,
-    "text": "Prisa. Vigilancia.",
+    "text": "Apuro. Alerta.",
     "flavorText": "Llega primero, acomoda a todos y todavía vuelve a buscar al que faltaba.",
     "image": "capataz_caravana.png",
     "keywords": [
@@ -2718,7 +2718,7 @@
     ],
     "power": 2,
     "toughness": 4,
-    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, Adiviná 1.",
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, Anticipá 1.",
     "flavorText": "Con barro hasta la cintura, nunca pierde el norte.",
     "image": "rastreador_islas.png",
     "keywords": [],
@@ -2737,7 +2737,7 @@
     "colors": [],
     "power": 3,
     "toughness": 3,
-    "text": "Ward {1}.",
+    "text": "Impuesto {1}.",
     "flavorText": "Cada baldosa floja estaba juntando bronca para esto.",
     "image": "golem_adoquines.png",
     "keywords": [
@@ -2788,7 +2788,7 @@
     "colors": [
       "W"
     ],
-    "text": "Vigilancia.",
+    "text": "Alerta.",
     "flavorText": "Duerme junto al portón, pero escucha hasta el último paso de la madrugada.",
     "image": "perro_cuartel.png",
     "power": 1,
@@ -2856,7 +2856,7 @@
     "colors": [
       "W"
     ],
-    "text": "Vuela. Vigilancia. Siempre que Custodia de la Basílica ataque, ganás 2 Puntos de Vida.",
+    "text": "Vuela. Alerta. Siempre que Custodia de la Basílica ataque, ganás 2 Puntos de Vida.",
     "flavorText": "No figura en ningún turno de guardia, pero nunca dejó la puerta sola.",
     "image": "custodia_basilica.png",
     "power": 4,
@@ -2880,7 +2880,7 @@
     "colors": [
       "U"
     ],
-    "text": "Cuando Buzo del Río Turbio entre al campo de batalla, Vigilá 1.",
+    "text": "Cuando Buzo del Río Turbio entre al campo de batalla, Chusmeá 1.",
     "flavorText": "Bajo el agua no ve más lejos; simplemente aprendió a mirar mejor.",
     "image": "buzo_rio_turbio.png",
     "power": 1,
@@ -2901,7 +2901,7 @@
     "colors": [
       "U"
     ],
-    "text": "Destello. Cuando Operador del Radar Costero entre al campo de batalla, Adiviná 1.",
+    "text": "Al toque. Cuando Operador del Radar Costero entre al campo de batalla, Anticipá 1.",
     "flavorText": "La pantalla se enciende varios segundos antes de que el horizonte admita que pasa algo.",
     "image": "operador_radar_costero.png",
     "power": 2,
@@ -2970,7 +2970,7 @@
     "colors": [
       "B"
     ],
-    "text": "Vuela. Infectar.",
+    "text": "Vuela. Contagio.",
     "flavorText": "No necesita agua limpia. De hecho, la prefiere de otro modo.",
     "image": "mosquito_riachuelo.png",
     "power": 1,
@@ -2990,7 +2990,7 @@
     "colors": [
       "B"
     ],
-    "text": "Toque Mortal. Cuando Viuda del Kilómetro 9 muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+    "text": "Letal. Cuando Viuda del Kilómetro 9 muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
     "flavorText": "Todos paran a preguntar qué pasó. Nadie se queda para escuchar la respuesta.",
     "image": "viuda_kilometro_9.png",
     "power": 2,
@@ -3013,7 +3013,7 @@
     "colors": [
       "B"
     ],
-    "text": "Cuando Recolector del Crematorio entre al campo de batalla, Vigilá 2.",
+    "text": "Cuando Recolector del Crematorio entre al campo de batalla, Chusmeá 2.",
     "flavorText": "Separa ceniza, metal y secretos con la misma paciencia.",
     "image": "recolector_crematorio.png",
     "power": 2,
@@ -3034,7 +3034,7 @@
     "colors": [
       "B"
     ],
-    "text": "Amenaza. Siempre que una criatura que controla tu oponente muera, ese jugador pierde 1 Punto de Vida y vos ganás 1.",
+    "text": "Intimidante. Siempre que una criatura que controla tu oponente muera, ese jugador pierde 1 Punto de Vida y vos ganás 1.",
     "flavorText": "La séptima noche no se cuenta. Se sobrevive.",
     "image": "lobizon_septima_noche.png",
     "power": 5,
@@ -3057,7 +3057,7 @@
     "colors": [
       "R"
     ],
-    "text": "Prisa. Siempre que lances un Instantáneo o Conjuro, Malabarista del Semáforo obtiene +1/+0 hasta el final del turno.",
+    "text": "Apuro. Siempre que lances un Instantáneo o Conjuro, Malabarista del Semáforo obtiene +1/+0 hasta el final del turno.",
     "flavorText": "Tres pelotas, dos bocinazos y exactamente cuarenta segundos.",
     "image": "malabarista_semaforo.png",
     "power": 1,
@@ -3084,7 +3084,7 @@
     "colors": [
       "R"
     ],
-    "text": "Prisa.",
+    "text": "Apuro.",
     "flavorText": "Cuando prende la mecha ya decidió de qué lado va a correr.",
     "image": "bombista_cancha.png",
     "power": 2,
@@ -3124,7 +3124,7 @@
     "colors": [
       "R"
     ],
-    "text": "Amenaza. Arrolla. Siempre que Diablo de la Salamanca ataque, le hacés 2 de daño al jugador rival.",
+    "text": "Intimidante. Arrolla. Siempre que Diablo de la Salamanca ataque, le hacés 2 de daño al jugador rival.",
     "flavorText": "La música se escucha desde lejos. Los gritos, un poco después.",
     "image": "diablo_salamanca.png",
     "power": 6,
@@ -3167,7 +3167,7 @@
     "colors": [
       "G"
     ],
-    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, poné un contador +1/+1 sobre Guardaparque del Iberá.",
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, poné un contador +1/+1 sobre Guardaparque del Iberá.",
     "flavorText": "Conoce cada huella y, sobre todo, cuáles no estaban ayer.",
     "image": "guardaparque_ibera.png",
     "power": 2,
@@ -3208,7 +3208,7 @@
     "colors": [
       "G"
     ],
-    "text": "Alcance. Intocable. Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, creá una ficha de criatura Brote 1/1.",
+    "text": "Alcance. Intocable. Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, creá una ficha de criatura Brote 1/1.",
     "flavorText": "Donde pisa vuelve a crecer algo, aunque nadie recuerde qué había antes.",
     "image": "madre_del_monte.png",
     "power": 5,
@@ -3264,7 +3264,7 @@
       "U",
       "B"
     ],
-    "text": "Toque Mortal. Cuando Perito de la Morgue Fluvial muera, devolvé un Instantáneo de tu cementerio a tu mano.",
+    "text": "Letal. Cuando Perito de la Morgue Fluvial muera, devolvé un Instantáneo de tu cementerio a tu mano.",
     "flavorText": "El río devuelve cuerpos. Él devuelve preguntas.",
     "image": "perito_morgue_fluvial.png",
     "power": 2,
@@ -3289,7 +3289,7 @@
       "B",
       "R"
     ],
-    "text": "Amenaza. {1}, Sacrificá otra criatura: Le hacés 1 de daño al jugador rival.",
+    "text": "Intimidante. {1}, Sacrificá otra criatura: Le hacés 1 de daño al jugador rival.",
     "flavorText": "Si todavía larga humo, para él todavía sirve.",
     "image": "calderero_tren_quemado.png",
     "power": 3,
@@ -3319,7 +3319,7 @@
       "R",
       "G"
     ],
-    "text": "Arrolla. Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, Arriero de la Cuesta Roja obtiene +2/+0 hasta el final del turno.",
+    "text": "Arrolla. Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, Arriero de la Cuesta Roja obtiene +2/+0 hasta el final del turno.",
     "flavorText": "Cuando el camino se empina, él acelera.",
     "image": "arriero_cuesta_roja.png",
     "power": 4,
@@ -3344,7 +3344,7 @@
       "G",
       "W"
     ],
-    "text": "Vigilancia. Siempre que Organizadora de la Peregrinación ataque, creá una ficha de criatura Peregrino 1/1.",
+    "text": "Alerta. Siempre que Organizadora de la Peregrinación ataque, creá una ficha de criatura Peregrino 1/1.",
     "flavorText": "Siempre sabe quién falta, quién se quedó atrás y quién trajo otra bandera.",
     "image": "organizadora_peregrinacion.png",
     "power": 3,
@@ -3375,7 +3375,7 @@
       "W",
       "B"
     ],
-    "text": "Vínculo Vital. Siempre que una criatura que controla tu oponente muera, creá una ficha de criatura Ánima 1/1.",
+    "text": "Absorción. Siempre que una criatura que controla tu oponente muera, creá una ficha de criatura Ánima 1/1.",
     "flavorText": "Prende una vela por cada nombre. Algunas se apagan solas.",
     "image": "veladora_santuario_gris.png",
     "power": 2,
@@ -3406,7 +3406,7 @@
       "U",
       "R"
     ],
-    "text": "Destello. Siempre que lances un Instantáneo o Conjuro, Cronista del Temporal obtiene +1/+0 hasta el final del turno.",
+    "text": "Al toque. Siempre que lances un Instantáneo o Conjuro, Cronista del Temporal obtiene +1/+0 hasta el final del turno.",
     "flavorText": "Anota la hora exacta del trueno y después discute con el pronóstico.",
     "image": "cronista_temporal.png",
     "power": 2,
@@ -3434,7 +3434,7 @@
       "B",
       "G"
     ],
-    "text": "Toque Mortal. Cuando Yuyero del Bañado muera, Proliferá.",
+    "text": "Letal. Cuando Yuyero del Bañado muera, Amplificá.",
     "flavorText": "Conoce las plantas que curan, las que matan y las que hacen las dos cosas.",
     "image": "yuyero_banado.png",
     "power": 2,
@@ -3457,7 +3457,7 @@
       "R",
       "W"
     ],
-    "text": "Prisa. Siempre que Bombista de Murga ataque, creá una ficha de criatura Murguero 1/1.",
+    "text": "Apuro. Siempre que Bombista de Murga ataque, creá una ficha de criatura Murguero 1/1.",
     "flavorText": "Empieza solo. Para la segunda cuadra ya son veinte.",
     "image": "bombista_murga.png",
     "power": 3,
@@ -3488,7 +3488,7 @@
       "G",
       "U"
     ],
-    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, Baquiana de los Esteros obtiene +1/+1 hasta el final del turno.",
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, Baquiana de los Esteros obtiene +1/+1 hasta el final del turno.",
     "flavorText": "Donde vos ves agua, ella ve tres caminos distintos.",
     "image": "baquiana_esteros.png",
     "power": 2,
@@ -3510,7 +3510,7 @@
     "colors": [
       "W"
     ],
-    "text": "Vigilancia.",
+    "text": "Alerta.",
     "flavorText": "A las cuatro de la mañana conoce cada pasillo y cada ruido.",
     "image": "sereno_del_hospital_viejo.png",
     "power": 2,
@@ -3548,7 +3548,7 @@
     "colors": [
       "W"
     ],
-    "text": "Vínculo Vital. Cuando Promesera de Luján entre al campo de batalla, ganás 2 Puntos de Vida.",
+    "text": "Absorción. Cuando Promesera de Luján entre al campo de batalla, ganás 2 Puntos de Vida.",
     "flavorText": "Caminó toda la noche. A la mañana todavía tenía algo para dar.",
     "image": "promesera_de_lujan.png",
     "power": 2,
@@ -3599,7 +3599,7 @@
     "colors": [
       "W"
     ],
-    "text": "Vigilancia. {2}{W}, {T}: La criatura objetivo no puede atacar en su próximo turno.",
+    "text": "Alerta. {2}{W}, {T}: La criatura objetivo no puede atacar en su próximo turno.",
     "flavorText": "No prohíbe entrar. Sólo consigue que nadie vuelva a moverse sin permiso.",
     "image": "custodio_del_archivo_general.png",
     "power": 3,
@@ -3628,7 +3628,7 @@
     "colors": [
       "W"
     ],
-    "text": "Vigilancia. Siempre que Capitana de Bomberos Voluntarios ataque, creá una ficha de criatura Voluntario 1/1 con Vigilancia.",
+    "text": "Alerta. Siempre que Capitana de Bomberos Voluntarios ataque, creá una ficha de criatura Voluntario 1/1 con Alerta.",
     "flavorText": "La sirena suena una vez y el barrio entero ya sabe qué hacer.",
     "image": "capitana_de_bomberos_voluntarios.png",
     "power": 4,
@@ -3660,7 +3660,7 @@
     "colors": [
       "W"
     ],
-    "text": "Vuela. Vínculo Vital. Siempre que muera una criatura, ganás 1 Punto de Vida.",
+    "text": "Vuela. Absorción. Siempre que muera una criatura, ganás 1 Punto de Vida.",
     "flavorText": "La ven al costado de la ruta cuando ya es demasiado tarde para frenar.",
     "image": "la_dama_blanca_del_kilometro_cero.png",
     "power": 5,
@@ -3684,7 +3684,7 @@
     "colors": [
       "U"
     ],
-    "text": "Cuando Vigía del Radar Costero entre al campo de batalla, Adiviná 2.",
+    "text": "Cuando Vigía del Radar Costero entre al campo de batalla, Anticipá 2.",
     "flavorText": "No ve barcos. Ve ecos que todavía no decidieron ser barcos.",
     "image": "vigia_del_radar_costero.png",
     "power": 1,
@@ -3724,7 +3724,7 @@
     "colors": [
       "U"
     ],
-    "text": "Destello. Cuando Telegrafista de Ushuaia entre al campo de batalla, Adiviná 2.",
+    "text": "Al toque. Cuando Telegrafista de Ushuaia entre al campo de batalla, Anticipá 2.",
     "flavorText": "El mensaje tarda menos que el viento, pero llega más frío.",
     "image": "telegrafista_de_ushuaia.png",
     "power": 2,
@@ -3862,7 +3862,7 @@
     "colors": [
       "B"
     ],
-    "text": "Cuando Peón del Cementerio Ferroviario muera, Vigilá 1.",
+    "text": "Cuando Peón del Cementerio Ferroviario muera, Chusmeá 1.",
     "flavorText": "Entre los durmientes viejos todavía encuentra nombres.",
     "image": "peon_del_cementerio_ferroviario.png",
     "power": 2,
@@ -3883,7 +3883,7 @@
     "colors": [
       "B"
     ],
-    "text": "Toque Mortal. Cuando Viuda del Hotel Cerrado entre al campo de batalla, el rival pierde 1 Punto de Vida y vos ganás 1.",
+    "text": "Letal. Cuando Viuda del Hotel Cerrado entre al campo de batalla, el rival pierde 1 Punto de Vida y vos ganás 1.",
     "flavorText": "La recepción quedó vacía hace veinte años. Ella todavía espera en el lobby.",
     "image": "viuda_del_hotel_cerrado.png",
     "power": 2,
@@ -3927,7 +3927,7 @@
     "colors": [
       "B"
     ],
-    "text": "Amenaza. Siempre que Contrabandista del Puerto Seco haga daño de combate al jugador rival, ese jugador descarta una carta.",
+    "text": "Intimidante. Siempre que Contrabandista del Puerto Seco haga daño de combate al jugador rival, ese jugador descarta una carta.",
     "flavorText": "No necesita río para mover cosas que no deberían moverse.",
     "image": "contrabandista_del_puerto_seco.png",
     "power": 3,
@@ -3972,7 +3972,7 @@
     "colors": [
       "B"
     ],
-    "text": "Amenaza. Toque Mortal. Al comienzo de tu mantenimiento, el rival pierde 1 Punto de Vida y vos ganás 1. Escape—{6}{B}{B}, exiliar cuatro cartas de tu cementerio.",
+    "text": "Intimidante. Letal. Al comienzo de tu mantenimiento, el rival pierde 1 Punto de Vida y vos ganás 1. Zafar — {6}{B}{B}, exiliar cuatro cartas de tu cementerio.",
     "flavorText": "En el cañaveral nadie lo llama por su nombre dos veces.",
     "image": "el_familiar_del_ingenio.png",
     "power": 5,
@@ -4000,7 +4000,7 @@
     "colors": [
       "R"
     ],
-    "text": "Prisa.",
+    "text": "Apuro.",
     "flavorText": "La parrilla ya está prendida cuando llega el primer micro.",
     "image": "parrillero_de_la_terminal.png",
     "power": 2,
@@ -4019,7 +4019,7 @@
     "colors": [
       "R"
     ],
-    "text": "Amenaza.",
+    "text": "Intimidante.",
     "flavorText": "Ve dos chapas rotas y enseguida imagina una sola que aguante.",
     "image": "soldador_del_astillero.png",
     "power": 3,
@@ -4038,7 +4038,7 @@
     "colors": [
       "R"
     ],
-    "text": "Prisa. Siempre que Corredor del TC Zonal ataque, le hacés 1 de daño al jugador rival.",
+    "text": "Apuro. Siempre que Corredor del TC Zonal ataque, le hacés 1 de daño al jugador rival.",
     "flavorText": "El motor se escucha dos curvas antes.",
     "image": "corredor_del_tc_zonal.png",
     "power": 3,
@@ -4111,8 +4111,8 @@
     "colors": [
       "R"
     ],
-    "text": "Amenaza. Siempre que Bombista de la Tribuna Vieja ataque, creá una ficha de criatura Hincha 1/1 con Prisa.",
-    "flavorText": "El primer golpe marca el ritmo. Después ya no se escucha otra cosa.",
+    "text": "Intimidante. Siempre que Bombista de la Tribuna Vieja ataque, creá una ficha de criatura Hincha 1/1 con Apuro.",
+    "flavorText": "El Iniciativa marca el ritmo. Después ya no se escucha otra cosa.",
     "image": "bombista_de_la_tribuna_vieja.png",
     "power": 4,
     "toughness": 4,
@@ -4143,7 +4143,7 @@
     "colors": [
       "R"
     ],
-    "text": "Prisa. Daña Primero. Siempre que El Jinete de la Ruta Quemada ataque, le hacés 2 de daño al jugador rival.",
+    "text": "Apuro. Daña Primero. Siempre que El Jinete de la Ruta Quemada ataque, le hacés 2 de daño al jugador rival.",
     "flavorText": "Nadie lo vio parar. Algunos aseguran que tampoco tiene destino.",
     "image": "el_jinete_de_la_ruta_quemada.png",
     "power": 6,
@@ -4228,7 +4228,7 @@
     "colors": [
       "G"
     ],
-    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, poné un contador +1/+1 sobre Criancera de la Precordillera.",
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, poné un contador +1/+1 sobre Criancera de la Precordillera.",
     "flavorText": "Donde termina el camino, para ella recién empieza el campo.",
     "image": "criancera_de_la_precordillera.png",
     "power": 3,
@@ -4296,7 +4296,7 @@
     "colors": [
       "G"
     ],
-    "text": "Arrolla. Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, El Ucumar de la Quebrada obtiene +2/+2 hasta el final del turno.",
+    "text": "Arrolla. Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, El Ucumar de la Quebrada obtiene +2/+2 hasta el final del turno.",
     "flavorText": "En la montaña hay huellas que parecen humanas hasta que ves el tamaño.",
     "image": "el_ucumar_de_la_quebrada.png",
     "power": 7,
@@ -4321,7 +4321,7 @@
       "W",
       "U"
     ],
-    "text": "Vuela. Cuando Restauradora del Teatro Viejo entre al campo de batalla, Adiviná 2.",
+    "text": "Vuela. Cuando Restauradora del Teatro Viejo entre al campo de batalla, Anticipá 2.",
     "flavorText": "Repara telones que recuerdan obras que nadie volvió a montar.",
     "image": "restauradora_del_teatro_viejo.png",
     "power": 2,
@@ -4345,7 +4345,7 @@
       "U",
       "B"
     ],
-    "text": "Siempre que Detective de la Ribera Oscura haga daño de combate al jugador rival, Vigilá 2.",
+    "text": "Siempre que Detective de la Ribera Oscura haga daño de combate al jugador rival, Chusmeá 2.",
     "flavorText": "No busca culpables. Busca la versión que sobrevivió a la marea.",
     "image": "detective_de_la_ribera_oscura.png",
     "power": 2,
@@ -4367,7 +4367,7 @@
       "B",
       "R"
     ],
-    "text": "Amenaza. Siempre que Fogonero del Tren Nocturno ataque, descartá una carta y luego robá una carta.",
+    "text": "Intimidante. Siempre que Fogonero del Tren Nocturno ataque, descartá una carta y luego robá una carta.",
     "flavorText": "Alimenta una locomotora que hace años dejó de figurar en los horarios.",
     "image": "fogonero_del_tren_nocturno.png",
     "power": 3,
@@ -4391,7 +4391,7 @@
       "R",
       "G"
     ],
-    "text": "Arrolla. Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, Arriero del Paso Colorado obtiene +1/+1 hasta el final del turno.",
+    "text": "Arrolla. Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, Arriero del Paso Colorado obtiene +1/+1 hasta el final del turno.",
     "flavorText": "La montaña no le corta el paso; apenas le cambia la conversación.",
     "image": "arriero_del_paso_colorado.png",
     "power": 4,
@@ -4416,7 +4416,7 @@
       "G",
       "W"
     ],
-    "text": "Vigilancia. Vínculo Vital.",
+    "text": "Alerta. Absorción.",
     "flavorText": "Llegan cinco en un auto para cuatro y siempre queda lugar para uno más.",
     "image": "familia_de_la_fiesta_patronal.png",
     "power": 3,
@@ -4437,7 +4437,7 @@
       "W",
       "B"
     ],
-    "text": "Vínculo Vital. Siempre que muera una criatura del rival, el rival pierde 1 Punto de Vida y vos ganás 1.",
+    "text": "Absorción. Siempre que muera una criatura del rival, el rival pierde 1 Punto de Vida y vos ganás 1.",
     "flavorText": "Conoce qué flor corresponde a cada silencio.",
     "image": "florista_del_cementerio_sur.png",
     "power": 2,
@@ -4461,7 +4461,7 @@
       "U",
       "R"
     ],
-    "text": "Destello. Siempre que lances un Instantáneo o Conjuro, robá una carta y luego descartá una carta.",
+    "text": "Al toque. Siempre que lances un Instantáneo o Conjuro, robá una carta y luego descartá una carta.",
     "flavorText": "Transmite desde una frecuencia que oficialmente nunca existió.",
     "image": "operador_de_radio_pirata.png",
     "power": 2,
@@ -4488,7 +4488,7 @@
       "B",
       "G"
     ],
-    "text": "Toque Mortal. Cuando Recolector del Bañado Negro muera, Proliferá.",
+    "text": "Letal. Cuando Recolector del Bañado Negro muera, Amplificá.",
     "flavorText": "Saca del barro cosas que el barro prefería conservar.",
     "image": "recolector_del_banado_negro.png",
     "power": 3,
@@ -4511,7 +4511,7 @@
       "R",
       "W"
     ],
-    "text": "Prisa. Siempre que Jefa de la Comparsa ataque, creá una ficha de criatura Bailarín 1/1 con Prisa.",
+    "text": "Apuro. Siempre que Jefa de la Comparsa ataque, creá una ficha de criatura Bailarín 1/1 con Apuro.",
     "flavorText": "No dirige desde adelante. Hace que todos terminen llegando ahí.",
     "image": "jefa_de_la_comparsa.png",
     "power": 3,
@@ -4544,7 +4544,7 @@
       "G",
       "U"
     ],
-    "text": "Landfall — Siempre que una tierra entre al campo de batalla bajo tu control, Adiviná 1.",
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, Anticipá 1.",
     "flavorText": "Anota el nivel del agua como quien escucha el pulso de alguien dormido.",
     "image": "biologa_de_los_humedales.png",
     "power": 3,
@@ -4645,7 +4645,7 @@
     "cmc": 2,
     "rarity": "Common",
     "colors": [],
-    "text": "Vigilancia.",
+    "text": "Alerta.",
     "flavorText": "Puede arreglar un carburador con una horquilla y todavía llegar a la salida.",
     "image": "mecanica_del_bajo_puente.png",
     "power": 2,
@@ -4662,8 +4662,8 @@
     "cmc": 3,
     "rarity": "Uncommon",
     "colors": [],
-    "text": "Prisa.",
-    "flavorText": "Jura que esa pieza era de un Torino. Nadie recuerda haber visto el Torino.",
+    "text": "Apuro.",
+    "flavorText": "Jura que esa pieza era de un cupé viejo. Nadie recuerda haber visto el auto entero.",
     "image": "pibe_del_taller_de_chacarita.png",
     "power": 3,
     "toughness": 3,
@@ -4681,7 +4681,7 @@
     "colors": [
       "G"
     ],
-    "text": "Landfall — Siempre que una Tierra entre bajo tu control, poné un contador +1/+1 sobre esta criatura.",
+    "text": "Arraigo — Siempre que una Tierra entre bajo tu control, poné un contador +1/+1 sobre esta criatura.",
     "flavorText": "A la primera lluvia rompe el asfalto.",
     "image": "brote_de_ceibo_montaraz.png",
     "power": 1,
@@ -4704,7 +4704,7 @@
       "G",
       "U"
     ],
-    "text": "Cuando entra al campo de batalla, Proliferá.",
+    "text": "Cuando entra al campo de batalla, Amplificá.",
     "flavorText": "Trae polen de flores que sólo abren bajo tierra.",
     "image": "polinizador_de_la_salamanca.png",
     "power": 2,
@@ -4724,7 +4724,7 @@
     "colors": [
       "G"
     ],
-    "text": "Arrolla. Landfall — Siempre que una Tierra entre bajo tu control, poné un contador +1/+1 sobre esta criatura.",
+    "text": "Arrolla. Arraigo — Siempre que una Tierra entre bajo tu control, poné un contador +1/+1 sobre esta criatura.",
     "flavorText": "Cada creciente le deja un anillo nuevo en el tronco.",
     "image": "gigante_de_las_raices_del_parana.png",
     "power": 5,
@@ -4749,7 +4749,7 @@
       "U",
       "R"
     ],
-    "text": "Siempre que lances un Instantáneo o Conjuro, Adiviná 1.",
+    "text": "Siempre que lances un Instantáneo o Conjuro, Anticipá 1.",
     "flavorText": "Cuando se corta la luz, recién ahí empieza el repertorio.",
     "image": "bandoneonista_del_apagon.png",
     "power": 2,
@@ -4796,7 +4796,7 @@
     "cmc": 2,
     "rarity": "Common",
     "colors": [],
-    "text": "Vigilancia.",
+    "text": "Alerta.",
     "flavorText": "Le pusieron dos resortes y desde entonces vuelve sola al puesto.",
     "image": "lata_caminadora_del_mercado.png",
     "power": 2,
@@ -4842,7 +4842,7 @@
     "colors": [
       "G"
     ],
-    "text": "Infectar.",
+    "text": "Contagio.",
     "flavorText": "Pica una uva y la cosecha entera aprende a tener miedo.",
     "image": "avispa_del_vinedo_tardio.png",
     "power": 1,
@@ -4861,7 +4861,7 @@
     "colors": [
       "B"
     ],
-    "text": "Infectar.",
+    "text": "Contagio.",
     "flavorText": "Pidió otro. Nadie le avisó qué había adentro del primero.",
     "image": "comensal_del_tamal_negro.png",
     "power": 1,
@@ -4881,7 +4881,7 @@
       "G",
       "B"
     ],
-    "text": "Infectar.",
+    "text": "Contagio.",
     "flavorText": "Poda de noche porque las vides muertas crecen mejor sin testigos.",
     "image": "vinatero_del_cementerio.png",
     "power": 2,
@@ -4901,7 +4901,7 @@
       "G",
       "B"
     ],
-    "text": "Infectar. Arrolla.",
+    "text": "Contagio. Arrolla.",
     "flavorText": "Florece una vez cada cien años. Con eso alcanza.",
     "image": "la_flor_negra_del_ceibo.png",
     "power": 5,
@@ -4922,7 +4922,7 @@
       "U",
       "B"
     ],
-    "text": "Siempre que le haga daño de combate al rival, Vigilá 1.",
+    "text": "Siempre que le haga daño de combate al rival, Chusmeá 1.",
     "flavorText": "Nunca toma notas delante tuyo. Nunca olvida nada.",
     "image": "el_tipo_del_impermeable_gris.png",
     "power": 2,
@@ -4944,7 +4944,7 @@
       "U",
       "B"
     ],
-    "text": "Vuela. Cuando entra al campo de batalla, Vigilá 3.",
+    "text": "Vuela. Cuando entra al campo de batalla, Chusmeá 3.",
     "flavorText": "Tiene llave de una puerta que oficialmente no existe.",
     "image": "inspectora_del_archivo_sellado.png",
     "power": 4,
@@ -4967,7 +4967,7 @@
     "colors": [
       "W"
     ],
-    "text": "Doble golpe.",
+    "text": "Dos golpes.",
     "flavorText": "Una púa para el acorde y otra para lo que venga.",
     "image": "guitarrista_de_dos_puas.png",
     "power": 1,
@@ -4986,7 +4986,7 @@
     "colors": [
       "W"
     ],
-    "text": "Doble golpe.",
+    "text": "Dos golpes.",
     "flavorText": "Marca el compás dos veces antes de que el piso lo entienda.",
     "image": "bailarina_de_dos_tacos.png",
     "power": 2,
@@ -5005,7 +5005,7 @@
     "colors": [
       "R"
     ],
-    "text": "Doble golpe.",
+    "text": "Dos golpes.",
     "flavorText": "El primer acorde rompe el vidrio. El segundo prende fuego la cortina.",
     "image": "solo_de_guitarra_en_llamas.png",
     "power": 3,
@@ -5024,7 +5024,7 @@
     "colors": [
       "W"
     ],
-    "text": "Indestructible.",
+    "text": "Irrompible.",
     "flavorText": "Sube cuando todos bajan.",
     "image": "bombero_del_ultimo_piso.png",
     "power": 3,
@@ -5043,7 +5043,7 @@
     "colors": [
       "U"
     ],
-    "text": "Ward {2}.",
+    "text": "Impuesto {2}.",
     "flavorText": "La planta cerró hace veinte años. Él todavía pide credencial.",
     "image": "sereno_de_la_usina_cerrada.png",
     "power": 3,
@@ -5062,7 +5062,7 @@
     "colors": [
       "G"
     ],
-    "text": "Ward {2}.",
+    "text": "Impuesto {2}.",
     "flavorText": "Los rayos caen alrededor como si supieran de quién es la sombra.",
     "image": "ombu_de_la_tormenta_quieta.png",
     "power": 4,
@@ -5081,7 +5081,7 @@
     "colors": [
       "B"
     ],
-    "text": "Ward {2}.",
+    "text": "Impuesto {2}.",
     "flavorText": "Nadie toca el timbre dos veces.",
     "image": "viuda_del_patio_interno.png",
     "power": 2,
@@ -5182,7 +5182,7 @@
     "colors": [
       "G"
     ],
-    "text": "Cuando entra al campo de batalla, Proliferá.",
+    "text": "Cuando entra al campo de batalla, Amplificá.",
     "flavorText": "No distingue entre flor, cicatriz o maldición.",
     "image": "polinizador_del_ceibo.png",
     "power": 2,
@@ -5202,7 +5202,7 @@
     "colors": [
       "W"
     ],
-    "text": "Kicker {2}{W}. Si fue kickeada, creá una ficha Vecino Madrugador 1/1.",
+    "text": "Yapa {2}{W}. Si pagaste la Yapa, creá una ficha Vecino Madrugador 1/1.",
     "flavorText": "Siempre trae uno de más por si alguien aparece.",
     "image": "repartidora_de_tamales_del_alba.png",
     "power": 2,
@@ -5234,7 +5234,7 @@
     "colors": [
       "G"
     ],
-    "text": "Kicker {2}{G}. Si fue kickeado, creá dos fichas Sarmiento 1/1.",
+    "text": "Yapa {2}{G}. Si pagaste la Yapa, creá dos fichas Sarmiento 1/1.",
     "flavorText": "Sube con dos cajones y baja con cuatro historias.",
     "image": "peon_del_vinedo_de_altura.png",
     "power": 2,
@@ -5266,7 +5266,7 @@
     "colors": [
       "B"
     ],
-    "text": "Escape — {3}{B}, exiliá tres cartas de tu cementerio.",
+    "text": "Zafar — {3}{B}, exiliá tres cartas de tu cementerio.",
     "flavorText": "Pierde el último tren todas las noches y vuelve a esperarlo.",
     "image": "muerto_de_hambre_del_anden.png",
     "power": 2,
@@ -5288,7 +5288,7 @@
       "B",
       "G"
     ],
-    "text": "Amenaza. Escape — {4}{B}{G}, exiliá tres cartas de tu cementerio.",
+    "text": "Intimidante. Zafar — {4}{B}{G}, exiliá tres cartas de tu cementerio.",
     "flavorText": "Corta racimos de parras que nadie plantó.",
     "image": "cosechero_de_la_vendimia_muerta.png",
     "power": 4,
@@ -5334,7 +5334,7 @@
     "colors": [
       "U"
     ],
-    "text": "Vuela. Al comienzo de tu mantenimiento, Adiviná 1. Cuando muera, robás dos cartas.",
+    "text": "Vuela. Al comienzo de tu mantenimiento, Anticipá 1. Cuando muera, robás dos cartas.",
     "flavorText": "La luz gira incluso cuando la costa se queda sin electricidad.",
     "image": "faro_vivo_de_mar_del_plata.png",
     "power": 4,
@@ -5361,7 +5361,7 @@
     "colors": [
       "R"
     ],
-    "text": "Prisa. Arrolla.",
+    "text": "Apuro. Arrolla.",
     "flavorText": "Sale del corral dejando las sogas encendidas.",
     "image": "toro_del_rodeo_de_fuego.png",
     "power": 5,
@@ -5381,7 +5381,7 @@
     "colors": [
       "B"
     ],
-    "text": "Amenaza. Cuando muera, creá dos fichas Ánima de Bodega 1/1.",
+    "text": "Intimidante. Cuando muera, creá dos fichas Ánima de Bodega 1/1.",
     "flavorText": "La cava se inundó. Él siguió bajando a contar botellas.",
     "image": "patron_de_la_bodega_hundida.png",
     "power": 5,
@@ -5412,7 +5412,7 @@
       "W",
       "G"
     ],
-    "text": "Arrolla. Vínculo vital.",
+    "text": "Arrolla. Absorción.",
     "flavorText": "Pisa la uva sin romper un solo racimo que no quiera romper.",
     "image": "toro_blanco_de_la_vendimia.png",
     "power": 5,
@@ -5432,7 +5432,7 @@
     "colors": [
       "R"
     ],
-    "text": "Prisa.",
+    "text": "Apuro.",
     "flavorText": "Llega antes que la banda y ya está saltando.",
     "image": "pibe_del_pogo_temprano.png",
     "power": 1,
@@ -5451,7 +5451,7 @@
     "colors": [
       "W"
     ],
-    "text": "Vigilancia.",
+    "text": "Alerta.",
     "flavorText": "Cuida el árbol como si el árbol pudiera irse.",
     "image": "gorrionera_del_ceibo.png",
     "power": 1,
@@ -5535,7 +5535,7 @@
     ],
     "power": 0,
     "toughness": 1,
-    "text": "Volar. {T}: agregá un maná de cualquier color.",
+    "text": "Vuela. {T}: agregá un maná de cualquier color.",
     "flavorText": "Visita todas las flores y nunca vuelve con el mismo color.",
     "image": "picaflor_del_jardin_botanico.png",
     "keywords": [
@@ -5607,7 +5607,7 @@
     ],
     "power": 6,
     "toughness": 6,
-    "text": "Arrollar. Cuando Gigante del Aconcagua entre al campo de batalla y siempre que ataque, podés buscar hasta dos Tierras en tu biblioteca, ponerlas en el campo de batalla giradas y luego barajar.",
+    "text": "Arrolla. Cuando Gigante del Aconcagua entre al campo de batalla y siempre que ataque, podés buscar hasta dos Tierras en tu biblioteca, ponerlas en el campo de batalla giradas y luego barajar.",
     "flavorText": "Cada paso abre dos senderos nuevos en la montaña.",
     "image": "gigante_del_aconcagua.png",
     "keywords": [
@@ -5856,7 +5856,7 @@
     ],
     "power": 3,
     "toughness": 3,
-    "text": "Excavar. Siempre que otra criatura que controlás muera, Vigilá 1.",
+    "text": "Rebuscar. Siempre que otra criatura que controlás muera, Chusmeá 1.",
     "flavorText": "Sabe qué tierra fue removida ayer y qué secreto quedó debajo.",
     "image": "sepulturero_de_chacarita.png",
     "keywords": [],
@@ -5919,7 +5919,7 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "Destello, Ward {1}.",
+    "text": "Al toque, Impuesto {1}.",
     "flavorText": "Cuando el galpón queda vacío, escucha pasos que nadie más oyó.",
     "image": "sereno_del_mercado_de_frutos.png",
     "keywords": [
@@ -5992,7 +5992,7 @@
     ],
     "power": 4,
     "toughness": 4,
-    "text": "Vigilancia, Convocar.",
+    "text": "Alerta, Vaquita.",
     "flavorText": "Cuando el humo tapa el sendero, la fila avanza igual.",
     "image": "brigadista_de_las_sierras.png",
     "keywords": [
@@ -6010,7 +6010,7 @@
     "colors": [],
     "power": 4,
     "toughness": 4,
-    "text": "Afinidad por artefactos.",
+    "text": "Conexión con artefactos.",
     "flavorText": "Cada taller cerró dejando una pieza. Alguien terminó armándolo.",
     "image": "golem_de_chatarra_ferroviaria.png",
     "keywords": [],
@@ -6076,7 +6076,7 @@
     ],
     "power": 3,
     "toughness": 1,
-    "text": "Prisa.",
+    "text": "Apuro.",
     "flavorText": "No sabe qué lleva el sobre. Sí sabe cuánto tarda en llegar.",
     "image": "mensajero_de_la_autopista.png",
     "keywords": [
@@ -6170,7 +6170,7 @@
   },
   {
     "id": "crea_279",
-    "name": "Perito de Sistemas del RENAPER",
+    "name": "Perito del Registro Fantasma",
     "type": "Criatura — Humano",
     "manaCost": "{1}{U}",
     "cmc": 2,
@@ -6178,9 +6178,9 @@
     "colors": [
       "U"
     ],
-    "text": "Siempre que crees una ficha, Adiviná 1.",
+    "text": "Siempre que crees una ficha, Anticipá 1.",
     "flavorText": "Una inconsistencia en la base alcanza para encontrar a alguien que juraba no existir.",
-    "image": "perito_de_sistemas_del_renaper.png",
+    "image": "perito_del_registro_fantasma.png",
     "power": 1,
     "toughness": 3,
     "keywords": [],
@@ -6308,7 +6308,7 @@
   },
   {
     "id": "crea_284",
-    "name": "Abuela del Tupper",
+    "name": "Abuela del Envase Hermético",
     "type": "Criatura — Humano",
     "manaCost": "{1}{G}",
     "cmc": 2,
@@ -6316,9 +6316,9 @@
     "colors": [
       "G"
     ],
-    "text": "Cuando Abuela del Tupper entre al campo de batalla, creá una ficha de artefacto Tupper.",
+    "text": "Cuando Abuela del Envase Hermético entre al campo de batalla, creá una ficha de artefacto Envase hermético.",
     "flavorText": "No importa cuánto comiste. Siempre hay uno más para llevar.",
-    "image": "abuela_del_tupper.png",
+    "image": "abuela_del_envase_hermetico.png",
     "power": 1,
     "toughness": 3,
     "keywords": [],
@@ -6327,8 +6327,8 @@
       "amount": 1,
       "tokenPreset": "food",
       "token": {
-        "name": "Tupper",
-        "image": "token_tupper.png"
+        "name": "Envase hermético",
+        "image": "token_envase_hermetico.png"
       }
     }
   },
@@ -6365,7 +6365,7 @@
   },
   {
     "id": "crea_286",
-    "name": "Paramédica del Hospital Posadas",
+    "name": "Paramédica de la Guardia Infinita",
     "type": "Criatura — Humano Médico",
     "manaCost": "{1}{W}",
     "cmc": 2,
@@ -6375,9 +6375,9 @@
     ],
     "power": 1,
     "toughness": 2,
-    "text": "Cuando Paramédica del Hospital Posadas entre al campo de batalla, poné un contador de Escudo sobre ella.",
+    "text": "Cuando Paramédica de la Guardia Infinita entre al campo de batalla, poné un contador de Escudo sobre ella.",
     "flavorText": "En guardia, cada segundo cuenta dos veces.",
-    "image": "paramedica_del_hospital_posadas.png",
+    "image": "paramedica_de_la_guardia_infinita.png",
     "keywords": [],
     "triggers": [
       {
@@ -6436,7 +6436,7 @@
     ],
     "power": 1,
     "toughness": 3,
-    "text": "Siempre que se remueva un contador de Aturdimiento de un permanente que controla un oponente, Adiviná 1.",
+    "text": "Siempre que se remueva un contador de Aturdimiento de un permanente que controla un oponente, Anticipá 1.",
     "flavorText": "Cuando la barrera sube, él ya sabe cuál baja después.",
     "image": "senalero_de_plaza_constitucion.png",
     "keywords": [],
@@ -6487,7 +6487,7 @@
   },
   {
     "id": "crea_290",
-    "name": "Técnico de Atucha II",
+    "name": "Técnico de la Usina de Medianoche",
     "type": "Criatura — Humano Técnico",
     "manaCost": "{2}{R}",
     "cmc": 3,
@@ -6497,9 +6497,9 @@
     ],
     "power": 2,
     "toughness": 3,
-    "text": "Siempre que se ponga uno o más contadores de Carga sobre un Artefacto que controlás, Técnico de Atucha II le hace 1 de daño a tu oponente.",
+    "text": "Siempre que se ponga uno o más contadores de Carga sobre un Artefacto que controlás, Técnico de la Usina de Medianoche le hace 1 de daño a tu oponente.",
     "flavorText": "Si la aguja sube, alguien tiene que mirar el tablero.",
-    "image": "tecnico_de_atucha_ii.png",
+    "image": "tecnico_de_la_usina_de_medianoche.png",
     "keywords": [],
     "triggers": [
       {
@@ -6552,7 +6552,7 @@
   },
   {
     "id": "crea_292",
-    "name": "Jardinera de la República de los Niños",
+    "name": "Jardinera de la Ciudad en Miniatura",
     "type": "Criatura — Humano Jardinero",
     "manaCost": "{1}{G}",
     "cmc": 2,
@@ -6562,9 +6562,9 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "Siempre que se ponga uno o más contadores sobre Jardinera de la República de los Niños, ganás 1 vida.",
+    "text": "Siempre que se ponga uno o más contadores sobre Jardinera de la Ciudad en Miniatura, ganás 1 vida.",
     "flavorText": "Cada marca nueva en la maceta significa que algo prendió.",
-    "image": "jardinera_de_la_republica_de_los_ninos.png",
+    "image": "jardinera_de_la_ciudad_en_miniatura.png",
     "keywords": [],
     "triggers": [
       {
@@ -6787,7 +6787,7 @@
     ],
     "power": 2,
     "toughness": 2,
-    "text": "Siempre que se dispare un capítulo de una Saga que controlás, ganás 1 vida.",
+    "text": "Siempre que se dispare un capítulo de una Crónica que controlás, ganás 1 vida.",
     "flavorText": "Anota lo que pasó y también lo que todos jurarán que pasó.",
     "image": "cronista_de_la_plaza.png",
     "keywords": [],
@@ -6817,7 +6817,7 @@
     ],
     "power": 1,
     "toughness": 3,
-    "text": "Siempre que se dispare un capítulo de una Saga que controlás, adiviná 1.",
+    "text": "Siempre que se dispare un capítulo de una Crónica que controlás, Anticipá 1.",
     "flavorText": "Para ella una fecha mal puesta es una grieta en la realidad.",
     "image": "archivera_de_hemeroteca.png",
     "keywords": [],
@@ -6847,7 +6847,7 @@
     ],
     "power": 2,
     "toughness": 3,
-    "text": "Siempre que una Saga entre al campo de batalla bajo tu control, poné un contador +1/+1 sobre Guía del Museo Histórico.",
+    "text": "Siempre que una Crónica entre al campo de batalla bajo tu control, poné un contador +1/+1 sobre Guía del Museo Histórico.",
     "flavorText": "Cada visita agrega una versión nueva al recorrido.",
     "image": "guia_del_museo_historico.png",
     "keywords": [],
@@ -6871,7 +6871,7 @@
   },
   {
     "id": "crea_301",
-    "name": "Relator de Radio Nacional",
+    "name": "Relator de la Radio de las Mil Historias",
     "type": "Criatura — Humano Músico",
     "manaCost": "{2}{R}",
     "cmc": 3,
@@ -6881,9 +6881,9 @@
     ],
     "power": 3,
     "toughness": 2,
-    "text": "Siempre que se dispare un capítulo de una Saga que controlás, Relator de Radio Nacional le hace 1 de daño a tu oponente.",
+    "text": "Siempre que se dispare un capítulo de una Crónica que controlás, Relator de la Radio de las Mil Historias le hace 1 de daño a tu oponente.",
     "flavorText": "Si no entra en treinta segundos, no fue historia: fue silencio.",
-    "image": "relator_de_radio_nacional.png",
+    "image": "relator_de_la_radio_de_las_mil_historias.png",
     "keywords": [],
     "triggers": [
       {
@@ -6912,7 +6912,7 @@
     ],
     "power": 3,
     "toughness": 4,
-    "text": "Siempre que una Saga que controlás sea sacrificada, robá una carta y perdé 1 vida.",
+    "text": "Siempre que una Crónica que controlás sea sacrificada, robá una carta y perdé 1 vida.",
     "flavorText": "Nada se pierde. Algunas cosas solamente cambian de estante.",
     "image": "curadora_del_archivo_general.png",
     "keywords": [],
@@ -6974,7 +6974,7 @@
     ],
     "power": 1,
     "toughness": 3,
-    "text": "Siempre que casteés un hechizo desde el Exilio, adiviná 1.",
+    "text": "Siempre que casteés un hechizo desde el Exilio, Anticipá 1.",
     "flavorText": "Una ventana cerrada sólo significa que hay otra cámara mirando.",
     "image": "operador_del_centro_de_monitoreo.png",
     "keywords": [],
@@ -7207,7 +7207,7 @@
     "colors": [
       "W"
     ],
-    "text": "Vigilancia. Suspender 2 — {W}.",
+    "text": "Alerta. En espera 2 — {W}.",
     "flavorText": "Le dijeron que cubriera el turno de mañana. Nadie aclaró de qué mes.",
     "image": "cadete_de_guardia_diferida.png",
     "power": 3,
@@ -7230,7 +7230,7 @@
     "colors": [
       "U"
     ],
-    "text": "Cuando Operadora de Línea Saturada entre al campo de batalla, adiviná 2. Suspender 2 — {1}{U}.",
+    "text": "Cuando Operadora de Línea Saturada entre al campo de batalla, Anticipá 2. En espera 2 — {1}{U}.",
     "flavorText": "Todos los internos están ocupados. La voz igual vuelve.",
     "image": "operadora_de_linea_saturada.png",
     "power": 2,
@@ -7255,7 +7255,7 @@
     "colors": [
       "B"
     ],
-    "text": "Amenaza. Suspender 3 — {1}{B}.",
+    "text": "Intimidante. En espera 3 — {1}{B}.",
     "flavorText": "No importa cuándo firmaste. Para él, ya llegaste tarde.",
     "image": "cobrador_de_deudas_vencidas.png",
     "power": 3,
@@ -7278,7 +7278,7 @@
     "colors": [
       "R"
     ],
-    "text": "Arrollar. Suspender 2 — {1}{R}.",
+    "text": "Arrolla. En espera 2 — {1}{R}.",
     "flavorText": "Si la barrera baja, encuentra otra calle. Si no hay calle, encuentra una vereda.",
     "image": "motoquero_del_ultimo_turno.png",
     "power": 4,
@@ -7301,7 +7301,7 @@
     "colors": [
       "G"
     ],
-    "text": "Arrollar. Suspender 3 — {1}{G}.",
+    "text": "Arrolla. En espera 3 — {1}{G}.",
     "flavorText": "Primero baja el agua. Después aparece algo que llevaba años esperando el barro.",
     "image": "gigante_del_embalse_demorado.png",
     "power": 6,
@@ -7325,7 +7325,7 @@
       "U",
       "B"
     ],
-    "text": "Volar. Suspender 4 — {U}{B}.",
+    "text": "Vuela. En espera 4 — {U}{B}.",
     "flavorText": "El último tren dejó de pasar hace décadas. El pasajero no recibió el aviso.",
     "image": "fantasma_del_anden_cerrado.png",
     "power": 4,
@@ -7349,7 +7349,7 @@
       "R",
       "G"
     ],
-    "text": "Arrollar. Suspender 3 — {1}{R}{G}.",
+    "text": "Arrolla. En espera 3 — {1}{R}{G}.",
     "flavorText": "La obra tiene fecha de inicio, presupuesto y una criatura que nadie puso en el pliego.",
     "image": "topadora_del_obrador_infinito.png",
     "power": 7,
@@ -7372,7 +7372,7 @@
     "colors": [
       "W"
     ],
-    "text": "Siempre que se remueva un contador de Tiempo de una carta suspendida que poseés, ganás 1 vida.",
+    "text": "Siempre que se remueva un contador de Tiempo de una carta en espera que poseés, ganás 1 vida.",
     "flavorText": "Arregla relojes que adelantan, atrasan y otros que directamente se niegan.",
     "image": "relojera_de_retiro.png",
     "power": 2,
@@ -7405,7 +7405,7 @@
     "colors": [
       "U"
     ],
-    "text": "Cuando Gestor de Cronogramas entre al campo de batalla, remové un contador de Tiempo de una carta suspendida que poseés.",
+    "text": "Cuando Gestor de Cronogramas entre al campo de batalla, remové un contador de Tiempo de una carta en espera que poseés.",
     "flavorText": "Su especialidad es convertir “algún día” en “el martes que viene”.",
     "image": "gestor_de_cronogramas.png",
     "power": 2,
@@ -7427,7 +7427,7 @@
     "colors": [
       "B"
     ],
-    "text": "Cuando Inspector de Prórrogas entre al campo de batalla, poné un contador de Tiempo sobre una carta suspendida que posea un oponente.",
+    "text": "Cuando Inspector de Prórrogas entre al campo de batalla, poné un contador de Tiempo sobre una carta en espera que posea un oponente.",
     "flavorText": "Siempre falta una firma. A veces la inventa.",
     "image": "inspector_de_prorrogas.png",
     "power": 3,
@@ -7491,7 +7491,7 @@
   },
   {
     "id": "crea_323",
-    "name": "Cadete del Servicio Meteorológico",
+    "name": "Cadete del Observatorio Meteorológico",
     "type": "Criatura — Humano Científico",
     "manaCost": "{1}{U}",
     "cmc": 2,
@@ -7499,9 +7499,9 @@
     "colors": [
       "U"
     ],
-    "text": "{2}{U}: Transformá a Cadete del Servicio Meteorológico.",
+    "text": "{2}{U}: Transformá a Cadete del Observatorio Meteorológico.",
     "flavorText": "Anota presión, viento y una columna que el formulario no contempla.",
-    "image": "cadete_del_servicio_meteorologico.png",
+    "image": "cadete_del_observatorio_meteorologico.png",
     "power": 1,
     "toughness": 3,
     "keywords": [],
@@ -8091,7 +8091,7 @@
     "colors": [
       "U"
     ],
-    "text": "Siempre que un permanente que controlás se transforme, Adiviná 1.",
+    "text": "Siempre que un permanente que controlás se transforme, Anticipá 1.",
     "flavorText": "Nunca saca una sola foto. Dice que una identidad necesita por lo menos dos.",
     "image": "fotografa_de_antes_y_despues.png",
     "power": 1,
@@ -8204,7 +8204,7 @@
       "U",
       "R"
     ],
-    "text": "Los otros Músicos que controlás obtienen +1/+1. Siempre que otro Músico entre al campo de batalla bajo tu control, adiviná 1.",
+    "text": "Los otros Músicos que controlás obtienen +1/+1. Siempre que otro Músico entre al campo de batalla bajo tu control, Anticipá 1.",
     "flavorText": "Levanta una ceja y cuarenta instrumentos recuerdan dónde empieza el compás.",
     "image": "director_de_la_orquesta_municipal.png",
     "power": 2,
@@ -8245,7 +8245,7 @@
     "colors": [
       "R"
     ],
-    "text": "Prisa. Siempre que otro Músico entre al campo de batalla bajo tu control, Cantora de Peña Itinerante obtiene +1/+0 hasta el final del turno.",
+    "text": "Apuro. Siempre que otro Músico entre al campo de batalla bajo tu control, Cantora de Peña Itinerante obtiene +1/+0 hasta el final del turno.",
     "flavorText": "Donde entra una guitarra, ella ya encontró escenario.",
     "image": "cantora_de_pena_itinerante.png",
     "power": 2,
@@ -8280,7 +8280,7 @@
     "colors": [
       "R"
     ],
-    "text": "Los otros Músicos que controlás tienen Prisa.",
+    "text": "Los otros Músicos que controlás tienen Apuro.",
     "flavorText": "Cuenta cuatro golpes y hasta el que llegó tarde entra justo a tiempo.",
     "image": "baterista_del_galpon_de_lanus.png",
     "power": 3,
@@ -8306,7 +8306,7 @@
     "colors": [
       "U"
     ],
-    "text": "Los otros Espíritus que controlás tienen Volar.",
+    "text": "Los otros Espíritus que controlás tienen Vuela.",
     "flavorText": "Aparece en la banquina cuando la neblina borra la línea amarilla.",
     "image": "dama_de_la_ruta_vieja.png",
     "power": 2,
@@ -8363,7 +8363,7 @@
     "colors": [
       "W"
     ],
-    "text": "Los otros Espíritus que controlás obtienen +0/+1 y tienen Vigilancia.",
+    "text": "Los otros Espíritus que controlás obtienen +0/+1 y tienen Alerta.",
     "flavorText": "No protege el edificio. Protege lo que todavía recuerda haber sido un edificio.",
     "image": "custodio_de_la_capilla_abandonada.png",
     "power": 2,
@@ -8401,7 +8401,7 @@
     "colors": [
       "G"
     ],
-    "text": "Arrollar. Las otras Bestias que controlás obtienen +1/+1.",
+    "text": "Arrolla. Las otras Bestias que controlás obtienen +1/+1.",
     "flavorText": "El estero se queda quieto antes de que él decida moverse.",
     "image": "yaguarete_del_ibera_profundo.png",
     "power": 4,
@@ -8461,7 +8461,7 @@
     "colors": [
       "R"
     ],
-    "text": "Las otras Bestias que controlás tienen Arrollar.",
+    "text": "Las otras Bestias que controlás tienen Arrolla.",
     "flavorText": "Cuando baja la cabeza, el alambrado empieza a hacer cuentas.",
     "image": "toro_del_corral_de_piedra.png",
     "power": 4,
@@ -8487,7 +8487,7 @@
     "colors": [
       "B"
     ],
-    "text": "Volar. Siempre que otra Ave que controlás muera, tu oponente pierde 1 vida y vos ganás 1 vida.",
+    "text": "Vuela. Siempre que otra Ave que controlás muera, tu oponente pierde 1 vida y vos ganás 1 vida.",
     "flavorText": "Aprendió que toda autopista termina dejando algo al costado.",
     "image": "carancho_de_la_general_paz.png",
     "power": 2,
@@ -8520,7 +8520,7 @@
     "colors": [
       "W"
     ],
-    "text": "Volar. Las otras Aves que controlás tienen Vigilancia.",
+    "text": "Vuela. Las otras Aves que controlás tienen Alerta.",
     "flavorText": "Grita antes de que la pelota, el perro o el problema crucen la línea.",
     "image": "tero_centinela_de_la_cancha.png",
     "power": 2,
@@ -8548,7 +8548,7 @@
     "colors": [
       "U"
     ],
-    "text": "Volar. Siempre que otra Ave entre al campo de batalla bajo tu control, adiviná 1.",
+    "text": "Vuela. Siempre que otra Ave entre al campo de batalla bajo tu control, Anticipá 1.",
     "flavorText": "Desde arriba, cada canal parece una flecha dibujada hacia otra parte.",
     "image": "bandada_del_delta.png",
     "power": 3,
@@ -8581,7 +8581,7 @@
     "colors": [
       "W"
     ],
-    "text": "Los otros Caninos que controlás obtienen +1/+1 y tienen Vigilancia.",
+    "text": "Los otros Caninos que controlás obtienen +1/+1 y tienen Alerta.",
     "flavorText": "Duerme debajo del elevador. Se despierta antes que la alarma.",
     "image": "dogo_del_taller_mecanico.png",
     "power": 3,
@@ -8729,7 +8729,7 @@
     "colors": [
       "U"
     ],
-    "text": "Cuando Programadora del Padrón Imposible entre al campo de batalla, elegí un tipo de criatura. Siempre que otra criatura del tipo elegido entre al campo de batalla bajo tu control, adiviná 1.",
+    "text": "Cuando Programadora del Padrón Imposible entre al campo de batalla, elegí un tipo de criatura. Siempre que otra criatura del tipo elegido entre al campo de batalla bajo tu control, Anticipá 1.",
     "flavorText": "La base admite cualquier categoría mientras no tenga espacios dobles.",
     "image": "programadora_del_padron_imposible.png",
     "power": 2,

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "version": "23.19.4.12",
+  "status": "ACCEPTED",
+  "tokenPublicName": "Envase hermético",
+  "internalTokenPreset": "food",
+  "mechanicsChanged": 0,
+  "assets": [
+    {
+      "image": "abuela_del_envase_hermetico.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "0feb1dcfc17c21d5cfc73b86a367387eb33a0d172c290c69f5f917c13f43125b",
+      "source": "existing generic art, public identity renamed"
+    },
+    {
+      "image": "viandas_del_club.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "220710215da4693c40d52adec1b94fc583ae139f08a4366219480b4fb536cf6f",
+      "source": "existing generic art"
+    },
+    {
+      "image": "heladera_del_club.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "655b3c040ae7a2424b23365c0ae588a7763698e38b51ee49ece5bc791eb24899",
+      "source": "existing generic art"
+    },
+    {
+      "image": "token_envase_hermetico.png",
+      "width": 1448,
+      "height": 1086,
+      "aspectRatio": 1.333333,
+      "sha256": "cb54adc9eb33be837b3197c8856b5fd71d6df9e135964e365e2bc3a250a8a64a",
+      "source": "existing generic container art, public identity renamed"
+    }
+  ]
+}

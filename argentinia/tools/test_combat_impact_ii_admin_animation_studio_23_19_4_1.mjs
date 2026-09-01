@@ -14,15 +14,15 @@ const ui=read('js/ui.js');
 const firebase=read('js/firebaseClientImpl.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 
-assert.equal(ENGINE_VERSION,'23.19.4.8');
+assert.equal(ENGINE_VERSION,'23.19.4.14');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(manifest.engineVersion,'23.19.4.8');
+assert.equal(manifest.engineVersion,'23.19.4.14');
 assert.equal(manifest.pool,880);
 
 const refs=normalizeAnimationSpeedMultipliers({slow:1.6,normal:.95,fast:.55});
 assert.deepEqual(refs,{slow:1.6,normal:.95,fast:.55});
-applyServerAnimationPolicy({enabled:true,speedMultipliers:refs},'test-23.19.4.8');
+applyServerAnimationPolicy({enabled:true,speedMultipliers:refs},'test-23.19.4.14');
 assert.equal(animationDuration(1000,'slow'),1600);
 assert.equal(animationDuration(1000,'normal'),950);
 assert.equal(animationDuration(1000,'fast'),550);
@@ -37,7 +37,7 @@ assert.match(combat,/stepKind = stepFilter === dealsInFirstStrikeStep \? 'first_
 assert.match(combat,/doubleStrikePass:stepKind === 'regular' && hasKeyword\(attacker,'doublestrike'\)/);
 assert.match(combat,/playerDamage:damageToPlayerThisStep/);
 
-for (const token of ['Multi ×3','Arrollar','Iniciativa','Doble golpe','Escudo','Toque mortal','Indestructible']) assert.ok(director.includes(token),`lab:${token}`);
+for (const token of ['Multi ×3','Arrollar','Iniciativa','Dos golpes','Escudo','Letal','Irrompible']) assert.ok(director.includes(token),`lab:${token}`);
 assert.ok(director.includes("background:#0b130e url('./assets/images/ui/fondo.png')"),'real-board-background');
 assert.ok(director.includes('grid-template-columns:minmax(0,1fr) 19%'),'board-plus-sidebar-geometry');
 assert.ok(director.includes('data-animation-lab-speed'),'lab-speed-select');

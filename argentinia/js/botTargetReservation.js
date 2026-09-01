@@ -66,7 +66,7 @@ export function botStackItemReservesCreatureTarget(stackItem, target, stack = []
   if (['exile_creature', 'exile_and_return', 'bounce'].includes(effect.type)) return true;
 
   if (effect.type === 'destroy_creature') {
-    // Shield can absorb the first destruction; Indestructible makes it fail completely.
+    // Shield can absorb the first destruction; Irrompible makes it fail completely.
     return !hasKeyword(target, 'indestructible') && getCounterCount(target, 'shield') <= 0;
   }
 

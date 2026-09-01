@@ -66,7 +66,7 @@ function subtractManaCost(cost, reduction) {
   const out = normalizeParsedManaCost(cost);
   const r = normalizeParsedManaCost(reduction);
   // Reducciones coloreadas sólo reducen el símbolo indicado. La parte genérica jamás
-  // puede comerse pips coloreados/incoloros, igual que en Magic.
+  // puede comerse pips coloreados/incoloros, según el contrato de costes de Argentinia.
   for (const k of MANA_TYPES) out[k] = Math.max(0, out[k] - r[k]);
   out.generic = Math.max(0, out.generic - r.generic);
   if(r.hybrid?.length&&out.hybrid?.length){
@@ -219,7 +219,7 @@ function directCardModifiers(card) {
   const out = [];
   if (Array.isArray(card?.costModifiers)) out.push(...card.costModifiers);
   else if (card?.costModifier) out.push(card.costModifier);
-  // Preset Affinity: reduce {1} por cada permanente del tipo indicado que controlás.
+  // Preset Conexión: reduce {1} por cada permanente del tipo indicado que controlás.
   if (card?.affinity) {
     const raw = card.affinity === true ? 'artifact' : (typeof card.affinity === 'string' ? card.affinity : card.affinity.permanentType || card.affinity.type || 'artifact');
     const kindMap = { artifact:'artifacts_you_control', creature:'creatures_you_control', land:'lands_you_control', permanent:'permanents_you_control' };
@@ -230,7 +230,7 @@ function directCardModifiers(card) {
 
 export function collectSpellCostModifiers(state, card, casterIsLocal) {
   const out = [];
-  // Modificadores impresos en el propio hechizo (Affinity y equivalentes) no dependen de
+  // Modificadores impresos en el propio hechizo (Conexión y equivalentes) no dependen de
   // estar en battlefield y siempre se evalúan para su controlador.
   for (const spec of directCardModifiers(card)) {
     const n = normalizeModifier(spec,{sourceCard:card,sourceIsLocal:casterIsLocal,sourceKind:'spell'});

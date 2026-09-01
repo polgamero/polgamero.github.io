@@ -96,7 +96,7 @@
   },
   {
     "id": "inst_011",
-    "name": "Mano de Dios",
+    "name": "Jugada Prohibida",
     "type": "Instantáneo",
     "manaCost": "{2}{R}",
     "cmc": 3,
@@ -105,9 +105,9 @@
       "R"
     ],
     "text": "Causa 4 de daño al jugador o criatura objetivo.",
-    "flavorText": "Un poco con la cabeza y un poco con la mano.",
+    "flavorText": "Nadie vio bien qué pasó. El tablero sí sintió el golpe.",
     "requiresTarget": true,
-    "image": "mano_dios.png",
+    "image": "jugada_prohibida.png",
     "effect": {
       "type": "damage",
       "amount": 4
@@ -318,7 +318,7 @@
   },
   {
     "id": "inst_017",
-    "name": "Mauro Viale",
+    "name": "Cronista de Último Momento",
     "type": "Instantáneo",
     "manaCost": "{1}{G}",
     "cmc": 2,
@@ -327,9 +327,9 @@
       "G"
     ],
     "text": "Tu criatura objetivo pelea contra la criatura rival objetivo.",
-    "flavorText": "Grita más fuerte que el invitado y gana el punto igual.",
+    "flavorText": "La noticia llegó tarde. La discusión, justo a tiempo.",
     "requiresTarget": true,
-    "image": "mauro_viale.png",
+    "image": "cronista_de_ultimo_momento.png",
     "effect": {
       "type": "fight"
     }
@@ -778,7 +778,7 @@
     "colors": [
       "R"
     ],
-    "text": "Le hace 2 de daño a cualquier objetivo.\n\nFlashback {3}{R}",
+    "text": "Le hace 2 de daño a cualquier objetivo.\n\nOtra vuelta {3}{R}",
     "flavorText": "Si la primera no alcanzó, siempre queda una de más en el bolsillo.",
     "requiresTarget": true,
     "image": "bengala_repuesto.png",
@@ -800,7 +800,7 @@
     "colors": [
       "U"
     ],
-    "text": "Robás una carta.\n\nFlashback {2}{U}{U}",
+    "text": "Robás una carta.\n\nOtra vuelta {2}{U}{U}",
     "flavorText": "La primera vez la leés. La segunda, la entendés.",
     "requiresTarget": false,
     "image": "segunda_lectura.png",
@@ -824,7 +824,7 @@
       "B"
     ],
     "modal": true,
-    "text": "Elegí uno — • Contrarresta la habilidad activada o disparada objetivo. • Vigilá 3.",
+    "text": "Elegí uno — • Contrarresta la habilidad activada o disparada objetivo. • Chusmeá 3.",
     "flavorText": "Uno frena lo que ya empezó. El otro decide qué queda y qué se pudre.",
     "image": "pacto_sombras.png",
     "modes": [
@@ -836,7 +836,7 @@
         "requiresTarget": true
       },
       {
-        "text": "Surveil 3.",
+        "text": "Chusmeá 3.",
         "effect": {
           "type": "surveil",
           "amount": 3
@@ -855,7 +855,7 @@
     "colors": [
       "B"
     ],
-    "text": "Elegí cualquier cantidad de permanentes y/o Planeswalkers que ya tengan un contador. Cada uno elegido recibe un contador más de cada tipo que ya tenga.",
+    "text": "Elegí cualquier cantidad de permanentes y/o Semidioses que ya tengan un contador. Cada uno elegido recibe un contador más de cada tipo que ya tenga.",
     "flavorText": "En el truco, quien pide retruco no está agrandando la apuesta — está agrandando lo que ya tenías en la mano.",
     "requiresTarget": false,
     "image": "quiero_retruco.png",
@@ -893,7 +893,7 @@
     "colors": [
       "U"
     ],
-    "text": "Robás una carta. Escape—{3}{U}{U}, exiliar dos cartas de tu cementerio.",
+    "text": "Robás una carta. Zafar — {3}{U}{U}, exiliar dos cartas de tu cementerio.",
     "flavorText": "Cada medianoche, alguien vuelve a pedir el mismo trato.",
     "requiresTarget": false,
     "image": "pacto_salamanca.png",
@@ -916,7 +916,7 @@
     "colors": [
       "R"
     ],
-    "text": "Le hace 2 de daño a cualquier objetivo. Kicker {2}{R}. Si pagaste el coste de Kicker, le hacés 2 de daño adicional al jugador rival.",
+    "text": "Le hace 2 de daño a cualquier objetivo. Yapa {2}{R}. Si pagaste la Yapa, le hacés 2 de daño adicional al jugador rival.",
     "flavorText": "Uno más nunca sobra.",
     "requiresTarget": true,
     "image": "petardos_ano_nuevo.png",
@@ -982,7 +982,7 @@
     "colors": [
       "W"
     ],
-    "text": "La criatura objetivo gana Indestructible hasta el final del turno.",
+    "text": "La criatura objetivo gana Irrompible hasta el final del turno.",
     "flavorText": "De este lado de la puerta se termina la discusión.",
     "requiresTarget": true,
     "image": "no_pasas.png",
@@ -1001,7 +1001,7 @@
     "colors": [
       "U"
     ],
-    "text": "Adiviná 2.",
+    "text": "Anticipá 2.",
     "flavorText": "Lo importante nunca estaba escrito en grande.",
     "requiresTarget": false,
     "image": "entre_lineas.png",
@@ -1341,7 +1341,7 @@
     "colors": [
       "W"
     ],
-    "text": "La criatura objetivo gana Indestructible hasta el final del turno.",
+    "text": "La criatura objetivo gana Irrompible hasta el final del turno.",
     "flavorText": "Un segundo alcanza cuando todos saben dónde ponerse.",
     "image": "cubrir_la_retaguardia.png",
     "requiresTarget": true,
@@ -1397,7 +1397,7 @@
     "colors": [
       "U"
     ],
-    "text": "Robá una carta. Flashback {4}{U}.",
+    "text": "Robá una carta. Otra vuelta {4}{U}.",
     "flavorText": "La segunda lectura siempre encuentra la frase que faltaba.",
     "image": "releer_el_expediente.png",
     "requiresTarget": false,
@@ -1477,7 +1477,7 @@
     "colors": [
       "R"
     ],
-    "text": "Descartá una carta, luego robá una carta. Flashback {3}{R}.",
+    "text": "Descartá una carta, luego robá una carta. Otra vuelta {3}{R}.",
     "flavorText": "La copia importante era la que nadie recordó sacar.",
     "image": "quemar_los_papeles.png",
     "requiresTarget": false,
@@ -1746,7 +1746,7 @@
     "colors": [
       "G"
     ],
-    "text": "Proliferá.",
+    "text": "Amplificá.",
     "flavorText": "Una pizca alcanza para que todo lo marcado crezca.",
     "image": "polen_de_la_salamanca.png",
     "requiresTarget": false,
@@ -1822,7 +1822,7 @@
     "colors": [
       "U"
     ],
-    "text": "Robás una carta. Flashback {3}{U}.",
+    "text": "Robás una carta. Otra vuelta {3}{U}.",
     "flavorText": "El público ya se fue, pero el fuelle todavía respira.",
     "image": "bis_del_bandoneon.png",
     "requiresTarget": false,
@@ -1864,7 +1864,7 @@
       "B",
       "G"
     ],
-    "text": "Proliferá.",
+    "text": "Amplificá.",
     "flavorText": "La brisa cruza los parrales y deja marcas nuevas donde ya había una.",
     "image": "polen_negro_del_vinedo.png",
     "requiresTarget": false,
@@ -1926,7 +1926,7 @@
     "colors": [
       "B"
     ],
-    "text": "Proliferá.",
+    "text": "Amplificá.",
     "flavorText": "Se mete entre las hileras y deja cada marca un poco más profunda.",
     "image": "humo_del_vinedo_negro.png",
     "requiresTarget": false,
@@ -1944,7 +1944,7 @@
     "colors": [
       "U"
     ],
-    "text": "Proliferá.",
+    "text": "Amplificá.",
     "flavorText": "Una gota cae. Todas las marcas responden.",
     "image": "eco_azul_del_aljibe.png",
     "requiresTarget": false,
@@ -1962,7 +1962,7 @@
     "colors": [
       "U"
     ],
-    "text": "Robás una carta. Kicker {1}{U}. Si fue kickeado, robás una carta adicional.",
+    "text": "Robás una carta. Yapa {1}{U}. Si pagaste la Yapa, robás una carta adicional.",
     "flavorText": "El fuelle se cierra. Alguien grita otra.",
     "image": "otra_vuelta_de_bandoneon.png",
     "requiresTarget": false,
@@ -1989,7 +1989,7 @@
     "colors": [
       "U"
     ],
-    "text": "Robás una carta. Escape — {4}{U}{U}, exiliá cuatro cartas de tu cementerio.",
+    "text": "Robás una carta. Zafar — {4}{U}{U}, exiliá cuatro cartas de tu cementerio.",
     "flavorText": "La voz sube con el balde aunque el balde esté vacío.",
     "image": "murmullo_desde_el_aljibe.png",
     "requiresTarget": false,
@@ -2012,7 +2012,7 @@
     "colors": [
       "R"
     ],
-    "text": "Hacé 1 de daño a cualquier objetivo. Flashback {3}{R}.",
+    "text": "Hacé 1 de daño a cualquier objetivo. Otra vuelta {3}{R}.",
     "flavorText": "La última nota rebota una noche entera contra la chapa.",
     "image": "riff_que_vuelve_del_galpon.png",
     "requiresTarget": true,
@@ -2034,7 +2034,7 @@
     "colors": [
       "U"
     ],
-    "text": "Adiviná 2. Flashback {3}{U}{U}.",
+    "text": "Anticipá 2. Otra vuelta {3}{U}{U}.",
     "flavorText": "El agua arruina el cuero, no la melodía.",
     "image": "eco_del_bandoneon_mojado.png",
     "requiresTarget": false,
@@ -2294,7 +2294,7 @@
     "colors": [
       "W"
     ],
-    "text": "Convocar. Previene los próximos 5 daños que fueran a recibir la criatura o jugador objetivo este turno.",
+    "text": "Vaquita. Previene los próximos 5 daños que fueran a recibir la criatura o jugador objetivo este turno.",
     "flavorText": "Cuando no alcanza una mano, aparecen veinte.",
     "image": "cadena_humana.png",
     "requiresTarget": true,
@@ -2314,7 +2314,7 @@
     "colors": [
       "B"
     ],
-    "text": "Excavar. Robá dos cartas y perdé 2 vidas.",
+    "text": "Rebuscar. Robá dos cartas y perdé 2 vidas.",
     "flavorText": "Lo enterraron para que nadie lo leyera. Ese fue el primer error.",
     "image": "expediente_bajo_tierra.png",
     "requiresTarget": false,
@@ -2638,7 +2638,7 @@
     "colors": [
       "U"
     ],
-    "text": "Poné un contador de Lore sobre la Saga objetivo que controlás.",
+    "text": "Poné un contador de Capítulo sobre la Crónica objetivo que controlás.",
     "flavorText": "Una línea alcanza para cambiar la lectura de todo lo anterior.",
     "image": "nota_al_margen.png",
     "requiresTarget": true,
@@ -2734,7 +2734,7 @@
       "U",
       "R"
     ],
-    "text": "Exiliá la carta superior de tu biblioteca. Podés jugarla este turno. Si es un hechizo, podés castearlo como si tuviera Destello.",
+    "text": "Exiliá la carta superior de tu biblioteca. Podés jugarla este turno. Si es un hechizo, podés castearlo como si tuviera Al toque.",
     "flavorText": "La frecuencia aparece una vez. Si dudás, vuelve al ruido.",
     "image": "senal_intermitente.png",
     "requiresTarget": false,
@@ -2842,7 +2842,7 @@
     "colors": [
       "U"
     ],
-    "text": "Remové un contador de Tiempo de una carta suspendida que poseés.",
+    "text": "Remové un contador de Tiempo de una carta en espera que poseés.",
     "flavorText": "Un minuto menos puede ser un turno entero.",
     "image": "adelantar_el_reloj.png",
     "requiresTarget": false,
@@ -2862,7 +2862,7 @@
     "colors": [
       "U"
     ],
-    "text": "Poné un contador de Tiempo sobre una carta suspendida que posea un oponente.",
+    "text": "Poné un contador de Tiempo sobre una carta en espera que posea un oponente.",
     "flavorText": "El expediente está listo. Sólo falta que vuelva la persona que sabe dónde está.",
     "image": "demora_administrativa.png",
     "requiresTarget": false,
@@ -2882,7 +2882,7 @@
     "colors": [
       "R"
     ],
-    "text": "Remové hasta dos contadores de Tiempo de una carta suspendida que poseés.",
+    "text": "Remové hasta dos contadores de Tiempo de una carta en espera que poseés.",
     "flavorText": "Hay gente que espera su turno. Hay gente que patea la puerta.",
     "image": "cortar_la_espera.png",
     "requiresTarget": false,
@@ -2902,7 +2902,7 @@
     "colors": [
       "U"
     ],
-    "text": "Poné dos contadores de Tiempo sobre una carta suspendida.",
+    "text": "Poné dos contadores de Tiempo sobre una carta en espera.",
     "flavorText": "La nueva fecha es definitiva. Hasta que llegue la próxima nota.",
     "image": "pedido_de_prorroga.png",
     "requiresTarget": false,
@@ -2922,7 +2922,7 @@
     "colors": [
       "U"
     ],
-    "text": "Robá dos cartas. Suspender 2 — {U}.",
+    "text": "Robá dos cartas. En espera 2 — {U}.",
     "flavorText": "El mensaje era urgente cuando salió. Sigue siendo útil cuando llega.",
     "image": "respuesta_que_llego_tarde.png",
     "requiresTarget": false,
@@ -2945,7 +2945,7 @@
     "colors": [
       "R"
     ],
-    "text": "Golpe Anunciado hace 3 de daño a cualquier objetivo. Suspender 2 — {R}.",
+    "text": "Golpe Anunciado hace 3 de daño a cualquier objetivo. En espera 2 — {R}.",
     "flavorText": "Se vio venir desde dos cuadras. Eso no lo hizo menos fuerte.",
     "image": "golpe_anunciado.png",
     "requiresTarget": true,
@@ -3095,7 +3095,7 @@
     "colors": [
       "B"
     ],
-    "text": "La criatura Canino objetivo que controlás gana Toque mortal hasta el final del turno.",
+    "text": "La criatura Canino objetivo que controlás gana Letal hasta el final del turno.",
     "flavorText": "Primero responde un patio. Después todos los demás.",
     "image": "aullar_a_la_medianoche.png",
     "requiresTarget": true,

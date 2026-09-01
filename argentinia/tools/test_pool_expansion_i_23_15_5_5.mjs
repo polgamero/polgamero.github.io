@@ -120,7 +120,7 @@ const empty=()=>({localCombat:[],localSupport:[],localLands:[],localPlaneswalker
 assert.match(buildCardTextLayout(byId.get('crea_271')).paragraphs[0].reminder,/criaturas pueden ayudar/i);
 assert.match(buildCardTextLayout(byId.get('inst_113')).paragraphs[0].reminder,/exilies de tu cementerio/i);
 assert.match(buildCardTextLayout(byId.get('conj_080')).paragraphs[0].reminder,/cuesta \{1\} menos/i);
-assert.deepEqual(buildCardTextLayout(byId.get('crea_268')).keywordLabels,['Destello','Ward 1']);
+assert.deepEqual(buildCardTextLayout(byId.get('crea_268')).keywordLabels,['Al toque','Impuesto 1']);
 assert.equal(buildCardTextLayout(byId.get('conj_077')).paragraphs.length,3,'Threaten debe renderizar sus tres reglas en renglones separados');
 assert.equal(buildCardTextLayout(byId.get('inst_112')).paragraphs.length,2,'Convoke + prevention deben quedar separados');
 
@@ -139,7 +139,7 @@ const version=fs.readFileSync(path.join(root,'js/version.js'),'utf8');
 const workflow=fs.readFileSync(path.join(root,'../.github/workflows/pages.yml'),'utf8');
 assert.match(poolContract,/pool_expansion_i_673:\s*makeMilestone\('23\.15\.5\.5',\s*673,/, 'milestone 673 debe existir');
 assert.match(poolContract,/pool_expansion_i_673:\s*makeMilestone\('23\.15\.5\.5',\s*673,/);
-if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.8'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:[6-9]|[1-9]\d+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
+if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.14'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:[6-9]|[1-9]\d+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
 assert.match(workflow,/regression_legacy_23_(?:15|16|17)_[0-9_]+\.zip/);
 assert.match(workflow,/ci_regression_manifest_23_(?:15|16|17)_[0-9_]+\.txt/);
 const manifest=fs.readdirSync(path.join(root,'tools')).find(x=>/^ci_regression_manifest_23_(?:15|16|17)_.*\.txt$/.test(x));
