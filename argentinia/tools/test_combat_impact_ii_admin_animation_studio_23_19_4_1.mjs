@@ -14,15 +14,15 @@ const ui=read('js/ui.js');
 const firebase=read('js/firebaseClientImpl.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 
-assert.equal(ENGINE_VERSION,'23.19.4.14');
+assert.equal(ENGINE_VERSION,'23.19.4.15');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(manifest.engineVersion,'23.19.4.14');
+assert.equal(manifest.engineVersion,'23.19.4.15');
 assert.equal(manifest.pool,880);
 
 const refs=normalizeAnimationSpeedMultipliers({slow:1.6,normal:.95,fast:.55});
 assert.deepEqual(refs,{slow:1.6,normal:.95,fast:.55});
-applyServerAnimationPolicy({enabled:true,speedMultipliers:refs},'test-23.19.4.14');
+applyServerAnimationPolicy({enabled:true,speedMultipliers:refs},'test-23.19.4.15');
 assert.equal(animationDuration(1000,'slow'),1600);
 assert.equal(animationDuration(1000,'normal'),950);
 assert.equal(animationDuration(1000,'fast'),550);

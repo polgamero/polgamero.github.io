@@ -199,6 +199,29 @@ export function keywordReminder(keyword) {
   return '';
 }
 
+
+function loyaltyCostLabel(cost) {
+  const value = Number(cost) || 0;
+  if (value > 0) return `+${value}`;
+  if (value < 0) return `−${Math.abs(value)}`;
+  return '0';
+}
+
+function stripPrintedLoyaltyCost(name) {
+  return publicTerminologyText(String(name || ''))
+    .replace(/^\s*[+−-]?\d+\s*:\s*/, '')
+    .trim();
+}
+
+export function buildLoyaltyAbilityDisplay(ability) {
+  return {
+    kind: 'loyalty-ability',
+    loyaltyCost: loyaltyCostLabel(ability?.cost),
+    abilityName: stripPrintedLoyaltyCost(ability?.name),
+    text: publicTerminologyText(String(ability?.text || '')).trim()
+  };
+}
+
 export function buildCardTextLayout(card, { effectiveKeywords = null, rulesTextOverride = null } = {}) {
   const keywords = Array.isArray(effectiveKeywords)
     ? [...effectiveKeywords]
@@ -222,6 +245,17 @@ export function buildCardTextLayout(card, { effectiveKeywords = null, rulesTextO
     ...entry,
     reminder: entry.kind === 'rule' ? reminderForRulesText(entry.text) : ''
   }));
+
+  // 23.19.4.15 — los Semidioses guardan sus habilidades en loyaltyAbilities, no en card.text.
+  // El renderer histórico miraba sólo card.text y dejaba el textbox vacío. Las sintetizamos
+  // como presentation-only; el motor sigue usando exactamente loyaltyAbilities/cost/effect.
+  if (Array.isArray(card?.loyaltyAbilities) && card.loyaltyAbilities.length > 0) {
+    const loyaltyParagraphs = card.loyaltyAbilities.map(ability => {
+      const entry = buildLoyaltyAbilityDisplay(ability);
+      return { ...entry, reminder: reminderForRulesText(entry.text) };
+    });
+    paragraphs = [...paragraphs, ...loyaltyParagraphs];
+  }
 
   const keywordReminders = [];
   for (const keyword of keywords) {

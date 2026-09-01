@@ -354,6 +354,32 @@ html, body {
   line-height: var(--card-text-line-height, 1.14);
 }
 
+
+/* 23.19.4.15 — Habilidades de Creencia impresas dentro del textbox de cada Semidiós.
+   El coste +N/−N/0 queda siempre visible también para el rival al hacer hover. */
+.card-loyalty-rule {
+  display: grid;
+  grid-template-columns: 2.35em minmax(0, 1fr);
+  align-items: start;
+  column-gap: 0.42em;
+}
+.card-loyalty-cost-inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.15em;
+  min-height: 1.65em;
+  padding: 0.04em 0.2em;
+  border-radius: 0.38em;
+  background: #6c3483;
+  color: #fff;
+  font-weight: 800;
+  line-height: 1;
+  box-sizing: border-box;
+}
+.card-loyalty-rule-copy { min-width: 0; }
+.card-loyalty-ability-name { font-weight: 700; }
+
 .card-mode-header {
   margin-bottom: -0.08em;
 }
@@ -1178,7 +1204,7 @@ button.mana-pool-chip:disabled { opacity: 1; }
   color: rgba(155, 89, 182, 0.55) !important;
 }
 
-/* Recuadro de Lealtad: mismo lugar y forma que Poder/Resistencia, pero en violeta para no
+/* Recuadro de Creencia: mismo lugar y forma que Poder/Resistencia, pero en violeta para no
    confundirlo con una criatura de un vistazo. */
 .card-loyalty {
   background: #6c3483 !important;
@@ -1186,7 +1212,7 @@ button.mana-pool-chip:disabled { opacity: 1; }
   border-color: #9b59b6 !important;
 }
 
-/* Menú de habilidades de Lealtad (showLoyaltyAbilityModal) */
+/* Menú de habilidades de Creencia (showLoyaltyAbilityModal) */
 .loyalty-ability-btn {
   display: flex;
   align-items: center;

@@ -12,8 +12,8 @@ const version = read('js/version.js');
 const manifest = JSON.parse(read('build-manifest.json'));
 const creatures = JSON.parse(read('assets/data/criaturas.json'));
 
-assert.ok((version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.14'")), 'engine 23.19');
-assert.equal(manifest.engineVersion, '23.19.4.14');
+assert.ok((version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.15'")), 'engine 23.19');
+assert.equal(manifest.engineVersion, '23.19.4.15');
 assert.equal(manifest.pool, 880);
 assert.equal(manifest.firestoreRulesVersion, '23.13.79');
 

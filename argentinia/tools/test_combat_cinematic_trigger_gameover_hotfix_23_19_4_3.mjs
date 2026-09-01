@@ -18,10 +18,10 @@ const html=read('index.html');
 const texts=read('js/gameTexts.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 
-assert.equal(ENGINE_VERSION,'23.19.4.14');
+assert.equal(ENGINE_VERSION,'23.19.4.15');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(manifest.engineVersion,'23.19.4.14');
+assert.equal(manifest.engineVersion,'23.19.4.15');
 assert.equal(manifest.pool,880);
 
 // Real-game bug #1: same ETB event => watchers + the entering creature's own ETB in ONE AP/NAP batch.

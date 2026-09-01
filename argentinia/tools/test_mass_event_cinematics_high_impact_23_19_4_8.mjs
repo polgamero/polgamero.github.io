@@ -18,10 +18,10 @@ const workflow=read('../.github/workflows/pages.yml');
 const conjuros=JSON.parse(read('assets/data/conjuros.json'));
 const planeswalkers=JSON.parse(read('assets/data/planeswalkers.json'));
 
-assert.equal(ENGINE_VERSION,'23.19.4.14');
+assert.equal(ENGINE_VERSION,'23.19.4.15');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(manifest.engineVersion,'23.19.4.14');
+assert.equal(manifest.engineVersion,'23.19.4.15');
 assert.equal(manifest.engineProtocolVersion,'mp-23.19.2');
 assert.equal(manifest.firestoreRulesVersion,'23.13.79');
 assert.equal(manifest.pool,880);
@@ -89,7 +89,7 @@ assert.ok(director.includes("cue.kind==='control_change'"));
 // Admin schema/catalog/CI advanced without changing protocol or Firestore Rules.
 assert.ok(firebase.includes('schemaVersion: 7'));
 assert.ok(workflow.includes('test_mass_event_cinematics_high_impact_23_19_4_8.mjs'));
-assert.ok(workflow.includes('Validate Mass Event Cinematics + High-Impact Feedback 23.19.4.14'));
+assert.ok(workflow.includes('Validate Mass Event Cinematics + High-Impact Feedback 23.19.4.8'));
 
 console.log('MASS_EVENT_CINEMATICS_HIGH_IMPACT_23_19_4_8_OK');
 console.log('events=creature-wipe+land-wipe+graveyard-purge+mass-land-return+fog+proliferate+control-change');

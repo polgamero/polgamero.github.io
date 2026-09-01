@@ -7,7 +7,7 @@ import { ENGINE_VERSION, FIRESTORE_RULES_VERSION } from '../js/version.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'build-manifest.json'), 'utf8'));
-assert.equal(ENGINE_VERSION, '23.19.4.14');
+assert.equal(ENGINE_VERSION, '23.19.4.15');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
 assert.equal(manifest.firestoreRulesVersion, '23.13.79');
 
@@ -34,4 +34,4 @@ if (rulesPath && fs.existsSync(rulesPath)) {
   assert.ok(rules.includes('function validNormalDailyCommonShapeV6(d)'), 'Normal common shape signature drift');
   assert.ok(rules.includes('function validNormalDailyLoginTransitionV6()'), 'Normal login helper still has unused userId parameter');
 }
-console.log('FIRESTORE_RULES_COMPILER_HYGIENE_23_19_4_1_OK engine=23.19.4.14 rules=23.13.79 deadHelpers=REMOVED unusedParams=REMOVED semantics=UNCHANGED');
+console.log('FIRESTORE_RULES_COMPILER_HYGIENE_23_19_4_1_OK engine=23.19.4.15 rules=23.13.79 deadHelpers=REMOVED unusedParams=REMOVED semantics=UNCHANGED');

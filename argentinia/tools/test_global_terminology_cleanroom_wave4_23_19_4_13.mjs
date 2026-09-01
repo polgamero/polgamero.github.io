@@ -22,7 +22,7 @@ const cards=[
   ...load('assets/data/planeswalkers.json')
 ];
 
-assert.equal(ENGINE_VERSION,'23.19.4.14');
+assert.equal(ENGINE_VERSION,'23.19.4.15');
 assert.equal(PUBLIC_TERMINOLOGY_VERSION,'23.19.4.14');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');

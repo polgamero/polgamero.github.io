@@ -14,7 +14,7 @@ const cardFiles=['criaturas.json','instantaneos.json','conjuros.json','encantami
 const cards=cardFiles.flatMap(f=>load(`assets/data/${f}`));
 const byId=new Map(cards.map(c=>[c.id,c]));
 
-assert.equal(ENGINE_VERSION,'23.19.4.14');
+assert.equal(ENGINE_VERSION,'23.19.4.15');
 assert.equal(PUBLIC_TERMINOLOGY_VERSION,'23.19.4.14');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
@@ -54,6 +54,13 @@ function strip(node){
  return node;
 }
 const normalized=Object.fromEntries([...cards].sort((a,b)=>a.id.localeCompare(b.id)).map(c=>[c.id,strip(c)]));
+// 23.19.4.15 has one explicit owner-approved gameplay delta after Commercial IP Hardening:
+// pw_007 loses its extra spellCastTrigger. Reinsert only that historical trigger before
+// validating the Wave5 fingerprint, proving no other mechanical drift occurred.
+if (ENGINE_VERSION === '23.19.4.15') {
+  normalized.pw_007.spellCastTrigger={effect:{amount:1,type:'scry'},filter:'instant_or_sorcery'};
+  normalized.pw_007=Object.fromEntries(Object.keys(normalized.pw_007).sort().map(k=>[k,normalized.pw_007[k]]));
+}
 const hash=crypto.createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
 assert.equal(hash,'0cdb30716c6359eae93166597dce1c842d00afa8ed0c2e313341e4d3841957b8');
 
@@ -80,4 +87,4 @@ assert.match(handoff,/INPI identical \+ phonetic clearance/);
 assert.match(handoff,/not a legal opinion/i);
 
 console.log('COMMERCIAL_READINESS_CLOSURE_WAVE5_23_19_4_14_OK');
-console.log('redResidual=0 yellowResidual=0 terminology=44/44 gameplayFingerprint=MATCH competitorRefs=0 cardImages=EXTERNALIZED');
+console.log('redResidual=0 yellowResidual=0 terminology=44/44 gameplayFingerprint=MATCH_EXCEPT_APPROVED_PW007_DELTA competitorRefs=0 cardImages=EXTERNALIZED');

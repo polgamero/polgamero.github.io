@@ -1,9 +1,9 @@
 {
-  "engineVersion": "23.19.4.14",
+  "engineVersion": "23.19.4.15",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
   "firestoreRulesVersion": "23.13.79",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Commercial Readiness Closure + Clean-room Verification"
+  "label": "Semidiós Rules Text + Creencia UX Hotfix"
 }

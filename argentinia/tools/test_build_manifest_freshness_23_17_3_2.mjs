@@ -5,7 +5,7 @@ import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION } from
 const manifest = JSON.parse(fs.readFileSync(new URL('../build-manifest.json', import.meta.url), 'utf8'));
 const main = fs.readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
 
-assert.equal(ENGINE_VERSION, '23.19.4.14');
+assert.equal(ENGINE_VERSION, '23.19.4.15');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
 assert.equal(manifest.engineVersion, ENGINE_VERSION);
 assert.equal(manifest.engineProtocolVersion, ENGINE_PROTOCOL_VERSION);

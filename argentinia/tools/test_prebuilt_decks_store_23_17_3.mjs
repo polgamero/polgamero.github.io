@@ -18,7 +18,7 @@ const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const json=p=>JSON.parse(read(p));
 
-assert.equal(ENGINE_VERSION, '23.19.4.14');
+assert.equal(ENGINE_VERSION, '23.19.4.15');
 assert.equal(PREBUILT_DECKS_VERSION,'23.17.3');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');

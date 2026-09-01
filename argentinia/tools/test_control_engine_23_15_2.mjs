@@ -57,7 +57,7 @@ const rehydrated=deserializeStackTarget(descriptor,syncState,'host');
 assert.equal(rehydrated.item,stolen);
 assert.equal(rehydrated.isLocal,false);
 
-if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.14'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:[2-9]|[1-9][0-9]+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
+if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.4.15'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:[2-9]|[1-9][0-9]+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
 assert.ok(main.includes('export function changePermanentController'));
 assert.ok(main.includes('expireTemporaryControlEffects'));
 assert.ok(main.includes('removeControlEffectFromPermanent'));

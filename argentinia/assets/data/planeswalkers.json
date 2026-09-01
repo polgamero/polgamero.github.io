@@ -70,7 +70,7 @@
       {
         "cost": 1,
         "name": "+1: Visión del Río",
-        "text": "Scry 2.",
+        "text": "Anticipá 2.",
         "effect": {
           "type": "scry",
           "amount": 2
@@ -307,7 +307,7 @@
       "U",
       "R"
     ],
-    "text": "Siempre que lances un Instantáneo o Conjuro, Anticipá 1.",
+    "text": "",
     "flavorText": "El barrio se queda sin luz cada vez que llega al estribillo.",
     "image": "la_negra_del_bandoneon_electrico.png",
     "loyalty": 5,
@@ -341,13 +341,6 @@
         }
       }
     ],
-    "spellCastTrigger": {
-      "filter": "instant_or_sorcery",
-      "effect": {
-        "type": "scry",
-        "amount": 1
-      }
-    },
     "legendary": true
   },
   {

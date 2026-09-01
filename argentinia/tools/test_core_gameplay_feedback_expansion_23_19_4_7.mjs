@@ -20,10 +20,10 @@ const version=read('js/version.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 const workflow=read('../.github/workflows/pages.yml');
 
-assert.equal(ENGINE_VERSION,'23.19.4.14');
+assert.equal(ENGINE_VERSION,'23.19.4.15');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(manifest.engineVersion,'23.19.4.14');
+assert.equal(manifest.engineVersion,'23.19.4.15');
 assert.equal(manifest.engineProtocolVersion,'mp-23.19.2');
 assert.equal(manifest.firestoreRulesVersion,'23.13.79');
 assert.equal(manifest.pool,880);
@@ -91,9 +91,9 @@ assert.ok(ui.includes("per_batch") && ui.includes('1 vez por lote'));
 assert.ok(ui.includes('Volumen relativo'));
 assert.ok(/schemaVersion:\s*(6|7)/.test(firebase));
 
-assert.ok(version.includes("ENGINE_VERSION = '23.19.4.14'"));
+assert.ok(version.includes("ENGINE_VERSION = '23.19.4.15'"));
 assert.ok(workflow.includes('test_core_gameplay_feedback_expansion_23_19_4_7.mjs'),'CI whitelist retains v23.19.4.7 contract');
-assert.ok(workflow.includes('Validate Core Gameplay Feedback Expansion 23.19.4.14'),'CI executes v23.19.4.7 contract');
+assert.ok(workflow.includes('Validate Core Gameplay Feedback Expansion 23.19.4.7'),'CI executes v23.19.4.7 contract');
 
 console.log('CORE_GAMEPLAY_FEEDBACK_EXPANSION_23_19_4_7_OK');
 console.log('verbs=land-play+permanent-entry+fight+shuffle+token-batch+transform+animate-land+instant-sorcery-cast');

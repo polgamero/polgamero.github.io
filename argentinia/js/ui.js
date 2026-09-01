@@ -81,7 +81,7 @@ import { gameText } from './gameTexts.js';
 import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
 import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate, telemetryDurationMs, telemetryOutcome } from './statistics.js';
-import { buildCardTextLayout } from './cardTextFormatter.js';
+import { buildCardTextLayout, buildLoyaltyAbilityDisplay } from './cardTextFormatter.js';
 import { publicKeywordLabel, publicCardTypeLine, publicTerminologyText } from './publicTerminology.js';
 import { MANA_ICON_URLS, manaIconKeyForSymbol } from './manaSymbolCatalog.js';
 import { POOL_BASELINE } from './poolContract.js';
@@ -881,13 +881,14 @@ export function showLoyaltyAbilityModal(pwItem, isLocal) {
 
   const alreadyUsed = pwItem.abilityUsedThisTurn;
   const abilitiesHTML = (pwItem.card.loyaltyAbilities || []).map((ability, idx) => {
-    const costLabel = ability.cost > 0 ? `+${ability.cost}` : `${ability.cost}`;
+    const display = buildLoyaltyAbilityDisplay(ability);
     const cantAfford = ability.cost < 0 && pwItem.loyalty < Math.abs(ability.cost);
     const disabled = alreadyUsed || cantAfford;
+    const name = display.abilityName ? `<strong>${escapeCardTextHtml(display.abilityName)}</strong>${display.text ? ' — ' : ''}` : '';
     return `
       <button class="loyalty-ability-btn ${disabled ? 'disabled' : ''}" data-idx="${idx}" ${disabled ? 'disabled' : ''}>
-        <span class="loyalty-cost">${costLabel}</span>
-        <span class="loyalty-ability-text">${ability.name}${ability.text ? ' — ' + ability.text : ''}</span>
+        <span class="loyalty-cost">${escapeCardTextHtml(display.loyaltyCost)}</span>
+        <span class="loyalty-ability-text">${name}${renderInlineGameSymbols(escapeCardTextHtml(display.text))}</span>
       </button>
     `;
   }).join('');
@@ -1673,12 +1674,18 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     ).join('');
 
     const rulesHTML = textLayout.paragraphs.map(entry => {
-      const abilityWord = entry.abilityWord
-        ? `<span class="card-ability-word">${escapeCardTextHtml(entry.abilityWord)} — </span>`
-        : '';
       const rule = renderInlineGameSymbols(escapeCardTextHtml(entry.text));
       const reminder = entry.reminder
         ? ` <span class="card-reminder-text">(${renderInlineGameSymbols(escapeCardTextHtml(entry.reminder))})</span>`
+        : '';
+      if (entry.kind === 'loyalty-ability') {
+        const abilityName = entry.abilityName
+          ? `<span class="card-loyalty-ability-name">${escapeCardTextHtml(entry.abilityName)}</span>${entry.text ? ' — ' : ''}`
+          : '';
+        return `<div class="card-rule-paragraph card-loyalty-rule"><span class="card-loyalty-cost-inline">${escapeCardTextHtml(entry.loyaltyCost)}</span><span class="card-loyalty-rule-copy">${abilityName}${rule}${reminder}</span></div>`;
+      }
+      const abilityWord = entry.abilityWord
+        ? `<span class="card-ability-word">${escapeCardTextHtml(entry.abilityWord)} — </span>`
         : '';
       const kindClass = entry.kind === 'mode-option' ? ' card-mode-option' : entry.kind === 'mode-header' ? ' card-mode-header' : '';
       return `<div class="card-rule-paragraph${kindClass}">${abilityWord}${rule}${reminder}</div>`;
@@ -1693,7 +1700,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     const reminderLen = textLayout.paragraphs.reduce((n, p) => n + (p.reminder || '').length, 0)
       + textLayout.keywordReminders.reduce((n, p) => n + p.text.length, 0);
     const totalTextLen = textLayout.flavorText.length
-      + textLayout.paragraphs.reduce((n, p) => n + p.text.length + (p.abilityWord || '').length, 0)
+      + textLayout.paragraphs.reduce((n, p) => n + p.text.length + (p.abilityWord || '').length + (p.abilityName || '').length + (p.loyaltyCost || '').length, 0)
       + textLayout.keywordLabels.join(', ').length
       + Math.round(reminderLen * 0.72)
       + (textLayout.paragraphs.length * 14);
