@@ -22,12 +22,14 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app-check.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_SAVED_DECKS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
 import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, isDailyStreakConsistent, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, localDateKey, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
-import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
+import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer } from './economyClient.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { normalizePlayerStats, summarizePlayerTelemetry, PLAYER_GAME_BACKFILL_VERSION } from './statistics.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
@@ -46,10 +48,40 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// Se exportan por si Fase 1 en adelante necesita usarlos directo (ej. leer/escribir la
-// colección del jugador en Firestore) — hoy (Fase 0) nadie más los usa todavía.
+// 23.19.5 — App Check se registra en el cliente ANTES de usar Functions/Firestore de forma
+// económica. El Site Key de reCAPTCHA Enterprise es público por diseño. Enforcement NO se
+// activa todavía: primero observamos métricas y el backend recibe request.app cuando existe.
+export const APP_CHECK_SITE_KEY = '6LeHl6MtAAAAAHWzciQAQS_jDNOzXO7QU9FL35JX';
+export const APP_CHECK_PROVIDER = 'recaptcha-enterprise';
+let appCheck = null;
+export const APP_CHECK_STATUS = { initialized: false, debug: false, skippedLocal: false, error: null };
+try {
+  const host = String(globalThis.location?.hostname || '').toLowerCase();
+  const localHost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  const params = (() => { try { return new URLSearchParams(globalThis.location?.search || ''); } catch { return null; } })();
+  const debugRequested = localHost && params?.get('appcheckdebug') === '1';
+  if (localHost && !debugRequested) {
+    APP_CHECK_STATUS.skippedLocal = true;
+  } else {
+    if (debugRequested) {
+      globalThis.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+      APP_CHECK_STATUS.debug = true;
+    }
+    appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY),
+      isTokenAutoRefreshEnabled: true
+    });
+    APP_CHECK_STATUS.initialized = true;
+  }
+} catch (error) {
+  APP_CHECK_STATUS.error = error?.message || String(error);
+  console.warn('[App Check 23.19.5] No se pudo inicializar; enforcement sigue apagado durante Foundation:', error);
+}
+
+// Se exportan por si Fase 1 en adelante necesita usarlos directo.
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+configureEconomyClient(app, auth);
 
 // El scope de foto de perfil (photoURL) ya viene incluido en el perfil básico de Google —
 // no hace falta pedir ningún permiso extra aparte, alcanza con el login estándar.
@@ -80,6 +112,50 @@ function normalizeProfileForClient(data) {
     inventory: normalizeInventory(data.inventory),
     dailyRewards: normalizeDailyRewardsState(data.dailyRewards)
   };
+}
+
+
+// ============================================================================
+// 23.19.5 — Economy Authority rollout client-side.
+// shadow: comportamiento legacy; server_preferred: Functions primero con fallback legacy;
+// server_required: Functions obligatorias. El firewall de Rules llega recién en 23.19.5.6.
+// ============================================================================
+const ECONOMY_AUTHORITY_MODES = new Set(['shadow','server_preferred','server_required']);
+let economyAuthorityCache = { at: 0, value: null };
+const ECONOMY_AUTHORITY_CACHE_MS = 30000;
+
+export async function loadEconomyAuthorityConfig({ force = false } = {}) {
+  const now = Date.now();
+  if (!force && economyAuthorityCache.value && (now - economyAuthorityCache.at) < ECONOMY_AUTHORITY_CACHE_MS) {
+    return economyAuthorityCache.value;
+  }
+  let value = { enabled: true, mode: 'shadow', minimumEconomyClientVersion: ECONOMY_PROTOCOL_VERSION };
+  try {
+    const snap = await getDoc(doc(db, 'gameConfig', 'economy'));
+    if (snap.exists()) {
+      const raw = snap.data() || {};
+      value = {
+        enabled: raw.enabled !== false,
+        mode: ECONOMY_AUTHORITY_MODES.has(raw.mode) ? raw.mode : 'shadow',
+        minimumEconomyClientVersion: typeof raw.minimumEconomyClientVersion === 'string' && raw.minimumEconomyClientVersion.trim()
+          ? raw.minimumEconomyClientVersion.trim()
+          : ECONOMY_PROTOCOL_VERSION
+      };
+    }
+  } catch (error) {
+    console.warn('[Economy 23.19.5] No se pudo leer gameConfig/economy; se conserva shadow:', error);
+  }
+  economyAuthorityCache = { at: now, value };
+  return value;
+}
+
+function economyShouldUseServer(config) {
+  return config?.enabled !== false && (config?.mode === 'server_preferred' || config?.mode === 'server_required');
+}
+function economyServerRequired(config) { return config?.mode === 'server_required'; }
+async function loadOwnProfileAfterServerMutation(uid) {
+  const snap = await getDocFromServer(doc(db, 'users', uid));
+  return snap.exists() ? normalizeProfileForClient(snap.data()) : null;
 }
 
 
@@ -335,6 +411,19 @@ export async function loadUserProfileFromServer(uid) {
 // campos username*. Las Rules 23.13.24 enlazan ambos documentos con getAfter().
 export async function reserveInitialUsername(uid, username, usernameKey, profileFields = {}) {
   const validated = assertValidUsernamePayload(username, usernameKey);
+  const authority = await loadEconomyAuthorityConfig();
+  if (economyShouldUseServer(authority)) {
+    if (uid !== auth.currentUser?.uid) throw usernameError('AUTH_UID_MISMATCH', 'La sesión no coincide con la cuenta.');
+    try {
+      await bootstrapAccountServer(validated.username);
+      const serverProfile = await loadOwnProfileAfterServerMutation(uid);
+      if (!serverProfile) throw new Error('ECONOMY_BOOTSTRAP_PROFILE_MISSING_AFTER_COMMIT');
+      return serverProfile;
+    } catch (error) {
+      if (economyServerRequired(authority)) throw error;
+      console.warn('[Economy 23.19.5] bootstrapAccount server_preferred falló; fallback legacy temporal:', error);
+    }
+  }
   const userRef = doc(db, 'users', uid);
   const nameRef = doc(db, 'usernames', validated.usernameKey);
 
@@ -469,7 +558,23 @@ export async function renameUsername(uid, username, usernameKey, fichaCost = USE
 // 23.13.24 normalmente users/{uid} YA existe como perfil mínimo starterDeckPending=true
 // porque el username se elige antes. Conserva fallback de creación defensiva si la reserva
 // existe pero el perfil todavía no llegó a escribirse por una ruta histórica.
-export async function createUserProfile(uid, profileFields, starterCardIds) {
+export async function createUserProfile(uid, profileFields, starterCardIds, starterIdentity = null) {
+  const authority = await loadEconomyAuthorityConfig();
+  if (economyShouldUseServer(authority)) {
+    if (uid !== auth.currentUser?.uid) throw usernameError('AUTH_UID_MISMATCH', 'La sesión no coincide con la cuenta.');
+    try {
+      if (!Array.isArray(starterIdentity) || starterIdentity.length < 1 || starterIdentity.length > 2) {
+        throw new Error('STARTER_IDENTITY_REQUIRED_FOR_SERVER_AUTHORITY');
+      }
+      await completeStarterDeckServer(starterIdentity);
+      const serverProfile = await loadOwnProfileAfterServerMutation(uid);
+      if (!serverProfile) throw new Error('ECONOMY_STARTER_PROFILE_MISSING_AFTER_COMMIT');
+      return serverProfile;
+    } catch (error) {
+      if (economyServerRequired(authority)) throw error;
+      console.warn('[Economy 23.19.5] completeStarterDeck server_preferred falló; fallback legacy temporal:', error);
+    }
+  }
   const username = profileFields.username || '';
   const usernameKey = profileFields.usernameKey || '';
   const validated = assertValidUsernamePayload(username, usernameKey);

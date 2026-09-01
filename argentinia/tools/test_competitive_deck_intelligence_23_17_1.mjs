@@ -24,7 +24,7 @@ const dataFiles=['criaturas','instantaneos','conjuros','encantamientos','artefac
 const cards=dataFiles.flatMap(k=>json(`assets/data/${k}.json`));
 function seeded(seed){ let x=seed>>>0; return()=>{ x=(Math.imul(x,1664525)+1013904223)>>>0; return x/4294967296; }; }
 
-assert.ok(['23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.4.15'].includes(ENGINE_VERSION));
+assert.ok(['23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.5'].includes(ENGINE_VERSION));
 assert.equal(DECK_INTELLIGENCE_VERSION,'23.17.1');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');

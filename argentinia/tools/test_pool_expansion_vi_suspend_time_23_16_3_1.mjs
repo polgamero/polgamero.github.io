@@ -16,7 +16,7 @@ const byFile=Object.fromEntries(files.map(f=>[f,collect(json(`assets/data/${f}`)
 const cards=Object.values(byFile).flat();
 const byId=new Map(cards.map(c=>[c.id,c]));
 
-assert.ok(['23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.4.15'].includes(ENGINE_VERSION));
+assert.ok(['23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.5'].includes(ENGINE_VERSION));
 assert.equal(SUSPEND_ENGINE_VERSION,'23.16.3');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');

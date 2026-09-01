@@ -27,12 +27,12 @@ const facade = read('js/firebaseClient.js');
 const texts = read('js/gameTexts.js');
 const utils = read('js/utils.js');
 
-assert.equal(manifest.engineVersion, '23.19.4.15');
+assert.equal(manifest.engineVersion, '23.19.5');
 assert.equal(manifest.engineProtocolVersion, 'mp-23.19.2');
 assert.equal(manifest.protocolVersion, 'mp-23.19.2');
 assert.equal(manifest.firestoreRulesVersion, '23.13.79');
 assert.equal(manifest.pool, 880);
-assert.match(version, /ENGINE_VERSION = '23\.19\.4\.15'/);
+assert.match(version, /ENGINE_VERSION = '23\.19\.5'/);
 assert.match(version, /ENGINE_PROTOCOL_VERSION = 'mp-23\.19\.2'/);
 
 assert.match(fb, /export async function publishMatchStateAtomic/);

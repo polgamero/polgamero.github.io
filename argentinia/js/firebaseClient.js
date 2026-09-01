@@ -211,6 +211,7 @@ export const deleteDeck = asyncProxy('deleteDeck');
 export const loadPublicGameConfigDocument = asyncProxy('loadPublicGameConfigDocument');
 export const saveAdminGameConfigDocument = asyncProxy('saveAdminGameConfigDocument');
 export const loadGameConfig = asyncProxy('loadGameConfig');
+export const loadEconomyAuthorityConfig = asyncProxy('loadEconomyAuthorityConfig');
 export const saveGameConfig = asyncProxy('saveGameConfig');
 export const loadAnimationPolicy = asyncProxy('loadAnimationPolicy');
 export const saveAnimationPolicy = asyncProxy('saveAnimationPolicy');

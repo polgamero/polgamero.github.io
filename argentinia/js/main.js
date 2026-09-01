@@ -960,7 +960,7 @@ async function initGame(deckSource) {
     if (!state.userProfile || state.userProfile.starterDeckPending === true) {
       const starterCardIds = state.localDeck.map(c => c.id);
       try {
-        state.userProfile = await createUserProfile(state.currentUser.uid, state.currentUser, starterCardIds);
+        state.userProfile = await createUserProfile(state.currentUser.uid, state.currentUser, starterCardIds, deckSource.identity);
         await processDailyLoginRewards();
         logMsg(gameText('account.starter.saved60'));
       } catch (err) {
@@ -1237,7 +1237,7 @@ function promptStarterDeckSelection() {
     async (chosenIdentity) => {
       const starterDeck = buildRandomDeck(chosenIdentity, { quality: 'starter' });
       try {
-        state.userProfile = await createUserProfile(state.currentUser.uid, state.currentUser, starterDeck.map(c => c.id));
+        state.userProfile = await createUserProfile(state.currentUser.uid, state.currentUser, starterDeck.map(c => c.id), chosenIdentity);
         await processDailyLoginRewards();
         logMsg(gameText('account.starter.savedIdentity', { identity: chosenIdentity.join('/') }));
       } catch (err) {
