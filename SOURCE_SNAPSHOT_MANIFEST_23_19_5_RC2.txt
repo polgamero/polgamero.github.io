@@ -8,7 +8,7 @@ ECONOMY_PROTOCOL=econ-23.19.5
 ECONOMY_SCHEMA=1
 ECONOMY_FUNCTIONS_REGION=southamerica-east1
 FIRESTORE_RULES=23.13.79 (unchanged; not shipped in public source)
-FILE_COUNT=287
+FILE_COUNT=288
 CARD_IMAGE_BINARIES=0
 PUBLIC_FIRESTORE_CONFIG_FILES=0
 APP_CHECK_PROVIDER=recaptcha-enterprise
@@ -52,7 +52,10 @@ RC2 REAL GATES COMPLETED:
 - Updated 4/4 Functions deployed successfully to southamerica-east1 / Node 22
 - GitHub CI hotfix: compact regression archive synchronized; CI no longer extracts archived tests over live tests.
 - GitHub CI hotfix 2: pool-expansion regression now reads the canonical 23.17.3.1 manifest explicitly; stale historical manifests left in a GitHub repo can no longer hijack manifest discovery.
-- GitHub CI hotfix 3: CI separates clean cumulative-delivery contracts from the hydrated GitHub Pages checkout, makes DFC image-audit tests present/missing invariant, and runs a fail-collecting 105-test preflight so all fast contract failures are reported in one run.
+- GitHub CI hotfix 3: CI separates clean cumulative-delivery contracts from the hydrated GitHub Pages checkout, makes DFC image-audit tests present/missing invariant, and runs a fail-collecting preflight.
+- GitHub CI hotfix 4: canonical 105-test manifest prevents stale retained tests from being auto-executed; commercial scans are restricted to authoritative current source rather than hydrated generated image inventories or stale build-* folders.
+
+- GitHub CI Hotfix 4 full local workflow emulation against polluted/hydrated checkout: ALL shell run steps PASS (including heavy labs and Functions unit).
 
 RELEASE BLOCKER:
 Production smoke only: Admin instant-open, Tano deck composition, animated-land warning and App Check/economyStatus.

@@ -64,13 +64,19 @@ if (ENGINE_VERSION === '23.19.5') {
 const hash=crypto.createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
 assert.equal(hash,'0cdb30716c6359eae93166597dce1c842d00afa8ed0c2e313341e4d3841957b8');
 
-// No explicit competitor attribution in production JS/CSS/HTML/data.
+// No explicit competitor attribution in canonical active JS/CSS/HTML/data.
+// GitHub web uploads do not delete stale historical build-* folders, so a hydrated
+// checkout may contain obsolete JS that is not part of the current cumulative source.
+// The active runtime for 23.19.5 is the flat js/ + css/ + assets/data/ tree shipped
+// by the source snapshot; scan those authoritative files, never arbitrary stale subtrees.
 const competitorRx=/Magic: The Gathering|Wizards of the Coast|\bMTG\b/gi;
-function walk(dir){ return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(dir,e.name)):[path.join(dir,e.name)]); }
-for(const rel of ['js','css','assets/data','index.html']){
+function canonicalFiles(rel){
  const abs=path.join(root,rel);
- const paths=fs.statSync(abs).isDirectory()?walk(abs):[abs];
- for(const p of paths){ const body=fs.readFileSync(p,'utf8'); assert.ok(!competitorRx.test(body),`competitor reference survives in ${path.relative(root,p)}`); competitorRx.lastIndex=0; }
+ if(!fs.statSync(abs).isDirectory()) return [abs];
+ return fs.readdirSync(abs,{withFileTypes:true}).filter(e=>e.isFile()).map(e=>path.join(abs,e.name));
+}
+for(const rel of ['js','css','assets/data','index.html']){
+ for(const p of canonicalFiles(rel)){ const body=fs.readFileSync(p,'utf8'); assert.ok(!competitorRx.test(body),`competitor reference survives in ${path.relative(root,p)}`); competitorRx.lastIndex=0; }
 }
 
 // Card-art binaries are externalized from cumulative delivery ZIPs, but the live

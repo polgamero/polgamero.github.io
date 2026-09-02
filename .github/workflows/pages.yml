@@ -95,16 +95,24 @@ jobs:
           grep -qx 'PUBLIC_FIRESTORE_CONFIG_FILES=0' SOURCE_SNAPSHOT_MANIFEST_23_19_5_RC2.txt
           echo "OK: cumulative delivery remains no-card-images/no-public-Firestore-config; hosted PNGs are allowed"
 
-      - name: Validate complete fast contract sweep
+      - name: Validate complete canonical fast contract sweep
         working-directory: ./argentinia
         run: |
+          test -f tools/ci_fast_contract_manifest_23_19_5_rc2.txt
           set +e
           total=0
           passed=0
           failed=0
-          for test_file in $(find tools -maxdepth 1 -type f -name 'test_*.mjs' -print | sort); do
+          while IFS= read -r test_file || [ -n "$test_file" ]; do
+            [ -z "$test_file" ] && continue
+            case "$test_file" in \#*) continue ;; esac
             total=$((total + 1))
             echo "[contract $total] $test_file"
+            if [ ! -f "$test_file" ]; then
+              failed=$((failed + 1))
+              echo "::error file=$test_file::Canonical contract file is missing"
+              continue
+            fi
             node "$test_file"
             code=$?
             if [ "$code" -eq 0 ]; then
@@ -113,10 +121,25 @@ jobs:
               failed=$((failed + 1))
               echo "::error file=$test_file::Contract test failed with exit code $code"
             fi
-          done
-          echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed"
+          done < tools/ci_fast_contract_manifest_23_19_5_rc2.txt
+
+          # Web uploads can leave historical test_*.mjs files in the repository. Report
+          # them for cleanup, but do not execute files outside the canonical RC2 suite.
+          grep -vE '^[[:space:]]*(#|$)' tools/ci_fast_contract_manifest_23_19_5_rc2.txt | sort > /tmp/canonical-tests.txt
+          find tools -maxdepth 1 -type f -name 'test_*.mjs' -print | sort > /tmp/present-tests.txt
+          comm -13 /tmp/canonical-tests.txt /tmp/present-tests.txt > /tmp/stale-tests.txt
+          if [ -s /tmp/stale-tests.txt ]; then
+            echo "::warning::Ignoring stale non-canonical tests retained by repository uploads:"
+            sed 's/^/  - /' /tmp/stale-tests.txt
+          fi
+
+          echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed canonical=23.19.5-rc2"
+          if [ "$total" -ne 105 ]; then
+            echo "::error::Canonical fast manifest must contain exactly 105 tests; got $total"
+            exit 1
+          fi
           if [ "$failed" -ne 0 ]; then
-            echo "::error::$failed contract test(s) failed. All failures were collected in this single run."
+            echo "::error::$failed canonical contract test(s) failed. All canonical failures were collected in this single run."
             exit 1
           fi
 

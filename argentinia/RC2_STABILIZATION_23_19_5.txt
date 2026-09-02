@@ -47,3 +47,12 @@ NO ECONOMY AUTHORITY SEMANTIC CHANGE
 - Functions cost limits remain minInstances=0 / maxInstances=1 / concurrency=10.
 - Pool 880, multiplayer protocol mp-23.19.2, Firestore Rules 23.13.79 unchanged.
 - Because trusted Deck Intelligence changed, Functions must be re-deployed only AFTER the RC2 Emulator Gate passes.
+
+
+CI HOTFIX 4 — HYDRATED REPOSITORY BOUNDARY
+- Fast CI runs exactly the canonical 105-test RC2 manifest; stale test files retained by web uploads are reported but not executed.
+- Wave 2 commercial purge ignores generated card-image inventory from externalized hydrated PNGs and still scans authoritative active metadata.
+- Wave 5 competitor scan targets the current flat runtime source tree and ignores obsolete build-* subtrees left behind by non-destructive uploads.
+- No runtime, gameplay, Functions, Rules or economy behavior changed.
+
+- GitHub CI Hotfix 4 full local workflow emulation against polluted/hydrated checkout: ALL shell run steps PASS (including heavy labs and Functions unit).

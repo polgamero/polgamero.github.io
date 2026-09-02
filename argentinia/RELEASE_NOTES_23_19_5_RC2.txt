@@ -38,3 +38,12 @@ GITHUB CI HOTFIX 3 — ENVIRONMENT CONTRACT SEPARATION
 - Pages CI now has an explicit source-package contract gate plus a fail-collecting sweep of every test_*.mjs, so all fast contract failures are reported in one run instead of one-at-a-time discovery.
 - Reproduced in two environments after generate_image_manifest.py: CLEAN source (0 image binaries) 105/105 PASS; HYDRATED live-style source (926 referenced card/token placeholder assets present) 105/105 PASS.
 - Exact heavy CI labs and Functions unit also PASS in hydrated mode. Runtime/gameplay/Functions code unchanged by this CI-only hotfix.
+
+
+CI HOTFIX 4 — HYDRATED REPOSITORY BOUNDARY
+- Fast CI runs exactly the canonical 105-test RC2 manifest; stale test files retained by web uploads are reported but not executed.
+- Wave 2 commercial purge ignores generated card-image inventory from externalized hydrated PNGs and still scans authoritative active metadata.
+- Wave 5 competitor scan targets the current flat runtime source tree and ignores obsolete build-* subtrees left behind by non-destructive uploads.
+- No runtime, gameplay, Functions, Rules or economy behavior changed.
+
+- GitHub CI Hotfix 4 full local workflow emulation against polluted/hydrated checkout: ALL shell run steps PASS (including heavy labs and Functions unit).

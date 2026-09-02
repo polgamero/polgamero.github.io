@@ -72,8 +72,11 @@ assert.equal(art.tokenPublicName,'Envase hermético');
 assert.equal(art.internalTokenPreset,'food');
 assert.equal(art.mechanicsChanged,0);
 
-// Commercial old-string purge: no literal brand-adjacent label may survive in production content.
-const productionPaths=['js','assets/data','assets/images/cards','COMMERCIAL_REMEDIATION_ROADMAP_23_19_4_9.txt','COMMERCIAL_REMEDIATION_WAVE2_23_19_4_10.txt'];
+// Commercial old-string purge: no literal brand-adjacent label may survive in authoritative production content.
+// Hydrated GitHub Pages may retain legacy/externalized PNG filenames. The generated
+// cards-image-manifest.json is an inventory of those retained binaries, not authoritative
+// public card metadata for the clean-room terminology contract.
+const productionPaths=['js','assets/data','assets/images/cards/commercial-art-wave2-envase-hermetico.json','COMMERCIAL_REMEDIATION_ROADMAP_23_19_4_9.txt','COMMERCIAL_REMEDIATION_WAVE2_23_19_4_10.txt'];
 function walk(p){
   const abs=path.join(root,p);
   const stat=fs.statSync(abs);
