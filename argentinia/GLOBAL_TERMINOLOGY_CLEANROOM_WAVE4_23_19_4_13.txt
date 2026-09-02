@@ -1,0 +1,21 @@
+ARGENTINIA 23.19.4.13 — GLOBAL TERMINOLOGY CLEAN-ROOM · WAVE 4
+
+STATUS: RELEASED
+POOL: 880
+PROTOCOL: mp-23.19.2
+FIRESTORE RULES: 23.13.79 (unchanged)
+OWNER DICTIONARY: 44/44 APPROVED
+
+SCOPE
+- Applies the owner-approved public terminology globally to card rules text, visible type lines, keyword labels, reminders, Game Text, Admin-visible Game Text catalog, UI labels, logs and presentation labels.
+- Internal gameplay contracts remain stable in this pass: keyword IDs, effect.type values, counter keys, raw canonical type classifiers and field names are NOT renamed.
+- Legacy Admin Game Text overrides are localized through publicTerminologyText() at read/display time, avoiding a Firestore schema migration.
+- Card-image binaries remain externalized and must not be included in deliverable ZIPs.
+
+OWNER TERMS
+Semidiós / Creencia / Crónica / Capítulo / Encanto / Transporte / Tripular / Equipamiento / Equipar / Transformar / Vuela / Arrolla / Alerta / Apuro / Intimidante / Alcance / Absorción / Letal / Contagio / Al toque / Iniciativa / Dos golpes / Intocable / Impuesto N / Muralla / Irrompible / Protección de X / Arraigo / Anticipá / Chusmeá / Amplificá / Yapa / Otra vuelta / Zafar / En espera / Vaquita / Conexión con… / Rebuscar / Pelea / Escudo / Aturdimiento / Tiempo / Carga / Veneno.
+
+COMPATIBILITY
+- Raw `type` values such as Planeswalker, Saga, Aura and Vehículo remain as internal classifiers; UI presentation maps them to Semidiós, Crónica, Encanto and Transporte.
+- Internal keys such as flying, vigilance, ward_2, scry, surveil, proliferate, loyalty, lore, kicker, flashback, escape, suspend, convoke, affinity and delve remain unchanged.
+- Browser keyboard key `Escape` remains Escape; the public mechanic Zafar does not alter DOM/browser key contracts.

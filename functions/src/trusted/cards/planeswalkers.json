@@ -1,0 +1,401 @@
+[
+  {
+    "id": "pw_001",
+    "name": "El Cacique del Barrio",
+    "type": "Planeswalker — Cacique",
+    "manaCost": "{3}{W}{W}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [
+      "W"
+    ],
+    "loyalty": 5,
+    "text": "",
+    "flavorText": "Nadie entra ni sale del barrio sin que él se entere.",
+    "image": "cacique_barrio.png",
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Contención",
+        "text": "Ganás 2 Puntos de Vida.",
+        "effect": {
+          "type": "heal",
+          "amount": 2
+        }
+      },
+      {
+        "cost": -2,
+        "name": "-2: Cerrar la Cuadra",
+        "text": "La criatura objetivo no puede atacar en su próximo turno.",
+        "requiresTarget": true,
+        "effect": {
+          "type": "cant_attack_next_turn",
+          "duration": "next_turn"
+        }
+      },
+      {
+        "cost": -7,
+        "name": "-7: Ley del Barrio",
+        "text": "Creá cuatro fichas de criatura Vecino del Barrio 2/2.",
+        "effect": {
+          "type": "create_tokens",
+          "amount": 4,
+          "tokenName": "Vecino del Barrio",
+          "tokenStats": {
+            "power": 2,
+            "toughness": 2
+          },
+          "tokenKeywords": [],
+          "image": "token_vecino_barrio.png"
+        }
+      }
+    ],
+    "legendary": true
+  },
+  {
+    "id": "pw_002",
+    "name": "La Bruja del Puerto",
+    "type": "Planeswalker — Bruja",
+    "manaCost": "{2}{U}{U}",
+    "cmc": 4,
+    "rarity": "Mythic",
+    "colors": [
+      "U"
+    ],
+    "loyalty": 4,
+    "text": "",
+    "flavorText": "Lee las cartas antes de que el barco termine de atracar.",
+    "image": "bruja_puerto.png",
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Visión del Río",
+        "text": "Anticipá 2.",
+        "effect": {
+          "type": "scry",
+          "amount": 2
+        }
+      },
+      {
+        "cost": -3,
+        "name": "-3: Niebla Cerrada",
+        "text": "Devolvé la criatura objetivo a la mano de su dueño.",
+        "requiresTarget": true,
+        "effect": {
+          "type": "bounce"
+        }
+      },
+      {
+        "cost": -8,
+        "name": "-8: Marea de Conocimiento",
+        "text": "Robás cuatro cartas.",
+        "effect": {
+          "type": "draw",
+          "amount": 4
+        }
+      }
+    ],
+    "legendary": true
+  },
+  {
+    "id": "pw_003",
+    "name": "El Enterrador",
+    "type": "Planeswalker — Enterrador",
+    "manaCost": "{2}{B}{B}",
+    "cmc": 4,
+    "rarity": "Mythic",
+    "colors": [
+      "B"
+    ],
+    "loyalty": 5,
+    "text": "",
+    "flavorText": "Ya cavó tu pozo. Solo pregunta cuándo.",
+    "image": "el_enterrador.png",
+    "loyaltyAbilities": [
+      {
+        "cost": 2,
+        "name": "+2: Cobro de Deuda",
+        "text": "El jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+        "effect": {
+          "type": "drain",
+          "amount": 1
+        }
+      },
+      {
+        "cost": -3,
+        "name": "-3: Últimos Ritos",
+        "text": "Devolvé una criatura de tu cementerio a tu mano.",
+        "effect": {
+          "type": "return_from_graveyard",
+          "filter": "creature",
+          "amount": 1
+        }
+      },
+      {
+        "cost": -8,
+        "name": "-8: Sentencia Final",
+        "text": "Devolvé hasta dos criaturas de tu cementerio al campo de batalla.",
+        "effect": {
+          "type": "reanimate",
+          "amount": 2
+        }
+      }
+    ],
+    "legendary": true
+  },
+  {
+    "id": "pw_004",
+    "name": "El Piromaníaco Callejero",
+    "type": "Planeswalker — Piromántico",
+    "manaCost": "{2}{R}{R}",
+    "cmc": 4,
+    "rarity": "Mythic",
+    "colors": [
+      "R"
+    ],
+    "loyalty": 4,
+    "text": "",
+    "flavorText": "Cada esquina arde en su propio fuego.",
+    "image": "piromantico_callejero.png",
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Chispa",
+        "text": "Le hacés 1 de daño al jugador rival.",
+        "effect": {
+          "type": "damage",
+          "amount": 1
+        }
+      },
+      {
+        "cost": -2,
+        "name": "-2: Fogonazo",
+        "text": "Creá dos fichas de criatura Incendiario 1/1 con Apuro.",
+        "effect": {
+          "type": "create_tokens",
+          "amount": 2,
+          "tokenName": "Incendiario",
+          "tokenStats": {
+            "power": 1,
+            "toughness": 1
+          },
+          "tokenKeywords": [
+            "haste"
+          ],
+          "image": "token_incendiario.png"
+        }
+      },
+      {
+        "cost": -7,
+        "name": "-7: Incendio",
+        "text": "Le hacés 7 de daño al jugador rival.",
+        "effect": {
+          "type": "damage",
+          "amount": 7
+        }
+      }
+    ],
+    "legendary": true
+  },
+  {
+    "id": "pw_005",
+    "name": "La Guardiana del Delta",
+    "type": "Planeswalker — Guardiana",
+    "manaCost": "{3}{G}{G}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [
+      "G"
+    ],
+    "loyalty": 6,
+    "text": "",
+    "flavorText": "El delta entero respira cuando ella lo permite.",
+    "image": "guardiana_delta.png",
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Savia Nueva",
+        "text": "Ganás 3 Puntos de Vida.",
+        "effect": {
+          "type": "heal",
+          "amount": 3
+        }
+      },
+      {
+        "cost": -3,
+        "name": "-3: Ciclo Natural",
+        "text": "Buscá hasta dos tierras básicas en tu mazo y ponelas en el campo de batalla.",
+        "effect": {
+          "type": "ramp",
+          "amount": 2
+        }
+      },
+      {
+        "cost": -8,
+        "name": "-8: Renacer del Delta",
+        "text": "Creá tres fichas de criatura Bestia del Delta 3/3 con Arrolla.",
+        "effect": {
+          "type": "create_tokens",
+          "amount": 3,
+          "tokenName": "Bestia del Delta",
+          "tokenStats": {
+            "power": 3,
+            "toughness": 3
+          },
+          "tokenKeywords": [
+            "trample"
+          ],
+          "image": "token_bestia_delta.png"
+        }
+      }
+    ],
+    "legendary": true
+  },
+  {
+    "id": "pw_006",
+    "name": "El Comisario",
+    "type": "Planeswalker — Comisario",
+    "manaCost": "{3}{W}{B}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [
+      "W",
+      "B"
+    ],
+    "loyalty": 5,
+    "text": "",
+    "flavorText": "En su comisaría, la ley se aplica antes de leerse.",
+    "image": "comisario.png",
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Palo y Zanahoria",
+        "text": "Ganás 2 Puntos de Vida.",
+        "effect": {
+          "type": "heal",
+          "amount": 2
+        }
+      },
+      {
+        "cost": -3,
+        "name": "-3: Orden de Arresto",
+        "text": "Destruye la criatura objetivo.",
+        "requiresTarget": true,
+        "effect": {
+          "type": "destroy_creature"
+        }
+      },
+      {
+        "cost": -8,
+        "name": "-8: Operativo Total",
+        "text": "Destruye todas las criaturas.",
+        "effect": {
+          "type": "destroy_all_creatures"
+        }
+      }
+    ],
+    "legendary": true
+  },
+  {
+    "id": "pw_007",
+    "name": "La Negra del Bandoneón Eléctrico",
+    "type": "Planeswalker — Bandoneonista",
+    "manaCost": "{2}{U}{R}",
+    "cmc": 4,
+    "rarity": "Mythic",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "text": "",
+    "flavorText": "El barrio se queda sin luz cada vez que llega al estribillo.",
+    "image": "la_negra_del_bandoneon_electrico.png",
+    "loyalty": 5,
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Afinar el Fuelle",
+        "text": "Robá una carta, luego descartá una carta.",
+        "effect": {
+          "type": "loot",
+          "amount": 1
+        }
+      },
+      {
+        "cost": -2,
+        "name": "-2: Acorde que Quema",
+        "text": "Hacé 3 de daño al objetivo.",
+        "requiresTarget": true,
+        "effect": {
+          "type": "damage",
+          "amount": 3
+        }
+      },
+      {
+        "cost": -7,
+        "name": "-7: Último Bis",
+        "text": "Robás cuatro cartas.",
+        "effect": {
+          "type": "draw",
+          "amount": 4
+        }
+      }
+    ],
+    "legendary": true
+  },
+  {
+    "id": "pw_008",
+    "name": "Doña Uva, Bruja de la Vendimia",
+    "type": "Planeswalker — Bruja",
+    "manaCost": "{2}{B}{G}",
+    "cmc": 4,
+    "rarity": "Mythic",
+    "colors": [
+      "B",
+      "G"
+    ],
+    "text": "",
+    "flavorText": "Prueba el mosto con un dedo y sabe quién va a llegar vivo a marzo.",
+    "image": "dona_uva_bruja_de_la_vendimia.png",
+    "loyalty": 5,
+    "loyaltyAbilities": [
+      {
+        "cost": 1,
+        "name": "+1: Fermentar la Marca",
+        "text": "Amplificá.",
+        "effect": {
+          "type": "proliferate"
+        }
+      },
+      {
+        "cost": -2,
+        "name": "-2: Copa Envenenada",
+        "text": "El jugador objetivo recibe un contador de Veneno.",
+        "requiresTarget": true,
+        "effect": {
+          "type": "poison",
+          "amount": 1
+        }
+      },
+      {
+        "cost": -7,
+        "name": "-7: Cosecha Negra",
+        "text": "Creá tres fichas Sarmiento Tóxico 2/2 con Contagio.",
+        "effect": {
+          "type": "create_tokens",
+          "amount": 3,
+          "tokenName": "Sarmiento Tóxico",
+          "tokenStats": {
+            "power": 2,
+            "toughness": 2
+          },
+          "tokenKeywords": [
+            "infect"
+          ],
+          "image": "token_sarmiento_toxico.png"
+        }
+      }
+    ],
+    "legendary": true
+  }
+]

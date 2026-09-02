@@ -6370,7 +6370,7 @@ export function showAdminPanel(onBack) {
       <div class="admin-field-row">
         <span class="admin-field-label">Para</span>
         <select class="admin-field-input" id="grant-recipient" style="text-align:left; max-width: 220px;">
-          <option value="">Cargando usuarios…</option>
+          <option value="">Entrá a esta solapa para cargar usuarios…</option>
         </select>
       </div>
       <div class="admin-field-row">
@@ -6483,13 +6483,21 @@ export function showAdminPanel(onBack) {
   `;
   document.body.appendChild(overlay);
 
-  const gameTextsAdminPane = createGameTextsAdminPane({
-    loadDocument: loadGameTextOverrides,
-    saveDocument: saveGameTextOverrides,
-    onApplied: notifyGameTextsApplied
-  });
-  overlay.querySelector('#admin-game-texts-root')?.appendChild(gameTextsAdminPane.element);
+  // 23.19.5 RC2 — Admin instant-open: las solapas pesadas NO se construyen al abrir
+  // el panel. Textos tiene 1242 definitions y antes se renderizaba aunque la solapa estuviera
+  // oculta; Usuarios y Campañas además disparaban reads de Firestore sin que el admin entrara.
+  let gameTextsAdminPane = null;
   let gameTextsAdminLoaded = false;
+  function ensureGameTextsAdminPane() {
+    if (gameTextsAdminPane) return gameTextsAdminPane;
+    gameTextsAdminPane = createGameTextsAdminPane({
+      loadDocument: loadGameTextOverrides,
+      saveDocument: saveGameTextOverrides,
+      onApplied: notifyGameTextsApplied
+    });
+    overlay.querySelector('#admin-game-texts-root')?.appendChild(gameTextsAdminPane.element);
+    return gameTextsAdminPane;
+  }
 
   let debugLoaded = false;
   let debugLoading = false;
@@ -7013,8 +7021,10 @@ Receipt: ${receiptId}
     overlay.querySelectorAll('[data-admin-pane]').forEach(pane => pane.classList.toggle('hidden', pane.dataset.adminPane !== key));
     if (key === 'texts' && !gameTextsAdminLoaded) {
       gameTextsAdminLoaded = true;
-      void gameTextsAdminPane.load();
+      void ensureGameTextsAdminPane().load();
     }
+    if (key === 'messages') void ensureAdminMessageUsers();
+    if (key === 'campaigns') ensureAdminCampaignsPane();
     if (key === 'stats' && !statsLoaded) reloadAdminStatistics();
     if (key === 'animations') ensureAdminAnimationLab();
     if (key === 'debug') {
@@ -7154,18 +7164,28 @@ Receipt: ${receiptId}
   };
   window.addEventListener('argentinia:animation-policy-changed', onAdminAnimationPolicyChanged);
 
-  // Carga la lista real de usuarios de forma asíncrona — no bloquea el resto del panel.
+  // 23.19.5 RC2 — Usuarios lazy: abrir Admin no hace reads de perfiles. Se carga una
+  // sola vez cuando el admin entra a MENSAJES Y USUARIOS.
   const recipientSelect = overlay.querySelector('#grant-recipient');
-  fetchAllUserProfiles()
-    .then(profiles => {
+  let messagesUsersLoaded = false;
+  let messagesUsersLoading = false;
+  async function ensureAdminMessageUsers() {
+    if (messagesUsersLoaded || messagesUsersLoading) return;
+    messagesUsersLoading = true;
+    recipientSelect.innerHTML = '<option value="">Cargando usuarios…</option>';
+    try {
+      const profiles = await fetchAllUserProfiles();
       const options = ['<option value="ALL">Todos los usuarios</option>']
         .concat(profiles.map(p => `<option value="${p.uid}">${escapeHtml(p.username || 'Sin username')} · ${escapeHtml(String(p.uid).slice(-6))}</option>`));
       recipientSelect.innerHTML = options.join('');
-    })
-    .catch(err => {
+      messagesUsersLoaded = true;
+    } catch (err) {
       console.error('No se pudo cargar la lista de usuarios:', err);
       recipientSelect.innerHTML = '<option value="">No se pudo cargar la lista de usuarios</option>';
-    });
+    } finally {
+      messagesUsersLoading = false;
+    }
+  }
 
   overlay.querySelector('#admin-grant-send').addEventListener('click', async () => {
     const grantErrorBox = overlay.querySelector('#admin-grant-error');
@@ -7220,7 +7240,16 @@ Receipt: ${receiptId}
     }
   });
 
-  mountAdminCampaignsPane(overlay.querySelector('#admin-campaigns-root'), { currentUser: state.currentUser });
+  // 23.19.5 RC2 — Campañas lazy: mountAdminCampaignsPane() ejecuta su reload inicial,
+  // por lo que no debe existir hasta que esa solapa sea solicitada.
+  let campaignsAdminMounted = false;
+  function ensureAdminCampaignsPane() {
+    if (campaignsAdminMounted) return;
+    const root = overlay.querySelector('#admin-campaigns-root');
+    if (!root) return;
+    campaignsAdminMounted = true;
+    mountAdminCampaignsPane(root, { currentUser: state.currentUser });
+  }
 
   overlay.querySelector('#admin-back').addEventListener('click', () => {
     window.removeEventListener('argentinia:animation-policy-changed', onAdminAnimationPolicyChanged);

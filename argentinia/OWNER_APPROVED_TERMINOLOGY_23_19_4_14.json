@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "version": "23.19.4.14",
+  "status": "OWNER_APPROVED_44_OF_44",
+  "implementationMode": "public_wording_first_internal_keys_stable",
+  "decisions": [
+    {
+      "current": "Planeswalker",
+      "public": "Semidiós",
+      "internal": "type: Planeswalker"
+    },
+    {
+      "current": "Lealtad",
+      "public": "Creencia",
+      "internal": "loyalty / loyaltyAbilities"
+    },
+    {
+      "current": "Saga",
+      "public": "Crónica",
+      "internal": "saga / subtype Saga"
+    },
+    {
+      "current": "Lore",
+      "public": "Capítulo",
+      "internal": "counterType lore"
+    },
+    {
+      "current": "Aura",
+      "public": "Encanto",
+      "internal": "type Aura"
+    },
+    {
+      "current": "Vehículo",
+      "public": "Transporte",
+      "internal": "type Vehículo"
+    },
+    {
+      "current": "Tripular",
+      "public": "Tripular",
+      "internal": "crewCost / crew_vehicle"
+    },
+    {
+      "current": "Equipamiento",
+      "public": "Equipamiento",
+      "internal": "type Equipamiento"
+    },
+    {
+      "current": "Equipar",
+      "public": "Equipar",
+      "internal": "equipCost"
+    },
+    {
+      "current": "Transformar",
+      "public": "Transformar",
+      "internal": "dfc.kind transform"
+    },
+    {
+      "current": "Vuela",
+      "public": "Vuela",
+      "internal": "keyword flying"
+    },
+    {
+      "current": "Arrolla",
+      "public": "Arrolla",
+      "internal": "keyword trample"
+    },
+    {
+      "current": "Vigilancia",
+      "public": "Alerta",
+      "internal": "keyword vigilance"
+    },
+    {
+      "current": "Prisa",
+      "public": "Apuro",
+      "internal": "keyword haste"
+    },
+    {
+      "current": "Amenaza",
+      "public": "Intimidante",
+      "internal": "keyword menace"
+    },
+    {
+      "current": "Alcance",
+      "public": "Alcance",
+      "internal": "keyword reach"
+    },
+    {
+      "current": "Vínculo vital",
+      "public": "Absorción",
+      "internal": "keyword lifelink"
+    },
+    {
+      "current": "Toque mortal",
+      "public": "Letal",
+      "internal": "keyword deathtouch"
+    },
+    {
+      "current": "Infectar",
+      "public": "Contagio",
+      "internal": "keyword infect"
+    },
+    {
+      "current": "Destello",
+      "public": "Al toque",
+      "internal": "keyword flash"
+    },
+    {
+      "current": "Primer golpe",
+      "public": "Iniciativa",
+      "internal": "keyword firststrike"
+    },
+    {
+      "current": "Doble golpe",
+      "public": "Dos golpes",
+      "internal": "keyword doublestrike"
+    },
+    {
+      "current": "Intocable",
+      "public": "Intocable",
+      "internal": "keyword hexproof"
+    },
+    {
+      "current": "Ward N",
+      "public": "Impuesto N",
+      "internal": "keyword ward_N"
+    },
+    {
+      "current": "Defensora",
+      "public": "Muralla",
+      "internal": "keyword defender"
+    },
+    {
+      "current": "Indestructible",
+      "public": "Irrompible",
+      "internal": "keyword indestructible"
+    },
+    {
+      "current": "Protección de X",
+      "public": "Protección de X",
+      "internal": "keyword protection_X"
+    },
+    {
+      "current": "Landfall",
+      "public": "Arraigo",
+      "internal": "public ability word / landfall trigger contract"
+    },
+    {
+      "current": "Adiviná N",
+      "public": "Anticipá N",
+      "internal": "effect scry"
+    },
+    {
+      "current": "Vigilá N / Surveil",
+      "public": "Chusmeá N",
+      "internal": "effect surveil"
+    },
+    {
+      "current": "Proliferá",
+      "public": "Amplificá",
+      "internal": "effect proliferate"
+    },
+    {
+      "current": "Kicker",
+      "public": "Yapa",
+      "internal": "field kicker"
+    },
+    {
+      "current": "Flashback",
+      "public": "Otra vuelta",
+      "internal": "field flashback"
+    },
+    {
+      "current": "Escape",
+      "public": "Zafar",
+      "internal": "field escape"
+    },
+    {
+      "current": "Suspend",
+      "public": "En espera",
+      "internal": "field suspend"
+    },
+    {
+      "current": "Convocar",
+      "public": "Vaquita",
+      "internal": "field convoke"
+    },
+    {
+      "current": "Afinidad por…",
+      "public": "Conexión con…",
+      "internal": "field affinity"
+    },
+    {
+      "current": "Excavar",
+      "public": "Rebuscar",
+      "internal": "field delve"
+    },
+    {
+      "current": "Pelea",
+      "public": "Pelea",
+      "internal": "effect fight"
+    },
+    {
+      "current": "Escudo",
+      "public": "Escudo",
+      "internal": "counter shield"
+    },
+    {
+      "current": "Aturdimiento",
+      "public": "Aturdimiento",
+      "internal": "counter stun"
+    },
+    {
+      "current": "Tiempo",
+      "public": "Tiempo",
+      "internal": "counter time"
+    },
+    {
+      "current": "Carga",
+      "public": "Carga",
+      "internal": "counter charge"
+    },
+    {
+      "current": "Veneno",
+      "public": "Veneno",
+      "internal": "counter poison"
+    }
+  ],
+  "cardImages": "EXTERNALIZED",
+  "approvedInVersion": "23.19.4.13",
+  "verifiedInVersion": "23.19.4.14"
+}

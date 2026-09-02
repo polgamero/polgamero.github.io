@@ -1,0 +1,30 @@
+ARGENTINIA 23.19.4.12 — COMMERCIAL IP REMEDIATION WAVE 2
+
+STATUS: RELEASED
+POOL: 880
+PROTOCOL: mp-23.19.2
+FIRESTORE RULES: 23.13.79 (unchanged)
+
+DECISION IMPLEMENTED
+- Public token name: Envase hermético
+- crea_284: Abuela del Envase Hermético
+- conj_084: Viandas del Club creates 2 Envases herméticos
+- art_065: Heladera del Club creates 1 Envase hermético
+- token image: token_envase_hermetico.png
+
+MECHANICAL CONTRACT
+- tokenPreset remains exactly "food".
+- Token type/text/cost/effect remain unchanged: Artefacto — Comida; {2}, {T}, sacrifice: gain 3 life.
+- No card ID, mana cost, rarity, P/T, count, timing or effect payload changed.
+- No keyword/global terminology rename is part of this wave.
+- Planeswalker/Semidiós and Loyalty/Creencia remain deferred to the terminology workshop.
+
+WAVE 1 ART GATE
+- 16/16 replacement PNGs supplied and visually accepted.
+- All are 1448x1086 (4:3).
+- Two archetype-derived concepts (Rey del Frigorífico; Anfitriona del Banquete Eterno) are acceptable as clean-room art but marketing must not re-link them to the original real-person references.
+
+SUPPLEMENTAL ART
+- 10 additional previously missing card images supplied and visually reviewed.
+- 9 show no obvious new visual blocker.
+- crea_292 (legacy place-name flag) remains a Wave 3 YELLOW due to the real-place name, not the supplied illustration.

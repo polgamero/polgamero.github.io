@@ -1,0 +1,42 @@
+ARGENTINIA — COMMERCIAL REMEDIATION ROADMAP
+
+Wave 1: 16 RED identity clean-room COMPLETE; new public identities remain active.
+Wave 2: Envase hermético migration COMPLETE. Public token name remains Envase hermético; internal tokenPreset remains food.
+Wave 3: Venues + institutions genericization COMPLETE in 23.19.4.11.
+
+OWNER DECISIONS LOCKED
+- The legacy brand-adjacent food token label remains replaced by Envase hermético.
+- Planeswalker direction: Semidiós.
+- Creencia is a candidate, NOT final.
+- No keyword rename is approved yet.
+- Keyword/global terminology workshop happens only after Wave 3.
+- Card image binaries are now EXTERNALIZED from deliverables; the owner manages them outside the repo packages.
+
+WAVE 3 IMPLEMENTED CARDS
+- art_071: Tablero Sinóptico de la Central Fantasma
+- art_056: Loto del Jardín Oriental
+- art_053: Radio Portátil Poseída
+- art_041: Camioneta del Correo Fantasma
+- art_049: Cupé de la Ruta de los Espectros
+- tier_004: Coloso de la Avenida
+- crea_323: Cadete del Observatorio Meteorológico
+- art_080: Cronómetro de la Bóveda Dorada
+- tier_001: Templo de la Ribera
+- tier_015: Biblioteca de la República Invisible
+- crea_292: Jardinera de la Ciudad en Miniatura
+
+DEFERRED / EXCEPTIONS
+- tier_012 Las Malvinas remains unchanged in this wave. It is treated as a historical/geographical subject, not as venue-brand genericization scope.
+
+RESIDUAL YELLOW CLOSURE — 23.19.4.12
+- crea_279: Perito del Registro Fantasma
+- crea_286: Paramédica de la Guardia Infinita
+- crea_290: Técnico de la Usina de Medianoche
+- crea_301: Relator de la Radio de las Mil Historias
+- ench_072: Sala de Guardia Infinita
+- ench_086: La Final de los Once Sueños
+- tier_012 Las Malvinas: name and mechanics retained; flavor replaced by original wording.
+- Metadata YELLOW residual after this closure: 0, subject to final artwork provenance/counsel.
+- Terminology/keyword changes remain deferred until owner approval of the complete terminology dictionary.
+
+Wave 4: Global Terminology Clean-room OWNER APPROVED 44/44 implemented in 23.19.4.13; internal engine keys preserved. Terminology Workshop CLOSED.

@@ -1,0 +1,17 @@
+ARGENTINIA 23.19.4.12 — RESIDUAL YELLOW CLOSURE
+
+STATUS: HISTORICAL — ABSORBED BY 23.19.4.14
+POOL: 880
+PROTOCOL: mp-23.19.2
+FIRESTORE RULES: 23.13.79 (unchanged)
+CARD IMAGES: EXTERNALIZED.
+
+SCOPE
+The six remaining institution/venue metadata flags and one third-party-recognizable flavor line were genericized without changing gameplay. Current public names are asserted by ID in the historical regression test.
+
+CONTRACT
+- 0 card ID changes.
+- 0 balance changes.
+- 0 effect payload changes.
+- Card-image binaries remain externalized.
+- Global terminology was implemented later in Wave 4 and verified again in Wave 5.

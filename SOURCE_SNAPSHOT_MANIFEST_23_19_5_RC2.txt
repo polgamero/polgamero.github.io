@@ -1,0 +1,50 @@
+SOURCE SNAPSHOT MANIFEST — 23.19.5 RC2
+
+STATUS=RELEASE_CANDIDATE_PENDING_RC2_REAL_EMULATOR_GATE
+BASELINE=23.19.5 RC / 23.19.4.15 RELEASED
+POOL=880
+PROTOCOL=mp-23.19.2
+ECONOMY_PROTOCOL=econ-23.19.5
+ECONOMY_SCHEMA=1
+ECONOMY_FUNCTIONS_REGION=southamerica-east1
+FIRESTORE_RULES=23.13.79 (unchanged; not shipped in public source)
+FILE_COUNT=287
+CARD_IMAGE_BINARIES=0
+PUBLIC_FIRESTORE_CONFIG_FILES=0
+APP_CHECK_PROVIDER=recaptcha-enterprise
+APP_CHECK_ENFORCEMENT=OBSERVE_ONLY
+FUNCTIONS_NODE=22
+FUNCTIONS_MIN_INSTANCES=0
+FUNCTIONS_MAX_INSTANCES=1
+FUNCTIONS_CONCURRENCY=10
+ECONOMY_OPERATION_LEDGER=economyOperations/{uid}_{operationId}
+SECURE_ACCOUNT_BOOTSTRAP=SERVER_READY
+TRUSTED_STARTER_POOL=880
+DECK_INTELLIGENCE_VERSION=23.19.5-rc2
+ADMIN_HEAVY_PANES=LAZY
+GAME_TEXT_RENDER_COMPLEXITY=O(N)
+ANIMATED_LAND_SELF_PAY=LEGAL_WITH_PREPAY_WARNING
+
+RC2 artifacts:
+- argentinia/RC2_STABILIZATION_23_19_5.txt
+- argentinia/RELEASE_NOTES_23_19_5_RC2.txt
+- argentinia/tools/test_rc2_deck_admin_land_23_19_5.mjs
+- argentinia/js/deckIntelligence.js
+- functions/src/trusted/deckIntelligence.js (byte-identical to frontend copy)
+
+QA completed in build container:
+- test_*.mjs: 105/105 PASS
+- Functions pure unit: PASS
+- Stability: PASS
+- Headless: PASS
+- Coverage: 97.95% structurally known
+- Multiplayer Reliability: PASS
+- Multiplayer Hardening: PASS
+- App JS/MJS syntax: 214/214 PASS
+- Functions JS/MJS syntax: 14/14 PASS
+- JSON: 22/22 PASS
+- YAML: 1/1 PASS
+- Game Text: 1243 definitions / 1010 runtime literal uses PASS
+
+RELEASE BLOCKER:
+Because functions/src/trusted/deckIntelligence.js changed after the first production deploy, rerun the included RC2 Auth + Firestore + Functions Emulator Gate. Only after PASS may the updated Functions be re-deployed.

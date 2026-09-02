@@ -1,0 +1,59 @@
+# ARGENTINIA — Terminology Workshop
+
+**Baseline:** 23.19.4.12 RELEASED candidate
+**Status:** PRE-IMPLEMENTATION — no terminology changes applied.
+
+Locked owner direction: **Planeswalker → Semidiós**. `Lealtad → Creencia` remains a candidate, not final.
+
+| Categoría | Actual | Cartas | Opciones | Mi voto | Estado |
+|---|---|---:|---|---|---|
+| Tipo especial | Planeswalker | 8 | Semidiós | Prócer | Avatar | Leyenda viviente | Semidiós | LOCKED — owner chose Semidiós |
+| Recurso Semidiós | Lealtad | 8 | Creencia | Devoción | Fe | Veneración | Ascendencia | Creencia (mi primera opción) | PENDING — Creencia es candidato, no final |
+| Tipo especial | Saga | 18 | Gesta | Crónica | Relato | Leyenda | Gesta | PENDING |
+| Contador especial | Lore | 21 | Hito | Capítulo | Memoria | Relato | Hito | PENDING |
+| Subtipo | Aura | 14 | Encanto | Impronta | Atadura | Vínculo | Encanto | PENDING |
+| Subtipo | Vehículo | 10 | Vehículo | Rodado | Máquina | Transporte | Mantener Vehículo | PENDING |
+| Acción keyword | Tripular | 10 | Tripular | Maniobrar | Conducir | Poner en marcha | Mantener Tripular | PENDING |
+| Subtipo | Equipamiento | 10 | Equipamiento | Accesorio | Implemento | Aparejo | Mantener Equipamiento | PENDING |
+| Acción keyword | Equipar | 10 | Equipar | Acoplar | Colocar | Enfundar | Mantener Equipar | PENDING |
+| Mecánica DFC | Transformar | 16 | Transformar | Mutar | Dar vuelta | Revelar la otra cara | Mantener Transformar | PENDING |
+| Keyword evergreen | Vuela | 36 | Vuela | Volador | Aéreo | Mantener Vuela | PENDING |
+| Keyword evergreen | Arrolla | 34 | Arrolla | Embiste | Pasa por encima | Mantener Arrolla | PENDING |
+| Keyword evergreen | Vigilancia | 29 | Vigilancia | En guardia | Alerta | Atenta/o | En guardia | PENDING |
+| Keyword evergreen | Prisa | 25 | Prisa | Apuro | Arranque | A las chapas | Mantener Prisa | PENDING |
+| Keyword evergreen | Amenaza | 22 | Amenaza | Apriete | Intimidante | Brava | Mantener Amenaza | PENDING |
+| Keyword evergreen | Alcance | 16 | Alcance | Antiaéreo | Llega arriba | Intercepción | Mantener Alcance | PENDING |
+| Keyword evergreen | Vínculo vital | 12 | Vínculo vital | Absorción | Recobro | Drenaje vital | Absorción | PENDING |
+| Keyword evergreen | Toque mortal | 12 | Toque mortal | Letal | Golpe letal | Muerte segura | Letal | PENDING |
+| Keyword evergreen | Infectar | 11 | Infectar | Contagio | Ponzoña | Envenenar | Contagio | PENDING |
+| Keyword evergreen | Destello | 9 | Destello | Al toque | Sorpresa | De improviso | Al toque | PENDING |
+| Keyword evergreen | Primer golpe | 8 | Primer golpe | Iniciativa | Se adelanta | Golpe inicial | Iniciativa | PENDING |
+| Keyword evergreen | Doble golpe | 4 | Doble golpe | Doble iniciativa | Dos golpes | Repite golpe | Doble iniciativa | PENDING |
+| Keyword evergreen | Intocable | 8 | Intocable | Inalcanzable | Blindado | Fuera de alcance | Mantener Intocable | PENDING |
+| Keyword evergreen | Ward N | 12 | Resguardo N | Custodia N | Cobertura N | Peaje N | Resguardo N | PENDING |
+| Keyword evergreen | Defensora | 4 | Defensora | Guardiana | Muralla | No ataca | Mantener Defensora | PENDING |
+| Keyword evergreen | Indestructible | 3 | Indestructible | Irrompible | Inquebrantable | No se rompe | Irrompible | PENDING |
+| Keyword evergreen | Protección de color | 5 | Protección de X | Amparo contra X | Inmune a X | Mantener Protección de X | PENDING |
+| Ability word | Landfall | 16 | Terruño | Pisada | Llegada | Arraigo | Tierra nueva | Terruño | PENDING |
+| Acción biblioteca | Adiviná N | 43 | Adiviná | Anticipá | Presentí | Mirá adelante | Mantener Adiviná | PENDING |
+| Acción biblioteca | Vigilá N / Surveil | 20 | Revisá | Husmeá | Escarbá | Vigilá | Revisá | PENDING |
+| Acción contadores | Proliferá | 19 | Amplificá | Multiplicá | Expandí | Redoblá | Amplificá | PENDING |
+| Coste adicional | Kicker | 6 | Yapa | Extra | Recargo | Potenciá | Yapa | PENDING |
+| Lanzar desde cementerio | Flashback | 9 | Otra vuelta | Bis | Revancha | De nuevo | Otra vuelta | PENDING |
+| Lanzar desde cementerio | Escape | 6 | Zafá | Fuga | Volvé | Regreso | Zafá | PENDING |
+| Lanzar desde exilio/tiempo | Suspend | 14 | En espera | A plazo | Postergá | Demora | En espera | PENDING |
+| Coste colaborativo | Convocar | 3 | Vaquita | Convocar | Entre todos | Hacer vaquita | Vaquita | PENDING |
+| Reductor de coste | Afinidad por… | 2 | Sintonía con… | Afinidad por… | Conexión con… | Descuento por… | Sintonía con… | PENDING |
+| Reductor de coste | Excavar | 2 | Rebuscar | Escarbar | Hurgar | Excavar | Rebuscar | PENDING |
+| Acción de combate | Pelea | 6 | Pelea | Mano a mano | Trenzarse | Duelo | Mantener Pelea | PENDING |
+| Contador | Escudo | 10 | Escudo | Aguante | Cobertura | Protección | Mantener Escudo | PENDING |
+| Contador | Aturdimiento | 8 | Aturdimiento | Mareo | Queda grogui | Traba | Mantener Aturdimiento | PENDING |
+| Contador | Tiempo | 27 | Tiempo | Espera | Reloj | Demora | Mantener Tiempo | PENDING |
+| Contador | Carga | 9 | Carga | Energía | Voltaje | Impulso | Mantener Carga | PENDING |
+| Contador | Veneno | 4 | Veneno | Toxina | Ponzoña | Contagio | Mantener Veneno | PENDING |
+
+## Implementation rule
+
+Once the complete dictionary is approved, first migrate public wording/type labels/reminders/UI while preserving internal engine keys (`flying`, `scry`, `ward_1`, `loyalty`, etc.). Only after compatibility/replay tests should internal identifiers be considered for a second clean-room pass.
+
+Card-image binaries remain externalized from deliverables.

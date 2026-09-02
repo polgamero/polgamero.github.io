@@ -1,0 +1,39 @@
+ARGENTINIA 23.19.4.14 — COMMERCIAL READINESS CLOSURE + CLEAN-ROOM VERIFICATION
+
+STATUS: RELEASED
+POOL: 880
+PROTOCOL: mp-23.19.2
+FIRESTORE RULES: 23.13.79 (unchanged)
+CARD IMAGES: EXTERNALIZED
+
+FIVE-WAVE OUTCOME
+- Wave 1: 16 RED real-person/third-party identity blockers replaced by original Argentinia identities.
+- Wave 2: brand-adjacent food-token naming replaced globally by Envase hermético.
+- Wave 3: venue/institution/product YELLOW set genericized while IDs/gameplay remained stable.
+- Residual closure: remaining institution/place metadata flags closed; Las Malvinas retained with original flavor wording.
+- Wave 4: owner-approved terminology dictionary 44/44 applied to all public presentation surfaces while internal engine keys stayed stable.
+- Wave 5: final clean-room scan, gameplay fingerprint proof, asset-externalization verification and counsel handoff.
+
+WAVE 5 FINDING
+- One overlooked model-name reference in crea_214 flavor was found and replaced with generic wording.
+- No gameplay fields changed.
+
+GAMEPLAY IDENTITY PROOF
+Presentation-stripped canonical 880-card SHA-256 (23.19.4.8 baseline):
+0cdb30716c6359eae93166597dce1c842d00afa8ed0c2e313341e4d3841957b8
+Presentation-stripped canonical 880-card SHA-256 (23.19.4.14):
+0cdb30716c6359eae93166597dce1c842d00afa8ed0c2e313341e4d3841957b8
+MATCH: YES
+
+The fingerprint removes presentation-only fields (name, text, flavor, image, labels/messages/reminders) before hashing. It demonstrates that Commercial IP Hardening did not alter the structured gameplay definitions of the 880 cards.
+
+CLOSURE TARGETS
+- Previously identified RED metadata blockers: 0 residual.
+- Previously identified YELLOW metadata blockers: 0 residual.
+- Owner terminology decisions: 44/44 applied.
+- Explicit MTG/Magic/Wizards references in production source: 0.
+- Card-image binaries in deliverables: 0.
+- Internal compatibility vocabulary may remain only where required by engine/replay contracts.
+
+IMPORTANT
+This is a technical/commercial-readiness closure, not a legal opinion. Final commercial launch still requires trademark clearance of ARGENTINIA, provenance/rights review of external art/audio/fonts/icons, and jurisdiction-specific consumer/privacy/payment review.

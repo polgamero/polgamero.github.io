@@ -1,0 +1,12 @@
+ARGENTINIA v23.19.5 RC — Economy Authority Foundation + Secure Account Bootstrap
+
+- New independent economy protocol econ-23.19.5.
+- Firebase Cloud Functions 2nd gen / Node 22 foundation in southamerica-east1.
+- Server-derived authenticated UID, trusted account bootstrap and trusted 60-card starter generation.
+- Idempotent economyOperations receipts with request fingerprint and payload-reuse protection.
+- shadow -> server_preferred -> server_required rollout support.
+- App Check reCAPTCHA Enterprise client integration; enforcement intentionally OBSERVE ONLY in Foundation.
+- Cost brakes: minInstances 0, maxInstances 1, concurrency 10, 30s timeout, 256MiB, authenticated callables, zero-Firestore-cost in-memory throttling, economy kill switch.
+- Pool 880, multiplayer protocol mp-23.19.2 and Firestore Rules 23.13.79 unchanged.
+- No card-image binaries.
+- Static/unit QA PASS. Real Firebase Auth+Firestore+Functions Emulator Gate still required before RELEASED.

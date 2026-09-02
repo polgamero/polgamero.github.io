@@ -1,0 +1,2 @@
+RELEASED NOTES — 23.19.4.13
+Global Terminology Clean-room applies the owner-approved 44/44 public dictionary across the game while preserving internal engine contracts. Pool 880, protocol mp-23.19.2 and Firestore Rules 23.13.79 are unchanged. Card-image binaries remain externalized from deliverables.

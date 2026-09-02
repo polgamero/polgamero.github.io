@@ -1,0 +1,49 @@
+ARGENTINIA v23.19.5 RC2 — DECK / ADMIN / ANIMATED-LAND STABILIZATION
+STATUS: RELEASE CANDIDATE
+BASELINE: v23.19.5 RC Economy Authority Foundation
+
+WHY RC2 EXISTS
+Two real Solo logs on 2026-09-01 exposed a Deck Intelligence structural failure: the Tano could receive decks with almost no creatures because any permanent was classified as a `threat`. The same verification session also reproduced an Admin Panel main-thread freeze of ~50 seconds on every entry and clarified a legal-but-surprising man-land self-payment interaction.
+
+1) DECK COMPOSITION HARDENING
+- `threat` no longer means every permanent.
+- True threats are creatures, Vehicles and Planeswalkers; utility artifacts/enchantments no longer satisfy threat targets merely by being permanents.
+- Every archetype now has a hard `creatureFloor` independent from role scoring.
+- Every archetype has `maxVehicles`; Vehicles never satisfy the creature floor.
+- Candidate construction forces creature picks when remaining slots are needed to satisfy the floor.
+- Structurally invalid candidates are rejected before percentile selection.
+- Artifact decks keep artifact identity but must contain real crew bodies.
+- Report now exposes creatureCount / vehicleCount / creatureFloor / maxVehicles.
+- Frontend and server-trusted Deck Intelligence are byte-identical.
+- Deck Intelligence internal version: 23.19.5-rc2.
+
+Archetype creature floors:
+Aggro 18; Tempo 14; Midrange 16; Control 8; Tokens 12; Counters 14; Sacrifice 14; Graveyard 12; Exile 10; Typal 18; Artifacts 12; Spells 8; Suspend 10; Transform 14; Ramp 12.
+
+2) ADMIN INSTANT-OPEN
+Root cause of the ~50s freeze was deterministic O(N²) Game Text work:
+- 1242+ rows were built on every Admin open even while TEXTOS DEL JUEGO was hidden.
+- for every rendered row, getGameTextCatalog() rebuilt the full catalog again.
+
+RC2 changes:
+- Game Text pane is created only when TEXTOS DEL JUEGO is entered.
+- One catalog per render + Map lookup by key (O(N), not O(N²)).
+- No initial Game Text render at pane construction; load() renders once after overrides are applied.
+- MENSAJES Y USUARIOS loads profiles only when that tab is entered.
+- CAMPAÑAS mounts and performs its Firestore reload only when that tab is entered.
+- Existing Stats / Debug / Animation Lab lazy behavior remains.
+- Opening Admin now performs no hidden Texts/User/Campaign reads/render work.
+
+3) ANIMATED LAND SELF-PAY UX
+Rules remain unchanged: a land may legally tap for mana to pay the activation cost that animates itself. The same permanent then becomes a creature while still tapped.
+RC2 adds a pre-payment confirmation when the player attempts exactly this interaction:
+"Si usás {card} para pagar su propia animación, se girará ... y se convertirá en criatura GIRADA..."
+Cancel performs no tap/mana/state mutation. Accept preserves the legal play.
+
+NO ECONOMY AUTHORITY SEMANTIC CHANGE
+- Economy protocol remains econ-23.19.5.
+- Foundation mode remains shadow.
+- App Check remains observe-only.
+- Functions cost limits remain minInstances=0 / maxInstances=1 / concurrency=10.
+- Pool 880, multiplayer protocol mp-23.19.2, Firestore Rules 23.13.79 unchanged.
+- Because trusted Deck Intelligence changed, Functions must be re-deployed only AFTER the RC2 Emulator Gate passes.

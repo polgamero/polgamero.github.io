@@ -1,0 +1,33 @@
+ARGENTINIA 23.19.4.12 — COMMERCIAL IP REMEDIATION WAVE 3
+
+STATUS: RELEASED
+POOL: 880
+PROTOCOL: mp-23.19.2
+FIRESTORE RULES: 23.13.79 (unchanged)
+
+DECISION IMPLEMENTED
+- Wave 3 resolves the covered YELLOW set focused on venues, institutions and branded/object names.
+- IDs, mana costs, rarities, stats, rules payloads and gameplay semantics remain unchanged.
+- No keyword/global terminology migration is part of this wave.
+- Card image binaries are intentionally externalized from deliverables. Image filenames still change in card data so the owner can manage artwork outside repo packages.
+
+PUBLIC IDENTITY CHANGES
+- art_071: Tablero Sinóptico de la Central Fantasma
+- art_056: Loto del Jardín Oriental
+- art_053: Radio Portátil Poseída
+- art_041: Camioneta del Correo Fantasma
+- art_049: Cupé de la Ruta de los Espectros
+- tier_004: Coloso de la Avenida
+- crea_323: Cadete del Observatorio Meteorológico
+- art_080: Cronómetro de la Bóveda Dorada
+- tier_001: Templo de la Ribera
+- tier_015: Biblioteca de la República Invisible
+- crea_292: Jardinera de la Ciudad en Miniatura
+
+MECHANICAL CONTRACT
+- No card ID changes.
+- No mana cost changes.
+- No rarity, P/T, timing or effect payload changes.
+- Vehículo / Tripular remain unchanged pending the terminology workshop.
+- Adiviná, Proliferá, Suspend and Planeswalker remain unchanged pending the terminology workshop.
+- tier_012 Las Malvinas remains unchanged in this wave.

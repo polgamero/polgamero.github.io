@@ -1,0 +1,2224 @@
+[
+  {
+    "id": "art_001",
+    "name": "El Mate de Calabaza",
+    "type": "Artefacto — Reliquia",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "{T}: Ganás 2 Puntos de Vida.",
+    "flavorText": "Un amargo que reconforta el alma.",
+    "image": "mate.png",
+    "activatedAbility": {
+      "cost": "{T}",
+      "effect": {
+        "type": "heal",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_002",
+    "name": "Imprenta Clandestina",
+    "type": "Artefacto",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "{T}: Robás 1 carta.",
+    "flavorText": "Toda revolución empieza informando la realidad.",
+    "image": "imprenta.png",
+    "activatedAbility": {
+      "cost": "{T}",
+      "effect": {
+        "type": "draw",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_003",
+    "name": "Facón de Plata",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Equipar {2}. La criatura equipada tiene \"{T}: Causa 2 de daño al héroe rival.\"",
+    "flavorText": "Para defender el honor en la pulpería.",
+    "image": "facon.png",
+    "equipment": {
+      "equipCost": "{2}"
+    },
+    "activatedAbility": {
+      "cost": "{2}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    },
+    "grantedAbility": {
+      "cost": "{T}",
+      "effect": {
+        "type": "damage",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_004",
+    "name": "Poncho de Diamante",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Equipar {1}. La criatura equipada obtiene +0/+2.",
+    "flavorText": "Tejido con hebras que ni el viento pampero atraviesa.",
+    "image": "poncho_diamante.png",
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedStats": {
+        "powerMod": 0,
+        "toughnessMod": 2
+      }
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_005",
+    "name": "Carreta Blindada",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Tripular 2.",
+    "flavorText": "A prueba de flechas, lanzas y luz mala.",
+    "image": "carreta.png",
+    "baseStats": {
+      "power": 4,
+      "toughness": 4
+    },
+    "activatedAbility": {
+      "crewCost": 2,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_006",
+    "name": "Limusina del Magnate",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{4}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Tripular 3.",
+    "flavorText": "No mide el éxito en kilómetros. Lo mide en cuántas cuadras se da vuelta la gente.",
+    "image": "limusina_del_magnate.png",
+    "baseStats": {
+      "power": 6,
+      "toughness": 6
+    },
+    "activatedAbility": {
+      "crewCost": 3,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_007",
+    "name": "El Caballo de San Martín",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Tripular 1.",
+    "flavorText": "Cruzó los Andes sin quejarse una sola vez.",
+    "image": "caballo_san_martin.png",
+    "keywords": [
+      "trample"
+    ],
+    "baseStats": {
+      "power": 3,
+      "toughness": 4
+    },
+    "activatedAbility": {
+      "crewCost": 1,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_008",
+    "name": "Termo Sagrado",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Ganás 1 Punto de Vida.",
+    "flavorText": "Nunca se enfría, nunca se termina.",
+    "image": "termo_sagrado.png",
+    "activatedAbility": {
+      "cost": "{T}",
+      "effect": {
+        "type": "heal",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_009",
+    "name": "Alfajor de la Fortuna",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{3}, {T}: Robás una carta.",
+    "flavorText": "El de maicena siempre trae suerte.",
+    "image": "alfajor_fortuna.png",
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "draw",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_010",
+    "name": "Cassette Pirata",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Robá una carta, luego descartá una carta.",
+    "flavorText": "Grabado de la radio, con la voz del locutor incluida.",
+    "image": "cassette_pirata.png",
+    "activatedAbility": {
+      "cost": "{T}",
+      "effect": {
+        "type": "loot",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_011",
+    "name": "Altar de las Ofrendas",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{1}, Sacrificá una criatura: El jugador rival pierde 2 Puntos de Vida y vos ganás 2.",
+    "flavorText": "Pide poco. Da mucho. Nunca pregunta a quién.",
+    "image": "altar_ofrendas.png",
+    "activatedAbility": {
+      "cost": "{1}",
+      "sacrifice": "creature",
+      "effect": {
+        "type": "drain",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_012",
+    "name": "Billetera Vieja",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agregá {1}.",
+    "flavorText": "Siempre hay un peso guardado en el fondo, para las emergencias.",
+    "image": "billetera_vieja.png",
+    "keywords": [],
+    "produces": "C"
+  },
+  {
+    "id": "art_013",
+    "name": "Reloj de Bolsillo",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{T}: Agregá {W} o {U}.",
+    "flavorText": "Marca la hora justo cuando menos lo esperás.",
+    "image": "reloj_abuelo.png",
+    "keywords": [
+      "flash"
+    ],
+    "producesOptions": [
+      "W",
+      "U"
+    ]
+  },
+  {
+    "id": "art_014",
+    "name": "Fajo de Dólares Blue",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{T}, Sacrificá este artefacto: Agregá un maná de cualquier color.",
+    "flavorText": "Cambia de mano, cambia de color, cambia de valor.",
+    "image": "fajo_dolares.png",
+    "keywords": [],
+    "producesOptions": [
+      "W",
+      "U",
+      "B",
+      "R",
+      "G"
+    ],
+    "sacrificeOnTap": true
+  },
+  {
+    "id": "art_015",
+    "name": "Robotito de Chatarra",
+    "type": "Artefacto — Criatura",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [],
+    "power": 2,
+    "toughness": 4,
+    "text": "",
+    "flavorText": "Le falta una tuerca, pero aguanta los golpes.",
+    "image": "robotito_chatarra.png",
+    "keywords": []
+  },
+  {
+    "id": "art_016",
+    "name": "Campanario del Barrio",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Cuando una criatura entre al campo de batalla bajo tu control, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Cada campanada anuncia una boca más para alimentar la resistencia.",
+    "image": "campanario.png",
+    "keywords": [],
+    "creatureEtbTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "art_017",
+    "name": "Bandera de la Cuadra",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Tus criaturas obtienen +1/+0.",
+    "flavorText": "Se planta en la vereda y ya cambia cómo camina toda la cuadra.",
+    "image": "bandera_cuadra.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 1,
+      "toughnessMod": 0
+    }
+  },
+  {
+    "id": "art_018",
+    "name": "Reloj Descompuesto",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Al comienzo de tu paso de Mantenimiento, robás una carta y perdés 1 Punto de Vida.",
+    "flavorText": "Canta a cualquier hora, y siempre te cobra el susto.",
+    "image": "reloj_cucu.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "draw_and_lose_life",
+      "amount": 1,
+      "lifeLoss": 1
+    }
+  },
+  {
+    "id": "art_019",
+    "name": "Daga Escondida",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Equipar {1}. La criatura equipada tiene Letal.",
+    "flavorText": "Nadie ve el filo hasta que ya es tarde.",
+    "image": "daga_escondida.png",
+    "keywords": [
+      "flash"
+    ],
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedKeywords": [
+        "deathtouch"
+      ]
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_020",
+    "name": "Depósito de Chatarra",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{1}, Sacrificá un artefacto: Robás una carta.",
+    "flavorText": "Todo lo que ya no sirve, todavía sirve para algo.",
+    "image": "deposito_chatarra.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}",
+      "sacrifice": "artifact",
+      "effect": {
+        "type": "draw",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_021",
+    "name": "Refugio Improvisado",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{1}, {T}: La criatura objetivo que controlás gana Intocable hasta el final del turno.",
+    "flavorText": "Se arma en un segundo, pero aguanta lo que haga falta.",
+    "image": "refugio_improvisado.png",
+    "keywords": [
+      "flash"
+    ],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "grant_keyword_temp",
+        "keyword": "hexproof"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_022",
+    "name": "Trampa para Fantasmas",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{2}, Sacrificá Trampa para Fantasmas: Exilia a la criatura objetivo.",
+    "flavorText": "Funciona una sola vez. Pero funciona con cualquier cosa.",
+    "image": "trampa_fantasmas.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}",
+      "sacrifice": "self",
+      "effect": {
+        "type": "exile_creature"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_023",
+    "name": "Amuleto Bendito",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Equipar {1}. La criatura equipada tiene Protección de Negro.",
+    "flavorText": "Se lo cuelgan al cuello los que ya vieron demasiado.",
+    "image": "amuleto_bendito.png",
+    "keywords": [],
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedKeywords": [
+        "protection_B"
+      ]
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_024",
+    "name": "Atado con Alambre",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Equipar {1}. La criatura equipada obtiene +1/+0.",
+    "flavorText": "Si todavía se mueve, todavía sirve.",
+    "image": "atado_con_alambre.png",
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedStats": {
+        "powerMod": 1,
+        "toughnessMod": 0
+      }
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_025",
+    "name": "Caja de Herramientas",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Equipar {1}. La criatura equipada obtiene +0/+1.",
+    "flavorText": "Siempre falta una llave, pero nunca la que termina salvando el día.",
+    "image": "caja_herramientas.png",
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedStats": {
+        "powerMod": 0,
+        "toughnessMod": 1
+      }
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_026",
+    "name": "Parrilla Portátil",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Ganás 2 Puntos de Vida.",
+    "flavorText": "Dos ladrillos, una rejilla y ya hay plan para el domingo.",
+    "image": "parrilla_portatil.png",
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "heal",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_027",
+    "name": "Mapa Rutero",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Anticipá 1.",
+    "flavorText": "Está doblado por una ruta que ya no existe, pero igual te lleva.",
+    "image": "mapa_rutero.png",
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "scry",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_028",
+    "name": "Farol a Kerosén",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{1}, {T}: Anticipá 1.",
+    "flavorText": "No ilumina mucho, pero alcanza para saber por dónde no seguir.",
+    "image": "farol_kerosen.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "scry",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_029",
+    "name": "Botiquín de Ruta",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{1}, {T}: Ganás 2 Puntos de Vida.",
+    "flavorText": "Tiene vendas, alcohol y una curita que nadie recuerda haber comprado.",
+    "image": "botiquin_ruta.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "heal",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_030",
+    "name": "Radio a Válvulas",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{1}, {T}: Chusmeá 1.",
+    "flavorText": "Entre la estática se escucha algo que todavía no pasó.",
+    "image": "radio_valvulas.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "surveil",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_031",
+    "name": "Máquina de Fichar",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{3}, {T}: Amplificá.",
+    "flavorText": "Marca la entrada, la salida y algunas horas que nadie trabajó.",
+    "image": "maquina_fichar.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "proliferate"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_032",
+    "name": "Caja de Repuestos",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{2}, {T}: Devolvé un Artefacto de tu cementerio a tu mano.",
+    "flavorText": "Siempre hay una pieza que no sabías que necesitabas hasta que se rompe todo.",
+    "image": "caja_repuestos.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "return_from_graveyard",
+        "filter": "artifact",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_033",
+    "name": "Colectivo de la Línea Fantasma",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Tripular 2.",
+    "flavorText": "No figura en ninguna aplicación, pero siempre hay alguien esperando que pase.",
+    "image": "colectivo_linea_fantasma.png",
+    "keywords": [
+      "menace"
+    ],
+    "baseStats": {
+      "power": 4,
+      "toughness": 4
+    },
+    "activatedAbility": {
+      "crewCost": 2,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_034",
+    "name": "Linterna del Sereno",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{1}, {T}: Chusmeá 1.",
+    "flavorText": "Alumbra poco, pero justo lo suficiente para descubrir qué quedó escondido.",
+    "image": "linterna_del_sereno.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "surveil",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_035",
+    "name": "Guitarra Criolla Encantada",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Equipar {1}. La criatura equipada obtiene +1/+1.",
+    "flavorText": "Si la afinás de noche, alguna cuerda siempre responde sola.",
+    "image": "guitarra_criolla_encantada.png",
+    "keywords": [],
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedStats": {
+        "powerMod": 1,
+        "toughnessMod": 1
+      }
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_036",
+    "name": "Casco de Bombero Voluntario",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Equipar {1}. La criatura equipada tiene Alerta.",
+    "flavorText": "Todavía huele a humo de incendios que nadie recuerda.",
+    "image": "casco_de_bombero_voluntario.png",
+    "keywords": [],
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedKeywords": [
+        "vigilance"
+      ]
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_037",
+    "name": "Botiquín del Parador",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Ganás 2 Puntos de Vida.",
+    "flavorText": "Tiene vendas, alcohol y una curita que venció en otra década.",
+    "image": "botiquin_del_parador.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "heal",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_038",
+    "name": "Cámara Súper 8 Maldita",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{2}, {T}: Chusmeá 2.",
+    "flavorText": "Revela fotogramas de gente que nunca estuvo delante de la lente.",
+    "image": "camara_super_8_maldita.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "surveil",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_039",
+    "name": "Generador a Nafta",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}, sacrificá este artefacto: Agregá un maná de cualquier color.",
+    "flavorText": "Arranca al tercer intento, justo cuando todos ya habían perdido la fe.",
+    "image": "generador_a_nafta.png",
+    "keywords": [],
+    "producesOptions": [
+      "W",
+      "U",
+      "B",
+      "R",
+      "G"
+    ],
+    "sacrificeOnTap": true
+  },
+  {
+    "id": "art_040",
+    "name": "Lancha Colectiva del Delta",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Tripular 2.",
+    "flavorText": "No tiene horario. Tiene un patrón que sabe cuándo hace falta pasar.",
+    "image": "lancha_colectiva_del_delta.png",
+    "keywords": [
+      "vigilance"
+    ],
+    "baseStats": {
+      "power": 4,
+      "toughness": 4
+    },
+    "activatedAbility": {
+      "crewCost": 2,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_041",
+    "name": "Camioneta del Correo Fantasma",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{4}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Tripular 3.",
+    "flavorText": "Entrega cartas en pueblos donde hace años cerró el correo.",
+    "image": "camioneta_del_correo_fantasma.png",
+    "keywords": [
+      "trample"
+    ],
+    "baseStats": {
+      "power": 5,
+      "toughness": 5
+    },
+    "activatedAbility": {
+      "crewCost": 3,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_042",
+    "name": "Central Telefónica Abandonada",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{1}, {T}: Anticipá 1. {4}, {T}: Robá una carta.",
+    "flavorText": "Hay líneas que siguen dando tono aunque no estén conectadas a nada.",
+    "image": "central_telefonica_abandonada.png",
+    "keywords": [],
+    "activatedAbilities": [
+      {
+        "cost": "{1}{T}",
+        "effect": {
+          "type": "scry",
+          "amount": 1
+        },
+        "requiresTarget": false,
+        "timing": "instant"
+      },
+      {
+        "cost": "{4}{T}",
+        "effect": {
+          "type": "draw",
+          "amount": 1
+        },
+        "requiresTarget": false,
+        "timing": "instant"
+      }
+    ]
+  },
+  {
+    "id": "art_043",
+    "name": "Proyector del Cine Cerrado",
+    "type": "Artefacto",
+    "manaCost": "{5}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "{3}, {T}: Exiliá la criatura objetivo y devolvela al campo de batalla.",
+    "flavorText": "La función termina, la pantalla queda blanca y alguien vuelve distinto.",
+    "image": "proyector_del_cine_cerrado.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "exile_and_return"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_044",
+    "name": "Lectora de Microfilm",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{3}, {T}: Mirá las tres primeras cartas del mazo del jugador rival. Elegí una. Exiliá esa carta.",
+    "flavorText": "Amplía hasta lo que alguien esperaba mantener ilegible.",
+    "image": "lectora_de_microfilm.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "private_zone_move",
+        "zone": "deck",
+        "amount": 1,
+        "visibility": "reveal_candidates",
+        "destination": "exile",
+        "range": "top_n",
+        "rangeCount": 3,
+        "filter": "any",
+        "target": "opponent_player"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_045",
+    "name": "Fuente de Vino del Velorio",
+    "type": "Artefacto",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "{1}, sacrificá una criatura: el rival pierde 2 Puntos de Vida y vos ganás 2.",
+    "flavorText": "El sifón se vacía solo cada vez que alguien deja la mesa.",
+    "image": "fuente_de_vino_del_velorio.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}",
+      "sacrifice": "creature",
+      "effect": {
+        "type": "drain",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_046",
+    "name": "Motito del Reparto Nocturno",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Tripular 1.",
+    "flavorText": "Pasa a las tres de la mañana y el pedido siempre llega caliente.",
+    "image": "motito_del_reparto_nocturno.png",
+    "keywords": [],
+    "baseStats": {
+      "power": 1,
+      "toughness": 2
+    },
+    "activatedAbility": {
+      "crewCost": 1,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_047",
+    "name": "Sulky de Hierro Maldito",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Tripular 1.",
+    "flavorText": "Las ruedas no tocan del todo el camino.",
+    "image": "sulky_de_hierro_maldito.png",
+    "keywords": [],
+    "baseStats": {
+      "power": 3,
+      "toughness": 2
+    },
+    "activatedAbility": {
+      "crewCost": 1,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_048",
+    "name": "Avioneta del Correo Fantasma",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{4}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Tripular 2.",
+    "flavorText": "Entrega cartas con sellos de pueblos que ya no figuran en el mapa.",
+    "image": "avioneta_del_correo_fantasma.png",
+    "keywords": [
+      "flying"
+    ],
+    "baseStats": {
+      "power": 4,
+      "toughness": 4
+    },
+    "activatedAbility": {
+      "crewCost": 2,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_049",
+    "name": "Cupé de la Ruta de los Espectros",
+    "type": "Artefacto — Vehículo",
+    "manaCost": "{4}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Tripular 2.",
+    "flavorText": "Las luces aparecen primero en el espejo. Después ya es tarde.",
+    "image": "cupe_de_la_ruta_de_los_espectros.png",
+    "keywords": [
+      "haste"
+    ],
+    "baseStats": {
+      "power": 5,
+      "toughness": 4
+    },
+    "activatedAbility": {
+      "crewCost": 2,
+      "effect": {
+        "type": "crew_vehicle"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_050",
+    "name": "Sifón de Soda Abollado",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}, sacrificá este artefacto: Agregá {C}.",
+    "flavorText": "Todavía conserva presión para una última mesa.",
+    "image": "sifon_de_soda_abollado.png",
+    "keywords": [],
+    "produces": "C",
+    "sacrificeOnTap": true
+  },
+  {
+    "id": "art_051",
+    "name": "Boleadoras de Alambre",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Equipar {1}. La criatura equipada obtiene +1/+0.",
+    "flavorText": "No son lindas. Alcanzan igual.",
+    "image": "boleadoras_de_alambre.png",
+    "keywords": [],
+    "equipment": {
+      "equipCost": "{1}",
+      "grantedStats": {
+        "powerMod": 1,
+        "toughnessMod": 0
+      }
+    },
+    "activatedAbility": {
+      "cost": "{1}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_052",
+    "name": "Bandoneón de Bronce Encantado",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{3}, {T}: robás una carta.",
+    "flavorText": "Las teclas amarillas conocen canciones que nadie compuso.",
+    "image": "bandoneon_de_bronce_encantado.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "draw",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_053",
+    "name": "Radio Portátil Poseída",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{1}, sacrificá un Artefacto: el rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Entre dos AM aparece una voz que pide piezas de repuesto.",
+    "image": "radio_portatil_poseida.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}",
+      "sacrifice": "artifact",
+      "effect": {
+        "type": "drain",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_054",
+    "name": "Mate de Acero Inquebrantable",
+    "type": "Artefacto — Equipamiento",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Equipar {2}. La criatura equipada tiene Irrompible.",
+    "flavorText": "Abollado siete veces, roto ninguna.",
+    "image": "mate_de_acero_inquebrantable.png",
+    "keywords": [],
+    "equipment": {
+      "equipCost": "{2}",
+      "grantedKeywords": [
+        "indestructible"
+      ]
+    },
+    "activatedAbility": {
+      "cost": "{2}",
+      "effect": {
+        "type": "attach_equipment"
+      },
+      "requiresTarget": true,
+      "timing": "sorcery"
+    }
+  },
+  {
+    "id": "art_055",
+    "name": "Pétalo del Rosedal",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Sacrificá Pétalo del Rosedal: agregá un maná de cualquier color.",
+    "flavorText": "Dura menos que una tarde y alcanza para abrir una puerta.",
+    "image": "petalo_del_rosedal.png",
+    "keywords": [],
+    "manaAbility": {
+      "producesOptions": [
+        "W",
+        "U",
+        "B",
+        "R",
+        "G"
+      ],
+      "amount": 1,
+      "requiresTap": false,
+      "sacrificeSelf": true
+    }
+  },
+  {
+    "id": "art_056",
+    "name": "Loto del Jardín Oriental",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "{T}, sacrificá Loto del Jardín Oriental: agregá tres manás de un color a elección.",
+    "flavorText": "Florece una sola vez. El resto del duelo recuerda cuándo.",
+    "image": "loto_del_jardin_oriental.png",
+    "keywords": [],
+    "manaAbility": {
+      "producesOptions": [
+        "W",
+        "U",
+        "B",
+        "R",
+        "G"
+      ],
+      "amount": 3,
+      "requiresTap": true,
+      "sacrificeSelf": true
+    }
+  },
+  {
+    "id": "art_057",
+    "name": "Globo del Planetario",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: agregá un maná de cualquier color.",
+    "flavorText": "Gira despacio, pero siempre señala algún mundo.",
+    "image": "globo_del_planetario.png",
+    "keywords": [],
+    "manaAbility": {
+      "producesOptions": [
+        "W",
+        "U",
+        "B",
+        "R",
+        "G"
+      ],
+      "amount": 1,
+      "requiresTap": true,
+      "sacrificeSelf": false
+    }
+  },
+  {
+    "id": "art_058",
+    "name": "Mapa del Camino de los Siete Lagos",
+    "type": "Artefacto",
+    "manaCost": "{1}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{2}, {T}, sacrificá Mapa del Camino de los Siete Lagos: buscá en tu biblioteca una Tierra, revelala, ponela en tu mano y luego barajá.",
+    "flavorText": "No dice dónde termina el viaje; sólo dónde vuelve a empezar.",
+    "image": "mapa_del_camino_de_los_siete_lagos.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "sacrifice": "self",
+      "effect": {
+        "type": "search_land",
+        "amount": 1,
+        "filter": "any",
+        "destination": "hand",
+        "allowFewer": true,
+        "reveal": true
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_059",
+    "name": "Crisol del Parque Nacional Los Glaciares",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Podés jugar Tierras desde tu cementerio.",
+    "flavorText": "El hielo guarda el camino incluso después de que el camino desaparece.",
+    "image": "crisol_del_parque_nacional_los_glaciares.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "play_lands_from_graveyard"
+    }
+  },
+  {
+    "id": "art_060",
+    "name": "Esfera Helada del Nahuel Huapi",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Mientras Esfera Helada del Nahuel Huapi esté enderezada, cada jugador no puede enderezar más de una Tierra durante su paso de Enderezar.",
+    "flavorText": "Cuando el lago se queda quieto, hasta los caminos dudan en moverse.",
+    "image": "esfera_helada_del_nahuel_huapi.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "land_untap_limit",
+      "scope": "all",
+      "max": 1,
+      "whileSourceUntapped": true
+    }
+  },
+  {
+    "id": "art_061",
+    "name": "Servidor Reciclado",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{T}: Agregá {C}.",
+    "flavorText": "Tiene tres ventiladores, dos gabinetes y una contraseña escrita con fibrón.",
+    "image": "servidor_reciclado.png",
+    "keywords": [],
+    "produces": "C"
+  },
+  {
+    "id": "art_062",
+    "name": "Peaje de la Ruta 2",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Todos los hechizos cuestan {1} más.",
+    "flavorText": "No importa hacia dónde vayas: primero hay que pasar por la cabina.",
+    "image": "peaje_de_la_ruta_2.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "spell_cost_modifier",
+      "mode": "increase",
+      "scope": "all",
+      "amount": 1
+    }
+  },
+  {
+    "id": "art_063",
+    "name": "Fotocopiadora del Centro Cultural",
+    "type": "Artefacto",
+    "manaCost": "{5}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Si fueras a crear una o más fichas, creá el doble de esas fichas en vez de eso.",
+    "flavorText": "Cada original vuelve con una copia de más y un tóner de menos.",
+    "image": "fotocopiadora_del_centro_cultural.png",
+    "keywords": [],
+    "replacementEffect": {
+      "event": "token_create",
+      "scope": "own",
+      "multiplyAmount": 2
+    }
+  },
+  {
+    "id": "art_064",
+    "name": "Máquina de Tickets",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Creá una ficha de artefacto Comprobante.",
+    "flavorText": "Imprime un número distinto para la misma espera.",
+    "image": "maquina_de_tickets.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "create_tokens",
+        "amount": 1,
+        "tokenPreset": "clue",
+        "token": {
+          "name": "Comprobante",
+          "image": "token_comprobante.png"
+        }
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_065",
+    "name": "Heladera del Club",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Creá una ficha de artefacto Envase hermético.",
+    "flavorText": "El estante de arriba dice “no tocar”. Nadie recuerda quién lo escribió.",
+    "image": "heladera_del_club.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "create_tokens",
+        "amount": 1,
+        "tokenPreset": "food",
+        "token": {
+          "name": "Envase hermético",
+          "image": "token_envase_hermetico.png"
+        }
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_066",
+    "name": "Montacargas del Depósito Fiscal",
+    "type": "Artefacto",
+    "manaCost": "{4}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Cuando Montacargas del Depósito Fiscal entre al campo de batalla, podés buscar en tu biblioteca una carta de artefacto con valor de maná de 3 o menos, mostrarla, ponerla en el campo de batalla girada y barajar.",
+    "flavorText": "Sube lo declarado, lo observado y alguna caja que no figura en ninguna lista.",
+    "image": "montacargas_del_deposito_fiscal.png",
+    "keywords": [],
+    "etbEffect": {
+      "type": "search_library",
+      "amount": 1,
+      "filter": {
+        "cardType": "artifact",
+        "maxManaValue": 3
+      },
+      "destination": "battlefield_tapped",
+      "reveal": true,
+      "shuffle": true,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "art_067",
+    "name": "Plano Maestro de Loteo",
+    "type": "Artefacto",
+    "manaCost": "{6}",
+    "cmc": 6,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "Cuando Plano Maestro de Loteo entre al campo de batalla, creá tres fichas de Tierra — Lote Baldío giradas con “{T}: Agregá {C}.”",
+    "flavorText": "Primero aparece la cuadrícula. Después las calles. Al final alguien pregunta quién era el dueño.",
+    "image": "plano_maestro_de_loteo.png",
+    "keywords": [],
+    "etbEffect": {
+      "type": "create_tokens",
+      "amount": 3,
+      "token": {
+        "name": "Lote Baldío",
+        "type": "Tierra — Lote",
+        "image": "token_lote_baldio.png",
+        "tapped": true,
+        "text": "{T}: Agregá {C}.",
+        "manaAbility": {
+          "produces": "C",
+          "amount": 1,
+          "requiresTap": true
+        }
+      }
+    }
+  },
+  {
+    "id": "art_068",
+    "name": "Batería de Emergencia",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Al comienzo de tu mantenimiento, poné un contador de Carga sobre Batería de Emergencia.",
+    "flavorText": "La etiqueta dice seis horas. Nadie pregunta de qué año.",
+    "image": "bateria_de_emergencia.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "upkeep_started",
+        "filter": {
+          "activePlayer": "you"
+        },
+        "effect": {
+          "type": "add_counter",
+          "counterType": "charge",
+          "amount": 1
+        },
+        "target": "self"
+      }
+    ]
+  },
+  {
+    "id": "art_069",
+    "name": "Banco de Capacitores",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{1}, {T}: Remové un contador de Carga del permanente objetivo que controlás. Siempre que se remueva uno o más contadores de Carga de un permanente que controlás, ganás 1 vida.",
+    "flavorText": "Guarda lo que sobra hasta que alguien se anime a soltarlo.",
+    "image": "banco_de_capacitores.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "remove_counter",
+        "counterType": "charge",
+        "amount": 1,
+        "targetKind": "any_permanent",
+        "targetController": "self"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    },
+    "triggers": [
+      {
+        "event": "counter_removed",
+        "filter": {
+          "controller": "you",
+          "counterType": "charge",
+          "minAmount": 1
+        },
+        "effect": {
+          "type": "heal",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "art_070",
+    "name": "Odómetro de la Ruta 40",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Al comienzo de tu mantenimiento, poné un contador de Kilómetro sobre Odómetro de la Ruta 40. {2}, {T}: Remové un contador de Kilómetro del permanente objetivo que controlás. Siempre que se remueva un contador de Kilómetro de Odómetro de la Ruta 40, robá una carta.",
+    "flavorText": "El paisaje cambia. El número insiste.",
+    "image": "odometro_de_la_ruta_40.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "upkeep_started",
+        "filter": {
+          "activePlayer": "you"
+        },
+        "effect": {
+          "type": "add_counter",
+          "counterType": "Kilómetro",
+          "amount": 1
+        },
+        "target": "self"
+      },
+      {
+        "event": "counter_removed",
+        "filter": {
+          "self": true,
+          "counterType": "Kilómetro"
+        },
+        "effect": {
+          "type": "draw",
+          "amount": 1
+        }
+      }
+    ],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "remove_counter",
+        "counterType": "Kilómetro",
+        "amount": 1,
+        "targetKind": "any_permanent",
+        "targetController": "self"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_071",
+    "name": "Tablero Sinóptico de la Central Fantasma",
+    "type": "Artefacto",
+    "manaCost": "{5}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "Si fueran a ponerse uno o más contadores sobre un Artefacto que controlás, se ponen el doble de esos contadores en vez de eso. {4}, {T}: Amplificá.",
+    "flavorText": "Cada luz del tablero cuenta una historia. Encendidas todas juntas cuentan otra.",
+    "image": "tablero_sinoptico_de_la_central_fantasma.png",
+    "keywords": [],
+    "replacementEffect": {
+      "event": "counter_add",
+      "scope": "own",
+      "filter": {
+        "cardType": "artifact"
+      },
+      "multiplyAmount": 2
+    },
+    "activatedAbility": {
+      "cost": "{4}{T}",
+      "effect": {
+        "type": "proliferate"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_072",
+    "name": "Campana del Cabildo",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{2}, {T}: Poné un contador de Capítulo sobre la Crónica objetivo que controlás.",
+    "flavorText": "Un golpe llama a la plaza. Dos golpes llaman a la historia.",
+    "image": "campana_del_cabildo.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "add_counter",
+        "counterType": "lore",
+        "amount": 1,
+        "targetKind": "support",
+        "targetController": "self",
+        "permanentFilter": "Saga"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_073",
+    "name": "Archivo de Historias Orales",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Siempre que una Crónica que controlás sea sacrificada, robá dos cartas.",
+    "flavorText": "La cinta termina. La voz, nunca.",
+    "image": "archivo_de_historias_orales.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "permanent_sacrificed",
+        "filter": {
+          "controller": "you",
+          "subtype": "Saga"
+        },
+        "effect": {
+          "type": "draw",
+          "amount": 2
+        }
+      }
+    ]
+  },
+  {
+    "id": "art_074",
+    "name": "Ticket de Acceso Temporal",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Exiliá la carta superior de tu biblioteca. Podés jugarla hasta el final del turno.",
+    "flavorText": "Válido por una entrada, una salida y ninguna explicación.",
+    "image": "ticket_de_acceso_temporal.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "exile_top_with_permission",
+        "amount": 1,
+        "permission": {
+          "duration": "until_end_of_turn",
+          "playMode": "any",
+          "timing": "normal",
+          "costMode": "normal",
+          "allowKicker": true
+        }
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_075",
+    "name": "Terminal de Autogestión",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{3}, {T}: Exiliá la carta superior de tu biblioteca. Podés jugarla hasta el final de tu próximo turno.",
+    "flavorText": "La fila desapareció. El trámite aprendió a perseguirte.",
+    "image": "terminal_de_autogestion.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "exile_top_with_permission",
+        "amount": 1,
+        "permission": {
+          "duration": "until_end_of_next_turn",
+          "playMode": "any",
+          "timing": "normal",
+          "costMode": "normal",
+          "allowKicker": true
+        }
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_076",
+    "name": "Módem de Emergencia",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "Siempre que casteés un hechizo desde el Exilio, Anticipá 1.",
+    "flavorText": "Dos luces verdes son servicio. Tres luces verdes son esperanza.",
+    "image": "modem_de_emergencia.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "cast_from_exile",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "scry",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "art_077",
+    "name": "Pasaporte de la República Invisible",
+    "type": "Artefacto Legendario",
+    "manaCost": "{5}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "{4}, {T}: Exiliá la carta superior de tu biblioteca. Si es un hechizo, podés castearlo este turno sin pagar su coste de maná.",
+    "flavorText": "Tiene sellos de fronteras que todavía no fueron dibujadas.",
+    "image": "pasaporte_de_la_republica_invisible.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{4}{T}",
+      "effect": {
+        "type": "exile_top_with_permission",
+        "amount": 1,
+        "permission": {
+          "duration": "until_end_of_turn",
+          "playMode": "spell",
+          "timing": "normal",
+          "costMode": "without_paying_mana_cost",
+          "allowKicker": false
+        }
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_078",
+    "name": "Reloj de Fichar",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{1}, {T}: Remové un contador de Tiempo de una carta en espera que poseés.",
+    "flavorText": "Marca entrada, salida y, si insistís, también el futuro.",
+    "image": "reloj_de_fichar.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "remove_time_counter_suspended",
+        "owner": "self",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_079",
+    "name": "Sello de Prórroga",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{1}, {T}: Poné un contador de Tiempo sobre una carta en espera.",
+    "flavorText": "Una tinta azul alcanza para mover una fecha semanas enteras.",
+    "image": "sello_de_prorroga.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "add_time_counter_suspended",
+        "owner": "any",
+        "amount": 1
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_080",
+    "name": "Cronómetro de la Bóveda Dorada",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{3}, {T}: Remové dos contadores de Tiempo de una carta en espera que poseés.",
+    "flavorText": "No acelera el trámite. Acelera todo lo demás alrededor.",
+    "image": "cronometro_de_la_boveda_dorada.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "remove_time_counter_suspended",
+        "owner": "self",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_081",
+    "name": "Reloj Monumental de Retiro",
+    "type": "Artefacto Legendario",
+    "manaCost": "{5}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "{2}, {T}: Remové dos contadores de Tiempo de una carta en espera que poseés. Siempre que se remueva el último contador de Tiempo de una carta en espera que poseés, robá dos cartas.",
+    "flavorText": "Miles lo miran para saber cuánto falta. Una vez por noche, responde cuánto falta de verdad.",
+    "image": "reloj_monumental_de_retiro.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "remove_time_counter_suspended",
+        "owner": "self",
+        "amount": 2
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    },
+    "triggers": [
+      {
+        "event": "counter_removed",
+        "filter": {
+          "owner": "you",
+          "counterType": "time",
+          "metadata": {
+            "suspended": true,
+            "lastRemoved": true
+          }
+        },
+        "effect": {
+          "type": "draw",
+          "amount": 2
+        }
+      }
+    ]
+  },
+  {
+    "id": "art_082",
+    "name": "Televisor de Tubo Encendido",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "{2}{U}{R}, {T}: Transformá Televisor de Tubo Encendido.",
+    "flavorText": "Entre dos canales aparece una señal que no pertenece a esta casa.",
+    "image": "televisor_de_tubo_encendido.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{U}{R}{T}",
+      "effect": {
+        "type": "transform"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    },
+    "dfc": {
+      "kind": "transform",
+      "backFace": {
+        "name": "Portal de Interferencia",
+        "type": "Artefacto",
+        "image": "portal_de_interferencia.png",
+        "text": "La estática era una puerta. El tubo sólo estaba tratando de abrirla.",
+        "colors": [],
+        "keywords": [],
+        "triggers": [
+          {
+            "event": "spell_cast",
+            "filter": {
+              "controller": "you",
+              "cardType": "noncreature"
+            },
+            "effect": {
+              "type": "damage",
+              "amount": 1
+            }
+          }
+        ],
+        "activatedAbility": {
+          "cost": "{2}{T}",
+          "effect": {
+            "type": "transform"
+          },
+          "requiresTarget": false,
+          "timing": "instant"
+        }
+      }
+    }
+  },
+  {
+    "id": "art_083",
+    "name": "Mate de Madrugada",
+    "type": "Artefacto",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{1}, {T}: Transformá Mate de Madrugada.",
+    "flavorText": "A la cuarta cebada ya nadie recuerda quién lo llenó primero.",
+    "image": "mate_de_madrugada.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{1}{T}",
+      "effect": {
+        "type": "transform"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    },
+    "dfc": {
+      "kind": "transform",
+      "backFace": {
+        "name": "Mate que No Se Vacía",
+        "type": "Artefacto",
+        "image": "mate_que_no_se_vacia.png",
+        "text": "El agua se termina. La charla no.",
+        "colors": [],
+        "keywords": [],
+        "triggers": [
+          {
+            "event": "upkeep_started",
+            "filter": {
+              "activePlayer": "you"
+            },
+            "effect": {
+              "type": "heal",
+              "amount": 1
+            }
+          }
+        ],
+        "activatedAbility": {
+          "cost": "{1}{T}",
+          "effect": {
+            "type": "transform"
+          },
+          "requiresTarget": false,
+          "timing": "instant"
+        }
+      }
+    }
+  },
+  {
+    "id": "art_084",
+    "name": "Espejo de Vestuario",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [],
+    "text": "{2}, {T}: Transformá el permanente transformable objetivo que controlás.",
+    "flavorText": "Devuelve exactamente lo que sos, salvo cuando decide mostrar lo que falta.",
+    "image": "espejo_de_vestuario.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "transform",
+        "targetKind": "any_permanent",
+        "targetController": "self"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_085",
+    "name": "Interruptor de Dos Posiciones",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "{3}, {T}: Transformá el permanente transformable objetivo.",
+    "flavorText": "Una posición dice “normal”. La otra no tiene etiqueta.",
+    "image": "interruptor_de_dos_posiciones.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{3}{T}",
+      "effect": {
+        "type": "transform",
+        "targetKind": "any_permanent",
+        "targetController": "any"
+      },
+      "requiresTarget": true,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_086",
+    "name": "Fichero de Socios del Club",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Cuando Fichero de Socios del Club entre al campo de batalla, elegí un tipo de criatura. {2}, {T}: buscá en tu biblioteca una carta de criatura del tipo elegido, mostrala, ponela en tu mano y barajá.",
+    "flavorText": "La ficha correcta siempre está dos cajones más abajo de donde debería.",
+    "image": "fichero_de_socios_del_club.png",
+    "keywords": [],
+    "etbEffect": {
+      "type": "choose_creature_type"
+    },
+    "activatedAbility": {
+      "cost": "{2}{T}",
+      "effect": {
+        "type": "search_library",
+        "amount": 1,
+        "filter": {
+          "cardType": "creature",
+          "subtype": "$chosen"
+        },
+        "destination": "hand",
+        "reveal": true,
+        "shuffle": true,
+        "allowFewer": true
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    }
+  },
+  {
+    "id": "art_087",
+    "name": "Censo Nacional de Criaturas",
+    "type": "Artefacto Legendario",
+    "manaCost": "{5}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [],
+    "text": "Cuando Censo Nacional de Criaturas entre al campo de batalla, elegí un tipo de criatura. Las criaturas del tipo elegido que controlás obtienen +1/+1. Tus hechizos de criatura del tipo elegido cuestan {1} menos. Siempre que una criatura del tipo elegido entre al campo de batalla bajo tu control, Anticipá 1.",
+    "flavorText": "La planilla tenía una casilla que decía “otros”. Fue la primera en quedarse sin espacio.",
+    "image": "censo_nacional_de_criaturas.png",
+    "keywords": [],
+    "legendary": true,
+    "etbEffect": {
+      "type": "choose_creature_type"
+    },
+    "staticEffects": [
+      {
+        "type": "team_buff",
+        "scope": "own",
+        "powerMod": 1,
+        "toughnessMod": 1,
+        "filter": {
+          "subtype": "$chosen"
+        }
+      },
+      {
+        "type": "spell_cost_modifier",
+        "mode": "reduce",
+        "scope": "own",
+        "amount": 1,
+        "filter": {
+          "subtype": "$chosen",
+          "cardType": "creature"
+        }
+      }
+    ],
+    "triggers": [
+      {
+        "event": "creature_entered",
+        "filter": {
+          "controller": "you",
+          "subtype": "$chosen"
+        },
+        "effect": {
+          "type": "scry",
+          "amount": 1
+        }
+      }
+    ]
+  }
+]

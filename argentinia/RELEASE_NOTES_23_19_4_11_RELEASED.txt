@@ -1,0 +1,2 @@
+RELEASED NOTES — 23.19.4.12
+Commercial IP Remediation Wave 3 genericizes 11 YELLOW venue/institution/object cards with zero gameplay changes, keeps Las Malvinas unchanged, and formally externalizes all card-image binaries from deliverables going forward.

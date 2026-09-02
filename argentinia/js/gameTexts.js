@@ -981,6 +981,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'replacement.shield.consumed': definition('Partida', '🛡️ {card} consumió 1 Escudo. Escudos restantes: {remaining}.', 'Consumo explícito de contador de Escudo por replacement/prevention.'),
   'effect.pwDamage': definition('Partida', '💥 ¡{card}! Le sacó {amount} de Creencia a {target} (queda en {loyalty}).', 'Daño a Semidiós.'),
   'land.animate.done': definition('Tierras y maná', '🌎 {card} se convirtió en una criatura {power}/{toughness} hasta el final del turno. Sigue siendo una Tierra.', 'Resolución de una man-land.'),
+  'land.animate.selfManaWarning': definition('Tierras y maná', '⚠️ Si usás {card} para pagar su propia animación, se girará para producir maná y se convertirá en criatura GIRADA. No podrá atacar este turno salvo que algún efecto la enderece. ¿Querés usarla igual?', 'Aviso antes de usar una man-land como fuente para pagar su propia animación.'),
   'land.animate.unavailable': definition('Tierras y maná', '⚠️ {card} ya no está disponible como Tierra para animarse.', 'La fuente de una animación de Tierra dejó el campo o cambió de estado.'),
   'land.animate.legacy': definition('Tierras y maná', '⚠️ {card} intentó usar el contrato legacy de animación. Actualizá la carta al efecto animate_land.', 'Diagnóstico de compatibilidad LAND 1.'),
   'land.destroy.done': definition('Tierras y maná', '💥 ¡{card} destruyó la Tierra {target}!', 'LAND 2: destrucción puntual de Tierra.'),

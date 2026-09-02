@@ -1,0 +1,3157 @@
+[
+  {
+    "id": "ench_001",
+    "name": "Cumbia Santafesina",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, ganás 1 Punto de Vida.",
+    "flavorText": "¡Con la fuerza del acordeón!",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "cumbia.png",
+    "creatureEtbTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_002",
+    "name": "Milonga de Medianoche",
+    "type": "Encantamiento",
+    "manaCost": "{1}{B}{W}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "W"
+    ],
+    "text": "Siempre que una criatura que controla tu oponente muera, ese jugador pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "El tango te espera si das un paso en falso.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "milonga.png",
+    "opponentDeathTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_003",
+    "name": "Hinchada Fervorosa",
+    "type": "Encantamiento",
+    "manaCost": "{2}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Al comienzo de tu paso final, si atacaste con dos o más criaturas este turno, robás una carta.",
+    "flavorText": "La gente siempre apoya... si hay espectáculo.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "hinchada.png",
+    "endStepTrigger": {
+      "type": "draw",
+      "amount": 1,
+      "condition": "attacked_with_two_or_more"
+    }
+  },
+  {
+    "id": "ench_004",
+    "name": "El Equipo de los Once Sueños",
+    "type": "Encantamiento Legendario",
+    "manaCost": "{3}{W}{R}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [
+      "W",
+      "R"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, robás una carta.",
+    "flavorText": "Once entran a la cancha. Todo el barrio sueña el mismo partido.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "equipo_de_los_once_suenos.png",
+    "upkeepTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_005",
+    "name": "Fuerza de la Manada",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Tus criaturas obtienen +1/+1.",
+    "flavorText": "Ninguna fiera del monte anda sola.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "fuerza_manada.png",
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 1,
+      "toughnessMod": 1
+    }
+  },
+  {
+    "id": "ench_006",
+    "name": "Viento Pampero",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Tus criaturas tienen Vuela.",
+    "flavorText": "La llanura entera se levanta con vos.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "viento_pampero.png",
+    "staticEffect": {
+      "type": "team_keyword",
+      "scope": "own",
+      "keyword": "flying"
+    }
+  },
+  {
+    "id": "ench_007",
+    "name": "Toque de Queda",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}{W}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Las criaturas del rival obtienen -1/-1.",
+    "flavorText": "A las diez de la noche, que no quede nadie en la calle.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "toque_de_queda.png",
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "opponent",
+      "powerMod": -1,
+      "toughnessMod": -1
+    }
+  },
+  {
+    "id": "ench_008",
+    "name": "Rezo de la Abuela",
+    "type": "Encantamiento",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, ganás 1 Punto de Vida.",
+    "flavorText": "Todas las noches, antes de dormir, pedía por vos.",
+    "requiresTarget": false,
+    "adjunta": false,
+    "image": "rezo_abuela.png",
+    "upkeepTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_009",
+    "name": "Poncho del Paisano",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Encantar criatura. La criatura encantada obtiene +1/+1.",
+    "flavorText": "Abriga en las noches frías de la pampa.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 1
+      },
+      "keywords": []
+    },
+    "image": "poncho.png"
+  },
+  {
+    "id": "ench_010",
+    "name": "Alpargatas Aladas",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Encantar criatura. La criatura encantada gana Vuela.",
+    "flavorText": "Livianas como el viento pampero.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [
+        "flying"
+      ]
+    },
+    "image": "alpargatas.png"
+  },
+  {
+    "id": "ench_011",
+    "name": "Rebenque Filoso",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{R}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Encantar criatura. La criatura encantada obtiene +2/+2.",
+    "flavorText": "Cuero curtido y filo templado.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 2
+      },
+      "keywords": []
+    },
+    "image": "rebenque.png"
+  },
+  {
+    "id": "ench_012",
+    "name": "Maldición del Yaguareté",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{B}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Encantar criatura rival. La criatura encantada obtiene -2/-2.",
+    "flavorText": "El monte cobra sus deudas tarde o temprano.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_rival",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "-",
+        "cantidad": 2
+      },
+      "keywords": []
+    },
+    "image": "maldicion_yaguarete.png"
+  },
+  {
+    "id": "ench_013",
+    "name": "Pacto de Sangre",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Siempre que una criatura del oponente muera, el jugador rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Lo que se pacta, se cumple sí o sí.",
+    "image": "pacto_sangre.png",
+    "keywords": [],
+    "opponentDeathTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_014",
+    "name": "Letanía del Cementerio",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, robás una carta y perdés 1 Punto de Vida.",
+    "flavorText": "Cada nombre que se reza, cuesta algo a cambio.",
+    "image": "letania_cementerio.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "draw_and_lose_life",
+      "amount": 1,
+      "lifeLoss": 1
+    }
+  },
+  {
+    "id": "ench_015",
+    "name": "Aguante del Fondo",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Tus criaturas obtienen +0/+1.",
+    "flavorText": "Los del fondo son los que más joden.",
+    "image": "aguante_fondo.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 0,
+      "toughnessMod": 1
+    }
+  },
+  {
+    "id": "ench_016",
+    "name": "Bengala de Cancha",
+    "type": "Encantamiento",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que ataques con una o más criaturas, le hacés 1 de daño al jugador rival.",
+    "flavorText": "En la cancha se juega todo, incluso la vida.",
+    "image": "bengala_cancha.png",
+    "keywords": [],
+    "anyCreatureAttacksTrigger": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_017",
+    "name": "Grito de Guerra",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Tus criaturas obtienen +1/+0.",
+    "flavorText": "Un solo grito, y la valentía se hace realidad.",
+    "image": "grito_guerra.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 1,
+      "toughnessMod": 0
+    }
+  },
+  {
+    "id": "ench_018",
+    "name": "Fogón de la Previa",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, le hacés 1 de daño al jugador rival.",
+    "flavorText": "Cada uno que se suma, tira una chispa más al fuego.",
+    "image": "fogon_previa.png",
+    "keywords": [],
+    "creatureEtbTrigger": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_019",
+    "name": "Alarma Vecinal",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Al final de tu turno, si atacaste con dos o más criaturas este turno, ganás 2 Puntos de Vida.",
+    "flavorText": "Cuando salen de a uno, el barrio entero los cubre.",
+    "image": "alarma_vecinal.png",
+    "keywords": [],
+    "endStepTrigger": {
+      "type": "heal",
+      "amount": 2,
+      "condition": "attacked_with_two_or_more"
+    }
+  },
+  {
+    "id": "ench_020",
+    "name": "Susurro del Río",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que ataques con una o más criaturas, robás una carta.",
+    "flavorText": "El agua siempre sabe algo que todavía no pasó.",
+    "image": "susurro_rio.png",
+    "keywords": [],
+    "anyCreatureAttacksTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_021",
+    "name": "Raíces de la Terraza",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, ganás 1 Punto de Vida.",
+    "flavorText": "Se agarran fuerte de donde pueden, y no las mueve nadie.",
+    "image": "raices_terraza.png",
+    "keywords": [],
+    "landEtbTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_022",
+    "name": "Consejo de la Cuadra",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "U"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, robás una carta.",
+    "flavorText": "Todos los vecinos se juntan, y siempre sale algo bueno de la charla.",
+    "image": "consejo_cuadra.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_023",
+    "name": "Espíritu del Monte",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Siempre que ataques con una o más criaturas, ganás 2 Puntos de Vida.",
+    "flavorText": "La montaña cuida a los que se animan a bajar de ella a pelear.",
+    "image": "espiritu_monte.png",
+    "keywords": [],
+    "anyCreatureAttacksTrigger": {
+      "type": "heal",
+      "amount": 2
+    }
+  },
+  {
+    "id": "ench_024",
+    "name": "Custodia del titán",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Encantar criatura. La criatura encantada tiene Impuesto {2}.",
+    "flavorText": "El clan entero responde si alguien se atreve a tocarla.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [
+        "ward_2"
+      ]
+    },
+    "image": "custodia_titan.png"
+  },
+  {
+    "id": "ench_025",
+    "name": "Corriente Subterránea",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que lances un hechizo Instantáneo o Conjuro, Anticipá 1.",
+    "flavorText": "Fluye por debajo de todo, sin que nadie la vea pasar.",
+    "image": "corriente_subterranea.png",
+    "keywords": [],
+    "spellCastTrigger": {
+      "filter": "instant_or_sorcery",
+      "effect": {
+        "type": "scry",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "ench_026",
+    "name": "Ecos del Puerto",
+    "type": "Encantamiento",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, ganás 1 Punto de Vida.",
+    "flavorText": "Cada barco que llega deja algo bueno atrás.",
+    "image": "ecos_puerto.png",
+    "keywords": [],
+    "creatureEtbTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_027",
+    "name": "Velo de Bruma",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{U}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Encantar criatura. La criatura encantada gana Intocable.",
+    "flavorText": "Se pierde entre la niebla del río, y ya nadie la encuentra.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [
+        "hexproof"
+      ]
+    },
+    "image": "velo_bruma.png"
+  },
+  {
+    "id": "ench_028",
+    "name": "Cinta de la Promesa",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Encantar criatura que controlás. La criatura encantada obtiene +1/+1 y tiene Alerta.",
+    "flavorText": "Se ata una vez. Se recuerda cada vez que toca salir.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 1
+      },
+      "keywords": [
+        "vigilance"
+      ]
+    },
+    "image": "cinta_promesa.png"
+  },
+  {
+    "id": "ench_029",
+    "name": "Campera Prestada",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{W}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Encantar criatura que controlás. La criatura encantada obtiene +1/+1.",
+    "flavorText": "Te queda grande, pero abriga igual.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 1
+      },
+      "keywords": []
+    },
+    "image": "campera_prestada.png"
+  },
+  {
+    "id": "ench_030",
+    "name": "Humedad del Sótano",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "Encantar criatura rival. La criatura encantada obtiene -1/-1.",
+    "flavorText": "Al principio es una mancha. Después se come la pared.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_rival",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "-",
+        "cantidad": 1
+      },
+      "keywords": []
+    },
+    "image": "humedad_sotano.png"
+  },
+  {
+    "id": "ench_031",
+    "name": "Bufanda de la Tribuna",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{R}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Encantar criatura que controlás. La criatura encantada tiene Intimidante.",
+    "flavorText": "Se usa aunque hagan treinta grados.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [
+        "menace"
+      ]
+    },
+    "image": "bufanda_tribuna.png"
+  },
+  {
+    "id": "ench_032",
+    "name": "Espuelas de Chispa",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Encantar criatura que controlás. La criatura encantada obtiene +1/+1 y tiene Apuro.",
+    "flavorText": "No hace al caballo más rápido. Le recuerda que tiene apuro.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 1
+      },
+      "keywords": [
+        "haste"
+      ]
+    },
+    "image": "espuelas_chispa.png"
+  },
+  {
+    "id": "ench_033",
+    "name": "Savia del Ombú",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Encantar criatura que controlás. La criatura encantada obtiene +2/+2.",
+    "flavorText": "No se ve subir, pero de golpe todo es más grueso.",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": {
+        "signo": "+",
+        "cantidad": 2
+      },
+      "keywords": []
+    },
+    "image": "savia_ombu.png"
+  },
+  {
+    "id": "ench_034",
+    "name": "Frecuencia Fantasma",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, Anticipá 1.",
+    "flavorText": "La radio no está enchufada, pero todas las noches alguien pide una canción.",
+    "image": "frecuencia_fantasma.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "scry",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_035",
+    "name": "Marea de Fondo",
+    "type": "Encantamiento",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, Anticipá 1.",
+    "flavorText": "Todo lo que llega a la costa mueve algo que no se ve.",
+    "image": "marea_de_fondo.png",
+    "keywords": [],
+    "creatureEtbTrigger": {
+      "type": "scry",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_036",
+    "name": "Cuaderno del Sepulturero",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Al comienzo de tu paso de Mantenimiento, Chusmeá 1.",
+    "flavorText": "Los nombres están en orden. Las fechas, no siempre.",
+    "image": "cuaderno_sepulturero.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "surveil",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_037",
+    "name": "Libro de Actas Negras",
+    "type": "Encantamiento",
+    "manaCost": "{3}{B}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Siempre que una criatura que controla tu oponente muera, robás una carta.",
+    "flavorText": "Cada ausencia deja una firma.",
+    "image": "libro_actas_negras.png",
+    "keywords": [],
+    "opponentDeathTrigger": {
+      "type": "draw",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_038",
+    "name": "Radio a Todo Volumen",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que lances un Instantáneo o Conjuro, le hacés 1 de daño al jugador rival.",
+    "flavorText": "Si no la escuchás desde la otra cuadra, está demasiado baja.",
+    "image": "radio_todo_volumen.png",
+    "keywords": [],
+    "spellCastTrigger": {
+      "filter": "instant_or_sorcery",
+      "effect": {
+        "type": "damage",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "ench_039",
+    "name": "Asfalto Hirviendo",
+    "type": "Encantamiento",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, le hacés 1 de daño al jugador rival.",
+    "flavorText": "A la siesta hasta la sombra quema.",
+    "image": "asfalto_hirviendo.png",
+    "keywords": [],
+    "landEtbTrigger": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_040",
+    "name": "Brotación del Terraplén",
+    "type": "Encantamiento",
+    "manaCost": "{4}{G}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, creá una ficha de criatura Brote 1/1.",
+    "flavorText": "Le tiraron tierra encima. Lo tomó como una invitación.",
+    "image": "brotacion_terraplen.png",
+    "keywords": [],
+    "landEtbTrigger": {
+      "type": "create_tokens",
+      "amount": 1,
+      "tokenName": "Brote",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": [],
+      "image": "token_brote.png"
+    }
+  },
+  {
+    "id": "ench_041",
+    "name": "Turno de Guardia",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Tus criaturas tienen Alerta.",
+    "flavorText": "En la cuadra siempre hay una ventana con la luz prendida.",
+    "image": "turno_de_guardia.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_keyword",
+      "scope": "own",
+      "keyword": "vigilance"
+    }
+  },
+  {
+    "id": "ench_042",
+    "name": "Promesa Cumplida",
+    "type": "Encantamiento",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Siempre que muera una criatura, ganás 1 Punto de Vida.",
+    "flavorText": "Hay velas que se prenden por los que llegan y otras por los que no.",
+    "image": "promesa_cumplida.png",
+    "keywords": [],
+    "anyCreatureDiesTrigger": {
+      "type": "heal",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_043",
+    "name": "Sala de Monitoreo",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Al comienzo de tu mantenimiento, Anticipá 2.",
+    "flavorText": "Doce pantallas, una silla y alguien que nunca pestañea.",
+    "image": "sala_de_monitoreo.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "scry",
+      "amount": 2
+    }
+  },
+  {
+    "id": "ench_044",
+    "name": "Frecuencia Intervenida",
+    "type": "Encantamiento",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que lances un Instantáneo o Conjuro, robá una carta y luego descartá una carta.",
+    "flavorText": "Cada conversación deja un ruido de fondo. Ellos aprendieron a leerlo.",
+    "image": "frecuencia_intervenida.png",
+    "keywords": [],
+    "spellCastTrigger": {
+      "filter": "instant_or_sorcery",
+      "effect": {
+        "type": "loot",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "ench_045",
+    "name": "Campanas del Velorio",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Siempre que muera una criatura, Chusmeá 1.",
+    "flavorText": "Suena una vez por cada silla que queda vacía.",
+    "image": "campanas_del_velorio.png",
+    "keywords": [],
+    "anyCreatureDiesTrigger": {
+      "type": "surveil",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_046",
+    "name": "Libro Negro de Turnos",
+    "type": "Encantamiento",
+    "manaCost": "{3}{B}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Al comienzo de tu mantenimiento, robás una carta y perdés 1 Punto de Vida.",
+    "flavorText": "Todos figuran. Algunos todavía no saben para qué.",
+    "image": "libro_negro_de_turnos.png",
+    "keywords": [],
+    "upkeepTrigger": {
+      "type": "draw_and_lose_life",
+      "amount": 1,
+      "lifeLoss": 1
+    }
+  },
+  {
+    "id": "ench_047",
+    "name": "Murga en la Avenida",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que ataques con una o más criaturas, le hacés 1 de daño al jugador rival.",
+    "flavorText": "Empieza en una esquina y para la siguiente ya cortó media avenida.",
+    "image": "murga_en_la_avenida.png",
+    "keywords": [],
+    "anyCreatureAttacksTrigger": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_048",
+    "name": "Sirena de Fábrica",
+    "type": "Encantamiento",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que una criatura entre al campo de batalla bajo tu control, le hacés 1 de daño al jugador rival.",
+    "flavorText": "La fábrica cerró. La sirena nunca recibió el aviso.",
+    "image": "sirena_de_fabrica.png",
+    "keywords": [],
+    "creatureEtbTrigger": {
+      "type": "damage",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_049",
+    "name": "Reserva Cercada",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Arraigo — Siempre que una tierra entre al campo de batalla bajo tu control, ganás 2 Puntos de Vida.",
+    "flavorText": "El alambrado marca el límite. Los animales nunca lo leyeron.",
+    "image": "reserva_cercada.png",
+    "keywords": [],
+    "landEtbTrigger": {
+      "type": "heal",
+      "amount": 2
+    }
+  },
+  {
+    "id": "ench_050",
+    "name": "Ley del Monte",
+    "type": "Encantamiento",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Tus criaturas tienen Arrolla.",
+    "flavorText": "En el monte todo termina pasando por encima de algo.",
+    "image": "ley_del_monte.png",
+    "keywords": [],
+    "staticEffect": {
+      "type": "team_keyword",
+      "scope": "own",
+      "keyword": "trample"
+    }
+  },
+  {
+    "id": "ench_051",
+    "name": "Velorio bajo el Ceibo",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}{B}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "B"
+    ],
+    "text": "Siempre que muera una criatura, creá una ficha de criatura Ánima 1/1.",
+    "flavorText": "Las flores caen aunque no haya viento.",
+    "image": "velorio_bajo_el_ceibo.png",
+    "anyCreatureDiesTrigger": {
+      "type": "create_tokens",
+      "amount": 1,
+      "tokenName": "Ánima",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": [],
+      "image": "token_anima.png"
+    }
+  },
+  {
+    "id": "ench_052",
+    "name": "Mesa Larga de la Última Noche",
+    "type": "Encantamiento",
+    "manaCost": "{3}{W}{B}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "B"
+    ],
+    "text": "Siempre que muera una criatura, el rival pierde 1 Punto de Vida y vos ganás 1.",
+    "flavorText": "Cuando se termina el vino, empiezan a brindar los que no se ven.",
+    "image": "mesa_larga_de_la_ultima_noche.png",
+    "anyCreatureDiesTrigger": {
+      "type": "drain",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_053",
+    "name": "Taller de la Medianoche",
+    "type": "Encantamiento",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Tus criaturas tienen Alerta.",
+    "flavorText": "Mientras quede una radio prendida, el taller no cierra.",
+    "image": "taller_de_la_medianoche.png",
+    "staticEffect": {
+      "type": "team_keyword",
+      "scope": "own",
+      "keyword": "vigilance"
+    }
+  },
+  {
+    "id": "ench_054",
+    "name": "Pogo Bajo la Tormenta",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "text": "Siempre que lances un Instantáneo o Conjuro, hacé 1 de daño al rival.",
+    "flavorText": "Cada relámpago cae justo a tiempo con la batería.",
+    "image": "pogo_bajo_la_tormenta.png",
+    "spellCastTrigger": {
+      "filter": "instant_or_sorcery",
+      "effect": {
+        "type": "damage",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "ench_055",
+    "name": "Expediente 147 Bis",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}{B}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "text": "Al comienzo de tu mantenimiento, Chusmeá 1.",
+    "flavorText": "Lo archivaron tres veces. Las tres volvió al escritorio.",
+    "image": "expediente_147_bis.png",
+    "upkeepTrigger": {
+      "type": "surveil",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_056",
+    "name": "Promesa Atada al Algarrobo",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Encantar criatura que controlás. La criatura encantada tiene Irrompible.",
+    "flavorText": "La cinta se pudre. La promesa no.",
+    "image": "promesa_atada_al_algarrobo.png",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_propia",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [
+        "indestructible"
+      ]
+    }
+  },
+  {
+    "id": "ench_057",
+    "name": "Laberinto de Parque Chas",
+    "type": "Encantamiento",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Las Tierras entran al campo de batalla giradas.",
+    "flavorText": "Entrar es sencillo. Orientarse lleva un turno entero.",
+    "image": "laberinto_de_parque_chas.png",
+    "staticEffect": {
+      "type": "lands_enter_tapped",
+      "scope": "all",
+      "landFilter": "any"
+    }
+  },
+  {
+    "id": "ench_058",
+    "name": "Hora Pico en General Paz",
+    "type": "Encantamiento",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Las Tierras no básicas no se enderezan durante los pasos de Enderezar de sus controladores.",
+    "flavorText": "Todos avanzan. Nadie se mueve.",
+    "image": "hora_pico_en_general_paz.png",
+    "staticEffect": {
+      "type": "lands_dont_untap",
+      "scope": "all",
+      "landFilter": "nonbasic"
+    }
+  },
+  {
+    "id": "ench_059",
+    "name": "Cables Pelados de Dock Sud",
+    "type": "Encantamiento",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que un jugador gire una Tierra para obtener maná, Cables Pelados de Dock Sud le hace 1 de daño.",
+    "flavorText": "La energía llega. La aislación es otro asunto.",
+    "image": "cables_pelados_de_dock_sud.png",
+    "landManaTrigger": {
+      "scope": "all",
+      "effect": {
+        "type": "damage",
+        "amount": 1
+      }
+    }
+  },
+  {
+    "id": "ench_060",
+    "name": "Usina de Costanera Sur",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que un jugador gire una Tierra para obtener maná, agrega un maná adicional del tipo producido.",
+    "flavorText": "Cada turbina consigue sacar una vuelta más de la misma corriente.",
+    "image": "usina_de_costanera_sur.png",
+    "landManaBonus": {
+      "scope": "all",
+      "mode": "same_type",
+      "amount": 1
+    }
+  },
+  {
+    "id": "ench_061",
+    "name": "Luna Roja sobre Avellaneda",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Las Tierras no básicas son Montañas.",
+    "flavorText": "Bajo esa luz, cada barrio parece hecho de la misma piedra caliente.",
+    "image": "luna_roja_sobre_avellaneda.png",
+    "staticEffect": {
+      "type": "land_type_set",
+      "scope": "all",
+      "landFilter": "nonbasic",
+      "setLandTypes": [
+        "Montaña"
+      ]
+    }
+  },
+  {
+    "id": "ench_062",
+    "name": "Jardines de Palermo",
+    "type": "Encantamiento",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Las Tierras que controlás son Planicies, Aguas, Pantanos, Montañas y Bosques además de sus otros tipos.",
+    "flavorText": "Cinco paisajes caben en la misma vuelta del sendero.",
+    "image": "jardines_de_palermo.png",
+    "staticEffect": {
+      "type": "land_type_add",
+      "scope": "own",
+      "addLandTypes": [
+        "Planicie",
+        "Agua",
+        "Pantano",
+        "Montaña",
+        "Bosque"
+      ]
+    }
+  },
+  {
+    "id": "ench_063",
+    "name": "Zona Franca de Ezeiza",
+    "type": "Encantamiento",
+    "manaCost": "{4}{U}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Las Tierras no básicas de tus oponentes pierden sus habilidades y tienen “{T}: agregá {C}”.",
+    "flavorText": "Todo cruza la frontera con menos atribuciones de las que tenía al llegar.",
+    "image": "zona_franca_de_ezeiza.png",
+    "staticEffects": [
+      {
+        "type": "land_abilities_remove",
+        "scope": "opponent",
+        "landFilter": "nonbasic"
+      },
+      {
+        "type": "land_mana_override",
+        "scope": "opponent",
+        "landFilter": "nonbasic",
+        "produces": "C",
+        "amount": 1,
+        "requiresTap": true,
+        "sacrificeSelf": false
+      }
+    ]
+  },
+  {
+    "id": "ench_064",
+    "name": "Cambio de Administración",
+    "type": "Encantamiento — Aura",
+    "manaCost": "{2}{U}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Encantar criatura que controla un oponente. Controlás la criatura encantada.",
+    "flavorText": "El cartel de la puerta es el mismo. El que firma abajo, no.",
+    "image": "cambio_de_administracion.png",
+    "effect": null,
+    "requiresTarget": true,
+    "adjunta": true,
+    "alcance": "criatura_rival",
+    "cuando": "estatico",
+    "auraEffect": {
+      "stats": null,
+      "keywords": [],
+      "controlAttachedCreature": true
+    }
+  },
+  {
+    "id": "ench_065",
+    "name": "Alarma de Fábrica",
+    "type": "Encantamiento",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que casteás un hechizo que no sea de criatura, Alarma de Fábrica le hace 1 de daño a tu oponente.",
+    "flavorText": "Suena por humo, por chispa y por cualquier cosa que se parezca a una idea.",
+    "image": "alarma_de_fabrica.png",
+    "triggers": [
+      {
+        "event": "spell_cast",
+        "filter": {
+          "controller": "you",
+          "cardType": "noncreature"
+        },
+        "effect": {
+          "type": "damage",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_066",
+    "name": "Vivero Experimental de Escobar",
+    "type": "Encantamiento",
+    "manaCost": "{1}{G}{G/P}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Siempre que otra criatura entre al campo de batalla bajo tu control, poné un contador +1/+1 sobre esa criatura.",
+    "flavorText": "Cada brote sale con una etiqueta distinta y ninguno respeta el tamaño del catálogo.",
+    "image": "vivero_experimental_de_escobar.png",
+    "triggers": [
+      {
+        "event": "creature_entered",
+        "filter": {
+          "controller": "you",
+          "notSelf": true
+        },
+        "effect": {
+          "type": "add_counter",
+          "counterType": "plusOne",
+          "amount": 1
+        },
+        "target": "event"
+      }
+    ]
+  },
+  {
+    "id": "ench_067",
+    "name": "Archivo de Causas Cerradas",
+    "type": "Encantamiento",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Si una carta o ficha fuera a ir a un cementerio desde cualquier parte, exiliala en vez de eso.",
+    "flavorText": "Una vez archivado, el expediente deja de circular incluso entre los muertos.",
+    "image": "archivo_de_causas_cerradas.png",
+    "replacementEffect": {
+      "event": "zone_change_to_graveyard",
+      "scope": "all",
+      "action": "redirect_zone",
+      "replaceZoneTo": "exile"
+    }
+  },
+  {
+    "id": "ench_068",
+    "name": "Cooperativa del Puente Pueyrredón",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Si una fuente fuera a hacerle daño a una criatura que controlás, previene 1 de ese daño.",
+    "flavorText": "Uno sostiene el tablón. Otro sostiene al que sostiene el tablón.",
+    "image": "cooperativa_del_puente_pueyrredon.png",
+    "replacementEffect": {
+      "event": "damage",
+      "scope": "own",
+      "filter": {
+        "cardType": "creature"
+      },
+      "preventAmount": 1
+    }
+  },
+  {
+    "id": "ench_069",
+    "name": "Mesa de Entradas",
+    "type": "Encantamiento",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Siempre que crees una ficha, ganás 1 vida.",
+    "flavorText": "Cada número entregado es una pequeña victoria administrativa.",
+    "image": "mesa_de_entradas.png",
+    "triggers": [
+      {
+        "event": "token_created",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "heal",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_070",
+    "name": "Mercado Paralelo",
+    "type": "Encantamiento",
+    "manaCost": "{1}{B}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "R"
+    ],
+    "text": "Siempre que sacrifiques un permanente que no sea artefacto, creá una ficha de artefacto Dólar Blue.",
+    "flavorText": "Todo tiene un precio. Algunas cosas además tienen dos.",
+    "image": "mercado_paralelo.png",
+    "triggers": [
+      {
+        "event": "permanent_sacrificed",
+        "filter": {
+          "controller": "you",
+          "excludeCardType": "artifact"
+        },
+        "effect": {
+          "type": "create_tokens",
+          "amount": 1,
+          "tokenPreset": "treasure",
+          "token": {
+            "name": "Dólar Blue",
+            "image": "token_dolar_blue.png"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_071",
+    "name": "Archivo Bajo Llave",
+    "type": "Encantamiento",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Al comienzo de tu mantenimiento, mirá las tres primeras cartas de tu biblioteca. Podés poner una carta que no sea Tierra de entre ellas en tu mano. Poné el resto en el fondo de tu biblioteca.",
+    "flavorText": "La llave no protege el archivo. Protege a quienes todavía no saben qué contiene.",
+    "image": "archivo_bajo_llave.png",
+    "triggers": [
+      {
+        "event": "upkeep_started",
+        "filter": {
+          "activePlayer": "you"
+        },
+        "effect": {
+          "type": "look_at_top",
+          "lookCount": 3,
+          "amount": 1,
+          "filter": {
+            "cardType": "nonland"
+          },
+          "destination": "hand",
+          "remainderDestination": "bottom",
+          "shuffle": false,
+          "allowFewer": true
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_072",
+    "name": "Sala de Guardia Infinita",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Si fueran a ponerse uno o más contadores de Escudo sobre una criatura que controlás, se ponen el doble de esos contadores en vez de eso.",
+    "flavorText": "Nadie entra solo a una emergencia.",
+    "image": "sala_de_guardia_infinita.png",
+    "replacementEffect": {
+      "event": "counter_add",
+      "scope": "own",
+      "filter": {
+        "cardType": "creature",
+        "counterType": "shield"
+      },
+      "multiplyAmount": 2
+    }
+  },
+  {
+    "id": "ench_073",
+    "name": "Barreras Bajas de Constitución",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que se remueva un contador de Aturdimiento de un permanente que controla un oponente, robá una carta.",
+    "flavorText": "Cada barrera que sube revela otro problema más adelante.",
+    "image": "barreras_bajas_de_constitucion.png",
+    "triggers": [
+      {
+        "event": "counter_removed",
+        "filter": {
+          "controller": "opponent",
+          "counterType": "stun"
+        },
+        "effect": {
+          "type": "draw",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_074",
+    "name": "Taller de Bobinas de Dock Sud",
+    "type": "Encantamiento",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que se ponga uno o más contadores de Carga sobre un Artefacto que controlás, Taller de Bobinas de Dock Sud le hace 1 de daño a tu oponente.",
+    "flavorText": "Toda chispa encuentra metal.",
+    "image": "taller_de_bobinas_de_dock_sud.png",
+    "triggers": [
+      {
+        "event": "counter_added",
+        "filter": {
+          "controller": "you",
+          "cardType": "artifact",
+          "counterType": "charge",
+          "minAmount": 1
+        },
+        "effect": {
+          "type": "damage",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_075",
+    "name": "La Revolución de Mayo",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "I — Ganás 2 vidas. II — Creá una ficha de criatura Vecino 1/1. III — Creá dos fichas de criatura Vecino 1/1.",
+    "flavorText": "La plaza empezó como rumor y terminó hablando con miles de voces.",
+    "image": "la_revolucion_de_mayo.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Ganás 2 vidas.",
+          "effect": {
+            "type": "heal",
+            "amount": 2
+          },
+          "id": "mayo_i"
+        },
+        {
+          "number": 2,
+          "text": "Creá una ficha de criatura Vecino 1/1.",
+          "effect": {
+            "type": "create_tokens",
+            "amount": 1,
+            "tokenName": "Vecino",
+            "tokenStats": {
+              "power": 1,
+              "toughness": 1
+            },
+            "tokenKeywords": [],
+            "image": "token_vecino.png"
+          },
+          "id": "mayo_ii"
+        },
+        {
+          "number": 3,
+          "text": "Creá dos fichas de criatura Vecino 1/1.",
+          "effect": {
+            "type": "create_tokens",
+            "amount": 2,
+            "tokenName": "Vecino",
+            "tokenStats": {
+              "power": 1,
+              "toughness": 1
+            },
+            "tokenKeywords": [],
+            "image": "token_vecino.png"
+          },
+          "id": "mayo_iii"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_076",
+    "name": "La Vuelta de Obligado",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "I — Poné un contador de Escudo sobre la criatura objetivo que controlás. II — Creá dos fichas de criatura Vecino 1/1. III — Exiliá la criatura objetivo.",
+    "flavorText": "Las cadenas cruzaron el río antes que la historia cruzara los libros.",
+    "image": "la_vuelta_de_obligado.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Poné un contador de Escudo sobre la criatura objetivo que controlás.",
+          "effect": {
+            "type": "add_counter",
+            "counterType": "shield",
+            "amount": 1,
+            "targetKind": "creature",
+            "targetController": "self"
+          },
+          "id": "obligado_i",
+          "requiresTarget": true
+        },
+        {
+          "number": 2,
+          "text": "Creá dos fichas de criatura Vecino 1/1.",
+          "effect": {
+            "type": "create_tokens",
+            "amount": 2,
+            "tokenName": "Vecino",
+            "tokenStats": {
+              "power": 1,
+              "toughness": 1
+            },
+            "tokenKeywords": [],
+            "image": "token_vecino.png"
+          },
+          "id": "obligado_ii"
+        },
+        {
+          "number": 3,
+          "text": "Exiliá la criatura objetivo.",
+          "effect": {
+            "type": "exile_creature"
+          },
+          "id": "obligado_iii",
+          "requiresTarget": true
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_077",
+    "name": "El Cabildo Abre sus Puertas",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "I — Ganás 2 vidas. II — Creá una ficha de criatura Vecino 1/1. III — Ganás 2 vidas.",
+    "flavorText": "Cada puerta abierta dejó entrar una discusión que ya no quiso salir.",
+    "image": "el_cabildo_abre_sus_puertas.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Ganás 2 vidas.",
+          "effect": {
+            "type": "heal",
+            "amount": 2
+          },
+          "id": "cabildo_i"
+        },
+        {
+          "number": 2,
+          "text": "Creá una ficha de criatura Vecino 1/1.",
+          "effect": {
+            "type": "create_tokens",
+            "amount": 1,
+            "tokenName": "Vecino",
+            "tokenStats": {
+              "power": 1,
+              "toughness": 1
+            },
+            "tokenKeywords": [],
+            "image": "token_vecino.png"
+          },
+          "id": "cabildo_ii"
+        },
+        {
+          "number": 3,
+          "text": "Ganás 2 vidas.",
+          "effect": {
+            "type": "heal",
+            "amount": 2
+          },
+          "id": "cabildo_iii"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_078",
+    "name": "La Crecida del Paraná",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "I — Anticipá 1. II — Devolvé la criatura objetivo a la mano de su propietario. III — Robá una carta.",
+    "flavorText": "Primero sube un centímetro. Después el río decide dónde termina la costa.",
+    "image": "la_crecida_del_parana.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Anticipá 1.",
+          "effect": {
+            "type": "scry",
+            "amount": 1
+          },
+          "id": "parana_i"
+        },
+        {
+          "number": 2,
+          "text": "Devolvé la criatura objetivo a la mano de su propietario.",
+          "effect": {
+            "type": "bounce"
+          },
+          "id": "parana_ii",
+          "requiresTarget": true
+        },
+        {
+          "number": 3,
+          "text": "Robá una carta.",
+          "effect": {
+            "type": "draw",
+            "amount": 1
+          },
+          "id": "parana_iii"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_079",
+    "name": "La Noche del Gran Apagón",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "I, II — Poné un contador de Aturdimiento sobre la criatura objetivo que controla un oponente. III — Robá dos cartas.",
+    "flavorText": "Una ventana se apagó. Después otra. Al final la ciudad aprendió a escuchar la oscuridad.",
+    "image": "la_noche_del_gran_apagon.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": [
+            1,
+            2
+          ],
+          "text": "Poné un contador de Aturdimiento sobre la criatura objetivo que controla un oponente.",
+          "effect": {
+            "type": "add_counter",
+            "counterType": "stun",
+            "amount": 1,
+            "targetKind": "creature",
+            "targetController": "opponent"
+          },
+          "id": "apagon_i_ii",
+          "requiresTarget": true
+        },
+        {
+          "number": 3,
+          "text": "Robá dos cartas.",
+          "effect": {
+            "type": "draw",
+            "amount": 2
+          },
+          "id": "apagon_iii"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_080",
+    "name": "La Ruta 40 de Punta a Punta",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{2}{G}{U}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "G",
+      "U"
+    ],
+    "text": "I — Buscá en tu biblioteca una Tierra, mostrála, ponela en tu mano y luego barajá. II — Robá una carta. III — Amplificá.",
+    "flavorText": "Cada kilómetro parece distinto hasta que el mismo horizonte vuelve a aparecer.",
+    "image": "la_ruta_40_de_punta_a_punta.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Buscá en tu biblioteca una Tierra, mostrála, ponela en tu mano y luego barajá.",
+          "effect": {
+            "type": "search_land",
+            "amount": 1,
+            "filter": "any",
+            "destination": "hand",
+            "allowFewer": true,
+            "reveal": true
+          },
+          "id": "ruta40_i"
+        },
+        {
+          "number": 2,
+          "text": "Robá una carta.",
+          "effect": {
+            "type": "draw",
+            "amount": 1
+          },
+          "id": "ruta40_ii"
+        },
+        {
+          "number": 3,
+          "text": "Amplificá.",
+          "effect": {
+            "type": "proliferate"
+          },
+          "id": "ruta40_iii"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_081",
+    "name": "La Luz Mala Cruza el Camino",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "I — Chusmeá 1. II — Tu oponente descarta una carta. III — Tu oponente pierde 1 vida y vos ganás 1 vida.",
+    "flavorText": "Nunca se acerca del todo. Nunca queda lo bastante lejos.",
+    "image": "la_luz_mala_cruza_el_camino.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Chusmeá 1.",
+          "effect": {
+            "type": "surveil",
+            "amount": 1
+          },
+          "id": "luzmala_i"
+        },
+        {
+          "number": 2,
+          "text": "Tu oponente descarta una carta.",
+          "effect": {
+            "type": "discard",
+            "amount": 1
+          },
+          "id": "luzmala_ii",
+          "target": "opponent_player"
+        },
+        {
+          "number": 3,
+          "text": "Tu oponente pierde 1 vida y vos ganás 1 vida.",
+          "effect": {
+            "type": "drain",
+            "amount": 1
+          },
+          "id": "luzmala_iii"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_082",
+    "name": "La Séptima Noche del Lobizón",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{3}{B}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "I — Chusmeá 2. II — Tu oponente pierde 1 vida y vos ganás 1 vida. III — Regresá una carta de criatura de tu cementerio al campo de batalla.",
+    "flavorText": "Seis noches son superstición. La séptima deja huellas.",
+    "image": "la_septima_noche_del_lobizon.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Chusmeá 2.",
+          "effect": {
+            "type": "surveil",
+            "amount": 2
+          },
+          "id": "lobizon_i"
+        },
+        {
+          "number": 2,
+          "text": "Tu oponente pierde 1 vida y vos ganás 1 vida.",
+          "effect": {
+            "type": "drain",
+            "amount": 1
+          },
+          "id": "lobizon_ii"
+        },
+        {
+          "number": 3,
+          "text": "Regresá una carta de criatura de tu cementerio al campo de batalla.",
+          "effect": {
+            "type": "reanimate",
+            "amount": 1
+          },
+          "id": "lobizon_iii"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_083",
+    "name": "El Pacto de la Salamanca",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{2}{B}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "R"
+    ],
+    "text": "I — Descartá una carta, luego robá una carta. II — El Pacto de la Salamanca hace 2 de daño a cualquier objetivo. III — Robá dos cartas y perdé 2 vidas.",
+    "flavorText": "La música siguió cuando ya nadie recordaba quién había encendido el fuego.",
+    "image": "el_pacto_de_la_salamanca.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Descartá una carta, luego robá una carta.",
+          "effect": {
+            "type": "rummage",
+            "amount": 1
+          },
+          "id": "salampacto_i"
+        },
+        {
+          "number": 2,
+          "text": "El Pacto de la Salamanca hace 2 de daño a cualquier objetivo.",
+          "effect": {
+            "type": "damage",
+            "amount": 2
+          },
+          "id": "salampacto_ii",
+          "requiresTarget": true
+        },
+        {
+          "number": 3,
+          "text": "Robá dos cartas y perdé 2 vidas.",
+          "effect": {
+            "type": "draw_and_lose_life",
+            "amount": 2,
+            "lifeLoss": 2
+          },
+          "id": "salampacto_iii"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_084",
+    "name": "El Cordobazo",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "I — El Cordobazo le hace 1 de daño a tu oponente. II — El Cordobazo le hace 2 de daño a la criatura objetivo. III — Descartá dos cartas, luego robá dos cartas.",
+    "flavorText": "La primera persiana bajó por miedo. Las siguientes bajaron por decisión.",
+    "image": "el_cordobazo.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "El Cordobazo le hace 1 de daño a tu oponente.",
+          "effect": {
+            "type": "damage",
+            "amount": 1
+          },
+          "id": "cordobazo_i",
+          "target": "opponent_player"
+        },
+        {
+          "number": 2,
+          "text": "El Cordobazo le hace 2 de daño a la criatura objetivo.",
+          "effect": {
+            "type": "damage",
+            "amount": 2
+          },
+          "id": "cordobazo_ii",
+          "requiresTarget": true
+        },
+        {
+          "number": 3,
+          "text": "Descartá dos cartas, luego robá dos cartas.",
+          "effect": {
+            "type": "rummage",
+            "amount": 2
+          },
+          "id": "cordobazo_iii"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_085",
+    "name": "El Rock Nacional Sale a la Calle",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "I — Descartá una carta, luego robá una carta. II — La criatura objetivo que controlás obtiene +2/+0 hasta el final del turno. III — El Rock Nacional Sale a la Calle le hace 2 de daño a tu oponente.",
+    "flavorText": "Un amplificador prestado alcanzó para que la vereda pareciera un estadio.",
+    "image": "el_rock_nacional_sale_a_la_calle.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Descartá una carta, luego robá una carta.",
+          "effect": {
+            "type": "rummage",
+            "amount": 1
+          },
+          "id": "rock_i"
+        },
+        {
+          "number": 2,
+          "text": "La criatura objetivo que controlás obtiene +2/+0 hasta el final del turno.",
+          "effect": {
+            "type": "pump",
+            "powerMod": 2,
+            "toughnessMod": 0
+          },
+          "id": "rock_ii",
+          "requiresTarget": true
+        },
+        {
+          "number": 3,
+          "text": "El Rock Nacional Sale a la Calle le hace 2 de daño a tu oponente.",
+          "effect": {
+            "type": "damage",
+            "amount": 2
+          },
+          "id": "rock_iii",
+          "target": "opponent_player"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_086",
+    "name": "La Final de los Once Sueños",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{3}{R}{W}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "R",
+      "W"
+    ],
+    "text": "I — Creá dos fichas de criatura Vecino 1/1. II — La criatura objetivo que controlás obtiene +3/+3 hasta el final del turno. III — La Final de los Once Sueños hace 3 de daño a cualquier objetivo.",
+    "flavorText": "Durante noventa minutos, hasta las ventanas del barrio miraron la misma cancha.",
+    "image": "la_final_de_los_once_suenos.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Creá dos fichas de criatura Vecino 1/1.",
+          "effect": {
+            "type": "create_tokens",
+            "amount": 2,
+            "tokenName": "Vecino",
+            "tokenStats": {
+              "power": 1,
+              "toughness": 1
+            },
+            "tokenKeywords": [],
+            "image": "token_vecino.png"
+          },
+          "id": "final86_i"
+        },
+        {
+          "number": 2,
+          "text": "La criatura objetivo que controlás obtiene +3/+3 hasta el final del turno.",
+          "effect": {
+            "type": "pump",
+            "powerMod": 3,
+            "toughnessMod": 3
+          },
+          "id": "final86_ii",
+          "requiresTarget": true
+        },
+        {
+          "number": 3,
+          "text": "La Final de los Once Sueños hace 3 de daño a cualquier objetivo.",
+          "effect": {
+            "type": "damage",
+            "amount": 3
+          },
+          "id": "final86_iii",
+          "requiresTarget": true
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_087",
+    "name": "La Vendimia Comienza",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "I — Ganás 2 vidas. II — Poné un contador +1/+1 sobre la criatura objetivo que controlás. III — Amplificá.",
+    "flavorText": "Primero una tijera. Después un canasto. Al final todo el valle huele a cosecha.",
+    "image": "la_vendimia_comienza.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Ganás 2 vidas.",
+          "effect": {
+            "type": "heal",
+            "amount": 2
+          },
+          "id": "vendimia_i"
+        },
+        {
+          "number": 2,
+          "text": "Poné un contador +1/+1 sobre la criatura objetivo que controlás.",
+          "effect": {
+            "type": "add_counter",
+            "counterType": "plusOne",
+            "amount": 1,
+            "targetKind": "creature",
+            "targetController": "self"
+          },
+          "id": "vendimia_ii",
+          "requiresTarget": true
+        },
+        {
+          "number": 3,
+          "text": "Amplificá.",
+          "effect": {
+            "type": "proliferate"
+          },
+          "id": "vendimia_iii"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_088",
+    "name": "El Éxodo Jujeño",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "I — Buscá en tu biblioteca una Tierra básica, mostrála, ponela en tu mano y luego barajá. II — Ganás 3 vidas. III — Regresá una carta de Tierra de tu cementerio al campo de batalla girada.",
+    "flavorText": "A veces conservar un pueblo exige saber exactamente qué dejar atrás.",
+    "image": "el_exodo_jujeno.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Buscá en tu biblioteca una Tierra básica, mostrála, ponela en tu mano y luego barajá.",
+          "effect": {
+            "type": "search_land",
+            "amount": 1,
+            "filter": "basic",
+            "destination": "hand",
+            "allowFewer": true,
+            "reveal": true
+          },
+          "id": "exodo_i"
+        },
+        {
+          "number": 2,
+          "text": "Ganás 3 vidas.",
+          "effect": {
+            "type": "heal",
+            "amount": 3
+          },
+          "id": "exodo_ii"
+        },
+        {
+          "number": 3,
+          "text": "Regresá una carta de Tierra de tu cementerio al campo de batalla girada.",
+          "effect": {
+            "type": "return_lands_from_graveyard",
+            "amount": 1,
+            "filter": "any",
+            "destination": "battlefield_tapped"
+          },
+          "id": "exodo_iii"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_089",
+    "name": "El Cruce de los Andes",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{3}{G}{W}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "G",
+      "W"
+    ],
+    "text": "I — Buscá en tu biblioteca una Tierra básica y ponela en el campo de batalla girada. II — Poné un contador de Escudo sobre la criatura objetivo que controlás. III — Poné dos contadores +1/+1 sobre la criatura objetivo que controlás.",
+    "flavorText": "La montaña no se movió. Todo lo demás sí.",
+    "image": "el_cruce_de_los_andes.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Buscá en tu biblioteca una Tierra básica y ponela en el campo de batalla girada.",
+          "effect": {
+            "type": "ramp",
+            "amount": 1,
+            "filter": "basic",
+            "destination": "battlefield_tapped"
+          },
+          "id": "andes_i"
+        },
+        {
+          "number": 2,
+          "text": "Poné un contador de Escudo sobre la criatura objetivo que controlás.",
+          "effect": {
+            "type": "add_counter",
+            "counterType": "shield",
+            "amount": 1,
+            "targetKind": "creature",
+            "targetController": "self"
+          },
+          "id": "andes_ii",
+          "requiresTarget": true
+        },
+        {
+          "number": 3,
+          "text": "Poné dos contadores +1/+1 sobre la criatura objetivo que controlás.",
+          "effect": {
+            "type": "add_counter",
+            "counterType": "plusOne",
+            "amount": 2,
+            "targetKind": "creature",
+            "targetController": "self"
+          },
+          "id": "andes_iii",
+          "requiresTarget": true
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_090",
+    "name": "La Nieve Cubre Buenos Aires",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "I — Anticipá 1. II — Poné un contador de Aturdimiento sobre la criatura objetivo que controla un oponente. III — Robá una carta.",
+    "flavorText": "Por unas horas la ciudad dejó de parecerse a sí misma.",
+    "image": "la_nieve_cubre_buenos_aires.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Anticipá 1.",
+          "effect": {
+            "type": "scry",
+            "amount": 1
+          },
+          "id": "nieve_i"
+        },
+        {
+          "number": 2,
+          "text": "Poné un contador de Aturdimiento sobre la criatura objetivo que controla un oponente.",
+          "effect": {
+            "type": "add_counter",
+            "counterType": "stun",
+            "amount": 1,
+            "targetKind": "creature",
+            "targetController": "opponent"
+          },
+          "id": "nieve_ii",
+          "requiresTarget": true
+        },
+        {
+          "number": 3,
+          "text": "Robá una carta.",
+          "effect": {
+            "type": "draw",
+            "amount": 1
+          },
+          "id": "nieve_iii"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_091",
+    "name": "La Reconquista de Buenos Aires",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{2}{R}{W}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "R",
+      "W"
+    ],
+    "text": "I — Creá una ficha de criatura Vecino 1/1. II — Ganás 3 vidas. III — La Reconquista de Buenos Aires le hace 3 de daño a tu oponente.",
+    "flavorText": "Cada balcón aportó un ruido distinto y todos terminaron diciendo lo mismo.",
+    "image": "la_reconquista_de_buenos_aires.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Creá una ficha de criatura Vecino 1/1.",
+          "effect": {
+            "type": "create_tokens",
+            "amount": 1,
+            "tokenName": "Vecino",
+            "tokenStats": {
+              "power": 1,
+              "toughness": 1
+            },
+            "tokenKeywords": [],
+            "image": "token_vecino.png"
+          },
+          "id": "reconquista_i"
+        },
+        {
+          "number": 2,
+          "text": "Ganás 3 vidas.",
+          "effect": {
+            "type": "heal",
+            "amount": 3
+          },
+          "id": "reconquista_ii"
+        },
+        {
+          "number": 3,
+          "text": "La Reconquista de Buenos Aires le hace 3 de daño a tu oponente.",
+          "effect": {
+            "type": "damage",
+            "amount": 3
+          },
+          "id": "reconquista_iii",
+          "target": "opponent_player"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ench_092",
+    "name": "La Argentina de las Mil Historias",
+    "type": "Encantamiento — Saga",
+    "manaCost": "{W}{U}{B}{R}{G}",
+    "cmc": 5,
+    "rarity": "Mythic",
+    "colors": [
+      "W",
+      "U",
+      "B",
+      "R",
+      "G"
+    ],
+    "text": "I — Creá dos fichas de criatura Vecino 1/1. II — Robá dos cartas. III — Regresá una carta de criatura de tu cementerio al campo de batalla. IV — La Argentina de las Mil Historias hace 4 de daño a cualquier objetivo. V — Amplificá.",
+    "flavorText": "Cinco voces empiezan separadas. La última página descubre que siempre fueron la misma canción.",
+    "image": "la_argentina_de_las_mil_historias.png",
+    "keywords": [],
+    "saga": {
+      "chapters": [
+        {
+          "number": 1,
+          "text": "Creá dos fichas de criatura Vecino 1/1.",
+          "effect": {
+            "type": "create_tokens",
+            "amount": 2,
+            "tokenName": "Vecino",
+            "tokenStats": {
+              "power": 1,
+              "toughness": 1
+            },
+            "tokenKeywords": [],
+            "image": "token_vecino.png"
+          },
+          "id": "argentina_i"
+        },
+        {
+          "number": 2,
+          "text": "Robá dos cartas.",
+          "effect": {
+            "type": "draw",
+            "amount": 2
+          },
+          "id": "argentina_ii"
+        },
+        {
+          "number": 3,
+          "text": "Regresá una carta de criatura de tu cementerio al campo de batalla.",
+          "effect": {
+            "type": "reanimate",
+            "amount": 1
+          },
+          "id": "argentina_iii"
+        },
+        {
+          "number": 4,
+          "text": "La Argentina de las Mil Historias hace 4 de daño a cualquier objetivo.",
+          "effect": {
+            "type": "damage",
+            "amount": 4
+          },
+          "id": "argentina_iv",
+          "requiresTarget": true
+        },
+        {
+          "number": 5,
+          "text": "Amplificá.",
+          "effect": {
+            "type": "proliferate"
+          },
+          "id": "argentina_v"
+        }
+      ],
+      "finalChapter": 5
+    }
+  },
+  {
+    "id": "ench_093",
+    "name": "Memoria Colectiva",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Siempre que una Crónica que controlás sea sacrificada, creá una ficha de criatura Vecino 1/1.",
+    "flavorText": "Lo que una página cierra, otra mesa vuelve a contar.",
+    "image": "memoria_colectiva.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "permanent_sacrificed",
+        "filter": {
+          "controller": "you",
+          "subtype": "Saga"
+        },
+        "effect": {
+          "type": "create_tokens",
+          "amount": 1,
+          "tokenName": "Vecino",
+          "tokenStats": {
+            "power": 1,
+            "toughness": 1
+          },
+          "tokenKeywords": [],
+          "image": "token_vecino.png"
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_094",
+    "name": "Pantalla de Salidas",
+    "type": "Encantamiento",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que casteés un hechizo desde el Exilio, Anticipá 1.",
+    "flavorText": "Cada destino cambia antes de que termine de parpadear.",
+    "image": "pantalla_de_salidas.png",
+    "triggers": [
+      {
+        "event": "cast_from_exile",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "scry",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_095",
+    "name": "Mercado de Oportunidades",
+    "type": "Encantamiento",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que juegues una carta desde el Exilio, Mercado de Oportunidades le hace 1 de daño a tu oponente.",
+    "flavorText": "Todo dura hasta que alguien pregunta de dónde salió.",
+    "image": "mercado_de_oportunidades.png",
+    "triggers": [
+      {
+        "event": "card_played_from_exile",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "damage",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_096",
+    "name": "Archivo Provisorio",
+    "type": "Encantamiento",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Siempre que juegues una carta desde el Exilio, ganás 1 vida.",
+    "flavorText": "Provisorio desde hace veinte años, imprescindible desde hace diecinueve.",
+    "image": "archivo_provisorio.png",
+    "triggers": [
+      {
+        "event": "card_played_from_exile",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "heal",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_097",
+    "name": "Feria de Ventana Abierta",
+    "type": "Encantamiento",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Siempre que juegues una carta desde el Exilio, creá una ficha de criatura Vecino 1/1.",
+    "flavorText": "Apenas se abre un hueco, alguien aparece con una mesa plegable.",
+    "image": "feria_de_ventana_abierta.png",
+    "triggers": [
+      {
+        "event": "card_played_from_exile",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "create_tokens",
+          "amount": 1,
+          "tokenName": "Vecino",
+          "tokenStats": {
+            "power": 1,
+            "toughness": 1
+          },
+          "tokenKeywords": [],
+          "image": "token_vecino.png"
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_098",
+    "name": "Calendario de Pared",
+    "type": "Encantamiento",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Siempre que se remueva un contador de Tiempo de una carta en espera que poseés, Anticipá 1.",
+    "flavorText": "Cada día tachado acerca algo. Nadie asegura qué.",
+    "image": "calendario_de_pared.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "counter_removed",
+        "filter": {
+          "owner": "you",
+          "counterType": "time",
+          "metadata": {
+            "suspended": true
+          }
+        },
+        "effect": {
+          "type": "scry",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_099",
+    "name": "Trámite sin Fin",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Siempre que se ponga uno o más contadores de Tiempo sobre una carta en espera que posea un oponente, ese jugador pierde 1 vida y vos ganás 1 vida.",
+    "flavorText": "El formulario vuelve por una ventanilla distinta y cobra peaje en cada vuelta.",
+    "image": "tramite_sin_fin.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "counter_added",
+        "filter": {
+          "owner": "opponent",
+          "counterType": "time",
+          "metadata": {
+            "suspended": true
+          }
+        },
+        "effect": {
+          "type": "drain",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_100",
+    "name": "El Día Finalmente Llega",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "U"
+    ],
+    "text": "Siempre que se remueva el último contador de Tiempo de una carta en espera que poseés, robá una carta.",
+    "flavorText": "El reloj no suena fuerte. El mundo igual cambia de página.",
+    "image": "el_dia_finalmente_llega.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "counter_removed",
+        "filter": {
+          "owner": "you",
+          "counterType": "time",
+          "metadata": {
+            "suspended": true,
+            "lastRemoved": true
+          }
+        },
+        "effect": {
+          "type": "draw",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_101",
+    "name": "Calendario Oficial",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "text": "Al comienzo de tu mantenimiento, remové un contador de Tiempo de una carta en espera que poseés.",
+    "flavorText": "Las fechas oficiales tienen una virtud: alguien puede cambiarlas oficialmente.",
+    "image": "calendario_oficial.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "upkeep_started",
+        "filter": {
+          "activePlayer": "you"
+        },
+        "effect": {
+          "type": "remove_time_counter_suspended",
+          "owner": "self",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_102",
+    "name": "Leyenda Susurrada en la Salamanca",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "G"
+    ],
+    "text": "{2}{B}{G}: Transformá Leyenda Susurrada en la Salamanca.",
+    "flavorText": "Mientras se cuenta en voz baja, sigue siendo apenas una historia.",
+    "image": "leyenda_susurrada_en_la_salamanca.png",
+    "keywords": [],
+    "activatedAbility": {
+      "cost": "{2}{B}{G}",
+      "effect": {
+        "type": "transform"
+      },
+      "requiresTarget": false,
+      "timing": "instant"
+    },
+    "dfc": {
+      "kind": "transform",
+      "backFace": {
+        "name": "La Salamanca Despierta",
+        "type": "Encantamiento",
+        "image": "la_salamanca_despierta.png",
+        "text": "Cuando el relato deja de necesitar narrador, conviene no escuchar el final.",
+        "colors": [
+          "B",
+          "G"
+        ],
+        "keywords": [],
+        "triggers": [
+          {
+            "event": "creature_died",
+            "filter": {
+              "controller": "opponent"
+            },
+            "effect": {
+              "type": "heal",
+              "amount": 1
+            }
+          }
+        ],
+        "activatedAbility": {
+          "cost": "{2}{B}{G}",
+          "effect": {
+            "type": "transform"
+          },
+          "requiresTarget": false,
+          "timing": "instant"
+        }
+      }
+    }
+  },
+  {
+    "id": "ench_103",
+    "name": "Tormenta sobre la Pampa",
+    "type": "Encantamiento",
+    "manaCost": "{2}{U}{R}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "text": "Al comienzo de tu paso final, transformá Tormenta sobre la Pampa.",
+    "flavorText": "El horizonte se oscurece antes de decidir qué clase de cielo será.",
+    "image": "tormenta_sobre_la_pampa.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "end_step_started",
+        "filter": {
+          "activePlayer": "you"
+        },
+        "effect": {
+          "type": "transform"
+        }
+      }
+    ],
+    "dfc": {
+      "kind": "transform",
+      "backFace": {
+        "name": "Cielo Después del Rayo",
+        "type": "Encantamiento",
+        "image": "cielo_despues_del_rayo.png",
+        "text": "La calma nunca es el mismo paisaje que había antes.",
+        "colors": [
+          "U",
+          "R"
+        ],
+        "keywords": [],
+        "triggers": [
+          {
+            "event": "end_step_started",
+            "filter": {
+              "activePlayer": "you"
+            },
+            "effect": {
+              "type": "transform"
+            }
+          },
+          {
+            "event": "permanent_transformed",
+            "filter": {
+              "self": true,
+              "metadata": {
+                "toFace": "back"
+              }
+            },
+            "effect": {
+              "type": "draw",
+              "amount": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "ench_104",
+    "name": "Segunda Naturaleza",
+    "type": "Encantamiento",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Siempre que una criatura que controlás se transforme, poné un contador +1/+1 sobre ella.",
+    "flavorText": "La primera forma aprende. La segunda recuerda.",
+    "image": "segunda_naturaleza.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "permanent_transformed",
+        "filter": {
+          "controller": "you",
+          "cardType": "creature"
+        },
+        "target": "event",
+        "effect": {
+          "type": "add_counter",
+          "counterType": "plusOne",
+          "amount": 1,
+          "targetKind": "creature",
+          "targetController": "self"
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_105",
+    "name": "Archivo de Metamorfosis",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}{B}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Siempre que un permanente que controla un oponente se transforme, Archivo de Metamorfosis hace 1 de daño a ese jugador.",
+    "flavorText": "Cada cambio de identidad deja un expediente. Algunos expedientes muerden.",
+    "image": "archivo_de_metamorfosis.png",
+    "keywords": [],
+    "triggers": [
+      {
+        "event": "permanent_transformed",
+        "filter": {
+          "controller": "opponent"
+        },
+        "effect": {
+          "type": "damage",
+          "amount": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_106",
+    "name": "Club de la Misma Camiseta",
+    "type": "Encantamiento",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Cuando Club de la Misma Camiseta entre al campo de batalla, elegí un tipo de criatura. Las criaturas del tipo elegido que controlás obtienen +0/+1 y tienen Alerta.",
+    "flavorText": "No importa de dónde vinieron. Una vez adentro, todos cuidan la misma puerta.",
+    "image": "club_de_la_misma_camiseta.png",
+    "etbEffect": {
+      "type": "choose_creature_type"
+    },
+    "staticEffects": [
+      {
+        "type": "team_buff",
+        "scope": "own",
+        "powerMod": 0,
+        "toughnessMod": 1,
+        "filter": {
+          "subtype": "$chosen"
+        }
+      },
+      {
+        "type": "team_keyword",
+        "scope": "own",
+        "keyword": "vigilance",
+        "filter": {
+          "subtype": "$chosen"
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_107",
+    "name": "Frecuencia de la Misma Banda",
+    "type": "Encantamiento",
+    "manaCost": "{1}{U}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "text": "Los Músicos que controlás obtienen +1/+0. Tus hechizos de Músico cuestan {1} menos.",
+    "flavorText": "Cuando todos encuentran la misma frecuencia, el barrio entero queda dentro del ensayo.",
+    "image": "frecuencia_de_la_misma_banda.png",
+    "staticEffects": [
+      {
+        "type": "team_buff",
+        "scope": "own",
+        "powerMod": 1,
+        "toughnessMod": 0,
+        "filter": {
+          "subtype": "Músico"
+        }
+      },
+      {
+        "type": "spell_cost_modifier",
+        "mode": "reduce",
+        "scope": "own",
+        "amount": 1,
+        "filter": {
+          "subtype": "Músico"
+        }
+      }
+    ]
+  },
+  {
+    "id": "ench_108",
+    "name": "Santuario de las Ánimas",
+    "type": "Encantamiento",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Los Espíritus que controlás obtienen +1/+0. Siempre que un Espíritu que controlás muera, ganás 1 vida.",
+    "flavorText": "Cada vela tiene un nombre. Algunas siguen ardiendo después de que nadie las recuerda.",
+    "image": "santuario_de_las_animas.png",
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 1,
+      "toughnessMod": 0,
+      "filter": {
+        "subtype": "Espíritu"
+      }
+    },
+    "triggers": [
+      {
+        "event": "creature_died",
+        "filter": {
+          "controller": "you",
+          "subtype": "Espíritu"
+        },
+        "effect": {
+          "type": "heal",
+          "amount": 1
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,2 @@
+RELEASED NOTES — 23.19.4.14
+Commercial Readiness Closure + Clean-room Verification. Final scan closes the five-wave IP hardening program, catches one residual model-name flavor reference, proves structured gameplay identity against 23.19.4.8, preserves the owner-approved 44/44 public terminology, and keeps card images externalized. No gameplay/protocol/Firestore Rules changes.

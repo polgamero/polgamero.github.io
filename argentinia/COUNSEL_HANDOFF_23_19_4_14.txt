@@ -1,0 +1,23 @@
+ARGENTINIA — COUNSEL HANDOFF CHECKLIST · 23.19.4.14
+
+TECHNICAL/IP CLEAN-ROOM COMPLETED
+- 880 canonical card records.
+- 16 previously identified RED identity blockers remediated.
+- 21 previously identified YELLOW metadata flags remediated/genericized.
+- 44/44 public terminology decisions owner-approved and implemented.
+- No deliberate Wizards/MTG references remain in production source.
+- Structured gameplay fingerprint matches pre-remediation 23.19.4.8 baseline.
+- Card art is intentionally external to deliverable ZIPs.
+
+ITEMS FOR PROFESSIONAL LEGAL SIGN-OFF BEFORE PAID LAUNCH
+1. ARGENTINIA word mark/logo: INPI identical + phonetic clearance and filing strategy; expand clearance to launch countries.
+2. Final external art set: creator/source/provenance/license ledger; no unlicensed real-person likenesses, logos, characters, traced photos, third-party trade dress or copyrighted art.
+3. All other shipped assets: fonts, music, SFX, icons, logos and promotional art must have documented commercial-use rights.
+4. Final product UI/card frame: visual trade-dress review against major TCG competitors.
+5. Terms of Service, Privacy Policy, age/minor handling, support/refund/cancellation and Argentine consumer-law compliance.
+6. Paid randomized packs: platform/jurisdiction review and odds disclosure before purchase; do not introduce real-money cash-out/P2P resale without a separate gambling/financial-regulatory analysis.
+7. Marketing copy: position as an independent Argentine fantasy TCG; do not market it as an unofficial/alternative version of another publisher's game.
+
+This checklist intentionally narrows counsel review to residual launch risks rather than asking counsel to rediscover the 880-card audit.
+
+NOTE: This checklist is a technical handoff and not a legal opinion.

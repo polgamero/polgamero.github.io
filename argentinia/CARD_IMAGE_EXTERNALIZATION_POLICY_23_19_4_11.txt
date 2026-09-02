@@ -1,0 +1,9 @@
+ARGENTINIA CARD IMAGE EXTERNALIZATION POLICY — 23.19.4.12
+
+Owner instruction: remove card-image binaries from deliverables and do not include them again in future repo/package zips.
+
+RULES
+- Binary card art and token art under assets/images/cards/*.png|jpg|jpeg|webp|gif|avif are not shipped in deliverables.
+- Card data keeps the public image filenames so the owner can manage assets externally.
+- JSON/TXT metadata inside assets/images/cards may remain for bookkeeping, but no binary card images are bundled.
+- Tests for commercial remediation must validate naming/contracts and tolerate externalized images.

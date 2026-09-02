@@ -1,0 +1,25 @@
+ARGENTINIA 23.19.4.15 — SEMIDIÓS RULES TEXT + CREENCIA UX HOTFIX
+
+STATUS: RELEASED
+POOL: 880
+PROTOCOL: mp-23.19.2
+FIRESTORE RULES: 23.13.79 (unchanged)
+
+BUG FIX
+- Los 8 Semidioses tenían loyaltyAbilities estructuradas pero 7 tenían card.text vacío; el renderer mostraba textbox vacío.
+- El textbox ahora sintetiza y muestra las 3 habilidades de Creencia con coste +N/−N/0, nombre y efecto.
+- Funciona para carta propia/rival y por lo tanto el hover informa las habilidades al oponente.
+- El modal de activación usa el mismo formatter público y deja de duplicar el coste que ya venía embebido en ability.name.
+
+DESIGN CHANGE
+- pw_007 La Negra del Bandoneón Eléctrico pierde su trigger adicional: “Siempre que lances un Instantáneo o Conjuro, Anticipá 1.”
+- Se elimina spellCastTrigger de pw_007. Conserva exactamente sus tres habilidades de Creencia +1/−2/−7.
+- Esto es un nerf deliberado solicitado por el dueño para uniformar los 8 Semidioses.
+
+AUDIT CONTRACT
+- Los 8 Semidioses tienen exactamente 3 loyaltyAbilities.
+- Cada habilidad tiene cost, name, text y effect.
+- Los costes se muestran como +N, −N o 0.
+- Los effect payloads de las 24 habilidades de Creencia no cambian.
+- pw_002 muestra “Anticipá 2.” públicamente, manteniendo effect.type=scry internamente.
+- Card images remain externalized from deliverables.

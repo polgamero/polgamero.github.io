@@ -1,0 +1,98 @@
+ARGENTINIA v23.19.5 — ECONOMY AUTHORITY FOUNDATION + SECURE ACCOUNT BOOTSTRAP
+STATUS: RELEASE CANDIDATE (RC2) pending rerun of real Firebase Emulator Gate after trusted Deck Intelligence hardening
+BASELINE: v23.19.4.15 RELEASED
+
+GOAL
+Move Argentinia toward a server-authoritative economy without changing gameplay, pool, prices or rewards in this Foundation wave. The browser sends intent; trusted Cloud Functions + Admin SDK become the target authority.
+
+NEW ECONOMY PROTOCOL
+- ENGINE_VERSION: 23.19.5
+- Multiplayer protocol: mp-23.19.2 (UNCHANGED)
+- Economy protocol: econ-23.19.5 (NEW, independent from multiplayer)
+- Economy schema: 1
+- Functions region: southamerica-east1 (same region as Firestore default)
+- Firestore Rules: 23.13.79 (UNCHANGED in this RC)
+- Pool: 880 (UNCHANGED)
+
+BACKEND FOUNDATION
+functions/src/index.js
+functions/src/shared/auth.js
+functions/src/shared/canonical.js
+functions/src/shared/constants.js
+functions/src/shared/errors.js
+functions/src/shared/firestore.js
+functions/src/shared/rateLimit.js
+functions/src/economy/config.js
+functions/src/economy/operationLedger.js
+functions/src/economy/accounts.js
+functions/src/economy/usernames.js
+functions/src/trusted/cardCatalog.js
+functions/src/trusted/deckIntelligence.js
+functions/src/trusted/cards/*.json
+
+CALLABLES
+- economyStatus
+- economyBootstrapAccount
+- economyCompleteStarterDeck
+- economyGetOperation
+
+TRUST MODEL
+- UID is derived only from authenticated request.auth.uid.
+- Client-supplied authority fields (uid, points, fichas, collection, decks, inventory, enhancements, starterCardIds, cardIds) are rejected in bootstrap/starter calls.
+- Initial account balances and empty economic state are created server-side.
+- Initial starter contents are generated server-side from an exact trusted snapshot of the 880-card pool + Deck Intelligence.
+- Client may choose only the allowed starter color identity (1 or 2 colors).
+
+IDEMPOTENCY
+Every mutation uses a stable operationId and economyOperations/{uid}_{operationId} receipt.
+- same operationId + same normalized payload => exact committed result is returned (replay)
+- same operationId + different payload/type => OPERATION_ID_PAYLOAD_MISMATCH
+- operation receipt records engine/economy protocol/schema + trusted result.
+- committed receipt recovery remains available even if the economy kill switch is later disabled.
+
+ROLLOUT
+Client understands three states:
+- shadow: legacy production behavior; Functions are not required.
+- server_preferred: Functions first, temporary legacy fallback.
+- server_required: Functions required; failure is fail-closed.
+Default when gameConfig/economy does not exist is shadow.
+
+APP CHECK
+Web App Check uses reCAPTCHA Enterprise.
+- Site key is public client configuration.
+- token auto-refresh enabled.
+- localhost is skipped unless explicit debug mode is requested.
+- Foundation backend has enforceAppCheck=false (OBSERVE ONLY).
+This is intentional. First deploy client + Functions, observe App Check metrics, then enforce product-by-product in a later controlled step.
+
+COST-SAFETY CONTRACT
+Operator-side controls already configured before this RC:
+- Google Cloud budget: USD 5/month
+- alerts: 20%, 40%, 60%, 80%, 100%
+- Cloud Run Functions Spend Cap: USD 5
+Code-side controls:
+- region southamerica-east1
+- minInstances=0
+- maxInstances=1
+- concurrency=10
+- timeout=30s
+- memory=256MiB
+- authenticated callables only
+- in-memory zero-Firestore-cost per-UID throttles before DB access
+- gameConfig/economy.enabled kill switch for NEW mutations
+- server_required is fail-closed
+
+IMPORTANT
+The budget/spend-cap settings live in Google Cloud, not in source code. Do not infer they exist merely from this package on another Firebase project.
+
+RC2 STABILIZATION NOTE
+The original Foundation Emulator Gate already passed on the owner machine and the first four Functions were deployed successfully. RC2 changes the trusted starter Deck Intelligence copy, so the Emulator Gate and Functions deploy must be rerun before final RELEASED promotion.
+
+WHAT IS NOT MIGRATED YET
+Packs, chest/mythic, store, craft, prebuilt, classifieds, rename, Daily Rewards, match settlement, Admin economy and final Firestore write firewall remain on the 23.19.5.1–23.19.5.6 roadmap. This Foundation does not pretend they are already server-authoritative.
+
+PRODUCTION DEPLOY POLICY
+Do not deploy this RC until the included real Emulator Gate prints:
+ECONOMY_AUTHORITY_FOUNDATION_23_19_5_EMULATOR_OK
+
+Card-image binaries remain externalized and are not included in deliverables.

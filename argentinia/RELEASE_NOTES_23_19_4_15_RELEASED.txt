@@ -1,0 +1,12 @@
+ARGENTINIA 23.19.4.15 — RELEASED
+Semidiós Rules Text + Creencia UX Hotfix
+
+- Los 8 Semidioses muestran sus 3 habilidades de Creencia directamente en el textbox de carta.
+- Cada fila visible incluye coste +N/−N/0, nombre y efecto; funciona también en carta rival/hover.
+- El modal de activación reutiliza el mismo formatter público y ya no duplica el coste dentro del nombre.
+- La Bruja del Puerto muestra Anticipá 2 públicamente; effect.type=scry permanece interno e intacto.
+- La Negra del Bandoneón Eléctrico pierde el trigger adicional de Instantáneo/Conjuro por decisión de diseño del dueño.
+- Sus tres habilidades de Creencia +1/−2/−7 permanecen intactas.
+- Los 24 payloads de habilidades de Creencia conservan exactamente sus mecánicas respecto de 23.19.4.14.
+- Pool 880, protocolo mp-23.19.2, Firestore Rules 23.13.79 sin cambios.
+- Card-image binaries continúan externalizados de los entregables.

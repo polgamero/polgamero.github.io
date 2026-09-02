@@ -8760,6 +8760,20 @@ export function canActivateLocalManaAbility(item) {
 
 function produceManaFromSource(item, isLocal, chosenType) {
   if (!item?.card || !canActivateManaSourcePermanent(item, { hasHaste: getEffectiveKeywords(item).some(k => String(k).toLowerCase() === 'haste'), ability: effectiveManaAbilityForItem(item, isLocal) })) return false;
+
+  // 23.19.5 RC2 — usar una man-land para pagar SU propia animación es legal, pero el resultado
+  // sorprende: la fuente se gira para producir maná y luego la habilidad la convierte en una
+  // criatura ya girada. No cambiamos reglas; damos una confirmación previa, una sola vez por
+  // intento de activación, antes de tocar mana pool/tap/telemetría.
+  const pendingAbility = state.pendingAbilitySource;
+  const selfPayingAnimation = isLocal && !!state.pendingCost && pendingAbility?.item === item &&
+    pendingAbility?.ability?.effect?.type === 'animate_land' && manaSourceRequiresTapEffective(item, true) && !item.tapped;
+  if (selfPayingAnimation && pendingAbility.selfManaWarningAccepted !== true) {
+    const accepted = window.confirm(gameText('land.animate.selfManaWarning', { card:item.card.name }));
+    if (!accepted) return false;
+    pendingAbility.selfManaWarningAccepted = true;
+  }
+
   const options = manaSourceOptions(item, isLocal);
   const type = chosenType || (options.length === 1 ? options[0] : null);
   if (!type || !options.includes(type)) return false;

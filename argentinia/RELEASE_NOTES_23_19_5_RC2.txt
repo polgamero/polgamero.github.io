@@ -1,0 +1,14 @@
+ARGENTINIA v23.19.5 RC2 — Economy Authority Foundation + Deck/Admin/Land UX Stabilization
+
+- Keeps the 23.19.5 Economy Authority Foundation in shadow / App Check observe-only.
+- Fixes pathological Tano/starter deck construction by adding hard per-archetype creature floors and Vehicle caps.
+- Utility permanents no longer count as `threat` only because they are permanents.
+- Frontend and server-trusted Deck Intelligence are byte-identical; internal version 23.19.5-rc2.
+- Fixes ~50 second Admin freeze: Game Texts, user profile loading and Campaigns are lazy; Game Text row lookup changes from repeated full-catalog rebuilds to one Map per render.
+- Adds explicit warning before a man-land is used to pay its own animation cost; rules remain unchanged.
+- New QA contract: test_rc2_deck_admin_land_23_19_5.mjs.
+- 105/105 test_*.mjs PASS; heavy Stability / Headless / Multiplayer labs PASS.
+- Game Text: 1243 definitions / 1010 runtime literal uses PASS.
+- Pool 880; multiplayer protocol mp-23.19.2; economy protocol econ-23.19.5; Rules 23.13.79.
+- Card-image binaries remain externalized.
+- RC2 is NOT RELEASED until the included Auth + Firestore + Functions Emulator Gate is rerun against the updated trusted Functions copy and passes.

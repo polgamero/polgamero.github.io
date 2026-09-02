@@ -1,0 +1,18 @@
+VISUAL ACCEPTANCE — 23.19.4.12
+
+Wave 1: 16/16 CLEAN-ROOM ART ACCEPTED.
+- All files are PNG 1448x1086, exact 4:3.
+- No obvious direct likeness, third-party character, sports mark, vehicle mark or original blocked identity remains visible.
+- Final commercial provenance/counsel review remains a separate launch gate.
+
+Supplemental 10: 10/10 technically accepted as card art.
+- Jefa de Señalamiento Ferroviario: visual pass.
+- Murguera de Boedo: visual pass.
+- Operador del Centro de Monitoreo: visual pass; existing terminology clean-room status remains.
+- Motoquero del Último Turno: visual pass; existing terminology clean-room status remains.
+- Mensajero de Última Hora: visual pass.
+- Molino Caminante de la Pampa: visual pass.
+- Mecánico de Taller Nocturno: visual pass.
+- Mensajero de la Autopista: visual pass.
+- Inspectora de Consorcio: visual pass.
+- crea_292 (legacy place-name flag): visual itself passes; public real-place naming remains YELLOW for Wave 3.

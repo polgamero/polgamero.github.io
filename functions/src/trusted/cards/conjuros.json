@@ -1,0 +1,2414 @@
+[
+  {
+    "id": "conj_001",
+    "name": "Choripán de Costanera",
+    "type": "Conjuro",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Ganás 3 Puntos de Vida.",
+    "flavorText": "Infaltable a la salida de la cancha.",
+    "requiresTarget": false,
+    "image": "choripan.png",
+    "effect": {
+      "type": "heal",
+      "amount": 3
+    }
+  },
+  {
+    "id": "conj_002",
+    "name": "La Picadita",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Robá dos cartas.",
+    "flavorText": "Para picar mientras esperamos el asado.",
+    "requiresTarget": false,
+    "image": "picadita.png",
+    "effect": {
+      "type": "draw",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_003",
+    "name": "Fin de Año",
+    "type": "Conjuro",
+    "manaCost": "{1}{R}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Causa 3 de daño al jugador o criatura objetivo.",
+    "flavorText": "Luces y estruendos en todo el barrio.",
+    "requiresTarget": true,
+    "image": "festejos.png",
+    "effect": {
+      "type": "damage",
+      "amount": 3
+    }
+  },
+  {
+    "id": "conj_004",
+    "name": "Piquete Nacional",
+    "type": "Conjuro",
+    "manaCost": "{2}{R}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Causa 4 de daño al jugador o criatura objetivo.",
+    "flavorText": "Corte total en la autopista.",
+    "requiresTarget": true,
+    "image": "piquete.png",
+    "effect": {
+      "type": "damage",
+      "amount": 4
+    }
+  },
+  {
+    "id": "conj_005",
+    "name": "Dólar Blue Desbocado",
+    "type": "Conjuro",
+    "manaCost": "{3}{B}{R}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "R"
+    ],
+    "text": "Causa 5 de daño al jugador o criatura objetivo.",
+    "flavorText": "¡Subió otro escalón!",
+    "requiresTarget": true,
+    "image": "dolar_blue.png",
+    "effect": {
+      "type": "damage",
+      "amount": 5
+    }
+  },
+  {
+    "id": "conj_006",
+    "name": "Tormenta Santa Rosa",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Robá tres cartas.",
+    "flavorText": "Llega puntual a fines de agosto.",
+    "requiresTarget": false,
+    "image": "santa_rosa.png",
+    "effect": {
+      "type": "draw",
+      "amount": 3
+    }
+  },
+  {
+    "id": "conj_007",
+    "name": "Asadito con amigos",
+    "type": "Conjuro",
+    "manaCost": "{4}{W}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Ganás 8 Puntos de Vida.",
+    "flavorText": "Sobró achura para toda la semana.",
+    "requiresTarget": false,
+    "image": "asado.png",
+    "effect": {
+      "type": "heal",
+      "amount": 8
+    }
+  },
+  {
+    "id": "conj_008",
+    "name": "Cacerolazo General",
+    "type": "Conjuro",
+    "manaCost": "{3}{B}{B}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Destruye todas las criaturas en el campo de batalla.",
+    "flavorText": "Cuando el pueblo sale a la calle con la cacerola, no queda títere con cabeza.",
+    "requiresTarget": false,
+    "image": "cacerolazo.png",
+    "effect": {
+      "type": "destroy_all_creatures"
+    }
+  },
+  {
+    "id": "conj_009",
+    "name": "Vecinos en Asamblea",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Creás dos fichas de criatura 1/1 Vecino Movilizado.",
+    "flavorText": "La cuadra entera se junta a discutir el problema... y a resolverlo a los codazos.",
+    "requiresTarget": false,
+    "image": "asamblea.png",
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenName": "Vecino Movilizado",
+      "image": "vecino.png",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": []
+    }
+  },
+  {
+    "id": "conj_010",
+    "name": "Cuarentena Total",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}{W}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Las criaturas del jugador objetivo no pueden atacar en su próximo turno.",
+    "flavorText": "Quedate en tu casa, no se puede circular.",
+    "requiresTarget": true,
+    "image": "cuarentena.png",
+    "effect": {
+      "type": "prevent_attack",
+      "duration": "next_turn"
+    }
+  },
+  {
+    "id": "conj_011",
+    "name": "Vuelto en Mano",
+    "type": "Conjuro",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Volvé la criatura objetivo a la mano de su dueño.",
+    "flavorText": "Éste no era el cambio que pediste, andate por donde viniste.",
+    "requiresTarget": true,
+    "image": "vuelto.png",
+    "effect": {
+      "type": "bounce"
+    }
+  },
+  {
+    "id": "conj_012",
+    "name": "Corralito",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "El jugador objetivo descarta 2 cartas.",
+    "flavorText": "Tu plata quedó atrapada del otro lado del mostrador.",
+    "requiresTarget": true,
+    "image": "corralito.png",
+    "effect": {
+      "type": "discard",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_013",
+    "name": "Yuyo del Loco",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}{B}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Destruí la criatura objetivo.",
+    "flavorText": "Un té mal preparado y no contás el cuento.",
+    "requiresTarget": true,
+    "image": "yuyo_del_loco.png",
+    "effect": {
+      "type": "destroy_creature"
+    }
+  },
+  {
+    "id": "conj_014",
+    "name": "Vela a la Difunta Correa",
+    "type": "Conjuro",
+    "manaCost": "{3}{B}{B}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Devolvé una criatura de tu cementerio al campo de batalla.",
+    "flavorText": "Le prendés una vela y te devuelve el favor desde el más allá.",
+    "requiresTarget": false,
+    "image": "difunta_correa.png",
+    "effect": {
+      "type": "reanimate",
+      "amount": 1
+    }
+  },
+  {
+    "id": "conj_015",
+    "name": "Siembra de Otoño",
+    "type": "Conjuro",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá una tierra básica en tu mazo y ponela en el campo de batalla.",
+    "flavorText": "El campo siempre da una mano más.",
+    "requiresTarget": false,
+    "image": "siembra_otono.png",
+    "effect": {
+      "type": "ramp",
+      "amount": 1
+    }
+  },
+  {
+    "id": "conj_016",
+    "name": "Yuyerío Salvaje",
+    "type": "Conjuro",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Destruí el encantamiento objetivo.",
+    "flavorText": "La maleza no respeta bendiciones ni maleficios.",
+    "requiresTarget": true,
+    "image": "yuyerio.png",
+    "effect": {
+      "type": "destroy_enchantment"
+    }
+  },
+  {
+    "id": "conj_017",
+    "name": "Piedrazo a la Vidriera",
+    "type": "Conjuro",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Destruí el artefacto objetivo.",
+    "flavorText": "A veces el mensaje se manda con una piedra.",
+    "requiresTarget": true,
+    "image": "piedrazo.png",
+    "effect": {
+      "type": "destroy_artifact"
+    }
+  },
+  {
+    "id": "conj_018",
+    "name": "Corriente de Datos",
+    "type": "Conjuro",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Robás dos cartas.",
+    "flavorText": "La información siempre termina llegando a quien sabe esperar.",
+    "requiresTarget": false,
+    "image": "corriente_datos.png",
+    "effect": {
+      "type": "draw",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_019",
+    "name": "Espejismo Colectivo",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Exilia a la criatura objetivo. Devolvela al campo de batalla bajo el control de su dueño al comienzo del próximo Paso Final de su controlador.",
+    "flavorText": "Un instante desaparece del barrio entero. Después, nadie recuerda haber visto nada raro.",
+    "requiresTarget": true,
+    "image": "espejismo_colectivo.png",
+    "effect": {
+      "type": "exile_and_return"
+    }
+  },
+  {
+    "id": "conj_020",
+    "name": "Saqueo entre Ruinas",
+    "type": "Conjuro",
+    "manaCost": "{1}{B}{R}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "R"
+    ],
+    "text": "Le hace 4 de daño a cualquier objetivo.",
+    "flavorText": "Entre los escombros siempre queda algo para llevarse.",
+    "requiresTarget": true,
+    "image": "saqueo_ruinas.png",
+    "effect": {
+      "type": "damage",
+      "amount": 4
+    }
+  },
+  {
+    "id": "conj_021",
+    "name": "Invocación de Urgencia",
+    "type": "Conjuro",
+    "manaCost": "{4}{R}{R}",
+    "cmc": 6,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Podés pagar 6 Puntos de Vida en vez del costo de maná de este hechizo. Le hace 5 de daño a cualquier objetivo.",
+    "flavorText": "Cuando no hay tiempo para juntar el mango, se paga con lo que hay.",
+    "requiresTarget": true,
+    "image": "invocacion_urgencia.png",
+    "alternativeCost": {
+      "type": "life",
+      "amount": 6
+    },
+    "effect": {
+      "type": "damage",
+      "amount": 5
+    }
+  },
+  {
+    "id": "conj_024",
+    "name": "El equipo sale a la cancha",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Creás dos fichas de criatura 1/1 Jugador Libre.",
+    "flavorText": "Se terminó el contrato, están enojados y con ganas de pelear.",
+    "requiresTarget": false,
+    "image": "equipo_cancha.png",
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenName": "Jugador Libre",
+      "image": "jugador_libre.png",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": []
+    }
+  },
+  {
+    "id": "conj_022",
+    "name": "Bendición de la vieja",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Ganás 5 Puntos de Vida.",
+    "flavorText": "A veces alcanza con que alguien te desee lo mejor.",
+    "requiresTarget": false,
+    "image": "bendicion_vieja.png",
+    "effect": {
+      "type": "heal",
+      "amount": 5
+    }
+  },
+  {
+    "id": "conj_023",
+    "name": "Estampida Verde",
+    "type": "Conjuro",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "La criatura objetivo que controlás obtiene +4/+4 hasta el final del turno.",
+    "flavorText": "Cuando arranca la estampida, no hay cerco que la frene.",
+    "requiresTarget": true,
+    "image": "estampida_verde.png",
+    "effect": {
+      "type": "pump",
+      "powerMod": 4,
+      "toughnessMod": 4
+    }
+  },
+  {
+    "id": "conj_025",
+    "name": "No hay Pacto sin Sangre",
+    "type": "Conjuro",
+    "manaCost": "{3}{B}{B}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Podés pagar {1} y 4 Puntos de Vida en vez del costo de maná de este hechizo. El jugador rival pierde 3 Puntos de Vida y vos ganás 3.",
+    "flavorText": "La sangre corta siempre alcanza para algo.",
+    "requiresTarget": false,
+    "image": "pacto_con_sangre.png",
+    "alternativeCost": {
+      "type": "hybrid",
+      "manaCost": "{1}",
+      "life": 4
+    },
+    "effect": {
+      "type": "drain",
+      "amount": 3
+    }
+  },
+  {
+    "id": "conj_026",
+    "name": "Asamblea de Vecinos",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}{W}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "modal": true,
+    "text": "Elegí uno — • Ganás 4 Puntos de Vida. • Creás dos fichas de criatura 1/1 Vecino Movilizado. • Destruye el artefacto objetivo.",
+    "flavorText": "La cuadra siempre tiene tres formas de resolver un problema.",
+    "image": "asamblea_vecinos.png",
+    "modes": [
+      {
+        "text": "Ganás 4 Puntos de Vida.",
+        "effect": {
+          "type": "heal",
+          "amount": 4
+        },
+        "requiresTarget": false
+      },
+      {
+        "text": "Creás dos fichas de criatura 1/1 Vecino Movilizado.",
+        "effect": {
+          "type": "create_tokens",
+          "amount": 2,
+          "tokenName": "Vecino Movilizado",
+          "image": "vecino.png",
+          "tokenStats": {
+            "power": 1,
+            "toughness": 1
+          },
+          "tokenKeywords": []
+        },
+        "requiresTarget": false
+      },
+      {
+        "text": "Destruye el artefacto objetivo.",
+        "effect": {
+          "type": "destroy_artifact"
+        },
+        "requiresTarget": true
+      }
+    ]
+  },
+  {
+    "id": "conj_027",
+    "name": "Justicia Impartida",
+    "type": "Conjuro",
+    "manaCost": "{1}{W}{U}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "U"
+    ],
+    "multiTarget": true,
+    "text": "Destruye el artefacto objetivo. Destruye el encantamiento objetivo.",
+    "flavorText": "Uno se ocupa de la máquina, el otro del hechizo — nadie se salva de los dos.",
+    "image": "justicia_impartida.png",
+    "targets": [
+      {
+        "effect": {
+          "type": "destroy_artifact"
+        }
+      },
+      {
+        "effect": {
+          "type": "destroy_enchantment"
+        }
+      }
+    ]
+  },
+  {
+    "id": "conj_028",
+    "name": "Instinto de Cacería",
+    "type": "Conjuro",
+    "manaCost": "{X}{G}",
+    "cmc": 1,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "La criatura objetivo que controlás obtiene +X/+X hasta el final del turno.",
+    "flavorText": "Cuanto más hambre junta, más grande se pone.",
+    "requiresTarget": true,
+    "image": "instinto_caceria.png",
+    "effect": {
+      "type": "pump",
+      "powerMod": "X",
+      "toughnessMod": "X"
+    }
+  },
+  {
+    "id": "conj_029",
+    "name": "Purga del Pantano",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "G"
+    ],
+    "multiTarget": true,
+    "text": "Destruye la criatura objetivo. Exiliá el cementerio del jugador objetivo.",
+    "flavorText": "No alcanza con matarlo. Hay que asegurarse de que no vuelva nunca más.",
+    "image": "purga_pantano.png",
+    "targets": [
+      {
+        "effect": {
+          "type": "destroy_creature"
+        }
+      },
+      {
+        "effect": {
+          "type": "exile_graveyard"
+        }
+      }
+    ]
+  },
+  {
+    "id": "conj_030",
+    "name": "Injerto de Ceibo",
+    "type": "Conjuro",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "La criatura objetivo que controlás recibe un contador +1/+1.",
+    "flavorText": "El ceibo prende de cualquier gajo, si lo plantás con ganas.",
+    "requiresTarget": true,
+    "image": "injerto_ceibo.png",
+    "effect": {
+      "type": "add_counter",
+      "counterType": "plusOne",
+      "amount": 1
+    }
+  },
+  {
+    "id": "conj_031",
+    "name": "Flores en la Vereda",
+    "type": "Conjuro",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Ganás 4 Puntos de Vida.",
+    "flavorText": "Nadie sabe quién las dejó, pero todos saben para quién eran.",
+    "requiresTarget": false,
+    "image": "flores_vereda.png",
+    "effect": {
+      "type": "heal",
+      "amount": 4
+    }
+  },
+  {
+    "id": "conj_032",
+    "name": "Planos del Puerto",
+    "type": "Conjuro",
+    "manaCost": "{1}{U}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Chusmeá 2.",
+    "flavorText": "Hay muelles que sólo aparecen en los mapas viejos.",
+    "requiresTarget": false,
+    "image": "planos_puerto.png",
+    "effect": {
+      "type": "surveil",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_033",
+    "name": "Fumigación del Bañado",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Amplificá.",
+    "flavorText": "Una nube baja pasa sobre el agua. Después todo tiene una marca más.",
+    "requiresTarget": false,
+    "image": "fumigacion_banado.png",
+    "effect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "conj_034",
+    "name": "Deuda Vencida",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "El jugador rival pierde 2 Puntos de Vida y vos ganás 2.",
+    "flavorText": "Cuando llega el tercero del mes, hasta la sombra pasa a cobrar.",
+    "requiresTarget": false,
+    "image": "deuda_vencida.png",
+    "effect": {
+      "type": "drain",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_035",
+    "name": "Se Armó",
+    "type": "Conjuro",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Creás dos fichas de criatura 1/1 Pibe de la Esquina con Apuro.",
+    "flavorText": "Uno gritó desde la otra cuadra y aparecieron cinco.",
+    "requiresTarget": false,
+    "image": "se_armo.png",
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenName": "Pibe de la Esquina",
+      "image": "token_pibe_esquina.png",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": [
+        "haste"
+      ]
+    }
+  },
+  {
+    "id": "conj_036",
+    "name": "Fogonazo de Taller",
+    "type": "Conjuro",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Le hacés 3 de daño a cualquier objetivo.",
+    "flavorText": "Nadie encontró el matafuego porque estaba atrás de las cubiertas.",
+    "requiresTarget": true,
+    "image": "fogonazo_taller.png",
+    "effect": {
+      "type": "damage",
+      "amount": 3
+    }
+  },
+  {
+    "id": "conj_037",
+    "name": "Engorde de Invierno",
+    "type": "Conjuro",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "La criatura objetivo que controlás recibe dos contadores +1/+1.",
+    "flavorText": "Con frío come el doble. Con primavera se nota.",
+    "requiresTarget": true,
+    "image": "engorde_invierno.png",
+    "effect": {
+      "type": "add_counter",
+      "counterType": "plusOne",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_038",
+    "name": "Abrir el Surco",
+    "type": "Conjuro",
+    "manaCost": "{5}{G}",
+    "cmc": 6,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá hasta dos tierras básicas en tu mazo y ponelas en el campo de batalla.",
+    "flavorText": "Primero pasa el arado. Después aparece el futuro.",
+    "requiresTarget": false,
+    "image": "abrir_surco.png",
+    "effect": {
+      "type": "ramp",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_039",
+    "name": "Olla Popular",
+    "type": "Conjuro",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Creá tres fichas de criatura Vecino 1/1.",
+    "flavorText": "Con una olla grande alcanza para que aparezca todo el barrio.",
+    "image": "olla_popular.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 3,
+      "tokenName": "Vecino",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": [],
+      "image": "token_vecino.png"
+    }
+  },
+  {
+    "id": "conj_040",
+    "name": "Archivo Desclasificado",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Robá dos cartas.",
+    "flavorText": "El sello decía confidencial. Nadie dijo hasta cuándo.",
+    "image": "archivo_desclasificado.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "draw",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_041",
+    "name": "Turno en la Morgue",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Devolvé una criatura de tu cementerio a tu mano.",
+    "flavorText": "Los que llegan temprano eligen primero qué recuerdo se llevan.",
+    "image": "turno_morgue.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "return_from_graveyard",
+      "filter": "creature",
+      "amount": 1
+    }
+  },
+  {
+    "id": "conj_042",
+    "name": "Limpieza del Baldío",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "El jugador rival sacrifica una criatura.",
+    "flavorText": "Al amanecer sólo quedan las marcas de las ruedas.",
+    "image": "limpieza_baldio.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "sacrifice",
+      "target": "opponent_creature",
+      "amount": 1
+    }
+  },
+  {
+    "id": "conj_043",
+    "name": "Apagón Programado",
+    "type": "Conjuro",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Destruye el Artefacto objetivo.",
+    "flavorText": "La cuadrilla avisó. Nadie creyó que hablaba en serio.",
+    "image": "apagon_programado.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "destroy_artifact"
+    }
+  },
+  {
+    "id": "conj_044",
+    "name": "Cenizas al Viento",
+    "type": "Conjuro",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Hacé 4 de daño al objetivo.",
+    "flavorText": "El humo se fue. El problema quedó.",
+    "image": "cenizas_al_viento.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "damage",
+      "amount": 4
+    }
+  },
+  {
+    "id": "conj_045",
+    "name": "Desmonte con Permiso",
+    "type": "Conjuro",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá hasta dos tierras básicas en tu mazo y ponelas en el campo de batalla.",
+    "flavorText": "El papel tiene tres sellos. El monte, varios siglos.",
+    "image": "desmonte_con_permiso.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "ramp",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_046",
+    "name": "Siembra de Emergencia",
+    "type": "Conjuro",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Creá dos fichas de criatura Brote 2/2.",
+    "flavorText": "Si hay tierra y queda una tarde, alcanza.",
+    "image": "siembra_emergencia.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenName": "Brote",
+      "tokenStats": {
+        "power": 2,
+        "toughness": 2
+      },
+      "tokenKeywords": [],
+      "image": "token_brote.png"
+    }
+  },
+  {
+    "id": "conj_047",
+    "name": "Procesión de Madrugada",
+    "type": "Conjuro",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Creá dos fichas de criatura Promesero 1/1 con Absorción.",
+    "flavorText": "A esa hora la calle todavía es noche, pero ya viene llena.",
+    "image": "procesion_de_madrugada.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenName": "Promesero",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": [
+        "lifelink"
+      ],
+      "image": "token_promesero.png"
+    }
+  },
+  {
+    "id": "conj_048",
+    "name": "Operativo de Rescate",
+    "type": "Conjuro",
+    "manaCost": "{4}{W}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Devolvé hasta dos criaturas de tu cementerio a tu mano.",
+    "flavorText": "Primero se cuenta a los que volvieron. Después se pregunta cómo.",
+    "image": "operativo_de_rescate.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "return_from_graveyard",
+      "filter": "creature",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_049",
+    "name": "Mapa de Corrientes",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Anticipá 3.",
+    "flavorText": "Los remolinos también son caminos si alguien se toma el trabajo de dibujarlos.",
+    "image": "mapa_de_corrientes.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "scry",
+      "amount": 3
+    }
+  },
+  {
+    "id": "conj_050",
+    "name": "Reabrir el Caso",
+    "type": "Conjuro",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Devolvé hasta dos Instantáneos de tu cementerio a tu mano.",
+    "flavorText": "Archivado no significa terminado.",
+    "image": "reabrir_el_caso.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "return_from_graveyard",
+      "filter": "instant",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_051",
+    "name": "Fosa Común",
+    "type": "Conjuro",
+    "manaCost": "{3}{B}",
+    "cmc": 4,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "El jugador rival sacrifica una criatura.",
+    "flavorText": "La tierra no pregunta quién llegó primero.",
+    "image": "fosa_comun.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "sacrifice",
+      "target": "opponent_creature",
+      "amount": 1
+    }
+  },
+  {
+    "id": "conj_052",
+    "name": "Turno de Exhumación",
+    "type": "Conjuro",
+    "manaCost": "{5}{B}{B}",
+    "cmc": 7,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Reanimá hasta dos criaturas de tu cementerio.",
+    "flavorText": "Hay noches en que el cementerio cambia de turno.",
+    "image": "turno_de_exhumacion.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "reanimate",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_053",
+    "name": "Incendio del Galpón",
+    "type": "Conjuro",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Destruye el Artefacto objetivo. Otra vuelta {5}{R}.",
+    "flavorText": "Cuando llegaron los bomberos, las máquinas ya eran siluetas negras.",
+    "image": "incendio_del_galpon.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "destroy_artifact"
+    },
+    "flashback": {
+      "cost": "{5}{R}"
+    }
+  },
+  {
+    "id": "conj_054",
+    "name": "Banda de Bombos",
+    "type": "Conjuro",
+    "manaCost": "{4}{R}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Creá tres fichas de criatura Murguero 1/1 con Apuro.",
+    "flavorText": "Entran desordenados y salen siendo una sola cosa.",
+    "image": "banda_de_bombos.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 3,
+      "tokenName": "Murguero",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": [
+        "haste"
+      ],
+      "image": "token_murguero.png"
+    }
+  },
+  {
+    "id": "conj_055",
+    "name": "Abrir Picada",
+    "type": "Conjuro",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá una tierra básica en tu mazo y ponela en el campo de batalla.",
+    "flavorText": "Primero pasa el machete. Después aparece el camino.",
+    "image": "abrir_picada.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "ramp",
+      "amount": 1
+    }
+  },
+  {
+    "id": "conj_056",
+    "name": "Reforestar la Banquina",
+    "type": "Conjuro",
+    "manaCost": "{5}{G}",
+    "cmc": 6,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Creá tres fichas de criatura Brote 2/2.",
+    "flavorText": "Donde hubo polvo, al año siguiente hubo sombra.",
+    "image": "reforestar_la_banquina.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 3,
+      "tokenName": "Brote",
+      "tokenStats": {
+        "power": 2,
+        "toughness": 2
+      },
+      "tokenKeywords": [],
+      "image": "token_brote.png"
+    }
+  },
+  {
+    "id": "conj_057",
+    "name": "Vigilia de los Ausentes",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}{B}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W",
+      "B"
+    ],
+    "text": "Reanimá una criatura de tu cementerio.",
+    "flavorText": "Dejan una silla vacía por respeto. A veces la silla deja de estar vacía.",
+    "image": "vigilia_de_los_ausentes.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "reanimate",
+      "amount": 1
+    }
+  },
+  {
+    "id": "conj_058",
+    "name": "Arreo Salvaje",
+    "type": "Conjuro",
+    "manaCost": "{3}{R}{G}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "R",
+      "G"
+    ],
+    "text": "Creá dos fichas de criatura Toro 3/3 con Arrolla.",
+    "flavorText": "El alambrado parecía una sugerencia.",
+    "image": "arreo_salvaje.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenName": "Toro",
+      "tokenStats": {
+        "power": 3,
+        "toughness": 3
+      },
+      "tokenKeywords": [
+        "trample"
+      ],
+      "image": "token_toro.png"
+    }
+  },
+  {
+    "id": "conj_059",
+    "name": "Allanamiento de Madrugada",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Mirá la mano del jugador rival. Elegí una carta que no sea tierra. Ese jugador descarta esa carta.",
+    "flavorText": "La puerta cedió antes que la excusa.",
+    "image": "allanamiento_de_madrugada.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "hand",
+      "amount": 1,
+      "visibility": "reveal_candidates",
+      "destination": "graveyard",
+      "range": "all",
+      "filter": "nonland",
+      "target": "opponent_player"
+    }
+  },
+  {
+    "id": "conj_060",
+    "name": "Archivo Clasificado",
+    "type": "Conjuro",
+    "manaCost": "{3}{U}{B}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "text": "Mirá las cinco primeras cartas del mazo del jugador rival. Elegí dos. Exiliá esas cartas.",
+    "flavorText": "Dos páginas bastaron para cambiar la versión oficial.",
+    "image": "archivo_clasificado.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "deck",
+      "amount": 2,
+      "visibility": "reveal_candidates",
+      "destination": "exile",
+      "range": "top_n",
+      "rangeCount": 5,
+      "filter": "any",
+      "target": "opponent_player"
+    }
+  },
+  {
+    "id": "conj_061",
+    "name": "Al Fondo del Cajón",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Mirá la mano del jugador rival. Elegí una carta de ella. Poné esa carta en el fondo de su mazo.",
+    "flavorText": "No desapareció. Quedó donde nadie la iba a buscar pronto.",
+    "image": "al_fondo_del_cajon.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "private_zone_move",
+      "zone": "hand",
+      "amount": 1,
+      "visibility": "reveal_candidates",
+      "destination": "bottom",
+      "range": "all",
+      "filter": "any",
+      "target": "opponent_player"
+    }
+  },
+  {
+    "id": "conj_062",
+    "name": "Tamales para los Difuntos",
+    "type": "Conjuro",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Creá dos fichas de criatura Vecino del Velorio 1/1.",
+    "flavorText": "Se sirven calientes. Nadie pregunta para quién quedó el tercer plato.",
+    "image": "tamales_para_los_difuntos.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenName": "Vecino del Velorio",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": [],
+      "image": "token_vecino_velorio.png"
+    }
+  },
+  {
+    "id": "conj_063",
+    "name": "Brote tras la Lluvia",
+    "type": "Conjuro",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Poné un contador +1/+1 sobre la criatura objetivo.",
+    "flavorText": "El yuyo vuelve antes de que termines de barrer.",
+    "image": "brote_tras_la_lluvia.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "add_counter",
+      "counterType": "plusOne",
+      "amount": 1
+    }
+  },
+  {
+    "id": "conj_064",
+    "name": "Carpeta que Nadie Firmó",
+    "type": "Conjuro",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "B"
+    ],
+    "text": "El jugador rival descarta una carta.",
+    "flavorText": "La firma falta. El sello está. Eso es peor.",
+    "image": "carpeta_que_nadie_firmo.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "discard",
+      "amount": 1
+    }
+  },
+  {
+    "id": "conj_065",
+    "name": "Boleadoras del Corral Viejo",
+    "type": "Conjuro",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Tu criatura objetivo pelea contra la criatura rival objetivo.",
+    "flavorText": "Tres piedras, dos vueltas y una discusión terminada.",
+    "image": "boleadoras_del_corral_viejo.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "fight"
+    }
+  },
+  {
+    "id": "conj_066",
+    "name": "Vino Caliente en la Caldera",
+    "type": "Conjuro",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Hacé 2 de daño a cualquier objetivo. Yapa {3}{R}. Si pagaste la Yapa, hacé 3 de daño adicional al rival.",
+    "flavorText": "No era la receta. Funcionó igual.",
+    "image": "vino_caliente_en_la_caldera.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "damage",
+      "amount": 2
+    },
+    "kicker": {
+      "cost": "{3}{R}",
+      "bonusText": "hacé 3 de daño adicional al rival",
+      "bonusEffect": {
+        "type": "damage",
+        "amount": 3
+      }
+    }
+  },
+  {
+    "id": "conj_067",
+    "name": "Otra Vuelta de Chacarera",
+    "type": "Conjuro",
+    "manaCost": "{1}{W}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Creá una ficha Bailarín de Chacarera 1/1. Otra vuelta {4}{W}.",
+    "flavorText": "Cuando termina la segunda vuelta, siempre aparece una tercera pareja.",
+    "image": "otra_vuelta_de_chacarera.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 1,
+      "tokenName": "Bailarín de Chacarera",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": [],
+      "image": "token_bailarin_chacarera.png"
+    },
+    "flashback": {
+      "cost": "{4}{W}"
+    }
+  },
+  {
+    "id": "conj_068",
+    "name": "Silencio Después del Cacerolazo",
+    "type": "Conjuro",
+    "manaCost": "{3}{W}{W}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Destruí todas las criaturas.",
+    "flavorText": "Cuando se apaga el último balcón, la avenida queda limpia.",
+    "image": "silencio_despues_del_cacerolazo.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "destroy_all_creatures"
+    }
+  },
+  {
+    "id": "conj_069",
+    "name": "Inspección de la Sacristía",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Elegí uno — destruí el Artefacto objetivo; o destruí el Encantamiento objetivo.",
+    "flavorText": "Todo objeto raro termina tarde o temprano sobre esa mesa.",
+    "image": "inspeccion_de_la_sacristia.png",
+    "requiresTarget": false,
+    "effect": null,
+    "modal": true,
+    "modes": [
+      {
+        "text": "Destruí el Artefacto objetivo.",
+        "effect": {
+          "type": "destroy_artifact"
+        },
+        "requiresTarget": true
+      },
+      {
+        "text": "Destruí el Encantamiento objetivo.",
+        "effect": {
+          "type": "destroy_enchantment"
+        },
+        "requiresTarget": true
+      }
+    ]
+  },
+  {
+    "id": "conj_070",
+    "name": "Archivo del Muerto que Vuelve",
+    "type": "Conjuro",
+    "manaCost": "{4}{U}{B}",
+    "cmc": 6,
+    "rarity": "Rare",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "text": "Elegí uno — devolvé una criatura de tu cementerio al campo de batalla; o robás tres cartas.",
+    "flavorText": "La carpeta tiene una foto nueva cada vez que se abre.",
+    "image": "archivo_del_muerto_que_vuelve.png",
+    "requiresTarget": false,
+    "effect": null,
+    "modal": true,
+    "modes": [
+      {
+        "text": "Devolvé una criatura de tu cementerio al campo de batalla.",
+        "effect": {
+          "type": "reanimate",
+          "amount": 1
+        },
+        "requiresTarget": false
+      },
+      {
+        "text": "Robás tres cartas.",
+        "effect": {
+          "type": "draw",
+          "amount": 3
+        },
+        "requiresTarget": false
+      }
+    ]
+  },
+  {
+    "id": "conj_071",
+    "name": "Lluvia de Cascotes en Laferrere",
+    "type": "Conjuro",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Destruí la Tierra objetivo.",
+    "flavorText": "Primero cayó una piedra. Después dejó de haber calle.",
+    "image": "lluvia_de_cascotes_en_laferrere.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "destroy_land"
+    }
+  },
+  {
+    "id": "conj_072",
+    "name": "Relevamiento del Delta de San Fernando",
+    "type": "Conjuro",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá en tu biblioteca una Tierra básica, ponela en el campo de batalla girada y luego barajá.",
+    "flavorText": "Cada canal nuevo termina dibujando otro camino.",
+    "image": "relevamiento_del_delta_de_san_fernando.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_land",
+      "amount": 1,
+      "filter": "basic",
+      "destination": "battlefield_tapped",
+      "allowFewer": true,
+      "reveal": false
+    }
+  },
+  {
+    "id": "conj_073",
+    "name": "Catastro del Conurbano",
+    "type": "Conjuro",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá en tu biblioteca hasta dos Tierras básicas, revelalas, ponelas en tu mano y luego barajá.",
+    "flavorText": "Hay planos viejos donde todavía aparece un lote que nadie recordaba.",
+    "image": "catastro_del_conurbano.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_land",
+      "amount": 2,
+      "filter": "basic",
+      "destination": "hand",
+      "allowFewer": true,
+      "reveal": true
+    }
+  },
+  {
+    "id": "conj_074",
+    "name": "Reconquista del Parque Costero del Sur",
+    "type": "Conjuro",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Devolvé todas las Tierras de tu cementerio al campo de batalla giradas.",
+    "flavorText": "El pastizal recupera cada metro que el abandono le dejó.",
+    "image": "reconquista_del_parque_costero_del_sur.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "return_all_lands_from_graveyard",
+      "filter": "any",
+      "destination": "battlefield_tapped"
+    }
+  },
+  {
+    "id": "conj_075",
+    "name": "Tierra Arrasada de Plaza Congreso",
+    "type": "Conjuro",
+    "manaCost": "{4}{W}{W}",
+    "cmc": 6,
+    "rarity": "Mythic",
+    "colors": [
+      "W"
+    ],
+    "text": "Destruí todas las Tierras.",
+    "flavorText": "Por un instante, no quedó territorio que pudiera reclamar ningún bando.",
+    "image": "tierra_arrasada_de_plaza_congreso.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "destroy_all_lands",
+      "controller": "all",
+      "landFilter": "any"
+    }
+  },
+  {
+    "id": "conj_076",
+    "name": "Ruina del Cordón Industrial",
+    "type": "Conjuro",
+    "manaCost": "{4}{R}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Destruí todas las Tierras no básicas.",
+    "flavorText": "Las chimeneas siguieron de pie. Todo lo que las alimentaba, no.",
+    "image": "ruina_del_cordon_industrial.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "destroy_all_lands",
+      "controller": "all",
+      "landFilter": "nonbasic"
+    }
+  },
+  {
+    "id": "conj_077",
+    "name": "Te la Expropio",
+    "type": "Conjuro",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Enderezá la criatura objetivo que controla un oponente. Ganá su control hasta el final del turno. Gana Apuro hasta el final del turno.",
+    "flavorText": "La escritura sigue siendo tuya. La llave, por hoy, no.",
+    "image": "te_la_expropio.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "gain_control_until_eot",
+      "targetKind": "creature",
+      "targetController": "opponent",
+      "untap": true,
+      "grantHaste": true
+    }
+  },
+  {
+    "id": "conj_078",
+    "name": "Intervención Federal",
+    "type": "Conjuro",
+    "manaCost": "{4}{U}{U}",
+    "cmc": 6,
+    "rarity": "Mythic",
+    "colors": [
+      "U"
+    ],
+    "text": "Ganá el control del permanente objetivo que controla un oponente.",
+    "flavorText": "La administración cambió antes de que terminara de secarse la tinta.",
+    "image": "intervencion_federal.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "gain_control",
+      "targetKind": "any_permanent",
+      "targetController": "opponent"
+    }
+  },
+  {
+    "id": "conj_079",
+    "name": "Asamblea en la Plaza",
+    "type": "Conjuro",
+    "manaCost": "{4}{W}{W}",
+    "cmc": 6,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Vaquita. Creá tres fichas de criatura Vecino 1/1.",
+    "flavorText": "Una silla trae otra. Después nadie recuerda quién convocó a la primera.",
+    "image": "asamblea_en_la_plaza.png",
+    "requiresTarget": false,
+    "convoke": true,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 3,
+      "tokenName": "Vecino",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": [],
+      "image": "token_vecino.png"
+    }
+  },
+  {
+    "id": "conj_080",
+    "name": "Inventario del Taller",
+    "type": "Conjuro",
+    "manaCost": "{4}{U}",
+    "cmc": 5,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Conexión con artefactos. Robá dos cartas.",
+    "flavorText": "Lo que parecía desorden era un sistema que sólo el encargado entendía.",
+    "image": "inventario_del_taller.png",
+    "requiresTarget": false,
+    "affinity": "artifact",
+    "effect": {
+      "type": "draw",
+      "amount": 2
+    }
+  },
+  {
+    "id": "conj_081",
+    "name": "Dato Reservado",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Buscá una carta en tu biblioteca, ponela en tu mano y barajá.",
+    "flavorText": "Si está marcado como confidencial, alguien ya hizo una copia.",
+    "image": "dato_reservado.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_library",
+      "amount": 1,
+      "filter": {
+        "cardType": "any"
+      },
+      "destination": "hand",
+      "reveal": false,
+      "shuffle": true,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "conj_082",
+    "name": "Revisión de Inventario",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Buscá una carta de artefacto en tu biblioteca, mostrá esa carta, ponela en tu mano y barajá.",
+    "flavorText": "Siempre falta una caja. Siempre sobra una explicación.",
+    "image": "revision_de_inventario.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_library",
+      "amount": 1,
+      "filter": {
+        "cardType": "artifact"
+      },
+      "destination": "hand",
+      "reveal": true,
+      "shuffle": true,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "conj_083",
+    "name": "Convocatoria Barrial",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "W"
+    ],
+    "text": "Buscá una carta de criatura con valor de maná de 2 o menos en tu biblioteca, mostrá esa carta, ponela en tu mano y barajá.",
+    "flavorText": "Cuando el volante dice urgente, aparecen hasta los que nunca bajan.",
+    "image": "convocatoria_barrial.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_library",
+      "amount": 1,
+      "filter": {
+        "cardType": "creature",
+        "maxManaValue": 2
+      },
+      "destination": "hand",
+      "reveal": true,
+      "shuffle": true,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "conj_084",
+    "name": "Viandas del Club",
+    "type": "Conjuro",
+    "manaCost": "{2}{W}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Creá dos fichas de artefacto Envase hermético.",
+    "flavorText": "La bandeja alcanza para todos porque alguien siempre trae otra.",
+    "image": "viandas_del_club.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenPreset": "food",
+      "token": {
+        "name": "Envase hermético",
+        "image": "token_envase_hermetico.png"
+      }
+    }
+  },
+  {
+    "id": "conj_085",
+    "name": "Pacto Bajo la Mesa",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Creá dos fichas de encantamiento Contrato Firmado.",
+    "flavorText": "Nadie vio la lapicera. Todos reconocieron la firma.",
+    "image": "pacto_bajo_la_mesa.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "token": {
+        "name": "Contrato Firmado",
+        "type": "Encantamiento — Pacto",
+        "image": "token_contrato_firmado.png"
+      }
+    }
+  },
+  {
+    "id": "conj_086",
+    "name": "Inspección del Tablero de Señales",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Amplificá.",
+    "flavorText": "Una marca prende otra. Después nadie recuerda cuál fue la primera.",
+    "image": "inspeccion_del_tablero_de_senales.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "conj_087",
+    "name": "Sobrecarga del Transformador",
+    "type": "Conjuro",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Poné dos contadores de Carga sobre el permanente objetivo que controlás.",
+    "flavorText": "El medidor llegó al rojo y siguió subiendo.",
+    "image": "sobrecarga_del_transformador.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "add_counter",
+      "counterType": "charge",
+      "amount": 2,
+      "targetKind": "any_permanent",
+      "targetController": "self"
+    }
+  },
+  {
+    "id": "conj_088",
+    "name": "Operativo de Escudos Barriales",
+    "type": "Conjuro",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "multiTarget": true,
+    "text": "Poné un contador de Escudo sobre dos criaturas objetivo que controlás.",
+    "flavorText": "Dos esquinas cubiertas alcanzan para cambiar toda la cuadra.",
+    "image": "operativo_de_escudos_barriales.png",
+    "targets": [
+      {
+        "effect": {
+          "type": "add_counter",
+          "counterType": "shield",
+          "amount": 1,
+          "targetKind": "creature",
+          "targetController": "self"
+        }
+      },
+      {
+        "effect": {
+          "type": "add_counter",
+          "counterType": "shield",
+          "amount": 1,
+          "targetKind": "creature",
+          "targetController": "self"
+        }
+      }
+    ]
+  },
+  {
+    "id": "conj_089",
+    "name": "Propagación del Vivero",
+    "type": "Conjuro",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Amplificá.",
+    "flavorText": "Una etiqueta nueva en cada maceta y el invernadero ya parece otro.",
+    "image": "propagacion_del_vivero.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "conj_090",
+    "name": "Revisar la Cronología",
+    "type": "Conjuro",
+    "manaCost": "{1}{B}",
+    "cmc": 2,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Remové un contador de Capítulo de la Crónica objetivo.",
+    "flavorText": "Mover una fecha un casillero alcanza para retrasar una conclusión.",
+    "image": "revisar_la_cronologia.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "remove_counter",
+      "counterType": "lore",
+      "amount": 1,
+      "targetKind": "support",
+      "targetController": "any",
+      "permanentFilter": "Saga"
+    }
+  },
+  {
+    "id": "conj_091",
+    "name": "Edición Ampliada",
+    "type": "Conjuro",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Amplificá.",
+    "flavorText": "La misma historia vuelve con una página que nadie había visto.",
+    "image": "edicion_ampliada.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "proliferate"
+    }
+  },
+  {
+    "id": "conj_092",
+    "name": "Adelanto de Cartelera",
+    "type": "Conjuro",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Exiliá las dos cartas superiores de tu biblioteca. Podés jugarlas hasta el final del turno.",
+    "flavorText": "Mañana empieza hoy, pero sólo hasta que apaguen las luces.",
+    "image": "adelanto_de_cartelera.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 2,
+      "permission": {
+        "duration": "until_end_of_turn",
+        "playMode": "any",
+        "timing": "normal",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "conj_093",
+    "name": "Dos por Uno del Kiosco",
+    "type": "Conjuro",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Exiliá las dos cartas superiores de tu biblioteca. Podés jugarlas hasta el final de tu próximo turno.",
+    "flavorText": "La segunda siempre parece gratis hasta que mirás cuánto tiempo te queda.",
+    "image": "dos_por_uno_del_kiosco.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 2,
+      "permission": {
+        "duration": "until_end_of_next_turn",
+        "playMode": "any",
+        "timing": "normal",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "conj_094",
+    "name": "Promoción de Medianoche",
+    "type": "Conjuro",
+    "manaCost": "{4}{R}",
+    "cmc": 5,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Exiliá las tres cartas superiores de tu biblioteca. Podés jugarlas hasta el final de tu próximo turno.",
+    "flavorText": "Después de las doce, el stock y las reglas se vuelven aproximaciones.",
+    "image": "promocion_de_medianoche.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 3,
+      "permission": {
+        "duration": "until_end_of_next_turn",
+        "playMode": "any",
+        "timing": "normal",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "conj_095",
+    "name": "Hackeo del Expediente",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}{B}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "U",
+      "B"
+    ],
+    "text": "Exiliá las dos cartas superiores de la biblioteca de tu oponente. Podés jugar esas cartas hasta el final de tu próximo turno pagando sus costes normalmente.",
+    "flavorText": "No roba el archivo. Convence al sistema de que siempre estuvo autorizado.",
+    "image": "hackeo_del_expediente.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 2,
+      "owner": "opponent",
+      "controller": "self",
+      "permission": {
+        "duration": "until_end_of_next_turn",
+        "playMode": "any",
+        "timing": "normal",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "conj_096",
+    "name": "Pase Libre",
+    "type": "Conjuro",
+    "manaCost": "{4}{R}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "R"
+    ],
+    "text": "Exiliá la carta superior de tu biblioteca. Si es un hechizo, podés castearlo este turno sin pagar su coste de maná.",
+    "flavorText": "Por una vez, nadie pregunta cuánto cuesta entrar.",
+    "image": "pase_libre.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 1,
+      "permission": {
+        "duration": "until_end_of_turn",
+        "playMode": "spell",
+        "timing": "normal",
+        "costMode": "without_paying_mana_cost",
+        "allowKicker": false
+      }
+    }
+  },
+  {
+    "id": "conj_097",
+    "name": "Menú Oculto",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}{R}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "U",
+      "R"
+    ],
+    "text": "Exiliá las dos cartas superiores de tu biblioteca. Podés jugarlas este turno. Si son hechizos, podés castearlos como si tuvieran Al toque.",
+    "flavorText": "No figura en la carta, pero todos los habitués saben dónde tocar.",
+    "image": "menu_oculto.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "exile_top_with_permission",
+      "amount": 2,
+      "permission": {
+        "duration": "until_end_of_turn",
+        "playMode": "any",
+        "timing": "any_time",
+        "costMode": "normal",
+        "allowKicker": true
+      }
+    }
+  },
+  {
+    "id": "conj_098",
+    "name": "Licencia en Trámite",
+    "type": "Conjuro",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Common",
+    "colors": [
+      "W"
+    ],
+    "text": "Creá dos fichas de criatura Vecino 1/1. En espera 2 — {W}.",
+    "flavorText": "La aprobación tarda. Los vecinos llegan antes.",
+    "image": "licencia_en_tramite.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "create_tokens",
+      "amount": 2,
+      "tokenName": "Vecino",
+      "tokenStats": {
+        "power": 1,
+        "toughness": 1
+      },
+      "tokenKeywords": [],
+      "image": "token_vecino.png"
+    },
+    "suspend": {
+      "time": 2,
+      "cost": "{W}"
+    }
+  },
+  {
+    "id": "conj_099",
+    "name": "Turno para Dentro de Tres Meses",
+    "type": "Conjuro",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Common",
+    "colors": [
+      "U"
+    ],
+    "text": "Robá dos cartas. En espera 3 — {U}.",
+    "flavorText": "Su turno fue asignado con precisión: entre abril y el fin de los tiempos.",
+    "image": "turno_para_dentro_de_tres_meses.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "draw",
+      "amount": 2
+    },
+    "suspend": {
+      "time": 3,
+      "cost": "{U}"
+    }
+  },
+  {
+    "id": "conj_100",
+    "name": "Expediente que Vuelve",
+    "type": "Conjuro",
+    "manaCost": "{4}{B}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Regresá una carta de criatura de tu cementerio al campo de batalla. En espera 3 — {1}{B}.",
+    "flavorText": "Archivado no significa terminado. A veces significa que aprendió a volver solo.",
+    "image": "expediente_que_vuelve.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "reanimate",
+      "amount": 1
+    },
+    "suspend": {
+      "time": 3,
+      "cost": "{1}{B}"
+    }
+  },
+  {
+    "id": "conj_101",
+    "name": "Plan de Obras a Largo Plazo",
+    "type": "Conjuro",
+    "manaCost": "{4}{G}",
+    "cmc": 5,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá hasta dos tierras básicas en tu biblioteca y ponelas en el campo de batalla. En espera 3 — {1}{G}.",
+    "flavorText": "El cartel promete futuro. La tierra, mientras tanto, ya empezó a moverse.",
+    "image": "plan_de_obras_a_largo_plazo.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "ramp",
+      "amount": 2
+    },
+    "suspend": {
+      "time": 3,
+      "cost": "{1}{G}"
+    }
+  },
+  {
+    "id": "conj_102",
+    "name": "Cobro Retroactivo",
+    "type": "Conjuro",
+    "manaCost": "{3}{B}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "B"
+    ],
+    "text": "Tu oponente descarta dos cartas. En espera 2 — {B}.",
+    "flavorText": "La deuda apareció hoy con fecha de hace seis meses.",
+    "image": "cobro_retroactivo.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "discard",
+      "amount": 2,
+      "selection": "choice"
+    },
+    "suspend": {
+      "time": 2,
+      "cost": "{B}"
+    }
+  },
+  {
+    "id": "conj_103",
+    "name": "Desatar la Segunda Naturaleza",
+    "type": "Conjuro",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Transformá el permanente transformable objetivo que controlás.",
+    "flavorText": "No era una maldición. Era una puerta que llevaba años esperando.",
+    "image": "desatar_la_segunda_naturaleza.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "transform",
+      "targetKind": "any_permanent",
+      "targetController": "self"
+    }
+  },
+  {
+    "id": "conj_104",
+    "name": "Reescribir el Retrato",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Transformá el permanente transformable objetivo.",
+    "flavorText": "El pintor corrigió una sonrisa y el modelo despertó con otra vida.",
+    "image": "reescribir_el_retrato.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "transform",
+      "targetKind": "any_permanent",
+      "targetController": "any"
+    }
+  },
+  {
+    "id": "conj_105",
+    "name": "Noche de Metamorfosis",
+    "type": "Conjuro",
+    "manaCost": "{2}{B}{R}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "B",
+      "R"
+    ],
+    "text": "Transformá el permanente transformable objetivo que controla un oponente.",
+    "flavorText": "A la mañana siguiente, todos juraron reconocer el edificio. Ninguno describió el mismo.",
+    "image": "noche_de_metamorfosis.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "transform",
+      "targetKind": "any_permanent",
+      "targetController": "opponent"
+    }
+  },
+  {
+    "id": "conj_106",
+    "name": "Rastreo del Iberá",
+    "type": "Conjuro",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá en tu biblioteca una carta de criatura Bestia, mostrá esa carta, ponela en tu mano y barajá.",
+    "flavorText": "Las marcas desaparecen bajo el agua. El baqueano sabe dónde vuelven a empezar.",
+    "image": "rastreo_del_ibera.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_library",
+      "amount": 1,
+      "filter": {
+        "cardType": "creature",
+        "subtype": "Bestia"
+      },
+      "destination": "hand",
+      "reveal": true,
+      "shuffle": true,
+      "allowFewer": true
+    }
+  },
+  {
+    "id": "conj_107",
+    "name": "Audición de la Banda",
+    "type": "Conjuro",
+    "manaCost": "{2}{U}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "U"
+    ],
+    "text": "Mirá las cinco primeras cartas de tu biblioteca. Podés mostrar una carta de criatura Músico de entre ellas y ponerla en tu mano. Poné el resto en el fondo de tu biblioteca.",
+    "flavorText": "Cinco temas alcanzan para saber quién escucha a los demás.",
+    "image": "audicion_de_la_banda.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "look_at_top",
+      "lookCount": 5,
+      "amount": 1,
+      "filter": {
+        "cardType": "creature",
+        "subtype": "Músico"
+      },
+      "destination": "hand",
+      "remainderDestination": "bottom",
+      "reveal": true,
+      "shuffle": false,
+      "allowFewer": true
+    }
+  }
+]

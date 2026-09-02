@@ -106,10 +106,10 @@ export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied
     try { onApplied?.(); } catch (error) { console.error('GAME_TEXT_ADMIN_NOTIFY_FAILED', error); }
   }
 
-  function filteredCatalog() {
+  function filteredCatalog(catalog) {
     const needle = String(search.value || '').trim().toLowerCase();
     const selectedCategory = category.value;
-    return getGameTextCatalog().filter(item => {
+    return catalog.filter(item => {
       if (selectedCategory && item.category !== selectedCategory) return false;
       if (!needle) return true;
       return `${item.key}\n${item.category}\n${item.description}\n${item.defaultText}\n${item.effectiveText}`.toLowerCase().includes(needle);
@@ -123,7 +123,8 @@ export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied
     category.innerHTML = `<option value="">Todas las categorías</option>${categories.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')}`;
     if (categories.includes(previousCategory)) category.value = previousCategory;
 
-    const visible = filteredCatalog();
+    const visible = filteredCatalog(catalog);
+    const catalogByKey = new Map(catalog.map(item => [item.key, item]));
     const customCount = catalog.filter(item => item.overrideText !== null).length;
     summary.textContent = `${visible.length} de ${catalog.length} textos · ${customCount} personalizado${customCount === 1 ? '' : 's'}.`;
     resetCategoryBtn.disabled = saving || !category.value || !catalog.some(item => item.category === category.value && item.overrideText !== null);
@@ -168,7 +169,7 @@ export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied
 
     list.querySelectorAll('.game-text-row').forEach(row => {
       const key = row.dataset.textKey;
-      const item = getGameTextCatalog().find(entry => entry.key === key);
+      const item = catalogByKey.get(key);
       row.querySelector('[data-action="edit"]')?.addEventListener('click', () => {
         editingKey = key;
         render();
@@ -260,7 +261,8 @@ export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied
   resetCategoryBtn.addEventListener('click', () => {
     const selected = category.value;
     if (!selected || saving) return;
-    const affected = getGameTextCatalog().filter(item => item.category === selected && item.overrideText !== null);
+    const catalog = getGameTextCatalog();
+    const affected = catalog.filter(item => item.category === selected && item.overrideText !== null);
     if (!affected.length) return;
     if (!window.confirm(`¿Restaurar ${affected.length} texto(s) de “${selected}” a su versión original?`)) return;
     const next = { ...overrides };
@@ -268,6 +270,8 @@ export function createGameTextsAdminPane({ loadDocument, saveDocument, onApplied
     void persistDocument(next, `Categoría “${selected}” restaurada.`);
   });
 
-  render();
-  return { element: root, load };
+  // 23.19.5 RC2: no renderizar 1242 filas al CONSTRUIR el pane. El Admin crea/monta este
+  // componente recién al entrar a la solapa y `load()` hace un único render con el catálogo
+  // remoto aplicado. Evita doble trabajo y, sobre todo, el antiguo O(N²) de catálogo por fila.
+  return { element: root, load, render };
 }
