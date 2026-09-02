@@ -100,7 +100,7 @@ expect(ui.includes("return closedPromise;"), 'El modal Daily no expone cierre aw
 expect(impl.includes('legacyContinuityMigration'), 'Firebase no marca migración de continuidad legacy.');
 expect(impl.includes('persistedDaily.serverPreviousLoginDay = data.dailyRewards.serverLastLoginDay'),
   'Firebase no sella el predecesor real al continuar la racha.');
-expect(version.includes("FIRESTORE_RULES_VERSION = '23.13.79'"), 'Frontend no exige Rules 23.13.75.');
+expect(version.includes("FIRESTORE_RULES_VERSION = '23.13.79'"), 'Frontend no exige Rules 23.13.79.');
 expect(!fs.existsSync(path.join(root, 'firestore.rules')) && !fs.existsSync(path.join(root, 'firebase.json')),
   'Infra Firestore volvió a quedar dentro del árbol público /argentinia.');
 

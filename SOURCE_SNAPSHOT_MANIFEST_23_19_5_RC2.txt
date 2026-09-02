@@ -1,6 +1,6 @@
 SOURCE SNAPSHOT MANIFEST — 23.19.5 RC2
 
-STATUS=RELEASE_CANDIDATE_PENDING_RC2_REAL_EMULATOR_GATE
+STATUS=RELEASE_CANDIDATE_PENDING_PRODUCTION_SMOKE
 BASELINE=23.19.5 RC / 23.19.4.15 RELEASED
 POOL=880
 PROTOCOL=mp-23.19.2
@@ -46,5 +46,11 @@ QA completed in build container:
 - YAML: 1/1 PASS
 - Game Text: 1243 definitions / 1010 runtime literal uses PASS
 
+RC2 REAL GATES COMPLETED:
+- Auth + Firestore + Functions Emulator Gate: PASS / code 0
+- RC2 wrapper marker: ECONOMY_AUTHORITY_FOUNDATION_23_19_5_RC2_EMULATOR_OK
+- Updated 4/4 Functions deployed successfully to southamerica-east1 / Node 22
+- GitHub CI hotfix: compact regression archive synchronized; CI no longer extracts archived tests over live tests.
+
 RELEASE BLOCKER:
-Because functions/src/trusted/deckIntelligence.js changed after the first production deploy, rerun the included RC2 Auth + Firestore + Functions Emulator Gate. Only after PASS may the updated Functions be re-deployed.
+Production smoke only: Admin instant-open, Tano deck composition, animated-land warning and App Check/economyStatus.

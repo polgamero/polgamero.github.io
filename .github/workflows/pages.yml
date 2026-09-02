@@ -66,12 +66,26 @@ jobs:
         run: |
           test -f tools/regression_legacy_23_17_3_1.zip
           test -f tools/ci_regression_manifest_23_17_3_1.txt
+          # The archive is retained as a compact historical artifact, but must NEVER be
+          # extracted over the live tools/ tree: doing so can overwrite tests that were
+          # intentionally updated for newer engine/rules/protocol baselines.
           python - <<'PY'
           from pathlib import Path
           import zipfile
           tools = Path('tools')
+          names = [line.strip() for line in (tools / 'ci_regression_manifest_23_17_3_1.txt').read_text(encoding='utf-8').splitlines()
+                   if line.strip() and not line.lstrip().startswith('#')]
           with zipfile.ZipFile(tools / 'regression_legacy_23_17_3_1.zip') as z:
-              z.extractall(tools)
+              archived = set(z.namelist())
+              for name in names:
+                  live = tools / name
+                  if not live.is_file():
+                      raise SystemExit(f'Missing live regression test: {name}')
+                  if name not in archived:
+                      raise SystemExit(f'Missing regression archive entry: {name}')
+                  if z.read(name) != live.read_bytes():
+                      raise SystemExit(f'Regression archive drift: {name}. Refresh the archive; do not overwrite live tests in CI.')
+          print(f'OK: regression archive synchronized with {len(names)} live tests')
           PY
           while IFS= read -r test_file; do
             case "$test_file" in
@@ -80,13 +94,6 @@ jobs:
             echo "[regression] $test_file"
             node "tools/$test_file"
           done < tools/ci_regression_manifest_23_17_3_1.txt
-          python - <<'PY'
-          from pathlib import Path
-          tools = Path('tools')
-          for path in tools.glob('test_*.mjs'):
-              if path.name not in {'test_prebuilt_decks_store_23_17_3.mjs','test_prebuilt_purchase_integrity_23_17_3_1.mjs','test_build_manifest_freshness_23_17_3_2.mjs','test_normal_profile_daily_recovery_23_17_3_3.mjs','test_daily_clock_runtime_hardening_23_17_3_4.mjs','test_firestore_rule_budget_router_23_17_3_5.mjs','test_store_navigation_ux_23_17_4.mjs','test_mydecks_click_hotfix_23_17_4_1.mjs','test_multiplayer_sync_reward_recovery_23_17_4_2.mjs','test_gameplay_music_23_17_5.mjs','test_bot_flashback_search_modal_23_17_5_1.mjs','test_tano_interactive_suspend_rules_ux_23_17_5_2.mjs','test_selection_modal_drag_hover_23_17_5_3.mjs','test_bot_reactive_target_reservation_23_17_5_6.mjs','test_tano_avatar_23_17_5_7.mjs','test_stability_replay_foundation_23_18.mjs','test_headless_full_game_lab_23_18_1.mjs','test_headless_coverage_failure_minimizer_23_18_2.mjs','test_mana_pool_ux_vanilla_rebalance_23_18_3.mjs','test_multiplayer_reliability_lab_23_19.mjs','test_multiplayer_reliability_hardening_23_19_1.mjs','test_reward_settlement_integrity_23_19_2.mjs','test_gameplay_semantic_ux_hardening_23_19_3.mjs','test_animation_foundation_combat_impact_23_19_4.mjs','test_admin_daily_runtime_parity_23_19_4.mjs','test_combat_impact_ii_admin_animation_studio_23_19_4_1.mjs','test_firestore_rules_compiler_hygiene_23_19_4_1.mjs','test_zone_transitions_animation_studio_23_19_4_2.mjs','test_combat_cinematic_trigger_gameover_hotfix_23_19_4_3.mjs','test_animation_tuning_matrix_draggable_console_23_19_4_4.mjs','test_animation_actor_parity_sfx_cues_23_19_4_5.mjs','test_rules_integrity_combat_ux_bot_tactical_hotfix_23_19_4_6.mjs','test_core_gameplay_feedback_expansion_23_19_4_7.mjs','test_mass_event_cinematics_high_impact_23_19_4_8.mjs','test_commercial_ip_remediation_wave1_23_19_4_9.mjs','test_commercial_ip_remediation_wave2_23_19_4_10.mjs','test_commercial_ip_remediation_wave3_23_19_4_11.mjs','test_commercial_ip_residual_yellow_23_19_4_12.mjs','test_global_terminology_cleanroom_wave4_23_19_4_13.mjs'}:
-                  path.unlink()
-          PY
 
       - name: Validate Prebuilt Decks Store 23.17.3
         working-directory: ./argentinia
@@ -266,6 +273,10 @@ jobs:
       - name: Validate Economy Authority Foundation 23.19.5
         working-directory: ./argentinia
         run: node tools/test_economy_authority_foundation_23_19_5.mjs
+
+      - name: Validate Economy Authority RC2 Stabilization 23.19.5
+        working-directory: ./argentinia
+        run: node tools/test_rc2_deck_admin_land_23_19_5.mjs
 
       - name: Validate Economy Functions Trusted Foundation 23.19.5
         run: node --test functions/test/foundation.test.mjs

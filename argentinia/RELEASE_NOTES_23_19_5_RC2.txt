@@ -12,3 +12,11 @@ ARGENTINIA v23.19.5 RC2 — Economy Authority Foundation + Deck/Admin/Land UX St
 - Pool 880; multiplayer protocol mp-23.19.2; economy protocol econ-23.19.5; Rules 23.13.79.
 - Card-image binaries remain externalized.
 - RC2 is NOT RELEASED until the included Auth + Firestore + Functions Emulator Gate is rerun against the updated trusted Functions copy and passes.
+
+
+RC2 GitHub CI hotfix
+- Fixed a CI-only regression: tools/regression_legacy_23_17_3_1.zip contained stale historical copies that the workflow extracted over the updated live tests.
+- The workflow now verifies archive/live byte parity and runs the live tests without destructive extraction.
+- Refreshed the compact archive from all 62 manifest-listed live regressions.
+- Added the RC2 Deck/Admin/Land stabilization test as an explicit GitHub Actions gate.
+- Runtime/gameplay/Functions behavior is unchanged by this CI repair; no additional Functions deployment is required.
