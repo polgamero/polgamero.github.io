@@ -25,7 +25,7 @@ const cards=dataFiles.flatMap(k=>json(`assets/data/${k}.json`));
 function seeded(seed){ let x=seed>>>0; return()=>{ x=(Math.imul(x,1664525)+1013904223)>>>0; return x/4294967296; }; }
 
 assert.ok(['23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.5'].includes(ENGINE_VERSION));
-assert.equal(DECK_INTELLIGENCE_VERSION,'23.19.5-rc2');
+assert.equal(DECK_INTELLIGENCE_VERSION,'23.19.5-di2');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.equal(CURRENT_POOL_MILESTONE,'pool_expansion_viii_880');
@@ -71,8 +71,8 @@ assert.ok(qualityScores.good <= qualityScores.strong && qualityScores.strong <= 
 
 const starter=buildCompetitiveDeck(cards,['G'],{quality:'starter',rng:seeded(321),candidateCount:32,goldfishIterations:20});
 assert.ok(validateCompetitiveDeck(starter.deck,['G']).ok);
-assert.ok((starter.report.rarity.Mythic||0)<=2,'starter mythic budget');
-assert.ok((starter.report.rarity.Mythic||0)+(starter.report.rarity.Rare||0)<=8,'starter premium rarity budget');
+assert.ok((starter.report.rarity.Mythic||0)<=1,'starter mythic budget');
+assert.ok((starter.report.rarity.Mythic||0)+(starter.report.rarity.Rare||0)<=6,'starter premium rarity budget');
 assert.ok(starter.report.landCount>=21 && starter.report.landCount<=26,'archetype land count is dynamic but sane');
 
 // Historical public wrapper remains array-returning and now exposes a diagnostic report.
@@ -81,7 +81,7 @@ const wrapped=buildRandomDeck(['W','U'],{quality:'competitive',rng:seeded(55),ca
 assert.equal(wrapped.length,60);
 assert.ok(validateCompetitiveDeck(wrapped,['W','U']).ok);
 const report=getLastRandomDeckReport();
-assert.equal(report.engineVersion,'23.19.5-rc2');
+assert.equal(report.engineVersion,'23.19.5-di2');
 assert.equal(report.archetypeId,'control');
 assert.equal(report.quality,'competitive');
 

@@ -12,12 +12,14 @@ export const BOT_DIFFICULTY_PROFILES = Object.freeze({
   }),
   medium: Object.freeze({
     id:'medium', label:'Medio', deckQuality:'strong',
-    // 23.17.2: MEDIO conserva exactamente las capacidades del viejo "Difícil".
+    // 23.19.5 DI2: MEDIO usa el builder avanzado/competente, pero NO el cierre elite.
+    // Puede dejar pequeñas imperfecciones de coherencia/selección para que no juegue como pro.
     reactiveStack:true, combatTricks:true, fightTrades:true,
     strategicMainPhase:true, strategicDiscard:true, combat2:false
   }),
   hard: Object.freeze({
     id:'hard', label:'Difícil', deckQuality:'elite',
+    // DI2: DIFÍCIL usa el potencial completo del builder (coherencia estricta + top percentile).
     reactiveStack:true, combatTricks:true, fightTrades:true,
     strategicMainPhase:true, strategicDiscard:true, combat2:true
   })

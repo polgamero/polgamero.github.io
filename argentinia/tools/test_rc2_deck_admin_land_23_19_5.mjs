@@ -23,7 +23,7 @@ assert.equal(ENGINE_VERSION,'23.19.5');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5');
-assert.equal(DECK_INTELLIGENCE_VERSION,'23.19.5-rc2');
+assert.equal(DECK_INTELLIGENCE_VERSION,'23.19.5-di2');
 assert.equal(cards.length,880);
 
 // 1) Deck Composition Hardening: un artefacto utilitario ya no satisface `threat` sólo por

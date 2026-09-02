@@ -1,0 +1,80 @@
+ARGENTINIA v23.19.5 — DECK INTELLIGENCE 2.0 HOTFIX
+INTERNAL DECK INTELLIGENCE: 23.19.5-di2
+POOL: 880
+MULTIPLAYER PROTOCOL: mp-23.19.2 (unchanged)
+ECONOMY PROTOCOL: econ-23.19.5 (unchanged)
+FIRESTORE RULES: 23.13.79 (unchanged)
+
+WHY THIS HOTFIX EXISTS
+A real Tano smoke after RC2 proved the creature-floor fix worked, but exposed the opposite quality problem: a legal 60-card deck could still be 35 creatures + 23 lands + 2 Vehicles, with zero instants/sorceries/enchantments. The old role detector also treated any structured `damage` effect as removal even when the damage could only hit the opposing player. That made face-damage creatures satisfy interaction/removal quotas and allowed structurally incoherent decks to pass.
+
+1) TARGET-AWARE INTERACTION SEMANTICS
+- Player-only damage is `reach`, never creature removal.
+- Damage that can legally hit a creature/permanent is creatureInteraction + removal.
+- Counter, discard, destroy/exile/bounce/fight/control and sweepers retain functional interaction roles.
+- Narrow interaction (artifact/enchantment/land/graveyard answers) is tracked separately from broad interaction.
+- Regression cards from the real failure (Tasador de Chacarita, Sereno de Morgue, Séptimo Hijo del Barrio) no longer satisfy broadInteraction/removal.
+
+2) HUMAN-LIKE COMPOSITION CONTRACTS
+Each archetype now has a composition contract rather than only a creature minimum:
+- creature minimum AND ceiling;
+- Vehicle cap;
+- broad interaction floor;
+- creature interaction floor;
+- instant/sorcery floor;
+- non-creature floor;
+- primary-theme density where relevant;
+- typal density/support where relevant;
+- dead-synergy budget by quality.
+
+This prevents accidental 35-creature soup while still allowing legitimate creature-heavy Aggro/Typal lists when the strategy supports it. Enchantments are not mandatory by card type; functional roles are.
+
+3) COHERENCE / TYPAL
+- Typal chooses one actual subtype focus.
+- Lords/payoffs are tied to literal/flexible subtype support instead of generic `typal` presence.
+- Dead tribal/payoff cards are penalized, with a strict cap for Elite.
+- Vehicle decks still require real crew bodies.
+- Tempo viability is normalized so its broad Aggro+Spells tag union does not dominate every color pair.
+
+4) QUALITY TIERS ARE PRODUCT BEHAVIOR
+- starter: guided/basic onboarding deck. Playable and coherent, lower selection pressure, max 1 Mythic and max 6 Rare+Mythic. Designed to leave meaningful upgrade headroom.
+- good: functional casual builder.
+- strong: Tano Medio. Advanced/competent builder with small tolerated imperfections and lower search/selection pressure than Elite.
+- elite: Tano Difícil. Full composition/coherence contracts, near-top candidate selection, largest search budget and strict dead-synergy cap.
+- competitive: full-power automatic player deck profile.
+
+Tano mapping remains:
+- Fácil -> good
+- Medio -> strong
+- Difícil -> elite
+
+Server-authoritative first-deck bootstrap explicitly uses `quality: starter`.
+
+5) CLIENT / SERVER PARITY
+`argentinia/js/deckIntelligence.js` and `functions/src/trusted/deckIntelligence.js` are byte-identical. Because trusted code changed, the Economy Authority Emulator Gate MUST be rerun and all four Economy Functions MUST be redeployed after PASS.
+
+LOCAL QA BEFORE REAL EMULATOR/PRODUCTION GATE
+- Canonical fast contracts: 106/106 PASS.
+- Deck Intelligence 2.0 contract: PASS.
+- Competitive Deck Intelligence historical contract: PASS.
+- Tano Difficulty / Combat Bot contract: PASS.
+- RC2 Deck/Admin/Land contract: PASS.
+- Functions trusted foundation unit: PASS.
+- Forced archetype matrix: 15 archetypes x 4 qualities = 60/60 structurally valid; Elite core deficits = 0.
+- Stability Lab: 10 seeds / 30 deck builds / 2000 RNG draws / 40 invariant mutations / PASS.
+- Headless 23.18.1: 6/6 complete, determinism PASS, 2484 actions / 109 turns.
+- Headless Coverage 23.18.2: 97.95% structurally known; 6/6 complete, determinism PASS, 2723 actions / 120 turns.
+- Multiplayer Reliability: 250 seeds / 30000 commits / 61822 deliveries PASS.
+- Multiplayer Hardening: 5000 cases / PASS.
+- App JS/MJS syntax: 216 PASS.
+- Functions JS/MJS syntax: 14 PASS.
+- JSON: 22 PASS.
+- YAML: 1 PASS.
+- Game Text: 1243 definitions / 1010 runtime literal uses PASS.
+
+RELEASE GATE STILL REQUIRED
+1. Run 05_Economy_Authority_Emulator_Gate and require the DI2 wrapper marker.
+2. Only after PASS, deploy 06_Economy_Functions_DEPLOY_AFTER_GATE.
+3. Push 01_GitHubSource and require GitHub Actions green.
+4. Production smoke: economyStatus appCheckPresent=true; Tano Medio/Hard deck sampling; starter bootstrap/version.
+5. Keep App Check enforcement OBSERVE ONLY during this hotfix gate.

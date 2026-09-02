@@ -1,0 +1,12 @@
+ARGENTINIA v23.19.5 — Deck Intelligence 2.0 Hotfix RC
+
+- Fixes target semantics: face-only damage is reach, not removal/interaction against creatures.
+- Adds per-archetype creature ceilings, real interaction floors, instant/sorcery and non-creature floors, theme/coherence checks and dead-synergy budgets.
+- Typal selects one real subtype focus and requires live support; dead lords/payoffs are penalized.
+- Tano Medio uses `strong` (advanced but intentionally not fully polished).
+- Tano Difícil uses `elite` (full builder potential, strict structure/coherence, near-best candidate selection).
+- New-user server bootstrap uses `starter`: coherent/readable, lower search pressure, <=1 Mythic and <=6 Rare+Mythic to preserve upgrade motivation.
+- Frontend/trusted Deck Intelligence byte-identical; internal version `23.19.5-di2`.
+- Economy/MP/Rules unchanged: econ-23.19.5 / mp-23.19.2 / 23.13.79.
+- Local QA: canonical fast 106/106 PASS; heavy Stability/Headless/Multiplayer labs PASS; Functions unit PASS; syntax/data/Game Text gates PASS.
+- Because trusted Functions code changed, this RC is NOT production-complete until the included Economy Authority Emulator Gate passes and Functions are redeployed.
