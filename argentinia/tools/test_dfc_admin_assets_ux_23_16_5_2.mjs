@@ -54,10 +54,16 @@ assert.equal(manifest.pool?.total ?? manifest.cardCount,880);
 assert.equal(manifest.images?.referencedFaceCount,896);
 assert.equal(manifest.images?.doubleFacedCardCount,16);
 const backMissing=(manifest.missing||[]).filter(x=>x.face==='back');
-assert.equal(backMissing.length,16,'all 16 back-face PNGs participate in missing-image audit in clean source');
 const expectedBackImages=new Set(tdfcs.map(c=>c.dfc.backFace.image));
-assert.deepEqual(new Set(backMissing.map(x=>x.image)),expectedBackImages);
+// The live GitHub Pages checkout intentionally retains external card PNGs, while the
+// cumulative source ZIP intentionally omits them. The image audit contract must be
+// invariant in both environments: every TDFC back is either present in manifest.files
+// or represented in manifest.missing with face metadata. Do not assert that all backs
+// are missing merely because the clean delivery ZIP has no binaries.
+const auditedImages=new Set([...(manifest.files||[]), ...(manifest.missing||[]).map(x=>x.image)]);
+for(const image of expectedBackImages) assert.ok(auditedImages.has(image),`TDFC back missing from image audit: ${image}`);
 assert.ok(backMissing.every(x=>x.id && x.name && x.category && x.face==='back'));
+assert.deepEqual(new Set(backMissing.map(x=>x.image)),new Set([...expectedBackImages].filter(image=>!(manifest.files||[]).includes(image))));
 
 const ui=read('js/ui.js');
 assert.ok(ui.includes("{ key: 'dfc-backs', label: gameText('encyclopedia.tab.dfcBacks') }"));

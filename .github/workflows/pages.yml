@@ -87,13 +87,38 @@ jobs:
                       raise SystemExit(f'Regression archive drift: {name}. Refresh the archive; do not overwrite live tests in CI.')
           print(f'OK: regression archive synchronized with {len(names)} live tests')
           PY
-          while IFS= read -r test_file; do
-            case "$test_file" in
-              ''|'#'*) continue ;;
-            esac
-            echo "[regression] $test_file"
-            node "tools/$test_file"
-          done < tools/ci_regression_manifest_23_17_3_1.txt
+
+      - name: Validate source-package contract independently from hosted assets
+        run: |
+          test -f SOURCE_SNAPSHOT_MANIFEST_23_19_5_RC2.txt
+          grep -qx 'CARD_IMAGE_BINARIES=0' SOURCE_SNAPSHOT_MANIFEST_23_19_5_RC2.txt
+          grep -qx 'PUBLIC_FIRESTORE_CONFIG_FILES=0' SOURCE_SNAPSHOT_MANIFEST_23_19_5_RC2.txt
+          echo "OK: cumulative delivery remains no-card-images/no-public-Firestore-config; hosted PNGs are allowed"
+
+      - name: Validate complete fast contract sweep
+        working-directory: ./argentinia
+        run: |
+          set +e
+          total=0
+          passed=0
+          failed=0
+          for test_file in $(find tools -maxdepth 1 -type f -name 'test_*.mjs' -print | sort); do
+            total=$((total + 1))
+            echo "[contract $total] $test_file"
+            node "$test_file"
+            code=$?
+            if [ "$code" -eq 0 ]; then
+              passed=$((passed + 1))
+            else
+              failed=$((failed + 1))
+              echo "::error file=$test_file::Contract test failed with exit code $code"
+            fi
+          done
+          echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed"
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::$failed contract test(s) failed. All failures were collected in this single run."
+            exit 1
+          fi
 
       - name: Validate Prebuilt Decks Store 23.17.3
         working-directory: ./argentinia

@@ -29,3 +29,12 @@ RC2 GitHub CI hotfix 2
 - Refreshed regression_legacy_23_17_3_1.zip so archive/live parity remains exact.
 - Compact regression 62/62 PASS; full test_*.mjs 105/105 PASS; Functions pure unit PASS.
 - Runtime/gameplay/Functions behavior remains unchanged; no Functions redeploy or Emulator rerun is required.
+
+GITHUB CI HOTFIX 3 — ENVIRONMENT CONTRACT SEPARATION
+- Root cause of the third GitHub failure was not a new gameplay regression: GitHub Pages checkout contains the real card PNG library, while cumulative GitHubSource ZIPs intentionally contain zero card-image binaries.
+- Historical DFC/commercial tests mixed those two environments by asserting that the live assets/images/cards directory had to be empty or that all 16 DFC backs had to be missing.
+- DFC image-audit regression is now invariant to present/missing assets: every canonical back face must participate in the generated manifest whether the PNG is present or absent.
+- Commercial clean-room tests validate the EXTERNALIZED delivery contract without requiring the hydrated production checkout to delete its hosted PNGs.
+- Pages CI now has an explicit source-package contract gate plus a fail-collecting sweep of every test_*.mjs, so all fast contract failures are reported in one run instead of one-at-a-time discovery.
+- Reproduced in two environments after generate_image_manifest.py: CLEAN source (0 image binaries) 105/105 PASS; HYDRATED live-style source (926 referenced card/token placeholder assets present) 105/105 PASS.
+- Exact heavy CI labs and Functions unit also PASS in hydrated mode. Runtime/gameplay/Functions code unchanged by this CI-only hotfix.
