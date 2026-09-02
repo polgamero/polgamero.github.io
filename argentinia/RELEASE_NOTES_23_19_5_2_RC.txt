@@ -1,0 +1,77 @@
+ARGENTINIA v23.19.5.2 RC2 — STORE / CRAFT / PREBUILT / CLASSIFIEDS / USERNAME AUTHORITY
+
+STATUS
+RELEASE CANDIDATE. Implementation, canonical contracts, heavy regression labs, syntax/data checks and artifact construction are complete. Real Emulator Gate, 13-Function production deploy/verify, GitHub Actions and production smoke remain mandatory before RELEASED.
+
+VERSION CONTRACT
+- Engine: 23.19.5.2.
+- Economy protocol: econ-23.19.5.2.
+- Economy schema: 3.
+- Pool: 880.
+- Multiplayer protocol: mp-23.19.2.
+- Deck Intelligence: 23.19.5-di2.
+- Firestore Rules: 23.13.79 unchanged.
+- App Check: OBSERVE_ONLY.
+
+NEW SERVER-AUTHORITATIVE SURFACES
+- Pack Store Purchase.
+- Creature enhancement Craft.
+- Official Prebuilt Deck purchase.
+- Classifieds offer/read + purchase.
+- Username rename.
+- economyGetStorefront exposes server cost/campaign snapshot for current UI.
+- Existing account/bootstrap/starter/Pack open/Guaranteed Mythic/open-operation-recovery authority remains cumulative.
+- Expected production callable total: 13.
+
+SECURITY / CONSISTENCY
+- Authoritative prices, balances, inventory, card grants, prebuilt card lists, Classifieds rarity/week/caps and usernameKey never come from trusted client input.
+- All writes use authenticated UID and idempotent operation receipts.
+- Same operationId is exactly-once; payload reuse mismatch is rejected.
+- Wallet debit + grant/change are transactional.
+- Generic current-client action recovery survives F5/network interruption without persisting economic authority locally.
+- Direct-Firestore custom-client firewall remains scheduled for 23.19.5.6; this release does not claim Rules closure.
+
+23.19.5.1 FRONTEND FIX ABSORBED
+- Firebase lazy stats bridge export repaired.
+- Replayed Pack/Mythic receipts do not double-count legacy best-effort chest stats.
+- Generic asyncProxy/export parity contract is active.
+
+RC2 EMULATOR-GATE HARDENING
+- RC1 real Emulator Gate exposed two issues before any production deploy: commerce campaign audit metadata included unrelated active campaign IDs, and cleanup dereferenced client C while still null, masking the original assertion.
+- Commerce Store audit IDs now contain only active pack_discount events. Pack-open audit IDs now contain only all_fichas_multiplier / pack_open_ficha_bonus events.
+- Emulator cleanup is null-safe and uses allSettled so cleanup can never replace the primary gate failure.
+- Pure contract QA now asserts cross-surface campaign-effect isolation.
+
+LOCAL QA FINAL
+- Canonical fast contracts: 108/108 PASS.
+- Historical regression archive/live parity: 62/62 byte-identical.
+- Store/Craft/Prebuilt/Classifieds/Username contract: PASS.
+- Packs/Cofre/Mythic authority contract: PASS.
+- Economy Authority Foundation contract: PASS.
+- Deck Intelligence 2 contract: PASS.
+- Stability: 20 seeds / 60 deck builds / 4000 RNG / 80 invariant mutations / PASS.
+- Headless 23.18.1: 12/12 games / 4785 actions / 209 turns / deterministic PASS.
+- Headless Coverage: 880 total / 560 full / 302 partial / 18 unsupported / 97.95% structurally known.
+- Headless 23.18.2: 12/12 games / 5481 actions / 236 turns / deterministic PASS.
+- Multiplayer Reliability: 500 seeds / 60000 commits / 123607 deliveries / PASS.
+- Multiplayer Hardening: 5000 cases / 15000 reconnect-safe / 15000 rejected / PASS.
+- Runtime JS/MJS syntax: 94/94 PASS.
+- Tools MJS syntax: 126/126 PASS.
+- Functions JS/MJS syntax: 19/19 PASS.
+- JSON: 23/23 PASS.
+- YAML: 1/1 PASS.
+- Game Text: 1243 definitions / 1010 runtime uses PASS.
+
+COST / SAFETY
+- Node 22, Functions 2nd Gen, southamerica-east1.
+- minInstances=0, maxInstances=1, concurrency=10, timeout=30s, memory=256 MiB.
+- Kill switch + minimum client remain enforced.
+- App Check remains observe-only for rollout safety.
+
+REAL PROMOTION GATES
+1. Folder 05 Emulator Gate code 0 with:
+   ECONOMY_STORE_CRAFT_PREBUILT_CLASSIFIEDS_USERNAME_23_19_5_2_EMULATOR_OK
+   ECONOMY_STORE_CRAFT_PREBUILT_CLASSIFIEDS_USERNAME_23_19_5_2_GATE_OK
+2. Folder 06 production Functions deploy + functions:list verification of exactly 13 Economy callables.
+3. Publish entire 01_GitHubSource and wait for GitHub Actions PASS.
+4. Production smoke: economyStatus schema3 + capabilities + App Check; Pack purchase; one Craft when resources permit; Prebuilt purchase when resources permit; Classifieds read/purchase; Username rename when resources permit; no duplicate operation on reload/retry.

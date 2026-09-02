@@ -19,7 +19,7 @@ const cards=[
 ];
 const byId=new Map(cards.map(card=>[card.id,card]));
 
-assert.equal(ENGINE_VERSION,'23.19.5.1');
+assert.equal(ENGINE_VERSION,'23.19.5.2');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.equal(cards.length,880);

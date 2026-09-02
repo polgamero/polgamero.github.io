@@ -1,6 +1,6 @@
-SOURCE SNAPSHOT MANIFEST — 23.19.5.1 PACKS / COFRE / MYTHIC AUTHORITY RC
+SOURCE SNAPSHOT MANIFEST — 23.19.5.1 PACKS / COFRE / MYTHIC AUTHORITY RC2
 
-STATUS=RELEASE_CANDIDATE_PENDING_EMULATOR_DEPLOY_GITHUB_SMOKE
+STATUS=RELEASE_CANDIDATE_RC2_FRONTEND_HOTFIX_PENDING_FINAL_GITHUB_SMOKE
 BASELINE=23.19.5 RELEASED + Deck Intelligence 23.19.5-di2
 POOL=880
 PROTOCOL=mp-23.19.2
@@ -31,6 +31,9 @@ PACK_CAMPAIGN_POLICY=SERVER_FAIL_CLOSED
 PACK_OPERATION_IDEMPOTENCY=EXACTLY_ONCE
 PACK_REVEAL_RECOVERY=IMMUTABLE_OPERATION_RECEIPT
 LEGACY_CURRENT_CLIENT_CHEST_WRITES=DISABLED
+RC2_FRONTEND_HOTFIX=FIREBASE_LAZY_STATS_BRIDGE
+FIREBASE_LAZY_PROXY_AUDIT=88_TARGETS_0_MISSING
+CHEST_STATS_REPLAY_GUARD=ENABLED
 DIRECT_FIRESTORE_FIREWALL=DEFERRED_TO_23.19.5.6
 DECK_INTELLIGENCE_VERSION=23.19.5-di2
 TRUSTED_STARTER_POOL=880
@@ -71,9 +74,10 @@ LOCAL QA COMPLETED:
 - YAML: 1/1 PASS
 - Game Text: 1243 definitions / 1010 runtime literal uses PASS
 
-REAL GATES REQUIRED:
-- Auth+Firestore+Functions Emulator Gate marker ECONOMY_PACKS_CHEST_MYTHIC_23_19_5_1_EMULATOR_OK: PENDING
-- Wrapper marker ECONOMY_PACKS_CHEST_MYTHIC_23_19_5_1_GATE_OK: PENDING
-- Production Functions deploy/verify 6/6: PENDING AFTER EMULATOR PASS
-- GitHub Actions: PENDING
-- Production Pack + Guaranteed Mythic + recovery + economyStatus smoke: PENDING
+REAL GATES / RC2 STATUS:
+- Auth+Firestore+Functions Emulator Gate: PASS (user-reported real gate, code 0).
+- Production Functions deploy/verify 6/6: PASS (user-reported).
+- GitHub source RC was pushed and CI reported green before RC2 frontend hotfix.
+- Production Pack/Mythic authoritative reward flow: PASS; one non-authoritative Firebase lazy stats-bridge console error isolated.
+- RC2 changes frontend Firebase bridge/UI/tests only; Functions, Rules and App Check policy unchanged.
+- Final promotion requires pushing RC2 GitHubSource and repeating Pack/Mythic console smoke with no FIREBASE_LAZY_EXPORT_MISSING.

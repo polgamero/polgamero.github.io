@@ -23,6 +23,10 @@ import {
   openTrustedGuaranteedMythicTx
 } from './economy/packs.js';
 import { TRUSTED_CARD_POOL_FINGERPRINT } from './trusted/cardCatalog.js';
+import {
+  storefrontSnapshot, loadCommerceCampaignEffects, purchasePackTx, craftEnhancementTx,
+  purchasePrebuiltTx, getClassifiedsView, purchaseClassifiedTx, renameUsernameTx
+} from './economy/commerce.js';
 
 function requestData(request) {
   const data = request?.data;
@@ -68,7 +72,11 @@ export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
       enabled: config.enabled,
       appCheckPresent: auth.appCheckPresent,
       costSafety: { minInstances: 0, maxInstances: 1, concurrency: 10 },
-      capabilities: { packAuthority: 'server', guaranteedMythicAuthority: 'server', operationRecovery: true },
+      capabilities: {
+        packAuthority: 'server', guaranteedMythicAuthority: 'server', operationRecovery: true,
+        storePurchaseAuthority: 'server', craftAuthority: 'server', prebuiltAuthority: 'server',
+        classifiedsAuthority: 'server', usernameRenameAuthority: 'server'
+      },
       trustedPoolFingerprint: TRUSTED_CARD_POOL_FINGERPRINT
     };
   } catch (error) {
@@ -205,6 +213,165 @@ export const economyOpenGuaranteedMythic = onCall(FUNCTION_RUNTIME_OPTIONS, asyn
     return { ok: true, ...outcome };
   } catch (error) {
     logFailure('economyOpenGuaranteedMythic', auth, error);
+    throw error;
+  }
+});
+
+
+export const economyGetStorefront = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'storefront-read', { limit: 60, windowMs: 60000 });
+    rejectUnknown(data, ['economyProtocolVersion']);
+    const config = await loadEconomyConfig(db);
+    assertEconomyAvailable(config, clientProtocol(data));
+    return { ok: true, storefront: await storefrontSnapshot(db) };
+  } catch (error) {
+    logFailure('economyGetStorefront', auth, error);
+    throw error;
+  }
+});
+
+export const economyPurchasePack = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'pack-purchase', { limit: 20, windowMs: 60000 });
+    rejectForbidden(data, ['uid','points','fichas','baseCost','cost','effectiveCost','inventory','collection','campaign']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion']);
+    const operationId = String(data.operationId || '');
+    const campaignEffects = await loadCommerceCampaignEffects(db);
+    const outcome = await runIdempotentOperation(db, {
+      uid: auth.uid, operationId, type: 'store.purchase_pack', request: {},
+      execute: async tx => {
+        const config = await loadEconomyConfig(db, tx);
+        assertEconomyAvailable(config, clientProtocol(data));
+        return purchasePackTx({ db, tx, uid: auth.uid, campaignEffects });
+      }
+    });
+    logger.info('Economy pack purchased', { uid: auth.uid, operationId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
+    return { ok: true, ...outcome };
+  } catch (error) {
+    logFailure('economyPurchasePack', auth, error);
+    throw error;
+  }
+});
+
+export const economyCraftEnhancement = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'craft-enhancement', { limit: 20, windowMs: 60000 });
+    rejectForbidden(data, ['uid','fichas','fichaCost','cost','collection','enhancements']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion','cardId','keyword']);
+    const operationId = String(data.operationId || '');
+    const cardId = String(data.cardId || '');
+    const keyword = String(data.keyword || '');
+    const outcome = await runIdempotentOperation(db, {
+      uid: auth.uid, operationId, type: 'store.craft_enhancement', request: { cardId, keyword },
+      execute: async tx => {
+        const config = await loadEconomyConfig(db, tx);
+        assertEconomyAvailable(config, clientProtocol(data));
+        return craftEnhancementTx({ db, tx, uid: auth.uid, cardId, keyword });
+      }
+    });
+    logger.info('Economy enhancement crafted', { uid: auth.uid, operationId, cardId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
+    return { ok: true, ...outcome };
+  } catch (error) {
+    logFailure('economyCraftEnhancement', auth, error);
+    throw error;
+  }
+});
+
+export const economyPurchasePrebuiltDeck = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'prebuilt-purchase', { limit: 12, windowMs: 60000 });
+    rejectForbidden(data, ['uid','points','fichas','pointsCost','fichasCost','collection','decks','cardIds','cardsGranted']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion','productId','deckName']);
+    const operationId = String(data.operationId || '');
+    const productId = String(data.productId || '');
+    const deckName = String(data.deckName || '');
+    const outcome = await runIdempotentOperation(db, {
+      uid: auth.uid, operationId, type: 'store.purchase_prebuilt', request: { productId, deckName },
+      execute: async tx => {
+        const config = await loadEconomyConfig(db, tx);
+        assertEconomyAvailable(config, clientProtocol(data));
+        return purchasePrebuiltTx({ db, tx, uid: auth.uid, productId, deckName, operationId });
+      }
+    });
+    logger.info('Economy prebuilt purchased', { uid: auth.uid, operationId, productId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
+    return { ok: true, ...outcome };
+  } catch (error) {
+    logFailure('economyPurchasePrebuiltDeck', auth, error);
+    throw error;
+  }
+});
+
+export const economyGetClassifieds = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'classifieds-read', { limit: 60, windowMs: 60000 });
+    rejectUnknown(data, ['economyProtocolVersion']);
+    const config = await loadEconomyConfig(db);
+    assertEconomyAvailable(config, clientProtocol(data));
+    return { ok: true, offer: await getClassifiedsView(db, auth.uid, Date.now()) };
+  } catch (error) {
+    logFailure('economyGetClassifieds', auth, error);
+    throw error;
+  }
+});
+
+export const economyPurchaseClassifiedCard = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'classified-purchase', { limit: 20, windowMs: 60000 });
+    rejectForbidden(data, ['uid','points','fichas','pointsCost','fichasCost','rarity','collection','weekKey']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion','cardId']);
+    const operationId = String(data.operationId || '');
+    const cardId = String(data.cardId || '');
+    const nowMs = Date.now();
+    const outcome = await runIdempotentOperation(db, {
+      uid: auth.uid, operationId, type: 'store.purchase_classified', request: { cardId },
+      execute: async tx => {
+        const config = await loadEconomyConfig(db, tx);
+        assertEconomyAvailable(config, clientProtocol(data));
+        return purchaseClassifiedTx({ db, tx, uid: auth.uid, cardId, nowMs });
+      }
+    });
+    logger.info('Economy classified purchased', { uid: auth.uid, operationId, cardId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
+    return { ok: true, ...outcome };
+  } catch (error) {
+    logFailure('economyPurchaseClassifiedCard', auth, error);
+    throw error;
+  }
+});
+
+export const economyRenameUsername = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'username-rename', { limit: 12, windowMs: 60000 });
+    rejectForbidden(data, ['uid','usernameKey','fichas','fichaCost','cost']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion','username']);
+    const operationId = String(data.operationId || '');
+    const username = String(data.username || '');
+    const outcome = await runIdempotentOperation(db, {
+      uid: auth.uid, operationId, type: 'account.rename_username', request: { username },
+      execute: async tx => {
+        const config = await loadEconomyConfig(db, tx);
+        assertEconomyAvailable(config, clientProtocol(data));
+        return renameUsernameTx({ db, tx, uid: auth.uid, usernameRaw: username });
+      }
+    });
+    logger.info('Economy username renamed', { uid: auth.uid, operationId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
+    return { ok: true, ...outcome };
+  } catch (error) {
+    logFailure('economyRenameUsername', auth, error);
     throw error;
   }
 });

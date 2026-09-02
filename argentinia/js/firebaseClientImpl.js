@@ -29,7 +29,8 @@ import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurcha
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, isDailyStreakConsistent, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, localDateKey, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, getClassifiedsServer, purchaseClassifiedCardServer, renameUsernameServer } from './economyClient.js';
+import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { normalizePlayerStats, summarizePlayerTelemetry, PLAYER_GAME_BACKFILL_VERSION } from './statistics.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
@@ -91,6 +92,10 @@ export function openGuaranteedMythicAuthorityServer(operationId) {
 }
 export function recoverEconomyOperationServer(operationId) {
   return recoverEconomyOperation(operationId);
+}
+export async function fetchStorefrontAuthority() {
+  const response = await getStorefrontServer();
+  return response?.storefront || null;
 }
 
 
@@ -167,6 +172,60 @@ function economyServerRequired(config) { return config?.mode === 'server_require
 async function loadOwnProfileAfterServerMutation(uid) {
   const snap = await getDocFromServer(doc(db, 'users', uid));
   return snap.exists() ? normalizeProfileForClient(snap.data()) : null;
+}
+
+
+const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
+  packPurchase: 'store.purchase_pack',
+  enhancementCraft: 'store.craft_enhancement',
+  prebuiltPurchase: 'store.purchase_prebuilt',
+  classifiedPurchase: 'store.purchase_classified',
+  usernameRename: 'account.rename_username'
+});
+const ECONOMY_ACTION_PREFIXES = Object.freeze({
+  packPurchase: 'buy-pack', enhancementCraft: 'craft', prebuiltPurchase: 'prebuilt',
+  classifiedPurchase: 'classified', usernameRename: 'rename'
+});
+
+// 23.19.5.2 — exactly-once browser bridge. El journal conserva sólo intención/operationId.
+// Si se perdió la respuesta después del commit, el siguiente click/F5 lee economyOperations
+// y sincroniza el perfil sin repetir la compra/craft/rename.
+async function runEconomyActionAuthority(uid, type, request, invoke) {
+  const expectedType = ECONOMY_ACTION_SERVER_TYPES[type];
+  if (!expectedType) throw new Error(`ECONOMY_ACTION_TYPE_INVALID:${type}`);
+  let pending = getPendingEconomyAction(uid, type, request);
+  let operationId = pending?.operationId || createEconomyOperationId(ECONOMY_ACTION_PREFIXES[type] || 'economy');
+  if (!pending) pending = beginEconomyAction(uid, type, operationId, request);
+
+  if (pending?.operationId) {
+    try {
+      const recovered = await recoverEconomyOperation(operationId);
+      const operation = recovered?.operation || null;
+      if (operation?.status === 'committed') {
+        if (operation.type !== expectedType) {
+          const error = new Error('ECONOMY_RECOVERY_TYPE_MISMATCH');
+          error.code = 'OPERATION_ID_PAYLOAD_MISMATCH';
+          throw error;
+        }
+        clearPendingEconomyAction(uid, type, request, operationId);
+        return { ok: true, result: operation.result || null, replayed: true, operationId };
+      }
+    } catch (error) {
+      // Un fallo de red al consultar recovery NO autoriza crear otro operationId.
+      // Reintentamos el mismo callable/operationId; Functions resolverá idempotencia.
+      if (error?.code === 'OPERATION_ID_PAYLOAD_MISMATCH') throw error;
+    }
+  }
+
+  try {
+    const outcome = await invoke(operationId);
+    clearPendingEconomyAction(uid, type, request, operationId);
+    return outcome;
+  } catch (error) {
+    // Journal survives. A deterministic validation rejection can safely reuse the same id;
+    // a lost response will replay the committed receipt instead of charging twice.
+    throw error;
+  }
 }
 
 
@@ -276,6 +335,42 @@ function economyLogBestEffort(event) {
     console.warn('[Statistics 23.13.37] No se pudo registrar economyEvent:', error);
     return false;
   });
+}
+
+// 23.19.5.1 RC2 — bridge de estadísticas para aperturas server-authoritative.
+// La autoridad económica ya fue aplicada por Functions; esto sólo conserva el espejo
+// estadístico legacy como best-effort hasta su migración server-side en 23.19.5.5.
+// IMPORTANT: ui.js NO invoca este bridge sobre outcomes replayed para evitar doble conteo.
+export async function recordChestAuthorityStatsBestEffort(uid, result = {}) {
+  try {
+    const kind = String(result?.kind || '');
+    if (kind === 'pack') {
+      const fichasGain = Math.max(0, Math.floor(Number(result?.fichasGain) || 0));
+      const cardsDelta = Array.isArray(result?.cardIds) ? result.cardIds.length : 15;
+      const stats = await statsBestEffort(uid, { fichasEarned: fichasGain, packsOpened: 1 });
+      void economyLogBestEffort({
+        targetUid: uid,
+        source: 'pack_open_server',
+        fichasDelta: fichasGain,
+        packsDelta: -1,
+        cardsDelta
+      });
+      return stats;
+    }
+    if (kind === 'guaranteedMythic') {
+      const stats = await statsBestEffort(uid, { guaranteedMythicsOpened: 1 });
+      void economyLogBestEffort({
+        targetUid: uid,
+        source: 'guaranteed_mythic_open_server',
+        cardsDelta: 1
+      });
+      return stats;
+    }
+    return { applied: false, reason: 'unsupported_chest_result' };
+  } catch (error) {
+    console.warn('[Economy 23.19.5.1] No se pudo actualizar el espejo estadístico del Cofre:', error);
+    return { applied: false, error };
+  }
 }
 
 export async function bootstrapPlayerStatistics(uid) {
@@ -506,62 +601,16 @@ export async function checkUsernameAvailability(username, usernameKey) {
 
 // Rename real: nombre + reserva + Ficha forman una única transacción. No se permite con
 // activeMatchId para que un snapshot multiplayer nunca cambie de identidad a mitad de match.
-export async function renameUsername(uid, username, usernameKey, fichaCost = USERNAME_RENAME_COST) {
-  const validated = assertValidUsernamePayload(username, usernameKey);
-  const cost = Math.max(1, Math.floor(Number(fichaCost) || USERNAME_RENAME_COST));
-  const userRef = doc(db, 'users', uid);
-
-  const profile = await runTransaction(db, async (tx) => {
-    const userSnap = await tx.get(userRef);
-    if (!userSnap.exists()) throw usernameError('USERNAME_PROFILE_MISSING', 'La cuenta no existe.');
-    const current = userSnap.data();
-    const oldKey = String(current.usernameKey || '');
-    const oldUsername = String(current.username || '');
-    if (!oldKey || !oldUsername) throw usernameError('USERNAME_NOT_CONFIGURED', 'Primero tenés que configurar tu nombre.');
-    if (current.activeMatchId) throw usernameError('USERNAME_ACTIVE_MATCH', 'Terminá tu partida multiplayer antes de cambiar el nombre.');
-    if ((Number(current.fichas) || 0) < cost) throw usernameError('USERNAME_NOT_ENOUGH_FICHAS', 'No tenés suficientes Fichas.');
-    if (oldUsername === validated.username) throw usernameError('USERNAME_SAME', 'Ese ya es tu nombre actual.');
-
-    const newNameRef = doc(db, 'usernames', validated.usernameKey);
-    const oldNameRef = doc(db, 'usernames', oldKey);
-    const refsToRead = validated.usernameKey === oldKey ? [newNameRef] : [newNameRef, oldNameRef];
-    const snaps = [];
-    for (const ref of refsToRead) snaps.push(await tx.get(ref));
-    const newNameSnap = snaps[0];
-    const oldNameSnap = validated.usernameKey === oldKey ? newNameSnap : snaps[1];
-
-    if (newNameSnap.exists() && newNameSnap.data()?.uid !== uid) {
-      throw usernameError('USERNAME_TAKEN', 'Ese nombre ya está usado.');
-    }
-    if (!oldNameSnap.exists() || oldNameSnap.data()?.uid !== uid) {
-      throw usernameError('USERNAME_REGISTRY_MISMATCH', 'La reserva del nombre actual está inconsistente.');
-    }
-
-    const now = serverTimestamp();
-    tx.update(userRef, {
-      username: validated.username,
-      usernameKey: validated.usernameKey,
-      usernameUpdatedAt: now,
-      fichas: (Number(current.fichas) || 0) - cost
-    });
-    tx.set(newNameRef, {
-      uid,
-      username: validated.username,
-      updatedAt: now,
-      ...(newNameSnap.exists() ? {} : { createdAt: now })
-    }, { merge: newNameSnap.exists() });
-    if (validated.usernameKey !== oldKey) tx.delete(oldNameRef);
-
-    return normalizeProfileForClient({
-      ...current,
-      username: validated.username,
-      usernameKey: validated.usernameKey,
-      usernameUpdatedAt: now,
-      fichas: (Number(current.fichas) || 0) - cost
-    });
-  });
-  await statsBestEffort(uid, { fichasSpent: cost });
-  void economyLogBestEffort({ targetUid: uid, source: 'username_rename', fichasDelta: -cost });
+export async function renameUsername(uid, username, _usernameKey = null, _fichaCost = USERNAME_RENAME_COST) {
+  const request = { username: String(username || '') };
+  const outcome = await runEconomyActionAuthority(uid, 'usernameRename', request,
+    operationId => renameUsernameServer(request.username, operationId));
+  const profile = await loadOwnProfileAfterServerMutation(uid);
+  if (!outcome.replayed) {
+    const spent = Math.max(0, Math.floor(Number(outcome.result?.fichasCost) || 0));
+    await statsBestEffort(uid, { fichasSpent: spent });
+    void economyLogBestEffort({ targetUid: uid, source: 'username_rename_server', fichasDelta: -spent });
+  }
   return profile;
 }
 
@@ -1097,25 +1146,24 @@ export async function flushPendingGameRewards(uid) {
 // 23.13.0 — Comprar ya NO abre el sobre. La transacción descuenta puntos y deposita una
 // unidad en Mi Cofre; abrirlo es otra acción atómica. Esto unifica sobres comprados,
 // recompensas diarias y futuros regalos/admin bajo el mismo inventario persistente.
-export async function purchasePack(uid, baseCost) {
-  const snapshot = await getCampaignSnapshotForEconomy(uid);
-  const cost = effectivePackCost(baseCost, snapshot);
-  const ref = doc(db, 'users', uid);
-  const profile = await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
-    const data = snap.data();
-    const currentPoints = data.points || 0;
-    if (currentPoints < cost) throw new Error('No te alcanzan los puntos para este sobre.');
-    const inventory = normalizeInventory(data.inventory);
-    inventory[CHEST_ITEM_KEYS.standardPack] += 1;
-    const updated = { points: currentPoints - cost, inventory };
-    tx.update(ref, updated);
-    return { ...data, ...updated, dailyRewards: normalizeDailyRewardsState(data.dailyRewards) };
-  });
-  await statsBestEffort(uid, { pointsSpent: cost, packsReceived: 1 });
-  void economyLogBestEffort({ targetUid: uid, source: 'pack_purchase', pointsDelta: -cost, packsDelta: 1 });
-  return { profile, effectiveCost: cost, baseCost: Math.max(0, Math.floor(Number(baseCost) || 0)), campaignSnapshot: snapshot };
+export async function purchasePack(uid, _baseCost = null) {
+  const request = {};
+  const outcome = await runEconomyActionAuthority(uid, 'packPurchase', request,
+    operationId => purchasePackServer(operationId));
+  const profile = await loadOwnProfileAfterServerMutation(uid);
+  const cost = Math.max(0, Math.floor(Number(outcome.result?.effectiveCost) || 0));
+  if (!outcome.replayed) {
+    await statsBestEffort(uid, { pointsSpent: cost, packsReceived: 1 });
+    void economyLogBestEffort({ targetUid: uid, source: 'pack_purchase_server', pointsDelta: -cost, packsDelta: 1 });
+  }
+  return {
+    profile,
+    effectiveCost: cost,
+    baseCost: Math.max(0, Math.floor(Number(outcome.result?.baseCost) || 0)),
+    campaignSnapshot: { effects: { packDiscountPercent: Math.max(0, Math.floor(Number(outcome.result?.campaign?.packDiscountPercent) || 0)) } },
+    replayed: !!outcome.replayed,
+    operationId: outcome.operationId
+  };
 }
 
 // 23.19.5.1 — legacy Cofre mutation path is intentionally disabled in the current client.
@@ -1447,35 +1495,16 @@ export async function claimDailyReward(uid, day, nowMs = null) {
 // Craftea una mejora permanente: gasta `fichaCost` Fichas para taggear UNA carta que ya
 // tenés (y que todavía no esté mejorada) con una keyword de la lista curada
 // (ENHANCEMENT_KEYWORDS en store.js). Devuelve el perfil ya actualizado.
-export async function craftEnhancement(uid, cardId, keyword, fichaCost) {
-  // 23.13.37 craft hotfix — las mejoras actuales son exclusivamente keywords de criatura.
-  // No confiamos sólo en el filtro visual: cualquier caller interno que intente pasar una
-  // Tierra/Artefacto/etc. queda rechazado antes de tocar Fichas o Firestore.
-  const cardDef = cardDb.getById(cardId);
-  if (!isEnhancementEligibleCard(cardDef)) {
-    throw new Error('Por ahora sólo se pueden mejorar Criaturas.');
+export async function craftEnhancement(uid, cardId, keyword, _fichaCost = null) {
+  const request = { cardId: String(cardId || ''), keyword: String(keyword || '') };
+  const outcome = await runEconomyActionAuthority(uid, 'enhancementCraft', request,
+    operationId => craftEnhancementServer(request.cardId, request.keyword, operationId));
+  const profile = await loadOwnProfileAfterServerMutation(uid);
+  if (!outcome.replayed) {
+    const spent = Math.max(0, Math.floor(Number(outcome.result?.fichasCost) || 0));
+    await statsBestEffort(uid, { fichasSpent: spent });
+    void economyLogBestEffort({ targetUid: uid, source: 'enhancement_craft_server', fichasDelta: -spent });
   }
-  const ref = doc(db, 'users', uid);
-  const profile = await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
-    const data = snap.data();
-    const currentFichas = data.fichas || 0;
-    if (currentFichas < fichaCost) throw new Error('No te alcanzan las Fichas.');
-    const enhancements = data.enhancements || {};
-    if (enhancements[cardId]) throw new Error('Esa carta ya tiene una mejora.');
-    if (!(data.collection || []).includes(cardId)) throw new Error('No tenés esa carta en tu colección.');
-
-    const updated = {
-      fichas: currentFichas - fichaCost,
-      enhancements: { ...enhancements, [cardId]: keyword }
-    };
-    tx.update(ref, updated);
-    return { ...data, ...updated };
-  });
-  const spent = Math.max(0, Math.floor(Number(fichaCost) || 0));
-  await statsBestEffort(uid, { fichasSpent: spent });
-  void economyLogBestEffort({ targetUid: uid, source: 'enhancement_craft', fichasDelta: -spent });
   return profile;
 }
 
@@ -1580,67 +1609,17 @@ export async function createDeck(uid, name, cardIds) {
 // dentro de la transacción vuelve a leer gameConfig/settings para que precio/cupo sean los
 // valores autoritativos publicados por Admin en ese instante.
 export async function purchasePrebuiltDeck(uid, productId, deckName) {
-  await cardDb.loadAll();
-  const catalog = await loadPrebuiltDeckCatalog();
-  const product = catalog.products.find(entry => entry.id === String(productId || ''));
-  if (!product) {
-    const error = new Error('Ese mazo prearmado no existe.'); error.code='PREBUILT_NOT_FOUND'; throw error;
+  const request = { productId: String(productId || ''), deckName: String(deckName || '').trim() };
+  const outcome = await runEconomyActionAuthority(uid, 'prebuiltPurchase', request,
+    operationId => purchasePrebuiltDeckServer(request.productId, request.deckName, operationId));
+  const profile = await loadOwnProfileAfterServerMutation(uid);
+  if (!outcome.replayed) {
+    const pointsSpent = Math.max(0, Math.floor(Number(outcome.result?.pointsCost) || 0));
+    const fichasSpent = Math.max(0, Math.floor(Number(outcome.result?.fichasCost) || 0));
+    await statsBestEffort(uid, { pointsSpent, fichasSpent });
+    void economyLogBestEffort({ targetUid: uid, source: 'prebuilt_deck_purchase_server', pointsDelta: -pointsSpent, fichasDelta: -fichasSpent, cardsDelta: Math.max(0, Math.floor(Number(outcome.result?.cardsGranted) || 0)) });
   }
-  const legal = validatePrebuiltDeckProduct(product, cardDb.allCards);
-  if (!legal.ok) {
-    const error = new Error(`El mazo oficial no supera su contrato de legalidad: ${legal.errors.join(', ')}`); error.code='PREBUILT_INVALID_PRODUCT'; throw error;
-  }
-  const cleanName=String(deckName||'').trim();
-  if (!cleanName) { const error=new Error('Elegí un nombre para el mazo.'); error.code='PREBUILT_NAME_REQUIRED'; throw error; }
-  if (cleanName.length>30) { const error=new Error('El nombre del mazo no puede tener más de 30 caracteres.'); error.code='PREBUILT_NAME_TOO_LONG'; throw error; }
-
-  // 23.17.3.1 — fail closed: antes de tocar economía, exigimos que Firestore acepte la
-  // attestation 23.13.71. Con Rules anteriores el probe es rechazado y la compra NO ocurre.
-  try {
-    await getAuthoritativeServerClock(uid);
-  } catch (cause) {
-    const error=new Error('La compra segura de Mazos Prearmados requiere Firestore Rules 23.13.71 publicadas.');
-    error.code='PREBUILT_RULES_STALE'; error.cause=cause; throw error;
-  }
-
-  const userRef=doc(db,'users',uid);
-  const settingsRef=doc(db,'gameConfig','settings');
-  const result=await runTransaction(db, async tx => {
-    const [userSnap,settingsSnap]=await Promise.all([tx.get(userRef),tx.get(settingsRef)]);
-    if(!userSnap.exists()) throw new Error('No se encontró tu perfil.');
-    const data=userSnap.data();
-    const settings=settingsSnap.exists()?settingsSnap.data():{};
-    const pointsCost=Math.max(0,Math.floor(Number(settings.prebuiltDeckPoints ?? PREBUILT_DECK_POINTS)||0));
-    const fichasCost=Math.max(0,Math.floor(Number(settings.prebuiltDeckFichas ?? PREBUILT_DECK_FICHAS)||0));
-    const maxDecks=Math.max(1,Math.floor(Number(settings.maxSavedDecks ?? MAX_SAVED_DECKS)||MAX_SAVED_DECKS));
-    const decks=Array.isArray(data.decks)?data.decks:[];
-    if(decks.length>=maxDecks){ const error=new Error(`Ya tenés el máximo de ${maxDecks} mazos.`); error.code='PREBUILT_DECK_LIMIT'; throw error; }
-    const purchased=getPrebuiltPurchaseIds(data);
-    if(purchased.includes(product.id)){ const error=new Error('Ese mazo prearmado ya fue comprado por esta cuenta.'); error.code='PREBUILT_ALREADY_PURCHASED'; throw error; }
-    const points=Math.max(0,Math.floor(Number(data.points)||0));
-    const fichas=Math.max(0,Math.floor(Number(data.fichas)||0));
-    if(points<pointsCost || fichas<fichasCost){ const error=new Error('No te alcanzan los puntos o las Fichas.'); error.code='PREBUILT_INSUFFICIENT_FUNDS'; throw error; }
-
-    const collection=[...(Array.isArray(data.collection)?data.collection:[]),...product.cardIds];
-    const synthetic={...data,collection};
-    validateDeckCards(synthetic,cleanName,product.cardIds,{allowVirtualAdminPool:false});
-    const now=Date.now();
-    const newDeck={id:`prebuilt_${product.id}_${now}`,name:cleanName,cardIds:[...product.cardIds],isDefault:false,createdAt:now,prebuiltProductId:product.id};
-    const receipt={productId:product.id,purchasedAt:now,deckId:newDeck.id,pointsCost,fichasCost};
-    const receipts={...(data.prebuiltDeckPurchases&&typeof data.prebuiltDeckPurchases==='object'&&!Array.isArray(data.prebuiltDeckPurchases)?data.prebuiltDeckPurchases:{}),[product.id]:receipt};
-    const updated={
-      points:points-pointsCost,
-      fichas:fichas-fichasCost,
-      collection,
-      decks:[...decks,newDeck],
-      prebuiltDeckPurchases:receipts
-    };
-    tx.update(userRef,updated);
-    return {profile:normalizeProfileForClient({...data,...updated}),pointsCost,fichasCost,cardsGranted:product.cardIds.length,deck:newDeck};
-  });
-  await statsBestEffort(uid,{pointsSpent:result.pointsCost,fichasSpent:result.fichasCost});
-  void economyLogBestEffort({targetUid:uid,source:'prebuilt_deck_purchase',pointsDelta:-result.pointsCost,fichasDelta:-result.fichasCost,cardsDelta:result.cardsGranted});
-  return result;
+  return { ...outcome.result, profile, replayed: !!outcome.replayed, operationId: outcome.operationId };
 }
 
 // Edita un mazo YA GUARDADO — mismas reglas que crear uno nuevo (mismo validateDeckCards),
@@ -1811,47 +1790,9 @@ export async function loadClassifiedsSchedule({ forceServer = false } = {}) {
 }
 
 export async function fetchCurrentClassifieds(uid) {
-  await cardDb.loadAll();
-  const clock = await getAuthoritativeClassifiedsNow(uid);
-  const [schedule, profileSnap] = await Promise.all([
-    loadClassifiedsSchedule({ forceServer: true }),
-    getDocFromServer(doc(db, 'users', uid))
-  ]);
-  if (!profileSnap.exists()) throw new Error('No se encontró tu perfil.');
-  const week = getScheduledClassifiedsWeek(schedule, clock.serverNow);
-  if (!week || !validateClassifiedsScheduleWeek(week, cardDb)) {
-    const error = new Error('Los Avisos Clasificados de esta semana todavía no fueron publicados.');
-    error.code = 'CLASSIFIEDS_WEEK_NOT_PUBLISHED';
-    throw error;
-  }
-
-  const profile = normalizeProfileForClient(profileSnap.data());
-  const weeklyState = getClassifiedsProfileState(profile, week.weekKey);
-  const entries = week.cardIds.map((cardId, slot) => {
-    const rarity = week.rarities[cardId];
-    const price = week.prices?.[rarity] || { points: 0, fichas: 0 };
-    return {
-      slot,
-      cardId,
-      rarity,
-      points: Math.max(0, Math.floor(Number(price.points) || 0)),
-      fichas: Math.max(0, Math.floor(Number(price.fichas) || 0)),
-      ownedCount: countOwnedClassifiedCard(profile, cardId),
-      purchased: weeklyState.purchased.includes(cardId)
-    };
-  });
-
-  return {
-    schemaVersion: CLASSIFIEDS_SCHEMA_VERSION,
-    weekKey: week.weekKey,
-    weekStart: week.weekStart,
-    premiumRarity: week.premiumRarity,
-    serverNow: clock.serverNow,
-    entries,
-    purchased: weeklyState.purchased,
-    purchaseCounts: weeklyState.counts,
-    profile
-  };
+  const response = await getClassifiedsServer();
+  const profile = await loadOwnProfileAfterServerMutation(uid);
+  return { ...(response?.offer || {}), profile };
 }
 
 function nextClassifiedsCounts(previous, rarity, reset = false) {
@@ -1868,72 +1809,16 @@ function nextClassifiedsCounts(previous, rarity, reset = false) {
 // carrera. Las Rules 23.13.25 validan además contra la semana trusted publicada en
 // gameConfig/classifiedsSchedule: cardId, rareza, precio, cupo semanal y append de colección.
 export async function purchaseClassifiedCard(uid, cardId) {
-  await cardDb.loadAll();
-  const clock = await getAuthoritativeClassifiedsNow(uid);
-  const schedule = await loadClassifiedsSchedule({ forceServer: true });
-  const week = getScheduledClassifiedsWeek(schedule, clock.serverNow);
-  if (!week || !validateClassifiedsScheduleWeek(week, cardDb)) {
-    const error = new Error('Los Avisos Clasificados de esta semana todavía no fueron publicados.');
-    error.code = 'CLASSIFIEDS_WEEK_NOT_PUBLISHED';
-    throw error;
+  const request = { cardId: String(cardId || '') };
+  const outcome = await runEconomyActionAuthority(uid, 'classifiedPurchase', request,
+    operationId => purchaseClassifiedCardServer(request.cardId, operationId));
+  const profile = await loadOwnProfileAfterServerMutation(uid);
+  if (!outcome.replayed) {
+    const pointsSpent = Math.max(0, Math.floor(Number(outcome.result?.pointsCost) || 0));
+    const fichasSpent = Math.max(0, Math.floor(Number(outcome.result?.fichasCost) || 0));
+    await statsBestEffort(uid, { pointsSpent, fichasSpent });
+    void economyLogBestEffort({ targetUid: uid, source: 'classified_purchase_server', pointsDelta: -pointsSpent, fichasDelta: -fichasSpent, cardsDelta: 1 });
   }
-  if (!week.cardIds.includes(cardId)) {
-    const error = new Error('Esa carta no forma parte de los Avisos Clasificados de esta semana.');
-    error.code = 'CLASSIFIEDS_CARD_NOT_OFFERED';
-    throw error;
-  }
-
-  const rarity = week.rarities[cardId];
-  const price = week.prices?.[rarity];
-  if (!price || !Number.isInteger(price.points) || !Number.isInteger(price.fichas) || price.points < 0 || price.fichas < 0) {
-    throw new Error('CLASSIFIEDS_PRICE_INVALID');
-  }
-
-  const ref = doc(db, 'users', uid);
-  const profile = await runTransaction(db, async tx => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
-    const data = snap.data();
-    const state = getClassifiedsProfileState(data, week.weekKey);
-    if (state.purchased.includes(cardId)) {
-      const error = new Error('Esa carta ya la compraste esta semana.');
-      error.code = 'CLASSIFIEDS_ALREADY_PURCHASED';
-      throw error;
-    }
-
-    const currentPoints = Math.max(0, Math.floor(Number(data.points) || 0));
-    const currentFichas = Math.max(0, Math.floor(Number(data.fichas) || 0));
-    if (currentPoints < price.points || currentFichas < price.fichas) {
-      const error = new Error('No te alcanzan los puntos o las Fichas para comprar esta carta.');
-      error.code = 'CLASSIFIEDS_INSUFFICIENT_FUNDS';
-      throw error;
-    }
-
-    const sameWeek = String(data.classifiedsWeekKey || '') === week.weekKey;
-    const purchased = sameWeek ? [...state.purchased, cardId] : [cardId];
-    const counts = nextClassifiedsCounts(data.classifiedsPurchaseCounts, rarity, !sameWeek);
-    const purchase = {
-      weekKey: week.weekKey,
-      cardId,
-      rarity,
-      pointsCost: price.points,
-      fichasCost: price.fichas
-    };
-    const updated = {
-      points: currentPoints - price.points,
-      fichas: currentFichas - price.fichas,
-      collection: [...(data.collection || []), cardId],
-      classifiedsWeekKey: week.weekKey,
-      classifiedsPurchased: purchased,
-      classifiedsPurchaseCounts: counts,
-      classifiedsLastPurchase: purchase,
-      classifiedsUpdatedAt: serverTimestamp()
-    };
-    tx.update(ref, updated);
-    return normalizeProfileForClient({ ...data, ...updated, classifiedsUpdatedAt: new Date() });
-  });
-  await statsBestEffort(uid, { pointsSpent: price.points, fichasSpent: price.fichas });
-  void economyLogBestEffort({ targetUid: uid, source: 'classified_purchase', pointsDelta: -price.points, fichasDelta: -price.fichas, cardsDelta: 1 });
   return profile;
 }
 

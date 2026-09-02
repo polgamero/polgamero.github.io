@@ -18,9 +18,9 @@ const root=path.resolve(here,'..');
 const repo=path.resolve(root,'..');
 const read=(p)=>fs.readFileSync(path.join(repo,p),'utf8');
 
-assert.equal(ENGINE_VERSION,'23.19.5.1');
-assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.1');
-assert.equal(ECONOMY_SCHEMA_VERSION,2);
+assert.equal(ENGINE_VERSION,'23.19.5.2');
+assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.2');
+assert.equal(ECONOMY_SCHEMA_VERSION,3);
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.equal(TRUSTED_CARD_POOL.length,880);
 
@@ -35,10 +35,13 @@ const mythicPack=generateTrustedPack({seed:'qa-pack-mythic',mythicChance:1});
 assert.equal(mythicPack.rareSlotRarity,'Mythic');
 assert.equal(byId.get(mythicPack.cardIds[13])?.rarity,'Mythic');
 assert.equal(byId.get(generateTrustedGuaranteedMythic({seed:'qa-mythic'}))?.rarity,'Mythic');
-assert.equal(effectivePackOpenFichas(buildPackCampaignEffects([
+const packCampaignEffects=buildPackCampaignEffects([
   {id:'a',type:'all_fichas_multiplier',value:2,startAt:new Date(1),endAt:new Date(Date.now()+60_000)},
-  {id:'b',type:'pack_open_ficha_bonus',value:3,startAt:new Date(1),endAt:new Date(Date.now()+60_000)}
-])),5);
+  {id:'b',type:'pack_open_ficha_bonus',value:3,startAt:new Date(1),endAt:new Date(Date.now()+60_000)},
+  {id:'ignored-discount',type:'pack_discount',value:50,startAt:new Date(1),endAt:new Date(Date.now()+60_000)}
+]);
+assert.equal(effectivePackOpenFichas(packCampaignEffects),5);
+assert.deepEqual(packCampaignEffects.activeEventIds,['a','b'],'Pack-open audit IDs must exclude Store-only campaign effects');
 
 const memory=new Map();
 globalThis.localStorage={
@@ -54,6 +57,7 @@ assert.equal(getPendingEconomyReveal('qa-user','pack'),null);
 
 const ui=read('argentinia/js/ui.js');
 const client=read('argentinia/js/economyClient.js');
+const firebaseFacade=read('argentinia/js/firebaseClient.js');
 const firebaseImpl=read('argentinia/js/firebaseClientImpl.js');
 const fnIndex=read('functions/src/index.js');
 const packServer=read('functions/src/economy/packs.js');
@@ -71,6 +75,19 @@ assert.doesNotMatch(ui,/generateGuaranteedMythicCard\s*\(/,'UI must not choose g
 assert.doesNotMatch(ui,/openInventoryPack\s*\(/,'UI must not invoke legacy client-authoritative pack mutation');
 assert.doesNotMatch(ui,/openGuaranteedMythic\s*\(/,'UI must not invoke legacy client-authoritative Mythic mutation');
 assert.match(firebaseImpl,/LEGACY_CHEST_WRITE_DISABLED/,'current client must hard-disable legacy direct Cofre writes');
+assert.match(firebaseImpl,/export async function recordChestAuthorityStatsBestEffort/,'server-authoritative chest stats bridge must exist in Firebase implementation');
+assert.match(ui,/if \(!outcome\.replayed\)[\s\S]{0,260}recordChestAuthorityStatsBestEffort/,'replayed economy receipts must not double-count chest statistics');
+
+// Systemic lazy-facade contract: every asyncProxy exported by firebaseClient.js must
+// resolve to a real export in firebaseClientImpl.js. This catches the exact class of
+// FIREBASE_LAZY_EXPORT_MISSING regressions before production.
+const lazyTargets=[...firebaseFacade.matchAll(/asyncProxy\('([^']+)'\)/g)].map(m=>m[1]);
+const implExportNames=new Set([
+  ...[...firebaseImpl.matchAll(/export\s+(?:async\s+)?function\s+(\w+)/g)].map(m=>m[1]),
+  ...[...firebaseImpl.matchAll(/export\s+(?:const|let|class)\s+(\w+)/g)].map(m=>m[1])
+]);
+const missingLazyTargets=lazyTargets.filter(name=>!implExportNames.has(name));
+assert.deepEqual(missingLazyTargets,[],'firebase lazy facade must not proxy missing implementation exports');
 
 assert.match(fnIndex,/export const economyOpenPack/);
 assert.match(fnIndex,/export const economyOpenGuaranteedMythic/);
@@ -85,8 +102,8 @@ assert.match(packServer,/CAMPAIGN_POLICY_UNAVAILABLE/,'campaign lookup must fail
 assert.match(packServer,/mythicChance/,'server must honor trusted admin pack policy');
 
 const manifest=JSON.parse(read('argentinia/build-manifest.json'));
-assert.equal(manifest.engineVersion,'23.19.5.1');
-assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.1');
-assert.equal(manifest.economySchemaVersion,2);
+assert.equal(manifest.engineVersion,'23.19.5.2');
+assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.2');
+assert.equal(manifest.economySchemaVersion,3);
 
 console.log('PACKS_CHEST_MYTHIC_AUTHORITY_23_19_5_1_OK serverRng=CRYPTO trustedPool=880 pack=9C+4U+R/M+L mythic=SERVER_ONLY recovery=OPERATION_ID campaign=FAIL_CLOSED');

@@ -14,10 +14,10 @@ const ui=read('js/ui.js');
 const firebase=read('js/firebaseClientImpl.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 
-assert.equal(ENGINE_VERSION,'23.19.5.1');
+assert.equal(ENGINE_VERSION,'23.19.5.2');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(manifest.engineVersion,'23.19.5.1');
+assert.equal(manifest.engineVersion,'23.19.5.2');
 assert.equal(manifest.pool,880);
 
 const refs=normalizeAnimationSpeedMultipliers({slow:1.6,normal:.95,fast:.55});

@@ -8,9 +8,9 @@ const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
 const rulesPath=process.env.ARGENTINIA_FIRESTORE_RULES || path.resolve(root,'../../FIRESTORE_RULES_COMPLETAS_ENTREGA_23_13_72_RULE_BUDGET_ROUTER_HOTFIX.rules');
 const manifest=JSON.parse(fs.readFileSync(path.join(root,'build-manifest.json'),'utf8'));
-assert.equal(ENGINE_VERSION, '23.19.5.1');
+assert.equal(ENGINE_VERSION, '23.19.5.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(manifest.engineVersion,'23.19.5.1');
+assert.equal(manifest.engineVersion,'23.19.5.2');
 assert.equal(manifest.firestoreRulesVersion,'23.13.79');
 
 if (fs.existsSync(rulesPath)) {

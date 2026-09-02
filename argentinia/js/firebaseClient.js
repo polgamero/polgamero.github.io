@@ -197,6 +197,7 @@ export const openGuaranteedMythic = asyncProxy('openGuaranteedMythic');
 export const openPackAuthorityServer = asyncProxy('openPackAuthorityServer');
 export const openGuaranteedMythicAuthorityServer = asyncProxy('openGuaranteedMythicAuthorityServer');
 export const recoverEconomyOperationServer = asyncProxy('recoverEconomyOperationServer');
+export const fetchStorefrontAuthority = asyncProxy('fetchStorefrontAuthority');
 
 export const recordChestAuthorityStatsBestEffort = asyncProxy('recordChestAuthorityStatsBestEffort');
 export const registerDailyLogin = asyncProxy('registerDailyLogin');

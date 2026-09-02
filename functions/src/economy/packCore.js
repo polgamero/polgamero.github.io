@@ -43,10 +43,15 @@ export function buildPackCampaignEffects(events = [], nowMs = Date.now()) {
   const activeEventIds = [];
   for (const event of Array.isArray(events) ? events : []) {
     if (!eventActive(event, nowMs)) continue;
-    activeEventIds.push(String(event.id || ''));
     const value = Math.max(0, Number(event.value) || 0);
-    if (event.type === 'all_fichas_multiplier') allFichasMultiplier = Math.max(allFichasMultiplier, value || 1);
-    if (event.type === 'pack_open_ficha_bonus') packOpenFichaBonus += Math.max(0, Math.floor(value));
+    if (event.type === 'all_fichas_multiplier') {
+      activeEventIds.push(String(event.id || ''));
+      allFichasMultiplier = Math.max(allFichasMultiplier, value || 1);
+    }
+    if (event.type === 'pack_open_ficha_bonus') {
+      activeEventIds.push(String(event.id || ''));
+      packOpenFichaBonus += Math.max(0, Math.floor(value));
+    }
   }
   return { allFichasMultiplier, packOpenFichaBonus, activeEventIds: activeEventIds.filter(Boolean).slice(0, 32) };
 }

@@ -48,3 +48,15 @@ assert.equal(byId.get(packM.cardIds[13])?.rarity, 'Mythic');
 const guaranteed = packs.generateTrustedGuaranteedMythic({ seed: 'unit-guaranteed' });
 assert.equal(byId.get(guaranteed)?.rarity, 'Mythic');
 assert.equal(packs.effectivePackOpenFichas({ allFichasMultiplier: 2, packOpenFichaBonus: 3 }), 5);
+
+const commerceCore = await import('../src/economy/commerceCore.js');
+const prebuilt = await import('../src/trusted/prebuiltCatalog.js');
+assert.equal(prebuilt.TRUSTED_PREBUILT_PRODUCTS.length, 10);
+assert.ok(prebuilt.TRUSTED_PREBUILT_PRODUCTS.every(product => product.cardIds.length === 60));
+assert.equal(commerceCore.ENHANCEMENT_KEYWORDS.length, 10);
+const commerceSettings = commerceCore.normalizeStoreSettings({ packCost: 200, fichasPerEnhancement: 4, prebuiltDeckPoints: 1700, prebuiltDeckFichas: 5, maxSavedDecks: 13 });
+assert.equal(commerceSettings.packCost, 200);
+assert.equal(commerceSettings.craftCost, 4);
+assert.equal(commerceCore.effectivePackPurchaseCost(200, { packDiscountPercent: 50 }), 100);
+assert.equal(commerceCore.argentinaWeekKey(Date.parse('2026-09-02T15:00:00Z')), '2026-08-31');
+assert.equal(commerceCore.nextArgentinaWeekRotationIso(Date.parse('2026-09-02T15:00:00Z')), '2026-09-07T03:00:00.000Z');

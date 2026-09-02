@@ -1,4 +1,4 @@
-// js/economyClient.js — v23.19.5.1 Packs / Cofre / Mythic Authority.
+// js/economyClient.js — v23.19.5.2 Store / Craft / Prebuilt / Classifieds / Username Authority.
 // Transporte único browser -> callable Functions. El cliente expresa INTENCIÓN; nunca
 // construye receipts ni escribe directamente economyOperations.
 
@@ -92,6 +92,52 @@ export function openPackServer(operationId = null) {
 export function openGuaranteedMythicServer(operationId = null) {
   return call('economyOpenGuaranteedMythic', {
     operationId: operationId || createEconomyOperationId('mythic')
+  });
+}
+
+
+
+export function getStorefrontServer() {
+  return call('economyGetStorefront');
+}
+
+export function purchasePackServer(operationId = null) {
+  return call('economyPurchasePack', {
+    operationId: operationId || createEconomyOperationId('buy-pack')
+  });
+}
+
+export function craftEnhancementServer(cardId, keyword, operationId = null) {
+  return call('economyCraftEnhancement', {
+    operationId: operationId || createEconomyOperationId('craft'),
+    cardId: String(cardId || ''),
+    keyword: String(keyword || '')
+  });
+}
+
+export function purchasePrebuiltDeckServer(productId, deckName, operationId = null) {
+  return call('economyPurchasePrebuiltDeck', {
+    operationId: operationId || createEconomyOperationId('prebuilt'),
+    productId: String(productId || ''),
+    deckName: String(deckName || '')
+  });
+}
+
+export function getClassifiedsServer() {
+  return call('economyGetClassifieds');
+}
+
+export function purchaseClassifiedCardServer(cardId, operationId = null) {
+  return call('economyPurchaseClassifiedCard', {
+    operationId: operationId || createEconomyOperationId('classified'),
+    cardId: String(cardId || '')
+  });
+}
+
+export function renameUsernameServer(username, operationId = null) {
+  return call('economyRenameUsername', {
+    operationId: operationId || createEconomyOperationId('rename'),
+    username: String(username || '')
   });
 }
 

@@ -20,3 +20,11 @@ Fail closed on unavailable Campaign policy, disabled economy, stale economy clie
 
 UNCHANGED
 Pool 880; mp-23.19.2; Firestore Rules 23.13.79; Deck Intelligence 23.19.5-di2.
+
+
+RC2 FRONTEND HOTFIX — Firebase Lazy Stats Bridge
+- Fixes FIREBASE_LAZY_EXPORT_MISSING:recordChestAuthorityStatsBestEffort after successful Pack/Mythic openings.
+- The authoritative reward transaction was already successful; only the best-effort legacy statistics bridge was missing from firebaseClientImpl.js.
+- Pack/Mythic stats bridge restored without economic authority. Replayed/recovered receipts are explicitly excluded from client stat increments to avoid double counting.
+- Added systemic test: every firebaseClient.js asyncProxy target must exist as an export in firebaseClientImpl.js.
+- Functions, Firestore Rules, economy protocol/schema, pool and App Check policy unchanged.

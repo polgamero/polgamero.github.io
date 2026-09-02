@@ -18,7 +18,7 @@ const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const json=p=>JSON.parse(read(p));
 
-assert.equal(ENGINE_VERSION, '23.19.5.1');
+assert.equal(ENGINE_VERSION, '23.19.5.2');
 assert.equal(PREBUILT_DECKS_VERSION,'23.17.3');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
@@ -74,11 +74,16 @@ assert.deepEqual(getPrebuiltPurchaseIds({prebuiltDeckPurchases:['wu','wu','br']}
 
 const fb=read('js/firebaseClientImpl.js');
 assert.ok(fb.includes('export async function purchasePrebuiltDeck'));
-assert.ok(fb.includes("doc(db,'gameConfig','settings')"),'precio/cupo deben releerse dentro de la transacción');
-assert.ok(fb.includes('prebuiltDeckPurchases:receipts'),'receipt persistente evita recompra tras borrar el deck');
-assert.ok(fb.includes('collection,') && fb.includes('decks:[...decks,newDeck]'),'compra debe acreditar cartas y crear deck');
-assert.ok(fb.includes('points:points-pointsCost') && fb.includes('fichas:fichas-fichasCost'),'compra debe cobrar ambas monedas');
-assert.ok(fb.includes("source:'prebuilt_deck_purchase'"),'compra debe registrar economía');
+assert.ok(fb.includes('purchasePrebuiltDeckServer(request.productId, request.deckName, operationId)'), 'cliente oficial debe delegar compra al servidor');
+const commerce=read('../functions/src/economy/commerce.js');
+const trustedPrebuilt=read('../functions/src/trusted/prebuiltCatalog.js');
+assert.ok(commerce.includes('purchasePrebuiltTx'), 'debe existir transacción server-authoritative');
+assert.ok(commerce.includes('loadSettings(db, tx)'), 'precio/cupo deben releerse dentro de la transacción server-side');
+assert.ok(commerce.includes('prebuiltDeckPurchases: { ...existingReceipts, [product.id]: receipt }'),'receipt persistente evita recompra tras borrar el deck');
+assert.ok(commerce.includes('collection: nextCollection') && commerce.includes('decks: [...decks, newDeck]'),'compra debe acreditar cartas y crear deck atómicamente');
+assert.ok(commerce.includes('points: pointsBefore - settings.prebuiltPoints') && commerce.includes('fichas: fichasBefore - settings.prebuiltFichas'),'servidor debe cobrar ambas monedas');
+assert.ok(trustedPrebuilt.includes("PREBUILT_DECKS_VERSION = '23.17.3'") && trustedPrebuilt.includes('product.cardIds.length !== 60'),'catálogo trusted server-side conserva contrato 10x60');
+assert.ok(fb.includes("source: 'prebuilt_deck_purchase_server'"),'cliente sólo registra espejo best-effort después del commit servidor');
 const facade=read('js/firebaseClient.js');
 assert.ok(facade.includes("purchasePrebuiltDeck = asyncProxy('purchasePrebuiltDeck')"));
 

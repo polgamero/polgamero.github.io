@@ -1,0 +1,62 @@
+ARGENTINIA 23.19.5.2 — STORE / CRAFT / PREBUILT / CLASSIFIEDS / USERNAME AUTHORITY
+
+OBJECTIVE
+Move the remaining current-client store and identity economy mutations to authenticated, idempotent server authority while preserving existing product behavior, Admin-controlled prices, the trusted prebuilt catalog, Classifieds weekly limits, and username UX.
+
+SERVER AUTHORITY
+- economyGetStorefront: returns trusted server prices/costs/capabilities for Packs, Craft, Prebuilt and Username rename.
+- economyPurchasePack: reads Admin packCost + active server campaign discount, atomically debits Points and grants exactly one Standard Pack.
+- economyCraftEnhancement: validates owned eligible creature, allowed enhancement keyword, current Admin Ficha cost, and atomically debits + stores enhancement.
+- economyPurchasePrebuiltDeck: resolves product from trusted server catalog, validates 60-card product, current Admin costs, purchase uniqueness and deck-slot cap; debit + 60-card grant + saved deck + purchase receipt are atomic.
+- economyGetClassifieds: server chooses current ART week (Monday 00:00 ART), validates the published 7-card offer and returns authoritative prices/rarities/wallet view.
+- economyPurchaseClassifiedCard: validates card belongs to the active server week, enforces 4 Common + 2 Uncommon + 1 Rare/Mythic weekly caps, and atomically debits + grants.
+- economyRenameUsername: validates username, canonical key, availability, registry ownership, active-match prohibition and server Ficha cost; registry swap + profile rename + debit are atomic.
+
+ANTI-FORGERY
+- Client cannot supply UID, balances, costs, rarity, week key, collection/deck contents, prebuilt card IDs, usernameKey or authoritative campaign data.
+- Unknown/forbidden fields fail with INVALID_ECONOMY_REQUEST before mutation.
+- Prebuilt products are loaded from functions/src/trusted/prebuilt-decks.json through the trusted server catalog.
+- Card eligibility and Classifieds offer validation use the trusted 880-card snapshot.
+
+ATOMICITY / IDEMPOTENCY
+- Operation ledger remains economyOperations/{uid}_{operationId}.
+- Same operationId + same payload/type is exactly-once under concurrent calls.
+- Reusing an operationId with a different payload fails OPERATION_ID_PAYLOAD_MISMATCH.
+- Wallet debit and the corresponding grant/change commit in the same transaction.
+- Distinct concurrent operations cannot legitimately overspend the same balance because each transaction revalidates current profile state.
+
+CLIENT RECOVERY
+- js/economyActionRecovery.js stores only uid/type/operationId/requestKey for pending non-cinematic economy actions.
+- Supported intents: packPurchase, enhancementCraft, prebuiltPurchase, classifiedPurchase, usernameRename.
+- F5/network interruption recovers the immutable committed operation through economyGetOperation; no client balance/card authority is persisted locally.
+- Existing 23.19.5.1 Pack/Mythic reveal recovery remains unchanged.
+
+23.19.5.1 FRONTEND HOTFIX ABSORBED
+- recordChestAuthorityStatsBestEffort is now exported by firebaseClientImpl.js.
+- Replayed/recovered Pack/Mythic operation results do not double-increment legacy best-effort stats.
+- Generic Firebase lazy-facade parity test ensures every asyncProxy target exists in firebaseClientImpl.js.
+
+CLASSIFIEDS CONTRACT
+- Official economy/calendar timezone: ART (UTC-3).
+- Week rolls Monday 00:00 ART.
+- Published week must contain exactly seven unique trusted cards: 4 Common + 2 Uncommon + 1 Rare/Mythic, with at most one Common Land.
+- Server validates rarity and price metadata against the trusted schedule before exposing or selling an offer.
+
+CURRENT CLIENT LEGACY AUTHORITY
+- Current UI mutation paths route through Economy Authority callables rather than trusting browser-supplied prices/balances/grants.
+- Direct-Firestore malicious/custom-client write firewall remains intentionally deferred to 23.19.5.6; Firestore Rules stay 23.13.79 in this release.
+
+FUNCTIONS / COST SAFETY
+- 13 Economy callables total after deploy.
+- Functions 2nd Gen, Node 22, southamerica-east1.
+- minInstances=0, maxInstances=1, concurrency=10, timeout=30s, memory=256 MiB.
+- Per-UID throttles: status/storefront/classifieds/operation reads 60/min; Pack purchase/Craft/Classified purchase 20/min; Prebuilt purchase/Username rename 12/min; Pack open 20/min; Guaranteed Mythic open 12/min.
+- Economy kill switch + minimum client are enforced.
+- Campaign-policy read failure for authoritative pricing is fail-closed.
+- App Check remains OBSERVE_ONLY until the expanded callable surface proves clean production traffic.
+
+UNCHANGED
+- Pool 880.
+- Multiplayer protocol mp-23.19.2.
+- Deck Intelligence 23.19.5-di2.
+- Firestore Rules 23.13.79.

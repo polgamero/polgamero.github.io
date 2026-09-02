@@ -14,7 +14,7 @@ const cardFiles=['criaturas.json','instantaneos.json','conjuros.json','encantami
 const cards=cardFiles.flatMap(f=>load(`assets/data/${f}`));
 const byId=new Map(cards.map(c=>[c.id,c]));
 
-assert.equal(ENGINE_VERSION,'23.19.5.1');
+assert.equal(ENGINE_VERSION,'23.19.5.2');
 assert.equal(PUBLIC_TERMINOLOGY_VERSION,'23.19.4.14');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
@@ -57,7 +57,7 @@ const normalized=Object.fromEntries([...cards].sort((a,b)=>a.id.localeCompare(b.
 // 23.19.5 has one explicit owner-approved gameplay delta after Commercial IP Hardening:
 // pw_007 loses its extra spellCastTrigger. Reinsert only that historical trigger before
 // validating the Wave5 fingerprint, proving no other mechanical drift occurred.
-if (ENGINE_VERSION === '23.19.5.1') {
+if (ENGINE_VERSION === '23.19.5.2') {
   normalized.pw_007.spellCastTrigger={effect:{amount:1,type:'scry'},filter:'instant_or_sorcery'};
   normalized.pw_007=Object.fromEntries(Object.keys(normalized.pw_007).sort().map(k=>[k,normalized.pw_007[k]]));
 }

@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -2734,7 +2734,10 @@ export function showChestScreen(onBack) {
       btn.disabled = true;
       try {
         const outcome = await runChestAuthority('pack');
-        void recordChestAuthorityStatsBestEffort(state.currentUser.uid, outcome.result);
+        if (!outcome.replayed) {
+          void recordChestAuthorityStatsBestEffort(state.currentUser.uid, outcome.result)
+            .catch(err => console.warn('[Economy 23.19.5.1] Stats de apertura de Pack no disponibles:', err));
+        }
         showPackReveal(outcome.result, outcome.pending.operationId);
       } catch (err) {
         console.error('No se pudo abrir el sobre server-authoritative:', err);
@@ -2750,7 +2753,10 @@ export function showChestScreen(onBack) {
       btn.disabled = true;
       try {
         const outcome = await runChestAuthority('guaranteedMythic');
-        void recordChestAuthorityStatsBestEffort(state.currentUser.uid, outcome.result);
+        if (!outcome.replayed) {
+          void recordChestAuthorityStatsBestEffort(state.currentUser.uid, outcome.result)
+            .catch(err => console.warn('[Economy 23.19.5.1] Stats de Mítica no disponibles:', err));
+        }
         // Keep the journal through the cinematic: F5 after commit but before the card reaches
         // the front reopens the exact server-selected Mythic via the committed operation.
         showMythicReveal(outcome.result);
@@ -3988,6 +3994,33 @@ export function showStoreScreen(onBack, options = {}) {
   let craftCardZoom = document.documentElement.classList.contains('argentinia-mobile') ? 20 : 14;
   let classifiedsTimerId = null;
   let classifiedsViewSerial = 0;
+  let storefrontAuthority = null;
+  let storefrontAuthorityAt = 0;
+  const STOREFRONT_AUTHORITY_CACHE_MS = 15000;
+
+  async function loadStorefrontAuthorityCached({ force = false } = {}) {
+    const now = Date.now();
+    if (!force && storefrontAuthority && now - storefrontAuthorityAt < STOREFRONT_AUTHORITY_CACHE_MS) return storefrontAuthority;
+    try {
+      const value = await fetchStorefrontAuthority();
+      if (value && typeof value === 'object') {
+        storefrontAuthority = value;
+        storefrontAuthorityAt = now;
+      }
+    } catch (error) {
+      console.warn('[Economy 23.19.5.2] No se pudo refrescar storefront authority; se usa config local para display:', error);
+    }
+    return storefrontAuthority;
+  }
+  function currentCraftCost() {
+    return Math.max(1, Math.floor(Number(storefrontAuthority?.craft?.fichasCost ?? FICHAS_PER_ENHANCEMENT) || FICHAS_PER_ENHANCEMENT));
+  }
+  function currentPrebuiltPointsCost() {
+    return Math.max(0, Math.floor(Number(storefrontAuthority?.prebuilt?.pointsCost ?? PREBUILT_DECK_POINTS) || 0));
+  }
+  function currentPrebuiltFichasCost() {
+    return Math.max(0, Math.floor(Number(storefrontAuthority?.prebuilt?.fichasCost ?? PREBUILT_DECK_FICHAS) || 0));
+  }
 
   function stopClassifiedsTimer() {
     if (classifiedsTimerId !== null) {
@@ -4037,12 +4070,17 @@ export function showStoreScreen(onBack, options = {}) {
 
     const points = state.userProfile.points || 0;
     const fichas = state.userProfile.fichas || 0;
+    const authority = await loadStorefrontAuthorityCached();
     let campaignSnapshot = null;
     try { campaignSnapshot = await fetchCampaignSnapshot(); } catch {}
-    const effectiveCost = effectivePackCost(PACK_COST, campaignSnapshot);
-    const packDiscountActive = effectiveCost < PACK_COST;
+    const packBaseCost = Math.max(0, Math.floor(Number(authority?.pack?.baseCost ?? PACK_COST) || 0));
+    const effectiveCost = Number.isFinite(Number(authority?.pack?.effectiveCost))
+      ? Math.max(0, Math.floor(Number(authority.pack.effectiveCost)))
+      : effectivePackCost(packBaseCost, campaignSnapshot);
+    const craftCost = currentCraftCost();
+    const packDiscountActive = effectiveCost < packBaseCost;
     const canBuyPack = points >= effectiveCost;
-    const canCraft = fichas >= FICHAS_PER_ENHANCEMENT;
+    const canCraft = fichas >= craftCost;
 
     body.innerHTML = `
       <div id="store-active-events"></div>
@@ -4052,7 +4090,7 @@ export function showStoreScreen(onBack, options = {}) {
           <div class="chest-item store-market-item store-market-pack">
             <div class="chest-item-icon">${PACK_ICON_HTML}</div>
             <div class="chest-item-title">${gameTextHtml('store.pack.showcaseTitle')}</div>
-            <div class="chest-item-count store-market-count">${gameTextHtml('store.pack.showcaseCost', { cost: effectiveCost })}${packDiscountActive ? ` <span class="store-discount-note">(${PACK_COST} → ${effectiveCost})</span>` : ''}</div>
+            <div class="chest-item-count store-market-count">${gameTextHtml('store.pack.showcaseCost', { cost: effectiveCost })}${packDiscountActive ? ` <span class="store-discount-note">(${packBaseCost} → ${effectiveCost})</span>` : ''}</div>
             <div class="chest-item-desc">${gameTextHtml('store.pack.description')}</div>
             <button class="reward-action-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>${gameTextHtml('store.pack.buy')}</button>
             <div class="store-error-msg" id="store-buy-error"></div>
@@ -4060,9 +4098,9 @@ export function showStoreScreen(onBack, options = {}) {
           <div class="chest-item store-market-item store-market-craft">
             <div class="chest-item-icon">${FICHA_ICON_HTML}</div>
             <div class="chest-item-title">${gameTextHtml('store.craft.showcaseTitle')}</div>
-            <div class="chest-item-count store-market-count">${gameTextHtml('store.craft.showcaseCost', { cost: FICHAS_PER_ENHANCEMENT })}</div>
+            <div class="chest-item-count store-market-count">${gameTextHtml('store.craft.showcaseCost', { cost: craftCost })}</div>
             <div class="chest-item-desc">${gameTextHtml('store.craft.description')}</div>
-            <button class="reward-action-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? gameTextHtml('store.craft.action') : gameTextHtml('store.craft.missing', { count: FICHAS_PER_ENHANCEMENT - fichas })}</button>
+            <button class="reward-action-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? gameTextHtml('store.craft.action') : gameTextHtml('store.craft.missing', { count: craftCost - fichas })}</button>
           </div>
           <div class="chest-item store-market-item store-prebuilt-entry">
             <div class="chest-item-icon"><div class="store-prebuilt-icon-wrap"><img class="store-prebuilt-icon" src="./assets/images/ui/mazos_prearmados.png" alt="Mazos Prearmados" onerror="this.parentElement.classList.add('image-missing');this.remove()"></div></div>
@@ -4108,7 +4146,7 @@ export function showStoreScreen(onBack, options = {}) {
       btn.disabled = true;
       errBox.textContent = '';
       try {
-        const purchase = await purchasePack(state.currentUser.uid, PACK_COST);
+        const purchase = await purchasePack(state.currentUser.uid, packBaseCost);
         state.userProfile = purchase.profile;
         updateAccountUI(state.currentUser);
         renderStoreHeader(gameText('store.title'));
@@ -4181,7 +4219,7 @@ export function showStoreScreen(onBack, options = {}) {
             <div style="grid-column:1/-1">${gameTextHtml('prebuilt.summary.lands',{lands:prebuiltLandSummary(summary)})}</div>
           </div>
           <div class="prebuilt-mechanics">${gameTextHtml('prebuilt.summary.mechanics',{themes})}</div>
-          <div class="prebuilt-price">${COIN_ICON_HTML} ${PREBUILT_DECK_POINTS} <span>+</span> ${FICHA_ICON_HTML} ${PREBUILT_DECK_FICHAS}</div>
+          <div class="prebuilt-price">${COIN_ICON_HTML} ${currentPrebuiltPointsCost()} <span>+</span> ${FICHA_ICON_HTML} ${currentPrebuiltFichasCost()}</div>
           <div class="prebuilt-actions">
             <button class="store-buy-btn" id="prebuilt-buy" ${purchased?'disabled':''}>${purchased?gameTextHtml('prebuilt.purchased'):gameTextHtml('prebuilt.buy')}</button>
             <button class="store-back-link" id="prebuilt-close">${gameTextHtml('common.close')}</button>
@@ -4236,6 +4274,7 @@ export function showStoreScreen(onBack, options = {}) {
     body.innerHTML=`<div class="store-section classifieds-loading">${gameTextHtml('common.loading')}</div>`;
     try {
       await cardDb.loadAll();
+      await loadStorefrontAuthorityCached();
       const catalog=await loadPrebuiltDeckCatalog();
       const purchasedIds=new Set(getPrebuiltPurchaseIds(state.userProfile));
       body.innerHTML=`
@@ -4583,7 +4622,7 @@ export function showStoreScreen(onBack, options = {}) {
     body.innerHTML = `
       <div class="store-section">
         <div class="store-section-title">${gameTextHtml('store.craft.chooseTitle')}</div>
-        <div class="store-section-desc">${gameTextHtml('store.craft.chooseDescription', { cost: FICHAS_PER_ENHANCEMENT })}</div>
+        <div class="store-section-desc">${gameTextHtml('store.craft.chooseDescription', { cost: currentCraftCost() })}</div>
         <div class="card-browser-zoom store-craft-zoom" title="Cambiar tamaño de las criaturas">
           <span>🔍</span>
           <input type="range" id="store-craft-card-zoom" min="8" max="40" step="1" value="${craftCardZoom}">
@@ -4639,7 +4678,7 @@ export function showStoreScreen(onBack, options = {}) {
         const errBox = body.querySelector('#store-craft-error');
         body.querySelectorAll('.store-keyword-btn').forEach(b => b.disabled = true);
         try {
-          const updated = await craftEnhancement(state.currentUser.uid, craftSelectedCardId, keyword, FICHAS_PER_ENHANCEMENT);
+          const updated = await craftEnhancement(state.currentUser.uid, craftSelectedCardId, keyword, currentCraftCost());
           state.userProfile = updated;
           renderMainView();
         } catch (err) {
@@ -4654,7 +4693,7 @@ export function showStoreScreen(onBack, options = {}) {
   }
 
   renderMainView();
-  if (options.initialView === 'craft' && state.userProfile && (state.userProfile.fichas || 0) >= FICHAS_PER_ENHANCEMENT) {
+  if (options.initialView === 'craft' && state.userProfile && (state.userProfile.fichas || 0) >= currentCraftCost()) {
     renderCraftPickCardView();
   } else if (options.initialView === 'classifieds' && state.userProfile) {
     void renderClassifiedsView();
