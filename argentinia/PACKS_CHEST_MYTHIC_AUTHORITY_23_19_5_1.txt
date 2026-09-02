@@ -1,0 +1,51 @@
+ARGENTINIA 23.19.5.1 — PACKS / COFRE / MYTHIC AUTHORITY
+
+OBJECTIVE
+Move the official current-client chest opening flow from browser-authoritative RNG/mutations to authenticated, idempotent server authority while preserving the established 15-card pack and campaign economy.
+
+SERVER AUTHORITY
+- economyOpenPack: server-only entropy, trusted 880-card snapshot, atomic pack consumption + collection grant + Ficha grant.
+- economyOpenGuaranteedMythic: server-only entropy, trusted Mythic pool, atomic guaranteed-Mythic consumption + collection grant.
+- economyGetOperation: authenticated immutable operation recovery by operationId.
+- Pack shape remains: 9 Common + 4 Uncommon + 1 Rare/Mythic + 1 Land = 15 cards.
+- Mythic chance is read server-side from gameConfig/settings; default remains 1/7.
+- Campaign effects all_fichas_multiplier and pack_open_ficha_bonus are evaluated server-side. Campaign-policy read failure is fail-closed before pack consumption.
+
+RNG / ANTI-FORGERY
+- Entropy comes from node:crypto randomBytes(32), never from client input or operationId.
+- Client-supplied card IDs, rarity, Mythic chance, Ficha grant, inventory, collection or UID are rejected.
+- Trusted card catalog is the same 880-card server snapshot used by Economy Authority.
+
+ATOMICITY / IDEMPOTENCY
+- Operation ledger: economyOperations/{uid}_{operationId}.
+- Same operationId + same operation type is exactly-once under concurrency.
+- Pack/Guaranteed Mythic inventory decrement and collection grant occur in the same Firestore transaction as the committed operation receipt.
+- A replay returns the immutable committed result; it does not consume another item or grant duplicate cards.
+
+DURABLE REVEAL RECOVERY
+- Browser stores only uid/type/operationId before invoking authority; it never stores authoritative card choices.
+- F5/network interruption after commit recovers the immutable server result through economyGetOperation.
+- Pack journal survives through the reveal cinematic so the exact 15 cards can resume.
+- Guaranteed Mythic journal survives until its selected card is revealed.
+
+CURRENT CLIENT LEGACY PATH
+- Legacy openInventoryPack() and openGuaranteedMythic() mutation entry points are disabled with LEGACY_CHEST_WRITE_DISABLED.
+- Historical local pack generation helpers remain only for compatibility/tests and are deprecated as product authority.
+- This is defense-in-depth for the official current client. The complete direct-Firestore write firewall remains explicitly scheduled for 23.19.5.6; 23.19.5.1 does not claim that an obsolete/custom malicious client is yet blocked by new Rules.
+
+STATS
+- playerStats/economyEvents are still best-effort legacy mirrors in 23.19.5.1.
+- Authoritative Stats/Audit migration remains 23.19.5.5 and cannot roll back a committed pack reward.
+
+COST / SAFETY
+- Functions 2nd Gen, Node 22, southamerica-east1.
+- minInstances=0, maxInstances=1, concurrency=10, timeout=30s, memory=256 MiB.
+- Per-UID in-memory throttling: Pack 20/min, Guaranteed Mythic 12/min.
+- Economy kill switch and minimum client version are enforced transactionally.
+- App Check remains OBSERVE_ONLY for the new callables until clean production traffic is observed.
+- Firestore Rules remain 23.13.79 and are not shipped in public GitHubSource.
+
+UNCHANGED
+- Pool 880.
+- Multiplayer protocol mp-23.19.2.
+- Deck Intelligence 23.19.5-di2.

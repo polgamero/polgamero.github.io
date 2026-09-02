@@ -45,9 +45,10 @@ assert.doesNotMatch(texts, /'store\.classifieds\.title': definition\('Tienda', '
 assert.doesNotMatch(texts, /'classifieds\.title': definition\('Clasificados', '📰/);
 assert.match(opening, /autoStart = true/);
 assert.doesNotMatch(opening, />PREPARAR REVELACIÓN</);
-assert.match(ui, /beginGuaranteedMythicReveal/);
-assert.match(ui, /markGuaranteedMythicRevealCommitted/);
+assert.match(ui, /beginEconomyReveal/);
+assert.match(ui, /recoverEconomyOperationServer/);
+assert.match(ui, /openGuaranteedMythicAuthorityServer/);
 assert.match(ui, /loadUserProfileFromServer/);
 assert.match(firebase, /export async function loadUserProfileFromServer/);
 
-console.log('REWARD_REVEAL_CLASSIFIEDS_23_13_67_OK mythic=journal+auto-resume classifieds=png');
+console.log('REWARD_REVEAL_CLASSIFIEDS_23_13_67_OK mythic=legacy-journal-preserved+server-authority-resume classifieds=png');

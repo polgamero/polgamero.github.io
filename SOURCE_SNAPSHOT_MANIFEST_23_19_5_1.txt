@@ -1,0 +1,79 @@
+SOURCE SNAPSHOT MANIFEST — 23.19.5.1 PACKS / COFRE / MYTHIC AUTHORITY RC
+
+STATUS=RELEASE_CANDIDATE_PENDING_EMULATOR_DEPLOY_GITHUB_SMOKE
+BASELINE=23.19.5 RELEASED + Deck Intelligence 23.19.5-di2
+POOL=880
+PROTOCOL=mp-23.19.2
+ECONOMY_PROTOCOL=econ-23.19.5.1
+ECONOMY_SCHEMA=2
+ECONOMY_FUNCTIONS_REGION=southamerica-east1
+FIRESTORE_RULES=23.13.79 (unchanged; not shipped in public source)
+FILE_COUNT=300
+CARD_IMAGE_BINARIES=0
+PUBLIC_FIRESTORE_CONFIG_FILES=0
+APP_CHECK_PROVIDER=recaptcha-enterprise
+APP_CHECK_ENFORCEMENT=OBSERVE_ONLY
+FUNCTIONS_NODE=22
+FUNCTIONS_MIN_INSTANCES=0
+FUNCTIONS_MAX_INSTANCES=1
+FUNCTIONS_CONCURRENCY=10
+FUNCTIONS_TIMEOUT_SECONDS=30
+FUNCTIONS_MEMORY=256MiB
+ECONOMY_OPERATION_LEDGER=economyOperations/{uid}_{operationId}
+ECONOMY_FUNCTION_COUNT=6
+PACK_AUTHORITY=SERVER
+GUARANTEED_MYTHIC_AUTHORITY=SERVER
+PACK_FORMAT=9_COMMON+4_UNCOMMON+1_RARE_OR_MYTHIC+1_LAND
+PACK_SIZE=15
+PACK_DEFAULT_MYTHIC_CHANCE=1/7
+PACK_RNG=node:crypto.randomBytes(32)
+PACK_CAMPAIGN_POLICY=SERVER_FAIL_CLOSED
+PACK_OPERATION_IDEMPOTENCY=EXACTLY_ONCE
+PACK_REVEAL_RECOVERY=IMMUTABLE_OPERATION_RECEIPT
+LEGACY_CURRENT_CLIENT_CHEST_WRITES=DISABLED
+DIRECT_FIRESTORE_FIREWALL=DEFERRED_TO_23.19.5.6
+DECK_INTELLIGENCE_VERSION=23.19.5-di2
+TRUSTED_STARTER_POOL=880
+
+FUNCTIONS:
+- economyStatus
+- economyBootstrapAccount
+- economyCompleteStarterDeck
+- economyOpenPack
+- economyOpenGuaranteedMythic
+- economyGetOperation
+
+23.19.5.1 PUBLIC-SOURCE ARTIFACTS:
+- argentinia/PACKS_CHEST_MYTHIC_AUTHORITY_23_19_5_1.txt
+- argentinia/RELEASE_NOTES_23_19_5_1_RC.txt
+- argentinia/tools/test_packs_chest_mythic_authority_23_19_5_1.mjs
+- argentinia/tools/ci_fast_contract_manifest_23_19_5_1.txt
+- argentinia/js/economyRevealRecovery.js
+- functions/src/economy/packCore.js
+- functions/src/economy/packs.js
+
+LOCAL QA COMPLETED:
+- test_*.mjs: 107/107 PASS
+- canonical fast contracts: 107/107 PASS
+- regression archive parity: 62/62 PASS
+- Functions pure unit: PASS
+- Deck Intelligence matrix: 60/60 PASS
+- Stability: 20 seeds / 60 builds / 4000 RNG / PASS
+- Headless 23.18.1: 12/12 PASS
+- Headless Coverage: 97.95% structurally known
+- Headless 23.18.2: 12/12 PASS
+- Multiplayer Reliability: 500 seeds / 60000 commits / PASS
+- Multiplayer Hardening: 5000 cases / PASS
+- runtime JS/MJS syntax: 93/93 PASS
+- tools MJS syntax: 125/125 PASS
+- Functions JS/MJS syntax: 16/16 PASS
+- JSON: 22/22 PASS
+- YAML: 1/1 PASS
+- Game Text: 1243 definitions / 1010 runtime literal uses PASS
+
+REAL GATES REQUIRED:
+- Auth+Firestore+Functions Emulator Gate marker ECONOMY_PACKS_CHEST_MYTHIC_23_19_5_1_EMULATOR_OK: PENDING
+- Wrapper marker ECONOMY_PACKS_CHEST_MYTHIC_23_19_5_1_GATE_OK: PENDING
+- Production Functions deploy/verify 6/6: PENDING AFTER EMULATOR PASS
+- GitHub Actions: PENDING
+- Production Pack + Guaranteed Mythic + recovery + economyStatus smoke: PENDING

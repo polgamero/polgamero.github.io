@@ -37,7 +37,7 @@ const expectedNames={
   crea_028:'Pianista del Apagón Eterno'
 };
 
-assert.equal(ENGINE_VERSION,'23.19.5');
+assert.equal(ENGINE_VERSION,'23.19.5.1');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.equal(cards.length,880);

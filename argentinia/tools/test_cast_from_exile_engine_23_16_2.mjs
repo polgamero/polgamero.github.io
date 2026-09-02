@@ -23,7 +23,7 @@ const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 
-assert.ok(['23.16.2','23.16.2.1','23.16.3','23.16.3.1','23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.5'].includes(ENGINE_VERSION));
+assert.ok(['23.16.2','23.16.2.1','23.16.3','23.16.3.1','23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.5.1'].includes(ENGINE_VERSION));
 assert.equal(EXILE_PLAY_ENGINE_VERSION,'23.16.2');
 assert.ok(['23.16.2','23.16.4','23.16.5'].includes(GENERIC_EVENT_ENGINE_VERSION));
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));

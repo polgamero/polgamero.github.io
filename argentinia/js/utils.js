@@ -329,13 +329,10 @@ export function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms)); 
 }
 
-// --- FASE 2: SOBRES ---
-// Arma el contenido de un sobre — misma estructura que un booster real de Argentinia (comunes +
-// poco comunes + una rara garantizada, con chance de mítica en su lugar + una tierra).
-// Puramente aleatorio del lado del cliente: aceptable para un proyecto de este tamaño sin
-// backend propio, mismo criterio de confianza que ya usa buildRandomDeck de acá arriba —
-// La compra y el consumo del sobre sí son transacciones Firestore; el contenido aleatorio
-// sigue generándose en cliente mientras Argentinia no tenga un backend autoritativo propio.
+// --- LEGACY FASE 2: SOBRES ---
+// @deprecated desde 23.19.5.1. Estos helpers sobreviven sólo para compatibilidad/tests
+// históricos. La UI productiva NO los usa: contenido, rareza y Mythic se eligen en
+// economyOpenPack/economyOpenGuaranteedMythic con RNG server-side y pool trusted.
 function pickRandomCard(pool) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -361,9 +358,8 @@ export function generatePackCards() {
   return cards; // 15 cartas (objetos de carta completos, no solo IDs)
 }
 
-// 23.13.0 — premio final del pase semanal. La elección se hace al ABRIR el item de Mi
-// Cofre, no al reclamarlo, para que el cofre pueda guardar una recompensa mítica pendiente
-// sin materializar de antemano qué carta tocará.
+// @deprecated desde 23.19.5.1 — la elección productiva de la Mythic vive en Functions.
+// Se conserva para regresión histórica y herramientas locales, nunca como autoridad económica.
 export function generateGuaranteedMythicCard() {
   const mythics = cardDb.allCards.filter(c => c.rarity === 'Mythic');
   if (!mythics.length) throw new Error('No hay cartas míticas cargadas.');

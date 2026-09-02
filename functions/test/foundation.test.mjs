@@ -32,3 +32,19 @@ assert.deepEqual(build('same-operation'),build('same-operation'));
 assert.notDeepEqual(build('same-operation'),build('different-operation'));
 
 console.log('ECONOMY_FUNCTIONS_FOUNDATION_UNIT_OK');
+
+const packs = await import('../src/economy/packCore.js');
+const packA = packs.generateTrustedPack({ seed: 'unit-pack', mythicChance: 0 });
+assert.equal(packA.cardIds.length, 15);
+assert.equal(packA.rareSlotRarity, 'Rare');
+const byId = new Map(TRUSTED_CARD_POOL.map(card => [card.id, card]));
+assert.ok(packA.cardIds.slice(0,9).every(id => byId.get(id)?.rarity === 'Common'));
+assert.ok(packA.cardIds.slice(9,13).every(id => byId.get(id)?.rarity === 'Uncommon'));
+assert.equal(byId.get(packA.cardIds[13])?.rarity, 'Rare');
+assert.ok(String(byId.get(packA.cardIds[14])?.type || '').toLowerCase().includes('tierra'));
+const packM = packs.generateTrustedPack({ seed: 'unit-pack-mythic', mythicChance: 1 });
+assert.equal(packM.rareSlotRarity, 'Mythic');
+assert.equal(byId.get(packM.cardIds[13])?.rarity, 'Mythic');
+const guaranteed = packs.generateTrustedGuaranteedMythic({ seed: 'unit-guaranteed' });
+assert.equal(byId.get(guaranteed)?.rarity, 'Mythic');
+assert.equal(packs.effectivePackOpenFichas({ allFichasMultiplier: 2, packOpenFichaBonus: 3 }), 5);

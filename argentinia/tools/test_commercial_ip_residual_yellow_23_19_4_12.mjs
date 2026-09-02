@@ -7,7 +7,7 @@ const here=path.dirname(fileURLToPath(import.meta.url)); const root=path.resolve
 const load=p=>JSON.parse(fs.readFileSync(path.join(root,p),'utf8'));
 const cards=[...load('assets/data/criaturas.json'),...load('assets/data/instantaneos.json'),...load('assets/data/conjuros.json'),...load('assets/data/encantamientos.json'),...load('assets/data/artefactos.json'),...load('assets/data/tierras.json'),...load('assets/data/planeswalkers.json')];
 const byId=new Map(cards.map(c=>[c.id,c]));
-assert.equal(ENGINE_VERSION,'23.19.5'); assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2'); assert.equal(FIRESTORE_RULES_VERSION,'23.13.79'); assert.equal(cards.length,880);
+assert.equal(ENGINE_VERSION,'23.19.5.1'); assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2'); assert.equal(FIRESTORE_RULES_VERSION,'23.13.79'); assert.equal(cards.length,880);
 const expected={
  crea_279:['Perito del Registro Fantasma','perito_del_registro_fantasma.png'],
  crea_286:['Paramédica de la Guardia Infinita','paramedica_de_la_guardia_infinita.png'],

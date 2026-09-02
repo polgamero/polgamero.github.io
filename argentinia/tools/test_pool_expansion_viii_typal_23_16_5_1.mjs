@@ -20,7 +20,7 @@ const fileMap={
 const byCategory=Object.fromEntries(Object.entries(fileMap).map(([k,f])=>[k,json(`assets/data/${f}`)]));
 const cards=Object.values(byCategory).flat();
 
-assert.ok(['23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.5'].includes(ENGINE_VERSION));
+assert.ok(['23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.19.5.1'].includes(ENGINE_VERSION));
 assert.equal(TYPAL_ENGINE_VERSION,'23.16.5');
 assert.equal(GENERIC_EVENT_ENGINE_VERSION,'23.16.5');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));

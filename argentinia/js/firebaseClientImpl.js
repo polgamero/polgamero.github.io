@@ -29,7 +29,7 @@ import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurcha
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, isDailyStreakConsistent, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, localDateKey, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation } from './economyClient.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { normalizePlayerStats, summarizePlayerTelemetry, PLAYER_GAME_BACKFILL_VERSION } from './statistics.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
@@ -82,6 +82,17 @@ try {
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 configureEconomyClient(app, auth);
+
+export function openPackAuthorityServer(operationId) {
+  return openPackServer(operationId);
+}
+export function openGuaranteedMythicAuthorityServer(operationId) {
+  return openGuaranteedMythicServer(operationId);
+}
+export function recoverEconomyOperationServer(operationId) {
+  return recoverEconomyOperation(operationId);
+}
+
 
 // El scope de foto de perfil (photoURL) ya viene incluido en el perfil básico de Google —
 // no hace falta pedir ningún permiso extra aparte, alcanza con el login estándar.
@@ -1107,61 +1118,20 @@ export async function purchasePack(uid, baseCost) {
   return { profile, effectiveCost: cost, baseCost: Math.max(0, Math.floor(Number(baseCost) || 0)), campaignSnapshot: snapshot };
 }
 
-function validatePackCardIds(cardIds) {
-  if (!Array.isArray(cardIds) || cardIds.length !== 15) throw new Error('El contenido del sobre no es válido.');
-  const cards = cardIds.map(id => cardDb.getById(id));
-  if (cards.some(c => !c)) throw new Error('El sobre contiene una carta desconocida.');
-  if (!cards.some(c => c.rarity === 'Rare' || c.rarity === 'Mythic')) throw new Error('El sobre no contiene su slot raro/mítico.');
-  return cards;
+// 23.19.5.1 — legacy Cofre mutation path is intentionally disabled in the current client.
+// Official openings are server-authoritative through callable Functions. Firestore Rules
+// still receive the global write firewall later in 23.19.5.6, so this is defense-in-depth,
+// not a claim that an obsolete cached client cannot attempt its historical direct write.
+export async function openInventoryPack() {
+  const error = new Error('La apertura local de sobres quedó deshabilitada. Actualizá la página.');
+  error.code = 'LEGACY_CHEST_WRITE_DISABLED';
+  throw error;
 }
 
-// Consume UN sobre ya existente en Mi Cofre, agrega sus 15 cartas a la colección y entrega
-// la +1 Ficha histórica recién al ABRIR (no al comprar). Así un sobre regalado se comporta
-// exactamente igual que uno comprado.
-export async function openInventoryPack(uid, newCardIds) {
-  validatePackCardIds(newCardIds);
-  const campaignSnapshot = await getCampaignSnapshotForEconomy(uid);
-  const fichasGain = effectiveFichas(1, campaignSnapshot, { packOpen: true });
-  const ref = doc(db, 'users', uid);
-  const profile = await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
-    const data = snap.data();
-    const inventory = normalizeInventory(data.inventory);
-    if (inventory[CHEST_ITEM_KEYS.standardPack] < 1) throw new Error('No tenés sobres para abrir.');
-    inventory[CHEST_ITEM_KEYS.standardPack] -= 1;
-    const updated = {
-      inventory,
-      collection: [...(data.collection || []), ...newCardIds],
-      fichas: (data.fichas || 0) + fichasGain
-    };
-    tx.update(ref, updated);
-    return { ...data, ...updated, dailyRewards: normalizeDailyRewardsState(data.dailyRewards) };
-  });
-  await statsBestEffort(uid, { fichasEarned: fichasGain, packsOpened: 1 });
-  void economyLogBestEffort({ targetUid: uid, source: 'pack_open', fichasDelta: fichasGain, packsDelta: -1, cardsDelta: newCardIds.length });
-  return profile;
-}
-
-// Consume la recompensa final del pase y agrega exactamente UNA carta Mythic existente.
-export async function openGuaranteedMythic(uid, cardId) {
-  const card = cardDb.getById(cardId);
-  if (!card || card.rarity !== 'Mythic') throw new Error('La recompensa mítica no es válida.');
-  const ref = doc(db, 'users', uid);
-  const profile = await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
-    const data = snap.data();
-    const inventory = normalizeInventory(data.inventory);
-    if (inventory[CHEST_ITEM_KEYS.guaranteedMythic] < 1) throw new Error('No tenés recompensas míticas para abrir.');
-    inventory[CHEST_ITEM_KEYS.guaranteedMythic] -= 1;
-    const updated = { inventory, collection: [...(data.collection || []), cardId] };
-    tx.update(ref, updated);
-    return { ...data, ...updated, dailyRewards: normalizeDailyRewardsState(data.dailyRewards) };
-  });
-  await statsBestEffort(uid, { guaranteedMythicsOpened: 1 });
-  void economyLogBestEffort({ targetUid: uid, source: 'guaranteed_mythic_open', cardsDelta: 1 });
-  return profile;
+export async function openGuaranteedMythic() {
+  const error = new Error('La apertura local de recompensas míticas quedó deshabilitada. Actualizá la página.');
+  error.code = 'LEGACY_CHEST_WRITE_DISABLED';
+  throw error;
 }
 
 // ============================================================================

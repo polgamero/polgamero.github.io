@@ -13,6 +13,16 @@ import { economyError, errorCode } from './shared/errors.js';
 import { loadEconomyConfig, assertEconomyAvailable } from './economy/config.js';
 import { runIdempotentOperation, readOwnOperation } from './economy/operationLedger.js';
 import { bootstrapAccountTx, completeStarterDeckTx, normalizeStarterIdentity } from './economy/accounts.js';
+import {
+  createServerEntropy,
+  generateTrustedPack,
+  generateTrustedGuaranteedMythic,
+  loadPackPolicy,
+  loadPackCampaignEffects,
+  openTrustedPackTx,
+  openTrustedGuaranteedMythicTx
+} from './economy/packs.js';
+import { TRUSTED_CARD_POOL_FINGERPRINT } from './trusted/cardCatalog.js';
 
 function requestData(request) {
   const data = request?.data;
@@ -25,6 +35,12 @@ function clientProtocol(data) {
 function rejectForbidden(data, keys) {
   for (const key of keys) if (Object.prototype.hasOwnProperty.call(data, key)) {
     throw economyError('INVALID_ECONOMY_REQUEST', { forbiddenField: key });
+  }
+}
+function rejectUnknown(data, allowedKeys) {
+  const allowed = new Set(allowedKeys);
+  for (const key of Object.keys(data || {})) if (!allowed.has(key)) {
+    throw economyError('INVALID_ECONOMY_REQUEST', { unknownField: key });
   }
 }
 function logFailure(name, auth, error) {
@@ -51,7 +67,9 @@ export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
       mode: config.mode,
       enabled: config.enabled,
       appCheckPresent: auth.appCheckPresent,
-      costSafety: { minInstances: 0, maxInstances: 1, concurrency: 10 }
+      costSafety: { minInstances: 0, maxInstances: 1, concurrency: 10 },
+      capabilities: { packAuthority: 'server', guaranteedMythicAuthority: 'server', operationRecovery: true },
+      trustedPoolFingerprint: TRUSTED_CARD_POOL_FINGERPRINT
     };
   } catch (error) {
     logFailure('economyStatus', auth, error);
@@ -117,6 +135,76 @@ export const economyCompleteStarterDeck = onCall(FUNCTION_RUNTIME_OPTIONS, async
     return { ok: true, ...outcome };
   } catch (error) {
     logFailure('economyCompleteStarterDeck', auth, error);
+    throw error;
+  }
+});
+
+
+export const economyOpenPack = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'pack-open', { limit: 20, windowMs: 60000 });
+    rejectForbidden(data, ['uid','cardIds','cards','rarity','rareSlotRarity','mythicChance','fichasGain','inventory','collection']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion']);
+    const operationId = String(data.operationId || '');
+    const entropy = createServerEntropy();
+    const [packPolicy, campaignEffects] = await Promise.all([
+      loadPackPolicy(db),
+      loadPackCampaignEffects(db)
+    ]);
+    const generated = generateTrustedPack({ seed: entropy.seed, mythicChance: packPolicy.mythicChance });
+    const outcome = await runIdempotentOperation(db, {
+      uid: auth.uid,
+      operationId,
+      type: 'chest.open_pack',
+      request: {},
+      execute: async tx => {
+        const config = await loadEconomyConfig(db, tx);
+        assertEconomyAvailable(config, clientProtocol(data));
+        return openTrustedPackTx({
+          db, tx, uid: auth.uid, generated,
+          entropyCommitment: entropy.commitment,
+          campaignEffects, packPolicy
+        });
+      }
+    });
+    logger.info('Economy pack opened', { uid: auth.uid, operationId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
+    return { ok: true, ...outcome };
+  } catch (error) {
+    logFailure('economyOpenPack', auth, error);
+    throw error;
+  }
+});
+
+export const economyOpenGuaranteedMythic = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'mythic-open', { limit: 12, windowMs: 60000 });
+    rejectForbidden(data, ['uid','cardId','cardIds','cards','rarity','mythicChance','inventory','collection']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion']);
+    const operationId = String(data.operationId || '');
+    const entropy = createServerEntropy();
+    const cardId = generateTrustedGuaranteedMythic({ seed: entropy.seed });
+    const outcome = await runIdempotentOperation(db, {
+      uid: auth.uid,
+      operationId,
+      type: 'chest.open_guaranteed_mythic',
+      request: {},
+      execute: async tx => {
+        const config = await loadEconomyConfig(db, tx);
+        assertEconomyAvailable(config, clientProtocol(data));
+        return openTrustedGuaranteedMythicTx({
+          db, tx, uid: auth.uid, cardId,
+          entropyCommitment: entropy.commitment
+        });
+      }
+    });
+    logger.info('Economy guaranteed Mythic opened', { uid: auth.uid, operationId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
+    return { ok: true, ...outcome };
+  } catch (error) {
+    logFailure('economyOpenGuaranteedMythic', auth, error);
     throw error;
   }
 });

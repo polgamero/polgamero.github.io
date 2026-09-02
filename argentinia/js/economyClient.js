@@ -1,4 +1,4 @@
-// js/economyClient.js — v23.19.5 Economy Authority Foundation.
+// js/economyClient.js — v23.19.5.1 Packs / Cofre / Mythic Authority.
 // Transporte único browser -> callable Functions. El cliente expresa INTENCIÓN; nunca
 // construye receipts ni escribe directamente economyOperations.
 
@@ -79,6 +79,19 @@ export function completeStarterDeckServer(identity, operationId = null) {
   return call('economyCompleteStarterDeck', {
     operationId: operationId || starterOperationId(uid),
     identity: Array.isArray(identity) ? identity : []
+  });
+}
+
+
+export function openPackServer(operationId = null) {
+  return call('economyOpenPack', {
+    operationId: operationId || createEconomyOperationId('pack')
+  });
+}
+
+export function openGuaranteedMythicServer(operationId = null) {
+  return call('economyOpenGuaranteedMythic', {
+    operationId: operationId || createEconomyOperationId('mythic')
   });
 }
 

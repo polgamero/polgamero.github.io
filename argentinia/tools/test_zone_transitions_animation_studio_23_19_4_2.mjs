@@ -14,13 +14,13 @@ const main = read('js/main.js');
 const stack = read('js/stackManager.js');
 const ui = read('js/ui.js');
 
-assert.equal(ENGINE_VERSION, '23.19.5');
+assert.equal(ENGINE_VERSION, '23.19.5.1');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
-assert.equal(manifest.engineVersion, '23.19.5');
+assert.equal(manifest.engineVersion, '23.19.5.1');
 assert.equal(manifest.firestoreRulesVersion, '23.13.79');
 assert.equal(manifest.pool, 880);
-assert.ok(['Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics','Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets','Rules Integrity + Combat UX + Bot Tactical Hotfix','Core Gameplay Feedback Expansion','Mass Event Cinematics + High-Impact Feedback','Commercial IP Remediation Wave 1 — Identity Clean-room','Commercial IP Remediation Wave 2 — Envase Hermético','Commercial IP Remediation Wave 3 — Venues + Institutions Genericization','Commercial IP Remediation — Residual YELLOW Closure','Global Terminology Clean-room — Owner Dictionary 44/44','Commercial Readiness Closure + Clean-room Verification','Semidiós Rules Text + Creencia UX Hotfix','Economy Authority Foundation + Secure Account Bootstrap','Economy Authority Foundation + Deck/Admin/Land UX Stabilization RC2'].includes(manifest.label));
+assert.ok(['Packs / Cofre / Mythic Authority + Deck Intelligence 2.0','Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics','Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets','Rules Integrity + Combat UX + Bot Tactical Hotfix','Core Gameplay Feedback Expansion','Mass Event Cinematics + High-Impact Feedback','Commercial IP Remediation Wave 1 — Identity Clean-room','Commercial IP Remediation Wave 2 — Envase Hermético','Commercial IP Remediation Wave 3 — Venues + Institutions Genericization','Commercial IP Remediation — Residual YELLOW Closure','Global Terminology Clean-room — Owner Dictionary 44/44','Commercial Readiness Closure + Clean-room Verification','Semidiós Rules Text + Creencia UX Hotfix','Economy Authority Foundation + Secure Account Bootstrap','Economy Authority Foundation + Deck/Admin/Land UX Stabilization RC2'].includes(manifest.label));
 
 // Director remains presentation-only and exposes the generic zone bridge.
 for (const token of [

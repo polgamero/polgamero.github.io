@@ -1,12 +1,12 @@
 {
-  "engineVersion": "23.19.5",
+  "engineVersion": "23.19.5.1",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
-  "economyProtocolVersion": "econ-23.19.5",
-  "economySchemaVersion": 1,
+  "economyProtocolVersion": "econ-23.19.5.1",
+  "economySchemaVersion": 2,
   "economyFunctionsRegion": "southamerica-east1",
   "firestoreRulesVersion": "23.13.79",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Economy Authority Foundation + Deck/Admin/Land UX Stabilization RC2"
+  "label": "Packs / Cofre / Mythic Authority + Deck Intelligence 2.0"
 }

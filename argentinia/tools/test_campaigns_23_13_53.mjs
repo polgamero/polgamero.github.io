@@ -38,7 +38,10 @@ import fs from 'node:fs';
 const firebaseImpl = fs.readFileSync(new URL('../js/firebaseClientImpl.js', import.meta.url), 'utf8');
 assert.match(firebaseImpl, /effectiveMatchPoints\(baseDelta, snapshot\)/);
 assert.match(firebaseImpl, /effectivePackCost\(baseCost, snapshot\)/);
-assert.match(firebaseImpl, /effectiveFichas\(1, campaignSnapshot, \{ packOpen: true \}\)/);
+assert.doesNotMatch(firebaseImpl, /effectiveFichas\(1, campaignSnapshot, \{ packOpen: true \}\)/); // 23.19.5.1: pack-open Ficha authority moved server-side
+const packCore = fs.readFileSync(new URL('../../functions/src/economy/packCore.js', import.meta.url), 'utf8');
+assert.match(packCore, /packOpenFichaBonus/);
+assert.match(packCore, /allFichasMultiplier/);
 assert.match(firebaseImpl, /effectiveAllPoints\(amount, campaignSnapshot\)/);
 assert.match(firebaseImpl, /getAuthoritativeClassifiedsNow\(uid\)/); // reloj real, no offset QA de Daily Rewards
 

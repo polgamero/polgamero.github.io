@@ -1,0 +1,22 @@
+ARGENTINIA v23.19.5.1 RC — PACKS / COFRE / MYTHIC AUTHORITY
+
+STATUS: RELEASE CANDIDATE. Do not promote to RELEASED until the real Auth+Firestore+Functions Emulator Gate, six-Function production deploy/verify, GitHub Actions and production Pack/Mythic/recovery smoke all pass.
+
+NEW
+- Economy schema 2 / protocol econ-23.19.5.1.
+- New callables: economyOpenPack and economyOpenGuaranteedMythic; six economy Functions total.
+- Server-side cryptographic pack/Mythic RNG against trusted pool 880.
+- Atomic Cofre decrement + collection grant + Campaign-aware Ficha grant.
+- Immutable idempotent receipts and F5/network recovery by operationId.
+- Current official legacy chest mutation path disabled.
+- Dedicated 23.19.5.1 adversarial emulator gate.
+
+PACK CONTRACT
+9 Common + 4 Uncommon + 1 Rare/Mythic + 1 Land = 15.
+Default Mythic chance 1/7; server Admin setting may override.
+
+SAFETY
+Fail closed on unavailable Campaign policy, disabled economy, stale economy client or invalid/forged authority payload. minInstances=0 / maxInstances=1 / concurrency=10. App Check stays observe-only.
+
+UNCHANGED
+Pool 880; mp-23.19.2; Firestore Rules 23.13.79; Deck Intelligence 23.19.5-di2.

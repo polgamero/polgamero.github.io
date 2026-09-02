@@ -193,6 +193,12 @@ export const flushPendingGameRewards = asyncProxy('flushPendingGameRewards');
 export const purchasePack = asyncProxy('purchasePack');
 export const openInventoryPack = asyncProxy('openInventoryPack');
 export const openGuaranteedMythic = asyncProxy('openGuaranteedMythic');
+
+export const openPackAuthorityServer = asyncProxy('openPackAuthorityServer');
+export const openGuaranteedMythicAuthorityServer = asyncProxy('openGuaranteedMythicAuthorityServer');
+export const recoverEconomyOperationServer = asyncProxy('recoverEconomyOperationServer');
+
+export const recordChestAuthorityStatsBestEffort = asyncProxy('recordChestAuthorityStatsBestEffort');
 export const registerDailyLogin = asyncProxy('registerDailyLogin');
 export const claimDailyReward = asyncProxy('claimDailyReward');
 export const getAuthoritativeRewardNow = asyncProxy('getAuthoritativeRewardNow');

@@ -4,11 +4,11 @@ import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION } from
 import { applyPhyrexianLifeToCost } from '../js/costEngine.js';
 import { isStackObjectReservedByBotCounter } from '../js/botTargetReservation.js';
 
-assert.equal(ENGINE_VERSION, '23.19.5');
+assert.equal(ENGINE_VERSION, '23.19.5.1');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
 const manifest=JSON.parse(fs.readFileSync(new URL('../build-manifest.json',import.meta.url),'utf8'));
-assert.equal(manifest.engineVersion,'23.19.5');
+assert.equal(manifest.engineVersion,'23.19.5.1');
 assert.equal(manifest.pool,880);
 
 // Repro mínimo del log real: Cobertura #34 ya está cubierta por Pará Ahí #35.

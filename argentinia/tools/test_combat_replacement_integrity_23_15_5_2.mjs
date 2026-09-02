@@ -33,6 +33,6 @@ assert.ok(combat.includes("type:'combat_damage_dealt'"),'daño de combate a perm
 assert.ok(combat.includes('pendingCombatDamageContinuation'),'First/Double Strike conserva continuación entre subpasos');
 assert.ok(combat.includes('wasBlockedThisCombat'),'un atacante sigue considerado bloqueado aunque mueran blockers');
 
-if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.5'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:5\.[2-9][0-9]*|[6-9]|[1-9][0-9]+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
+if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.5.1'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:5\.[2-9][0-9]*|[6-9]|[1-9][0-9]+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
 assert.match(index,/const VERSION = '23\.15\.(?:5\.[2-9][0-9]*|[6-9]|[1-9][0-9]+)(?:\.\d+)?'/);
 console.log('PASS test_combat_replacement_integrity_23_15_5_2');
