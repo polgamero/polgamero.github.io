@@ -51,6 +51,7 @@ RC2 REAL GATES COMPLETED:
 - RC2 wrapper marker: ECONOMY_AUTHORITY_FOUNDATION_23_19_5_RC2_EMULATOR_OK
 - Updated 4/4 Functions deployed successfully to southamerica-east1 / Node 22
 - GitHub CI hotfix: compact regression archive synchronized; CI no longer extracts archived tests over live tests.
+- GitHub CI hotfix 2: pool-expansion regression now reads the canonical 23.17.3.1 manifest explicitly; stale historical manifests left in a GitHub repo can no longer hijack manifest discovery.
 
 RELEASE BLOCKER:
 Production smoke only: Admin instant-open, Tano deck composition, animated-land warning and App Check/economyStatus.

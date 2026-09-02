@@ -20,3 +20,12 @@ RC2 GitHub CI hotfix
 - Refreshed the compact archive from all 62 manifest-listed live regressions.
 - Added the RC2 Deck/Admin/Land stabilization test as an explicit GitHub Actions gate.
 - Runtime/gameplay/Functions behavior is unchanged by this CI repair; no additional Functions deployment is required.
+
+
+RC2 GitHub CI hotfix 2
+- Fixed a second CI-only fragility in test_pool_expansion_i_23_15_5_5.mjs: it selected the first historical ci_regression_manifest_* returned by readdirSync instead of the canonical manifest.
+- A stale manifest left behind by GitHub web uploads could therefore make the test fail even though the canonical 62-test archive/live parity gate had already passed.
+- The test now reads ci_regression_manifest_23_17_3_1.txt explicitly.
+- Refreshed regression_legacy_23_17_3_1.zip so archive/live parity remains exact.
+- Compact regression 62/62 PASS; full test_*.mjs 105/105 PASS; Functions pure unit PASS.
+- Runtime/gameplay/Functions behavior remains unchanged; no Functions redeploy or Emulator rerun is required.

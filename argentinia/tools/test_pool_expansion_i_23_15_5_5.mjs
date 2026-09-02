@@ -142,7 +142,11 @@ assert.match(poolContract,/pool_expansion_i_673:\s*makeMilestone\('23\.15\.5\.5'
 if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.5'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:[6-9]|[1-9]\d+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
 assert.match(workflow,/regression_legacy_23_(?:15|16|17)_[0-9_]+\.zip/);
 assert.match(workflow,/ci_regression_manifest_23_(?:15|16|17)_[0-9_]+\.txt/);
-const manifest=fs.readdirSync(path.join(root,'tools')).find(x=>/^ci_regression_manifest_23_(?:15|16|17)_.*\.txt$/.test(x));
-assert.ok(manifest && fs.readFileSync(path.join(root,'tools',manifest),'utf8').includes('test_pool_expansion_i_23_15_5_5.mjs'));
+// The canonical compact-regression manifest is explicit. Do not pick the first
+// historical manifest returned by readdirSync(): stale files can survive a web
+// upload in GitHub and directory enumeration order is not a version contract.
+const manifest='ci_regression_manifest_23_17_3_1.txt';
+assert.ok(fs.existsSync(path.join(root,'tools',manifest)), 'canonical regression manifest debe existir');
+assert.ok(fs.readFileSync(path.join(root,'tools',manifest),'utf8').includes('test_pool_expansion_i_23_15_5_5.mjs'));
 
 console.log('PASS test_pool_expansion_i_23_15_5_5 pool=673 new=30 events=7 control=3 convoke=3 delve=2 affinity=2 replacements=4');
