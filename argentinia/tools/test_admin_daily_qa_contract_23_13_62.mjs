@@ -6,6 +6,8 @@ const root = process.cwd();
 const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
 const rewards = await import(pathToFileURL(path.join(root, 'js/rewards.js')).href);
 const impl = fs.readFileSync(path.join(root, 'js/firebaseClientImpl.js'), 'utf8');
+const fnIndex = fs.readFileSync(path.join(root, '../functions/src/index.js'), 'utf8');
+const serverDaily = fs.readFileSync(path.join(root, '../functions/src/economy/daily.js'), 'utf8');
 const ui = fs.readFileSync(path.join(root, 'js/ui.js'), 'utf8');
 const version = fs.readFileSync(path.join(root, 'js/version.js'), 'utf8');
 
@@ -53,16 +55,18 @@ expect(resetBackToRealDay.state.claimedDays.length === 0, 'RESET Admin debe limp
 
 expect(impl.includes('adminAdvanceDailyRewardDebugDay'), 'Se perdió el control +1 DÍA Admin.');
 expect(impl.includes('adminResetDailyRewardDebug'), 'Se perdió RESET Admin.');
-expect(impl.includes('applyAdminDailyDebugOffset'), 'Admin QA no usa una transacción atómica dedicada.');
-expect(impl.includes("const update = { rewardDebugOffsetDays: nextOffset, lastSeenAt: serverTimestamp() };"),
-  'La transacción Admin no incluye el reloj QA.');
-expect(impl.includes('if (plan.login.newCalendarLogin) update.dailyRewards = serializeDailyLoginPlan(data, plan, now);'),
-  'La transacción Admin no acopla Daily al reloj QA.');
+expect(impl.includes("adminDailyDebugServer(uid, 'advance')") || impl.includes("runAdminDailyDebugServer(uid, 'advance')"), 'Admin QA no usa autoridad server-side.');
+expect(fnIndex.includes('export const economyAdminDailyDebug'), 'Falta callable Admin Daily server-side.');
+expect(serverDaily.includes('export async function adminDailyDebugTx'), 'Falta transacción Admin Daily del servidor.');
+expect(serverDaily.includes("const update={rewardDebugOffsetDays:nextOffset,lastSeenAt:FieldValue.serverTimestamp()};"),
+  'La transacción Admin server-side no incluye el reloj QA.');
+expect(serverDaily.includes('if(plan.newCalendarLogin||Number(profile.dailyRewards?.schemaVersion)<DAILY_REWARDS_SCHEMA_VERSION) update.dailyRewards=serializeDailyState'),
+  'La transacción Admin server-side no acopla Daily al reloj QA.');
 expect(!ui.includes('const offset = await adminAdvanceDailyRewardDebugDay(state.currentUser.uid);\n        const result = await registerDailyLogin(state.currentUser.uid);'),
   '+1 DÍA sigue siendo una secuencia de dos transacciones.');
 expect(!ui.includes('await adminResetDailyRewardDebug(state.currentUser.uid);\n        // 23.13.6'),
   'RESET sigue siendo una secuencia vieja de dos transacciones.');
-expect(impl.includes('adminQa:'), 'registerDailyLogin no diagnostica explícitamente el modo Admin QA.');
+expect(fnIndex.includes('isAdmin: isAdminAuth(auth)'), 'registerDailyLogin server-side no conserva identidad Admin QA.');
 expect(version.includes("FIRESTORE_RULES_VERSION = '23.13.79'"), 'Frontend no exige Rules 23.13.79.');
 expect(version.includes('Admin Daily QA Contract'), 'Build no declara el contrato Admin Daily QA.');
 

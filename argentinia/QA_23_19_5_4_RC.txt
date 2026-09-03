@@ -1,0 +1,28 @@
+ARGENTINIA v23.19.5.4 RC — QA SUMMARY
+
+LOCAL CONTRACTS
+- Match/Admission/Pending 23.19.5.4 specific contract: PASS.
+- Economy Functions Foundation + Daily + Match/Admission units: PASS.
+- Canonical fast manifest is explicit 23.19.5.4 and contains 110 tests; final-worktree split revalidation: 110/110 PASS.
+- Regression archive parity revalidated against final worktree: 62/62 PASS.
+
+HEAVY LABS REVALIDATED ON FINAL WORKTREE
+- Headless 23.18.1: 6/6, 2484 actions, 109 turns, 0 determinism failures.
+- Headless coverage: 880 cards; 560 full / 302 partial / 18 unsupported; 97.95% structurally known.
+- Headless 23.18.2: 6/6, 2723 actions, 120 turns, 0 determinism failures.
+- Multiplayer Reliability: 250 seeds / 30000 commits / 61822 deliveries PASS.
+- Multiplayer Hardening: 5000 cases / 15000 reconnect-safe / 15000 rejected PASS.
+- Stability foundation contract PASS. The local container's long 10-seed DI replay runner experienced execution-environment timeout during this packaging pass; GitHub Actions retains the unchanged canonical 10-seed gate and must be green before promotion.
+
+STATIC / CONTENT
+- JSON: 23/23 PASS.
+- YAML: 1/1 PASS.
+- JS/MJS syntax: app+tools 223 files PASS; Functions 25 files PASS.
+- Game Text: 1243 definitions / 1008 runtime literal uses PASS.
+- Image source audit: pool 880, 0 card binaries, 896 missing card faces by design, image/token ownership OK.
+
+REAL GATES REQUIRED
+- Emulator Gate 23.19.5.4 code 0 + both required markers.
+- Production deploy/verify exactly 20 Functions.
+- GitHub Actions green, including canonical 110/110 and unchanged heavy stability runner.
+- Production smoke.

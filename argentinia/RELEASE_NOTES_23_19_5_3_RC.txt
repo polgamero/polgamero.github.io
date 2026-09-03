@@ -1,0 +1,33 @@
+ARGENTINIA v23.19.5.3 RC — DAILY REWARDS AUTHORITY
+
+Base: v23.19.5.2 RELEASED.
+
+Daily Rewards is migrated from browser-authoritative state transitions to Cloud Functions authority. Server time in ART decides login continuity and claimability; the server owns reward values, campaign multipliers and atomic wallet/inventory credits. Daily claims are idempotent and recoverable through operationId receipts. Admin Daily +1 day/reset is also server-authoritative.
+
+Canonical schedule remains unchanged: D1 30 Puntos; D2 30; D3 30; D4 1 Ficha; D5 60 Puntos; D6 1 Sobre + 100 Puntos; D7 1 Mítica garantizada.
+
+Three callables are added, bringing Economy Authority to 16 Functions:
+- economyRegisterDailyLogin
+- economyClaimDailyReward
+- economyAdminDailyDebug
+
+Engine 23.19.5.3 · econ-23.19.5.3 · schema 4 · pool 880 · mp-23.19.2 · DI 23.19.5-di2 · Rules 23.13.79 unchanged · App Check observe-only · cost safety min0/max1/concurrency10.
+
+Local QA before packaging:
+- canonical fast contracts: 109/109 PASS
+- regression archive parity: 62/62 PASS
+- Functions unit: PASS
+- Stability: 10 seeds / 30 deck builds / 2000 RNG / 40 invariant mutations PASS
+- Headless 23.18.1: 6/6, deterministic PASS
+- Headless coverage: 97.95% structurally known
+- Headless 23.18.2: 6/6, deterministic PASS
+- Multiplayer Reliability: 250 seeds / 30000 commits / 61822 deliveries PASS
+- Multiplayer Hardening: 5000 cases / 15000 reconnect-safe / 15000 rejected PASS
+- Runtime JS/MJS syntax: 94/94 PASS
+- Tools JS/MJS syntax: 127/127 PASS
+- Functions JS/MJS syntax: 21/21 PASS
+- JSON: 23/23 PASS
+- YAML: 1/1 PASS
+- Game Text: 1243 definitions / 1010 runtime uses PASS
+
+Promotion still requires: real 23.19.5.3 Emulator Gate code 0 + markers, deploy/verify exactly 16 Economy Functions, GitHub Actions green, production Daily smoke. Do not change Firestore Rules or App Check enforcement for this RC.

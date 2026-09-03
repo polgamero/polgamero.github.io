@@ -10,6 +10,7 @@ import {
 } from './usernames.js';
 import { FIRESTORE_RULES_VERSION } from './version.js';
 import { gameText } from './gameTexts.js';
+import { withEconomyButtonPending } from './economyPending.js';
 
 function injectUsernameStyles() {
   if (document.getElementById('username-flow-styles')) return;
@@ -73,6 +74,9 @@ function friendlyPersistError(error) {
   if (code === 'USERNAME_ACTIVE_MATCH') return gameText('username.error.activeMatch');
   if (code === 'USERNAME_NOT_ENOUGH_FICHAS') return gameText('username.error.noFichas', { cost: USERNAME_RENAME_COST });
   if (code === 'USERNAME_SAME') return gameText('username.error.same');
+  if (code === 'REGISTRATION_PAUSED') return 'El registro de nuevos jugadores está temporalmente pausado. Probá nuevamente más adelante.';
+  if (code === 'REGISTRATION_CAPACITY_REACHED') return 'Argentinia alcanzó temporalmente su cupo de nuevos jugadores. Probá nuevamente más adelante.';
+  if (code === 'REGISTRATION_DAILY_LIMIT_REACHED') return 'Se alcanzó el cupo de altas de hoy. Probá nuevamente más adelante.';
   if (code === 'permission-denied') return gameText('username.error.permission', { rulesVersion: FIRESTORE_RULES_VERSION });
   return error?.message || gameText('username.error.generic');
 }
@@ -122,18 +126,18 @@ function createUsernameModal({ mode, currentUsername = '', fichas = 0, onSave, o
       return;
     }
     busy = true;
-    saveBtn.disabled = true;
     input.disabled = true;
     errorBox.textContent = '';
     try {
-      const result = await onSave(validated);
+      const result = await withEconomyButtonPending(saveBtn, () => onSave(validated), {
+        pendingLabel: isSetup ? 'CREANDO CUENTA...' : 'GUARDANDO...'
+      });
       overlay.remove();
       return result;
     } catch (error) {
       console.error('No se pudo guardar el username:', error);
       errorBox.textContent = friendlyPersistError(error);
       busy = false;
-      saveBtn.disabled = false;
       input.disabled = false;
       input.focus();
     }

@@ -5,7 +5,8 @@ import {
   ECONOMY_PROTOCOL_VERSION,
   ECONOMY_SCHEMA_VERSION,
   ENGINE_VERSION,
-  FUNCTION_RUNTIME_OPTIONS
+  FUNCTION_RUNTIME_OPTIONS,
+  ADMIN_EMAIL
 } from './shared/constants.js';
 import { requireAuth, trustedProfileFields } from './shared/auth.js';
 import { assertRateLimit } from './shared/rateLimit.js';
@@ -13,6 +14,8 @@ import { economyError, errorCode } from './shared/errors.js';
 import { loadEconomyConfig, assertEconomyAvailable } from './economy/config.js';
 import { runIdempotentOperation, readOwnOperation } from './economy/operationLedger.js';
 import { bootstrapAccountTx, completeStarterDeckTx, normalizeStarterIdentity } from './economy/accounts.js';
+import { prepareAdmissionObservation, getAdmissionStatus, setAdmissionPolicyAdmin, ADMISSION_MODES } from './economy/admission.js';
+import { loadMatchCampaignEffects, normalizeMatchRewardRequest, sealMultiplayerOutcomeServer, settleMatchRewardTx, applyAbandonPenaltyTx } from './economy/matches.js';
 import {
   createServerEntropy,
   generateTrustedPack,
@@ -23,6 +26,9 @@ import {
   openTrustedGuaranteedMythicTx
 } from './economy/packs.js';
 import { TRUSTED_CARD_POOL_FINGERPRINT } from './trusted/cardCatalog.js';
+import {
+  loadDailyCampaignEffects, registerDailyLoginTx, claimDailyRewardTx, adminDailyDebugTx
+} from './economy/daily.js';
 import {
   storefrontSnapshot, loadCommerceCampaignEffects, purchasePackTx, craftEnhancementTx,
   purchasePrebuiltTx, getClassifiedsView, purchaseClassifiedTx, renameUsernameTx
@@ -47,6 +53,11 @@ function rejectUnknown(data, allowedKeys) {
     throw economyError('INVALID_ECONOMY_REQUEST', { unknownField: key });
   }
 }
+
+function isAdminAuth(auth) {
+  return String(auth?.token?.email || '').trim().toLowerCase() === ADMIN_EMAIL;
+}
+
 function logFailure(name, auth, error) {
   logger.warn('Economy callable rejected', {
     function: name,
@@ -75,7 +86,10 @@ export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
       capabilities: {
         packAuthority: 'server', guaranteedMythicAuthority: 'server', operationRecovery: true,
         storePurchaseAuthority: 'server', craftAuthority: 'server', prebuiltAuthority: 'server',
-        classifiedsAuthority: 'server', usernameRenameAuthority: 'server'
+        classifiedsAuthority: 'server', usernameRenameAuthority: 'server',
+        dailyRewardsAuthority: 'server', dailyClockAuthority: 'server', dailyClaimRecovery: true,
+        matchSettlementAuthority: 'server', pvpAntiFarmAuthority: 'server',
+        registrationAdmissionAuthority: 'server'
       },
       trustedPoolFingerprint: TRUSTED_CARD_POOL_FINGERPRINT
     };
@@ -94,6 +108,9 @@ export const economyBootstrapAccount = onCall(FUNCTION_RUNTIME_OPTIONS, async re
     const username = String(data.username || '');
     const operationId = String(data.operationId || '');
     const opRequest = { username };
+    // El aggregate count es una observación trusted. El contador transaccional serializa
+    // el último cupo para impedir oversubscription cuando llegan altas simultáneas.
+    const admissionObservation = await prepareAdmissionObservation(db);
     const outcome = await runIdempotentOperation(db, {
       uid: auth.uid,
       operationId,
@@ -107,7 +124,8 @@ export const economyBootstrapAccount = onCall(FUNCTION_RUNTIME_OPTIONS, async re
           tx,
           uid: auth.uid,
           authProfile: trustedProfileFields(auth),
-          usernameRaw: username
+          usernameRaw: username,
+          admissionObservation
         });
       }
     });
@@ -372,6 +390,186 @@ export const economyRenameUsername = onCall(FUNCTION_RUNTIME_OPTIONS, async requ
     return { ok: true, ...outcome };
   } catch (error) {
     logFailure('economyRenameUsername', auth, error);
+    throw error;
+  }
+});
+
+
+export const economyRegisterDailyLogin = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'daily-login', { limit: 30, windowMs: 60000 });
+    rejectForbidden(data, ['uid','nowMs','date','day','streak','dailyRewards','points','fichas','inventory','rewardDebugOffsetDays']);
+    rejectUnknown(data, ['economyProtocolVersion']);
+    const config = await loadEconomyConfig(db);
+    assertEconomyAvailable(config, clientProtocol(data));
+    const serverNowMs = Date.now();
+    const result = await db.runTransaction(tx => registerDailyLoginTx({
+      db, tx, uid: auth.uid, serverNowMs, isAdmin: isAdminAuth(auth)
+    }));
+    logger.info('Economy daily login registered', { uid: auth.uid, newCalendarLogin: !!result.login?.newCalendarLogin, appCheckPresent: auth.appCheckPresent });
+    return { ok: true, result };
+  } catch (error) {
+    logFailure('economyRegisterDailyLogin', auth, error);
+    throw error;
+  }
+});
+
+export const economyClaimDailyReward = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'daily-claim', { limit: 20, windowMs: 60000 });
+    rejectForbidden(data, ['uid','nowMs','date','streak','dailyRewards','points','fichas','inventory','rewards','amount','campaign']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion','day']);
+    const operationId = String(data.operationId || '');
+    const day = Number(data.day);
+    if (!Number.isInteger(day) || day < 1 || day > 7) throw economyError('DAILY_REWARD_INVALID');
+    const serverNowMs = Date.now();
+    const campaignEffects = await loadDailyCampaignEffects(db, serverNowMs);
+    const outcome = await runIdempotentOperation(db, {
+      uid: auth.uid, operationId, type: 'daily.claim', request: { day },
+      execute: async tx => {
+        const config = await loadEconomyConfig(db, tx);
+        assertEconomyAvailable(config, clientProtocol(data));
+        return claimDailyRewardTx({
+          db, tx, uid: auth.uid, day, serverNowMs,
+          isAdmin: isAdminAuth(auth), campaignEffects
+        });
+      }
+    });
+    logger.info('Economy daily reward claimed', { uid: auth.uid, day, operationId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
+    return { ok: true, ...outcome };
+  } catch (error) {
+    logFailure('economyClaimDailyReward', auth, error);
+    throw error;
+  }
+});
+
+export const economyAdminDailyDebug = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'daily-debug', { limit: 40, windowMs: 60000 });
+    rejectForbidden(data, ['uid','nowMs','date','day','streak','dailyRewards','points','fichas','inventory','rewardDebugOffsetDays']);
+    rejectUnknown(data, ['economyProtocolVersion','mode']);
+    if (!isAdminAuth(auth)) throw economyError('ADMIN_REQUIRED');
+    const mode = String(data.mode || '');
+    if (!['advance','reset'].includes(mode)) throw economyError('DAILY_DEBUG_MODE_INVALID');
+    const config = await loadEconomyConfig(db);
+    assertEconomyAvailable(config, clientProtocol(data));
+    const serverNowMs = Date.now();
+    const result = await db.runTransaction(tx => adminDailyDebugTx({ db, tx, uid: auth.uid, mode, serverNowMs }));
+    logger.info('Economy daily admin debug updated', { uid: auth.uid, mode, offset: result.rewardDebugOffsetDays, appCheckPresent: auth.appCheckPresent });
+    return { ok: true, result };
+  } catch (error) {
+    logFailure('economyAdminDailyDebug', auth, error);
+    throw error;
+  }
+});
+
+
+
+// ---------------------------------------------------------------------------
+// v23.19.5.4 — Admission Control (Admin) + Match Settlement Authority.
+// ---------------------------------------------------------------------------
+export const economyGetAdmissionStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'admission-status', { limit: 30, windowMs: 60000 });
+    rejectUnknown(data, ['economyProtocolVersion']);
+    if (!isAdminAuth(auth)) throw economyError('ADMIN_REQUIRED');
+    return { ok: true, status: await getAdmissionStatus(db) };
+  } catch (error) {
+    logFailure('economyGetAdmissionStatus', auth, error);
+    throw error;
+  }
+});
+
+export const economyAdminSetAdmissionPolicy = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'admission-admin-set', { limit: 20, windowMs: 60000 });
+    rejectForbidden(data, ['uid','registeredUsers','registrationsToday','availableSlots','dailySlotsRemaining','dayKey']);
+    rejectUnknown(data, ['economyProtocolVersion','registrationMode','maxRegisteredUsers','maxRegistrationsPerDay']);
+    if (!isAdminAuth(auth)) throw economyError('ADMIN_REQUIRED');
+    const registrationMode = String(data.registrationMode || '');
+    if (!Object.values(ADMISSION_MODES).includes(registrationMode)) throw economyError('INVALID_ECONOMY_REQUEST', { field:'registrationMode' });
+    const maxRegisteredUsers = Number(data.maxRegisteredUsers);
+    const maxRegistrationsPerDay = Number(data.maxRegistrationsPerDay);
+    if (!Number.isFinite(maxRegisteredUsers) || !Number.isFinite(maxRegistrationsPerDay) || maxRegisteredUsers < 0 || maxRegistrationsPerDay < 0) {
+      throw economyError('INVALID_ECONOMY_REQUEST', { field:'admissionLimits' });
+    }
+    const status = await setAdmissionPolicyAdmin({ db, registrationMode, maxRegisteredUsers, maxRegistrationsPerDay });
+    logger.info('Registration admission policy updated', { uid:auth.uid, registrationMode:status.registrationMode, maxRegisteredUsers:status.maxRegisteredUsers, maxRegistrationsPerDay:status.maxRegistrationsPerDay });
+    return { ok:true, status };
+  } catch (error) {
+    logFailure('economyAdminSetAdmissionPolicy', auth, error);
+    throw error;
+  }
+});
+
+export const economySettleMatchReward = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'match-settlement', { limit: 20, windowMs: 60000 });
+    rejectForbidden(data, ['uid','baseDelta','effectiveDelta','requestedEffectiveDelta','points','fichas','limits','campaign','myRole','winnerRole','terminalKind','durationMs','completedTurns']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion','receiptId','mode','outcome','difficulty','matchId']);
+    const operationId = String(data.operationId || '');
+    const rewardRequest = normalizeMatchRewardRequest(data);
+    if (rewardRequest.mode === 'multiplayer') {
+      // El servidor congela primero endedAt/terminalKind/winnerRole. El settlement posterior
+      // consume exclusivamente esa evidencia sellada y nunca el resultado declarado por UI.
+      await sealMultiplayerOutcomeServer(db, auth.uid, rewardRequest.matchId);
+    }
+    const campaignEffects = await loadMatchCampaignEffects(db);
+    const outcome = await runIdempotentOperation(db, {
+      uid: auth.uid,
+      operationId,
+      type: 'match.settle_reward',
+      request: rewardRequest,
+      execute: async tx => {
+        const config = await loadEconomyConfig(db, tx);
+        assertEconomyAvailable(config, clientProtocol(data));
+        return settleMatchRewardTx({ db, tx, uid: auth.uid, request:rewardRequest, campaignEffects });
+      }
+    });
+    logger.info('Economy match reward settled', { uid:auth.uid, operationId, receiptId:rewardRequest.receiptId, mode:rewardRequest.mode, replayed:outcome.replayed, appCheckPresent:auth.appCheckPresent });
+    return { ok:true, ...outcome };
+  } catch (error) {
+    logFailure('economySettleMatchReward', auth, error);
+    throw error;
+  }
+});
+
+export const economyApplyAbandonPenalty = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'abandon-penalty', { limit: 12, windowMs: 60000 });
+    rejectForbidden(data, ['uid','points','delta','abandonPenalty','settings','myRole']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion','mode','matchId']);
+    const operationId = String(data.operationId || '');
+    const mode = data.mode === 'multiplayer' ? 'multiplayer' : (data.mode === 'solo' ? 'solo' : null);
+    if (!mode) throw economyError('ABANDON_MODE_INVALID');
+    const matchId = mode === 'multiplayer' ? String(data.matchId || '').trim().toUpperCase() : '';
+    if (mode === 'multiplayer' && !matchId) throw economyError('MATCH_REWARD_MATCH_REQUIRED');
+    const outcome = await runIdempotentOperation(db, {
+      uid:auth.uid, operationId, type:'match.abandon_penalty', request:{ mode, matchId },
+      execute: async tx => {
+        const config = await loadEconomyConfig(db, tx);
+        assertEconomyAvailable(config, clientProtocol(data));
+        return applyAbandonPenaltyTx({ db, tx, uid:auth.uid, mode, matchId });
+      }
+    });
+    logger.info('Economy abandon penalty applied', { uid:auth.uid, operationId, mode, matchId:matchId||null, replayed:outcome.replayed, appCheckPresent:auth.appCheckPresent });
+    return { ok:true, ...outcome };
+  } catch (error) {
+    logFailure('economyApplyAbandonPenalty', auth, error);
     throw error;
   }
 });

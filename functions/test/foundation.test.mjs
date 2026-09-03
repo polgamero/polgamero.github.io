@@ -60,3 +60,52 @@ assert.equal(commerceSettings.craftCost, 4);
 assert.equal(commerceCore.effectivePackPurchaseCost(200, { packDiscountPercent: 50 }), 100);
 assert.equal(commerceCore.argentinaWeekKey(Date.parse('2026-09-02T15:00:00Z')), '2026-08-31');
 assert.equal(commerceCore.nextArgentinaWeekRotationIso(Date.parse('2026-09-02T15:00:00Z')), '2026-09-07T03:00:00.000Z');
+
+const dailyCore = await import('../src/economy/dailyCore.js');
+assert.equal(dailyCore.DAILY_REWARD_SCHEDULE.length,7);
+assert.equal(dailyCore.dailyDateKey(new Date('2026-09-03T02:30:00.000Z')),'2026-09-02');
+const dailyFx=dailyCore.buildDailyCampaignEffects([
+  {id:'p',type:'all_points_multiplier',value:2,startAt:new Date(1),endAt:new Date(Date.now()+60000)},
+  {id:'f',type:'all_fichas_multiplier',value:3,startAt:new Date(1),endAt:new Date(Date.now()+60000)},
+  {id:'ignored',type:'pack_discount',value:50,startAt:new Date(1),endAt:new Date(Date.now()+60000)}
+]);
+assert.deepEqual(dailyFx,{allPointsMultiplier:2,allFichasMultiplier:3,activeEventIds:['p','f']});
+assert.deepEqual(dailyCore.effectiveDailyRewards(dailyCore.DAILY_REWARD_SCHEDULE[5],dailyFx),[
+  {type:'standardPack',amount:1},{type:'points',amount:200}
+]);
+const dailyD1=dailyCore.advanceDailyState(null,new Date('2026-09-02T15:00:00.000Z'));
+assert.equal(dailyD1.state.streak,1);
+assert.equal(dailyD1.rewardDay,1);
+console.log('ECONOMY_DAILY_23_19_5_3_UNIT_OK');
+
+
+const admissionCore = await import('../src/economy/admissionCore.js');
+assert.deepEqual(admissionCore.normalizeAdmissionPolicy({registrationMode:'limited',maxRegisteredUsers:500,maxRegistrationsPerDay:50}),{
+  registrationMode:'limited',maxRegisteredUsers:500,maxRegistrationsPerDay:50
+});
+assert.equal(admissionCore.evaluateAdmission({policy:{registrationMode:'limited',maxRegisteredUsers:2},registeredUsers:2}).reason,'capacity');
+assert.equal(admissionCore.evaluateAdmission({policy:{registrationMode:'limited',maxRegistrationsPerDay:3},registrationsToday:3}).reason,'daily_limit');
+assert.equal(admissionCore.evaluateAdmission({policy:{registrationMode:'paused'}}).reason,'paused');
+assert.equal(admissionCore.argentinaAdmissionDayKey(Date.parse('2026-09-03T02:30:00.000Z')),'2026-09-02');
+
+const matchCore = await import('../src/economy/matchCore.js');
+const rewardCfg=matchCore.normalizeMatchRewardConfig({});
+assert.deepEqual(rewardCfg.solo,{easy:50,medium:100,hard:200,loss:15});
+assert.deepEqual(rewardCfg.pvp,{win:120,loss:20});
+assert.equal(rewardCfg.abandonPenalty,-30);
+const early=matchCore.evaluatePvpRewardEligibility({terminalKind:'abandon',durationMs:60000,turnCountAtEnd:3,requestedDelta:120});
+assert.equal(early.rewardable,false);
+assert.equal(early.reason,'early_abandon');
+const pairCap=matchCore.evaluatePvpRewardEligibility({terminalKind:'natural',durationMs:300000,turnCountAtEnd:8,pairRewardedCount:5,requestedDelta:120});
+assert.equal(pairCap.reason,'pair_limit');
+const partial=matchCore.evaluatePvpRewardEligibility({terminalKind:'natural',durationMs:300000,turnCountAtEnd:8,pairRewardedCount:0,dailyPointsAwarded:1150,requestedDelta:120});
+assert.equal(partial.reason,'daily_cap_partial');
+assert.equal(partial.appliedDelta,50);
+const matchFx=matchCore.normalizeMatchCampaignEffects([
+  {id:'points',type:'all_points_multiplier',value:2,startAt:new Date(1),endAt:new Date(Date.now()+60000)},
+  {id:'ignored-pack',type:'pack_discount',value:50,startAt:new Date(1),endAt:new Date(Date.now()+60000)},
+  {id:'ignored-fichas',type:'all_fichas_multiplier',value:3,startAt:new Date(1),endAt:new Date(Date.now()+60000)}
+]);
+assert.deepEqual(matchFx,{allPointsMultiplier:2,activeEventIds:['points']});
+assert.equal(matchCore.effectiveMatchRewardPoints(120,matchFx),240);
+console.log('ECONOMY_MATCH_ADMISSION_23_19_5_4_UNIT_OK');

@@ -7,23 +7,28 @@ import { ENGINE_VERSION, FIRESTORE_RULES_VERSION } from '../js/version.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const impl = fs.readFileSync(path.join(root, 'js/firebaseClientImpl.js'), 'utf8');
+const serverDaily = fs.readFileSync(path.join(root, '../functions/src/economy/daily.js'), 'utf8');
+const fnIndex = fs.readFileSync(path.join(root, '../functions/src/index.js'), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'build-manifest.json'), 'utf8'));
 
-assert.equal(ENGINE_VERSION, '23.19.5.2');
+assert.equal(ENGINE_VERSION, '23.19.5.4');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
-assert.equal(manifest.engineVersion, '23.19.5.2');
+assert.equal(manifest.engineVersion, '23.19.5.4');
 assert.equal(manifest.firestoreRulesVersion, '23.13.79');
 
-// Production shape that triggered the incident: nested serverUpdatedAt is a resolved
-// authoritative clock snapshot, while the top-level lastSeenAt is the request.time seal.
-assert.ok(impl.includes('serializeDailyLoginPlan(data, plan, now, clock.serverNow)'),
-  'Normal/Admin-login runtime must persist the already-resolved authoritative clock metadata.');
-assert.ok(impl.includes('lastSeenAt: serverTimestamp()'),
-  'Daily writes must retain the top-level serverTimestamp authorization seal.');
-assert.ok(impl.includes('function isAdminDailyQaUser(uid)'),
-  'Admin Daily QA identity path disappeared.');
-assert.ok(impl.includes('applyAdminDailyDebugOffset'),
-  'Admin Daily QA debug clock path disappeared.');
+// 23.19.5.4 moves the authoritative write off the browser entirely. Preserve the old
+// data-shape invariants server-side while preventing current clients from issuing Daily txs.
+assert.ok(serverDaily.includes('serializeDailyState(plan.state,new Date(serverNowMs))'),
+  'Server Daily login must persist resolved server-clock metadata.');
+assert.ok(serverDaily.includes('FieldValue.serverTimestamp()'),
+  'Server Daily writes must retain a server timestamp seal.');
+assert.ok(fnIndex.includes('export const economyRegisterDailyLogin'),
+  'Daily login callable disappeared.');
+assert.ok(fnIndex.includes('export const economyAdminDailyDebug'),
+  'Admin Daily QA callable disappeared.');
+const clientDaily = impl.slice(impl.indexOf('// 23.19.5.4 — DAILY REWARDS AUTHORITY.'), impl.indexOf('// Craftea una mejora permanente'));
+assert.ok(clientDaily.includes('registerDailyLoginServer()'), 'Browser Daily login is no longer routed to Functions.');
+assert.ok(!clientDaily.includes('runTransaction('), 'Browser regained direct Daily mutation authority.');
 
 // When a private Rules candidate is supplied locally, lock the exact security invariant
 // that production exposed. GitHubSource intentionally does not contain firestore.rules.
@@ -63,4 +68,4 @@ if (rulesPath && fs.existsSync(rulesPath)) {
     'Normal users must not regress to nested request.time equality.');
 }
 
-console.log('ADMIN_DAILY_RUNTIME_PARITY_23_19_4_OK engine=23.19.5 rules=23.13.79 admin=nested-clock-metadata+top-level-seal normal=unchanged-v6');
+console.log('ADMIN_DAILY_RUNTIME_PARITY_23_19_4_OK engine=23.19.5.4 rules=23.13.79 authority=SERVER browserDirectTx=DISABLED');

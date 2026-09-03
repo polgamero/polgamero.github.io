@@ -7,7 +7,7 @@ import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseMa
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, awardPoints, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks, getTelemetryStatus } from './telemetry.js';
@@ -115,9 +115,9 @@ function currentSoloLifecycleDurationMs() {
 }
 
 
-// 23.13.0 — una sola puerta para registrar el login diario después de tener un perfil real.
-// Firestore hace la operación idempotente, así que un callback duplicado/reload el mismo día
-// no duplica streak ni premio. La UI de claim aparece sólo en el primer login calendario.
+// 23.19.5.3 — una sola puerta para registrar el login diario después de tener un perfil real.
+// Economy Authority usa reloj/estado server-side; callbacks duplicados o reload el mismo día no
+// avanzan dos veces la racha. La UI de claim aparece sólo en el primer login calendario confirmado.
 async function processDailyLoginRewards({ showModal = true } = {}) {
   if (!state.currentUser || !state.userProfile) return null;
   try {
@@ -810,20 +810,31 @@ function hookGameplayButtons() {
             // eventos posteriores quedaban fuera del último upload final.
 
             // FASE 4, ETAPA 6: en multiplayer, el rival tiene que ENTERARSE de que abandoné.
+            // 23.19.5.4: la penalidad espera a que esa evidencia quede publicada; Functions
+            // valida abandonedBy/gameOver antes de tocar puntos.
+            let abandonEvidencePromise = Promise.resolve(true);
             if (state.currentMatch) {
               state.abandonedBy = 'local';
               try {
-                cleanupTasks.push(Promise.resolve(publishMatchState({ force: true })));
+                abandonEvidencePromise = Promise.resolve(publishMatchState({ force: true }));
+                cleanupTasks.push(abandonEvidencePromise);
               } catch (err) {
-                cleanupTasks.push(Promise.reject(err));
+                abandonEvidencePromise = Promise.reject(err);
+                cleanupTasks.push(abandonEvidencePromise);
               }
             }
 
             if (state.currentUser) {
               cleanupTasks.push(recordLocalAbandonStatsBestEffort());
               try {
+                const abandonReceiptId = state.currentMatch?.matchId || getActiveSoloGameId() || getTelemetryStatus().sessionId || 'solo';
                 cleanupTasks.push(
-                  Promise.resolve(awardPoints(state.currentUser.uid, POINTS.abandonPenalty))
+                  abandonEvidencePromise
+                    .then(() => applyAbandonPenalty(state.currentUser.uid, {
+                      mode: state.currentMatch ? 'multiplayer' : 'solo',
+                      matchId: state.currentMatch?.matchId || '',
+                      receiptId: abandonReceiptId
+                    }))
                     .catch(err => {
                       console.error('No se pudo aplicar la penalidad de abandono:', err);
                       return null;
@@ -1041,7 +1052,7 @@ async function abandonRecoveredSolo(candidate, { expired = false } = {}) {
       });
     } catch (err) { console.warn('No se pudieron registrar stats del recovery abandonado:', err); }
     try {
-      const result = await awardPoints(state.currentUser.uid, POINTS.abandonPenalty);
+      const result = await applyAbandonPenalty(state.currentUser.uid, { mode:'solo', receiptId:candidate.soloGameId || candidate.telemetrySessionId || 'recovered-solo' });
       if (state.userProfile && result?.total !== undefined) state.userProfile.points = result.total;
       updateAccountUI(state.currentUser);
     } catch (err) { console.warn('No se pudo aplicar penalidad del recovery abandonado:', err); }
@@ -4328,7 +4339,7 @@ function offerReconnectIfStillActive(matchId) {
 
             if (state.currentUser) {
               recordLocalAbandonStatsBestEffort();
-              awardPoints(state.currentUser.uid, POINTS.abandonPenalty).catch(() => {});
+              applyAbandonPenalty(state.currentUser.uid, { mode:'multiplayer', matchId }).catch(() => {});
             }
             await clearActiveMatchId(state.currentUser.uid);
             if (state.userProfile) state.userProfile.activeMatchId = null;

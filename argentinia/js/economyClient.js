@@ -1,4 +1,4 @@
-// js/economyClient.js — v23.19.5.2 Store / Craft / Prebuilt / Classifieds / Username Authority.
+// js/economyClient.js — v23.19.5.4 Match Settlement + Admission Control Authority.
 // Transporte único browser -> callable Functions. El cliente expresa INTENCIÓN; nunca
 // construye receipts ni escribe directamente economyOperations.
 
@@ -138,6 +138,58 @@ export function renameUsernameServer(username, operationId = null) {
   return call('economyRenameUsername', {
     operationId: operationId || createEconomyOperationId('rename'),
     username: String(username || '')
+  });
+}
+
+
+export function registerDailyLoginServer() {
+  return call('economyRegisterDailyLogin');
+}
+
+export function claimDailyRewardServer(day, operationId = null) {
+  return call('economyClaimDailyReward', {
+    operationId: operationId || createEconomyOperationId('daily-claim'),
+    day: Number(day)
+  });
+}
+
+export function adminDailyDebugServer(mode) {
+  return call('economyAdminDailyDebug', { mode: String(mode || '') });
+}
+
+export function getAdmissionStatusServer() {
+  return call('economyGetAdmissionStatus');
+}
+
+export function adminSetAdmissionPolicyServer(policy = {}) {
+  return call('economyAdminSetAdmissionPolicy', {
+    registrationMode: String(policy.registrationMode || ''),
+    maxRegisteredUsers: Number(policy.maxRegisteredUsers),
+    maxRegistrationsPerDay: Number(policy.maxRegistrationsPerDay)
+  });
+}
+
+export function matchRewardOperationId(receiptId) {
+  const safe = String(receiptId || '').replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 105);
+  return `match-reward:${safe}`.slice(0, 128);
+}
+
+export function settleMatchRewardServer(reward = {}, operationId = null) {
+  return call('economySettleMatchReward', {
+    operationId: operationId || matchRewardOperationId(reward.receiptId),
+    receiptId: String(reward.receiptId || ''),
+    mode: reward.mode === 'multiplayer' ? 'multiplayer' : 'solo',
+    outcome: reward.outcome === 'loss' ? 'loss' : 'win',
+    difficulty: reward.mode === 'multiplayer' ? null : String(reward.difficulty || ''),
+    matchId: reward.mode === 'multiplayer' ? String(reward.matchId || '') : ''
+  });
+}
+
+export function applyAbandonPenaltyServer({ mode = 'solo', matchId = '', operationId = null } = {}) {
+  return call('economyApplyAbandonPenalty', {
+    operationId: operationId || createEconomyOperationId('abandon'),
+    mode: mode === 'multiplayer' ? 'multiplayer' : 'solo',
+    matchId: mode === 'multiplayer' ? String(matchId || '') : ''
   });
 }
 

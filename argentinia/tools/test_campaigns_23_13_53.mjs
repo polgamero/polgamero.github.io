@@ -39,13 +39,17 @@ const firebaseImpl = fs.readFileSync(new URL('../js/firebaseClientImpl.js', impo
 assert.match(firebaseImpl, /effectiveMatchPoints\(baseDelta, snapshot\)/);
 const commerce = fs.readFileSync(new URL('../../functions/src/economy/commerce.js', import.meta.url), 'utf8');
 const commerceCore = fs.readFileSync(new URL('../../functions/src/economy/commerceCore.js', import.meta.url), 'utf8');
-assert.match(commerce, /effectivePackPurchaseCost\(settings\.packCost, campaignEffects\)/); // 23.19.5.2: purchase discount authority is server-side
+assert.match(commerce, /effectivePackPurchaseCost\(settings\.packCost, campaignEffects\)/); // 23.19.5.4: purchase discount authority is server-side
 assert.match(commerceCore, /event\.type === 'pack_discount'/);
-assert.doesNotMatch(firebaseImpl, /effectiveFichas\(1, campaignSnapshot, \{ packOpen: true \}\)/); // 23.19.5.2: pack-open Ficha authority moved server-side
+assert.doesNotMatch(firebaseImpl, /effectiveFichas\(1, campaignSnapshot, \{ packOpen: true \}\)/); // 23.19.5.4: pack-open Ficha authority moved server-side
 const packCore = fs.readFileSync(new URL('../../functions/src/economy/packCore.js', import.meta.url), 'utf8');
 assert.match(packCore, /packOpenFichaBonus/);
 assert.match(packCore, /allFichasMultiplier/);
-assert.match(firebaseImpl, /effectiveAllPoints\(amount, campaignSnapshot\)/);
+const dailyCore = fs.readFileSync(new URL('../../functions/src/economy/dailyCore.js', import.meta.url), 'utf8');
+assert.match(dailyCore, /all_points_multiplier/);
+assert.match(dailyCore, /all_fichas_multiplier/);
+assert.match(dailyCore, /effectiveDailyRewards/);
+assert.doesNotMatch(firebaseImpl, /effectiveAllPoints\(amount, campaignSnapshot\)/); // 23.19.5.4: Daily campaign authority moved server-side
 assert.match(firebaseImpl, /getAuthoritativeClassifiedsNow\(uid\)/); // reloj real, no offset QA de Daily Rewards
 
 console.log('CAMPAIGNS_23_13_53_OK activeEvents=' + snap.activeEvents.length);

@@ -4,6 +4,7 @@ import { TRUSTED_CARD_POOL, TRUSTED_CARD_POOL_FINGERPRINT } from '../trusted/car
 import { seededRng } from '../shared/canonical.js';
 import { economyError } from '../shared/errors.js';
 import { validateUsername } from './usernames.js';
+import { reserveRegistrationAdmissionTx } from './admission.js';
 
 const VALID_COLORS = new Set(['W','U','B','R','G']);
 
@@ -37,7 +38,7 @@ function hasConfiguredIdentity(profile) {
   return !!(typeof profile?.username === 'string' && profile.username.trim() && typeof profile?.usernameKey === 'string' && profile.usernameKey.trim());
 }
 
-export async function bootstrapAccountTx({ db, tx, uid, authProfile, usernameRaw }) {
+export async function bootstrapAccountTx({ db, tx, uid, authProfile, usernameRaw, admissionObservation = null }) {
   const validated = validateUsername(usernameRaw);
   if (!validated.ok) throw economyError(validated.code);
 
@@ -57,6 +58,9 @@ export async function bootstrapAccountTx({ db, tx, uid, authProfile, usernameRaw
     }
     tx.set(userRef, { ...identityPatch, lastSeenAt: now }, { merge: true });
   } else {
+    // 23.19.5.4 — solamente las ALTAS nuevas consumen cupo. Un usuario ya existente
+    // siempre puede volver a entrar aunque Admin haya pausado el registro.
+    const admission = await reserveRegistrationAdmissionTx({ db, tx, observation: admissionObservation });
     created = true;
     current = {
       displayName: authProfile.displayName || '',
@@ -89,7 +93,11 @@ export async function bootstrapAccountTx({ db, tx, uid, authProfile, usernameRaw
     created,
     username: validated.username,
     usernameKey: validated.usernameKey,
-    starterDeckPending: current?.starterDeckPending !== false
+    starterDeckPending: current?.starterDeckPending !== false,
+    admission: created ? {
+      dayKey: admissionObservation?.dayKey || null,
+      authority: 'server'
+    } : { authority: 'existing_user_bypass' }
   };
 }
 

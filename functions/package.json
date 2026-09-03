@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "node --test test/*.test.mjs",
-    "lint:syntax": "node --check src/index.js && node --check src/economy/accounts.js && node --check src/economy/operationLedger.js && node --check src/economy/packCore.js && node --check src/economy/packs.js && node --check src/economy/commerceCore.js && node --check src/economy/commerce.js && node --check src/trusted/prebuiltCatalog.js"
+    "lint:syntax": "node --check src/index.js && node --check src/economy/accounts.js && node --check src/economy/operationLedger.js && node --check src/economy/packCore.js && node --check src/economy/packs.js && node --check src/economy/commerceCore.js && node --check src/economy/commerce.js && node --check src/economy/dailyCore.js && node --check src/economy/daily.js && node --check src/economy/admissionCore.js && node --check src/economy/admission.js && node --check src/economy/matchCore.js && node --check src/economy/matches.js && node --check src/trusted/prebuiltCatalog.js"
   },
   "dependencies": {
     "firebase-admin": "14.3.0",

@@ -1,11 +1,11 @@
-// js/economyActionRecovery.js — v23.19.5.2
+// js/economyActionRecovery.js — v23.19.5.3
 // Journal local de intención para mutaciones económicas server-authoritative no-cinemáticas.
 // Guarda sólo uid/tipo/operationId/requestKey. Nunca guarda saldo, cartas ni autoridad.
 
 export const ECONOMY_ACTION_STORAGE_KEY = 'argentinia.economyActionRecovery.v1';
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const VALID_TYPES = new Set([
-  'packPurchase','enhancementCraft','prebuiltPurchase','classifiedPurchase','usernameRename'
+  'packPurchase','enhancementCraft','prebuiltPurchase','classifiedPurchase','usernameRename','dailyClaim'
 ]);
 
 function safeRead() {

@@ -4,7 +4,7 @@ import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { hasKeyword, canBlock } from './keywords.js';
-import { awardGamePointsOnce, clearActiveMatchId, recordPlayerGameResult, sealMultiplayerOutcome } from './firebaseClient.js';
+import { awardGamePointsOnce, clearActiveMatchId, recordPlayerGameResult } from './firebaseClient.js';
 import { pointsForBotGameEnd, POINTS } from './store.js';
 import { recordTelemetryEvent, getTelemetryStatus, refreshFinalTelemetryAfterTerminalEvent } from './telemetry.js';
 import { PRIORITY_CLOCK_DURATION_MS, getEffectivePriorityActivity, canPriorityClockRun, getFrozenPriorityRemainingMs } from './priorityUX.js';
@@ -161,9 +161,9 @@ function awardMatchEndPoints(won) {
 
   const settlePromise = state.currentMatch
     ? Promise.resolve()
-        // Fuerza a subir gameOver/HP/veneno/abandonedBy antes de sellar evidencia terminal.
+        // Fuerza a subir gameOver/HP/veneno/abandonedBy. Functions 23.19.5.4 sella
+        // endedAt/terminalKind/winnerRole y liquida usando sólo evidencia server-side.
         .then(() => publishMatchState({ force: true }))
-        .then(() => sealMultiplayerOutcome(matchId))
         .then(() => awardGamePointsOnce(state.currentUser.uid, rewardPayload))
     : awardGamePointsOnce(state.currentUser.uid, rewardPayload);
 

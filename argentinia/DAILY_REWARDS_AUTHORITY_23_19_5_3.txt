@@ -1,0 +1,76 @@
+ARGENTINIA v23.19.5.3 — DAILY REWARDS AUTHORITY
+
+STATUS
+- Release Candidate pending real Auth + Firestore + Functions Emulator Gate, Functions deploy/verify, GitHub Actions and production smoke.
+- Base promoted: v23.19.5.2 RELEASED (Store / Craft / Prebuilt / Classifieds / Username Authority).
+
+VERSION CONTRACT
+- Engine: 23.19.5.3
+- Economy protocol: econ-23.19.5.3
+- Economy schema: 4
+- Pool: 880
+- Multiplayer: mp-23.19.2
+- Deck Intelligence: 23.19.5-di2
+- Firestore Rules: 23.13.79 unchanged
+- App Check: observe-only / enforceAppCheck=false
+- Functions: southamerica-east1, Node 22, 256 MiB, timeout 30s, minInstances=0, maxInstances=1, concurrency=10
+
+SERVER AUTHORITY
+Daily Rewards no longer trusts browser time, streak state, unlocked days, claimed days, balances, inventory or reward payloads.
+The official client sends intent only. Cloud Functions owns:
+- ART calendar date (UTC-3) and continuity decision.
+- Daily streak, cycle restart/completion and unlocked reward day.
+- Claim eligibility.
+- Reward amounts and campaign multipliers.
+- Atomic wallet / inventory credit and claimed-day state.
+- Admin +1 day / reset debug clock.
+
+CANONICAL 7-DAY SCHEDULE
+D1: 30 Puntos
+D2: 30 Puntos
+D3: 30 Puntos
+D4: 1 Ficha
+D5: 60 Puntos
+D6: 1 Sobre estándar + 100 Puntos
+D7: 1 Mítica garantizada
+
+CONTINUITY
+- Same ART calendar day: login is idempotent; no extra streak day.
+- Consecutive ART day: advances exactly one day.
+- Gap: starts a new cycle at D1.
+- Consecutive day after D7: starts a new D1 cycle and marks the previous cycle complete.
+- Old/untrusted Daily schema is repaired/migrated server-side instead of trusting browser continuity.
+
+CAMPAIGNS
+Only campaign types that materially affect Daily Rewards are included in the Daily receipt:
+- all_points_multiplier
+- all_fichas_multiplier
+Store pack discounts and Pack-opening bonuses are excluded from Daily campaign metadata and amounts.
+If campaign policy cannot be validated, claims fail closed before granting a reward.
+
+IDEMPOTENCY / RECOVERY
+- Claims use economyOperations/{uid}_{operationId}, operation type daily.claim.
+- Same operationId + same day replays the committed receipt without a second grant.
+- Same operationId + different payload is denied.
+- Browser recovery journal type: dailyClaim.
+- Statistics/logging are best-effort and skipped on replay so recovery cannot double-count legacy stats.
+
+ADMIN DEBUG
+- economyAdminDailyDebug is server-side and requires trusted Firebase Auth email authorization.
+- advance: +1 effective Daily day, max +30 days.
+- reset: returns debug offset to 0 and recomputes Daily against real server time.
+- Browser-supplied nowMs/date/rewardDebugOffsetDays are rejected.
+
+NEW CALLABLES
+- economyRegisterDailyLogin
+- economyClaimDailyReward
+- economyAdminDailyDebug
+
+ECONOMY STATUS CAPABILITIES
+- dailyRewardsAuthority: server
+- dailyClockAuthority: server
+- dailyClaimRecovery: true
+
+SECURITY BOUNDARY
+This release migrates the official Daily runtime to server authority, but does NOT yet claim the final direct-Firestore write firewall. Firestore Rules remain 23.13.79 until the planned v23.19.5.6 Write Firewall / reconciliation / server_required stage.
+Do not enable App Check enforcement as part of this release; keep observe-only while the new callables are validated in production traffic.

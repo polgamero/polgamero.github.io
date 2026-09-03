@@ -53,13 +53,14 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 import { recordTelemetryUiLog, captureTelemetryState, getTelemetryStatus } from './telemetry.js';
 import { checkpointSoloRecovery } from './soloRecovery.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_VERSION_SHORT } from './version.js';
+import { withEconomyButtonPending } from './economyPending.js';
 import { getPriorityUxCopy, getEffectivePriorityActivity, canPriorityClockRun, PRIORITY_CLOCK_DURATION_MS } from './priorityUX.js';
 import { DAILY_REWARD_SCHEDULE, normalizeInventory, normalizeDailyRewardsState, unclaimedUnlockedDays, CHEST_ITEM_KEYS, rewardForDay } from './rewards.js';
 import { showPackOpeningExperience, showGuaranteedMythicExperience } from './packOpening.js';
@@ -2731,18 +2732,17 @@ export function showChestScreen(onBack) {
 
     body.querySelector('#chest-open-pack')?.addEventListener('click', async () => {
       const btn = body.querySelector('#chest-open-pack');
-      btn.disabled = true;
       try {
-        const outcome = await runChestAuthority('pack');
-        if (!outcome.replayed) {
-          void recordChestAuthorityStatsBestEffort(state.currentUser.uid, outcome.result)
-            .catch(err => console.warn('[Economy 23.19.5.1] Stats de apertura de Pack no disponibles:', err));
-        }
-        showPackReveal(outcome.result, outcome.pending.operationId);
+        await withEconomyButtonPending(btn, async () => {
+          const outcome = await runChestAuthority('pack');
+          if (!outcome.replayed) {
+            void recordChestAuthorityStatsBestEffort(state.currentUser.uid, outcome.result)
+              .catch(err => console.warn('[Economy 23.19.5.1] Stats de apertura de Pack no disponibles:', err));
+          }
+          showPackReveal(outcome.result, outcome.pending.operationId);
+        }, { pendingLabel:'ABRIENDO...' });
       } catch (err) {
         console.error('No se pudo abrir el sobre server-authoritative:', err);
-        // Journal deliberately survives. If the callable committed but the response was lost,
-        // the next click/F5 resolves economyOperations instead of consuming another pack.
         showSimpleAlertModal(economyChestMessage(err, 'No se pudo abrir el sobre. Probá de nuevo.'));
         renderChest();
       }
@@ -2750,16 +2750,15 @@ export function showChestScreen(onBack) {
 
     body.querySelector('#chest-open-mythic')?.addEventListener('click', async () => {
       const btn = body.querySelector('#chest-open-mythic');
-      btn.disabled = true;
       try {
-        const outcome = await runChestAuthority('guaranteedMythic');
-        if (!outcome.replayed) {
-          void recordChestAuthorityStatsBestEffort(state.currentUser.uid, outcome.result)
-            .catch(err => console.warn('[Economy 23.19.5.1] Stats de Mítica no disponibles:', err));
-        }
-        // Keep the journal through the cinematic: F5 after commit but before the card reaches
-        // the front reopens the exact server-selected Mythic via the committed operation.
-        showMythicReveal(outcome.result);
+        await withEconomyButtonPending(btn, async () => {
+          const outcome = await runChestAuthority('guaranteedMythic');
+          if (!outcome.replayed) {
+            void recordChestAuthorityStatsBestEffort(state.currentUser.uid, outcome.result)
+              .catch(err => console.warn('[Economy 23.19.5.1] Stats de Mítica no disponibles:', err));
+          }
+          showMythicReveal(outcome.result);
+        }, { pendingLabel:'REVELANDO...' });
       } catch (err) {
         console.error('No se pudo revelar la recompensa mítica server-authoritative:', err);
         showSimpleAlertModal(economyChestMessage(err, gameText('chest.mythic.reconcileError')));
@@ -2845,14 +2844,14 @@ export function showDailyRewardsScreen(onBack) {
       <div class="daily-rewards-help">${gameTextHtml('daily.help')}</div>`;
     body.querySelector('#daily-debug-next')?.addEventListener('click', async () => {
       const btn = body.querySelector('#daily-debug-next');
-      btn.disabled = true;
       try {
-        // 23.13.62 — +1 DÍA es atómico: reloj QA + Daily avanzan juntos o ninguno cambia.
-        const result = await adminAdvanceDailyRewardDebugDay(state.currentUser.uid);
-        state.userProfile = result.profile;
-        updateAccountUI(state.currentUser);
-        renderRewards();
-        if (result.login?.newCalendarLogin) showDailyLoginRewardModal(result.login);
+        await withEconomyButtonPending(btn, async () => {
+          const result = await adminAdvanceDailyRewardDebugDay(state.currentUser.uid);
+          state.userProfile = result.profile;
+          updateAccountUI(state.currentUser);
+          renderRewards();
+          if (result.login?.newCalendarLogin) showDailyLoginRewardModal(result.login);
+        }, { pendingLabel:'PROCESANDO...' });
       } catch (err) {
         console.error('No se pudo avanzar el día de debug:', err);
         showSimpleAlertModal(err.message || 'No se pudo avanzar el día de debug.');
@@ -2861,14 +2860,14 @@ export function showDailyRewardsScreen(onBack) {
     });
     body.querySelector('#daily-debug-reset')?.addEventListener('click', async () => {
       const btn = body.querySelector('#daily-debug-reset');
-      btn.disabled = true;
       try {
-        // 23.13.62 — RESET también es atómico: offset=0 + resincronización D1 en una sola tx.
-        const result = await adminResetDailyRewardDebug(state.currentUser.uid);
-        state.userProfile = result.profile;
-        updateAccountUI(state.currentUser);
-        renderRewards();
-        if (result.login?.newCalendarLogin) showDailyLoginRewardModal(result.login);
+        await withEconomyButtonPending(btn, async () => {
+          const result = await adminResetDailyRewardDebug(state.currentUser.uid);
+          state.userProfile = result.profile;
+          updateAccountUI(state.currentUser);
+          renderRewards();
+          if (result.login?.newCalendarLogin) showDailyLoginRewardModal(result.login);
+        }, { pendingLabel:'PROCESANDO...' });
       } catch (err) {
         console.error('No se pudo resetear el reloj de debug:', err);
         showSimpleAlertModal(err.message || 'No se pudo resetear el reloj de debug.');
@@ -2879,11 +2878,12 @@ export function showDailyRewardsScreen(onBack) {
     body.querySelectorAll('[data-claim-day]').forEach(btn => {
       btn.addEventListener('click', async () => {
         const day = Number(btn.dataset.claimDay);
-        btn.disabled = true;
         try {
-          state.userProfile = await claimDailyReward(state.currentUser.uid, day);
-          updateAccountUI(state.currentUser);
-          renderRewards();
+          await withEconomyButtonPending(btn, async () => {
+            state.userProfile = await claimDailyReward(state.currentUser.uid, day);
+            updateAccountUI(state.currentUser);
+            renderRewards();
+          }, { pendingLabel:'RECLAMANDO...' });
         } catch (err) {
           console.error('No se pudo reclamar premio diario:', err);
           showSimpleAlertModal(err.message || 'No se pudo reclamar el premio.');
@@ -2936,16 +2936,16 @@ export function showDailyLoginRewardModal(loginInfo) {
   modal.querySelector('#daily-login-claim')?.addEventListener('click', async () => {
     const btn = modal.querySelector('#daily-login-claim');
     const result = modal.querySelector('#daily-login-result');
-    btn.disabled = true;
     try {
-      state.userProfile = await claimDailyReward(state.currentUser.uid, loginInfo.rewardDay);
-      updateAccountUI(state.currentUser);
-      result.innerHTML = `✅ <strong>¡Premio reclamado!</strong>${reward?.rewards.some(r => r.type === 'standardPack' || r.type === 'guaranteedMythic') ? ' Los items quedaron guardados en Mi Cofre.' : ''}`;
-      btn.remove();
+      await withEconomyButtonPending(btn, async () => {
+        state.userProfile = await claimDailyReward(state.currentUser.uid, loginInfo.rewardDay);
+        updateAccountUI(state.currentUser);
+        result.innerHTML = `✅ <strong>¡Premio reclamado!</strong>${reward?.rewards.some(r => r.type === 'standardPack' || r.type === 'guaranteedMythic') ? ' Los items quedaron guardados en Mi Cofre.' : ''}`;
+        btn.remove();
+      }, { pendingLabel:'RECLAMANDO...' });
     } catch (err) {
       console.error('No se pudo reclamar el premio del login:', err);
       result.textContent = err.message || 'No se pudo reclamar el premio. Probá de nuevo.';
-      btn.disabled = false;
     }
   });
   return closedPromise;
@@ -4008,7 +4008,7 @@ export function showStoreScreen(onBack, options = {}) {
         storefrontAuthorityAt = now;
       }
     } catch (error) {
-      console.warn('[Economy 23.19.5.2] No se pudo refrescar storefront authority; se usa config local para display:', error);
+      console.warn('[Economy 23.19.5.3] No se pudo refrescar storefront authority; se usa config local para display:', error);
     }
     return storefrontAuthority;
   }
@@ -4143,30 +4143,30 @@ export function showStoreScreen(onBack, options = {}) {
     body.querySelector('#store-buy-pack').addEventListener('click', async () => {
       const btn = body.querySelector('#store-buy-pack');
       const errBox = body.querySelector('#store-buy-error');
-      btn.disabled = true;
       errBox.textContent = '';
       try {
-        const purchase = await purchasePack(state.currentUser.uid, packBaseCost);
-        state.userProfile = purchase.profile;
-        updateAccountUI(state.currentUser);
-        renderStoreHeader(gameText('store.title'));
-        body.innerHTML = `
-          <div class="store-section">
-            <img class="store-pack-visual" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">
-            <div class="store-section-title">${gameTextHtml('store.pack.purchasedTitle')}</div>
-            <div class="store-section-desc">${gameTextHtml('store.pack.purchasedDescription')}</div>
-            <button class="store-buy-btn" id="store-go-chest">${gameTextHtml('store.pack.goChest')}</button>
-            <button class="store-back-link" id="store-buy-more">${gameTextHtml('store.pack.backStore')}</button>
-          </div>`;
-        body.querySelector('#store-go-chest').addEventListener('click', () => {
-          overlay.remove();
-          showChestScreen(() => showStoreScreen(onBack));
-        });
-        body.querySelector('#store-buy-more').addEventListener('click', renderMainView);
+        await withEconomyButtonPending(btn, async () => {
+          const purchase = await purchasePack(state.currentUser.uid, packBaseCost);
+          state.userProfile = purchase.profile;
+          updateAccountUI(state.currentUser);
+          renderStoreHeader(gameText('store.title'));
+          body.innerHTML = `
+            <div class="store-section">
+              <img class="store-pack-visual" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">
+              <div class="store-section-title">${gameTextHtml('store.pack.purchasedTitle')}</div>
+              <div class="store-section-desc">${gameTextHtml('store.pack.purchasedDescription')}</div>
+              <button class="store-buy-btn" id="store-go-chest">${gameTextHtml('store.pack.goChest')}</button>
+              <button class="store-back-link" id="store-buy-more">${gameTextHtml('store.pack.backStore')}</button>
+            </div>`;
+          body.querySelector('#store-go-chest').addEventListener('click', () => {
+            overlay.remove();
+            showChestScreen(() => showStoreScreen(onBack));
+          });
+          body.querySelector('#store-buy-more').addEventListener('click', renderMainView);
+        }, { pendingLabel:'COMPRANDO...' });
       } catch (err) {
         console.error('No se pudo comprar el sobre:', err);
         errBox.textContent = err.message || 'No se pudo comprar el sobre. Probá de nuevo.';
-        btn.disabled = !canBuyPack;
       }
     });
 
@@ -4249,21 +4249,22 @@ export function showStoreScreen(onBack, options = {}) {
       const input=panel.querySelector('#prebuilt-name');
       const name=String(input?.value||'').trim();
       if(!name){ err.textContent=gameText('prebuilt.nameLabel'); return; }
-      confirm.disabled=true; confirm.textContent=gameText('prebuilt.buying'); err.textContent='';
+      err.textContent='';
       try {
-        const result=await purchasePrebuiltDeck(state.currentUser.uid,product.id,name);
-        state.userProfile=result.profile;
-        updateAccountUI(state.currentUser);
-        renderStoreHeader(gameText('prebuilt.title'));
-        panel.innerHTML=`<div class="prebuilt-preview-title">${gameTextHtml('prebuilt.success')}</div>
-          <div class="prebuilt-preview-sub">${escapeHtml(result.deck?.name||name)}</div>
-          <div class="prebuilt-actions"><button class="store-buy-btn" id="prebuilt-go-decks">${gameTextHtml('prebuilt.goDecks')}</button><button class="store-back-link" id="prebuilt-success-close">${gameTextHtml('prebuilt.backStore')}</button></div>`;
-        panel.querySelector('#prebuilt-go-decks').addEventListener('click',()=>{ modal.remove(); overlay.remove(); showMyDecksScreen(()=>showStoreScreen(onBack,{initialView:'prebuilt'})); });
-        panel.querySelector('#prebuilt-success-close').addEventListener('click',()=>{ modal.remove(); void renderPrebuiltDecksView(); });
+        await withEconomyButtonPending(confirm, async () => {
+          const result=await purchasePrebuiltDeck(state.currentUser.uid,product.id,name);
+          state.userProfile=result.profile;
+          updateAccountUI(state.currentUser);
+          renderStoreHeader(gameText('prebuilt.title'));
+          panel.innerHTML=`<div class="prebuilt-preview-title">${gameTextHtml('prebuilt.success')}</div>
+            <div class="prebuilt-preview-sub">${escapeHtml(result.deck?.name||name)}</div>
+            <div class="prebuilt-actions"><button class="store-buy-btn" id="prebuilt-go-decks">${gameTextHtml('prebuilt.goDecks')}</button><button class="store-back-link" id="prebuilt-success-close">${gameTextHtml('prebuilt.backStore')}</button></div>`;
+          panel.querySelector('#prebuilt-go-decks').addEventListener('click',()=>{ modal.remove(); overlay.remove(); showMyDecksScreen(()=>showStoreScreen(onBack,{initialView:'prebuilt'})); });
+          panel.querySelector('#prebuilt-success-close').addEventListener('click',()=>{ modal.remove(); void renderPrebuiltDecksView(); });
+        }, { pendingLabel:'COMPRANDO...' });
       } catch(error) {
         console.error('No se pudo comprar el mazo prearmado:',error);
         err.textContent=prebuiltFriendlyError(error);
-        confirm.disabled=false; confirm.textContent=gameText('prebuilt.confirm');
       }
     });
   }
@@ -4503,31 +4504,25 @@ export function showStoreScreen(onBack, options = {}) {
       if (!entry.purchased) {
         buy.addEventListener('click', async () => {
           if (!state.currentUser || buy.disabled) return;
-          buy.disabled = true;
           errorBox.textContent = '';
-          const oldLabel = buy.textContent;
-          buy.textContent = gameText('classifieds.buying');
           try {
-            const updatedProfile = await purchaseClassifiedCard(state.currentUser.uid, entry.cardId);
-            if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
-            state.userProfile = updatedProfile;
-            updateAccountUI(state.currentUser);
-            renderStoreHeader(gameText('classifieds.title'));
-            const synced = syncClassifiedsOfferWithProfile(offer, updatedProfile);
-            // Conserva el ancla temporal real: no reiniciamos el countdown al serverNow
-            // viejo cada vez que se compra una carta. También preservamos scroll para que
-            // comprar una oferta de abajo no te mande de vuelta al comienzo de la lista.
-            synced.serverNow = new Date(serverAnchorMs + (Date.now() - localAnchorMs));
-            synced.nextRotationAt = rotationAt;
-            const previousScrollTop = body.scrollTop;
-            renderClassifiedsOffer(synced, viewSerial);
-            body.scrollTop = previousScrollTop;
+            await withEconomyButtonPending(buy, async () => {
+              const updatedProfile = await purchaseClassifiedCard(state.currentUser.uid, entry.cardId);
+              if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
+              state.userProfile = updatedProfile;
+              updateAccountUI(state.currentUser);
+              renderStoreHeader(gameText('classifieds.title'));
+              const synced = syncClassifiedsOfferWithProfile(offer, updatedProfile);
+              synced.serverNow = new Date(serverAnchorMs + (Date.now() - localAnchorMs));
+              synced.nextRotationAt = rotationAt;
+              const previousScrollTop = body.scrollTop;
+              renderClassifiedsOffer(synced, viewSerial);
+              body.scrollTop = previousScrollTop;
+            }, { pendingLabel:'COMPRANDO...' });
           } catch (error) {
             console.error('No se pudo comprar el Aviso Clasificado:', error);
             if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
             errorBox.textContent = classifiedsFriendlyError(error);
-            buy.textContent = oldLabel;
-            buy.disabled = !canAfford;
             if (['CLASSIFIEDS_ALREADY_PURCHASED', 'CLASSIFIEDS_CARD_NOT_OFFERED', 'CLASSIFIEDS_WEEK_NOT_PUBLISHED'].includes(error?.code)) {
               setTimeout(() => {
                 if (overlay.isConnected && viewSerial === classifiedsViewSerial) void renderClassifiedsView();
@@ -4676,15 +4671,16 @@ export function showStoreScreen(onBack, options = {}) {
       btn.addEventListener('click', async () => {
         const keyword = btn.getAttribute('data-keyword');
         const errBox = body.querySelector('#store-craft-error');
-        body.querySelectorAll('.store-keyword-btn').forEach(b => b.disabled = true);
+        const peers = [...body.querySelectorAll('.store-keyword-btn')].filter(b => b !== btn);
         try {
-          const updated = await craftEnhancement(state.currentUser.uid, craftSelectedCardId, keyword, currentCraftCost());
-          state.userProfile = updated;
-          renderMainView();
+          await withEconomyButtonPending(btn, async () => {
+            const updated = await craftEnhancement(state.currentUser.uid, craftSelectedCardId, keyword, currentCraftCost());
+            state.userProfile = updated;
+            renderMainView();
+          }, { pendingLabel:'MEJORANDO...', disablePeers:peers });
         } catch (err) {
           console.error('No se pudo craftear la mejora:', err);
           errBox.textContent = err.message || 'No se pudo craftear la mejora. Probá de nuevo.';
-          body.querySelectorAll('.store-keyword-btn').forEach(b => b.disabled = false);
         }
       });
     });
@@ -6334,6 +6330,27 @@ export function showAdminPanel(onBack) {
     return `<div class="admin-section"><div class="admin-section-title">${sectionName}</div>${rowsHTML}</div>`;
   }).join('');
 
+
+  const admissionAdminHTML = `
+    <div class="admin-section" id="admin-admission-section">
+      <div class="admin-section-title">CONTROL DE ALTAS · Cost Safety</div>
+      <div class="admin-debug-summary" style="margin-bottom:12px;line-height:1.5;">Limita solamente <b>cuentas nuevas de Argentinia</b>. Los usuarios ya registrados siguen entrando aunque el registro esté pausado.</div>
+      <div class="admin-field-row">
+        <span class="admin-field-label">Estado del registro</span>
+        <select class="admin-field-input" id="cfg-registrationMode">
+          <option value="open">🟢 ABIERTO · sin límites</option>
+          <option value="limited">🟡 LIMITADO · aplicar cupos</option>
+          <option value="paused">🔴 PAUSADO · sin nuevas altas</option>
+        </select>
+      </div>
+      <div class="admin-field-row"><span class="admin-field-label">Máximo de usuarios registrados · 0 = ilimitado</span><input type="number" class="admin-field-input" id="cfg-maxRegisteredUsers" min="0" step="1" value="0"></div>
+      <div class="admin-field-row"><span class="admin-field-label">Máximo de altas por día ART · 0 = ilimitado</span><input type="number" class="admin-field-input" id="cfg-maxRegistrationsPerDay" min="0" step="1" value="0"></div>
+      <div class="admin-debug-summary" id="admin-admission-status">Cargando estado autoritativo…</div>
+      <button class="admin-save-btn" id="admin-admission-save">🛡️ Aplicar control de altas</button>
+      <div class="store-error-msg" id="admin-admission-error" style="text-align:center;"></div>
+      <div class="admin-success-msg" id="admin-admission-success"></div>
+    </div>`;
+
   const initialAnimationPolicy = getServerAnimationPolicy();
   const initialAnimationRefs = initialAnimationPolicy.speedMultipliers || { slow:1.35, normal:1, fast:0.68 };
   const animationTuningCatalog = getAnimationTuningCatalog();
@@ -6469,6 +6486,7 @@ export function showAdminPanel(onBack) {
       <div class="admin-tab-pane" data-admin-pane="game">
         <div class="admin-pane-narrow">
           ${sectionsHTML}
+          ${admissionAdminHTML}
           ${placeholdersHTML}
           <button class="admin-save-btn" id="admin-save">💾 Guardar cambios</button>
           <div class="store-error-msg" id="admin-error" style="text-align:center;"></div>
@@ -6543,6 +6561,48 @@ export function showAdminPanel(onBack) {
     </div>
   `;
   document.body.appendChild(overlay);
+
+  // 23.19.5.4 — Admission Control es independiente del save legacy de gameConfig/settings:
+  // lee/escribe exclusivamente por Functions para que el navegador no pueda falsificar contadores.
+  const admissionModeEl = overlay.querySelector('#cfg-registrationMode');
+  const admissionMaxUsersEl = overlay.querySelector('#cfg-maxRegisteredUsers');
+  const admissionMaxDailyEl = overlay.querySelector('#cfg-maxRegistrationsPerDay');
+  const admissionStatusEl = overlay.querySelector('#admin-admission-status');
+  const admissionErrorEl = overlay.querySelector('#admin-admission-error');
+  const admissionSuccessEl = overlay.querySelector('#admin-admission-success');
+  const admissionSaveBtn = overlay.querySelector('#admin-admission-save');
+  const renderAdmissionStatus = status => {
+    if (!status) return;
+    admissionModeEl.value = status.registrationMode || 'open';
+    admissionMaxUsersEl.value = Math.max(0, Math.floor(Number(status.maxRegisteredUsers) || 0));
+    admissionMaxDailyEl.value = Math.max(0, Math.floor(Number(status.maxRegistrationsPerDay) || 0));
+    const totalCap = status.maxRegisteredUsers > 0 ? `${status.registeredUsers}/${status.maxRegisteredUsers}` : `${status.registeredUsers}/∞`;
+    const dayCap = status.maxRegistrationsPerDay > 0 ? `${status.registrationsToday}/${status.maxRegistrationsPerDay}` : `${status.registrationsToday}/∞`;
+    const available = status.availableSlots == null ? '∞' : status.availableSlots;
+    admissionStatusEl.innerHTML = `<b>Registrados:</b> ${totalCap} · <b>Cupos disponibles:</b> ${available} · <b>Altas hoy (${escapeHtml(status.dayKey || 'ART')}):</b> ${dayCap} · <b>Admite nuevas cuentas:</b> ${status.currentlyAcceptingNewUsers ? 'SÍ' : 'NO'}`;
+  };
+  void getAdmissionStatus().then(renderAdmissionStatus).catch(error => {
+    console.error('No se pudo cargar Admission Control:', error);
+    admissionStatusEl.textContent = 'No se pudo leer el estado autoritativo de altas.';
+  });
+  admissionSaveBtn?.addEventListener('click', async () => {
+    admissionErrorEl.textContent = '';
+    admissionSuccessEl.textContent = '';
+    try {
+      await withEconomyButtonPending(admissionSaveBtn, async () => {
+        const status = await adminSetAdmissionPolicy({
+          registrationMode: admissionModeEl.value,
+          maxRegisteredUsers: Math.max(0, Math.floor(Number(admissionMaxUsersEl.value) || 0)),
+          maxRegistrationsPerDay: Math.max(0, Math.floor(Number(admissionMaxDailyEl.value) || 0))
+        });
+        renderAdmissionStatus(status);
+        admissionSuccessEl.textContent = '✓ Control de altas actualizado en servidor.';
+      }, { pendingLabel:'APLICANDO...' });
+    } catch (error) {
+      console.error('No se pudo guardar Admission Control:', error);
+      admissionErrorEl.textContent = error?.message || 'No se pudo actualizar el control de altas.';
+    }
+  });
 
   // 23.19.5 RC2 — Admin instant-open: las solapas pesadas NO se construyen al abrir
   // el panel. Textos tiene 1242 definitions y antes se renderizaba aunque la solapa estuviera

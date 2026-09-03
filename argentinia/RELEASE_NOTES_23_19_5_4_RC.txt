@@ -1,0 +1,10 @@
+ARGENTINIA v23.19.5.4 RC — Match Settlement + Anti-Farming + Admission Control + Economy Pending UX
+
+- Match reward amounts, campaign multipliers, PvP anti-farming counters and abandon penalty move to Economy Authority.
+- PvP settlement seals/checks terminal match evidence server-side and uses operationId exactly-once receipts.
+- Registration Admission Control is configurable from Admin: OPEN / LIMITED / PAUSED, total cap and ART daily cap.
+- New-account final slot is transactional; existing players are never locked out by a paused registration policy.
+- Economy mutations now share centralized pending UX with disabled buttons, spinner, slow-server label and double-click protection.
+- Engine 23.19.5.4; econ-23.19.5.4; schema 5; 20 callables.
+- Pool 880; mp-23.19.2; Deck Intelligence 23.19.5-di2; Rules 23.13.79 unchanged; App Check observe-only.
+- RELEASE CANDIDATE only until real Emulator Gate + production Functions deploy/verify + GitHub Actions + production smoke pass.

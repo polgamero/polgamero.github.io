@@ -1,4 +1,4 @@
-// js/gameRewards.js — Entrega 23.19.2 · Reward Settlement Integrity
+// js/gameRewards.js — Entrega 23.19.5.4 · server-authoritative Reward Settlement recovery journal
 // Cola local mínima y sin Firebase para premios de fin de partida.
 // Se escribe SINCRÓNICAMENTE antes de disparar la transacción remota: si la pestaña muere,
 // el próximo login puede reintentar el mismo receipt sin duplicar puntos.
@@ -38,7 +38,10 @@ export function queuePendingGameReward(uid, reward = {}) {
   const normalized = {
     uid: ownerUid,
     receiptId,
+    // baseDelta queda sólo como metadata legacy/UX. Functions 23.19.5.4 lo ignora y
+    // reconstruye el premio desde gameConfig + evidencia de partida.
     baseDelta,
+    operationId: String(reward.operationId || `match-reward:${receiptId}`).slice(0, 128),
     mode: reward.mode === 'multiplayer' ? 'multiplayer' : 'solo',
     outcome: reward.outcome === 'loss' ? 'loss' : 'win',
     // 23.19.2 — la dificultad forma parte de la evidencia durable para que Rules pueda

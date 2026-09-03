@@ -8,14 +8,16 @@ import { ENGINE_VERSION, FIRESTORE_RULES_VERSION } from '../js/version.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const impl = fs.readFileSync(path.join(root,'js/firebaseClientImpl.js'),'utf8');
+const serverDaily = fs.readFileSync(path.join(root,'../functions/src/economy/daily.js'),'utf8');
+const fnIndex = fs.readFileSync(path.join(root,'../functions/src/index.js'),'utf8');
 const main = fs.readFileSync(path.join(root,'js/main.js'),'utf8');
 const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || path.resolve(root,'../../FIRESTORE_RULES_COMPLETAS_ENTREGA_23_13_72_RULE_BUDGET_ROUTER_HOTFIX.rules');
 const rules = fs.existsSync(rulesPath) ? fs.readFileSync(rulesPath,'utf8') : '';
 const manifest = JSON.parse(fs.readFileSync(path.join(root,'build-manifest.json'),'utf8'));
 
-assert.equal(ENGINE_VERSION, '23.19.5.2');
+assert.equal(ENGINE_VERSION, '23.19.5.4');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(manifest.engineVersion,'23.19.5.2');
+assert.equal(manifest.engineVersion,'23.19.5.4');
 assert.equal(manifest.firestoreRulesVersion,'23.13.79');
 
 const day = n => new Date(Date.UTC(2026,7,27+n,15,30,0));
@@ -37,22 +39,29 @@ assert.equal(gap.state.streak,1);
 assert.equal(gap.streakReset,true);
 assert.equal(localDateKey(day(0)),'2026-08-27');
 
-// Clock: one in-flight probe per uid, retries transient unresolved reads, accepts Timestamp-like values.
+// Legacy/Classifieds authoritative clock stays hardened; Daily itself is server-authoritative in 23.19.5.4.
 for (const marker of [
   'const authoritativeClockInFlight = new Map()',
   'function firestoreTimestampLikeToDate(value)',
   'for (let attempt = 0; attempt < 3; attempt += 1)',
   "if (error?.code === 'permission-denied'",
   'const existing = authoritativeClockInFlight.get(uid)',
-  'const dailyLoginInFlight = new Map()',
-  'if (existing) return existing',
   'let classifiedsScheduleEnsureInFlight = null'
 ]) assert.ok(impl.includes(marker),`missing runtime hardening marker: ${marker}`);
 
-// Claim now carries a top-level request.time seal too.
-assert.ok(impl.includes('dailyRewards: persistedDaily,\n      lastSeenAt: serverTimestamp()'));
-assert.ok(impl.includes('serializeDailyLoginPlan(data, plan, now, clock.serverNow)'), 'Login normal volvió a usar nested serverTimestamp en dailyRewards.');
-assert.ok(impl.includes('serializeDailyRewardsForFirestore(nextDaily, now, clock.serverNow)'), 'Claim volvió a usar nested serverTimestamp en dailyRewards.');
+// Daily login/claim authority moved off the browser: server owns clock, transition and wallet/inventory mutation.
+assert.ok(fnIndex.includes('export const economyRegisterDailyLogin'), 'Falta callable server-authoritative de Daily login.');
+assert.ok(fnIndex.includes('export const economyClaimDailyReward'), 'Falta callable server-authoritative de Daily claim.');
+assert.ok(serverDaily.includes('serverNowMs=Date.now()'), 'Daily server perdió reloj por defecto de servidor.');
+assert.ok(serverDaily.includes('dailyDateKey(clock.effectiveNow)'), 'Daily server dejó de sellar fecha efectiva server-side.');
+
+const dailyClientStart = impl.indexOf('// 23.19.5.4 — DAILY REWARDS AUTHORITY.');
+const dailyClientEnd = impl.indexOf('// Craftea una mejora permanente', dailyClientStart);
+assert.ok(dailyClientStart >= 0 && dailyClientEnd > dailyClientStart, 'No se pudo aislar bloque Daily 23.19.5.4 del cliente.');
+const dailyClient = impl.slice(dailyClientStart, dailyClientEnd);
+assert.ok(dailyClient.includes('registerDailyLoginServer()'), 'Daily login oficial no delega al servidor.');
+assert.ok(dailyClient.includes('claimDailyRewardServer(request.day, operationId)'), 'Daily claim oficial no delega al servidor con operationId.');
+assert.ok(!dailyClient.includes('runTransaction('), 'Daily oficial volvió a mutar Firestore directamente desde el navegador.');
 
 // Console remains quiet for informational Daily/bootstrap diagnostics.
 assert.ok(!main.includes('[DailyRewards 23.13.62] Decisión de bootstrap:'));

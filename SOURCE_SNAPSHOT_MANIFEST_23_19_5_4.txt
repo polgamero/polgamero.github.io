@@ -1,0 +1,102 @@
+SOURCE SNAPSHOT MANIFEST — 23.19.5.4 MATCH SETTLEMENT + ANTI-FARMING + ADMISSION CONTROL + ECONOMY PENDING UX RC
+
+STATUS=RELEASE_CANDIDATE_PENDING_REAL_EMULATOR_DEPLOY_GITHUB_SMOKE
+BASELINE=23.19.5.3 RC code + 23.19.5.2 RELEASED + Deck Intelligence 23.19.5-di2
+POOL=880
+PROTOCOL=mp-23.19.2
+ECONOMY_PROTOCOL=econ-23.19.5.4
+ECONOMY_SCHEMA=5
+ECONOMY_FUNCTIONS_REGION=southamerica-east1
+FIRESTORE_RULES=23.13.79 (unchanged; not shipped in public source)
+FILE_COUNT=328
+CARD_IMAGE_BINARIES=0
+PUBLIC_FIRESTORE_CONFIG_FILES=0
+APP_CHECK_PROVIDER=recaptcha-enterprise
+APP_CHECK_ENFORCEMENT=OBSERVE_ONLY
+FUNCTIONS_NODE=22
+FUNCTIONS_MIN_INSTANCES=0
+FUNCTIONS_MAX_INSTANCES=1
+FUNCTIONS_CONCURRENCY=10
+FUNCTIONS_TIMEOUT_SECONDS=30
+FUNCTIONS_MEMORY=256MiB
+ECONOMY_OPERATION_LEDGER=economyOperations/{uid}_{operationId}
+ECONOMY_FUNCTION_COUNT=20
+PACK_AUTHORITY=SERVER
+GUARANTEED_MYTHIC_AUTHORITY=SERVER
+STORE_PACK_PURCHASE_AUTHORITY=SERVER
+CRAFT_AUTHORITY=SERVER
+PREBUILT_AUTHORITY=SERVER_TRUSTED_CATALOG
+CLASSIFIEDS_AUTHORITY=SERVER_ART_WEEK
+USERNAME_RENAME_AUTHORITY=SERVER_ATOMIC_REGISTRY
+DAILY_REWARDS_AUTHORITY=SERVER
+DAILY_CLOCK_AUTHORITY=SERVER_ART_UTC_MINUS_3
+MATCH_SETTLEMENT_AUTHORITY=SERVER_VALUES_AND_PVP_EVIDENCE
+PVP_ANTI_FARM_AUTHORITY=SERVER
+ABANDON_PENALTY_AUTHORITY=SERVER
+REGISTRATION_ADMISSION_AUTHORITY=SERVER_ATOMIC
+REGISTRATION_MODES=OPEN|LIMITED|PAUSED
+REGISTRATION_TOTAL_CAP=ADMIN_CONFIGURABLE
+REGISTRATION_DAILY_CAP=ADMIN_CONFIGURABLE_ART
+ECONOMY_PENDING_UX=CENTRALIZED
+ACTION_RECOVERY=OPERATION_ID_JOURNAL
+DIRECT_FIRESTORE_FIREWALL=DEFERRED_TO_23.19.5.6
+DECK_INTELLIGENCE_VERSION=23.19.5-di2
+TRUSTED_STARTER_POOL=880
+
+FUNCTIONS:
+- economyStatus
+- economyBootstrapAccount
+- economyCompleteStarterDeck
+- economyOpenPack
+- economyOpenGuaranteedMythic
+- economyGetOperation
+- economyGetStorefront
+- economyPurchasePack
+- economyCraftEnhancement
+- economyPurchasePrebuiltDeck
+- economyGetClassifieds
+- economyPurchaseClassifiedCard
+- economyRenameUsername
+- economyRegisterDailyLogin
+- economyClaimDailyReward
+- economyAdminDailyDebug
+- economyGetAdmissionStatus
+- economyAdminSetAdmissionPolicy
+- economySettleMatchReward
+- economyApplyAbandonPenalty
+
+23.19.5.4 PUBLIC-SOURCE ARTIFACTS:
+- argentinia/MATCH_SETTLEMENT_ADMISSION_PENDING_23_19_5_4.txt
+- argentinia/RELEASE_NOTES_23_19_5_4_RC.txt
+- argentinia/QA_23_19_5_4_RC.txt
+- argentinia/js/economyPending.js
+- argentinia/tools/test_match_admission_pending_authority_23_19_5_4.mjs
+- argentinia/tools/ci_fast_contract_manifest_23_19_5_4.txt
+- functions/src/economy/admissionCore.js
+- functions/src/economy/admission.js
+- functions/src/economy/matchCore.js
+- functions/src/economy/matches.js
+
+LOCAL QA COMPLETED:
+- specific Match/Admission/Pending contract: PASS
+- Functions Foundation + Daily + Match/Admission unit contracts: PASS
+- canonical fast manifest: 110 tests; final-worktree split revalidation 110/110 PASS
+- regression archive parity: 62/62 PASS revalidated on final worktree
+- Headless 23.18.1: 6/6 / 2484 actions / 109 turns PASS
+- Headless Coverage: 97.95% structurally known
+- Headless 23.18.2: 6/6 / 2723 actions / 120 turns PASS
+- Multiplayer Reliability: 250 seeds / 30000 commits / 61822 deliveries PASS
+- Multiplayer Hardening: 5000 cases / 15000 safe / 15000 rejected PASS
+- Stability foundation contract: PASS; canonical 10-seed long runner remains a required GitHub Actions promotion gate
+- app+tools JS/MJS syntax: 223 files PASS
+- Functions JS/MJS syntax: 25 files PASS
+- JSON: 23/23 PASS
+- YAML: 1/1 PASS
+- Game Text: 1243 definitions / 1008 runtime literal uses PASS
+- source image audit: pool 880 / card binaries 0 / ownership OK
+
+REAL PROMOTION GATES PENDING:
+- Auth+Firestore+Functions Emulator Gate 23.19.5.4 code 0 + both required markers.
+- Production deploy/verify exactly 20 Economy Functions.
+- GitHubSource push + GitHub Actions green (canonical 110/110 + heavy labs).
+- Production smoke of schema5/capabilities, Admission Admin, pending button UX, match settlement and abandon paths.

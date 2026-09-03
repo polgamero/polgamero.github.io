@@ -1,12 +1,12 @@
 {
-  "engineVersion": "23.19.5.2",
+  "engineVersion": "23.19.5.4",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
-  "economyProtocolVersion": "econ-23.19.5.2",
-  "economySchemaVersion": 3,
+  "economyProtocolVersion": "econ-23.19.5.4",
+  "economySchemaVersion": 5,
   "economyFunctionsRegion": "southamerica-east1",
   "firestoreRulesVersion": "23.13.79",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Store / Craft / Prebuilt / Classifieds / Username Authority + Packs / Cofre / Mythic + Deck Intelligence 2.0"
+  "label": "Match Settlement + Anti-Farming + Admission Control + Economy Pending UX"
 }

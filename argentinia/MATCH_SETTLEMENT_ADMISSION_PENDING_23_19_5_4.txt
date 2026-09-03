@@ -1,0 +1,77 @@
+ARGENTINIA v23.19.5.4 — MATCH SETTLEMENT + ANTI-FARMING + ADMISSION CONTROL + ECONOMY PENDING UX
+
+STATUS: RELEASE CANDIDATE — requires real 23.19.5.4 Auth+Firestore+Functions Emulator Gate, production Functions deploy/verify, GitHub Actions and smoke before RELEASED.
+
+VERSION CONTRACT
+- Engine: 23.19.5.4
+- Economy protocol: econ-23.19.5.4
+- Economy schema: 5
+- Multiplayer protocol: mp-23.19.2 (unchanged)
+- Firestore Rules: 23.13.79 (unchanged)
+- Pool: 880
+- Deck Intelligence: 23.19.5-di2
+- App Check: observe-only / enforceAppCheck=false
+- Functions: Node 22, southamerica-east1, minInstances=0, maxInstances=1, concurrency=10, timeout=30s, 256MiB
+
+MATCH SETTLEMENT AUTHORITY
+- New callable economySettleMatchReward.
+- Browser sends only settlement intent: receiptId, mode, outcome, difficulty/matchId and operationId.
+- Reward values are loaded from server gameConfig/settings.
+- all_points_multiplier is evaluated server-side and surface-scoped.
+- operationId ledger provides exactly-once replay/recovery.
+- PvP outcome is checked against server-readable match evidence and sealed server-side before settlement.
+- PvP anti-farming is server-owned: early-abandon 0 reward before 3 minutes or 4 completed turns, 5 rewarded matches per pair/day default, 1200 points/user/day default.
+- Pair/day counters are Firestore transaction participants.
+- New callable economyApplyAbandonPenalty derives abandonPenalty from server config; browser cannot supply delta.
+
+SECURITY SCOPE NOTE
+- Multiplayer terminal evidence is server-checked against the match document.
+- Solo gameplay itself is still simulated in the browser; 23.19.5.4 moves reward values/idempotency/campaign policy to server authority but is not a fully server-simulated anti-cheat system.
+- Direct Firestore write firewall remains scheduled for 23.19.5.6. This RC does not claim otherwise.
+
+ADMISSION CONTROL
+- New callables economyGetAdmissionStatus and economyAdminSetAdmissionPolicy.
+- Admin policy: registrationMode = open | limited | paused.
+- maxRegisteredUsers: 0 means unlimited.
+- maxRegistrationsPerDay: 0 means unlimited.
+- Only NEW users consume admission capacity; existing users may continue logging in while registration is paused.
+- Global count is reconciled against trusted users collection count and then serialized through admissionCounters/global inside the account bootstrap transaction.
+- ART daily registrations are serialized in admissionDaily/{YYYY-MM-DD}.
+- Final-slot concurrency is fail-closed: only one concurrent registration can consume the last available slot.
+- Official current client always uses bootstrapAccountServer for first profile creation, including while Economy mode remains shadow.
+
+ECONOMY PENDING UX
+- Central helper: js/economyPending.js / withEconomyButtonPending().
+- Immediately disables the affected button, sets aria-busy, renders a spinner/pending label and prevents impatient duplicate clicks.
+- Slow-request state shows “CONECTANDO CON EL SERVIDOR...” without pretending the economic result already succeeded.
+- No optimistic balance/inventory mutations: UI waits for the server receipt.
+- Applied to Pack, guaranteed Mythic, Store purchase, Craft, Prebuilt, Classifieds, Username, Daily Reward and Admin Daily surfaces.
+
+20 ECONOMY CALLABLES
+1. economyStatus
+2. economyBootstrapAccount
+3. economyCompleteStarterDeck
+4. economyOpenPack
+5. economyOpenGuaranteedMythic
+6. economyGetOperation
+7. economyGetStorefront
+8. economyPurchasePack
+9. economyCraftEnhancement
+10. economyPurchasePrebuiltDeck
+11. economyGetClassifieds
+12. economyPurchaseClassifiedCard
+13. economyRenameUsername
+14. economyRegisterDailyLogin
+15. economyClaimDailyReward
+16. economyAdminDailyDebug
+17. economyGetAdmissionStatus
+18. economyAdminSetAdmissionPolicy
+19. economySettleMatchReward
+20. economyApplyAbandonPenalty
+
+PROMOTION ORDER
+1. 05 Emulator Gate: code 0 + both 23.19.5.4 markers.
+2. 06 deploy Functions only + verify exactly 20 Economy Functions.
+3. Push 01_GitHubSource to GitHub; GitHub Actions green.
+4. Production smoke: economyStatus schema5/capabilities; Admission Admin view/save; one normal economic spinner path; solo settlement; PvP settlement/abandon path.
+5. Do NOT deploy Firestore Rules and do NOT enable App Check enforcement in this release.

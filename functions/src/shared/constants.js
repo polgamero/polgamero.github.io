@@ -1,9 +1,10 @@
-export const ENGINE_VERSION = '23.19.5.2';
-export const ECONOMY_PROTOCOL_VERSION = 'econ-23.19.5.2';
-export const ECONOMY_SCHEMA_VERSION = 3;
+export const ENGINE_VERSION = '23.19.5.4';
+export const ECONOMY_PROTOCOL_VERSION = 'econ-23.19.5.4';
+export const ECONOMY_SCHEMA_VERSION = 5;
 export const ECONOMY_REGION = 'southamerica-east1';
 export const ECONOMY_CONFIG_PATH = 'gameConfig/economy';
 export const ECONOMY_OPERATIONS_COLLECTION = 'economyOperations';
+export const ADMIN_EMAIL = 'pablogamero1@gmail.com';
 
 export const ECONOMY_MODES = Object.freeze({
   SHADOW: 'shadow',

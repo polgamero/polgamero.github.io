@@ -87,6 +87,8 @@ expect(gapReset.streakReset === true && gapReset.state.streak === 1 && gapReset.
 const main = fs.readFileSync(path.join(root, 'js/main.js'), 'utf8');
 const ui = fs.readFileSync(path.join(root, 'js/ui.js'), 'utf8');
 const impl = fs.readFileSync(path.join(root, 'js/firebaseClientImpl.js'), 'utf8');
+const serverDailyCore = fs.readFileSync(path.join(root, '../functions/src/economy/dailyCore.js'), 'utf8');
+const fnIndex = fs.readFileSync(path.join(root, '../functions/src/index.js'), 'utf8');
 const version = fs.readFileSync(path.join(root, 'js/version.js'), 'utf8');
 
 expect(!ui.includes('void maybeShowAnnouncementPopup({ currentUser: state.currentUser });'),
@@ -97,9 +99,11 @@ expect(dailyPos >= 0 && announcementPos > dailyPos, 'El anuncio no está secuenc
 expect(main.includes('await waitForInitialAuthState();\n      if (!state.currentUser) await maybeShowAnnouncementPopup({ currentUser: null });'),
   'El anuncio guest no espera resolución real de Auth.');
 expect(ui.includes("return closedPromise;"), 'El modal Daily no expone cierre awaitable para la cola de overlays.');
-expect(impl.includes('legacyContinuityMigration'), 'Firebase no marca migración de continuidad legacy.');
-expect(impl.includes('persistedDaily.serverPreviousLoginDay = data.dailyRewards.serverLastLoginDay'),
-  'Firebase no sella el predecesor real al continuar la racha.');
+expect(serverDailyCore.includes('legacyMigration'), 'Servidor no marca migración de continuidad legacy.');
+expect(serverDailyCore.includes('previousLoginDate:state.lastLoginDate'), 'Servidor no sella el predecesor real al continuar la racha.');
+expect(fnIndex.includes('export const economyRegisterDailyLogin'), 'Daily login no está bajo autoridad callable.');
+const dailyClient = impl.slice(impl.indexOf('// 23.19.5.4 — DAILY REWARDS AUTHORITY.'), impl.indexOf('// Craftea una mejora permanente'));
+expect(!dailyClient.includes('runTransaction('), 'Browser volvió a mutar Daily directamente.');
 expect(version.includes("FIRESTORE_RULES_VERSION = '23.13.79'"), 'Frontend no exige Rules 23.13.79.');
 expect(!fs.existsSync(path.join(root, 'firestore.rules')) && !fs.existsSync(path.join(root, 'firebase.json')),
   'Infra Firestore volvió a quedar dentro del árbol público /argentinia.');

@@ -27,14 +27,14 @@ import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_SAVED_DECKS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
 import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
-import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, advanceDailyLoginState, isDailyStreakConsistent, rewardForDay, isRewardClaimable, applyRewardToProfileData, CHEST_ITEM_KEYS, localDateKey, hasAuthoritativeDailyState, serializeDailyRewardsForFirestore } from './rewards.js';
+import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, getClassifiedsServer, purchaseClassifiedCardServer, renameUsernameServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, getClassifiedsServer, purchaseClassifiedCardServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { normalizePlayerStats, summarizePlayerTelemetry, PLAYER_GAME_BACKFILL_VERSION } from './statistics.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
-import { buildCampaignSnapshot, validateEventPayload, validateAnnouncementPayload, effectivePackCost, effectiveMatchPoints, effectiveAllPoints, effectiveFichas } from './campaigns.js';
+import { buildCampaignSnapshot, validateEventPayload, validateAnnouncementPayload, effectivePackCost, effectiveMatchPoints } from './campaigns.js';
 import { queuePendingGameReward, pendingGameRewardsForUid, removePendingGameReward, normalizeGameRewardReceiptId } from './gameRewards.js';
 import { normalizePvpRewardLimits, evaluatePvpRewardEligibility, argentinaDayKeyFromMs, pvpPairKey, pvpCompletedTurns } from './pvpRewards.js';
 import { privateRevisionField, validateReconnectRevisionPair, normalizeSyncRevision, MULTIPLAYER_CLIENT_SESSION_ID, roleSessionField, validateRoleSession, classifyReconnectSafety } from './multiplayerReliability.js';
@@ -180,14 +180,15 @@ const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
   enhancementCraft: 'store.craft_enhancement',
   prebuiltPurchase: 'store.purchase_prebuilt',
   classifiedPurchase: 'store.purchase_classified',
-  usernameRename: 'account.rename_username'
+  usernameRename: 'account.rename_username',
+  dailyClaim: 'daily.claim'
 });
 const ECONOMY_ACTION_PREFIXES = Object.freeze({
   packPurchase: 'buy-pack', enhancementCraft: 'craft', prebuiltPurchase: 'prebuilt',
-  classifiedPurchase: 'classified', usernameRename: 'rename'
+  classifiedPurchase: 'classified', usernameRename: 'rename', dailyClaim: 'daily-claim'
 });
 
-// 23.19.5.2 — exactly-once browser bridge. El journal conserva sólo intención/operationId.
+// 23.19.5.3 — exactly-once browser bridge. El journal conserva sólo intención/operationId.
 // Si se perdió la respuesta después del commit, el siguiente click/F5 lee economyOperations
 // y sincroniza el perfil sin repetir la compra/craft/rename.
 async function runEconomyActionAuthority(uid, type, request, invoke) {
@@ -515,82 +516,18 @@ export async function loadUserProfileFromServer(uid) {
 // no existe users/{uid}, crea un perfil mínimo starterDeckPending=true en la MISMA transacción
 // que reserva usernames/{usernameKey}; si el perfil ya existía (migración), sólo agrega los
 // campos username*. Las Rules 23.13.24 enlazan ambos documentos con getAfter().
-export async function reserveInitialUsername(uid, username, usernameKey, profileFields = {}) {
+export async function reserveInitialUsername(uid, username, usernameKey, _profileFields = {}) {
   const validated = assertValidUsernamePayload(username, usernameKey);
-  const authority = await loadEconomyAuthorityConfig();
-  if (economyShouldUseServer(authority)) {
-    if (uid !== auth.currentUser?.uid) throw usernameError('AUTH_UID_MISMATCH', 'La sesión no coincide con la cuenta.');
-    try {
-      await bootstrapAccountServer(validated.username);
-      const serverProfile = await loadOwnProfileAfterServerMutation(uid);
-      if (!serverProfile) throw new Error('ECONOMY_BOOTSTRAP_PROFILE_MISSING_AFTER_COMMIT');
-      return serverProfile;
-    } catch (error) {
-      if (economyServerRequired(authority)) throw error;
-      console.warn('[Economy 23.19.5] bootstrapAccount server_preferred falló; fallback legacy temporal:', error);
-    }
-  }
-  const userRef = doc(db, 'users', uid);
-  const nameRef = doc(db, 'usernames', validated.usernameKey);
-
-  return runTransaction(db, async (tx) => {
-    const [userSnap, nameSnap] = await Promise.all([tx.get(userRef), tx.get(nameRef)]);
-    if (nameSnap.exists() && nameSnap.data()?.uid !== uid) {
-      throw usernameError('USERNAME_TAKEN', 'Ese nombre ya está usado.');
-    }
-
-    const now = serverTimestamp();
-    const identityPatch = {
-      username: validated.username,
-      usernameKey: validated.usernameKey,
-      usernameUpdatedAt: now
-    };
-
-    let nextProfile;
-    if (userSnap.exists()) {
-      const current = userSnap.data();
-      // 23.13.26 — el criterio debe ser idéntico al del boot/UI. Perfiles históricos
-      // (especialmente Admin/debug) pueden tener usernameKey null, huérfano o una identidad
-      // parcial; eso NO cuenta como username configurado. Sólo bloqueamos una segunda alta
-      // gratis cuando ya existe username + usernameKey válidos.
-      const hasConfiguredIdentity = typeof current.username === 'string' && current.username.trim()
-        && typeof current.usernameKey === 'string' && current.usernameKey.trim();
-      if (hasConfiguredIdentity && current.usernameKey !== validated.usernameKey) {
-        throw usernameError('USERNAME_ALREADY_CONFIGURED', 'La cuenta ya tiene un nombre configurado.');
-      }
-      tx.update(userRef, identityPatch);
-      nextProfile = { ...current, ...identityPatch };
-    } else {
-      nextProfile = {
-        displayName: profileFields.displayName || '',
-        photoURL: profileFields.photoURL || '',
-        email: profileFields.email || '',
-        ...identityPatch,
-        points: 0,
-        collection: [],
-        decks: [],
-        fichas: 0,
-        enhancements: {},
-        inventory: defaultInventory(),
-        dailyRewards: defaultDailyRewardsState(),
-        activeMatchId: null,
-        starterDeckPending: true,
-        createdAt: now,
-        lastSeenAt: now
-      };
-      tx.set(userRef, nextProfile);
-    }
-
-    const registryData = {
-      uid,
-      username: validated.username,
-      updatedAt: now,
-      ...(nameSnap.exists() ? {} : { createdAt: now })
-    };
-    tx.set(nameRef, registryData, { merge: nameSnap.exists() });
-    return normalizeProfileForClient(nextProfile);
-  });
+  if (uid !== auth.currentUser?.uid) throw usernameError('AUTH_UID_MISMATCH', 'La sesión no coincide con la cuenta.');
+  // 23.19.5.4 — el cliente oficial SIEMPRE crea/migra la cuenta por Functions. Esto hace
+  // que Admission Control sea efectivo incluso mientras el rollout global sigue en shadow.
+  // El bloqueo absoluto de clientes viejos/custom llega con Write Firewall 23.19.5.6.
+  await bootstrapAccountServer(validated.username);
+  const serverProfile = await loadOwnProfileAfterServerMutation(uid);
+  if (!serverProfile) throw new Error('ECONOMY_BOOTSTRAP_PROFILE_MISSING_AFTER_COMMIT');
+  return serverProfile;
 }
+
 
 export async function checkUsernameAvailability(username, usernameKey) {
   const validated = assertValidUsernamePayload(username, usernameKey);
@@ -1074,31 +1011,29 @@ async function settlePvpGameRewardOnce(uid, reward, snapshot, requestedEffective
 
 async function settleGameRewardOnce(uid, reward = {}) {
   const receiptId = normalizeGameRewardReceiptId(reward.receiptId);
-  const baseDelta = Math.max(0, Math.floor(Number(reward.baseDelta) || 0));
   const mode = reward.mode === 'multiplayer' ? 'multiplayer' : 'solo';
-  if (!uid || !receiptId || baseDelta <= 0) throw new Error('GAME_REWARD_INVALID_REQUEST');
-
-  if (mode === 'multiplayer') {
-    // También corre al reconciliar la cola después de F5: si el match ya quedó terminal
-    // pero la pestaña murió antes del sellado, lo completa antes de liquidar.
-    await sealMultiplayerOutcome(matchIdFromReward(reward));
-  }
-  const snapshot = await getCampaignSnapshotForEconomy(uid);
-  const requestedEffectiveDelta = effectiveMatchPoints(baseDelta, snapshot);
-  const result = mode === 'multiplayer'
-    ? await settlePvpGameRewardOnce(uid, reward, snapshot, requestedEffectiveDelta)
-    : await settleSoloGameRewardOnce(uid, reward, snapshot, requestedEffectiveDelta);
-
-  if (!result.duplicate && Number(result.appliedDelta) > 0) {
+  if (!uid || uid !== auth.currentUser?.uid || !receiptId) throw new Error('GAME_REWARD_INVALID_REQUEST');
+  // 23.19.5.4 — el browser ya NO calcula ni valida el monto. Envía intención/evidencia
+  // mínima; Functions lee gameConfig, campañas, match sellado y anti-farming.
+  const response = await settleMatchRewardServer({
+    receiptId,
+    mode,
+    outcome: reward.outcome === 'loss' ? 'loss' : 'win',
+    difficulty: mode === 'solo' ? reward.difficulty : '',
+    matchId: mode === 'multiplayer' ? matchIdFromReward(reward) : ''
+  }, reward.operationId || null);
+  const result = response?.result || null;
+  if (!result) throw new Error('MATCH_REWARD_SERVER_RESULT_MISSING');
+  if (!response?.replayed && !result.duplicate && Number(result.appliedDelta) > 0) {
     await statsBestEffort(uid, { pointsEarned: Math.max(0, Number(result.appliedDelta) || 0) });
     void economyLogBestEffort({
       targetUid: uid,
-      source: 'game_reward',
+      source: 'game_reward_server',
       pointsDelta: Math.max(0, Number(result.appliedDelta) || 0),
       sessionId: receiptId
     });
   }
-  return result;
+  return { ...result, replayed: response?.replayed === true };
 }
 
 export async function awardGamePointsOnce(uid, reward = {}) {
@@ -1141,6 +1076,30 @@ export async function flushPendingGameRewards(uid) {
     }
   }
   return { attempted: pending.length, settled, failed, latestTotal, results };
+}
+
+export async function getAdmissionStatus() {
+  const response = await getAdmissionStatusServer();
+  return response?.status || null;
+}
+
+export async function adminSetAdmissionPolicy(policy = {}) {
+  const response = await adminSetAdmissionPolicyServer(policy);
+  return response?.status || null;
+}
+
+export async function applyAbandonPenalty(uid, { mode = 'solo', matchId = '', receiptId = '', operationId = null } = {}) {
+  if (!uid || uid !== auth.currentUser?.uid) throw new Error('AUTH_UID_MISMATCH');
+  const normalizedMode = mode === 'multiplayer' ? 'multiplayer' : 'solo';
+  const stableSource = normalizedMode === 'multiplayer'
+    ? String(matchId || '').trim().toUpperCase()
+    : normalizeGameRewardReceiptId(receiptId || 'solo');
+  const stableOperationId = operationId || `abandon:${normalizedMode}:${stableSource}:${uid}`.replace(/[^A-Za-z0-9._:-]/g, '_').slice(0, 128);
+  const response = await applyAbandonPenaltyServer({ mode: normalizedMode, matchId, operationId: stableOperationId });
+  const result = response?.result || null;
+  if (!result) throw new Error('ABANDON_PENALTY_SERVER_RESULT_MISSING');
+  const profile = await loadOwnProfileAfterServerMutation(uid);
+  return { ...result, total: profile?.points ?? result.total, profile, replayed: response?.replayed === true };
 }
 
 // 23.13.0 — Comprar ya NO abre el sobre. La transacción descuenta puntos y deposita una
@@ -1281,215 +1240,69 @@ export async function getAuthoritativeClassifiedsNow(uid) {
   return { ...clock, effectiveNow: new Date(clock.serverNow.getTime()), debugOffsetDays: 0 };
 }
 
-function isAdminDailyQaUser(uid) {
-  return auth.currentUser?.uid === uid
-    && String(auth.currentUser?.email || '').trim().toLowerCase() === ADMIN_EMAIL;
-}
-
-function buildDailyLoginPlan(data, now, clock) {
-  const sourceDaily = hasAuthoritativeDailyState(data.dailyRewards) ? data.dailyRewards : null;
-  const previous = normalizeDailyRewardsState(data.dailyRewards, now);
-  const previousSchemaVersion = Math.max(0, Math.floor(Number(data.dailyRewards?.schemaVersion) || 0));
-  const legacyContinuityMigration = previousSchemaVersion > 0 && previousSchemaVersion < 4;
-  const login = advanceDailyLoginState(sourceDaily, now);
-  if (legacyContinuityMigration && previous.streak > 0) {
-    login.streakReset = true;
-    login.cycleRestarted = true;
-    login.repairApplied = true;
+// ============================================================================
+// 23.19.5.4 — DAILY REWARDS AUTHORITY.
+// El browser ya no calcula/transacciona streaks ni acredita premios. Functions usa reloj
+// server-side en ART, decide continuidad, campañas y saldo, y el claim usa operationId.
+// El viejo rewardClock queda sólo para utilidades legacy/Admin de Clasificados hasta que
+// sus últimas rutas de publicación sean retiradas; Daily no lo usa para autoridad.
+// ============================================================================
+export async function registerDailyLogin(uid, nowMs = null) {
+  if (uid !== auth.currentUser?.uid) throw usernameError('AUTH_UID_MISMATCH', 'La sesión no coincide con la cuenta.');
+  if (nowMs != null) {
+    const error = new Error('DAILY_CLIENT_CLOCK_DISABLED');
+    error.code = 'DAILY_CLIENT_CLOCK_DISABLED';
+    throw error;
   }
-  const inventory = normalizeInventory(data.inventory);
-  const diagnostics = {
-    adminQa: isAdminDailyQaUser(data.uid || auth.currentUser?.uid),
-    schemaVersion: previousSchemaVersion,
-    hasServerUpdatedAt: !!data.dailyRewards?.serverUpdatedAt,
-    previousLastLoginDate: previous.lastLoginDate,
-    previousPreviousLoginDate: previous.previousLoginDate,
-    previousCycleStartDate: previous.cycleStartDate,
-    previousStreak: previous.streak,
-    previousUnlockedDays: previous.unlockedDays.slice(),
-    previousClaimedDays: previous.claimedDays.slice(),
-    previousLastClaimedDay: previous.lastClaimedDay,
-    previousStateConsistent: sourceDaily ? isDailyStreakConsistent(sourceDaily, now) : false,
-    previousAuthoritative: !!sourceDaily,
-    legacyMigration: legacyContinuityMigration,
-    effectiveDate: localDateKey(now),
-    requestedRewardDay: login.rewardDay,
-    requestedStreak: login.state.streak,
-    requestedUnlockedDays: login.state.unlockedDays.slice(),
-    requestedClaimedDays: login.state.claimedDays.slice(),
-    requestedLastClaimedDay: login.state.lastClaimedDay,
-    debugOffsetDays: clock.debugOffsetDays,
-    rulesVersion: clock.rulesVersion || null
-  };
-  return { sourceDaily, previous, previousSchemaVersion, login, inventory, diagnostics };
-}
-
-function serializeDailyLoginPlan(data, plan, now, serverUpdatedAt = serverTimestamp()) {
-  const persistedDaily = serializeDailyRewardsForFirestore(plan.login.state, now, serverUpdatedAt);
-  if (plan.sourceDaily && plan.login.state.streak > 1 && data.dailyRewards?.serverCycleStartDay) {
-    persistedDaily.serverCycleStartDay = data.dailyRewards.serverCycleStartDay;
-    persistedDaily.serverPreviousLoginDay = data.dailyRewards.serverLastLoginDay;
-  }
-  return persistedDaily;
-}
-
-function dailyLoginResult(data, plan, clock, now, extraProfile = {}) {
+  const response = await registerDailyLoginServer();
+  const profile = await loadOwnProfileAfterServerMutation(uid);
+  if (!profile) throw new Error('DAILY_PROFILE_MISSING_AFTER_COMMIT');
   return {
-    profile: { ...data, ...extraProfile, inventory: plan.inventory, dailyRewards: plan.login.state },
-    diagnostics: plan.diagnostics,
-    login: {
-      newCalendarLogin: plan.login.newCalendarLogin,
-      rewardDay: plan.login.rewardDay,
-      rewardUnlocked: plan.login.rewardUnlocked,
-      streakReset: plan.login.streakReset,
-      cycleRestarted: plan.login.cycleRestarted,
-      cycleCompleted: plan.login.cycleCompleted,
-      repairApplied: plan.login.repairApplied === true,
-      streak: plan.login.state.streak,
-      cycleStartDate: plan.login.state.cycleStartDate,
-      authoritative: true,
-      serverNowMs: clock.serverNow.getTime(),
-      effectiveNowMs: now.getTime(),
-      debugOffsetDays: clock.debugOffsetDays,
-      rulesVersion: clock.rulesVersion || null
-    }
+    profile,
+    diagnostics: { authority: 'server', dailySchemaVersion: response?.result?.login?.dailySchemaVersion || null },
+    login: response?.result?.login || null
   };
 }
 
-async function applyAdminDailyDebugOffset(uid, mode) {
-  if (!isAdminDailyQaUser(uid)) throw new Error('Esta herramienta de debug es exclusiva del admin.');
-  const clock = await getAuthoritativeServerClock(uid);
-  const ref = doc(db, 'users', uid);
-  return runTransaction(db, async tx => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('No se encontró tu perfil admin.');
-    const data = snap.data();
-    const current = Math.max(0, Math.min(30, Math.floor(Number(data.rewardDebugOffsetDays) || 0)));
-    const nextOffset = mode === 'reset' ? 0 : Math.min(30, current + 1);
-    if (mode === 'advance' && current >= 30) throw new Error('El reloj QA ya está en el máximo de +30 días.');
-    const now = new Date(clock.serverNow.getTime() + nextOffset * 86400000);
-    const effectiveClock = { ...clock, effectiveNow: now, debugOffsetDays: nextOffset };
-    const plan = buildDailyLoginPlan(data, now, effectiveClock);
-    const update = { rewardDebugOffsetDays: nextOffset, lastSeenAt: serverTimestamp() };
-    if (plan.login.newCalendarLogin) update.dailyRewards = serializeDailyLoginPlan(data, plan, now);
-    tx.update(ref, update);
-    return dailyLoginResult(data, plan, effectiveClock, now, { rewardDebugOffsetDays: nextOffset });
-  });
+export async function claimDailyReward(uid, day, nowMs = null) {
+  if (uid !== auth.currentUser?.uid) throw usernameError('AUTH_UID_MISMATCH', 'La sesión no coincide con la cuenta.');
+  if (nowMs != null) {
+    const error = new Error('DAILY_CLIENT_CLOCK_DISABLED');
+    error.code = 'DAILY_CLIENT_CLOCK_DISABLED';
+    throw error;
+  }
+  const request = { day: Number(day) };
+  const outcome = await runEconomyActionAuthority(uid, 'dailyClaim', request,
+    operationId => claimDailyRewardServer(request.day, operationId));
+  const profile = await loadOwnProfileAfterServerMutation(uid);
+  if (!profile) throw new Error('DAILY_PROFILE_MISSING_AFTER_COMMIT');
+  if (!outcome.replayed) {
+    const result = outcome.result || {};
+    const points = Math.max(0, Math.floor(Number(result.pointsGain) || 0));
+    const fichas = Math.max(0, Math.floor(Number(result.fichasGain) || 0));
+    const packs = Math.max(0, Math.floor(Number(result.standardPacksGain) || 0));
+    await statsBestEffort(uid, { pointsEarned: points, fichasEarned: fichas, packsReceived: packs });
+    void economyLogBestEffort({ targetUid: uid, source: 'daily_reward_server', pointsDelta: points, fichasDelta: fichas, packsDelta: packs });
+  }
+  return profile;
 }
 
-// 23.13.62 — ADMIN QA ATÓMICO: el offset y la transición Daily se confirman juntos.
-// Si Firestore rechaza Daily, el offset tampoco avanza y no queda un reloj desincronizado.
+async function runAdminDailyDebugServer(uid, mode) {
+  if (uid !== auth.currentUser?.uid || String(auth.currentUser?.email || '').trim().toLowerCase() !== ADMIN_EMAIL) {
+    throw new Error('Esta herramienta de debug es exclusiva del admin.');
+  }
+  const response = await adminDailyDebugServer(mode);
+  const profile = await loadOwnProfileAfterServerMutation(uid);
+  if (!profile) throw new Error('DAILY_PROFILE_MISSING_AFTER_COMMIT');
+  return { profile, login: response?.result?.login || null };
+}
+
 export async function adminAdvanceDailyRewardDebugDay(uid) {
-  return applyAdminDailyDebugOffset(uid, 'advance');
+  return runAdminDailyDebugServer(uid, 'advance');
 }
 
 export async function adminResetDailyRewardDebug(uid) {
-  return applyAdminDailyDebugOffset(uid, 'reset');
-}
-
-// Registra como máximo UN login por fecha oficial ART. Primer acceso = Día 1. El día
-// siguiente avanza hasta Día 7; un gap reinicia Día 1; después de Día 7, el siguiente día
-// consecutivo empieza un ciclo nuevo. La operación es idempotente el mismo día.
-const dailyLoginInFlight = new Map();
-
-async function registerDailyLoginOnce(uid, nowMs = null) {
-  const clock = nowMs == null
-    ? await getAuthoritativeRewardNow(uid)
-    : { serverNow: new Date(nowMs), effectiveNow: new Date(nowMs), debugOffsetDays: 0, rulesVersion: null };
-  const now = clock.effectiveNow;
-  const ref = doc(db, 'users', uid);
-  return runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
-    const data = snap.data();
-    const plan = buildDailyLoginPlan(data, now, clock);
-    if (plan.login.newCalendarLogin) {
-      tx.update(ref, {
-        // 23.17.3.4: serverUpdatedAt es metadata tomada del rewardClock ya resuelto. Evitamos
-        // un transform anidado dentro de dailyRewards; la autorización vive en lastSeenAt=request.time.
-        dailyRewards: serializeDailyLoginPlan(data, plan, now, clock.serverNow),
-        lastSeenAt: serverTimestamp()
-      });
-    } else {
-      tx.update(ref, { lastSeenAt: serverTimestamp() });
-    }
-    return dailyLoginResult(data, plan, clock, now);
-  });
-}
-
-export async function registerDailyLogin(uid, nowMs = null) {
-  // En producción el callback de Auth puede repetirse durante popup/F5. No ejecutamos dos
-  // transacciones Daily paralelas para la misma cuenta. Los tests con nowMs siguen aislados.
-  if (nowMs != null) return registerDailyLoginOnce(uid, nowMs);
-  const existing = dailyLoginInFlight.get(uid);
-  if (existing) return existing;
-  const task = registerDailyLoginOnce(uid, null);
-  dailyLoginInFlight.set(uid, task);
-  try {
-    return await task;
-  } finally {
-    if (dailyLoginInFlight.get(uid) === task) dailyLoginInFlight.delete(uid);
-  }
-}
-
-// Claim separado del login: entrar desbloquea y RECLAMAR acredita. Los premios pertenecen
-// al ciclo activo. Antes de reclamar exigimos que hoy ya haya sido registrado con el reloj
-// oficial; así una llamada manual no puede cobrar un ciclo viejo después de cortar la racha.
-export async function claimDailyReward(uid, day, nowMs = null) {
-  const clock = nowMs == null
-    ? await getAuthoritativeRewardNow(uid)
-    : { serverNow: new Date(nowMs), effectiveNow: new Date(nowMs), debugOffsetDays: 0 };
-  const now = clock.effectiveNow;
-  const reward = rewardForDay(day);
-  if (!reward) throw new Error('Ese premio diario no existe.');
-  const campaignSnapshot = buildCampaignSnapshot(await fetchCampaignEvents(100), clock.serverNow);
-  const effectiveReward = {
-    ...reward,
-    rewards: (reward.rewards || []).map(item => {
-      const amount = Math.max(0, Math.floor(Number(item?.amount) || 0));
-      if (item?.type === 'points') return { ...item, amount: effectiveAllPoints(amount, campaignSnapshot) };
-      if (item?.type === 'fichas') return { ...item, amount: effectiveFichas(amount, campaignSnapshot) };
-      return { ...item, amount };
-    })
-  };
-  const ref = doc(db, 'users', uid);
-  const profile = await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('No se encontró tu perfil.');
-    const data = snap.data();
-    if (!hasAuthoritativeDailyState(data.dailyRewards)) throw new Error('Volvé a entrar para sincronizar tu racha con el reloj oficial.');
-    const dailyRewards = normalizeDailyRewardsState(data.dailyRewards, now);
-    if (dailyRewards.lastLoginDate !== localDateKey(now)) throw new Error('Volvé a entrar hoy para activar tu recompensa diaria.');
-    if (!isRewardClaimable(dailyRewards, day, now)) throw new Error('Ese premio no está disponible o ya fue reclamado.');
-    const rewarded = applyRewardToProfileData({ ...data, inventory: normalizeInventory(data.inventory) }, effectiveReward);
-    const claimedDays = [...dailyRewards.claimedDays, Number(day)];
-    const nextDaily = { ...dailyRewards, claimedDays, lastClaimedDay: Number(day) };
-    // 23.17.3.4: misma simplificación que login. serverUpdatedAt conserva hora de servidor
-    // obtenida del rewardClock; sólo lastSeenAt usa transform de request.time como sello de Rules.
-    const persistedDaily = serializeDailyRewardsForFirestore(nextDaily, now, clock.serverNow);
-    persistedDaily.serverLastLoginDay = data.dailyRewards.serverLastLoginDay;
-    persistedDaily.serverPreviousLoginDay = data.dailyRewards.serverPreviousLoginDay || null;
-    persistedDaily.serverCycleStartDay = data.dailyRewards.serverCycleStartDay;
-    const updated = {
-      points: Number(rewarded.points) || 0,
-      fichas: Number(rewarded.fichas) || 0,
-      inventory: normalizeInventory(rewarded.inventory),
-      dailyRewards: persistedDaily,
-      lastSeenAt: serverTimestamp()
-    };
-    tx.update(ref, updated);
-    return { ...data, ...updated, dailyRewards: nextDaily };
-  });
-  const rewardTotals = (effectiveReward.rewards || []).reduce((acc, item) => {
-    const amount = Math.max(0, Math.floor(Number(item?.amount) || 0));
-    if (item?.type === 'points') acc.points += amount;
-    else if (item?.type === 'fichas') acc.fichas += amount;
-    else if (item?.type === 'standardPack') acc.packs += amount;
-    return acc;
-  }, { points: 0, fichas: 0, packs: 0 });
-  await statsBestEffort(uid, { pointsEarned: rewardTotals.points, fichasEarned: rewardTotals.fichas, packsReceived: rewardTotals.packs });
-  void economyLogBestEffort({ targetUid: uid, source: 'daily_reward', pointsDelta: rewardTotals.points, fichasDelta: rewardTotals.fichas, packsDelta: rewardTotals.packs });
-  return profile;
+  return runAdminDailyDebugServer(uid, 'reset');
 }
 
 // Craftea una mejora permanente: gasta `fichaCost` Fichas para taggear UNA carta que ya
