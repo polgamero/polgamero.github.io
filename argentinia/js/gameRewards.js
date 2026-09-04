@@ -54,6 +54,9 @@ export function queuePendingGameReward(uid, reward = {}) {
           : ''),
     matchId: reward.mode === 'multiplayer' ? String(reward.matchId || '') : '',
     myRole: reward.mode === 'multiplayer' && reward.myRole === 'guest' ? 'guest' : (reward.mode === 'multiplayer' ? 'host' : ''),
+    // 23.19.5.5 — stat-only evidence for server-owned Solo duration. Never participates in
+    // reward amount/digest; old pending entries without it remain valid and normalize to 0.
+    durationMs: reward.mode === 'multiplayer' ? 0 : Math.max(0, Math.min(24 * 60 * 60 * 1000, Math.floor(Number(reward.durationMs) || 0))),
     queuedAtMs: Math.max(0, Math.floor(Number(reward.queuedAtMs) || Date.now()))
   };
   const all = safeReadAll();

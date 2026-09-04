@@ -1,0 +1,22 @@
+ARGENTINIA v23.19.5.5 RC — Admin Economy + Statistics / Immutable Audit Authority
+
+- Admin single and bulk grants moved to authenticated Admin Functions.
+- Bulk jobs are resumable/idempotent and survive lost responses/F5 without duplicate grants.
+- Economic playerStats mirrors and economyEvents are server-owned; official browser best-effort economic writes are disabled.
+- Admin grants commit balance/inventory + stats + immutable adminAction/economyEvent atomically.
+- Solo reward repair moved behind trusted backend evidence validation.
+- Solo abandonment integrity: abandonment is a signed negative server settlement, creates terminal playerGameReceipt + gameRewardReceipt evidence, and can never fall through to the +15 normal-loss reward.
+- Abandon penalty recovery journal: lost response/F5 retries the same operationId before any positive pending game reward; exactly-once receipts prevent duplicate penalties.
+- Rolling deploy compatibility: 23.19.5.5 accepts the 23.19.5.4 abandon payload/digest and backfills schema-6 evidence for already-committed legacy operations without subtracting twice.
+- Caja Negra distinguishes abandonment penalties, missing abandon receipts and interrupted sessions; Admin reward repair is server-denied for abandonment evidence.
+- Abandon confirmation button alignment corrected to centered text.
+- Admin ranking/stat mirror reconciliation moved behind a callable.
+- Storefront Loading UX: Tienda now paints an immediate spinner, switches to CONECTANDO CON EL SERVIDOR... after 2.8s, deduplicates in-flight authority loads, and shows an explicit RETRY state on a real backend failure.
+- Multiplayer terminal integrity: a peer that receives gameOver=true from Firestore now independently derives win/loss and runs its local game-over overlay + role-specific settlement exactly once. This fixes the real mobile loser freeze at 0 HP observed in match 4RSNZJ.
+- Natural match game-result statistics moved server-side: playerGameReceipt plus games/wins/losses/duration are written by Functions; the browser terminal flow no longer races on playerStats/playerGameReceipts.
+- Mobile battlefield selected-card clipping fixed: horizontal scroll rows reserve internal vertical headroom and mobile selection transforms are bounded while preserving visual lift/highlight.
+- Combat damage allocation modal placeholder bug fixed: {hp}/{needed} now match the Game Text call sites; no card JSON changes were required.
+- Economy protocol econ-23.19.5.5; schema 6; 25 callables.
+- Rules 23.13.79 unchanged; App Check remains observe-only; cost safety remains 0/1/10.
+
+STATUS: RC — requires real Emulator Gate, production Functions deploy, GitHub CI and production smoke before RELEASED.

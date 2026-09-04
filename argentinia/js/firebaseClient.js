@@ -191,6 +191,7 @@ export const awardPoints = asyncProxy('awardPoints');
 export const awardGamePointsOnce = asyncProxy('awardGamePointsOnce');
 export const flushPendingGameRewards = asyncProxy('flushPendingGameRewards');
 export const applyAbandonPenalty = asyncProxy('applyAbandonPenalty');
+export const flushPendingAbandonPenalties = asyncProxy('flushPendingAbandonPenalties');
 export const getAdmissionStatus = asyncProxy('getAdmissionStatus');
 export const adminSetAdmissionPolicy = asyncProxy('adminSetAdmissionPolicy');
 export const purchasePack = asyncProxy('purchasePack');

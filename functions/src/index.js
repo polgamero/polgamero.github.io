@@ -15,7 +15,7 @@ import { loadEconomyConfig, assertEconomyAvailable } from './economy/config.js';
 import { runIdempotentOperation, readOwnOperation } from './economy/operationLedger.js';
 import { bootstrapAccountTx, completeStarterDeckTx, normalizeStarterIdentity } from './economy/accounts.js';
 import { prepareAdmissionObservation, getAdmissionStatus, setAdmissionPolicyAdmin, ADMISSION_MODES } from './economy/admission.js';
-import { loadMatchCampaignEffects, normalizeMatchRewardRequest, sealMultiplayerOutcomeServer, settleMatchRewardTx, applyAbandonPenaltyTx } from './economy/matches.js';
+import { loadMatchCampaignEffects, normalizeMatchRewardRequest, sealMultiplayerOutcomeServer, settleMatchRewardTx, ensureMatchResultStats, applyAbandonPenaltyTx, ensureAbandonSettlementEvidence, normalizeGameRewardReceiptId } from './economy/matches.js';
 import {
   createServerEntropy,
   generateTrustedPack,
@@ -33,6 +33,9 @@ import {
   storefrontSnapshot, loadCommerceCampaignEffects, purchasePackTx, craftEnhancementTx,
   purchasePrebuiltTx, getClassifiedsView, purchaseClassifiedTx, renameUsernameTx
 } from './economy/commerce.js';
+import { recordAuthorityAudit } from './economy/audit.js';
+import { deriveSoloAbandonReceiptId, normalizeAbandonDurationMs } from './economy/matchCore.js';
+import { normalizeAdminGrantRequest, adminGrantTx, advanceBulkGrantJob, readBulkGrantJob, adminSyncPlayerStats, adminRepairSoloRewardTx } from './economy/admin.js';
 
 function requestData(request) {
   const data = request?.data;
@@ -67,6 +70,16 @@ function logFailure(name, auth, error) {
   });
 }
 
+async function finalizeAuthorityAudit({ auth, operationId, type, outcome, metadata = {} }) {
+  // Always attempt the idempotent audit, including operation-ledger replays. If the
+  // canonical mutation committed but the first response/audit side effect was interrupted,
+  // retrying the same operationId backfills the missing event/stats without double counting.
+  if (outcome?.result) {
+    await recordAuthorityAudit(db, { uid: auth.uid, actorUid: auth.uid, operationId, type, result: outcome.result, metadata });
+  }
+  return outcome;
+}
+
 export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
   const auth = requireAuth(request);
   requestData(request);
@@ -89,7 +102,8 @@ export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
         classifiedsAuthority: 'server', usernameRenameAuthority: 'server',
         dailyRewardsAuthority: 'server', dailyClockAuthority: 'server', dailyClaimRecovery: true,
         matchSettlementAuthority: 'server', pvpAntiFarmAuthority: 'server',
-        registrationAdmissionAuthority: 'server'
+        registrationAdmissionAuthority: 'server', adminEconomyAuthority: 'server',
+        economicStatisticsAuthority: 'server', immutableAuditAuthority: 'server'
       },
       trustedPoolFingerprint: TRUSTED_CARD_POOL_FINGERPRINT
     };
@@ -195,6 +209,7 @@ export const economyOpenPack = onCall(FUNCTION_RUNTIME_OPTIONS, async request =>
         });
       }
     });
+    await finalizeAuthorityAudit({ auth, operationId, type:'chest.open_pack', outcome });
     logger.info('Economy pack opened', { uid: auth.uid, operationId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
     return { ok: true, ...outcome };
   } catch (error) {
@@ -227,6 +242,7 @@ export const economyOpenGuaranteedMythic = onCall(FUNCTION_RUNTIME_OPTIONS, asyn
         });
       }
     });
+    await finalizeAuthorityAudit({ auth, operationId, type:'chest.open_guaranteed_mythic', outcome });
     logger.info('Economy guaranteed Mythic opened', { uid: auth.uid, operationId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
     return { ok: true, ...outcome };
   } catch (error) {
@@ -268,6 +284,7 @@ export const economyPurchasePack = onCall(FUNCTION_RUNTIME_OPTIONS, async reques
         return purchasePackTx({ db, tx, uid: auth.uid, campaignEffects });
       }
     });
+    await finalizeAuthorityAudit({ auth, operationId, type:'store.purchase_pack', outcome });
     logger.info('Economy pack purchased', { uid: auth.uid, operationId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
     return { ok: true, ...outcome };
   } catch (error) {
@@ -294,6 +311,7 @@ export const economyCraftEnhancement = onCall(FUNCTION_RUNTIME_OPTIONS, async re
         return craftEnhancementTx({ db, tx, uid: auth.uid, cardId, keyword });
       }
     });
+    await finalizeAuthorityAudit({ auth, operationId, type:'store.craft_enhancement', outcome });
     logger.info('Economy enhancement crafted', { uid: auth.uid, operationId, cardId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
     return { ok: true, ...outcome };
   } catch (error) {
@@ -320,6 +338,7 @@ export const economyPurchasePrebuiltDeck = onCall(FUNCTION_RUNTIME_OPTIONS, asyn
         return purchasePrebuiltTx({ db, tx, uid: auth.uid, productId, deckName, operationId });
       }
     });
+    await finalizeAuthorityAudit({ auth, operationId, type:'store.purchase_prebuilt', outcome });
     logger.info('Economy prebuilt purchased', { uid: auth.uid, operationId, productId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
     return { ok: true, ...outcome };
   } catch (error) {
@@ -361,6 +380,7 @@ export const economyPurchaseClassifiedCard = onCall(FUNCTION_RUNTIME_OPTIONS, as
         return purchaseClassifiedTx({ db, tx, uid: auth.uid, cardId, nowMs });
       }
     });
+    await finalizeAuthorityAudit({ auth, operationId, type:'store.purchase_classified', outcome });
     logger.info('Economy classified purchased', { uid: auth.uid, operationId, cardId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
     return { ok: true, ...outcome };
   } catch (error) {
@@ -386,6 +406,7 @@ export const economyRenameUsername = onCall(FUNCTION_RUNTIME_OPTIONS, async requ
         return renameUsernameTx({ db, tx, uid: auth.uid, usernameRaw: username });
       }
     });
+    await finalizeAuthorityAudit({ auth, operationId, type:'account.rename_username', outcome });
     logger.info('Economy username renamed', { uid: auth.uid, operationId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
     return { ok: true, ...outcome };
   } catch (error) {
@@ -439,6 +460,7 @@ export const economyClaimDailyReward = onCall(FUNCTION_RUNTIME_OPTIONS, async re
         });
       }
     });
+    await finalizeAuthorityAudit({ auth, operationId, type:'daily.claim', outcome });
     logger.info('Economy daily reward claimed', { uid: auth.uid, day, operationId, replayed: outcome.replayed, appCheckPresent: auth.appCheckPresent });
     return { ok: true, ...outcome };
   } catch (error) {
@@ -517,10 +539,13 @@ export const economySettleMatchReward = onCall(FUNCTION_RUNTIME_OPTIONS, async r
   const data = requestData(request);
   try {
     assertRateLimit(auth.uid, 'match-settlement', { limit: 20, windowMs: 60000 });
-    rejectForbidden(data, ['uid','baseDelta','effectiveDelta','requestedEffectiveDelta','points','fichas','limits','campaign','myRole','winnerRole','terminalKind','durationMs','completedTurns']);
-    rejectUnknown(data, ['operationId','economyProtocolVersion','receiptId','mode','outcome','difficulty','matchId']);
+    rejectForbidden(data, ['uid','baseDelta','effectiveDelta','requestedEffectiveDelta','points','fichas','limits','campaign','myRole','winnerRole','terminalKind','completedTurns']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion','receiptId','mode','outcome','difficulty','matchId','durationMs']);
     const operationId = String(data.operationId || '');
     const rewardRequest = normalizeMatchRewardRequest(data);
+    // durationMs is stat-only client evidence for Solo and is intentionally OUTSIDE the
+    // operation request digest, preserving replay compatibility with 23.19.5.4 ledgers.
+    const clientDurationMs = rewardRequest.mode === 'solo' ? normalizeAbandonDurationMs(data.durationMs) : 0;
     if (rewardRequest.mode === 'multiplayer') {
       // El servidor congela primero endedAt/terminalKind/winnerRole. El settlement posterior
       // consume exclusivamente esa evidencia sellada y nunca el resultado declarado por UI.
@@ -535,9 +560,11 @@ export const economySettleMatchReward = onCall(FUNCTION_RUNTIME_OPTIONS, async r
       execute: async tx => {
         const config = await loadEconomyConfig(db, tx);
         assertEconomyAvailable(config, clientProtocol(data));
-        return settleMatchRewardTx({ db, tx, uid: auth.uid, request:rewardRequest, campaignEffects });
+        return settleMatchRewardTx({ db, tx, uid: auth.uid, request:rewardRequest, campaignEffects, clientDurationMs });
       }
     });
+    await ensureMatchResultStats({ db, uid:auth.uid, request:rewardRequest, result:outcome?.result||{}, clientDurationMs });
+    await finalizeAuthorityAudit({ auth, operationId, type:'match.settle_reward', outcome, metadata:{ receiptId:rewardRequest.receiptId, mode:rewardRequest.mode, matchId:rewardRequest.matchId||null } });
     logger.info('Economy match reward settled', { uid:auth.uid, operationId, receiptId:rewardRequest.receiptId, mode:rewardRequest.mode, replayed:outcome.replayed, appCheckPresent:auth.appCheckPresent });
     return { ok:true, ...outcome };
   } catch (error) {
@@ -552,26 +579,111 @@ export const economyApplyAbandonPenalty = onCall(FUNCTION_RUNTIME_OPTIONS, async
   try {
     assertRateLimit(auth.uid, 'abandon-penalty', { limit: 12, windowMs: 60000 });
     rejectForbidden(data, ['uid','points','delta','abandonPenalty','settings','myRole']);
-    rejectUnknown(data, ['operationId','economyProtocolVersion','mode','matchId']);
+    // receiptId/durationMs are accepted for the 23.19.5.5 client, but deliberately excluded
+    // from the operation digest below so a 23.19.5.4 ledger entry remains replay-compatible.
+    rejectUnknown(data, ['operationId','economyProtocolVersion','mode','matchId','receiptId','durationMs']);
     const operationId = String(data.operationId || '');
     const mode = data.mode === 'multiplayer' ? 'multiplayer' : (data.mode === 'solo' ? 'solo' : null);
     if (!mode) throw economyError('ABANDON_MODE_INVALID');
     const matchId = mode === 'multiplayer' ? String(data.matchId || '').trim().toUpperCase() : '';
     if (mode === 'multiplayer' && !matchId) throw economyError('MATCH_REWARD_MATCH_REQUIRED');
+    const derivedReceiptId = mode === 'solo' ? deriveSoloAbandonReceiptId(operationId, auth.uid) : '';
+    const requestedReceiptId = mode === 'solo' ? normalizeGameRewardReceiptId(data.receiptId) : '';
+    if (mode === 'solo' && requestedReceiptId && derivedReceiptId && requestedReceiptId !== derivedReceiptId) {
+      throw economyError('ABANDON_RECEIPT_CONFLICT', { requestedReceiptId, derivedReceiptId });
+    }
+    const receiptId = mode === 'solo' ? (requestedReceiptId || derivedReceiptId) : '';
+    if (mode === 'solo' && !receiptId) throw economyError('ABANDON_RECEIPT_REQUIRED');
+    const durationMs = normalizeAbandonDurationMs(data.durationMs);
     const outcome = await runIdempotentOperation(db, {
-      uid:auth.uid, operationId, type:'match.abandon_penalty', request:{ mode, matchId },
+      uid:auth.uid, operationId, type:'match.abandon_penalty',
+      // IMPORTANT: v23.19.5.4 used exactly this digest shape. Keep it stable through rollout.
+      request:{ mode, matchId },
       execute: async tx => {
         const config = await loadEconomyConfig(db, tx);
         assertEconomyAvailable(config, clientProtocol(data));
-        return applyAbandonPenaltyTx({ db, tx, uid:auth.uid, mode, matchId });
+        return applyAbandonPenaltyTx({ db, tx, uid:auth.uid, operationId, mode, matchId, receiptId, durationMs });
       }
     });
-    logger.info('Economy abandon penalty applied', { uid:auth.uid, operationId, mode, matchId:matchId||null, replayed:outcome.replayed, appCheckPresent:auth.appCheckPresent });
+    // If the operation ledger was created by 23.19.5.4, runIdempotentOperation replays its
+    // old result without executing schema-6 writes. Backfill only evidence/stats/audit here;
+    // points are never mutated by this compatibility path. Fresh 23.19.5.5 operations no-op.
+    if (outcome.replayed && (!outcome.result?.receiptId || outcome.result?.terminalKind !== 'abandon')) {
+      await ensureAbandonSettlementEvidence(db, {
+        uid:auth.uid, operationId, mode, matchId, receiptId, durationMs, result:outcome.result
+      });
+    }
+    logger.info('Economy abandon penalty applied', { uid:auth.uid, operationId, mode, matchId:matchId||null, receiptId:receiptId||null, replayed:outcome.replayed, appCheckPresent:auth.appCheckPresent });
     return { ok:true, ...outcome };
   } catch (error) {
     logFailure('economyApplyAbandonPenalty', auth, error);
     throw error;
   }
+});
+
+
+// ---------------------------------------------------------------------------
+// v23.19.5.5 — Admin Economy + Statistics / Immutable Audit Authority.
+// ---------------------------------------------------------------------------
+export const economyAdminGrant = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request); const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'admin-grant', { limit: 40, windowMs: 60000 });
+    rejectUnknown(data, ['operationId','economyProtocolVersion','targetUid','kind','amount','reason']);
+    if (!isAdminAuth(auth)) throw economyError('ADMIN_REQUIRED');
+    const operationId=String(data.operationId||''), grant=normalizeAdminGrantRequest(data);
+    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'admin.grant',request:grant,execute:async tx=>{
+      const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+      return adminGrantTx({db,tx,adminUid:auth.uid,operationId,...grant});
+    }});
+    logger.info('Admin economy grant committed',{adminUid:auth.uid,targetUid:grant.targetUid,kind:grant.kind,operationId,replayed:outcome.replayed});
+    return {ok:true,...outcome};
+  } catch(error){logFailure('economyAdminGrant',auth,error);throw error;}
+});
+
+export const economyAdminBulkGrant = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'admin-bulk-grant',{limit:20,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','jobId','kind','amount','reason']);
+    if(!isAdminAuth(auth)) throw economyError('ADMIN_REQUIRED');
+    const kind=String(data.kind||''),amount=Math.floor(Number(data.amount)||0),reason=String(data.reason||'').trim().slice(0,240),jobId=String(data.jobId||'');
+    const config=await loadEconomyConfig(db); assertEconomyAvailable(config,clientProtocol(data));
+    const job=await advanceBulkGrantJob(db,{adminUid:auth.uid,jobId,kind,amount,reason});
+    return {ok:true,job};
+  } catch(error){logFailure('economyAdminBulkGrant',auth,error);throw error;}
+});
+
+export const economyAdminGetBulkGrant = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'admin-bulk-grant-read',{limit:60,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','jobId']); if(!isAdminAuth(auth)) throw economyError('ADMIN_REQUIRED');
+    return {ok:true,job:await readBulkGrantJob(db,{adminUid:auth.uid,jobId:String(data.jobId||'')})};
+  } catch(error){logFailure('economyAdminGetBulkGrant',auth,error);throw error;}
+});
+
+export const economyAdminRepairGameReward = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'admin-reward-repair',{limit:20,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','targetUid','receiptId','telemetrySessionId','reason']); if(!isAdminAuth(auth)) throw economyError('ADMIN_REQUIRED');
+    const targetUid=String(data.targetUid||'').trim(),receiptId=String(data.receiptId||'').replace(/[^A-Za-z0-9_-]/g,'_').slice(0,240),telemetrySessionId=String(data.telemetrySessionId||'').trim();
+    if(!targetUid||!receiptId||!telemetrySessionId) throw economyError('ADMIN_REWARD_REPAIR_INVALID_REQUEST');
+    const config=await loadEconomyConfig(db); assertEconomyAvailable(config,clientProtocol(data));
+    const result=await db.runTransaction(tx=>adminRepairSoloRewardTx({db,tx,adminUid:auth.uid,targetUid,receiptId,telemetrySessionId,reason:String(data.reason||'')}));
+    return {ok:true,result};
+  } catch(error){logFailure('economyAdminRepairGameReward',auth,error);throw error;}
+});
+
+export const economyAdminSyncPlayerStats = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'admin-stats-sync',{limit:6,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','targetUid']); if(!isAdminAuth(auth)) throw economyError('ADMIN_REQUIRED');
+    const config=await loadEconomyConfig(db); assertEconomyAvailable(config,clientProtocol(data));
+    return {ok:true,result:await adminSyncPlayerStats(db,{targetUid:String(data.targetUid||'').trim()||null})};
+  } catch(error){logFailure('economyAdminSyncPlayerStats',auth,error);throw error;}
 });
 
 export const economyGetOperation = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {

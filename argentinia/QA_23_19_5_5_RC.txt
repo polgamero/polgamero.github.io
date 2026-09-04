@@ -1,0 +1,73 @@
+ARGENTINIA 23.19.5.5 — QA RC
+ADMIN ECONOMY + STATISTICS / IMMUTABLE AUDIT AUTHORITY
+
+LOCAL CLOSED
+- Admin Economy + Statistics + Immutable Audit authority contract: PASS.
+- Storefront Loading UX contract: PASS — immediate spinner + 2800ms slow state + explicit retry + in-flight request dedupe.
+- Solo Abandon Settlement Integrity contract: PASS — signed negative receipt + server-owned game receipt/stats + no positive repair + durable recovery journal + 23.19.5.4 rolling compatibility.
+- Multiplayer Remote Terminal Settlement contract: PASS — a peer receiving synced gameOver=true derives its local outcome, shows terminal UX and queues match_{matchId}_{role} exactly once.
+- Natural match result stats contract: PASS — playerGameReceipts + games/wins/losses/duration are server-owned; browser recordPlayerGameResult is removed from terminal settlement.
+- Mobile battlefield selection clipping contract: PASS — scrollport headroom + bounded mobile transforms; row fit accounts for padding.
+- Combat damage modal interpolation contract: PASS — {hp} and {needed} resolve; no raw placeholder tags remain.
+- Functions unit: PASS.
+- Functions syntax including audit.js/admin.js: PASS.
+- Canonical fast contract sweep: 111/111 PASS.
+- Regression archive parity: 62/62 PASS.
+- JS/MJS syntax across source app/tools/functions: 252 PASS.
+- JSON parse: 23/23 PASS.
+- YAML parse: 1/1 PASS.
+- Game Text contract: 1250 definitions / 1015 runtime literal uses PASS.
+- Stability Replay Foundation: PASS.
+- Stability Lab: 10 seeds / 30 deck builds / 2000 RNG draws / 40 invariant mutations / 3 replay hashes PASS.
+- Headless 23.18.1: 6 games / determinism 2 / 2484 actions / 109 turns PASS.
+- Headless Coverage: 560 full / 302 partial / 18 unsupported / 97.95% structurally known PASS.
+- Headless 23.18.2: 6 games / determinism 2 / 2723 actions / 120 turns PASS.
+- Multiplayer Reliability: 250 seeds / 30000 commits / 61822 deliveries PASS.
+- Multiplayer Hardening: 5000 cases / 15000 reconnect-safe / 15000 rejected PASS.
+- Source contract: 337 files / card image binaries 0 / public Firestore config 0.
+- Functions contract: exactly 25 callables.
+- Functions parity target across source / Emulator gate / production-deploy package: required by artifact gate.
+
+STOREFRONT LOADING UX
+- Tienda renders a non-empty loading state before awaiting economyGetStorefront.
+- After 2800 ms the visible state becomes CONECTANDO CON EL SERVIDOR...; this masks minInstances=0 cold starts without increasing cost.
+- Failure is visible/fail-closed with RETRY; no market purchase controls render until server authority is available.
+- Concurrent/reentrant loads share one in-flight storefront request; fresh authority snapshots remain cached for 15 seconds.
+
+SOLO ABANDON INTEGRITY
+- Immediate Solo abandon can never become the +15 normal-loss reward: gameRewardReceipt is written with rewardReason=abandon_penalty and a non-positive effectiveDelta.
+- playerGameReceipt is server-owned and marked abandoned=true / terminalKind=abandon; browser abandonment stats writes are removed.
+- Caja Negra never enables positive Admin repair for abandon_local / abandon_recovery / abandoned receipts.
+- Pending abandon journal retries the same operationId before flushPendingGameRewards; if penalty recovery remains unresolved, positive reward recovery is fail-closed for that boot.
+- Rolling deploy gate covers a pre-seeded 23.19.5.4 economyOperations entry and proves replay backfills evidence without a second debit.
+
+MULTIPLAYER TERMINAL INTEGRITY
+- `gameOver` is synchronized state, not a local once-only guard. Each peer owns a separate `terminalProcessedLocally` flag that never travels through matchSync.
+- A remote transition to gameOver=true at localHP=0 / poison 10 / terminal deck-out now produces the loser overlay and queues that role's receipt exactly once.
+- Natural PvP settlement creates server-owned playerGameReceipts for BOTH roles; the server seals winnerRole from match evidence and rejects a forged opposite outcome.
+- 23.19.5.4 browser gameplay-stat writes are removed from the .5.5 terminal path, eliminating the playerStats/playerGameReceipts transaction race observed in production.
+
+MOBILE + COMBAT MODAL UX
+- Mobile field rows reserve vertical headroom inside their horizontal scrollport; selected/paying/attacking transforms stay visible instead of being clipped by computed overflow.
+- `sizeCardsInRow()` subtracts computed row padding before card-fit math.
+- Damage allocation uses `Resistencia actual: {hp}` and `(letal: {needed})` with matching call-site parameters; this was a Game Text placeholder mismatch, not a card JSON/IP-clean mutation.
+
+RECOVERY HARDENING
+- Bulk Admin jobId persists client-side so F5/lost response reuses the same server job.
+- One adminBulkGrantReceipt per target makes page replay exact-once.
+- Bulk pages fail closed on a failed recipient: the persisted cursor never advances past that target, so a transient error cannot silently produce a committed partial grant.
+- Legacy authoritative economy audit/stat side effects are idempotent and are retried even when the canonical operation ledger returns replayed=true. This repairs an interrupted post-commit audit without double counting.
+
+REAL GATES PENDING
+1. Auth + Firestore + Functions Emulator Gate 23.19.5.5: code 0 and BOTH markers:
+   - ECONOMY_ADMIN_STATS_AUDIT_23_19_5_5_EMULATOR_OK
+   - ECONOMY_ADMIN_STATS_AUDIT_23_19_5_5_GATE_OK
+2. Production Functions deploy ONLY; verify exactly 25 economy callables.
+3. GitHubSource cumulative upload; GitHub Actions green.
+4. Production smoke: economyStatus schema6/capabilities, Tienda immediate loading spinner + slow-state/retry behavior, immediate Solo abandon (negative terminal receipt; no +15), a natural Multiplayer match with BOTH winner + loser settlement/overlay, mobile selected-card rows without clipping, damage allocation modal without raw placeholders, single Admin grant, resumable bulk grant, Admin stats sync, and Solo repair only if a genuine non-abandon missing-reward case exists.
+
+DO NOT
+- Do not deploy Firestore Rules in 23.19.5.5; Rules remain 23.13.79.
+- Do not enable App Check enforcement; observe-only remains intentional.
+- Do not switch economyAuthorityMode to server_required yet.
+- Do not mark 23.19.5.5 RELEASED until all real gates are green.

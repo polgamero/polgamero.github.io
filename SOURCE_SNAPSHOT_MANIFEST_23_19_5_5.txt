@@ -1,0 +1,133 @@
+SOURCE SNAPSHOT MANIFEST — 23.19.5.5 ADMIN ECONOMY + STATISTICS / IMMUTABLE AUDIT AUTHORITY RC
+
+STATUS=RELEASE_CANDIDATE_PENDING_REAL_EMULATOR_DEPLOY_GITHUB_SMOKE
+BASELINE=23.19.5.4 RELEASED + Deck Intelligence 23.19.5-di2
+POOL=880
+PROTOCOL=mp-23.19.2
+ECONOMY_PROTOCOL=econ-23.19.5.5
+ECONOMY_SCHEMA=6
+ECONOMY_FUNCTIONS_REGION=southamerica-east1
+FIRESTORE_RULES=23.13.79 (unchanged; not shipped in public source)
+FILE_COUNT=337
+CARD_IMAGE_BINARIES=0
+PUBLIC_FIRESTORE_CONFIG_FILES=0
+APP_CHECK_PROVIDER=recaptcha-enterprise
+APP_CHECK_ENFORCEMENT=OBSERVE_ONLY
+FUNCTIONS_NODE=22
+FUNCTIONS_MIN_INSTANCES=0
+FUNCTIONS_MAX_INSTANCES=1
+FUNCTIONS_CONCURRENCY=10
+FUNCTIONS_TIMEOUT_SECONDS=30
+FUNCTIONS_MEMORY=256MiB
+ECONOMY_OPERATION_LEDGER=economyOperations/{uid}_{operationId}
+ECONOMY_FUNCTION_COUNT=25
+ADMIN_ECONOMY_AUTHORITY=SERVER
+ADMIN_SINGLE_GRANT=SERVER_ATOMIC_BALANCE_STATS_ACTION_EVENT
+ADMIN_BULK_GRANT=SERVER_RESUMABLE_IDEMPOTENT_RECEIPTS_FAIL_CLOSED
+ADMIN_BULK_PAGE_SIZE=10
+ADMIN_BULK_F5_RECOVERY=PERSISTED_JOB_ID
+ECONOMIC_STATS_AUTHORITY=SERVER
+ECONOMY_AUDIT_AUTHORITY=SERVER_IMMUTABLE_IDEMPOTENT
+AUDIT_REPLAY_RECOVERY=YES
+ADMIN_SOLO_REPAIR_AUTHORITY=SERVER_TRUSTED_EVIDENCE
+PVP_MANUAL_REPAIR=NOT_EXPOSED
+PACK_AUTHORITY=SERVER
+GUARANTEED_MYTHIC_AUTHORITY=SERVER
+STORE_PACK_PURCHASE_AUTHORITY=SERVER
+CRAFT_AUTHORITY=SERVER
+PREBUILT_AUTHORITY=SERVER_TRUSTED_CATALOG
+CLASSIFIEDS_AUTHORITY=SERVER_ART_WEEK
+USERNAME_RENAME_AUTHORITY=SERVER_ATOMIC_REGISTRY
+DAILY_REWARDS_AUTHORITY=SERVER
+DAILY_CLOCK_AUTHORITY=SERVER_ART_UTC_MINUS_3
+MATCH_SETTLEMENT_AUTHORITY=SERVER_VALUES_AND_PVP_EVIDENCE
+PVP_ANTI_FARM_AUTHORITY=SERVER
+ABANDON_PENALTY_AUTHORITY=SERVER_SIGNED_TERMINAL_RECEIPT
+ABANDON_RECOVERY_JOURNAL=LOCAL_EXACTLY_ONCE_BEFORE_POSITIVE_REWARDS
+ABANDON_ADMIN_POSITIVE_REPAIR=DENY
+ABANDON_ROLLING_COMPAT=23.19.5.4_DIGEST_AND_PAYLOAD
+REGISTRATION_ADMISSION_AUTHORITY=SERVER_ATOMIC
+ECONOMY_PENDING_UX=CENTRALIZED
+STOREFRONT_LOADING_UX=SPINNER_SLOW_RETRY_DEDUPED
+STOREFRONT_LOADING_SLOW_AFTER_MS=2800
+MULTIPLAYER_REMOTE_TERMINAL=LOCAL_EXACTLY_ONCE_SETTLEMENT
+NATURAL_GAME_RESULT_STATS=SERVER_OWNED_RECEIPTS
+MOBILE_SELECTED_CARD_CLIPPING=FIXED_SCROLLPORT_HEADROOM
+DAMAGE_MODAL_TOKENS=RESOLVED_HP_NEEDED
+ACTION_RECOVERY=OPERATION_ID_JOURNAL
+DIRECT_FIRESTORE_FIREWALL=DEFERRED_TO_23.19.5.6
+ECONOMY_AUTHORITY_MODE_CUTOVER=DEFERRED_TO_23.19.5.6
+DECK_INTELLIGENCE_VERSION=23.19.5-di2
+TRUSTED_STARTER_POOL=880
+
+TRANSACTION_BOUNDARY_NOTE:
+- Admin single grants commit balance/inventory + playerStats + adminAction + economyEvent in one Firestore transaction.
+- Admin Solo reward repair commits reward + balance + stats + adminAction + economyEvent in one Firestore transaction.
+- Solo abandon commits points penalty + terminal playerGameReceipt + negative gameRewardReceipt + playerStats + immutable economyEvent in the canonical operation transaction. Legacy 23.19.5.4 operation-ledger replays run evidence-only backfill and never mutate points twice.
+- Natural match settlement now commits missing playerGameReceipt + games/wins/losses/duration playerStats evidence server-side with the reward transaction; legacy 23.19.5.4 operation replays run an evidence-only idempotent backfill.
+- Legacy server-authoritative non-match economy operations retain their pre-schema-6 canonical transaction, then run a second idempotent server transaction for playerStats + economyEvent. Replaying the same operationId also retries this audit/stat side effect, so an interrupted post-commit audit can be recovered without double counting.
+
+FUNCTIONS:
+- economyStatus
+- economyBootstrapAccount
+- economyCompleteStarterDeck
+- economyOpenPack
+- economyOpenGuaranteedMythic
+- economyGetOperation
+- economyGetStorefront
+- economyPurchasePack
+- economyCraftEnhancement
+- economyPurchasePrebuiltDeck
+- economyGetClassifieds
+- economyPurchaseClassifiedCard
+- economyRenameUsername
+- economyRegisterDailyLogin
+- economyClaimDailyReward
+- economyAdminDailyDebug
+- economyGetAdmissionStatus
+- economyAdminSetAdmissionPolicy
+- economySettleMatchReward
+- economyApplyAbandonPenalty
+- economyAdminGrant
+- economyAdminBulkGrant
+- economyAdminGetBulkGrant
+- economyAdminRepairGameReward
+- economyAdminSyncPlayerStats
+
+23.19.5.5 PUBLIC-SOURCE ARTIFACTS:
+- argentinia/ADMIN_ECONOMY_STATISTICS_AUDIT_23_19_5_5.txt
+- argentinia/RELEASE_NOTES_23_19_5_5_RC.txt
+- argentinia/QA_23_19_5_5_RC.txt
+- argentinia/tools/test_admin_economy_statistics_audit_authority_23_19_5_5.mjs
+- argentinia/tools/ci_fast_contract_manifest_23_19_5_5.txt
+- functions/src/economy/audit.js
+- functions/src/economy/admin.js
+
+LOCAL QA COMPLETED:
+- Admin Economy + Statistics + Immutable Audit contract: PASS
+- Solo Abandon Settlement Integrity: PASS (signed negative receipt / no +15 repair / recovery journal / rolling compatibility)
+- Multiplayer Remote Terminal Settlement: PASS (synced gameOver peer processes overlay + role receipt exactly once)
+- Mobile battlefield selected-card clipping guard: PASS
+- Combat damage modal token interpolation: PASS
+- Functions unit contracts: PASS
+- Functions syntax including audit.js/admin.js: PASS
+- canonical fast manifest: 111/111 PASS
+- regression archive parity: 62/62 PASS
+- app/tools/functions JS/MJS syntax: 252 files PASS
+- JSON: 23/23 PASS
+- YAML: 1/1 PASS
+- Game Text: 1250 definitions / 1015 runtime literal uses PASS
+- Stability Replay Foundation: PASS
+- Stability Lab: 10 seeds / 30 deck builds / 2000 RNG draws / 40 invariant mutations / 3 replay hashes PASS
+- Headless 23.18.1: 6/6 / 2484 actions / 109 turns PASS
+- Headless Coverage: 560 full / 302 partial / 18 unsupported / 97.95% structurally known PASS
+- Headless 23.18.2: 6/6 / 2723 actions / 120 turns PASS
+- Multiplayer Reliability: 250 seeds / 30000 commits / 61822 deliveries PASS
+- Multiplayer Hardening: 5000 cases / 15000 reconnect-safe / 15000 rejected PASS
+- source image audit boundary: pool 880 / card binaries 0
+
+REAL PROMOTION GATES PENDING:
+- Auth+Firestore+Functions Emulator Gate 23.19.5.5 code 0 + both required markers.
+- Production deploy/verify exactly 25 Economy Functions.
+- GitHubSource push + GitHub Actions green (canonical 111/111 + heavy labs).
+- Production smoke of schema6/capabilities, Storefront loading UX, immediate Solo abandon negative receipt/no +15, single Admin grant, resumable bulk grant, stats sync, and trusted Solo repair only if a genuine non-abandon repair case exists.

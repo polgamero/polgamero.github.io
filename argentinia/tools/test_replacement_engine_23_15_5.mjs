@@ -66,7 +66,7 @@ assert.deepEqual(replacementEngineSummary().events,['damage','destroy','zone_cha
   const combat=fs.readFileSync(path.join(here,'../js/combatRules.js'),'utf8');
   const turn=fs.readFileSync(path.join(here,'../js/turnManager.js'),'utf8');
   const version=fs.readFileSync(path.join(here,'../js/version.js'),'utf8');
-  if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.5.4'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:[5-9]|[1-9][0-9]+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
+  if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.5.5'")))) assert.match(version,/ENGINE_VERSION = '23\.15\.(?:[5-9]|[1-9][0-9]+)(?:\.\d+)?'|ENGINE_VERSION = '23\.16\.1(?:\.1)?'|ENGINE_VERSION = '23\.16\.(?:2(?:\.1)?|3(?:\.1)?|4(?:\.1)?|5(?:\.[12])?)'/);
   assert.match(main,/resolveReplacementEvent/);
   assert.match(main,/type:'counter_add'/);
   assert.match(main,/replacementExitPlan/);

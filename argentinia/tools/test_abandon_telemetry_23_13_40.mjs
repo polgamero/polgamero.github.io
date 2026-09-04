@@ -17,22 +17,25 @@ assert.ok(Number.isFinite(status.elapsedMs), 'elapsedMs debe ser numérico y nun
 assert.ok(status.elapsedMs >= 0, 'elapsedMs no puede ser negativo');
 endTelemetrySession('qa');
 
-// El callback de abandono debe blindar stats y meterlas dentro del deadline best-effort.
+// El callback de abandono sigue blindado por deadline, pero desde 23.19.5.5 las stats
+// y el receipt terminal nacen del MISMO settlement server-side. El browser no debe volver
+// a competir con la Function escribiendo playerStats/playerGameReceipts.
 const main = fs.readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-const fnStart = main.indexOf('function recordLocalAbandonStatsBestEffort()');
-const fnEnd = main.indexOf('\n}\n\nfunction hookGameplayButtons()', fnStart);
-assert.ok(fnStart >= 0 && fnEnd > fnStart, 'No se encontró recordLocalAbandonStatsBestEffort');
-const fn = main.slice(fnStart, fnEnd + 2);
-assert.match(fn, /try\s*\{/, 'Stats de abandono deben estar protegidas por try/catch');
-assert.match(fn, /catch\s*\(err\)/, 'Stats de abandono deben absorber errores síncronos');
-assert.match(fn, /Promise\.resolve\(null\)/, 'El fallback debe devolver una Promise segura');
-assert.match(main, /cleanupTasks\.push\(recordLocalAbandonStatsBestEffort\(\)\)/,
-  'La escritura de stats debe formar parte del cleanup limitado por deadline');
+assert.doesNotMatch(main, /function recordLocalAbandonStatsBestEffort\(/,
+  '23.19.5.5 elimina la escritura cliente de stats de abandono');
+assert.doesNotMatch(main, /cleanupTasks\.push\(recordLocalAbandonStatsBestEffort\(\)\)/,
+  'El cleanup no debe lanzar una transacción cliente paralela contra playerStats');
+assert.match(main, /applyAbandonPenalty\(state\.currentUser\.uid,[\s\S]*?receiptId: abandonReceiptId,[\s\S]*?durationMs: abandonDurationMs/,
+  'El settlement server-side debe recibir receipt durable + duración de diagnóstico');
+assert.match(main, /Promise\.race\(\[settle, deadline\]\)/,
+  'El cleanup mantiene el deadline para que la UI nunca quede congelada');
 assert.match(main, /finally\s*\{[\s\S]*?endTelemetrySession\('abandon_local'\)[\s\S]*?location\.reload\(\)/,
   'La salida debe vivir en finally y no depender de ningún cleanup');
 assert.match(main, /abandon_cleanup_exception/, 'Las excepciones de cleanup deben quedar registradas');
-assert.doesNotMatch(main, /recordLocalAbandonStatsBestEffort\(\);\s*cleanupTasks\.push\(/,
-  'No debe volver a quedar fire-and-forget antes del cleanup');
+
+const impl = fs.readFileSync(new URL('../js/firebaseClientImpl.js', import.meta.url), 'utf8');
+assert.match(impl, /PENDING_ABANDON_PENALTIES_KEY/, 'La penalidad debe tener journal durable');
+assert.match(impl, /flushPendingAbandonPenalties/, 'El próximo login debe poder reintentar la penalidad exactly-once');
 
 const telemetrySource = fs.readFileSync(new URL('../js/telemetry.js', import.meta.url), 'utf8');
 assert.match(telemetrySource, /ABANDON_CLEANUP_EXCEPTION/, 'Telemetry debe convertir excepciones de abandono en bugCandidate');

@@ -11,7 +11,7 @@ const combat = fs.readFileSync(new URL('../js/combatRules.js', import.meta.url),
 const texts = fs.readFileSync(new URL('../js/gameTexts.js', import.meta.url), 'utf8');
 const creatures = JSON.parse(fs.readFileSync(new URL('../assets/data/criaturas.json', import.meta.url), 'utf8'));
 
-assert.equal(ENGINE_VERSION, '23.19.5.4');
+assert.equal(ENGINE_VERSION, '23.19.5.5');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
 
 // RCA real turno 26: tras cerrar un efecto interactivo, el driver COMPLETO del bot debe

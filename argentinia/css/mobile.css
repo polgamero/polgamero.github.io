@@ -1946,3 +1946,32 @@ html.argentinia-mobile .mana-pool-education-hint {
 html.argentinia-mobile #mulligan-overlay.mulligan-flow-overlay .mulligan-hand-row {
   justify-content: safe center !important;
 }
+
+
+/* ==========================================================
+   23.19.5.5 — MOBILE SELECTED-CARD CLIPPING GUARD
+   Una fila con overflow-x:auto es un scroll container: CSS computa overflow-y:visible como
+   auto y recorta cualquier transform que salga por arriba. Reservamos headroom REAL dentro
+   del scrollport y reducimos sólo en mobile el lift/scale de estados seleccionados. Desktop
+   conserva la animación histórica. sizeCardsInRow() descuenta este padding al calcular fit.
+   ========================================================== */
+html.argentinia-mobile .field-row {
+  box-sizing: border-box !important;
+  padding-top: 10px !important;
+  padding-bottom: 3px !important;
+}
+html.argentinia-mobile .field-row .card.paying {
+  transform: scale(1.08) translateY(-4px) !important;
+  transform-origin: center center !important;
+  z-index: 2500 !important;
+}
+html.argentinia-mobile .field-row .card.attacking {
+  transform: translateY(-4px) !important;
+  z-index: 2400 !important;
+}
+html.argentinia-mobile .field-row .card.selected-blocker,
+html.argentinia-mobile .field-row .card.crewing-selected {
+  transform: scale(1.04) !important;
+  transform-origin: center center !important;
+  z-index: 2400 !important;
+}

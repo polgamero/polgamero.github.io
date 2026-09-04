@@ -108,4 +108,8 @@ const matchFx=matchCore.normalizeMatchCampaignEffects([
 ]);
 assert.deepEqual(matchFx,{allPointsMultiplier:2,activeEventIds:['points']});
 assert.equal(matchCore.effectiveMatchRewardPoints(120,matchFx),240);
+assert.equal(matchCore.deriveSoloAbandonReceiptId('abandon:solo:solo_gate_2355:user_abc','user_abc'),'solo_gate_2355');
+assert.equal(matchCore.deriveSoloAbandonReceiptId('abandon:solo:wrong:user_abc','other_uid'),'');
+assert.equal(matchCore.normalizeAbandonDurationMs(-5),0);
+assert.equal(matchCore.normalizeAbandonDurationMs(999999999),24*60*60*1000);
 console.log('ECONOMY_MATCH_ADMISSION_23_19_5_4_UNIT_OK');

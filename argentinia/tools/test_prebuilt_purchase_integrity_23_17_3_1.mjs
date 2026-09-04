@@ -8,7 +8,7 @@ import { PREBUILT_DECKS_VERSION } from '../js/prebuiltDecks.js';
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
-assert.equal(ENGINE_VERSION, '23.19.5.4');
+assert.equal(ENGINE_VERSION, '23.19.5.5');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(PREBUILT_DECKS_VERSION,'23.17.3','el catálogo congelado no cambia en el hotfix');
@@ -23,6 +23,6 @@ assert.ok(commerce.includes('tx.update') && commerce.includes('prebuiltDeckPurch
 assert.ok(index.includes("type: 'store.purchase_prebuilt'"), 'operation ledger debe identificar compra prebuilt');
 assert.ok(index.includes("rejectForbidden(data, ['uid','points','fichas','pointsCost','fichasCost','collection','decks','cardIds','cardsGranted'])"), 'cliente no puede forjar cartas/costo/uid');
 const manifest=JSON.parse(read('build-manifest.json'));
-assert.equal(manifest.engineVersion,'23.19.5.4');
+assert.equal(manifest.engineVersion,'23.19.5.5');
 assert.equal(manifest.firestoreRulesVersion,'23.13.79');
 console.log('PASS test_prebuilt_purchase_integrity_23_17_3_1.mjs · server-authoritative trusted catalog + idempotent ledger · catalog remains 23.17.3 · pool unchanged');

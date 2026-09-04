@@ -4,7 +4,7 @@ import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { hasKeyword, canBlock } from './keywords.js';
-import { awardGamePointsOnce, clearActiveMatchId, recordPlayerGameResult } from './firebaseClient.js';
+import { awardGamePointsOnce, clearActiveMatchId } from './firebaseClient.js';
 import { pointsForBotGameEnd, POINTS } from './store.js';
 import { recordTelemetryEvent, getTelemetryStatus, refreshFinalTelemetryAfterTerminalEvent } from './telemetry.js';
 import { PRIORITY_CLOCK_DURATION_MS, getEffectivePriorityActivity, canPriorityClockRun, getFrozenPriorityRemainingMs } from './priorityUX.js';
@@ -20,6 +20,7 @@ import { zoneForCardOwner, cardOwnerIsLocal } from './zoneOwnership.js';
 import { resolveUntapAttempt } from './counterEngine.js';
 import { botDifficultyLabel } from './botDifficulty.js';
 import { gameRandom } from './gameRng.js';
+import { derivePerspectiveTerminalOutcome } from './gameTerminal.js';
 
 function cleanupDiscardDestination(card,isLocal) {
   const ownerIsLocal=cardOwnerIsLocal(card,!!isLocal,state.currentMatch?.myRole||null);
@@ -32,44 +33,61 @@ function cleanupDiscardDestination(card,isLocal) {
 }
 
 export function checkGameOver() {
-  // FASE 4, ETAPA 6: gameOver y abandonedBy llegan JUNTOS por sync en el mismo publish
-  // cuando el rival abandona (ambos son campos compartidos) — si este chequeo fuera
-  // DESPUÉS del guard de "ya terminó" de acá abajo, nunca se llegaría a procesar del lado
-  // de quien lo recibe (gameOver ya llegaría en true). Por eso usa su propio guard
-  // idempotente (abandonProcessedLocally, puramente de este cliente, nunca se sincroniza)
-  // en vez de reusar state.gameOver para eso.
-  if (state.abandonedBy === 'rival' && !state.abandonProcessedLocally) {
-    state.abandonProcessedLocally = true;
-    state.gameOver = true;
-    logMsg(gameText('game.over.abandonWin'));
-    showGameOverOverlay(true);
-    awardMatchEndPoints(true);
-    return;
+  const terminal = derivePerspectiveTerminalOutcome(state);
+  if (!terminal || state.terminalProcessedLocally) return;
+
+  // CRÍTICO 23.19.5.5: `state.gameOver` es estado COMPARTIDO y puede llegar ya en true
+  // desde Firestore. Nunca puede funcionar como guard local de terminal. Este flag puramente
+  // local garantiza overlay + receipt + settlement exactamente una vez en AMBOS peers.
+  const wasAlreadyGameOver = state.gameOver === true;
+  state.terminalProcessedLocally = true;
+  state.gameOver = true;
+
+  switch (terminal.reason) {
+    case 'rival_abandon':
+      state.abandonProcessedLocally = true;
+      logMsg(gameText('game.over.abandonWin'));
+      break;
+    case 'hp_loss':
+      logMsg(gameText('game.over.hpLoss', { rival: getRivalName() }));
+      break;
+    case 'hp_win':
+      logMsg(gameText('game.over.hpWin', { rival: getRivalName() }));
+      break;
+    case 'poison_loss':
+      logMsg(gameText('game.over.poisonLoss', { rival: getRivalName() }));
+      break;
+    case 'poison_win':
+      logMsg(gameText('game.over.poisonWin', { rival: getRivalName() }));
+      break;
+    case 'deckout_loss':
+      logMsg(gameText('game.deckout.local'));
+      break;
+    case 'deckout_win':
+      logMsg(gameText('game.deckout.rival'));
+      break;
+    default:
+      return;
   }
 
-  if (state.gameOver) return;
-  if (state.localHP <= 0) {
-    state.gameOver = true; logMsg(gameText('game.over.hpLoss', { rival: getRivalName() })); showGameOverOverlay(false);
-    awardMatchEndPoints(false);
-  } else if (state.rivalHP <= 0) {
-    state.gameOver = true; logMsg(gameText('game.over.hpWin', { rival: getRivalName() })); showGameOverOverlay(true);
-    awardMatchEndPoints(true);
-  } else if (state.localPoison >= 10) {
-    // Condición de derrota ALTERNATIVA (regla 104.3c): no importa cuánto HP te quede.
-    state.gameOver = true; logMsg(gameText('game.over.poisonLoss', { rival: getRivalName() })); showGameOverOverlay(false);
-    awardMatchEndPoints(false);
-  } else if (state.rivalPoison >= 10) {
-    state.gameOver = true; logMsg(gameText('game.over.poisonWin', { rival: getRivalName() })); showGameOverOverlay(true);
-    awardMatchEndPoints(true);
-  }
+  recordTelemetryEvent('terminal_processed_locally', {
+    reason: terminal.reason,
+    won: terminal.won,
+    mode: state.currentMatch ? 'multiplayer' : 'solo',
+    matchId: state.currentMatch?.matchId || null,
+    myRole: state.currentMatch?.myRole || null,
+    syncedGameOver: wasAlreadyGameOver
+  });
+  showGameOverOverlay(terminal.won);
+  awardMatchEndPoints(terminal.won);
 }
+
 
 // FASE 2 (renombrada en la Etapa 6 de la Fase 4: ya no es solo "vs Tano"): le suma (o
 // resta) puntos a la cuenta logueada al terminar la partida — contra el Tano O contra un
-// rival de verdad, cada cliente premia SOLO su propia cuenta (nunca puede escribir puntos
-// en la cuenta de otro jugador — ver firestore.rules, users/{userId} — así que cuando gano
-// una partida multiplayer, el que se premia a sí mismo con la victoria es MI cliente; el
-// rival, al perder, hace lo mismo del otro lado con su propia derrota). Sin sesión, no hace
+// rival de verdad. Cada cliente inicia SOLAMENTE el settlement de su propio receipt; Functions
+// valida la evidencia sellada y modifica sólo la cuenta autenticada. El ganador y el perdedor
+// ejecutan por separado su terminal local incluso si gameOver llegó por sync. Sin sesión, no hace
 // nada — Solitario sin login sigue sin puntos, como siempre. No bloquea nada del cierre de
 // partida (el overlay de Fin de Partida ya se mostró arriba, esto pasa "en paralelo" y solo
 // actualiza el número una vez que Firestore responde).
@@ -112,17 +130,8 @@ function awardMatchEndPoints(won) {
     : (soloRecovery?.soloGameId || telemetry.sessionId);
   const mode = state.currentMatch ? 'multiplayer' : 'solo';
 
-  // 23.13.68 — RESULTADO y RECOMPENSA quedan deliberadamente separados. Este receipt de
-  // estadísticas se escribe aunque el ledger económico después decida 0 puntos.
-  if (receiptId) {
-    void recordPlayerGameResult(state.currentUser.uid, {
-      sessionId: receiptId,
-      mode,
-      won: !!won,
-      abandoned: false,
-      durationMs: soloRecovery?.durationMs ?? telemetry.elapsedMs ?? 0
-    }).catch(err => console.warn('No se pudieron registrar las estadísticas de la partida:', err));
-  }
+  // 23.19.5.5 — playerGameReceipts + game counters are server-owned. The browser queues
+  // only the economic settlement; Functions writes the result receipt/stats idempotently.
 
   if (state.currentMatch) {
     clearActiveMatchId(state.currentUser.uid)
@@ -148,7 +157,8 @@ function awardMatchEndPoints(won) {
     outcome: won ? 'win' : 'loss',
     difficulty: mode === 'solo' ? String(state.botDifficulty || 'medium') : '',
     matchId,
-    myRole
+    myRole,
+    durationMs: mode === 'solo' ? Math.max(0, Math.floor(Number(soloRecovery?.durationMs ?? telemetry.elapsedMs) || 0)) : 0
   };
 
   // Durable antes del primer await: un F5 puede reintentar exactamente este settlement.
@@ -974,10 +984,8 @@ function executeDrawStep() {
     } else {
       // Regla real de Argentinia: intentar robar de una biblioteca vacía es una forma legítima
       // de perder la partida, no un "no pasa nada".
-      logMsg(gameText('game.deckout.local'));
       state.gameOver = true;
-      showGameOverOverlay(false);
-      awardMatchEndPoints(false);
+      checkGameOver();
     }
   } else {
     if (state.rivalDeck.length > 0) {
@@ -985,10 +993,8 @@ function executeDrawStep() {
       dispatchGameEvent({type:'card_drawn',controllerIsLocal:false,actorIsLocal:false,ownerIsLocal:false,card:drawnCard,zoneFrom:'library',zoneTo:'hand',cause:'draw_step'});
       logMsg(gameText('game.draw.rival'));
     } else {
-      logMsg(gameText('game.deckout.rival'));
       state.gameOver = true;
-      showGameOverOverlay(true);
-      awardMatchEndPoints(true);
+      checkGameOver();
     }
   }
 }

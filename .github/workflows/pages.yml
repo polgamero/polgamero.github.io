@@ -90,15 +90,15 @@ jobs:
 
       - name: Validate source-package contract independently from hosted assets
         run: |
-          test -f SOURCE_SNAPSHOT_MANIFEST_23_19_5_4.txt
-          grep -qx 'CARD_IMAGE_BINARIES=0' SOURCE_SNAPSHOT_MANIFEST_23_19_5_4.txt
-          grep -qx 'PUBLIC_FIRESTORE_CONFIG_FILES=0' SOURCE_SNAPSHOT_MANIFEST_23_19_5_4.txt
+          test -f SOURCE_SNAPSHOT_MANIFEST_23_19_5_5.txt
+          grep -qx 'CARD_IMAGE_BINARIES=0' SOURCE_SNAPSHOT_MANIFEST_23_19_5_5.txt
+          grep -qx 'PUBLIC_FIRESTORE_CONFIG_FILES=0' SOURCE_SNAPSHOT_MANIFEST_23_19_5_5.txt
           echo "OK: cumulative delivery remains no-card-images/no-public-Firestore-config; hosted PNGs are allowed"
 
       - name: Validate complete canonical fast contract sweep
         working-directory: ./argentinia
         run: |
-          test -f tools/ci_fast_contract_manifest_23_19_5_4.txt
+          test -f tools/ci_fast_contract_manifest_23_19_5_5.txt
           set +e
           total=0
           passed=0
@@ -121,11 +121,11 @@ jobs:
               failed=$((failed + 1))
               echo "::error file=$test_file::Contract test failed with exit code $code"
             fi
-          done < tools/ci_fast_contract_manifest_23_19_5_4.txt
+          done < tools/ci_fast_contract_manifest_23_19_5_5.txt
 
           # Web uploads can leave historical test_*.mjs files in the repository. Report
-          # them for cleanup, but do not execute files outside the canonical 23.19.5.4 suite.
-          grep -vE '^[[:space:]]*(#|$)' tools/ci_fast_contract_manifest_23_19_5_4.txt | sort > /tmp/canonical-tests.txt
+          # them for cleanup, but do not execute files outside the canonical 23.19.5.5 suite.
+          grep -vE '^[[:space:]]*(#|$)' tools/ci_fast_contract_manifest_23_19_5_5.txt | sort > /tmp/canonical-tests.txt
           find tools -maxdepth 1 -type f -name 'test_*.mjs' -print | sort > /tmp/present-tests.txt
           comm -13 /tmp/canonical-tests.txt /tmp/present-tests.txt > /tmp/stale-tests.txt
           if [ -s /tmp/stale-tests.txt ]; then
@@ -133,9 +133,9 @@ jobs:
             sed 's/^/  - /' /tmp/stale-tests.txt
           fi
 
-          echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed canonical=23.19.5.4"
-          if [ "$total" -ne 110 ]; then
-            echo "::error::Canonical fast manifest must contain exactly 110 tests; got $total"
+          echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed canonical=23.19.5.5"
+          if [ "$total" -ne 111 ]; then
+            echo "::error::Canonical fast manifest must contain exactly 111 tests; got $total"
             exit 1
           fi
           if [ "$failed" -ne 0 ]; then
@@ -345,6 +345,10 @@ jobs:
       - name: Validate Match Settlement + Admission + Pending UX 23.19.5.4
         working-directory: ./argentinia
         run: node tools/test_match_admission_pending_authority_23_19_5_4.mjs
+
+      - name: Validate Admin Economy + Statistics + Immutable Audit Authority 23.19.5.5
+        working-directory: ./argentinia
+        run: node tools/test_admin_economy_statistics_audit_authority_23_19_5_5.mjs
 
       - name: Audit Deck Intelligence 2.0 Archetype Matrix 23.19.5
         working-directory: ./argentinia

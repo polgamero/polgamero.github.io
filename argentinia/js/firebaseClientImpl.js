@@ -29,7 +29,7 @@ import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurcha
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, getClassifiedsServer, purchaseClassifiedCardServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, getClassifiedsServer, purchaseClassifiedCardServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { normalizePlayerStats, summarizePlayerTelemetry, PLAYER_GAME_BACKFILL_VERSION } from './statistics.js';
@@ -304,38 +304,18 @@ async function trackPlayerStats(uid, deltas = {}, options = {}) {
 }
 
 function statsBestEffort(uid, deltas = {}, options = {}) {
+  // 23.19.5.5: economic counters are backend-owned. The only remaining client path is
+  // legacy gameplay-result telemetry until the 23.19.5.6 write firewall cutover.
+  if (options?.allowClientGameStats !== true) return Promise.resolve({ applied:false, reason:'server_owned_economic_stats' });
   return trackPlayerStats(uid, deltas, options).catch(error => {
-    console.warn('[Statistics 23.13.37] No se pudo actualizar playerStats:', error);
+    console.warn('[Statistics 23.19.5.5] No se pudo actualizar playerStats gameplay legacy:', error);
     return { applied: false, error };
   });
 }
 
-async function logEconomyEvent(event) {
-  const actorUid = auth.currentUser?.uid || null;
-  if (!actorUid) return false;
-  const targetUid = String(event?.targetUid || actorUid);
-  const ref = doc(collection(db, 'economyEvents'));
-  await setDoc(ref, {
-    actorUid,
-    targetUid,
-    source: String(event?.source || 'unknown'),
-    pointsDelta: Math.floor(Number(event?.pointsDelta) || 0),
-    fichasDelta: Math.floor(Number(event?.fichasDelta) || 0),
-    packsDelta: Math.floor(Number(event?.packsDelta) || 0),
-    cardsDelta: Math.floor(Number(event?.cardsDelta) || 0),
-    matchId: event?.matchId || null,
-    sessionId: event?.sessionId || null,
-    engineVersion: ENGINE_VERSION,
-    createdAt: serverTimestamp()
-  });
-  return true;
-}
-
-function economyLogBestEffort(event) {
-  return logEconomyEvent(event).catch(error => {
-    console.warn('[Statistics 23.13.37] No se pudo registrar economyEvent:', error);
-    return false;
-  });
+function economyLogBestEffort(_event) {
+  // 23.19.5.5: economyEvents are server-owned. Browser audit writes are intentionally disabled.
+  return Promise.resolve(false);
 }
 
 // 23.19.5.1 RC2 — bridge de estadísticas para aperturas server-authoritative.
@@ -417,7 +397,8 @@ export async function recordPlayerGameResult(uid, result = {}) {
     receiptId: result.sessionId,
     mode,
     result: won ? 'win' : (lost ? 'loss' : 'unknown'),
-    durationMs: result.durationMs
+    durationMs: result.durationMs,
+    allowClientGameStats: true
   });
 }
 
@@ -426,33 +407,10 @@ export async function fetchPublicPlayerStats() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-export async function adminSyncPublicPlayerStats(profiles = [], sessions = []) {
+export async function adminSyncPublicPlayerStats(_profiles = [], _sessions = []) {
   if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL) throw new Error('ADMIN_REQUIRED');
-  const byOwner = new Map();
-  for (const session of sessions) {
-    const uid = session?.ownerUid;
-    if (!uid) continue;
-    if (!byOwner.has(uid)) byOwner.set(uid, []);
-    byOwner.get(uid).push(session);
-  }
-  let updated = 0;
-  for (const profile of profiles) {
-    if (!profile?.uid) continue;
-    const statsRef = doc(db, 'playerStats', profile.uid);
-    const currentSnap = await getDoc(statsRef);
-    const current = normalizePlayerStats(currentSnap.exists() ? currentSnap.data() : null);
-    const history = summarizePlayerTelemetry(byOwner.get(profile.uid) || []);
-    let merged = { ...current, gameBackfillVersion: PLAYER_GAME_BACKFILL_VERSION };
-    if ((Number(history.gamesPlayed) || 0) > (Number(current.gamesPlayed) || 0)) {
-      for (const key of ['gamesPlayed','soloGames','multiplayerGames','wins','losses','soloWins','soloLosses','multiplayerWins','multiplayerLosses','abandons']) {
-        merged[key] = Number(history[key]) || 0;
-      }
-    }
-    merged.totalDurationMs = Math.max(Number(current.totalDurationMs) || 0, Number(history.totalDurationMs) || 0);
-    await setDoc(statsRef, playerStatsMirror(profile, merged), { merge: false });
-    updated++;
-  }
-  return { updated };
+  const response = await adminSyncPlayerStatsServer('');
+  return response?.result || { updated: 0 };
 }
 
 // Devuelve una Promise que resuelve con el UserCredential de Firebase, o rechaza si el
@@ -1020,7 +978,8 @@ async function settleGameRewardOnce(uid, reward = {}) {
     mode,
     outcome: reward.outcome === 'loss' ? 'loss' : 'win',
     difficulty: mode === 'solo' ? reward.difficulty : '',
-    matchId: mode === 'multiplayer' ? matchIdFromReward(reward) : ''
+    matchId: mode === 'multiplayer' ? matchIdFromReward(reward) : '',
+    durationMs: mode === 'solo' ? Math.max(0, Math.floor(Number(reward.durationMs) || 0)) : 0
   }, reward.operationId || null);
   const result = response?.result || null;
   if (!result) throw new Error('MATCH_REWARD_SERVER_RESULT_MISSING');
@@ -1088,18 +1047,86 @@ export async function adminSetAdmissionPolicy(policy = {}) {
   return response?.status || null;
 }
 
-export async function applyAbandonPenalty(uid, { mode = 'solo', matchId = '', receiptId = '', operationId = null } = {}) {
+const PENDING_ABANDON_PENALTIES_KEY = 'argentinia.pendingAbandonPenalties.v1';
+function readPendingAbandonPenalties() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(PENDING_ABANDON_PENALTIES_KEY) || '[]');
+    return Array.isArray(raw) ? raw.filter(row => row && typeof row === 'object') : [];
+  } catch { return []; }
+}
+function writePendingAbandonPenalties(rows) {
+  try {
+    const next = Array.isArray(rows) ? rows.slice(-24) : [];
+    if (next.length) localStorage.setItem(PENDING_ABANDON_PENALTIES_KEY, JSON.stringify(next));
+    else localStorage.removeItem(PENDING_ABANDON_PENALTIES_KEY);
+  } catch {}
+}
+function queuePendingAbandonPenalty(uid, payload) {
+  const rows = readPendingAbandonPenalties().filter(row => !(row.uid === uid && row.operationId === payload.operationId));
+  const queued = { uid, ...payload, queuedAt: Date.now() };
+  rows.push(queued); writePendingAbandonPenalties(rows); return queued;
+}
+function removePendingAbandonPenalty(uid, operationId) {
+  writePendingAbandonPenalties(readPendingAbandonPenalties().filter(row => !(row.uid === uid && row.operationId === operationId)));
+}
+
+export async function applyAbandonPenalty(uid, { mode = 'solo', matchId = '', receiptId = '', durationMs = 0, operationId = null } = {}) {
   if (!uid || uid !== auth.currentUser?.uid) throw new Error('AUTH_UID_MISMATCH');
   const normalizedMode = mode === 'multiplayer' ? 'multiplayer' : 'solo';
   const stableSource = normalizedMode === 'multiplayer'
     ? String(matchId || '').trim().toUpperCase()
     : normalizeGameRewardReceiptId(receiptId || 'solo');
   const stableOperationId = operationId || `abandon:${normalizedMode}:${stableSource}:${uid}`.replace(/[^A-Za-z0-9._:-]/g, '_').slice(0, 128);
-  const response = await applyAbandonPenaltyServer({ mode: normalizedMode, matchId, operationId: stableOperationId });
-  const result = response?.result || null;
-  if (!result) throw new Error('ABANDON_PENALTY_SERVER_RESULT_MISSING');
-  const profile = await loadOwnProfileAfterServerMutation(uid);
-  return { ...result, total: profile?.points ?? result.total, profile, replayed: response?.replayed === true };
+  const pending = queuePendingAbandonPenalty(uid, {
+    mode: normalizedMode,
+    matchId: normalizedMode === 'multiplayer' ? String(matchId || '').trim().toUpperCase() : '',
+    receiptId: normalizedMode === 'solo' ? stableSource : '',
+    durationMs: Math.max(0, Math.floor(Number(durationMs) || 0)),
+    operationId: stableOperationId
+  });
+  try {
+    const response = await applyAbandonPenaltyServer(pending);
+    const result = response?.result || null;
+    if (!result) throw new Error('ABANDON_PENALTY_SERVER_RESULT_MISSING');
+    removePendingAbandonPenalty(uid, stableOperationId);
+    // El commit server-side es la autoridad. Una lectura de perfil que falle después del
+    // commit no puede convertir una penalidad ya aplicada en un falso "falló" ni dejar
+    // al usuario reintentando a ciegas; la próxima lectura normal refresca el HUD.
+    const profile = await loadOwnProfileAfterServerMutation(uid).catch(error => {
+      console.warn('[Abandon 23.19.5.5] Penalidad confirmada; no se pudo refrescar el perfil inmediatamente:', error);
+      return null;
+    });
+    return { ...result, total: profile?.points ?? result.total, profile, replayed: response?.replayed === true };
+  } catch (error) {
+    // El journal queda persistido. El próximo login repite el MISMO operationId; Functions
+    // y el receipt terminal garantizan exactly-once aunque la respuesta original se haya perdido.
+    throw error;
+  }
+}
+
+export async function flushPendingAbandonPenalties(uid) {
+  if (!uid || uid !== auth.currentUser?.uid) return { attempted:0, settled:0, failed:0, latestTotal:null, results:[] };
+  const pending = readPendingAbandonPenalties().filter(row => row.uid === uid);
+  const results = []; let settled = 0, failed = 0, latestTotal = null;
+  for (const row of pending) {
+    try {
+      const response = await applyAbandonPenaltyServer(row);
+      const result = response?.result || null;
+      if (!result) throw new Error('ABANDON_PENALTY_SERVER_RESULT_MISSING');
+      removePendingAbandonPenalty(uid, row.operationId);
+      settled += 1;
+      if (Number.isFinite(Number(result.total))) latestTotal = Number(result.total);
+      results.push({ ok:true, operationId:row.operationId, receiptId:result.receiptId || row.receiptId || '', appliedDelta:Number(result.appliedDelta)||0, replayed:response?.replayed===true });
+    } catch (error) {
+      failed += 1;
+      results.push({ ok:false, operationId:row.operationId, code:error?.code||error?.name||'ERROR', message:error?.message||String(error) });
+    }
+  }
+  if (settled > 0) {
+    const profile = await loadOwnProfileAfterServerMutation(uid).catch(() => null);
+    if (profile && Number.isFinite(Number(profile.points))) latestTotal = Number(profile.points);
+  }
+  return { attempted:pending.length, settled, failed, latestTotal, results };
 }
 
 // 23.13.0 — Comprar ya NO abre el sobre. La transacción descuenta puntos y deposita una
@@ -2153,71 +2180,35 @@ export async function fetchAllUserProfiles() {
 // transacción para no pisar un cambio concurrente (ej. el jugador comprando un sobre justo
 // en ese momento) — mismo patrón que awardPoints/purchasePack. Nunca deja el valor en
 // negativo, sea cual sea el monto pedido.
-export async function adminGrantCurrency(targetUid, currencyField, amount) {
-  const ref = doc(db, 'users', targetUid);
-  const result = await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('Esa cuenta no existe.');
-    const current = snap.data()[currencyField] || 0;
-    const newValue = Math.max(0, current + amount);
-    tx.update(ref, { [currencyField]: newValue });
-    return { current, newValue };
-  });
-  const applied = result.newValue - result.current;
-  const statDelta = currencyField === 'points' ? { pointsEarned: Math.max(0, applied) } : { fichasEarned: Math.max(0, applied) };
-  await statsBestEffort(targetUid, statDelta);
-  void economyLogBestEffort({ targetUid, source: 'admin_grant', pointsDelta: currencyField === 'points' ? applied : 0, fichasDelta: currencyField === 'fichas' ? applied : 0 });
-  return result.newValue;
+export async function adminGrantCurrency(targetUid, currencyField, amount, reason = '') {
+  const response = await adminGrantServer({ targetUid, kind:currencyField, amount, reason });
+  return Number(response?.result?.newValue ?? 0);
 }
 
-// Le da lo mismo a TODOS los usuarios — trae la lista completa y aplica adminGrantCurrency
-// a cada uno. No es una única transacción atómica gigante (Firestore no está pensado para
-// eso con potencialmente cientos de cuentas) — cada cuenta se actualiza en su propia
-// transacción chica, en paralelo. Devuelve cuántas tuvieron éxito y cuántas fallaron, para
-// que la UI pueda avisar si algo no se pudo aplicar.
-export async function adminGrantCurrencyToAll(currencyField, amount) {
-  const profiles = await fetchAllUserProfiles();
-  const results = await Promise.allSettled(
-    profiles.map(p => adminGrantCurrency(p.uid, currencyField, amount))
-  );
-  const failed = results.filter(r => r.status === 'rejected').length;
-  return { total: profiles.length, succeeded: profiles.length - failed, failed };
+const ADMIN_BULK_PENDING_KEY='argentinia.adminBulkGrant.pending.v231955';
+function readPendingAdminBulk(){try{return JSON.parse(localStorage.getItem(ADMIN_BULK_PENDING_KEY)||'null');}catch{return null;}}
+function writePendingAdminBulk(value){try{if(value)localStorage.setItem(ADMIN_BULK_PENDING_KEY,JSON.stringify(value));else localStorage.removeItem(ADMIN_BULK_PENDING_KEY);}catch{}}
+async function adminGrantToAllServer(kind, amount, reason = '') {
+  const normalized={kind:String(kind||''),amount:Math.floor(Number(amount)||0),reason:String(reason||'').trim().slice(0,240)};
+  let pending=readPendingAdminBulk();
+  if(!pending||pending.kind!==normalized.kind||Number(pending.amount)!==normalized.amount||String(pending.reason||'')!==normalized.reason){
+    pending={...normalized,jobId:createEconomyOperationId('admin-bulk')}; writePendingAdminBulk(pending);
+  }
+  let job=null;
+  for(let i=0;i<250;i++){
+    const response=await adminBulkGrantServer(pending); job=response?.job||null;
+    if(job?.status==='committed'){writePendingAdminBulk(null);return {total:Number(job.total)||0,succeeded:Number(job.succeeded)||0,failed:Number(job.failed)||0,jobId:job.id};}
+  }
+  throw new Error('ADMIN_BULK_GRANT_DID_NOT_CONVERGE');
 }
-
-
-// 23.13.2 — Regalo de sobres al Cofre. Es inventario, no compra: no descuenta puntos y
-// no abre el sobre. Firestore Rules permite al admin modificar únicamente standardPacks
-// dentro del inventory de otra cuenta; guaranteedMythics queda fuera de este permiso.
-export async function adminGrantPacks(targetUid, amount) {
-  const delta = Math.floor(Number(amount) || 0);
-  if (delta <= 0) throw new Error('La cantidad de sobres debe ser mayor que 0.');
-  const ref = doc(db, 'users', targetUid);
-  const total = await runTransaction(db, async tx => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('Esa cuenta no existe.');
-    const data = snap.data();
-    const inventory = normalizeInventory(data.inventory);
-    inventory[CHEST_ITEM_KEYS.standardPack] += delta;
-    tx.update(ref, { inventory });
-    return inventory[CHEST_ITEM_KEYS.standardPack];
-  });
-  await statsBestEffort(targetUid, { packsReceived: delta });
-  void economyLogBestEffort({ targetUid, source: 'admin_pack_grant', packsDelta: delta });
-  return total;
+export async function adminGrantCurrencyToAll(currencyField, amount, reason = '') { return adminGrantToAllServer(currencyField,amount,reason); }
+export async function adminGrantPacks(targetUid, amount, reason = '') {
+  const response=await adminGrantServer({targetUid,kind:'standardPacks',amount,reason}); return Number(response?.result?.newValue??0);
 }
-
-export async function adminGrantPacksToAll(amount) {
-  const profiles = await fetchAllUserProfiles();
-  const results = await Promise.allSettled(profiles.map(p => adminGrantPacks(p.uid, amount)));
-  const failed = results.filter(r => r.status === 'rejected').length;
-  return { total: profiles.length, succeeded: profiles.length - failed, failed };
-}
-
-// Registro liviano de auditoría — a quién, cuánto, de qué, y por qué (si se puso un
-// motivo). No bloquea ni condiciona el regalo en sí (que ya se aplicó antes de llamar a
-// esto) — es solo trazabilidad, mejor esfuerzo: si esto falla, el regalo ya se hizo igual.
-export async function logAdminAction(action) {
-  await setDoc(doc(collection(db, 'adminActions')), { ...action, timestamp: serverTimestamp() });
+export async function adminGrantPacksToAll(amount, reason = '') { return adminGrantToAllServer('standardPacks',amount,reason); }
+export async function logAdminAction(_action) {
+  // 23.19.5.5: immutable adminActions are created by Functions in the same trusted flow.
+  return true;
 }
 
 // ============================================================================
@@ -2487,112 +2478,9 @@ function adminRewardRepairSafeId(value) {
 // en PvP existen anti-farming, ledger por pareja y tope diario, por lo que "sumar el premio"
 // sin reconstruir todos esos ledgers sería conceptualmente incorrecto.
 export async function adminRepairSoloGameReward(payload = {}) {
-  const adminUid = auth.currentUser?.uid || '';
-  if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL || !adminUid) throw new Error('ADMIN_REQUIRED');
-
-  const targetUid = String(payload.targetUid || '').trim();
-  const receiptId = normalizeGameRewardReceiptId(payload.receiptId);
-  const telemetrySessionId = String(payload.telemetrySessionId || '').trim();
-  if (!targetUid || !receiptId || !telemetrySessionId) throw new Error('ADMIN_REWARD_REPAIR_INVALID_REQUEST');
-
-  const userRef = doc(db, 'users', targetUid);
-  const gameResultRef = doc(db, 'playerGameReceipts', `${targetUid}_${receiptId}`);
-  const rewardRef = doc(db, 'gameRewardReceipts', `${targetUid}_${receiptId}`);
-  const telemetryRef = doc(db, 'telemetrySessions', telemetrySessionId);
-  const settingsRef = doc(db, 'gameConfig', 'settings');
-  const auditSuffix = adminRewardRepairSafeId(`${targetUid}_${receiptId}`);
-  const actionRef = doc(db, 'adminActions', `reward_repair_${auditSuffix}`);
-  const economyRef = doc(db, 'economyEvents', `reward_repair_${auditSuffix}`);
-
-  const result = await runTransaction(db, async tx => {
-    // Reads primero: además de ser requisito de Firestore, evita que el botón confíe en la UI.
-    const rewardSnap = await tx.get(rewardRef);
-    const userSnap = await tx.get(userRef);
-    const resultSnap = await tx.get(gameResultRef);
-    const telemetrySnap = await tx.get(telemetryRef);
-    const settingsSnap = await tx.get(settingsRef);
-
-    if (!userSnap.exists()) throw new Error('ADMIN_REWARD_REPAIR_USER_NOT_FOUND');
-    const current = Math.max(0, Math.floor(Number(userSnap.data()?.points) || 0));
-    if (rewardSnap.exists()) {
-      const previous = rewardSnap.data() || {};
-      return {
-        duplicate: true,
-        appliedDelta: 0,
-        creditedDelta: Math.max(0, Math.floor(Number(previous.effectiveDelta) || 0)),
-        total: current,
-        reward: previous
-      };
-    }
-    if (!resultSnap.exists()) throw new Error('ADMIN_REWARD_REPAIR_RESULT_RECEIPT_MISSING');
-    if (!telemetrySnap.exists()) throw new Error('ADMIN_REWARD_REPAIR_TELEMETRY_MISSING');
-
-    const gameResult = resultSnap.data() || {};
-    const telemetry = telemetrySnap.data() || {};
-    const outcome = gameResult.result === 'loss' ? 'loss' : (gameResult.result === 'win' ? 'win' : null);
-    const difficulty = normalizeSoloRewardDifficulty(telemetry.difficulty);
-    if (gameResult.uid !== targetUid || gameResult.receiptId !== receiptId || gameResult.mode !== 'solo' || !outcome) {
-      throw new Error('ADMIN_REWARD_REPAIR_RESULT_EVIDENCE_MISMATCH');
-    }
-    const telemetryReceipt = String(telemetry.soloGameId || telemetry.sessionId || '');
-    if (telemetry.ownerUid !== targetUid || telemetry.mode !== 'solo' || telemetry.status !== 'completed' || telemetryReceipt !== receiptId || !difficulty) {
-      throw new Error('ADMIN_REWARD_REPAIR_TELEMETRY_EVIDENCE_MISMATCH');
-    }
-
-    const rewardConfig = normalizeSoloRewardConfig(settingsSnap.exists() ? settingsSnap.data() : {});
-    const baseDelta = expectedSoloRewardBase(rewardConfig, outcome, difficulty);
-    if (!Number.isFinite(baseDelta) || baseDelta <= 0) throw new Error('ADMIN_REWARD_REPAIR_CONFIG_INVALID');
-    const next = current + baseDelta;
-
-    tx.update(userRef, { points: next });
-    tx.set(rewardRef, {
-      uid: targetUid,
-      receiptId,
-      mode: 'solo',
-      outcome,
-      difficulty,
-      baseDelta,
-      effectiveDelta: baseDelta,
-      resultingTotal: next,
-      rewardReason: 'admin_repair',
-      adminRepair: true,
-      repairAdminUid: adminUid,
-      telemetrySessionId,
-      engineVersion: ENGINE_VERSION,
-      createdAt: serverTimestamp()
-    });
-    tx.set(actionRef, {
-      type: 'game_reward_manual_repair',
-      adminUid,
-      targetUid,
-      telemetrySessionId,
-      receiptId,
-      outcome,
-      difficulty,
-      pointsDelta: baseDelta,
-      reason: String(payload.reason || 'Caja Negra: liquidación faltante confirmada').slice(0, 240),
-      createdAt: serverTimestamp()
-    });
-    tx.set(economyRef, {
-      actorUid: adminUid,
-      targetUid,
-      source: 'game_reward_admin_repair',
-      pointsDelta: baseDelta,
-      fichasDelta: 0,
-      packsDelta: 0,
-      cardsDelta: 0,
-      matchId: null,
-      sessionId: receiptId,
-      engineVersion: ENGINE_VERSION,
-      createdAt: serverTimestamp()
-    });
-    return { duplicate: false, appliedDelta: baseDelta, creditedDelta: baseDelta, total: next, outcome, difficulty };
-  });
-
-  if (!result.duplicate && result.appliedDelta > 0) {
-    await statsBestEffort(targetUid, { pointsEarned: result.appliedDelta });
-  }
-  return result;
+  if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL || !auth.currentUser?.uid) throw new Error('ADMIN_REQUIRED');
+  const response = await adminRepairGameRewardServer(payload);
+  return response?.result || null;
 }
 
 export async function fetchTelemetrySessionsForAdmin() {

@@ -80,6 +80,7 @@ function serializableGameState(state) {
   out.gameOver = false;
   out.abandonedBy = null;
   out.abandonProcessedLocally = false;
+  out.terminalProcessedLocally = false;
   return out;
 }
 
@@ -242,6 +243,7 @@ export function restoreSoloRecoveryState(candidate, state) {
   state.gameOver = false;
   state.abandonedBy = null;
   state.abandonProcessedLocally = false;
+  state.terminalProcessedLocally = false;
   state.matchSyncBusy = false;
   state.multiplayerWaitingForReady = false;
   state.stackResolutionAuthority = false;

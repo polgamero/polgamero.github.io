@@ -7,7 +7,7 @@ import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseMa
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, recordPlayerGameResult, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks, getTelemetryStatus } from './telemetry.js';
@@ -409,6 +409,9 @@ export const state = {
   // checkGameOver() no puede usar el propio state.gameOver como guard de "ya lo procesé" en
   // este caso puntual (ya llegaría en true). Este flag cumple ese rol aparte.
   abandonProcessedLocally: false,
+  // 23.19.5.5 — guard terminal PURAMENTE local. A diferencia de gameOver, jamás viaja por
+  // matchSync: cada peer debe procesar su propio overlay/receipt aunque gameOver llegue remoto.
+  terminalProcessedLocally: false,
   // ENTREGA 23.6: bandera LOCAL (no viaja por matchSync) que se activa sólo mientras este
   // cliente está resolviendo un objeto de Stack que controla. Durante esa ventana puede
   // publicar también las mutaciones públicas del rival causadas por SU propio hechizo,
@@ -753,31 +756,6 @@ export function getRivalName() {
 // abajo), no solo al arrancar una nueva. Todo lo que toca acá ya es módulo/global (els,
 // state, funciones importadas) — nada de esto dependía de variables locales de initGame,
 // así que sacarlo de ahí no cambia el comportamiento en absoluto.
-function recordLocalAbandonStatsBestEffort() {
-  // 23.13.40 — este camino JAMÁS puede abortar la salida de la partida. 23.13.39
-  // consultaba getTelemetryStatus() fuera de un guard y un typo interno de Telemetría podía
-  // rechazar por completo el callback async de Abandonar antes de alcanzar el deadline/reload.
-  try {
-    if (!state.currentUser) return Promise.resolve(null);
-    const telemetry = getTelemetryStatus();
-    const soloGameId = !state.currentMatch ? getActiveSoloGameId() : null;
-    const receiptId = soloGameId || telemetry.sessionId;
-    if (!receiptId) return Promise.resolve(null);
-    return recordPlayerGameResult(state.currentUser.uid, {
-      sessionId: receiptId,
-      mode: state.currentMatch ? 'multiplayer' : 'solo',
-      won: false,
-      abandoned: true,
-      durationMs: state.currentMatch ? (telemetry.elapsedMs || 0) : currentSoloLifecycleDurationMs()
-    }).catch(err => {
-      console.warn('No se pudieron registrar las estadísticas del abandono:', err);
-      return null;
-    });
-  } catch (err) {
-    console.warn('No se pudieron preparar las estadísticas del abandono:', err);
-    return Promise.resolve(null);
-  }
-}
 
 function hookGameplayButtons() {
   els.btnRestart.addEventListener('click', () => location.reload());
@@ -825,15 +803,16 @@ function hookGameplayButtons() {
             }
 
             if (state.currentUser) {
-              cleanupTasks.push(recordLocalAbandonStatsBestEffort());
               try {
                 const abandonReceiptId = state.currentMatch?.matchId || getActiveSoloGameId() || getTelemetryStatus().sessionId || 'solo';
+                const abandonDurationMs = state.currentMatch ? (getTelemetryStatus().elapsedMs || 0) : currentSoloLifecycleDurationMs();
                 cleanupTasks.push(
                   abandonEvidencePromise
                     .then(() => applyAbandonPenalty(state.currentUser.uid, {
                       mode: state.currentMatch ? 'multiplayer' : 'solo',
                       matchId: state.currentMatch?.matchId || '',
-                      receiptId: abandonReceiptId
+                      receiptId: abandonReceiptId,
+                      durationMs: abandonDurationMs
                     }))
                     .catch(err => {
                       console.error('No se pudo aplicar la penalidad de abandono:', err);
@@ -939,6 +918,10 @@ async function initGame(deckSource) {
   state.consecutivePasses = 0;
   state.phase = 'main1';
   state.turnCount = 1;
+  state.gameOver = false;
+  state.abandonedBy = null;
+  state.abandonProcessedLocally = false;
+  state.terminalProcessedLocally = false;
 
   // ENTREGA 22: sesión diagnóstica aislada para esta partida contra el Tano. Se arranca
   // después de construir ambos mazos y ANTES de robar, así el log conserva el orden inicial
@@ -1046,13 +1029,9 @@ async function abandonRecoveredSolo(candidate, { expired = false } = {}) {
   }
   if (state.currentUser && (!candidate?.ownerUid || candidate.ownerUid === state.currentUser.uid)) {
     try {
-      await recordPlayerGameResult(state.currentUser.uid, {
-        sessionId: candidate.soloGameId || candidate.telemetrySessionId,
-        mode: 'solo', won: false, abandoned: true, durationMs
+      const result = await applyAbandonPenalty(state.currentUser.uid, {
+        mode:'solo', receiptId:candidate.soloGameId || candidate.telemetrySessionId || 'recovered-solo', durationMs
       });
-    } catch (err) { console.warn('No se pudieron registrar stats del recovery abandonado:', err); }
-    try {
-      const result = await applyAbandonPenalty(state.currentUser.uid, { mode:'solo', receiptId:candidate.soloGameId || candidate.telemetrySessionId || 'recovered-solo' });
       if (state.userProfile && result?.total !== undefined) state.userProfile.points = result.total;
       updateAccountUI(state.currentUser);
     } catch (err) { console.warn('No se pudo aplicar penalidad del recovery abandonado:', err); }
@@ -1460,7 +1439,28 @@ async function boot() {
         // quedado localmente pendiente por caída de red/cierre de pestaña. Si la transacción
         // original sí había entrado, el receipt remoto lo vuelve un no-op idempotente.
         let recoveredRewardNotice = null;
+        let blockPositiveRewardRecovery = false;
+        // 23.19.5.5 — una penalidad confirmada por el jugador tiene prioridad absoluta sobre
+        // cualquier premio pendiente. Si el callable se cortó durante el abandono, reintentamos
+        // primero el MISMO operationId y no procesamos +rewards hasta que quede cerrado.
         try {
+          const recoveredAbandons = await flushPendingAbandonPenalties(state.currentUser.uid);
+          if (typeof recoveredAbandons?.latestTotal === 'number' && Number.isFinite(recoveredAbandons.latestTotal)) {
+            state.userProfile.points = recoveredAbandons.latestTotal;
+            profile.points = recoveredAbandons.latestTotal;
+            updateAccountUI(state.currentUser);
+          }
+          if (Number(recoveredAbandons?.failed) > 0) {
+            blockPositiveRewardRecovery = true;
+            console.warn('[Abandon 23.19.5.5] Quedaron penalidades pendientes después del login:', recoveredAbandons.results?.filter(item => !item?.ok) || []);
+            recoveredRewardNotice = gameText('game.points.recoveryPending', { count: recoveredAbandons.failed });
+          }
+        } catch (abandonErr) {
+          blockPositiveRewardRecovery = true;
+          console.warn('[Abandon 23.19.5.5] No se pudieron reconciliar penalidades pendientes; se reintentará luego:', abandonErr);
+          recoveredRewardNotice = gameText('game.points.recoveryPending', { count: 1 });
+        }
+        if (!blockPositiveRewardRecovery) try {
           const recoveredRewards = await flushPendingGameRewards(state.currentUser.uid);
           if (typeof recoveredRewards?.latestTotal === 'number' && Number.isFinite(recoveredRewards.latestTotal)) {
             state.userProfile.points = recoveredRewards.latestTotal;
@@ -1741,6 +1741,10 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
   state.consecutivePasses = 0;
   state.phase = 'main1';
   state.turnCount = 1;
+  state.gameOver = false;
+  state.abandonedBy = null;
+  state.abandonProcessedLocally = false;
+  state.terminalProcessedLocally = false;
 
   // ENTREGA 22: en multiplayer el start ocurre acá (la mano inicial de 7 ya fue robada
   // localmente). recordTelemetryInitialDecks reconstruye el orden original de las 60 cartas
@@ -4236,6 +4240,8 @@ function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc, rivalNam
   state.multiplayerResolutionMarker = null;
   hideMultiplayerSyncBarrier();
   state.currentMatch = { matchId, myRole, rivalName: rivalName || 'tu rival', rivalPhotoURL: rivalPhotoURL || '', startingRole: normalizeStartingRole(publicDoc?.startingRole), engineVersion: ENGINE_VERSION, engineProtocolVersion: ENGINE_PROTOCOL_VERSION };
+  state.terminalProcessedLocally = false;
+  state.abandonProcessedLocally = false;
   startMultiplayerPresenceHeartbeat(matchId, myRole);
   reconstructStateFromMatch(publicDoc, privateDoc, myRole);
 
@@ -4338,8 +4344,9 @@ function offerReconnectIfStillActive(matchId) {
             if (!abandonConfirmed) throw new Error('MULTIPLAYER_ABANDON_NOT_CONFIRMED');
 
             if (state.currentUser) {
-              recordLocalAbandonStatsBestEffort();
-              applyAbandonPenalty(state.currentUser.uid, { mode:'multiplayer', matchId }).catch(() => {});
+              applyAbandonPenalty(state.currentUser.uid, {
+                mode:'multiplayer', matchId, durationMs:getTelemetryStatus().elapsedMs || 0
+              }).catch(() => {});
             }
             await clearActiveMatchId(state.currentUser.uid);
             if (state.userProfile) state.userProfile.activeMatchId = null;

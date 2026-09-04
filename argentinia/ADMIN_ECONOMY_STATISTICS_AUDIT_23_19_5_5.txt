@@ -1,0 +1,65 @@
+ARGENTINIA 23.19.5.5 — ADMIN ECONOMY + STATISTICS / IMMUTABLE AUDIT AUTHORITY
+
+OBJECTIVE
+- Remove official-browser authority from Admin economic grants and economic statistics/audit mirrors.
+- Preserve Firestore Rules 23.13.79 until the dedicated 23.19.5.6 Write Firewall cutover.
+
+SERVER AUTHORITY
+- economyAdminGrant: exact-once single-user points/Fichas/pack grants.
+- economyAdminBulkGrant: resumable server-side bulk jobs, 10 users per invocation.
+- economyAdminGetBulkGrant: trusted job recovery/status.
+- economyAdminRepairGameReward: Solo reward repair derived from trusted playerGameReceipt + telemetry + gameConfig evidence.
+- economyAdminSyncPlayerStats: trusted reconciliation of public balance/collection mirrors.
+
+AUDIT / STATS
+- Admin grants update user balance/inventory + playerStats + adminAction + economyEvent inside one Firestore transaction.
+- adminActions/economyEvents are deterministic/idempotent and marked authority=server, immutable=true.
+- Existing server-authoritative economy callables create idempotent server-owned playerStats/economyEvents side effects after their canonical operation commits.
+- Browser economyEvents writes are disabled; browser economic stats best-effort writes are disabled.
+- Legacy non-economic/gameplay result statistics remain temporarily compatible until 23.19.5.6.
+
+BULK RECOVERY
+- Browser persists the current jobId locally.
+- Server stores adminBulkGrantJobs and one adminBulkGrantReceipt per target.
+- Bulk processing is fail-closed per recipient: a target error does not advance the job cursor, so retries cannot silently finish with a skipped user.
+- Lost response/F5 can safely replay a page without duplicate grants.
+- Aggregate user count is taken only when a job is created; resumptions read the job and next page.
+
+STOREFRONT LOADING UX
+- Opening Tienda paints a visible loading panel immediately before economyGetStorefront resolves; no empty/black body during cold start.
+- Shared Economy Pending spinner language; after 2800 ms the title changes to CONECTANDO CON EL SERVIDOR...
+- In-flight storefront authority requests are deduplicated so reentry/retry cannot create parallel economyGetStorefront calls.
+- Initial authority failure is fail-closed visually: the market is not rendered from local prices; the user sees a RETRY action and a message that balances were not modified.
+- A valid recent storefront snapshot is cached for 15 seconds; when the backend already returned an authoritative effective pack cost, the UI does not wait on a second campaign fetch before rendering.
+- This UX does not change minInstances=0, server authority, costs, Rules or App Check enforcement.
+
+
+SOLO ABANDON SETTLEMENT INTEGRITY
+- economyApplyAbandonPenalty owns the Solo terminal settlement: points penalty + playerGameReceipt + signed negative gameRewardReceipt + playerStats + immutable economyEvent.
+- A Solo abandonment receipt is terminalKind=abandon, abandoned=true, penalty=true and rewardReason=abandon_penalty. The normal Solo-loss +15 path therefore sees an existing receipt and cannot award again.
+- The browser no longer writes abandonment playerStats/playerGameReceipts in parallel with the penalty Function, eliminating the observed Firestore permission/race failure.
+- Local pending-abandon journal is persisted before the callable. On login, abandonment recovery executes before positive game-reward recovery.
+- 23.19.5.4 rolling compatibility is explicit: the old operation digest {mode,matchId} is preserved; receiptId can be derived from the legacy operationId; an old committed operation is backfilled without mutating points again.
+- economyAdminRepairGameReward rejects ADMIN_REWARD_REPAIR_ABANDONED when reward/playerGameReceipt/telemetry proves abandonment.
+- Caja Negra renders negative penalty receipts as penalties, never as +loss rewards; interrupted sessions without terminal evidence are shown as unliquidated, not repairable losses.
+
+INVARIANTS
+- Engine 23.19.5.5
+- Economy econ-23.19.5.5 / schema 6
+- Multiplayer mp-23.19.2 unchanged
+- Firestore Rules 23.13.79 unchanged
+- Pool 880
+- App Check enforceAppCheck=false (OBSERVE ONLY)
+- Functions Node 22, southamerica-east1, minInstances=0, maxInstances=1, concurrency=10, timeout=30s, memory=256MiB
+- Exactly 25 economy callables.
+
+AUDIT RECOVERY
+- Existing authoritative economy mutations preserve their canonical pre-schema-6 transaction, followed by an idempotent server transaction for playerStats + economyEvent.
+- The audit/stat transaction is attempted on both fresh operations and operation-ledger replays. If the canonical mutation committed but the first audit response was interrupted, retrying the same operationId backfills the missing audit without double counting.
+
+
+PRODUCTION-SMOKE HARDENING ADDENDUM
+- Multiplayer remote terminal: synchronized gameOver is not a local processing guard; each peer executes terminal overlay + reward queue once via terminalProcessedLocally.
+- Natural match result receipts/stats are server-owned in schema 6; legacy browser recordPlayerGameResult is not used by the .5.5 terminal path.
+- Mobile horizontal battlefield rows reserve safe vertical headroom for selected/paying/attacking cards.
+- Damage allocation Game Text interpolation uses hp/needed consistently.

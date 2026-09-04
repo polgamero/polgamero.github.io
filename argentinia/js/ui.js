@@ -53,14 +53,14 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, logAdminAction, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 import { recordTelemetryUiLog, captureTelemetryState, getTelemetryStatus } from './telemetry.js';
 import { checkpointSoloRecovery } from './soloRecovery.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_VERSION_SHORT } from './version.js';
-import { withEconomyButtonPending } from './economyPending.js';
+import { withEconomyButtonPending, ensureEconomyPendingStyles } from './economyPending.js';
 import { getPriorityUxCopy, getEffectivePriorityActivity, canPriorityClockRun, PRIORITY_CLOCK_DURATION_MS } from './priorityUX.js';
 import { DAILY_REWARD_SCHEDULE, normalizeInventory, normalizeDailyRewardsState, unclaimedUnlockedDays, CHEST_ITEM_KEYS, rewardForDay } from './rewards.js';
 import { showPackOpeningExperience, showGuaranteedMythicExperience } from './packOpening.js';
@@ -780,7 +780,7 @@ export function showAbandonConfirmModal(onConfirm, onCancel) {
       </div>
       <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
         <p style="color:#cfe0d4; font-size: 13px; margin: 0 0 4px;">${gameTextHtml('modal.abandon.description')}</p>
-        <button class="loyalty-ability-btn" id="abandon-yes" style="justify-content: flex-start;">
+        <button class="loyalty-ability-btn" id="abandon-yes" style="justify-content:center; text-align:center;">
           <span class="loyalty-ability-text">${gameTextHtml('modal.abandon.confirm')}</span>
         </button>
         <button id="abandon-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">${gameTextHtml('modal.abandon.cancel')}</button>
@@ -1975,8 +1975,10 @@ export function sizeCardsInRow(rowEl) {
   if (n === 0) return;
   const rowStyles = getComputedStyle(rowEl);
   const gap = parseFloat(rowStyles.columnGap) || parseFloat(rowStyles.gap) || 6;
-  const availableWidth = rowEl.clientWidth - 6;
-  const availableHeight = rowEl.clientHeight - 6;
+  const padX = (parseFloat(rowStyles.paddingLeft) || 0) + (parseFloat(rowStyles.paddingRight) || 0);
+  const padY = (parseFloat(rowStyles.paddingTop) || 0) + (parseFloat(rowStyles.paddingBottom) || 0);
+  const availableWidth = Math.max(24, rowEl.clientWidth - padX - 6);
+  const availableHeight = Math.max(24, rowEl.clientHeight - padY - 6);
 
   // Las giradas ocupan 7/5 del ancho de una vertical (intercambian sus medidas). Si no las
   // contamos aparte acá, el "cuántas entran" queda mal apenas hay una girada en la fila —
@@ -3699,6 +3701,18 @@ function injectStoreStyles() {
     .store-header-points-link:hover { color:#fff0b8; }
     .store-body { flex:1; overflow-y:auto; overflow-x:hidden; max-width:1220px; width:100%; margin:0 auto; padding:2px 3px 24px; overscroll-behavior:contain; }
     .store-body.drag-scroll-active { user-select:none; cursor:grabbing; }
+    .store-loading-panel {
+      min-height:min(520px,68dvh); display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:12px; padding:32px 20px; box-sizing:border-box; text-align:center; color:#cfe0d4;
+      border:1px solid rgba(212,175,55,.18); border-radius:16px;
+      background:radial-gradient(circle at center,rgba(32,49,37,.58),rgba(9,16,11,.34) 68%,rgba(9,16,11,.08));
+    }
+    .store-loading-spinner { width:36px; height:36px; border-width:3px; color:#d4af37; margin-bottom:4px; }
+    .store-loading-title { color:#f0e0b0; font-size:20px; font-weight:850; letter-spacing:.02em; }
+    .store-loading-desc { max-width:520px; color:#aebfb3; font-size:13px; line-height:1.5; }
+    .store-loading-error { border-color:rgba(224,122,107,.35); }
+    .store-loading-error .store-loading-title { color:#f0c2b8; }
+    .store-loading-error .store-buy-btn { margin-top:6px; min-width:170px; }
     .store-balance-row { display:flex; gap:12px; margin-bottom:18px; justify-content:center; }
     .store-balance-chip {
       background:rgba(18,25,15,0.7); border:1px solid rgba(212,175,55,.55); border-radius:10px;
@@ -3959,6 +3973,8 @@ export function showStoreScreen(onBack, options = {}) {
   document.body.appendChild(overlay);
   overlay.querySelector('#store-back').addEventListener('click', () => {
     leaveClassifiedsView();
+    clearStoreLoadingSlowTimer();
+    storeMainViewSerial += 1;
     overlay.remove();
     onBack();
   });
@@ -3996,21 +4012,79 @@ export function showStoreScreen(onBack, options = {}) {
   let classifiedsViewSerial = 0;
   let storefrontAuthority = null;
   let storefrontAuthorityAt = 0;
+  let storefrontAuthorityPromise = null;
+  let storeMainViewSerial = 0;
+  let storeLoadingSlowTimerId = null;
   const STOREFRONT_AUTHORITY_CACHE_MS = 15000;
+  const STOREFRONT_LOADING_SLOW_AFTER_MS = 2800;
 
-  async function loadStorefrontAuthorityCached({ force = false } = {}) {
+  function clearStoreLoadingSlowTimer() {
+    if (storeLoadingSlowTimerId !== null) {
+      clearTimeout(storeLoadingSlowTimerId);
+      storeLoadingSlowTimerId = null;
+    }
+  }
+
+  function renderStoreLoadingState(renderSerial) {
+    ensureEconomyPendingStyles();
+    clearStoreLoadingSlowTimer();
+    body.setAttribute('aria-busy', 'true');
+    body.innerHTML = `
+      <div class="store-loading-panel" role="status" aria-live="polite">
+        <span class="economy-pending-spinner store-loading-spinner" aria-hidden="true"></span>
+        <div class="store-loading-title" id="store-loading-title">${gameTextHtml('store.loading.title')}</div>
+        <div class="store-loading-desc" id="store-loading-desc">${gameTextHtml('store.loading.description')}</div>
+      </div>`;
+    storeLoadingSlowTimerId = setTimeout(() => {
+      if (renderSerial !== storeMainViewSerial || !overlay.isConnected) return;
+      const title = body.querySelector('#store-loading-title');
+      const desc = body.querySelector('#store-loading-desc');
+      if (title) title.textContent = gameText('store.loading.slow');
+      if (desc) desc.textContent = gameText('store.loading.slowDescription');
+    }, STOREFRONT_LOADING_SLOW_AFTER_MS);
+  }
+
+  function finishStoreLoadingState() {
+    clearStoreLoadingSlowTimer();
+    body.removeAttribute('aria-busy');
+  }
+
+  function renderStoreLoadingError(error, renderSerial) {
+    if (renderSerial !== storeMainViewSerial || !overlay.isConnected) return;
+    finishStoreLoadingState();
+    console.warn('[Economy 23.19.5.5] No se pudo cargar storefront authority:', error);
+    body.innerHTML = `
+      <div class="store-loading-panel store-loading-error" role="alert">
+        <div class="store-loading-title">${gameTextHtml('store.loading.errorTitle')}</div>
+        <div class="store-loading-desc">${gameTextHtml('store.loading.errorDescription')}</div>
+        <button class="store-buy-btn" id="store-loading-retry" type="button">${gameTextHtml('store.loading.retry')}</button>
+      </div>`;
+    body.querySelector('#store-loading-retry')?.addEventListener('click', () => {
+      void renderMainView({ forceStorefront: true });
+    });
+  }
+
+  async function loadStorefrontAuthorityCached({ force = false, throwOnError = false } = {}) {
     const now = Date.now();
     if (!force && storefrontAuthority && now - storefrontAuthorityAt < STOREFRONT_AUTHORITY_CACHE_MS) return storefrontAuthority;
-    try {
-      const value = await fetchStorefrontAuthority();
-      if (value && typeof value === 'object') {
+    if (!storefrontAuthorityPromise) {
+      storefrontAuthorityPromise = (async () => {
+        const value = await fetchStorefrontAuthority();
+        if (!value || typeof value !== 'object') throw new Error('STOREFRONT_AUTHORITY_EMPTY');
         storefrontAuthority = value;
-        storefrontAuthorityAt = now;
-      }
-    } catch (error) {
-      console.warn('[Economy 23.19.5.3] No se pudo refrescar storefront authority; se usa config local para display:', error);
+        storefrontAuthorityAt = Date.now();
+        return storefrontAuthority;
+      })().finally(() => {
+        storefrontAuthorityPromise = null;
+      });
     }
-    return storefrontAuthority;
+    try {
+      return await storefrontAuthorityPromise;
+    } catch (error) {
+      if (throwOnError) throw error;
+      console.warn('[Economy 23.19.5.5] No se pudo refrescar storefront authority; se conserva el último snapshot válido:', error);
+      return storefrontAuthority;
+    }
   }
   function currentCraftCost() {
     return Math.max(1, Math.floor(Number(storefrontAuthority?.craft?.fichasCost ?? FICHAS_PER_ENHANCEMENT) || FICHAS_PER_ENHANCEMENT));
@@ -4054,8 +4128,10 @@ export function showStoreScreen(onBack, options = {}) {
     </div>
   `;
 
-  async function renderMainView({ openPointsInfo = false } = {}) {
+  async function renderMainView({ openPointsInfo = false, forceStorefront = false } = {}) {
+    const renderSerial = ++storeMainViewSerial;
     leaveClassifiedsView();
+    finishStoreLoadingState();
     renderStoreHeader(gameText('store.title'), { showWallet: !!state.userProfile });
     if (!state.currentUser) {
       body.innerHTML = `<div id="store-active-events"></div><div class="store-section"><div class="store-section-desc">${gameTextHtml('store.loginRequired')}</div></div>`;
@@ -4070,9 +4146,21 @@ export function showStoreScreen(onBack, options = {}) {
 
     const points = state.userProfile.points || 0;
     const fichas = state.userProfile.fichas || 0;
-    const authority = await loadStorefrontAuthorityCached();
+    renderStoreLoadingState(renderSerial);
+    let authority = null;
+    try {
+      authority = await loadStorefrontAuthorityCached({ force: forceStorefront, throwOnError: true });
+    } catch (error) {
+      renderStoreLoadingError(error, renderSerial);
+      return;
+    }
+    if (renderSerial !== storeMainViewSerial || !overlay.isConnected) return;
     let campaignSnapshot = null;
-    try { campaignSnapshot = await fetchCampaignSnapshot(); } catch {}
+    if (!Number.isFinite(Number(authority?.pack?.effectiveCost))) {
+      try { campaignSnapshot = await fetchCampaignSnapshot(); } catch {}
+      if (renderSerial !== storeMainViewSerial || !overlay.isConnected) return;
+    }
+    finishStoreLoadingState();
     const packBaseCost = Math.max(0, Math.floor(Number(authority?.pack?.baseCost ?? PACK_COST) || 0));
     const effectiveCost = Number.isFinite(Number(authority?.pack?.effectiveCost))
       ? Math.max(0, Math.floor(Number(authority.pack.effectiveCost)))
@@ -6232,6 +6320,7 @@ function injectAdminPanelStyles() {
     .admin-debug-result.loss { color:#e49388; }
     .admin-debug-reward { display:inline-block; font-weight:700; white-space:nowrap; }
     .admin-debug-reward.ok { color:#8fd29a; }
+    .admin-debug-reward.penalty { color:#ff9f6e; }
     .admin-debug-reward.missing { color:#ff9f6e; }
     .admin-debug-reward.unknown { color:#8f8298; }
     .admin-debug-reward-note { color:#aa95b8; font-size:10px; margin-top:3px; white-space:nowrap; }
@@ -6865,18 +6954,47 @@ export function showAdminPanel(onBack) {
     const identity = adminRewardReceiptIdForSession(session, meta);
     const gameResult = identity.key ? maps.gameResults.get(identity.key) : null;
     const reward = identity.key ? maps.rewards.get(identity.key) : null;
+    const displayStatus = telemetryAdminDisplayStatus(session);
+    const endReason = String(session?.endReason || '');
+    const abandoned = gameResult?.abandoned === true
+      || gameResult?.terminalKind === 'abandon'
+      || endReason === 'abandon_local'
+      || endReason.startsWith('abandon_recovery');
     const outcome = adminTelemetryOutcome(session, gameResult);
     const winner = outcome.result === 'win' ? localName : (outcome.result === 'loss' ? rivalName : '—');
-    const resultHtml = outcome.result === 'unknown'
+    let resultHtml = outcome.result === 'unknown'
       ? '<span class="admin-debug-reward unknown">—</span>'
       : `<span class="admin-debug-result ${outcome.result}" title="${outcome.authoritative ? 'Registrado en playerGameReceipt' : 'Inferido desde snapshot final'}">${outcome.result === 'win' ? '🏆' : '💀'} ${escapeHtml(winner)}</span>`;
 
     if (reward) {
-      const effective = Math.max(0, Math.floor(Number(reward.effectiveDelta) || 0));
+      const effective = Math.floor(Number(reward.effectiveDelta) || 0);
+      const isPenalty = reward.penalty === true || reward.abandoned === true || reward.terminalKind === 'abandon' || reward.rewardReason === 'abandon_penalty';
+      if (isPenalty) {
+        const signed = effective > 0 ? `+${effective}` : String(effective);
+        return {
+          resultHtml,
+          rewardHtml: `<span class="admin-debug-reward penalty" title="Receipt económico terminal ${escapeHtml(identity.receiptId)}">⛔ ${escapeHtml(signed)} pts · penalidad de abandono</span>`
+        };
+      }
+      const safeEffective = Math.max(0, effective);
       const reason = String(reward.rewardReason || (reward.adminRepair ? 'admin_repair' : 'rewarded'));
       const repair = reward.adminRepair === true ? ' · reparación Admin' : '';
-      const label = effective > 0 ? `✅ +${effective} acreditados${repair}` : `✅ 0 pts · ${reason}`;
+      const label = safeEffective > 0 ? `✅ +${safeEffective} acreditados${repair}` : `✅ 0 pts · ${reason}`;
       return { resultHtml, rewardHtml: `<span class="admin-debug-reward ok" title="Receipt económico ${escapeHtml(identity.receiptId)}">${escapeHtml(label)}</span>` };
+    }
+
+    // Una sesión incompleta no es una derrota liquidable. En particular, la Caja Negra no
+    // debe convertir una sesión huérfana/interrumpida en el +15 base de una derrota Solo.
+    if (displayStatus.status === 'interrupted' && !abandoned) {
+      resultHtml = '<span class="admin-debug-reward unknown">—</span>';
+      return { resultHtml, rewardHtml: '<span class="admin-debug-reward unknown">— Sin liquidación · sesión interrumpida</span>' };
+    }
+
+    if (abandoned) {
+      return {
+        resultHtml,
+        rewardHtml: `<div><span class="admin-debug-reward missing">⚠ Penalidad de abandono sin receipt económico</span>${gameResult ? '' : '<div class="admin-debug-reward-note">Sin playerGameReceipt terminal registrado</div>'}</div>`
+      };
     }
 
     if (outcome.result === 'win' || outcome.result === 'loss') {
@@ -6886,7 +7004,7 @@ export function showAdminPanel(onBack) {
         ? Math.max(0, Math.floor(Number(outcome.result === 'win' ? POINTS.winVsHumano : POINTS.lossVsHumano) || 0))
         : adminExpectedSoloBaseDelta(session, meta, outcome.result);
       const authoritativeNote = gameResult ? '' : '<div class="admin-debug-reward-note">Sin playerGameReceipt registrado</div>';
-      const sessionCompleted = telemetryAdminDisplayStatus(session).status === 'completed';
+      const sessionCompleted = displayStatus.status === 'completed';
       const canRepair = sessionCompleted && !isMulti && !!gameResult && !!identity.ownerUid && !!identity.receiptId && expected > 0;
       const repairButton = canRepair
         ? `<button class="admin-save-btn admin-debug-reward-repair" data-reward-repair="${escapeHtml(identity.receiptId)}" data-reward-owner="${escapeHtml(identity.ownerUid)}" data-reward-session="${escapeHtml(session.id || session.sessionId || '')}" data-reward-expected="${expected}">Acreditar manualmente</button>`
@@ -7342,16 +7460,14 @@ Receipt: ${receiptId}
     try {
       if (recipient === 'ALL') {
         const result = currencyField === 'standardPacks'
-          ? await adminGrantPacksToAll(amount)
-          : await adminGrantCurrencyToAll(currencyField, amount);
+          ? await adminGrantPacksToAll(amount, reason)
+          : await adminGrantCurrencyToAll(currencyField, amount, reason);
         grantSuccessBox.textContent = `✅ Aplicado a ${result.succeeded}/${result.total} cuentas${result.failed > 0 ? ` (${result.failed} fallaron)` : ''}.`;
-        await logAdminAction({ adminUid: state.currentUser.uid, targetUid: 'ALL', currencyField, amount, reason }).catch(() => {});
       } else {
         const newValue = currencyField === 'standardPacks'
-          ? await adminGrantPacks(recipient, amount)
-          : await adminGrantCurrency(recipient, currencyField, amount);
+          ? await adminGrantPacks(recipient, amount, reason)
+          : await adminGrantCurrency(recipient, currencyField, amount, reason);
         grantSuccessBox.textContent = `✅ Listo — esa cuenta ahora tiene ${newValue} ${currencyLabel}.`;
-        await logAdminAction({ adminUid: state.currentUser.uid, targetUid: recipient, currencyField, amount, reason }).catch(() => {});
       }
     } catch (err) {
       console.error('No se pudo aplicar el regalo:', err);
@@ -9778,7 +9894,7 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
            <div style="text-align: left; line-height: 1.2;">
              <strong style="font-size: 1.1rem;">${bItem.card.name}</strong><br>
              <span style="font-size: 0.8rem; color: ${met ? '#7ed6a5' : '#e67e22'};">
-               ${gameTextHtml('damage.modal.toughness', { toughness: hp })} ${needed > 0 ? gameTextHtml('damage.modal.lethal', { lethal: needed }) : gameTextHtml('damage.modal.noMore')}
+               ${gameTextHtml('damage.modal.toughness', { hp })} ${needed > 0 ? gameTextHtml('damage.modal.lethal', { needed }) : gameTextHtml('damage.modal.noMore')}
              </span>
            </div>
            <div class="damage-controls">

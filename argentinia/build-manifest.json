@@ -1,12 +1,12 @@
 {
-  "engineVersion": "23.19.5.4",
+  "engineVersion": "23.19.5.5",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
-  "economyProtocolVersion": "econ-23.19.5.4",
-  "economySchemaVersion": 5,
+  "economyProtocolVersion": "econ-23.19.5.5",
+  "economySchemaVersion": 6,
   "economyFunctionsRegion": "southamerica-east1",
   "firestoreRulesVersion": "23.13.79",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Match Settlement + Anti-Farming + Admission Control + Economy Pending UX"
+  "label": "Admin Economy + Statistics + Immutable Audit Authority"
 }

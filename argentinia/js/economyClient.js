@@ -1,4 +1,4 @@
-// js/economyClient.js — v23.19.5.4 Match Settlement + Admission Control Authority.
+// js/economyClient.js — v23.19.5.5 Admin Economy + Statistics / Immutable Audit Authority.
 // Transporte único browser -> callable Functions. El cliente expresa INTENCIÓN; nunca
 // construye receipts ni escribe directamente economyOperations.
 
@@ -181,18 +181,45 @@ export function settleMatchRewardServer(reward = {}, operationId = null) {
     mode: reward.mode === 'multiplayer' ? 'multiplayer' : 'solo',
     outcome: reward.outcome === 'loss' ? 'loss' : 'win',
     difficulty: reward.mode === 'multiplayer' ? null : String(reward.difficulty || ''),
-    matchId: reward.mode === 'multiplayer' ? String(reward.matchId || '') : ''
+    matchId: reward.mode === 'multiplayer' ? String(reward.matchId || '') : '',
+    durationMs: reward.mode === 'multiplayer' ? 0 : Math.max(0, Math.floor(Number(reward.durationMs) || 0))
   });
 }
 
-export function applyAbandonPenaltyServer({ mode = 'solo', matchId = '', operationId = null } = {}) {
+export function applyAbandonPenaltyServer({ mode = 'solo', matchId = '', receiptId = '', durationMs = 0, operationId = null } = {}) {
+  const normalizedMode = mode === 'multiplayer' ? 'multiplayer' : 'solo';
   return call('economyApplyAbandonPenalty', {
     operationId: operationId || createEconomyOperationId('abandon'),
-    mode: mode === 'multiplayer' ? 'multiplayer' : 'solo',
-    matchId: mode === 'multiplayer' ? String(matchId || '') : ''
+    mode: normalizedMode,
+    matchId: normalizedMode === 'multiplayer' ? String(matchId || '') : '',
+    receiptId: normalizedMode === 'solo' ? String(receiptId || '') : '',
+    durationMs: Math.max(0, Math.floor(Number(durationMs) || 0))
   });
 }
 
 export function recoverEconomyOperation(operationId) {
   return call('economyGetOperation', { operationId: String(operationId || '') });
+}
+
+
+export function adminGrantServer({ targetUid, kind, amount, reason = '', operationId = null } = {}) {
+  return call('economyAdminGrant', {
+    operationId: operationId || createEconomyOperationId('admin-grant'),
+    targetUid: String(targetUid || ''), kind: String(kind || ''), amount: Number(amount), reason: String(reason || '')
+  });
+}
+export function adminBulkGrantServer({ jobId, kind, amount, reason = '' } = {}) {
+  return call('economyAdminBulkGrant', { jobId:String(jobId||''), kind:String(kind||''), amount:Number(amount), reason:String(reason||'') });
+}
+export function adminGetBulkGrantServer(jobId) {
+  return call('economyAdminGetBulkGrant', { jobId:String(jobId||'') });
+}
+export function adminRepairGameRewardServer(payload = {}) {
+  return call('economyAdminRepairGameReward', {
+    targetUid:String(payload.targetUid||''), receiptId:String(payload.receiptId||''),
+    telemetrySessionId:String(payload.telemetrySessionId||''), reason:String(payload.reason||'')
+  });
+}
+export function adminSyncPlayerStatsServer(targetUid = '') {
+  return call('economyAdminSyncPlayerStats', { targetUid:String(targetUid||'') });
 }

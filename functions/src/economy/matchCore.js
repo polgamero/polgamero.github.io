@@ -39,6 +39,12 @@ export function normalizeMatchRewardConfig(settings = {}) {
   };
 }
 export function pvpCompletedTurns(turnCountAtEnd){return Math.max(0,Math.floor(Number(turnCountAtEnd)||1)-1);}
+export function normalizeAbandonDurationMs(value){return Math.min(24*60*60*1000,Math.max(0,Math.floor(Number(value)||0)));}
+export function deriveSoloAbandonReceiptId(operationId,uid){
+  const op=String(operationId||''),prefix='abandon:solo:',suffix=`:${String(uid||'')}`;
+  if(!op.startsWith(prefix)||!op.endsWith(suffix)) return '';
+  return String(op.slice(prefix.length,op.length-suffix.length)||'').replace(/[^A-Za-z0-9_-]/g,'_').slice(0,240);
+}
 export function argentinaMatchDayKey(ms=Date.now()){
   const shifted=new Date(Number(ms)-3*60*60*1000);
   return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth()+1).padStart(2,'0')}-${String(shifted.getUTCDate()).padStart(2,'0')}`;
