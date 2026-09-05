@@ -28,3 +28,15 @@ NOT RELEASED YET
 - Real Tournament Emulator Gate still must be executed successfully.
 - 40/40 NPC PNG asset gate is pending.
 - GitHub CI, Functions deploy/verify and production Tournament smoke are pending.
+
+RC2 HOTFIX CANDIDATE — FIRST PRODUCTION SMOKE REMEDIATION
+- Fixed literal {attacker} leak in damage assignment modal.
+- Fixed null Tournament config boot exception.
+- Removed Tournament-visible El Tano hardcodes from generic bot gameplay copy via runtime rival-name variables.
+- Restored authenticated player avatar in Tournament fixture.
+- Redesigned Tournament rules screen into structured bullet cards/sections.
+- Added safe ABANDONAR TORNEO action between matches; active-match abandon remains elimination through the existing match path.
+- Admin Economy Audit now displays in-game usernames and exposes raw UID on hover/fallback.
+- Compacted GitHub CI by removing 51 duplicate executions while retaining all 113 canonical contracts plus dynamic reliability labs.
+- Rules remain 23.13.80 unchanged; callable count remains 30; cost safety remains 0/1/10; App Check remains OBSERVE ONLY.
+- Because RC2 changes Tournament Functions, rerun the real Tournament Emulator Gate and redeploy Functions before RELEASED promotion.

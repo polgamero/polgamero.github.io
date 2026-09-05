@@ -108,8 +108,9 @@ for(const event of ['ward_triggered','ward_paid','ward_countered','shield_consum
 for(const event of ['bot_fight_evaluation','bot_attack_plan']) assert.ok(bot.includes(`'${event}'`));
 
 assert.ok(/ENGINE_VERSION = '23\.19\.4\.(6|7|8|9|10|11|12|13|14|15)'/.test(version) || /ENGINE_VERSION = '23\.19\.5(?:\.[123456])?'/.test(version) || /ENGINE_VERSION = '23\.20\.0'/.test(version));
-assert.ok(workflow.includes('test_rules_integrity_combat_ux_bot_tactical_hotfix_23_19_4_6.mjs'),'CI whitelist retains v23.19.4.6 contract');
-assert.ok(workflow.includes('Validate Rules Integrity + Combat UX + Bot Tactical Hotfix 23.19.4.6'),'CI runs v23.19.4.6 contract');
+const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'),'CI executes the canonical fast contract manifest');
+assert.ok(fastManifest.includes('tools/test_rules_integrity_combat_ux_bot_tactical_hotfix_23_19_4_6.mjs'),'canonical manifest retains v23.19.4.6 contract');
 
 console.log('RULES_INTEGRITY_COMBAT_UX_BOT_TACTICAL_HOTFIX_23_19_4_6_OK');
 console.log('ward=stack-committed+saga-trigger+multi-target life=unbounded-render-readonly blocker-edit=undo+reassign');

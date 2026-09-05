@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
@@ -7299,6 +7299,7 @@ Receipt: ${receiptId}
   let economyAuditLoaded = false;
   let economyAuditLoading = false;
   let economyAuditRows = [];
+  let economyAuditUsernames = {};
 
   function auditTimestampMs(value) {
     if (!value) return 0;
@@ -7314,13 +7315,23 @@ Receipt: ${receiptId}
       : String(row.source || row.type || 'economy_event');
   }
 
+  function economyAuditIdentityHtml(uid) {
+    const value=String(uid||'').trim();
+    if(!value||value==='server') return '<span>server</span>';
+    const username=String(economyAuditUsernames[value]||'').trim();
+    const tooltip=gameText('admin.audit.uidTooltip',{uid:value});
+    return username
+      ? `<span class="admin-audit-user" title="${escapeHtml(tooltip)}">${escapeHtml(username)}</span>`
+      : `<code title="${escapeHtml(tooltip)}">${escapeHtml(value)}</code>`;
+  }
+
   function renderEconomyAudit() {
     const kind = overlay.querySelector('#admin-economy-audit-kind')?.value || 'all';
     const term = String(overlay.querySelector('#admin-economy-audit-search')?.value || '').trim().toLowerCase();
     const rows = economyAuditRows.filter(row => {
       if (kind !== 'all' && row.auditKind !== kind) return false;
       if (!term) return true;
-      const haystack = [row.id,row.auditKind,row.type,row.source,row.operationId,row.targetUid,row.actorUid,row.adminUid,row.kind,row.reason,row.bulkJobId,row.sessionId].map(v=>String(v||'')).join(' ').toLowerCase();
+      const haystack = [row.id,row.auditKind,row.type,row.source,row.operationId,row.targetUid,row.actorUid,row.adminUid,row.kind,row.reason,row.bulkJobId,row.sessionId,economyAuditUsernames[row.targetUid],economyAuditUsernames[row.actorUid],economyAuditUsernames[row.adminUid]].map(v=>String(v||'')).join(' ').toLowerCase();
       return haystack.includes(term);
     });
     const totalPoints = rows.reduce((n,r)=>n+(Number(r.pointsDelta)||Number(r.appliedAmount && r.kind==='points' ? r.appliedAmount : 0)||0),0);
@@ -7328,24 +7339,24 @@ Receipt: ${receiptId}
     const totalPacks = rows.reduce((n,r)=>n+(Number(r.packsDelta)||Number(r.appliedAmount && r.kind==='standardPacks' ? r.appliedAmount : 0)||0),0);
     const adminCount = rows.filter(r=>r.auditKind==='adminAction').length;
     const cards = [
-      ['Operaciones visibles', rows.length, `de ${economyAuditRows.length} cargadas`],
-      ['Δ Puntos', `${totalPoints>=0?'+':''}${totalPoints.toLocaleString('es-AR')}`, 'ventana filtrada'],
-      ['Δ Fichas', `${totalFichas>=0?'+':''}${totalFichas.toLocaleString('es-AR')}`, 'ventana filtrada'],
-      ['Δ Sobres', `${totalPacks>=0?'+':''}${totalPacks.toLocaleString('es-AR')}`, `Acciones Admin: ${adminCount}`]
+      [gameText('admin.audit.kpi.visible'), rows.length, gameText('admin.audit.kpi.loaded',{count:economyAuditRows.length})],
+      [gameText('admin.audit.kpi.points'), `${totalPoints>=0?'+':''}${totalPoints.toLocaleString('es-AR')}`, gameText('admin.audit.kpi.filtered')],
+      [gameText('admin.audit.kpi.fichas'), `${totalFichas>=0?'+':''}${totalFichas.toLocaleString('es-AR')}`, gameText('admin.audit.kpi.filtered')],
+      [gameText('admin.audit.kpi.packs'), `${totalPacks>=0?'+':''}${totalPacks.toLocaleString('es-AR')}`, gameText('admin.audit.kpi.adminActions',{count:adminCount})]
     ];
     overlay.querySelector('#admin-economy-audit-cards').innerHTML = cards.map(([label,value,sub])=>`<div class="admin-stat-card"><div class="admin-stat-label">${escapeHtml(label)}</div><div class="admin-stat-value">${escapeHtml(value)}</div><div class="admin-stat-sub">${escapeHtml(sub)}</div></div>`).join('');
     const body = rows.map(row => {
       const ms=auditTimestampMs(row.createdAt), when=ms?new Date(ms).toLocaleString('es-AR'):'—';
-      const target=String(row.targetUid||'—'), op=String(row.operationId||row.bulkJobId||row.sessionId||'—');
+      const target=String(row.targetUid||''), op=String(row.operationId||row.bulkJobId||row.sessionId||'—');
       const points=Number(row.pointsDelta)||Number(row.kind==='points'?row.appliedAmount:0)||0;
       const fichas=Number(row.fichasDelta)||Number(row.kind==='fichas'?row.appliedAmount:0)||0;
       const packs=Number(row.packsDelta)||Number(row.kind==='standardPacks'?row.appliedAmount:0)||0;
       const delta=[points?`P ${points>0?'+':''}${points}`:'',fichas?`F ${fichas>0?'+':''}${fichas}`:'',packs?`S ${packs>0?'+':''}${packs}`:''].filter(Boolean).join(' · ')||'—';
       const actor=String(row.adminUid||row.actorUid||'server');
       const detail=escapeHtml(JSON.stringify(row, (_k,v)=>typeof v?.toDate==='function'?v.toDate().toISOString():v));
-      return `<tr title="${detail}"><td>${escapeHtml(when)}</td><td><strong>${escapeHtml(row.auditKind==='adminAction'?'ADMIN':'ECON')}</strong></td><td>${escapeHtml(economyAuditLabel(row))}</td><td><code>${escapeHtml(target)}</code></td><td>${escapeHtml(delta)}</td><td><code>${escapeHtml(op)}</code></td><td><code>${escapeHtml(actor)}</code></td></tr>`;
+      return `<tr title="${detail}"><td>${escapeHtml(when)}</td><td><strong>${escapeHtml(row.auditKind==='adminAction'?'ADMIN':'ECON')}</strong></td><td>${escapeHtml(economyAuditLabel(row))}</td><td>${target?economyAuditIdentityHtml(target):'—'}</td><td>${escapeHtml(delta)}</td><td><code>${escapeHtml(op)}</code></td><td>${economyAuditIdentityHtml(actor)}</td></tr>`;
     }).join('');
-    overlay.querySelector('#admin-economy-audit-table').innerHTML = `<table class="admin-debug-table"><thead><tr><th>Fecha</th><th>Clase</th><th>Operación</th><th>Usuario</th><th>Delta</th><th>Operation ID</th><th>Actor</th></tr></thead><tbody>${body||`<tr><td colspan="7">${escapeHtml(gameText('admin.audit.empty'))}</td></tr>`}</tbody></table>`;
+    overlay.querySelector('#admin-economy-audit-table').innerHTML = `<table class="admin-debug-table"><thead><tr><th>${gameTextHtml('admin.audit.col.date')}</th><th>${gameTextHtml('admin.audit.col.class')}</th><th>${gameTextHtml('admin.audit.col.operation')}</th><th>${gameTextHtml('admin.audit.col.user')}</th><th>${gameTextHtml('admin.audit.col.delta')}</th><th>${gameTextHtml('admin.audit.col.operationId')}</th><th>${gameTextHtml('admin.audit.col.actor')}</th></tr></thead><tbody>${body||`<tr><td colspan="7">${escapeHtml(gameText('admin.audit.empty'))}</td></tr>`}</tbody></table>`;
     overlay.querySelector('#admin-economy-audit-summary').textContent = gameText('admin.audit.summary',{count:economyAuditRows.length});
   }
 
@@ -7356,6 +7367,7 @@ Receipt: ${receiptId}
     if(btn){btn.disabled=true;btn.textContent=gameText('admin.audit.loading');}
     try {
       const audit=await fetchEconomyAuditForAdmin({limitCount:250});
+      economyAuditUsernames={...(audit?.usernames||{})};
       economyAuditRows=[...(audit?.economyEvents||[]),...(audit?.adminActions||[])].sort((a,b)=>auditTimestampMs(b.createdAt)-auditTimestampMs(a.createdAt));
       economyAuditLoaded=true;
       renderEconomyAudit();
@@ -8123,10 +8135,10 @@ function injectTournamentStyles() {
     #tournament-overlay{position:fixed;inset:0;z-index:9800;background:radial-gradient(ellipse at top,#201710 0%,#0b0907 70%);color:#f0e0b0;padding:22px;overflow:auto}
     .tournament-shell{max-width:1320px;margin:0 auto}.tournament-header{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}.tournament-title{font-size:30px;font-weight:900;letter-spacing:1.2px}.tournament-subtitle{font-size:13px;color:#c8b995}
     .tournament-panel{background:rgba(15,13,9,.82);border:1px solid rgba(212,175,55,.38);border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 12px 34px rgba(0,0,0,.25)}
-    .tournament-rules{line-height:1.55;color:#dfd1ad}.tournament-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.tournament-btn{border:1px solid #d4af37;background:linear-gradient(#44351c,#20170d);color:#ffe7a0;font-weight:800;border-radius:9px;padding:11px 18px;cursor:pointer}.tournament-btn.secondary{border-color:#766b56;background:#17130d;color:#d4cab5}.tournament-btn:disabled{opacity:.45;cursor:wait}
+    .tournament-rules{line-height:1.55;color:#dfd1ad}.tournament-rules-hero{display:flex;align-items:center;gap:16px;padding:18px 20px;border:1px solid rgba(212,175,55,.34);border-radius:14px;background:linear-gradient(135deg,rgba(80,58,21,.34),rgba(19,15,9,.75));margin-bottom:16px}.tournament-rules-trophy{font-size:42px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.35))}.tournament-rules-hero h2{margin:0 0 4px;font-size:25px;letter-spacing:.7px;color:#fff0bf}.tournament-rules-lead{margin:0;color:#cdbf9c;font-size:14px}.tournament-rules-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.tournament-rule-card{border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.035);border-radius:12px;padding:14px 15px}.tournament-rule-card h3{margin:0 0 9px;color:#e3be45;font-size:13px;letter-spacing:.6px}.tournament-rule-card ul{margin:0;padding-left:19px;display:grid;gap:7px}.tournament-rule-card li{color:#ded2b4;font-size:13px;line-height:1.45}.tournament-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.tournament-btn{border:1px solid #d4af37;background:linear-gradient(#44351c,#20170d);color:#ffe7a0;font-weight:800;border-radius:9px;padding:11px 18px;cursor:pointer}.tournament-btn.secondary{border-color:#766b56;background:#17130d;color:#d4cab5}.tournament-btn.danger{border-color:#a94d47;background:linear-gradient(#4e211e,#21100f);color:#ffd6cf}.tournament-btn:disabled{opacity:.45;cursor:wait}
     .tournament-status{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}.tournament-badge{border:1px solid rgba(212,175,55,.42);border-radius:999px;padding:5px 10px;font-size:12px}.tournament-practice{border-color:#7b7b99;color:#c9c9ef}.tournament-next{font-size:17px;font-weight:800;margin:10px 0}.tournament-warning{color:#f0b47a;font-size:12px;line-height:1.45}
     .tournament-fixture-wrap{overflow:auto}.tournament-fixture{display:grid;grid-template-columns:repeat(4,minmax(235px,1fr));gap:14px;min-width:1000px}.tournament-round h3{font-size:13px;letter-spacing:.8px;text-align:center;color:#d4af37;margin:0 0 10px}.tournament-match{border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:7px;margin-bottom:8px;background:rgba(255,255,255,.035)}.tournament-side{display:flex;align-items:center;gap:7px;min-height:31px;padding:3px 5px;border-radius:6px}.tournament-side.winner{background:rgba(80,140,75,.2);color:#d7ffd2}.tournament-side.loser{text-decoration:line-through;opacity:.48}.tournament-side.player{font-weight:900;border-left:3px solid #d4af37}.tournament-avatar{width:25px;height:25px;border-radius:50%;object-fit:cover;background:#332a1b}.tournament-seed-empty{opacity:.38;font-style:italic}.tournament-reward{font-size:11px;color:#b9ab86;text-align:center;margin:0 0 9px}
-    @media(max-width:700px){#tournament-overlay{padding:12px}.tournament-title{font-size:24px}.tournament-header{align-items:flex-start}.tournament-fixture{grid-template-columns:repeat(4,220px)}}`;
+    @media(max-width:900px){.tournament-rules-grid{grid-template-columns:1fr}}@media(max-width:700px){#tournament-overlay{padding:12px}.tournament-title{font-size:24px}.tournament-header{align-items:flex-start}.tournament-rules-hero{align-items:flex-start;padding:14px}.tournament-rules-trophy{font-size:34px}.tournament-fixture{grid-template-columns:repeat(4,220px)}}`;
   document.head.appendChild(style);
 }
 
@@ -8136,7 +8148,8 @@ function tournamentEntrantName(tournament,id){
   return String(tournament?.entrants?.[id]?.name || (id==='player'?getLocalPlayerName():gameText('tournament.npc.fallback')));
 }
 function tournamentEntrantAvatar(tournament,id){
-  if(!id||id==='player')return '';
+  if(!id)return '';
+  if(id==='player') return String(state.currentUser?.photoURL || state.userProfile?.photoURL || '');
   return String(tournament?.entrants?.[id]?.avatar || '');
 }
 function tournamentMatchSideHTML(tournament,id,match){
@@ -8152,6 +8165,16 @@ function tournamentFixtureHTML(tournament){
   }).join('')}</div>`;
 }
 
+function showTournamentBetweenMatchAbandonConfirm(onConfirm, onCancel) {
+  injectMulliganStyles();
+  const modalOverlay=document.createElement('div');
+  modalOverlay.className='gy-modal-overlay';
+  modalOverlay.innerHTML=`<div class="gy-modal-content" style="max-width:460px"><div class="gy-modal-header"><h3>${gameTextHtml('tournament.abandon.title')}</h3></div><div style="display:flex;flex-direction:column;gap:12px;padding:16px"><p style="color:#cfe0d4;font-size:13px;line-height:1.5;margin:0">${gameTextHtml('tournament.abandon.description')}</p><button class="loyalty-ability-btn" id="tournament-abandon-confirm" style="justify-content:center;text-align:center"><span class="loyalty-ability-text">${gameTextHtml('tournament.abandon.confirm')}</span></button><button class="mulligan-btn mulligan-btn-mull" id="tournament-abandon-cancel">${gameTextHtml('tournament.abandon.cancel')}</button></div></div>`;
+  document.body.appendChild(modalOverlay);
+  modalOverlay.querySelector('#tournament-abandon-confirm')?.addEventListener('click',()=>{modalOverlay.remove();onConfirm?.();});
+  modalOverlay.querySelector('#tournament-abandon-cancel')?.addEventListener('click',()=>{modalOverlay.remove();onCancel?.();});
+}
+
 export function showTournamentScreen(onBack, onPlayMatch) {
   injectMainMenuStyles(); injectTournamentStyles();
   document.querySelectorAll('#tournament-overlay').forEach(el=>el.remove());
@@ -8165,18 +8188,23 @@ export function showTournamentScreen(onBack, onPlayMatch) {
 
   const renderState=tournament=>{
     if(!tournament){
-      body.innerHTML=`<div class="tournament-rules"><h2>${gameTextHtml('tournament.rules.title')}</h2><p>${gameTextHtml('tournament.rules.body')}</p><p>${gameTextHtml('tournament.rules.rewards')}</p><div class="tournament-actions"><button class="tournament-btn" id="tournament-start">${gameTextHtml('tournament.start')}</button></div></div>`;
+      body.innerHTML=`<div class="tournament-rules"><div class="tournament-rules-hero"><div class="tournament-rules-trophy">🏆</div><div><h2>${gameTextHtml('tournament.rules.title')}</h2><p class="tournament-rules-lead">${gameTextHtml('tournament.rules.lead')}</p></div></div><div class="tournament-rules-grid"><section class="tournament-rule-card"><h3>${gameTextHtml('tournament.rules.formatTitle')}</h3><ul><li>${gameTextHtml('tournament.rules.format1')}</li><li>${gameTextHtml('tournament.rules.format2')}</li></ul></section><section class="tournament-rule-card"><h3>${gameTextHtml('tournament.rules.resumeTitle')}</h3><ul><li>${gameTextHtml('tournament.rules.resume1')}</li><li>${gameTextHtml('tournament.rules.resume2')}</li></ul></section><section class="tournament-rule-card"><h3>${gameTextHtml('tournament.rules.rewardsTitle')}</h3><ul><li>${gameTextHtml('tournament.rules.rewards1')}</li><li>${gameTextHtml('tournament.rules.rewards2')}</li></ul></section></div><div class="tournament-actions"><button class="tournament-btn" id="tournament-start">${gameTextHtml('tournament.start')}</button></div></div>`;
       body.querySelector('#tournament-start')?.addEventListener('click',()=>void createNew()); return;
     }
     const ended=tournament.status!=='active'; const interrupted=tournament.eliminationReason==='interrupted_match';
     const currentRound=tournament.rounds?.[tournament.currentRoundIndex]; const playerMatch=currentRound?.matches?.find(m=>m.aEntrantId==='player'||m.bEntrantId==='player'); const opponentId=playerMatch?(playerMatch.aEntrantId==='player'?playerMatch.bEntrantId:playerMatch.aEntrantId):null;
     const opponent=tournamentEntrantName(tournament,opponentId); const roundKey=currentRound?.key||'final';
     const statusText=tournament.status==='champion'?gameText('tournament.status.champion'):tournament.status==='eliminated'?(interrupted?gameText('tournament.status.interrupted'):gameText('tournament.status.eliminated')):gameText('tournament.status.active',{round:gameText(tournamentRoundTextKey(roundKey)),opponent});
-    body.innerHTML=`<div class="tournament-status"><div><div class="tournament-badge ${tournament.rewardEligible?'':'tournament-practice'}">${gameTextHtml(tournament.rewardEligible?'tournament.rewarded':'tournament.practice')}</div><div class="tournament-next">${escapeHtml(statusText)}</div><div>${gameTextHtml('tournament.rewardsEarned',{points:Number(tournament.rewardsEarned?.points)||0,packs:Number(tournament.rewardsEarned?.packs)||0})}</div></div></div><div class="tournament-panel" style="margin-top:16px"><h2>${gameTextHtml('tournament.fixture')}</h2><div class="tournament-fixture-wrap">${tournamentFixtureHTML(tournament)}</div></div><div class="tournament-actions">${ended?`<button class="tournament-btn" id="tournament-new">${gameTextHtml('tournament.new')}</button>`:`<button class="tournament-btn" id="tournament-play">${gameTextHtml('tournament.playRound',{round:gameText(tournamentRoundTextKey(roundKey))})}</button>`}</div>${ended?'':`<div class="tournament-warning">${gameTextHtml('tournament.match.warning')}</div>`}`;
+    body.innerHTML=`<div class="tournament-status"><div><div class="tournament-badge ${tournament.rewardEligible?'':'tournament-practice'}">${gameTextHtml(tournament.rewardEligible?'tournament.rewarded':'tournament.practice')}</div><div class="tournament-next">${escapeHtml(statusText)}</div><div>${gameTextHtml('tournament.rewardsEarned',{points:Number(tournament.rewardsEarned?.points)||0,packs:Number(tournament.rewardsEarned?.packs)||0})}</div></div></div><div class="tournament-panel" style="margin-top:16px"><h2>${gameTextHtml('tournament.fixture')}</h2><div class="tournament-fixture-wrap">${tournamentFixtureHTML(tournament)}</div></div><div class="tournament-actions">${ended?`<button class="tournament-btn" id="tournament-new">${gameTextHtml('tournament.new')}</button>`:`<button class="tournament-btn" id="tournament-play">${gameTextHtml('tournament.playRound',{round:gameText(tournamentRoundTextKey(roundKey))})}</button><button class="tournament-btn danger" id="tournament-abandon">${gameTextHtml('tournament.abandon')}</button>`}</div>${ended?'':`<div class="tournament-warning">${gameTextHtml('tournament.match.warning')}</div>`}`;
     body.querySelector('#tournament-new')?.addEventListener('click',()=>void createNew());
     body.querySelector('#tournament-play')?.addEventListener('click',()=>{if(busy)return;overlay.remove();onPlayMatch?.(tournament);});
+    body.querySelector('#tournament-abandon')?.addEventListener('click',()=>{
+      if(busy)return;
+      showTournamentBetweenMatchAbandonConfirm(()=>void abandonCurrent(tournament),()=>{});
+    });
   };
   const createNew=async()=>{if(busy)return;setBusy(true);body.innerHTML=gameTextHtml('tournament.starting');try{const result=await startTournament();renderState(result?.tournament||null);}catch(error){console.error('Tournament start failed:',error);body.innerHTML=`<div class="store-error-msg">${gameTextHtml('tournament.error.start')}</div><div class="tournament-actions"><button class="tournament-btn secondary" id="tournament-retry">${gameTextHtml('common.retry')}</button></div>`;body.querySelector('#tournament-retry')?.addEventListener('click',()=>void load());}finally{setBusy(false);}};
+  const abandonCurrent=async tournament=>{if(busy||!tournament?.tournamentId)return;setBusy(true);const prior=body.innerHTML;body.innerHTML=`<div class="tournament-next">${gameTextHtml('tournament.abandon.working')}</div>`;try{await abandonTournament(tournament.tournamentId);overlay.remove();onBack?.();}catch(error){console.error('Tournament abandon failed:',error);body.innerHTML=prior;renderState(tournament);showSimpleAlertModal(gameText('tournament.error.abandon'));}finally{setBusy(false);}};
   const load=async()=>{if(busy)return;setBusy(true);try{renderState(await getTournamentState({resolveInterrupted:true}));}catch(error){console.error('Tournament load failed:',error);body.innerHTML=`<div class="store-error-msg">${gameTextHtml('tournament.error.load')}</div><div class="tournament-actions"><button class="tournament-btn secondary" id="tournament-retry">${gameTextHtml('common.retry')}</button></div>`;body.querySelector('#tournament-retry')?.addEventListener('click',()=>void load());}finally{setBusy(false);}};
   void load();
   return overlay;
@@ -10104,7 +10132,7 @@ export function showDamageAssignmentModal(attackerItem, blockersArray, totalDama
 
   content.innerHTML = `
     <p style="margin-bottom: 1.2rem; font-size: 1.1rem; color: #eee;">
-      ${gameTextHtml('damage.modal.intro', { card: attacker.name, power: totalDamage })}<br>
+      ${gameTextHtml('damage.modal.intro', { attacker: attacker.name, power: totalDamage })}<br>
       <span style="font-size: 0.85rem; color: #aaa;">${gameTextHtml('damage.modal.question')}</span>
     </p>`;
   

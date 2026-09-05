@@ -21,7 +21,7 @@ import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, where, documentId, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app-check.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_SAVED_DECKS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
@@ -29,7 +29,7 @@ import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurcha
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, getClassifiedsServer, purchaseClassifiedCardServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, getClassifiedsServer, purchaseClassifiedCardServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
@@ -111,6 +111,10 @@ export async function settleTournamentMatch(tournamentId, matchId, won) {
 }
 export async function forfeitTournament(tournamentId, matchId) {
   const response = await forfeitTournamentServer(tournamentId, matchId);
+  return response?.result || null;
+}
+export async function abandonTournament(tournamentId) {
+  const response = await abandonTournamentServer(tournamentId);
   return response?.result || null;
 }
 export async function fetchStorefrontAuthority() {
@@ -2104,11 +2108,33 @@ export async function fetchEconomyAuditForAdmin({ limitCount = 250 } = {}) {
     auditKind: kind,
     ...d.data()
   }));
-  return {
-    economyEvents: normalize('economyEvent', eventsSnap),
-    adminActions: normalize('adminAction', actionsSnap),
-    limitCount: safeLimit
-  };
+  const economyEvents = normalize('economyEvent', eventsSnap);
+  const adminActions = normalize('adminAction', actionsSnap);
+
+  // Admin works with usernames, not opaque UIDs. Resolve only the users referenced by the
+  // currently loaded audit window (never the full users collection), in Firestore-safe
+  // batches. This is read-only and best-effort: audit evidence still renders if a profile
+  // was deleted or a lookup fails.
+  const referencedUids = [...new Set([...economyEvents, ...adminActions]
+    .flatMap(row => [row.targetUid, row.actorUid, row.adminUid])
+    .map(value => String(value || '').trim())
+    .filter(value => value && value !== 'server'))];
+  const usernames = {};
+  try {
+    for (let i = 0; i < referencedUids.length; i += 30) {
+      const chunk = referencedUids.slice(i, i + 30);
+      if (!chunk.length) continue;
+      const profileSnap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', chunk)));
+      for (const profileDoc of profileSnap.docs) {
+        const profile = profileDoc.data() || {};
+        const username = String(profile.username || profile.displayName || '').trim();
+        if (username) usernames[profileDoc.id] = username;
+      }
+    }
+  } catch (error) {
+    console.warn('No se pudieron resolver todos los usernames de Auditoría Económica; se mostrarán UIDs como fallback:', error);
+  }
+  return { economyEvents, adminActions, usernames, limitCount: safeLimit };
 }
 
 export async function fetchGameRewardAuditForAdmin() {

@@ -116,9 +116,10 @@ assert.ok(main.includes('void playback()'),'remote playback starts after authori
 assert.ok(director.includes('broadcast:false,remoteCue:true'),'remote playback cannot echo back');
 assert.ok(director.includes("cue.zoneFrom==='library'&&cue.zoneTo==='hand'") || main.includes("cue.zoneFrom === 'library' && cue.zoneTo === 'hand'"),'private draws hide card identity on public cue');
 
-// CI retention: cleanup must not delete the new contract and CI must execute it explicitly.
-assert.ok(workflow.includes('test_animation_actor_parity_sfx_cues_23_19_4_5.mjs'),'CI whitelist retains v23.19.4.5 test');
-assert.ok(workflow.includes('Validate Animation Actor Parity + SFX Cue Semantics 23.19.4.5'),'CI runs v23.19.4.5 contract');
+// CI retention: the contract is executed exactly once through the canonical 23.20.0 manifest.
+const fastManifest=fs.readFileSync(path.join(root,'tools','ci_fast_contract_manifest_23_20_0.txt'),'utf8');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'),'CI executes the canonical fast contract manifest');
+assert.ok(fastManifest.includes('tools/test_animation_actor_parity_sfx_cues_23_19_4_5.mjs'),'canonical manifest retains v23.19.4.5 contract');
 
 console.log('ANIMATION_ACTOR_PARITY_SFX_CUES_23_19_4_5_OK');
 console.log('actors=player+tano+host+guest presentation-cues=role-owned-deduped-no-echo');

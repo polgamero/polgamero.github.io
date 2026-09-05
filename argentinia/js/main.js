@@ -18,7 +18,7 @@ import { stampCardOwner, zoneForCardOwner, cardOwnerIsLocal } from './zoneOwners
 import { PRIVATE_ZONE_VISIBILITY, PRIVATE_ZONE_FILTERS, buildPrivateZoneOffer, resolvePrivateZoneSelection } from './privateZoneProtocol.js';
 import { isUsernameConfigured } from './usernames.js';
 import { showUsernameSetupModal } from './usernameUI.js';
-import { applyGameTextOverrides, gameText } from './gameTexts.js';
+import { applyGameTextOverrides, gameText, setGameTextRuntimeVariablesProvider } from './gameTexts.js';
 import { POOL_BASELINE } from './poolContract.js';
 import { chooseSoloStartingSide, normalizeStartingRole, startingSideForRole } from './startingPlayer.js';
 import { showStartingCoinToss } from './startingCoin.js';
@@ -741,6 +741,10 @@ export function getRivalName() {
   return 'El Tano';
 }
 
+// Central runtime interpolation for editable Game Texts. Bot-facing copy can use {rival}
+// without every call site needing to remember to pass the current opponent name.
+setGameTextRuntimeVariablesProvider(() => ({ rival: getRivalName() }));
+
 // FASE 3, ETAPA 4: deckSource es { type: 'random', identity: [...] } (comportamiento de
 // siempre, disponible con o sin sesión) o { type: 'saved', deck: {...} } (uno de tus
 // mazos guardados de verdad, armado 100% desde tu colección). El del Tano SIEMPRE es al
@@ -1023,7 +1027,7 @@ async function initGame(deckSource, options = {}) {
       logMsg(gameText('game.start.yourTurnHint'));
     } else {
       logMsg(gameText('game.start.waitingRival'));
-      setTimeout(() => { takeBotPriorityAction().catch(err => console.error('Falló el primer turno del Tano:', err)); }, 180);
+      setTimeout(() => { takeBotPriorityAction().catch(err => console.error(`Falló el primer turno de ${getRivalName()}:`, err)); }, 180);
     }
   };
 
@@ -1118,7 +1122,7 @@ async function resumeSoloRecoveryGame(candidate) {
   render();
   logMsg(gameText('solo.recovery.restored'));
   if (!state.gameOver && state.priorityPlayer === 'rival') {
-    setTimeout(() => takeBotPriorityAction().catch(err => console.error('Falló la reanudación de prioridad del Tano:', err)), 180);
+    setTimeout(() => takeBotPriorityAction().catch(err => console.error(`Falló la reanudación de prioridad de ${getRivalName()}:`, err)), 180);
   }
 }
 
@@ -10236,7 +10240,7 @@ export async function resumeAfterInteractiveEffect() {
     // takeBotPriorityAction(): responde si puede y, si no, pasa prioridad.
     if (!state.currentMatch && !state.gameOver && state.priorityPlayer === 'rival') {
       setTimeout(() => {
-        takeBotPriorityAction().catch(err => console.error('Falló la reanudación del Tano tras una resolución interactiva:', err));
+        takeBotPriorityAction().catch(err => console.error(`Falló la reanudación de ${getRivalName()} tras una resolución interactiva:`, err));
       }, 180);
     }
   } finally {

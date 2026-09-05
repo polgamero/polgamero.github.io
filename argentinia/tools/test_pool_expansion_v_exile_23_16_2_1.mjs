@@ -132,7 +132,9 @@ for(const e of tokenEffects){
 const workflow=read('../.github/workflows/pages.yml');
 assert.ok(workflow.includes('regression_legacy_23_17_3_1.zip'));
 assert.ok(workflow.includes('ci_regression_manifest_23_17_3_1.txt'));
-assert.ok(workflow.includes('test_prebuilt_decks_store_23_17_3.mjs'));
+const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'));
+assert.ok(fastManifest.includes('tools/test_prebuilt_decks_store_23_17_3.mjs'));
 assert.ok(fs.readFileSync(path.join(__dirname,'ci_regression_manifest_23_17_3_1.txt'),'utf8').includes('test_cast_from_exile_engine_23_16_2.mjs'));
 
 console.log(`PASS test_pool_expansion_v_exile_23_16_2_1.mjs · Pool 790 · +30 · exileEffects=${exileEffects.length} · cast/play payoffs + opponent library + custom/free/any-time · C10 U12 R7 M1`);

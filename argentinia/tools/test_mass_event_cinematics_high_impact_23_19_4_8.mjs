@@ -88,8 +88,9 @@ assert.ok(director.includes("cue.kind==='control_change'"));
 
 // Admin schema/catalog/CI advanced without changing protocol or Firestore Rules.
 assert.ok(firebase.includes('schemaVersion: 7'));
-assert.ok(workflow.includes('test_mass_event_cinematics_high_impact_23_19_4_8.mjs'));
-assert.ok(workflow.includes('Validate Mass Event Cinematics + High-Impact Feedback 23.19.4.8'));
+const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'));
+assert.ok(fastManifest.includes('tools/test_mass_event_cinematics_high_impact_23_19_4_8.mjs'));
 
 console.log('MASS_EVENT_CINEMATICS_HIGH_IMPACT_23_19_4_8_OK');
 console.log('events=creature-wipe+land-wipe+graveyard-purge+mass-land-return+fog+proliferate+control-change');

@@ -53,11 +53,29 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'tournament.rules.title': definition('Torneo', 'REGLAS DEL TORNEO', 'Título de reglas del Torneo.'),
   'tournament.rules.body': definition('Torneo', 'Entrás a un fixture de 16 participantes. Ganá Octavos, Cuartos, Semifinal y Final para salir campeón. Entre partidos podés salir y continuar más tarde. Si abandonás, cerrás o recargás durante una partida de Torneo, perdés esa partida y quedás eliminado.', 'Reglas completas del Torneo.'),
   'tournament.rules.rewards': definition('Torneo', 'Cada ronda ganada entrega su premio. Los torneos que superan el límite diario premiado se pueden jugar igual, pero quedan en modo práctica.', 'Explicación de premios y práctica.'),
+  'tournament.rules.lead': definition('Torneo', '16 participantes. Cuatro victorias te separan del campeonato.', 'Resumen destacado de las reglas del Torneo.'),
+  'tournament.rules.formatTitle': definition('Torneo', '⚔️ FORMATO', 'Título del bloque de formato.'),
+  'tournament.rules.format1': definition('Torneo', 'Eliminación directa: Octavos → Cuartos → Semifinal → Final.', 'Bullet de formato y rondas.'),
+  'tournament.rules.format2': definition('Torneo', 'Si perdés una partida, quedás eliminado del Torneo.', 'Bullet de eliminación.'),
+  'tournament.rules.resumeTitle': definition('Torneo', '💾 CONTINUAR MÁS TARDE', 'Título del bloque de persistencia.'),
+  'tournament.rules.resume1': definition('Torneo', 'Entre partidos podés volver al menú, cerrar el juego y continuar otro día.', 'Bullet de persistencia entre partidos.'),
+  'tournament.rules.resume2': definition('Torneo', 'Una partida ya iniciada no se pausa: abandonar, cerrar o recargar cuenta como derrota.', 'Bullet de no-pausa durante una partida.'),
+  'tournament.rules.rewardsTitle': definition('Torneo', '🏆 PREMIOS', 'Título del bloque de premios.'),
+  'tournament.rules.rewards1': definition('Torneo', 'Cada ronda ganada entrega el premio configurado para esa etapa.', 'Bullet de premios por ronda.'),
+  'tournament.rules.rewards2': definition('Torneo', 'Si superaste el límite diario de torneos premiados, podés seguir jugando en modo práctica.', 'Bullet de límite diario y práctica.'),
   'tournament.start': definition('Torneo', 'EMPEZAR TORNEO', 'Botón para crear un Torneo.'),
   'tournament.new': definition('Torneo', 'NUEVO TORNEO', 'Botón para crear otro Torneo después de finalizar uno.'),
   'tournament.continue': definition('Torneo', 'CONTINUAR TORNEO', 'Botón para continuar un Torneo activo.'),
   'tournament.playRound': definition('Torneo', 'JUGAR {round}', 'Botón para jugar la ronda actual.'),
   'tournament.back': definition('Torneo', '← VOLVER AL MENÚ', 'Botón para salir del fixture entre partidas.'),
+  'tournament.abandon': definition('Torneo', 'ABANDONAR TORNEO', 'Botón para terminar voluntariamente un Torneo activo entre partidos.'),
+  'tournament.abandon.title': definition('Torneo', '🏳️ ¿Abandonar este Torneo?', 'Título de confirmación al abandonar entre partidos.'),
+  'tournament.abandon.description': definition('Torneo', 'Vas a cerrar este Torneo y no podrás retomarlo. No cuenta como abandonar una partida y no modifica los premios ya ganados. Después podrás iniciar otro Torneo normalmente.', 'Explicación de abandono entre partidos.'),
+  'tournament.abandon.confirm': definition('Torneo', 'SÍ, ABANDONAR TORNEO', 'Confirmar abandono entre partidos.'),
+  'tournament.abandon.cancel': definition('Torneo', 'SEGUIR EN EL TORNEO', 'Cancelar abandono entre partidos.'),
+  'tournament.abandon.working': definition('Torneo', 'Cerrando Torneo…', 'Estado mientras el servidor procesa el abandono entre partidos.'),
+  'tournament.abandon.done': definition('Torneo', 'Torneo abandonado.', 'Confirmación de abandono entre partidos.'),
+  'tournament.error.abandon': definition('Torneo', 'No se pudo abandonar el Torneo. Revisá tu conexión e intentá de nuevo.', 'Error al abandonar un Torneo entre partidos.'),
   'tournament.loading': definition('Torneo', 'Cargando torneo…', 'Estado mientras se carga el Torneo.'),
   'tournament.starting': definition('Torneo', 'Armando el fixture…', 'Estado mientras se crea el Torneo.'),
   'tournament.fixture': definition('Torneo', 'FIXTURE', 'Título del fixture.'),
@@ -339,23 +357,23 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'game.points.pvpDailyCapPartial': definition('Partida', '🪙 Sumaste {points} puntos. El premio se redujo porque con eso alcanzaste el tope diario de {cap} puntos PvP.', 'Aviso de premio parcial al alcanzar el cap diario.'),
   'game.points.pvpRewarded': definition('Partida', '🪙 Recompensa PvP acreditada: +{points} puntos.', 'Aviso positivo de settlement PvP.'),
   'store.pointsHow.pvpLimits': definition('Tienda', 'PvP: los abandonos puntúan después de {minutes} min Y {turns} turnos completos. Máximo {matches} partidas puntuadas por rival/día y {cap} puntos PvP por día.', 'Resumen visible de límites anti-farming PvP.'),
-  'game.points.botWin': definition('Partida', '🪙 ¡Le ganaste al Tano en {difficulty}! Sumaste {points} puntos de premio — llevás {total} en total.', 'Premio por victoria contra el bot.'),
+  'game.points.botWin': definition('Partida', '🪙 ¡Le ganaste a {rival} en {difficulty}! Sumaste {points} puntos de premio — llevás {total} en total.', 'Premio por victoria contra el bot.'),
   'game.points.botLoss': definition('Partida', '🪙 Perdiste esta vez, pero te llevás {points} puntos de recompensa igual — llevás {total} en total. ¡Mejor suerte la próxima!', 'Premio por derrota contra el bot.'),
   'game.points.saveError': definition('Partida', '⚠️ No se pudieron guardar los puntos de esta partida — revisá tu conexión.', 'Error al guardar puntos de fin de partida.'),
   'game.points.deferred': definition('Partida', '⏳ No pudimos cerrar la liquidación de esta partida ahora. Quedó pendiente y se reintentará automáticamente cuando vuelvas a conectar; el resultado final puede ser 0 puntos si corresponde por las reglas anti-farming.', 'Liquidación de partida pendiente de settlement/reintento.'),
   'game.points.recovered': definition('Partida', '✅ Se resolvió una liquidación pendiente: +{points} puntos. Tu total ahora es {total}.', 'Confirmación visible al recuperar una liquidación pendiente con puntos.'),
   'game.points.recoveredZero': definition('Partida', '✅ Se resolvió una liquidación pendiente. Esta partida otorgó 0 puntos según las reglas de recompensa/anti-farming.', 'Confirmación visible al cerrar una liquidación pendiente sin puntos.'),
   'game.points.recoveryPending': definition('Partida', '⚠️ Todavía queda(n) {count} liquidación(es) pendiente(s). Se volverán a intentar automáticamente cuando tengas conexión y vuelvas a ingresar.', 'Aviso visible cuando una liquidación sigue pendiente después del login.'),
-  'game.mulligan.bot': definition('Partida', '🃏 El Tano hizo mulligan {count} vez(es) y dejó {count} carta(s) al fondo de su mazo.', 'Resumen del mulligan del bot.'),
+  'game.mulligan.bot': definition('Partida', '🃏 {rival} hizo mulligan {count} vez(es) y dejó {count} carta(s) al fondo de su mazo.', 'Resumen del mulligan del bot.'),
   'game.mulligan.keep': definition('Partida', 'Te quedaste con tu mano inicial.', 'Confirmación de mano inicial.'),
   'game.mulligan.allBottom': definition('Partida', 'Dejaste tu mano entera ({count} carta(s)) al fondo del mazo. Arrancás con 0 cartas en mano.', 'Resultado de mulligan extremo.'),
   'game.mulligan.bottom': definition('Partida', 'Dejaste {bottom} carta(s) al fondo del mazo. Mano final: {hand} cartas.', 'Resultado final de mulligan.'),
   'game.draw.local': definition('Partida', '🃏 Robaste una carta.', 'Robo normal del jugador.'),
-  'game.draw.rival': definition('Partida', '🃏 El Tano robó una carta.', 'Robo normal del bot.'),
+  'game.draw.rival': definition('Partida', '🃏 {rival} robó una carta.', 'Robo normal del bot.'),
   'game.deckout.local': definition('Partida', '💀 ¡Intentaste robar de un mazo vacío! Te quedaste sin cartas para seguir jugando.', 'Deck-out del jugador.'),
-  'game.deckout.rival': definition('Partida', '🏆 ¡El Tano intentó robar de un mazo vacío! Se quedó sin cartas para seguir jugando.', 'Deck-out del bot.'),
+  'game.deckout.rival': definition('Partida', '🏆 ¡{rival} intentó robar de un mazo vacío! Se quedó sin cartas para seguir jugando.', 'Deck-out del bot.'),
   'game.handLimit.prompt': definition('Partida', '⚠️ Tenés demasiadas cartas. Hacé clic en {count} carta(s) para descartar.', 'Aviso de descarte por límite de mano.'),
-  'game.handLimit.botDiscard': definition('Partida', '🗑️ El Tano descartó {card} por límite de mano.', 'Descarte automático del bot por límite de mano.'),
+  'game.handLimit.botDiscard': definition('Partida', '🗑️ {rival} descartó {card} por límite de mano.', 'Descarte automático del bot por límite de mano.'),
   'game.handLimit.selfDiscard': definition('Partida', '🗑️ Descartaste {card}.', 'Descarte del jugador por límite de mano.'),
   'game.turn.rival': definition('Partida', '📌 --- Le toca el turno a tu rival. ---', 'Cambio de turno al rival.'),
   'game.turn.step': definition('Partida', '📌 --- {owner}: Paso de {phase} ---', 'Anuncio de paso/fase en el log.'),
@@ -543,7 +561,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'ability.pendingPayment': definition('Habilidades y costos', 'Terminá el casteo o pago anterior antes de activar otra cosa.', 'Bloqueo por pago/casteo pendiente.'),
   'ability.additionalDiscard.missing': definition('Habilidades y costos', 'No tenés {count} carta(s) para pagar el descarte de {card}.', 'Costo activado de descarte sin recursos suficientes.'),
   'ability.additionalDiscard.failed': definition('Habilidades y costos', 'No se pudo completar el descarte de {card}; la activación se cancela.', 'Fallo defensivo de costo activado de descarte.'),
-  'ability.additionalDiscard.botPaid': definition('Habilidades y costos', '🤖 {card}: Tano descartó {count} carta(s) como costo de activación.', 'Descarte pagado por Tano para una habilidad activada.'),
+  'ability.additionalDiscard.botPaid': definition('Habilidades y costos', '🤖 {card}: {rival} descartó {count} carta(s) como costo de activación.', 'Descarte pagado por el rival controlado por IA para una habilidad activada.'),
   'ability.noSacrificeCandidate': definition('Habilidades y costos', '{card}: no controlás ningún {kind} que puedas sacrificar para pagar esta habilidad.', 'Bloqueo antes de activar una habilidad cuyo costo de sacrificio no tiene candidatos.'),
   'sacrifice.kind.creature': definition('Habilidades y costos', 'criatura', 'Nombre humano del tipo sacrificable criatura.'),
   'sacrifice.kind.artifact': definition('Habilidades y costos', 'artefacto', 'Nombre humano del tipo sacrificable artefacto.'),
@@ -835,7 +853,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'sacrifice.ownOnly': definition('Habilidades y costos', 'Solo podés sacrificar tus propios permanentes.', 'Sacrificio sólo sobre permanentes propios.'),
   'sacrifice.invalid': definition('Habilidades y costos', 'Ese no es un {type} válido para sacrificar acá.', 'Permanente inválido para sacrificio.'),
   'sacrifice.self': definition('Habilidades y costos', '🔪 ¡Sacrificaste a {card}!{token}', 'Sacrificio realizado por el jugador.'),
-  'sacrifice.self.bot': definition('Habilidades y costos', '🔪 ¡El Tano sacrificó a {card}!{token}', 'Sacrificio realizado por el Tano.'),
+  'sacrifice.self.bot': definition('Habilidades y costos', '🔪 ¡{rival} sacrificó a {card}!{token}', 'Sacrificio realizado por el Tano.'),
   'sacrifice.tokenSuffix': definition('Habilidades y costos', ' Al ser ficha, dejó de existir.', 'Sufijo al sacrificar una ficha.'),
   'sacrifice.missing': definition('Habilidades y costos', '⚠️ No se pudo sacrificar a {card}: ya no está en el campo.', 'Sacrificio falla porque el permanente ya no está.'),
   'multiplayer.ready.both': definition('Multiplayer', '¡Ambos listos!', 'Barrera de preparación cuando ambos terminaron.'),
@@ -874,26 +892,26 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'effect.counterGeneric.add': definition('Habilidades y costos', '🔵 {card}: {target} recibió {count} contador(es) de {counter}.', 'Agregar counters genéricos.'),
   'effect.counterGeneric.remove': definition('Habilidades y costos', '🔵 {card}: se removieron {count} contador(es) de {counter} de {target}.', 'Remover counters genéricos.'),
   'counter.stun.consumed': definition('Partida', '⏸️ {card} no se enderezó: se removió un contador de Aturdimiento.', 'Reemplazo de enderezar por Stun counter.'),
-  'bot.loyaltyStack': definition('Partida', '🔮 El Tano puso "{ability}" de {card} en la pila.', 'Bot activa Creencia.'),
-  'bot.graveCast': definition('Partida', '🔄 El Tano usó {ability} en {card}.', 'Bot usa Otra vuelta/Zafar.'),
-  'bot.instantAttack': definition('Partida', '🔴 ¡El Tano respondió a tus atacantes con "{card}"!', 'Respuesta instantánea del bot al ataque.'),
-  'bot.combatPump': definition('Partida', '💪 ¡El Tano salvó a {target} con "{card}" en medio del combate!', 'Pump de combate del bot.'),
-  'bot.protect': definition('Partida', '🛡️ ¡El Tano protegió a {target} con "{card}" antes de que le hicieras algo!', 'Protección del bot.'),
-  'bot.instantResponse': definition('Partida', '🔴 ¡El Tano te respondió en velocidad instantánea con "{card}"!', 'Respuesta instantánea general del bot.'),
-  'bot.mode': definition('Partida', '🔀 El Tano eligió el modo "{mode}" para {card}.', 'Modo elegido por el bot.'),
+  'bot.loyaltyStack': definition('Partida', '🔮 {rival} puso "{ability}" de {card} en la pila.', 'Bot activa Creencia.'),
+  'bot.graveCast': definition('Partida', '🔄 {rival} usó {ability} en {card}.', 'Bot usa Otra vuelta/Zafar.'),
+  'bot.instantAttack': definition('Partida', '🔴 ¡{rival} respondió a tus atacantes con "{card}"!', 'Respuesta instantánea del bot al ataque.'),
+  'bot.combatPump': definition('Partida', '💪 ¡{rival} salvó a {target} con "{card}" en medio del combate!', 'Pump de combate del bot.'),
+  'bot.protect': definition('Partida', '🛡️ ¡{rival} protegió a {target} con "{card}" antes de que le hicieras algo!', 'Protección del bot.'),
+  'bot.instantResponse': definition('Partida', '🔴 ¡{rival} te respondió en velocidad instantánea con "{card}"!', 'Respuesta instantánea general del bot.'),
+  'bot.mode': definition('Partida', '🔀 {rival} eligió el modo "{mode}" para {card}.', 'Modo elegido por el bot.'),
   'bot.attackLocked': definition('Partida', '🚫 {card} no puede atacar en este combate por {source}.', 'Restricción de ataque del bot.'),
-  'bot.noAttack': definition('Partida', 'El Tano no atacó con nada.', 'Bot declara cero atacantes.'),
-  'bot.block.cleanKill': definition('Combate', '🛡️ El Tano bloquea a tu {attacker} con {blocker} y se lo lleva puesto sin perder nada.', 'Bloqueo óptimo del bot.'),
-  'bot.block.safe': definition('Combate', '🛡️ El Tano frena a tu {attacker} con {blocker}: no arriesga nada, sobrevive tranquilo.', 'Bloqueo seguro del bot.'),
-  'bot.block.trade': definition('Combate', '🛡️ El Tano bloquea a tu {attacker} con {blocker}, cambio parejo.', 'Trade del bot.'),
-  'bot.block.chump': definition('Combate', '🛡️ El Tano sacrifica a {blocker} para frenar el golpe de tu {attacker}.', 'Chump block del bot.'),
-  'bot.block.gangKillNoTrample': definition('Combate', '🧠 El Tano gangea a tu {attacker} con {blockers}: lo mata y no pasa nada de Arrollar.', 'Bloqueo múltiple del bot sin overflow.'),
-  'bot.block.gangKillTrample': definition('Combate', '🧠 El Tano gangea a tu {attacker} con {blockers} para matarlo, aunque algo de Arrollar se filtre.', 'Bloqueo múltiple del bot con overflow.'),
-  'bot.block.gangAbsorb': definition('Combate', '🧠 El Tano gangea a tu {attacker} con {blockers} para absorber todo el Arrollar, aunque no logre matarlo.', 'Bloqueo múltiple para absorber Arrollar.'),
-  'bot.block.trampleChump': definition('Combate', '🛡️ El Tano sacrifica a {blocker} para amortiguar el Arrollar de tu {attacker}.', 'Chump contra Arrollar.'),
-  'bot.block.menaceGang': definition('Combate', '👥 ¡Intimidante! El Tano te bloquea en pandilla a {attacker}.', 'Bloqueo de Intimidante por el bot.'),
-  'bot.block.done': definition('Combate', '🛡️ El Tano ha asignado sus defensores.', 'Bot terminó de bloquear.'),
-  'bot.block.combat2': definition('Combate', '🧠 El Tano evaluó el combate completo y asignó {count} bloqueador(es).', 'Combat Bot 2.0: asignación global de bloqueadores.'),
+  'bot.noAttack': definition('Partida', '{rival} no atacó con nada.', 'Bot declara cero atacantes.'),
+  'bot.block.cleanKill': definition('Combate', '🛡️ {rival} bloquea a tu {attacker} con {blocker} y se lo lleva puesto sin perder nada.', 'Bloqueo óptimo del bot.'),
+  'bot.block.safe': definition('Combate', '🛡️ {rival} frena a tu {attacker} con {blocker}: no arriesga nada, sobrevive tranquilo.', 'Bloqueo seguro del bot.'),
+  'bot.block.trade': definition('Combate', '🛡️ {rival} bloquea a tu {attacker} con {blocker}, cambio parejo.', 'Trade del bot.'),
+  'bot.block.chump': definition('Combate', '🛡️ {rival} sacrifica a {blocker} para frenar el golpe de tu {attacker}.', 'Chump block del bot.'),
+  'bot.block.gangKillNoTrample': definition('Combate', '🧠 {rival} gangea a tu {attacker} con {blockers}: lo mata y no pasa nada de Arrollar.', 'Bloqueo múltiple del bot sin overflow.'),
+  'bot.block.gangKillTrample': definition('Combate', '🧠 {rival} gangea a tu {attacker} con {blockers} para matarlo, aunque algo de Arrollar se filtre.', 'Bloqueo múltiple del bot con overflow.'),
+  'bot.block.gangAbsorb': definition('Combate', '🧠 {rival} gangea a tu {attacker} con {blockers} para absorber todo el Arrollar, aunque no logre matarlo.', 'Bloqueo múltiple para absorber Arrollar.'),
+  'bot.block.trampleChump': definition('Combate', '🛡️ {rival} sacrifica a {blocker} para amortiguar el Arrollar de tu {attacker}.', 'Chump contra Arrollar.'),
+  'bot.block.menaceGang': definition('Combate', '👥 ¡Intimidante! {rival} te bloquea en pandilla a {attacker}.', 'Bloqueo de Intimidante por el bot.'),
+  'bot.block.done': definition('Combate', '🛡️ {rival} ha asignado sus defensores.', 'Bot terminó de bloquear.'),
+  'bot.block.combat2': definition('Combate', '🧠 {rival} evaluó el combate completo y asignó {count} bloqueador(es).', 'Combat Bot 2.0: asignación global de bloqueadores.'),
 
   // Etapa 6 — cierre de auditoría inversa: narración humana residual.
   'account.starter.saved60': definition('Cuenta', '🎁 ¡Se guardó tu colección inicial de 60 cartas en tu cuenta!', 'Confirmación de colección inicial legacy.'),
@@ -1134,33 +1152,33 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'copy.permanent.became': definition('Partida', '🪞 {source} se convirtió en una copia de {target}.', 'Copy Engine: permanente se vuelve copia.'),
   'copy.permanent.sourceGone': definition('Partida', '⚠️ {card}: la fuente que debía convertirse en copia ya no está en el campo.', 'Copy Engine: fuente ausente para become_copy.'),
   'copy.permanent.targetGone': definition('Partida', '⚠️ {card}: el permanente a copiar ya no está en el campo.', 'Copy Engine: template ausente.'),
-  'bot.ward.cantPay': definition('Partida', '🔶 {target} tenía Impuesto {cost} y al Tano no le alcanzó el maná extra — el hechizo se pierde sin efecto.', 'Bot no puede pagar Impuesto.'),
-  'bot.ward.paid': definition('Partida', '🔶 El Tano pagó Impuesto {cost} para que su hechizo pase igual.', 'Bot paga Impuesto.'),
-  'bot.escape.exile': definition('Partida', '🌀 El Tano exilió {count} carta(s) de su cementerio para el Zafar de {card}.', 'Bot paga Zafar.'),
-  'bot.crew.done': definition('Partida', '🚗 El Tano tripuló a {card} con {count} criatura(s) suya(s) ({power} de poder) — ahora es un {basePower}/{baseToughness}.', 'Compatibilidad legacy de Tripular del bot.'),
-  'bot.crew.activated': definition('Partida', '🚗 El Tano activó Tripular sobre {card} con {count} criatura(s) ({power}/{required} de poder). La habilidad está en la pila.', 'Bot activa Tripular.'),
-  'bot.ability.activated': definition('Partida', '⚙️ El Tano activó una habilidad de {card}. Tenés prioridad para responder.', 'Bot activa habilidad.'),
-  'bot.ability.usedWith': definition('Partida', '⚙️ El Tano usó la habilidad de {source} con {target}. Tenés prioridad para responder.', 'Bot usa habilidad con objetivo/coste.'),
-  'bot.priority.noResponse': definition('Partida', '👁️ El Tano revisó su mano y sus habilidades, no tiene respuestas y pasa prioridad.', 'Bot pasa prioridad sin respuesta.'),
-  'bot.land.played': definition('Partida', 'El Tano bajó una tierra: {card}.', 'Bot juega Tierra.'),
-  'bot.land.playedTapped': definition('Partida', 'El Tano bajó una tierra: {card} (entra girada).', 'Bot juega Tierra girada.'),
-  'bot.kicker.paid': definition('Partida', '💪 El Tano pagó también el Yapa de {card}.', 'Bot paga la Yapa.'),
-  'bot.x.chosen': definition('Partida', '✨ El Tano eligió X = {x} para {card}.', 'Bot elige X.'),
-  'bot.cast.noTargets': definition('Partida', 'El Tano no tenía objetivos válidos para {card} y no lo lanzó.', 'Bot no lanza por falta de objetivos.'),
-  'bot.cast.noBeneficialCreature': definition('Partida', 'El Tano no tenía ninguna criatura que se beneficiara de {card} y no lo lanzó.', 'Bot no lanza buff sin objetivo útil.'),
-  'bot.cast.noAuraTarget': definition('Partida', 'El Tano no tenía criaturas para encantar con {card} y no lo lanzó.', 'Bot no lanza Encanto sin target.'),
-  'bot.cast.noModalTargets': definition('Partida', 'El Tano no encontró objetivos válidos para todos los modos de {card} y no lo lanzó.', 'Bot no lanza modal por targets.'),
-  'bot.cast.noGraveToExile': definition('Partida', 'El Tano no encontró un cementerio que valiera la pena exiliar y no lanzó {card}.', 'Bot no lanza exilio de cementerio.'),
-  'bot.cast.noPreventTarget': definition('Partida', 'El Tano no tenía criaturas válidas para frenar con {card} y no lo lanzó.', 'Bot no lanza efecto preventivo.'),
-  'bot.cast.noBuffTarget': definition('Partida', 'El Tano no tenía criaturas para reforzar con {card} y no lo lanzó.', 'Bot no lanza buff.'),
-  'bot.cast.noProtectTarget': definition('Partida', 'El Tano no tenía criaturas para proteger con {card} y no lo lanzó.', 'Bot no lanza protección.'),
-  'bot.cast.noGoodFight': definition('Partida', 'El Tano no encontró una pelea que le convenga con {card} y no lo lanzó.', 'Bot no lanza Fight inconveniente.'),
-  'bot.cast.altPaid': definition('Partida', '🔀 El Tano pagó {card} por su costo alternativo.', 'Bot usa costo alternativo.'),
-  'bot.stack.entered': definition('Partida', '⏳ El Tano puso {card} en la pila. Tenés la prioridad para responder.', 'Bot pone hechizo en pila.'),
-  'bot.attack.planeswalker': definition('Partida', '🔮 El Tano manda a {card} contra tu Semidiós {target}.', 'Bot ataca Semidiós.'),
-  'bot.attack.heldBack': definition('Partida', '🧠 El Tano decide guardar {count} criatura(s) atrás para defender.', 'Bot deja criaturas defendiendo.'),
-  'bot.attack.combat2': definition('Combate', '🧠 El Tano evaluó la mesa completa y declaró {count} atacante(s).', 'Combat Bot 2.0: selección global de atacantes.'),
-  'bot.attack.count': definition('Partida', '⚠️ ¡El Tano te ataca con {count} criatura(s)!', 'Bot declara atacantes.'),
+  'bot.ward.cantPay': definition('Partida', '🔶 {target} tenía Impuesto {cost} y a {rival} no le alcanzó el maná extra — el hechizo se pierde sin efecto.', 'Bot no puede pagar Impuesto.'),
+  'bot.ward.paid': definition('Partida', '🔶 {rival} pagó Impuesto {cost} para que su hechizo pase igual.', 'Bot paga Impuesto.'),
+  'bot.escape.exile': definition('Partida', '🌀 {rival} exilió {count} carta(s) de su cementerio para el Zafar de {card}.', 'Bot paga Zafar.'),
+  'bot.crew.done': definition('Partida', '🚗 {rival} tripuló a {card} con {count} criatura(s) suya(s) ({power} de poder) — ahora es un {basePower}/{baseToughness}.', 'Compatibilidad legacy de Tripular del bot.'),
+  'bot.crew.activated': definition('Partida', '🚗 {rival} activó Tripular sobre {card} con {count} criatura(s) ({power}/{required} de poder). La habilidad está en la pila.', 'Bot activa Tripular.'),
+  'bot.ability.activated': definition('Partida', '⚙️ {rival} activó una habilidad de {card}. Tenés prioridad para responder.', 'Bot activa habilidad.'),
+  'bot.ability.usedWith': definition('Partida', '⚙️ {rival} usó la habilidad de {source} con {target}. Tenés prioridad para responder.', 'Bot usa habilidad con objetivo/coste.'),
+  'bot.priority.noResponse': definition('Partida', '👁️ {rival} revisó su mano y sus habilidades, no tiene respuestas y pasa prioridad.', 'Bot pasa prioridad sin respuesta.'),
+  'bot.land.played': definition('Partida', '{rival} bajó una tierra: {card}.', 'Bot juega Tierra.'),
+  'bot.land.playedTapped': definition('Partida', '{rival} bajó una tierra: {card} (entra girada).', 'Bot juega Tierra girada.'),
+  'bot.kicker.paid': definition('Partida', '💪 {rival} pagó también el Yapa de {card}.', 'Bot paga la Yapa.'),
+  'bot.x.chosen': definition('Partida', '✨ {rival} eligió X = {x} para {card}.', 'Bot elige X.'),
+  'bot.cast.noTargets': definition('Partida', '{rival} no tenía objetivos válidos para {card} y no lo lanzó.', 'Bot no lanza por falta de objetivos.'),
+  'bot.cast.noBeneficialCreature': definition('Partida', '{rival} no tenía ninguna criatura que se beneficiara de {card} y no lo lanzó.', 'Bot no lanza buff sin objetivo útil.'),
+  'bot.cast.noAuraTarget': definition('Partida', '{rival} no tenía criaturas para encantar con {card} y no lo lanzó.', 'Bot no lanza Encanto sin target.'),
+  'bot.cast.noModalTargets': definition('Partida', '{rival} no encontró objetivos válidos para todos los modos de {card} y no lo lanzó.', 'Bot no lanza modal por targets.'),
+  'bot.cast.noGraveToExile': definition('Partida', '{rival} no encontró un cementerio que valiera la pena exiliar y no lanzó {card}.', 'Bot no lanza exilio de cementerio.'),
+  'bot.cast.noPreventTarget': definition('Partida', '{rival} no tenía criaturas válidas para frenar con {card} y no lo lanzó.', 'Bot no lanza efecto preventivo.'),
+  'bot.cast.noBuffTarget': definition('Partida', '{rival} no tenía criaturas para reforzar con {card} y no lo lanzó.', 'Bot no lanza buff.'),
+  'bot.cast.noProtectTarget': definition('Partida', '{rival} no tenía criaturas para proteger con {card} y no lo lanzó.', 'Bot no lanza protección.'),
+  'bot.cast.noGoodFight': definition('Partida', '{rival} no encontró una pelea que le convenga con {card} y no lo lanzó.', 'Bot no lanza Fight inconveniente.'),
+  'bot.cast.altPaid': definition('Partida', '🔀 {rival} pagó {card} por su costo alternativo.', 'Bot usa costo alternativo.'),
+  'bot.stack.entered': definition('Partida', '⏳ {rival} puso {card} en la pila. Tenés la prioridad para responder.', 'Bot pone hechizo en pila.'),
+  'bot.attack.planeswalker': definition('Partida', '🔮 {rival} manda a {card} contra tu Semidiós {target}.', 'Bot ataca Semidiós.'),
+  'bot.attack.heldBack': definition('Partida', '🧠 {rival} decide guardar {count} criatura(s) atrás para defender.', 'Bot deja criaturas defendiendo.'),
+  'bot.attack.combat2': definition('Combate', '🧠 {rival} evaluó la mesa completa y declaró {count} atacante(s).', 'Combat Bot 2.0: selección global de atacantes.'),
+  'bot.attack.count': definition('Partida', '⚠️ ¡{rival} te ataca con {count} criatura(s)!', 'Bot declara atacantes.'),
 
   // Enciclopedia — progreso de colección (23.13.37 centralizado en 23.13.38)
   'encyclopedia.progress': definition('Enciclopedia', 'Descubriste {owned} cartas de {total} totales', 'Progreso de cartas únicas descubiertas sobre el pool actual.'),
@@ -1291,6 +1309,21 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'admin.audit.summary': definition('Auditoría económica', '{count} registros recientes cargados desde evidencia inmutable server-side.', 'Resumen de la ventana cargada.'),
   'admin.audit.error': definition('Auditoría económica', 'Error leyendo auditoría: {message}', 'Error visible del visor.'),
   'admin.audit.note': definition('Auditoría económica', 'Vista de diagnóstico: economyEvents y adminActions son append-only e inmutables. Los totales de esta pantalla corresponden sólo a la ventana reciente cargada, no a balances históricos globales.', 'Nota metodológica y de alcance.'),
+  'admin.audit.kpi.visible': definition('Auditoría económica', 'Operaciones visibles', 'KPI de filas visibles.'),
+  'admin.audit.kpi.loaded': definition('Auditoría económica', 'de {count} cargadas', 'Subtexto de filas cargadas.'),
+  'admin.audit.kpi.points': definition('Auditoría económica', 'Δ Puntos', 'KPI delta de puntos.'),
+  'admin.audit.kpi.fichas': definition('Auditoría económica', 'Δ Fichas', 'KPI delta de Fichas.'),
+  'admin.audit.kpi.packs': definition('Auditoría económica', 'Δ Sobres', 'KPI delta de sobres.'),
+  'admin.audit.kpi.filtered': definition('Auditoría económica', 'ventana filtrada', 'Subtexto de KPI filtrado.'),
+  'admin.audit.kpi.adminActions': definition('Auditoría económica', 'Acciones Admin: {count}', 'Subtexto de cantidad de acciones Admin.'),
+  'admin.audit.col.date': definition('Auditoría económica', 'Fecha', 'Columna fecha.'),
+  'admin.audit.col.class': definition('Auditoría económica', 'Clase', 'Columna clase de evidencia.'),
+  'admin.audit.col.operation': definition('Auditoría económica', 'Operación', 'Columna operación.'),
+  'admin.audit.col.user': definition('Auditoría económica', 'Usuario', 'Columna usuario afectado.'),
+  'admin.audit.col.delta': definition('Auditoría económica', 'Delta', 'Columna delta económico.'),
+  'admin.audit.col.operationId': definition('Auditoría económica', 'Operation ID', 'Columna operationId.'),
+  'admin.audit.col.actor': definition('Auditoría económica', 'Actor', 'Columna actor.'),
+  'admin.audit.uidTooltip': definition('Auditoría económica', 'UID: {uid}', 'Tooltip que conserva el UID técnico al mostrar el nombre de usuario.'),
 
   // Debugging / auditoría de imágenes — tokens pasan a ser ciudadanos de primera clase.
   'admin.images.title': definition('Debugging', '🖼️ Auditoría de imágenes', 'Título de auditoría de imágenes.'),
@@ -1472,6 +1505,16 @@ export function getGameTextDefault(key) {
   return hasGameTextKey(key) ? publicTerminologyText(GAME_TEXT_DEFAULTS[key]) : null;
 }
 
+let runtimeVariablesProvider = null;
+
+// Runtime variables are intentionally injected by main.js instead of importing gameplay
+// state here (which would create a circular dependency). This keeps editable Game Texts
+// such as bot logs context-aware: Solo resolves {rival} to El Tano, Tournament to the
+// actual NPC name, and Multiplayer to the remote username when applicable.
+export function setGameTextRuntimeVariablesProvider(provider) {
+  runtimeVariablesProvider = typeof provider === 'function' ? provider : null;
+}
+
 export function interpolateGameText(text, variables = {}) {
   const source = String(text ?? '');
   const vars = isRecord(variables) ? variables : {};
@@ -1495,7 +1538,17 @@ export function gameText(key, variables = {}) {
   const template = hasOwn(activeOverrides, normalizedKey)
     ? activeOverrides[normalizedKey]
     : GAME_TEXT_DEFAULTS[normalizedKey];
-  return publicTerminologyText(interpolateGameText(template, variables));
+  let runtimeVariables = {};
+  if (runtimeVariablesProvider) {
+    try {
+      const provided = runtimeVariablesProvider(normalizedKey);
+      if (isRecord(provided)) runtimeVariables = provided;
+    } catch {
+      // Text rendering must never break gameplay because an optional runtime provider failed.
+    }
+  }
+  const explicitVariables = isRecord(variables) ? variables : {};
+  return publicTerminologyText(interpolateGameText(template, { ...runtimeVariables, ...explicitVariables }));
 }
 
 export function getGameTextCatalog() {

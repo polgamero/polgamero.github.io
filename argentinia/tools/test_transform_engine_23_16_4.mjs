@@ -120,6 +120,8 @@ assert.ok(generator.includes('doubleFacedCardCount'));
 const workflow=read('../.github/workflows/pages.yml');
 assert.ok(workflow.includes('regression_legacy_23_17_3_1.zip'));
 assert.ok(workflow.includes('ci_regression_manifest_23_17_3_1.txt'));
-assert.ok(workflow.includes('test_prebuilt_decks_store_23_17_3.mjs'));
+const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'));
+assert.ok(fastManifest.includes('tools/test_prebuilt_decks_store_23_17_3.mjs'));
 
 console.log('PASS test_transform_engine_23_16_4.mjs · TDFC identity/faces/zones/copy/UI/assets · Pool 820');

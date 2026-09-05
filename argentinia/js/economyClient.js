@@ -259,3 +259,11 @@ export function forfeitTournamentServer(tournamentId, matchId, operationId = nul
     matchId: String(matchId || '')
   });
 }
+
+export function abandonTournamentServer(tournamentId, operationId = null) {
+  return call('economyForfeitTournament', {
+    operationId: operationId || `tournament-abandon:${String(tournamentId || '')}`.slice(0, 128),
+    tournamentId: String(tournamentId || ''),
+    matchId: ''
+  });
+}

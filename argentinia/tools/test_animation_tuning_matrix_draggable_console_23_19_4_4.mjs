@@ -27,8 +27,9 @@ assert.equal(manifest.engineVersion,ENGINE_VERSION);
 assert.equal(manifest.firestoreRulesVersion,'23.13.80');
 assert.equal(manifest.pool,880);
 assert.ok(['Torneo · 16-player Knockout Mode','Economy Write Firewall + Server-Required Cutover','Admin Economy + Statistics + Immutable Audit Authority','Match Settlement + Anti-Farming + Admission Control + Economy Pending UX','Store / Craft / Prebuilt / Classifieds / Username Authority + Packs / Cofre / Mythic + Deck Intelligence 2.0','Packs / Cofre / Mythic Authority + Deck Intelligence 2.0','Animation Tuning Matrix + Draggable Test Console','Animation Actor Parity + SFX Cue Semantics','Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets','Rules Integrity + Combat UX + Bot Tactical Hotfix','Core Gameplay Feedback Expansion','Mass Event Cinematics + High-Impact Feedback','Commercial IP Remediation Wave 1 — Identity Clean-room','Commercial IP Remediation Wave 2 — Envase Hermético','Commercial IP Remediation Wave 3 — Venues + Institutions Genericization','Commercial IP Remediation — Residual YELLOW Closure','Global Terminology Clean-room — Owner Dictionary 44/44','Commercial Readiness Closure + Clean-room Verification','Semidiós Rules Text + Creencia UX Hotfix','Economy Authority Foundation + Secure Account Bootstrap','Economy Authority Foundation + Deck/Admin/Land UX Stabilization RC2'].includes(manifest.label));
-assert.ok(workflow.includes('test_animation_tuning_matrix_draggable_console_23_19_4_4.mjs'),'CI must retain and execute the 23.19.4.4 contract');
-assert.ok(workflow.includes('Validate Animation Tuning Matrix + Draggable Test Console 23.19.4.4'),'CI gate label');
+const fastManifest=fs.readFileSync(path.join(root,'tools','ci_fast_contract_manifest_23_20_0.txt'),'utf8');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'),'CI executes the canonical fast contract manifest');
+assert.ok(fastManifest.includes('tools/test_animation_tuning_matrix_draggable_console_23_19_4_4.mjs'),'canonical manifest retains v23.19.4.4 contract');
 
 const catalog=getAnimationTuningCatalog();
 assert.ok(catalog.length>=18,'all historical Animation Studio scenarios must remain tuneable');

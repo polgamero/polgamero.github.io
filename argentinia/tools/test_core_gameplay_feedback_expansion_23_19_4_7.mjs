@@ -92,8 +92,9 @@ assert.ok(ui.includes('Volumen relativo'));
 assert.ok(/schemaVersion:\s*(6|7)/.test(firebase));
 
 assert.ok(version.includes("ENGINE_VERSION = '23.20.0'"));
-assert.ok(workflow.includes('test_core_gameplay_feedback_expansion_23_19_4_7.mjs'),'CI whitelist retains v23.19.4.7 contract');
-assert.ok(workflow.includes('Validate Core Gameplay Feedback Expansion 23.19.4.7'),'CI executes v23.19.4.7 contract');
+const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'),'CI executes the canonical fast contract manifest');
+assert.ok(fastManifest.includes('tools/test_core_gameplay_feedback_expansion_23_19_4_7.mjs'),'canonical manifest retains v23.19.4.7 contract');
 
 console.log('CORE_GAMEPLAY_FEEDBACK_EXPANSION_23_19_4_7_OK');
 console.log('verbs=land-play+permanent-entry+fight+shuffle+token-batch+transform+animate-land+instant-sorcery-cast');

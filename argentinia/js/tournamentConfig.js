@@ -38,6 +38,9 @@ function enumValue(v, allowed, fallback){
 
 export function applyTournamentConfig(config = {}) {
   const d = TOURNAMENT_DEFAULT_CONFIG;
+  // Firestore legitimately returns null when gameConfig/settings does not exist yet.
+  // Treat null/non-record values exactly like an empty config so boot falls back cleanly.
+  config = config && typeof config === 'object' && !Array.isArray(config) ? config : {};
   TOURNAMENT_POLICY.tournamentRewardedStartsPerDay = int(config.tournamentRewardedStartsPerDay, d.tournamentRewardedStartsPerDay, 0, 1000);
   TOURNAMENT_POLICY.tournamentNpcRandomnessPercent = int(config.tournamentNpcRandomnessPercent, d.tournamentNpcRandomnessPercent, 0, 100);
   for (const suffix of ['Round16','Quarter','Semi','Final']) {

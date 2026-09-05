@@ -92,6 +92,8 @@ assert.ok(main.includes("buildRandomDeck(chosenIdentity, { quality: 'starter' })
 assert.ok(!main.includes("showArchetypeSelectionModal"),'23.17.1 must not ask the player to choose an archetype');
 
 const workflow=read('../.github/workflows/pages.yml');
-assert.ok(workflow.includes('test_prebuilt_decks_store_23_17_3.mjs'));
+const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'));
+assert.ok(fastManifest.includes('tools/test_prebuilt_decks_store_23_17_3.mjs'));
 
 console.log(`PASS test_competitive_deck_intelligence_23_17_1.mjs · Pool 880 · archetypes + roles + 60-card candidates + dynamic lands + goldfish + starter/competitive/good/strong/elite profiles · scores ${JSON.stringify(qualityScores)}`);

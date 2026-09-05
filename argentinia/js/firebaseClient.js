@@ -207,6 +207,7 @@ export const startTournament = asyncProxy('startTournament');
 export const beginTournamentMatch = asyncProxy('beginTournamentMatch');
 export const settleTournamentMatch = asyncProxy('settleTournamentMatch');
 export const forfeitTournament = asyncProxy('forfeitTournament');
+export const abandonTournament = asyncProxy('abandonTournament');
 
 export const recordChestAuthorityStatsBestEffort = asyncProxy('recordChestAuthorityStatsBestEffort');
 export const registerDailyLogin = asyncProxy('registerDailyLogin');

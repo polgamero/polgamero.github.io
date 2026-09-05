@@ -37,7 +37,7 @@ import {
 import { recordAuthorityAudit } from './economy/audit.js';
 import { deriveSoloAbandonReceiptId, normalizeAbandonDurationMs } from './economy/matchCore.js';
 import { normalizeAdminGrantRequest, adminGrantTx, advanceBulkGrantJob, readBulkGrantJob, adminSyncPlayerStats, adminRepairSoloRewardTx } from './economy/admin.js';
-import { getTournamentState, startTournamentTx, beginTournamentMatchTx, settleTournamentMatchTx, forfeitTournamentTx } from './economy/tournament.js';
+import { getTournamentState, startTournamentTx, beginTournamentMatchTx, settleTournamentMatchTx, forfeitTournamentTx, abandonTournamentTx } from './economy/tournament.js';
 
 function requestData(request) {
   const data = request?.data;
@@ -769,11 +769,14 @@ export const economyForfeitTournament = onCall(FUNCTION_RUNTIME_OPTIONS, async r
     assertRateLimit(auth.uid,'tournament-forfeit',{limit:12,windowMs:60000});
     rejectUnknown(data,['economyProtocolVersion','operationId','tournamentId','matchId']);
     const operationId=String(data.operationId||''),tournamentId=String(data.tournamentId||''),matchId=String(data.matchId||'');
-    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'tournament.forfeit_match',request:{tournamentId,matchId},execute:async tx=>{
+    const betweenMatches=!matchId;
+    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:betweenMatches?'tournament.abandon_run':'tournament.forfeit_match',request:{tournamentId,matchId},execute:async tx=>{
       const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
-      return forfeitTournamentTx({db,tx,uid:auth.uid,tournamentId,matchId});
+      return betweenMatches
+        ? abandonTournamentTx({db,tx,uid:auth.uid,tournamentId})
+        : forfeitTournamentTx({db,tx,uid:auth.uid,tournamentId,matchId});
     }});
-    logger.info('Tournament forfeited',{uid:auth.uid,tournamentId,matchId,replayed:outcome.replayed});
+    logger.info(betweenMatches?'Tournament abandoned between matches':'Tournament match forfeited',{uid:auth.uid,tournamentId,matchId,replayed:outcome.replayed});
     return {ok:true,...outcome};
   } catch(error){logFailure('economyForfeitTournament',auth,error);throw error;}
 });

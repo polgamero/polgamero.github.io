@@ -213,3 +213,29 @@ export async function settleTournamentMatchTx({db,tx,uid,tournamentId,matchId,wo
 export async function forfeitTournamentTx({db,tx,uid,tournamentId,matchId}){
   return settleTournamentMatchTx({db,tx,uid,tournamentId,matchId,won:false,forfeit:true});
 }
+
+export async function abandonTournamentTx({db,tx,uid,tournamentId}){
+  const loaded=await loadRun(db,uid,tx);
+  const run=loaded.run;
+  if(!run||run.tournamentId!==tournamentId)throw economyError('TOURNAMENT_NOT_FOUND');
+  if(run.status!=='active')throw economyError('TOURNAMENT_NOT_ACTIVE');
+  // Between-match abandon is intentionally distinct from abandoning a live match. Once a
+  // match has begun, the existing forfeit path settles that match as a loss.
+  if(run.activeMatch)throw economyError('TOURNAMENT_MATCH_ACTIVE');
+
+  const userRef=db.collection('users').doc(uid);
+  const statsRef=db.collection('playerStats').doc(uid);
+  const [userSnap,statsSnap]=await Promise.all([tx.get(userRef),tx.get(statsRef)]);
+  if(!userSnap.exists)throw economyError('PROFILE_MISSING');
+  const profile=userSnap.data()||{};
+  const next={...run,status:'eliminated',eliminationReason:'tournament_abandon',activeMatch:null};
+  tx.set(loaded.runRef,{...next,updatedAt:FieldValue.serverTimestamp(),endedAt:FieldValue.serverTimestamp()},{merge:false});
+  tx.set(loaded.activeRef,{uid,tournamentId,updatedAt:FieldValue.serverTimestamp()},{merge:true});
+  tx.set(statsRef,playerStatsMirrorServer(uid,profile,statsSnap.exists?(statsSnap.data()||{}):{}, {tournamentForfeits:1}),{merge:false});
+  tx.create(db.collection('economyEvents').doc(`tournament_abandon_${tournamentId}`),{
+    actorUid:uid,targetUid:uid,source:'tournament_abandon_server',tournamentId,
+    pointsDelta:0,fichasDelta:0,packsDelta:0,cardsDelta:0,authority:'server',immutable:true,
+    engineVersion:ENGINE_VERSION,economySchemaVersion:ECONOMY_SCHEMA_VERSION,createdAt:FieldValue.serverTimestamp()
+  });
+  return {tournament:sanitizedTournament(next),abandoned:true,status:'eliminated',pointsGain:0,packsGain:0};
+}

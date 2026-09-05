@@ -31,3 +31,13 @@ ASSETS
 TEXT / ADMIN
 - Tournament player-facing copy uses Game Text and remains editable through Admin Textos.
 - Rewards, caps, NPC randomness, per-round IA difficulty and per-round deck quality are Admin settings, not hidden constants.
+
+RC2 PRODUCTION-SMOKE FIXES
+- Damage assignment copy now binds the real attacker name to {attacker}; no code placeholder can leak into the modal.
+- Tournament configuration accepts null/non-object remote config and cleanly falls back to defaults.
+- Bot-facing gameplay copy resolves {rival} at runtime: El Tano in Partida Simple, assigned NPC name in Tournament.
+- Tournament fixture uses the authenticated player's profile photo for the player entrant.
+- Tournament rules screen uses a structured hero + three bullet-card layout (format / resume / rewards), all copy still Game-Text editable.
+- Active Tournament screen exposes ABANDONAR TORNEO between matches. It ends only the run, pays nothing, creates immutable audit evidence, and does not fabricate a played/lost match.
+- Admin Economy Audit resolves referenced UIDs to in-game usernames best-effort and keeps UID in a tooltip/fallback.
+- GitHub CI no longer reruns 51 canonical test files a second time. The full 113-contract manifest still runs once; all stateful/dynamic reliability labs remain enabled once.

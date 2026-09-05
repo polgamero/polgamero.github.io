@@ -40,3 +40,40 @@ PROMOTION ORDER
 7. Production tournament smoke: start -> fixture -> round -> reward -> reload/continue -> champion; explicit loss/abandon; practice cap; Admin edits apply only to newly started tournaments.
 8. Firestore Rules 23.13.80 are unchanged and MUST NOT be redeployed for Torneo.
 9. Only then mark 23.20.0 RELEASED.
+
+RC2 HOTFIX QA (post first production smoke)
+- First production candidate previously passed real Tournament Emulator Gate, GitHub CI, 30/30 Functions deploy/verify and initial production smoke.
+- User also confirmed 40/40 NPC portraits uploaded to the canonical hosted path. The source package intentionally still contains no portrait binaries; preserve those hosted assets when applying RC2.
+- RC2 changed Tournament backend for safe BETWEEN-MATCH run abandonment, so Tournament Emulator Gate MUST be rerun before redeploying RC2 Functions.
+- Damage modal placeholder regression: fixed + contract guarded.
+- Remote gameConfig=null boot regression: fixed + contract guarded.
+- Tournament rival naming: gameplay Game Text now resolves runtime {rival}; selected generic bot paths and bot console diagnostics guarded.
+- Fixture player avatar: authenticated photoURL wired + contract guarded.
+- Admin Economy Audit username UX: referenced users resolved by username with UID tooltip/fallback; no economic writes added.
+- Tournament rules UX: hero + separated bullet cards + responsive layout.
+- Between-match ABANDONAR TORNEO: server transaction, zero reward, immutable audit, no active-match escape; emulator coverage added.
+- CI compaction: removed 51 duplicate second executions of test_*.mjs. Canonical 113/113 remains mandatory and all seven dynamic labs/audits remain mandatory.
+
+RC2 LOCAL QA CURRENT
+- Tournament structural contract: PASS.
+- Canonical cumulative fast sweep: 113/113 PASS.
+- Regression archive parity: 62/62 PASS.
+- Game Text contract: 1342 definitions / 1084 uses PASS.
+- JS/MJS syntax: 229/229 PASS.
+- Functions unit suite: 2/2 PASS.
+- Functions parity 01/05/06: 41/41/41 byte-identical PASS.
+- Rules parity 02/03/05: PASS; SHA-256 2dc00cd3cf1b20cb9335c79254ac21ba6539557ace7b835e088454dd94721d91.
+- Stability lab: PASS (10 seeds / 30 deck builds / 2000 RNG draws / 40 invariant mutations).
+- Headless 23.18.1: 6/6 PASS; Headless 23.18.2: 6/6 PASS.
+- Coverage audit: 880 total / 560 full / 302 partial / 18 unsupported / 97.95% structurally known PASS.
+- Multiplayer Reliability: 250 seeds / 30000 commits PASS.
+- Multiplayer Hardening: 5000 cases PASS.
+- Deck Intelligence matrix: 15 archetypes / 4 qualities / 60 builds PASS.
+
+RC2 PROMOTION DELTA
+1. Preserve existing assets/images/npcs/npc_001.png..npc_040.png.
+2. Apply RC2 source/hotfix files and let GitHub CI finish green.
+3. Rerun RUN_ECONOMY_AUTHORITY_EMULATOR_GATE_23_20_0.sh; require updated betweenMatchAbandon=PASS marker and code 0.
+4. Deploy Functions only (still exactly 30), verify 30/30.
+5. NO Firestore Rules deploy; 23.13.80 is unchanged.
+6. Production smoke the eight fixed items; only then promote 23.20.0 RELEASED.

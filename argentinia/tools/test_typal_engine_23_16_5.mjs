@@ -85,6 +85,8 @@ assert.ok(cards.filter(c=>JSON.stringify(c).includes('choose_creature_type')).le
 const workflow=read('../.github/workflows/pages.yml');
 assert.ok(workflow.includes('regression_legacy_23_17_3_1.zip'));
 assert.ok(workflow.includes('ci_regression_manifest_23_17_3_1.txt'));
-assert.ok(workflow.includes('test_prebuilt_decks_store_23_17_3.mjs'));
+const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'));
+assert.ok(fastManifest.includes('tools/test_prebuilt_decks_store_23_17_3.mjs'));
 
 console.log('PASS test_typal_engine_23_16_5.mjs · generic exact subtypes + shared types + chosen type + lords/cost/library/events/targets · Pool 850');
