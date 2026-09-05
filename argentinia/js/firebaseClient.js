@@ -202,6 +202,11 @@ export const openPackAuthorityServer = asyncProxy('openPackAuthorityServer');
 export const openGuaranteedMythicAuthorityServer = asyncProxy('openGuaranteedMythicAuthorityServer');
 export const recoverEconomyOperationServer = asyncProxy('recoverEconomyOperationServer');
 export const fetchStorefrontAuthority = asyncProxy('fetchStorefrontAuthority');
+export const getTournamentState = asyncProxy('getTournamentState');
+export const startTournament = asyncProxy('startTournament');
+export const beginTournamentMatch = asyncProxy('beginTournamentMatch');
+export const settleTournamentMatch = asyncProxy('settleTournamentMatch');
+export const forfeitTournament = asyncProxy('forfeitTournament');
 
 export const recordChestAuthorityStatsBestEffort = asyncProxy('recordChestAuthorityStatsBestEffort');
 export const registerDailyLogin = asyncProxy('registerDailyLogin');

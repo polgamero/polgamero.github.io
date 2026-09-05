@@ -1,0 +1,129 @@
+SOURCE SNAPSHOT MANIFEST — 23.20.0 TORNEO PRE-RC
+
+STATUS=IN_DEVELOPMENT_PENDING_REAL_TOURNAMENT_EMULATOR_NPC_ASSETS_GITHUB_FUNCTIONS_PRODUCTION_SMOKE
+BASELINE=23.19.5.6 RELEASED + Deck Intelligence 23.19.5-di2
+POOL=880
+PROTOCOL=mp-23.19.2
+ECONOMY_PROTOCOL=econ-23.19.5.6
+ECONOMY_SCHEMA=8
+ECONOMY_FUNCTIONS_REGION=southamerica-east1
+FIRESTORE_RULES=23.13.80 RELEASED_UNCHANGED_NO_REDEPLOY
+FILE_COUNT=358
+CARD_IMAGE_BINARIES=0
+PUBLIC_FIRESTORE_CONFIG_FILES=0
+NPC_PORTRAIT_BINARIES=0
+NPC_PORTRAITS_REQUIRED_FOR_RELEASE=40
+NPC_PORTRAIT_PATH=argentinia/assets/images/npcs/npc_001.png..npc_040.png
+APP_CHECK_PROVIDER=recaptcha-enterprise
+APP_CHECK_ENFORCEMENT=OBSERVE_ONLY
+FUNCTIONS_NODE=22
+FUNCTIONS_MIN_INSTANCES=0
+FUNCTIONS_MAX_INSTANCES=1
+FUNCTIONS_CONCURRENCY=10
+FUNCTIONS_TIMEOUT_SECONDS=30
+FUNCTIONS_MEMORY=256MiB
+ECONOMY_FUNCTION_COUNT=30
+ECONOMY_AUTHORITY_MODE=SERVER_REQUIRED
+ECONOMY_MINIMUM_CLIENT=econ-23.19.5.6
+DIRECT_FIRESTORE_FIREWALL=ACTIVE_RULES_23.13.80
+BROWSER_ECONOMY_WRITES=DENY
+TOURNAMENT_AUTHORITY=SERVER_PERSISTENCE_REWARDS_BRACKET
+TOURNAMENT_SCHEMA=1
+TOURNAMENT_FORMAT=16_PLAYER_SINGLE_ELIMINATION
+TOURNAMENT_NPC_ROSTER=40
+TOURNAMENT_NPCS_PER_RUN=15
+TOURNAMENT_RESUME=BETWEEN_MATCHES_ONLY
+TOURNAMENT_ACTIVE_MATCH_INTERRUPTION=ELIMINATION
+TOURNAMENT_REWARD_SETTLEMENT=SERVER_ATOMIC_EXACTLY_ONCE
+TOURNAMENT_POLICY_SNAPSHOT=AT_START
+TOURNAMENT_ADMIN_BALANCE=EDITABLE
+TOURNAMENT_GAME_TEXT=ADMIN_EDITABLE
+TOURNAMENT_DEFAULT_REWARDED_STARTS_PER_DAY=1
+TOURNAMENT_DEFAULT_NPC_RANDOMNESS_PERCENT=18
+TOURNAMENT_DEFAULT_ROUND16=100P,0PACK,MEDIUM,GOOD
+TOURNAMENT_DEFAULT_QUARTER=150P,0PACK,MEDIUM,STRONG
+TOURNAMENT_DEFAULT_SEMI=250P,1PACK,HARD,STRONG
+TOURNAMENT_DEFAULT_FINAL=500P,2PACK,HARD,ELITE
+TOURNAMENT_DEFAULT_CHAMPION_TOTAL=1000P,3PACKS
+PLAYER_STATS_AUTHORITY=SERVER
+PLAYER_GAME_RECEIPTS_AUTHORITY=SERVER
+GAME_REWARD_RECEIPTS_AUTHORITY=SERVER
+PVP_LEDGER_AUTHORITY=SERVER
+ECONOMY_AUDIT_AUTHORITY=SERVER_IMMUTABLE
+ADMIN_ECONOMY_AUTHORITY=SERVER
+DECK_INTELLIGENCE_VERSION=23.19.5-di2
+TRUSTED_STARTER_POOL=880
+
+FUNCTIONS (30):
+- economyStatus
+- economyBootstrapAccount
+- economyCompleteStarterDeck
+- economyOpenPack
+- economyOpenGuaranteedMythic
+- economyGetOperation
+- economyGetStorefront
+- economyPurchasePack
+- economyCraftEnhancement
+- economyPurchasePrebuiltDeck
+- economyGetClassifieds
+- economyPurchaseClassifiedCard
+- economyRenameUsername
+- economyRegisterDailyLogin
+- economyClaimDailyReward
+- economyAdminDailyDebug
+- economyGetAdmissionStatus
+- economyAdminSetAdmissionPolicy
+- economySettleMatchReward
+- economyApplyAbandonPenalty
+- economyAdminGrant
+- economyAdminBulkGrant
+- economyAdminGetBulkGrant
+- economyAdminRepairGameReward
+- economyAdminSyncPlayerStats
+- economyGetTournament
+- economyStartTournament
+- economyBeginTournamentMatch
+- economySettleTournamentMatch
+- economyForfeitTournament
+
+PUBLIC-SOURCE 23.20.0 ARTIFACTS:
+- argentinia/TOURNAMENT_MODE_23_20_0.txt
+- argentinia/QA_23_20_0_RC.txt
+- argentinia/RELEASE_NOTES_23_20_0_RC.txt
+- argentinia/js/tournamentConfig.js
+- argentinia/tools/test_tournament_mode_23_20_0.mjs
+- argentinia/tools/test_tournament_npc_assets_23_20_0.mjs
+- argentinia/tools/ci_fast_contract_manifest_23_20_0.txt
+- argentinia/assets/images/npcs/README.txt
+- argentinia/assets/images/npcs/NPC_ROSTER_23_20_0.txt
+- functions/src/economy/tournament.js
+- functions/src/economy/tournamentCore.js
+- functions/src/trusted/tournamentRoster.js
+- functions/test/tournament.test.mjs
+
+LOCAL QA COMPLETED ON CURRENT 23.20.0 CODELINE:
+- Tournament structural contract: PASS
+- canonical fast contract sweep: 113/113 PASS
+- regression archive parity: 62/62 PASS
+- Functions unit suite: PASS
+- Functions syntax: PASS
+- Game Text contract: 1309 definitions / 1054 uses PASS
+- current app/tools JS/MJS syntax sweep: 229/229 PASS
+- Stability: 10 seeds / 30 deck builds / 2000 RNG draws / 40 invariant mutations PASS
+- Headless 23.18.1: 6/6 games PASS
+- Headless Coverage: 560 full / 302 partial / 18 unsupported / 97.95% structurally known PASS
+- Headless 23.18.2: 6/6 games PASS
+- Multiplayer Reliability: 250 seeds / 30000 commits PASS
+- Multiplayer Hardening: 5000 cases PASS
+- Functions parity target 01/05/06: 41/41/41 byte-identical
+
+PRE-RELEASE GATES PENDING:
+1. Real 05 Auth+Firestore+Functions Tournament Emulator Gate code 0.
+2. Add and validate 40/40 NPC portrait PNGs in canonical path.
+3. Re-run cumulative QA + source/package parity and refresh this manifest if file count changes.
+4. Publish cumulative GitHubSource + GitHub Actions green.
+5. Deploy Functions 23.20.0 only + verify exact 30/30.
+6. Production economyStatus engine23.20.0/schema8/tournamentAuthority server/cost0-1-10/AppCheck present.
+7. Production Tournament gameplay/recovery/reward/Admin smoke.
+8. Rules 23.13.80 remain unchanged; no Rules redeploy for Torneo.
+9. Only then mark 23.20.0 RELEASED.

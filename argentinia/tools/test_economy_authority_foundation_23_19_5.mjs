@@ -13,15 +13,15 @@ const appRoot=path.resolve(here,'..');
 const repoRoot=path.resolve(appRoot,'..');
 const read=(p)=>fs.readFileSync(path.join(repoRoot,p),'utf8');
 
-assert.equal(ENGINE_VERSION,'23.19.5.6');
+assert.equal(ENGINE_VERSION,'23.20.0');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
 assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.6');
-assert.equal(ECONOMY_SCHEMA_VERSION,7);
+assert.equal(ECONOMY_SCHEMA_VERSION,8);
 assert.equal(ECONOMY_FUNCTIONS_REGION,'southamerica-east1');
 
 const manifest=JSON.parse(read('argentinia/build-manifest.json'));
-assert.equal(manifest.engineVersion,'23.19.5.6');
+assert.equal(manifest.engineVersion,'23.20.0');
 assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.6');
 assert.equal(manifest.economyFunctionsRegion,'southamerica-east1');
 assert.equal(manifest.firestoreRulesVersion,'23.13.80');

@@ -1,4 +1,4 @@
-// js/economyClient.js — v23.19.5.6 Economy Write Firewall + Server-Required Cutover.
+// js/economyClient.js — v23.20.0 Tournament Mode + server-required Economy Authority.
 // Transporte único browser -> callable Functions. El cliente expresa INTENCIÓN; nunca
 // construye receipts ni escribe directamente economyOperations.
 
@@ -222,4 +222,40 @@ export function adminRepairGameRewardServer(payload = {}) {
 }
 export function adminSyncPlayerStatsServer(targetUid = '') {
   return call('economyAdminSyncPlayerStats', { targetUid:String(targetUid||'') });
+}
+
+
+// v23.20.0 — Tournament Authority
+export function getTournamentServer({ resolveInterrupted = false } = {}) {
+  return call('economyGetTournament', { resolveInterrupted: resolveInterrupted === true });
+}
+
+export function startTournamentServer(operationId = null) {
+  return call('economyStartTournament', {
+    operationId: operationId || createEconomyOperationId('tournament-start')
+  });
+}
+
+export function beginTournamentMatchServer(tournamentId, operationId = null) {
+  return call('economyBeginTournamentMatch', {
+    operationId: operationId || createEconomyOperationId('tournament-begin'),
+    tournamentId: String(tournamentId || '')
+  });
+}
+
+export function settleTournamentMatchServer(tournamentId, matchId, won, operationId = null) {
+  return call('economySettleTournamentMatch', {
+    operationId: operationId || `tournament-settle:${String(tournamentId || '')}:${String(matchId || '')}`.slice(0, 128),
+    tournamentId: String(tournamentId || ''),
+    matchId: String(matchId || ''),
+    won: won === true
+  });
+}
+
+export function forfeitTournamentServer(tournamentId, matchId, operationId = null) {
+  return call('economyForfeitTournament', {
+    operationId: operationId || `tournament-forfeit:${String(tournamentId || '')}:${String(matchId || '')}`.slice(0, 128),
+    tournamentId: String(tournamentId || ''),
+    matchId: String(matchId || '')
+  });
 }

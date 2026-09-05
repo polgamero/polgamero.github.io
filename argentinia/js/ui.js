@@ -53,8 +53,9 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
+import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
 import { recordTelemetryUiLog, captureTelemetryState, getTelemetryStatus } from './telemetry.js';
@@ -768,7 +769,7 @@ export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel 
 
 // FASE 2: confirmación antes de abandonar — es una acción con penalidad real de puntos, así
 // que nunca se ejecuta con un solo click. Mismo esqueleto que showKickerModal.
-export function showAbandonConfirmModal(onConfirm, onCancel) {
+export function showAbandonConfirmModal(onConfirm, onCancel, { tournament = false } = {}) {
   injectMulliganStyles();
   const modalOverlay = document.createElement('div');
   modalOverlay.className = 'gy-modal-overlay';
@@ -776,14 +777,14 @@ export function showAbandonConfirmModal(onConfirm, onCancel) {
   modalOverlay.innerHTML = `
     <div class="gy-modal-content" style="max-width: 440px;">
       <div class="gy-modal-header">
-        <h3>${gameTextHtml('modal.abandon.title')}</h3>
+        <h3>${gameTextHtml(tournament ? 'modal.tournamentAbandon.title' : 'modal.abandon.title')}</h3>
       </div>
       <div style="display:flex; flex-direction:column; gap:10px; padding: 16px;">
-        <p style="color:#cfe0d4; font-size: 13px; margin: 0 0 4px;">${gameTextHtml('modal.abandon.description')}</p>
+        <p style="color:#cfe0d4; font-size: 13px; margin: 0 0 4px;">${gameTextHtml(tournament ? 'modal.tournamentAbandon.description' : 'modal.abandon.description')}</p>
         <button class="loyalty-ability-btn" id="abandon-yes" style="justify-content:center; text-align:center;">
-          <span class="loyalty-ability-text">${gameTextHtml('modal.abandon.confirm')}</span>
+          <span class="loyalty-ability-text">${gameTextHtml(tournament ? 'modal.tournamentAbandon.confirm' : 'modal.abandon.confirm')}</span>
         </button>
-        <button id="abandon-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">${gameTextHtml('modal.abandon.cancel')}</button>
+        <button id="abandon-cancel" class="mulligan-btn mulligan-btn-mull" style="margin-top: 6px;">${gameTextHtml(tournament ? 'modal.tournamentAbandon.cancel' : 'modal.abandon.cancel')}</button>
       </div>
     </div>
   `;
@@ -6068,7 +6069,7 @@ function updateMainMenuLoginGatedButtons(overlay) {
   // Jugar puede ser guest, pero JAMÁS mientras todavía no sabemos si existe una sesión
   // persistida. Las superficies privadas además exigen perfil Firestore listo.
   setGate('menu-play', guestReady || loggedInReady, authTooltip);
-  ['menu-multiplayer', 'menu-encyclopedia', 'menu-mydecks', 'menu-store'].forEach(id => {
+  ['menu-tournament', 'menu-multiplayer', 'menu-encyclopedia', 'menu-mydecks', 'menu-store'].forEach(id => {
     setGate(id, loggedInReady, authTooltip);
   });
 }
@@ -6083,6 +6084,7 @@ function refreshVisibleGameTextCopy() {
   if (!menu) return;
   const labels = {
     'menu-play': 'menu.play',
+    'menu-tournament': 'menu.tournament',
     'menu-multiplayer': 'menu.multiplayer',
     'menu-mydecks': 'menu.myDecks',
     'menu-ranking': 'menu.ranking',
@@ -6130,24 +6132,20 @@ function updateRivalAccountUI() {
   if (!els.rivalAvatar && !els.rivalPlayerName) return;
 
   const multiplayer = !!state.currentMatch;
-  const rivalName = multiplayer ? getRivalName() : 'El Tano';
-  const rivalPhotoURL = multiplayer ? (state.currentMatch.rivalPhotoURL || '') : '';
+  const tournament = !!state.currentTournamentMatch;
+  const rivalName = getRivalName();
+  const rivalPhotoURL = multiplayer
+    ? (state.currentMatch.rivalPhotoURL || '')
+    : (tournament ? (state.currentTournamentMatch?.opponent?.avatar || '') : TANO_AVATAR_SRC);
 
-  if (els.rivalPlayerName) {
-    els.rivalPlayerName.textContent = multiplayer ? `${rivalName} (TU RIVAL)` : 'El Tano (TU RIVAL)';
-  }
+  if (els.rivalPlayerName) els.rivalPlayerName.textContent = `${rivalName} (TU RIVAL)`;
 
   if (els.rivalAvatar) {
-    const identityKey = multiplayer ? `mp|${rivalPhotoURL}` : `solo|${TANO_AVATAR_SRC}`;
+    const identityKey = multiplayer ? `mp|${rivalPhotoURL}` : (tournament ? `tournament|${rivalPhotoURL}|${rivalName}` : `solo|${TANO_AVATAR_SRC}`);
     if (els.rivalAvatar.dataset.identityKey !== identityKey) {
       els.rivalAvatar.dataset.identityKey = identityKey;
-      if (!multiplayer) {
-        setAvatarImageOrFallback(els.rivalAvatar, TANO_AVATAR_SRC, '🤠', 'tano-avatar-img');
-      } else if (rivalPhotoURL) {
-        setAvatarImageOrFallback(els.rivalAvatar, rivalPhotoURL, '🤠');
-      } else {
-        els.rivalAvatar.textContent = '🤠';
-      }
+      if (rivalPhotoURL) setAvatarImageOrFallback(els.rivalAvatar, rivalPhotoURL, '🤠', tournament ? 'tano-avatar-img' : (multiplayer ? '' : 'tano-avatar-img'));
+      else els.rivalAvatar.textContent = '🤠';
     }
   }
 }
@@ -6405,7 +6403,17 @@ export function showAdminPanel(onBack) {
     { section: 'Mazos', id: 'maxEnhancedCardsPerDeck', label: 'Máximo de cartas mejoradas por mazo', value: MAX_ENHANCED_CARDS_PER_DECK, step: '1' },
     { section: 'Mazos', id: 'maxSavedDecks', label: 'Máximo de mazos guardados por cuenta', value: MAX_SAVED_DECKS, step: '1' },
     { section: 'Mazos Prearmados', id: 'prebuiltDeckPoints', label: 'Costo global · puntos', value: PREBUILT_DECK_POINTS, step: '1' },
-    { section: 'Mazos Prearmados', id: 'prebuiltDeckFichas', label: 'Costo global · Fichas', value: PREBUILT_DECK_FICHAS, step: '1' }
+    { section: 'Mazos Prearmados', id: 'prebuiltDeckFichas', label: 'Costo global · Fichas', value: PREBUILT_DECK_FICHAS, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentRewardedStartsPerDay', label: 'Torneos premiados máximos por día · 0 = ilimitado', value: TOURNAMENT_POLICY.tournamentRewardedStartsPerDay, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentNpcRandomnessPercent', label: 'Randomness de simulación NPC (%)', value: TOURNAMENT_POLICY.tournamentNpcRandomnessPercent, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentRound16Points', label: 'Octavos · puntos', value: TOURNAMENT_POLICY.tournamentRound16Points, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentRound16Packs', label: 'Octavos · sobres', value: TOURNAMENT_POLICY.tournamentRound16Packs, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentQuarterPoints', label: 'Cuartos · puntos', value: TOURNAMENT_POLICY.tournamentQuarterPoints, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentQuarterPacks', label: 'Cuartos · sobres', value: TOURNAMENT_POLICY.tournamentQuarterPacks, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentSemiPoints', label: 'Semifinal · puntos', value: TOURNAMENT_POLICY.tournamentSemiPoints, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentSemiPacks', label: 'Semifinal · sobres', value: TOURNAMENT_POLICY.tournamentSemiPacks, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentFinalPoints', label: 'Final · puntos', value: TOURNAMENT_POLICY.tournamentFinalPoints, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentFinalPacks', label: 'Final · sobres', value: TOURNAMENT_POLICY.tournamentFinalPacks, step: '1' }
   ];
 
   const sections = [...new Set(fields.map(f => f.section))];
@@ -6419,6 +6427,14 @@ export function showAdminPanel(onBack) {
     return `<div class="admin-section"><div class="admin-section-title">${sectionName}</div>${rowsHTML}</div>`;
   }).join('');
 
+  const tournamentDifficultyHTML = `
+    <div class="admin-section">
+      <div class="admin-section-title">TORNEO · DIFICULTAD Y MAZOS</div>
+      ${[['Round16','Octavos'],['Quarter','Cuartos'],['Semi','Semifinal'],['Final','Final']].map(([suffix,label]) => `
+        <div class="admin-field-row"><span class="admin-field-label">${label} · dificultad IA</span><select class="admin-field-input" id="cfg-tournament${suffix}Difficulty"><option value="easy">Fácil</option><option value="medium">Medio</option><option value="hard">Difícil</option></select></div>
+        <div class="admin-field-row"><span class="admin-field-label">${label} · calidad de mazo</span><select class="admin-field-input" id="cfg-tournament${suffix}DeckQuality"><option value="good">Good</option><option value="strong">Strong</option><option value="elite">Elite</option></select></div>
+      `).join('')}
+    </div>`;
 
   const admissionAdminHTML = `
     <div class="admin-section" id="admin-admission-section">
@@ -6576,6 +6592,7 @@ export function showAdminPanel(onBack) {
       <div class="admin-tab-pane" data-admin-pane="game">
         <div class="admin-pane-narrow">
           ${sectionsHTML}
+          ${tournamentDifficultyHTML}
           ${admissionAdminHTML}
           ${placeholdersHTML}
           <button class="admin-save-btn" id="admin-save">💾 Guardar cambios</button>
@@ -6677,6 +6694,14 @@ export function showAdminPanel(onBack) {
     </div>
   `;
   document.body.appendChild(overlay);
+
+  // 23.20.0 — Tournament balance strings are real gameConfig/settings values.
+  for (const suffix of ['Round16','Quarter','Semi','Final']) {
+    const difficultyEl = overlay.querySelector(`#cfg-tournament${suffix}Difficulty`);
+    const qualityEl = overlay.querySelector(`#cfg-tournament${suffix}DeckQuality`);
+    if (difficultyEl) difficultyEl.value = TOURNAMENT_POLICY[`tournament${suffix}Difficulty`];
+    if (qualityEl) qualityEl.value = TOURNAMENT_POLICY[`tournament${suffix}DeckQuality`];
+  }
 
   // 23.19.5.4 — Admission Control es independiente del save legacy de gameConfig/settings:
   // lee/escribe exclusivamente por Functions para que el navegador no pueda falsificar contadores.
@@ -7643,10 +7668,28 @@ Receipt: ${receiptId}
       maxEnhancedCardsPerDeck: readNumber('maxEnhancedCardsPerDeck'),
       maxSavedDecks: readNumber('maxSavedDecks'),
       prebuiltDeckPoints: readNumber('prebuiltDeckPoints'),
-      prebuiltDeckFichas: readNumber('prebuiltDeckFichas')
+      prebuiltDeckFichas: readNumber('prebuiltDeckFichas'),
+      tournamentRewardedStartsPerDay: readNumber('tournamentRewardedStartsPerDay'),
+      tournamentNpcRandomnessPercent: readNumber('tournamentNpcRandomnessPercent'),
+      tournamentRound16Points: readNumber('tournamentRound16Points'),
+      tournamentRound16Packs: readNumber('tournamentRound16Packs'),
+      tournamentRound16Difficulty: overlay.querySelector('#cfg-tournamentRound16Difficulty')?.value || 'medium',
+      tournamentRound16DeckQuality: overlay.querySelector('#cfg-tournamentRound16DeckQuality')?.value || 'good',
+      tournamentQuarterPoints: readNumber('tournamentQuarterPoints'),
+      tournamentQuarterPacks: readNumber('tournamentQuarterPacks'),
+      tournamentQuarterDifficulty: overlay.querySelector('#cfg-tournamentQuarterDifficulty')?.value || 'medium',
+      tournamentQuarterDeckQuality: overlay.querySelector('#cfg-tournamentQuarterDeckQuality')?.value || 'strong',
+      tournamentSemiPoints: readNumber('tournamentSemiPoints'),
+      tournamentSemiPacks: readNumber('tournamentSemiPacks'),
+      tournamentSemiDifficulty: overlay.querySelector('#cfg-tournamentSemiDifficulty')?.value || 'hard',
+      tournamentSemiDeckQuality: overlay.querySelector('#cfg-tournamentSemiDeckQuality')?.value || 'strong',
+      tournamentFinalPoints: readNumber('tournamentFinalPoints'),
+      tournamentFinalPacks: readNumber('tournamentFinalPacks'),
+      tournamentFinalDifficulty: overlay.querySelector('#cfg-tournamentFinalDifficulty')?.value || 'hard',
+      tournamentFinalDeckQuality: overlay.querySelector('#cfg-tournamentFinalDeckQuality')?.value || 'elite'
     };
 
-    if (Object.values(newConfig).some(v => typeof v !== 'number' || Number.isNaN(v))) {
+    if (Object.values(newConfig).some(v => typeof v === 'number' && Number.isNaN(v))) {
       errorBox.textContent = 'Todos los campos tienen que ser números válidos.';
       return;
     }
@@ -7667,13 +7710,25 @@ Receipt: ${receiptId}
       newConfig.classifiedsRarePoints, newConfig.classifiedsRareFichas,
       newConfig.classifiedsMythicPoints, newConfig.classifiedsMythicFichas
     ].every(value => value >= 0);
+    const tournamentNumeric = [
+      newConfig.tournamentRewardedStartsPerDay,newConfig.tournamentNpcRandomnessPercent,
+      newConfig.tournamentRound16Points,newConfig.tournamentRound16Packs,newConfig.tournamentQuarterPoints,newConfig.tournamentQuarterPacks,
+      newConfig.tournamentSemiPoints,newConfig.tournamentSemiPacks,newConfig.tournamentFinalPoints,newConfig.tournamentFinalPacks
+    ];
+    const tournamentNumbersValid = tournamentNumeric.every(v => Number.isInteger(v) && v >= 0)
+      && newConfig.tournamentNpcRandomnessPercent <= 100;
+    const tournamentEnumsValid = ['Round16','Quarter','Semi','Final'].every(suffix =>
+      ['easy','medium','hard'].includes(newConfig[`tournament${suffix}Difficulty`])
+      && ['good','strong','elite'].includes(newConfig[`tournament${suffix}DeckQuality`])
+    );
     if (newConfig.deckSizeExact <= 0 || newConfig.maxCopiesPerCard <= 0 || newConfig.maxSavedDecks <= 0
       || !Number.isInteger(newConfig.maxSavedDecks) || newConfig.prebuiltDeckPoints < 0 || newConfig.prebuiltDeckFichas < 0
       || !Number.isInteger(newConfig.prebuiltDeckPoints) || !Number.isInteger(newConfig.prebuiltDeckFichas)
       || newConfig.packCost < 0 || newConfig.fichasPerEnhancement <= 0 || !pointsAreValidIntegers
       || newConfig.pvpMinRewardMinutes < 0 || newConfig.pvpMinCompletedTurns < 0
       || newConfig.pvpMaxRewardedMatchesPerPairDaily < 0 || newConfig.pvpMaxPointsPerDay < 0 || !pvpIntegerFields
-      || !classifiedsNonNegative || newConfig.classifiedsMythicChance < 0 || newConfig.classifiedsMythicChance > 1) {
+      || !classifiedsNonNegative || newConfig.classifiedsMythicChance < 0 || newConfig.classifiedsMythicChance > 1
+      || !tournamentNumbersValid || !tournamentEnumsValid) {
       errorBox.textContent = 'Algún valor no tiene sentido (¿puntos/límites no enteros, negativo o porcentaje fuera de 0–100?). Revisá antes de guardar.';
       return;
     }
@@ -7683,6 +7738,7 @@ Receipt: ${receiptId}
     try {
       await saveGameConfig(newConfig);
       applyGameConfig(newConfig);
+      applyTournamentConfig(newConfig);
       // 23.13.25: la semana actual queda congelada; el scheduler Admin detecta el nuevo
       // fingerprint económico y republica únicamente semanas futuras con estos valores.
       await ensureClassifiedsSchedule();
@@ -8059,7 +8115,74 @@ export function showMultiplayerLobby(onBack, onMatched) {
   renderHome();
 }
 
-export function showMainMenu(onPlay, onMultiplayerMatched) {
+
+function injectTournamentStyles() {
+  if (document.getElementById('tournament-styles')) return;
+  const style=document.createElement('style'); style.id='tournament-styles';
+  style.textContent=`
+    #tournament-overlay{position:fixed;inset:0;z-index:9800;background:radial-gradient(ellipse at top,#201710 0%,#0b0907 70%);color:#f0e0b0;padding:22px;overflow:auto}
+    .tournament-shell{max-width:1320px;margin:0 auto}.tournament-header{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}.tournament-title{font-size:30px;font-weight:900;letter-spacing:1.2px}.tournament-subtitle{font-size:13px;color:#c8b995}
+    .tournament-panel{background:rgba(15,13,9,.82);border:1px solid rgba(212,175,55,.38);border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 12px 34px rgba(0,0,0,.25)}
+    .tournament-rules{line-height:1.55;color:#dfd1ad}.tournament-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.tournament-btn{border:1px solid #d4af37;background:linear-gradient(#44351c,#20170d);color:#ffe7a0;font-weight:800;border-radius:9px;padding:11px 18px;cursor:pointer}.tournament-btn.secondary{border-color:#766b56;background:#17130d;color:#d4cab5}.tournament-btn:disabled{opacity:.45;cursor:wait}
+    .tournament-status{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}.tournament-badge{border:1px solid rgba(212,175,55,.42);border-radius:999px;padding:5px 10px;font-size:12px}.tournament-practice{border-color:#7b7b99;color:#c9c9ef}.tournament-next{font-size:17px;font-weight:800;margin:10px 0}.tournament-warning{color:#f0b47a;font-size:12px;line-height:1.45}
+    .tournament-fixture-wrap{overflow:auto}.tournament-fixture{display:grid;grid-template-columns:repeat(4,minmax(235px,1fr));gap:14px;min-width:1000px}.tournament-round h3{font-size:13px;letter-spacing:.8px;text-align:center;color:#d4af37;margin:0 0 10px}.tournament-match{border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:7px;margin-bottom:8px;background:rgba(255,255,255,.035)}.tournament-side{display:flex;align-items:center;gap:7px;min-height:31px;padding:3px 5px;border-radius:6px}.tournament-side.winner{background:rgba(80,140,75,.2);color:#d7ffd2}.tournament-side.loser{text-decoration:line-through;opacity:.48}.tournament-side.player{font-weight:900;border-left:3px solid #d4af37}.tournament-avatar{width:25px;height:25px;border-radius:50%;object-fit:cover;background:#332a1b}.tournament-seed-empty{opacity:.38;font-style:italic}.tournament-reward{font-size:11px;color:#b9ab86;text-align:center;margin:0 0 9px}
+    @media(max-width:700px){#tournament-overlay{padding:12px}.tournament-title{font-size:24px}.tournament-header{align-items:flex-start}.tournament-fixture{grid-template-columns:repeat(4,220px)}}`;
+  document.head.appendChild(style);
+}
+
+function tournamentRoundTextKey(key){return `tournament.round.${key}`;}
+function tournamentEntrantName(tournament,id){
+  if(!id)return '—';
+  return String(tournament?.entrants?.[id]?.name || (id==='player'?getLocalPlayerName():gameText('tournament.npc.fallback')));
+}
+function tournamentEntrantAvatar(tournament,id){
+  if(!id||id==='player')return '';
+  return String(tournament?.entrants?.[id]?.avatar || '');
+}
+function tournamentMatchSideHTML(tournament,id,match){
+  const winner=match?.winnerEntrantId; const lost=winner&&id&&winner!==id; const won=winner&&winner===id;
+  const classes=['tournament-side',id==='player'?'player':'',won?'winner':'',lost?'loser':''].filter(Boolean).join(' ');
+  const avatar=tournamentEntrantAvatar(tournament,id);
+  return `<div class="${classes}">${avatar?`<img class="tournament-avatar" src="${escapeHtml(avatar)}" alt="" onerror="this.style.visibility='hidden'">`:'<span class="tournament-avatar"></span>'}<span class="${id?'':'tournament-seed-empty'}">${escapeHtml(tournamentEntrantName(tournament,id))}</span></div>`;
+}
+function tournamentFixtureHTML(tournament){
+  return `<div class="tournament-fixture">${(tournament?.rounds||[]).map(round=>{
+    const policy=tournament?.policy?.[round.key]||{};
+    return `<div class="tournament-round"><h3>${gameTextHtml(tournamentRoundTextKey(round.key))}</h3><div class="tournament-reward">${gameTextHtml(`tournament.reward.${round.key}`,{points:Number(policy.points)||0,packs:Number(policy.packs)||0})}</div>${(round.matches||[]).map(match=>`<div class="tournament-match">${tournamentMatchSideHTML(tournament,match.aEntrantId,match)}${tournamentMatchSideHTML(tournament,match.bEntrantId,match)}</div>`).join('')}</div>`;
+  }).join('')}</div>`;
+}
+
+export function showTournamentScreen(onBack, onPlayMatch) {
+  injectMainMenuStyles(); injectTournamentStyles();
+  document.querySelectorAll('#tournament-overlay').forEach(el=>el.remove());
+  const overlay=document.createElement('div'); overlay.id='tournament-overlay';
+  overlay.innerHTML=`<div class="tournament-shell"><div class="tournament-header"><div><div class="tournament-title">${gameTextHtml('tournament.title')}</div><div class="tournament-subtitle">${gameTextHtml('tournament.subtitle')}</div></div><button class="tournament-btn secondary" id="tournament-back">${gameTextHtml('tournament.back')}</button></div><div id="tournament-body" class="tournament-panel">${gameTextHtml('tournament.loading')}</div></div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#tournament-back')?.addEventListener('click',()=>{overlay.remove();onBack?.();});
+  const body=overlay.querySelector('#tournament-body');
+  let busy=false;
+  const setBusy=value=>{busy=value;overlay.querySelectorAll('button').forEach(btn=>{if(btn.id!=='tournament-back')btn.disabled=value;});};
+
+  const renderState=tournament=>{
+    if(!tournament){
+      body.innerHTML=`<div class="tournament-rules"><h2>${gameTextHtml('tournament.rules.title')}</h2><p>${gameTextHtml('tournament.rules.body')}</p><p>${gameTextHtml('tournament.rules.rewards')}</p><div class="tournament-actions"><button class="tournament-btn" id="tournament-start">${gameTextHtml('tournament.start')}</button></div></div>`;
+      body.querySelector('#tournament-start')?.addEventListener('click',()=>void createNew()); return;
+    }
+    const ended=tournament.status!=='active'; const interrupted=tournament.eliminationReason==='interrupted_match';
+    const currentRound=tournament.rounds?.[tournament.currentRoundIndex]; const playerMatch=currentRound?.matches?.find(m=>m.aEntrantId==='player'||m.bEntrantId==='player'); const opponentId=playerMatch?(playerMatch.aEntrantId==='player'?playerMatch.bEntrantId:playerMatch.aEntrantId):null;
+    const opponent=tournamentEntrantName(tournament,opponentId); const roundKey=currentRound?.key||'final';
+    const statusText=tournament.status==='champion'?gameText('tournament.status.champion'):tournament.status==='eliminated'?(interrupted?gameText('tournament.status.interrupted'):gameText('tournament.status.eliminated')):gameText('tournament.status.active',{round:gameText(tournamentRoundTextKey(roundKey)),opponent});
+    body.innerHTML=`<div class="tournament-status"><div><div class="tournament-badge ${tournament.rewardEligible?'':'tournament-practice'}">${gameTextHtml(tournament.rewardEligible?'tournament.rewarded':'tournament.practice')}</div><div class="tournament-next">${escapeHtml(statusText)}</div><div>${gameTextHtml('tournament.rewardsEarned',{points:Number(tournament.rewardsEarned?.points)||0,packs:Number(tournament.rewardsEarned?.packs)||0})}</div></div></div><div class="tournament-panel" style="margin-top:16px"><h2>${gameTextHtml('tournament.fixture')}</h2><div class="tournament-fixture-wrap">${tournamentFixtureHTML(tournament)}</div></div><div class="tournament-actions">${ended?`<button class="tournament-btn" id="tournament-new">${gameTextHtml('tournament.new')}</button>`:`<button class="tournament-btn" id="tournament-play">${gameTextHtml('tournament.playRound',{round:gameText(tournamentRoundTextKey(roundKey))})}</button>`}</div>${ended?'':`<div class="tournament-warning">${gameTextHtml('tournament.match.warning')}</div>`}`;
+    body.querySelector('#tournament-new')?.addEventListener('click',()=>void createNew());
+    body.querySelector('#tournament-play')?.addEventListener('click',()=>{if(busy)return;overlay.remove();onPlayMatch?.(tournament);});
+  };
+  const createNew=async()=>{if(busy)return;setBusy(true);body.innerHTML=gameTextHtml('tournament.starting');try{const result=await startTournament();renderState(result?.tournament||null);}catch(error){console.error('Tournament start failed:',error);body.innerHTML=`<div class="store-error-msg">${gameTextHtml('tournament.error.start')}</div><div class="tournament-actions"><button class="tournament-btn secondary" id="tournament-retry">${gameTextHtml('common.retry')}</button></div>`;body.querySelector('#tournament-retry')?.addEventListener('click',()=>void load());}finally{setBusy(false);}};
+  const load=async()=>{if(busy)return;setBusy(true);try{renderState(await getTournamentState({resolveInterrupted:true}));}catch(error){console.error('Tournament load failed:',error);body.innerHTML=`<div class="store-error-msg">${gameTextHtml('tournament.error.load')}</div><div class="tournament-actions"><button class="tournament-btn secondary" id="tournament-retry">${gameTextHtml('common.retry')}</button></div>`;body.querySelector('#tournament-retry')?.addEventListener('click',()=>void load());}finally{setBusy(false);}};
+  void load();
+  return overlay;
+}
+
+export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
   clearAnimationLayer('main_menu');
   injectMainMenuStyles();
   injectRewardsStyles();
@@ -8075,6 +8198,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
     </div>
     <div class="main-menu-buttons">
       <button class="main-menu-btn main-menu-btn-primary" id="menu-play">${gameTextHtml('menu.play')}</button>
+      <button class="main-menu-btn main-menu-btn-primary" id="menu-tournament">${gameTextHtml('menu.tournament')}</button>
       <button class="main-menu-btn" id="menu-multiplayer">${gameTextHtml('menu.multiplayer')}</button>
       <button class="main-menu-btn" id="menu-mydecks">${gameTextHtml('menu.myDecks')}</button>
       <button class="main-menu-btn" id="menu-ranking">${gameTextHtml('menu.ranking')}</button>
@@ -8143,6 +8267,13 @@ export function showMainMenu(onPlay, onMultiplayerMatched) {
     if (!await awaitMenuIdentityOrStay()) return;
     overlay.remove();
     await onPlay();
+  });
+
+  overlay.querySelector('#menu-tournament')?.addEventListener('click', async () => {
+    if (!await awaitMenuIdentityOrStay()) return;
+    if (!state.currentUser || !state.userProfile) { releaseMenuIdentityAction(); return; }
+    overlay.remove();
+    if (typeof onTournament === 'function') await onTournament();
   });
 
   // FASE 4 (cierre del roadmap): Multijugador ya conecta con una partida jugable de
@@ -9356,8 +9487,14 @@ export function showGameOverOverlay(didWin) {
   if (HEADLESS_ENGINE) { globalThis.__ARGENTINIA_HEADLESS_GAME_OVER__ = { didWin: !!didWin, at: Date.now() }; return; }
   els.gameOverTitle.textContent = didWin ? gameText('game.over.overlayWin', { rival: getRivalName() }) : gameText('game.over.overlayLoss', { rival: getRivalName() });
   if (els.gameOverRewardStatus) {
-    els.gameOverRewardStatus.textContent = state.currentUser ? (state.currentMatch ? gameText('game.points.pvpChecking') : gameText('game.points.botChecking')) : '';
+    els.gameOverRewardStatus.textContent = state.currentTournamentMatch
+      ? gameText('tournament.match.settling')
+      : (state.currentUser ? (state.currentMatch ? gameText('game.points.pvpChecking') : gameText('game.points.botChecking')) : '');
     els.gameOverRewardStatus.classList.toggle('hidden', !els.gameOverRewardStatus.textContent);
+  }
+  if (state.currentTournamentMatch && els.btnRestart) {
+    els.btnRestart.textContent = gameText('tournament.match.returnFixture');
+    els.btnRestart.disabled = true;
   }
   els.gameOverOverlay.classList.remove('hidden'); els.btnEndTurn.disabled = true;
 }

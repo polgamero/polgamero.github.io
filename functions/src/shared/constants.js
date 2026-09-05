@@ -1,6 +1,6 @@
-export const ENGINE_VERSION = '23.19.5.6';
+export const ENGINE_VERSION = '23.20.0';
 export const ECONOMY_PROTOCOL_VERSION = 'econ-23.19.5.6';
-export const ECONOMY_SCHEMA_VERSION = 7;
+export const ECONOMY_SCHEMA_VERSION = 8;
 export const ECONOMY_REGION = 'southamerica-east1';
 export const ECONOMY_CONFIG_PATH = 'gameConfig/economy';
 export const ECONOMY_OPERATIONS_COLLECTION = 'economyOperations';

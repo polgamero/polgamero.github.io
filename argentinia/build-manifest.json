@@ -1,12 +1,12 @@
 {
-  "engineVersion": "23.19.5.6",
+  "engineVersion": "23.20.0",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
   "economyProtocolVersion": "econ-23.19.5.6",
-  "economySchemaVersion": 7,
+  "economySchemaVersion": 8,
   "economyFunctionsRegion": "southamerica-east1",
   "firestoreRulesVersion": "23.13.80",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Economy Write Firewall + Server-Required Cutover"
+  "label": "Torneo · 16-player Knockout Mode"
 }

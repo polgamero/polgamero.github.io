@@ -167,7 +167,25 @@ export function getDefaultGameConfig() {
     maxEnhancedCardsPerDeck: 3,
     prebuiltDeckPoints: 1500,
     prebuiltDeckFichas: 3,
-    maxSavedDecks: 12
+    maxSavedDecks: 12,
+    tournamentRewardedStartsPerDay: 1,
+    tournamentNpcRandomnessPercent: 18,
+    tournamentRound16Points: 100,
+    tournamentRound16Packs: 0,
+    tournamentRound16Difficulty: 'medium',
+    tournamentRound16DeckQuality: 'good',
+    tournamentQuarterPoints: 150,
+    tournamentQuarterPacks: 0,
+    tournamentQuarterDifficulty: 'medium',
+    tournamentQuarterDeckQuality: 'strong',
+    tournamentSemiPoints: 250,
+    tournamentSemiPacks: 1,
+    tournamentSemiDifficulty: 'hard',
+    tournamentSemiDeckQuality: 'strong',
+    tournamentFinalPoints: 500,
+    tournamentFinalPacks: 2,
+    tournamentFinalDifficulty: 'hard',
+    tournamentFinalDeckQuality: 'elite'
   };
 }
 

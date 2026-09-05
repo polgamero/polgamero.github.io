@@ -23,9 +23,9 @@ const root = path.resolve(here,'..');
 const repo = path.resolve(root,'..');
 const read = p => fs.readFileSync(path.join(repo,p),'utf8');
 
-assert.equal(ENGINE_VERSION,'23.19.5.6');
+assert.equal(ENGINE_VERSION,'23.20.0');
 assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.6');
-assert.equal(ECONOMY_SCHEMA_VERSION,7);
+assert.equal(ECONOMY_SCHEMA_VERSION,8);
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
 assert.equal(TRUSTED_CARD_POOL.length,880);
 assert.equal(TRUSTED_PREBUILT_PRODUCTS.length,10);
@@ -114,8 +114,8 @@ const implExports=new Set([
 assert.deepEqual(lazyTargets.filter(name=>!implExports.has(name)),[],'firebase lazy facade drift');
 
 const manifest=JSON.parse(read('argentinia/build-manifest.json'));
-assert.equal(manifest.engineVersion,'23.19.5.6');
+assert.equal(manifest.engineVersion,'23.20.0');
 assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.6');
-assert.equal(manifest.economySchemaVersion,7);
+assert.equal(manifest.economySchemaVersion,8);
 
 console.log('STORE_CRAFT_PREBUILT_CLASSIFIEDS_USERNAME_AUTHORITY_23_19_5_2_OK pack=SERVER craft=SERVER prebuilt=TRUSTED classifieds=SERVER_WEEK username=SERVER_IDEMPOTENT recovery=OPERATION_ID lazy=PARITY');

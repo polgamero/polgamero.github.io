@@ -44,7 +44,7 @@ if(!telemetry.includes('TELEMETRY_SCHEMA_VERSION = 5')) throw new Error('schema 
 if(!telemetry.includes('afterHash') || !telemetry.includes('recordReplayCheckpoint')) throw new Error('replay telemetry missing');
 const main=read('js/main.js');
 if(!main.includes('beginGameRngSession') || !main.includes('gameSeedFromLocation')) throw new Error('rng bootstrap missing');
-if(!main.includes("seed: gameSeedFromLocation(), label: 'solo'")) throw new Error('solo forced seed hook missing');
+if(!main.includes("seed: gameSeedFromLocation(), label: tournamentMatch ? `tournament:${tournamentMatch.tournamentId}:${tournamentMatch.matchId}` : 'solo'")) throw new Error('solo/tournament forced seed hook missing');
 if(main.includes("seed: gameSeedFromLocation(), label: `multiplayer:")) throw new Error('multiplayer must ignore URL-forced game seed');
 const recovery=read('js/soloRecovery.js');
 if(!recovery.includes('SOLO_RECOVERY_SCHEMA_VERSION = 2') || !recovery.includes('rngState')) throw new Error('recovery rng missing');

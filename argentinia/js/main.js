@@ -2,13 +2,14 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardForBot, tryPayWardForBotTarget } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal } from './ui.js';
+import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal } from './ui.js';
 import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence, beginTournamentMatch, forfeitTournament } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
+import { applyTournamentConfig } from './tournamentConfig.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
 import { initTelemetry, startTelemetrySession, endTelemetrySession, recordTelemetryEvent, recordTelemetryNetwork, recordTelemetryDecision, recordTelemetryInitialDecks, getTelemetryStatus } from './telemetry.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, ENGINE_BUILD_LABEL, BUILD_MANIFEST_URL, isExactMultiplayerVersionCompatible } from './version.js';
@@ -400,6 +401,8 @@ export const state = {
   // partida multiplayer arranca de verdad, pasa a { matchId, myRole } ('host' o 'guest'),
   // y ahí sí render() (ui.js) publica mi mitad del estado después de cada cambio real.
   currentMatch: null,
+  // 23.20.0 — contexto local de una ronda de Torneo. Nunca se sincroniza por multiplayer.
+  currentTournamentMatch: null,
   // Fase 4, Etapa 6: null mientras nadie abandonó. 'local' si abandoné yo (mi propio botón
   // ya lo maneja directo, sin pasar por acá); 'rival' si el rival abandonó — esto es lo que
   // mi sync trae de vuelta y checkGameOver() usa para saber que gané por abandono ajeno.
@@ -733,9 +736,8 @@ export function getLocalPlayerName() {
 // Reemplaza los mensajes
 // que antes decían "El Tano" hardcodeado incluso jugando contra una persona de verdad.
 export function getRivalName() {
-  if (state.currentMatch && state.currentMatch.rivalName) {
-    return state.currentMatch.rivalName;
-  }
+  if (state.currentMatch && state.currentMatch.rivalName) return state.currentMatch.rivalName;
+  if (state.currentTournamentMatch?.opponent?.name) return state.currentTournamentMatch.opponent.name;
   return 'El Tano';
 }
 
@@ -758,7 +760,10 @@ export function getRivalName() {
 // así que sacarlo de ahí no cambia el comportamiento en absoluto.
 
 function hookGameplayButtons() {
-  els.btnRestart.addEventListener('click', () => location.reload());
+  els.btnRestart.addEventListener('click', () => {
+    if (state.currentTournamentMatch) { try { sessionStorage.setItem('argentinia.tournament.openAfterReload.v1','1'); } catch {} }
+    location.reload();
+  });
   els.rivalHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(false));
   els.localHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(true));
 
@@ -770,6 +775,22 @@ function hookGameplayButtons() {
       showAbandonConfirmModal(
         async () => {
           state.gameOver = true; // evita que checkGameOver procese esto como otra cosa
+          if (state.currentTournamentMatch) {
+            const t = state.currentTournamentMatch;
+            try {
+              await forfeitTournament(t.tournamentId, t.matchId);
+              recordTelemetryEvent('tournament_forfeit_committed', { tournamentId:t.tournamentId, matchId:t.matchId, roundKey:t.roundKey });
+            } catch (error) {
+              // Fail-closed semantics remain safe: if this explicit call cannot reach Functions,
+              // getTournament(resolveInterrupted) will eliminate the still-active round later.
+              console.error('No se pudo confirmar el abandono de Torneo en línea; quedará como partida interrumpida:', error);
+            } finally {
+              try { sessionStorage.setItem('argentinia.tournament.openAfterReload.v1','1'); } catch {}
+              try { endTelemetrySession('tournament_forfeit'); } catch {}
+              location.reload();
+            }
+            return;
+          }
           const cleanupTasks = [];
           let timedOut = false;
 
@@ -852,7 +873,8 @@ function hookGameplayButtons() {
             location.reload();
           }
         },
-        () => {} // "Seguir jugando": no hace falta hacer nada, el modal ya se cerró solo
+        () => {}, // "Seguir jugando": no hace falta hacer nada, el modal ya se cerró solo
+        { tournament: !!state.currentTournamentMatch }
       );
     });
   }
@@ -863,24 +885,28 @@ function hookGameplayButtons() {
   // cuando un recovery Solo vence tras 24 h y el jugador vuelve.
   window.addEventListener('beforeunload', (event) => {
     if (state.gameOver) return;
+    if (state.currentTournamentMatch) { try { sessionStorage.setItem('argentinia.tournament.openAfterReload.v1','1'); } catch {} }
     if (hasActiveSoloRecovery()) {
       checkpointSoloRecovery(state, spellStack, { telemetrySessionId: getTelemetryStatus().sessionId });
     }
-    if (hasActiveSoloRecovery() || state.currentMatch) {
+    if (hasActiveSoloRecovery() || state.currentMatch || state.currentTournamentMatch) {
       event.preventDefault();
       event.returnValue = '';
     }
   });
   window.addEventListener('pagehide', () => {
+    if (!state.gameOver && state.currentTournamentMatch) { try { sessionStorage.setItem('argentinia.tournament.openAfterReload.v1','1'); } catch {} }
     if (!state.gameOver && hasActiveSoloRecovery()) {
       checkpointSoloRecovery(state, spellStack, { telemetrySessionId: getTelemetryStatus().sessionId });
     }
   });
 }
 
-async function initGame(deckSource) {
+async function initGame(deckSource, options = {}) {
   soloGameplayReady = false;
-  beginGameRngSession({ seed: gameSeedFromLocation(), label: 'solo' });
+  const tournamentMatch = options?.tournamentMatch || null;
+  state.currentTournamentMatch = tournamentMatch;
+  beginGameRngSession({ seed: gameSeedFromLocation(), label: tournamentMatch ? `tournament:${tournamentMatch.tournamentId}:${tournamentMatch.matchId}` : 'solo' });
   enterGameplayAudio('solo');
   logMsg(gameText('game.loadingDeck'));
 
@@ -901,9 +927,10 @@ async function initGame(deckSource) {
     deckLabel = deckSource.identity.join('/');
   }
   await mobileSoloYield('local_deck_ready', { count: state.localDeck.length });
-  state.botDifficulty = normalizeBotDifficulty(state.botDifficulty);
-  const botQuality = botDeckQuality(state.botDifficulty);
-  state.rivalDeck = buildRandomDeck(undefined, { quality: botQuality });
+  state.botDifficulty = normalizeBotDifficulty(tournamentMatch?.difficulty || state.botDifficulty);
+  const botQuality = tournamentMatch?.deckQuality || botDeckQuality(state.botDifficulty);
+  const botIdentity = Array.isArray(tournamentMatch?.opponent?.colors) && tournamentMatch.opponent.colors.length ? tournamentMatch.opponent.colors : undefined;
+  state.rivalDeck = buildRandomDeck(botIdentity, { quality: botQuality, archetypeId: tournamentMatch?.opponent?.archetypeId || undefined });
   // 23.19 — no persistir ni exponer el arquetipo generado del Tano en diagnósticos de runtime.
   // El cliente necesita el mazo para jugar, pero la instrumentación no debe spoilearlo.
   state.rivalDeckBuildReport = null;
@@ -928,7 +955,7 @@ async function initGame(deckSource) {
   // completo de las dos bibliotecas sin intervenir en ningún RNG ni regla.
   const soloGameId = createSoloGameId();
   startTelemetrySession({
-    mode: 'solo',
+    mode: tournamentMatch ? 'tournament' : 'solo',
     difficulty: state.botDifficulty,
     deckLabel,
     soloGameId,
@@ -937,9 +964,9 @@ async function initGame(deckSource) {
     replayRng: getGameRngSnapshot()
   });
   recordTelemetryEvent('starting_player_selected', {
-    mode: 'solo',
+    mode: tournamentMatch ? 'tournament' : 'solo',
     startingSide: soloStartingSide,
-    winner: soloStartingSide === 'local' ? getLocalPlayerName() : 'El Tano'
+    winner: soloStartingSide === 'local' ? getLocalPlayerName() : getRivalName()
   });
   recordTelemetryInitialDecks({ revealRival: true });
   await mobileSoloYield('telemetry_ready');
@@ -977,7 +1004,7 @@ async function initGame(deckSource) {
   // verdad recién cuando termina de resolver su mano (finishSetup).
   const finishSetup = () => {
     soloGameplayReady = true;
-    beginSoloRecoverySession({
+    if (!tournamentMatch) beginSoloRecoverySession({
       soloGameId,
       state,
       stack: spellStack,
@@ -1002,7 +1029,7 @@ async function initGame(deckSource) {
 
   await showStartingCoinToss({
     localName: getLocalPlayerName(),
-    rivalName: 'El Tano',
+    rivalName: getRivalName(),
     winnerSide: soloStartingSide
   });
   await mobileSoloYield('before_mulligan_ui', { local: state.localHand.length, startingSide: soloStartingSide });
@@ -1399,6 +1426,7 @@ async function boot() {
         loadGameConfig()
           .then(config => {
             applyGameConfig(config);
+            applyTournamentConfig(config);
             globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('firebase_config_loaded_after_auth_mobile');
           })
           .catch(err => {
@@ -1545,6 +1573,7 @@ async function boot() {
       try {
         const config = await loadGameConfig();
         applyGameConfig(config);
+        applyTournamentConfig(config);
       } catch (err) {
         console.error('No se pudo cargar la configuración del juego — se usan los valores por defecto:', err);
       }
@@ -1572,8 +1601,26 @@ async function boot() {
   }
 
   markEngineBootState('ready', { engineVersion: ENGINE_VERSION });
-  showMainMenu(startPlayFlow, startMultiplayerFlow);
+  showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow);
   startAnimationPolicyBridge();
+
+  // 23.20.0 — after a finished/aborted tournament gameplay reload, return to the fixture.
+  // The server decides whether an unfinished activeMatch became an elimination.
+  void (async () => {
+    let reopen=false;
+    try { reopen=sessionStorage.getItem('argentinia.tournament.openAfterReload.v1')==='1'; } catch {}
+    if(!reopen) return;
+    try {
+      await waitForInitialAuthState();
+      if(state.currentUser) await userProfileLoadPromise;
+      if(!state.currentUser || !state.userProfile) return;
+      try { sessionStorage.removeItem('argentinia.tournament.openAfterReload.v1'); } catch {}
+      document.querySelector('#main-menu-overlay')?.remove();
+      await startTournamentFlow();
+    } catch(error) {
+      console.warn('No se pudo reabrir el fixture de Torneo automáticamente:', error);
+    }
+  })();
 
   // 23.13.61 — el popup de anuncios ya no nace dentro de showMainMenu antes de que Auth
   // resuelva. Para guest se muestra recién cuando sabemos que realmente NO hay usuario;
@@ -1627,7 +1674,7 @@ async function startPlayFlow() {
     await ensureMenuIdentityReady();
   } catch (err) {
     console.error('No se pudo iniciar Jugar sin una identidad resuelta:', err);
-    showMainMenu(startPlayFlow, startMultiplayerFlow);
+    showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow);
     return;
   }
   const savedDecks = (state.currentUser && state.userProfile && state.userProfile.decks) || [];
@@ -1636,13 +1683,13 @@ async function startPlayFlow() {
   if (state.currentUser) {
     if (savedDecks.length <= 0) {
       window.alert(gameText('menu.noDecksReady'));
-      showMainMenu(startPlayFlow, startMultiplayerFlow);
+      showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow);
       return;
     }
     showPlayDeckPickerModal(
       (chosenDeck) => initGame({ type: 'saved', deck: chosenDeck }),
       null,
-      () => showMainMenu(startPlayFlow, startMultiplayerFlow)
+      () => showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow)
     );
     return;
   }
@@ -1651,8 +1698,54 @@ async function startPlayFlow() {
   showDeckSelectionModal(
     (chosenIdentity) => initGame({ type: 'random', identity: chosenIdentity }),
     {},
-    () => showMainMenu(startPlayFlow, startMultiplayerFlow)
+    () => showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow)
   );
+}
+
+
+// 23.20.0 — Torneo: el fixture se puede pausar entre partidos. El servidor marca la
+// ronda como activa RECIÉN después de elegir un mazo; desde ese momento F5/abandono = eliminación.
+async function startTournamentFlow() {
+  try {
+    await ensureMenuIdentityReady();
+    if (!state.currentUser || !state.userProfile) {
+      showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow);
+      return;
+    }
+    showTournamentScreen(
+      () => showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow),
+      tournament => {
+        const savedDecks = state.userProfile?.decks || [];
+        if (!savedDecks.length) {
+          window.alert(gameText('menu.noDecksReady'));
+          startTournamentFlow();
+          return;
+        }
+        showPlayDeckPickerModal(
+          async chosenDeck => {
+            try {
+              const begun = await beginTournamentMatch(tournament.tournamentId);
+              const match = begun?.match;
+              if (!match?.matchId) throw new Error('TOURNAMENT_MATCH_MISSING');
+              await initGame({ type:'saved', deck:chosenDeck }, {
+                tournamentMatch: { ...match, tournamentId:tournament.tournamentId }
+              });
+            } catch (error) {
+              console.error('No se pudo iniciar la ronda de Torneo:', error);
+              showSimpleAlertModal(gameText('tournament.error.begin'));
+              startTournamentFlow();
+            }
+          },
+          null,
+          () => startTournamentFlow()
+        );
+      }
+    );
+  } catch (error) {
+    console.error('No se pudo abrir Torneo:', error);
+    showSimpleAlertModal(gameText('tournament.error.load'));
+    showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow);
+  }
 }
 
 // FASE 4 (CIERRE DEL ROADMAP): se llama desde showMultiplayerLobby (ui.js) apenas dos
@@ -1665,7 +1758,7 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', st
   showPlayDeckPickerModal(
     (chosenDeck) => startMultiplayerMatch(matchId, myRole, { type: 'saved', deck: chosenDeck }, rivalName, rivalPhotoURL, startingRole),
     null,
-    () => showMainMenu(startPlayFlow, startMultiplayerFlow),
+    () => showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow),
     () => startMultiplayerMatch(matchId, myRole, { type: 'test' }, rivalName, rivalPhotoURL, startingRole)
   );
 }

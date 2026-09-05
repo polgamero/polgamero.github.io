@@ -1,0 +1,42 @@
+ARGENTINIA v23.20.0 — TORNEO — QA / PROMOTION CONTRACT
+
+STATUS: IN DEVELOPMENT / PRE-RC. 23.19.5.6 remains the production RELEASED baseline.
+
+LOCAL QA CURRENTLY GREEN
+- Tournament structural contract: PASS.
+- Canonical cumulative fast sweep: 113/113 PASS.
+- Regression archive parity: 62/62 PASS.
+- Functions unit suite (Foundation + Tournament): PASS.
+- Functions syntax: PASS.
+- Game Text contract: 1309 definitions / 1054 uses PASS.
+- JS/MJS syntax over current app/tools set: 229/229 PASS.
+- Stability: PASS (10 seeds / 30 deck builds / 2000 RNG draws / 40 invariant mutations).
+- Headless 23.18.1: 6/6 games PASS.
+- Headless Coverage: 560 full / 302 partial / 18 unsupported / 97.95% structurally known PASS.
+- Headless 23.18.2: 6/6 games PASS.
+- Multiplayer Reliability: 250 seeds / 30000 commits PASS.
+- Multiplayer Hardening: 5000 cases PASS.
+- Functions parity 01/05/06: 41/41/41 expected byte-identical.
+
+REAL TOURNAMENT EMULATOR GATE 05 — REQUIRED BEFORE RC PROMOTION
+- cumulative 23.19.5.6 Economy/Firewall authority gate must remain green against schema 8 / 30 callables.
+- TOURNAMENT_MODE_23_20_0_EMULATOR_OK
+- TOURNAMENT_MODE_23_20_0_GATE_OK
+- code 0.
+- Covers bracket16, all four round policies, exactly-once settlement, reward total 1000P+3 packs, daily cap/practice, forfeit/interruption elimination, immutable receipts/audit and server stats.
+
+NPC ASSET GATE — REQUIRED BEFORE RELEASE
+Run: node tools/test_tournament_npc_assets_23_20_0.mjs
+Required: TOURNAMENT_NPC_ASSETS_23_20_0_OK count=40 ...
+Current source intentionally has 0/40 portrait binaries; this gate is pending and is NOT in the canonical 113 fast manifest yet.
+
+PROMOTION ORDER
+1. Real Tournament Emulator Gate code 0.
+2. Supply/validate 40/40 NPC PNGs at assets/images/npcs/.
+3. Re-run full cumulative local QA and source/package parity.
+4. Publish cumulative GitHubSource; GitHub Actions green.
+5. Deploy Functions only; verify exact 30/30 Node22 southamerica-east1 256MiB.
+6. Production economyStatus: engine23.20.0, econ-23.19.5.6, schema8, tournamentAuthority=server, mode=server_required, AppCheck present, cost 0/1/10.
+7. Production tournament smoke: start -> fixture -> round -> reward -> reload/continue -> champion; explicit loss/abandon; practice cap; Admin edits apply only to newly started tournaments.
+8. Firestore Rules 23.13.80 are unchanged and MUST NOT be redeployed for Torneo.
+9. Only then mark 23.20.0 RELEASED.

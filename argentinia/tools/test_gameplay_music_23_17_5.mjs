@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { AUDIO_CATALOG, MUSIC_SCENE_TRACKS, enterGameplayAudio, getAudioRuntimeStatus } from '../js/audioManager.js';
 import { ENGINE_VERSION, FIRESTORE_RULES_VERSION } from '../js/version.js';
 
-assert.equal(ENGINE_VERSION, '23.19.5.6');
+assert.equal(ENGINE_VERSION, '23.20.0');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.80');
 assert.deepEqual(MUSIC_SCENE_TRACKS, { menu:'menu', solo:'solo', multiplayer:'multiplayer' });
 
@@ -19,7 +19,7 @@ enterGameplayAudio('multiplayer');
 assert.equal(getAudioRuntimeStatus().desiredScene, 'multiplayer');
 
 const main = fs.readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
-assert.match(main, /async function initGame\(deckSource\)[\s\S]{0,160}enterGameplayAudio\('solo'\)/);
+assert.match(main, /async function initGame\(deckSource(?:, options = \{\})?\)[\s\S]{0,320}enterGameplayAudio\('solo'\)/);
 assert.match(main, /resumeSoloRecoveryGame\(candidate\)[\s\S]{0,160}enterGameplayAudio\('solo'\)/);
 assert.match(main, /startMultiplayerMatch\([\s\S]{0,700}enterGameplayAudio\('multiplayer'\)/);
 assert.match(main, /resumeReconnectedMatch\([\s\S]{0,220}enterGameplayAudio\('multiplayer'\)/);

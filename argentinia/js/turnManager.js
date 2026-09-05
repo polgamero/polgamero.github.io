@@ -4,7 +4,7 @@ import { takeBotPriorityAction } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { hasKeyword, canBlock } from './keywords.js';
-import { awardGamePointsOnce, clearActiveMatchId } from './firebaseClient.js';
+import { awardGamePointsOnce, clearActiveMatchId, settleTournamentMatch } from './firebaseClient.js';
 import { pointsForBotGameEnd, POINTS } from './store.js';
 import { recordTelemetryEvent, getTelemetryStatus, refreshFinalTelemetryAfterTerminalEvent } from './telemetry.js';
 import { PRIORITY_CLOCK_DURATION_MS, getEffectivePriorityActivity, canPriorityClockRun, getFrozenPriorityRemainingMs } from './priorityUX.js';
@@ -73,7 +73,7 @@ export function checkGameOver() {
   recordTelemetryEvent('terminal_processed_locally', {
     reason: terminal.reason,
     won: terminal.won,
-    mode: state.currentMatch ? 'multiplayer' : 'solo',
+    mode: state.currentMatch ? 'multiplayer' : (state.currentTournamentMatch ? 'tournament' : 'solo'),
     matchId: state.currentMatch?.matchId || null,
     myRole: state.currentMatch?.myRole || null,
     syncedGameOver: wasAlreadyGameOver
@@ -116,6 +116,46 @@ function pvpRewardNotice(result) {
 }
 
 function awardMatchEndPoints(won) {
+  // 23.20.0 — Torneo has its own exactly-once authority. Never let the generic Solo
+  // receipt path award a second reward for the same game.
+  if (state.currentTournamentMatch) {
+    const context = { ...state.currentTournamentMatch };
+    if (!state.currentUser || !context.tournamentId || !context.matchId) return;
+    if (els.btnRestart) els.btnRestart.disabled = true;
+    showGameRewardStatus(gameText('tournament.match.settling'), 'info');
+    recordTelemetryEvent('tournament_settlement_queued', { tournamentId:context.tournamentId, matchId:context.matchId, roundKey:context.roundKey, won:!!won });
+    settleTournamentMatch(context.tournamentId, context.matchId, !!won)
+      .then(result => {
+        if (state.userProfile) {
+          if (Number.isFinite(Number(result?.totalPoints))) state.userProfile.points = Number(result.totalPoints);
+          if (result?.inventoryAfter) state.userProfile.inventory = result.inventoryAfter;
+        }
+        const round = gameText(`tournament.round.${context.roundKey}`);
+        const msg = won
+          ? (result?.rewardEligible
+              ? gameText('tournament.match.win', { round, points:Number(result?.pointsGain)||0, packs:Number(result?.packsGain)||0 })
+              : gameText('tournament.match.winPractice', { round }))
+          : gameText('tournament.match.loss', { round });
+        showGameRewardStatus(msg, won ? 'success' : 'warning');
+        logMsg(msg);
+        state.currentTournamentMatch.settled = true;
+        try { sessionStorage.setItem('argentinia.tournament.openAfterReload.v1','1'); } catch {}
+        if (els.btnRestart) {
+          els.btnRestart.textContent = gameText('tournament.match.returnFixture');
+          els.btnRestart.disabled = false;
+        }
+        updateAccountUI(state.currentUser);
+        void refreshFinalTelemetryAfterTerminalEvent('tournament_match_settled').catch(()=>{});
+      })
+      .catch(error => {
+        console.error('[Tournament 23.20.0] Settlement failed:', error);
+        showGameRewardStatus(gameText('tournament.error.settle'), 'warning');
+        recordTelemetryEvent('tournament_settlement_deferred', { tournamentId:context.tournamentId, matchId:context.matchId, won:!!won, code:error?.code||error?.name||'ERROR' }, 'warning');
+        // Keep the return button disabled: leaving now would correctly count as an interrupted
+        // tournament game, but could discard a legitimate win before the idempotent settle lands.
+      });
+    return;
+  }
   // 23.13.54 — una partida Solo finalizada deja de ser reanudable inmediatamente, incluso
   // para Gaucho sin login. Guardamos antes su duración efectiva para Stats.
   const soloRecovery = !state.currentMatch ? finishSoloRecovery() : null;

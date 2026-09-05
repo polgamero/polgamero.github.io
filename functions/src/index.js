@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { onCall } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions';
 import { db } from './shared/firestore.js';
@@ -36,6 +37,7 @@ import {
 import { recordAuthorityAudit } from './economy/audit.js';
 import { deriveSoloAbandonReceiptId, normalizeAbandonDurationMs } from './economy/matchCore.js';
 import { normalizeAdminGrantRequest, adminGrantTx, advanceBulkGrantJob, readBulkGrantJob, adminSyncPlayerStats, adminRepairSoloRewardTx } from './economy/admin.js';
+import { getTournamentState, startTournamentTx, beginTournamentMatchTx, settleTournamentMatchTx, forfeitTournamentTx } from './economy/tournament.js';
 
 function requestData(request) {
   const data = request?.data;
@@ -103,7 +105,7 @@ export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
         dailyRewardsAuthority: 'server', dailyClockAuthority: 'server', dailyClaimRecovery: true,
         matchSettlementAuthority: 'server', pvpAntiFarmAuthority: 'server',
         registrationAdmissionAuthority: 'server', adminEconomyAuthority: 'server',
-        economicStatisticsAuthority: 'server', immutableAuditAuthority: 'server',
+        economicStatisticsAuthority: 'server', immutableAuditAuthority: 'server', tournamentAuthority: 'server',
         browserEconomyWrites: 'denied_by_rules_23.13.80', authorityCutover: 'server_required'
       },
       trustedPoolFingerprint: TRUSTED_CARD_POOL_FINGERPRINT
@@ -698,4 +700,80 @@ export const economyGetOperation = onCall(FUNCTION_RUNTIME_OPTIONS, async reques
     logFailure('economyGetOperation', auth, error);
     throw error;
   }
+});
+
+
+// ---------------------------------------------------------------------------
+// v23.20.0 — Tournament Authority. Browser reports Solo outcome intent; rewards,
+// persistence, bracket progression, caps and economic mutation are server-owned.
+// ---------------------------------------------------------------------------
+export const economyGetTournament = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'tournament-read',{limit:60,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','resolveInterrupted']);
+    const config=await loadEconomyConfig(db); assertEconomyAvailable(config,clientProtocol(data));
+    const tournament=await getTournamentState(db,{uid:auth.uid,resolveInterrupted:data.resolveInterrupted===true});
+    return {ok:true,tournament};
+  } catch(error){logFailure('economyGetTournament',auth,error);throw error;}
+});
+
+export const economyStartTournament = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'tournament-start',{limit:12,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','operationId']);
+    const operationId=String(data.operationId||'');
+    const seed=crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'tournament.start',request:{},execute:async tx=>{
+      const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+      return startTournamentTx({db,tx,uid:auth.uid,seed});
+    }});
+    logger.info('Tournament started',{uid:auth.uid,operationId,replayed:outcome.replayed,tournamentId:outcome.result?.tournament?.tournamentId||null});
+    return {ok:true,...outcome};
+  } catch(error){logFailure('economyStartTournament',auth,error);throw error;}
+});
+
+export const economyBeginTournamentMatch = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'tournament-begin',{limit:24,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','operationId','tournamentId']);
+    const operationId=String(data.operationId||''),tournamentId=String(data.tournamentId||'');
+    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'tournament.begin_match',request:{tournamentId},execute:async tx=>{
+      const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+      return beginTournamentMatchTx({db,tx,uid:auth.uid,tournamentId});
+    }});
+    return {ok:true,...outcome};
+  } catch(error){logFailure('economyBeginTournamentMatch',auth,error);throw error;}
+});
+
+export const economySettleTournamentMatch = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'tournament-settle',{limit:24,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','operationId','tournamentId','matchId','won']);
+    const operationId=String(data.operationId||''),tournamentId=String(data.tournamentId||''),matchId=String(data.matchId||''),won=data.won===true;
+    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'tournament.settle_match',request:{tournamentId,matchId,won},execute:async tx=>{
+      const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+      return settleTournamentMatchTx({db,tx,uid:auth.uid,tournamentId,matchId,won});
+    }});
+    logger.info('Tournament match settled',{uid:auth.uid,tournamentId,matchId,won,replayed:outcome.replayed});
+    return {ok:true,...outcome};
+  } catch(error){logFailure('economySettleTournamentMatch',auth,error);throw error;}
+});
+
+export const economyForfeitTournament = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'tournament-forfeit',{limit:12,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','operationId','tournamentId','matchId']);
+    const operationId=String(data.operationId||''),tournamentId=String(data.tournamentId||''),matchId=String(data.matchId||'');
+    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'tournament.forfeit_match',request:{tournamentId,matchId},execute:async tx=>{
+      const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+      return forfeitTournamentTx({db,tx,uid:auth.uid,tournamentId,matchId});
+    }});
+    logger.info('Tournament forfeited',{uid:auth.uid,tournamentId,matchId,replayed:outcome.replayed});
+    return {ok:true,...outcome};
+  } catch(error){logFailure('economyForfeitTournament',auth,error);throw error;}
 });

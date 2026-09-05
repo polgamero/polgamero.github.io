@@ -69,6 +69,11 @@ const MAP = Object.freeze({
   DAILY_REWARD_NOT_AVAILABLE: ['failed-precondition', 'Ese premio no está disponible o ya fue reclamado.'],
   DAILY_DEBUG_MODE_INVALID: ['invalid-argument', 'Modo de debug diario inválido.'],
   DAILY_DEBUG_MAX: ['failed-precondition', 'El reloj QA ya está en el máximo de +30 días.'],
+  TOURNAMENT_NOT_FOUND: ['not-found', 'No se encontró el torneo.'],
+  TOURNAMENT_NOT_ACTIVE: ['failed-precondition', 'Ese torneo ya terminó.'],
+  TOURNAMENT_MATCH_NOT_ACTIVE: ['failed-precondition', 'Esa partida de torneo no está activa.'],
+  TOURNAMENT_BRACKET_INVALID: ['internal', 'El fixture del torneo es inconsistente.'],
+  TOURNAMENT_RECEIPT_CONFLICT: ['failed-precondition', 'La partida de torneo ya tiene un resultado incompatible.'],
   INTERNAL: ['internal', 'Error interno de Economy Authority.']
 });
 

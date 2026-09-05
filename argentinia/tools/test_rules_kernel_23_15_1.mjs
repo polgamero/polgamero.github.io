@@ -46,7 +46,7 @@ assert.equal(SBA_MAX_PASSES,32);
 assert.equal(isLegendaryPermanentCard({type:'Criatura Legendaria — Humano'}),true);
 assert.equal(isLegendaryPermanentCard({type:'Planeswalker',text:'Planeswalker Legendario.'}),true);
 assert.equal(isLegendaryPermanentCard({type:'Criatura — Humano'}),false);
-assert.ok((version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.5.6'"))) || (()=>{ try { if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.19.5.6'")))) return /ENGINE_VERSION = '23\.(?:15|16|17)\.(?:[1-9]|[1-9][0-9]+)(?:\.\d+)?'/.test(version); } catch { return false; } })());
+assert.ok((version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.20.0'"))) || (()=>{ try { if (!(version.includes("ENGINE_VERSION = '23.18.3'") || (version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.20.0'")))) return /ENGINE_VERSION = '23\.(?:15|16|17)\.(?:[1-9]|[1-9][0-9]+)(?:\.\d+)?'/.test(version); } catch { return false; } })());
 
 // Legend rule must span every permanent zone controlled by the same player, not only creatures.
 {

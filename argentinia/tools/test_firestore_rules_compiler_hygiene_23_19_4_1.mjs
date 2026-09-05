@@ -7,7 +7,7 @@ import { ENGINE_VERSION, FIRESTORE_RULES_VERSION } from '../js/version.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'build-manifest.json'), 'utf8'));
-assert.equal(ENGINE_VERSION, '23.19.5.6');
+assert.equal(ENGINE_VERSION, '23.20.0');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.80');
 assert.equal(manifest.firestoreRulesVersion, '23.13.80');
 

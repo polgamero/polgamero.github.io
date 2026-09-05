@@ -35,7 +35,7 @@ assert.ok(ui.includes('enterMenuAudio();'), 'Menú principal no arma la escena m
 assert.ok(ui.includes("id=\"opt-music-volume\""), 'Opciones no incluye slider de Música.');
 assert.ok(ui.includes("id=\"opt-sfx-volume\""), 'Opciones no incluye slider separado de Efectos.');
 assert.ok(ui.includes("id=\"menu-music-toggle\""), 'Menú no incluye mute rápido de música.');
-assert.match(main, /async function initGame\(deckSource\) \{[\s\S]{0,220}enterGameplayAudio\('solo'\);/, 'Solitario no selecciona la pista gameplay solo.');
+assert.match(main, /async function initGame\(deckSource(?:, options = \{\})?\) \{[\s\S]{0,320}enterGameplayAudio\('solo'\);/, 'Solitario no selecciona la pista gameplay solo.');
 assert.match(main, /function startMultiplayerMatch\(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host'\) \{[\s\S]{0,700}enterGameplayAudio\('multiplayer'\);/, 'Multiplayer no selecciona la pista gameplay multiplayer.');
 assert.ok(fs.readFileSync(path.join(root, 'js/audioManager.js'), 'utf8').includes("document.addEventListener('visibilitychange'"), 'Audio no pausa/reanuda al cambiar visibilidad.');
 assert.ok(fs.readFileSync(path.join(root, 'js/audioManager.js'), 'utf8').includes("window.addEventListener('pointerdown'"), 'Audio no espera interacción de usuario para autoplay audible.');

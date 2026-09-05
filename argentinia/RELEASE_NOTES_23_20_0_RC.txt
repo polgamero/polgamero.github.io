@@ -1,0 +1,30 @@
+ARGENTINIA v23.20.0 PRE-RC — TORNEO
+
+Cumulative over v23.19.5.6 RELEASED.
+
+NEW
+- TORNEO mode beside PARTIDA SIMPLE.
+- 16-player direct-elimination fixture: Octavos, Cuartos, Semifinal, Final.
+- Trusted roster of 40 fictitious NPC identities; each tournament samples 15.
+- Per-NPC colors/archetype/rating and canonical portrait contract npc_001.png ... npc_040.png.
+- Progressive IA/deck quality by round, with Hard+Elite final by default.
+- Persistent server-owned bracket; free exit/resume between matches; active-match interruption = elimination.
+- Server-owned rewards, daily rewarded-start cap, receipts, audit events and tournament statistics.
+- Five new callable Functions; total 30.
+- Economy schema 8.
+- Admin-editable tournament reward/cap/randomness/difficulty/deck-quality values with per-run policy snapshot.
+- Tournament player copy centralized in Game Text.
+
+UNCHANGED
+- Pool 880.
+- mp-23.19.2.
+- economy protocol econ-23.19.5.6.
+- Firestore Rules 23.13.80 / server_required browser write firewall.
+- Node 22 / Gen2 / southamerica-east1 / 256MiB / timeout30s.
+- minInstances=0 / maxInstances=1 / concurrency=10.
+- App Check observe-only.
+
+NOT RELEASED YET
+- Real Tournament Emulator Gate still must be executed successfully.
+- 40/40 NPC PNG asset gate is pending.
+- GitHub CI, Functions deploy/verify and production Tournament smoke are pending.

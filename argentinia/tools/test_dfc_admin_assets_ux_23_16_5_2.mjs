@@ -16,7 +16,7 @@ const dataFiles=['criaturas','instantaneos','conjuros','encantamientos','artefac
 const cards=dataFiles.flatMap(k=>json(`assets/data/${k}.json`));
 const tdfcs=cards.filter(isTransformingDoubleFacedCard);
 
-assert.match(ENGINE_VERSION,/^(?:23\.16\.5\.2|23\.17(?:\.\d+)+|23\.18(?:\.\d+)*|23\.19(?:\.\d+)*)$/);
+assert.match(ENGINE_VERSION,/^(?:23\.16\.5\.2|23\.17(?:\.\d+)+|23\.18(?:\.\d+)*|23\.19(?:\.\d+)*|23\.20(?:\.\d+)*)$/);
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
 assert.equal(CURRENT_POOL_MILESTONE,'pool_expansion_viii_880');

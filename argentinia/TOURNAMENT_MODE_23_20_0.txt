@@ -1,0 +1,33 @@
+ARGENTINIA v23.20.0 — TORNEO
+
+PRODUCT CONTRACT
+- Menu JUGAR exposes PARTIDA SIMPLE and TORNEO.
+- Direct-elimination bracket with 16 entrants: player + 15 fictitious NPCs sampled from a trusted roster of 40.
+- Rounds: Octavos -> Cuartos -> Semifinal -> Final.
+- Tournament can be left/resumed only between matches. An interrupted/abandoned active match eliminates the player.
+- NPC-vs-NPC results are server-simulated from rating plus Admin-configurable randomness.
+- Player rival identity includes canonical name, avatar, colors, archetype and rating.
+
+DEFAULT ROUND POLICY (all real values editable in Admin and snapshotted when a run starts)
+- Octavos: 100 points, 0 packs, Medium IA, Good deck.
+- Cuartos: 150 points, 0 packs, Medium IA, Strong deck.
+- Semifinal: 250 points, 1 pack, Hard IA, Strong deck.
+- Final: 500 points, 2 packs, Hard IA, Elite deck.
+- Champion default total: 1000 points + 3 packs.
+- Rewarded tournament starts/day: 1 by default; 0 means unlimited. Further starts become practice when cap is reached.
+- NPC simulation randomness: 18% by default.
+
+AUTHORITY / PERSISTENCE
+- Tournament runs, bracket progression, policy snapshot, daily cap, rewards, receipts and stats are server-owned.
+- Match result intent originates in the official Solo client; economic mutation is atomic/idempotent server-side.
+- Five v23.20.0 callables: economyGetTournament, economyStartTournament, economyBeginTournamentMatch, economySettleTournamentMatch, economyForfeitTournament.
+- Economy schema 8; econ-23.19.5.6 retained; Rules 23.13.80 retained; browser economic writes remain DENY.
+- Immutable tournamentReceipts and economyEvents record reward settlement.
+
+ASSETS
+- Canonical portraits: assets/images/npcs/npc_001.png ... npc_040.png.
+- Release gate requires 40/40 valid square PNGs. No portraits are embedded in the source package yet.
+
+TEXT / ADMIN
+- Tournament player-facing copy uses Game Text and remains editable through Admin Textos.
+- Rewards, caps, NPC randomness, per-round IA difficulty and per-round deck quality are Admin settings, not hidden constants.
