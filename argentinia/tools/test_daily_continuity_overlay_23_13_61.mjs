@@ -104,7 +104,7 @@ expect(serverDailyCore.includes('previousLoginDate:state.lastLoginDate'), 'Servi
 expect(fnIndex.includes('export const economyRegisterDailyLogin'), 'Daily login no está bajo autoridad callable.');
 const dailyClient = impl.slice(impl.indexOf('// 23.19.5.4 — DAILY REWARDS AUTHORITY.'), impl.indexOf('// Craftea una mejora permanente'));
 expect(!dailyClient.includes('runTransaction('), 'Browser volvió a mutar Daily directamente.');
-expect(version.includes("FIRESTORE_RULES_VERSION = '23.13.79'"), 'Frontend no exige Rules 23.13.79.');
+expect(version.includes("FIRESTORE_RULES_VERSION = '23.13.80'"), 'Frontend no exige Rules 23.13.80.');
 expect(!fs.existsSync(path.join(root, 'firestore.rules')) && !fs.existsSync(path.join(root, 'firebase.json')),
   'Infra Firestore volvió a quedar dentro del árbol público /argentinia.');
 

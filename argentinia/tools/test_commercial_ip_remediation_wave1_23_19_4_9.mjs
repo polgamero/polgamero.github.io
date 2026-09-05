@@ -37,9 +37,9 @@ const expectedNames={
   crea_028:'Pianista del Apagón Eterno'
 };
 
-assert.equal(ENGINE_VERSION,'23.19.5.5');
+assert.equal(ENGINE_VERSION,'23.19.5.6');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
 assert.equal(cards.length,880);
 assert.equal(Object.keys(expectedNames).length,16);
 for(const [id,name] of Object.entries(expectedNames)){

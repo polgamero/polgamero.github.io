@@ -18,10 +18,10 @@ const html=read('index.html');
 const texts=read('js/gameTexts.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 
-assert.equal(ENGINE_VERSION,'23.19.5.5');
+assert.equal(ENGINE_VERSION,'23.19.5.6');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(manifest.engineVersion,'23.19.5.5');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
+assert.equal(manifest.engineVersion,'23.19.5.6');
 assert.equal(manifest.pool,880);
 
 // Real-game bug #1: same ETB event => watchers + the entering creature's own ETB in ONE AP/NAP batch.
@@ -68,4 +68,4 @@ assert.match(turns,/showGameRewardStatus\(gameText\('game\.points\.deferred'\), 
 console.log('COMBAT_CINEMATIC_TRIGGER_GAMEOVER_HOTFIX_23_19_4_3_OK');
 console.log('triggerOrder=simultaneous-ETB-APNAP botAbilityReservation=PASS combatPresentation=awaited+progressive-hp+impact-death');
 console.log('targetUX=effect-aware gameOver=reward-visible+correct-menu-label telemetry=postgame-final-refresh');
-console.log('pool=880 protocol=mp-23.19.2 rules=23.13.79 unchanged');
+console.log('pool=880 protocol=mp-23.19.2 rules=23.13.80 unchanged');

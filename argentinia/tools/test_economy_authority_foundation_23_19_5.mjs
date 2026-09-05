@@ -13,18 +13,18 @@ const appRoot=path.resolve(here,'..');
 const repoRoot=path.resolve(appRoot,'..');
 const read=(p)=>fs.readFileSync(path.join(repoRoot,p),'utf8');
 
-assert.equal(ENGINE_VERSION,'23.19.5.5');
+assert.equal(ENGINE_VERSION,'23.19.5.6');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.5');
-assert.equal(ECONOMY_SCHEMA_VERSION,6);
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
+assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.6');
+assert.equal(ECONOMY_SCHEMA_VERSION,7);
 assert.equal(ECONOMY_FUNCTIONS_REGION,'southamerica-east1');
 
 const manifest=JSON.parse(read('argentinia/build-manifest.json'));
-assert.equal(manifest.engineVersion,'23.19.5.5');
-assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.5');
+assert.equal(manifest.engineVersion,'23.19.5.6');
+assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.6');
 assert.equal(manifest.economyFunctionsRegion,'southamerica-east1');
-assert.equal(manifest.firestoreRulesVersion,'23.13.79');
+assert.equal(manifest.firestoreRulesVersion,'23.13.80');
 assert.equal(manifest.pool,880);
 
 const firebaseImpl=read('argentinia/js/firebaseClientImpl.js');
@@ -40,9 +40,10 @@ const fnPackage=JSON.parse(read('functions/package.json'));
 assert.match(firebaseImpl,/ReCaptchaEnterpriseProvider/);
 assert.match(firebaseImpl,/6LeHl6MtAAAAAHWzciQAQS_jDNOzXO7QU9FL35JX/);
 assert.match(firebaseImpl,/isTokenAutoRefreshEnabled:\s*true/);
-assert.match(firebaseImpl,/mode:\s*'shadow'/);
-assert.match(firebaseImpl,/server_preferred/);
+assert.match(firebaseImpl,/mode:\s*'server_required'/);
+assert.match(firebaseImpl,/function economyShouldUseServer\(_config\) \{ return true; \}/);
 assert.match(firebaseImpl,/server_required/);
+assert.doesNotMatch(firebaseImpl,/async function trackPlayerStats\(/);
 assert.match(firebaseImpl,/bootstrapAccountServer/);
 assert.match(firebaseImpl,/completeStarterDeckServer/);
 assert.match(main,/createUserProfile\([^\n]+deckSource\.identity\)/);
@@ -91,4 +92,4 @@ assert.equal(
 );
 
 console.log('ECONOMY_AUTHORITY_FOUNDATION_23_19_5_OK');
-console.log('region=southamerica-east1 node=22 minInstances=0 maxInstances=1 appCheck=OBSERVE_ONLY operationLedger=IDEMPOTENT secureBootstrap=SERVER_READY pool=880 rules=23.13.79');
+console.log('region=southamerica-east1 node=22 minInstances=0 maxInstances=1 appCheck=OBSERVE_ONLY operationLedger=IDEMPOTENT secureBootstrap=SERVER_READY pool=880 rules=23.13.80');

@@ -1,12 +1,12 @@
 {
-  "engineVersion": "23.19.5.5",
+  "engineVersion": "23.19.5.6",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
-  "economyProtocolVersion": "econ-23.19.5.5",
-  "economySchemaVersion": 6,
+  "economyProtocolVersion": "econ-23.19.5.6",
+  "economySchemaVersion": 7,
   "economyFunctionsRegion": "southamerica-east1",
-  "firestoreRulesVersion": "23.13.79",
+  "firestoreRulesVersion": "23.13.80",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Admin Economy + Statistics + Immutable Audit Authority"
+  "label": "Economy Write Firewall + Server-Required Cutover"
 }

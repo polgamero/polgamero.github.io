@@ -1,0 +1,129 @@
+SOURCE SNAPSHOT MANIFEST — 23.19.5.6 ECONOMY WRITE FIREWALL + SERVER-REQUIRED CUTOVER RC
+
+STATUS=RELEASE_CANDIDATE_PENDING_REAL_EMULATOR_GATES_GITHUB_FUNCTIONS_RULES_PRODUCTION_SMOKE
+BASELINE=23.19.5.5 RELEASED + Deck Intelligence 23.19.5-di2
+POOL=880
+PROTOCOL=mp-23.19.2
+ECONOMY_PROTOCOL=econ-23.19.5.6
+ECONOMY_SCHEMA=7
+ECONOMY_FUNCTIONS_REGION=southamerica-east1
+FIRESTORE_RULES=23.13.80 (ordered deploy candidate; intentionally not shipped in public source)
+FILE_COUNT=344
+CARD_IMAGE_BINARIES=0
+PUBLIC_FIRESTORE_CONFIG_FILES=0
+APP_CHECK_PROVIDER=recaptcha-enterprise
+APP_CHECK_ENFORCEMENT=OBSERVE_ONLY
+FUNCTIONS_NODE=22
+FUNCTIONS_MIN_INSTANCES=0
+FUNCTIONS_MAX_INSTANCES=1
+FUNCTIONS_CONCURRENCY=10
+FUNCTIONS_TIMEOUT_SECONDS=30
+FUNCTIONS_MEMORY=256MiB
+ECONOMY_FUNCTION_COUNT=25
+ECONOMY_AUTHORITY_MODE=SERVER_REQUIRED
+ECONOMY_MINIMUM_CLIENT=econ-23.19.5.6
+DIRECT_FIRESTORE_FIREWALL=ACTIVE_RULES_23.13.80
+BROWSER_ECONOMY_WRITES=DENY
+GAMECONFIG_ECONOMY_BROWSER_DOWNGRADE=DENY
+STALE_SHADOW_CONFIG=COERCED_SERVER_REQUIRED
+PLAYER_STATS_AUTHORITY=SERVER
+PLAYER_GAME_RECEIPTS_AUTHORITY=SERVER
+GAME_REWARD_RECEIPTS_AUTHORITY=SERVER
+PVP_LEDGER_AUTHORITY=SERVER
+ECONOMY_AUDIT_AUTHORITY=SERVER_IMMUTABLE
+ADMIN_ECONOMY_AUTHORITY=SERVER
+PACK_AUTHORITY=SERVER
+GUARANTEED_MYTHIC_AUTHORITY=SERVER
+STORE_PACK_PURCHASE_AUTHORITY=SERVER
+CRAFT_AUTHORITY=SERVER
+PREBUILT_AUTHORITY=SERVER_TRUSTED_CATALOG
+CLASSIFIEDS_AUTHORITY=SERVER_ART_WEEK
+USERNAME_RENAME_AUTHORITY=SERVER_ATOMIC_REGISTRY
+DAILY_REWARDS_AUTHORITY=SERVER
+DAILY_CLOCK_AUTHORITY=SERVER_ART_UTC_MINUS_3
+MATCH_SETTLEMENT_AUTHORITY=SERVER_VALUES_AND_PVP_EVIDENCE
+PVP_ANTI_FARM_AUTHORITY=SERVER
+ABANDON_PENALTY_AUTHORITY=SERVER_SIGNED_TERMINAL_RECEIPT
+REGISTRATION_ADMISSION_AUTHORITY=SERVER_ATOMIC
+BROWSER_PROFILE_ALLOWED_FIELDS=lastSeenAt,decks,activeMatchId
+BROWSER_REWARD_CLOCK=ALLOW_SERVER_TIMESTAMP
+BROWSER_MULTIPLAYER_SYNC=ALLOW_EXISTING_SESSION_RULES
+BROWSER_TELEMETRY=ALLOW_EXISTING_OWNER_RULES
+BROWSER_ADMIN_EDITORIAL_CONFIG=ALLOW_EXCEPT_GAMECONFIG_ECONOMY
+LEGACY_CREATE_PROFILE_FIRESTORE_FALLBACK=REMOVED
+LEGACY_TRACK_PLAYER_STATS_DIRECT=REMOVED
+LEGACY_SOLO_DIRECT_SETTLEMENT=REMOVED
+LEGACY_PVP_DIRECT_SETTLEMENT=REMOVED
+LEGACY_AWARD_POINTS=EXPORTED_FAIL_CLOSED
+LEGACY_RECORD_GAME_RESULT=BROWSER_NOOP_SERVER_OWNED
+KILL_SWITCH_BROWSER_FALLBACK=NONE_FUNCTIONS_FAIL_CLOSED
+DECK_INTELLIGENCE_VERSION=23.19.5-di2
+TRUSTED_STARTER_POOL=880
+
+FUNCTIONS (25, count unchanged):
+- economyStatus
+- economyBootstrapAccount
+- economyCompleteStarterDeck
+- economyOpenPack
+- economyOpenGuaranteedMythic
+- economyGetOperation
+- economyGetStorefront
+- economyPurchasePack
+- economyCraftEnhancement
+- economyPurchasePrebuiltDeck
+- economyGetClassifieds
+- economyPurchaseClassifiedCard
+- economyRenameUsername
+- economyRegisterDailyLogin
+- economyClaimDailyReward
+- economyAdminDailyDebug
+- economyGetAdmissionStatus
+- economyAdminSetAdmissionPolicy
+- economySettleMatchReward
+- economyApplyAbandonPenalty
+- economyAdminGrant
+- economyAdminBulkGrant
+- economyAdminGetBulkGrant
+- economyAdminRepairGameReward
+- economyAdminSyncPlayerStats
+
+PUBLIC-SOURCE 23.19.5.6 ARTIFACTS:
+- argentinia/ECONOMY_BROWSER_WRITE_AUDIT_23_19_5_6.txt
+- argentinia/ECONOMY_WRITE_FIREWALL_CUTOVER_23_19_5_6.txt
+- argentinia/RELEASE_NOTES_23_19_5_6_RC.txt
+- argentinia/QA_23_19_5_6_RC.txt
+- argentinia/tools/test_economy_write_firewall_cutover_23_19_5_6.mjs
+- argentinia/tools/ci_fast_contract_manifest_23_19_5_6.txt
+
+LOCAL QA COMPLETED:
+- Economy Write Firewall + Cutover structural contract: PASS
+- canonical fast contract sweep: 112/112 PASS
+- regression archive parity: 62/62 PASS
+- Firestore Rules 23.13.80 compiler hygiene structural contract: PASS
+- Functions unit suite: PASS
+- Functions syntax: PASS
+- Game Text contract: 1264 definitions / 1029 runtime literal uses PASS
+- Stability Replay Foundation: PASS
+- Stability Lab: 10 seeds / 30 deck builds / 2000 RNG draws / 40 invariant mutations PASS
+- Headless 23.18.1: 12/12 games / 4785 actions / 209 turns PASS
+- Headless Coverage: 560 full / 302 partial / 18 unsupported / 97.95% structurally known PASS
+- Headless 23.18.2: 12/12 games / 5481 actions / 236 turns PASS
+- Multiplayer Reliability: 500 seeds / 60000 commits / 123607 deliveries PASS
+- Multiplayer Hardening: 5000 cases / 15000 reconnect-safe / 15000 rejected PASS
+- app/tools/functions JS/MJS syntax: 253 files PASS
+- JSON parse: 23 PASS
+- YAML parse: 1 PASS
+- ordered-package shell syntax: 9 PASS
+- Functions parity 01/05/06: 37/37/37 byte-identical
+- source card-image boundary: 0 binaries
+- public Firestore config boundary: 0 files
+
+REAL PROMOTION GATES PENDING:
+1. Folder 03 Firestore Emulator: compiler + multiplayer hardening + adversarial economy firewall, code 0.
+2. Folder 05 Auth+Firestore+Functions cumulative cutover Emulator, code 0.
+3. Publish 01 GitHubSource + GitHub Actions green.
+4. Deploy Functions 23.19.5.6 only + robust verify exact 25/25.
+5. Production economyStatus server_required/schema7 smoke.
+6. Deploy Firestore Rules 23.13.80 LAST.
+7. Adversarial direct-write DENY + normal login/store/daily/admin/solo/multiplayer production smoke.
+8. Only then mark 23.19.5.6 RELEASED.

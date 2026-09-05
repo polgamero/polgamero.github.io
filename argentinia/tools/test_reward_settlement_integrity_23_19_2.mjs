@@ -14,14 +14,16 @@ const firebase = read('js/firebaseClientImpl.js');
 const proxy = read('js/firebaseClient.js');
 const ui = read('js/ui.js');
 const adminAuthority = read('../functions/src/economy/admin.js');
+const matchAuthority = read('../functions/src/economy/matches.js');
+const matchCore = read('../functions/src/economy/matchCore.js');
 const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || '';
 
-assert.equal(ENGINE_VERSION, '23.19.5.5');
+assert.equal(ENGINE_VERSION, '23.19.5.6');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
-assert.equal(manifest.engineVersion, '23.19.5.5');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.80');
+assert.equal(manifest.engineVersion, '23.19.5.6');
 assert.equal(manifest.engineProtocolVersion, 'mp-23.19.2');
-assert.equal(manifest.firestoreRulesVersion, '23.13.79');
+assert.equal(manifest.firestoreRulesVersion, '23.13.80');
 assert.equal(manifest.pool, 880);
 
 // El pending nuevo debe conservar dificultad; el pending legacy sigue siendo válido.
@@ -29,13 +31,15 @@ assert.match(rewards, /difficulty:\s*reward\.mode === 'multiplayer'/);
 assert.match(turn, /difficulty:\s*mode === 'solo' \? String\(state\.botDifficulty/);
 assert.match(turn, /game_reward_queued[\s\S]*difficulty:/);
 
-// Settlement Solo usa gameConfig y no una matriz hardcodeada en cliente.
-assert.match(firebase, /function normalizeSoloRewardConfig/);
-assert.match(firebase, /winVsTanoFacil/);
-assert.match(firebase, /winVsTanoMedio/);
-assert.match(firebase, /winVsTanoDificil/);
-assert.match(firebase, /SOLO_REWARD_CONFIG_MISMATCH/);
-assert.match(firebase, /storedDifficulty = requestedDifficulty \|\| 'legacy'/);
+// Settlement Solo usa gameConfig en Functions; el browser ya no calcula/escribe el premio.
+assert.match(matchCore, /normalizeMatchRewardConfig/);
+assert.match(matchCore, /winVsTanoFacil/);
+assert.match(matchCore, /winVsTanoMedio/);
+assert.match(matchCore, /winVsTanoDificil/);
+assert.match(matchAuthority, /settleMatchRewardTx/);
+assert.match(matchAuthority, /effectiveMatchRewardPoints/);
+assert.doesNotMatch(firebase, /settleSoloGameRewardOnce/);
+assert.doesNotMatch(firebase, /settlePvpGameRewardOnce/);
 
 // PvP usa la misma configuración Admin que el cliente; no puede quedar congelado en 120/20.
 assert.match(ui, /POINTS\.winVsHumano/);
@@ -84,4 +88,4 @@ if (rulesPath) {
 // Privacidad del Tano de 23.19 sigue sellada.
 assert.doesNotMatch(read('js/deckIntelligence.js'), /console\.log\([^\n]*Deck Intelligence/i);
 
-console.log('REWARD_SETTLEMENT_INTEGRITY_23_19_2_OK config=dynamic-solo+pvp legacyHard=compatible blackBox=result+receipt adminRepair=solo+idempotent rules=23.13.79 pool=880 protocol=mp-23.19.2');
+console.log('REWARD_SETTLEMENT_INTEGRITY_23_19_2_OK config=dynamic-solo+pvp legacyHard=compatible blackBox=result+receipt adminRepair=solo+idempotent rules=23.13.80 pool=880 protocol=mp-23.19.2');

@@ -2,13 +2,16 @@ import { DEFAULT_ECONOMY_CONFIG, ECONOMY_CONFIG_PATH, ECONOMY_MODES, ECONOMY_PRO
 import { economyError } from '../shared/errors.js';
 
 export function normalizeEconomyConfig(raw = {}) {
-  const mode = Object.values(ECONOMY_MODES).includes(raw?.mode) ? raw.mode : DEFAULT_ECONOMY_CONFIG.mode;
+  // 23.19.5.6 cutover is intentionally one-way from the browser perspective. Historical
+  // gameConfig/economy documents may still say shadow/server_preferred, but Rules 23.13.80
+  // already deny direct economic writes. Coerce authority + minimum protocol here so a stale
+  // config document cannot silently resurrect a client mutation path.
+  void raw?.mode;
+  void raw?.minimumEconomyClientVersion;
   return {
     enabled: raw?.enabled !== false,
-    mode,
-    minimumEconomyClientVersion: typeof raw?.minimumEconomyClientVersion === 'string' && raw.minimumEconomyClientVersion.trim()
-      ? raw.minimumEconomyClientVersion.trim()
-      : DEFAULT_ECONOMY_CONFIG.minimumEconomyClientVersion
+    mode: ECONOMY_MODES.SERVER_REQUIRED,
+    minimumEconomyClientVersion: ECONOMY_PROTOCOL_VERSION
   };
 }
 

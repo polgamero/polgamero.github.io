@@ -17,15 +17,15 @@ const firebase=read('js/firebaseClientImpl.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 const workflow=fs.readFileSync(path.join(root,'..','.github','workflows','pages.yml'),'utf8');
 
-assert.equal(ENGINE_VERSION,'23.19.5.5');
+assert.equal(ENGINE_VERSION,'23.19.5.6');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(manifest.engineVersion,'23.19.5.5');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
+assert.equal(manifest.engineVersion,'23.19.5.6');
 assert.equal(manifest.engineProtocolVersion,'mp-23.19.2');
 assert.equal(manifest.protocolVersion,'mp-23.19.2');
-assert.equal(manifest.firestoreRulesVersion,'23.13.79');
+assert.equal(manifest.firestoreRulesVersion,'23.13.80');
 assert.equal(manifest.pool,880);
-assert.ok(['Admin Economy + Statistics + Immutable Audit Authority','Match Settlement + Anti-Farming + Admission Control + Economy Pending UX','Store / Craft / Prebuilt / Classifieds / Username Authority + Packs / Cofre / Mythic + Deck Intelligence 2.0','Packs / Cofre / Mythic Authority + Deck Intelligence 2.0','Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets','Rules Integrity + Combat UX + Bot Tactical Hotfix','Core Gameplay Feedback Expansion','Mass Event Cinematics + High-Impact Feedback','Commercial IP Remediation Wave 1 — Identity Clean-room','Commercial IP Remediation Wave 2 — Envase Hermético','Commercial IP Remediation Wave 3 — Venues + Institutions Genericization','Commercial IP Remediation — Residual YELLOW Closure','Global Terminology Clean-room — Owner Dictionary 44/44','Commercial Readiness Closure + Clean-room Verification','Semidiós Rules Text + Creencia UX Hotfix','Economy Authority Foundation + Secure Account Bootstrap','Economy Authority Foundation + Deck/Admin/Land UX Stabilization RC2'].includes(manifest.label));
+assert.ok(['Economy Write Firewall + Server-Required Cutover','Admin Economy + Statistics + Immutable Audit Authority','Match Settlement + Anti-Farming + Admission Control + Economy Pending UX','Store / Craft / Prebuilt / Classifieds / Username Authority + Packs / Cofre / Mythic + Deck Intelligence 2.0','Packs / Cofre / Mythic Authority + Deck Intelligence 2.0','Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets','Rules Integrity + Combat UX + Bot Tactical Hotfix','Core Gameplay Feedback Expansion','Mass Event Cinematics + High-Impact Feedback','Commercial IP Remediation Wave 1 — Identity Clean-room','Commercial IP Remediation Wave 2 — Envase Hermético','Commercial IP Remediation Wave 3 — Venues + Institutions Genericization','Commercial IP Remediation — Residual YELLOW Closure','Global Terminology Clean-room — Owner Dictionary 44/44','Commercial Readiness Closure + Clean-room Verification','Semidiós Rules Text + Creencia UX Hotfix','Economy Authority Foundation + Secure Account Bootstrap','Economy Authority Foundation + Deck/Admin/Land UX Stabilization RC2'].includes(manifest.label));
 
 // Admin semantics: the old "Fin" is migrated to the actual cue meaning, "Momento clave".
 const catalog=getAnimationTuningCatalog();
@@ -123,4 +123,4 @@ assert.ok(workflow.includes('Validate Animation Actor Parity + SFX Cue Semantics
 console.log('ANIMATION_ACTOR_PARITY_SFX_CUES_23_19_4_5_OK');
 console.log('actors=player+tano+host+guest presentation-cues=role-owned-deduped-no-echo');
 console.log('sfx=start-or-key cadence=single-or-per-impact multi-xN=N-key-cues audio-targets=runtime-catalog-opus+mp3');
-console.log('pool=880 protocol=mp-23.19.2 rules=23.13.79 unchanged');
+console.log('pool=880 protocol=mp-23.19.2 rules=23.13.80 unchanged');

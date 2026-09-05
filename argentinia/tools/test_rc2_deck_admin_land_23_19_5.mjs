@@ -19,10 +19,10 @@ const json=(p)=>JSON.parse(read(p));
 const cards=['criaturas','instantaneos','conjuros','encantamientos','artefactos','tierras','planeswalkers'].flatMap(k=>json(`assets/data/${k}.json`));
 function seeded(seed){ let x=seed>>>0; return()=>{ x=(Math.imul(x,1664525)+1013904223)>>>0; return x/4294967296; }; }
 
-assert.equal(ENGINE_VERSION,'23.19.5.5');
+assert.equal(ENGINE_VERSION,'23.19.5.6');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.5');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
+assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.6');
 assert.equal(DECK_INTELLIGENCE_VERSION,'23.19.5-di2');
 assert.equal(cards.length,880);
 

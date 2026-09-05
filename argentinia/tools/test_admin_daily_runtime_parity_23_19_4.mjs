@@ -11,10 +11,10 @@ const serverDaily = fs.readFileSync(path.join(root, '../functions/src/economy/da
 const fnIndex = fs.readFileSync(path.join(root, '../functions/src/index.js'), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'build-manifest.json'), 'utf8'));
 
-assert.equal(ENGINE_VERSION, '23.19.5.5');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.79');
-assert.equal(manifest.engineVersion, '23.19.5.5');
-assert.equal(manifest.firestoreRulesVersion, '23.13.79');
+assert.equal(ENGINE_VERSION, '23.19.5.6');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.80');
+assert.equal(manifest.engineVersion, '23.19.5.6');
+assert.equal(manifest.firestoreRulesVersion, '23.13.80');
 
 // 23.19.5.4 moves the authoritative write off the browser entirely. Preserve the old
 // data-shape invariants server-side while preventing current clients from issuing Daily txs.
@@ -36,7 +36,7 @@ const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || '';
 if (rulesPath && fs.existsSync(rulesPath)) {
   const rules = fs.readFileSync(rulesPath, 'utf8');
   assert.ok(rules.includes('function validAdminDailyDocumentShapeV7(d)'),
-    'Rules 23.13.79 Admin parity shape missing.');
+    'Rules 23.13.80 Admin parity shape missing.');
   const start = rules.indexOf('function validAdminDailyDocumentShapeV7(d)');
   const end = rules.indexOf('function validNormalDailyCommonShapeV6', start);
   const adminShape = rules.slice(start, end);
@@ -68,4 +68,4 @@ if (rulesPath && fs.existsSync(rulesPath)) {
     'Normal users must not regress to nested request.time equality.');
 }
 
-console.log('ADMIN_DAILY_RUNTIME_PARITY_23_19_4_OK engine=23.19.5.4 rules=23.13.79 authority=SERVER browserDirectTx=DISABLED');
+console.log('ADMIN_DAILY_RUNTIME_PARITY_23_19_4_OK engine=23.19.5.4 rules=23.13.80 authority=SERVER browserDirectTx=DISABLED');

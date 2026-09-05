@@ -1,0 +1,33 @@
+ARGENTINIA v23.19.5.6 — ECONOMY WRITE FIREWALL + SERVER-REQUIRED CUTOVER
+
+Baseline: v23.19.5.5 RELEASED. Pool 880. Multiplayer protocol mp-23.19.2 unchanged.
+
+Contracts
+- Engine 23.19.5.6
+- Economy protocol econ-23.19.5.6
+- Economy schema 7
+- Firestore Rules 23.13.80
+- Economy Authority mode: server_required
+- Economy Functions: 25, unchanged count
+- App Check: observe-only / enforceAppCheck=false
+- Cost safety: minInstances=0, maxInstances=1, concurrency=10, timeout=30s, memory=256MiB
+
+What closes in this release
+- Browser/custom-client economic writes are denied by Firestore Rules 23.13.80.
+- Official client has no economic fallback and routes bootstrap/starter/economy to Functions even when the kill switch is disabled, so ECONOMY_DISABLED is fail-closed.
+- Browser playerStats/game-result writers are removed/no-op; natural and abandon stats/receipts remain server-owned.
+- Dead direct Solo/PvP settlement and stats writers were removed from firebaseClientImpl.js.
+- gameConfig/economy cannot be edited from browser, including Admin; stale shadow/minimum-version values are ignored by Functions and coerced to server_required/econ-23.19.5.6.
+- Admin editorial/config surfaces remain direct where intentional; all economic consequences are still computed/applied server-side.
+- Admin ECONOMÍA / AUDITORÍA exposes read-only operational inspection of immutable economyEvents/adminActions; it cannot create, edit or delete audit evidence.
+
+Deployment ordering is security-sensitive
+1) real Firestore Emulator Gate 03
+2) real combined Auth+Firestore+Functions Gate 05
+3) publish GitHubSource 23.19.5.6 + CI green
+4) deploy Functions 23.19.5.6 + verify 25/25
+5) smoke economyStatus server_required/schema7
+6) deploy Rules 23.13.80 LAST
+7) adversarial + normal gameplay production smoke
+
+Rules are last so the official 23.19.5.6 frontend is already live before cached 23.19.5.5 clients lose legacy write access. Once Functions .5.6 are active, an old economic client is rejected by minimum protocol before mutation.

@@ -263,6 +263,7 @@ export const finalizeCampaignEvent = asyncProxy('finalizeCampaignEvent');
 export const deleteCampaignEvent = asyncProxy('deleteCampaignEvent');
 export const fetchTelemetrySessionsForAdmin = asyncProxy('fetchTelemetrySessionsForAdmin');
 export const fetchGameRewardAuditForAdmin = asyncProxy('fetchGameRewardAuditForAdmin');
+export const fetchEconomyAuditForAdmin = asyncProxy('fetchEconomyAuditForAdmin');
 export const adminRepairSoloGameReward = asyncProxy('adminRepairSoloGameReward');
 export const fetchTelemetrySessionArchive = asyncProxy('fetchTelemetrySessionArchive');
 export const uploadTelemetrySession = asyncProxy('uploadTelemetrySession');

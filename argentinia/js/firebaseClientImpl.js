@@ -32,7 +32,6 @@ import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONO
 import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, getClassifiedsServer, purchaseClassifiedCardServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
-import { normalizePlayerStats, summarizePlayerTelemetry, PLAYER_GAME_BACKFILL_VERSION } from './statistics.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
 import { buildCampaignSnapshot, validateEventPayload, validateAnnouncementPayload, effectivePackCost, effectiveMatchPoints } from './campaigns.js';
 import { queuePendingGameReward, pendingGameRewardsForUid, removePendingGameReward, normalizeGameRewardReceiptId } from './gameRewards.js';
@@ -132,11 +131,11 @@ function normalizeProfileForClient(data) {
 
 
 // ============================================================================
-// 23.19.5 — Economy Authority rollout client-side.
-// shadow: comportamiento legacy; server_preferred: Functions primero con fallback legacy;
-// server_required: Functions obligatorias. El firewall de Rules llega recién en 23.19.5.6.
+// 23.19.5.6 — Economy Authority CUTOVER.
+// El cliente oficial es server_required sin fallback. Un gameConfig/economy histórico en
+// shadow/server_preferred ya no puede reabrir escrituras directas; Rules 23.13.80 son el
+// enforcement real y este bloque evita además intentos legacy/ruido permission-denied.
 // ============================================================================
-const ECONOMY_AUTHORITY_MODES = new Set(['shadow','server_preferred','server_required']);
 let economyAuthorityCache = { at: 0, value: null };
 const ECONOMY_AUTHORITY_CACHE_MS = 30000;
 
@@ -145,30 +144,20 @@ export async function loadEconomyAuthorityConfig({ force = false } = {}) {
   if (!force && economyAuthorityCache.value && (now - economyAuthorityCache.at) < ECONOMY_AUTHORITY_CACHE_MS) {
     return economyAuthorityCache.value;
   }
-  let value = { enabled: true, mode: 'shadow', minimumEconomyClientVersion: ECONOMY_PROTOCOL_VERSION };
+  let enabled = true;
   try {
     const snap = await getDoc(doc(db, 'gameConfig', 'economy'));
-    if (snap.exists()) {
-      const raw = snap.data() || {};
-      value = {
-        enabled: raw.enabled !== false,
-        mode: ECONOMY_AUTHORITY_MODES.has(raw.mode) ? raw.mode : 'shadow',
-        minimumEconomyClientVersion: typeof raw.minimumEconomyClientVersion === 'string' && raw.minimumEconomyClientVersion.trim()
-          ? raw.minimumEconomyClientVersion.trim()
-          : ECONOMY_PROTOCOL_VERSION
-      };
-    }
+    if (snap.exists()) enabled = (snap.data() || {}).enabled !== false;
   } catch (error) {
-    console.warn('[Economy 23.19.5] No se pudo leer gameConfig/economy; se conserva shadow:', error);
+    console.warn('[Economy 23.19.5.6] No se pudo leer gameConfig/economy; se conserva server_required fail-closed:', error);
   }
+  const value = { enabled, mode: 'server_required', minimumEconomyClientVersion: ECONOMY_PROTOCOL_VERSION };
   economyAuthorityCache = { at: now, value };
   return value;
 }
 
-function economyShouldUseServer(config) {
-  return config?.enabled !== false && (config?.mode === 'server_preferred' || config?.mode === 'server_required');
-}
-function economyServerRequired(config) { return config?.mode === 'server_required'; }
+function economyShouldUseServer(_config) { return true; }
+function economyServerRequired(_config) { return true; }
 async function loadOwnProfileAfterServerMutation(uid) {
   const snap = await getDocFromServer(doc(db, 'users', uid));
   return snap.exists() ? normalizeProfileForClient(snap.data()) : null;
@@ -238,29 +227,12 @@ async function runEconomyActionAuthority(uid, type, request, invoke) {
 // actualización estadística falla, NO revierte una compra/recompensa ya válida.
 // ============================================================================
 
-function playerStatsMirror(profile, statsValue = null) {
-  const stats = normalizePlayerStats(statsValue);
-  const collectionIds = Array.isArray(profile?.collection) ? profile.collection : [];
-  const inventory = normalizeInventory(profile?.inventory);
-  return {
-    ...stats,
-    uid: String(profile?.uid || ''),
-    username: String(profile?.username || 'Jugador'),
-    pointsCurrent: Math.max(0, Math.floor(Number(profile?.points) || 0)),
-    fichasCurrent: Math.max(0, Math.floor(Number(profile?.fichas) || 0)),
-    packsInChest: Math.max(0, Math.floor(Number(inventory[CHEST_ITEM_KEYS.standardPack]) || 0)),
-    cardsOwned: collectionIds.length,
-    uniqueCards: new Set(collectionIds).size,
-    updatedAt: serverTimestamp()
-  };
-}
-
 async function loadProfileRaw(uid) {
   const snap = await getDoc(doc(db, 'users', uid));
   return snap.exists() ? { uid, ...snap.data() } : null;
 }
 
-async function trackPlayerStats(uid, deltas = {}, options = {}) {
+, options = {}) {
   const userRef = doc(db, 'users', uid);
   const statsRef = doc(db, 'playerStats', uid);
   const receiptId = options.receiptId ? String(options.receiptId).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 300) : null;
@@ -303,14 +275,8 @@ async function trackPlayerStats(uid, deltas = {}, options = {}) {
   });
 }
 
-function statsBestEffort(uid, deltas = {}, options = {}) {
-  // 23.19.5.5: economic counters are backend-owned. The only remaining client path is
-  // legacy gameplay-result telemetry until the 23.19.5.6 write firewall cutover.
-  if (options?.allowClientGameStats !== true) return Promise.resolve({ applied:false, reason:'server_owned_economic_stats' });
-  return trackPlayerStats(uid, deltas, options).catch(error => {
-    console.warn('[Statistics 23.19.5.5] No se pudo actualizar playerStats gameplay legacy:', error);
-    return { applied: false, error };
-  });
+function statsBestEffort(_uid, _deltas = {}, _options = {}) {
+  return Promise.resolve({ applied:false, reason:'server_owned_economic_stats' });
 }
 
 function economyLogBestEffort(_event) {
@@ -355,51 +321,17 @@ export async function recordChestAuthorityStatsBestEffort(uid, result = {}) {
 }
 
 export async function bootstrapPlayerStatistics(uid) {
-  const ownQuery = query(collection(db, 'telemetrySessions'), where('ownerUid', '==', uid));
-  const sessionsSnap = await getDocs(ownQuery);
-  const sessions = sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  const history = summarizePlayerTelemetry(sessions);
-  const statsRef = doc(db, 'playerStats', uid);
-  const currentSnap = await getDoc(statsRef);
-  const current = normalizePlayerStats(currentSnap.exists() ? currentSnap.data() : null);
-  // Reconciliación permanente, no sólo migración one-shot: si un cierre de pestaña o una
-  // caída de red impidió grabar el receipt en vivo pero la telemetría sí quedó finalizada,
-  // el próximo login rellena el hueco. Nunca decrementa contadores ya registrados.
-  const gameKeys = ['gamesPlayed','soloGames','multiplayerGames','wins','losses','soloWins','soloLosses','multiplayerWins','multiplayerLosses','abandons'];
-  const deltas = {};
-  if ((Number(history.gamesPlayed) || 0) > (Number(current.gamesPlayed) || 0)) {
-    for (const key of gameKeys) deltas[key] = Math.max(0, Number(history[key]) || 0) - Math.max(0, Number(current[key]) || 0);
-  }
-  deltas.totalDurationMs = Math.max(0, (Number(history.totalDurationMs) || 0) - Math.max(0, Number(current.totalDurationMs) || 0));
-  await trackPlayerStats(uid, deltas, { gameBackfillVersion: PLAYER_GAME_BACKFILL_VERSION });
-  const refreshed = await getDoc(statsRef);
-  return refreshed.exists() ? { id: refreshed.id, ...refreshed.data() } : null;
+  // 23.19.5.6: el browser dejó de reconciliar playerStats por transacción. Los nuevos
+  // resultados/stats se escriben junto al settlement server-side; huecos históricos se
+  // reparan desde Admin con economyAdminSyncPlayerStats. Login sólo lee el espejo público.
+  const snap = await getDoc(doc(db, 'playerStats', uid));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
-export async function recordPlayerGameResult(uid, result = {}) {
-  const mode = String(result.mode || 'solo').toLowerCase().startsWith('multi') ? 'multiplayer' : 'solo';
-  const won = result.won === true;
-  const lost = result.won === false;
-  const deltas = {
-    gamesPlayed: 1,
-    soloGames: mode === 'solo' ? 1 : 0,
-    multiplayerGames: mode === 'multiplayer' ? 1 : 0,
-    wins: won ? 1 : 0,
-    losses: lost ? 1 : 0,
-    soloWins: mode === 'solo' && won ? 1 : 0,
-    soloLosses: mode === 'solo' && lost ? 1 : 0,
-    multiplayerWins: mode === 'multiplayer' && won ? 1 : 0,
-    multiplayerLosses: mode === 'multiplayer' && lost ? 1 : 0,
-    abandons: result.abandoned ? 1 : 0,
-    totalDurationMs: Math.max(0, Math.floor(Number(result.durationMs) || 0))
-  };
-  return trackPlayerStats(uid, deltas, {
-    receiptId: result.sessionId,
-    mode,
-    result: won ? 'win' : (lost ? 'loss' : 'unknown'),
-    durationMs: result.durationMs,
-    allowClientGameStats: true
-  });
+export async function recordPlayerGameResult(_uid, _result = {}) {
+  // Compat API only: natural/abandon results are server-owned since 23.19.5.5 and Rules
+  // 23.13.80 deny playerStats/playerGameReceipts writes from browser.
+  return { applied: false, reason: 'server_owned_game_result' };
 }
 
 export async function fetchPublicPlayerStats() {
@@ -513,69 +445,18 @@ export async function renameUsername(uid, username, _usernameKey = null, _fichaC
 // 23.13.24 normalmente users/{uid} YA existe como perfil mínimo starterDeckPending=true
 // porque el username se elige antes. Conserva fallback de creación defensiva si la reserva
 // existe pero el perfil todavía no llegó a escribirse por una ruta histórica.
-export async function createUserProfile(uid, profileFields, starterCardIds, starterIdentity = null) {
-  const authority = await loadEconomyAuthorityConfig();
-  if (economyShouldUseServer(authority)) {
-    if (uid !== auth.currentUser?.uid) throw usernameError('AUTH_UID_MISMATCH', 'La sesión no coincide con la cuenta.');
-    try {
-      if (!Array.isArray(starterIdentity) || starterIdentity.length < 1 || starterIdentity.length > 2) {
-        throw new Error('STARTER_IDENTITY_REQUIRED_FOR_SERVER_AUTHORITY');
-      }
-      await completeStarterDeckServer(starterIdentity);
-      const serverProfile = await loadOwnProfileAfterServerMutation(uid);
-      if (!serverProfile) throw new Error('ECONOMY_STARTER_PROFILE_MISSING_AFTER_COMMIT');
-      return serverProfile;
-    } catch (error) {
-      if (economyServerRequired(authority)) throw error;
-      console.warn('[Economy 23.19.5] completeStarterDeck server_preferred falló; fallback legacy temporal:', error);
-    }
+export async function createUserProfile(uid, _profileFields, _starterCardIds, starterIdentity = null) {
+  // 23.19.5.6: no browser fallback exists. Even with the economy kill switch disabled,
+  // the request still reaches Functions and fails closed with ECONOMY_DISABLED.
+  await loadEconomyAuthorityConfig();
+  if (uid !== auth.currentUser?.uid) throw usernameError('AUTH_UID_MISMATCH', 'La sesión no coincide con la cuenta.');
+  if (!Array.isArray(starterIdentity) || starterIdentity.length < 1 || starterIdentity.length > 2) {
+    throw new Error('STARTER_IDENTITY_REQUIRED_FOR_SERVER_AUTHORITY');
   }
-  const username = profileFields.username || '';
-  const usernameKey = profileFields.usernameKey || '';
-  const validated = assertValidUsernamePayload(username, usernameKey);
-  const userRef = doc(db, 'users', uid);
-  const nameRef = doc(db, 'usernames', validated.usernameKey);
-
-  const profile = await runTransaction(db, async (tx) => {
-    const [userSnap, nameSnap] = await Promise.all([tx.get(userRef), tx.get(nameRef)]);
-    if (!nameSnap.exists() || nameSnap.data()?.uid !== uid) {
-      throw usernameError('USERNAME_REQUIRED', 'Primero elegí tu nombre en Argentinia.');
-    }
-
-    const current = userSnap.exists() ? userSnap.data() : null;
-    if (current && current.starterDeckPending !== true) {
-      return normalizeProfileForClient(current);
-    }
-
-    const base = current || {
-      displayName: profileFields.displayName || '',
-      photoURL: profileFields.photoURL || '',
-      email: profileFields.email || '',
-      username: validated.username,
-      usernameKey: validated.usernameKey,
-      usernameUpdatedAt: serverTimestamp(),
-      points: 0,
-      fichas: 0,
-      enhancements: {},
-      inventory: defaultInventory(),
-      dailyRewards: defaultDailyRewardsState(),
-      activeMatchId: null,
-      createdAt: serverTimestamp()
-    };
-    const patch = {
-      collection: starterCardIds,
-      decks: [
-        { id: 'starter', name: 'Mazo 1', cardIds: starterCardIds, isDefault: true, createdAt: Date.now() }
-      ],
-      starterDeckPending: false,
-      lastSeenAt: serverTimestamp()
-    };
-    if (current) tx.update(userRef, patch);
-    else tx.set(userRef, { ...base, ...patch });
-    return normalizeProfileForClient({ ...base, ...patch });
-  });
-  await statsBestEffort(uid, {});
-  return profile;
+  await completeStarterDeckServer(starterIdentity);
+  const serverProfile = await loadOwnProfileAfterServerMutation(uid);
+  if (!serverProfile) throw new Error('ECONOMY_STARTER_PROFILE_MISSING_AFTER_COMMIT');
+  return serverProfile;
 }
 
 // Actualiza SOLO la marca de última conexión, sin tocar el resto del documento (merge:true)
@@ -619,24 +500,11 @@ export async function deleteUserProfile(uid) {
 // Suma (o resta) puntos de forma atómica, y nunca deja el total por debajo de 0 — se usa
 // tanto para premiar victorias/derrotas como para penalizar abandonos (delta negativo).
 // Devuelve el total de puntos ya actualizado.
-export async function awardPoints(uid, delta) {
-  const baseDelta = Math.floor(Number(delta) || 0);
-  const snapshot = baseDelta > 0 ? await getCampaignSnapshotForEconomy(uid) : buildCampaignSnapshot([], Date.now());
-  const effectiveDelta = baseDelta > 0 ? effectiveMatchPoints(baseDelta, snapshot) : baseDelta;
-  const ref = doc(db, 'users', uid);
-  const result = await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    const current = snap.exists() ? (snap.data().points || 0) : 0;
-    const next = Math.max(0, current + effectiveDelta);
-    tx.update(ref, { points: next });
-    return { current, next, appliedDelta: next - current };
-  });
-  const applied = Number(result.appliedDelta) || 0;
-  await statsBestEffort(uid, applied >= 0 ? { pointsEarned: applied } : { pointsLost: Math.abs(applied) });
-  void economyLogBestEffort({ targetUid: uid, source: applied >= 0 ? 'game_reward' : 'abandon_penalty', pointsDelta: applied });
-  return { total: result.next, appliedDelta: applied, baseDelta, campaignSnapshot: snapshot };
+export async function awardPoints(_uid, _delta) {
+  const error = new Error('ECONOMY_SERVER_AUTHORITY_REQUIRED');
+  error.code = 'ECONOMY_SERVER_AUTHORITY_REQUIRED';
+  throw error;
 }
-
 
 // 23.13.59 — premios de FIN DE PARTIDA durables e idempotentes.
 // `awardPoints()` sigue existiendo para ajustes/penalidades generales; gameplay terminal usa
@@ -750,221 +618,6 @@ function expectedSoloRewardBase(config, outcome, difficulty) {
 function legacySoloRewardMatchesConfig(config, outcome, baseDelta) {
   if (outcome === 'loss') return baseDelta === config.loss;
   return [config.easy, config.medium, config.hard].includes(baseDelta);
-}
-
-async function settleSoloGameRewardOnce(uid, reward, snapshot, requestedEffectiveDelta) {
-  const receiptId = normalizeGameRewardReceiptId(reward.receiptId);
-  const baseDelta = Math.max(0, Math.floor(Number(reward.baseDelta) || 0));
-  const outcome = reward.outcome === 'loss' ? 'loss' : 'win';
-  const requestedDifficulty = normalizeSoloRewardDifficulty(reward.difficulty);
-  const userRef = doc(db, 'users', uid);
-  const receiptRef = doc(db, 'gameRewardReceipts', `${uid}_${receiptId}`);
-  const settingsRef = doc(db, 'gameConfig', 'settings');
-  const result = await runTransaction(db, async tx => {
-    // Todas las lecturas antes de cualquier escritura: Firestore transactions lo exigen y
-    // además la configuración que valida el premio queda congelada para este settlement.
-    const receiptSnap = await tx.get(receiptRef);
-    const userSnap = await tx.get(userRef);
-    const settingsSnap = await tx.get(settingsRef);
-    if (!userSnap.exists()) throw new Error('No se encontró tu perfil.');
-    const current = Math.max(0, Math.floor(Number(userSnap.data()?.points) || 0));
-    if (receiptSnap.exists()) {
-      const previous = receiptSnap.data() || {};
-      return {
-        duplicate: true,
-        current,
-        next: current,
-        appliedDelta: Number(previous.effectiveDelta) || 0,
-        effectiveDelta: Number(previous.effectiveDelta) || requestedEffectiveDelta,
-        rewardReason: previous.rewardReason || 'duplicate',
-        difficulty: previous.difficulty || requestedDifficulty || null
-      };
-    }
-
-    const rewardConfig = normalizeSoloRewardConfig(settingsSnap.exists() ? settingsSnap.data() : {});
-    const exactExpected = expectedSoloRewardBase(rewardConfig, outcome, requestedDifficulty);
-    const validBase = requestedDifficulty
-      ? baseDelta === exactExpected
-      : legacySoloRewardMatchesConfig(rewardConfig, outcome, baseDelta);
-    if (!validBase) throw new Error('SOLO_REWARD_CONFIG_MISMATCH');
-
-    const storedDifficulty = requestedDifficulty || 'legacy';
-    const next = current + requestedEffectiveDelta;
-    tx.update(userRef, { points: next });
-    tx.set(receiptRef, {
-      uid, receiptId, mode: 'solo', outcome, difficulty: storedDifficulty, baseDelta,
-      effectiveDelta: requestedEffectiveDelta,
-      resultingTotal: next, engineVersion: ENGINE_VERSION, createdAt: serverTimestamp()
-    });
-    return {
-      duplicate: false,
-      current,
-      next,
-      appliedDelta: requestedEffectiveDelta,
-      effectiveDelta: requestedEffectiveDelta,
-      rewardReason: 'rewarded',
-      difficulty: storedDifficulty
-    };
-  });
-  return { ...result, total: result.next, baseDelta, receiptId, mode: 'solo', outcome, difficulty: result.difficulty || requestedDifficulty || null, campaignSnapshot: snapshot };
-}
-
-async function settlePvpGameRewardOnce(uid, reward, snapshot, requestedEffectiveDelta) {
-  const receiptId = normalizeGameRewardReceiptId(reward.receiptId);
-  const baseDelta = Math.max(0, Math.floor(Number(reward.baseDelta) || 0));
-  const outcome = reward.outcome === 'loss' ? 'loss' : 'win';
-  const matchId = matchIdFromReward(reward);
-  if (!matchId) throw new Error('PVP_MATCH_ID_REQUIRED');
-
-  const userRef = doc(db, 'users', uid);
-  const receiptRef = doc(db, 'gameRewardReceipts', `${uid}_${receiptId}`);
-  const matchRef = doc(db, 'matches', matchId);
-  const settingsRef = doc(db, 'gameConfig', 'settings');
-
-  const result = await runTransaction(db, async tx => {
-    // Todas las lecturas antes de cualquier escritura.
-    const receiptSnap = await tx.get(receiptRef);
-    const userSnap = await tx.get(userRef);
-    const matchSnap = await tx.get(matchRef);
-    const settingsSnap = await tx.get(settingsRef);
-    if (!userSnap.exists()) throw new Error('No se encontró tu perfil.');
-    if (!matchSnap.exists()) throw new Error('PVP_MATCH_NOT_FOUND');
-
-    const current = Math.max(0, Math.floor(Number(userSnap.data()?.points) || 0));
-    if (receiptSnap.exists()) {
-      const previous = receiptSnap.data() || {};
-      return {
-        duplicate: true,
-        current,
-        next: current,
-        appliedDelta: Number(previous.effectiveDelta) || 0,
-        effectiveDelta: Number(previous.effectiveDelta) || 0,
-        requestedEffectiveDelta: Number(previous.requestedEffectiveDelta) || Number(previous.effectiveDelta) || requestedEffectiveDelta,
-        rewardReason: previous.rewardReason || 'duplicate',
-        terminalKind: previous.terminalKind || null,
-        durationMs: Number(previous.durationMs) || 0,
-        completedTurns: Number(previous.completedTurns) || 0,
-        pvpDayKey: previous.pvpDayKey || null,
-        pairCountAfter: Number(previous.pairCountAfter) || 0,
-        dailyPointsAfter: Number(previous.dailyPointsAfter) || 0,
-        limits: previous.limits || null
-      };
-    }
-
-    const match = matchSnap.data() || {};
-    if (!match.endedAt || !match.terminalKind || !match.winnerRole) throw new Error('PVP_MATCH_NOT_SEALED');
-    const myRole = match.hostUid === uid ? 'host' : (match.guestUid === uid ? 'guest' : null);
-    if (!myRole) throw new Error('PVP_NOT_MATCH_PARTICIPANT');
-    const terminal = deriveTerminalOutcome(match);
-    if (!terminal || terminal.terminalKind !== match.terminalKind || terminal.winnerRole !== match.winnerRole) throw new Error('PVP_TERMINAL_EVIDENCE_MISMATCH');
-    const actualOutcome = match.winnerRole === myRole ? 'win' : 'loss';
-    if (actualOutcome !== outcome) throw new Error('PVP_OUTCOME_MISMATCH');
-
-    const limits = normalizePvpRewardLimits(settingsSnap.exists() ? settingsSnap.data() : {});
-    const endedAtMs = timestampMs(match.endedAt);
-    const bothReadyAtMs = timestampMs(match.bothReadyAt);
-    const durationMs = bothReadyAtMs > 0 && endedAtMs >= bothReadyAtMs ? endedAtMs - bothReadyAtMs : 0;
-    const turnCountAtEnd = Math.max(1, Math.floor(Number(match.turnCountAtEnd || match.turnCount) || 1));
-    const completedTurns = pvpCompletedTurns(turnCountAtEnd);
-    const dayKey = argentinaDayKeyFromMs(endedAtMs || Date.now());
-    const pairKey = pvpPairKey(match.hostUid, match.guestUid);
-    const pairRef = doc(db, 'pvpDailyPairs', `${dayKey}__${pairKey}`);
-    const dailyRef = doc(db, 'pvpDailyUsers', `${dayKey}__${uid}`);
-    const pairSnap = await tx.get(pairRef);
-    const dailySnap = await tx.get(dailyRef);
-    const pairData = pairSnap.exists() ? (pairSnap.data() || {}) : {};
-    const dailyData = dailySnap.exists() ? (dailySnap.data() || {}) : {};
-    const rewardedMatchIds = Array.isArray(pairData.rewardedMatchIds) ? pairData.rewardedMatchIds : [];
-    const pairAlreadyRewarded = rewardedMatchIds.includes(matchId);
-    const pairRewardedCount = Math.max(0, Math.floor(Number(pairData.rewardedMatches) || rewardedMatchIds.length));
-    const dailyPointsAwarded = Math.max(0, Math.floor(Number(dailyData.pointsAwarded) || 0));
-
-    const verdict = evaluatePvpRewardEligibility({
-      terminalKind: match.terminalKind,
-      durationMs,
-      turnCountAtEnd,
-      pairAlreadyRewarded,
-      pairRewardedCount,
-      dailyPointsAwarded,
-      requestedDelta: requestedEffectiveDelta,
-      limits
-    });
-
-    const passesEarlyGate = match.terminalKind !== 'abandon'
-      || (durationMs >= limits.minRewardMinutes * 60000 && completedTurns >= limits.minCompletedTurns);
-    const pairCanCount = pairAlreadyRewarded || pairRewardedCount < limits.maxRewardedMatchesPerPairDaily;
-    const shouldRegisterPairMatch = passesEarlyGate && pairCanCount && !pairAlreadyRewarded;
-    const pairCountAfter = pairRewardedCount + (shouldRegisterPairMatch ? 1 : 0);
-    const appliedDelta = Math.max(0, Math.floor(Number(verdict.appliedDelta) || 0));
-    const dailyPointsAfter = dailyPointsAwarded + appliedDelta;
-    const next = current + appliedDelta;
-
-    if (shouldRegisterPairMatch) {
-      tx.set(pairRef, {
-        schemaVersion: 1,
-        dayKey,
-        uidA: [String(match.hostUid), String(match.guestUid)].sort()[0],
-        uidB: [String(match.hostUid), String(match.guestUid)].sort()[1],
-        rewardedMatches: pairCountAfter,
-        rewardedMatchIds: rewardedMatchIds.concat([matchId]),
-        updatedAt: serverTimestamp()
-      });
-    }
-    if (appliedDelta > 0) {
-      tx.update(userRef, { points: next });
-      const priorReceipts = Array.isArray(dailyData.rewardReceiptIds) ? dailyData.rewardReceiptIds : [];
-      tx.set(dailyRef, {
-        schemaVersion: 1,
-        dayKey,
-        uid,
-        pointsAwarded: dailyPointsAfter,
-        rewardReceiptIds: priorReceipts.includes(receiptId) ? priorReceipts : priorReceipts.concat([receiptId]),
-        updatedAt: serverTimestamp()
-      });
-    }
-
-    tx.set(receiptRef, {
-      uid,
-      receiptId,
-      mode: 'multiplayer',
-      outcome,
-      baseDelta,
-      requestedEffectiveDelta,
-      effectiveDelta: appliedDelta,
-      resultingTotal: next,
-      matchId,
-      terminalKind: match.terminalKind,
-      rewardReason: verdict.reason,
-      durationMs,
-      completedTurns,
-      pvpDayKey: dayKey,
-      pairKey,
-      pairCountAfter,
-      dailyPointsAfter,
-      limits,
-      engineVersion: ENGINE_VERSION,
-      createdAt: serverTimestamp()
-    });
-
-    return {
-      duplicate: false,
-      current,
-      next,
-      appliedDelta,
-      effectiveDelta: appliedDelta,
-      requestedEffectiveDelta,
-      rewardReason: verdict.reason,
-      terminalKind: match.terminalKind,
-      durationMs,
-      completedTurns,
-      pvpDayKey: dayKey,
-      pairCountAfter,
-      dailyPointsAfter,
-      limits
-    };
-  });
-
-  return { ...result, total: result.next, baseDelta, receiptId, mode: 'multiplayer', outcome, matchId, campaignSnapshot: snapshot };
 }
 
 async function settleGameRewardOnce(uid, reward = {}) {
@@ -1093,7 +746,7 @@ export async function applyAbandonPenalty(uid, { mode = 'solo', matchId = '', re
     // commit no puede convertir una penalidad ya aplicada en un falso "falló" ni dejar
     // al usuario reintentando a ciegas; la próxima lectura normal refresca el HUD.
     const profile = await loadOwnProfileAfterServerMutation(uid).catch(error => {
-      console.warn('[Abandon 23.19.5.5] Penalidad confirmada; no se pudo refrescar el perfil inmediatamente:', error);
+      console.warn('[Abandon 23.19.5.6] Penalidad confirmada; no se pudo refrescar el perfil inmediatamente:', error);
       return null;
     });
     return { ...result, total: profile?.points ?? result.total, profile, replayed: response?.replayed === true };
@@ -1154,8 +807,8 @@ export async function purchasePack(uid, _baseCost = null) {
 
 // 23.19.5.1 — legacy Cofre mutation path is intentionally disabled in the current client.
 // Official openings are server-authoritative through callable Functions. Firestore Rules
-// still receive the global write firewall later in 23.19.5.6, so this is defense-in-depth,
-// not a claim that an obsolete cached client cannot attempt its historical direct write.
+// are now additionally blocked by the 23.13.80 write firewall. This remains
+// defense-in-depth for stale/cached clients that may attempt the historical direct write.
 export async function openInventoryPack() {
   const error = new Error('La apertura local de sobres quedó deshabilitada. Actualizá la página.');
   error.code = 'LEGACY_CHEST_WRITE_DISABLED';
@@ -1691,6 +1344,11 @@ export async function loadPublicGameConfigDocument(documentId) {
 
 export async function saveAdminGameConfigDocument(documentId, config) {
   const id = assertGameConfigDocumentId(documentId);
+  if (id === 'economy') {
+    const error = new Error('ECONOMY_SERVER_AUTHORITY_REQUIRED');
+    error.code = 'ECONOMY_SERVER_AUTHORITY_REQUIRED';
+    throw error;
+  }
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     throw new Error('GAME_CONFIG_INVALID_PAYLOAD');
   }
@@ -2458,6 +2116,25 @@ export async function adminCloseStaleTelemetrySessions(staleAfterMs = 120000) {
 // 23.19.2 — Vista económica autoritativa para Caja Negra. A diferencia de Telemetría,
 // estos documentos prueban si la transacción de puntos realmente se confirmó: el receipt
 // económico y el salto de users.points nacen atómicamente.
+export async function fetchEconomyAuditForAdmin({ limitCount = 250 } = {}) {
+  if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL) throw new Error('ADMIN_REQUIRED');
+  const safeLimit = Math.max(25, Math.min(500, Math.floor(Number(limitCount) || 250)));
+  const [eventsSnap, actionsSnap] = await Promise.all([
+    getDocs(query(collection(db, 'economyEvents'), orderBy('createdAt', 'desc'), limit(safeLimit))),
+    getDocs(query(collection(db, 'adminActions'), orderBy('createdAt', 'desc'), limit(safeLimit)))
+  ]);
+  const normalize = (kind, snap) => snap.docs.map(d => ({
+    id: d.id,
+    auditKind: kind,
+    ...d.data()
+  }));
+  return {
+    economyEvents: normalize('economyEvent', eventsSnap),
+    adminActions: normalize('adminAction', actionsSnap),
+    limitCount: safeLimit
+  };
+}
+
 export async function fetchGameRewardAuditForAdmin() {
   if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL) throw new Error('ADMIN_REQUIRED');
   const [gameResultsSnap, rewardsSnap] = await Promise.all([

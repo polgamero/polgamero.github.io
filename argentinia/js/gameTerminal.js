@@ -1,4 +1,4 @@
-// v23.19.5.5 — local terminal derivation shared by direct gameplay and remote-sync endings.
+// v23.19.5.6 — local terminal derivation retained under server-required economy cutover.
 // This module is intentionally pure: synced `gameOver` is evidence that a terminal state was
 // committed, but it is NOT the local once-only processing guard. Each client still has to
 // classify the outcome from its own perspective and settle/show the ending exactly once.

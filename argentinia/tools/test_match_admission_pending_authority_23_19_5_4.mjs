@@ -11,10 +11,10 @@ const root=path.resolve(here,'..');
 const repo=path.resolve(root,'..');
 const read=p=>fs.readFileSync(path.join(repo,p),'utf8');
 
-assert.equal(ENGINE_VERSION,'23.19.5.5');
-assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.5');
-assert.equal(ECONOMY_SCHEMA_VERSION,6);
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
+assert.equal(ENGINE_VERSION,'23.19.5.6');
+assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.6');
+assert.equal(ECONOMY_SCHEMA_VERSION,7);
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
 
 // Admission policy: open never blocks; limited obeys both caps; paused blocks only new-account path.
 assert.deepEqual(normalizeAdmissionPolicy({registrationMode:'limited',maxRegisteredUsers:500,maxRegistrationsPerDay:50}),{
@@ -129,9 +129,9 @@ const implExports=new Set([
 assert.deepEqual(lazyTargets.filter(name=>!implExports.has(name)),[],'firebase lazy facade drift');
 
 const manifest=JSON.parse(read('argentinia/build-manifest.json'));
-assert.equal(manifest.engineVersion,'23.19.5.5');
-assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.5');
-assert.equal(manifest.economySchemaVersion,6);
-assert.equal(manifest.firestoreRulesVersion,'23.13.79');
+assert.equal(manifest.engineVersion,'23.19.5.6');
+assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.6');
+assert.equal(manifest.economySchemaVersion,7);
+assert.equal(manifest.firestoreRulesVersion,'23.13.80');
 
 console.log('MATCH_ADMISSION_PENDING_AUTHORITY_23_19_5_4_OK settlement=SERVER antiFarm=SERVER admission=ATOMIC pendingUX=CENTRALIZED rules=UNCHANGED');

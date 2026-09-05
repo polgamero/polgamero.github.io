@@ -17,12 +17,12 @@ assert.ok(Number.isFinite(status.elapsedMs), 'elapsedMs debe ser numérico y nun
 assert.ok(status.elapsedMs >= 0, 'elapsedMs no puede ser negativo');
 endTelemetrySession('qa');
 
-// El callback de abandono sigue blindado por deadline, pero desde 23.19.5.5 las stats
+// El callback de abandono sigue blindado por deadline, pero desde 23.19.5.6 las stats
 // y el receipt terminal nacen del MISMO settlement server-side. El browser no debe volver
 // a competir con la Function escribiendo playerStats/playerGameReceipts.
 const main = fs.readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
 assert.doesNotMatch(main, /function recordLocalAbandonStatsBestEffort\(/,
-  '23.19.5.5 elimina la escritura cliente de stats de abandono');
+  '23.19.5.6 elimina la escritura cliente de stats de abandono');
 assert.doesNotMatch(main, /cleanupTasks\.push\(recordLocalAbandonStatsBestEffort\(\)\)/,
   'El cleanup no debe lanzar una transacción cliente paralela contra playerStats');
 assert.match(main, /applyAbandonPenalty\(state\.currentUser\.uid,[\s\S]*?receiptId: abandonReceiptId,[\s\S]*?durationMs: abandonDurationMs/,

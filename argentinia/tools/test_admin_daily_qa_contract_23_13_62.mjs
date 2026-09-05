@@ -67,7 +67,7 @@ expect(!ui.includes('const offset = await adminAdvanceDailyRewardDebugDay(state.
 expect(!ui.includes('await adminResetDailyRewardDebug(state.currentUser.uid);\n        // 23.13.6'),
   'RESET sigue siendo una secuencia vieja de dos transacciones.');
 expect(fnIndex.includes('isAdmin: isAdminAuth(auth)'), 'registerDailyLogin server-side no conserva identidad Admin QA.');
-expect(version.includes("FIRESTORE_RULES_VERSION = '23.13.79'"), 'Frontend no exige Rules 23.13.79.');
+expect(version.includes("FIRESTORE_RULES_VERSION = '23.13.80'"), 'Frontend no exige Rules 23.13.80.');
 expect(version.includes('Admin Daily QA Contract'), 'Build no declara el contrato Admin Daily QA.');
 
 console.log('ADMIN_DAILY_QA_23_13_62_OK d6>d7=ALLOW_MODEL d7>next=D1 resetBack=D1 debugTx=atomic rules=separate-contract');

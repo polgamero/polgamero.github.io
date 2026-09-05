@@ -1,0 +1,52 @@
+ARGENTINIA v23.19.5.6 RC — QA / PROMOTION CONTRACT
+
+LOCAL GATES
+- structural Economy Write Firewall/Cutover test
+- canonical fast manifest exactly 112 tests
+- regression archive parity
+- Game Text contract
+- Functions units + syntax
+- app/tools/functions JS/MJS syntax; JSON/YAML/shell syntax
+- Stability / Headless / Coverage / Multiplayer Reliability / Multiplayer Hardening
+- source-package no-card-image/no-public-Firestore-config boundary
+- functions parity 01/05/06
+
+REAL EMULATOR GATE 03 — required:
+- FIRESTORE_RULES_COMPILER_HYGIENE_23_13_80_OK
+- FIRESTORE_MP_HARDENING_REGRESSION_23_13_80_EMULATOR_OK
+- FIRESTORE_ECONOMY_WRITE_FIREWALL_23_13_80_EMULATOR_OK
+- FIRESTORE_ECONOMY_WRITE_FIREWALL_23_19_5_6_GATE_OK
+- code 0
+
+REAL COMBINED GATE 05 — required:
+- ECONOMY_WRITE_FIREWALL_CUTOVER_23_19_5_6_EMULATOR_OK
+- ECONOMY_WRITE_FIREWALL_CUTOVER_23_19_5_6_GATE_OK
+- code 0
+
+PROMOTION ORDER
+1. Both real emulator gates green.
+2. Publish cumulative 01_GitHubSource 23.19.5.6 without deleting externalized card PNGs; GitHub Actions green.
+3. Deploy Functions only; verify:
+   ECONOMY_FUNCTIONS_VERIFY_23_19_5_6_OK count=25 runtime=nodejs22 region=southamerica-east1 memory=256
+4. Production economyStatus: engine 23.19.5.6, econ-23.19.5.6, schema7, mode server_required, AppCheck present expected on official domain, cost 0/1/10, new cutover capabilities.
+5. Deploy Firestore Rules 23.13.80 LAST.
+6. Final production smoke.
+
+FINAL PRODUCTION SMOKE
+- normal login/existing account/bootstrap/starter flow works.
+- Store spinner/fail-closed purchase flow works.
+- Daily claim/recovery works.
+- natural Solo and Multiplayer winner+loser settlements produce server receipts/stats; loser never freezes at 0 HP.
+- early Solo abandon creates signed negative receipt exactly once; no +15 repair.
+- Admin single/bulk grants and stats sync work.
+- deck save/update/delete, lastSeen, activeMatchId and multiplayer sync still work after Rules 23.13.80.
+- adversarial DevTools direct Firestore attempts to mutate points, Fichas, collection, inventory, playerStats, receipts, PvP ledgers, economyEvents/adminActions, usernames or gameConfig/economy are permission-denied.
+- Admin settings/campaign/announcement editing still works where intentionally allowed.
+- mobile selected-card clipping and damage modal fixes remain green.
+
+DO NOT mark RELEASED before all real gates + production smoke pass.
+
+ADMIN ECONOMY AUDIT UX
+- New ECONOMÍA / AUDITORÍA Admin tab reads immutable economyEvents/adminActions read-only.
+- Recent-window filters/search/export JSON are present; no mutation control exists in the viewer.
+- Window KPI text states that filtered sums are not historical/global balance totals.

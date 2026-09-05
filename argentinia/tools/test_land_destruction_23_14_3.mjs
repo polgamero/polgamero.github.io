@@ -44,7 +44,7 @@ const currentVersion = version.match(/ENGINE_VERSION = '([^']+)'/)?.[1] || '';
 const [maj,min,patch] = currentVersion.split('.').map(Number);
 assert.ok(maj > 23 || (maj === 23 && (min > 14 || (min === 14 && patch >= 3))), 'LAND 2 debe sobrevivir en 23.14.3 o posterior');
 assert.equal(manifest.engineVersion,currentVersion);
-assert.equal(manifest.firestoreRulesVersion,'23.13.79');
+assert.equal(manifest.firestoreRulesVersion,'23.13.80');
 
 // Desde 23.14.8 LAND 2 ya está materializado en cartas reales; este test histórico valida que el motor sobreviva acumulativamente.
 const files=['criaturas','instantaneos','conjuros','encantamientos','artefactos','tierras','planeswalkers'];

@@ -36,7 +36,10 @@ assert.throws(() => validateEventPayload({name:'Mal', type:'pack_discount', valu
 
 import fs from 'node:fs';
 const firebaseImpl = fs.readFileSync(new URL('../js/firebaseClientImpl.js', import.meta.url), 'utf8');
-assert.match(firebaseImpl, /effectiveMatchPoints\(baseDelta, snapshot\)/);
+const matchCore = fs.readFileSync(new URL('../../functions/src/economy/matchCore.js', import.meta.url), 'utf8');
+assert.match(matchCore, /effectiveMatchRewardPoints/);
+assert.match(matchCore, /all_points_multiplier/);
+assert.doesNotMatch(firebaseImpl, /effectiveMatchPoints\(baseDelta, snapshot\)/); // 23.19.5.6: match campaign authority is server-only
 const commerce = fs.readFileSync(new URL('../../functions/src/economy/commerce.js', import.meta.url), 'utf8');
 const commerceCore = fs.readFileSync(new URL('../../functions/src/economy/commerceCore.js', import.meta.url), 'utf8');
 assert.match(commerce, /effectivePackPurchaseCost\(settings\.packCost, campaignEffects\)/); // 23.19.5.4: purchase discount authority is server-side

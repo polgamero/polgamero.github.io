@@ -9,8 +9,8 @@ const root=path.resolve(here,'..');
 const ui=fs.readFileSync(path.join(root,'js/ui.js'),'utf8');
 const mobile=fs.readFileSync(path.join(root,'css/mobile.css'),'utf8');
 
-assert.equal(ENGINE_VERSION, '23.19.5.5');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
+assert.equal(ENGINE_VERSION, '23.19.5.6');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
 
 // Native browser ghost drag must never steal pointermove from card selectors.
 assert.match(ui,/addEventListener\('dragstart',[\s\S]*rowFromEvent\(event\)[\s\S]*event\.preventDefault\(\)/);
@@ -36,4 +36,4 @@ assert.match(ui,/#mulligan-overlay\.mulligan-flow-overlay \.mulligan-hand-row\s*
 assert.match(ui,/\.mulligan-hand-row\s*\{[\s\S]*justify-content:\s*flex-start/);
 assert.match(mobile,/mulligan-flow-overlay \.mulligan-hand-row[\s\S]*justify-content:\s*safe center !important/);
 
-console.log('SELECTION_MODAL_DRAG_HOVER_23_17_5_3_OK drag=card-safe native-drag=off hover=portal mulligan=safe-center rules=23.13.79');
+console.log('SELECTION_MODAL_DRAG_HOVER_23_17_5_3_OK drag=card-safe native-drag=off hover=portal mulligan=safe-center rules=23.13.80');

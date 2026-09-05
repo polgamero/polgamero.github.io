@@ -103,7 +103,8 @@ export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
         dailyRewardsAuthority: 'server', dailyClockAuthority: 'server', dailyClaimRecovery: true,
         matchSettlementAuthority: 'server', pvpAntiFarmAuthority: 'server',
         registrationAdmissionAuthority: 'server', adminEconomyAuthority: 'server',
-        economicStatisticsAuthority: 'server', immutableAuditAuthority: 'server'
+        economicStatisticsAuthority: 'server', immutableAuditAuthority: 'server',
+        browserEconomyWrites: 'denied_by_rules_23.13.80', authorityCutover: 'server_required'
       },
       trustedPoolFingerprint: TRUSTED_CARD_POOL_FINGERPRINT
     };
@@ -623,7 +624,7 @@ export const economyApplyAbandonPenalty = onCall(FUNCTION_RUNTIME_OPTIONS, async
 
 
 // ---------------------------------------------------------------------------
-// v23.19.5.5 — Admin Economy + Statistics / Immutable Audit Authority.
+// v23.19.5.6 — Economy Write Firewall + Server-Required Cutover (Admin Authority retained).
 // ---------------------------------------------------------------------------
 export const economyAdminGrant = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
   const auth = requireAuth(request); const data = requestData(request);

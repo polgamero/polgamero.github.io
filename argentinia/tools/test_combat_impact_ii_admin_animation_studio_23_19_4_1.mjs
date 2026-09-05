@@ -14,10 +14,10 @@ const ui=read('js/ui.js');
 const firebase=read('js/firebaseClientImpl.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 
-assert.equal(ENGINE_VERSION,'23.19.5.5');
+assert.equal(ENGINE_VERSION,'23.19.5.6');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.79');
-assert.equal(manifest.engineVersion,'23.19.5.5');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
+assert.equal(manifest.engineVersion,'23.19.5.6');
 assert.equal(manifest.pool,880);
 
 const refs=normalizeAnimationSpeedMultipliers({slow:1.6,normal:.95,fast:.55});
@@ -60,4 +60,4 @@ assert.ok(firebase.includes('Math.max(0.25, Math.min(3'),'policy-speed-clamp');
 console.log('COMBAT_IMPACT_II_ADMIN_ANIMATION_STUDIO_23_19_4_1_OK');
 console.log('combat=multi-block+trample+first-strike+double-strike+shield+deathtouch+indestructible');
 console.log('admin=dedicated-tab+server-speed-reference+full-board-dummy+lab-speed-override');
-console.log('rules=23.13.79 unchanged protocol=mp-23.19.2 pool=880');
+console.log('rules=23.13.80 unchanged protocol=mp-23.19.2 pool=880');

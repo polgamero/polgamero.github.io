@@ -1,0 +1,27 @@
+ARGENTINIA v23.19.5.6 RC — Economy Write Firewall + Server-Required Cutover
+
+Cumulative over 23.19.5.5 RELEASED.
+
+NEW
+- Firestore Rules 23.13.80 Economy Write Firewall.
+- Economy Authority one-way cutover to server_required.
+- econ-23.19.5.6 / schema 7 / minimum client econ-23.19.5.6.
+- status capability markers browserEconomyWrites=denied_by_rules_23.13.80 and authorityCutover=server_required.
+- official client economic fallback eliminated; kill-switch state fails through server authority, never direct Firestore.
+- dead browser economic stats/Solo/PvP direct writers removed.
+- gameConfig/economy browser/Admin downgrade blocked client-side and Rules-side.
+- new adversarial Firestore gate plus cumulative Auth+Firestore+Functions cutover gate.
+- Node 22 preflight now happens before gate dependency installation.
+- production Functions verifier uses ASCII function-name parsing, fixing the Windows/Git-Bash Unicode table false-negative seen in 23.19.5.5.
+- Admin ECONOMÍA / AUDITORÍA: read-only recent immutable economyEvents/adminActions, filters/search, signed deltas and JSON export for operational incident review.
+
+UNCHANGED
+- pool 880
+- mp-23.19.2
+- 25 Economy callables
+- Node 22 / Gen2 / southamerica-east1 / 256MiB
+- minInstances=0 / maxInstances=1 / concurrency=10 / timeout=30s
+- App Check observe-only
+
+RC ONLY until both real emulator gates, GitHub CI, Functions deploy/verify, Rules deploy and production adversarial/gameplay smoke pass.
+

@@ -1,4 +1,4 @@
-// js/economyClient.js — v23.19.5.5 Admin Economy + Statistics / Immutable Audit Authority.
+// js/economyClient.js — v23.19.5.6 Economy Write Firewall + Server-Required Cutover.
 // Transporte único browser -> callable Functions. El cliente expresa INTENCIÓN; nunca
 // construye receipts ni escribe directamente economyOperations.
 

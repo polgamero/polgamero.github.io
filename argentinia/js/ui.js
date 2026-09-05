@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -6558,6 +6558,7 @@ export function showAdminPanel(onBack) {
     { key: 'messages', label: 'MENSAJES Y USUARIOS' },
     { key: 'campaigns', label: gameText('admin.tab.campaigns') },
     { key: 'stats', label: gameText('admin.tab.statistics') },
+    { key: 'economyAudit', label: gameText('admin.tab.economyAudit') },
     { key: 'debug', label: 'DEBUGGING' }
   ];
   const tabsHTML = adminTabs.map((tab, idx) =>
@@ -6613,6 +6614,32 @@ export function showAdminPanel(onBack) {
           <div id="admin-stats-cards" class="admin-stats-grid"></div>
           <div class="admin-debug-table-wrap" id="admin-stats-detail" style="margin-top:14px;"></div>
           <div class="admin-debug-summary" style="margin-top:10px;">${gameTextHtml('admin.stats.methodNote')}</div>
+        </div>
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="economyAudit">
+        <div class="admin-section">
+          <div class="admin-debug-toolbar">
+            <div>
+              <div class="admin-section-title">${gameTextHtml('admin.audit.title')}</div>
+              <div class="admin-debug-summary" id="admin-economy-audit-summary">${gameTextHtml('admin.audit.initial')}</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+              <button class="admin-save-btn" id="admin-economy-audit-export" disabled>${gameTextHtml('admin.audit.export')}</button>
+              <button class="admin-save-btn" id="admin-economy-audit-refresh">${gameTextHtml('admin.audit.refresh')}</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 12px;">
+            <select class="admin-field-input" id="admin-economy-audit-kind" style="max-width:220px;text-align:left;">
+              <option value="all">${gameTextHtml('admin.audit.filterAll')}</option>
+              <option value="economyEvent">${gameTextHtml('admin.audit.filterEconomy')}</option>
+              <option value="adminAction">${gameTextHtml('admin.audit.filterAdmin')}</option>
+            </select>
+            <input class="admin-field-input" id="admin-economy-audit-search" type="search" placeholder="${gameTextHtml('admin.audit.searchPlaceholder')}" style="min-width:260px;flex:1;text-align:left;">
+          </div>
+          <div id="admin-economy-audit-cards" class="admin-stats-grid"></div>
+          <div class="admin-debug-table-wrap" id="admin-economy-audit-table" style="margin-top:14px;"><div class="admin-debug-empty">${gameTextHtml('admin.audit.empty')}</div></div>
+          <div class="admin-debug-summary" style="margin-top:10px;">${gameTextHtml('admin.audit.note')}</div>
         </div>
       </div>
 
@@ -7244,6 +7271,79 @@ Receipt: ${receiptId}
     }
   }
 
+  let economyAuditLoaded = false;
+  let economyAuditLoading = false;
+  let economyAuditRows = [];
+
+  function auditTimestampMs(value) {
+    if (!value) return 0;
+    if (typeof value?.toMillis === 'function') return value.toMillis();
+    if (typeof value?.seconds === 'number') return value.seconds * 1000;
+    const n = Date.parse(String(value));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function economyAuditLabel(row) {
+    return row.auditKind === 'adminAction'
+      ? String(row.type || 'admin_action')
+      : String(row.source || row.type || 'economy_event');
+  }
+
+  function renderEconomyAudit() {
+    const kind = overlay.querySelector('#admin-economy-audit-kind')?.value || 'all';
+    const term = String(overlay.querySelector('#admin-economy-audit-search')?.value || '').trim().toLowerCase();
+    const rows = economyAuditRows.filter(row => {
+      if (kind !== 'all' && row.auditKind !== kind) return false;
+      if (!term) return true;
+      const haystack = [row.id,row.auditKind,row.type,row.source,row.operationId,row.targetUid,row.actorUid,row.adminUid,row.kind,row.reason,row.bulkJobId,row.sessionId].map(v=>String(v||'')).join(' ').toLowerCase();
+      return haystack.includes(term);
+    });
+    const totalPoints = rows.reduce((n,r)=>n+(Number(r.pointsDelta)||Number(r.appliedAmount && r.kind==='points' ? r.appliedAmount : 0)||0),0);
+    const totalFichas = rows.reduce((n,r)=>n+(Number(r.fichasDelta)||Number(r.appliedAmount && r.kind==='fichas' ? r.appliedAmount : 0)||0),0);
+    const totalPacks = rows.reduce((n,r)=>n+(Number(r.packsDelta)||Number(r.appliedAmount && r.kind==='standardPacks' ? r.appliedAmount : 0)||0),0);
+    const adminCount = rows.filter(r=>r.auditKind==='adminAction').length;
+    const cards = [
+      ['Operaciones visibles', rows.length, `de ${economyAuditRows.length} cargadas`],
+      ['Δ Puntos', `${totalPoints>=0?'+':''}${totalPoints.toLocaleString('es-AR')}`, 'ventana filtrada'],
+      ['Δ Fichas', `${totalFichas>=0?'+':''}${totalFichas.toLocaleString('es-AR')}`, 'ventana filtrada'],
+      ['Δ Sobres', `${totalPacks>=0?'+':''}${totalPacks.toLocaleString('es-AR')}`, `Acciones Admin: ${adminCount}`]
+    ];
+    overlay.querySelector('#admin-economy-audit-cards').innerHTML = cards.map(([label,value,sub])=>`<div class="admin-stat-card"><div class="admin-stat-label">${escapeHtml(label)}</div><div class="admin-stat-value">${escapeHtml(value)}</div><div class="admin-stat-sub">${escapeHtml(sub)}</div></div>`).join('');
+    const body = rows.map(row => {
+      const ms=auditTimestampMs(row.createdAt), when=ms?new Date(ms).toLocaleString('es-AR'):'—';
+      const target=String(row.targetUid||'—'), op=String(row.operationId||row.bulkJobId||row.sessionId||'—');
+      const points=Number(row.pointsDelta)||Number(row.kind==='points'?row.appliedAmount:0)||0;
+      const fichas=Number(row.fichasDelta)||Number(row.kind==='fichas'?row.appliedAmount:0)||0;
+      const packs=Number(row.packsDelta)||Number(row.kind==='standardPacks'?row.appliedAmount:0)||0;
+      const delta=[points?`P ${points>0?'+':''}${points}`:'',fichas?`F ${fichas>0?'+':''}${fichas}`:'',packs?`S ${packs>0?'+':''}${packs}`:''].filter(Boolean).join(' · ')||'—';
+      const actor=String(row.adminUid||row.actorUid||'server');
+      const detail=escapeHtml(JSON.stringify(row, (_k,v)=>typeof v?.toDate==='function'?v.toDate().toISOString():v));
+      return `<tr title="${detail}"><td>${escapeHtml(when)}</td><td><strong>${escapeHtml(row.auditKind==='adminAction'?'ADMIN':'ECON')}</strong></td><td>${escapeHtml(economyAuditLabel(row))}</td><td><code>${escapeHtml(target)}</code></td><td>${escapeHtml(delta)}</td><td><code>${escapeHtml(op)}</code></td><td><code>${escapeHtml(actor)}</code></td></tr>`;
+    }).join('');
+    overlay.querySelector('#admin-economy-audit-table').innerHTML = `<table class="admin-debug-table"><thead><tr><th>Fecha</th><th>Clase</th><th>Operación</th><th>Usuario</th><th>Delta</th><th>Operation ID</th><th>Actor</th></tr></thead><tbody>${body||`<tr><td colspan="7">${escapeHtml(gameText('admin.audit.empty'))}</td></tr>`}</tbody></table>`;
+    overlay.querySelector('#admin-economy-audit-summary').textContent = gameText('admin.audit.summary',{count:economyAuditRows.length});
+  }
+
+  async function reloadEconomyAudit() {
+    if (economyAuditLoading) return;
+    economyAuditLoading = true;
+    const btn=overlay.querySelector('#admin-economy-audit-refresh');
+    if(btn){btn.disabled=true;btn.textContent=gameText('admin.audit.loading');}
+    try {
+      const audit=await fetchEconomyAuditForAdmin({limitCount:250});
+      economyAuditRows=[...(audit?.economyEvents||[]),...(audit?.adminActions||[])].sort((a,b)=>auditTimestampMs(b.createdAt)-auditTimestampMs(a.createdAt));
+      economyAuditLoaded=true;
+      renderEconomyAudit();
+      overlay.querySelector('#admin-economy-audit-export').disabled=false;
+    } catch(err) {
+      console.error('No se pudo cargar Auditoría Económica:',err);
+      overlay.querySelector('#admin-economy-audit-summary').textContent=gameText('admin.audit.error',{message:err?.message||err});
+    } finally {
+      economyAuditLoading=false;
+      if(btn){btn.disabled=false;btn.textContent=gameText('admin.audit.refresh');}
+    }
+  }
+
   let animationLabCleanup = null;
   let animationLabMounted = false;
 
@@ -7265,6 +7365,7 @@ Receipt: ${receiptId}
     if (key === 'messages') void ensureAdminMessageUsers();
     if (key === 'campaigns') ensureAdminCampaignsPane();
     if (key === 'stats' && !statsLoaded) reloadAdminStatistics();
+    if (key === 'economyAudit' && !economyAuditLoaded) reloadEconomyAudit();
     if (key === 'animations') ensureAdminAnimationLab();
     if (key === 'debug') {
       if (!debugLoaded) reloadTelemetryHistory();
@@ -7277,6 +7378,13 @@ Receipt: ${receiptId}
   });
   overlay.querySelector('#admin-stats-refresh').addEventListener('click', reloadAdminStatistics);
   overlay.querySelector('#admin-stats-sync').addEventListener('click', syncAdminRanking);
+  overlay.querySelector('#admin-economy-audit-refresh').addEventListener('click', reloadEconomyAudit);
+  overlay.querySelector('#admin-economy-audit-kind').addEventListener('change', renderEconomyAudit);
+  overlay.querySelector('#admin-economy-audit-search').addEventListener('input', renderEconomyAudit);
+  overlay.querySelector('#admin-economy-audit-export').addEventListener('click', () => {
+    if (!economyAuditRows.length) return;
+    downloadAdminJson({ engineVersion: ENGINE_VERSION, exportedAt: new Date().toISOString(), rows: economyAuditRows }, `Argentinia_auditoria_economica_v${ENGINE_VERSION}.json`);
+  });
   overlay.querySelector('#admin-debug-refresh').addEventListener('click', reloadTelemetryHistory);
   overlay.querySelector('#admin-debug-cleanup').addEventListener('click', async () => {
     if (!window.confirm(gameText('admin.debug.cleanupConfirm'))) return;

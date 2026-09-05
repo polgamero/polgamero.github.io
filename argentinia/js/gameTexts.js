@@ -1230,6 +1230,22 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'admin.stats.col.time': definition('Estadísticas', 'Tiempo', 'Columna Tiempo jugado.'),
   'admin.stats.empty': definition('Estadísticas', 'Sin filas públicas todavía.', 'Tabla Admin sin jugadores públicos.'),
 
+  // Auditoría económica Admin — 23.19.5.6: evidencia server-owned visible y exportable.
+  'admin.tab.economyAudit': definition('Auditoría económica', 'ECONOMÍA / AUDITORÍA', 'Nombre de la solapa de operaciones económicas del Panel Admin.'),
+  'admin.audit.title': definition('Auditoría económica', '🧾 Operaciones económicas auditadas', 'Título del visor de economíaEvents y adminActions.'),
+  'admin.audit.initial': definition('Auditoría económica', 'Entrá a esta solapa para leer la evidencia económica inmutable del servidor.', 'Estado inicial del visor.'),
+  'admin.audit.refresh': definition('Auditoría económica', '↻ Actualizar', 'Botón para recargar evidencia económica.'),
+  'admin.audit.loading': definition('Auditoría económica', '⏳ Leyendo auditoría…', 'Estado durante la carga.'),
+  'admin.audit.export': definition('Auditoría económica', '⬇ Exportar JSON', 'Botón para exportar la ventana de auditoría.'),
+  'admin.audit.filterAll': definition('Auditoría económica', 'Todas las operaciones', 'Filtro para mostrar todas las clases.'),
+  'admin.audit.filterEconomy': definition('Auditoría económica', 'Eventos económicos', 'Filtro economyEvents.'),
+  'admin.audit.filterAdmin': definition('Auditoría económica', 'Acciones Admin', 'Filtro adminActions.'),
+  'admin.audit.searchPlaceholder': definition('Auditoría económica', 'Buscar usuario, operationId, origen, motivo…', 'Placeholder del buscador de auditoría.'),
+  'admin.audit.empty': definition('Auditoría económica', 'No hay operaciones para este filtro.', 'Estado vacío de la tabla.'),
+  'admin.audit.summary': definition('Auditoría económica', '{count} registros recientes cargados desde evidencia inmutable server-side.', 'Resumen de la ventana cargada.'),
+  'admin.audit.error': definition('Auditoría económica', 'Error leyendo auditoría: {message}', 'Error visible del visor.'),
+  'admin.audit.note': definition('Auditoría económica', 'Vista de diagnóstico: economyEvents y adminActions son append-only e inmutables. Los totales de esta pantalla corresponden sólo a la ventana reciente cargada, no a balances históricos globales.', 'Nota metodológica y de alcance.'),
+
   // Debugging / auditoría de imágenes — tokens pasan a ser ciudadanos de primera clase.
   'admin.images.title': definition('Debugging', '🖼️ Auditoría de imágenes', 'Título de auditoría de imágenes.'),
   'admin.images.initial': definition('Debugging', 'Entrá a esta solapa para leer el manifiesto generado en el deploy.', 'Estado inicial de auditoría de imágenes.'),

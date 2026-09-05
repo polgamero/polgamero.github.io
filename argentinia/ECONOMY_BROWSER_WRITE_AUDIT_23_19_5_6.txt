@@ -1,0 +1,79 @@
+ARGENTINIA 23.19.5.6 — BROWSER WRITE AUDIT / ECONOMY FIREWALL MATRIX
+
+Purpose
+Close the last Economy Authority gap: the official client already uses server callables, and Firestore Rules 23.13.80 now deny economic mutation from browser/custom clients. This matrix classifies every remaining browser write family.
+
+A) BROWSER ALLOW — NON-ECONOMIC / GAMEPLAY
+- users/{uid}.lastSeenAt — own presence only, serverTimestamp.
+- users/{uid}.decks — own deck composition/names only; no balances/inventory.
+- users/{uid}.activeMatchId — own match lifecycle pointer.
+- rewardClock/{uid} — own serverTimestamp attestation used for time-derived UI; rulesVersion 23.13.80 accepted.
+- matches/{id}, matches/{id}/private/{role}, privateSelections — authenticated multiplayer lifecycle/sync under existing ownership/session/revision rules.
+- telemetrySessions / telemetryChunks — existing telemetry ownership/admin rules.
+- announcementDismissals — own UI preference.
+
+B) ADMIN BROWSER ALLOW — PRIVILEGED CONFIG/EDITORIAL, NOT PLAYER BALANCE MUTATION
+- gameConfig/* EXCEPT gameConfig/economy — Admin configuration documents such as settings/texts/animations/classifieds schedule.
+- campaignEvents — Admin campaign configuration; may influence server-computed rewards/prices, but never directly edits user balances.
+- announcements — Admin editorial content.
+The server remains authoritative when applying any economic effect from these configs.
+
+authority downgrade protection:
+- gameConfig/economy browser write = DENY even for Admin.
+- firebaseClientImpl.saveAdminGameConfigDocument('economy', ...) also rejects locally with ECONOMY_SERVER_AUTHORITY_REQUIRED.
+- Functions normalize stale raw shadow/server_preferred to server_required and force minimum protocol econ-23.19.5.6.
+
+C) SERVER-ONLY — FIRESTORE RULES DENY FROM BROWSER
+users/{uid} protected/economic fields, including:
+- profile creation/bootstrap/starter fields
+- points / fichas
+- collection / inventory / enhancements
+- dailyRewards
+- username / usernameKey / usernameUpdatedAt
+- prebuilt/classified purchase state
+
+Dedicated authoritative collections:
+- playerStats — server writes only; browser read remains public by product contract.
+- playerGameReceipts — server writes only; owner/Admin read.
+- gameRewardReceipts — server writes only; owner/Admin read.
+- pvpDailyPairs / pvpDailyUsers — server writes only.
+- economyEvents — immutable server audit; browser Admin read only.
+- adminActions — immutable server audit; browser Admin read only.
+- usernames create/update — server only. Own delete remains only for voluntary account deletion/registry release contract.
+
+Authoritative operations routed through Functions:
+- account bootstrap + starter completion
+- packs / guaranteed mythic
+- store pack purchase / craft / prebuilt / classifieds
+- username rename
+- Daily Rewards / Admin Daily Debug
+- match natural settlement / abandon penalty / anti-farming
+- registration admission control
+- Admin single grant / bulk grant / stats sync / trusted Solo repair
+
+D) LEGACY DIRECT ECONOMIC CLIENT ROUTINES REMOVED/DISABLED
+- createUserProfile has no direct Firestore fallback; it always invokes server authority.
+- awardPoints exported compatibility API throws ECONOMY_SERVER_AUTHORITY_REQUIRED.
+- recordPlayerGameResult is a compatibility no-op; result receipts/stats are server-owned.
+- bootstrapPlayerStatistics is read-only; historical reconciliation uses economyAdminSyncPlayerStats.
+- statsBestEffort / economyLogBestEffort are no-op browser bridges.
+- dead private trackPlayerStats direct writer removed.
+- dead private settleSoloGameRewardOnce / settlePvpGameRewardOnce direct writers removed.
+- even when gameConfig/economy.enabled=false, the client still routes to Functions and fails closed with ECONOMY_DISABLED; it does not fall back to direct Firestore writes.
+
+E) FINAL ENFORCEMENT LAYERS
+1. Official client: server_required, no economic fallback.
+2. Functions: minimum client econ-23.19.5.6, stale mode/min-version coercion, server validation + transactions/idempotency.
+3. Firestore Rules 23.13.80: direct browser economic writes DENY.
+4. App Check: still observe-only; not used as the primary economic security boundary.
+5. Cost safety unchanged: minInstances=0 / maxInstances=1 / concurrency=10 / timeout=30s / memory=256MiB.
+
+Result
+After Rules 23.13.80 production deployment, a hostile/obsolete browser cannot grant itself points/Fichas/packs/cards, forge stats/receipts/PvP ledgers/audit, create an economic profile, or downgrade Economy Authority. Legitimate gameplay/profile browser writes remain available.
+
+ADMIN AUDIT VIEWER
+- Admin ECONOMÍA / AUDITORÍA reads the most recent immutable economyEvents + adminActions (250 per collection, max 500 each server query guard).
+- Filters: economy events / Admin actions + free-text search by uid, operationId, source/type, reason, bulkJobId/sessionId.
+- Shows date, class, operation/source, target uid, signed delta, operationId and actor.
+- JSON export is diagnostic evidence only. KPI deltas are explicitly scoped to the loaded/filtered window, not historical global balances.
+- Viewer is read-only; Rules 23.13.80 allow Admin read but deny browser create/update/delete even to Admin.
