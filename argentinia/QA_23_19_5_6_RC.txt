@@ -50,3 +50,11 @@ ADMIN ECONOMY AUDIT UX
 - New ECONOMÍA / AUDITORÍA Admin tab reads immutable economyEvents/adminActions read-only.
 - Recent-window filters/search/export JSON are present; no mutation control exists in the viewer.
 - Window KPI text states that filtered sums are not historical/global balance totals.
+
+RC2 BROWSER SYNTAX HOTFIX — 2026-09-05
+- Production smoke after GitHub publication exposed a parse error in argentinia/js/firebaseClientImpl.js (`Unexpected token ','`).
+- Root cause: the 23.19.5.6 removal of the legacy browser playerStats/playerGameReceipts writer left an orphaned tail of the deleted function in the packaged source.
+- Fix: removed the dead legacy writer tail completely; playerStats/playerGameReceipts remain server-owned as intended.
+- No Functions behavior change. No Firestore Rules change. Rules candidate remains 23.13.80.
+- Revalidation on the fixed source: node --check 253/253 PASS; canonical fast contract sweep 112/112 PASS; Economy Write Firewall structural contract PASS.
+- The previous 23.19.5.6 RC ZIP is superseded by RC2 and must not be uploaded again.

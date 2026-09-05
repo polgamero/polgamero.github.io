@@ -227,53 +227,8 @@ async function runEconomyActionAuthority(uid, type, request, invoke) {
 // actualización estadística falla, NO revierte una compra/recompensa ya válida.
 // ============================================================================
 
-async function loadProfileRaw(uid) {
-  const snap = await getDoc(doc(db, 'users', uid));
-  return snap.exists() ? { uid, ...snap.data() } : null;
-}
-
-, options = {}) {
-  const userRef = doc(db, 'users', uid);
-  const statsRef = doc(db, 'playerStats', uid);
-  const receiptId = options.receiptId ? String(options.receiptId).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 300) : null;
-  const receiptRef = receiptId ? doc(db, 'playerGameReceipts', `${uid}_${receiptId}`) : null;
-  return runTransaction(db, async tx => {
-    const userSnap = await tx.get(userRef);
-    if (!userSnap.exists()) return { applied: false, reason: 'missing_user' };
-    const statsSnap = await tx.get(statsRef);
-    let receiptSnap = null;
-    if (receiptRef) receiptSnap = await tx.get(receiptRef);
-    if (receiptSnap?.exists()) return { applied: false, reason: 'duplicate_receipt' };
-
-    const profile = { uid, ...userSnap.data() };
-    const stats = normalizePlayerStats(statsSnap.exists() ? statsSnap.data() : null);
-    const numericKeys = [
-      'gamesPlayed','soloGames','multiplayerGames','wins','losses','soloWins','soloLosses',
-      'multiplayerWins','multiplayerLosses','abandons','totalDurationMs','pointsEarned',
-      'pointsSpent','pointsLost','fichasEarned','fichasSpent','packsReceived','packsOpened',
-      'guaranteedMythicsOpened'
-    ];
-    for (const key of numericKeys) {
-      const delta = Math.floor(Number(deltas[key]) || 0);
-      if (delta) stats[key] = Math.max(0, (Number(stats[key]) || 0) + delta);
-    }
-    if (Number.isFinite(Number(options.gameBackfillVersion))) {
-      stats.gameBackfillVersion = Math.max(stats.gameBackfillVersion || 0, Math.floor(Number(options.gameBackfillVersion)));
-    }
-    tx.set(statsRef, playerStatsMirror(profile, stats), { merge: false });
-    if (receiptRef) {
-      tx.set(receiptRef, {
-        uid,
-        receiptId,
-        mode: options.mode || null,
-        result: options.result || null,
-        durationMs: Math.max(0, Math.floor(Number(options.durationMs) || 0)),
-        createdAt: serverTimestamp()
-      });
-    }
-    return { applied: true, stats };
-  });
-}
+// 23.19.5.6: playerStats y playerGameReceipts son server-owned.
+// Se eliminó el writer transaccional legacy del browser durante el cutover.
 
 function statsBestEffort(_uid, _deltas = {}, _options = {}) {
   return Promise.resolve({ applied:false, reason:'server_owned_economic_stats' });
