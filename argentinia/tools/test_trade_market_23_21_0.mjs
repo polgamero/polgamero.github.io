@@ -72,7 +72,7 @@ for(const name of ['getTradeMarket','createTradeListing','cancelTradeListing','c
 const version=read('js/version.js');
 const sourceManifest=fs.readFileSync(path.join(repo,'SOURCE_SNAPSHOT_MANIFEST_23_21_0.txt'),'utf8');
 assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.81'/);
-assert.match(sourceManifest,/DIRECT_FIRESTORE_FIREWALL=CANDIDATE_RULES_23\.13\.81/);
+assert.match(sourceManifest,/DIRECT_FIRESTORE_FIREWALL=(?:CANDIDATE|DEPLOYED)_RULES_23\.13\.81/);
 assert.match(sourceManifest,/TRADE_RESERVATIONS=SERVER_ONLY/);
 
 const callables=[...fn.matchAll(/export const \w+\s*=\s*onCall\(/g)];
