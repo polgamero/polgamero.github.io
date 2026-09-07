@@ -49,8 +49,8 @@ if(main.includes("seed: gameSeedFromLocation(), label: `multiplayer:")) throw ne
 const recovery=read('js/soloRecovery.js');
 if(!recovery.includes('SOLO_RECOVERY_SCHEMA_VERSION = 2') || !recovery.includes('rngState')) throw new Error('recovery rng missing');
 const workflow=read('../.github/workflows/pages.yml');
-const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
-if(!workflow.includes('ci_fast_contract_manifest_23_20_0.txt')) throw new Error('canonical CI gate missing');
+const fastManifest=read('tools/ci_fast_contract_manifest_23_21_0.txt');
+if(!workflow.includes('ci_fast_contract_manifest_23_21_0.txt')) throw new Error('canonical CI gate missing');
 if(!fastManifest.includes('tools/test_stability_replay_foundation_23_18.mjs')) throw new Error('stability contract missing from canonical manifest');
 if(!workflow.includes('run_stability_lab_23_18.mjs --seeds 10')) throw new Error('dynamic stability lab missing');
 

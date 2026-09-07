@@ -19,11 +19,11 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const files=['criaturas','instantaneos','conjuros','encantamientos','artefactos','tierras','planeswalkers'];
 const cards=files.flatMap(x=>JSON.parse(read(`assets/data/${x}.json`)));
 
-assert.ok(['23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.20.0'].includes(ENGINE_VERSION));
+assert.ok(['23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.21.0'].includes(ENGINE_VERSION));
 assert.equal(TYPAL_ENGINE_VERSION,'23.16.5');
 assert.equal(GENERIC_EVENT_ENGINE_VERSION,'23.16.5');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.81');
 assert.ok(['pool_expansion_vii_850','pool_expansion_viii_880'].includes(CURRENT_POOL_MILESTONE));
 assert.ok(POOL_BASELINE.total>=850);
 assert.ok(cards.length>=850,'Typal Engine contract survives later Typal content');
@@ -85,8 +85,8 @@ assert.ok(cards.filter(c=>JSON.stringify(c).includes('choose_creature_type')).le
 const workflow=read('../.github/workflows/pages.yml');
 assert.ok(workflow.includes('regression_legacy_23_17_3_1.zip'));
 assert.ok(workflow.includes('ci_regression_manifest_23_17_3_1.txt'));
-const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
-assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'));
+const fastManifest=read('tools/ci_fast_contract_manifest_23_21_0.txt');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_21_0.txt'));
 assert.ok(fastManifest.includes('tools/test_prebuilt_decks_store_23_17_3.mjs'));
 
 console.log('PASS test_typal_engine_23_16_5.mjs · generic exact subtypes + shared types + chosen type + lords/cost/library/events/targets · Pool 850');

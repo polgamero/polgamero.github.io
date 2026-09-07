@@ -18,10 +18,10 @@ const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const json=p=>JSON.parse(read(p));
 
-assert.equal(ENGINE_VERSION, '23.20.0');
+assert.equal(ENGINE_VERSION, '23.21.0');
 assert.equal(PREBUILT_DECKS_VERSION,'23.17.3');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.81');
 assert.equal(CURRENT_POOL_MILESTONE,'pool_expansion_viii_880');
 assert.equal(POOL_BASELINE.total,880);
 
@@ -110,8 +110,8 @@ for(const key of ['store.prebuilt.showcaseTitle','prebuilt.title','prebuilt.view
 const workflow=read('../.github/workflows/pages.yml');
 assert.ok(workflow.includes('regression_legacy_23_17_3_1.zip'));
 assert.ok(workflow.includes('ci_regression_manifest_23_17_3_1.txt'));
-const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
-assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'));
+const fastManifest=read('tools/ci_fast_contract_manifest_23_21_0.txt');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_21_0.txt'));
 assert.ok(fastManifest.includes('tools/test_prebuilt_decks_store_23_17_3.mjs'));
 
 console.log('PASS test_prebuilt_decks_store_23_17_3.mjs · Pool 880 · 10 official bicolor products · 60 cards fixed · 1500+3 · 12 deck slots · persistent purchase receipts · collection+Mis Mazos atomic flow');

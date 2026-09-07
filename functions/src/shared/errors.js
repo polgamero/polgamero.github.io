@@ -74,6 +74,21 @@ const MAP = Object.freeze({
   TOURNAMENT_MATCH_NOT_ACTIVE: ['failed-precondition', 'Esa partida de torneo no está activa.'],
   TOURNAMENT_BRACKET_INVALID: ['internal', 'El fixture del torneo es inconsistente.'],
   TOURNAMENT_RECEIPT_CONFLICT: ['failed-precondition', 'La partida de torneo ya tiene un resultado incompatible.'],
+  TRADE_LISTING_EXISTS: ['failed-precondition', 'Ya tenés una publicación activa en el Mercado de Pases.'],
+  TRADE_LISTING_NOT_FOUND: ['not-found', 'No se encontró esa publicación activa.'],
+  TRADE_LISTING_NOT_ACTIVE: ['failed-precondition', 'La publicación ya no está activa.'],
+  TRADE_CARD_INVALID: ['invalid-argument', 'Esa carta no pertenece al pool válido de Argentinia.'],
+  TRADE_CARD_NOT_TRADABLE: ['failed-precondition', 'No tenés una copia libre de esa carta para intercambiar.'],
+  TRADE_CRITERIA_INVALID: ['invalid-argument', 'Configurá una cantidad válida de criterios BUSCO según el límite actual, o elegí Acepto cualquier carta.'],
+  TRADE_OFFER_LIMIT: ['resource-exhausted', 'Esta publicación ya alcanzó el máximo configurado de ofertas activas.'],
+  TRADE_OUTGOING_LIMIT: ['resource-exhausted', 'Ya alcanzaste el máximo configurado de ofertas salientes activas.'],
+  TRADE_OFFER_EXISTS: ['failed-precondition', 'Ya hiciste una oferta activa para esta publicación.'],
+  TRADE_OFFER_NOT_FOUND: ['not-found', 'No se encontró esa oferta activa.'],
+  TRADE_OFFER_NOT_MATCHING: ['failed-precondition', 'La carta ofrecida no cumple ninguno de los criterios BUSCO.'],
+  TRADE_WEEKLY_LIMIT: ['resource-exhausted', 'Uno de los jugadores ya alcanzó el máximo semanal configurado de intercambios completados.'],
+  TRADE_SELF_OFFER: ['failed-precondition', 'No podés hacer una oferta sobre tu propia publicación.'],
+  TRADE_RESERVATION_CONFLICT: ['failed-precondition', 'La reserva ya no puede sostenerse con la colección y los mazos actuales.'],
+  USERNAME_TRADE_RESERVED: ['failed-precondition', 'Cancelá tu publicación y tus ofertas del Mercado de Pases antes de cambiar el nombre.'],
   INTERNAL: ['internal', 'Error interno de Economy Authority.']
 });
 

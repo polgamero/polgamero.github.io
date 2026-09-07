@@ -1,0 +1,62 @@
+ARGENTINIA 23.21.0 — MERCADO DE PASES
+STATUS: PRE-RC / PENDING REAL EMULATOR GATES + PRODUCTION SMOKE
+
+CONTRATO FUNCIONAL
+- Intercambio estricto 1 carta ↔ 1 carta.
+- Nunca usa puntos, Fichas, sobres ni dinero.
+- 1 publicación activa por jugador.
+- Límites operativos configurables desde Admin con defaults seguros:
+  * hasta 3 criterios BUSCO por publicación (hard ceiling 3),
+  * 10 ofertas activas por publicación por defecto (hard ceiling 50),
+  * 5 ofertas salientes activas por jugador por defecto (hard ceiling 20),
+  * 3 intercambios COMPLETADOS por semana por jugador por defecto (hard ceiling 20).
+- 1 oferta activa por jugador/publicación.
+- Cancelar/rechazar no consume el cupo semanal.
+- El servidor normaliza y acota cualquier configuración remota fuera de rango.
+
+RESERVAS Y MAZOS
+- Publicar reserva exactamente 1 copia física disponible.
+- Cada oferta saliente reserva exactamente 1 copia física disponible.
+- Una misma carta puede estar en varias ofertas sólo si hay suficientes copias libres reales.
+- Una carta usada en mazos NO necesita quitarse manualmente.
+- Se protege el MÁXIMO de copias requerido por cualquiera de los mazos guardados; no se suman todos los mazos.
+- Una copia mejorada también se protege.
+- La aceptación vuelve a validar colección + mazos + reservas. Si una edición posterior de mazo hace inviable una reserva, el trade falla cerrado.
+
+BUSCO
+- Hasta 3 criterios por publicación.
+- Cada criterio es:
+  1) carta específica; o
+  2) filtro Rareza + Color, permitiendo también sólo Rareza o sólo Color.
+- Los tres criterios se combinan con OR.
+- Rareza y Color dentro del mismo criterio se combinan con AND.
+- Color significa "la identidad/lista de colores contiene ese color"; ROJA acepta mono-roja o multicolor con R.
+- INCOLORA exige colors=[] en el catálogo trusted.
+- CUALQUIER RAREZA + CUALQUIER COLOR no es un criterio válido: usar ACEPTO CUALQUIER CARTA.
+- ACEPTO CUALQUIER CARTA desactiva la exigencia de criterios.
+- Matching se valida server-side; la UI sólo presenta opciones compatibles como ayuda.
+
+ADMIN / OPERACIONES
+- Todo el copy visible de Mercado está integrado a Game Text y es editable desde Admin.
+- Admin CONFIGURACIÓN expone los cuatro límites operativos de Mercado; Functions aplica los mismos límites con hard ceilings server-side.
+- Estadísticas mantiene tradesCompleted por jugador y muestra un KPI global de intercambios completados, contando cada swap una sola vez.
+- Cada aceptación escribe un único economyEvent inmutable en la misma transacción del swap.
+- ECONOMÍA / AUDITORÍA muestra el intercambio como una operación 1 ↔ 1, con usernames, UID en tooltip y metadata listing/offer/trade + ambas cartas.
+
+AUTORIDAD / DATOS
+- Cloud Functions server-authoritative.
+- tradeListings / tradeOffers / tradeReceipts / tradeWeeklyLedgers / tradeReservations son browser DENY por Rules 23.13.81.
+- Accept es una transacción atómica: ambas colecciones cambian o ninguna cambia.
+- Accept cierra la publicación y rechaza/libera las demás ofertas activas.
+- Receipts + weekly ledgers + Economy Audit dan trazabilidad.
+- Retry con operationId es idempotente/exact-once.
+- Rename de username y delete de cuenta quedan bloqueados mientras existan reservas activas.
+
+VERSIÓN
+Engine: 23.21.0
+Economy protocol: econ-23.19.5.6 (UNCHANGED)
+Economy schema: 9
+Multiplayer: mp-23.19.2 (UNCHANGED)
+Pool: 880 (UNCHANGED)
+Rules: 23.13.81 CANDIDATE
+Functions: 37

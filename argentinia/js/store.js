@@ -130,6 +130,14 @@ export let PREBUILT_DECK_POINTS = 1500;
 export let PREBUILT_DECK_FICHAS = 3;
 export let MAX_SAVED_DECKS = 12;
 
+// 23.21.0 — Mercado de Pases. Defaults are admin-editable through gameConfig/settings;
+// the server applies its own hard ceilings, so a corrupted Admin document cannot explode
+// transaction fan-out or document size.
+export let TRADE_MAX_WANTED_CRITERIA = 3;
+export let TRADE_MAX_OFFERS_PER_LISTING = 10;
+export let TRADE_MAX_OUTGOING_OFFERS = 5;
+export let TRADE_MAX_COMPLETED_PER_WEEK = 3;
+
 // ============================================================================
 // PANEL DE ADMIN: puente entre Firestore y estos valores en memoria.
 // ============================================================================
@@ -168,6 +176,10 @@ export function getDefaultGameConfig() {
     prebuiltDeckPoints: 1500,
     prebuiltDeckFichas: 3,
     maxSavedDecks: 12,
+    tradeMaxWantedCriteria: 3,
+    tradeMaxOffersPerListing: 10,
+    tradeMaxOutgoingOffers: 5,
+    tradeMaxCompletedPerWeek: 3,
     tournamentRewardedStartsPerDay: 1,
     tournamentNpcRandomnessPercent: 18,
     tournamentRound16Points: 100,
@@ -232,4 +244,8 @@ export function applyGameConfig(config) {
   if (typeof config.prebuiltDeckPoints === 'number') PREBUILT_DECK_POINTS = Math.max(0, Math.floor(config.prebuiltDeckPoints));
   if (typeof config.prebuiltDeckFichas === 'number') PREBUILT_DECK_FICHAS = Math.max(0, Math.floor(config.prebuiltDeckFichas));
   if (typeof config.maxSavedDecks === 'number') MAX_SAVED_DECKS = Math.max(1, Math.floor(config.maxSavedDecks));
+  if (typeof config.tradeMaxWantedCriteria === 'number') TRADE_MAX_WANTED_CRITERIA = Math.min(3, Math.max(1, Math.floor(config.tradeMaxWantedCriteria)));
+  if (typeof config.tradeMaxOffersPerListing === 'number') TRADE_MAX_OFFERS_PER_LISTING = Math.min(50, Math.max(1, Math.floor(config.tradeMaxOffersPerListing)));
+  if (typeof config.tradeMaxOutgoingOffers === 'number') TRADE_MAX_OUTGOING_OFFERS = Math.min(20, Math.max(1, Math.floor(config.tradeMaxOutgoingOffers)));
+  if (typeof config.tradeMaxCompletedPerWeek === 'number') TRADE_MAX_COMPLETED_PER_WEEK = Math.min(20, Math.max(1, Math.floor(config.tradeMaxCompletedPerWeek)));
 }

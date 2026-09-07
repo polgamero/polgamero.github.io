@@ -16,10 +16,10 @@ const byFile=Object.fromEntries(files.map(f=>[f,collect(json(`assets/data/${f}`)
 const cards=Object.values(byFile).flat();
 const byId=new Map(cards.map(c=>[c.id,c]));
 
-assert.ok(['23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.20.0'].includes(ENGINE_VERSION));
+assert.ok(['23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.21.0'].includes(ENGINE_VERSION));
 assert.equal(SUSPEND_ENGINE_VERSION,'23.16.3');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.81');
 assert.ok(['pool_expansion_vi_820','pool_expansion_vii_850','pool_expansion_viii_880'].includes(CURRENT_POOL_MILESTONE));
 assert.ok(POOL_BASELINE.total>=820);
 assert.equal(POOL_MILESTONES.pool_expansion_v_790.total,790);
@@ -104,8 +104,8 @@ assert.equal(tokenEffects[0].image,'token_vecino.png');
 const workflow=read('../.github/workflows/pages.yml');
 assert.ok(workflow.includes('regression_legacy_23_17_3_1.zip'));
 assert.ok(workflow.includes('ci_regression_manifest_23_17_3_1.txt'));
-const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
-assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'));
+const fastManifest=read('tools/ci_fast_contract_manifest_23_21_0.txt');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_21_0.txt'));
 assert.ok(fastManifest.includes('tools/test_prebuilt_decks_store_23_17_3.mjs'));
 assert.ok(fs.readFileSync(path.join(__dirname,'ci_regression_manifest_23_17_3_1.txt'),'utf8').includes('test_suspend_engine_23_16_3.mjs'));
 

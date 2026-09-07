@@ -9,8 +9,8 @@ const root=path.resolve(here,'..');
 const ui=fs.readFileSync(path.join(root,'js/ui.js'),'utf8');
 const mobile=fs.readFileSync(path.join(root,'css/mobile.css'),'utf8');
 
-assert.equal(ENGINE_VERSION, '23.20.0');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
+assert.equal(ENGINE_VERSION, '23.21.0');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.81');
 
 // Native browser ghost drag must never steal pointermove from card selectors.
 assert.match(ui,/addEventListener\('dragstart',[\s\S]*rowFromEvent\(event\)[\s\S]*event\.preventDefault\(\)/);

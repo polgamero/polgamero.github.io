@@ -38,6 +38,7 @@ import { recordAuthorityAudit } from './economy/audit.js';
 import { deriveSoloAbandonReceiptId, normalizeAbandonDurationMs } from './economy/matchCore.js';
 import { normalizeAdminGrantRequest, adminGrantTx, advanceBulkGrantJob, readBulkGrantJob, adminSyncPlayerStats, adminRepairSoloRewardTx } from './economy/admin.js';
 import { getTournamentState, startTournamentTx, beginTournamentMatchTx, settleTournamentMatchTx, forfeitTournamentTx, abandonTournamentTx } from './economy/tournament.js';
+import { getTradeMarketView, createTradeListingTx, cancelTradeListingTx, createTradeOfferTx, cancelTradeOfferTx, rejectTradeOfferTx, acceptTradeOfferTx } from './economy/trade.js';
 
 function requestData(request) {
   const data = request?.data;
@@ -105,8 +106,8 @@ export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
         dailyRewardsAuthority: 'server', dailyClockAuthority: 'server', dailyClaimRecovery: true,
         matchSettlementAuthority: 'server', pvpAntiFarmAuthority: 'server',
         registrationAdmissionAuthority: 'server', adminEconomyAuthority: 'server',
-        economicStatisticsAuthority: 'server', immutableAuditAuthority: 'server', tournamentAuthority: 'server',
-        browserEconomyWrites: 'denied_by_rules_23.13.80', authorityCutover: 'server_required'
+        economicStatisticsAuthority: 'server', immutableAuditAuthority: 'server', tournamentAuthority: 'server', tradeMarketAuthority: 'server',
+        browserEconomyWrites: 'denied_by_rules_23.13.81', authorityCutover: 'server_required'
       },
       trustedPoolFingerprint: TRUSTED_CARD_POOL_FINGERPRINT
     };
@@ -780,3 +781,110 @@ export const economyForfeitTournament = onCall(FUNCTION_RUNTIME_OPTIONS, async r
     return {ok:true,...outcome};
   } catch(error){logFailure('economyForfeitTournament',auth,error);throw error;}
 });
+
+// ---------------------------------------------------------------------------
+// v23.21.0 — Mercado de Pases Authority. Strict 1 card <-> 1 card trades.
+// Listings reserve one copy; offers reserve one copy; BUSCO supports up to
+// three exact-card or rarity/color criteria. All mutation is server-owned.
+// ---------------------------------------------------------------------------
+export const economyGetTradeMarket = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'trade-read',{limit:60,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion']);
+    const config=await loadEconomyConfig(db); assertEconomyAvailable(config,clientProtocol(data));
+    return {ok:true,market:await getTradeMarketView(db,auth.uid)};
+  } catch(error){logFailure('economyGetTradeMarket',auth,error);throw error;}
+});
+
+export const economyCreateTradeListing = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'trade-listing-create',{limit:12,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','operationId','cardId','wantedCriteria','acceptAnyCard']);
+    const operationId=String(data.operationId||'');
+    const opRequest={cardId:String(data.cardId||''),wantedCriteria:Array.isArray(data.wantedCriteria)?data.wantedCriteria:[],acceptAnyCard:data.acceptAnyCard===true};
+    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'trade.listing.create',request:opRequest,execute:async tx=>{
+      const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+      return createTradeListingTx({db,tx,uid:auth.uid,operationId,...opRequest});
+    }});
+    await finalizeAuthorityAudit({auth,operationId,type:'trade.listing.create',outcome});
+    return {ok:true,...outcome};
+  } catch(error){logFailure('economyCreateTradeListing',auth,error);throw error;}
+});
+
+export const economyCancelTradeListing = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'trade-listing-cancel',{limit:20,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','operationId','listingId']);
+    const operationId=String(data.operationId||''),listingId=String(data.listingId||'');
+    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'trade.listing.cancel',request:{listingId},execute:async tx=>{
+      const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+      return cancelTradeListingTx({db,tx,uid:auth.uid,listingId});
+    }});
+    await finalizeAuthorityAudit({auth,operationId,type:'trade.listing.cancel',outcome});
+    return {ok:true,...outcome};
+  } catch(error){logFailure('economyCancelTradeListing',auth,error);throw error;}
+});
+
+export const economyCreateTradeOffer = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'trade-offer-create',{limit:30,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','operationId','listingOwnerUid','cardId']);
+    const operationId=String(data.operationId||''),listingOwnerUid=String(data.listingOwnerUid||''),cardId=String(data.cardId||'');
+    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'trade.offer.create',request:{listingOwnerUid,cardId},execute:async tx=>{
+      const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+      return createTradeOfferTx({db,tx,uid:auth.uid,listingOwnerUid,cardId});
+    }});
+    await finalizeAuthorityAudit({auth,operationId,type:'trade.offer.create',outcome});
+    return {ok:true,...outcome};
+  } catch(error){logFailure('economyCreateTradeOffer',auth,error);throw error;}
+});
+
+export const economyCancelTradeOffer = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'trade-offer-cancel',{limit:30,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','operationId','offerId']);
+    const operationId=String(data.operationId||''),offerId=String(data.offerId||'');
+    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'trade.offer.cancel',request:{offerId},execute:async tx=>{
+      const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+      return cancelTradeOfferTx({db,tx,uid:auth.uid,offerId});
+    }});
+    await finalizeAuthorityAudit({auth,operationId,type:'trade.offer.cancel',outcome});
+    return {ok:true,...outcome};
+  } catch(error){logFailure('economyCancelTradeOffer',auth,error);throw error;}
+});
+
+export const economyRejectTradeOffer = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'trade-offer-reject',{limit:30,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','operationId','offerId']);
+    const operationId=String(data.operationId||''),offerId=String(data.offerId||'');
+    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'trade.offer.reject',request:{offerId},execute:async tx=>{
+      const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+      return rejectTradeOfferTx({db,tx,uid:auth.uid,offerId});
+    }});
+    await finalizeAuthorityAudit({auth,operationId,type:'trade.offer.reject',outcome});
+    return {ok:true,...outcome};
+  } catch(error){logFailure('economyRejectTradeOffer',auth,error);throw error;}
+});
+
+export const economyAcceptTradeOffer = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth=requireAuth(request); const data=requestData(request);
+  try {
+    assertRateLimit(auth.uid,'trade-offer-accept',{limit:12,windowMs:60000});
+    rejectUnknown(data,['economyProtocolVersion','operationId','offerId']);
+    const operationId=String(data.operationId||''),offerId=String(data.offerId||'');
+    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'trade.complete',request:{offerId},execute:async tx=>{
+      const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+      return acceptTradeOfferTx({db,tx,uid:auth.uid,offerId,operationId});
+    }});
+    await finalizeAuthorityAudit({auth,operationId,type:'trade.complete',outcome});
+    return {ok:true,...outcome};
+  } catch(error){logFailure('economyAcceptTradeOffer',auth,error);throw error;}
+});
+

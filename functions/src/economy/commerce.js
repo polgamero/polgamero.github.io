@@ -291,8 +291,10 @@ export async function renameUsernameTx({ db, tx, uid, usernameRaw }) {
   const validated = validateUsername(usernameRaw);
   if (!validated.ok) throw economyError(validated.code);
   const userRef = db.collection('users').doc(uid);
-  const userSnap = await tx.get(userRef);
+  const tradeReservationRef = db.collection('tradeReservations').doc(uid);
+  const [userSnap, tradeReservationSnap] = await Promise.all([tx.get(userRef), tx.get(tradeReservationRef)]);
   if (!userSnap.exists) throw economyError('PROFILE_MISSING');
+  if (tradeReservationSnap.exists) throw economyError('USERNAME_TRADE_RESERVED');
   const profile = userSnap.data() || {};
   const oldKey = String(profile.usernameKey || '');
   const oldUsername = String(profile.username || '');

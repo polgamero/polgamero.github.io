@@ -1,0 +1,32 @@
+ARGENTINIA 23.21.0 — QA PRE-RC MERCADO DE PASES
+
+LOCAL / STATIC GREEN
+- Trade structural contract: PASS
+- Canonical fast contracts: 114/114 PASS
+- Regression archive parity: 62/62 PASS
+- Functions unit suite: 9/9 PASS
+- Functions syntax: PASS
+- Game Text contract: 1407 definitions / 1144 uses PASS
+- JS/MJS syntax: 230/230 PASS
+- Stability Lab: PASS
+- Headless 23.18.1: PASS
+- Headless Coverage: 97.95% structurally known
+- Headless 23.18.2: PASS
+- Multiplayer Reliability: PASS
+- Multiplayer Hardening: PASS
+- Deck Intelligence Matrix: PASS
+- Admin-configurable Mercado limits structural contract: PASS
+- Mercado per-player/global statistics structural contract: PASS
+- Economy Audit trade-event structural contract: PASS
+- Functions parity 01/05/06/07: byte-identical
+- Rules parity 02/03/05/07: byte-identical
+
+REAL GATES REQUIRED BEFORE PRODUCTION
+1. Gate 03 — Rules 23.13.81 / Firestore regression.
+2. Gate 05 — cumulative Economy + Tournament under 23.21.0.
+3. Gate 07 — Mercado de Pases Auth + Firestore + Functions, including Admin limits + stats + Economy Audit.
+4. Deploy Rules 23.13.81.
+5. Deploy Functions 23.21.0 and verify exactly 37/37.
+6. Publish GitHubSource 23.21.0 + Actions green.
+7. Production smoke Mercado de Pases + Admin/Ops.
+8. Only then mark 23.21.0 RELEASED.

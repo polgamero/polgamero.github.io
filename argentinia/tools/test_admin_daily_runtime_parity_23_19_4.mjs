@@ -11,10 +11,10 @@ const serverDaily = fs.readFileSync(path.join(root, '../functions/src/economy/da
 const fnIndex = fs.readFileSync(path.join(root, '../functions/src/index.js'), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'build-manifest.json'), 'utf8'));
 
-assert.equal(ENGINE_VERSION, '23.20.0');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.80');
-assert.equal(manifest.engineVersion, '23.20.0');
-assert.equal(manifest.firestoreRulesVersion, '23.13.80');
+assert.equal(ENGINE_VERSION, '23.21.0');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.81');
+assert.equal(manifest.engineVersion, '23.21.0');
+assert.equal(manifest.firestoreRulesVersion, '23.13.81');
 
 // 23.19.5.4 moves the authoritative write off the browser entirely. Preserve the old
 // data-shape invariants server-side while preventing current clients from issuing Daily txs.

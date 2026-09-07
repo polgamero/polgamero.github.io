@@ -267,3 +267,47 @@ export function abandonTournamentServer(tournamentId, operationId = null) {
     matchId: ''
   });
 }
+
+// v23.21.0 — Mercado de Pases Authority
+export function getTradeMarketServer() {
+  return call('economyGetTradeMarket');
+}
+export function createTradeListingServer({ cardId, wantedCriteria = [], acceptAnyCard = false } = {}, operationId = null) {
+  return call('economyCreateTradeListing', {
+    operationId: operationId || createEconomyOperationId('trade-listing'),
+    cardId: String(cardId || ''),
+    wantedCriteria: Array.isArray(wantedCriteria) ? wantedCriteria : [],
+    acceptAnyCard: acceptAnyCard === true
+  });
+}
+export function cancelTradeListingServer(listingId, operationId = null) {
+  return call('economyCancelTradeListing', {
+    operationId: operationId || createEconomyOperationId('trade-listing-cancel'),
+    listingId: String(listingId || '')
+  });
+}
+export function createTradeOfferServer(listingOwnerUid, cardId, operationId = null) {
+  return call('economyCreateTradeOffer', {
+    operationId: operationId || createEconomyOperationId('trade-offer'),
+    listingOwnerUid: String(listingOwnerUid || ''),
+    cardId: String(cardId || '')
+  });
+}
+export function cancelTradeOfferServer(offerId, operationId = null) {
+  return call('economyCancelTradeOffer', {
+    operationId: operationId || createEconomyOperationId('trade-offer-cancel'),
+    offerId: String(offerId || '')
+  });
+}
+export function rejectTradeOfferServer(offerId, operationId = null) {
+  return call('economyRejectTradeOffer', {
+    operationId: operationId || createEconomyOperationId('trade-offer-reject'),
+    offerId: String(offerId || '')
+  });
+}
+export function acceptTradeOfferServer(offerId, operationId = null) {
+  return call('economyAcceptTradeOffer', {
+    operationId: operationId || createEconomyOperationId('trade-offer-accept'),
+    offerId: String(offerId || '')
+  });
+}

@@ -12,9 +12,9 @@ const root=path.resolve(here,'..');
 const read=(p)=>fs.readFileSync(path.join(root,p),'utf8');
 const pws=JSON.parse(read('assets/data/planeswalkers.json'));
 
-assert.equal(ENGINE_VERSION,'23.20.0');
+assert.equal(ENGINE_VERSION,'23.21.0');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.81');
 assert.equal(pws.length,8);
 
 // Contract: all 8 Semidioses are readable cards with exactly three Creencia abilities.

@@ -7,7 +7,7 @@ const NUMERIC_KEYS = [
   'multiplayerWins','multiplayerLosses','abandons','totalDurationMs','pointsEarned',
   'pointsSpent','pointsLost','fichasEarned','fichasSpent','packsReceived','packsOpened',
   'guaranteedMythicsOpened','tournamentsPlayed','tournamentMatches','tournamentWins','tournamentLosses',
-  'tournamentQuarterfinals','tournamentSemifinals','tournamentFinals','tournamentChampionships','tournamentForfeits'
+  'tournamentQuarterfinals','tournamentSemifinals','tournamentFinals','tournamentChampionships','tournamentForfeits','tradesCompleted'
 ];
 
 function int(value){ const n=Math.floor(Number(value)||0); return Number.isFinite(n)?n:0; }

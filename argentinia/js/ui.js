@@ -53,8 +53,8 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament } from './firebaseClient.js';
-import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -6069,7 +6069,7 @@ function updateMainMenuLoginGatedButtons(overlay) {
   // Jugar puede ser guest, pero JAMÁS mientras todavía no sabemos si existe una sesión
   // persistida. Las superficies privadas además exigen perfil Firestore listo.
   setGate('menu-play', guestReady || loggedInReady, authTooltip);
-  ['menu-tournament', 'menu-multiplayer', 'menu-encyclopedia', 'menu-mydecks', 'menu-store'].forEach(id => {
+  ['menu-tournament', 'menu-trade-market', 'menu-multiplayer', 'menu-encyclopedia', 'menu-mydecks', 'menu-store'].forEach(id => {
     setGate(id, loggedInReady, authTooltip);
   });
 }
@@ -6085,6 +6085,7 @@ function refreshVisibleGameTextCopy() {
   const labels = {
     'menu-play': 'menu.play',
     'menu-tournament': 'menu.tournament',
+    'menu-trade-market': 'menu.tradeMarket',
     'menu-multiplayer': 'menu.multiplayer',
     'menu-mydecks': 'menu.myDecks',
     'menu-ranking': 'menu.ranking',
@@ -6404,6 +6405,10 @@ export function showAdminPanel(onBack) {
     { section: 'Mazos', id: 'maxSavedDecks', label: 'Máximo de mazos guardados por cuenta', value: MAX_SAVED_DECKS, step: '1' },
     { section: 'Mazos Prearmados', id: 'prebuiltDeckPoints', label: 'Costo global · puntos', value: PREBUILT_DECK_POINTS, step: '1' },
     { section: 'Mazos Prearmados', id: 'prebuiltDeckFichas', label: 'Costo global · Fichas', value: PREBUILT_DECK_FICHAS, step: '1' },
+    { section: 'MERCADO DE PASES · LÍMITES', id: 'tradeMaxWantedCriteria', label: 'Máximo de criterios BUSCO por publicación · 1–3', value: TRADE_MAX_WANTED_CRITERIA, step: '1' },
+    { section: 'MERCADO DE PASES · LÍMITES', id: 'tradeMaxOffersPerListing', label: 'Máximo de ofertas activas por publicación · 1–50', value: TRADE_MAX_OFFERS_PER_LISTING, step: '1' },
+    { section: 'MERCADO DE PASES · LÍMITES', id: 'tradeMaxOutgoingOffers', label: 'Máximo de ofertas salientes activas por jugador · 1–20', value: TRADE_MAX_OUTGOING_OFFERS, step: '1' },
+    { section: 'MERCADO DE PASES · LÍMITES', id: 'tradeMaxCompletedPerWeek', label: 'Máximo de intercambios completados por jugador/semana · 1–20', value: TRADE_MAX_COMPLETED_PER_WEEK, step: '1' },
     { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentRewardedStartsPerDay', label: 'Torneos premiados máximos por día · 0 = ilimitado', value: TOURNAMENT_POLICY.tournamentRewardedStartsPerDay, step: '1' },
     { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentNpcRandomnessPercent', label: 'Randomness de simulación NPC (%)', value: TOURNAMENT_POLICY.tournamentNpcRandomnessPercent, step: '1' },
     { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentRound16Points', label: 'Octavos · puntos', value: TOURNAMENT_POLICY.tournamentRound16Points, step: '1' },
@@ -7232,13 +7237,15 @@ Receipt: ${receiptId}
     return (publicRows || []).reduce((acc, row) => {
       for (const key of Object.keys(acc)) acc[key] += Number(row?.[key]) || 0;
       return acc;
-    }, { pointsEarned: 0, pointsSpent: 0, pointsLost: 0, fichasEarned: 0, fichasSpent: 0, packsReceived: 0, packsOpened: 0, guaranteedMythicsOpened: 0 });
+    }, { pointsEarned: 0, pointsSpent: 0, pointsLost: 0, fichasEarned: 0, fichasSpent: 0, packsReceived: 0, packsOpened: 0, guaranteedMythicsOpened: 0, tradesCompleted: 0 });
   }
 
   function renderAdminStatistics(profiles, sessions, publicRows) {
     const profileStats = summarizeProfiles(profiles);
     const games = summarizeGlobalTelemetry(sessions);
     const tracked = trackedTotals(publicRows);
+    const tradeParticipants=(publicRows||[]).filter(row=>(Number(row?.tradesCompleted)||0)>0).length;
+    const completedTrades=Math.floor((Number(tracked.tradesCompleted)||0)/2);
     const cards = [
       [gameText('admin.stats.registered.label'), profileStats.registeredPlayers, gameText('admin.stats.registered.sub', { new7d: profileStats.new7d, new30d: profileStats.new30d })],
       [gameText('admin.stats.active.label'), profileStats.active24h, gameText('admin.stats.active.sub', { active7d: profileStats.active7d, active30d: profileStats.active30d })],
@@ -7248,16 +7255,17 @@ Receipt: ${receiptId}
       [gameText('admin.stats.fichas.label'), tracked.fichasEarned.toLocaleString('es-AR'), gameText('admin.stats.fichas.sub', { spent: tracked.fichasSpent.toLocaleString('es-AR'), circulation: profileStats.fichasInCirculation.toLocaleString('es-AR') })],
       [gameText('admin.stats.packs.label'), tracked.packsOpened.toLocaleString('es-AR'), gameText('admin.stats.packs.sub', { received: tracked.packsReceived.toLocaleString('es-AR'), chests: profileStats.packsInChests.toLocaleString('es-AR'), mythics: tracked.guaranteedMythicsOpened.toLocaleString('es-AR') })],
       [gameText('admin.stats.collection.label'), profileStats.cardsOwned.toLocaleString('es-AR'), gameText('admin.stats.collection.sub', { unique: profileStats.communityUniqueCards, total: POOL_BASELINE.total, average: profileStats.averageUniqueCards.toFixed(1) })],
+      [gameText('admin.stats.trades.label'), completedTrades.toLocaleString('es-AR'), gameText('admin.stats.trades.sub', { participants: tradeParticipants })],
       [gameText('admin.stats.abandons.label'), games.abandonedGames.toLocaleString('es-AR'), gameText('admin.stats.abandons.sub', { sessions: games.completedSessions })]
     ];
     overlay.querySelector('#admin-stats-cards').innerHTML = cards.map(([label,value,sub]) => `<div class="admin-stat-card"><div class="admin-stat-label">${escapeHtml(label)}</div><div class="admin-stat-value">${escapeHtml(value)}</div><div class="admin-stat-sub">${escapeHtml(sub)}</div></div>`).join('');
     overlay.querySelector('#admin-stats-summary').textContent = gameText('admin.stats.summary', { profiles: profiles.length, sessions: sessions.length });
-    const rows = [...publicRows].sort((a,b)=>(Number(b.gamesPlayed)||0)-(Number(a.gamesPlayed)||0)).map(r=>`<tr><td><strong>${escapeHtml(r.username || gameText('ranking.playerFallback'))}</strong></td><td>${Number(r.gamesPlayed||0)}</td><td>${Number(r.soloGames||0)} / ${Number(r.multiplayerGames||0)}</td><td>${Number(r.wins||0)}</td><td>${winRate(r).toFixed(1)}%</td><td>${Number(r.pointsEarned||0)}</td><td>${Number(r.fichasEarned||0)}</td><td>${Number(r.packsOpened||0)}</td><td>${Number(r.uniqueCards||0)} / ${POOL_BASELINE.total}</td><td>${formatDuration(r.totalDurationMs||0)}</td></tr>`).join('');
+    const rows = [...publicRows].sort((a,b)=>(Number(b.gamesPlayed)||0)-(Number(a.gamesPlayed)||0)).map(r=>`<tr><td><strong>${escapeHtml(r.username || gameText('ranking.playerFallback'))}</strong></td><td>${Number(r.gamesPlayed||0)}</td><td>${Number(r.soloGames||0)} / ${Number(r.multiplayerGames||0)}</td><td>${Number(r.wins||0)}</td><td>${winRate(r).toFixed(1)}%</td><td>${Number(r.pointsEarned||0)}</td><td>${Number(r.fichasEarned||0)}</td><td>${Number(r.packsOpened||0)}</td><td>${Number(r.uniqueCards||0)} / ${POOL_BASELINE.total}</td><td>${Number(r.tradesCompleted||0)}</td><td>${formatDuration(r.totalDurationMs||0)}</td></tr>`).join('');
     const headers = [
       'admin.stats.col.player','admin.stats.col.games','admin.stats.col.soloMulti','admin.stats.col.wins','admin.stats.col.winRate',
-      'admin.stats.col.points','admin.stats.col.fichas','admin.stats.col.packs','admin.stats.col.discovered','admin.stats.col.time'
+      'admin.stats.col.points','admin.stats.col.fichas','admin.stats.col.packs','admin.stats.col.discovered','admin.stats.col.trades','admin.stats.col.time'
     ].map(key => `<th>${escapeHtml(gameText(key))}</th>`).join('');
-    overlay.querySelector('#admin-stats-detail').innerHTML = `<table class="admin-debug-table"><thead><tr>${headers}</tr></thead><tbody>${rows || `<tr><td colspan="10">${escapeHtml(gameText('admin.stats.empty'))}</td></tr>`}</tbody></table>`;
+    overlay.querySelector('#admin-stats-detail').innerHTML = `<table class="admin-debug-table"><thead><tr>${headers}</tr></thead><tbody>${rows || `<tr><td colspan="11">${escapeHtml(gameText('admin.stats.empty'))}</td></tr>`}</tbody></table>`;
   }
 
   async function reloadAdminStatistics() {
@@ -7310,6 +7318,9 @@ Receipt: ${receiptId}
   }
 
   function economyAuditLabel(row) {
+    if(row?.auditKind!=='adminAction'&&(row?.type==='trade.complete'||row?.source==='trade_market_complete_server')){
+      return gameText('admin.audit.operation.tradeComplete');
+    }
     return row.auditKind === 'adminAction'
       ? String(row.type || 'admin_action')
       : String(row.source || row.type || 'economy_event');
@@ -7331,7 +7342,7 @@ Receipt: ${receiptId}
     const rows = economyAuditRows.filter(row => {
       if (kind !== 'all' && row.auditKind !== kind) return false;
       if (!term) return true;
-      const haystack = [row.id,row.auditKind,row.type,row.source,row.operationId,row.targetUid,row.actorUid,row.adminUid,row.kind,row.reason,row.bulkJobId,row.sessionId,economyAuditUsernames[row.targetUid],economyAuditUsernames[row.actorUid],economyAuditUsernames[row.adminUid]].map(v=>String(v||'')).join(' ').toLowerCase();
+      const haystack = [row.id,row.auditKind,row.type,row.source,row.operationId,row.targetUid,row.actorUid,row.adminUid,row.kind,row.reason,row.bulkJobId,row.sessionId,row.metadata?.tradeId,row.metadata?.listingId,row.metadata?.offerId,row.metadata?.ownerUsername,row.metadata?.offererUsername,row.metadata?.ownerGaveCardId,row.metadata?.offererGaveCardId,economyAuditUsernames[row.targetUid],economyAuditUsernames[row.actorUid],economyAuditUsernames[row.adminUid]].map(v=>String(v||'')).join(' ').toLowerCase();
       return haystack.includes(term);
     });
     const totalPoints = rows.reduce((n,r)=>n+(Number(r.pointsDelta)||Number(r.appliedAmount && r.kind==='points' ? r.appliedAmount : 0)||0),0);
@@ -7351,7 +7362,9 @@ Receipt: ${receiptId}
       const points=Number(row.pointsDelta)||Number(row.kind==='points'?row.appliedAmount:0)||0;
       const fichas=Number(row.fichasDelta)||Number(row.kind==='fichas'?row.appliedAmount:0)||0;
       const packs=Number(row.packsDelta)||Number(row.kind==='standardPacks'?row.appliedAmount:0)||0;
-      const delta=[points?`P ${points>0?'+':''}${points}`:'',fichas?`F ${fichas>0?'+':''}${fichas}`:'',packs?`S ${packs>0?'+':''}${packs}`:''].filter(Boolean).join(' · ')||'—';
+      const delta=(row.type==='trade.complete'||row.source==='trade_market_complete_server')
+        ? gameText('admin.audit.delta.trade')
+        : ([points?`P ${points>0?'+':''}${points}`:'',fichas?`F ${fichas>0?'+':''}${fichas}`:'',packs?`S ${packs>0?'+':''}${packs}`:''].filter(Boolean).join(' · ')||'—');
       const actor=String(row.adminUid||row.actorUid||'server');
       const detail=escapeHtml(JSON.stringify(row, (_k,v)=>typeof v?.toDate==='function'?v.toDate().toISOString():v));
       return `<tr title="${detail}"><td>${escapeHtml(when)}</td><td><strong>${escapeHtml(row.auditKind==='adminAction'?'ADMIN':'ECON')}</strong></td><td>${escapeHtml(economyAuditLabel(row))}</td><td>${target?economyAuditIdentityHtml(target):'—'}</td><td>${escapeHtml(delta)}</td><td><code>${escapeHtml(op)}</code></td><td>${economyAuditIdentityHtml(actor)}</td></tr>`;
@@ -7681,6 +7694,10 @@ Receipt: ${receiptId}
       maxSavedDecks: readNumber('maxSavedDecks'),
       prebuiltDeckPoints: readNumber('prebuiltDeckPoints'),
       prebuiltDeckFichas: readNumber('prebuiltDeckFichas'),
+      tradeMaxWantedCriteria: readNumber('tradeMaxWantedCriteria'),
+      tradeMaxOffersPerListing: readNumber('tradeMaxOffersPerListing'),
+      tradeMaxOutgoingOffers: readNumber('tradeMaxOutgoingOffers'),
+      tradeMaxCompletedPerWeek: readNumber('tradeMaxCompletedPerWeek'),
       tournamentRewardedStartsPerDay: readNumber('tournamentRewardedStartsPerDay'),
       tournamentNpcRandomnessPercent: readNumber('tournamentNpcRandomnessPercent'),
       tournamentRound16Points: readNumber('tournamentRound16Points'),
@@ -7722,6 +7739,10 @@ Receipt: ${receiptId}
       newConfig.classifiedsRarePoints, newConfig.classifiedsRareFichas,
       newConfig.classifiedsMythicPoints, newConfig.classifiedsMythicFichas
     ].every(value => value >= 0);
+    const tradeLimitsValid = Number.isInteger(newConfig.tradeMaxWantedCriteria) && newConfig.tradeMaxWantedCriteria >= 1 && newConfig.tradeMaxWantedCriteria <= 3
+      && Number.isInteger(newConfig.tradeMaxOffersPerListing) && newConfig.tradeMaxOffersPerListing >= 1 && newConfig.tradeMaxOffersPerListing <= 50
+      && Number.isInteger(newConfig.tradeMaxOutgoingOffers) && newConfig.tradeMaxOutgoingOffers >= 1 && newConfig.tradeMaxOutgoingOffers <= 20
+      && Number.isInteger(newConfig.tradeMaxCompletedPerWeek) && newConfig.tradeMaxCompletedPerWeek >= 1 && newConfig.tradeMaxCompletedPerWeek <= 20;
     const tournamentNumeric = [
       newConfig.tournamentRewardedStartsPerDay,newConfig.tournamentNpcRandomnessPercent,
       newConfig.tournamentRound16Points,newConfig.tournamentRound16Packs,newConfig.tournamentQuarterPoints,newConfig.tournamentQuarterPacks,
@@ -7740,7 +7761,7 @@ Receipt: ${receiptId}
       || newConfig.pvpMinRewardMinutes < 0 || newConfig.pvpMinCompletedTurns < 0
       || newConfig.pvpMaxRewardedMatchesPerPairDaily < 0 || newConfig.pvpMaxPointsPerDay < 0 || !pvpIntegerFields
       || !classifiedsNonNegative || newConfig.classifiedsMythicChance < 0 || newConfig.classifiedsMythicChance > 1
-      || !tournamentNumbersValid || !tournamentEnumsValid) {
+      || !tradeLimitsValid || !tournamentNumbersValid || !tournamentEnumsValid) {
       errorBox.textContent = 'Algún valor no tiene sentido (¿puntos/límites no enteros, negativo o porcentaje fuera de 0–100?). Revisá antes de guardar.';
       return;
     }
@@ -8210,6 +8231,123 @@ export function showTournamentScreen(onBack, onPlayMatch) {
   return overlay;
 }
 
+
+function injectTradeMarketStyles() {
+  if (document.getElementById('trade-market-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'trade-market-styles';
+  style.textContent = `
+    #trade-market-overlay{position:fixed;inset:0;z-index:9820;background:radial-gradient(circle at 20% 0,#2a2016 0,#0d0a08 64%);color:#eadcb8;padding:18px;overflow:auto}
+    .trade-shell{max-width:1220px;margin:0 auto}.trade-header{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:14px}.trade-title{font-size:29px;font-weight:950;letter-spacing:1px;color:#ffe6a1}.trade-subtitle{font-size:12px;color:#bcae8d;margin-top:3px}
+    .trade-summary{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}.trade-chip{border:1px solid rgba(212,175,55,.35);border-radius:999px;padding:5px 10px;font-size:11px;background:rgba(255,255,255,.035)}
+    .trade-rules{border:1px solid rgba(212,175,55,.24);background:rgba(86,60,18,.12);border-radius:11px;padding:11px 13px;font-size:12px;line-height:1.5;color:#d8caa8;margin-bottom:14px}
+    .trade-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}.trade-tab{border:1px solid #594b31;background:#17120d;color:#cdbf9d;border-radius:8px;padding:9px 12px;font-weight:800;cursor:pointer}.trade-tab.active{border-color:#d4af37;color:#ffe9a8;background:#3b2b14}
+    .trade-panel{border:1px solid rgba(255,255,255,.1);background:rgba(12,10,8,.82);border-radius:13px;padding:15px}.trade-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.trade-card{border:1px solid rgba(212,175,55,.22);background:rgba(255,255,255,.035);border-radius:10px;padding:13px}.trade-card-title{font-weight:900;color:#ffe391;font-size:15px;margin-bottom:4px}.trade-muted{color:#9f947b;font-size:11px}.trade-busco{margin:9px 0;padding:8px 10px;border-left:3px solid #a88731;background:rgba(212,175,55,.06);font-size:12px;line-height:1.55}.trade-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.trade-select,.trade-input{background:#15110d;color:#eadcb8;border:1px solid #66583c;border-radius:7px;padding:8px;min-width:0}.trade-select{max-width:100%}.trade-btn{border:1px solid #d4af37;background:linear-gradient(#4a3719,#21160b);color:#ffe8a4;font-weight:900;border-radius:8px;padding:9px 12px;cursor:pointer}.trade-btn.secondary{border-color:#6b6250;background:#17130f;color:#d0c6ae}.trade-btn.danger{border-color:#a9544d;background:#3b1815;color:#ffd2cd}.trade-btn:disabled{opacity:.4;cursor:not-allowed}.trade-empty{text-align:center;color:#9d9279;padding:26px 10px}.trade-publish{display:grid;gap:12px}.trade-field label{display:block;font-size:11px;color:#b9aa87;margin-bottom:5px}.trade-criterion{border:1px solid rgba(255,255,255,.09);border-radius:9px;padding:10px}.trade-criterion.disabled{opacity:.42}.trade-criterion-controls{display:grid;grid-template-columns:auto minmax(120px,.7fr) minmax(170px,1.3fr);gap:8px;align-items:center}.trade-filter-pair{display:grid;grid-template-columns:1fr 1fr;gap:7px}.trade-error{border:1px solid #8b413b;background:#301613;color:#ffd1cb;padding:10px;border-radius:8px}.trade-success{border:1px solid #49754a;background:#132416;color:#d8ffd9;padding:10px;border-radius:8px}
+    @media(max-width:700px){#trade-market-overlay{padding:10px}.trade-title{font-size:23px}.trade-header{gap:8px}.trade-criterion-controls{grid-template-columns:1fr}.trade-filter-pair{grid-template-columns:1fr}.trade-tab{flex:1 1 45%;font-size:11px}.trade-btn{width:100%}}
+  `;
+  document.head.appendChild(style);
+}
+
+const TRADE_RARITY_KEYS = Object.freeze({ Common:'trade.rarity.Common', Uncommon:'trade.rarity.Uncommon', Rare:'trade.rarity.Rare', Mythic:'trade.rarity.Mythic' });
+const TRADE_COLOR_KEYS = Object.freeze({ W:'trade.color.W', U:'trade.color.U', B:'trade.color.B', R:'trade.color.R', G:'trade.color.G', C:'trade.color.C' });
+function tradeRarityLabel(rarity){ return gameText(TRADE_RARITY_KEYS[rarity] || 'trade.criteria.anyRarity'); }
+function tradeColorLabel(color){ return gameText(TRADE_COLOR_KEYS[color] || 'trade.criteria.anyColor'); }
+function tradeCard(cardId){ return cardDb.getById(String(cardId||'')); }
+function tradeCardName(cardId){ return tradeCard(cardId)?.name || gameText('trade.cardFallback'); }
+function tradeCriterionText(c){
+  if(c?.type==='exact_card') return tradeCardName(c.cardId);
+  if(c?.type==='attributes'){
+    const parts=[]; if(c.rarity) parts.push(tradeRarityLabel(c.rarity)); if(c.color) parts.push(tradeColorLabel(c.color));
+    return parts.join(' + ') || gameText('trade.criteria.anyCard');
+  }
+  return gameText('trade.criteria.invalid');
+}
+function tradeListingWantedHtml(listing){
+  if(listing?.acceptAnyCard===true) return gameTextHtml('trade.acceptAny');
+  return (listing?.wantedCriteria||[]).map((c,i)=>`${i+1}. ${escapeHtml(tradeCriterionText(c))}`).join('<br>');
+}
+function tradeCardMatchesCriterion(card,c){
+  if(!card||!c)return false;
+  if(c.type==='exact_card')return String(card.id)===String(c.cardId);
+  if(c.type!=='attributes')return false;
+  if(c.rarity&&String(card.rarity)!==String(c.rarity))return false;
+  if(c.color){const colors=Array.isArray(card.colors)?card.colors:[];if(c.color==='C'){if(colors.length!==0)return false;}else if(!colors.includes(c.color))return false;}
+  return true;
+}
+function tradeCardMatchesListing(card,listing){return listing?.acceptAnyCard===true||(listing?.wantedCriteria||[]).some(c=>tradeCardMatchesCriterion(card,c));}
+function tradeAllCardOptions(selected=''){
+  return [...cardDb.allCards].sort((a,b)=>String(a.name).localeCompare(String(b.name),'es')).map(c=>`<option value="${escapeHtml(c.id)}" ${c.id===selected?'selected':''}>${escapeHtml(c.name)} · ${escapeHtml(c.rarity?tradeRarityLabel(c.rarity):'')}</option>`).join('');
+}
+function tradeTradableOptions(market,listing=null){
+  return Object.entries(market?.tradableCounts||{}).filter(([id,n])=>Number(n)>0&&(!listing||tradeCardMatchesListing(tradeCard(id),listing))).map(([id,n])=>({card:tradeCard(id),id,n:Number(n)})).filter(x=>x.card).sort((a,b)=>String(a.card.name).localeCompare(String(b.card.name),'es')).map(x=>`<option value="${escapeHtml(x.id)}">${gameTextHtml('trade.option.card',{card:x.card.name,count:x.n})}</option>`).join('');
+}
+
+export function showTradeMarketScreen(onBack) {
+  injectTradeMarketStyles();
+  document.querySelectorAll('#trade-market-overlay').forEach(el=>el.remove());
+  const overlay=document.createElement('div'); overlay.id='trade-market-overlay';
+  overlay.innerHTML=`<div class="trade-shell"><div class="trade-header"><div><div class="trade-title">${gameTextHtml('trade.title')}</div><div class="trade-subtitle">${gameTextHtml('trade.subtitle')}</div></div><button class="trade-btn secondary" id="trade-back">← ${gameTextHtml('common.back')}</button></div><div id="trade-root"><div class="trade-panel trade-empty">${gameTextHtml('trade.loading')}</div></div></div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#trade-back')?.addEventListener('click',()=>{overlay.remove();onBack?.();});
+  const root=overlay.querySelector('#trade-root'); let market=null; let tab='explore'; let busy=false;
+  const setBusy=v=>{busy=!!v;overlay.querySelectorAll('.trade-btn,.trade-select,input').forEach(el=>{if(el.id!=='trade-back')el.disabled=busy;});};
+  const errorText=e=>String(e?.message||e?.code||gameText('trade.error.generic'));
+  async function refresh({profile=false}={}){
+    if(busy)return;setBusy(true);
+    try{market=await getTradeMarket();if(profile&&state.currentUser?.uid){const p=await loadUserProfileFromServer(state.currentUser.uid);if(p)state.userProfile=p;}render();}
+    catch(e){console.error('Trade market load failed:',e);root.innerHTML=`<div class="trade-panel trade-error">${escapeHtml(errorText(e))}</div>`;}
+    finally{setBusy(false);}
+  }
+  async function mutate(work,{profile=false}={}){if(busy)return;setBusy(true);try{await work();market=await getTradeMarket();if(profile&&state.currentUser?.uid){const p=await loadUserProfileFromServer(state.currentUser.uid);if(p)state.userProfile=p;}render();}catch(e){console.error('Trade market mutation failed:',e);showSimpleAlertModal(errorText(e));}finally{setBusy(false);}}
+  function limits(){
+    return {
+      maxWantedCriteria:Math.min(3,Math.max(1,Number(market?.limits?.maxWantedCriteria)||3)),
+      maxOffersPerListing:Math.max(1,Number(market?.limits?.maxOffersPerListing)||10),
+      maxOutgoingOffers:Math.max(1,Number(market?.limits?.maxOutgoingOffers)||5),
+      maxCompletedPerWeek:Math.max(1,Number(market?.limits?.maxCompletedPerWeek)||3)
+    };
+  }
+  function summary(){
+    const l=limits();
+    return `<div class="trade-summary"><span class="trade-chip">${gameTextHtml('trade.summary.listing',{used:market?.ownListing?1:0})}</span><span class="trade-chip">${gameTextHtml('trade.summary.outgoing',{used:(market?.outgoingOffers||[]).length,max:l.maxOutgoingOffers})}</span><span class="trade-chip">${gameTextHtml('trade.summary.week',{used:Number(market?.completedThisWeek)||0,max:l.maxCompletedPerWeek})}</span></div><div class="trade-rules">${gameTextHtml('trade.rules',{maxCriteria:l.maxWantedCriteria})}<br><strong>${gameTextHtml('trade.rules.decksLabel')}:</strong> ${gameTextHtml('trade.rules.decksBody')}</div>`;
+  }
+  function tabs(){return `<div class="trade-tabs">${[['explore','trade.tab.explore'],['mine','trade.tab.mine'],['offers','trade.tab.offers'],['history','trade.tab.history']].map(([id,key])=>`<button class="trade-tab ${tab===id?'active':''}" data-trade-tab="${id}">${gameTextHtml(key)}</button>`).join('')}</div>`;}
+  function bindTabs(){root.querySelectorAll('[data-trade-tab]').forEach(btn=>btn.addEventListener('click',()=>{tab=btn.dataset.tradeTab;render();}));}
+  function renderExplore(){
+    const listings=market?.listings||[], l=limits();
+    if(!listings.length)return `<div class="trade-panel trade-empty">${gameTextHtml('trade.empty')}</div>`;
+    const outgoing=new Set((market?.outgoingOffers||[]).map(o=>o.listingOwnerUid));
+    return `<div class="trade-grid">${listings.map(item=>{const options=tradeTradableOptions(market,item),already=outgoing.has(item.ownerUid);return `<div class="trade-card"><div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-muted">${gameTextHtml('trade.explore.offeredBy',{username:item.ownerUsername,count:item.offerCount,max:l.maxOffersPerListing})}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><br>${tradeListingWantedHtml(item)}</div>${already?`<div class="trade-muted">${gameTextHtml('trade.explore.alreadyOffered')}</div>`:options?`<div class="trade-row"><select class="trade-select" data-offer-select="${escapeHtml(item.ownerUid)}">${options}</select><button class="trade-btn" data-offer-owner="${escapeHtml(item.ownerUid)}">${gameTextHtml('trade.offer')}</button></div>`:`<div class="trade-muted">${gameTextHtml('trade.explore.noMatching')}</div>`}</div>`;}).join('')}</div>`;
+  }
+  function bindExplore(){root.querySelectorAll('[data-offer-owner]').forEach(btn=>btn.addEventListener('click',()=>{const owner=btn.dataset.offerOwner;const select=root.querySelector(`[data-offer-select="${CSS.escape(owner)}"]`);const cardId=select?.value;if(cardId)void mutate(()=>createTradeOffer(owner,cardId));}));}
+  function criterionRow(i){return `<div class="trade-criterion ${i?'disabled':''}" data-criterion-row="${i}"><div class="trade-criterion-controls"><label><input type="checkbox" data-criterion-use="${i}" ${i===0?'checked':''}> ${gameTextHtml('trade.criteria.slot',{index:i+1})}</label><select class="trade-select" data-criterion-type="${i}"><option value="exact_card">${gameTextHtml('trade.criteria.typeExact')}</option><option value="attributes">${gameTextHtml('trade.criteria.typeAttributes')}</option></select><div data-criterion-exact="${i}"><select class="trade-select" data-criterion-card="${i}">${tradeAllCardOptions()}</select></div><div class="trade-filter-pair" data-criterion-filter="${i}" style="display:none"><select class="trade-select" data-criterion-rarity="${i}"><option value="">${gameTextHtml('trade.criteria.anyRarity')}</option><option value="Common">${gameTextHtml('trade.rarity.Common')}</option><option value="Uncommon">${gameTextHtml('trade.rarity.Uncommon')}</option><option value="Rare">${gameTextHtml('trade.rarity.Rare')}</option><option value="Mythic">${gameTextHtml('trade.rarity.Mythic')}</option></select><select class="trade-select" data-criterion-color="${i}"><option value="">${gameTextHtml('trade.criteria.anyColor')}</option><option value="W">${gameTextHtml('trade.color.W')}</option><option value="U">${gameTextHtml('trade.color.U')}</option><option value="B">${gameTextHtml('trade.color.B')}</option><option value="R">${gameTextHtml('trade.color.R')}</option><option value="G">${gameTextHtml('trade.color.G')}</option><option value="C">${gameTextHtml('trade.color.C')}</option></select></div></div></div>`;}
+  function renderMine(){
+    const item=market?.ownListing, l=limits();
+    if(item){const offers=market?.receivedOffers||[];return `<div class="trade-panel"><div class="trade-card-title">${gameTextHtml('trade.mine.title',{card:tradeCardName(item.cardId)})}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><br>${tradeListingWantedHtml(item)}</div><div class="trade-row"><button class="trade-btn danger" id="trade-cancel-listing">${gameTextHtml('trade.cancelListing')}</button></div><h3>${gameTextHtml('trade.mine.received',{count:offers.length,max:l.maxOffersPerListing})}</h3>${offers.length?`<div class="trade-grid">${offers.map(o=>`<div class="trade-card"><div class="trade-card-title">${escapeHtml(tradeCardName(o.offeredCardId))}</div><div class="trade-muted">${escapeHtml(o.offererUsername)}</div><div class="trade-row"><button class="trade-btn" data-accept-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.accept')}</button><button class="trade-btn secondary" data-reject-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.reject')}</button></div></div>`).join('')}</div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneReceived')}</div>`}</div>`;}
+    const offeredOptions=tradeTradableOptions(market);
+    if(!offeredOptions)return `<div class="trade-panel trade-empty">${gameTextHtml('trade.mine.noneTradable')}</div>`;
+    return `<div class="trade-panel trade-publish"><div class="trade-field"><label>${gameTextHtml('trade.mine.offerLabel')}</label><select class="trade-select" id="trade-listed-card">${offeredOptions}</select></div><label class="trade-row"><input type="checkbox" id="trade-accept-any"> ${gameTextHtml('trade.acceptAny')}</label><div id="trade-criteria-wrap">${Array.from({length:l.maxWantedCriteria},(_,i)=>criterionRow(i)).join('')}</div><div class="trade-row"><button class="trade-btn" id="trade-publish">${gameTextHtml('trade.publish')}</button></div></div>`;
+  }
+  function bindMine(){
+    root.querySelector('#trade-cancel-listing')?.addEventListener('click',()=>{if(window.confirm(gameText('trade.confirm.cancelListing')))void mutate(()=>cancelTradeListing(market.ownListing.listingId));});
+    root.querySelectorAll('[data-reject-offer]').forEach(btn=>btn.addEventListener('click',()=>void mutate(()=>rejectTradeOffer(btn.dataset.rejectOffer))));
+    root.querySelectorAll('[data-accept-offer]').forEach(btn=>btn.addEventListener('click',()=>{const offer=(market.receivedOffers||[]).find(o=>o.offerId===btn.dataset.acceptOffer);if(!offer)return;if(window.confirm(gameText('trade.confirm.acceptSwap',{give:tradeCardName(market.ownListing.cardId),receive:tradeCardName(offer.offeredCardId)})))void mutate(()=>acceptTradeOffer(offer.offerId),{profile:true});}));
+    const acceptAny=root.querySelector('#trade-accept-any');
+    const syncRows=()=>{const any=acceptAny?.checked===true;root.querySelector('#trade-criteria-wrap')?.classList.toggle('disabled',any);root.querySelectorAll('[data-criterion-row]').forEach(row=>{const i=row.dataset.criterionRow;const use=root.querySelector(`[data-criterion-use="${i}"]`);row.classList.toggle('disabled',any||!use?.checked);});};
+    acceptAny?.addEventListener('change',syncRows);
+    root.querySelectorAll('[data-criterion-use]').forEach(el=>el.addEventListener('change',syncRows));
+    root.querySelectorAll('[data-criterion-type]').forEach(sel=>sel.addEventListener('change',()=>{const i=sel.dataset.criterionType;const exact=root.querySelector(`[data-criterion-exact="${i}"]`),filter=root.querySelector(`[data-criterion-filter="${i}"]`);if(exact)exact.style.display=sel.value==='exact_card'?'':'none';if(filter)filter.style.display=sel.value==='attributes'?'grid':'none';}));
+    syncRows();
+    root.querySelector('#trade-publish')?.addEventListener('click',()=>{const cardId=root.querySelector('#trade-listed-card')?.value;const any=acceptAny?.checked===true;const wantedCriteria=[];if(!any){const maxCriteria=limits().maxWantedCriteria;for(let i=0;i<maxCriteria;i++){if(!root.querySelector(`[data-criterion-use="${i}"]`)?.checked)continue;const type=root.querySelector(`[data-criterion-type="${i}"]`)?.value;if(type==='exact_card'){wantedCriteria.push({type,cardId:root.querySelector(`[data-criterion-card="${i}"]`)?.value||''});}else{const rarity=root.querySelector(`[data-criterion-rarity="${i}"]`)?.value||null,color=root.querySelector(`[data-criterion-color="${i}"]`)?.value||null;if(!rarity&&!color){showSimpleAlertModal(gameText('trade.criteria.needAttribute',{index:i+1}));return;}wantedCriteria.push({type:'attributes',rarity,color});}}if(!wantedCriteria.length){showSimpleAlertModal(gameText('trade.criteria.needOneOrAny'));return;}}void mutate(()=>createTradeListing({cardId,wantedCriteria,acceptAnyCard:any}));});
+  }
+  function renderOffers(){const offers=market?.outgoingOffers||[];if(!offers.length)return `<div class="trade-panel trade-empty">${gameTextHtml('trade.outgoing.none')}</div>`;return `<div class="trade-grid">${offers.map(o=>`<div class="trade-card"><div class="trade-card-title">${escapeHtml(tradeCardName(o.offeredCardId))} → ${escapeHtml(tradeCardName(o.listedCardId))}</div><div class="trade-muted">${gameTextHtml('trade.outgoing.owner',{username:o.listingOwnerUsername})}</div><button class="trade-btn danger" data-cancel-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.cancelOffer')}</button></div>`).join('')}</div>`;}
+  function bindOffers(){root.querySelectorAll('[data-cancel-offer]').forEach(btn=>btn.addEventListener('click',()=>void mutate(()=>cancelTradeOffer(btn.dataset.cancelOffer))));}
+  function renderHistory(){const rows=market?.history||[];if(!rows.length)return `<div class="trade-panel trade-empty">${gameTextHtml('trade.history.none')}</div>`;return `<div class="trade-grid">${rows.map(r=>{const me=state.currentUser?.uid;const owner=String(r.ownerUid)===String(me);const gave=owner?r.ownerGaveCardId:r.offererGaveCardId,got=owner?r.offererGaveCardId:r.ownerGaveCardId,other=owner?r.offererUsername:r.ownerUsername;return `<div class="trade-card"><div class="trade-card-title">${escapeHtml(tradeCardName(gave))} ↔ ${escapeHtml(tradeCardName(got))}</div><div class="trade-muted">${gameTextHtml('trade.history.row',{username:other||gameText('ranking.playerFallback'),week:r.weekKey||''})}</div></div>`;}).join('')}</div>`;}
+  function render(){if(!market)return;root.innerHTML=summary()+tabs()+`<div class="trade-panel">${tab==='explore'?renderExplore():tab==='mine'?renderMine():tab==='offers'?renderOffers():renderHistory()}</div>`;bindTabs();if(tab==='explore')bindExplore();if(tab==='mine')bindMine();if(tab==='offers')bindOffers();}
+  void refresh();
+  return overlay;
+}
+
 export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
   clearAnimationLayer('main_menu');
   injectMainMenuStyles();
@@ -8227,6 +8365,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
     <div class="main-menu-buttons">
       <button class="main-menu-btn main-menu-btn-primary" id="menu-play">${gameTextHtml('menu.play')}</button>
       <button class="main-menu-btn main-menu-btn-primary" id="menu-tournament">${gameTextHtml('menu.tournament')}</button>
+      <button class="main-menu-btn" id="menu-trade-market">${gameTextHtml('menu.tradeMarket')}</button>
       <button class="main-menu-btn" id="menu-multiplayer">${gameTextHtml('menu.multiplayer')}</button>
       <button class="main-menu-btn" id="menu-mydecks">${gameTextHtml('menu.myDecks')}</button>
       <button class="main-menu-btn" id="menu-ranking">${gameTextHtml('menu.ranking')}</button>
@@ -8302,6 +8441,13 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
     if (!state.currentUser || !state.userProfile) { releaseMenuIdentityAction(); return; }
     overlay.remove();
     if (typeof onTournament === 'function') await onTournament();
+  });
+
+  overlay.querySelector('#menu-trade-market')?.addEventListener('click', async () => {
+    if (!await awaitMenuIdentityOrStay()) return;
+    if (!state.currentUser || !state.userProfile) { releaseMenuIdentityAction(); return; }
+    overlay.style.display = 'none';
+    showTradeMarketScreen(() => { overlay.style.display = ''; releaseMenuIdentityAction(); });
   });
 
   // FASE 4 (cierre del roadmap): Multijugador ya conecta con una partida jugable de
@@ -8484,17 +8630,40 @@ export function showOptionsMenu(onBack) {
   });
 
   if (state.currentUser) {
-    overlay.querySelector('#opt-delete-account').addEventListener('click', () => {
+    overlay.querySelector('#opt-delete-account').addEventListener('click', async () => {
+      // 23.21.0 Mercado de Pases: una cuenta con cartas reservadas no puede borrarse.
+      // El guard real vive además en Rules 23.13.81; este preflight sólo evita una UX
+      // confusa y explica qué tiene que liberar el jugador antes de volver a intentar.
+      try {
+        const market = await getTradeMarket();
+        const reservation = market?.ownReservation || {};
+        if (reservation.activeListingId || (Array.isArray(reservation.activeOfferIds) && reservation.activeOfferIds.length > 0)) {
+          showSimpleAlertModal(gameText('account.delete.tradeReserved'));
+          return;
+        }
+      } catch (err) {
+        // Si el preflight no responde, no fingimos autoridad en cliente: Rules decide.
+        console.warn('No se pudo verificar reservas antes de borrar cuenta; continúa el guard server-side.', err);
+      }
       showDeleteAccountModal(async () => {
         try {
           await deleteUserProfile(state.currentUser.uid);
           state.userProfile = null;
           logMsg(gameText('account.delete.success'));
+          location.reload();
         } catch (err) {
           console.error('No se pudo borrar la cuenta:', err);
+          // Un permission-denied puede ser justamente el guard de reservas 23.13.81.
+          // Reconsultamos sólo para dar un mensaje útil; si no, conservamos el error genérico.
+          try {
+            const market = await getTradeMarket();
+            const reservation = market?.ownReservation || {};
+            if (reservation.activeListingId || (Array.isArray(reservation.activeOfferIds) && reservation.activeOfferIds.length > 0)) {
+              logMsg(gameText('account.delete.tradeReserved'));
+              return;
+            }
+          } catch {}
           logMsg(gameText('account.delete.error'));
-        } finally {
-          location.reload();
         }
       }, () => {});
     });

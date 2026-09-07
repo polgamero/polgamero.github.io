@@ -29,7 +29,7 @@ import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurcha
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, getClassifiedsServer, purchaseClassifiedCardServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, getClassifiedsServer, purchaseClassifiedCardServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
@@ -115,6 +115,34 @@ export async function forfeitTournament(tournamentId, matchId) {
 }
 export async function abandonTournament(tournamentId) {
   const response = await abandonTournamentServer(tournamentId);
+  return response?.result || null;
+}
+export async function getTradeMarket() {
+  const response = await getTradeMarketServer();
+  return response?.market || null;
+}
+export async function createTradeListing(payload) {
+  const response = await createTradeListingServer(payload);
+  return response?.result || null;
+}
+export async function cancelTradeListing(listingId) {
+  const response = await cancelTradeListingServer(listingId);
+  return response?.result || null;
+}
+export async function createTradeOffer(listingOwnerUid, cardId) {
+  const response = await createTradeOfferServer(listingOwnerUid, cardId);
+  return response?.result || null;
+}
+export async function cancelTradeOffer(offerId) {
+  const response = await cancelTradeOfferServer(offerId);
+  return response?.result || null;
+}
+export async function rejectTradeOffer(offerId) {
+  const response = await rejectTradeOfferServer(offerId);
+  return response?.result || null;
+}
+export async function acceptTradeOffer(offerId) {
+  const response = await acceptTradeOfferServer(offerId);
   return response?.result || null;
 }
 export async function fetchStorefrontAuthority() {

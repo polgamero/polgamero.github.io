@@ -1,0 +1,147 @@
+SOURCE SNAPSHOT MANIFEST — 23.21.0 MERCADO DE PASES PRE-RC
+
+STATUS=PRE_RC_PENDING_GATE03_GATE05_GATE07_DEPLOY_AND_SMOKE
+BASELINE=23.20.0 TORNEO RELEASED + econ-23.19.5.6 RELEASED
+POOL=880
+PROTOCOL=mp-23.19.2
+ECONOMY_PROTOCOL=econ-23.19.5.6
+ECONOMY_SCHEMA=9
+ECONOMY_FUNCTIONS_REGION=southamerica-east1
+FIRESTORE_RULES=23.13.81 CANDIDATE_REQUIRES_REAL_GATES_AND_DEPLOY
+FILE_COUNT=367
+CARD_IMAGE_BINARIES=0
+PUBLIC_FIRESTORE_CONFIG_FILES=0
+NPC_PORTRAIT_BINARIES=0
+HOSTED_NPC_PORTRAITS_USER_CONFIRMED=40/40_PRESERVE_EXISTING
+NPC_PORTRAIT_PATH=argentinia/assets/images/npcs/npc_001.png..npc_040.png
+APP_CHECK_PROVIDER=recaptcha-enterprise
+APP_CHECK_ENFORCEMENT=OBSERVE_ONLY
+FUNCTIONS_NODE=22
+FUNCTIONS_MIN_INSTANCES=0
+FUNCTIONS_MAX_INSTANCES=1
+FUNCTIONS_CONCURRENCY=10
+FUNCTIONS_TIMEOUT_SECONDS=30
+FUNCTIONS_MEMORY=256MiB
+ECONOMY_FUNCTION_COUNT=37
+ECONOMY_AUTHORITY_MODE=SERVER_REQUIRED
+ECONOMY_MINIMUM_CLIENT=econ-23.19.5.6
+DIRECT_FIRESTORE_FIREWALL=CANDIDATE_RULES_23.13.81
+BROWSER_ECONOMY_WRITES=DENY
+TOURNAMENT_AUTHORITY=SERVER_PERSISTENCE_REWARDS_BRACKET
+TOURNAMENT_SCHEMA=1
+TOURNAMENT_FORMAT=16_PLAYER_SINGLE_ELIMINATION
+TOURNAMENT_NPC_ROSTER=40
+PLAYER_STATS_AUTHORITY=SERVER
+PLAYER_GAME_RECEIPTS_AUTHORITY=SERVER
+GAME_REWARD_RECEIPTS_AUTHORITY=SERVER
+PVP_LEDGER_AUTHORITY=SERVER
+ECONOMY_AUDIT_AUTHORITY=SERVER_IMMUTABLE
+ADMIN_ECONOMY_AUTHORITY=SERVER
+DECK_INTELLIGENCE_VERSION=23.19.5-di2
+TRUSTED_STARTER_POOL=880
+
+TRADE_MARKET=SERVER_AUTHORITY_STRICT_1_TO_1
+TRADE_ACTIVE_LISTINGS_PER_USER=1
+TRADE_MAX_OFFERS_PER_LISTING_DEFAULT=10
+TRADE_MAX_OFFERS_PER_LISTING_HARD=50
+TRADE_ONE_ACTIVE_OFFER_PER_PLAYER_PER_LISTING=YES
+TRADE_MAX_OUTGOING_OFFERS_DEFAULT=5
+TRADE_MAX_OUTGOING_OFFERS_HARD=20
+TRADE_MAX_COMPLETED_PER_WEEK_DEFAULT=3
+TRADE_MAX_COMPLETED_PER_WEEK_HARD=20
+TRADE_CANCEL_REJECT_WEEKLY_COST=0
+TRADE_WANTED_CRITERIA_DEFAULT_MAX=3
+TRADE_WANTED_CRITERIA_HARD_MAX=3
+TRADE_WANTED_CRITERIA=EXACT_CARD_OR_RARITY_PLUS_COLOR
+TRADE_CRITERIA_COMBINATION=OR_BETWEEN_SLOTS_AND_WITHIN_RARITY_COLOR
+TRADE_ACCEPT_ANY_CARD=SUPPORTED
+TRADE_COLOR_FILTER=CONTAINS_COLOR_MULTICOLOR_INCLUDED
+TRADE_COLORLESS_FILTER=COLORS_EMPTY
+TRADE_DECK_PROTECTION=MAX_COPIES_REQUIRED_BY_ANY_SAVED_DECK
+TRADE_ENHANCEMENT_PROTECTION=ONE_COPY
+TRADE_MULTIPLE_SAME_CARD_OFFERS=ALLOWED_ONLY_WITH_REAL_FREE_COPIES
+TRADE_RESERVATIONS=SERVER_ONLY
+TRADE_ACCEPT_SETTLEMENT=ATOMIC_ONE_COPY_EACH
+TRADE_ADMIN_LIMITS=CONFIGURABLE_SERVER_BOUNDED
+TRADE_STATS=PLAYER_STATS_PLUS_GLOBAL_KPI
+TRADE_ECONOMY_AUDIT=ONE_IMMUTABLE_EVENT_PER_COMPLETED_SWAP
+TRADE_RETRY=IDEMPOTENT_EXACT_ONCE
+TRADE_ACCOUNT_DELETE_WITH_RESERVATION=DENY
+TRADE_USERNAME_RENAME_WITH_RESERVATION=DENY
+
+FUNCTIONS (37):
+- economyStatus
+- economyBootstrapAccount
+- economyCompleteStarterDeck
+- economyOpenPack
+- economyOpenGuaranteedMythic
+- economyGetOperation
+- economyGetStorefront
+- economyPurchasePack
+- economyCraftEnhancement
+- economyPurchasePrebuiltDeck
+- economyGetClassifieds
+- economyPurchaseClassifiedCard
+- economyRenameUsername
+- economyRegisterDailyLogin
+- economyClaimDailyReward
+- economyAdminDailyDebug
+- economyGetAdmissionStatus
+- economyAdminSetAdmissionPolicy
+- economySettleMatchReward
+- economyApplyAbandonPenalty
+- economyAdminGrant
+- economyAdminBulkGrant
+- economyAdminGetBulkGrant
+- economyAdminRepairGameReward
+- economyAdminSyncPlayerStats
+- economyGetTournament
+- economyStartTournament
+- economyBeginTournamentMatch
+- economySettleTournamentMatch
+- economyForfeitTournament
+- economyGetTradeMarket
+- economyCreateTradeListing
+- economyCancelTradeListing
+- economyCreateTradeOffer
+- economyCancelTradeOffer
+- economyRejectTradeOffer
+- economyAcceptTradeOffer
+
+PUBLIC-SOURCE 23.21.0 ARTIFACTS:
+- argentinia/MERCADO_DE_PASES_23_21_0.txt
+- argentinia/QA_23_21_0_PRE_RC.txt
+- argentinia/RELEASE_NOTES_23_21_0_PRE_RC.txt
+- argentinia/tools/test_trade_market_23_21_0.mjs
+- argentinia/tools/ci_fast_contract_manifest_23_21_0.txt
+- functions/src/economy/tradeCore.js
+- functions/src/economy/trade.js
+- functions/test/trade.test.mjs
+
+LOCAL QA COMPLETED ON CURRENT 23.21.0 CODELINE:
+- Mercado de Pases structural contract: PASS
+- canonical fast contract sweep: 114/114 PASS
+- regression archive parity: 62/62 PASS
+- Functions unit suite: 9/9 PASS
+- Functions syntax: PASS
+- Game Text contract: 1407 definitions / 1144 uses PASS
+- current app/tools JS/MJS syntax sweep: 230/230 PASS
+- Stability: PASS
+- Headless 23.18.1: 6/6 PASS
+- Headless Coverage: 560 full / 302 partial / 18 unsupported / 97.95% structurally known PASS
+- Headless 23.18.2: 6/6 PASS
+- Multiplayer Reliability: PASS
+- Multiplayer Hardening: PASS
+- Deck Intelligence Matrix: PASS
+- Functions parity target 01/05/06/07: 44/44/44/44 byte-identical
+- Rules parity target 02/03/05/07: byte-identical
+
+PRE-RELEASE GATES PENDING:
+1. Gate 03: Rules 23.13.81 real Firestore Emulator code 0.
+2. Gate 05: cumulative Economy + Tournament Auth/Firestore/Functions Emulator code 0.
+3. Gate 07: Mercado de Pases Auth/Firestore/Functions Emulator code 0.
+4. Deploy Rules 23.13.81.
+5. Deploy Functions 23.21.0 and verify exact 37/37.
+6. Publish cumulative GitHubSource 23.21.0 + GitHub Actions green.
+7. Production Mercado de Pases smoke.
+8. Only then mark 23.21.0 RELEASED.

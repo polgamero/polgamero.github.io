@@ -1,0 +1,28 @@
+ARGENTINIA 23.21.0 — MERCADO DE PASES — PRE-RC
+
+Adds server-authoritative player-to-player card trading with strict 1↔1 settlement.
+Listings reserve one real tradable copy and may declare up to three strict BUSCO criteria:
+exact card OR rarity/color filters, with optional ACEPTO CUALQUIER CARTA.
+
+Saved decks are protected automatically: the market preserves the maximum number of copies
+required by any individual saved deck, plus enhancement protection. Players do not need to
+manually remove cards from decks before listing excess copies.
+
+Mercado limits are Admin-configurable with server-enforced hard ceilings. Defaults remain:
+3 BUSCO criteria, 10 offers/listing, 5 outgoing active offers and 3 completed trades/player/week.
+Cancel/reject does not consume the weekly completion cap.
+
+All Mercado user-facing copy is in Game Text. Admin Statistics tracks tradesCompleted per player
+and a global completed-trades KPI. Every successful swap writes exactly one immutable economyEvent
+inside the settlement transaction, so ECONOMÍA / AUDITORÍA shows a single 1↔1 operation with
+usernames, UID tooltips and full trade/listing/offer/card metadata.
+
+Backend: 37 callable Functions, schema 9, econ-23.19.5.6 unchanged, Rules 23.13.81 candidate.
+Rules add server-only trade collections and reservation guards for account delete. Username
+rename also fails closed while a reservation is active.
+
+NOT RELEASED. Requires Gate03 + Gate05 + Gate07, Rules deploy, Functions 37/37, GitHub Actions
+and production smoke.
+
+GATE07 BACKEND HOTFIX — 2026-09-07
+Gate07 exposed an authorization-adapter defect in cancel/reject: closeOneOfferTx expected actorUid while public tx callers passed uid. Fixed by using uid consistently for cancel/reject authorization. No Rules/schema/protocol change. Gate03 and Gate05 remain valid; Gate07 must be rerun.

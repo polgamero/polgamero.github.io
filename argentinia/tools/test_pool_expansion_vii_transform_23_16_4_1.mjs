@@ -21,10 +21,10 @@ const fileMap={
 const byCategory=Object.fromEntries(Object.entries(fileMap).map(([k,f])=>[k,json(`assets/data/${f}`)]));
 const cards=Object.values(byCategory).flat();
 
-assert.ok(['23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.20.0'].includes(ENGINE_VERSION));
+assert.ok(['23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.21.0'].includes(ENGINE_VERSION));
 assert.equal(TRANSFORM_ENGINE_VERSION,'23.16.4','content release reuses the canonical 23.16.4 Transform Engine');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.81');
 assert.ok(['pool_expansion_vii_850','pool_expansion_viii_880'].includes(CURRENT_POOL_MILESTONE));
 assert.ok(POOL_BASELINE.total>=850);
 assert.equal(POOL_MILESTONES.pool_expansion_vi_820.total,820,'previous Pool VI milestone must remain frozen');
@@ -103,8 +103,8 @@ assert.ok(manifestText.includes('usina_fantasma_de_barracas.png'));
 const workflow=read('../.github/workflows/pages.yml');
 assert.ok(workflow.includes('regression_legacy_23_17_3_1.zip'));
 assert.ok(workflow.includes('ci_regression_manifest_23_17_3_1.txt'));
-const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
-assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'));
+const fastManifest=read('tools/ci_fast_contract_manifest_23_21_0.txt');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_21_0.txt'));
 assert.ok(fastManifest.includes('tools/test_prebuilt_decks_store_23_17_3.mjs'));
 
 console.log('PASS test_pool_expansion_vii_transform_23_16_4_1.mjs · +30 · 16 TDFC + 14 support · 46 new face images · Pool 850');

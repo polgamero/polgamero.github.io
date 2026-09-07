@@ -208,6 +208,13 @@ export const beginTournamentMatch = asyncProxy('beginTournamentMatch');
 export const settleTournamentMatch = asyncProxy('settleTournamentMatch');
 export const forfeitTournament = asyncProxy('forfeitTournament');
 export const abandonTournament = asyncProxy('abandonTournament');
+export const getTradeMarket = asyncProxy('getTradeMarket');
+export const createTradeListing = asyncProxy('createTradeListing');
+export const cancelTradeListing = asyncProxy('cancelTradeListing');
+export const createTradeOffer = asyncProxy('createTradeOffer');
+export const cancelTradeOffer = asyncProxy('cancelTradeOffer');
+export const rejectTradeOffer = asyncProxy('rejectTradeOffer');
+export const acceptTradeOffer = asyncProxy('acceptTradeOffer');
 
 export const recordChestAuthorityStatsBestEffort = asyncProxy('recordChestAuthorityStatsBestEffort');
 export const registerDailyLogin = asyncProxy('registerDailyLogin');

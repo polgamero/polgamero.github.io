@@ -18,12 +18,12 @@ const workflow=read('../.github/workflows/pages.yml');
 const conjuros=JSON.parse(read('assets/data/conjuros.json'));
 const planeswalkers=JSON.parse(read('assets/data/planeswalkers.json'));
 
-assert.equal(ENGINE_VERSION,'23.20.0');
+assert.equal(ENGINE_VERSION,'23.21.0');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
-assert.equal(manifest.engineVersion,'23.20.0');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.81');
+assert.equal(manifest.engineVersion,'23.21.0');
 assert.equal(manifest.engineProtocolVersion,'mp-23.19.2');
-assert.equal(manifest.firestoreRulesVersion,'23.13.80');
+assert.equal(manifest.firestoreRulesVersion,'23.13.81');
 assert.equal(manifest.pool,880);
 assert.ok(ENGINE_BASELINE.includes('23.19.4.7 Core Gameplay Feedback Expansion'));
 
@@ -88,8 +88,8 @@ assert.ok(director.includes("cue.kind==='control_change'"));
 
 // Admin schema/catalog/CI advanced without changing protocol or Firestore Rules.
 assert.ok(firebase.includes('schemaVersion: 7'));
-const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
-assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'));
+const fastManifest=read('tools/ci_fast_contract_manifest_23_21_0.txt');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_21_0.txt'));
 assert.ok(fastManifest.includes('tools/test_mass_event_cinematics_high_impact_23_19_4_8.mjs'));
 
 console.log('MASS_EVENT_CINEMATICS_HIGH_IMPACT_23_19_4_8_OK');

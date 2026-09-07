@@ -24,10 +24,10 @@ const dataFiles=['criaturas','instantaneos','conjuros','encantamientos','artefac
 const cards=dataFiles.flatMap(k=>json(`assets/data/${k}.json`));
 function seeded(seed){ let x=seed>>>0; return()=>{ x=(Math.imul(x,1664525)+1013904223)>>>0; return x/4294967296; }; }
 
-assert.ok(['23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.20.0'].includes(ENGINE_VERSION));
+assert.ok(['23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.21.0'].includes(ENGINE_VERSION));
 assert.equal(DECK_INTELLIGENCE_VERSION,'23.19.5-di2');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.80');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.81');
 assert.equal(CURRENT_POOL_MILESTONE,'pool_expansion_viii_880');
 assert.equal(POOL_BASELINE.total,880);
 assert.equal(cards.length,880);
@@ -92,8 +92,8 @@ assert.ok(main.includes("buildRandomDeck(chosenIdentity, { quality: 'starter' })
 assert.ok(!main.includes("showArchetypeSelectionModal"),'23.17.1 must not ask the player to choose an archetype');
 
 const workflow=read('../.github/workflows/pages.yml');
-const fastManifest=read('tools/ci_fast_contract_manifest_23_20_0.txt');
-assert.ok(workflow.includes('ci_fast_contract_manifest_23_20_0.txt'));
+const fastManifest=read('tools/ci_fast_contract_manifest_23_21_0.txt');
+assert.ok(workflow.includes('ci_fast_contract_manifest_23_21_0.txt'));
 assert.ok(fastManifest.includes('tools/test_prebuilt_decks_store_23_17_3.mjs'));
 
 console.log(`PASS test_competitive_deck_intelligence_23_17_1.mjs · Pool 880 · archetypes + roles + 60-card candidates + dynamic lands + goldfish + starter/competitive/good/strong/elite profiles · scores ${JSON.stringify(qualityScores)}`);
