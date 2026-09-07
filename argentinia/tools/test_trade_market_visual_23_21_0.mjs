@@ -12,7 +12,13 @@ const ui=read('js/ui.js');
 const texts=read('js/gameTexts.js');
 const css=read('css/style.css');
 const mobile=read('css/mobile.css');
+const version=read('js/version.js');
 const fn=fs.readFileSync(path.join(repo,'functions','src','index.js'),'utf8');
+
+// 23.21.1 engine/UI hotfix, backend contract intentionally unchanged.
+assert.match(version,/ENGINE_VERSION = '23\.21\.1'/);
+assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.81'/);
+assert.match(version,/ECONOMY_SCHEMA_VERSION = 9/);
 
 // Visual renderer + modal/zoom reuse.
 assert.match(ui,/hydrateTradeCards/);
@@ -20,6 +26,14 @@ assert.match(ui,/createCardElement\(card,false,true,null,'preview',null\)/);
 assert.match(ui,/openTradeCardPreview/);
 assert.match(ui,/data-trade-zoom-card/);
 assert.match(ui,/trade-preview-modal/);
+
+// 23.21.1: embedded cards cannot depend on a cyclic percentage width. The slot owns a real
+// width and the canonical .card fills it, so Explorar/Mi publicación/Mis ofertas/Historial
+// always show the card before the zoom is opened.
+assert.match(css,/\.trade-visual-card\{--trade-card-w:190px/);
+assert.match(css,/\.trade-render-slot\{[^}]*width:min\(100%,var\(--trade-card-w\)\)/);
+assert.match(css,/\.trade-render-slot>\.card\{width:100%!important;height:auto!important/);
+assert.doesNotMatch(css,/\.trade-visual-card\{--card-w:min\(190px,100%\)/);
 
 // Explore filters: name + color + rarity + type, all client-side over the already-authorized market view.
 assert.match(ui,/trade-explore-search/);
@@ -31,6 +45,12 @@ assert.match(ui,/tradeNormalizeSearch/);
 assert.match(ui,/tradeCardMatchesColor/);
 assert.match(ui,/tradeCardTypeKey/);
 
+// Names: the tiny generic caption was removed. Explore keeps its large title and pairs use
+// one deliberate large external name only where a pair needs extra identification.
+assert.doesNotMatch(ui,/trade-card-caption/);
+assert.match(ui,/trade-card-name-large/);
+assert.match(ui,/trade-card-title/);
+
 // Offer flow must be visual and only expose real free/matching cards from tradableCounts.
 assert.match(ui,/openTradeOfferModal/);
 assert.match(ui,/tradeTradableEntries\(market,listing\)/);
@@ -38,17 +58,48 @@ assert.match(ui,/trade-offer-choice-grid/);
 assert.match(ui,/data-trade-offer-choice/);
 assert.match(ui,/createTradeOffer\(listing\.ownerUid,selected\)/);
 
-// Publication, received offers, outgoing offers, and history all render actual card pairs.
+// Mi Publicación: own listing appears once; received offers show only the incoming card +
+// Aceptar/Rechazar instead of rendering TU PUBLICACIÓN again on every row.
+assert.match(ui,/trade-received-offer-list/);
+assert.match(ui,/tradeVisualCardHtml\(o\.offeredCardId,\{label:gameText\('trade\.pair\.theyOffer'\),className:'trade-received-offer-card',showName:true\}\)/);
+assert.doesNotMatch(ui,/tradePairHtml\(o\.offeredCardId,item\.cardId/);
+assert.match(ui,/data-accept-offer/);
+assert.match(ui,/data-reject-offer/);
+
+// Outgoing offers + history remain visual card↔card pairs.
 assert.match(ui,/renderPublishCardChooser/);
 assert.match(ui,/trade-publish-card-grid/);
-assert.match(ui,/tradePairHtml\(o\.offeredCardId,item\.cardId/);
 assert.match(ui,/tradePairHtml\(o\.offeredCardId,o\.listedCardId/);
 assert.match(ui,/tradePairHtml\(gave,got/);
 assert.match(ui,/openTradeAcceptModal/);
 assert.match(ui,/trade\.pair\.youGive/);
 assert.match(ui,/trade\.pair\.youReceive/);
 
-// Game Text owns all new player-facing UX copy.
+// Market + Tournament use the same canonical Back control/left-header pattern as Store/Encyclopedia.
+assert.match(ui,/showTradeMarketScreen[\s\S]*injectEncyclopediaStyles\(\)/);
+assert.match(ui,/<button class="encyclopedia-back-btn" id="trade-back">←/);
+assert.match(ui,/showTournamentScreen[\s\S]*injectEncyclopediaStyles\(\)/);
+assert.match(ui,/<button class="encyclopedia-back-btn" id="tournament-back">←/);
+
+// Main-menu compression: Options + compact Store/Ranking/Market icon buttons, canonical asset
+// hooks and exact emoji fallbacks. These three no longer occupy full-width menu rows.
+assert.match(ui,/main-menu-bottom-row/);
+assert.match(ui,/class="main-menu-icon-btn" id="menu-store"/);
+assert.match(ui,/class="main-menu-icon-btn" id="menu-ranking"/);
+assert.match(ui,/class="main-menu-icon-btn" id="menu-trade-market"/);
+assert.match(ui,/assets\/images\/ui\/icon_tienda\.png/);
+assert.match(ui,/assets\/images\/ui\/icon_ranking\.png/);
+assert.match(ui,/assets\/images\/ui\/icon_mercado_pases\.png/);
+assert.match(ui,/>🛒<\/span>/);
+assert.match(ui,/>📊<\/span>/);
+assert.match(ui,/>🔄️<\/span>/);
+assert.match(ui,/iconLabels = \{ 'menu-store':'menu\.store', 'menu-ranking':'menu\.ranking', 'menu-trade-market':'menu\.tradeMarket' \}/);
+
+// Mobile zoom must shrink against viewport HEIGHT in landscape rather than clipping the card.
+assert.match(mobile,/trade-preview-card-slot\{--card-w:min\(72vw,300px,58dvh\)\}/);
+assert.match(mobile,/trade-preview-panel\{max-height:calc\(100dvh - 14px\)!important;overflow:hidden\}/);
+
+// Game Text still owns all player-facing UX copy.
 for (const key of [
   'trade.filter.searchPlaceholder','trade.filter.color','trade.filter.rarity','trade.filter.type',
   'trade.filter.noResults','trade.type.creature','trade.type.planeswalker','trade.offerModal.title',
@@ -63,12 +114,12 @@ assert.match(mobile,/html\.argentinia-mobile \.trade-market-grid/);
 assert.match(mobile,/html\.argentinia-mobile \.trade-offer-choice-grid/);
 assert.match(mobile,/html\.argentinia-mobile \.trade-pair/);
 
-// No extra callable: RC2 is frontend-only.
+// No extra callable: 23.21.1 is frontend-only.
 const callables=[...fn.matchAll(/export const \w+\s*=\s*onCall\(/g)];
 assert.equal(callables.length,37);
 
 // Strong byte-parity guard: the whole functions/ tree must remain the exact backend candidate
-// that passed Gate05 + Gate07 and was deployed before this visual RC2.
+// that passed Gate05 + Gate07 and is already deployed.
 function walk(dir){
   let out=[];
   for(const entry of fs.readdirSync(dir,{withFileTypes:true})){
@@ -86,4 +137,4 @@ for(const file of walk(functionsRoot).sort()){
 }
 assert.equal(hash.digest('hex'),'eefdec575ec64b97e4a3cbf96e066a9fd2a1a2d8b1c222163cd6f63d88a0b6d5');
 
-console.log('TRADE_MARKET_VISUAL_23_21_0_RC2_OK filters=NAME_COLOR_RARITY_TYPE cards=CANONICAL_RENDERER offerModal=VISUAL pairs=VISUAL zoom=PASS mobile=PASS functions=BYTE_IDENTICAL_37');
+console.log('TRADE_MARKET_VISUAL_23_21_1_HOTFIX_OK cards=VISIBLE_ALWAYS names=NO_DUPLICATE receivedOffers=INCOMING_ONLY zoomMobile=VIEWPORT_HEIGHT back=CANONICAL menu=COMPACT_ICONS functions=BYTE_IDENTICAL_37');

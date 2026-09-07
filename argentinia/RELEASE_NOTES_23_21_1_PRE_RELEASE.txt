@@ -1,0 +1,36 @@
+ARGENTINIA v23.21.1 — MERCADO VISUAL + MENU CONSISTENCY HOTFIX
+PRE-RELEASE · 2026-09-07
+
+Baseline
+- v23.21.0 Mercado de Pases remains RELEASED.
+- v23.21.1 is frontend/UI only until GitHub Actions + production smoke are green.
+- Pool: 880.
+- Multiplayer protocol: mp-23.19.2.
+- Economy protocol: econ-23.19.5.6.
+- Economy schema: 9.
+- Firestore Rules: 23.13.81 unchanged/deployed.
+- Cloud Functions: exactly 37, byte-identical to deployed v23.21.0 backend.
+
+Hotfix scope
+1. Mercado embedded cards are always visible; magnifier is zoom only.
+2. Removed duplicate small card captions; one prominent card name remains.
+3. Mi publicación received-offer rows show only the incoming offered card + ACEPTAR/RECHAZAR; the owner's listing is not repeated on every row.
+4. Mis ofertas and Historial preserve visual card ↔ card presentation with both embedded cards visible.
+5. Mobile zoom is constrained by the real viewport height so the bottom of the card is not clipped in landscape.
+6. Mercado and Torneo use the same canonical back control placement/style as Tienda/Enciclopedia.
+7. Main menu is compacted: OPCIONES remains a normal button; TIENDA, RANKING GLOBAL and MERCADO DE PASES are square icon buttons immediately to its right.
+8. Icon routes are reserved under assets/images/ui/:
+   - icon_tienda.png (fallback 🛒)
+   - icon_ranking.png (fallback 📊)
+   - icon_mercado_pases.png (fallback 🔄️)
+   Recommended source art: transparent PNG around 256x256.
+
+Backend freeze
+- No Firestore Rules changes.
+- No Cloud Functions changes.
+- No new callable.
+- No economy/trade authority changes.
+- No Gate 03/05/07 rerun or backend redeploy required for this frontend-only hotfix.
+
+Release condition
+Publish the cumulative GitHubSource, require GitHub Actions green, then complete QA_23_21_1 / smoke checklist. Only then mark v23.21.1 RELEASED.

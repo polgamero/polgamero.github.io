@@ -20,10 +20,10 @@ const version=read('js/version.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 const workflow=read('../.github/workflows/pages.yml');
 
-assert.equal(ENGINE_VERSION,'23.21.0');
+assert.equal(ENGINE_VERSION,'23.21.1');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.81');
-assert.equal(manifest.engineVersion,'23.21.0');
+assert.equal(manifest.engineVersion,'23.21.1');
 assert.equal(manifest.engineProtocolVersion,'mp-23.19.2');
 assert.equal(manifest.firestoreRulesVersion,'23.13.81');
 assert.equal(manifest.pool,880);
@@ -91,7 +91,7 @@ assert.ok(ui.includes("per_batch") && ui.includes('1 vez por lote'));
 assert.ok(ui.includes('Volumen relativo'));
 assert.ok(/schemaVersion:\s*(6|7)/.test(firebase));
 
-assert.ok(version.includes("ENGINE_VERSION = '23.21.0'"));
+assert.ok(version.includes("ENGINE_VERSION = '23.21.1'"));
 const fastManifest=read('tools/ci_fast_contract_manifest_23_21_0.txt');
 assert.ok(workflow.includes('ci_fast_contract_manifest_23_21_0.txt'),'CI executes the canonical fast contract manifest');
 assert.ok(fastManifest.includes('tools/test_core_gameplay_feedback_expansion_23_19_4_7.mjs'),'canonical manifest retains v23.19.4.7 contract');

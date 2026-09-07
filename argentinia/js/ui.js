@@ -2168,8 +2168,25 @@ function injectMainMenuStyles() {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    width: 230px;
+    width: max-content;
+    --main-menu-button-width: 230px;
+    --main-menu-button-height: 40px;
 }
+#main-menu-overlay .main-menu-buttons > .main-menu-btn { width: var(--main-menu-button-width); min-height: var(--main-menu-button-height); }
+.main-menu-bottom-row { display:flex; align-items:stretch; gap:8px; width:max-content; }
+.main-menu-bottom-row > #menu-options { width:var(--main-menu-button-width); min-height:var(--main-menu-button-height); flex:0 0 var(--main-menu-button-width); }
+.main-menu-icon-btn {
+    position:relative; flex:0 0 var(--main-menu-button-height); width:var(--main-menu-button-height); height:var(--main-menu-button-height);
+    display:flex; align-items:center; justify-content:center; overflow:hidden; padding:0;
+    background:linear-gradient(180deg,rgba(18,25,15,.92),rgba(11,19,14,.96));
+    border:2px solid var(--gold,#d4af37); border-radius:10px; color:#f0e0b0;
+    cursor:pointer; box-shadow:0 4px 16px rgba(0,0,0,.4);
+    transition:transform .15s ease,box-shadow .15s ease,background .15s ease;
+}
+.main-menu-icon-btn:hover { transform:translateY(-2px); background:linear-gradient(180deg,rgba(212,175,55,.18),rgba(11,19,14,.96)); box-shadow:0 4px 22px rgba(212,175,55,.35); }
+.main-menu-icon-fallback { position:relative; z-index:1; font-size:21px; line-height:1; }
+.main-menu-icon-image { position:absolute; inset:4px; z-index:2; width:calc(100% - 8px); height:calc(100% - 8px); object-fit:contain; object-position:center; pointer-events:none; }
+.main-menu-icon-btn.main-menu-btn-disabled:hover { transform:none; }
 .main-menu-btn {
     display: block;
     width: 100%;
@@ -6085,17 +6102,18 @@ function refreshVisibleGameTextCopy() {
   const labels = {
     'menu-play': 'menu.play',
     'menu-tournament': 'menu.tournament',
-    'menu-trade-market': 'menu.tradeMarket',
     'menu-multiplayer': 'menu.multiplayer',
     'menu-mydecks': 'menu.myDecks',
-    'menu-ranking': 'menu.ranking',
     'menu-encyclopedia': 'menu.encyclopedia',
-    'menu-store': 'menu.store',
     'menu-options': 'menu.options'
   };
   Object.entries(labels).forEach(([id, key]) => {
     const el = menu.querySelector(`#${id}`);
     if (el) el.textContent = gameText(key);
+  });
+  const iconLabels = { 'menu-store':'menu.store', 'menu-ranking':'menu.ranking', 'menu-trade-market':'menu.tradeMarket' };
+  Object.entries(iconLabels).forEach(([id,key])=>{
+    const el=menu.querySelector(`#${id}`); if(!el)return; const label=gameText(key); el.title=label; el.setAttribute('aria-label',label);
   });
   const newsTitle = menu.querySelector('.main-menu-news-title');
   if (newsTitle) newsTitle.textContent = gameText('menu.news.title');
@@ -8154,12 +8172,12 @@ function injectTournamentStyles() {
   const style=document.createElement('style'); style.id='tournament-styles';
   style.textContent=`
     #tournament-overlay{position:fixed;inset:0;z-index:9800;background:radial-gradient(ellipse at top,#201710 0%,#0b0907 70%);color:#f0e0b0;padding:22px;overflow:auto}
-    .tournament-shell{max-width:1320px;margin:0 auto}.tournament-header{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}.tournament-title{font-size:30px;font-weight:900;letter-spacing:1.2px}.tournament-subtitle{font-size:13px;color:#c8b995}
+    .tournament-shell{max-width:1320px;margin:0 auto}.tournament-header{display:flex;gap:20px;align-items:center;margin-bottom:16px}.tournament-header-copy{min-width:0}.tournament-title{font-size:28px;font-weight:900;letter-spacing:1.2px}.tournament-subtitle{font-size:13px;color:#c8b995}
     .tournament-panel{background:rgba(15,13,9,.82);border:1px solid rgba(212,175,55,.38);border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 12px 34px rgba(0,0,0,.25)}
     .tournament-rules{line-height:1.55;color:#dfd1ad}.tournament-rules-hero{display:flex;align-items:center;gap:16px;padding:18px 20px;border:1px solid rgba(212,175,55,.34);border-radius:14px;background:linear-gradient(135deg,rgba(80,58,21,.34),rgba(19,15,9,.75));margin-bottom:16px}.tournament-rules-trophy{font-size:42px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.35))}.tournament-rules-hero h2{margin:0 0 4px;font-size:25px;letter-spacing:.7px;color:#fff0bf}.tournament-rules-lead{margin:0;color:#cdbf9c;font-size:14px}.tournament-rules-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.tournament-rule-card{border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.035);border-radius:12px;padding:14px 15px}.tournament-rule-card h3{margin:0 0 9px;color:#e3be45;font-size:13px;letter-spacing:.6px}.tournament-rule-card ul{margin:0;padding-left:19px;display:grid;gap:7px}.tournament-rule-card li{color:#ded2b4;font-size:13px;line-height:1.45}.tournament-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.tournament-btn{border:1px solid #d4af37;background:linear-gradient(#44351c,#20170d);color:#ffe7a0;font-weight:800;border-radius:9px;padding:11px 18px;cursor:pointer}.tournament-btn.secondary{border-color:#766b56;background:#17130d;color:#d4cab5}.tournament-btn.danger{border-color:#a94d47;background:linear-gradient(#4e211e,#21100f);color:#ffd6cf}.tournament-btn:disabled{opacity:.45;cursor:wait}
     .tournament-status{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}.tournament-badge{border:1px solid rgba(212,175,55,.42);border-radius:999px;padding:5px 10px;font-size:12px}.tournament-practice{border-color:#7b7b99;color:#c9c9ef}.tournament-next{font-size:17px;font-weight:800;margin:10px 0}.tournament-warning{color:#f0b47a;font-size:12px;line-height:1.45}
     .tournament-fixture-wrap{overflow:auto}.tournament-fixture{display:grid;grid-template-columns:repeat(4,minmax(235px,1fr));gap:14px;min-width:1000px}.tournament-round h3{font-size:13px;letter-spacing:.8px;text-align:center;color:#d4af37;margin:0 0 10px}.tournament-match{border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:7px;margin-bottom:8px;background:rgba(255,255,255,.035)}.tournament-side{display:flex;align-items:center;gap:7px;min-height:31px;padding:3px 5px;border-radius:6px}.tournament-side.winner{background:rgba(80,140,75,.2);color:#d7ffd2}.tournament-side.loser{text-decoration:line-through;opacity:.48}.tournament-side.player{font-weight:900;border-left:3px solid #d4af37}.tournament-avatar{width:25px;height:25px;border-radius:50%;object-fit:cover;background:#332a1b}.tournament-seed-empty{opacity:.38;font-style:italic}.tournament-reward{font-size:11px;color:#b9ab86;text-align:center;margin:0 0 9px}
-    @media(max-width:900px){.tournament-rules-grid{grid-template-columns:1fr}}@media(max-width:700px){#tournament-overlay{padding:12px}.tournament-title{font-size:24px}.tournament-header{align-items:flex-start}.tournament-rules-hero{align-items:flex-start;padding:14px}.tournament-rules-trophy{font-size:34px}.tournament-fixture{grid-template-columns:repeat(4,220px)}}`;
+    @media(max-width:900px){.tournament-rules-grid{grid-template-columns:1fr}}@media(max-width:700px){#tournament-overlay{padding:12px}.tournament-title{font-size:24px}.tournament-header{align-items:center;gap:10px}.tournament-rules-hero{align-items:flex-start;padding:14px}.tournament-rules-trophy{font-size:34px}.tournament-fixture{grid-template-columns:repeat(4,220px)}}`;
   document.head.appendChild(style);
 }
 
@@ -8197,10 +8215,10 @@ function showTournamentBetweenMatchAbandonConfirm(onConfirm, onCancel) {
 }
 
 export function showTournamentScreen(onBack, onPlayMatch) {
-  injectMainMenuStyles(); injectTournamentStyles();
+  injectMainMenuStyles(); injectTournamentStyles(); injectEncyclopediaStyles();
   document.querySelectorAll('#tournament-overlay').forEach(el=>el.remove());
   const overlay=document.createElement('div'); overlay.id='tournament-overlay';
-  overlay.innerHTML=`<div class="tournament-shell"><div class="tournament-header"><div><div class="tournament-title">${gameTextHtml('tournament.title')}</div><div class="tournament-subtitle">${gameTextHtml('tournament.subtitle')}</div></div><button class="tournament-btn secondary" id="tournament-back">${gameTextHtml('tournament.back')}</button></div><div id="tournament-body" class="tournament-panel">${gameTextHtml('tournament.loading')}</div></div>`;
+  overlay.innerHTML=`<div class="tournament-shell"><div class="tournament-header"><button class="encyclopedia-back-btn" id="tournament-back">← ${gameTextHtml('common.back')}</button><div class="tournament-header-copy"><div class="tournament-title">${gameTextHtml('tournament.title')}</div><div class="tournament-subtitle">${gameTextHtml('tournament.subtitle')}</div></div></div><div id="tournament-body" class="tournament-panel">${gameTextHtml('tournament.loading')}</div></div>`;
   document.body.appendChild(overlay);
   overlay.querySelector('#tournament-back')?.addEventListener('click',()=>{overlay.remove();onBack?.();});
   const body=overlay.querySelector('#tournament-body');
@@ -8313,17 +8331,17 @@ function tradeFormatDate(ms){
   if(!n)return '';
   try{return new Date(n).toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch{return new Date(n).toLocaleString();}
 }
-function tradeVisualCardHtml(cardId,{label='',className=''}={}){
+function tradeVisualCardHtml(cardId,{label='',className='',showName=false}={}){
   const id=String(cardId||'');
-  return `<div class="trade-visual-card ${className}" data-trade-visual-card="${escapeHtml(id)}">
+  return `<div class="trade-visual-card ${label?'trade-has-label':''} ${className}" data-trade-visual-card="${escapeHtml(id)}">
     ${label?`<div class="trade-visual-label">${escapeHtml(label)}</div>`:''}
     <div class="trade-render-slot" data-trade-card-id="${escapeHtml(id)}" aria-label="${escapeHtml(tradeCardName(id))}"></div>
     <button type="button" class="trade-zoom-btn" data-trade-zoom-card="${escapeHtml(id)}" title="${gameTextHtml('trade.zoom')}" aria-label="${gameTextHtml('trade.zoomCard',{card:tradeCardName(id)})}">🔍</button>
-    <div class="trade-card-caption">${escapeHtml(tradeCardName(id))}</div>
+    ${showName?`<div class="trade-card-name-large">${escapeHtml(tradeCardName(id))}</div>`:''}
   </div>`;
 }
 function tradePairHtml(leftId,rightId,{leftLabel='',rightLabel='',compact=false}={}){
-  return `<div class="trade-pair ${compact?'compact':''}">${tradeVisualCardHtml(leftId,{label:leftLabel,className:'trade-pair-side'})}<div class="trade-pair-arrow" aria-hidden="true">↔</div>${tradeVisualCardHtml(rightId,{label:rightLabel,className:'trade-pair-side'})}</div>`;
+  return `<div class="trade-pair ${compact?'compact':''}">${tradeVisualCardHtml(leftId,{label:leftLabel,className:'trade-pair-side',showName:true})}<div class="trade-pair-arrow" aria-hidden="true">↔</div>${tradeVisualCardHtml(rightId,{label:rightLabel,className:'trade-pair-side',showName:true})}</div>`;
 }
 function hydrateTradeCards(scope){
   if(!scope)return;
@@ -8340,9 +8358,10 @@ function hydrateTradeCards(scope){
 
 export function showTradeMarketScreen(onBack) {
   injectTradeMarketStyles();
+  injectEncyclopediaStyles(); // 23.21.1 — mismo botón/posición de Volver que Tienda y Enciclopedia.
   document.querySelectorAll('#trade-market-overlay').forEach(el=>el.remove());
   const overlay=document.createElement('div'); overlay.id='trade-market-overlay';
-  overlay.innerHTML=`<div class="trade-shell"><div class="trade-header"><div><div class="trade-title">${gameTextHtml('trade.title')}</div><div class="trade-subtitle">${gameTextHtml('trade.subtitle')}</div></div><button class="trade-btn secondary" id="trade-back">← ${gameTextHtml('common.back')}</button></div><div id="trade-root"><div class="trade-panel trade-empty">${gameTextHtml('trade.loading')}</div></div></div>`;
+  overlay.innerHTML=`<div class="trade-shell"><div class="trade-header"><button class="encyclopedia-back-btn" id="trade-back">← ${gameTextHtml('common.back')}</button><div class="trade-header-copy"><div class="trade-title">${gameTextHtml('trade.title')}</div><div class="trade-subtitle">${gameTextHtml('trade.subtitle')}</div></div></div><div id="trade-root"><div class="trade-panel trade-empty">${gameTextHtml('trade.loading')}</div></div></div>`;
   document.body.appendChild(overlay);
   overlay.querySelector('#trade-back')?.addEventListener('click',()=>{closeTransientTradeModal();overlay.remove();onBack?.();});
   const root=overlay.querySelector('#trade-root');
@@ -8472,7 +8491,7 @@ export function showTradeMarketScreen(onBack) {
     const item=market?.ownListing, l=limits();
     if(item){
       const offers=market?.receivedOffers||[];
-      return `<div class="trade-mine-layout"><section class="trade-panel trade-own-listing"><div class="trade-section-kicker">${gameTextHtml('trade.mine.active')}</div>${tradeVisualCardHtml(item.cardId,{className:'trade-own-listing-card'})}<div class="trade-card-title">${gameTextHtml('trade.mine.title',{card:tradeCardName(item.cardId)})}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div><button class="trade-btn danger" id="trade-cancel-listing">${gameTextHtml('trade.cancelListing')}</button></section><section class="trade-panel trade-received-offers"><h3>${gameTextHtml('trade.mine.received',{count:offers.length,max:l.maxOffersPerListing})}</h3>${offers.length?`<div class="trade-offer-list">${offers.map(o=>`<article class="trade-received-offer"><div class="trade-muted trade-offer-user">${escapeHtml(o.offererUsername)}</div>${tradePairHtml(o.offeredCardId,item.cardId,{leftLabel:gameText('trade.pair.theyOffer'),rightLabel:gameText('trade.pair.yourListing'),compact:true})}<div class="trade-row trade-offer-actions"><button class="trade-btn" data-accept-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.accept')}</button><button class="trade-btn secondary" data-reject-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.reject')}</button></div></article>`).join('')}</div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneReceived')}</div>`}</section></div>`;
+      return `<div class="trade-mine-layout"><section class="trade-panel trade-own-listing"><div class="trade-section-kicker">${gameTextHtml('trade.mine.active')}</div>${tradeVisualCardHtml(item.cardId,{className:'trade-own-listing-card'})}<div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div><button class="trade-btn danger" id="trade-cancel-listing">${gameTextHtml('trade.cancelListing')}</button></section><section class="trade-panel trade-received-offers"><h3>${gameTextHtml('trade.mine.received',{count:offers.length,max:l.maxOffersPerListing})}</h3>${offers.length?`<div class="trade-offer-list trade-received-offer-list">${offers.map(o=>`<article class="trade-received-offer"><div class="trade-muted trade-offer-user">${escapeHtml(o.offererUsername)}</div><div class="trade-received-card-wrap">${tradeVisualCardHtml(o.offeredCardId,{label:gameText('trade.pair.theyOffer'),className:'trade-received-offer-card',showName:true})}</div><div class="trade-row trade-offer-actions"><button class="trade-btn" data-accept-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.accept')}</button><button class="trade-btn secondary" data-reject-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.reject')}</button></div></article>`).join('')}</div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneReceived')}</div>`}</section></div>`;
     }
     const entries=tradeTradableEntries(market);
     if(!entries.length)return `<div class="trade-empty">${gameTextHtml('trade.mine.noneTradable')}</div>`;
@@ -8542,13 +8561,15 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
     <div class="main-menu-buttons">
       <button class="main-menu-btn main-menu-btn-primary" id="menu-play">${gameTextHtml('menu.play')}</button>
       <button class="main-menu-btn main-menu-btn-primary" id="menu-tournament">${gameTextHtml('menu.tournament')}</button>
-      <button class="main-menu-btn" id="menu-trade-market">${gameTextHtml('menu.tradeMarket')}</button>
       <button class="main-menu-btn" id="menu-multiplayer">${gameTextHtml('menu.multiplayer')}</button>
       <button class="main-menu-btn" id="menu-mydecks">${gameTextHtml('menu.myDecks')}</button>
-      <button class="main-menu-btn" id="menu-ranking">${gameTextHtml('menu.ranking')}</button>
       <button class="main-menu-btn" id="menu-encyclopedia">${gameTextHtml('menu.encyclopedia')}</button>
-      <button class="main-menu-btn" id="menu-store">${gameTextHtml('menu.store')}</button>
-      <button class="main-menu-btn" id="menu-options">${gameTextHtml('menu.options')}</button>
+      <div class="main-menu-bottom-row">
+        <button class="main-menu-btn" id="menu-options">${gameTextHtml('menu.options')}</button>
+        <button class="main-menu-icon-btn" id="menu-store" title="${gameTextHtml('menu.store')}" aria-label="${gameTextHtml('menu.store')}"><span class="main-menu-icon-fallback" aria-hidden="true">🛒</span><img class="main-menu-icon-image" src="./assets/images/ui/icon_tienda.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        <button class="main-menu-icon-btn" id="menu-ranking" title="${gameTextHtml('menu.ranking')}" aria-label="${gameTextHtml('menu.ranking')}"><span class="main-menu-icon-fallback" aria-hidden="true">📊</span><img class="main-menu-icon-image" src="./assets/images/ui/icon_ranking.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        <button class="main-menu-icon-btn" id="menu-trade-market" title="${gameTextHtml('menu.tradeMarket')}" aria-label="${gameTextHtml('menu.tradeMarket')}"><span class="main-menu-icon-fallback" aria-hidden="true">🔄️</span><img class="main-menu-icon-image" src="./assets/images/ui/icon_mercado_pases.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+      </div>
     </div>
     <div id="main-menu-active-events"></div>
     <div class="main-menu-news" id="main-menu-news">

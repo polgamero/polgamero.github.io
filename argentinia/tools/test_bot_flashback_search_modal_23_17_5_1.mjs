@@ -7,7 +7,7 @@ const ui = fs.readFileSync(new URL('../js/ui.js', import.meta.url), 'utf8');
 const telemetry = fs.readFileSync(new URL('../js/telemetry.js', import.meta.url), 'utf8');
 const main = fs.readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
 
-assert.equal(ENGINE_VERSION, '23.21.0');
+assert.equal(ENGINE_VERSION, '23.21.1');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.81');
 
 const graveStart = bot.indexOf('async function tryFlashbackOrEscapeFromBotGraveyard()');

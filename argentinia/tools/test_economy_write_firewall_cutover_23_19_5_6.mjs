@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 const read = p => fs.readFileSync(p, 'utf8');
 const version = await import(pathToFileURL(new URL('../js/version.js', import.meta.url).pathname).href + '?v=' + Date.now());
-assert.equal(version.ENGINE_VERSION, '23.21.0');
+assert.equal(version.ENGINE_VERSION, '23.21.1');
 assert.equal(version.ECONOMY_PROTOCOL_VERSION, 'econ-23.19.5.6');
 assert.equal(version.ECONOMY_SCHEMA_VERSION, 9);
 assert.equal(version.FIRESTORE_RULES_VERSION, '23.13.81');
@@ -52,7 +52,7 @@ assert.match(ui, /ECONOMÍA \/ AUDITORÍA|admin\.tab\.economyAudit/);
 assert.match(ui, /admin-economy-audit-export/);
 assert.match(ui, /operationId/);
 
-assert.equal(manifest.engineVersion, '23.21.0');
+assert.equal(manifest.engineVersion, '23.21.1');
 assert.equal(manifest.economyProtocolVersion, 'econ-23.19.5.6');
 assert.equal(manifest.economySchemaVersion, 9);
 assert.equal(manifest.firestoreRulesVersion, '23.13.81');

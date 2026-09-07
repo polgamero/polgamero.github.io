@@ -17,10 +17,10 @@ const firebase=read('js/firebaseClientImpl.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 const workflow=fs.readFileSync(path.join(root,'..','.github','workflows','pages.yml'),'utf8');
 
-assert.equal(ENGINE_VERSION,'23.21.0');
+assert.equal(ENGINE_VERSION,'23.21.1');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.81');
-assert.equal(manifest.engineVersion,'23.21.0');
+assert.equal(manifest.engineVersion,'23.21.1');
 assert.equal(manifest.engineProtocolVersion,'mp-23.19.2');
 assert.equal(manifest.protocolVersion,'mp-23.19.2');
 assert.equal(manifest.firestoreRulesVersion,'23.13.81');

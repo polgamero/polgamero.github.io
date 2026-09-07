@@ -1,0 +1,44 @@
+ARGENTINIA v23.21.1 — PRODUCTION SMOKE
+
+A. MERCADO · EXPLORAR
+[ ] Every listing shows the embedded full card without touching the magnifier.
+[ ] Only one prominent card name is shown; no duplicate small caption.
+[ ] Magnifier opens zoom and does not replace normal card visibility.
+[ ] Name/color/rarity/type filters still work.
+[ ] HACER OFERTA still opens the visual eligible-card modal.
+
+B. MERCADO · MI PUBLICACIÓN
+[ ] Own active listing card is visible once in the listing summary.
+[ ] Each received offer shows the incoming card visibly.
+[ ] Own published card is NOT repeated inside every received-offer row.
+[ ] ACEPTAR and RECHAZAR still work.
+
+C. MERCADO · MIS OFERTAS
+[ ] Offered card and wanted card are both visibly rendered.
+[ ] Magnifiers work for both cards.
+[ ] CANCELAR OFERTA still works.
+
+D. MERCADO · HISTORIAL
+[ ] Delivered and received cards are both visibly rendered.
+[ ] No duplicate small card captions.
+[ ] Magnifiers work.
+
+E. MOBILE ZOOM
+[ ] Portrait: complete card visible.
+[ ] Landscape: complete bottom edge/text box visible; zoom never exceeds available viewport height.
+[ ] Closing zoom returns to the same Mercado state/modal.
+
+F. MENU CONSISTENCY
+[ ] Mercado back control matches Tienda/Enciclopedia position/style.
+[ ] Torneo back control matches Tienda/Enciclopedia position/style.
+[ ] Main menu has the expected primary buttons without the three old full-width Store/Ranking/Market buttons.
+[ ] Bottom row is OPCIONES + square TIENDA + square RANKING + square MERCADO.
+[ ] Without PNG icon files, fallbacks render: 🛒 / 📊 / 🔄️.
+[ ] If icon_tienda.png / icon_ranking.png / icon_mercado_pases.png are later uploaded to assets/images/ui/, the PNG replaces its fallback automatically.
+[ ] All three square buttons navigate to the correct screens.
+
+G. NO BACKEND REGRESSION
+[ ] Normal market create/offer/cancel/reject/accept flow still works.
+[ ] No Rules deploy performed.
+[ ] No Functions deploy performed.
+[ ] Backend still verifies 37 callables if checked.

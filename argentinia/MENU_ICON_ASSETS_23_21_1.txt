@@ -1,0 +1,14 @@
+ARGENTINIA 23.21.1 — ICONOS COMPACTOS DEL MENÚ PRINCIPAL
+
+Rutas canónicas (PNG recomendado ~256x256, fondo transparente):
+- argentinia/assets/images/ui/icon_tienda.png
+- argentinia/assets/images/ui/icon_ranking.png
+- argentinia/assets/images/ui/icon_mercado_pases.png
+
+Fallbacks embebidos si el PNG todavía no existe:
+- Tienda: 🛒
+- Ranking Global: 📊
+- Mercado de Pases: 🔄️
+
+Los botones visibles son cuadrados y su lado iguala la altura del botón OPCIONES.
+No mover ni crear otra carpeta de UI assets.

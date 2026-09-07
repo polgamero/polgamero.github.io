@@ -7,7 +7,7 @@ const root=path.resolve(here,'..');
 const repo=path.resolve(root,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const manifest=JSON.parse(read('build-manifest.json'));
-assert.equal(manifest.engineVersion,'23.21.0');
+assert.equal(manifest.engineVersion,'23.21.1');
 assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.6');
 assert.equal(manifest.economySchemaVersion,9);
 assert.equal(manifest.firestoreRulesVersion,'23.13.81');

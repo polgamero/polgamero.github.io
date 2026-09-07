@@ -1,0 +1,33 @@
+ARGENTINIA v23.21.1 — QA PRE-RELEASE
+
+Canonical contracts
+- FAST_CONTRACT_SWEEP total=115 passed=115 failed=0 canonical=23.21.1
+- TRADE_MARKET_23_21_0_OK
+- TRADE_MARKET_VISUAL_23_21_1_HOTFIX_OK cards=VISIBLE_ALWAYS names=NO_DUPLICATE receivedOffers=INCOMING_ONLY zoomMobile=VIEWPORT_HEIGHT back=CANONICAL menu=COMPACT_ICONS functions=BYTE_IDENTICAL_37
+
+Static/runtime validation
+- Game Text: 1452 definitions / 1176 uses / strictSurfaces=4 / controlled=97 PASS
+- JS/MJS syntax: 231/231 PASS
+- Functions unit: 9/9 PASS
+- Functions tree SHA-256: eefdec575ec64b97e4a3cbf96e066a9fd2a1a2d8b1c222163cd6f63d88a0b6d5
+- Callables: 37/37
+
+Dynamic regression labs
+- Stability Lab: PASS (10 seeds)
+- Headless 23.18.1: 6/6 PASS
+- Coverage 23.18.2: 560 full / 302 partial / 18 unsupported / 97.95% structurally known PASS
+- Headless 23.18.2: 6/6 PASS
+- Multiplayer Reliability: PASS
+- Multiplayer Hardening: PASS
+- Deck Intelligence Matrix: PASS
+
+Backend invariants
+- Firestore Rules: 23.13.81 unchanged.
+- Functions: byte-identical to deployed v23.21.0 authority candidate.
+- Economy protocol: econ-23.19.5.6 unchanged.
+- Economy schema: 9 unchanged.
+- Multiplayer protocol: mp-23.19.2 unchanged.
+
+Pending before RELEASED
+1. GitHub Actions green on the cumulative v23.21.1 source.
+2. Production UI smoke from SMOKE_23_21_1_MERCADO_MENU.txt.

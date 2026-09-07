@@ -20,7 +20,7 @@ const firebase=read('js/firebaseClientImpl.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 const workflow=fs.readFileSync(path.join(root,'..','.github','workflows','pages.yml'),'utf8');
 
-assert.ok(/^23\.19\.4\.(?:4|[5-9]|[1-9]\d+)$/.test(ENGINE_VERSION) || ENGINE_VERSION === '23.21.0',`23.19.4.4+ cumulative engine expected, got ${ENGINE_VERSION}`);
+assert.ok(/^23\.19\.4\.(?:4|[5-9]|[1-9]\d+)$/.test(ENGINE_VERSION) || ENGINE_VERSION === '23.21.1',`23.19.4.4+ cumulative engine expected, got ${ENGINE_VERSION}`);
 assert.ok(/^mp-23\.19\.(?:1|[2-9]|[1-9]\d+)$/.test(ENGINE_PROTOCOL_VERSION),`mp-23.19.1+ expected, got ${ENGINE_PROTOCOL_VERSION}`);
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.81');
 assert.equal(manifest.engineVersion,ENGINE_VERSION);

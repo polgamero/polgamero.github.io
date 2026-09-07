@@ -22,7 +22,7 @@ const version=read('js/version.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 const workflow=read('../.github/workflows/pages.yml');
 
-assert.ok(['23.19.4.6','23.21.0'].includes(ENGINE_VERSION));
+assert.ok(['23.19.4.6','23.21.1'].includes(ENGINE_VERSION));
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.81');
 assert.equal(manifest.engineVersion,ENGINE_VERSION);
@@ -107,7 +107,7 @@ assert.ok(main.includes("isLocal ? 'sacrifice.self' : 'sacrifice.self.bot'"));
 for(const event of ['ward_triggered','ward_paid','ward_countered','shield_consumed']) assert.ok(main.includes(`'${event}'`));
 for(const event of ['bot_fight_evaluation','bot_attack_plan']) assert.ok(bot.includes(`'${event}'`));
 
-assert.ok(/ENGINE_VERSION = '23\.19\.4\.(6|7|8|9|10|11|12|13|14|15)'/.test(version) || /ENGINE_VERSION = '23\.19\.5(?:\.[123456])?'/.test(version) || /ENGINE_VERSION = '23\.21\.0'/.test(version));
+assert.ok(/ENGINE_VERSION = '23\.19\.4\.(6|7|8|9|10|11|12|13|14|15)'/.test(version) || /ENGINE_VERSION = '23\.19\.5(?:\.[123456])?'/.test(version) || /ENGINE_VERSION = '23\.21\.1'/.test(version));
 const fastManifest=read('tools/ci_fast_contract_manifest_23_21_0.txt');
 assert.ok(workflow.includes('ci_fast_contract_manifest_23_21_0.txt'),'CI executes the canonical fast contract manifest');
 assert.ok(fastManifest.includes('tools/test_rules_integrity_combat_ux_bot_tactical_hotfix_23_19_4_6.mjs'),'canonical manifest retains v23.19.4.6 contract');
