@@ -114,3 +114,5 @@ tools/test_admin_economy_statistics_audit_authority_23_19_5_5.mjs
 tools/test_economy_write_firewall_cutover_23_19_5_6.mjs
 tools/test_tournament_mode_23_20_0.mjs
 tools/test_trade_market_23_21_0.mjs
+
+tools/test_trade_market_visual_23_21_0.mjs

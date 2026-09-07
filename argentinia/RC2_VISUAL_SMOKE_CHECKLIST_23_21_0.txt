@@ -1,0 +1,47 @@
+ARGENTINIA 23.21.0 RC2 — MERCADO VISUAL — PRODUCTION SMOKE
+
+A. EXPLORAR
+[ ] Publicaciones muestran cartas completas, legibles y sin desbordes.
+[ ] Lupa abre zoom; cerrar zoom vuelve a la misma vista.
+[ ] Buscar por nombre tolera mayúsculas/minúsculas y tildes.
+[ ] Filtro ROJA incluye mono-rojas y multicolor con R.
+[ ] Filtro INCOLORA muestra colors=[].
+[ ] Rareza funciona: Común / Infrecuente / Rara / Mítica.
+[ ] Tipo funciona: Criatura / Instantáneo / Conjuro / Encantamiento / Artefacto / Tierra / Semidios.
+[ ] Filtros combinados funcionan y LIMPIAR FILTROS restaura todo.
+
+B. HACER OFERTA
+[ ] Modal visual conserva la carta objetivo + BUSCO.
+[ ] Sólo aparecen cartas propias libres y compatibles.
+[ ] Seleccionar carta resalta una sola opción.
+[ ] Lupa dentro del modal NO cierra ni pierde la selección del modal.
+[ ] Confirmar crea la misma oferta server-authoritative ya homologada.
+
+C. MI PUBLICACIÓN
+[ ] Carta propia renderizada.
+[ ] Ofertas recibidas se ven TE OFRECEN ↔ TU PUBLICACIÓN.
+[ ] Rechazar libera la reserva del ofertante.
+[ ] Aceptar abre confirmación VOS ENTREGÁS ↔ VOS RECIBÍS.
+[ ] Confirmar aceptación realiza 1↔1 y cierra las demás ofertas.
+
+D. MIS OFERTAS
+[ ] Cada fila muestra VOS OFRECÉS ↔ QUERÉS.
+[ ] Estado PENDIENTE visible.
+[ ] Cancelar libera copia y desaparece de activas.
+
+E. HISTORIAL
+[ ] Entrada completada muestra ENTREGASTE ↔ RECIBISTE.
+[ ] Ambas cartas tienen lupa.
+[ ] Contraparte y fecha/hora correctas.
+
+F. RESPONSIVE
+[ ] Desktop: grillas y modales sin clipping.
+[ ] Mobile: Explorar usable, modal de oferta usable, pares de cartas legibles.
+
+G. AUTORIDAD / OPS
+[ ] Functions verify sigue 37/37 (sin redeploy de backend por RC2).
+[ ] Un trade real suma +1 tradesCompleted a ambos jugadores.
+[ ] KPI global suma exactamente +1 intercambio.
+[ ] Economy Audit crea exactamente una fila 1 ↔ 1 con metadata completa.
+
+Si todo queda verde: Argentinia v23.21.0 — Mercado de Pases puede cerrarse RELEASED.

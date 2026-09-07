@@ -1,0 +1,52 @@
+ARGENTINIA 23.21.0 RC2 — MERCADO DE PASES VISUAL UX
+STATUS: PRE-RELEASE / BACKEND HOMOLOGATED + DEPLOYED / FRONTEND VISUAL SMOKE PENDING
+DATE: 2026-09-07
+
+BACKEND FROZEN
+- Rules 23.13.81: Gate03 PASS and deployed.
+- Economy + Tournament: Gate05 PASS on final backend candidate.
+- Mercado: Gate07 10/10 PASS.
+- Functions: deployed and verified exactly 37/37.
+- Functions tree remains byte-identical in RC2 Visual.
+- Economy schema stays 9; protocol stays econ-23.19.5.6.
+
+RC2 VISUAL UX
+- EXPLORAR now renders canonical full cards through createCardElement(); no textual-only listings.
+- Explorer filters: card-name search, Color, Rarity and card Type.
+- Color semantics preserve multicolor membership; C requires colorless.
+- Search is accent-insensitive and operates client-side over the authorized market view.
+- Each published card has a magnifier and full-card preview modal.
+- HACER OFERTA opens a visual modal showing the wanted card, BUSCO chips and only the user's real free/matching cards.
+- Offer selection is card-first: click a rendered card, highlight it, then CONFIRMAR OFERTA.
+- MI PUBLICACIÓN renders the listed card and every received offer as card ↔ card.
+- Accepting an offer uses a visual final confirmation showing VOS ENTREGÁS ↔ VOS RECIBÍS.
+- MIS OFERTAS renders VOS OFRECÉS ↔ QUERÉS with pending status.
+- HISTORIAL renders ENTREGASTE ↔ RECIBISTE with counterpart, date/time and completed status.
+- New-listing card selection is visual as well; exact BUSCO card selection keeps the existing selector and adds a live rendered preview.
+- Desktop and mobile layouts are namespaced to Mercado and responsive.
+- All new player-facing copy is under Game Text.
+
+NO AUTHORITY CHANGES
+- No new callable.
+- Still exactly 37 Functions.
+- No change to Firestore Rules.
+- No change to trade collections, reservation semantics, exact-once settlement, weekly cap, stats or Economy Audit.
+
+QA ON RC2 SOURCE
+- Canonical fast contracts: 115/115 PASS.
+- Mercado base structural contract: PASS.
+- Mercado Visual RC2 contract: PASS.
+- Game Text contract: 1452 definitions / 1179 uses PASS.
+- JS/MJS syntax: 231/231 PASS.
+- style.css brace balance: PASS.
+- mobile.css brace balance: PASS.
+- Functions immutable tree SHA-256: eefdec575ec64b97e4a3cbf96e066a9fd2a1a2d8b1c222163cd6f63d88a0b6d5.
+- Callable count: 37.
+
+RELEASE STILL NOT CLOSED
+Required now:
+1. Publish this cumulative GitHubSource RC2.
+2. GitHub Actions green.
+3. Production smoke focused on visual Explorer / filters / zoom / offer modal / mine / outgoing / history.
+4. Reconfirm Stats + Economy Audit after one real accepted 1↔1 swap.
+5. Only then mark 23.21.0 RELEASED.

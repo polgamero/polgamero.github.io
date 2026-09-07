@@ -60,3 +60,13 @@ Multiplayer: mp-23.19.2 (UNCHANGED)
 Pool: 880 (UNCHANGED)
 Rules: 23.13.81 CANDIDATE
 Functions: 37
+
+RC2 — UX VISUAL (2026-09-07)
+- Backend authority queda CONGELADO y ya homologado/deployed: Rules 23.13.81 + 37 Functions.
+- EXPLORAR pasa a grilla de cartas renderizadas con lupa y filtros por nombre/color/rareza/tipo.
+- HACER OFERTA pasa a modal visual: carta objetivo + BUSCO + sólo cartas libres/compatibles del usuario.
+- MI PUBLICACIÓN, MIS OFERTAS e HISTORIAL pasan a composición visual carta ↔ carta.
+- Aceptar intercambio muestra confirmación visual VOS ENTREGÁS ↔ VOS RECIBÍS.
+- La carta a publicar también se elige visualmente; BUSCO exacto conserva selector y suma preview renderizado.
+- Todo copy nuevo entra a Game Text.
+- Functions/Rules no cambian en RC2 Visual.

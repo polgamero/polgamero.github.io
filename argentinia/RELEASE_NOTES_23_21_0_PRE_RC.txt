@@ -26,3 +26,6 @@ and production smoke.
 
 GATE07 BACKEND HOTFIX — 2026-09-07
 Gate07 exposed an authorization-adapter defect in cancel/reject: closeOneOfferTx expected actorUid while public tx callers passed uid. Fixed by using uid consistently for cancel/reject authorization. No Rules/schema/protocol change. Gate03 and Gate05 remain valid; Gate07 must be rerun.
+
+RC2 VISUAL STATUS UPDATE — 2026-09-07
+Gate03 PASS + Rules deployed; Gate07 10/10 PASS; final Gate05 PASS; Functions deployed/verified 37/37; GitHub and first functional production smoke PASS. Release remains open only for RC2 Visual frontend publication + final visual smoke. See RELEASE_NOTES_23_21_0_RC2_VISUAL.txt.

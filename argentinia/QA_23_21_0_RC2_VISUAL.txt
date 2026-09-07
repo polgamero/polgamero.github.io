@@ -1,0 +1,50 @@
+ARGENTINIA 23.21.0 RC2 — QA MERCADO VISUAL
+DATE: 2026-09-07
+
+BACKEND HOMOLOGATION ALREADY COMPLETED
+- Gate03 Rules 23.13.81: PASS / DEPLOYED.
+- Gate07 Mercado: PASS 10/10.
+- Gate05 Economy + Tournament final candidate: PASS.
+- Functions deploy: PASS.
+- Functions verify: 37/37 PASS.
+- Previous functional production smoke: PASS.
+
+RC2 STATIC / CONTRACT QA
+- Fast canonical manifest: 115/115 PASS.
+- test_trade_market_23_21_0.mjs: TRADE_MARKET_23_21_0_OK.
+- test_trade_market_visual_23_21_0.mjs: TRADE_MARKET_VISUAL_23_21_0_RC2_OK.
+- Game Text: GAME_TEXT_CONTRACT_OK definitions=1452 used=1179 strictSurfaces=4 controlled=97.
+- JS/MJS syntax sweep: 231/231 PASS.
+- CSS structural brace balance: style.css PASS / mobile.css PASS.
+- Functions whole-tree immutable digest: eefdec575ec64b97e4a3cbf96e066a9fd2a1a2d8b1c222163cd6f63d88a0b6d5 PASS.
+- Callable count: exactly 37.
+
+VISUAL ACCEPTANCE TARGETS
+EXPLORAR
+- Render real full cards.
+- Magnifier opens readable full-card preview.
+- Search by name.
+- Filter by W/U/B/R/G/C.
+- Filter by Common/Uncommon/Rare/Mythic.
+- Filter by Creature/Instant/Sorcery/Enchantment/Artifact/Land/Semidios.
+- Combined filters work without server calls per keystroke.
+
+OFERTAR
+- Modal shows wanted card visually.
+- BUSCO chips are readable.
+- User grid contains only tradableCounts > 0 that match BUSCO locally; server still revalidates.
+- Card click selects; magnifier zooms without selecting.
+- Confirm sends existing createTradeOffer(ownerUid, cardId) contract.
+
+MI PUBLICACIÓN / MIS OFERTAS / HISTORIAL
+- Received offers show card ↔ card.
+- Accept confirmation shows give ↔ receive before mutation.
+- Outgoing offers show offered ↔ wanted.
+- History shows gave ↔ received, counterpart and completion timestamp.
+- Cancel/reject/accept use the same already-homologated backend callables.
+
+PRODUCTION SMOKE PENDING AFTER GITHUB
+- Responsive desktop + mobile visual inspection.
+- One real create/cancel/reject/accept flow.
+- Stats +1 per participant and global +1 completed trade.
+- Exactly one Economy Audit 1↔1 row.

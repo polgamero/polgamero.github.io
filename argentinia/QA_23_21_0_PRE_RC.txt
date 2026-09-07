@@ -30,3 +30,6 @@ REAL GATES REQUIRED BEFORE PRODUCTION
 6. Publish GitHubSource 23.21.0 + Actions green.
 7. Production smoke Mercado de Pases + Admin/Ops.
 8. Only then mark 23.21.0 RELEASED.
+
+RC2 VISUAL STATUS UPDATE — 2026-09-07
+The real backend gates/deploy listed above are now completed green. Current remaining gate is frontend RC2 Visual GitHub/Actions + production visual smoke. See QA_23_21_0_RC2_VISUAL.txt.
