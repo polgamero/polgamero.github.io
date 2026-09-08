@@ -1,6 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { economyError } from '../shared/errors.js';
-import { TRUSTED_EMOTE_BY_ID, userCanUseEmote } from '../trusted/emoteCatalog.js';
+import { loadTrustedEmoteCatalog, userCanUseEmote } from '../trusted/emoteCatalog.js';
 
 export const MULTIPLAYER_SOCIAL_SCHEMA_VERSION = 1;
 export const CHAT_MAX_CHARS = 220;
@@ -74,7 +74,6 @@ export async function sendMultiplayerCommunication({ db, uid, matchId, type, tex
   if (!['chat','emote'].includes(kind)) throw economyError('MULTIPLAYER_SOCIAL_TYPE_INVALID');
   const cleanText = kind === 'chat' ? normalizeChatText(text) : '';
   const cleanEmoteId = kind === 'emote' ? String(emoteId || '').trim() : '';
-  if (kind === 'emote' && !TRUSTED_EMOTE_BY_ID.has(cleanEmoteId)) throw economyError('MULTIPLAYER_EMOTE_INVALID');
 
   const matchRef = db.collection('matches').doc(id);
   const commRef = db.collection('matchCommunications').doc(id);
@@ -90,13 +89,16 @@ export async function sendMultiplayerCommunication({ db, uid, matchId, type, tex
     }
     if (match.hostReady !== true || match.guestReady !== true) throw economyError('MULTIPLAYER_SOCIAL_NOT_READY');
 
-    const [commSnap, userSnap] = await Promise.all([
+    const [commSnap, userSnap, emoteCatalog] = await Promise.all([
       tx.get(commRef),
-      kind === 'emote' ? tx.get(userRef) : Promise.resolve(null)
+      kind === 'emote' ? tx.get(userRef) : Promise.resolve(null),
+      kind === 'emote' ? loadTrustedEmoteCatalog(db, tx) : Promise.resolve(null)
     ]);
     if (kind === 'emote') {
       if (!userSnap?.exists) throw economyError('PROFILE_MISSING');
-      if (!userCanUseEmote(userSnap.data() || {}, cleanEmoteId)) throw economyError('MULTIPLAYER_EMOTE_NOT_OWNED');
+      const item = emoteCatalog?.byId?.get(cleanEmoteId) || null;
+      if (!item || item.active === false) throw economyError('MULTIPLAYER_EMOTE_INVALID');
+      if (!userCanUseEmote(userSnap.data() || {}, cleanEmoteId, emoteCatalog.items)) throw economyError('MULTIPLAYER_EMOTE_NOT_OWNED');
     }
 
     const current = commSnap.exists ? (commSnap.data() || {}) : {};

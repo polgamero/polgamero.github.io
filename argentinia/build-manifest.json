@@ -5,8 +5,10 @@
   "economyProtocolVersion": "econ-23.19.5.6",
   "economySchemaVersion": 10,
   "economyFunctionsRegion": "southamerica-east1",
-  "firestoreRulesVersion": "23.13.83",
+  "firestoreRulesVersion": "23.13.85",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Multiplayer Social Layer · Chat + Emotes + Premium Cosmetics"
+  "label": "Multiplayer Social Layer · Chat + Emotes + Premium Cosmetics",
+  "emoteCatalogAuthority": "gameConfig/emotes via economyAdminSetEmoteCatalog",
+  "functionsCount": 40
 }

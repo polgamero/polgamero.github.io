@@ -2042,3 +2042,10 @@ html.argentinia-mobile .store-emote-card { padding:8px 5px; }
 html.argentinia-mobile .store-emote-art { height:62px; }
 html.argentinia-mobile .store-emote-art-img { max-width:62px; max-height:62px; }
 html.argentinia-mobile .store-emote-fallback { font-size:3rem; }
+
+
+/* 23.21.3 RC2 — HP stays on one compact line on mobile too; the pre-existing
+   mobile drawer/controls remain otherwise unchanged. */
+html.argentinia-mobile .hp-line { gap:.18rem !important; }
+html.argentinia-mobile .hp-line .hp-bar-container { flex:1 1 auto; width:auto !important; }
+html.argentinia-mobile .hp-line .hp-text { flex:0 0 auto; margin-left:0 !important; white-space:nowrap; }

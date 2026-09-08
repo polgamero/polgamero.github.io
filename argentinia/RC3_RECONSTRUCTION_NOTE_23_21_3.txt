@@ -1,0 +1,7 @@
+ARGENTINIA 23.21.3 RC3 — RECONSTRUCTION NOTE
+
+Este RC3 fue reconstruido el 2026-09-08 sobre los bytes exactos del GitHubSource 23.21.3 RC2 HUD SAFETY recuperado de la conversación/Library.
+
+La conversación saturada conservó el diseño/estado objetivo (Admin > EMOTES, gameConfig/emotes, economyAdminSetEmoteCatalog, Functions 40 y Rules 23.13.85), pero el workspace temporal RC3 previo al empaquetado no quedó persistido como archivo recuperable.
+
+Por eso este paquete NO afirma ser byte-for-byte idéntico a aquel workspace temporal perdido. Sí implementa y valida el mismo contrato RC3 sobre el baseline RC2 exacto recuperado.

@@ -17,7 +17,7 @@ const fn=fs.readFileSync(path.join(repo,'functions','src','index.js'),'utf8');
 
 // 23.21.3 cumulative visual contract + ELO/Movimientos backend integration.
 assert.match(version,/ENGINE_VERSION = '23\.21\.3'/);
-assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.83'/);
+assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.85'/);
 assert.match(version,/ECONOMY_SCHEMA_VERSION = 10/);
 
 // Visual renderer + modal/zoom reuse.
@@ -119,7 +119,7 @@ assert.match(mobile,/html\.argentinia-mobile \.trade-pair/);
 
 // 23.21.3 deliberately expands the backend with premium-emote purchase + social send.
 const callables=[...fn.matchAll(/export const \w+\s*=\s*onCall\(/g)];
-assert.equal(callables.length,39);
+assert.equal(callables.length,40);
 assert.match(fn,/export const economyPurchaseEmote\s*=\s*onCall/);
 assert.match(fn,/export const multiplayerSendCommunication\s*=\s*onCall/);
 
@@ -145,4 +145,4 @@ assert.equal(functionDigest.length,64);
 assert.ok(fs.existsSync(path.join(repo,'functions','src','economy','elo.js')));
 assert.ok(fs.existsSync(path.join(repo,'functions','src','economy','eloCore.js')));
 
-console.log('TRADE_MARKET_VISUAL_23_21_3_OK cards=VISIBLE_ALWAYS names=NO_DUPLICATE receivedOffers=INCOMING_ONLY zoomMobile=VIEWPORT_HEIGHT back=CANONICAL menu=COMPACT_ICONS functions=CUMULATIVE_39');
+console.log('TRADE_MARKET_VISUAL_23_21_3_OK cards=VISIBLE_ALWAYS names=NO_DUPLICATE receivedOffers=INCOMING_ONLY zoomMobile=VIEWPORT_HEIGHT back=CANONICAL menu=COMPACT_ICONS functions=CUMULATIVE_40');

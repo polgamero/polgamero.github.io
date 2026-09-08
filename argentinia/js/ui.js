@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, purchaseEmote, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
@@ -86,7 +86,8 @@ import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate, t
 import { buildCardTextLayout, buildLoyaltyAbilityDisplay } from './cardTextFormatter.js';
 import { publicKeywordLabel, publicCardTypeLine, publicTerminologyText } from './publicTerminology.js';
 import { MANA_ICON_URLS, manaIconKeyForSymbol } from './manaSymbolCatalog.js';
-import { EMOTE_CATALOG, getEmoteDefinition, normalizeOwnedEmoteIds, emoteAssetCandidates } from './emoteCatalog.js';
+import { EMOTE_CATALOG, getEmoteDefinition, normalizeOwnedEmoteIds, emoteAssetCandidates, applyEmoteCatalogSnapshot } from './emoteCatalog.js';
+import { mountAdminEmotesPane } from './emotesAdmin.js';
 import { POOL_BASELINE } from './poolContract.js';
 import { effectivePackCost, campaignStatus } from './campaigns.js';
 import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.js';
@@ -4091,6 +4092,7 @@ export function showStoreScreen(onBack, options = {}) {
         const value = await fetchStorefrontAuthority();
         if (!value || typeof value !== 'object') throw new Error('STOREFRONT_AUTHORITY_EMPTY');
         storefrontAuthority = value;
+        if (value?.emotes) applyEmoteCatalogSnapshot(value.emotes);
         storefrontAuthorityAt = Date.now();
         return storefrontAuthority;
       })().finally(() => {
@@ -4297,7 +4299,7 @@ export function showStoreScreen(onBack, options = {}) {
   function mountStoreEmoteArt(holder, def) {
     if (!holder || !def) return;
     holder.replaceChildren();
-    const urls = emoteAssetCandidates(def.id);
+    const urls = emoteAssetCandidates(def);
     let index = 0;
     const fallback = () => {
       holder.replaceChildren();
@@ -4314,9 +4316,8 @@ export function showStoreScreen(onBack, options = {}) {
   async function renderEmotesStoreView() {
     leaveClassifiedsView();
     renderStoreHeader(gameText('store.emotes.title'));
-    const authorityItems = Array.isArray(storefrontAuthority?.emotes?.items) ? storefrontAuthority.emotes.items : [];
+    if (storefrontAuthority?.emotes) applyEmoteCatalogSnapshot(storefrontAuthority.emotes);
     const owned = normalizeOwnedEmoteIds(state.userProfile);
-    const serverById = new Map(authorityItems.map(row => [String(row.id || ''), row]));
     body.innerHTML = `
       <div class="store-section store-emotes-section">
         <div class="store-section-title">${gameTextHtml('store.emotes.title')}</div>
@@ -4325,8 +4326,8 @@ export function showStoreScreen(onBack, options = {}) {
         <button class="store-back-link" id="store-emotes-back">${gameTextHtml('common.back')}</button>
       </div>`;
     const grid = body.querySelector('#store-emote-grid');
-    for (const def of EMOTE_CATALOG) {
-      const trusted = serverById.get(def.id) || def;
+    for (const def of EMOTE_CATALOG.filter(row => row.active !== false)) {
+      const trusted = def;
       const isOwned = owned.has(def.id);
       const card = document.createElement('div');
       card.className = `store-emote-card${def.premium ? ' premium' : ' free'}${isOwned ? ' owned' : ''}`;
@@ -6671,6 +6672,7 @@ export function showAdminPanel(onBack) {
   const adminTabs = [
     { key: 'game', label: 'AJUSTES DEL JUEGO' },
     { key: 'animations', label: 'ANIMACIONES' },
+    { key: 'emotes', label: 'EMOTES' },
     { key: 'texts', label: 'TEXTOS DEL JUEGO' },
     { key: 'messages', label: 'MENSAJES Y USUARIOS' },
     { key: 'campaigns', label: gameText('admin.tab.campaigns') },
@@ -6704,6 +6706,10 @@ export function showAdminPanel(onBack) {
 
       <div class="admin-tab-pane hidden" data-admin-pane="animations">
         ${animationAdminHTML}
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="emotes">
+        <div id="admin-emotes-root"></div>
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="texts">
@@ -7632,6 +7638,25 @@ Receipt: ${receiptId}
 
   let animationLabCleanup = null;
   let animationLabMounted = false;
+  let adminEmotesPane = null;
+  function ensureAdminEmotesPane() {
+    if (adminEmotesPane) return adminEmotesPane;
+    const root = overlay.querySelector('#admin-emotes-root');
+    if (!root) return null;
+    adminEmotesPane = mountAdminEmotesPane(root, {
+      loadCatalog: async () => {
+        const storefront = await fetchStorefrontAuthority();
+        return storefront?.emotes || null;
+      },
+      saveCatalog: async items => {
+        const catalog = await adminSetEmoteCatalog(items);
+        if (catalog?.items) applyEmoteCatalogSnapshot(catalog);
+        return catalog;
+      },
+      onApplied: catalog => { if(catalog?.items) applyEmoteCatalogSnapshot(catalog); }
+    });
+    return adminEmotesPane;
+  }
 
   function ensureAdminAnimationLab() {
     if (animationLabMounted) return;
@@ -7653,6 +7678,7 @@ Receipt: ${receiptId}
     if (key === 'stats' && !statsLoaded) reloadAdminStatistics();
     if (key === 'economyAudit') activateEconomySubtab(economySubtab);
     if (key === 'animations') ensureAdminAnimationLab();
+    if (key === 'emotes') void ensureAdminEmotesPane()?.load();
     if (key === 'debug') {
       if (!debugLoaded) reloadTelemetryHistory();
       if (!imageAuditLoaded) reloadImageAudit(false);

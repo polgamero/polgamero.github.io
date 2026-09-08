@@ -130,6 +130,13 @@ export function purchaseEmoteServer(emoteId, operationId = null) {
   });
 }
 
+export function adminSetEmoteCatalogServer(items, operationId = null) {
+  return call('economyAdminSetEmoteCatalog', {
+    operationId: operationId || createEconomyOperationId('admin-emotes'),
+    items: Array.isArray(items) ? items : []
+  });
+}
+
 export function sendMultiplayerCommunicationServer(matchId, payload = {}) {
   return call('multiplayerSendCommunication', {
     matchId: String(matchId || '').trim().toUpperCase(),

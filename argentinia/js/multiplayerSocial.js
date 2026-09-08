@@ -2,10 +2,11 @@
 // Visualmente convive con la bitácora; técnicamente NO viaja por el snapshot gameplay ni
 // entra en telemetry. Chat/emotes usan un canal server-authoritative separado para que una
 // ráfaga social jamás pueda tocar revisión, prioridad, mano o estado de combate.
-import { listenToMatchCommunication, sendMultiplayerCommunication } from './firebaseClient.js';
-import { EMOTE_CATALOG, getEmoteDefinition, normalizeOwnedEmoteIds, emoteAssetCandidates } from './emoteCatalog.js';
+import { listenToMatchCommunication, sendMultiplayerCommunication, fetchStorefrontAuthority } from './firebaseClient.js';
+import { EMOTE_CATALOG, getEmoteDefinition, normalizeOwnedEmoteIds, emoteAssetCandidates, emoteAudioCandidates, applyEmoteCatalogSnapshot } from './emoteCatalog.js';
 import { animationsEffectivelyEnabled } from './animationDirector.js';
 import { gameText } from './gameTexts.js';
+import { getAudioSettings } from './audioManager.js';
 
 const MUTE_KEY = 'argentinia.multiplayerSocial.muteRival.v1';
 const MAX_CHAT = 220;
@@ -53,19 +54,31 @@ function mountEmoteAsset(holder, def, { decorative=false } = {}) {
   if(!holder) return;
   holder.replaceChildren();
   if(!def){ holder.textContent='🙂'; return; }
-  const urls=emoteAssetCandidates(def.id);
+  const urls=emoteAssetCandidates(def);
   let index=0;
   const fallback=()=>{ holder.replaceChildren(); const span=document.createElement('span'); span.className='mp-emote-fallback'; span.textContent=def.fallback || '🙂'; span.setAttribute('aria-hidden', decorative?'true':'false'); holder.appendChild(span); };
   const img=document.createElement('img'); img.className='mp-emote-img'; img.alt=decorative?'':def.label; img.decoding='async'; img.draggable=false;
   img.onerror=()=>{ index+=1; if(index<urls.length) img.src=urls[index]; else fallback(); };
   if(urls.length) { img.src=urls[0]; holder.appendChild(img); } else fallback();
 }
+function playEmoteAudio(def) {
+  const urls=emoteAudioCandidates(def); if(!urls.length || typeof Audio==='undefined') return;
+  const settings=getAudioSettings(); if(settings?.sfxEnabled===false) return;
+  let index=0; const audio=new Audio(); audio.preload='auto'; audio.volume=Math.max(0,Math.min(1,Number(settings?.sfxVolume ?? 1)));
+  audio.onerror=()=>{index+=1;if(index<urls.length){audio.src=urls[index];void audio.play().catch(()=>{});}};
+  audio.src=urls[0]; void audio.play().catch(()=>{});
+}
+async function refreshAuthoritativeEmoteCatalog(){
+  try{const storefront=await fetchStorefrontAuthority();if(storefront?.emotes)applyEmoteCatalogSnapshot(storefront.emotes);}catch(error){console.warn('[Multiplayer Social] Catálogo de emotes authority no disponible; se conserva último snapshot/default:',error);}
+}
+
 function animateEmote(event) {
   if(!event || (!isOwnEvent(event) && muted())) return;
   const own=isOwnEvent(event);
   const target=document.querySelector(own?'.player-card.local-card':'.player-card.rival-card');
   if(!target) return;
   const def=getEmoteDefinition(event.emoteId); if(!def) return;
+  playEmoteAudio(def);
   target.querySelectorAll('.mp-emote-burst').forEach(node=>node.remove());
   const burst=document.createElement('div');
   const canAnimate=animationsEffectivelyEnabled();
@@ -93,7 +106,7 @@ function renderEmotePicker(){
   const picker=byId('mp-emote-picker'); if(!picker || !session) return;
   picker.replaceChildren();
   const owned=normalizeOwnedEmoteIds(session.profile);
-  for(const def of EMOTE_CATALOG.filter(row=>owned.has(row.id))){
+  for(const def of EMOTE_CATALOG.filter(row=>row.active!==false&&owned.has(row.id))){
     const btn=document.createElement('button'); btn.type='button'; btn.className=`mp-emote-choice${def.premium?' premium':''}`; btn.title=def.label; btn.dataset.emoteId=def.id;
     const art=document.createElement('span'); art.className='mp-emote-choice-art'; mountEmoteAsset(art,def); btn.appendChild(art);
     btn.addEventListener('click',()=>{ void sendEmote(def.id); }); picker.appendChild(btn);
@@ -135,7 +148,7 @@ export function startMultiplayerSocialSession({matchId,uid,localName='Vos',rival
   const safeMatch=String(matchId||'').trim().toUpperCase(); const safeUid=String(uid||'').trim();
   if(!safeMatch||!safeUid) return false;
   session={matchId:safeMatch,uid:safeUid,localName:String(localName||'Vos'),rivalName:String(rivalName||'Rival'),profile:profile||{}};
-  lastProcessedSeq=0; baselineLoaded=false; bindControls();
+  lastProcessedSeq=0; baselineLoaded=false; bindControls(); void refreshAuthoritativeEmoteCatalog().then(()=>{ if(session?.matchId===safeMatch) hidePicker(); });
   const shell=byId('mp-social-shell'); if(shell) shell.classList.remove('hidden');
   const input=byId('mp-chat-input'); if(input) input.placeholder=gameText('multiplayer.social.placeholder',{rival:session.rivalName});
   stopListener=listenToMatchCommunication(safeMatch,onSnapshot,onListenerError);

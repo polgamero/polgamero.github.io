@@ -12,7 +12,7 @@ const texts = fs.readFileSync(new URL('../js/gameTexts.js', import.meta.url), 'u
 const creatures = JSON.parse(fs.readFileSync(new URL('../assets/data/criaturas.json', import.meta.url), 'utf8'));
 
 assert.equal(ENGINE_VERSION, '23.21.3');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.83');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.85');
 
 // RCA real turno 26: tras cerrar un efecto interactivo, el driver COMPLETO del bot debe
 // reactivarse. checkRivalCounterOrResponse() solo no es suficiente porque no pasa prioridad.

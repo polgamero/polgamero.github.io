@@ -1,0 +1,21 @@
+ARGENTINIA 23.21.3 RC3 — ADMIN EMOTE CATALOG AUTHORITY — PRE-RELEASE
+
+Acumulativa sobre 23.21.3 RC2 HUD Safety.
+
+- Nueva solapa ADMIN > EMOTES.
+- Alta y edición de catálogo dinámico hasta hard ceiling 128.
+- Campos: ID, nombre, imagen, audio, fallback, animación, activo, gratis/premium y precio Puntos.
+- Nueva Function Admin-only economyAdminSetEmoteCatalog.
+- Callables totales: 40 (39 economy* + multiplayerSendCommunication).
+- Catálogo autoritativo persistente: gameConfig/emotes.
+- economyPurchaseEmote resuelve elegibilidad/precio server-side dentro de transacción.
+- multiplayerSendCommunication resuelve activo/premium/ownership server-side dentro de transacción.
+- Firestore Rules promovidas a 23.13.85: gameConfig/emotes read público, browser write DENY incluso Admin.
+- Ownership histórico de premium se conserva aunque el item se retire/desactive temporalmente.
+- Soporte de assets custom: imágenes WebP/GIF/PNG y audio OPUS/MP3/WAV locales.
+- Default compatible: 12 emotes iniciales si todavía no existe catálogo publicado.
+
+Pool 880 y protocolo multiplayer mp-23.19.2 sin cambios.
+Economy protocol econ-23.19.5.6 / schema 10 sin cambios.
+
+Estado: PRE-RELEASE hasta gates reales y smoke productivo.

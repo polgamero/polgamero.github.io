@@ -1,0 +1,28 @@
+ARGENTINIA 23.21.3 RC2 — HUD SAFETY SMOKE
+
+DESKTOP
+[ ] Both player badges are visibly shorter than RC1.
+[ ] "20 HP" is on the same line as the life bar for rival and local player.
+[ ] Bitácora grows/shrinks to use remaining vertical space.
+[ ] Chat input + emote/mute/send remain visible.
+[ ] PASAR PRIORIDAD is fully visible and clickable.
+[ ] ABANDONAR PARTIDA is fully visible and clickable.
+[ ] Neither action is behind/under the local player badge at normal desktop heights.
+[ ] Resize browser vertically: log body shrinks first; action buttons remain accessible.
+[ ] Open emote picker: picker is usable and does not displace actions.
+[ ] Trigger payment controls: actions remain accessible.
+
+GEOMETRY REGRESSION
+[ ] Attack a player directly: red combat arrow ends on the correct player badge.
+[ ] Block/trample to player: arrow endpoint remains correct.
+[ ] Player damage animation/number lands on the correct badge.
+[ ] HP animation updates inline text + bar correctly.
+[ ] Emote burst remains anchored to the correct player badge.
+
+MOBILE
+[ ] Existing collapsible Bitácora behavior unchanged.
+[ ] HP line remains compact and readable.
+[ ] Priority and abandon controls remain touchable.
+
+BACKEND
+No Rules/Functions redeploy required.

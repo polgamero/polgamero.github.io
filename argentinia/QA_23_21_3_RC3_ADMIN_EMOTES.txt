@@ -1,0 +1,32 @@
+ARGENTINIA 23.21.3 RC3 — QA ADMIN EMOTES
+
+STATIC / UNIT
+[PASS] 116/116 fast contracts de código (test de assets NPC externo excluido por asset externalization).
+[PASS] Functions unit 9/9.
+[PASS] 40 callables totales; 39 economy* + multiplayerSendCommunication.
+[PASS] JS/MJS de archivos modificados: sintaxis Node OK.
+
+SECURITY CONTRACT
+[ ] Gate03 Rules 23.13.85: browser normal no escribe gameConfig/emotes.
+[ ] Gate03 Rules 23.13.85: Admin browser tampoco escribe gameConfig/emotes.
+[ ] Gate03: gameConfig/emotes sigue siendo legible para render de catálogo.
+[ ] Gate05: usuario no-Admin recibe ADMIN_REQUIRED en economyAdminSetEmoteCatalog.
+[ ] Gate05: Admin publica catálogo válido y la persistencia queda en gameConfig/emotes.
+[ ] Gate05: compra usa precio actual del catálogo server-side, no precio enviado por cliente.
+[ ] Gate05: emote gratis no necesita ownership premium.
+[ ] Gate05: emote premium sí exige ownership al enviarlo.
+[ ] Gate07: Mercado de Pases no regresa bajo Rules85/Functions40.
+
+ADMIN UX
+[ ] Abrir ADMIN > EMOTES y cargar catálogo actual.
+[ ] Agregar emote_013 y guardarlo.
+[ ] Recargar: emote_013 persiste.
+[ ] Cambiar Premium ON/OFF y precio; Tienda refleja el cambio tras refresh.
+[ ] Marcar inactivo: desaparece de superficies de uso y backend rechaza su uso.
+[ ] Imagen inexistente cae al fallback Unicode.
+[ ] Imagen WebP/GIF/PNG local se renderiza correctamente.
+[ ] Audio OPUS/MP3/WAV local respeta SFX enabled/volume.
+[ ] Ownership previamente comprado sobrevive a desactivar/eliminar/reagregar el mismo ID.
+
+RELEASE GATE
+No marcar RELEASED hasta Gate03 + Gate05 + Gate07 GREEN, deploy Rules85, deploy Functions40, GitHub GREEN y smoke productivo.

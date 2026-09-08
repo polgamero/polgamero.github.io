@@ -1,0 +1,52 @@
+ARGENTINIA 23.21.3 RC3 — ADMIN EMOTE CATALOG AUTHORITY
+
+OBJETIVO
+La solapa EMOTES del Panel de Administración gobierna el catálogo real consumido por Tienda y Multiplayer. El catálogo ya no está limitado a los 12 slots iniciales ni confía en premium/precio provenientes del navegador del comprador.
+
+AUTORIDAD
+- Documento canónico: gameConfig/emotes.
+- Único escritor permitido: Cloud Function callable economyAdminSetEmoteCatalog (Admin-only).
+- Firestore Rules 23.13.85: gameConfig/emotes es read-only para browsers; incluso un navegador autenticado como Admin recibe DENY al intentar escribir directo.
+- economyPurchaseEmote lee gameConfig/emotes dentro de su transacción antes de decidir elegibilidad y precio.
+- multiplayerSendCommunication lee gameConfig/emotes dentro de su transacción antes de aceptar un emote.
+- El cliente nunca puede imponer premium, precio, activo ni ownership.
+
+SOLAPA ADMIN > EMOTES
+Cada fila permite editar:
+- ID estable y único (ej. emote_013)
+- Nombre
+- Imagen
+- Audio
+- Fallback Unicode
+- Animación: none / pop / bounce / shake / float / pulse
+- Activo
+- Premium
+- Precio en Puntos
+
+El botón AGREGAR EMOTE crea el siguiente ID emote_NNN disponible. Hard ceiling server-side: 128 registros.
+
+REGLAS DE CATÁLOGO
+- IDs: 3..64 caracteres seguros [A-Za-z0-9_-].
+- Imagen/audio: nombre de asset local seguro; no se aceptan URLs ni traversal.
+- Gratis => precio autoritativo 0.
+- Premium => precio entero 1..100000 Puntos.
+- Inactivo => no aparece para uso/compra y el backend rechaza su envío/compra.
+- Quitar o desactivar un emote NO borra ownership histórico del perfil; si el mismo ID vuelve a activarse, la compra previa sigue reconocida.
+
+ASSETS
+Imágenes: argentinia/assets/images/emotes/
+Audio:    argentinia/assets/sounds/sfx/emotes/
+La imagen acepta basename (ej. emote_013 => prueba WebP/GIF/PNG) o nombre con extensión.
+El audio acepta basename (=> OPUS/MP3/WAV) o nombre con extensión.
+Los assets pesados siguen siendo administrados por el owner y no se eliminan al aplicar source acumulativo.
+
+BOOTSTRAP
+Si gameConfig/emotes todavía no existe, Functions y cliente usan el catálogo bundled de 12 emotes (6 gratis + 6 premium) para compatibilidad. El primer GUARDAR desde Admin publica el catálogo autoritativo persistente.
+
+FUNCTIONS
+23.21.3 RC2: 39 callables totales.
+23.21.3 RC3: 40 callables totales.
+Nueva: economyAdminSetEmoteCatalog.
+
+ESTADO
+RC3 PRE-RELEASE. Requiere Gate03 + Gate05 + Gate07 con Rules 23.13.85/Functions 40 antes de producción.

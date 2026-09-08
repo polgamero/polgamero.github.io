@@ -242,6 +242,7 @@ export const fetchCurrentClassifieds = asyncProxy('fetchCurrentClassifieds');
 export const purchaseClassifiedCard = asyncProxy('purchaseClassifiedCard');
 export const purchasePrebuiltDeck = asyncProxy('purchasePrebuiltDeck');
 export const purchaseEmote = asyncProxy('purchaseEmote');
+export const adminSetEmoteCatalog = asyncProxy('adminSetEmoteCatalog');
 export const sendMultiplayerCommunication = asyncProxy('sendMultiplayerCommunication');
 export const adminAdvanceDailyRewardDebugDay = asyncProxy('adminAdvanceDailyRewardDebugDay');
 export const adminResetDailyRewardDebug = asyncProxy('adminResetDailyRewardDebug');

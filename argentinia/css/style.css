@@ -2538,3 +2538,126 @@ button.mana-pool-chip:disabled { opacity: 1; }
 .store-emote-tier { min-height:18px; color:#aebfb3; font-size:10px; text-transform:uppercase; letter-spacing:.06em; }
 .store-emote-card.premium .store-emote-tier { color:#e4c96c; }
 .store-emote-card .store-error-msg { min-height:15px; margin-top:0; }
+
+
+/* ==========================================================================\n   23.21.3 RC2 — DESKTOP HUD VERTICAL SAFETY + COMPACT PLAYER BADGES\n   Chat/emotes added useful controls to the Bitácora. The desktop sidebar must\n   therefore allocate the remaining viewport height to the log instead of\n   allowing fixed-height log chrome to push PASAR PRIORIDAD / ABANDONAR under\n   the local player badge. Player-target geometry remains DOM-anchored to the\n   same .player-card elements; no combat/animation coordinate contract changes.\n   ========================================================================== */
+.hp-line {
+  width:100%;
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:.32rem;
+}
+.hp-line .hp-bar-container {
+  flex:1 1 auto;
+  width:auto;
+  max-width:none;
+}
+.hp-line .hp-text {
+  flex:0 0 auto;
+  margin-left:0;
+  white-space:nowrap;
+  line-height:1;
+}
+
+@media (min-width: 769px) {
+  #sidebar-hud {
+    height:100dvh;
+    min-height:0;
+    padding:.65rem;
+    gap:.5rem;
+  }
+
+  .player-card {
+    padding:.36rem .42rem;
+    gap:.4rem;
+    border-radius:8px;
+  }
+  .avatar {
+    width:2.05rem;
+    height:2.05rem;
+    font-size:1.35rem;
+    border-width:1.5px;
+  }
+  .player-info h3 {
+    margin:0 0 2px;
+    font-size:.76rem;
+    line-height:1.08;
+  }
+  .hp-line { gap:.28rem; }
+  .hp-bar-container { height:8px; border-radius:4px; }
+  .hp-text { font-size:.62rem; }
+
+  /* Six explicit rows: only the Bitácora body is elastic. Every interactive
+     control stays inside the middle viewport row and can never slide behind
+     the lower player badge simply because chat/emote chrome was added. */
+  .log-section {
+    flex:1 1 0;
+    min-height:0;
+    display:grid;
+    grid-template-rows:minmax(0,1fr) auto auto auto auto auto;
+    gap:.25rem;
+    padding:.42rem;
+    overflow:hidden;
+  }
+  .log-box {
+    min-height:0;
+    flex:none;
+    padding:.4rem .5rem;
+    gap:.24rem;
+    font-size:.69rem;
+    line-height:1.3;
+  }
+  .mp-social-shell { gap:.18rem; }
+  .mp-social-compose {
+    grid-template-columns:minmax(0,1fr) 30px 30px auto;
+    gap:.22rem;
+  }
+  .mp-chat-input,
+  .mp-social-icon-btn,
+  .mp-chat-send { height:30px; }
+  .mp-social-icon-btn { width:30px; }
+  .mp-chat-send { padding:0 .52rem; }
+
+  .turn-priority-hud { padding:.32rem .4rem .28rem; }
+  .priority-status-row { margin-top:.18rem; gap:.3rem; }
+  .priority-context-label { margin-top:.12rem; font-size:.61rem; line-height:1.18; }
+  .priority-clock { margin-top:.22rem; }
+
+  .phase-indicator {
+    min-height:16px;
+    gap:6px;
+    padding:0;
+  }
+  .phase-dot.phase-dot-major {
+    width:18px;
+    height:18px;
+    min-width:18px;
+    min-height:18px;
+    flex-basis:18px;
+    font-size:9px;
+  }
+  .phase-dot.phase-dot-major.active {
+    width:20px;
+    height:20px;
+    min-width:20px;
+    min-height:20px;
+    flex-basis:20px;
+    font-size:10px;
+  }
+  .phase-dot.phase-dot-combat > span { font-size:10px; }
+
+  .turn-controls {
+    position:relative;
+    z-index:20;
+    gap:.24rem;
+  }
+  .btn-turn {
+    padding:.42rem .35rem;
+    font-size:.74rem;
+  }
+  .btn-abandon {
+    padding:.26rem .35rem;
+    font-size:.62rem;
+  }
+}

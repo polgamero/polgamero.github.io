@@ -22,10 +22,10 @@ const workflow=read('../.github/workflows/pages.yml');
 
 assert.equal(ENGINE_VERSION,'23.21.3');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.83');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.85');
 assert.equal(manifest.engineVersion,'23.21.3');
 assert.equal(manifest.engineProtocolVersion,'mp-23.19.2');
-assert.equal(manifest.firestoreRulesVersion,'23.13.83');
+assert.equal(manifest.firestoreRulesVersion,'23.13.85');
 assert.equal(manifest.pool,880);
 assert.ok(ENGINE_BASELINE.includes('23.19.4.6 Rules Integrity + Combat UX + Bot Tactical Hotfix'));
 

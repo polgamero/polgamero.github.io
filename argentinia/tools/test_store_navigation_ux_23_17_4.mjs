@@ -8,7 +8,7 @@ const mobile = fs.readFileSync(new URL('../css/mobile.css', import.meta.url), 'u
 const manifest = JSON.parse(fs.readFileSync(new URL('../build-manifest.json', import.meta.url), 'utf8'));
 
 assert.equal(ENGINE_VERSION, '23.21.3');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.83');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.85');
 assert.equal(manifest.engineVersion, ENGINE_VERSION);
 assert.equal(manifest.firestoreRulesVersion, FIRESTORE_RULES_VERSION);
 assert.equal(manifest.pool, 880);

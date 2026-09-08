@@ -138,6 +138,11 @@ for (const contract of [
 assert.equal(emotes.TRUSTED_EMOTE_CATALOG.length,12);
 assert.equal(emotes.TRUSTED_EMOTE_CATALOG.filter(e=>!e.premium).length,6);
 assert.equal(emotes.TRUSTED_EMOTE_CATALOG.filter(e=>e.premium).length,6);
+assert.equal(emotes.MAX_EMOTES,128);
+const adminCatalog=emotes.normalizeEmoteCatalogItems([{id:'emote_013',label:'Nuevo',image:'emote_013',audio:'nuevo',fallback:'🙂',animation:'pulse',active:true,premium:true,pricePoints:777}]);
+assert.equal(adminCatalog[0].pricePoints,777);
+assert.equal(emotes.userCanUseEmote({cosmetics:{emotes:['emote_013']}},'emote_013',adminCatalog),true);
+assert.equal(emotes.userCanUseEmote({},'emote_013',adminCatalog),false);
 assert.equal(emotes.userCanUseEmote({},'emote_001'),true);
 assert.equal(emotes.userCanUseEmote({},'emote_007'),false);
 assert.equal(emotes.userCanUseEmote({cosmetics:{emotes:['emote_007']}},'emote_007'),true);

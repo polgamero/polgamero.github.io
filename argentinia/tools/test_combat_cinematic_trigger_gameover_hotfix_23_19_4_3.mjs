@@ -20,7 +20,7 @@ const manifest=JSON.parse(read('build-manifest.json'));
 
 assert.equal(ENGINE_VERSION,'23.21.3');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.83');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.85');
 assert.equal(manifest.engineVersion,'23.21.3');
 assert.equal(manifest.pool,880);
 

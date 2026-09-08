@@ -40,6 +40,7 @@ import { normalizeAdminGrantRequest, adminGrantTx, advanceBulkGrantJob, readBulk
 import { getTournamentState, startTournamentTx, beginTournamentMatchTx, settleTournamentMatchTx, forfeitTournamentTx, abandonTournamentTx } from './economy/tournament.js';
 import { getTradeMarketView, createTradeListingTx, cancelTradeListingTx, createTradeOfferTx, cancelTradeOfferTx, rejectTradeOfferTx, acceptTradeOfferTx } from './economy/trade.js';
 import { sendMultiplayerCommunication } from './multiplayer/communication.js';
+import { normalizeAdminEmoteCatalog, setEmoteCatalogAdminTx } from './economy/emotes.js';
 
 function requestData(request) {
   const data = request?.data;
@@ -108,7 +109,7 @@ export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
         matchSettlementAuthority: 'server', pvpAntiFarmAuthority: 'server',
         registrationAdmissionAuthority: 'server', adminEconomyAuthority: 'server',
         economicStatisticsAuthority: 'server', immutableAuditAuthority: 'server', tournamentAuthority: 'server', tradeMarketAuthority: 'server', emoteStoreAuthority:'server', multiplayerSocialAuthority:'server',
-        browserEconomyWrites: 'denied_by_rules_23.13.83', authorityCutover: 'server_required'
+        browserEconomyWrites: 'denied_by_rules_23.13.85', authorityCutover: 'server_required'
       },
       trustedPoolFingerprint: TRUSTED_CARD_POOL_FINGERPRINT
     };
@@ -350,6 +351,25 @@ export const economyPurchasePrebuiltDeck = onCall(FUNCTION_RUNTIME_OPTIONS, asyn
     logFailure('economyPurchasePrebuiltDeck', auth, error);
     throw error;
   }
+});
+
+export const economyAdminSetEmoteCatalog = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'admin-emote-catalog', { limit: 20, windowMs: 60000 });
+    rejectForbidden(data, ['uid','catalogVersion','updatedAt','updatedByUid']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion','items']);
+    if (!isAdminAuth(auth)) throw economyError('ADMIN_REQUIRED');
+    const operationId = String(data.operationId || '');
+    const items = normalizeAdminEmoteCatalog(data.items);
+    const outcome = await runIdempotentOperation(db, {
+      uid:auth.uid, operationId, type:'admin.set_emote_catalog', request:{ items },
+      execute: async tx => setEmoteCatalogAdminTx({ db, tx, adminUid:auth.uid, items, operationId })
+    });
+    logger.info('Admin emote catalog updated', { uid:auth.uid, operationId, count:items.length, replayed:outcome.replayed, appCheckPresent:auth.appCheckPresent });
+    return { ok:true, ...outcome, catalog:outcome.result };
+  } catch(error) { logFailure('economyAdminSetEmoteCatalog', auth, error); throw error; }
 });
 
 export const economyPurchaseEmote = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {

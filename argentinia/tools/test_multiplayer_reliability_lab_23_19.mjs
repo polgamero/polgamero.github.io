@@ -30,7 +30,7 @@ const utils = read('js/utils.js');
 assert.equal(manifest.engineVersion, '23.21.3');
 assert.equal(manifest.engineProtocolVersion, 'mp-23.19.2');
 assert.equal(manifest.protocolVersion, 'mp-23.19.2');
-assert.equal(manifest.firestoreRulesVersion, '23.13.83');
+assert.equal(manifest.firestoreRulesVersion, '23.13.85');
 assert.equal(manifest.pool, 880);
 assert.match(version, /ENGINE_VERSION = '(?:23\.19\.5(?:\.[123456])?|23\.21\.3)'/);
 assert.match(version, /ENGINE_PROTOCOL_VERSION = 'mp-23\.19\.2'/);

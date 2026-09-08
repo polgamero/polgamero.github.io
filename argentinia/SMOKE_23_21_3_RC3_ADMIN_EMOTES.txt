@@ -1,0 +1,32 @@
+ARGENTINIA 23.21.3 RC3 — PRODUCTIVE SMOKE ADMIN EMOTES
+
+1. ADMIN
+[ ] ADMIN > EMOTES abre sin congelar ni afectar otras solapas.
+[ ] AGREGAR EMOTE crea un ID nuevo; completar nombre/imagen/audio/fallback/animación.
+[ ] Guardar como GRATIS => precio 0.
+[ ] Guardar como PREMIUM => precio configurado.
+[ ] F5/reingreso conserva catálogo.
+
+2. TIENDA
+[ ] EMOJIS ya no está limitado visualmente a 12; muestra todos los activos del catálogo.
+[ ] Gratis aparece incluido/disponible.
+[ ] Premium muestra exactamente el precio Admin vigente.
+[ ] Comprar premium descuenta una sola vez ese precio y persiste ownership.
+[ ] MOVIMIENTOS/Economy Audit registra la compra.
+
+3. MULTIPLAYER
+[ ] Emote gratis nuevo puede enviarse.
+[ ] Premium nuevo no comprado es rechazado server-side.
+[ ] Tras comprarlo puede enviarse y aparece en Bitácora + burst.
+[ ] Desactivar desde Admin impide compra/envío inmediatamente tras refresh/server read.
+[ ] Chat/emote no cambia turn/priority/Stack/combat/revision.
+
+4. FIREWALL
+[ ] Intento browser de escribir gameConfig/emotes falla incluso con cuenta Admin.
+[ ] Sólo economyAdminSetEmoteCatalog logra persistir el cambio.
+
+5. REGRESIONES
+[ ] Torneo normal.
+[ ] Mercado normal.
+[ ] ELO/Ranking normal.
+[ ] Packs/decks/crafting normal.

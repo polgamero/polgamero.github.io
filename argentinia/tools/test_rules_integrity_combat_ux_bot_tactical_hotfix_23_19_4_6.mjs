@@ -24,10 +24,10 @@ const workflow=read('../.github/workflows/pages.yml');
 
 assert.ok(['23.19.4.6','23.21.3'].includes(ENGINE_VERSION));
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.83');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.85');
 assert.equal(manifest.engineVersion,ENGINE_VERSION);
 assert.equal(manifest.engineProtocolVersion,'mp-23.19.2');
-assert.equal(manifest.firestoreRulesVersion,'23.13.83');
+assert.equal(manifest.firestoreRulesVersion,'23.13.85');
 assert.equal(manifest.pool,880);
 assert.ok(ENGINE_BASELINE.includes('23.19.4.5 Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets'));
 

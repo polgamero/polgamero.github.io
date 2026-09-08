@@ -34,6 +34,9 @@ const social = read('js/multiplayerSocial.js');
 const emoteCatalog = read('js/emoteCatalog.js');
 const html = read('index.html');
 const css = read('css/style.css');
+const mobileCss = read('css/mobile.css');
+const combatMap = read('js/combatMap.js');
+const animationDirector = read('js/animationDirector.js');
 const economyClient = read('js/economyClient.js');
 const functionsIndex = fs.readFileSync(path.join(root, '../functions/src/index.js'), 'utf8');
 const serverSocial = fs.readFileSync(path.join(root, '../functions/src/multiplayer/communication.js'), 'utf8');
@@ -41,11 +44,11 @@ const trustedEmotes = fs.readFileSync(path.join(root, '../functions/src/trusted/
 
 assert.equal(ENGINE_VERSION, '23.21.3');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.83');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.85');
 assert.equal(MULTIPLAYER_RELIABILITY_VERSION, '23.19.1');
 assert.equal(manifest.engineVersion, '23.21.3');
 assert.equal(manifest.engineProtocolVersion, 'mp-23.19.2');
-assert.equal(manifest.firestoreRulesVersion, '23.13.83');
+assert.equal(manifest.firestoreRulesVersion, '23.13.85');
 assert.equal(manifest.pool, 880);
 
 // Aclaración central de 23.19.1: el self-join host->guest YA estaba protegido y debe seguirlo.
@@ -82,17 +85,37 @@ assert.ok(social.includes("mp-social-rival"));
 assert.ok(social.includes("const MAX_CHAT = 220"));
 assert.ok(social.includes("animationsEffectivelyEnabled"));
 assert.ok(social.includes("MUTE_KEY"));
-assert.ok(emoteCatalog.includes(".webp`"));
-assert.ok(emoteCatalog.includes(".gif`"));
-assert.ok(emoteCatalog.includes(".png`"));
+assert.ok(emoteCatalog.includes("['webp','gif','png']"));
+assert.ok(emoteCatalog.includes('applyEmoteCatalogSnapshot'));
+assert.ok(social.includes('fetchStorefrontAuthority'));
 assert.ok(emoteCatalog.includes("pricePoints:500"));
 assert.ok(css.includes('.mp-social-own'));
 assert.ok(css.includes('.mp-social-rival'));
+// 23.21.3 RC2 — desktop HUD safety after chat/emotes. HP shares one line and
+// only the Bitácora body is allowed to shrink; action buttons stay inside the
+// middle viewport row instead of overflowing under the local player badge.
+assert.equal((html.match(/class="hp-line"/g)||[]).length,2);
+assert.ok(css.includes('grid-template-rows:minmax(0,1fr) auto auto auto auto auto'));
+assert.ok(css.includes(`.log-section {\n    flex:1 1 0;`));
+assert.ok(css.includes('overflow:hidden;'));
+assert.ok(css.includes('.hp-line .hp-text'));
+assert.ok(css.includes(`.turn-controls {\n    position:relative;\n    z-index:20;`));
+assert.ok(mobileCss.includes('html.argentinia-mobile .hp-line'));
+// Player-target visuals remain rect-based. Badge compaction must not introduce
+// hardcoded endpoint offsets for combat arrows or damage animations.
+assert.ok(combatMap.includes("document.querySelector('.player-card.local-card')"));
+assert.ok(combatMap.includes('const sr = sourceEl.getBoundingClientRect(), tr = targetEl.getBoundingClientRect();'));
+assert.ok(animationDirector.includes("document.querySelector(isLocal ? '.player-card.local-card' : '.player-card.rival-card')"));
+assert.ok(animationDirector.includes('const rect = rectSnapshot(el);'));
 assert.ok(economyClient.includes("call('multiplayerSendCommunication'"));
 assert.ok(economyClient.includes("call('economyPurchaseEmote'"));
 assert.ok(functionsIndex.includes('export const multiplayerSendCommunication = onCall'));
 assert.ok(functionsIndex.includes('export const economyPurchaseEmote = onCall'));
-assert.equal([...functionsIndex.matchAll(/export const \w+\s*=\s*onCall\(/g)].length, 39);
+assert.ok(functionsIndex.includes('export const economyAdminSetEmoteCatalog = onCall'));
+assert.ok(trustedEmotes.includes("EMOTE_CATALOG_PATH = 'gameConfig/emotes'"));
+assert.ok(trustedEmotes.includes('MAX_EMOTES = 128'));
+assert.ok(serverSocial.includes('loadTrustedEmoteCatalog(db, tx)'));
+assert.equal([...functionsIndex.matchAll(/export const \w+\s*=\s*onCall\(/g)].length, 40);
 for (const contract of [
   'CHAT_MAX_CHARS = 220','COMMUNICATION_EVENT_CAP = 40','CHAT_MIN_INTERVAL_MS = 1500',
   'CHAT_BURST_MAX = 5','EMOTE_MIN_INTERVAL_MS = 4000','EMOTE_BURST_MAX = 3',
@@ -102,7 +125,7 @@ assert.ok(serverSocial.includes("db.collection('matchCommunications').doc(id)"))
 assert.ok(serverSocial.includes("match.status !== 'active'"));
 assert.ok(serverSocial.includes("match.hostReady !== true || match.guestReady !== true"));
 assert.ok(serverSocial.includes("MULTIPLAYER_EMOTE_NOT_OWNED"));
-assert.ok(trustedEmotes.includes("TRUSTED_EMOTE_CATALOG_VERSION = '23.21.3'"));
+assert.ok(trustedEmotes.includes("TRUSTED_EMOTE_CATALOG_VERSION = '23.21.3-rc3'"));
 assert.equal((trustedEmotes.match(/id:'emote_/g)||[]).length,12);
 assert.ok(!main.includes('matchCommunications'));
 assert.ok(!main.includes('MULTIPLAYER_CHAT_RATE_LIMIT'));
@@ -160,7 +183,7 @@ assert.equal(classifyReconnectSafety({multiplayerResolutionMarker:{authorityRole
 const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || '';
 if (rulesPath) {
   const rules = fs.readFileSync(rulesPath, 'utf8');
-  assert.ok(rules.includes('23.13.83'));
+  assert.ok(rules.includes('23.13.85'));
   assert.ok(rules.includes('function validMatchIdentityTransition()'));
   assert.ok(rules.includes('function validMatchSessionTransition()'));
   assert.ok(rules.includes("request.auth.uid != resource.data.hostUid"));
@@ -172,7 +195,7 @@ if (rulesPath) {
   assert.ok(rules.includes("d.get('ownerSessionId', '') == m.get('guestSessionId', '')"));
   assert.ok(rules.includes('allow create: if isAuthenticated() && validPrivateSelectionCreate(matchId, requestId);'));
   assert.ok(rules.includes('allow update: if false;'));
-  assert.ok(rules.includes("'23.13.83'"));
+  assert.ok(rules.includes("'23.13.85'"));
 }
 
 const lab = path.join(root, 'tools/run_multiplayer_hardening_lab_23_19_1.mjs');

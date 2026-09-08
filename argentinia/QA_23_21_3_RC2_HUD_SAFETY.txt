@@ -1,0 +1,32 @@
+ARGENTINIA 23.21.3 RC2 — HUD SAFETY / COMPACT BADGES
+
+Scope: frontend-only. Backend, Rules and 39 Functions unchanged.
+
+Implemented:
+- HP text now shares one horizontal line with the life bar in both player badges.
+- Desktop player badges compacted vertically (padding/gap/avatar/name/bar).
+- Desktop sidebar uses remaining viewport height for the Bitácora.
+- .log-section is a six-row grid; only .log-box is elastic/scrollable.
+- PASAR PRIORIDAD / ABANDONAR remain in the fixed action row and cannot be displaced beneath the local player badge by chat/emote chrome.
+- Social compose, priority HUD and phase pips compacted by a few pixels on desktop.
+- Mobile keeps its existing drawer behavior; HP line remains compact.
+- Combat arrows still resolve .player-card and calculate getBoundingClientRect() at render time.
+- Player damage animations still capture .player-card rects at animation time.
+
+QA:
+- Game Text: 1504 definitions / 1224 uses PASS
+- Regression archive: 62/62 byte-identical PASS
+- Canonical fast contracts: 115/115 PASS
+- JS/MJS syntax: 233/233 PASS
+- Functions unit: 9/9 PASS
+- Stability Lab PASS
+- Headless 23.18.1 6/6 PASS
+- Coverage structurally known 97.95% PASS
+- Headless 23.18.2 6/6 PASS
+- Multiplayer Reliability PASS
+- Multiplayer Hardening PASS
+- Deck Intelligence Matrix PASS
+
+Backend deploy: NOT REQUIRED for this RC2.
+Rules deploy: NOT REQUIRED for this RC2.
+Emulator gates: no rerun required because runtime backend/Rules are byte-identical; owner already confirmed Gate03/05/07 green for 23.21.3.

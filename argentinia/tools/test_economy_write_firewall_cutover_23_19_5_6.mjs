@@ -6,7 +6,7 @@ const version = await import(pathToFileURL(new URL('../js/version.js', import.me
 assert.equal(version.ENGINE_VERSION, '23.21.3');
 assert.equal(version.ECONOMY_PROTOCOL_VERSION, 'econ-23.19.5.6');
 assert.equal(version.ECONOMY_SCHEMA_VERSION, 10);
-assert.equal(version.FIRESTORE_RULES_VERSION, '23.13.83');
+assert.equal(version.FIRESTORE_RULES_VERSION, '23.13.85');
 assert.equal(version.ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
 
 const constants = read(new URL('../../functions/src/shared/constants.js', import.meta.url));
@@ -24,7 +24,7 @@ assert.match(constants, /concurrency: 10/);
 assert.match(constants, /enforceAppCheck: false/);
 assert.match(config, /mode: ECONOMY_MODES\.SERVER_REQUIRED/);
 assert.match(config, /minimumEconomyClientVersion: ECONOMY_PROTOCOL_VERSION/);
-assert.match(index, /browserEconomyWrites: 'denied_by_rules_23\.13\.83'/);
+assert.match(index, /browserEconomyWrites: 'denied_by_rules_23\.13\.85'/);
 assert.match(index, /authorityCutover: 'server_required'/);
 assert.match(impl, /mode: 'server_required'/);
 assert.match(impl, /server_required fail-closed/);
@@ -55,5 +55,5 @@ assert.match(ui, /operationId/);
 assert.equal(manifest.engineVersion, '23.21.3');
 assert.equal(manifest.economyProtocolVersion, 'econ-23.19.5.6');
 assert.equal(manifest.economySchemaVersion, 10);
-assert.equal(manifest.firestoreRulesVersion, '23.13.83');
+assert.equal(manifest.firestoreRulesVersion, '23.13.85');
 console.log('ECONOMY_WRITE_FIREWALL_CUTOVER_23_19_5_6_OK mode=SERVER_REQUIRED rules=23.13.80 browserEconomyWrites=DENY stats=SERVER receipts=SERVER audit=IMMUTABLE+ADMIN_VIEWER costSafety=0/1/10 appCheck=OBSERVE_ONLY');
