@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
@@ -6659,27 +6659,47 @@ export function showAdminPanel(onBack) {
 
       <div class="admin-tab-pane hidden" data-admin-pane="economyAudit">
         <div class="admin-section">
-          <div class="admin-debug-toolbar">
-            <div>
-              <div class="admin-section-title">${gameTextHtml('admin.audit.title')}</div>
-              <div class="admin-debug-summary" id="admin-economy-audit-summary">${gameTextHtml('admin.audit.initial')}</div>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-              <button class="admin-save-btn" id="admin-economy-audit-export" disabled>${gameTextHtml('admin.audit.export')}</button>
-              <button class="admin-save-btn" id="admin-economy-audit-refresh">${gameTextHtml('admin.audit.refresh')}</button>
-            </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+            <button class="admin-save-btn active" data-economy-subtab="audit">${gameTextHtml('admin.movements.tab.audit')}</button>
+            <button class="admin-save-btn" data-economy-subtab="movements">${gameTextHtml('admin.movements.tab.movements')}</button>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 12px;">
-            <select class="admin-field-input" id="admin-economy-audit-kind" style="max-width:220px;text-align:left;">
-              <option value="all">${gameTextHtml('admin.audit.filterAll')}</option>
-              <option value="economyEvent">${gameTextHtml('admin.audit.filterEconomy')}</option>
-              <option value="adminAction">${gameTextHtml('admin.audit.filterAdmin')}</option>
-            </select>
-            <input class="admin-field-input" id="admin-economy-audit-search" type="search" placeholder="${gameTextHtml('admin.audit.searchPlaceholder')}" style="min-width:260px;flex:1;text-align:left;">
+          <div data-economy-subpane="audit">
+            <div class="admin-debug-toolbar">
+              <div>
+                <div class="admin-section-title">${gameTextHtml('admin.audit.title')}</div>
+                <div class="admin-debug-summary" id="admin-economy-audit-summary">${gameTextHtml('admin.audit.initial')}</div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                <button class="admin-save-btn" id="admin-economy-audit-export" disabled>${gameTextHtml('admin.audit.export')}</button>
+                <button class="admin-save-btn" id="admin-economy-audit-refresh">${gameTextHtml('admin.audit.refresh')}</button>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 12px;">
+              <select class="admin-field-input" id="admin-economy-audit-kind" style="max-width:220px;text-align:left;">
+                <option value="all">${gameTextHtml('admin.audit.filterAll')}</option>
+                <option value="economyEvent">${gameTextHtml('admin.audit.filterEconomy')}</option>
+                <option value="adminAction">${gameTextHtml('admin.audit.filterAdmin')}</option>
+              </select>
+              <input class="admin-field-input" id="admin-economy-audit-search" type="search" placeholder="${gameTextHtml('admin.audit.searchPlaceholder')}" style="min-width:260px;flex:1;text-align:left;">
+            </div>
+            <div id="admin-economy-audit-cards" class="admin-stats-grid"></div>
+            <div class="admin-debug-table-wrap" id="admin-economy-audit-table" style="margin-top:14px;"><div class="admin-debug-empty">${gameTextHtml('admin.audit.empty')}</div></div>
+            <div class="admin-debug-summary" style="margin-top:10px;">${gameTextHtml('admin.audit.note')}</div>
           </div>
-          <div id="admin-economy-audit-cards" class="admin-stats-grid"></div>
-          <div class="admin-debug-table-wrap" id="admin-economy-audit-table" style="margin-top:14px;"><div class="admin-debug-empty">${gameTextHtml('admin.audit.empty')}</div></div>
-          <div class="admin-debug-summary" style="margin-top:10px;">${gameTextHtml('admin.audit.note')}</div>
+          <div data-economy-subpane="movements" class="hidden">
+            <div class="admin-debug-toolbar">
+              <div><div class="admin-section-title">${gameTextHtml('admin.movements.title')}</div><div class="admin-debug-summary" id="admin-movements-summary">${gameTextHtml('admin.movements.note')}</div></div>
+              <button class="admin-save-btn" id="admin-movements-load">${gameTextHtml('admin.movements.load')}</button>
+            </div>
+            <div style="display:grid;grid-template-columns:minmax(180px,1.3fr) minmax(145px,.7fr) minmax(145px,.7fr);gap:8px;margin:10px 0 12px;">
+              <label class="admin-field"><span>${gameTextHtml('admin.movements.user')}</span><select class="admin-field-input" id="admin-movements-user"></select></label>
+              <label class="admin-field"><span>${gameTextHtml('admin.movements.from')}</span><input class="admin-field-input" type="date" id="admin-movements-from"></label>
+              <label class="admin-field"><span>${gameTextHtml('admin.movements.to')}</span><input class="admin-field-input" type="date" id="admin-movements-to"></label>
+            </div>
+            <div id="admin-movements-cards" class="admin-stats-grid"></div>
+            <div class="admin-debug-table-wrap" id="admin-movements-table" style="margin-top:14px;"><div class="admin-debug-empty">${gameTextHtml('admin.movements.empty')}</div></div>
+            <div class="admin-debug-summary" style="margin-top:10px;">${gameTextHtml('admin.movements.note')}</div>
+          </div>
         </div>
       </div>
 
@@ -6787,7 +6807,7 @@ export function showAdminPanel(onBack) {
   let debugLoaded = false;
   let debugLoading = false;
   let debugSessions = [];
-  let debugRewardAudit = { playerGameReceipts: [], gameRewardReceipts: [] };
+  let debugRewardAudit = { playerGameReceipts: [], gameRewardReceipts: [], tournamentReceipts: [], pvpEloReceipts: [] };
   let imageAuditLoaded = false;
   let imageAuditLoading = false;
   let imageAuditShowAll = false;
@@ -7003,10 +7023,36 @@ export function showAdminPanel(onBack) {
   }
 
   function adminRewardMaps() {
+    const tournaments=[...(debugRewardAudit?.tournamentReceipts || [])];
     return {
       gameResults: new Map((debugRewardAudit?.playerGameReceipts || []).map(row => [String(row.id || ''), row])),
-      rewards: new Map((debugRewardAudit?.gameRewardReceipts || []).map(row => [String(row.id || ''), row]))
+      rewards: new Map((debugRewardAudit?.gameRewardReceipts || []).map(row => [String(row.id || ''), row])),
+      tournaments: new Map(tournaments.map(row => [String(row.id || ''), row])),
+      tournamentRows: tournaments
     };
+  }
+
+  function adminTournamentReceiptForSession(session, meta, maps) {
+    const tournamentId=String(session?.tournamentId || meta?.tournamentId || '').trim();
+    const matchId=String(session?.tournamentMatchId || session?.matchId || meta?.tournamentMatchId || meta?.matchId || '').trim();
+    if(tournamentId && matchId){
+      const exact=maps.tournaments.get(`${tournamentId}_${matchId}`);
+      if(exact) return exact;
+    }
+    // Sesiones anteriores a 23.21.2 no indexaban tournamentId/matchId. Para ellas hacemos
+    // un fallback acotado por UID y por cercanía temporal al fin de la partida.
+    const uid=String(session?.ownerUid || '').trim();
+    const ended=adminTelemetryTimestampMs(session?.finalizedAt || session?.updatedAt) || Date.parse(session?.endedAtClient || '') || 0;
+    if(!uid || !ended) return null;
+    let best=null,bestDist=Number.MAX_SAFE_INTEGER;
+    for(const row of maps.tournamentRows||[]){
+      if(String(row?.uid||'')!==uid) continue;
+      const at=adminTelemetryTimestampMs(row?.createdAt);
+      if(!at) continue;
+      const dist=Math.abs(at-ended);
+      if(dist<=5*60*1000 && dist<bestDist){best=row;bestDist=dist;}
+    }
+    return best;
   }
 
   function adminExpectedSoloBaseDelta(session, meta, outcome) {
@@ -7026,6 +7072,27 @@ export function showAdminPanel(onBack) {
   }
 
   function adminRewardCells(session, meta, localName, rivalName, maps) {
+    const modeRaw = String(session?.mode || meta?.mode || '').toLowerCase();
+    if(modeRaw === 'tournament'){
+      const receipt=adminTournamentReceiptForSession(session,meta,maps);
+      const displayStatus=telemetryAdminDisplayStatus(session);
+      if(receipt){
+        const won=receipt.won===true;
+        const resultHtml=`<span class="admin-debug-result ${won?'win':'loss'}" title="Receipt de Torneo server-authoritative">${won?'🏆':'💀'} ${escapeHtml(won?localName:rivalName)}</span>`;
+        const points=Math.max(0,Math.floor(Number(receipt.pointsGain)||0));
+        const packs=Math.max(0,Math.floor(Number(receipt.packsGain)||0));
+        const eligible=receipt.rewardEligible===true;
+        const rewardHtml=won && eligible
+          ? `<span class="admin-debug-reward ok" title="tournamentReceipt ${escapeHtml(receipt.id||'')}">✅ ${escapeHtml(gameText('admin.debug.tournamentReward',{points,packs}))}</span>`
+          : `<span class="admin-debug-reward ok" title="tournamentReceipt ${escapeHtml(receipt.id||'')}">✅ ${escapeHtml(eligible?gameText('admin.debug.tournamentSettledZero'):gameText('admin.debug.tournamentPractice'))}</span>`;
+        return {resultHtml,rewardHtml};
+      }
+      if(displayStatus.status==='interrupted') return {resultHtml:'<span class="admin-debug-reward unknown">—</span>',rewardHtml:'<span class="admin-debug-reward unknown">— Sin liquidación · sesión interrumpida</span>'};
+      return {
+        resultHtml:'<span class="admin-debug-reward unknown">—</span>',
+        rewardHtml:`<span class="admin-debug-reward missing">${escapeHtml(gameText('admin.debug.tournamentReceiptMissing'))}</span>`
+      };
+    }
     const identity = adminRewardReceiptIdForSession(session, meta);
     const gameResult = identity.key ? maps.gameResults.get(identity.key) : null;
     const reward = identity.key ? maps.rewards.get(identity.key) : null;
@@ -7073,7 +7140,6 @@ export function showAdminPanel(onBack) {
     }
 
     if (outcome.result === 'win' || outcome.result === 'loss') {
-      const modeRaw = String(session?.mode || meta?.mode || '').toLowerCase();
       const isMulti = modeRaw.startsWith('multi');
       const expected = isMulti
         ? Math.max(0, Math.floor(Number(outcome.result === 'win' ? POINTS.winVsHumano : POINTS.lossVsHumano) || 0))
@@ -7232,7 +7298,7 @@ Receipt: ${receiptId}
         fetchGameRewardAuditForAdmin()
       ]);
       debugSessions = sessions;
-      debugRewardAudit = rewardAudit || { playerGameReceipts: [], gameRewardReceipts: [] };
+      debugRewardAudit = rewardAudit || { playerGameReceipts: [], gameRewardReceipts: [], tournamentReceipts: [], pvpEloReceipts: [] };
       debugLoaded = true;
       renderTelemetrySessions(debugSessions);
     } catch (err) {
@@ -7326,6 +7392,77 @@ Receipt: ${receiptId}
   let economyAuditLoading = false;
   let economyAuditRows = [];
   let economyAuditUsernames = {};
+  let economySubtab = 'audit';
+  let movementUsersLoaded = false;
+  let movementUsers = [];
+  let movementLoading = false;
+  let movementData = null;
+
+  function activateEconomySubtab(key) {
+    economySubtab = key === 'movements' ? 'movements' : 'audit';
+    overlay.querySelectorAll('[data-economy-subtab]').forEach(btn=>btn.classList.toggle('active',btn.dataset.economySubtab===economySubtab));
+    overlay.querySelectorAll('[data-economy-subpane]').forEach(pane=>pane.classList.toggle('hidden',pane.dataset.economySubpane!==economySubtab));
+    if(economySubtab==='audit'&&!economyAuditLoaded) void reloadEconomyAudit();
+    if(economySubtab==='movements') void ensureMovementUsers();
+  }
+
+  async function ensureMovementUsers() {
+    if(movementUsersLoaded)return;
+    const select=overlay.querySelector('#admin-movements-user');
+    if(select)select.innerHTML=`<option value="">${escapeHtml(gameText('common.loading'))}</option>`;
+    try{
+      const rows=await fetchAllUserProfiles();
+      movementUsers=(Array.isArray(rows)?rows:[]).sort((a,b)=>String(a.username||a.displayName||'').localeCompare(String(b.username||b.displayName||''),'es-AR'));
+      if(select){
+        select.innerHTML=movementUsers.map(u=>`<option value="${escapeHtml(u.uid)}">${escapeHtml(u.username||u.displayName||u.uid)}</option>`).join('');
+        const potato=movementUsers.find(u=>String(u.username||'').toLocaleLowerCase('es-AR')==='potato');
+        if(potato)select.value=potato.uid;
+      }
+      const today=new Date(),from=new Date(today.getTime()-30*86400000);
+      const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const fromEl=overlay.querySelector('#admin-movements-from'),toEl=overlay.querySelector('#admin-movements-to');
+      if(fromEl&&!fromEl.value)fromEl.value=iso(from); if(toEl&&!toEl.value)toEl.value=iso(today);
+      movementUsersLoaded=true;
+    }catch(err){
+      if(select)select.innerHTML='';
+      overlay.querySelector('#admin-movements-summary').textContent=gameText('admin.movements.error',{message:err?.message||err});
+    }
+  }
+
+  function movementSigned(value){const n=Math.floor(Number(value)||0);return n===0?'—':`${n>0?'+':''}${n.toLocaleString('es-AR')}`;}
+  function renderEconomyMovements(){
+    const table=overlay.querySelector('#admin-movements-table'),cards=overlay.querySelector('#admin-movements-cards'),summary=overlay.querySelector('#admin-movements-summary');
+    if(!table||!cards||!summary)return;
+    if(!movementData){cards.innerHTML='';table.innerHTML=`<div class="admin-debug-empty">${gameTextHtml('admin.movements.empty')}</div>`;return;}
+    const fromRaw=overlay.querySelector('#admin-movements-from')?.value||'',toRaw=overlay.querySelector('#admin-movements-to')?.value||'';
+    const fromMs=fromRaw?new Date(`${fromRaw}T00:00:00`).getTime():0,toMs=toRaw?new Date(`${toRaw}T23:59:59.999`).getTime():Number.MAX_SAFE_INTEGER;
+    const all=[...(movementData.events||[])].sort((a,b)=>auditTimestampMs(b.createdAt)-auditTimestampMs(a.createdAt));
+    let points=Number(movementData.current?.points)||0,fichas=Number(movementData.current?.fichas)||0,packs=Number(movementData.current?.packs)||0;
+    const reconstructed=all.map(row=>{
+      const after={points,fichas,packs};
+      points-=Number(row.pointsDelta)||0; fichas-=Number(row.fichasDelta)||0; packs-=Number(row.packsDelta)||0;
+      return {...row,_after:after,_ms:auditTimestampMs(row.createdAt)};
+    });
+    const rows=reconstructed.filter(row=>row._ms>=fromMs&&row._ms<=toMs);
+    cards.innerHTML=[
+      [gameText('admin.movements.currentPoints'),Number(movementData.current?.points||0).toLocaleString('es-AR')],
+      [gameText('admin.movements.currentFichas'),Number(movementData.current?.fichas||0).toLocaleString('es-AR')],
+      [gameText('admin.movements.currentPacks'),Number(movementData.current?.packs||0).toLocaleString('es-AR')]
+    ].map(([label,value])=>`<div class="admin-stat-card"><div class="admin-stat-label">${escapeHtml(label)}</div><div class="admin-stat-value">${escapeHtml(value)}</div><div class="admin-stat-sub">${escapeHtml(movementData.username||movementData.uid)}</div></div>`).join('');
+    const body=rows.map(row=>`<tr><td>${escapeHtml(new Date(row._ms).toLocaleString('es-AR'))}</td><td>${escapeHtml(economyAuditLabel({...row,auditKind:'economyEvent'}))}</td><td>${escapeHtml(movementSigned(row.pointsDelta))}</td><td><strong>${Number(row._after.points).toLocaleString('es-AR')}</strong></td><td>${escapeHtml(movementSigned(row.fichasDelta))}</td><td>${Number(row._after.fichas).toLocaleString('es-AR')}</td><td>${escapeHtml(movementSigned(row.packsDelta))}</td><td>${Number(row._after.packs).toLocaleString('es-AR')}</td><td><code>${escapeHtml(row.operationId||row.id||'—')}</code></td></tr>`).join('');
+    table.innerHTML=`<table class="admin-debug-table"><thead><tr><th>${gameTextHtml('admin.movements.col.date')}</th><th>${gameTextHtml('admin.movements.col.operation')}</th><th>${gameTextHtml('admin.movements.col.deltaPoints')}</th><th>${gameTextHtml('admin.movements.col.balancePoints')}</th><th>${gameTextHtml('admin.movements.col.deltaFichas')}</th><th>${gameTextHtml('admin.movements.col.balanceFichas')}</th><th>${gameTextHtml('admin.movements.col.deltaPacks')}</th><th>${gameTextHtml('admin.movements.col.balancePacks')}</th><th>${gameTextHtml('admin.movements.col.evidence')}</th></tr></thead><tbody>${body||`<tr><td colspan="9">${gameTextHtml('admin.movements.empty')}</td></tr>`}</tbody></table>`;
+    summary.textContent=`${movementData.username||movementData.uid} · ${rows.length} movimientos visibles · ${all.length} eventos cargados`;
+  }
+
+  async function reloadEconomyMovements(){
+    if(movementLoading)return;
+    await ensureMovementUsers();
+    const uid=overlay.querySelector('#admin-movements-user')?.value||''; if(!uid)return;
+    movementLoading=true; const btn=overlay.querySelector('#admin-movements-load'); if(btn){btn.disabled=true;btn.textContent=gameText('admin.movements.loading');}
+    try{movementData=await fetchEconomyMovementsForAdmin({targetUid:uid});renderEconomyMovements();}
+    catch(err){movementData=null;overlay.querySelector('#admin-movements-summary').textContent=gameText('admin.movements.error',{message:err?.message||err});renderEconomyMovements();}
+    finally{movementLoading=false;if(btn){btn.disabled=false;btn.textContent=gameText('admin.movements.load');}}
+  }
 
   function auditTimestampMs(value) {
     if (!value) return 0;
@@ -7433,7 +7570,7 @@ Receipt: ${receiptId}
     if (key === 'messages') void ensureAdminMessageUsers();
     if (key === 'campaigns') ensureAdminCampaignsPane();
     if (key === 'stats' && !statsLoaded) reloadAdminStatistics();
-    if (key === 'economyAudit' && !economyAuditLoaded) reloadEconomyAudit();
+    if (key === 'economyAudit') activateEconomySubtab(economySubtab);
     if (key === 'animations') ensureAdminAnimationLab();
     if (key === 'debug') {
       if (!debugLoaded) reloadTelemetryHistory();
@@ -7444,6 +7581,13 @@ Receipt: ${receiptId}
   overlay.querySelectorAll('[data-admin-tab]').forEach(btn => {
     btn.addEventListener('click', () => activateAdminTab(btn.dataset.adminTab));
   });
+  overlay.querySelectorAll('[data-economy-subtab]').forEach(btn => {
+    btn.addEventListener('click', () => activateEconomySubtab(btn.dataset.economySubtab));
+  });
+  overlay.querySelector('#admin-movements-load')?.addEventListener('click', reloadEconomyMovements);
+  overlay.querySelector('#admin-movements-user')?.addEventListener('change', () => { movementData=null; renderEconomyMovements(); });
+  overlay.querySelector('#admin-movements-from')?.addEventListener('change', renderEconomyMovements);
+  overlay.querySelector('#admin-movements-to')?.addEventListener('change', renderEconomyMovements);
   overlay.querySelector('#admin-stats-refresh').addEventListener('click', reloadAdminStatistics);
   overlay.querySelector('#admin-stats-sync').addEventListener('click', syncAdminRanking);
   overlay.querySelector('#admin-economy-audit-refresh').addEventListener('click', reloadEconomyAudit);
@@ -7935,7 +8079,8 @@ function multiplayerProfileBannerHTML(profile, roleLabel, fallbackName) {
     <div class="mp-versus-player">
       <div class="mp-versus-role">${escapeHtml(roleLabel)}</div>
       ${avatar}
-      <div class="mp-versus-name">${escapeHtml(username)}</div>
+      <div class="mp-versus-name" title="${escapeHtml(username)}">${escapeHtml(username)}</div>
+      <div class="mp-versus-elo" data-mp-elo-user="${escapeHtml(username)}">ELO …</div>
     </div>
   `;
 }
@@ -8157,6 +8302,15 @@ export function showMultiplayerLobby(onBack, onMatched) {
         <button class="store-buy-btn" id="mp-start">${gameTextHtml('multiplayer.matched.start')}</button>
       </div>
     `;
+    void fetchPublicPlayerStats().then(rows=>{
+      const byName=new Map((Array.isArray(rows)?rows:[]).map(row=>[String(row.username||'').trim().toLocaleLowerCase('es-AR'),row]));
+      body.querySelectorAll('[data-mp-elo-user]').forEach(node=>{
+        const row=byName.get(String(node.dataset.mpEloUser||'').trim().toLocaleLowerCase('es-AR'))||{};
+        const rating=Math.max(1,Math.floor(Number(row.eloRating)||1200),1200);
+        node.textContent=gameText((Number(row.eloGames)||0)<10?'ranking.elo.provisional':'ranking.elo.established',{rating});
+        node.title=node.textContent;
+      });
+    }).catch(()=>{});
     body.querySelector('#mp-start').addEventListener('click', () => {
       overlay.remove();
       onMatched(match.code, myRole, rivalName, rivalPhotoURL, match.startingRole || 'host');
@@ -8429,7 +8583,7 @@ export function showTradeMarketScreen(onBack) {
     const listings=market?.listings||[], l=limits();
     if(!listings.length)return `<div class="trade-empty">${gameTextHtml('trade.empty')}</div>`;
     const outgoing=new Set((market?.outgoingOffers||[]).map(o=>o.listingOwnerUid));
-    return `${renderExploreFilters()}<div class="trade-results-meta"><span id="trade-filter-result-count"></span></div><div class="trade-market-grid" id="trade-explore-grid">${listings.map(item=>{
+    const cardsHtml=listings.map(item=>{
       const eligible=tradeTradableEntries(market,item),already=outgoing.has(item.ownerUid),card=tradeCard(item.cardId);
       const search=tradeNormalizeSearch(card?.name);
       const colors=Array.isArray(card?.colors)&&card.colors.length?card.colors.join(','):'C';
@@ -8438,7 +8592,8 @@ export function showTradeMarketScreen(onBack) {
         <div class="trade-listing-visual">${tradeVisualCardHtml(item.cardId)}</div>
         <div class="trade-listing-body"><div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-muted">${gameTextHtml('trade.explore.offeredBy',{username:item.ownerUsername,count:item.offerCount,max:l.maxOffersPerListing})}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div>${already?`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.alreadyOffered')}</div>`:eligible.length?`<button class="trade-btn trade-offer-cta" data-offer-owner="${escapeHtml(item.ownerUid)}">${gameTextHtml('trade.offer')}</button>`:`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.noMatching')}</div>`}</div>
       </article>`;
-    }).join('')}</div><div class="trade-empty" id="trade-filter-empty" hidden>${gameTextHtml('trade.filter.noResults')}</div>`;
+    }).join('');
+    return `<div class="trade-explore-layout"><section class="trade-explore-results"><div class="trade-results-meta"><span id="trade-filter-result-count"></span></div><div class="trade-market-grid" id="trade-explore-grid">${cardsHtml}</div><div class="trade-empty" id="trade-filter-empty" hidden>${gameTextHtml('trade.filter.noResults')}</div></section><aside class="trade-explore-sidebar">${renderExploreFilters()}</aside></div>`;
   }
   function applyExploreFilters(){
     const query=tradeNormalizeSearch(exploreFilters.query);let visible=0;

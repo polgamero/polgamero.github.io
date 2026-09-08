@@ -1,0 +1,58 @@
+ARGENTINIA v23.21.2 — ELO + MOVIMIENTOS + BOT SURVIVAL + RANKING/MARKET UX
+PRE-RC — requires emulator gates before production deploy.
+
+BASELINE
+- v23.21.0 Mercado de Pases RELEASED.
+- v23.21.1 Mercado Visual/Menu Consistency cumulative frontend hotfix absorbed.
+- Pool 880.
+- Multiplayer protocol mp-23.19.2 unchanged.
+- Economy protocol econ-23.19.5.6 unchanged.
+- Economy schema 9 unchanged.
+- Cloud Functions remain exactly 37.
+
+23.21.2 CHANGES
+1. Admin ECONOMÍA / AUDITORÍA → MOVIMIENTOS
+   - player selector + date filters;
+   - current Points/Fichas/Packs;
+   - immutable economyEvents ledger;
+   - delta + reconstructed balance after each movement;
+   - operation/evidence id.
+
+2. Tournament Black Box audit fix
+   - tournament sessions are validated against tournamentReceipts/economyEvents;
+   - no false "Sin playerGameReceipt" for Tournament;
+   - no Solo +15 fallback on Tournament losses;
+   - new telemetry index fields: tournamentId, tournamentMatchId, roundKey;
+   - legacy fallback by owner + nearby timestamp.
+
+3. PvP ELO
+   - initial rating 1200;
+   - K=40 for first 10 rated games; K=24 afterwards;
+   - human-vs-human PvP only; NPC/Tano/Tournament do not change ELO;
+   - exact-once pvpEloReceipts/{matchId};
+   - sealed PvP abandonment counts as competitive loss;
+   - max 5 rated matches per pair/day to reduce win-trading;
+   - no new callable: Functions remain 37.
+
+4. Bot lethal self-preservation floor
+   - Easy/Medium/Hard will not declare an attacker if a legal blocker has an on-block trigger that kills the bot before combat damage;
+   - telemetry marker bot_attack_held_lethal_block_trigger.
+
+5. Global Ranking refresh
+   - ELO visible and default sort;
+   - Torneos ganados;
+   - Torneos jugados;
+   - Cartas intercambiadas;
+   - ELO exposed in PvP matchmaking / identity tooltip surfaces.
+
+6. Mercado UX
+   - desktop Explore filters moved to a right sidebar consistent with Encyclopedia;
+   - mobile remains vertical/responsive.
+
+FIRESTORE RULES
+- Candidate 23.13.82.
+- Adds Admin read-only access to tournamentReceipts, pvpEloReceipts, pvpEloDailyPairs.
+- Browser create/update/delete remains DENY for server-authority evidence.
+
+RELEASE CONDITION
+Do not mark RELEASED until Gate03 + Gate05 + Gate07, Rules deploy, Functions deploy/37-verify, GitHub Actions, and production smoke are green.

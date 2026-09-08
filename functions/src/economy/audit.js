@@ -7,7 +7,8 @@ const NUMERIC_KEYS = [
   'multiplayerWins','multiplayerLosses','abandons','totalDurationMs','pointsEarned',
   'pointsSpent','pointsLost','fichasEarned','fichasSpent','packsReceived','packsOpened',
   'guaranteedMythicsOpened','tournamentsPlayed','tournamentMatches','tournamentWins','tournamentLosses',
-  'tournamentQuarterfinals','tournamentSemifinals','tournamentFinals','tournamentChampionships','tournamentForfeits','tradesCompleted'
+  'tournamentQuarterfinals','tournamentSemifinals','tournamentFinals','tournamentChampionships','tournamentForfeits','tradesCompleted',
+  'eloRating','eloPeak','eloGames','eloWins','eloLosses'
 ];
 
 function int(value){ const n=Math.floor(Number(value)||0); return Number.isFinite(n)?n:0; }
@@ -17,6 +18,9 @@ function normalizeInventory(raw={}){
 }
 export function normalizePlayerStatsServer(raw={}){
   const out={}; for(const key of NUMERIC_KEYS) out[key]=nonneg(raw?.[key]);
+  if(raw?.eloRating===undefined||raw?.eloRating===null) out.eloRating=1200;
+  if(raw?.eloPeak===undefined||raw?.eloPeak===null) out.eloPeak=Math.max(1200,out.eloRating);
+  out.eloPeak=Math.max(out.eloPeak,out.eloRating);
   out.gameBackfillVersion=nonneg(raw?.gameBackfillVersion);
   return out;
 }

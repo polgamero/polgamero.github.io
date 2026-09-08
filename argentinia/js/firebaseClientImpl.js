@@ -2167,13 +2167,42 @@ export async function fetchEconomyAuditForAdmin({ limitCount = 250 } = {}) {
 
 export async function fetchGameRewardAuditForAdmin() {
   if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL) throw new Error('ADMIN_REQUIRED');
-  const [gameResultsSnap, rewardsSnap] = await Promise.all([
+  const [gameResultsSnap, rewardsSnap, tournamentSnap, eloSnap] = await Promise.all([
     getDocs(collection(db, 'playerGameReceipts')),
-    getDocs(collection(db, 'gameRewardReceipts'))
+    getDocs(collection(db, 'gameRewardReceipts')),
+    getDocs(collection(db, 'tournamentReceipts')),
+    getDocs(collection(db, 'pvpEloReceipts'))
   ]);
   return {
     playerGameReceipts: gameResultsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-    gameRewardReceipts: rewardsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+    gameRewardReceipts: rewardsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+    tournamentReceipts: tournamentSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+    pvpEloReceipts: eloSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+  };
+}
+
+// 23.21.2 — "MOVIMIENTOS" estilo homebanking. La fuente contable es economyEvents:
+// append-only, server-authoritative e inmutable. Consultamos por targetUid (índice simple)
+// y reconstruimos saldos en UI partiendo del saldo actual real de users/{uid}.
+export async function fetchEconomyMovementsForAdmin({ targetUid } = {}) {
+  if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL) throw new Error('ADMIN_REQUIRED');
+  const uid=String(targetUid||'').trim();
+  if(!uid) throw new Error('MOVEMENTS_TARGET_REQUIRED');
+  const [profileSnap,eventsSnap]=await Promise.all([
+    getDoc(doc(db,'users',uid)),
+    getDocs(query(collection(db,'economyEvents'),where('targetUid','==',uid)))
+  ]);
+  if(!profileSnap.exists()) throw new Error('MOVEMENTS_USER_NOT_FOUND');
+  const profile=profileSnap.data()||{};
+  return {
+    uid,
+    username:String(profile.username||profile.displayName||'Jugador'),
+    current:{
+      points:Math.max(0,Math.floor(Number(profile.points)||0)),
+      fichas:Math.max(0,Math.floor(Number(profile.fichas)||0)),
+      packs:Math.max(0,Math.floor(Number(profile.inventory?.standardPacks)||0))
+    },
+    events:eventsSnap.docs.map(d=>({id:d.id,...d.data()}))
   };
 }
 
@@ -2372,6 +2401,9 @@ function telemetryIndexData(checkpoint, playerName, reason) {
     playerName: String(playerName || summary?.meta?.localPlayerName || 'Jugador').slice(0, 80),
     sessionId: checkpoint?.sessionId || null,
     matchId: summary?.meta?.matchId || null,
+    tournamentId: summary?.meta?.tournamentId || null,
+    tournamentMatchId: summary?.meta?.tournamentMatchId || null,
+    tournamentRoundKey: summary?.meta?.roundKey || null,
     mode: summary?.meta?.mode || null,
     myRole: summary?.meta?.myRole || null,
     difficulty: summary?.meta?.difficulty || null,

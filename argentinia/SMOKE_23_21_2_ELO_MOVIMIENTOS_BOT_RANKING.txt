@@ -1,0 +1,47 @@
+ARGENTINIA v23.21.2 — PRODUCTION SMOKE CHECKLIST
+Run only after Gate03/05/07 green + Rules 23.13.82 deployed + Functions 23.21.2 deployed/37 verified + GitHub green.
+
+A) MOVIMIENTOS / TOURNAMENT AUDIT
+[ ] Admin → ECONOMÍA / AUDITORÍA → MOVIMIENTOS opens.
+[ ] Select Potato (or another user): current Points/Fichas/Packs match profile.
+[ ] Date From/To filters work.
+[ ] A known Daily Reward shows correct positive delta and running balance.
+[ ] A known purchase shows correct negative delta and running balance.
+[ ] A new Tournament win appears as tournament_round_server / valid evidence.
+[ ] Caja Negra does NOT require playerGameReceipt for Tournament.
+[ ] A Tournament loss does NOT display Solo +15 as expected reward.
+
+B) PvP ELO
+[ ] Two human accounts display ELO 1200/provisional before rated games if new.
+[ ] Complete one natural PvP: winner +20 / loser -20 when both start 1200.
+[ ] Retry settlement: ELO does not change twice.
+[ ] pvpEloReceipts/{matchId} exists and is immutable/readable by Admin only.
+[ ] Sealed PvP abandon counts as ELO loss/win once.
+[ ] NPC/Tano/Tournament games do not alter ELO.
+[ ] Same pair after daily rated cap stops changing ELO.
+
+C) Ranking
+[ ] Ranking defaults to ELO ordering.
+[ ] ELO column visible.
+[ ] Torneos ganados / Torneos jugados visible.
+[ ] Cartas intercambiadas visible.
+[ ] ELO tooltip/identity appears in PvP matchmaking.
+
+D) BOT SURVIVAL
+[ ] Reproduce a board where bot is at 1 HP and a legal blocker deals 2 on block.
+[ ] Easy does not attack into that blocker.
+[ ] Medium does not attack into that blocker.
+[ ] Hard does not attack into that blocker.
+[ ] No regression in normal attacks when block trigger is not lethal.
+
+E) MERCADO
+[ ] Explore desktop filters are on the right.
+[ ] Search/color/rarity/type filters still work.
+[ ] Mobile filters stack vertically.
+[ ] Existing listing/offer/accept/history flow remains functional.
+
+F) REGRESSION
+[ ] Torneo start/continue/settlement works.
+[ ] Economy Audit remains immutable.
+[ ] Rules browser-write firewall remains DENY.
+[ ] Functions verify exactly 37/37.

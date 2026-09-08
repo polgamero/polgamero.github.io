@@ -1,12 +1,12 @@
 {
-  "engineVersion": "23.21.1",
+  "engineVersion": "23.21.2",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
   "economyProtocolVersion": "econ-23.19.5.6",
   "economySchemaVersion": 9,
   "economyFunctionsRegion": "southamerica-east1",
-  "firestoreRulesVersion": "23.13.81",
+  "firestoreRulesVersion": "23.13.82",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Mercado de Pases · 1↔1 Server Authority + BUSCO Criteria"
+  "label": "ELO + Movimientos + Tournament Audit Fix + Bot Survival + Ranking/Market UX"
 }

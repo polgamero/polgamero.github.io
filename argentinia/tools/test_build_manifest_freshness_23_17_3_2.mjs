@@ -5,8 +5,8 @@ import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION } from
 const manifest = JSON.parse(fs.readFileSync(new URL('../build-manifest.json', import.meta.url), 'utf8'));
 const main = fs.readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
 
-assert.equal(ENGINE_VERSION, '23.21.1');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.81');
+assert.equal(ENGINE_VERSION, '23.21.2');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.82');
 assert.equal(manifest.engineVersion, ENGINE_VERSION);
 assert.equal(manifest.engineProtocolVersion, ENGINE_PROTOCOL_VERSION);
 assert.equal(manifest.protocolVersion, ENGINE_PROTOCOL_VERSION, 'legacy alias must remain aligned during schema transition');

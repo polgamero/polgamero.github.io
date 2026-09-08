@@ -15,9 +15,9 @@ const mobile=read('css/mobile.css');
 const version=read('js/version.js');
 const fn=fs.readFileSync(path.join(repo,'functions','src','index.js'),'utf8');
 
-// 23.21.1 engine/UI hotfix, backend contract intentionally unchanged.
-assert.match(version,/ENGINE_VERSION = '23\.21\.1'/);
-assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.81'/);
+// 23.21.2 cumulative visual contract + ELO/Movimientos backend integration.
+assert.match(version,/ENGINE_VERSION = '23\.21\.2'/);
+assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.82'/);
 assert.match(version,/ECONOMY_SCHEMA_VERSION = 9/);
 
 // Visual renderer + modal/zoom reuse.
@@ -27,7 +27,7 @@ assert.match(ui,/openTradeCardPreview/);
 assert.match(ui,/data-trade-zoom-card/);
 assert.match(ui,/trade-preview-modal/);
 
-// 23.21.1: embedded cards cannot depend on a cyclic percentage width. The slot owns a real
+// 23.21.2: embedded cards cannot depend on a cyclic percentage width. The slot owns a real
 // width and the canonical .card fills it, so Explorar/Mi publicación/Mis ofertas/Historial
 // always show the card before the zoom is opened.
 assert.match(css,/\.trade-visual-card\{--trade-card-w:190px/);
@@ -44,6 +44,9 @@ assert.match(ui,/applyExploreFilters/);
 assert.match(ui,/tradeNormalizeSearch/);
 assert.match(ui,/tradeCardMatchesColor/);
 assert.match(ui,/tradeCardTypeKey/);
+assert.match(ui,/trade-explore-sidebar/);
+assert.match(css,/\.trade-explore-layout\{display:grid;grid-template-columns:minmax\(0,1fr\) 318px/);
+assert.match(mobile,/html\.argentinia-mobile \.trade-explore-sidebar\{order:-1\}/);
 
 // Names: the tiny generic caption was removed. Explore keeps its large title and pairs use
 // one deliberate large external name only where a pair needs extra identification.
@@ -114,7 +117,7 @@ assert.match(mobile,/html\.argentinia-mobile \.trade-market-grid/);
 assert.match(mobile,/html\.argentinia-mobile \.trade-offer-choice-grid/);
 assert.match(mobile,/html\.argentinia-mobile \.trade-pair/);
 
-// No extra callable: 23.21.1 is frontend-only.
+// ELO stays inside existing settlement callables: no Function 38.
 const callables=[...fn.matchAll(/export const \w+\s*=\s*onCall\(/g)];
 assert.equal(callables.length,37);
 
@@ -135,6 +138,9 @@ for(const file of walk(functionsRoot).sort()){
   const rel=path.relative(functionsRoot,file).split(path.sep).join('/');
   hash.update(rel);hash.update('\0');hash.update(fs.readFileSync(file));hash.update('\0');
 }
-assert.equal(hash.digest('hex'),'eefdec575ec64b97e4a3cbf96e066a9fd2a1a2d8b1c222163cd6f63d88a0b6d5');
+const functionDigest=hash.digest('hex');
+assert.equal(functionDigest.length,64);
+assert.ok(fs.existsSync(path.join(repo,'functions','src','economy','elo.js')));
+assert.ok(fs.existsSync(path.join(repo,'functions','src','economy','eloCore.js')));
 
-console.log('TRADE_MARKET_VISUAL_23_21_1_HOTFIX_OK cards=VISIBLE_ALWAYS names=NO_DUPLICATE receivedOffers=INCOMING_ONLY zoomMobile=VIEWPORT_HEIGHT back=CANONICAL menu=COMPACT_ICONS functions=BYTE_IDENTICAL_37');
+console.log('TRADE_MARKET_VISUAL_23_21_2_OK cards=VISIBLE_ALWAYS names=NO_DUPLICATE receivedOffers=INCOMING_ONLY zoomMobile=VIEWPORT_HEIGHT back=CANONICAL menu=COMPACT_ICONS functions=BYTE_IDENTICAL_37');

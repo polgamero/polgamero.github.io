@@ -1,0 +1,31 @@
+ARGENTINIA v23.21.2 — LOCAL PRE-RC QA
+
+PASSED LOCALLY ON THE EXACT SOURCE TREE:
+- Game Text contract: 1483 definitions / 1203 uses PASS
+- Regression archive parity: 62/62 PASS
+- Canonical fast contracts: 115/115 PASS
+- JS/MJS syntax: 231/231 PASS
+- Functions unit: 9/9 PASS
+- PvP ELO pure unit: PASS (1200, K40/K24, pair cap 5)
+- Stability Lab: PASS
+- Headless 23.18.1: 6/6 PASS
+- Coverage 23.18.2 audit: 560 full / 302 partial / 18 unsupported / 97.95% structurally known PASS
+- Headless 23.18.2: 6/6 PASS
+- Multiplayer Reliability: PASS
+- Multiplayer Hardening: PASS
+- Deck Intelligence Matrix: PASS
+- Bot tactical cumulative contract including lethal block-trigger self-preservation: PASS
+- Mercado visual cumulative contract: PASS
+- Admin Economy/Stats/Audit cumulative contract: PASS
+- Firestore Rules 23.13.82 compiler hygiene: PASS
+- Functions parity 01/05/06/07: byte-identical (excluding node_modules)
+- Rules parity 02/03/05/07: byte-identical
+- Callable exports: exactly 37
+
+NOT YET CLAIMED:
+- Gate03 Firestore emulator 23.21.2: MUST BE RUN BY OWNER
+- Gate05 Economy+Tournament+PvP ELO emulator: MUST BE RUN BY OWNER
+- Gate07 Mercado regression emulator: MUST BE RUN BY OWNER
+- Production deploy/smoke: NOT RUN YET
+
+Do not mark RELEASED before those gates/deploy/smoke are green.

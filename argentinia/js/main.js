@@ -963,6 +963,9 @@ async function initGame(deckSource, options = {}) {
     difficulty: state.botDifficulty,
     deckLabel,
     soloGameId,
+    tournamentId: tournamentMatch?.tournamentId || null,
+    tournamentMatchId: tournamentMatch?.matchId || null,
+    roundKey: tournamentMatch?.roundKey || null,
     segmentIndex: 1,
     activeElapsedBaseMs: 0,
     replayRng: getGameRngSnapshot()

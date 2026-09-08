@@ -11,6 +11,8 @@ function esc(value) {
   return div.innerHTML;
 }
 function n(value) { return Math.max(0, Math.floor(Number(value) || 0)); }
+function elo(value) { const n0=Math.floor(Number(value)); return Number.isFinite(n0)&&n0>0?n0:1200; }
+function eloLabel(row){ const rating=elo(row?.eloRating),games=n(row?.eloGames); return gameText(games<10?'ranking.elo.provisional':'ranking.elo.established',{rating}); }
 
 function injectStyles() {
   if (document.getElementById('global-ranking-styles')) return;
@@ -40,13 +42,15 @@ function injectStyles() {
 
 const columns = [
   ['username','ranking.col.player'],
-  ['pointsEarned','ranking.col.pointsEarned'],
-  ['fichasEarned','ranking.col.fichasEarned'],
-  ['packsOpened','ranking.col.packsOpened'],
-  ['uniqueCards','ranking.col.uniqueCards'],
+  ['eloRating','ranking.col.elo'],
+  ['tournamentChampionships','ranking.col.tournamentChampionships'],
+  ['tournamentsPlayed','ranking.col.tournamentsPlayed'],
+  ['tradesCompleted','ranking.col.tradesCompleted'],
   ['gamesPlayed','ranking.col.games'],
   ['wins','ranking.col.wins'],
   ['winRate','ranking.col.winRate'],
+  ['pointsEarned','ranking.col.pointsEarned'],
+  ['uniqueCards','ranking.col.uniqueCards'],
   ['totalDurationMs','ranking.col.timePlayed'],
   ['pointsCurrent','ranking.col.pointsCurrent'],
   ['fichasCurrent','ranking.col.fichasCurrent']
@@ -70,9 +74,9 @@ export function showGlobalRanking(onBack = () => {}) {
   overlay.querySelector('#ranking-back').addEventListener('click', () => { overlay.remove(); onBack(); });
 
   let rows = [];
-  let sortKey = 'pointsEarned';
+  let sortKey = 'eloRating';
   let direction = 'desc';
-  const valueFor = (row, key) => key === 'winRate' ? winRate(row) : (key === 'username' ? String(row.username || '').toLocaleLowerCase('es-AR') : n(row[key]));
+  const valueFor = (row, key) => key === 'winRate' ? winRate(row) : (key === 'username' ? String(row.username || '').toLocaleLowerCase('es-AR') : (key==='eloRating'?elo(row[key]):n(row[key])));
   function render() {
     const sorted = [...rows].sort((a,b) => {
       const av=valueFor(a,sortKey), bv=valueFor(b,sortKey);
@@ -85,14 +89,16 @@ export function showGlobalRanking(onBack = () => {}) {
     const headers=columns.map(([key,textKey])=>`<th data-sort="${key}">${esc(gameText(textKey))}${sortKey===key?(direction==='asc'?' ↑':' ↓'):''}</th>`).join('');
     const body=sorted.map((r,i)=>`<tr>
       <td class="ranking-rank">${i+1}</td>
-      <td class="ranking-player">${esc(r.username || gameText('ranking.playerFallback'))}</td>
-      <td>${n(r.pointsEarned).toLocaleString('es-AR')}</td>
-      <td>${n(r.fichasEarned).toLocaleString('es-AR')}</td>
-      <td>${n(r.packsOpened).toLocaleString('es-AR')}</td>
-      <td>${n(r.uniqueCards).toLocaleString('es-AR')} / ${POOL_BASELINE.total}</td>
+      <td class="ranking-player" title="${esc(eloLabel(r))}">${esc(r.username || gameText('ranking.playerFallback'))}</td>
+      <td><strong>${elo(r.eloRating).toLocaleString('es-AR')}</strong>${n(r.eloGames)<10?'*':''}</td>
+      <td>${n(r.tournamentChampionships).toLocaleString('es-AR')}</td>
+      <td>${n(r.tournamentsPlayed).toLocaleString('es-AR')}</td>
+      <td>${n(r.tradesCompleted).toLocaleString('es-AR')}</td>
       <td>${n(r.gamesPlayed).toLocaleString('es-AR')}</td>
       <td>${n(r.wins).toLocaleString('es-AR')}</td>
       <td>${winRate(r).toFixed(1)}%</td>
+      <td>${n(r.pointsEarned).toLocaleString('es-AR')}</td>
+      <td>${n(r.uniqueCards).toLocaleString('es-AR')} / ${POOL_BASELINE.total}</td>
       <td>${formatDuration(r.totalDurationMs)}</td>
       <td>${n(r.pointsCurrent).toLocaleString('es-AR')}</td>
       <td>${n(r.fichasCurrent).toLocaleString('es-AR')}</td>

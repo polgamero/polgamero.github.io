@@ -18,9 +18,9 @@ const root = path.resolve(here, '..');
 const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 const need = (cond, msg) => { if (!cond) throw new Error(`ANIMATION_23_19_4_FAIL:${msg}`); };
 
-need(ENGINE_VERSION === '23.21.1', `engine=${ENGINE_VERSION}`);
+need(ENGINE_VERSION === '23.21.2', `engine=${ENGINE_VERSION}`);
 need(ENGINE_PROTOCOL_VERSION === 'mp-23.19.2', `protocol=${ENGINE_PROTOCOL_VERSION}`);
-need(FIRESTORE_RULES_VERSION === '23.13.81', `rules=${FIRESTORE_RULES_VERSION}`);
+need(FIRESTORE_RULES_VERSION === '23.13.82', `rules=${FIRESTORE_RULES_VERSION}`);
 need(POOL_BASELINE.total === 880, `pool=${POOL_BASELINE.total}`);
 
 const normalized = normalizeAnimationSettings({ enabled:false, speed:'fast' });
@@ -78,7 +78,7 @@ need(firebaseImpl.includes('speedMultipliers') && /schemaVersion:\s*[234567]/.te
 need(firebaseImpl.includes("doc(db, 'gameConfig', 'animations')") && firebaseImpl.includes('onSnapshot'), 'animation-policy-live-listener');
 need(firebaseFacade.includes('listenAnimationPolicy') && firebaseFacade.includes('saveAnimationPolicy'), 'animation-policy-lazy-facade');
 
-need(manifest.engineVersion === '23.21.1' && manifest.firestoreRulesVersion === '23.13.81' && manifest.pool === 880, 'build-manifest');
+need(manifest.engineVersion === '23.21.2' && manifest.firestoreRulesVersion === '23.13.82' && manifest.pool === 880, 'build-manifest');
 
 console.log('ANIMATION_FOUNDATION_COMBAT_IMPACT_23_19_4_OK');
 console.log('director=isolated+queue+cleanup+server-speed-references');

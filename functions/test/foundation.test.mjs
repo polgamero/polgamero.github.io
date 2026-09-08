@@ -113,3 +113,15 @@ assert.equal(matchCore.deriveSoloAbandonReceiptId('abandon:solo:wrong:user_abc',
 assert.equal(matchCore.normalizeAbandonDurationMs(-5),0);
 assert.equal(matchCore.normalizeAbandonDurationMs(999999999),24*60*60*1000);
 console.log('ECONOMY_MATCH_ADMISSION_23_19_5_4_UNIT_OK');
+
+
+const eloCore = await import('../src/economy/eloCore.js');
+assert.equal(eloCore.ELO_INITIAL_RATING,1200);
+assert.equal(eloCore.ELO_MAX_RATED_PAIR_DAILY,5);
+assert.deepEqual(eloCore.normalizeEloStats({}),{rating:1200,peak:1200,games:0,wins:0,losses:0});
+const eloNew=eloCore.calculateEloChange({}, {}, 1);
+assert.equal(eloNew.a.before,1200); assert.equal(eloNew.a.after,1220); assert.equal(eloNew.a.delta,20); assert.equal(eloNew.a.k,40);
+assert.equal(eloNew.b.after,1180); assert.equal(eloNew.b.delta,-20);
+const eloEstablished=eloCore.calculateEloChange({eloRating:1200,eloGames:10},{eloRating:1200,eloGames:10},1);
+assert.equal(eloEstablished.a.after,1212); assert.equal(eloEstablished.a.k,24); assert.equal(eloEstablished.b.after,1188);
+console.log('PVP_ELO_23_21_2_UNIT_OK initial=1200 provisionalK=40 establishedK=24 pairDailyCap=5');

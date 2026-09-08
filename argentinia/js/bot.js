@@ -1054,7 +1054,23 @@ export async function checkRivalCounterOrResponse() {
 }
 
 // --- EVALUACIÓN TÁCTICA DE ATAQUE ---
+// 23.21.2 — Lethal Self-Preservation Floor. Incluso Easy conoce la información pública
+// del campo: si un bloqueador legal dispara daño al JUGADOR al bloquear y ese trigger
+// mata al Tano antes del daño de combate, atacar con esa criatura es un suicidio forzado.
+function lethalBlockTriggerThreat(attackerItem) {
+  const hp=Math.max(0,Number(state.rivalHP)||0);
+  if(hp<=0)return null;
+  for(const blocker of state.localCombat||[]){
+    if(blocker?.tapped||!canBlock(attackerItem,blocker))continue;
+    const trigger=blocker?.card?.blockTrigger;
+    if(trigger?.type!=='damage')continue;
+    const amount=Math.max(0,Number(trigger.amount)||0);
+    if(amount>=hp)return {blocker,amount};
+  }
+  return null;
+}
 function shouldRivalAttackWith(attackerItem) {
+  if (lethalBlockTriggerThreat(attackerItem)) return false;
   const atkPower = getEffectivePower(attackerItem);
   const atkHasMenace = hasKeyword(attackerItem, 'menace');
   const hasVigilance = hasKeyword(attackerItem, 'vigilance');
@@ -2372,9 +2388,16 @@ export async function takeBotPriorityAction() {
     // No inspecciona mano ni biblioteca humanas para decidir atacantes.
     let hardAttackIndexes = null;
     let hardAttackPlan = null;
+    const lethalHeld=[];
     const eligibleAttackers=state.rivalCombat
       .map((unit,index)=>({unit,index}))
-      .filter(({unit})=>!hasKeyword(unit,'defender') && !unit.tapped && !unit.summoningSickness && !attackLockFor(unit));
+      .filter(({unit,index})=>{
+        if(hasKeyword(unit,'defender')||unit.tapped||unit.summoningSickness||attackLockFor(unit))return false;
+        const threat=lethalBlockTriggerThreat(unit);
+        if(threat){lethalHeld.push({index,attacker:unit.card?.name||'',blocker:threat.blocker?.card?.name||'',amount:threat.amount,hp:state.rivalHP});return false;}
+        return true;
+      });
+    if(lethalHeld.length) recordTelemetryEvent('bot_attack_held_lethal_block_trigger',{held:lethalHeld});
     const publicDefenders=state.localCombat
       .map((unit,index)=>({unit,index}))
       .filter(({unit})=>!unit.tapped);

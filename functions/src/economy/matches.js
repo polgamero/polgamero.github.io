@@ -3,6 +3,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { economyError } from '../shared/errors.js';
 import { ENGINE_VERSION, ECONOMY_SCHEMA_VERSION } from '../shared/constants.js';
 import { playerStatsMirrorServer } from './audit.js';
+import { loadPvpEloContext, commitPvpEloSettlementTx } from './elo.js';
 import {
   normalizeMatchRewardConfig, deriveTerminalOutcome, normalizeMatchCampaignEffects,
   effectiveMatchRewardPoints, argentinaMatchDayKey, pvpPairKey, pvpCompletedTurns,
@@ -131,7 +132,7 @@ export async function settleMatchRewardTx({db,tx,uid,request,campaignEffects,cli
   if(receiptSnap.exists){
     const prior=receiptSnap.data()||{},actualOutcome=prior.outcome||reward.outcome,safeDuration=normalizeAbandonDurationMs(prior.durationMs);
     writeGameResultEvidenceTx({tx,uid,profile,statsSnap,resultSnap,statsRef,resultRef,mode:'multiplayer',outcome:actualOutcome,durationMs:safeDuration});
-    return {duplicate:true,total:current,appliedDelta:Number(prior.effectiveDelta)||0,effectiveDelta:Number(prior.effectiveDelta)||0,requestedEffectiveDelta:Number(prior.requestedEffectiveDelta)||0,rewardReason:prior.rewardReason||'duplicate',terminalKind:prior.terminalKind||null,durationMs:safeDuration,completedTurns:Number(prior.completedTurns)||0,pvpDayKey:prior.pvpDayKey||null,pairCountAfter:Number(prior.pairCountAfter)||0,dailyPointsAfter:Number(prior.dailyPointsAfter)||0,limits:prior.limits||null,receiptId:reward.receiptId,mode:'multiplayer',outcome:actualOutcome,matchId:reward.matchId};
+    return {duplicate:true,total:current,appliedDelta:Number(prior.effectiveDelta)||0,effectiveDelta:Number(prior.effectiveDelta)||0,requestedEffectiveDelta:Number(prior.requestedEffectiveDelta)||0,rewardReason:prior.rewardReason||'duplicate',terminalKind:prior.terminalKind||null,durationMs:safeDuration,completedTurns:Number(prior.completedTurns)||0,pvpDayKey:prior.pvpDayKey||null,pairCountAfter:Number(prior.pairCountAfter)||0,dailyPointsAfter:Number(prior.dailyPointsAfter)||0,limits:prior.limits||null,receiptId:reward.receiptId,mode:'multiplayer',outcome:actualOutcome,matchId:reward.matchId,elo:prior.elo||null};
   }
   const match=matchSnap.data()||{}; if(!match.endedAt||!match.terminalKind||!match.winnerRole) throw economyError('PVP_MATCH_NOT_SEALED');
   const myRole=match.hostUid===uid?'host':(match.guestUid===uid?'guest':null); if(!myRole) throw economyError('PVP_NOT_MATCH_PARTICIPANT');
@@ -142,6 +143,8 @@ export async function settleMatchRewardTx({db,tx,uid,request,campaignEffects,cli
   const turnCountAtEnd=Math.max(1,Math.floor(Number(match.turnCountAtEnd||match.turnCount)||1)), completedTurns=pvpCompletedTurns(turnCountAtEnd), dayKey=argentinaMatchDayKey(endedAtMs||Date.now()), pairKey=pvpPairKey(match.hostUid,match.guestUid);
   const pairRef=db.collection('pvpDailyPairs').doc(`${dayKey}__${pairKey}`), dailyRef=db.collection('pvpDailyUsers').doc(`${dayKey}__${uid}`);
   const [pairSnap,dailySnap]=await Promise.all([tx.get(pairRef),tx.get(dailyRef)]), pairData=pairSnap.exists?(pairSnap.data()||{}):{}, dailyData=dailySnap.exists?(dailySnap.data()||{}):{};
+  // 23.21.2 — ELO PvP exact-once. All reads happen before any write in this transaction.
+  const eloContext=await loadPvpEloContext({db,tx,match,matchId:reward.matchId,dayKey});
   const ids=Array.isArray(pairData.rewardedMatchIds)?pairData.rewardedMatchIds:[], pairAlreadyRewarded=ids.includes(reward.matchId), pairRewardedCount=Math.max(0,Math.floor(Number(pairData.rewardedMatches)||ids.length)), dailyPointsAwarded=Math.max(0,Math.floor(Number(dailyData.pointsAwarded)||0));
   const verdict=evaluatePvpRewardEligibility({terminalKind:match.terminalKind,durationMs,turnCountAtEnd,pairAlreadyRewarded,pairRewardedCount,dailyPointsAwarded,requestedDelta:requestedEffectiveDelta,limits:config.limits});
   const passesEarlyGate=match.terminalKind!=='abandon'||(durationMs>=config.limits.minRewardMinutes*60000&&completedTurns>=config.limits.minCompletedTurns), pairCanCount=pairAlreadyRewarded||pairRewardedCount<config.limits.maxRewardedMatchesPerPairDaily, shouldRegister=passesEarlyGate&&pairCanCount&&!pairAlreadyRewarded;
@@ -149,8 +152,9 @@ export async function settleMatchRewardTx({db,tx,uid,request,campaignEffects,cli
   if(shouldRegister) tx.set(pairRef,{schemaVersion:2,dayKey,uidA:[String(match.hostUid),String(match.guestUid)].sort()[0],uidB:[String(match.hostUid),String(match.guestUid)].sort()[1],rewardedMatches:pairCountAfter,rewardedMatchIds:ids.concat([reward.matchId]),updatedAt:FieldValue.serverTimestamp()},{merge:false});
   if(appliedDelta>0){tx.update(userRef,{points:next});const prior=Array.isArray(dailyData.rewardReceiptIds)?dailyData.rewardReceiptIds:[];tx.set(dailyRef,{schemaVersion:2,dayKey,uid,pointsAwarded:dailyPointsAfter,rewardReceiptIds:prior.includes(reward.receiptId)?prior:prior.concat([reward.receiptId]),updatedAt:FieldValue.serverTimestamp()},{merge:false});}
   writeGameResultEvidenceTx({tx,uid,profile:{...profile,points:next},statsSnap,resultSnap,statsRef,resultRef,mode:'multiplayer',outcome:actualOutcome,durationMs});
-  tx.create(receiptRef,{uid,receiptId:reward.receiptId,mode:'multiplayer',outcome:actualOutcome,baseDelta,requestedEffectiveDelta,effectiveDelta:appliedDelta,resultingTotal:next,matchId:reward.matchId,terminalKind:match.terminalKind,rewardReason:verdict.reason,durationMs,completedTurns,pvpDayKey:dayKey,pairKey,pairCountAfter,dailyPointsAfter,limits:config.limits,campaign:campaignEffects,authority:'server',createdAt:FieldValue.serverTimestamp()});
-  return {duplicate:false,total:next,appliedDelta,effectiveDelta:appliedDelta,requestedEffectiveDelta,rewardReason:verdict.reason,terminalKind:match.terminalKind,durationMs,completedTurns,pvpDayKey:dayKey,pairCountAfter,dailyPointsAfter,limits:config.limits,baseDelta,receiptId:reward.receiptId,mode:'multiplayer',outcome:actualOutcome,matchId:reward.matchId,campaign:campaignEffects};
+  const elo=commitPvpEloSettlementTx({tx,context:eloContext,match,matchId:reward.matchId});
+  tx.create(receiptRef,{uid,receiptId:reward.receiptId,mode:'multiplayer',outcome:actualOutcome,baseDelta,requestedEffectiveDelta,effectiveDelta:appliedDelta,resultingTotal:next,matchId:reward.matchId,terminalKind:match.terminalKind,rewardReason:verdict.reason,durationMs,completedTurns,pvpDayKey:dayKey,pairKey,pairCountAfter,dailyPointsAfter,limits:config.limits,campaign:campaignEffects,elo,authority:'server',createdAt:FieldValue.serverTimestamp()});
+  return {duplicate:false,total:next,appliedDelta,effectiveDelta:appliedDelta,requestedEffectiveDelta,rewardReason:verdict.reason,terminalKind:match.terminalKind,durationMs,completedTurns,pvpDayKey:dayKey,pairCountAfter,dailyPointsAfter,limits:config.limits,baseDelta,receiptId:reward.receiptId,mode:'multiplayer',outcome:actualOutcome,matchId:reward.matchId,campaign:campaignEffects,elo};
 }
 
 function abandonSafeId(value){return String(value||'').replace(/[^A-Za-z0-9_-]/g,'_').slice(0,420);}
@@ -176,13 +180,13 @@ async function synchronizeAbandonSettlementTx({db,tx,uid,mode,matchId='',receipt
   const initialSnaps=await Promise.all(initial),userSnap=initialSnaps[0],settingsSnap=initialSnaps[1];
   if(!userSnap.exists) throw economyError('PROFILE_MISSING');
 
-  let myRole=null;
+  let myRole=null,pvpMatch=null;
   if(mode==='multiplayer'){
     const matchSnap=initialSnaps[2];
     if(!matchSnap?.exists) throw economyError('PVP_MATCH_NOT_FOUND');
-    const match=matchSnap.data()||{};
-    myRole=match.hostUid===uid?'host':(match.guestUid===uid?'guest':null);
-    if(!myRole||match.abandonedBy!==myRole||match.gameOver!==true) throw economyError('PVP_ABANDON_EVIDENCE_MISMATCH');
+    pvpMatch=matchSnap.data()||{};
+    myRole=pvpMatch.hostUid===uid?'host':(pvpMatch.guestUid===uid?'guest':null);
+    if(!myRole||pvpMatch.abandonedBy!==myRole||pvpMatch.gameOver!==true) throw economyError('PVP_ABANDON_EVIDENCE_MISMATCH');
   }
 
   const normalizedReceipt=mode==='solo'
@@ -197,6 +201,11 @@ async function synchronizeAbandonSettlementTx({db,tx,uid,mode,matchId='',receipt
   const extraReads=[tx.get(statsRef),tx.get(resultRef),tx.get(eventRef)];
   if(rewardRef) extraReads.push(tx.get(rewardRef));
   const extras=await Promise.all(extraReads),statsSnap=extras[0],resultSnap=extras[1],eventSnap=extras[2],rewardSnap=rewardRef?extras[3]:null;
+  // PvP abandon counts as a competitive loss. Load ELO evidence before the first write; the
+  // exact-once receipt means retries or the winner's later settlement cannot double-rate.
+  const abandonEloContext=mode==='multiplayer'
+    ? await loadPvpEloContext({db,tx,match:pvpMatch,matchId:String(matchId||'').trim().toUpperCase(),dayKey:argentinaMatchDayKey(timestampMs(pvpMatch?.endedAt)||Date.now())})
+    : null;
   const priorReward=rewardSnap?.exists?(rewardSnap.data()||{}):null;
   if(priorReward&&!abandonReceiptIsCompatible(priorReward)) throw economyError('ABANDON_RECEIPT_CONFLICT',{receiptId:normalizedReceipt});
 
@@ -245,6 +254,9 @@ async function synchronizeAbandonSettlementTx({db,tx,uid,mode,matchId='',receipt
       createdAt:FieldValue.serverTimestamp()
     });
   }
+  const abandonElo=mode==='multiplayer'
+    ? commitPvpEloSettlementTx({tx,context:abandonEloContext,match:pvpMatch,matchId:String(matchId||'').trim().toUpperCase()})
+    : null;
   if(!eventSnap.exists){
     tx.create(eventRef,{
       actorUid:uid,targetUid:uid,source:'abandon_penalty_server',operationId,type:'match.abandon_penalty',
@@ -258,7 +270,7 @@ async function synchronizeAbandonSettlementTx({db,tx,uid,mode,matchId='',receipt
     kind:'abandonPenalty',mode,matchId:mode==='multiplayer'?String(matchId||'').trim().toUpperCase():null,
     receiptId:normalizedReceipt,baseDelta,appliedDelta,total:priorReward?current:next,
     rewardReason:'abandon_penalty',terminalKind:'abandon',abandoned:true,penalty:true,authority:'server',
-    duplicate:!!priorReward
+    duplicate:!!priorReward,elo:abandonElo
   };
 }
 
