@@ -1,0 +1,40 @@
+ARGENTINIA 23.21.3 — QA LOCAL PRE-RC — 2026-09-08
+
+STATUS=LOCAL_QA_GREEN_OWNER_GATES_PENDING
+BASELINE=23.21.2_RELEASED
+ENGINE=23.21.3
+POOL=880
+MP_PROTOCOL=mp-23.19.2
+ECONOMY_PROTOCOL=econ-23.19.5.6
+ECONOMY_SCHEMA=10
+RULES=23.13.83_CANDIDATE
+CALLABLES=39
+
+LOCAL QA:
+- Canonical fast contracts: 115/115 PASS
+- Regression archive: 62/62 PASS
+- Game Text: 1504 definitions / 1224 uses PASS
+- Source Functions unit: 9/9 PASS
+- MULTIPLAYER_SOCIAL_23_21_3_UNIT_OK PASS
+- Source JS/MJS syntax: 271/271 PASS
+- Ordered-package JS/MJS syntax: 410/410 PASS
+- Shell syntax: 18/18 PASS
+- Stability Lab: PASS
+- Headless 23.18.1: 6/6 PASS
+- Coverage 23.18.2: 97.95% structurally known PASS
+- Headless 23.18.2: 6/6 PASS
+- Multiplayer Reliability Lab: PASS
+- Multiplayer Hardening Lab: PASS
+- Deck Intelligence Matrix: PASS
+- Rules compiler hygiene structural test: PASS
+- Functions parity 01/05/06/07: PASS
+- Rules parity 02/03/05/07: PASS
+- Gate03 active project IDs: demo-argentinia-rules-23213 only
+- Gate05 active project IDs: demo-argentinia-economy-23213 only
+- Gate07 active project IDs: demo-argentinia-trade-23213 only
+
+FUNCTIONS_TREE_SHA256=c9ec4f19c1ac1818ade25f56cf1ea0727745823aa435df65b4c6441cfe4c6416
+RULES_23_13_83_SHA256=dea4a3dbf618c2258ba8265715b5cd533a68ad563ec235035f2d48857dd2a274
+
+IMPORTANT:
+Gate03/Gate05/Gate07 emulator executions are NOT claimed green here. They must be run by owner on the exact ordered package. Do not deploy before all three pass.

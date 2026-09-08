@@ -1,12 +1,12 @@
 {
-  "engineVersion": "23.21.2",
+  "engineVersion": "23.21.3",
   "engineProtocolVersion": "mp-23.19.2",
   "protocolVersion": "mp-23.19.2",
   "economyProtocolVersion": "econ-23.19.5.6",
-  "economySchemaVersion": 9,
+  "economySchemaVersion": 10,
   "economyFunctionsRegion": "southamerica-east1",
-  "firestoreRulesVersion": "23.13.82",
+  "firestoreRulesVersion": "23.13.83",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "ELO + Movimientos + Tournament Audit Fix + Bot Survival + Ranking/Market UX"
+  "label": "Multiplayer Social Layer · Chat + Emotes + Premium Cosmetics"
 }

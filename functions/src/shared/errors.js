@@ -88,6 +88,20 @@ const MAP = Object.freeze({
   TRADE_WEEKLY_LIMIT: ['resource-exhausted', 'Uno de los jugadores ya alcanzó el máximo semanal configurado de intercambios completados.'],
   TRADE_SELF_OFFER: ['failed-precondition', 'No podés hacer una oferta sobre tu propia publicación.'],
   TRADE_RESERVATION_CONFLICT: ['failed-precondition', 'La reserva ya no puede sostenerse con la colección y los mazos actuales.'],
+  EMOTE_NOT_FOUND: ['not-found', 'Ese emoji no existe en el catálogo actual.'],
+  EMOTE_FREE_INCLUDED: ['failed-precondition', 'Ese emoji ya está incluido para todos los jugadores.'],
+  EMOTE_ALREADY_OWNED: ['failed-precondition', 'Ya tenés ese emoji.'],
+  EMOTE_INSUFFICIENT_POINTS: ['failed-precondition', 'No te alcanzan los puntos para comprar ese emoji.'],
+  MULTIPLAYER_SOCIAL_MATCH_INVALID: ['invalid-argument', 'La partida multiplayer no es válida para comunicación.'],
+  MULTIPLAYER_SOCIAL_TYPE_INVALID: ['invalid-argument', 'Ese tipo de comunicación no es válido.'],
+  MULTIPLAYER_SOCIAL_MATCH_CLOSED: ['failed-precondition', 'El chat ya no está disponible porque la partida terminó.'],
+  MULTIPLAYER_SOCIAL_NOT_READY: ['failed-precondition', 'El chat se habilita cuando ambos jugadores están listos.'],
+  MULTIPLAYER_CHAT_INVALID: ['invalid-argument', 'El mensaje está vacío o supera el máximo permitido.'],
+  MULTIPLAYER_CHAT_RATE_LIMIT: ['resource-exhausted', 'Estás enviando mensajes demasiado rápido.'],
+  MULTIPLAYER_EMOTE_INVALID: ['invalid-argument', 'Ese emoji no existe.'],
+  MULTIPLAYER_EMOTE_NOT_OWNED: ['permission-denied', 'Ese emoji premium no pertenece a tu cuenta.'],
+  MULTIPLAYER_EMOTE_RATE_LIMIT: ['resource-exhausted', 'Esperá un momento antes de mandar otro emoji.'],
+
   USERNAME_TRADE_RESERVED: ['failed-precondition', 'Cancelá tu publicación y tus ofertas del Mercado de Pases antes de cambiar el nombre.'],
   INTERNAL: ['internal', 'Error interno de Economy Authority.']
 });

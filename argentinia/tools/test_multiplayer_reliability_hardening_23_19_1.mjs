@@ -30,14 +30,22 @@ const sync = read('js/matchSync.js');
 const ui = read('js/ui.js');
 const texts = read('js/gameTexts.js');
 const utils = read('js/utils.js');
+const social = read('js/multiplayerSocial.js');
+const emoteCatalog = read('js/emoteCatalog.js');
+const html = read('index.html');
+const css = read('css/style.css');
+const economyClient = read('js/economyClient.js');
+const functionsIndex = fs.readFileSync(path.join(root, '../functions/src/index.js'), 'utf8');
+const serverSocial = fs.readFileSync(path.join(root, '../functions/src/multiplayer/communication.js'), 'utf8');
+const trustedEmotes = fs.readFileSync(path.join(root, '../functions/src/trusted/emoteCatalog.js'), 'utf8');
 
-assert.equal(ENGINE_VERSION, '23.21.2');
+assert.equal(ENGINE_VERSION, '23.21.3');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.82');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.83');
 assert.equal(MULTIPLAYER_RELIABILITY_VERSION, '23.19.1');
-assert.equal(manifest.engineVersion, '23.21.2');
+assert.equal(manifest.engineVersion, '23.21.3');
 assert.equal(manifest.engineProtocolVersion, 'mp-23.19.2');
-assert.equal(manifest.firestoreRulesVersion, '23.13.82');
+assert.equal(manifest.firestoreRulesVersion, '23.13.83');
 assert.equal(manifest.pool, 880);
 
 // Aclaración central de 23.19.1: el self-join host->guest YA estaba protegido y debe seguirlo.
@@ -59,6 +67,45 @@ assert.ok(!/export async function publishMyPrivateState\s*\(/.test(fb));
 assert.ok(fb.includes('function validateCurrentMatchSessionForUid'));
 assert.ok(fb.includes('ownerSessionId: MULTIPLAYER_CLIENT_SESSION_ID'));
 assert.ok(fb.includes("throw new Error('MULTIPLAYER_PRIVATE_SELECTION_OWNER_MISMATCH')"));
+
+// 23.21.3 — Multiplayer Social Layer: visually shares the bitácora, but transport is
+// server-authoritative and completely separate from gameplay snapshots/telemetry.
+assert.ok(html.includes('id="mp-social-shell"'));
+assert.ok(html.includes('id="mp-chat-input"'));
+assert.ok(html.includes('id="mp-chat-send"'));
+assert.ok(html.includes('id="mp-emote-picker"'));
+assert.ok(social.includes("listenToMatchCommunication"));
+assert.ok(social.includes("sendMultiplayerCommunication"));
+assert.ok(social.includes("row.className=`log-entry mp-social-log-entry"));
+assert.ok(social.includes("mp-social-own"));
+assert.ok(social.includes("mp-social-rival"));
+assert.ok(social.includes("const MAX_CHAT = 220"));
+assert.ok(social.includes("animationsEffectivelyEnabled"));
+assert.ok(social.includes("MUTE_KEY"));
+assert.ok(emoteCatalog.includes(".webp`"));
+assert.ok(emoteCatalog.includes(".gif`"));
+assert.ok(emoteCatalog.includes(".png`"));
+assert.ok(emoteCatalog.includes("pricePoints:500"));
+assert.ok(css.includes('.mp-social-own'));
+assert.ok(css.includes('.mp-social-rival'));
+assert.ok(economyClient.includes("call('multiplayerSendCommunication'"));
+assert.ok(economyClient.includes("call('economyPurchaseEmote'"));
+assert.ok(functionsIndex.includes('export const multiplayerSendCommunication = onCall'));
+assert.ok(functionsIndex.includes('export const economyPurchaseEmote = onCall'));
+assert.equal([...functionsIndex.matchAll(/export const \w+\s*=\s*onCall\(/g)].length, 39);
+for (const contract of [
+  'CHAT_MAX_CHARS = 220','COMMUNICATION_EVENT_CAP = 40','CHAT_MIN_INTERVAL_MS = 1500',
+  'CHAT_BURST_MAX = 5','EMOTE_MIN_INTERVAL_MS = 4000','EMOTE_BURST_MAX = 3',
+  'COMMUNICATION_TTL_MS = 48 * 60 * 60 * 1000'
+]) assert.ok(serverSocial.includes(contract), `missing social authority contract ${contract}`);
+assert.ok(serverSocial.includes("db.collection('matchCommunications').doc(id)"));
+assert.ok(serverSocial.includes("match.status !== 'active'"));
+assert.ok(serverSocial.includes("match.hostReady !== true || match.guestReady !== true"));
+assert.ok(serverSocial.includes("MULTIPLAYER_EMOTE_NOT_OWNED"));
+assert.ok(trustedEmotes.includes("TRUSTED_EMOTE_CATALOG_VERSION = '23.21.3'"));
+assert.equal((trustedEmotes.match(/id:'emote_/g)||[]).length,12);
+assert.ok(!main.includes('matchCommunications'));
+assert.ok(!main.includes('MULTIPLAYER_CHAT_RATE_LIMIT'));
 
 // Self-echo ya no puede asumir que "mismo rol" == "misma pestaña".
 assert.ok(main.includes('const isSelfEcho = !!writerClientId && writerClientId === matchSyncClientId;'));
@@ -113,7 +160,7 @@ assert.equal(classifyReconnectSafety({multiplayerResolutionMarker:{authorityRole
 const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || '';
 if (rulesPath) {
   const rules = fs.readFileSync(rulesPath, 'utf8');
-  assert.ok(rules.includes('23.13.82'));
+  assert.ok(rules.includes('23.13.83'));
   assert.ok(rules.includes('function validMatchIdentityTransition()'));
   assert.ok(rules.includes('function validMatchSessionTransition()'));
   assert.ok(rules.includes("request.auth.uid != resource.data.hostUid"));
@@ -125,7 +172,7 @@ if (rulesPath) {
   assert.ok(rules.includes("d.get('ownerSessionId', '') == m.get('guestSessionId', '')"));
   assert.ok(rules.includes('allow create: if isAuthenticated() && validPrivateSelectionCreate(matchId, requestId);'));
   assert.ok(rules.includes('allow update: if false;'));
-  assert.ok(rules.includes("'23.13.82'"));
+  assert.ok(rules.includes("'23.13.83'"));
 }
 
 const lab = path.join(root, 'tools/run_multiplayer_hardening_lab_23_19_1.mjs');

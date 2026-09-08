@@ -327,6 +327,18 @@
 
       <div class="log-section">
         <div class="log-box" id="game-log-box"></div>
+
+        <!-- 23.21.3 — Chat + emojis: misma bitácora visual, canal de red separado. -->
+        <div id="mp-social-shell" class="mp-social-shell hidden" aria-label="Chat multiplayer">
+          <div id="mp-emote-picker" class="mp-emote-picker hidden" aria-label="Emojis disponibles"></div>
+          <div class="mp-social-compose">
+            <input id="mp-chat-input" class="mp-chat-input" type="text" maxlength="220" autocomplete="off" spellcheck="true" placeholder="Mensaje al rival…" aria-label="Mensaje al rival">
+            <button id="mp-emote-open" class="mp-social-icon-btn" type="button" title="Enviar emoji" aria-label="Enviar emoji">😏</button>
+            <button id="mp-social-mute" class="mp-social-icon-btn" type="button" title="Silenciar rival" aria-label="Silenciar rival" aria-pressed="false">🔊</button>
+            <button id="mp-chat-send" class="mp-chat-send" type="button">Enviar</button>
+          </div>
+          <div id="mp-social-status" class="mp-social-status" aria-live="polite"></div>
+        </div>
         
         <!-- ENTREGA 23.9.1: cabecera compacta. Turno, fase, prioridad y actividad son capas distintas. -->
         <div id="turn-priority-hud" class="turn-priority-hud" aria-live="polite">

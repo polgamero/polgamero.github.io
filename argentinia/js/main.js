@@ -48,6 +48,7 @@ import { initializeTransformPermanentItem, canTransformPermanent } from './trans
 import { cardHasSubtype, cardsShareCreatureType, typalFilterMatches, buildCreatureTypeCatalog, chooseBestCreatureType, setChosenCreatureType } from './typalEngine.js';
 import { botDeckQuality, normalizeBotDifficulty } from './botDifficulty.js';
 import { normalizeSyncRevision, deriveEffectiveTouchedKeys, classifySnapshotRevision, syncRetryDelayMs, isRetryableSyncError, classifyRivalPresence, fieldRevisionDeltaKeys, markFieldRevisionsApplied, SYNC_RETRY_MAX_ATTEMPTS, SYNC_RECOVERY_RETRY_MS, MULTIPLAYER_READY_TIMEOUT_MS, MULTIPLAYER_CLIENT_SESSION_ID, validateRoleSession } from './multiplayerReliability.js';
+import { startMultiplayerSocialSession, stopMultiplayerSocialSession } from './multiplayerSocial.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -907,6 +908,7 @@ function hookGameplayButtons() {
 }
 
 async function initGame(deckSource, options = {}) {
+  stopMultiplayerSocialSession();
   soloGameplayReady = false;
   const tournamentMatch = options?.tournamentMatch || null;
   state.currentTournamentMatch = tournamentMatch;
@@ -1941,6 +1943,7 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
       state.multiplayerWaitingForReady = false;
       hideMultiplayerReadyBarrier();
       startListeningToMatch(matchId, myRole);
+      startMultiplayerSocialSession({ matchId, myRole, uid:state.currentUser?.uid, localName:getLocalPlayerName(), rivalName:rivalName || 'tu rival', profile:state.userProfile });
       hookGameplayButtons();
       if (state.priorityPlayer === 'local') resetPriorityClock('match_start');
       render();
@@ -4361,6 +4364,7 @@ function resumeReconnectedMatch(matchId, myRole, publicDoc, privateDoc, rivalNam
   });
 
   startListeningToMatch(matchId, myRole);
+  startMultiplayerSocialSession({ matchId, myRole, uid:state.currentUser?.uid, localName:getLocalPlayerName(), rivalName:rivalName || 'tu rival', profile:state.userProfile });
   hookGameplayButtons();
 
   render();

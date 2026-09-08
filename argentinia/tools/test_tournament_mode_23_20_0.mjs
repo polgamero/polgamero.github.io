@@ -23,12 +23,12 @@ const roster=read(path.join(fn,'src/trusted/tournamentRoster.js'));
 const constants=read(path.join(fn,'src/shared/constants.js'));
 const workflow=read(path.join(repo,'.github/workflows/pages.yml'));
 
-assert.match(version,/ENGINE_VERSION = '23\.21\.2'/);
-assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.82'/);
+assert.match(version,/ENGINE_VERSION = '23\.21\.3'/);
+assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.83'/);
 assert.match(version,/ECONOMY_PROTOCOL_VERSION = 'econ-23\.19\.5\.6'/);
-assert.match(version,/ECONOMY_SCHEMA_VERSION = 9/);
-assert.match(constants,/ENGINE_VERSION = '23\.21\.2'/); // Backend is promoted in 23.21.2 for PvP ELO while Tournament semantics stay cumulative.
-assert.match(constants,/ECONOMY_SCHEMA_VERSION = 9/);
+assert.match(version,/ECONOMY_SCHEMA_VERSION = 10/);
+assert.match(constants,/ENGINE_VERSION = '23\.21\.3'/); // Backend is promoted in 23.21.3 for PvP ELO while Tournament semantics stay cumulative.
+assert.match(constants,/ECONOMY_SCHEMA_VERSION = 10/);
 assert.match(constants,/minInstances: 0/); assert.match(constants,/maxInstances: 1/); assert.match(constants,/concurrency: 10/); assert.match(constants,/enforceAppCheck: false/);
 
 assert.match(texts,/'menu\.play': definition\('Menú', 'PARTIDA SIMPLE'/);

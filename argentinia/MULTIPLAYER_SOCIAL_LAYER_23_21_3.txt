@@ -1,0 +1,72 @@
+ARGENTINIA 23.21.3 — MULTIPLAYER SOCIAL LAYER
+
+OBJETIVO
+Agregar comunicación social a las partidas PvP sin mezclarla con el snapshot/revision de gameplay.
+
+CHAT
+- Vive visualmente debajo/dentro de la Bitácora.
+- Input + ENVIAR; Enter envía.
+- Formato: NOMBRE: mensaje.
+- Propios: azul. Rival: rojo.
+- Máximo 220 caracteres; sanitización server-side.
+- Transporte: multiplayerSendCommunication (Cloud Function).
+- matchCommunications/{matchId}: ring buffer máximo 40 eventos.
+- Chat NO entra en Telemetría/Caja Negra.
+- Mute rival local disponible.
+
+ANTI-SPAM SERVER-SIDE
+- Chat: mínimo 1500 ms; máximo 5/15 s.
+- Emote: mínimo 4000 ms; máximo 3/20 s.
+- Brake adicional en memoria: 30 social calls/min por UID.
+- El rate state persistente vive en matchCommunications y sobrevive cold starts.
+
+EMOTES
+- 12 slots: emote_001..emote_012.
+- 6 free + 6 premium.
+- Asset path: assets/images/emotes/.
+- Fallback: .webp -> .gif -> .png/APNG -> Unicode.
+- Recomendado: 256x256 transparente; WebP animado preferido; GIF soportado.
+- Los emotes se ven en Bitácora y como burst visual temporal sobre el jugador.
+- reduced-motion/animaciones desactivadas se respetan.
+
+PREMIUM
+- Ownership: users.cosmetics.emotes.
+- Compra server-authoritative: economyPurchaseEmote.
+- operationId idempotente: retry no cobra dos veces.
+- Precio trusted server-side; browser no puede inyectar precio/points/ownership.
+- Economía Audit registra store.purchase_emote / emote_purchase_server.
+
+CATÁLOGO INICIAL
+FREE:
+- emote_001 Mate
+- emote_002 Aplausos
+- emote_003 Risa
+- emote_004 Sorpresa
+- emote_005 Enojo
+- emote_006 Desafío
+PREMIUM:
+- emote_007 Fuego — 250 P
+- emote_008 Corona — 350 P
+- emote_009 Calavera — 350 P
+- emote_010 Rayos — 400 P
+- emote_011 Fantasma — 450 P
+- emote_012 Trofeo — 500 P
+
+SEGURIDAD
+- Sólo host/guest pueden leer matchCommunications.
+- Browser host/guest/Admin no pueden escribir el documento social directamente.
+- Username autoritativo sale del match, nunca del payload browser.
+- Tercero no puede enviar ni leer.
+- No se envía antes de ambos Ready ni después de cerrar/abandonar/gameOver.
+- Premium sin ownership: DENY.
+- Social send no modifica syncRevision ni snapshot gameplay.
+
+RETENCIÓN
+- Documento incluye expiresAt a 48 h.
+- Es TTL-ready; 23.21.3 NO presupone que Firestore TTL esté habilitado automáticamente.
+
+BACKEND
+- Rules candidate: 23.13.83.
+- Economy schema: 10.
+- Callables: 39 (37 baseline + economyPurchaseEmote + multiplayerSendCommunication).
+- Node 22 / southamerica-east1 / 256 MiB / min0 / max1 / concurrency10.

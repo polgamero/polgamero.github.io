@@ -61,6 +61,8 @@ export function deriveAuthorityAudit(type,result={}){
     case 'store.purchase_classified':
       out.source='classified_purchase_server'; out.pointsDelta=-nonneg(result.pointsCost); out.fichasDelta=-nonneg(result.fichasCost); out.cardsDelta=1;
       out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost)}; break;
+    case 'store.purchase_emote':
+      out.source='emote_purchase_server'; out.pointsDelta=-nonneg(result.pointsCost); out.stats={pointsSpent:nonneg(result.pointsCost)}; break;
     case 'account.rename_username':
       out.source='username_rename_server'; out.fichasDelta=-nonneg(result.fichasCost); out.stats={fichasSpent:nonneg(result.fichasCost)}; break;
     case 'daily.claim':

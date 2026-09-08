@@ -2025,3 +2025,20 @@ html.argentinia-mobile .trade-preview-card-slot>.card{max-height:82dvh}
   html.argentinia-mobile .trade-filter-selects{grid-template-columns:1fr}
   html.argentinia-mobile .trade-filter-clear{grid-column:1}
 }
+
+/* 23.21.3 — Chat/emojis multiplayer mobile */
+html.argentinia-mobile .mp-social-compose { grid-template-columns:minmax(0,1fr) 28px 28px auto; gap:3px; }
+html.argentinia-mobile .mp-chat-input { height:29px; font-size:.62rem; padding:0 .4rem; }
+html.argentinia-mobile .mp-social-icon-btn,html.argentinia-mobile .mp-chat-send { height:29px; }
+html.argentinia-mobile .mp-social-icon-btn { width:28px; font-size:.86rem; }
+html.argentinia-mobile .mp-chat-send { padding:0 .42rem; font-size:.6rem; }
+html.argentinia-mobile .mp-emote-picker { width:min(220px,96vw); grid-template-columns:repeat(4,1fr); }
+html.argentinia-mobile .mp-emote-burst { width:82px; height:82px; }
+html.argentinia-mobile .mp-emote-burst .mp-emote-fallback { font-size:3.7rem; }
+html.argentinia-mobile .mp-emote-burst-rival { bottom:-58px; }
+html.argentinia-mobile .mp-emote-burst-own { top:-58px; }
+html.argentinia-mobile .store-emote-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+html.argentinia-mobile .store-emote-card { padding:8px 5px; }
+html.argentinia-mobile .store-emote-art { height:62px; }
+html.argentinia-mobile .store-emote-art-img { max-width:62px; max-height:62px; }
+html.argentinia-mobile .store-emote-fallback { font-size:3rem; }

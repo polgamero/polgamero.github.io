@@ -29,7 +29,7 @@ import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurcha
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, getClassifiedsServer, purchaseClassifiedCardServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, purchaseEmoteServer, sendMultiplayerCommunicationServer, getClassifiedsServer, purchaseClassifiedCardServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
@@ -178,7 +178,11 @@ function normalizeProfileForClient(data) {
     ...data,
     starterDeckPending: data.starterDeckPending === true,
     inventory: normalizeInventory(data.inventory),
-    dailyRewards: normalizeDailyRewardsState(data.dailyRewards)
+    dailyRewards: normalizeDailyRewardsState(data.dailyRewards),
+    cosmetics: {
+      ...(data.cosmetics && typeof data.cosmetics === 'object' && !Array.isArray(data.cosmetics) ? data.cosmetics : {}),
+      emotes: [...new Set((Array.isArray(data.cosmetics?.emotes) ? data.cosmetics.emotes : []).map(String).filter(Boolean))]
+    }
   };
 }
 
@@ -221,13 +225,14 @@ const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
   packPurchase: 'store.purchase_pack',
   enhancementCraft: 'store.craft_enhancement',
   prebuiltPurchase: 'store.purchase_prebuilt',
+  emotePurchase: 'store.purchase_emote',
   classifiedPurchase: 'store.purchase_classified',
   usernameRename: 'account.rename_username',
   dailyClaim: 'daily.claim'
 });
 const ECONOMY_ACTION_PREFIXES = Object.freeze({
   packPurchase: 'buy-pack', enhancementCraft: 'craft', prebuiltPurchase: 'prebuilt',
-  classifiedPurchase: 'classified', usernameRename: 'rename', dailyClaim: 'daily-claim'
+  classifiedPurchase: 'classified', emotePurchase:'emote', usernameRename: 'rename', dailyClaim: 'daily-claim'
 });
 
 // 23.19.5.3 — exactly-once browser bridge. El journal conserva sólo intención/operationId.
@@ -1123,6 +1128,21 @@ export async function purchasePrebuiltDeck(uid, productId, deckName) {
   return { ...outcome.result, profile, replayed: !!outcome.replayed, operationId: outcome.operationId };
 }
 
+// 23.21.3 — compra server-authoritative de un emoji premium. Los emojis free no se
+// persisten como ownership: el cliente los incluye por catálogo.
+export async function purchaseEmote(uid, emoteId) {
+  const request = { emoteId:String(emoteId || '') };
+  const outcome = await runEconomyActionAuthority(uid, 'emotePurchase', request,
+    operationId => purchaseEmoteServer(request.emoteId, operationId));
+  const profile = await loadOwnProfileAfterServerMutation(uid);
+  return { ...outcome.result, profile, replayed:!!outcome.replayed, operationId:outcome.operationId };
+}
+
+export async function sendMultiplayerCommunication(matchId, payload = {}) {
+  const response = await sendMultiplayerCommunicationServer(matchId, payload);
+  return response?.event || null;
+}
+
 // Edita un mazo YA GUARDADO — mismas reglas que crear uno nuevo (mismo validateDeckCards),
 // pero reemplaza el nombre/cardIds del mazo existente en vez de sumar uno a la lista.
 // Conserva su id/isDefault/createdAt originales — solo cambia el contenido.
@@ -1662,6 +1682,18 @@ export function listenToMatch(code, onUpdate, onError = null) {
   }, (error) => {
     if (typeof onError === 'function') onError(error);
     else console.error('Listener multiplayer interrumpido:', error);
+  });
+}
+
+export function listenToMatchCommunication(code, onUpdate, onError = null) {
+  const ref = doc(db, 'matchCommunications', String(code || '').trim().toUpperCase());
+  return onSnapshot(ref, { includeMetadataChanges:true }, (snap) => {
+    onUpdate(snap.exists() ? snap.data() : null, {
+      hasPendingWrites:!!snap.metadata?.hasPendingWrites, fromCache:!!snap.metadata?.fromCache, receivedAtClientMs:Date.now()
+    });
+  }, (error) => {
+    if (typeof onError === 'function') onError(error);
+    else console.error('Listener social multiplayer interrumpido:', error);
   });
 }
 

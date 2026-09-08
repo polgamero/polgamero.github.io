@@ -123,6 +123,22 @@ export function purchasePrebuiltDeckServer(productId, deckName, operationId = nu
   });
 }
 
+export function purchaseEmoteServer(emoteId, operationId = null) {
+  return call('economyPurchaseEmote', {
+    operationId: operationId || createEconomyOperationId('emote'),
+    emoteId: String(emoteId || '')
+  });
+}
+
+export function sendMultiplayerCommunicationServer(matchId, payload = {}) {
+  return call('multiplayerSendCommunication', {
+    matchId: String(matchId || '').trim().toUpperCase(),
+    type: String(payload?.type || ''),
+    text: String(payload?.text || ''),
+    emoteId: String(payload?.emoteId || '')
+  });
+}
+
 export function getClassifiedsServer() {
   return call('economyGetClassifieds');
 }

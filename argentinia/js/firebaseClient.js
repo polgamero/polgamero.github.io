@@ -127,6 +127,21 @@ export function listenToMatch(...args) {
   };
 }
 
+export function listenToMatchCommunication(...args) {
+  let cancelled = false;
+  let innerStop = null;
+  preloadFirebaseClient().then(mod => {
+    if (cancelled) return;
+    innerStop = mod.listenToMatchCommunication(...args);
+    if (cancelled && typeof innerStop === 'function') innerStop();
+  }).catch(error => {
+    diag('firebase_listen_social_failed', { message:error?.message || String(error) });
+    const onError = args[2];
+    if (typeof onError === 'function') { try { onError(error); } catch {} }
+  });
+  return () => { cancelled = true; if (typeof innerStop === 'function') innerStop(); };
+}
+
 export function listenAnimationPolicy(...args) {
   let cancelled = false;
   let innerStop = null;
@@ -226,6 +241,8 @@ export const loadClassifiedsSchedule = asyncProxy('loadClassifiedsSchedule');
 export const fetchCurrentClassifieds = asyncProxy('fetchCurrentClassifieds');
 export const purchaseClassifiedCard = asyncProxy('purchaseClassifiedCard');
 export const purchasePrebuiltDeck = asyncProxy('purchasePrebuiltDeck');
+export const purchaseEmote = asyncProxy('purchaseEmote');
+export const sendMultiplayerCommunication = asyncProxy('sendMultiplayerCommunication');
 export const adminAdvanceDailyRewardDebugDay = asyncProxy('adminAdvanceDailyRewardDebugDay');
 export const adminResetDailyRewardDebug = asyncProxy('adminResetDailyRewardDebug');
 export const craftEnhancement = asyncProxy('craftEnhancement');

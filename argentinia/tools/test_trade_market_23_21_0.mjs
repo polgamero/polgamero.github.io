@@ -7,10 +7,10 @@ const root=path.resolve(here,'..');
 const repo=path.resolve(root,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const manifest=JSON.parse(read('build-manifest.json'));
-assert.equal(manifest.engineVersion,'23.21.2');
+assert.equal(manifest.engineVersion,'23.21.3');
 assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.6');
-assert.equal(manifest.economySchemaVersion,9);
-assert.equal(manifest.firestoreRulesVersion,'23.13.82');
+assert.equal(manifest.economySchemaVersion,10);
+assert.equal(manifest.firestoreRulesVersion,'23.13.83');
 assert.equal(manifest.pool,880);
 
 const ui=read('js/ui.js');
@@ -67,14 +67,14 @@ for(const name of ['getTradeMarket','createTradeListing','cancelTradeListing','c
 }
 
 // GitHubSource must remain independently testable and intentionally carries no deployable
-// Firestore config. Rules 23.13.82 is certified by Gate 03 in the ordered package; here we
+// Firestore config. Rules 23.13.83 is certified by Gate 03 in the ordered package; here we
 // assert only the source-side contract/version so CI never depends on a sibling delivery folder.
 const version=read('js/version.js');
-const sourceManifest=fs.readFileSync(path.join(repo,'SOURCE_SNAPSHOT_MANIFEST_23_21_2.txt'),'utf8');
-assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.82'/);
-assert.match(sourceManifest,/DIRECT_FIRESTORE_FIREWALL=(?:CANDIDATE|DEPLOYED)_RULES_23\.13\.82/);
+const sourceManifest=fs.readFileSync(path.join(repo,'SOURCE_SNAPSHOT_MANIFEST_23_21_3.txt'),'utf8');
+assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.83'/);
+assert.match(sourceManifest,/DIRECT_FIRESTORE_FIREWALL=(?:CANDIDATE|DEPLOYED)_RULES_23\.13\.83/);
 assert.match(sourceManifest,/TRADE_RESERVATIONS=SERVER_ONLY/);
 
 const callables=[...fn.matchAll(/export const \w+\s*=\s*onCall\(/g)];
-assert.equal(callables.length,37);
+assert.equal(callables.length,39);
 console.log('TRADE_MARKET_23_21_0_OK');

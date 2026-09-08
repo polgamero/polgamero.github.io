@@ -32,13 +32,14 @@ import {
 } from './economy/daily.js';
 import {
   storefrontSnapshot, loadCommerceCampaignEffects, purchasePackTx, craftEnhancementTx,
-  purchasePrebuiltTx, getClassifiedsView, purchaseClassifiedTx, renameUsernameTx
+  purchasePrebuiltTx, getClassifiedsView, purchaseClassifiedTx, renameUsernameTx, purchaseEmoteTx
 } from './economy/commerce.js';
 import { recordAuthorityAudit } from './economy/audit.js';
 import { deriveSoloAbandonReceiptId, normalizeAbandonDurationMs } from './economy/matchCore.js';
 import { normalizeAdminGrantRequest, adminGrantTx, advanceBulkGrantJob, readBulkGrantJob, adminSyncPlayerStats, adminRepairSoloRewardTx } from './economy/admin.js';
 import { getTournamentState, startTournamentTx, beginTournamentMatchTx, settleTournamentMatchTx, forfeitTournamentTx, abandonTournamentTx } from './economy/tournament.js';
 import { getTradeMarketView, createTradeListingTx, cancelTradeListingTx, createTradeOfferTx, cancelTradeOfferTx, rejectTradeOfferTx, acceptTradeOfferTx } from './economy/trade.js';
+import { sendMultiplayerCommunication } from './multiplayer/communication.js';
 
 function requestData(request) {
   const data = request?.data;
@@ -106,8 +107,8 @@ export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
         dailyRewardsAuthority: 'server', dailyClockAuthority: 'server', dailyClaimRecovery: true,
         matchSettlementAuthority: 'server', pvpAntiFarmAuthority: 'server',
         registrationAdmissionAuthority: 'server', adminEconomyAuthority: 'server',
-        economicStatisticsAuthority: 'server', immutableAuditAuthority: 'server', tournamentAuthority: 'server', tradeMarketAuthority: 'server',
-        browserEconomyWrites: 'denied_by_rules_23.13.82', authorityCutover: 'server_required'
+        economicStatisticsAuthority: 'server', immutableAuditAuthority: 'server', tournamentAuthority: 'server', tradeMarketAuthority: 'server', emoteStoreAuthority:'server', multiplayerSocialAuthority:'server',
+        browserEconomyWrites: 'denied_by_rules_23.13.83', authorityCutover: 'server_required'
       },
       trustedPoolFingerprint: TRUSTED_CARD_POOL_FINGERPRINT
     };
@@ -349,6 +350,44 @@ export const economyPurchasePrebuiltDeck = onCall(FUNCTION_RUNTIME_OPTIONS, asyn
     logFailure('economyPurchasePrebuiltDeck', auth, error);
     throw error;
   }
+});
+
+export const economyPurchaseEmote = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'emote-purchase', { limit: 20, windowMs: 60000 });
+    rejectForbidden(data, ['uid','points','price','pointsCost','cosmetics','ownedEmotes']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion','emoteId']);
+    const operationId = String(data.operationId || '');
+    const emoteId = String(data.emoteId || '');
+    const outcome = await runIdempotentOperation(db, {
+      uid:auth.uid, operationId, type:'store.purchase_emote', request:{ emoteId },
+      execute: async tx => {
+        const config = await loadEconomyConfig(db, tx);
+        assertEconomyAvailable(config, clientProtocol(data));
+        return purchaseEmoteTx({ db, tx, uid:auth.uid, emoteId });
+      }
+    });
+    await finalizeAuthorityAudit({ auth, operationId, type:'store.purchase_emote', outcome, metadata:{ emoteId } });
+    logger.info('Economy emote purchased', { uid:auth.uid, operationId, emoteId, replayed:outcome.replayed, appCheckPresent:auth.appCheckPresent });
+    return { ok:true, ...outcome };
+  } catch(error) { logFailure('economyPurchaseEmote', auth, error); throw error; }
+});
+
+export const multiplayerSendCommunication = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    // Cheap in-memory brake before the persistent per-match throttle. Persistent limits
+    // in matchCommunications survive cold starts and are the actual anti-spam authority.
+    assertRateLimit(auth.uid, 'multiplayer-social', { limit: 30, windowMs: 60000 });
+    rejectUnknown(data, ['economyProtocolVersion','matchId','type','text','emoteId']);
+    const result = await sendMultiplayerCommunication({
+      db, uid:auth.uid, matchId:data.matchId, type:data.type, text:data.text, emoteId:data.emoteId
+    });
+    return { ok:true, ...result };
+  } catch(error) { logFailure('multiplayerSendCommunication', auth, error); throw error; }
 });
 
 export const economyGetClassifieds = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {

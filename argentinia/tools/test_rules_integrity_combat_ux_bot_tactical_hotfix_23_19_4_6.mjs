@@ -22,12 +22,12 @@ const version=read('js/version.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 const workflow=read('../.github/workflows/pages.yml');
 
-assert.ok(['23.19.4.6','23.21.2'].includes(ENGINE_VERSION));
+assert.ok(['23.19.4.6','23.21.3'].includes(ENGINE_VERSION));
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.82');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.83');
 assert.equal(manifest.engineVersion,ENGINE_VERSION);
 assert.equal(manifest.engineProtocolVersion,'mp-23.19.2');
-assert.equal(manifest.firestoreRulesVersion,'23.13.82');
+assert.equal(manifest.firestoreRulesVersion,'23.13.83');
 assert.equal(manifest.pool,880);
 assert.ok(ENGINE_BASELINE.includes('23.19.4.5 Animation Actor Parity + SFX Cue Semantics + Admin Audio Targets'));
 
@@ -106,12 +106,12 @@ assert.ok(texts.includes("'sacrifice.self.bot'"));
 assert.ok(main.includes("isLocal ? 'sacrifice.self' : 'sacrifice.self.bot'"));
 for(const event of ['ward_triggered','ward_paid','ward_countered','shield_consumed']) assert.ok(main.includes(`'${event}'`));
 for(const event of ['bot_fight_evaluation','bot_attack_plan']) assert.ok(bot.includes(`'${event}'`));
-// 23.21.2 Lethal Self-Preservation Floor: even Easy must not attack into a legal block trigger that kills the bot before combat damage.
+// 23.21.3 Lethal Self-Preservation Floor: even Easy must not attack into a legal block trigger that kills the bot before combat damage.
 assert.ok(bot.includes('function lethalBlockTriggerThreat'));
 assert.ok(bot.includes("recordTelemetryEvent('bot_attack_held_lethal_block_trigger'"));
 assert.ok(bot.includes("blockTrigger?.type!=='damage'") || bot.includes("trigger?.type!=='damage'"));
 
-assert.ok(/ENGINE_VERSION = '23\.19\.4\.(6|7|8|9|10|11|12|13|14|15)'/.test(version) || /ENGINE_VERSION = '23\.19\.5(?:\.[123456])?'/.test(version) || /ENGINE_VERSION = '23\.21\.2'/.test(version));
+assert.ok(/ENGINE_VERSION = '23\.19\.4\.(6|7|8|9|10|11|12|13|14|15)'/.test(version) || /ENGINE_VERSION = '23\.19\.5(?:\.[123456])?'/.test(version) || /ENGINE_VERSION = '23\.21\.3'/.test(version));
 const fastManifest=read('tools/ci_fast_contract_manifest_23_21_0.txt');
 assert.ok(workflow.includes('ci_fast_contract_manifest_23_21_0.txt'),'CI executes the canonical fast contract manifest');
 assert.ok(fastManifest.includes('tools/test_rules_integrity_combat_ux_bot_tactical_hotfix_23_19_4_6.mjs'),'canonical manifest retains v23.19.4.6 contract');

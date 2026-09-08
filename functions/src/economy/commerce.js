@@ -1,6 +1,7 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { TRUSTED_CARD_POOL, TRUSTED_CARD_IDS, TRUSTED_CARD_POOL_FINGERPRINT } from '../trusted/cardCatalog.js';
 import { TRUSTED_PREBUILT_BY_ID } from '../trusted/prebuiltCatalog.js';
+import { TRUSTED_EMOTE_CATALOG, TRUSTED_EMOTE_BY_ID, normalizeOwnedPremiumEmotes } from '../trusted/emoteCatalog.js';
 import { validateUsername } from './usernames.js';
 import { economyError } from '../shared/errors.js';
 import {
@@ -53,6 +54,7 @@ export async function storefrontSnapshot(db) {
     craft: { fichasCost: settings.craftCost, allowedKeywords: [...ENHANCEMENT_KEYWORDS] },
     prebuilt: { pointsCost: settings.prebuiltPoints, fichasCost: settings.prebuiltFichas, maxSavedDecks: settings.maxSavedDecks },
     username: { renameFichasCost: USERNAME_RENAME_COST },
+    emotes: { catalogVersion:'23.21.3', items:TRUSTED_EMOTE_CATALOG.map(item => ({ id:item.id, label:item.label, premium:item.premium, pricePoints:item.pricePoints })) },
     trustedPoolFingerprint: TRUSTED_CARD_POOL_FINGERPRINT
   };
 }
@@ -108,6 +110,27 @@ export async function craftEnhancementTx({ db, tx, uid, cardId, keyword }) {
     enhancements: { ...enhancements, [card.id]: cleanKeyword }
   });
   return { kind: 'enhancementCraft', cardId: card.id, keyword: cleanKeyword, fichasCost: settings.craftCost, fichasAfter };
+}
+
+
+export async function purchaseEmoteTx({ db, tx, uid, emoteId }) {
+  const item = TRUSTED_EMOTE_BY_ID.get(String(emoteId || '').trim());
+  if (!item) throw economyError('EMOTE_NOT_FOUND');
+  if (!item.premium) throw economyError('EMOTE_FREE_INCLUDED');
+  const userRef = db.collection('users').doc(uid);
+  const userSnap = await tx.get(userRef);
+  if (!userSnap.exists) throw economyError('PROFILE_MISSING');
+  const profile = userSnap.data() || {};
+  const owned = normalizeOwnedPremiumEmotes(profile);
+  if (owned.includes(item.id)) throw economyError('EMOTE_ALREADY_OWNED');
+  const pointsBefore = Math.max(0, Math.floor(Number(profile.points) || 0));
+  const cost = Math.max(0, Math.floor(Number(item.pricePoints) || 0));
+  if (pointsBefore < cost) throw economyError('EMOTE_INSUFFICIENT_POINTS', { required:cost, available:pointsBefore });
+  const pointsAfter = pointsBefore - cost;
+  const nextOwned = [...owned, item.id];
+  const cosmetics = profile.cosmetics && typeof profile.cosmetics === 'object' && !Array.isArray(profile.cosmetics) ? profile.cosmetics : {};
+  tx.update(userRef, { points:pointsAfter, cosmetics:{ ...cosmetics, emotes:nextOwned } });
+  return { kind:'emotePurchase', emoteId:item.id, label:item.label, pointsCost:cost, pointsAfter, ownedEmotes:nextOwned };
 }
 
 function cleanDeckName(value) {

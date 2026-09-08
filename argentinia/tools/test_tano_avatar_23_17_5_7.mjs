@@ -10,9 +10,9 @@ const bot = read('js/bot.js');
 
 function ok(cond, msg) { if (!cond) throw new Error(msg); }
 
-ok((version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.21.2'")), 'engine 23.17.5.7');
-ok(manifest.engineVersion === '23.21.2', 'manifest 23.17.5.7');
-ok(manifest.firestoreRulesVersion === '23.13.82', 'rules unchanged');
+ok((version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.21.3'")), 'engine 23.17.5.7');
+ok(manifest.engineVersion === '23.21.3', 'manifest 23.17.5.7');
+ok(manifest.firestoreRulesVersion === '23.13.83', 'rules unchanged');
 ok(ui.includes("const TANO_AVATAR_SRC = 'assets/images/ui/tano.png';"), 'canonical tano.png path');
 ok(ui.includes(": TANO_AVATAR_SRC") && ui.includes("setAvatarImageOrFallback(els.rivalAvatar, rivalPhotoURL"), 'solo keeps tano.png fallback while tournament may use NPC avatar');
 ok(ui.includes("multiplayer ? `mp|${rivalPhotoURL}` : (tournament ? `tournament|${rivalPhotoURL}|${rivalName}` : `solo|${TANO_AVATAR_SRC}`)"), 'solo/mp/tournament identity separation');

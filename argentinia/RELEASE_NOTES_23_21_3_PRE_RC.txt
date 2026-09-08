@@ -1,0 +1,23 @@
+ARGENTINIA v23.21.3 — MULTIPLAYER SOCIAL LAYER — PRE-RC
+Date: 2026-09-08
+Baseline: v23.21.2 RELEASED
+
+FEATURES
+- PvP chat integrated into Bitácora: own blue, rival red, NOMBRE: mensaje.
+- Server-authoritative chat, 220-char max, persistent anti-spam.
+- Emote picker midgame with animated burst and local rival mute.
+- Canonical emote assets path assets/images/emotes/ with WebP/GIF/PNG/APNG/Unicode fallback.
+- 12 initial emotes: 6 free + 6 premium.
+- Premium emote Store category and persistent account ownership.
+- Server-authoritative, exact-once Points purchase with immutable Economy Audit evidence.
+- Social channel separated from gameplay snapshot/revision and excluded from Telemetry.
+
+INFRA
+- Economy schema 9 -> 10.
+- Rules candidate 23.13.82 -> 23.13.83.
+- Functions 37 -> 39 by deliberate architecture decision.
+- New callables: economyPurchaseEmote, multiplayerSendCommunication.
+- mp-23.19.2 unchanged; econ-23.19.5.6 unchanged; pool 880 unchanged.
+
+RELEASE STATE
+PRE-RC. Local QA green. Pending owner Gate03 + Gate05 + Gate07, production Rules/Functions deploy, VERIFY 39/39, GitHub Actions and productive smoke.

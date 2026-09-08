@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, purchaseEmote, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
@@ -86,6 +86,7 @@ import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate, t
 import { buildCardTextLayout, buildLoyaltyAbilityDisplay } from './cardTextFormatter.js';
 import { publicKeywordLabel, publicCardTypeLine, publicTerminologyText } from './publicTerminology.js';
 import { MANA_ICON_URLS, manaIconKeyForSymbol } from './manaSymbolCatalog.js';
+import { EMOTE_CATALOG, getEmoteDefinition, normalizeOwnedEmoteIds, emoteAssetCandidates } from './emoteCatalog.js';
 import { POOL_BASELINE } from './poolContract.js';
 import { effectivePackCost, campaignStatus } from './campaigns.js';
 import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.js';
@@ -4222,6 +4223,13 @@ export function showStoreScreen(onBack, options = {}) {
             <div class="chest-item-desc">${gameTextHtml('store.classifieds.description')}</div>
             <button class="reward-action-btn" id="store-classifieds">${gameTextHtml('store.classifieds.open')}</button>
           </div>
+          <div class="chest-item store-market-item store-emotes-entry">
+            <div class="chest-item-icon"><div class="store-emote-showcase-icon">😏</div></div>
+            <div class="chest-item-title">${gameTextHtml('store.emotes.showcaseTitle')}</div>
+            <div class="chest-item-count store-market-count">${gameTextHtml('store.emotes.showcaseCount')}</div>
+            <div class="chest-item-desc">${gameTextHtml('store.emotes.description')}</div>
+            <button class="reward-action-btn" id="store-emotes">${gameTextHtml('store.emotes.open')}</button>
+          </div>
         </div>
       </div>
     `;
@@ -4244,6 +4252,10 @@ export function showStoreScreen(onBack, options = {}) {
 
     body.querySelector('#store-classifieds').addEventListener('click', () => {
       void renderClassifiedsView();
+    });
+
+    body.querySelector('#store-emotes')?.addEventListener('click', () => {
+      void renderEmotesStoreView();
     });
 
     body.querySelector('#store-buy-pack').addEventListener('click', async () => {
@@ -4279,6 +4291,72 @@ export function showStoreScreen(onBack, options = {}) {
     if (canCraft) {
       body.querySelector('#store-craft').addEventListener('click', () => renderCraftPickCardView());
     }
+  }
+
+
+  function mountStoreEmoteArt(holder, def) {
+    if (!holder || !def) return;
+    holder.replaceChildren();
+    const urls = emoteAssetCandidates(def.id);
+    let index = 0;
+    const fallback = () => {
+      holder.replaceChildren();
+      const span = document.createElement('span');
+      span.className = 'store-emote-fallback'; span.textContent = def.fallback || '🙂';
+      holder.appendChild(span);
+    };
+    const img = document.createElement('img');
+    img.className = 'store-emote-art-img'; img.alt = def.label; img.decoding = 'async'; img.draggable = false;
+    img.onerror = () => { index += 1; if (index < urls.length) img.src = urls[index]; else fallback(); };
+    if (urls.length) { img.src = urls[0]; holder.appendChild(img); } else fallback();
+  }
+
+  async function renderEmotesStoreView() {
+    leaveClassifiedsView();
+    renderStoreHeader(gameText('store.emotes.title'));
+    const authorityItems = Array.isArray(storefrontAuthority?.emotes?.items) ? storefrontAuthority.emotes.items : [];
+    const owned = normalizeOwnedEmoteIds(state.userProfile);
+    const serverById = new Map(authorityItems.map(row => [String(row.id || ''), row]));
+    body.innerHTML = `
+      <div class="store-section store-emotes-section">
+        <div class="store-section-title">${gameTextHtml('store.emotes.title')}</div>
+        <div class="store-section-desc">${gameTextHtml('store.emotes.longDescription')}</div>
+        <div class="store-emote-grid" id="store-emote-grid"></div>
+        <button class="store-back-link" id="store-emotes-back">${gameTextHtml('common.back')}</button>
+      </div>`;
+    const grid = body.querySelector('#store-emote-grid');
+    for (const def of EMOTE_CATALOG) {
+      const trusted = serverById.get(def.id) || def;
+      const isOwned = owned.has(def.id);
+      const card = document.createElement('div');
+      card.className = `store-emote-card${def.premium ? ' premium' : ' free'}${isOwned ? ' owned' : ''}`;
+      card.innerHTML = `
+        <div class="store-emote-art" data-emote-art="${escapeHtml(def.id)}"></div>
+        <div class="store-emote-name">${escapeHtml(def.label)}</div>
+        <div class="store-emote-tier">${def.premium ? gameTextHtml('store.emotes.premium') : gameTextHtml('store.emotes.free')}</div>
+        <button class="reward-action-btn store-emote-buy" type="button" data-emote-id="${escapeHtml(def.id)}" ${(!def.premium || isOwned) ? 'disabled' : ''}>
+          ${!def.premium ? gameTextHtml('store.emotes.included') : (isOwned ? gameTextHtml('store.emotes.owned') : gameTextHtml('store.emotes.buy',{points:Math.max(0,Math.floor(Number(trusted.pricePoints)||0))}))}
+        </button>
+        <div class="store-error-msg"></div>`;
+      grid.appendChild(card);
+      mountStoreEmoteArt(card.querySelector('[data-emote-art]'), def);
+    }
+    grid.querySelectorAll('.store-emote-buy:not(:disabled)').forEach(btn => btn.addEventListener('click', async () => {
+      const card = btn.closest('.store-emote-card'); const errorBox = card?.querySelector('.store-error-msg');
+      if (errorBox) errorBox.textContent = '';
+      try {
+        await withEconomyButtonPending(btn, async () => {
+          const result = await purchaseEmote(state.currentUser.uid, btn.dataset.emoteId);
+          if (result?.profile) state.userProfile = result.profile;
+          updateAccountUI(state.currentUser);
+          renderStoreHeader(gameText('store.emotes.title'));
+          await renderEmotesStoreView();
+        }, { pendingLabel:gameText('store.emotes.buying') });
+      } catch (error) {
+        if (errorBox) errorBox.textContent = error?.message || gameText('store.emotes.error');
+      }
+    }));
+    body.querySelector('#store-emotes-back')?.addEventListener('click', () => { void renderMainView(); });
   }
 
 
@@ -7475,6 +7553,9 @@ Receipt: ${receiptId}
   function economyAuditLabel(row) {
     if(row?.auditKind!=='adminAction'&&(row?.type==='trade.complete'||row?.source==='trade_market_complete_server')){
       return gameText('admin.audit.operation.tradeComplete');
+    }
+    if(row?.auditKind!=='adminAction'&&(row?.type==='store.purchase_emote'||row?.source==='emote_purchase_server')){
+      return gameText('admin.audit.operation.emotePurchase');
     }
     return row.auditKind === 'adminAction'
       ? String(row.type || 'admin_action')

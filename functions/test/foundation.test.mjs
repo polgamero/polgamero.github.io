@@ -125,3 +125,20 @@ assert.equal(eloNew.b.after,1180); assert.equal(eloNew.b.delta,-20);
 const eloEstablished=eloCore.calculateEloChange({eloRating:1200,eloGames:10},{eloRating:1200,eloGames:10},1);
 assert.equal(eloEstablished.a.after,1212); assert.equal(eloEstablished.a.k,24); assert.equal(eloEstablished.b.after,1188);
 console.log('PVP_ELO_23_21_2_UNIT_OK initial=1200 provisionalK=40 establishedK=24 pairDailyCap=5');
+
+
+const emotes = await import('../src/trusted/emoteCatalog.js');
+const { readFileSync } = await import('node:fs');
+const socialSource = readFileSync(new URL('../src/multiplayer/communication.js', import.meta.url),'utf8');
+for (const contract of [
+  'CHAT_MAX_CHARS = 220','COMMUNICATION_EVENT_CAP = 40','CHAT_MIN_INTERVAL_MS = 1500',
+  'CHAT_BURST_WINDOW_MS = 15000','CHAT_BURST_MAX = 5','EMOTE_MIN_INTERVAL_MS = 4000',
+  'EMOTE_BURST_WINDOW_MS = 20000','EMOTE_BURST_MAX = 3','COMMUNICATION_TTL_MS = 48 * 60 * 60 * 1000'
+]) assert.ok(socialSource.includes(contract),`missing social contract ${contract}`);
+assert.equal(emotes.TRUSTED_EMOTE_CATALOG.length,12);
+assert.equal(emotes.TRUSTED_EMOTE_CATALOG.filter(e=>!e.premium).length,6);
+assert.equal(emotes.TRUSTED_EMOTE_CATALOG.filter(e=>e.premium).length,6);
+assert.equal(emotes.userCanUseEmote({},'emote_001'),true);
+assert.equal(emotes.userCanUseEmote({},'emote_007'),false);
+assert.equal(emotes.userCanUseEmote({cosmetics:{emotes:['emote_007']}},'emote_007'),true);
+console.log('MULTIPLAYER_SOCIAL_23_21_3_UNIT_OK chat=220 ring=40 chatRate=5/15s emoteRate=3/20s emotes=12 free=6 premium=6');
