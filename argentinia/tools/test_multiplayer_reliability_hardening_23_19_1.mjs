@@ -84,7 +84,12 @@ assert.ok(social.includes("mp-social-own"));
 assert.ok(social.includes("mp-social-rival"));
 assert.ok(social.includes("const MAX_CHAT = 220"));
 assert.ok(social.includes("animationsEffectivelyEnabled"));
-assert.ok(social.includes("MUTE_KEY"));
+assert.ok(!html.includes('id="mp-social-mute"'));
+assert.ok(social.includes("command==='/silenciar'"));
+assert.ok(social.includes("rivalMuted=false"));
+assert.ok(social.includes("localStorage.removeItem('argentinia.multiplayerSocial.muteRival.v1')"));
+assert.ok(social.includes("resolveAvailableAsset"));
+assert.ok(social.includes("method:'HEAD'"));
 assert.ok(emoteCatalog.includes("['webp','gif','png']"));
 assert.ok(emoteCatalog.includes('applyEmoteCatalogSnapshot'));
 assert.ok(social.includes('fetchStorefrontAuthority'));
@@ -95,7 +100,12 @@ assert.ok(css.includes('.mp-social-rival'));
 // only the Bitácora body is allowed to shrink; action buttons stay inside the
 // middle viewport row instead of overflowing under the local player badge.
 assert.equal((html.match(/class="hp-line"/g)||[]).length,2);
-assert.ok(css.includes('grid-template-rows:minmax(0,1fr) auto auto auto auto auto'));
+assert.ok(css.includes('grid-template-rows:auto minmax(0,1fr) auto auto auto auto'));
+assert.ok(mobileCss.includes('grid-template-rows:auto minmax(42px,1fr) auto auto auto auto'));
+assert.ok(social.includes("filters-hide-all"));
+assert.ok(css.includes('.mp-emote-picker { position:fixed'));
+assert.ok(mobileCss.includes('html.argentinia-mobile .mp-emote-picker'));
+assert.ok(fb.includes('await updateDoc(ref, { [field]: serverTimestamp() });'));
 assert.ok(css.includes(`.log-section {\n    flex:1 1 0;`));
 assert.ok(css.includes('overflow:hidden;'));
 assert.ok(css.includes('.hp-line .hp-text'));

@@ -4299,21 +4299,39 @@ export function showStoreScreen(onBack, options = {}) {
   }
 
 
+  const storeEmoteAssetProbeCache = new Map();
+  async function resolveStoreEmoteAsset(urls = []) {
+    for (const url of Array.isArray(urls) ? urls : []) {
+      if (!url) continue;
+      if (storeEmoteAssetProbeCache.has(url)) {
+        if (storeEmoteAssetProbeCache.get(url) === true) return url;
+        continue;
+      }
+      try {
+        const response = await fetch(url, { method:'HEAD', cache:'force-cache', credentials:'same-origin' });
+        const ok = response.ok;
+        storeEmoteAssetProbeCache.set(url, ok);
+        if (ok) return url;
+      } catch { storeEmoteAssetProbeCache.set(url, false); }
+    }
+    return null;
+  }
   function mountStoreEmoteArt(holder, def) {
     if (!holder || !def) return;
-    holder.replaceChildren();
-    const urls = emoteAssetCandidates(def);
-    let index = 0;
     const fallback = () => {
       holder.replaceChildren();
       const span = document.createElement('span');
       span.className = 'store-emote-fallback'; span.textContent = def.fallback || '🙂';
       holder.appendChild(span);
     };
-    const img = document.createElement('img');
-    img.className = 'store-emote-art-img'; img.alt = def.label; img.decoding = 'async'; img.draggable = false;
-    img.onerror = () => { index += 1; if (index < urls.length) img.src = urls[index]; else fallback(); };
-    if (urls.length) { img.src = urls[0]; holder.appendChild(img); } else fallback();
+    fallback();
+    const urls = emoteAssetCandidates(def);
+    void resolveStoreEmoteAsset(urls).then(url => {
+      if (!url || !holder.isConnected) return;
+      const img = document.createElement('img');
+      img.className = 'store-emote-art-img'; img.alt = def.label; img.decoding = 'async'; img.draggable = false;
+      img.onerror = fallback; img.src = url; holder.replaceChildren(img);
+    });
   }
 
   async function renderEmotesStoreView() {

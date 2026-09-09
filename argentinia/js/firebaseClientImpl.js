@@ -21,7 +21,7 @@ import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, where, documentId, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, getDocFromServer, setDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, where, documentId, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app-check.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_SAVED_DECKS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
@@ -2118,18 +2118,22 @@ export async function touchMatchPresence(matchId, role) {
   if (!matchId || (role !== 'host' && role !== 'guest')) return null;
   const ref = doc(db, 'matches', String(matchId).trim().toUpperCase());
   const field = role === 'host' ? 'hostLastSeenAt' : 'guestLastSeenAt';
-  return runTransaction(db, async tx => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error('MULTIPLAYER_MATCH_NOT_FOUND');
-    const data = snap.data() || {};
-    const uid = auth.currentUser?.uid || null;
-    const expectedUid = role === 'host' ? data.hostUid : data.guestUid;
-    if (!uid || expectedUid !== uid) throw new Error('MULTIPLAYER_ROLE_UID_MISMATCH');
-    const session = validateRoleSession(data, role, MULTIPLAYER_CLIENT_SESSION_ID);
-    if (!session.ok) throw new Error('MULTIPLAYER_SESSION_SUPERSEDED');
-    tx.update(ref, { [field]: serverTimestamp() });
-    return true;
-  });
+  // RC5: presence no necesita una read/write transaction sobre el mismo documento que el
+  // gameplay actualiza continuamente. Ese patrón generaba FAILED_PRECONDITION de updateTime
+  // por contención aunque el heartbeat fuese válido. Leemos desde servidor para conservar el
+  // session fencing y después hacemos una actualización de un único campo sin precondición de
+  // versión. En la carrera extrema de una supersesión entre ambas operaciones puede escapar un
+  // solo heartbeat viejo; el siguiente beat detecta el sessionId nuevo y se cierra fail-closed.
+  const snap = await getDocFromServer(ref);
+  if (!snap.exists()) throw new Error('MULTIPLAYER_MATCH_NOT_FOUND');
+  const data = snap.data() || {};
+  const uid = auth.currentUser?.uid || null;
+  const expectedUid = role === 'host' ? data.hostUid : data.guestUid;
+  if (!uid || expectedUid !== uid) throw new Error('MULTIPLAYER_ROLE_UID_MISMATCH');
+  const session = validateRoleSession(data, role, MULTIPLAYER_CLIENT_SESSION_ID);
+  if (!session.ok) throw new Error('MULTIPLAYER_SESSION_SUPERSEDED');
+  await updateDoc(ref, { [field]: serverTimestamp() });
+  return true;
 }
 
 export async function adminCloseStaleTelemetrySessions(staleAfterMs = 120000) {

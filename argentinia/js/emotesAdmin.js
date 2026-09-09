@@ -51,10 +51,17 @@ export function mountAdminEmotesPane(root,{loadCatalog,saveCatalog,onApplied}={}
   }
   function syncRows(){ rows=[...shell.querySelectorAll('tbody tr[data-row]')].map(rowFromTr); }
   function mountPreview(holder,row){
-    holder.replaceChildren(); const urls=emoteAssetCandidates(row); let i=0;
+    holder.replaceChildren(); const urls=emoteAssetCandidates(row);
     const fallback=()=>{holder.textContent=row.fallback||'🙂';};
-    if(!urls.length){fallback();return;}
-    const img=document.createElement('img'); img.alt=''; img.onerror=()=>{i++;if(i<urls.length)img.src=urls[i];else fallback();}; img.src=urls[0]; holder.appendChild(img);
+    fallback();
+    if(!urls.length)return;
+    void (async()=>{
+      for(const url of urls){
+        if(!await probeUrl(url)) continue;
+        if(!holder.isConnected) return;
+        const img=document.createElement('img'); img.alt=''; img.decoding='async'; img.onerror=fallback; img.src=url; holder.replaceChildren(img); return;
+      }
+    })();
   }
   function setProbe(cell,state){ if(!cell)return; cell.dataset.state=state===true?'ok':state===false?'missing':'na'; cell.textContent=state===true?'✅':state===false?'❌':'—'; }
   async function probeRow(tr,row,generation){

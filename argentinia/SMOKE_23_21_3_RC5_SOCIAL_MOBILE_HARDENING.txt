@@ -1,0 +1,50 @@
+PRODUCTIVE SMOKE — ARGENTINIA 23.21.3 RC5
+Use two real logged-in devices/users, one desktop and one phone landscape when possible.
+
+A. SOCIAL DELIVERY — CRITICAL
+1. Start a fresh PvP. Neither device must begin muted.
+2. A sends chat to B: B sees it. B sends chat to A: A sees it.
+3. A sends emote: A sees local burst AND B sees rival-badge burst.
+4. B sends emote: B sees local burst AND A sees rival-badge burst.
+5. Refresh/re-enter a new match: previous mute state must not survive.
+6. Type /silenciar on A. B's incoming chat/emote presentation is hidden only on A; gameplay/network unaffected.
+7. Type /desilenciar (or /activar) on A. B's next chat/emote is visible again.
+8. /ayuda returns command help locally and is not sent to rival.
+
+B. MOBILE BITÁCORA / CHAT
+1. Filters remain visible above log at all times.
+2. Log uses remaining height; does not grow over filters.
+3. Toggle Jugadores OFF, Sistema ON; then inverse; then both OFF.
+4. Both OFF leaves stable empty log region; Bitácora does not collapse.
+5. Input, emote button and Enviar are fully visible/clickable and do not escape sidebar.
+6. Open keyboard by focusing chat, tap outside to dismiss: no persistent vertical blank band or scale drift.
+
+C. EMOTE PICKER / ASSETS
+1. Open picker on desktop and mobile: it opens over the board, outside Bitácora.
+2. With many owned emotes, picker scrolls internally; HUD/action controls remain intact.
+3. Missing configured WEBP/GIF/PNG uses Unicode fallback.
+4. Console must not show repeated Failed to load resource 404 spam from emote image fallbacks.
+5. Store and Admin EMOTES preview behave the same for missing assets.
+
+D. HEARTBEAT / CONSOLE — CRITICAL
+1. Keep PvP alive >90 seconds while both players take actions.
+2. Console must not show periodic Firestore FAILED_PRECONDITION commits for hostLastSeenAt/guestLastSeenAt.
+3. Reload/supersede one same-role session: session fencing still blocks the stale instance.
+4. Normal reconnect remains functional.
+
+E. MOBILE MATCHMAKING
+1. Match with another user on phone landscape.
+2. Matched title + two avatars/ELO + description + Motor/protocol + start CTA fit in one viewport.
+3. No vertical scroll is required to press start.
+
+F. MOBILE PRIORITY
+1. Acquire priority on mobile.
+2. Pass Priority is compact (30px min-height family), readable and touchable.
+3. Abandon remains visible and not overlapped.
+
+G. REGRESSION
+- Telemetry shows OK and appears in Caja Negra for Tano and PvP.
+- Points + ELO final modal remains correct.
+- No-blockers fast window remains clickable with 5s auto ceiling.
+- Rules 23.13.86 behavior unchanged.
+- Store premium emote purchase and Admin catalog authority remain correct.

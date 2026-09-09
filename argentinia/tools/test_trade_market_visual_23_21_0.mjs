@@ -46,7 +46,9 @@ assert.match(ui,/tradeCardMatchesColor/);
 assert.match(ui,/tradeCardTypeKey/);
 assert.match(ui,/trade-explore-sidebar/);
 assert.match(css,/\.trade-explore-layout\{display:grid;grid-template-columns:minmax\(0,1fr\) 318px/);
-assert.match(mobile,/html\.argentinia-mobile \.trade-explore-sidebar\{order:-1\}/);
+assert.match(mobile,/html\.argentinia-mobile \.trade-explore-layout\{grid-template-columns:minmax\(0,1fr\) clamp\(150px,26dvw,190px\)/);
+assert.match(mobile,/html\.argentinia-mobile \.trade-explore-sidebar\{order:0/);
+assert.doesNotMatch(mobile,/html\.argentinia-mobile \.trade-explore-sidebar\{order:-1\}/);
 
 // Names: the tiny generic caption was removed. Explore keeps its large title and pairs use
 // one deliberate large external name only where a pair needs extra identification.

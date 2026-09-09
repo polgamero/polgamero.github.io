@@ -1,0 +1,37 @@
+ARGENTINIA v23.21.3 RC5 — SOCIAL DELIVERY + MOBILE HUD HARDENING
+PRE_RELEASE — 2026-09-09
+
+Baseline
+- Engine: 23.21.3
+- MP protocol: mp-23.19.2
+- Pool: 880
+- Firestore Rules: 23.13.86 — BYTE IDENTICAL vs RC4
+- Functions: 40 — BYTE IDENTICAL vs RC4
+- Economy schema: 10
+- RC4 Gate03/Gate05/Gate07: remain valid; RC5 is frontend/source-contract only.
+
+RC5 closes real-device smoke findings:
+1. Mobile social compose is fully contained: input + emote + Enviar fit inside sidebar.
+   Filters live in their own non-elastic row; log body alone consumes remaining height.
+   Both filters OFF leaves a stable empty log viewport instead of collapsing the Bitácora.
+2. Corrected row geometry: filters are auto; log is the only minmax(...,1fr) row.
+3. Incoming chat/emotes no longer disappear because of stale persisted mute state.
+   Legacy mute localStorage is cleared at match start; mute is session-local only.
+4. Mobile keyboard blur restores the pre-keyboard game viewport bridge to avoid the transient vertical blank strip.
+   Mobile send no longer forcibly re-focuses the chat input.
+5. Missing emote assets are probed with HEAD before an img/audio src is mounted in gameplay, Store and Admin preview.
+   Missing WEBP/GIF/PNG falls back to configured Unicode without console resource spam.
+6. Presence heartbeat no longer uses a read/write Firestore transaction on the hot gameplay match document.
+   It validates server snapshot + UID/session fence, then performs a single-field LastSeenAt update without updateTime contention.
+7. Emote picker is a fixed, scrollable board overlay structurally outside the chat shell, Stack-like and usable with many emotes on desktop/mobile.
+8. Mobile matchmaking matched reveal is compacted to one landscape viewport; header/back button, VS banner, avatars, copy and CTA are reduced without scrolling.
+9. Mute button removed. Local commands: /silenciar, /desilenciar, /activar, /ayuda. Designed for future chat command extension.
+10. Mobile Pass Priority reduced to compact 30px minimum height.
+
+Social delivery note
+The server-authoritative communication Function and Firestore channel remain unchanged. The observed one-way chat/emote symptom was client-side: one device had the old persistent rival mute enabled, which intentionally discarded incoming rival chat and emote presentation. RC5 removes this hidden persisted state.
+
+Deployment
+- Do NOT deploy new Rules or Functions for RC5.
+- Do NOT repeat Gate03/Gate05/Gate07 solely for RC5.
+- Upload the RC5 cumulative GitHubSource, require GitHub Actions green, then execute RC5 productive two-device smoke before RELEASED.

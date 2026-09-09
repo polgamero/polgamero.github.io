@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const css=fs.readFileSync('css/style.css','utf8');
+const mobile=fs.readFileSync('css/mobile.css','utf8');
+const social=fs.readFileSync('js/multiplayerSocial.js','utf8');
+const manifest=JSON.parse(fs.readFileSync('build-manifest.json','utf8'));
+assert.match(social,/def\.premium\?' premium':''/);
+for(const token of ['premiumEmoteHaloSpin','premiumEmoteHaloBreath','premiumEmoteStoreBreath','.mp-emote-burst.premium','.store-emote-card.premium']) assert.ok(css.includes(token),`missing premium halo token ${token}`);
+assert.match(css,/@media \(prefers-reduced-motion:reduce\)[\s\S]*store-emote-card\.premium/);
+assert.match(mobile,/\.trade-explore-layout\{grid-template-columns:minmax\(0,1fr\) clamp\(150px,26dvw,190px\)/);
+assert.match(mobile,/\.trade-explore-sidebar\{order:0/);
+assert.doesNotMatch(mobile,/\.trade-explore-sidebar\{order:-1\}/);
+assert.match(mobile,/\.trade-explore-toolbar\{position:sticky/);
+assert.equal(manifest.firestoreRulesVersion,'23.13.86');
+assert.equal(manifest.functionsCount,40);
+console.log('RC5_PREMIUM_EMOTE_MARKET_SIDEBAR_HOTFIX_OK');

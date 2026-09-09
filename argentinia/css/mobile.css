@@ -1990,9 +1990,11 @@ html.argentinia-mobile :is(#trade-market-overlay,#tournament-overlay) .encyclope
 html.argentinia-mobile #trade-market-overlay{padding:9px!important}html.argentinia-mobile .trade-title{font-size:23px}html.argentinia-mobile .trade-header{gap:8px}
 html.argentinia-mobile .trade-tab{flex:1 1 44%;font-size:10px;padding:8px 6px}
 html.argentinia-mobile .trade-main-panel{padding:10px}
-html.argentinia-mobile .trade-explore-layout{grid-template-columns:1fr;gap:9px}html.argentinia-mobile .trade-explore-sidebar{order:-1}html.argentinia-mobile .trade-explore-toolbar{position:static;grid-template-columns:1fr;gap:9px;padding:9px}
-html.argentinia-mobile .trade-filter-selects{grid-column:1;grid-template-columns:1fr 1fr}
-html.argentinia-mobile .trade-filter-clear{grid-column:1/-1;width:100%}
+html.argentinia-mobile .trade-explore-layout{grid-template-columns:minmax(0,1fr) clamp(150px,26dvw,190px);gap:8px;align-items:start}html.argentinia-mobile .trade-explore-sidebar{order:0;min-width:0;width:100%}html.argentinia-mobile .trade-explore-toolbar{position:sticky;top:4px;grid-template-columns:1fr;gap:7px;padding:8px;max-height:calc(100dvh - 142px);overflow:auto;overscroll-behavior:contain}
+html.argentinia-mobile .trade-filter-selects{grid-column:1;grid-template-columns:1fr;gap:6px}
+html.argentinia-mobile .trade-filter-clear{grid-column:1;width:100%}
+html.argentinia-mobile .trade-explore-toolbar .trade-input,html.argentinia-mobile .trade-explore-toolbar .trade-select{padding:6px;font-size:9px}
+html.argentinia-mobile .trade-explore-toolbar .trade-filter-chip{padding:4px 6px;font-size:8px}
 html.argentinia-mobile .trade-market-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 html.argentinia-mobile .trade-listing-card{padding:7px;border-radius:10px}
 html.argentinia-mobile .trade-listing-body{min-height:160px}
@@ -2049,3 +2051,86 @@ html.argentinia-mobile .store-emote-fallback { font-size:3rem; }
 html.argentinia-mobile .hp-line { gap:.18rem !important; }
 html.argentinia-mobile .hp-line .hp-bar-container { flex:1 1 auto; width:auto !important; }
 html.argentinia-mobile .hp-line .hp-text { flex:0 0 auto; margin-left:0 !important; white-space:nowrap; }
+
+
+/* ==========================================================================
+   23.21.3 RC5 — MOBILE SOCIAL HUD / KEYBOARD / MATCHMAKING SAFETY
+   ========================================================================== */
+html.argentinia-mobile .log-section {
+  min-height:0 !important;
+  display:grid !important;
+  grid-template-rows:auto minmax(42px,1fr) auto auto auto auto !important;
+  overflow:hidden !important;
+  align-content:stretch !important;
+}
+html.argentinia-mobile .mp-log-filters {
+  min-width:0 !important;
+  width:100% !important;
+  display:grid !important;
+  grid-template-columns:auto auto auto !important;
+  justify-content:start !important;
+  align-items:center !important;
+  gap:3px 6px !important;
+  min-height:18px !important;
+  font-size:.5rem !important;
+  line-height:1 !important;
+  overflow:visible !important;
+}
+html.argentinia-mobile .mp-log-filters.hidden { display:none !important; }
+html.argentinia-mobile .mp-log-filters input { width:11px !important; height:11px !important; }
+html.argentinia-mobile #game-log-box {
+  flex:none !important;
+  width:100% !important;
+  min-height:42px !important;
+  height:100% !important;
+  max-height:none !important;
+}
+html.argentinia-mobile #game-log-box.filters-hide-all { min-height:42px !important; height:42px !important; }
+html.argentinia-mobile .mp-social-shell { min-width:0 !important; width:100% !important; max-width:100% !important; overflow:hidden !important; box-sizing:border-box !important; }
+html.argentinia-mobile .mp-social-compose { grid-template-columns:minmax(0,1fr) 28px minmax(46px,auto) !important; gap:3px !important; min-width:0 !important; width:100% !important; }
+html.argentinia-mobile .mp-chat-input { width:100% !important; min-width:0 !important; }
+html.argentinia-mobile .mp-chat-send { min-width:46px !important; max-width:58px !important; padding:0 .28rem !important; white-space:nowrap !important; overflow:hidden !important; }
+html.argentinia-mobile .mp-emote-picker {
+  position:fixed !important;
+  z-index:2147482300 !important;
+  right:calc(var(--sidebar-width) + var(--arg-safe-right) + 6px) !important;
+  top:50% !important;
+  bottom:auto !important;
+  transform:translateY(-50%) !important;
+  width:min(68dvw,430px) !important;
+  max-width:calc(100dvw - var(--sidebar-width) - var(--arg-safe-left) - var(--arg-safe-right) - 18px) !important;
+  max-height:min(78dvh,300px) !important;
+  overflow:auto !important;
+  grid-template-columns:repeat(auto-fill,minmax(58px,1fr)) !important;
+  gap:6px !important;
+  padding:8px !important;
+}
+html.argentinia-mobile .mp-emote-choice { min-height:58px !important; }
+html.argentinia-mobile .btn-turn { min-height:30px !important; padding:.25rem .28rem !important; font-size:.6rem !important; line-height:1.05 !important; }
+html.argentinia-mobile.arg-mobile-keyboard-recovering,
+html.argentinia-mobile.arg-mobile-keyboard-recovering body,
+html.argentinia-mobile.arg-mobile-keyboard-recovering #game-app { height:var(--arg-mobile-keyboard-recovery-height) !important; }
+html.argentinia-mobile.arg-mobile-keyboard-recovering #board,
+html.argentinia-mobile.arg-mobile-keyboard-recovering #sidebar-hud { height:calc(var(--arg-mobile-keyboard-recovery-height) - var(--arg-safe-top) - var(--arg-safe-bottom)) !important; }
+
+/* Match found must preserve the reveal + CTA in a single landscape viewport. */
+html.argentinia-mobile #multiplayer-overlay { padding:8px 12px !important; overflow:hidden !important; }
+html.argentinia-mobile #multiplayer-overlay .mp-header { margin-bottom:5px !important; min-height:34px !important; }
+html.argentinia-mobile #multiplayer-overlay .mp-body { max-width:min(760px,94dvw) !important; overflow:hidden !important; }
+html.argentinia-mobile #multiplayer-overlay .mp-section { padding:7px 10px !important; margin-bottom:0 !important; }
+html.argentinia-mobile #multiplayer-overlay .mp-section-title { margin-bottom:3px !important; font-size:clamp(13px,3.6dvh,18px) !important; }
+html.argentinia-mobile #multiplayer-overlay .mp-versus-banner { margin:5px auto 6px !important; padding:6px 10px !important; gap:8px !important; }
+html.argentinia-mobile #multiplayer-overlay .mp-versus-avatar { width:clamp(42px,12dvh,58px) !important; height:clamp(42px,12dvh,58px) !important; border-width:2px !important; }
+html.argentinia-mobile #multiplayer-overlay .mp-versus-player { gap:2px !important; }
+html.argentinia-mobile #multiplayer-overlay .mp-versus-role { font-size:7px !important; letter-spacing:1px !important; }
+html.argentinia-mobile #multiplayer-overlay .mp-versus-name { font-size:clamp(11px,3dvh,14px) !important; line-height:1 !important; }
+html.argentinia-mobile #multiplayer-overlay .mp-versus-player [data-mp-elo-user] { font-size:clamp(9px,2.5dvh,12px) !important; line-height:1 !important; }
+html.argentinia-mobile #multiplayer-overlay .mp-versus-vs { font-size:clamp(19px,5.2dvh,25px) !important; }
+html.argentinia-mobile #multiplayer-overlay .mp-section-desc { margin:3px 0 5px !important; font-size:clamp(9px,2.5dvh,11px) !important; line-height:1.15 !important; }
+html.argentinia-mobile #multiplayer-overlay #mp-start { min-height:32px !important; padding:6px 16px !important; font-size:11px !important; }
+/* RC5 follow-up: the lobby header itself was consuming a large fraction of the
+   landscape viewport on phones. Keep the matched reveal cinematic, but make
+   header/back chrome compact so the CTA stays visible without scrolling. */
+html.argentinia-mobile #multiplayer-overlay .mp-header { gap:8px !important; margin-bottom:3px !important; min-height:28px !important; }
+html.argentinia-mobile #multiplayer-overlay #mp-back { min-height:28px !important; height:28px !important; padding:2px 9px !important; border-width:1px !important; border-radius:7px !important; font-size:10px !important; line-height:1 !important; }
+html.argentinia-mobile #multiplayer-overlay .mp-title { font-size:clamp(14px,3.6dvh,18px) !important; line-height:1 !important; }

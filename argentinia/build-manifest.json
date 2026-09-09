@@ -8,10 +8,16 @@
   "firestoreRulesVersion": "23.13.86",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Multiplayer Social Layer RC4 · Telemetry Recovery + PvP UX + Emote Studio",
+  "label": "Multiplayer Social Layer RC5 · Social Delivery + Mobile HUD Hardening",
   "emoteCatalogAuthority": "gameConfig/emotes via economyAdminSetEmoteCatalog",
   "functionsCount": 40,
-  "releaseCandidate": "RC4",
+  "releaseCandidate": "RC5",
   "telemetryRecovery": "tournament metadata allowlisted in telemetrySessions + explicit upload diagnostics",
-  "emoteAudioConvention": "assets/sounds/sfx/<audioBase>.opus|mp3; defaults audioBase=id"
+  "emoteAudioConvention": "assets/sounds/sfx/<audioBase>.opus|mp3; defaults audioBase=id",
+  "socialMute": "session-local chat command /silenciar; no persistent hidden mute button",
+  "emotePicker": "fixed board overlay outside Bitacora; scrollable grid",
+  "presenceHeartbeat": "server-read session fence + single-field update; no gameplay-doc transaction contention",
+  "mobileKeyboardRecovery": "pre-keyboard viewport restore after chat blur",
+  "premiumEmoteVisual": "animated mythic-orange halo in store, picker and in-match burst; static under reduced motion",
+  "mobileTradeFilters": "right sidebar aligned with Encyclopedia in landscape; no order:-1 top stack"
 }

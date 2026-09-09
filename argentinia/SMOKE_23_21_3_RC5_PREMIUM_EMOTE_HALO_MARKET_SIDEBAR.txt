@@ -1,0 +1,26 @@
+SMOKE — ARGENTINIA 23.21.3 RC5 FRONTEND HOTFIX
+
+A. MERCADO DESKTOP
+[ ] EXPLORAR shows results on the left and filters in the right sidebar.
+[ ] Search/color/rarity/type filters still work in combination.
+[ ] LIMPIAR FILTROS restores all listings.
+
+B. MERCADO MOBILE LANDSCAPE
+[ ] Filters are on the RIGHT, not above the cards.
+[ ] Right filter panel remains visible/sticky while listings scroll.
+[ ] Filter panel can scroll internally on short-height devices.
+[ ] Listings retain usable width and card zoom still works.
+
+C. PREMIUM EMOTES — STORE
+[ ] Free emotes have normal styling.
+[ ] Premium emotes show an animated mythic-orange halo/glow.
+[ ] Owned premium emotes retain the premium orange identity.
+
+D. PREMIUM EMOTES — MATCH
+[ ] Sending a free emote shows no premium halo.
+[ ] Sending a premium emote shows the orange animated halo around the burst.
+[ ] Rival sees the same premium treatment when receiving the premium emote.
+[ ] Premium picker choice has a subtle orange glow.
+
+E. ACCESSIBILITY
+[ ] With reduced motion enabled, premium remains visibly orange but no halo rotates/pulses.

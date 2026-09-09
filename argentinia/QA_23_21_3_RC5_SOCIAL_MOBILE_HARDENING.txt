@@ -1,0 +1,55 @@
+QA — ARGENTINIA 23.21.3 RC5 SOCIAL DELIVERY + MOBILE HUD HARDENING
+
+Static/source contracts
+- build-manifest releaseCandidate RC5
+- Rules version remains 23.13.86
+- Functions count remains 40
+- Functions tree byte-identical to RC4
+- Canonical fast contract manifest remains exactly 115 tests
+- Historical regression archive synchronized to 62 live manifest tests
+- Game Text contract PASS
+- JS/MJS syntax PASS for modified files
+
+RC5 focused contracts
+- No #mp-social-mute button
+- /silenciar command path present; legacy persisted mute cleared at match start
+- Incoming chat/emote presentation is only suppressed by current session-local mute
+- Emote picker visually fixed and structurally outside mp-social-shell
+- Runtime emote asset resolution probes before image/audio mount
+- Store/Admin emote preview probes before image src assignment
+- Desktop log grid: auto filters + minmax(0,1fr) log + fixed chrome rows
+- Mobile log grid: auto filters + minmax(42px,1fr) log + fixed chrome rows
+- Mobile compose is input + emote + send; min-width containment
+- Both filters hidden state preserves a stable log body
+- Mobile keyboard recovery class and pre-keyboard height bridge present
+- Heartbeat uses getDocFromServer + updateDoc single LastSeen field; no runTransaction in touchMatchPresence
+- Mobile matchmaking overlay blocks body scrolling and compacts back/header/reveal/CTA
+- Mobile priority button min-height 30px
+
+Dynamic labs
+- Stability Lab
+- Headless Full Game 23.18.1
+- Headless Coverage 23.18.2
+- Headless Full Game 23.18.2 coverage-v2
+- Multiplayer Reliability Lab
+- Multiplayer Hardening Lab
+- Deck Intelligence Matrix
+- Functions unit 9/9
+
+Required productive acceptance remains in SMOKE_23_21_3_RC5_SOCIAL_MOBILE_HARDENING.txt.
+
+LOCAL SEAL RESULTS
+- Game Text: 1513 definitions / 1228 uses / strictSurfaces=4 / controlled=101 PASS
+- Regression archive: 62/62 byte-synchronized PASS
+- Canonical fast contracts: 115/115 PASS
+- JS/MJS syntax (argentinia/js + tools): 236 files PASS
+- Functions unit: 9/9 PASS
+- Stability Lab: PASS (10 seeds)
+- Headless 23.18.1: 6/6 completed, 0 stalls/invariants/determinism failures
+- Headless coverage: 97.95% structurally known
+- Headless 23.18.2: 6/6 completed, 0 stalls/invariants/determinism failures
+- Multiplayer Reliability Lab: PASS (250 seeds / 30000 commits)
+- Multiplayer Hardening Lab: PASS (5000 cases)
+- Deck Intelligence Matrix: PASS (15 archetypes / 60 builds)
+- Functions source tree SHA aggregate: 1664528a1266e65f8c682f7ee4343e14f04fda30457b3628350859a761de7db9 — BYTE IDENTICAL vs RC4
+- Rules 23.13.86 SHA-256: 399b5e26bceb087e35557c7e95283d6f1a783b27361153daed63017d844245c1 — BYTE IDENTICAL vs RC4 ordered package

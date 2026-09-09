@@ -1,0 +1,30 @@
+ARGENTINIA v23.21.3 RC5 — FRONTEND HOTFIX
+PREMIUM EMOTE MYTHIC HALO + MARKET FILTER SIDEBAR
+
+Scope
+- Frontend/UI only.
+- Firestore Rules remain 23.13.86 byte-identical.
+- Cloud Functions remain 40 byte-identical.
+- Existing Gate03/Gate05/Gate07 greens remain valid.
+
+1. Mercado de Pases filters
+- Desktop already used the requested right sidebar.
+- Mobile landscape had regressed to a vertical/top layout via `.trade-explore-sidebar{order:-1}`.
+- Mobile now mirrors Encyclopedia: results left, filters right.
+- Sidebar width: clamp(150px,26dvw,190px).
+- Filter toolbar is sticky and independently scrollable when viewport height is tight.
+
+2. Premium emote visual identity
+- `premium=true` remains sourced from the authoritative emote catalog.
+- Store premium cards: animated mythic-orange halo/breathing glow.
+- In-match premium burst: animated orange rotating halo + pulse ring.
+- Emote picker premium choices: subtle orange breathing glow.
+- Free emotes receive no premium halo.
+- `prefers-reduced-motion: reduce` keeps a static premium differentiation and disables halo animation.
+
+QA
+- Focused premium/market contract: PASS.
+- Canonical fast contracts: 115/115 PASS (112 baseline + Tournament/Trade/Trade Visual 3/3).
+- Regression archive: 62/62 byte synchronized PASS.
+- Functions unit: 9/9 PASS.
+- Game Text: 1513 definitions / 1228 uses PASS.
