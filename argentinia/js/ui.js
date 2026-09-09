@@ -170,12 +170,51 @@ export const els = {
   rivalPlaneswalkers: document.getElementById('rival-planeswalkers'),
 };
 
+export function teardownBoardLayout({ clearGameplay = false } = {}) {
+  const restoreWrapper = (wrapperId, combatId, placeBeforeCombat) => {
+    const wrapper = document.getElementById(wrapperId);
+    const combat = document.getElementById(combatId);
+    const fieldZone = combat?.closest?.('.field-zone-container') || wrapper?.closest?.('.field-zone-container');
+    if (!wrapper || !fieldZone) return;
+
+    // RC5.2 — setupBoardLayout used to wrap the same lands/support wrapper on every new
+    // match. A soft return (no reload) therefore accumulated MAZO/CEMENTERIO/EXILIO DOM.
+    // Move the canonical wrapper back to its original field-zone first, then remove every
+    // generated row shell left by any previous match. This also repairs already-duplicated
+    // sessions without requiring a page reload.
+    if (placeBeforeCombat && combat) fieldZone.insertBefore(wrapper, combat);
+    else fieldZone.appendChild(wrapper);
+    fieldZone.querySelectorAll('.zone-row-container').forEach(node => node.remove());
+  };
+
+  restoreWrapper('rival-wrapper', 'rival-combat', true);
+  restoreWrapper('local-wrapper', 'local-combat', false);
+
+  els.rivalDeckPile = null;
+  els.rivalGYPile = null;
+  els.rivalExilePile = null;
+  els.localDeckPile = null;
+  els.localGYPile = null;
+  els.localExilePile = null;
+
+  if (clearGameplay) {
+    [els.localHand, els.rivalHand, els.localLands, els.rivalLands, els.localCombat, els.rivalCombat,
+      els.localSupport, els.rivalSupport, els.localPlaneswalkers, els.rivalPlaneswalkers]
+      .filter(Boolean).forEach(node => { node.replaceChildren(); node.classList.remove('paying-mode'); });
+    try { els.gameLogBox?.replaceChildren?.(); } catch {}
+    document.querySelectorAll('#stack-container .stack-item,.mp-emote-burst,.floating-damage-number,.combat-arrow-layer').forEach(node => node.remove());
+  }
+}
+
 export function setupBoardLayout() {
+  // Idempotent by construction: normalize any previous match shell before generating one.
+  teardownBoardLayout({ clearGameplay: false });
   const rivalWrapper = document.getElementById('rival-wrapper');
   const localWrapper = document.getElementById('local-wrapper');
 
   const rivalRowContainer = document.createElement('div');
   rivalRowContainer.className = 'zone-row-container';
+  rivalRowContainer.dataset.boardSide = 'rival';
   rivalWrapper.parentNode.insertBefore(rivalRowContainer, rivalWrapper);
 
   els.rivalDeckPile = createPileElement('MAZO');
@@ -198,6 +237,7 @@ export function setupBoardLayout() {
 
   const localRowContainer = document.createElement('div');
   localRowContainer.className = 'zone-row-container';
+  localRowContainer.dataset.boardSide = 'local';
   localWrapper.parentNode.insertBefore(localRowContainer, localWrapper);
 
   els.localDeckPile = createPileElement('MAZO');

@@ -95,6 +95,10 @@ jobs:
           grep -qx 'PUBLIC_FIRESTORE_CONFIG_FILES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_3.txt
           echo "OK: cumulative delivery remains no-card-images/no-public-Firestore-config; hosted PNGs are allowed"
 
+      - name: Validate RC5.2 match lifecycle + mobile HUD contract
+        working-directory: ./argentinia
+        run: node tools/rc5_2_match_lifecycle_mobile_hud_contract.mjs
+
       - name: Validate complete canonical fast contract sweep
         working-directory: ./argentinia
         run: |

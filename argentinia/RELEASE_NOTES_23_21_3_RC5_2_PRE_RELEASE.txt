@@ -1,0 +1,30 @@
+ARGENTINIA v23.21.3 RC5.2 — MATCH LIFECYCLE + MOBILE HUD STABILIZATION
+PRE-RELEASE · 2026-09-09
+
+Scope: frontend/runtime lifecycle only. Firestore Rules 23.13.86 and all 40 Cloud Functions are unchanged.
+
+FIXES
+1. Board layout lifecycle is idempotent. Soft-return no longer accumulates generated MAZO/CEMENTERIO/EXILIO shells between matches.
+2. Abandon soft-return performs DOM teardown in addition to gameplay-state reset.
+3. New match is covered by a black "Inicializando partida…" spinner until the starting coin overlay is mounted.
+4. Mobile battlefield zones receive more vertical budget (36dvh each); local hand becomes slightly smaller (15.5dvh) and bottom-aligned.
+5. Paying/attacking/blocking feedback is strong and internal to card-inner, so selection stays visible without clipping.
+6. Mobile turn/priority HUD uses stable one-line rows with controlled ellipsis and no self-collapsing wraps.
+7. RC5.1 premium circular emote halo, compact exit house, fullscreen soft-return and Mercado right-sidebar filters remain preserved.
+
+QA
+- Focused RC5.2 lifecycle/mobile contract: PASS
+- Game Text contract: PASS (1515 definitions / 1230 uses)
+- Canonical fast contracts: 115/115 PASS
+- Regression archive: 62/62 synchronized
+- JS/MJS syntax: 239/239 PASS
+- Functions unit: 9/9 PASS
+- Stability Lab: PASS
+- Headless 23.18.1: 6/6 PASS
+- Structural coverage: 97.95% known
+- Headless 23.18.2: 6/6 PASS
+- Multiplayer Reliability: PASS
+- Multiplayer Hardening: PASS
+- Deck Intelligence Matrix: PASS
+
+Do not mark RELEASED until GitHub Actions and productive S23 landscape smoke are green.

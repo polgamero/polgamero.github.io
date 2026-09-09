@@ -6,7 +6,7 @@ const main=fs.readFileSync('js/main.js','utf8');
 const ui=fs.readFileSync('js/ui.js','utf8');
 const html=fs.readFileSync('index.html','utf8');
 const manifest=JSON.parse(fs.readFileSync('build-manifest.json','utf8'));
-assert.equal(manifest.releaseCandidate,'RC5.1');
+assert.ok(['RC5.1','RC5.2'].includes(manifest.releaseCandidate));
 assert.match(html,/btn-exit-game[\s\S]*assets\/images\/ui\/salir\.png/);
 assert.match(base,/\.turn-controls \{ flex-direction:row/);
 assert.match(css,/\.field-zone-container \{ height:35vh !important; flex:0 0 35vh/);

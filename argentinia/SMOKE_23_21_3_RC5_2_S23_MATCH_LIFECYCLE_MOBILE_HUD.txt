@@ -1,0 +1,33 @@
+ARGENTINIA 23.21.3 RC5.2 — PRODUCTIVE S23 ULTRA LANDSCAPE SMOKE
+
+A. MULTI-MATCH LIFECYCLE (CRITICAL)
+[ ] Start Solo/Tano match #1: exactly 1 rival MAZO/CEMENTERIO/EXILIO and 1 local MAZO/CEMENTERIO/EXILIO.
+[ ] Exit with house button; fullscreen remains active.
+[ ] Start match #2 without reload: still exactly one set of six side piles; no duplicate containers.
+[ ] Repeat a third time to prove idempotency.
+
+B. INITIALIZATION COVER
+[ ] After choosing deck, board is never visible in stale/partial state.
+[ ] Black screen + spinner + "Inicializando partida…" remains until coin appears.
+[ ] Coin appears with its normal SFX and no black-frame gap.
+
+C. HAND / BATTLEFIELD GEOMETRY
+[ ] Local hand sits lower, uses nearly all bottom pixels without touching viewport edge.
+[ ] Hand cards are slightly smaller and never clipped at top.
+[ ] At least one untapped land does not crop local creatures.
+[ ] Many permanents may pan horizontally instead of shrinking unexpectedly.
+
+D. INTERACTION FEEDBACK
+[ ] Card selected for payment has an obvious cyan internal border/glow, fully visible.
+[ ] Attacker has an obvious red internal border/glow before/after tap; same card size.
+[ ] Selected blocker has an obvious cyan/blue internal border/glow, fully visible.
+
+E. SIDEBAR
+[ ] Turn owner, phase, priority owner and priority state remain readable and non-overlapping.
+[ ] Priority context does not wrap into a collapsed pile.
+[ ] Phase dots and action row remain below HUD without overlap.
+[ ] House exit stays right of action button.
+
+F. PRESERVED RC5.1
+[ ] Premium emote ring remains subtle/circular and store scroll is stable.
+[ ] Mercado mobile filters remain in right sidebar.

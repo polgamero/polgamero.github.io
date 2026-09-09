@@ -1,0 +1,18 @@
+ARGENTINIA 23.21.3 RC5.2 — QA
+
+STATIC / AUTOMATED
+[PASS] setupBoardLayout normalizes/removes prior zone-row-container before rebuilding.
+[PASS] soft-return calls teardownBoardLayout({clearGameplay:true}) before Main Menu.
+[PASS] match initialization cover exists and starting coin dismisses it after mounting.
+[PASS] local mobile hand = 15.5dvh bottom aligned; field zones = 36dvh.
+[PASS] payment/attack/block selections use internal card-inner highlights.
+[PASS] mobile turn/priority labels cannot wrap into multiple collapsed lines.
+[PASS] canonical contracts 115/115.
+[PASS] regression archive 62/62 synchronized.
+[PASS] Functions unit 9/9.
+[PASS] dynamic labs green.
+
+BACKEND FREEZE
+Firestore Rules 23.13.86 unchanged.
+Cloud Functions 40 unchanged.
+No Gate03/05/07 rerun required.

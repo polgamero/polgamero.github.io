@@ -2174,3 +2174,116 @@ html.argentinia-mobile .store-emote-card.premium .store-emote-art::before { box-
 /* Browser-chrome compact mode preserves the same 88svh row budget but gives field more room. */
 html.argentinia-mobile.arg-mobile-browser-ui .field-zone-container { height:33.5svh !important; flex:0 0 33.5svh !important; }
 html.argentinia-mobile.arg-mobile-browser-ui #local-hand { height:15svh !important; flex:0 0 15svh !important; align-items:flex-end !important; }
+
+/* ============================================================================
+   23.21.3 RC5.2 — S23 HAND / SELECTION / PRIORITY HUD FINAL STABILIZATION
+   Geometry comes first: no visual state may move outside its own card rectangle.
+   ============================================================================ */
+html.argentinia-mobile #board {
+  padding-top:.45dvh !important;
+  padding-bottom:.12dvh !important;
+  gap:.34dvh !important;
+}
+html.argentinia-mobile .field-zone-container {
+  height:36dvh !important;
+  flex:0 0 36dvh !important;
+}
+html.argentinia-mobile #local-hand {
+  height:15.5dvh !important;
+  flex:0 0 15.5dvh !important;
+  align-items:flex-end !important;
+  padding:1px 7px 0 !important;
+}
+/* The hand is intentionally a touch smaller; battlefield receives the recovered pixels. */
+html.argentinia-mobile #local-hand .card {
+  max-height:calc(15.5dvh - 3px) !important;
+}
+
+/* Strong selection feedback, entirely INSIDE the real card surface so scrollports cannot clip it. */
+html.argentinia-mobile #local-hand .card.paying,
+html.argentinia-mobile .field-row .card.paying,
+html.argentinia-mobile .field-row .card.attacking,
+html.argentinia-mobile .field-row .card.blocking,
+html.argentinia-mobile .field-row .card.selected-blocker {
+  box-shadow:none !important;
+  outline:none !important;
+}
+html.argentinia-mobile #local-hand .card.paying .card-inner,
+html.argentinia-mobile .field-row .card.paying .card-inner {
+  box-shadow:inset 0 0 0 4px #57d2ff, inset 0 0 20px rgba(87,210,255,.62) !important;
+  filter:brightness(1.08) saturate(1.08) !important;
+}
+html.argentinia-mobile .field-row .card.attacking .card-inner {
+  box-shadow:inset 0 0 0 4px #ff4d43, inset 0 0 22px rgba(255,77,67,.66) !important;
+  filter:brightness(1.07) saturate(1.12) !important;
+}
+html.argentinia-mobile .field-row .card.blocking .card-inner,
+html.argentinia-mobile .field-row .card.selected-blocker .card-inner {
+  box-shadow:inset 0 0 0 4px #42b7ff, inset 0 0 22px rgba(66,183,255,.66) !important;
+  filter:brightness(1.08) saturate(1.1) !important;
+}
+
+/* Priority HUD must never wrap itself into a collapsed pile on narrow landscape phones. */
+html.argentinia-mobile .turn-priority-hud {
+  overflow:visible !important;
+  display:grid !important;
+  grid-template-rows:auto auto auto auto auto !important;
+  gap:1px !important;
+  min-height:54px !important;
+  padding:.2rem .25rem !important;
+}
+html.argentinia-mobile .turn-priority-head,
+html.argentinia-mobile .priority-status-row {
+  min-width:0 !important;
+  min-height:15px !important;
+  grid-template-columns:minmax(0,1fr) minmax(0,auto) !important;
+  gap:3px !important;
+  align-items:center !important;
+}
+html.argentinia-mobile .priority-turn-label,
+html.argentinia-mobile .priority-owner-badge {
+  min-width:0 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  overflow-wrap:normal !important;
+  font-size:.54rem !important;
+  line-height:1.05 !important;
+}
+html.argentinia-mobile .turn-phase-badge,
+html.argentinia-mobile .priority-state-chip {
+  max-width:76px !important;
+  min-width:0 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  font-size:.48rem !important;
+  line-height:1 !important;
+  padding:.12rem .28rem !important;
+}
+html.argentinia-mobile .priority-context-label {
+  min-height:12px !important;
+  max-height:none !important;
+  margin-top:1px !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  display:block !important;
+  font-size:.5rem !important;
+  line-height:1.05 !important;
+}
+html.argentinia-mobile .priority-clock {
+  margin-top:2px !important;
+  gap:3px !important;
+}
+
+/* Browser chrome variant keeps the same proportions instead of reverting to the old cramped hand. */
+html.argentinia-mobile.arg-mobile-browser-ui .field-zone-container {
+  height:34.5svh !important;
+  flex:0 0 34.5svh !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui #local-hand {
+  height:14svh !important;
+  flex:0 0 14svh !important;
+  padding-bottom:0 !important;
+}

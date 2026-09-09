@@ -280,6 +280,15 @@
     <div class="boot-spinner"></div>
   </div>
 
+  <!-- RC5.2 — cada partida nueva se inicializa detrás de negro para que una salida suave
+       (sin reload, necesaria para conservar fullscreen) jamás exponga DOM de la partida anterior. -->
+  <div id="match-loading-overlay" hidden aria-live="polite" aria-busy="true">
+    <div class="match-loading-content">
+      <div class="boot-spinner"></div>
+      <div class="match-loading-label">Inicializando partida…</div>
+    </div>
+  </div>
+
   <div id="game-app">
     <main id="board">
       <!-- MANO RIVAL (OCULTA) -->

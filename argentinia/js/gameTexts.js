@@ -448,6 +448,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   // Etapa 6 — copy de gameplay: sólo presentación humana. Las keys de fase/action/type
   // internas siguen siendo constantes técnicas y nunca dependen de estos overrides.
   'game.loadingDeck': definition('Partida', 'Cargando el mazo...', 'Mensaje al preparar una partida.'),
+  'game.initializing': definition('Partida', 'Inicializando partida…', 'Pantalla negra mostrada entre elegir mazo y la moneda inicial.'),
   'game.start.deck': definition('Partida', '¡Arranca la partida! Jugás con "{deck}".', 'Inicio de partida con nombre del mazo.'),
   'game.start.yourTurnHint': definition('Partida', '¡Tu turno! Bajá una tierra para empezar.', 'Consejo inicial cuando empieza el jugador.'),
   'game.start.waitingRival': definition('Partida', 'Esperando a que tu rival juegue...', 'Mensaje inicial cuando empieza el rival.'),

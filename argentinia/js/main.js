@@ -2,7 +2,7 @@ import { addToStack, spellStack, replaceSpellStackFromSync, resolveGameEffect, c
 import { cardDb } from './cardLoader.js';
 import { executeLocalAttack, executeRivalAttack, resolveCombatDamage, checkDeaths } from './combatRules.js';
 import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardForBot, tryPayWardForBotTarget } from './bot.js';
-import { setupBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal } from './ui.js';
+import { setupBoardLayout, teardownBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal } from './ui.js';
 import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
@@ -799,6 +799,28 @@ setGameTextRuntimeVariablesProvider(() => ({ rival: getRivalName() }));
 // state, funciones importadas) — nada de esto dependía de variables locales de initGame,
 // así que sacarlo de ahí no cambia el comportamiento en absoluto.
 
+let matchInitializationSafetyTimer = null;
+function showMatchInitializationOverlay() {
+  const overlay = document.getElementById('match-loading-overlay');
+  if (!overlay) return;
+  const label = overlay.querySelector('.match-loading-label');
+  if (label) label.textContent = gameText('game.initializing');
+  overlay.hidden = false;
+  if (matchInitializationSafetyTimer !== null) clearTimeout(matchInitializationSafetyTimer);
+  // Fail-open visual guard: a thrown initialization error must never leave a permanent black screen.
+  matchInitializationSafetyTimer = setTimeout(() => {
+    overlay.hidden = true;
+    matchInitializationSafetyTimer = null;
+  }, 15000);
+}
+function hideMatchInitializationOverlay() {
+  if (matchInitializationSafetyTimer !== null) clearTimeout(matchInitializationSafetyTimer);
+  matchInitializationSafetyTimer = null;
+  const overlay = document.getElementById('match-loading-overlay');
+  if (overlay) overlay.hidden = true;
+}
+globalThis.__ARGENTINIA_HIDE_MATCH_LOADING__ = hideMatchInitializationOverlay;
+
 async function returnToMainMenuAfterAbandon() {
   const matchId = state.currentMatch?.matchId || null;
   const uid = state.currentUser?.uid || null;
@@ -817,6 +839,9 @@ async function returnToMainMenuAfterAbandon() {
   state.currentMatch = null;
   state.currentTournamentMatch = null;
   state.multiplayerWaitingForReady = false;
+  // RC5.2 — soft-return must clean BOTH state and presentation. Otherwise every subsequent
+  // setupBoardLayout() wraps the same board again and duplicates MAZO/CEMENTERIO/EXILIO.
+  teardownBoardLayout({ clearGameplay: true });
   try { els.gameOverOverlay?.classList?.add('hidden'); } catch {}
   try { els.paymentControls?.classList?.add('hidden'); } catch {}
   document.querySelectorAll('.gy-modal-overlay,#mulligan-overlay,#damage-modal-overlay,#deck-select-overlay,#multiplayer-overlay').forEach(el => el.remove());
@@ -989,6 +1014,7 @@ function hookGameplayButtons() {
 }
 
 async function initGame(deckSource, options = {}) {
+  showMatchInitializationOverlay();
   stopMultiplayerSocialSession();
   soloGameplayReady = false;
   const tournamentMatch = options?.tournamentMatch || null;
@@ -1860,6 +1886,7 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', st
 // trae un startingRole 50/50 decidido una sola vez al crearse; ambos clientes convierten
 // ese mismo rol compartido a su perspectiva local/rival.
 function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host') {
+  showMatchInitializationOverlay();
   // Multiplayer must never accept the reproducibility URL seed: allowing a player to
   // choose its shuffle seed would make deck order controllable/predictable. We still record
   // the generated session seed in telemetry for post-match diagnostics.

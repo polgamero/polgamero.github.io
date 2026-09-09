@@ -181,6 +181,9 @@ export function showStartingCoinToss({ localName, rivalName, winnerSide = 'local
   const result = overlay.querySelector('.starting-coin-result');
   result.textContent = gameText('game.start.coin.result', { player: winner });
   document.body.appendChild(overlay);
+  // RC5.2 — cover stale/empty board initialization until the coin is actually mounted.
+  // The coin is now the first gameplay visual frame the player sees.
+  try { globalThis.__ARGENTINIA_HIDE_MATCH_LOADING__?.(); } catch {}
 
   return new Promise(resolve => {
     const coin = overlay.querySelector('.starting-coin');

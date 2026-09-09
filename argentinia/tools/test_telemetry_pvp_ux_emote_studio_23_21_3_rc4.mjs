@@ -61,7 +61,7 @@ assert.match(trusted,/EMOTE_CATALOG_PATH = 'gameConfig\/emotes'/);
 assert.match(emoteFn,/setEmoteCatalogAdminTx/);
 assert.equal(manifest.firestoreRulesVersion,'23.13.86');
 assert.equal(manifest.functionsCount,40);
-assert.ok(['RC5','RC5.1'].includes(manifest.releaseCandidate));
+assert.ok(['RC5','RC5.1','RC5.2'].includes(manifest.releaseCandidate));
 // RC5 social delivery + mobile containment hardening.
 assert.ok(!html.includes('id="mp-social-mute"'));
 assert.match(social,/command==='\/silenciar'/);
@@ -81,5 +81,5 @@ assert.match(mobile,/#multiplayer-overlay \.mp-body \{[^}]*overflow:hidden/s);
 assert.match(ui,/resolveStoreEmoteAsset/);
 assert.match(ui,/method:'HEAD'/);
 assert.match(admin,/async function probeUrl/);
-assert.ok(['RC5','RC5.1'].includes(manifest.releaseCandidate));
+assert.ok(['RC5','RC5.1','RC5.2'].includes(manifest.releaseCandidate));
 console.log('TELEMETRY_PVP_UX_EMOTE_STUDIO_23_21_3_RC5_OK telemetry=RECOVERED social=SYMMETRIC mute=COMMAND_ONLY heartbeat=NONCONTENDING mobileHud=CONTAINED emotePicker=EXTERNAL asset404=PROBED functions=40 rules=23.13.86');

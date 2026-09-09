@@ -8,10 +8,10 @@
   "firestoreRulesVersion": "23.13.86",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Multiplayer Social Layer RC5.1 · Premium Halo + Mobile Geometry Stabilization",
+  "label": "Multiplayer Social Layer RC5.2 · Match Lifecycle + Mobile HUD Stabilization",
   "emoteCatalogAuthority": "gameConfig/emotes via economyAdminSetEmoteCatalog",
   "functionsCount": 40,
-  "releaseCandidate": "RC5.1",
+  "releaseCandidate": "RC5.2",
   "telemetryRecovery": "tournament metadata allowlisted in telemetrySessions + explicit upload diagnostics",
   "emoteAudioConvention": "assets/sounds/sfx/<audioBase>.opus|mp3; defaults audioBase=id",
   "socialMute": "session-local chat command /silenciar; no persistent hidden mute button",
@@ -22,5 +22,10 @@
   "mobileTradeFilters": "right sidebar aligned with Encyclopedia in landscape; no order:-1 top stack",
   "mobileBattlefieldGeometry": "row-height sized cards + horizontal pan; tapping/attacking/paying/blocking never changes card scale or lift",
   "fullscreenAbandon": "soft return to main menu without page reload; fullscreen session preserved for Solo/PvP abandon",
-  "compactExitAction": "assets/images/ui/salir.png square action beside priority button with house fallback"
+  "compactExitAction": "assets/images/ui/salir.png square action beside priority button with house fallback",
+  "softMatchLifecycle": "idempotent board teardown/setup; no duplicate deck/graveyard/exile DOM across matches",
+  "matchInitializationCover": "black spinner cover until starting coin is mounted",
+  "mobileHandGeometry": "15.5dvh bottom-aligned hand; 36dvh battlefield zones; no selected-state geometry changes",
+  "mobileSelectionFeedback": "strong internal red/cyan rings on card-inner; no external clipping",
+  "mobilePriorityHud": "single-line ellipsis rows with stable minimum height; no self-collapsing status chrome"
 }
