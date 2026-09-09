@@ -3028,3 +3028,139 @@ html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped .card-inner
   min-height:var(--arg-mobile-field-card-h, 12.2svh) !important;
   max-height:var(--arg-mobile-field-card-h, 12.2svh) !important;
 }
+
+
+/* ============================================================================
+   23.21.3 RC5.2e — SURGICAL MANA-POOL VISIBILITY + EXACT SCALE PASS
+   Requested deltas from RC5.2d, measured on 1600x746 S23 captures:
+   - local hand cards +6%; battlefield permanents +12%; MAZO/CEMENTERIO/EXILIO -4%.
+   - consume the previously unused vertical gap by growing each field-zone row to 35.8%.
+   - preserve exact 5:7 card geometry, horizontal centering and 8/3/1 permanent strip.
+   ============================================================================ */
+
+/* The mana docks intentionally live LEFT of the sidebar badges. RC5.2b introduced
+   overflow:hidden on #sidebar-hud, which clipped both local and rival docks and the
+   first-use education balloon. The app shell still clips to the viewport; only the
+   sidebar itself must allow these anchored children to paint into the board area. */
+html.argentinia-mobile #sidebar-hud {
+  overflow:visible !important;
+}
+html.argentinia-mobile .player-card {
+  overflow:visible !important;
+  position:relative !important;
+}
+html.argentinia-mobile .mana-pool-dock {
+  z-index:720 !important;
+}
+html.argentinia-mobile .mana-pool-education-hint {
+  z-index:730 !important;
+}
+
+/* Vertical budget: 6.8 + 35.8 + 35.8 + 16.8 = 95.2% before tiny gaps/padding,
+   leaving only a small safety band instead of the large dead gap above the hand. */
+html.argentinia-mobile .field-zone-container {
+  height:var(--arg-mobile-field-zone-h, 35.8dvh) !important;
+  flex:0 0 var(--arg-mobile-field-zone-h, 35.8dvh) !important;
+}
+html.argentinia-mobile #local-hand {
+  height:var(--arg-mobile-local-hand-row-h, 16.8dvh) !important;
+  flex:0 0 var(--arg-mobile-local-hand-row-h, 16.8dvh) !important;
+}
+
+/* Hand +6% exactly from 15.1dvh. */
+html.argentinia-mobile #local-hand .card {
+  width:var(--arg-mobile-hand-card-w, 11.43314dvh) !important;
+  height:var(--arg-mobile-hand-card-h, 16.006dvh) !important;
+  min-width:var(--arg-mobile-hand-card-w, 11.43314dvh) !important;
+  max-width:var(--arg-mobile-hand-card-w, 11.43314dvh) !important;
+  min-height:var(--arg-mobile-hand-card-h, 16.006dvh) !important;
+  max-height:var(--arg-mobile-hand-card-h, 16.006dvh) !important;
+  aspect-ratio:5 / 7 !important;
+}
+
+/* Battlefield +12% exactly from 12.2dvh. The same geometry is used by both players and
+   by lands/support/PW/creatures; tapped only rotates the same 5:7 rectangle. */
+html.argentinia-mobile .field-row .card:not(.tapped),
+html.argentinia-mobile .field-row .card:not(.tapped) .card-inner {
+  width:var(--arg-mobile-field-card-w, 9.76dvh) !important;
+  height:var(--arg-mobile-field-card-h, 13.664dvh) !important;
+  min-width:var(--arg-mobile-field-card-w, 9.76dvh) !important;
+  max-width:var(--arg-mobile-field-card-w, 9.76dvh) !important;
+  min-height:var(--arg-mobile-field-card-h, 13.664dvh) !important;
+  max-height:var(--arg-mobile-field-card-h, 13.664dvh) !important;
+}
+html.argentinia-mobile .field-row .card.tapped {
+  width:var(--arg-mobile-field-card-h, 13.664dvh) !important;
+  height:var(--arg-mobile-field-card-w, 9.76dvh) !important;
+  min-width:var(--arg-mobile-field-card-h, 13.664dvh) !important;
+  max-width:var(--arg-mobile-field-card-h, 13.664dvh) !important;
+  min-height:var(--arg-mobile-field-card-w, 9.76dvh) !important;
+  max-height:var(--arg-mobile-field-card-w, 9.76dvh) !important;
+}
+html.argentinia-mobile .field-row .card.tapped .card-inner {
+  width:var(--arg-mobile-field-card-w, 9.76dvh) !important;
+  height:var(--arg-mobile-field-card-h, 13.664dvh) !important;
+  min-width:var(--arg-mobile-field-card-w, 9.76dvh) !important;
+  max-width:var(--arg-mobile-field-card-w, 9.76dvh) !important;
+  min-height:var(--arg-mobile-field-card-h, 13.664dvh) !important;
+  max-height:var(--arg-mobile-field-card-h, 13.664dvh) !important;
+}
+
+/* Piles -4% from RC5.2d while retaining a complete 5:7 render. */
+html.argentinia-mobile .side-pile {
+  width:var(--arg-mobile-pile-w, clamp(52px, 7.872dvh, 63.36px)) !important;
+  min-width:var(--arg-mobile-pile-w, clamp(52px, 7.872dvh, 63.36px)) !important;
+  max-width:var(--arg-mobile-pile-w, 63.36px) !important;
+  height:var(--arg-mobile-pile-h, auto) !important;
+  min-height:var(--arg-mobile-pile-h, 0) !important;
+  max-height:var(--arg-mobile-pile-h, none) !important;
+  aspect-ratio:5 / 7 !important;
+}
+
+/* Keep the already-approved 8/3/1 permanent strip and centered-when-fit scrollers. */
+html.argentinia-mobile :is(#local-lands,#rival-lands) { flex:8 1 0 !important; }
+html.argentinia-mobile :is(#local-support,#rival-support) { flex:3 1 0 !important; }
+html.argentinia-mobile :is(#local-planeswalkers,#rival-planeswalkers) { flex:1 1 0 !important; }
+
+/* Browser-chrome profile uses the same pixel variables published from visualViewport. */
+html.argentinia-mobile.arg-mobile-browser-ui .field-zone-container {
+  height:var(--arg-mobile-field-zone-h, 35.8svh) !important;
+  flex:0 0 var(--arg-mobile-field-zone-h, 35.8svh) !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui #local-hand {
+  height:var(--arg-mobile-local-hand-row-h, 16.8svh) !important;
+  flex:0 0 var(--arg-mobile-local-hand-row-h, 16.8svh) !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui #local-hand .card {
+  width:var(--arg-mobile-hand-card-w, 11.43314svh) !important;
+  height:var(--arg-mobile-hand-card-h, 16.006svh) !important;
+  min-width:var(--arg-mobile-hand-card-w, 11.43314svh) !important;
+  max-width:var(--arg-mobile-hand-card-w, 11.43314svh) !important;
+  min-height:var(--arg-mobile-hand-card-h, 16.006svh) !important;
+  max-height:var(--arg-mobile-hand-card-h, 16.006svh) !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card:not(.tapped),
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card:not(.tapped) .card-inner {
+  width:var(--arg-mobile-field-card-w, 9.76svh) !important;
+  height:var(--arg-mobile-field-card-h, 13.664svh) !important;
+  min-width:var(--arg-mobile-field-card-w, 9.76svh) !important;
+  max-width:var(--arg-mobile-field-card-w, 9.76svh) !important;
+  min-height:var(--arg-mobile-field-card-h, 13.664svh) !important;
+  max-height:var(--arg-mobile-field-card-h, 13.664svh) !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped {
+  width:var(--arg-mobile-field-card-h, 13.664svh) !important;
+  height:var(--arg-mobile-field-card-w, 9.76svh) !important;
+  min-width:var(--arg-mobile-field-card-h, 13.664svh) !important;
+  max-width:var(--arg-mobile-field-card-h, 13.664svh) !important;
+  min-height:var(--arg-mobile-field-card-w, 9.76svh) !important;
+  max-height:var(--arg-mobile-field-card-w, 9.76svh) !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped .card-inner {
+  width:var(--arg-mobile-field-card-w, 9.76svh) !important;
+  height:var(--arg-mobile-field-card-h, 13.664svh) !important;
+  min-width:var(--arg-mobile-field-card-w, 9.76svh) !important;
+  max-width:var(--arg-mobile-field-card-w, 9.76svh) !important;
+  min-height:var(--arg-mobile-field-card-h, 13.664svh) !important;
+  max-height:var(--arg-mobile-field-card-h, 13.664svh) !important;
+}

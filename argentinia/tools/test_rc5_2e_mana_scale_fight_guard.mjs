@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const css=fs.readFileSync(new URL('../css/mobile.css',import.meta.url),'utf8');
+const mobile=fs.readFileSync(new URL('../js/mobileUI.js',import.meta.url),'utf8');
+const stack=fs.readFileSync(new URL('../js/stackManager.js',import.meta.url),'utf8');
+const creatures=JSON.parse(fs.readFileSync(new URL('../assets/data/criaturas.json',import.meta.url),'utf8'));
+assert.ok(css.includes('#sidebar-hud {\n  overflow:visible !important;'),'mana docks must not be clipped by sidebar');
+assert.ok(mobile.includes("height * 0.16006"),'hand +6% metric');
+assert.ok(mobile.includes("height * 0.13664"),'battlefield +12% metric');
+assert.ok(mobile.includes("height * 0.07872"),'piles -4% metric');
+assert.ok(mobile.includes("height * 0.358"),'field rows consume recovered vertical space');
+assert.ok(stack.includes("damageTaken = (selfUnit.damageTaken || 0) + toSelf"),'fight damage must accumulate, never overwrite');
+const pedregal=creatures.find(c=>c.id==='crea_125');
+const salamanca=creatures.find(c=>c.id==='crea_238');
+assert.equal(pedregal.power,4); assert.equal(pedregal.toughness,4);
+assert.ok(String(pedregal.activatedAbility?.cost||'').includes('{T}'),'Toro del Pedregal taps as an activation cost');
+assert.ok(!String(salamanca.activatedAbility?.cost||'').includes('{T}'),'Toro de la Salamanca Baja fight does not tap as a cost');
+console.log('RC5_2E_MANA_SCALE_FIGHT_GUARD_OK');
