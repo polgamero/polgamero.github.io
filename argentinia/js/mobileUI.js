@@ -42,8 +42,8 @@ export function syncMobileViewportMetrics() {
   setPx('--arg-mobile-rival-card-w', height * 0.068 * 5 / 7);
   setPx('--arg-mobile-hand-card-h', height * 0.16006);
   setPx('--arg-mobile-hand-card-w', height * 0.16006 * 5 / 7);
-  setPx('--arg-mobile-field-card-h', height * 0.13664);
-  setPx('--arg-mobile-field-card-w', height * 0.13664 * 5 / 7);
+  setPx('--arg-mobile-field-card-h', height * 0.1585024);
+  setPx('--arg-mobile-field-card-w', height * 0.1585024 * 5 / 7);
   const pileW = Math.max(52, Math.min(63.36, height * 0.07872));
   setPx('--arg-mobile-pile-w', pileW);
   setPx('--arg-mobile-pile-h', pileW * 7 / 5);
