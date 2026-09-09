@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const css=fs.readFileSync('css/mobile.css','utf8');
+const ui=fs.readFileSync('js/ui.js','utf8');
+const manifest=JSON.parse(fs.readFileSync('build-manifest.json','utf8'));
+assert.equal(manifest.releaseCandidate,'RC5.2');
+assert.match(css,/#local-hand \.card \{[\s\S]*?width:10dvh !important;[\s\S]*?height:14dvh !important;[\s\S]*?aspect-ratio:5 \/ 7 !important/);
+assert.match(css,/#local-hand \{[\s\S]*?margin-top:auto !important;[\s\S]*?align-items:flex-end/);
+assert.match(css,/\.field-zone-container > \.zone-row-container,[\s\S]*?\.field-zone-container > \.combat-row \{[\s\S]*?flex:1 1 0 !important/);
+assert.match(css,/\.card\.attacking \{[\s\S]*?outline:4px solid #ff4338/);
+assert.match(css,/\.card\.selected-blocker \{[\s\S]*?outline:4px solid #48bfff/);
+assert.match(css,/\.card\.attacking \.card-inner,[\s\S]*?box-shadow:none !important/);
+assert.match(css,/grid-template-areas:[\s\S]*?"priority"[\s\S]*?"phases"/);
+assert.match(css,/#turn-priority-hud \{ grid-area:priority !important; \}/);
+assert.match(css,/#phase-indicator-container \{ grid-area:phases !important/);
+assert.match(ui,/rowEl\?\.id === 'local-hand'[\s\S]*?removeProperty\('width'\)[\s\S]*?return;/);
+console.log('RC5_2_HAND_ASPECT_SIDEBAR_OUTER_SELECTION_CONTRACT_OK');

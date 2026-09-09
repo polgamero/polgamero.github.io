@@ -2287,3 +2287,152 @@ html.argentinia-mobile.arg-mobile-browser-ui #local-hand {
   flex:0 0 14svh !important;
   padding-bottom:0 !important;
 }
+
+
+/* ============================================================================
+   23.21.3 RC5.2 — HAND ASPECT / UNIFORM BATTLEFIELD / OUTER SELECTION / HUD GRID HOTFIX
+   Geometric invariants:
+   - local hand cards are always exact 5:7 and identical in size;
+   - generated public-zone rows recover the original 50/50 field split;
+   - gameplay selection is drawn OUTSIDE the card, never painted into card-inner;
+   - sidebar items use named grid areas so hidden social/filter nodes cannot shift HUD rows.
+   ============================================================================ */
+html.argentinia-mobile #board {
+  padding-bottom:.28rem !important;
+}
+
+/* Push the hand to the real bottom of the board. The board/sidebar now share the same
+   bottom inset, so card bottoms visually line up with the bottom of the local badge. */
+html.argentinia-mobile #local-hand {
+  height:14.5dvh !important;
+  flex:0 0 14.5dvh !important;
+  margin-top:auto !important;
+  align-items:flex-end !important;
+  padding:4px 7px 0 !important; /* 4px top breathing room is for OUTER selection only. */
+}
+html.argentinia-mobile #local-hand .card {
+  width:10dvh !important;
+  height:14dvh !important;
+  min-width:10dvh !important;
+  max-width:10dvh !important;
+  min-height:14dvh !important;
+  max-height:14dvh !important;
+  aspect-ratio:5 / 7 !important;
+  flex:0 0 auto !important;
+}
+html.argentinia-mobile #local-hand .card .card-inner {
+  width:100% !important;
+  height:100% !important;
+}
+
+/* setupBoardLayout wraps lands/support in .zone-row-container. That wrapper must inherit
+   the same flex share the canonical wrapper had before being wrapped; otherwise local and
+   rival combat rows get content-dependent heights and identical creatures render at
+   different scales. */
+html.argentinia-mobile .field-zone-container > .zone-row-container,
+html.argentinia-mobile .field-zone-container > .combat-row {
+  flex:1 1 0 !important;
+  min-height:0 !important;
+  height:auto !important;
+}
+html.argentinia-mobile .zone-row-container {
+  align-items:stretch !important;
+}
+html.argentinia-mobile .lands-center-zone,
+html.argentinia-mobile .lands-support-wrapper,
+html.argentinia-mobile .lands-support-wrapper > .field-row {
+  height:100% !important;
+  min-height:0 !important;
+  align-items:center !important;
+}
+
+/* OUTER selection rings. They do not alter size/position and remain visually separate
+   from the actual card art/text. Small row breathing room prevents vertical clipping. */
+html.argentinia-mobile .field-row {
+  padding-top:5px !important;
+  padding-bottom:5px !important;
+}
+html.argentinia-mobile #local-hand .card.paying,
+html.argentinia-mobile .field-row .card.paying {
+  outline:4px solid #55d4ff !important;
+  outline-offset:1px !important;
+  box-shadow:0 0 10px rgba(85,212,255,.88), 0 0 3px rgba(255,255,255,.62) !important;
+  filter:none !important;
+  z-index:2500 !important;
+}
+html.argentinia-mobile .field-row .card.attacking {
+  outline:4px solid #ff4338 !important;
+  outline-offset:1px !important;
+  box-shadow:0 0 11px rgba(255,67,56,.92), 0 0 3px rgba(255,220,210,.62) !important;
+  filter:none !important;
+  z-index:2500 !important;
+}
+html.argentinia-mobile .field-row .card.blocking,
+html.argentinia-mobile .field-row .card.selected-blocker {
+  outline:4px solid #48bfff !important;
+  outline-offset:1px !important;
+  box-shadow:0 0 11px rgba(72,191,255,.92), 0 0 3px rgba(220,245,255,.62) !important;
+  filter:none !important;
+  z-index:2500 !important;
+}
+/* Explicitly neutralize the RC5.2 inner paint. */
+html.argentinia-mobile #local-hand .card.paying .card-inner,
+html.argentinia-mobile .field-row .card.paying .card-inner,
+html.argentinia-mobile .field-row .card.attacking .card-inner,
+html.argentinia-mobile .field-row .card.blocking .card-inner,
+html.argentinia-mobile .field-row .card.selected-blocker .card-inner {
+  box-shadow:none !important;
+  filter:none !important;
+}
+
+/* Named rows make layout independent from which optional multiplayer controls are hidden.
+   This fixes the priority panel falling into/behind the phase bullets in Solo/Tano. */
+html.argentinia-mobile .log-section {
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) !important;
+  grid-template-rows:auto minmax(0,1fr) auto auto auto auto auto !important;
+  grid-template-areas:
+    "filters"
+    "log"
+    "social"
+    "priority"
+    "phases"
+    "payment"
+    "actions" !important;
+  gap:2px !important;
+  overflow:hidden !important;
+}
+html.argentinia-mobile #mp-log-filters { grid-area:filters !important; }
+html.argentinia-mobile #game-log-box { grid-area:log !important; }
+html.argentinia-mobile #mp-social-shell { grid-area:social !important; }
+html.argentinia-mobile #turn-priority-hud { grid-area:priority !important; }
+html.argentinia-mobile #phase-indicator-container { grid-area:phases !important; position:relative !important; z-index:2 !important; }
+html.argentinia-mobile #payment-controls { grid-area:payment !important; }
+html.argentinia-mobile .turn-controls { grid-area:actions !important; }
+html.argentinia-mobile .turn-priority-hud {
+  height:auto !important;
+  min-height:58px !important;
+  max-height:none !important;
+  overflow:hidden !important;
+  align-self:stretch !important;
+}
+html.argentinia-mobile .phase-indicator {
+  position:relative !important;
+  margin:0 !important;
+  flex-shrink:0 !important;
+}
+
+/* Browser chrome variant keeps exactly the same 5:7 invariant. */
+html.argentinia-mobile.arg-mobile-browser-ui #local-hand {
+  height:13.5svh !important;
+  flex:0 0 13.5svh !important;
+  margin-top:auto !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui #local-hand .card {
+  width:9.285714svh !important;
+  height:13svh !important;
+  min-width:9.285714svh !important;
+  max-width:9.285714svh !important;
+  min-height:13svh !important;
+  max-height:13svh !important;
+}

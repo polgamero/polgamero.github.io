@@ -20,12 +20,12 @@
   "mobileKeyboardRecovery": "pre-keyboard viewport restore after chat blur",
   "premiumEmoteVisual": "subtle circular mythic-orange ring around emote art only; transform/opacity animation; static under reduced motion",
   "mobileTradeFilters": "right sidebar aligned with Encyclopedia in landscape; no order:-1 top stack",
-  "mobileBattlefieldGeometry": "row-height sized cards + horizontal pan; tapping/attacking/paying/blocking never changes card scale or lift",
+  "mobileBattlefieldGeometry": "equal 50/50 zone/combat flex split; uniform battlefield card height per side; tapped state rotates without rescale",
   "fullscreenAbandon": "soft return to main menu without page reload; fullscreen session preserved for Solo/PvP abandon",
   "compactExitAction": "assets/images/ui/salir.png square action beside priority button with house fallback",
   "softMatchLifecycle": "idempotent board teardown/setup; no duplicate deck/graveyard/exile DOM across matches",
   "matchInitializationCover": "black spinner cover until starting coin is mounted",
-  "mobileHandGeometry": "15.5dvh bottom-aligned hand; 36dvh battlefield zones; no selected-state geometry changes",
-  "mobileSelectionFeedback": "strong internal red/cyan rings on card-inner; no external clipping",
-  "mobilePriorityHud": "single-line ellipsis rows with stable minimum height; no self-collapsing status chrome"
+  "mobileHandGeometry": "exact 5:7 fixed-size local hand cards; identical dimensions; bottom aligned to local badge baseline",
+  "mobileSelectionFeedback": "strong OUTER red/cyan outline+glow on card box; no card-inner paint; no scale/lift",
+  "mobilePriorityHud": "named grid areas keep priority status above phase bullets; single-line ellipsis; no hidden-node row shifting"
 }

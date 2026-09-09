@@ -2016,6 +2016,21 @@ export function sizeCardsInRow(rowEl) {
   const cards = rowEl.querySelectorAll('.card');
   const n = cards.length;
   if (n === 0) return;
+
+  // RC5.2 hand-geometry hotfix: mobile local-hand dimensions are a CSS invariant
+  // (exact 5:7, identical for every card). Do not leave per-render inline width/height
+  // behind, because those values can fight responsive d/svh sizing after fullscreen or
+  // browser-chrome changes. Battlefield rows continue through the geometry engine below.
+  if (document.documentElement?.classList?.contains('argentinia-mobile') && rowEl?.id === 'local-hand') {
+    cards.forEach(c => {
+      c.style.removeProperty('width');
+      c.style.removeProperty('height');
+      const inner = c.querySelector('.card-inner');
+      inner?.style?.removeProperty('width');
+      inner?.style?.removeProperty('height');
+    });
+    return;
+  }
   const rowStyles = getComputedStyle(rowEl);
   const gap = parseFloat(rowStyles.columnGap) || parseFloat(rowStyles.gap) || 6;
   const padX = (parseFloat(rowStyles.paddingLeft) || 0) + (parseFloat(rowStyles.paddingRight) || 0);

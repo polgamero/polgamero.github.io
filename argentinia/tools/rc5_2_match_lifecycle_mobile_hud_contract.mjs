@@ -18,9 +18,11 @@ assert.match(html,/id="match-loading-overlay" hidden[\s\S]*?Inicializando partid
 assert.match(coin,/document\.body\.appendChild\(overlay\);[\s\S]*?__ARGENTINIA_HIDE_MATCH_LOADING__/);
 assert.match(base,/#match-loading-overlay \{[\s\S]*?background:#000/);
 assert.match(css,/\.field-zone-container \{[\s\S]*?height:36dvh !important/);
-assert.match(css,/#local-hand \{[\s\S]*?height:15\.5dvh !important[\s\S]*?align-items:flex-end/);
-assert.match(css,/\.card\.attacking \.card-inner \{[\s\S]*?#ff4d43/);
-assert.match(css,/\.card\.selected-blocker \.card-inner \{[\s\S]*?#42b7ff/);
-assert.match(css,/\.turn-priority-hud \{[\s\S]*?min-height:54px/);
+assert.match(css,/#local-hand \{[\s\S]*?height:14\.5dvh !important[\s\S]*?margin-top:auto !important[\s\S]*?align-items:flex-end/);
+assert.match(css,/\.card\.attacking \{[\s\S]*?outline:4px solid #ff4338/);
+assert.match(css,/\.card\.selected-blocker \{[\s\S]*?outline:4px solid #48bfff/);
+assert.match(css,/grid-template-areas:[\s\S]*?"priority"[\s\S]*?"phases"/);
+assert.match(css,/#turn-priority-hud \{ grid-area:priority !important; \}/);
+assert.match(css,/\.turn-priority-hud \{[\s\S]*?min-height:58px/);
 assert.match(css,/\.priority-owner-badge \{[\s\S]*?white-space:nowrap/);
 console.log('RC5_2_MATCH_LIFECYCLE_MOBILE_HUD_CONTRACT_OK');
