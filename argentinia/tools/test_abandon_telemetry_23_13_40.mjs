@@ -29,7 +29,7 @@ assert.match(main, /applyAbandonPenalty\(state\.currentUser\.uid,[\s\S]*?receipt
   'El settlement server-side debe recibir receipt durable + duración de diagnóstico');
 assert.match(main, /Promise\.race\(\[settle, deadline\]\)/,
   'El cleanup mantiene el deadline para que la UI nunca quede congelada');
-assert.match(main, /finally\s*\{[\s\S]*?endTelemetrySession\('abandon_local'\)[\s\S]*?location\.reload\(\)/,
+assert.match(main, /finally\s*\{[\s\S]*?endTelemetrySession\('abandon_local'\)[\s\S]*?await returnToMainMenuAfterAbandon\(\)/,
   'La salida debe vivir en finally y no depender de ningún cleanup');
 assert.match(main, /abandon_cleanup_exception/, 'Las excepciones de cleanup deben quedar registradas');
 

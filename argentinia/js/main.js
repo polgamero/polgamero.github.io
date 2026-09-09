@@ -87,6 +87,13 @@ function startAnimationPolicyBridge() {
 }
 
 let multiplayerPresenceTimer = null;
+let activeMatchListenerStop = null;
+function stopActiveMatchListener() {
+  if (typeof activeMatchListenerStop === 'function') {
+    try { activeMatchListenerStop(); } catch {}
+  }
+  activeMatchListenerStop = null;
+}
 function stopMultiplayerPresenceHeartbeat() {
   if (multiplayerPresenceTimer !== null) clearInterval(multiplayerPresenceTimer);
   multiplayerPresenceTimer = null;
@@ -673,6 +680,34 @@ export const state = {
   rivalBlockersDeclaredThisCombat: false
 };
 
+// 23.21.3 RC5.1 — abandonar ya no recarga la página en mobile/desktop normal.
+// Guardamos los defaults de gameplay una sola vez para que el siguiente match pueda
+// empezar limpio sin sacrificar Fullscreen. Identidad/perfil/preferencia del Tano
+// pertenecen a la sesión y se preservan deliberadamente.
+const GAMEPLAY_STATE_PERSIST_KEYS = new Set(['currentUser','authInitialResolved','authIdentityReady','userProfile','botDifficulty']);
+const cloneGameplayValue = value => {
+  try { return structuredClone(value); } catch {
+    if (Array.isArray(value)) return value.map(cloneGameplayValue);
+    if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,cloneGameplayValue(v)]));
+    return value;
+  }
+};
+const INITIAL_GAMEPLAY_STATE = Object.fromEntries(Object.entries(state).map(([key,value])=>[key,cloneGameplayValue(value)]));
+function resetGameplayStateForNewMatch() {
+  const preserved = Object.fromEntries([...GAMEPLAY_STATE_PERSIST_KEYS].map(key => [key,state[key]]));
+  Object.entries(INITIAL_GAMEPLAY_STATE).forEach(([key,value]) => {
+    if (!GAMEPLAY_STATE_PERSIST_KEYS.has(key)) state[key] = cloneGameplayValue(value);
+  });
+  Object.assign(state,preserved);
+  castTransactionSerial = 1;
+  presentationCueSerial = 0;
+  replaceSpellStackFromSync([]);
+  stopMultiplayerSocialSession();
+  stopMultiplayerPresenceHeartbeat();
+  stopActiveMatchListener();
+  resetMatchPublishRetry();
+}
+
 const PRESENTATION_CUE_RING_LIMIT = 24;
 let presentationCueSerial = 0;
 
@@ -764,7 +799,51 @@ setGameTextRuntimeVariablesProvider(() => ({ rival: getRivalName() }));
 // state, funciones importadas) — nada de esto dependía de variables locales de initGame,
 // así que sacarlo de ahí no cambia el comportamiento en absoluto.
 
+async function returnToMainMenuAfterAbandon() {
+  const matchId = state.currentMatch?.matchId || null;
+  const uid = state.currentUser?.uid || null;
+  stopMultiplayerPresenceHeartbeat();
+  stopMultiplayerSocialSession();
+  stopActiveMatchListener();
+  resetMatchPublishRetry();
+  matchPublishQueued = false;
+  hideMultiplayerReadyBarrier();
+  hideMultiplayerSyncBarrier();
+  replaceSpellStackFromSync([]);
+  if (matchId && uid) {
+    try { await clearActiveMatchId(uid); } catch (error) { console.warn('No se pudo limpiar activeMatchId al volver al menú:', error); }
+    if (state.userProfile) state.userProfile.activeMatchId = null;
+  }
+  state.currentMatch = null;
+  state.currentTournamentMatch = null;
+  state.multiplayerWaitingForReady = false;
+  try { els.gameOverOverlay?.classList?.add('hidden'); } catch {}
+  try { els.paymentControls?.classList?.add('hidden'); } catch {}
+  document.querySelectorAll('.gy-modal-overlay,#mulligan-overlay,#damage-modal-overlay,#deck-select-overlay,#multiplayer-overlay').forEach(el => el.remove());
+  showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow);
+  try { window.dispatchEvent(new Event('resize')); } catch {}
+}
+
+let gameplayButtonsHooked = false;
 function hookGameplayButtons() {
+  if (gameplayButtonsHooked) return;
+  gameplayButtonsHooked = true;
+  if (els.btnAbandonGame) {
+    const exitLabel = gameText('game.exitToMenuTooltip');
+    els.btnAbandonGame.title = exitLabel;
+    els.btnAbandonGame.setAttribute('aria-label', exitLabel);
+  }
+  const exitImage = els.btnAbandonGame?.querySelector?.('.btn-exit-image');
+  if (exitImage) {
+    const syncExitImage = () => {
+      const loaded = !!(exitImage.complete && exitImage.naturalWidth > 0);
+      els.btnAbandonGame?.classList?.toggle('exit-image-loaded', loaded);
+      exitImage.hidden = !loaded;
+    };
+    exitImage.addEventListener('load', syncExitImage);
+    exitImage.addEventListener('error', syncExitImage);
+    queueMicrotask(syncExitImage);
+  }
   els.btnRestart.addEventListener('click', () => {
     if (state.currentTournamentMatch) { try { sessionStorage.setItem('argentinia.tournament.openAfterReload.v1','1'); } catch {} }
     location.reload();
@@ -874,8 +953,10 @@ function hookGameplayButtons() {
             }
             if (state.currentMatch) stopMultiplayerPresenceHeartbeat();
             else finishSoloRecovery();
-            // La salida NO depende de Firestore, Statistics, Telemetry ni de ninguna otra Promise.
-            location.reload();
+            // RC5.1: un reload expulsa Chrome Android del Fullscreen API y el navegador
+            // prohíbe reingresar sin un gesto nuevo. Volvemos al menú dentro de la misma
+            // página y preservamos la sesión fullscreen; el próximo match resetea runtime.
+            await returnToMainMenuAfterAbandon();
           }
         },
         () => {}, // "Seguir jugando": no hace falta hacer nada, el modal ya se cerró solo
@@ -911,6 +992,7 @@ async function initGame(deckSource, options = {}) {
   stopMultiplayerSocialSession();
   soloGameplayReady = false;
   const tournamentMatch = options?.tournamentMatch || null;
+  resetGameplayStateForNewMatch();
   state.currentTournamentMatch = tournamentMatch;
   beginGameRngSession({ seed: gameSeedFromLocation(), label: tournamentMatch ? `tournament:${tournamentMatch.tournamentId}:${tournamentMatch.matchId}` : 'solo' });
   enterGameplayAudio('solo');
@@ -1797,6 +1879,7 @@ function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhot
     throw new Error('Multijugador sólo admite mazos propios guardados o el Mazo de pruebas de QA.');
   }
 
+  resetGameplayStateForNewMatch();
   setupBoardLayout();
   replaceSpellStackFromSync([]);
   state.localManaPool = emptyManaPool();
@@ -3930,6 +4013,7 @@ function respondToDecision(requestId, responseData) {
 }
 
 export function startListeningToMatch(matchId, myRole) {
+  stopActiveMatchListener();
   // Evita procesar la MISMA pregunta dos veces si el listener vuelve a disparar por algo
   // no relacionado mientras pendingDecision sigue siendo la misma — sin esto, podría
   // mostrarse el modal de "Pagar/No pagar" repetido.
@@ -3938,7 +4022,7 @@ export function startListeningToMatch(matchId, myRole) {
   // no una película pendiente. Sólo reproducimos IDs nuevos que lleguen desde ahora.
   const handledPresentationCueIds = new Set((Array.isArray(state.rivalPresentationCues) ? state.rivalPresentationCues : []).map(cue=>cue?.id).filter(Boolean));
 
-  return listenToMatch(matchId, (publicDoc, snapshotMeta = {}) => {
+  activeMatchListenerStop = listenToMatch(matchId, (publicDoc, snapshotMeta = {}) => {
     if (!publicDoc) return;
     const receivePerfStarted = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     const receiveClientMs = Number(snapshotMeta.receivedAtClientMs || Date.now());
@@ -4293,6 +4377,12 @@ export function startListeningToMatch(matchId, myRole) {
     }, 'error');
     console.error('La escucha multiplayer se interrumpió:', error);
   });
+  return () => {
+    if (typeof activeMatchListenerStop === 'function') {
+      try { activeMatchListenerStop(); } catch {}
+      activeMatchListenerStop = null;
+    }
+  };
 }
 
 // FASE 4, ETAPA 6 (reconexión): reconstruye el `state` local COMPLETO desde lo último

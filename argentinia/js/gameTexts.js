@@ -466,6 +466,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'solo.recovery.expired': definition('Partida', '⌛ Tu partida contra El Tano venció después de 24 horas sin actividad y se registró como abandono.', 'Aviso de recovery Solo expirado.'),
   'solo.recovery.restored': definition('Partida', '🔄 Partida contra El Tano reanudada desde el último checkpoint estable.', 'Confirmación de recovery Solo.'),
   'game.abandon.self': definition('Partida', '🏳️ Abandonaste la partida — te descontamos {points} puntos. Te quedan {total} en total.', 'Resultado de abandonar una partida.'),
+  'game.exitToMenuTooltip': definition('Partida', 'Menú principal', 'Tooltip del botón compacto salir/casita del HUD.'),
   'game.over.abandonWin': definition('Partida', '🏳️ ¡Tu rival abandonó la partida! Ganaste.', 'Victoria porque el rival abandonó.'),
   'game.over.hpLoss': definition('Partida', '💀 Te quedaste sin HP. ¡Ganó {rival}!', 'Derrota por vida.'),
   'game.over.hpWin': definition('Partida', '🏆 ¡VICTORIA! Hiciste morder el polvo a {rival}.', 'Victoria por vida rival.'),

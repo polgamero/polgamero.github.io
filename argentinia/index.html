@@ -389,7 +389,10 @@
         </div>
         <div class="turn-controls">
           <button id="btn-end-turn" class="btn-turn">Pasar Prioridad ➔</button>
-          <button id="btn-abandon-game" class="btn-abandon">🏳️ Abandonar partida</button>
+          <button id="btn-abandon-game" class="btn-abandon btn-exit-game" type="button" title="Menú principal" aria-label="Menú principal">
+            <span class="btn-exit-fallback" aria-hidden="true">⌂</span>
+            <img class="btn-exit-image" src="assets/images/ui/salir.png" alt="" draggable="false">
+          </button>
         </div>
       </div>
 

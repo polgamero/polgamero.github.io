@@ -8,16 +8,19 @@
   "firestoreRulesVersion": "23.13.86",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Multiplayer Social Layer RC5 · Social Delivery + Mobile HUD Hardening",
+  "label": "Multiplayer Social Layer RC5.1 · Premium Halo + Mobile Geometry Stabilization",
   "emoteCatalogAuthority": "gameConfig/emotes via economyAdminSetEmoteCatalog",
   "functionsCount": 40,
-  "releaseCandidate": "RC5",
+  "releaseCandidate": "RC5.1",
   "telemetryRecovery": "tournament metadata allowlisted in telemetrySessions + explicit upload diagnostics",
   "emoteAudioConvention": "assets/sounds/sfx/<audioBase>.opus|mp3; defaults audioBase=id",
   "socialMute": "session-local chat command /silenciar; no persistent hidden mute button",
   "emotePicker": "fixed board overlay outside Bitacora; scrollable grid",
   "presenceHeartbeat": "server-read session fence + single-field update; no gameplay-doc transaction contention",
   "mobileKeyboardRecovery": "pre-keyboard viewport restore after chat blur",
-  "premiumEmoteVisual": "animated mythic-orange halo in store, picker and in-match burst; static under reduced motion",
-  "mobileTradeFilters": "right sidebar aligned with Encyclopedia in landscape; no order:-1 top stack"
+  "premiumEmoteVisual": "subtle circular mythic-orange ring around emote art only; transform/opacity animation; static under reduced motion",
+  "mobileTradeFilters": "right sidebar aligned with Encyclopedia in landscape; no order:-1 top stack",
+  "mobileBattlefieldGeometry": "row-height sized cards + horizontal pan; tapping/attacking/paying/blocking never changes card scale or lift",
+  "fullscreenAbandon": "soft return to main menu without page reload; fullscreen session preserved for Solo/PvP abandon",
+  "compactExitAction": "assets/images/ui/salir.png square action beside priority button with house fallback"
 }

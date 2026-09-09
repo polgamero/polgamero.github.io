@@ -1993,8 +1993,14 @@ export function sizeCardsInRow(rowEl) {
 
   let cardHeight = Math.min(getIdealCardHeightPx(), availableHeight);
   let cardWidth = cardHeight * CARD_ASPECT;
-  const widthIfFit = (availableWidth - (gap * Math.max(0, n - 1))) / effectiveUnits;
-  if (widthIfFit < cardWidth) { cardWidth = Math.max(widthIfFit, 24); cardHeight = cardWidth / CARD_ASPECT; }
+  const mobileScrollableRow = document.documentElement?.classList?.contains('argentinia-mobile');
+  // RC5.1: en mobile las filas ya son scroll containers horizontales. Reducir el tamaño
+  // para que "entren todas" hacía que declarar atacantes (giradas = 7/5 unidades) encogiera
+  // visualmente las cartas. En teléfono manda el alto disponible; el exceso panea.
+  if (!mobileScrollableRow) {
+    const widthIfFit = (availableWidth - (gap * Math.max(0, n - 1))) / effectiveUnits;
+    if (widthIfFit < cardWidth) { cardWidth = Math.max(widthIfFit, 24); cardHeight = cardWidth / CARD_ASPECT; }
+  }
 
   cards.forEach(c => {
     const inner = c.querySelector('.card-inner');
