@@ -26,6 +26,31 @@ const GAMEPLAY_ZONE_SELECTOR = '#local-hand,#rival-hand,#local-lands,#rival-land
 const directClickBypass = new WeakSet();
 let lastStackPreviewAnchor = null;
 
+export function syncMobileViewportMetrics() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return null;
+  const vv = window.visualViewport;
+  const height = Math.max(280, Math.round(Number(vv?.height || window.innerHeight || document.documentElement.clientHeight || 0)));
+  const width = Math.max(480, Math.round(Number(vv?.width || window.innerWidth || document.documentElement.clientWidth || 0)));
+  const root = document.documentElement;
+  const setPx = (name, value) => root.style.setProperty(name, `${Math.round(value * 100) / 100}px`);
+  setPx('--arg-mobile-live-height', height);
+  setPx('--arg-mobile-live-width', width);
+  setPx('--arg-mobile-rival-hand-row-h', height * 0.068);
+  setPx('--arg-mobile-field-zone-h', height * 0.316);
+  setPx('--arg-mobile-local-hand-row-h', height * 0.1585);
+  setPx('--arg-mobile-rival-card-h', height * 0.068);
+  setPx('--arg-mobile-rival-card-w', height * 0.068 * 5 / 7);
+  setPx('--arg-mobile-hand-card-h', height * 0.151);
+  setPx('--arg-mobile-hand-card-w', height * 0.151 * 5 / 7);
+  setPx('--arg-mobile-field-card-h', height * 0.122);
+  setPx('--arg-mobile-field-card-w', height * 0.122 * 5 / 7);
+  const pileW = Math.max(54, Math.min(66, height * 0.082));
+  setPx('--arg-mobile-pile-w', pileW);
+  setPx('--arg-mobile-pile-h', pileW * 7 / 5);
+  return { width, height };
+}
+globalThis.__ARGENTINIA_SYNC_MOBILE_VIEWPORT__ = syncMobileViewportMetrics;
+
 export function classifyMobileTapIntent({
   targetable = false,
   manaPayable = false,
@@ -661,6 +686,7 @@ export function updateMobileEnvironment({ preserveOrientation = false } = {}) {
     return false;
   }
 
+  syncMobileViewportMetrics();
   ensureMobileGates();
   ensureMobileTouchUI();
   ensureComplexOverlayObserver();
@@ -701,6 +727,7 @@ export function initMobileUI() {
     if (viewportRaf) return;
     viewportRaf = window.requestAnimationFrame(() => {
       viewportRaf = 0;
+      syncMobileViewportMetrics();
       updateMobileEnvironment({ preserveOrientation: true });
       try {
         window.dispatchEvent(new Event('resize'));

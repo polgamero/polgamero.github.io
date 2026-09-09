@@ -67,7 +67,7 @@ for(const term of ['Arraigo','Anticipá','Chusmeá','Amplificá','Yapa','Otra vu
 // Changed legacy vocabulary must not survive in user-facing card name/rules/flavor strings.
 const forbidden=[
   /\bPlaneswalker(?:s)?\b/i,/\bLealtad\b/i,/\bSaga(?:s)?\b/i,/\bLore\b/i,/\bAura(?:s)?\b/i,/\bVeh[ií]culo(?:s)?\b/i,
-  /\bVigilancia\b/i,/\bPrisa\b/i,/\bAmenaza\b/i,/V[ií]nculo vital/i,/Toque mortal/i,/\bInfectar\b/i,/\bDestello\b/i,
+  /\bVigilancia\b/i,/\bPrisa\b/i,/\bAmenaza\b/i,/V[ií]nculo vital/i,/Toque mortal/i,/\bInfectar\b/i,/\bDestello\b/i,/\bSpellslinger\b/i,
   /Primer golpe/i,/Doble golpe/i,/\bWard\b/i,/\bDefensor(?:a)?\b/i,/\bIndestructible\b/i,/\bLandfall\b/i,
   /\bAdivin[aá](?:r)?\b/i,/\b(?:Surveil|Vigil[aá])\b/i,/\bProlifer[aá](?:r)?\b/i,/\bKicker\b/i,/\bFlashback\b/i,
   /\bEscape\b/i,/\bSuspend(?:er|ida|ido|idas|idos)?\b/i,/\b(?:Convocar|Convoke)\b/i,/\bAfinidad por\b/i,/\bExcavar\b/i
@@ -111,6 +111,12 @@ assert.ok(wardDef && wardDef.defaultText.includes('Impuesto'));
 applyGameTextOverrides({schemaVersion:1,overrides:{'payment.status.ward':'🔶 ¡{card} tiene Ward {cost}! Pagá o el hechizo se pierde.'}});
 assert.match(gameText('payment.status.ward',{card:'X',cost:'{2}'}),/Impuesto/);
 assert.ok(!gameText('payment.status.ward',{card:'X',cost:'{2}'}).includes('Ward'));
+assert.equal(publicTerminologyText('Hexproof. Spellslinger.'),'Intocable. Hechizo lanzado.');
+assert.ok(!gameText('trigger.spellslinger',{card:'X',spell:'Y'}).includes('Spellslinger'));
+const sirena=cards.find(c=>c.id==='crea_244');
+const sirenaLayout=buildCardTextLayout(sirena);
+assert.ok(sirenaLayout.keywordLabels.includes('Intocable'));
+assert.ok(!sirenaLayout.paragraphs.some(p=>/Hexproof|Intocable/i.test(String(p.text||''))),'Sirena must not duplicate the rendered Intocable keyword in rules text');
 resetGameTextOverrides();
 
 // Browser/API internal contract must not be confused with the public mechanic Escape→Zafar.

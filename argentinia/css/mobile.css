@@ -2885,3 +2885,146 @@ html.argentinia-mobile .turn-controls > #btn-cancel-spell {
   border-radius:6px !important;
   font-size:.64rem !important;
 }
+
+/* ============================================================================
+   23.21.3 RC5.2d — SURGICAL LIVE VIEWPORT + MEASURED CARD SCALE
+   Uses the real visualViewport height published by mobileUI.js so first fullscreen paint
+   cannot keep stale browser-chrome geometry. Existing horizontal/scroll behavior remains.
+   ============================================================================ */
+html.argentinia-mobile #game-app {
+  height:var(--arg-mobile-live-height, 100dvh) !important;
+  max-height:var(--arg-mobile-live-height, 100dvh) !important;
+}
+html.argentinia-mobile #board,
+html.argentinia-mobile #sidebar-hud {
+  height:calc(var(--arg-mobile-live-height, 100dvh) - var(--arg-safe-top) - var(--arg-safe-bottom)) !important;
+  max-height:calc(var(--arg-mobile-live-height, 100dvh) - var(--arg-safe-top) - var(--arg-safe-bottom)) !important;
+  min-height:0 !important;
+}
+html.argentinia-mobile #rival-hand {
+  height:var(--arg-mobile-rival-hand-row-h, 6.8dvh) !important;
+  flex:0 0 var(--arg-mobile-rival-hand-row-h, 6.8dvh) !important;
+}
+html.argentinia-mobile #rival-hand .card {
+  width:var(--arg-mobile-rival-card-w, 4.857dvh) !important;
+  height:var(--arg-mobile-rival-card-h, 6.8dvh) !important;
+  min-width:var(--arg-mobile-rival-card-w, 4.857dvh) !important;
+  max-width:var(--arg-mobile-rival-card-w, 4.857dvh) !important;
+  min-height:var(--arg-mobile-rival-card-h, 6.8dvh) !important;
+  max-height:var(--arg-mobile-rival-card-h, 6.8dvh) !important;
+}
+html.argentinia-mobile .field-zone-container {
+  height:var(--arg-mobile-field-zone-h, 31.6dvh) !important;
+  flex:0 0 var(--arg-mobile-field-zone-h, 31.6dvh) !important;
+}
+html.argentinia-mobile #local-hand {
+  height:var(--arg-mobile-local-hand-row-h, 15.85dvh) !important;
+  flex:0 0 var(--arg-mobile-local-hand-row-h, 15.85dvh) !important;
+}
+html.argentinia-mobile #local-hand .card {
+  width:var(--arg-mobile-hand-card-w, 10.786dvh) !important;
+  height:var(--arg-mobile-hand-card-h, 15.1dvh) !important;
+  min-width:var(--arg-mobile-hand-card-w, 10.786dvh) !important;
+  max-width:var(--arg-mobile-hand-card-w, 10.786dvh) !important;
+  min-height:var(--arg-mobile-hand-card-h, 15.1dvh) !important;
+  max-height:var(--arg-mobile-hand-card-h, 15.1dvh) !important;
+  aspect-ratio:5 / 7 !important;
+}
+html.argentinia-mobile .field-row .card:not(.tapped),
+html.argentinia-mobile .field-row .card:not(.tapped) .card-inner {
+  width:var(--arg-mobile-field-card-w, 8.714dvh) !important;
+  height:var(--arg-mobile-field-card-h, 12.2dvh) !important;
+  min-width:var(--arg-mobile-field-card-w, 8.714dvh) !important;
+  max-width:var(--arg-mobile-field-card-w, 8.714dvh) !important;
+  min-height:var(--arg-mobile-field-card-h, 12.2dvh) !important;
+  max-height:var(--arg-mobile-field-card-h, 12.2dvh) !important;
+}
+html.argentinia-mobile .field-row .card.tapped {
+  width:var(--arg-mobile-field-card-h, 12.2dvh) !important;
+  height:var(--arg-mobile-field-card-w, 8.714dvh) !important;
+  min-width:var(--arg-mobile-field-card-h, 12.2dvh) !important;
+  max-width:var(--arg-mobile-field-card-h, 12.2dvh) !important;
+  min-height:var(--arg-mobile-field-card-w, 8.714dvh) !important;
+  max-height:var(--arg-mobile-field-card-w, 8.714dvh) !important;
+}
+html.argentinia-mobile .field-row .card.tapped .card-inner {
+  width:var(--arg-mobile-field-card-w, 8.714dvh) !important;
+  height:var(--arg-mobile-field-card-h, 12.2dvh) !important;
+  min-width:var(--arg-mobile-field-card-w, 8.714dvh) !important;
+  max-width:var(--arg-mobile-field-card-w, 8.714dvh) !important;
+  min-height:var(--arg-mobile-field-card-h, 12.2dvh) !important;
+  max-height:var(--arg-mobile-field-card-h, 12.2dvh) !important;
+}
+/* Keep MAZO/CEMENTERIO/EXILIO at the current approved visual size, but bind them to the
+   same live viewport metric so they are stable on first fullscreen paint. */
+html.argentinia-mobile .side-pile {
+  width:var(--arg-mobile-pile-w, clamp(54px, 8.2dvh, 66px)) !important;
+  height:var(--arg-mobile-pile-h, auto) !important;
+  min-width:var(--arg-mobile-pile-w, clamp(54px, 8.2dvh, 66px)) !important;
+  max-width:var(--arg-mobile-pile-w, 66px) !important;
+  min-height:var(--arg-mobile-pile-h, 0) !important;
+  max-height:var(--arg-mobile-pile-h, none) !important;
+  aspect-ratio:5 / 7 !important;
+}
+/* Permanent strip: 8/3/1 reflects actual game density. Each child keeps its own horizontal
+   scroller and the existing centered-when-fit behavior. */
+html.argentinia-mobile :is(#local-lands,#rival-lands) { flex:8 1 0 !important; }
+html.argentinia-mobile :is(#local-support,#rival-support) { flex:3 1 0 !important; }
+html.argentinia-mobile :is(#local-planeswalkers,#rival-planeswalkers) { flex:1 1 0 !important; }
+
+/* Higher-specificity browser-chrome selectors from older mobile layers must not override
+   the live metric. The same proportions are used fullscreen and non-fullscreen. */
+html.argentinia-mobile.arg-mobile-browser-ui #game-app {
+  height:var(--arg-mobile-live-height, 100svh) !important;
+  max-height:var(--arg-mobile-live-height, 100svh) !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui #board,
+html.argentinia-mobile.arg-mobile-browser-ui #sidebar-hud {
+  height:calc(var(--arg-mobile-live-height, 100svh) - var(--arg-safe-top) - var(--arg-safe-bottom)) !important;
+  max-height:calc(var(--arg-mobile-live-height, 100svh) - var(--arg-safe-top) - var(--arg-safe-bottom)) !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui #rival-hand {
+  height:var(--arg-mobile-rival-hand-row-h, 6.8svh) !important;
+  flex:0 0 var(--arg-mobile-rival-hand-row-h, 6.8svh) !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui .field-zone-container {
+  height:var(--arg-mobile-field-zone-h, 31.6svh) !important;
+  flex:0 0 var(--arg-mobile-field-zone-h, 31.6svh) !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui #local-hand {
+  height:var(--arg-mobile-local-hand-row-h, 15.85svh) !important;
+  flex:0 0 var(--arg-mobile-local-hand-row-h, 15.85svh) !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui #local-hand .card {
+  width:var(--arg-mobile-hand-card-w, 10.786svh) !important;
+  height:var(--arg-mobile-hand-card-h, 15.1svh) !important;
+  min-width:var(--arg-mobile-hand-card-w, 10.786svh) !important;
+  max-width:var(--arg-mobile-hand-card-w, 10.786svh) !important;
+  min-height:var(--arg-mobile-hand-card-h, 15.1svh) !important;
+  max-height:var(--arg-mobile-hand-card-h, 15.1svh) !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card:not(.tapped),
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card:not(.tapped) .card-inner {
+  width:var(--arg-mobile-field-card-w, 8.714svh) !important;
+  height:var(--arg-mobile-field-card-h, 12.2svh) !important;
+  min-width:var(--arg-mobile-field-card-w, 8.714svh) !important;
+  max-width:var(--arg-mobile-field-card-w, 8.714svh) !important;
+  min-height:var(--arg-mobile-field-card-h, 12.2svh) !important;
+  max-height:var(--arg-mobile-field-card-h, 12.2svh) !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped {
+  width:var(--arg-mobile-field-card-h, 12.2svh) !important;
+  height:var(--arg-mobile-field-card-w, 8.714svh) !important;
+  min-width:var(--arg-mobile-field-card-h, 12.2svh) !important;
+  max-width:var(--arg-mobile-field-card-h, 12.2svh) !important;
+  min-height:var(--arg-mobile-field-card-w, 8.714svh) !important;
+  max-height:var(--arg-mobile-field-card-w, 8.714svh) !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped .card-inner {
+  width:var(--arg-mobile-field-card-w, 8.714svh) !important;
+  height:var(--arg-mobile-field-card-h, 12.2svh) !important;
+  min-width:var(--arg-mobile-field-card-w, 8.714svh) !important;
+  max-width:var(--arg-mobile-field-card-w, 8.714svh) !important;
+  min-height:var(--arg-mobile-field-card-h, 12.2svh) !important;
+  max-height:var(--arg-mobile-field-card-h, 12.2svh) !important;
+}

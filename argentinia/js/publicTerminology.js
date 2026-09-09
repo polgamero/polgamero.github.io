@@ -80,6 +80,8 @@ const REPLACEMENTS = Object.freeze([
   [/\bDefensora\b/g, 'Muralla'],
   [/\bDefensor\b/g, 'Muralla'],
   [/\bIndestructible\b/g, 'Irrompible'],
+  [/\bHexproof\b/gi, 'Intocable'],
+  [/\bSpellslinger\b/gi, 'Hechizo lanzado'],
   [/\bLandfall\b/g, 'Arraigo'],
   [/\bAdiviná(?=$|[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9_])/g, 'Anticipá'],
   [/\bAdivina\b/g, 'Anticipá'],

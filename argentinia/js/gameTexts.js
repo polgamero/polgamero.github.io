@@ -1084,7 +1084,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'discard.remote.random': definition('Selecciones', '🗑️ ¡{card} de tu rival te hizo descartar: {cards}!', 'Descarte remoto aleatorio.'),
   'discard.remote.randomNone': definition('Selecciones', '🗑️ ¡{card} de tu rival intentó hacerte descartar, pero no tenías cartas!', 'Descarte remoto aleatorio sin cartas.'),
   'trigger.landfall': definition('Partida', '🌿 Arraigo — {card} reaccionó a {land}.', 'Narración de Arraigo.'),
-  'trigger.spellslinger': definition('Partida', '✨ Spellslinger — {card} reaccionó a {spell}.', 'Narración de Spellslinger.'),
+  'trigger.spellslinger': definition('Partida', '✨ Hechizo lanzado — {card} reaccionó a {spell}.', 'Narración de una habilidad disparada al lanzar un hechizo.'),
   'attachment.equipment.detached': definition('Partida', '🗡️ {equipment} se cae al piso, pero sigue en tu campo listo para volver a equiparse.', 'Equipo se desprende de criatura.'),
   'attachment.aura.detached': definition('Partida', '💔 {aura} se desprendió de {creature} y fue al cementerio de su dueño.', 'Encanto se desprende.'),
   'attachment.aura.protection': definition('Partida', '💔 ¡{creature} tiene Protección de {color} y {aura} ya no puede seguir pegada! Se cae al cementerio de su dueño.', 'Encanto ilegal por Protección.'),

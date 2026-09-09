@@ -821,7 +821,7 @@ function hideMatchInitializationOverlay() {
 }
 globalThis.__ARGENTINIA_HIDE_MATCH_LOADING__ = hideMatchInitializationOverlay;
 
-async function returnToMainMenuAfterAbandon() {
+async function returnToMainMenuAfterAbandon({ destination = 'main' } = {}) {
   const matchId = state.currentMatch?.matchId || null;
   const uid = state.currentUser?.uid || null;
   stopMultiplayerPresenceHeartbeat();
@@ -845,7 +845,9 @@ async function returnToMainMenuAfterAbandon() {
   try { els.gameOverOverlay?.classList?.add('hidden'); } catch {}
   try { els.paymentControls?.classList?.add('hidden'); } catch {}
   document.querySelectorAll('.gy-modal-overlay,#mulligan-overlay,#damage-modal-overlay,#deck-select-overlay,#multiplayer-overlay').forEach(el => el.remove());
-  showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow);
+  if (destination === 'tournament') await startTournamentFlow();
+  else showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow);
+  try { globalThis.__ARGENTINIA_SYNC_MOBILE_VIEWPORT__?.(); } catch {}
   try { window.dispatchEvent(new Event('resize')); } catch {}
 }
 
@@ -869,9 +871,15 @@ function hookGameplayButtons() {
     exitImage.addEventListener('error', syncExitImage);
     queueMicrotask(syncExitImage);
   }
-  els.btnRestart.addEventListener('click', () => {
-    if (state.currentTournamentMatch) { try { sessionStorage.setItem('argentinia.tournament.openAfterReload.v1','1'); } catch {} }
-    location.reload();
+  els.btnRestart.addEventListener('click', async () => {
+    const returnToTournament = !!state.currentTournamentMatch;
+    try { endTelemetrySession(returnToTournament ? 'tournament_match_complete' : 'game_complete_return_menu'); } catch (error) {
+      console.warn('No se pudo cerrar Telemetría al volver desde Fin de Partida:', error);
+    }
+    // Natural win/loss uses the same total visual/runtime teardown as explicit abandon.
+    // No reload: Android fullscreen is preserved and generated MAZO/CEMENTERIO/EXILIO rows
+    // are destroyed before the next setupBoardLayout().
+    await returnToMainMenuAfterAbandon({ destination: returnToTournament ? 'tournament' : 'main' });
   });
   els.rivalHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(false));
   els.localHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(true));
@@ -1015,6 +1023,13 @@ function hookGameplayButtons() {
 
 async function initGame(deckSource, options = {}) {
   showMatchInitializationOverlay();
+  if (globalThis.__ARGENTINIA_PHONE_SURFACE__ === true) {
+    try { globalThis.__ARGENTINIA_SYNC_MOBILE_VIEWPORT__?.(); } catch {}
+    // Samsung/Chrome can publish the final fullscreen visualViewport one paint after the
+    // fullscreen event. Keep the table hidden while two tiny paint opportunities settle it.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    try { globalThis.__ARGENTINIA_SYNC_MOBILE_VIEWPORT__?.(); } catch {}
+  }
   stopMultiplayerSocialSession();
   soloGameplayReady = false;
   const tournamentMatch = options?.tournamentMatch || null;
@@ -5269,7 +5284,7 @@ export function getStaticTeamModifiers(itemObj) {
 // La fuente puede abandonar el campo después: el objeto de Stack conserva el snapshot de
 // `card` + `ability.effect`. Contrarrestar la habilidad solo remueve ese objeto; nunca la fuente.
 const TRIGGER_LABELS = {
-  etb: 'ETB', creature_etb: 'entrada de criatura', land_etb: 'Arraigo', spell_cast: 'Spellslinger',
+  etb: 'ETB', creature_etb: 'entrada de criatura', land_etb: 'Arraigo', spell_cast: 'hechizo lanzado',
   dies: 'al morir', any_creature_dies: 'muerte de criatura', opponent_death: 'muerte rival',
   attack: 'al atacar', any_creature_attacks: 'ataque', block: 'al bloquear',
   combat_damage: 'daño de combate', upkeep: 'mantenimiento', end_step: 'paso final',
@@ -5277,7 +5292,7 @@ const TRIGGER_LABELS = {
   reanimate_etb: 'ETB reanimado', return_etb: 'ETB al volver',
   permanent_entered: 'entrada de permanente', creature_entered: 'entrada de criatura',
   land_entered: 'entrada de Tierra', creature_died: 'muerte de criatura',
-  spell_cast_generic: 'hechizo casteado', attack_declared: 'ataque declarado',
+  spell_cast_generic: 'hechizo lanzado', attack_declared: 'ataque declarado',
   block_declared: 'bloqueo declarado', combat_damage_dealt: 'daño de combate',
   upkeep_started: 'mantenimiento', end_step_started: 'paso final',
   card_drawn: 'robo de carta', card_discarded: 'descarte', permanent_sacrificed: 'sacrificio',

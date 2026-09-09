@@ -9,7 +9,7 @@ export const CARD_KEYWORD_LABELS = PUBLIC_KEYWORD_LABELS;
 const KEYWORD_TEXT_ALIASES = Object.freeze({
   flying: ['Vuela', 'Volar'],
   trample: ['Arrolla', 'Arrollar'],
-  hexproof: ['Intocable'],
+  hexproof: ['Intocable', 'Hexproof'],
   haste: ['Apuro', 'Prisa'],
   menace: ['Intimidante', 'Amenaza'],
   vigilance: ['Alerta', 'Vigilancia'],
