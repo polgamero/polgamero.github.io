@@ -44,11 +44,11 @@ const trustedEmotes = fs.readFileSync(path.join(root, '../functions/src/trusted/
 
 assert.equal(ENGINE_VERSION, '23.21.3');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.85');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.86');
 assert.equal(MULTIPLAYER_RELIABILITY_VERSION, '23.19.1');
 assert.equal(manifest.engineVersion, '23.21.3');
 assert.equal(manifest.engineProtocolVersion, 'mp-23.19.2');
-assert.equal(manifest.firestoreRulesVersion, '23.13.85');
+assert.equal(manifest.firestoreRulesVersion, '23.13.86');
 assert.equal(manifest.pool, 880);
 
 // Aclaración central de 23.19.1: el self-join host->guest YA estaba protegido y debe seguirlo.
@@ -125,7 +125,7 @@ assert.ok(serverSocial.includes("db.collection('matchCommunications').doc(id)"))
 assert.ok(serverSocial.includes("match.status !== 'active'"));
 assert.ok(serverSocial.includes("match.hostReady !== true || match.guestReady !== true"));
 assert.ok(serverSocial.includes("MULTIPLAYER_EMOTE_NOT_OWNED"));
-assert.ok(trustedEmotes.includes("TRUSTED_EMOTE_CATALOG_VERSION = '23.21.3-rc3'"));
+assert.ok(trustedEmotes.includes("TRUSTED_EMOTE_CATALOG_VERSION = '23.21.3-rc4'"));
 assert.equal((trustedEmotes.match(/id:'emote_/g)||[]).length,12);
 assert.ok(!main.includes('matchCommunications'));
 assert.ok(!main.includes('MULTIPLAYER_CHAT_RATE_LIMIT'));
@@ -183,7 +183,7 @@ assert.equal(classifyReconnectSafety({multiplayerResolutionMarker:{authorityRole
 const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || '';
 if (rulesPath) {
   const rules = fs.readFileSync(rulesPath, 'utf8');
-  assert.ok(rules.includes('23.13.85'));
+  assert.ok(rules.includes('23.13.86'));
   assert.ok(rules.includes('function validMatchIdentityTransition()'));
   assert.ok(rules.includes('function validMatchSessionTransition()'));
   assert.ok(rules.includes("request.auth.uid != resource.data.hostUid"));
@@ -195,7 +195,7 @@ if (rulesPath) {
   assert.ok(rules.includes("d.get('ownerSessionId', '') == m.get('guestSessionId', '')"));
   assert.ok(rules.includes('allow create: if isAuthenticated() && validPrivateSelectionCreate(matchId, requestId);'));
   assert.ok(rules.includes('allow update: if false;'));
-  assert.ok(rules.includes("'23.13.85'"));
+  assert.ok(rules.includes("'23.13.86'"));
 }
 
 const lab = path.join(root, 'tools/run_multiplayer_hardening_lab_23_19_1.mjs');

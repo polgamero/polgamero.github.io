@@ -37,17 +37,11 @@ function appendSocialLog(event) {
   const own=isOwnEvent(event);
   if(!own && muted()) return;
   const row=document.createElement('div');
-  row.className=`log-entry mp-social-log-entry ${own?'mp-social-own':'mp-social-rival'} ${event.type==='emote'?'mp-social-emote-entry':'mp-social-chat-entry'}`;
+  row.className=`log-entry mp-social-log-entry log-player-entry ${own?'mp-social-own':'mp-social-rival'} mp-social-chat-entry`;
   row.dataset.socialSeq=String(event.seq || '');
   const name=document.createElement('strong'); name.className='mp-social-name'; name.textContent=`${escapeText(event.username || (own?session?.localName:session?.rivalName) || 'Jugador')}:`;
   row.appendChild(name);
-  if(event.type==='chat') {
-    const text=document.createElement('span'); text.className='mp-social-message'; text.textContent=escapeText(event.text || ''); row.appendChild(text);
-  } else {
-    const def=getEmoteDefinition(event.emoteId);
-    const holder=document.createElement('span'); holder.className='mp-social-inline-emote';
-    mountEmoteAsset(holder,def); row.appendChild(holder);
-  }
+  const text=document.createElement('span'); text.className='mp-social-message'; text.textContent=escapeText(event.text || ''); row.appendChild(text);
   log.appendChild(row); log.scrollTop=log.scrollHeight;
 }
 function mountEmoteAsset(holder, def, { decorative=false } = {}) {
@@ -92,7 +86,7 @@ function renderEvent(event,{animate=false}={}){
   const seq=Math.max(0,Math.floor(Number(event?.seq)||0));
   if(!seq || seq<=lastProcessedSeq) return;
   lastProcessedSeq=seq;
-  appendSocialLog(event);
+  if(event.type==='chat') appendSocialLog(event);
   if(event.type==='emote' && animate) animateEmote(event);
 }
 function onSnapshot(data){
@@ -134,13 +128,31 @@ async function sendEmote(emoteId){
   finally { sendingEmote=false; }
 }
 
+const FILTER_PLAYERS_KEY='argentinia.multiplayerSocial.showPlayers.v1';
+const FILTER_SYSTEM_KEY='argentinia.multiplayerSocial.showSystem.v1';
+function storedFilter(key, fallback=true){ try { const raw=localStorage.getItem(key); return raw===null?fallback:raw!=='0'; } catch { return fallback; } }
+function applyLogFilters(){
+  const log=byId('game-log-box'), players=byId('mp-log-filter-players'), system=byId('mp-log-filter-system'); if(!log)return;
+  const showPlayers=players?players.checked:storedFilter(FILTER_PLAYERS_KEY,true);
+  const showSystem=system?system.checked:storedFilter(FILTER_SYSTEM_KEY,true);
+  log.classList.toggle('hide-player-messages',!showPlayers);
+  log.classList.toggle('hide-system-messages',!showSystem);
+}
+function bindLogFilters(){
+  const shell=byId('mp-log-filters'), players=byId('mp-log-filter-players'), system=byId('mp-log-filter-system');
+  if(shell) shell.classList.remove('hidden');
+  if(players && !players.dataset.boundFilter){ players.dataset.boundFilter='1'; players.checked=storedFilter(FILTER_PLAYERS_KEY,true); players.addEventListener('change',()=>{try{localStorage.setItem(FILTER_PLAYERS_KEY,players.checked?'1':'0');}catch{} applyLogFilters();}); }
+  if(system && !system.dataset.boundFilter){ system.dataset.boundFilter='1'; system.checked=storedFilter(FILTER_SYSTEM_KEY,true); system.addEventListener('change',()=>{try{localStorage.setItem(FILTER_SYSTEM_KEY,system.checked?'1':'0');}catch{} applyLogFilters();}); }
+  applyLogFilters();
+}
+
 function bindControls(){
   const send=byId('mp-chat-send'), input=byId('mp-chat-input'), emotes=byId('mp-emote-open'), mute=byId('mp-social-mute');
   if(send && !send.dataset.boundSocial){ send.dataset.boundSocial='1'; send.addEventListener('click',()=>void sendChat()); }
   if(input && !input.dataset.boundSocial){ input.dataset.boundSocial='1'; input.maxLength=MAX_CHAT; input.addEventListener('keydown',event=>{ if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();void sendChat();} }); }
   if(emotes && !emotes.dataset.boundSocial){ emotes.dataset.boundSocial='1'; emotes.addEventListener('click',()=>{ const picker=byId('mp-emote-picker'); if(!picker)return; if(picker.classList.contains('hidden'))renderEmotePicker(); else hidePicker(); }); }
   if(mute && !mute.dataset.boundSocial){ mute.dataset.boundSocial='1'; mute.addEventListener('click',()=>{setMuted(!muted());updateMuteButton();}); }
-  updateMuteButton();
+  updateMuteButton(); bindLogFilters();
 }
 
 export function startMultiplayerSocialSession({matchId,uid,localName='Vos',rivalName='Rival',profile=null}={}){
@@ -157,6 +169,6 @@ export function startMultiplayerSocialSession({matchId,uid,localName='Vos',rival
 export function refreshMultiplayerSocialProfile(profile){ if(session) session.profile=profile||{}; }
 export function stopMultiplayerSocialSession({keepLog=false}={}){
   if(typeof stopListener==='function'){try{stopListener();}catch{}} stopListener=null; session=null; lastProcessedSeq=0; baselineLoaded=false; sendingChat=false; sendingEmote=false;
-  hidePicker(); setStatus(''); const shell=byId('mp-social-shell'); if(shell) shell.classList.add('hidden');
+  hidePicker(); setStatus(''); const shell=byId('mp-social-shell'); if(shell) shell.classList.add('hidden'); const filters=byId('mp-log-filters'); if(filters) filters.classList.add('hidden');
   if(!keepLog && typeof document!=='undefined') document.querySelectorAll('.mp-social-log-entry,.mp-emote-burst').forEach(node=>node.remove());
 }

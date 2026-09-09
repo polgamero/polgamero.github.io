@@ -1163,6 +1163,14 @@ async function performRemoteTelemetryUpload(session, user, kind, reason) {
   } catch (error) {
     remoteState.status = 'error';
     remoteState.lastError = String(error?.message || error || 'Error desconocido').slice(0, 500);
+    // 23.21.3 RC4 — un upload remoto fallido nunca vuelve a quedar sólo como badge ERROR.
+    // La consola expone el código/reason sin incluir contenido privado del stream.
+    console.error('[Telemetry Remote] upload failed', {
+      kind,
+      reason,
+      code: error?.code || error?.name || 'ERROR',
+      message: error?.message || String(error)
+    });
     recordTelemetryEvent('telemetry_remote_upload_error', {
       kind,
       reason,

@@ -1,8 +1,8 @@
-// 23.21.3 RC3 — authoritative Admin-managed emote catalog.
+// 23.21.3 RC4 — authoritative Admin-managed emote catalog + audio defaults.
 // Browser-supplied premium/price flags are NEVER trusted. The persisted catalog lives at
 // gameConfig/emotes and is written only by the Admin-only callable.
 
-export const TRUSTED_EMOTE_CATALOG_VERSION = '23.21.3-rc3';
+export const TRUSTED_EMOTE_CATALOG_VERSION = '23.21.3-rc4';
 export const EMOTE_CATALOG_SCHEMA_VERSION = 1;
 export const EMOTE_CATALOG_PATH = 'gameConfig/emotes';
 export const MAX_EMOTES = 128;
@@ -10,18 +10,18 @@ export const MAX_OWNED_EMOTE_IDS = 256;
 export const EMOTE_ANIMATIONS = Object.freeze(['none','pop','bounce','shake','float','pulse']);
 
 export const TRUSTED_EMOTE_CATALOG = Object.freeze([
-  Object.freeze({ id:'emote_001', label:'Mate',       image:'emote_001', audio:'', fallback:'🧉', animation:'pop',    active:true, premium:false, pricePoints:0 }),
-  Object.freeze({ id:'emote_002', label:'Aplausos',   image:'emote_002', audio:'', fallback:'👏', animation:'bounce', active:true, premium:false, pricePoints:0 }),
-  Object.freeze({ id:'emote_003', label:'Risa',       image:'emote_003', audio:'', fallback:'😂', animation:'shake',  active:true, premium:false, pricePoints:0 }),
-  Object.freeze({ id:'emote_004', label:'Sorpresa',   image:'emote_004', audio:'', fallback:'😱', animation:'pop',    active:true, premium:false, pricePoints:0 }),
-  Object.freeze({ id:'emote_005', label:'Enojo',      image:'emote_005', audio:'', fallback:'😤', animation:'shake',  active:true, premium:false, pricePoints:0 }),
-  Object.freeze({ id:'emote_006', label:'Desafío',    image:'emote_006', audio:'', fallback:'😏', animation:'float',  active:true, premium:false, pricePoints:0 }),
-  Object.freeze({ id:'emote_007', label:'Fuego',      image:'emote_007', audio:'', fallback:'🔥', animation:'pulse',  active:true, premium:true,  pricePoints:250 }),
-  Object.freeze({ id:'emote_008', label:'Corona',     image:'emote_008', audio:'', fallback:'👑', animation:'float',  active:true, premium:true,  pricePoints:350 }),
-  Object.freeze({ id:'emote_009', label:'Calavera',   image:'emote_009', audio:'', fallback:'💀', animation:'shake',  active:true, premium:true,  pricePoints:350 }),
-  Object.freeze({ id:'emote_010', label:'Rayos',      image:'emote_010', audio:'', fallback:'⚡', animation:'pulse',  active:true, premium:true,  pricePoints:400 }),
-  Object.freeze({ id:'emote_011', label:'Fantasma',   image:'emote_011', audio:'', fallback:'👻', animation:'float',  active:true, premium:true,  pricePoints:450 }),
-  Object.freeze({ id:'emote_012', label:'Trofeo',     image:'emote_012', audio:'', fallback:'🏆', animation:'bounce', active:true, premium:true,  pricePoints:500 })
+  Object.freeze({ id:'emote_001', label:'Mate',       image:'emote_001', audio:'emote_001', fallback:'🧉', animation:'pop',    active:true, premium:false, pricePoints:0 }),
+  Object.freeze({ id:'emote_002', label:'Aplausos',   image:'emote_002', audio:'emote_002', fallback:'👏', animation:'bounce', active:true, premium:false, pricePoints:0 }),
+  Object.freeze({ id:'emote_003', label:'Risa',       image:'emote_003', audio:'emote_003', fallback:'😂', animation:'shake',  active:true, premium:false, pricePoints:0 }),
+  Object.freeze({ id:'emote_004', label:'Sorpresa',   image:'emote_004', audio:'emote_004', fallback:'😱', animation:'pop',    active:true, premium:false, pricePoints:0 }),
+  Object.freeze({ id:'emote_005', label:'Enojo',      image:'emote_005', audio:'emote_005', fallback:'😤', animation:'shake',  active:true, premium:false, pricePoints:0 }),
+  Object.freeze({ id:'emote_006', label:'Desafío',    image:'emote_006', audio:'emote_006', fallback:'😏', animation:'float',  active:true, premium:false, pricePoints:0 }),
+  Object.freeze({ id:'emote_007', label:'Fuego',      image:'emote_007', audio:'emote_007', fallback:'🔥', animation:'pulse',  active:true, premium:true,  pricePoints:250 }),
+  Object.freeze({ id:'emote_008', label:'Corona',     image:'emote_008', audio:'emote_008', fallback:'👑', animation:'float',  active:true, premium:true,  pricePoints:350 }),
+  Object.freeze({ id:'emote_009', label:'Calavera',   image:'emote_009', audio:'emote_009', fallback:'💀', animation:'shake',  active:true, premium:true,  pricePoints:350 }),
+  Object.freeze({ id:'emote_010', label:'Rayos',      image:'emote_010', audio:'emote_010', fallback:'⚡', animation:'pulse',  active:true, premium:true,  pricePoints:400 }),
+  Object.freeze({ id:'emote_011', label:'Fantasma',   image:'emote_011', audio:'emote_011', fallback:'👻', animation:'float',  active:true, premium:true,  pricePoints:450 }),
+  Object.freeze({ id:'emote_012', label:'Trofeo',     image:'emote_012', audio:'emote_012', fallback:'🏆', animation:'bounce', active:true, premium:true,  pricePoints:500 })
 ]);
 
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$/;
@@ -92,14 +92,14 @@ export function userCanUseEmote(profile, emoteId, items = TRUSTED_EMOTE_CATALOG)
 export async function loadTrustedEmoteCatalog(db, tx = null) {
   const ref = db.doc(EMOTE_CATALOG_PATH);
   const snap = tx ? await tx.get(ref) : await ref.get();
-  if (!snap.exists) return { schemaVersion:EMOTE_CATALOG_SCHEMA_VERSION, catalogVersion:'23.21.3-defaults', source:'defaults', items:TRUSTED_EMOTE_CATALOG, byId:emoteCatalogById(TRUSTED_EMOTE_CATALOG) };
+  if (!snap.exists) return { schemaVersion:EMOTE_CATALOG_SCHEMA_VERSION, catalogVersion:'23.21.3-rc4-defaults', source:'defaults', items:TRUSTED_EMOTE_CATALOG, byId:emoteCatalogById(TRUSTED_EMOTE_CATALOG) };
   const data = snap.data() || {};
   let items;
   try { items = normalizeEmoteCatalogItems(data.items, { strict:false }); }
   catch (error) { error.code = error.code || 'EMOTE_CATALOG_INVALID'; throw error; }
   return {
     schemaVersion:EMOTE_CATALOG_SCHEMA_VERSION,
-    catalogVersion:cleanText(data.catalogVersion || '23.21.3-admin', 96),
+    catalogVersion:cleanText(data.catalogVersion || '23.21.3-rc4-admin', 96),
     source:'firestore', items, byId:emoteCatalogById(items)
   };
 }

@@ -2033,7 +2033,7 @@ html.argentinia-mobile .mp-social-icon-btn,html.argentinia-mobile .mp-chat-send 
 html.argentinia-mobile .mp-social-icon-btn { width:28px; font-size:.86rem; }
 html.argentinia-mobile .mp-chat-send { padding:0 .42rem; font-size:.6rem; }
 html.argentinia-mobile .mp-emote-picker { width:min(220px,96vw); grid-template-columns:repeat(4,1fr); }
-html.argentinia-mobile .mp-emote-burst { width:82px; height:82px; }
+html.argentinia-mobile .mp-emote-burst { width:98px; height:98px; }
 html.argentinia-mobile .mp-emote-burst .mp-emote-fallback { font-size:3.7rem; }
 html.argentinia-mobile .mp-emote-burst-rival { bottom:-58px; }
 html.argentinia-mobile .mp-emote-burst-own { top:-58px; }

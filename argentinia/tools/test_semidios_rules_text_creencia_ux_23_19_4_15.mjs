@@ -14,7 +14,7 @@ const pws=JSON.parse(read('assets/data/planeswalkers.json'));
 
 assert.equal(ENGINE_VERSION,'23.21.3');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.85');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
 assert.equal(pws.length,8);
 
 // Contract: all 8 Semidioses are readable cards with exactly three Creencia abilities.

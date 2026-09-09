@@ -91,6 +91,23 @@ export function checkGameOver() {
 // nada — Solitario sin login sigue sin puntos, como siempre. No bloquea nada del cierre de
 // partida (el overlay de Fin de Partida ya se mostró arriba, esto pasa "en paralelo" y solo
 // actualiza el número una vez que Firestore responde).
+function pvpEloNotice(result) {
+  const elo = result?.elo;
+  if (!elo || typeof elo !== 'object') return '';
+  if (elo.rated !== true) {
+    const reason = elo.reason === 'pair_daily_cap' ? 'límite diario de la pareja' : (elo.reason || 'partida no puntuada');
+    return gameText('game.elo.notRated', { reason });
+  }
+  const role = state.currentMatch?.myRole;
+  const row = role === 'host' ? elo.host : (role === 'guest' ? elo.guest : null);
+  if (!row) return '';
+  const before = Math.round(Number(row.before ?? row.eloRating ?? 1200));
+  const after = Math.round(Number(row.after ?? row.eloRating ?? before));
+  const rawDelta = Math.round(Number(row.delta ?? (after - before)) || 0);
+  const delta = rawDelta > 0 ? `+${rawDelta}` : String(rawDelta);
+  return gameText('game.elo.changed', { before, after, delta });
+}
+
 function pvpRewardNotice(result) {
   const limits = result?.limits || {};
   const reason = result?.rewardReason || 'rewarded';
@@ -240,9 +257,12 @@ function awardMatchEndPoints(won) {
 
       if (mode === 'multiplayer') {
         const notice = pvpRewardNotice(result);
+        const eloNotice = pvpEloNotice(result);
+        const finalNotice = eloNotice ? `${notice}\n${eloNotice}` : notice;
         const limited = ['early_abandon','pair_limit','daily_cap'].includes(result?.rewardReason);
-        showGameRewardStatus(notice, limited ? 'warning' : 'success');
+        showGameRewardStatus(finalNotice, limited ? 'warning' : 'success');
         logMsg(notice);
+        if (eloNotice) logMsg(eloNotice);
         if (awarded > 0 && result?.rewardReason !== 'daily_cap_partial') {
           logMsg(won
             ? gameText('game.points.pvpWin', { points: awarded, total: newTotal })
@@ -752,8 +772,16 @@ export async function passPriority(player) {
     const attackers=state.rivalCombat.filter(attacker=>attacker.isAttacking);
     const hasLegalBlocker=state.localCombat.some(defender=>!defender.tapped && attackers.some(attacker=>canBlock(attacker,defender)));
     if(!hasLegalBlocker){
+      // 23.21.3 RC4 — no hay decisión de bloques posible. En vez de bloquear el botón
+      // durante la ventana normal de 15 s, abrimos una ventana corta de 5 s que el
+      // defensor puede cerrar inmediatamente con “SIN BLOQUEADORES — AVANZAR”.
+      state.autoZeroBlockersQueued = true;
       logMsg(gameText('combat.autoZeroBlockers'));
-      executeRivalAttack();
+      resetPriorityClock('no_blockers_fast_window', {
+        durationMs: 5000,
+        telemetryType: 'priority_no_blockers_fast_window'
+      });
+      render();
       return;
     }
   }

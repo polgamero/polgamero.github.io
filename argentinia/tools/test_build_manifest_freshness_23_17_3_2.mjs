@@ -6,7 +6,7 @@ const manifest = JSON.parse(fs.readFileSync(new URL('../build-manifest.json', im
 const main = fs.readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
 
 assert.equal(ENGINE_VERSION, '23.21.3');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.85');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.86');
 assert.equal(manifest.engineVersion, ENGINE_VERSION);
 assert.equal(manifest.engineProtocolVersion, ENGINE_PROTOCOL_VERSION);
 assert.equal(manifest.protocolVersion, ENGINE_PROTOCOL_VERSION, 'legacy alias must remain aligned during schema transition');

@@ -17,7 +17,7 @@ const fn=fs.readFileSync(path.join(repo,'functions','src','index.js'),'utf8');
 
 // 23.21.3 cumulative visual contract + ELO/Movimientos backend integration.
 assert.match(version,/ENGINE_VERSION = '23\.21\.3'/);
-assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.85'/);
+assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.86'/);
 assert.match(version,/ECONOMY_SCHEMA_VERSION = 10/);
 
 // Visual renderer + modal/zoom reuse.

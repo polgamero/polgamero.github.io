@@ -360,6 +360,7 @@ export function executeRivalAttack() {
   }
 
   markDeclaredBlocks(state.rivalCombat, state.localCombat);
+  state.autoZeroBlockersQueued = false;
   state.localBlockersDeclaredThisCombat = true;
   recordTelemetryEvent('blockers_declared', {
     player: 'local',

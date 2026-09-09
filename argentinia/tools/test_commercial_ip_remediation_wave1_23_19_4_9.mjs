@@ -39,7 +39,7 @@ const expectedNames={
 
 assert.equal(ENGINE_VERSION,'23.21.3');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.85');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
 assert.equal(cards.length,880);
 assert.equal(Object.keys(expectedNames).length,16);
 for(const [id,name] of Object.entries(expectedNames)){

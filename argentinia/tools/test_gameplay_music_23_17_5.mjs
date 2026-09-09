@@ -4,7 +4,7 @@ import { AUDIO_CATALOG, MUSIC_SCENE_TRACKS, enterGameplayAudio, getAudioRuntimeS
 import { ENGINE_VERSION, FIRESTORE_RULES_VERSION } from '../js/version.js';
 
 assert.equal(ENGINE_VERSION, '23.21.3');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.85');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.86');
 assert.deepEqual(MUSIC_SCENE_TRACKS, { menu:'menu', solo:'solo', multiplayer:'multiplayer' });
 
 const sources = (id) => AUDIO_CATALOG.music[id].sources.map(x => x.src);

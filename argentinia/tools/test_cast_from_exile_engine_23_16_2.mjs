@@ -27,7 +27,7 @@ assert.ok(['23.16.2','23.16.2.1','23.16.3','23.16.3.1','23.16.4','23.16.4.1','23
 assert.equal(EXILE_PLAY_ENGINE_VERSION,'23.16.2');
 assert.ok(['23.16.2','23.16.4','23.16.5'].includes(GENERIC_EVENT_ENGINE_VERSION));
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.85');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
 assert.ok(['pool_expansion_iv_760','pool_expansion_v_790','pool_expansion_vi_820','pool_expansion_vii_850','pool_expansion_viii_880'].includes(CURRENT_POOL_MILESTONE));
 assert.ok(POOL_BASELINE.total>=760);
 assert.equal(POOL_MILESTONES.pool_expansion_iv_760.total,760);

@@ -15,7 +15,7 @@ export function normalizeAdminEmoteCatalog(rawItems) {
 export async function setEmoteCatalogAdminTx({ db, tx, adminUid, items, operationId }) {
   const normalized = normalizeAdminEmoteCatalog(items);
   const nowMs = Date.now();
-  const catalogVersion = `23.21.3-rc3-${nowMs}`;
+  const catalogVersion = `23.21.3-rc4-${nowMs}`;
   const ref = db.doc(EMOTE_CATALOG_PATH);
   tx.set(ref, {
     schemaVersion:EMOTE_CATALOG_SCHEMA_VERSION,

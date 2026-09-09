@@ -109,7 +109,7 @@ export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
         matchSettlementAuthority: 'server', pvpAntiFarmAuthority: 'server',
         registrationAdmissionAuthority: 'server', adminEconomyAuthority: 'server',
         economicStatisticsAuthority: 'server', immutableAuditAuthority: 'server', tournamentAuthority: 'server', tradeMarketAuthority: 'server', emoteStoreAuthority:'server', multiplayerSocialAuthority:'server',
-        browserEconomyWrites: 'denied_by_rules_23.13.85', authorityCutover: 'server_required'
+        browserEconomyWrites: 'denied_by_rules_23.13.86', authorityCutover: 'server_required'
       },
       trustedPoolFingerprint: TRUSTED_CARD_POOL_FINGERPRINT
     };

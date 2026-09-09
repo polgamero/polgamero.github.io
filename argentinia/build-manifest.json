@@ -5,10 +5,13 @@
   "economyProtocolVersion": "econ-23.19.5.6",
   "economySchemaVersion": 10,
   "economyFunctionsRegion": "southamerica-east1",
-  "firestoreRulesVersion": "23.13.85",
+  "firestoreRulesVersion": "23.13.86",
   "poolMilestone": "pool_expansion_viii_880",
   "pool": 880,
-  "label": "Multiplayer Social Layer · Chat + Emotes + Premium Cosmetics",
+  "label": "Multiplayer Social Layer RC4 · Telemetry Recovery + PvP UX + Emote Studio",
   "emoteCatalogAuthority": "gameConfig/emotes via economyAdminSetEmoteCatalog",
-  "functionsCount": 40
+  "functionsCount": 40,
+  "releaseCandidate": "RC4",
+  "telemetryRecovery": "tournament metadata allowlisted in telemetrySessions + explicit upload diagnostics",
+  "emoteAudioConvention": "assets/sounds/sfx/<audioBase>.opus|mp3; defaults audioBase=id"
 }

@@ -23,7 +23,7 @@ const oldLabel='Tup'+'per';
 
 assert.equal(ENGINE_VERSION,'23.21.3');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.85');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
 assert.equal(cards.length,880);
 
 const abuela=byId.get('crea_284');

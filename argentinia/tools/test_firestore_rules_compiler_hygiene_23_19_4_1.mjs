@@ -8,8 +8,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'build-manifest.json'), 'utf8'));
 assert.equal(ENGINE_VERSION, '23.21.3');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.85');
-assert.equal(manifest.firestoreRulesVersion, '23.13.85');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.86');
+assert.equal(manifest.firestoreRulesVersion, '23.13.86');
 
 const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || '';
 if (rulesPath && fs.existsSync(rulesPath)) {

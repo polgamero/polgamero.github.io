@@ -19,5 +19,5 @@ assert.match(fn,/export const economyAdminSetEmoteCatalog = onCall/); assert.equ
 assert.match(trusted,/EMOTE_CATALOG_PATH = 'gameConfig\/emotes'/); assert.match(trusted,/MAX_EMOTES = 128/); assert.match(trusted,/loadTrustedEmoteCatalog/);
 assert.match(adminBackend,/setEmoteCatalogAdminTx/); assert.match(adminBackend,/admin\.emote_catalog\.set/);
 assert.match(commerce,/loadTrustedEmoteCatalog\(db, tx\)/); assert.match(comm,/loadTrustedEmoteCatalog\(db, tx\)/);
-assert.equal(manifest.firestoreRulesVersion,'23.13.85'); assert.equal(manifest.functionsCount,40); assert.equal(manifest.emoteCatalogAuthority,'gameConfig/emotes via economyAdminSetEmoteCatalog');
-console.log('ADMIN_EMOTE_CATALOG_23_21_3_RC3_OK adminTab=YES dynamicMax=128 authority=SERVER purchase=SERVER_PRICE send=SERVER_OWNERSHIP functions=40 rules=23.13.85');
+assert.equal(manifest.firestoreRulesVersion,'23.13.86'); assert.equal(manifest.functionsCount,40); assert.equal(manifest.emoteCatalogAuthority,'gameConfig/emotes via economyAdminSetEmoteCatalog');
+console.log('ADMIN_EMOTE_CATALOG_23_21_3_RC3_OK adminTab=YES dynamicMax=128 authority=SERVER purchase=SERVER_PRICE send=SERVER_OWNERSHIP functions=40 rules=23.13.86');

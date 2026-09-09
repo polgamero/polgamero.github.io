@@ -2434,6 +2434,7 @@ button.mana-pool-chip:disabled { opacity: 1; }
   font-size: 13px;
   line-height: 1.45;
   text-align: center;
+  white-space: pre-line;
 }
 .game-over-reward-status[data-kind="warning"] { border-color: rgba(224,122,107,.65); color:#f0c4bb; }
 .game-over-reward-status[data-kind="success"] { border-color: rgba(102,187,106,.55); color:#cce8ce; }
@@ -2479,6 +2480,12 @@ button.mana-pool-chip:disabled { opacity: 1; }
 /* 23.21.3 — MULTIPLAYER SOCIAL LAYER --------------------------------------- */
 .mp-social-shell { flex:0 0 auto; position:relative; display:flex; flex-direction:column; gap:.28rem; }
 .mp-social-shell.hidden { display:none !important; }
+.mp-log-filters { flex:0 0 auto; display:flex; align-items:center; gap:.45rem; min-height:20px; font-size:.7rem; color:rgba(240,240,240,.78); padding:0 .1rem; }
+.mp-log-filters.hidden { display:none !important; }
+.mp-log-filters label { display:inline-flex; align-items:center; gap:.2rem; cursor:pointer; white-space:nowrap; }
+.mp-log-filters input { width:13px; height:13px; margin:0; accent-color:#d4af37; }
+#game-log-box.hide-player-messages .mp-social-chat-entry { display:none !important; }
+#game-log-box.hide-system-messages .log-system-entry { display:none !important; }
 .mp-social-compose { display:grid; grid-template-columns:minmax(0,1fr) 32px 32px auto; gap:.3rem; align-items:center; }
 .mp-chat-input { min-width:0; height:32px; border-radius:7px; border:1px solid rgba(212,175,55,.28); background:rgba(4,12,10,.92); color:#f5eed7; padding:0 .55rem; font-size:.72rem; outline:none; }
 .mp-chat-input:focus { border-color:rgba(212,175,55,.72); box-shadow:0 0 0 2px rgba(212,175,55,.10); }
@@ -2507,7 +2514,7 @@ button.mana-pool-chip:disabled { opacity: 1; }
 .mp-social-inline-emote { width:30px; height:30px; margin-left:2px; }
 .mp-social-inline-emote .mp-emote-fallback { font-size:1.35rem; }
 .player-card { position:relative; }
-.mp-emote-burst { position:absolute; z-index:260; width:112px; height:112px; pointer-events:none; filter:drop-shadow(0 8px 12px rgba(0,0,0,.42)); }
+.mp-emote-burst { position:absolute; z-index:260; width:136px; height:136px; pointer-events:none; filter:drop-shadow(0 8px 12px rgba(0,0,0,.42)); }
 .mp-emote-burst-rival { right:6px; bottom:-80px; }
 .mp-emote-burst-own { right:6px; top:-80px; }
 .mp-emote-burst-art { width:100%; height:100%; }

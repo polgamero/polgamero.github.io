@@ -1225,7 +1225,7 @@ export function logMsg(msg) {
   recordTelemetryUiLog(publicMsg);
   if (HEADLESS_ENGINE) { globalThis.__ARGENTINIA_HEADLESS_LOG__?.push?.(String(publicMsg)); return; }
   const entry = document.createElement('div');
-  entry.className = 'log-entry';
+  entry.className = 'log-entry log-system-entry';
   entry.textContent = publicMsg;
   els.gameLogBox.appendChild(entry);
   els.gameLogBox.scrollTop = els.gameLogBox.scrollHeight;
@@ -10545,8 +10545,8 @@ export function render() {
       els.btnEndTurn.style.backgroundColor = "";
     } else if (autoZeroBlockersPending) {
       els.btnEndTurn.textContent = gameText('priority.button.noBlockers');
-      els.btnEndTurn.onclick = null;
-      els.btnEndTurn.disabled = true;
+      els.btnEndTurn.onclick = executeRivalAttack;
+      els.btnEndTurn.disabled = multiplayerInteractionBlocked;
       els.btnEndTurn.style.backgroundColor = "#3498db";
     } else {
       els.btnEndTurn.textContent = gameText('priority.button.confirmBlocks');

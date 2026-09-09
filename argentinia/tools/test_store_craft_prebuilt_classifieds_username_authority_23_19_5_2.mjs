@@ -26,7 +26,7 @@ const read = p => fs.readFileSync(path.join(repo,p),'utf8');
 assert.equal(ENGINE_VERSION,'23.21.3');
 assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.6');
 assert.equal(ECONOMY_SCHEMA_VERSION,10);
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.85');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
 assert.equal(TRUSTED_CARD_POOL.length,880);
 assert.equal(TRUSTED_PREBUILT_PRODUCTS.length,10);
 assert.ok(TRUSTED_PREBUILT_PRODUCTS.every(p=>p.cardIds.length===60));
