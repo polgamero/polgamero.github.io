@@ -2766,3 +2766,122 @@ html.argentinia-mobile.arg-mobile-browser-ui #local-hand .card {
   min-height:13.75svh !important;
   max-height:13.75svh !important;
 }
+
+
+/* ============================================================================
+   23.21.3 RC5.2c — SURGICAL MOBILE TABLE POLISH
+   Only restores alignment/zone flow/blocker feedback/action-row behavior.
+   Existing card proportions and lifecycle fixes remain untouched.
+   ============================================================================ */
+
+/* Center hands and every battlefield sub-row when contents fit; when they overflow,
+   auto margins collapse and the existing horizontal scroller remains usable. */
+html.argentinia-mobile #local-hand > .card:first-child,
+html.argentinia-mobile #rival-hand > .card:first-child,
+html.argentinia-mobile .field-row > .card:first-child {
+  margin-left:auto !important;
+}
+html.argentinia-mobile #local-hand > .card:last-child,
+html.argentinia-mobile #rival-hand > .card:last-child,
+html.argentinia-mobile .field-row > .card:last-child {
+  margin-right:auto !important;
+}
+
+/* Restore the canonical horizontal 6/3/3 lands / support / planeswalker strip.
+   RC5.2b accidentally forced this wrapper into a vertical column. */
+html.argentinia-mobile .lands-support-wrapper {
+  flex-direction:row !important;
+  align-items:stretch !important;
+  justify-content:stretch !important;
+  width:100% !important;
+  height:100% !important;
+  min-width:0 !important;
+  min-height:0 !important;
+  gap:.42dvw !important;
+}
+html.argentinia-mobile .lands-support-wrapper > .field-row {
+  height:100% !important;
+  min-width:0 !important;
+  min-height:0 !important;
+  align-items:center !important;
+}
+
+/* Use a little more of the available battlefield height without changing the row budget. */
+html.argentinia-mobile .field-row .card:not(.tapped),
+html.argentinia-mobile .field-row .card:not(.tapped) .card-inner {
+  width:8.214dvh !important;
+  height:11.5dvh !important;
+  min-width:8.214dvh !important;
+  max-width:8.214dvh !important;
+  min-height:11.5dvh !important;
+  max-height:11.5dvh !important;
+}
+html.argentinia-mobile .field-row .card.tapped {
+  width:11.5dvh !important;
+  height:8.214dvh !important;
+  min-width:11.5dvh !important;
+  max-width:11.5dvh !important;
+  min-height:8.214dvh !important;
+  max-height:8.214dvh !important;
+}
+html.argentinia-mobile .field-row .card.tapped .card-inner {
+  width:8.214dvh !important;
+  height:11.5dvh !important;
+  min-width:8.214dvh !important;
+  max-width:8.214dvh !important;
+  min-height:11.5dvh !important;
+  max-height:11.5dvh !important;
+}
+
+/* MAZO / CEMENTERIO / EXILIO remain compact, but large enough to show the full card render. */
+html.argentinia-mobile .side-pile {
+  width:clamp(54px, 8.2dvh, 66px) !important;
+  height:auto !important;
+  aspect-ratio:5 / 7 !important;
+  min-width:clamp(54px, 8.2dvh, 66px) !important;
+  min-height:0 !important;
+  max-width:66px !important;
+  max-height:none !important;
+  align-self:center !important;
+}
+html.argentinia-mobile .side-pile .pile-content,
+html.argentinia-mobile .side-pile .pile-content .card,
+html.argentinia-mobile .side-pile .pile-content .card .card-inner {
+  width:100% !important;
+  height:100% !important;
+}
+html.argentinia-mobile .side-pile .pile-label {
+  bottom:-11px !important;
+}
+
+/* Blocker UX: pending selection is intentionally soft; assigned block is solid. */
+html.argentinia-mobile .field-row .card.selected-blocker::after {
+  opacity:1 !important;
+  border:2px solid rgba(93,203,255,.72) !important;
+  box-shadow:0 0 0 2px rgba(93,203,255,.14), 0 0 11px rgba(93,203,255,.30) !important;
+}
+html.argentinia-mobile .field-row .card.blocking::after {
+  opacity:1 !important;
+  border:4px solid #42b7ff !important;
+  box-shadow:0 0 0 3px rgba(66,183,255,.28), 0 0 18px rgba(66,183,255,.62) !important;
+}
+
+/* Phase bullets stay horizontally centered. */
+html.argentinia-mobile #phase-indicator-container,
+html.argentinia-mobile .phase-indicator {
+  justify-content:center !important;
+}
+
+/* When paying, Cancel takes the same main-action slot as Pass Priority and the house
+   remains a compact sibling at the right. */
+html.argentinia-mobile .turn-controls > #btn-cancel-spell {
+  width:auto !important;
+  min-width:0 !important;
+  min-height:30px !important;
+  height:30px !important;
+  margin:0 !important;
+  padding:.35rem .3rem !important;
+  flex:1 1 auto !important;
+  border-radius:6px !important;
+  font-size:.64rem !important;
+}

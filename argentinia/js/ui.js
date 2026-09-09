@@ -10525,6 +10525,18 @@ function renderResolvedEffectTargetHint() {
   el.style.color=destructive?'#ffd8d8':'#fff2cf';
 }
 
+function syncPaymentActionRow(isPaying) {
+  const turnControls = els.btnEndTurn?.closest?.('.turn-controls');
+  if (!turnControls || !els.btnCancelSpell || !els.paymentControls) return;
+  if (isPaying) {
+    if (els.btnCancelSpell.parentElement !== turnControls) {
+      turnControls.insertBefore(els.btnCancelSpell, els.btnAbandonGame || null);
+    }
+  } else if (els.btnCancelSpell.parentElement !== els.paymentControls) {
+    els.paymentControls.appendChild(els.btnCancelSpell);
+  }
+}
+
 export function render() {
   if (HEADLESS_ENGINE) {
     try { captureTelemetryState('headless_render'); } catch {}
@@ -10668,7 +10680,8 @@ export function render() {
   else els.localHand.classList.remove('discard-warning');
 
   if (state.pendingSuspendTransaction || state.pendingSpellIndex !== null || state.pendingCastTransaction?.stage === 'targets' || state.pendingAbilitySource !== null || state.pendingCrew || state.pendingWardChoice || state.pendingCounterUnlessPay) {
-    els.paymentControls.classList.remove('hidden'); els.btnEndTurn.classList.add('hidden'); 
+    els.paymentControls.classList.remove('hidden'); els.btnEndTurn.classList.add('hidden');
+    syncPaymentActionRow(true);
     els.localHand.classList.add('paying-mode');
     if (!state.pendingCrew && !state.pendingWardChoice && !state.pendingCounterUnlessPay) {
       els.localLands.classList.add('paying-mode');
@@ -10756,6 +10769,7 @@ export function render() {
       els.btnConfirmCrew.disabled = false;
     }
   } else {
+    syncPaymentActionRow(false);
     els.paymentControls.classList.add('hidden'); els.btnEndTurn.classList.remove('hidden');
     els.localHand.classList.remove('paying-mode'); els.localLands.classList.remove('paying-mode'); els.localSupport.classList.remove('paying-mode');
   }
