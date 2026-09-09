@@ -2436,3 +2436,333 @@ html.argentinia-mobile.arg-mobile-browser-ui #local-hand .card {
   min-height:13svh !important;
   max-height:13svh !important;
 }
+
+
+/* ============================================================================
+   23.21.3 RC5.2b — LAST-CHANCE MOBILE GEOMETRY STABILIZATION
+   Hard invariants:
+   - mobile board cards use CSS-fixed sizes only (no per-row JS sizing);
+   - all battlefield cards share one exact size across both players;
+   - hand cards are exact 5:7 and fully visible inside the viewport;
+   - red/cyan/blue selections reuse the OUTER-ring strategy of the yellow target glow;
+   - the priority card cannot spill into the phase bullets row.
+   ============================================================================ */
+html.argentinia-mobile #game-app,
+html.argentinia-mobile #board,
+html.argentinia-mobile #sidebar-hud {
+  overflow:hidden !important;
+}
+html.argentinia-mobile #board {
+  padding:.32dvh .55dvw .18dvh !important;
+  gap:.28dvh !important;
+}
+html.argentinia-mobile #rival-hand {
+  height:6.8dvh !important;
+  flex:0 0 6.8dvh !important;
+  min-height:0 !important;
+  align-items:center !important;
+  overflow:hidden !important;
+}
+html.argentinia-mobile #rival-hand .card {
+  width:4.857dvh !important;
+  height:6.8dvh !important;
+  min-width:4.857dvh !important;
+  max-width:4.857dvh !important;
+  min-height:6.8dvh !important;
+  max-height:6.8dvh !important;
+  aspect-ratio:5 / 7 !important;
+}
+html.argentinia-mobile .field-zone-container {
+  height:31.6dvh !important;
+  flex:0 0 31.6dvh !important;
+  min-height:0 !important;
+  gap:.24dvh !important;
+}
+html.argentinia-mobile .field-zone-container > .zone-row-container,
+html.argentinia-mobile .field-zone-container > .combat-row,
+html.argentinia-mobile .zone-row-container,
+html.argentinia-mobile .lands-center-zone,
+html.argentinia-mobile .lands-support-wrapper {
+  min-height:0 !important;
+}
+html.argentinia-mobile .field-zone-container > .zone-row-container,
+html.argentinia-mobile .field-zone-container > .combat-row {
+  flex:1 1 0 !important;
+}
+html.argentinia-mobile .zone-row-container,
+html.argentinia-mobile .lands-center-zone,
+html.argentinia-mobile .lands-support-wrapper {
+  display:flex !important;
+  align-items:center !important;
+}
+html.argentinia-mobile .lands-support-wrapper {
+  flex-direction:column !important;
+  justify-content:center !important;
+  gap:.18dvh !important;
+}
+html.argentinia-mobile .field-row {
+  flex:1 1 0 !important;
+  min-height:0 !important;
+  justify-content:flex-start !important;
+  align-items:center !important;
+  overflow-x:auto !important;
+  overflow-y:visible !important;
+  padding:6px 4px !important;
+  gap:6px !important;
+}
+html.argentinia-mobile .field-row .card:not(.tapped),
+html.argentinia-mobile .field-row .card:not(.tapped) .card-inner {
+  width:7.857dvh !important;
+  height:11dvh !important;
+  min-width:7.857dvh !important;
+  max-width:7.857dvh !important;
+  min-height:11dvh !important;
+  max-height:11dvh !important;
+  aspect-ratio:5 / 7 !important;
+}
+html.argentinia-mobile .field-row .card.tapped {
+  width:11dvh !important;
+  height:7.857dvh !important;
+  min-width:11dvh !important;
+  max-width:11dvh !important;
+  min-height:7.857dvh !important;
+  max-height:7.857dvh !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+}
+html.argentinia-mobile .field-row .card.tapped .card-inner {
+  width:7.857dvh !important;
+  height:11dvh !important;
+  min-width:7.857dvh !important;
+  max-width:7.857dvh !important;
+  min-height:11dvh !important;
+  max-height:11dvh !important;
+  transform:rotate(90deg) !important;
+  transform-origin:center center !important;
+}
+html.argentinia-mobile .side-pile {
+  width:7.857dvh !important;
+  height:11dvh !important;
+  min-width:7.857dvh !important;
+  max-width:7.857dvh !important;
+  min-height:11dvh !important;
+  max-height:11dvh !important;
+}
+html.argentinia-mobile #local-hand {
+  height:15.25dvh !important;
+  flex:0 0 15.25dvh !important;
+  min-height:0 !important;
+  margin-top:auto !important;
+  align-items:flex-end !important;
+  justify-content:flex-start !important;
+  overflow-x:auto !important;
+  overflow-y:visible !important;
+  padding:6px 7px 0 !important;
+  gap:6px !important;
+  scroll-padding-inline:7px !important;
+}
+html.argentinia-mobile #local-hand .card {
+  width:10.357dvh !important;
+  height:14.5dvh !important;
+  min-width:10.357dvh !important;
+  max-width:10.357dvh !important;
+  min-height:14.5dvh !important;
+  max-height:14.5dvh !important;
+  aspect-ratio:5 / 7 !important;
+  flex:0 0 auto !important;
+  scroll-snap-align:start !important;
+}
+html.argentinia-mobile #local-hand .card .card-inner {
+  width:100% !important;
+  height:100% !important;
+}
+
+/* Reuse the GOOD yellow outer-glow strategy via pseudo-elements. */
+html.argentinia-mobile #local-hand .card.paying,
+html.argentinia-mobile .field-row .card.paying,
+html.argentinia-mobile .field-row .card.attacking,
+html.argentinia-mobile .field-row .card.blocking,
+html.argentinia-mobile .field-row .card.selected-blocker,
+html.argentinia-mobile .field-row .card.crewing-selected {
+  outline:none !important;
+  box-shadow:none !important;
+  filter:none !important;
+}
+html.argentinia-mobile #local-hand .card.paying .card-inner,
+html.argentinia-mobile .field-row .card.paying .card-inner,
+html.argentinia-mobile .field-row .card.attacking .card-inner,
+html.argentinia-mobile .field-row .card.blocking .card-inner,
+html.argentinia-mobile .field-row .card.selected-blocker .card-inner,
+html.argentinia-mobile .field-row .card.crewing-selected .card-inner {
+  box-shadow:none !important;
+  filter:none !important;
+}
+html.argentinia-mobile #local-hand .card::after,
+html.argentinia-mobile .field-row .card::after {
+  content:'';
+  position:absolute;
+  inset:-4px;
+  border-radius:9px;
+  pointer-events:none;
+  opacity:0;
+  box-sizing:border-box;
+}
+html.argentinia-mobile #local-hand .card.paying::after,
+html.argentinia-mobile .field-row .card.paying::after {
+  opacity:1;
+  border:4px solid #57d2ff;
+  box-shadow:0 0 0 3px rgba(87,210,255,.30), 0 0 18px rgba(87,210,255,.62);
+}
+html.argentinia-mobile .field-row .card.attacking::after {
+  opacity:1;
+  border:4px solid #ff4d43;
+  box-shadow:0 0 0 3px rgba(255,77,67,.28), 0 0 18px rgba(255,77,67,.62);
+}
+html.argentinia-mobile .field-row .card.blocking::after,
+html.argentinia-mobile .field-row .card.selected-blocker::after {
+  opacity:1;
+  border:4px solid #42b7ff;
+  box-shadow:0 0 0 3px rgba(66,183,255,.28), 0 0 18px rgba(66,183,255,.62);
+}
+html.argentinia-mobile .field-row .card.crewing-selected::after {
+  opacity:1;
+  border:4px solid #f1c40f;
+  box-shadow:0 0 0 3px rgba(241,196,15,.28), 0 0 18px rgba(241,196,15,.62);
+}
+
+/* Sidebar: explicit rows + clipped context copy so nothing can slide under the phase bullets. */
+html.argentinia-mobile #sidebar-hud {
+  display:grid !important;
+  grid-template-rows:auto minmax(0,1fr) auto !important;
+  gap:.28rem !important;
+}
+html.argentinia-mobile .log-section {
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) !important;
+  grid-template-rows:auto minmax(0,1fr) auto auto auto auto !important;
+  grid-template-areas:
+    'filters'
+    'log'
+    'social'
+    'priority'
+    'phases'
+    'payment'
+    'actions' !important;
+  gap:4px !important;
+  padding:.28rem !important;
+  overflow:hidden !important;
+  align-content:start !important;
+}
+html.argentinia-mobile #mp-log-filters.hidden,
+html.argentinia-mobile #mp-social-shell.hidden,
+html.argentinia-mobile #payment-controls.hidden {
+  display:none !important;
+}
+html.argentinia-mobile #game-log-box {
+  min-height:0 !important;
+  overflow-y:auto !important;
+}
+html.argentinia-mobile .turn-priority-hud {
+  display:grid !important;
+  grid-template-rows:auto auto auto auto auto !important;
+  row-gap:2px !important;
+  min-height:0 !important;
+  padding:.22rem .28rem !important;
+  overflow:hidden !important;
+}
+html.argentinia-mobile .turn-priority-head,
+html.argentinia-mobile .priority-status-row {
+  min-width:0 !important;
+}
+html.argentinia-mobile .priority-context-label {
+  min-height:0 !important;
+  line-height:1.12 !important;
+  max-height:2.3em !important;
+  overflow:hidden !important;
+  display:-webkit-box !important;
+  -webkit-box-orient:vertical !important;
+  -webkit-line-clamp:2 !important;
+}
+html.argentinia-mobile #phase-indicator-container {
+  min-height:22px !important;
+  height:22px !important;
+  margin-top:1px !important;
+}
+html.argentinia-mobile .phase-indicator {
+  min-height:22px !important;
+  height:22px !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  gap:4px !important;
+}
+html.argentinia-mobile #payment-controls {
+  margin-bottom:0 !important;
+}
+html.argentinia-mobile .turn-controls {
+  gap:.24rem !important;
+  margin-top:0 !important;
+}
+
+/* Browser UI variant stays compact but preserves the same exact proportions. */
+html.argentinia-mobile.arg-mobile-browser-ui #rival-hand {
+  height:6.2svh !important;
+  flex:0 0 6.2svh !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui #rival-hand .card {
+  width:4.428571svh !important;
+  height:6.2svh !important;
+  min-width:4.428571svh !important;
+  max-width:4.428571svh !important;
+  min-height:6.2svh !important;
+  max-height:6.2svh !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui .field-zone-container {
+  height:30.2svh !important;
+  flex:0 0 30.2svh !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card:not(.tapped),
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card:not(.tapped) .card-inner {
+  width:7.5svh !important;
+  height:10.5svh !important;
+  min-width:7.5svh !important;
+  max-width:7.5svh !important;
+  min-height:10.5svh !important;
+  max-height:10.5svh !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped {
+  width:10.5svh !important;
+  height:7.5svh !important;
+  min-width:10.5svh !important;
+  max-width:10.5svh !important;
+  min-height:7.5svh !important;
+  max-height:7.5svh !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped .card-inner {
+  width:7.5svh !important;
+  height:10.5svh !important;
+  min-width:7.5svh !important;
+  max-width:7.5svh !important;
+  min-height:10.5svh !important;
+  max-height:10.5svh !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui .side-pile {
+  width:7.5svh !important;
+  height:10.5svh !important;
+  min-width:7.5svh !important;
+  max-width:7.5svh !important;
+  min-height:10.5svh !important;
+  max-height:10.5svh !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui #local-hand {
+  height:14.35svh !important;
+  flex:0 0 14.35svh !important;
+}
+html.argentinia-mobile.arg-mobile-browser-ui #local-hand .card {
+  width:9.821428svh !important;
+  height:13.75svh !important;
+  min-width:9.821428svh !important;
+  max-width:9.821428svh !important;
+  min-height:13.75svh !important;
+  max-height:13.75svh !important;
+}

@@ -2021,13 +2021,21 @@ export function sizeCardsInRow(rowEl) {
   // (exact 5:7, identical for every card). Do not leave per-render inline width/height
   // behind, because those values can fight responsive d/svh sizing after fullscreen or
   // browser-chrome changes. Battlefield rows continue through the geometry engine below.
-  if (document.documentElement?.classList?.contains('argentinia-mobile') && rowEl?.id === 'local-hand') {
+  if (document.documentElement?.classList?.contains('argentinia-mobile') && rowEl && (rowEl.id === 'local-hand' || rowEl.id === 'rival-hand' || rowEl.classList?.contains('field-row'))) {
     cards.forEach(c => {
       c.style.removeProperty('width');
       c.style.removeProperty('height');
+      c.style.removeProperty('min-width');
+      c.style.removeProperty('min-height');
+      c.style.removeProperty('max-width');
+      c.style.removeProperty('max-height');
       const inner = c.querySelector('.card-inner');
       inner?.style?.removeProperty('width');
       inner?.style?.removeProperty('height');
+      inner?.style?.removeProperty('min-width');
+      inner?.style?.removeProperty('min-height');
+      inner?.style?.removeProperty('max-width');
+      inner?.style?.removeProperty('max-height');
     });
     return;
   }

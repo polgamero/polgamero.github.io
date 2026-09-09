@@ -696,10 +696,26 @@ export function initMobileUI() {
   document.documentElement.classList.add(MOBILE_SHELL_READY_CLASS);
   globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('mobile_shell_ready', { width: window.innerWidth, height: window.innerHeight });
 
-  // 23.11.8: NO listeners de resize/orientationchange después del boot. CSS dinámico (dvh,
-  // safe-area y @media orientation) hace el trabajo visual. Esto evita ráfagas de rAF y
-  // observers durante rotación/address-bar resize en Android.
-  document.addEventListener('fullscreenchange', () => updateMobileEnvironment({ preserveOrientation: true }));
+  let viewportRaf = 0;
+  const refreshViewportShell = () => {
+    if (viewportRaf) return;
+    viewportRaf = window.requestAnimationFrame(() => {
+      viewportRaf = 0;
+      updateMobileEnvironment({ preserveOrientation: true });
+      try {
+        window.dispatchEvent(new Event('resize'));
+      } catch {}
+    });
+  };
+
+  // Fullscreen and browser-chrome changes must refresh the mobile shell. Some Android
+  // devices report the stable final viewport a tick later, so we refresh twice.
+  document.addEventListener('fullscreenchange', () => {
+    refreshViewportShell();
+    window.setTimeout(refreshViewportShell, 120);
+  });
+  window.visualViewport?.addEventListener?.('resize', refreshViewportShell, { passive: true });
+  window.visualViewport?.addEventListener?.('scroll', refreshViewportShell, { passive: true });
 }
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
