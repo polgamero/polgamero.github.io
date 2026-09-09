@@ -53,6 +53,10 @@ for(const label of ['WEBP','GIF','PNG','OPUS','MP3']) assert.ok(admin.includes(l
 assert.match(admin,/EMOTE_FALLBACK_OPTIONS/); assert.match(admin,/data-f="fallback"/);
 assert.match(admin,/probeUrl/); assert.match(admin,/Detectar assets/);
 assert.match(admin,/premium/); assert.match(admin,/pricePoints/);
+// Store showcase count follows the active authoritative catalog; it is not hardcoded to the 12 bootstrap defaults.
+assert.match(texts,/store\.emotes\.showcaseCount[\s\S]{0,120}\{count\} emotes/);
+assert.match(ui,/currentEmoteActiveCount\(\)/);
+assert.match(ui,/store\.emotes\.showcaseCount'\s*,\s*\{\s*count:\s*currentEmoteActiveCount\(\)\s*\}/);
 assert.match(trusted,/EMOTE_CATALOG_PATH = 'gameConfig\/emotes'/);
 assert.match(emoteFn,/setEmoteCatalogAdminTx/);
 assert.equal(manifest.firestoreRulesVersion,'23.13.86');

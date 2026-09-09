@@ -282,7 +282,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'store.prebuilt.description': definition('Tienda', 'Mazos competitivos de 60 cartas, armados por color y arquetipo. Al comprarlos recibís también todas sus cartas en tu colección.', 'Explicación breve de Mazos Prearmados.'),
   'store.prebuilt.open': definition('Tienda', 'Ver mazos prearmados', 'Botón para abrir el catálogo de Mazos Prearmados.'),
   'store.emotes.showcaseTitle': definition('Tienda', 'Emojis', 'Título del acceso a emojis multiplayer.'),
-  'store.emotes.showcaseCount': definition('Tienda', '12 taunts', 'Cantidad inicial de emojis del catálogo.'),
+  'store.emotes.showcaseCount': definition('Tienda', '{count} emotes', 'Cantidad dinámica de emotes activos del catálogo autoritativo.'),
   'store.emotes.description': definition('Tienda', 'Emojis para usar durante partidas multiplayer. Hay una base gratuita y otros premium para desbloquear con puntos.', 'Descripción breve del catálogo de emojis.'),
   'store.emotes.open': definition('Tienda', 'Ver emojis', 'Botón para abrir el catálogo de emojis.'),
   'store.emotes.title': definition('Tienda', 'Emojis multiplayer', 'Título del catálogo de emojis.'),

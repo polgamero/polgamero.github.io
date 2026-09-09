@@ -4116,6 +4116,9 @@ export function showStoreScreen(onBack, options = {}) {
   function currentPrebuiltFichasCost() {
     return Math.max(0, Math.floor(Number(storefrontAuthority?.prebuilt?.fichasCost ?? PREBUILT_DECK_FICHAS) || 0));
   }
+  function currentEmoteActiveCount() {
+    return EMOTE_CATALOG.filter(row => row?.active !== false).length;
+  }
 
   function stopClassifiedsTimer() {
     if (classifiedsTimerId !== null) {
@@ -4228,7 +4231,7 @@ export function showStoreScreen(onBack, options = {}) {
           <div class="chest-item store-market-item store-emotes-entry">
             <div class="chest-item-icon"><div class="store-emote-showcase-icon">😏</div></div>
             <div class="chest-item-title">${gameTextHtml('store.emotes.showcaseTitle')}</div>
-            <div class="chest-item-count store-market-count">${gameTextHtml('store.emotes.showcaseCount')}</div>
+            <div class="chest-item-count store-market-count">${gameTextHtml('store.emotes.showcaseCount', { count: currentEmoteActiveCount() })}</div>
             <div class="chest-item-desc">${gameTextHtml('store.emotes.description')}</div>
             <button class="reward-action-btn" id="store-emotes">${gameTextHtml('store.emotes.open')}</button>
           </div>

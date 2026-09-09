@@ -1,0 +1,28 @@
+ARGENTINIA 23.21.3 RC4 — GITHUB CI + DYNAMIC EMOTE COUNT HOTFIX
+STATUS: PRE_RELEASE / frontend+CI only
+
+Scope:
+1. Tienda no muestra "12 taunts" hardcodeado. store.emotes.showcaseCount usa {count} y se renderiza con la cantidad de emotes active=true del catálogo autoritativo ya cargado desde storefront.
+2. El archive tools/regression_legacy_23_17_3_1.zip fue refrescado exclusivamente desde los 62 tests vivos enumerados por tools/ci_regression_manifest_23_17_3_1.txt. CI nunca extrae el archive sobre tools/.
+
+Authority/runtime unchanged:
+- Engine 23.21.3 RC4
+- Rules 23.13.86 byte-identical
+- Functions 40 byte-identical
+- MP protocol mp-23.19.2 unchanged
+- Economy schema 10 unchanged
+- Gate03/Gate05/Gate07 RC4 owner-confirmed GREEN remain valid; no emulator rerun is required for this frontend/CI-only hotfix.
+
+Local QA after hotfix:
+- Exact GitHub regression archive sync: 62/62 PASS
+- Game Text contract: PASS
+- RC4 focused Telemetry/PvP/Emote Studio contract: PASS
+- Canonical fast contracts: 115/115 PASS
+- Stability Lab: PASS
+- Headless 23.18.1: 6/6 PASS
+- Coverage: 97.95% structurally known PASS
+- Headless 23.18.2: 6/6 PASS
+- Multiplayer Reliability Lab: PASS
+- Multiplayer Hardening Lab: PASS
+- Deck Intelligence Matrix: PASS
+- Functions unit: 9/9 PASS
