@@ -1,0 +1,34 @@
+ARGENTINIA v23.21.3 — MERCADO DE PASES UX REOPEN RC1
+
+Cambios funcionales
+1) Crear publicación: la grilla de cartas propias reutiliza los mismos filtros de Explorar (nombre, color, rareza y tipo) en la misma columna lateral.
+2) BUSCO / Carta específica: reemplaza el select infinito por input de búsqueda por nombre + datalist/autocomplete. Sólo se acepta una coincidencia exacta normalizada; la preview aparece al resolver la carta.
+3) BUSCO / Atributos: pasa de Rareza + Color a Tipo + Color + Rareza. Cualquiera puede usarse solo; si se combinan, se aplica AND dentro del criterio. Los distintos BUSCO siguen unidos por OR.
+4) Matching de Tipo admite cartas con más de un tipo relevante; por ejemplo una Criatura Artefacto puede satisfacer Criatura o Artefacto.
+
+Autoridad / compatibilidad
+- Firestore Rules: sin cambios (23.13.86).
+- Functions: misma cantidad total (40); cambia tradeCore para validar cardType y matching server-side.
+- Callables: sin cambios de nombre ni top-level payload.
+- Economy protocol/schema: sin cambios.
+- Listados previos sin cardType siguen válidos.
+- Límites Admin y reservas 1↔1: sin cambios.
+
+QA ejecutado en build local
+- ui.js syntax PASS
+- gameTexts.js syntax PASS
+- tradeCore.js syntax PASS
+- trade_market_reopen_contract_23_21_3.mjs PASS
+- test_trade_market_23_21_0.mjs PASS
+- test_trade_market_visual_23_21_0.mjs PASS
+- Manual Preview contracts PASS
+- Game Text contract PASS
+- Canonical fast contracts 115/115 PASS
+- Regression archive 62/62 PASS
+- Functions npm test 10/10 PASS
+- Stability / Headless / Coverage / Multiplayer Reliability / Hardening / Deck Intelligence PASS
+
+Antes de producción
+- Reejecutar Gate05 porque el artefacto de Functions cambió.
+- Reejecutar Gate07 porque la semántica autoritativa del BUSCO del Mercado cambió.
+- Gate03 no requiere repetición: Firestore Rules permanecen byte-identical.

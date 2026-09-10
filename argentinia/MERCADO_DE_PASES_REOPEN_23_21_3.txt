@@ -1,0 +1,14 @@
+ARGENTINIA v23.21.3 — MERCADO DE PASES UX REOPEN
+
+Alcance
+- Crear publicación reutiliza los mismos filtros de Explorar: nombre, color, rareza y tipo, en la misma columna lateral.
+- Carta específica deja de usar un select de todo el pool y pasa a búsqueda por nombre con datalist/autocomplete y preview sólo cuando hay coincidencia válida.
+- El criterio de atributos se amplía de Rareza + Color a Tipo + Color + Rareza; cualquiera de los tres puede usarse solo o combinado.
+- Dentro de un criterio, los atributos se combinan con AND. Entre distintos BUSCO, se conserva OR.
+- El servidor valida cardType contra Creature/Instant/Sorcery/Enchantment/Artifact/Land/Planeswalker y vuelve a verificar el match al crear la oferta.
+- Firestore Rules no cambian: Mercado sigue server-only.
+- No cambia el límite de criterios, ofertas ni swaps.
+
+Compatibilidad
+- Listados viejos sin cardType siguen válidos.
+- Functions conserva el mismo callable y la misma cantidad total; sólo se extiende el contenido validado de wantedCriteria.attributes.
