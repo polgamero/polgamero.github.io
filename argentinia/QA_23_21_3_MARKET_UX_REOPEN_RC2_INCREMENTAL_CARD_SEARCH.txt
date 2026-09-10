@@ -1,0 +1,51 @@
+ARGENTINIA v23.21.3 — MERCADO DE PASES UX REOPEN RC2 — INCREMENTAL CARD SEARCH
+
+Objetivo del hotfix frontend
+Corregir BUSCO > Carta específica para que no exija escribir el nombre completo y exacto.
+
+Comportamiento nuevo
+1) El textbox busca en vivo mientras se escribe.
+2) La búsqueda es case-insensitive y accent-insensitive.
+3) Cada palabra/fragmento escrito debe estar contenido en el nombre normalizado de la carta, sin exigir que las palabras sean contiguas.
+   Ejemplos conceptuales: "sir" puede traer nombres que contengan sir; "rio plata" puede encontrar una carta cuyo nombre contenga ambas palabras.
+4) Se muestran hasta 18 coincidencias vivas en un dropdown compacto y scrolleable.
+5) Coincidencias exactas y nombres que empiezan por el texto buscado se priorizan arriba.
+6) El criterio exact_card sólo guarda cardId después de que el jugador selecciona una carta concreta (o escribe manualmente un nombre exacto válido).
+7) Si el usuario modifica el texto después de seleccionar, se limpia el cardId hasta volver a resolver/seleccionar una carta válida.
+8) No se usa datalist del navegador: la lista es propia de Argentinia y funciona igual en desktop/mobile.
+
+Delta runtime contra MARKET UX REOPEN RC1
+- MOD argentinia/js/ui.js
+- MOD argentinia/js/gameTexts.js
+- MOD argentinia/css/style.css
+- NEW argentinia/tools/trade_market_exact_card_incremental_search_contract_23_21_3.mjs
+- MOD argentinia/tools/trade_market_reopen_contract_23_21_3.mjs (QA/contract, no runtime)
+
+Backend / deploy
+- functions/: BYTE IDENTICAL contra RC1 ya gateado/deployado.
+- Firestore Rules: sin cambios, 23.13.86.
+- Functions: 40, sin cambios respecto de RC1.
+- Gate05: NO repetir por RC2; el backend es byte-identical al RC1 que ya quedó GREEN y deployado/verificado.
+- Gate07: NO repetir por RC2; la semántica server-side es byte-identical al RC1 que ya quedó GREEN.
+- Gate03: no repetir; Rules siguen byte-identical.
+
+QA ejecutado
+- ui.js syntax PASS
+- gameTexts.js syntax PASS
+- trade_market_reopen_contract_23_21_3.mjs PASS
+- trade_market_exact_card_incremental_search_contract_23_21_3.mjs PASS
+- Game Text contract PASS: definitions=1521 used=1226
+- Canonical fast contracts 115/115 PASS
+- Regression archive 62/62 PASS
+- Functions npm test 10/10 PASS
+- functions/ byte-identical vs RC1 PASS
+- argentinia/css/mobile.css byte-identical vs RC1 PASS
+- argentinia/js/mobileUI.js byte-identical vs RC1 PASS
+
+Smoke recomendado
+- Abrir Mercado > Mis publicaciones > Crear publicación.
+- BUSCO 1 > Carta específica.
+- Escribir 2-4 letras de una carta y comprobar que aparezcan coincidencias debajo.
+- Probar dos palabras no contiguas de un mismo nombre.
+- Tocar una coincidencia y confirmar preview + publicación.
+- Repetir en mobile y desktop.
