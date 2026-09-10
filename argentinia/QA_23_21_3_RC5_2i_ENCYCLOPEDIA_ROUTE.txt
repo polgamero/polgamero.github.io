@@ -1,0 +1,19 @@
+ARGENTINIA v23.21.3 RC5.2i — ENCYCLOPEDIA ROUTE RECOVERY
+PRE_RELEASE
+
+Scope: frontend-only, shared desktop/mobile.
+
+Fixes:
+- showEncyclopedia() uses browserSortOptionsHTML(), not the deck-builder-only deckSortOptionsHTML().
+- Main-menu Enciclopedia launch is guarded: a synchronous init failure restores the menu instead of revealing the empty game board underneath.
+- No Rules/Functions/mobile geometry changes.
+
+Validated:
+- RC5_2I_ENCYCLOPEDIA_ROUTE_CONTRACT_OK
+- canonical fast contracts 115/115
+- regression archive synchronized 62/62
+- Functions unit 9/9
+- ui.js syntax PASS
+
+Known separate asset debt:
+- Missing hosted optional SFX such as permanente.opus/mp3 and bajar_tierra.opus/mp3 still return 404 until those actual assets are uploaded. They are unrelated to the Enciclopedia route failure.

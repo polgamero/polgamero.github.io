@@ -1,0 +1,10 @@
+ARGENTINIA v23.21.3 RC5.2i — PRODUCTIVE SMOKE
+
+1. Start Solo/Tano.
+2. Abandon via home button; verify soft return to main menu.
+3. Click Enciclopedia.
+   PASS: Enciclopedia overlay opens; no empty game board; no ReferenceError deckSortOptionsHTML.
+4. Back to menu, open Editar Mazos.
+   PASS: Últimas obtenidas remains present only in deck editor.
+5. Repeat on mobile.
+   PASS: same navigation behavior; mobile gameplay geometry unchanged.

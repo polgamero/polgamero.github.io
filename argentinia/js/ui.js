@@ -3544,7 +3544,7 @@ export function showEncyclopedia(onBack) {
         </div>
         <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.sort')}</div>
         <div class="card-browser-sort">
-          <select id="enc-sort-key" aria-label="Ordenar cartas por">${deckSortOptionsHTML(activeTab, 'cmc')}</select>
+          <select id="enc-sort-key" aria-label="Ordenar cartas por">${browserSortOptionsHTML(activeTab, 'cmc')}</select>
           <button type="button" id="enc-sort-direction" class="card-browser-sort-direction" aria-label="Orden creciente" title="Orden creciente">↑</button>
         </div>
         <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.options')}</div>
@@ -9170,7 +9170,15 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
     if (!await awaitMenuIdentityOrStay()) return;
     if (!state.currentUser || !state.userProfile) { releaseMenuIdentityAction(); return; }
     overlay.style.display = 'none';
-    showEncyclopedia(() => { overlay.style.display = ''; releaseMenuIdentityAction(); });
+    try {
+      showEncyclopedia(() => { overlay.style.display = ''; releaseMenuIdentityAction(); });
+    } catch (error) {
+      // 23.21.3 RC5.2i — un fallo de inicialización de una vista de menú jamás debe
+      // revelar el game-app vacío que vive debajo del overlay principal.
+      console.error('No se pudo abrir Enciclopedia:', error);
+      overlay.style.display = '';
+      releaseMenuIdentityAction();
+    }
   });
 
   overlay.querySelector('#menu-mydecks').addEventListener('click', async () => {
