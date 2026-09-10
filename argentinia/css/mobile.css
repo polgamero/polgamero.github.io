@@ -3224,3 +3224,44 @@ html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped .card-inner
   min-height:var(--arg-mobile-field-card-h, 15.85024svh) !important;
   max-height:var(--arg-mobile-field-card-h, 15.85024svh) !important;
 }
+
+/* ============================================================================
+   23.21.3 RC5.2h — MOBILE TAPPED-LANDS WIDTH CONTAINMENT
+   Real-device S23 QA: many tapped lands increased the min-content width of the
+   center zone and pushed Graveyard / Exile outside the board. Keep the outer
+   zone row fixed to the viewport; only the 8/3/1 permanent subrows may scroll.
+   Card sizes and vertical-card behavior are intentionally unchanged.
+   ============================================================================ */
+html.argentinia-mobile .zone-row-container {
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+}
+html.argentinia-mobile .zone-row-container > .side-pile {
+  flex:0 0 auto !important;
+}
+html.argentinia-mobile .lands-center-zone {
+  flex:1 1 0 !important;
+  width:0 !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  overflow:hidden !important;
+  box-sizing:border-box !important;
+}
+html.argentinia-mobile .lands-center-zone > .lands-support-wrapper,
+html.argentinia-mobile .lands-support-wrapper {
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  overflow:hidden !important;
+  box-sizing:border-box !important;
+}
+html.argentinia-mobile .lands-support-wrapper > .field-row {
+  min-width:0 !important;
+  max-width:100% !important;
+  overflow-x:auto !important;
+  overflow-y:visible !important;
+  flex-shrink:1 !important;
+}

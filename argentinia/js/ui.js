@@ -3265,6 +3265,65 @@ export function getOwnedCardIds() {
   return new Set(cardDb.allCards.map(c => c.id));
 }
 
+
+const DECKBUILDER_RECENT_STORAGE_VERSION = 1;
+
+function deckbuilderRecentStorageKey() {
+  const uid = state.currentUser?.uid;
+  return uid ? `argentinia.deckbuilderRecent.v${DECKBUILDER_RECENT_STORAGE_VERSION}.${uid}` : null;
+}
+
+function collectionCountsAndLastIndex(collection = []) {
+  const counts = Object.create(null);
+  const lastIndex = new Map();
+  (Array.isArray(collection) ? collection : []).forEach((rawId, index) => {
+    const id = String(rawId || '');
+    if (!id) return;
+    counts[id] = (counts[id] || 0) + 1;
+    lastIndex.set(id, index);
+  });
+  return { counts, lastIndex };
+}
+
+function loadDeckbuilderRecentState(collection = []) {
+  const key = deckbuilderRecentStorageKey();
+  const snapshot = collectionCountsAndLastIndex(collection);
+  if (!key || typeof localStorage === 'undefined') return { ...snapshot, newAt: Object.create(null), save(){} };
+
+  let stored = null;
+  try { stored = JSON.parse(localStorage.getItem(key) || 'null'); } catch {}
+  const previousCounts = stored && stored.version === DECKBUILDER_RECENT_STORAGE_VERSION && stored.knownCounts && typeof stored.knownCounts === 'object'
+    ? stored.knownCounts : null;
+  const newAt = stored && stored.version === DECKBUILDER_RECENT_STORAGE_VERSION && stored.newAt && typeof stored.newAt === 'object'
+    ? { ...stored.newAt } : Object.create(null);
+
+  // First encounter establishes a baseline so a veteran account does not suddenly get
+  // hundreds of historical NUEVA badges. From then on, every increase in owned copies
+  // becomes new, regardless of whether it came from packs, classifieds, prebuilt or trade.
+  if (previousCounts) {
+    for (const [id, count] of Object.entries(snapshot.counts)) {
+      if (count > Math.max(0, Number(previousCounts[id]) || 0)) {
+        newAt[id] = snapshot.lastIndex.get(id) ?? 0;
+      }
+    }
+    for (const id of Object.keys(newAt)) {
+      if (!(snapshot.counts[id] > 0)) delete newAt[id];
+    }
+  }
+
+  const persist = () => {
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        version: DECKBUILDER_RECENT_STORAGE_VERSION,
+        knownCounts: snapshot.counts,
+        newAt
+      }));
+    } catch {}
+  };
+  persist();
+  return { ...snapshot, newAt, save: persist };
+}
+
 export function getDeckBuilderOwnedCounts() {
   const counts = {};
   if (isAdminUser()) {
@@ -3485,7 +3544,7 @@ export function showEncyclopedia(onBack) {
         </div>
         <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.sort')}</div>
         <div class="card-browser-sort">
-          <select id="enc-sort-key" aria-label="Ordenar cartas por">${browserSortOptionsHTML(activeTab, 'cmc')}</select>
+          <select id="enc-sort-key" aria-label="Ordenar cartas por">${deckSortOptionsHTML(activeTab, 'cmc')}</select>
           <button type="button" id="enc-sort-direction" class="card-browser-sort-direction" aria-label="Orden creciente" title="Orden creciente">↑</button>
         </div>
         <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.options')}</div>
@@ -5079,6 +5138,12 @@ function injectDeckBuilderStyles() {
       border: 1px solid var(--gold, #d4af37); border-radius: 999px; font-size: 11px; font-weight: 700;
       padding: 2px 7px; pointer-events: none; white-space: nowrap; z-index: 20;
     }
+    .deckbuilder-new-marker {
+      position:absolute; top:-12px; left:-9px; z-index:25; pointer-events:none;
+      padding:3px 7px; border-radius:999px; border:1px solid #fff0a0;
+      background:linear-gradient(180deg,#e9b72f,#b77709); color:#171006;
+      font-size:9px; font-weight:950; letter-spacing:.55px; box-shadow:0 2px 8px rgba(0,0,0,.55),0 0 10px rgba(231,178,42,.32);
+    }
     .deckbuilder-filters { width: 220px; flex-shrink: 0; }
     .deckbuilder-side { width: 330px; flex-shrink: 0; display: flex; flex-direction: column; min-width: 0; }
     .deckbuilder-side-title { color: #f0e0b0; font-size: 14px; font-weight: 700; margin-bottom: 8px; }
@@ -5252,6 +5317,8 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   injectDeckBuilderStyles();
 
   const ownedCounts = getDeckBuilderOwnedCounts();
+  const recentAcquisitions = loadDeckbuilderRecentState(state.userProfile?.collection || []);
+  const acquisitionLastIndex = recentAcquisitions.lastIndex;
   const enhancements = (state.userProfile && state.userProfile.enhancements) || {};
   const enhancedIds = new Set(Object.keys(enhancements).filter(id => isEnhancementEligibleCard(cardDb.getById(id))));
 
@@ -5262,6 +5329,33 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   const activeColors = new Set(CARD_BROWSER_COLORS.map(c => c.key));
   const activeArchetypes = new Set();
   const sortByTab = new Map(ENCYCLOPEDIA_TABS.map(tab => [tab.key, { key: 'cmc', direction: 'asc' }]));
+  const RECENT_SORT_KEY = 'recent_obtained';
+  const normalizeDeckSort = (tabKey, sort = {}) => sort?.key === RECENT_SORT_KEY
+    ? { key: RECENT_SORT_KEY, direction: sort.direction === 'asc' ? 'asc' : 'desc' }
+    : normalizeCardBrowserSort(tabKey, sort);
+  const deckSortOptionsHTML = (tabKey, selectedKey) => `${browserSortOptionsHTML(tabKey, selectedKey)}<option value="${RECENT_SORT_KEY}"${selectedKey === RECENT_SORT_KEY ? ' selected' : ''}>Últimas obtenidas</option>`;
+  const syncDeckSortControls = (sort) => {
+    const normalized = normalizeDeckSort(activeTab, sort);
+    const select = overlay.querySelector('#deck-sort-key');
+    const direction = overlay.querySelector('#deck-sort-direction');
+    if (select) { select.innerHTML = deckSortOptionsHTML(activeTab, normalized.key); select.value = normalized.key; }
+    if (direction) {
+      direction.textContent = normalized.direction === 'desc' ? '↓' : '↑';
+      direction.title = normalized.direction === 'desc' ? 'Orden decreciente' : 'Orden creciente';
+      direction.setAttribute('aria-label', direction.title);
+    }
+    return normalized;
+  };
+  let newOnly = false;
+  const isNewlyObtained = cardId => Object.prototype.hasOwnProperty.call(recentAcquisitions.newAt, String(cardId));
+  const markRecentlyObtainedSeen = cardId => {
+    const id = String(cardId || '');
+    if (!id || !isNewlyObtained(id)) return;
+    delete recentAcquisitions.newAt[id];
+    recentAcquisitions.save();
+    overlay.querySelectorAll(`.deckbuilder-pool-card-wrap[data-base-card-id="${CSS.escape(id)}"] .deckbuilder-new-marker`).forEach(node => node.remove());
+    if (newOnly) refreshPool();
+  };
   const deckCounts = {};
   let workingDeckName = String(deckName || '').trim();
   if (existingDeck) {
@@ -5312,6 +5406,10 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         <label class="encyclopedia-filter-option">
           <input type="checkbox" id="deckbuilder-enhanced-only">
           ✨ Solo mejoradas
+        </label>
+        <label class="encyclopedia-filter-option">
+          <input type="checkbox" id="deckbuilder-new-only">
+          🆕 Solo nuevas
         </label>
         <div class="encyclopedia-filter-section-title">Color</div>
         <div class="card-browser-filter-grid">${browserColorFiltersHTML('deck')}</div>
@@ -5470,9 +5568,17 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       const wrap = document.createElement('div');
       wrap.className = `deckbuilder-pool-card-wrap${maxed ? ' maxed' : ''}${isEnhancedTile ? ' enhanced' : ''}`;
       wrap.dataset.trackingKey = trackingKey;
+      wrap.dataset.baseCardId = baseCard.id;
       wrap.dataset.cap = String(cap);
       wrap.dataset.enhanced = isEnhancedTile ? '1' : '0';
       wrap.appendChild(createCardElement(displayCard, false, true, null, 'encyclopedia', null));
+
+      if (isNewlyObtained(baseCard.id)) {
+        const newMarker = document.createElement('div');
+        newMarker.className = 'deckbuilder-new-marker';
+        newMarker.textContent = 'NUEVA';
+        wrap.appendChild(newMarker);
+      }
 
       if (isEnhancedTile) {
         const star = document.createElement('div');
@@ -5487,6 +5593,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       wrap.appendChild(badge);
 
       wrap.addEventListener('click', () => {
+        markRecentlyObtainedSeen(baseCard.id);
         if (isTileMaxed(trackingKey, cap, isEnhancedTile)) return;
         deckCounts[trackingKey] = (deckCounts[trackingKey] || 0) + 1;
         refreshPoolTileStates();
@@ -5524,12 +5631,20 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
     const entry = ensurePoolTab(activeTab);
     activateBrowserTab(poolTabCache, activeTab);
     const query = normalizeSearch(searchQuery);
-    const sort = normalizeCardBrowserSort(activeTab, sortByTab.get(activeTab));
+    const sort = normalizeDeckSort(activeTab, sortByTab.get(activeTab));
     sortByTab.set(activeTab, sort);
-    syncBrowserSortControls(overlay, 'deck', activeTab, sort);
+    syncDeckSortControls(sort);
 
     entry.records.sort((a, b) => {
-      const byCard = compareCardsForBrowser(a.card, b.card, sort);
+      let byCard = 0;
+      if (sort.key === RECENT_SORT_KEY) {
+        const aIndex = acquisitionLastIndex.has(a.card.id) ? acquisitionLastIndex.get(a.card.id) : -1;
+        const bIndex = acquisitionLastIndex.has(b.card.id) ? acquisitionLastIndex.get(b.card.id) : -1;
+        byCard = (aIndex - bIndex) * (sort.direction === 'desc' ? -1 : 1);
+        if (byCard === 0) byCard = compareCardsForBrowser(a.card, b.card, { key:'cmc', direction:'asc' });
+      } else {
+        byCard = compareCardsForBrowser(a.card, b.card, sort);
+      }
       if (byCard !== 0) return byCard;
       if (a.isEnhancedTile !== b.isEnhancedTile) return a.isEnhancedTile ? -1 : 1;
       return a.trackingKey.localeCompare(b.trackingKey);
@@ -5542,6 +5657,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         cardMatchesColorFilter(card, activeColors) &&
         cardMatchesArchetypeFilter(card, activeArchetypes) &&
         (!enhancedOnly || record.isEnhancedTile) &&
+        (!newOnly || isNewlyObtained(card.id)) &&
         (!query || normalizeSearch(card.name).includes(query));
       record.node.hidden = !matches;
       if (matches) visible += 1;
@@ -5739,12 +5855,13 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   });
 
   overlay.querySelector('#deck-sort-key').addEventListener('change', e => {
-    const current = normalizeCardBrowserSort(activeTab, sortByTab.get(activeTab));
-    sortByTab.set(activeTab, { ...current, key: e.target.value });
+    const current = normalizeDeckSort(activeTab, sortByTab.get(activeTab));
+    const nextKey = e.target.value;
+    sortByTab.set(activeTab, { ...current, key: nextKey, direction: nextKey === RECENT_SORT_KEY ? 'desc' : current.direction });
     refreshPool();
   });
   overlay.querySelector('#deck-sort-direction').addEventListener('click', () => {
-    const current = normalizeCardBrowserSort(activeTab, sortByTab.get(activeTab));
+    const current = normalizeDeckSort(activeTab, sortByTab.get(activeTab));
     sortByTab.set(activeTab, { ...current, direction: current.direction === 'asc' ? 'desc' : 'asc' });
     refreshPool();
   });
@@ -5760,6 +5877,11 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 
   overlay.querySelector('#deckbuilder-enhanced-only').addEventListener('change', e => {
     enhancedOnly = e.target.checked;
+    refreshPool();
+  });
+
+  overlay.querySelector('#deckbuilder-new-only').addEventListener('change', e => {
+    newOnly = e.target.checked;
     refreshPool();
   });
 
@@ -6344,7 +6466,7 @@ function updateRivalAccountUI() {
     ? (state.currentMatch.rivalPhotoURL || '')
     : (tournament ? (state.currentTournamentMatch?.opponent?.avatar || '') : TANO_AVATAR_SRC);
 
-  if (els.rivalPlayerName) els.rivalPlayerName.textContent = `${rivalName} (TU RIVAL)`;
+  if (els.rivalPlayerName) els.rivalPlayerName.textContent = rivalName;
 
   if (els.rivalAvatar) {
     const identityKey = multiplayer ? `mp|${rivalPhotoURL}` : (tournament ? `tournament|${rivalPhotoURL}|${rivalName}` : `solo|${TANO_AVATAR_SRC}`);
@@ -6357,6 +6479,12 @@ function updateRivalAccountUI() {
 }
 
 export function updateAccountUI(user) {
+  // RC5.2g: prime the per-account acquisition tracker as soon as the authenticated
+  // profile is visible to UI. This establishes the veteran baseline before the player
+  // opens another pack/trade/classified, so only genuinely later acquisitions get NUEVA.
+  if (user && Array.isArray(state.userProfile?.collection)) {
+    loadDeckbuilderRecentState(state.userProfile.collection);
+  }
   if (els.localAvatar) {
     els.localAvatar.innerHTML = (user && user.photoURL)
       ? `<img src="${user.photoURL}" alt="" onerror="this.parentElement.textContent='🧉'">`

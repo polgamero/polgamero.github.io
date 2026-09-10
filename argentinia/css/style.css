@@ -2721,3 +2721,72 @@ button.mana-pool-chip:disabled { opacity: 1; }
   letter-spacing:.035em;
   color:#f0e0b0;
 }
+
+
+/* ============================================================================
+   23.21.3 RC5.2g — DESKTOP TABLE / HUD POLISH
+   IMPORTANT: desktop-only. Mobile geometry is frozen and lives in mobile.css.
+   ============================================================================ */
+@media (min-width: 769px) {
+  /* Use the vertical slack below the local hand without changing card scale:
+     the hand stays centered horizontally, but its cards sit on the bottom edge.
+     The recovered 1.5vh becomes a real neutral gap between rival/local combat rows. */
+  #rival-hand {
+    flex: 0 0 7vh;
+  }
+  .field-zone-container {
+    flex: 0 0 33.5vh;
+  }
+  #local-hand {
+    height: 18.5vh;
+    flex: 0 0 18.5vh;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 0;
+  }
+  .field-zone-container + .field-zone-container {
+    margin-top: 1.5vh;
+  }
+
+  /* Desktop gets the same explicit HUD row contract that fixed mobile:
+     filters -> log -> social -> state -> phases -> payment -> actions.
+     Only the log is elastic; the state block can never be auto-placed underneath dots/actions. */
+  .log-section {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto auto auto;
+    grid-template-areas:
+      'filters'
+      'log'
+      'social'
+      'priority'
+      'phases'
+      'payment'
+      'actions';
+    align-content: stretch;
+  }
+  #mp-log-filters { grid-area: filters; }
+  #game-log-box { grid-area: log; }
+  #mp-social-shell { grid-area: social; }
+  #turn-priority-hud { grid-area: priority; }
+  #phase-indicator-container { grid-area: phases; }
+  #payment-controls { grid-area: payment; }
+  .turn-controls { grid-area: actions; }
+
+  #turn-priority-hud {
+    min-height: 0;
+    overflow: hidden;
+  }
+  #turn-priority-hud .priority-context-label {
+    max-height: 2.4em;
+    overflow: hidden;
+  }
+  #phase-indicator-container,
+  #phase-indicator-container.phase-indicator {
+    justify-content: center;
+    width: 100%;
+    min-height: 20px;
+  }
+  .turn-controls {
+    margin-top: 0;
+  }
+}
