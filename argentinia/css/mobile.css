@@ -3237,7 +3237,9 @@ html.argentinia-mobile .zone-row-container {
   max-width:100% !important;
   min-width:0 !important;
   box-sizing:border-box !important;
-  overflow:hidden !important;
+  /* RC5.2j: no recortar verticalmente MAZO/CEMENTERIO/EXILIO. La contención
+     horizontal peligrosa sigue viviendo en .lands-center-zone y sus subfilas. */
+  overflow:visible !important;
 }
 html.argentinia-mobile .zone-row-container > .side-pile {
   flex:0 0 auto !important;
@@ -3264,4 +3266,26 @@ html.argentinia-mobile .lands-support-wrapper > .field-row {
   overflow-x:auto !important;
   overflow-y:visible !important;
   flex-shrink:1 !important;
+}
+
+
+/* ============================================================================
+   23.21.3 RC5.2j — MOBILE SIDE-PILE VERTICAL CLIP RECOVERY
+   Surgical follow-up to RC5.2h. Keep tapped-land horizontal containment in the
+   center zone, but allow MAZO/CEMENTERIO/EXILIO to paint their full 5:7 frame,
+   top count badge and bottom label outside the row's content box.
+   ============================================================================ */
+html.argentinia-mobile .zone-row-container > .side-pile {
+  align-self:center !important;
+  overflow:visible !important;
+}
+html.argentinia-mobile .zone-row-container > .side-pile .pile-content {
+  overflow:hidden !important;
+}
+html.argentinia-mobile .lands-center-zone,
+html.argentinia-mobile .lands-center-zone > .lands-support-wrapper,
+html.argentinia-mobile .lands-support-wrapper {
+  min-width:0 !important;
+  max-width:100% !important;
+  overflow:hidden !important;
 }
