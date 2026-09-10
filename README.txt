@@ -8,9 +8,9 @@ Copiar al directorio raíz publicado por GitHub Pages:
 /js/landing.js
 /privacidad/index.html
 /terminos/index.html
-/assets/images/ui/screen1.png
-/assets/images/ui/screen2.png
-/assets/images/ui/screen3.png
+/argentinia/assets/images/ui/screen1.png
+/argentinia/assets/images/ui/screen2.png
+/argentinia/assets/images/ui/screen3.png
 
 El juego permanece en:
 /argentinia/
