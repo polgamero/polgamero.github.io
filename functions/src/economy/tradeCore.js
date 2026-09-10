@@ -1,6 +1,6 @@
 // v23.21.0 — Mercado de Pases pure contracts.
 // One listing reserves one real copy. Up to three strict BUSCO criteria may be
-// exact cards or rarity/color filters. Offers are always 1 card <-> 1 card.
+// exact cards or type/color/rarity filters. Offers are always 1 card <-> 1 card.
 
 export const TRADE_LIMITS = Object.freeze({
   maxWantedCriteria: 3,
@@ -34,6 +34,7 @@ export function normalizeTradeLimits(config = {}) {
 
 export const TRADE_RARITIES = Object.freeze(['Common', 'Uncommon', 'Rare', 'Mythic']);
 export const TRADE_COLORS = Object.freeze(['W', 'U', 'B', 'R', 'G', 'C']);
+export const TRADE_CARD_TYPES = Object.freeze(['Creature', 'Instant', 'Sorcery', 'Enchantment', 'Artifact', 'Land', 'Planeswalker']);
 
 function plainObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -118,13 +119,39 @@ function normalizeExactCriterion(raw, trustedById) {
   return { type: 'exact_card', cardId };
 }
 
+function normalizeTypeText(value) {
+  return String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+export function tradeCardTypeKeys(card) {
+  const type = normalizeTypeText(card?.type);
+  const out = [];
+  if (type.includes('criatura')) out.push('Creature');
+  if (type.includes('instantaneo')) out.push('Instant');
+  if (type.includes('conjuro')) out.push('Sorcery');
+  if (type.includes('encantamiento')) out.push('Enchantment');
+  if (type.includes('artefacto')) out.push('Artifact');
+  if (type.includes('tierra')) out.push('Land');
+  if (type.includes('planeswalker') || type.includes('semidios')) out.push('Planeswalker');
+  return out;
+}
+
+export function tradeCardTypeKey(card) {
+  return tradeCardTypeKeys(card)[0] || '';
+}
+
 function normalizeAttributeCriterion(raw) {
   const rarityRaw = String(raw?.rarity || '').trim();
   const colorRaw = String(raw?.color || '').trim().toUpperCase();
+  const cardTypeRaw = String(raw?.cardType || '').trim();
   const rarity = TRADE_RARITIES.includes(rarityRaw) ? rarityRaw : null;
   const color = TRADE_COLORS.includes(colorRaw) ? colorRaw : null;
-  if (!rarity && !color) throw new Error('TRADE_CRITERIA_INVALID');
-  return { type: 'attributes', rarity, color };
+  const cardType = TRADE_CARD_TYPES.includes(cardTypeRaw) ? cardTypeRaw : null;
+  if (rarityRaw && !rarity) throw new Error('TRADE_CRITERIA_INVALID');
+  if (colorRaw && !color) throw new Error('TRADE_CRITERIA_INVALID');
+  if (cardTypeRaw && !cardType) throw new Error('TRADE_CRITERIA_INVALID');
+  if (!rarity && !color && !cardType) throw new Error('TRADE_CRITERIA_INVALID');
+  return { type: 'attributes', cardType, color, rarity };
 }
 
 export function normalizeWantedCriteria(rawCriteria, acceptAnyCard, trustedById, limits = TRADE_LIMITS) {
@@ -147,6 +174,7 @@ export function cardMatchesCriterion(card, criterion) {
   if (!card || !criterion) return false;
   if (criterion.type === 'exact_card') return String(card.id || '') === String(criterion.cardId || '');
   if (criterion.type !== 'attributes') return false;
+  if (criterion.cardType && !tradeCardTypeKeys(card).includes(criterion.cardType)) return false;
   if (criterion.rarity && String(card.rarity || '') !== criterion.rarity) return false;
   if (criterion.color) {
     const colors = Array.isArray(card.colors) ? card.colors.map(String) : [];

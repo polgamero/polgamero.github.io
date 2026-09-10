@@ -8771,17 +8771,18 @@ function tradeTypeLabel(type){ return gameText(TRADE_TYPE_KEYS[type] || 'trade.f
 function tradeCard(cardId){ return cardDb.getById(String(cardId||'')); }
 function tradeCardName(cardId){ return tradeCard(cardId)?.name || gameText('trade.cardFallback'); }
 function tradeNormalizeSearch(value){ return String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
-function tradeCardTypeKey(card){
-  const type=tradeNormalizeSearch(card?.type);
-  if(type.includes('criatura')) return 'Creature';
-  if(type.includes('instantaneo')) return 'Instant';
-  if(type.includes('conjuro')) return 'Sorcery';
-  if(type.includes('encantamiento')) return 'Enchantment';
-  if(type.includes('artefacto')) return 'Artifact';
-  if(type.includes('tierra')) return 'Land';
-  if(type.includes('planeswalker') || type.includes('semidios')) return 'Planeswalker';
-  return '';
+function tradeCardTypeKeys(card){
+  const type=tradeNormalizeSearch(card?.type),out=[];
+  if(type.includes('criatura')) out.push('Creature');
+  if(type.includes('instantaneo')) out.push('Instant');
+  if(type.includes('conjuro')) out.push('Sorcery');
+  if(type.includes('encantamiento')) out.push('Enchantment');
+  if(type.includes('artefacto')) out.push('Artifact');
+  if(type.includes('tierra')) out.push('Land');
+  if(type.includes('planeswalker') || type.includes('semidios')) out.push('Planeswalker');
+  return out;
 }
+function tradeCardTypeKey(card){return tradeCardTypeKeys(card)[0]||'';}
 function tradeCardMatchesColor(card,color){
   if(!color)return true;
   const colors=Array.isArray(card?.colors)?card.colors.map(c=>String(c).toUpperCase()):[];
@@ -8790,7 +8791,7 @@ function tradeCardMatchesColor(card,color){
 function tradeCriterionText(c){
   if(c?.type==='exact_card') return tradeCardName(c.cardId);
   if(c?.type==='attributes'){
-    const parts=[]; if(c.rarity) parts.push(tradeRarityLabel(c.rarity)); if(c.color) parts.push(tradeColorLabel(c.color));
+    const parts=[]; if(c.cardType) parts.push(tradeTypeLabel(c.cardType)); if(c.color) parts.push(tradeColorLabel(c.color)); if(c.rarity) parts.push(tradeRarityLabel(c.rarity));
     return parts.join(' + ') || gameText('trade.criteria.anyCard');
   }
   return gameText('trade.criteria.invalid');
@@ -8808,14 +8809,19 @@ function tradeCardMatchesCriterion(card,c){
   if(!card||!c)return false;
   if(c.type==='exact_card')return String(card.id)===String(c.cardId);
   if(c.type!=='attributes')return false;
+  if(c.cardType&&!tradeCardTypeKeys(card).includes(String(c.cardType)))return false;
   if(c.rarity&&String(card.rarity)!==String(c.rarity))return false;
   if(c.color&&!tradeCardMatchesColor(card,String(c.color)))return false;
   return true;
 }
 function tradeCardMatchesListing(card,listing){return listing?.acceptAnyCard===true||(listing?.wantedCriteria||[]).some(c=>tradeCardMatchesCriterion(card,c));}
 function tradeAllCardsSorted(){ return [...cardDb.allCards].sort((a,b)=>String(a.name).localeCompare(String(b.name),'es')); }
-function tradeAllCardOptions(selected=''){
-  return tradeAllCardsSorted().map(c=>`<option value="${escapeHtml(c.id)}" ${c.id===selected?'selected':''}>${escapeHtml(c.name)} · ${escapeHtml(c.rarity?tradeRarityLabel(c.rarity):'')}</option>`).join('');
+function tradeAllCardNameOptions(){
+  return tradeAllCardsSorted().map(c=>`<option value="${escapeHtml(c.name)}"></option>`).join('');
+}
+function tradeFindCardByName(value){
+  const needle=tradeNormalizeSearch(value);if(!needle)return null;
+  return tradeAllCardsSorted().find(card=>tradeNormalizeSearch(card?.name)===needle)||null;
 }
 function tradeTradableEntries(market,listing=null){
   return Object.entries(market?.tradableCounts||{})
@@ -8869,6 +8875,7 @@ export function showTradeMarketScreen(onBack) {
   let transientModal=null;
   let publishSelectedCardId='';
   const exploreFilters={query:'',colors:new Set(),rarity:'',type:''};
+  const publishFilters={query:'',colors:new Set(),rarity:'',type:''};
 
   const closeTransientTradeModal=()=>{if(transientModal?.isConnected)transientModal.remove();transientModal=null;};
   const setBusy=v=>{busy=!!v;overlay.querySelectorAll('.trade-btn,.trade-select,.trade-input,input,button[data-trade-offer-choice]').forEach(el=>{if(el.id!=='trade-back')el.disabled=busy;});};
@@ -8916,13 +8923,20 @@ export function showTradeMarketScreen(onBack) {
   }
   function bindTradeZoom(scope){scope?.querySelectorAll('[data-trade-zoom-card]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openTradeCardPreview(btn.dataset.tradeZoomCard);}));}
 
-  function renderExploreFilters(){
-    return `<div class="trade-explore-toolbar">
-      <div class="trade-filter-search"><label for="trade-explore-search">${gameTextHtml('trade.filter.searchLabel')}</label><input id="trade-explore-search" class="trade-input" type="search" autocomplete="off" placeholder="${gameTextHtml('trade.filter.searchPlaceholder')}" value="${escapeHtml(exploreFilters.query)}"></div>
-      <div class="trade-filter-block"><span class="trade-filter-label">${gameTextHtml('trade.filter.color')}</span><div class="trade-filter-chips">${TRADE_FILTER_COLORS.map(c=>`<button type="button" class="trade-filter-chip ${exploreFilters.colors.has(c)?'active':''}" data-trade-color-filter="${c}">${escapeHtml(tradeColorLabel(c))}</button>`).join('')}</div></div>
-      <div class="trade-filter-selects"><label>${gameTextHtml('trade.filter.rarity')}<select class="trade-select" id="trade-filter-rarity"><option value="">${gameTextHtml('trade.filter.all')}</option>${TRADE_FILTER_RARITIES.map(r=>`<option value="${r}" ${exploreFilters.rarity===r?'selected':''}>${escapeHtml(tradeRarityLabel(r))}</option>`).join('')}</select></label><label>${gameTextHtml('trade.filter.type')}<select class="trade-select" id="trade-filter-type"><option value="">${gameTextHtml('trade.filter.anyType')}</option>${TRADE_FILTER_TYPES.map(t=>`<option value="${t}" ${exploreFilters.type===t?'selected':''}>${escapeHtml(tradeTypeLabel(t))}</option>`).join('')}</select></label><button type="button" class="trade-btn secondary trade-filter-clear" id="trade-filter-clear">${gameTextHtml('trade.filter.clear')}</button></div>
+  function renderTradeFilterToolbar(filters,prefix){
+    const isExplore=prefix==='trade-explore';
+    const searchId=isExplore?'trade-explore-search':`${prefix}-search`;
+    const rarityId=isExplore?'trade-filter-rarity':`${prefix}-filter-rarity`;
+    const typeId=isExplore?'trade-filter-type':`${prefix}-filter-type`;
+    const clearId=isExplore?'trade-filter-clear':`${prefix}-filter-clear`;
+    return `<div class="trade-explore-toolbar" data-trade-filter-toolbar="${escapeHtml(prefix)}">
+      <div class="trade-filter-search"><label for="${escapeHtml(searchId)}">${gameTextHtml('trade.filter.searchLabel')}</label><input id="${escapeHtml(searchId)}" class="trade-input" type="search" autocomplete="off" placeholder="${gameTextHtml('trade.filter.searchPlaceholder')}" value="${escapeHtml(filters.query)}"></div>
+      <div class="trade-filter-block"><span class="trade-filter-label">${gameTextHtml('trade.filter.color')}</span><div class="trade-filter-chips">${TRADE_FILTER_COLORS.map(c=>`<button type="button" class="trade-filter-chip ${filters.colors.has(c)?'active':''}" data-trade-filter-prefix="${escapeHtml(prefix)}" data-trade-color-filter="${c}">${escapeHtml(tradeColorLabel(c))}</button>`).join('')}</div></div>
+      <div class="trade-filter-selects"><label>${gameTextHtml('trade.filter.rarity')}<select class="trade-select" id="${escapeHtml(rarityId)}"><option value="">${gameTextHtml('trade.filter.all')}</option>${TRADE_FILTER_RARITIES.map(r=>`<option value="${r}" ${filters.rarity===r?'selected':''}>${escapeHtml(tradeRarityLabel(r))}</option>`).join('')}</select></label><label>${gameTextHtml('trade.filter.type')}<select class="trade-select" id="${escapeHtml(typeId)}"><option value="">${gameTextHtml('trade.filter.anyType')}</option>${TRADE_FILTER_TYPES.map(t=>`<option value="${t}" ${filters.type===t?'selected':''}>${escapeHtml(tradeTypeLabel(t))}</option>`).join('')}</select></label><button type="button" class="trade-btn secondary trade-filter-clear" id="${escapeHtml(clearId)}">${gameTextHtml('trade.filter.clear')}</button></div>
     </div>`;
   }
+  function renderExploreFilters(){return renderTradeFilterToolbar(exploreFilters,'trade-explore');}
+  function renderPublishFilters(){return renderTradeFilterToolbar(publishFilters,'trade-publish');}
   function renderExplore(){
     const listings=market?.listings||[], l=limits();
     if(!listings.length)return `<div class="trade-empty">${gameTextHtml('trade.empty')}</div>`;
@@ -8931,7 +8945,7 @@ export function showTradeMarketScreen(onBack) {
       const eligible=tradeTradableEntries(market,item),already=outgoing.has(item.ownerUid),card=tradeCard(item.cardId);
       const search=tradeNormalizeSearch(card?.name);
       const colors=Array.isArray(card?.colors)&&card.colors.length?card.colors.join(','):'C';
-      const type=tradeCardTypeKey(card);
+      const type=tradeCardTypeKeys(card).join(',');
       return `<article class="trade-listing-card" data-trade-listing-owner="${escapeHtml(item.ownerUid)}" data-trade-card-search="${escapeHtml(search)}" data-trade-card-colors="${escapeHtml(colors)}" data-trade-card-rarity="${escapeHtml(card?.rarity||'')}" data-trade-card-type="${escapeHtml(type)}">
         <div class="trade-listing-visual">${tradeVisualCardHtml(item.cardId)}</div>
         <div class="trade-listing-body"><div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-muted">${gameTextHtml('trade.explore.offeredBy',{username:item.ownerUsername,count:item.offerCount,max:l.maxOffersPerListing})}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div>${already?`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.alreadyOffered')}</div>`:eligible.length?`<button class="trade-btn trade-offer-cta" data-offer-owner="${escapeHtml(item.ownerUid)}">${gameTextHtml('trade.offer')}</button>`:`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.noMatching')}</div>`}</div>
@@ -8947,7 +8961,8 @@ export function showTradeMarketScreen(onBack) {
       const matchesQuery=!query||search.includes(query);
       const matchesColor=exploreFilters.colors.size===0||[...exploreFilters.colors].some(c=>colors.includes(c));
       const matchesRarity=!exploreFilters.rarity||node.dataset.tradeCardRarity===exploreFilters.rarity;
-      const matchesType=!exploreFilters.type||node.dataset.tradeCardType===exploreFilters.type;
+      const types=String(node.dataset.tradeCardType||'').split(',').filter(Boolean);
+      const matchesType=!exploreFilters.type||types.includes(exploreFilters.type);
       const show=matchesQuery&&matchesColor&&matchesRarity&&matchesType;node.hidden=!show;if(show)visible++;
     });
     const count=root.querySelector('#trade-filter-result-count');if(count)count.textContent=gameText('trade.filter.resultCount',{count:visible});
@@ -8978,13 +8993,13 @@ export function showTradeMarketScreen(onBack) {
   }
 
   function criterionRow(i){
-    const first=tradeAllCardsSorted()[0]?.id||'';
-    return `<div class="trade-criterion ${i?'disabled':''}" data-criterion-row="${i}"><div class="trade-criterion-controls"><label><input type="checkbox" data-criterion-use="${i}" ${i===0?'checked':''}> ${gameTextHtml('trade.criteria.slot',{index:i+1})}</label><select class="trade-select" data-criterion-type="${i}"><option value="exact_card">${gameTextHtml('trade.criteria.typeExact')}</option><option value="attributes">${gameTextHtml('trade.criteria.typeAttributes')}</option></select><div class="trade-criterion-exact-wrap" data-criterion-exact="${i}"><select class="trade-select" data-criterion-card="${i}">${tradeAllCardOptions()}</select><div class="trade-criterion-preview" data-trade-criterion-preview="${i}"><div class="trade-render-slot" data-trade-card-id="${escapeHtml(first)}"></div><button type="button" class="trade-zoom-btn compact" data-trade-zoom-card="${escapeHtml(first)}">🔍</button></div></div><div class="trade-filter-pair" data-criterion-filter="${i}" style="display:none"><select class="trade-select" data-criterion-rarity="${i}"><option value="">${gameTextHtml('trade.criteria.anyRarity')}</option><option value="Common">${gameTextHtml('trade.rarity.Common')}</option><option value="Uncommon">${gameTextHtml('trade.rarity.Uncommon')}</option><option value="Rare">${gameTextHtml('trade.rarity.Rare')}</option><option value="Mythic">${gameTextHtml('trade.rarity.Mythic')}</option></select><select class="trade-select" data-criterion-color="${i}"><option value="">${gameTextHtml('trade.criteria.anyColor')}</option><option value="W">${gameTextHtml('trade.color.W')}</option><option value="U">${gameTextHtml('trade.color.U')}</option><option value="B">${gameTextHtml('trade.color.B')}</option><option value="R">${gameTextHtml('trade.color.R')}</option><option value="G">${gameTextHtml('trade.color.G')}</option><option value="C">${gameTextHtml('trade.color.C')}</option></select></div></div></div>`;
+    return `<div class="trade-criterion ${i?'disabled':''}" data-criterion-row="${i}"><div class="trade-criterion-controls"><label><input type="checkbox" data-criterion-use="${i}" ${i===0?'checked':''}> ${gameTextHtml('trade.criteria.slot',{index:i+1})}</label><select class="trade-select" data-criterion-type="${i}"><option value="exact_card">${gameTextHtml('trade.criteria.typeExact')}</option><option value="attributes">${gameTextHtml('trade.criteria.typeAttributes')}</option></select><div class="trade-criterion-exact-wrap" data-criterion-exact="${i}"><div class="trade-criterion-card-search"><input class="trade-input" type="search" autocomplete="off" list="trade-all-card-names" data-criterion-card-search="${i}" placeholder="${gameTextHtml('trade.criteria.searchExactPlaceholder')}"><input type="hidden" data-criterion-card="${i}" value=""></div><div class="trade-criterion-preview" data-trade-criterion-preview="${i}"><div class="trade-criterion-preview-empty">${gameTextHtml('trade.criteria.searchExactHint')}</div></div></div><div class="trade-filter-triple" data-criterion-filter="${i}" style="display:none"><select class="trade-select" data-criterion-card-type="${i}"><option value="">${gameTextHtml('trade.filter.anyType')}</option>${TRADE_FILTER_TYPES.map(t=>`<option value="${t}">${escapeHtml(tradeTypeLabel(t))}</option>`).join('')}</select><select class="trade-select" data-criterion-color="${i}"><option value="">${gameTextHtml('trade.criteria.anyColor')}</option>${TRADE_FILTER_COLORS.map(c=>`<option value="${c}">${escapeHtml(tradeColorLabel(c))}</option>`).join('')}</select><select class="trade-select" data-criterion-rarity="${i}"><option value="">${gameTextHtml('trade.criteria.anyRarity')}</option>${TRADE_FILTER_RARITIES.map(r=>`<option value="${r}">${escapeHtml(tradeRarityLabel(r))}</option>`).join('')}</select></div></div></div>`;
   }
   function renderPublishCardChooser(entries){
     if(!entries.length)return '';
     if(!publishSelectedCardId||!entries.some(x=>x.id===publishSelectedCardId))publishSelectedCardId=entries[0].id;
-    return `<div class="trade-section-kicker">${gameTextHtml('trade.mine.offerLabel')}</div><div class="trade-publish-card-grid">${entries.map(entry=>`<div class="trade-publish-card-choice ${entry.id===publishSelectedCardId?'is-selected':''}" role="button" tabindex="0" data-trade-publish-card="${escapeHtml(entry.id)}">${tradeVisualCardHtml(entry.id)}<div class="trade-copy-count">${gameTextHtml('trade.freeCopies',{count:entry.n})}</div></div>`).join('')}</div><div class="trade-publish-selected">${gameTextHtml('trade.mine.selectedCard')}: <strong id="trade-publish-selected-name">${escapeHtml(tradeCardName(publishSelectedCardId))}</strong></div>`;
+    const cards=entries.map(entry=>{const card=entry.card;const search=tradeNormalizeSearch(card?.name);const colors=Array.isArray(card?.colors)&&card.colors.length?card.colors.join(','):'C';const type=tradeCardTypeKeys(card).join(',');return `<div class="trade-publish-card-choice ${entry.id===publishSelectedCardId?'is-selected':''}" role="button" tabindex="0" data-trade-publish-card="${escapeHtml(entry.id)}" data-trade-card-search="${escapeHtml(search)}" data-trade-card-colors="${escapeHtml(colors)}" data-trade-card-rarity="${escapeHtml(card?.rarity||'')}" data-trade-card-type="${escapeHtml(type)}">${tradeVisualCardHtml(entry.id)}<div class="trade-copy-count">${gameTextHtml('trade.freeCopies',{count:entry.n})}</div></div>`;}).join('');
+    return `<div class="trade-section-kicker">${gameTextHtml('trade.mine.offerLabel')}</div><div class="trade-explore-layout trade-publish-browser"><section class="trade-explore-results"><div class="trade-results-meta"><span id="trade-publish-filter-result-count"></span></div><div class="trade-publish-card-grid" id="trade-publish-grid">${cards}</div><div class="trade-empty" id="trade-publish-filter-empty" hidden>${gameTextHtml('trade.publishFilter.noResults')}</div></section><aside class="trade-explore-sidebar">${renderPublishFilters()}</aside></div><div class="trade-publish-selected">${gameTextHtml('trade.mine.selectedCard')}: <strong id="trade-publish-selected-name">${escapeHtml(tradeCardName(publishSelectedCardId))}</strong></div>`;
   }
   function renderMine(){
     const item=market?.ownListing, l=limits();
@@ -8994,7 +9009,7 @@ export function showTradeMarketScreen(onBack) {
     }
     const entries=tradeTradableEntries(market);
     if(!entries.length)return `<div class="trade-empty">${gameTextHtml('trade.mine.noneTradable')}</div>`;
-    return `<div class="trade-panel trade-publish">${renderPublishCardChooser(entries)}<label class="trade-row trade-accept-any"><input type="checkbox" id="trade-accept-any"> ${gameTextHtml('trade.acceptAny')}</label><div id="trade-criteria-wrap">${Array.from({length:l.maxWantedCriteria},(_,i)=>criterionRow(i)).join('')}</div><div class="trade-row trade-publish-actions"><button class="trade-btn" id="trade-publish">${gameTextHtml('trade.publish')}</button></div></div>`;
+    return `<div class="trade-panel trade-publish">${renderPublishCardChooser(entries)}<label class="trade-row trade-accept-any"><input type="checkbox" id="trade-accept-any"> ${gameTextHtml('trade.acceptAny')}</label><div id="trade-criteria-wrap">${Array.from({length:l.maxWantedCriteria},(_,i)=>criterionRow(i)).join('')}<datalist id="trade-all-card-names">${tradeAllCardNameOptions()}</datalist></div><div class="trade-row trade-publish-actions"><button class="trade-btn" id="trade-publish">${gameTextHtml('trade.publish')}</button></div></div>`;
   }
   function openTradeAcceptModal(offer){
     if(!market?.ownListing||!offer)return;
@@ -9005,7 +9020,32 @@ export function showTradeMarketScreen(onBack) {
     modal.querySelector('.trade-modal-panel')?.addEventListener('click',e=>e.stopPropagation());modal.addEventListener('click',close);modal.querySelectorAll('[data-trade-modal-close]').forEach(btn=>btn.addEventListener('click',close));modal.querySelector('#trade-accept-confirm')?.addEventListener('click',()=>{close();void mutate(()=>acceptTradeOffer(offer.offerId),{profile:true});});document.addEventListener('keydown',onKey);document.body.appendChild(modal);transientModal=modal;hydrateTradeCards(modal);bindTradeZoom(modal);
   }
   function refreshCriterionPreview(i,cardId){
-    const host=root.querySelector(`[data-trade-criterion-preview="${i}"]`);if(!host)return;host.innerHTML=`<div class="trade-render-slot" data-trade-card-id="${escapeHtml(cardId)}"></div><button type="button" class="trade-zoom-btn compact" data-trade-zoom-card="${escapeHtml(cardId)}">🔍</button>`;hydrateTradeCards(host);bindTradeZoom(host);
+    const host=root.querySelector(`[data-trade-criterion-preview="${i}"]`);if(!host)return;
+    if(!cardId){host.innerHTML=`<div class="trade-criterion-preview-empty">${gameTextHtml('trade.criteria.searchExactHint')}</div>`;return;}
+    host.innerHTML=`<div class="trade-render-slot" data-trade-card-id="${escapeHtml(cardId)}"></div><button type="button" class="trade-zoom-btn compact" data-trade-zoom-card="${escapeHtml(cardId)}">🔍</button>`;hydrateTradeCards(host);bindTradeZoom(host);
+  }
+  function applyPublishFilters(){
+    const query=tradeNormalizeSearch(publishFilters.query);let visible=0;
+    root.querySelectorAll('.trade-publish-card-choice[data-trade-publish-card]').forEach(node=>{
+      const search=node.dataset.tradeCardSearch||'';
+      const colors=String(node.dataset.tradeCardColors||'').split(',').filter(Boolean);
+      const matchesQuery=!query||search.includes(query);
+      const matchesColor=publishFilters.colors.size===0||[...publishFilters.colors].some(c=>colors.includes(c));
+      const matchesRarity=!publishFilters.rarity||node.dataset.tradeCardRarity===publishFilters.rarity;
+      const types=String(node.dataset.tradeCardType||'').split(',').filter(Boolean);
+      const matchesType=!publishFilters.type||types.includes(publishFilters.type);
+      const show=matchesQuery&&matchesColor&&matchesRarity&&matchesType;node.hidden=!show;if(show)visible++;
+    });
+    const count=root.querySelector('#trade-publish-filter-result-count');if(count)count.textContent=gameText('trade.publishFilter.resultCount',{count:visible});
+    const empty=root.querySelector('#trade-publish-filter-empty');if(empty)empty.hidden=visible!==0;
+  }
+  function bindPublishFilters(){
+    root.querySelector('#trade-publish-search')?.addEventListener('input',e=>{publishFilters.query=e.target.value;applyPublishFilters();});
+    root.querySelectorAll('[data-trade-filter-prefix="trade-publish"][data-trade-color-filter]').forEach(btn=>btn.addEventListener('click',()=>{const c=btn.dataset.tradeColorFilter;if(publishFilters.colors.has(c))publishFilters.colors.delete(c);else publishFilters.colors.add(c);btn.classList.toggle('active',publishFilters.colors.has(c));applyPublishFilters();}));
+    root.querySelector('#trade-publish-filter-rarity')?.addEventListener('change',e=>{publishFilters.rarity=e.target.value||'';applyPublishFilters();});
+    root.querySelector('#trade-publish-filter-type')?.addEventListener('change',e=>{publishFilters.type=e.target.value||'';applyPublishFilters();});
+    root.querySelector('#trade-publish-filter-clear')?.addEventListener('click',()=>{publishFilters.query='';publishFilters.colors.clear();publishFilters.rarity='';publishFilters.type='';render();});
+    applyPublishFilters();
   }
   function bindMine(){
     root.querySelector('#trade-cancel-listing')?.addEventListener('click',()=>{if(window.confirm(gameText('trade.confirm.cancelListing')))void mutate(()=>cancelTradeListing(market.ownListing.listingId));});
@@ -9016,9 +9056,33 @@ export function showTradeMarketScreen(onBack) {
     const syncRows=()=>{const any=acceptAny?.checked===true;root.querySelector('#trade-criteria-wrap')?.classList.toggle('disabled',any);root.querySelectorAll('[data-criterion-row]').forEach(row=>{const i=row.dataset.criterionRow;const use=root.querySelector(`[data-criterion-use="${i}"]`);row.classList.toggle('disabled',any||!use?.checked);});};
     acceptAny?.addEventListener('change',syncRows);root.querySelectorAll('[data-criterion-use]').forEach(el=>el.addEventListener('change',syncRows));
     root.querySelectorAll('[data-criterion-type]').forEach(sel=>sel.addEventListener('change',()=>{const i=sel.dataset.criterionType;const exact=root.querySelector(`[data-criterion-exact="${i}"]`),filter=root.querySelector(`[data-criterion-filter="${i}"]`);if(exact)exact.style.display=sel.value==='exact_card'?'grid':'none';if(filter)filter.style.display=sel.value==='attributes'?'grid':'none';}));
-    root.querySelectorAll('[data-criterion-card]').forEach(sel=>sel.addEventListener('change',()=>refreshCriterionPreview(sel.dataset.criterionCard,sel.value)));
+    root.querySelectorAll('[data-criterion-card-search]').forEach(input=>{const resolve=()=>{const i=input.dataset.criterionCardSearch;const card=tradeFindCardByName(input.value);const hidden=root.querySelector(`[data-criterion-card="${i}"]`);if(hidden)hidden.value=card?.id||'';refreshCriterionPreview(i,card?.id||'');};input.addEventListener('input',resolve);input.addEventListener('change',resolve);});
+    bindPublishFilters();
     syncRows();
-    root.querySelector('#trade-publish')?.addEventListener('click',()=>{const cardId=publishSelectedCardId;const any=acceptAny?.checked===true;const wantedCriteria=[];if(!cardId){showSimpleAlertModal(gameText('trade.mine.chooseCard'));return;}if(!any){const maxCriteria=limits().maxWantedCriteria;for(let i=0;i<maxCriteria;i++){if(!root.querySelector(`[data-criterion-use="${i}"]`)?.checked)continue;const type=root.querySelector(`[data-criterion-type="${i}"]`)?.value;if(type==='exact_card'){wantedCriteria.push({type,cardId:root.querySelector(`[data-criterion-card="${i}"]`)?.value||''});}else{const rarity=root.querySelector(`[data-criterion-rarity="${i}"]`)?.value||null,color=root.querySelector(`[data-criterion-color="${i}"]`)?.value||null;if(!rarity&&!color){showSimpleAlertModal(gameText('trade.criteria.needAttribute',{index:i+1}));return;}wantedCriteria.push({type:'attributes',rarity,color});}}if(!wantedCriteria.length){showSimpleAlertModal(gameText('trade.criteria.needOneOrAny'));return;}}void mutate(()=>createTradeListing({cardId,wantedCriteria,acceptAnyCard:any}));});
+    root.querySelector('#trade-publish')?.addEventListener('click',()=>{
+      const cardId=publishSelectedCardId,any=acceptAny?.checked===true,wantedCriteria=[];
+      if(!cardId){showSimpleAlertModal(gameText('trade.mine.chooseCard'));return;}
+      if(!any){
+        const maxCriteria=limits().maxWantedCriteria;
+        for(let i=0;i<maxCriteria;i++){
+          if(!root.querySelector(`[data-criterion-use="${i}"]`)?.checked)continue;
+          const type=root.querySelector(`[data-criterion-type="${i}"]`)?.value;
+          if(type==='exact_card'){
+            const wantedCardId=root.querySelector(`[data-criterion-card="${i}"]`)?.value||'';
+            if(!wantedCardId){showSimpleAlertModal(gameText('trade.criteria.needExact',{index:i+1}));return;}
+            wantedCriteria.push({type,cardId:wantedCardId});
+          }else{
+            const cardType=root.querySelector(`[data-criterion-card-type="${i}"]`)?.value||null;
+            const color=root.querySelector(`[data-criterion-color="${i}"]`)?.value||null;
+            const rarity=root.querySelector(`[data-criterion-rarity="${i}"]`)?.value||null;
+            if(!cardType&&!rarity&&!color){showSimpleAlertModal(gameText('trade.criteria.needAttribute',{index:i+1}));return;}
+            wantedCriteria.push({type:'attributes',cardType,color,rarity});
+          }
+        }
+        if(!wantedCriteria.length){showSimpleAlertModal(gameText('trade.criteria.needOneOrAny'));return;}
+      }
+      void mutate(()=>createTradeListing({cardId,wantedCriteria,acceptAnyCard:any}));
+    });
   }
 
   function renderOffers(){

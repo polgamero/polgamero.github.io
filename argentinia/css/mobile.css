@@ -2011,6 +2011,8 @@ html.argentinia-mobile .trade-publish-card-choice .trade-visual-card,html.argent
 html.argentinia-mobile .trade-criterion-controls{grid-template-columns:1fr}
 html.argentinia-mobile .trade-criterion-exact-wrap{grid-template-columns:minmax(0,1fr) 68px}
 html.argentinia-mobile .trade-filter-pair{grid-template-columns:1fr 1fr}
+html.argentinia-mobile .trade-filter-triple{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+html.argentinia-mobile .trade-criterion-preview-empty{font-size:8px;min-height:76px}
 html.argentinia-mobile .trade-modal{padding:7px}
 html.argentinia-mobile .trade-modal-panel{width:98vw;max-height:96dvh;padding:13px}
 html.argentinia-mobile .trade-offer-target{grid-template-columns:1fr}

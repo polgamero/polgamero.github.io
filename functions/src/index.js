@@ -844,7 +844,7 @@ export const economyForfeitTournament = onCall(FUNCTION_RUNTIME_OPTIONS, async r
 // ---------------------------------------------------------------------------
 // v23.21.0 — Mercado de Pases Authority. Strict 1 card <-> 1 card trades.
 // Listings reserve one copy; offers reserve one copy; BUSCO supports up to
-// three exact-card or rarity/color criteria. All mutation is server-owned.
+// three exact-card or type/color/rarity criteria. All mutation is server-owned.
 // ---------------------------------------------------------------------------
 export const economyGetTradeMarket = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
   const auth=requireAuth(request); const data=requestData(request);

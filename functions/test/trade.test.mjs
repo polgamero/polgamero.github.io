@@ -12,11 +12,11 @@ const blackRare = TRUSTED_CARD_POOL.find(c => c.rarity === 'Rare' && c.colors?.i
 const exact = TRUSTED_CARD_POOL.find(c => c.id !== redMythic?.id && c.id !== blackRare?.id);
 assert.ok(redMythic && blackRare && exact);
 
-test('23.21.0 BUSCO supports exact or rarity+color and uses OR between criteria', () => {
+test('23.21.3 market UX BUSCO supports exact or type+color+rarity and uses OR between criteria', () => {
   const criteria = normalizeWantedCriteria([
     { type:'exact_card', cardId:exact.id },
     { type:'attributes', rarity:'Mythic', color:'R' },
-    { type:'attributes', rarity:'Rare', color:'B' }
+    { type:'attributes', cardType:'Creature', rarity:'Rare', color:'B' }
   ], false, byId);
   assert.equal(criteria.length, 3);
   const listing = { acceptAnyCard:false, wantedCriteria:criteria };
@@ -27,7 +27,7 @@ test('23.21.0 BUSCO supports exact or rarity+color and uses OR between criteria'
   assert.equal(cardMatchesWanted(miss, listing), false);
 });
 
-test('23.21.0 attribute filter uses AND inside one criterion and red includes multicolor', () => {
+test('23.21.3 attribute filter uses AND inside one criterion and red includes multicolor', () => {
   const listing = { acceptAnyCard:false, wantedCriteria:[{type:'attributes',rarity:'Mythic',color:'R'}] };
   assert.equal(cardMatchesWanted(redMythic, listing), true);
   const otherMythic = TRUSTED_CARD_POOL.find(c => c.rarity === 'Mythic' && !c.colors?.includes('R'));
@@ -35,8 +35,24 @@ test('23.21.0 attribute filter uses AND inside one criterion and red includes mu
   assert.equal(cardMatchesWanted(otherMythic, listing), false);
 });
 
+
+test('23.21.3 BUSCO supports type-only and type + rarity + color criteria', () => {
+  const mythicArtifact = TRUSTED_CARD_POOL.find(c => c.rarity === 'Mythic' && String(c.type || '').toLowerCase().includes('artefacto'));
+  assert.ok(mythicArtifact);
+  const [criterion] = normalizeWantedCriteria([
+    { type:'attributes', cardType:'Artifact', rarity:'Mythic', color:null }
+  ], false, byId);
+  assert.deepEqual(criterion, {type:'attributes',cardType:'Artifact',color:null,rarity:'Mythic'});
+  const listing={acceptAnyCard:false,wantedCriteria:[criterion]};
+  assert.equal(cardMatchesWanted(mythicArtifact,listing), true);
+  const nonArtifactMythic = TRUSTED_CARD_POOL.find(c => c.rarity === 'Mythic' && !String(c.type || '').toLowerCase().includes('artefacto'));
+  assert.ok(nonArtifactMythic);
+  assert.equal(cardMatchesWanted(nonArtifactMythic,listing), false);
+});
+
 test('23.21.0 rejects empty filters, duplicate criteria and more than three BUSCO slots', () => {
-  assert.throws(() => normalizeWantedCriteria([{type:'attributes',rarity:null,color:null}], false, byId), /TRADE_CRITERIA_INVALID/);
+  assert.throws(() => normalizeWantedCriteria([{type:'attributes',cardType:null,rarity:null,color:null}], false, byId), /TRADE_CRITERIA_INVALID/);
+  assert.throws(() => normalizeWantedCriteria([{type:'attributes',cardType:'Bogus',rarity:'Rare',color:null}], false, byId), /TRADE_CRITERIA_INVALID/);
   assert.throws(() => normalizeWantedCriteria([
     {type:'exact_card',cardId:exact.id},{type:'exact_card',cardId:exact.id}
   ], false, byId), /TRADE_CRITERIA_INVALID/);
