@@ -1,0 +1,39 @@
+ARGENTINIA v23.21.3 — FINAL RELEASE QA
+STATUS: RELEASED
+DATE: 2026-09-10
+PROMOTED FROM: RC5.2j
+
+OWNER ACCEPTANCE
+- GitHub Actions: GREEN
+- Productive desktop smoke: GREEN
+- Productive mobile smoke: GREEN
+- RC5.2j side-pile/tapped-lands final validation: GREEN
+
+AUTOMATED VALIDATION RE-RUN ON RELEASED SOURCE
+- Image manifest / pool contract: PASS; pool 880
+- Game Text: PASS; definitions=1515, used=1230
+- Historical regression archive: 62/62 synchronized
+- RC5.2 lifecycle/mobile HUD contract: PASS
+- Canonical fast contract sweep: 115/115 PASS
+- Stability Lab: PASS; seeds=10
+- Headless 23.18.1: 6/6 PASS
+- Headless coverage audit: structurally known 97.95%
+- Headless 23.18.2: 6/6 PASS
+- Multiplayer Reliability Lab: PASS; seeds=250, commits=30000
+- Multiplayer Hardening Lab: PASS; cases=5000
+- Deck Intelligence Matrix: PASS; archetypes=15, qualities=4, builds=60
+- Functions unit suite: 9/9 PASS
+
+FINAL BASELINE
+- Engine 23.21.3
+- Pool 880
+- Firestore Rules 23.13.86
+- Cloud Functions 40
+- MP protocol mp-23.19.2
+- Economy protocol econ-23.19.5.6
+- Economy schema 10
+
+PROMOTION POLICY
+- releaseCandidate remains RC5.2 in build-manifest for historical contract compatibility.
+- releaseStatus=RELEASED and promotedFrom=RC5.2j are the authoritative final promotion markers.
+- Functional gameplay/runtime is unchanged from accepted RC5.2j; release metadata/docs are the only promotion delta.

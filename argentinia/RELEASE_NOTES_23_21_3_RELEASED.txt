@@ -1,0 +1,66 @@
+ARGENTINIA v23.21.3 — MULTIPLAYER SOCIAL LAYER
+STATUS: RELEASED
+PROMOTED FROM: RC5.2j
+RELEASE DATE: 2026-09-10
+
+FINAL BASELINE
+- Engine: 23.21.3
+- Pool: 880
+- Multiplayer protocol: mp-23.19.2
+- Economy protocol: econ-23.19.5.6
+- Economy schema: 10
+- Firestore Rules: 23.13.86
+- Cloud Functions: 40
+- Node runtime: 22
+- Region: southamerica-east1
+
+MAJOR DELIVERED SCOPE
+- Multiplayer social layer with player chat and emotes.
+- Admin-authoritative emote catalog with active/free/premium/Points price, image, audio, fallback and animation controls.
+- Server-authoritative premium emote purchase/send validation; direct browser writes denied.
+- Premium emote circular mythic-orange presentation in Store, picker and in-match burst.
+- Bitácora player/system visual filters; emotes removed from Bitácora and rendered over badges.
+- Session-local /silenciar, /desilenciar, /activar and /ayuda chat commands.
+- Telemetry Rules recovery for tournament metadata and explicit remote-upload diagnostics.
+- PvP no-blockers fast path: manual advance plus 5 s automatic window.
+- Multiplayer end modal shows Points + ELO result.
+- Presence heartbeat contention fix.
+- Mercado de Pases filters on right-side layout, including mobile landscape.
+- Soft-return match lifecycle preserving fullscreen on abandon and natural match end.
+- Idempotent board teardown/setup preventing duplicated deck/graveyard/exile containers.
+- Black “Inicializando partida…” cover until starting coin is mounted.
+- Desktop and S23 mobile board/HUD geometry hardening.
+- Compact salir.png action beside the main action button.
+- Mobile fixed 5:7 hand geometry, centered rows, outer attack/pay/block highlights and stable priority HUD.
+- Mobile 8/3/1 lands/support/semidioses layout with internal scrolling.
+- Mobile tapped-land containment without pushing graveyard/exile off-table.
+- Mobile MAZO/CEMENTERIO/EXILIO clip recovery.
+- Desktop hand bottom alignment, combat-row separation and priority/sidebar stabilization.
+- Rival badge no longer appends “(TU RIVAL)”.
+- Deck editor: NUEVA badge until first tile click, Solo nuevas filter, and Últimas obtenidas ascending/descending.
+- Encyclopedia route recovery after soft-return.
+- Presentation terminology cleanup for public UI (including Al toque/Apuro and removal of visible legacy English keyword leakage addressed during RC cycle).
+
+FINAL QUALIFICATION
+- Gate03: GREEN (carried from authoritative RC4 backend/rules baseline)
+- Gate05: GREEN (carried from authoritative RC4 backend/rules baseline)
+- Gate07: GREEN (carried from authoritative RC4 backend/rules baseline)
+- GitHub Actions: GREEN — owner confirmed
+- Productive smoke desktop/mobile: GREEN — owner confirmed
+- RC5.2j final visual/mobile smoke: GREEN — owner confirmed
+
+AUTOMATED REGRESSION BASELINE
+- Game Text contract: PASS
+- Canonical fast contracts: 115/115 PASS
+- Historical regression archive: 62/62 synchronized
+- Functions unit suite: 9/9 PASS
+- Stability Lab: PASS
+- Headless 23.18.1: 6/6 PASS
+- Headless 23.18.2: 6/6 PASS
+- Structurally known headless coverage: 97.95%
+- Multiplayer Reliability: PASS
+- Multiplayer Hardening: PASS
+- Deck Intelligence Matrix: PASS
+
+RELEASE DECISION
+RC5.2j is promoted without runtime changes. The RELEASED package differs only in release metadata/documentation.

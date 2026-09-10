@@ -1,0 +1,87 @@
+ARGENTINIA — MANUAL DEL JUGADOR — GUÍA DE IMÁGENES
+Ruta canónica: argentinia/assets/images/manual/
+
+No hace falta ilustrar cada sección. El manual ya funciona aunque no haya imágenes: muestra
+un placeholder con el nombre esperado. Los PNG son el fallback estable.
+
+FORMATO RECOMENDADO
+- Capturas estáticas: PNG, ideal 1600x900 o 1920x1080 (16:9).
+- Jugabilidad animada: WebP animado preferido por peso/calidad; GIF como segunda opción.
+- Para los demos animados, conservar SIEMPRE también el PNG del mismo nombre como fallback.
+- No agregues textos gigantes dentro de la captura: el pie ya explica qué se está mostrando.
+
+ARCHIVOS
+
+manual1.png
+Ubicación: sección “Objetivo, zonas y condiciones de victoria”.
+Qué debería mostrar: vista general limpia de una partida real, con mano, Tierras, criaturas,
+apoyos/Semidioses si hay, MAZO, CEMENTERIO, EXILIO, HP y panel de fases visibles.
+Pie usado en el manual: “La mesa completa”.
+Por qué vale la pena: es la imagen más importante para orientar a alguien que nunca vio el tablero.
+
+manual2.png  [fallback obligatorio]
+manual2.webp [ANIMADO recomendado, opcional]
+manual2.gif  [alternativa animada]
+Ubicación: sección “Turno, Tierras, maná y tipos de carta”.
+Qué debería mostrar: una secuencia corta desde click/tap en una carta de la mano, selección de
+Tierras/maná, confirmación del pago, carta en Pila y entrada/resolución.
+Pie: “Pagar y lanzar una carta”.
+Duración ideal si es animado: 4–7 segundos, loop limpio.
+
+manual3.png  [fallback obligatorio]
+manual3.webp [ANIMADO recomendado, opcional]
+manual3.gif  [alternativa animada]
+Ubicación: sección “Combate paso a paso”.
+Qué debería mostrar: declarar 2–3 atacantes, confirmarlos, rival declarando al menos un bloqueador,
+flechas de combate y resolución de daño. Mejor si se entiende la diferencia entre bloqueado y no bloqueado.
+Pie: “Ataque, bloqueo y daño”.
+Duración ideal: 6–10 segundos.
+
+manual4.png
+Ubicación: sección “Habilidades y mecánicas principales”.
+Qué debería mostrar: una carta grande y legible donde se distingan coste, nombre, tipo, caja de texto,
+keywords, fuerza/resistencia y rareza. Puede ser una composición con pequeñas llamadas visuales, sin
+cambiar la estética real de la carta.
+Pie: “Cómo leer una carta”.
+
+manual5.png  [fallback obligatorio]
+manual5.webp [ANIMADO recomendado, opcional]
+manual5.gif  [alternativa animada]
+Ubicación: sección “Pila, prioridad y objetivos”.
+Qué debería mostrar: jugador lanza un hechizo A, rival responde con B, ambos pasan prioridad y B
+resuelve antes que A. Que se vea el indicador/Pila real del juego.
+Pie: “Responder usando la Pila”.
+Duración ideal: 7–12 segundos.
+
+manual6.png
+Ubicación: sección “Torneo”.
+Qué debería mostrar: fixture real de 16 participantes, ronda actual, recorrido del jugador y premios.
+Pie: “Fixture del Torneo”.
+
+manual7.png
+Ubicación: sección “Tienda y sus secciones”.
+Qué debería mostrar: vista principal de la Tienda donde entren visualmente Sobres, Avisos Clasificados,
+Mazos Prearmados, Fichas/Mejoras y Emojis. Si no entran todos, priorizar la pantalla de entrada a Tienda.
+Pie: “La Tienda”.
+
+manual8.png
+Ubicación: sección “Mercado de Pases”.
+Qué debería mostrar: una publicación real con carta ofrecida, criterios BUSCO y una oferta recibida o
+modal de oferta. Ideal que se entienda el intercambio 1 carta ↔ 1 carta.
+Pie: “Publicación y oferta”.
+
+manual9.png
+Ubicación: sección “Daily Rewards y Mi Cofre”.
+Qué debería mostrar: pantalla de Recompensas diarias con los 7 días, racha actual y al menos un premio
+reclamado/disponible. Si entra Mi Cofre en la misma composición, mejor; si no, priorizar Daily Rewards.
+Pie: “Racha de 7 días”.
+
+manual10.png
+Ubicación: sección “Mazos, colección y Enciclopedia”.
+Qué debería mostrar: constructor de mazos con colección/filtros, mazo a la vista y contador 60/60.
+Pie: “Constructor de mazos”.
+
+SOPORTE ANIMADO YA PREPARADO
+manualUI.js prueba automáticamente WebP y luego GIF para manual2, manual3 y manual5. Si encuentra
+uno, lo muestra y conserva manualN.png como fallback. Para el resto usa PNG estático porque una animación
+no aporta demasiado y sólo aumentaría transferencia/ruido visual.

@@ -82,6 +82,7 @@ import { loadPrebuiltDeckCatalog, summarizePrebuiltDeck, getPrebuiltPurchaseIds 
 import { gameText } from './gameTexts.js';
 import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
+import { prepareGameManualUI, showGameManual } from './manualUI.js';
 import { summarizeGlobalTelemetry, summarizeProfiles, formatDuration, winRate, telemetryDurationMs, telemetryOutcome } from './statistics.js';
 import { buildCardTextLayout, buildLoyaltyAbilityDisplay } from './cardTextFormatter.js';
 import { publicKeywordLabel, publicCardTypeLine, publicTerminologyText } from './publicTerminology.js';
@@ -9046,6 +9047,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
   clearAnimationLayer('main_menu');
   injectMainMenuStyles();
   injectRewardsStyles();
+  prepareGameManualUI();
   // ENTREGA 23.8.5 — el menú principal es singleton DOM. Aunque un flujo viejo o una
   // llamada accidental intente abrirlo dos veces, nunca quedan dos #main-menu-overlay.
   document.querySelectorAll('#main-menu-overlay').forEach(el => el.remove());
@@ -9067,6 +9069,7 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
         <button class="main-menu-icon-btn" id="menu-store" title="${gameTextHtml('menu.store')}" aria-label="${gameTextHtml('menu.store')}"><span class="main-menu-icon-fallback" aria-hidden="true">🛒</span><img class="main-menu-icon-image" src="./assets/images/ui/icon_tienda.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
         <button class="main-menu-icon-btn" id="menu-ranking" title="${gameTextHtml('menu.ranking')}" aria-label="${gameTextHtml('menu.ranking')}"><span class="main-menu-icon-fallback" aria-hidden="true">📊</span><img class="main-menu-icon-image" src="./assets/images/ui/icon_ranking.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
         <button class="main-menu-icon-btn" id="menu-trade-market" title="${gameTextHtml('menu.tradeMarket')}" aria-label="${gameTextHtml('menu.tradeMarket')}"><span class="main-menu-icon-fallback" aria-hidden="true">🔄️</span><img class="main-menu-icon-image" src="./assets/images/ui/icon_mercado_pases.png" alt="" onload="this.previousElementSibling.style.visibility='hidden'" onerror="this.style.display='none'"></button>
+        <button class="main-menu-help-link" id="menu-how-to-play" type="button">¿Cómo se juega?</button>
       </div>
     </div>
     <div id="main-menu-active-events"></div>
@@ -9193,6 +9196,10 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
     if (!state.currentUser || !state.userProfile) { releaseMenuIdentityAction(); return; }
     overlay.style.display = 'none';
     showStoreScreen(() => { overlay.style.display = ''; releaseMenuIdentityAction(); });
+  });
+
+  overlay.querySelector('#menu-how-to-play')?.addEventListener('click', event => {
+    showGameManual({ returnFocusTo: event.currentTarget });
   });
 
   overlay.querySelector('#menu-options').addEventListener('click', () => {

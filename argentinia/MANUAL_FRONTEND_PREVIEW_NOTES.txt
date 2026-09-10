@@ -1,0 +1,27 @@
+ARGENTINIA — MANUAL DEL JUGADOR — FRONTEND-ONLY PREVIEW
+Baseline: v23.21.3 RELEASED
+
+Objetivo:
+- Agregar “¿Cómo se juega?” inmediatamente a la derecha del botón Mercado de Pases.
+- Abrir un modal de manual sin navegación, reload, Firebase ni cambios de estado de partida.
+- Contenido estático frontend: reglas, mecánicas, habilidades y sistemas actuales.
+- Menú interno de contenido con scroll y estado activo.
+- Placeholders de imágenes en ./assets/images/manual/.
+- Soporte opcional de WebP/GIF animados con PNG fallback para demos de jugabilidad.
+
+Archivos runtime modificados/agregados:
+- MOD: argentinia/js/ui.js
+- NEW: argentinia/js/manualUI.js
+
+Archivos informativos agregados:
+- argentinia/assets/images/manual/MANUAL_MEDIA_GUIDE.txt
+- argentinia/MANUAL_FRONTEND_PREVIEW_NOTES.txt
+
+No se modifican:
+- css/style.css
+- css/mobile.css
+- js/mobileUI.js
+- functions/
+- firestore.rules
+- economía / tienda / mercado / torneos / multiplayer
+- build-manifest / versionado de la release estable

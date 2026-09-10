@@ -27,5 +27,9 @@
   "matchInitializationCover": "black spinner cover until starting coin is mounted",
   "mobileHandGeometry": "exact 5:7 fixed-size local hand cards; identical dimensions; bottom aligned to local badge baseline",
   "mobileSelectionFeedback": "strong OUTER red/cyan outline+glow on card box; no card-inner paint; no scale/lift",
-  "mobilePriorityHud": "named grid areas keep priority status above phase bullets; single-line ellipsis; no hidden-node row shifting"
+  "mobilePriorityHud": "named grid areas keep priority status above phase bullets; single-line ellipsis; no hidden-node row shifting",
+  "releaseStatus": "RELEASED",
+  "promotedFrom": "RC5.2j",
+  "releaseDate": "2026-09-10",
+  "releaseQualification": "GitHub Actions green + productive desktop/mobile smoke green + owner acceptance"
 }

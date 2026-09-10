@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const ui=fs.readFileSync(new URL('../js/ui.js',import.meta.url),'utf8');
+const manual=fs.readFileSync(new URL('../js/manualUI.js',import.meta.url),'utf8');
+assert.ok(ui.includes("import { prepareGameManualUI, showGameManual } from './manualUI.js';"));
+const marketPos=ui.indexOf('id="menu-trade-market"');
+const helpPos=ui.indexOf('id="menu-how-to-play"');
+assert.ok(marketPos>=0 && helpPos>marketPos && helpPos-marketPos<1200,'manual link must sit immediately after Mercado de Pases');
+assert.ok(ui.includes('¿Cómo se juega?'));
+assert.ok(ui.includes('showGameManual({ returnFocusTo: event.currentTarget })'));
+for(const id of ['simple','torneo','tienda','mercado','daily','completo']) assert.ok(manual.includes(`data-manual-section=\\"${id}\\"`) || manual.includes(`data-manual-section="${id}"`) || manual.includes(`['${id}'`),`missing section ${id}`);
+for(let i=1;i<=10;i++) assert.ok(manual.includes(`manual${i}`),`missing manual${i} placeholder`);
+assert.ok(manual.includes('./assets/images/manual/'));
+assert.ok(manual.includes("for (const ext of ['webp','gif'])"),'animated WebP/GIF fallback loader missing');
+assert.ok(!/from\s+['\"]\.\/firebase|from\s+['\"]\.\/economyClient|firestore\.rules/i.test(manual),'manual must remain frontend-only and backend-independent');
+console.log('MANUAL_FRONTEND_PREVIEW_CONTRACT_OK');
