@@ -36,7 +36,24 @@ function ensureManualStyles() {
       transition:color .15s ease,opacity .15s ease,transform .15s ease;
     }
     .main-menu-help-link:hover{color:#f4d969;opacity:1;transform:translateY(-1px)}
-    html.argentinia-mobile .main-menu-help-link{font-size:10px;padding:0 6px;min-width:0}
+    /* Manual Preview v2 — el acceso debe quedar realmente visible a la derecha de Mercado
+       también en viewports mobile estrechos. No se redimensionan Opciones ni los 3 iconos
+       existentes: sólo el texto nuevo puede encogerse/envolver. */
+    html.argentinia-mobile .main-menu-bottom-row{
+      max-width:calc(100dvw - max(3dvw,var(--arg-safe-left,0px)) - max(8px,var(--arg-safe-right,0px)))!important;
+      overflow:visible!important;
+    }
+    html.argentinia-mobile .main-menu-help-link{
+      flex:0 1 var(--arg-manual-help-max-width,96px);
+      width:min(96px,var(--arg-manual-help-max-width,96px));
+      max-width:var(--arg-manual-help-max-width,96px);
+      min-width:0; min-height:var(--main-menu-button-height);
+      padding:0 4px; box-sizing:border-box;
+      font-size:clamp(8px,2.35dvw,10px); line-height:1.04;
+      white-space:normal; overflow-wrap:normal; word-break:normal; text-align:center;
+      position:relative; z-index:4;
+      color:#f2df9c; opacity:1;
+    }
 
     #${MANUAL_OVERLAY_ID}{
       position:fixed; inset:0; z-index:12000; display:flex; align-items:center; justify-content:center;
@@ -151,8 +168,53 @@ function ensureManualStyles() {
   document.head.appendChild(style);
 }
 
+let manualMenuFitListenersInstalled = false;
+let manualMenuFitRaf = 0;
+
+function fitMainMenuHelpLink() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+  const link = document.getElementById('menu-how-to-play');
+  const market = document.getElementById('menu-trade-market');
+  if (!link || !market) return;
+
+  const isMobile = document.documentElement.classList.contains('argentinia-mobile');
+  if (!isMobile) {
+    link.style.removeProperty('--arg-manual-help-max-width');
+    return;
+  }
+
+  const vv = window.visualViewport;
+  const viewportRight = (vv ? vv.offsetLeft + vv.width : window.innerWidth) - 8;
+  const marketRect = market.getBoundingClientRect();
+  // Gap mobile canónico = 4 px. El ancho disponible sólo modifica este enlace nuevo;
+  // nunca toca Opciones, Tienda, Ranking ni Mercado de Pases.
+  const available = Math.max(40, Math.floor(viewportRight - marketRect.right - 4));
+  link.style.setProperty('--arg-manual-help-max-width', `${Math.min(96, available)}px`);
+}
+
+function scheduleMainMenuHelpLinkFit() {
+  if (typeof window === 'undefined') return;
+  if (manualMenuFitRaf) window.cancelAnimationFrame?.(manualMenuFitRaf);
+  const run = () => { manualMenuFitRaf = 0; fitMainMenuHelpLink(); };
+  if (window.requestAnimationFrame) manualMenuFitRaf = window.requestAnimationFrame(run);
+  else setTimeout(run, 0);
+}
+
+function installManualMenuFitListeners() {
+  if (manualMenuFitListenersInstalled || typeof window === 'undefined') return;
+  manualMenuFitListenersInstalled = true;
+  window.addEventListener('resize', scheduleMainMenuHelpLinkFit, { passive:true });
+  window.visualViewport?.addEventListener('resize', scheduleMainMenuHelpLinkFit, { passive:true });
+  window.visualViewport?.addEventListener('scroll', scheduleMainMenuHelpLinkFit, { passive:true });
+}
+
 export function prepareGameManualUI() {
   ensureManualStyles();
+  installManualMenuFitListeners();
+  // showMainMenu crea y agrega el overlay sincrónicamente después de esta llamada.
+  // El microtask corre cuando #menu-how-to-play ya existe en el DOM.
+  if (typeof queueMicrotask === 'function') queueMicrotask(scheduleMainMenuHelpLinkFit);
+  else Promise.resolve().then(scheduleMainMenuHelpLinkFit);
 }
 
 function figure(key, title, caption, animatedCandidate = false) {

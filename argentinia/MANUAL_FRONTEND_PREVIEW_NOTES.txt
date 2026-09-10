@@ -25,3 +25,10 @@ No se modifican:
 - firestore.rules
 - economía / tienda / mercado / torneos / multiplayer
 - build-manifest / versionado de la release estable
+
+PREVIEW v2 — MOBILE LINK VISIBILITY
+- Corrige exclusivamente la visibilidad/fit del acceso “¿Cómo se juega?” en mobile.
+- Mantiene el enlace inmediatamente después de Mercado de Pases.
+- El ancho sobrante se calcula contra visualViewport y sólo puede compactarse el enlace nuevo.
+- Opciones, Tienda, Ranking y Mercado de Pases conservan dimensiones/layout previos.
+- css/mobile.css continúa byte-identical al PREVIEW v1 y a v23.21.3 RELEASED.

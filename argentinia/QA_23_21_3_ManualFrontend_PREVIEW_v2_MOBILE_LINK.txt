@@ -1,0 +1,17 @@
+ARGENTINIA v23.21.3 — MANUAL FRONTEND PREVIEW v2 — MOBILE LINK VISIBILITY
+STATUS: PREVIEW / frontend-only sobre Manual Preview v1 + v23.21.3 RELEASED
+
+FIX
+- Conserva “¿Cómo se juega?” inmediatamente a la derecha de Mercado de Pases.
+- Mobile: limita la fila al viewport/safe area y permite que SOLO el enlace nuevo se compacte/envuelva.
+- Runtime fit usa visualViewport/getBoundingClientRect para asignar al enlace el ancho real restante.
+- El fit se recalcula en resize/visualViewport resize/scroll.
+- No cambia tamaño ni geometría de Opciones, Tienda, Ranking o Mercado de Pases.
+- No toca css/mobile.css, css/style.css, js/mobileUI.js, gameplay, Firebase, Rules ni Functions.
+
+SMOKE MANUAL
+1. Abrir menú principal en mobile portrait y landscape.
+2. Verificar que “¿Cómo se juega?” esté visible inmediatamente a la derecha de Mercado de Pases.
+3. Rotar/cambiar fullscreen: el enlace debe seguir dentro del viewport; puede envolver texto, nunca desaparecer.
+4. Click/tap: debe abrir el modal del Manual.
+5. Verificar que Opciones/Tienda/Ranking/Mercado conserven exactamente sus tamaños y posiciones previas.
