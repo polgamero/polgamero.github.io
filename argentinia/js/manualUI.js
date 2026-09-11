@@ -1,4 +1,5 @@
 // js/manualUI.js — Manual del jugador (frontend-only)
+import { gameText } from './gameTexts.js';
 // No Firebase, no economía, no gameplay mutations. Se monta sobre el menú principal y
 // puede eliminarse sin tocar el estado de la partida.
 
@@ -20,6 +21,130 @@ const MANUAL_MEDIA = Object.freeze({
   manual9: { preferAnimated:false, alt:'Pantalla de la racha de Recompensas diarias' },
   manual10:{ preferAnimated:false, alt:'Constructor de mazos y colección de Argentinia' }
 });
+
+
+function escapeManualHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function renderManualRich(value) {
+  // Textos del Juego sigue siendo texto plano. Sólo interpretamos **negrita** después de escapar HTML.
+  return escapeManualHtml(value).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+}
+
+function setManualText(root, selector, key, mode = 'text') {
+  const el = root?.querySelector?.(selector);
+  if (!el) return;
+  const value = gameText(key);
+  if (mode === 'rich') el.innerHTML = renderManualRich(value);
+  else if (mode === 'attr-alt') el.setAttribute('alt', value);
+  else if (mode === 'attr-aria') el.setAttribute('aria-label', value);
+  else if (mode === 'first-text') {
+    const node = [...el.childNodes].find(n => n.nodeType === Node.TEXT_NODE);
+    if (node) node.nodeValue = value;
+  } else if (mode === 'tail-text') {
+    const node = [...el.childNodes].reverse().find(n => n.nodeType === Node.TEXT_NODE);
+    if (node) node.nodeValue = value;
+    else el.appendChild(document.createTextNode(value));
+  } else el.textContent = value;
+}
+
+const MANUAL_TOC_KEYS = Object.freeze(['inicio','objetivo','simple','turno','combate','pila','habilidades','torneo','multi','tienda','mercado','daily','mazos','completo']);
+
+function applyManualGameTexts(root) {
+  if (!root) return;
+  setManualText(root,'.arg-manual-kicker','manual.header.kicker');
+  setManualText(root,'.arg-manual-title','manual.header.title');
+  setManualText(root,'.arg-manual-subtitle','manual.header.subtitle');
+  setManualText(root,'[data-manual-close]','manual.header.closeAria','attr-aria');
+  setManualText(root,'.arg-manual-toc','manual.toc.aria','attr-aria');
+  setManualText(root,'.arg-manual-toc-title','manual.toc.title');
+  setManualText(root,'.arg-manual-placeholder small','manual.media.placeholder');
+  root.querySelectorAll('.arg-manual-media-badge').forEach(el => { el.textContent = gameText('manual.media.animatedBadge'); });
+  MANUAL_TOC_KEYS.forEach(id => setManualText(root,`[data-manual-target="${id}"]`,`manual.toc.${id}`,'tail-text'));
+
+  const bindSection = (id, prefix, opts = {}) => {
+    const sec = root.querySelector(`#manual-${id}`); if (!sec) return;
+    setManualText(sec,'.arg-manual-section-kicker',`${prefix}.kicker`);
+    setManualText(sec,'h3',`${prefix}.title`);
+    (opts.paragraphs || []).forEach((mode, i) => {
+      const ps=[...sec.children].filter(el => el.tagName === 'P' && !el.classList.contains('arg-manual-section-kicker'));
+      const p=ps[i]; if (!p) return;
+      const value=gameText(`${prefix}.body${opts.paragraphs.length > 1 ? i+1 : ''}`);
+      if (mode === 'rich') p.innerHTML=renderManualRich(value); else p.textContent=value;
+    });
+  };
+
+  // Intro / hero
+  const intro=root.querySelector('#manual-inicio');
+  if (intro) {
+    setManualText(intro,'.arg-manual-section-kicker','manual.inicio.kicker');
+    setManualText(intro,'h2','manual.inicio.title1','first-text');
+    setManualText(intro,'h2 span','manual.inicio.title2');
+    setManualText(intro,'h2 + p','manual.inicio.body');
+    [...intro.querySelectorAll('.arg-manual-quick span')].forEach((el,i)=>{ el.textContent=gameText(`manual.inicio.quick${i+1}`); });
+  }
+
+  bindSection('objetivo','manual.objetivo',{paragraphs:['rich']});
+  [...root.querySelectorAll('#manual-objetivo .arg-manual-card')].forEach((card,i)=>{ setManualText(card,'h4',`manual.objetivo.card${i+1}.title`); setManualText(card,'p',`manual.objetivo.card${i+1}.body`); });
+  bindSection('simple','manual.simple',{paragraphs:['rich']});
+  [...root.querySelectorAll('#manual-simple .arg-manual-step')].forEach((step,i)=>{ setManualText(step,'b',`manual.simple.step${i+1}.title`); setManualText(step,'span',`manual.simple.step${i+1}.body`); });
+  setManualText(root,'#manual-simple .arg-manual-note','manual.simple.note');
+
+  bindSection('turno','manual.turno',{paragraphs:['rich','text']});
+  [...root.querySelectorAll('#manual-turno .arg-manual-card')].forEach((card,i)=>{ setManualText(card,'h4',`manual.turno.card${i+1}.title`); setManualText(card,'p',`manual.turno.card${i+1}.body`); });
+
+  bindSection('combate','manual.combate');
+  [...root.querySelectorAll('#manual-combate .arg-manual-step')].forEach((step,i)=>{ setManualText(step,'b',`manual.combate.step${i+1}.title`); setManualText(step,'span',`manual.combate.step${i+1}.body`); });
+  setManualText(root,'#manual-combate .arg-manual-note','manual.combate.warning','rich');
+
+  bindSection('pila','manual.pila',{paragraphs:['rich']});
+  [...root.querySelectorAll('#manual-pila .arg-manual-list li')].forEach((el,i)=>{ el.textContent=gameText(`manual.pila.bullet${i+1}`); });
+
+  bindSection('habilidades','manual.habilidades',{paragraphs:['text']});
+  const h4s=[...root.querySelectorAll('#manual-habilidades > h4')];
+  if (h4s[0]) h4s[0].textContent=gameText('manual.habilidades.creatureHeading');
+  if (h4s[1]) h4s[1].textContent=gameText('manual.habilidades.advancedHeading');
+  [...root.querySelectorAll('#manual-habilidades .arg-manual-keyword')].forEach((el,i)=>{ setManualText(el,'b',`manual.habilidades.keyword${i+1}.name`); setManualText(el,'span',`manual.habilidades.keyword${i+1}.body`); });
+  [...root.querySelectorAll('#manual-habilidades .arg-manual-grid .arg-manual-card')].forEach((el,i)=>{ setManualText(el,'h4',`manual.habilidades.advanced${i+1}.name`); setManualText(el,'p',`manual.habilidades.advanced${i+1}.body`); });
+
+  bindSection('torneo','manual.torneo',{paragraphs:['rich']});
+  [...root.querySelectorAll('#manual-torneo .arg-manual-list li')].forEach((el,i)=>{ el.textContent=gameText(`manual.torneo.bullet${i+1}`); });
+  bindSection('multi','manual.multi',{paragraphs:['rich']});
+  [...root.querySelectorAll('#manual-multi .arg-manual-list li')].forEach((el,i)=>{ el.textContent=gameText(`manual.multi.bullet${i+1}`); });
+  setManualText(root,'#manual-multi .arg-manual-note','manual.multi.note');
+
+  bindSection('tienda','manual.tienda',{paragraphs:['text']});
+  [...root.querySelectorAll('#manual-tienda .arg-manual-card')].forEach((card,i)=>{ setManualText(card,'h4',`manual.tienda.card${i+1}.title`); setManualText(card,'p',`manual.tienda.card${i+1}.body`,'rich'); });
+
+  bindSection('mercado','manual.mercado',{paragraphs:['rich','text']});
+  [...root.querySelectorAll('#manual-mercado .arg-manual-step')].forEach((step,i)=>{ setManualText(step,'b',`manual.mercado.step${i+1}.title`); setManualText(step,'span',`manual.mercado.step${i+1}.body`); });
+
+  bindSection('daily','manual.daily',{paragraphs:['rich','text']});
+  [...root.querySelectorAll('#manual-daily .arg-manual-day')].forEach((day,i)=>{ setManualText(day,'b',`manual.daily.day${i+1}.label`); setManualText(day,'span',`manual.daily.day${i+1}.reward`); });
+
+  bindSection('mazos','manual.mazos',{paragraphs:['rich','rich']});
+  bindSection('completo','manual.completo',{paragraphs:['text']});
+  [...root.querySelectorAll('#manual-completo .arg-manual-route > div')].forEach((row,i)=>{
+    setManualText(row,'b',`manual.completo.route${i+1}.title`);
+    const value=gameText(`manual.completo.route${i+1}.body`);
+    const node=[...row.childNodes].reverse().find(n => n.nodeType === Node.TEXT_NODE);
+    if (node) node.nodeValue=value; else row.appendChild(document.createTextNode(value));
+  });
+  setManualText(root,'#manual-completo .arg-manual-footer-note','manual.completo.footer');
+
+  for (let i=1;i<=10;i++) {
+    const fig=root.querySelector(`[data-manual-figure="manual${i}"]`); if (!fig) continue;
+    setManualText(fig,'figcaption b',`manual.figure.manual${i}.title`);
+    setManualText(fig,'figcaption span',`manual.figure.manual${i}.caption`);
+    setManualText(fig,'img',`manual.figure.manual${i}.alt`,'attr-alt');
+  }
+}
 
 function ensureManualStyles() {
   if (typeof document === 'undefined' || document.getElementById(MANUAL_STYLE_ID)) return;
@@ -206,6 +331,15 @@ function installManualMenuFitListeners() {
   window.addEventListener('resize', scheduleMainMenuHelpLinkFit, { passive:true });
   window.visualViewport?.addEventListener('resize', scheduleMainMenuHelpLinkFit, { passive:true });
   window.visualViewport?.addEventListener('scroll', scheduleMainMenuHelpLinkFit, { passive:true });
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('argentinia:game-texts-updated', () => {
+    const openManual = document.getElementById(MANUAL_OVERLAY_ID);
+    if (openManual) applyManualGameTexts(openManual);
+    const menuLink = document.getElementById('menu-how-to-play');
+    if (menuLink) menuLink.textContent = gameText('manual.menu.link');
+  });
 }
 
 export function prepareGameManualUI() {
@@ -497,6 +631,7 @@ export function showGameManual({ returnFocusTo = null } = {}) {
   overlay.setAttribute('aria-modal','true');
   overlay.setAttribute('aria-labelledby','arg-manual-title');
   overlay.innerHTML = manualHTML();
+  applyManualGameTexts(overlay);
   document.body.appendChild(overlay);
 
   const scroll = overlay.querySelector('[data-manual-scroll]');

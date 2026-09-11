@@ -1,0 +1,10 @@
+ARGENTINIA 23.21.3 — RC3 MANUAL + LANDING GAME TEXTS
+
+Scope:
+- Manual del jugador: copy visible centralizado en Admin > TEXTOS DEL JUEGO (categoría Manual).
+- Landing pública: copy visible + metadata SEO centralizado en el mismo gameConfig/texts (categoría Landing).
+- Landing carga overrides públicos desde Firestore y falla abierto a defaults locales.
+- Privacidad/Términos quedan deliberadamente fuera: son documentos legales versionados, no copy operativo.
+- Functions y Firestore Rules: sin cambios.
+
+Definitions added: Manual=278 Landing=60 Total=338

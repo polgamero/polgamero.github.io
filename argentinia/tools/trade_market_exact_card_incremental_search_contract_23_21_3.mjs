@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const ui=fs.readFileSync(new URL('../js/ui.js',import.meta.url),'utf8');
+const texts=fs.readFileSync(new URL('../js/gameTexts.js',import.meta.url),'utf8');
+const css=fs.readFileSync(new URL('../css/style.css',import.meta.url),'utf8');
+assert.match(ui,/function tradeFindCardsByNameQuery\(value,\{limit=18\}=\{\}\)/);
+assert.match(ui,/terms\.every\(term=>hay\.includes\(term\)\)/);
+assert.match(ui,/data-criterion-card-suggestions=/);
+assert.match(ui,/data-trade-card-suggestion-id=/);
+assert.match(ui,/input\.addEventListener\('input',renderSuggestions\)/);
+assert.match(ui,/selectCard\(tradeCard\(btn\.dataset\.tradeCardSuggestionId\)\)/);
+assert.doesNotMatch(ui,/list="trade-all-card-names"/);
+assert.match(texts,/Escribí letras o palabras del nombre/);
+assert.match(texts,/No hay cartas que coincidan con esa búsqueda/);
+assert.match(css,/\.trade-card-suggestions\{/);
+assert.match(css,/max-height:246px;overflow:auto/);
+console.log('TRADE_MARKET_EXACT_CARD_INCREMENTAL_SEARCH_23_21_3_OK contains=LETTERS_AND_WORDS suggestions=LIVE selected=EXPLICIT');
