@@ -28,7 +28,35 @@ export function emptyPlayerStats() {
     fichasSpent: 0,
     packsReceived: 0,
     packsOpened: 0,
-    guaranteedMythicsOpened: 0
+    guaranteedMythicsOpened: 0,
+    tournamentsPlayed: 0,
+    tournamentMatches: 0,
+    tournamentWins: 0,
+    tournamentLosses: 0,
+    tournamentQuarterfinals: 0,
+    tournamentSemifinals: 0,
+    tournamentFinals: 0,
+    tournamentChampionships: 0,
+    tournamentForfeits: 0,
+    tradesCompleted: 0,
+    eloRating: 1200,
+    eloPeak: 1200,
+    eloGames: 0,
+    eloWins: 0,
+    eloLosses: 0,
+    basicLandPacksPurchased: 0,
+    basicLandsReceived: 0,
+    basicLandPacksWhite: 0,
+    basicLandPacksBlue: 0,
+    basicLandPacksBlack: 0,
+    basicLandPacksRed: 0,
+    basicLandPacksGreen: 0,
+    storePacksPurchased: 0,
+    enhancementsCrafted: 0,
+    prebuiltDecksPurchased: 0,
+    classifiedsCardsPurchased: 0,
+    emotesPurchased: 0,
+    dailyRewardsClaimed: 0
   };
 }
 
@@ -45,6 +73,9 @@ export function normalizePlayerStats(value) {
   }
   base.schemaVersion = PLAYER_STATS_SCHEMA_VERSION;
   base.gameBackfillVersion = int0(src.gameBackfillVersion);
+  if (src.eloRating === undefined || src.eloRating === null) base.eloRating = 1200;
+  if (src.eloPeak === undefined || src.eloPeak === null) base.eloPeak = Math.max(1200, base.eloRating);
+  base.eloPeak = Math.max(base.eloPeak, base.eloRating);
   return base;
 }
 
@@ -91,17 +122,24 @@ export function summarizePlayerTelemetry(sessions = []) {
     const meta = parseJson(session.metaJson, session.meta || {}) || {};
     const modeRaw = String(session.mode || meta.mode || '').toLowerCase();
     const isMulti = modeRaw.startsWith('multi');
+    const isTournament = modeRaw.includes('tournament');
     const duration = telemetryDurationMs(session);
     const outcome = telemetryOutcome(session);
     out.gamesPlayed += 1;
     out.totalDurationMs += duration;
-    if (isMulti) out.multiplayerGames += 1; else out.soloGames += 1;
+    if (isMulti) out.multiplayerGames += 1;
+    else if (isTournament) out.tournamentMatches += 1;
+    else out.soloGames += 1;
     if (outcome.result === 'win') {
       out.wins += 1;
-      if (isMulti) out.multiplayerWins += 1; else out.soloWins += 1;
+      if (isMulti) out.multiplayerWins += 1;
+      else if (isTournament) out.tournamentWins += 1;
+      else out.soloWins += 1;
     } else if (outcome.result === 'loss') {
       out.losses += 1;
-      if (isMulti) out.multiplayerLosses += 1; else out.soloLosses += 1;
+      if (isMulti) out.multiplayerLosses += 1;
+      else if (isTournament) out.tournamentLosses += 1;
+      else out.soloLosses += 1;
     }
     if (outcome.abandoned) out.abandons += 1;
   }
@@ -112,6 +150,7 @@ export function summarizeGlobalTelemetry(sessions = []) {
   const completed = sessions.filter(isTelemetryTerminalGame);
   const soloGames = [];
   const multiGroups = new Map();
+  const tournamentGroups = new Map();
   for (const s of completed) {
     const meta = parseJson(s.metaJson, s.meta || {}) || {};
     const mode = String(s.mode || meta.mode || '').toLowerCase();
@@ -119,6 +158,12 @@ export function summarizeGlobalTelemetry(sessions = []) {
       const key = String(s.matchId || meta.matchId || s.id || s.sessionId || 'unknown');
       if (!multiGroups.has(key)) multiGroups.set(key, []);
       multiGroups.get(key).push(s);
+    } else if (mode.includes('tournament')) {
+      const tournamentId = String(s.tournamentId || meta.tournamentId || 'tournament');
+      const matchId = String(s.tournamentMatchId || meta.tournamentMatchId || s.matchId || meta.matchId || s.id || s.sessionId || 'unknown');
+      const key = `${tournamentId}:${matchId}`;
+      if (!tournamentGroups.has(key)) tournamentGroups.set(key, []);
+      tournamentGroups.get(key).push(s);
     } else {
       const soloKey = String(s.soloGameId || meta.soloGameId || s.id || s.sessionId || 'unknown');
       let group = soloGames.find(entry => entry.key === soloKey);
@@ -126,7 +171,7 @@ export function summarizeGlobalTelemetry(sessions = []) {
       group.sessions.push(s);
     }
   }
-  const gameGroups = [...soloGames.map(entry => entry.sessions), ...multiGroups.values()];
+  const gameGroups = [...soloGames.map(entry => entry.sessions), ...multiGroups.values(), ...tournamentGroups.values()];
   let totalDurationMs = 0;
   let abandonedGames = 0;
   let longestDurationMs = 0;
@@ -146,6 +191,7 @@ export function summarizeGlobalTelemetry(sessions = []) {
     totalGames,
     soloGames: soloGames.length,
     multiplayerGames: multiGroups.size,
+    tournamentGames: tournamentGroups.size,
     totalDurationMs,
     averageDurationMs: totalGames ? Math.round(totalDurationMs / totalGames) : 0,
     longestDurationMs,

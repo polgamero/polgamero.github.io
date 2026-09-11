@@ -1,0 +1,18 @@
+ARGENTINIA 23.21.4 — PRE-RELEASE SEAL
+Basic Land Access + Admin Statistics Dashboard
+Date: 2026-09-11
+
+Baseline promoted from: 23.21.3 HF1
+Pool: 880
+Multiplayer protocol: mp-23.19.2
+Firestore Rules: 23.13.86 (UNCHANGED)
+Economy protocol/schema: econ-23.19.5.6 / 10 (UNCHANGED)
+Cloud Functions: 41
+
+Local qualification:
+- Canonical fast contracts: 117/117 PASS
+- Functions unit suite: 13/13 PASS
+- Functions syntax/lint: PASS
+- 23.21.4 dedicated Basic Land/Admin Stats contract is inside the canonical manifest
+
+Promotion remains PRE_RELEASE until GitHub Actions, Functions deploy/verification and productive smoke are green.

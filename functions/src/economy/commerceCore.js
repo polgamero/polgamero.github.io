@@ -5,6 +5,9 @@ export const DEFAULT_CRAFT_COST = 3;
 export const DEFAULT_PREBUILT_POINTS = 1500;
 export const DEFAULT_PREBUILT_FICHAS = 3;
 export const DEFAULT_MAX_SAVED_DECKS = 12;
+export const DEFAULT_CLASSIFIED_BASIC_LAND_PACK_PRICE = 150;
+export const DEFAULT_CLASSIFIED_BASIC_LAND_PACK_QUANTITY = 15;
+export const CLASSIFIED_BASIC_LAND_PACK_QUANTITY_HARD_MAX = 100;
 export const USERNAME_RENAME_COST = 1;
 
 export const ENHANCEMENT_KEYWORDS = Object.freeze([
@@ -27,7 +30,9 @@ export function normalizeStoreSettings(raw = {}) {
     craftCost: intAtLeast(raw.fichasPerEnhancement, 1, DEFAULT_CRAFT_COST),
     prebuiltPoints: intAtLeast(raw.prebuiltDeckPoints, 0, DEFAULT_PREBUILT_POINTS),
     prebuiltFichas: intAtLeast(raw.prebuiltDeckFichas, 0, DEFAULT_PREBUILT_FICHAS),
-    maxSavedDecks: intAtLeast(raw.maxSavedDecks, 1, DEFAULT_MAX_SAVED_DECKS)
+    maxSavedDecks: intAtLeast(raw.maxSavedDecks, 1, DEFAULT_MAX_SAVED_DECKS),
+    classifiedBasicLandPackPrice: intAtLeast(raw.classifiedBasicLandPackPrice, 0, DEFAULT_CLASSIFIED_BASIC_LAND_PACK_PRICE),
+    classifiedBasicLandPackQuantity: Math.min(CLASSIFIED_BASIC_LAND_PACK_QUANTITY_HARD_MAX, intAtLeast(raw.classifiedBasicLandPackQuantity, 1, DEFAULT_CLASSIFIED_BASIC_LAND_PACK_QUANTITY))
   });
 }
 function timestampMs(value) {

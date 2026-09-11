@@ -1,4 +1,4 @@
-export const ENGINE_VERSION = '23.21.3';
+export const ENGINE_VERSION = '23.21.4';
 export const ECONOMY_PROTOCOL_VERSION = 'econ-23.19.5.6';
 export const ECONOMY_SCHEMA_VERSION = 10;
 export const ECONOMY_REGION = 'southamerica-east1';

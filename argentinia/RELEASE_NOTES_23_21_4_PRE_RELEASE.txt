@@ -1,0 +1,41 @@
+ARGENTINIA 23.21.4 — BASIC LAND ACCESS + ADMIN STATISTICS DASHBOARD — PRE-RELEASE
+
+BASIC LAND ACCESS
+- Avisos Clasificados keeps its seven weekly card offers unchanged.
+- A separate Basic Land Packs container exposes five fixed Common products: White / Blue / Black / Red / Green.
+- Default pack price: 150 points.
+- Default quantity: 15 lands.
+- Admin can edit both classifiedBasicLandPackPrice and classifiedBasicLandPackQuantity.
+- Server clamps quantity to 1..100.
+- Each color can be purchased once per Classifieds week, independently of the other four colors.
+- The purchase grants real copies to the personal collection and does not consume a normal Classifieds slot.
+- economyPurchaseClassifiedBasicLandPack is server-authoritative, transactional and exactly-once/idempotent.
+- Immutable economy audit + per-color/statistics accumulation are recorded.
+
+ADMIN STATISTICS
+- Tournament KPIs/funnel, ELO KPIs, Trade Market KPIs, economy, collection/acquisition and Basic Land metrics are surfaced.
+- Tournament telemetry is separated from Solo instead of inflating Solo counts.
+- Added dashboard charts for tournament funnel, Basic Land pack purchases by color, point flow and Trade Market activity.
+- Added Excel-compatible CSV export with spreadsheet-formula injection protection.
+- New commercial/acquisition counters begin accumulating from 23.21.4; existing historical Tournament/Trade data remain available.
+
+COMPATIBILITY
+- Pool remains 880.
+- Multiplayer protocol remains mp-23.19.2.
+- Firestore Rules remain 23.13.86; no Rules deploy is required for this release.
+- Economy protocol/schema remain econ-23.19.5.6 / 10.
+- Functions increase from 40 to 41.
+
+LOCAL QA SEAL
+- Canonical fast contract sweep: 117/117 PASS.
+- Functions tests: 13/13 PASS.
+- Functions syntax/lint: PASS.
+
+DEPLOYMENT
+- Upload the complete GitHub source.
+- Confirm GitHub Actions green.
+- Run 23.21.4 backend gates as desired/recommended.
+- Deploy Functions from the ordered package using the 23.21.4 deploy script.
+- Verify exactly 41 callable Functions.
+- No Firestore Rules redeploy.
+- Finish with productive smoke before promoting RELEASED.

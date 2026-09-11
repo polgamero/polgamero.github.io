@@ -10,8 +10,8 @@ const bot = read('js/bot.js');
 
 function ok(cond, msg) { if (!cond) throw new Error(msg); }
 
-ok((version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.21.3'")), 'engine 23.17.5.7');
-ok(manifest.engineVersion === '23.21.3', 'manifest 23.17.5.7');
+ok((version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.21.4'")), 'engine 23.17.5.7');
+ok(manifest.engineVersion === '23.21.4', 'manifest 23.17.5.7');
 ok(manifest.firestoreRulesVersion === '23.13.86', 'rules unchanged');
 ok(ui.includes("const TANO_AVATAR_SRC = 'assets/images/ui/tano.png';"), 'canonical tano.png path');
 ok(ui.includes(": TANO_AVATAR_SRC") && ui.includes("setAvatarImageOrFallback(els.rivalAvatar, rivalPhotoURL"), 'solo keeps tano.png fallback while tournament may use NPC avatar');

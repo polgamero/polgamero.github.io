@@ -1,0 +1,23 @@
+QA 23.21.4 — BASIC LAND ACCESS + ADMIN STATISTICS DASHBOARD
+
+LOCAL AUTOMATED RESULTS
+PASS canonical contracts: 117/117
+PASS Functions unit tests: 13/13
+PASS Functions syntax/lint
+
+PRODUCTIVE SMOKE CHECKLIST
+1. Avisos Clasificados still shows seven normal weekly cards.
+2. Separate Basic Land Packs section shows exactly W/U/B/R/G.
+3. Each card has visible xN quantity and current Admin price.
+4. Default config resolves to 150 points / 15 lands.
+5. Admin changes to price and quantity are reflected after refresh.
+6. Buying one color adds exactly N real copies to collection and deducts exactly the configured price.
+7. Buying a color does not consume/block any of the seven normal Classifieds offers.
+8. Same color cannot be purchased twice in the same week, including retry/double-click/two-tab attempts.
+9. Other four colors remain independently purchasable.
+10. Weekly reset matches the existing Classifieds weekKey.
+11. Economy Audit contains the Basic Land purchase with color/card/quantity/price/week data.
+12. Admin Statistics loads Tournament, ELO, Trade Market, economy, collection/acquisition and Basic Land KPIs.
+13. Tournament matches no longer increase Solo match count.
+14. Dashboard charts render without console errors.
+15. CSV export opens correctly in Excel-compatible software and user-controlled cells are formula-safe.

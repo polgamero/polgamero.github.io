@@ -53,8 +53,8 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
-import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -77,7 +77,7 @@ import { registerCardTextBox, hasCustomCardTextLayout, ensureCardTextLayoutsLoad
 import { openCardTextLayoutEditor } from './textLayoutEditor.js';
 import { USERNAME_RENAME_COST } from './usernames.js';
 import { showUsernameRenameModal } from './usernameUI.js';
-import { classifiedsNextRotationAt, getClassifiedsProfileState, countOwnedClassifiedCard } from './classifieds.js';
+import { classifiedsNextRotationAt, getClassifiedsProfileState, getClassifiedsBasicLandPackProfileState, countOwnedClassifiedCard } from './classifieds.js';
 import { loadPrebuiltDeckCatalog, summarizePrebuiltDeck, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { gameText } from './gameTexts.js';
 import { createGameTextsAdminPane } from './gameTextsAdmin.js';
@@ -4035,6 +4035,31 @@ function injectStoreStyles() {
     .classifieds-global-error { color:#eaa194; font-size:12px; margin:8px 0 10px; text-align:center; }
     .classifieds-refresh-row { text-align:center; margin-top:6px; }
 
+    /* 23.21.4 — Packs de Tierras Básicas: sección deliberadamente separada de las
+       siete ofertas semanales. Comparte weekKey/reset, pero no slots ni cupos 4/2/1. */
+    .classifieds-basic-land-section {
+      margin:24px 0 15px; padding:16px 14px 14px; border-radius:13px;
+      border:1px solid rgba(116,172,223,.34);
+      background:linear-gradient(180deg,rgba(17,38,48,.54),rgba(7,17,14,.48));
+      box-shadow:inset 0 0 30px rgba(116,172,223,.035);
+    }
+    .classifieds-basic-land-header { text-align:center; margin:0 auto 14px; max-width:760px; }
+    .classifieds-basic-land-title { color:#f0e0b0; font-size:18px; font-weight:900; letter-spacing:.055em; }
+    .classifieds-basic-land-subtitle { color:#b8c9cf; font-size:11px; line-height:1.45; margin-top:5px; }
+    .classifieds-basic-land-strip {
+      display:grid; grid-template-columns:repeat(5,minmax(145px,1fr)); align-items:start; gap:13px;
+    }
+    .classifieds-land-pack-slot { --card-w:min(156px,100%); }
+    .classifieds-land-pack-title { color:#d8edf5; font-size:11px; font-weight:850; text-align:center; min-height:16px; }
+    .classifieds-land-pack-quantity-badge {
+      position:absolute; z-index:5; top:4px; left:4px; min-width:44px; padding:5px 8px; border-radius:999px;
+      background:rgba(8,14,18,.95); border:1px solid rgba(240,224,176,.76);
+      color:#fff3c9; font-size:15px; font-weight:950; letter-spacing:.025em; text-align:center;
+      box-shadow:0 3px 10px rgba(0,0,0,.48);
+    }
+    .classifieds-land-pack-price { min-height:21px; }
+    .classifieds-land-pack-week { color:#8eb4c2; font-size:9px; text-align:center; min-height:12px; }
+
     .classifieds-preview-overlay {
       position:fixed; inset:0; z-index:10060; display:flex; align-items:center; justify-content:center;
       padding:20px; background:rgba(0,0,0,.82); backdrop-filter:blur(5px); cursor:zoom-out;
@@ -4079,6 +4104,13 @@ function injectStoreStyles() {
     html.argentinia-mobile .classifieds-price :is(.coin-icon,.ficha-icon) { width:13px; height:13px; }
     html.argentinia-mobile .classifieds-buy-btn { padding:6px 7px; font-size:9px; border-width:1px; }
     html.argentinia-mobile .classifieds-card-error { font-size:8px; min-height:10px; }
+    html.argentinia-mobile .classifieds-basic-land-section { margin-top:16px; padding:11px 8px 10px; }
+    html.argentinia-mobile .classifieds-basic-land-title { font-size:14px; }
+    html.argentinia-mobile .classifieds-basic-land-subtitle { font-size:9px; }
+    html.argentinia-mobile .classifieds-basic-land-strip { grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:8px; }
+    html.argentinia-mobile .classifieds-land-pack-slot { --card-w:min(37dvh,145px); }
+    html.argentinia-mobile .classifieds-land-pack-quantity-badge { min-width:36px; padding:4px 6px; font-size:12px; }
+    html.argentinia-mobile .classifieds-land-pack-title { font-size:9px; }
     html.argentinia-mobile .classifieds-preview-overlay { padding:8px; }
     html.argentinia-mobile .classifieds-preview-panel { --card-w:min(72vw, calc(84dvh * 5 / 7), 280px); }
     .store-section-compact { padding:14px 18px; margin-bottom:14px; }
@@ -4700,6 +4732,10 @@ export function showStoreScreen(onBack, options = {}) {
       case 'CLASSIFIEDS_INSUFFICIENT_FUNDS': return gameText('classifieds.error.insufficientFunds');
       case 'CLASSIFIEDS_CARD_NOT_OFFERED': return gameText('classifieds.error.offerChanged');
       case 'CLASSIFIEDS_WEEK_NOT_PUBLISHED': return gameText('classifieds.error.notPublished');
+      case 'CLASSIFIEDS_BASIC_LAND_PACK_ALREADY_PURCHASED': return gameText('classifieds.basicLands.error.alreadyPurchased');
+      case 'CLASSIFIEDS_BASIC_LAND_PACK_INSUFFICIENT_POINTS': return gameText('classifieds.basicLands.error.insufficientPoints');
+      case 'CLASSIFIEDS_BASIC_LAND_PACK_INVALID_COLOR':
+      case 'CLASSIFIEDS_BASIC_LAND_PACK_CATALOG_INVALID': return gameText('classifieds.basicLands.error.invalid');
       default: return error?.message || gameText('classifieds.error.generic');
     }
   }
@@ -4707,15 +4743,22 @@ export function showStoreScreen(onBack, options = {}) {
   function syncClassifiedsOfferWithProfile(offer, profile) {
     if (!offer || !profile) return offer;
     const weekly = getClassifiedsProfileState(profile, offer.weekKey);
+    const landWeekly = getClassifiedsBasicLandPackProfileState(profile, offer.weekKey);
     return {
       ...offer,
       profile,
       purchased: weekly.purchased,
       purchaseCounts: weekly.counts,
+      basicLandPacksPurchased: landWeekly.purchasedColors,
       entries: (offer.entries || []).map(entry => ({
         ...entry,
         ownedCount: countOwnedClassifiedCard(profile, entry.cardId),
         purchased: weekly.purchased.includes(entry.cardId)
+      })),
+      basicLandPacks: (offer.basicLandPacks || []).map(entry => ({
+        ...entry,
+        ownedCount: countOwnedClassifiedCard(profile, entry.cardId),
+        purchased: landWeekly.purchasedColors.includes(String(entry.color || '').toUpperCase())
       }))
     };
   }
@@ -4781,6 +4824,13 @@ export function showStoreScreen(onBack, options = {}) {
       <div class="classifieds-strip-shell">
         <div class="classifieds-strip" id="classifieds-strip" aria-label="Siete Avisos Clasificados de esta semana"></div>
       </div>
+      <section class="classifieds-basic-land-section" aria-labelledby="classifieds-basic-land-title">
+        <div class="classifieds-basic-land-header">
+          <div class="classifieds-basic-land-title" id="classifieds-basic-land-title">${gameTextHtml('classifieds.basicLands.title')}</div>
+          <div class="classifieds-basic-land-subtitle">${gameTextHtml('classifieds.basicLands.subtitle')}</div>
+        </div>
+        <div class="classifieds-basic-land-strip" id="classifieds-basic-land-strip" aria-label="Cinco packs semanales de Tierras Básicas"></div>
+      </section>
       <div class="classifieds-refresh-row store-nav-row">
         <button class="store-back-link" id="classifieds-back">${gameTextHtml('classifieds.backStore')}</button>
         <button class="store-back-link" id="classifieds-refresh">↻ ${gameTextHtml('classifieds.refresh')}</button>
@@ -4886,6 +4936,105 @@ export function showStoreScreen(onBack, options = {}) {
       }
 
       strip?.appendChild(slot);
+    });
+
+    const landStrip = body.querySelector('#classifieds-basic-land-strip');
+    (offer.basicLandPacks || []).forEach(entry => {
+      const card = cardDb.getById(entry.cardId);
+      if (!card) return;
+      const slot = document.createElement('div');
+      slot.className = `classifieds-card-slot classifieds-land-pack-slot classifieds-rarity-Common${entry.purchased ? ' classifieds-purchased' : ''}`;
+
+      const quantityBadge = document.createElement('div');
+      quantityBadge.className = 'classifieds-land-pack-quantity-badge';
+      quantityBadge.textContent = `×${Math.max(1, Math.floor(Number(entry.quantity) || 1))}`;
+      slot.appendChild(quantityBadge);
+
+      if (entry.purchased) {
+        const badge = document.createElement('div');
+        badge.className = 'classifieds-purchased-badge';
+        badge.textContent = gameText('classifieds.basicLands.purchased');
+        slot.appendChild(badge);
+      }
+
+      const title = document.createElement('div');
+      title.className = 'classifieds-land-pack-title';
+      title.textContent = gameText('classifieds.basicLands.packTitle', { color: entry.label || entry.color });
+      slot.appendChild(title);
+
+      const cardEl = createCardElement(card, false, true, null, 'encyclopedia', null);
+      cardEl.setAttribute('role', 'button');
+      cardEl.setAttribute('tabindex', '0');
+      cardEl.setAttribute('aria-label', `Ver ${card.name || 'Tierra básica'} en grande`);
+      cardEl.addEventListener('click', event => { event.stopPropagation(); showClassifiedsCardPreview(card); });
+      cardEl.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          showClassifiedsCardPreview(card);
+        }
+      });
+      slot.appendChild(cardEl);
+
+      const owned = document.createElement('div');
+      owned.className = 'classifieds-owned';
+      owned.textContent = gameText('classifieds.basicLands.owned', { count: Math.max(0, Number(entry.ownedCount) || 0) });
+      slot.appendChild(owned);
+
+      const price = document.createElement('div');
+      price.className = 'classifieds-price classifieds-land-pack-price';
+      price.innerHTML = `<span class="classifieds-price-part">${COIN_ICON_HTML} ${Math.max(0, Math.floor(Number(entry.points) || 0))}</span>`;
+      slot.appendChild(price);
+
+      const weekHint = document.createElement('div');
+      weekHint.className = 'classifieds-land-pack-week';
+      weekHint.textContent = gameText('classifieds.basicLands.weekHint');
+      slot.appendChild(weekHint);
+
+      const buy = document.createElement('button');
+      buy.type = 'button';
+      buy.className = 'store-buy-btn classifieds-buy-btn';
+      const canAfford = points >= Math.max(0, Number(entry.points) || 0);
+      buy.disabled = entry.purchased || !canAfford;
+      buy.textContent = entry.purchased
+        ? gameText('classifieds.basicLands.purchased')
+        : (canAfford ? gameText('classifieds.basicLands.buy') : gameText('classifieds.noFunds'));
+      slot.appendChild(buy);
+
+      const errorBox = document.createElement('div');
+      errorBox.className = 'classifieds-card-error';
+      slot.appendChild(errorBox);
+
+      if (!entry.purchased) {
+        buy.addEventListener('click', async () => {
+          if (!state.currentUser || buy.disabled) return;
+          errorBox.textContent = '';
+          try {
+            await withEconomyButtonPending(buy, async () => {
+              const updatedProfile = await purchaseClassifiedBasicLandPack(state.currentUser.uid, entry.color);
+              if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
+              state.userProfile = updatedProfile;
+              updateAccountUI(state.currentUser);
+              renderStoreHeader(gameText('classifieds.title'));
+              const synced = syncClassifiedsOfferWithProfile(offer, updatedProfile);
+              synced.serverNow = new Date(serverAnchorMs + (Date.now() - localAnchorMs));
+              synced.nextRotationAt = rotationAt;
+              const previousScrollTop = body.scrollTop;
+              renderClassifiedsOffer(synced, viewSerial);
+              body.scrollTop = previousScrollTop;
+            }, { pendingLabel:gameText('classifieds.basicLands.buying') });
+          } catch (error) {
+            console.error('No se pudo comprar el pack semanal de Tierras Básicas:', error);
+            if (!overlay.isConnected || viewSerial !== classifiedsViewSerial) return;
+            errorBox.textContent = classifiedsFriendlyError(error);
+            if (['CLASSIFIEDS_BASIC_LAND_PACK_ALREADY_PURCHASED','CLASSIFIEDS_WEEK_NOT_PUBLISHED'].includes(error?.code)) {
+              setTimeout(() => {
+                if (overlay.isConnected && viewSerial === classifiedsViewSerial) void renderClassifiedsView();
+              }, 500);
+            }
+          }
+        });
+      }
+      landStrip?.appendChild(slot);
     });
 
     body.querySelector('#classifieds-back').addEventListener('click', renderMainView);
@@ -6664,6 +6813,22 @@ function injectAdminPanelStyles() {
     .admin-stat-label { color:#a997b6; font-size:11px; text-transform:uppercase; letter-spacing:.45px; }
     .admin-stat-value { color:#f1dfb4; font-size:24px; font-weight:800; margin-top:4px; }
     .admin-stat-sub { color:#8f8298; font-size:10px; margin-top:3px; }
+    .admin-dashboard-group { margin-top:18px; }
+    .admin-dashboard-group:first-child { margin-top:12px; }
+    .admin-dashboard-group-title {
+      color:#d9c0e8; font-size:12px; font-weight:900; letter-spacing:.065em; text-transform:uppercase;
+      padding-bottom:6px; border-bottom:1px solid rgba(176,106,212,.22);
+    }
+    .admin-chart-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:18px; }
+    .admin-chart-card { border:1px solid rgba(176,106,212,.24); border-radius:10px; padding:12px; background:rgba(8,5,12,.38); }
+    .admin-chart-title { color:#f1dfb4; font-size:12px; font-weight:850; margin-bottom:10px; }
+    .admin-chart-row { display:grid; grid-template-columns:minmax(90px,1fr) minmax(90px,2fr) auto; gap:8px; align-items:center; margin:7px 0; }
+    .admin-chart-label { color:#b9a7c5; font-size:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .admin-chart-track { height:9px; border-radius:999px; overflow:hidden; background:rgba(255,255,255,.06); }
+    .admin-chart-fill { height:100%; min-width:0; border-radius:999px; background:linear-gradient(90deg,rgba(176,106,212,.7),rgba(212,175,55,.72)); }
+    .admin-chart-value { color:#e5d4ec; font-size:10px; font-weight:800; min-width:30px; text-align:right; }
+    .admin-chart-empty { color:#7f7288; font-size:10px; font-style:italic; padding:8px 0 2px; }
+    .admin-stats-export-note { color:#8f8298; font-size:9px; margin-top:5px; }
     .admin-debug-download { width:auto; margin:0; padding:7px 10px; font-size:12px; white-space:nowrap; }
     .admin-debug-empty { padding:30px; color:#a995b8; text-align:center; font-style:italic; }
     .admin-debug-error { padding:18px; color:#e07a6b; text-align:center; }
@@ -6734,6 +6899,8 @@ export function showAdminPanel(onBack) {
     { section: 'Avisos Clasificados', id: 'classifiedsMythicPoints', label: 'Mythic · puntos', value: CLASSIFIEDS_MYTHIC_POINTS, step: '1' },
     { section: 'Avisos Clasificados', id: 'classifiedsMythicFichas', label: 'Mythic · Fichas', value: CLASSIFIEDS_MYTHIC_FICHAS, step: '1' },
     { section: 'Avisos Clasificados', id: 'classifiedsMythicChancePercent', label: 'Chance Mythic en slot premium (%)', value: +(CLASSIFIEDS_MYTHIC_CHANCE * 100).toFixed(2), step: '0.1' },
+    { section: 'AVISOS CLASIFICADOS · PACKS DE TIERRAS BÁSICAS', id: 'classifiedBasicLandPackPrice', label: 'Costo de cada pack por color · puntos', value: CLASSIFIEDS_BASIC_LAND_PACK_PRICE, step: '1' },
+    { section: 'AVISOS CLASIFICADOS · PACKS DE TIERRAS BÁSICAS', id: 'classifiedBasicLandPackQuantity', label: 'Tierras entregadas por pack · 1–100', value: CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, step: '1' },
     { section: 'Mazos', id: 'deckSizeExact', label: 'Cartas exactas por mazo', value: DECK_SIZE_EXACT, step: '1' },
     { section: 'Mazos', id: 'maxCopiesPerCard', label: 'Máximo de copias iguales por mazo', value: MAX_COPIES_PER_CARD, step: '1' },
     { section: 'Mazos', id: 'maxEnhancedCardsPerDeck', label: 'Máximo de cartas mejoradas por mazo', value: MAX_ENHANCED_CARDS_PER_DECK, step: '1' },
@@ -6970,11 +7137,13 @@ export function showAdminPanel(onBack) {
             <div><div class="admin-section-title">${gameTextHtml('admin.stats.title')}</div><div class="admin-debug-summary" id="admin-stats-summary">${gameTextHtml('admin.stats.initial')}</div></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
               <button class="admin-save-btn" id="admin-stats-sync">${gameTextHtml('admin.stats.sync')}</button>
+              <button class="admin-save-btn" id="admin-stats-export">${gameTextHtml('admin.stats.export')}</button>
               <button class="admin-save-btn" id="admin-stats-refresh">${gameTextHtml('admin.stats.refresh')}</button>
             </div>
           </div>
-          <div id="admin-stats-cards" class="admin-stats-grid"></div>
-          <div class="admin-debug-table-wrap" id="admin-stats-detail" style="margin-top:14px;"></div>
+          <div id="admin-stats-cards"></div>
+          <div id="admin-stats-charts" class="admin-chart-grid"></div>
+          <div class="admin-debug-table-wrap" id="admin-stats-detail" style="margin-top:18px;"></div>
           <div class="admin-debug-summary" style="margin-top:10px;">${gameTextHtml('admin.stats.methodNote')}</div>
         </div>
       </div>
@@ -7638,40 +7807,252 @@ Receipt: ${receiptId}
   let statsLoading = false;
   let statsProfilesCache = [];
   let statsSessionsCache = [];
+  let statsPublicRowsCache = [];
+  let statsMarketCache = null;
+
+  const ADMIN_TRACKED_STAT_KEYS = Object.freeze([
+    'gamesPlayed','soloGames','multiplayerGames','wins','losses','soloWins','soloLosses',
+    'multiplayerWins','multiplayerLosses','abandons','totalDurationMs','pointsEarned','pointsSpent','pointsLost',
+    'fichasEarned','fichasSpent','packsReceived','packsOpened','guaranteedMythicsOpened',
+    'tournamentsPlayed','tournamentMatches','tournamentWins','tournamentLosses','tournamentQuarterfinals',
+    'tournamentSemifinals','tournamentFinals','tournamentChampionships','tournamentForfeits','tradesCompleted',
+    'eloGames','eloWins','eloLosses','basicLandPacksPurchased','basicLandsReceived','basicLandPacksWhite',
+    'basicLandPacksBlue','basicLandPacksBlack','basicLandPacksRed','basicLandPacksGreen',
+    'storePacksPurchased','enhancementsCrafted','prebuiltDecksPurchased','classifiedsCardsPurchased',
+    'emotesPurchased','dailyRewardsClaimed'
+  ]);
 
   function trackedTotals(publicRows) {
+    const seed = Object.fromEntries(ADMIN_TRACKED_STAT_KEYS.map(key => [key, 0]));
     return (publicRows || []).reduce((acc, row) => {
-      for (const key of Object.keys(acc)) acc[key] += Number(row?.[key]) || 0;
+      for (const key of ADMIN_TRACKED_STAT_KEYS) acc[key] += Number(row?.[key]) || 0;
       return acc;
-    }, { pointsEarned: 0, pointsSpent: 0, pointsLost: 0, fichasEarned: 0, fichasSpent: 0, packsReceived: 0, packsOpened: 0, guaranteedMythicsOpened: 0, tradesCompleted: 0 });
+    }, seed);
   }
 
-  function renderAdminStatistics(profiles, sessions, publicRows) {
+  function adminRate(wins, losses) {
+    const total = Math.max(0, Number(wins) || 0) + Math.max(0, Number(losses) || 0);
+    return total ? (Math.max(0, Number(wins) || 0) / total) * 100 : 0;
+  }
+
+  function adminMetricCard(label, value, sub = '') {
+    return `<div class="admin-stat-card"><div class="admin-stat-label">${escapeHtml(label)}</div><div class="admin-stat-value">${escapeHtml(value)}</div><div class="admin-stat-sub">${escapeHtml(sub)}</div></div>`;
+  }
+
+  function adminMetricGroup(title, cards) {
+    return `<section class="admin-dashboard-group"><div class="admin-dashboard-group-title">${escapeHtml(title)}</div><div class="admin-stats-grid">${cards.join('')}</div></section>`;
+  }
+
+  function adminBarChart(title, items) {
+    const normalized = (items || []).map(item => ({
+      label: String(item?.label || ''),
+      value: Math.max(0, Number(item?.value) || 0),
+      display: item?.display == null ? Math.max(0, Number(item?.value) || 0).toLocaleString('es-AR') : String(item.display)
+    }));
+    const max = Math.max(0, ...normalized.map(item => item.value));
+    const rows = normalized.map(item => {
+      const width = max > 0 ? Math.max(item.value > 0 ? 2 : 0, Math.min(100, (item.value / max) * 100)) : 0;
+      return `<div class="admin-chart-row"><div class="admin-chart-label" title="${escapeHtml(item.label)}">${escapeHtml(item.label)}</div><div class="admin-chart-track"><div class="admin-chart-fill" style="width:${width.toFixed(2)}%"></div></div><div class="admin-chart-value">${escapeHtml(item.display)}</div></div>`;
+    }).join('');
+    return `<div class="admin-chart-card"><div class="admin-chart-title">${escapeHtml(title)}</div>${max > 0 ? rows : `<div class="admin-chart-empty">${escapeHtml(gameText('admin.stats.chart.empty'))}</div>`}</div>`;
+  }
+
+  function adminMarketSnapshot(market) {
+    if (!market) return { available:false, activeListings:0, activeOffers:0, capped:false };
+    const listings = [...(Array.isArray(market.listings) ? market.listings : [])];
+    if (market.ownListing) listings.push(market.ownListing);
+    const unique = new Map();
+    for (const listing of listings) {
+      const key = String(listing?.listingId || `${listing?.ownerUid || ''}:${listing?.cardId || ''}`);
+      if (key) unique.set(key, listing);
+    }
+    const rows = [...unique.values()];
+    return {
+      available:true,
+      activeListings:rows.length,
+      activeOffers:rows.reduce((sum, listing) => sum + Math.max(0, Number(listing?.offerCount) || 0), 0),
+      capped:(Array.isArray(market.listings) ? market.listings.length : 0) >= 100
+    };
+  }
+
+  function buildAdminStatisticsSnapshot(profiles, sessions, publicRows, market) {
     const profileStats = summarizeProfiles(profiles);
     const games = summarizeGlobalTelemetry(sessions);
     const tracked = trackedTotals(publicRows);
-    const tradeParticipants=(publicRows||[]).filter(row=>(Number(row?.tradesCompleted)||0)>0).length;
-    const completedTrades=Math.floor((Number(tracked.tradesCompleted)||0)/2);
-    const cards = [
-      [gameText('admin.stats.registered.label'), profileStats.registeredPlayers, gameText('admin.stats.registered.sub', { new7d: profileStats.new7d, new30d: profileStats.new30d })],
-      [gameText('admin.stats.active.label'), profileStats.active24h, gameText('admin.stats.active.sub', { active7d: profileStats.active7d, active30d: profileStats.active30d })],
-      [gameText('admin.stats.games.label'), games.totalGames, gameText('admin.stats.games.sub', { solo: games.soloGames, multi: games.multiplayerGames })],
-      [gameText('admin.stats.duration.label'), formatDuration(games.averageDurationMs), gameText('admin.stats.duration.sub', { total: formatDuration(games.totalDurationMs), max: formatDuration(games.longestDurationMs) })],
-      [gameText('admin.stats.points.label'), tracked.pointsEarned.toLocaleString('es-AR'), gameText('admin.stats.points.sub', { spent: tracked.pointsSpent.toLocaleString('es-AR'), lost: tracked.pointsLost.toLocaleString('es-AR'), circulation: profileStats.pointsInCirculation.toLocaleString('es-AR') })],
-      [gameText('admin.stats.fichas.label'), tracked.fichasEarned.toLocaleString('es-AR'), gameText('admin.stats.fichas.sub', { spent: tracked.fichasSpent.toLocaleString('es-AR'), circulation: profileStats.fichasInCirculation.toLocaleString('es-AR') })],
-      [gameText('admin.stats.packs.label'), tracked.packsOpened.toLocaleString('es-AR'), gameText('admin.stats.packs.sub', { received: tracked.packsReceived.toLocaleString('es-AR'), chests: profileStats.packsInChests.toLocaleString('es-AR'), mythics: tracked.guaranteedMythicsOpened.toLocaleString('es-AR') })],
-      [gameText('admin.stats.collection.label'), profileStats.cardsOwned.toLocaleString('es-AR'), gameText('admin.stats.collection.sub', { unique: profileStats.communityUniqueCards, total: POOL_BASELINE.total, average: profileStats.averageUniqueCards.toFixed(1) })],
-      [gameText('admin.stats.trades.label'), completedTrades.toLocaleString('es-AR'), gameText('admin.stats.trades.sub', { participants: tradeParticipants })],
-      [gameText('admin.stats.abandons.label'), games.abandonedGames.toLocaleString('es-AR'), gameText('admin.stats.abandons.sub', { sessions: games.completedSessions })]
+    const marketNow = adminMarketSnapshot(market);
+    const tradeParticipants = (publicRows || []).filter(row => (Number(row?.tradesCompleted) || 0) > 0).length;
+    const completedTrades = Math.floor((Number(tracked.tradesCompleted) || 0) / 2);
+    const eloPlayers = (publicRows || []).filter(row => (Number(row?.eloGames) || 0) > 0);
+    const logicalEloMatches = Math.floor((Number(tracked.eloGames) || 0) / 2);
+    const averageElo = eloPlayers.length
+      ? Math.round(eloPlayers.reduce((sum, row) => sum + (Number(row?.eloRating) || 1200), 0) / eloPlayers.length)
+      : 0;
+    const topElo = eloPlayers.reduce((best, row) => !best || (Number(row?.eloRating) || 0) > (Number(best?.eloRating) || 0) ? row : best, null);
+    const peakElo = eloPlayers.reduce((best, row) => !best || (Number(row?.eloPeak) || 0) > (Number(best?.eloPeak) || 0) ? row : best, null);
+    const tournamentRate = adminRate(tracked.tournamentWins, tracked.tournamentLosses);
+    return {
+      profileStats, games, tracked, marketNow, tradeParticipants, completedTrades,
+      eloPlayers, logicalEloMatches, averageElo, topElo, peakElo, tournamentRate
+    };
+  }
+
+  function renderAdminStatistics(profiles, sessions, publicRows, market = null) {
+    const snap = buildAdminStatisticsSnapshot(profiles, sessions, publicRows, market);
+    const { profileStats, games, tracked, marketNow } = snap;
+    const marketSuffix = marketNow.capped ? gameText('admin.stats.market.capped') : gameText('admin.stats.market.live');
+    const groups = [
+      adminMetricGroup(gameText('admin.stats.group.activity'), [
+        adminMetricCard(gameText('admin.stats.registered.label'), profileStats.registeredPlayers, gameText('admin.stats.registered.sub', { new7d:profileStats.new7d, new30d:profileStats.new30d })),
+        adminMetricCard(gameText('admin.stats.active.label'), profileStats.active24h, gameText('admin.stats.active.sub', { active7d:profileStats.active7d, active30d:profileStats.active30d })),
+        adminMetricCard(gameText('admin.stats.games.label'), games.totalGames, gameText('admin.stats.games.sub3', { solo:games.soloGames, multi:games.multiplayerGames, tournament:games.tournamentGames || 0 })),
+        adminMetricCard(gameText('admin.stats.duration.label'), formatDuration(games.averageDurationMs), gameText('admin.stats.duration.sub', { total:formatDuration(games.totalDurationMs), max:formatDuration(games.longestDurationMs) })),
+        adminMetricCard(gameText('admin.stats.abandons.label'), games.abandonedGames.toLocaleString('es-AR'), gameText('admin.stats.abandons.sub', { sessions:games.completedSessions }))
+      ]),
+      adminMetricGroup(gameText('admin.stats.group.competition'), [
+        adminMetricCard(gameText('admin.stats.tournaments.started'), tracked.tournamentsPlayed.toLocaleString('es-AR'), `${tracked.tournamentMatches.toLocaleString('es-AR')} ${gameText('admin.stats.matches')}`),
+        adminMetricCard(gameText('admin.stats.tournaments.record'), `${tracked.tournamentWins.toLocaleString('es-AR')}–${tracked.tournamentLosses.toLocaleString('es-AR')}`, `${snap.tournamentRate.toFixed(1)}% · ${tracked.tournamentForfeits.toLocaleString('es-AR')} ${gameText('admin.stats.forfeits')}`),
+        adminMetricCard(gameText('admin.stats.tournaments.champions'), tracked.tournamentChampionships.toLocaleString('es-AR'), `${tracked.tournamentFinals.toLocaleString('es-AR')} ${gameText('admin.stats.finalsReached')}`),
+        adminMetricCard(gameText('admin.stats.elo.players'), snap.eloPlayers.length.toLocaleString('es-AR'), `${snap.logicalEloMatches.toLocaleString('es-AR')} ${gameText('admin.stats.ratedMatches')}`),
+        adminMetricCard(gameText('admin.stats.elo.average'), snap.averageElo ? snap.averageElo.toLocaleString('es-AR') : '—', snap.topElo ? `${gameText('admin.stats.elo.leader')}: ${snap.topElo.username || gameText('ranking.playerFallback')} · ${Number(snap.topElo.eloRating || 1200)}` : gameText('admin.stats.noRatedPlayers')),
+        adminMetricCard(gameText('admin.stats.elo.peak'), snap.peakElo ? Number(snap.peakElo.eloPeak || 1200).toLocaleString('es-AR') : '—', snap.peakElo ? String(snap.peakElo.username || gameText('ranking.playerFallback')) : gameText('admin.stats.noRatedPlayers'))
+      ]),
+      adminMetricGroup(gameText('admin.stats.group.market'), [
+        adminMetricCard(gameText('admin.stats.trades.label'), snap.completedTrades.toLocaleString('es-AR'), gameText('admin.stats.trades.sub', { participants:snap.tradeParticipants })),
+        adminMetricCard(gameText('admin.stats.market.participants'), snap.tradeParticipants.toLocaleString('es-AR'), snap.tradeParticipants ? `${(snap.completedTrades / snap.tradeParticipants).toFixed(2)} ${gameText('admin.stats.market.tradesPerParticipant')}` : '—'),
+        adminMetricCard(gameText('admin.stats.market.activeListings'), marketNow.available ? marketNow.activeListings.toLocaleString('es-AR') : '—', marketNow.available ? marketSuffix : gameText('admin.stats.market.unavailable')),
+        adminMetricCard(gameText('admin.stats.market.activeOffers'), marketNow.available ? marketNow.activeOffers.toLocaleString('es-AR') : '—', marketNow.available ? marketSuffix : gameText('admin.stats.market.unavailable'))
+      ]),
+      adminMetricGroup(gameText('admin.stats.group.economy'), [
+        adminMetricCard(gameText('admin.stats.points.label'), tracked.pointsEarned.toLocaleString('es-AR'), gameText('admin.stats.points.sub', { spent:tracked.pointsSpent.toLocaleString('es-AR'), lost:tracked.pointsLost.toLocaleString('es-AR'), circulation:profileStats.pointsInCirculation.toLocaleString('es-AR') })),
+        adminMetricCard(gameText('admin.stats.fichas.label'), tracked.fichasEarned.toLocaleString('es-AR'), gameText('admin.stats.fichas.sub', { spent:tracked.fichasSpent.toLocaleString('es-AR'), circulation:profileStats.fichasInCirculation.toLocaleString('es-AR') })),
+        adminMetricCard(gameText('admin.stats.packs.label'), tracked.packsOpened.toLocaleString('es-AR'), gameText('admin.stats.packs.sub', { received:tracked.packsReceived.toLocaleString('es-AR'), chests:profileStats.packsInChests.toLocaleString('es-AR'), mythics:tracked.guaranteedMythicsOpened.toLocaleString('es-AR') })),
+        adminMetricCard(gameText('admin.stats.collection.label'), profileStats.cardsOwned.toLocaleString('es-AR'), gameText('admin.stats.collection.sub', { unique:profileStats.communityUniqueCards, total:POOL_BASELINE.total, average:profileStats.averageUniqueCards.toFixed(1) })),
+        adminMetricCard(gameText('admin.stats.basicLands.packs'), tracked.basicLandPacksPurchased.toLocaleString('es-AR'), `${tracked.basicLandsReceived.toLocaleString('es-AR')} ${gameText('admin.stats.basicLands.received')}`),
+        adminMetricCard(gameText('admin.stats.dailyClaims'), tracked.dailyRewardsClaimed.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314'))
+      ]),
+      adminMetricGroup(gameText('admin.stats.group.store'), [
+        adminMetricCard(gameText('admin.stats.store.packPurchases'), tracked.storePacksPurchased.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314')),
+        adminMetricCard(gameText('admin.stats.store.classifiedPurchases'), tracked.classifiedsCardsPurchased.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314')),
+        adminMetricCard(gameText('admin.stats.store.prebuiltPurchases'), tracked.prebuiltDecksPurchased.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314')),
+        adminMetricCard(gameText('admin.stats.store.enhancements'), tracked.enhancementsCrafted.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314')),
+        adminMetricCard(gameText('admin.stats.store.emotes'), tracked.emotesPurchased.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314'))
+      ])
     ];
-    overlay.querySelector('#admin-stats-cards').innerHTML = cards.map(([label,value,sub]) => `<div class="admin-stat-card"><div class="admin-stat-label">${escapeHtml(label)}</div><div class="admin-stat-value">${escapeHtml(value)}</div><div class="admin-stat-sub">${escapeHtml(sub)}</div></div>`).join('');
-    overlay.querySelector('#admin-stats-summary').textContent = gameText('admin.stats.summary', { profiles: profiles.length, sessions: sessions.length });
-    const rows = [...publicRows].sort((a,b)=>(Number(b.gamesPlayed)||0)-(Number(a.gamesPlayed)||0)).map(r=>`<tr><td><strong>${escapeHtml(r.username || gameText('ranking.playerFallback'))}</strong></td><td>${Number(r.gamesPlayed||0)}</td><td>${Number(r.soloGames||0)} / ${Number(r.multiplayerGames||0)}</td><td>${Number(r.wins||0)}</td><td>${winRate(r).toFixed(1)}%</td><td>${Number(r.pointsEarned||0)}</td><td>${Number(r.fichasEarned||0)}</td><td>${Number(r.packsOpened||0)}</td><td>${Number(r.uniqueCards||0)} / ${POOL_BASELINE.total}</td><td>${Number(r.tradesCompleted||0)}</td><td>${formatDuration(r.totalDurationMs||0)}</td></tr>`).join('');
+    overlay.querySelector('#admin-stats-cards').innerHTML = groups.join('');
+
+    overlay.querySelector('#admin-stats-charts').innerHTML = [
+      adminBarChart(gameText('admin.stats.chart.tournamentFunnel'), [
+        { label:gameText('admin.stats.chart.started'), value:tracked.tournamentsPlayed },
+        { label:gameText('admin.stats.chart.quarters'), value:tracked.tournamentQuarterfinals },
+        { label:gameText('admin.stats.chart.semis'), value:tracked.tournamentSemifinals },
+        { label:gameText('admin.stats.chart.finals'), value:tracked.tournamentFinals },
+        { label:gameText('admin.stats.chart.champions'), value:tracked.tournamentChampionships }
+      ]),
+      adminBarChart(gameText('admin.stats.chart.landsByColor'), [
+        { label:gameText('admin.stats.color.white'), value:tracked.basicLandPacksWhite },
+        { label:gameText('admin.stats.color.blue'), value:tracked.basicLandPacksBlue },
+        { label:gameText('admin.stats.color.black'), value:tracked.basicLandPacksBlack },
+        { label:gameText('admin.stats.color.red'), value:tracked.basicLandPacksRed },
+        { label:gameText('admin.stats.color.green'), value:tracked.basicLandPacksGreen }
+      ]),
+      adminBarChart(gameText('admin.stats.chart.economy'), [
+        { label:gameText('admin.stats.chart.pointsEarned'), value:tracked.pointsEarned },
+        { label:gameText('admin.stats.chart.pointsSpent'), value:tracked.pointsSpent },
+        { label:gameText('admin.stats.chart.pointsLost'), value:tracked.pointsLost }
+      ]),
+      adminBarChart(gameText('admin.stats.chart.market'), [
+        { label:gameText('admin.stats.chart.trades'), value:snap.completedTrades },
+        { label:gameText('admin.stats.chart.participants'), value:snap.tradeParticipants },
+        { label:gameText('admin.stats.chart.activeListings'), value:marketNow.activeListings },
+        { label:gameText('admin.stats.chart.activeOffers'), value:marketNow.activeOffers }
+      ])
+    ].join('');
+
+    overlay.querySelector('#admin-stats-summary').textContent = gameText('admin.stats.summary', { profiles:profiles.length, sessions:sessions.length });
+
+    const rows = [...(publicRows || [])].sort((a,b) => (Number(b.gamesPlayed)||0) - (Number(a.gamesPlayed)||0)).map(r => {
+      const soloRecord = `${Number(r.soloWins||0)}–${Number(r.soloLosses||0)} (${adminRate(r.soloWins,r.soloLosses).toFixed(0)}%)`;
+      const pvpRecord = `${Number(r.multiplayerWins||0)}–${Number(r.multiplayerLosses||0)} (${adminRate(r.multiplayerWins,r.multiplayerLosses).toFixed(0)}%)`;
+      const tournamentRecord = `${Number(r.tournamentWins||0)}–${Number(r.tournamentLosses||0)} · 🏆 ${Number(r.tournamentChampionships||0)}`;
+      const elo = Number(r.eloGames||0) > 0 ? `${Number(r.eloRating||1200)} / ${Number(r.eloPeak||1200)}` : '—';
+      return `<tr><td><strong>${escapeHtml(r.username || gameText('ranking.playerFallback'))}</strong></td><td>${Number(r.gamesPlayed||0)}</td><td>${escapeHtml(soloRecord)}</td><td>${escapeHtml(pvpRecord)}</td><td>${Number(r.tournamentsPlayed||0)} · ${escapeHtml(tournamentRecord)}</td><td>${escapeHtml(elo)}</td><td>${Number(r.tradesCompleted||0)}</td><td>${Number(r.basicLandPacksPurchased||0)} / ${Number(r.basicLandsReceived||0)}</td><td>${Number(r.pointsEarned||0)}</td><td>${Number(r.fichasEarned||0)}</td><td>${Number(r.packsOpened||0)}</td><td>${Number(r.uniqueCards||0)} / ${POOL_BASELINE.total}</td><td>${formatDuration(r.totalDurationMs||0)}</td></tr>`;
+    }).join('');
     const headers = [
-      'admin.stats.col.player','admin.stats.col.games','admin.stats.col.soloMulti','admin.stats.col.wins','admin.stats.col.winRate',
-      'admin.stats.col.points','admin.stats.col.fichas','admin.stats.col.packs','admin.stats.col.discovered','admin.stats.col.trades','admin.stats.col.time'
+      'admin.stats.col.player','admin.stats.col.games','admin.stats.col.soloRecord','admin.stats.col.pvpRecord','admin.stats.col.tournaments',
+      'admin.stats.col.elo','admin.stats.col.trades','admin.stats.col.landPacks','admin.stats.col.points','admin.stats.col.fichas',
+      'admin.stats.col.packs','admin.stats.col.discovered','admin.stats.col.time'
     ].map(key => `<th>${escapeHtml(gameText(key))}</th>`).join('');
-    overlay.querySelector('#admin-stats-detail').innerHTML = `<table class="admin-debug-table"><thead><tr>${headers}</tr></thead><tbody>${rows || `<tr><td colspan="11">${escapeHtml(gameText('admin.stats.empty'))}</td></tr>`}</tbody></table>`;
+    overlay.querySelector('#admin-stats-detail').innerHTML = `<table class="admin-debug-table"><thead><tr>${headers}</tr></thead><tbody>${rows || `<tr><td colspan="13">${escapeHtml(gameText('admin.stats.empty'))}</td></tr>`}</tbody></table>`;
+  }
+
+  function adminCsvCell(value) {
+    let text = value == null ? '' : String(value);
+    if (/^[=+\-@]/.test(text)) text = `'${text}`;
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+
+  function exportAdminStatisticsCsv() {
+    if (!statsProfilesCache.length && !statsPublicRowsCache.length) return;
+    const snap = buildAdminStatisticsSnapshot(statsProfilesCache, statsSessionsCache, statsPublicRowsCache, statsMarketCache);
+    const summary = [
+      ['ARGENTINIA · ESTADÍSTICAS ADMIN', '23.21.4'],
+      ['Exportado', new Date().toISOString()],
+      ['Jugadores registrados', snap.profileStats.registeredPlayers],
+      ['Activos 24h', snap.profileStats.active24h],
+      ['Partidas telemetría', snap.games.totalGames],
+      ['Solo', snap.games.soloGames],
+      ['Multiplayer', snap.games.multiplayerGames],
+      ['Torneo', snap.games.tournamentGames || 0],
+      ['Torneos iniciados', snap.tracked.tournamentsPlayed],
+      ['Partidas de torneo', snap.tracked.tournamentMatches],
+      ['Campeonatos', snap.tracked.tournamentChampionships],
+      ['Intercambios completados', snap.completedTrades],
+      ['Participantes Mercado de Pases', snap.tradeParticipants],
+      ['Publicaciones activas visibles', snap.marketNow.available ? snap.marketNow.activeListings : 'N/D'],
+      ['Ofertas activas visibles', snap.marketNow.available ? snap.marketNow.activeOffers : 'N/D'],
+      ['Jugadores con ELO', snap.eloPlayers.length],
+      ['Partidas ELO', snap.logicalEloMatches],
+      ['ELO promedio', snap.averageElo || 'N/D'],
+      ['Packs de tierras comprados', snap.tracked.basicLandPacksPurchased],
+      ['Tierras básicas entregadas', snap.tracked.basicLandsReceived],
+      ['Puntos ganados', snap.tracked.pointsEarned],
+      ['Puntos gastados', snap.tracked.pointsSpent],
+      ['Fichas ganadas', snap.tracked.fichasEarned],
+      ['Fichas gastadas', snap.tracked.fichasSpent],
+      ['Sobres abiertos', snap.tracked.packsOpened],
+      ['Cartas en colecciones', snap.profileStats.cardsOwned]
+    ];
+
+    const playerHeader = [
+      'Jugador','Partidas','Solo','Solo W','Solo L','PvP','PvP W','PvP L','Torneos','Torneo partidas','Torneo W','Torneo L',
+      'Cuartos','Semis','Finales','Campeonatos','Forfeits','ELO','ELO peak','ELO partidas','Intercambios',
+      'Packs tierras','Tierras recibidas','Puntos ganados','Puntos gastados','Fichas ganadas','Fichas gastadas',
+      'Sobres recibidos','Sobres abiertos','Mythics aseguradas','Cartas poseídas','Únicas','Tiempo ms'
+    ];
+    const playerRows = [...statsPublicRowsCache]
+      .sort((a,b) => String(a.username || '').localeCompare(String(b.username || ''), 'es-AR'))
+      .map(r => [
+        r.username || 'Jugador',r.gamesPlayed||0,r.soloGames||0,r.soloWins||0,r.soloLosses||0,r.multiplayerGames||0,r.multiplayerWins||0,r.multiplayerLosses||0,
+        r.tournamentsPlayed||0,r.tournamentMatches||0,r.tournamentWins||0,r.tournamentLosses||0,r.tournamentQuarterfinals||0,r.tournamentSemifinals||0,r.tournamentFinals||0,
+        r.tournamentChampionships||0,r.tournamentForfeits||0,r.eloRating||1200,r.eloPeak||1200,r.eloGames||0,r.tradesCompleted||0,
+        r.basicLandPacksPurchased||0,r.basicLandsReceived||0,r.pointsEarned||0,r.pointsSpent||0,r.fichasEarned||0,r.fichasSpent||0,
+        r.packsReceived||0,r.packsOpened||0,r.guaranteedMythicsOpened||0,r.cardsOwned||0,r.uniqueCards||0,r.totalDurationMs||0
+      ]);
+    const lines = [
+      ...summary.map(row => row.map(adminCsvCell).join(';')),
+      '',
+      playerHeader.map(adminCsvCell).join(';'),
+      ...playerRows.map(row => row.map(adminCsvCell).join(';'))
+    ];
+    const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type:'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Argentinia_Estadisticas_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
   async function reloadAdminStatistics() {
@@ -7680,14 +8061,24 @@ Receipt: ${receiptId}
     const refresh = overlay.querySelector('#admin-stats-refresh');
     if (refresh) { refresh.disabled = true; refresh.textContent = gameText('admin.stats.loading'); }
     try {
-      const [profiles, sessions, publicRows] = await Promise.all([fetchAllUserProfiles(), fetchTelemetrySessionsForAdmin(), fetchPublicPlayerStats()]);
+      const [profiles, sessions, publicRows, market] = await Promise.all([
+        fetchAllUserProfiles(),
+        fetchTelemetrySessionsForAdmin(),
+        fetchPublicPlayerStats(),
+        getTradeMarket().catch(error => {
+          console.warn('Estadísticas: no se pudo cargar snapshot vivo del Mercado de Pases:', error);
+          return null;
+        })
+      ]);
       statsProfilesCache = profiles;
       statsSessionsCache = sessions;
-      renderAdminStatistics(profiles, sessions, publicRows);
+      statsPublicRowsCache = publicRows;
+      statsMarketCache = market;
+      renderAdminStatistics(profiles, sessions, publicRows, market);
       statsLoaded = true;
     } catch (err) {
       console.error('No se pudieron cargar Estadísticas:', err);
-      overlay.querySelector('#admin-stats-summary').textContent = gameText('admin.stats.error', { message: err?.message || err });
+      overlay.querySelector('#admin-stats-summary').textContent = gameText('admin.stats.error', { message:err?.message || err });
     } finally {
       statsLoading = false;
       if (refresh) { refresh.disabled = false; refresh.textContent = gameText('admin.stats.refresh'); }
@@ -7700,7 +8091,7 @@ Receipt: ${receiptId}
     try {
       if (!statsProfilesCache.length && !statsSessionsCache.length) await reloadAdminStatistics();
       const result = await adminSyncPublicPlayerStats(statsProfilesCache, statsSessionsCache);
-      btn.textContent = gameText('admin.stats.syncDone', { count: result.updated });
+      btn.textContent = gameText('admin.stats.syncDone', { count:result.updated });
       await reloadAdminStatistics();
     } catch (err) {
       console.error('No se pudo sincronizar Ranking:', err);
@@ -7935,6 +8326,7 @@ Receipt: ${receiptId}
   overlay.querySelector('#admin-movements-to')?.addEventListener('change', renderEconomyMovements);
   overlay.querySelector('#admin-stats-refresh').addEventListener('click', reloadAdminStatistics);
   overlay.querySelector('#admin-stats-sync').addEventListener('click', syncAdminRanking);
+  overlay.querySelector('#admin-stats-export').addEventListener('click', exportAdminStatisticsCsv);
   overlay.querySelector('#admin-economy-audit-refresh').addEventListener('click', reloadEconomyAudit);
   overlay.querySelector('#admin-economy-audit-kind').addEventListener('change', renderEconomyAudit);
   overlay.querySelector('#admin-economy-audit-search').addEventListener('input', renderEconomyAudit);
@@ -8195,6 +8587,8 @@ Receipt: ${receiptId}
       classifiedsMythicPoints: readNumber('classifiedsMythicPoints'),
       classifiedsMythicFichas: readNumber('classifiedsMythicFichas'),
       classifiedsMythicChance: readNumber('classifiedsMythicChancePercent') / 100,
+      classifiedBasicLandPackPrice: readNumber('classifiedBasicLandPackPrice'),
+      classifiedBasicLandPackQuantity: readNumber('classifiedBasicLandPackQuantity'),
       deckSizeExact: readNumber('deckSizeExact'),
       maxCopiesPerCard: readNumber('maxCopiesPerCard'),
       maxEnhancedCardsPerDeck: readNumber('maxEnhancedCardsPerDeck'),
@@ -8246,6 +8640,8 @@ Receipt: ${receiptId}
       newConfig.classifiedsRarePoints, newConfig.classifiedsRareFichas,
       newConfig.classifiedsMythicPoints, newConfig.classifiedsMythicFichas
     ].every(value => value >= 0);
+    const basicLandPackConfigValid = Number.isInteger(newConfig.classifiedBasicLandPackPrice) && newConfig.classifiedBasicLandPackPrice >= 0
+      && Number.isInteger(newConfig.classifiedBasicLandPackQuantity) && newConfig.classifiedBasicLandPackQuantity >= 1 && newConfig.classifiedBasicLandPackQuantity <= 100;
     const tradeLimitsValid = Number.isInteger(newConfig.tradeMaxWantedCriteria) && newConfig.tradeMaxWantedCriteria >= 1 && newConfig.tradeMaxWantedCriteria <= 3
       && Number.isInteger(newConfig.tradeMaxOffersPerListing) && newConfig.tradeMaxOffersPerListing >= 1 && newConfig.tradeMaxOffersPerListing <= 50
       && Number.isInteger(newConfig.tradeMaxOutgoingOffers) && newConfig.tradeMaxOutgoingOffers >= 1 && newConfig.tradeMaxOutgoingOffers <= 20
@@ -8268,7 +8664,7 @@ Receipt: ${receiptId}
       || newConfig.pvpMinRewardMinutes < 0 || newConfig.pvpMinCompletedTurns < 0
       || newConfig.pvpMaxRewardedMatchesPerPairDaily < 0 || newConfig.pvpMaxPointsPerDay < 0 || !pvpIntegerFields
       || !classifiedsNonNegative || newConfig.classifiedsMythicChance < 0 || newConfig.classifiedsMythicChance > 1
-      || !tradeLimitsValid || !tournamentNumbersValid || !tournamentEnumsValid) {
+      || !basicLandPackConfigValid || !tradeLimitsValid || !tournamentNumbersValid || !tournamentEnumsValid) {
       errorBox.textContent = 'Algún valor no tiene sentido (¿puntos/límites no enteros, negativo o porcentaje fuera de 0–100?). Revisá antes de guardar.';
       return;
     }
@@ -8282,7 +8678,7 @@ Receipt: ${receiptId}
       // 23.13.25: la semana actual queda congelada; el scheduler Admin detecta el nuevo
       // fingerprint económico y republica únicamente semanas futuras con estos valores.
       await ensureClassifiedsSchedule();
-      successBox.textContent = '✅ Guardado — ya está activo; Clasificados conserva la semana actual y actualizó las futuras.';
+      successBox.textContent = '✅ Guardado — Packs de Tierras: precio/cantidad activos ahora. Las 7 cartas de Clasificados conservan la semana actual y actualizan las futuras.';
     } catch (err) {
       console.error('No se pudo guardar la configuración:', err);
       errorBox.textContent = err.message || 'No se pudo guardar. Probá de nuevo.';

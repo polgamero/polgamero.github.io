@@ -42,11 +42,11 @@ const functionsIndex = fs.readFileSync(path.join(root, '../functions/src/index.j
 const serverSocial = fs.readFileSync(path.join(root, '../functions/src/multiplayer/communication.js'), 'utf8');
 const trustedEmotes = fs.readFileSync(path.join(root, '../functions/src/trusted/emoteCatalog.js'), 'utf8');
 
-assert.equal(ENGINE_VERSION, '23.21.3');
+assert.equal(ENGINE_VERSION, '23.21.4');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.86');
 assert.equal(MULTIPLAYER_RELIABILITY_VERSION, '23.19.1');
-assert.equal(manifest.engineVersion, '23.21.3');
+assert.equal(manifest.engineVersion, '23.21.4');
 assert.equal(manifest.engineProtocolVersion, 'mp-23.19.2');
 assert.equal(manifest.firestoreRulesVersion, '23.13.86');
 assert.equal(manifest.pool, 880);
@@ -71,7 +71,7 @@ assert.ok(fb.includes('function validateCurrentMatchSessionForUid'));
 assert.ok(fb.includes('ownerSessionId: MULTIPLAYER_CLIENT_SESSION_ID'));
 assert.ok(fb.includes("throw new Error('MULTIPLAYER_PRIVATE_SELECTION_OWNER_MISMATCH')"));
 
-// 23.21.3 — Multiplayer Social Layer: visually shares the bitácora, but transport is
+// 23.21.4 — Multiplayer Social Layer: visually shares the bitácora, but transport is
 // server-authoritative and completely separate from gameplay snapshots/telemetry.
 assert.ok(html.includes('id="mp-social-shell"'));
 assert.ok(html.includes('id="mp-chat-input"'));
@@ -96,7 +96,7 @@ assert.ok(social.includes('fetchStorefrontAuthority'));
 assert.ok(emoteCatalog.includes("pricePoints:500"));
 assert.ok(css.includes('.mp-social-own'));
 assert.ok(css.includes('.mp-social-rival'));
-// 23.21.3 RC2 — desktop HUD safety after chat/emotes. HP shares one line and
+// 23.21.4 RC2 — desktop HUD safety after chat/emotes. HP shares one line and
 // only the Bitácora body is allowed to shrink; action buttons stay inside the
 // middle viewport row instead of overflowing under the local player badge.
 assert.equal((html.match(/class="hp-line"/g)||[]).length,2);
@@ -125,7 +125,7 @@ assert.ok(functionsIndex.includes('export const economyAdminSetEmoteCatalog = on
 assert.ok(trustedEmotes.includes("EMOTE_CATALOG_PATH = 'gameConfig/emotes'"));
 assert.ok(trustedEmotes.includes('MAX_EMOTES = 128'));
 assert.ok(serverSocial.includes('loadTrustedEmoteCatalog(db, tx)'));
-assert.equal([...functionsIndex.matchAll(/export const \w+\s*=\s*onCall\(/g)].length, 40);
+assert.equal([...functionsIndex.matchAll(/export const \w+\s*=\s*onCall\(/g)].length, 41);
 for (const contract of [
   'CHAT_MAX_CHARS = 220','COMMUNICATION_EVENT_CAP = 40','CHAT_MIN_INTERVAL_MS = 1500',
   'CHAT_BURST_MAX = 5','EMOTE_MIN_INTERVAL_MS = 4000','EMOTE_BURST_MAX = 3',

@@ -18,6 +18,39 @@ import {
 } from './commerceCore.js';
 
 const trustedById = new Map(TRUSTED_CARD_POOL.map(card => [card.id, card]));
+
+// 23.21.4 — productos fijos de infraestructura de mazo. Cada color entrega copias de
+// una Tierra básica Common trusted; la economía (precio/cantidad) se resuelve siempre
+// desde gameConfig/settings dentro de la autoridad server-side.
+export const CLASSIFIED_BASIC_LAND_PACKS = Object.freeze([
+  Object.freeze({ color:'W', cardId:'tier_001', label:'Blancas' }),
+  Object.freeze({ color:'U', cardId:'tier_003', label:'Azules' }),
+  Object.freeze({ color:'B', cardId:'tier_009', label:'Negras' }),
+  Object.freeze({ color:'R', cardId:'tier_005', label:'Rojas' }),
+  Object.freeze({ color:'G', cardId:'tier_007', label:'Verdes' })
+]);
+const classifiedBasicLandPackByColor = new Map(CLASSIFIED_BASIC_LAND_PACKS.map(pack => [pack.color, pack]));
+
+function trustedBasicLandPack(colorRaw) {
+  const color = String(colorRaw || '').trim().toUpperCase();
+  const pack = classifiedBasicLandPackByColor.get(color);
+  if (!pack) throw economyError('CLASSIFIEDS_BASIC_LAND_PACK_INVALID_COLOR');
+  const card = trustedById.get(pack.cardId);
+  const type = String(card?.type || '').toLowerCase();
+  if (!card || card.rarity !== 'Common' || !type.includes('tierra básica') || String(card.produces || '').toUpperCase() !== color) {
+    throw economyError('CLASSIFIEDS_BASIC_LAND_PACK_CATALOG_INVALID');
+  }
+  return { ...pack, card };
+}
+
+function basicLandPackState(profile, weekKey) {
+  const sameWeek = String(profile?.classifiedsBasicLandPackWeekKey || '') === String(weekKey || '');
+  return {
+    purchasedColors: sameWeek && Array.isArray(profile?.classifiedsBasicLandPacksPurchased)
+      ? [...new Set(profile.classifiedsBasicLandPacksPurchased.map(value => String(value || '').toUpperCase()).filter(value => classifiedBasicLandPackByColor.has(value)))]
+      : []
+  };
+}
 let campaignCache = { at: 0, events: [] };
 const CAMPAIGN_TTL_MS = 15_000;
 
@@ -53,6 +86,7 @@ export async function storefrontSnapshot(db) {
     },
     craft: { fichasCost: settings.craftCost, allowedKeywords: [...ENHANCEMENT_KEYWORDS] },
     prebuilt: { pointsCost: settings.prebuiltPoints, fichasCost: settings.prebuiltFichas, maxSavedDecks: settings.maxSavedDecks },
+    classifiedBasicLandPacks: { pointsCost: settings.classifiedBasicLandPackPrice, quantity: settings.classifiedBasicLandPackQuantity },
     username: { renameFichasCost: USERNAME_RENAME_COST },
     emotes: { schemaVersion:emoteCatalog.schemaVersion, catalogVersion:emoteCatalog.catalogVersion, items:emoteCatalog.items.map(item => ({ ...item })) },
     trustedPoolFingerprint: TRUSTED_CARD_POOL_FINGERPRINT
@@ -234,14 +268,16 @@ function classifiedState(profile, weekKey) {
 }
 export async function getClassifiedsView(db, uid, nowMs = Date.now()) {
   const weekKey = argentinaWeekKey(nowMs);
-  const [scheduleSnap, userSnap] = await Promise.all([
+  const [scheduleSnap, userSnap, settings] = await Promise.all([
     db.doc('gameConfig/classifiedsSchedule').get(),
-    db.collection('users').doc(uid).get()
+    db.collection('users').doc(uid).get(),
+    loadSettings(db)
   ]);
   if (!userSnap.exists) throw economyError('PROFILE_MISSING');
   const week = validatedClassifiedWeek(scheduleSnap.exists ? scheduleSnap.data() || {} : {}, weekKey);
   const profile = userSnap.data() || {};
   const state = classifiedState(profile, weekKey);
+  const landPackState = basicLandPackState(profile, weekKey);
   const collection = Array.isArray(profile.collection) ? profile.collection : [];
   const ownedCounts = new Map();
   for (const id of collection) ownedCounts.set(id, (ownedCounts.get(id) || 0) + 1);
@@ -255,22 +291,38 @@ export async function getClassifiedsView(db, uid, nowMs = Date.now()) {
       purchased: state.purchased.includes(cardId)
     };
   });
+  const basicLandPacks = CLASSIFIED_BASIC_LAND_PACKS.map(definition => {
+    const trusted = trustedBasicLandPack(definition.color);
+    return {
+      color: trusted.color,
+      label: trusted.label,
+      cardId: trusted.cardId,
+      rarity: 'Common',
+      points: settings.classifiedBasicLandPackPrice,
+      quantity: settings.classifiedBasicLandPackQuantity,
+      ownedCount: ownedCounts.get(trusted.cardId) || 0,
+      purchased: landPackState.purchasedColors.includes(trusted.color)
+    };
+  });
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     weekKey,
     weekStart: week.weekStart || weekKey,
     premiumRarity: week.premiumRarity || entries.at(-1)?.rarity || null,
     serverNow: new Date(nowMs).toISOString(),
     nextRotationAt: nextArgentinaWeekRotationIso(nowMs),
     entries,
+    basicLandPacks,
     purchased: state.purchased,
     purchaseCounts: state.counts,
+    basicLandPacksPurchased: landPackState.purchasedColors,
     wallet: {
       points: Math.max(0, Math.floor(Number(profile.points) || 0)),
       fichas: Math.max(0, Math.floor(Number(profile.fichas) || 0))
     }
   };
 }
+
 export async function purchaseClassifiedTx({ db, tx, uid, cardId, nowMs = Date.now() }) {
   const weekKey = argentinaWeekKey(nowMs);
   const scheduleRef = db.doc('gameConfig/classifiedsSchedule');
@@ -316,6 +368,43 @@ export async function purchaseClassifiedTx({ db, tx, uid, cardId, nowMs = Date.n
   };
 }
 
+export async function purchaseClassifiedBasicLandPackTx({ db, tx, uid, color, nowMs = Date.now() }) {
+  const weekKey = argentinaWeekKey(nowMs);
+  const pack = trustedBasicLandPack(color);
+  const userRef = db.collection('users').doc(uid);
+  const settingsRef = db.doc('gameConfig/settings');
+  const [userSnap, settingsSnap] = await Promise.all([tx.get(userRef), tx.get(settingsRef)]);
+  if (!userSnap.exists) throw economyError('PROFILE_MISSING');
+  const settings = normalizeStoreSettings(settingsSnap.exists ? settingsSnap.data() || {} : {});
+  const profile = userSnap.data() || {};
+  const state = basicLandPackState(profile, weekKey);
+  if (state.purchasedColors.includes(pack.color)) throw economyError('CLASSIFIEDS_BASIC_LAND_PACK_ALREADY_PURCHASED');
+  const pointsBefore = Math.max(0, Math.floor(Number(profile.points) || 0));
+  const price = settings.classifiedBasicLandPackPrice;
+  const quantity = settings.classifiedBasicLandPackQuantity;
+  if (pointsBefore < price) throw economyError('CLASSIFIEDS_BASIC_LAND_PACK_INSUFFICIENT_POINTS', { required: price, available: pointsBefore });
+  const collection = Array.isArray(profile.collection) ? profile.collection : [];
+  const resetWeek = String(profile.classifiedsBasicLandPackWeekKey || '') !== weekKey;
+  const purchasedColors = resetWeek ? [pack.color] : [...state.purchasedColors, pack.color];
+  const grantedCards = Array(quantity).fill(pack.cardId);
+  const purchase = { weekKey, color: pack.color, cardId: pack.cardId, quantity, pointsCost: price };
+  tx.update(userRef, {
+    points: pointsBefore - price,
+    collection: [...collection, ...grantedCards],
+    classifiedsBasicLandPackWeekKey: weekKey,
+    classifiedsBasicLandPacksPurchased: purchasedColors,
+    classifiedsBasicLandPackLastPurchase: purchase,
+    classifiedsBasicLandPackUpdatedAt: FieldValue.serverTimestamp()
+  });
+  return {
+    kind: 'classifiedBasicLandPackPurchase',
+    ...purchase,
+    pointsAfter: pointsBefore - price,
+    purchasedColors,
+    collectionCountAfter: collection.length + quantity
+  };
+}
+
 export async function renameUsernameTx({ db, tx, uid, usernameRaw }) {
   const validated = validateUsername(usernameRaw);
   if (!validated.ok) throw economyError(validated.code);
@@ -358,5 +447,6 @@ export async function renameUsernameTx({ db, tx, uid, usernameRaw }) {
 export function assertTrustedCommerceCatalog() {
   if (TRUSTED_CARD_IDS.size !== 880) throw new Error('TRUSTED_COMMERCE_POOL_INVALID');
   if (TRUSTED_PREBUILT_BY_ID.size !== 10) throw new Error('TRUSTED_COMMERCE_PREBUILT_INVALID');
+  for (const pack of CLASSIFIED_BASIC_LAND_PACKS) trustedBasicLandPack(pack.color);
   return true;
 }

@@ -157,6 +157,13 @@ export function purchaseClassifiedCardServer(cardId, operationId = null) {
   });
 }
 
+export function purchaseClassifiedBasicLandPackServer(color, operationId = null) {
+  return call('economyPurchaseClassifiedBasicLandPack', {
+    operationId: operationId || createEconomyOperationId('classified-land'),
+    color: String(color || '').trim().toUpperCase()
+  });
+}
+
 export function renameUsernameServer(username, operationId = null) {
   return call('economyRenameUsername', {
     operationId: operationId || createEconomyOperationId('rename'),

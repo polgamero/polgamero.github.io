@@ -32,7 +32,7 @@ import {
 } from './economy/daily.js';
 import {
   storefrontSnapshot, loadCommerceCampaignEffects, purchasePackTx, craftEnhancementTx,
-  purchasePrebuiltTx, getClassifiedsView, purchaseClassifiedTx, renameUsernameTx, purchaseEmoteTx
+  purchasePrebuiltTx, getClassifiedsView, purchaseClassifiedTx, purchaseClassifiedBasicLandPackTx, renameUsernameTx, purchaseEmoteTx
 } from './economy/commerce.js';
 import { recordAuthorityAudit } from './economy/audit.js';
 import { deriveSoloAbandonReceiptId, normalizeAbandonDurationMs } from './economy/matchCore.js';
@@ -104,7 +104,7 @@ export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
       capabilities: {
         packAuthority: 'server', guaranteedMythicAuthority: 'server', operationRecovery: true,
         storePurchaseAuthority: 'server', craftAuthority: 'server', prebuiltAuthority: 'server',
-        classifiedsAuthority: 'server', usernameRenameAuthority: 'server',
+        classifiedsAuthority: 'server', basicLandPackAuthority: 'server', usernameRenameAuthority: 'server',
         dailyRewardsAuthority: 'server', dailyClockAuthority: 'server', dailyClaimRecovery: true,
         matchSettlementAuthority: 'server', pvpAntiFarmAuthority: 'server',
         registrationAdmissionAuthority: 'server', adminEconomyAuthority: 'server',
@@ -448,6 +448,42 @@ export const economyPurchaseClassifiedCard = onCall(FUNCTION_RUNTIME_OPTIONS, as
     return { ok: true, ...outcome };
   } catch (error) {
     logFailure('economyPurchaseClassifiedCard', auth, error);
+    throw error;
+  }
+});
+
+export const economyPurchaseClassifiedBasicLandPack = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  try {
+    assertRateLimit(auth.uid, 'classified-land-pack', { limit: 20, windowMs: 60000 });
+    rejectForbidden(data, ['uid','points','pointsCost','quantity','collection','weekKey','cardId']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion','color']);
+    const operationId = String(data.operationId || '');
+    const color = String(data.color || '').trim().toUpperCase();
+    const nowMs = Date.now();
+    const outcome = await runIdempotentOperation(db, {
+      uid: auth.uid, operationId, type: 'store.purchase_basic_land_pack', request: { color },
+      execute: async tx => {
+        const config = await loadEconomyConfig(db, tx);
+        assertEconomyAvailable(config, clientProtocol(data));
+        return purchaseClassifiedBasicLandPackTx({ db, tx, uid: auth.uid, color, nowMs });
+      }
+    });
+    await finalizeAuthorityAudit({
+      auth, operationId, type:'store.purchase_basic_land_pack', outcome,
+      metadata: outcome?.result ? {
+        weekKey:outcome.result.weekKey, color:outcome.result.color, cardId:outcome.result.cardId,
+        quantity:outcome.result.quantity, pointsCost:outcome.result.pointsCost
+      } : { color }
+    });
+    logger.info('Economy classified basic-land pack purchased', {
+      uid:auth.uid, operationId, color, quantity:outcome?.result?.quantity || 0,
+      replayed:outcome.replayed, appCheckPresent:auth.appCheckPresent
+    });
+    return { ok:true, ...outcome };
+  } catch(error) {
+    logFailure('economyPurchaseClassifiedBasicLandPack', auth, error);
     throw error;
   }
 });

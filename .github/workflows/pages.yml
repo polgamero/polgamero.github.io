@@ -90,9 +90,9 @@ jobs:
 
       - name: Validate source-package contract independently from hosted assets
         run: |
-          test -f SOURCE_SNAPSHOT_MANIFEST_23_21_3.txt
-          grep -qx 'CARD_IMAGE_BINARIES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_3.txt
-          grep -qx 'PUBLIC_FIRESTORE_CONFIG_FILES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_3.txt
+          test -f SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt
+          grep -qx 'CARD_IMAGE_BINARIES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt
+          grep -qx 'PUBLIC_FIRESTORE_CONFIG_FILES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt
           echo "OK: cumulative delivery remains no-card-images/no-public-Firestore-config; hosted PNGs are allowed"
 
       - name: Validate RC5.2 match lifecycle + mobile HUD contract
@@ -137,9 +137,9 @@ jobs:
             sed 's/^/  - /' /tmp/stale-tests.txt
           fi
 
-          echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed canonical=23.21.3"
-          if [ "$total" -ne 115 ]; then
-            echo "::error::Canonical fast manifest must contain exactly 115 tests; got $total"
+          echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed canonical=23.21.4"
+          if [ "$total" -ne 117 ]; then
+            echo "::error::Canonical fast manifest must contain exactly 117 tests; got $total"
             exit 1
           fi
           if [ "$failed" -ne 0 ]; then
@@ -147,7 +147,7 @@ jobs:
             exit 1
           fi
 
-      # All 115 canonical test_*.mjs contracts already ran once in the sweep above.
+      # All 116 canonical test_*.mjs contracts already ran once in the sweep above.
       # Historically we ran 51 of those files a SECOND time as individually named steps,
       # which added substantial wall-clock time without adding coverage. Keep only the
       # stateful/dynamic labs and audits that are NOT part of the canonical manifest.
@@ -162,7 +162,7 @@ jobs:
           node tools/run_multiplayer_hardening_lab_23_19_1.mjs --cases 5000
           node tools/audit_deck_intelligence_matrix_23_19_5.mjs
 
-      - name: Validate Economy + Tournament + Trade Functions unit suite 23.21.3
+      - name: Validate Economy + Tournament + Trade + Basic Lands Functions unit suite 23.21.4
         working-directory: ./functions
         run: npm test
 

@@ -15,8 +15,8 @@ const mobile=read('css/mobile.css');
 const version=read('js/version.js');
 const fn=fs.readFileSync(path.join(repo,'functions','src','index.js'),'utf8');
 
-// 23.21.3 cumulative visual contract + ELO/Movimientos backend integration.
-assert.match(version,/ENGINE_VERSION = '23\.21\.3'/);
+// 23.21.4 cumulative visual contract + ELO/Movimientos backend integration.
+assert.match(version,/ENGINE_VERSION = '23\.21\.4'/);
 assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.86'/);
 assert.match(version,/ECONOMY_SCHEMA_VERSION = 10/);
 
@@ -27,7 +27,7 @@ assert.match(ui,/openTradeCardPreview/);
 assert.match(ui,/data-trade-zoom-card/);
 assert.match(ui,/trade-preview-modal/);
 
-// 23.21.3: embedded cards cannot depend on a cyclic percentage width. The slot owns a real
+// 23.21.4: embedded cards cannot depend on a cyclic percentage width. The slot owns a real
 // width and the canonical .card fills it, so Explorar/Mi publicación/Mis ofertas/Historial
 // always show the card before the zoom is opened.
 assert.match(css,/\.trade-visual-card\{--trade-card-w:190px/);
@@ -119,14 +119,14 @@ assert.match(mobile,/html\.argentinia-mobile \.trade-market-grid/);
 assert.match(mobile,/html\.argentinia-mobile \.trade-offer-choice-grid/);
 assert.match(mobile,/html\.argentinia-mobile \.trade-pair/);
 
-// 23.21.3 deliberately expands the backend with premium-emote purchase + social send.
+// 23.21.4 keeps premium-emote/social authority and adds the Basic Land pack callable.
 const callables=[...fn.matchAll(/export const \w+\s*=\s*onCall\(/g)];
-assert.equal(callables.length,40);
+assert.equal(callables.length,41);
 assert.match(fn,/export const economyPurchaseEmote\s*=\s*onCall/);
 assert.match(fn,/export const multiplayerSendCommunication\s*=\s*onCall/);
 
-// Strong byte-parity guard: the whole functions/ tree must remain the exact backend candidate
-// that passed Gate05 + Gate07 and is already deployed.
+// Strong source-integrity guard: the cumulative Functions tree must remain readable/hashable;
+// 23.21.4 adds one callable and therefore requires a fresh Functions deployment.
 function walk(dir){
   let out=[];
   for(const entry of fs.readdirSync(dir,{withFileTypes:true})){
@@ -147,4 +147,4 @@ assert.equal(functionDigest.length,64);
 assert.ok(fs.existsSync(path.join(repo,'functions','src','economy','elo.js')));
 assert.ok(fs.existsSync(path.join(repo,'functions','src','economy','eloCore.js')));
 
-console.log('TRADE_MARKET_VISUAL_23_21_3_OK cards=VISIBLE_ALWAYS names=NO_DUPLICATE receivedOffers=INCOMING_ONLY zoomMobile=VIEWPORT_HEIGHT back=CANONICAL menu=COMPACT_ICONS functions=CUMULATIVE_40');
+console.log('TRADE_MARKET_VISUAL_23_21_3_OK cards=VISIBLE_ALWAYS names=NO_DUPLICATE receivedOffers=INCOMING_ONLY zoomMobile=VIEWPORT_HEIGHT back=CANONICAL menu=COMPACT_ICONS functions=CUMULATIVE_41');

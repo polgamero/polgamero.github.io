@@ -313,6 +313,23 @@ export function countOwnedClassifiedCard(profile, cardId) {
     : 0;
 }
 
+export function getClassifiedsBasicLandPackProfileState(profile, weekKey) {
+  const validColors = new Set(['W','U','B','R','G']);
+  const sameWeek = String(profile?.classifiedsBasicLandPackWeekKey || '') === String(weekKey || '');
+  const purchasedColors = sameWeek && Array.isArray(profile?.classifiedsBasicLandPacksPurchased)
+    ? [...new Set(profile.classifiedsBasicLandPacksPurchased
+        .map(value => String(value || '').trim().toUpperCase())
+        .filter(color => validColors.has(color)))]
+    : [];
+  return {
+    weekKey: String(weekKey || ''),
+    purchasedColors,
+    lastPurchase: sameWeek && profile?.classifiedsBasicLandPackLastPurchase && typeof profile.classifiedsBasicLandPackLastPurchase === 'object'
+      ? { ...profile.classifiedsBasicLandPackLastPurchase }
+      : null
+  };
+}
+
 export function validateClassifiedsScheduleWeek(week, cardDbLike = null) {
   if (!week || !Array.isArray(week.cardIds) || week.cardIds.length !== CLASSIFIEDS_TOTAL_SLOTS) return false;
   if (new Set(week.cardIds).size !== CLASSIFIEDS_TOTAL_SLOTS) return false;

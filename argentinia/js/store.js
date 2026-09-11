@@ -74,6 +74,11 @@ export let CLASSIFIEDS_MYTHIC_POINTS = 300;
 export let CLASSIFIEDS_MYTHIC_FICHAS = 5;
 export let CLASSIFIEDS_MYTHIC_CHANCE = 1 / 7;
 
+// 23.21.4 — Packs semanales de Tierras básicas dentro de Avisos Clasificados.
+// Precio y cantidad son editables en Admin; la compra sigue siendo una vez por color/semana.
+export let CLASSIFIEDS_BASIC_LAND_PACK_PRICE = 150;
+export let CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY = 15;
+
 // Marca, dentro del cardIds de UN mazo guardado, cuál copia puntual es "la mejorada" — como
 // la colección es solo un array de IDs repetidos (sin identidad individual por copia), esto
 // es lo que permite elegir/reconocer ESA copia en particular al armar el mazo y en el juego,
@@ -170,6 +175,8 @@ export function getDefaultGameConfig() {
     classifiedsMythicPoints: 300,
     classifiedsMythicFichas: 5,
     classifiedsMythicChance: 1 / 7,
+    classifiedBasicLandPackPrice: 150,
+    classifiedBasicLandPackQuantity: 15,
     deckSizeExact: 60,
     maxCopiesPerCard: 4,
     maxEnhancedCardsPerDeck: 3,
@@ -238,6 +245,8 @@ export function applyGameConfig(config) {
   if (typeof config.classifiedsMythicPoints === 'number') CLASSIFIEDS_MYTHIC_POINTS = config.classifiedsMythicPoints;
   if (typeof config.classifiedsMythicFichas === 'number') CLASSIFIEDS_MYTHIC_FICHAS = config.classifiedsMythicFichas;
   if (typeof config.classifiedsMythicChance === 'number') CLASSIFIEDS_MYTHIC_CHANCE = Math.min(1, Math.max(0, config.classifiedsMythicChance));
+  if (typeof config.classifiedBasicLandPackPrice === 'number') CLASSIFIEDS_BASIC_LAND_PACK_PRICE = Math.max(0, Math.floor(config.classifiedBasicLandPackPrice));
+  if (typeof config.classifiedBasicLandPackQuantity === 'number') CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY = Math.min(100, Math.max(1, Math.floor(config.classifiedBasicLandPackQuantity)));
   if (typeof config.deckSizeExact === 'number') DECK_SIZE_EXACT = config.deckSizeExact;
   if (typeof config.maxCopiesPerCard === 'number') MAX_COPIES_PER_CARD = config.maxCopiesPerCard;
   if (typeof config.maxEnhancedCardsPerDeck === 'number') MAX_ENHANCED_CARDS_PER_DECK = config.maxEnhancedCardsPerDeck;

@@ -23,7 +23,7 @@ const root = path.resolve(here,'..');
 const repo = path.resolve(root,'..');
 const read = p => fs.readFileSync(path.join(repo,p),'utf8');
 
-assert.equal(ENGINE_VERSION,'23.21.3');
+assert.equal(ENGINE_VERSION,'23.21.4');
 assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.6');
 assert.equal(ECONOMY_SCHEMA_VERSION,10);
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
@@ -33,7 +33,7 @@ assert.ok(TRUSTED_PREBUILT_PRODUCTS.every(p=>p.cardIds.length===60));
 assert.equal(ENHANCEMENT_KEYWORDS.length,10);
 
 const settings=normalizeStoreSettings({packCost:200,fichasPerEnhancement:4,prebuiltDeckPoints:1700,prebuiltDeckFichas:5,maxSavedDecks:13});
-assert.deepEqual(settings,{packCost:200,craftCost:4,prebuiltPoints:1700,prebuiltFichas:5,maxSavedDecks:13});
+assert.deepEqual(settings,{packCost:200,craftCost:4,prebuiltPoints:1700,prebuiltFichas:5,maxSavedDecks:13,classifiedBasicLandPackPrice:150,classifiedBasicLandPackQuantity:15});
 const effects=buildCommerceCampaignEffects([
   {id:'discount',type:'pack_discount',value:50,startAt:new Date(1),endAt:new Date(Date.now()+60000)},
   {id:'ignored-fichas',type:'all_fichas_multiplier',value:9,startAt:new Date(1),endAt:new Date(Date.now()+60000)},
@@ -114,7 +114,7 @@ const implExports=new Set([
 assert.deepEqual(lazyTargets.filter(name=>!implExports.has(name)),[],'firebase lazy facade drift');
 
 const manifest=JSON.parse(read('argentinia/build-manifest.json'));
-assert.equal(manifest.engineVersion,'23.21.3');
+assert.equal(manifest.engineVersion,'23.21.4');
 assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.6');
 assert.equal(manifest.economySchemaVersion,10);
 

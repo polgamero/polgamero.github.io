@@ -8,7 +8,11 @@ const NUMERIC_KEYS = [
   'pointsSpent','pointsLost','fichasEarned','fichasSpent','packsReceived','packsOpened',
   'guaranteedMythicsOpened','tournamentsPlayed','tournamentMatches','tournamentWins','tournamentLosses',
   'tournamentQuarterfinals','tournamentSemifinals','tournamentFinals','tournamentChampionships','tournamentForfeits','tradesCompleted',
-  'eloRating','eloPeak','eloGames','eloWins','eloLosses'
+  'eloRating','eloPeak','eloGames','eloWins','eloLosses',
+  'basicLandPacksPurchased','basicLandsReceived','basicLandPacksWhite','basicLandPacksBlue',
+  'basicLandPacksBlack','basicLandPacksRed','basicLandPacksGreen',
+  'storePacksPurchased','enhancementsCrafted','prebuiltDecksPurchased','classifiedsCardsPurchased',
+  'emotesPurchased','dailyRewardsClaimed'
 ];
 
 function int(value){ const n=Math.floor(Number(value)||0); return Number.isFinite(n)?n:0; }
@@ -52,22 +56,36 @@ export function deriveAuthorityAudit(type,result={}){
       out.source='guaranteed_mythic_open_server'; out.cardsDelta=1; out.stats={guaranteedMythicsOpened:1}; break;
     case 'store.purchase_pack':
       out.source='pack_purchase_server'; out.pointsDelta=-nonneg(result.effectiveCost); out.packsDelta=1;
-      out.stats={pointsSpent:nonneg(result.effectiveCost),packsReceived:1}; break;
+      out.stats={pointsSpent:nonneg(result.effectiveCost),packsReceived:1,storePacksPurchased:1}; break;
     case 'store.craft_enhancement':
-      out.source='enhancement_craft_server'; out.fichasDelta=-nonneg(result.fichasCost); out.stats={fichasSpent:nonneg(result.fichasCost)}; break;
+      out.source='enhancement_craft_server'; out.fichasDelta=-nonneg(result.fichasCost); out.stats={fichasSpent:nonneg(result.fichasCost),enhancementsCrafted:1}; break;
     case 'store.purchase_prebuilt':
       out.source='prebuilt_deck_purchase_server'; out.pointsDelta=-nonneg(result.pointsCost); out.fichasDelta=-nonneg(result.fichasCost); out.cardsDelta=nonneg(result.cardsGranted);
-      out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost)}; break;
+      out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost),prebuiltDecksPurchased:1}; break;
     case 'store.purchase_classified':
       out.source='classified_purchase_server'; out.pointsDelta=-nonneg(result.pointsCost); out.fichasDelta=-nonneg(result.fichasCost); out.cardsDelta=1;
-      out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost)}; break;
+      out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost),classifiedsCardsPurchased:1}; break;
+    case 'store.purchase_basic_land_pack': {
+      out.source='classified_basic_land_pack_purchase_server';
+      out.pointsDelta=-nonneg(result.pointsCost);
+      out.cardsDelta=nonneg(result.quantity);
+      const color=String(result.color||'').toUpperCase();
+      const colorKey={W:'basicLandPacksWhite',U:'basicLandPacksBlue',B:'basicLandPacksBlack',R:'basicLandPacksRed',G:'basicLandPacksGreen'}[color];
+      out.stats={
+        pointsSpent:nonneg(result.pointsCost),
+        basicLandPacksPurchased:1,
+        basicLandsReceived:nonneg(result.quantity),
+        ...(colorKey?{[colorKey]:1}:{})
+      };
+      break;
+    }
     case 'store.purchase_emote':
-      out.source='emote_purchase_server'; out.pointsDelta=-nonneg(result.pointsCost); out.stats={pointsSpent:nonneg(result.pointsCost)}; break;
+      out.source='emote_purchase_server'; out.pointsDelta=-nonneg(result.pointsCost); out.stats={pointsSpent:nonneg(result.pointsCost),emotesPurchased:1}; break;
     case 'account.rename_username':
       out.source='username_rename_server'; out.fichasDelta=-nonneg(result.fichasCost); out.stats={fichasSpent:nonneg(result.fichasCost)}; break;
     case 'daily.claim':
       out.source='daily_reward_server'; out.pointsDelta=nonneg(result.pointsGain); out.fichasDelta=nonneg(result.fichasGain); out.packsDelta=nonneg(result.standardPacksGain);
-      out.stats={pointsEarned:out.pointsDelta,fichasEarned:out.fichasDelta,packsReceived:out.packsDelta}; break;
+      out.stats={pointsEarned:out.pointsDelta,fichasEarned:out.fichasDelta,packsReceived:out.packsDelta,dailyRewardsClaimed:1}; break;
     case 'match.settle_reward':
       if(result?.penalty===true||result?.rewardReason==='abandon_penalty') return null;
       out.source='game_reward_server'; out.pointsDelta=Math.max(0,int(result.appliedDelta)); out.stats={pointsEarned:out.pointsDelta}; break;

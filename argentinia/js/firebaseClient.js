@@ -240,6 +240,7 @@ export const ensureClassifiedsSchedule = asyncProxy('ensureClassifiedsSchedule')
 export const loadClassifiedsSchedule = asyncProxy('loadClassifiedsSchedule');
 export const fetchCurrentClassifieds = asyncProxy('fetchCurrentClassifieds');
 export const purchaseClassifiedCard = asyncProxy('purchaseClassifiedCard');
+export const purchaseClassifiedBasicLandPack = asyncProxy('purchaseClassifiedBasicLandPack');
 export const purchasePrebuiltDeck = asyncProxy('purchasePrebuiltDeck');
 export const purchaseEmote = asyncProxy('purchaseEmote');
 export const adminSetEmoteCatalog = asyncProxy('adminSetEmoteCatalog');

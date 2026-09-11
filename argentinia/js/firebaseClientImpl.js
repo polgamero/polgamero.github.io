@@ -29,7 +29,7 @@ import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurcha
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, getClassifiedsServer, purchaseClassifiedCardServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
@@ -232,12 +232,13 @@ const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
   prebuiltPurchase: 'store.purchase_prebuilt',
   emotePurchase: 'store.purchase_emote',
   classifiedPurchase: 'store.purchase_classified',
+  classifiedBasicLandPackPurchase: 'store.purchase_basic_land_pack',
   usernameRename: 'account.rename_username',
   dailyClaim: 'daily.claim'
 });
 const ECONOMY_ACTION_PREFIXES = Object.freeze({
   packPurchase: 'buy-pack', enhancementCraft: 'craft', prebuiltPurchase: 'prebuilt',
-  classifiedPurchase: 'classified', emotePurchase:'emote', usernameRename: 'rename', dailyClaim: 'daily-claim'
+  classifiedPurchase: 'classified', classifiedBasicLandPackPurchase:'classified-land', emotePurchase:'emote', usernameRename: 'rename', dailyClaim: 'daily-claim'
 });
 
 // 23.19.5.3 — exactly-once browser bridge. El journal conserva sólo intención/operationId.
@@ -1348,6 +1349,13 @@ export async function purchaseClassifiedCard(uid, cardId) {
   return profile;
 }
 
+export async function purchaseClassifiedBasicLandPack(uid, color) {
+  const request = { color: String(color || '').trim().toUpperCase() };
+  await runEconomyActionAuthority(uid, 'classifiedBasicLandPackPurchase', request,
+    operationId => purchaseClassifiedBasicLandPackServer(request.color, operationId));
+  return loadOwnProfileAfterServerMutation(uid);
+}
+
 // ============================================================================
 // PANEL DE ADMIN: la configuración de balance vive en un documento aparte
 // (gameConfig/settings), NO en el perfil de ningún jugador — cualquiera puede LEERLA (todo
@@ -2184,10 +2192,19 @@ export async function fetchEconomyAuditForAdmin({ limitCount = 250 } = {}) {
   // currently loaded audit window (never the full users collection), in Firestore-safe
   // batches. This is read-only and best-effort: audit evidence still renders if a profile
   // was deleted or a lookup fails.
+  // Some immutable adminActions intentionally point targetUid at an audited resource
+  // path (for example gameConfig/emotes) rather than users/{uid}. Firestore documentId()
+  // filters against collection(db, 'users') only accept a plain document id, so never feed
+  // resource paths into the username resolver. The original audit row is left untouched and
+  // still renders verbatim as a fallback identity/resource reference.
+  const isResolvableUserDocumentId = value => {
+    const id = String(value || '').trim();
+    return Boolean(id && id !== 'server' && !id.includes('/'));
+  };
   const referencedUids = [...new Set([...economyEvents, ...adminActions]
     .flatMap(row => [row.targetUid, row.actorUid, row.adminUid])
     .map(value => String(value || '').trim())
-    .filter(value => value && value !== 'server'))];
+    .filter(isResolvableUserDocumentId))];
   const usernames = {};
   try {
     for (let i = 0; i < referencedUids.length; i += 30) {
