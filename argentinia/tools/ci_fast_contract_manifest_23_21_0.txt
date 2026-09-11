@@ -119,3 +119,4 @@ tools/test_trade_market_visual_23_21_0.mjs
 tools/test_console_audit_identity_hygiene_23_21_3_hf1.mjs
 
 tools/test_basic_land_packs_admin_stats_23_21_4.mjs
+tools/rc5_2_match_lifecycle_mobile_hud_contract.mjs

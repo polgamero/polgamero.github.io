@@ -1,0 +1,42 @@
+ARGENTINIA 23.21.4 — CI FIX3 — FULL GITHUB PIPELINE HARDENING
+
+ROOT CAUSE
+- GitHub Actions executed tools/rc5_2_match_lifecycle_mobile_hud_contract.mjs as a standalone step outside the canonical fast manifest.
+- That historical survival contract incorrectly asserted build-manifest.releaseCandidate === RC5.2.
+- 23.21.4 correctly uses releaseCandidate = 23.21.4 PRE-RELEASE, so CI failed despite the underlying lifecycle/mobile behavior still being present.
+
+FIX
+- The RC5.2 lifecycle/mobile contract now validates the preserved feature markers and runtime implementation rather than freezing the global releaseCandidate label.
+- The contract is now owned by tools/ci_fast_contract_manifest_23_21_0.txt.
+- Canonical static contract count increases from 117 to 118.
+- The duplicate standalone workflow step was removed.
+- GitHub workflow now fails if a future static test_*.mjs or *contract.mjs is invoked as a one-off outside the canonical manifest.
+- SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt is now validated for CANONICAL_FAST_CONTRACTS=118 and FUNCTIONS_COUNT=41.
+- Current QA/release metadata was synchronized to 118/118.
+
+FULL LOCAL REHEARSAL OF GITHUB RUN STEPS
+PASS repository layout / no public Firebase config
+PASS generate_image_manifest.py
+PASS Game Text contract: definitions=1928 used=1297 strictSurfaces=4 controlled=159
+PASS compact historical regression archive: 62 synchronized tests
+PASS source snapshot contract metadata
+PASS canonical ownership guard for static contracts
+PASS canonical static contracts: 118/118
+PASS stability lab: seeds=10
+PASS headless full-game lab 23.18.1: games=6 determinismRuns=2
+PASS headless coverage audit 23.18.2: total=880 structurallyKnownPct=97.95
+PASS headless full-game lab 23.18.2 coverage-v2: games=6 determinismRuns=2
+PASS multiplayer reliability lab: seeds=250 commits=120
+PASS multiplayer hardening lab: cases=5000
+PASS deck intelligence matrix: archetypes=15 qualities=4 builds=60
+PASS Functions unit suite: 13/13
+PASS pages.yml YAML parse
+
+UNCHANGED
+- Runtime gameplay/economy implementation.
+- Firestore Rules 23.13.86.
+- Functions source/count: 41.
+- Multiplayer protocol mp-23.19.2.
+- Economy protocol/schema econ-23.19.5.6 / 10.
+- Pool 880.
+- Previously green Gate03/Gate05/Gate07 remain valid.

@@ -27,7 +27,7 @@ COMPATIBILITY
 - Functions increase from 40 to 41.
 
 LOCAL QA SEAL
-- Canonical fast contract sweep: 117/117 PASS.
+- Canonical fast contract sweep: 118/118 PASS.
 - Functions tests: 13/13 PASS.
 - Functions syntax/lint: PASS.
 
@@ -39,3 +39,10 @@ DEPLOYMENT
 - Verify exactly 41 callable Functions.
 - No Firestore Rules redeploy.
 - Finish with productive smoke before promoting RELEASED.
+
+CI FIX3 — FULL PIPELINE HARDENING
+- Historical RC5.2 lifecycle/mobile survival contract no longer freezes the global releaseCandidate label.
+- That contract is now part of the canonical static manifest; canonical count is 118.
+- Workflow guard prevents future standalone static contracts from bypassing the canonical sweep.
+- Source snapshot validation now checks canonical test count 118 and Functions count 41.
+- Full local rehearsal of every executable GitHub build validation step passed before packaging FIX3.

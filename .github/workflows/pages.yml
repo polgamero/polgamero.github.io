@@ -93,11 +93,19 @@ jobs:
           test -f SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt
           grep -qx 'CARD_IMAGE_BINARIES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt
           grep -qx 'PUBLIC_FIRESTORE_CONFIG_FILES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt
-          echo "OK: cumulative delivery remains no-card-images/no-public-Firestore-config; hosted PNGs are allowed"
+          grep -qx 'CANONICAL_FAST_CONTRACTS=118' SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt
+          grep -qx 'FUNCTIONS_COUNT=41' SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt
+          echo "OK: source snapshot metadata matches 23.21.4 canonical CI counts"
 
-      - name: Validate RC5.2 match lifecycle + mobile HUD contract
+      - name: Guard canonical ownership of static contracts
         working-directory: ./argentinia
-        run: node tools/rc5_2_match_lifecycle_mobile_hud_contract.mjs
+        run: |
+          # Static contract/test files must live in the canonical manifest, not as one-off workflow steps.
+          if grep -nE 'node tools/(test_[^ ]*\.mjs|[^ ]*contract\.mjs)' ../.github/workflows/pages.yml; then
+            echo "::error::Standalone static contract invocation detected. Add it to ci_fast_contract_manifest_23_21_0.txt instead."
+            exit 1
+          fi
+          echo "OK: no standalone static contracts outside canonical manifest"
 
       - name: Validate complete canonical fast contract sweep
         working-directory: ./argentinia
@@ -138,8 +146,8 @@ jobs:
           fi
 
           echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed canonical=23.21.4"
-          if [ "$total" -ne 117 ]; then
-            echo "::error::Canonical fast manifest must contain exactly 117 tests; got $total"
+          if [ "$total" -ne 118 ]; then
+            echo "::error::Canonical fast manifest must contain exactly 118 tests; got $total"
             exit 1
           fi
           if [ "$failed" -ne 0 ]; then
@@ -147,7 +155,7 @@ jobs:
             exit 1
           fi
 
-      # All 116 canonical test_*.mjs contracts already ran once in the sweep above.
+      # All 118 canonical static contracts already ran once in the sweep above.
       # Historically we ran 51 of those files a SECOND time as individually named steps,
       # which added substantial wall-clock time without adding coverage. Keep only the
       # stateful/dynamic labs and audits that are NOT part of the canonical manifest.

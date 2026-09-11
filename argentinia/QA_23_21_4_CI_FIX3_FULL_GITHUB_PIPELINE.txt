@@ -1,0 +1,18 @@
+QA 23.21.4 — CI FIX3 — FULL GITHUB PIPELINE REHEARSAL
+
+PASS image manifest generation
+PASS Game Text contract definitions=1928 used=1297 strictSurfaces=4 controlled=159
+PASS regression archive synchronization: 62
+PASS canonical static contracts: 118/118
+PASS stability lab
+PASS headless full-game lab 23.18.1
+PASS headless coverage audit 23.18.2
+PASS headless full-game lab 23.18.2 coverage-v2
+PASS multiplayer reliability lab
+PASS multiplayer hardening lab
+PASS deck intelligence matrix: 60 builds
+PASS Functions tests: 13/13
+PASS workflow YAML parse
+PASS no standalone static test/contract invocation outside canonical manifest
+
+CI FIX3 only changes CI/contracts/QA metadata. Runtime, Functions, Rules and gates are unchanged.
