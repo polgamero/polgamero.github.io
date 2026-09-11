@@ -1,0 +1,23 @@
+ARGENTINIA 23.21.4 UI-POLISH-2 — PRE-RELEASE
+Store Button Alignment + Emote Showcase Asset Path Fix
+
+Base canónica:
+- 23.21.4 RELEASED — Basic Land Access + Admin Statistics Dashboard
+- ENGINE_VERSION permanece 23.21.4.
+- mp-23.19.2 / econ-23.19.5.6 / schema 10 / Rules 23.13.86 / pool 880.
+- Sin cambios en Functions ni Firestore Rules.
+
+Cambios:
+1. Tienda — alineación de botones
+   - #store-buy-error se renderiza antes de #store-buy-pack.
+   - Se conserva el espacio reservado del error, pero el botón Comprar sobre vuelve a compartir la misma línea inferior con las demás acciones de la vidriera.
+   - El mensaje de error aparece inmediatamente sobre el botón.
+
+2. Tienda — imagen de Emotes
+   - Corrige el typo de UI-POLISH-1: assets/images/iu/ → assets/images/ui/.
+   - La tarjeta de Emotes intenta cargar ./assets/images/ui/emotes.png.
+   - Si el archivo todavía no existe o falla, conserva 😏 como fallback.
+   - Geometría desktop 120×120 y mobile 96×96 para mantener consistencia con el resto de accesos visuales.
+
+QA:
+- El contrato canónico tools/test_store_redesign_23_13_64.mjs verifica ambos cambios.

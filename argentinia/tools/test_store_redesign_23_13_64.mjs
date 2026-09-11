@@ -46,11 +46,11 @@ const packCard = main.slice(packIx, packCardEnd);
 const packErrorIx = packCard.indexOf('id="store-buy-error"');
 const packBuyIx = packCard.indexOf('id="store-buy-pack"');
 assert.ok(packErrorIx >= 0 && packBuyIx > packErrorIx, 'El error reservado de Sobres debe estar antes del botón para alinear acciones.');
-assert.ok(main.includes('src="./assets/images/iu/emotes.png"'), 'La entrada de Emotes debe usar assets/images/iu/emotes.png.');
+assert.ok(main.includes('src="./assets/images/ui/emotes.png"'), 'La entrada de Emotes debe usar assets/images/ui/emotes.png.');
 assert.ok(main.includes(`onerror="this.parentElement.textContent='😏'"`), 'Emotes debe conservar 😏 como fallback si falta la imagen.');
 assert.ok(ui.includes('.store-emote-showcase-img { width:120px; height:120px; object-fit:contain;'), 'La imagen de Emotes debe respetar la geometría desktop de la vidriera.');
 assert.ok(ui.includes('html.argentinia-mobile .store-market-item .store-emote-showcase-img { width:96px; height:96px; }'), 'La imagen de Emotes debe respetar la geometría mobile.');
 assert.ok(ui.includes('.store-market-strip {\n      display:grid;'), '23.17.4 debe usar grid responsive y no carrusel horizontal obligatorio.');
 assert.ok(ui.includes('injectRewardsStyles(); // 23.13.64'), 'Tienda debe conservar el lenguaje visual compartido de Mi Cofre.');
 
-console.log('STORE_REDESIGN_23_13_64_OK legacy=preserved layout=responsive-23.17.4 order=packs>fichas>prebuilt>classifieds chestStyle=shared packError=aboveButton emoteAsset=iu/emotes.png');
+console.log('STORE_REDESIGN_23_13_64_OK legacy=preserved layout=responsive-23.17.4 order=packs>fichas>prebuilt>classifieds chestStyle=shared packError=aboveButton emoteAsset=ui/emotes.png');
