@@ -1,0 +1,5 @@
+ARGENTINIA 23.21.4 — CI FIX2
+Game Text contract cleanup only.
+Removed four obsolete/unreferenced Admin Statistics Game Text definitions.
+GAME_TEXT_CONTRACT_OK; canonical fast sweep 117/117 PASS.
+No Rules/Functions/gameplay change. Existing green emulator gates remain valid.

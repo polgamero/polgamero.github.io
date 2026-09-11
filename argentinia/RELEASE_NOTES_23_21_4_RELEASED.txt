@@ -1,0 +1,48 @@
+ARGENTINIA 23.21.4 — BASIC LAND ACCESS + ADMIN STATISTICS DASHBOARD — RELEASED
+
+RELEASE STATUS
+- RELEASED on 2026-09-11.
+- Gate03: GREEN.
+- Gate05: GREEN.
+- Gate07: GREEN.
+- GitHub Actions: GREEN.
+- Canonical static contracts: 118/118 PASS.
+- Functions unit tests: 13/13 PASS.
+- Cloud Functions count: 41.
+- Firestore Rules remain 23.13.86.
+- Multiplayer protocol remains mp-23.19.2.
+- Economy protocol/schema remain econ-23.19.5.6 / 10.
+- Pool remains 880.
+
+BASIC LAND ACCESS
+- Avisos Clasificados retains its seven weekly card offers.
+- Separate fixed Common Basic Land packs for White / Blue / Black / Red / Green.
+- Defaults: 150 points and 15 lands per pack.
+- Admin controls: classifiedBasicLandPackPrice and classifiedBasicLandPackQuantity.
+- Quantity is server-normalized to 1..100.
+- One purchase per color per Classifieds week, independently.
+- Purchases grant real collection copies and do not consume normal Classifieds slots.
+- economyPurchaseClassifiedBasicLandPack is server-authoritative, transactional and exactly-once/idempotent.
+- Immutable economy audit and statistics accumulation are recorded.
+
+ADMIN STATISTICS DASHBOARD
+- Tournament KPIs and funnel.
+- ELO KPIs.
+- Trade Market KPIs.
+- Economy, collection/acquisition and Basic Land metrics.
+- Tournament telemetry separated from Solo.
+- Dashboard charts for tournament funnel, Basic Land packs by color, point flow and Trade Market activity.
+- Excel-compatible CSV export with formula-injection protection.
+- New acquisition counters start accumulating with 23.21.4; historical Tournament/Trade counters are preserved.
+
+CI / RELEASE HARDENING
+- Game Text catalog cleaned of four obsolete controlled keys after the Admin Statistics redesign.
+- Historical RC5.2 lifecycle/mobile contract no longer freezes the global release label.
+- That contract is part of the canonical manifest.
+- Canonical static count is 118.
+- Workflow guard prevents standalone static contracts outside the canonical sweep.
+- Source snapshot verifies 118 contracts and 41 Functions.
+
+PROMOTION
+- This file supersedes RELEASE_NOTES_23_21_4_PRE_RELEASE.txt for release status.
+- PRE-RELEASE and CI-fix documents remain historical evidence only.

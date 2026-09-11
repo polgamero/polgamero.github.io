@@ -3948,6 +3948,8 @@ function injectStoreStyles() {
     .store-market-item .store-error-msg { min-height:16px; margin-top:7px; }
     .store-discount-note { display:inline-block; font-size:11px; color:#f5d777; margin-left:3px; }
     .store-classifieds-icon { width:120px; height:120px; object-fit:contain; filter:drop-shadow(0 5px 12px rgba(116,172,223,.24)); }
+    .store-emote-showcase-icon { width:120px; height:120px; display:flex; align-items:center; justify-content:center; font-size:72px; line-height:1; }
+    .store-emote-showcase-img { width:120px; height:120px; object-fit:contain; filter:drop-shadow(0 5px 12px rgba(116,172,223,.24)); }
     .store-card-grid {
       display: flex; flex-wrap: wrap; justify-content: center; gap: 16px;
       --card-w: 14vh;
@@ -4091,6 +4093,9 @@ function injectStoreStyles() {
     html.argentinia-mobile .store-market-item .chest-item-icon { min-height:92px; }
     html.argentinia-mobile .store-market-item .reward-pack-icon { width:96px; height:96px; }
     html.argentinia-mobile .store-market-item .store-classifieds-icon { width:96px; height:96px; }
+    html.argentinia-mobile .store-market-item .store-emote-showcase-icon,
+    html.argentinia-mobile .store-market-item .store-emote-showcase-img { width:96px; height:96px; }
+    html.argentinia-mobile .store-market-item .store-emote-showcase-icon { font-size:58px; }
     html.argentinia-mobile .store-points-info { margin-top:-4px; padding:20px 16px 16px; }
     html.argentinia-mobile .classifieds-topbar { margin-bottom:8px; }
     html.argentinia-mobile .classifieds-week-title { font-size:15px; }
@@ -4383,8 +4388,8 @@ export function showStoreScreen(onBack, options = {}) {
             <div class="chest-item-title">${gameTextHtml('store.pack.showcaseTitle')}</div>
             <div class="chest-item-count store-market-count">${gameTextHtml('store.pack.showcaseCost', { cost: effectiveCost })}${packDiscountActive ? ` <span class="store-discount-note">(${packBaseCost} → ${effectiveCost})</span>` : ''}</div>
             <div class="chest-item-desc">${gameTextHtml('store.pack.description')}</div>
-            <button class="reward-action-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>${gameTextHtml('store.pack.buy')}</button>
             <div class="store-error-msg" id="store-buy-error"></div>
+            <button class="reward-action-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>${gameTextHtml('store.pack.buy')}</button>
           </div>
           <div class="chest-item store-market-item store-market-craft">
             <div class="chest-item-icon">${FICHA_ICON_HTML}</div>
@@ -4408,7 +4413,7 @@ export function showStoreScreen(onBack, options = {}) {
             <button class="reward-action-btn" id="store-classifieds">${gameTextHtml('store.classifieds.open')}</button>
           </div>
           <div class="chest-item store-market-item store-emotes-entry">
-            <div class="chest-item-icon"><div class="store-emote-showcase-icon">😏</div></div>
+            <div class="chest-item-icon"><div class="store-emote-showcase-icon"><img class="store-emote-showcase-img" src="./assets/images/ui/emotes.png" alt="Emotes" onerror="this.parentElement.textContent='😏'"></div></div>
             <div class="chest-item-title">${gameTextHtml('store.emotes.showcaseTitle')}</div>
             <div class="chest-item-count store-market-count">${gameTextHtml('store.emotes.showcaseCount', { count: currentEmoteActiveCount() })}</div>
             <div class="chest-item-desc">${gameTextHtml('store.emotes.description')}</div>
