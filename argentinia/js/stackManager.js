@@ -2779,6 +2779,19 @@ function hideStackHoverPreview() {
   if (stackPreviewEl) stackPreviewEl.classList.remove('visible');
 }
 
+function getStackTargetDisplayName(stackId) {
+  const numericId = Number(stackId);
+  const target = spellStack.find(item => Number(item?.id) === numericId);
+  if (!target) return '';
+  if (target.type === 'ability' && target.abilityKind === 'triggered') {
+    return `${target.card?.name || 'Habilidad'} — ${target.triggerLabel || 'Habilidad disparada'}`;
+  }
+  if (target.type === 'ability' && target.abilityKind === 'loyalty') {
+    return `${target.card?.name || 'Semidiós'} — ${target.ability?.name || 'Habilidad de Creencia'}`;
+  }
+  return target.card?.name || '';
+}
+
 export function renderStack() {
   const container = document.getElementById('stack-container');
   const list = document.getElementById('stack-list');
@@ -2828,7 +2841,10 @@ export function renderStack() {
       } else if (item.targetObj.type === 'permanent') {
         targetText = `Objetivo: ${item.targetObj.item?.card?.name || 'objetivo ausente'}`;
       } else if (item.targetObj.type === 'stack') {
-        targetText = `Objetivo: Hechizo en pila #${item.targetObj.stackId}`;
+        const stackTargetName = getStackTargetDisplayName(item.targetObj.stackId);
+        targetText = stackTargetName
+          ? `Objetivo: ${stackTargetName}`
+          : `Objetivo: Hechizo en pila #${item.targetObj.stackId}`;
       }
     }
 

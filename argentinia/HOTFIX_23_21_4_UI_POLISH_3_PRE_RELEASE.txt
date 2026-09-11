@@ -1,0 +1,27 @@
+ARGENTINIA 23.21.4 UI-POLISH-3 PRE-RELEASE
+Desktop Long-Game Battlefield + Target UX
+
+Base canónica: 23.21.4 UI-POLISH-2.
+ENGINE_VERSION permanece 23.21.4. No cambia Functions, Rules, protocolos, schema ni pool.
+
+Cambios quirúrgicos:
+1. Battlefield desktop — filas con demasiados permanentes
+   - Cada zona Tierras / Soporte / Semidioses conserva su ancho flex asignado.
+   - Mientras las cartas entren con >=88% del tamaño ideal, el layout histórico no cambia.
+   - Si una fila requeriría más reducción, pasa a scroll horizontal.
+   - Mouse: click+drag y rueda vertical sobre la fila desplazan horizontalmente.
+   - Un drag real (>7 px) suprime el click residual para no jugar/tapear/targetear una carta accidentalmente.
+   - El hover ampliado se renderiza fuera del viewport del scroller para no quedar recortado.
+   - Mobile conserva intacto su contrato existente.
+
+2. Objetivo jugador — superficie completa
+   - Para un jugador objetivo se ilumina y acepta click el badge entero (avatar + nombre + HP).
+   - Ya no hace falta acertar a la barra de vida fina.
+   - Los controles del mana-pool dentro del badge mantienen sus propios clicks.
+
+3. Objetivos de Stack legibles
+   - Un counter/efecto que apunta a stackId muestra el nombre real de la carta/habilidad.
+   - Ejemplo: "Objetivo: Tierra sobre el Cajón" en vez de "Hechizo en pila #23".
+   - Si por una carrera visual el objeto ya no puede resolverse, se conserva el fallback numérico.
+
+QA: el contrato RC5.2 existente protege los tres comportamientos sin aumentar el total canónico.

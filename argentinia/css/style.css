@@ -93,6 +93,50 @@ html, body {
   /* Idem: sin overflow. El fit lo resuelve JS. */
 }
 
+/* UI-POLISH-3 — desktop long-game safety.
+   Normal rows keep the exact historical centered layout. JS only adds this class when fitting
+   every permanent would shrink cards below the readability threshold. */
+@media (min-width: 769px) {
+  .lands-support-wrapper > .field-row { min-width: 0; }
+  .field-row.desktop-overflow-scroll {
+    box-sizing: border-box;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-inline: 6px;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212,175,55,.58) rgba(0,0,0,.18);
+    cursor: grab;
+  }
+  .field-row.desktop-overflow-scroll.is-dragging {
+    cursor: grabbing;
+    user-select: none;
+    scroll-behavior: auto;
+  }
+  .field-row.desktop-overflow-scroll::-webkit-scrollbar { height: 6px; }
+  .field-row.desktop-overflow-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,.18); border-radius: 999px; }
+  .field-row.desktop-overflow-scroll::-webkit-scrollbar-thumb { background: rgba(212,175,55,.58); border-radius: 999px; }
+}
+
+/* El preview vive fuera del scroller para que overflow-x:auto no recorte el hover ampliado. */
+.desktop-battlefield-hover-preview {
+  position: fixed !important;
+  z-index: 20000 !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  transform: none !important;
+  transform-origin: center center !important;
+  opacity: 1 !important;
+  transition: none !important;
+  box-shadow: 0 16px 42px rgba(0,0,0,.86) !important;
+}
+.desktop-battlefield-hover-preview .card-inner {
+  transform: none !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .field-row::before {
   content: attr(data-label);
   position: absolute;
@@ -605,6 +649,16 @@ html, body {
   align-items: center; 
   gap: 0.6rem; 
   flex-shrink: 0; 
+}
+
+/* UI-POLISH-3: target de JUGADOR = badge completo. El outline evita cambiar geometría del HUD
+   mientras el pulse heredado de .targetable conserva el feedback canónico. */
+#sidebar-hud .player-card.targetable {
+  border-width: 1px !important;
+  border-color: #f1c40f !important;
+  outline: 2px solid #f1c40f;
+  outline-offset: 2px;
+  cursor: crosshair !important;
 }
 
 .avatar { 

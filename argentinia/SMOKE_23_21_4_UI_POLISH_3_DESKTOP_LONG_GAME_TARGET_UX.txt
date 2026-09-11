@@ -1,0 +1,29 @@
+ARGENTINIA 23.21.4 UI-POLISH-3 — SMOKE DESKTOP LONG GAME + TARGET UX
+
+Base: 23.21.4 UI-POLISH-2. Client-only. No Functions / Rules deploy.
+
+A. Desktop battlefield overflow
+[ ] En una fila que entra normalmente, las cartas conservan centrado/tamaño histórico y NO aparece scroll.
+[ ] Con suficientes Tierras únicas para bajar de 88% del tamaño ideal, la fila conserva tamaño legible y activa overflow horizontal.
+[ ] Soporte y Semidioses conservan su ancho asignado aunque Tierras desborde.
+[ ] Click+drag sobre carta desplaza la fila sólo después de superar ~7 px.
+[ ] Un click corto sobre Tierra/criatura sigue ejecutando la acción normal; un drag no deja click residual.
+[ ] Rueda vertical sobre fila desbordada desplaza horizontalmente.
+[ ] Hover sobre carta de fila desbordada muestra preview completo sin clipping.
+[ ] Combat map se recalcula al scrollear Combat/Semidioses.
+
+B. Player target surface
+[ ] Lanzar Tierra sobre el Cajón: el badge completo del jugador objetivo queda dorado/targetable.
+[ ] Click en avatar, nombre o zona HP del badge rival selecciona el jugador.
+[ ] Los chips del mana pool no se convierten en clicks de target.
+[ ] Si el efecto exige opponent_player, el badge propio no se ilumina falsamente.
+
+C. Stack target label
+[ ] Con Tierra sobre el Cajón en stack, responder con Decreto de Urgencia (DNU).
+[ ] DNU muestra "Objetivo: Tierra sobre el Cajón" y no "Hechizo en pila #N".
+[ ] Si el objeto de stack ya no es resolvible por UI, se conserva fallback numérico sin crash.
+
+D. No-regression
+[ ] Mobile mantiene sus filas scrollables actuales sin cambio de geometría.
+[ ] Mano, Mulligan, selector de cartas y drag/hover históricos siguen normales.
+[ ] GitHub: 118/118 canonical + dynamic labs + 13/13 Functions verdes.

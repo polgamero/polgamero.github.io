@@ -2012,11 +2012,171 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 
 const CARD_ASPECT = 5 / 7;
 const CARD_ASPECT_INV = 7 / 5; // cuánto más ancha es una carta girada, respecto de una vertical
+// UI-POLISH-3: en desktop una fila de permanentes deja de seguir encogiendo cartas cuando
+// eso las llevaría por debajo del 88% de su tamaño ideal. A partir de ahí conserva lectura
+// y pasa a overflow horizontal; mobile conserva íntegro su contrato de scroll nativo.
+const DESKTOP_BATTLEFIELD_SCROLL_MIN_SCALE = 0.88;
+let desktopBattlefieldScrollInteractionsInstalled = false;
+let desktopBattlefieldScrollGesture = null;
+let desktopBattlefieldHoverPreview = null;
+let desktopBattlefieldHoverSource = null;
+
 function getIdealCardHeightPx() { return window.innerHeight * 0.175; }
+
+function clearDesktopBattlefieldHoverPreview() {
+  desktopBattlefieldHoverPreview?.remove?.();
+  desktopBattlefieldHoverPreview = null;
+  desktopBattlefieldHoverSource = null;
+}
+
+function showDesktopBattlefieldHoverPreview(cardEl) {
+  if (!cardEl || typeof document === 'undefined') return;
+  if (!window.matchMedia?.('(hover: hover) and (pointer: fine)')?.matches) return;
+  if (desktopBattlefieldScrollGesture?.dragging) return;
+  const row = cardEl.closest?.('.field-row.desktop-overflow-scroll');
+  if (!row) return;
+  if (desktopBattlefieldHoverSource === cardEl && desktopBattlefieldHoverPreview?.isConnected) return;
+  clearDesktopBattlefieldHoverPreview();
+
+  const rect = cardEl.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const tapped = cardEl.classList.contains('tapped');
+  const verticalSourceWidth = tapped ? rect.height : rect.width;
+  const displayW = Math.min(220, Math.max(150, verticalSourceWidth * 2));
+  const displayH = displayW / CARD_ASPECT;
+  const pad = 12;
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const left = Math.min(Math.max(pad, centerX - displayW / 2), Math.max(pad, window.innerWidth - displayW - pad));
+  const top = Math.min(Math.max(pad, centerY - displayH / 2), Math.max(pad, window.innerHeight - displayH - pad));
+
+  const preview = cardEl.cloneNode(true);
+  preview.querySelectorAll?.('[id]').forEach?.(node => node.removeAttribute('id'));
+  preview.classList.remove('tapped', 'targetable', 'attacking', 'selected-blocker', 'blocking');
+  preview.classList.add('desktop-battlefield-hover-preview');
+  preview.setAttribute('aria-hidden', 'true');
+  preview.style.left = `${left}px`;
+  preview.style.top = `${top}px`;
+  preview.style.width = `${displayW}px`;
+  preview.style.height = `${displayH}px`;
+  const inner = preview.querySelector('.card-inner');
+  if (inner) {
+    inner.style.width = '';
+    inner.style.height = '';
+    inner.style.transform = 'none';
+  }
+  preview.querySelectorAll?.('img').forEach?.(img => { img.draggable = false; });
+  document.body.appendChild(preview);
+  desktopBattlefieldHoverPreview = preview;
+  desktopBattlefieldHoverSource = cardEl;
+}
+
+function installDesktopBattlefieldScrollInteractions() {
+  if (desktopBattlefieldScrollInteractionsInstalled || typeof document === 'undefined') return;
+  desktopBattlefieldScrollInteractionsInstalled = true;
+
+  const rowFromEvent = (event) => event?.target?.nodeType === 1 ? event.target.closest('.field-row.desktop-overflow-scroll') : null;
+  const cardFromEvent = (event) => event?.target?.nodeType === 1 ? event.target.closest('.field-row.desktop-overflow-scroll .card') : null;
+  const hasHorizontalOverflow = (row) => !!row && row.scrollWidth > row.clientWidth + 2;
+
+  document.addEventListener('dragstart', (event) => {
+    if (!rowFromEvent(event)) return;
+    event.preventDefault();
+  }, true);
+
+  // El hover normal 2.8x quedaría recortado por overflow-x:auto. Igual que en Mulligan,
+  // mostramos una copia fija FUERA del viewport del scroller sólo para filas desbordadas.
+  document.addEventListener('pointerover', (event) => {
+    const cardEl = cardFromEvent(event);
+    if (!cardEl || event.pointerType === 'touch' || cardEl.contains(event.relatedTarget)) return;
+    showDesktopBattlefieldHoverPreview(cardEl);
+  }, true);
+  document.addEventListener('pointerout', (event) => {
+    const cardEl = cardFromEvent(event);
+    if (!cardEl || cardEl !== desktopBattlefieldHoverSource || cardEl.contains(event.relatedTarget)) return;
+    clearDesktopBattlefieldHoverPreview();
+  }, true);
+
+  // Rueda vertical sobre una fila desbordada = desplazamiento horizontal. Trackpads que
+  // ya entregan deltaX mantienen su comportamiento nativo.
+  document.addEventListener('wheel', (event) => {
+    const row = rowFromEvent(event);
+    if (!hasHorizontalOverflow(row)) return;
+    clearDesktopBattlefieldHoverPreview();
+    if (Math.abs(event.deltaX) >= Math.abs(event.deltaY) || Math.abs(event.deltaY) < 1) return;
+    event.preventDefault();
+    row.scrollLeft += event.deltaY;
+  }, { passive: false, capture: true });
+
+  // Click + drag con mouse. Un click corto sigue llegando a la carta; recién luego de 7 px
+  // la interacción se convierte en paneo y se suprime el click residual del pointerup.
+  document.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || event.pointerType === 'touch') return;
+    const row = rowFromEvent(event);
+    if (!hasHorizontalOverflow(row)) return;
+    if (event.target?.closest?.('button,a,input,select,textarea,label')) return;
+    clearDesktopBattlefieldHoverPreview();
+    desktopBattlefieldScrollGesture = {
+      row,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScrollLeft: row.scrollLeft,
+      dragging: false
+    };
+  }, true);
+
+  document.addEventListener('pointermove', (event) => {
+    const g = desktopBattlefieldScrollGesture;
+    if (!g || g.pointerId !== event.pointerId) return;
+    const dx = event.clientX - g.startX;
+    if (!g.dragging && Math.abs(dx) < 7) return;
+    if (!g.dragging) {
+      g.dragging = true;
+      clearDesktopBattlefieldHoverPreview();
+      g.row.classList.add('is-dragging');
+      try { g.row.setPointerCapture?.(event.pointerId); } catch {}
+    }
+    event.preventDefault();
+    g.row.scrollLeft = g.startScrollLeft - dx;
+  }, { passive: false, capture: true });
+
+  const finishDrag = (event) => {
+    const g = desktopBattlefieldScrollGesture;
+    if (!g || g.pointerId !== event.pointerId) return;
+    if (g.dragging) {
+      g.row.dataset.suppressBattlefieldClickUntil = String(Date.now() + 260);
+      g.row.classList.remove('is-dragging');
+      try { g.row.releasePointerCapture?.(event.pointerId); } catch {}
+    }
+    desktopBattlefieldScrollGesture = null;
+  };
+  document.addEventListener('pointerup', finishDrag, true);
+  document.addEventListener('pointercancel', finishDrag, true);
+  document.addEventListener('click', (event) => {
+    const row = rowFromEvent(event);
+    if (!row) return;
+    if (Number(row.dataset.suppressBattlefieldClickUntil || 0) > Date.now()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
+
+  document.addEventListener('scroll', (event) => {
+    const row = event?.target?.closest?.('.field-row.desktop-overflow-scroll');
+    if (!row) return;
+    clearDesktopBattlefieldHoverPreview();
+    if (row.classList.contains('combat-row') || row.classList.contains('planeswalker-row')) scheduleCurrentCombatMap();
+  }, true);
+}
+
 export function sizeCardsInRow(rowEl) {
   const cards = rowEl.querySelectorAll('.card');
   const n = cards.length;
-  if (n === 0) return;
+  if (n === 0) {
+    rowEl.classList?.remove('desktop-overflow-scroll');
+    if (rowEl.scrollLeft) rowEl.scrollLeft = 0;
+    return;
+  }
 
   // RC5.2 hand-geometry hotfix: mobile local-hand dimensions are a CSS invariant
   // (exact 5:7, identical for every card). Do not leave per-render inline width/height
@@ -2076,12 +2236,17 @@ export function sizeCardsInRow(rowEl) {
   let cardHeight = Math.min(getIdealCardHeightPx(), availableHeight);
   let cardWidth = cardHeight * CARD_ASPECT;
   const mobileScrollableRow = document.documentElement?.classList?.contains('argentinia-mobile');
-  // RC5.1: en mobile las filas ya son scroll containers horizontales. Reducir el tamaño
-  // para que "entren todas" hacía que declarar atacantes (giradas = 7/5 unidades) encogiera
-  // visualmente las cartas. En teléfono manda el alto disponible; el exceso panea.
-  if (!mobileScrollableRow) {
-    const widthIfFit = (availableWidth - (gap * Math.max(0, n - 1))) / effectiveUnits;
-    if (widthIfFit < cardWidth) { cardWidth = Math.max(widthIfFit, 24); cardHeight = cardWidth / CARD_ASPECT; }
+  const widthIfFit = (availableWidth - (gap * Math.max(0, n - 1))) / effectiveUnits;
+  const desktopBattlefieldRow = !mobileScrollableRow && rowEl.classList?.contains('field-row');
+  const desktopOverflowScroll = desktopBattlefieldRow && n > 1 && widthIfFit < (cardWidth * DESKTOP_BATTLEFIELD_SCROLL_MIN_SCALE);
+  rowEl.classList?.toggle('desktop-overflow-scroll', desktopOverflowScroll);
+  if (!desktopOverflowScroll && rowEl.scrollLeft) rowEl.scrollLeft = 0;
+
+  // RC5.1: en mobile las filas ya son scroll containers horizontales. UI-POLISH-3 extiende
+  // el mismo principio a desktop SÓLO cuando seguir achicando volvería ilegible la fila.
+  if (!mobileScrollableRow && !desktopOverflowScroll && widthIfFit < cardWidth) {
+    cardWidth = Math.max(widthIfFit, 24);
+    cardHeight = cardWidth / CARD_ASPECT;
   }
 
   cards.forEach(c => {
@@ -2109,6 +2274,8 @@ export function sizeCardsInRow(rowEl) {
 }
 
 export function sizeAllRows() {
+  clearDesktopBattlefieldHoverPreview();
+  installDesktopBattlefieldScrollInteractions();
   [els.localHand, els.rivalHand, els.localLands, els.rivalLands, els.localCombat, els.rivalCombat, els.localSupport, els.rivalSupport, els.localPlaneswalkers, els.rivalPlaneswalkers].forEach(sizeCardsInRow);
 }
 
@@ -11231,14 +11398,33 @@ export function render() {
   els.localCombat.innerHTML = ''; state.localCombat.forEach((item, idx) => els.localCombat.appendChild(createCardElement(item, item.tapped, true, idx, 'combat')));
   els.rivalCombat.innerHTML = ''; state.rivalCombat.forEach((item, idx) => els.rivalCombat.appendChild(createCardElement(item, item.tapped, false, idx, 'combat')));
   
+  // UI-POLISH-3: si el target legal es un JUGADOR, la superficie visual/clickeable es el
+  // badge entero — avatar + nombre + HP — y no la barrita de vida de 8px. Para efectos que
+  // dicen explícitamente opponent_player tampoco iluminamos falsamente el badge propio.
+  let allowLocalPlayerTarget = false;
+  let allowRivalPlayerTarget = false;
   if (state.pendingTargetCard) {
     const rules = getTargetRules(state.pendingTargetCard);
-    els.rivalHpBar.parentElement.classList.toggle('targetable', rules.allowPlayer);
-    els.localHpBar.parentElement.classList.toggle('targetable', rules.allowPlayer);
-  } else {
-    els.rivalHpBar.parentElement.classList.remove('targetable');
-    els.localHpBar.parentElement.classList.remove('targetable');
+    if (rules.allowPlayer) {
+      allowLocalPlayerTarget = true;
+      allowRivalPlayerTarget = true;
+      if (state.pendingTargetCard.effect?.target === 'opponent_player') allowLocalPlayerTarget = false;
+    }
+  } else if (state.pendingMultiTargetChoice) {
+    const mtc = state.pendingMultiTargetChoice;
+    const spec = mtc.card?.targets?.[mtc.currentIndex];
+    const rules = spec ? getTargetRules({ effect: spec.effect }) : null;
+    if (rules?.allowPlayer) {
+      allowLocalPlayerTarget = true;
+      allowRivalPlayerTarget = true;
+      if (spec.effect?.target === 'opponent_player') allowLocalPlayerTarget = false;
+    }
   }
+  els.rivalPlayerCard?.classList.toggle('targetable', allowRivalPlayerTarget);
+  els.localPlayerCard?.classList.toggle('targetable', allowLocalPlayerTarget);
+  // Limpieza de compatibilidad: versiones anteriores aplicaban targetable al hp-bar-container.
+  els.rivalHpBar?.parentElement?.classList.remove('targetable');
+  els.localHpBar?.parentElement?.classList.remove('targetable');
 
   sizeAllRows();
   updatePilesUI();

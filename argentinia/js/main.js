@@ -881,8 +881,17 @@ function hookGameplayButtons() {
     // are destroyed before the next setupBoardLayout().
     await returnToMainMenuAfterAbandon({ destination: returnToTournament ? 'tournament' : 'main' });
   });
-  els.rivalHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(false));
-  els.localHpBar.parentElement.addEventListener('click', () => handlePlayerTargetClick(true));
+  // UI-POLISH-3: targetear un jugador usa TODO su badge, no solamente la barra de vida.
+  // Los docks de maná viven dentro del mismo nodo por geometría del HUD pero conservan sus
+  // propios clicks: no deben transformarse accidentalmente en un click de target al gastar maná.
+  els.rivalPlayerCard?.addEventListener('click', (event) => {
+    if (event.target?.closest?.('.mana-pool-hud,.mana-pool-education-hint')) return;
+    handlePlayerTargetClick(false);
+  });
+  els.localPlayerCard?.addEventListener('click', (event) => {
+    if (event.target?.closest?.('.mana-pool-hud,.mana-pool-education-hint')) return;
+    handlePlayerTargetClick(true);
+  });
 
   // FASE 2: abandonar tiene una penalidad más dura que perder jugando hasta el final — por
   // eso el botón pide confirmación (showAbandonConfirmModal) antes de aplicar nada.
