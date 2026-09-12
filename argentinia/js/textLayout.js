@@ -9,10 +9,11 @@
 
 import { loadPublicGameConfigDocument, saveAdminGameConfigDocument } from './firebaseClient.js';
 
-export const TEXT_LAYOUT_SCHEMA_VERSION = 1;
+export const TEXT_LAYOUT_SCHEMA_VERSION = 2;
 export const TEXT_LAYOUT_DOCUMENT_ID = 'textLayouts';
-export const TEXT_LAYOUT_CACHE_KEY = 'argentinia.textLayouts.v1';
+export const TEXT_LAYOUT_CACHE_KEY = 'argentinia.textLayouts.v2';
 export const TEXT_LAYOUT_DEFAULT = Object.freeze({
+  nameScale: 1,
   fontScale: 1,
   lineHeightScale: 1,
   flavorScale: 1,
@@ -20,6 +21,8 @@ export const TEXT_LAYOUT_DEFAULT = Object.freeze({
   boxHeight: 42
 });
 export const TEXT_LAYOUT_LIMITS = Object.freeze({
+  minNameScale: 0.70,
+  maxNameScale: 1.35,
   minFontScale: 0.70,
   maxFontScale: 1.35,
   minLineHeightScale: 0.85,
@@ -48,6 +51,7 @@ function round3(value) { return Math.round(value * 1000) / 1000; }
 export function normalizeCardTextLayout(layout) {
   if (!isRecord(layout)) return { ...TEXT_LAYOUT_DEFAULT };
   return {
+    nameScale: round3(clamp(finiteNumber(layout.nameScale, 1), TEXT_LAYOUT_LIMITS.minNameScale, TEXT_LAYOUT_LIMITS.maxNameScale)),
     fontScale: round3(clamp(finiteNumber(layout.fontScale, 1), TEXT_LAYOUT_LIMITS.minFontScale, TEXT_LAYOUT_LIMITS.maxFontScale)),
     lineHeightScale: round3(clamp(finiteNumber(layout.lineHeightScale, 1), TEXT_LAYOUT_LIMITS.minLineHeightScale, TEXT_LAYOUT_LIMITS.maxLineHeightScale)),
     flavorScale: round3(clamp(finiteNumber(layout.flavorScale, 1), TEXT_LAYOUT_LIMITS.minFlavorScale, TEXT_LAYOUT_LIMITS.maxFlavorScale)),
@@ -129,6 +133,12 @@ export function applyCardTextLayoutToBox(box, cardId, layoutOverride = null) {
   if (id) box.dataset.cardTextLayoutId = id;
   const layout = layoutOverride ? normalizeCardTextLayout(layoutOverride) : getCardTextLayout(id);
   const autoTextCqw = finiteNumber(box.dataset.autoTextCqw, 6);
+  const title = box.closest?.('.card')?.querySelector?.('.card-title');
+  if (title) {
+    const autoNameCqw = finiteNumber(title.dataset.autoNameCqw, 8);
+    title.style.fontSize = `clamp(4px, ${round3(autoNameCqw * layout.nameScale)}cqw, 40px)`;
+    title.dataset.nameScale = String(layout.nameScale);
+  }
   box.style.setProperty('--card-text-effective-size', `${round3(autoTextCqw * layout.fontScale)}cqw`);
   box.style.setProperty('--card-text-line-height', String(round3(1.14 * layout.lineHeightScale)));
   box.style.setProperty('--card-flavor-line-height', String(round3(1.12 * layout.lineHeightScale)));

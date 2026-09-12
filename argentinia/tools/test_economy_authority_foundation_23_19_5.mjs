@@ -13,7 +13,7 @@ const appRoot=path.resolve(here,'..');
 const repoRoot=path.resolve(appRoot,'..');
 const read=(p)=>fs.readFileSync(path.join(repoRoot,p),'utf8');
 
-assert.equal(ENGINE_VERSION,'23.21.4');
+assert.equal(ENGINE_VERSION,'23.21.6');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
 assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.6');
@@ -21,11 +21,11 @@ assert.equal(ECONOMY_SCHEMA_VERSION,10);
 assert.equal(ECONOMY_FUNCTIONS_REGION,'southamerica-east1');
 
 const manifest=JSON.parse(read('argentinia/build-manifest.json'));
-assert.equal(manifest.engineVersion,'23.21.4');
+assert.equal(manifest.engineVersion,'23.21.6');
 assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.6');
 assert.equal(manifest.economyFunctionsRegion,'southamerica-east1');
 assert.equal(manifest.firestoreRulesVersion,'23.13.86');
-assert.equal(manifest.pool,880);
+assert.equal(manifest.pool,900);
 
 const firebaseImpl=read('argentinia/js/firebaseClientImpl.js');
 const economyClient=read('argentinia/js/economyClient.js');
@@ -72,7 +72,8 @@ assert.match(fnIndex,/rejectForbidden\(data, \['uid','points','fichas','collecti
 assert.match(ledger,/requestDigest/);
 assert.match(ledger,/OPERATION_ID_PAYLOAD_MISMATCH/);
 assert.match(ledger,/status:\s*'committed'/);
-assert.match(accounts,/buildCompetitiveDeck\(TRUSTED_CARD_POOL/);
+assert.match(accounts,/enabledTrustedPool\(publication\)/);
+assert.match(accounts,/buildTrustedStarterDeck\(uid, operationId, identity, enabledTrustedPool\(publication\)\)/);
 assert.match(accounts,/quality:\s*'starter'/);
 assert.match(accounts,/starterCardIds/);
 
@@ -84,7 +85,7 @@ for(const file of files){
   assert.equal(server,browser,`${file} trusted snapshot must be byte-identical`);
   count+=JSON.parse(server).length;
 }
-assert.equal(count,880);
+assert.equal(count,900);
 assert.equal(
   crypto.createHash('sha256').update(read('functions/src/trusted/deckIntelligence.js')).digest('hex'),
   crypto.createHash('sha256').update(read('argentinia/js/deckIntelligence.js')).digest('hex'),

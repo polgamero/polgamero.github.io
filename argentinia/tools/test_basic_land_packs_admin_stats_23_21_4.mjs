@@ -10,14 +10,14 @@ const argRoot = path.resolve(__dirname, '..');
 const read = rel => fs.readFileSync(path.join(repoRoot, rel), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(argRoot, 'build-manifest.json'), 'utf8'));
 
-assert.equal(manifest.engineVersion, '23.21.4');
+assert.equal(manifest.engineVersion, '23.21.6');
 assert.equal(manifest.functionsCount, 41);
-assert.match(manifest.label, /Basic Land Access.*Admin Statistics Dashboard/i);
+assert.match(String(manifest.basicLandPacks || ''), /W\/U\/B\/R\/G|WUBRG|5 fixed Common/i);
 
 const version = read('argentinia/js/version.js');
-assert.match(version, /ENGINE_VERSION = '23\.21\.4'/);
+assert.match(version, /ENGINE_VERSION = '23\.21\.6'/);
 const constants = read('functions/src/shared/constants.js');
-assert.match(constants, /ENGINE_VERSION = '23\.21\.4'/);
+assert.match(constants, /ENGINE_VERSION = '23\.21\.6'/);
 assert.match(constants, /ECONOMY_PROTOCOL_VERSION = 'econ-23\.19\.5\.6'/);
 
 const store = read('argentinia/js/store.js');
@@ -87,4 +87,4 @@ assert.equal(global.multiplayerGames, 1);
 assert.equal(global.tournamentGames, 1);
 assert.equal(global.totalGames, 3);
 
-console.log('PASS 23.21.4 Basic Land Access + Admin Statistics Dashboard contract');
+console.log('PASS 23.21.6 Basic Land Access + Admin Statistics Dashboard contract');

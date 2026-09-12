@@ -8,7 +8,13 @@ const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(__dirname,'..');
 const cards=['criaturas','instantaneos','conjuros','encantamientos','artefactos','tierras','planeswalkers']
   .flatMap(k=>JSON.parse(fs.readFileSync(path.join(root,'assets/data',`${k}.json`),'utf8')));
-const identities=[['W'],['U'],['B'],['R'],['G'],['W','U'],['U','B'],['B','R'],['R','G'],['G','W'],['W','B'],['U','R'],['B','G'],['R','W'],['G','U']];
+const identityByArchetype={
+  aggro:['W'], tempo:['U'], midrange:['B'], control:['R'], tokens:['G'], counters:['W','U'],
+  sacrifice:['U','B'], graveyard:['B','R'], exile:['R','G'],
+  // 23.21.6: keep generic Typal audit on a mature non-Dragon tribe; Dragons has its own fixed R/G matrix row.
+  typal:['U','R'], dragons:['R','G'],
+  artifacts:['W','B'], spells:['U','R'], suspend:['B','G'], transform:['R','W'], ramp:['G','U']
+};
 const qualities=['starter','good','strong','elite'];
 function seeded(seed){let x=seed>>>0;return()=>{x=(Math.imul(x,1664525)+1013904223)>>>0;return x/4294967296;};}
 let audited=0, eliteStrict=0, starterBudget=0;
@@ -16,8 +22,10 @@ for (let q=0;q<qualities.length;q++) {
   const quality=qualities[q];
   for (let i=0;i<ARCHETYPE_IDS.length;i++) {
     const archetypeId=ARCHETYPE_IDS[i];
-    const identity=identities[i%identities.length];
-    const built=buildCompetitiveDeck(cards,identity,{quality,archetypeId,rng:seeded(23195000+q*100+i),candidateCount:14,goldfishIterations:12});
+    const identity=identityByArchetype[archetypeId];
+    assert.ok(identity,`missing audit identity for ${archetypeId}`);
+    const matrixCandidateCount=archetypeId==='dragons'?32:14;
+    const built=buildCompetitiveDeck(cards,identity,{quality,archetypeId,rng:seeded(23195000+q*100+i),candidateCount:matrixCandidateCount,goldfishIterations:12});
     assert.ok(validateCompetitiveDeck(built.deck,identity).ok,`${quality}/${archetypeId}/${identity.join('/')}: legal 60-card deck`);
     const c=built.report.composition;
     assert.ok(c.creatures>=built.report.creatureFloor && c.creatures<=built.report.creatureCeiling,`${quality}/${archetypeId}: creature range`);
@@ -26,8 +34,12 @@ for (let q=0;q<qualities.length;q++) {
     assert.ok(c.creatureInteraction>=built.report.creatureInteractionFloor,`${quality}/${archetypeId}: creature interaction`);
     assert.ok(c.instantSorcery>=built.report.instantSorceryFloor,`${quality}/${archetypeId}: instant/sorcery mix`);
     assert.ok(c.nonCreature>=built.report.nonCreatureFloor,`${quality}/${archetypeId}: non-creature mix`);
-    if (archetypeId==='typal' && built.report.focusSubtype) {
-      assert.ok(c.typalDensity>=0.50,`${quality}/typal: coherent subtype density`);
+    if ((archetypeId==='typal' || archetypeId==='dragons') && built.report.focusSubtype) {
+      assert.ok(c.typalDensity>=0.50,`${quality}/${archetypeId}: coherent subtype density`);
+      if (archetypeId==='dragons') {
+        assert.equal(built.report.focusSubtype,'dragon',`${quality}/dragons: fixed Dragon focus`);
+        assert.ok(c.tribalSupport>=4,`${quality}/dragons: real tribal support`);
+      }
     }
     if (quality==='elite') {
       const core=new Set(['creatures','creatureCeiling','vehicles','broadInteraction','creatureInteraction','instantSorcery','nonCreature','typalDensity','tribalSupport','deadSynergy']);

@@ -3153,5 +3153,58 @@
         }
       }
     ]
+  },
+  {
+    "id": "ench_109",
+    "name": "Cielo Reclamado",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}{G}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "R",
+      "G"
+    ],
+    "text": "Los Dragones que controlás obtienen +1/+1.",
+    "flavorText": "El cielo nunca estuvo vacío. Sólo estaba esperando dueño.",
+    "image": "cielo_reclamado.png",
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 1,
+      "toughnessMod": 1,
+      "filter": {
+        "subtype": "Dragón"
+      }
+    },
+    "enabled": false
+  },
+  {
+    "id": "ench_110",
+    "name": "Juramento de la Primera Llama",
+    "type": "Encantamiento",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Siempre que un Dragón entre al campo de batalla bajo tu control, Juramento de la Primera Llama le hace 1 de daño al jugador rival.",
+    "flavorText": "Cada ala nueva repite una promesa que empezó antes de los hombres.",
+    "image": "juramento_de_la_primera_llama.png",
+    "triggers": [
+      {
+        "event": "creature_entered",
+        "filter": {
+          "controller": "you",
+          "subtype": "Dragón"
+        },
+        "effect": {
+          "type": "damage",
+          "amount": 1
+        }
+      }
+    ],
+    "enabled": false
   }
 ]

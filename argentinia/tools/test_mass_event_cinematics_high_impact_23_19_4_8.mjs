@@ -18,13 +18,13 @@ const workflow=read('../.github/workflows/pages.yml');
 const conjuros=JSON.parse(read('assets/data/conjuros.json'));
 const planeswalkers=JSON.parse(read('assets/data/planeswalkers.json'));
 
-assert.equal(ENGINE_VERSION,'23.21.4');
+assert.equal(ENGINE_VERSION,'23.21.6');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
-assert.equal(manifest.engineVersion,'23.21.4');
+assert.equal(manifest.engineVersion,'23.21.6');
 assert.equal(manifest.engineProtocolVersion,'mp-23.19.2');
 assert.equal(manifest.firestoreRulesVersion,'23.13.86');
-assert.equal(manifest.pool,880);
+assert.equal(manifest.pool,900);
 assert.ok(ENGINE_BASELINE.includes('23.19.4.7 Core Gameplay Feedback Expansion'));
 
 const catalog=getAnimationTuningCatalog();

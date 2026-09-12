@@ -1,0 +1,29 @@
+QA 23.21.5 — CARD PUBLICATION / ADMIN IDENTITY / ARCHETYPE UX
+
+PRE-RELEASE GATES
+[ ] GitHub Actions completo verde.
+[ ] Gate05 23.21.5 verde.
+[ ] Gate07 23.21.5 verde.
+[ ] Deploy Functions 23.21.5 + verify exactamente 41.
+[ ] Gate03 no requerido: Rules 23.13.86 byte-idénticas.
+
+SMOKE ADMIN ENCICLOPEDIA
+[ ] Las 880 cartas históricas muestran HABILITADA tildada.
+[ ] Deshabilitar una carta la marca NO PUBLICADA sin borrarla de colección.
+[ ] Rehabilitarla restaura disponibilidad.
+[ ] No permitir habilitar una carta cuyo frente figure faltante en image manifest.
+[ ] Renombrar una carta persiste tras F5 y no cambia el card ID.
+[ ] Si su rules text menciona su nombre canónico, aparece el nuevo nombre.
+[ ] Tamaño de nombre 70%-135% funciona junto al auto-fit.
+[ ] Lápiz de arte no tapa coste de maná.
+
+SMOKE GAMEPLAY / ECONOMY
+[ ] Carta suspendida no entra en nuevo mazo automático/Tano.
+[ ] Mazo guardado con carta suspendida se bloquea con CARD_DISABLED hasta corregir/re-habilitar.
+[ ] Packs/starters/crafting/Clasificados/prebuilt/Trade Market no entregan cartas suspendidas.
+[ ] Colecciones existentes conservan copias suspendidas.
+[ ] Publicación propia del Mercado queda cancelable por dueño aun si la carta fue suspendida.
+
+FILTROS
+[ ] Enciclopedia: 15 arquetipos + Mecánicas Veneno/Robo/Curación.
+[ ] Editar mazo: misma taxonomía y comportamiento.

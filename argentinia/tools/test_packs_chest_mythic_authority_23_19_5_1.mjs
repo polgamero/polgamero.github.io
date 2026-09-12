@@ -18,11 +18,11 @@ const root=path.resolve(here,'..');
 const repo=path.resolve(root,'..');
 const read=(p)=>fs.readFileSync(path.join(repo,p),'utf8');
 
-assert.equal(ENGINE_VERSION,'23.21.4');
+assert.equal(ENGINE_VERSION,'23.21.6');
 assert.equal(ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.6');
 assert.equal(ECONOMY_SCHEMA_VERSION,10);
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
-assert.equal(TRUSTED_CARD_POOL.length,880);
+assert.equal(TRUSTED_CARD_POOL.length,900);
 
 const byId=new Map(TRUSTED_CARD_POOL.map(c=>[c.id,c]));
 const rarePack=generateTrustedPack({seed:'qa-pack-rare',mythicChance:0});
@@ -102,7 +102,7 @@ assert.match(packServer,/CAMPAIGN_POLICY_UNAVAILABLE/,'campaign lookup must fail
 assert.match(packServer,/mythicChance/,'server must honor trusted admin pack policy');
 
 const manifest=JSON.parse(read('argentinia/build-manifest.json'));
-assert.equal(manifest.engineVersion,'23.21.4');
+assert.equal(manifest.engineVersion,'23.21.6');
 assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.6');
 assert.equal(manifest.economySchemaVersion,10);
 

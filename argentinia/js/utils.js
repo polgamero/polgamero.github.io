@@ -218,7 +218,7 @@ export function buildRandomDeck(forcedIdentity, options = {}) {
   const identity = forcedIdentity || pickDeckIdentity();
   const quality = options.quality || 'competitive';
   const replayRng = options.rng || (() => gameRandom('deck_intelligence'));
-  const result = buildCompetitiveDeck(cardDb.allCards, identity, { ...options, quality, rng: replayRng });
+  const result = buildCompetitiveDeck(cardDb.enabledCards, identity, { ...options, quality, rng: replayRng });
   lastRandomDeckReport = result.report;
   // 23.19 — privacidad de juego Solo: el mazo del Tano es información oculta.
   // No imprimir identidad, arquetipo, score ni curva del mazo generado en consola.
@@ -250,6 +250,10 @@ export function buildDeckFromCardIds(cardIds, enhancements) {
       const baseId = isEnhancedSlot ? id.slice(0, -ENHANCED_SUFFIX.length) : id;
       const cardDef = cardDb.getById(baseId);
       if (!cardDef) return null;
+      if (cardDef.enabled === false) {
+        const error = new Error(`La carta ${cardDef.name || baseId} está deshabilitada. Editá el mazo antes de jugar.`);
+        error.code = 'CARD_DISABLED'; error.cardId = baseId; throw error;
+      }
       const cloned = { ...cardDef };
       if (isEnhancedSlot && isEnhancementEligibleCard(cardDef)) {
         const keyword = enhancements && enhancements[baseId];
@@ -339,12 +343,12 @@ function pickRandomCard(pool) {
 
 export function generatePackCards() {
   const byRarity = {
-    Common: cardDb.allCards.filter(c => c.rarity === 'Common'),
-    Uncommon: cardDb.allCards.filter(c => c.rarity === 'Uncommon'),
-    Rare: cardDb.allCards.filter(c => c.rarity === 'Rare'),
-    Mythic: cardDb.allCards.filter(c => c.rarity === 'Mythic')
+    Common: cardDb.enabledCards.filter(c => c.rarity === 'Common'),
+    Uncommon: cardDb.enabledCards.filter(c => c.rarity === 'Uncommon'),
+    Rare: cardDb.enabledCards.filter(c => c.rarity === 'Rare'),
+    Mythic: cardDb.enabledCards.filter(c => c.rarity === 'Mythic')
   };
-  const lands = cardDb.allCards.filter(c => c.type.includes('Tierra'));
+  const lands = cardDb.enabledCards.filter(c => c.type.includes('Tierra'));
 
   const cards = [];
   for (let i = 0; i < PACK_COMMONS; i++) cards.push(pickRandomCard(byRarity.Common));
@@ -361,7 +365,7 @@ export function generatePackCards() {
 // @deprecated desde 23.19.5.1 — la elección productiva de la Mythic vive en Functions.
 // Se conserva para regresión histórica y herramientas locales, nunca como autoridad económica.
 export function generateGuaranteedMythicCard() {
-  const mythics = cardDb.allCards.filter(c => c.rarity === 'Mythic');
+  const mythics = cardDb.enabledCards.filter(c => c.rarity === 'Mythic');
   if (!mythics.length) throw new Error('No hay cartas míticas cargadas.');
   return pickRandomCard(mythics);
 }

@@ -1,6 +1,7 @@
 // js/poolContract.js
-// 23.16.5.1 — POOL EXPANSION VIII — Typal. Pool canónico 850 → 880.
-// Estrena 30 cartas de contenido Typal sobre el motor Typal 23.16.5.
+// 23.21.6 — POOL EXPANSION IX — DRAGONES EN BUENOS AIRES. Pool canónico 880 → 900.
+// Agrega 20 cartas alrededor del nuevo arquetipo Dragones; las 20 nacen NO PUBLICADAS.
+// La baseline histórica de publicación permanece congelada en las 880 cartas previas.
 const makeMilestone = (version, total, categories) => Object.freeze({
   version,
   total,
@@ -125,7 +126,16 @@ export const POOL_MILESTONES = Object.freeze({
     encantamientos: 108,
     planeswalkers: 8
   }),
+  dragons_buenos_aires_900: makeMilestone('23.21.6', 900, {
+    tierras: 68,
+    artefactos: 89,
+    criaturas: 367,
+    instantaneos: 149,
+    conjuros: 109,
+    encantamientos: 110,
+    planeswalkers: 8
+  }),
 });
 
-export const CURRENT_POOL_MILESTONE = 'pool_expansion_viii_880';
+export const CURRENT_POOL_MILESTONE = 'dragons_buenos_aires_900';
 export const POOL_BASELINE = POOL_MILESTONES[CURRENT_POOL_MILESTONE];

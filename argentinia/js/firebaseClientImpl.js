@@ -21,7 +21,7 @@ import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, getDocFromServer, setDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, collection, query, orderBy, limit, where, documentId, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, getDocFromServer, setDoc, updateDoc, deleteDoc, runTransaction, serverTimestamp, onSnapshot, getDocs, getDocsFromServer, collection, query, orderBy, limit, where, documentId, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app-check.js";
 import { cardDb } from './cardLoader.js';
 import { DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, MAX_SAVED_DECKS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, ENHANCED_SUFFIX, isEnhancementEligibleCard } from './store.js';
@@ -1046,7 +1046,7 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
     // 23.11.13 — colección virtual de test: el admin puede guardar mazos contra todo el
     // pool sin persistir 511 IDs/copias artificiales en su perfil. Los topes legales de
     // copias siguen aplicando más abajo; sólo se saltea la restricción económica de posesión.
-    cardDb.allCards.forEach(card => {
+    cardDb.enabledCards.forEach(card => {
       ownedCounts[card.id] = card.type?.includes('básica') ? DECK_SIZE_EXACT : MAX_COPIES_PER_CARD;
     });
   } else {
@@ -1069,6 +1069,7 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
   });
 
   for (const [baseId, count] of Object.entries(requestedCounts)) {
+    if (!cardDb.isEnabled(baseId)) throw new Error(`La carta ${cardDb.getById(baseId)?.name || baseId} está deshabilitada y no puede guardarse en un mazo jugable.`);
     if (count > (ownedCounts[baseId] || 0)) throw new Error('Estás usando más copias de una carta de las que tenés.');
     // Regla oficial 100.2a: máximo 4 copias de una misma carta, salvo Tierras básicas
     // (esas no tienen límite, ni acá ni en el contrato canónico de Argentinia).
@@ -1257,7 +1258,7 @@ async function ensureClassifiedsScheduleOnce() {
     const previous = normalizeScheduleForClient(scheduleSnap.exists() ? scheduleSnap.data() : null) || { weeks: {} };
     const settings = settingsSnap.exists() ? settingsSnap.data() : {};
     const economy = getClassifiedsEconomySnapshot(settings);
-    const generated = buildClassifiedsScheduleWindow(cardDb.allCards, clock.serverNow, economy, {
+    const generated = buildClassifiedsScheduleWindow(cardDb.enabledCards, clock.serverNow, economy, {
       historyWeeks: CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS,
       horizonWeeks: CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS
     });
@@ -2225,18 +2226,47 @@ export async function fetchEconomyAuditForAdmin({ limitCount = 250 } = {}) {
 
 export async function fetchGameRewardAuditForAdmin() {
   if ((auth.currentUser?.email || '').toLowerCase() !== ADMIN_EMAIL) throw new Error('ADMIN_REQUIRED');
-  const [gameResultsSnap, rewardsSnap, tournamentSnap, eloSnap] = await Promise.all([
-    getDocs(collection(db, 'playerGameReceipts')),
-    getDocs(collection(db, 'gameRewardReceipts')),
-    getDocs(collection(db, 'tournamentReceipts')),
-    getDocs(collection(db, 'pvpEloReceipts'))
-  ]);
-  return {
-    playerGameReceipts: gameResultsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-    gameRewardReceipts: rewardsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-    tournamentReceipts: tournamentSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-    pvpEloReceipts: eloSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+
+  // 23.21.6 HF1 — Caja Negra must never turn an unreadable/stale Firestore view into
+  // negative economic evidence. These collections are diagnostic authority, so force
+  // server reads and preserve verification status per collection. A transient DNS/network
+  // failure therefore renders "no se pudo verificar" instead of "receipt inexistente".
+  const collectionNames = [
+    'playerGameReceipts',
+    'gameRewardReceipts',
+    'tournamentReceipts',
+    'pvpEloReceipts'
+  ];
+  const settled = await Promise.allSettled(
+    collectionNames.map(name => getDocsFromServer(collection(db, name)))
+  );
+  const result = {
+    playerGameReceipts: [],
+    gameRewardReceipts: [],
+    tournamentReceipts: [],
+    pvpEloReceipts: [],
+    verification: {}
   };
+
+  settled.forEach((entry, index) => {
+    const name = collectionNames[index];
+    if (entry.status === 'fulfilled') {
+      const snap = entry.value;
+      result[name] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      result.verification[name] = { verified: true, source: 'server', count: snap.size };
+      return;
+    }
+    const error = entry.reason;
+    result.verification[name] = {
+      verified: false,
+      source: 'unavailable',
+      code: String(error?.code || ''),
+      message: String(error?.message || error || 'READ_FAILED')
+    };
+    console.warn(`[Caja Negra] No se pudo verificar ${name} contra Firestore server; no se inferirán receipts faltantes.`, error);
+  });
+
+  return result;
 }
 
 // 23.21.2 — "MOVIMIENTOS" estilo homebanking. La fuente contable es economyEvents:

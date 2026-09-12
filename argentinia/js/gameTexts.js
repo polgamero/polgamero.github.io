@@ -1571,6 +1571,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'admin.movements.note': definition('Auditoría económica', 'Los saldos se reconstruyen hacia atrás desde el saldo actual real usando economyEvents inmutables. La cobertura contable exacta comienza con Economy Authority; operaciones históricas anteriores pueden no tener evidencia completa.', 'Nota metodológica del ledger.'),
   'admin.movements.error': definition('Auditoría económica', 'No se pudieron cargar los movimientos: {message}', 'Error visible del ledger.'),
   'admin.debug.tournamentReceiptMissing': definition('Caja Negra', '❌ Sin tournamentReceipt', 'Diagnóstico cuando una sesión de Torneo no tiene evidencia de settlement.'),
+  'admin.debug.receiptVerificationUnavailable': definition('Caja Negra', '⚠ No se pudo verificar {label} · conexión incompleta', 'Diagnóstico neutral cuando Firestore server no pudo confirmar la colección de receipts; nunca implica ausencia.'),
   'admin.debug.tournamentPractice': definition('Caja Negra', '✅ 0 pts · Torneo de práctica', 'Settlement correcto de Torneo sin premio económico.'),
   'admin.debug.tournamentSettledZero': definition('Caja Negra', '0 pts · ronda liquidada sin premio', 'Settlement de Torneo válido que no acredita puntos por la semántica de esa ronda.'),
   'admin.debug.tournamentReward': definition('Caja Negra', '✅ +{points} pts · {packs} sobre(s)', 'Settlement correcto de una ronda de Torneo.'),

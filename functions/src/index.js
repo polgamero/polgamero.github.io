@@ -27,6 +27,7 @@ import {
   openTrustedGuaranteedMythicTx
 } from './economy/packs.js';
 import { TRUSTED_CARD_POOL_FINGERPRINT } from './trusted/cardCatalog.js';
+import { loadCardPublicationPolicy, enabledTrustedPool } from './trusted/cardPublication.js';
 import {
   loadDailyCampaignEffects, registerDailyLoginTx, claimDailyRewardTx, adminDailyDebugTx
 } from './economy/daily.js';
@@ -109,7 +110,7 @@ export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
         matchSettlementAuthority: 'server', pvpAntiFarmAuthority: 'server',
         registrationAdmissionAuthority: 'server', adminEconomyAuthority: 'server',
         economicStatisticsAuthority: 'server', immutableAuditAuthority: 'server', tournamentAuthority: 'server', tradeMarketAuthority: 'server', emoteStoreAuthority:'server', multiplayerSocialAuthority:'server',
-        browserEconomyWrites: 'denied_by_rules_23.13.86', authorityCutover: 'server_required'
+        browserEconomyWrites: 'denied_by_rules_23.13.86', cardPublicationAuthority:'server', authorityCutover: 'server_required'
       },
       trustedPoolFingerprint: TRUSTED_CARD_POOL_FINGERPRINT
     };
@@ -199,7 +200,6 @@ export const economyOpenPack = onCall(FUNCTION_RUNTIME_OPTIONS, async request =>
       loadPackPolicy(db),
       loadPackCampaignEffects(db)
     ]);
-    const generated = generateTrustedPack({ seed: entropy.seed, mythicChance: packPolicy.mythicChance });
     const outcome = await runIdempotentOperation(db, {
       uid: auth.uid,
       operationId,
@@ -208,6 +208,8 @@ export const economyOpenPack = onCall(FUNCTION_RUNTIME_OPTIONS, async request =>
       execute: async tx => {
         const config = await loadEconomyConfig(db, tx);
         assertEconomyAvailable(config, clientProtocol(data));
+        const publication = await loadCardPublicationPolicy(db, tx);
+        const generated = generateTrustedPack({ seed: entropy.seed, mythicChance: packPolicy.mythicChance, cardPool: enabledTrustedPool(publication) });
         return openTrustedPackTx({
           db, tx, uid: auth.uid, generated,
           entropyCommitment: entropy.commitment,
@@ -233,7 +235,6 @@ export const economyOpenGuaranteedMythic = onCall(FUNCTION_RUNTIME_OPTIONS, asyn
     rejectUnknown(data, ['operationId','economyProtocolVersion']);
     const operationId = String(data.operationId || '');
     const entropy = createServerEntropy();
-    const cardId = generateTrustedGuaranteedMythic({ seed: entropy.seed });
     const outcome = await runIdempotentOperation(db, {
       uid: auth.uid,
       operationId,
@@ -242,6 +243,8 @@ export const economyOpenGuaranteedMythic = onCall(FUNCTION_RUNTIME_OPTIONS, asyn
       execute: async tx => {
         const config = await loadEconomyConfig(db, tx);
         assertEconomyAvailable(config, clientProtocol(data));
+        const publication = await loadCardPublicationPolicy(db, tx);
+        const cardId = generateTrustedGuaranteedMythic({ seed: entropy.seed, cardPool: enabledTrustedPool(publication) });
         return openTrustedGuaranteedMythicTx({
           db, tx, uid: auth.uid, cardId,
           entropyCommitment: entropy.commitment

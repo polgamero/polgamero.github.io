@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION } from '../js/version.js';
 import { OWNER_APPROVED_PUBLIC_DICTIONARY, PUBLIC_TERMINOLOGY_VERSION } from '../js/publicTerminology.js';
+import { PUBLISHED_CARD_BASELINE_IDS } from '../js/publishedCardBaseline.js';
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(here,'..');
@@ -14,13 +15,13 @@ const cardFiles=['criaturas.json','instantaneos.json','conjuros.json','encantami
 const cards=cardFiles.flatMap(f=>load(`assets/data/${f}`));
 const byId=new Map(cards.map(c=>[c.id,c]));
 
-assert.equal(ENGINE_VERSION,'23.21.4');
+assert.equal(ENGINE_VERSION,'23.21.6');
 assert.equal(PUBLIC_TERMINOLOGY_VERSION,'23.19.4.14');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
-assert.equal(cards.length,880);
-assert.equal(byId.size,880);
-assert.equal(new Set(cards.map(c=>String(c.name).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim())).size,880);
+assert.equal(cards.length,900);
+assert.equal(byId.size,900);
+assert.equal(new Set(cards.map(c=>String(c.name).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim())).size,900);
 
 const dict=load('OWNER_APPROVED_TERMINOLOGY_23_19_4_14.json');
 assert.equal(dict.status,'OWNER_APPROVED_44_OF_44');
@@ -53,11 +54,13 @@ function strip(node){
  if(node && typeof node==='object') return Object.fromEntries(Object.keys(node).sort().filter(k=>!presentation.has(k)).map(k=>[k,strip(node[k])]));
  return node;
 }
-const normalized=Object.fromEntries([...cards].sort((a,b)=>a.id.localeCompare(b.id)).map(c=>[c.id,strip(c)]));
+const historicalBaselineSet=new Set(PUBLISHED_CARD_BASELINE_IDS);
+const normalized=Object.fromEntries(cards.filter(c=>historicalBaselineSet.has(c.id)).sort((a,b)=>a.id.localeCompare(b.id)).map(c=>[c.id,strip(c)]));
+assert.equal(Object.keys(normalized).length,880,'Wave 5 fingerprint remains scoped to the frozen 880-card historical baseline');
 // 23.19.5 has one explicit owner-approved gameplay delta after Commercial IP Hardening:
 // pw_007 loses its extra spellCastTrigger. Reinsert only that historical trigger before
 // validating the Wave5 fingerprint, proving no other mechanical drift occurred.
-if (ENGINE_VERSION === '23.21.4') {
+if (ENGINE_VERSION === '23.21.6') {
   normalized.pw_007.spellCastTrigger={effect:{amount:1,type:'scry'},filter:'instant_or_sorcery'};
   normalized.pw_007=Object.fromEntries(Object.keys(normalized.pw_007).sort().map(k=>[k,normalized.pw_007[k]]));
 }

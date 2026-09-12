@@ -3106,5 +3106,52 @@
       "targetController": "self",
       "targetSubtype": "Canino"
     }
+  },
+  {
+    "id": "inst_148",
+    "name": "Escamas de Acero",
+    "type": "Instantáneo",
+    "manaCost": "{G}",
+    "cmc": 1,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "El Dragón objetivo que controlás gana Irrompible hasta el final del turno.",
+    "flavorText": "La hoja encontró escama. La escama ni se enteró.",
+    "image": "escamas_de_acero.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "grant_keyword_temp",
+      "keyword": "indestructible",
+      "targetKind": "creature",
+      "targetController": "self",
+      "targetSubtype": "Dragón"
+    },
+    "enabled": false
+  },
+  {
+    "id": "inst_149",
+    "name": "Picada desde las Nubes",
+    "type": "Instantáneo",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "El Dragón objetivo que controlás obtiene +3/+0 hasta el final del turno.",
+    "flavorText": "Primero llega la sombra. Después, demasiado tarde, el rugido.",
+    "image": "picada_desde_las_nubes.png",
+    "requiresTarget": true,
+    "effect": {
+      "type": "pump",
+      "powerMod": 3,
+      "toughnessMod": 0,
+      "targetKind": "creature",
+      "targetController": "self",
+      "targetSubtype": "Dragón"
+    },
+    "enabled": false
   }
 ]

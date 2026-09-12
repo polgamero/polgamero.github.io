@@ -1,6 +1,7 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { TRUSTED_CARD_POOL, TRUSTED_CARD_IDS, TRUSTED_CARD_POOL_FINGERPRINT } from '../trusted/cardCatalog.js';
 import { TRUSTED_PREBUILT_BY_ID } from '../trusted/prebuiltCatalog.js';
+import { loadCardPublicationPolicy, cardEnabledByPolicy, assertCardEnabled } from '../trusted/cardPublication.js';
 import { loadTrustedEmoteCatalog, normalizeOwnedPremiumEmotes } from '../trusted/emoteCatalog.js';
 import { validateUsername } from './usernames.js';
 import { economyError } from '../shared/errors.js';
@@ -76,7 +77,8 @@ async function loadSettings(db, tx = null) {
 }
 
 export async function storefrontSnapshot(db) {
-  const [settings, campaign, emoteCatalog] = await Promise.all([loadSettings(db), loadCommerceCampaignEffects(db), loadTrustedEmoteCatalog(db)]);
+  const [settings, campaign, emoteCatalog, publication] = await Promise.all([loadSettings(db), loadCommerceCampaignEffects(db), loadTrustedEmoteCatalog(db), loadCardPublicationPolicy(db)]);
+  const disabledPrebuiltProductIds = [...TRUSTED_PREBUILT_BY_ID.values()].filter(product => product.cardIds.some(id => !cardEnabledByPolicy(id, publication))).map(product => product.id);
   return {
     pack: {
       baseCost: settings.packCost,
@@ -85,7 +87,7 @@ export async function storefrontSnapshot(db) {
       activeEventIds: campaign.activeEventIds
     },
     craft: { fichasCost: settings.craftCost, allowedKeywords: [...ENHANCEMENT_KEYWORDS] },
-    prebuilt: { pointsCost: settings.prebuiltPoints, fichasCost: settings.prebuiltFichas, maxSavedDecks: settings.maxSavedDecks },
+    prebuilt: { pointsCost: settings.prebuiltPoints, fichasCost: settings.prebuiltFichas, maxSavedDecks: settings.maxSavedDecks, disabledProductIds: disabledPrebuiltProductIds },
     classifiedBasicLandPacks: { pointsCost: settings.classifiedBasicLandPackPrice, quantity: settings.classifiedBasicLandPackQuantity },
     username: { renameFichasCost: USERNAME_RENAME_COST },
     emotes: { schemaVersion:emoteCatalog.schemaVersion, catalogVersion:emoteCatalog.catalogVersion, items:emoteCatalog.items.map(item => ({ ...item })) },
@@ -125,10 +127,12 @@ export async function craftEnhancementTx({ db, tx, uid, cardId, keyword }) {
   const card = enhancementCard(cardId);
   const cleanKeyword = String(keyword || '').trim();
   if (!ENHANCEMENT_KEYWORDS.includes(cleanKeyword)) throw economyError('CRAFT_KEYWORD_INVALID');
-  const [userSnap, settings] = await Promise.all([
+  const [userSnap, settings, publication] = await Promise.all([
     tx.get(db.collection('users').doc(uid)),
-    loadSettings(db, tx)
+    loadSettings(db, tx),
+    loadCardPublicationPolicy(db, tx)
   ]);
+  assertCardEnabled(card.id, publication);
   if (!userSnap.exists) throw economyError('PROFILE_MISSING');
   const profile = userSnap.data() || {};
   const collection = Array.isArray(profile.collection) ? profile.collection : [];
@@ -193,10 +197,13 @@ export async function purchasePrebuiltTx({ db, tx, uid, productId, deckName, ope
   const product = TRUSTED_PREBUILT_BY_ID.get(String(productId || ''));
   if (!product) throw economyError('PREBUILT_NOT_FOUND');
   const cleanName = cleanDeckName(deckName);
-  const [userSnap, settings] = await Promise.all([
+  const [userSnap, settings, publication] = await Promise.all([
     tx.get(db.collection('users').doc(uid)),
-    loadSettings(db, tx)
+    loadSettings(db, tx),
+    loadCardPublicationPolicy(db, tx)
   ]);
+  const disabledCardId = product.cardIds.find(id => !cardEnabledByPolicy(id, publication));
+  if (disabledCardId) throw economyError('CARD_DISABLED', { cardId:disabledCardId, productId:product.id });
   if (!userSnap.exists) throw economyError('PROFILE_MISSING');
   const profile = userSnap.data() || {};
   const decks = Array.isArray(profile.decks) ? profile.decks : [];
@@ -268,10 +275,11 @@ function classifiedState(profile, weekKey) {
 }
 export async function getClassifiedsView(db, uid, nowMs = Date.now()) {
   const weekKey = argentinaWeekKey(nowMs);
-  const [scheduleSnap, userSnap, settings] = await Promise.all([
+  const [scheduleSnap, userSnap, settings, publication] = await Promise.all([
     db.doc('gameConfig/classifiedsSchedule').get(),
     db.collection('users').doc(uid).get(),
-    loadSettings(db)
+    loadSettings(db),
+    loadCardPublicationPolicy(db)
   ]);
   if (!userSnap.exists) throw economyError('PROFILE_MISSING');
   const week = validatedClassifiedWeek(scheduleSnap.exists ? scheduleSnap.data() || {} : {}, weekKey);
@@ -290,7 +298,7 @@ export async function getClassifiedsView(db, uid, nowMs = Date.now()) {
       ownedCount: ownedCounts.get(cardId) || 0,
       purchased: state.purchased.includes(cardId)
     };
-  });
+  }).filter(entry => cardEnabledByPolicy(entry.cardId, publication));
   const basicLandPacks = CLASSIFIED_BASIC_LAND_PACKS.map(definition => {
     const trusted = trustedBasicLandPack(definition.color);
     return {
@@ -303,9 +311,9 @@ export async function getClassifiedsView(db, uid, nowMs = Date.now()) {
       ownedCount: ownedCounts.get(trusted.cardId) || 0,
       purchased: landPackState.purchasedColors.includes(trusted.color)
     };
-  });
+  }).filter(entry => cardEnabledByPolicy(entry.cardId, publication));
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     weekKey,
     weekStart: week.weekStart || weekKey,
     premiumRarity: week.premiumRarity || entries.at(-1)?.rarity || null,
@@ -327,11 +335,12 @@ export async function purchaseClassifiedTx({ db, tx, uid, cardId, nowMs = Date.n
   const weekKey = argentinaWeekKey(nowMs);
   const scheduleRef = db.doc('gameConfig/classifiedsSchedule');
   const userRef = db.collection('users').doc(uid);
-  const [scheduleSnap, userSnap] = await Promise.all([tx.get(scheduleRef), tx.get(userRef)]);
+  const [scheduleSnap, userSnap, publication] = await Promise.all([tx.get(scheduleRef), tx.get(userRef), loadCardPublicationPolicy(db, tx)]);
   if (!userSnap.exists) throw economyError('PROFILE_MISSING');
   const week = validatedClassifiedWeek(scheduleSnap.exists ? scheduleSnap.data() || {} : {}, weekKey);
   const cleanCardId = String(cardId || '');
   if (!week.cardIds.includes(cleanCardId)) throw economyError('CLASSIFIEDS_CARD_NOT_OFFERED');
+  assertCardEnabled(cleanCardId, publication);
   const rarity = week.rarities[cleanCardId];
   const price = week.prices[rarity];
   const profile = userSnap.data() || {};
@@ -373,7 +382,8 @@ export async function purchaseClassifiedBasicLandPackTx({ db, tx, uid, color, no
   const pack = trustedBasicLandPack(color);
   const userRef = db.collection('users').doc(uid);
   const settingsRef = db.doc('gameConfig/settings');
-  const [userSnap, settingsSnap] = await Promise.all([tx.get(userRef), tx.get(settingsRef)]);
+  const [userSnap, settingsSnap, publication] = await Promise.all([tx.get(userRef), tx.get(settingsRef), loadCardPublicationPolicy(db, tx)]);
+  assertCardEnabled(pack.cardId, publication);
   if (!userSnap.exists) throw economyError('PROFILE_MISSING');
   const settings = normalizeStoreSettings(settingsSnap.exists ? settingsSnap.data() || {} : {});
   const profile = userSnap.data() || {};

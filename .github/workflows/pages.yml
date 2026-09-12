@@ -90,12 +90,12 @@ jobs:
 
       - name: Validate source-package contract independently from hosted assets
         run: |
-          test -f SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt
-          grep -qx 'CARD_IMAGE_BINARIES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt
-          grep -qx 'PUBLIC_FIRESTORE_CONFIG_FILES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt
-          grep -qx 'CANONICAL_FAST_CONTRACTS=118' SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt
-          grep -qx 'FUNCTIONS_COUNT=41' SOURCE_SNAPSHOT_MANIFEST_23_21_4.txt
-          echo "OK: source snapshot metadata matches 23.21.4 canonical CI counts"
+          test -f SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
+          grep -qx 'CARD_IMAGE_BINARIES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
+          grep -qx 'PUBLIC_FIRESTORE_CONFIG_FILES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
+          grep -qx 'CANONICAL_FAST_CONTRACTS=121' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
+          grep -qx 'FUNCTIONS_COUNT=41' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
+          echo "OK: source snapshot metadata matches 23.21.6 canonical CI counts"
 
       - name: Guard canonical ownership of static contracts
         working-directory: ./argentinia
@@ -145,9 +145,9 @@ jobs:
             sed 's/^/  - /' /tmp/stale-tests.txt
           fi
 
-          echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed canonical=23.21.4"
-          if [ "$total" -ne 118 ]; then
-            echo "::error::Canonical fast manifest must contain exactly 118 tests; got $total"
+          echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed canonical=23.21.6"
+          if [ "$total" -ne 121 ]; then
+            echo "::error::Canonical fast manifest must contain exactly 121 tests; got $total"
             exit 1
           fi
           if [ "$failed" -ne 0 ]; then
@@ -155,7 +155,7 @@ jobs:
             exit 1
           fi
 
-      # All 118 canonical static contracts already ran once in the sweep above.
+      # All 121 canonical static contracts already ran once in the sweep above.
       # Historically we ran 51 of those files a SECOND time as individually named steps,
       # which added substantial wall-clock time without adding coverage. Keep only the
       # stateful/dynamic labs and audits that are NOT part of the canonical manifest.
@@ -170,7 +170,7 @@ jobs:
           node tools/run_multiplayer_hardening_lab_23_19_1.mjs --cases 5000
           node tools/audit_deck_intelligence_matrix_23_19_5.mjs
 
-      - name: Validate Economy + Tournament + Trade + Basic Lands Functions unit suite 23.21.4
+      - name: Validate Economy + Tournament + Trade + Card Publication Functions unit suite 23.21.6
         working-directory: ./functions
         run: npm test
 

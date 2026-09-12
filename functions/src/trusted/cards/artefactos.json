@@ -2220,5 +2220,55 @@
         }
       }
     ]
+  },
+  {
+    "id": "art_088",
+    "name": "Nido de Obsidiana",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [],
+    "text": "Tus hechizos de criatura Dragón cuestan {1} menos.",
+    "flavorText": "La piedra conserva el calor incluso cuando el huevo ya rompió el cielo.",
+    "image": "nido_de_obsidiana.png",
+    "staticEffect": {
+      "type": "spell_cost_modifier",
+      "mode": "reduce",
+      "scope": "own",
+      "amount": 1,
+      "filter": {
+        "subtype": "Dragón",
+        "cardType": "creature"
+      }
+    },
+    "enabled": false
+  },
+  {
+    "id": "art_089",
+    "name": "Mapa de los Nidos Antiguos",
+    "type": "Artefacto",
+    "manaCost": "{3}",
+    "cmc": 3,
+    "rarity": "Rare",
+    "colors": [],
+    "text": "Cuando Mapa de los Nidos Antiguos entre al campo de batalla, mirá las cinco primeras cartas de tu biblioteca. Podés mostrar una carta de criatura Dragón de entre ellas y ponerla en tu mano. Poné el resto en el fondo de tu biblioteca.",
+    "flavorText": "Algunas marcas no señalan lugares. Señalan dónde conviene no mirar hacia arriba.",
+    "image": "mapa_de_los_nidos_antiguos.png",
+    "etbEffect": {
+      "type": "look_at_top",
+      "lookCount": 5,
+      "amount": 1,
+      "filter": {
+        "cardType": "creature",
+        "subtype": "Dragón"
+      },
+      "destination": "hand",
+      "remainderDestination": "bottom",
+      "reveal": true,
+      "shuffle": false,
+      "allowFewer": true
+    },
+    "enabled": false
   }
 ]

@@ -20,17 +20,17 @@ const fileMap={
 const byCategory=Object.fromEntries(Object.entries(fileMap).map(([k,f])=>[k,json(`assets/data/${f}`)]));
 const cards=Object.values(byCategory).flat();
 
-assert.ok(['23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.21.4'].includes(ENGINE_VERSION));
+assert.ok(['23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.21.6'].includes(ENGINE_VERSION));
 assert.equal(TYPAL_ENGINE_VERSION,'23.16.5');
 assert.equal(GENERIC_EVENT_ENGINE_VERSION,'23.16.5');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
-assert.equal(CURRENT_POOL_MILESTONE,'pool_expansion_viii_880');
-assert.equal(POOL_BASELINE.total,880);
+assert.equal(CURRENT_POOL_MILESTONE,'dragons_buenos_aires_900');
+assert.equal(POOL_BASELINE.total,900);
 assert.equal(POOL_MILESTONES.pool_expansion_vii_850.total,850);
-assert.equal(cards.length,880);
+assert.equal(cards.length,900);
 assert.deepEqual(Object.fromEntries(Object.entries(byCategory).map(([k,v])=>[k,v.length])),{
-  criaturas:355, instantaneos:147, conjuros:107, encantamientos:108, artefactos:87, tierras:68, planeswalkers:8
+  criaturas:367, instantaneos:149, conjuros:109, encantamientos:110, artefactos:89, tierras:68, planeswalkers:8
 });
 
 const newIds=new Set([
@@ -68,7 +68,7 @@ assert.ok(mythic.triggers.some(t=>t.event==='creature_entered' && t.filter?.subt
 
 const expectedSubtypeCounts={Humano:218,'Espíritu':26,Bestia:17,Ave:11,'Músico':11,Constructo:8,Canino:5};
 const catalog=buildCreatureTypeCatalog(cards);
-assert.equal(catalog.length,77,'Pool VIII must strengthen existing tribes without inventing new subtype tokens');
+assert.equal(catalog.length,78,'Later Dragon content adds exactly one new subtype token while preserving Pool VIII tribes');
 const counts=Object.fromEntries(catalog.map(x=>[x.name,x.count]));
 for(const [name,count] of Object.entries(expectedSubtypeCounts)) assert.equal(counts[name],count,`${name} count`);
 assert.ok(cardHasSubtype(added.find(c=>c.id==='crea_337'),'Músico'));
@@ -84,9 +84,9 @@ assert.equal(added.filter(c=>c?.dfc?.kind==='transform').length,0,'Pool VIII is 
 assert.equal(added.filter(c=>stringify(c).includes('create_tokens')).length,0,'Pool VIII adds no token concepts/debt');
 
 const manifest=json('assets/images/cards/cards-image-manifest.json');
-assert.equal(manifest.pool?.total ?? manifest.poolTotal ?? manifest.cardCount,880);
+assert.equal(manifest.pool?.total ?? manifest.poolTotal ?? manifest.cardCount,900);
 assert.equal(manifest.images?.doubleFacedCardCount,16);
-assert.equal(manifest.images?.referencedFaceCount,896,'880 fronts + 16 existing TDFC backs');
+assert.equal(manifest.images?.referencedFaceCount,916,'900 fronts + 16 existing TDFC backs');
 
 const workflow=read('../.github/workflows/pages.yml');
 assert.ok(workflow.includes('regression_legacy_23_17_3_1.zip'));

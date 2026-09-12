@@ -19,7 +19,7 @@ function load() {
     if (!card?.id || ids.has(card.id)) throw new Error(`TRUSTED_CARD_ID_INVALID:${card?.id || 'missing'}`);
     ids.add(card.id);
   }
-  if (all.length !== 880) throw new Error(`TRUSTED_POOL_COUNT_MISMATCH:${all.length}`);
+  if (all.length !== 900) throw new Error(`TRUSTED_POOL_COUNT_MISMATCH:${all.length}`);
   return Object.freeze(all);
 }
 

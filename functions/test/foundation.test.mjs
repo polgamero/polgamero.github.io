@@ -14,7 +14,7 @@ assert.equal(good.usernameKey,usernameKeyFromName('Pibe del Sur'));
 assert.equal(validateUsername('admin').ok,false);
 assert.equal(validateUsername('x').ok,false);
 
-assert.equal(TRUSTED_CARD_POOL.length,880);
+assert.equal(TRUSTED_CARD_POOL.length,900);
 assert.equal(DECK_INTELLIGENCE_VERSION,'23.19.5-di2');
 assert.match(TRUSTED_CARD_POOL_FINGERPRINT,/^[a-f0-9]{64}$/);
 

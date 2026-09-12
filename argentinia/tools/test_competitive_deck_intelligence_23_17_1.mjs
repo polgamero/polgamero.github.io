@@ -24,13 +24,13 @@ const dataFiles=['criaturas','instantaneos','conjuros','encantamientos','artefac
 const cards=dataFiles.flatMap(k=>json(`assets/data/${k}.json`));
 function seeded(seed){ let x=seed>>>0; return()=>{ x=(Math.imul(x,1664525)+1013904223)>>>0; return x/4294967296; }; }
 
-assert.ok(['23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.21.4'].includes(ENGINE_VERSION));
+assert.ok(['23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.21.6'].includes(ENGINE_VERSION));
 assert.equal(DECK_INTELLIGENCE_VERSION,'23.19.5-di2');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
-assert.equal(CURRENT_POOL_MILESTONE,'pool_expansion_viii_880');
-assert.equal(POOL_BASELINE.total,880);
-assert.equal(cards.length,880);
+assert.equal(CURRENT_POOL_MILESTONE,'dragons_buenos_aires_900');
+assert.equal(POOL_BASELINE.total,900);
+assert.equal(cards.length,900);
 assert.ok(DEFAULT_CANDIDATE_COUNT>=48,'production builder must evaluate many candidates');
 assert.ok(DECK_QUALITY_PROFILES.good.quantile < DECK_QUALITY_PROFILES.strong.quantile);
 assert.ok(DECK_QUALITY_PROFILES.strong.quantile < DECK_QUALITY_PROFILES.elite.quantile);
@@ -77,6 +77,7 @@ assert.ok(starter.report.landCount>=21 && starter.report.landCount<=26,'archetyp
 
 // Historical public wrapper remains array-returning and now exposes a diagnostic report.
 cardDb.allCards=cards;
+cardDb.enabledCards=cards;
 const wrapped=buildRandomDeck(['W','U'],{quality:'competitive',rng:seeded(55),candidateCount:20,goldfishIterations:16,archetypeId:'control'});
 assert.equal(wrapped.length,60);
 assert.ok(validateCompetitiveDeck(wrapped,['W','U']).ok);

@@ -75,6 +75,8 @@ import { registerCardArtImage, hasCustomArtLayout, ensureArtLayoutsLoaded } from
 import { openArtLayoutEditor } from './artLayoutEditor.js';
 import { registerCardTextBox, hasCustomCardTextLayout, ensureCardTextLayoutsLoaded } from './textLayout.js';
 import { openCardTextLayoutEditor } from './textLayoutEditor.js';
+import { saveCardCatalogOverride } from './cardPublication.js';
+import { ARCHETYPE_IDS, inferCardDeckProfile, getArchetypeDefinition } from './deckIntelligence.js';
 import { USERNAME_RENAME_COST } from './usernames.js';
 import { showUsernameRenameModal } from './usernameUI.js';
 import { classifiedsNextRotationAt, getClassifiedsProfileState, getClassifiedsBasicLandPackProfileState, countOwnedClassifiedCard } from './classifieds.js';
@@ -1893,7 +1895,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
 
   el.innerHTML = `
     <div class="card-inner">
-      <div class="card-header"><span class="card-title" style="font-size: clamp(4px, ${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
+      <div class="card-header"><span class="card-title" data-auto-name-cqw="${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}" style="font-size: clamp(4px, ${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
       <div class="card-art" style="position: relative; overflow: hidden;">
         <div class="card-art-fallback" aria-hidden="true">${icon}</div>
         ${card.image ? `<img class="card-art-image" src="./assets/images/cards/${card.image}" alt="${card.name}"${browserImageAttrs} style="position: absolute; width: 120%; height: 120%; object-fit: cover; object-position: center top; z-index: 2;" onerror="this.style.display='none'">` : ''}
@@ -3258,11 +3260,14 @@ const CARD_BROWSER_COLORS = [
   { key: 'C', label: '◇ Incoloras' }
 ];
 
-const CARD_BROWSER_ARCHETYPES = [
-  { key: 'poison', label: '☠️ Veneno', effectTypes: ['poison', 'proliferate'] },
-  { key: 'draw', label: '🃏 Robo', effectTypes: ['draw', 'draw_and_lose_life', 'loot', 'rummage'] },
-  { key: 'heal', label: '❤️ Curación', effectTypes: ['heal', 'drain'], keywords: ['lifelink'] },
-  { key: 'tokens', label: '👥 Tokens', effectTypes: ['create_tokens'] }
+const ARCHETYPE_FILTER_ICONS = Object.freeze({
+  aggro:'⚔️', tempo:'💨', midrange:'⚖️', control:'🛡️', tokens:'👥', counters:'➕', sacrifice:'🩸', graveyard:'⚰️', exile:'🔥', typal:'🧬', dragons:'🐉', artifacts:'⚙️', spells:'✨', suspend:'⏳', transform:'↻', ramp:'🌱'
+});
+const CARD_BROWSER_ARCHETYPES = ARCHETYPE_IDS.map(key => ({ key, label:`${ARCHETYPE_FILTER_ICONS[key] || '•'} ${getArchetypeDefinition(key)?.label || key}` }));
+const CARD_BROWSER_MECHANICS = [
+  { key:'poison', label:'☠️ Veneno', effectTypes:['poison','proliferate'] },
+  { key:'draw', label:'🃏 Robo', effectTypes:['draw','draw_and_lose_life','loot','rummage'] },
+  { key:'heal', label:'❤️ Curación', effectTypes:['heal','drain'], keywords:['lifelink'] }
 ];
 
 function collectCardMechanics(card) {
@@ -3285,14 +3290,23 @@ function collectCardMechanics(card) {
 }
 
 function getCardArchetypes(card) {
+  const profile = inferCardDeckProfile(card);
+  const themes = new Set(profile.themes || []);
+  const roles = new Set(profile.roles || []);
+  const result = new Set();
+  for (const id of ARCHETYPE_IDS) {
+    let match = themes.has(id);
+    if (id === 'tempo') match = themes.has('spells') && (themes.has('aggro') || roles.has('selection') || roles.has('broadInteraction')) && Number(profile.mv) <= 4;
+    if (match) result.add(id);
+  }
+  return result;
+}
+function getCardMechanicTags(card) {
   const mechanics = collectCardMechanics(card);
   const keywords = new Set((card?.keywords || []).map(k => String(k).toLowerCase()));
   const result = new Set();
-  CARD_BROWSER_ARCHETYPES.forEach(def => {
-    if (def.effectTypes.some(type => mechanics.has(type)) ||
-        (def.keywords || []).some(keyword => keywords.has(keyword))) {
-      result.add(def.key);
-    }
+  CARD_BROWSER_MECHANICS.forEach(def => {
+    if (def.effectTypes.some(type => mechanics.has(type)) || (def.keywords || []).some(keyword => keywords.has(keyword))) result.add(def.key);
   });
   return result;
 }
@@ -3304,10 +3318,10 @@ function cardMatchesColorFilter(card, activeColors) {
   return colors.some(color => activeColors.has(String(color).toUpperCase()));
 }
 
-function cardMatchesArchetypeFilter(card, activeArchetypes) {
-  if (activeArchetypes.size === 0) return true;
-  const cardArchetypes = getCardArchetypes(card);
-  return [...activeArchetypes].some(key => cardArchetypes.has(key));
+function cardMatchesTaxonomyFilter(card, activeArchetypes, activeMechanics) {
+  const archetypeOk = activeArchetypes.size === 0 || [...activeArchetypes].some(key => getCardArchetypes(card).has(key));
+  const mechanicOk = activeMechanics.size === 0 || [...activeMechanics].some(key => getCardMechanicTags(card).has(key));
+  return archetypeOk && mechanicOk;
 }
 
 function browserColorFiltersHTML(prefix) {
@@ -3323,6 +3337,14 @@ function browserArchetypeFiltersHTML(prefix) {
     <label class="encyclopedia-filter-option">
       <input type="checkbox" data-browser-archetype="${archetype.key}" data-filter-prefix="${prefix}">
       ${archetype.label}
+    </label>`).join('');
+}
+
+function browserMechanicFiltersHTML(prefix) {
+  return CARD_BROWSER_MECHANICS.map(mechanic => `
+    <label class="encyclopedia-filter-option">
+      <input type="checkbox" data-browser-mechanic="${mechanic.key}" data-filter-prefix="${prefix}">
+      ${mechanic.label}
     </label>`).join('');
 }
 
@@ -3430,7 +3452,7 @@ export function getOwnedCardIds() {
   if (state.currentUser && state.userProfile && state.userProfile.collection) {
     return new Set(state.userProfile.collection);
   }
-  return new Set(cardDb.allCards.map(c => c.id));
+  return new Set(cardDb.enabledCards.map(c => c.id));
 }
 
 
@@ -3495,7 +3517,7 @@ function loadDeckbuilderRecentState(collection = []) {
 export function getDeckBuilderOwnedCounts() {
   const counts = {};
   if (isAdminUser()) {
-    cardDb.allCards.forEach(card => {
+    cardDb.enabledCards.forEach(card => {
       counts[card.id] = card.type?.includes('básica') ? DECK_SIZE_EXACT : MAX_COPIES_PER_CARD;
     });
     return counts;
@@ -3560,8 +3582,12 @@ function injectEncyclopediaStyles() {
 }
     .encyclopedia-card-slot { content-visibility: auto; contain-intrinsic-size: 180px 252px; position:relative; }
     .encyclopedia-card-slot .card-inner { border-width: 6px; }
+    .encyclopedia-publication-control { margin-top:7px; display:flex; align-items:center; justify-content:center; gap:7px; padding:5px 8px; border-radius:7px; border:1px solid rgba(45,77,52,.25); background:#eef2eb; color:#233225; font-size:11px; font-weight:850; letter-spacing:.04em; user-select:none; }
+    .encyclopedia-publication-control.unpublished { background:#fff0ec; color:#8b2b22; border-color:rgba(139,43,34,.35); }
+    .encyclopedia-publication-control input { accent-color:#347a43; }
+    .encyclopedia-publication-control .publication-note { font-size:9px; font-weight:700; opacity:.75; letter-spacing:0; }
     .encyclopedia-art-edit-btn {
-      position:absolute; top:5px; right:5px; z-index:35; width:24px; height:24px; padding:0;
+      position:absolute; top:30px; right:5px; z-index:35; width:24px; height:24px; padding:0;
       display:flex; align-items:center; justify-content:center; border-radius:50%; cursor:pointer;
       border:1.5px solid rgba(212,175,55,.88); background:rgba(7,10,8,.90); color:#f0e0b0;
       font-size:12px; line-height:1; box-shadow:0 2px 7px rgba(0,0,0,.62);
@@ -3675,6 +3701,7 @@ export function showEncyclopedia(onBack) {
   const activeRarities = new Set(ENCYCLOPEDIA_RARITIES.map(r => r.key));
   const activeColors = new Set(CARD_BROWSER_COLORS.map(c => c.key));
   const activeArchetypes = new Set();
+  const activeMechanics = new Set();
   const sortByTab = new Map(encyclopediaTabs.map(tab => [tab.key, { key: 'cmc', direction: 'asc' }]));
 
   const overlay = document.createElement('div');
@@ -3734,6 +3761,8 @@ export function showEncyclopedia(onBack) {
         <div class="card-browser-filter-grid">${rarityFiltersHTML}</div>
         <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.archetype')}</div>
         <div class="card-browser-filter-grid archetypes">${browserArchetypeFiltersHTML('enc')}</div>
+        <div class="encyclopedia-filter-section-title">Mecánicas</div>
+        <div class="card-browser-filter-grid archetypes">${browserMechanicFiltersHTML('enc')}</div>
       </div>
     </div>
   `;
@@ -3763,7 +3792,7 @@ export function showEncyclopedia(onBack) {
       ? buildTokenCatalog(cardDb.allCards)
       : isDfcBackTab
         ? cardDb.allCards.filter(isTransformingDoubleFacedCard).map(card => buildTransformFaceCard(card, 'back'))
-        : cardDb.getByCategory(tabKey);
+        : cardDb.getByCategory(tabKey, { includeDisabled: isAdminUser() });
     sourceCards.forEach(card => {
       // Tokens y reversos DFC son superficies Admin de assets, no objetos adicionales de
       // colección: siempre se renderizan a pleno color y no participan de "poseo".
@@ -3838,9 +3867,8 @@ export function showEncyclopedia(onBack) {
                 renderCard: previewCard => createCardElement(previewCard, false, true, null, 'preview', null),
                 onSaved: (_layout, meta) => {
                   editTextBtn.classList.toggle('has-custom-layout', !!meta?.custom);
-                  editTextBtn.title = meta?.custom
-                    ? 'Ajustar texto de la carta (personalizado)'
-                    : 'Ajustar texto de la carta';
+                  editTextBtn.title = meta?.custom ? 'Ajustar texto de la carta (personalizado)' : 'Ajustar texto de la carta';
+                  if (meta?.nameChanged) setTimeout(() => { if (overlay.isConnected) { overlay.remove(); showEncyclopedia(onBack); } }, 450);
                 }
               });
             } catch (error) {
@@ -3852,6 +3880,45 @@ export function showEncyclopedia(onBack) {
           });
           textBox.appendChild(editTextBtn);
         }
+      }
+
+      // 23.21.5 — publication authority. Admin sees the entire physical catalog; players
+      // only receive enabled cards. Historical 880 default enabled, future IDs default OFF.
+      if (isAdminUser() && !isAssetTab) {
+        const publication = document.createElement('label');
+        publication.className = `encyclopedia-publication-control${card.enabled === false ? ' unpublished' : ''}`;
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = card.enabled !== false;
+        checkbox.dataset.publicationCardId = card.id;
+        const labelText = document.createElement('span');
+        labelText.textContent = 'HABILITADA';
+        const note = document.createElement('span'); note.className='publication-note'; note.textContent = checkbox.checked ? 'PUBLICADA' : 'NO PUBLICADA';
+        publication.append(checkbox,labelText,note);
+        checkbox.addEventListener('change', async event => {
+          event.preventDefault(); event.stopPropagation();
+          const desired = checkbox.checked;
+          checkbox.disabled = true;
+          try {
+            if (desired) {
+              if (!card.image) throw new Error('La carta no tiene imagen asignada.');
+              const manifest = await cardDb.loadImageManifest();
+              const missing = Array.isArray(manifest?.missing) ? manifest.missing : [];
+              if (missing.some(item => String(item?.id||'')===String(card.id) && item?.face !== 'back')) {
+                throw new Error(`Falta la imagen ${card.image}. Subila antes de habilitar la carta.`);
+              }
+            }
+            await saveCardCatalogOverride(card,{enabled:desired},{allCards:cardDb.allCards});
+            cardDb.refreshPublicationState();
+            card.enabled = desired;
+            publication.classList.toggle('unpublished', !desired);
+            note.textContent = desired ? 'PUBLICADA' : 'NO PUBLICADA';
+          } catch (error) {
+            checkbox.checked = !desired;
+            window.alert(`No se pudo ${desired?'habilitar':'suspender'} la carta: ${error?.message || error}`);
+          } finally { checkbox.disabled = false; }
+        });
+        slot.appendChild(publication);
       }
 
       fragment.appendChild(slot);
@@ -3882,7 +3949,7 @@ export function showEncyclopedia(onBack) {
         ? (!query || normalizeSearch(card.name).includes(query) || normalizeSearch(card.image).includes(query) || normalizeSearch(card.id).includes(query))
         : activeRarities.has(card.rarity) &&
           cardMatchesColorFilter(card, activeColors) &&
-          cardMatchesArchetypeFilter(card, activeArchetypes) &&
+          cardMatchesTaxonomyFilter(card, activeArchetypes, activeMechanics) &&
           (ownershipFilter !== 'owned' || record.owned) &&
           (!enhancedOnly || record.enhanced) &&
           (!query || normalizeSearch(card.name).includes(query));
@@ -3972,6 +4039,14 @@ export function showEncyclopedia(onBack) {
       const archetype = checkbox.getAttribute('data-browser-archetype');
       if (checkbox.checked) activeArchetypes.add(archetype);
       else activeArchetypes.delete(archetype);
+      refreshGrid();
+    });
+  });
+
+  overlay.querySelectorAll('input[data-browser-mechanic][data-filter-prefix="enc"]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      const mechanic = checkbox.getAttribute('data-browser-mechanic');
+      if (checkbox.checked) activeMechanics.add(mechanic); else activeMechanics.delete(mechanic);
       refreshGrid();
     });
   });
@@ -5650,6 +5725,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   const activeRarities = new Set(ENCYCLOPEDIA_RARITIES.map(r => r.key));
   const activeColors = new Set(CARD_BROWSER_COLORS.map(c => c.key));
   const activeArchetypes = new Set();
+  const activeMechanics = new Set();
   const sortByTab = new Map(ENCYCLOPEDIA_TABS.map(tab => [tab.key, { key: 'cmc', direction: 'asc' }]));
   const RECENT_SORT_KEY = 'recent_obtained';
   const normalizeDeckSort = (tabKey, sort = {}) => sort?.key === RECENT_SORT_KEY
@@ -5739,6 +5815,8 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
         <div class="card-browser-filter-grid">${rarityFiltersHTML}</div>
         <div class="encyclopedia-filter-section-title">Arquetipo</div>
         <div class="card-browser-filter-grid archetypes">${browserArchetypeFiltersHTML('deck')}</div>
+        <div class="encyclopedia-filter-section-title">Mecánicas</div>
+        <div class="card-browser-filter-grid archetypes">${browserMechanicFiltersHTML('deck')}</div>
       </div>
       <div class="deckbuilder-side">
         <button class="deckbuilder-stats-btn" id="deckbuilder-stats" type="button">📊 Estadísticas del mazo</button>
@@ -5977,7 +6055,7 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       const card = record.card;
       const matches = activeRarities.has(card.rarity) &&
         cardMatchesColorFilter(card, activeColors) &&
-        cardMatchesArchetypeFilter(card, activeArchetypes) &&
+        cardMatchesTaxonomyFilter(card, activeArchetypes, activeMechanics) &&
         (!enhancedOnly || record.isEnhancedTile) &&
         (!newOnly || isNewlyObtained(card.id)) &&
         (!query || normalizeSearch(card.name).includes(query));
@@ -6230,6 +6308,14 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
       const archetype = checkbox.getAttribute('data-browser-archetype');
       if (checkbox.checked) activeArchetypes.add(archetype);
       else activeArchetypes.delete(archetype);
+      refreshPool();
+    });
+  });
+
+  overlay.querySelectorAll('input[data-browser-mechanic][data-filter-prefix="deck"]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      const mechanic = checkbox.getAttribute('data-browser-mechanic');
+      if (checkbox.checked) activeMechanics.add(mechanic); else activeMechanics.delete(mechanic);
       refreshPool();
     });
   });
@@ -7470,7 +7556,7 @@ export function showAdminPanel(onBack) {
   let debugLoaded = false;
   let debugLoading = false;
   let debugSessions = [];
-  let debugRewardAudit = { playerGameReceipts: [], gameRewardReceipts: [], tournamentReceipts: [], pvpEloReceipts: [] };
+  let debugRewardAudit = { playerGameReceipts: [], gameRewardReceipts: [], tournamentReceipts: [], pvpEloReceipts: [], verification: {} };
   let imageAuditLoaded = false;
   let imageAuditLoading = false;
   let imageAuditShowAll = false;
@@ -7687,12 +7773,23 @@ export function showAdminPanel(onBack) {
 
   function adminRewardMaps() {
     const tournaments=[...(debugRewardAudit?.tournamentReceipts || [])];
+    const verification=debugRewardAudit?.verification || {};
     return {
       gameResults: new Map((debugRewardAudit?.playerGameReceipts || []).map(row => [String(row.id || ''), row])),
       rewards: new Map((debugRewardAudit?.gameRewardReceipts || []).map(row => [String(row.id || ''), row])),
       tournaments: new Map(tournaments.map(row => [String(row.id || ''), row])),
-      tournamentRows: tournaments
+      tournamentRows: tournaments,
+      verified: {
+        playerGameReceipts: verification?.playerGameReceipts?.verified === true,
+        gameRewardReceipts: verification?.gameRewardReceipts?.verified === true,
+        tournamentReceipts: verification?.tournamentReceipts?.verified === true,
+        pvpEloReceipts: verification?.pvpEloReceipts?.verified === true
+      }
     };
+  }
+
+  function adminReceiptVerificationUnavailableHtml(label = 'receipt') {
+    return `<span class="admin-debug-reward unknown" title="Firestore server no confirmó esta colección">${escapeHtml(gameText('admin.debug.receiptVerificationUnavailable', { label }))}</span>`;
   }
 
   function adminTournamentReceiptForSession(session, meta, maps) {
@@ -7751,6 +7848,12 @@ export function showAdminPanel(onBack) {
         return {resultHtml,rewardHtml};
       }
       if(displayStatus.status==='interrupted') return {resultHtml:'<span class="admin-debug-reward unknown">—</span>',rewardHtml:'<span class="admin-debug-reward unknown">— Sin liquidación · sesión interrumpida</span>'};
+      if (!maps.verified?.tournamentReceipts) {
+        return {
+          resultHtml:'<span class="admin-debug-reward unknown">—</span>',
+          rewardHtml:adminReceiptVerificationUnavailableHtml('tournamentReceipt')
+        };
+      }
       return {
         resultHtml:'<span class="admin-debug-reward unknown">—</span>',
         rewardHtml:`<span class="admin-debug-reward missing">${escapeHtml(gameText('admin.debug.tournamentReceiptMissing'))}</span>`
@@ -7786,6 +7889,14 @@ export function showAdminPanel(onBack) {
       const repair = reward.adminRepair === true ? ' · reparación Admin' : '';
       const label = safeEffective > 0 ? `✅ +${safeEffective} acreditados${repair}` : `✅ 0 pts · ${reason}`;
       return { resultHtml, rewardHtml: `<span class="admin-debug-reward ok" title="Receipt económico ${escapeHtml(identity.receiptId)}">${escapeHtml(label)}</span>` };
+    }
+
+    // Ausencia sólo es evidencia si ambas colecciones relevantes fueron confirmadas por
+    // Firestore server en esta misma recarga. Si hubo DNS/offline/listener disruption, no
+    // mostramos falsos "Sin receipt" ni ofrecemos reparación manual.
+    if (!maps.verified?.playerGameReceipts || !maps.verified?.gameRewardReceipts) {
+      const missingAuthority = !maps.verified?.playerGameReceipts ? 'playerGameReceipt' : 'receipt económico';
+      return { resultHtml, rewardHtml: adminReceiptVerificationUnavailableHtml(missingAuthority) };
     }
 
     // Una sesión incompleta no es una derrota liquidable. En particular, la Caja Negra no
@@ -7961,7 +8072,7 @@ Receipt: ${receiptId}
         fetchGameRewardAuditForAdmin()
       ]);
       debugSessions = sessions;
-      debugRewardAudit = rewardAudit || { playerGameReceipts: [], gameRewardReceipts: [], tournamentReceipts: [], pvpEloReceipts: [] };
+      debugRewardAudit = rewardAudit || { playerGameReceipts: [], gameRewardReceipts: [], tournamentReceipts: [], pvpEloReceipts: [], verification: {} };
       debugLoaded = true;
       renderTelemetrySessions(debugSessions);
     } catch (err) {
@@ -9384,7 +9495,7 @@ function tradeCardMatchesCriterion(card,c){
   return true;
 }
 function tradeCardMatchesListing(card,listing){return listing?.acceptAnyCard===true||(listing?.wantedCriteria||[]).some(c=>tradeCardMatchesCriterion(card,c));}
-function tradeAllCardsSorted(){ return [...cardDb.allCards].sort((a,b)=>String(a.name).localeCompare(String(b.name),'es')); }
+function tradeAllCardsSorted(){ return [...cardDb.enabledCards].sort((a,b)=>String(a.name).localeCompare(String(b.name),'es')); }
 function tradeFindCardsByNameQuery(value,{limit=18}={}){
   const needle=tradeNormalizeSearch(value);
   if(!needle)return [];
@@ -11094,9 +11205,14 @@ function zoneGroupingKey(item, idx, zoneType) {
   // 23.17.5.5 — las Sagas iguales NO se apilan visualmente: dos copias con capítulos
   // distintos deben verse como instancias separadas para poder seguir su progreso real.
   // La identidad estable prioriza _syncObjectId; si no existe aún, caemos a instance/id+idx.
-  if (zoneType === 'support' && isSagaCard(item?.card)) {
-    const sagaInstanceKey = item?._syncObjectId || item?.card?.instanceId || item?._effectObjectId || `${baseKey}_${idx}`;
-    return `saga_${sagaInstanceKey}`;
+  // Sagas y Equipamientos conservan estado POR INSTANCIA y no pueden colapsarse
+  // visualmente por card.id. Dos copias del mismo Equipo pueden estar adjuntas a criaturas
+  // distintas; si se apilan acá, el click siempre cae en group.ready[0] y reequipa la
+  // primera copia en vez de permitir activar la segunda (bug real: Atado con Alambre).
+  if (zoneType === 'support' && (isSagaCard(item?.card) || !!item?.card?.equipment)) {
+    const instanceKey = item?._syncObjectId || item?.card?.instanceId || item?._effectObjectId || `${baseKey}_${idx}`;
+    const kind = isSagaCard(item?.card) ? 'saga' : 'equipment';
+    return `${kind}_${instanceKey}`;
   }
   return baseKey;
 }

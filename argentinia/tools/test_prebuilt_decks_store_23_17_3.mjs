@@ -18,16 +18,16 @@ const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const json=p=>JSON.parse(read(p));
 
-assert.equal(ENGINE_VERSION, '23.21.4');
+assert.equal(ENGINE_VERSION, '23.21.6');
 assert.equal(PREBUILT_DECKS_VERSION,'23.17.3');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
-assert.equal(CURRENT_POOL_MILESTONE,'pool_expansion_viii_880');
-assert.equal(POOL_BASELINE.total,880);
+assert.equal(CURRENT_POOL_MILESTONE,'dragons_buenos_aires_900');
+assert.equal(POOL_BASELINE.total,900);
 
 const dataFiles=['criaturas','instantaneos','conjuros','encantamientos','artefactos','tierras','planeswalkers'];
 const cards=dataFiles.flatMap(name=>json(`assets/data/${name}.json`));
-assert.equal(cards.length,880,'Pool físico debe seguir en 880');
+assert.equal(cards.length,900,'Pool físico debe seguir en 880');
 const rawCatalog=json('assets/data/prebuilt-decks.json');
 const normalized=normalizePrebuiltDeckCatalog(rawCatalog);
 assert.equal(normalized.ok,true,normalized.errors.join(','));

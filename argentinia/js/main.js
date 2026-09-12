@@ -2464,7 +2464,7 @@ export function requestRivalDecision(type, forRole, data) {
 
 // 23.16.5 — chooseCreatureType comparte una sola decisión humano/Tano/multiplayer.
 export async function chooseCreatureTypeForEffect(effect={},isLocal=true,sourceItem=null,sourceCard=null){
-  const fullCatalog=buildCreatureTypeCatalog(cardDb.allCards,{minCount:Math.max(1,Number(effect.minPoolCount)||1)});
+  const fullCatalog=buildCreatureTypeCatalog(cardDb.enabledCards,{minCount:Math.max(1,Number(effect.minPoolCount)||1)});
   let catalog=fullCatalog;
   if(Array.isArray(effect.options) && effect.options.length){
     const allowed=new Set(effect.options.map(x=>String(x).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()));
@@ -2481,7 +2481,7 @@ export async function chooseCreatureTypeForEffect(effect={},isLocal=true,sourceI
     chosen=response?.chosenType||null;
   } else {
     const preferred=[...(state.rivalCombat||[]),...(state.rivalSupport||[])].map(x=>x.card);
-    chosen=chooseBestCreatureType(cardDb.allCards,preferred);
+    chosen=chooseBestCreatureType(cardDb.enabledCards,preferred);
     if(chosen && !catalog.some(x=>x.name===chosen)) chosen=catalog[0].name;
   }
   if(!chosen) return null;

@@ -22,7 +22,7 @@ const byId=new Map(cards.map(c=>[c.id,c]));
 function seeded(seed){ let x=seed>>>0; return()=>{ x=(Math.imul(x,1664525)+1013904223)>>>0; return x/4294967296; }; }
 
 assert.equal(DECK_INTELLIGENCE_VERSION,'23.19.5-di2');
-assert.equal(cards.length,880);
+assert.equal(cards.length,900);
 
 // 1) Target-aware interaction: daño a la cara NO es removal.
 for (const id of ['crea_294','crea_093','crea_326']) {

@@ -12,9 +12,9 @@ const version = read('js/version.js');
 const manifest = JSON.parse(read('build-manifest.json'));
 const creatures = JSON.parse(read('assets/data/criaturas.json'));
 
-assert.ok((version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.21.4'")), 'engine 23.19');
-assert.equal(manifest.engineVersion, '23.21.4');
-assert.equal(manifest.pool, 880);
+assert.ok((version.includes("ENGINE_VERSION = '23.19.2'") || version.includes("ENGINE_VERSION = '23.21.6'")), 'engine 23.19');
+assert.equal(manifest.engineVersion, '23.21.6');
+assert.equal(manifest.pool, 900);
 assert.equal(manifest.firestoreRulesVersion, '23.13.86');
 
 // Mana pool: independent docks outside the player-name row, no cemetery/exile relocation.

@@ -18,13 +18,13 @@ const matchAuthority = read('../functions/src/economy/matches.js');
 const matchCore = read('../functions/src/economy/matchCore.js');
 const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || '';
 
-assert.equal(ENGINE_VERSION, '23.21.4');
+assert.equal(ENGINE_VERSION, '23.21.6');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.86');
-assert.equal(manifest.engineVersion, '23.21.4');
+assert.equal(manifest.engineVersion, '23.21.6');
 assert.equal(manifest.engineProtocolVersion, 'mp-23.19.2');
 assert.equal(manifest.firestoreRulesVersion, '23.13.86');
-assert.equal(manifest.pool, 880);
+assert.equal(manifest.pool, 900);
 
 // El pending nuevo debe conservar dificultad; el pending legacy sigue siendo válido.
 assert.match(rewards, /difficulty:\s*reward\.mode === 'multiplayer'/);
@@ -49,8 +49,8 @@ assert.match(ui, /pointsAreValidIntegers/);
 // Caja Negra cruza receipts reales y sólo ofrece reparación Solo cuando hay resultado registrado.
 assert.match(proxy, /fetchGameRewardAuditForAdmin/);
 assert.match(proxy, /adminRepairSoloGameReward/);
-assert.match(firebase, /collection\(db, 'playerGameReceipts'\)/);
-assert.match(firebase, /collection\(db, 'gameRewardReceipts'\)/);
+assert.match(firebase, /'playerGameReceipts'/);
+assert.match(firebase, /'gameRewardReceipts'/);
 assert.match(adminAuthority, /rewardReason:'admin_repair'/);
 assert.match(adminAuthority, /telemetry\.status!=='completed'/);
 assert.match(adminAuthority, /game_reward_admin_repair/);
@@ -88,4 +88,13 @@ if (rulesPath) {
 // Privacidad del Tano de 23.19 sigue sellada.
 assert.doesNotMatch(read('js/deckIntelligence.js'), /console\.log\([^\n]*Deck Intelligence/i);
 
-console.log('REWARD_SETTLEMENT_INTEGRITY_23_19_2_OK config=dynamic-solo+pvp legacyHard=compatible blackBox=result+receipt adminRepair=solo+idempotent rules=23.13.80 pool=880 protocol=mp-23.19.2');
+
+// 23.21.6 HF1 — Caja Negra must distinguish missing evidence from unreadable Firestore evidence.
+assert.match(firebase, /getDocsFromServer/);
+assert.match(firebase, /Promise\.allSettled/);
+assert.match(firebase, /verification\[name\].*verified: true/s);
+assert.match(firebase, /No se pudo verificar .* no se inferirán receipts faltantes/);
+assert.match(ui, /admin\.debug\.receiptVerificationUnavailable/);
+assert.match(ui, /!maps\.verified\?\.playerGameReceipts \|\| !maps\.verified\?\.gameRewardReceipts/);
+assert.match(ui, /!maps\.verified\?\.tournamentReceipts/);
+console.log('REWARD_SETTLEMENT_INTEGRITY_23_19_2_OK config=dynamic-solo+pvp legacyHard=compatible blackBox=server-verified-receipts adminRepair=solo+idempotent rules=23.13.86 pool=900 protocol=mp-23.19.2');

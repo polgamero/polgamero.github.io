@@ -78,6 +78,7 @@ const MAP = Object.freeze({
   TRADE_LISTING_NOT_FOUND: ['not-found', 'No se encontró esa publicación activa.'],
   TRADE_LISTING_NOT_ACTIVE: ['failed-precondition', 'La publicación ya no está activa.'],
   TRADE_CARD_INVALID: ['invalid-argument', 'Esa carta no pertenece al pool válido de Argentinia.'],
+  CARD_DISABLED: ['failed-precondition', 'Esa carta está temporalmente deshabilitada y no puede usarse en nuevas operaciones.'],
   TRADE_CARD_NOT_TRADABLE: ['failed-precondition', 'No tenés una copia libre de esa carta para intercambiar.'],
   TRADE_CRITERIA_INVALID: ['invalid-argument', 'Configurá una cantidad válida de criterios BUSCO según el límite actual, o elegí Acepto cualquier carta.'],
   TRADE_OFFER_LIMIT: ['resource-exhausted', 'Esta publicación ya alcanzó el máximo configurado de ofertas activas.'],

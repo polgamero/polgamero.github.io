@@ -1,6 +1,7 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { buildCompetitiveDeck, validateCompetitiveDeck } from '../trusted/deckIntelligence.js';
 import { TRUSTED_CARD_POOL, TRUSTED_CARD_POOL_FINGERPRINT } from '../trusted/cardCatalog.js';
+import { loadCardPublicationPolicy, enabledTrustedPool } from '../trusted/cardPublication.js';
 import { seededRng } from '../shared/canonical.js';
 import { economyError } from '../shared/errors.js';
 import { validateUsername } from './usernames.js';
@@ -110,10 +111,10 @@ function shuffleWithRng(items, rng) {
   return out;
 }
 
-export function buildTrustedStarterDeck(uid, operationId, identity) {
+export function buildTrustedStarterDeck(uid, operationId, identity, cardPool = TRUSTED_CARD_POOL) {
   const cleanIdentity = normalizeStarterIdentity(identity);
   const rng = seededRng(`${uid}|${operationId}|starter|${cleanIdentity.join('/')}`);
-  const built = buildCompetitiveDeck(TRUSTED_CARD_POOL, cleanIdentity, {
+  const built = buildCompetitiveDeck(cardPool, cleanIdentity, {
     quality: 'starter',
     rng
   });
@@ -139,7 +140,8 @@ export async function completeStarterDeckTx({ db, tx, uid, operationId, identity
   if (!hasConfiguredIdentity(current)) throw economyError('USERNAME_REQUIRED');
   if (current.starterDeckPending !== true) throw economyError('STARTER_ALREADY_COMPLETED');
 
-  const starter = buildTrustedStarterDeck(uid, operationId, identity);
+  const publication = await loadCardPublicationPolicy(db, tx);
+  const starter = buildTrustedStarterDeck(uid, operationId, identity, enabledTrustedPool(publication));
   const nowMs = Date.now();
   tx.update(userRef, {
     collection: starter.cardIds,

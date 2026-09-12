@@ -19,9 +19,9 @@ const tdfcs=cards.filter(isTransformingDoubleFacedCard);
 assert.match(ENGINE_VERSION,/^(?:23\.16\.5\.2|23\.17(?:\.\d+)+|23\.18(?:\.\d+)*|23\.19(?:\.\d+)*|23\.20(?:\.\d+)*|23\.21(?:\.\d+)*)$/);
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
-assert.equal(CURRENT_POOL_MILESTONE,'pool_expansion_viii_880');
-assert.equal(POOL_BASELINE.total,880);
-assert.equal(cards.length,880);
+assert.equal(CURRENT_POOL_MILESTONE,'dragons_buenos_aires_900');
+assert.equal(POOL_BASELINE.total,900);
+assert.equal(cards.length,900);
 assert.equal(tdfcs.length,16,'the 16 physical TDFCs must remain canonical');
 
 const backFaces=tdfcs.map(card=>buildTransformFaceCard(card,'back'));
@@ -50,8 +50,8 @@ assert.ok(textDoc.layouts[`${tdfcs[0].id}::front`]);
 assert.ok(textDoc.layouts[`${tdfcs[0].id}::back`]);
 
 const manifest=json('assets/images/cards/cards-image-manifest.json');
-assert.equal(manifest.pool?.total ?? manifest.cardCount,880);
-assert.equal(manifest.images?.referencedFaceCount,896);
+assert.equal(manifest.pool?.total ?? manifest.cardCount,900);
+assert.equal(manifest.images?.referencedFaceCount,916);
 assert.equal(manifest.images?.doubleFacedCardCount,16);
 const backMissing=(manifest.missing||[]).filter(x=>x.face==='back');
 const expectedBackImages=new Set(tdfcs.map(c=>c.dfc.backFace.image));

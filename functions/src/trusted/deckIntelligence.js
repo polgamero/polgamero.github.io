@@ -1,5 +1,5 @@
 // js/deckIntelligence.js
-// ENTREGA 23.17.1 — Competitive Deck Intelligence Engine · Pool 880.
+// ENTREGA 23.21.6 — Dragon Archetype specialization over Competitive Deck Intelligence · Pool 900.
 // Motor puro de construcción/evaluación. No toca DOM, Firebase ni estado global.
 
 const COLORS = ['W','U','B','R','G'];
@@ -35,6 +35,7 @@ const ARCHETYPES = Object.freeze({
   graveyard:  { label:'Cementerio', lands:24, creatureFloor:14, creatureCeiling:26, maxVehicles:3, broadInteractionFloor:5, creatureInteractionFloor:3, instantSorceryFloor:3, nonCreatureFloor:6, primaryThemeFloor:9, themes:['graveyard'], roleTargets:{ enabler:7, payoff:5, cardAdvantage:4, threat:13, broadInteraction:5 }, curve:{1:2,2:8,3:9,4:7,5:5,'6+':3} },
   exile:      { label:'Exilio / Impulse', lands:24, creatureFloor:10, creatureCeiling:24, maxVehicles:3, broadInteractionFloor:5, creatureInteractionFloor:2, instantSorceryFloor:4, nonCreatureFloor:8, primaryThemeFloor:8, themes:['exile'], roleTargets:{ enabler:6, payoff:5, cardAdvantage:5, threat:12, broadInteraction:5 }, curve:{1:2,2:8,3:9,4:7,5:5,'6+':3} },
   typal:      { label:'Typal', lands:23, creatureFloor:24, creatureCeiling:32, maxVehicles:2, broadInteractionFloor:4, creatureInteractionFloor:2, instantSorceryFloor:2, nonCreatureFloor:4, primaryThemeFloor:10, typalDensityFloor:0.68, tribalSupportFloor:3, themes:['typal'], roleTargets:{ lord:3, threat:20, broadInteraction:4, cardAdvantage:2 }, curve:{1:3,2:10,3:10,4:7,5:4,'6+':2} },
+  dragons:    { label:'Dragones', lands:25, creatureFloor:16, creatureCeiling:24, maxVehicles:1, broadInteractionFloor:4, creatureInteractionFloor:2, instantSorceryFloor:2, nonCreatureFloor:6, primaryThemeFloor:10, typalDensityFloor:0.50, tribalSupportFloor:4, themes:['dragons','ramp'], roleTargets:{ ramp:5, lord:2, threat:16, broadInteraction:4, finisher:5 }, curve:{1:1,2:6,3:8,4:8,5:6,'6+':6} },
   artifacts:  { label:'Artefactos', lands:24, creatureFloor:12, creatureCeiling:24, maxVehicles:5, broadInteractionFloor:5, creatureInteractionFloor:2, instantSorceryFloor:2, nonCreatureFloor:8, primaryThemeFloor:11, themes:['artifacts'], roleTargets:{ enabler:7, payoff:5, threat:13, broadInteraction:5, cardAdvantage:3 }, curve:{1:3,2:8,3:9,4:7,5:5,'6+':3} },
   spells:     { label:'Spells', lands:23, creatureFloor:6, creatureCeiling:16, maxVehicles:1, broadInteractionFloor:8, creatureInteractionFloor:3, instantSorceryFloor:14, nonCreatureFloor:16, primaryThemeFloor:13, themes:['spells'], roleTargets:{ broadInteraction:8, cardAdvantage:5, threat:9, payoff:4 }, curve:{1:4,2:10,3:9,4:6,5:3,'6+':2} },
   suspend:    { label:'En espera / Tiempo', lands:24, creatureFloor:10, creatureCeiling:24, maxVehicles:3, broadInteractionFloor:5, creatureInteractionFloor:2, instantSorceryFloor:4, nonCreatureFloor:8, primaryThemeFloor:8, themes:['suspend','exile'], roleTargets:{ enabler:6, payoff:4, threat:12, broadInteraction:5, cardAdvantage:3 }, curve:{1:2,2:8,3:9,4:7,5:5,'6+':3} },
@@ -238,6 +239,7 @@ export function inferCardDeckProfile(card) {
   if (effects.has('scry') || effects.has('surveil') || effects.has('look_at_top')) roles.add('selection');
   if (effects.has('search_library')) { roles.add('cardAdvantage'); roles.add('tutor'); }
   if (effects.has('ramp') || effects.has('search_land')) { roles.add('ramp'); themes.add('ramp'); }
+  if (effects.has('spell_cost_modifier')) roles.add('ramp');
 
   if (effects.has('create_tokens') || /crea (?:una|un|dos|tres|\d+)/.test(text)) { themes.add('tokens'); roles.add('enabler'); }
   if (card?.diesTrigger || card?.anyCreatureDiesTrigger || effects.has('sacrifice') || /sacrific/.test(text)) { themes.add('sacrifice'); roles.add(card?.diesTrigger || /siempre que .*muera|cuando .*muera/.test(text) ? 'payoff':'enabler'); }
@@ -250,6 +252,9 @@ export function inferCardDeckProfile(card) {
   if (instant || sorcery || card?.spellCastTrigger) themes.add('spells');
   if (card?.spellCastTrigger) roles.add('payoff');
   const tribal=literalSubtypeRefs(card);
+  const ownSubtypes=cardSubtypeTokens(card);
+  const dragonLinked=ownSubtypes.includes('dragon') || (tribal.refs||[]).includes('dragon');
+  if (dragonLinked) themes.add('dragons');
   const staticIsLord=card?.staticEffect && ['team_buff','team_keyword'].includes(norm(card.staticEffect.type));
   const textLord=/otros |otras |tus /.test(text) && /obtienen|tienen|cuestan/.test(text) && tribal.refs.length>0;
   if (staticIsLord && (tribal.refs.length || tribal.flexible) || textLord) { themes.add('typal'); roles.add('lord'); roles.add('payoff'); }
@@ -312,9 +317,10 @@ function archetypeSupport(eligibleProfiles, id) {
   let matching=0, payoff=0, enabler=0, power=0;
   let focusSubtype=null;
   if (id==='typal') focusSubtype=chooseTypalFocus(eligibleProfiles)?.subtype||null;
+  if (id==='dragons') focusSubtype='dragon';
   for (const {profile} of eligibleProfiles) {
     let hit=arch.themes.some(t=>profile.themes.includes(t));
-    if (id==='typal') {
+    if (id==='typal' || id==='dragons') {
       hit=!!focusSubtype && (
         profile.isCreature&&profile.subtypeTokens.includes(focusSubtype) ||
         profile.flexibleTribe || (profile.tribalRefs||[]).includes(focusSubtype)
@@ -328,13 +334,15 @@ function archetypeSupport(eligibleProfiles, id) {
   }
   const density=eligibleProfiles.length?matching/eligibleProfiles.length:0;
   let score=matching*1.8 + density*45 + (matching?power/matching:0)*0.08;
-  if (['tokens','counters','sacrifice','graveyard','exile','typal','artifacts','suspend','transform'].includes(id)) {
+  if (['tokens','counters','sacrifice','graveyard','exile','typal','dragons','artifacts','suspend','transform'].includes(id)) {
     score += Math.min(enabler,payoff)*2.5;
     if (matching<8) score-=25;
   }
-  if (id==='typal') {
-    const focus=chooseTypalFocus(eligibleProfiles);
-    if (!focus) score-=80;
+  if (id==='typal' || id==='dragons') {
+    const focus=id==='dragons'
+      ? {subtype:'dragon',creatures:eligibleProfiles.filter(x=>x.profile.isCreature&&x.profile.subtypeTokens.includes('dragon')).length,support:eligibleProfiles.filter(x=>x.profile.flexibleTribe||(x.profile.tribalRefs||[]).includes('dragon')).length,lords:eligibleProfiles.filter(x=>(x.profile.tribalRefs||[]).includes('dragon')&&x.profile.roles.includes('lord')).length}
+      : chooseTypalFocus(eligibleProfiles);
+    if (!focus || focus.creatures<4) score-=80;
     else score += focus.support*5 + focus.lords*8 + Math.min(20,focus.creatures)*0.8;
   }
   if (id==='control') score += eligibleProfiles.filter(x=>x.profile.roles.includes('broadInteraction')).length*0.75;
@@ -371,13 +379,13 @@ function chooseArchetype(cards, identity, rng, quality='competitive') {
   if (quality==='starter') {
     // Onboarding: no regalar un deck malo, pero sí favorecer planes legibles y con espacio
     // para upgrades. Los arquetipos más técnicos siguen disponibles si el pool/color lo exige.
-    const complexity={aggro:0,midrange:0,tokens:1,counters:1,typal:1,artifacts:2,ramp:2,sacrifice:3,graveyard:4,tempo:4,exile:4,transform:5,spells:5,suspend:6,control:6};
+    const complexity={aggro:0,midrange:0,tokens:1,counters:1,typal:1,dragons:2,artifacts:2,ramp:2,sacrifice:3,graveyard:4,tempo:4,exile:4,transform:5,spells:5,suspend:6,control:6};
     ranked.forEach(x=>x.score-=Number(complexity[x.id]||0)*8);
     ranked.sort((a,b)=>b.score-a.score);
   }
   let rankedPool=ranked;
   if (quality==='starter') {
-    const preferred=new Set(['aggro','midrange','tokens','counters','typal','artifacts','ramp']);
+    const preferred=new Set(['aggro','midrange','tokens','counters','typal','dragons','artifacts','ramp']);
     const globalTop=Math.max(1,ranked[0]?.score||1);
     const simple=ranked.filter(x=>preferred.has(x.id) && x.score>=Math.max(18,globalTop*0.30));
     if (simple.length) rankedPool=simple;
@@ -424,7 +432,14 @@ function chooseTypalFocus(eligibleProfiles) {
 }
 function buildArchetypeContext(cards, identity, archetypeId, meta) {
   const eligible=cards.filter(c=>!isLand(c)&&identityMatches(c,identity)).map(card=>({card,profile:meta.get(card.id)}));
-  const typalFocus=archetypeId==='typal'?chooseTypalFocus(eligible):null;
+  let typalFocus=archetypeId==='typal'?chooseTypalFocus(eligible):null;
+  if (archetypeId==='dragons') {
+    const subtype='dragon';
+    const creatures=eligible.filter(x=>x.profile.isCreature&&x.profile.subtypeTokens.includes(subtype)).length;
+    const support=eligible.filter(x=>x.profile.flexibleTribe||(x.profile.tribalRefs||[]).includes(subtype)).length;
+    const lords=eligible.filter(x=>(x.profile.tribalRefs||[]).includes(subtype)&&x.profile.roles.includes('lord')).length;
+    typalFocus={subtype,creatures,support,lords,score:creatures*1.25+support*7+lords*9};
+  }
   return {eligible,focusSubtype:typalFocus?.subtype||null,typalFocus};
 }
 function availableCopies(eligible, predicate, spellCount) {
@@ -497,7 +512,7 @@ function compositionDeficits(stats, req, archetypeId) {
   need('instantSorcery',stats.instantSorcery,req.instantSorcery);
   need('nonCreature',stats.nonCreature,req.nonCreature);
   need('primaryTheme',stats.themeHits,req.primaryTheme);
-  if (archetypeId==='typal' && req.typalDensity>0) {
+  if ((archetypeId==='typal' || archetypeId==='dragons') && req.typalDensity>0) {
     if (!stats.focusSubtype) out.push({key:'typalFocus',actual:0,target:1,missing:1});
     else if (stats.typalDensity+1e-9<req.typalDensity) out.push({key:'typalDensity',actual:stats.typalDensity,target:req.typalDensity,missing:req.typalDensity-stats.typalDensity});
     need('tribalSupport',stats.tribalSupport,req.tribalSupport);
@@ -511,7 +526,7 @@ function synergyScore(profile, arch, context=null) {
   if (arch.themes.includes('midrange') && profile.themes.includes('midrange')) s+=4;
   if (arch.themes.includes('control') && profile.roles.includes('interaction')) s+=5;
   if (arch.themes.includes('aggro') && profile.isCreature && profile.mv<=3) s+=5;
-  if (arch.themes.includes('typal') && context?.focusSubtype) {
+  if ((arch.themes.includes('typal') || arch.themes.includes('dragons')) && context?.focusSubtype) {
     const focus=context.focusSubtype;
     if (profile.isCreature && profile.subtypeTokens.includes(focus)) s+=13;
     if (profile.flexibleTribe) s+=9;
@@ -577,6 +592,7 @@ function profileMatchesDeficit(profile, deficitKey, arch, context) {
 function repairSpellCandidate(chosen, meta, arch, archetypeId, quality, archContext, req) {
   let cards=[...chosen];
   const eligible=archContext.eligible;
+  const rarityBudget=(DECK_QUALITY_PROFILES[quality]||DECK_QUALITY_PROFILES.competitive).rarityBudget;
   for (let pass=0;pass<28;pass++) {
     const profiles=cards.map(c=>meta.get(c.id));
     const stats=compositionStats(profiles,arch,archContext);
@@ -597,6 +613,10 @@ function repairSpellCandidate(chosen, meta, arch, archetypeId, quality, archCont
       for (let i=0;i<cards.length;i++) {
         const old=cards[i];
         if (old.id===cand.card.id) continue;
+        if (rarityBudget) {
+          const simulatedCards=cards.slice(); simulatedCards[i]=cand.card;
+          if (exceedsRarityBudget(simulatedCards,rarityBudget)) continue;
+        }
         const simulated=profiles.slice(); simulated[i]=cand.profile;
         const simStats=compositionStats(simulated,arch,archContext);
         const simDef=compositionDeficits(simStats,req,archetypeId);
@@ -633,6 +653,8 @@ function buildSpellCandidate(cards, identity, archetypeId, spellCount, meta, rng
       const count=copies.get(card.id)||0;
       if (count>=4) continue;
       const profile=meta.get(card.id);
+      const rarityBudget=(DECK_QUALITY_PROFILES[quality]||DECK_QUALITY_PROFILES.competitive).rarityBudget;
+      if (rarityBudget && exceedsRarityBudget([...chosen,card],rarityBudget)) continue;
       if (forceCreature && !profile.isCreature) continue;
       if (forceNonCreature && profile.isCreature) continue;
       if (forceBroad && !profile.roles.includes('broadInteraction')) continue;
@@ -755,6 +777,17 @@ function openingGoldfish(deck, identity, iterations, rng) {
   return {iterations:runs,healthyPct:pct(healthy),earlyPct:pct(early),colorReadyPct:pct(colorReady),thirdLandPct:pct(land3),manaStallPct:pct(manaStall)};
 }
 
+function exceedsRarityBudget(cards,budget) {
+  if (!budget) return false;
+  let mythic=0, rarePlusMythic=0;
+  for (const card of cards||[]) {
+    const rank=rarityRank(card);
+    if (rank>=3) mythic++;
+    if (rank>=2) rarePlusMythic++;
+  }
+  return mythic>budget.mythic || rarePlusMythic>budget.rarePlusMythic;
+}
+
 function rarityPenalty(summary,budget) {
   if (!budget) return 0;
   const mythic=summary.rarity.Mythic||0;
@@ -795,7 +828,7 @@ function evaluateCandidate(deck, identity, archetypeId, meta, quality, goldfishI
   score += roleScore;
   const themeHits=composition.themeHits;
   score += Math.min(28,themeHits*1.2);
-  if (['tokens','counters','sacrifice','graveyard','exile','typal','artifacts','suspend','transform'].some(t=>arch.themes.includes(t))) {
+  if (['tokens','counters','sacrifice','graveyard','exile','typal','dragons','artifacts','suspend','transform'].some(t=>arch.themes.includes(t))) {
     score += Math.min(s.roles.enabler||0,s.roles.payoff||0)*2.15;
     if ((s.roles.payoff||0)>0 && (s.roles.enabler||0)===0) score-=18;
   }
@@ -807,7 +840,7 @@ function evaluateCandidate(deck, identity, archetypeId, meta, quality, goldfishI
   score -= composition.narrowInteraction>Math.max(3,composition.broadInteraction)?5:0;
   const deadWeight=qp.sophistication==='elite'?6:qp.sophistication==='advanced'?3.5:1.5;
   score -= composition.deadSynergy*deadWeight;
-  if (archetypeId==='typal' && composition.focusSubtype) {
+  if ((archetypeId==='typal' || archetypeId==='dragons') && composition.focusSubtype) {
     score += composition.typalDensity*18 + Math.min(10,composition.tribalSupport*1.3);
   }
   // Base de maná basada en demanda real de pips.

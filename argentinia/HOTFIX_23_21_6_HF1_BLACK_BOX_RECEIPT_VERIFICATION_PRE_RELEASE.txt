@@ -1,0 +1,34 @@
+ARGENTINIA 23.21.6 HF1 PRE-RELEASE
+Admin Black Box Receipt Verification Hardening
+
+INCIDENTE
+- Con Firestore Listen afectado por DNS/red, Caja Negra podía mostrar visualmente receipts como faltantes hasta un hard refresh.
+- No hubo evidencia de pérdida económica: el hard refresh recuperó los receipts sin deploy ni reparación.
+
+FIX
+- fetchGameRewardAuditForAdmin fuerza lecturas server-authoritative con getDocsFromServer.
+- Cada colección de evidencia se resuelve independientemente con Promise.allSettled.
+- Una colección que falla ya no se convierte en [] indistinguible de "cero receipts".
+- Caja Negra sólo muestra ❌ receipt faltante cuando la colección relevante fue verificada contra Firestore server.
+- Si la lectura falla, muestra ⚠ No se pudo verificar … · conexión incompleta.
+- En estado no verificado no aparece reparación manual basada en ausencia.
+- Una colección disponible sigue pudiendo renderizar evidencia aunque otra haya fallado.
+
+SIN CAMBIOS
+- ENGINE_VERSION: 23.21.6
+- Pool físico: 900
+- Publicadas por baseline: 880
+- Functions: 41, sin cambios de código
+- Rules: 23.13.86, sin cambios
+- Multiplayer: mp-23.19.2
+- Economy: econ-23.19.5.6 / schema 10
+
+PROMOCION RECOMENDADA
+1. Gate03
+2. Gate05
+3. Gate07
+4. Deploy Functions 23.21.6
+5. Verify 41 Functions
+6. GitHub / GitHub Actions GREEN
+7. Smoke productivo
+Rules se certifican con Gate03 pero NO se redeployan porque no cambiaron.

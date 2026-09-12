@@ -1,31 +1,31 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-11T16:02:40Z",
+  "generatedAt": "2026-09-12T22:23:53Z",
   "gitSha": null,
   "githubRunId": null,
   "pool": {
-    "milestone": "pool_expansion_viii_880",
-    "contractVersion": "23.16.5.1",
-    "total": 880,
+    "milestone": "dragons_buenos_aires_900",
+    "contractVersion": "23.21.6",
+    "total": 900,
     "categories": {
       "tierras": 68,
-      "artefactos": 87,
-      "criaturas": 355,
-      "instantaneos": 147,
-      "conjuros": 107,
-      "encantamientos": 108,
+      "artefactos": 89,
+      "criaturas": 367,
+      "instantaneos": 149,
+      "conjuros": 109,
+      "encantamientos": 110,
       "planeswalkers": 8
     },
-    "uniqueIds": 880
+    "uniqueIds": 900
   },
   "images": {
     "directory": "assets/images/cards",
     "existingFileCount": 0,
-    "referencedCardCount": 880,
-    "referencedFaceCount": 896,
+    "referencedCardCount": 900,
+    "referencedFaceCount": 916,
     "doubleFacedCardCount": 16,
-    "uniqueReferencedFileCount": 895,
-    "missingCardCount": 896,
+    "uniqueReferencedFileCount": 915,
+    "missingCardCount": 916,
     "cardsWithoutImageFieldCount": 0
   },
   "tokenImages": {
@@ -410,6 +410,13 @@
       "image": "mapa_rutero.png"
     },
     {
+      "id": "art_089",
+      "name": "Mapa de los Nidos Antiguos",
+      "category": "artefactos",
+      "face": "front",
+      "image": "mapa_de_los_nidos_antiguos.png"
+    },
+    {
       "id": "art_058",
       "name": "Mapa del Camino de los Siete Lagos",
       "category": "artefactos",
@@ -471,6 +478,13 @@
       "category": "artefactos",
       "face": "front",
       "image": "modem_de_emergencia.png"
+    },
+    {
+      "id": "art_088",
+      "name": "Nido de Obsidiana",
+      "category": "artefactos",
+      "face": "front",
+      "image": "nido_de_obsidiana.png"
     },
     {
       "id": "art_070",
@@ -879,6 +893,13 @@
       "image": "desmonte_con_permiso.png"
     },
     {
+      "id": "conj_109",
+      "name": "Despertar de los Nidos",
+      "category": "conjuros",
+      "face": "front",
+      "image": "despertar_de_los_nidos.png"
+    },
+    {
       "id": "conj_034",
       "name": "Deuda Vencida",
       "category": "conjuros",
@@ -1208,6 +1229,13 @@
       "image": "rastreo_del_ibera.png"
     },
     {
+      "id": "conj_108",
+      "name": "Rastro de Escamas",
+      "category": "conjuros",
+      "face": "front",
+      "image": "rastro_de_escamas.png"
+    },
+    {
       "id": "conj_050",
       "name": "Reabrir el Caso",
       "category": "conjuros",
@@ -1530,6 +1558,13 @@
       "image": "artista_de_la_instalacion_imposible.png"
     },
     {
+      "id": "crea_367",
+      "name": "Aureón, Guardián del Alba",
+      "category": "criaturas",
+      "face": "front",
+      "image": "aureon_guardian_del_alba.png"
+    },
+    {
       "id": "crea_351",
       "name": "Autómata del Astillero Río Santiago",
       "category": "criaturas",
@@ -1563,6 +1598,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "avispa_del_vinedo_tardio.png"
+    },
+    {
+      "id": "crea_364",
+      "name": "Azhkar, Furia del Cielo Austral",
+      "category": "criaturas",
+      "face": "front",
+      "image": "azhkar_furia_del_cielo_austral.png"
     },
     {
       "id": "crea_229",
@@ -2048,6 +2090,13 @@
       "image": "cronista_temporal.png"
     },
     {
+      "id": "crea_356",
+      "name": "Cría de Brasa Errante",
+      "category": "criaturas",
+      "face": "front",
+      "image": "cria_de_brasa_errante.png"
+    },
+    {
       "id": "crea_182",
       "name": "Cuidador de Mausoleo",
       "category": "criaturas",
@@ -2475,6 +2524,13 @@
       "image": "freestyler_del_subte_b.png"
     },
     {
+      "id": "crea_358",
+      "name": "Garganta de Fuego Carmesí",
+      "category": "criaturas",
+      "face": "front",
+      "image": "garganta_de_fuego_carmesi.png"
+    },
+    {
       "id": "crea_098",
       "name": "Gato del Tejado Caliente",
       "category": "criaturas",
@@ -2720,6 +2776,13 @@
       "image": "hornero_alambrado.png"
     },
     {
+      "id": "crea_359",
+      "name": "Ignivar, Rey de las Brasas",
+      "category": "criaturas",
+      "face": "front",
+      "image": "ignivar_rey_de_las_brasas.png"
+    },
+    {
       "id": "crea_177",
       "name": "Ilusionista de la Costanera",
       "category": "criaturas",
@@ -2930,6 +2993,13 @@
       "image": "maestro_de_mesa_del_velorio.png"
     },
     {
+      "id": "crea_363",
+      "name": "Magmavelo, Ala del Horizonte",
+      "category": "criaturas",
+      "face": "front",
+      "image": "magmavelo_ala_del_horizonte.png"
+    },
+    {
       "id": "crea_015",
       "name": "Magnate del Show Infinito",
       "category": "criaturas",
@@ -3077,11 +3147,25 @@
       "image": "murguera_de_boedo.png"
     },
     {
+      "id": "crea_360",
+      "name": "Musgaria, Cría de Escama Verde",
+      "category": "criaturas",
+      "face": "front",
+      "image": "musgaria_cria_de_escama_verde.png"
+    },
+    {
       "id": "crea_142",
       "name": "Nahuelito, Sombra del Lago",
       "category": "criaturas",
       "face": "front",
       "image": "nahuelito_sombra_lago.png"
+    },
+    {
+      "id": "crea_365",
+      "name": "Nocthar, Devorador de Juramentos",
+      "category": "criaturas",
+      "face": "front",
+      "image": "nocthar_devorador_de_juramentos.png"
     },
     {
       "id": "crea_198",
@@ -3756,6 +3840,13 @@
       "image": "toro_del_rodeo_de_fuego.png"
     },
     {
+      "id": "crea_361",
+      "name": "Torvagrís, Draco de la Sierra",
+      "category": "criaturas",
+      "face": "front",
+      "image": "torvagris_draco_de_la_sierra.png"
+    },
+    {
       "id": "crea_063",
       "name": "Trepadora del Cerro",
       "category": "criaturas",
@@ -3775,6 +3866,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "tecnico_de_la_usina_de_medianoche.png"
+    },
+    {
+      "id": "crea_357",
+      "name": "Varkel, Vigía del Poniente",
+      "category": "criaturas",
+      "face": "front",
+      "image": "varkel_vigia_del_poniente.png"
     },
     {
       "id": "crea_007",
@@ -3831,6 +3929,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "vendedora_del_anden_nueve.png"
+    },
+    {
+      "id": "crea_362",
+      "name": "Verdarraíz, Coloso Ancestral",
+      "category": "criaturas",
+      "face": "front",
+      "image": "verdarraiz_coloso_ancestral.png"
     },
     {
       "id": "crea_061",
@@ -3943,6 +4048,13 @@
       "category": "criaturas",
       "face": "front",
       "image": "yuyero_banado.png"
+    },
+    {
+      "id": "crea_366",
+      "name": "Zafiria, Ala de la Tormenta",
+      "category": "criaturas",
+      "face": "front",
+      "image": "zafiria_ala_de_la_tormenta.png"
     },
     {
       "id": "crea_050",
@@ -4111,6 +4223,13 @@
       "category": "encantamientos",
       "face": "back",
       "image": "cielo_despues_del_rayo.png"
+    },
+    {
+      "id": "ench_109",
+      "name": "Cielo Reclamado",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "cielo_reclamado.png"
     },
     {
       "id": "ench_028",
@@ -4328,6 +4447,13 @@
       "category": "encantamientos",
       "face": "front",
       "image": "jardines_de_palermo.png"
+    },
+    {
+      "id": "ench_110",
+      "name": "Juramento de la Primera Llama",
+      "category": "encantamientos",
+      "face": "front",
+      "image": "juramento_de_la_primera_llama.png"
     },
     {
       "id": "ench_092",
@@ -5212,6 +5338,13 @@
       "image": "envion_del_terraplen.png"
     },
     {
+      "id": "inst_148",
+      "name": "Escamas de Acero",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "escamas_de_acero.png"
+    },
+    {
       "id": "inst_113",
       "name": "Expediente Bajo Tierra",
       "category": "instantaneos",
@@ -5497,6 +5630,13 @@
       "category": "instantaneos",
       "face": "front",
       "image": "petardos_ano_nuevo.png"
+    },
+    {
+      "id": "inst_149",
+      "name": "Picada desde las Nubes",
+      "category": "instantaneos",
+      "face": "front",
+      "image": "picada_desde_las_nubes.png"
     },
     {
       "id": "inst_083",

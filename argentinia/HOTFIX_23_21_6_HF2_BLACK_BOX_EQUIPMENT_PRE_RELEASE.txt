@@ -1,0 +1,15 @@
+ARGENTINIA 23.21.6 HF2 PRE-RELEASE
+Black Box Verification + Equipment Instance Isolation
+
+1) Admin Black Box receipt verification hardening
+- Server-forced reads distinguish confirmed missing receipts from network/read failures.
+- Unverified receipt state is neutral and never enables absence-based repair.
+
+2) Equipment instance isolation
+- Root cause: support-zone renderer grouped identical non-Saga support permanents by card.id.
+- For two Atado con Alambre copies, the grouped card click always selected group.ready[0], so activating what looked like the second copy actually re-equipped the first.
+- Engine attachment/stat logic was already instance-correct; the bug was UI instance selection.
+- Equipment now follows Saga-style per-instance grouping using _syncObjectId / card.instanceId / _effectObjectId / index fallback.
+- Duplicate equipment copies render separately, can attach to different creatures, and their bonuses stack independently.
+
+No Functions, Firestore Rules, multiplayer protocol, economy schema or physical/published pool changes.

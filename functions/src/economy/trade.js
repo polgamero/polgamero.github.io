@@ -1,6 +1,7 @@
 // v23.21.0 — Mercado de Pases server authority.
 import { FieldValue } from 'firebase-admin/firestore';
 import { TRUSTED_CARD_POOL } from '../trusted/cardCatalog.js';
+import { loadCardPublicationPolicy, cardEnabledByPolicy, assertCardEnabled } from '../trusted/cardPublication.js';
 import { ENGINE_VERSION, ECONOMY_SCHEMA_VERSION } from '../shared/constants.js';
 import { economyError } from '../shared/errors.js';
 import { argentinaWeekKey } from './commerceCore.js';
@@ -69,11 +70,12 @@ function publicOffer(data = {}) {
 
 export async function getTradeMarketView(db, uid) {
   const userRef=db.collection('users').doc(uid);
-  const [userSnap,resSnap,listingsSnap,receiptsA,receiptsB,settingsSnap] = await Promise.all([
+  const [userSnap,resSnap,listingsSnap,receiptsA,receiptsB,settingsSnap,publication] = await Promise.all([
     userRef.get(), reservationRef(db,uid).get(), db.collection('tradeListings').where('status','==','active').limit(100).get(),
     db.collection('tradeReceipts').where('ownerUid','==',uid).limit(25).get(),
     db.collection('tradeReceipts').where('offererUid','==',uid).limit(25).get(),
-    db.doc('gameConfig/settings').get()
+    db.doc('gameConfig/settings').get(),
+    loadCardPublicationPolicy(db)
   ]);
   const limits=normalizeTradeLimits(settingsSnap.exists?(settingsSnap.data()||{}):{});
   if (!userSnap.exists) throw economyError('PROFILE_MISSING');
@@ -89,7 +91,7 @@ export async function getTradeMarketView(db, uid) {
   const outgoing=outgoingSnaps.filter(s=>s.exists&&s.data()?.status==='active').map(s=>publicOffer(s.data()));
   const profile=userSnap.data()||{};
   const counts={}; for(const id of Array.isArray(profile.collection)?profile.collection:[]) counts[id]=(counts[id]||0)+1;
-  const tradable={}; for(const cardId of Object.keys(counts)) { const n=tradableCardCount(profile,reservation,cardId); if(n>0) tradable[cardId]=n; }
+  const tradable={}; for(const cardId of Object.keys(counts)) { if(!cardEnabledByPolicy(cardId,publication)) continue; const n=tradableCardCount(profile,reservation,cardId); if(n>0) tradable[cardId]=n; }
   const weekKey=argentinaWeekKey(Date.now());
   const ledgerSnap=await ledgerRef(db,uid,weekKey).get();
   const receipts=new Map();
@@ -97,8 +99,8 @@ export async function getTradeMarketView(db, uid) {
   return {
     limits, weekKey, completedThisWeek:weekCompleted(ledgerSnap),
     ownReservation:reservation, tradableCounts:tradable,
-    listings:listingsSnap.docs.map(s=>publicListing(s.data())).filter(x=>x.ownerUid!==uid),
-    ownListing:ownListing?publicListing(ownListing):null,
+    listings:listingsSnap.docs.map(s=>publicListing(s.data())).filter(x=>x.ownerUid!==uid && cardEnabledByPolicy(x.cardId,publication)),
+    ownListing:ownListing?{...publicListing(ownListing),cardEnabled:cardEnabledByPolicy(ownListing.cardId,publication)}:null,
     receivedOffers:received,
     outgoingOffers:outgoing,
     history:[...receipts.values()].sort((a,b)=>(Number(b.completedAtMs)||0)-(Number(a.completedAtMs)||0)).slice(0,25)
@@ -108,14 +110,16 @@ export async function getTradeMarketView(db, uid) {
 export async function createTradeListingTx({db,tx,uid,operationId,cardId,wantedCriteria,acceptAnyCard,nowMs=Date.now()}) {
   const card=cleanCard(cardId); const userRef=db.collection('users').doc(uid); const listRef=listingRef(db,uid); const resRef=reservationRef(db,uid);
   const settingsRef=db.doc('gameConfig/settings');
-  const [userSnap,listSnap,resSnap,settingsSnap]=await Promise.all([tx.get(userRef),tx.get(listRef),tx.get(resRef),tx.get(settingsRef)]);
+  const [userSnap,listSnap,resSnap,settingsSnap,publication]=await Promise.all([tx.get(userRef),tx.get(listRef),tx.get(resRef),tx.get(settingsRef),loadCardPublicationPolicy(db,tx)]);
+  assertCardEnabled(card.id,publication);
   const limits=normalizeTradeLimits(settingsSnap.exists?(settingsSnap.data()||{}):{});
   if(!userSnap.exists) throw economyError('PROFILE_MISSING');
   if(listSnap.exists&&listSnap.data()?.status==='active') throw economyError('TRADE_LISTING_EXISTS');
   const profile=userSnap.data()||{}; const reservation=normalizeReservation(resSnap.exists?resSnap.data():{});
   if(reservation.activeListingId) throw economyError('TRADE_LISTING_EXISTS');
   if(tradableCardCount(profile,reservation,card.id)<1) throw economyError('TRADE_CARD_NOT_TRADABLE');
-  let criteria; try{criteria=normalizeWantedCriteria(wantedCriteria,acceptAnyCard===true,trustedById,limits);}catch(error){mapCriteriaError(error);}
+  const enabledById=new Map([...trustedById].filter(([id])=>cardEnabledByPolicy(id,publication)));
+  let criteria; try{criteria=normalizeWantedCriteria(wantedCriteria,acceptAnyCard===true,enabledById,limits);}catch(error){mapCriteriaError(error);}
   const listingId=String(operationId||'');
   let next=changeReservedCard(reservation,card.id,1); next.activeListingId=listingId;
   const data={listingId,ownerUid:uid,ownerUsername:username(profile),cardId:card.id,acceptAnyCard:acceptAnyCard===true,wantedCriteria:criteria,status:'active',offerIds:[],offerCount:0,createdAtMs:nowMs,updatedAtMs:nowMs};
@@ -152,11 +156,12 @@ export async function createTradeOfferTx({db,tx,uid,listingOwnerUid,cardId,nowMs
   if(String(uid)===String(listingOwnerUid)) throw economyError('TRADE_SELF_OFFER');
   const card=cleanCard(cardId); const listRef=listingRef(db,listingOwnerUid), userRef=db.collection('users').doc(uid),resRef=reservationRef(db,uid), offRef=offerRef(db,listingOwnerUid,uid);
   const settingsRef=db.doc('gameConfig/settings');
-  const [listSnap,userSnap,resSnap,offSnap,settingsSnap]=await Promise.all([tx.get(listRef),tx.get(userRef),tx.get(resRef),tx.get(offRef),tx.get(settingsRef)]);
+  const [listSnap,userSnap,resSnap,offSnap,settingsSnap,publication]=await Promise.all([tx.get(listRef),tx.get(userRef),tx.get(resRef),tx.get(offRef),tx.get(settingsRef),loadCardPublicationPolicy(db,tx)]);
+  assertCardEnabled(card.id,publication);
   const limits=normalizeTradeLimits(settingsSnap.exists?(settingsSnap.data()||{}):{});
   if(!listSnap.exists||listSnap.data()?.status!=='active') throw economyError('TRADE_LISTING_NOT_FOUND');
   if(!userSnap.exists) throw economyError('PROFILE_MISSING');
-  const listing=listSnap.data(); const reservation=normalizeReservation(resSnap.exists?resSnap.data():{});
+  const listing=listSnap.data(); assertCardEnabled(listing.cardId,publication); const reservation=normalizeReservation(resSnap.exists?resSnap.data():{});
   if(offSnap.exists&&offSnap.data()?.status==='active'&&offSnap.data()?.listingId===listing.listingId) throw economyError('TRADE_OFFER_EXISTS');
   if(activeOfferIds(listing).length>=limits.maxOffersPerListing) throw economyError('TRADE_OFFER_LIMIT');
   if(reservation.activeOfferIds.length>=limits.maxOutgoingOffers) throw economyError('TRADE_OUTGOING_LIMIT');
@@ -192,10 +197,12 @@ export async function acceptTradeOfferTx({db,tx,uid,offerId,operationId='',nowMs
   const ownerRef=db.collection('users').doc(uid),offererRef=db.collection('users').doc(accepted.offererUid),ownerResRef=reservationRef(db,uid),offererResRef=reservationRef(db,accepted.offererUid);
   const ownerStatsRef=db.collection('playerStats').doc(uid),offererStatsRef=db.collection('playerStats').doc(accepted.offererUid),settingsRef=db.doc('gameConfig/settings');
   const weekKey=argentinaWeekKey(nowMs),ownerLedgerRef=ledgerRef(db,uid,weekKey),offererLedgerRef=ledgerRef(db,accepted.offererUid,weekKey);
-  const [ownerSnap,offererSnap,ownerResSnap,offererResSnap,ownerLedgerSnap,offererLedgerSnap,ownerStatsSnap,offererStatsSnap,settingsSnap]=await Promise.all([
+  const [ownerSnap,offererSnap,ownerResSnap,offererResSnap,ownerLedgerSnap,offererLedgerSnap,ownerStatsSnap,offererStatsSnap,settingsSnap,publication]=await Promise.all([
     tx.get(ownerRef),tx.get(offererRef),tx.get(ownerResRef),tx.get(offererResRef),tx.get(ownerLedgerRef),tx.get(offererLedgerRef),
-    tx.get(ownerStatsRef),tx.get(offererStatsRef),tx.get(settingsRef)
+    tx.get(ownerStatsRef),tx.get(offererStatsRef),tx.get(settingsRef),loadCardPublicationPolicy(db,tx)
   ]);
+  assertCardEnabled(listing.cardId,publication);
+  assertCardEnabled(accepted.offeredCardId,publication);
   const limits=normalizeTradeLimits(settingsSnap.exists?(settingsSnap.data()||{}):{});
   if(!ownerSnap.exists||!offererSnap.exists) throw economyError('PROFILE_MISSING');
   if(weekCompleted(ownerLedgerSnap)>=limits.maxCompletedPerWeek||weekCompleted(offererLedgerSnap)>=limits.maxCompletedPerWeek) throw economyError('TRADE_WEEKLY_LIMIT');

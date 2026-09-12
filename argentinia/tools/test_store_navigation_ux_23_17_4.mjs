@@ -7,11 +7,11 @@ const css = fs.readFileSync(new URL('../css/style.css', import.meta.url), 'utf8'
 const mobile = fs.readFileSync(new URL('../css/mobile.css', import.meta.url), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(new URL('../build-manifest.json', import.meta.url), 'utf8'));
 
-assert.equal(ENGINE_VERSION, '23.21.4');
+assert.equal(ENGINE_VERSION, '23.21.6');
 assert.equal(FIRESTORE_RULES_VERSION, '23.13.86');
 assert.equal(manifest.engineVersion, ENGINE_VERSION);
 assert.equal(manifest.firestoreRulesVersion, FIRESTORE_RULES_VERSION);
-assert.equal(manifest.pool, 880);
+assert.equal(manifest.pool, 900);
 
 // Header compacto: título + wallet sin labels gigantes dentro del body.
 assert.ok(ui.includes('class="store-header-wallet" id="store-header-wallet"'));

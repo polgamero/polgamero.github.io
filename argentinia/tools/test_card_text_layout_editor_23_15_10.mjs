@@ -13,17 +13,18 @@ const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(__dirname,'..');
 const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 
-assert.ok(['23.15.10','23.16.1','23.16.1.1','23.16.2','23.16.2.1','23.16.3','23.16.3.1','23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.21.4'].includes(ENGINE_VERSION),'Card Text Layout contract must survive later engine-only releases');
+assert.ok(['23.15.10','23.16.1','23.16.1.1','23.16.2','23.16.2.1','23.16.3','23.16.3.1','23.16.4','23.16.4.1','23.16.5','23.16.5.1','23.16.5.2','23.17.1','23.17.2','23.17.3','23.18.3','23.19','23.19.2','23.21.6'].includes(ENGINE_VERSION),'Card Text Layout contract must survive later engine-only releases');
 assert.ok(['mp-23.10.0','mp-23.19.0','mp-23.19.2'].includes(ENGINE_PROTOCOL_VERSION));
 assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
-assert.ok(['pool_expansion_iii_730','pool_expansion_iv_760','pool_expansion_v_790','pool_expansion_vi_820','pool_expansion_vii_850','pool_expansion_viii_880'].includes(CURRENT_POOL_MILESTONE));
+assert.ok(['pool_expansion_iii_730','pool_expansion_iv_760','pool_expansion_v_790','pool_expansion_vi_820','pool_expansion_vii_850','pool_expansion_viii_880','dragons_buenos_aires_900'].includes(CURRENT_POOL_MILESTONE));
 assert.ok(POOL_BASELINE.total>=730);
-assert.equal(TEXT_LAYOUT_SCHEMA_VERSION,1);
+assert.equal(TEXT_LAYOUT_SCHEMA_VERSION,2);
 assert.equal(TEXT_LAYOUT_DOCUMENT_ID,'textLayouts');
 assert.deepEqual(normalizeCardTextLayout(null),TEXT_LAYOUT_DEFAULT);
 assert.ok(isDefaultCardTextLayout(TEXT_LAYOUT_DEFAULT));
 
-const normalized=normalizeCardTextLayout({fontScale:99,lineHeightScale:0,flavorScale:99,flavorGapScale:-2,boxHeight:100});
+const normalized=normalizeCardTextLayout({nameScale:99,fontScale:99,lineHeightScale:0,flavorScale:99,flavorGapScale:-2,boxHeight:100});
+assert.equal(normalized.nameScale,TEXT_LAYOUT_LIMITS.maxNameScale);
 assert.equal(normalized.fontScale,TEXT_LAYOUT_LIMITS.maxFontScale);
 assert.equal(normalized.lineHeightScale,TEXT_LAYOUT_LIMITS.minLineHeightScale);
 assert.equal(normalized.flavorScale,TEXT_LAYOUT_LIMITS.maxFlavorScale);
@@ -36,7 +37,7 @@ const doc=buildCardTextLayoutsDocument({
   default_card:{...TEXT_LAYOUT_DEFAULT},
   'bad id!':{...TEXT_LAYOUT_DEFAULT,fontScale:1.2}
 });
-assert.equal(doc.schemaVersion,1);
+assert.equal(doc.schemaVersion,2);
 assert.equal(doc.layouts.crea_001.fontScale,1.1);
 assert.equal(doc.layouts.default_card,undefined);
 assert.equal(doc.layouts['bad id!'],undefined);
@@ -58,15 +59,16 @@ for(const marker of [
 
 const editor=read('js/textLayoutEditor.js');
 for(const marker of [
-  'Tamaño general de letra','Altura del recuadro de texto','Interlineado','Tamaño del flavor','Separación antes del flavor',
-  'El contenido no se edita acá.','saveCardTextLayout(','Reset automático'
+  'Nombre real de la carta','Tamaño del nombre','Tamaño general de letra','Altura del recuadro de texto','Interlineado','Tamaño del flavor','Separación antes del flavor',
+  'Reglas y flavor siguen viniendo de los JSON.','saveCardTextLayout(','Reset automático'
 ]) assert.ok(editor.includes(marker),`editor missing ${marker}`);
 assert.ok(!editor.includes('<textarea'), 'editor must not edit content');
-assert.ok(!editor.includes('type="text"'), 'editor must expose only layout controls');
+assert.ok(editor.includes('id="text-layout-name"'), '23.21.6 Admin editor must expose the persistent card identity field');
+assert.ok(editor.includes('saveCardCatalogOverride'), 'identity save must use card catalog authority');
 
 const layout=read('js/textLayout.js');
 for(const marker of [
-  "TEXT_LAYOUT_DOCUMENT_ID = 'textLayouts'", "TEXT_LAYOUT_CACHE_KEY = 'argentinia.textLayouts.v1'",
+  "TEXT_LAYOUT_DOCUMENT_ID = 'textLayouts'", "TEXT_LAYOUT_CACHE_KEY = 'argentinia.textLayouts.v2'",
   'loadPublicGameConfigDocument(TEXT_LAYOUT_DOCUMENT_ID)', 'saveAdminGameConfigDocument(TEXT_LAYOUT_DOCUMENT_ID',
   'applyAllCardTextLayoutsToVisibleBoxes()', 'registerCardTextBox'
 ]) assert.ok(layout.includes(marker),`textLayout missing ${marker}`);

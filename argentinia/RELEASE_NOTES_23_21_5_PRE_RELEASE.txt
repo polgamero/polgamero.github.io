@@ -1,0 +1,28 @@
+ARGENTINIA 23.21.5 — CARD PUBLICATION CONTROL + ADMIN CARD IDENTITY + BROWSER ARCHETYPE UX
+PRE-RELEASE · 2026-09-12 · Pool físico 880 · Functions 41 · Rules 23.13.86 sin cambios
+
+1. CARD PUBLICATION CONTROL
+- Congela las 880 IDs históricas de 23.21.4 como baseline publicada.
+- Cualquier ID futura nace NO PUBLICADA por defecto aunque el JSON omita enabled:false.
+- Admin Enciclopedia incorpora HABILITADA por carta.
+- Una carta deshabilitada permanece en colección/mazos históricos pero queda fuera de nuevas partidas, pool automático y nuevas operaciones económicas.
+- Functions aplica CARD_DISABLED en autoridades server-side relevantes; packs/starters operan sólo sobre el pool habilitado.
+- Mercado excluye cartas suspendidas de nuevas operaciones; el dueño conserva visibilidad de una publicación propia suspendida para cancelarla.
+
+2. ADMIN CARD IDENTITY
+- El editor del lapicito de texto permite cambiar el nombre visible global sin modificar el ID estable de la carta.
+- Las menciones del nombre propio dentro del texto estructurado se regeneran desde el nombre canónico y siguen el override.
+- Nombres duplicados normalizados son rechazados.
+- Nuevo slider Tamaño del nombre: 70%-135%, aplicado encima del auto-fit existente.
+
+3. ENCICLOPEDIA / DECK BUILDER
+- Arquetipos alineados con los 15 perfiles de Deck Intelligence.
+- Mecánicas separadas: Veneno, Robo, Curación.
+- Admin sigue viendo cartas no publicadas; jugadores sólo ven cartas habilitadas.
+
+4. UI ADMIN
+- El lápiz de arte baja a top:30px para no tapar el coste de maná.
+
+5. CONTRATOS
+- Engine 23.21.5; pool/protocolos/schema/Rules no cambian.
+- Functions conserva 41 exports pero cambia código: Gate05 + Gate07 + deploy/verify de Functions son obligatorios antes de RELEASED.

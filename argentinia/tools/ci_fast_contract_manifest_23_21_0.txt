@@ -120,3 +120,6 @@ tools/test_console_audit_identity_hygiene_23_21_3_hf1.mjs
 
 tools/test_basic_land_packs_admin_stats_23_21_4.mjs
 tools/rc5_2_match_lifecycle_mobile_hud_contract.mjs
+tools/test_card_publication_admin_identity_23_21_5.mjs
+tools/test_dragons_buenos_aires_pool_900_23_21_6.mjs
+tools/test_equipment_instance_isolation_23_21_6_hf2.mjs

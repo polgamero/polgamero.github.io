@@ -8792,5 +8792,315 @@
         }
       }
     ]
+  },
+  {
+    "id": "crea_356",
+    "name": "Cría de Brasa Errante",
+    "type": "Criatura — Dragón",
+    "manaCost": "{1}{R}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "R"
+    ],
+    "text": "Apuro.",
+    "flavorText": "Nació donde la piedra todavía recuerda el incendio.",
+    "image": "cria_de_brasa_errante.png",
+    "power": 2,
+    "toughness": 1,
+    "keywords": [
+      "haste"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "crea_357",
+    "name": "Varkel, Vigía del Poniente",
+    "type": "Criatura — Dragón",
+    "manaCost": "{2}{R}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Vuela.",
+    "flavorText": "Cuando el horizonte se vuelve rojo, Varkel ya estaba mirando.",
+    "image": "varkel_vigia_del_poniente.png",
+    "power": 2,
+    "toughness": 2,
+    "keywords": [
+      "flying"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "crea_358",
+    "name": "Garganta de Fuego Carmesí",
+    "type": "Criatura — Dragón",
+    "manaCost": "{3}{R}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "R"
+    ],
+    "text": "Vuela. Cuando Garganta de Fuego Carmesí entre al campo de batalla, le hace 1 de daño al jugador rival.",
+    "flavorText": "Su rugido llega después de la llamarada.",
+    "image": "garganta_de_fuego_carmesi.png",
+    "power": 4,
+    "toughness": 3,
+    "keywords": [
+      "flying"
+    ],
+    "etbEffect": {
+      "type": "damage",
+      "amount": 1
+    },
+    "enabled": false
+  },
+  {
+    "id": "crea_359",
+    "name": "Ignivar, Rey de las Brasas",
+    "type": "Criatura Legendaria — Dragón",
+    "manaCost": "{4}{R}{R}",
+    "cmc": 6,
+    "rarity": "Mythic",
+    "colors": [
+      "R"
+    ],
+    "text": "Vuela. Apuro. Siempre que Ignivar, Rey de las Brasas ataque, le hace 2 de daño al jugador rival.",
+    "flavorText": "No gobierna un territorio. Gobierna todo lo que puede arder.",
+    "image": "ignivar_rey_de_las_brasas.png",
+    "power": 5,
+    "toughness": 5,
+    "keywords": [
+      "flying",
+      "haste"
+    ],
+    "attackTrigger": {
+      "type": "damage",
+      "amount": 2
+    },
+    "enabled": false
+  },
+  {
+    "id": "crea_360",
+    "name": "Musgaria, Cría de Escama Verde",
+    "type": "Criatura — Dragón",
+    "manaCost": "{1}{G}",
+    "cmc": 2,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Alcance.",
+    "flavorText": "Todavía no domina el cielo, pero ya aprendió a defenderlo.",
+    "image": "musgaria_cria_de_escama_verde.png",
+    "power": 2,
+    "toughness": 3,
+    "keywords": [
+      "reach"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "crea_361",
+    "name": "Torvagrís, Draco de la Sierra",
+    "type": "Criatura — Dragón",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Arrolla.",
+    "flavorText": "Donde apoya una garra, el sendero cambia de dirección.",
+    "image": "torvagris_draco_de_la_sierra.png",
+    "power": 3,
+    "toughness": 3,
+    "keywords": [
+      "trample"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "crea_362",
+    "name": "Verdarraíz, Coloso Ancestral",
+    "type": "Criatura Legendaria — Dragón",
+    "manaCost": "{3}{G}{G}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "G"
+    ],
+    "text": "Arrolla. Los otros Dragones que controlás tienen Arrolla.",
+    "flavorText": "Sus escamas parecen corteza hasta que el bosque empieza a caminar.",
+    "image": "verdarraiz_coloso_ancestral.png",
+    "power": 5,
+    "toughness": 5,
+    "keywords": [
+      "trample"
+    ],
+    "staticEffect": {
+      "type": "team_keyword",
+      "scope": "own",
+      "keyword": "trample",
+      "filter": {
+        "subtype": "Dragón",
+        "other": true
+      }
+    },
+    "enabled": false
+  },
+  {
+    "id": "crea_363",
+    "name": "Magmavelo, Ala del Horizonte",
+    "type": "Criatura — Dragón",
+    "manaCost": "{2}{R}{G}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "R",
+      "G"
+    ],
+    "text": "Vuela. Arrolla.",
+    "flavorText": "Entre sus alas, el aire huele a piedra caliente y pasto quemado.",
+    "image": "magmavelo_ala_del_horizonte.png",
+    "power": 4,
+    "toughness": 3,
+    "keywords": [
+      "flying",
+      "trample"
+    ],
+    "enabled": false
+  },
+  {
+    "id": "crea_364",
+    "name": "Azhkar, Furia del Cielo Austral",
+    "type": "Criatura Legendaria — Dragón",
+    "manaCost": "{4}{R}{G}",
+    "cmc": 6,
+    "rarity": "Mythic",
+    "colors": [
+      "R",
+      "G"
+    ],
+    "text": "Vuela. Arrolla. Los otros Dragones que controlás obtienen +1/+1.",
+    "flavorText": "Cada batir de alas convierte el horizonte en una declaración de guerra.",
+    "image": "azhkar_furia_del_cielo_austral.png",
+    "power": 6,
+    "toughness": 5,
+    "keywords": [
+      "flying",
+      "trample"
+    ],
+    "staticEffect": {
+      "type": "team_buff",
+      "scope": "own",
+      "powerMod": 1,
+      "toughnessMod": 1,
+      "filter": {
+        "subtype": "Dragón",
+        "other": true
+      }
+    },
+    "enabled": false
+  },
+  {
+    "id": "crea_365",
+    "name": "Nocthar, Devorador de Juramentos",
+    "type": "Criatura Legendaria — Dragón",
+    "manaCost": "{3}{B}{B}",
+    "cmc": 5,
+    "rarity": "Rare",
+    "colors": [
+      "B"
+    ],
+    "text": "Vuela. Siempre que otro Dragón que controlás muera, el jugador rival pierde 1 vida y vos ganás 1 vida.",
+    "flavorText": "Recuerda cada promesa rota por el sabor que deja.",
+    "image": "nocthar_devorador_de_juramentos.png",
+    "power": 4,
+    "toughness": 4,
+    "keywords": [
+      "flying"
+    ],
+    "triggers": [
+      {
+        "event": "creature_died",
+        "filter": {
+          "controller": "you",
+          "subtype": "Dragón",
+          "notSelf": true
+        },
+        "effect": {
+          "type": "drain",
+          "amount": 1
+        }
+      }
+    ],
+    "enabled": false
+  },
+  {
+    "id": "crea_366",
+    "name": "Zafiria, Ala de la Tormenta",
+    "type": "Criatura Legendaria — Dragón",
+    "manaCost": "{3}{U}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "U"
+    ],
+    "text": "Vuela. Siempre que otro Dragón entre al campo de batalla bajo tu control, Anticipá 1.",
+    "flavorText": "La tormenta no la persigue: se abre para dejarla pasar.",
+    "image": "zafiria_ala_de_la_tormenta.png",
+    "power": 3,
+    "toughness": 4,
+    "keywords": [
+      "flying"
+    ],
+    "triggers": [
+      {
+        "event": "creature_entered",
+        "filter": {
+          "controller": "you",
+          "subtype": "Dragón",
+          "notSelf": true
+        },
+        "effect": {
+          "type": "scry",
+          "amount": 1
+        }
+      }
+    ],
+    "enabled": false
+  },
+  {
+    "id": "crea_367",
+    "name": "Aureón, Guardián del Alba",
+    "type": "Criatura Legendaria — Dragón",
+    "manaCost": "{3}{W}",
+    "cmc": 4,
+    "rarity": "Rare",
+    "colors": [
+      "W"
+    ],
+    "text": "Vuela. Alerta. Los otros Dragones que controlás tienen Alerta.",
+    "flavorText": "Cuando abre los ojos, la primera luz encuentra dónde quedarse.",
+    "image": "aureon_guardian_del_alba.png",
+    "power": 3,
+    "toughness": 4,
+    "keywords": [
+      "flying",
+      "vigilance"
+    ],
+    "staticEffect": {
+      "type": "team_keyword",
+      "scope": "own",
+      "keyword": "vigilance",
+      "filter": {
+        "subtype": "Dragón",
+        "other": true
+      }
+    },
+    "enabled": false
   }
 ]

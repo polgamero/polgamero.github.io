@@ -2410,5 +2410,57 @@
       "shuffle": false,
       "allowFewer": true
     }
+  },
+  {
+    "id": "conj_108",
+    "name": "Rastro de Escamas",
+    "type": "Conjuro",
+    "manaCost": "{2}{G}",
+    "cmc": 3,
+    "rarity": "Common",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá en tu biblioteca una carta de criatura Dragón, mostrala, ponela en tu mano y luego barajá.",
+    "flavorText": "Una sola escama alcanza para saber hacia dónde mirar.",
+    "image": "rastro_de_escamas.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_library",
+      "amount": 1,
+      "filter": {
+        "cardType": "creature",
+        "subtype": "Dragón"
+      },
+      "destination": "hand",
+      "reveal": true,
+      "shuffle": true,
+      "allowFewer": true
+    },
+    "enabled": false
+  },
+  {
+    "id": "conj_109",
+    "name": "Despertar de los Nidos",
+    "type": "Conjuro",
+    "manaCost": "{3}{G}",
+    "cmc": 4,
+    "rarity": "Uncommon",
+    "colors": [
+      "G"
+    ],
+    "text": "Buscá en tu biblioteca hasta dos Tierras básicas, ponelas en el campo de batalla giradas y luego barajá.",
+    "flavorText": "Cuando los nidos despiertan, hasta la tierra empieza a prepararse.",
+    "image": "despertar_de_los_nidos.png",
+    "requiresTarget": false,
+    "effect": {
+      "type": "search_land",
+      "amount": 2,
+      "filter": "basic",
+      "destination": "battlefield_tapped",
+      "allowFewer": true,
+      "reveal": false
+    },
+    "enabled": false
   }
 ]

@@ -51,6 +51,7 @@ limusina_del_magnate.png
 linterna_del_sereno.png
 loto_del_jardin_oriental.png
 mapa_rutero.png
+mapa_de_los_nidos_antiguos.png
 mapa_del_camino_de_los_siete_lagos.png
 mate_de_acero_inquebrantable.png
 mate_de_madrugada.png
@@ -60,6 +61,7 @@ motito_del_reparto_nocturno.png
 maquina_fichar.png
 maquina_de_tickets.png
 modem_de_emergencia.png
+nido_de_obsidiana.png
 odometro_de_la_ruta_40.png
 parrilla_portatil.png
 pasaporte_de_la_republica_invisible.png
@@ -118,6 +120,7 @@ cuarentena.png
 dato_reservado.png
 desatar_la_segunda_naturaleza.png
 desmonte_con_permiso.png
+despertar_de_los_nidos.png
 deuda_vencida.png
 dos_por_uno_del_kiosco.png
 dolar_blue.png
@@ -165,6 +168,7 @@ promocion_de_medianoche.png
 propagacion_del_vivero.png
 purga_pantano.png
 rastreo_del_ibera.png
+rastro_de_escamas.png
 reabrir_el_caso.png
 reconquista_del_parque_costero_del_sur.png
 reescribir_el_retrato.png
@@ -211,11 +215,13 @@ archivista_del_congreso.png
 arriero_cuesta_roja.png
 arriero_del_paso_colorado.png
 artista_de_la_instalacion_imposible.png
+aureon_guardian_del_alba.png
 automata_del_astillero_rio_santiago.png
 automata_del_planetario.png
 avalancha_de_tribuna.png
 avatar_de_la_argentina_secreta.png
 avispa_del_vinedo_tardio.png
+azhkar_furia_del_cielo_austral.png
 bailarina_de_dos_tacos.png
 bandada_del_delta.png
 bandoneonista_del_apagon.png
@@ -285,6 +291,7 @@ criancera_de_la_precordillera.png
 cronista_de_la_doble_vida.png
 cronista_de_la_plaza.png
 cronista_temporal.png
+cria_de_brasa_errante.png
 cuidador_de_mausoleo.png
 curadora_del_archivo_general.png
 curandero_monte.png
@@ -346,6 +353,7 @@ fogonero_del_tren_nocturno.png
 foguista_taller.png
 fotografa_de_antes_y_despues.png
 freestyler_del_subte_b.png
+garganta_de_fuego_carmesi.png
 gato_tejado_caliente.png
 gauchito_gil.png
 gaviota_del_puerto_sur.png
@@ -381,6 +389,7 @@ golem_de_chatarra_ferroviaria.png
 hachero_del_litoral.png
 hincha_de_popular.png
 hornero_alambrado.png
+ignivar_rey_de_las_brasas.png
 ilusionista_de_la_costanera.png
 ingeniero_de_metamorfosis.png
 inspector_de_aduana_paralela.png
@@ -411,6 +420,7 @@ madre_del_monte.png
 madre_del_monte_desatada.png
 maestra_de_escuela_rural.png
 maestro_de_mesa_del_velorio.png
+magmavelo_ala_del_horizonte.png
 magnate_del_show_infinito.png
 malabarista_semaforo.png
 martin_fierro.png
@@ -432,7 +442,9 @@ mozo_bodegon.png
 muerto_de_hambre_del_anden.png
 mulita_camino.png
 murguera_de_boedo.png
+musgaria_cria_de_escama_verde.png
 nahuelito_sombra_lago.png
+nocthar_devorador_de_juramentos.png
 ombu_caminante.png
 ombu_de_la_tormenta_quieta.png
 operador_de_radio_pirata.png
@@ -529,9 +541,11 @@ toro_de_la_salamanca_baja.png
 toro_del_corral_de_piedra.png
 toro_pedregal.png
 toro_del_rodeo_de_fuego.png
+torvagris_draco_de_la_sierra.png
 trepadora_cerro.png
 turista_de_cataratas.png
 tecnico_de_la_usina_de_medianoche.png
+varkel_vigia_del_poniente.png
 vecina_chismosa.png
 vecina_cooperadora.png
 vecina_metiche.png
@@ -540,6 +554,7 @@ veladora_santuario_gris.png
 vendedor_ambulante.png
 vendedora_chipa.png
 vendedora_del_anden_nueve.png
+verdarraiz_coloso_ancestral.png
 verdulera_mercado.png
 vigia_niebla.png
 vigia_del_radar_costero.png
@@ -556,6 +571,7 @@ yaguarete_del_monte_quemado.png
 yarara.png
 yuyera_de_traslasierra.png
 yuyero_banado.png
+zafiria_ala_de_la_tormenta.png
 angel_descampado.png
 anima_del_ultimo_tren.png
 idolo_del_potrero_imposible.png
@@ -580,6 +596,7 @@ cambio_de_administracion.png
 campanas_del_velorio.png
 campera_prestada.png
 cielo_despues_del_rayo.png
+cielo_reclamado.png
 cinta_promesa.png
 club_de_la_misma_camiseta.png
 consejo_cuadra.png
@@ -611,6 +628,7 @@ hinchada.png
 hora_pico_en_general_paz.png
 humedad_sotano.png
 jardines_de_palermo.png
+juramento_de_la_primera_llama.png
 la_argentina_de_las_mil_historias.png
 la_crecida_del_parana.png
 la_final_de_los_once_suenos.png
@@ -737,6 +755,7 @@ enredar_las_ruedas.png
 ensayo_general.png
 entre_lineas.png
 envion_del_terraplen.png
+escamas_de_acero.png
 expediente_bajo_tierra.png
 explosion_bengalas.png
 faconazo_del_monte.png
@@ -778,6 +797,7 @@ para_ahi.png
 peaje_rio.png
 pedido_de_prorroga.png
 petardos_ano_nuevo.png
+picada_desde_las_nubes.png
 pinchazo_de_archivo.png
 plaga_silo.png
 polen_negro_del_vinedo.png

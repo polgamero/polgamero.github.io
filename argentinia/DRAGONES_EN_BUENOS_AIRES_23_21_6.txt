@@ -1,0 +1,112 @@
+ARGENTINIA 23.21.6 — DRAGONES EN BUENOS AIRES — CATÁLOGO / ASSETS
+
+POOL FÍSICO: 900 · BASELINE PUBLICADA AL ENTREGAR: 880
+Las 20 cartas siguientes se entregan con enabled:false y fuera de la baseline histórica; NO salen en juego/economía hasta habilitarlas desde Admin.
+
+IMÁGENES: subir cada PNG a argentinia/assets/images/cards/ con el nombre indicado. Admin no permite HABILITADA si el manifest vivo informa que falta el frente.
+
+crea_356 — Cría de Brasa Errante
+  Coste: {1}{R} · Rareza: Common · F/R: 2/1
+  Apuro.
+  PNG: cria_de_brasa_errante.png
+
+crea_357 — Varkel, Vigía del Poniente
+  Coste: {2}{R} · Rareza: Uncommon · F/R: 2/2
+  Vuela.
+  PNG: varkel_vigia_del_poniente.png
+
+crea_358 — Garganta de Fuego Carmesí
+  Coste: {3}{R} · Rareza: Uncommon · F/R: 4/3
+  Vuela; ETB: 1 daño al rival.
+  PNG: garganta_de_fuego_carmesi.png
+
+crea_359 — Ignivar, Rey de las Brasas
+  Coste: {4}{R}{R} · Rareza: Mythic · F/R: 5/5
+  Vuela, Apuro; al atacar: 2 daño al rival.
+  PNG: ignivar_rey_de_las_brasas.png
+
+crea_360 — Musgaria, Cría de Escama Verde
+  Coste: {1}{G} · Rareza: Common · F/R: 2/3
+  Alcance.
+  PNG: musgaria_cria_de_escama_verde.png
+
+crea_361 — Torvagrís, Draco de la Sierra
+  Coste: {2}{G} · Rareza: Uncommon · F/R: 3/3
+  Arrolla.
+  PNG: torvagris_draco_de_la_sierra.png
+
+crea_362 — Verdarraíz, Coloso Ancestral
+  Coste: {3}{G}{G} · Rareza: Rare · F/R: 5/5
+  Arrolla; otros Dragones tienen Arrolla.
+  PNG: verdarraiz_coloso_ancestral.png
+
+crea_363 — Magmavelo, Ala del Horizonte
+  Coste: {2}{R}{G} · Rareza: Uncommon · F/R: 4/3
+  Vuela, Arrolla.
+  PNG: magmavelo_ala_del_horizonte.png
+
+crea_364 — Azhkar, Furia del Cielo Austral
+  Coste: {4}{R}{G} · Rareza: Mythic · F/R: 6/5
+  Vuela, Arrolla; otros Dragones +1/+1.
+  PNG: azhkar_furia_del_cielo_austral.png
+
+crea_365 — Nocthar, Devorador de Juramentos
+  Coste: {3}{B}{B} · Rareza: Rare · F/R: 4/4
+  Vuela; otro Dragón muere: rival -1, vos +1.
+  PNG: nocthar_devorador_de_juramentos.png
+
+crea_366 — Zafiria, Ala de la Tormenta
+  Coste: {3}{U} · Rareza: Rare · F/R: 3/4
+  Vuela; otro Dragón entra: Anticipá 1.
+  PNG: zafiria_ala_de_la_tormenta.png
+
+crea_367 — Aureón, Guardián del Alba
+  Coste: {3}{W} · Rareza: Rare · F/R: 3/4
+  Vuela, Alerta; otros Dragones tienen Alerta.
+  PNG: aureon_guardian_del_alba.png
+
+inst_148 — Escamas de Acero
+  Coste: {G} · Rareza: Common · F/R: —
+  Dragón objetivo gana Irrompible hasta EOT.
+  PNG: escamas_de_acero.png
+
+inst_149 — Picada desde las Nubes
+  Coste: {1}{R} · Rareza: Common · F/R: —
+  Dragón objetivo obtiene +3/+0 hasta EOT.
+  PNG: picada_desde_las_nubes.png
+
+conj_108 — Rastro de Escamas
+  Coste: {2}{G} · Rareza: Common · F/R: —
+  Tutor de criatura Dragón a mano.
+  PNG: rastro_de_escamas.png
+
+conj_109 — Despertar de los Nidos
+  Coste: {3}{G} · Rareza: Uncommon · F/R: —
+  Hasta 2 tierras básicas al campo giradas.
+  PNG: despertar_de_los_nidos.png
+
+ench_109 — Cielo Reclamado
+  Coste: {2}{R}{G} · Rareza: Rare · F/R: —
+  Dragones que controlás +1/+1.
+  PNG: cielo_reclamado.png
+
+ench_110 — Juramento de la Primera Llama
+  Coste: {2}{R} · Rareza: Uncommon · F/R: —
+  Dragón entra: 1 daño al rival.
+  PNG: juramento_de_la_primera_llama.png
+
+art_088 — Nido de Obsidiana
+  Coste: {3} · Rareza: Uncommon · F/R: —
+  Hechizos de criatura Dragón cuestan {1} menos.
+  PNG: nido_de_obsidiana.png
+
+art_089 — Mapa de los Nidos Antiguos
+  Coste: {3} · Rareza: Rare · F/R: —
+  ETB mirá top 5; Dragón a mano; resto al fondo.
+  PNG: mapa_de_los_nidos_antiguos.png
+
+ARQUETIPO DRAGONES
+- Núcleo: R/G typal + ramp/midrange.
+- Deck Intelligence: 25 tierras; 16–24 criaturas; foco fijo `dragon`; densidad typal objetivo 50%; soporte tribal mínimo 4.
+- Starter: presupuesto premium protegido durante selección/reparación (máx. 1 Mythic; máx. 6 Rare+Mythic).
+- Matriz QA: 16 arquetipos × 4 calidades = 64 builds.

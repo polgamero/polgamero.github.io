@@ -8,14 +8,18 @@ export const PACK_LANDS = 1;
 export const PACK_SIZE = PACK_COMMONS + PACK_UNCOMMONS + PACK_LANDS + 1;
 export const DEFAULT_MYTHIC_CHANCE = 1 / 7;
 
-const CARD_POOLS = Object.freeze({
-  Common: Object.freeze(TRUSTED_CARD_POOL.filter(card => card?.rarity === 'Common')),
-  Uncommon: Object.freeze(TRUSTED_CARD_POOL.filter(card => card?.rarity === 'Uncommon')),
-  Rare: Object.freeze(TRUSTED_CARD_POOL.filter(card => card?.rarity === 'Rare')),
-  Mythic: Object.freeze(TRUSTED_CARD_POOL.filter(card => card?.rarity === 'Mythic')),
-  Land: Object.freeze(TRUSTED_CARD_POOL.filter(card => String(card?.type || '').toLowerCase().includes('tierra')))
-});
-for (const [name, pool] of Object.entries(CARD_POOLS)) if (!pool.length) throw new Error(`TRUSTED_PACK_POOL_EMPTY:${name}`);
+function buildCardPools(cardPool = TRUSTED_CARD_POOL) {
+  const source = Array.isArray(cardPool) ? cardPool : [];
+  const pools = {
+    Common: source.filter(card => card?.rarity === 'Common'),
+    Uncommon: source.filter(card => card?.rarity === 'Uncommon'),
+    Rare: source.filter(card => card?.rarity === 'Rare'),
+    Mythic: source.filter(card => card?.rarity === 'Mythic'),
+    Land: source.filter(card => String(card?.type || '').toLowerCase().includes('tierra'))
+  };
+  for (const [name,pool] of Object.entries(pools)) if (!pool.length) throw new Error(`TRUSTED_PACK_POOL_EMPTY:${name}`);
+  return pools;
+}
 
 export function clamp(value, min, max, fallback) {
   const n = Number(value);
@@ -65,7 +69,8 @@ export function createServerEntropy() {
   const seed = crypto.randomBytes(32).toString('hex');
   return { seed, commitment: crypto.createHash('sha256').update(seed).digest('hex') };
 }
-export function generateTrustedPack({ seed, mythicChance = DEFAULT_MYTHIC_CHANCE }) {
+export function generateTrustedPack({ seed, mythicChance = DEFAULT_MYTHIC_CHANCE, cardPool = TRUSTED_CARD_POOL }) {
+  const CARD_POOLS = buildCardPools(cardPool);
   const rng = seededRng(`pack|${String(seed || '')}`);
   const cards = [];
   for (let i = 0; i < PACK_COMMONS; i++) cards.push(pick(CARD_POOLS.Common, rng));
@@ -76,7 +81,8 @@ export function generateTrustedPack({ seed, mythicChance = DEFAULT_MYTHIC_CHANCE
   if (cards.length !== PACK_SIZE) throw new Error('PACK_GENERATION_INVALID');
   return { cardIds: cards.map(card => card.id), rareSlotRarity: mythic ? 'Mythic' : 'Rare' };
 }
-export function generateTrustedGuaranteedMythic({ seed }) {
+export function generateTrustedGuaranteedMythic({ seed, cardPool = TRUSTED_CARD_POOL }) {
+  const CARD_POOLS = buildCardPools(cardPool);
   const rng = seededRng(`mythic|${String(seed || '')}`);
   const card = pick(CARD_POOLS.Mythic, rng);
   if (!card?.id || card.rarity !== 'Mythic') throw new Error('MYTHIC_GENERATION_INVALID');

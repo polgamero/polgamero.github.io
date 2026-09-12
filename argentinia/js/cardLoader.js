@@ -4,6 +4,7 @@
 // estático con los archivos existentes y el navegador lo consulta una sola vez.
 
 import { POOL_BASELINE } from './poolContract.js';
+import { ensureCardCatalogLoaded, applyCardCatalogToPool, subscribeCardCatalog } from './cardPublication.js';
 
 const IMAGE_MANIFEST_URL = './assets/images/cards/cards-image-manifest.json';
 
@@ -70,12 +71,16 @@ function validateLoadedPool(cardsByCategory, allCards) {
 
 class CardDatabase {
   constructor() {
+    this.rawCardsByCategory = {};
+    this.rawAllCards = [];
     this.cardsByCategory = {};
     this.allCards = [];
+    this.enabledCards = [];
     this.isLoaded = false;
     this.loadPromise = null;
     this.imageManifest = null;
     this.imageManifestPromise = null;
+    subscribeCardCatalog(() => { if (this.rawAllCards.length) this.refreshPublicationState(); });
   }
 
   async loadAll() {
@@ -126,8 +131,11 @@ class CardDatabase {
 
     validateLoadedPool(nextByCategory, nextAllCards);
 
-    this.cardsByCategory = nextByCategory;
-    this.allCards = nextAllCards;
+    // 23.21.5 publication/identity layer. Historical 880 default enabled; future IDs fail closed.
+    await ensureCardCatalogLoaded({ allowCachedFallback: true });
+    this.rawCardsByCategory = nextByCategory;
+    this.rawAllCards = nextAllCards;
+    this.refreshPublicationState();
     this.isLoaded = true;
 
     // La auditoría de imágenes queda disponible bajo demanda desde Admin/DEBUGGING.
@@ -222,16 +230,38 @@ class CardDatabase {
     }
   }
 
-  getByCategory(category) {
-    return this.cardsByCategory[category] || [];
+  refreshPublicationState() {
+    if (!this.rawAllCards.length) return;
+    const effectiveAll = applyCardCatalogToPool(this.rawAllCards);
+    const byId = new Map(effectiveAll.map(card => [card.id, card]));
+    const effectiveByCategory = {};
+    for (const [category, cards] of Object.entries(this.rawCardsByCategory)) {
+      effectiveByCategory[category] = cards.map(card => byId.get(card.id)).filter(Boolean);
+    }
+    this.cardsByCategory = effectiveByCategory;
+    this.allCards = effectiveAll;
+    this.enabledCards = effectiveAll.filter(card => card.enabled !== false);
+  }
+
+  getByCategory(category, { includeDisabled = false } = {}) {
+    const cards = this.cardsByCategory[category] || [];
+    return includeDisabled ? cards : cards.filter(card => card.enabled !== false);
   }
 
   getById(id) {
     return this.allCards.find(card => card.id === id);
   }
 
-  getByType(typeString) {
-    return this.allCards.filter(card => card.type.toLowerCase().includes(typeString.toLowerCase()));
+  getEnabledById(id) {
+    const card = this.getById(id);
+    return card && card.enabled !== false ? card : null;
+  }
+
+  isEnabled(id) { return !!this.getEnabledById(id); }
+
+  getByType(typeString, { includeDisabled = false } = {}) {
+    const source = includeDisabled ? this.allCards : this.enabledCards;
+    return source.filter(card => card.type.toLowerCase().includes(typeString.toLowerCase()));
   }
 }
 
