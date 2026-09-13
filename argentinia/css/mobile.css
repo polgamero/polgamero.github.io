@@ -1567,8 +1567,16 @@ html.argentinia-mobile .daily-login-kicker { font-size: 8px !important; }
 html.argentinia-mobile .daily-login-title { font-size: 20px !important; margin: 3px 0 !important; }
 html.argentinia-mobile .daily-login-copy { font-size: 9px !important; line-height: 1.25 !important; }
 html.argentinia-mobile .daily-login-reward { margin: 7px auto 2px !important; min-height: 43px !important; gap: 7px !important; }
+/* HF3: el modal necesita sus propias medidas; no debe heredar el max-width compacto del track de 7 días. */
+html.argentinia-mobile .daily-login-reward .daily-reward-icons { max-width:none !important; min-height:43px !important; flex-wrap:nowrap !important; gap:4px !important; }
+html.argentinia-mobile .daily-login-reward .daily-reward-icons .coin-icon,
+html.argentinia-mobile .daily-login-reward .daily-reward-icons .ficha-icon { width:36px !important; height:36px !important; }
+html.argentinia-mobile .daily-login-reward .daily-reward-icons .reward-pack-icon { width:44px !important; height:44px !important; }
+html.argentinia-mobile .daily-login-reward .daily-reward-amount { font-size:9px !important; margin-right:3px !important; white-space:nowrap !important; }
 html.argentinia-mobile .daily-login-reward-text { font-size: 12px !important; }
-html.argentinia-mobile .daily-login-actions { margin-top: 8px !important; gap: 6px !important; }
+html.argentinia-mobile .daily-login-actions { margin-top: 8px !important; gap: 6px !important; align-items:stretch !important; }
+html.argentinia-mobile .daily-login-actions .reward-action-btn,
+html.argentinia-mobile .daily-login-actions .reward-secondary-btn { margin-top:0 !important; min-height:34px !important; padding:5px 9px !important; }
 html.argentinia-mobile .reward-secondary-btn { padding: 5px 9px !important; font-size: 8px !important; }
 html.argentinia-mobile .reward-reveal-cards { gap: 4px !important; margin: 7px 0 !important; flex-wrap: nowrap !important; overflow-x:auto !important; justify-content:flex-start !important; }
 html.argentinia-mobile .reward-reveal-cards .card { --card-w: 62px !important; flex:0 0 auto !important; }

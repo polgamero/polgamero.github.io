@@ -65,7 +65,7 @@ import { permissionBaseManaOverride, consumeExilePlayPermission, clearExilePlayS
 import { SUSPEND_ENGINE_VERSION, clearSuspendState } from './suspendEngine.js';
 import { canTransformPermanent } from './transformEngine.js';
 import { botHasCapability, normalizeBotDifficulty } from './botDifficulty.js';
-import { chooseHardAttackPlan, COMBAT_BOT_2_VERSION } from './combatBot2.js';
+import { chooseHardAttackPlan, combatUnitValue, COMBAT_BOT_2_VERSION } from './combatBot2.js';
 import { isCreatureReservedByBotStack, isStackObjectReservedByBotCounter } from './botTargetReservation.js';
 import { getCounterCount } from './counterEngine.js';
 import { previewReplacementEvent } from './replacementEngine.js';
@@ -1081,12 +1081,28 @@ function shouldRivalAttackWith(attackerItem) {
   if (atkHasMenace && validBlockers.length < 2) return true;
 
   const dueledBlockers = validBlockers.map(b => ({ b, duel: predictDuel(attackerItem, b) }));
+  const valueHelpers = { getPower:getEffectivePower, getToughness:getEffectiveToughness, hasKeyword };
+  const attackerValue = combatUnitValue(attackerItem, valueHelpers);
 
-  const freeKillAvailable = dueledBlockers.some(({ duel }) => duel.attackerDies && !duel.blockerDies);
-  if (freeKillAvailable) return false;
+  // 23.21.6 HF3 — el defensor elige el bloqueo, así que basta UN bloqueo que castigue al
+  // atacante para que un ataque no sea "gratis". Antes sólo se frenaba si el atacante
+  // moría y el bloqueador sobrevivía; contra Letal ambos morían, luego `blockerDies` se
+  // interpretaba erróneamente como buen trade. Resultado real observado: un Vehículo 5/4
+  // se suicidaba contra una 2/2 con Letal. Los trades mutuos ahora se comparan por valor.
+  const opponentHasPunishingBlock = dueledBlockers.some(({ b, duel }) => {
+    if (!duel.attackerDies) return false;
+    if (!duel.blockerDies) return true;
+    const blockerValue = combatUnitValue(b, valueHelpers);
+    return blockerValue <= attackerValue;
+  });
+  if (opponentHasPunishingBlock) return false;
 
-  const getsAGoodTrade = dueledBlockers.some(({ duel }) => duel.blockerDies);
-  if (getsAGoodTrade) return true;
+  const getsFavorableTrade = dueledBlockers.some(({ b, duel }) => {
+    if (!duel.blockerDies) return false;
+    if (!duel.attackerDies) return true;
+    return combatUnitValue(b, valueHelpers) > attackerValue;
+  });
+  if (getsFavorableTrade) return true;
 
   return hasVigilance;
 }

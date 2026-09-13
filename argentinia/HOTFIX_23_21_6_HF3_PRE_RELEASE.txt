@@ -1,0 +1,12 @@
+ARGENTINIA 23.21.6 HF3 PRE-RELEASE
+
+Cumulative over HF2 + Gate05 FIX1.
+
+Fixes:
+- Daily Reward modal keeps compound rewards in one horizontal row and aligns all action buttons.
+- Desktop battlefield overflow no longer clips grouped permanent counters when long/tapped land rows activate scrolling.
+- Tano Medium/basic combat evaluator rejects unfavorable mutual-death trades (notably expensive attackers into Letal/deathtouch blockers).
+- Admin Encyclopedia adds NO PUBLICADAS filter; hidden from non-Admin and does not affect Deckbuilder.
+- Preserves Admin Black Box receipt verification hardening, Equipment instance isolation and Gate05 additive capability contract.
+
+Contracts unchanged: pool 900 physical / historical published baseline 880; 41 Functions; Firestore Rules 23.13.86; mp-23.19.2; econ-23.19.5.6 schema 10.

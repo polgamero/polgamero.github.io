@@ -2797,11 +2797,21 @@ function injectRewardsStyles() {
     .daily-login-kicker { color:#d4af37; font-size:11px; text-transform:uppercase; letter-spacing:1.6px; font-weight:900; }
     .daily-login-title { font-size:28px; line-height:1.1; font-weight:900; margin:8px 0; }
     .daily-login-copy { color:#c2cdc4; font-size:14px; line-height:1.45; }
-    .daily-login-reward { margin:18px auto 6px; display:flex; align-items:center; justify-content:center; gap:12px; min-height:70px; }
-    .daily-login-reward .coin-icon, .daily-login-reward .ficha-icon { width:60px; height:60px; }
-    .daily-login-reward .reward-pack-icon { width:120px; height:120px; }
-    .daily-login-reward-text { font-size:18px; font-weight:900; color:#f0d56a; }
-    .daily-login-actions { display:flex; justify-content:center; gap:10px; margin-top:20px; flex-wrap:wrap; }
+    .daily-login-reward { margin:18px auto 6px; display:flex; align-items:center; justify-content:center; gap:16px; min-height:76px; }
+    /* 23.21.6 HF3 — el resumen del modal no hereda el layout compacto de los 7 días.
+       Los premios de un mismo día viven en UNA fila: sobre ×1 + moneda 100, sin wrap vertical. */
+    .daily-login-reward .daily-reward-icons { max-width:none; min-height:68px; flex-wrap:nowrap; gap:7px; }
+    .daily-login-reward .coin-icon, .daily-login-reward .ficha-icon { width:60px; height:60px; flex:0 0 auto; }
+    .daily-login-reward .reward-pack-icon { width:72px; height:72px; flex:0 0 auto; }
+    .daily-login-reward .daily-reward-amount { font-size:14px; margin-right:5px; white-space:nowrap; }
+    .daily-login-reward-text { font-size:18px; font-weight:900; color:#f0d56a; white-space:nowrap; }
+    .daily-login-actions { display:flex; justify-content:center; align-items:stretch; gap:10px; margin-top:20px; flex-wrap:wrap; }
+    /* El CTA principal tenía margin-top propio y quedaba desalineado respecto a secundarios. */
+    .daily-login-actions .reward-action-btn,
+    .daily-login-actions .reward-secondary-btn {
+      margin-top:0; min-height:46px; box-sizing:border-box; padding:8px 16px;
+      display:flex; align-items:center; justify-content:center; line-height:1.15;
+    }
     .reward-secondary-btn { border:1.5px solid #637067; border-radius:10px; padding:8px 14px; background:rgba(255,255,255,.035); color:#bdc8bf; font-weight:700; cursor:pointer; }
     .reward-reveal-cards { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:16px 0; }
     .reward-reveal-cards .card { --card-w:92px; }
@@ -3697,6 +3707,8 @@ export function showEncyclopedia(onBack) {
   let activeTab = 'criaturas';
   let ownershipFilter = 'all'; // 'all' | 'owned'
   let enhancedOnly = false;
+  // 23.21.6 HF3 — superficie operativa sólo Admin para revisar/publicar expansiones nuevas.
+  let unpublishedOnly = false;
   let searchQuery = '';
   const activeRarities = new Set(ENCYCLOPEDIA_RARITIES.map(r => r.key));
   const activeColors = new Set(CARD_BROWSER_COLORS.map(c => c.key));
@@ -3755,6 +3767,10 @@ export function showEncyclopedia(onBack) {
           <input type="checkbox" id="enc-enhanced-only">
           ${gameTextHtml('encyclopedia.filter.enhanced')}
         </label>
+        ${isAdminUser() ? `<label class="encyclopedia-filter-option encyclopedia-admin-publication-filter">
+          <input type="checkbox" id="enc-unpublished-only">
+          ${gameTextHtml('encyclopedia.filter.unpublished')}
+        </label>` : ''}
         <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.color')}</div>
         <div class="card-browser-filter-grid">${browserColorFiltersHTML('enc')}</div>
         <div class="encyclopedia-filter-section-title">${gameTextHtml('encyclopedia.filter.rarity')}</div>
@@ -3913,6 +3929,7 @@ export function showEncyclopedia(onBack) {
             card.enabled = desired;
             publication.classList.toggle('unpublished', !desired);
             note.textContent = desired ? 'PUBLICADA' : 'NO PUBLICADA';
+            if (unpublishedOnly) refreshGrid();
           } catch (error) {
             checkbox.checked = !desired;
             window.alert(`No se pudo ${desired?'habilitar':'suspender'} la carta: ${error?.message || error}`);
@@ -3952,6 +3969,7 @@ export function showEncyclopedia(onBack) {
           cardMatchesTaxonomyFilter(card, activeArchetypes, activeMechanics) &&
           (ownershipFilter !== 'owned' || record.owned) &&
           (!enhancedOnly || record.enhanced) &&
+          (!unpublishedOnly || card.enabled === false) &&
           (!query || normalizeSearch(card.name).includes(query));
       record.node.hidden = !matches;
       if (matches) visible += 1;
@@ -4013,6 +4031,11 @@ export function showEncyclopedia(onBack) {
 
   overlay.querySelector('#enc-enhanced-only').addEventListener('change', e => {
     enhancedOnly = e.target.checked;
+    refreshGrid();
+  });
+
+  overlay.querySelector('#enc-unpublished-only')?.addEventListener('change', e => {
+    unpublishedOnly = !!e.target.checked;
     refreshGrid();
   });
 

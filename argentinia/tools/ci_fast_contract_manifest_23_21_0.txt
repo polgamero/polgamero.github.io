@@ -123,3 +123,5 @@ tools/rc5_2_match_lifecycle_mobile_hud_contract.mjs
 tools/test_card_publication_admin_identity_23_21_5.mjs
 tools/test_dragons_buenos_aires_pool_900_23_21_6.mjs
 tools/test_equipment_instance_isolation_23_21_6_hf2.mjs
+
+tools/test_runtime_polish_bot_admin_23_21_6_hf3.mjs

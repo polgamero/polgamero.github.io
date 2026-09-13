@@ -382,6 +382,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'encyclopedia.filter.all': definition('Enciclopedia', 'Mostrar todas', 'Filtro para mostrar todas las cartas.'),
   'encyclopedia.filter.owned': definition('Enciclopedia', 'Solo cartas que poseo', 'Filtro de cartas poseídas.'),
   'encyclopedia.filter.enhanced': definition('Enciclopedia', '✨ Solo mejoradas', 'Filtro de cartas mejoradas.'),
+  'encyclopedia.filter.unpublished': definition('Enciclopedia', '🚫 NO PUBLICADAS', 'Filtro Admin para mostrar sólo cartas todavía no publicadas.'),
   'encyclopedia.filter.color': definition('Enciclopedia', 'Color', 'Título del filtro de color.'),
   'encyclopedia.filter.rarity': definition('Enciclopedia', 'Rareza', 'Título del filtro de rareza.'),
   'encyclopedia.filter.archetype': definition('Enciclopedia', 'Arquetipo', 'Título del filtro de arquetipo.'),

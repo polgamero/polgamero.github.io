@@ -117,6 +117,11 @@ html, body {
   .field-row.desktop-overflow-scroll::-webkit-scrollbar { height: 6px; }
   .field-row.desktop-overflow-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,.18); border-radius: 999px; }
   .field-row.desktop-overflow-scroll::-webkit-scrollbar-thumb { background: rgba(212,175,55,.58); border-radius: 999px; }
+  /* 23.21.6 HF3 — overflow-y:hidden es obligatorio para un scroller horizontal estable,
+     pero el contador agrupado histórico vivía en top:-12px y quedaba cortado sólo cuando
+     la fila entraba en modo scroll (muy visible con muchas tierras giradas). En scroll lo
+     inseteamos dentro del footprint; fuera de scroll conserva exactamente su posición. */
+  .field-row.desktop-overflow-scroll .stack-counter-container { top: 3px; z-index: 500; }
 }
 
 /* El preview vive fuera del scroller para que overflow-x:auto no recorte el hover ampliado. */
