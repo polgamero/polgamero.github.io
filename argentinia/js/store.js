@@ -112,6 +112,29 @@ export function isEnhancementEligibleCard(card) {
   return !!card && String(card.type || '').toLowerCase().includes('criatura');
 }
 
+// HF8 — normalización defensiva para mazos históricos creados antes del auto-sync de craft.
+// No inventa nuevas mejoras: sólo reemplaza una copia base por ::enhanced cuando el perfil
+// ya declara esa mejora y el mazo todavía no la representa.
+export function reconcileDeckEnhancementSlots(cardIds = [], enhancements = {}, ownedCounts = {}, maxEnhancedCards = MAX_ENHANCED_CARDS_PER_DECK) {
+  const next = Array.isArray(cardIds) ? [...cardIds] : [];
+  const cap = Math.max(1, Math.floor(Number(maxEnhancedCards) || MAX_ENHANCED_CARDS_PER_DECK));
+  let totalEnhanced = next.filter(id => String(id).endsWith(ENHANCED_SUFFIX)).length;
+  for (const baseId of Object.keys(enhancements || {})) {
+    if (totalEnhanced >= cap) break;
+    const enhancedId = `${baseId}${ENHANCED_SUFFIX}`;
+    if (next.includes(enhancedId)) continue;
+    const normalIndexes = next.map((id, index) => id === baseId ? index : -1).filter(index => index >= 0);
+    if (!normalIndexes.length) continue;
+    const normalOwned = Math.max(0, (Number(ownedCounts?.[baseId]) || 0) - 1);
+    // Sólo repara estados históricos físicamente imposibles. Si el usuario tiene normales
+    // suficientes y eligió deliberadamente no usar la mejorada, respetamos esa elección.
+    if (normalIndexes.length <= normalOwned) continue;
+    next[normalIndexes[0]] = enhancedId;
+    totalEnhanced += 1;
+  }
+  return next;
+}
+
 // --- Reglas de armado de mazo (admin-editable) ---
 // Respetan las reglas canónicas de construcción de Argentinia, con UNA excepción de diseño
 // explícita: acá el tamaño de mazo es un límite RÍGIDO (ni más ni menos), no "60 o más"

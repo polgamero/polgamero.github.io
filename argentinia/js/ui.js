@@ -54,7 +54,7 @@ import { listCounters, compactCounterText, counterTooltipLines, normalizeCounter
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
 import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
-import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -4241,6 +4241,10 @@ function injectStoreStyles() {
       padding: 10px;
     }
     .store-craft-zoom { max-width:520px; margin:0 auto 12px; }
+    .store-craft-browser { margin:12px 0; }
+    .store-craft-browser .trade-explore-results { min-height:180px; }
+    .store-craft-browser .store-craft-list { margin:0; max-height:54vh; }
+    .store-craft-filter-note { color:#8f856e; font-size:10px; line-height:1.3; }
     .store-craft-card-btn { cursor: pointer; border-radius: 8px; transition: transform 0.15s ease; background: none; border: none; padding: 0; text-align:left; }
     .store-craft-card-btn .card { text-align:left; }
     .store-craft-card-btn:hover { transform: translateY(-4px); }
@@ -4488,6 +4492,8 @@ export function showStoreScreen(onBack, options = {}) {
   }
 
   let craftSelectedCardId = null;
+  // HF8 — browser de crafteo con el mismo lenguaje de filtros que Mis publicaciones.
+  const craftFilters = { query:'', colors:new Set(), rarity:'' };
   // 23.13.37 craft hotfix — tamaño persistente dentro del selector de criaturas.
   let craftCardZoom = document.documentElement.classList.contains('argentinia-mobile') ? 20 : 14;
   let classifiedsTimerId = null;
@@ -5386,7 +5392,8 @@ export function showStoreScreen(onBack, options = {}) {
     const eligibleCards = ownedUnique
       .filter(id => !enhancements[id])
       .map(id => cardDb.getById(id))
-      .filter(card => isEnhancementEligibleCard(card));
+      .filter(card => isEnhancementEligibleCard(card))
+      .sort((a, b) => (Number(a?.cmc) || 0) - (Number(b?.cmc) || 0) || String(a?.name || '').localeCompare(String(b?.name || ''), 'es'));
 
     if (eligibleCards.length === 0) {
       body.innerHTML = `
@@ -5399,6 +5406,9 @@ export function showStoreScreen(onBack, options = {}) {
       return;
     }
 
+    const rarityOptions = TRADE_FILTER_RARITIES.map(r => `<option value="${r}" ${craftFilters.rarity === r ? 'selected' : ''}>${escapeHtml(tradeRarityLabel(r))}</option>`).join('');
+    const colorChips = TRADE_FILTER_COLORS.map(c => `<button type="button" class="trade-filter-chip ${craftFilters.colors.has(c) ? 'active' : ''}" data-craft-color-filter="${c}">${escapeHtml(tradeColorLabel(c))}</button>`).join('');
+
     body.innerHTML = `
       <div class="store-section">
         <div class="store-section-title">${gameTextHtml('store.craft.chooseTitle')}</div>
@@ -5408,7 +5418,25 @@ export function showStoreScreen(onBack, options = {}) {
           <input type="range" id="store-craft-card-zoom" min="8" max="40" step="1" value="${craftCardZoom}">
           <span id="store-craft-card-zoom-value">${craftCardZoom}</span>
         </div>
-        <div class="store-craft-list" id="store-craft-list"></div>
+        <div class="store-craft-browser trade-explore-layout">
+          <section class="trade-explore-results">
+            <div class="trade-results-meta"><span id="store-craft-filter-count"></span></div>
+            <div class="store-craft-list" id="store-craft-list"></div>
+            <div class="trade-empty" id="store-craft-filter-empty" hidden>No tenés criaturas que coincidan con esos filtros.</div>
+          </section>
+          <aside class="trade-explore-sidebar">
+            <div class="trade-explore-toolbar">
+              <div class="trade-filter-search"><label for="store-craft-search">Buscar carta</label><input id="store-craft-search" class="trade-input" type="search" autocomplete="off" placeholder="Nombre de la criatura..." value="${escapeHtml(craftFilters.query)}"></div>
+              <div class="trade-filter-block"><span class="trade-filter-label">Color</span><div class="trade-filter-chips">${colorChips}</div></div>
+              <div class="trade-filter-selects">
+                <label>Rareza<select class="trade-select" id="store-craft-rarity"><option value="">Todas</option>${rarityOptions}</select></label>
+                <label>Tipo<select class="trade-select" disabled><option>Criatura</option></select></label>
+                <button type="button" class="trade-btn secondary trade-filter-clear" id="store-craft-filter-clear">Limpiar filtros</button>
+              </div>
+              <div class="store-craft-filter-note">Cada ID de carta admite una sola copia mejorada. Si tenés más copias, las restantes siguen siendo normales.</div>
+            </div>
+          </aside>
+        </div>
         <button class="store-back-link" id="store-craft-cancel">← ${gameTextHtml('common.cancel')}</button>
       </div>
     `;
@@ -5426,6 +5454,9 @@ export function showStoreScreen(onBack, options = {}) {
     eligibleCards.forEach(card => {
       const btn = document.createElement('button');
       btn.className = 'store-craft-card-btn';
+      btn.dataset.craftCardSearch = tradeNormalizeSearch(card.name);
+      btn.dataset.craftCardRarity = String(card.rarity || '');
+      btn.dataset.craftCardColors = Array.isArray(card.colors) && card.colors.length ? card.colors.join(',') : 'C';
       const cardEl = createCardElement(card, false, true, null, 'encyclopedia', null);
       btn.appendChild(cardEl);
       btn.addEventListener('click', () => {
@@ -5435,17 +5466,54 @@ export function showStoreScreen(onBack, options = {}) {
       list.appendChild(btn);
     });
 
+    const applyCraftFilters = () => {
+      const query = tradeNormalizeSearch(craftFilters.query);
+      let visible = 0;
+      list.querySelectorAll('.store-craft-card-btn').forEach(btn => {
+        const colors = String(btn.dataset.craftCardColors || '').split(',').filter(Boolean);
+        const matchesQuery = !query || String(btn.dataset.craftCardSearch || '').includes(query);
+        const matchesColor = craftFilters.colors.size === 0 || [...craftFilters.colors].some(c => colors.includes(c));
+        const matchesRarity = !craftFilters.rarity || btn.dataset.craftCardRarity === craftFilters.rarity;
+        const show = matchesQuery && matchesColor && matchesRarity;
+        btn.hidden = !show;
+        if (show) visible += 1;
+      });
+      const count = body.querySelector('#store-craft-filter-count');
+      if (count) count.textContent = `${visible} criatura${visible === 1 ? '' : 's'}`;
+      const empty = body.querySelector('#store-craft-filter-empty');
+      if (empty) empty.hidden = visible !== 0;
+    };
+
+    body.querySelector('#store-craft-search')?.addEventListener('input', e => { craftFilters.query = e.target.value; applyCraftFilters(); });
+    body.querySelectorAll('[data-craft-color-filter]').forEach(btn => btn.addEventListener('click', () => {
+      const color = btn.dataset.craftColorFilter;
+      if (craftFilters.colors.has(color)) craftFilters.colors.delete(color); else craftFilters.colors.add(color);
+      btn.classList.toggle('active', craftFilters.colors.has(color));
+      applyCraftFilters();
+    }));
+    body.querySelector('#store-craft-rarity')?.addEventListener('change', e => { craftFilters.rarity = e.target.value || ''; applyCraftFilters(); });
+    body.querySelector('#store-craft-filter-clear')?.addEventListener('click', () => {
+      craftFilters.query = '';
+      craftFilters.colors.clear();
+      craftFilters.rarity = '';
+      renderCraftPickCardView();
+    });
+
+    applyCraftFilters();
     body.querySelector('#store-craft-cancel').addEventListener('click', renderMainView);
   }
 
   function renderCraftPickKeywordView(card) {
-    const keywordButtonsHTML = ENHANCEMENT_KEYWORDS.map(k =>
+    const intrinsicKeywords = new Set((Array.isArray(card?.keywords) ? card.keywords : []).map(k => String(k || '').trim().toLowerCase()));
+    const availableKeywords = ENHANCEMENT_KEYWORDS.filter(k => !intrinsicKeywords.has(String(k.key).toLowerCase()));
+    const keywordButtonsHTML = availableKeywords.map(k =>
       `<button class="store-keyword-btn" data-keyword="${k.key}">${k.label}</button>`
     ).join('');
 
     body.innerHTML = `
       <div class="store-section">
         <div class="store-section-title">${card.name} — elegí la keyword</div>
+        <div class="store-section-desc">Las habilidades que la carta ya tiene de forma natural no se ofrecen como mejora.</div>
         <div class="store-keyword-grid">${keywordButtonsHTML}</div>
         <div class="store-error-msg" id="store-craft-error"></div>
         <button class="store-back-link" id="store-craft-back">← Elegir otra carta</button>
@@ -5793,7 +5861,8 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
   const deckCounts = {};
   let workingDeckName = String(deckName || '').trim();
   if (existingDeck) {
-    (existingDeck.cardIds || []).forEach(id => { deckCounts[id] = (deckCounts[id] || 0) + 1; });
+    const normalizedExistingIds = reconcileDeckEnhancementSlots(existingDeck.cardIds || [], enhancements, ownedCounts, MAX_ENHANCED_CARDS_PER_DECK);
+    normalizedExistingIds.forEach(id => { deckCounts[id] = (deckCounts[id] || 0) + 1; });
   }
 
   const overlay = document.createElement('div');
@@ -6564,7 +6633,15 @@ export function showMyDecksScreen(onBack) {
     // copia mejorada con su keyword de más y el marcador visual — mismo criterio que el
     // constructor de mazos, para que se vea igual acá y ahí.
     const enhancements = (state.userProfile && state.userProfile.enhancements) || {};
-    const cards = (deck.cardIds || [])
+    // HF8 — la vista previa del mazo usa un orden canónico legible: tipo (Criaturas →
+    // Instantáneos → Conjuros → Encantamientos → Artefactos → Semidioses → Tierras),
+    // luego CMC ascendente y finalmente nombre. La copia mejorada queda junto a su base.
+    const detailCategoryOrder = new Map(ENCYCLOPEDIA_TABS.map((tab, index) => [tab.key, index]));
+    const detailCategoryById = new Map();
+    ENCYCLOPEDIA_TABS.forEach(tab => cardDb.getByCategory(tab.key).forEach(card => detailCategoryById.set(card.id, tab.key)));
+    const displayOwnedCounts = getDeckBuilderOwnedCounts();
+    const displayDeckIds = reconcileDeckEnhancementSlots(deck.cardIds || [], enhancements, displayOwnedCounts, MAX_ENHANCED_CARDS_PER_DECK);
+    const cards = displayDeckIds
       .map(id => {
         const isEnhanced = id.endsWith(ENHANCED_SUFFIX);
         const baseId = isEnhanced ? id.slice(0, -ENHANCED_SUFFIX.length) : id;
@@ -6572,11 +6649,22 @@ export function showMyDecksScreen(onBack) {
         if (!cardDef) return null;
         const keyword = isEnhanced ? enhancements[baseId] : null;
         return {
+          baseId,
+          categoryKey: detailCategoryById.get(baseId) || 'otros',
           displayCard: keyword ? { ...cardDef, keywords: [...(cardDef.keywords || []), keyword] } : cardDef,
           isEnhanced: !!keyword
         };
       })
-      .filter(Boolean);
+      .filter(Boolean)
+      .sort((a, b) => {
+        const typeDelta = (detailCategoryOrder.get(a.categoryKey) ?? 99) - (detailCategoryOrder.get(b.categoryKey) ?? 99);
+        if (typeDelta) return typeDelta;
+        const cmcDelta = (Number(a.displayCard?.cmc) || 0) - (Number(b.displayCard?.cmc) || 0);
+        if (cmcDelta) return cmcDelta;
+        const nameDelta = String(a.displayCard?.name || '').localeCompare(String(b.displayCard?.name || ''), 'es');
+        if (nameDelta) return nameDelta;
+        return Number(b.isEnhanced) - Number(a.isEnhanced);
+      });
 
     body.innerHTML = `
       <div class="mydecks-detail-header">

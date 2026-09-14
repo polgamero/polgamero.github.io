@@ -1061,11 +1061,13 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
   const enhancements = data.enhancements || {};
   const requestedCounts = {};
   const enhancedSlotCounts = {};
+  const normalSlotCounts = {};
   cardIds.forEach(id => {
     const isEnhancedSlot = id.endsWith(ENHANCED_SUFFIX);
     const baseId = isEnhancedSlot ? id.slice(0, -ENHANCED_SUFFIX.length) : id;
     requestedCounts[baseId] = (requestedCounts[baseId] || 0) + 1;
     if (isEnhancedSlot) enhancedSlotCounts[baseId] = (enhancedSlotCounts[baseId] || 0) + 1;
+    else normalSlotCounts[baseId] = (normalSlotCounts[baseId] || 0) + 1;
   });
 
   for (const [baseId, count] of Object.entries(requestedCounts)) {
@@ -1079,6 +1081,20 @@ function validateDeckCards(data, name, cardIds, { allowVirtualAdminPool = false 
       throw new Error(`No podés tener más de ${MAX_COPIES_PER_CARD} copias de la misma carta (salvo Tierras básicas)${cardDef ? `: ${cardDef.name}` : ''}.`);
     }
   }
+  // HF8 — una mejora consume UNA de las copias físicas de ese cardId. Si tenés 2 copias
+  // y una está mejorada, quedan como máximo 1 normal + 1 mejorada; no puede persistir el
+  // estado histórico imposible de 2 normales + la mejorada virtual en el mismo mazo.
+  if (!allowVirtualAdminPool) {
+    for (const [baseId, normalCount] of Object.entries(normalSlotCounts)) {
+      if (!enhancements[baseId]) continue;
+      const normalOwned = Math.max(0, (ownedCounts[baseId] || 0) - 1);
+      if (normalCount > normalOwned) {
+        const cardName = cardDb.getById(baseId)?.name || baseId;
+        throw new Error(`Una copia de ${cardName} está mejorada: sólo te quedan ${normalOwned} copia(s) normal(es) disponibles para este mazo.`);
+      }
+    }
+  }
+
   for (const [baseId, count] of Object.entries(enhancedSlotCounts)) {
     const enhancedCardDef = cardDb.getById(baseId);
     if (!isEnhancementEligibleCard(enhancedCardDef)) {

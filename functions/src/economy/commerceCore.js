@@ -5,6 +5,7 @@ export const DEFAULT_CRAFT_COST = 3;
 export const DEFAULT_PREBUILT_POINTS = 1500;
 export const DEFAULT_PREBUILT_FICHAS = 3;
 export const DEFAULT_MAX_SAVED_DECKS = 12;
+export const DEFAULT_MAX_ENHANCED_CARDS_PER_DECK = 3;
 export const DEFAULT_CLASSIFIED_BASIC_LAND_PACK_PRICE = 150;
 export const DEFAULT_CLASSIFIED_BASIC_LAND_PACK_QUANTITY = 15;
 export const CLASSIFIED_BASIC_LAND_PACK_QUANTITY_HARD_MAX = 100;
@@ -14,11 +15,71 @@ export const ENHANCEMENT_KEYWORDS = Object.freeze([
   'flying','trample','vigilance','haste','lifelink','deathtouch','firststrike','menace','reach','hexproof'
 ]);
 
+
+
+export const ENHANCED_CARD_SUFFIX = '::enhanced';
+
+export function cardHasEnhancementKeyword(card, keyword) {
+  const wanted = String(keyword || '').trim().toLowerCase();
+  if (!wanted) return false;
+  return (Array.isArray(card?.keywords) ? card.keywords : [])
+    .some(value => String(value || '').trim().toLowerCase() === wanted);
+}
+
+// HF8 — una mejora representa UNA copia física mejorada de ese cardId. Los mazos guardados
+// son configuraciones independientes, así que cada mazo que ya usa esa carta recibe una
+// única ranura ::enhanced cuando tiene cupo. Si un mazo usa más copias normales de las que
+// quedan físicamente después del craft, la migración es obligatoria; en ese caso fallamos
+// cerrado si el mazo ya alcanzó el tope de mejoradas, en lugar de dejar un mazo imposible.
+export function migrateDecksForEnhancementCraft({
+  decks = [],
+  cardId,
+  ownedCopies = 0,
+  maxEnhancedCardsPerDeck = DEFAULT_MAX_ENHANCED_CARDS_PER_DECK,
+  enhancedSuffix = ENHANCED_CARD_SUFFIX
+} = {}) {
+  const baseId = String(cardId || '');
+  const enhancedId = `${baseId}${enhancedSuffix}`;
+  const owned = Math.max(0, Math.floor(Number(ownedCopies) || 0));
+  const normalOwnedAfter = Math.max(0, owned - 1);
+  const cap = Math.max(1, Math.floor(Number(maxEnhancedCardsPerDeck) || DEFAULT_MAX_ENHANCED_CARDS_PER_DECK));
+  const updatedDeckIds = [];
+  const skippedDeckIds = [];
+  const conflictDeckIds = [];
+
+  const nextDecks = (Array.isArray(decks) ? decks : []).map((deck, index) => {
+    const ids = Array.isArray(deck?.cardIds) ? deck.cardIds.map(String) : [];
+    if (!baseId || ids.includes(enhancedId) || !ids.includes(baseId)) return deck;
+
+    const normalCount = ids.filter(id => id === baseId).length;
+    const totalEnhanced = ids.filter(id => id.endsWith(enhancedSuffix)).length;
+    const mustReplaceForPhysicalOwnership = normalCount > normalOwnedAfter;
+    const deckKey = String(deck?.id || index);
+
+    if (totalEnhanced >= cap) {
+      skippedDeckIds.push(deckKey);
+      if (mustReplaceForPhysicalOwnership) conflictDeckIds.push(deckKey);
+      return deck;
+    }
+
+    const nextIds = [...ids];
+    nextIds[nextIds.indexOf(baseId)] = enhancedId;
+    updatedDeckIds.push(deckKey);
+    return { ...deck, cardIds: nextIds };
+  });
+
+  return { decks: nextDecks, updatedDeckIds, skippedDeckIds, conflictDeckIds, normalOwnedAfter };
+}
+
 export function intAtLeast(value, min, fallback) {
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
   return Math.max(min, Math.floor(n));
 }
+export function normalizeMaxEnhancedCardsPerDeck(raw = {}) {
+  return intAtLeast(raw?.maxEnhancedCardsPerDeck, 1, DEFAULT_MAX_ENHANCED_CARDS_PER_DECK);
+}
+
 export function clamp(value, min, max, fallback) {
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;

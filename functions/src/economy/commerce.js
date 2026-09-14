@@ -15,7 +15,10 @@ import {
   normalizeClassifiedCounts,
   nextClassifiedCounts,
   argentinaWeekKey,
-  nextArgentinaWeekRotationIso
+  nextArgentinaWeekRotationIso,
+  cardHasEnhancementKeyword,
+  migrateDecksForEnhancementCraft,
+  normalizeMaxEnhancedCardsPerDeck
 } from './commerceCore.js';
 
 const trustedById = new Map(TRUSTED_CARD_POOL.map(card => [card.id, card]));
@@ -76,6 +79,13 @@ async function loadSettings(db, tx = null) {
   return normalizeStoreSettings(snap.exists ? snap.data() || {} : {});
 }
 
+async function loadEnhancementSettings(db, tx = null) {
+  const ref = db.doc('gameConfig/settings');
+  const snap = tx ? await tx.get(ref) : await ref.get();
+  const raw = snap.exists ? snap.data() || {} : {};
+  return { ...normalizeStoreSettings(raw), maxEnhancedCardsPerDeck: normalizeMaxEnhancedCardsPerDeck(raw) };
+}
+
 export async function storefrontSnapshot(db) {
   const [settings, campaign, emoteCatalog, publication] = await Promise.all([loadSettings(db), loadCommerceCampaignEffects(db), loadTrustedEmoteCatalog(db), loadCardPublicationPolicy(db)]);
   const disabledPrebuiltProductIds = [...TRUSTED_PREBUILT_BY_ID.values()].filter(product => product.cardIds.some(id => !cardEnabledByPolicy(id, publication))).map(product => product.id);
@@ -129,7 +139,7 @@ export async function craftEnhancementTx({ db, tx, uid, cardId, keyword }) {
   if (!ENHANCEMENT_KEYWORDS.includes(cleanKeyword)) throw economyError('CRAFT_KEYWORD_INVALID');
   const [userSnap, settings, publication] = await Promise.all([
     tx.get(db.collection('users').doc(uid)),
-    loadSettings(db, tx),
+    loadEnhancementSettings(db, tx),
     loadCardPublicationPolicy(db, tx)
   ]);
   assertCardEnabled(card.id, publication);
@@ -140,14 +150,31 @@ export async function craftEnhancementTx({ db, tx, uid, cardId, keyword }) {
   const enhancements = profile.enhancements && typeof profile.enhancements === 'object' && !Array.isArray(profile.enhancements)
     ? profile.enhancements : {};
   if (enhancements[card.id]) throw economyError('CRAFT_ALREADY_ENHANCED');
+  if (cardHasEnhancementKeyword(card, cleanKeyword)) throw economyError('CRAFT_KEYWORD_ALREADY_PRESENT');
+
+  const ownedCopies = collection.filter(id => String(id) === card.id).length;
+  const deckSync = migrateDecksForEnhancementCraft({
+    decks: profile.decks || [],
+    cardId: card.id,
+    ownedCopies,
+    maxEnhancedCardsPerDeck: settings.maxEnhancedCardsPerDeck
+  });
+  if (deckSync.conflictDeckIds.length) {
+    throw economyError('CRAFT_DECK_ENHANCED_LIMIT_CONFLICT', { deckIds: deckSync.conflictDeckIds });
+  }
+
   const fichasBefore = Math.max(0, Math.floor(Number(profile.fichas) || 0));
   if (fichasBefore < settings.craftCost) throw economyError('CRAFT_INSUFFICIENT_FICHAS', { required: settings.craftCost, available: fichasBefore });
   const fichasAfter = fichasBefore - settings.craftCost;
   tx.update(db.collection('users').doc(uid), {
     fichas: fichasAfter,
-    enhancements: { ...enhancements, [card.id]: cleanKeyword }
+    enhancements: { ...enhancements, [card.id]: cleanKeyword },
+    decks: deckSync.decks
   });
-  return { kind: 'enhancementCraft', cardId: card.id, keyword: cleanKeyword, fichasCost: settings.craftCost, fichasAfter };
+  return {
+    kind: 'enhancementCraft', cardId: card.id, keyword: cleanKeyword, fichasCost: settings.craftCost, fichasAfter,
+    deckSync: { updatedDeckIds: deckSync.updatedDeckIds, skippedDeckIds: deckSync.skippedDeckIds }
+  };
 }
 
 

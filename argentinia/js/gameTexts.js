@@ -336,12 +336,12 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'store.craft.title': definition('Tienda', 'Mejora permanente — {cost} Fichas', 'Título del crafting de mejoras.'),
   'store.craft.showcaseTitle': definition('Tienda', 'Fichas', 'Título corto de Fichas en la vidriera horizontal.'),
   'store.craft.showcaseCost': definition('Tienda', '{cost} Fichas', 'Costo destacado de la mejora en la vidriera horizontal.'),
-  'store.craft.description': definition('Tienda', 'Elegí una criatura que ya tengas (que todavía no esté mejorada) y dale una habilidad de criatura para siempre, solo en tu colección.', 'Explicación del crafting.'),
+  'store.craft.description': definition('Tienda', 'Elegí una criatura que ya tengas y dale una habilidad para siempre. Cada carta admite una sola copia mejorada; si tenés más copias, las demás siguen normales.', 'Explicación del crafting.'),
   'store.craft.action': definition('Tienda', 'Craftear mejora', 'Botón para iniciar crafting.'),
   'store.craft.missing': definition('Tienda', 'Te faltan {count} Ficha(s)', 'Botón de crafting sin saldo.'),
   'store.craft.noneEligible': definition('Tienda', 'No te queda ninguna criatura sin mejorar todavía en tu colección.', 'Mensaje cuando no hay criatura elegible.'),
   'store.craft.chooseTitle': definition('Tienda', 'Elegí qué criatura mejorar', 'Título del selector de criatura a mejorar.'),
-  'store.craft.chooseDescription': definition('Tienda', 'Esto gasta {cost} Fichas y es permanente — solo en tu colección. Por ahora, las mejoras se aplican únicamente a Criaturas.', 'Explicación del selector de crafting.'),
+  'store.craft.chooseDescription': definition('Tienda', 'Esto gasta {cost} Fichas y es permanente. Cada ID de carta puede tener una sola copia mejorada; las demás copias siguen normales. Por ahora, las mejoras se aplican únicamente a Criaturas.', 'Explicación del selector de crafting.'),
 
   // Avisos Clasificados
   'classifieds.title': definition('Clasificados', 'Avisos Clasificados', 'Título de la cartelera semanal.'),

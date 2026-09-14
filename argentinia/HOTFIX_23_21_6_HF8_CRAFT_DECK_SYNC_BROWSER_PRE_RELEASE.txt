@@ -1,0 +1,27 @@
+ARGENTINIA 23.21.6 HF8 — CRAFT DECK AUTO-SYNC + UPGRADE BROWSER + DECK PREVIEW ORDER
+STATUS: PRE-RELEASE
+
+Scope
+- Crafting one enhanced creature remains one enhanced physical copy per base card ID.
+- economyCraftEnhancement now atomically migrates saved decks using that card: one normal slot becomes ::enhanced when the deck has enhanced-card capacity.
+- If physical ownership requires that replacement and a deck is already at maxEnhancedCardsPerDeck, craft fails closed before spending Fichas.
+- Legacy deck editor/detail defensively normalize an enhanced slot so old profiles no longer show impossible normal-copy counts.
+- Deck validation now enforces the physical split: owned N + enhancement => at most N-1 normal slots plus one enhanced slot.
+- Natural/intrinsic keywords are hidden from the craft choices and independently rejected by Functions authority.
+- Craft browser adds name search, color chips, rarity selector, fixed Creature type and clear filters, using the Trade Market publication-browser UX.
+- Mis Mazos detail view orders cards: Criaturas, Instantáneos, Conjuros, Encantamientos, Artefactos, Semidioses, Tierras; then CMC ascending and name.
+
+Contract intentionally unchanged
+- A second physical copy of the same base card does NOT become separately craftable. enhancements remains { cardId: keyword }, so one enhanced copy per card ID is the canonical model. Extra owned copies stay normal.
+
+Server / deploy impact
+- Functions changed (economyCraftEnhancement + pure commerce helpers), total remains 41.
+- Firestore Rules unchanged 23.13.86.
+- economy protocol unchanged econ-23.19.5.6; schema unchanged 10; multiplayer protocol unchanged mp-23.19.2; pool unchanged 900 / published baseline 880.
+- Re-run Gate05 with HF8 before deploying Functions. Gate03 and Gate07 HF5 remain cumulative promotion prerequisites.
+
+Local qualification
+- Canonical fast sweep: 127/127 PASS.
+- Functions unit tests: 17/17 PASS.
+- Functions syntax + browser changed-file syntax: PASS.
+- Dedicated HF8 contract: CRAFT_DECK_SYNC_BROWSER_23_21_6_HF8_OK.

@@ -93,7 +93,7 @@ jobs:
           test -f SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
           grep -qx 'CARD_IMAGE_BINARIES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
           grep -qx 'PUBLIC_FIRESTORE_CONFIG_FILES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
-          grep -qx 'CANONICAL_FAST_CONTRACTS=124' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
+          grep -qx 'CANONICAL_FAST_CONTRACTS=127' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
           grep -qx 'FUNCTIONS_COUNT=41' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
           echo "OK: source snapshot metadata matches 23.21.6 canonical CI counts"
 
@@ -146,8 +146,8 @@ jobs:
           fi
 
           echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed canonical=23.21.6"
-          if [ "$total" -ne 126 ]; then
-            echo "::error::Canonical fast manifest must contain exactly 126 tests; got $total"
+          if [ "$total" -ne 127 ]; then
+            echo "::error::Canonical fast manifest must contain exactly 127 tests; got $total"
             exit 1
           fi
           if [ "$failed" -ne 0 ]; then

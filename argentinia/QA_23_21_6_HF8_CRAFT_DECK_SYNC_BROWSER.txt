@@ -1,0 +1,7 @@
+SMOKE HF8
+1. Own 2 copies of one creature and put both in a saved deck. Craft one new allowed keyword. Re-open Mis Mazos: expect 1 normal + 1 ✨ Mejorada automatically, still 60/60.
+2. Return to craft: the same base card must no longer appear even if another normal copy is owned (one enhanced copy per card ID is intentional).
+3. Pick a creature that already naturally has Letal/Vuela/etc. Its existing keyword must not appear among craft choices. Direct/custom server attempts must reject it.
+4. Craft picker: verify search, W/U/B/R/G/C color chips, rarity, clear filters and mobile layout.
+5. Mis Mazos detail before Edit: verify type order Criaturas → Instantáneos → Conjuros → Encantamientos → Artefactos → Semidioses → Tierras; CMC ascending inside type.
+6. Regression: edit/save a deck with one enhanced + remaining normal copies; impossible N normals + enhanced must not save.
