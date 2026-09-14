@@ -595,6 +595,25 @@ html, body {
   background:rgba(22,25,31,.9); color:#f4e7a8;
   font-weight:800; font-size:clamp(6px,3.4cqw,12px); line-height:1; box-shadow:0 1px 4px rgba(0,0,0,.65);
 }
+
+/* 23.21.6 HF9 — vista global de la otra cara TDFC. El popover desktop vive en body
+   para escapar de overflow/transform de cards; en touch se vuelve modal. */
+.dfc-face-badge { cursor: help; touch-action: manipulation; }
+.dfc-face-badge:focus-visible { outline: 2px solid rgba(255,232,120,.95); outline-offset: 2px; }
+.dfc-face-preview-layer { position: fixed; inset: 0; z-index: 2147483200; }
+.dfc-face-preview-layer.is-hover { pointer-events: none; }
+.dfc-face-preview-layer.is-modal { display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(0,0,0,.72); pointer-events:auto; }
+.dfc-face-preview-panel { position:fixed; width:min(250px,68vw); filter:drop-shadow(0 14px 28px rgba(0,0,0,.72)); }
+.dfc-face-preview-layer.is-modal .dfc-face-preview-panel { position:relative; left:auto !important; top:auto !important; width:min(290px,76vw); }
+.dfc-face-preview-label { margin:0 0 7px; padding:5px 8px; border:1px solid rgba(255,221,92,.72); border-radius:8px; background:rgba(8,9,12,.96); color:#ffe78a; font:700 11px/1.25 system-ui,sans-serif; text-align:center; letter-spacing:.04em; }
+.dfc-face-preview-card-slot { width:100%; aspect-ratio:5/7; }
+.dfc-face-preview-card-slot > .card { width:100% !important; height:100% !important; max-width:none !important; max-height:none !important; transform:none !important; margin:0 !important; }
+.dfc-face-preview-close { position:absolute; right:-12px; top:-12px; width:34px; height:34px; border-radius:50%; border:1px solid rgba(255,255,255,.72); background:#15171c; color:#fff; font:700 23px/30px system-ui,sans-serif; cursor:pointer; z-index:2; }
+@media (max-width: 700px), (hover: none), (pointer: coarse) {
+  .dfc-face-badge { cursor:pointer; }
+  .dfc-face-preview-label { font-size:12px; }
+}
+
 /* 23.16.5 Typal Engine — tipo de criatura elegido en permanentes públicos. */
 .typal-choice-badge {
   position:absolute; left:4%; bottom:4%; z-index:7;

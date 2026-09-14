@@ -1,5 +1,6 @@
 // js/version.js — fuente única de versión/build/protocolo multiplayer.
 // 23.21.6: DRAGONES EN BUENOS AIRES · Pool 900 + Dragon Archetype Foundation.
+// HF9: global TDFC reverse-face preview + 16-card identity lock + targeted Transform balance/readability pass.
 // HF8: crafting/deck auto-sync + duplicate-keyword authority + craft browser filters + canonical deck preview order.
 // HF7: quick master audio mute + WebKit damage-transient hardening + printed P/T global para Transporte.
 // Las 20 cartas nuevas permanecen NO PUBLICADAS por la baseline histórica 23.21.4-880 hasta habilitación Admin.

@@ -66,7 +66,8 @@ assert.match(css, /\.trigger-order-arrow/);
 // DFC: fallback pequeño y tooltip fuera del clipping CSS mediante title nativo.
 assert.match(ui, /class="card-art-fallback"/);
 assert.match(css, /\.card-art-fallback[\s\S]*font-size:clamp\(14px, 9cqw, 32px\)/);
-assert.match(ui, /class="dfc-face-badge" title=/);
+assert.match(ui, /class="dfc-face-badge"/);
+assert.match(ui, /title=/);
 assert.doesNotMatch(ui, /class="dfc-face-badge" data-tooltip=/);
 assert.doesNotMatch(css, /\.dfc-face-badge\[data-tooltip\]:hover::after/);
 

@@ -7469,7 +7469,7 @@
         "name": "Guardián del Andén Vacío",
         "type": "Criatura — Espíritu Guardián",
         "image": "guardian_del_anden_vacio.png",
-        "text": "Nadie pierde el último tren dos veces.",
+        "text": "{2}: Transformá a Guardián del Andén Vacío.",
         "colors": [
           "W"
         ],
@@ -7485,7 +7485,8 @@
           },
           "requiresTarget": false,
           "timing": "instant"
-        }
+        },
+        "flavorText": "Nadie pierde el último tren dos veces."
       }
     }
   },
@@ -7519,7 +7520,7 @@
         "name": "Oráculo de la Sudestada",
         "type": "Criatura — Espíritu Oráculo",
         "image": "oraculo_de_la_sudestada.png",
-        "text": "Ya no pronostica la tormenta. La recuerda antes de que ocurra.",
+        "text": "{2}{U}: Transformá a Oráculo de la Sudestada.",
         "colors": [
           "U"
         ],
@@ -7535,7 +7536,8 @@
           },
           "requiresTarget": false,
           "timing": "instant"
-        }
+        },
+        "flavorText": "Ya no pronostica la tormenta. La recuerda antes de que ocurra."
       }
     }
   },
@@ -7572,12 +7574,12 @@
         "name": "Motorista de Fierro Vivo",
         "type": "Criatura — Constructo Humano",
         "image": "motorista_de_fierro_vivo.png",
-        "text": "Acelera hasta que el metal deja de distinguirse del pulso.",
+        "text": "Al comienzo de tu paso final, transformá a Motorista de Fierro Vivo.",
         "colors": [
           "R"
         ],
         "keywords": [
-          "haste"
+          "firststrike"
         ],
         "power": 3,
         "toughness": 2,
@@ -7591,7 +7593,8 @@
               "type": "transform"
             }
           }
-        ]
+        ],
+        "flavorText": "Acelera hasta que el metal deja de distinguirse del pulso."
       }
     }
   },
@@ -7625,15 +7628,15 @@
         "name": "Bestia del Espinillo",
         "type": "Criatura — Bestia Planta",
         "image": "bestia_del_espinillo.png",
-        "text": "El monte no lo escondía: estaba esperando que creciera.",
+        "text": "{2}{G}: Transformá a Bestia del Espinillo.",
         "colors": [
           "G"
         ],
         "keywords": [
           "trample"
         ],
-        "power": 4,
-        "toughness": 4,
+        "power": 5,
+        "toughness": 5,
         "activatedAbility": {
           "cost": "{2}{G}",
           "effect": {
@@ -7641,7 +7644,8 @@
           },
           "requiresTarget": false,
           "timing": "instant"
-        }
+        },
+        "flavorText": "El monte no lo escondía: estaba esperando que creciera."
       }
     }
   },
@@ -7678,7 +7682,7 @@
         "name": "Lobizón de Medianoche",
         "type": "Criatura — Licántropo Bestia",
         "image": "lobizon_de_medianoche.png",
-        "text": "A medianoche el barrio aprende a cerrar dos veces cada puerta.",
+        "text": "Cuando Lobizón de Medianoche se transforme en esta cara, le hace 1 de daño al jugador rival. {2}{B}: Transformá a Lobizón de Medianoche.",
         "colors": [
           "B"
         ],
@@ -7710,7 +7714,8 @@
           },
           "requiresTarget": false,
           "timing": "instant"
-        }
+        },
+        "flavorText": "A medianoche el barrio aprende a cerrar dos veces cada puerta."
       }
     }
   },
@@ -7744,7 +7749,7 @@
         "name": "Espíritu del Salto Eterno",
         "type": "Criatura — Espíritu",
         "image": "espiritu_del_salto_eterno.png",
-        "text": "Cae para siempre y nunca toca el río.",
+        "text": "Cuando Espíritu del Salto Eterno se transforme en esta cara, ganás 2 Puntos de Vida. {2}{W}: Transformá a Espíritu del Salto Eterno.",
         "colors": [
           "W"
         ],
@@ -7776,7 +7781,8 @@
           },
           "requiresTarget": false,
           "timing": "instant"
-        }
+        },
+        "flavorText": "Cae para siempre y nunca toca el río."
       }
     }
   },
@@ -7814,7 +7820,7 @@
         "name": "Espectro de las Aguas Australes",
         "type": "Criatura — Espíritu",
         "image": "espectro_de_las_aguas_australes.png",
-        "text": "Las corrientes del sur también tienen fantasmas.",
+        "text": "{2}{U}: Transformá a Espectro de las Aguas Australes.",
         "colors": [
           "U"
         ],
@@ -7830,7 +7836,8 @@
           },
           "requiresTarget": false,
           "timing": "instant"
-        }
+        },
+        "flavorText": "Las corrientes del sur también tienen fantasmas."
       }
     }
   },
@@ -7867,13 +7874,13 @@
         "name": "Avalancha de Tribuna",
         "type": "Criatura — Elemental Multitud",
         "image": "avalancha_de_tribuna.png",
-        "text": "Ya no hay gargantas individuales, sólo una voz que empuja el cemento.",
+        "text": "Al comienzo de tu paso final, transformá a Avalancha de Tribuna.",
         "colors": [
           "R"
         ],
         "keywords": [
           "trample",
-          "haste"
+          "firststrike"
         ],
         "power": 4,
         "toughness": 2,
@@ -7887,7 +7894,8 @@
               "type": "transform"
             }
           }
-        ]
+        ],
+        "flavorText": "Ya no hay gargantas individuales, sólo una voz que empuja el cemento."
       }
     }
   },
@@ -7924,12 +7932,13 @@
         "name": "Madre del Monte Desatada",
         "type": "Criatura — Espíritu Planta",
         "image": "madre_del_monte_desatada.png",
-        "text": "El bosque la reconoce antes que los pájaros.",
+        "text": "Al comienzo de tu paso final, transformá a Madre del Monte Desatada.",
         "colors": [
           "G"
         ],
         "keywords": [
-          "reach"
+          "reach",
+          "trample"
         ],
         "power": 4,
         "toughness": 5,
@@ -7943,7 +7952,8 @@
               "type": "transform"
             }
           }
-        ]
+        ],
+        "flavorText": "El bosque la reconoce antes que los pájaros."
       }
     }
   },
@@ -7980,7 +7990,7 @@
         "name": "Santa del Patio Encendido",
         "type": "Criatura — Ángel Espíritu",
         "image": "santa_del_patio_encendido.png",
-        "text": "El patio se queda sin sombras cuando ella termina de rezar.",
+        "text": "{2}{W}{B}: Transformá a Santa del Patio Encendido.",
         "colors": [
           "W",
           "B"
@@ -7998,7 +8008,8 @@
           },
           "requiresTarget": false,
           "timing": "instant"
-        }
+        },
+        "flavorText": "El patio se queda sin sombras cuando ella termina de rezar."
       }
     }
   },
@@ -8019,10 +8030,11 @@
     "text": "{W}{U}{B}{R}{G}: Transformá a Pibe del Barrio Imposible.",
     "flavorText": "Conoce una esquina que no figura en ningún mapa y aparece en todos los sueños.",
     "image": "pibe_del_barrio_imposible.png",
-    "power": 4,
-    "toughness": 4,
+    "power": 5,
+    "toughness": 5,
     "keywords": [
-      "vigilance"
+      "vigilance",
+      "ward_2"
     ],
     "legendary": true,
     "activatedAbility": {
@@ -8039,7 +8051,7 @@
         "name": "Avatar de la Argentina Secreta",
         "type": "Criatura Legendaria — Avatar",
         "image": "avatar_de_la_argentina_secreta.png",
-        "text": "Debajo de cada barrio, río, ruta y montaña existe el mismo país esperando despertar.",
+        "text": "Cuando Avatar de la Argentina Secreta se transforme en esta cara, robás dos cartas y le hace 3 de daño al jugador rival. {W}{U}{B}{R}{G}: Transformá a Avatar de la Argentina Secreta.",
         "colors": [
           "W",
           "U",
@@ -8050,10 +8062,11 @@
         "keywords": [
           "flying",
           "trample",
-          "vigilance"
+          "vigilance",
+          "ward_2"
         ],
-        "power": 8,
-        "toughness": 8,
+        "power": 9,
+        "toughness": 9,
         "legendary": true,
         "triggers": [
           {
@@ -8068,6 +8081,20 @@
               "type": "draw",
               "amount": 2
             }
+          },
+          {
+            "event": "permanent_transformed",
+            "filter": {
+              "self": true,
+              "metadata": {
+                "toFace": "back"
+              }
+            },
+            "target": "opponent_player",
+            "effect": {
+              "type": "damage",
+              "amount": 3
+            }
           }
         ],
         "activatedAbility": {
@@ -8077,7 +8104,8 @@
           },
           "requiresTarget": false,
           "timing": "instant"
-        }
+        },
+        "flavorText": "Debajo de cada barrio, río, ruta y montaña existe el mismo país esperando despertar."
       }
     }
   },

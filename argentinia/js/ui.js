@@ -1566,6 +1566,135 @@ function fitScaleByLength(len, idealChars, minScale = 0.55) {
   return Math.max(minScale, idealChars / len);
 }
 
+
+// 23.21.6 HF9 — Preview global de la otra cara TDFC.
+// El badge ↻ A/B existe en todas las superficies que reutilizan createCardElement, incluso
+// las que después serializan la carta con outerHTML (Enciclopedia/Mercado). Por eso la
+// interacción es delegada desde document y el badge sólo transporta card.id + cara actual.
+// Desktop: hover/focus = popover. Touch/mobile: tap = modal bloqueante. Nunca propaga el
+// tap/click hacia la acción propia de la carta (jugar/publicar/elegir/etc.).
+let dfcFacePreviewLayer = null;
+let dfcFacePreviewSource = null;
+let dfcFacePreviewDelegationInstalled = false;
+
+function closeDfcFacePreview() {
+  dfcFacePreviewLayer?.remove?.();
+  dfcFacePreviewLayer = null;
+  dfcFacePreviewSource = null;
+}
+
+function dfcPreviewUsesHover() {
+  return !!globalThis.matchMedia?.('(hover: hover) and (pointer: fine)')?.matches;
+}
+
+function showDfcFacePreview(badge, { modal = false } = {}) {
+  if (!badge || typeof document === 'undefined') return;
+  const cardId = String(badge.dataset.dfcCardId || '').trim();
+  const shownFace = badge.dataset.dfcFace === 'back' ? 'back' : 'front';
+  const physical = cardDb.getById(cardId);
+  if (!physical || !isTransformingDoubleFacedCard(physical)) return;
+  const targetFace = shownFace === 'back' ? 'front' : 'back';
+
+  if (dfcFacePreviewSource === badge && dfcFacePreviewLayer?.isConnected && dfcFacePreviewLayer.dataset.modal === String(!!modal)) return;
+  closeDfcFacePreview();
+
+  const faceCard = buildTransformFaceCard(physical, targetFace);
+  const previewItem = { card: faceCard, _dfcPhysicalCard: physical, _dfcFace: targetFace };
+  const layer = document.createElement('div');
+  layer.className = `dfc-face-preview-layer${modal ? ' is-modal' : ' is-hover'}`;
+  layer.dataset.modal = String(!!modal);
+  layer.setAttribute('role', modal ? 'dialog' : 'tooltip');
+  layer.setAttribute('aria-label', `${targetFace === 'back' ? 'Cara B' : 'Cara A'}: ${faceCard.name}`);
+
+  const panel = document.createElement('div');
+  panel.className = 'dfc-face-preview-panel';
+  const label = document.createElement('div');
+  label.className = 'dfc-face-preview-label';
+  label.textContent = `${targetFace === 'back' ? 'CARA B' : 'CARA A'} · ${faceCard.name}`;
+  const cardSlot = document.createElement('div');
+  cardSlot.className = 'dfc-face-preview-card-slot';
+  const previewCard = createCardElement(previewItem, false, true, null, 'dfc-preview', null);
+  previewCard.classList.add('dfc-face-preview-card');
+  cardSlot.appendChild(previewCard);
+  panel.append(label, cardSlot);
+
+  if (modal) {
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'dfc-face-preview-close';
+    close.textContent = '×';
+    close.setAttribute('aria-label', 'Cerrar vista de la otra cara');
+    close.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); closeDfcFacePreview(); });
+    panel.appendChild(close);
+    layer.addEventListener('click', (event) => { if (event.target === layer) closeDfcFacePreview(); });
+  }
+
+  layer.appendChild(panel);
+  document.body.appendChild(layer);
+  dfcFacePreviewLayer = layer;
+  dfcFacePreviewSource = badge;
+
+  if (!modal) {
+    const rect = badge.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const margin = 12;
+    const leftCandidate = rect.right + margin;
+    const left = leftCandidate + panelRect.width <= window.innerWidth - margin
+      ? leftCandidate
+      : Math.max(margin, rect.left - panelRect.width - margin);
+    const top = Math.min(
+      Math.max(margin, rect.top + rect.height / 2 - panelRect.height / 2),
+      Math.max(margin, window.innerHeight - panelRect.height - margin)
+    );
+    panel.style.left = `${Math.round(left)}px`;
+    panel.style.top = `${Math.round(top)}px`;
+  }
+}
+
+function ensureDfcFacePreviewInteractions() {
+  if (dfcFacePreviewDelegationInstalled || typeof document === 'undefined') return;
+  dfcFacePreviewDelegationInstalled = true;
+  const badgeFrom = target => target?.closest?.('.dfc-face-badge[data-dfc-card-id]') || null;
+
+  document.addEventListener('pointerover', event => {
+    const badge = badgeFrom(event.target);
+    if (!badge || !dfcPreviewUsesHover()) return;
+    if (event.relatedTarget && badge.contains(event.relatedTarget)) return;
+    showDfcFacePreview(badge, { modal:false });
+  }, true);
+  document.addEventListener('pointerout', event => {
+    const badge = badgeFrom(event.target);
+    if (!badge || !dfcPreviewUsesHover()) return;
+    if (event.relatedTarget && badge.contains(event.relatedTarget)) return;
+    if (dfcFacePreviewSource === badge && dfcFacePreviewLayer?.dataset.modal !== 'true') closeDfcFacePreview();
+  }, true);
+  document.addEventListener('focusin', event => {
+    const badge = badgeFrom(event.target);
+    if (badge) showDfcFacePreview(badge, { modal:!dfcPreviewUsesHover() });
+  }, true);
+  document.addEventListener('focusout', event => {
+    const badge = badgeFrom(event.target);
+    if (badge && dfcPreviewUsesHover() && dfcFacePreviewSource === badge) closeDfcFacePreview();
+  }, true);
+  document.addEventListener('pointerdown', event => {
+    const badge = badgeFrom(event.target);
+    if (badge) event.stopPropagation();
+  }, true);
+  document.addEventListener('click', event => {
+    const badge = badgeFrom(event.target);
+    if (!badge) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!dfcPreviewUsesHover()) showDfcFacePreview(badge, { modal:true });
+  }, true);
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && dfcFacePreviewLayer) closeDfcFacePreview();
+  });
+  window.addEventListener?.('scroll', () => {
+    if (dfcFacePreviewLayer?.dataset.modal !== 'true') closeDfcFacePreview();
+  }, true);
+}
+
 export function createCardElement(itemObj, isTapped = false, isLocal = true, index = null, zone = 'hand', customClick = null) {
   const card = itemObj.card || itemObj;
   const isBattlefieldLand = !!itemObj?.card && isLandPermanent(itemObj) && (zone === 'land' || zone === 'combat' || zone === 'support');
@@ -1871,11 +2000,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const dfcSpec = normalizeTransformSpec(itemObj);
   const dfcFace = dfcSpec ? currentTransformFace(itemObj) : null;
   const dfcBackName = dfcSpec?.backFace?.name || 'cara posterior';
-  const dfcBadgeHTML = dfcSpec
-    // 23.17.5.2 — title nativo a propósito: el badge vive sobre un área de arte recortada
-    // y un ::after interno siempre puede ser clippeado por overflow. El tooltip del browser
-    // escapa de ese stacking context y nunca queda cortado por la carta.
-    ? `<div class="dfc-face-badge" title="${(dfcFace === 'back' ? `Cara posterior · ${card.name}` : `Transforma en ${dfcBackName}`).replace(/"/g, '&quot;')}" aria-label="${(dfcFace === 'back' ? `Cara posterior · ${card.name}` : `Transforma en ${dfcBackName}`).replace(/"/g, '&quot;')}">↻ ${dfcFace === 'back' ? 'B' : 'A'}</div>`
+  const dfcBadgeHTML = dfcSpec && zone !== 'dfc-preview'
+    ? `<div class="dfc-face-badge" role="button" tabindex="0" data-dfc-card-id="${escapeHtml(String(card.id || ''))}" data-dfc-face="${dfcFace === 'back' ? 'back' : 'front'}" title="${(dfcFace === 'back' ? `Ver cara A · ${dfcSpec.frontName || card.name}` : `Ver cara B · ${dfcBackName}`).replace(/"/g, '&quot;')}" aria-label="${(dfcFace === 'back' ? `Ver cara A · ${dfcSpec.frontName || card.name}` : `Ver cara B · ${dfcBackName}`).replace(/"/g, '&quot;')}">↻ ${dfcFace === 'back' ? 'B' : 'A'}</div>`
     : '';
   const chosenCreatureType=getChosenCreatureType(itemObj);
   const typalTooltipText = chosenCreatureType ? `Tipo de criatura elegido: ${String(chosenCreatureType)}` : '';
@@ -1972,6 +2098,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     el.classList.add('card-with-bottom-fab');
     el.appendChild(suspendBtn);
   }
+
+  ensureDfcFacePreviewInteractions();
 
   if (customClick) {
     el.addEventListener('click', customClick);

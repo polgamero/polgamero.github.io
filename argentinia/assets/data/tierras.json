@@ -1382,10 +1382,9 @@
         "name": "Usina Fantasma de Barracas",
         "type": "Tierra",
         "image": "usina_fantasma_de_barracas.png",
-        "text": "{T}: Agregá {R}. {2}, {T}: Transformá Usina Fantasma de Barracas.",
+        "text": "{T}: Agregá {R}{R}. {2}, {T}: Transformá Usina Fantasma de Barracas.",
         "colors": [],
         "keywords": [],
-        "produces": "R",
         "flavorText": "Las turbinas no están conectadas a nada y, sin embargo, toda la cuadra tiembla.",
         "activatedAbility": {
           "cost": "{2}{T}",
@@ -1394,6 +1393,11 @@
           },
           "requiresTarget": false,
           "timing": "instant"
+        },
+        "manaAbility": {
+          "produces": "R",
+          "amount": 2,
+          "requiresTap": true
         }
       }
     }

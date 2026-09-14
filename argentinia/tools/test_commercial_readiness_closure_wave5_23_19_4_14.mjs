@@ -57,14 +57,32 @@ function strip(node){
 const historicalBaselineSet=new Set(PUBLISHED_CARD_BASELINE_IDS);
 const normalized=Object.fromEntries(cards.filter(c=>historicalBaselineSet.has(c.id)).sort((a,b)=>a.id.localeCompare(b.id)).map(c=>[c.id,strip(c)]));
 assert.equal(Object.keys(normalized).length,880,'Wave 5 fingerprint remains scoped to the frozen 880-card historical baseline');
-// 23.19.5 has one explicit owner-approved gameplay delta after Commercial IP Hardening:
-// pw_007 loses its extra spellCastTrigger. Reinsert only that historical trigger before
-// validating the Wave5 fingerprint, proving no other mechanical drift occurred.
+// Explicit owner-approved gameplay deltas after Commercial IP Hardening are normalized
+// back to their historical values before checking the Wave5 fingerprint. This keeps the
+// legal clean-room guard useful: any UNAPPROVED mechanical drift still changes the hash.
 if (ENGINE_VERSION === '23.21.6') {
   normalized.pw_007.spellCastTrigger={effect:{amount:1,type:'scry'},filter:'instant_or_sorcery'};
   normalized.pw_007=Object.fromEntries(Object.keys(normalized.pw_007).sort().map(k=>[k,normalized.pw_007[k]]));
+
+  // HF9 — explicit DFC balance pass approved by the owner.
+  normalized.crea_324.dfc.backFace.keywords=['haste'];
+  normalized.crea_325.dfc.backFace.power=4; normalized.crea_325.dfc.backFace.toughness=4;
+  normalized.crea_329.dfc.backFace.keywords=['trample','haste'];
+  normalized.crea_330.dfc.backFace.keywords=['reach'];
+  normalized.crea_332.power=4; normalized.crea_332.toughness=4; normalized.crea_332.keywords=['vigilance'];
+  normalized.crea_332.dfc.backFace.power=8; normalized.crea_332.dfc.backFace.toughness=8;
+  normalized.crea_332.dfc.backFace.keywords=['flying','trample','vigilance'];
+  normalized.crea_332.dfc.backFace.triggers=[{effect:{amount:2,type:'draw'},event:'permanent_transformed',filter:{metadata:{toFace:'back'},self:true}}];
+  normalized.ench_102.activatedAbility.cost='{2}{B}{G}';
+  normalized.ench_102.dfc.backFace.activatedAbility.cost='{2}{B}{G}';
+  normalized.ench_102.dfc.backFace.triggers=[{effect:{amount:1,type:'heal'},event:'creature_died',filter:{controller:'opponent'}}];
+  normalized.ench_103.dfc.backFace.triggers=normalized.ench_103.dfc.backFace.triggers.filter(t=>t.event!=='spell_cast');
+  normalized.art_082.activatedAbility.cost='{2}{U}{R}{T}';
+  normalized.art_082.dfc.backFace.triggers=normalized.art_082.dfc.backFace.triggers.map(({target,...trigger})=>trigger);
+  delete normalized.tier_068.dfc.backFace.manaAbility;
+  normalized.tier_068.dfc.backFace.produces='R';
 }
-const hash=crypto.createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
+const hash=crypto.createHash('sha256').update(JSON.stringify(strip(normalized))).digest('hex');
 assert.equal(hash,'0cdb30716c6359eae93166597dce1c842d00afa8ed0c2e313341e4d3841957b8');
 
 // No explicit competitor attribution in canonical active JS/CSS/HTML/data.
@@ -97,4 +115,4 @@ assert.match(handoff,/INPI identical \+ phonetic clearance/);
 assert.match(handoff,/not a legal opinion/i);
 
 console.log('COMMERCIAL_READINESS_CLOSURE_WAVE5_23_19_4_14_OK');
-console.log('redResidual=0 yellowResidual=0 terminology=44/44 gameplayFingerprint=MATCH_EXCEPT_APPROVED_PW007_DELTA competitorRefs=0 cardImages=EXTERNALIZED');
+console.log('redResidual=0 yellowResidual=0 terminology=44/44 gameplayFingerprint=MATCH_EXCEPT_APPROVED_PW007_AND_HF9_DFC_DELTAS competitorRefs=0 cardImages=EXTERNALIZED');

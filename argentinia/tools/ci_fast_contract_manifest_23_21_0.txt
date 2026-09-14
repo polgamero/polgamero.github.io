@@ -133,3 +133,4 @@ tools/test_mobile_lifecycle_trigger_stack_23_21_6_hf6.mjs
 
 tools/test_master_audio_damage_transporte_stats_23_21_6_hf7.mjs
 tools/test_craft_deck_sync_browser_23_21_6_hf8.mjs
+tools/test_dfc_preview_balance_23_21_6_hf9.mjs

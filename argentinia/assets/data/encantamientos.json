@@ -2876,12 +2876,12 @@
       "B",
       "G"
     ],
-    "text": "{2}{B}{G}: Transformá Leyenda Susurrada en la Salamanca.",
+    "text": "{1}{B}{G}: Transformá Leyenda Susurrada en la Salamanca.",
     "flavorText": "Mientras se cuenta en voz baja, sigue siendo apenas una historia.",
     "image": "leyenda_susurrada_en_la_salamanca.png",
     "keywords": [],
     "activatedAbility": {
-      "cost": "{2}{B}{G}",
+      "cost": "{1}{B}{G}",
       "effect": {
         "type": "transform"
       },
@@ -2894,13 +2894,24 @@
         "name": "La Salamanca Despierta",
         "type": "Encantamiento",
         "image": "la_salamanca_despierta.png",
-        "text": "Cuando el relato deja de necesitar narrador, conviene no escuchar el final.",
+        "text": "Siempre que muera una criatura que controla tu oponente, La Salamanca Despierta le hace 1 de daño y vos ganás 1 Punto de Vida. {1}{B}{G}: Transformá La Salamanca Despierta.",
         "colors": [
           "B",
           "G"
         ],
         "keywords": [],
         "triggers": [
+          {
+            "event": "creature_died",
+            "filter": {
+              "controller": "opponent"
+            },
+            "target": "opponent_player",
+            "effect": {
+              "type": "damage",
+              "amount": 1
+            }
+          },
           {
             "event": "creature_died",
             "filter": {
@@ -2913,13 +2924,14 @@
           }
         ],
         "activatedAbility": {
-          "cost": "{2}{B}{G}",
+          "cost": "{1}{B}{G}",
           "effect": {
             "type": "transform"
           },
           "requiresTarget": false,
           "timing": "instant"
-        }
+        },
+        "flavorText": "Cuando el relato deja de necesitar narrador, conviene no escuchar el final."
       }
     }
   },
@@ -2955,7 +2967,7 @@
         "name": "Cielo Después del Rayo",
         "type": "Encantamiento",
         "image": "cielo_despues_del_rayo.png",
-        "text": "La calma nunca es el mismo paisaje que había antes.",
+        "text": "Cuando Cielo Después del Rayo se transforme en esta cara, robás una carta. Siempre que lances un hechizo que no sea de criatura, le hace 1 de daño al jugador rival. Al comienzo de tu paso final, transformalo.",
         "colors": [
           "U",
           "R"
@@ -2983,8 +2995,21 @@
               "type": "draw",
               "amount": 1
             }
+          },
+          {
+            "event": "spell_cast",
+            "filter": {
+              "controller": "you",
+              "cardType": "noncreature"
+            },
+            "target": "opponent_player",
+            "effect": {
+              "type": "damage",
+              "amount": 1
+            }
           }
-        ]
+        ],
+        "flavorText": "La calma nunca es el mismo paisaje que había antes."
       }
     }
   },

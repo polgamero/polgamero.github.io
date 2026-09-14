@@ -1,0 +1,40 @@
+ARGENTINIA 23.21.6 HF9 — TDFC REVERSE PREVIEW + TRANSFORM BALANCE PASS — PRE-RELEASE
+
+STATUS: PRE-RELEASE. No Rules/protocol/schema/pool change. Functions count remains 41.
+
+1) Global reverse-face discovery
+- Every TDFC badge ↻ A/B rendered by createCardElement carries physical card ID + visible face.
+- Desktop hover/focus shows the opposite face in a body-level popover outside card clipping.
+- Mobile/touch tap opens the opposite face in a blocking modal; tap outside/X closes.
+- Badge events stop propagation, so inspecting a face never plays/selects/publishes the card.
+- Delegated document handlers preserve behavior in surfaces that serialize card.outerHTML (catalog/market/classifieds).
+
+2) Identity lock
+- All 16 TDFC are runtime-tested against their own dfc.backFace.
+- Pibe del Barrio Imposible maps only to Avatar de la Argentina Secreta.
+- The 4/3 Intimidante card is Lobizón de Medianoche, back of Séptimo Hijo del Barrio.
+
+3) Targeted balance pass
+UNCHANGED mechanically: Sereno/Guardián, Cadete/Oráculo, Séptimo/Lobizón, Turista/Espíritu, Buzo/Espectro, Abuela/Santa, Mate/Mate.
+BUFFED:
+- Motorista de Fierro Vivo: Apuro -> Iniciativa (Apuro after declaring attack was practically dead).
+- Bestia del Espinillo: 4/4 -> 5/5, keeps Arrolla.
+- Avalancha de Tribuna: Apuro -> Iniciativa, keeps 4/2 Arrolla.
+- Madre del Monte Desatada: adds Arrolla to 4/5 Alcance.
+- Pibe del Barrio Imposible: 4/4 Alerta -> 5/5 Alerta + Resguardo {2}.
+- Avatar de la Argentina Secreta: 8/8 -> 9/9; Vuela/Arrolla/Alerta + Resguardo {2}; on transform draws 2 AND deals 3 to rival.
+- Leyenda/Salamanca: transform cost {2}{B}{G}->{1}{B}{G}; back drains 1 when opposing creature dies.
+- Cielo Después del Rayo: while back, each noncreature spell deals 1 to rival; existing draw/flip cadence preserved.
+- Televisor: transform cost {2}{U}{R},{T}->{1}{U}{R},{T}; Portal ping payoff preserved.
+- Usina Fantasma de Barracas: back now taps for {R}{R}, making the 3-mana transform investment meaningful.
+
+4) Back-face readability
+- All 16 back faces now display actual rules text.
+- Previous poetic back text is preserved as flavorText instead of hiding mechanics.
+
+QA LOCAL
+- Canonical contracts: 128/128 PASS.
+- Functions unit tests: 17/17 PASS.
+- Dedicated HF9 contract: PASS.
+- Firestore Rules: unchanged 23.13.86.
+- Functions exported count: unchanged 41.
