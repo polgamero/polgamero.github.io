@@ -1,0 +1,38 @@
+ARGENTINIA 23.21.6 HF9 — TDFC REVERSE PREVIEW + TRANSFORM BALANCE PASS — RELEASED
+
+RELEASE STATUS
+- RELEASED on 2026-09-14 by owner promotion.
+- Engine remains 23.21.6.
+- Physical pool remains 900; published baseline remains historical 880 unless Admin publishes newer cards.
+- Multiplayer protocol remains mp-23.19.2.
+- Economy protocol/schema remain econ-23.19.5.6 / 10.
+- Firestore Rules remain 23.13.86.
+- Cloud Functions exported count remains 41.
+- Canonical static contracts: 128/128 PASS locally.
+- Functions unit suite: 17/17 PASS in HF9 QA certification.
+
+CUMULATIVE HOTFIXES HF1..HF9
+- HF1: Admin Black Box receipt/network-state verification hardening.
+- HF2: duplicate Equipment instance isolation.
+- HF3: Daily/long-board UI polish, Tano trade/deathtouch behavior, Admin NO PUBLICADAS filter.
+- HF4: announcement carousel + serialized startup + mobile spinner-only boot.
+- HF5: Tano interactive-resolution guard, Store/Chest CTA geometry, Admin ranking exclusion, configurable multi-listing Trade Market.
+- HF6: mobile lifecycle safe suspend/recovery, active-time freeze, epoch-fenced Tano scheduler, atomic trigger ordering.
+- HF7: master audio mute, WebKit damage-overlay cleanup, global Transporte P/T visibility.
+- HF8: craft->deck atomic sync, duplicate natural-keyword rejection, Mejorar filters, deck preview ordering.
+- HF9: global TDFC A/B preview, back-face rules readability, 16-card identity lock and targeted Transform balance pass.
+
+HF9 TDFC UX / BALANCE
+- Desktop hover/focus and mobile tap on ↻ A/B reveal the opposite face without firing the underlying card action.
+- All 16 physical TDFC back faces expose their actual rules text while preserving flavor.
+- Pibe del Barrio Imposible is 5/5 Alerta + Resguardo {2}; Avatar de la Argentina Secreta is 9/9 Vuela/Arrolla/Alerta/Resguardo {2}, draws 2 and deals 3 on transform.
+- The 4/3 Intimidante remains Lobizón de Medianoche, back face of Séptimo Hijo del Barrio; runtime identity checks prevent cross-wiring.
+- Additional targeted buffs cover Motorista, Bestia, Avalancha, Madre del Monte, Salamanca, Cielo, Televisor/Portal and Galpón/Usina.
+
+RELEASE PACKAGING CORRECTION
+- During promotion, the active SOURCE_SNAPSHOT_MANIFEST still advertised 127 canonical contracts while the workflow correctly required 128.
+- The release package fixes that precheck to 128/128. No gameplay, Functions export count, Rules, protocol, schema or pool change was introduced by this correction.
+
+PROMOTION
+- This file supersedes HF9 PRE-RELEASE status for release labeling.
+- Historical PRE-RELEASE/HF documents remain bundled as audit evidence.

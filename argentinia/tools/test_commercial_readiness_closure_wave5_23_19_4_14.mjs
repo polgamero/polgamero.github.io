@@ -74,11 +74,15 @@ if (ENGINE_VERSION === '23.21.6') {
   normalized.crea_332.dfc.backFace.keywords=['flying','trample','vigilance'];
   normalized.crea_332.dfc.backFace.triggers=[{effect:{amount:2,type:'draw'},event:'permanent_transformed',filter:{metadata:{toFace:'back'},self:true}}];
   normalized.ench_102.activatedAbility.cost='{2}{B}{G}';
+  delete normalized.ench_102.triggers; // HF10 front-side graveyard filtering
   normalized.ench_102.dfc.backFace.activatedAbility.cost='{2}{B}{G}';
   normalized.ench_102.dfc.backFace.triggers=[{effect:{amount:1,type:'heal'},event:'creature_died',filter:{controller:'opponent'}}];
+  normalized.ench_103.triggers=normalized.ench_103.triggers.filter(t=>t.event!=='spell_cast'); // HF10 front-side scry
   normalized.ench_103.dfc.backFace.triggers=normalized.ench_103.dfc.backFace.triggers.filter(t=>t.event!=='spell_cast');
-  normalized.art_082.activatedAbility.cost='{2}{U}{R}{T}';
-  normalized.art_082.dfc.backFace.triggers=normalized.art_082.dfc.backFace.triggers.map(({target,...trigger})=>trigger);
+  delete normalized.art_082.activatedAbilities;
+  normalized.art_082.activatedAbility={cost:'{2}{U}{R}{T}',effect:{type:'transform'},requiresTarget:false,timing:'instant'};
+  normalized.art_082.dfc.backFace.triggers=[{effect:{amount:1,type:'damage'},event:'spell_cast',filter:{cardType:'noncreature',controller:'you'}}];
+  delete normalized.art_083.produces; // HF10 face-A mana-rock mode
   delete normalized.tier_068.dfc.backFace.manaAbility;
   normalized.tier_068.dfc.backFace.produces='R';
 }
@@ -115,4 +119,4 @@ assert.match(handoff,/INPI identical \+ phonetic clearance/);
 assert.match(handoff,/not a legal opinion/i);
 
 console.log('COMMERCIAL_READINESS_CLOSURE_WAVE5_23_19_4_14_OK');
-console.log('redResidual=0 yellowResidual=0 terminology=44/44 gameplayFingerprint=MATCH_EXCEPT_APPROVED_PW007_AND_HF9_DFC_DELTAS competitorRefs=0 cardImages=EXTERNALIZED');
+console.log('redResidual=0 yellowResidual=0 terminology=44/44 gameplayFingerprint=MATCH_EXCEPT_APPROVED_PW007_AND_HF9_HF10_DFC_DELTAS competitorRefs=0 cardImages=EXTERNALIZED');

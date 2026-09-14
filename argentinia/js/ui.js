@@ -1587,6 +1587,22 @@ function dfcPreviewUsesHover() {
   return !!globalThis.matchMedia?.('(hover: hover) and (pointer: fine)')?.matches;
 }
 
+// HF10 — iOS/WebKit landscape puede tener muy poca altura útil aunque el ancho sea enorme.
+// Dimensionamos el modal por AMBOS ejes usando visualViewport cuando existe. La carta mantiene
+// 5:7 y nunca debe desbordar por abajo; en viewports bajos ocultamos el rótulo redundante.
+function fitDfcModalPreviewToViewport(panel) {
+  if (!panel || typeof window === 'undefined') return;
+  const viewport = window.visualViewport;
+  const vw = Math.max(1, Number(viewport?.width || window.innerWidth || document.documentElement?.clientWidth || 0));
+  const vh = Math.max(1, Number(viewport?.height || window.innerHeight || document.documentElement?.clientHeight || 0));
+  const shortViewport = vh < 520;
+  const verticalReserve = shortViewport ? 22 : 66; // close/safe-area + optional label
+  const widthByHeight = Math.max(132, (vh - verticalReserve) * (5 / 7));
+  const width = Math.max(132, Math.min(290, vw * 0.76, widthByHeight));
+  panel.style.setProperty('--dfc-modal-panel-width', `${Math.floor(width)}px`);
+  panel.classList.toggle('is-short-viewport', shortViewport);
+}
+
 function showDfcFacePreview(badge, { modal = false } = {}) {
   if (!badge || typeof document === 'undefined') return;
   const cardId = String(badge.dataset.dfcCardId || '').trim();
@@ -1633,6 +1649,8 @@ function showDfcFacePreview(badge, { modal = false } = {}) {
   document.body.appendChild(layer);
   dfcFacePreviewLayer = layer;
   dfcFacePreviewSource = badge;
+
+  if (modal) fitDfcModalPreviewToViewport(panel);
 
   if (!modal) {
     const rect = badge.getBoundingClientRect();
@@ -1693,6 +1711,12 @@ function ensureDfcFacePreviewInteractions() {
   window.addEventListener?.('scroll', () => {
     if (dfcFacePreviewLayer?.dataset.modal !== 'true') closeDfcFacePreview();
   }, true);
+  const refitModal = () => {
+    if (dfcFacePreviewLayer?.dataset.modal !== 'true') return;
+    fitDfcModalPreviewToViewport(dfcFacePreviewLayer.querySelector('.dfc-face-preview-panel'));
+  };
+  window.addEventListener?.('resize', refitModal, { passive:true });
+  window.visualViewport?.addEventListener?.('resize', refitModal, { passive:true });
 }
 
 export function createCardElement(itemObj, isTapped = false, isLocal = true, index = null, zone = 'hand', customClick = null) {

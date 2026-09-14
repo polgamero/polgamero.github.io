@@ -1994,25 +1994,17 @@
     "cmc": 3,
     "rarity": "Rare",
     "colors": [],
-    "text": "{1}{U}{R}, {T}: Transformá Televisor de Tubo Encendido.",
+    "text": "{1}, {T}: Anticipá 1. {U}{R}, {T}: Transformá Televisor de Tubo Encendido.",
     "flavorText": "Entre dos canales aparece una señal que no pertenece a esta casa.",
     "image": "televisor_de_tubo_encendido.png",
     "keywords": [],
-    "activatedAbility": {
-      "cost": "{1}{U}{R}{T}",
-      "effect": {
-        "type": "transform"
-      },
-      "requiresTarget": false,
-      "timing": "instant"
-    },
     "dfc": {
       "kind": "transform",
       "backFace": {
         "name": "Portal de Interferencia",
         "type": "Artefacto",
         "image": "portal_de_interferencia.png",
-        "text": "Siempre que lances un hechizo que no sea de criatura, Portal de Interferencia le hace 1 de daño al jugador rival. {2}, {T}: Transformá Portal de Interferencia.",
+        "text": "Siempre que lances un hechizo que no sea de criatura, Portal de Interferencia le hace 2 de daño al jugador rival. {2}, {T}: Transformá Portal de Interferencia.",
         "colors": [],
         "keywords": [],
         "triggers": [
@@ -2025,7 +2017,7 @@
             "target": "opponent_player",
             "effect": {
               "type": "damage",
-              "amount": 1
+              "amount": 2
             }
           }
         ],
@@ -2039,7 +2031,26 @@
         },
         "flavorText": "La estática era una puerta. El tubo sólo estaba tratando de abrirla."
       }
-    }
+    },
+    "activatedAbilities": [
+      {
+        "cost": "{1}{T}",
+        "effect": {
+          "type": "scry",
+          "amount": 1
+        },
+        "requiresTarget": false,
+        "timing": "instant"
+      },
+      {
+        "cost": "{U}{R}{T}",
+        "effect": {
+          "type": "transform"
+        },
+        "requiresTarget": false,
+        "timing": "instant"
+      }
+    ]
   },
   {
     "id": "art_083",
@@ -2049,7 +2060,7 @@
     "cmc": 2,
     "rarity": "Uncommon",
     "colors": [],
-    "text": "{1}, {T}: Transformá Mate de Madrugada.",
+    "text": "{T}: Agregá {C}. {1}, {T}: Transformá Mate de Madrugada.",
     "flavorText": "A la cuarta cebada ya nadie recuerda quién lo llenó primero.",
     "image": "mate_de_madrugada.png",
     "keywords": [],
@@ -2092,7 +2103,8 @@
         },
         "flavorText": "El agua se termina. La charla no."
       }
-    }
+    },
+    "produces": "C"
   },
   {
     "id": "art_084",

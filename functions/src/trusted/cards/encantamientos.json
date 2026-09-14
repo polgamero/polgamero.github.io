@@ -2876,12 +2876,12 @@
       "B",
       "G"
     ],
-    "text": "{1}{B}{G}: Transformá Leyenda Susurrada en la Salamanca.",
+    "text": "Siempre que muera una criatura que controlás, Chusmeá 1. {B}{G}: Transformá Leyenda Susurrada en la Salamanca.",
     "flavorText": "Mientras se cuenta en voz baja, sigue siendo apenas una historia.",
     "image": "leyenda_susurrada_en_la_salamanca.png",
     "keywords": [],
     "activatedAbility": {
-      "cost": "{1}{B}{G}",
+      "cost": "{B}{G}",
       "effect": {
         "type": "transform"
       },
@@ -2894,7 +2894,7 @@
         "name": "La Salamanca Despierta",
         "type": "Encantamiento",
         "image": "la_salamanca_despierta.png",
-        "text": "Siempre que muera una criatura que controla tu oponente, La Salamanca Despierta le hace 1 de daño y vos ganás 1 Punto de Vida. {1}{B}{G}: Transformá La Salamanca Despierta.",
+        "text": "Siempre que muera una criatura, el jugador rival pierde 1 vida y vos ganás 1 vida. {B}{G}: Transformá La Salamanca Despierta.",
         "colors": [
           "B",
           "G"
@@ -2903,28 +2903,14 @@
         "triggers": [
           {
             "event": "creature_died",
-            "filter": {
-              "controller": "opponent"
-            },
-            "target": "opponent_player",
             "effect": {
-              "type": "damage",
-              "amount": 1
-            }
-          },
-          {
-            "event": "creature_died",
-            "filter": {
-              "controller": "opponent"
-            },
-            "effect": {
-              "type": "heal",
+              "type": "drain",
               "amount": 1
             }
           }
         ],
         "activatedAbility": {
-          "cost": "{1}{B}{G}",
+          "cost": "{B}{G}",
           "effect": {
             "type": "transform"
           },
@@ -2933,7 +2919,19 @@
         },
         "flavorText": "Cuando el relato deja de necesitar narrador, conviene no escuchar el final."
       }
-    }
+    },
+    "triggers": [
+      {
+        "event": "creature_died",
+        "filter": {
+          "controller": "you"
+        },
+        "effect": {
+          "type": "surveil",
+          "amount": 1
+        }
+      }
+    ]
   },
   {
     "id": "ench_103",
@@ -2946,11 +2944,22 @@
       "U",
       "R"
     ],
-    "text": "Al comienzo de tu paso final, transformá Tormenta sobre la Pampa.",
+    "text": "Siempre que lances un hechizo que no sea de criatura, Anticipá 1. Al comienzo de tu paso final, transformá Tormenta sobre la Pampa.",
     "flavorText": "El horizonte se oscurece antes de decidir qué clase de cielo será.",
     "image": "tormenta_sobre_la_pampa.png",
     "keywords": [],
     "triggers": [
+      {
+        "event": "spell_cast",
+        "filter": {
+          "controller": "you",
+          "cardType": "noncreature"
+        },
+        "effect": {
+          "type": "scry",
+          "amount": 1
+        }
+      },
       {
         "event": "end_step_started",
         "filter": {

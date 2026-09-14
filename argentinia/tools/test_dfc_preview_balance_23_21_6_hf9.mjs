@@ -55,13 +55,15 @@ assert.equal(byId('crea_325').dfc.backFace.power, 5); assert.equal(byId('crea_32
 assert.deepEqual(byId('crea_329').dfc.backFace.keywords, ['trample','firststrike']);
 assert.deepEqual(byId('crea_330').dfc.backFace.keywords, ['reach','trample']);
 
+// HF10 supersedes the exact tuning of Salamanca/Storm/Televisor/Mate while preserving
+// HF9's contract that these cards have real Transform gameplay on their back faces.
 const salamanca = byId('ench_102');
-assert.equal(salamanca.activatedAbility.cost, '{1}{B}{G}');
-assert.ok(salamanca.dfc.backFace.triggers.some(t => t.effect?.type === 'damage' && t.effect?.amount === 1));
-assert.ok(salamanca.dfc.backFace.triggers.some(t => t.effect?.type === 'heal' && t.effect?.amount === 1));
+assert.ok(salamanca.activatedAbility?.effect?.type === 'transform');
+assert.ok(salamanca.dfc.backFace.triggers?.length > 0);
 const stormBack = byId('ench_103').dfc.backFace;
-assert.ok(stormBack.triggers.some(t => t.event === 'spell_cast' && t.effect?.type === 'damage' && t.effect?.amount === 1));
-assert.equal(byId('art_082').activatedAbility.cost, '{1}{U}{R}{T}');
+assert.ok(stormBack.triggers.some(t => t.event === 'spell_cast'));
+const televisor = byId('art_082');
+assert.ok((televisor.activatedAbilities || [televisor.activatedAbility]).some(a => a?.effect?.type === 'transform'));
 const usina = byId('tier_068').dfc.backFace;
 const usinaMana = normalizeManaAbility(usina);
 assert.deepEqual(usinaMana.options, ['R']); assert.equal(usinaMana.amount, 2);
