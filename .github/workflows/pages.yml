@@ -146,8 +146,8 @@ jobs:
           fi
 
           echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed canonical=23.21.6"
-          if [ "$total" -ne 125 ]; then
-            echo "::error::Canonical fast manifest must contain exactly 125 tests; got $total"
+          if [ "$total" -ne 126 ]; then
+            echo "::error::Canonical fast manifest must contain exactly 126 tests; got $total"
             exit 1
           fi
           if [ "$failed" -ne 0 ]; then
@@ -155,7 +155,7 @@ jobs:
             exit 1
           fi
 
-      # All 125 canonical static contracts already ran once in the sweep above.
+      # All 126 canonical static contracts already ran once in the sweep above.
       # Historically we ran 51 of those files a SECOND time as individually named steps,
       # which added substantial wall-clock time without adding coverage. Keep only the
       # stateful/dynamic labs and audits that are NOT part of the canonical manifest.
