@@ -87,6 +87,12 @@ function ensureCampaignStyles() {
     .campaign-popup-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:22px}
     .campaign-popup-dismiss{display:flex;gap:7px;align-items:center;font-size:12px;color:#c9c5b8}
     .campaign-popup-close{border:1px solid rgba(212,175,55,.55);background:#18261c;color:#f7e7a8;border-radius:9px;padding:9px 18px;font-weight:900;cursor:pointer}
+    .campaign-popup-carousel-head{display:flex;align-items:center;justify-content:flex-end;gap:9px;min-height:34px;margin:-8px 0 4px}
+    .campaign-popup-nav{width:34px;height:34px;border-radius:999px;border:1px solid rgba(212,175,55,.52);background:rgba(9,18,13,.72);color:#f5d777;font-size:24px;line-height:1;cursor:pointer}
+    .campaign-popup-counter{min-width:44px;text-align:center;color:#d7c47a;font-size:11px;font-weight:900;letter-spacing:.06em}
+    .campaign-popup-dots{display:flex;align-items:center;justify-content:center;gap:9px;min-height:18px;margin:18px 0 2px}
+    .campaign-popup-dot{width:9px;height:9px;padding:0;border-radius:999px;border:1px solid rgba(212,175,55,.8);background:rgba(212,175,55,.18);cursor:pointer;transition:transform .15s ease,background .15s ease,box-shadow .15s ease}
+    .campaign-popup-dot.active{background:#d4af37;transform:scale(1.28);box-shadow:0 0 9px rgba(212,175,55,.55)}
     @media(max-width:760px){.campaign-admin-grid{grid-template-columns:1fr}.campaign-popup-content{padding:20px}.campaign-popup-title{font-size:23px}}
   `;
   document.head.appendChild(style);
@@ -228,30 +234,121 @@ export function mountAdminCampaignsPane(root, { currentUser } = {}) {
 
 function guestDismissKey(id) { return `argentinia:dismissed-announcement:${id}`; }
 
+async function announcementDismissedForViewer(ann, currentUser) {
+  if (!ann?.id) return true;
+  if (currentUser?.uid) {
+    try { return await isAnnouncementDismissed(currentUser.uid, ann.id); }
+    catch { return false; }
+  }
+  try { return localStorage.getItem(guestDismissKey(ann.id)) === '1'; }
+  catch { return false; }
+}
+
 export async function maybeShowAnnouncementPopup({ currentUser } = {}) {
   ensureCampaignStyles();
   if (document.querySelector('.campaign-popup-shell')) return false;
   let list=[]; let now=new Date();
-  try { const loaded=await Promise.all([fetchAnnouncements(50), fetchCampaignSnapshot()]); list=loaded[0]; now=loaded[1]?.now || now; } catch { return false; }
+  try {
+    const loaded=await Promise.all([fetchAnnouncements(50), fetchCampaignSnapshot()]);
+    list=loaded[0]; now=loaded[1]?.now || now;
+  } catch { return false; }
   const candidates=list.filter(a=>campaignStatus(a,now)==='active' && a.showPopup && !a.finalizedAt);
-  for (const ann of candidates) {
-    let dismissed=false;
-    if (currentUser?.uid) { try { dismissed=await isAnnouncementDismissed(currentUser.uid,ann.id); } catch {} }
-    else { try { dismissed=localStorage.getItem(guestDismissKey(ann.id))==='1'; } catch {} }
-    if (dismissed) continue;
-    showAnnouncementPopup(ann,{currentUser}); return true;
-  }
-  return false;
+  if (!candidates.length) return false;
+  const dismissed=await Promise.all(candidates.map(ann=>announcementDismissedForViewer(ann,currentUser)));
+  const visible=candidates.filter((_,index)=>!dismissed[index]);
+  if (!visible.length) return false;
+  await showAnnouncementCarousel(visible,{currentUser});
+  return true;
 }
 
-function showAnnouncementPopup(ann,{currentUser}={}) {
-  const shell=document.createElement('div'); shell.className='campaign-popup-shell';
-  const imageUrl=announcementImageUrl(ann.imageFilename);
-  shell.innerHTML=`<div class="campaign-popup-card">${imageUrl?`<img class="campaign-popup-bg" data-ann-bg src="${esc(imageUrl)}" alt="">`:''}<div class="campaign-popup-overlay"></div><div class="campaign-popup-content"><h2 class="campaign-popup-title">${esc(ann.title)}</h2>${ann.subtitle?`<div class="campaign-popup-subtitle">${esc(ann.subtitle)}</div>`:''}<div>${(ann.paragraphs||[]).map(p=>`<p class="campaign-popup-paragraph">${esc(p)}</p>`).join('')}</div><div class="campaign-popup-footer">${ann.dismissible?`<label class="campaign-popup-dismiss"><input type="checkbox" data-dismiss> ${esc(gameText('campaign.popup.dontShowAgain'))}</label>`:'<span></span>'}<button class="campaign-popup-close" data-close>${esc(gameText('campaign.popup.close'))}</button></div></div></div>`;
-  const bg=shell.querySelector('[data-ann-bg]');
-  if(bg) bg.addEventListener('error',()=>bg.remove(),{once:true});
-  const close=async()=>{const checked=!!shell.querySelector('[data-dismiss]')?.checked;if(checked){if(currentUser?.uid){try{await dismissAnnouncement(currentUser.uid,ann.id);}catch{}}else{try{localStorage.setItem(guestDismissKey(ann.id),'1');}catch{}}}shell.remove();};
-  shell.querySelector('[data-close]').addEventListener('click',()=>void close()); document.body.appendChild(shell);
+function showAnnouncementCarousel(announcements,{currentUser}={}) {
+  return new Promise(resolveClosed => {
+    const items=Array.isArray(announcements)?announcements.filter(Boolean):[];
+    if(!items.length){resolveClosed(false);return;}
+    const shell=document.createElement('div'); shell.className='campaign-popup-shell';
+    shell.innerHTML=`<div class="campaign-popup-card" role="dialog" aria-modal="true">
+      <img class="campaign-popup-bg" data-ann-bg alt="" hidden>
+      <div class="campaign-popup-overlay"></div>
+      <div class="campaign-popup-content">
+        <div class="campaign-popup-carousel-head">
+          <button class="campaign-popup-nav" type="button" data-prev aria-label="${esc(gameText('campaign.popup.previous'))}">‹</button>
+          <div class="campaign-popup-counter" data-counter></div>
+          <button class="campaign-popup-nav" type="button" data-next aria-label="${esc(gameText('campaign.popup.next'))}">›</button>
+        </div>
+        <h2 class="campaign-popup-title" data-title></h2>
+        <div class="campaign-popup-subtitle" data-subtitle></div>
+        <div data-paragraphs></div>
+        <div class="campaign-popup-dots" data-dots></div>
+        <div class="campaign-popup-footer">
+          <div data-dismiss-slot></div>
+          <button class="campaign-popup-close" data-close>${esc(gameText('campaign.popup.close'))}</button>
+        </div>
+      </div>
+    </div>`;
+    const selectedDismissals=new Map();
+    let index=0;
+    let timer=null;
+    let closed=false;
+    const card=shell.querySelector('.campaign-popup-card');
+    const bg=shell.querySelector('[data-ann-bg]');
+    const title=shell.querySelector('[data-title]');
+    const subtitle=shell.querySelector('[data-subtitle]');
+    const paragraphs=shell.querySelector('[data-paragraphs]');
+    const counter=shell.querySelector('[data-counter]');
+    const dots=shell.querySelector('[data-dots]');
+    const dismissSlot=shell.querySelector('[data-dismiss-slot]');
+    const prev=shell.querySelector('[data-prev]');
+    const next=shell.querySelector('[data-next]');
+
+    const stopTimer=()=>{if(timer){clearTimeout(timer);timer=null;}};
+    const schedule=()=>{
+      stopTimer();
+      if(items.length>1 && !closed) timer=setTimeout(()=>{showIndex((index+1)%items.length,{auto:true});},9000);
+    };
+    const renderDots=()=>{
+      dots.innerHTML=items.length>1?items.map((ann,i)=>`<button type="button" class="campaign-popup-dot${i===index?' active':''}" data-dot="${i}" aria-label="${esc(gameText('campaign.popup.position',{index:i+1,total:items.length}))}"></button>`).join(''):'';
+      dots.querySelectorAll('[data-dot]').forEach(btn=>btn.addEventListener('click',()=>showIndex(Number(btn.dataset.dot))));
+    };
+    const showIndex=(nextIndex,{auto=false}={})=>{
+      index=((Number(nextIndex)||0)%items.length+items.length)%items.length;
+      const ann=items[index];
+      const imageUrl=announcementImageUrl(ann.imageFilename);
+      if(imageUrl){bg.hidden=false;bg.src=imageUrl;}else{bg.hidden=true;bg.removeAttribute('src');}
+      title.textContent=ann.title||'';
+      subtitle.textContent=ann.subtitle||'';
+      subtitle.hidden=!ann.subtitle;
+      paragraphs.innerHTML=(ann.paragraphs||[]).map(p=>`<p class="campaign-popup-paragraph">${esc(p)}</p>`).join('');
+      counter.textContent=items.length>1?`${index+1} / ${items.length}`:'';
+      prev.hidden=next.hidden=items.length<2;
+      if(ann.dismissible){
+        dismissSlot.innerHTML=`<label class="campaign-popup-dismiss"><input type="checkbox" data-dismiss ${selectedDismissals.get(ann.id)?'checked':''}> ${esc(gameText('campaign.popup.dontShowAgain'))}</label>`;
+        dismissSlot.querySelector('[data-dismiss]')?.addEventListener('change',event=>selectedDismissals.set(ann.id,!!event.currentTarget.checked));
+      }else dismissSlot.innerHTML='<span></span>';
+      renderDots();
+      if(!auto) schedule(); else schedule();
+    };
+    const close=async()=>{
+      if(closed)return;
+      closed=true;stopTimer();
+      const selected=items.filter(ann=>ann.dismissible && selectedDismissals.get(ann.id));
+      shell.remove();
+      resolveClosed(true);
+      await Promise.all(selected.map(async ann=>{
+        if(currentUser?.uid){try{await dismissAnnouncement(currentUser.uid,ann.id);}catch{}}
+        else{try{localStorage.setItem(guestDismissKey(ann.id),'1');}catch{}}
+      }));
+    };
+    bg.addEventListener('error',()=>{bg.hidden=true;bg.removeAttribute('src');});
+    prev.addEventListener('click',()=>showIndex(index-1));
+    next.addEventListener('click',()=>showIndex(index+1));
+    shell.querySelector('[data-close]').addEventListener('click',()=>void close());
+    card.addEventListener('mouseenter',stopTimer);
+    card.addEventListener('mouseleave',schedule);
+    card.addEventListener('focusin',stopTimer);
+    card.addEventListener('focusout',schedule);
+    document.body.appendChild(shell);
+    showIndex(0);
+  });
 }
 
 export async function renderActiveEventsStrip(container) {

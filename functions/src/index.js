@@ -930,11 +930,11 @@ export const economyCreateTradeOffer = onCall(FUNCTION_RUNTIME_OPTIONS, async re
   const auth=requireAuth(request); const data=requestData(request);
   try {
     assertRateLimit(auth.uid,'trade-offer-create',{limit:30,windowMs:60000});
-    rejectUnknown(data,['economyProtocolVersion','operationId','listingOwnerUid','cardId']);
-    const operationId=String(data.operationId||''),listingOwnerUid=String(data.listingOwnerUid||''),cardId=String(data.cardId||'');
-    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'trade.offer.create',request:{listingOwnerUid,cardId},execute:async tx=>{
+    rejectUnknown(data,['economyProtocolVersion','operationId','listingOwnerUid','listingId','cardId']);
+    const operationId=String(data.operationId||''),listingOwnerUid=String(data.listingOwnerUid||''),listingId=String(data.listingId||''),cardId=String(data.cardId||'');
+    const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'trade.offer.create',request:{listingOwnerUid,listingId,cardId},execute:async tx=>{
       const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
-      return createTradeOfferTx({db,tx,uid:auth.uid,listingOwnerUid,cardId});
+      return createTradeOfferTx({db,tx,uid:auth.uid,listingOwnerUid,listingId,cardId});
     }});
     await finalizeAuthorityAudit({auth,operationId,type:'trade.offer.create',outcome});
     return {ok:true,...outcome};

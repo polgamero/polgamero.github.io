@@ -54,7 +54,7 @@ import { listCounters, compactCounterText, counterTooltipLines, normalizeCounter
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
 import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
-import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -96,7 +96,7 @@ import { effectivePackCost, campaignStatus } from './campaigns.js';
 import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.js';
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
-import { enterMenuAudio, getAudioSettings, toggleMusic, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
+import { enterMenuAudio, getAudioSettings, toggleMasterMute, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
 import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer } from './animationDirector.js';
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
@@ -1678,7 +1678,14 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   // 23.15.3.1 — scope hotfix: este dato se usa después de ambas ramas de render.
   // Debe existir también cuando la carta usa la rama especial de Tierra básica.
   const hasCreatureStats = isCreaturePermanent(itemObj);
-  const hasCornerStat = hasCreatureStats || card.type.includes('Planeswalker');
+  // 23.21.6 HF7 — Transportes/Vehículos tienen P/T impresa aun cuando todavía son artefactos
+  // no tripulados. Esto es PRESENTATION-ONLY: no los convierte en criatura ni altera reglas.
+  const isVehicleCard = /(?:Vehículo|Transporte)/i.test(String(card.type || ''));
+  const vehiclePrintedPower = Number(card?.baseStats?.power);
+  const vehiclePrintedToughness = Number(card?.baseStats?.toughness);
+  const hasVehiclePrintedStats = isVehicleCard && Number.isFinite(vehiclePrintedPower) && Number.isFinite(vehiclePrintedToughness);
+  const hasDisplayCombatStats = hasCreatureStats || hasVehiclePrintedStats;
+  const hasCornerStat = hasDisplayCombatStats || card.type.includes('Planeswalker');
 
   let formattedTextHTML = '';
   if (isBasicLand && landSymbolImg) {
@@ -1756,13 +1763,13 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     formattedTextHTML = `<div class="card-text-box card-text-box-structured${hasCornerStat ? ' card-text-box-stat-reserve' : ''}" data-auto-text-cqw="${(6 * textBoxScale).toFixed(2)}" style="--card-text-effective-size:${(6 * textBoxScale).toFixed(2)}cqw; font-size:clamp(3px, var(--card-text-effective-size), 26px);">${keywordsHTML}${keywordReminderHTML}<div class="card-rules-list">${rulesHTML}</div>${flavorHTML}</div>`;
   }
 
-  const effPower = hasCreatureStats ? getEffectivePower(itemObj) : undefined;
-  const effToughness = hasCreatureStats ? getEffectiveToughness(itemObj) : undefined;
+  const effPower = hasCreatureStats ? getEffectivePower(itemObj) : (hasVehiclePrintedStats ? vehiclePrintedPower : undefined);
+  const effToughness = hasCreatureStats ? getEffectiveToughness(itemObj) : (hasVehiclePrintedStats ? vehiclePrintedToughness : undefined);
   const basePowerForUi = itemObj.animatedBasePower ?? card.power;
   const baseToughnessForUi = itemObj.animatedBaseToughness ?? card.toughness;
-  const isBuffed = effPower !== undefined && (effPower !== basePowerForUi || effToughness !== baseToughnessForUi);
+  const isBuffed = hasCreatureStats && effPower !== undefined && (effPower !== basePowerForUi || effToughness !== baseToughnessForUi);
 
-  let ptText = hasCreatureStats ? `${effPower}/${effToughness}` : '';
+  let ptText = hasDisplayCombatStats ? `${effPower}/${effToughness}` : '';
   if (itemObj.damageTaken > 0 && hasCreatureStats) {
     ptText = `${effPower}/<span style="color:#e74c3c;">${effToughness - itemObj.damageTaken}</span>`;
   } else if (isBuffed) {
@@ -1906,7 +1913,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
       </div>
       <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(displayType, 16, 0.3)).toFixed(2)}cqw, 30px);">${displayType}</span><span class="rarity-icon">●</span></div>
       ${formattedTextHTML}
-      ${hasCreatureStats ? `<div class="card-pt">${ptText}</div>` : ''}
+      ${hasDisplayCombatStats ? `<div class="card-pt${hasVehiclePrintedStats && !hasCreatureStats ? ' vehicle-printed-pt' : ''}"${hasVehiclePrintedStats && !hasCreatureStats ? ' title="Poder/Resistencia al tripular este Transporte" aria-label="Poder/Resistencia al tripular este Transporte"' : ''}>${ptText}</div>` : ''}
       ${isPlaneswalker ? `<div class="card-pt card-loyalty">${loyaltyText}</div>` : ''}
       ${auraBadgeHTML}
     </div>
@@ -2729,9 +2736,11 @@ function injectRewardsStyles() {
     .chest-item {
       position:relative; min-height:190px; background:linear-gradient(180deg,rgba(24,36,27,.94),rgba(10,18,12,.98));
       border:2px solid rgba(212,175,55,.42); border-radius:16px; padding:18px;
-      display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+      display:flex; flex-direction:column; align-items:center; justify-content:stretch; text-align:center;
       box-shadow:0 12px 36px rgba(0,0,0,.28); overflow:hidden;
     }
+    .chest-item-content { flex:1 1 auto; min-height:0; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    .chest-item > .reward-action-btn { flex:0 0 auto; margin-top:12px; }
     .chest-item.chest-mythic { border-color:#d9792f; box-shadow:0 0 30px rgba(217,121,47,.14),0 12px 36px rgba(0,0,0,.3); }
     .chest-item-icon { min-height:72px; display:flex; align-items:center; justify-content:center; font-size:54px; }
     .chest-item .coin-icon, .chest-item .ficha-icon { width:68px; height:68px; }
@@ -2993,22 +3002,22 @@ export function showChestScreen(onBack) {
     body.innerHTML = `
       <div class="chest-summary">
         <div class="chest-item">
-          <div class="chest-item-icon">${COIN_ICON_HTML}</div><div class="chest-item-title">${gameTextHtml('chest.points.title')}</div><div class="chest-item-count">${points}</div>
-          <div class="chest-item-desc">${gameTextHtml('chest.points.description')}</div>
+          <div class="chest-item-content"><div class="chest-item-icon">${COIN_ICON_HTML}</div><div class="chest-item-title">${gameTextHtml('chest.points.title')}</div><div class="chest-item-count">${points}</div>
+          <div class="chest-item-desc">${gameTextHtml('chest.points.description')}</div></div>
         </div>
         <div class="chest-item">
-          <div class="chest-item-icon">${FICHA_ICON_HTML}</div><div class="chest-item-title">${gameTextHtml('chest.fichas.title')}</div><div class="chest-item-count">${fichas}</div>
-          <div class="chest-item-desc">${gameTextHtml('chest.fichas.description')}</div>
+          <div class="chest-item-content"><div class="chest-item-icon">${FICHA_ICON_HTML}</div><div class="chest-item-title">${gameTextHtml('chest.fichas.title')}</div><div class="chest-item-count">${fichas}</div>
+          <div class="chest-item-desc">${gameTextHtml('chest.fichas.description')}</div></div>
           <button class="reward-action-btn" id="chest-use-fichas" ${fichas < FICHAS_PER_ENHANCEMENT ? 'disabled' : ''}>${gameTextHtml('chest.fichas.action')}</button>
         </div>
         <div class="chest-item">
-          <div class="chest-item-icon">${PACK_ICON_HTML}</div><div class="chest-item-title">${gameTextHtml('chest.packs.title')}</div><div class="chest-item-count">${packs}</div>
-          <div class="chest-item-desc">${pendingPack ? 'Apertura pendiente: el servidor conserva exactamente el resultado acreditado.' : gameTextHtml('chest.packs.description')}</div>
+          <div class="chest-item-content"><div class="chest-item-icon">${PACK_ICON_HTML}</div><div class="chest-item-title">${gameTextHtml('chest.packs.title')}</div><div class="chest-item-count">${packs}</div>
+          <div class="chest-item-desc">${pendingPack ? 'Apertura pendiente: el servidor conserva exactamente el resultado acreditado.' : gameTextHtml('chest.packs.description')}</div></div>
           <button class="reward-action-btn" id="chest-open-pack" ${packs < 1 && !pendingPack ? 'disabled' : ''}>${packAction}</button>
         </div>
         <div class="chest-item chest-mythic">
-          <div class="chest-item-icon">✦</div><div class="chest-item-title">${gameTextHtml('chest.mythic.title')}</div><div class="chest-item-count">${mythics}</div>
-          <div class="chest-item-desc">${pendingMythic ? gameTextHtml('chest.mythic.pendingDescription') : gameTextHtml('chest.mythic.description')}</div>
+          <div class="chest-item-content"><div class="chest-item-icon">✦</div><div class="chest-item-title">${gameTextHtml('chest.mythic.title')}</div><div class="chest-item-count">${mythics}</div>
+          <div class="chest-item-desc">${pendingMythic ? gameTextHtml('chest.mythic.pendingDescription') : gameTextHtml('chest.mythic.description')}</div></div>
           <button class="reward-action-btn" id="chest-open-mythic" ${mythics < 1 && !pendingMythic ? 'disabled' : ''}>${mythicAction}</button>
         </div>
       </div>
@@ -3217,10 +3226,14 @@ export function showDailyLoginRewardModal(loginInfo) {
   };
   modal.querySelector('#daily-login-close').addEventListener('click', () => finish('closed'));
   modal.querySelector('#daily-login-view').addEventListener('click', () => {
-    finish('view_rewards');
+    if (closed) return;
+    modal.remove();
     const menu = document.getElementById('main-menu-overlay');
     if (menu) menu.style.display = 'none';
-    showDailyRewardsScreen(() => { if (menu) menu.style.display = ''; });
+    showDailyRewardsScreen(() => {
+      if (menu) menu.style.display = '';
+      finish('view_rewards');
+    });
   });
   modal.querySelector('#daily-login-claim')?.addEventListener('click', async () => {
     const btn = modal.querySelector('#daily-login-claim');
@@ -4204,9 +4217,9 @@ function injectStoreStyles() {
       display:grid; grid-template-columns:repeat(auto-fit,minmax(245px,1fr)); align-items:stretch; gap:16px;
       overflow:visible; padding:0;
     }
-    .store-market-item { min-width:0; max-width:none; min-height:300px; justify-content:flex-start; }
+    .store-market-item { min-width:0; max-width:none; min-height:300px; justify-content:stretch; }
     .store-market-item .chest-item-icon { min-height:112px; }
-    .store-market-item .chest-item-desc { flex:1; min-height:0; margin-top:2px; }
+    .store-market-item .chest-item-desc { min-height:0; margin-top:2px; }
     .store-market-count { font-size:23px; line-height:1.15; margin:5px 0 8px; white-space:normal; }
     .store-market-count-classifieds { color:#8dc5e4; }
     .store-market-item .reward-action-btn { width:100%; min-height:42px; }
@@ -4649,39 +4662,39 @@ export function showStoreScreen(onBack, options = {}) {
       <div class="store-market-strip-shell">
         <div class="store-market-strip" aria-label="Opciones de la Tienda">
           <div class="chest-item store-market-item store-market-pack">
-            <div class="chest-item-icon">${PACK_ICON_HTML}</div>
+            <div class="chest-item-content"><div class="chest-item-icon">${PACK_ICON_HTML}</div>
             <div class="chest-item-title">${gameTextHtml('store.pack.showcaseTitle')}</div>
             <div class="chest-item-count store-market-count">${gameTextHtml('store.pack.showcaseCost', { cost: effectiveCost })}${packDiscountActive ? ` <span class="store-discount-note">(${packBaseCost} → ${effectiveCost})</span>` : ''}</div>
             <div class="chest-item-desc">${gameTextHtml('store.pack.description')}</div>
-            <div class="store-error-msg" id="store-buy-error"></div>
+            <div class="store-error-msg" id="store-buy-error"></div></div>
             <button class="reward-action-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>${gameTextHtml('store.pack.buy')}</button>
           </div>
           <div class="chest-item store-market-item store-market-craft">
-            <div class="chest-item-icon">${FICHA_ICON_HTML}</div>
+            <div class="chest-item-content"><div class="chest-item-icon">${FICHA_ICON_HTML}</div>
             <div class="chest-item-title">${gameTextHtml('store.craft.showcaseTitle')}</div>
             <div class="chest-item-count store-market-count">${gameTextHtml('store.craft.showcaseCost', { cost: craftCost })}</div>
-            <div class="chest-item-desc">${gameTextHtml('store.craft.description')}</div>
+            <div class="chest-item-desc">${gameTextHtml('store.craft.description')}</div></div>
             <button class="reward-action-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? gameTextHtml('store.craft.action') : gameTextHtml('store.craft.missing', { count: craftCost - fichas })}</button>
           </div>
           <div class="chest-item store-market-item store-prebuilt-entry">
-            <div class="chest-item-icon"><div class="store-prebuilt-icon-wrap"><img class="store-prebuilt-icon" src="./assets/images/ui/mazos_prearmados.png" alt="Mazos Prearmados" onerror="this.parentElement.classList.add('image-missing');this.remove()"></div></div>
+            <div class="chest-item-content"><div class="chest-item-icon"><div class="store-prebuilt-icon-wrap"><img class="store-prebuilt-icon" src="./assets/images/ui/mazos_prearmados.png" alt="Mazos Prearmados" onerror="this.parentElement.classList.add('image-missing');this.remove()"></div></div>
             <div class="chest-item-title">${gameTextHtml('store.prebuilt.showcaseTitle')}</div>
             <div class="chest-item-count store-market-count">${gameTextHtml('store.prebuilt.showcaseCount')}</div>
-            <div class="chest-item-desc">${gameTextHtml('store.prebuilt.description')}</div>
+            <div class="chest-item-desc">${gameTextHtml('store.prebuilt.description')}</div></div>
             <button class="reward-action-btn" id="store-prebuilt">${gameTextHtml('store.prebuilt.open')}</button>
           </div>
           <div class="chest-item store-market-item store-classifieds-entry">
-            <div class="chest-item-icon"><img class="store-classifieds-icon" src="./assets/images/ui/clasificados.png" alt="Avisos Clasificados"></div>
+            <div class="chest-item-content"><div class="chest-item-icon"><img class="store-classifieds-icon" src="./assets/images/ui/clasificados.png" alt="Avisos Clasificados"></div>
             <div class="chest-item-title">${gameTextHtml('store.classifieds.showcaseTitle')}</div>
             <div class="chest-item-count store-market-count store-market-count-classifieds">${gameTextHtml('store.classifieds.showcaseCount')}</div>
-            <div class="chest-item-desc">${gameTextHtml('store.classifieds.description')}</div>
+            <div class="chest-item-desc">${gameTextHtml('store.classifieds.description')}</div></div>
             <button class="reward-action-btn" id="store-classifieds">${gameTextHtml('store.classifieds.open')}</button>
           </div>
           <div class="chest-item store-market-item store-emotes-entry">
-            <div class="chest-item-icon"><div class="store-emote-showcase-icon"><img class="store-emote-showcase-img" src="./assets/images/ui/emotes.png" alt="Emotes" onerror="this.parentElement.textContent='😏'"></div></div>
+            <div class="chest-item-content"><div class="chest-item-icon"><div class="store-emote-showcase-icon"><img class="store-emote-showcase-img" src="./assets/images/ui/emotes.png" alt="Emotes" onerror="this.parentElement.textContent='😏'"></div></div>
             <div class="chest-item-title">${gameTextHtml('store.emotes.showcaseTitle')}</div>
             <div class="chest-item-count store-market-count">${gameTextHtml('store.emotes.showcaseCount', { count: currentEmoteActiveCount() })}</div>
-            <div class="chest-item-desc">${gameTextHtml('store.emotes.description')}</div>
+            <div class="chest-item-desc">${gameTextHtml('store.emotes.description')}</div></div>
             <button class="reward-action-btn" id="store-emotes">${gameTextHtml('store.emotes.open')}</button>
           </div>
         </div>
@@ -6651,15 +6664,15 @@ function bindMainMenuMusicQuickButton(root) {
   if (!musicQuickBtn) return;
   const refresh = () => {
     const audio = getAudioSettings();
-    const pct = Math.round(audio.musicVolume * 100);
-    musicQuickBtn.textContent = audio.musicEnabled ? '🔊' : '🔇';
-    musicQuickBtn.classList.toggle('is-muted', !audio.musicEnabled);
-    musicQuickBtn.title = `${gameText('options.music')}: ${audio.musicEnabled ? gameText('options.enabled') : gameText('options.off')} · ${pct}%`;
-    musicQuickBtn.setAttribute('aria-pressed', audio.musicEnabled ? 'true' : 'false');
+    musicQuickBtn.textContent = audio.masterMuted ? '🔇' : '🔊';
+    musicQuickBtn.classList.toggle('is-muted', !!audio.masterMuted);
+    musicQuickBtn.title = audio.masterMuted ? 'Activar audio' : 'Silenciar música y efectos';
+    musicQuickBtn.setAttribute('aria-label', audio.masterMuted ? 'Activar audio' : 'Silenciar música y efectos');
+    musicQuickBtn.setAttribute('aria-pressed', String(!!audio.masterMuted));
   };
   refresh();
   musicQuickBtn.addEventListener('click', () => {
-    toggleMusic();
+    toggleMasterMute();
     refresh();
   });
   const onAudioSettingsChanged = () => {
@@ -6694,7 +6707,7 @@ function renderAccountBox(container, user) {
       <div class="main-menu-account-actions">
         <button class="main-menu-reward-btn" id="menu-chest">${gameTextHtml('account.chest')}${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
         <button class="main-menu-reward-btn" id="menu-daily-rewards">${gameTextHtml('account.dailyRewards')}${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
-        <button class="main-menu-music-btn" id="menu-music-toggle" type="button" aria-label="Música">🔊</button>
+        <button class="main-menu-music-btn" id="menu-music-toggle" type="button" aria-label="Silenciar música y efectos">🔊</button>
       </div>`;
     container.innerHTML = `
       ${adminBtnHTML}
@@ -7188,6 +7201,7 @@ export function showAdminPanel(onBack) {
     { section: 'Mazos', id: 'maxSavedDecks', label: 'Máximo de mazos guardados por cuenta', value: MAX_SAVED_DECKS, step: '1' },
     { section: 'Mazos Prearmados', id: 'prebuiltDeckPoints', label: 'Costo global · puntos', value: PREBUILT_DECK_POINTS, step: '1' },
     { section: 'Mazos Prearmados', id: 'prebuiltDeckFichas', label: 'Costo global · Fichas', value: PREBUILT_DECK_FICHAS, step: '1' },
+    { section: 'MERCADO DE PASES · LÍMITES', id: 'tradeMaxActiveListings', label: 'Máximo de publicaciones activas por jugador · 1–10', value: TRADE_MAX_ACTIVE_LISTINGS, step: '1' },
     { section: 'MERCADO DE PASES · LÍMITES', id: 'tradeMaxWantedCriteria', label: 'Máximo de criterios BUSCO por publicación · 1–3', value: TRADE_MAX_WANTED_CRITERIA, step: '1' },
     { section: 'MERCADO DE PASES · LÍMITES', id: 'tradeMaxOffersPerListing', label: 'Máximo de ofertas activas por publicación · 1–50', value: TRADE_MAX_OFFERS_PER_LISTING, step: '1' },
     { section: 'MERCADO DE PASES · LÍMITES', id: 'tradeMaxOutgoingOffers', label: 'Máximo de ofertas salientes activas por jugador · 1–20', value: TRADE_MAX_OUTGOING_OFFERS, step: '1' },
@@ -8901,6 +8915,7 @@ Receipt: ${receiptId}
       maxSavedDecks: readNumber('maxSavedDecks'),
       prebuiltDeckPoints: readNumber('prebuiltDeckPoints'),
       prebuiltDeckFichas: readNumber('prebuiltDeckFichas'),
+      tradeMaxActiveListings: readNumber('tradeMaxActiveListings'),
       tradeMaxWantedCriteria: readNumber('tradeMaxWantedCriteria'),
       tradeMaxOffersPerListing: readNumber('tradeMaxOffersPerListing'),
       tradeMaxOutgoingOffers: readNumber('tradeMaxOutgoingOffers'),
@@ -8948,7 +8963,8 @@ Receipt: ${receiptId}
     ].every(value => value >= 0);
     const basicLandPackConfigValid = Number.isInteger(newConfig.classifiedBasicLandPackPrice) && newConfig.classifiedBasicLandPackPrice >= 0
       && Number.isInteger(newConfig.classifiedBasicLandPackQuantity) && newConfig.classifiedBasicLandPackQuantity >= 1 && newConfig.classifiedBasicLandPackQuantity <= 100;
-    const tradeLimitsValid = Number.isInteger(newConfig.tradeMaxWantedCriteria) && newConfig.tradeMaxWantedCriteria >= 1 && newConfig.tradeMaxWantedCriteria <= 3
+    const tradeLimitsValid = Number.isInteger(newConfig.tradeMaxActiveListings) && newConfig.tradeMaxActiveListings >= 1 && newConfig.tradeMaxActiveListings <= 10
+      && Number.isInteger(newConfig.tradeMaxWantedCriteria) && newConfig.tradeMaxWantedCriteria >= 1 && newConfig.tradeMaxWantedCriteria <= 3
       && Number.isInteger(newConfig.tradeMaxOffersPerListing) && newConfig.tradeMaxOffersPerListing >= 1 && newConfig.tradeMaxOffersPerListing <= 50
       && Number.isInteger(newConfig.tradeMaxOutgoingOffers) && newConfig.tradeMaxOutgoingOffers >= 1 && newConfig.tradeMaxOutgoingOffers <= 20
       && Number.isInteger(newConfig.tradeMaxCompletedPerWeek) && newConfig.tradeMaxCompletedPerWeek >= 1 && newConfig.tradeMaxCompletedPerWeek <= 20;
@@ -9615,6 +9631,7 @@ export function showTradeMarketScreen(onBack) {
   }
   function limits(){
     return {
+      maxActiveListings:Math.min(10,Math.max(1,Number(market?.limits?.maxActiveListings)||1)),
       maxWantedCriteria:Math.min(3,Math.max(1,Number(market?.limits?.maxWantedCriteria)||3)),
       maxOffersPerListing:Math.max(1,Number(market?.limits?.maxOffersPerListing)||10),
       maxOutgoingOffers:Math.max(1,Number(market?.limits?.maxOutgoingOffers)||5),
@@ -9623,7 +9640,7 @@ export function showTradeMarketScreen(onBack) {
   }
   function summary(){
     const l=limits();
-    return `<div class="trade-summary"><span class="trade-chip">${gameTextHtml('trade.summary.listing',{used:market?.ownListing?1:0})}</span><span class="trade-chip">${gameTextHtml('trade.summary.outgoing',{used:(market?.outgoingOffers||[]).length,max:l.maxOutgoingOffers})}</span><span class="trade-chip">${gameTextHtml('trade.summary.week',{used:Number(market?.completedThisWeek)||0,max:l.maxCompletedPerWeek})}</span></div><div class="trade-rules">${gameTextHtml('trade.rules',{maxCriteria:l.maxWantedCriteria})}<br><strong>${gameTextHtml('trade.rules.decksLabel')}:</strong> ${gameTextHtml('trade.rules.decksBody')}</div>`;
+    return `<div class="trade-summary"><span class="trade-chip">${gameTextHtml('trade.summary.listing',{used:(market?.ownListings||[]).length||(market?.ownListing?1:0),max:l.maxActiveListings})}</span><span class="trade-chip">${gameTextHtml('trade.summary.outgoing',{used:(market?.outgoingOffers||[]).length,max:l.maxOutgoingOffers})}</span><span class="trade-chip">${gameTextHtml('trade.summary.week',{used:Number(market?.completedThisWeek)||0,max:l.maxCompletedPerWeek})}</span></div><div class="trade-rules">${gameTextHtml('trade.rules',{maxCriteria:l.maxWantedCriteria})}<br><strong>${gameTextHtml('trade.rules.decksLabel')}:</strong> ${gameTextHtml('trade.rules.decksBody')}</div>`;
   }
   function tabs(){return `<div class="trade-tabs">${[['explore','trade.tab.explore'],['mine','trade.tab.mine'],['offers','trade.tab.offers'],['history','trade.tab.history']].map(([id,key])=>`<button class="trade-tab ${tab===id?'active':''}" data-trade-tab="${id}">${gameTextHtml(key)}</button>`).join('')}</div>`;}
   function bindTabs(){root.querySelectorAll('[data-trade-tab]').forEach(btn=>btn.addEventListener('click',()=>{closeTransientTradeModal();tab=btn.dataset.tradeTab;render();}));}
@@ -9660,15 +9677,15 @@ export function showTradeMarketScreen(onBack) {
   function renderExplore(){
     const listings=market?.listings||[], l=limits();
     if(!listings.length)return `<div class="trade-empty">${gameTextHtml('trade.empty')}</div>`;
-    const outgoing=new Set((market?.outgoingOffers||[]).map(o=>o.listingOwnerUid));
+    const outgoing=new Set((market?.outgoingOffers||[]).map(o=>String(o.listingId||'')));
     const cardsHtml=listings.map(item=>{
-      const eligible=tradeTradableEntries(market,item),already=outgoing.has(item.ownerUid),card=tradeCard(item.cardId);
+      const eligible=tradeTradableEntries(market,item),already=outgoing.has(String(item.listingId||'')),card=tradeCard(item.cardId);
       const search=tradeNormalizeSearch(card?.name);
       const colors=Array.isArray(card?.colors)&&card.colors.length?card.colors.join(','):'C';
       const type=tradeCardTypeKeys(card).join(',');
-      return `<article class="trade-listing-card" data-trade-listing-owner="${escapeHtml(item.ownerUid)}" data-trade-card-search="${escapeHtml(search)}" data-trade-card-colors="${escapeHtml(colors)}" data-trade-card-rarity="${escapeHtml(card?.rarity||'')}" data-trade-card-type="${escapeHtml(type)}">
+      return `<article class="trade-listing-card" data-trade-listing-owner="${escapeHtml(item.ownerUid)}" data-trade-listing-id="${escapeHtml(item.listingId)}" data-trade-card-search="${escapeHtml(search)}" data-trade-card-colors="${escapeHtml(colors)}" data-trade-card-rarity="${escapeHtml(card?.rarity||'')}" data-trade-card-type="${escapeHtml(type)}">
         <div class="trade-listing-visual">${tradeVisualCardHtml(item.cardId)}</div>
-        <div class="trade-listing-body"><div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-muted">${gameTextHtml('trade.explore.offeredBy',{username:item.ownerUsername,count:item.offerCount,max:l.maxOffersPerListing})}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div>${already?`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.alreadyOffered')}</div>`:eligible.length?`<button class="trade-btn trade-offer-cta" data-offer-owner="${escapeHtml(item.ownerUid)}">${gameTextHtml('trade.offer')}</button>`:`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.noMatching')}</div>`}</div>
+        <div class="trade-listing-body"><div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-muted">${gameTextHtml('trade.explore.offeredBy',{username:item.ownerUsername,count:item.offerCount,max:l.maxOffersPerListing})}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div>${already?`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.alreadyOffered')}</div>`:eligible.length?`<button class="trade-btn trade-offer-cta" data-offer-owner="${escapeHtml(item.ownerUid)}" data-offer-listing="${escapeHtml(item.listingId)}">${gameTextHtml('trade.offer')}</button>`:`<div class="trade-muted trade-listing-status">${gameTextHtml('trade.explore.noMatching')}</div>`}</div>
       </article>`;
     }).join('');
     return `<div class="trade-explore-layout"><section class="trade-explore-results"><div class="trade-results-meta"><span id="trade-filter-result-count"></span></div><div class="trade-market-grid" id="trade-explore-grid">${cardsHtml}</div><div class="trade-empty" id="trade-filter-empty" hidden>${gameTextHtml('trade.filter.noResults')}</div></section><aside class="trade-explore-sidebar">${renderExploreFilters()}</aside></div>`;
@@ -9698,7 +9715,7 @@ export function showTradeMarketScreen(onBack) {
     const onKey=e=>{if(e.key==='Escape')close();};
     const select=id=>{selected=String(id||'');modal.querySelectorAll('[data-trade-offer-choice]').forEach(node=>node.classList.toggle('is-selected',node.dataset.tradeOfferChoice===selected));const name=modal.querySelector('#trade-offer-selected-name');if(name)name.textContent=tradeCardName(selected);const confirm=modal.querySelector('#trade-offer-confirm');if(confirm)confirm.disabled=!selected;};
     modal.querySelectorAll('[data-trade-offer-choice]').forEach(node=>{const choose=e=>{if(e.target.closest('[data-trade-zoom-card]'))return;select(node.dataset.tradeOfferChoice);};node.addEventListener('click',choose);node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select(node.dataset.tradeOfferChoice);}});});
-    modal.querySelector('#trade-offer-confirm')?.addEventListener('click',()=>{if(!selected)return;close();void mutate(()=>createTradeOffer(listing.ownerUid,selected));});
+    modal.querySelector('#trade-offer-confirm')?.addEventListener('click',()=>{if(!selected)return;close();void mutate(()=>createTradeOffer(listing.ownerUid,listing.listingId,selected));});
     modal.addEventListener('click',close);modal.querySelectorAll('[data-trade-modal-close]').forEach(btn=>btn.addEventListener('click',close));document.addEventListener('keydown',onKey);
     document.body.appendChild(modal);transientModal=modal;hydrateTradeCards(modal);bindTradeZoom(modal);
   }
@@ -9708,7 +9725,7 @@ export function showTradeMarketScreen(onBack) {
     root.querySelector('#trade-filter-rarity')?.addEventListener('change',e=>{exploreFilters.rarity=e.target.value||'';applyExploreFilters();});
     root.querySelector('#trade-filter-type')?.addEventListener('change',e=>{exploreFilters.type=e.target.value||'';applyExploreFilters();});
     root.querySelector('#trade-filter-clear')?.addEventListener('click',()=>{exploreFilters.query='';exploreFilters.colors.clear();exploreFilters.rarity='';exploreFilters.type='';render();});
-    root.querySelectorAll('[data-offer-owner]').forEach(btn=>btn.addEventListener('click',()=>{const listing=(market?.listings||[]).find(x=>String(x.ownerUid)===String(btn.dataset.offerOwner));if(listing)openTradeOfferModal(listing);}));
+    root.querySelectorAll('[data-offer-listing]').forEach(btn=>btn.addEventListener('click',()=>{const listing=(market?.listings||[]).find(x=>String(x.listingId)===String(btn.dataset.offerListing));if(listing)openTradeOfferModal(listing);}));
     applyExploreFilters();
   }
 
@@ -9722,20 +9739,24 @@ export function showTradeMarketScreen(onBack) {
     return `<div class="trade-section-kicker">${gameTextHtml('trade.mine.offerLabel')}</div><div class="trade-explore-layout trade-publish-browser"><section class="trade-explore-results"><div class="trade-results-meta"><span id="trade-publish-filter-result-count"></span></div><div class="trade-publish-card-grid" id="trade-publish-grid">${cards}</div><div class="trade-empty" id="trade-publish-filter-empty" hidden>${gameTextHtml('trade.publishFilter.noResults')}</div></section><aside class="trade-explore-sidebar">${renderPublishFilters()}</aside></div><div class="trade-publish-selected">${gameTextHtml('trade.mine.selectedCard')}: <strong id="trade-publish-selected-name">${escapeHtml(tradeCardName(publishSelectedCardId))}</strong></div>`;
   }
   function renderMine(){
-    const item=market?.ownListing, l=limits();
-    if(item){
-      const offers=market?.receivedOffers||[];
-      return `<div class="trade-mine-layout"><section class="trade-panel trade-own-listing"><div class="trade-section-kicker">${gameTextHtml('trade.mine.active')}</div>${tradeVisualCardHtml(item.cardId,{className:'trade-own-listing-card'})}<div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div><button class="trade-btn danger" id="trade-cancel-listing">${gameTextHtml('trade.cancelListing')}</button></section><section class="trade-panel trade-received-offers"><h3>${gameTextHtml('trade.mine.received',{count:offers.length,max:l.maxOffersPerListing})}</h3>${offers.length?`<div class="trade-offer-list trade-received-offer-list">${offers.map(o=>`<article class="trade-received-offer"><div class="trade-muted trade-offer-user">${escapeHtml(o.offererUsername)}</div><div class="trade-received-card-wrap">${tradeVisualCardHtml(o.offeredCardId,{label:gameText('trade.pair.theyOffer'),className:'trade-received-offer-card',showName:true})}</div><div class="trade-row trade-offer-actions"><button class="trade-btn" data-accept-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.accept')}</button><button class="trade-btn secondary" data-reject-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.reject')}</button></div></article>`).join('')}</div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneReceived')}</div>`}</section></div>`;
-    }
+    const l=limits();
+    const items=(Array.isArray(market?.ownListings)&&market.ownListings.length)?market.ownListings:(market?.ownListing?[market.ownListing]:[]);
+    const activeHtml=items.length?`<div class="trade-own-listings">${items.map(item=>{
+      const offers=(market?.receivedOffers||[]).filter(o=>String(o.listingId)===String(item.listingId));
+      return `<div class="trade-mine-layout"><section class="trade-panel trade-own-listing"><div class="trade-section-kicker">${gameTextHtml('trade.mine.active')}</div>${tradeVisualCardHtml(item.cardId,{className:'trade-own-listing-card'})}<div class="trade-card-title">${escapeHtml(tradeCardName(item.cardId))}</div><div class="trade-busco"><strong>${gameTextHtml('trade.busco')}</strong><div class="trade-wanted-chips">${tradeListingWantedChipsHtml(item)}</div></div><button class="trade-btn danger" data-cancel-listing="${escapeHtml(item.listingId)}">${gameTextHtml('trade.cancelListing')}</button></section><section class="trade-panel trade-received-offers"><h3>${gameTextHtml('trade.mine.received',{count:offers.length,max:l.maxOffersPerListing})}</h3>${offers.length?`<div class="trade-offer-list trade-received-offer-list">${offers.map(o=>`<article class="trade-received-offer"><div class="trade-muted trade-offer-user">${escapeHtml(o.offererUsername)}</div><div class="trade-received-card-wrap">${tradeVisualCardHtml(o.offeredCardId,{label:gameText('trade.pair.theyOffer'),className:'trade-received-offer-card',showName:true})}</div><div class="trade-row trade-offer-actions"><button class="trade-btn" data-accept-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.accept')}</button><button class="trade-btn secondary" data-reject-offer="${escapeHtml(o.offerId)}">${gameTextHtml('trade.reject')}</button></div></article>`).join('')}</div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneReceived')}</div>`}</section></div>`;
+    }).join('')}</div>`:'';
+    if(items.length>=l.maxActiveListings)return activeHtml||`<div class="trade-empty">${gameTextHtml('trade.mine.noneTradable')}</div>`;
     const entries=tradeTradableEntries(market);
-    if(!entries.length)return `<div class="trade-empty">${gameTextHtml('trade.mine.noneTradable')}</div>`;
-    return `<div class="trade-panel trade-publish">${renderPublishCardChooser(entries)}<label class="trade-row trade-accept-any"><input type="checkbox" id="trade-accept-any"> ${gameTextHtml('trade.acceptAny')}</label><div id="trade-criteria-wrap">${Array.from({length:l.maxWantedCriteria},(_,i)=>criterionRow(i)).join('')}</div><div class="trade-row trade-publish-actions"><button class="trade-btn" id="trade-publish">${gameTextHtml('trade.publish')}</button></div></div>`;
+    const publishHtml=entries.length?`<div class="trade-panel trade-publish">${renderPublishCardChooser(entries)}<label class="trade-row trade-accept-any"><input type="checkbox" id="trade-accept-any"> ${gameTextHtml('trade.acceptAny')}</label><div id="trade-criteria-wrap">${Array.from({length:l.maxWantedCriteria},(_,i)=>criterionRow(i)).join('')}</div><div class="trade-row trade-publish-actions"><button class="trade-btn" id="trade-publish">${gameTextHtml('trade.publish')}</button></div></div>`:`<div class="trade-empty">${gameTextHtml('trade.mine.noneTradable')}</div>`;
+    return activeHtml+publishHtml;
   }
   function openTradeAcceptModal(offer){
-    if(!market?.ownListing||!offer)return;
+    if(!offer)return;
+    const ownItems=(Array.isArray(market?.ownListings)&&market.ownListings.length)?market.ownListings:(market?.ownListing?[market.ownListing]:[]);
+    const listing=ownItems.find(item=>String(item.listingId)===String(offer.listingId));if(!listing)return;
     closeTransientTradeModal();
     const modal=document.createElement('div');modal.className='trade-modal trade-accept-modal';modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');
-    modal.innerHTML=`<div class="trade-modal-panel trade-confirm-panel"><button type="button" class="trade-modal-close" data-trade-modal-close aria-label="${gameTextHtml('common.close')}">×</button><div class="trade-modal-title">${gameTextHtml('trade.acceptModal.title')}</div><div class="trade-confirm-copy">${gameTextHtml('trade.acceptModal.body',{username:offer.offererUsername})}</div>${tradePairHtml(market.ownListing.cardId,offer.offeredCardId,{leftLabel:gameText('trade.pair.youGive'),rightLabel:gameText('trade.pair.youReceive')})}<div class="trade-modal-actions"><button type="button" class="trade-btn secondary" data-trade-modal-close>${gameTextHtml('common.cancel')}</button><button type="button" class="trade-btn" id="trade-accept-confirm">${gameTextHtml('trade.acceptModal.confirm')}</button></div></div>`;
+    modal.innerHTML=`<div class="trade-modal-panel trade-confirm-panel"><button type="button" class="trade-modal-close" data-trade-modal-close aria-label="${gameTextHtml('common.close')}">×</button><div class="trade-modal-title">${gameTextHtml('trade.acceptModal.title')}</div><div class="trade-confirm-copy">${gameTextHtml('trade.acceptModal.body',{username:offer.offererUsername})}</div>${tradePairHtml(listing.cardId,offer.offeredCardId,{leftLabel:gameText('trade.pair.youGive'),rightLabel:gameText('trade.pair.youReceive')})}<div class="trade-modal-actions"><button type="button" class="trade-btn secondary" data-trade-modal-close>${gameTextHtml('common.cancel')}</button><button type="button" class="trade-btn" id="trade-accept-confirm">${gameTextHtml('trade.acceptModal.confirm')}</button></div></div>`;
     const close=()=>{document.removeEventListener('keydown',onKey);if(modal.isConnected)modal.remove();if(transientModal===modal)transientModal=null;};const onKey=e=>{if(e.key==='Escape')close();};
     modal.querySelector('.trade-modal-panel')?.addEventListener('click',e=>e.stopPropagation());modal.addEventListener('click',close);modal.querySelectorAll('[data-trade-modal-close]').forEach(btn=>btn.addEventListener('click',close));modal.querySelector('#trade-accept-confirm')?.addEventListener('click',()=>{close();void mutate(()=>acceptTradeOffer(offer.offerId),{profile:true});});document.addEventListener('keydown',onKey);document.body.appendChild(modal);transientModal=modal;hydrateTradeCards(modal);bindTradeZoom(modal);
   }
@@ -9768,7 +9789,7 @@ export function showTradeMarketScreen(onBack) {
     applyPublishFilters();
   }
   function bindMine(){
-    root.querySelector('#trade-cancel-listing')?.addEventListener('click',()=>{if(window.confirm(gameText('trade.confirm.cancelListing')))void mutate(()=>cancelTradeListing(market.ownListing.listingId));});
+    root.querySelectorAll('[data-cancel-listing]').forEach(btn=>btn.addEventListener('click',()=>{if(window.confirm(gameText('trade.confirm.cancelListing')))void mutate(()=>cancelTradeListing(btn.dataset.cancelListing));}));
     root.querySelectorAll('[data-reject-offer]').forEach(btn=>btn.addEventListener('click',()=>void mutate(()=>rejectTradeOffer(btn.dataset.rejectOffer))));
     root.querySelectorAll('[data-accept-offer]').forEach(btn=>btn.addEventListener('click',()=>{const offer=(market.receivedOffers||[]).find(o=>o.offerId===btn.dataset.acceptOffer);if(offer)openTradeAcceptModal(offer);}));
     root.querySelectorAll('[data-trade-publish-card]').forEach(node=>{const select=()=>{publishSelectedCardId=node.dataset.tradePublishCard;root.querySelectorAll('[data-trade-publish-card]').forEach(x=>x.classList.toggle('is-selected',x.dataset.tradePublishCard===publishSelectedCardId));const name=root.querySelector('#trade-publish-selected-name');if(name)name.textContent=tradeCardName(publishSelectedCardId);};node.addEventListener('click',e=>{if(e.target.closest('[data-trade-zoom-card]'))return;select();});node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select();}});});
@@ -10156,7 +10177,7 @@ export function showOptionsMenu(onBack) {
       try {
         const market = await getTradeMarket();
         const reservation = market?.ownReservation || {};
-        if (reservation.activeListingId || (Array.isArray(reservation.activeOfferIds) && reservation.activeOfferIds.length > 0)) {
+        if ((Array.isArray(reservation.activeListingIds) && reservation.activeListingIds.length > 0) || reservation.activeListingId || (Array.isArray(reservation.activeOfferIds) && reservation.activeOfferIds.length > 0)) {
           showSimpleAlertModal(gameText('account.delete.tradeReserved'));
           return;
         }
@@ -10177,7 +10198,7 @@ export function showOptionsMenu(onBack) {
           try {
             const market = await getTradeMarket();
             const reservation = market?.ownReservation || {};
-            if (reservation.activeListingId || (Array.isArray(reservation.activeOfferIds) && reservation.activeOfferIds.length > 0)) {
+            if ((Array.isArray(reservation.activeListingIds) && reservation.activeListingIds.length > 0) || reservation.activeListingId || (Array.isArray(reservation.activeOfferIds) && reservation.activeOfferIds.length > 0)) {
               logMsg(gameText('account.delete.tradeReserved'));
               return;
             }

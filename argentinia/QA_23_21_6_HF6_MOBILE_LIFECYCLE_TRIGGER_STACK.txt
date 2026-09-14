@@ -1,0 +1,49 @@
+QA — ARGENTINIA 23.21.6 HF6 — MOBILE LIFECYCLE + TRIGGER STACK
+
+A. DUAL TRIGGER ATTACK REGRESSION (incident reproduction)
+1. Solo vs El Tano. Control two permanents with simultaneous “cuando/si una criatura ataca” triggers (e.g. two Espíritu del Monte).
+2. Declare attackers so both abilities trigger together.
+3. Trigger-order modal must appear while priority is still LOCAL.
+4. Confirm order.
+5. Both abilities must already be visible in Stack BEFORE priority becomes rival.
+6. El Tano must react/pass normally. After both players pass, Stack resolves LIFO with no stall.
+7. Repeat with zero legal instant responses for El Tano and with a legal response in hand.
+8. Expected: no permanent “Esperando a El Tano…”, no stranded priorityPlayer=rival.
+
+B. BLOCK TRIGGER SYMMETRY
+1. Produce 2 simultaneous block-declaration triggers under local control.
+2. Confirm blockers and order triggers.
+3. All triggers must materialize before the new active-player priority window.
+4. Repeat on a Tano block declaration. No duplicate or skipped priority window.
+
+C. SHORT MOBILE SUSPEND (< 2 min)
+1. During Solo, record visible turn/phase/priority and effective duration.
+2. Background/lock phone for 20–60 s.
+3. Return.
+4. Expected: same live table soft-resumes; no recovery modal; if Tano owned priority he acts/passes once; no duplicate Tano action.
+5. Effective match duration must exclude hidden interval within normal measurement tolerance.
+6. No BOT_PRIORITY_STALL is emitted solely for hidden time.
+
+D. LONG MOBILE SUSPEND (>= 2 min)
+1. During a stable Solo state, lock/background phone >2 min.
+2. Return.
+3. Expected immediately: blocking “Reanudando partida suspendida…” cover; stale table cannot be played.
+4. Controlled reload occurs without native abandon confirmation.
+5. Existing “Partida activa” recovery flow appears; choose Reanudar.
+6. Match restores and El Tano continues normally.
+7. Hidden interval is excluded from effective match duration.
+
+E. SUSPEND DURING TRANSIENT MODAL
+1. Open a target/payment/trigger-order decision and background the page.
+2. Long-suspend and return.
+3. Expected: recovery uses the last STABLE checkpoint, not a half-serialized decision state.
+4. No corrupted pending selector or impossible Stack.
+
+F. TELEMETRY STACK-AWARE STALL
+1. In QA/dev only, intentionally suppress Tano scheduling while priorityPlayer=rival and Stack depth >0.
+2. Keep page visible and with no pending decision.
+3. Expected after watchdog threshold: BOT_PRIORITY_STALL automatic candidate includes stackLength > 0.
+4. Repeat while document hidden: no stall candidate from hidden time.
+
+PROMOTION REQUIREMENT
+All local CI remains green. Because this package is cumulative over HF5, Gate03 + Gate05 + Gate07 HF5 + Functions deploy/verify 41 + Admin playerStats sync are still required before GitHub promotion. HF6 itself does not change Rules or Functions.

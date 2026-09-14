@@ -75,6 +75,7 @@ const MAP = Object.freeze({
   TOURNAMENT_BRACKET_INVALID: ['internal', 'El fixture del torneo es inconsistente.'],
   TOURNAMENT_RECEIPT_CONFLICT: ['failed-precondition', 'La partida de torneo ya tiene un resultado incompatible.'],
   TRADE_LISTING_EXISTS: ['failed-precondition', 'Ya tenés una publicación activa en el Mercado de Pases.'],
+  TRADE_LISTING_LIMIT: ['resource-exhausted', 'Ya alcanzaste el máximo configurado de publicaciones activas.'],
   TRADE_LISTING_NOT_FOUND: ['not-found', 'No se encontró esa publicación activa.'],
   TRADE_LISTING_NOT_ACTIVE: ['failed-precondition', 'La publicación ya no está activa.'],
   TRADE_CARD_INVALID: ['invalid-argument', 'Esa carta no pertenece al pool válido de Argentinia.'],

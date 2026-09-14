@@ -32,12 +32,13 @@ assert.match(texts,/trade\.color\.R/);
 assert.match(texts,/trade\.acceptAny/);
 assert.match(texts,/trade\.confirm\.acceptSwap/);
 assert.match(texts,/trade\.history\.none/);
+assert.match(core,/maxActiveListings:\s*1/);
 assert.match(core,/maxWantedCriteria:\s*3/);
 assert.match(core,/maxOffersPerListing:\s*10/);
 assert.match(core,/maxOutgoingOffers:\s*5/);
 assert.match(core,/maxCompletedPerWeek:\s*3/);
 assert.match(core,/normalizeTradeLimits/);
-for(const field of ['tradeMaxWantedCriteria','tradeMaxOffersPerListing','tradeMaxOutgoingOffers','tradeMaxCompletedPerWeek']){
+for(const field of ['tradeMaxActiveListings','tradeMaxWantedCriteria','tradeMaxOffersPerListing','tradeMaxOutgoingOffers','tradeMaxCompletedPerWeek']){
   assert.match(store,new RegExp(field));
   assert.match(ui,new RegExp(`id: '${field}'`));
 }
@@ -56,6 +57,10 @@ assert.match(trade,/swapOneCard/);
 assert.match(trade,/tradeWeeklyLedgers/);
 assert.match(trade,/tradeReceipts/);
 assert.match(trade,/tradeReservations/);
+assert.match(trade,/ownListings/);
+assert.match(trade,/listingRefById/);
+assert.match(client,/listingId: String\(listingId \|\| ''\)/);
+assert.match(ui,/data-cancel-listing/);
 assert.match(trade,/closeOneOfferTx\(\{db,tx,uid,offerId,mode,nowMs=Date\.now\(\)\}\)/);
 for(const name of ['economyGetTradeMarket','economyCreateTradeListing','economyCancelTradeListing','economyCreateTradeOffer','economyCancelTradeOffer','economyRejectTradeOffer','economyAcceptTradeOffer']){
   assert.match(fn,new RegExp(`export const ${name}\\s*=\\s*onCall`));

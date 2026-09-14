@@ -1068,8 +1068,8 @@ html.argentinia-mobile.arg-mobile-portrait :is(#arg-mobile-zones-drawer,.gy-moda
    inline sin imports. Por eso puede verse aunque main.js/Firebase no lleguen a evaluar. */
 #arg-mobile-boot-fallback { display: none; }
 
-html.argentinia-mobile-bootstrap:not(.arg-mobile-engine-ready) #arg-mobile-boot-fallback,
-html.argentinia-mobile-bootstrap:not(.arg-mobile-shell-ready) #arg-mobile-boot-fallback {
+html.argentinia-mobile-bootstrap.arg-bootdiag-force:not(.arg-mobile-engine-ready) #arg-mobile-boot-fallback,
+html.argentinia-mobile-bootstrap.arg-bootdiag-force:not(.arg-mobile-shell-ready) #arg-mobile-boot-fallback {
   position: fixed;
   inset: 0;
   z-index: 2147483647;
@@ -1117,8 +1117,8 @@ html.argentinia-mobile-bootstrap:not(.arg-mobile-shell-ready) #arg-mobile-boot-f
 
 .arg-mobile-boot-portrait-copy { display: none; }
 @media (orientation: portrait) {
-  html.argentinia-mobile-bootstrap:not(.arg-mobile-engine-ready) .arg-mobile-boot-landscape-copy { display: none; }
-  html.argentinia-mobile-bootstrap:not(.arg-mobile-engine-ready) .arg-mobile-boot-portrait-copy { display: block; }
+  html.argentinia-mobile-bootstrap.arg-bootdiag-force:not(.arg-mobile-engine-ready) .arg-mobile-boot-landscape-copy { display: none; }
+  html.argentinia-mobile-bootstrap.arg-bootdiag-force:not(.arg-mobile-engine-ready) .arg-mobile-boot-portrait-copy { display: block; }
 }
 
 

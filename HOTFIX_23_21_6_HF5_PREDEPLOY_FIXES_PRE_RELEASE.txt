@@ -1,0 +1,21 @@
+ARGENTINIA 23.21.6 HF5 — PREDEPLOY FIXES — PRE-RELEASE
+
+Base: HF4 cumulative PRE-RELEASE. Engine 23.21.6; mp-23.19.2; econ-23.19.5.6; schema 10; Functions 41; Rules 23.13.86; physical pool 900 / published baseline 880.
+
+HF5 DELTAS
+1. Solo bot / stack pause: El Tano cannot act while counter-tax, scry/surveil or proliferate is awaiting an interactive choice. Scheduler + stale-timer double guard.
+2. Tienda + Mi Cofre: visual/text content is vertically centered in the available card body; action button is pinned to the bottom baseline.
+3. Ranking Global: Admin exclusion is username-independent. Backend derives excludeFromGlobalRanking from canonical ADMIN_EMAIL (pablogamero1@gmail.com) and never publishes email in playerStats. Run Admin stats sync once after deploy to backfill existing playerStats.
+4. Mercado de Pases: tradeMaxActiveListings is configurable in Admin, default 1, hard server cap 10. HF5 uses per-listing documents, activeListingIds reservations, listing-specific offers, selective cancel/accept, while retaining legacy activeListingId/ownListing mirrors.
+
+LOCAL CERTIFICATION
+- Functions tests: 17/17 PASS
+- Functions syntax: PASS
+- Canonical static contracts: 124/124 PASS
+- Functions count expected: 41
+- Firestore Rules: unchanged 23.13.86
+
+PROMOTION ORDER
+Gate03 -> Gate05 -> Gate07 HF5 -> deploy Functions -> verify 41 -> Admin playerStats sync -> upload GitHubSource -> GitHub Actions GREEN -> production smoke -> RELEASED.
+
+STATUS: PRE-RELEASE. Emulator gates and production deploy are NOT claimed as executed in this package.

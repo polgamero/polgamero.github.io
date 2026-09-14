@@ -14,6 +14,7 @@ export const TELEMETRY_STALE_AFTER_MS = 2 * 60 * 1000;
 
 const TRANSIENT_KEYS = new Set([
   'currentUser','userProfile','currentMatch','authInitialResolved','authIdentityReady',
+  'soloRuntimeSuspended','soloLifecycleSuspendedAtMs','soloLifecycleResumeGraceUntilMs','soloLifecycleReloading',
   'matchSyncBusy','multiplayerWaitingForReady','stackResolutionAuthority','autoZeroBlockersQueued',
   'priorityClockDeadlineLocalMs','priorityClockRemainingMs','priorityClockPausedLocal','priorityClockPauseReasonLocal',
   'pendingCastTransaction','pendingPreparedCastCosts','pendingAlternativeCostChoice','pendingPrivateZoneChoice',
@@ -36,6 +37,7 @@ const PENDING_KEYS = [...TRANSIENT_KEYS].filter(k => k.startsWith('pending') || 
 
 let active = null;
 let heartbeatTimer = null;
+let heartbeatContext = null;
 
 function nowMs() { return Date.now(); }
 function iso(ms = nowMs()) { return new Date(ms).toISOString(); }
@@ -100,7 +102,7 @@ export function createSoloGameId() { return makeId(); }
 
 export function getSoloEffectiveElapsedMs(atMs = nowMs()) {
   if (!active) return 0;
-  const live = Math.max(0, atMs - active.segmentStartedAtMs);
+  const live = active.suspended ? 0 : Math.max(0, atMs - active.segmentStartedAtMs);
   return Math.max(0, Math.floor(active.activeElapsedBaseMs + live));
 }
 
@@ -133,6 +135,8 @@ export function checkpointSoloRecovery(state, stack, options = {}) {
     startedAt: active.startedAt,
     lastCheckpointAt: iso(checkpointAtMs),
     activeElapsedMs: getSoloEffectiveElapsedMs(checkpointAtMs),
+    runtimeSuspended: !!active.suspended,
+    lifecycleSuspendedAt: active.suspendedAtMs ? iso(active.suspendedAtMs) : null,
     telemetrySessionId: options.telemetrySessionId || active.telemetrySessionId || null,
     rngState: getGameRngSnapshot(),
     state: serializableGameState(state),
@@ -153,8 +157,10 @@ function stopHeartbeat() {
 
 function startHeartbeat(getState, getStack, getTelemetrySessionId) {
   stopHeartbeat();
+  heartbeatContext = { getState, getStack, getTelemetrySessionId };
   heartbeatTimer = setInterval(() => {
     if (!active) return stopHeartbeat();
+    if (active.suspended) return;
     try {
       checkpointSoloRecovery(getState(), getStack(), {
         telemetrySessionId: typeof getTelemetrySessionId === 'function' ? getTelemetrySessionId() : null
@@ -163,6 +169,66 @@ function startHeartbeat(getState, getStack, getTelemetrySessionId) {
       console.warn('Heartbeat Solo no pudo guardar checkpoint:', err);
     }
   }, SOLO_RECOVERY_HEARTBEAT_MS);
+}
+
+function restartHeartbeatFromContext() {
+  if (!heartbeatContext || !active || active.suspended) return;
+  startHeartbeat(heartbeatContext.getState, heartbeatContext.getStack, heartbeatContext.getTelemetrySessionId);
+}
+
+// HF6 — browser lifecycle. Hidden time is NOT gameplay time. We freeze the effective clock
+// before Chrome/iOS may throttle the page and stop the heartbeat so no late callback can
+// overwrite the last stable checkpoint after suspension.
+export function suspendSoloRecoverySession(state, stack, options = {}) {
+  if (!active || active.suspended || state?.currentMatch || state?.gameOver) {
+    return { suspended:false, suspendedAtMs:active?.suspendedAtMs || null, effectiveElapsedMs:getSoloEffectiveElapsedMs() };
+  }
+  const suspendedAtMs = nowMs();
+  const effectiveElapsedMs = getSoloEffectiveElapsedMs(suspendedAtMs);
+  active.activeElapsedBaseMs = effectiveElapsedMs;
+  active.segmentStartedAtMs = suspendedAtMs;
+  active.suspended = true;
+  active.suspendedAtMs = suspendedAtMs;
+  stopHeartbeat();
+
+  // Only promote a new gameplay checkpoint when the state is stable. If the page hides in
+  // the middle of a target/order/payment modal, keep the previous stable state instead of
+  // serializing a half-finished transition.
+  let checkpointSaved = false;
+  if (isSoloRecoveryStable(state)) {
+    checkpointSaved = checkpointSoloRecovery(state, stack, {
+      force:true,
+      telemetrySessionId: options.telemetrySessionId || active.telemetrySessionId || null
+    });
+  } else {
+    // Preserve the old stable state/stack, but freeze its effective-time metadata so a tab
+    // killed by the OS cannot later count the whole background interval as played time.
+    try {
+      const raw = localStorage.getItem(SOLO_RECOVERY_STORAGE_KEY);
+      const candidate = raw ? JSON.parse(raw) : null;
+      if (candidate?.soloGameId === active.soloGameId && candidate?.status === 'active') {
+        candidate.activeElapsedMs = effectiveElapsedMs;
+        candidate.runtimeSuspended = true;
+        candidate.lifecycleSuspendedAt = iso(suspendedAtMs);
+        candidate.telemetrySessionId = options.telemetrySessionId || candidate.telemetrySessionId || active.telemetrySessionId || null;
+        persist(candidate);
+      }
+    } catch (err) {
+      console.warn('No se pudo congelar metadata de lifecycle Solo:', err);
+    }
+  }
+  return { suspended:true, suspendedAtMs, effectiveElapsedMs, checkpointSaved };
+}
+
+export function resumeSoloRecoverySession() {
+  if (!active || !active.suspended) return { resumed:false, hiddenForMs:0, resumedAtMs:null };
+  const resumedAtMs = nowMs();
+  const hiddenForMs = Math.max(0, resumedAtMs - (active.suspendedAtMs || resumedAtMs));
+  active.suspended = false;
+  active.suspendedAtMs = null;
+  active.segmentStartedAtMs = resumedAtMs;
+  restartHeartbeatFromContext();
+  return { resumed:true, hiddenForMs, resumedAtMs, effectiveElapsedMs:getSoloEffectiveElapsedMs(resumedAtMs) };
 }
 
 export function beginSoloRecoverySession({ soloGameId, state, stack, deckLabel, ownerUid, playerName, telemetrySessionId, getState, getStack, getTelemetrySessionId }) {
@@ -177,7 +243,9 @@ export function beginSoloRecoverySession({ soloGameId, state, stack, deckLabel, 
     activeElapsedBaseMs: 0,
     segmentStartedAtMs: started,
     lastCheckpointAtMs: started,
-    telemetrySessionId: telemetrySessionId || null
+    telemetrySessionId: telemetrySessionId || null,
+    suspended: false,
+    suspendedAtMs: null
   };
   checkpointSoloRecovery(state, stack, { force: true, telemetrySessionId });
   if (getState && getStack) startHeartbeat(getState, getStack, getTelemetrySessionId);
@@ -196,7 +264,9 @@ export function activateResumedSoloRecovery(candidate, { state, stack, telemetry
     activeElapsedBaseMs: Math.max(0, Number(candidate.activeElapsedMs) || 0),
     segmentStartedAtMs: resumedAt,
     lastCheckpointAtMs: resumedAt,
-    telemetrySessionId: telemetrySessionId || null
+    telemetrySessionId: telemetrySessionId || null,
+    suspended: false,
+    suspendedAtMs: null
   };
   checkpointSoloRecovery(state, stack, { force: true, telemetrySessionId });
   if (getState && getStack) startHeartbeat(getState, getStack, getTelemetrySessionId);
@@ -256,6 +326,7 @@ export function restoreSoloRecoveryState(candidate, state) {
 
 export function clearSoloRecovery() {
   stopHeartbeat();
+  heartbeatContext = null;
   active = null;
   try { localStorage.removeItem(SOLO_RECOVERY_STORAGE_KEY); } catch {}
 }

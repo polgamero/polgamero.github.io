@@ -245,6 +245,9 @@ export const AUDIO_CATALOG = Object.freeze({
 });
 
 const DEFAULT_SETTINGS = Object.freeze({
+  // HF7: quick speaker buttons are a MASTER mute overlay. Individual Music/SFX preferences
+  // remain independent and survive mute/unmute untouched.
+  masterMuted: false,
   musicEnabled: true,
   musicVolume: 0.25,
   sfxEnabled: true,
@@ -259,6 +262,7 @@ const clamp01 = (value, fallback) => {
 
 export function normalizeAudioSettings(raw = {}) {
   return {
+    masterMuted: raw?.masterMuted === true,
     musicEnabled: raw?.musicEnabled !== false,
     musicVolume: clamp01(raw?.musicVolume, DEFAULT_SETTINGS.musicVolume),
     sfxEnabled: raw?.sfxEnabled !== false,
@@ -289,6 +293,48 @@ let desiredScene = 'silent'; // 'menu' | 'solo' | 'multiplayer' | 'silent'
 let audioUnlockedByGesture = false;
 let pausedForVisibility = false;
 let fadeSerial = 0;
+
+// 23.21.6 HF7 — master audio contract. The quick speaker icon must silence BOTH music and
+// SFX without destroying the user's independent Music/SFX settings. Hard silence is synchronous
+// so WebKit/background throttling cannot leave an already-playing node audible after 🔇.
+function managedMusicElements() {
+  const nodes = [];
+  if (musicElement) nodes.push(musicElement);
+  if (typeof document !== 'undefined') {
+    document.querySelectorAll?.('audio[data-argentinia-audio-role="music"]').forEach(node => {
+      if (node && !nodes.includes(node)) nodes.push(node);
+    });
+  }
+  return nodes;
+}
+
+function managedSfxElements() {
+  if (typeof document === 'undefined') return [];
+  return Array.from(document.querySelectorAll?.('audio[data-argentinia-audio-role="sfx"]') || []);
+}
+
+function hardSilenceManagedMusic() {
+  fadeSerial += 1;
+  for (const audio of managedMusicElements()) {
+    try { audio.muted = true; } catch {}
+    try { audio.volume = 0; } catch {}
+    try { audio.pause(); } catch {}
+  }
+}
+
+function hardSilenceManagedSfx({ remove = true } = {}) {
+  for (const audio of managedSfxElements()) {
+    try { audio.muted = true; } catch {}
+    try { audio.volume = 0; } catch {}
+    try { audio.pause(); } catch {}
+    if (remove) { try { audio.remove(); } catch {} }
+  }
+}
+
+function armManagedMusicForPlayback(audio = musicElement) {
+  if (!audio) return;
+  try { audio.muted = !!settings.masterMuted || !settings.musicEnabled; } catch {}
+}
 
 function persistSettings() {
   if (typeof localStorage === 'undefined') return;
@@ -328,6 +374,7 @@ function ensureMusicElement(trackId = 'menu') {
   audio.preload = track.preload || 'metadata';
   audio.setAttribute('playsinline', '');
   audio.volume = 0;
+  audio.muted = !!settings.masterMuted || !settings.musicEnabled;
 
   for (const sourceDef of track.sources || []) {
     const source = document.createElement('source');
@@ -389,17 +436,21 @@ function fadeMusicTo(targetVolume, durationMs = 700, pauseAtEnd = false) {
 async function syncMusicToDesiredScene({ fadeMs = 700 } = {}) {
   const trackId = MUSIC_SCENE_TRACKS[desiredScene] || null;
   const shouldPlay = !!trackId
+    && !settings.masterMuted
     && settings.musicEnabled
     && audioUnlockedByGesture
     && (typeof document === 'undefined' || !document.hidden);
 
   if (!shouldPlay) {
-    if (musicElement && !musicElement.paused) fadeMusicTo(0, Math.min(400, fadeMs), true);
+    // Explicit channel disable or master mute is an immediate authority boundary.
+    if (settings.masterMuted || !settings.musicEnabled) hardSilenceManagedMusic();
+    else if (musicElement && !musicElement.paused) fadeMusicTo(0, Math.min(400, fadeMs), true);
     return false;
   }
 
   const audio = ensureMusicElement(trackId);
   if (!audio) return false;
+  armManagedMusicForPlayback(audio);
 
   try {
     const result = audio.play();
@@ -466,14 +517,35 @@ export function silenceAudio() {
 export function setMusicEnabled(enabled) {
   settings = { ...settings, musicEnabled: !!enabled };
   persistSettings();
+  if (!settings.musicEnabled || settings.masterMuted) hardSilenceManagedMusic();
+  else {
+    managedMusicElements().forEach(armManagedMusicForPlayback);
+    void syncMusicToDesiredScene({ fadeMs: 250 });
+  }
   emitSettingsChanged();
-  if (settings.musicEnabled) void syncMusicToDesiredScene({ fadeMs: 250 });
-  else if (musicElement && !musicElement.paused) fadeMusicTo(0, 250, true);
   return settings.musicEnabled;
 }
 
 export function toggleMusic() {
   return setMusicEnabled(!settings.musicEnabled);
+}
+
+export function setMasterMuted(muted) {
+  settings = { ...settings, masterMuted: !!muted };
+  persistSettings();
+  if (settings.masterMuted) {
+    hardSilenceManagedMusic();
+    hardSilenceManagedSfx();
+  } else {
+    managedMusicElements().forEach(armManagedMusicForPlayback);
+    if (settings.musicEnabled) void syncMusicToDesiredScene({ fadeMs: 180 });
+  }
+  emitSettingsChanged();
+  return settings.masterMuted;
+}
+
+export function toggleMasterMute() {
+  return setMasterMuted(!settings.masterMuted);
 }
 
 export function setMusicVolume(volume) {
@@ -489,6 +561,7 @@ export function setMusicVolume(volume) {
 export function setSfxEnabled(enabled) {
   settings = { ...settings, sfxEnabled: !!enabled };
   persistSettings();
+  if (!settings.sfxEnabled) hardSilenceManagedSfx();
   emitSettingsChanged();
   return settings.sfxEnabled;
 }
@@ -501,10 +574,11 @@ export function setSfxVolume(volume) {
 }
 
 export function playSfx(id, options = {}) {
-  if (!settings.sfxEnabled || settings.sfxVolume <= 0 || typeof document === 'undefined') return null;
+  if (settings.masterMuted || !settings.sfxEnabled || settings.sfxVolume <= 0 || typeof document === 'undefined') return null;
   const def = AUDIO_CATALOG.sfx[id];
   if (!def) return null;
   const audio = document.createElement('audio');
+  audio.dataset.argentiniaAudioRole = 'sfx';
   audio.preload = 'auto';
   const relativeVolumeRaw=Number(options?.volumeMultiplier ?? options?.relativeVolume ?? 1);
   const relativeVolume=Number.isFinite(relativeVolumeRaw) ? Math.max(0,Math.min(2,relativeVolumeRaw)) : 1;
@@ -529,7 +603,8 @@ export function getAudioRuntimeStatus() {
   return {
     desiredScene,
     musicTrackId: currentMusicTrackId,
-    musicPlaying: !!musicElement && !musicElement.paused,
+    musicPlaying: !!musicElement && !musicElement.paused && !musicElement.muted,
+    musicMuted: !!musicElement?.muted,
     currentTime: musicElement?.currentTime || 0,
     unlocked: audioUnlockedByGesture,
     ...getAudioSettings()

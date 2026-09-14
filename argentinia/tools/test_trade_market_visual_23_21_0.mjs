@@ -61,7 +61,7 @@ assert.match(ui,/openTradeOfferModal/);
 assert.match(ui,/tradeTradableEntries\(market,listing\)/);
 assert.match(ui,/trade-offer-choice-grid/);
 assert.match(ui,/data-trade-offer-choice/);
-assert.match(ui,/createTradeOffer\(listing\.ownerUid,selected\)/);
+assert.match(ui,/createTradeOffer\(listing\.ownerUid,listing\.listingId,selected\)/);
 
 // Mi Publicación: own listing appears once; received offers show only the incoming card +
 // Aceptar/Rechazar instead of rendering TU PUBLICACIÓN again on every row.

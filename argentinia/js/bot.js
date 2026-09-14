@@ -48,7 +48,8 @@ import {
   captureLandTappedForManaEvent,
   flushDeferredLandManaTriggers,
   payBotActivatedDiscardCost,
-  dispatchGameEvent
+  dispatchGameEvent,
+  waitForTriggerOrdering
 } from './main.js';
 
 import { moveBattlefieldCardToZone, moveCounteredStackItemToDestination, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost } from './utils.js';
@@ -1799,6 +1800,28 @@ export async function castSuspendedCardForBot(original) {
   logMsg(gameText('bot.stack.entered',{card:card.name})); render(); return true;
 }
 
+// HF5: interactive stack resolutions (counter tax / scry-surveil / proliferate) are
+// decisions inside an already-resolving object, NOT new priority windows. A bot timer that
+// was scheduled before the pause must not sneak another spell onto the stack.
+function hasBotInteractiveResolutionPending() {
+  return !!(state.pendingCounterUnlessPay || state.pendingScrySurveilChoice || state.pendingProliferateChoice);
+}
+
+function botRuntimeIsHidden() {
+  return typeof document !== 'undefined' && document.visibilityState === 'hidden';
+}
+
+function hasBotRuntimeBlocker() {
+  return !!(
+    state.soloRuntimeSuspended ||
+    botRuntimeIsHidden() ||
+    state.pendingLegendChoice ||
+    state.pendingTriggerOrderChoice ||
+    state.sbaKernelRunning ||
+    hasBotInteractiveResolutionPending()
+  );
+}
+
 // NUEVO: SISTEMA DE PRIORIDAD DEL BOT (Remplaza startRivalTurn)
 export async function takeBotPriorityAction() {
   // FASE 4, ETAPA 4: mismo criterio que checkRivalCounterOrResponse acá arriba — durante
@@ -1807,9 +1830,13 @@ export async function takeBotPriorityAction() {
   // propia prioridad y publica el resultado — este cliente solo lo refleja (ver
   // startListeningToMatch, Etapa 3), nunca lo simula.
   if (state.currentMatch) return;
-  if (state.gameOver || state.priorityPlayer !== 'rival') return;
+  if (state.gameOver || state.priorityPlayer !== 'rival' || hasBotRuntimeBlocker()) return;
 
   await botThinkDelay(600); // El Tano "piensa"
+
+  // A delayed callback may have started before the resolver opened an interactive choice.
+  // Re-check after thinking so a stale timer cannot act during that pause.
+  if (state.currentMatch || state.gameOver || state.priorityPlayer !== 'rival' || hasBotRuntimeBlocker()) return;
 
   // 1. Responder a la pila
   if (spellStack.length > 0) {
@@ -2473,12 +2500,15 @@ export async function takeBotPriorityAction() {
     if (attackCount > 0) {
       queueDeclaredAttackTriggers(declaredAttackers, false);
       logMsg(gameText('bot.attack.count', { count: attackCount }));
+      // HF6: el bot tampoco cede prioridad antes de que sus triggers de ataque estén
+      // realmente apilados; evita carreras simétricas contra clicks humanos rápidos.
+      await waitForTriggerOrdering();
     }
     else logMsg(gameText('bot.noAttack'));
     state.rivalAttackersDeclaredThisTurn = attackCount;
     
     render();
-    passPriority('rival'); // Termina de declarar atacantes
+    await passPriority('rival'); // Termina de declarar atacantes
     return;
   }
 
@@ -2495,6 +2525,7 @@ export async function takeBotPriorityAction() {
         blockerCount: state.rivalCombat.filter(unit => unit.blockingIndex !== null && unit.blockingIndex !== undefined).length
       });
       queueDeclaredBlockTriggers(state.rivalCombat, false);
+      await waitForTriggerOrdering();
 
       // 23.13.39 — declarar bloqueadores NO es un pase de prioridad. 23.13.38 heredaba el
       // pase que el atacante había hecho para cederle el control al bot; el passPriority

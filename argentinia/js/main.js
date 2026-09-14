@@ -5,7 +5,7 @@ import { checkRivalCounterOrResponse, takeBotPriorityAction, castSuspendedCardFo
 import { setupBoardLayout, teardownBoardLayout, render, logMsg, els, showGameOverOverlay, showSimpleAlertModal, getTargetRules, showDeckSelectionModal, showPlayDeckPickerModal, showMainMenu, showTournamentScreen, updateAccountUI, showMulliganModal, showBottomCardsModal, showLoyaltyAbilityModal, showXValueModal, showModalSpellChoice, showScrySurveilModal, showProliferateModal, showKickerModal, showAbandonConfirmModal, showReconnectPrompt, showSoloRecoveryPrompt, showCounterTaxDecisionModal, showWardDecisionModal, showSacrificeEffectModal, showGraveyardChoiceModal, showHandDiscardChoiceModal, showActivatedAbilityModal, showMultiplayerReadyBarrier, hideMultiplayerReadyBarrier, showMultiplayerSyncBarrier, hideMultiplayerSyncBarrier, showAlternativeCostModal, showPrivateZoneChoiceModal, showDailyLoginRewardModal, showManaColorChoiceModal, showManaOrAbilityChoiceModal, showLandSearchModal, showLibrarySearchModal, showLegendRuleChoiceModal, showTriggerOrderModal, showCostPaymentResourceModal, showPhyrexianCostChoiceModal, showCopyRetargetModal, showStackObjectChoiceModal, showSuspendCastModal, showSuspendedCardChoiceModal, showCreatureTypeChoiceModal } from './ui.js';
 import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseManaCost, sumManaCosts, getLandColor, sleep, shuffle, moveBattlefieldCardToZone, isSacrificeCandidate, removeRandomCardsFromHand, moveCounteredStackItemToDestination, createRemoteDecisionQueue, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, normalizeCompositeCost, getCompositeCostManaString, cardMatchesDiscardCost, describeCompositeCost, compositeCostHasNonMana, combineManaCostStrings, getProliferateCandidates } from './utils.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
-import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork } from './turnManager.js';
+import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork, ensureSoloBotPriorityScheduled, invalidateSoloBotPrioritySchedule } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
 import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence, beginTournamentMatch, forfeitTournament } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
@@ -22,7 +22,7 @@ import { applyGameTextOverrides, gameText, setGameTextRuntimeVariablesProvider }
 import { POOL_BASELINE } from './poolContract.js';
 import { chooseSoloStartingSide, normalizeStartingRole, startingSideForRole } from './startingPlayer.js';
 import { showStartingCoinToss } from './startingCoin.js';
-import { createSoloGameId, beginSoloRecoverySession, activateResumedSoloRecovery, loadSoloRecoveryCandidate, isSoloRecoveryCompatible, isSoloRecoveryExpired, restoreSoloRecoveryState, checkpointSoloRecovery, clearSoloRecovery, finishSoloRecovery, getSoloEffectiveElapsedMs, getActiveSoloGameId, hasActiveSoloRecovery } from './soloRecovery.js';
+import { createSoloGameId, beginSoloRecoverySession, activateResumedSoloRecovery, loadSoloRecoveryCandidate, isSoloRecoveryCompatible, isSoloRecoveryExpired, restoreSoloRecoveryState, checkpointSoloRecovery, clearSoloRecovery, finishSoloRecovery, getSoloEffectiveElapsedMs, getActiveSoloGameId, hasActiveSoloRecovery, suspendSoloRecoverySession, resumeSoloRecoverySession } from './soloRecovery.js';
 import { maybeShowAnnouncementPopup } from './campaignsUI.js';
 import { beginGameRngSession, gameRandom, gameSeedFromLocation, getGameRngSnapshot } from './gameRng.js';
 import { enterGameplayAudio } from './audioManager.js';
@@ -121,6 +121,87 @@ function startMultiplayerPresenceHeartbeat(matchId, myRole) {
 
 function currentSoloLifecycleDurationMs() {
   return hasActiveSoloRecovery() ? getSoloEffectiveElapsedMs() : (getTelemetryStatus().elapsedMs || 0);
+}
+
+const SOLO_LONG_SUSPEND_MS = 2 * 60 * 1000;
+const SOLO_RESUME_WATCHDOG_GRACE_MS = 3500;
+
+function isLifecycleManagedSoloGame() {
+  return !state.gameOver && !state.currentMatch && !state.currentTournamentMatch && hasActiveSoloRecovery();
+}
+
+function beginSoloRuntimeSuspend(reason = 'visibility_hidden') {
+  if (!isLifecycleManagedSoloGame() || state.soloRuntimeSuspended) return null;
+  state.soloRuntimeSuspended = true;
+  state.soloLifecycleSuspendedAtMs = Date.now();
+  state.soloLifecycleResumeGraceUntilMs = 0;
+  invalidateSoloBotPrioritySchedule();
+  const result = suspendSoloRecoverySession(state, spellStack, {
+    telemetrySessionId: getTelemetryStatus().sessionId
+  });
+  recordTelemetryEvent('solo_lifecycle_suspended', {
+    reason,
+    suspendedAtMs: state.soloLifecycleSuspendedAtMs,
+    effectiveElapsedMs: result?.effectiveElapsedMs || currentSoloLifecycleDurationMs(),
+    checkpointSaved: !!result?.checkpointSaved,
+    turnCount: state.turnCount,
+    phase: state.phase,
+    priorityPlayer: state.priorityPlayer,
+    stackDepth: spellStack.length
+  });
+  return result;
+}
+
+function resumeSoloRuntimeAfterShortSuspend(hiddenForMs) {
+  const recovery = resumeSoloRecoverySession();
+  state.soloRuntimeSuspended = false;
+  state.soloLifecycleSuspendedAtMs = null;
+  state.soloLifecycleResumeGraceUntilMs = Date.now() + SOLO_RESUME_WATCHDOG_GRACE_MS;
+  recordTelemetryEvent('solo_lifecycle_soft_resumed', {
+    hiddenForMs: Math.max(0, Number(hiddenForMs) || recovery?.hiddenForMs || 0),
+    effectiveElapsedMs: recovery?.effectiveElapsedMs || currentSoloLifecycleDurationMs(),
+    turnCount: state.turnCount,
+    phase: state.phase,
+    priorityPlayer: state.priorityPlayer,
+    stackDepth: spellStack.length
+  });
+  // Re-arm exactly one Tano callback if the page froze after he had received priority.
+  // The scheduler itself re-checks all pending/hidden guards before acting.
+  ensureSoloBotPriorityScheduled(220);
+}
+
+function forceSoloRecoveryReloadAfterLongSuspend(hiddenForMs) {
+  if (state.soloLifecycleReloading) return;
+  state.soloLifecycleReloading = true;
+  state.soloRuntimeSuspended = true;
+  invalidateSoloBotPrioritySchedule();
+  recordTelemetryEvent('solo_lifecycle_long_suspend_reload', {
+    hiddenForMs: Math.max(0, Number(hiddenForMs) || 0),
+    thresholdMs: SOLO_LONG_SUSPEND_MS,
+    effectiveElapsedMs: currentSoloLifecycleDurationMs(),
+    turnCount: state.turnCount,
+    phase: state.phase,
+    priorityPlayer: state.priorityPlayer,
+    stackDepth: spellStack.length
+  }, 'warning');
+  showMatchInitializationOverlay(gameText('solo.lifecycle.reloading'));
+  // Yield one paint so the player never gets an interactive stale table between thaw and reload.
+  requestAnimationFrame(() => setTimeout(() => window.location.reload(), 0));
+}
+
+function handleSoloVisibilityLifecycle() {
+  if (document.visibilityState === 'hidden') {
+    beginSoloRuntimeSuspend('visibility_hidden');
+    return;
+  }
+  if (document.visibilityState !== 'visible' || !state.soloRuntimeSuspended || !isLifecycleManagedSoloGame()) return;
+  const suspendedAt = Number(state.soloLifecycleSuspendedAtMs) || Date.now();
+  const hiddenForMs = Math.max(0, Date.now() - suspendedAt);
+  if (hiddenForMs >= SOLO_LONG_SUSPEND_MS) {
+    forceSoloRecoveryReloadAfterLongSuspend(hiddenForMs);
+    return;
+  }
+  resumeSoloRuntimeAfterShortSuspend(hiddenForMs);
 }
 
 
@@ -450,6 +531,11 @@ export const state = {
   // 23.7.2: barrera puramente local hasta que ambos clientes terminaron deck+mulligan.
   multiplayerWaitingForReady: false,
   autoZeroBlockersQueued: false,
+  // HF6 — lifecycle Solo local-only. Nunca viaja por matchSync/recovery serializado.
+  soloRuntimeSuspended: false,
+  soloLifecycleSuspendedAtMs: null,
+  soloLifecycleResumeGraceUntilMs: 0,
+  soloLifecycleReloading: false,
   // 23.15.1 — decisiones reglamentarias sin prioridad.
   pendingLegendChoice: null,
   pendingTriggerOrderChoice: null,
@@ -800,11 +886,11 @@ setGameTextRuntimeVariablesProvider(() => ({ rival: getRivalName() }));
 // así que sacarlo de ahí no cambia el comportamiento en absoluto.
 
 let matchInitializationSafetyTimer = null;
-function showMatchInitializationOverlay() {
+function showMatchInitializationOverlay(customLabel = null) {
   const overlay = document.getElementById('match-loading-overlay');
   if (!overlay) return;
   const label = overlay.querySelector('.match-loading-label');
-  if (label) label.textContent = gameText('game.initializing');
+  if (label) label.textContent = customLabel || gameText('game.initializing');
   overlay.hidden = false;
   if (matchInitializationSafetyTimer !== null) clearTimeout(matchInitializationSafetyTimer);
   // Fail-open visual guard: a thrown initialization error must never leave a permanent black screen.
@@ -1012,7 +1098,7 @@ function hookGameplayButtons() {
   // el match multiplayer reanudable; la penalidad sólo ocurre ante Abandonar explícito o
   // cuando un recovery Solo vence tras 24 h y el jugador vuelve.
   window.addEventListener('beforeunload', (event) => {
-    if (state.gameOver) return;
+    if (state.gameOver || state.soloLifecycleReloading) return;
     if (state.currentTournamentMatch) { try { sessionStorage.setItem('argentinia.tournament.openAfterReload.v1','1'); } catch {} }
     if (hasActiveSoloRecovery()) {
       checkpointSoloRecovery(state, spellStack, { telemetrySessionId: getTelemetryStatus().sessionId });
@@ -1024,10 +1110,13 @@ function hookGameplayButtons() {
   });
   window.addEventListener('pagehide', () => {
     if (!state.gameOver && state.currentTournamentMatch) { try { sessionStorage.setItem('argentinia.tournament.openAfterReload.v1','1'); } catch {} }
-    if (!state.gameOver && hasActiveSoloRecovery()) {
+    if (!state.gameOver && hasActiveSoloRecovery() && !state.soloRuntimeSuspended) {
       checkpointSoloRecovery(state, spellStack, { telemetrySessionId: getTelemetryStatus().sessionId });
     }
   });
+  // HF6 — Chrome Android / iOS can freeze JS timers while the page remains visually alive.
+  // Short hides soft-resume; >=2 min forces a clean reload into the existing recovery modal.
+  document.addEventListener('visibilitychange', handleSoloVisibilityLifecycle);
 }
 
 async function initGame(deckSource, options = {}) {
@@ -1164,7 +1253,7 @@ async function initGame(deckSource, options = {}) {
       logMsg(gameText('game.start.yourTurnHint'));
     } else {
       logMsg(gameText('game.start.waitingRival'));
-      setTimeout(() => { takeBotPriorityAction().catch(err => console.error(`Falló el primer turno de ${getRivalName()}:`, err)); }, 180);
+      ensureSoloBotPriorityScheduled(180);
     }
   };
 
@@ -1259,7 +1348,7 @@ async function resumeSoloRecoveryGame(candidate) {
   render();
   logMsg(gameText('solo.recovery.restored'));
   if (!state.gameOver && state.priorityPlayer === 'rival') {
-    setTimeout(() => takeBotPriorityAction().catch(err => console.error(`Falló la reanudación de prioridad de ${getRivalName()}:`, err)), 180);
+    ensureSoloBotPriorityScheduled(180);
   }
 }
 
@@ -1665,11 +1754,10 @@ async function boot() {
         // Startup overlay queue: Daily Rewards tiene prioridad. Sólo cuando el usuario
         // termina con ese modal se evalúa el anuncio activo con la identidad real cargada.
         // Así un usuario autenticado nunca ve el anuncio como "guest" ni se superponen overlays.
-        let dailyModalResult = null;
         if (dailyResult?.login?.newCalendarLogin) {
-          dailyModalResult = await showDailyLoginRewardModal(dailyResult.login);
+          await showDailyLoginRewardModal(dailyResult.login);
         }
-        if (serial === authIdentitySerial && state.currentUser && dailyModalResult !== 'view_rewards') {
+        if (serial === authIdentitySerial && state.currentUser) {
           await maybeShowAnnouncementPopup({ currentUser: state.currentUser });
         }
         if (serial !== authIdentitySerial || !state.currentUser) return profile;

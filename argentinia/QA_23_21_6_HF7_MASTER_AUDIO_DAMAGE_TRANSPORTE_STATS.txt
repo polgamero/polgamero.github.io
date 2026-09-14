@@ -1,0 +1,31 @@
+QA — ARGENTINIA 23.21.6 HF7 — MASTER AUDIO + DAMAGE TRANSIENTS + TRANSPORTE P/T
+
+A. MASTER QUICK MUTE
+1. Main menu with Music=ON and SFX=ON: tap 🔊. Expected: icon becomes 🔇, current music stops immediately, subsequent UI/game SFX are silent.
+2. Tap 🔇 again. Expected: icon becomes 🔊; music resumes if Music remains enabled; old SFX are not replayed; new SFX work.
+3. Set Music=OFF, SFX=ON in Options. Toggle master mute twice. Expected: Music remains OFF, SFX preference remains ON; master mute never rewrites either channel preference.
+4. Set Music=ON, SFX=OFF and repeat. Same preservation requirement.
+5. Reload while master-muted. Expected: master mute remains active.
+6. Repeat gameplay quick control next to REC. It must have exactly the same master semantics.
+
+B. iPHONE/WEBKIT DAMAGE TRANSIENT
+1. iPhone Chrome/Safari: receive unblocked combat damage from one creature. Expected: only the intended floating negative number appears and removes itself.
+2. Receive two sequential attackers to player (e.g. 1 then 5 damage). Expected: HP changes correctly; neither damage node remains stuck below badge.
+3. Background/foreground during the damage animation. Expected: no stale floating text survives indefinitely.
+4. Confirm visible combat log remains normal Spanish gameplay copy; no debug/internal label is rendered.
+
+C. TRANSPORTE PRINTED P/T GLOBAL
+1. Verify all 10 Transportes in Enciclopedia show lower-right printed P/T before being crewed.
+2. Verify the same cards in deckbuilder/My Decks and any deck/prebuilt preview show P/T.
+3. Verify pack/reward/card preview surfaces show P/T.
+4. In a live game, an uncrewed Transporte in support shows printed P/T but cannot attack/block as a creature solely because of the badge.
+5. Crew it. Expected: normal effective creature P/T pipeline takes over, including buffs/debuffs/damage.
+6. Verify non-creature non-vehicle artifacts still do NOT receive a P/T badge.
+
+D. REGRESSION
+1. Music/SFX sliders and independent toggles in Options still work.
+2. HF6 mobile lifecycle and dual-trigger stack regressions remain green.
+3. Run canonical fast suite and dedicated HF7 contract.
+
+PROMOTION REQUIREMENT
+HF7 itself is client-only. Because package is cumulative over HF5, execute the existing HF5 Gate03/Gate05/Gate07 + Functions deploy/verify + playerStats sync before GitHub/client promotion.

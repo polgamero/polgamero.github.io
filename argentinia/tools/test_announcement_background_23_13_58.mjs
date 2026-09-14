@@ -7,7 +7,7 @@ const must = [
   'class="campaign-popup-overlay"',
   '.campaign-popup-bg{position:absolute',
   'object-fit:cover',
-  "bg.addEventListener('error',()=>bg.remove(),{once:true})"
+  "bg.addEventListener('error',()=>{bg.hidden=true;bg.removeAttribute('src');})"
 ];
 for (const needle of must) {
   if (!src.includes(needle)) throw new Error(`Missing announcement background contract: ${needle}`);

@@ -337,7 +337,7 @@ function injectAnimationStyles() {
     .arg-anim-impact-ring.deathtouch{border-color:rgba(180,88,255,.95);box-shadow:0 0 22px rgba(130,45,230,.88),inset 0 0 14px rgba(220,175,255,.5);}
     .arg-anim-impact-ring.first-strike{border-color:rgba(255,247,182,.98);box-shadow:0 0 26px rgba(255,235,112,.92),inset 0 0 18px rgba(255,255,255,.75);}
     .arg-anim-dust{position:fixed;z-index:4;width:8px;height:8px;border-radius:50%;pointer-events:none;background:rgba(196,166,111,.72);box-shadow:0 0 7px rgba(224,194,136,.38);}
-    .arg-anim-damage-number{position:fixed;z-index:5;color:#ff6b5f;font:900 25px/1 system-ui,sans-serif;text-shadow:0 2px 4px #000,0 0 10px rgba(255,40,40,.65);pointer-events:none;}
+    .arg-anim-damage-number{position:fixed;z-index:5;color:#ff6b5f;font:900 25px/1 system-ui,sans-serif;text-shadow:0 2px 4px #000,0 0 10px rgba(255,40,40,.65);pointer-events:none;white-space:nowrap;line-height:1;contain:content;}
     .arg-anim-step-label{position:fixed;z-index:6;padding:5px 9px;border:1px solid rgba(255,232,133,.85);border-radius:999px;background:rgba(20,18,12,.88);color:#ffe883;font:900 10px/1 system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;pointer-events:none;box-shadow:0 0 12px rgba(255,207,63,.35);}
     .arg-anim-shield-burst{position:fixed;z-index:4;border:3px solid rgba(104,211,255,.94);border-radius:50%;pointer-events:none;box-shadow:0 0 24px rgba(70,185,255,.85),inset 0 0 18px rgba(170,235,255,.45);}
     .arg-anim-indestructible-burst{position:fixed;z-index:4;border:3px solid rgba(255,220,91,.96);border-radius:10px;pointer-events:none;box-shadow:0 0 26px rgba(255,188,40,.82),inset 0 0 18px rgba(255,247,180,.55);}
@@ -560,7 +560,10 @@ function runWebAnimation(el, keyframes, options) {
   try {
     if (typeof el.animate === 'function') {
       const anim = el.animate(keyframes, { ...options, duration, fill:options?.fill || 'forwards' });
-      return anim.finished.catch(() => {});
+      // 23.21.6 HF7 — WebKit can leave Animation.finished pending after page/layer lifecycle
+      // interruptions. The deadline guarantees that transient combat UI can always clean itself.
+      const finished = anim.finished.catch(() => {});
+      return Promise.race([finished, sleepMs(duration + 350)]);
     }
   } catch {}
   const last = keyframes[keyframes.length - 1] || {};
@@ -575,6 +578,12 @@ function vectorBetween(aRect,bRect) {
 }
 
 function removeNode(node) { try { node?.remove?.(); } catch {} }
+
+function armTransientRemoval(node, ttlMs = 1200) {
+  if (!node || typeof setTimeout !== 'function') return;
+  const ttl = Math.max(250, Number(ttlMs) || 1200);
+  setTimeout(() => removeNode(node), ttl);
+}
 
 async function impactBurst(x, y, payload = {}, variant = 'normal') {
   const layer = ensureAnimationLayer(); if (!layer) return;
@@ -735,8 +744,10 @@ async function animateCombatSequence(payload) {
       const playerEl=playerSnap.element;
       try{playerEl?.classList?.add('arg-player-hit');}catch{}
       const damage=document.createElement('div');damage.className='arg-anim-damage-number';damage.textContent=`-${Math.max(0,Number(payload.playerDamage)||0)}`;
+      damage.setAttribute('aria-hidden','true'); damage.dataset.argTransient='damage';
       Object.assign(damage.style,{left:`${impact.x+18}px`,top:`${impact.y-12}px`});ensureAnimationLayer()?.appendChild(damage);
-      void runWebAnimation(damage,[{transform:'translateY(8px) scale(.8)',opacity:0},{transform:'translateY(0) scale(1.08)',opacity:1},{transform:'translateY(-28px) scale(1)',opacity:0}],{duration:durationFor(payload,650),easing:'ease-out'}).then(()=>removeNode(damage));
+      const damageDuration=durationFor(payload,650); armTransientRemoval(damage,damageDuration+500);
+      void runWebAnimation(damage,[{transform:'translateY(8px) scale(.8)',opacity:0},{transform:'translateY(0) scale(1.08)',opacity:1},{transform:'translateY(-28px) scale(1)',opacity:0}],{duration:damageDuration,easing:'ease-out'}).then(()=>removeNode(damage));
       try{if(playerEl?.animate)playerEl.animate([{transform:'translateX(0)'},{transform:'translateX(-5px)'},{transform:'translateX(5px)'},{transform:'translateX(0)'}],{duration:durationFor(payload,230),easing:'ease-out'});}catch{}
       setTimeout(()=>{try{playerEl?.classList?.remove('arg-player-hit');}catch{}},durationFor(payload,420));
     }
@@ -770,8 +781,10 @@ async function animatePlayerImpact(payload) {
   const playerEl=pSnap.element;
   try { playerEl?.classList?.add('arg-player-hit'); } catch {}
   const damage=document.createElement('div'); damage.className='arg-anim-damage-number'; damage.textContent=`-${Math.max(0,Number(payload?.amount)||0)}`;
+  damage.setAttribute('aria-hidden','true'); damage.dataset.argTransient='damage';
   Object.assign(damage.style,{left:`${impact.x+18}px`,top:`${impact.y-12}px`}); ensureAnimationLayer()?.appendChild(damage);
-  void runWebAnimation(damage,[{transform:'translateY(8px) scale(.8)',opacity:0},{transform:'translateY(0) scale(1.08)',opacity:1},{transform:'translateY(-28px) scale(1)',opacity:0}],{duration:durationFor(payload,650),easing:'ease-out'}).then(()=>removeNode(damage));
+  const damageDuration=durationFor(payload,650); armTransientRemoval(damage,damageDuration+500);
+  void runWebAnimation(damage,[{transform:'translateY(8px) scale(.8)',opacity:0},{transform:'translateY(0) scale(1.08)',opacity:1},{transform:'translateY(-28px) scale(1)',opacity:0}],{duration:damageDuration,easing:'ease-out'}).then(()=>removeNode(damage));
   try {
     if(playerEl?.animate) playerEl.animate([{transform:'translateX(0)'},{transform:'translateX(-5px)'},{transform:'translateX(5px)'},{transform:'translateX(0)'}],{duration:durationFor(payload,230),easing:'ease-out'});
   } catch {}

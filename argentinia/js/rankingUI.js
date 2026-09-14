@@ -106,5 +106,5 @@ export function showGlobalRanking(onBack = () => {}) {
     wrap.innerHTML=`<table class="ranking-table"><thead><tr><th>#</th>${headers}</tr></thead><tbody>${body}</tbody></table>`;
     wrap.querySelectorAll('th[data-sort]').forEach(th=>th.addEventListener('click',()=>{ const key=th.dataset.sort; if(sortKey===key) direction=direction==='asc'?'desc':'asc'; else {sortKey=key; direction=key==='username'?'asc':'desc';} render(); }));
   }
-  fetchPublicPlayerStats().then(data=>{ rows=Array.isArray(data)?data:[]; render(); }).catch(err=>{ console.error('No se pudo cargar Ranking Global:',err); overlay.querySelector('#ranking-wrap').innerHTML=`<div class="ranking-empty">${esc(gameText('ranking.error'))}<br>${esc(err?.message||err)}</div>`; });
+  fetchPublicPlayerStats().then(data=>{ rows=(Array.isArray(data)?data:[]).filter(row=>row?.excludeFromGlobalRanking !== true); render(); }).catch(err=>{ console.error('No se pudo cargar Ranking Global:',err); overlay.querySelector('#ranking-wrap').innerHTML=`<div class="ranking-empty">${esc(gameText('ranking.error'))}<br>${esc(err?.message||err)}</div>`; });
 }

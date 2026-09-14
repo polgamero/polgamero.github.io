@@ -125,3 +125,10 @@ tools/test_dragons_buenos_aires_pool_900_23_21_6.mjs
 tools/test_equipment_instance_isolation_23_21_6_hf2.mjs
 
 tools/test_runtime_polish_bot_admin_23_21_6_hf3.mjs
+
+tools/test_announcement_carousel_mobile_boot_23_21_6_hf4.mjs
+tools/test_global_ranking_admin_exclusion_23_21_6_hf5.mjs
+
+tools/test_mobile_lifecycle_trigger_stack_23_21_6_hf6.mjs
+
+tools/test_master_audio_damage_transporte_stats_23_21_6_hf7.mjs

@@ -316,10 +316,11 @@ export function cancelTradeListingServer(listingId, operationId = null) {
     listingId: String(listingId || '')
   });
 }
-export function createTradeOfferServer(listingOwnerUid, cardId, operationId = null) {
+export function createTradeOfferServer(listingOwnerUid, listingId, cardId, operationId = null) {
   return call('economyCreateTradeOffer', {
     operationId: operationId || createEconomyOperationId('trade-offer'),
     listingOwnerUid: String(listingOwnerUid || ''),
+    listingId: String(listingId || ''),
     cardId: String(cardId || '')
   });
 }

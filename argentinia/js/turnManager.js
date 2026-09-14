@@ -680,7 +680,7 @@ async function priorityClockTick() {
     // Confirmamos 0 atacantes / 0 bloqueadores usando el MISMO carril que el botón humano,
     // de modo que la fase pueda avanzar y nadie pause la partida indefinidamente.
     if (timeoutActivity === 'choosing_attackers') await executeLocalAttack();
-    else if (timeoutActivity === 'choosing_blockers') executeRivalAttack();
+    else if (timeoutActivity === 'choosing_blockers') await executeRivalAttack();
     else await passPriority('local');
   } finally {
     priorityClockTickBusy = false;
@@ -692,9 +692,53 @@ async function priorityClockTick() {
 const priorityClockInterval = setInterval(() => { priorityClockTick().catch(err => console.error('Priority clock tick:', err)); }, 125);
 if (priorityClockInterval && typeof priorityClockInterval.unref === 'function') priorityClockInterval.unref();
 
-function scheduleSoloBotPriority(delayMs = 600) {
-  if (globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true) return;
-  setTimeout(takeBotPriorityAction, delayMs);
+function hasSoloInteractiveResolutionPending() {
+  return !!(state.pendingCounterUnlessPay || state.pendingScrySurveilChoice || state.pendingProliferateChoice);
+}
+
+function soloRuntimeIsHidden() {
+  return typeof document !== 'undefined' && document.visibilityState === 'hidden';
+}
+
+function hasSoloBotSchedulingBlocker() {
+  return !!(
+    state.soloRuntimeSuspended ||
+    soloRuntimeIsHidden() ||
+    state.pendingLegendChoice ||
+    state.pendingTriggerOrderChoice ||
+    state.sbaKernelRunning ||
+    hasSoloInteractiveResolutionPending()
+  );
+}
+
+// HF6 — single-owner scheduler. Mobile browsers may freeze/thaw timers, so anonymous
+// one-shot callbacks are not safe enough: every schedule belongs to one epoch and a
+// suspend/reload invalidates the previous epoch before Chrome can wake it late.
+let soloBotPriorityTimer = null;
+let soloBotPriorityEpoch = 0;
+
+export function invalidateSoloBotPrioritySchedule() {
+  soloBotPriorityEpoch += 1;
+  if (soloBotPriorityTimer !== null) clearTimeout(soloBotPriorityTimer);
+  soloBotPriorityTimer = null;
+}
+
+export function scheduleSoloBotPriority(delayMs = 600) {
+  if (globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true) return false;
+  if (state.currentMatch || state.gameOver || state.priorityPlayer !== 'rival' || hasSoloBotSchedulingBlocker()) return false;
+  invalidateSoloBotPrioritySchedule();
+  const epoch = soloBotPriorityEpoch;
+  soloBotPriorityTimer = setTimeout(() => {
+    soloBotPriorityTimer = null;
+    if (epoch !== soloBotPriorityEpoch) return;
+    if (state.currentMatch || state.gameOver || state.priorityPlayer !== 'rival' || hasSoloBotSchedulingBlocker()) return;
+    void takeBotPriorityAction().catch(err => console.error('Falló la prioridad programada del Tano:', err));
+  }, Math.max(0, Number(delayMs) || 0));
+  return true;
+}
+
+export function ensureSoloBotPriorityScheduled(delayMs = 180) {
+  return scheduleSoloBotPriority(delayMs);
 }
 
 export function beginActivePlayerPriorityWindow() {

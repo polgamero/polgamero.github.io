@@ -26,7 +26,8 @@ import {
   addCounters,
   getRivalName,
   waitForDiscardEffects,
-  runStateBasedActions
+  runStateBasedActions,
+  waitForTriggerOrdering
 } from './main.js';
 import { showDamageAssignmentModal } from './ui.js';
 import { recordTelemetryEvent } from './telemetry.js';
@@ -318,14 +319,17 @@ export async function executeLocalAttack() {
   if (attackers.length > 0) {
     queueDeclaredAttackTriggers(attackers, true);
     logMsg(gameText('combat.attackers.count', { count: attackers.length }));
+    // HF6: declarar atacantes y poner sus triggers en la Stack es UNA transición de reglas.
+    // No cedemos prioridad al Tano mientras el humano todavía está ordenando ese batch.
+    await waitForTriggerOrdering();
   } else {
     logMsg(gameText('combat.attackers.none'));
   }
   render();
-  passPriority('local'); // Pasamos la prioridad para avanzar la fase
+  await passPriority('local'); // Pasamos la prioridad recién con la Stack materializada.
 }
 
-export function executeRivalAttack() {
+export async function executeRivalAttack() {
   // 23.9.3: declarar bloqueadores es idempotente, incluso si fueron CERO. La ventana
   // post-bloqueadores devuelve prioridad y NO debe volver a entrar a esta declaración.
   if (state.localBlockersDeclaredThisCombat) {
@@ -371,6 +375,9 @@ export function executeRivalAttack() {
   });
   queueDeclaredBlockTriggers(state.localCombat, true);
   logMsg(gameText('combat.block.confirmed'));
+  // Igual que atacantes: todos los triggers declarativos deben existir antes de abrir
+  // la nueva ventana de prioridad. Esto cubre múltiples block-triggers con orden humano.
+  await waitForTriggerOrdering();
   // La declaración de bloqueadores abre una ventana NUEVA. El jugador activo recibe
   // prioridad primero; no heredamos el pase que hizo para llegar a este paso ni salteamos
   // directo al daño cuando se declararon cero bloqueadores.

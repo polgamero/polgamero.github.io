@@ -27,7 +27,7 @@ assert.match(main, /resumeReconnectedMatch\([\s\S]{0,220}enterGameplayAudio\('mu
 const telemetry = fs.readFileSync(new URL('../js/telemetry.js', import.meta.url), 'utf8');
 assert.match(telemetry, /id = 'arg-game-music-toggle'/);
 assert.match(telemetry, /panel\.append\(recToggle, gameplayMusicToggleEl,/);
-assert.match(telemetry, /toggleMusic\(\)/);
+assert.match(telemetry, /toggleMasterMute\(\)/);
 assert.match(telemetry, /audio\.desiredScene === 'solo' \|\| audio\.desiredScene === 'multiplayer'/);
 assert.match(telemetry, /argentinia:audio-settings-changed/);
 assert.match(telemetry, /argentinia:audio-scene-changed/);
@@ -39,4 +39,4 @@ assert.match(css, /:not\(\.arg-game-music-toggle\)/);
 assert.match(mobile, /html\.argentinia-mobile \.arg-game-music-toggle/);
 assert.match(mobile, /:not\(\.arg-game-music-toggle\)/);
 
-console.log('GAMEPLAY_MUSIC_23_17_5_OK tracks=menu+solo+multiplayer fallback=opus>mp3 hud=REC+music persistent=shared');
+console.log('GAMEPLAY_MUSIC_23_17_5_OK tracks=menu+solo+multiplayer fallback=opus>mp3 hud=REC+master-audio persistent=shared');

@@ -129,8 +129,8 @@ export async function cancelTradeListing(listingId) {
   const response = await cancelTradeListingServer(listingId);
   return response?.result || null;
 }
-export async function createTradeOffer(listingOwnerUid, cardId) {
-  const response = await createTradeOfferServer(listingOwnerUid, cardId);
+export async function createTradeOffer(listingOwnerUid, listingId, cardId) {
+  const response = await createTradeOfferServer(listingOwnerUid, listingId, cardId);
   return response?.result || null;
 }
 export async function cancelTradeOffer(offerId) {

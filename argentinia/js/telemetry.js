@@ -17,7 +17,7 @@
 // igual que en el motor: la telemetría no intenta saltarse la privacidad de Firestore.
 
 import { ENGINE_VERSION, ENGINE_VERSION_SHORT, ENGINE_BASELINE } from './version.js';
-import { getAudioRuntimeStatus, toggleMusic } from './audioManager.js';
+import { getAudioRuntimeStatus, toggleMasterMute } from './audioManager.js';
 import { getGameRngSnapshot } from './gameRng.js';
 import { REPLAY_FORMAT_VERSION, REPLAY_HASH_ALGORITHM, replayHash, buildReplayActionJournal } from './replayKernel.js';
 
@@ -944,12 +944,21 @@ function pollBotPriorityWatchdog() {
     return;
   }
   const state = providers.getState();
+  const now = Date.now();
+  const pageHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+  const lifecycleGraceUntil = Number(state?.soloLifecycleResumeGraceUntilMs || 0);
+  // HF6: background time is not a playable bot-priority window. Chrome/iOS may freeze
+  // timers for minutes/hours; lifecycle recovery owns that condition, telemetry only observes.
+  if (pageHidden || state?.soloRuntimeSuspended || lifecycleGraceUntil > now) {
+    resetBotPriorityWatchdogWindow();
+    return;
+  }
   const stack = typeof providers.getStack === 'function' ? providers.getStack() : [];
   const pending = pendingSummary(state);
   const suspicious = !state?.gameOver
     && !state?.currentMatch
     && state?.priorityPlayer === 'rival'
-    && Array.isArray(stack) && stack.length === 0
+    && Array.isArray(stack)
     && Object.keys(pending).length === 0;
 
   if (!suspicious) {
@@ -957,7 +966,6 @@ function pollBotPriorityWatchdog() {
     return;
   }
 
-  const now = Date.now();
   const windowKey = buildBotPriorityWatchdogKey(state, stack.length, pending, botPriorityProgressSerial);
 
   // Si hubo cualquier progreso entre polls, aunque terminemos otra vez con prioridad del
@@ -992,7 +1000,7 @@ function pollBotPriorityWatchdog() {
   addBugCandidate({
     code: 'BOT_PRIORITY_STALL',
     severity: 'error',
-    message: 'El Tano conserva la misma ventana de prioridad sin Stack, decisión pendiente ni progreso durante demasiado tiempo.',
+    message: 'El Tano conserva la misma ventana de prioridad sin decisión pendiente ni progreso durante demasiado tiempo.',
     details: {
       turnCount: state.turnCount,
       phase: state.phase,
@@ -1687,10 +1695,10 @@ function refreshGameplayMusicToggle() {
   const audio = getAudioRuntimeStatus();
   const inGameplay = audio.desiredScene === 'solo' || audio.desiredScene === 'multiplayer';
   gameplayMusicToggleEl.hidden = !inGameplay;
-  gameplayMusicToggleEl.textContent = audio.musicEnabled ? '🔊' : '🔇';
-  gameplayMusicToggleEl.setAttribute('aria-pressed', String(!audio.musicEnabled));
-  gameplayMusicToggleEl.setAttribute('aria-label', audio.musicEnabled ? 'Silenciar música de la partida' : 'Activar música de la partida');
-  gameplayMusicToggleEl.title = audio.musicEnabled ? 'Silenciar música' : 'Activar música';
+  gameplayMusicToggleEl.textContent = audio.masterMuted ? '🔇' : '🔊';
+  gameplayMusicToggleEl.setAttribute('aria-pressed', String(audio.masterMuted));
+  gameplayMusicToggleEl.setAttribute('aria-label', audio.masterMuted ? 'Activar audio de la partida' : 'Silenciar música y efectos de la partida');
+  gameplayMusicToggleEl.title = audio.masterMuted ? 'Activar audio' : 'Silenciar música y efectos';
 }
 
 function buildPanel() {
@@ -1723,14 +1731,14 @@ function buildPanel() {
     recToggle.setAttribute('aria-label', expanded ? 'Colapsar panel de reporte de bugs' : 'Desplegar panel de reporte de bugs');
   });
 
-  // 23.17.5 — segunda superficie del MISMO musicEnabled persistente de OPCIONES.
-  // Sólo aparece durante partidas y queda inmediatamente a la derecha de REC.
+  // 23.21.6 HF7 — mute rápido GENERAL. No pisa las preferencias independientes de
+  // Música/Efectos de OPCIONES; aplica una capa master a ambos canales.
   gameplayMusicToggleEl = document.createElement('button');
   gameplayMusicToggleEl.id = 'arg-game-music-toggle';
   gameplayMusicToggleEl.className = 'arg-game-music-toggle';
   gameplayMusicToggleEl.type = 'button';
   gameplayMusicToggleEl.addEventListener('click', () => {
-    toggleMusic();
+    toggleMasterMute();
     refreshGameplayMusicToggle();
   });
   window.addEventListener('argentinia:audio-settings-changed', refreshGameplayMusicToggle);

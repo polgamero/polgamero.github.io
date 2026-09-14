@@ -1,6 +1,6 @@
 // v23.19.5.5 — server-owned economic statistics + immutable audit trail.
 import { FieldValue } from 'firebase-admin/firestore';
-import { ENGINE_VERSION, ECONOMY_SCHEMA_VERSION } from '../shared/constants.js';
+import { ENGINE_VERSION, ECONOMY_SCHEMA_VERSION, ADMIN_EMAIL } from '../shared/constants.js';
 
 const NUMERIC_KEYS = [
   'gamesPlayed','soloGames','multiplayerGames','wins','losses','soloWins','soloLosses',
@@ -36,6 +36,9 @@ export function playerStatsMirrorServer(uid, profile={}, currentStats={}, deltas
   return {
     ...stats,
     uid:String(uid||''), username:String(profile.username||profile.displayName||'Jugador'),
+    // Ranking visibility is derived server-side from the immutable admin authority identity.
+    // We deliberately do NOT publish the email itself in playerStats.
+    excludeFromGlobalRanking:String(profile.email||'').trim().toLowerCase() === ADMIN_EMAIL,
     pointsCurrent:nonneg(profile.points), fichasCurrent:nonneg(profile.fichas),
     packsInChest:inventory.standardPacks, cardsOwned:collection.length,
     uniqueCards:new Set(collection.map(String)).size,

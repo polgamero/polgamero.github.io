@@ -3,6 +3,7 @@
 // exact cards or type/color/rarity filters. Offers are always 1 card <-> 1 card.
 
 export const TRADE_LIMITS = Object.freeze({
+  maxActiveListings: 1,
   maxWantedCriteria: 3,
   maxOffersPerListing: 10,
   maxOutgoingOffers: 5,
@@ -12,6 +13,7 @@ export const TRADE_LIMITS = Object.freeze({
 // Admin may tune the product limits, but these hard ceilings protect document size,
 // transaction fan-out and accidental/malicious configuration values.
 export const TRADE_HARD_LIMITS = Object.freeze({
+  maxActiveListings: 10,
   maxWantedCriteria: 3,
   maxOffersPerListing: 50,
   maxOutgoingOffers: 20,
@@ -25,6 +27,7 @@ function boundedInt(value, fallback, min, max) {
 
 export function normalizeTradeLimits(config = {}) {
   return {
+    maxActiveListings: boundedInt(config.tradeMaxActiveListings, TRADE_LIMITS.maxActiveListings, 1, TRADE_HARD_LIMITS.maxActiveListings),
     maxWantedCriteria: boundedInt(config.tradeMaxWantedCriteria, TRADE_LIMITS.maxWantedCriteria, 1, TRADE_HARD_LIMITS.maxWantedCriteria),
     maxOffersPerListing: boundedInt(config.tradeMaxOffersPerListing, TRADE_LIMITS.maxOffersPerListing, 1, TRADE_HARD_LIMITS.maxOffersPerListing),
     maxOutgoingOffers: boundedInt(config.tradeMaxOutgoingOffers, TRADE_LIMITS.maxOutgoingOffers, 1, TRADE_HARD_LIMITS.maxOutgoingOffers),
@@ -47,9 +50,20 @@ export function normalizeReservation(raw = {}) {
     const count = Math.max(0, Math.floor(Number(countRaw) || 0));
     if (cardId && count > 0) cards[String(cardId)] = count;
   }
+  const activeListingIds = Array.isArray(source.activeListingIds)
+    ? [...new Set(source.activeListingIds.map(String).filter(Boolean))].slice(0, TRADE_HARD_LIMITS.maxActiveListings)
+    : [];
+  // Backward compatibility: reservations created before HF5 only had activeListingId.
+  if (source.activeListingId && !activeListingIds.includes(String(source.activeListingId))) {
+    activeListingIds.unshift(String(source.activeListingId));
+    activeListingIds.splice(TRADE_HARD_LIMITS.maxActiveListings);
+  }
   return {
     cards,
-    activeListingId: source.activeListingId ? String(source.activeListingId) : null,
+    activeListingIds,
+    // Legacy mirror kept while old clients / account guards still exist. It always points
+    // to the first active listing and is never the source of truth in HF5.
+    activeListingId: activeListingIds[0] || null,
     activeOfferIds: Array.isArray(source.activeOfferIds)
       ? [...new Set(source.activeOfferIds.map(String).filter(Boolean))].slice(0, TRADE_HARD_LIMITS.maxOutgoingOffers)
       : []
@@ -58,9 +72,30 @@ export function normalizeReservation(raw = {}) {
 
 export function reservationIsEmpty(raw = {}) {
   const reservation = normalizeReservation(raw);
-  return !reservation.activeListingId
+  return reservation.activeListingIds.length === 0
     && reservation.activeOfferIds.length === 0
     && Object.keys(reservation.cards).length === 0;
+}
+
+export function setActiveListingIds(raw, listingIds = []) {
+  const reservation = normalizeReservation(raw);
+  reservation.activeListingIds = [...new Set((Array.isArray(listingIds) ? listingIds : []).map(String).filter(Boolean))]
+    .slice(0, TRADE_HARD_LIMITS.maxActiveListings);
+  reservation.activeListingId = reservation.activeListingIds[0] || null;
+  return reservation;
+}
+
+export function addActiveListing(raw, listingId) {
+  const reservation = normalizeReservation(raw);
+  const id = String(listingId || '');
+  if (!id || reservation.activeListingIds.includes(id)) return reservation;
+  return setActiveListingIds(reservation, [...reservation.activeListingIds, id]);
+}
+
+export function removeActiveListing(raw, listingId) {
+  const reservation = normalizeReservation(raw);
+  const id = String(listingId || '');
+  return setActiveListingIds(reservation, reservation.activeListingIds.filter(value => value !== id));
 }
 
 export function changeReservedCard(raw, cardId, delta) {

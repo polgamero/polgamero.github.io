@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { TRUSTED_CARD_POOL } from '../src/trusted/cardCatalog.js';
 import {
   TRADE_LIMITS, normalizeTradeLimits, normalizeWantedCriteria, cardMatchesWanted, tradableCardCount,
-  changeReservedCard, reservationsStillBacked, swapOneCard
+  changeReservedCard, reservationsStillBacked, swapOneCard, normalizeReservation, addActiveListing, removeActiveListing
 } from '../src/economy/tradeCore.js';
 
 const byId = new Map(TRUSTED_CARD_POOL.map(card => [card.id, card]));
@@ -64,27 +64,46 @@ test('23.21.0 rejects empty filters, duplicate criteria and more than three BUSC
 test('23.21.0 Admin trade limits are configurable but bounded by hard server ceilings', () => {
   assert.deepEqual(normalizeTradeLimits({}), TRADE_LIMITS);
   assert.deepEqual(normalizeTradeLimits({
+    tradeMaxActiveListings:3,
     tradeMaxWantedCriteria:2,
     tradeMaxOffersPerListing:17,
     tradeMaxOutgoingOffers:8,
     tradeMaxCompletedPerWeek:6
   }), {
+    maxActiveListings:3,
     maxWantedCriteria:2,
     maxOffersPerListing:17,
     maxOutgoingOffers:8,
     maxCompletedPerWeek:6
   });
   assert.deepEqual(normalizeTradeLimits({
+    tradeMaxActiveListings:999,
     tradeMaxWantedCriteria:999,
     tradeMaxOffersPerListing:999,
     tradeMaxOutgoingOffers:999,
     tradeMaxCompletedPerWeek:999
   }), {
+    maxActiveListings:10,
     maxWantedCriteria:3,
     maxOffersPerListing:50,
     maxOutgoingOffers:20,
     maxCompletedPerWeek:20
   });
+});
+
+
+test('23.21.6 HF5 reservation migrates legacy listing id and preserves multiple active listings independently', () => {
+  let r=normalizeReservation({activeListingId:'legacy-1',cards:{a:1}});
+  assert.deepEqual(r.activeListingIds,['legacy-1']);
+  r=addActiveListing(r,'listing-2');
+  r=addActiveListing(r,'listing-3');
+  assert.deepEqual(r.activeListingIds,['legacy-1','listing-2','listing-3']);
+  assert.equal(r.activeListingId,'legacy-1');
+  r=removeActiveListing(r,'listing-2');
+  assert.deepEqual(r.activeListingIds,['legacy-1','listing-3']);
+  r=removeActiveListing(r,'legacy-1');
+  assert.deepEqual(r.activeListingIds,['listing-3']);
+  assert.equal(r.activeListingId,'listing-3');
 });
 
 test('23.21.0 deck protection uses the maximum copies required by any saved deck, not the sum', () => {
@@ -116,6 +135,7 @@ test('23.21.0 swap is exactly one card for one card', () => {
   const swapped=swapOneCard([a,a],[a],[b,b],[b]);
   assert.deepEqual(swapped.collectionA.sort(),[a,b].sort());
   assert.deepEqual(swapped.collectionB.sort(),[a,b].sort());
+  assert.equal(TRADE_LIMITS.maxActiveListings,1);
   assert.equal(TRADE_LIMITS.maxWantedCriteria,3);
   assert.equal(TRADE_LIMITS.maxOffersPerListing,10);
   assert.equal(TRADE_LIMITS.maxOutgoingOffers,5);
