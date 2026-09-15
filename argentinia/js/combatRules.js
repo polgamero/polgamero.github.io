@@ -353,6 +353,8 @@ export async function executeRivalAttack() {
 
   if (menaceViolations.length) {
     state.localCombat.forEach(c => c.blockingIndex = null);
+    // HF16: una selección visual pendiente no puede sobrevivir a un reset de declaración.
+    state.pendingBlockerIndex = null;
     menaceViolations.forEach(({ attacker, blockersCount }) => {
       logMsg(gameText('combat.block.menaceIllegal', {
         attacker: attacker.card.name,
@@ -366,6 +368,10 @@ export async function executeRivalAttack() {
   markDeclaredBlocks(state.rivalCombat, state.localCombat);
   state.autoZeroBlockersQueued = false;
   state.localBlockersDeclaredThisCombat = true;
+  // HF16: confirmar (también vía Space) consume cualquier blocker preseleccionado.
+  // `selected-blocker` depende de este índice; si queda vivo el halo celeste persiste
+  // aunque la declaración haya avanzado con cero bloqueos.
+  state.pendingBlockerIndex = null;
   recordTelemetryEvent('blockers_declared', {
     player: 'local',
     turnCount: state.turnCount,

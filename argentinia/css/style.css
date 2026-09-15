@@ -122,6 +122,16 @@ html, body {
      la fila entraba en modo scroll (muy visible con muchas tierras giradas). En scroll lo
      inseteamos dentro del footprint; fuera de scroll conserva exactamente su posición. */
   .field-row.desktop-overflow-scroll .stack-counter-container { top: 3px; z-index: 500; }
+
+  /* HF16 — una fila con overflow usa EXCLUSIVAMENTE el preview portal/fixed.
+     El hover histórico 2.8x dentro del scroller quedaba recortado por overflow-y:hidden
+     y se veía atrás del preview nuevo como una segunda carta fantasma. */
+  .field-row.desktop-overflow-scroll .card:not(.tapped):hover {
+    transform: none !important;
+  }
+  .field-row.desktop-overflow-scroll .card.tapped:hover .card-inner {
+    transform: rotate(90deg) !important;
+  }
 }
 
 /* El preview vive fuera del scroller para que overflow-x:auto no recorte el hover ampliado. */
@@ -1841,7 +1851,7 @@ button.mana-pool-chip:disabled { opacity: 1; }
   white-space: nowrap;
 }
 .arg-mobile-telemetry-toggle:hover { background: rgba(73,19,19,.96); }
-/* 23.17.5 — mute/unmute de música de partida, siempre pegado a la derecha de REC. */
+/* HF16 — acceso rápido al mixer Música/Efectos, siempre pegado a la derecha de REC. */
 .arg-game-music-toggle {
   order: -99;
   width: 30px;
@@ -1864,6 +1874,41 @@ button.mana-pool-chip:disabled { opacity: 1; }
   height: 24px;
   border-radius: 6px;
   font-size: 12px;
+}
+
+.arg-quick-audio-mixer {
+  position: fixed;
+  z-index: 2147483001;
+  width: min(270px, calc(100vw - 16px));
+  box-sizing: border-box;
+  padding: 10px 11px;
+  border: 1px solid rgba(222,193,112,.68);
+  border-radius: 10px;
+  background: rgba(13,16,14,.97);
+  box-shadow: 0 12px 34px rgba(0,0,0,.68);
+  backdrop-filter: blur(8px);
+  color: #f5e8b3;
+  font: 700 11px/1.1 system-ui,sans-serif;
+}
+.arg-quick-audio-mixer[hidden] { display:none !important; }
+.arg-quick-audio-row {
+  display:grid;
+  grid-template-columns: 54px minmax(90px,1fr) 36px;
+  gap:8px;
+  align-items:center;
+  min-height:34px;
+}
+.arg-quick-audio-row + .arg-quick-audio-row {
+  border-top:1px solid rgba(222,193,112,.16);
+  margin-top:5px;
+  padding-top:5px;
+}
+.arg-quick-audio-row label { white-space:nowrap; }
+.arg-quick-audio-row input[type="range"] { width:100%; min-width:0; accent-color:#d4af37; }
+.arg-quick-audio-row span { text-align:right; color:#fff3c4; font-variant-numeric:tabular-nums; }
+@media (max-width: 768px) {
+  .arg-quick-audio-mixer { width:min(248px, calc(100vw - 12px)); padding:8px 9px; }
+  .arg-quick-audio-row { grid-template-columns:50px minmax(78px,1fr) 34px; gap:6px; min-height:30px; font-size:10px; }
 }
 /* 23.17.4 — cerrado ocupa menos pantalla; al expandir recupera exactamente la huella previa. */
 .telemetry-panel:not(.arg-mobile-telemetry-expanded) .arg-mobile-telemetry-toggle {

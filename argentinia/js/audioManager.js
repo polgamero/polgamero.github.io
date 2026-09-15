@@ -548,6 +548,53 @@ export function toggleMasterMute() {
   return setMasterMuted(!settings.masterMuted);
 }
 
+// HF16 — el control rápido junto a REC deja de ser un mute maestro binario y pasa a ser
+// un mini mixer real. Si el usuario venía de HF7 con masterMuted persistido, la primera
+// interacción con un slider migra ese silencio a ambos canales en 0 y después habilita
+// únicamente el canal que el usuario está moviendo. Así nunca aparece el caso confuso de
+// un slider > 0 que sigue sin sonar por un master mute oculto.
+function beginQuickMixerLevelChange() {
+  if (!settings.masterMuted) return;
+  settings = {
+    ...settings,
+    masterMuted: false,
+    musicEnabled: false,
+    musicVolume: 0,
+    sfxEnabled: false,
+    sfxVolume: 0
+  };
+}
+
+export function setQuickMusicLevel(volume) {
+  const next = clamp01(volume, settings.musicVolume);
+  beginQuickMixerLevelChange();
+  settings = { ...settings, masterMuted:false, musicVolume:next, musicEnabled:next > 0 };
+  persistSettings();
+  if (next <= 0) hardSilenceManagedMusic();
+  else {
+    managedMusicElements().forEach(armManagedMusicForPlayback);
+    void syncMusicToDesiredScene({ fadeMs: 90 });
+  }
+  emitSettingsChanged();
+  return next;
+}
+
+export function setQuickSfxLevel(volume) {
+  const next = clamp01(volume, settings.sfxVolume);
+  beginQuickMixerLevelChange();
+  settings = { ...settings, masterMuted:false, sfxVolume:next, sfxEnabled:next > 0 };
+  persistSettings();
+  if (next <= 0) hardSilenceManagedSfx();
+  else {
+    for (const audio of managedSfxElements()) {
+      try { audio.muted = false; } catch {}
+      try { audio.volume = next; } catch {}
+    }
+  }
+  emitSettingsChanged();
+  return next;
+}
+
 export function setMusicVolume(volume) {
   settings = { ...settings, musicVolume: clamp01(volume, settings.musicVolume) };
   persistSettings();

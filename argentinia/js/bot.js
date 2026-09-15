@@ -1,5 +1,5 @@
 import { hasKeyword, canBlock, predictDuel, getProtectionMatch } from './keywords.js';
-import { recordTelemetryEvent } from './telemetry.js';
+import { recordTelemetryEvent, recordTelemetryBugCandidate } from './telemetry.js';
 import { isCreaturePermanent, isArtifactPermanent, isLandPermanent, landMatchesFilter } from './permanentTypes.js';
 import { getProliferateCandidates } from './utils.js';
 import { getEffectiveLandManaAbility, getEffectiveLandActivatedAbilities, landMatchesEffectiveFilter } from './landCharacteristics.js';
@@ -66,7 +66,8 @@ import { permissionBaseManaOverride, consumeExilePlayPermission, clearExilePlayS
 import { SUSPEND_ENGINE_VERSION, clearSuspendState } from './suspendEngine.js';
 import { canTransformPermanent } from './transformEngine.js';
 import { botHasCapability, normalizeBotDifficulty } from './botDifficulty.js';
-import { chooseHardAttackPlan, combatUnitValue, COMBAT_BOT_2_VERSION } from './combatBot2.js';
+import { evaluateBotValueAbilityPolicy, isNonUrgentBotValueEffect, projectedBotHandGain, chooseStrategicBotDiscardIndex, buildBotSubtypeCounts } from './botStrategy.js';
+import { chooseHardAttackPlan, chooseHardBlockPlan, combatUnitValue, COMBAT_BOT_2_VERSION } from './combatBot2.js';
 import { isCreatureReservedByBotStack, isStackObjectReservedByBotCounter } from './botTargetReservation.js';
 import { getCounterCount } from './counterEngine.js';
 import { previewReplacementEvent } from './replacementEngine.js';
@@ -423,6 +424,85 @@ function getRivalManaSources(excludeItems = []) {
 // no descuenta nada todavía, es la base para calcular cuánto puede gastar en X.
 function getRivalTotalAvailableMana() {
   return manaPoolTotal(state.rivalManaPool) + getRivalManaSources().filter(item => botCanActivateMana(item, false)).reduce((sum, s) => sum + botManaAmount(s, false), 0);
+}
+
+
+// HF15 — memoria diagnóstica de gasto de valor dentro del turno del bot. No forma parte del
+// state sincronizado ni del recovery: sólo sirve para detectar automáticamente regresiones
+// del patrón "tap out de valor -> cero hechizos -> descarte por límite de mano".
+const botStrategicTurnSpend = new Map();
+
+function getBotStrategicTurnRecord(turnCount = state.turnCount) {
+  const key = Number(turnCount) || 0;
+  if (!botStrategicTurnSpend.has(key)) botStrategicTurnSpend.set(key, {
+    turnCount:key, nonUrgentManaSpent:0, maxSpendFraction:0, valueActivations:[], mainPhaseHandCasts:0
+  });
+  // Evita crecer sin límite en partidas largas.
+  for (const oldKey of [...botStrategicTurnSpend.keys()]) if (oldKey < key - 2) botStrategicTurnSpend.delete(oldKey);
+  return botStrategicTurnSpend.get(key);
+}
+
+function botAbilityManaAmount(manaCostString) {
+  if (!manaCostString) return 0;
+  try { return Math.max(0, manaCostTotal(parseManaCost(manaCostString)) || 0); } catch { return 0; }
+}
+
+function botHasPlayableMainPhaseSpellNow() {
+  if (!botHasCapability(state.botDifficulty, 'strategicMainPhase')) return false;
+  return state.rivalHand.some(c => {
+    if (!c || String(c.type || '').includes('Tierra') || isCounterSpell(c)) return false;
+    if (chooseBotCastRoute(c, { excludeCard:c }) === null) return false;
+    if (c.effect?.type === 'heal' && !shouldBotActivateHealing(c.effect, 'main2')) return false;
+    return canBotBuildMainPhaseCastProposal(c);
+  });
+}
+
+function recordBotValueAbilitySpend({ card, effect, manaCostString, availableManaBefore, handBefore, phase }) {
+  if (!isNonUrgentBotValueEffect(effect?.type)) return;
+  const spent = botAbilityManaAmount(manaCostString);
+  const available = Math.max(0, Number(availableManaBefore) || 0);
+  const rec = getBotStrategicTurnRecord();
+  rec.nonUrgentManaSpent += spent;
+  rec.maxSpendFraction = Math.max(rec.maxSpendFraction, available > 0 ? spent / available : 0);
+  rec.valueActivations.push({ card:card?.name || null, effectType:effect?.type || null, spent, availableBefore:available, handBefore, phase });
+  recordTelemetryEvent('bot_value_ability_spend', {
+    turnCount:state.turnCount, phase, cardId:card?.id || null, cardName:card?.name || null,
+    effectType:effect?.type || null, spentMana:spent, availableManaBefore:available,
+    spendFraction:available > 0 ? spent / available : 0, handBefore
+  });
+}
+
+function noteBotMainPhaseHandCast(card) {
+  if (state.activePlayer !== 'rival' || !['main1','main2'].includes(state.phase)) return;
+  const rec = getBotStrategicTurnRecord();
+  rec.mainPhaseHandCasts += 1;
+  recordTelemetryEvent('bot_main_phase_hand_cast', { turnCount:state.turnCount, phase:state.phase, cardId:card?.id || null, cardName:card?.name || null });
+}
+
+export function reportBotStrategicTurnAtCleanup({ excessDiscardCount = 0 } = {}) {
+  if (!botHasCapability(state.botDifficulty, 'strategicMainPhase')) return;
+  const rec = botStrategicTurnSpend.get(Number(state.turnCount) || 0);
+  if (!rec || rec.valueActivations.length === 0) return;
+  const suspicious = rec.maxSpendFraction >= .60 && rec.mainPhaseHandCasts === 0 && Number(excessDiscardCount) > 0;
+  if (!suspicious) return;
+  recordTelemetryBugCandidate({
+    code:'BOT_STRATEGIC_MANA_WASTE',
+    severity:'warning',
+    message:'El bot gastó la mayor parte de su maná en una habilidad de valor no urgente, no casteó cartas de la mano y luego descartó por límite de mano.',
+    details:{ ...rec, excessDiscardCount:Number(excessDiscardCount) || 0, handAtCleanup:state.rivalHand.length }
+  });
+}
+
+export function chooseBotCleanupDiscardIndex() {
+  if (!botHasCapability(state.botDifficulty, 'strategicDiscard')) return -1;
+  const battlefieldCards = [...state.rivalCombat, ...state.rivalSupport, ...state.rivalLands].map(item => item?.card).filter(Boolean);
+  const subtypeCounts = buildBotSubtypeCounts([...state.rivalHand, ...battlefieldCards]);
+  return chooseStrategicBotDiscardIndex(state.rivalHand, {
+    landCount:state.rivalLands.length,
+    manaNextTurn:getRivalTotalAvailableMana() + state.rivalLands.filter(l => l?.tapped && !l?.stunCounters).reduce((sum,l)=>sum + Math.max(0,botManaAmount(l,false)||0),0),
+    battlefieldCards,
+    subtypeCounts
+  });
 }
 
 // LAND 2: candidatos reales de destrucción de Tierras del oponente humano, incluyendo
@@ -1108,38 +1188,129 @@ function shouldRivalAttackWith(attackerItem) {
   return hasVigilance;
 }
 
-// Tripular un Vehículo del Tano: paga el coste girando criaturas y pone la habilidad en
-// la Stack. La conversión a criatura ocurre recién al resolver, igual que para el humano.
-// La IA evita tripular en upkeep/end step sin motivo: lo intenta en su Main/Beginning of
-// Combat para atacar, o durante Declare Attackers rival para preparar un bloqueador.
-function tryBotCrewVehicle(vehicleItem, zoneType, ability = getActivatedAbilities(vehicleItem.card).find(ab => ab.crewCost !== undefined)) {
-  const usefulWindow =
-    (state.activePlayer === 'rival' && ['main1','main2','combat_begin'].includes(state.phase)) ||
-    (state.activePlayer === 'local' && state.phase === 'combat_attackers');
-  if (!usefulWindow || state.priorityPlayer !== 'rival') return false;
+// HF16 — Planificador de Tripular.
+// Antes la IA activaba Crew apenas podía (incluso Main 1, incluso un Vehículo recién bajado),
+// y recién después decidía si atacar. Ahora Crew forma parte del PLAN de combate: compara el
+// campo público antes/después de girar tripulantes y exige que el Transporte sea usado.
+function botCombatHelpers() {
+  return { getPower:getEffectivePower, getToughness:getEffectiveToughness, hasKeyword, canBlock, predictDuel };
+}
 
-  const required = ability?.crewCost;
-  if (required === undefined) return false;
-  const candidates = state.rivalCombat
-    .filter(c => c !== vehicleItem && !c.tapped)
-    .sort((a, b) => {
-      if (a.summoningSickness !== b.summoningSickness) return a.summoningSickness ? -1 : 1;
-      return getEffectivePower(a) - getEffectivePower(b);
-    });
+function makeBotVirtualVehicle(vehicleItem) {
+  const base = vehicleItem?.card?.baseStats || {};
+  return {
+    ...vehicleItem,
+    card:{
+      ...(vehicleItem?.card || {}),
+      power:Number(base.power ?? vehicleItem?.card?.power ?? 0),
+      toughness:Number(base.toughness ?? vehicleItem?.card?.toughness ?? 0)
+    },
+    isVehicle:true,
+    summoningSickness:false,
+    tapped:false
+  };
+}
 
-  const chosen = [];
-  let powerSoFar = 0;
-  for (const c of candidates) {
-    if (powerSoFar >= required) break;
-    chosen.push(c);
-    powerSoFar += getEffectivePower(c);
+function enumerateBotCrewSets(candidates, required) {
+  if (!Array.isArray(candidates) || !candidates.length) return [];
+  // Acotamos la explosión combinatoria conservando primero cuerpos enfermos/baratos: son los
+  // mejores tripulantes porque su costo de oportunidad ofensivo suele ser menor.
+  const helpers=botCombatHelpers();
+  const pool=[...candidates]
+    .sort((a,b)=>{
+      if (!!a.summoningSickness !== !!b.summoningSickness) return a.summoningSickness ? -1 : 1;
+      return combatUnitValue(a,helpers)-combatUnitValue(b,helpers);
+    })
+    .slice(0,8);
+  const out=[];
+  for(let mask=1;mask<(1<<pool.length);mask++){
+    const chosen=[]; let power=0;
+    for(let i=0;i<pool.length;i++) if(mask&(1<<i)){ chosen.push(pool[i]); power+=Math.max(0,getEffectivePower(pool[i])||0); }
+    if(power>=required) out.push({chosen,power});
   }
-  if (powerSoFar < required) return false;
+  out.sort((a,b)=>{
+    const value=x=>x.chosen.reduce((sum,c)=>sum+combatUnitValue(c,helpers)*(c.summoningSickness?.35:1),0);
+    return value(a)-value(b) || a.chosen.length-b.chosen.length || a.power-b.power;
+  });
+  return out.slice(0,24);
+}
+
+function chooseStrategicBotCrewSet(vehicleItem, candidates, required, mode) {
+  const sets=enumerateBotCrewSets(candidates,required);
+  if(!sets.length) return null;
+  const helpers=botCombatHelpers();
+  const virtualVehicle=makeBotVirtualVehicle(vehicleItem);
+  const strategic=normalizeBotDifficulty(state.botDifficulty)!=='easy';
+
+  if(mode==='attack'){
+    // Un Transporte que entró este turno no puede atacar salvo Apuro. Crew no elimina mareo.
+    if(vehicleItem.enteredThisTurn && !hasKeyword(vehicleItem,'haste')) return null;
+    const defenders=state.localCombat.map((unit,index)=>({unit,index})).filter(({unit})=>!unit.tapped);
+    const baselineEligible=state.rivalCombat.map((unit,index)=>({unit,index})).filter(({unit})=>!unit.tapped&&!unit.summoningSickness&&!hasKeyword(unit,'defender'));
+    if(!strategic){
+      const chosen=sets[0];
+      const attackableCost=chosen.chosen.filter(c=>!c.summoningSickness&&!c.tapped).reduce((sum,c)=>sum+Math.max(0,getEffectivePower(c)||0),0);
+      return Number(virtualVehicle.card.power||0)>attackableCost ? chosen : null;
+    }
+    const baseline=chooseHardAttackPlan({eligibleAttackers:baselineEligible,defenders,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
+    let best=null;
+    for(const option of sets){
+      const crewSet=new Set(option.chosen);
+      const virtualIndex=state.rivalCombat.length;
+      const eligible=state.rivalCombat.map((unit,index)=>({unit,index}))
+        .filter(({unit})=>!crewSet.has(unit)&&!unit.tapped&&!unit.summoningSickness&&!hasKeyword(unit,'defender'));
+      eligible.push({unit:virtualVehicle,index:virtualIndex});
+      const plan=chooseHardAttackPlan({eligibleAttackers:eligible,defenders,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
+      if(!plan.indexes.includes(virtualIndex)) continue; // si no lo va a usar, no paga Crew.
+      const gain=plan.utility-baseline.utility;
+      const damageGain=(plan.damage||0)-(baseline.damage||0);
+      if(gain<=0.5 && damageGain<=0) continue;
+      if(!best || gain>best.gain || (gain===best.gain && option.chosen.length<best.chosen.length)) best={...option,gain,plan,baseline};
+    }
+    return best;
+  }
+
+  // Defensa: sólo después de que el humano declaró atacantes. Elegimos Crew únicamente si
+  // el Vehículo termina asignado a un atacante y mejora la defensa global.
+  const attackers=state.localCombat.map((unit,index)=>({unit,index})).filter(({unit})=>unit.isAttacking);
+  if(!attackers.length) return null;
+  if(!strategic) return sets[0];
+  const baselineBlockers=state.rivalCombat.map((unit,index)=>({unit,index})).filter(({unit})=>!unit.tapped);
+  const baseline=chooseHardBlockPlan({attackers,blockers:baselineBlockers,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
+  let best=null;
+  for(const option of sets){
+    const crewSet=new Set(option.chosen);
+    const blockers=state.rivalCombat.map((unit,index)=>({unit,index})).filter(({unit})=>!crewSet.has(unit)&&!unit.tapped);
+    const virtualBlockerPos=blockers.length;
+    blockers.push({unit:virtualVehicle,index:state.rivalCombat.length});
+    const plan=chooseHardBlockPlan({attackers,blockers,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
+    if((plan.assignment?.[virtualBlockerPos] ?? -1)<0) continue;
+    const gain=baseline.utility-plan.utility; // menor utility del atacante = mejor defensa.
+    const damageGain=(baseline.damage||0)-(plan.damage||0);
+    if(gain<=0.5 && damageGain<=0) continue;
+    if(!best || gain>best.gain || (gain===best.gain && option.chosen.length<best.chosen.length)) best={...option,gain,plan,baseline};
+  }
+  return best;
+}
+
+// Tripular un Transporte del Tano: la conversión a criatura ocurre al resolver. La decisión
+// estratégica sucede ANTES de girar criaturas y sólo en Beginning of Combat propio o después
+// de Declare Attackers rival; Main 1/Main 2 ya no pueden secuestrar cuerpos sin propósito.
+function tryBotCrewVehicle(vehicleItem, zoneType, ability = getActivatedAbilities(vehicleItem.card).find(ab => ab.crewCost !== undefined)) {
+  const offensive = state.activePlayer==='rival' && state.phase==='combat_begin';
+  const defensive = state.activePlayer==='local' && state.phase==='combat_attackers';
+  if ((!offensive && !defensive) || state.priorityPlayer !== 'rival') return false;
+
+  const required=Number(ability?.crewCost);
+  if(!Number.isFinite(required) || required<0) return false;
+  const candidates = state.rivalCombat.filter(c => c !== vehicleItem && !c.tapped);
+  const decision=chooseStrategicBotCrewSet(vehicleItem,candidates,required,offensive?'attack':'block');
+  if(!decision) return false;
 
   const originZone = zoneType === 'land' ? state.rivalLands : state.rivalSupport;
   if (!originZone.includes(vehicleItem)) return false;
 
-  chosen.forEach(c => {
+  decision.chosen.forEach(c => {
     c.tapped = true;
     dispatchGameEvent({
       type:'permanent_tapped',controllerIsLocal:false,actorIsLocal:false,
@@ -1147,6 +1318,9 @@ function tryBotCrewVehicle(vehicleItem, zoneType, ability = getActivatedAbilitie
       card:c.card,item:c,zoneFrom:'battlefield',zoneTo:'battlefield',cause:'crew'
     }, {forceDeferNormalTriggers:true});
   });
+
+  if(offensive) vehicleItem._botCrewedForAttackTurn=state.turnCount;
+  else delete vehicleItem._botCrewedForAttackTurn;
 
   const abilityIndex = Math.max(0, getActivatedAbilities(vehicleItem.card).indexOf(ability));
   addToStack({
@@ -1160,9 +1334,14 @@ function tryBotCrewVehicle(vehicleItem, zoneType, ability = getActivatedAbilitie
     source:{type:'crew_activation',abilityIndex,sourceItem:vehicleItem}
   });
   flushDeferredLandManaTriggers();
+  recordTelemetryEvent('bot_crew_plan',{
+    turnCount:state.turnCount,phase:state.phase,mode:offensive?'attack':'block',
+    vehicle:vehicleItem.card?.name||null,crewCount:decision.chosen.length,crewPower:decision.power,required,
+    strategic:normalizeBotDifficulty(state.botDifficulty)!=='easy',utilityGain:Number(decision.gain||0)
+  });
   state.priorityPlayer='local';
   state.consecutivePasses=0;
-  logMsg(gameText('bot.crew.activated',{card:vehicleItem.card.name,count:chosen.length,power:powerSoFar,required}));
+  logMsg(gameText('bot.crew.activated',{card:vehicleItem.card.name,count:decision.chosen.length,power:decision.power,required}));
   render();
   return true;
 }
@@ -1261,6 +1440,38 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
       let aiTargetObj = null;
       const effect = ability.effect || {};
 
+      // HF15 — las habilidades instantáneas de valor ya no "secuestran" upkeep/draw/main1
+      // en Medio/Difícil. Primero se conserva el plan de la mano; el valor sobrante se cobra
+      // en Main 2 propio o End step rival. Además se evita fabricar descarte por hand limit.
+      if (isNonUrgentBotValueEffect(effect.type)) {
+        const eligibleCount = effect.type === 'return_all_lands_from_graveyard'
+          ? state.rivalGraveyard.filter(c => String(c?.type || '').includes('Tierra')).length
+          : effect.type === 'return_from_graveyard'
+            ? state.rivalGraveyard.filter(c => cardMatchesGraveyardFilter(c, effect.filter || 'any')).length
+            : effect.type === 'return_lands_from_graveyard'
+              ? state.rivalGraveyard.filter(c => String(c?.type || '').includes('Tierra')).length
+              : 0;
+        const policy = evaluateBotValueAbilityPolicy({
+          strategic:botHasCapability(state.botDifficulty, 'strategicMainPhase'),
+          activePlayer:state.activePlayer,
+          phase:state.phase,
+          timing,
+          handSize:state.rivalHand.length,
+          projectedHandGain:projectedBotHandGain(effect, eligibleCount),
+          hasPlayableMainPhaseSpell:botHasPlayableMainPhaseSpellNow(),
+          effectType:effect.type
+        });
+        if (!policy.allow) {
+          recordTelemetryEvent('bot_value_ability_deferred', {
+            turnCount:state.turnCount, phase:state.phase, activePlayer:state.activePlayer,
+            cardId:card?.id || null, cardName:card?.name || null, effectType:effect.type,
+            handSize:state.rivalHand.length, reason:policy.reason,
+            abilityManaCost:manaCostString || null, availableMana:getRivalTotalAvailableMana()
+          });
+          continue;
+        }
+      }
+
       if (effect.type === 'animate_land') {
         // 23.17.5.5 — si la misma Tierra ya está animada o ya tiene una activación de
         // animación esperando en la pila, volver a activarla no aporta nada y puede dejarla
@@ -1330,11 +1541,46 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
         const hasCandidate = state.rivalGraveyard.some(c => (effect.type === 'return_from_graveyard' ? cardMatchesGraveyardFilter(c, effect.filter || 'any') : String(c?.type || '').includes('Tierra')));
         if (hasCandidate && (state.phase === 'main2' || timing === 'instant')) shouldActivate = true;
       }
+      else if (effect.type === 'remove_counter') {
+        const counterType=effect.counterType || 'plusOne';
+        const amount=Math.max(1,Math.floor(Number(effect.amount)||1));
+        const targetCandidates=getResolvedEffectTargetCandidates({effect,sourceCard:card,controllerIsLocal:false,chooserIsLocal:false,cardName:card.name})
+          .filter(target=>target?.item && getCounterCount(target.item,counterType)>=amount);
+        if(targetCandidates.length){
+          const ownCounterPayoff=(card.triggers||[]).some(trigger=>trigger?.event==='counter_removed' && trigger?.filter?.self===true
+            && (!trigger?.filter?.counterType || String(trigger.filter.counterType).toLowerCase()===String(counterType).toLowerCase()));
+          const preferred=targetCandidates.find(target=>target.item===supportItem) || targetCandidates[0];
+          const safeWindow=(state.activePlayer==='rival' && state.phase==='main2') || (state.activePlayer==='local' && state.phase==='end_step');
+          const handSafe=!ownCounterPayoff || state.rivalHand.length<7;
+          if(safeWindow && handSafe){
+            aiTargetObj=preferred;
+            shouldActivate=true;
+            recordTelemetryEvent('bot_counter_resource_plan',{turnCount:state.turnCount,phase:state.phase,card:card.name,counterType,target:preferred.item?.card?.name||null,ownCounterPayoff,handSize:state.rivalHand.length});
+          }
+        }
+      }
       else if (effect.type === 'draw_and_lose_life') {
         if ((state.phase === 'main2' || (timing === 'instant' && state.rivalHand.length <= 3)) && state.rivalHP > 8) shouldActivate = true;
       }
 
       if (!shouldActivate) continue;
+
+      const strategicAvailableManaBefore = getRivalTotalAvailableMana();
+      const strategicHandBefore = state.rivalHand.length;
+      // Guard diagnóstico independiente de la política: si una regresión futura permitiera
+      // un tap-out temprano, Telemetry debe dejar una huella antes de comprometer recursos.
+      if (isNonUrgentBotValueEffect(effect.type) && botHasCapability(state.botDifficulty, 'strategicMainPhase')) {
+        const spend = botAbilityManaAmount(manaCostString);
+        const fraction = strategicAvailableManaBefore > 0 ? spend / strategicAvailableManaBefore : 0;
+        if (state.activePlayer === 'rival' && !['main2','end_step'].includes(state.phase) && fraction >= .60 && strategicHandBefore >= 5) {
+          recordTelemetryBugCandidate({
+            code:'BOT_STRATEGIC_MANA_WASTE',
+            severity:'warning',
+            message:'El bot está por comprometer la mayor parte de su maná en una habilidad de valor antes de completar su plan principal.',
+            details:{turnCount:state.turnCount,phase:state.phase,card:card?.name||null,effectType:effect.type,spendMana:spend,availableMana:strategicAvailableManaBefore,handBefore:strategicHandBefore}
+          });
+        }
+      }
 
       if (abilityAdditional?.discard?.amount > 0 && !payBotActivatedDiscardCost(abilityAdditional.discard.amount, card.name)) continue;
       if (dummyCardForCost.manaCost) tapRivalLandsFor(dummyCardForCost, { excludeItems: reservedManaSources });
@@ -1359,6 +1605,13 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
         const chosen = lands.sort((a,b) => (Number(a.card?.manaAmount)||1) - (Number(b.card?.manaAmount)||1))[0];
         if (chosen) performSacrifice(chosen, false);
       }
+
+      recordBotValueAbilitySpend({
+        card, effect, manaCostString,
+        availableManaBefore:strategicAvailableManaBefore,
+        handBefore:strategicHandBefore,
+        phase:state.phase
+      });
 
       if (tryPayWardForBotTarget(aiTargetObj)) {
         addToStack({
@@ -1431,6 +1684,39 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
       let aiTargetObj = null;
       const effect = ability.effect || {};
 
+      // HF15 — misma política para habilidades propias/prestadas de criaturas equipadas.
+      // No tendría sentido arreglar Tierras/Artefactos y dejar un Equipo capaz de provocar
+      // exactamente el mismo tap-out prematuro.
+      if (isNonUrgentBotValueEffect(effect.type)) {
+        const eligibleCount = effect.type === 'return_all_lands_from_graveyard'
+          ? state.rivalGraveyard.filter(c => String(c?.type || '').includes('Tierra')).length
+          : effect.type === 'return_from_graveyard'
+            ? state.rivalGraveyard.filter(c => cardMatchesGraveyardFilter(c, effect.filter || 'any')).length
+            : effect.type === 'return_lands_from_graveyard'
+              ? state.rivalGraveyard.filter(c => String(c?.type || '').includes('Tierra')).length
+              : 0;
+        const policy = evaluateBotValueAbilityPolicy({
+          strategic:botHasCapability(state.botDifficulty, 'strategicMainPhase'),
+          activePlayer:state.activePlayer,
+          phase:state.phase,
+          timing,
+          handSize:state.rivalHand.length,
+          projectedHandGain:projectedBotHandGain(effect, eligibleCount),
+          hasPlayableMainPhaseSpell:botHasPlayableMainPhaseSpellNow(),
+          effectType:effect.type
+        });
+        if (!policy.allow) {
+          recordTelemetryEvent('bot_value_ability_deferred', {
+            turnCount:state.turnCount, phase:state.phase, activePlayer:state.activePlayer,
+            cardId:sourceCard?.id || null, cardName:sourceCard?.name || null, effectType:effect.type,
+            handSize:state.rivalHand.length, reason:policy.reason,
+            abilityManaCost:manaCostString || null, availableMana:getRivalTotalAvailableMana(),
+            sourceKind:abilityKind
+          });
+          continue;
+        }
+      }
+
       if (effect.type === 'damage') {
         const vulnerable = state.localCombat.find(c =>
           isValidBotTarget(c, sourceCard.colors) && getEffectiveToughness(c) <= effect.amount
@@ -1485,6 +1771,20 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
 
       if (!shouldActivate) continue;
 
+      const strategicAvailableManaBefore = getRivalTotalAvailableMana();
+      const strategicHandBefore = state.rivalHand.length;
+      if (isNonUrgentBotValueEffect(effect.type) && botHasCapability(state.botDifficulty, 'strategicMainPhase')) {
+        const spend = botAbilityManaAmount(manaCostString);
+        const fraction = strategicAvailableManaBefore > 0 ? spend / strategicAvailableManaBefore : 0;
+        if (state.activePlayer === 'rival' && !['main2','end_step'].includes(state.phase) && fraction >= .60 && strategicHandBefore >= 5) {
+          recordTelemetryBugCandidate({
+            code:'BOT_STRATEGIC_MANA_WASTE', severity:'warning',
+            message:'El bot está por comprometer la mayor parte de su maná en una habilidad de valor concedida antes de completar su plan principal.',
+            details:{turnCount:state.turnCount,phase:state.phase,card:sourceCard?.name||null,effectType:effect.type,spendMana:spend,availableMana:strategicAvailableManaBefore,handBefore:strategicHandBefore,sourceKind:abilityKind}
+          });
+        }
+      }
+
       if (abilityAdditional?.discard?.amount > 0 && !payBotActivatedDiscardCost(abilityAdditional.discard.amount, sourceCard.name)) continue;
       if (dummyCardForCost.manaCost) tapRivalLandsFor(dummyCardForCost);
       if (requiresTap) {
@@ -1511,6 +1811,13 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
         // "self" refiere a la criatura que está usando la habilidad.
         performSacrifice(creatureItem, false);
       }
+
+      recordBotValueAbilitySpend({
+        card:sourceCard, effect, manaCostString,
+        availableManaBefore:strategicAvailableManaBefore,
+        handBefore:strategicHandBefore,
+        phase:state.phase
+      });
 
       if (tryPayWardForBotTarget(aiTargetObj)) {
         addToStack({
@@ -2380,6 +2687,7 @@ export async function takeBotPriorityAction() {
       // métodos de pago del Tano antes de activar fuentes.
       await payBotCastRoute(cardToPlay,useAlternative,{kicked:botKicked,xValue:botXValue||0});
       if (useAlternative) logMsg(gameText('bot.cast.altPaid', { card: cardToPlay.name }));
+      noteBotMainPhaseHandCast(originalCardToPlay);
 
       const castStackItem = {
         card: cardToPlay,
@@ -2493,6 +2801,21 @@ export async function takeBotPriorityAction() {
           heldBackCount++;
         }
       }
+    }
+
+    // HF16 invariant: un Transporte tripulado ofensivamente en Beginning of Combat debe
+    // aparecer realmente en la declaración de atacantes. Si una regresión rompe esa promesa,
+    // Telemetry lo marca automáticamente en lugar de dejar otra jugada absurda silenciosa.
+    for (const unit of state.rivalCombat) {
+      if (unit?._botCrewedForAttackTurn !== state.turnCount) continue;
+      if (!unit.isAttacking) {
+        recordTelemetryBugCandidate({
+          code:'BOT_CREW_WASTE',severity:'warning',
+          message:'El bot tripuló un Transporte con intención ofensiva pero no lo declaró atacante.',
+          details:{turnCount:state.turnCount,phase:state.phase,vehicle:unit.card?.name||null,tapped:!!unit.tapped,summoningSickness:!!unit.summoningSickness}
+        });
+      }
+      delete unit._botCrewedForAttackTurn;
     }
 
     if (hardAttackPlan) logMsg(gameText('bot.attack.combat2', { count:attackCount }));

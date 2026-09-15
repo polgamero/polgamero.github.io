@@ -7,6 +7,7 @@ const root = process.cwd();
 const audio = await import(pathToFileURL(path.join(root, 'js/audioManager.js')).href);
 const ui = fs.readFileSync(path.join(root, 'js/ui.js'), 'utf8');
 const main = fs.readFileSync(path.join(root, 'js/main.js'), 'utf8');
+const telemetry = fs.readFileSync(path.join(root, 'js/telemetry.js'), 'utf8');
 const version = fs.readFileSync(path.join(root, 'js/version.js'), 'utf8');
 
 const defaults = audio.getDefaultAudioSettings();
@@ -34,7 +35,12 @@ assert.equal(audio.AUDIO_SETTINGS_STORAGE_KEY, 'argentinia.audio.v1', 'Persisten
 assert.ok(ui.includes('enterMenuAudio();'), 'Menú principal no arma la escena musical.');
 assert.ok(ui.includes("id=\"opt-music-volume\""), 'Opciones no incluye slider de Música.');
 assert.ok(ui.includes("id=\"opt-sfx-volume\""), 'Opciones no incluye slider separado de Efectos.');
-assert.ok(ui.includes("id=\"menu-music-toggle\""), 'Menú no incluye mute rápido de música.');
+assert.ok(!ui.includes("id=\"menu-music-toggle\""), 'El mute legacy no debe seguir dentro del bloque de cuenta.');
+assert.ok(telemetry.includes("id = 'arg-game-music-toggle'") || telemetry.includes("id='arg-game-music-toggle'") || telemetry.includes("id = \"arg-game-music-toggle\"") || telemetry.includes("id = 'arg-game-music-toggle'"), 'El acceso rápido de audio debe vivir junto a REC.');
+assert.match(telemetry, /arg-quick-music-volume/);
+assert.match(telemetry, /arg-quick-sfx-volume/);
+assert.match(telemetry, /setQuickMusicLevel/);
+assert.match(telemetry, /setQuickSfxLevel/);
 assert.match(main, /async function initGame\(deckSource(?:, options = \{\})?\) \{[\s\S]{0,900}enterGameplayAudio\('solo'\);/, 'Solitario no selecciona la pista gameplay solo.');
 assert.match(main, /function startMultiplayerMatch\(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host'\) \{[\s\S]{0,700}enterGameplayAudio\('multiplayer'\);/, 'Multiplayer no selecciona la pista gameplay multiplayer.');
 assert.ok(fs.readFileSync(path.join(root, 'js/audioManager.js'), 'utf8').includes("document.addEventListener('visibilitychange'"), 'Audio no pausa/reanuda al cambiar visibilidad.');

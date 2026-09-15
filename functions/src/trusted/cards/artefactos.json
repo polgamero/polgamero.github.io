@@ -1589,7 +1589,9 @@
         "effect": {
           "type": "add_counter",
           "counterType": "charge",
-          "amount": 1
+          "amount": 1,
+          "targetKind": "support",
+          "targetController": "self"
         },
         "target": "self"
       }
@@ -1655,7 +1657,9 @@
         "effect": {
           "type": "add_counter",
           "counterType": "Kilómetro",
-          "amount": 1
+          "amount": 1,
+          "targetKind": "support",
+          "targetController": "self"
         },
         "target": "self"
       },

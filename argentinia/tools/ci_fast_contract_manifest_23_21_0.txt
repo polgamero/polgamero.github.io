@@ -141,3 +141,9 @@ tools/test_private_zone_full_card_zone_hover_23_21_6_hf11.mjs
 tools/test_tournament_bot_visibility_recovery_23_21_6_hf12.mjs
 
 tools/test_auth_onboarding_account_chooser_23_21_6_hf13.mjs
+
+tools/test_options_responsive_two_column_23_21_6_hf14.mjs
+
+tools/test_bot_strategy_desktop_match_cover_23_21_6_hf15.mjs
+
+tools/test_combat_transport_counter_audio_mixer_23_21_6_hf16.mjs

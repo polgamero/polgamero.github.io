@@ -1086,6 +1086,8 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'account.delete.error': definition('Cuenta', '⚠️ No se pudo borrar la cuenta — revisá tu conexión e intentá de nuevo.', 'Error al borrar la cuenta.'),
   'account.delete.tradeReserved': definition('Cuenta', '🔒 No podés borrar tu cuenta mientras tengas una publicación u oferta activa en Mercado de Pases. Cancelalas primero para liberar las cartas reservadas.', 'Borrado de cuenta bloqueado por reservas activas de Mercado de Pases.'),
   'options.title': definition('Menú', 'Opciones', 'Título del menú Opciones.'),
+  'options.gameplay': definition('Menú', 'Juego', 'Título de la columna de opciones de gameplay.'),
+  'options.back': definition('Menú', 'Volver', 'Botón para cerrar Opciones y volver al menú.'),
   'options.difficulty': definition('Menú', 'Dificultad del Tano', 'Etiqueta de dificultad del bot.'),
   'options.animations': definition('Menú', 'Animaciones', 'Etiqueta y sección del sistema de animaciones de partida.'),
   'options.animationSpeed': definition('Menú', 'Velocidad de animaciones', 'Etiqueta de velocidad de animaciones.'),

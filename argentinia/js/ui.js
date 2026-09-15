@@ -96,7 +96,7 @@ import { effectivePackCost, campaignStatus } from './campaigns.js';
 import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.js';
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
-import { enterMenuAudio, getAudioSettings, toggleMasterMute, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
+import { enterMenuAudio, getAudioSettings, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
 import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer } from './animationDirector.js';
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
@@ -2259,13 +2259,22 @@ function showDesktopBattlefieldHoverPreview(cardEl) {
   if (!rect.width || !rect.height) return;
   const tapped = cardEl.classList.contains('tapped');
   const verticalSourceWidth = tapped ? rect.height : rect.width;
-  const displayW = Math.min(220, Math.max(150, verticalSourceWidth * 2));
-  const displayH = displayW / CARD_ASPECT;
+  // HF16: en overflow el portal es el ÚNICO hover. Lo hacemos comparable al hover histórico
+  // (2.8x), pero con clamp por ancho Y alto de viewport para que siempre se vea completo.
   const pad = 12;
+  const viewportW = window.visualViewport?.width || window.innerWidth;
+  const viewportH = window.visualViewport?.height || window.innerHeight;
+  const desiredW = Math.max(170, verticalSourceWidth * 2.65);
+  const maxWByViewport = Math.max(120, viewportW - pad * 2);
+  const maxWByHeight = Math.max(120, (viewportH - pad * 2) * CARD_ASPECT);
+  const displayW = Math.min(desiredW, 300, maxWByViewport, maxWByHeight);
+  const displayH = displayW / CARD_ASPECT;
+  const viewportLeft = window.visualViewport?.offsetLeft || 0;
+  const viewportTop = window.visualViewport?.offsetTop || 0;
   const centerX = rect.left + rect.width / 2;
   const centerY = rect.top + rect.height / 2;
-  const left = Math.min(Math.max(pad, centerX - displayW / 2), Math.max(pad, window.innerWidth - displayW - pad));
-  const top = Math.min(Math.max(pad, centerY - displayH / 2), Math.max(pad, window.innerHeight - displayH - pad));
+  const left = Math.min(Math.max(viewportLeft + pad, centerX - displayW / 2), Math.max(viewportLeft + pad, viewportLeft + viewportW - displayW - pad));
+  const top = Math.min(Math.max(viewportTop + pad, centerY - displayH / 2), Math.max(viewportTop + pad, viewportTop + viewportH - displayH - pad));
 
   const preview = cardEl.cloneNode(true);
   preview.querySelectorAll?.('[id]').forEach?.(node => node.removeAttribute('id'));
@@ -2782,27 +2791,56 @@ function injectMainMenuStyles() {
       padding: 6px 14px; cursor: pointer; transition: box-shadow 0.15s ease;
     }
     .main-menu-admin-btn:hover { box-shadow: 0 4px 16px rgba(176,106,212,0.4); }
-    #options-menu-overlay { display: flex; align-items: center; justify-content: center; }
+    #options-menu-overlay {
+      display: flex; align-items: center; justify-content: center;
+      box-sizing: border-box;
+      padding: clamp(10px, 2vh, 24px);
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
     .options-menu-panel {
-      max-width: 520px; width: 92%;
+      width: min(940px, calc(100vw - 32px));
+      max-width: 940px;
+      max-height: calc(100vh - 32px);
+      max-height: calc(100dvh - 32px);
+      box-sizing: border-box;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-gutter: stable;
+      overscroll-behavior: contain;
       background: linear-gradient(180deg, rgba(18,25,15,0.97), rgba(11,19,14,0.99));
       border: 2px solid var(--gold, #d4af37);
       border-radius: 16px;
-      padding: 32px 36px;
+      padding: clamp(20px, 3vh, 30px) clamp(20px, 3vw, 34px);
       box-shadow: 0 0 60px rgba(212,175,55,0.15), 0 20px 60px rgba(0,0,0,0.6);
     }
     .options-menu-title {
-      text-align: center; font-size: 24px; font-weight: 700;
-      color: #f0e0b0; margin-bottom: 24px;
+      text-align: center; font-size: clamp(22px, 2vw, 28px); font-weight: 700;
+      color: #f0e0b0; margin-bottom: clamp(14px, 2.2vh, 22px);
       text-shadow: 0 0 20px rgba(212,175,55,0.4);
+    }
+    .options-layout-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(18px, 2.4vw, 30px);
+      align-items: start;
+    }
+    .options-column {
+      min-width: 0;
+      border: 1px solid rgba(212,175,55,0.14);
+      border-radius: 12px;
+      padding: 10px 14px 14px;
+      background: rgba(0,0,0,0.08);
     }
     .options-row {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 4px;
+      gap: 14px;
+      min-width: 0;
+      padding: 11px 4px;
       border-bottom: 1px solid rgba(212,175,55,0.15);
     }
     .options-row:last-of-type { border-bottom: none; }
-    .options-label { color: #e8ddc8; font-size: 15px; }
+    .options-label { color: #e8ddc8; font-size: 15px; min-width: 0; }
     .options-toggle-btn {
       background: rgba(255,255,255,0.05);
       border: 1.5px solid rgba(212,175,55,0.4);
@@ -2812,17 +2850,28 @@ function injectMainMenuStyles() {
       padding: 7px 16px;
       cursor: pointer;
       min-width: 90px;
+      flex: 0 0 auto;
       transition: background 0.15s ease, border-color 0.15s ease;
     }
     .options-toggle-btn:hover { background: rgba(212,175,55,0.15); border-color: #f0e0b0; }
     .options-section-title {
       color: #d4af37; font-size: 11px; font-weight: 800; letter-spacing: 0.9px;
-      text-transform: uppercase; margin-top: 18px; padding: 0 4px 5px;
+      text-transform: uppercase; margin-top: 12px; padding: 0 4px 5px;
     }
-    .options-audio-row { gap: 18px; }
-    .options-audio-controls { display:flex; align-items:center; justify-content:flex-end; gap:10px; min-width: 310px; }
-    .options-volume-slider { width: 150px; accent-color: #d4af37; cursor: pointer; }
+    .options-section-title:first-child { margin-top: 2px; }
+    .options-audio-row { gap: 12px; }
+    .options-audio-controls {
+      display:grid;
+      grid-template-columns: minmax(92px, auto) minmax(90px, 1fr) 42px;
+      align-items:center;
+      gap:8px;
+      min-width: 0;
+      flex: 1 1 250px;
+      max-width: 315px;
+    }
+    .options-volume-slider { width: 100%; min-width: 90px; accent-color: #d4af37; cursor: pointer; }
     .options-volume-value { width: 42px; text-align:right; color:#cfe0d4; font-size:12px; font-variant-numeric: tabular-nums; }
+    .options-back-btn { margin-top: 18px !important; text-align: center; }
     .main-menu-music-btn {
       flex:0 0 34px; width:34px; height:30px; min-width:34px; padding:0; margin:0; align-self:auto;
       border: 1px solid rgba(212,175,55,0.45); border-radius: 8px;
@@ -2832,11 +2881,33 @@ function injectMainMenuStyles() {
     }
     .main-menu-music-btn:hover { background: rgba(212,175,55,0.14); border-color:#f0e0b0; }
     .main-menu-music-btn.is-muted { opacity: .62; }
-    @media (max-width: 620px) {
-      .options-menu-panel { padding: 24px 18px; }
+    @media (max-width: 759px) {
+      #options-menu-overlay { align-items: flex-start; padding: 10px; }
+      .options-menu-panel {
+        width: min(100%, 620px);
+        max-height: calc(100vh - 20px);
+        max-height: calc(100dvh - 20px);
+        padding: 20px 16px;
+      }
+      .options-layout-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+      .options-column { padding: 8px 12px 12px; }
       .options-audio-row { align-items:flex-start; flex-direction:column; gap:8px; }
-      .options-audio-controls { width:100%; min-width:0; justify-content:space-between; }
-      .options-volume-slider { flex:1; min-width: 100px; }
+      .options-audio-controls { width:100%; max-width:none; grid-template-columns: minmax(92px, auto) minmax(100px, 1fr) 42px; }
+    }
+    @media (max-height: 640px) and (min-width: 760px) {
+      #options-menu-overlay { padding: 8px 16px; }
+      .options-menu-panel {
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
+        padding-top: 14px;
+        padding-bottom: 14px;
+      }
+      .options-menu-title { margin-bottom: 10px; font-size: 22px; }
+      .options-column { padding-top: 7px; padding-bottom: 9px; }
+      .options-row { padding-top: 8px; padding-bottom: 8px; }
+      .options-section-title { margin-top: 8px; }
+      .options-danger-zone { margin-top: 14px; padding-top: 12px; }
+      .options-back-btn { margin-top: 12px !important; }
     }
     .options-row-disabled .options-label { opacity: 0.5; }
     .options-row-disabled .options-toggle-btn { opacity: 0.45; cursor: not-allowed; position: relative; }
@@ -2851,7 +2922,7 @@ function injectMainMenuStyles() {
       border: 1px solid var(--gold, #d4af37); pointer-events: none; z-index: 10;
     }
     .options-danger-zone {
-      margin-top: 26px; padding-top: 18px; border-top: 1px solid rgba(224,122,107,0.3);
+      margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(224,122,107,0.3);
     }
     .options-danger-title {
       color: #e07a6b; font-size: 12px; font-weight: 700; text-transform: uppercase;
@@ -6964,32 +7035,6 @@ export function showMyDecksScreen(onBack) {
 // cada vez que cambia el estado de sesión (login/logout/recarga con sesión activa), vía
 // updateAccountUI más abajo, que ya está enganchado en boot() (main.js) apenas arranca la
 // página, sin importar qué pantalla esté mostrándose en ese momento.
-function bindMainMenuMusicQuickButton(root) {
-  const musicQuickBtn = root?.querySelector?.('#menu-music-toggle');
-  if (!musicQuickBtn) return;
-  const refresh = () => {
-    const audio = getAudioSettings();
-    musicQuickBtn.textContent = audio.masterMuted ? '🔇' : '🔊';
-    musicQuickBtn.classList.toggle('is-muted', !!audio.masterMuted);
-    musicQuickBtn.title = audio.masterMuted ? 'Activar audio' : 'Silenciar música y efectos';
-    musicQuickBtn.setAttribute('aria-label', audio.masterMuted ? 'Activar audio' : 'Silenciar música y efectos');
-    musicQuickBtn.setAttribute('aria-pressed', String(!!audio.masterMuted));
-  };
-  refresh();
-  musicQuickBtn.addEventListener('click', () => {
-    toggleMasterMute();
-    refresh();
-  });
-  const onAudioSettingsChanged = () => {
-    if (!musicQuickBtn.isConnected) {
-      window.removeEventListener('argentinia:audio-settings-changed', onAudioSettingsChanged);
-      return;
-    }
-    refresh();
-  };
-  window.addEventListener('argentinia:audio-settings-changed', onAudioSettingsChanged);
-}
-
 function renderAccountBox(container, user) {
   if (!container) return;
 
@@ -7012,7 +7057,6 @@ function renderAccountBox(container, user) {
       <div class="main-menu-account-actions">
         <button class="main-menu-reward-btn" id="menu-chest">${gameTextHtml('account.chest')}${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
         <button class="main-menu-reward-btn" id="menu-daily-rewards">${gameTextHtml('account.dailyRewards')}${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
-        <button class="main-menu-music-btn" id="menu-music-toggle" type="button" aria-label="Silenciar música y efectos">🔊</button>
       </div>`;
     container.innerHTML = `
       ${adminBtnHTML}
@@ -7027,7 +7071,6 @@ function renderAccountBox(container, user) {
         </div>
       </div>
     `;
-    bindMainMenuMusicQuickButton(container);
     container.querySelector('#menu-chest').addEventListener('click', () => {
       if (!state.userProfile) return;
       const mainMenuOverlay = document.getElementById('main-menu-overlay');
@@ -10376,40 +10419,47 @@ export function showOptionsMenu(onBack) {
   overlay.innerHTML = `
     <div class="options-menu-panel">
       <div class="options-menu-title">${escapeHtml(gameText('options.title'))}</div>
-      <div class="options-row">
-        <span class="options-label">${escapeHtml(gameText('options.difficulty'))}</span>
-        <button class="options-toggle-btn" id="opt-difficulty">${difficultyLabel()}</button>
-      </div>
-      <div class="options-section-title">${escapeHtml(gameText('options.animations'))}</div>
-      <div class="options-row">
-        <span class="options-label">${escapeHtml(gameText('options.animations'))}</span>
-        <button class="options-toggle-btn" id="opt-animations-toggle">${initialAnimations.enabled ? escapeHtml(gameText('options.enabled')) : escapeHtml(gameText('options.off'))}</button>
-      </div>
-      <div class="options-row" id="opt-animation-speed-row">
-        <span class="options-label">${escapeHtml(gameText('options.animationSpeed'))}</span>
-        <button class="options-toggle-btn" id="opt-animation-speed">${escapeHtml(animationSpeedLabel(initialAnimations.speed))}</button>
-      </div>
-      <div id="opt-animation-server-note" style="${initialServerAnimationPolicy.enabled ? 'display:none;' : ''}margin:-2px 0 12px;color:#d99b6b;font-size:11px;line-height:1.4;">${escapeHtml(gameText('options.animations.serverOff'))}</div>
+      <div class="options-layout-grid">
+        <section class="options-column options-column-gameplay">
+          <div class="options-section-title">${escapeHtml(gameText('options.gameplay'))}</div>
+          <div class="options-row">
+            <span class="options-label">${escapeHtml(gameText('options.difficulty'))}</span>
+            <button class="options-toggle-btn" id="opt-difficulty">${difficultyLabel()}</button>
+          </div>
+          <div class="options-section-title">${escapeHtml(gameText('options.animations'))}</div>
+          <div class="options-row">
+            <span class="options-label">${escapeHtml(gameText('options.animations'))}</span>
+            <button class="options-toggle-btn" id="opt-animations-toggle">${initialAnimations.enabled ? escapeHtml(gameText('options.enabled')) : escapeHtml(gameText('options.off'))}</button>
+          </div>
+          <div class="options-row" id="opt-animation-speed-row">
+            <span class="options-label">${escapeHtml(gameText('options.animationSpeed'))}</span>
+            <button class="options-toggle-btn" id="opt-animation-speed">${escapeHtml(animationSpeedLabel(initialAnimations.speed))}</button>
+          </div>
+          <div id="opt-animation-server-note" style="${initialServerAnimationPolicy.enabled ? 'display:none;' : ''}margin:4px 4px 2px;color:#d99b6b;font-size:11px;line-height:1.4;">${escapeHtml(gameText('options.animations.serverOff'))}</div>
+        </section>
 
-      <div class="options-section-title">${escapeHtml(gameText('options.audio'))}</div>
-      <div class="options-row options-audio-row">
-        <span class="options-label">${escapeHtml(gameText('options.music'))}</span>
-        <div class="options-audio-controls">
-          <button class="options-toggle-btn" id="opt-music-toggle">${initialAudio.musicEnabled ? escapeHtml(gameText('options.enabled')) : escapeHtml(gameText('options.off'))}</button>
-          <input class="options-volume-slider" id="opt-music-volume" type="range" min="0" max="100" step="1" value="${percent(initialAudio.musicVolume)}" aria-label="${escapeHtml(gameText('options.musicVolume'))}">
-          <span class="options-volume-value" id="opt-music-value">${percent(initialAudio.musicVolume)}%</span>
-        </div>
+        <section class="options-column options-column-audio">
+          <div class="options-section-title">${escapeHtml(gameText('options.audio'))}</div>
+          <div class="options-row options-audio-row">
+            <span class="options-label">${escapeHtml(gameText('options.music'))}</span>
+            <div class="options-audio-controls">
+              <button class="options-toggle-btn" id="opt-music-toggle">${initialAudio.musicEnabled ? escapeHtml(gameText('options.enabled')) : escapeHtml(gameText('options.off'))}</button>
+              <input class="options-volume-slider" id="opt-music-volume" type="range" min="0" max="100" step="1" value="${percent(initialAudio.musicVolume)}" aria-label="${escapeHtml(gameText('options.musicVolume'))}">
+              <span class="options-volume-value" id="opt-music-value">${percent(initialAudio.musicVolume)}%</span>
+            </div>
+          </div>
+          <div class="options-row options-audio-row">
+            <span class="options-label">${escapeHtml(gameText('options.effects'))}</span>
+            <div class="options-audio-controls">
+              <button class="options-toggle-btn" id="opt-sfx-toggle">${initialAudio.sfxEnabled ? escapeHtml(gameText('options.enabled')) : escapeHtml(gameText('options.off'))}</button>
+              <input class="options-volume-slider" id="opt-sfx-volume" type="range" min="0" max="100" step="1" value="${percent(initialAudio.sfxVolume)}" aria-label="${escapeHtml(gameText('options.effectsVolume'))}">
+              <span class="options-volume-value" id="opt-sfx-value">${percent(initialAudio.sfxVolume)}%</span>
+            </div>
+          </div>
+          ${dangerZoneHTML}
+        </section>
       </div>
-      <div class="options-row options-audio-row">
-        <span class="options-label">${escapeHtml(gameText('options.effects'))}</span>
-        <div class="options-audio-controls">
-          <button class="options-toggle-btn" id="opt-sfx-toggle">${initialAudio.sfxEnabled ? escapeHtml(gameText('options.enabled')) : escapeHtml(gameText('options.off'))}</button>
-          <input class="options-volume-slider" id="opt-sfx-volume" type="range" min="0" max="100" step="1" value="${percent(initialAudio.sfxVolume)}" aria-label="${escapeHtml(gameText('options.effectsVolume'))}">
-          <span class="options-volume-value" id="opt-sfx-value">${percent(initialAudio.sfxVolume)}%</span>
-        </div>
-      </div>
-      ${dangerZoneHTML}
-      <button class="main-menu-btn" id="opt-back" style="margin-top: 24px;">Volver</button>
+      <button class="main-menu-btn options-back-btn" id="opt-back">${escapeHtml(gameText('options.back'))}</button>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -10463,6 +10513,9 @@ export function showOptionsMenu(onBack) {
     sfxSlider.value = String(percent(audio.sfxVolume));
     sfxValue.textContent = `${percent(audio.sfxVolume)}%`;
   };
+
+  const onAudioSettingsChanged = () => refreshAudioControls();
+  window.addEventListener('argentinia:audio-settings-changed', onAudioSettingsChanged);
 
   musicToggle.addEventListener('click', () => {
     setMusicEnabled(!getAudioSettings().musicEnabled);
@@ -10523,6 +10576,7 @@ export function showOptionsMenu(onBack) {
 
   overlay.querySelector('#opt-back').addEventListener('click', () => {
     window.removeEventListener('argentinia:animation-policy-changed', onAnimationPolicyChanged);
+    window.removeEventListener('argentinia:audio-settings-changed', onAudioSettingsChanged);
     overlay.remove();
     onBack();
   });

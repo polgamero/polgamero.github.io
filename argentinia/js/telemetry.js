@@ -17,7 +17,8 @@
 // igual que en el motor: la telemetría no intenta saltarse la privacidad de Firestore.
 
 import { ENGINE_VERSION, ENGINE_VERSION_SHORT, ENGINE_BASELINE } from './version.js';
-import { getAudioRuntimeStatus, toggleMasterMute } from './audioManager.js';
+import { getAudioRuntimeStatus, setQuickMusicLevel, setQuickSfxLevel } from './audioManager.js';
+import { gameText } from './gameTexts.js';
 import { getGameRngSnapshot } from './gameRng.js';
 import { REPLAY_FORMAT_VERSION, REPLAY_HASH_ALGORITHM, replayHash, buildReplayActionJournal } from './replayKernel.js';
 
@@ -74,6 +75,8 @@ let cloudEl = null;
 let bugsEl = null;
 let uploadBtn = null;
 let gameplayMusicToggleEl = null;
+let quickAudioMixerEl = null;
+let quickAudioMixerOpen = false;
 let remoteCheckpointTimer = null;
 let botPriorityWatchdogTimer = null;
 let botPriorityStallSince = null;
@@ -658,14 +661,14 @@ function bugRootCauseKey(finding) {
   if (code === 'SYNC_PUBLISH_ERROR') {
     return `SYNC_PUBLISH_ERROR|${details.errorName || ''}|${details.errorMessage || ''}`;
   }
-  if (code === 'SYNC_PUBLISH_OVERLAP' || code === 'POSSIBLE_SYNC_RENDER_STORM' || code === 'INVALID_PASS_COUNT' || code === 'BLOCKER_DECLARATION_LOOP' || code === 'BOT_PRIORITY_STALL') {
+  if (code === 'SYNC_PUBLISH_OVERLAP' || code === 'POSSIBLE_SYNC_RENDER_STORM' || code === 'INVALID_PASS_COUNT' || code === 'BLOCKER_DECLARATION_LOOP' || code === 'BOT_PRIORITY_STALL' || code === 'BOT_STRATEGIC_MANA_WASTE') {
     return code;
   }
   return `${code}|${JSON.stringify(details)}`;
 }
 
 function shouldAggregateBug(finding) {
-  return new Set(['JS_ERROR', 'UNHANDLED_REJECTION', 'SYNC_PUBLISH_OVERLAP', 'SYNC_PUBLISH_ERROR', 'POSSIBLE_SYNC_RENDER_STORM', 'INVALID_PASS_COUNT', 'BLOCKER_DECLARATION_LOOP', 'BOT_PRIORITY_STALL']).has(finding?.code);
+  return new Set(['JS_ERROR', 'UNHANDLED_REJECTION', 'SYNC_PUBLISH_OVERLAP', 'SYNC_PUBLISH_ERROR', 'POSSIBLE_SYNC_RENDER_STORM', 'INVALID_PASS_COUNT', 'BLOCKER_DECLARATION_LOOP', 'BOT_PRIORITY_STALL', 'BOT_STRATEGIC_MANA_WASTE']).has(finding?.code);
 }
 
 function addBugCandidate(finding, eventSeq = null) {
@@ -711,6 +714,18 @@ function addBugCandidate(finding, eventSeq = null) {
   updatePanelStatus();
   schedulePersist();
   return candidate;
+}
+
+// HF15 — API interna para que subsistemas con una señal estratégica fuerte creen un
+// candidato automático con el mismo dedupe/persistencia de los watchdogs de Telemetry.
+export function recordTelemetryBugCandidate(finding = {}) {
+  if (!currentSession || !finding?.code) return null;
+  const event = recordTelemetryEvent('automatic_bug_candidate', {
+    code:finding.code,
+    message:finding.message || '',
+    details:finding.details || {}
+  }, finding.severity || 'warning');
+  return addBugCandidate(finding, event?.seq ?? currentSession._seq);
 }
 
 function recordStormSample(type) {
@@ -1692,15 +1707,85 @@ function button(label, title, onClick) {
   return b;
 }
 
+function effectiveQuickAudioLevel(audio, channel) {
+  if (audio.masterMuted) return 0;
+  if (channel === 'music') return audio.musicEnabled ? Number(audio.musicVolume || 0) : 0;
+  return audio.sfxEnabled ? Number(audio.sfxVolume || 0) : 0;
+}
+
+function positionQuickAudioMixer() {
+  if (!quickAudioMixerEl || !gameplayMusicToggleEl || quickAudioMixerEl.hidden) return;
+  const rect = gameplayMusicToggleEl.getBoundingClientRect();
+  const pad = 8;
+  const width = quickAudioMixerEl.offsetWidth || 250;
+  const height = quickAudioMixerEl.offsetHeight || 112;
+  const vw = window.visualViewport?.width || window.innerWidth || 1024;
+  const vh = window.visualViewport?.height || window.innerHeight || 768;
+  const left = Math.min(Math.max(pad, rect.left), Math.max(pad, vw - width - pad));
+  const top = Math.min(Math.max(pad, rect.bottom + 7), Math.max(pad, vh - height - pad));
+  quickAudioMixerEl.style.left = `${left}px`;
+  quickAudioMixerEl.style.top = `${top}px`;
+}
+
+function ensureQuickAudioMixer() {
+  if (quickAudioMixerEl?.isConnected) return quickAudioMixerEl;
+  const mixer = document.createElement('div');
+  mixer.id = 'arg-quick-audio-mixer';
+  mixer.className = 'arg-quick-audio-mixer';
+  mixer.hidden = true;
+  mixer.innerHTML = `
+    <div class="arg-quick-audio-row">
+      <label for="arg-quick-music-volume">${gameText('options.music')}</label>
+      <input id="arg-quick-music-volume" type="range" min="0" max="100" step="1" aria-label="${gameText('options.musicVolume')}">
+      <span id="arg-quick-music-value">0%</span>
+    </div>
+    <div class="arg-quick-audio-row">
+      <label for="arg-quick-sfx-volume">${gameText('options.effects')}</label>
+      <input id="arg-quick-sfx-volume" type="range" min="0" max="100" step="1" aria-label="${gameText('options.effectsVolume')}">
+      <span id="arg-quick-sfx-value">0%</span>
+    </div>`;
+  document.body.appendChild(mixer);
+  const music = mixer.querySelector('#arg-quick-music-volume');
+  const sfx = mixer.querySelector('#arg-quick-sfx-volume');
+  music.addEventListener('input', () => setQuickMusicLevel(Number(music.value) / 100));
+  sfx.addEventListener('input', () => setQuickSfxLevel(Number(sfx.value) / 100));
+  mixer.addEventListener('pointerdown', event => event.stopPropagation());
+  quickAudioMixerEl = mixer;
+  return mixer;
+}
+
+function closeQuickAudioMixer() {
+  quickAudioMixerOpen = false;
+  if (quickAudioMixerEl) quickAudioMixerEl.hidden = true;
+  gameplayMusicToggleEl?.setAttribute('aria-expanded', 'false');
+}
+
 function refreshGameplayMusicToggle() {
   if (!gameplayMusicToggleEl) return;
   const audio = getAudioRuntimeStatus();
-  const inGameplay = audio.desiredScene === 'solo' || audio.desiredScene === 'multiplayer';
-  gameplayMusicToggleEl.hidden = !inGameplay;
-  gameplayMusicToggleEl.textContent = audio.masterMuted ? '🔇' : '🔊';
-  gameplayMusicToggleEl.setAttribute('aria-pressed', String(audio.masterMuted));
-  gameplayMusicToggleEl.setAttribute('aria-label', audio.masterMuted ? 'Activar audio de la partida' : 'Silenciar música y efectos de la partida');
-  gameplayMusicToggleEl.title = audio.masterMuted ? 'Activar audio' : 'Silenciar música y efectos';
+  const hasAudioScene = ['menu','solo','multiplayer'].includes(audio.desiredScene);
+  gameplayMusicToggleEl.hidden = !hasAudioScene;
+  const musicLevel = effectiveQuickAudioLevel(audio, 'music');
+  const sfxLevel = effectiveQuickAudioLevel(audio, 'sfx');
+  const silent = musicLevel <= 0.001 && sfxLevel <= 0.001;
+  gameplayMusicToggleEl.textContent = silent ? '🔇' : '🔊';
+  gameplayMusicToggleEl.setAttribute('aria-label', 'Ajustar música y efectos');
+  gameplayMusicToggleEl.title = 'Volumen de música y efectos';
+  gameplayMusicToggleEl.setAttribute('aria-expanded', String(quickAudioMixerOpen));
+
+  const mixer = ensureQuickAudioMixer();
+  const musicSlider = mixer.querySelector('#arg-quick-music-volume');
+  const sfxSlider = mixer.querySelector('#arg-quick-sfx-volume');
+  const musicValue = mixer.querySelector('#arg-quick-music-value');
+  const sfxValue = mixer.querySelector('#arg-quick-sfx-value');
+  const musicPct = Math.round(musicLevel * 100);
+  const sfxPct = Math.round(sfxLevel * 100);
+  musicSlider.value = String(musicPct);
+  sfxSlider.value = String(sfxPct);
+  musicValue.textContent = `${musicPct}%`;
+  sfxValue.textContent = `${sfxPct}%`;
+  if (!hasAudioScene) closeQuickAudioMixer();
+  else if (quickAudioMixerOpen) requestAnimationFrame(positionQuickAudioMixer);
 }
 
 function buildPanel() {
@@ -1733,18 +1818,33 @@ function buildPanel() {
     recToggle.setAttribute('aria-label', expanded ? 'Colapsar panel de reporte de bugs' : 'Desplegar panel de reporte de bugs');
   });
 
-  // 23.21.6 HF7 — mute rápido GENERAL. No pisa las preferencias independientes de
-  // Música/Efectos de OPCIONES; aplica una capa master a ambos canales.
+  // HF16 — control rápido universal de Audio. Vive siempre pegado a REC tanto en menú
+  // como en partida y abre un mixer de dos canales en vez de mutear todo binariamente.
   gameplayMusicToggleEl = document.createElement('button');
   gameplayMusicToggleEl.id = 'arg-game-music-toggle';
   gameplayMusicToggleEl.className = 'arg-game-music-toggle';
   gameplayMusicToggleEl.type = 'button';
-  gameplayMusicToggleEl.addEventListener('click', () => {
-    toggleMasterMute();
+  gameplayMusicToggleEl.setAttribute('aria-haspopup', 'true');
+  gameplayMusicToggleEl.setAttribute('aria-controls', 'arg-quick-audio-mixer');
+  gameplayMusicToggleEl.addEventListener('click', (event) => {
+    event.stopPropagation();
+    ensureQuickAudioMixer();
+    quickAudioMixerOpen = !quickAudioMixerOpen;
+    quickAudioMixerEl.hidden = !quickAudioMixerOpen;
+    gameplayMusicToggleEl.setAttribute('aria-expanded', String(quickAudioMixerOpen));
     refreshGameplayMusicToggle();
+    if (quickAudioMixerOpen) positionQuickAudioMixer();
   });
   window.addEventListener('argentinia:audio-settings-changed', refreshGameplayMusicToggle);
   window.addEventListener('argentinia:audio-scene-changed', refreshGameplayMusicToggle);
+  window.addEventListener('resize', positionQuickAudioMixer, { passive:true });
+  window.visualViewport?.addEventListener?.('resize', positionQuickAudioMixer, { passive:true });
+  document.addEventListener('pointerdown', event => {
+    if (!quickAudioMixerOpen) return;
+    if (quickAudioMixerEl?.contains(event.target) || gameplayMusicToggleEl?.contains(event.target)) return;
+    closeQuickAudioMixer();
+  });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeQuickAudioMixer(); });
   refreshGameplayMusicToggle();
 
   const markBtn = button('🐞 Marcar', 'Marcar este instante como bug observado y subir checkpoint inmediato', () => markTelemetryBug());

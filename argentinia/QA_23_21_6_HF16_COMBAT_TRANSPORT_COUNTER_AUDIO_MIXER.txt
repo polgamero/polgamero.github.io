@@ -1,0 +1,32 @@
+QA 23.21.6 HF16 — COMBAT / TRANSPORT / COUNTER / AUDIO MIXER
+
+SMOKE A — BLOQUEO POR ESPACIO
+- En declarar bloqueadores, seleccionar una criatura propia y NO seleccionar atacante.
+- Presionar Espacio.
+- Debe confirmar 0 bloqueos y desaparecer inmediatamente el halo de selección.
+
+SMOKE B — HOVER CON MUCHAS TIERRAS/PERMANENTES
+- Forzar scroll horizontal desktop en una fila de campo.
+- Hover sobre una carta dentro del scroller.
+- Debe existir un solo preview ampliado; no debe verse detrás el hover viejo recortado.
+- Preview aprox. 2.65x cuando entra, limitado por viewport; nunca cortado.
+
+SMOKE C — ODÓMETRO / BATERÍA
+- Odómetro: cada mantenimiento propio debe resolver y sumar Kilómetro, no 'objetivo ilegal'.
+- Confirmar que la habilidad que remueve Kilómetro funciona.
+- Batería de Emergencia: mismo contrato de self-counter en Support.
+
+SMOKE D — TANO + TRANSPORTE
+- En Medio/Difícil, Transporte recién bajado sin Apuro no debe tripularse ofensivamente.
+- Crew ofensivo debe ocurrir en Inicio de Combate y sólo si mejora el plan.
+- Si tripula ofensivamente, el Transporte debe formar parte del ataque salvo que una interacción posterior cambie legalmente la situación.
+- En defensa, Crew sólo debe justificarse después de conocer atacantes.
+
+SMOKE E — MIXER RÁPIDO
+- Menú principal desktop/mobile: parlante inmediatamente a la derecha de REC.
+- Tap/click abre popup con Música arriba y Efectos abajo.
+- Llevar Música a 0: música muda, SFX conserva volumen.
+- Llevar Efectos a 0: SFX muda, música conserva volumen.
+- Reabrir Opciones: porcentajes/estado deben coincidir.
+- Recargar: preferencias persisten.
+- Dentro de partida el mismo control conserva ubicación/valores.

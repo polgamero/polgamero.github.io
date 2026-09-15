@@ -18,9 +18,9 @@ function functionSlice(src, startMarker, endMarker) {
   return src.slice(start, end);
 }
 
-// HF7 quick speaker is a MASTER mute: it silences music + currently playing/future SFX
-// without destroying the independent Music/SFX preferences in Options. The hard boundary is
-// synchronous so WebKit/background throttling cannot leave an old audio node audible.
+// HF7 conservó el master mute como compatibilidad interna. HF16 reemplaza su acceso rápido
+// por un mixer Música/Efectos independiente junto a REC; las primitivas master siguen disponibles
+// para migración/backward compatibility y el hard silence de WebKit continúa vigente.
 assert.match(audio, /masterMuted: false/);
 assert.match(audio, /masterMuted: raw\?\.masterMuted === true/);
 assert.match(audio, /function managedMusicElements\(\)/);
@@ -38,10 +38,11 @@ assert.match(audio, /export function toggleMasterMute\(\)/);
 assert.match(audio, /if \(settings\.masterMuted \|\| !settings\.sfxEnabled/);
 assert.match(audio, /audio\.dataset\.argentiniaAudioRole = 'sfx'/);
 assert.match(audio, /audio\.muted = !!settings\.masterMuted \|\| !settings\.musicEnabled/);
-assert.match(ui, /toggleMasterMute\(\)/);
-assert.match(ui, /Silenciar música y efectos/);
-assert.match(telemetry, /toggleMasterMute/);
-assert.match(telemetry, /Silenciar música y efectos de la partida/);
+assert.doesNotMatch(ui, /id=\"menu-music-toggle\"/);
+assert.match(telemetry, /setQuickMusicLevel/);
+assert.match(telemetry, /setQuickSfxLevel/);
+assert.match(telemetry, /arg-quick-music-volume/);
+assert.match(telemetry, /arg-quick-sfx-volume/);
 
 // WebKit animation completion is not trusted as the only cleanup path. Every Web Animation gets
 // a deadline, and player-damage pills have their own TTL + aria-hidden transient marker.

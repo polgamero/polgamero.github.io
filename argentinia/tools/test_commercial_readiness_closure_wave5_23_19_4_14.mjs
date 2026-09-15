@@ -83,6 +83,11 @@ if (ENGINE_VERSION === '23.21.6') {
   normalized.art_082.activatedAbility={cost:'{2}{U}{R}{T}',effect:{type:'transform'},requiresTarget:false,timing:'instant'};
   normalized.art_082.dfc.backFace.triggers=[{effect:{amount:1,type:'damage'},event:'spell_cast',filter:{cardType:'noncreature',controller:'you'}}];
   delete normalized.art_083.produces; // HF10 face-A mana-rock mode
+  // HF16: target metadata only; strip it for the historical commercial-readiness identity hash.
+  for (const id of ['art_068','art_070']) {
+    const upkeep=normalized[id]?.triggers?.find(t=>t.event==='upkeep_started');
+    if (upkeep?.effect) { delete upkeep.effect.targetKind; delete upkeep.effect.targetController; }
+  }
   delete normalized.tier_068.dfc.backFace.manaAbility;
   normalized.tier_068.dfc.backFace.produces='R';
 }

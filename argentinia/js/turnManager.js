@@ -1,6 +1,6 @@
 import { logMsg, els, showGameOverOverlay, showGameRewardStatus, render, updateAccountUI, refreshTurnPriorityHudClock, showUntapLandChoiceModal } from './ui.js';
 import { state, queueTriggeredAbilities, buildGenericEventTriggerEntries, dispatchGameEvent, resolveScheduledReturns, getLocalPlayerName, getRivalName, publishMatchState, revertAnimatedLandState, detachEquipmentFrom, sendAurasToGraveyard, expireTemporaryControlEffects, advanceSagaLoreForPrecombatMainPhase, expireExilePlayPermissionsForCleanup, collectSuspendUpkeepTriggers, isMultiplayerInteractionBlocked } from './main.js';
-import { takeBotPriorityAction } from './bot.js';
+import { takeBotPriorityAction, chooseBotCleanupDiscardIndex, reportBotStrategicTurnAtCleanup } from './bot.js';
 import { spellStack, resolveTopStackItem } from './stackManager.js';
 import { resolveCombatDamage, hasPendingCombatDamageContinuation, executeLocalAttack, executeRivalAttack } from './combatRules.js';
 import { hasKeyword, canBlock } from './keywords.js';
@@ -1179,8 +1179,14 @@ async function executeCleanupStep() {
     }
   } else {
     const rivalExcess = state.rivalHand.length - 7;
+    // HF15 — Medio/Difícil dejan de ignorar strategicDiscard: protegen removal, engines,
+    // cartas casteables/sinérgicas y descartan el recurso de menor valor. Fácil conserva RNG.
+    reportBotStrategicTurnAtCleanup({ excessDiscardCount:rivalExcess });
     for (let i = 0; i < rivalExcess; i++) {
-      const randomIndex = Math.floor(gameRandom('cleanup_random_discard') * state.rivalHand.length);
+      const strategicIndex = chooseBotCleanupDiscardIndex();
+      const randomIndex = strategicIndex >= 0
+        ? strategicIndex
+        : Math.floor(gameRandom('cleanup_random_discard') * state.rivalHand.length);
       const discarded = state.rivalHand.splice(randomIndex,1)[0];
       const plan=cleanupDiscardDestination(discarded,false);
       plan.destination.push(discarded);

@@ -46,7 +46,8 @@ import { EXILE_PLAY_ENGINE_VERSION, ensureExileObjectId, grantExilePlayPermissio
 import { SUSPEND_ENGINE_VERSION, normalizeSuspendSpec, hasSuspend, markCardSuspended, clearSuspendState, isSuspendedCard, suspendedTimeCount, buildSuspendUpkeepTrigger, removeSuspendTimeCounterStorage, addSuspendTimeCounterStorage, buildSuspendCastTrigger } from './suspendEngine.js';
 import { initializeTransformPermanentItem, canTransformPermanent } from './transformEngine.js';
 import { cardHasSubtype, cardsShareCreatureType, typalFilterMatches, buildCreatureTypeCatalog, chooseBestCreatureType, setChosenCreatureType } from './typalEngine.js';
-import { botDeckQuality, normalizeBotDifficulty } from './botDifficulty.js';
+import { botDeckQuality, normalizeBotDifficulty, botHasCapability } from './botDifficulty.js';
+import { scoreBotGraveyardRecovery, buildBotSubtypeCounts } from './botStrategy.js';
 import { normalizeSyncRevision, deriveEffectiveTouchedKeys, classifySnapshotRevision, syncRetryDelayMs, isRetryableSyncError, classifyRivalPresence, fieldRevisionDeltaKeys, markFieldRevisionsApplied, SYNC_RETRY_MAX_ATTEMPTS, SYNC_RECOVERY_RETRY_MS, MULTIPLAYER_READY_TIMEOUT_MS, MULTIPLAYER_CLIENT_SESSION_ID, validateRoleSession } from './multiplayerReliability.js';
 import { startMultiplayerSocialSession, stopMultiplayerSocialSession } from './multiplayerSocial.js';
 
@@ -976,6 +977,15 @@ function hideMatchInitializationOverlay() {
 }
 globalThis.__ARGENTINIA_HIDE_MATCH_LOADING__ = hideMatchInitializationOverlay;
 
+
+async function paintMatchInitializationOverlay() {
+  // HF15 — `hidden=false` no garantiza un frame pintado antes de seguir ejecutando JS.
+  // Mobile ya cedía al event loop durante init; desktop podía bloquear varios ms armando
+  // decks/board y exponer la mesa vacía. Dos paints + task boundary hacen al spinner el
+  // primer frame real en TODAS las superficies antes del trabajo pesado.
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 0))));
+}
+
 async function returnToMainMenuAfterAbandon({ destination = 'main' } = {}) {
   const matchId = state.currentMatch?.matchId || null;
   const uid = state.currentUser?.uid || null;
@@ -1190,6 +1200,8 @@ function hookGameplayButtons() {
 
 async function initGame(deckSource, options = {}) {
   showMatchInitializationOverlay();
+  enterGameplayAudio('solo');
+  await paintMatchInitializationOverlay();
   if (globalThis.__ARGENTINIA_PHONE_SURFACE__ === true) {
     try { globalThis.__ARGENTINIA_SYNC_MOBILE_VIEWPORT__?.(); } catch {}
     // Samsung/Chrome can publish the final fullscreen visualViewport one paint after the
@@ -1203,7 +1215,6 @@ async function initGame(deckSource, options = {}) {
   resetGameplayStateForNewMatch();
   state.currentTournamentMatch = tournamentMatch;
   beginGameRngSession({ seed: gameSeedFromLocation(), label: tournamentMatch ? `tournament:${tournamentMatch.tournamentId}:${tournamentMatch.matchId}` : 'solo' });
-  enterGameplayAudio('solo');
   logMsg(gameText('game.loadingDeck'));
 
   await mobileSoloYield('before_board_layout');
@@ -4935,7 +4946,18 @@ function graveyardFilterLabel(filter) {
 function chooseBotGraveyardEntries(entries, count, strategy = 'highest_value') {
   const copy = [...entries];
   if (strategy === 'last') return copy.slice(-count);
-  const value = e => (e.card.cmc || 0) + (e.card.power !== undefined ? ((e.card.power || 0) + (e.card.toughness || 0)) / 10 : 0);
+  const strategic = botHasCapability(state.botDifficulty, 'strategicMainPhase');
+  const battlefieldCards = [...state.rivalCombat, ...state.rivalSupport, ...state.rivalLands].map(item => item?.card).filter(Boolean);
+  const subtypeCounts = buildBotSubtypeCounts([...state.rivalHand, ...battlefieldCards]);
+  const value = e => strategic
+    ? scoreBotGraveyardRecovery(e.card, {
+        hand:state.rivalHand,
+        battlefieldCards,
+        subtypeCounts,
+        landCount:state.rivalLands.length,
+        manaNextTurn:state.rivalLands.length
+      })
+    : ((e.card.cmc || 0) + (e.card.power !== undefined ? ((e.card.power || 0) + (e.card.toughness || 0)) / 10 : 0));
   copy.sort((a, b) => strategy === 'lowest_value' ? value(a) - value(b) : value(b) - value(a));
   return copy.slice(0, count);
 }
