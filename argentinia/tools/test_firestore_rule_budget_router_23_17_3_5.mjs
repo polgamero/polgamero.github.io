@@ -9,9 +9,9 @@ const root=path.resolve(here,'..');
 const rulesPath=process.env.ARGENTINIA_FIRESTORE_RULES || path.resolve(root,'../../FIRESTORE_RULES_COMPLETAS_ENTREGA_23_13_72_RULE_BUDGET_ROUTER_HOTFIX.rules');
 const manifest=JSON.parse(fs.readFileSync(path.join(root,'build-manifest.json'),'utf8'));
 assert.equal(ENGINE_VERSION, '23.21.6');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.87');
 assert.equal(manifest.engineVersion,'23.21.6');
-assert.equal(manifest.firestoreRulesVersion,'23.13.86');
+assert.equal(manifest.firestoreRulesVersion,'23.13.87');
 
 if (fs.existsSync(rulesPath)) {
   const rules=fs.readFileSync(rulesPath,'utf8');

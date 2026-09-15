@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
@@ -97,6 +97,7 @@ import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 import { enterMenuAudio, getAudioSettings, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
+import { setPlayerPresenceActivity, isPresenceOnline, isPresenceAvailable, describePresenceActivity, presenceTimestampMs } from './multiplayerPresence.js';
 import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer } from './animationDirector.js';
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
@@ -9380,26 +9381,58 @@ function injectMultiplayerLobbyStyles() {
   style.textContent = `
     #multiplayer-overlay {
       position: fixed; inset: 0; z-index: 9999;
-      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      background: radial-gradient(ellipse at top, #1b281e 0%, #0b130e 72%);
       display: flex; flex-direction: column;
-      padding: 24px 32px;
+      padding: 22px 28px;
+      color:#f0e0b0;
     }
-    .mp-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; flex-shrink: 0; }
-    .mp-title { font-size: 26px; font-weight: 700; color: #f0e0b0; text-shadow: 0 0 20px rgba(212,175,55,0.4); }
-    .mp-body { flex: 1; overflow-y: auto; max-width: 560px; width: 100%; margin: 0 auto; }
-    .mp-section {
-      background: rgba(18,25,15,0.5); border: 2px solid rgba(212,175,55,0.3); border-radius: 14px;
-      padding: 24px; margin-bottom: 20px; text-align: center;
+    .mp-header { display:flex; align-items:center; gap:20px; margin-bottom:16px; flex-shrink:0; }
+    .mp-title { font-size:28px; font-weight:800; color:#f0e0b0; text-shadow:0 0 20px rgba(212,175,55,.35); }
+    .mp-subtitle { color:#9fb6a5; font-size:12px; margin-left:auto; text-align:right; }
+    .mp-body { flex:1; overflow-y:auto; max-width:1180px; width:100%; margin:0 auto; padding-bottom:18px; }
+    .mp-live-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; align-items:start; }
+    .mp-live-panel,.mp-section {
+      background:rgba(18,25,15,.72); border:2px solid rgba(212,175,55,.28); border-radius:14px;
+      box-shadow:0 10px 26px rgba(0,0,0,.2);
     }
-    .mp-section-title { color: #f0e0b0; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-    .mp-section-desc { color: #cfe0d4; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
-    .mp-code-display {
-      font-size: 40px; font-weight: 700; letter-spacing: 6px; color: #f0e0b0;
-      background: rgba(0,0,0,0.3); border: 2px dashed rgba(212,175,55,0.5); border-radius: 10px;
-      padding: 16px; margin: 12px 0 18px;
+    .mp-live-panel { min-height:350px; overflow:hidden; }
+    .mp-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px 12px; border-bottom:1px solid rgba(212,175,55,.16); }
+    .mp-panel-title { font-size:17px; font-weight:800; color:#f0e0b0; }
+    .mp-panel-count { min-width:28px; height:24px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; background:rgba(212,175,55,.12); color:#d4af37; font-size:12px; font-weight:800; }
+    .mp-panel-list { padding:8px; max-height:min(53vh,520px); overflow:auto; }
+    .mp-player-row,.mp-match-row { display:flex; align-items:center; gap:10px; padding:10px 10px; border-radius:10px; border:1px solid transparent; }
+    .mp-player-row:hover,.mp-match-row:hover { background:rgba(255,255,255,.035); border-color:rgba(212,175,55,.12); }
+    .mp-presence-dot { width:9px; height:9px; border-radius:50%; flex:0 0 auto; background:#536056; box-shadow:none; }
+    .mp-player-row.is-online .mp-presence-dot { background:#52d273; box-shadow:0 0 9px rgba(82,210,115,.72); }
+    .mp-player-copy,.mp-match-copy { min-width:0; flex:1; }
+    .mp-player-name { display:inline-block; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px; font-weight:800; color:#77867b; }
+    .mp-player-row.is-online .mp-player-name { color:#fff; }
+    .mp-player-status,.mp-match-meta { color:#91a498; font-size:11px; line-height:1.35; margin-top:2px; }
+    .mp-player-row.is-available .mp-player-status { color:#8fd7a0; }
+    .mp-challenge-btn { border:1px solid rgba(212,175,55,.45); background:rgba(212,175,55,.1); color:#d4af37; border-radius:8px; padding:6px 10px; font-size:10px; font-weight:900; letter-spacing:.5px; }
+    .mp-challenge-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .mp-match-versus { color:#f0e0b0; font-size:14px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .mp-live-empty { padding:30px 18px; color:#7e9084; text-align:center; font-size:12px; line-height:1.5; }
+    .mp-manual-wrap { margin-top:18px; }
+    .mp-manual-title { color:#b6c5ba; text-transform:uppercase; letter-spacing:1.4px; font-size:10px; font-weight:900; margin:0 0 8px 4px; }
+    .mp-manual-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .mp-section { padding:18px; margin:0; text-align:center; }
+    .mp-section-title { color:#f0e0b0; font-size:17px; font-weight:700; margin-bottom:7px; }
+    .mp-section-desc { color:#aebfb3; font-size:12px; margin-bottom:13px; line-height:1.45; }
+    .mp-join-row { display:flex; gap:8px; align-items:center; justify-content:center; }
+    .mp-join-row .encyclopedia-search-input { max-width:190px; text-transform:uppercase; letter-spacing:2px; }
+    .mp-code-row { display:flex; align-items:center; justify-content:center; gap:8px; margin:12px 0 18px; }
+    .mp-code-display { font-size:36px; font-weight:800; letter-spacing:6px; color:#f0e0b0; background:rgba(0,0,0,.3); border:2px dashed rgba(212,175,55,.5); border-radius:10px; padding:13px 16px; }
+    .mp-copy-btn { border:1px solid rgba(212,175,55,.5); background:rgba(212,175,55,.12); color:#f0e0b0; border-radius:8px; padding:9px 10px; cursor:pointer; font-size:12px; }
+    .mp-copy-btn:hover { background:rgba(212,175,55,.2); }
+    .mp-spinner { font-size:28px; margin-bottom:4px; animation:mp-pulse 1.4s ease-in-out infinite; }
+    @keyframes mp-pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+    @media (max-width:820px) {
+      #multiplayer-overlay { padding:14px; }
+      .mp-live-grid,.mp-manual-grid { grid-template-columns:1fr; }
+      .mp-subtitle { display:none; }
+      .mp-panel-list { max-height:300px; }
     }
-    .mp-spinner { font-size: 28px; margin-bottom: 4px; animation: mp-pulse 1.4s ease-in-out infinite; }
-    @keyframes mp-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
   `;
   document.head.appendChild(style);
 }
@@ -9579,8 +9612,8 @@ export function showReconnectPrompt(onReconnect, onAbandon, options = {}) {
 export function showMultiplayerLobby(onBack, onMatched) {
   injectMultiplayerLobbyStyles();
   injectMultiplayerMatchBannerStyles();
-  injectStoreStyles(); // reusa .store-buy-btn / .store-back-link / .store-error-msg
-  injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn / .encyclopedia-search-input
+  injectStoreStyles();
+  injectEncyclopediaStyles();
 
   const overlay = document.createElement('div');
   overlay.id = 'multiplayer-overlay';
@@ -9588,159 +9621,260 @@ export function showMultiplayerLobby(onBack, onMatched) {
     <div class="mp-header">
       <button class="encyclopedia-back-btn" id="mp-back">← ${gameTextHtml('common.back')}</button>
       <div class="mp-title">${gameTextHtml('multiplayer.title')}</div>
+      <div class="mp-subtitle">${gameTextHtml('multiplayer.lobby.subtitle', { protocol: ENGINE_PROTOCOL_VERSION })}</div>
     </div>
     <div class="mp-body" id="mp-body"></div>
   `;
   document.body.appendChild(overlay);
 
   const body = overlay.querySelector('#mp-body');
-  let unsubscribe = null;
+  let roomUnsubscribe = null;
+  let presenceUnsubscribe = null;
+  let matchesUnsubscribe = null;
+  let refreshTimer = null;
+  let publicStats = [];
+  let presenceRows = [];
+  let activeMatches = [];
 
-  function cleanup() {
-    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+  function stopRoomListener() { if (roomUnsubscribe) { roomUnsubscribe(); roomUnsubscribe = null; } }
+  function stopDirectoryListeners() {
+    if (presenceUnsubscribe) { presenceUnsubscribe(); presenceUnsubscribe = null; }
+    if (matchesUnsubscribe) { matchesUnsubscribe(); matchesUnsubscribe = null; }
+    if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+  }
+  function cleanup() { stopRoomListener(); stopDirectoryListeners(); }
+  function tsMs(value) { return presenceTimestampMs(value); }
+  function formatElapsed(startValue) {
+    const start = tsMs(startValue);
+    if (!start) return '';
+    const total = Math.max(0, Math.floor((Date.now() - start) / 1000));
+    const min = Math.floor(total / 60);
+    const sec = total % 60;
+    return `${min}:${String(sec).padStart(2,'0')}`;
+  }
+  function phaseLabel(raw) {
+    const map = { upkeep:'Mantenimiento', draw:'Robo', main1:'Principal 1', combat_attackers:'Atacantes', combat_blockers:'Bloqueadores', combat_damage:'Daño', main2:'Principal 2', end:'Final' };
+    return map[String(raw || '')] || '';
+  }
+  async function copyCode(code, button) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(code); ok = true; } catch {}
+    if (!ok) {
+      const input = document.createElement('textarea'); input.value = code; input.style.position='fixed'; input.style.opacity='0';
+      document.body.appendChild(input); input.select();
+      try { ok = document.execCommand('copy'); } catch {} input.remove();
+    }
+    if (button) {
+      const old = button.textContent; button.textContent = ok ? gameText('multiplayer.lobby.copied') : gameText('multiplayer.lobby.copy').replace(/^📋\s*/, '');
+      setTimeout(() => { if (button.isConnected) button.textContent = old; }, 1300);
+    }
+  }
+
+  function renderPlayers() {
+    const list = body.querySelector('#mp-player-list');
+    const count = body.querySelector('#mp-online-count');
+    if (!list) return;
+    const now = Date.now();
+    const presenceByUid = new Map(presenceRows.map(row => [String(row.uid), row]));
+    const statsByUid = new Map(publicStats.map(row => [String(row.id || row.uid || ''), row]));
+    const ids = new Set([...statsByUid.keys(), ...presenceByUid.keys()].filter(Boolean));
+    const me = String(state.currentUser?.uid || '');
+    const rows = [...ids].map(uid => {
+      const stats = statsByUid.get(uid) || {};
+      const presence = presenceByUid.get(uid) || {};
+      const online = isPresenceOnline(presence, now);
+      const available = isPresenceAvailable(presence, now);
+      const username = uid === me ? (state.userProfile?.username || state.currentUser?.username || stats.username || 'Vos') : (stats.username || 'Jugador');
+      return { uid, stats, presence, online, available, username };
+    }).sort((a,b) => {
+      const score = r => r.online ? (r.available ? 0 : (r.presence?.availability === 'away' ? 2 : 1)) : 3;
+      return score(a)-score(b) || a.username.localeCompare(b.username,'es',{sensitivity:'base'});
+    });
+    const onlineCount = rows.filter(r => r.online).length;
+    count.textContent = String(onlineCount);
+    if (!rows.length) {
+      list.innerHTML = `<div class="mp-live-empty">${gameTextHtml('multiplayer.lobby.playersEmpty')}</div>`;
+      return;
+    }
+    list.innerHTML = rows.map(row => {
+      const elo = Math.max(1, Math.floor(Number(row.stats?.eloRating) || 1200));
+      const eloGames = Math.max(0, Math.floor(Number(row.stats?.eloGames) || 0));
+      const status = describePresenceActivity(row.presence, now);
+      const self = row.uid === me;
+      const canChallenge = row.available && !self;
+      const title = `ELO ${elo}${eloGames < 10 ? ' · provisional' : ''} · ${eloGames} partida${eloGames===1?'':'s'} ELO`;
+      return `<div class="mp-player-row ${row.online?'is-online':''} ${row.available?'is-available':''}" data-presence-uid="${escapeHtml(row.uid)}">
+        <span class="mp-presence-dot" aria-hidden="true"></span>
+        <div class="mp-player-copy">
+          <span class="mp-player-name" title="${escapeHtml(title)}">${escapeHtml(row.username)}${self?' <span style="color:#8fa296;font-weight:600">(vos)</span>':''}</span>
+          <div class="mp-player-status">${escapeHtml(status)}</div>
+        </div>
+        ${self ? '' : `<button class="mp-challenge-btn" type="button" disabled title="${escapeHtml(canChallenge ? gameText('multiplayer.lobby.challengeComing') : gameText('multiplayer.lobby.unavailable'))}">${gameTextHtml('multiplayer.lobby.challengeAction')}</button>`}
+      </div>`;
+    }).join('');
+  }
+
+  function renderMatches() {
+    const list = body.querySelector('#mp-match-list');
+    const count = body.querySelector('#mp-match-count');
+    if (!list) return;
+    const rows = activeMatches
+      .filter(m => m && m.status === 'active' && m.hostUid && m.guestUid && m.gameOver !== true && !m.endedAt && !m.abandonedBy)
+      .sort((a,b) => tsMs(b.updatedAt)-tsMs(a.updatedAt));
+    count.textContent = String(rows.length);
+    if (!rows.length) {
+      list.innerHTML = `<div class="mp-live-empty">${gameTextHtml('multiplayer.lobby.matchesEmpty')}</div>`;
+      return;
+    }
+    list.innerHTML = rows.map(match => {
+      const hp = match.players?.[match.hostUid] || {};
+      const gp = match.players?.[match.guestUid] || {};
+      const host = String(hp.username || hp.displayName || 'Host');
+      const guest = String(gp.username || gp.displayName || 'Guest');
+      const turn = Math.max(1, Math.floor(Number(match.turnCount) || 1));
+      const phase = phaseLabel(match.phase);
+      const elapsed = formatElapsed(match.bothReadyAt || match.createdAt);
+      const meta = match.bothReadyAt
+        ? `Turno ${turn}${phase?` · ${escapeHtml(phase)}`:''}${elapsed?` · ${escapeHtml(elapsed)}`:''}`
+        : `${gameTextHtml('multiplayer.lobby.matchPreparing')}${elapsed?` · ${escapeHtml(elapsed)}`:''}`;
+      return `<div class="mp-match-row">
+        <div class="mp-match-copy">
+          <div class="mp-match-versus">${escapeHtml(host)} <span style="color:#8fa296">vs.</span> ${escapeHtml(guest)}</div>
+          <div class="mp-match-meta">${meta}</div>
+        </div>
+      </div>`;
+    }).join('');
   }
 
   overlay.querySelector('#mp-back').addEventListener('click', () => {
     cleanup();
+    setPlayerPresenceActivity('menu', { availability:'available' });
     overlay.remove();
     onBack();
   });
 
+  function startDirectoryListeners() {
+    stopDirectoryListeners();
+    void fetchPublicPlayerStats().then(rows => { publicStats = Array.isArray(rows) ? rows : []; renderPlayers(); }).catch(error => {
+      console.warn('No se pudo cargar ranking para el Lobby Multiplayer:', error);
+      publicStats = [];
+      renderPlayers();
+    });
+    presenceUnsubscribe = listenToPlayerPresence(rows => { presenceRows = Array.isArray(rows) ? rows : []; renderPlayers(); }, error => {
+      console.warn('No se pudo escuchar presencia de jugadores:', error);
+    });
+    matchesUnsubscribe = listenToActiveMultiplayerMatches(rows => { activeMatches = Array.isArray(rows) ? rows : []; renderMatches(); }, error => {
+      console.warn('No se pudieron escuchar partidas activas:', error);
+    });
+    refreshTimer = setInterval(() => { renderPlayers(); renderMatches(); }, 30_000);
+  }
+
   function renderHome() {
-    cleanup();
+    stopRoomListener();
+    setPlayerPresenceActivity('multiplayer_lobby', { availability:'available' });
     body.innerHTML = `
-      <div class="mp-section">
-        <div class="mp-section-title">${gameTextHtml('multiplayer.create.title')}</div>
-        <div class="mp-section-desc">${gameTextHtml('multiplayer.create.description')}</div>
-        <button class="store-buy-btn" id="mp-create">${gameTextHtml('multiplayer.create.action')}</button>
-        <div class="store-error-msg" id="mp-create-error"></div>
+      <div class="mp-live-grid">
+        <section class="mp-live-panel">
+          <div class="mp-panel-head"><div class="mp-panel-title">${gameTextHtml('multiplayer.lobby.players')}</div><span class="mp-panel-count" id="mp-online-count">0</span></div>
+          <div class="mp-panel-list" id="mp-player-list"><div class="mp-live-empty">${gameTextHtml('multiplayer.lobby.playersLoading')}</div></div>
+        </section>
+        <section class="mp-live-panel">
+          <div class="mp-panel-head"><div class="mp-panel-title">${gameTextHtml('multiplayer.lobby.matches')}</div><span class="mp-panel-count" id="mp-match-count">0</span></div>
+          <div class="mp-panel-list" id="mp-match-list"><div class="mp-live-empty">${gameTextHtml('multiplayer.lobby.matchesLoading')}</div></div>
+        </section>
       </div>
-      <div class="mp-section">
-        <div class="mp-section-title">${gameTextHtml('multiplayer.join.title')}</div>
-        <input type="text" class="encyclopedia-search-input" id="mp-code-input" placeholder="${gameTextHtml('multiplayer.join.placeholder')}" maxlength="6">
-        <button class="store-buy-btn" id="mp-join">${gameTextHtml('multiplayer.join.action')}</button>
-        <div class="store-error-msg" id="mp-join-error"></div>
-      </div>
-    `;
+      <div class="mp-manual-wrap">
+        <div class="mp-manual-title">${gameTextHtml('multiplayer.lobby.manual')}</div>
+        <div class="mp-manual-grid">
+          <div class="mp-section">
+            <div class="mp-section-title">${gameTextHtml('multiplayer.create.title')}</div>
+            <div class="mp-section-desc">${gameTextHtml('multiplayer.create.description')}</div>
+            <button class="store-buy-btn" id="mp-create">${gameTextHtml('multiplayer.create.action')}</button>
+            <div class="store-error-msg" id="mp-create-error"></div>
+          </div>
+          <div class="mp-section">
+            <div class="mp-section-title">${gameTextHtml('multiplayer.join.title')}</div>
+            <div class="mp-join-row">
+              <input type="text" class="encyclopedia-search-input" id="mp-code-input" placeholder="${gameTextHtml('multiplayer.join.placeholder')}" maxlength="6">
+              <button class="store-buy-btn" id="mp-join">${gameTextHtml('multiplayer.join.action')}</button>
+            </div>
+            <div class="store-error-msg" id="mp-join-error"></div>
+          </div>
+        </div>
+      </div>`;
+    startDirectoryListeners();
 
     body.querySelector('#mp-create').addEventListener('click', async () => {
-      const btn = body.querySelector('#mp-create');
-      const errBox = body.querySelector('#mp-create-error');
-      btn.disabled = true;
-      errBox.textContent = '';
-      try {
-        const match = await createMatch(state.currentUser.uid, state.currentUser);
-        renderWaitingRoom(match.code);
-      } catch (err) {
-        console.error('No se pudo crear la partida:', err);
-        errBox.textContent = err.message || gameText('multiplayer.create.error');
-        btn.disabled = false;
-      }
+      const btn = body.querySelector('#mp-create'); const errBox = body.querySelector('#mp-create-error');
+      btn.disabled = true; errBox.textContent = '';
+      try { const match = await createMatch(state.currentUser.uid, state.currentUser); renderWaitingRoom(match.code); }
+      catch (err) { console.error('No se pudo crear la partida:', err); errBox.textContent = err.message || gameText('multiplayer.create.error'); btn.disabled = false; }
     });
-
     body.querySelector('#mp-join').addEventListener('click', async () => {
-      const input = body.querySelector('#mp-code-input');
-      const btn = body.querySelector('#mp-join');
-      const errBox = body.querySelector('#mp-join-error');
-      const code = input.value.trim();
-      if (!code) { errBox.textContent = gameText('multiplayer.join.empty'); return; }
-      btn.disabled = true;
-      errBox.textContent = '';
-      try {
-        const match = await joinMatchByCode(state.currentUser.uid, code, state.currentUser);
-        renderMatched(match);
-      } catch (err) {
-        console.error('No se pudo unir a la partida:', err);
-        errBox.textContent = err.message || gameText('multiplayer.join.error');
-        btn.disabled = false;
-      }
+      const input = body.querySelector('#mp-code-input'); const btn = body.querySelector('#mp-join'); const errBox = body.querySelector('#mp-join-error');
+      const code = input.value.trim(); if (!code) { errBox.textContent = gameText('multiplayer.join.empty'); return; }
+      btn.disabled = true; errBox.textContent = '';
+      try { const match = await joinMatchByCode(state.currentUser.uid, code, state.currentUser); renderMatched(match); }
+      catch (err) { console.error('No se pudo unir a la partida:', err); errBox.textContent = err.message || gameText('multiplayer.join.error'); btn.disabled = false; }
     });
   }
 
   function renderWaitingRoom(code) {
-    cleanup();
-    body.innerHTML = `
-      <div class="mp-section">
-        <div class="mp-spinner">⏳</div>
-        <div class="mp-section-title">${gameTextHtml('multiplayer.waiting.title')}</div>
-        <div class="mp-code-display">${code}</div>
-        <div class="mp-section-desc">${gameTextHtml('multiplayer.waiting.description')}</div>
-        <button class="store-back-link" id="mp-cancel">${gameTextHtml('common.cancel')}</button>
-      </div>
-    `;
-
-    unsubscribe = listenToMatch(code, (data) => {
-      if (!data) { renderHome(); return; } // se canceló/borró desde otro lado
-      if (data.status === 'active' && data.guestUid) {
-        renderMatched({ code, ...data });
-      }
+    stopDirectoryListeners(); stopRoomListener();
+    setPlayerPresenceActivity('multiplayer_lobby', { availability:'busy' });
+    body.innerHTML = `<div class="mp-section" style="max-width:560px;margin:40px auto">
+      <div class="mp-spinner">⏳</div>
+      <div class="mp-section-title">${gameTextHtml('multiplayer.waiting.title')}</div>
+      <div class="mp-code-row"><div class="mp-code-display">${escapeHtml(code)}</div><button class="mp-copy-btn" id="mp-copy-code" type="button">${gameTextHtml('multiplayer.lobby.copy')}</button></div>
+      <div class="mp-section-desc">${gameTextHtml('multiplayer.waiting.description')}</div>
+      <button class="store-back-link" id="mp-cancel">${gameTextHtml('common.cancel')}</button>
+    </div>`;
+    body.querySelector('#mp-copy-code').addEventListener('click', event => void copyCode(code, event.currentTarget));
+    roomUnsubscribe = listenToMatch(code, data => {
+      if (!data) { renderHome(); return; }
+      if (data.status === 'active' && data.guestUid) renderMatched({ code, ...data });
     });
-
     body.querySelector('#mp-cancel').addEventListener('click', async () => {
-      cleanup();
+      stopRoomListener();
       try { await cancelMatch(code, state.currentUser?.uid || null); } catch (err) { console.error('No se pudo cancelar la partida:', err); }
       renderHome();
     });
   }
 
-  // FASE 4 (cierre del roadmap): ya no es un cartel de "todavía no está listo" — con las
-  // Etapas 1 a 6 completas, emparejarse de verdad lleva a elegir mazo y arrancar una
-  // partida sincronizada real. myRole (host o guest) se calcula acá, comparando MI uid
-  // contra hostUid del match — es la ÚNICA vez que se calcula, y de acá en más viaja tal
-  // cual a onMatched, así main.js nunca tiene que volver a derivarlo.
   function renderMatched(match) {
-    cleanup();
+    stopDirectoryListeners(); stopRoomListener();
+    setPlayerPresenceActivity('multiplayer_setup', { availability:'busy' });
     const remoteEngine = match.engineVersion || null;
     const remoteProtocol = match.engineProtocolVersion || null;
     const guestEngine = match.guestEngineVersion || null;
     const incompatible = remoteEngine !== ENGINE_VERSION || remoteProtocol !== ENGINE_PROTOCOL_VERSION || (match.guestUid && guestEngine !== ENGINE_VERSION);
     if (incompatible) {
-      body.innerHTML = `
-        <div class="mp-section">
-          <div class="mp-section-title">${gameTextHtml('multiplayer.incompatible.title')}</div>
-          <div class="mp-section-desc">${gameTextHtml('multiplayer.incompatible.description', { localVersion: ENGINE_VERSION, remoteVersion: remoteEngine || guestEngine || 'versión anterior/desconocida' })}</div>
-          <button class="store-back-link" id="mp-incompatible-back">← ${gameTextHtml('common.back')}</button>
-        </div>`;
-      body.querySelector('#mp-incompatible-back').addEventListener('click', renderHome);
-      return;
+      body.innerHTML = `<div class="mp-section" style="max-width:560px;margin:40px auto">
+        <div class="mp-section-title">${gameTextHtml('multiplayer.incompatible.title')}</div>
+        <div class="mp-section-desc">${gameTextHtml('multiplayer.incompatible.description', { localVersion: ENGINE_VERSION, remoteVersion: remoteEngine || guestEngine || 'versión anterior/desconocida' })}</div>
+        <button class="store-back-link" id="mp-incompatible-back">← ${gameTextHtml('common.back')}</button></div>`;
+      body.querySelector('#mp-incompatible-back').addEventListener('click', renderHome); return;
     }
     const myUid = state.currentUser.uid;
     const myRole = match.hostUid === myUid ? 'host' : 'guest';
     const rivalUid = myRole === 'host' ? match.guestUid : match.hostUid;
-    // 23.13.24: el snapshot multiplayer transporta el username Argentinia. displayName
-    // queda sólo como fallback de compatibilidad y en builds nuevos contiene el MISMO alias,
-    // nunca el nombre Google.
     const rivalProfile = (match.players && match.players[rivalUid]) || {};
     const rivalName = String(rivalProfile.username || rivalProfile.displayName || '').trim() || 'tu rival';
     const rivalPhotoURL = rivalProfile.photoURL || '';
     const hostProfile = (match.players && match.players[match.hostUid]) || {};
     const guestProfile = (match.players && match.players[match.guestUid]) || {};
-
-    body.innerHTML = `
-      <div class="mp-section">
-        <div class="mp-section-title">${gameTextHtml('multiplayer.matched.title', { rival: rivalName })}</div>
-        <div class="mp-versus-banner" aria-label="Enfrentamiento confirmado">
-          ${multiplayerProfileBannerHTML(hostProfile, 'HOST', 'Host')}
-          <div class="mp-versus-vs">VS.</div>
-          ${multiplayerProfileBannerHTML(guestProfile, 'GUEST', 'Guest')}
-        </div>
-        <div class="mp-section-desc">${gameTextHtml('multiplayer.matched.description')}<br><span style="color:#a99362;font-size:11px">Motor v${ENGINE_VERSION} · protocolo ${ENGINE_PROTOCOL_VERSION}</span></div>
-        <button class="store-buy-btn" id="mp-start">${gameTextHtml('multiplayer.matched.start')}</button>
+    body.innerHTML = `<div class="mp-section" style="max-width:650px;margin:28px auto">
+      <div class="mp-section-title">${gameTextHtml('multiplayer.matched.title', { rival: rivalName })}</div>
+      <div class="mp-versus-banner" aria-label="Enfrentamiento confirmado">
+        ${multiplayerProfileBannerHTML(hostProfile, 'HOST', 'Host')}<div class="mp-versus-vs">VS.</div>${multiplayerProfileBannerHTML(guestProfile, 'GUEST', 'Guest')}
       </div>
-    `;
-    void fetchPublicPlayerStats().then(rows=>{
+      <div class="mp-section-desc">${gameTextHtml('multiplayer.matched.description')}<br><span style="color:#a99362;font-size:11px">Motor v${ENGINE_VERSION} · protocolo ${ENGINE_PROTOCOL_VERSION}</span></div>
+      <button class="store-buy-btn" id="mp-start">${gameTextHtml('multiplayer.matched.start')}</button></div>`;
+    void fetchPublicPlayerStats().then(rows => {
       const byName=new Map((Array.isArray(rows)?rows:[]).map(row=>[String(row.username||'').trim().toLocaleLowerCase('es-AR'),row]));
-      body.querySelectorAll('[data-mp-elo-user]').forEach(node=>{
-        const row=byName.get(String(node.dataset.mpEloUser||'').trim().toLocaleLowerCase('es-AR'))||{};
-        const rating=Math.max(1,Math.floor(Number(row.eloRating)||1200),1200);
-        node.textContent=gameText((Number(row.eloGames)||0)<10?'ranking.elo.provisional':'ranking.elo.established',{rating});
-        node.title=node.textContent;
-      });
+      body.querySelectorAll('[data-mp-elo-user]').forEach(node=>{ const row=byName.get(String(node.dataset.mpEloUser||'').trim().toLocaleLowerCase('es-AR'))||{}; const rating=Math.max(1,Math.floor(Number(row.eloRating)||1200),1200); node.textContent=gameText((Number(row.eloGames)||0)<10?'ranking.elo.provisional':'ranking.elo.established',{rating}); node.title=node.textContent; });
     }).catch(()=>{});
-    body.querySelector('#mp-start').addEventListener('click', () => {
-      overlay.remove();
-      onMatched(match.code, myRole, rivalName, rivalPhotoURL, match.startingRole || 'host');
-    });
+    body.querySelector('#mp-start').addEventListener('click', () => { cleanup(); overlay.remove(); onMatched(match.code, myRole, rivalName, rivalPhotoURL, match.startingRole || 'host'); });
   }
 
   renderHome();
@@ -11760,9 +11894,13 @@ export function showGameOverOverlay(didWin) {
       : (state.currentUser ? (state.currentMatch ? gameText('game.points.pvpChecking') : gameText('game.points.botChecking')) : '');
     els.gameOverRewardStatus.classList.toggle('hidden', !els.gameOverRewardStatus.textContent);
   }
-  if (state.currentTournamentMatch && els.btnRestart) {
-    els.btnRestart.textContent = gameText('tournament.match.returnFixture');
-    els.btnRestart.disabled = true;
+  // HF18 — el mismo nodo se reutiliza entre modos. Torneo cambia su copy a
+  // "VOLVER AL FIXTURE", por lo que cada game-over debe rehidratar explícitamente
+  // label + disabled y no heredar estado DOM de una partida anterior.
+  if (els.btnRestart) {
+    const tournamentGameOver = !!state.currentTournamentMatch;
+    els.btnRestart.textContent = gameText(tournamentGameOver ? 'tournament.match.returnFixture' : 'game.over.backMenu');
+    els.btnRestart.disabled = tournamentGameOver;
   }
   els.gameOverOverlay.classList.remove('hidden'); els.btnEndTurn.disabled = true;
 }

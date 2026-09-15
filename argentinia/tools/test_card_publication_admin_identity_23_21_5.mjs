@@ -15,7 +15,7 @@ const manifest=JSON.parse(fs.readFileSync(path.join(argRoot,'build-manifest.json
 assert.equal(manifest.engineVersion,'23.21.6');
 assert.equal(manifest.pool,900);
 assert.equal(manifest.functionsCount,41);
-assert.equal(manifest.firestoreRulesVersion,'23.13.86');
+assert.equal(manifest.firestoreRulesVersion,'23.13.87');
 assert.ok(/Card Publication Control.*Admin Card Identity.*Browser Archetype UX/i.test(manifest.label) || /DRAGONES EN BUENOS AIRES.*Dragon Archetype Foundation/i.test(manifest.label),'23.21.5 publication controls must survive cumulative 23.21.6 label');
 assert.match(String(manifest.promotedFrom||''),/23\.21\.(?:5|6)/,'cumulative/hotfix candidates may be promoted from 23.21.5 or the 23.21.6 pre-release while retaining publication controls');
 

@@ -375,7 +375,12 @@ export function signInWithGoogle() {
   return signInWithPopup(auth, googleProvider);
 }
 
-export function signOutUser() {
+export async function signOutUser() {
+  const uid = auth.currentUser?.uid || null;
+  if (uid) {
+    try { await deleteDoc(doc(db, 'playerPresence', uid)); }
+    catch (error) { console.warn('[Presence] No se pudo retirar presencia antes de cerrar sesión:', error); }
+  }
   return signOut(auth);
 }
 
@@ -1461,6 +1466,71 @@ export async function saveAnimationPolicy(config = {}) {
     animationTunings,
     schemaVersion: 7,
     engineVersion: ENGINE_VERSION
+  });
+}
+
+
+// ============================================================================
+// 23.22 Multiplayer Lobby & Presence Foundation.
+// Firestore-only first stage: low-frequency heartbeat + structured activity. The document
+// contains no economy/private/gameplay state and is keyed by auth uid. Security Rules allow
+// each player to write only their own constrained presence document.
+// ============================================================================
+export async function publishPlayerPresence(uid, payload = {}) {
+  if (!uid || uid !== auth.currentUser?.uid) throw new Error('PRESENCE_UID_MISMATCH');
+  const activity = String(payload.activity || 'menu').trim().toLowerCase();
+  const availability = String(payload.availability || 'busy').trim().toLowerCase();
+  const visibility = payload.visibility === 'hidden' ? 'hidden' : 'visible';
+  const difficulty = String(payload.difficulty || '').trim().toLowerCase();
+  const tournamentRoundKey = String(payload.tournamentRoundKey || '').trim().slice(0, 40);
+  const allowedActivity = new Set(['menu','multiplayer_lobby','multiplayer_setup','multiplayer','solo','tournament','away']);
+  const allowedAvailability = new Set(['available','busy','away','dnd']);
+  const allowedDifficulty = new Set(['','easy','medium','hard']);
+  if (!allowedActivity.has(activity)) throw new Error('PRESENCE_ACTIVITY_INVALID');
+  if (!allowedAvailability.has(availability)) throw new Error('PRESENCE_AVAILABILITY_INVALID');
+  if (!allowedDifficulty.has(difficulty)) throw new Error('PRESENCE_DIFFICULTY_INVALID');
+  await setDoc(doc(db, 'playerPresence', uid), {
+    activity, availability, visibility, difficulty, tournamentRoundKey,
+    engineVersion: ENGINE_VERSION,
+    engineProtocolVersion: ENGINE_PROTOCOL_VERSION,
+    lastSeenAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  }, { merge: false });
+  return true;
+}
+
+export async function removePlayerPresence(uid) {
+  if (!uid || uid !== auth.currentUser?.uid) throw new Error('PRESENCE_UID_MISMATCH');
+  await deleteDoc(doc(db, 'playerPresence', uid));
+  return true;
+}
+
+export function listenToPlayerPresence(onUpdate, onError = null) {
+  const ref = query(collection(db, 'playerPresence'), limit(250));
+  return onSnapshot(ref, { includeMetadataChanges: true }, snap => {
+    onUpdate(snap.docs.map(d => ({ uid:d.id, ...d.data() })), {
+      fromCache: !!snap.metadata?.fromCache,
+      hasPendingWrites: !!snap.metadata?.hasPendingWrites,
+      receivedAtClientMs: Date.now()
+    });
+  }, error => {
+    if (typeof onError === 'function') onError(error);
+    else console.error('[Presence] Listener interrumpido:', error);
+  });
+}
+
+export function listenToActiveMultiplayerMatches(onUpdate, onError = null) {
+  const ref = query(collection(db, 'matches'), where('status', '==', 'active'), limit(40));
+  return onSnapshot(ref, { includeMetadataChanges: true }, snap => {
+    const rows = snap.docs.map(d => ({ code:d.id, ...d.data() }));
+    onUpdate(rows, {
+      fromCache: !!snap.metadata?.fromCache,
+      hasPendingWrites: !!snap.metadata?.hasPendingWrites,
+      receivedAtClientMs: Date.now()
+    });
+  }, error => {
+    if (typeof onError === 'function') onError(error);
+    else console.error('[Lobby] Listener de partidas activas interrumpido:', error);
   });
 }
 

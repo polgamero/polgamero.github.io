@@ -149,3 +149,6 @@ tools/test_bot_strategy_desktop_match_cover_23_21_6_hf15.mjs
 tools/test_combat_transport_counter_audio_mixer_23_21_6_hf16.mjs
 
 tools/test_suspend_watchdog_match_cover_23_21_6_hf17.mjs
+
+tools/test_solo_recovery_audio_manland_gameover_23_21_6_hf18.mjs
+tools/test_multiplayer_lobby_presence_foundation_23_21_6_hf19.mjs

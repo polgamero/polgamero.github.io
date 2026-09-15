@@ -1478,9 +1478,27 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
         // girada al autopagarse el coste. El caso reportado de Plaza Mitre era una doble
         // activación redundante antes de la fase de combate.
         if (supportItem.isAnimatedLand || hasPendingAnimateLandActivation(supportItem)) continue;
-        // En su Main 1 la anima para atacar; con prioridad instantánea durante bloqueadores
-        // también puede animarla para defender. No la activa por puro valor fuera de combate.
-        shouldActivate = state.phase === 'main1' || (timing === 'instant' && state.phase === 'combat_blockers' && state.activePlayer === 'local');
+
+        // HF18 — la condición anterior decía "Main 1" pero no comprobaba DE QUIÉN era
+        // esa Main 1, y tampoco verificaba que la Tierra recién bajada pudiera atacar. Eso
+        // hacía gastar maná en animaciones que caducaban sin producir ataque alguno.
+        const animationKeywords = Array.isArray(effect?.keywords) ? effect.keywords : [];
+        const animationHasHaste = animationKeywords.some(keyword => String(keyword || '').trim().toLowerCase() === 'haste') || hasKeyword(supportItem, 'haste');
+        const canAttackAfterAnimation = !supportItem.tapped && (!supportItem.enteredThisTurn || animationHasHaste);
+        const canBlockAfterAnimation = !supportItem.tapped;
+        const offensiveWindow = state.activePlayer === 'rival' && state.phase === 'main1' && canAttackAfterAnimation;
+        const defensiveWindow = timing === 'instant' && state.activePlayer === 'local' && state.phase === 'combat_blockers' && canBlockAfterAnimation;
+        shouldActivate = offensiveWindow || defensiveWindow;
+        if (!shouldActivate) {
+          recordTelemetryEvent('bot_animate_land_deferred', {
+            turnCount: state.turnCount, phase: state.phase, activePlayer: state.activePlayer,
+            cardId: card?.id || null, cardName: card?.name || null,
+            enteredThisTurn: !!supportItem.enteredThisTurn, tapped: !!supportItem.tapped,
+            animationHasHaste, reason: state.phase === 'main1' && state.activePlayer === 'rival'
+              ? (supportItem.tapped ? 'tapped' : 'summoning_sickness')
+              : (state.phase === 'main1' ? 'opponent_main1' : 'outside_combat_window')
+          });
+        }
       }
       else if (effect.type === 'crew_vehicle') {
         if (state.phase === 'main1') shouldActivate = true;

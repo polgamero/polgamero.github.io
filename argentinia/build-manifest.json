@@ -5,13 +5,13 @@
   "economyProtocolVersion": "econ-23.19.5.6",
   "economySchemaVersion": 10,
   "economyFunctionsRegion": "southamerica-east1",
-  "firestoreRulesVersion": "23.13.86",
+  "firestoreRulesVersion": "23.13.87",
   "poolMilestone": "dragons_buenos_aires_900",
   "pool": 900,
   "label": "DRAGONES EN BUENOS AIRES · Pool 900 + Dragon Archetype Foundation",
   "emoteCatalogAuthority": "gameConfig/emotes via economyAdminSetEmoteCatalog",
   "functionsCount": 41,
-  "releaseCandidate": "23.21.6 HF17 PRE-RELEASE",
+  "releaseCandidate": "23.21.6 HF19 PRE-RELEASE — Multiplayer Lobby & Presence Foundation",
   "telemetryRecovery": "tournament metadata allowlisted in telemetrySessions + explicit upload diagnostics",
   "emoteAudioConvention": "assets/sounds/sfx/<audioBase>.opus|mp3; defaults audioBase=id",
   "socialMute": "session-local chat command /silenciar; no persistent hidden mute button",
@@ -111,5 +111,8 @@
   "botCounterResourceStrategy": "Medium/Hard can evaluate remove_counter activated abilities as safe value resources, spending them mainly own Main2/opponent End step when counter inventory and payoff are legal",
   "botVehicleCrewStrategy": "Crew is planned only in combat-relevant windows; offensive crew rejects entered-this-turn vehicles without haste and Medium/Hard compare virtual crew/no-crew attack/block plans before tapping creatures; BOT_CREW_WASTE telemetry guards regressions",
   "suspendCastChoiceTelemetry": "human Suspend cast/decline modal is represented by pendingSuspendCastChoice; BOT_PRIORITY_STALL and Solo bot scheduler remain armed for real stalls but pause during this explicit human decision",
-  "matchStartCoverHf17": "Solo, Tournament and Multiplayer arm the black Inicializando partida cover at gameplay-commit click before picker removal; Multiplayer additionally awaits the shared paint fence before removing flow overlays or building the board"
+  "matchStartCoverHf17": "Solo, Tournament and Multiplayer arm the black Inicializando partida cover at gameplay-commit click before picker removal; Multiplayer additionally awaits the shared paint fence before removing flow overlays or building the board",
+  "lobbyPresence": "playerPresence/{uid}; heartbeat=45s; stale=110s; own-write/auth-read; activity structured",
+  "multiplayerLobby": "two-column live players + active multiplayer matches; manual code fallback retained; copy-code added",
+  "directChallenges": "reserved for 23.22.1; no invitation writes enabled in Foundation"
 }

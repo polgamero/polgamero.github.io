@@ -6,7 +6,7 @@ import { listenToMatchCommunication, sendMultiplayerCommunication, fetchStorefro
 import { EMOTE_CATALOG, getEmoteDefinition, normalizeOwnedEmoteIds, emoteAssetCandidates, emoteAudioCandidates, applyEmoteCatalogSnapshot } from './emoteCatalog.js';
 import { animationsEffectivelyEnabled } from './animationDirector.js';
 import { gameText } from './gameTexts.js';
-import { getAudioSettings } from './audioManager.js';
+import { playExternalSfx } from './audioManager.js';
 
 const MAX_CHAT = 220;
 let session = null;
@@ -76,12 +76,10 @@ function mountEmoteAsset(holder, def, { decorative=false } = {}) {
   });
 }
 function playEmoteAudio(def) {
-  const urls=emoteAudioCandidates(def); if(!urls.length || typeof Audio==='undefined') return;
-  const settings=getAudioSettings(); if(settings?.sfxEnabled===false) return;
+  const urls=emoteAudioCandidates(def); if(!urls.length) return;
   void resolveAvailableAsset(urls).then(url=>{
     if(!url)return;
-    const audio=new Audio(url); audio.preload='auto'; audio.volume=Math.max(0,Math.min(1,Number(settings?.sfxVolume ?? 1)));
-    void audio.play().catch(()=>{});
+    playExternalSfx(url);
   });
 }
 async function refreshAuthoritativeEmoteCatalog(){

@@ -24,6 +24,6 @@ for (const file of fs.readdirSync(new URL('../js/', import.meta.url)).filter(x =
 
 assert.equal(manifest.engineVersion, '23.21.6');
 assert.match(read('js/version.js'), /23\.21\.3 HF1 Console Hygiene \+ Economy Audit Identity Resolver/);
-assert.equal(manifest.firestoreRulesVersion, '23.13.86');
+assert.equal(manifest.firestoreRulesVersion, '23.13.87');
 assert.equal(manifest.functionsCount, 41);
 console.log('CONSOLE_AUDIT_IDENTITY_HYGIENE_23_21_3_HF1_OK resourcePaths=SKIPPED_FROM_USER_LOOKUP extensionMessaging=NONE rules=23.13.86 functions=41');

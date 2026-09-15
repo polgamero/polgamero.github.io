@@ -804,7 +804,7 @@ async function animateLandTap(payload) {
     const dx=(i-3.5)*7,dy=-12-(i%4)*5;
     void runWebAnimation(p,[{transform:'translate(0,0) scale(.7)',opacity:0},{transform:`translate(${dx*.3}px,${dy*.35}px) scale(1)`,opacity:.75},{transform:`translate(${dx}px,${dy}px) scale(1.5)`,opacity:0}],{duration:durationFor(payload,520),easing:'ease-out'}).then(()=>removeNode(p));
   }
-  playAnimationSfx('landTap','land','start');
+  if (!payload?.semanticSfxPlayed) playAnimationSfx('landTap','land','start');
   const anim=runWebAnimation(card,[
     {transform:'rotate(0deg) translateX(0)',filter:'brightness(1)'},
     {transform:'rotate(-4deg) translateX(-2px)',filter:'brightness(.96)'},
@@ -814,7 +814,7 @@ async function animateLandTap(payload) {
   ],{duration:durationFor(payload,470),easing:'cubic-bezier(.28,.72,.18,1)'});
   await anim;
   if (animationEventCancelled(payload)) { removeNode(card); return false; }
-  playAnimationSfx('landTap','land','key');
+  if (!payload?.semanticSfxPlayed) playAnimationSfx('landTap','land','key');
   await runWebAnimation(card,[{opacity:1},{opacity:0}],{duration:durationFor(payload,100)}); removeNode(card); return true;
 }
 
@@ -1116,10 +1116,11 @@ export function queuePlayerDamageAnimation(payload, options={}) {
   return enqueue('combat_player_impact',payload,animatePlayerImpact,options);
 }
 export function queueLandTapAnimation(payload, options={}) {
+  const animationPayload = options?.semanticSfxPlayed ? { ...payload, semanticSfxPlayed:true } : payload;
   emitPresentationCue({
     kind:'land_tap',sourceIsLocal:payload?.isLocal !== false,source:cueVisualRef(payload?.snapshot),animationTuningKey:'land'
   },options);
-  return enqueue('land_tap',payload,animateLandTap,options);
+  return enqueue('land_tap',animationPayload,animateLandTap,options);
 }
 export function queueZoneTransitionAnimation(payload, options={}) {
   const controllerIsLocal=payload?.controllerIsLocal !== false;
@@ -1212,8 +1213,13 @@ export function queueGameEventAnimation(event={}, options={}) {
   if(type==='card_exiled' && event.cause==='graveyard_purge') return Promise.resolve(false);
   if(type==='land_entered' && event.zoneFrom==='graveyard_mass') return Promise.resolve(false);
   if(type==='permanent_tapped' && event.cause==='mana_ability' && event.item && event.card) {
+    // HF18 — el sonido de girar por maná es semántico, no un efecto colateral de poder
+    // capturar la geometría visual. Así local/rival suenan igual aunque el DOM cambie antes
+    // de que Animation Director alcance a clonar la carta. La animación visual suprime su
+    // cue interno para no duplicar el mismo SFX.
+    playSfx('landTap',{ volumeMultiplier:getAnimationTuning('land').relativeVolume });
     const snapshot=captureCardVisual(event.item,isLocal?'local':'rival',options);
-    return snapshot ? queueLandTapAnimation({snapshot,isLocal},options) : Promise.resolve(false);
+    return snapshot ? queueLandTapAnimation({snapshot,isLocal},{...options,semanticSfxPlayed:true}) : Promise.resolve(false);
   }
   if(type==='permanent_transformed' && event.item) return queueTransformAnimation({item:event.item,isLocal,afterName:event.metadata?.afterName||event.card?.name||null,animationTuningKey:'transform'},options);
   if(type==='permanent_animated' && event.item) return queueTransformAnimation({item:event.item,isLocal,afterName:event.card?.name||null,animationTuningKey:'animate_land'},options);

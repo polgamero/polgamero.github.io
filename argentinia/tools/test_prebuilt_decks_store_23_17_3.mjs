@@ -21,7 +21,7 @@ const json=p=>JSON.parse(read(p));
 assert.equal(ENGINE_VERSION, '23.21.6');
 assert.equal(PREBUILT_DECKS_VERSION,'23.17.3');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.86');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.87');
 assert.equal(CURRENT_POOL_MILESTONE,'dragons_buenos_aires_900');
 assert.equal(POOL_BASELINE.total,900);
 

@@ -278,7 +278,17 @@ function loadStoredSettings() {
   if (typeof localStorage === 'undefined') return getDefaultAudioSettings();
   try {
     const raw = localStorage.getItem(AUDIO_SETTINGS_STORAGE_KEY);
-    return raw ? normalizeAudioSettings(JSON.parse(raw)) : getDefaultAudioSettings();
+    if (!raw) return getDefaultAudioSettings();
+    const normalized = normalizeAudioSettings(JSON.parse(raw));
+    // HF18 — el speaker dejó de ser un master mute binario en HF16. Convertimos una
+    // preferencia legacy persistida a dos canales explícitamente en 0 una sola vez, para
+    // que ningún masterMuted invisible vuelva a acoplar los sliders.
+    if (normalized.masterMuted) {
+      const migrated = { ...normalized, masterMuted:false, musicEnabled:false, musicVolume:0, sfxEnabled:false, sfxVolume:0 };
+      try { localStorage.setItem(AUDIO_SETTINGS_STORAGE_KEY, JSON.stringify(migrated)); } catch {}
+      return migrated;
+    }
+    return normalized;
   } catch {
     return getDefaultAudioSettings();
   }
@@ -548,26 +558,17 @@ export function toggleMasterMute() {
   return setMasterMuted(!settings.masterMuted);
 }
 
-// HF16 — el control rápido junto a REC deja de ser un mute maestro binario y pasa a ser
-// un mini mixer real. Si el usuario venía de HF7 con masterMuted persistido, la primera
-// interacción con un slider migra ese silencio a ambos canales en 0 y después habilita
-// únicamente el canal que el usuario está moviendo. Así nunca aparece el caso confuso de
-// un slider > 0 que sigue sin sonar por un master mute oculto.
-function beginQuickMixerLevelChange() {
+// HF18 — mixer realmente ortogonal: tocar Música jamás escribe estado de SFX y tocar
+// SFX jamás escribe estado de Música. masterMuted queda sólo como API legacy; si existiera
+// en runtime, mover un slider lo libera sin alterar el otro canal.
+function releaseLegacyMasterMuteForQuickMixer() {
   if (!settings.masterMuted) return;
-  settings = {
-    ...settings,
-    masterMuted: false,
-    musicEnabled: false,
-    musicVolume: 0,
-    sfxEnabled: false,
-    sfxVolume: 0
-  };
+  settings = { ...settings, masterMuted:false };
 }
 
 export function setQuickMusicLevel(volume) {
   const next = clamp01(volume, settings.musicVolume);
-  beginQuickMixerLevelChange();
+  releaseLegacyMasterMuteForQuickMixer();
   settings = { ...settings, masterMuted:false, musicVolume:next, musicEnabled:next > 0 };
   persistSettings();
   if (next <= 0) hardSilenceManagedMusic();
@@ -581,7 +582,7 @@ export function setQuickMusicLevel(volume) {
 
 export function setQuickSfxLevel(volume) {
   const next = clamp01(volume, settings.sfxVolume);
-  beginQuickMixerLevelChange();
+  releaseLegacyMasterMuteForQuickMixer();
   settings = { ...settings, masterMuted:false, sfxVolume:next, sfxEnabled:next > 0 };
   persistSettings();
   if (next <= 0) hardSilenceManagedSfx();
@@ -640,6 +641,28 @@ export function playSfx(id, options = {}) {
   const cleanup = () => { try { audio.remove(); } catch {} };
   audio.addEventListener('ended', cleanup, { once: true });
   audio.addEventListener('error', cleanup, { once: true });
+  (document.body || document.documentElement)?.appendChild(audio);
+  const promise = audio.play();
+  if (promise && typeof promise.catch === 'function') promise.catch(cleanup);
+  return audio;
+}
+
+// HF18 — assets dinámicos (por ejemplo audio de emotes) también pasan por el mismo
+// bus SFX. Nada debe instanciar `new Audio()` por afuera y esquivar master/SFX volume.
+export function playExternalSfx(url, options = {}) {
+  const src = String(url || '').trim();
+  if (!src || settings.masterMuted || !settings.sfxEnabled || settings.sfxVolume <= 0 || typeof document === 'undefined') return null;
+  const audio = document.createElement('audio');
+  audio.dataset.argentiniaAudioRole = 'sfx';
+  audio.preload = 'auto';
+  audio.src = src;
+  const relativeVolumeRaw = Number(options?.volumeMultiplier ?? options?.relativeVolume ?? 1);
+  const relativeVolume = Number.isFinite(relativeVolumeRaw) ? Math.max(0, Math.min(2, relativeVolumeRaw)) : 1;
+  audio.volume = Math.max(0, Math.min(1, settings.sfxVolume * relativeVolume));
+  audio.setAttribute('playsinline', '');
+  const cleanup = () => { try { audio.remove(); } catch {} };
+  audio.addEventListener('ended', cleanup, { once:true });
+  audio.addEventListener('error', cleanup, { once:true });
   (document.body || document.documentElement)?.appendChild(audio);
   const promise = audio.play();
   if (promise && typeof promise.catch === 'function') promise.catch(cleanup);

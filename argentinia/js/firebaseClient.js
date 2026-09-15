@@ -142,6 +142,32 @@ export function listenToMatchCommunication(...args) {
   return () => { cancelled = true; if (typeof innerStop === 'function') innerStop(); };
 }
 
+
+function syncListenerProxy(name, diagCode, args) {
+  let cancelled = false;
+  let innerStop = null;
+  preloadFirebaseClient().then(mod => {
+    if (cancelled) return;
+    const fn = mod?.[name];
+    if (typeof fn !== 'function') throw new Error(`FIREBASE_LAZY_EXPORT_MISSING:${name}`);
+    innerStop = fn(...args);
+    if (cancelled && typeof innerStop === 'function') innerStop();
+  }).catch(error => {
+    diag(diagCode, { message:error?.message || String(error) });
+    const onError = args[1];
+    if (typeof onError === 'function') { try { onError(error); } catch {} }
+  });
+  return () => { cancelled = true; if (typeof innerStop === 'function') innerStop(); };
+}
+
+export function listenToPlayerPresence(...args) {
+  return syncListenerProxy('listenToPlayerPresence', 'firebase_presence_listen_failed', args);
+}
+
+export function listenToActiveMultiplayerMatches(...args) {
+  return syncListenerProxy('listenToActiveMultiplayerMatches', 'firebase_active_matches_listen_failed', args);
+}
+
 export function listenAnimationPolicy(...args) {
   let cancelled = false;
   let innerStop = null;
@@ -303,6 +329,8 @@ export const uploadTelemetrySession = asyncProxy('uploadTelemetrySession');
 export const finalizeTelemetryLifecycleSession = asyncProxy('finalizeTelemetryLifecycleSession');
 export const adminCloseStaleTelemetrySessions = asyncProxy('adminCloseStaleTelemetrySessions');
 export const touchMatchPresence = asyncProxy('touchMatchPresence');
+export const publishPlayerPresence = asyncProxy('publishPlayerPresence');
+export const removePlayerPresence = asyncProxy('removePlayerPresence');
 export const bootstrapPlayerStatistics = asyncProxy('bootstrapPlayerStatistics');
 export const recordPlayerGameResult = asyncProxy('recordPlayerGameResult');
 export const fetchPublicPlayerStats = asyncProxy('fetchPublicPlayerStats');

@@ -50,6 +50,7 @@ import { botDeckQuality, normalizeBotDifficulty, botHasCapability } from './botD
 import { scoreBotGraveyardRecovery, buildBotSubtypeCounts } from './botStrategy.js';
 import { normalizeSyncRevision, deriveEffectiveTouchedKeys, classifySnapshotRevision, syncRetryDelayMs, isRetryableSyncError, classifyRivalPresence, fieldRevisionDeltaKeys, markFieldRevisionsApplied, SYNC_RETRY_MAX_ATTEMPTS, SYNC_RECOVERY_RETRY_MS, MULTIPLAYER_READY_TIMEOUT_MS, MULTIPLAYER_CLIENT_SESSION_ID, validateRoleSession } from './multiplayerReliability.js';
 import { startMultiplayerSocialSession, stopMultiplayerSocialSession } from './multiplayerSocial.js';
+import { startPlayerPresence, stopPlayerPresence, setPlayerPresenceActivity } from './multiplayerPresence.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -142,6 +143,21 @@ function currentSoloLifecycleDurationMs() {
 
 const SOLO_LONG_SUSPEND_MS = 2 * 60 * 1000;
 const SOLO_RESUME_WATCHDOG_GRACE_MS = 3500;
+const TOURNAMENT_REOPEN_STORAGE_KEY = 'argentinia.tournament.openAfterReload.v1';
+
+function clearTournamentReopenIntent() {
+  try { sessionStorage.removeItem(TOURNAMENT_REOPEN_STORAGE_KEY); } catch {}
+}
+
+function soloRecoveryOwnsBootRoute() {
+  const candidate = loadSoloRecoveryCandidate();
+  if (!candidate || !isSoloRecoveryCompatible(candidate)) return false;
+  // Multiplayer server state remains the strongest boot authority.
+  if (state.userProfile?.activeMatchId) return false;
+  if (candidate.ownerUid && candidate.ownerUid !== state.currentUser?.uid) return false;
+  if (!candidate.ownerUid && state.currentUser) return false;
+  return true;
+}
 
 function isLifecycleManagedSoloGame() {
   return !state.gameOver && !state.currentMatch && !state.currentTournamentMatch && hasActiveSoloRecovery();
@@ -249,6 +265,9 @@ function forceSoloRecoveryReloadAfterLongSuspend(hiddenForMs) {
     stackDepth: spellStack.length
   }, 'warning');
   showMatchInitializationOverlay(gameText('solo.lifecycle.reloading'));
+  // HF18 — una recarga de recovery Solo no puede heredar una intención vieja de volver
+  // al fixture. Ese flag era suficiente para montar un Torneo obsoleto detrás del prompt.
+  clearTournamentReopenIntent();
   // Yield one paint so the player never gets an interactive stale table between thaw and reload.
   requestAnimationFrame(() => setTimeout(() => window.location.reload(), 0));
 }
@@ -1007,6 +1026,7 @@ async function returnToMainMenuAfterAbandon({ destination = 'main' } = {}) {
   }
   state.currentMatch = null;
   state.currentTournamentMatch = null;
+  setPlayerPresenceActivity('menu', { availability:'available' });
   state.multiplayerWaitingForReady = false;
   // RC5.2 — soft-return must clean BOTH state and presentation. Otherwise every subsequent
   // setupBoardLayout() wraps the same board again and duplicates MAZO/CEMENTERIO/EXILIO.
@@ -1239,6 +1259,11 @@ async function initGame(deckSource, options = {}) {
   }
   await mobileSoloYield('local_deck_ready', { count: state.localDeck.length });
   state.botDifficulty = normalizeBotDifficulty(tournamentMatch?.difficulty || state.botDifficulty);
+  setPlayerPresenceActivity(tournamentMatch ? 'tournament' : 'solo', {
+    availability:'busy',
+    difficulty:state.botDifficulty,
+    tournamentRoundKey:tournamentMatch?.roundKey || ''
+  });
   const botQuality = tournamentMatch?.deckQuality || botDeckQuality(state.botDifficulty);
   const botIdentity = Array.isArray(tournamentMatch?.opponent?.colors) && tournamentMatch.opponent.colors.length ? tournamentMatch.opponent.colors : undefined;
   state.rivalDeck = buildRandomDeck(botIdentity, { quality: botQuality, archetypeId: tournamentMatch?.opponent?.archetypeId || undefined });
@@ -1384,7 +1409,12 @@ async function abandonRecoveredSolo(candidate, { expired = false } = {}) {
 async function resumeSoloRecoveryGame(candidate) {
   soloGameplayReady = true;
   enterGameplayAudio('solo');
-  document.querySelectorAll('#main-menu-overlay, #solo-recovery-overlay').forEach(el => el.remove());
+  setPlayerPresenceActivity('solo', { availability:'busy', difficulty:normalizeBotDifficulty(candidate?.difficulty || state.botDifficulty) });
+  // HF18 — route ownership: un recovery Solo válido siempre gana frente a cualquier
+  // fixture stale que haya quedado montado por un boot/reload anterior.
+  clearTournamentReopenIntent();
+  state.currentTournamentMatch = null;
+  document.querySelectorAll('#main-menu-overlay, #solo-recovery-overlay, #tournament-overlay').forEach(el => el.remove());
   setupBoardLayout();
 
   if (candidate.telemetrySessionId && state.currentUser) {
@@ -1449,9 +1479,15 @@ async function offerSoloRecoveryIfAvailable() {
   if (candidate.ownerUid && candidate.ownerUid !== state.currentUser?.uid) return;
   if (!candidate.ownerUid && state.currentUser) return;
   if (isSoloRecoveryExpired(candidate)) {
+    clearTournamentReopenIntent();
+    document.querySelector('#tournament-overlay')?.remove();
     await abandonRecoveredSolo(candidate, { expired: true });
     return;
   }
+  // HF18 — no se permiten dos routers de recuperación visibles al mismo tiempo.
+  clearTournamentReopenIntent();
+  state.currentTournamentMatch = null;
+  document.querySelector('#tournament-overlay')?.remove();
   showSoloRecoveryPrompt(
     candidate,
     () => { void resumeSoloRecoveryGame(candidate); },
@@ -1900,6 +1936,7 @@ async function boot() {
         void bootstrapPlayerStatistics(state.currentUser.uid).catch(statsErr => {
           console.warn('No se pudieron preparar las estadísticas del jugador:', statsErr);
         });
+        startPlayerPresence(state.currentUser.uid);
         if (profile.activeMatchId) offerReconnectIfStillActive(profile.activeMatchId);
         return profile;
       })().catch(err => {
@@ -1913,6 +1950,7 @@ async function boot() {
         updateAccountUI(state.currentUser);
       });
     } else {
+      void stopPlayerPresence({ remove:false });
       state.userProfile = null;
       state.authIdentityReady = true;
       userProfileLoadPromise = Promise.resolve();
@@ -1972,13 +2010,19 @@ async function boot() {
   // The server decides whether an unfinished activeMatch became an elimination.
   void (async () => {
     let reopen=false;
-    try { reopen=sessionStorage.getItem('argentinia.tournament.openAfterReload.v1')==='1'; } catch {}
+    try { reopen=sessionStorage.getItem(TOURNAMENT_REOPEN_STORAGE_KEY)==='1'; } catch {}
     if(!reopen) return;
     try {
       await waitForInitialAuthState();
       if(state.currentUser) await userProfileLoadPromise;
       if(!state.currentUser || !state.userProfile) return;
-      try { sessionStorage.removeItem('argentinia.tournament.openAfterReload.v1'); } catch {}
+      // HF18 — Solo recovery is a concrete active-game route and must beat a stale
+      // tournament reopen intent left in sessionStorage by an older tournament.
+      if (soloRecoveryOwnsBootRoute()) {
+        clearTournamentReopenIntent();
+        return;
+      }
+      clearTournamentReopenIntent();
       document.querySelector('#main-menu-overlay')?.remove();
       await startTournamentFlow();
     } catch(error) {
@@ -2118,6 +2162,7 @@ async function startTournamentFlow() {
 // hace falta coordinar nada con el rival para esto: cada mazo/mano es privado por diseño,
 // así que cada cliente arma el suyo de forma totalmente independiente.
 function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', startingRole = 'host') {
+  setPlayerPresenceActivity('multiplayer_setup', { availability:'busy' });
   // Multiplayer normal sigue sin mazos random. 23.8.1 agrega una ÚNICA excepción de QA:
   // "Mazo de pruebas", determinista y no persistente, visible al pie del picker.
   const launch = (deckSource) => {
@@ -2141,6 +2186,7 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', st
 // trae un startingRole 50/50 decidido una sola vez al crearse; ambos clientes convierten
 // ese mismo rol compartido a su perspectiva local/rival.
 async function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host') {
+  setPlayerPresenceActivity('multiplayer', { availability:'busy' });
   showMatchInitializationOverlay();
   // Multiplayer must never accept the reproducibility URL seed: allowing a player to
   // choose its shuffle seed would make deck order controllable/predictable. We still record
