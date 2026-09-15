@@ -1,0 +1,16 @@
+ARGENTINIA 23.21.6 HF19.1 — GITHUB CI REGRESSION ARCHIVE SYNC
+STATUS: PRE_RELEASE / packaging+CI only
+
+Cause of GitHub Actions failure after HF19 Rules gates/deploy were green:
+- Firestore Rules were intentionally promoted 23.13.86 -> 23.13.87 for Multiplayer Presence.
+- 23 historical live regression contracts were correspondingly promoted to assert the current Rules baseline 23.13.87.
+- tools/regression_legacy_23_17_3_1.zip still contained their pre-promotion 23.13.86 bytes.
+- GitHub CI correctly rejected the archive/live drift.
+
+Fix:
+1. Rebuilt tools/regression_legacy_23_17_3_1.zip exclusively from the 62 live tests enumerated by tools/ci_regression_manifest_23_17_3_1.txt.
+2. No live regression test was reverted or overwritten.
+3. Archive/live parity is exact 62/62 after the refresh.
+4. No runtime, gameplay, card data, Functions, Firestore Rules, multiplayer protocol, economy schema, pool, or callable change.
+
+Rules remain 23.13.87 byte-identical to HF19. The already-green Gate03/Gate05/Gate07 and deployed Rules remain valid; this correction only requires republishing the GitHub source and rerunning GitHub Actions.
