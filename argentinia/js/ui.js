@@ -756,60 +756,109 @@ export function showPrivateZoneChoiceModal(offer, cardName, onConfirm, onCancel 
   if (HEADLESS_ENGINE) { onConfirm?.(headlessChoice.choosePrivateZoneTokens(offer)); return; }
   injectMulliganStyles();
   const overlay = document.createElement('div');
-  overlay.className = 'gy-modal-overlay';
+  overlay.id = 'mulligan-overlay';
+  overlay.classList.add('private-zone-selection-overlay');
   const amount = Math.max(0, Number(offer?.amount || 0));
   const chosen = new Set();
   const zoneLabel = offer?.zone === 'deck' ? gameText('selection.private.zoneDeck') : gameText('selection.private.zoneHand');
+
   overlay.innerHTML = `
-    <div class="gy-modal-content" style="max-width:760px;">
-      <div class="gy-modal-header"><h3>${gameTextHtml('selection.private.title', { card: cardName || gameText('selection.private.effectFallback'), zone: zoneLabel })}</h3></div>
-      <div style="padding:16px;">
-        <p id="private-zone-hint" style="color:#cfe0d4;font-size:13px;">${gameTextHtml('selection.chooseCount', { total: amount, selected: 0 })}</p>
-        <div id="private-zone-row" style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:16px 0;"></div>
-        <div class="mulligan-buttons">
-          ${onCancel ? `<button id="private-zone-cancel" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('modal.mode.cancel')}</button>` : ''}
-          <button id="private-zone-confirm" class="mulligan-btn mulligan-btn-keep" disabled>${gameTextHtml('selection.confirmChoice')}</button>
-        </div>
+    <div class="mulligan-panel private-zone-selection-panel">
+      <div class="mulligan-title">${gameTextHtml('selection.private.title', { card: cardName || gameText('selection.private.effectFallback'), zone: zoneLabel })}</div>
+      <div class="mulligan-subtitle" id="private-zone-hint">${gameTextHtml('selection.chooseCount', { total: amount, selected: 0 })}</div>
+      <div class="mulligan-hand-row-slot"></div>
+      <div class="mulligan-buttons">
+        ${onCancel ? `<button id="private-zone-cancel" class="mulligan-btn mulligan-btn-mull">${gameTextHtml('modal.mode.cancel')}</button>` : ''}
+        <button id="private-zone-confirm" class="mulligan-btn mulligan-btn-keep mulligan-btn-confirm" disabled>${gameTextHtml('selection.confirmChoice')}</button>
       </div>
     </div>`;
-  const row = overlay.querySelector('#private-zone-row');
-  const hint = overlay.querySelector('#private-zone-hint');
-  const confirm = overlay.querySelector('#private-zone-confirm');
+
+  const hint = () => overlay.querySelector('#private-zone-hint');
+  const confirm = () => overlay.querySelector('#private-zone-confirm');
+  const row = document.createElement('div');
+  row.className = 'mulligan-hand-row private-zone-card-row';
+
+  const update = () => {
+    hint().textContent = gameText('selection.chooseCount', { total: amount, selected: chosen.size });
+    confirm().disabled = chosen.size !== amount;
+  };
+
   (offer?.candidates || []).forEach((entry, idx) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'loyalty-ability-btn';
-    btn.style.cssText = 'width:128px;min-height:170px;display:flex;align-items:center;justify-content:center;text-align:center;';
-    btn.dataset.token = entry.token;
-    if (entry.selectable === false) {
-      btn.disabled = true;
-      btn.style.opacity = '0.45';
-      btn.title = gameText('selection.private.invalid');
-    }
-    if (offer.visibility === 'reveal_candidates' && entry.card) {
-      btn.innerHTML = `<span class="loyalty-ability-text"><strong>${entry.card.name || gameText('selection.private.cardFallback')}</strong><br><small>${publicCardTypeLine(entry.card.type || '')}</small></span>`;
-    } else {
-      btn.innerHTML = `<span class="loyalty-ability-text" style="font-size:30px;">🂠<br><small>${gameTextHtml('selection.private.slot', { index: idx + 1 })}</small></span>`;
-      btn.title = gameText('selection.private.hidden');
-    }
-    btn.addEventListener('click', () => {
-      if (entry.selectable === false) return;
+    let cardEl;
+    const selectable = entry.selectable !== false;
+    const toggle = () => {
+      if (!selectable) return;
       const token = entry.token;
-      if (chosen.has(token)) { chosen.delete(token); btn.classList.remove('chosen'); }
-      else if (chosen.size < amount) { chosen.add(token); btn.classList.add('chosen'); }
-      hint.textContent = gameText('selection.chooseCount', { total: amount, selected: chosen.size });
-      confirm.disabled = chosen.size !== amount;
-    });
-    row.appendChild(btn);
+      if (chosen.has(token)) {
+        chosen.delete(token);
+        cardEl.classList.remove('chosen');
+        cardEl.setAttribute('aria-pressed', 'false');
+      } else if (chosen.size < amount) {
+        chosen.add(token);
+        cardEl.classList.add('chosen');
+        cardEl.setAttribute('aria-pressed', 'true');
+      }
+      update();
+    };
+
+    if (offer.visibility === 'reveal_candidates' && entry.card) {
+      // HF11: a rule that explicitly says "Mirá" authorizes the chooser to see the real
+      // printed card. Reuse the canonical renderer instead of the old name/type fallback so
+      // art, mana, rules, P/T, Transporte stats, improvements and DFC preview are consistent
+      // with Mulligan / land search / every other finished card picker.
+      cardEl = createCardElement(entry.card, false, true, null, 'mulligan-pick', toggle);
+      cardEl.classList.add('mulligan-card-slot', 'private-zone-revealed-card');
+      if (selectable) cardEl.classList.add('selectable');
+      else {
+        cardEl.classList.add('disabled');
+        cardEl.style.opacity = '0.46';
+        cardEl.title = gameText('selection.private.invalid');
+      }
+    } else {
+      // Opaque offers intentionally remain card backs: revealing full card data here would
+      // violate the private-zone protocol. They still use the same picker geometry/selection.
+      cardEl = document.createElement('div');
+      cardEl.className = `mulligan-card-slot private-zone-opaque-card${selectable ? ' selectable' : ' disabled'}`;
+      cardEl.innerHTML = `<div class="private-zone-card-back"><span>🂠</span><small>${gameTextHtml('selection.private.slot', { index: idx + 1 })}</small></div>`;
+      if (selectable) cardEl.addEventListener('click', toggle);
+      else {
+        cardEl.style.opacity = '0.46';
+        cardEl.title = gameText('selection.private.invalid');
+      }
+    }
+
+    cardEl.dataset.token = entry.token;
+    cardEl.tabIndex = selectable ? 0 : -1;
+    cardEl.setAttribute('role', 'button');
+    cardEl.setAttribute('aria-pressed', 'false');
+    if (!selectable) cardEl.setAttribute('aria-disabled', 'true');
+    if (selectable) {
+      cardEl.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        toggle();
+      });
+    }
+    if (!entry.card) cardEl.title ||= gameText('selection.private.hidden');
+    row.appendChild(cardEl);
   });
+
+  overlay.querySelector('.mulligan-hand-row-slot').replaceWith(row);
   document.body.appendChild(overlay);
-  confirm.addEventListener('click', () => {
+  update();
+
+  confirm().addEventListener('click', () => {
     if (chosen.size !== amount) return;
     const tokens = [...chosen];
+    clearMulliganHoverPreview();
     overlay.remove();
     onConfirm(tokens);
   });
-  if (onCancel) overlay.querySelector('#private-zone-cancel').addEventListener('click', () => { overlay.remove(); onCancel(); });
+  if (onCancel) overlay.querySelector('#private-zone-cancel').addEventListener('click', () => {
+    clearMulliganHoverPreview();
+    overlay.remove();
+    onCancel();
+  });
 }
 
 // FASE 2: confirmación antes de abandonar — es una acción con penalidad real de puntos, así
@@ -969,6 +1018,7 @@ export function showLoyaltyAbilityModal(pwItem, isLocal) {
 
 export function openGraveyardModal(isLocal) {
   injectMulliganStyles();
+  installDesktopZoneBrowserHoverInteractions();
   const gyArray = isLocal ? state.localGraveyard : state.rivalGraveyard;
   const title = isLocal ? "Tu Cementerio" : `Cementerio de ${getRivalName()}`;
 
@@ -1000,6 +1050,7 @@ export function openGraveyardModal(isLocal) {
       wrapper.style.gap = '4px';
 
       const cardEl = createCardElement(cardObj, false, isLocal, idx, 'modal');
+      cardEl.classList.add('zone-browser-card-slot');
       cardEl.style.width = '120px';
       cardEl.style.height = '168px';
       wrapper.appendChild(cardEl);
@@ -1012,6 +1063,7 @@ export function openGraveyardModal(isLocal) {
         fbBtn.style.padding = '4px 8px';
         fbBtn.innerHTML = `🔄 Otra vuelta ${renderInlineGameSymbols(cardObj.flashback.cost)}`;
         fbBtn.addEventListener('click', () => {
+          clearDesktopZoneHoverPreview();
           modalOverlay.remove();
           castFromGraveyard(cardObj, isLocal);
         });
@@ -1031,6 +1083,7 @@ export function openGraveyardModal(isLocal) {
         const exileCount = cardObj.escape.exileCount || 0;
         escBtn.innerHTML = `🌀 Zafar ${renderInlineGameSymbols(cardObj.escape.cost)} + exiliar ${exileCount}`;
         escBtn.addEventListener('click', () => {
+          clearDesktopZoneHoverPreview();
           modalOverlay.remove();
           castFromGraveyard(cardObj, isLocal);
         });
@@ -1041,12 +1094,13 @@ export function openGraveyardModal(isLocal) {
     });
   }
 
-  modalOverlay.querySelector('.gy-close-btn').onclick = () => modalOverlay.remove();
-  modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
+  modalOverlay.querySelector('.gy-close-btn').onclick = () => { clearDesktopZoneHoverPreview(); modalOverlay.remove(); };
+  modalOverlay.onclick = (e) => { if (e.target === modalOverlay) { clearDesktopZoneHoverPreview(); modalOverlay.remove(); } };
 }
 
 export function openExileModal(isLocal) {
   injectMulliganStyles();
+  installDesktopZoneBrowserHoverInteractions();
   const exileArray = isLocal ? state.localExile : state.rivalExile;
   const title = isLocal ? "Tu Exilio" : `Exilio de ${getRivalName()}`;
 
@@ -1077,6 +1131,7 @@ export function openExileModal(isLocal) {
       wrapper.style.alignItems='center';
       wrapper.style.gap='4px';
       const cardEl = createCardElement(cardObj, false, isLocal, idx, 'modal');
+      cardEl.classList.add('zone-browser-card-slot');
       cardEl.style.width = '120px';
       cardEl.style.height = '168px';
       wrapper.appendChild(cardEl);
@@ -1105,6 +1160,7 @@ export function openExileModal(isLocal) {
           : permission.duration==='while_exiled' ? 'mientras siga exiliada' : 'hasta fin de turno';
         playBtn.title=`Permiso ${duration}`;
         playBtn.addEventListener('click',()=>{
+          clearDesktopZoneHoverPreview();
           modalOverlay.remove();
           void playCardFromExile(cardObj,true);
         });
@@ -1114,8 +1170,8 @@ export function openExileModal(isLocal) {
     });
   }
 
-  modalOverlay.querySelector('.gy-close-btn').onclick = () => modalOverlay.remove();
-  modalOverlay.onclick = (e) => { if (e.target === modalOverlay) modalOverlay.remove(); };
+  modalOverlay.querySelector('.gy-close-btn').onclick = () => { clearDesktopZoneHoverPreview(); modalOverlay.remove(); };
+  modalOverlay.onclick = (e) => { if (e.target === modalOverlay) { clearDesktopZoneHoverPreview(); modalOverlay.remove(); } };
 }
 
 
@@ -2470,7 +2526,7 @@ function injectDeckSelectionStyles() {
   const style = document.createElement('style');
   style.id = 'deck-select-styles';
   style.textContent = `
-    #deck-select-overlay {
+    #deck-select-overlay, #starter-deck-select-overlay {
       position: fixed; inset: 0; z-index: 9999;
       background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
       display: flex; align-items: center; justify-content: center;
@@ -2490,6 +2546,15 @@ function injectDeckSelectionStyles() {
     }
     .deck-select-subtitle {
       text-align: center; font-size: 14px; color: #a89bb5; margin-bottom: 28px;
+    }
+    .deck-select-status {
+      min-height: 20px; margin: -18px 0 18px; text-align: center;
+      color: #d8cfb7; font-size: 12px; line-height: 1.35;
+    }
+    .deck-select-status-error { color: #ff9c9c; font-weight: 700; }
+    .deck-select-mono-btn:disabled, .deck-select-pair-btn:disabled,
+    #deckselect-exit:disabled {
+      opacity: .55; cursor: wait; transform: none !important;
     }
     .deck-select-mono-row {
       display: flex; justify-content: center; gap: 22px; margin-bottom: 32px; flex-wrap: wrap;
@@ -7057,7 +7122,8 @@ function renderAccountBox(container, user) {
 // abierto, sin tener que cerrar y volver a entrar para que se note).
 function updateMainMenuLoginGatedButtons(overlay) {
   const identityReady = state.authInitialResolved === true && state.authIdentityReady === true;
-  const loggedInReady = identityReady && !!state.currentUser && !!state.userProfile;
+  const starterDeckPending = identityReady && !!state.currentUser && state.userProfile?.starterDeckPending === true;
+  const loggedInReady = identityReady && !!state.currentUser && !!state.userProfile && !starterDeckPending;
   const guestReady = identityReady && !state.currentUser;
 
   const setGate = (id, enabled, tooltip) => {
@@ -7075,12 +7141,16 @@ function updateMainMenuLoginGatedButtons(overlay) {
   const authTooltip = identityReady
     ? gameText('menu.loginRequiredTooltip')
     : gameText('menu.authCheckingTooltip');
+  const privateTooltip = starterDeckPending
+    ? gameText('menu.starterDeckRequiredTooltip')
+    : authTooltip;
 
   // Jugar puede ser guest, pero JAMÁS mientras todavía no sabemos si existe una sesión
-  // persistida. Las superficies privadas además exigen perfil Firestore listo.
-  setGate('menu-play', guestReady || loggedInReady, authTooltip);
+  // persistida. Un perfil starterDeckPending tampoco se considera listo: HF13 obliga a
+  // terminar el onboarding antes de entrar a cualquier superficie dependiente de cuenta.
+  setGate('menu-play', guestReady || loggedInReady, starterDeckPending ? privateTooltip : authTooltip);
   ['menu-tournament', 'menu-trade-market', 'menu-multiplayer', 'menu-encyclopedia', 'menu-mydecks', 'menu-store'].forEach(id => {
-    setGate(id, loggedInReady, authTooltip);
+    setGate(id, loggedInReady, privateTooltip);
   });
 }
 
@@ -10191,7 +10261,9 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
     } catch (err) {
       menuIdentityActionPending = false;
       console.error('No se pudo resolver la identidad antes de abrir el menú solicitado:', err);
-      window.alert(gameText('menu.profileUnavailable'));
+      if (err?.code !== 'AUTH_STARTER_DECK_REQUIRED') {
+        window.alert(gameText('menu.profileUnavailable'));
+      }
       updateMainMenuLoginGatedButtons(overlay);
       return false;
     }
@@ -10549,12 +10621,13 @@ export function showDeleteAccountModal(onConfirm, onCancel) {
   });
 }
 
-export function showDeckSelectionModal(onChoose, titleOverrides = {}, onCancel) {
+export function showDeckSelectionModal(onChoose, titleOverrides = {}, onCancel, options = {}) {
   injectDeckSelectionStyles();
   injectEncyclopediaStyles(); // reusa .encyclopedia-back-btn para "Volver"
 
+  const mandatory = options?.mandatory === true;
   const overlay = document.createElement('div');
-  overlay.id = 'deck-select-overlay';
+  overlay.id = options?.overlayId || 'deck-select-overlay';
 
   const title = titleOverrides.title || 'Elegi tu mazo';
   const subtitle = titleOverrides.subtitle || 'El Tano ya barajo el suyo al azar. Vos elegis con que pelear.';
@@ -10586,14 +10659,14 @@ export function showDeckSelectionModal(onChoose, titleOverrides = {}, onCancel) 
     `;
   }).join('');
 
-  // BUGFIX (#9): antes este modal no tenía NINGUNA salida — ni back, ni cancelar. "Volver"
-  // es opcional en su comportamiento (si no hay onCancel, solo cierra el modal), pero el
-  // botón siempre está.
   overlay.innerHTML = `
     <div class="deck-select-panel">
-      <button class="encyclopedia-back-btn" id="deckselect-back" style="margin-bottom: 12px;">← Volver</button>
+      ${mandatory
+        ? `<button class="encyclopedia-back-btn" id="deckselect-exit" style="margin-bottom: 12px;">${escapeHtml(options?.exitText || gameText('account.logout'))}</button>`
+        : '<button class="encyclopedia-back-btn" id="deckselect-back" style="margin-bottom: 12px;">← Volver</button>'}
       <div class="deck-select-title">${title}</div>
       <div class="deck-select-subtitle">${subtitle}</div>
+      <div class="deck-select-status" id="deckselect-status" role="status" aria-live="polite"></div>
       <div class="deck-select-mono-row">${monoButtonsHTML}</div>
       <div class="deck-select-divider">o combina dos colores</div>
       <div class="deck-select-pairs-grid">${pairButtonsHTML}</div>
@@ -10602,26 +10675,165 @@ export function showDeckSelectionModal(onChoose, titleOverrides = {}, onCancel) 
 
   document.body.appendChild(overlay);
 
-  overlay.querySelector('#deckselect-back').addEventListener('click', () => {
+  const statusEl = overlay.querySelector('#deckselect-status');
+  const choiceButtons = [...overlay.querySelectorAll('[data-mono], [data-pair]')];
+  let busy = false;
+  let closed = false;
+
+  const closeOverlay = () => {
+    if (closed) return;
+    closed = true;
     overlay.remove();
-    if (onCancel) onCancel();
-  });
+    try { options?.onClose?.(); } catch (err) { console.warn('Error cerrando selector de mazo:', err); }
+  };
+
+  const setBusy = (value, message = '') => {
+    busy = !!value;
+    choiceButtons.forEach(btn => { btn.disabled = busy; });
+    const exitBtn = overlay.querySelector('#deckselect-exit');
+    if (exitBtn) exitBtn.disabled = busy;
+    if (statusEl) {
+      statusEl.textContent = message || '';
+      statusEl.classList.toggle('deck-select-status-error', false);
+    }
+  };
+
+  const failInline = (err) => {
+    console.error('No se pudo completar la selección de mazo:', err);
+    busy = false;
+    choiceButtons.forEach(btn => { btn.disabled = false; });
+    const exitBtn = overlay.querySelector('#deckselect-exit');
+    if (exitBtn) exitBtn.disabled = false;
+    if (statusEl) {
+      statusEl.textContent = options?.errorText || gameText('account.starter.inlineError');
+      statusEl.classList.add('deck-select-status-error');
+    }
+  };
+
+  const commitChoice = async (identity) => {
+    if (busy || closed) return;
+    if (!mandatory) {
+      closeOverlay();
+      onChoose(identity);
+      return;
+    }
+    setBusy(true, options?.savingText || '');
+    try {
+      const accepted = await onChoose(identity);
+      if (accepted === false) throw new Error('DECK_SELECTION_NOT_ACCEPTED');
+      closeOverlay();
+    } catch (err) {
+      failInline(err);
+    }
+  };
+
+  if (mandatory) {
+    overlay.querySelector('#deckselect-exit')?.addEventListener('click', async () => {
+      if (busy || closed) return;
+      setBusy(true, '');
+      try {
+        await options?.onExit?.();
+        closeOverlay();
+      } catch (err) {
+        failInline(err);
+      }
+    });
+  } else {
+    overlay.querySelector('#deckselect-back').addEventListener('click', () => {
+      closeOverlay();
+      if (onCancel) onCancel();
+    });
+  }
 
   overlay.querySelectorAll('[data-mono]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const color = btn.getAttribute('data-mono');
-      overlay.remove();
-      onChoose([color]);
+      void commitChoice([btn.getAttribute('data-mono')]);
     });
   });
 
   overlay.querySelectorAll('[data-pair]').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.getAttribute('data-pair');
-      overlay.remove();
-      onChoose([key[0], key[1]]);
+      void commitChoice([key[0], key[1]]);
     });
   });
+
+  return overlay;
+}
+
+let desktopZoneHoverInteractionsInstalled = false;
+let desktopZoneHoverPreview = null;
+let desktopZoneHoverSource = null;
+
+function clearDesktopZoneHoverPreview() {
+  desktopZoneHoverPreview?.remove?.();
+  desktopZoneHoverPreview = null;
+  desktopZoneHoverSource = null;
+}
+
+function showDesktopZoneHoverPreview(cardEl) {
+  if (!cardEl || typeof document === 'undefined') return;
+  if (!window.matchMedia?.('(hover: hover) and (pointer: fine)')?.matches) return;
+  if (desktopZoneHoverSource === cardEl && desktopZoneHoverPreview?.isConnected) return;
+  clearDesktopZoneHoverPreview();
+
+  const rect = cardEl.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  const pad = 12;
+  const targetScale = 2.15; // HF11: materially larger than legacy 1.15x, readable text on desktop.
+  const scale = Math.max(1, Math.min(
+    targetScale,
+    (window.innerWidth - pad * 2) / rect.width,
+    (window.innerHeight - pad * 2) / rect.height
+  ));
+  const displayW = rect.width * scale;
+  const displayH = rect.height * scale;
+  const centerX = rect.left + rect.width / 2;
+  const left = Math.min(
+    Math.max(pad, window.innerWidth - displayW - pad),
+    Math.max(pad, centerX - displayW / 2)
+  );
+  // Keep a TOP transform origin/growth direction. Only translate the whole portal upward
+  // when the source sits too low to keep the complete enlarged card inside the viewport.
+  const top = Math.min(
+    Math.max(pad, rect.top),
+    Math.max(pad, window.innerHeight - displayH - pad)
+  );
+
+  const preview = cardEl.cloneNode(true);
+  preview.querySelectorAll?.('[id]').forEach?.(node => node.removeAttribute('id'));
+  preview.classList.remove('zone-browser-card-slot');
+  preview.classList.add('zone-card-hover-preview');
+  preview.setAttribute('aria-hidden', 'true');
+  preview.style.left = `${left}px`;
+  preview.style.top = `${top}px`;
+  preview.style.width = `${rect.width}px`;
+  preview.style.height = `${rect.height}px`;
+  preview.style.setProperty('--zone-hover-scale', String(scale));
+  preview.querySelectorAll?.('img').forEach?.(img => { img.draggable = false; });
+  document.body.appendChild(preview);
+  desktopZoneHoverPreview = preview;
+  desktopZoneHoverSource = cardEl;
+}
+
+function installDesktopZoneBrowserHoverInteractions() {
+  if (desktopZoneHoverInteractionsInstalled || typeof document === 'undefined') return;
+  desktopZoneHoverInteractionsInstalled = true;
+  const cardFromEvent = event => event?.target?.closest?.('.zone-browser-card-slot') || null;
+  document.addEventListener('pointerover', event => {
+    const cardEl = cardFromEvent(event);
+    if (!cardEl || event.pointerType === 'touch') return;
+    if (cardEl.contains(event.relatedTarget)) return;
+    showDesktopZoneHoverPreview(cardEl);
+  }, true);
+  document.addEventListener('pointerout', event => {
+    const cardEl = cardFromEvent(event);
+    if (!cardEl || cardEl !== desktopZoneHoverSource) return;
+    if (cardEl.contains(event.relatedTarget)) return;
+    clearDesktopZoneHoverPreview();
+  }, true);
+  document.addEventListener('scroll', clearDesktopZoneHoverPreview, true);
+  window.addEventListener?.('resize', clearDesktopZoneHoverPreview, { passive:true });
 }
 
 let mulliganScrollInteractionsInstalled = false;
@@ -10812,6 +11024,18 @@ function injectMulliganStyles() {
       flex-shrink: 0;
     }
     .mulligan-card-slot:hover { z-index: 2; filter: brightness(1.04); }
+    .private-zone-opaque-card {
+      border: 2px solid rgba(212,175,55,.48); border-radius: 8px;
+      background: radial-gradient(circle at 35% 28%, #3b465b 0%, #252940 42%, #171a2b 100%);
+      color: #f7e9bd; display:flex; align-items:center; justify-content:center;
+      box-shadow: inset 0 0 0 2px rgba(0,0,0,.32), 0 6px 16px rgba(0,0,0,.35);
+    }
+    .private-zone-card-back {
+      height:100%; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:7px; text-align:center; padding:8px; box-sizing:border-box;
+    }
+    .private-zone-card-back > span { font-size:34px; line-height:1; }
+    .private-zone-card-back > small { font-size:10px; line-height:1.15; color:#e7dec7; }
     .mulligan-card-hover-preview {
       position: fixed !important; z-index: 10020 !important; margin: 0 !important;
       pointer-events: none !important; transform: scale(2) !important; transform-origin: top left !important;

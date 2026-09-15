@@ -1,0 +1,56 @@
+ARGENTINIA 23.21.6 HF13 PRE-RELEASE
+Auth Onboarding Recovery + Google Account Chooser
+
+INCIDENTE A — CUENTA NUEVA EN LIMBO
+- Google Auth había iniciado correctamente.
+- users/{uid} podía existir como perfil mínimo con starterDeckPending=true.
+- El selector reutilizable de mazo inicial siempre ofrecía “← Volver”.
+- Al cerrarlo, el jugador quedaba autenticado pero sin colección inicial terminada.
+- Tienda/Mercado/Torneo/Mis Mazos quedaban bloqueados por ensureMenuIdentityReady(), pero el mensaje genérico decía “No se pudo cargar tu perfil todavía”, aunque el perfil sí existía.
+
+FIX
+1. starterDeckPending pasa a ser un estado de onboarding explícito y obligatorio.
+2. El selector de mazo inicial no tiene salida “Volver”. La única salida alternativa es “Cerrar sesión”.
+3. Guardar el mazo inicial es async/atómico desde la UX: mientras persiste, las elecciones quedan bloqueadas.
+4. Si el guardado falla, el selector permanece abierto y muestra error inline; se puede reintentar sin quedar en limbo.
+5. Una vez confirmado el commit de starter deck, Daily/Stats son best-effort y no pueden volver a abrir el onboarding por un fallo secundario.
+6. ensureMenuIdentityReady() distingue AUTH_PROFILE_NOT_READY de AUTH_STARTER_DECK_REQUIRED.
+7. Si starterDeckPending sigue activo tras F5 o un perfil histórico incompleto, el selector obligatorio se reabre automáticamente.
+8. Los botones privados del menú no se consideran ready mientras starterDeckPending=true y muestran tooltip específico.
+
+INCIDENTE B — GOOGLE REENTRA SIEMPRE A LA MISMA CUENTA
+- Cerrar sesión de Firebase/Argentinia no borra la sesión/cookie de Google del navegador.
+- El provider usaba signInWithPopup() sin exigir chooser de cuenta.
+
+FIX
+- GoogleAuthProvider usa prompt=select_account en cada login manual.
+- Después de “Cerrar sesión”, “Iniciar sesión con Google” fuerza el selector de cuentas incluso si Google conserva una cuenta activa en Vivaldi/Chromium.
+- No cambia UID, persistencia Firebase, Firestore, Functions ni seguridad.
+
+DELTA TÉCNICO
+- Cliente: main.js, ui.js, firebaseClientImpl.js, gameTexts.js.
+- Functions: sin cambios respecto de HF12; count 41.
+- Firestore Rules: sin cambios; 23.13.86.
+- Multiplayer: mp-23.19.2 sin cambios.
+- Economy: econ-23.19.5.6 / schema 10 sin cambios.
+- Pool físico: 900 sin cambios.
+
+CERTIFICACIÓN LOCAL
+- 132/132 contratos canónicos PASS.
+- HF13 dedicated auth/onboarding contract PASS.
+- Game Text contract PASS.
+- Changed-client syntax PASS.
+- Functions 17/17 PASS.
+- Functions tree HF12 -> HF13: byte/content diff NONE.
+- Stability Lab seeds=10 PASS.
+- Headless Full Game 23.18.1 reducido: 3/3 completas, 0 stalls/invariants.
+- Headless Full Game 23.18.2 reducido: 3/3 completas, 0 stalls/invariants.
+- Headless coverage: 900 total, 98% structurally known.
+- Multiplayer Reliability reducido: seeds=100 PASS.
+- Multiplayer Hardening reducido: cases=2000 PASS.
+- Deck Intelligence matrix: 64 builds PASS.
+
+PENDIENTE EXTERNO
+- Emulator gates reales.
+- GitHub Actions.
+- Smoke productivo real en Vivaldi/Chromium y al menos un Chrome/Android o desktop Chrome.

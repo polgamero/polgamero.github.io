@@ -1261,6 +1261,28 @@ button.mana-pool-chip:disabled { opacity: 1; }
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
 }
 
+/* 23.21.6 HF11 — Cementerio/Exilio desktop: el 1.15x histórico no alcanza para leer
+   una carta completa. Las cartas de esos dos navegadores usan un clon fijo en <body>,
+   fuera del contenedor scrolleable, por lo que nunca queda recortado por los límites del
+   modal. El origen sigue arriba-centro: visualmente crece hacia abajo como antes. */
+.gy-modal-grid .zone-browser-card-slot:hover {
+  transform: none !important;
+  transform-origin: top center !important;
+  z-index: 1000;
+  box-shadow: 0 7px 18px rgba(0,0,0,.5);
+}
+.zone-card-hover-preview {
+  position: fixed !important;
+  z-index: 21050 !important;
+  margin: 0 !important;
+  pointer-events: none !important;
+  transform: scale(var(--zone-hover-scale, 2.15)) !important;
+  transform-origin: top center !important;
+  transition: none !important;
+  filter: none !important;
+  box-shadow: 0 18px 52px rgba(0,0,0,.72), 0 0 0 1px rgba(212,175,55,.62) !important;
+}
+
 /* Ajuste de contenedor lateral para cartas en Cementerio */
 .side-pile .pile-content .card {
   width: 100% !important;

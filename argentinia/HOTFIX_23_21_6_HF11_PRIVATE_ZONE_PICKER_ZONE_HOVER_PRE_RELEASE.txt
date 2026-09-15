@@ -1,0 +1,35 @@
+ARGENTINIA 23.21.6 HF11 — CANONICAL PRIVATE-ZONE PICKER + DESKTOP ZONE HOVER READABILITY — PRE-RELEASE
+
+Baseline: cumulative 23.21.6 HF10 PRE-RELEASE over HF9 RELEASED.
+No new cards. Physical pool 900. Functions count 41. Firestore Rules 23.13.86 unchanged.
+
+1) Private-zone chooser UX (Allanamiento de Madrugada / future reveal effects)
+- Root cause: reveal_candidates still used the 23.10 protocol fallback UI: purple name/type buttons instead of real cards.
+- HF11 replaces that surface with the same Mulligan/Land-search selection family: mulligan panel, horizontal card row, exact selection count, confirm button and existing external hover preview.
+- reveal_candidates now render FULL cards through canonical createCardElement: art, mana, type, rules/flavor, P/T, rarity/frame, Transporte printed P/T, enhanced keyword if present, and DFC ↻ preview.
+- Disabled candidates remain visible but ineligible.
+- Opaque private-zone offers DO NOT reveal identities: they remain tokenized card backs and preserve the existing privacy contract.
+
+2) Private-zone descriptor hardening
+- reveal-authorized multiplayer offers now include only printed/public presentation fields required to render the card.
+- Engine effect objects, runtime ownership/state, AI metadata and back-face trigger internals are not serialized.
+- Semidiós loyalty rows expose only printed cost/name/text; internal effect payloads remain private.
+
+3) Cementerio / Exilio desktop hover
+- Legacy 1.15x in-container hover was too small to read.
+- HF11 marks cards from Cemetery/Exile browsers and renders the hover clone into document.body at target 2.15x.
+- The portal is fixed above the modal (z-index 21050), therefore modal/grid overflow cannot crop it.
+- transform-origin remains top center; the enlarged card grows downward. The portal is translated only when necessary to keep the entire card inside the viewport.
+- Mobile touch behavior remains unchanged.
+
+4) Certification
+- Canonical static contracts: 130/130 PASS.
+- Functions unit tests: 17/17 PASS.
+- HF11 dedicated contract: PASS.
+- Changed client syntax: PASS.
+- Game Text contract: PASS (1934 definitions / 1302 used).
+- Dynamic gameplay labs were not re-certified for this UI/protocol-presentation-only delta; HF10 baseline certification is retained.
+- Emulator Gates, GitHub Actions and production smoke: pending user run; not claimed.
+
+Promotion note
+- HF10 cumulative trusted-card backend changes are still part of this cumulative artifact, so keep the current Gate03 -> Gate05 -> Gate07 -> Functions deploy/verify -> GitHub/Actions -> smoke order.

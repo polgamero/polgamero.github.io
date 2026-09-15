@@ -136,3 +136,8 @@ tools/test_craft_deck_sync_browser_23_21_6_hf8.mjs
 tools/test_dfc_preview_balance_23_21_6_hf9.mjs
 
 tools/test_dfc_mobile_fit_dual_face_balance_23_21_6_hf10.mjs
+
+tools/test_private_zone_full_card_zone_hover_23_21_6_hf11.mjs
+tools/test_tournament_bot_visibility_recovery_23_21_6_hf12.mjs
+
+tools/test_auth_onboarding_account_chooser_23_21_6_hf13.mjs

@@ -1,0 +1,30 @@
+ARGENTINIA 23.21.6 HF11 — QA / SMOKE
+
+AUTOMATED LOCAL
+[PASS] Canonical contracts 130/130.
+[PASS] Functions npm test 17/17.
+[PASS] tools/test_private_zone_full_card_zone_hover_23_21_6_hf11.mjs.
+[PASS] node --check js/ui.js + js/privateZoneProtocol.js.
+[PASS] Game Text contract.
+
+MANUAL SMOKE — PRIORITY
+1. Allanamiento de Madrugada against a rival hand with 5+ cards:
+   - panel must use the green/gold Mulligan/Land-search visual language;
+   - every revealed card must render FULL, not name/type purple tiles;
+   - lands are visible but disabled for Allanamiento (nonland filter);
+   - selection counter goes 0/1 -> 1/1; confirm only enables at exact count;
+   - desktop hover uses the same readable Mulligan preview;
+   - a DFC in hand keeps its ↻ A/B alternate-face preview without selecting the card accidentally.
+2. Archivo Clasificado / another reveal_candidates effect:
+   - full canonical cards; exact count; no hidden-zone identity leaks beyond the cards explicitly authorized by the effect.
+3. Any opaque_slots private-zone effect:
+   - card identities remain hidden as card backs/slots; no art/name/text leak.
+4. Desktop Cementerio:
+   - hover is clearly larger than before (~2.15x target);
+   - full card remains visible even when it would exceed the modal/grid bounds;
+   - growth remains top-origin/downward; viewport edge may translate the whole portal only to avoid clipping.
+5. Desktop Exilio: same four hover assertions as Cementerio.
+6. Mobile Cemetery/Exile and mobile selection overlays: no sticky desktop hover regression.
+
+NO RULES/PROTOCOL COUNT DELTA
+Functions=41; Firestore Rules=23.13.86; multiplayer=mp-23.19.2; economy=econ-23.19.5.6/schema10; pool=900.

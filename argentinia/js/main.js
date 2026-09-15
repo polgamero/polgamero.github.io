@@ -60,11 +60,27 @@ const COLOR_LABELS = { W: 'Blanco', U: 'Azul', B: 'Negro', R: 'Rojo', G: 'Verde'
 // todavía podría estar en null aunque YA tenga una cuenta real, y le pisaríamos la
 // colección/puntos existentes con una colección "inicial" nueva por error de timing.
 let userProfileLoadPromise = Promise.resolve();
+let starterDeckSelectionOpen = false;
+
+function identityGateError(code, message = code) {
+  const err = new Error(message);
+  err.code = code;
+  return err;
+}
 
 export async function ensureMenuIdentityReady() {
   await waitForInitialAuthState();
   if (state.currentUser) await userProfileLoadPromise;
-  if (state.currentUser && (!state.userProfile || state.userProfile.starterDeckPending === true)) throw new Error('AUTH_PROFILE_NOT_READY');
+  if (state.currentUser && !state.userProfile) {
+    throw identityGateError('AUTH_PROFILE_NOT_READY');
+  }
+  if (state.currentUser && state.userProfile?.starterDeckPending === true) {
+    // HF13 — este estado no es "perfil sin cargar": es onboarding incompleto. Recuperamos
+    // automáticamente el chooser obligatorio (por ejemplo tras F5 o una cuenta histórica
+    // que cerró el selector) y devolvemos un código específico para no mostrar el alert viejo.
+    promptStarterDeckSelection();
+    throw identityGateError('AUTH_STARTER_DECK_REQUIRED');
+  }
   return { authenticated: !!state.currentUser, user: state.currentUser, profile: state.userProfile };
 }
 
@@ -130,6 +146,53 @@ function isLifecycleManagedSoloGame() {
   return !state.gameOver && !state.currentMatch && !state.currentTournamentMatch && hasActiveSoloRecovery();
 }
 
+let tournamentBotHiddenAtMs = null;
+
+function isLifecycleManagedTournamentBotGame() {
+  return !state.gameOver && !state.currentMatch && !!state.currentTournamentMatch;
+}
+
+function suspendTournamentBotForHidden(reason = 'visibility_hidden') {
+  if (!isLifecycleManagedTournamentBotGame()) return false;
+  tournamentBotHiddenAtMs = Date.now();
+  // Tournament matches reuse the local bot engine but intentionally do not create Solo
+  // recovery checkpoints. We still must invalidate a one-shot callback before the browser
+  // can consume it while hidden.
+  invalidateSoloBotPrioritySchedule();
+  recordTelemetryEvent('tournament_bot_lifecycle_suspended', {
+    reason,
+    suspendedAtMs: tournamentBotHiddenAtMs,
+    turnCount: state.turnCount,
+    phase: state.phase,
+    priorityPlayer: state.priorityPlayer,
+    stackDepth: spellStack.length
+  });
+  return true;
+}
+
+function resumeTournamentBotAfterVisibility() {
+  if (!isLifecycleManagedTournamentBotGame()) {
+    tournamentBotHiddenAtMs = null;
+    return false;
+  }
+  const resumedAtMs = Date.now();
+  const hiddenForMs = tournamentBotHiddenAtMs == null ? 0 : Math.max(0, resumedAtMs - tournamentBotHiddenAtMs);
+  tournamentBotHiddenAtMs = null;
+  state.soloLifecycleResumeGraceUntilMs = resumedAtMs + SOLO_RESUME_WATCHDOG_GRACE_MS;
+  recordTelemetryEvent('tournament_bot_lifecycle_resumed', {
+    hiddenForMs,
+    turnCount: state.turnCount,
+    phase: state.phase,
+    priorityPlayer: state.priorityPlayer,
+    stackDepth: spellStack.length
+  });
+  // Critical HF12 invariant: Tournament is local-bot gameplay too. If the tab became
+  // hidden during the 600ms scheduler + 600ms think window, the hidden guard consumes
+  // that callback. Re-arm exactly one epoch-fenced callback when visibility returns.
+  if (state.priorityPlayer === 'rival') ensureSoloBotPriorityScheduled(220);
+  return true;
+}
+
 function beginSoloRuntimeSuspend(reason = 'visibility_hidden') {
   if (!isLifecycleManagedSoloGame() || state.soloRuntimeSuspended) return null;
   state.soloRuntimeSuspended = true;
@@ -191,10 +254,16 @@ function forceSoloRecoveryReloadAfterLongSuspend(hiddenForMs) {
 
 function handleSoloVisibilityLifecycle() {
   if (document.visibilityState === 'hidden') {
+    if (suspendTournamentBotForHidden('visibility_hidden')) return;
     beginSoloRuntimeSuspend('visibility_hidden');
     return;
   }
-  if (document.visibilityState !== 'visible' || !state.soloRuntimeSuspended || !isLifecycleManagedSoloGame()) return;
+  if (document.visibilityState !== 'visible') return;
+  if (isLifecycleManagedTournamentBotGame()) {
+    resumeTournamentBotAfterVisibility();
+    return;
+  }
+  if (!state.soloRuntimeSuspended || !isLifecycleManagedSoloGame()) return;
   const suspendedAt = Number(state.soloLifecycleSuspendedAtMs) || Date.now();
   const hiddenForMs = Math.max(0, Date.now() - suspendedAt);
   if (hiddenForMs >= SOLO_LONG_SUSPEND_MS) {
@@ -1480,23 +1549,74 @@ function startLocalMulliganFlow(onDone) {
 // un título distinto que deja bien claro que ESTA elección es para siempre. La partida NO
 // arranca acá — solo se guarda la colección; el jugador vuelve al menú y juega cuando quiera.
 function promptStarterDeckSelection() {
+  if (!state.currentUser || !state.userProfile || state.userProfile.starterDeckPending !== true) return false;
+  if (starterDeckSelectionOpen || document.getElementById('starter-deck-select-overlay')) return false;
+
+  starterDeckSelectionOpen = true;
   showDeckSelectionModal(
     async (chosenIdentity) => {
+      const userAtStart = state.currentUser;
+      if (!userAtStart) throw identityGateError('AUTH_REQUIRED');
       const starterDeck = buildRandomDeck(chosenIdentity, { quality: 'starter' });
+      let updatedProfile;
       try {
-        state.userProfile = await createUserProfile(state.currentUser.uid, state.currentUser, starterDeck.map(c => c.id), chosenIdentity);
-        await processDailyLoginRewards();
-        logMsg(gameText('account.starter.savedIdentity', { identity: chosenIdentity.join('/') }));
+        updatedProfile = await createUserProfile(userAtStart.uid, userAtStart, starterDeck.map(c => c.id), chosenIdentity);
+        if (!state.currentUser || state.currentUser.uid !== userAtStart.uid) {
+          throw identityGateError('AUTH_IDENTITY_CHANGED');
+        }
+        if (!updatedProfile || updatedProfile.starterDeckPending === true) {
+          throw identityGateError('STARTER_DECK_COMMIT_INCOMPLETE');
+        }
       } catch (err) {
         console.error('No se pudo guardar la colección inicial:', err);
         logMsg(gameText('account.starter.saveErrorRetry'));
+        throw err;
       }
+
+      // El commit del mazo inicial es la frontera autoritativa del onboarding. Todo lo que
+      // sigue es bootstrap secundario/best-effort: si Daily/Stats falla NO volvemos a ofrecer
+      // elegir otro mazo ni dejamos al usuario atrapado después de un commit exitoso.
+      state.userProfile = updatedProfile;
+      state.authIdentityReady = true;
+      applyUsernameIdentity(updatedProfile);
+      updateAccountUI(state.currentUser);
+      try {
+        const dailyResult = await processDailyLoginRewards({ showModal: false });
+        if (dailyResult?.login?.newCalendarLogin) {
+          // El chooser obligatorio todavía está montado mientras onChoose() resuelve.
+          // Diferimos Daily al próximo task para que primero cierre el onboarding y no se
+          // superpongan dos overlays de cuenta.
+          setTimeout(() => { void showDailyLoginRewardModal(dailyResult.login); }, 0);
+        }
+      } catch (dailyErr) {
+        console.warn('El mazo inicial quedó guardado pero Daily Rewards se reintentará luego:', dailyErr);
+      }
+      void bootstrapPlayerStatistics(state.currentUser.uid).catch(statsErr => {
+        console.warn('No se pudieron preparar las estadísticas después del mazo inicial:', statsErr);
+      });
+      logMsg(gameText('account.starter.savedIdentity', { identity: chosenIdentity.join('/') }));
+      return true;
     },
     {
-      title: 'Elegí tu mazo inicial',
-      subtitle: 'Estas cartas te van a acompañar para siempre — pensalo bien, no se puede cambiar después.'
+      title: gameText('account.starter.title'),
+      subtitle: gameText('account.starter.subtitle')
+    },
+    null,
+    {
+      mandatory: true,
+      overlayId: 'starter-deck-select-overlay',
+      savingText: gameText('account.starter.saving'),
+      errorText: gameText('account.starter.inlineError'),
+      exitText: gameText('account.starter.signOut'),
+      onExit: async () => {
+        await signOutUser();
+      },
+      onClose: () => {
+        starterDeckSelectionOpen = false;
+      }
     }
   );
+  return true;
 }
 
 const BUILD_FRESHNESS_TIMEOUT_MS = 5000;

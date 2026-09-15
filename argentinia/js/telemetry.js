@@ -928,8 +928,10 @@ function stopBotPriorityWatchdog() {
 }
 
 function pollBotPriorityWatchdog() {
-  const soloMode = currentSession?.meta?.mode === 'solo' || currentSession?.meta?.mode === 'solo_reconnect';
-  if (!currentSession || currentSession.endedAt || !soloMode || typeof providers.getState !== 'function') {
+  const localBotMode = currentSession?.meta?.mode === 'solo'
+    || currentSession?.meta?.mode === 'solo_reconnect'
+    || currentSession?.meta?.mode === 'tournament';
+  if (!currentSession || currentSession.endedAt || !localBotMode || typeof providers.getState !== 'function') {
     resetBotPriorityWatchdogWindow();
     return;
   }
@@ -1000,7 +1002,7 @@ function pollBotPriorityWatchdog() {
   addBugCandidate({
     code: 'BOT_PRIORITY_STALL',
     severity: 'error',
-    message: 'El Tano conserva la misma ventana de prioridad sin decisión pendiente ni progreso durante demasiado tiempo.',
+    message: 'El rival controlado por bot conserva la misma ventana de prioridad sin decisión pendiente ni progreso durante demasiado tiempo.',
     details: {
       turnCount: state.turnCount,
       phase: state.phase,

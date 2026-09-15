@@ -159,6 +159,10 @@ export async function adminSetEmoteCatalog(items) {
 // El scope de foto de perfil (photoURL) ya viene incluido en el perfil básico de Google —
 // no hace falta pedir ningún permiso extra aparte, alcanza con el login estándar.
 const googleProvider = new GoogleAuthProvider();
+// HF13 — Google/Firebase conserva la sesión del proveedor en el navegador incluso después
+// de cerrar la sesión de Argentinia. Forzamos el selector de cuenta en cada login manual
+// para que un equipo compartido no vuelva silenciosamente a la última cuenta Google.
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 const ADMIN_EMAIL = 'pablogamero1@gmail.com';
 export const FIREBASE_IMPL_VERSION = ENGINE_VERSION;
 const REWARD_RULES_VERSION = FIRESTORE_RULES_VERSION;

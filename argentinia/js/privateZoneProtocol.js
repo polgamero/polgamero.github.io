@@ -23,15 +23,55 @@ export function createPrivateSelectionToken(prefix = 'pz') {
   return `${prefix}_${randomChunk()}`;
 }
 
+const PRIVATE_REVEAL_CARD_FIELDS = Object.freeze([
+  // Only printed/public characteristics needed by the canonical card renderer. Runtime
+  // engine metadata, ownership state, hidden-zone identity maps and internal AI hints are
+  // deliberately excluded even when an effect authorizes the chooser to LOOK at a card.
+  'id','name','type','manaCost','cmc','rarity','colors','text','flavorText','image',
+  'power','toughness','baseStats','keywords','legendary','loyalty','loyaltyAbilities'
+]);
+
+function clonePrivateRevealValue(value) {
+  if (Array.isArray(value)) return value.map(clonePrivateRevealValue);
+  if (!value || typeof value !== 'object') return value;
+  const out = {};
+  for (const [key, child] of Object.entries(value)) out[key] = clonePrivateRevealValue(child);
+  return out;
+}
+
+function sanitizePrivateFaceDescriptor(card) {
+  if (!card || typeof card !== 'object') return null;
+  const out = {};
+  for (const key of PRIVATE_REVEAL_CARD_FIELDS) {
+    if (card[key] === undefined) continue;
+    if (key === 'loyaltyAbilities') {
+      out.loyaltyAbilities = Array.isArray(card.loyaltyAbilities)
+        ? card.loyaltyAbilities.map(ability => ({
+            cost: Number(ability?.cost || 0),
+            name: ability?.name || '',
+            text: ability?.text || ''
+          }))
+        : [];
+      continue;
+    }
+    out[key] = clonePrivateRevealValue(card[key]);
+  }
+  out.id = card.id || null;
+  out.name = card.name || null;
+  out.type = card.type || null;
+  out.cmc = Number.isFinite(Number(card.cmc)) ? Number(card.cmc) : 0;
+  out.colors = Array.isArray(card.colors) ? [...card.colors] : [];
+  if (card?.dfc?.kind === 'transform' && card.dfc.backFace) {
+    out.dfc = {
+      kind: 'transform',
+      backFace: sanitizePrivateFaceDescriptor(card.dfc.backFace)
+    };
+  }
+  return out;
+}
+
 export function sanitizePrivateCardDescriptor(card) {
-  if (!card) return null;
-  return {
-    id: card.id || null,
-    name: card.name || null,
-    type: card.type || null,
-    cmc: Number.isFinite(Number(card.cmc)) ? Number(card.cmc) : 0,
-    colors: Array.isArray(card.colors) ? [...card.colors] : []
-  };
+  return sanitizePrivateFaceDescriptor(card);
 }
 
 export function buildPrivateZoneOffer({ requestId, ownerRole, chooserRole, zone, cards, eligibleCards = null, visibility = PRIVATE_ZONE_VISIBILITY.OPAQUE, amount = 1, operation = 'select', range = 'all', filter = 'any' }) {
