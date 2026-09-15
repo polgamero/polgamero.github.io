@@ -652,6 +652,9 @@ export const state = {
   // 23.16.3 — acción especial de En espera. Reusa la UI/transacción reversible de pago de maná
   // pero NO es un casteo ni usa la Stack.
   pendingSuspendTransaction: null,
+  // HF17 — decisión humana al resolverse En espera (castear gratis / dejar exiliada).
+  // No es prioridad del bot: mientras este pending exista, Telemetry no debe acusar stall.
+  pendingSuspendCastChoice: null,
   pendingPreparedCastCosts: null,
   pendingAlternativeCostChoice: null,
   pendingPrivateZoneChoice: null,
@@ -975,6 +978,7 @@ function hideMatchInitializationOverlay() {
   const overlay = document.getElementById('match-loading-overlay');
   if (overlay) overlay.hidden = true;
 }
+globalThis.__ARGENTINIA_SHOW_MATCH_LOADING__ = showMatchInitializationOverlay;
 globalThis.__ARGENTINIA_HIDE_MATCH_LOADING__ = hideMatchInitializationOverlay;
 
 
@@ -2091,6 +2095,7 @@ async function startTournamentFlow() {
                 tournamentMatch: { ...match, tournamentId:tournament.tournamentId }
               });
             } catch (error) {
+              hideMatchInitializationOverlay();
               console.error('No se pudo iniciar la ronda de Torneo:', error);
               showSimpleAlertModal(gameText('tournament.error.begin'));
               startTournamentFlow();
@@ -2115,11 +2120,18 @@ async function startTournamentFlow() {
 function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', startingRole = 'host') {
   // Multiplayer normal sigue sin mazos random. 23.8.1 agrega una ÚNICA excepción de QA:
   // "Mazo de pruebas", determinista y no persistente, visible al pie del picker.
+  const launch = (deckSource) => {
+    void startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL, startingRole).catch(error => {
+      hideMatchInitializationOverlay();
+      console.error('No se pudo inicializar la partida multiplayer:', error);
+      alert('No se pudo inicializar la partida multijugador. Volvé al menú e intentá nuevamente.');
+    });
+  };
   showPlayDeckPickerModal(
-    (chosenDeck) => startMultiplayerMatch(matchId, myRole, { type: 'saved', deck: chosenDeck }, rivalName, rivalPhotoURL, startingRole),
+    (chosenDeck) => launch({ type: 'saved', deck: chosenDeck }),
     null,
     () => showMainMenu(startPlayFlow, startMultiplayerFlow, startTournamentFlow),
-    () => startMultiplayerMatch(matchId, myRole, { type: 'test' }, rivalName, rivalPhotoURL, startingRole)
+    () => launch({ type: 'test' })
   );
 }
 
@@ -2128,13 +2140,16 @@ function startMultiplayerFlow(matchId, myRole, rivalName, rivalPhotoURL = '', st
 // mano/mazo llegan solos por sync una vez que publique lo suyo). Desde 23.13.52 el lobby
 // trae un startingRole 50/50 decidido una sola vez al crearse; ambos clientes convierten
 // ese mismo rol compartido a su perspectiva local/rival.
-function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host') {
+async function startMultiplayerMatch(matchId, myRole, deckSource, rivalName, rivalPhotoURL = '', rawStartingRole = 'host') {
   showMatchInitializationOverlay();
   // Multiplayer must never accept the reproducibility URL seed: allowing a player to
   // choose its shuffle seed would make deck order controllable/predictable. We still record
   // the generated session seed in telemetry for post-match diagnostics.
   beginGameRngSession({ label: `multiplayer:${myRole || 'unknown'}` });
   enterGameplayAudio('multiplayer');
+  // HF17 — igual que Solo/Torneo: forzar un frame real del cover ANTES de tocar tablero,
+  // decks o overlays del lobby/picker. Desktop no debe exponer ni un frame de mesa vacía.
+  await paintMatchInitializationOverlay();
   // ENTREGA 23.8.5 — al entrar a gameplay no puede sobrevivir ningún overlay del flujo
   // menú/lobby/picker. Antes el menú quedaba oculto (display:none) debajo del tablero; con
   // el doble boot podía quedar una SEGUNDA copia visible y parecía que la partida explotaba.
@@ -8114,7 +8129,7 @@ function suspendTimingAllows(card) {
 export function canSuspendCardFromHand(card) {
   if (isMultiplayerInteractionBlocked()) return false;
   if (!hasSuspend(card) || !state.localHand.includes(card)) return false;
-  if (state.pendingSuspendTransaction || state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCompositeCostPayment || state.awaitingRivalDecision || state.respondingToDecision) return false;
+  if (state.pendingSuspendTransaction || state.pendingSuspendCastChoice || state.pendingCastTransaction || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingCompositeCostPayment || state.awaitingRivalDecision || state.respondingToDecision) return false;
   return suspendTimingAllows(card);
 }
 
@@ -8259,7 +8274,20 @@ export async function resolveSuspendCastFromExile(effect,isLocal) {
     if(!result) clearSuspendState(card,{clearTime:false});
     return result;
   }
-  const accept=await showSuspendCastModal(card,{engineVersion:SUSPEND_ENGINE_VERSION});
+  // HF17 — el trigger de En espera ya salió de la Stack, pero la resolución todavía está
+  // esperando una decisión HUMANA. Sin este pending, BOT_PRIORITY_STALL interpreta la
+  // prioridad rival + pila vacía como un bot colgado a los 6 s.
+  state.pendingSuspendCastChoice = {
+    cardId: card.id || null,
+    cardName: card.name || null,
+    exileObjectId: effect?.exileObjectId || card._exileObjectId || null
+  };
+  let accept = false;
+  try {
+    accept = await showSuspendCastModal(card,{engineVersion:SUSPEND_ENGINE_VERSION});
+  } finally {
+    state.pendingSuspendCastChoice = null;
+  }
   if(!accept){ card._suspendCastPending=false; clearSuspendState(card,{clearTime:false}); logMsg(gameText('suspend.castDeclined',{card:card.name})); render(); return false; }
   const role=state.currentMatch?.myRole||'local';
   const permission=grantExilePlayPermission(card,{controllerRole:role,duration:'while_exiled',playMode:'spell',timing:'any_time',costMode:'without_paying_mana_cost',allowKicker:true,singleUse:true,label:'En espera'});
@@ -8270,7 +8298,7 @@ export async function resolveSuspendCastFromExile(effect,isLocal) {
 
 export function canPlayCard(card) {
   if (isMultiplayerInteractionBlocked()) return false;
-  if (state.gameOver || state.pendingSuspendTransaction || state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingLandSearchChoice || state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice || state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || state.pendingCompositeCostPayment || (state.resolvingCardFilterEffects || 0) > 0 || (state.resolvingDiscardEffects || 0) > 0 || (state.resolvingSacrificeEffects || 0) > 0 || (state.resolvingGraveyardChoices || 0) > 0 || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen || state.pendingRampChoice || state.awaitingRivalDecision || state.respondingToDecision) return false;
+  if (state.gameOver || state.pendingSuspendTransaction || state.pendingSuspendCastChoice || state.pendingCastTransaction || state.pendingAlternativeCostChoice || state.pendingPrivateZoneChoice || state.pendingLandSearchChoice || state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice || state.pendingCrew !== null || state.pendingWardChoice !== null || state.pendingCounterUnlessPay !== null || state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null || state.pendingLoyaltyTargetChoice !== null || state.pendingMultiTargetChoice !== null || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingHandFilterChoice || state.pendingDiscardChoice || state.pendingSacrificeEffectChoice || state.pendingGraveyardChoice || state.pendingResolvedEffectTargetChoice || state.pendingCompositeCostPayment || (state.resolvingCardFilterEffects || 0) > 0 || (state.resolvingDiscardEffects || 0) > 0 || (state.resolvingSacrificeEffects || 0) > 0 || (state.resolvingGraveyardChoices || 0) > 0 || (state.resolvingResolvedEffectTargetChoices || 0) > 0 || state.pendingEscapeExileChoice || state.pendingKickerChoice || state.damageModalOpen || state.pendingRampChoice || state.awaitingRivalDecision || state.respondingToDecision) return false;
   if (state.priorityPlayer !== 'local') return false; // Solo si poseés prioridad
 
   // LAND 3 / Punto 14: cualquier costo adicional no-maná, tanto schema legacy

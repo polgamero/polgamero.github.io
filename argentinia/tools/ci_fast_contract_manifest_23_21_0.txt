@@ -147,3 +147,5 @@ tools/test_options_responsive_two_column_23_21_6_hf14.mjs
 tools/test_bot_strategy_desktop_match_cover_23_21_6_hf15.mjs
 
 tools/test_combat_transport_counter_audio_mixer_23_21_6_hf16.mjs
+
+tools/test_suspend_watchdog_match_cover_23_21_6_hf17.mjs

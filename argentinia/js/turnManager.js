@@ -693,7 +693,7 @@ const priorityClockInterval = setInterval(() => { priorityClockTick().catch(err 
 if (priorityClockInterval && typeof priorityClockInterval.unref === 'function') priorityClockInterval.unref();
 
 function hasSoloInteractiveResolutionPending() {
-  return !!(state.pendingCounterUnlessPay || state.pendingScrySurveilChoice || state.pendingProliferateChoice);
+  return !!(state.pendingCounterUnlessPay || state.pendingScrySurveilChoice || state.pendingProliferateChoice || state.pendingSuspendCastChoice);
 }
 
 function soloRuntimeIsHidden() {

@@ -17,7 +17,7 @@ const TRANSIENT_KEYS = new Set([
   'soloRuntimeSuspended','soloLifecycleSuspendedAtMs','soloLifecycleResumeGraceUntilMs','soloLifecycleReloading',
   'matchSyncBusy','multiplayerWaitingForReady','stackResolutionAuthority','autoZeroBlockersQueued',
   'priorityClockDeadlineLocalMs','priorityClockRemainingMs','priorityClockPausedLocal','priorityClockPauseReasonLocal',
-  'pendingCastTransaction','pendingPreparedCastCosts','pendingAlternativeCostChoice','pendingPrivateZoneChoice',
+  'pendingCastTransaction','pendingSuspendCastChoice','pendingPreparedCastCosts','pendingAlternativeCostChoice','pendingPrivateZoneChoice',
   'pendingSpellIndex','pendingCost','tappedLandsThisSpell','paymentManaSourceRollbacks','pendingTargetCard',
   'pendingAbilitySource','pendingActivatedAbilityChoice','pendingBlockerIndex','pendingTargetSource',
   'pendingSacrificeChoice','pendingCrew','pendingAttackRedirect','pendingWardChoice','pendingCounterUnlessPay',

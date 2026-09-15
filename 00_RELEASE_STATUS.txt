@@ -1,3 +1,12 @@
-ARGENTINIA 23.21.6 HF9 — RELEASED
-Canonical base for the next version.
-See RELEASE_SEAL_23_21_6_HF9.txt and RELEASE_NOTES_23_21_6_HF9_RELEASED.txt.
+ARGENTINIA RELEASE STATUS
+
+BASELINE_RELEASED=23.21.6 HF9
+CURRENT_CANDIDATE=23.21.6 HF17 PRE-RELEASE
+CURRENT_CANDIDATE_BASE=HF16 PRE-RELEASE
+POOL=900
+PROTOCOL=mp-23.19.2
+RULES=23.13.86
+FUNCTIONS=41
+
+HF17 is client-only: Suspend watchdog false-positive + match-start cover hardening.
+Do not call HF17 RELEASED until gates/Actions/smoke are green.

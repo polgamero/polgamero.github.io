@@ -1,0 +1,29 @@
+QA 23.21.6 HF17 — SUSPEND WATCHDOG + MATCH START COVER
+
+A. Suspend / Telemetry
+1. En una partida Solo o Torneo, llevar una carta con En espera a 0 contadores.
+2. Cuando aparezca “Castear gratis”, NO tocar nada durante al menos 8 segundos.
+3. Esperado: no aparece BOT_PRIORITY_STALL en telemetry.
+4. Elegir Castear gratis y completar target/pago adicional si aplica: la partida continúa.
+5. Repetir el caso eligiendo no castear: la carta permanece según regla y la partida continúa.
+6. Control negativo: una prioridad real del bot sin pending humano conserva el watchdog.
+
+B. Solo desktop
+1. Menú > Jugar > elegir mazo.
+2. Esperado desde el MISMO click: negro + spinner + “Inicializando partida…”.
+3. Nunca debe verse la mesa vacía ni un frame de la partida anterior.
+4. El spinner es reemplazado directamente por la moneda.
+
+C. Torneo desktop
+1. Torneo > iniciar ronda > elegir mazo.
+2. Aunque beginTournamentMatch tarde, el cover debe aparecer inmediatamente y permanecer hasta la moneda.
+3. No mesa vacía.
+
+D. Multiplayer desktop
+1. Emparejar dos clientes > Empezar > elegir mazo.
+2. Desde confirmar mazo aparece inmediatamente el cover.
+3. El cover se pinta antes de setupBoardLayout/deck build y se reemplaza por la moneda.
+4. Ready barrier/mulligan/sync conservan comportamiento previo.
+
+E. Mobile
+Smoke corto Solo/Torneo/Multiplayer: comportamiento existente no debe degradarse.

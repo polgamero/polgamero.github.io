@@ -6766,6 +6766,13 @@ export function showDeckBuilderScreen(deckName, onSaved, onCancel, existingDeck)
 // logueado, siempre elegís uno de tus propios mazos. Sin sesión, el llamador ni siquiera
 // pasa por acá (no hay mazos guardados que elegir). También se suma "Volver" — antes este
 // modal no tenía ninguna salida más que elegir un mazo o clickear random.
+function showMatchLoadingBeforeGameplayCommit() {
+  // HF17 — el cover se arma dentro del mismo click que confirma mazo/identidad, ANTES de
+  // retirar el picker. Así ningún await posterior (Torneo server-side, Multiplayer, etc.)
+  // puede dejar visible la mesa desnuda entre superficies.
+  try { globalThis.__ARGENTINIA_SHOW_MATCH_LOADING__?.(); } catch {}
+}
+
 export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, onPlayTestDeck = null) {
   injectMyDecksStyles();
   injectStoreStyles(); // reusa .store-back-link para el link de "jugar random"
@@ -6809,6 +6816,7 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, on
       const deckId = el.getAttribute('data-deck-id');
       const deck = decks.find(d => d.id === deckId);
       if (deck) {
+        showMatchLoadingBeforeGameplayCommit();
         overlay.remove();
         onChooseDeck(deck);
       }
@@ -6817,6 +6825,7 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, on
 
   if (onPlayRandom) {
     overlay.querySelector('#playpicker-random').addEventListener('click', () => {
+      showMatchLoadingBeforeGameplayCommit();
       overlay.remove();
       onPlayRandom();
     });
@@ -6824,6 +6833,7 @@ export function showPlayDeckPickerModal(onChooseDeck, onPlayRandom, onCancel, on
 
   if (onPlayTestDeck) {
     overlay.querySelector('#playpicker-testdeck').addEventListener('click', () => {
+      showMatchLoadingBeforeGameplayCommit();
       overlay.remove();
       onPlayTestDeck();
     });
@@ -10315,15 +10325,17 @@ export function showMainMenu(onPlay, onMultiplayerMatched, onTournament) {
 
   overlay.querySelector('#menu-play').addEventListener('click', async () => {
     if (!await awaitMenuIdentityOrStay()) return;
-    overlay.remove();
+    // HF17 — no desnudar #game-app entre el menú y el selector. El destino monta primero
+    // su superficie; recién entonces retiramos el menú que estaba cubriendo el tablero.
     await onPlay();
+    overlay.remove();
   });
 
   overlay.querySelector('#menu-tournament')?.addEventListener('click', async () => {
     if (!await awaitMenuIdentityOrStay()) return;
     if (!state.currentUser || !state.userProfile) { releaseMenuIdentityAction(); return; }
-    overlay.remove();
     if (typeof onTournament === 'function') await onTournament();
+    overlay.remove();
   });
 
   overlay.querySelector('#menu-trade-market')?.addEventListener('click', async () => {
@@ -10767,6 +10779,7 @@ export function showDeckSelectionModal(onChoose, titleOverrides = {}, onCancel, 
   const commitChoice = async (identity) => {
     if (busy || closed) return;
     if (!mandatory) {
+      showMatchLoadingBeforeGameplayCommit();
       closeOverlay();
       onChoose(identity);
       return;
@@ -12135,7 +12148,7 @@ export function render() {
   // menos que pagues, etc.) — arriesgando una condición de carrera con esa resolución.
   // Misma lista que ya usa canPlayCard (más pendingTargetCard/pendingSacrificeChoice/
   // pendingHybridLifePayment, que faltaban ahí también).
-  const anyPendingChoice = !!state.pendingSuspendTransaction || !!state.pendingCastTransaction || !!state.pendingAlternativeCostChoice || !!state.pendingPrivateZoneChoice || !!state.pendingLandSearchChoice || !!state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice !== null ||
+  const anyPendingChoice = !!state.pendingSuspendTransaction || !!state.pendingSuspendCastChoice || !!state.pendingCastTransaction || !!state.pendingAlternativeCostChoice || !!state.pendingPrivateZoneChoice || !!state.pendingLandSearchChoice || !!state.pendingLibraryChoice || state.pendingSpellIndex !== null || state.pendingAbilitySource !== null || state.pendingActivatedAbilityChoice !== null ||
     state.pendingTargetCard !== null || state.pendingCrew !== null || state.pendingWardChoice !== null ||
     state.pendingCounterUnlessPay !== null || state.pendingHybridLifePayment !== null ||
     state.pendingFightChoice !== null || state.pendingXChoice !== null || state.pendingModeChoice !== null ||

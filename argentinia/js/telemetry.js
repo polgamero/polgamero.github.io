@@ -39,7 +39,7 @@ const PENDING_KEYS = [
   // 23.17.5.2 — decisiones reglamentarias/UI sin prioridad también cuentan como pending.
   // Si no están acá, el watchdog puede acusar al Tano mientras en realidad está esperando
   // que el humano ordene triggers, resuelva Leyenda, elija Yapa/En espera, etc.
-  'pendingLegendChoice', 'pendingTriggerOrderChoice', 'pendingSuspendTransaction',
+  'pendingLegendChoice', 'pendingTriggerOrderChoice', 'pendingSuspendTransaction', 'pendingSuspendCastChoice',
   'pendingCastTransaction', 'pendingAlternativeCostChoice', 'pendingPrivateZoneChoice',
   'pendingUntapLandChoice', 'pendingKickerChoice', 'pendingEscapeExileChoice', 'pendingRampChoice',
   'pendingSpellIndex', 'pendingCost', 'pendingTargetCard', 'pendingAbilitySource',
