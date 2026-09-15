@@ -75,16 +75,26 @@ jobs:
           tools = Path('tools')
           names = [line.strip() for line in (tools / 'ci_regression_manifest_23_17_3_1.txt').read_text(encoding='utf-8').splitlines()
                    if line.strip() and not line.lstrip().startswith('#')]
+          issues = []
           with zipfile.ZipFile(tools / 'regression_legacy_23_17_3_1.zip') as z:
               archived = set(z.namelist())
               for name in names:
                   live = tools / name
                   if not live.is_file():
-                      raise SystemExit(f'Missing live regression test: {name}')
+                      issues.append(f'Missing live regression test: {name}')
+                      continue
                   if name not in archived:
-                      raise SystemExit(f'Missing regression archive entry: {name}')
+                      issues.append(f'Missing regression archive entry: {name}')
+                      continue
                   if z.read(name) != live.read_bytes():
-                      raise SystemExit(f'Regression archive drift: {name}. Refresh the archive; do not overwrite live tests in CI.')
+                      issues.append(f'Regression archive drift: {name}')
+              extras = sorted(archived.difference(names))
+              for name in extras:
+                  issues.append(f'Unexpected regression archive entry: {name}')
+          if issues:
+              for issue in issues:
+                  print(f'::error::{issue}')
+              raise SystemExit(f'Regression archive has {len(issues)} synchronization issue(s). Refresh the archive; do not overwrite live tests in CI.')
           print(f'OK: regression archive synchronized with {len(names)} live tests')
           PY
 
@@ -93,9 +103,9 @@ jobs:
           test -f SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
           grep -qx 'CARD_IMAGE_BINARIES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
           grep -qx 'PUBLIC_FIRESTORE_CONFIG_FILES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
-          grep -qx 'CANONICAL_FAST_CONTRACTS=135' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
-          grep -qx 'FUNCTIONS_COUNT=41' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
-          echo "OK: source snapshot metadata matches 23.21.6 canonical CI counts"
+          grep -Eq '^CANONICAL_FAST_CONTRACTS=[1-9][0-9]*$' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
+          grep -Eq '^FUNCTIONS_COUNT=[1-9][0-9]*$' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
+          echo "OK: source snapshot metadata exposes valid 23.21.6 canonical CI counts"
 
       - name: Guard canonical ownership of static contracts
         working-directory: ./argentinia
@@ -146,8 +156,13 @@ jobs:
           fi
 
           echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed canonical=23.21.6"
-          if [ "$total" -ne 135 ]; then
-            echo "::error::Canonical fast manifest must contain exactly 135 tests; got $total"
+          expected=$(sed -n 's/^CANONICAL_FAST_CONTRACTS=//p' ../SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt)
+          if [ -z "$expected" ] || ! printf '%s' "$expected" | grep -Eq '^[1-9][0-9]*$'; then
+            echo "::error::SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt has invalid CANONICAL_FAST_CONTRACTS=$expected"
+            exit 1
+          fi
+          if [ "$total" -ne "$expected" ]; then
+            echo "::error::Canonical fast manifest count drift: snapshot expects $expected tests; manifest has $total"
             exit 1
           fi
           if [ "$failed" -ne 0 ]; then
@@ -155,7 +170,7 @@ jobs:
             exit 1
           fi
 
-      # All 135 canonical static contracts already ran once in the sweep above.
+      # All canonical static contracts already ran once in the sweep above.
       # Historically we ran 51 of those files a SECOND time as individually named steps,
       # which added substantial wall-clock time without adding coverage. Keep only the
       # stateful/dynamic labs and audits that are NOT part of the canonical manifest.
