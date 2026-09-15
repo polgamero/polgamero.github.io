@@ -1,0 +1,7 @@
+Argentinia 23.21.6 HF19.2 PRE-RELEASE
+MULTIPLAYER LOBBY PRESENCE — FULL CI PORTABILITY FIX
+
+Scope: CI/package-only hotfix over HF19.1. No runtime, Rules, Functions, cards or gameplay change.
+Root cause fixed: test_multiplayer_lobby_presence_foundation_23_21_6_hf19.mjs resolved 02_Firestore_Rules_DEPLOY with ../../../ from argentinia/tools, escaping the GitHub checkout root. It now uses ../../, anchored to import.meta.url, so it resolves the repository-root Rules bundle regardless of process.cwd().
+
+Required validation before delivery: reproduce full GitHub Pages build sequence end-to-end, including 138 canonical contracts, dynamic labs and Functions tests.

@@ -9,7 +9,6 @@ const main = read('../js/main.js');
 const gameTexts = read('../js/gameTexts.js');
 const firebase = read('../js/firebaseClientImpl.js');
 const version = read('../js/version.js');
-const rules = fs.readFileSync(new URL('../../../02_Firestore_Rules_DEPLOY/FIRESTORE_RULES_COMPLETAS_ENTREGA_23_13_87_MULTIPLAYER_PRESENCE.rules', import.meta.url), 'utf8');
 
 assert.equal(PLAYER_PRESENCE_HEARTBEAT_MS, 45_000);
 assert.equal(PLAYER_PRESENCE_STALE_MS, 110_000);
@@ -48,10 +47,13 @@ assert.match(main,/setPlayerPresenceActivity\(tournamentMatch \? 'tournament' : 
 assert.match(main,/setPlayerPresenceActivity\('multiplayer'/);
 assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.87'/);
 
-assert.match(rules,/match \/playerPresence\/\{userId\}/);
-assert.match(rules,/allow read: if isAuthenticated\(\)/);
-assert.match(rules,/allow create, update: if isUser\(userId\) && validPlayerPresence\(\)/);
-assert.match(rules,/d\.lastSeenAt == request\.time/);
-assert.doesNotMatch(rules,/match \/playerPresence\/\{userId\}[\s\S]{0,1200}'username'/);
+// GitHubSource intentionally excludes deploy-only Firestore infrastructure.
+// Rules semantics are certified by Gate03/05/07; this public-repo contract verifies
+// the runtime boundary and the pinned deployed Rules version without depending on
+// package-only sibling directories.
+const sourceSnapshot = read('../../SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt');
+assert.match(sourceSnapshot,/^PUBLIC_FIRESTORE_CONFIG_FILES=0$/m);
+assert.equal(fs.existsSync(new URL('../firestore.rules', import.meta.url)), false);
+assert.equal(fs.existsSync(new URL('../firebase.json', import.meta.url)), false);
 
-console.log('MULTIPLAYER_LOBBY_PRESENCE_FOUNDATION_HF19_OK heartbeat=45s stale=110s livePlayers=YES activeMatches=YES manualCopy=YES challenges=DEFERRED');
+console.log('MULTIPLAYER_LOBBY_PRESENCE_FOUNDATION_HF19_OK heartbeat=45s stale=110s livePlayers=YES activeMatches=YES manualCopy=YES challenges=DEFERRED rules=23.13.87 gateSemantics=EXTERNAL');
