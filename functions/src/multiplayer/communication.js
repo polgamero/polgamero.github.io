@@ -13,6 +13,8 @@ export const EMOTE_BURST_WINDOW_MS = 20000;
 export const EMOTE_BURST_MAX = 3;
 export const COMMUNICATION_TTL_MS = 48 * 60 * 60 * 1000;
 
+// Legacy in-match communication validators. HF20 lobby chat is additive and must not
+// replace or shadow these contracts used by multiplayer chat/emotes.
 function cleanMatchId(value) {
   const id = String(value || '').trim().toUpperCase();
   if (!/^[A-HJ-NP-Z2-9]{6}$/.test(id)) throw economyError('MULTIPLAYER_SOCIAL_MATCH_INVALID');
@@ -23,6 +25,25 @@ export function normalizeChatText(value) {
   if (!text || text.length > CHAT_MAX_CHARS) throw economyError('MULTIPLAYER_CHAT_INVALID', { maxChars:CHAT_MAX_CHARS });
   return text;
 }
+
+// HF20 — Lobby policy is pure/testable; this module owns only Firebase persistence.
+import {
+  LOBBY_CHAT_EVENT_CAP, LOBBY_CHAT_MIN_INTERVAL_MS,
+  normalizeLobbyChatText as evaluateLobbyText, evaluateLobbyChatRate
+} from './lobbyChatPolicy.js';
+
+export const LOBBY_CHAT_SCHEMA_VERSION = 1;
+function normalizeLobbyChatText(value) {
+  const result = evaluateLobbyText(value);
+  if (!result.ok) throw economyError(result.code, result.details);
+  return result.text;
+}
+function applyLobbyChatRateLimit(rawRate = {}, text = '', nowMs = Date.now()) {
+  const result = evaluateLobbyChatRate(rawRate, text, nowMs);
+  if (!result.ok) throw economyError(result.code, result.details);
+  return result.next;
+}
+
 function roleFor(match, uid) {
   if (match?.hostUid === uid) return 'host';
   if (match?.guestUid === uid) return 'guest';
@@ -31,6 +52,9 @@ function roleFor(match, uid) {
 function cleanUsername(match, uid, role) {
   const row = match?.players?.[uid] || {};
   return String(row.username || row.displayName || (role === 'host' ? 'Jugador 1' : 'Jugador 2')).trim().slice(0, 40) || 'Jugador';
+}
+function cleanLobbyUsername(profile = {}) {
+  return String(profile.username || profile.displayName || 'Jugador').trim().slice(0, 40) || 'Jugador';
 }
 function normalizedRate(raw = {}) {
   return {
@@ -66,6 +90,32 @@ function applyPersistentRateLimit(rate, kind, nowMs) {
     next.emoteCount = count + 1;
   }
   return next;
+}
+
+export async function sendLobbyCommunication({ db, uid, text = '' }) {
+  const cleanText = normalizeLobbyChatText(text);
+  const commRef = db.collection('lobbyCommunications').doc('global');
+  const rateRef = db.collection('lobbyChatRate').doc(uid);
+  const userRef = db.collection('users').doc(uid);
+  return db.runTransaction(async tx => {
+    const [commSnap, rateSnap, userSnap] = await Promise.all([tx.get(commRef), tx.get(rateRef), tx.get(userRef)]);
+    if (!userSnap.exists) throw economyError('PROFILE_MISSING');
+    const nowMs = Date.now();
+    const newRate = applyLobbyChatRateLimit(rateSnap.exists ? rateSnap.data() : {}, cleanText, nowMs);
+    const current = commSnap.exists ? (commSnap.data() || {}) : {};
+    const seq = Math.max(0, Math.floor(Number(current.nextSeq) || 0)) + 1;
+    const event = { seq, type:'chat', uid, username:cleanLobbyUsername(userSnap.data() || {}), text:cleanText, createdAtMs:nowMs };
+    const events = [...(Array.isArray(current.events) ? current.events : []), event].slice(-LOBBY_CHAT_EVENT_CAP);
+    tx.set(commRef, {
+      schemaVersion:LOBBY_CHAT_SCHEMA_VERSION,
+      channel:'global',
+      nextSeq:seq,
+      events,
+      updatedAt:FieldValue.serverTimestamp()
+    }, { merge:false });
+    tx.set(rateRef, { ...newRate, updatedAt:FieldValue.serverTimestamp() }, { merge:false });
+    return { event, nextAllowedInMs:LOBBY_CHAT_MIN_INTERVAL_MS };
+  });
 }
 
 export async function sendMultiplayerCommunication({ db, uid, matchId, type, text = '', emoteId = '' }) {

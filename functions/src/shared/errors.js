@@ -116,6 +116,11 @@ const MAP = Object.freeze({
   MULTIPLAYER_EMOTE_INVALID: ['invalid-argument', 'Ese emoji no existe.'],
   MULTIPLAYER_EMOTE_NOT_OWNED: ['permission-denied', 'Ese emoji premium no pertenece a tu cuenta.'],
   MULTIPLAYER_EMOTE_RATE_LIMIT: ['resource-exhausted', 'Esperá un momento antes de mandar otro emoji.'],
+  LOBBY_CHAT_TYPE_INVALID: ['invalid-argument', 'Ese tipo de mensaje no está habilitado en el Lobby.'],
+  LOBBY_CHAT_RATE_LIMIT: ['resource-exhausted', 'Estás enviando mensajes demasiado rápido en el Lobby.'],
+  LOBBY_CHAT_DUPLICATE: ['failed-precondition', 'Evitá repetir el mismo mensaje seguido.'],
+  LOBBY_CHAT_PROFANITY: ['invalid-argument', 'Ese mensaje contiene lenguaje no permitido.'],
+  MULTIPLAYER_SOCIAL_SCOPE_INVALID: ['invalid-argument', 'Ese canal social no existe.'],
 
   USERNAME_TRADE_RESERVED: ['failed-precondition', 'Cancelá tu publicación y tus ofertas del Mercado de Pases antes de cambiar el nombre.'],
   INTERNAL: ['internal', 'Error interno de Economy Authority.']

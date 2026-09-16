@@ -139,10 +139,19 @@ export function adminSetEmoteCatalogServer(items, operationId = null) {
 
 export function sendMultiplayerCommunicationServer(matchId, payload = {}) {
   return call('multiplayerSendCommunication', {
+    scope: 'match',
     matchId: String(matchId || '').trim().toUpperCase(),
     type: String(payload?.type || ''),
     text: String(payload?.text || ''),
     emoteId: String(payload?.emoteId || '')
+  });
+}
+
+export function sendLobbyCommunicationServer(text = '') {
+  return call('multiplayerSendCommunication', {
+    scope: 'lobby',
+    type: 'chat',
+    text: String(text || '')
   });
 }
 

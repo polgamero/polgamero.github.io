@@ -16,9 +16,9 @@ const rules = fs.existsSync(rulesPath) ? fs.readFileSync(rulesPath,'utf8') : '';
 const manifest = JSON.parse(fs.readFileSync(path.join(root,'build-manifest.json'),'utf8'));
 
 assert.equal(ENGINE_VERSION, '23.21.6');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.87');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.88');
 assert.equal(manifest.engineVersion,'23.21.6');
-assert.equal(manifest.firestoreRulesVersion,'23.13.87');
+assert.equal(manifest.firestoreRulesVersion,'23.13.88');
 
 const day = n => new Date(Date.UTC(2026,7,27+n,15,30,0));
 const d1 = advanceDailyLoginState(null, day(0));

@@ -7,7 +7,7 @@ assert.equal(version.ENGINE_VERSION,'23.21.6');
 assert.equal(version.ECONOMY_PROTOCOL_VERSION,'econ-23.19.5.6');
 assert.equal(version.ECONOMY_SCHEMA_VERSION,10);
 assert.equal(version.ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(version.FIRESTORE_RULES_VERSION,'23.13.87');
+assert.equal(version.FIRESTORE_RULES_VERSION,'23.13.88');
 const index=read(new URL('../../functions/src/index.js',import.meta.url));
 const constants=read(new URL('../../functions/src/shared/constants.js',import.meta.url));
 const admin=read(new URL('../../functions/src/economy/admin.js',import.meta.url));
@@ -72,7 +72,7 @@ assert.match(ui,/store-loading-retry/,'Storefront load failure must expose an ex
 assert.match(ui,/throwOnError: true/,'Initial Storefront render must fail visibly rather than silently presenting stale/local authority');
 for (const key of ['store.loading.title','store.loading.description','store.loading.slow','store.loading.slowDescription','store.loading.errorTitle','store.loading.errorDescription','store.loading.retry']) assert.ok(gameTexts.includes(`'${key}'`),key);
 const manifest=JSON.parse(read(new URL('../build-manifest.json',import.meta.url)));
-assert.equal(manifest.engineVersion,'23.21.6'); assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.6'); assert.equal(manifest.economySchemaVersion,10); assert.equal(manifest.firestoreRulesVersion,'23.13.87');
+assert.equal(manifest.engineVersion,'23.21.6'); assert.equal(manifest.economyProtocolVersion,'econ-23.19.5.6'); assert.equal(manifest.economySchemaVersion,10); assert.equal(manifest.firestoreRulesVersion,'23.13.88');
 assert.match(ui,/admin\.movements\.title/);
 assert.match(ui,/fetchEconomyMovementsForAdmin/);
 assert.match(impl,/export async function fetchEconomyMovementsForAdmin/);

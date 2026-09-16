@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
@@ -9380,58 +9380,107 @@ function injectMultiplayerLobbyStyles() {
   style.id = 'multiplayer-lobby-styles';
   style.textContent = `
     #multiplayer-overlay {
-      position: fixed; inset: 0; z-index: 9999;
-      background: radial-gradient(ellipse at top, #1b281e 0%, #0b130e 72%);
-      display: flex; flex-direction: column;
-      padding: 22px 28px;
-      color:#f0e0b0;
+      position: fixed; inset: 0; z-index: 9999; box-sizing:border-box;
+      background: radial-gradient(ellipse at center, #16211a 0%, #0b130e 100%);
+      display:flex; flex-direction:column; padding:24px 32px; color:#f0e0b0; overflow:hidden;
     }
-    .mp-header { display:flex; align-items:center; gap:20px; margin-bottom:16px; flex-shrink:0; }
-    .mp-title { font-size:28px; font-weight:800; color:#f0e0b0; text-shadow:0 0 20px rgba(212,175,55,.35); }
-    .mp-subtitle { color:#9fb6a5; font-size:12px; margin-left:auto; text-align:right; }
-    .mp-body { flex:1; overflow-y:auto; max-width:1180px; width:100%; margin:0 auto; padding-bottom:18px; }
-    .mp-live-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; align-items:start; }
+    #multiplayer-overlay .mp-header { margin-bottom:14px; min-width:0; }
+    #multiplayer-overlay .mydecks-title { flex:0 0 auto; }
+    .mp-header-connect { margin-left:auto; min-width:0; display:flex; align-items:center; justify-content:flex-end; gap:8px; flex:1 1 auto; }
+    .mp-header-divider { width:1px; height:30px; background:rgba(212,175,55,.25); margin:0 3px; flex:0 0 auto; }
+    .mp-header-connect .store-buy-btn { margin:0; white-space:nowrap; padding:8px 13px; min-height:38px; }
+    .mp-header-code { width:142px; min-width:110px; height:38px; box-sizing:border-box; margin:0; text-transform:uppercase; letter-spacing:1.2px; }
+    .mp-header-status { min-width:0; max-width:220px; color:#d9b86b; font-size:11px; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .mp-waiting-code { display:inline-flex; align-items:center; gap:8px; min-width:0; }
+    .mp-waiting-label { color:#9fb6a5; font-size:11px; white-space:nowrap; }
+    .mp-waiting-value { color:#fff0b7; font-size:18px; font-weight:900; letter-spacing:3px; }
+    .mp-header-mini-btn { border:1px solid rgba(212,175,55,.45); background:rgba(212,175,55,.10); color:#f0e0b0; border-radius:8px; padding:7px 9px; cursor:pointer; font-size:11px; font-weight:800; white-space:nowrap; }
+    .mp-header-mini-btn:hover { background:rgba(212,175,55,.18); }
+    .mp-header-mini-btn.danger { border-color:rgba(190,82,74,.58); color:#ffd0c9; background:rgba(130,45,39,.16); }
+
+    .mp-body { flex:1; min-height:0; max-width:1680px; width:100%; margin:0 auto; overflow:hidden; }
+    .mp-live-grid { display:grid; grid-template-columns:minmax(280px,1.04fr) minmax(250px,.90fr) minmax(320px,1.10fr); gap:14px; height:100%; min-height:0; }
     .mp-live-panel,.mp-section {
       background:rgba(18,25,15,.72); border:2px solid rgba(212,175,55,.28); border-radius:14px;
       box-shadow:0 10px 26px rgba(0,0,0,.2);
     }
-    .mp-live-panel { min-height:350px; overflow:hidden; }
-    .mp-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px 12px; border-bottom:1px solid rgba(212,175,55,.16); }
-    .mp-panel-title { font-size:17px; font-weight:800; color:#f0e0b0; }
+    .mp-live-panel { min-height:0; overflow:hidden; display:flex; flex-direction:column; }
+    .mp-panel-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px 14px 10px; border-bottom:1px solid rgba(212,175,55,.16); flex:0 0 auto; }
+    .mp-panel-title { font-size:16px; font-weight:800; color:#f0e0b0; min-width:0; }
     .mp-panel-count { min-width:28px; height:24px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; border-radius:999px; background:rgba(212,175,55,.12); color:#d4af37; font-size:12px; font-weight:800; }
-    .mp-panel-list { padding:8px; max-height:min(53vh,520px); overflow:auto; }
-    .mp-player-row,.mp-match-row { display:flex; align-items:center; gap:10px; padding:10px 10px; border-radius:10px; border:1px solid transparent; }
+    .mp-player-search-wrap { padding:9px 10px 3px; flex:0 0 auto; }
+    .mp-player-search-wrap .encyclopedia-search-input { width:100%; max-width:none; box-sizing:border-box; height:36px; }
+    .mp-panel-list { padding:7px; min-height:0; flex:1 1 auto; overflow:auto; overscroll-behavior:contain; }
+    .mp-player-row,.mp-match-row { display:flex; align-items:center; gap:9px; padding:9px; border-radius:10px; border:1px solid transparent; }
     .mp-player-row:hover,.mp-match-row:hover { background:rgba(255,255,255,.035); border-color:rgba(212,175,55,.12); }
     .mp-presence-dot { width:9px; height:9px; border-radius:50%; flex:0 0 auto; background:#536056; box-shadow:none; }
     .mp-player-row.is-online .mp-presence-dot { background:#52d273; box-shadow:0 0 9px rgba(82,210,115,.72); }
     .mp-player-copy,.mp-match-copy { min-width:0; flex:1; }
-    .mp-player-name { display:inline-block; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px; font-weight:800; color:#77867b; }
+    .mp-player-name,.mp-chat-name { display:inline-block; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px; font-weight:800; color:#77867b; cursor:help; }
     .mp-player-row.is-online .mp-player-name { color:#fff; }
     .mp-player-status,.mp-match-meta { color:#91a498; font-size:11px; line-height:1.35; margin-top:2px; }
     .mp-player-row.is-available .mp-player-status { color:#8fd7a0; }
-    .mp-challenge-btn { border:1px solid rgba(212,175,55,.45); background:rgba(212,175,55,.1); color:#d4af37; border-radius:8px; padding:6px 10px; font-size:10px; font-weight:900; letter-spacing:.5px; }
-    .mp-challenge-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .mp-challenge-btn { border:1px solid rgba(212,175,55,.45); background:rgba(212,175,55,.1); color:#d4af37; border-radius:8px; padding:6px 9px; font-size:10px; font-weight:900; letter-spacing:.5px; }
+    .mp-challenge-btn:disabled { opacity:.38; cursor:not-allowed; }
     .mp-match-versus { color:#f0e0b0; font-size:14px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .mp-live-empty { padding:30px 18px; color:#7e9084; text-align:center; font-size:12px; line-height:1.5; }
-    .mp-manual-wrap { margin-top:18px; }
-    .mp-manual-title { color:#b6c5ba; text-transform:uppercase; letter-spacing:1.4px; font-size:10px; font-weight:900; margin:0 0 8px 4px; }
-    .mp-manual-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .mp-live-empty { padding:26px 15px; color:#7e9084; text-align:center; font-size:12px; line-height:1.5; }
+
+    .mp-chat-list { min-height:0; flex:1 1 auto; overflow:auto; overscroll-behavior:contain; padding:8px 10px; display:flex; flex-direction:column; gap:7px; }
+    .mp-chat-row { padding:7px 9px; border-radius:9px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.035); line-height:1.35; word-break:break-word; }
+    .mp-chat-row.is-own { background:rgba(212,175,55,.055); border-color:rgba(212,175,55,.12); }
+    .mp-chat-name { color:#f0e0b0; margin-right:6px; font-size:12px; vertical-align:baseline; }
+    .mp-chat-text { color:#cfe0d4; font-size:12px; }
+    .mp-chat-time { float:right; margin-left:8px; color:#607267; font-size:9px; font-variant-numeric:tabular-nums; }
+    .mp-chat-compose { flex:0 0 auto; border-top:1px solid rgba(212,175,55,.14); padding:9px; background:rgba(0,0,0,.10); }
+    .mp-chat-compose-row { display:flex; gap:7px; align-items:center; }
+    .mp-chat-compose .encyclopedia-search-input { flex:1; width:auto; min-width:0; max-width:none; height:37px; box-sizing:border-box; }
+    .mp-chat-send { min-height:37px; margin:0 !important; padding:7px 11px !important; }
+    .mp-chat-status { min-height:14px; padding-top:4px; color:#87998d; font-size:10px; line-height:1.25; }
+    .mp-chat-status.error { color:#ff9b8f; }
+
     .mp-section { padding:18px; margin:0; text-align:center; }
     .mp-section-title { color:#f0e0b0; font-size:17px; font-weight:700; margin-bottom:7px; }
     .mp-section-desc { color:#aebfb3; font-size:12px; margin-bottom:13px; line-height:1.45; }
-    .mp-join-row { display:flex; gap:8px; align-items:center; justify-content:center; }
-    .mp-join-row .encyclopedia-search-input { max-width:190px; text-transform:uppercase; letter-spacing:2px; }
     .mp-code-row { display:flex; align-items:center; justify-content:center; gap:8px; margin:12px 0 18px; }
     .mp-code-display { font-size:36px; font-weight:800; letter-spacing:6px; color:#f0e0b0; background:rgba(0,0,0,.3); border:2px dashed rgba(212,175,55,.5); border-radius:10px; padding:13px 16px; }
     .mp-copy-btn { border:1px solid rgba(212,175,55,.5); background:rgba(212,175,55,.12); color:#f0e0b0; border-radius:8px; padding:9px 10px; cursor:pointer; font-size:12px; }
     .mp-copy-btn:hover { background:rgba(212,175,55,.2); }
     .mp-spinner { font-size:28px; margin-bottom:4px; animation:mp-pulse 1.4s ease-in-out infinite; }
     @keyframes mp-pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
-    @media (max-width:820px) {
-      #multiplayer-overlay { padding:14px; }
-      .mp-live-grid,.mp-manual-grid { grid-template-columns:1fr; }
-      .mp-subtitle { display:none; }
-      .mp-panel-list { max-height:300px; }
+
+    @media (max-width:1180px) {
+      #multiplayer-overlay { padding:16px 18px; }
+      #multiplayer-overlay .mp-header { gap:10px; margin-bottom:10px; }
+      #multiplayer-overlay .mydecks-title { font-size:22px; }
+      .mp-header-connect { gap:6px; }
+      .mp-header-connect .store-buy-btn { padding:7px 10px; font-size:11px; }
+      .mp-header-code { width:120px; }
+      .mp-live-grid { grid-template-columns:minmax(230px,1fr) minmax(220px,.9fr) minmax(270px,1.1fr); gap:10px; }
+      .mp-panel-title { font-size:14px; }
+    }
+    @media (max-width:860px), (max-height:560px) {
+      #multiplayer-overlay { padding:10px 12px; }
+      #multiplayer-overlay .mydecks-header { margin-bottom:8px; gap:8px; flex-wrap:nowrap; }
+      #multiplayer-overlay .mydecks-title { font-size:18px; white-space:nowrap; }
+      #multiplayer-overlay .encyclopedia-back-btn { padding:7px 10px; font-size:12px; white-space:nowrap; }
+      .mp-header-divider { display:none; }
+      .mp-header-connect { gap:5px; overflow:hidden; }
+      .mp-header-connect .store-buy-btn { padding:6px 8px; min-height:34px; font-size:10px; }
+      .mp-header-code { width:102px; min-width:82px; height:34px; padding:5px 7px; font-size:10px; letter-spacing:.6px; }
+      .mp-header-status { display:none; }
+      .mp-live-grid { grid-template-columns:repeat(3,minmax(235px,1fr)); gap:8px; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x proximity; padding-bottom:2px; }
+      .mp-live-panel { scroll-snap-align:start; }
+      .mp-panel-head { padding:9px 10px 7px; }
+      .mp-panel-title { font-size:13px; }
+      .mp-player-search-wrap { padding:6px 7px 2px; }
+      .mp-player-search-wrap .encyclopedia-search-input { height:31px; font-size:10px; }
+      .mp-player-row,.mp-match-row { padding:7px; }
+      .mp-player-name,.mp-match-versus { font-size:12px; }
+      .mp-player-status,.mp-match-meta,.mp-chat-text { font-size:10px; }
+      .mp-challenge-btn { padding:5px 7px; font-size:9px; }
+      .mp-chat-compose { padding:6px; }
+      .mp-chat-compose .encyclopedia-search-input { height:32px; font-size:10px; }
+      .mp-chat-send { min-height:32px; padding:5px 8px !important; font-size:10px; }
     }
   `;
   document.head.appendChild(style);
@@ -9610,6 +9659,7 @@ export function showReconnectPrompt(onReconnect, onAbandon, options = {}) {
 }
 
 export function showMultiplayerLobby(onBack, onMatched) {
+  injectMyDecksStyles();
   injectMultiplayerLobbyStyles();
   injectMultiplayerMatchBannerStyles();
   injectStoreStyles();
@@ -9618,28 +9668,36 @@ export function showMultiplayerLobby(onBack, onMatched) {
   const overlay = document.createElement('div');
   overlay.id = 'multiplayer-overlay';
   overlay.innerHTML = `
-    <div class="mp-header">
+    <div class="mydecks-header mp-header">
       <button class="encyclopedia-back-btn" id="mp-back">← ${gameTextHtml('common.back')}</button>
-      <div class="mp-title">${gameTextHtml('multiplayer.title')}</div>
-      <div class="mp-subtitle">${gameTextHtml('multiplayer.lobby.subtitle', { protocol: ENGINE_PROTOCOL_VERSION })}</div>
+      <div class="mydecks-title">${gameTextHtml('multiplayer.title')}</div>
+      <div class="mp-header-connect" id="mp-header-connect"></div>
     </div>
     <div class="mp-body" id="mp-body"></div>
   `;
   document.body.appendChild(overlay);
 
   const body = overlay.querySelector('#mp-body');
+  const headerConnect = overlay.querySelector('#mp-header-connect');
   let roomUnsubscribe = null;
   let presenceUnsubscribe = null;
   let matchesUnsubscribe = null;
+  let lobbyChatUnsubscribe = null;
   let refreshTimer = null;
   let publicStats = [];
   let presenceRows = [];
   let activeMatches = [];
+  let lobbyChatEvents = [];
+  let playerQuery = '';
+  let waitingCode = '';
+  let sendingLobbyChat = false;
+  const ACTIVE_MATCH_STALE_MS = 20 * 60_000;
 
   function stopRoomListener() { if (roomUnsubscribe) { roomUnsubscribe(); roomUnsubscribe = null; } }
   function stopDirectoryListeners() {
     if (presenceUnsubscribe) { presenceUnsubscribe(); presenceUnsubscribe = null; }
     if (matchesUnsubscribe) { matchesUnsubscribe(); matchesUnsubscribe = null; }
+    if (lobbyChatUnsubscribe) { lobbyChatUnsubscribe(); lobbyChatUnsubscribe = null; }
     if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
   }
   function cleanup() { stopRoomListener(); stopDirectoryListeners(); }
@@ -9648,9 +9706,10 @@ export function showMultiplayerLobby(onBack, onMatched) {
     const start = tsMs(startValue);
     if (!start) return '';
     const total = Math.max(0, Math.floor((Date.now() - start) / 1000));
-    const min = Math.floor(total / 60);
+    const hours = Math.floor(total / 3600);
+    const min = Math.floor((total % 3600) / 60);
     const sec = total % 60;
-    return `${min}:${String(sec).padStart(2,'0')}`;
+    return hours > 0 ? `${hours}:${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}` : `${min}:${String(sec).padStart(2,'0')}`;
   }
   function phaseLabel(raw) {
     const map = { upkeep:'Mantenimiento', draw:'Robo', main1:'Principal 1', combat_attackers:'Atacantes', combat_blockers:'Bloqueadores', combat_damage:'Daño', main2:'Principal 2', end:'Final' };
@@ -9669,6 +9728,16 @@ export function showMultiplayerLobby(onBack, onMatched) {
       setTimeout(() => { if (button.isConnected) button.textContent = old; }, 1300);
     }
   }
+  function statsForUid(uid) {
+    return publicStats.find(row => String(row.id || row.uid || '') === String(uid || '')) || {};
+  }
+  function playerHoverText(stats = {}) {
+    const elo = Math.max(1, Math.floor(Number(stats.eloRating) || 1200));
+    const games = Math.max(0, Math.floor(Number(stats.eloGames) || 0));
+    const wins = Math.max(0, Math.floor(Number(stats.eloWins) || 0));
+    const losses = Math.max(0, Math.floor(Number(stats.eloLosses) || 0));
+    return `ELO ${elo}${games < 10 ? ' · provisional' : ''} · ${wins}V / ${losses}D · ${games} partida${games===1?'':'s'} ELO`;
+  }
 
   function renderPlayers() {
     const list = body.querySelector('#mp-player-list');
@@ -9679,49 +9748,53 @@ export function showMultiplayerLobby(onBack, onMatched) {
     const statsByUid = new Map(publicStats.map(row => [String(row.id || row.uid || ''), row]));
     const ids = new Set([...statsByUid.keys(), ...presenceByUid.keys()].filter(Boolean));
     const me = String(state.currentUser?.uid || '');
-    const rows = [...ids].map(uid => {
+    const allRows = [...ids].filter(uid => uid !== me).map(uid => {
       const stats = statsByUid.get(uid) || {};
       const presence = presenceByUid.get(uid) || {};
       const online = isPresenceOnline(presence, now);
       const available = isPresenceAvailable(presence, now);
-      const username = uid === me ? (state.userProfile?.username || state.currentUser?.username || stats.username || 'Vos') : (stats.username || 'Jugador');
+      const username = String(stats.username || 'Jugador');
       return { uid, stats, presence, online, available, username };
     }).sort((a,b) => {
       const score = r => r.online ? (r.available ? 0 : (r.presence?.availability === 'away' ? 2 : 1)) : 3;
       return score(a)-score(b) || a.username.localeCompare(b.username,'es',{sensitivity:'base'});
     });
-    const onlineCount = rows.filter(r => r.online).length;
-    count.textContent = String(onlineCount);
+    const onlineCount = allRows.filter(r => r.online).length;
+    if (count) count.textContent = String(onlineCount);
+    const query = playerQuery.trim().toLocaleLowerCase('es-AR');
+    const rows = query ? allRows.filter(r => r.username.toLocaleLowerCase('es-AR').includes(query)) : allRows;
     if (!rows.length) {
-      list.innerHTML = `<div class="mp-live-empty">${gameTextHtml('multiplayer.lobby.playersEmpty')}</div>`;
+      list.innerHTML = `<div class="mp-live-empty">${query ? gameTextHtml('multiplayer.lobby.playersNoSearchResults') : gameTextHtml('multiplayer.lobby.playersEmpty')}</div>`;
       return;
     }
     list.innerHTML = rows.map(row => {
-      const elo = Math.max(1, Math.floor(Number(row.stats?.eloRating) || 1200));
-      const eloGames = Math.max(0, Math.floor(Number(row.stats?.eloGames) || 0));
       const status = describePresenceActivity(row.presence, now);
-      const self = row.uid === me;
-      const canChallenge = row.available && !self;
-      const title = `ELO ${elo}${eloGames < 10 ? ' · provisional' : ''} · ${eloGames} partida${eloGames===1?'':'s'} ELO`;
+      const canChallenge = row.available;
       return `<div class="mp-player-row ${row.online?'is-online':''} ${row.available?'is-available':''}" data-presence-uid="${escapeHtml(row.uid)}">
         <span class="mp-presence-dot" aria-hidden="true"></span>
         <div class="mp-player-copy">
-          <span class="mp-player-name" title="${escapeHtml(title)}">${escapeHtml(row.username)}${self?' <span style="color:#8fa296;font-weight:600">(vos)</span>':''}</span>
+          <span class="mp-player-name" title="${escapeHtml(playerHoverText(row.stats))}">${escapeHtml(row.username)}</span>
           <div class="mp-player-status">${escapeHtml(status)}</div>
         </div>
-        ${self ? '' : `<button class="mp-challenge-btn" type="button" disabled title="${escapeHtml(canChallenge ? gameText('multiplayer.lobby.challengeComing') : gameText('multiplayer.lobby.unavailable'))}">${gameTextHtml('multiplayer.lobby.challengeAction')}</button>`}
+        <button class="mp-challenge-btn" type="button" disabled title="${escapeHtml(canChallenge ? gameText('multiplayer.lobby.challengeComing') : gameText('multiplayer.lobby.unavailable'))}">${gameTextHtml('multiplayer.lobby.challengeAction')}</button>
       </div>`;
     }).join('');
   }
 
+  function isFreshActiveMatch(match) {
+    if (!match || match.status !== 'active' || !match.hostUid || !match.guestUid) return false;
+    if (String(match.hostUid) === String(match.guestUid)) return false;
+    if (match.gameOver === true || match.endedAt || match.abandonedBy) return false;
+    const touched = tsMs(match.updatedAt || match.bothReadyAt || match.createdAt);
+    if (!touched || Date.now() - touched > ACTIVE_MATCH_STALE_MS) return false;
+    return true;
+  }
   function renderMatches() {
     const list = body.querySelector('#mp-match-list');
     const count = body.querySelector('#mp-match-count');
     if (!list) return;
-    const rows = activeMatches
-      .filter(m => m && m.status === 'active' && m.hostUid && m.guestUid && m.gameOver !== true && !m.endedAt && !m.abandonedBy)
-      .sort((a,b) => tsMs(b.updatedAt)-tsMs(a.updatedAt));
-    count.textContent = String(rows.length);
+    const rows = activeMatches.filter(isFreshActiveMatch).sort((a,b) => tsMs(b.updatedAt)-tsMs(a.updatedAt));
+    if (count) count.textContent = String(rows.length);
     if (!rows.length) {
       list.innerHTML = `<div class="mp-live-empty">${gameTextHtml('multiplayer.lobby.matchesEmpty')}</div>`;
       return;
@@ -9737,17 +9810,153 @@ export function showMultiplayerLobby(onBack, onMatched) {
       const meta = match.bothReadyAt
         ? `Turno ${turn}${phase?` · ${escapeHtml(phase)}`:''}${elapsed?` · ${escapeHtml(elapsed)}`:''}`
         : `${gameTextHtml('multiplayer.lobby.matchPreparing')}${elapsed?` · ${escapeHtml(elapsed)}`:''}`;
-      return `<div class="mp-match-row">
-        <div class="mp-match-copy">
-          <div class="mp-match-versus">${escapeHtml(host)} <span style="color:#8fa296">vs.</span> ${escapeHtml(guest)}</div>
-          <div class="mp-match-meta">${meta}</div>
-        </div>
-      </div>`;
+      return `<div class="mp-match-row"><div class="mp-match-copy">
+        <div class="mp-match-versus">${escapeHtml(host)} <span style="color:#8fa296">vs.</span> ${escapeHtml(guest)}</div>
+        <div class="mp-match-meta">${meta}</div>
+      </div></div>`;
     }).join('');
   }
 
-  overlay.querySelector('#mp-back').addEventListener('click', () => {
+  function renderLobbyChat() {
+    const list = body.querySelector('#mp-lobby-chat-list');
+    if (!list) return;
+    const events = [...lobbyChatEvents].filter(event => event?.type === 'chat' && event?.text).sort((a,b) => Number(a.seq||0)-Number(b.seq||0));
+    if (!events.length) {
+      list.innerHTML = `<div class="mp-live-empty">${gameTextHtml('multiplayer.lobby.chatEmpty')}</div>`;
+      return;
+    }
+    const me = String(state.currentUser?.uid || '');
+    list.innerHTML = events.map(event => {
+      const stats = statsForUid(event.uid);
+      const timeMs = Math.max(0, Number(event.createdAtMs) || 0);
+      const time = timeMs ? new Date(timeMs).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) : '';
+      return `<div class="mp-chat-row ${String(event.uid||'')===me?'is-own':''}">
+        ${time?`<span class="mp-chat-time">${escapeHtml(time)}</span>`:''}
+        <span class="mp-chat-name" title="${escapeHtml(playerHoverText(stats))}">${escapeHtml(event.username || 'Jugador')}</span>
+        <span class="mp-chat-text">${escapeHtml(event.text || '')}</span>
+      </div>`;
+    }).join('');
+    list.scrollTop = list.scrollHeight;
+  }
+  function lobbyChatErrorMessage(error) {
+    const code = String(error?.details?.code || error?.customData?.details?.code || error?.code || '');
+    if (code.includes('LOBBY_CHAT_PROFANITY')) return gameText('multiplayer.lobby.chatProfanity');
+    if (code.includes('LOBBY_CHAT_DUPLICATE')) return gameText('multiplayer.lobby.chatDuplicate');
+    if (code.includes('LOBBY_CHAT_RATE_LIMIT')) return gameText('multiplayer.lobby.chatRateLimit');
+    if (code.includes('MULTIPLAYER_CHAT_INVALID')) return gameText('multiplayer.social.maxChars',{count:220});
+    return error?.message || gameText('multiplayer.lobby.chatSendError');
+  }
+  async function sendLobbyChatMessage() {
+    const input = body.querySelector('#mp-lobby-chat-input');
+    const send = body.querySelector('#mp-lobby-chat-send');
+    const status = body.querySelector('#mp-lobby-chat-status');
+    if (!input || sendingLobbyChat) return;
+    const text = String(input.value || '').replace(/\s+/g,' ').trim();
+    if (!text) return;
+    if (text.length > 220) { if(status){status.textContent=gameText('multiplayer.social.maxChars',{count:220});status.className='mp-chat-status error';} return; }
+    sendingLobbyChat = true;
+    if (send) send.disabled = true;
+    if (status) { status.textContent=''; status.className='mp-chat-status'; }
+    try {
+      await sendLobbyCommunication(text);
+      input.value = '';
+      if (status) status.textContent = gameText('multiplayer.lobby.chatSent');
+    } catch (error) {
+      console.warn('No se pudo enviar mensaje al chat del Lobby:', error);
+      if (status) { status.textContent = lobbyChatErrorMessage(error); status.className='mp-chat-status error'; }
+    } finally {
+      sendingLobbyChat = false;
+      if (send?.isConnected) send.disabled = false;
+      input?.focus?.();
+    }
+  }
+  function bindLobbyPanelControls() {
+    const search = body.querySelector('#mp-player-search');
+    if (search) {
+      search.value = playerQuery;
+      search.addEventListener('input', () => { playerQuery = search.value; renderPlayers(); });
+    }
+    const input = body.querySelector('#mp-lobby-chat-input');
+    const send = body.querySelector('#mp-lobby-chat-send');
+    if (input) {
+      input.maxLength = 220;
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void sendLobbyChatMessage(); }
+      });
+    }
+    if (send) send.addEventListener('click', () => void sendLobbyChatMessage());
+  }
+
+  function setHeaderStatus(message = '', error = false) {
+    const el = headerConnect.querySelector('#mp-header-status');
+    if (!el) return;
+    el.textContent = String(message || '');
+    el.style.color = error ? '#ff9b8f' : '#d9b86b';
+  }
+  function renderHeaderHome() {
+    waitingCode = '';
+    headerConnect.innerHTML = `
+      <button class="store-buy-btn" id="mp-create">${gameTextHtml('multiplayer.create.action')}</button>
+      <span class="mp-header-divider" aria-hidden="true"></span>
+      <input type="text" class="encyclopedia-search-input mp-header-code" id="mp-code-input" placeholder="${gameTextHtml('multiplayer.join.placeholder')}" maxlength="6" autocomplete="off" spellcheck="false">
+      <button class="store-buy-btn" id="mp-join">${gameTextHtml('multiplayer.join.action')}</button>
+      <span class="mp-header-status" id="mp-header-status"></span>`;
+    const createBtn = headerConnect.querySelector('#mp-create');
+    const joinBtn = headerConnect.querySelector('#mp-join');
+    const input = headerConnect.querySelector('#mp-code-input');
+    createBtn.addEventListener('click', async () => {
+      createBtn.disabled = true; joinBtn.disabled = true; setHeaderStatus('');
+      try {
+        const match = await createMatch(state.currentUser.uid, state.currentUser);
+        beginWaitingRoom(match.code);
+      } catch (err) {
+        console.error('No se pudo crear la partida:', err);
+        setHeaderStatus(err.message || gameText('multiplayer.create.error'), true);
+        createBtn.disabled = false; joinBtn.disabled = false;
+      }
+    });
+    const join = async () => {
+      const code = String(input.value || '').trim().toUpperCase();
+      if (!code) { setHeaderStatus(gameText('multiplayer.join.empty'), true); return; }
+      createBtn.disabled = true; joinBtn.disabled = true; setHeaderStatus('');
+      try { const match = await joinMatchByCode(state.currentUser.uid, code, state.currentUser); renderMatched(match); }
+      catch (err) {
+        console.error('No se pudo unir a la partida:', err);
+        setHeaderStatus(err.message || gameText('multiplayer.join.error'), true);
+        createBtn.disabled = false; joinBtn.disabled = false;
+      }
+    };
+    joinBtn.addEventListener('click', () => void join());
+    input.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); void join(); } });
+  }
+  function beginWaitingRoom(code) {
+    stopRoomListener();
+    waitingCode = String(code || '').trim().toUpperCase();
+    setPlayerPresenceActivity('multiplayer_lobby', { availability:'busy' });
+    headerConnect.innerHTML = `<div class="mp-waiting-code">
+      <span class="mp-waiting-label">${gameTextHtml('multiplayer.waiting.title')}</span>
+      <span class="mp-waiting-value">${escapeHtml(waitingCode)}</span>
+      <button class="mp-header-mini-btn" id="mp-copy-code" type="button">${gameTextHtml('multiplayer.lobby.copy')}</button>
+      <button class="mp-header-mini-btn danger" id="mp-cancel-room" type="button">${gameTextHtml('common.cancel')}</button>
+    </div>`;
+    headerConnect.querySelector('#mp-copy-code').addEventListener('click', event => void copyCode(waitingCode, event.currentTarget));
+    headerConnect.querySelector('#mp-cancel-room').addEventListener('click', async () => {
+      const codeToCancel = waitingCode;
+      stopRoomListener(); waitingCode='';
+      try { await cancelMatch(codeToCancel, state.currentUser?.uid || null); } catch (err) { console.error('No se pudo cancelar la partida:', err); }
+      setPlayerPresenceActivity('multiplayer_lobby', { availability:'available' });
+      renderHeaderHome();
+    });
+    roomUnsubscribe = listenToMatch(waitingCode, data => {
+      if (!data) { stopRoomListener(); setPlayerPresenceActivity('multiplayer_lobby',{availability:'available'}); renderHeaderHome(); return; }
+      if (data.status === 'active' && data.guestUid) renderMatched({ code:waitingCode, ...data });
+    });
+  }
+
+  overlay.querySelector('#mp-back').addEventListener('click', async () => {
+    const codeToCancel = waitingCode;
     cleanup();
+    if (codeToCancel) { try { await cancelMatch(codeToCancel, state.currentUser?.uid || null); } catch {} }
     setPlayerPresenceActivity('menu', { availability:'available' });
     overlay.remove();
     onBack();
@@ -9755,16 +9964,23 @@ export function showMultiplayerLobby(onBack, onMatched) {
 
   function startDirectoryListeners() {
     stopDirectoryListeners();
-    void fetchPublicPlayerStats().then(rows => { publicStats = Array.isArray(rows) ? rows : []; renderPlayers(); }).catch(error => {
+    void fetchPublicPlayerStats().then(rows => {
+      publicStats = Array.isArray(rows) ? rows : [];
+      renderPlayers(); renderLobbyChat();
+    }).catch(error => {
       console.warn('No se pudo cargar ranking para el Lobby Multiplayer:', error);
       publicStats = [];
-      renderPlayers();
+      renderPlayers(); renderLobbyChat();
     });
     presenceUnsubscribe = listenToPlayerPresence(rows => { presenceRows = Array.isArray(rows) ? rows : []; renderPlayers(); }, error => {
       console.warn('No se pudo escuchar presencia de jugadores:', error);
     });
     matchesUnsubscribe = listenToActiveMultiplayerMatches(rows => { activeMatches = Array.isArray(rows) ? rows : []; renderMatches(); }, error => {
       console.warn('No se pudieron escuchar partidas activas:', error);
+    });
+    lobbyChatUnsubscribe = listenToLobbyCommunication(rows => { lobbyChatEvents = Array.isArray(rows) ? rows : []; renderLobbyChat(); }, error => {
+      console.warn('No se pudo escuchar chat del Lobby:', error);
+      const status=body.querySelector('#mp-lobby-chat-status'); if(status){status.textContent=gameText('multiplayer.lobby.chatDisconnected');status.className='mp-chat-status error';}
     });
     refreshTimer = setInterval(() => { renderPlayers(); renderMatches(); }, 30_000);
   }
@@ -9776,74 +9992,31 @@ export function showMultiplayerLobby(onBack, onMatched) {
       <div class="mp-live-grid">
         <section class="mp-live-panel">
           <div class="mp-panel-head"><div class="mp-panel-title">${gameTextHtml('multiplayer.lobby.players')}</div><span class="mp-panel-count" id="mp-online-count">0</span></div>
+          <div class="mp-player-search-wrap"><input type="search" class="encyclopedia-search-input" id="mp-player-search" placeholder="${gameTextHtml('multiplayer.lobby.playerSearch')}" autocomplete="off"></div>
           <div class="mp-panel-list" id="mp-player-list"><div class="mp-live-empty">${gameTextHtml('multiplayer.lobby.playersLoading')}</div></div>
         </section>
         <section class="mp-live-panel">
           <div class="mp-panel-head"><div class="mp-panel-title">${gameTextHtml('multiplayer.lobby.matches')}</div><span class="mp-panel-count" id="mp-match-count">0</span></div>
           <div class="mp-panel-list" id="mp-match-list"><div class="mp-live-empty">${gameTextHtml('multiplayer.lobby.matchesLoading')}</div></div>
         </section>
-      </div>
-      <div class="mp-manual-wrap">
-        <div class="mp-manual-title">${gameTextHtml('multiplayer.lobby.manual')}</div>
-        <div class="mp-manual-grid">
-          <div class="mp-section">
-            <div class="mp-section-title">${gameTextHtml('multiplayer.create.title')}</div>
-            <div class="mp-section-desc">${gameTextHtml('multiplayer.create.description')}</div>
-            <button class="store-buy-btn" id="mp-create">${gameTextHtml('multiplayer.create.action')}</button>
-            <div class="store-error-msg" id="mp-create-error"></div>
+        <section class="mp-live-panel">
+          <div class="mp-panel-head"><div class="mp-panel-title">${gameTextHtml('multiplayer.lobby.chatTitle')}</div><span class="mp-panel-count">💬</span></div>
+          <div class="mp-chat-list" id="mp-lobby-chat-list"><div class="mp-live-empty">${gameTextHtml('multiplayer.lobby.chatLoading')}</div></div>
+          <div class="mp-chat-compose">
+            <div class="mp-chat-compose-row"><input type="text" class="encyclopedia-search-input" id="mp-lobby-chat-input" maxlength="220" placeholder="${gameTextHtml('multiplayer.lobby.chatPlaceholder')}" autocomplete="off"><button class="store-buy-btn mp-chat-send" id="mp-lobby-chat-send" type="button">${gameTextHtml('multiplayer.lobby.chatSend')}</button></div>
+            <div class="mp-chat-status" id="mp-lobby-chat-status">${gameTextHtml('multiplayer.lobby.chatHint')}</div>
           </div>
-          <div class="mp-section">
-            <div class="mp-section-title">${gameTextHtml('multiplayer.join.title')}</div>
-            <div class="mp-join-row">
-              <input type="text" class="encyclopedia-search-input" id="mp-code-input" placeholder="${gameTextHtml('multiplayer.join.placeholder')}" maxlength="6">
-              <button class="store-buy-btn" id="mp-join">${gameTextHtml('multiplayer.join.action')}</button>
-            </div>
-            <div class="store-error-msg" id="mp-join-error"></div>
-          </div>
-        </div>
+        </section>
       </div>`;
+    renderHeaderHome();
+    bindLobbyPanelControls();
     startDirectoryListeners();
-
-    body.querySelector('#mp-create').addEventListener('click', async () => {
-      const btn = body.querySelector('#mp-create'); const errBox = body.querySelector('#mp-create-error');
-      btn.disabled = true; errBox.textContent = '';
-      try { const match = await createMatch(state.currentUser.uid, state.currentUser); renderWaitingRoom(match.code); }
-      catch (err) { console.error('No se pudo crear la partida:', err); errBox.textContent = err.message || gameText('multiplayer.create.error'); btn.disabled = false; }
-    });
-    body.querySelector('#mp-join').addEventListener('click', async () => {
-      const input = body.querySelector('#mp-code-input'); const btn = body.querySelector('#mp-join'); const errBox = body.querySelector('#mp-join-error');
-      const code = input.value.trim(); if (!code) { errBox.textContent = gameText('multiplayer.join.empty'); return; }
-      btn.disabled = true; errBox.textContent = '';
-      try { const match = await joinMatchByCode(state.currentUser.uid, code, state.currentUser); renderMatched(match); }
-      catch (err) { console.error('No se pudo unir a la partida:', err); errBox.textContent = err.message || gameText('multiplayer.join.error'); btn.disabled = false; }
-    });
-  }
-
-  function renderWaitingRoom(code) {
-    stopDirectoryListeners(); stopRoomListener();
-    setPlayerPresenceActivity('multiplayer_lobby', { availability:'busy' });
-    body.innerHTML = `<div class="mp-section" style="max-width:560px;margin:40px auto">
-      <div class="mp-spinner">⏳</div>
-      <div class="mp-section-title">${gameTextHtml('multiplayer.waiting.title')}</div>
-      <div class="mp-code-row"><div class="mp-code-display">${escapeHtml(code)}</div><button class="mp-copy-btn" id="mp-copy-code" type="button">${gameTextHtml('multiplayer.lobby.copy')}</button></div>
-      <div class="mp-section-desc">${gameTextHtml('multiplayer.waiting.description')}</div>
-      <button class="store-back-link" id="mp-cancel">${gameTextHtml('common.cancel')}</button>
-    </div>`;
-    body.querySelector('#mp-copy-code').addEventListener('click', event => void copyCode(code, event.currentTarget));
-    roomUnsubscribe = listenToMatch(code, data => {
-      if (!data) { renderHome(); return; }
-      if (data.status === 'active' && data.guestUid) renderMatched({ code, ...data });
-    });
-    body.querySelector('#mp-cancel').addEventListener('click', async () => {
-      stopRoomListener();
-      try { await cancelMatch(code, state.currentUser?.uid || null); } catch (err) { console.error('No se pudo cancelar la partida:', err); }
-      renderHome();
-    });
   }
 
   function renderMatched(match) {
-    stopDirectoryListeners(); stopRoomListener();
+    stopDirectoryListeners(); stopRoomListener(); waitingCode='';
     setPlayerPresenceActivity('multiplayer_setup', { availability:'busy' });
+    headerConnect.innerHTML = `<span class="mp-header-status" style="max-width:none">${gameTextHtml('multiplayer.lobby.matchFound')}</span>`;
     const remoteEngine = match.engineVersion || null;
     const remoteProtocol = match.engineProtocolVersion || null;
     const guestEngine = match.guestEngineVersion || null;

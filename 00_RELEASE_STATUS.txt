@@ -1,14 +1,14 @@
 ARGENTINIA RELEASE STATUS
 
 BASELINE_RELEASED=23.21.6 HF9
-CURRENT_CANDIDATE=23.21.6 HF19 PRE-RELEASE
-CURRENT_CANDIDATE_BASE=HF18 PRE-RELEASE
+CURRENT_CANDIDATE=23.21.6 HF20.1 PRE-RELEASE
+CURRENT_CANDIDATE_BASE=HF20 PRE-RELEASE
 POOL=900
 PROTOCOL=mp-23.19.2
-RULES=23.13.87
+RULES=23.13.88
 FUNCTIONS=41
 
-HF19 agrega Multiplayer Lobby & Presence Foundation. Functions runtime/gameplay protocol no cambian.
-Rules suben a 23.13.87 únicamente para playerPresence/{uid}.
-Direct Challenges permanecen deshabilitados hasta validar la Foundation.
-Do not call HF19 RELEASED until Gate03/05/07, Rules deploy, GitHub Actions and production smoke are green.
+HF20.1 corrige exclusivamente la regresión Gate05 del canal social legacy introducida al integrar scope=lobby: restaura cleanMatchId() y normalizeChatText() en communication.js y agrega guard unitario.
+HF20 Lobby UX + Global Chat permanece intacto.
+Rules 23.13.88 no cambian; Gate03 HF20 ya verde sigue válido.
+Do not call HF20.1 RELEASED until Gate05/07, backend deploy, GitHub Actions and production smoke are green.

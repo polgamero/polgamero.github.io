@@ -40,7 +40,7 @@ import { deriveSoloAbandonReceiptId, normalizeAbandonDurationMs } from './econom
 import { normalizeAdminGrantRequest, adminGrantTx, advanceBulkGrantJob, readBulkGrantJob, adminSyncPlayerStats, adminRepairSoloRewardTx } from './economy/admin.js';
 import { getTournamentState, startTournamentTx, beginTournamentMatchTx, settleTournamentMatchTx, forfeitTournamentTx, abandonTournamentTx } from './economy/tournament.js';
 import { getTradeMarketView, createTradeListingTx, cancelTradeListingTx, createTradeOfferTx, cancelTradeOfferTx, rejectTradeOfferTx, acceptTradeOfferTx } from './economy/trade.js';
-import { sendMultiplayerCommunication } from './multiplayer/communication.js';
+import { sendMultiplayerCommunication, sendLobbyCommunication } from './multiplayer/communication.js';
 import { normalizeAdminEmoteCatalog, setEmoteCatalogAdminTx } from './economy/emotes.js';
 
 function requestData(request) {
@@ -402,14 +402,24 @@ export const multiplayerSendCommunication = onCall(FUNCTION_RUNTIME_OPTIONS, asy
   const auth = requireAuth(request);
   const data = requestData(request);
   try {
+    const scope = String(data.scope || 'match').trim().toLowerCase();
+    rejectUnknown(data, ['economyProtocolVersion','scope','matchId','type','text','emoteId']);
+    if (scope === 'lobby') {
+      // HF20: mismo perímetro Auth/AppCheck/logging, canal global separado y server-owned.
+      // La autoridad persistente aplica un throttle más estricto que el chat 1v1.
+      assertRateLimit(auth.uid, 'multiplayer-lobby-chat', { limit: 24, windowMs: 5 * 60000 });
+      if (String(data.type || 'chat').trim().toLowerCase() !== 'chat') throw economyError('LOBBY_CHAT_TYPE_INVALID');
+      const result = await sendLobbyCommunication({ db, uid:auth.uid, text:data.text });
+      return { ok:true, scope:'lobby', ...result };
+    }
+    if (scope !== 'match') throw economyError('MULTIPLAYER_SOCIAL_SCOPE_INVALID');
     // Cheap in-memory brake before the persistent per-match throttle. Persistent limits
     // in matchCommunications survive cold starts and are the actual anti-spam authority.
     assertRateLimit(auth.uid, 'multiplayer-social', { limit: 30, windowMs: 60000 });
-    rejectUnknown(data, ['economyProtocolVersion','matchId','type','text','emoteId']);
     const result = await sendMultiplayerCommunication({
       db, uid:auth.uid, matchId:data.matchId, type:data.type, text:data.text, emoteId:data.emoteId
     });
-    return { ok:true, ...result };
+    return { ok:true, scope:'match', ...result };
   } catch(error) { logFailure('multiplayerSendCommunication', auth, error); throw error; }
 });
 

@@ -18,7 +18,7 @@ const byId=new Map(cards.map(c=>[c.id,c]));
 assert.equal(ENGINE_VERSION,'23.21.6');
 assert.equal(PUBLIC_TERMINOLOGY_VERSION,'23.19.4.14');
 assert.equal(ENGINE_PROTOCOL_VERSION,'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.87');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.88');
 assert.equal(cards.length,900);
 assert.equal(byId.size,900);
 assert.equal(new Set(cards.map(c=>String(c.name).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim())).size,900);

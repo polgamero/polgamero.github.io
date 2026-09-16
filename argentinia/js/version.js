@@ -10,7 +10,7 @@
 export const ENGINE_VERSION = '23.21.6';
 export const ENGINE_VERSION_SHORT = '23.21.6';
 export const ENGINE_PROTOCOL_VERSION = 'mp-23.19.2';
-export const FIRESTORE_RULES_VERSION = '23.13.87';
+export const FIRESTORE_RULES_VERSION = '23.13.88';
 export const ECONOMY_PROTOCOL_VERSION = 'econ-23.19.5.6';
 export const ECONOMY_SCHEMA_VERSION = 10;
 export const ECONOMY_FUNCTIONS_REGION = 'southamerica-east1';

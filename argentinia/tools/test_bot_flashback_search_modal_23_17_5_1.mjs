@@ -8,7 +8,7 @@ const telemetry = fs.readFileSync(new URL('../js/telemetry.js', import.meta.url)
 const main = fs.readFileSync(new URL('../js/main.js', import.meta.url), 'utf8');
 
 assert.equal(ENGINE_VERSION, '23.21.6');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.87');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.88');
 
 const graveStart = bot.indexOf('async function tryFlashbackOrEscapeFromBotGraveyard()');
 const graveEnd = bot.indexOf('// Elegir un valor de X', graveStart);

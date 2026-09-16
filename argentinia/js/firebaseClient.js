@@ -168,6 +168,11 @@ export function listenToActiveMultiplayerMatches(...args) {
   return syncListenerProxy('listenToActiveMultiplayerMatches', 'firebase_active_matches_listen_failed', args);
 }
 
+
+export function listenToLobbyCommunication(...args) {
+  return syncListenerProxy('listenToLobbyCommunication', 'firebase_lobby_chat_listen_failed', args);
+}
+
 export function listenAnimationPolicy(...args) {
   let cancelled = false;
   let innerStop = null;
@@ -271,6 +276,7 @@ export const purchasePrebuiltDeck = asyncProxy('purchasePrebuiltDeck');
 export const purchaseEmote = asyncProxy('purchaseEmote');
 export const adminSetEmoteCatalog = asyncProxy('adminSetEmoteCatalog');
 export const sendMultiplayerCommunication = asyncProxy('sendMultiplayerCommunication');
+export const sendLobbyCommunication = asyncProxy('sendLobbyCommunication');
 export const adminAdvanceDailyRewardDebugDay = asyncProxy('adminAdvanceDailyRewardDebugDay');
 export const adminResetDailyRewardDebug = asyncProxy('adminResetDailyRewardDebug');
 export const craftEnhancement = asyncProxy('craftEnhancement');
