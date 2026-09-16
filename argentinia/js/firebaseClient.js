@@ -173,6 +173,10 @@ export function listenToLobbyCommunication(...args) {
   return syncListenerProxy('listenToLobbyCommunication', 'firebase_lobby_chat_listen_failed', args);
 }
 
+export function listenToDirectChallenges(...args) {
+  return syncListenerProxy('listenToDirectChallenges', 'firebase_direct_challenges_listen_failed', args);
+}
+
 export function listenAnimationPolicy(...args) {
   let cancelled = false;
   let innerStop = null;
@@ -301,6 +305,8 @@ export const clearActiveMatchId = asyncProxy('clearActiveMatchId');
 export const fetchMatchForReconnect = asyncProxy('fetchMatchForReconnect');
 export const claimMatchRoleSession = asyncProxy('claimMatchRoleSession');
 export const cancelMatch = asyncProxy('cancelMatch');
+export const createDirectChallenge = asyncProxy('createDirectChallenge');
+export const resolveDirectChallenge = asyncProxy('resolveDirectChallenge');
 export const publishMatchStateAtomic = asyncProxy('publishMatchStateAtomic');
 export const publishPrivateSelectionOffer = asyncProxy('publishPrivateSelectionOffer');
 export const fetchPrivateSelectionOffer = asyncProxy('fetchPrivateSelectionOffer');

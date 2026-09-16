@@ -1,0 +1,9 @@
+ARGENTINIA 23.21.6 HF21.2 — DIRECT CHALLENGE RATE PRECEDENCE — PRE-RELEASE
+
+Targeted Functions hotfix over HF21.1.
+Observed Gate05 failure: same-pair reinvite after reject returned MULTIPLAYER_CHALLENGE_RATE_LIMIT while the direct-challenge contract expected MULTIPLAYER_CHALLENGE_PAIR_COOLDOWN.
+Cause: generic 5s cadence was evaluated before the more specific 15s same-pair cooldown.
+Fix: evaluate same-pair cooldown first; different-target rapid invites still use the generic rate limit.
+
+No Rules delta: 23.13.89 unchanged. Gate03 HF21 remains valid.
+Functions remain 41; Gate05 and Gate07 must be rerun, then Functions redeployed before publishing the HF21.2 client.

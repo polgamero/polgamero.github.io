@@ -1,4 +1,5 @@
 export const ENGINE_VERSION = '23.21.6';
+export const MULTIPLAYER_PROTOCOL_VERSION = 'mp-23.19.2';
 export const ECONOMY_PROTOCOL_VERSION = 'econ-23.19.5.6';
 export const ECONOMY_SCHEMA_VERSION = 10;
 export const ECONOMY_REGION = 'southamerica-east1';

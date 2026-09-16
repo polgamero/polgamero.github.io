@@ -14,7 +14,7 @@ const rulesPath = process.env.ARGENTINIA_FIRESTORE_RULES || path.resolve(root,'.
 const rules = fs.existsSync(rulesPath) ? fs.readFileSync(rulesPath,'utf8') : '';
 
 assert.equal(ENGINE_VERSION, '23.21.6');
-assert.equal(FIRESTORE_RULES_VERSION,'23.13.88');
+assert.equal(FIRESTORE_RULES_VERSION,'23.13.89');
 
 // Perfil sin Daily previo: dominio puro debe producir un D1 limpio.
 const d1 = advanceDailyLoginState(null, new Date('2026-08-27T15:55:44.000Z'));

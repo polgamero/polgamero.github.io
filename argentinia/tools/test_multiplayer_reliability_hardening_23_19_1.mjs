@@ -44,11 +44,11 @@ const trustedEmotes = fs.readFileSync(path.join(root, '../functions/src/trusted/
 
 assert.equal(ENGINE_VERSION, '23.21.6');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.88');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.89');
 assert.equal(MULTIPLAYER_RELIABILITY_VERSION, '23.19.1');
 assert.equal(manifest.engineVersion, '23.21.6');
 assert.equal(manifest.engineProtocolVersion, 'mp-23.19.2');
-assert.equal(manifest.firestoreRulesVersion, '23.13.88');
+assert.equal(manifest.firestoreRulesVersion, '23.13.89');
 assert.equal(manifest.pool, 900);
 
 // Aclaración central de 23.19.1: el self-join host->guest YA estaba protegido y debe seguirlo.

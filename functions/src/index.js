@@ -41,6 +41,7 @@ import { normalizeAdminGrantRequest, adminGrantTx, advanceBulkGrantJob, readBulk
 import { getTournamentState, startTournamentTx, beginTournamentMatchTx, settleTournamentMatchTx, forfeitTournamentTx, abandonTournamentTx } from './economy/tournament.js';
 import { getTradeMarketView, createTradeListingTx, cancelTradeListingTx, createTradeOfferTx, cancelTradeOfferTx, rejectTradeOfferTx, acceptTradeOfferTx } from './economy/trade.js';
 import { sendMultiplayerCommunication, sendLobbyCommunication } from './multiplayer/communication.js';
+import { createDirectChallenge, resolveDirectChallenge } from './multiplayer/directChallenges.js';
 import { normalizeAdminEmoteCatalog, setEmoteCatalogAdminTx } from './economy/emotes.js';
 
 function requestData(request) {
@@ -403,7 +404,17 @@ export const multiplayerSendCommunication = onCall(FUNCTION_RUNTIME_OPTIONS, asy
   const data = requestData(request);
   try {
     const scope = String(data.scope || 'match').trim().toLowerCase();
-    rejectUnknown(data, ['economyProtocolVersion','scope','matchId','type','text','emoteId']);
+    rejectUnknown(data, ['economyProtocolVersion','scope','matchId','type','text','emoteId','action','targetUid','challengeId','sessionId']);
+    if (scope === 'challenge') {
+      const action = String(data.action || '').trim().toLowerCase();
+      assertRateLimit(auth.uid, 'multiplayer-challenge', { limit: 30, windowMs: 5 * 60000 });
+      if (action === 'invite') {
+        const result = await createDirectChallenge({ db, uid:auth.uid, targetUid:data.targetUid, sessionId:data.sessionId });
+        return { ok:true, scope:'challenge', action, ...result };
+      }
+      const result = await resolveDirectChallenge({ db, uid:auth.uid, challengeId:data.challengeId, action, sessionId:data.sessionId });
+      return { ok:true, scope:'challenge', action, ...result };
+    }
     if (scope === 'lobby') {
       // HF20: mismo perímetro Auth/AppCheck/logging, canal global separado y server-owned.
       // La autoridad persistente aplica un throttle más estricto que el chat 1v1.

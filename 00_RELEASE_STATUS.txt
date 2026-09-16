@@ -1,14 +1,17 @@
 ARGENTINIA RELEASE STATUS
 
 BASELINE_RELEASED=23.21.6 HF9
-CURRENT_CANDIDATE=23.21.6 HF20.1 PRE-RELEASE
-CURRENT_CANDIDATE_BASE=HF20 PRE-RELEASE
+CURRENT_CANDIDATE=23.21.6 HF21.2 PRE-RELEASE
+CURRENT_CANDIDATE_BASE=HF21.1 PRE-RELEASE
 POOL=900
 PROTOCOL=mp-23.19.2
-RULES=23.13.88
+RULES=23.13.89
 FUNCTIONS=41
 
-HF20.1 corrige exclusivamente la regresión Gate05 del canal social legacy introducida al integrar scope=lobby: restaura cleanMatchId() y normalizeChatText() en communication.js y agrega guard unitario.
-HF20 Lobby UX + Global Chat permanece intacto.
-Rules 23.13.88 no cambian; Gate03 HF20 ya verde sigue válido.
-Do not call HF20.1 RELEASED until Gate05/07, backend deploy, GitHub Actions and production smoke are green.
+HF21 alinea la geometría del Lobby en desktop/mobile y compacta el control de código de seis caracteres.
+HF21 activa invitaciones directas de 20 segundos mediante la callable existente multiplayerSendCommunication scope=challenge.
+Aceptar un desafío valida presencia/locks/partida activa y crea atómicamente el match mp-23.19.2 con session fences de host/guest y activeMatchId de ambos usuarios.
+Rules 23.13.89: multiplayerChallenges es participant-read/server-write-only; challenge locks/rate son server-only.
+HF20.1 legacy scope=match y HF20 lobby chat permanecen preservados.
+HF21.2 fixes anti-spam precedence so same-pair cooldown wins over generic invite cadence when both apply.
+Do not call HF21.2 RELEASED until Gate03/05/07, Rules 23.13.89 deploy, Functions 41 deploy/verify, GitHub Actions and two-account production smoke are green.

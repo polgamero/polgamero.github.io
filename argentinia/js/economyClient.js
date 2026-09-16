@@ -155,6 +155,16 @@ export function sendLobbyCommunicationServer(text = '') {
   });
 }
 
+export function sendDirectChallengeServer(action, payload = {}) {
+  return call('multiplayerSendCommunication', {
+    scope: 'challenge',
+    action: String(action || ''),
+    targetUid: String(payload?.targetUid || ''),
+    challengeId: String(payload?.challengeId || ''),
+    sessionId: String(payload?.sessionId || '')
+  });
+}
+
 export function getClassifiedsServer() {
   return call('economyGetClassifieds');
 }

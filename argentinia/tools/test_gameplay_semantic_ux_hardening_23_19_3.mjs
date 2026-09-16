@@ -6,7 +6,7 @@ import { isStackObjectReservedByBotCounter } from '../js/botTargetReservation.js
 
 assert.equal(ENGINE_VERSION, '23.21.6');
 assert.equal(ENGINE_PROTOCOL_VERSION, 'mp-23.19.2');
-assert.equal(FIRESTORE_RULES_VERSION, '23.13.88');
+assert.equal(FIRESTORE_RULES_VERSION, '23.13.89');
 const manifest=JSON.parse(fs.readFileSync(new URL('../build-manifest.json',import.meta.url),'utf8'));
 assert.equal(manifest.engineVersion,'23.21.6');
 assert.equal(manifest.pool,900);

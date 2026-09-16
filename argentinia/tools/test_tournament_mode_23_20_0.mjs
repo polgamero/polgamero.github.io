@@ -24,7 +24,7 @@ const constants=read(path.join(fn,'src/shared/constants.js'));
 const workflow=read(path.join(repo,'.github/workflows/pages.yml'));
 
 assert.match(version,/ENGINE_VERSION = '23\.21\.6'/);
-assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.88'/);
+assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.89'/);
 assert.match(version,/ECONOMY_PROTOCOL_VERSION = 'econ-23\.19\.5\.6'/);
 assert.match(version,/ECONOMY_SCHEMA_VERSION = 10/);
 assert.match(constants,/ENGINE_VERSION = '23\.21\.6'/); // Backend is promoted in 23.21.6 for PvP ELO while Tournament semantics stay cumulative.

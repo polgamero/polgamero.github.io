@@ -1,0 +1,29 @@
+QA — ARGENTINIA 23.21.6 HF21 MULTIPLAYER DIRECT CHALLENGES + LOBBY GEOMETRY
+STATUS: PRE-RELEASE
+
+AUTOMATED LOCAL
+- Canonical contracts: 140/140 PASS
+- Regression archive: 62/62 byte-identical with live regression manifest
+- Functions unit: 20/20 PASS
+- Functions syntax: PASS
+- Game Text Contract: definitions=1993 PASS
+
+EXTERNAL GATES REQUIRED
+1. Gate03 Rules 23.13.89: challenge participant read / browser writes denied / presence+lobby legacy preserved.
+2. Gate05: complete economy/social suite + direct challenge callable real emulator path.
+3. Gate07: trade-market cumulative suite + direct challenge compatibility.
+4. Deploy Rules 23.13.89.
+5. Deploy/verify exactly 41 Functions.
+6. GitHub Actions green.
+
+TWO-ACCOUNT SMOKE
+- Alignment desktop/mobile; code input compact.
+- A sees B available and B sees A; self remains hidden.
+- A presses JUGAR: A gets CANCELAR/countdown; B gets incoming modal/countdown.
+- Reject: A receives rejection, both become available.
+- Expire: no match is created; both become available.
+- Cancel: B modal disappears; no match is created.
+- Accept: exactly one match is created and both clients enter same match; coin/mulligan/ready flow remains canonical.
+- Cross/double invite while pending is blocked.
+- Existing manual create/copy/join code still works.
+- Lobby chat still works; in-match chat/emotes legacy still work.

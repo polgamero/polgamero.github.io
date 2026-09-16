@@ -30,8 +30,8 @@ assert.match(gameTexts,/Partidas Multiplayer en curso/);
 assert.match(ui,/id=\\?"mp-copy-code\\?"/);
 assert.match(ui,/navigator\.clipboard\.writeText\(code\)/);
 assert.match(ui,/mp-challenge-btn/);
-assert.match(ui,/multiplayer\.lobby\.challengeComing/);
-assert.match(gameTexts,/Invitaciones directas: próxima etapa 23\.22\.1/);
+assert.match(ui,/createDirectChallenge|sendChallengeTo/);
+assert.match(gameTexts,/Invitaciones directas/);
 assert.match(ui,/listenToPlayerPresence/);
 assert.match(ui,/listenToActiveMultiplayerMatches/);
 assert.match(ui,/fetchPublicPlayerStats/);
@@ -45,7 +45,7 @@ assert.match(firebase,/deleteDoc\(doc\(db, 'playerPresence', uid\)\)/);
 assert.match(main,/startPlayerPresence\(state\.currentUser\.uid\)/);
 assert.match(main,/setPlayerPresenceActivity\(tournamentMatch \? 'tournament' : 'solo'/);
 assert.match(main,/setPlayerPresenceActivity\('multiplayer'/);
-assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.88'/);
+assert.match(version,/FIRESTORE_RULES_VERSION = '23\.13\.89'/);
 
 // GitHubSource intentionally excludes deploy-only Firestore infrastructure.
 // Rules semantics are certified by Gate03/05/07; this public-repo contract verifies
@@ -56,4 +56,4 @@ assert.match(sourceSnapshot,/^PUBLIC_FIRESTORE_CONFIG_FILES=0$/m);
 assert.equal(fs.existsSync(new URL('../firestore.rules', import.meta.url)), false);
 assert.equal(fs.existsSync(new URL('../firebase.json', import.meta.url)), false);
 
-console.log('MULTIPLAYER_LOBBY_PRESENCE_FOUNDATION_HF19_OK heartbeat=45s stale=110s livePlayers=YES activeMatches=YES manualCopy=YES challenges=DEFERRED rules=23.13.88 gateSemantics=EXTERNAL');
+console.log('MULTIPLAYER_LOBBY_PRESENCE_FOUNDATION_HF19_OK heartbeat=45s stale=110s livePlayers=YES activeMatches=YES manualCopy=YES challenges=ACTIVE rules=23.13.89 gateSemantics=EXTERNAL');
