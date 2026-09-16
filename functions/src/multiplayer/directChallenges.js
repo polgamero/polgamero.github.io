@@ -39,7 +39,7 @@ function timestampMs(value) {
 function isFreshLobbyPresence(data, nowMs) {
   if (!data || data.visibility === 'hidden') return false;
   if (data.availability !== 'available') return false;
-  if (data.activity !== 'multiplayer_lobby') return false;
+  if (!['menu','multiplayer_lobby'].includes(String(data.activity || ''))) return false;
   const seen = timestampMs(data.lastSeenAt || data.updatedAt);
   return seen > 0 && nowMs - seen <= DIRECT_CHALLENGE_PRESENCE_STALE_MS;
 }

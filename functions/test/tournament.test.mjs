@@ -17,7 +17,22 @@ test('23.20.0 tournament core builds a deterministic 16-player knockout', () => 
   const completedNpcR16 = Object.values(run.matches).filter(m => m.roundKey === 'round16' && ![m.aEntrantId,m.bEntrantId].includes('player'));
   assert.equal(completedNpcR16.length, 7);
   assert.ok(completedNpcR16.every(m => m.status === 'completed' && m.winnerEntrantId));
-  assert.deepEqual(policy.final, {points:500,packs:2,difficulty:'hard',deckQuality:'elite'});
+  assert.deepEqual(policy.round16, {points:100,lossPoints:15,packs:0,difficulty:'medium',deckQuality:'good'});
+  assert.deepEqual(policy.quarter, {points:150,lossPoints:30,packs:0,difficulty:'medium',deckQuality:'strong'});
+  assert.deepEqual(policy.semi, {points:250,lossPoints:60,packs:1,difficulty:'hard',deckQuality:'strong'});
+  assert.deepEqual(policy.final, {points:500,lossPoints:100,packs:2,difficulty:'hard',deckQuality:'elite'});
   simulateNpcMatchesForRound(run, 0, 'again');
   assert.ok(completedNpcR16.every(m => m.winnerEntrantId));
+});
+
+
+test('HF22 tournament loss consolation is normalized and configurable per round', () => {
+  const policy = normalizeTournamentPolicy({
+    tournamentRound16LossPoints:21, tournamentQuarterLossPoints:42,
+    tournamentSemiLossPoints:84, tournamentFinalLossPoints:168
+  });
+  assert.equal(policy.round16.lossPoints,21);
+  assert.equal(policy.quarter.lossPoints,42);
+  assert.equal(policy.semi.lossPoints,84);
+  assert.equal(policy.final.lossPoints,168);
 });

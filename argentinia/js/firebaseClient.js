@@ -281,6 +281,7 @@ export const purchaseEmote = asyncProxy('purchaseEmote');
 export const adminSetEmoteCatalog = asyncProxy('adminSetEmoteCatalog');
 export const sendMultiplayerCommunication = asyncProxy('sendMultiplayerCommunication');
 export const sendLobbyCommunication = asyncProxy('sendLobbyCommunication');
+export const deleteLobbyCommunication = asyncProxy('deleteLobbyCommunication');
 export const adminAdvanceDailyRewardDebugDay = asyncProxy('adminAdvanceDailyRewardDebugDay');
 export const adminResetDailyRewardDebug = asyncProxy('adminResetDailyRewardDebug');
 export const craftEnhancement = asyncProxy('craftEnhancement');

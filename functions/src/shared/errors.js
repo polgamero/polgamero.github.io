@@ -120,6 +120,7 @@ const MAP = Object.freeze({
   LOBBY_CHAT_RATE_LIMIT: ['resource-exhausted', 'Estás enviando mensajes demasiado rápido en el Lobby.'],
   LOBBY_CHAT_DUPLICATE: ['failed-precondition', 'Evitá repetir el mismo mensaje seguido.'],
   LOBBY_CHAT_PROFANITY: ['invalid-argument', 'Ese mensaje contiene lenguaje no permitido.'],
+  LOBBY_CHAT_MESSAGE_NOT_FOUND: ['not-found', 'Ese mensaje ya no existe en el Lobby.'],
   MULTIPLAYER_SOCIAL_SCOPE_INVALID: ['invalid-argument', 'Ese canal social no existe.'],
   MULTIPLAYER_CHALLENGE_TARGET_INVALID: ['invalid-argument', 'El jugador invitado no es válido.'],
   MULTIPLAYER_CHALLENGE_SESSION_INVALID: ['invalid-argument', 'La sesión multiplayer no es válida para este desafío.'],

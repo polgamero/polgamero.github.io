@@ -28,7 +28,7 @@ export function normalizeChatText(value) {
 
 // HF20 — Lobby policy is pure/testable; this module owns only Firebase persistence.
 import {
-  LOBBY_CHAT_EVENT_CAP, LOBBY_CHAT_MIN_INTERVAL_MS,
+  LOBBY_CHAT_EVENT_CAP, LOBBY_CHAT_RETENTION_MS, LOBBY_CHAT_MIN_INTERVAL_MS,
   normalizeLobbyChatText as evaluateLobbyText, evaluateLobbyChatRate
 } from './lobbyChatPolicy.js';
 
@@ -105,7 +105,9 @@ export async function sendLobbyCommunication({ db, uid, text = '' }) {
     const current = commSnap.exists ? (commSnap.data() || {}) : {};
     const seq = Math.max(0, Math.floor(Number(current.nextSeq) || 0)) + 1;
     const event = { seq, type:'chat', uid, username:cleanLobbyUsername(userSnap.data() || {}), text:cleanText, createdAtMs:nowMs };
-    const events = [...(Array.isArray(current.events) ? current.events : []), event].slice(-LOBBY_CHAT_EVENT_CAP);
+    const cutoffMs = nowMs - LOBBY_CHAT_RETENTION_MS;
+    const retained = (Array.isArray(current.events) ? current.events : []).filter(item => Math.max(0, Number(item?.createdAtMs) || 0) >= cutoffMs);
+    const events = [...retained, event].slice(-LOBBY_CHAT_EVENT_CAP);
     tx.set(commRef, {
       schemaVersion:LOBBY_CHAT_SCHEMA_VERSION,
       channel:'global',
@@ -115,6 +117,43 @@ export async function sendLobbyCommunication({ db, uid, text = '' }) {
     }, { merge:false });
     tx.set(rateRef, { ...newRate, updatedAt:FieldValue.serverTimestamp() }, { merge:false });
     return { event, nextAllowedInMs:LOBBY_CHAT_MIN_INTERVAL_MS };
+  });
+}
+
+
+export async function deleteLobbyCommunication({ db, uid, seq: rawSeq }) {
+  const seq = Math.floor(Number(rawSeq));
+  if (!Number.isInteger(seq) || seq <= 0) throw economyError('LOBBY_CHAT_MESSAGE_NOT_FOUND');
+  const commRef = db.collection('lobbyCommunications').doc('global');
+  const auditRef = db.collection('lobbyModerationAudit').doc();
+  return db.runTransaction(async tx => {
+    const snap = await tx.get(commRef);
+    const current = snap.exists ? (snap.data() || {}) : {};
+    const nowMs = Date.now();
+    const cutoffMs = nowMs - LOBBY_CHAT_RETENTION_MS;
+    const all = Array.isArray(current.events) ? current.events : [];
+    const removed = all.find(item => Math.floor(Number(item?.seq) || 0) === seq) || null;
+    if (!removed) throw economyError('LOBBY_CHAT_MESSAGE_NOT_FOUND');
+    const events = all.filter(item => Math.floor(Number(item?.seq) || 0) !== seq)
+      .filter(item => Math.max(0, Number(item?.createdAtMs) || 0) >= cutoffMs)
+      .slice(-LOBBY_CHAT_EVENT_CAP);
+    tx.set(commRef, {
+      schemaVersion:LOBBY_CHAT_SCHEMA_VERSION,
+      channel:'global',
+      nextSeq:Math.max(0, Math.floor(Number(current.nextSeq) || 0)),
+      events,
+      updatedAt:FieldValue.serverTimestamp()
+    }, { merge:false });
+    tx.create(auditRef, {
+      moderatorUid:uid,
+      removedSeq:seq,
+      removedUid:String(removed.uid || ''),
+      removedCreatedAtMs:Math.max(0, Number(removed.createdAtMs) || 0),
+      action:'delete_lobby_message',
+      immutable:true,
+      createdAt:FieldValue.serverTimestamp()
+    });
+    return { deletedSeq:seq };
   });
 }
 

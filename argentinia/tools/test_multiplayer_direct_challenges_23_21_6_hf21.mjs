@@ -3,6 +3,7 @@ import fs from 'node:fs';
 
 const read = rel => fs.readFileSync(new URL(rel, import.meta.url), 'utf8');
 const ui = read('../js/ui.js');
+const main = read('../js/main.js');
 const texts = read('../js/gameTexts.js');
 const impl = read('../js/firebaseClientImpl.js');
 const facade = read('../js/firebaseClient.js');
@@ -24,12 +25,12 @@ assert.match(ui, /\.mp-player-row,\.mp-match-row \{[^}]*min-height:54px;/s);
 assert.match(ui, /data-challenge-uid/);
 assert.match(ui, /createDirectChallenge\(targetUid\)/);
 assert.match(ui, /resolveDirectChallenge\(challengeId, action\)/);
-assert.match(ui, /listenToDirectChallenges/);
+assert.match(main, /listenToDirectChallenges/); // HF22 promotes the listener to authenticated app scope.
 assert.match(ui, /mp-challenge-countdown/);
-assert.match(ui, /multiplayer\.challenge\.accept/);
-assert.match(ui, /multiplayer\.challenge\.reject/);
+assert.match(main, /multiplayer\.challenge\.accept/);
+assert.match(main, /multiplayer\.challenge\.reject/);
 assert.match(ui, /DIRECT_CHALLENGE_TTL_MS = 20_000/);
-assert.match(ui, /beginAcceptedChallengeMatch/);
+assert.match(main, /launchAcceptedChallengeMatch/);
 assert.match(texts, /'multiplayer\.challenge\.rejected'/);
 assert.match(texts, /'multiplayer\.challenge\.expired'/);
 

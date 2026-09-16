@@ -7,7 +7,7 @@ import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseMa
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork, ensureSoloBotPriorityScheduled, invalidateSoloBotPrioritySchedule } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence, beginTournamentMatch, forfeitTournament } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, listenToDirectChallenges, resolveDirectChallenge, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence, beginTournamentMatch, forfeitTournament } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { applyTournamentConfig } from './tournamentConfig.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
@@ -50,7 +50,7 @@ import { botDeckQuality, normalizeBotDifficulty, botHasCapability } from './botD
 import { scoreBotGraveyardRecovery, buildBotSubtypeCounts } from './botStrategy.js';
 import { normalizeSyncRevision, deriveEffectiveTouchedKeys, classifySnapshotRevision, syncRetryDelayMs, isRetryableSyncError, classifyRivalPresence, fieldRevisionDeltaKeys, markFieldRevisionsApplied, SYNC_RETRY_MAX_ATTEMPTS, SYNC_RECOVERY_RETRY_MS, MULTIPLAYER_READY_TIMEOUT_MS, MULTIPLAYER_CLIENT_SESSION_ID, validateRoleSession } from './multiplayerReliability.js';
 import { startMultiplayerSocialSession, stopMultiplayerSocialSession } from './multiplayerSocial.js';
-import { startPlayerPresence, stopPlayerPresence, setPlayerPresenceActivity } from './multiplayerPresence.js';
+import { startPlayerPresence, stopPlayerPresence, setPlayerPresenceActivity, setChallengeInteractionBlocked } from './multiplayerPresence.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -102,6 +102,166 @@ function startAnimationPolicyBridge() {
       applyServerAnimationPolicy(policy || { enabled:true }, policy ? 'firestore_live' : 'default_missing');
     }, err => console.warn('Se perdió el listener de política de animaciones:', err));
   }
+}
+
+
+let globalChallengeListenerStop = null;
+let globalChallengeTicker = null;
+let globalChallengeRows = [];
+let globalChallengePreviousStatus = new Map();
+let globalChallengePrimed = false;
+let globalChallengeActionPending = false;
+let globalAcceptedChallengeCode = '';
+let globalAcceptedMatchStop = null;
+let globalChallengeToastTimer = null;
+
+function challengeTimestampMs(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === 'function') return Number(value.toMillis()) || 0;
+  if (typeof value.seconds === 'number') return Number(value.seconds) * 1000 + Math.floor(Number(value.nanoseconds || 0) / 1e6);
+  return Number(value) || 0;
+}
+function injectGlobalChallengeStyles() {
+  if (document.getElementById('global-challenge-styles')) return;
+  const style=document.createElement('style'); style.id='global-challenge-styles';
+  style.textContent=`
+    .global-challenge-layer{position:fixed;inset:0;z-index:20020;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(2,7,4,.72);backdrop-filter:blur(2px)}
+    .global-challenge-card{width:min(430px,92vw);box-sizing:border-box;background:linear-gradient(180deg,#17231a,#0d160f);border:2px solid rgba(212,175,55,.72);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.68);padding:24px;text-align:center;color:#f0e0b0}
+    .global-challenge-kicker{color:#8fd7a0;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;margin-bottom:7px}.global-challenge-title{font-size:21px;font-weight:900;line-height:1.25;margin-bottom:8px}.global-challenge-copy{color:#aebfb3;font-size:12px;line-height:1.45}.global-challenge-countdown{margin:16px auto;width:66px;height:66px;border:2px solid #d4af37;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff0b7;font-size:26px;font-weight:900;font-variant-numeric:tabular-nums;background:rgba(212,175,55,.06)}.global-challenge-actions{display:flex;justify-content:center;gap:10px}.global-challenge-actions button{min-width:122px}
+    .global-challenge-toast{position:fixed;right:18px;top:18px;z-index:20030;max-width:min(420px,76vw);padding:10px 13px;border-radius:9px;border:1px solid rgba(212,175,55,.44);background:rgba(12,20,14,.98);color:#dce8df;box-shadow:0 10px 28px rgba(0,0,0,.42);font:600 12px/1.35 system-ui}.global-challenge-toast.error{border-color:rgba(216,91,77,.55);color:#ffc0b8}
+    @media(max-width:700px){.global-challenge-card{padding:16px}.global-challenge-countdown{width:54px;height:54px;font-size:22px;margin:10px auto}.global-challenge-actions{gap:7px}.global-challenge-actions button{min-width:100px}}
+  `; document.head.appendChild(style);
+}
+const GLOBAL_CHALLENGE_SAFE_SURFACES = '#main-menu-overlay,#options-menu-overlay,#multiplayer-overlay,#encyclopedia-overlay,#ranking-overlay,#game-manual-overlay';
+const GLOBAL_CHALLENGE_UNSAFE_SURFACES = '#mydecks-overlay,#deckbuilder-overlay,#deck-select-overlay,#starter-deck-select-overlay,#pack-opening-overlay,#chest-overlay,#daily-rewards-overlay,#reward-reveal-modal,#daily-login-reward-modal,#store-overlay,#trade-market-overlay,#tournament-overlay,#mulligan-overlay,#multiplayer-ready-barrier,#multiplayer-sync-barrier';
+let globalChallengeSurfaceObserver = null;
+let globalChallengeSurfaceSafe = false;
+let globalChallengeSurfaceSyncQueued = false;
+
+function challengeSurfaceElementVisible(el) {
+  if (!el || el.hidden || el.style?.display === 'none' || el.style?.visibility === 'hidden') return false;
+  try { const css=getComputedStyle(el); if(css.display==='none'||css.visibility==='hidden') return false; } catch {}
+  return true;
+}
+function challengeSelectorHasVisible(selector) {
+  return Array.from(document.querySelectorAll(selector)).some(challengeSurfaceElementVisible);
+}
+function globalChallengeSurfaceVisible() {
+  if (!state.currentUser || document.visibilityState === 'hidden') return false;
+  if (challengeSelectorHasVisible(GLOBAL_CHALLENGE_UNSAFE_SURFACES)) return false;
+  if (state.currentMatch && !state.gameOver) return false;
+  return challengeSelectorHasVisible(GLOBAL_CHALLENGE_SAFE_SURFACES);
+}
+function syncGlobalChallengeSurfaceSafety({ cancelOutgoing = true } = {}) {
+  const safe = globalChallengeSurfaceVisible();
+  const changed = safe !== globalChallengeSurfaceSafe;
+  const wasSafe = globalChallengeSurfaceSafe;
+  globalChallengeSurfaceSafe = safe;
+  setChallengeInteractionBlocked(!safe);
+  if (!safe) removeGlobalChallengeModal();
+  else if (changed) renderGlobalChallengeModal();
+  if (changed && wasSafe && !safe && cancelOutgoing) {
+    const pending = globalChallengePendingForMe();
+    const me = String(state.currentUser?.uid || '');
+    if (pending && String(pending.inviterUid || '') === me) {
+      void resolveDirectChallenge(pending.challengeId || pending.id, 'cancel').catch(() => {});
+    }
+  }
+  return safe;
+}
+function queueGlobalChallengeSurfaceSafetySync() {
+  if (globalChallengeSurfaceSyncQueued) return;
+  globalChallengeSurfaceSyncQueued = true;
+  queueMicrotask(() => {
+    globalChallengeSurfaceSyncQueued = false;
+    syncGlobalChallengeSurfaceSafety();
+  });
+}
+function startGlobalChallengeSurfaceObserver() {
+  if (globalChallengeSurfaceObserver || typeof MutationObserver === 'undefined') return;
+  globalChallengeSurfaceObserver = new MutationObserver(queueGlobalChallengeSurfaceSafetySync);
+  // Overlays relevantes son hijos directos de body. Evitamos observar mutaciones de cartas/board;
+  // el ticker de 500 ms cubre toggles de display/hidden sin convertir Presence en un hot path.
+  globalChallengeSurfaceObserver.observe(document.body, { childList:true, subtree:false });
+  document.addEventListener('visibilitychange', queueGlobalChallengeSurfaceSafetySync);
+  syncGlobalChallengeSurfaceSafety({ cancelOutgoing:false });
+}
+function stopGlobalChallengeSurfaceObserver() {
+  if (globalChallengeSurfaceObserver) { try { globalChallengeSurfaceObserver.disconnect(); } catch {} globalChallengeSurfaceObserver = null; }
+  globalChallengeSurfaceSafe = false;
+  setChallengeInteractionBlocked(false);
+}
+function globalChallengeRowsForMe(status='pending') {
+  const me=String(state.currentUser?.uid||'');
+  return globalChallengeRows.filter(row=>row?.status===status && Array.isArray(row.participants) && row.participants.includes(me));
+}
+function globalChallengePendingForMe() {
+  const now=Date.now();
+  return globalChallengeRowsForMe('pending').find(row=>challengeTimestampMs(row.expiresAt)>now) || null;
+}
+function globalChallengeExpiredForMe() {
+  const now=Date.now();
+  return globalChallengeRowsForMe('pending').find(row=>{const expires=challengeTimestampMs(row.expiresAt);return expires>0&&expires<=now;}) || null;
+}
+function challengeEscapeHtml(value){
+  return String(value??'').replace(/[&<>"']/g,ch=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+}
+function globalChallengeToast(message,error=false){
+  injectGlobalChallengeStyles(); document.querySelector('.global-challenge-toast')?.remove(); if(globalChallengeToastTimer)clearTimeout(globalChallengeToastTimer);
+  const toast=document.createElement('div');toast.className=`global-challenge-toast${error?' error':''}`;toast.textContent=String(message||'');document.body.appendChild(toast);globalChallengeToastTimer=setTimeout(()=>{toast.remove();globalChallengeToastTimer=null;},3600);
+}
+function globalChallengeErrorMessage(error){
+  const code=String(error?.details?.code||error?.customData?.details?.code||error?.code||'');
+  if(code.includes('TARGET_UNAVAILABLE'))return gameText('multiplayer.challenge.targetUnavailable');
+  if(code.includes('INVITER_UNAVAILABLE'))return gameText('multiplayer.challenge.selfUnavailable');
+  if(code.includes('TARGET_BUSY'))return gameText('multiplayer.challenge.targetBusy');
+  if(code.includes('ALREADY_PENDING'))return gameText('multiplayer.challenge.alreadyPending');
+  if(code.includes('PAIR_COOLDOWN')||code.includes('RATE_LIMIT'))return gameText('multiplayer.challenge.rateLimit');
+  if(code.includes('EXPIRED'))return gameText('multiplayer.challenge.expired');
+  if(code.includes('ACTIVE_MATCH'))return gameText('multiplayer.challenge.activeMatch');
+  return error?.message||gameText('multiplayer.challenge.error');
+}
+function removeGlobalChallengeModal(){document.querySelector('#global-challenge-layer')?.remove();}
+function launchAcceptedChallengeMatch(code){
+  const normalized=String(code||'').trim().toUpperCase(); if(!normalized||globalAcceptedChallengeCode===normalized)return;
+  globalAcceptedChallengeCode=normalized; removeGlobalChallengeModal(); setPlayerPresenceActivity('multiplayer_setup',{availability:'busy'});
+  if(globalAcceptedMatchStop){try{globalAcceptedMatchStop();}catch{} globalAcceptedMatchStop=null;}
+  globalAcceptedMatchStop=listenToMatch(normalized,data=>{
+    if(!data?.hostUid||!data?.guestUid||data.status!=='active')return;
+    const me=String(state.currentUser?.uid||''); const myRole=data.hostUid===me?'host':data.guestUid===me?'guest':''; if(!myRole)return;
+    const rivalUid=myRole==='host'?data.guestUid:data.hostUid; const rival=data.players?.[rivalUid]||{};
+    if(globalAcceptedMatchStop){try{globalAcceptedMatchStop();}catch{} globalAcceptedMatchStop=null;}
+    document.querySelectorAll('#main-menu-overlay,#options-menu-overlay,#multiplayer-overlay,#mydecks-overlay,#encyclopedia-overlay,#store-overlay,#ranking-overlay,#trade-market-overlay,#tournament-overlay,#game-manual-overlay').forEach(el=>el.remove());
+    startMultiplayerFlow(normalized,myRole,String(rival.username||rival.displayName||'tu rival'),String(rival.photoURL||''),data.startingRole||'host');
+  },error=>{console.warn('No se pudo abrir la partida aceptada globalmente:',error);globalChallengeToast(gameText('multiplayer.challenge.matchOpenError'),true);globalAcceptedChallengeCode='';});
+}
+function renderGlobalChallengeModal(){
+  const pending=globalChallengePendingForMe(); const me=String(state.currentUser?.uid||''); const incoming=pending&&String(pending.inviteeUid||'')===me?pending:null;
+  if(!incoming||!globalChallengeSurfaceVisible()){removeGlobalChallengeModal();return;}
+  injectGlobalChallengeStyles(); const remaining=Math.max(0,Math.ceil((challengeTimestampMs(incoming.expiresAt)-Date.now())/1000));
+  let layer=document.querySelector('#global-challenge-layer'); if(!layer){layer=document.createElement('div');layer.id='global-challenge-layer';layer.className='global-challenge-layer';document.body.appendChild(layer);}
+  layer.innerHTML=`<div class="global-challenge-card"><div class="global-challenge-kicker">${challengeEscapeHtml(gameText('multiplayer.challenge.incomingKicker'))}</div><div class="global-challenge-title">${challengeEscapeHtml(gameText('multiplayer.challenge.incomingTitle',{player:incoming.inviterUsername||'Jugador'}))}</div><div class="global-challenge-copy">${challengeEscapeHtml(gameText('multiplayer.challenge.incomingCopy'))}</div><div class="global-challenge-countdown">${remaining}</div><div class="global-challenge-actions"><button class="store-buy-btn" id="global-challenge-accept" type="button">${challengeEscapeHtml(gameText('multiplayer.challenge.accept'))}</button><button class="store-back-link" id="global-challenge-reject" type="button">${challengeEscapeHtml(gameText('multiplayer.challenge.reject'))}</button></div></div>`;
+  const accept=layer.querySelector('#global-challenge-accept'),reject=layer.querySelector('#global-challenge-reject');
+  accept?.addEventListener('click',async()=>{if(globalChallengeActionPending)return;if(!syncGlobalChallengeSurfaceSafety({cancelOutgoing:false})){globalChallengeToast(gameText('multiplayer.challenge.selfUnavailable'),true);return;}globalChallengeActionPending=true;accept.disabled=true;reject.disabled=true;try{const result=await resolveDirectChallenge(incoming.challengeId||incoming.id,'accept');if(result?.matchCode)launchAcceptedChallengeMatch(result.matchCode);}catch(error){globalChallengeToast(globalChallengeErrorMessage(error),true);accept.disabled=false;reject.disabled=false;}finally{globalChallengeActionPending=false;}});
+  reject?.addEventListener('click',async()=>{if(globalChallengeActionPending)return;globalChallengeActionPending=true;accept.disabled=true;reject.disabled=true;try{await resolveDirectChallenge(incoming.challengeId||incoming.id,'reject');removeGlobalChallengeModal();}catch(error){globalChallengeToast(globalChallengeErrorMessage(error),true);accept.disabled=false;reject.disabled=false;}finally{globalChallengeActionPending=false;}});
+}
+function publishGlobalChallengeRows(){
+  globalThis.__ARGENTINIA_DIRECT_CHALLENGES__=globalChallengeRows;
+  try{window.dispatchEvent(new CustomEvent('argentinia:direct-challenges-updated',{detail:{rows:globalChallengeRows}}));}catch{}
+}
+function handleGlobalChallengeRows(rows){
+  const next=Array.isArray(rows)?rows:[]; const nextStatus=new Map(next.map(row=>[String(row.challengeId||row.id||''),String(row.status||'')]));
+  if(globalChallengePrimed){for(const row of next){const id=String(row.challengeId||row.id||'');const before=globalChallengePreviousStatus.get(id),after=String(row.status||'');if(before==='pending'&&after&&after!=='pending'){const me=String(state.currentUser?.uid||'');if(after==='accepted'&&row.matchCode)launchAcceptedChallengeMatch(row.matchCode);else if(String(row.inviterUid||'')===me){if(after==='rejected')globalChallengeToast(gameText('multiplayer.challenge.rejected',{player:row.inviteeUsername||'El jugador'}),true);else if(after==='expired')globalChallengeToast(gameText('multiplayer.challenge.expired'),true);else if(after==='cancelled')globalChallengeToast(gameText('multiplayer.challenge.cancelled'));}}}}
+  globalChallengeRows=next;globalChallengePreviousStatus=nextStatus;globalChallengePrimed=true;publishGlobalChallengeRows();renderGlobalChallengeModal();
+}
+function stopGlobalDirectChallengeBridge(){
+  if(globalChallengeListenerStop){try{globalChallengeListenerStop();}catch{}globalChallengeListenerStop=null;}if(globalChallengeTicker){clearInterval(globalChallengeTicker);globalChallengeTicker=null;}if(globalAcceptedMatchStop){try{globalAcceptedMatchStop();}catch{}globalAcceptedMatchStop=null;}stopGlobalChallengeSurfaceObserver();removeGlobalChallengeModal();globalChallengeRows=[];globalChallengePreviousStatus=new Map();globalChallengePrimed=false;globalAcceptedChallengeCode='';publishGlobalChallengeRows();
+}
+function startGlobalDirectChallengeBridge(uid){
+  stopGlobalDirectChallengeBridge(); const me=String(uid||'').trim(); if(!me)return;
+  startGlobalChallengeSurfaceObserver();
+  globalChallengeListenerStop=listenToDirectChallenges(me,handleGlobalChallengeRows,error=>{console.warn('Listener global de invitaciones Multiplayer interrumpido:',error);globalChallengeToast(gameText('multiplayer.challenge.listenError'),true);});
+  globalChallengeTicker=setInterval(()=>{const expired=globalChallengeExpiredForMe();if(expired)void resolveDirectChallenge(expired.challengeId||expired.id,'expire').catch(()=>{});const safe=syncGlobalChallengeSurfaceSafety({cancelOutgoing:false});if(safe)renderGlobalChallengeModal();},500);
 }
 
 let multiplayerPresenceTimer = null;
@@ -1937,6 +2097,7 @@ async function boot() {
           console.warn('No se pudieron preparar las estadísticas del jugador:', statsErr);
         });
         startPlayerPresence(state.currentUser.uid);
+        startGlobalDirectChallengeBridge(state.currentUser.uid);
         if (profile.activeMatchId) offerReconnectIfStillActive(profile.activeMatchId);
         return profile;
       })().catch(err => {
@@ -1950,6 +2111,7 @@ async function boot() {
         updateAccountUI(state.currentUser);
       });
     } else {
+      stopGlobalDirectChallengeBridge();
       void stopPlayerPresence({ remove:false });
       state.userProfile = null;
       state.authIdentityReady = true;

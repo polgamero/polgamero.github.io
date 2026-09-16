@@ -10,10 +10,10 @@ export const TOURNAMENT_ROUNDS = Object.freeze([
 ]);
 export const TOURNAMENT_DEFAULT_POLICY = Object.freeze({
   rewardedStartsPerDay:1, npcRandomnessPercent:18,
-  round16:Object.freeze({ points:100,packs:0,difficulty:'medium',deckQuality:'good' }),
-  quarter:Object.freeze({ points:150,packs:0,difficulty:'medium',deckQuality:'strong' }),
-  semi:Object.freeze({ points:250,packs:1,difficulty:'hard',deckQuality:'strong' }),
-  final:Object.freeze({ points:500,packs:2,difficulty:'hard',deckQuality:'elite' })
+  round16:Object.freeze({ points:100,lossPoints:15,packs:0,difficulty:'medium',deckQuality:'good' }),
+  quarter:Object.freeze({ points:150,lossPoints:30,packs:0,difficulty:'medium',deckQuality:'strong' }),
+  semi:Object.freeze({ points:250,lossPoints:60,packs:1,difficulty:'hard',deckQuality:'strong' }),
+  final:Object.freeze({ points:500,lossPoints:100,packs:2,difficulty:'hard',deckQuality:'elite' })
 });
 const DIFFICULTIES=new Set(['easy','medium','hard']);
 const QUALITIES=new Set(['good','strong','elite']);
@@ -22,7 +22,7 @@ function enumv(v,set,f){const s=String(v||'').toLowerCase();return set.has(s)?s:
 export function normalizeTournamentPolicy(raw={}){
   const out={rewardedStartsPerDay:int(raw.tournamentRewardedStartsPerDay,1,0,1000),npcRandomnessPercent:int(raw.tournamentNpcRandomnessPercent,18,0,100)};
   const map=[['round16','Round16'],['quarter','Quarter'],['semi','Semi'],['final','Final']];
-  for(const [key,suffix] of map){const d=TOURNAMENT_DEFAULT_POLICY[key];out[key]={points:int(raw[`tournament${suffix}Points`],d.points),packs:int(raw[`tournament${suffix}Packs`],d.packs,0,100),difficulty:enumv(raw[`tournament${suffix}Difficulty`],DIFFICULTIES,d.difficulty),deckQuality:enumv(raw[`tournament${suffix}DeckQuality`],QUALITIES,d.deckQuality)};}
+  for(const [key,suffix] of map){const d=TOURNAMENT_DEFAULT_POLICY[key];out[key]={points:int(raw[`tournament${suffix}Points`],d.points),lossPoints:int(raw[`tournament${suffix}LossPoints`],d.lossPoints),packs:int(raw[`tournament${suffix}Packs`],d.packs,0,100),difficulty:enumv(raw[`tournament${suffix}Difficulty`],DIFFICULTIES,d.difficulty),deckQuality:enumv(raw[`tournament${suffix}DeckQuality`],QUALITIES,d.deckQuality)};}
   return out;
 }
 function shuffle(list,rng){const a=[...list];for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}

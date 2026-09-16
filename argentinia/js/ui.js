@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, listenToDirectChallenges, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
@@ -97,7 +97,7 @@ import { mountAdminCampaignsPane, renderActiveEventsStrip } from './campaignsUI.
 import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 import { enterMenuAudio, getAudioSettings, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
-import { setPlayerPresenceActivity, isPresenceOnline, isPresenceAvailable, describePresenceActivity, presenceTimestampMs } from './multiplayerPresence.js';
+import { setPlayerPresenceActivity, isPresenceOnline, isPresenceAvailable, describePresenceActivity, presenceTimestampMs, getChallengeInvitesEnabled, setChallengeInvitesEnabled } from './multiplayerPresence.js';
 import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer } from './animationDirector.js';
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
@@ -7573,12 +7573,16 @@ export function showAdminPanel(onBack) {
     { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentRewardedStartsPerDay', label: 'Torneos premiados máximos por día · 0 = ilimitado', value: TOURNAMENT_POLICY.tournamentRewardedStartsPerDay, step: '1' },
     { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentNpcRandomnessPercent', label: 'Randomness de simulación NPC (%)', value: TOURNAMENT_POLICY.tournamentNpcRandomnessPercent, step: '1' },
     { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentRound16Points', label: 'Octavos · puntos', value: TOURNAMENT_POLICY.tournamentRound16Points, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentRound16LossPoints', label: 'Octavos · puntos por derrota', value: TOURNAMENT_POLICY.tournamentRound16LossPoints, step: '1' },
     { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentRound16Packs', label: 'Octavos · sobres', value: TOURNAMENT_POLICY.tournamentRound16Packs, step: '1' },
     { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentQuarterPoints', label: 'Cuartos · puntos', value: TOURNAMENT_POLICY.tournamentQuarterPoints, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentQuarterLossPoints', label: 'Cuartos · puntos por derrota', value: TOURNAMENT_POLICY.tournamentQuarterLossPoints, step: '1' },
     { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentQuarterPacks', label: 'Cuartos · sobres', value: TOURNAMENT_POLICY.tournamentQuarterPacks, step: '1' },
     { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentSemiPoints', label: 'Semifinal · puntos', value: TOURNAMENT_POLICY.tournamentSemiPoints, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentSemiLossPoints', label: 'Semifinal · puntos por derrota', value: TOURNAMENT_POLICY.tournamentSemiLossPoints, step: '1' },
     { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentSemiPacks', label: 'Semifinal · sobres', value: TOURNAMENT_POLICY.tournamentSemiPacks, step: '1' },
     { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentFinalPoints', label: 'Final · puntos', value: TOURNAMENT_POLICY.tournamentFinalPoints, step: '1' },
+    { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentFinalLossPoints', label: 'Final · puntos por derrota', value: TOURNAMENT_POLICY.tournamentFinalLossPoints, step: '1' },
     { section: 'TORNEO · PREMIOS Y LÍMITES', id: 'tournamentFinalPacks', label: 'Final · sobres', value: TOURNAMENT_POLICY.tournamentFinalPacks, step: '1' }
   ];
 
@@ -9287,18 +9291,22 @@ Receipt: ${receiptId}
       tournamentRewardedStartsPerDay: readNumber('tournamentRewardedStartsPerDay'),
       tournamentNpcRandomnessPercent: readNumber('tournamentNpcRandomnessPercent'),
       tournamentRound16Points: readNumber('tournamentRound16Points'),
+      tournamentRound16LossPoints: readNumber('tournamentRound16LossPoints'),
       tournamentRound16Packs: readNumber('tournamentRound16Packs'),
       tournamentRound16Difficulty: overlay.querySelector('#cfg-tournamentRound16Difficulty')?.value || 'medium',
       tournamentRound16DeckQuality: overlay.querySelector('#cfg-tournamentRound16DeckQuality')?.value || 'good',
       tournamentQuarterPoints: readNumber('tournamentQuarterPoints'),
+      tournamentQuarterLossPoints: readNumber('tournamentQuarterLossPoints'),
       tournamentQuarterPacks: readNumber('tournamentQuarterPacks'),
       tournamentQuarterDifficulty: overlay.querySelector('#cfg-tournamentQuarterDifficulty')?.value || 'medium',
       tournamentQuarterDeckQuality: overlay.querySelector('#cfg-tournamentQuarterDeckQuality')?.value || 'strong',
       tournamentSemiPoints: readNumber('tournamentSemiPoints'),
+      tournamentSemiLossPoints: readNumber('tournamentSemiLossPoints'),
       tournamentSemiPacks: readNumber('tournamentSemiPacks'),
       tournamentSemiDifficulty: overlay.querySelector('#cfg-tournamentSemiDifficulty')?.value || 'hard',
       tournamentSemiDeckQuality: overlay.querySelector('#cfg-tournamentSemiDeckQuality')?.value || 'strong',
       tournamentFinalPoints: readNumber('tournamentFinalPoints'),
+      tournamentFinalLossPoints: readNumber('tournamentFinalLossPoints'),
       tournamentFinalPacks: readNumber('tournamentFinalPacks'),
       tournamentFinalDifficulty: overlay.querySelector('#cfg-tournamentFinalDifficulty')?.value || 'hard',
       tournamentFinalDeckQuality: overlay.querySelector('#cfg-tournamentFinalDeckQuality')?.value || 'elite'
@@ -9334,8 +9342,8 @@ Receipt: ${receiptId}
       && Number.isInteger(newConfig.tradeMaxCompletedPerWeek) && newConfig.tradeMaxCompletedPerWeek >= 1 && newConfig.tradeMaxCompletedPerWeek <= 20;
     const tournamentNumeric = [
       newConfig.tournamentRewardedStartsPerDay,newConfig.tournamentNpcRandomnessPercent,
-      newConfig.tournamentRound16Points,newConfig.tournamentRound16Packs,newConfig.tournamentQuarterPoints,newConfig.tournamentQuarterPacks,
-      newConfig.tournamentSemiPoints,newConfig.tournamentSemiPacks,newConfig.tournamentFinalPoints,newConfig.tournamentFinalPacks
+      newConfig.tournamentRound16Points,newConfig.tournamentRound16LossPoints,newConfig.tournamentRound16Packs,newConfig.tournamentQuarterPoints,newConfig.tournamentQuarterLossPoints,newConfig.tournamentQuarterPacks,
+      newConfig.tournamentSemiPoints,newConfig.tournamentSemiLossPoints,newConfig.tournamentSemiPacks,newConfig.tournamentFinalPoints,newConfig.tournamentFinalLossPoints,newConfig.tournamentFinalPacks
     ];
     const tournamentNumbersValid = tournamentNumeric.every(v => Number.isInteger(v) && v >= 0)
       && newConfig.tournamentNpcRandomnessPercent <= 100;
@@ -9418,7 +9426,7 @@ function injectMultiplayerLobbyStyles() {
     .mp-presence-dot { width:9px; height:9px; border-radius:50%; flex:0 0 auto; background:#536056; box-shadow:none; }
     .mp-player-row.is-online .mp-presence-dot { background:#52d273; box-shadow:0 0 9px rgba(82,210,115,.72); }
     .mp-player-copy,.mp-match-copy { min-width:0; flex:1; }
-    .mp-player-name,.mp-chat-name { display:inline-block; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px; font-weight:800; color:#77867b; cursor:help; }
+    .mp-player-name,.mp-chat-name { display:inline-block; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px; font-weight:800; color:#77867b; cursor:pointer; }
     .mp-player-row.is-online .mp-player-name { color:#fff; }
     .mp-player-status,.mp-match-meta { color:#91a498; font-size:11px; line-height:1.35; margin-top:2px; }
     .mp-player-row.is-available .mp-player-status { color:#8fd7a0; }
@@ -9428,11 +9436,17 @@ function injectMultiplayerLobbyStyles() {
     .mp-live-empty { padding:26px 15px; color:#7e9084; text-align:center; font-size:12px; line-height:1.5; }
 
     .mp-chat-list { min-height:0; flex:1 1 auto; overflow:auto; overscroll-behavior:contain; padding:8px 10px; display:flex; flex-direction:column; gap:7px; }
-    .mp-chat-row { min-height:42px; box-sizing:border-box; padding:8px 9px; border-radius:9px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.035); line-height:1.35; word-break:break-word; }
+    .mp-chat-row { min-width:0; box-sizing:border-box; padding:8px 9px; border-radius:9px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.035); line-height:1.35; overflow:hidden; }
     .mp-chat-row.is-own { background:rgba(212,175,55,.055); border-color:rgba(212,175,55,.12); }
-    .mp-chat-name { color:#f0e0b0; margin-right:6px; font-size:12px; vertical-align:baseline; }
-    .mp-chat-text { color:#cfe0d4; font-size:12px; }
-    .mp-chat-time { float:right; margin-left:8px; color:#607267; font-size:9px; font-variant-numeric:tabular-nums; }
+    .mp-chat-meta { min-width:0; display:flex; align-items:center; gap:7px; margin-bottom:4px; }
+    .mp-chat-name { color:#f0e0b0; margin:0; font-size:12px; flex:1 1 auto; min-width:0; }
+    .mp-chat-meta-actions { flex:0 0 auto; display:inline-flex; align-items:center; gap:5px; }
+    .mp-chat-text { display:block; min-width:0; max-width:100%; color:#cfe0d4; font-size:12px; white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word; line-break:anywhere; }
+    .mp-chat-time { color:#607267; font-size:9px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .mp-chat-delete { width:18px; height:18px; min-width:18px; border:0; border-radius:5px; padding:0; background:transparent; color:#a96d66; font-size:13px; line-height:18px; cursor:pointer; }
+    .mp-chat-delete:hover { color:#ff9b8f; background:rgba(216,91,77,.12); }
+    .mp-player-popover { position:fixed; z-index:10040; max-width:min(290px,calc(100vw - 20px)); padding:8px 10px; border-radius:8px; border:1px solid rgba(212,175,55,.52); background:rgba(8,15,10,.98); color:#f0e0b0; box-shadow:0 12px 32px rgba(0,0,0,.52); font-size:11px; line-height:1.4; pointer-events:auto; }
+    .mp-player-popover strong { color:#fff0b7; }
     .mp-chat-compose { flex:0 0 auto; border-top:1px solid rgba(212,175,55,.14); padding:9px; background:rgba(0,0,0,.10); }
     .mp-chat-compose-row { display:flex; gap:7px; align-items:center; min-height:38px; }
     .mp-chat-compose .encyclopedia-search-input { flex:1; width:auto; min-width:0; max-width:none; height:38px; box-sizing:border-box; margin:0; }
@@ -9696,8 +9710,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
   let presenceUnsubscribe = null;
   let matchesUnsubscribe = null;
   let lobbyChatUnsubscribe = null;
-  let challengeUnsubscribe = null;
-  let acceptedMatchUnsubscribe = null;
+
   let challengeTicker = null;
   let refreshTimer = null;
   let publicStats = [];
@@ -9706,7 +9719,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
   let lobbyChatEvents = [];
   let challengeRows = [];
   let previousChallengeStatus = new Map();
-  let challengeListenerPrimed = false;
+
   let playerQuery = '';
   let waitingCode = '';
   let sendingLobbyChat = false;
@@ -9715,19 +9728,19 @@ export function showMultiplayerLobby(onBack, onMatched) {
   let toastTimer = null;
   const ACTIVE_MATCH_STALE_MS = 20 * 60_000;
   const DIRECT_CHALLENGE_TTL_MS = 20_000;
+  const LOBBY_CHAT_RETENTION_MS = 2 * 60 * 60_000;
 
   function stopRoomListener() { if (roomUnsubscribe) { roomUnsubscribe(); roomUnsubscribe = null; } }
   function stopDirectoryListeners() {
     if (presenceUnsubscribe) { presenceUnsubscribe(); presenceUnsubscribe = null; }
     if (matchesUnsubscribe) { matchesUnsubscribe(); matchesUnsubscribe = null; }
     if (lobbyChatUnsubscribe) { lobbyChatUnsubscribe(); lobbyChatUnsubscribe = null; }
-    if (challengeUnsubscribe) { challengeUnsubscribe(); challengeUnsubscribe = null; }
-    if (acceptedMatchUnsubscribe) { acceptedMatchUnsubscribe(); acceptedMatchUnsubscribe = null; }
+
     if (challengeTicker) { clearInterval(challengeTicker); challengeTicker = null; }
     if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
     if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
   }
-  function cleanup() { stopRoomListener(); stopDirectoryListeners(); }
+  function cleanup() { stopRoomListener(); stopDirectoryListeners(); window.removeEventListener('argentinia:direct-challenges-updated', onGlobalChallengeRows); closePlayerStatsPopover(); }
   function tsMs(value) { return presenceTimestampMs(value); }
   function formatElapsed(startValue) {
     const start = tsMs(startValue);
@@ -9764,6 +9777,38 @@ export function showMultiplayerLobby(onBack, onMatched) {
     const wins = Math.max(0, Math.floor(Number(stats.eloWins) || 0));
     const losses = Math.max(0, Math.floor(Number(stats.eloLosses) || 0));
     return `ELO ${elo}${games < 10 ? ' · provisional' : ''} · ${wins}V / ${losses}D · ${games} partida${games===1?'':'s'} ELO`;
+  }
+
+  let playerPopoverHideTimer = null;
+  function closePlayerStatsPopover() {
+    if (playerPopoverHideTimer) { clearTimeout(playerPopoverHideTimer); playerPopoverHideTimer = null; }
+    document.querySelector('#mp-player-popover')?.remove();
+  }
+  function showPlayerStatsPopover(anchorEl) {
+    const uid = String(anchorEl?.dataset?.playerUid || '');
+    if (!anchorEl || !uid) return;
+    closePlayerStatsPopover();
+    const stats = statsForUid(uid);
+    const pop = document.createElement('div');
+    pop.id = 'mp-player-popover'; pop.className = 'mp-player-popover';
+    pop.innerHTML = `<strong>${escapeHtml(anchorEl.dataset.playerName || 'Jugador')}</strong><br>${escapeHtml(playerHoverText(stats))}`;
+    document.body.appendChild(pop);
+    const r = anchorEl.getBoundingClientRect(); const pr = pop.getBoundingClientRect();
+    pop.style.left = `${Math.max(8, Math.min(window.innerWidth-pr.width-8, r.left))}px`;
+    const below = r.bottom + 7;
+    pop.style.top = `${below + pr.height <= window.innerHeight-8 ? below : Math.max(8,r.top-pr.height-7)}px`;
+    pop.addEventListener('pointerenter', () => { if (playerPopoverHideTimer) clearTimeout(playerPopoverHideTimer); });
+    pop.addEventListener('pointerleave', () => { playerPopoverHideTimer=setTimeout(closePlayerStatsPopover,120); });
+  }
+  function bindPlayerStatsInteractions(scope) {
+    scope?.querySelectorAll?.('.mp-player-name[data-player-uid],.mp-chat-name[data-player-uid]').forEach(node => {
+      node.setAttribute('tabindex','0'); node.setAttribute('role','button');
+      node.addEventListener('click', event => { event.stopPropagation(); if (document.querySelector('#mp-player-popover')) closePlayerStatsPopover(); else showPlayerStatsPopover(node); });
+      node.addEventListener('focus', () => showPlayerStatsPopover(node));
+      node.addEventListener('blur', () => { playerPopoverHideTimer=setTimeout(closePlayerStatsPopover,120); });
+      node.addEventListener('pointerenter', () => { if (globalThis.matchMedia?.('(hover:hover) and (pointer:fine)')?.matches) showPlayerStatsPopover(node); });
+      node.addEventListener('pointerleave', () => { if (globalThis.matchMedia?.('(hover:hover) and (pointer:fine)')?.matches) playerPopoverHideTimer=setTimeout(closePlayerStatsPopover,120); });
+    });
   }
 
   function challengeExpiryMs(challenge) { return tsMs(challenge?.expiresAt); }
@@ -9826,97 +9871,12 @@ export function showMultiplayerLobby(onBack, onMatched) {
       refreshHeaderControls();
     }
   }
-  function removeChallengeModal() { overlay.querySelector('#mp-challenge-layer')?.remove(); }
-  function renderIncomingChallengeModal() {
-    const me = String(state.currentUser?.uid || '');
-    const challenge = livePendingChallenges().find(row => String(row.inviteeUid || '') === me);
-    if (!challenge) { removeChallengeModal(); return; }
-    const remaining = Math.max(0, Math.ceil((challengeExpiryMs(challenge) - Date.now()) / 1000));
-    let layer = overlay.querySelector('#mp-challenge-layer');
-    if (!layer) {
-      layer = document.createElement('div');
-      layer.id = 'mp-challenge-layer';
-      layer.className = 'mp-challenge-layer';
-      overlay.appendChild(layer);
-    }
-    layer.innerHTML = `<div class="mp-challenge-card">
-      <div class="mp-challenge-kicker">${gameTextHtml('multiplayer.challenge.incomingKicker')}</div>
-      <div class="mp-challenge-title">${gameTextHtml('multiplayer.challenge.incomingTitle',{player:challenge.inviterUsername || 'Jugador'})}</div>
-      <div class="mp-challenge-copy">${gameTextHtml('multiplayer.challenge.incomingCopy')}</div>
-      <div class="mp-challenge-countdown" id="mp-challenge-countdown">${remaining}</div>
-      <div class="mp-challenge-actions">
-        <button class="store-buy-btn" id="mp-challenge-accept" type="button">${gameTextHtml('multiplayer.challenge.accept')}</button>
-        <button class="store-back-link" id="mp-challenge-reject" type="button">${gameTextHtml('multiplayer.challenge.reject')}</button>
-      </div>
-    </div>`;
-    const accept = layer.querySelector('#mp-challenge-accept');
-    const reject = layer.querySelector('#mp-challenge-reject');
-    accept.addEventListener('click', async () => {
-      accept.disabled = true; reject.disabled = true;
-      try {
-        const result = await actOnChallenge(challenge.challengeId || challenge.id, 'accept');
-        if (result?.matchCode) beginAcceptedChallengeMatch(result.matchCode);
-      } catch { accept.disabled = false; reject.disabled = false; }
-    });
-    reject.addEventListener('click', async () => {
-      accept.disabled = true; reject.disabled = true;
-      try { await actOnChallenge(challenge.challengeId || challenge.id, 'reject'); removeChallengeModal(); }
-      catch { accept.disabled = false; reject.disabled = false; }
-    });
-  }
-  function refreshChallengeCountdown() {
-    const pending = pendingChallengeForMe();
-    if (pending && challengeExpiryMs(pending) <= Date.now()) {
-      void resolveDirectChallenge(pending.challengeId || pending.id, 'expire').catch(()=>{});
-    }
-    renderIncomingChallengeModal();
-    renderPlayers();
-  }
-  function beginAcceptedChallengeMatch(code) {
-    const normalized = String(code || '').trim().toUpperCase();
-    if (!normalized || acceptedChallengeCode === normalized) return;
-    acceptedChallengeCode = normalized;
-    removeChallengeModal();
-    setPlayerPresenceActivity('multiplayer_setup', { availability:'busy' });
-    if (acceptedMatchUnsubscribe) acceptedMatchUnsubscribe();
-    acceptedMatchUnsubscribe = listenToMatch(normalized, data => {
-      if (data?.status === 'active' && data.hostUid && data.guestUid) {
-        const match = { code:normalized, ...data };
-        if (acceptedMatchUnsubscribe) { acceptedMatchUnsubscribe(); acceptedMatchUnsubscribe = null; }
-        renderMatched(match);
-      }
-    }, error => {
-      console.warn('No se pudo abrir la partida aceptada desde Challenge:', error);
-      showLobbyToast(gameText('multiplayer.challenge.matchOpenError'), true);
-      acceptedChallengeCode = '';
-    });
-  }
-  function handleChallengeRows(rows) {
-    const nextRows = Array.isArray(rows) ? rows : [];
-    const nextStatus = new Map(nextRows.map(row => [String(row.challengeId || row.id || ''), String(row.status || '')]));
-    if (challengeListenerPrimed) {
-      for (const row of nextRows) {
-        const id = String(row.challengeId || row.id || '');
-        const before = previousChallengeStatus.get(id);
-        const after = String(row.status || '');
-        if (before === 'pending' && after && after !== 'pending') {
-          const me = String(state.currentUser?.uid || '');
-          if (after === 'accepted' && row.matchCode) beginAcceptedChallengeMatch(row.matchCode);
-          else if (String(row.inviterUid || '') === me) {
-            if (after === 'rejected') showLobbyToast(gameText('multiplayer.challenge.rejected',{player:row.inviteeUsername || 'El jugador'}), true);
-            else if (after === 'expired') showLobbyToast(gameText('multiplayer.challenge.expired'), true);
-            else if (after === 'cancelled') showLobbyToast(gameText('multiplayer.challenge.cancelled'));
-          }
-        }
-      }
-    }
-    challengeRows = nextRows;
-    previousChallengeStatus = nextStatus;
-    challengeListenerPrimed = true;
-    renderIncomingChallengeModal();
+  function onGlobalChallengeRows(event) {
+    challengeRows = Array.isArray(event?.detail?.rows) ? event.detail.rows : [];
     renderPlayers();
     refreshHeaderControls();
   }
+
 
   function renderPlayers() {
     const list = body.querySelector('#mp-player-list');
@@ -9950,7 +9910,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
       const status = describePresenceActivity(row.presence, now);
       const pending = pendingChallengeForMe();
       const outgoing = pending && String(pending.inviterUid || '') === me && String(pending.inviteeUid || '') === row.uid ? pending : null;
-      const lobbyAvailable = row.available && String(row.presence?.activity || '') === 'multiplayer_lobby';
+      const lobbyAvailable = row.available && ['menu','multiplayer_lobby'].includes(String(row.presence?.activity || ''));
       const canChallenge = lobbyAvailable && !pending && !waitingCode && !challengeActionPending;
       const remaining = outgoing ? Math.max(0, Math.ceil((challengeExpiryMs(outgoing)-now)/1000)) : 0;
       const buttonText = outgoing ? gameText('multiplayer.challenge.cancelCountdown',{seconds:remaining}) : gameText('multiplayer.lobby.challengeAction');
@@ -9959,12 +9919,13 @@ export function showMultiplayerLobby(onBack, onMatched) {
       return `<div class="mp-player-row ${row.online?'is-online':''} ${row.available?'is-available':''}" data-presence-uid="${escapeHtml(row.uid)}">
         <span class="mp-presence-dot" aria-hidden="true"></span>
         <div class="mp-player-copy">
-          <span class="mp-player-name" title="${escapeHtml(playerHoverText(row.stats))}">${escapeHtml(row.username)}</span>
+          <span class="mp-player-name" data-player-uid="${escapeHtml(row.uid)}" data-player-name="${escapeHtml(row.username)}" title="${escapeHtml(playerHoverText(row.stats))}">${escapeHtml(row.username)}</span>
           <div class="mp-player-status">${escapeHtml(status)}</div>
         </div>
         <button class="mp-challenge-btn" type="button" data-challenge-uid="${escapeHtml(row.uid)}" data-challenge-name="${escapeHtml(row.username)}" ${disabled?'disabled':''} title="${escapeHtml(title)}">${escapeHtml(buttonText)}</button>
       </div>`;
     }).join('');
+    bindPlayerStatsInteractions(list);
     list.querySelectorAll('[data-challenge-uid]').forEach(button => {
       button.addEventListener('click', () => {
         const targetUid = button.dataset.challengeUid || '';
@@ -10018,24 +9979,28 @@ export function showMultiplayerLobby(onBack, onMatched) {
   function renderLobbyChat() {
     const list = body.querySelector('#mp-lobby-chat-list');
     if (!list) return;
-    const events = [...lobbyChatEvents].filter(event => event?.type === 'chat' && event?.text).sort((a,b) => Number(a.seq||0)-Number(b.seq||0));
-    if (!events.length) {
-      list.innerHTML = `<div class="mp-live-empty">${gameTextHtml('multiplayer.lobby.chatEmpty')}</div>`;
-      return;
-    }
+    const cutoff = Date.now() - LOBBY_CHAT_RETENTION_MS;
+    const events = [...lobbyChatEvents].filter(event => event?.type === 'chat' && event?.text && Math.max(0,Number(event.createdAtMs)||0) >= cutoff).sort((a,b) => Number(a.seq||0)-Number(b.seq||0));
+    if (!events.length) { list.innerHTML = `<div class="mp-live-empty">${gameTextHtml('multiplayer.lobby.chatEmpty')}</div>`; return; }
     const me = String(state.currentUser?.uid || '');
+    const admin = isAdminUser(state.currentUser);
     list.innerHTML = events.map(event => {
-      const stats = statsForUid(event.uid);
-      const timeMs = Math.max(0, Number(event.createdAtMs) || 0);
+      const stats = statsForUid(event.uid); const timeMs = Math.max(0, Number(event.createdAtMs)||0);
       const time = timeMs ? new Date(timeMs).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) : '';
-      return `<div class="mp-chat-row ${String(event.uid||'')===me?'is-own':''}">
-        ${time?`<span class="mp-chat-time">${escapeHtml(time)}</span>`:''}
-        <span class="mp-chat-name" title="${escapeHtml(playerHoverText(stats))}">${escapeHtml(event.username || 'Jugador')}</span>
-        <span class="mp-chat-text">${escapeHtml(event.text || '')}</span>
+      const username = String(event.username || 'Jugador'); const seq = Math.floor(Number(event.seq)||0);
+      return `<div class="mp-chat-row ${String(event.uid||'')===me?'is-own':''}" data-chat-seq="${seq}">
+        <div class="mp-chat-meta"><span class="mp-chat-name" data-player-uid="${escapeHtml(String(event.uid||''))}" data-player-name="${escapeHtml(username)}" title="${escapeHtml(playerHoverText(stats))}">${escapeHtml(username)}</span><span class="mp-chat-meta-actions">${time?`<span class="mp-chat-time">${escapeHtml(time)}</span>`:''}${admin?`<button class="mp-chat-delete" type="button" data-delete-chat-seq="${seq}" title="${gameTextHtml('multiplayer.lobby.chatDeleteTitle')}" aria-label="${gameTextHtml('multiplayer.lobby.chatDeleteTitle')}">×</button>`:''}</span></div>
+        <div class="mp-chat-text">${escapeHtml(event.text || '')}</div>
       </div>`;
     }).join('');
+    bindPlayerStatsInteractions(list);
+    list.querySelectorAll('[data-delete-chat-seq]').forEach(button => button.addEventListener('click', async event => {
+      event.stopPropagation(); const seq=Math.floor(Number(button.dataset.deleteChatSeq)||0); if(!seq||!isAdminUser(state.currentUser)) return;
+      button.disabled=true; try { await deleteLobbyCommunication(seq); } catch(error) { console.warn('No se pudo moderar mensaje del Lobby:',error); showLobbyToast(error?.message||gameText('multiplayer.lobby.chatDeleteError'),true); button.disabled=false; }
+    }));
     list.scrollTop = list.scrollHeight;
   }
+
   function lobbyChatErrorMessage(error) {
     const code = String(error?.details?.code || error?.customData?.details?.code || error?.code || '');
     if (code.includes('LOBBY_CHAT_PROFANITY')) return gameText('multiplayer.lobby.chatProfanity');
@@ -10165,11 +10130,6 @@ export function showMultiplayerLobby(onBack, onMatched) {
 
   overlay.querySelector('#mp-back').addEventListener('click', async () => {
     const codeToCancel = waitingCode;
-    const pending = pendingChallengeForMe();
-    if (pending) {
-      const action = String(pending.inviterUid || '') === String(state.currentUser?.uid || '') ? 'cancel' : 'reject';
-      try { await resolveDirectChallenge(pending.challengeId || pending.id, action); } catch {}
-    }
     cleanup();
     if (codeToCancel) { try { await cancelMatch(codeToCancel, state.currentUser?.uid || null); } catch {} }
     setPlayerPresenceActivity('menu', { availability:'available' });
@@ -10197,11 +10157,9 @@ export function showMultiplayerLobby(onBack, onMatched) {
       console.warn('No se pudo escuchar chat del Lobby:', error);
       const status=body.querySelector('#mp-lobby-chat-status'); if(status){status.textContent=gameText('multiplayer.lobby.chatDisconnected');status.className='mp-chat-status error';}
     });
-    challengeUnsubscribe = listenToDirectChallenges(state.currentUser?.uid || '', handleChallengeRows, error => {
-      console.warn('No se pudieron escuchar invitaciones multiplayer:', error);
-      showLobbyToast(gameText('multiplayer.challenge.listenError'), true);
-    });
-    challengeTicker = setInterval(refreshChallengeCountdown, 500);
+    window.addEventListener('argentinia:direct-challenges-updated', onGlobalChallengeRows);
+    challengeRows = Array.isArray(globalThis.__ARGENTINIA_DIRECT_CHALLENGES__) ? globalThis.__ARGENTINIA_DIRECT_CHALLENGES__ : [];
+    challengeTicker = setInterval(() => renderPlayers(), 500);
     refreshTimer = setInterval(() => { renderPlayers(); renderMatches(); }, 30_000);
   }
 
@@ -10234,7 +10192,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
   }
 
   function renderMatched(match) {
-    stopDirectoryListeners(); stopRoomListener(); waitingCode=''; acceptedChallengeCode=''; removeChallengeModal();
+    stopDirectoryListeners(); stopRoomListener(); waitingCode=''; acceptedChallengeCode='';
     setPlayerPresenceActivity('multiplayer_setup', { availability:'busy' });
     headerConnect.innerHTML = `<span class="mp-header-status" style="max-width:none">${gameTextHtml('multiplayer.lobby.matchFound')}</span>`;
     const remoteEngine = match.engineVersion || null;
@@ -10307,7 +10265,7 @@ function tournamentMatchSideHTML(tournament,id,match){
 function tournamentFixtureHTML(tournament){
   return `<div class="tournament-fixture">${(tournament?.rounds||[]).map(round=>{
     const policy=tournament?.policy?.[round.key]||{};
-    return `<div class="tournament-round"><h3>${gameTextHtml(tournamentRoundTextKey(round.key))}</h3><div class="tournament-reward">${gameTextHtml(`tournament.reward.${round.key}`,{points:Number(policy.points)||0,packs:Number(policy.packs)||0})}</div>${(round.matches||[]).map(match=>`<div class="tournament-match">${tournamentMatchSideHTML(tournament,match.aEntrantId,match)}${tournamentMatchSideHTML(tournament,match.bEntrantId,match)}</div>`).join('')}</div>`;
+    return `<div class="tournament-round"><h3>${gameTextHtml(tournamentRoundTextKey(round.key))}</h3><div class="tournament-reward">${gameTextHtml(`tournament.reward.${round.key}`,{points:Number(policy.points)||0,lossPoints:Number(policy.lossPoints)||0,packs:Number(policy.packs)||0})}</div>${(round.matches||[]).map(match=>`<div class="tournament-match">${tournamentMatchSideHTML(tournament,match.aEntrantId,match)}${tournamentMatchSideHTML(tournament,match.bEntrantId,match)}</div>`).join('')}</div>`;
   }).join('')}</div>`;
 }
 
@@ -10975,6 +10933,8 @@ export function showOptionsMenu(onBack) {
             <button class="options-toggle-btn" id="opt-animation-speed">${escapeHtml(animationSpeedLabel(initialAnimations.speed))}</button>
           </div>
           <div id="opt-animation-server-note" style="${initialServerAnimationPolicy.enabled ? 'display:none;' : ''}margin:4px 4px 2px;color:#d99b6b;font-size:11px;line-height:1.4;">${escapeHtml(gameText('options.animations.serverOff'))}</div>
+          <div class="options-section-title">${escapeHtml(gameText('options.multiplayer'))}</div>
+          <div class="options-row"><span class="options-label">${escapeHtml(gameText('options.challengeInvites'))}</span><button class="options-toggle-btn" id="opt-challenge-invites">${getChallengeInvitesEnabled()?escapeHtml(gameText('options.enabled')):escapeHtml(gameText('options.off'))}</button></div>
         </section>
 
         <section class="options-column options-column-audio">
@@ -11072,6 +11032,8 @@ export function showOptionsMenu(onBack) {
     setSfxVolume(Number(sfxSlider.value) / 100);
     sfxValue.textContent = `${sfxSlider.value}%`;
   });
+  const challengeInvitesBtn=overlay.querySelector('#opt-challenge-invites');
+  challengeInvitesBtn?.addEventListener('click',()=>{const enabled=setChallengeInvitesEnabled(!getChallengeInvitesEnabled());challengeInvitesBtn.textContent=enabled?gameText('options.enabled'):gameText('options.off');});
 
   if (state.currentUser) {
     overlay.querySelector('#opt-delete-account').addEventListener('click', async () => {

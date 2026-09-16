@@ -1,17 +1,56 @@
 ARGENTINIA RELEASE STATUS
 
 BASELINE_RELEASED=23.21.6 HF9
-CURRENT_CANDIDATE=23.21.6 HF21.2 PRE-RELEASE
-CURRENT_CANDIDATE_BASE=HF21.1 PRE-RELEASE
+CURRENT_CANDIDATE=23.21.6 HF22.3 PRE-RELEASE
+CURRENT_CANDIDATE_BASE=HF22.2 PRE-RELEASE
 POOL=900
 PROTOCOL=mp-23.19.2
+ECONOMY=econ-23.19.5.6
+ECONOMY_SCHEMA=10
 RULES=23.13.89
 FUNCTIONS=41
 
-HF21 alinea la geometría del Lobby en desktop/mobile y compacta el control de código de seis caracteres.
-HF21 activa invitaciones directas de 20 segundos mediante la callable existente multiplayerSendCommunication scope=challenge.
-Aceptar un desafío valida presencia/locks/partida activa y crea atómicamente el match mp-23.19.2 con session fences de host/guest y activeMatchId de ambos usuarios.
-Rules 23.13.89: multiplayerChallenges es participant-read/server-write-only; challenge locks/rate son server-only.
-HF20.1 legacy scope=match y HF20 lobby chat permanecen preservados.
-HF21.2 fixes anti-spam precedence so same-pair cooldown wins over generic invite cadence when both apply.
-Do not call HF21.2 RELEASED until Gate03/05/07, Rules 23.13.89 deploy, Functions 41 deploy/verify, GitHub Actions and two-account production smoke are green.
+HF22 FEATURE RUNTIME REMAINS UNCHANGED IN HF22.3:
+- Lobby chat max 60 + 2h retention, ADMIN-only moderation, long-message wrap.
+- Player stats popover desktop/mobile.
+- Global Direct Challenges + DND + transactional/busy race fences.
+- Tournament normal-loss consolation 15/30/60/100, Admin-configurable; forfeit/abandon/interrupted zero.
+- Mobile Options responsive compact repair.
+
+HF22.1 RELEASE-HARNESS HARDENING:
+- Runtime JS/Functions/Rules behavior from HF22 is unchanged.
+- Gate05 starter test no longer uses a first-write double transaction that historically consumed 23-30s on Windows Firestore Emulator and could exceed the intentional 30s Function timeout.
+- Starter coverage is single commit + two concurrent committed-receipt replays; generic ledger first-write races remain covered by multiple economy operations in the cumulative gate.
+- FUNCTION_RUNTIME_OPTIONS.timeoutSeconds remains 30 (cost-safety contract preserved).
+- Gate05 fail-fast verifies the stable test shape before npm/emulators.
+- Gate07 runs Functions syntax + 21/21 unit tests before emulator integration and verifies explicit trade project binding.
+- GitHub workflow runs Functions syntax + 21/21 unit tests after 141 canonical contracts + dynamic labs.
+
+RULES_CONTENT_CHANGED_FROM_HF22=NO
+FUNCTIONS_RUNTIME_CHANGED_FROM_HF22=NO
+CLIENT_RUNTIME_CHANGED_FROM_HF22=NO
+GATE_HARNESS_CHANGED_FROM_HF22=YES
+GITHUB_WORKFLOW_CHANGED_FROM_HF22=YES_SYNTAX_STEP
+
+GATE03=HF21_GREEN_CARRIED_FORWARD_RULES_23_13_89_BYTE_IDENTICAL
+GATE05=PENDING_HF22_3_USER_RUN
+GATE07=PENDING_HF22_3_USER_RUN
+FUNCTIONS_DEPLOY=PENDING_AFTER_GATES
+GITHUB_ACTIONS=PENDING_UPLOAD
+PRODUCTION_SMOKE=PENDING
+
+HF22_3_LOCAL_CERTIFICATION=141_OF_141_GAME_TEXT_1997_FUNCTIONS21_PARITY56_DYNAMIC_LABS_GREEN_GITHUB_LOCAL_EQUIVALENT_GREEN_FIXTURE_ISOLATION_PREFLIGHT_GREEN
+
+Do not call HF22/HF22.3 RELEASED until Gate05 + Gate07, Functions deploy/verify, GitHub Actions and production smoke are green.
+
+HF22.2 RELEASE-HARNESS FIXTURE VALIDATION:
+- HF22.1 runtime/client/Rules behavior remains unchanged.
+- Gate05 tournament forfeit fixture username corrected from 19 chars to <=18 chars.
+- Gate05 and Gate07 now fail fast on any literal emulator username outside the product contract 3..18 before npm/emulators.
+- GitHub workflow was re-audited locally with 141/141 canonical + 7 dynamic labs + Functions syntax + 21/21 units.
+
+HF22.3 RELEASE-HARNESS AUTH/FIXTURE ISOLATION:
+- Runtime/client/Rules/Functions behavior remains identical to HF22.2/HF22.
+- Lobby Chat ADMIN fixture now safely reuses the canonical Auth identity with create-or-sign-in.
+- Gate05/Gate07 preflight cross-file username uniqueness, Auth email isolation, static Firestore/operationId isolation and hardcoded project IDs before npm/emulators.
+- Only intentionally shared static docs allowed across active test files: gameConfig/economy and gameConfig/settings.

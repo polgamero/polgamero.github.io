@@ -155,6 +155,12 @@ export function sendLobbyCommunicationServer(text = '') {
   });
 }
 
+export function deleteLobbyCommunicationServer(messageSeq) {
+  return call('multiplayerSendCommunication', {
+    scope: 'lobby', action: 'delete', messageSeq: Math.floor(Number(messageSeq) || 0)
+  });
+}
+
 export function sendDirectChallengeServer(action, payload = {}) {
   return call('multiplayerSendCommunication', {
     scope: 'challenge',

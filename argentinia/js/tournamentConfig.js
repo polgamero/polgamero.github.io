@@ -5,18 +5,22 @@
 export const TOURNAMENT_DEFAULT_CONFIG = Object.freeze({
   tournamentRewardedStartsPerDay: 1,
   tournamentNpcRandomnessPercent: 18,
+  tournamentRound16LossPoints: 15,
   tournamentRound16Points: 100,
   tournamentRound16Packs: 0,
   tournamentRound16Difficulty: 'medium',
   tournamentRound16DeckQuality: 'good',
+  tournamentQuarterLossPoints: 30,
   tournamentQuarterPoints: 150,
   tournamentQuarterPacks: 0,
   tournamentQuarterDifficulty: 'medium',
   tournamentQuarterDeckQuality: 'strong',
+  tournamentSemiLossPoints: 60,
   tournamentSemiPoints: 250,
   tournamentSemiPacks: 1,
   tournamentSemiDifficulty: 'hard',
   tournamentSemiDeckQuality: 'strong',
+  tournamentFinalLossPoints: 100,
   tournamentFinalPoints: 500,
   tournamentFinalPacks: 2,
   tournamentFinalDifficulty: 'hard',
@@ -45,10 +49,12 @@ export function applyTournamentConfig(config = {}) {
   TOURNAMENT_POLICY.tournamentNpcRandomnessPercent = int(config.tournamentNpcRandomnessPercent, d.tournamentNpcRandomnessPercent, 0, 100);
   for (const suffix of ['Round16','Quarter','Semi','Final']) {
     const pointsKey = `tournament${suffix}Points`;
+    const lossPointsKey = `tournament${suffix}LossPoints`;
     const packsKey = `tournament${suffix}Packs`;
     const difficultyKey = `tournament${suffix}Difficulty`;
     const qualityKey = `tournament${suffix}DeckQuality`;
     TOURNAMENT_POLICY[pointsKey] = int(config[pointsKey], d[pointsKey]);
+    TOURNAMENT_POLICY[lossPointsKey] = int(config[lossPointsKey], d[lossPointsKey]);
     TOURNAMENT_POLICY[packsKey] = int(config[packsKey], d[packsKey], 0, 100);
     TOURNAMENT_POLICY[difficultyKey] = enumValue(config[difficultyKey], DIFFICULTIES, d[difficultyKey]);
     TOURNAMENT_POLICY[qualityKey] = enumValue(config[qualityKey], QUALITIES, d[qualityKey]);
@@ -61,6 +67,7 @@ export function getTournamentRoundConfig(roundKey) {
   if (!suffix) return null;
   return {
     points: TOURNAMENT_POLICY[`tournament${suffix}Points`],
+    lossPoints: TOURNAMENT_POLICY[`tournament${suffix}LossPoints`],
     packs: TOURNAMENT_POLICY[`tournament${suffix}Packs`],
     difficulty: TOURNAMENT_POLICY[`tournament${suffix}Difficulty`],
     deckQuality: TOURNAMENT_POLICY[`tournament${suffix}DeckQuality`]

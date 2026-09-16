@@ -2,6 +2,7 @@
 // moderation/rate semantics without installing the Functions runtime SDK.
 export const LOBBY_CHAT_MAX_CHARS = 220;
 export const LOBBY_CHAT_EVENT_CAP = 60;
+export const LOBBY_CHAT_RETENTION_MS = 2 * 60 * 60 * 1000;
 export const LOBBY_CHAT_MIN_INTERVAL_MS = 2500;
 export const LOBBY_CHAT_BURST_WINDOW_MS = 30_000;
 export const LOBBY_CHAT_BURST_MAX = 5;

@@ -21,6 +21,11 @@ let current = {
   tournamentRoundKey: ''
 };
 let writeSerial = 0;
+const CHALLENGE_INVITES_KEY = 'argentinia.multiplayer.challengeInvitesEnabled.v1';
+let challengeInteractionBlocked = false;
+let challengeInvitesEnabled = (() => {
+  try { return localStorage.getItem(CHALLENGE_INVITES_KEY) !== '0'; } catch { return true; }
+})();
 
 function cleanString(value, max = 48) {
   return String(value ?? '').trim().slice(0, max);
@@ -39,7 +44,9 @@ function normalizeDifficulty(value) {
 }
 function effectiveSnapshot() {
   const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
-  const availability = hidden && current.availability === 'available' ? 'away' : current.availability;
+  let availability = hidden && current.availability === 'available' ? 'away' : current.availability;
+  if (!hidden && !challengeInvitesEnabled && availability === 'available') availability = 'dnd';
+  if (!hidden && challengeInteractionBlocked && availability === 'available' && ['menu','multiplayer_lobby'].includes(current.activity)) availability = 'busy';
   return {
     activity: hidden && current.activity === 'menu' ? 'away' : current.activity,
     availability,
@@ -102,6 +109,29 @@ export function setPlayerPresenceActivity(activity, options = {}) {
     tournamentRoundKey: cleanString(options.tournamentRoundKey, 40)
   };
   if (activeUid) void writePresence();
+}
+
+
+
+export function getChallengeInteractionBlocked() { return challengeInteractionBlocked; }
+
+export function setChallengeInteractionBlocked(blocked) {
+  const next = blocked === true;
+  if (challengeInteractionBlocked === next) return challengeInteractionBlocked;
+  challengeInteractionBlocked = next;
+  if (activeUid) void writePresence();
+  try { globalThis.dispatchEvent?.(new CustomEvent('argentinia:challenge-interaction-changed', { detail:{ blocked:challengeInteractionBlocked } })); } catch {}
+  return challengeInteractionBlocked;
+}
+
+export function getChallengeInvitesEnabled() { return challengeInvitesEnabled; }
+
+export function setChallengeInvitesEnabled(enabled) {
+  challengeInvitesEnabled = enabled !== false;
+  try { localStorage.setItem(CHALLENGE_INVITES_KEY, challengeInvitesEnabled ? '1' : '0'); } catch {}
+  if (activeUid) void writePresence();
+  try { globalThis.dispatchEvent?.(new CustomEvent('argentinia:challenge-invites-changed', { detail:{ enabled:challengeInvitesEnabled } })); } catch {}
+  return challengeInvitesEnabled;
 }
 
 export async function stopPlayerPresence({ remove = true } = {}) {

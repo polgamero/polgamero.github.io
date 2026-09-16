@@ -156,14 +156,14 @@ export async function settleTournamentMatchTx({db,tx,uid,tournamentId,matchId,wo
   const profile=userSnap.data()||{};
   const statDeltas={gamesPlayed:1,tournamentMatches:1,...(won?{wins:1,tournamentWins:1}:{losses:1,tournamentLosses:1}),...(forfeit?{tournamentForfeits:1}:{})};
 
-  if(won&&run.rewardEligible){
-    pointsGain=nonneg(policy.points);
-    packsGain=nonneg(policy.packs);
+  if(run.rewardEligible && (won || !forfeit)){
+    pointsGain=nonneg(won ? policy.points : policy.lossPoints);
+    packsGain=won ? nonneg(policy.packs) : 0;
     const inventory=inv(profile.inventory);
     profileAfter={...profile,points:nonneg(profile.points)+pointsGain,inventory:{...inventory,standardPacks:inventory.standardPacks+packsGain}};
-    tx.update(userRef,{points:profileAfter.points,inventory:profileAfter.inventory});
-    statDeltas.pointsEarned=pointsGain;
-    statDeltas.packsReceived=packsGain;
+    if(pointsGain>0 || packsGain>0) tx.update(userRef,{points:profileAfter.points,inventory:profileAfter.inventory});
+    if(pointsGain>0) statDeltas.pointsEarned=pointsGain;
+    if(packsGain>0) statDeltas.packsReceived=packsGain;
   } else profileAfter=profile;
 
   let status='active',currentRoundIndex=run.currentRoundIndex,championEntrantId=null;

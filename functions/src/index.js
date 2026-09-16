@@ -40,7 +40,7 @@ import { deriveSoloAbandonReceiptId, normalizeAbandonDurationMs } from './econom
 import { normalizeAdminGrantRequest, adminGrantTx, advanceBulkGrantJob, readBulkGrantJob, adminSyncPlayerStats, adminRepairSoloRewardTx } from './economy/admin.js';
 import { getTournamentState, startTournamentTx, beginTournamentMatchTx, settleTournamentMatchTx, forfeitTournamentTx, abandonTournamentTx } from './economy/tournament.js';
 import { getTradeMarketView, createTradeListingTx, cancelTradeListingTx, createTradeOfferTx, cancelTradeOfferTx, rejectTradeOfferTx, acceptTradeOfferTx } from './economy/trade.js';
-import { sendMultiplayerCommunication, sendLobbyCommunication } from './multiplayer/communication.js';
+import { sendMultiplayerCommunication, sendLobbyCommunication, deleteLobbyCommunication } from './multiplayer/communication.js';
 import { createDirectChallenge, resolveDirectChallenge } from './multiplayer/directChallenges.js';
 import { normalizeAdminEmoteCatalog, setEmoteCatalogAdminTx } from './economy/emotes.js';
 
@@ -404,7 +404,7 @@ export const multiplayerSendCommunication = onCall(FUNCTION_RUNTIME_OPTIONS, asy
   const data = requestData(request);
   try {
     const scope = String(data.scope || 'match').trim().toLowerCase();
-    rejectUnknown(data, ['economyProtocolVersion','scope','matchId','type','text','emoteId','action','targetUid','challengeId','sessionId']);
+    rejectUnknown(data, ['economyProtocolVersion','scope','matchId','type','text','emoteId','action','targetUid','challengeId','sessionId','messageSeq']);
     if (scope === 'challenge') {
       const action = String(data.action || '').trim().toLowerCase();
       assertRateLimit(auth.uid, 'multiplayer-challenge', { limit: 30, windowMs: 5 * 60000 });
@@ -416,12 +416,19 @@ export const multiplayerSendCommunication = onCall(FUNCTION_RUNTIME_OPTIONS, asy
       return { ok:true, scope:'challenge', action, ...result };
     }
     if (scope === 'lobby') {
-      // HF20: mismo perímetro Auth/AppCheck/logging, canal global separado y server-owned.
-      // La autoridad persistente aplica un throttle más estricto que el chat 1v1.
+      const action = String(data.action || 'send').trim().toLowerCase();
+      if (action === 'delete') {
+        if (!isAdminAuth(auth)) throw economyError('ADMIN_REQUIRED');
+        assertRateLimit(auth.uid, 'multiplayer-lobby-moderation', { limit: 60, windowMs: 5 * 60000 });
+        const result = await deleteLobbyCommunication({ db, uid:auth.uid, seq:data.messageSeq });
+        return { ok:true, scope:'lobby', action, ...result };
+      }
+      if (action !== 'send') throw economyError('LOBBY_CHAT_TYPE_INVALID');
+      // HF22: canal global efímero, server-owned, máximo 60 mensajes / 2 horas.
       assertRateLimit(auth.uid, 'multiplayer-lobby-chat', { limit: 24, windowMs: 5 * 60000 });
       if (String(data.type || 'chat').trim().toLowerCase() !== 'chat') throw economyError('LOBBY_CHAT_TYPE_INVALID');
       const result = await sendLobbyCommunication({ db, uid:auth.uid, text:data.text });
-      return { ok:true, scope:'lobby', ...result };
+      return { ok:true, scope:'lobby', action, ...result };
     }
     if (scope !== 'match') throw economyError('MULTIPLAYER_SOCIAL_SCOPE_INVALID');
     // Cheap in-memory brake before the persistent per-match throttle. Persistent limits

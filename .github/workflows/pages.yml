@@ -185,9 +185,11 @@ jobs:
           node tools/run_multiplayer_hardening_lab_23_19_1.mjs --cases 5000
           node tools/audit_deck_intelligence_matrix_23_19_5.mjs
 
-      - name: Validate Economy + Tournament + Trade + Card Publication Functions unit suite 23.21.6
+      - name: Validate Functions syntax + Economy/Tournament/Trade/Social unit suite 23.21.6
         working-directory: ./functions
-        run: npm test
+        run: |
+          npm run lint:syntax
+          npm test
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

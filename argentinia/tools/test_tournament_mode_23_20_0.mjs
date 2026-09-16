@@ -49,7 +49,7 @@ assert.match(main,/buildRandomDeck\(botIdentity, \{ quality: botQuality, archety
 assert.match(main,/\{ tournament: !!state\.currentTournamentMatch \}/);
 assert.match(main,/argentinia\.tournament\.openAfterReload\.v1/);
 
-for(const field of ['tournamentRewardedStartsPerDay','tournamentNpcRandomnessPercent','tournamentRound16Points','tournamentQuarterPoints','tournamentSemiPoints','tournamentFinalPoints','tournamentRound16Difficulty','tournamentFinalDeckQuality']) assert.ok(config.includes(field),field);
+for(const field of ['tournamentRewardedStartsPerDay','tournamentNpcRandomnessPercent','tournamentRound16Points','tournamentRound16LossPoints','tournamentQuarterPoints','tournamentQuarterLossPoints','tournamentSemiPoints','tournamentSemiLossPoints','tournamentFinalPoints','tournamentFinalLossPoints','tournamentRound16Difficulty','tournamentFinalDeckQuality']) assert.ok(config.includes(field),field);
 assert.match(config,/config = config && typeof config === 'object'/);
 assert.match(ui,/TORNEO · PREMIOS Y LÍMITES/);
 assert.match(ui,/TORNEO · DIFICULTAD Y MAZOS/);
@@ -62,8 +62,8 @@ for(const callable of ['economyGetTournament','economyStartTournament','economyB
 for(const proxy of ['getTournamentState','startTournament','beginTournamentMatch','settleTournamentMatch','forfeitTournament','abandonTournament']) assert.ok(facade.includes(`'${proxy}'`)||impl.includes(`function ${proxy}`),proxy);
 assert.match(index,/tournamentAuthority: 'server'/);
 assert.match(core,/rewardedStartsPerDay:1/);
-assert.match(core,/round16:Object\.freeze\(\{ points:100,packs:0,difficulty:'medium',deckQuality:'good' \}\)/);
-assert.match(core,/final:Object\.freeze\(\{ points:500,packs:2,difficulty:'hard',deckQuality:'elite' \}\)/);
+assert.match(core,/round16:Object\.freeze\(\{ points:100,lossPoints:15,packs:0,difficulty:'medium',deckQuality:'good' \}\)/);
+assert.match(core,/final:Object\.freeze\(\{ points:500,lossPoints:100,packs:2,difficulty:'hard',deckQuality:'elite' \}\)/);
 assert.match(tournament,/tournamentReceipts/);
 assert.match(tournament,/economyEvents/);
 assert.match(tournament,/playerStatsMirrorServer/);
