@@ -9436,7 +9436,7 @@ function injectMultiplayerLobbyStyles() {
     .mp-live-empty { padding:26px 15px; color:#7e9084; text-align:center; font-size:12px; line-height:1.5; }
 
     .mp-chat-list { min-height:0; flex:1 1 auto; overflow:auto; overscroll-behavior:contain; padding:8px 10px; display:flex; flex-direction:column; gap:7px; }
-    .mp-chat-row { min-width:0; box-sizing:border-box; padding:8px 9px; border-radius:9px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.035); line-height:1.35; overflow:hidden; }
+    .mp-chat-row { min-width:0; box-sizing:border-box; padding:8px 9px; border-radius:9px; background:rgba(255,255,255,.025); border:1px solid rgba(255,255,255,.035); line-height:1.35; overflow:hidden; flex:0 0 auto; flex-shrink:0; height:auto; }
     .mp-chat-row.is-own { background:rgba(212,175,55,.055); border-color:rgba(212,175,55,.12); }
     .mp-chat-meta { min-width:0; display:flex; align-items:center; gap:7px; margin-bottom:4px; }
     .mp-chat-name { color:#f0e0b0; margin:0; font-size:12px; flex:1 1 auto; min-width:0; }
@@ -9801,13 +9801,40 @@ export function showMultiplayerLobby(onBack, onMatched) {
     pop.addEventListener('pointerleave', () => { playerPopoverHideTimer=setTimeout(closePlayerStatsPopover,120); });
   }
   function bindPlayerStatsInteractions(scope) {
+    const finePointer = !!globalThis.matchMedia?.('(hover:hover) and (pointer:fine)')?.matches;
     scope?.querySelectorAll?.('.mp-player-name[data-player-uid],.mp-chat-name[data-player-uid]').forEach(node => {
       node.setAttribute('tabindex','0'); node.setAttribute('role','button');
-      node.addEventListener('click', event => { event.stopPropagation(); if (document.querySelector('#mp-player-popover')) closePlayerStatsPopover(); else showPlayerStatsPopover(node); });
-      node.addEventListener('focus', () => showPlayerStatsPopover(node));
-      node.addEventListener('blur', () => { playerPopoverHideTimer=setTimeout(closePlayerStatsPopover,120); });
-      node.addEventListener('pointerenter', () => { if (globalThis.matchMedia?.('(hover:hover) and (pointer:fine)')?.matches) showPlayerStatsPopover(node); });
-      node.addEventListener('pointerleave', () => { if (globalThis.matchMedia?.('(hover:hover) and (pointer:fine)')?.matches) playerPopoverHideTimer=setTimeout(closePlayerStatsPopover,120); });
+      node.style.touchAction = 'manipulation';
+      // HF23 P0: Safari/iOS puede convertir title en un tooltip nativo que exige long-press.
+      // En superficies táctiles quitamos title y usamos pointerup para un tap corto real.
+      if (!finePointer) node.removeAttribute('title');
+      let suppressSyntheticClickUntil = 0;
+      const togglePopover = event => {
+        event?.stopPropagation?.();
+        if (document.querySelector('#mp-player-popover')) closePlayerStatsPopover();
+        else showPlayerStatsPopover(node);
+      };
+      node.addEventListener('pointerup', event => {
+        if (finePointer || !event.isPrimary || !['touch','pen'].includes(String(event.pointerType || ''))) return;
+        event.preventDefault();
+        suppressSyntheticClickUntil = Date.now() + 650;
+        togglePopover(event);
+      });
+      node.addEventListener('click', event => {
+        if (Date.now() < suppressSyntheticClickUntil) { event.preventDefault(); event.stopPropagation(); return; }
+        togglePopover(event);
+      });
+      node.addEventListener('keydown', event => {
+        if (!['Enter',' '].includes(event.key)) return;
+        event.preventDefault();
+        togglePopover(event);
+      });
+      if (finePointer) {
+        node.addEventListener('focus', () => showPlayerStatsPopover(node));
+        node.addEventListener('blur', () => { playerPopoverHideTimer=setTimeout(closePlayerStatsPopover,120); });
+        node.addEventListener('pointerenter', () => showPlayerStatsPopover(node));
+        node.addEventListener('pointerleave', () => { playerPopoverHideTimer=setTimeout(closePlayerStatsPopover,120); });
+      }
     });
   }
 

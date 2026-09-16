@@ -1,14 +1,21 @@
 ARGENTINIA RELEASE STATUS
 
 BASELINE_RELEASED=23.21.6 HF9
-CURRENT_CANDIDATE=23.21.6 HF22.3 PRE-RELEASE
-CURRENT_CANDIDATE_BASE=HF22.2 PRE-RELEASE
+CURRENT_CANDIDATE=23.21.6 HF23 PRE-RELEASE
+CURRENT_CANDIDATE_BASE=HF22.3 PRE-RELEASE
 POOL=900
 PROTOCOL=mp-23.19.2
 ECONOMY=econ-23.19.5.6
 ECONOMY_SCHEMA=10
 RULES=23.13.89
 FUNCTIONS=41
+
+
+HF23 P0 RECOVERY:
+- Client runtime changes only: Lobby chat rows cannot shrink; touch/coarse player stats popover uses short pointerup tap and removes native title/long-press dependency.
+- Rules unchanged 23.13.89; Functions unchanged 41.
+- New canonical contract raises fast suite 141 -> 142; local 142/142 PASS.
+- Community/moderation/market/bots are explicitly staged for HF23.1-HF23.3 and are NOT claimed as implemented in this P0 ZIP.
 
 HF22 FEATURE RUNTIME REMAINS UNCHANGED IN HF22.3:
 - Lobby chat max 60 + 2h retention, ADMIN-only moderation, long-message wrap.
@@ -24,17 +31,17 @@ HF22.1 RELEASE-HARNESS HARDENING:
 - FUNCTION_RUNTIME_OPTIONS.timeoutSeconds remains 30 (cost-safety contract preserved).
 - Gate05 fail-fast verifies the stable test shape before npm/emulators.
 - Gate07 runs Functions syntax + 21/21 unit tests before emulator integration and verifies explicit trade project binding.
-- GitHub workflow runs Functions syntax + 21/21 unit tests after 141 canonical contracts + dynamic labs.
+- GitHub workflow runs Functions syntax + 21/21 unit tests after 142 canonical contracts + dynamic labs.
 
 RULES_CONTENT_CHANGED_FROM_HF22=NO
 FUNCTIONS_RUNTIME_CHANGED_FROM_HF22=NO
-CLIENT_RUNTIME_CHANGED_FROM_HF22=NO
+CLIENT_RUNTIME_CHANGED_FROM_HF22=YES_HF23_P0_LOBBY_CHAT_NO_SHRINK_PLUS_TOUCH_POPOVER
 GATE_HARNESS_CHANGED_FROM_HF22=YES
 GITHUB_WORKFLOW_CHANGED_FROM_HF22=YES_SYNTAX_STEP
 
 GATE03=HF21_GREEN_CARRIED_FORWARD_RULES_23_13_89_BYTE_IDENTICAL
-GATE05=PENDING_HF22_3_USER_RUN
-GATE07=PENDING_HF22_3_USER_RUN
+GATE05=PENDING_HF23_USER_RUN_IF_PROMOTING_THIS_PACKAGE
+GATE07=PENDING_HF23_USER_RUN_IF_PROMOTING_THIS_PACKAGE
 FUNCTIONS_DEPLOY=PENDING_AFTER_GATES
 GITHUB_ACTIONS=PENDING_UPLOAD
 PRODUCTION_SMOKE=PENDING

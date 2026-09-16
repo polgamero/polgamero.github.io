@@ -1,0 +1,27 @@
+ARGENTINIA 23.21.6 HF23 PRE-RELEASE
+RECUPERACIÓN P0 DEL LOBBY + ROADMAP COMMUNITY/MODERATION/MARKET/BOTS
+
+BASE DE RECUPERACIÓN:
+- Último artefacto concreto recuperado: Argentinia_23.21.6_HF22.3_PRE.zip.
+- No existía un ZIP HF23 persistido: las modificaciones posteriores a HF22.3 habían quedado en el working state de la conversación anterior.
+- Este paquete reconstruye primero los dos P0 solicitados y preserva por escrito todo el estado/arquitectura recuperado para continuar sin perder decisiones.
+
+P0 IMPLEMENTADO EN ESTE ENTREGABLE:
+1) Chat del Lobby: cada .mp-chat-row conserva altura natural con flex:0 0 auto + flex-shrink:0 + height:auto. El único elemento que scrollea es .mp-chat-list. Los mensajes ya no se comprimen al acumularse.
+2) Perfil/estadísticas mobile: en pointer coarse se elimina title para evitar el tooltip nativo/long-press de Safari/iOS. El popover abre/cierra con pointerup de touch/pen, se suprime el click sintético posterior y se usa touch-action:manipulation. Desktop conserva hover/focus/click.
+
+SIN CAMBIO EN ESTE STAGE P0:
+- Firestore Rules 23.13.89.
+- Functions: 41.
+- Protocol mp-23.19.2.
+- Economy econ-23.19.5.6 / schema 10.
+- Pool físico 900 / baseline publicada 880.
+
+CONTRATO NUEVO:
+- tools/test_multiplayer_lobby_p0_23_21_6_hf23.mjs
+- Canonical fast contracts: 142.
+
+ROADMAP RESTANTE:
+Ver 04_QA_Docs/ROADMAP_23_21_6_HF23_COMMUNITY_MODERATION_MARKET_BOTS_RECOVERY.txt
+
+STATUS: PRE-RELEASE. Este ZIP es el primer entregable de recuperación HF23, deliberadamente acotado a los P0 para no volver a mezclar múltiples bloques sin cierre verificable.

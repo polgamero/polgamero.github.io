@@ -156,3 +156,4 @@ tools/test_multiplayer_lobby_ux_chat_23_21_6_hf20.mjs
 tools/test_multiplayer_direct_challenges_23_21_6_hf21.mjs
 
 tools/test_social_ux_tournament_mobile_options_23_21_6_hf22.mjs
+tools/test_multiplayer_lobby_p0_23_21_6_hf23.mjs
