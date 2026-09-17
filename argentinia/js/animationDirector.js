@@ -71,6 +71,17 @@ let skippedCount = 0;
 let cloneCount = 0;
 let lastEvent = null;
 let presentationCueEmitter = null;
+const animationObjectIds = new WeakMap();
+let animationObjectSerial = 0;
+
+export function ensureAnimationVisualIdentity(item) {
+  if (!item || (typeof item !== 'object' && typeof item !== 'function')) return '';
+  const authoritative = item?._syncObjectId || item?._effectObjectId || item?.card?.instanceId || item?.instanceId || null;
+  if (authoritative) return String(authoritative);
+  let id = animationObjectIds.get(item);
+  if (!id) { id = `animobj_${++animationObjectSerial}`; animationObjectIds.set(item,id); }
+  return id;
+}
 
 function normalizeSpeed(value) {
   const speed = String(value || '').toLowerCase();
@@ -484,13 +495,26 @@ function findCardElement(item, sideHint = null) {
   if (debugEl?.getBoundingClientRect) return debugEl;
   const syncId = item?._syncObjectId;
   if (syncId) {
-    const bySync = document.querySelector(`[data-sync-object-id="${String(syncId).replace(/"/g,'\\"')}"]`);
+    const bySync = document.querySelector(`[data-sync-object-id="${cssAttr(syncId)}"]`);
     if (bySync) return bySync;
+  }
+  const authoritativeVisualId = item?._effectObjectId || item?.card?.instanceId || item?.instanceId || null;
+  const rememberedVisualId = animationObjectIds.get(item) || null;
+  const visualId = authoritativeVisualId || rememberedVisualId;
+  if (visualId) {
+    const byVisual = document.querySelector(`[data-animation-object-id="${cssAttr(visualId)}"]`);
+    // This object has a physical identity. If its DOM node no longer exists, never fall
+    // through to card.id: another copy may still exist and would become a false origin.
+    return byVisual || null;
   }
   const cardId = item?.card?.id;
   if (!cardId) return null;
-  const selector = sideHint ? `[data-card-id="${cardId}"][data-side="${sideHint}"]` : `[data-card-id="${cardId}"]`;
-  return document.querySelector(selector);
+  const selector = sideHint ? `[data-card-id="${cssAttr(cardId)}"][data-side="${cssAttr(sideHint)}"]` : `[data-card-id="${cssAttr(cardId)}"]`;
+  const matches=[...document.querySelectorAll(selector)];
+  // Never animate from the wrong physical copy. Legacy/card-id fallback is safe only when
+  // the DOM contains exactly one candidate; duplicated IDs intentionally suppress the
+  // cinematic instead of jumping from graveyard/exile or a different battlefield copy.
+  return matches.length===1 ? matches[0] : null;
 }
 
 export function captureCardVisual(item, sideHint = null, { force = false } = {}) {

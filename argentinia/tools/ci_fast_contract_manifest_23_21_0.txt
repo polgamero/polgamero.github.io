@@ -163,3 +163,7 @@ tools/test_community_moderation_suspend_mobile_23_21_6_hf23_1.mjs
 tools/test_trade_notifications_land_filters_mobile_attack_23_21_6_hf23_2.mjs
 
 tools/test_ambient_population_23_21_6_hf23_3.mjs
+
+tools/test_moderation_admin_ux_23_21_6_hf23_3_4.mjs
+
+tools/test_hf23_3_5_integrity_ai_hotfix.mjs

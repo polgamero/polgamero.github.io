@@ -14,6 +14,8 @@ const firebaseImpl=read('js/firebaseClientImpl.js');
 const functionsIndex=read('../functions/src/index.js');
 const directChallenges=read('../functions/src/multiplayer/directChallenges.js');
 const bots=read('../functions/src/community/bots.js');
+const admission=read('../functions/src/economy/admission.js');
+const animations=read('js/animationDirector.js');
 const manifest=JSON.parse(read('build-manifest.json'));
 
 assert.equal([...functionsIndex.matchAll(/export const \w+\s*=\s*onCall\(/g)].length,42,'HF23.3 must reuse economyCommunityAction; no new callable instance');
@@ -59,10 +61,20 @@ assert.match(bots,/rejectTradeOfferTx/);
 assert.match(bots,/if\(offeredRank<listedRank\)/);
 assert.match(bots,/acceptHigherPct/);
 assert.match(bots,/acceptEqualPct/);
+assert.match(bots,/buildAmbientWantedCriteria/);
+assert.match(bots,/acceptAnyCard:false/,'ambient Market listings must publish BUSCO criteria, never accept-any');
+assert.match(admission,/where\('isSystemBot','==',true\)\.count\(\)/,'system accounts must be excluded from registration capacity');
+assert.match(admission,/countScope:ADMISSION_COUNTER_SCOPE/,'legacy admission counters must migrate to human-only scope');
+
+// Duplicate-card cinematics must bind to a physical object identity. Card-id fallback is
+// allowed only when unique, so a graveyard/exile copy can never steal the origin.
+assert.match(animations,/ensureAnimationVisualIdentity/);
+assert.match(ui,/dataset\.animationObjectId/);
+assert.match(animations,/matches\.length===1 \? matches\[0\] : null/);
 
 // Simulated competitive movement is bot-vs-bot only and bounded.
 assert.match(bots,/simulateBotGames/);
 assert.match(bots,/Math\.max\(1050,Math\.min\(1350/);
 assert.match(ui,/ambientUids=new Set/,'Admin statistics must exclude ambient system accounts from human KPIs');
 
-console.log('AMBIENT_POPULATION_23_21_6_HF23_3_OK functions=42 identities=PRIVATE publicBadge=NONE presence=06:00-23:30+RANDOM challenges=AUTO_REJECT market=REAL_INVENTORY+RARITY_GUARD stats=HUMAN_ISOLATED');
+console.log('AMBIENT_POPULATION_23_21_6_HF23_3_OK functions=42 identities=PRIVATE admission=HUMAN_ONLY publicBadge=NONE presence=06:00-23:30+RANDOM challenges=AUTO_REJECT market=COHERENT_BUSCO+RARITY_GUARD animationIdentity=PHYSICAL_COPY stats=HUMAN_ISOLATED');

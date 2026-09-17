@@ -71,6 +71,7 @@ import { chooseHardAttackPlan, chooseHardBlockPlan, combatUnitValue, COMBAT_BOT_
 import { isCreatureReservedByBotStack, isStackObjectReservedByBotCounter } from './botTargetReservation.js';
 import { getCounterCount } from './counterEngine.js';
 import { previewReplacementEvent } from './replacementEngine.js';
+import { isLegendaryPermanentCard } from './rulesKernel.js';
 
 
 const botThinkDelay = (ms) => globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true ? Promise.resolve() : sleep(ms);
@@ -87,6 +88,20 @@ function botManaSacrifices(item, isLocal = false) { return !!botEffectiveManaAbi
 function botCanActivateMana(item, isLocal = false) {
   const ability = botEffectiveManaAbility(item, isLocal);
   return !!ability && canActivateManaSourcePermanent(item, { hasHaste:hasKeyword(item, 'haste'), ability });
+}
+
+// HF23.3.5 — la Regla de Leyenda sigue siendo una SBA legal del motor, pero el Tano no
+// debe gastar carta/maná a sabiendas en una segunda copia del mismo permanente legendario.
+// Es una decisión estratégica, no una prohibición de casteo para humanos.
+function botControlsLegendaryNamed(card) {
+  if (!isLegendaryPermanentCard(card)) return false;
+  const type=String(card?.type || '');
+  if (!/(Criatura|Planeswalker|Artefacto|Encantamiento|Tierra)/i.test(type)) return false;
+  const name=String(card?.name || '').trim().toLocaleLowerCase('es');
+  if (!name) return false;
+  return [...state.rivalCombat, ...state.rivalSupport, ...state.rivalLands, ...state.rivalPlaneswalkers]
+    .some(item => isLegendaryPermanentCard(item?.card)
+      && String(item?.card?.name || '').trim().toLocaleLowerCase('es') === name);
 }
 
 function moveBotCounteredSpell(stackItem, cause='ward') {
@@ -563,7 +578,7 @@ async function tryFlashbackOrEscapeFromBotGraveyard() {
 
   const isUsable = (c) => {
     const meta = getAbility(c);
-    if (!meta || !canBotPayCastRoute(c, false, { baseOverride: meta.ability.cost, excludeCard: null })) return false;
+    if (!meta || botControlsLegendaryNamed(c) || !canBotPayCastRoute(c, false, { baseOverride: meta.ability.cost, excludeCard: null })) return false;
     if (meta.source === 'escape') {
       const exileCount = meta.ability.exileCount || 0;
       const extraCostExiles = getCastCompositeCostBundle(c, false).graveyardExiles.reduce((sum, spec) => sum + (spec.amount || 0), 0);
@@ -1246,10 +1261,10 @@ function chooseStrategicBotCrewSet(vehicleItem, candidates, required, mode) {
     // Un Transporte que entró este turno no puede atacar salvo Apuro. Crew no elimina mareo.
     if(vehicleItem.enteredThisTurn && !hasKeyword(vehicleItem,'haste')) return null;
     const defenders=state.localCombat.map((unit,index)=>({unit,index})).filter(({unit})=>!unit.tapped);
-    const baselineEligible=state.rivalCombat.map((unit,index)=>({unit,index})).filter(({unit})=>!unit.tapped&&!unit.summoningSickness&&!hasKeyword(unit,'defender'));
+    const baselineEligible=state.rivalCombat.map((unit,index)=>({unit,index})).filter(({unit})=>!unit.tapped&&(!unit.summoningSickness||hasKeyword(unit,'haste'))&&!hasKeyword(unit,'defender'));
     if(!strategic){
       const chosen=sets[0];
-      const attackableCost=chosen.chosen.filter(c=>!c.summoningSickness&&!c.tapped).reduce((sum,c)=>sum+Math.max(0,getEffectivePower(c)||0),0);
+      const attackableCost=chosen.chosen.filter(c=>(!c.summoningSickness||hasKeyword(c,'haste'))&&!c.tapped).reduce((sum,c)=>sum+Math.max(0,getEffectivePower(c)||0),0);
       return Number(virtualVehicle.card.power||0)>attackableCost ? chosen : null;
     }
     const baseline=chooseHardAttackPlan({eligibleAttackers:baselineEligible,defenders,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
@@ -1258,7 +1273,7 @@ function chooseStrategicBotCrewSet(vehicleItem, candidates, required, mode) {
       const crewSet=new Set(option.chosen);
       const virtualIndex=state.rivalCombat.length;
       const eligible=state.rivalCombat.map((unit,index)=>({unit,index}))
-        .filter(({unit})=>!crewSet.has(unit)&&!unit.tapped&&!unit.summoningSickness&&!hasKeyword(unit,'defender'));
+        .filter(({unit})=>!crewSet.has(unit)&&!unit.tapped&&(!unit.summoningSickness||hasKeyword(unit,'haste'))&&!hasKeyword(unit,'defender'));
       eligible.push({unit:virtualVehicle,index:virtualIndex});
       const plan=chooseHardAttackPlan({eligibleAttackers:eligible,defenders,botLife:state.rivalHP,opponentLife:state.localHP,helpers});
       if(!plan.indexes.includes(virtualIndex)) continue; // si no lo va a usar, no paga Crew.
@@ -1421,7 +1436,7 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
 
       const manaCostString = costStr.replace('{T}', '').replace(',', '').trim();
       const dummyCardForCost = { manaCost: manaCostString || null };
-      const reservedManaSources = requiresTap ? [supportItem] : [];
+      let reservedManaSources = requiresTap ? [supportItem] : [];
       if (dummyCardForCost.manaCost && !canRivalAfford(dummyCardForCost, { excludeItems: reservedManaSources })) continue;
       const timing = getActivatedAbilityTiming(ability);
       // Sin costo, sin {T} y sin sacrificio, una habilidad instantánea repetible podría hacer
@@ -1486,17 +1501,39 @@ export function tryActivateBotAbilities({ instantOnly = false } = {}) {
         const animationHasHaste = animationKeywords.some(keyword => String(keyword || '').trim().toLowerCase() === 'haste') || hasKeyword(supportItem, 'haste');
         const canAttackAfterAnimation = !supportItem.tapped && (!supportItem.enteredThisTurn || animationHasHaste);
         const canBlockAfterAnimation = !supportItem.tapped;
-        const offensiveWindow = state.activePlayer === 'rival' && state.phase === 'main1' && canAttackAfterAnimation;
-        const defensiveWindow = timing === 'instant' && state.activePlayer === 'local' && state.phase === 'combat_blockers' && canBlockAfterAnimation;
+        const wantsOffensiveAnimation = state.activePlayer === 'rival' && state.phase === 'main1' && canAttackAfterAnimation;
+        const wantsDefensiveAnimation = timing === 'instant' && state.activePlayer === 'local' && state.phase === 'combat_blockers' && canBlockAfterAnimation;
+        // HF23.3.5 — si la Tierra debe atacar O bloquear después de animarse, ella misma queda
+        // reservada durante el pago. El caso real de Parque Pereyra pagaba {3}{G} girando las
+        // cuatro Tierras, incluido el Parque: resolvía como 4/4 pero ya girado y no podía atacar.
+        const canPayWithoutTappingAnimatedLand = !dummyCardForCost.manaCost
+          || canRivalAfford(dummyCardForCost,{excludeItems:[...new Set([...reservedManaSources,supportItem])]});
+        const animateSpend=botAbilityManaAmount(manaCostString);
+        const animateAvailable=Math.max(0,getRivalTotalAvailableMana());
+        const preservePlayableSpell = wantsOffensiveAnimation
+          && botHasCapability(state.botDifficulty,'strategicMainPhase')
+          && botHasPlayableMainPhaseSpellNow()
+          && animateAvailable>0 && (animateSpend / animateAvailable) >= .60;
+        const offensiveWindow = wantsOffensiveAnimation && canPayWithoutTappingAnimatedLand && !preservePlayableSpell;
+        const defensiveWindow = wantsDefensiveAnimation && canPayWithoutTappingAnimatedLand;
+        if (offensiveWindow || defensiveWindow) {
+          reservedManaSources=[...new Set([...reservedManaSources,supportItem])];
+          // Revalidación explícita con la reserva que también se usará al pagar más abajo.
+          if (dummyCardForCost.manaCost && !canRivalAfford(dummyCardForCost,{excludeItems:reservedManaSources})) continue;
+        }
         shouldActivate = offensiveWindow || defensiveWindow;
         if (!shouldActivate) {
           recordTelemetryEvent('bot_animate_land_deferred', {
             turnCount: state.turnCount, phase: state.phase, activePlayer: state.activePlayer,
             cardId: card?.id || null, cardName: card?.name || null,
             enteredThisTurn: !!supportItem.enteredThisTurn, tapped: !!supportItem.tapped,
-            animationHasHaste, reason: state.phase === 'main1' && state.activePlayer === 'rival'
-              ? (supportItem.tapped ? 'tapped' : 'summoning_sickness')
-              : (state.phase === 'main1' ? 'opponent_main1' : 'outside_combat_window')
+            animationHasHaste, reason: preservePlayableSpell
+              ? 'preserve_main_phase_spell'
+              : wantsOffensiveAnimation && !canPayWithoutTappingAnimatedLand
+                ? 'would_tap_animation_source'
+                : state.phase === 'main1' && state.activePlayer === 'rival'
+                ? (supportItem.tapped ? 'tapped' : 'summoning_sickness')
+                : (state.phase === 'main1' ? 'opponent_main1' : 'outside_combat_window')
           });
         }
       }
@@ -1683,7 +1720,7 @@ export function tryActivateGrantedBotAbilities({ instantOnly = false } = {}) {
       if (hasPendingBotActivatedAbility(sourceItem, abilityIndex)) continue;
       const costStr = ability.cost || '';
       const requiresTap = costStr.includes('{T}');
-      if (requiresTap && (creatureItem.tapped || creatureItem.summoningSickness)) continue;
+      if (requiresTap && (creatureItem.tapped || (creatureItem.summoningSickness && !hasKeyword(creatureItem,'haste')))) continue;
 
       const manaCostString = costStr.replace('{T}', '').replace(',', '').trim();
       const dummyCardForCost = { manaCost: manaCostString || null };
@@ -1876,6 +1913,7 @@ function resolveBotModalVariantForPreflight(card) {
 function canBotBuildMainPhaseCastProposal(rawCard) {
   const card = resolveBotModalVariantForPreflight(rawCard);
   if (!card) return false;
+  if (botControlsLegendaryNamed(card)) return false;
 
   // Auras: replicamos exactamente el criterio del casteo real (maldición rival vs buff propio).
   if (card.adjunta) {
@@ -1996,6 +2034,10 @@ async function tryBotCastFromExile({ instantOnly = false } = {}) {
       const modeIdx=chooseBotMode(card); const chosen=card.modes[modeIdx];
       card={...card,effect:chosen.effect,requiresTarget:chosen.requiresTarget,chosenModeText:chosen.text};
     }
+    if (botControlsLegendaryNamed(card)) {
+      recordTelemetryEvent('bot_legend_duplicate_deferred',{turnCount:state.turnCount,phase:state.phase,cardId:card?.id||null,cardName:card?.name||null,castFrom:'exile'});
+      continue;
+    }
     const baseOverride=permissionBaseManaOverride(permission);
     let useAlternative=false;
     if(baseOverride===null){
@@ -2081,6 +2123,10 @@ export async function castSuspendedCardForBot(original) {
   if(card.modal && card.modes?.length){
     const modeIdx=chooseBotMode(card); const chosen=card.modes[modeIdx];
     card={...card,effect:chosen.effect,requiresTarget:chosen.requiresTarget,chosenModeText:chosen.text};
+  }
+  if (botControlsLegendaryNamed(card)) {
+    recordTelemetryEvent('bot_legend_duplicate_deferred',{turnCount:state.turnCount,phase:state.phase,cardId:card?.id||null,cardName:card?.name||null,castFrom:'suspend'});
+    return false;
   }
   const baseOverride='{0}';
   let botKicked=false;
@@ -2761,7 +2807,7 @@ export async function takeBotPriorityAction() {
     const eligibleAttackers=state.rivalCombat
       .map((unit,index)=>({unit,index}))
       .filter(({unit,index})=>{
-        if(hasKeyword(unit,'defender')||unit.tapped||unit.summoningSickness||attackLockFor(unit))return false;
+        if(hasKeyword(unit,'defender')||unit.tapped||(unit.summoningSickness&&!hasKeyword(unit,'haste'))||attackLockFor(unit))return false;
         const threat=lethalBlockTriggerThreat(unit);
         if(threat){lethalHeld.push({index,attacker:unit.card?.name||'',blocker:threat.blocker?.card?.name||'',amount:threat.amount,hp:state.rivalHP});return false;}
         return true;
@@ -2804,7 +2850,7 @@ export async function takeBotPriorityAction() {
         continue;
       }
 
-      if (!unit.tapped && !unit.summoningSickness) {
+      if (!unit.tapped && (!unit.summoningSickness || hasKeyword(unit,'haste'))) {
         const shouldAttack = hardAttackIndexes ? hardAttackIndexes.has(unitIndex) : shouldRivalAttackWith(unit);
         if (shouldAttack) {
           unit.isAttacking = true;

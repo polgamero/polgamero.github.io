@@ -7515,7 +7515,10 @@ export function handleCombatClick(item, isLocal, index) {
       logMsg(gameText('combat.local.defender', { card: item.card.name }));
       return;
     }
-    if (item.summoningSickness) {
+    // HF23.3.5 — el mareo sólo impide atacar mientras la criatura NO tenga Apuro efectivo.
+    // Apuro puede venir de Aura/Equipo/efecto estático, así que no debe depender de haber
+    // borrado físicamente summoningSickness al entrar al battlefield.
+    if (item.summoningSickness && !hasKeyword(item, 'haste')) {
       logMsg(gameText('combat.local.summoningSick', { card: item.card.name }));
       return;
     }
@@ -7781,7 +7784,7 @@ function beginActivatedAbility(source, displayName = source.sourceName || source
   // {T} en una criatura está sujeto al mareo; {T} en un Artefacto/Tierra no. Esto conserva
   // exactamente la diferencia histórica entre habilidades propias de criatura y soporte.
   const combatZone = source.isLocal ? state.localCombat : state.rivalCombat;
-  if (requiresTap && combatZone.includes(tapTarget) && tapTarget.summoningSickness) {
+  if (requiresTap && combatZone.includes(tapTarget) && tapTarget.summoningSickness && !hasKeyword(tapTarget, 'haste')) {
     logMsg(gameText('ability.summoningSick', { card: tapTarget.card.name, source: source.sourceName || displayName }));
     return true;
   }

@@ -98,7 +98,7 @@ import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 import { enterMenuAudio, getAudioSettings, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
 import { setPlayerPresenceActivity, isPresenceOnline, isPresenceAvailable, describePresenceActivity, presenceTimestampMs, getChallengeInvitesEnabled, setChallengeInvitesEnabled } from './multiplayerPresence.js';
-import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer } from './animationDirector.js';
+import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer, ensureAnimationVisualIdentity } from './animationDirector.js';
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
 import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandActivatedAbilities, describeLandTransformation } from './landCharacteristics.js';
@@ -1781,7 +1781,9 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   const isBattlefieldLand = !!itemObj?.card && isLandPermanent(itemObj) && (zone === 'land' || zone === 'combat' || zone === 'support');
   const el = document.createElement('div');
   
-  const isSick = itemObj.summoningSickness ? 'sick' : '';
+  // HF23.3.5 — una criatura puede conservar el flag histórico de mareo pero recibir
+  // Apuro dinámicamente (Aura/Equipo/efecto). La UI debe reflejar la legalidad efectiva.
+  const isSick = itemObj.summoningSickness && !getEffectiveKeywords(itemObj).some(k => String(k || '').trim().toLowerCase() === 'haste') ? 'sick' : '';
   const isAttacking = itemObj.isAttacking === true ? 'attacking' : '';
   const isBlocking = (itemObj.blockingIndex !== null && itemObj.blockingIndex !== undefined) ? 'blocking' : '';
   const isSelectedBlocker = (index !== null && index !== undefined && state.pendingBlockerIndex === index && zone === 'combat' && isLocal) ? 'selected-blocker' : '';
@@ -1868,6 +1870,8 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
   // 23.13.38 — identidad DOM presentation-only para el Combat Map. Nunca participa del sync.
   el.dataset.cardId = card.id || '';
   if (itemObj?._syncObjectId) el.dataset.syncObjectId = itemObj._syncObjectId;
+  const animationObjectId = ensureAnimationVisualIdentity(itemObj);
+  if (animationObjectId) el.dataset.animationObjectId = animationObjectId;
   if (index !== null && index !== undefined) el.dataset.zoneIndex = String(index);
   el.dataset.zone = zone;
   el.dataset.side = isLocal ? 'local' : 'rival';
@@ -7113,7 +7117,7 @@ export async function showModerationCenter(onBack = null) {
   overlay.id = 'moderation-center-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:24000;background:radial-gradient(ellipse at center,#16211a 0%,#0b130e 100%);padding:24px;box-sizing:border-box;overflow:auto;color:#efe4bc;';
   overlay.innerHTML = `<div style="max-width:780px;margin:0 auto;">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;"><button class="encyclopedia-back-btn" id="moderation-center-back">← Volver</button><h2 style="margin:0;color:#f0e0b0;">🛡️ Moderación</h2><button class="admin-save-btn" id="moderation-center-new" style="margin-left:auto;">✉️ Nuevo mensaje</button></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;"><button class="encyclopedia-back-btn" id="moderation-center-back" style="flex:0 0 auto;white-space:nowrap;">← Volver</button><h2 style="margin:0;color:#f0e0b0;flex:1 1 auto;min-width:150px;">🛡️ Moderación</h2><button class="admin-save-btn" id="moderation-center-new" style="width:auto;max-width:220px;flex:0 0 auto;margin:0 0 0 auto;white-space:nowrap;padding:10px 18px;">✉️ Nuevo mensaje</button></div>
     <div class="admin-section"><div class="admin-section-title">TUS CASOS Y RESPUESTAS</div><div id="moderation-center-status" class="admin-debug-summary">Cargando…</div><div id="moderation-center-cases" style="display:grid;gap:10px;margin-top:12px;"></div></div>
   </div>`;
   document.body.appendChild(overlay);
@@ -7179,11 +7183,16 @@ function renderAccountBox(container, user) {
     const inventory = normalizeInventory(state.userProfile?.inventory);
     const chestPending = inventory[CHEST_ITEM_KEYS.standardPack] + inventory[CHEST_ITEM_KEYS.guaranteedMythic];
     const rewardsPending = state.userProfile ? unclaimedUnlockedDays(state.userProfile.dailyRewards).length : 0;
+    // HF23.3.4 — el ADMIN ya tiene Moderación y usuarios dentro del panel de administración.
+    // No le mostramos además el centro de Moderación pensado para jugadores/reportantes.
+    const moderationBtnHTML = user.email === ADMIN_EMAIL
+      ? ''
+      : '<button class="main-menu-reward-btn" id="menu-moderation">🛡️ Moderación</button>';
     const rewardActionsHTML = `
       <div class="main-menu-account-actions">
         <button class="main-menu-reward-btn" id="menu-chest">${gameTextHtml('account.chest')}${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
         <button class="main-menu-reward-btn" id="menu-daily-rewards">${gameTextHtml('account.dailyRewards')}${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
-        <button class="main-menu-reward-btn" id="menu-moderation">🛡️ Moderación</button>
+        ${moderationBtnHTML}
       </div>`;
     container.innerHTML = `
       ${adminBtnHTML}
@@ -7894,8 +7903,9 @@ export function showAdminPanel(onBack) {
       <div class="admin-field-row"><span class="admin-field-label">Jugador</span><select class="admin-field-input" id="admin-community-ban-user" style="text-align:left;max-width:260px;"><option value="">Cargando usuarios…</option></select></div>
       <div class="admin-field-row"><span class="admin-field-label">Duración</span><select class="admin-field-input" id="admin-community-ban-duration"><option value="1h">1 hora</option><option value="24h">24 horas</option><option value="7d">7 días</option><option value="30d">30 días</option><option value="permanent">Permanente</option></select></div>
       <div class="admin-field-row"><span class="admin-field-label">Motivo</span><input class="admin-field-input" id="admin-community-ban-reason" maxlength="300" placeholder="Motivo obligatorio" style="text-align:left;min-width:260px;"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="admin-save-btn" id="admin-community-ban-apply">⛔ Aplicar ban</button><button class="admin-save-btn" id="admin-community-ban-clear">✅ Quitar ban</button></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="admin-save-btn" id="admin-community-ban-apply">⛔ Aplicar ban</button></div>
       <div class="admin-success-msg" id="admin-community-ban-status"></div>
+      <div class="admin-debug-summary" style="margin-top:10px;">Para levantar una restricción, usá <b>Quitar ban</b> en la fila exacta del ban activo.</div>
       <div class="admin-debug-table-wrap" id="admin-community-bans" style="margin-top:12px;"><div class="admin-debug-empty">Sin cargar.</div></div>
     </div>
     <div class="admin-section">
@@ -9377,7 +9387,25 @@ Receipt: ${receiptId}
     const cases = Array.isArray(communityDashboard?.cases) ? communityDashboard.cases : [];
     const openCount = cases.filter(item => item.status !== 'resolved').length;
     if (communitySummaryEl) communitySummaryEl.innerHTML = `<b>${words.length}</b> palabras ADMIN · <b>${bans.length}</b> bans activos · <b>${openCount}</b> casos abiertos`;
-    if (communityBansEl) communityBansEl.innerHTML = bans.length ? `<table class="admin-debug-table"><thead><tr><th>Usuario</th><th>Hasta</th><th>Motivo</th></tr></thead><tbody>${bans.map(ban => `<tr><td>${escapeHtml(ban.usernameSnapshot || ban.uid)}${ban.emailSnapshot ? `<br><small>${escapeHtml(ban.emailSnapshot)}</small>` : ''}<br><small>UID …${escapeHtml(String(ban.uid||'').slice(-10))}</small></td><td>${escapeHtml(formatBanUntil(ban))}</td><td>${escapeHtml(ban.reason || '—')}</td></tr>`).join('')}</tbody></table>` : '<div class="admin-debug-empty">No hay bans activos.</div>';
+    if (communityBansEl) communityBansEl.innerHTML = bans.length ? `<table class="admin-debug-table"><thead><tr><th>Usuario</th><th>Hasta</th><th>Motivo</th><th>Acción</th></tr></thead><tbody>${bans.map(ban => `<tr><td>${escapeHtml(ban.usernameSnapshot || ban.uid)}${ban.emailSnapshot ? `<br><small>${escapeHtml(ban.emailSnapshot)}</small>` : ''}<br><small>UID …${escapeHtml(String(ban.uid||'').slice(-10))}</small></td><td>${escapeHtml(formatBanUntil(ban))}</td><td>${escapeHtml(ban.reason || '—')}</td><td><button type="button" class="admin-save-btn" data-community-unban-uid="${escapeHtml(ban.uid || '')}" data-community-unban-label="${escapeHtml(ban.usernameSnapshot || ban.emailSnapshot || ban.uid || 'jugador')}" style="width:auto;min-width:110px;padding:6px 10px;margin:0;white-space:nowrap;">✅ Quitar ban</button></td></tr>`).join('')}</tbody></table>` : '<div class="admin-debug-empty">No hay bans activos.</div>';
+    communityBansEl?.querySelectorAll?.('[data-community-unban-uid]').forEach(btn => btn.addEventListener('click', async () => {
+      const targetUid = btn.dataset.communityUnbanUid || '';
+      const label = btn.dataset.communityUnbanLabel || targetUid;
+      const status = overlay.querySelector('#admin-community-ban-status');
+      if (!targetUid) return;
+      if (!window.confirm(`¿Levantar el ban activo de ${label}?`)) return;
+      const reason = overlay.querySelector('#admin-community-ban-reason')?.value?.trim() || '';
+      btn.disabled = true;
+      if (status) status.textContent = `Quitando ban de ${label}…`;
+      try {
+        await adminUnbanCommunityUser(targetUid, reason);
+        await reloadCommunityAdminDashboard();
+        if (status) status.textContent = `✓ Ban removido de ${label}.`;
+      } catch (err) {
+        if (status) status.textContent = err?.message || `No se pudo quitar el ban de ${label}.`;
+        btn.disabled = false;
+      }
+    }));
     if (communityCasesEl) communityCasesEl.innerHTML = cases.length ? `<table class="admin-debug-table"><thead><tr><th>Estado</th><th>Usuario</th><th>Tipo</th><th>Detalle</th><th></th></tr></thead><tbody>${cases.map(item => `<tr><td>${item.status==='resolved'?'✅ Resuelto':'🟡 Abierto'}</td><td>${escapeHtml(item.reporterUsername || item.reporterUid || 'Jugador')}</td><td>${escapeHtml(item.kind || '')}</td><td>${escapeHtml((item.subject || item.text || '').slice(0,120))}</td><td><button type="button" class="admin-save-btn" data-community-case-id="${escapeHtml(item.caseId || '')}" style="padding:5px 8px;">Ver</button></td></tr>`).join('')}</tbody></table>` : '<div class="admin-debug-empty">No hay casos.</div>';
     communityCasesEl?.querySelectorAll?.('[data-community-case-id]').forEach(btn => btn.addEventListener('click', () => {
       selectedCommunityCaseId = btn.dataset.communityCaseId || '';
@@ -9465,14 +9493,6 @@ Receipt: ${receiptId}
     if (!targetUid || !reason) { status.textContent='Elegí jugador y escribí un motivo.'; return; }
     try { await adminBanCommunityUser(targetUid,duration,reason); await reloadCommunityAdminDashboard(); status.textContent='✓ Ban aplicado por UID.'; }
     catch(err){ status.textContent=err?.message||'No se pudo aplicar el ban.'; }
-  });
-  overlay.querySelector('#admin-community-ban-clear')?.addEventListener('click', async () => {
-    const status = overlay.querySelector('#admin-community-ban-status'); status.textContent='';
-    const targetUid = communityBanSelect?.value || '';
-    if (!targetUid) { status.textContent='Elegí un jugador.'; return; }
-    const reason = overlay.querySelector('#admin-community-ban-reason')?.value?.trim() || '';
-    try { await adminUnbanCommunityUser(targetUid,reason); await reloadCommunityAdminDashboard(); status.textContent='✓ Ban removido.'; }
-    catch(err){ status.textContent=err?.message||'No se pudo quitar el ban.'; }
   });
   overlay.querySelector('#admin-community-case-resolve')?.addEventListener('click', async () => {
     const status = overlay.querySelector('#admin-community-case-status'); status.textContent='';

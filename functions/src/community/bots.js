@@ -7,6 +7,7 @@ import { TRUSTED_CARD_POOL } from '../trusted/cardCatalog.js';
 import { PUBLISHED_CARD_BASELINE_IDS } from '../trusted/publishedCardBaseline.js';
 import { playerStatsMirrorServer } from '../economy/audit.js';
 import { getTradeMarketView, createTradeListingTx, rejectTradeOfferTx, acceptTradeOfferTx } from '../economy/trade.js';
+import { tradeCardTypeKey, cardFilterColors, TRADE_RARITIES } from '../economy/tradeCore.js';
 
 export const COMMUNITY_BOT_CONFIG_PATH = 'communityBotConfig/main';
 export const COMMUNITY_BOT_STATE_PATH = 'communityBotState/main';
@@ -239,6 +240,48 @@ function chooseTradableCard(view, uid, nowMs) {
   return ids[hashInt('listing-card',uid,nowMs)%ids.length];
 }
 
+function canonicalTradeRarity(card) {
+  const raw=String(card?.rarity||'Common').toLowerCase().replace(/[^a-z]/g,'');
+  if(raw==='mythic'||raw==='mythicrare') return 'Mythic';
+  if(raw==='rare') return 'Rare';
+  if(raw==='uncommon') return 'Uncommon';
+  return 'Common';
+}
+
+export function buildAmbientWantedCriteria(cardId, uid='', nowMs=Date.now()) {
+  // HF23.3.5 — ambient listings must look like plausible player listings. They never use
+  // the suspicious historical "acepto cualquier carta": every publication asks for a
+  // bounded combination derived from the value/type/color of the card being offered.
+  // The choice and number of OR criteria vary deterministically by bot/card/day so the
+  // five ambient profiles do not all publish the exact same BUSCO pattern.
+  const card=cardById.get(String(cardId));
+  if(!card) return [{type:'attributes',cardType:null,color:null,rarity:'Common'}];
+  const rarity=canonicalTradeRarity(card);
+  const cardType=tradeCardTypeKey(card)||null;
+  const colors=cardFilterColors(card);
+  const color=colors.length ? colors[hashInt('wanted-color',uid,cardId,Math.floor(nowMs/DAY_MS))%colors.length] : null;
+  const rarityIndex=TRADE_RARITIES.indexOf(rarity);
+  const candidates=[];
+  const pushCandidate=(entry)=>{
+    if(!entry.cardType && !entry.color && !entry.rarity) return;
+    const key=JSON.stringify(entry);
+    if(!candidates.some(x=>JSON.stringify(x)===key)) candidates.push(entry);
+  };
+  // Primary intent: comparable card. When color exists, combining type+color+rarity is
+  // intentionally stricter and reads much more like a real BUSCO than "cualquier carta".
+  pushCandidate({type:'attributes',cardType,color,rarity});
+  pushCandidate({type:'attributes',cardType,color:null,rarity});
+  pushCandidate({type:'attributes',cardType:null,color,rarity});
+  // Trading upward is coherent and still protected by the independent rarity guard.
+  if(rarityIndex>=0 && rarityIndex<TRADE_RARITIES.length-1) {
+    pushCandidate({type:'attributes',cardType,color:null,rarity:TRADE_RARITIES[rarityIndex+1]});
+  }
+  const seedDay=Math.floor(nowMs/DAY_MS);
+  const ordered=[...candidates].sort((a,b)=>hashInt('wanted-order',uid,cardId,seedDay,JSON.stringify(a))-hashInt('wanted-order',uid,cardId,seedDay,JSON.stringify(b)));
+  const wantedCount=Math.min(ordered.length,1+(hashInt('wanted-count',uid,cardId,seedDay)%3));
+  return ordered.slice(0,Math.max(1,wantedCount));
+}
+
 async function advanceBotMarket(db, cfg, nowMs) {
   if(cfg.maxListingsPerBot<=0) return { accepted:0,rejected:0,created:0 };
   let accepted=0,rejected=0,created=0;
@@ -265,7 +308,8 @@ async function advanceBotMarket(db, cfg, nowMs) {
     if(own.length<cfg.maxListingsPerBot) {
       const cardId=chooseTradableCard(view,uid,nowMs); if(!cardId) continue;
       const operationId=`ambient_listing_${uid}_${Math.floor(nowMs/(cfg.activityIntervalMinutes*60000))}`;
-      try { await db.runTransaction(tx=>createTradeListingTx({db,tx,uid,operationId,cardId,wantedCriteria:[],acceptAnyCard:true,nowMs})); created++; } catch {}
+      const wantedCriteria=buildAmbientWantedCriteria(cardId,uid,nowMs);
+      try { await db.runTransaction(tx=>createTradeListingTx({db,tx,uid,operationId,cardId,wantedCriteria,acceptAnyCard:false,nowMs})); created++; } catch {}
     }
   }
   return {accepted,rejected,created};
