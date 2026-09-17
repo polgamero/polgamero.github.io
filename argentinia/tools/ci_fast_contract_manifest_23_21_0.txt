@@ -157,3 +157,9 @@ tools/test_multiplayer_direct_challenges_23_21_6_hf21.mjs
 
 tools/test_social_ux_tournament_mobile_options_23_21_6_hf22.mjs
 tools/test_multiplayer_lobby_p0_23_21_6_hf23.mjs
+
+tools/test_community_moderation_suspend_mobile_23_21_6_hf23_1.mjs
+
+tools/test_trade_notifications_land_filters_mobile_attack_23_21_6_hf23_2.mjs
+
+tools/test_ambient_population_23_21_6_hf23_3.mjs

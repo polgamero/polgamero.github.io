@@ -125,7 +125,7 @@ assert.ok(functionsIndex.includes('export const economyAdminSetEmoteCatalog = on
 assert.ok(trustedEmotes.includes("EMOTE_CATALOG_PATH = 'gameConfig/emotes'"));
 assert.ok(trustedEmotes.includes('MAX_EMOTES = 128'));
 assert.ok(serverSocial.includes('loadTrustedEmoteCatalog(db, tx)'));
-assert.equal([...functionsIndex.matchAll(/export const \w+\s*=\s*onCall\(/g)].length, 41);
+assert.equal([...functionsIndex.matchAll(/export const \w+\s*=\s*onCall\(/g)].length, 42);
 for (const contract of [
   'CHAT_MAX_CHARS = 220','COMMUNICATION_EVENT_CAP = 40','CHAT_MIN_INTERVAL_MS = 1500',
   'CHAT_BURST_MAX = 5','EMOTE_MIN_INTERVAL_MS = 4000','EMOTE_BURST_MAX = 3',

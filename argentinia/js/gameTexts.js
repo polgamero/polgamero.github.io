@@ -28,6 +28,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'common.save': definition('General', 'Guardar', 'Acción genérica para guardar cambios.'),
   'common.retry': definition('General', 'Reintentar', 'Acción genérica para intentar nuevamente.'),
   'common.close': definition('General', 'Cerrar', 'Acción genérica para cerrar una ventana.'),
+  'common.continue': definition('General', 'CONTINUAR', 'Acción genérica para cerrar un aviso y continuar.'),
   'common.update': definition('General', 'Actualizar', 'Acción genérica para refrescar información.'),
 
   // Menú principal
@@ -219,6 +220,14 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'trade.status.completed': definition('Mercado de Pases', 'COMPLETADO', 'Estado visual de un intercambio completado.'),
   'trade.history.completed': definition('Mercado de Pases', 'INTERCAMBIO COMPLETADO', 'Título visual de cada entrada histórica.'),
   'trade.history.with': definition('Mercado de Pases', 'con {username}', 'Contraparte de un intercambio histórico.'),
+  'trade.history.dispute': definition('Mercado de Pases', 'ABRIR DISPUTA', 'Abre un caso de Moderación enlazado al intercambio del historial.'),
+  'trade.dispute.title': definition('Mercado de Pases', 'Disputa de Mercado de Pases', 'Título del formulario de disputa de un intercambio completado.'),
+  'trade.dispute.placeholder': definition('Mercado de Pases', 'Contanos qué pasó en este intercambio con {username}…', 'Texto guía para una disputa enlazada a un recibo real.'),
+  'trade.dispute.submit': definition('Mercado de Pases', 'ENVIAR A MODERACIÓN', 'Envía una disputa de Mercado a Moderación.'),
+  'trade.notification.accepted.title': definition('Mercado de Pases', 'Aceptaron tu oferta', 'Título del aviso persistente de oferta aceptada.'),
+  'trade.notification.accepted.body': definition('Mercado de Pases', '{username} aceptó tu oferta. El intercambio ya se completó.', 'Cuerpo del aviso persistente de oferta aceptada.'),
+  'trade.notification.rejected.title': definition('Mercado de Pases', 'Rechazaron tu oferta', 'Título del aviso persistente de oferta rechazada.'),
+  'trade.notification.rejected.body': definition('Mercado de Pases', '{username} decidió no aceptar la carta que ofreciste por su carta. ¡Mejor suerte la próxima!', 'Cuerpo del aviso persistente de oferta rechazada.'),
   'trade.error.generic': definition('Mercado de Pases', 'No se pudo completar la operación.', 'Error genérico de operación de Mercado.'),
 
   // Cuenta / username

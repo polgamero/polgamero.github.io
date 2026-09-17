@@ -1,15 +1,51 @@
 ARGENTINIA RELEASE STATUS
 
 BASELINE_RELEASED=23.21.6 HF9
-CURRENT_CANDIDATE=23.21.6 HF23 PRE-RELEASE
-CURRENT_CANDIDATE_BASE=HF22.3 PRE-RELEASE
+CURRENT_CANDIDATE=23.21.6 HF23.3.1 PRE-RELEASE
+CURRENT_CANDIDATE_BASE=HF23.3 PRE-RELEASE
 POOL=900
 PROTOCOL=mp-23.19.2
 ECONOMY=econ-23.19.5.6
 ECONOMY_SCHEMA=10
 RULES=23.13.89
-FUNCTIONS=41
+FUNCTIONS=42
 
+
+HF23.3.1 GATE CWD PORTABILITY FIX:
+- No gameplay/Rules/Functions behavior delta from HF23.3.
+- Ambient static contract resolves repository root from import.meta.url instead of process.cwd(), so Gate05/Gate07 can invoke it from their own folders on Windows/MSYS/Linux.
+- RUN_CURRENT wrappers point to explicit HF23_3_1 runners.
+- Gate package identities are current; Gate07 npm gate coverage includes the ambient runtime emulator test.
+- Direct-challenge project-binding verification checks the current HF23_3_1 runners.
+- Functions remain 42; Rules remain 23.13.89; canonical contracts remain 145.
+
+HF23.3 AMBIENT COMMUNITY POPULATION:
+- Five private server system identities, configurable in Moderación y usuarios and disabled by default.
+- No player-facing BOT marker: public presence/stats are normal-shaped; private isSystemBot/systemRole remain server/Admin-only.
+- Default randomized presence window 06:00-23:30 Argentina; configurable max visible, chance, slot and activity interval.
+- Direct challenges can be sent while virtually online and always resolve as ordinary rejected after configurable random delay; no human-vs-system match is created.
+- Simulated games are system-vs-system only, ratings clamped 1050-1350; Admin human KPIs explicitly exclude system UIDs.
+- Market uses real inventory + canonical listing/reservation/receipt/economyEvent authority; lower-rarity offers are never accepted.
+- System-mediated swaps preserve anti-farming weekly ledgers but suppress public tradesCompleted increments.
+- Opportunistic advance through existing community/market authority: Functions remain 42; Rules remain 23.13.89.
+
+HF23.2 MARKET / DISPUTES / LAND FILTER / MOBILE ATTACK:
+- Persistent accepted/rejected Market notifications with real-card render and ACK on close.
+- Receipt-linked disputes validated server-side.
+- Land filters use mana produced in Encyclopedia/Edit Deck/Market/server BUSCO.
+- Mobile tapped-attacker presentation and combat cinematic clone normalization fixed.
+- Rules 23.13.89 / Functions 42 unchanged.
+
+
+HF23.1 COMMUNITY / MODERATION + SUSPEND MOBILE:
+- New server-authoritative economyCommunityAction boundary; total Functions 41 -> 42.
+- Admin tab is now Moderación y usuarios; Admission controls move there and remain lazy-loaded.
+- Argentine/lunfardo profanity policy is server-side, with accent/leetspeak/repeated-letter/punctuation-spacing normalization plus editable Admin blocked words.
+- UID-authoritative bans: 1h/24h/7d/30d/permanent, mandatory reason, username/email audit snapshots, boot state, and Moderation contact channel retained while banned.
+- User/message reports, Moderation contact cases, Admin resolution/reply and read acknowledgement.
+- Ban fences cover Lobby/in-match chat, emotes, direct challenges, and relevant Market create/offer/reject/accept actions.
+- Mobile Suspend: local-hand hourglass lifted/enlarged; mobile card preview exposes a large EN ESPERA action wired to the original authoritative control.
+- Rules remain 23.13.89. Bots, Market accepted/rejected notification UX, trade-linked disputes and Land mana-color filtering remain staged for HF23.2/HF23.3.
 
 HF23 P0 RECOVERY:
 - Client runtime changes only: Lobby chat rows cannot shrink; touch/coarse player stats popover uses short pointerup tap and removes native title/long-press dependency.
@@ -34,14 +70,14 @@ HF22.1 RELEASE-HARNESS HARDENING:
 - GitHub workflow runs Functions syntax + 21/21 unit tests after 142 canonical contracts + dynamic labs.
 
 RULES_CONTENT_CHANGED_FROM_HF22=NO
-FUNCTIONS_RUNTIME_CHANGED_FROM_HF22=NO
-CLIENT_RUNTIME_CHANGED_FROM_HF22=YES_HF23_P0_LOBBY_CHAT_NO_SHRINK_PLUS_TOUCH_POPOVER
+FUNCTIONS_RUNTIME_CHANGED_FROM_HF22=YES_HF23_1_TO_HF23_3_COMMUNITY_MARKET_AMBIENT
+CLIENT_RUNTIME_CHANGED_FROM_HF22=YES_HF23_P0_TO_HF23_3_UI_MARKET_MODERATION_AMBIENT
 GATE_HARNESS_CHANGED_FROM_HF22=YES
 GITHUB_WORKFLOW_CHANGED_FROM_HF22=YES_SYNTAX_STEP
 
 GATE03=HF21_GREEN_CARRIED_FORWARD_RULES_23_13_89_BYTE_IDENTICAL
-GATE05=PENDING_HF23_USER_RUN_IF_PROMOTING_THIS_PACKAGE
-GATE07=PENDING_HF23_USER_RUN_IF_PROMOTING_THIS_PACKAGE
+GATE05=HF23_3_1_CWD_PORTABILITY_PREFLIGHT_PASS_FULL_EMULATOR_PENDING_EXTERNAL_RUN
+GATE07=HF23_3_1_CWD_PORTABILITY_PREFLIGHT_PASS_FULL_EMULATOR_PENDING_EXTERNAL_RUN
 FUNCTIONS_DEPLOY=PENDING_AFTER_GATES
 GITHUB_ACTIONS=PENDING_UPLOAD
 PRODUCTION_SMOKE=PENDING
@@ -61,3 +97,16 @@ HF22.3 RELEASE-HARNESS AUTH/FIXTURE ISOLATION:
 - Lobby Chat ADMIN fixture now safely reuses the canonical Auth identity with create-or-sign-in.
 - Gate05/Gate07 preflight cross-file username uniqueness, Auth email isolation, static Firestore/operationId isolation and hardcoded project IDs before npm/emulators.
 - Only intentionally shared static docs allowed across active test files: gameConfig/economy and gameConfig/settings.
+
+HF23_1_LOCAL_CERTIFICATION=143_OF_143_FUNCTIONS23_PARITY59X3_PACKAGING_PREFLIGHT_GREEN_GATE05_PREFLIGHT_GREEN_GATE07_PREFLIGHT_GREEN_STABILITY10_PASS
+HF23_1_FULL_EMULATOR_GATES=PENDING_EXTERNAL_RUN_LOCAL_NPM_INSTALL_TIMEOUT
+HF23_1_GITHUB_ACTIONS=PENDING_UPLOAD
+HF23_1_PRODUCTION_SMOKE=PENDING
+
+HF23_3_LOCAL_CERTIFICATION=145_OF_145_FUNCTIONS24_PARITY60X3_PACKAGING_PREFLIGHT_GATE05_GATE07_PREFLIGHT_GREEN
+HF23_3_FULL_EMULATOR_GATES=PENDING_EXTERNAL_RUN
+HF23_3_GITHUB_ACTIONS=PENDING_UPLOAD
+HF23_3_PRODUCTION_SMOKE=PENDING
+
+HF23_3_1_LOCAL_CERTIFICATION=TARGETED_HF23_1_HF23_2_HF23_3_CONTRACTS_PASS_FUNCTIONS24_PASS_PARITY60X3_PASS_PACKAGING_PREFLIGHT_PASS_GATE05_GATE07_HARNESS_DRYRUN_PASS_CWD_ARBITRARY_PASS
+HF23_3_1_FULL_EMULATOR_GATES=PENDING_USER_RUN

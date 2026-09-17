@@ -1,0 +1,6 @@
+QA HF23.3.3 — GATE07 AMBIENT INVITER PRESENCE FIX
+
+Root cause: ambient_population emulator fixture bootstrapped a human account but omitted playerPresence/{humanUid}; direct challenge authority correctly requires fresh inviter presence.
+Fix: seed canonical lobby presence before invite, assert it exists, and fail fast with VERIFY_AMBIENT_GATE_FIXTURE.mjs before npm install.
+Expected marker: AMBIENT_GATE_FIXTURE_OK inviterPresence=FRESH_LOBBY seededBeforeInvite=YES
+No product runtime delta. Functions 42 / Rules 23.13.89 unchanged. Gate05 HF23.3.2 green remains valid.

@@ -121,7 +121,7 @@ assert.match(mobile,/html\.argentinia-mobile \.trade-pair/);
 
 // 23.21.6 keeps premium-emote/social authority and adds the Basic Land pack callable.
 const callables=[...fn.matchAll(/export const \w+\s*=\s*onCall\(/g)];
-assert.equal(callables.length,41);
+assert.equal(callables.length,42);
 assert.match(fn,/export const economyPurchaseEmote\s*=\s*onCall/);
 assert.match(fn,/export const multiplayerSendCommunication\s*=\s*onCall/);
 
@@ -147,4 +147,4 @@ assert.equal(functionDigest.length,64);
 assert.ok(fs.existsSync(path.join(repo,'functions','src','economy','elo.js')));
 assert.ok(fs.existsSync(path.join(repo,'functions','src','economy','eloCore.js')));
 
-console.log('TRADE_MARKET_VISUAL_23_21_3_OK cards=VISIBLE_ALWAYS names=NO_DUPLICATE receivedOffers=INCOMING_ONLY zoomMobile=VIEWPORT_HEIGHT back=CANONICAL menu=COMPACT_ICONS functions=CUMULATIVE_41');
+console.log('TRADE_MARKET_VISUAL_23_21_3_OK cards=VISIBLE_ALWAYS names=NO_DUPLICATE receivedOffers=INCOMING_ONLY zoomMobile=VIEWPORT_HEIGHT back=CANONICAL menu=COMPACT_ICONS functions=CUMULATIVE_42');

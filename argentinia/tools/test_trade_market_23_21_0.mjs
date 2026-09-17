@@ -81,5 +81,5 @@ assert.match(sourceManifest,/DIRECT_FIRESTORE_FIREWALL=(?:CANDIDATE|DEPLOYED)_RU
 assert.match(sourceManifest,/TRADE_RESERVATIONS=SERVER_ONLY/);
 
 const callables=[...fn.matchAll(/export const \w+\s*=\s*onCall\(/g)];
-assert.equal(callables.length,41);
+assert.equal(callables.length,42);
 console.log('TRADE_MARKET_23_21_0_OK');

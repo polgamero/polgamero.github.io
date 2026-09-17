@@ -1,0 +1,81 @@
+ARGENTINIA 23.21.6 HF23.3 PRE-RELEASE
+POBLACIÓN AMBIENTAL — 5 JUGADORES DE SISTEMA PRIVADOS + PRESENCIA/RETOS/MERCADO CONTROLADOS
+
+BASE
+- Acumulativo sobre HF23.2: Moderación, notificaciones/disputas de Mercado, Tierras por maná y fix visual de ataque mobile permanecen incluidos.
+- Pool físico: 900 / baseline publicada histórica: 880.
+- Multiplayer protocol: mp-23.19.2.
+- Economy: econ-23.19.5.6 / schema 10.
+- Firestore Rules: 23.13.89, SIN CAMBIOS.
+- Functions: 42, SIN NUEVA callable. HF23.3 reutiliza economyCommunityAction y autoridad existente de Mercado/Desafíos.
+
+HF23.3 IMPLEMENTA
+1) Cinco jugadores ambientales de sistema, apagados por default.
+   - Identidad interna privada: users/{uid}.isSystemBot=true + systemRole=ambient_player.
+   - playerStats y playerPresence públicos NO reciben isBot/bot/systemRole ni badge especial.
+   - Para jugadores reales se presentan como perfiles normales; la condición de sistema sólo es visible en Admin/servidor.
+   - Admin puede cambiar los 5 nombres y encender/apagar el sistema.
+
+2) Presencia ambiental controlada.
+   - Ventana por default: 06:00–23:30 hora Argentina (editable en Admin).
+   - Conexión/desconexión pseudoaleatoria por slots estables, chance configurable y máximo de visibles configurable.
+   - Heartbeat <=60 s mientras corresponda estar visible, compatible con el stale threshold del Lobby/Desafíos.
+   - Fuera de la ventana se eliminan sus documentos de presencia.
+
+3) Invitaciones a jugar.
+   - Un humano puede enviarles una invitación normal desde Lobby.
+   - No se crea partida humano-vs-sistema.
+   - Si el target es uno de estos jugadores y está virtualmente online, la invitación queda pending con forma normal y luego resuelve rejected tras una demora pseudoaleatoria configurable (default 5–13 s).
+   - La UI recibe el mismo resultado rejected que con un rechazo humano; no se expone motivo bot/system.
+
+4) Ranking/progresión simulada aislada.
+   - Sólo se simulan bot-vs-bot.
+   - ELO/rating de estos cinco queda acotado aproximadamente a 1050–1350.
+   - Nunca se escribe resultado humano-vs-bot ni se altera ELO/partidas humanas.
+   - Daily/progresión propia de los jugadores ambientales puede avanzar una vez por día Argentina.
+   - Estadísticas Admin de humanos excluyen explícitamente sus UIDs.
+
+5) Mercado con inventario real y criterio conservador.
+   - Cada jugador ambiental se provisiona con inventario real de cartas publicadas; los swaps usan exactamente los mismos tx, reservas, receipts, límites y auditoría que Mercado normal.
+   - Máximo de publicaciones por jugador configurable.
+   - JAMÁS acepta una oferta cuya rareza sea inferior a la carta que entrega.
+   - Ofertas de rareza igual/superior usan probabilidades Admin configurables; también puede rechazarlas.
+   - Un swap real con jugador ambiental conserva weekly anti-abuse ledger + receipt + economyEvent, pero NO incrementa tradesCompleted público de ninguno de los dos lados para no inflar KPIs humanos.
+
+6) Coste/arquitectura.
+   - No se agrega scheduler ni Function número 43.
+   - advanceCommunityBots se ejecuta oportunísticamente al refrescar directorio/Lobby o consultar Mercado y posee lock por intervalo para no repetir actividad en cada request.
+   - El cliente recibe de directory_refresh sólo refreshed:true; la metadata privada de bots nunca vuelve al jugador.
+
+ADMIN — MODERACIÓN Y USUARIOS
+- Encender/apagar población ambiental.
+- Nombres 1..5.
+- Máximo visible online.
+- Hora inicio/fin Argentina.
+- Intervalo de presencia + chance online.
+- Intervalo de actividad.
+- Partidas bot-vs-bot por ciclo.
+- Máximo de publicaciones por jugador.
+- % aceptar misma rareza / rareza superior / rechazo elegible.
+- Demora mínima/máxima para rechazar desafíos.
+
+CERTIFICACIÓN LOCAL
+- 145/145 contratos canónicos PASS; el nuevo contrato HF23.3 valida privacidad de identidad, 42 Functions, presencia, auto-rechazo, Mercado real/rarity guard y aislamiento de stats.
+- Functions unit tests: 24/24 PASS.
+- Functions parity Source -> Gate05 / Deploy / Gate07: 60/60 PASS x3.
+- Packaging preflight: canonical=145 / regression=62 / functions=42 PASS.
+- Gate05 HF23.3 PRECHECK: PASS. Gate07 HF23.3 PRECHECK: PASS.
+- Gate05/Gate07 emuladores completos deben ejecutarse antes de deploy; este PRE no los declara verdes por anticipado.
+
+ORDEN DE PROMOCIÓN
+1. Gate03 no necesita repetición: Rules 23.13.89 no cambian.
+2. 05_Economy_Authority_Emulator_Gate/RUN_CURRENT.sh
+3. 07_Trade_Market_Emulator_Gate/RUN_CURRENT.sh
+4. Con ambos verdes: 06_Economy_Functions_DEPLOY_AFTER_GATE/DEPLOY_CURRENT.sh
+5. VERIFY_CURRENT.sh -> EXACTAMENTE 42 Functions.
+6. GitHub Actions verde + smoke producción Lobby/Desafíos/Mercado/Ranking/Admin.
+
+QA DETALLADA
+- 04_QA_Docs/QA_23_21_6_HF23_3_AMBIENT_POPULATION.txt
+
+STATUS: PRE-RELEASE. NO promover como RELEASED sin gates completos + deploy/verify + GitHub + smoke.

@@ -29,7 +29,7 @@ import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurcha
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
@@ -726,6 +726,71 @@ export async function getAdmissionStatus() {
 export async function adminSetAdmissionPolicy(policy = {}) {
   const response = await adminSetAdmissionPolicyServer(policy);
   return response?.status || null;
+}
+
+export async function getCommunityStatus() {
+  const response = await communityActionServer('status');
+  return response?.status || { ban:null, cases:[] };
+}
+export async function contactModeration({ subject = '', text = '' } = {}) {
+  const response = await communityActionServer('contact', { subject:String(subject||''), text:String(text||'') });
+  return response?.case || null;
+}
+export async function reportCommunityUser(targetUid, reason = '') {
+  const response = await communityActionServer('report_user', { targetUid:String(targetUid||''), reason:String(reason||'') });
+  return response?.case || null;
+}
+export async function reportLobbyMessage(messageSeq, reason = '') {
+  const response = await communityActionServer('report_lobby_message', { messageSeq:Math.floor(Number(messageSeq)||0), reason:String(reason||'') });
+  return response?.case || null;
+}
+export async function getMyModerationCases() {
+  const response = await communityActionServer('my_cases');
+  return Array.isArray(response?.cases) ? response.cases : [];
+}
+export async function acknowledgeModerationCase(caseId) {
+  const response = await communityActionServer('ack_case', { caseId:String(caseId||'') });
+  return response?.acknowledgement || null;
+}
+export async function getPendingTradeNotifications() {
+  const response = await communityActionServer('trade_notifications');
+  return Array.isArray(response?.notifications) ? response.notifications : [];
+}
+export async function acknowledgeTradeNotification(notificationId) {
+  const response = await communityActionServer('ack_trade_notification', { notificationId:String(notificationId||'') });
+  return response?.acknowledgement || null;
+}
+export async function createTradeDispute(tradeId, reason = '') {
+  const response = await communityActionServer('trade_dispute', { tradeId:String(tradeId||''), reason:String(reason||''), subject:'Disputa de Mercado de Pases' });
+  return response?.case || null;
+}
+export async function adminGetCommunityDashboard() {
+  const response = await communityActionServer('admin_dashboard');
+  return response?.dashboard || { policy:{blockedWords:[]}, bans:[], cases:[] };
+}
+export async function adminSetCommunityBlockedWords(blockedWords = []) {
+  const response = await communityActionServer('admin_set_blocked_words', { blockedWords:Array.isArray(blockedWords)?blockedWords:[] });
+  return response?.policy || { blockedWords:[] };
+}
+export async function adminBanCommunityUser(targetUid, duration, reason) {
+  const response = await communityActionServer('admin_ban', { targetUid:String(targetUid||''), duration:String(duration||''), reason:String(reason||'') });
+  return response?.ban || null;
+}
+export async function adminUnbanCommunityUser(targetUid, reason = '') {
+  const response = await communityActionServer('admin_unban', { targetUid:String(targetUid||''), reason:String(reason||'') });
+  return response?.ban || null;
+}
+export async function adminResolveCommunityCase(caseId, responseText) {
+  const response = await communityActionServer('admin_resolve_case', { caseId:String(caseId||''), response:String(responseText||'') });
+  return response?.case || null;
+}
+export async function refreshLobbyDirectoryAuthority() {
+  const response = await communityActionServer('directory_refresh');
+  return response?.refreshed === true;
+}
+export async function adminSetCommunityBots(botConfig = {}) {
+  const response = await communityActionServer('admin_set_bots', { botConfig:botConfig && typeof botConfig === 'object' ? botConfig : {} });
+  return response?.bots || { config:{}, botUids:[], profiles:[], runtime:{} };
 }
 
 const PENDING_ABANDON_PENALTIES_KEY = 'argentinia.pendingAbandonPenalties.v1';

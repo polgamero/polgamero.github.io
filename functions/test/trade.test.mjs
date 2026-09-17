@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { TRUSTED_CARD_POOL } from '../src/trusted/cardCatalog.js';
 import {
   TRADE_LIMITS, normalizeTradeLimits, normalizeWantedCriteria, cardMatchesWanted, tradableCardCount,
-  changeReservedCard, reservationsStillBacked, swapOneCard, normalizeReservation, addActiveListing, removeActiveListing
+  changeReservedCard, reservationsStillBacked, swapOneCard, normalizeReservation, addActiveListing, removeActiveListing,
+  cardFilterColors
 } from '../src/economy/tradeCore.js';
 
 const byId = new Map(TRUSTED_CARD_POOL.map(card => [card.id, card]));
@@ -48,6 +49,21 @@ test('23.21.3 BUSCO supports type-only and type + rarity + color criteria', () =
   const nonArtifactMythic = TRUSTED_CARD_POOL.find(c => c.rarity === 'Mythic' && !String(c.type || '').toLowerCase().includes('artefacto'));
   assert.ok(nonArtifactMythic);
   assert.equal(cardMatchesWanted(nonArtifactMythic,listing), false);
+});
+
+
+test('23.21.6 HF23.2 Land color filters use mana produced while colorless nonlands remain C', () => {
+  const whiteLand = TRUSTED_CARD_POOL.find(c => String(c.type || '').toLowerCase().includes('tierra') && c.produces === 'W');
+  const dualLand = TRUSTED_CARD_POOL.find(c => String(c.type || '').toLowerCase().includes('tierra') && Array.isArray(c.producesOptions) && c.producesOptions.includes('U') && c.producesOptions.includes('R'));
+  const colorlessLand = TRUSTED_CARD_POOL.find(c => String(c.type || '').toLowerCase().includes('tierra') && !c.produces && (!Array.isArray(c.producesOptions) || !c.producesOptions.length));
+  const colorlessNonland = TRUSTED_CARD_POOL.find(c => !String(c.type || '').toLowerCase().includes('tierra') && (!Array.isArray(c.colors) || c.colors.length === 0));
+  assert.ok(whiteLand && dualLand && colorlessLand && colorlessNonland);
+  assert.deepEqual(cardFilterColors(whiteLand), ['W']);
+  assert.deepEqual(new Set(cardFilterColors(dualLand)), new Set(['U','R']));
+  assert.deepEqual(cardFilterColors(colorlessLand), ['C']);
+  assert.deepEqual(cardFilterColors(colorlessNonland), ['C']);
+  assert.equal(cardMatchesWanted(whiteLand, { acceptAnyCard:false, wantedCriteria:[{type:'attributes', color:'W'}] }), true);
+  assert.equal(cardMatchesWanted(whiteLand, { acceptAnyCard:false, wantedCriteria:[{type:'attributes', color:'C'}] }), false);
 });
 
 test('23.21.0 rejects empty filters, duplicate criteria and more than three BUSCO slots', () => {

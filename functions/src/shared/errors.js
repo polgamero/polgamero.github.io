@@ -144,6 +144,21 @@ const MAP = Object.freeze({
   MULTIPLAYER_CHALLENGE_LOCK_LOST: ['failed-precondition', 'La invitación perdió su reserva; volvé a intentarlo.'],
   MULTIPLAYER_CHALLENGE_MATCH_CODE_EXHAUSTED: ['resource-exhausted', 'No se pudo reservar un código de partida. Probá otra vez.'],
 
+  COMMUNITY_BANNED: ['permission-denied', 'Tu cuenta tiene una restricción activa de Moderación.'],
+  COMMUNITY_ACTION_INVALID: ['invalid-argument', 'Acción de Moderación inválida.'],
+  COMMUNITY_TARGET_INVALID: ['invalid-argument', 'El usuario indicado no es válido.'],
+  COMMUNITY_TEXT_INVALID: ['invalid-argument', 'El texto de Moderación no es válido.'],
+  COMMUNITY_BAN_DURATION_INVALID: ['invalid-argument', 'La duración del ban no es válida.'],
+  COMMUNITY_BAN_REASON_INVALID: ['invalid-argument', 'Escribí un motivo válido para el ban.'],
+  COMMUNITY_CASE_KIND_INVALID: ['invalid-argument', 'Ese tipo de caso de Moderación no es válido.'],
+  COMMUNITY_CASE_SUBJECT_INVALID: ['invalid-argument', 'El asunto del caso no es válido.'],
+  COMMUNITY_CASE_TEXT_INVALID: ['invalid-argument', 'El mensaje a Moderación está vacío o es demasiado largo.'],
+  COMMUNITY_CASE_SELF_REPORT: ['failed-precondition', 'No podés reportarte a vos mismo.'],
+  COMMUNITY_MESSAGE_NOT_FOUND: ['not-found', 'Ese mensaje ya no está disponible para reportar.'],
+  COMMUNITY_CASE_INVALID: ['invalid-argument', 'El caso de Moderación no es válido.'],
+  COMMUNITY_CASE_NOT_FOUND: ['not-found', 'No se encontró ese caso de Moderación.'],
+  COMMUNITY_CASE_NOT_RESOLVED: ['failed-precondition', 'Ese caso todavía no fue resuelto.'],
+  COMMUNITY_CASE_RESPONSE_INVALID: ['invalid-argument', 'La respuesta de Moderación está vacía o es demasiado larga.'],
   USERNAME_TRADE_RESERVED: ['failed-precondition', 'Cancelá tu publicación y tus ofertas del Mercado de Pases antes de cambiar el nombre.'],
   INTERNAL: ['internal', 'Error interno de Economy Authority.']
 });

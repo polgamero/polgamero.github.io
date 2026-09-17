@@ -45,6 +45,32 @@ function offerRef(db, listingId, offererUid) { return db.collection('tradeOffers
 function ledgerRef(db, uid, weekKey) { return db.collection('tradeWeeklyLedgers').doc(`${uid}_${weekKey}`); }
 function receiptRef(db, tradeId) { return db.collection('tradeReceipts').doc(String(tradeId)); }
 
+function tradeNotificationRef(db, type, offerId) {
+  return db.collection('tradeNotifications').doc(`trade_notice_${safeDocId(type)}_${safeDocId(offerId)}`.slice(0,420));
+}
+function writeTradeNotificationTx(tx, db, offer = {}, type = 'rejected', nowMs = Date.now(), reason = '') {
+  const normalized = type === 'accepted' ? 'accepted' : 'rejected';
+  const ref = tradeNotificationRef(db, normalized, offer.offerId);
+  const notificationId = ref.id;
+  tx.set(ref, {
+    notificationId,
+    recipientUid:String(offer.offererUid||''),
+    type:normalized,
+    offerId:String(offer.offerId||''),
+    listingId:String(offer.listingId||''),
+    listingOwnerUid:String(offer.listingOwnerUid||''),
+    listingOwnerUsername:String(offer.listingOwnerUsername||'Jugador'),
+    offererUid:String(offer.offererUid||''),
+    offererUsername:String(offer.offererUsername||'Jugador'),
+    listedCardId:String(offer.listedCardId||''),
+    offeredCardId:String(offer.offeredCardId||''),
+    reason:String(reason||''),
+    createdAtMs:nowMs,
+    readAtMs:null
+  }, { merge:false });
+  return notificationId;
+}
+
 function reservationWrite(tx, ref, uid, reservation, nowMs) {
   const normalized = normalizeReservation(reservation);
   if (reservationIsEmpty(normalized)) tx.delete(ref);
@@ -232,13 +258,14 @@ async function closeOneOfferTx({db,tx,uid,offerId,mode,nowMs=Date.now()}) {
   const resolved=await resolveListingForTx(db,tx,offer.listingOwnerUid,offer.listingId), resRef=reservationRef(db,offer.offererUid); const resSnap=await tx.get(resRef);
   let reservation=normalizeReservation(resSnap.exists?resSnap.data():{}); reservation=changeReservedCard(reservation,offer.offeredCardId,-1); reservation.activeOfferIds=reservation.activeOfferIds.filter(id=>id!==offer.offerId);
   reservationWrite(tx,resRef,offer.offererUid,reservation,nowMs); tx.update(offRef,{status:mode==='cancel'?'canceled':'rejected',closedAtMs:nowMs,updatedAtMs:nowMs});
+  if (mode === 'reject') writeTradeNotificationTx(tx,db,offer,'rejected',nowMs,'owner_rejected');
   if(resolved){const ids=activeOfferIds(resolved.data).filter(id=>id!==offer.offerId);tx.update(resolved.ref,{offerIds:ids,offerCount:ids.length,updatedAtMs:nowMs});}
   return {kind:mode==='cancel'?'tradeOfferCancel':'tradeOfferReject',offerId:offer.offerId};
 }
 export function cancelTradeOfferTx(args){return closeOneOfferTx({...args,mode:'cancel'});}
 export function rejectTradeOfferTx(args){return closeOneOfferTx({...args,mode:'reject'});}
 
-export async function acceptTradeOfferTx({db,tx,uid,offerId,operationId='',nowMs=Date.now()}) {
+export async function acceptTradeOfferTx({db,tx,uid,offerId,operationId='',nowMs=Date.now(),suppressPublicTradeStats=false}) {
   const offRef=db.collection('tradeOffers').doc(String(offerId||'')); const offSnap=await tx.get(offRef);
   if(!offSnap.exists||offSnap.data()?.status!=='active') throw economyError('TRADE_OFFER_NOT_FOUND');
   const accepted=offSnap.data(); if(String(accepted.listingOwnerUid)!==String(uid)) throw economyError('TRADE_OFFER_NOT_FOUND');
@@ -262,12 +289,18 @@ export async function acceptTradeOfferTx({db,tx,uid,offerId,operationId='',nowMs
   const otherOffers=offers.filter(o=>o.data.offerId!==accepted.offerId); const otherResByUid=await loadReservationsForOffers(db,tx,otherOffers);
   const ownerProfileAfter={...ownerProfile,collection:swapped.collectionA}, offererProfileAfter={...offererProfile,collection:swapped.collectionB};
   tx.update(ownerRef,{collection:swapped.collectionA}); tx.update(offererRef,{collection:swapped.collectionB});
-  tx.set(ownerStatsRef,playerStatsMirrorServer(uid,ownerProfileAfter,ownerStatsSnap.exists?(ownerStatsSnap.data()||{}):{},{tradesCompleted:1}),{merge:false});
-  tx.set(offererStatsRef,playerStatsMirrorServer(accepted.offererUid,offererProfileAfter,offererStatsSnap.exists?(offererStatsSnap.data()||{}):{},{tradesCompleted:1}),{merge:false});
+  const tradeStatsDelta=suppressPublicTradeStats?{}:{tradesCompleted:1};
+  tx.set(ownerStatsRef,playerStatsMirrorServer(uid,ownerProfileAfter,ownerStatsSnap.exists?(ownerStatsSnap.data()||{}):{},tradeStatsDelta),{merge:false});
+  tx.set(offererStatsRef,playerStatsMirrorServer(accepted.offererUid,offererProfileAfter,offererStatsSnap.exists?(offererStatsSnap.data()||{}):{},tradeStatsDelta),{merge:false});
   let nextOwner=changeReservedCard(ownerRes,listing.cardId,-1); nextOwner=removeActiveListing(nextOwner,listing.listingId); reservationWrite(tx,ownerResRef,uid,nextOwner,nowMs);
   let nextOfferer=changeReservedCard(offererRes,accepted.offeredCardId,-1); nextOfferer.activeOfferIds=nextOfferer.activeOfferIds.filter(id=>id!==accepted.offerId); reservationWrite(tx,offererResRef,accepted.offererUid,nextOfferer,nowMs);
   tx.update(offRef,{status:'accepted',closedAtMs:nowMs,updatedAtMs:nowMs});
-  for(const other of otherOffers){tx.update(other.ref,{status:'rejected_after_accept',closedAtMs:nowMs,updatedAtMs:nowMs}); const entry=otherResByUid.get(String(other.data.offererUid)); let r=normalizeReservation(entry?.snap.exists?entry.snap.data():{});r=changeReservedCard(r,other.data.offeredCardId,-1);r.activeOfferIds=r.activeOfferIds.filter(id=>id!==other.data.offerId);reservationWrite(tx,entry.ref,other.data.offererUid,r,nowMs);}
+  writeTradeNotificationTx(tx,db,accepted,'accepted',nowMs,'owner_accepted');
+  for(const other of otherOffers){
+    tx.update(other.ref,{status:'rejected_after_accept',closedAtMs:nowMs,updatedAtMs:nowMs});
+    writeTradeNotificationTx(tx,db,other.data,'rejected',nowMs,'listing_completed');
+    const entry=otherResByUid.get(String(other.data.offererUid)); let r=normalizeReservation(entry?.snap.exists?entry.snap.data():{});r=changeReservedCard(r,other.data.offeredCardId,-1);r.activeOfferIds=r.activeOfferIds.filter(id=>id!==other.data.offerId);reservationWrite(tx,entry.ref,other.data.offererUid,r,nowMs);
+  }
   tx.update(listRef,{status:'completed',offerIds:[],offerCount:0,closedAtMs:nowMs,updatedAtMs:nowMs,acceptedOfferId:accepted.offerId});
   const ownerCompleted=weekCompleted(ownerLedgerSnap)+1,offererCompleted=weekCompleted(offererLedgerSnap)+1;
   tx.set(ownerLedgerRef,{uid,weekKey,completed:ownerCompleted,updatedAtMs:nowMs},{merge:true});tx.set(offererLedgerRef,{uid:accepted.offererUid,weekKey,completed:offererCompleted,updatedAtMs:nowMs},{merge:true});

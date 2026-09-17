@@ -65,6 +65,6 @@ assert.match(version, /FIRESTORE_RULES_VERSION = '23\.13\.89'/);
 
 // No new callable: the global chat deliberately reuses multiplayerSendCommunication.
 const callableCount = (fnIndex.match(/^export const [A-Za-z0-9_]+ = onCall/gm) || []).length;
-assert.equal(callableCount, 41);
+assert.equal(callableCount, 42);
 
-console.log('MULTIPLAYER_LOBBY_UX_CHAT_23_21_6_HF20_OK columns=3 header=manual-fixed players=self-hidden+search matches=hygiene chat=server-authoritative+filtered+rate-limited functions=41 rules=23.13.89');
+console.log('MULTIPLAYER_LOBBY_UX_CHAT_23_21_6_HF20_OK columns=3 header=manual-fixed players=self-hidden+search matches=hygiene chat=server-authoritative+filtered+rate-limited functions=42 rules=23.13.89');

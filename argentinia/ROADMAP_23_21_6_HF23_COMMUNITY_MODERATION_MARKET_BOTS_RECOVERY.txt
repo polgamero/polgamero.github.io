@@ -26,7 +26,7 @@ P0 solamente:
 - roadmap preservado.
 Functions permanece 41.
 
-ENTREGA HF23.1 — MODERACIÓN Y USUARIOS / SERVER AUTHORITY
+ENTREGA HF23.1 — MODERACIÓN Y USUARIOS / SERVER AUTHORITY — COMPLETADA EN ESTE PAQUETE
 Alcance cerrado:
 - rename UI de solapa;
 - mover Admission/registro diario a esa solapa;
@@ -39,7 +39,8 @@ Alcance cerrado:
 - economyCommunityAction entra aquí;
 - Functions 41→42;
 - tests unitarios y emulator del nuevo boundary;
-- sincronización de las 4 copias Functions y todos los expected counts 42.
+- sincronización de las 4 copias Functions y todos los expected counts 42;
+- extra incorporado a pedido: “En espera” mobile, con reloj de arena levantado/agrandado en mano y acción equivalente desde el zoom mobile de la carta.
 NO bots todavía. NO Mercado notifications todavía.
 
 ENTREGA HF23.2 — MERCADO UX + DISPUTAS + FILTRO DE TIERRAS

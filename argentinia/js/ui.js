@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminResolveCommunityCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
@@ -3623,11 +3623,28 @@ function getCardMechanicTags(card) {
   return result;
 }
 
+function cardFilterColors(card) {
+  // HF23.2 — una Tierra se filtra por el maná que produce, no por su color mecánico.
+  // Para no-Tierras se conserva card.colors y las cartas sin color siguen perteneciendo a C.
+  // Es autocontenido porque lo comparten Enciclopedia, Editar mazo y Mercado.
+  const allowed = new Set(['W','U','B','R','G','C']);
+  const normalizedType = String(card?.type || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const isLand = normalizedType.includes('tierra') || normalizedType.includes('land');
+  if (!isLand) {
+    const colors = Array.isArray(card?.colors) ? card.colors.map(value => String(value).toUpperCase()) : [];
+    const filtered = [...new Set(colors.filter(value => allowed.has(value)))];
+    return filtered.length ? filtered : ['C'];
+  }
+  const produced = [];
+  if (card?.produces != null) produced.push(card.produces);
+  if (Array.isArray(card?.producesOptions)) produced.push(...card.producesOptions);
+  const colors = produced.map(value => String(value).toUpperCase()).filter(value => allowed.has(value));
+  return [...new Set(colors.length ? colors : ['C'])];
+}
+
 function cardMatchesColorFilter(card, activeColors) {
   if (activeColors.size === CARD_BROWSER_COLORS.length) return true;
-  const colors = Array.isArray(card?.colors) ? card.colors : [];
-  if (colors.length === 0) return activeColors.has('C');
-  return colors.some(color => activeColors.has(String(color).toUpperCase()));
+  return cardFilterColors(card).some(color => activeColors.has(color));
 }
 
 function cardMatchesTaxonomyFilter(card, activeArchetypes, activeMechanics) {
@@ -7046,6 +7063,104 @@ export function showMyDecksScreen(onBack) {
 // cada vez que cambia el estado de sesión (login/logout/recarga con sesión activa), vía
 // updateAccountUI más abajo, que ya está enganchado en boot() (main.js) apenas arranca la
 // página, sin importar qué pantalla esté mostrándose en ese momento.
+
+function communityDateText(ms) {
+  const value = Math.max(0, Number(ms) || 0);
+  return value ? new Date(value).toLocaleString('es-AR') : '—';
+}
+
+function showModerationComposer({ title = 'Contactar Moderación', placeholder = 'Contanos qué pasó…', submitLabel = 'ENVIAR', onSubmit } = {}) {
+  injectMulliganStyles();
+  const layer = document.createElement('div');
+  layer.className = 'gy-modal-overlay';
+  layer.style.zIndex = '25050';
+  layer.innerHTML = `<div class="gy-modal-content" style="max-width:520px;width:min(92vw,520px);">
+    <div class="gy-modal-header"><h3>🛡️ ${escapeHtml(title)}</h3></div>
+    <div style="display:flex;flex-direction:column;gap:10px;padding:16px;">
+      <textarea id="moderation-compose-text" maxlength="1000" rows="6" placeholder="${escapeHtml(placeholder)}" style="width:100%;box-sizing:border-box;background:#111a14;color:#efe4bc;border:1px solid rgba(212,175,55,.5);border-radius:8px;padding:10px;resize:vertical;"></textarea>
+      <div id="moderation-compose-status" style="min-height:18px;color:#e5c978;font-size:12px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;"><button class="mulligan-btn mulligan-btn-mull" id="moderation-compose-cancel">CANCELAR</button><button class="mulligan-btn mulligan-btn-keep" id="moderation-compose-send">${escapeHtml(submitLabel)}</button></div>
+    </div>
+  </div>`;
+  document.body.appendChild(layer);
+  const text = layer.querySelector('#moderation-compose-text');
+  const status = layer.querySelector('#moderation-compose-status');
+  const send = layer.querySelector('#moderation-compose-send');
+  layer.querySelector('#moderation-compose-cancel')?.addEventListener('click', () => layer.remove());
+  send?.addEventListener('click', async () => {
+    const value = String(text?.value || '').replace(/\s+/g,' ').trim();
+    if (!value) { status.textContent = 'Escribí un mensaje antes de enviar.'; return; }
+    send.disabled = true; status.textContent = 'Enviando…';
+    try {
+      await onSubmit?.(value);
+      status.textContent = '✓ Enviado a Moderación.';
+      setTimeout(() => layer.remove(), 650);
+    } catch (error) {
+      status.textContent = error?.message || 'No se pudo enviar. Probá de nuevo.';
+      send.disabled = false;
+    }
+  });
+  setTimeout(() => text?.focus?.(), 0);
+  return layer;
+}
+
+export async function showModerationCenter(onBack = null) {
+  injectMulliganStyles();
+  injectAdminPanelStyles();
+  injectEncyclopediaStyles();
+  document.getElementById('moderation-center-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'moderation-center-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:24000;background:radial-gradient(ellipse at center,#16211a 0%,#0b130e 100%);padding:24px;box-sizing:border-box;overflow:auto;color:#efe4bc;';
+  overlay.innerHTML = `<div style="max-width:780px;margin:0 auto;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;"><button class="encyclopedia-back-btn" id="moderation-center-back">← Volver</button><h2 style="margin:0;color:#f0e0b0;">🛡️ Moderación</h2><button class="admin-save-btn" id="moderation-center-new" style="margin-left:auto;">✉️ Nuevo mensaje</button></div>
+    <div class="admin-section"><div class="admin-section-title">TUS CASOS Y RESPUESTAS</div><div id="moderation-center-status" class="admin-debug-summary">Cargando…</div><div id="moderation-center-cases" style="display:grid;gap:10px;margin-top:12px;"></div></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  const close = () => { overlay.remove(); onBack?.(); };
+  overlay.querySelector('#moderation-center-back')?.addEventListener('click', close);
+  overlay.querySelector('#moderation-center-new')?.addEventListener('click', () => showModerationComposer({ onSubmit:text => contactModeration({ subject:'Mensaje del jugador', text }) }));
+  const status = overlay.querySelector('#moderation-center-status');
+  const list = overlay.querySelector('#moderation-center-cases');
+  try {
+    const cases = await getMyModerationCases();
+    status.textContent = cases.length ? `${cases.length} caso${cases.length===1?'':'s'} registrado${cases.length===1?'':'s'}.` : 'Todavía no tenés casos.';
+    list.innerHTML = cases.map(item => `<div style="border:1px solid rgba(212,175,55,.24);border-radius:9px;padding:11px;background:rgba(255,255,255,.025);">
+      <div style="display:flex;gap:8px;justify-content:space-between;"><b>${item.status==='resolved'?'✅ Resuelto':'🟡 Abierto'} · ${escapeHtml(item.kind || 'consulta')}</b><span style="font-size:11px;color:#9ea99f;">${escapeHtml(communityDateText(item.createdAtMs))}</span></div>
+      <div style="margin-top:7px;color:#d7ddd8;line-height:1.4;">${escapeHtml(item.text || '')}</div>
+      ${item.response ? `<div style="margin-top:9px;padding:8px;border-left:3px solid #d4af37;background:rgba(212,175,55,.07);"><b>Moderación:</b> ${escapeHtml(item.response)}</div>` : ''}
+    </div>`).join('');
+  } catch (error) {
+    status.textContent = error?.message || 'No se pudieron cargar tus casos.';
+  }
+}
+
+function showCommunityNotice({ title, bodyHtml, allowContact = false } = {}) {
+  injectMulliganStyles();
+  return new Promise(resolve => {
+    const layer = document.createElement('div'); layer.className='gy-modal-overlay'; layer.style.zIndex='26000';
+    layer.innerHTML=`<div class="gy-modal-content" style="max-width:500px;"><div class="gy-modal-header"><h3>${title}</h3></div><div style="padding:16px;display:flex;flex-direction:column;gap:12px;color:#dbe3dc;line-height:1.45;">${bodyHtml}<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">${allowContact?'<button class="mulligan-btn mulligan-btn-mull" id="community-notice-contact">Contactar Moderación</button>':''}<button class="mulligan-btn mulligan-btn-keep" id="community-notice-ok">Entendido</button></div></div></div>`;
+    document.body.appendChild(layer);
+    const done=()=>{ layer.remove(); resolve(); };
+    layer.querySelector('#community-notice-ok')?.addEventListener('click',done);
+    layer.querySelector('#community-notice-contact')?.addEventListener('click',()=>{ layer.remove(); showModerationComposer({ onSubmit:text=>contactModeration({subject:'Reclamo de moderación',text}) }); resolve(); });
+  });
+}
+
+export async function showCommunityStatusAtBoot(status = null) {
+  const ban = status?.ban || null;
+  if (ban?.active) {
+    const until = ban.permanent ? 'permanente' : `hasta ${communityDateText(ban.expiresAtMs)}`;
+    await showCommunityNotice({ title:'⛔ Restricción de cuenta', allowContact:true, bodyHtml:`<div>Tu cuenta tiene un ban <b>${escapeHtml(until)}</b>.</div><div><b>Motivo:</b> ${escapeHtml(ban.reason || 'Moderación')}</div><div>Mientras esté activo no podés usar chat, desafíos ni iniciar/aceptar operaciones sociales de Mercado. Podés contactar Moderación desde este aviso.</div>` });
+  }
+  const answered = (Array.isArray(status?.cases) ? status.cases : []).filter(item => item.status==='resolved' && item.response && !item.acknowledgedAtMs).sort((a,b)=>(b.resolvedAtMs||b.updatedAtMs||0)-(a.resolvedAtMs||a.updatedAtMs||0));
+  if (answered.length) {
+    const item = answered[0];
+    await showCommunityNotice({ title:'🛡️ Moderación respondió', bodyHtml:`<div>${escapeHtml(item.response)}</div><div style="font-size:12px;color:#aab5ad;">Caso ${escapeHtml(item.caseId || '')}</div>` });
+    try { await acknowledgeModerationCase(item.caseId); } catch (error) { console.warn('No se pudo confirmar lectura del caso:', error); }
+  }
+}
+
 function renderAccountBox(container, user) {
   if (!container) return;
 
@@ -7068,6 +7183,7 @@ function renderAccountBox(container, user) {
       <div class="main-menu-account-actions">
         <button class="main-menu-reward-btn" id="menu-chest">${gameTextHtml('account.chest')}${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
         <button class="main-menu-reward-btn" id="menu-daily-rewards">${gameTextHtml('account.dailyRewards')}${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
+        <button class="main-menu-reward-btn" id="menu-moderation">🛡️ Moderación</button>
       </div>`;
     container.innerHTML = `
       ${adminBtnHTML}
@@ -7099,6 +7215,11 @@ function renderAccountBox(container, user) {
         if (mainMenuOverlay) mainMenuOverlay.style.display = '';
         renderAccountBox(container, state.currentUser);
       });
+    });
+    container.querySelector('#menu-moderation')?.addEventListener('click', () => {
+      const mainMenuOverlay = document.getElementById('main-menu-overlay');
+      if (mainMenuOverlay) mainMenuOverlay.style.display = 'none';
+      void showModerationCenter(() => { if (mainMenuOverlay) mainMenuOverlay.style.display = ''; });
     });
     if (user.email === ADMIN_EMAIL) {
       container.querySelector('#menu-admin').addEventListener('click', () => {
@@ -7737,12 +7858,65 @@ export function showAdminPanel(onBack) {
   `;
 
 
+  const communityAdminHTML = `
+    <div class="admin-section" id="admin-community-section">
+      <div class="admin-section-title">MODERACIÓN · Política y casos</div>
+      <div class="admin-debug-summary" id="admin-community-summary">Entrá a esta solapa para cargar la autoridad de Moderación.</div>
+      <div class="admin-field-row" style="align-items:flex-start;">
+        <span class="admin-field-label">Palabras prohibidas adicionales</span>
+        <textarea class="admin-field-input" id="admin-community-words" rows="5" placeholder="Una por línea o separadas por coma" style="text-align:left;min-width:260px;resize:vertical;"></textarea>
+      </div>
+      <button class="admin-save-btn" id="admin-community-words-save">🛡️ Guardar lista prohibida</button>
+      <div class="admin-success-msg" id="admin-community-words-status"></div>
+    </div>
+    <div class="admin-section" id="admin-community-bots-section">
+      <div class="admin-section-title">POBLACIÓN AMBIENTAL · 5 jugadores del sistema</div>
+      <div class="admin-debug-summary" style="margin-bottom:10px;">Internamente quedan aislados como cuentas del sistema. Para jugadores reales se muestran como perfiles normales: sin etiqueta, sin acceso a partidas reales y sin afectar ELO/estadísticas humanas. Los desafíos siempre terminan rechazados después de una demora variable.</div>
+      <div class="admin-field-row"><span class="admin-field-label">Estado</span><button class="options-toggle-btn" id="admin-community-bots-enabled" type="button">APAGADOS</button></div>
+      <div class="admin-field-row"><span class="admin-field-label">Nombres</span><div style="display:grid;grid-template-columns:1fr;gap:6px;min-width:280px;">${[0,1,2,3,4].map(i=>`<input class="admin-field-input" id="admin-community-bot-name-${i}" maxlength="40" style="text-align:left;width:100%;" placeholder="Jugador ${i+1}">`).join('')}</div></div>
+      <div class="admin-field-row"><span class="admin-field-label">Máx. visibles online</span><input type="number" min="0" max="5" class="admin-field-input" id="admin-community-bots-online-max" value="2"></div>
+      <div class="admin-field-row"><span class="admin-field-label">Ventana horaria Argentina</span><div style="display:flex;gap:8px;align-items:center;"><input type="time" class="admin-field-input" id="admin-community-bots-start" value="06:00"><span>→</span><input type="time" class="admin-field-input" id="admin-community-bots-end" value="23:30"></div></div>
+      <div class="admin-field-row"><span class="admin-field-label">Cambio de presencia</span><select class="admin-field-input" id="admin-community-bots-presence-slot"><option value="10">cada 10 min</option><option value="20" selected>cada 20 min</option><option value="30">cada 30 min</option><option value="60">cada 60 min</option></select></div>
+      <div class="admin-field-row"><span class="admin-field-label">Prob. online por franja</span><input type="number" min="0" max="100" class="admin-field-input" id="admin-community-bots-online-pct" value="58"><span>%</span></div>
+      <div class="admin-field-row"><span class="admin-field-label">Actividad simulada</span><select class="admin-field-input" id="admin-community-bots-activity-min"><option value="10">cada 10 min</option><option value="20" selected>cada 20 min</option><option value="30">cada 30 min</option><option value="60">cada 60 min</option></select></div>
+      <div class="admin-field-row"><span class="admin-field-label">Partidas bot-vs-bot por ciclo</span><input type="number" min="0" max="3" class="admin-field-input" id="admin-community-bots-games" value="1"></div>
+      <div class="admin-field-row"><span class="admin-field-label">Publicaciones máx. por jugador</span><input type="number" min="0" max="5" class="admin-field-input" id="admin-community-bots-listings" value="2"></div>
+      <div class="admin-field-row"><span class="admin-field-label">Aceptar intercambio misma rareza</span><input type="number" min="0" max="100" class="admin-field-input" id="admin-community-bots-accept-equal" value="35"><span>%</span></div>
+      <div class="admin-field-row"><span class="admin-field-label">Aceptar rareza superior</span><input type="number" min="0" max="100" class="admin-field-input" id="admin-community-bots-accept-higher" value="70"><span>%</span></div>
+      <div class="admin-field-row"><span class="admin-field-label">Rechazar oferta elegible</span><input type="number" min="0" max="100" class="admin-field-input" id="admin-community-bots-reject-eligible" value="25"><span>%</span></div>
+      <div class="admin-field-row"><span class="admin-field-label">Demora rechazo desafío</span><div style="display:flex;gap:8px;align-items:center;"><input type="number" min="3" max="15" class="admin-field-input" id="admin-community-bots-reject-min" value="5"><span>a</span><input type="number" min="5" max="20" class="admin-field-input" id="admin-community-bots-reject-max" value="13"><span>seg.</span></div></div>
+      <button class="admin-save-btn" id="admin-community-bots-save">👥 Guardar población ambiental</button>
+      <div class="admin-success-msg" id="admin-community-bots-status"></div>
+    </div>
+    <div class="admin-section">
+      <div class="admin-section-title">BANS · UID como autoridad</div>
+      <div class="admin-debug-summary" style="margin-bottom:10px;">El email y username se guardan sólo como snapshot de auditoría. Un ban activo bloquea chat, desafíos y creación/aceptación de operaciones de Mercado; siempre conserva contacto con Moderación.</div>
+      <div class="admin-field-row"><span class="admin-field-label">Jugador</span><select class="admin-field-input" id="admin-community-ban-user" style="text-align:left;max-width:260px;"><option value="">Cargando usuarios…</option></select></div>
+      <div class="admin-field-row"><span class="admin-field-label">Duración</span><select class="admin-field-input" id="admin-community-ban-duration"><option value="1h">1 hora</option><option value="24h">24 horas</option><option value="7d">7 días</option><option value="30d">30 días</option><option value="permanent">Permanente</option></select></div>
+      <div class="admin-field-row"><span class="admin-field-label">Motivo</span><input class="admin-field-input" id="admin-community-ban-reason" maxlength="300" placeholder="Motivo obligatorio" style="text-align:left;min-width:260px;"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="admin-save-btn" id="admin-community-ban-apply">⛔ Aplicar ban</button><button class="admin-save-btn" id="admin-community-ban-clear">✅ Quitar ban</button></div>
+      <div class="admin-success-msg" id="admin-community-ban-status"></div>
+      <div class="admin-debug-table-wrap" id="admin-community-bans" style="margin-top:12px;"><div class="admin-debug-empty">Sin cargar.</div></div>
+    </div>
+    <div class="admin-section">
+      <div class="admin-section-title">CASOS · Reportes y mensajes a Moderación</div>
+      <div class="admin-debug-toolbar"><div class="admin-debug-summary">Casos abiertos primero; la respuesta queda visible para quien reportó.</div><button class="admin-save-btn" id="admin-community-refresh">🔄 Actualizar</button></div>
+      <div class="admin-debug-table-wrap" id="admin-community-cases" style="margin-top:10px;"><div class="admin-debug-empty">Sin cargar.</div></div>
+      <div id="admin-community-case-editor" class="hidden" style="margin-top:12px;padding:10px;border:1px solid rgba(212,175,55,.25);border-radius:8px;">
+        <div class="admin-debug-summary" id="admin-community-case-selected"></div>
+        <textarea class="admin-field-input" id="admin-community-case-response" rows="4" maxlength="1000" placeholder="Respuesta / resolución para el usuario" style="width:100%;text-align:left;resize:vertical;margin:8px 0;"></textarea>
+        <button class="admin-save-btn" id="admin-community-case-resolve">✓ Resolver y responder</button>
+      </div>
+      <div class="admin-success-msg" id="admin-community-case-status"></div>
+    </div>`;
+
+
   const adminTabs = [
     { key: 'game', label: 'AJUSTES DEL JUEGO' },
     { key: 'animations', label: 'ANIMACIONES' },
     { key: 'emotes', label: 'EMOTES' },
     { key: 'texts', label: 'TEXTOS DEL JUEGO' },
-    { key: 'messages', label: 'MENSAJES Y USUARIOS' },
+    { key: 'messages', label: 'MODERACIÓN Y USUARIOS' },
     { key: 'campaigns', label: gameText('admin.tab.campaigns') },
     { key: 'stats', label: gameText('admin.tab.statistics') },
     { key: 'economyAudit', label: gameText('admin.tab.economyAudit') },
@@ -7764,7 +7938,6 @@ export function showAdminPanel(onBack) {
         <div class="admin-pane-narrow">
           ${sectionsHTML}
           ${tournamentDifficultyHTML}
-          ${admissionAdminHTML}
           ${placeholdersHTML}
           <button class="admin-save-btn" id="admin-save">💾 Guardar cambios</button>
           <div class="store-error-msg" id="admin-error" style="text-align:center;"></div>
@@ -7786,6 +7959,8 @@ export function showAdminPanel(onBack) {
 
       <div class="admin-tab-pane hidden" data-admin-pane="messages">
         <div class="admin-pane-narrow">
+          ${communityAdminHTML}
+          ${admissionAdminHTML}
           ${grantHTML}
         </div>
       </div>
@@ -7919,10 +8094,18 @@ export function showAdminPanel(onBack) {
     const available = status.availableSlots == null ? '∞' : status.availableSlots;
     admissionStatusEl.innerHTML = `<b>Registrados:</b> ${totalCap} · <b>Cupos disponibles:</b> ${available} · <b>Altas hoy (${escapeHtml(status.dayKey || 'ART')}):</b> ${dayCap} · <b>Admite nuevas cuentas:</b> ${status.currentlyAcceptingNewUsers ? 'SÍ' : 'NO'}`;
   };
-  void getAdmissionStatus().then(renderAdmissionStatus).catch(error => {
-    console.error('No se pudo cargar Admission Control:', error);
-    admissionStatusEl.textContent = 'No se pudo leer el estado autoritativo de altas.';
-  });
+  let admissionStatusLoaded = false;
+  async function ensureAdmissionStatusLoaded(force = false) {
+    if (admissionStatusLoaded && !force) return;
+    admissionStatusEl.textContent = 'Cargando estado autoritativo…';
+    try {
+      renderAdmissionStatus(await getAdmissionStatus());
+      admissionStatusLoaded = true;
+    } catch (error) {
+      console.error('No se pudo cargar Admission Control:', error);
+      admissionStatusEl.textContent = 'No se pudo leer el estado autoritativo de altas.';
+    }
+  }
   admissionSaveBtn?.addEventListener('click', async () => {
     admissionErrorEl.textContent = '';
     admissionSuccessEl.textContent = '';
@@ -7934,6 +8117,7 @@ export function showAdminPanel(onBack) {
           maxRegistrationsPerDay: Math.max(0, Math.floor(Number(admissionMaxDailyEl.value) || 0))
         });
         renderAdmissionStatus(status);
+        admissionStatusLoaded = true;
         admissionSuccessEl.textContent = '✓ Control de altas actualizado en servidor.';
       }, { pendingLabel:'APLICANDO...' });
     } catch (error) {
@@ -8749,15 +8933,19 @@ Receipt: ${receiptId}
     const refresh = overlay.querySelector('#admin-stats-refresh');
     if (refresh) { refresh.disabled = true; refresh.textContent = gameText('admin.stats.loading'); }
     try {
-      const [profiles, sessions, publicRows, market] = await Promise.all([
+      const [profilesRaw, sessions, publicRowsRaw, market, communityForStats] = await Promise.all([
         fetchAllUserProfiles(),
         fetchTelemetrySessionsForAdmin(),
         fetchPublicPlayerStats(),
         getTradeMarket().catch(error => {
           console.warn('Estadísticas: no se pudo cargar snapshot vivo del Mercado de Pases:', error);
           return null;
-        })
+        }),
+        adminGetCommunityDashboard().catch(()=>null)
       ]);
+      const ambientUids=new Set(Array.isArray(communityForStats?.bots?.botUids)?communityForStats.bots.botUids.map(String):[]);
+      const profiles=(Array.isArray(profilesRaw)?profilesRaw:[]).filter(row=>!ambientUids.has(String(row.uid||row.id||'')));
+      const publicRows=(Array.isArray(publicRowsRaw)?publicRowsRaw:[]).filter(row=>!ambientUids.has(String(row.uid||row.id||'')));
       statsProfilesCache = profiles;
       statsSessionsCache = sessions;
       statsPublicRowsCache = publicRows;
@@ -9148,28 +9336,151 @@ Receipt: ${receiptId}
   };
   window.addEventListener('argentinia:animation-policy-changed', onAdminAnimationPolicyChanged);
 
-  // 23.19.5 RC2 — Usuarios lazy: abrir Admin no hace reads de perfiles. Se carga una
-  // sola vez cuando el admin entra a MENSAJES Y USUARIOS.
+  // HF23.1 — Moderación y usuarios sigue siendo lazy: abrir Admin no hace reads de perfiles,
+  // Admission ni Community. Todo se carga recién al entrar en la solapa.
   const recipientSelect = overlay.querySelector('#grant-recipient');
+  const communityBanSelect = overlay.querySelector('#admin-community-ban-user');
+  const communityWordsEl = overlay.querySelector('#admin-community-words');
+  const communitySummaryEl = overlay.querySelector('#admin-community-summary');
+  const communityBansEl = overlay.querySelector('#admin-community-bans');
+  const communityCasesEl = overlay.querySelector('#admin-community-cases');
+  const communityCaseEditor = overlay.querySelector('#admin-community-case-editor');
+  const communityCaseSelected = overlay.querySelector('#admin-community-case-selected');
+  const communityCaseResponse = overlay.querySelector('#admin-community-case-response');
+  let communityDashboard = { policy:{ blockedWords:[] }, bans:[], cases:[], bots:{config:{},botUids:[],profiles:[],runtime:{}} };
+  let selectedCommunityCaseId = '';
   let messagesUsersLoaded = false;
   let messagesUsersLoading = false;
-  async function ensureAdminMessageUsers() {
-    if (messagesUsersLoaded || messagesUsersLoading) return;
+
+  const formatBanUntil = ban => ban?.permanent ? 'Permanente' : (ban?.expiresAtMs ? new Date(ban.expiresAtMs).toLocaleString('es-AR') : '—');
+  const minuteToTimeInput = value => { const n=Math.max(0,Math.min(1439,Math.floor(Number(value)||0))); return `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`; };
+  const timeInputToMinute = value => { const m=String(value||'').match(/^(\d{1,2}):(\d{2})$/); return m ? Math.max(0,Math.min(1439,Number(m[1])*60+Number(m[2]))) : 0; };
+  function renderCommunityBotConfig() {
+    const cfg=communityDashboard?.bots?.config || {};
+    const enabled=overlay.querySelector('#admin-community-bots-enabled');
+    if(enabled){enabled.dataset.enabled=cfg.enabled===true?'1':'0';enabled.textContent=cfg.enabled===true?'ENCENDIDOS':'APAGADOS';enabled.classList.toggle('active',cfg.enabled===true);}
+    const defaults=['Toto del 92','Mora del Oeste','Nico del Pasaje','La Flaca de Barracas','El Gallego de Parque Patricios'];
+    for(let i=0;i<5;i++){const el=overlay.querySelector(`#admin-community-bot-name-${i}`);if(el&&document.activeElement!==el)el.value=String(cfg.names?.[i]||defaults[i]);}
+    const set=(id,v)=>{const el=overlay.querySelector(id);if(el&&document.activeElement!==el)el.value=String(v);};
+    set('#admin-community-bots-online-max',cfg.visibleOnlineMax??2); set('#admin-community-bots-presence-slot',cfg.presenceSlotMinutes??20);
+    set('#admin-community-bots-online-pct',cfg.onlineChancePct??58); set('#admin-community-bots-activity-min',cfg.activityIntervalMinutes??20);
+    set('#admin-community-bots-games',cfg.simulatedGamesPerTick??1); set('#admin-community-bots-listings',cfg.maxListingsPerBot??2);
+    set('#admin-community-bots-accept-equal',cfg.acceptEqualPct??35); set('#admin-community-bots-accept-higher',cfg.acceptHigherPct??70);
+    set('#admin-community-bots-reject-eligible',cfg.rejectEligiblePct??25); set('#admin-community-bots-reject-min',cfg.challengeRejectMinSeconds??5); set('#admin-community-bots-reject-max',cfg.challengeRejectMaxSeconds??13);
+    set('#admin-community-bots-start',minuteToTimeInput(cfg.activeStartMinute??360)); set('#admin-community-bots-end',minuteToTimeInput(cfg.activeEndMinute??1410));
+  }
+  function renderCommunityAdminDashboard() {
+    const words = Array.isArray(communityDashboard?.policy?.blockedWords) ? communityDashboard.policy.blockedWords : [];
+    renderCommunityBotConfig();
+    if (communityWordsEl && document.activeElement !== communityWordsEl) communityWordsEl.value = words.join('\n');
+    const bans = Array.isArray(communityDashboard?.bans) ? communityDashboard.bans : [];
+    const cases = Array.isArray(communityDashboard?.cases) ? communityDashboard.cases : [];
+    const openCount = cases.filter(item => item.status !== 'resolved').length;
+    if (communitySummaryEl) communitySummaryEl.innerHTML = `<b>${words.length}</b> palabras ADMIN · <b>${bans.length}</b> bans activos · <b>${openCount}</b> casos abiertos`;
+    if (communityBansEl) communityBansEl.innerHTML = bans.length ? `<table class="admin-debug-table"><thead><tr><th>Usuario</th><th>Hasta</th><th>Motivo</th></tr></thead><tbody>${bans.map(ban => `<tr><td>${escapeHtml(ban.usernameSnapshot || ban.uid)}${ban.emailSnapshot ? `<br><small>${escapeHtml(ban.emailSnapshot)}</small>` : ''}<br><small>UID …${escapeHtml(String(ban.uid||'').slice(-10))}</small></td><td>${escapeHtml(formatBanUntil(ban))}</td><td>${escapeHtml(ban.reason || '—')}</td></tr>`).join('')}</tbody></table>` : '<div class="admin-debug-empty">No hay bans activos.</div>';
+    if (communityCasesEl) communityCasesEl.innerHTML = cases.length ? `<table class="admin-debug-table"><thead><tr><th>Estado</th><th>Usuario</th><th>Tipo</th><th>Detalle</th><th></th></tr></thead><tbody>${cases.map(item => `<tr><td>${item.status==='resolved'?'✅ Resuelto':'🟡 Abierto'}</td><td>${escapeHtml(item.reporterUsername || item.reporterUid || 'Jugador')}</td><td>${escapeHtml(item.kind || '')}</td><td>${escapeHtml((item.subject || item.text || '').slice(0,120))}</td><td><button type="button" class="admin-save-btn" data-community-case-id="${escapeHtml(item.caseId || '')}" style="padding:5px 8px;">Ver</button></td></tr>`).join('')}</tbody></table>` : '<div class="admin-debug-empty">No hay casos.</div>';
+    communityCasesEl?.querySelectorAll?.('[data-community-case-id]').forEach(btn => btn.addEventListener('click', () => {
+      selectedCommunityCaseId = btn.dataset.communityCaseId || '';
+      const item = cases.find(row => row.caseId === selectedCommunityCaseId);
+      if (!item) return;
+      communityCaseEditor?.classList.remove('hidden');
+      if (communityCaseSelected) communityCaseSelected.innerHTML = `<b>${escapeHtml(item.reporterUsername || item.reporterUid || 'Jugador')}</b> · ${escapeHtml(item.kind || '')}<br>${escapeHtml(item.text || '')}${item.messageSnapshot?.text ? `<br><br><b>Mensaje reportado:</b> “${escapeHtml(item.messageSnapshot.text)}”` : ''}${item.response ? `<br><br><b>Respuesta actual:</b> ${escapeHtml(item.response)}` : ''}`;
+      if (communityCaseResponse) communityCaseResponse.value = item.response || '';
+    }));
+  }
+
+  async function reloadCommunityAdminDashboard() {
+    communitySummaryEl.textContent = 'Cargando autoridad de Moderación…';
+    communityDashboard = await adminGetCommunityDashboard();
+    renderCommunityAdminDashboard();
+    return communityDashboard;
+  }
+
+  async function ensureAdminMessageUsers(force = false) {
+    if (messagesUsersLoaded && !force) return;
+    if (messagesUsersLoading) return;
     messagesUsersLoading = true;
     recipientSelect.innerHTML = '<option value="">Cargando usuarios…</option>';
+    if (communityBanSelect) communityBanSelect.innerHTML = '<option value="">Cargando usuarios…</option>';
     try {
-      const profiles = await fetchAllUserProfiles();
-      const options = ['<option value="ALL">Todos los usuarios</option>']
-        .concat(profiles.map(p => `<option value="${p.uid}">${escapeHtml(p.username || 'Sin username')} · ${escapeHtml(String(p.uid).slice(-6))}</option>`));
-      recipientSelect.innerHTML = options.join('');
+      const [profiles] = await Promise.all([fetchAllUserProfiles(), ensureAdmissionStatusLoaded(force), reloadCommunityAdminDashboard()]);
+      const userOptions = profiles.map(p => `<option value="${escapeHtml(p.uid)}">${escapeHtml(p.username || 'Sin username')}${p.email ? ` · ${escapeHtml(p.email)}` : ''} · UID …${escapeHtml(String(p.uid).slice(-6))}</option>`);
+      recipientSelect.innerHTML = ['<option value="ALL">Todos los usuarios</option>', ...userOptions].join('');
+      if (communityBanSelect) communityBanSelect.innerHTML = ['<option value="">Elegí un jugador…</option>', ...userOptions].join('');
       messagesUsersLoaded = true;
     } catch (err) {
-      console.error('No se pudo cargar la lista de usuarios:', err);
+      console.error('No se pudo cargar Moderación y usuarios:', err);
       recipientSelect.innerHTML = '<option value="">No se pudo cargar la lista de usuarios</option>';
+      if (communityBanSelect) communityBanSelect.innerHTML = '<option value="">No se pudo cargar usuarios</option>';
+      if (communitySummaryEl) communitySummaryEl.textContent = err?.message || 'No se pudo cargar Moderación.';
     } finally {
       messagesUsersLoading = false;
     }
   }
+
+  overlay.querySelector('#admin-community-refresh')?.addEventListener('click', async () => {
+    try { await ensureAdminMessageUsers(true); } catch {}
+  });
+  overlay.querySelector('#admin-community-words-save')?.addEventListener('click', async () => {
+    const status = overlay.querySelector('#admin-community-words-status');
+    status.textContent = '';
+    const words = String(communityWordsEl?.value || '').split(/[\n,;]+/).map(v=>v.trim()).filter(Boolean);
+    try {
+      const policy = await adminSetCommunityBlockedWords(words);
+      communityDashboard.policy = policy;
+      renderCommunityAdminDashboard();
+      status.textContent = `✓ Lista guardada: ${policy.blockedWords?.length || 0} palabras adicionales.`;
+    } catch (err) { status.textContent = err?.message || 'No se pudo guardar la lista.'; }
+  });
+  overlay.querySelector('#admin-community-bots-enabled')?.addEventListener('click', event => {
+    const button=event.currentTarget; const next=button.dataset.enabled!=='1'; button.dataset.enabled=next?'1':'0'; button.textContent=next?'ENCENDIDOS':'APAGADOS'; button.classList.toggle('active',next);
+  });
+  overlay.querySelector('#admin-community-bots-save')?.addEventListener('click', async () => {
+    const status=overlay.querySelector('#admin-community-bots-status'); if(status)status.textContent='';
+    const enabled=overlay.querySelector('#admin-community-bots-enabled')?.dataset.enabled==='1';
+    const num=(id,fallback)=>{const n=Number(overlay.querySelector(id)?.value);return Number.isFinite(n)?n:fallback;};
+    const botConfig={
+      enabled,
+      names:[0,1,2,3,4].map(i=>String(overlay.querySelector(`#admin-community-bot-name-${i}`)?.value||'').trim()),
+      visibleOnlineMax:num('#admin-community-bots-online-max',2),
+      activeStartMinute:timeInputToMinute(overlay.querySelector('#admin-community-bots-start')?.value||'06:00'),
+      activeEndMinute:timeInputToMinute(overlay.querySelector('#admin-community-bots-end')?.value||'23:30'),
+      presenceSlotMinutes:num('#admin-community-bots-presence-slot',20), onlineChancePct:num('#admin-community-bots-online-pct',58),
+      activityIntervalMinutes:num('#admin-community-bots-activity-min',20), simulatedGamesPerTick:num('#admin-community-bots-games',1),
+      maxListingsPerBot:num('#admin-community-bots-listings',2), acceptEqualPct:num('#admin-community-bots-accept-equal',35),
+      acceptHigherPct:num('#admin-community-bots-accept-higher',70), rejectEligiblePct:num('#admin-community-bots-reject-eligible',25),
+      challengeRejectMinSeconds:num('#admin-community-bots-reject-min',5), challengeRejectMaxSeconds:num('#admin-community-bots-reject-max',13)
+    };
+    try {
+      const bots=await adminSetCommunityBots(botConfig); communityDashboard.bots=bots; renderCommunityAdminDashboard();
+      if(status)status.textContent=`✓ Población ambiental ${bots?.config?.enabled?'encendida':'apagada'} · ${bots?.profiles?.length||5} perfiles del sistema.`;
+    } catch(err){if(status)status.textContent=err?.message||'No se pudo guardar la población ambiental.';}
+  });
+
+  overlay.querySelector('#admin-community-ban-apply')?.addEventListener('click', async () => {
+    const status = overlay.querySelector('#admin-community-ban-status'); status.textContent='';
+    const targetUid = communityBanSelect?.value || '';
+    const duration = overlay.querySelector('#admin-community-ban-duration')?.value || '';
+    const reason = overlay.querySelector('#admin-community-ban-reason')?.value?.trim() || '';
+    if (!targetUid || !reason) { status.textContent='Elegí jugador y escribí un motivo.'; return; }
+    try { await adminBanCommunityUser(targetUid,duration,reason); await reloadCommunityAdminDashboard(); status.textContent='✓ Ban aplicado por UID.'; }
+    catch(err){ status.textContent=err?.message||'No se pudo aplicar el ban.'; }
+  });
+  overlay.querySelector('#admin-community-ban-clear')?.addEventListener('click', async () => {
+    const status = overlay.querySelector('#admin-community-ban-status'); status.textContent='';
+    const targetUid = communityBanSelect?.value || '';
+    if (!targetUid) { status.textContent='Elegí un jugador.'; return; }
+    const reason = overlay.querySelector('#admin-community-ban-reason')?.value?.trim() || '';
+    try { await adminUnbanCommunityUser(targetUid,reason); await reloadCommunityAdminDashboard(); status.textContent='✓ Ban removido.'; }
+    catch(err){ status.textContent=err?.message||'No se pudo quitar el ban.'; }
+  });
+  overlay.querySelector('#admin-community-case-resolve')?.addEventListener('click', async () => {
+    const status = overlay.querySelector('#admin-community-case-status'); status.textContent='';
+    const response = communityCaseResponse?.value?.trim() || '';
+    if (!selectedCommunityCaseId || !response) { status.textContent='Seleccioná un caso y escribí una respuesta.'; return; }
+    try { await adminResolveCommunityCase(selectedCommunityCaseId,response); selectedCommunityCaseId=''; communityCaseEditor?.classList.add('hidden'); await reloadCommunityAdminDashboard(); status.textContent='✓ Caso resuelto y respuesta guardada.'; }
+    catch(err){ status.textContent=err?.message||'No se pudo resolver el caso.'; }
+  });
 
   overlay.querySelector('#admin-grant-send').addEventListener('click', async () => {
     const grantErrorBox = overlay.querySelector('#admin-grant-error');
@@ -9791,8 +10102,16 @@ export function showMultiplayerLobby(onBack, onMatched) {
     const stats = statsForUid(uid);
     const pop = document.createElement('div');
     pop.id = 'mp-player-popover'; pop.className = 'mp-player-popover';
-    pop.innerHTML = `<strong>${escapeHtml(anchorEl.dataset.playerName || 'Jugador')}</strong><br>${escapeHtml(playerHoverText(stats))}`;
+    const canReport = uid !== String(state.currentUser?.uid || '');
+    pop.innerHTML = `<strong>${escapeHtml(anchorEl.dataset.playerName || 'Jugador')}</strong><br>${escapeHtml(playerHoverText(stats))}${canReport ? `<br><button type="button" class="mp-chat-delete" data-report-player="${escapeHtml(uid)}" style="margin-top:8px;width:auto;padding:4px 8px;">⚑ Reportar jugador</button>` : ''}`;
     document.body.appendChild(pop);
+    pop.querySelector('[data-report-player]')?.addEventListener('click', event => {
+      event.stopPropagation();
+      const targetUid = event.currentTarget.dataset.reportPlayer || uid;
+      const targetName = anchorEl.dataset.playerName || 'Jugador';
+      closePlayerStatsPopover();
+      showModerationComposer({ title:`Reportar a ${targetName}`, placeholder:'Explicá brevemente el motivo del reporte…', submitLabel:'REPORTAR', onSubmit:reason=>reportCommunityUser(targetUid,reason) });
+    });
     const r = anchorEl.getBoundingClientRect(); const pr = pop.getBoundingClientRect();
     pop.style.left = `${Math.max(8, Math.min(window.innerWidth-pr.width-8, r.left))}px`;
     const below = r.bottom + 7;
@@ -9863,6 +10182,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
     if (code.includes('TARGET_BUSY')) return gameText('multiplayer.challenge.targetBusy');
     if (code.includes('ALREADY_PENDING')) return gameText('multiplayer.challenge.alreadyPending');
     if (code.includes('PAIR_COOLDOWN') || code.includes('RATE_LIMIT')) return gameText('multiplayer.challenge.rateLimit');
+    if (code.includes('COMMUNITY_BANNED')) return 'La cuenta tiene una restricción activa de Moderación.';
     if (code.includes('EXPIRED')) return gameText('multiplayer.challenge.expired');
     if (code.includes('ACTIVE_MATCH')) return gameText('multiplayer.challenge.activeMatch');
     return error?.message || gameText('multiplayer.challenge.error');
@@ -10015,8 +10335,9 @@ export function showMultiplayerLobby(onBack, onMatched) {
       const stats = statsForUid(event.uid); const timeMs = Math.max(0, Number(event.createdAtMs)||0);
       const time = timeMs ? new Date(timeMs).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) : '';
       const username = String(event.username || 'Jugador'); const seq = Math.floor(Number(event.seq)||0);
-      return `<div class="mp-chat-row ${String(event.uid||'')===me?'is-own':''}" data-chat-seq="${seq}">
-        <div class="mp-chat-meta"><span class="mp-chat-name" data-player-uid="${escapeHtml(String(event.uid||''))}" data-player-name="${escapeHtml(username)}" title="${escapeHtml(playerHoverText(stats))}">${escapeHtml(username)}</span><span class="mp-chat-meta-actions">${time?`<span class="mp-chat-time">${escapeHtml(time)}</span>`:''}${admin?`<button class="mp-chat-delete" type="button" data-delete-chat-seq="${seq}" title="${gameTextHtml('multiplayer.lobby.chatDeleteTitle')}" aria-label="${gameTextHtml('multiplayer.lobby.chatDeleteTitle')}">×</button>`:''}</span></div>
+      const own = String(event.uid||'')===me;
+      return `<div class="mp-chat-row ${own?'is-own':''}" data-chat-seq="${seq}">
+        <div class="mp-chat-meta"><span class="mp-chat-name" data-player-uid="${escapeHtml(String(event.uid||''))}" data-player-name="${escapeHtml(username)}" title="${escapeHtml(playerHoverText(stats))}">${escapeHtml(username)}</span><span class="mp-chat-meta-actions">${time?`<span class="mp-chat-time">${escapeHtml(time)}</span>`:''}${!own?`<button class="mp-chat-delete" type="button" data-report-chat-seq="${seq}" title="Reportar mensaje" aria-label="Reportar mensaje">⚑</button>`:''}${admin?`<button class="mp-chat-delete" type="button" data-delete-chat-seq="${seq}" title="${gameTextHtml('multiplayer.lobby.chatDeleteTitle')}" aria-label="${gameTextHtml('multiplayer.lobby.chatDeleteTitle')}">×</button>`:''}</span></div>
         <div class="mp-chat-text">${escapeHtml(event.text || '')}</div>
       </div>`;
     }).join('');
@@ -10024,6 +10345,11 @@ export function showMultiplayerLobby(onBack, onMatched) {
     list.querySelectorAll('[data-delete-chat-seq]').forEach(button => button.addEventListener('click', async event => {
       event.stopPropagation(); const seq=Math.floor(Number(button.dataset.deleteChatSeq)||0); if(!seq||!isAdminUser(state.currentUser)) return;
       button.disabled=true; try { await deleteLobbyCommunication(seq); } catch(error) { console.warn('No se pudo moderar mensaje del Lobby:',error); showLobbyToast(error?.message||gameText('multiplayer.lobby.chatDeleteError'),true); button.disabled=false; }
+    }));
+    list.querySelectorAll('[data-report-chat-seq]').forEach(button => button.addEventListener('click', event => {
+      event.stopPropagation();
+      const seq=Math.floor(Number(button.dataset.reportChatSeq)||0); if(!seq) return;
+      showModerationComposer({ title:'Reportar mensaje del Lobby', placeholder:'Explicá brevemente por qué reportás este mensaje…', submitLabel:'REPORTAR', onSubmit:reason=>reportLobbyMessage(seq,reason) });
     }));
     list.scrollTop = list.scrollHeight;
   }
@@ -10034,6 +10360,7 @@ export function showMultiplayerLobby(onBack, onMatched) {
     if (code.includes('LOBBY_CHAT_DUPLICATE')) return gameText('multiplayer.lobby.chatDuplicate');
     if (code.includes('LOBBY_CHAT_RATE_LIMIT')) return gameText('multiplayer.lobby.chatRateLimit');
     if (code.includes('MULTIPLAYER_CHAT_INVALID')) return gameText('multiplayer.social.maxChars',{count:220});
+    if (code.includes('COMMUNITY_BANNED')) return 'Tu cuenta tiene una restricción activa. Podés contactar Moderación desde el menú principal.';
     return error?.message || gameText('multiplayer.lobby.chatSendError');
   }
   async function sendLobbyChatMessage() {
@@ -10166,6 +10493,10 @@ export function showMultiplayerLobby(onBack, onMatched) {
 
   function startDirectoryListeners() {
     stopDirectoryListeners();
+    // HF23.3: social activity is advanced opportunistically while somebody is actually using
+    // the Lobby. The response carries no system-player metadata; presence arrives through the
+    // exact same playerPresence listener as every other connected profile.
+    void refreshLobbyDirectoryAuthority().catch(error => console.warn('No se pudo refrescar el directorio del Lobby:', error));
     void fetchPublicPlayerStats().then(rows => {
       publicStats = Array.isArray(rows) ? rows : [];
       renderPlayers(); renderLobbyChat();
@@ -10187,7 +10518,10 @@ export function showMultiplayerLobby(onBack, onMatched) {
     window.addEventListener('argentinia:direct-challenges-updated', onGlobalChallengeRows);
     challengeRows = Array.isArray(globalThis.__ARGENTINIA_DIRECT_CHALLENGES__) ? globalThis.__ARGENTINIA_DIRECT_CHALLENGES__ : [];
     challengeTicker = setInterval(() => renderPlayers(), 500);
-    refreshTimer = setInterval(() => { renderPlayers(); renderMatches(); }, 30_000);
+    refreshTimer = setInterval(() => {
+      void refreshLobbyDirectoryAuthority().catch(()=>{});
+      renderPlayers(); renderMatches();
+    }, 30_000);
   }
 
   function renderHome() {
@@ -10379,8 +10713,7 @@ function tradeCardTypeKeys(card){
 function tradeCardTypeKey(card){return tradeCardTypeKeys(card)[0]||'';}
 function tradeCardMatchesColor(card,color){
   if(!color)return true;
-  const colors=Array.isArray(card?.colors)?card.colors.map(c=>String(c).toUpperCase()):[];
-  return color==='C'?colors.length===0:colors.includes(color);
+  return cardFilterColors(card).includes(String(color).toUpperCase());
 }
 function tradeCriterionText(c){
   if(c?.type==='exact_card') return tradeCardName(c.cardId);
@@ -10471,6 +10804,63 @@ function hydrateTradeCards(scope){
   });
 }
 
+function showTradeNotificationModal(item = {}) {
+  injectTradeMarketStyles();
+  const accepted = String(item?.type || '') === 'accepted';
+  return new Promise(resolve => {
+    const modal = document.createElement('div');
+    modal.className = 'trade-modal trade-notification-modal';
+    modal.dataset.tradeNotificationId = String(item?.notificationId || '');
+    const owner = String(item?.listingOwnerUsername || gameText('ranking.playerFallback'));
+    const titleKey = accepted ? 'trade.notification.accepted.title' : 'trade.notification.rejected.title';
+    const bodyKey = accepted ? 'trade.notification.accepted.body' : 'trade.notification.rejected.body';
+    const pair = accepted
+      ? tradePairHtml(item.listedCardId, item.offeredCardId, { leftLabel:gameText('trade.pair.youReceived'), rightLabel:gameText('trade.pair.youGave') })
+      : tradePairHtml(item.offeredCardId, item.listedCardId, { leftLabel:gameText('trade.pair.youOffer'), rightLabel:gameText('trade.pair.youWant') });
+    modal.innerHTML = `<div class="trade-modal-panel trade-notification-panel">
+      <button type="button" class="trade-modal-close" data-trade-notification-close aria-label="${gameTextHtml('common.close')}">×</button>
+      <div class="trade-modal-title">${gameTextHtml(titleKey)}</div>
+      <div class="trade-confirm-copy">${gameTextHtml(bodyKey,{username:owner})}</div>
+      ${pair}
+      <div class="trade-modal-actions"><button type="button" class="trade-btn" data-trade-notification-close>${gameTextHtml('common.continue')}</button></div>
+    </div>`;
+    let finishing = false;
+    const finish = async () => {
+      if (finishing) return;
+      finishing = true;
+      modal.querySelectorAll('[data-trade-notification-close]').forEach(btn => { btn.disabled = true; });
+      const id = String(item?.notificationId || '');
+      try {
+        if (id) await acknowledgeTradeNotification(id);
+      } catch (error) {
+        // Fail open visually, fail closed persistently: if ACK fails, the notice remains
+        // unread server-side and will be offered again on a later login.
+        console.warn('No se pudo marcar la notificación de Mercado como leída:', error);
+      } finally {
+        document.removeEventListener('keydown', onKey);
+        modal.remove();
+        resolve();
+      }
+    };
+    const onKey = event => {
+      if (event.key === 'Escape' || event.key === 'Enter') { event.preventDefault(); void finish(); }
+    };
+    modal.querySelector('.trade-modal-panel')?.addEventListener('click', event => event.stopPropagation());
+    modal.addEventListener('click', event => { if (event.target === modal) void finish(); });
+    modal.querySelectorAll('[data-trade-notification-close]').forEach(btn => btn.addEventListener('click', () => void finish()));
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(modal);
+    hydrateTradeCards(modal);
+  });
+}
+
+export async function showTradeNotificationsAtBoot(notifications = []) {
+  const queue = (Array.isArray(notifications) ? notifications : [])
+    .filter(item => item && item.readAtMs == null && ['accepted','rejected'].includes(String(item.type || '')))
+    .slice(0,20);
+  for (const item of queue) await showTradeNotificationModal(item);
+}
+
 export function showTradeMarketScreen(onBack) {
   injectTradeMarketStyles();
   injectEncyclopediaStyles(); // 23.21.1 — mismo botón/posición de Volver que Tienda y Enciclopedia.
@@ -10556,7 +10946,7 @@ export function showTradeMarketScreen(onBack) {
     const cardsHtml=listings.map(item=>{
       const eligible=tradeTradableEntries(market,item),already=outgoing.has(String(item.listingId||'')),card=tradeCard(item.cardId);
       const search=tradeNormalizeSearch(card?.name);
-      const colors=Array.isArray(card?.colors)&&card.colors.length?card.colors.join(','):'C';
+      const colors=cardFilterColors(card).join(',');
       const type=tradeCardTypeKeys(card).join(',');
       return `<article class="trade-listing-card" data-trade-listing-owner="${escapeHtml(item.ownerUid)}" data-trade-listing-id="${escapeHtml(item.listingId)}" data-trade-card-search="${escapeHtml(search)}" data-trade-card-colors="${escapeHtml(colors)}" data-trade-card-rarity="${escapeHtml(card?.rarity||'')}" data-trade-card-type="${escapeHtml(type)}">
         <div class="trade-listing-visual">${tradeVisualCardHtml(item.cardId)}</div>
@@ -10610,7 +11000,7 @@ export function showTradeMarketScreen(onBack) {
   function renderPublishCardChooser(entries){
     if(!entries.length)return '';
     if(!publishSelectedCardId||!entries.some(x=>x.id===publishSelectedCardId))publishSelectedCardId=entries[0].id;
-    const cards=entries.map(entry=>{const card=entry.card;const search=tradeNormalizeSearch(card?.name);const colors=Array.isArray(card?.colors)&&card.colors.length?card.colors.join(','):'C';const type=tradeCardTypeKeys(card).join(',');return `<div class="trade-publish-card-choice ${entry.id===publishSelectedCardId?'is-selected':''}" role="button" tabindex="0" data-trade-publish-card="${escapeHtml(entry.id)}" data-trade-card-search="${escapeHtml(search)}" data-trade-card-colors="${escapeHtml(colors)}" data-trade-card-rarity="${escapeHtml(card?.rarity||'')}" data-trade-card-type="${escapeHtml(type)}">${tradeVisualCardHtml(entry.id)}<div class="trade-copy-count">${gameTextHtml('trade.freeCopies',{count:entry.n})}</div></div>`;}).join('');
+    const cards=entries.map(entry=>{const card=entry.card;const search=tradeNormalizeSearch(card?.name);const colors=cardFilterColors(card).join(',');const type=tradeCardTypeKeys(card).join(',');return `<div class="trade-publish-card-choice ${entry.id===publishSelectedCardId?'is-selected':''}" role="button" tabindex="0" data-trade-publish-card="${escapeHtml(entry.id)}" data-trade-card-search="${escapeHtml(search)}" data-trade-card-colors="${escapeHtml(colors)}" data-trade-card-rarity="${escapeHtml(card?.rarity||'')}" data-trade-card-type="${escapeHtml(type)}">${tradeVisualCardHtml(entry.id)}<div class="trade-copy-count">${gameTextHtml('trade.freeCopies',{count:entry.n})}</div></div>`;}).join('');
     return `<div class="trade-section-kicker">${gameTextHtml('trade.mine.offerLabel')}</div><div class="trade-explore-layout trade-publish-browser"><section class="trade-explore-results"><div class="trade-results-meta"><span id="trade-publish-filter-result-count"></span></div><div class="trade-publish-card-grid" id="trade-publish-grid">${cards}</div><div class="trade-empty" id="trade-publish-filter-empty" hidden>${gameTextHtml('trade.publishFilter.noResults')}</div></section><aside class="trade-explore-sidebar">${renderPublishFilters()}</aside></div><div class="trade-publish-selected">${gameTextHtml('trade.mine.selectedCard')}: <strong id="trade-publish-selected-name">${escapeHtml(tradeCardName(publishSelectedCardId))}</strong></div>`;
   }
   function renderMine(){
@@ -10734,14 +11124,30 @@ export function showTradeMarketScreen(onBack) {
   function renderHistory(){
     const rows=market?.history||[];
     if(!rows.length)return `<div class="trade-empty">${gameTextHtml('trade.history.none')}</div>`;
-    return `<div class="trade-history-list">${rows.map(r=>{const me=state.currentUser?.uid;const owner=String(r.ownerUid)===String(me);const gave=owner?r.ownerGaveCardId:r.offererGaveCardId,got=owner?r.offererGaveCardId:r.ownerGaveCardId,other=owner?r.offererUsername:r.ownerUsername;const when=tradeFormatDate(r.completedAtMs);return `<article class="trade-history-entry"><div class="trade-history-heading"><div><div class="trade-section-kicker">${gameTextHtml('trade.history.completed')}</div><div class="trade-muted">${gameTextHtml('trade.history.with',{username:other||gameText('ranking.playerFallback')})}${when?` · ${escapeHtml(when)}`:''}</div></div><span class="trade-status-pill completed">${gameTextHtml('trade.status.completed')}</span></div>${tradePairHtml(gave,got,{leftLabel:gameText('trade.pair.youGave'),rightLabel:gameText('trade.pair.youReceived')})}</article>`;}).join('')}</div>`;
+    return `<div class="trade-history-list">${rows.map(r=>{const me=state.currentUser?.uid;const owner=String(r.ownerUid)===String(me);const gave=owner?r.ownerGaveCardId:r.offererGaveCardId,got=owner?r.offererGaveCardId:r.ownerGaveCardId,other=owner?r.offererUsername:r.ownerUsername;const when=tradeFormatDate(r.completedAtMs);const tradeId=String(r.tradeId||r.receiptId||'');return `<article class="trade-history-entry"><div class="trade-history-heading"><div><div class="trade-section-kicker">${gameTextHtml('trade.history.completed')}</div><div class="trade-muted">${gameTextHtml('trade.history.with',{username:other||gameText('ranking.playerFallback')})}${when?` · ${escapeHtml(when)}`:''}</div></div><span class="trade-status-pill completed">${gameTextHtml('trade.status.completed')}</span></div>${tradePairHtml(gave,got,{leftLabel:gameText('trade.pair.youGave'),rightLabel:gameText('trade.pair.youReceived')})}${tradeId?`<div class="trade-history-actions"><button type="button" class="trade-btn secondary" data-open-trade-dispute="${escapeHtml(tradeId)}">${gameTextHtml('trade.history.dispute')}</button></div>`:''}</article>`;}).join('')}</div>`;
+  }
+  function bindHistory(){
+    root.querySelectorAll('[data-open-trade-dispute]').forEach(btn=>btn.addEventListener('click',()=>{
+      const tradeId=String(btn.dataset.openTradeDispute||'');
+      const receipt=(market?.history||[]).find(row=>String(row.tradeId||row.receiptId||'')===tradeId);
+      if(!receipt)return;
+      const me=state.currentUser?.uid;
+      const owner=String(receipt.ownerUid)===String(me);
+      const other=owner?receipt.offererUsername:receipt.ownerUsername;
+      showModerationComposer({
+        title:gameText('trade.dispute.title'),
+        placeholder:gameText('trade.dispute.placeholder',{username:other||gameText('ranking.playerFallback')}),
+        submitLabel:gameText('trade.dispute.submit'),
+        onSubmit:text=>createTradeDispute(tradeId,text)
+      });
+    }));
   }
   function render(){
     if(!market)return;
     closeTransientTradeModal();
     root.innerHTML=summary()+tabs()+`<div class="trade-panel trade-main-panel">${tab==='explore'?renderExplore():tab==='mine'?renderMine():tab==='offers'?renderOffers():renderHistory()}</div>`;
     bindTabs();hydrateTradeCards(root);bindTradeZoom(root);
-    if(tab==='explore')bindExplore();if(tab==='mine')bindMine();if(tab==='offers')bindOffers();
+    if(tab==='explore')bindExplore();if(tab==='mine')bindMine();if(tab==='offers')bindOffers();if(tab==='history')bindHistory();
   }
   void refresh();
   return overlay;

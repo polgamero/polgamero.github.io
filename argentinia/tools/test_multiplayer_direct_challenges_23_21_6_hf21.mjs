@@ -64,6 +64,6 @@ assert.match(fnIndex, /createDirectChallenge/);
 assert.match(fnIndex, /resolveDirectChallenge/);
 assert.match(version, /FIRESTORE_RULES_VERSION = '23\.13\.89'/);
 const callableCount=(fnIndex.match(/^export const [A-Za-z0-9_]+ = onCall/gm)||[]).length;
-assert.equal(callableCount,41);
+assert.equal(callableCount,42);
 
-console.log('MULTIPLAYER_DIRECT_CHALLENGES_23_21_6_HF21_OK ui=aligned+compact-code invite=20s accept=ATOMIC_MATCH reject+cancel+expire=PASS antiSpam=LOCK+RATE races=TRANSACTIONAL functions=41 rules=23.13.89');
+console.log('MULTIPLAYER_DIRECT_CHALLENGES_23_21_6_HF21_OK ui=aligned+compact-code invite=20s accept=ATOMIC_MATCH reject+cancel+expire=PASS antiSpam=LOCK+RATE races=TRANSACTIONAL functions=42 rules=23.13.89');

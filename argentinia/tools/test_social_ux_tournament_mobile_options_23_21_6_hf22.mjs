@@ -106,6 +106,6 @@ assert.match(mobile, /@media \(orientation:portrait\)[\s\S]*grid-template-column
 // Authority topology remains stable: no extra callable and no Rules migration required.
 assert.match(version, /FIRESTORE_RULES_VERSION = '23\.13\.89'/);
 const callableCount=(fnIndex.match(/^export const [A-Za-z0-9_]+ = onCall/gm)||[]).length;
-assert.equal(callableCount,41);
+assert.equal(callableCount,42);
 
-console.log('SOCIAL_UX_TOURNAMENT_MOBILE_OPTIONS_23_21_6_HF22_OK chat=2H+60+ADMIN_DELETE+LONG_WRAP stats=HOVER+TAP challenges=GLOBAL+DND+RACE_FENCED tournamentLoss=15_30_60_100 mobileOptions=COMPACT functions=41 rules=23.13.89');
+console.log('SOCIAL_UX_TOURNAMENT_MOBILE_OPTIONS_23_21_6_HF22_OK chat=2H+60+ADMIN_DELETE+LONG_WRAP stats=HOVER+TAP challenges=GLOBAL+DND+RACE_FENCED tournamentLoss=15_30_60_100 mobileOptions=COMPACT functions=42 rules=23.13.89');

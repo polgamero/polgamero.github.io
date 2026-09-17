@@ -1,6 +1,8 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { economyError } from '../shared/errors.js';
 import { loadTrustedEmoteCatalog, userCanUseEmote } from '../trusted/emoteCatalog.js';
+import { assertUserNotBanned, loadCommunityModerationPolicy } from '../community/community.js';
+import { communityContainsBlockedLanguage } from '../community/moderationPolicy.js';
 
 export const MULTIPLAYER_SOCIAL_SCHEMA_VERSION = 1;
 export const CHAT_MAX_CHARS = 220;
@@ -33,8 +35,8 @@ import {
 } from './lobbyChatPolicy.js';
 
 export const LOBBY_CHAT_SCHEMA_VERSION = 1;
-function normalizeLobbyChatText(value) {
-  const result = evaluateLobbyText(value);
+function normalizeLobbyChatText(value, extraWords = []) {
+  const result = evaluateLobbyText(value, extraWords);
   if (!result.ok) throw economyError(result.code, result.details);
   return result.text;
 }
@@ -93,7 +95,11 @@ function applyPersistentRateLimit(rate, kind, nowMs) {
 }
 
 export async function sendLobbyCommunication({ db, uid, text = '' }) {
-  const cleanText = normalizeLobbyChatText(text);
+  const [, policy] = await Promise.all([
+    assertUserNotBanned(db, uid, 'lobby_chat'),
+    loadCommunityModerationPolicy(db)
+  ]);
+  const cleanText = normalizeLobbyChatText(text, policy.blockedWords);
   const commRef = db.collection('lobbyCommunications').doc('global');
   const rateRef = db.collection('lobbyChatRate').doc(uid);
   const userRef = db.collection('users').doc(uid);
@@ -161,7 +167,12 @@ export async function sendMultiplayerCommunication({ db, uid, matchId, type, tex
   const id = cleanMatchId(matchId);
   const kind = String(type || '').trim().toLowerCase();
   if (!['chat','emote'].includes(kind)) throw economyError('MULTIPLAYER_SOCIAL_TYPE_INVALID');
+  const [, policy] = await Promise.all([
+    assertUserNotBanned(db, uid, kind === 'chat' ? 'match_chat' : 'match_emote'),
+    kind === 'chat' ? loadCommunityModerationPolicy(db) : Promise.resolve({ blockedWords:[] })
+  ]);
   const cleanText = kind === 'chat' ? normalizeChatText(text) : '';
+  if (kind === 'chat' && communityContainsBlockedLanguage(cleanText, policy.blockedWords)) throw economyError('LOBBY_CHAT_PROFANITY');
   const cleanEmoteId = kind === 'emote' ? String(emoteId || '').trim() : '';
 
   const matchRef = db.collection('matches').doc(id);

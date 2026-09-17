@@ -10,29 +10,16 @@ export const LOBBY_CHAT_LONG_WINDOW_MS = 5 * 60_000;
 export const LOBBY_CHAT_LONG_MAX = 20;
 export const LOBBY_CHAT_DUPLICATE_WINDOW_MS = 45_000;
 
-const BLOCKED_WORDS = new Set([
-  'boludo','boluda','pelotudo','pelotuda','forro','forra','sorete','mierda','puto','puta',
-  'concha','pajero','pajera','mogolico','mogolica','imbecil','idiota'
-]);
-const BLOCKED_PHRASES = ['hijo de puta','hija de puta','la concha de tu madre'];
+import { moderationCanonical, communityContainsBlockedLanguage } from '../community/moderationPolicy.js';
 
-export function moderationCanonical(value) {
-  return String(value ?? '')
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/4/g,'a').replace(/3/g,'e').replace(/1/g,'i').replace(/0/g,'o')
-    .replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+export { moderationCanonical };
+export function lobbyChatContainsBlockedLanguage(value, extraWords = []) {
+  return communityContainsBlockedLanguage(value, extraWords);
 }
-export function lobbyChatContainsBlockedLanguage(value) {
-  const canonical = moderationCanonical(value);
-  if (!canonical) return false;
-  if (BLOCKED_PHRASES.some(phrase => canonical.includes(phrase))) return true;
-  return canonical.split(' ').some(token => BLOCKED_WORDS.has(token));
-}
-export function normalizeLobbyChatText(value) {
+export function normalizeLobbyChatText(value, extraWords = []) {
   const text = String(value ?? '').replace(/[\u0000-\u001F\u007F]+/g, ' ').replace(/\s+/g, ' ').trim();
   if (!text || text.length > LOBBY_CHAT_MAX_CHARS) return { ok:false, code:'MULTIPLAYER_CHAT_INVALID', details:{ maxChars:LOBBY_CHAT_MAX_CHARS } };
-  if (lobbyChatContainsBlockedLanguage(text)) return { ok:false, code:'LOBBY_CHAT_PROFANITY', details:{} };
+  if (lobbyChatContainsBlockedLanguage(text, extraWords)) return { ok:false, code:'LOBBY_CHAT_PROFANITY', details:{} };
   return { ok:true, text };
 }
 export function normalizeLobbyRate(raw = {}) {

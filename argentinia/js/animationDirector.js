@@ -424,9 +424,45 @@ function freezeClone(snapshot) {
   stripDuplicateIds(clone);
   clone.classList?.add('arg-anim-clone');
   clone.removeAttribute?.('data-tooltip');
+
+  // HF23.2 mobile combat visual hardening. During combat-damage cinematics the
+  // snapshot of an attacker can be captured while the real card is both tapped
+  // and attacking. On mobile that snapshot has landscape outer geometry plus a
+  // 90deg inner transform; scaling/moving that clone toward the player badge
+  // magnified both transforms and produced the large "broken" duplicate seen in
+  // the combat screenshot. Keep GAME STATE untouched and normalize only this
+  // disposable animation clone to a vertical card before the cinematic moves it.
+  let cloneLeft = snapshot.rect.left;
+  let cloneTop = snapshot.rect.top;
+  let cloneWidth = snapshot.rect.width;
+  let cloneHeight = snapshot.rect.height;
+  const mobileTappedAttacker = snapshot.kind === 'card'
+    && typeof document !== 'undefined'
+    && document.documentElement?.classList?.contains('argentinia-mobile')
+    && clone.classList?.contains('tapped')
+    && clone.classList?.contains('attacking');
+  if (mobileTappedAttacker) {
+    const verticalWidth = Math.min(cloneWidth, cloneHeight);
+    const verticalHeight = Math.max(cloneWidth, cloneHeight);
+    cloneLeft += (cloneWidth - verticalWidth) / 2;
+    cloneTop += (cloneHeight - verticalHeight) / 2;
+    cloneWidth = verticalWidth;
+    cloneHeight = verticalHeight;
+    clone.classList.remove(
+      'tapped', 'attacking', 'blocking', 'selected-blocker',
+      'crewing-selected', 'paying', 'targetable', 'mana-payable'
+    );
+    const inner = clone.querySelector?.('.card-inner');
+    if (inner) Object.assign(inner.style, {
+      width:'100%', height:'100%', minWidth:'100%', minHeight:'100%',
+      maxWidth:'100%', maxHeight:'100%', transform:'none',
+      transformOrigin:'center center'
+    });
+  }
+
   Object.assign(clone.style, {
-    left:`${snapshot.rect.left}px`, top:`${snapshot.rect.top}px`,
-    width:`${snapshot.rect.width}px`, height:`${snapshot.rect.height}px`,
+    left:`${cloneLeft}px`, top:`${cloneTop}px`,
+    width:`${cloneWidth}px`, height:`${cloneHeight}px`,
     opacity:'1', transform:'translate3d(0,0,0) rotate(0deg)',
     transition:'none', animation:'none'
   });

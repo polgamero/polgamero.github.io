@@ -2948,3 +2948,10 @@ button.mana-pool-chip:disabled { opacity: 1; }
     margin-top: 0;
   }
 }
+
+/* HF23.2 — Trade outcome notices + receipt-linked disputes. */
+.trade-notification-panel{width:min(780px,95vw)}
+.trade-notification-panel .trade-pair{margin-top:10px}
+.trade-notification-panel .trade-zoom-btn{display:none}
+.trade-history-actions{display:flex;justify-content:flex-end;margin-top:10px}
+.trade-history-actions .trade-btn{min-width:150px}

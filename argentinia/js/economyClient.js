@@ -171,6 +171,10 @@ export function sendDirectChallengeServer(action, payload = {}) {
   });
 }
 
+export function communityActionServer(action, payload = {}) {
+  return call('economyCommunityAction', { action:String(action || ''), ...(payload && typeof payload === 'object' ? payload : {}) });
+}
+
 export function getClassifiedsServer() {
   return call('economyGetClassifieds');
 }

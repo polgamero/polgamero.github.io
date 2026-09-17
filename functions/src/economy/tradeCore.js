@@ -205,6 +205,24 @@ export function normalizeWantedCriteria(rawCriteria, acceptAnyCard, trustedById,
   return normalized;
 }
 
+export function cardFilterColors(card) {
+  // HF23.2 — para Tierras, "color" significa el maná que pueden producir, no el
+  // color propio de la carta. Así una Tierra W/U aparece en Blanco y Azul aunque sea
+  // mecánicamente incolora; una fuente sólo-C queda en Incoloro. El resto de cartas
+  // conserva exactamente la semántica histórica de card.colors.
+  const isLand = tradeCardTypeKeys(card).includes('Land');
+  if (!isLand) {
+    const colors = Array.isArray(card?.colors) ? card.colors.map(value => String(value).toUpperCase()) : [];
+    const filtered = [...new Set(colors.filter(value => TRADE_COLORS.includes(value)))];
+    return filtered.length ? filtered : ['C'];
+  }
+  const produced = [];
+  if (card?.produces != null) produced.push(card.produces);
+  if (Array.isArray(card?.producesOptions)) produced.push(...card.producesOptions);
+  const colors = produced.map(value => String(value).toUpperCase()).filter(value => TRADE_COLORS.includes(value));
+  return [...new Set(colors.length ? colors : ['C'])];
+}
+
 export function cardMatchesCriterion(card, criterion) {
   if (!card || !criterion) return false;
   if (criterion.type === 'exact_card') return String(card.id || '') === String(criterion.cardId || '');
@@ -212,9 +230,9 @@ export function cardMatchesCriterion(card, criterion) {
   if (criterion.cardType && !tradeCardTypeKeys(card).includes(criterion.cardType)) return false;
   if (criterion.rarity && String(card.rarity || '') !== criterion.rarity) return false;
   if (criterion.color) {
-    const colors = Array.isArray(card.colors) ? card.colors.map(String) : [];
+    const colors = cardFilterColors(card);
     if (criterion.color === 'C') {
-      if (colors.length !== 0) return false;
+      if (!colors.includes('C')) return false;
     } else if (!colors.includes(criterion.color)) return false;
   }
   return true;

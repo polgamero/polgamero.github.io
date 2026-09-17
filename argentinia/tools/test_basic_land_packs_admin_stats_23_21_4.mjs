@@ -11,7 +11,7 @@ const read = rel => fs.readFileSync(path.join(repoRoot, rel), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(argRoot, 'build-manifest.json'), 'utf8'));
 
 assert.equal(manifest.engineVersion, '23.21.6');
-assert.equal(manifest.functionsCount, 41);
+assert.equal(manifest.functionsCount, 42);
 assert.match(String(manifest.basicLandPacks || ''), /W\/U\/B\/R\/G|WUBRG|5 fixed Common/i);
 
 const version = read('argentinia/js/version.js');

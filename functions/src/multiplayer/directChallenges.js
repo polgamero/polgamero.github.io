@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { economyError } from '../shared/errors.js';
 import { ENGINE_VERSION, MULTIPLAYER_PROTOCOL_VERSION } from '../shared/constants.js';
+import { assertUserNotBanned } from '../community/community.js';
+import { challengeTtlForTarget, expiredChallengeStatusForTarget } from '../community/bots.js';
 
 export const DIRECT_CHALLENGE_SCHEMA_VERSION = 1;
 export const DIRECT_CHALLENGE_TTL_MS = 20_000;
@@ -97,8 +99,16 @@ export async function createDirectChallenge({ db, uid, targetUid: rawTargetUid, 
   const inviteeUid = cleanUid(rawTargetUid);
   if (inviterUid === inviteeUid) throw economyError('MULTIPLAYER_CHALLENGE_SELF');
   const inviterSessionId = cleanSessionId(rawSessionId);
+  await Promise.all([
+    assertUserNotBanned(db, inviterUid, 'direct_challenge'),
+    assertUserNotBanned(db, inviteeUid, 'direct_challenge_target')
+  ]);
   const nowMs = Date.now();
-  const expiresMs = nowMs + DIRECT_CHALLENGE_TTL_MS;
+  // HF23.3: ambient system players use a shorter, randomized normal-looking pending window.
+  // The challenge document itself contains no bot/system marker; only the private bot registry
+  // knows why this target never accepts.
+  const ambientTtlMs = await challengeTtlForTarget(db, inviteeUid, nowMs);
+  const expiresMs = nowMs + (ambientTtlMs || DIRECT_CHALLENGE_TTL_MS);
   const challengeId = generateChallengeId(nowMs);
   const challengeRef = db.doc(`multiplayerChallenges/${challengeId}`);
   const inviterLockRef = db.doc(`multiplayerChallengeLocks/${inviterUid}`);
@@ -167,9 +177,17 @@ export async function resolveDirectChallenge({ db, uid: rawUid, challengeId: raw
   const action = String(rawAction || '').trim().toLowerCase();
   if (!['accept','reject','cancel','expire'].includes(action)) throw economyError('MULTIPLAYER_CHALLENGE_ACTION_INVALID');
   const acceptSessionId = action === 'accept' ? cleanSessionId(rawSessionId) : '';
+  if (action === 'accept' || action === 'reject') await assertUserNotBanned(db, uid, 'direct_challenge');
   const nowMs = Date.now();
   const challengeRef = db.doc(`multiplayerChallenges/${challengeId}`);
   const candidateCodes = action === 'accept' ? Array.from({length:5}, generateMatchCode) : [];
+  let expiredStatus = 'expired';
+  if (action === 'expire') {
+    const pre = await challengeRef.get();
+    if (pre.exists && Array.isArray(pre.data()?.participants) && pre.data().participants.includes(uid)) {
+      expiredStatus = await expiredChallengeStatusForTarget(db, pre.data()?.inviteeUid);
+    }
+  }
 
   return db.runTransaction(async tx => {
     const challenge = await loadPendingChallengeTx(tx, challengeRef, uid, action, nowMs);
@@ -180,7 +198,7 @@ export async function resolveDirectChallenge({ db, uid: rawUid, challengeId: raw
     const [inviterLock, inviteeLock] = await Promise.all([tx.get(inviterLockRef), tx.get(inviteeLockRef)]);
 
     if (action !== 'accept') {
-      const status = action === 'reject' ? 'rejected' : (action === 'cancel' ? 'cancelled' : 'expired');
+      const status = action === 'reject' ? 'rejected' : (action === 'cancel' ? 'cancelled' : expiredStatus);
       tx.update(challengeRef, { status, resolvedAt:Timestamp.fromMillis(nowMs) });
       deleteMatchingLock(tx, inviterLockRef, inviterLock, challengeId);
       deleteMatchingLock(tx, inviteeLockRef, inviteeLock, challengeId);

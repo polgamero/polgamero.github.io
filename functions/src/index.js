@@ -43,6 +43,12 @@ import { getTradeMarketView, createTradeListingTx, cancelTradeListingTx, createT
 import { sendMultiplayerCommunication, sendLobbyCommunication, deleteLobbyCommunication } from './multiplayer/communication.js';
 import { createDirectChallenge, resolveDirectChallenge } from './multiplayer/directChallenges.js';
 import { normalizeAdminEmoteCatalog, setEmoteCatalogAdminTx } from './economy/emotes.js';
+import {
+  assertUserNotBanned, createCommunityCase, getCommunityStatus, getCommunityAdminDashboard,
+  setCommunityBlockedWordsAdmin, setCommunityBanAdmin, clearCommunityBanAdmin, resolveCommunityCaseAdmin, acknowledgeCommunityCase,
+  getPendingTradeNotifications, acknowledgeTradeNotification
+} from './community/community.js';
+import { advanceCommunityBots, getCommunityBotAdminSnapshot, setCommunityBotConfigAdmin } from './community/bots.js';
 
 function requestData(request) {
   const data = request?.data;
@@ -439,6 +445,64 @@ export const multiplayerSendCommunication = onCall(FUNCTION_RUNTIME_OPTIONS, asy
     });
     return { ok:true, scope:'match', ...result };
   } catch(error) { logFailure('multiplayerSendCommunication', auth, error); throw error; }
+});
+
+// ---------------------------------------------------------------------------
+// HF23.1 — Community / Moderation server authority. One bounded callable boundary
+// centralizes bans, reports/cases and the Admin moderation policy. Ban authority is UID;
+// email/username are snapshots for audit only.
+// ---------------------------------------------------------------------------
+export const economyCommunityAction = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
+  const auth = requireAuth(request);
+  const data = requestData(request);
+  const action = String(data.action || '').trim().toLowerCase();
+  try {
+    rejectUnknown(data, ['economyProtocolVersion','action','targetUid','duration','reason','blockedWords','kind','messageSeq','tradeId','notificationId','subject','text','caseId','response','botConfig']);
+    assertRateLimit(auth.uid, `community-${action || 'invalid'}`, { limit: action.startsWith('admin_') ? 90 : 30, windowMs:5*60000 });
+    if (action === 'status') return { ok:true, status:await getCommunityStatus(db, auth.uid) };
+    if (action === 'directory_refresh') {
+      await advanceCommunityBots(db, { nowMs:Date.now() });
+      return { ok:true, refreshed:true };
+    }
+    if (action === 'contact') {
+      const item = await createCommunityCase(db, { reporterUid:auth.uid, kind:'contact', subject:data.subject, text:data.text });
+      return { ok:true, case:item };
+    }
+    if (action === 'my_cases') return { ok:true, cases:(await getCommunityStatus(db, auth.uid)).cases };
+    if (action === 'ack_case') return { ok:true, acknowledgement:await acknowledgeCommunityCase(db, { uid:auth.uid, caseId:data.caseId }) };
+    if (action === 'trade_notifications') return { ok:true, notifications:await getPendingTradeNotifications(db, auth.uid) };
+    if (action === 'ack_trade_notification') return { ok:true, acknowledgement:await acknowledgeTradeNotification(db, { uid:auth.uid, notificationId:data.notificationId }) };
+    if (action === 'trade_dispute') {
+      // Bans do not remove the right to contact Moderation about an already-completed swap.
+      const item = await createCommunityCase(db, { reporterUid:auth.uid, kind:'dispute', tradeId:data.tradeId, reason:data.reason || data.text, subject:data.subject || 'Disputa de Mercado de Pases' });
+      return { ok:true, case:item };
+    }
+    if (action === 'report_user') {
+      await assertUserNotBanned(db, auth.uid, 'report_user');
+      const item = await createCommunityCase(db, { reporterUid:auth.uid, kind:'report_user', targetUid:data.targetUid, reason:data.reason || data.text, subject:data.subject });
+      return { ok:true, case:item };
+    }
+    if (action === 'report_lobby_message') {
+      await assertUserNotBanned(db, auth.uid, 'report_message');
+      const item = await createCommunityCase(db, { reporterUid:auth.uid, kind:'report_lobby_message', messageSeq:data.messageSeq, reason:data.reason || data.text, subject:data.subject });
+      return { ok:true, case:item };
+    }
+    if (!isAdminAuth(auth)) throw economyError('ADMIN_REQUIRED');
+    if (action === 'admin_dashboard') {
+      const [dashboard,bots] = await Promise.all([getCommunityAdminDashboard(db),getCommunityBotAdminSnapshot(db)]);
+      return { ok:true, dashboard:{...dashboard,bots} };
+    }
+    if (action === 'admin_set_bots') {
+      const config = await setCommunityBotConfigAdmin(db, data.botConfig && typeof data.botConfig === 'object' ? data.botConfig : {}, auth.uid);
+      await advanceCommunityBots(db, { nowMs:Date.now(), force:true });
+      return { ok:true, bots:await getCommunityBotAdminSnapshot(db), config };
+    }
+    if (action === 'admin_set_blocked_words') return { ok:true, policy:await setCommunityBlockedWordsAdmin(db, data.blockedWords, auth.uid) };
+    if (action === 'admin_ban') return { ok:true, ban:await setCommunityBanAdmin(db, { targetUid:data.targetUid, duration:data.duration, reason:data.reason, moderatorUid:auth.uid }) };
+    if (action === 'admin_unban') return { ok:true, ban:await clearCommunityBanAdmin(db, { targetUid:data.targetUid, reason:data.reason, moderatorUid:auth.uid }) };
+    if (action === 'admin_resolve_case') return { ok:true, case:await resolveCommunityCaseAdmin(db, { caseId:data.caseId, response:data.response, moderatorUid:auth.uid }) };
+    throw economyError('COMMUNITY_ACTION_INVALID');
+  } catch(error) { logFailure('economyCommunityAction', auth, error); throw error; }
 });
 
 export const economyGetClassifieds = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
@@ -919,6 +983,8 @@ export const economyGetTradeMarket = onCall(FUNCTION_RUNTIME_OPTIONS, async requ
     assertRateLimit(auth.uid,'trade-read',{limit:60,windowMs:60000});
     rejectUnknown(data,['economyProtocolVersion']);
     const config=await loadEconomyConfig(db); assertEconomyAvailable(config,clientProtocol(data));
+    try { await advanceCommunityBots(db, { nowMs:Date.now() }); }
+    catch (botError) { logger.warn('Ambient population tick skipped', { code:errorCode(botError) }); }
     return {ok:true,market:await getTradeMarketView(db,auth.uid)};
   } catch(error){logFailure('economyGetTradeMarket',auth,error);throw error;}
 });
@@ -926,6 +992,7 @@ export const economyGetTradeMarket = onCall(FUNCTION_RUNTIME_OPTIONS, async requ
 export const economyCreateTradeListing = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
   const auth=requireAuth(request); const data=requestData(request);
   try {
+    await assertUserNotBanned(db, auth.uid, 'trade_listing_create');
     assertRateLimit(auth.uid,'trade-listing-create',{limit:12,windowMs:60000});
     rejectUnknown(data,['economyProtocolVersion','operationId','cardId','wantedCriteria','acceptAnyCard']);
     const operationId=String(data.operationId||'');
@@ -957,6 +1024,7 @@ export const economyCancelTradeListing = onCall(FUNCTION_RUNTIME_OPTIONS, async 
 export const economyCreateTradeOffer = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
   const auth=requireAuth(request); const data=requestData(request);
   try {
+    await assertUserNotBanned(db, auth.uid, 'trade_offer_create');
     assertRateLimit(auth.uid,'trade-offer-create',{limit:30,windowMs:60000});
     rejectUnknown(data,['economyProtocolVersion','operationId','listingOwnerUid','listingId','cardId']);
     const operationId=String(data.operationId||''),listingOwnerUid=String(data.listingOwnerUid||''),listingId=String(data.listingId||''),cardId=String(data.cardId||'');
@@ -987,6 +1055,7 @@ export const economyCancelTradeOffer = onCall(FUNCTION_RUNTIME_OPTIONS, async re
 export const economyRejectTradeOffer = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
   const auth=requireAuth(request); const data=requestData(request);
   try {
+    await assertUserNotBanned(db, auth.uid, 'trade_offer_reject');
     assertRateLimit(auth.uid,'trade-offer-reject',{limit:30,windowMs:60000});
     rejectUnknown(data,['economyProtocolVersion','operationId','offerId']);
     const operationId=String(data.operationId||''),offerId=String(data.offerId||'');
@@ -1002,6 +1071,7 @@ export const economyRejectTradeOffer = onCall(FUNCTION_RUNTIME_OPTIONS, async re
 export const economyAcceptTradeOffer = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
   const auth=requireAuth(request); const data=requestData(request);
   try {
+    await assertUserNotBanned(db, auth.uid, 'trade_offer_accept');
     assertRateLimit(auth.uid,'trade-offer-accept',{limit:12,windowMs:60000});
     rejectUnknown(data,['economyProtocolVersion','operationId','offerId']);
     const operationId=String(data.operationId||''),offerId=String(data.offerId||'');

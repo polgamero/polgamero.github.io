@@ -3313,3 +3313,59 @@ html.argentinia-mobile .lands-support-wrapper {
   max-width:100% !important;
   overflow:hidden !important;
 }
+
+
+/* HF23.1 — Suspend / "En espera" mobile reachability.
+   The desktop FAB hangs below the card by design; in the bottom hand row that position can
+   sit against the physical/browser edge and become untappable. On mobile we lift only the
+   hourglass inside the hand and enlarge its hit target without changing card geometry. */
+html.argentinia-mobile #local-hand .suspend-action-fab {
+  bottom: 3px !important;
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 13px !important;
+  line-height: 22px !important;
+  z-index: 2900 !important;
+  touch-action: manipulation !important;
+}
+html.argentinia-mobile .arg-mobile-preview-suspend-btn {
+  border-color: #e7c34b !important;
+  background: linear-gradient(180deg, #806719, #44360c) !important;
+}
+
+/* ============================================================================
+   HF23.2 — MOBILE ATTACKING CARD TRANSFORM ISOLATION
+   Tapped battlefield cards normally swap their outer 5:7 footprint to 7:5 and rotate
+   .card-inner. During combat that clashes with the attacking highlight/arrow geometry on
+   narrow viewports and produces the broken/offset card seen on real-device QA. Keep the
+   GAME STATE tapped, but render tapped+attacking creatures vertically on mobile. Ordinary
+   tapped permanents keep the existing 90deg presentation.
+   ============================================================================ */
+html.argentinia-mobile .field-row .card.tapped.attacking,
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped.attacking {
+  width:var(--arg-mobile-field-card-w, 11.3216svh) !important;
+  height:var(--arg-mobile-field-card-h, 15.85024svh) !important;
+  min-width:var(--arg-mobile-field-card-w, 11.3216svh) !important;
+  max-width:var(--arg-mobile-field-card-w, 11.3216svh) !important;
+  min-height:var(--arg-mobile-field-card-h, 15.85024svh) !important;
+  max-height:var(--arg-mobile-field-card-h, 15.85024svh) !important;
+  aspect-ratio:5 / 7 !important;
+}
+html.argentinia-mobile .field-row .card.tapped.attacking .card-inner,
+html.argentinia-mobile .field-row .card.tapped.attacking:hover .card-inner,
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped.attacking .card-inner,
+html.argentinia-mobile.arg-mobile-browser-ui .field-row .card.tapped.attacking:hover .card-inner {
+  width:100% !important;
+  height:100% !important;
+  min-width:100% !important;
+  max-width:100% !important;
+  min-height:100% !important;
+  max-height:100% !important;
+  transform:none !important;
+  transform-origin:center center !important;
+}
+
+html.argentinia-mobile .trade-notification-panel{width:min(94vw,700px);max-height:92svh}
+html.argentinia-mobile .trade-notification-panel .trade-pair{gap:6px}
+html.argentinia-mobile .trade-history-actions{justify-content:stretch}
+html.argentinia-mobile .trade-history-actions .trade-btn{width:100%}

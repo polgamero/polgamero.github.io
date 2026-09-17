@@ -22,6 +22,10 @@ test('Lobby chat basic profanity filter handles accents/leetspeak and token boun
   assert.equal(lobbyChatContainsBlockedLanguage('sos un pel0tud0'),true);
   assert.equal(lobbyChatContainsBlockedLanguage('idiomático'),false);
   assert.equal(normalizeLobbyChatText('hijo de puta').code,'LOBBY_CHAT_PROFANITY');
+  assert.equal(lobbyChatContainsBlockedLanguage('pija'),true);
+  assert.equal(lobbyChatContainsBlockedLanguage('p1j4444'),true);
+  assert.equal(lobbyChatContainsBlockedLanguage('porrrronga'),true);
+  assert.equal(normalizeLobbyChatText('frutilla', ['frutilla']).code,'LOBBY_CHAT_PROFANITY','Admin list is applied server-side');
 });
 test('Lobby chat persistent rate policy handles min interval and duplicate window', () => {
   const t=1_000_000;

@@ -315,6 +315,7 @@ function ensureMobileTouchUI() {
     <div id="arg-mobile-card-preview-stage"></div>
     <div class="arg-mobile-preview-actions">
       <button id="arg-mobile-preview-action" class="arg-mobile-preview-action-btn" type="button">USAR</button>
+      <button id="arg-mobile-preview-suspend" class="arg-mobile-preview-action-btn arg-mobile-preview-suspend-btn hidden" type="button">⏳ EN ESPERA</button>
       <button id="arg-mobile-preview-close" class="arg-mobile-preview-close-btn" type="button">CERRAR</button>
     </div>`;
 
@@ -529,7 +530,7 @@ function classifyGameplayCardElement(card, eventTarget) {
   return classifyMobileTapIntent({
     targetable: card.classList.contains('targetable'),
     manaPayable: card.classList.contains('mana-payable'),
-    instantAction: Boolean(eventTarget?.closest?.('.instant-ability-fab')),
+    instantAction: Boolean(eventTarget?.closest?.('.instant-ability-fab,.suspend-action-fab')),
     discardChoice: zone?.id === 'local-hand' && zone.classList.contains('discard-warning'),
     combatDeclaration: localCombat && /Confirmar Ataque|Saltar Ataque/i.test(turnText),
     // Durante declaración de bloqueadores hay DOS taps de gameplay: primero la bloqueadora
@@ -562,13 +563,14 @@ function openCardPreview(card) {
   closeMobileLayers({ keepPreview: true });
   const stage = document.getElementById('arg-mobile-card-preview-stage');
   const actionBtn = document.getElementById('arg-mobile-preview-action');
-  if (!stage || !actionBtn) return;
+  const suspendPreviewBtn = document.getElementById('arg-mobile-preview-suspend');
+  if (!stage || !actionBtn || !suspendPreviewBtn) return;
 
   const clone = card.cloneNode(true);
   clone.classList.remove('tapped', 'targetable', 'mana-payable', 'paying', 'attacking', 'blocking', 'selected-blocker', 'crewing-selected', 'card-with-instant-action');
   clone.removeAttribute('style');
   clone.querySelector('.card-inner')?.removeAttribute('style');
-  clone.querySelectorAll('.instant-ability-fab').forEach(el => el.remove());
+  clone.querySelectorAll('.instant-ability-fab,.suspend-action-fab').forEach(el => el.remove());
   clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
   clone.setAttribute('aria-hidden', 'true');
   stage.replaceChildren(clone);
@@ -581,6 +583,15 @@ function openCardPreview(card) {
   } else {
     actionBtn.onclick = null;
   }
+
+  // HF23.1 — En espera must remain actionable from the enlarged mobile preview. The clone
+  // itself is intentionally inert; this large button invokes the original authoritative FAB.
+  const originalSuspend = card.querySelector('.suspend-action-fab');
+  const suspendAvailable = Boolean(originalSuspend);
+  suspendPreviewBtn.classList.toggle('hidden', !suspendAvailable);
+  suspendPreviewBtn.disabled = !suspendAvailable || Boolean(originalSuspend?.disabled);
+  suspendPreviewBtn.textContent = originalSuspend?.disabled ? '⏳ EN ESPERA · NO DISPONIBLE' : '⏳ EN ESPERA';
+  suspendPreviewBtn.onclick = suspendAvailable && !originalSuspend.disabled ? () => invokeOriginalAction(originalSuspend) : null;
 
   document.documentElement.classList.add(CARD_PREVIEW_OPEN_CLASS);
 }
@@ -637,7 +648,7 @@ function interceptMobileGameplayTap(event) {
 
   const card = target.closest('.card');
   if (!card || !card.closest(GAMEPLAY_ZONE_SELECTOR) || directClickBypass.has(card)) return;
-  if (target.closest('.instant-ability-fab')) return;
+  if (target.closest('.instant-ability-fab,.suspend-action-fab')) return;
 
   const intent = classifyGameplayCardElement(card, target);
   if (intent === 'direct') return;

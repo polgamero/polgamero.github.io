@@ -1,0 +1,79 @@
+ARGENTINIA 23.21.6 HF23.2 PRE-RELEASE
+QA — MARKET OUTCOME NOTIFICATIONS + RECEIPT DISPUTES + LAND MANA FILTER + MOBILE ATTACK VISUAL
+
+STATUS
+- PRE-RELEASE acumulativo sobre HF23.1.
+- Firestore Rules: 23.13.89, SIN CAMBIOS.
+- Functions: 42, SIN NUEVA callable en HF23.2. Se reutiliza economyCommunityAction.
+- Bots ambientales: deliberadamente diferidos a HF23.3.
+
+1. NOTIFICACIONES PERSISTENTES DEL MERCADO
+- El backend crea notificaciones server-side cuando una oferta llega a estado terminal por acción del dueño de la publicación.
+- Oferta aceptada: notificación accepted para el oferente aceptado.
+- Oferta rechazada manualmente: notificación rejected / owner_rejected.
+- Ofertas restantes cerradas porque otra oferta completó la publicación: rejected / listing_completed.
+- Cancelar la propia oferta NO genera notificación.
+- IDs determinísticos por type + offerId y mutaciones exact-once evitan duplicados por retry.
+- La cola se consulta al iniciar después de Daily + anuncio + Moderación, evitando superposición de modales.
+- La UI usa el renderer real de cartas. Aceptada: RECIBISTE / ENTREGASTE. Rechazada: VOS OFRECÉS / QUERÉS.
+- La notificación NO se marca leída al iniciar sesión: readAtMs se escribe al cerrar el modal. Si el ACK falla, permanece pendiente para el siguiente ingreso.
+
+2. DISPUTAS VINCULADAS AL INTERCAMBIO
+- Historial de Mercado incorpora ABRIR DISPUTA.
+- Cliente envía únicamente tradeId + motivo.
+- Servidor carga tradeReceipts/{tradeId} y verifica que el UID reportante sea ownerUid u offererUid.
+- El target se deriva server-side como el otro participante.
+- El caso conserva snapshot del receipt: listing/offer, participantes, cartas entregadas y completedAtMs.
+- No se confía en IDs de cartas/usuario suministrados por el cliente para reconstruir la operación.
+- El canal de disputa se mantiene disponible aunque el usuario esté baneado, para no quitarle acceso a Moderación.
+
+3. FILTRO DE TIERRAS POR MANÁ PRODUCIDO
+- Enciclopedia, Editar mazo y Mercado usan cardFilterColors(card).
+- Para Tierra/Land: el color de filtro deriva de produces + producesOptions.
+- Una Tierra que produce W aparece en Blanco aunque su card.colors sea vacío.
+- Una Tierra U/R aparece en Azul y Rojo.
+- Tierra sin productor explícito queda C.
+- Cartas que NO son Tierra conservan semántica card.colors; sin colores => C.
+- El mismo criterio existe en Functions para BUSCO, evitando desacuerdo cliente/servidor.
+
+4. FIX VISUAL MOBILE — ATACANTE GIRADO
+La captura reportada ocurría durante “Resolviendo daño de combate”. Había dos problemas de presentación relacionados:
+- La carta real podía combinar el layout horizontal de tapped con el estado attacking/arrow y romper su geometría.
+- La cinemática de daño clonaba ese atacante ya girado. Al mover/escalar el snapshot hacia el badge del jugador, se magnificaban a la vez la geometría apaisada y el transform de 90°, generando el duplicado grande/roto visible cerca del rival.
+
+Corrección:
+- Sólo en mobile, .card.tapped.attacking mantiene el GAME STATE tapped pero se presenta vertical 5:7 mientras está atacando; el .card-inner queda transform:none.
+- Las cartas simplemente tapped y no attacking siguen giradas normalmente.
+- animationDirector.freezeClone() detecta exclusivamente snapshots mobile de carta tapped + attacking y normaliza el CLON DESCARTABLE a geometría vertical, recentrado, quitando clases visuales de combate y transform del inner antes de la cinemática.
+- No se modifica el objeto de juego, tapped state, daño, atacante real ni reglas de combate.
+
+5. CERTIFICACIÓN LOCAL HF23.2
+- Contratos canónicos: 144/144 PASS.
+- Nuevo contrato: test_trade_notifications_land_filters_mobile_attack_23_21_6_hf23_2.mjs.
+- Functions unit tests: 24/24 PASS, incluyendo Tierra por maná producido.
+- Sintaxis JS cliente/Functions: PASS.
+- Game Text contract: PASS, definitions=2006.
+- Functions parity Source -> Gate05 / Deploy / Gate07: 59/59 PASS en las tres comparaciones.
+- Packaging preflight: canonical=144 / regression=62 / functions=42 PASS.
+- Gate05 HF23.2 preflight: PASS.
+- Gate07 HF23.2 preflight: PASS; incluye runtime test preparado para notificación accepted, autorejected, ACK, disputa por receipt y Land W con colors vacío.
+- Gate05/Gate07 EMULADORES COMPLETOS: NO se declaran PASS localmente. Este entorno no conserva node_modules y el intento previo de npm install quedó bloqueado; los runners autoritativos HF23.2 quedan incluidos para ejecución externa.
+- Firestore Rules 23.13.89 se mantienen byte-identical respecto de HF23.1.
+
+6. PROMOCIÓN
+1) Gate03 no requiere rerun por este HF: Rules no cambian.
+2) Ejecutar 05_Economy_Authority_Emulator_Gate/RUN_CURRENT.sh.
+3) Ejecutar 07_Trade_Market_Emulator_Gate/RUN_CURRENT.sh.
+4) Sólo con ambos verdes ejecutar 06_Economy_Functions_DEPLOY_AFTER_GATE/DEPLOY_CURRENT.sh.
+5) Ejecutar VERIFY_CURRENT.sh y exigir exactamente 42 Functions.
+6) Subir 01_GitHubSource, esperar GitHub Actions verde y hacer smoke real mobile/desktop.
+
+SMOKE VISUAL MOBILE RECOMENDADO
+- Atacar con una criatura enderezada: queda vertical mientras attacking; flecha parte de geometría correcta.
+- Resolver daño al jugador rival: la carta animada hacia el badge debe permanecer vertical y proporcionada, sin duplicado apaisado/roto.
+- Atacar múltiples criaturas.
+- Declarar bloqueadores y resolver criatura vs criatura.
+- Tras finalizar combate, si el permanente sigue tapped debe volver a verse girado normalmente.
+- Abrir zoom mobile antes/después del combate para confirmar que no se alteró el preview.
+
+STATUS FINAL: PRE-RELEASE. NO promover como RELEASED sin Gate05 + Gate07 completos, deploy/verify 42, GitHub Actions y smoke.

@@ -1,0 +1,54 @@
+ARGENTINIA 23.21.6 HF23.1 — SMOKE / QA
+
+A. P0 CARRIED FORWARD
+[ ] Lobby con 10+ mensajes: las filas conservan altura natural; sólo scrollea la lista.
+[ ] Mobile: un tap corto sobre nombre de jugador abre estadísticas; no requiere hold.
+
+B. FILTRO DE MODERACIÓN
+[ ] Lobby: “pija” -> bloqueado.
+[ ] Lobby: “p1j4444” -> bloqueado.
+[ ] Lobby: “p.i.j.a” -> bloqueado.
+[ ] Lobby: “p i j a” -> bloqueado.
+[ ] Lobby: una frase segura con “pijama” -> permitida.
+[ ] Admin > Moderación y usuarios: agregar una palabra de prueba (ej. frutilla), guardar y comprobar que se bloquea server-side.
+[ ] Quitar la palabra de prueba al terminar.
+[ ] Repetir una palabra bloqueada en chat de partida: debe rechazarse también.
+
+C. BANS
+[ ] Admin > Moderación y usuarios muestra selector username + email + UID.
+[ ] Aplicar ban 1 h con motivo a cuenta tester.
+[ ] Cuenta tester al iniciar ve aviso de restricción con motivo/expiración.
+[ ] Cuenta baneada no puede escribir Lobby ni chat/emote de partida.
+[ ] Cuenta baneada no puede crear/aceptar/rechazar desafío directo.
+[ ] Cuenta baneada no puede crear publicación/oferta ni aceptar/rechazar oferta de Mercado.
+[ ] Cuenta baneada SÍ puede entrar a Moderación y enviar reclamo.
+[ ] Admin ve el ban activo con snapshot email/UID y puede quitarlo.
+
+D. REPORTES / CASOS
+[ ] Desde perfil de otro jugador: “Reportar jugador” abre composer y crea caso.
+[ ] Bandera ⚑ de un mensaje de Lobby crea reporte con snapshot de ese mensaje.
+[ ] Menú principal > Moderación > Nuevo mensaje crea contacto voluntario.
+[ ] Admin ve casos abiertos y puede responder/resolver.
+[ ] En próximo inicio del reportante, la respuesta aparece después de Daily/avisos.
+[ ] Cerrar el aviso marca la respuesta leída; no debe reaparecer indefinidamente.
+
+E. ADMISSION
+[ ] Límites de registro/admisión ya NO aparecen en Ajustes del juego.
+[ ] Aparecen en Moderación y usuarios y siguen editables.
+[ ] Abrir Admin sin entrar en esa solapa no dispara la carga pesada de usuarios/Moderación.
+
+F. EN ESPERA / SUSPEND MOBILE
+[ ] En un teléfono, una carta de mano con En espera muestra el ⏳ separado del borde físico/browser.
+[ ] Tap directo al ⏳ funciona sin necesidad de apuntar fuera de la pantalla.
+[ ] Tap al cuerpo de la carta abre zoom mobile.
+[ ] En el zoom aparece “⏳ EN ESPERA”.
+[ ] Pulsarlo dispara exactamente el mismo flujo/modal de Suspend que el reloj de arena original.
+[ ] Cuando Suspend no está legalmente disponible, el botón del zoom queda deshabilitado y lo indica.
+
+G. PROMOCIÓN
+[ ] Gate05 RUN_CURRENT.sh verde.
+[ ] Gate07 RUN_CURRENT.sh verde.
+[ ] DEPLOY_CURRENT.sh completa deploy acumulativo de 42 Functions.
+[ ] VERIFY_CURRENT.sh devuelve count=42 e incluye economyCommunityAction.
+[ ] GitHub Actions verde.
+[ ] Smoke producción completado con dos cuentas.
