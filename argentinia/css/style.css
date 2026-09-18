@@ -346,16 +346,28 @@ html, body {
   color: var(--card-text, #222);
   flex-shrink: 0;
   overflow: hidden;
-  font-size: 6cqw; /* base heredado por .rarity-icon — sin esto, el ● no tiene tamaño propio
-                       y hereda el default del navegador (gigante), rompe la altura de toda
-                       la carta. .card-type-text lo pisa con su propio tamaño dinámico. */
+  font-size: 6cqw; /* base geométrica de la type-line. El ícono PNG de rareza mide 0.9em,
+                       por lo que queda estrictamente dentro de esta línea y no puede aumentar
+                       su altura. .card-type-text usa su propio tamaño dinámico. */
 }
 .card-type-text {
   flex: 1;
   min-width: 0; /* imprescindible para que el ellipsis funcione en un hijo flex */
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.rarity-icon { flex-shrink: 0; margin-left: 3px; font-size: 1em; }
+.rarity-icon {
+  flex: 0 0 auto;
+  margin-left: 3px;
+  width: .9em;
+  height: .9em;
+  max-width: .9em;
+  max-height: .9em;
+  object-fit: contain;
+  display: block;
+  align-self: center;
+  pointer-events: none;
+  user-select: none;
+}
 
 .card.bg-b .card-type-line,
 .card.bg-land .card-type-line {
@@ -663,11 +675,8 @@ html, body {
 
 .card-back { background: #4a2b10; border: 4px solid #111; background-image: repeating-linear-gradient(45deg, #3e220b 0, #3e220b 5px, #4a2b10 5px, #4a2b10 10px); }
 
-/* ICONOS POR RAREZA */
-.card.Mythic .rarity-icon { color: #e67e22; }
-.card.Rare .rarity-icon { color: var(--gold); }
-.card.Uncommon .rarity-icon { color: #a6abae; }
-.card.Common .rarity-icon { color: #111; }
+/* ICONOS POR RAREZA — HF23.3.7 usa PNG propios en assets/images/ui.
+   No se aplican tintes: cada asset conserva su diseño/color original. */
 
 /* HUD SIDEBAR */
 #sidebar-hud {

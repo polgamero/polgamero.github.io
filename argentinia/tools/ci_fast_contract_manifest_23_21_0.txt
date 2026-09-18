@@ -167,3 +167,7 @@ tools/test_ambient_population_23_21_6_hf23_3.mjs
 tools/test_moderation_admin_ux_23_21_6_hf23_3_4.mjs
 
 tools/test_hf23_3_5_integrity_ai_hotfix.mjs
+
+tools/test_ambient_population_realism_ii_23_21_6_hf23_3_6.mjs
+
+tools/test_rarity_icons_ambient_stats_23_21_6_hf23_3_7.mjs

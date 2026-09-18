@@ -2111,6 +2111,12 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
     ? ' loading="lazy" decoding="async" fetchpriority="low"'
     : ' decoding="async"';
 
+  // HF23.3.7 — rarity is an actual compact UI asset, never a glyph. Keep the filename
+  // mapping intentionally closed so arbitrary card data cannot escape assets/images/ui.
+  const rarityKey = ({ Common:'common', Uncommon:'uncommon', Rare:'rare', Mythic:'mythic' })[String(card.rarity || 'Common')] || 'common';
+  const rarityLabel = ({ common:'Común', uncommon:'Poco común', rare:'Rara', mythic:'Mítica' })[rarityKey];
+  const rarityIconHTML = `<img class="rarity-icon" src="./assets/images/ui/${rarityKey}.png" alt="Rareza ${rarityLabel}" title="Rareza ${rarityLabel}" decoding="async" draggable="false" onerror="this.style.visibility='hidden'">`;
+
   el.innerHTML = `
     <div class="card-inner">
       <div class="card-header"><span class="card-title" data-auto-name-cqw="${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}" style="font-size: clamp(4px, ${(8 * fitScale(card.name, 13, 0.3)).toFixed(2)}cqw, 40px);">${card.name}</span><span class="card-cost">${renderManaSymbols(card.manaCost)}</span></div>
@@ -2122,7 +2128,7 @@ export function createCardElement(itemObj, isTapped = false, isLocal = true, ind
         ${dfcBadgeHTML}
         ${typalChoiceBadgeHTML}
       </div>
-      <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(displayType, 16, 0.3)).toFixed(2)}cqw, 30px);">${displayType}</span><span class="rarity-icon">●</span></div>
+      <div class="card-type-line"><span class="card-type-text" style="font-size: clamp(4px, ${(7 * fitScale(displayType, 16, 0.3)).toFixed(2)}cqw, 30px);">${displayType}</span>${rarityIconHTML}</div>
       ${formattedTextHTML}
       ${hasDisplayCombatStats ? `<div class="card-pt${hasVehiclePrintedStats && !hasCreatureStats ? ' vehicle-printed-pt' : ''}"${hasVehiclePrintedStats && !hasCreatureStats ? ' title="Poder/Resistencia al tripular este Transporte" aria-label="Poder/Resistencia al tripular este Transporte"' : ''}>${ptText}</div>` : ''}
       ${isPlaneswalker ? `<div class="card-pt card-loyalty">${loyaltyText}</div>` : ''}
@@ -7890,6 +7896,8 @@ export function showAdminPanel(onBack) {
       <div class="admin-field-row"><span class="admin-field-label">Actividad simulada</span><select class="admin-field-input" id="admin-community-bots-activity-min"><option value="10">cada 10 min</option><option value="20" selected>cada 20 min</option><option value="30">cada 30 min</option><option value="60">cada 60 min</option></select></div>
       <div class="admin-field-row"><span class="admin-field-label">Partidas bot-vs-bot por ciclo</span><input type="number" min="0" max="3" class="admin-field-input" id="admin-community-bots-games" value="1"></div>
       <div class="admin-field-row"><span class="admin-field-label">Publicaciones máx. por jugador</span><input type="number" min="0" max="5" class="admin-field-input" id="admin-community-bots-listings" value="2"></div>
+      <div class="admin-field-row"><span class="admin-field-label">Renovar publicaciones</span><div style="display:flex;gap:8px;align-items:center;"><input type="number" min="15" max="1440" class="admin-field-input" id="admin-community-bots-listing-life-min" value="90"><span>a</span><input type="number" min="15" max="2880" class="admin-field-input" id="admin-community-bots-listing-life-max" value="360"><span>min.</span></div></div>
+      <div class="admin-debug-summary" style="margin:-2px 0 8px;">Cada publicación recibe una vida útil distinta dentro de ese rango. Sólo se renueva si no tiene ofertas pendientes.</div>
       <div class="admin-field-row"><span class="admin-field-label">Aceptar intercambio misma rareza</span><input type="number" min="0" max="100" class="admin-field-input" id="admin-community-bots-accept-equal" value="35"><span>%</span></div>
       <div class="admin-field-row"><span class="admin-field-label">Aceptar rareza superior</span><input type="number" min="0" max="100" class="admin-field-input" id="admin-community-bots-accept-higher" value="70"><span>%</span></div>
       <div class="admin-field-row"><span class="admin-field-label">Rechazar oferta elegible</span><input type="number" min="0" max="100" class="admin-field-input" id="admin-community-bots-reject-eligible" value="25"><span>%</span></div>
@@ -9375,6 +9383,7 @@ Receipt: ${receiptId}
     set('#admin-community-bots-online-max',cfg.visibleOnlineMax??2); set('#admin-community-bots-presence-slot',cfg.presenceSlotMinutes??20);
     set('#admin-community-bots-online-pct',cfg.onlineChancePct??58); set('#admin-community-bots-activity-min',cfg.activityIntervalMinutes??20);
     set('#admin-community-bots-games',cfg.simulatedGamesPerTick??1); set('#admin-community-bots-listings',cfg.maxListingsPerBot??2);
+    set('#admin-community-bots-listing-life-min',cfg.listingLifetimeMinMinutes??90); set('#admin-community-bots-listing-life-max',cfg.listingLifetimeMaxMinutes??360);
     set('#admin-community-bots-accept-equal',cfg.acceptEqualPct??35); set('#admin-community-bots-accept-higher',cfg.acceptHigherPct??70);
     set('#admin-community-bots-reject-eligible',cfg.rejectEligiblePct??25); set('#admin-community-bots-reject-min',cfg.challengeRejectMinSeconds??5); set('#admin-community-bots-reject-max',cfg.challengeRejectMaxSeconds??13);
     set('#admin-community-bots-start',minuteToTimeInput(cfg.activeStartMinute??360)); set('#admin-community-bots-end',minuteToTimeInput(cfg.activeEndMinute??1410));
@@ -9475,7 +9484,9 @@ Receipt: ${receiptId}
       activeEndMinute:timeInputToMinute(overlay.querySelector('#admin-community-bots-end')?.value||'23:30'),
       presenceSlotMinutes:num('#admin-community-bots-presence-slot',20), onlineChancePct:num('#admin-community-bots-online-pct',58),
       activityIntervalMinutes:num('#admin-community-bots-activity-min',20), simulatedGamesPerTick:num('#admin-community-bots-games',1),
-      maxListingsPerBot:num('#admin-community-bots-listings',2), acceptEqualPct:num('#admin-community-bots-accept-equal',35),
+      maxListingsPerBot:num('#admin-community-bots-listings',2),
+      listingLifetimeMinMinutes:num('#admin-community-bots-listing-life-min',90), listingLifetimeMaxMinutes:num('#admin-community-bots-listing-life-max',360),
+      acceptEqualPct:num('#admin-community-bots-accept-equal',35),
       acceptHigherPct:num('#admin-community-bots-accept-higher',70), rejectEligiblePct:num('#admin-community-bots-reject-eligible',25),
       challengeRejectMinSeconds:num('#admin-community-bots-reject-min',5), challengeRejectMaxSeconds:num('#admin-community-bots-reject-max',13)
     };
