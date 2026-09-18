@@ -1,4 +1,4 @@
-ARGENTINIA 23.21.6 — HF23.3.7 PRE
+ARGENTINIA 23.21.6 — HF23.3.7.1 RELEASED
 Rarity Icon Assets + Ambient Public Stats Realism
 
 CAMBIOS
@@ -9,11 +9,11 @@ CAMBIOS
   assets/images/ui/uncommon.png
   assets/images/ui/rare.png
   assets/images/ui/mythic.png
-- El icono queda limitado a 0.9em × 0.9em, sin incrementar la altura del contenedor de tipo.
+- El icono queda limitado a 1.1em × 1.1em, sin incrementar la altura del contenedor de tipo.
 - No se aplican tintes CSS; se respeta el PNG original.
 
 IMPORTANTE SOBRE LOS 4 PNG
-Los binarios no estaban dentro del HF23.3.6 que recibió este hotfix. Este PRE está pensado como OVERLAY
+Los binarios no estaban dentro del HF23.3.6 que recibió este hotfix. Este RELEASE está pensado como OVERLAY
 sobre la copia local del owner donde esos cuatro archivos ya existen. Los gates ahora verifican firma PNG y
 existencia antes de instalar dependencias para impedir un deploy silencioso con assets faltantes.
 
@@ -36,5 +36,6 @@ CERTIFICACIÓN LOCAL
 - Functions: 42, count sin cambios.
 
 PENDIENTE EXTERNO
-- Gate05 y Gate07 completos deben repetirse porque functions/src/community/bots.js cambió.
+- Gate05 y Gate07: GREEN confirmados por ejecución real del owner sobre HF23.3.7.
+- HF23.3.7.1 sólo ajusta geometría CSS del icono de rareza + su contrato; Functions y Rules quedan byte-identical, por lo que no requiere repetir Gate05/Gate07.
 - El overlay requiere que los 4 PNG del owner ya estén en assets/images/ui.

@@ -16,7 +16,7 @@ for (const [rarity,file] of [['Common','common.png'],['Uncommon','uncommon.png']
 }
 assert.match(ui,/\.\/assets\/images\/ui\/\$\{rarityKey\}\.png/);
 assert.doesNotMatch(ui,/class="rarity-icon">●<\/span>/);
-assert.match(css,/\.rarity-icon\s*\{[\s\S]*?width:\s*\.9em;[\s\S]*?height:\s*\.9em;[\s\S]*?max-height:\s*\.9em;/);
+assert.match(css,/\.rarity-icon\s*\{[\s\S]*?width:\s*1\.1em;[\s\S]*?height:\s*1\.1em;[\s\S]*?max-width:\s*1\.1em;[\s\S]*?max-height:\s*1\.1em;[\s\S]*?filter:\s*drop-shadow\(0px 0px 3px black\);/);
 assert.doesNotMatch(css,/\.card\.Mythic \.rarity-icon\s*\{\s*color:/);
 
 // Ambient public stats must remain mutually coherent and non-identical-looking.
@@ -34,4 +34,4 @@ assert.match(bots,/ensureAmbientCollectionDiversity/);
 assert.doesNotMatch(bots,/for\(let i=0;i<72;i\+\+\)/,'fixed 72-card discovery fingerprint must be removed');
 assert.match(bots,/ambientStatsModelVersion:AMBIENT_STATS_MODEL_VERSION/);
 
-console.log('RARITY_ICONS_AMBIENT_STATS_23_21_6_HF23_3_7_OK rarity=PNG_BOUNDED_0_9EM ambientTime=NONZERO_PER_GAME wins=COHERENT collection=VARIED economy=REBUILT_V3');
+console.log('RARITY_ICONS_AMBIENT_STATS_23_21_6_HF23_3_7_OK rarity=PNG_BOUNDED_1_1EM_SHADOW ambientTime=NONZERO_PER_GAME wins=COHERENT collection=VARIED economy=REBUILT_V3');
