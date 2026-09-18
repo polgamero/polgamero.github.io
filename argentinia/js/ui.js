@@ -8445,7 +8445,9 @@ export function showAdminPanel(onBack) {
       const displayStatus=telemetryAdminDisplayStatus(session);
       if(receipt){
         const won=receipt.won===true;
-        const resultHtml=`<span class="admin-debug-result ${won?'win':'loss'}" title="Receipt de Torneo server-authoritative">${won?'🏆':'💀'} ${escapeHtml(won?localName:rivalName)}</span>`;
+        // La fila representa la perspectiva del owner de ESTE log: el ícono expresa si ese
+        // jugador ganó/perdió y el nombre debe ser siempre el jugador local, nunca el ganador global.
+        const resultHtml=`<span class="admin-debug-result ${won?'win':'loss'}" title="Receipt de Torneo server-authoritative">${won?'🏆':'💀'} ${escapeHtml(localName)}</span>`;
         const points=Math.max(0,Math.floor(Number(receipt.pointsGain)||0));
         const packs=Math.max(0,Math.floor(Number(receipt.packsGain)||0));
         const eligible=receipt.rewardEligible===true;
@@ -8476,10 +8478,11 @@ export function showAdminPanel(onBack) {
       || endReason === 'abandon_local'
       || endReason.startsWith('abandon_recovery');
     const outcome = adminTelemetryOutcome(session, gameResult);
-    const winner = outcome.result === 'win' ? localName : (outcome.result === 'loss' ? rivalName : '—');
+    // Igual que en Torneo, win/loss es relativo al owner de esta sesión. La calavera no
+    // nombra al ganador: identifica que el jugador local perdió.
     let resultHtml = outcome.result === 'unknown'
       ? '<span class="admin-debug-reward unknown">—</span>'
-      : `<span class="admin-debug-result ${outcome.result}" title="${outcome.authoritative ? 'Registrado en playerGameReceipt' : 'Inferido desde snapshot final'}">${outcome.result === 'win' ? '🏆' : '💀'} ${escapeHtml(winner)}</span>`;
+      : `<span class="admin-debug-result ${outcome.result}" title="${outcome.authoritative ? 'Registrado en playerGameReceipt' : 'Inferido desde snapshot final'}">${outcome.result === 'win' ? '🏆' : '💀'} ${escapeHtml(localName)}</span>`;
 
     if (reward) {
       const effective = Math.floor(Number(reward.effectiveDelta) || 0);
