@@ -1,0 +1,40 @@
+ARGENTINIA 23.21.6 HF23.3.8 PRE-RELEASE
+TOURNAMENT MULTI-TAB SAFETY + SETTLEMENT RECOVERY + BRACKET REDESIGN
+
+BASELINE
+- Cumulative over HF23.3.7.1 RELEASED recovered full package.
+- Engine/protocol/pool unchanged: 23.21.6 / mp-23.19.2 / 900 cards.
+- Firestore Rules unchanged: 23.13.89.
+- Functions unchanged: 42 callables, byte-identical to HF23.3.7.1 baseline.
+
+P0 TOURNAMENT FIX
+- Ordinary Tournament screen loads are now read-only: resolveInterrupted=false.
+- Opening Tournament in a second tab can no longer eliminate a live match as a side effect of reading the fixture.
+- A tab-scoped active-match marker is written only after economyBeginTournamentMatch succeeds.
+- At terminal game state, a tab-scoped pending settlement is persisted BEFORE economySettleTournamentMatch.
+- On same-tab reload, pending settlement is retried first. Only when no pending terminal result exists may that same reloaded tab resolve its own active match as interrupted.
+- A fresh/second tab never auto-resolves interruption.
+- If the server still reports activeMatch, the fixture blocks Play/Abandon and shows an explicit recovery panel.
+- If a pending result exists, the only CTA is Reintentar guardado.
+- If there is no pending result, Resolver partida interrumpida is manual and requires confirmation.
+
+FIXTURE REDESIGN
+- Bracket is split into left/right trees: 4+4 Octavos -> 2+2 Cuartos -> 1+1 Semifinal -> Final.
+- Both trees converge visually toward a central Argentinia cup.
+- Placeholder asset: assets/images/ui/copa_argentinia.png (320x600 PNG, transparent; replace in-place later with final art).
+- Final reward block below the cup reuses moneda.png / sobres.png visual language with emoji fallback already used by Rewards.
+- Entrants now use larger circular avatars (48px) with the name below the image.
+- Desktop bracket supports click+drag panning on both axes using the existing drag-scroll helper; touch scrolling remains native.
+- Board is 1420x560 so desktop uses width rather than the old tall vertical scroll.
+
+NO SERVER AUTHORITY DELTA
+- No Functions code changed.
+- No Firestore Rules changed.
+- No tournament receipt/economy schema changed.
+- Existing settle callable idempotency is preserved.
+- Gate03 / Gate05 / Gate07 runtime authority can be carried forward because their server inputs are byte-identical.
+- New client contract test added to canonical fast suite; canonical count becomes 150.
+
+IMPORTANT
+- This PRE does not retroactively repair a tournament that was already converted to interrupted_match before installation. Admin repair remains a separate server-authority feature if needed.
+- Do not mark RELEASED until owner smoke passes the multi-tab/F5 scenarios and GitHub Actions is green.

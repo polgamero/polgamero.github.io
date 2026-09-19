@@ -109,6 +109,16 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'tournament.error.start': definition('Torneo', 'No se pudo iniciar el Torneo.', 'Error al iniciar Torneo.'),
   'tournament.error.begin': definition('Torneo', 'No se pudo iniciar esta partida de Torneo.', 'Error al comenzar una ronda.'),
   'tournament.error.settle': definition('Torneo', 'No se pudo guardar el resultado todavía. No cierres esta pantalla y reintentá.', 'Error al liquidar ronda.'),
+  'tournament.fixtureDragHint': definition('Torneo', 'Arrastrá la llave con el mouse para recorrerla', 'Ayuda de navegación del fixture en desktop.'),
+  'tournament.finalRewards': definition('Torneo', 'Premio de la Final', 'Título del bloque visual de premios bajo la copa.'),
+  'tournament.finalLossReward': definition('Torneo', 'Derrota: +{points} puntos', 'Premio de consolación visible bajo la copa.'),
+  'tournament.recovery.pending': definition('Torneo', 'Hay un resultado terminal pendiente de guardarse. Reintentá ese settlement antes de resolver cualquier interrupción.', 'Recovery seguro cuando existe un settlement terminal durable en esta pestaña.'),
+  'tournament.recovery.retry': definition('Torneo', 'Reintentar guardado', 'CTA para reintentar settlement terminal pendiente.'),
+  'tournament.recovery.retryError': definition('Torneo', 'El resultado sigue pendiente. No se convirtió en derrota: revisá la conexión y reintentá.', 'Error no destructivo al reintentar settlement.'),
+  'tournament.recovery.activeElsewhere': definition('Torneo', 'El servidor todavía registra una partida activa. Si esa partida sigue abierta en otra pestaña, continuá jugando allí. Sólo resolvela como interrumpida si ya no está abierta en ningún lado.', 'Advertencia multi-tab antes de resolver una interrupción.'),
+  'tournament.recovery.resolve': definition('Torneo', 'Resolver partida interrumpida', 'CTA manual y explícito para cerrar un activeMatch huérfano.'),
+  'tournament.recovery.resolveConfirm': definition('Torneo', '¿Seguro que esta partida ya no está abierta en ninguna otra pestaña o dispositivo? Resolverla la contará como derrota por interrupción.', 'Confirmación destructiva del recovery de activeMatch huérfano.'),
+  'tournament.recovery.resolveError': definition('Torneo', 'No se pudo resolver la partida interrumpida todavía. Revisá la conexión e intentá de nuevo.', 'Error al resolver manualmente activeMatch huérfano.'),
   'tournament.npc.fallback': definition('Torneo', 'Rival del Torneo', 'Nombre fallback de NPC.'),
 
   // Mercado de Pases 23.21.0

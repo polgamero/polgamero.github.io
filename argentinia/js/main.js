@@ -7,7 +7,7 @@ import { buildRandomDeck, getLastRandomDeckReport, buildDeckFromCardIds, parseMa
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter, getPermanentTypes } from './permanentTypes.js';
 import { checkGameOver, attemptPassTurn, handleDiscardClick, passTurnToRival, startLocalTurn, passPriority, resolveBothPassed, processMyTurnStart, beginActivePlayerPriorityWindow, resetPriorityClock, syncPriorityClockFromNetwork, ensureSoloBotPriorityScheduled, invalidateSoloBotPrioritySchedule } from './turnManager.js';
 import { hasKeyword, canBlock, getProtectionMatch } from './keywords.js';
-import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, listenToDirectChallenges, resolveDirectChallenge, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence, beginTournamentMatch, forfeitTournament, getCommunityStatus, getPendingTradeNotifications } from './firebaseClient.js';
+import { preloadFirebaseClient, onAuthChange, waitForInitialAuthState, loadUserProfile, createUserProfile, reserveInitialUsername, signOutUser, registerDailyLogin, applyAbandonPenalty, flushPendingAbandonPenalties, flushPendingGameRewards, loadGameConfig, loadAnimationPolicy, listenAnimationPolicy, loadGameTextOverrides, ensureClassifiedsSchedule, publishMatchStateAtomic, listenToMatch, listenToDirectChallenges, resolveDirectChallenge, fetchMatchForReconnect, claimMatchRoleSession, clearActiveMatchId, uploadTelemetrySession, setMatchPlayerReady, publishPrivateSelectionOffer, fetchPrivateSelectionOffer, deletePrivateSelectionOffer, bootstrapPlayerStatistics, finalizeTelemetryLifecycleSession, touchMatchPresence, beginTournamentMatch, settleTournamentMatch, forfeitTournament, getTournamentState, getCommunityStatus, getPendingTradeNotifications } from './firebaseClient.js';
 import { POINTS, applyGameConfig } from './store.js';
 import { applyTournamentConfig } from './tournamentConfig.js';
 import { buildMyPublicPatch, buildMyPrivatePatch, extractRivalStateFromPublicDoc, extractSharedStateFromPublicDoc, extractMyStateFromPublicDoc, serializeStackForPublic, deserializeStackFromPublic, serializeStackTarget, deserializeStackTarget, serializeBoardItemRef, deserializeBoardItemRef, otherRole, refreshStackBoardRefs, relinkEquipmentAttachments } from './matchSync.js';
@@ -51,6 +51,7 @@ import { scoreBotGraveyardRecovery, buildBotSubtypeCounts } from './botStrategy.
 import { normalizeSyncRevision, deriveEffectiveTouchedKeys, classifySnapshotRevision, syncRetryDelayMs, isRetryableSyncError, classifyRivalPresence, fieldRevisionDeltaKeys, markFieldRevisionsApplied, SYNC_RETRY_MAX_ATTEMPTS, SYNC_RECOVERY_RETRY_MS, MULTIPLAYER_READY_TIMEOUT_MS, MULTIPLAYER_CLIENT_SESSION_ID, validateRoleSession } from './multiplayerReliability.js';
 import { startMultiplayerSocialSession, stopMultiplayerSocialSession } from './multiplayerSocial.js';
 import { startPlayerPresence, stopPlayerPresence, setPlayerPresenceActivity, setChallengeInteractionBlocked } from './multiplayerPresence.js';
+import { markTournamentActiveMatch, readTournamentActiveMatch, readTournamentPendingSettlement, clearTournamentActiveMatch, clearTournamentPendingSettlement, clearTournamentRecoveryMarkers, isReloadNavigation } from './tournamentRecovery.js';
 
 globalThis.__ARGENTINIA_BOOT_DIAG__?.mark?.('main_module_evaluated');
 
@@ -307,6 +308,37 @@ const TOURNAMENT_REOPEN_STORAGE_KEY = 'argentinia.tournament.openAfterReload.v1'
 
 function clearTournamentReopenIntent() {
   try { sessionStorage.removeItem(TOURNAMENT_REOPEN_STORAGE_KEY); } catch {}
+}
+
+async function recoverTournamentBeforeFixture() {
+  const pending = readTournamentPendingSettlement();
+  if (pending?.tournamentId && pending?.matchId) {
+    try {
+      await settleTournamentMatch(pending.tournamentId, pending.matchId, pending.won === true);
+      clearTournamentRecoveryMarkers();
+      return { recovered:'pending_settlement' };
+    } catch (error) {
+      // Never fall through to interruption while a terminal result is waiting to settle.
+      // The fixture will surface an explicit retry CTA instead of converting it into a loss.
+      console.warn('[Tournament HF23.3.8] Pending settlement replay deferred:', error);
+      return { recovered:'pending_settlement_deferred', error };
+    }
+  }
+
+  const active = readTournamentActiveMatch();
+  // Only the same tab performing a real reload is allowed to translate its own live-match
+  // marker into interrupted_match. A fresh/duplicate/second tab is read-only.
+  if (active?.tournamentId && active?.matchId && isReloadNavigation()) {
+    try {
+      await getTournamentState({ resolveInterrupted:true });
+      clearTournamentActiveMatch();
+      return { recovered:'same_tab_interruption' };
+    } catch (error) {
+      console.warn('[Tournament HF23.3.8] Same-tab interruption recovery deferred:', error);
+      return { recovered:'same_tab_interruption_deferred', error };
+    }
+  }
+  return { recovered:'none' };
 }
 
 function soloRecoveryOwnsBootRoute() {
@@ -1254,6 +1286,7 @@ function hookGameplayButtons() {
             const t = state.currentTournamentMatch;
             try {
               await forfeitTournament(t.tournamentId, t.matchId);
+              clearTournamentRecoveryMarkers();
               recordTelemetryEvent('tournament_forfeit_committed', { tournamentId:t.tournamentId, matchId:t.matchId, roundKey:t.roundKey });
             } catch (error) {
               // Fail-closed semantics remain safe: if this explicit call cannot reach Functions,
@@ -2201,6 +2234,7 @@ async function boot() {
         clearTournamentReopenIntent();
         return;
       }
+      await recoverTournamentBeforeFixture();
       clearTournamentReopenIntent();
       document.querySelector('#main-menu-overlay')?.remove();
       await startTournamentFlow();
@@ -2310,16 +2344,30 @@ async function startTournamentFlow() {
         }
         showPlayDeckPickerModal(
           async chosenDeck => {
+            let begunMatch = null;
             try {
               const begun = await beginTournamentMatch(tournament.tournamentId);
               const match = begun?.match;
               if (!match?.matchId) throw new Error('TOURNAMENT_MATCH_MISSING');
+              begunMatch = match;
+              markTournamentActiveMatch({ tournamentId:tournament.tournamentId, matchId:match.matchId, roundKey:match.roundKey });
               await initGame({ type:'saved', deck:chosenDeck }, {
                 tournamentMatch: { ...match, tournamentId:tournament.tournamentId }
               });
             } catch (error) {
               hideMatchInitializationOverlay();
               console.error('No se pudo iniciar la ronda de Torneo:', error);
+              // If Functions already opened the round but local gameplay failed to initialize,
+              // this same tab owns the interruption. Resolve it explicitly rather than leaving
+              // a zombie activeMatch behind for a later read-only fixture.
+              if (begunMatch?.matchId) {
+                try {
+                  await getTournamentState({ resolveInterrupted:true });
+                  clearTournamentRecoveryMarkers();
+                } catch (recoveryError) {
+                  console.warn('No se pudo resolver el activeMatch tras fallar initGame:', recoveryError);
+                }
+              }
               showSimpleAlertModal(gameText('tournament.error.begin'));
               startTournamentFlow();
             }

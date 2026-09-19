@@ -21,6 +21,7 @@ import { resolveUntapAttempt } from './counterEngine.js';
 import { botDifficultyLabel } from './botDifficulty.js';
 import { gameRandom } from './gameRng.js';
 import { derivePerspectiveTerminalOutcome } from './gameTerminal.js';
+import { markTournamentPendingSettlement, clearTournamentPendingSettlement, clearTournamentActiveMatch } from './tournamentRecovery.js';
 
 function cleanupDiscardDestination(card,isLocal) {
   const ownerIsLocal=cardOwnerIsLocal(card,!!isLocal,state.currentMatch?.myRole||null);
@@ -140,6 +141,7 @@ function awardMatchEndPoints(won) {
     if (!state.currentUser || !context.tournamentId || !context.matchId) return;
     if (els.btnRestart) els.btnRestart.disabled = true;
     showGameRewardStatus(gameText('tournament.match.settling'), 'info');
+    markTournamentPendingSettlement({ tournamentId:context.tournamentId, matchId:context.matchId, roundKey:context.roundKey, won:!!won });
     recordTelemetryEvent('tournament_settlement_queued', { tournamentId:context.tournamentId, matchId:context.matchId, roundKey:context.roundKey, won:!!won });
     settleTournamentMatch(context.tournamentId, context.matchId, !!won)
       .then(result => {
@@ -156,6 +158,8 @@ function awardMatchEndPoints(won) {
         showGameRewardStatus(msg, won ? 'success' : 'warning');
         logMsg(msg);
         state.currentTournamentMatch.settled = true;
+        clearTournamentPendingSettlement();
+        clearTournamentActiveMatch();
         try { sessionStorage.setItem('argentinia.tournament.openAfterReload.v1','1'); } catch {}
         if (els.btnRestart) {
           els.btnRestart.textContent = gameText('tournament.match.returnFixture');
