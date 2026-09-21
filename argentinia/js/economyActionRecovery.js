@@ -5,7 +5,7 @@
 export const ECONOMY_ACTION_STORAGE_KEY = 'argentinia.economyActionRecovery.v1';
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const VALID_TYPES = new Set([
-  'packPurchase','enhancementCraft','prebuiltPurchase','classifiedPurchase','usernameRename','dailyClaim'
+  'packPurchase','enhancementCraft','workshopUnlock','prebuiltPurchase','classifiedPurchase','usernameRename','dailyClaim'
 ]);
 
 function safeRead() {

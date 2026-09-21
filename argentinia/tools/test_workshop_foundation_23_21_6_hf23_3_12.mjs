@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizeWorkshopLayout, DEFAULT_WORKSHOP_LAYOUT, workshopMachineAsset } from '../js/workshop.js';
 import { getDefaultGameConfig, WORKSHOP_POLICY } from '../js/store.js';
+import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from '../js/economyActionRecovery.js';
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const app=path.resolve(__dirname,'..');
@@ -64,6 +65,20 @@ assert.match(functionsIndex,/action === 'unlockWorkshopMachine'/);
 assert.match(functionsIndex,/type:'workshop\.unlock_machine'/);
 assert.match(client,/call\('economyCraftEnhancement',[\s\S]*action: 'unlockWorkshopMachine'/);
 assert.match(impl,/runEconomyActionAuthority\(uid, 'workshopUnlock'/);
+assert.match(impl,/workshopUnlock:\s*'workshop\.unlock_machine'/,'client recovery journal must know the server operation type for workshop unlock');
+assert.match(impl,/workshopUnlock:\s*'workshop-unlock'/,'client operation-id prefix must be registered for workshop unlock');
+
+// Browser recovery journal must accept workshop unlocks so a lost response cannot cause a second charge.
+{
+  const mem=new Map();
+  globalThis.localStorage={getItem:key=>mem.has(key)?mem.get(key):null,setItem:(key,value)=>{mem.set(key,String(value));},removeItem:key=>mem.delete(key)};
+  const request={machineId:'machine1'};
+  const started=beginEconomyAction('workshop-user','workshopUnlock','workshop-unlock:test-op',request);
+  assert.equal(started?.operationId,'workshop-unlock:test-op');
+  assert.equal(getPendingEconomyAction('workshop-user','workshopUnlock',request)?.operationId,'workshop-unlock:test-op');
+  assert.equal(clearPendingEconomyAction('workshop-user','workshopUnlock',request,'workshop-unlock:test-op'),true);
+  assert.equal(getPendingEconomyAction('workshop-user','workshopUnlock',request),null);
+}
 assert.match(audit,/case 'workshop\.unlock_machine'/);
 
 // Craft is not merely relocated visually: server requires the unlocked Generador.

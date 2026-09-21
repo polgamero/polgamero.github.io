@@ -233,6 +233,7 @@ async function loadOwnProfileAfterServerMutation(uid) {
 const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
   packPurchase: 'store.purchase_pack',
   enhancementCraft: 'store.craft_enhancement',
+  workshopUnlock: 'workshop.unlock_machine',
   prebuiltPurchase: 'store.purchase_prebuilt',
   emotePurchase: 'store.purchase_emote',
   classifiedPurchase: 'store.purchase_classified',
@@ -241,7 +242,7 @@ const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
   dailyClaim: 'daily.claim'
 });
 const ECONOMY_ACTION_PREFIXES = Object.freeze({
-  packPurchase: 'buy-pack', enhancementCraft: 'craft', prebuiltPurchase: 'prebuilt',
+  packPurchase: 'buy-pack', enhancementCraft: 'craft', workshopUnlock: 'workshop-unlock', prebuiltPurchase: 'prebuilt',
   classifiedPurchase: 'classified', classifiedBasicLandPackPurchase:'classified-land', emotePurchase:'emote', usernameRename: 'rename', dailyClaim: 'daily-claim'
 });
 
