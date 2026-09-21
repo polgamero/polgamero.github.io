@@ -301,6 +301,7 @@ export const deleteLobbyCommunication = asyncProxy('deleteLobbyCommunication');
 export const adminAdvanceDailyRewardDebugDay = asyncProxy('adminAdvanceDailyRewardDebugDay');
 export const adminResetDailyRewardDebug = asyncProxy('adminResetDailyRewardDebug');
 export const craftEnhancement = asyncProxy('craftEnhancement');
+export const unlockWorkshopMachine = asyncProxy('unlockWorkshopMachine');
 export const createDeck = asyncProxy('createDeck');
 export const updateDeck = asyncProxy('updateDeck');
 export const deleteDeck = asyncProxy('deleteDeck');

@@ -12,7 +12,7 @@ const NUMERIC_KEYS = [
   'basicLandPacksPurchased','basicLandsReceived','basicLandPacksWhite','basicLandPacksBlue',
   'basicLandPacksBlack','basicLandPacksRed','basicLandPacksGreen',
   'storePacksPurchased','enhancementsCrafted','prebuiltDecksPurchased','classifiedsCardsPurchased',
-  'emotesPurchased','dailyRewardsClaimed'
+  'emotesPurchased','dailyRewardsClaimed','workshopMachinesUnlocked'
 ];
 
 function int(value){ const n=Math.floor(Number(value)||0); return Number.isFinite(n)?n:0; }
@@ -62,6 +62,8 @@ export function deriveAuthorityAudit(type,result={}){
       out.stats={pointsSpent:nonneg(result.effectiveCost),packsReceived:1,storePacksPurchased:1}; break;
     case 'store.craft_enhancement':
       out.source='enhancement_craft_server'; out.fichasDelta=-nonneg(result.fichasCost); out.stats={fichasSpent:nonneg(result.fichasCost),enhancementsCrafted:1}; break;
+    case 'workshop.unlock_machine':
+      out.source='workshop_machine_unlock_server'; out.pointsDelta=-nonneg(result.pointsCost); out.fichasDelta=-nonneg(result.fichasCost); out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost),workshopMachinesUnlocked:result.duplicate?0:1}; break;
     case 'store.purchase_prebuilt':
       out.source='prebuilt_deck_purchase_server'; out.pointsDelta=-nonneg(result.pointsCost); out.fichasDelta=-nonneg(result.fichasCost); out.cardsDelta=nonneg(result.cardsGranted);
       out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost),prebuiltDecksPurchased:1}; break;

@@ -53,8 +53,8 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminResolveCommunityCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots } from './firebaseClient.js';
-import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminResolveCommunityCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots } from './firebaseClient.js';
+import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, WORKSHOP_POLICY, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
 import { ALL_COLORS, GUILD_PAIRS } from './utils.js';
@@ -83,6 +83,7 @@ import { showUsernameRenameModal } from './usernameUI.js';
 import { classifiedsNextRotationAt, getClassifiedsProfileState, getClassifiedsBasicLandPackProfileState, countOwnedClassifiedCard } from './classifieds.js';
 import { loadPrebuiltDeckCatalog, summarizePrebuiltDeck, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { gameText } from './gameTexts.js';
+import { WORKSHOP_MACHINE_IDS, normalizeWorkshopLayout, normalizeWorkshopProfile, isWorkshopMachineUnlocked, workshopMachineAsset } from './workshop.js';
 import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
 import { prepareGameManualUI, showGameManual } from './manualUI.js';
@@ -3325,7 +3326,7 @@ export function showChestScreen(onBack) {
 
     body.querySelector('#chest-use-fichas')?.addEventListener('click', () => {
       overlay.remove();
-      showStoreScreen(() => showChestScreen(onBack), { initialView: 'craft' });
+      showWorkshopScreen(() => showChestScreen(onBack), { autoOpenMachine1: true });
     });
 
     body.querySelector('#chest-open-pack')?.addEventListener('click', async () => {
@@ -4760,6 +4761,7 @@ function injectStoreStyles() {
 // 'encyclopedia', el mismo truco de "zona inerte" para que ningún click dispare una acción
 // de juego real) — nada de esto necesitó inventar una forma nueva de mostrar una carta.
 export function showStoreScreen(onBack, options = {}) {
+  const craftOnly = options.craftOnly === true;
   injectStoreStyles();
   injectRewardsStyles(); // 23.13.64 — reutiliza el lenguaje visual exacto de Mi Cofre en la vidriera horizontal.
   injectEncyclopediaStyles(); // .encyclopedia-back-btn: no depender del orden de navegación
@@ -4804,7 +4806,7 @@ export function showStoreScreen(onBack, options = {}) {
       <button class="store-header-points-link" id="store-header-points-how" type="button">${gameTextHtml('store.pointsHow.link')}</button>
     `;
     storeWallet.querySelector('#store-header-points-how')?.addEventListener('click', () => {
-      void renderMainView({ openPointsInfo: true });
+      if (!craftOnly) void renderMainView({ openPointsInfo: true });
     });
   }
 
@@ -4992,13 +4994,6 @@ export function showStoreScreen(onBack, options = {}) {
             <div class="store-error-msg" id="store-buy-error"></div></div>
             <button class="reward-action-btn" id="store-buy-pack" ${canBuyPack ? '' : 'disabled'}>${gameTextHtml('store.pack.buy')}</button>
           </div>
-          <div class="chest-item store-market-item store-market-craft">
-            <div class="chest-item-content"><div class="chest-item-icon">${FICHA_ICON_HTML}</div>
-            <div class="chest-item-title">${gameTextHtml('store.craft.showcaseTitle')}</div>
-            <div class="chest-item-count store-market-count">${gameTextHtml('store.craft.showcaseCost', { cost: craftCost })}</div>
-            <div class="chest-item-desc">${gameTextHtml('store.craft.description')}</div></div>
-            <button class="reward-action-btn" id="store-craft" ${canCraft ? '' : 'disabled'}>${canCraft ? gameTextHtml('store.craft.action') : gameTextHtml('store.craft.missing', { count: craftCost - fichas })}</button>
-          </div>
           <div class="chest-item store-market-item store-prebuilt-entry">
             <div class="chest-item-content"><div class="chest-item-icon"><div class="store-prebuilt-icon-wrap"><img class="store-prebuilt-icon" src="./assets/images/ui/mazos_prearmados.png" alt="Mazos Prearmados" onerror="this.parentElement.classList.add('image-missing');this.remove()"></div></div>
             <div class="chest-item-title">${gameTextHtml('store.prebuilt.showcaseTitle')}</div>
@@ -5079,7 +5074,6 @@ export function showStoreScreen(onBack, options = {}) {
     });
 
     if (canCraft) {
-      body.querySelector('#store-craft').addEventListener('click', () => renderCraftPickCardView());
     }
   }
 
@@ -5703,7 +5697,16 @@ export function showStoreScreen(onBack, options = {}) {
     body.querySelector('#store-continue').addEventListener('click', renderMainView);
   }
 
+  function leaveCraftOnly() {
+    if (!craftOnly) return renderMainView();
+    leaveClassifiedsView();
+    clearStoreLoadingSlowTimer();
+    overlay.remove();
+    onBack?.();
+  }
+
   function renderCraftPickCardView() {
+    if (craftOnly) renderStoreHeader(gameText('workshop.machine1.title'), { showWallet:true });
     const enhancements = state.userProfile.enhancements || {};
     const ownedUnique = [...new Set(state.userProfile.collection || [])];
     const eligibleCards = ownedUnique
@@ -5719,7 +5722,7 @@ export function showStoreScreen(onBack, options = {}) {
           <button class="store-back-link" id="store-craft-back">← ${gameTextHtml('common.back')}</button>
         </div>
       `;
-      body.querySelector('#store-craft-back').addEventListener('click', renderMainView);
+      body.querySelector('#store-craft-back').addEventListener('click', leaveCraftOnly);
       return;
     }
 
@@ -5817,7 +5820,7 @@ export function showStoreScreen(onBack, options = {}) {
     });
 
     applyCraftFilters();
-    body.querySelector('#store-craft-cancel').addEventListener('click', renderMainView);
+    body.querySelector('#store-craft-cancel').addEventListener('click', leaveCraftOnly);
   }
 
   function renderCraftPickKeywordView(card) {
@@ -5846,7 +5849,7 @@ export function showStoreScreen(onBack, options = {}) {
           await withEconomyButtonPending(btn, async () => {
             const updated = await craftEnhancement(state.currentUser.uid, craftSelectedCardId, keyword, currentCraftCost());
             state.userProfile = updated;
-            renderMainView();
+            if (craftOnly) renderCraftPickCardView(); else renderMainView();
           }, { pendingLabel:'MEJORANDO...', disablePeers:peers });
         } catch (err) {
           console.error('No se pudo craftear la mejora:', err);
@@ -5858,14 +5861,206 @@ export function showStoreScreen(onBack, options = {}) {
     body.querySelector('#store-craft-back').addEventListener('click', renderCraftPickCardView);
   }
 
-  renderMainView();
-  if (options.initialView === 'craft' && state.userProfile && (state.userProfile.fichas || 0) >= currentCraftCost()) {
+  if (options.initialView === 'craft' && state.userProfile) {
     renderCraftPickCardView();
-  } else if (options.initialView === 'classifieds' && state.userProfile) {
-    void renderClassifiedsView();
-  } else if (options.initialView === 'prebuilt' && state.userProfile) {
-    void renderPrebuiltDecksView();
+  } else {
+    renderMainView();
+    if (options.initialView === 'classifieds' && state.userProfile) {
+      void renderClassifiedsView();
+    } else if (options.initialView === 'prebuilt' && state.userProfile) {
+      void renderPrebuiltDecksView();
+    }
   }
+}
+
+export function showEnhancementCraftScreen(onBack) {
+  return showStoreScreen(onBack, { initialView:'craft', craftOnly:true });
+}
+
+
+function injectWorkshopStyles() {
+  if (document.getElementById('workshop-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'workshop-styles';
+  style.textContent = `
+    #workshop-overlay { position:fixed; inset:0; z-index:10030; overflow:hidden; background:#050505; color:#f3e8bd; }
+    .workshop-stage { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); overflow:visible; }
+    .workshop-bg { position:absolute; inset:0; width:100%; height:100%; object-fit:fill; user-select:none; -webkit-user-drag:none; pointer-events:none; }
+    .workshop-topbar { position:absolute; z-index:25; left:18px; right:18px; top:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; pointer-events:none; }
+    .workshop-topbar > * { pointer-events:auto; }
+    .workshop-title { font:800 clamp(20px,2.5vw,34px)/1.05 Georgia,serif; letter-spacing:.08em; text-shadow:0 2px 8px #000,0 0 18px #000; }
+    .workshop-wallet { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    .workshop-wallet-pill { display:flex; align-items:center; gap:5px; padding:7px 10px; border:1px solid rgba(212,175,55,.55); border-radius:999px; background:rgba(5,5,5,.76); box-shadow:0 2px 12px rgba(0,0,0,.55); font-weight:700; }
+    .workshop-wallet-pill img { width:20px!important; height:20px!important; object-fit:contain; }
+    .workshop-machine-slot { position:absolute; transform:translate(-50%,-50%); z-index:8; border:0; background:transparent; padding:0; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .workshop-machine-slot:focus-visible { outline:2px solid #f2cf61; outline-offset:4px; border-radius:12px; }
+    .workshop-machine-img { display:block; width:100%; height:auto; object-fit:contain; filter:drop-shadow(0 8px 10px rgba(0,0,0,.7)); pointer-events:none; }
+    .workshop-machine-slot.unlocked:hover .workshop-machine-img { filter:drop-shadow(0 0 12px rgba(255,224,116,.7)) drop-shadow(0 8px 10px rgba(0,0,0,.75)); }
+    .workshop-machine-hitbox { width:100%; height:min(42vh,42vw); border:1px dashed rgba(255,255,255,.10); border-radius:18px; background:rgba(0,0,0,.01); }
+    .workshop-machine-slot.locked:hover .workshop-machine-hitbox { border-color:rgba(246,206,84,.55); background:rgba(246,206,84,.06); }
+    .workshop-machine-badge { position:absolute; left:50%; bottom:-6px; transform:translate(-50%,100%); white-space:nowrap; padding:5px 9px; border-radius:999px; background:rgba(0,0,0,.78); border:1px solid rgba(212,175,55,.45); font-size:11px; font-weight:800; letter-spacing:.04em; color:#f5dfa0; pointer-events:none; }
+    .workshop-panel { position:absolute; z-index:30; left:50%; bottom:18px; transform:translateX(-50%); width:min(620px,calc(100vw - 28px)); padding:13px 15px; border:1px solid rgba(212,175,55,.6); border-radius:14px; background:rgba(6,8,7,.9); box-shadow:0 12px 38px rgba(0,0,0,.65); text-align:center; }
+    .workshop-panel[hidden] { display:none; }
+    .workshop-panel-title { font-size:18px; font-weight:850; color:#f4dd91; margin-bottom:4px; }
+    .workshop-panel-desc { color:#d3cec0; line-height:1.35; font-size:13px; }
+    .workshop-panel-cost { margin:8px 0; font-weight:800; color:#f7edc2; }
+    .workshop-panel-actions { display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .workshop-action-btn { appearance:none; border:1px solid #d4af37; background:linear-gradient(#5f481a,#332208); color:#fff1b6; border-radius:8px; padding:8px 14px; font-weight:850; cursor:pointer; }
+    .workshop-action-btn.secondary { background:#242821; border-color:#777; color:#eee; }
+    .workshop-action-btn:disabled { opacity:.45; cursor:not-allowed; }
+    .workshop-status { min-height:18px; color:#ffcf6a; margin-top:6px; font-size:12px; }
+    .workshop-loading { position:absolute; inset:0; z-index:40; display:grid; place-items:center; background:rgba(0,0,0,.7); font-weight:800; }
+    @media(max-width:700px){ .workshop-topbar{left:8px;right:8px;top:8px}.workshop-title{font-size:18px}.workshop-wallet-pill{padding:5px 7px;font-size:11px}.workshop-panel{bottom:8px;padding:10px 11px}.workshop-machine-badge{font-size:9px} }
+  `;
+  document.head.appendChild(style);
+}
+
+function applyWorkshopStageCover(stage, image, host = window) {
+  if (!stage || !image) return () => {};
+  const sync = () => {
+    const vw = Math.max(1, host.innerWidth || document.documentElement.clientWidth || 1);
+    const vh = Math.max(1, host.innerHeight || document.documentElement.clientHeight || 1);
+    const iw = Math.max(1, image.naturalWidth || 16);
+    const ih = Math.max(1, image.naturalHeight || 9);
+    const imageRatio = iw / ih;
+    const viewportRatio = vw / vh;
+    let width, height;
+    if (viewportRatio > imageRatio) { width = vw; height = width / imageRatio; }
+    else { height = vh; width = height * imageRatio; }
+    stage.style.width = `${width}px`;
+    stage.style.height = `${height}px`;
+  };
+  if (image.complete) sync(); else image.addEventListener('load', sync, { once:true });
+  window.addEventListener('resize', sync);
+  sync();
+  return () => window.removeEventListener('resize', sync);
+}
+
+function machinePolicy(machineId) {
+  return WORKSHOP_POLICY?.[machineId] || { available:false, points:0, fichas:0 };
+}
+
+export function showWorkshopScreen(onBack, options = {}) {
+  injectWorkshopStyles();
+  injectEncyclopediaStyles();
+  document.getElementById('workshop-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'workshop-overlay';
+  overlay.innerHTML = `
+    <div class="workshop-stage" id="workshop-stage">
+      <img class="workshop-bg" id="workshop-bg" src="./assets/images/ui/menu_taller.png" alt="">
+      <div id="workshop-machines"></div>
+    </div>
+    <div class="workshop-topbar">
+      <button class="encyclopedia-back-btn" id="workshop-back">← ${gameTextHtml('workshop.back')}</button>
+      <div class="workshop-title">${gameTextHtml('workshop.title')}</div>
+      <div class="workshop-wallet" id="workshop-wallet"></div>
+    </div>
+    <div class="workshop-panel" id="workshop-panel" hidden></div>
+    <div class="workshop-loading" id="workshop-loading">${gameTextHtml('workshop.loading')}</div>`;
+  document.body.appendChild(overlay);
+  const stage = overlay.querySelector('#workshop-stage');
+  const bg = overlay.querySelector('#workshop-bg');
+  const machineRoot = overlay.querySelector('#workshop-machines');
+  const panel = overlay.querySelector('#workshop-panel');
+  const loading = overlay.querySelector('#workshop-loading');
+  const cleanupStage = applyWorkshopStageCover(stage, bg);
+  let layout = normalizeWorkshopLayout(null);
+  let selectedMachineId = null;
+
+  const close = () => { cleanupStage(); overlay.remove(); onBack?.(); };
+  overlay.querySelector('#workshop-back')?.addEventListener('click', close);
+
+  function renderWallet() {
+    const points = Math.max(0, Math.floor(Number(state.userProfile?.points) || 0));
+    const fichas = Math.max(0, Math.floor(Number(state.userProfile?.fichas) || 0));
+    const wallet = overlay.querySelector('#workshop-wallet');
+    wallet.innerHTML = `<span class="workshop-wallet-pill">${COIN_ICON_HTML}<span>${gameTextHtml('workshop.wallet.points',{points})}</span></span><span class="workshop-wallet-pill">${FICHA_ICON_HTML}<span>${gameTextHtml('workshop.wallet.fichas',{fichas})}</span></span>`;
+  }
+
+  function machineTitle(id) { return gameText(`workshop.${id}.title`); }
+  function machineDescription(id) { return gameText(`workshop.${id}.description`); }
+
+  function renderPanel(machineId) {
+    selectedMachineId = machineId;
+    const policy = machinePolicy(machineId);
+    const unlocked = isWorkshopMachineUnlocked(state.userProfile, machineId);
+    const points = Math.max(0, Math.floor(Number(policy.points)||0));
+    const fichas = Math.max(0, Math.floor(Number(policy.fichas)||0));
+    const hasFunds = (Number(state.userProfile?.points)||0) >= points && (Number(state.userProfile?.fichas)||0) >= fichas;
+    const future = machineId !== 'machine1' || policy.available === false;
+    panel.hidden = false;
+    panel.innerHTML = `<div class="workshop-panel-title">${escapeHtml(machineTitle(machineId))}</div>
+      <div class="workshop-panel-desc">${escapeHtml(machineDescription(machineId))}</div>
+      ${unlocked ? `<div class="workshop-panel-cost">${gameTextHtml('workshop.unlocked')}</div>` : `<div class="workshop-panel-cost">${COIN_ICON_HTML} ${points} &nbsp; ${FICHA_ICON_HTML} ${fichas}</div>`}
+      <div class="workshop-panel-actions">
+        ${future ? `<button class="workshop-action-btn" disabled>${gameTextHtml('workshop.future')}</button>` : unlocked ? `<button class="workshop-action-btn" id="workshop-use-machine">${gameTextHtml('store.craft.action')}</button>` : `<button class="workshop-action-btn" id="workshop-unlock-machine" ${hasFunds?'':'disabled'}>${gameTextHtml('workshop.unlock')}</button>`}
+        <button class="workshop-action-btn secondary" id="workshop-panel-close">${gameTextHtml('common.close')}</button>
+      </div>
+      <div class="workshop-status" id="workshop-status">${(!future && !unlocked && !hasFunds) ? gameTextHtml('workshop.unlock.notEnough') : ''}</div>`;
+    panel.querySelector('#workshop-panel-close')?.addEventListener('click',()=>{ panel.hidden=true; selectedMachineId=null; });
+    panel.querySelector('#workshop-use-machine')?.addEventListener('click',()=>{
+      cleanupStage(); overlay.remove();
+      showEnhancementCraftScreen(() => showWorkshopScreen(onBack));
+    });
+    panel.querySelector('#workshop-unlock-machine')?.addEventListener('click', async event => {
+      if (!state.currentUser?.uid || !state.userProfile) return;
+      const confirmText = gameText('workshop.unlock.confirm',{ machine:machineTitle(machineId), points, fichas });
+      if (!window.confirm(confirmText)) return;
+      const btn=event.currentTarget, status=panel.querySelector('#workshop-status'); btn.disabled=true;
+      try {
+        const outcome = await unlockWorkshopMachine(state.currentUser.uid, machineId);
+        state.userProfile = outcome.profile;
+        renderWallet(); renderMachines(); renderPanel(machineId); updateAccountUI(state.currentUser);
+        const liveStatus=panel.querySelector('#workshop-status'); if(liveStatus) liveStatus.textContent=gameText('workshop.unlock.success',{machine:machineTitle(machineId)});
+      } catch(err) {
+        console.error('No se pudo desbloquear la máquina:',err);
+        if(status) status.textContent=err?.message || gameText('workshop.unlock.notEnough');
+        btn.disabled=false;
+      }
+    });
+  }
+
+  function renderMachines() {
+    machineRoot.replaceChildren();
+    const profileWorkshop = normalizeWorkshopProfile(state.userProfile?.workshop);
+    for (const machineId of WORKSHOP_MACHINE_IDS) {
+      const item = layout.machines[machineId];
+      const unlocked = !!profileWorkshop.unlockedMachines[machineId];
+      const slot=document.createElement('button');
+      slot.type='button'; slot.className=`workshop-machine-slot ${unlocked?'unlocked':'locked'}`;
+      slot.dataset.machineId=machineId;
+      slot.style.left=`${item.xPct}%`; slot.style.top=`${item.yPct}%`; slot.style.width=`${item.widthPct}%`;
+      slot.setAttribute('aria-label',machineTitle(machineId));
+      if(unlocked){
+        const img=document.createElement('img'); img.className='workshop-machine-img'; img.src=`./assets/images/ui/${workshopMachineAsset(machineId)}`; img.alt=machineTitle(machineId);
+        img.onerror=()=>{ console.warn('[Workshop] Asset faltante:',img.src); img.style.visibility='hidden'; };
+        slot.appendChild(img);
+      } else {
+        const hit=document.createElement('span'); hit.className='workshop-machine-hitbox'; slot.appendChild(hit);
+      }
+      const badge=document.createElement('span'); badge.className='workshop-machine-badge'; badge.textContent=unlocked?gameText('workshop.unlocked'):(machinePolicy(machineId).available?gameText('workshop.locked'):gameText('workshop.future')); slot.appendChild(badge);
+      slot.addEventListener('click',()=>renderPanel(machineId));
+      machineRoot.appendChild(slot);
+    }
+  }
+
+  (async()=>{
+    try {
+      if (!state.currentUser || !state.userProfile) {
+        loading.textContent=gameText('workshop.loginRequired'); return;
+      }
+      if (WORKSHOP_POLICY.enabled === false) { loading.textContent=gameText('workshop.disabled'); return; }
+      try { layout=normalizeWorkshopLayout(await loadPublicGameConfigDocument('workshop')); }
+      catch(err){ console.warn('[Workshop] No se pudo cargar layout, se usan defaults.',err); }
+      renderWallet(); renderMachines(); loading.remove();
+      if(options.autoOpenMachine1){
+        if(isWorkshopMachineUnlocked(state.userProfile,'machine1')) {
+          cleanupStage(); overlay.remove(); showEnhancementCraftScreen(() => showWorkshopScreen(onBack));
+        } else renderPanel('machine1');
+      }
+    } catch(err){ console.error('[Workshop] Error al abrir Taller:',err); loading.textContent=err?.message||gameText('workshop.disabled'); }
+  })();
 }
 
 function injectMyDecksStyles() {
@@ -7198,6 +7393,7 @@ function renderAccountBox(container, user) {
     const rewardActionsHTML = `
       <div class="main-menu-account-actions">
         <button class="main-menu-reward-btn" id="menu-chest">${gameTextHtml('account.chest')}${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
+        <button class="main-menu-reward-btn" id="menu-workshop">${gameTextHtml('account.workshop')}</button>
         <button class="main-menu-reward-btn" id="menu-daily-rewards">${gameTextHtml('account.dailyRewards')}${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
         ${moderationBtnHTML}
       </div>`;
@@ -7219,6 +7415,15 @@ function renderAccountBox(container, user) {
       const mainMenuOverlay = document.getElementById('main-menu-overlay');
       if (mainMenuOverlay) mainMenuOverlay.style.display = 'none';
       showChestScreen(() => {
+        if (mainMenuOverlay) mainMenuOverlay.style.display = '';
+        renderAccountBox(container, state.currentUser);
+      });
+    });
+    container.querySelector('#menu-workshop')?.addEventListener('click', () => {
+      if (!state.userProfile) return;
+      const mainMenuOverlay = document.getElementById('main-menu-overlay');
+      if (mainMenuOverlay) mainMenuOverlay.style.display = 'none';
+      showWorkshopScreen(() => {
         if (mainMenuOverlay) mainMenuOverlay.style.display = '';
         renderAccountBox(container, state.currentUser);
       });
@@ -7684,7 +7889,6 @@ export function showAdminPanel(onBack) {
     { section: 'PUNTOS Y LÍMITES DIARIOS', id: 'pvpMaxPointsPerDay', label: 'PvP · máximo de puntos por cuenta / día', value: PVP_LIMITS.maxPointsPerDay, step: '1' },
     { section: 'Sobres', id: 'packCost', label: 'Costo del sobre (puntos)', value: PACK_COST, step: '1' },
     { section: 'Sobres', id: 'mythicChancePercent', label: 'Probabilidad de carta mítica (%)', value: +(MYTHIC_CHANCE_IN_RARE_SLOT * 100).toFixed(2), step: '0.1' },
-    { section: 'Fichas', id: 'fichasPerEnhancement', label: 'Fichas necesarias para craftear', value: FICHAS_PER_ENHANCEMENT, step: '1' },
     { section: 'Avisos Clasificados', id: 'classifiedsCommonPoints', label: 'Common · puntos', value: CLASSIFIEDS_COMMON_POINTS, step: '1' },
     { section: 'Avisos Clasificados', id: 'classifiedsCommonFichas', label: 'Common · Fichas', value: CLASSIFIEDS_COMMON_FICHAS, step: '1' },
     { section: 'Avisos Clasificados', id: 'classifiedsUncommonPoints', label: 'Uncommon · puntos', value: CLASSIFIEDS_UNCOMMON_POINTS, step: '1' },
@@ -7698,7 +7902,6 @@ export function showAdminPanel(onBack) {
     { section: 'AVISOS CLASIFICADOS · PACKS DE TIERRAS BÁSICAS', id: 'classifiedBasicLandPackQuantity', label: 'Tierras entregadas por pack · 1–100', value: CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, step: '1' },
     { section: 'Mazos', id: 'deckSizeExact', label: 'Cartas exactas por mazo', value: DECK_SIZE_EXACT, step: '1' },
     { section: 'Mazos', id: 'maxCopiesPerCard', label: 'Máximo de copias iguales por mazo', value: MAX_COPIES_PER_CARD, step: '1' },
-    { section: 'Mazos', id: 'maxEnhancedCardsPerDeck', label: 'Máximo de cartas mejoradas por mazo', value: MAX_ENHANCED_CARDS_PER_DECK, step: '1' },
     { section: 'Mazos', id: 'maxSavedDecks', label: 'Máximo de mazos guardados por cuenta', value: MAX_SAVED_DECKS, step: '1' },
     { section: 'Mazos Prearmados', id: 'prebuiltDeckPoints', label: 'Costo global · puntos', value: PREBUILT_DECK_POINTS, step: '1' },
     { section: 'Mazos Prearmados', id: 'prebuiltDeckFichas', label: 'Costo global · Fichas', value: PREBUILT_DECK_FICHAS, step: '1' },
@@ -7844,7 +8047,7 @@ export function showAdminPanel(onBack) {
 
   const grantHTML = `
     <div class="admin-section">
-      <div class="admin-section-title">Regalar Puntos, Fichas o Sobres</div>
+      <div class="admin-section-title">${gameTextHtml('admin.gifts.title')}</div>
       <div class="admin-field-row">
         <span class="admin-field-label">Cantidad</span>
         <input type="number" class="admin-field-input" id="grant-amount" value="0" step="1">
@@ -7855,6 +8058,8 @@ export function showAdminPanel(onBack) {
           <option value="points">Puntos</option>
           <option value="fichas">Fichas</option>
           <option value="standardPacks">Sobres para Mi Cofre</option>
+          <option value="guaranteedMythics">${gameTextHtml('admin.gifts.guaranteedMythic')}</option>
+          <option value="essence" disabled>${gameTextHtml('admin.gifts.essenceFuture')}</option>
         </select>
       </div>
       <div class="admin-field-row">
@@ -7930,8 +8135,33 @@ export function showAdminPanel(onBack) {
     </div>`;
 
 
+  const workshopAdminHTML = `
+    <div class="admin-pane-narrow" style="max-width:1250px;">
+      <div class="admin-section">
+        <div class="admin-section-title">${gameTextHtml('admin.workshop.title')}</div>
+        <div class="admin-debug-summary">${gameTextHtml('admin.workshop.help')}</div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.enabled')}</span><input type="checkbox" id="admin-workshop-enabled"></div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.enhancementCost')}</span><input type="number" min="1" step="1" class="admin-field-input" id="admin-workshop-craft-fichas"></div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.maxEnhanced')}</span><input type="number" min="0" step="1" class="admin-field-input" id="admin-workshop-max-enhanced"></div>
+        <div class="admin-workshop-machine-settings" id="admin-workshop-machine-settings"></div>
+        <button class="admin-save-btn" id="admin-workshop-save-settings">${gameTextHtml('admin.workshop.saveSettings')}</button>
+        <div class="admin-success-msg" id="admin-workshop-settings-status"></div>
+      </div>
+      <div class="admin-section">
+        <div class="admin-section-title">${gameTextHtml('admin.workshop.layoutTitle')}</div>
+        <div class="admin-debug-summary" style="margin-bottom:10px;">${gameTextHtml('admin.workshop.layoutHelp')}</div>
+        <div class="admin-workshop-preview-controls" id="admin-workshop-preview-controls"></div>
+        <div class="admin-workshop-canvas-wrap"><div class="admin-workshop-canvas" id="admin-workshop-canvas"><img id="admin-workshop-bg" class="admin-workshop-bg" src="./assets/images/ui/menu_taller.png" alt=""><div id="admin-workshop-machines"></div></div></div>
+        <div class="admin-debug-summary" id="admin-workshop-editor-status" style="margin-top:10px;"></div>
+        <button class="admin-save-btn" id="admin-workshop-save-layout">${gameTextHtml('admin.workshop.saveLayout')}</button>
+        <div class="admin-success-msg" id="admin-workshop-layout-status"></div>
+      </div>
+    </div>`;
+
+
   const adminTabs = [
     { key: 'game', label: 'AJUSTES DEL JUEGO' },
+    { key: 'workshop', label: gameText('admin.tab.workshop') },
     { key: 'animations', label: 'ANIMACIONES' },
     { key: 'emotes', label: 'EMOTES' },
     { key: 'texts', label: 'TEXTOS DEL JUEGO' },
@@ -7962,6 +8192,10 @@ export function showAdminPanel(onBack) {
           <div class="store-error-msg" id="admin-error" style="text-align:center;"></div>
           <div class="admin-success-msg" id="admin-success"></div>
         </div>
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="workshop">
+        ${workshopAdminHTML}
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="animations">
@@ -9193,6 +9427,111 @@ Receipt: ${receiptId}
     animationLabMounted = true;
   }
 
+
+  let adminWorkshopMounted = false;
+  let adminWorkshopLayout = normalizeWorkshopLayout(null);
+  const adminWorkshopPreview = Object.fromEntries(WORKSHOP_MACHINE_IDS.map(id => [id, false]));
+  let adminWorkshopEditingId = null;
+
+  async function ensureAdminWorkshopPane() {
+    if (adminWorkshopMounted) return;
+    adminWorkshopMounted = true;
+    injectWorkshopStyles();
+    const canvas = overlay.querySelector('#admin-workshop-canvas');
+    const bg = overlay.querySelector('#admin-workshop-bg');
+    const machinesRoot = overlay.querySelector('#admin-workshop-machines');
+    const controls = overlay.querySelector('#admin-workshop-preview-controls');
+    const editorStatus = overlay.querySelector('#admin-workshop-editor-status');
+    const settingsStatus = overlay.querySelector('#admin-workshop-settings-status');
+    const layoutStatus = overlay.querySelector('#admin-workshop-layout-status');
+    const settingsRoot = overlay.querySelector('#admin-workshop-machine-settings');
+    if (!canvas || !bg || !machinesRoot || !controls || !settingsRoot) return;
+
+    if (!document.getElementById('admin-workshop-styles')) {
+      const style=document.createElement('style'); style.id='admin-workshop-styles'; style.textContent=`
+        .admin-workshop-machine-settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin:12px 0}
+        .admin-workshop-setting-card{border:1px solid rgba(212,175,55,.24);border-radius:10px;padding:10px;background:rgba(0,0,0,.17)}
+        .admin-workshop-setting-title{font-weight:800;color:#ecd783;margin-bottom:7px}
+        .admin-workshop-preview-controls{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+        .admin-workshop-preview-check{display:flex;gap:6px;align-items:center;padding:6px 9px;border:1px solid rgba(212,175,55,.28);border-radius:8px;background:rgba(0,0,0,.18);font-size:12px}
+        .admin-workshop-canvas-wrap{overflow:auto;max-width:100%;border:1px solid rgba(212,175,55,.36);background:#050505;overscroll-behavior:contain}
+        .admin-workshop-canvas{position:relative;width:100%;min-width:760px;aspect-ratio:16/9;overflow:hidden;background:#050505}
+        .admin-workshop-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;user-select:none;-webkit-user-drag:none;pointer-events:none}
+        .admin-workshop-machine{position:absolute;transform:translate(-50%,-50%);z-index:3;cursor:default}
+        .admin-workshop-machine.editing{cursor:grab;outline:2px dashed #ffe278;outline-offset:3px}
+        .admin-workshop-machine.dragging{cursor:grabbing}
+        .admin-workshop-machine img{display:block;width:100%;height:auto;pointer-events:none;user-select:none;-webkit-user-drag:none;filter:drop-shadow(0 5px 8px rgba(0,0,0,.7))}
+        .admin-workshop-pencil{position:absolute;right:-12px;top:-12px;width:30px;height:30px;border-radius:50%;border:1px solid #d4af37;background:#17150e;color:#ffdf72;cursor:pointer;z-index:5;font-size:15px}
+      `; document.head.appendChild(style);
+    }
+
+    const syncAdminWorkshopAspect = () => {
+      if (bg.naturalWidth > 0 && bg.naturalHeight > 0) canvas.style.aspectRatio = `${bg.naturalWidth}/${bg.naturalHeight}`;
+    };
+    if (bg.complete) syncAdminWorkshopAspect();
+    else bg.addEventListener('load', syncAdminWorkshopAspect, { once:true });
+
+    let settings = { ...getDefaultGameConfig(), ...(await loadPublicGameConfigDocument('settings').catch(()=>null) || {}) };
+    adminWorkshopLayout = normalizeWorkshopLayout(await loadPublicGameConfigDocument('workshop').catch(()=>null));
+    overlay.querySelector('#admin-workshop-enabled').checked = settings.workshopEnabled !== false;
+    overlay.querySelector('#admin-workshop-craft-fichas').value = Number(settings.fichasPerEnhancement ?? FICHAS_PER_ENHANCEMENT);
+    overlay.querySelector('#admin-workshop-max-enhanced').value = Number(settings.maxEnhancedCardsPerDeck ?? MAX_ENHANCED_CARDS_PER_DECK);
+
+    settingsRoot.innerHTML = WORKSHOP_MACHINE_IDS.map((id,index)=>{
+      const n=index+1;
+      return `<div class="admin-workshop-setting-card"><div class="admin-workshop-setting-title">${escapeHtml(gameText(`workshop.${id}.title`))}</div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.available')}</span><input type="checkbox" id="admin-workshop-${id}-available" ${settings[`workshopMachine${n}Available`]?'checked':''}></div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.unlockPoints')}</span><input type="number" min="0" step="1" class="admin-field-input" id="admin-workshop-${id}-points" value="${Math.max(0,Number(settings[`workshopMachine${n}UnlockPoints`]||0))}"></div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.unlockFichas')}</span><input type="number" min="0" step="1" class="admin-field-input" id="admin-workshop-${id}-fichas" value="${Math.max(0,Number(settings[`workshopMachine${n}UnlockFichas`]||0))}"></div></div>`;
+    }).join('');
+
+    controls.innerHTML = WORKSHOP_MACHINE_IDS.map(id=>`<label class="admin-workshop-preview-check"><input type="checkbox" data-workshop-preview="${id}"> ${gameTextHtml('admin.workshop.previewUnlock')} · ${escapeHtml(gameText(`workshop.${id}.title`))}</label>`).join('');
+
+    const syncCanvasRatio=()=>{ if(bg.naturalWidth&&bg.naturalHeight) canvas.style.aspectRatio=`${bg.naturalWidth}/${bg.naturalHeight}`; };
+    if(bg.complete) syncCanvasRatio(); else bg.addEventListener('load',syncCanvasRatio,{once:true});
+    bg.addEventListener('error',()=>{ if(editorStatus) editorStatus.textContent=gameText('admin.workshop.assetsMissing'); });
+
+    function renderAdminWorkshopMachines(){
+      machinesRoot.replaceChildren();
+      for(const id of WORKSHOP_MACHINE_IDS){
+        if(!adminWorkshopPreview[id]) continue;
+        const item=adminWorkshopLayout.machines[id];
+        const wrap=document.createElement('div'); wrap.className=`admin-workshop-machine${adminWorkshopEditingId===id?' editing':''}`; wrap.dataset.machineId=id;
+        wrap.style.left=`${item.xPct}%`; wrap.style.top=`${item.yPct}%`; wrap.style.width=`${item.widthPct}%`;
+        const img=document.createElement('img'); img.src=`./assets/images/ui/${workshopMachineAsset(id)}`; img.alt=gameText(`workshop.${id}.title`); img.onerror=()=>{ if(editorStatus) editorStatus.textContent=gameText('admin.workshop.assetsMissing'); };
+        const pencil=document.createElement('button'); pencil.type='button'; pencil.className='admin-workshop-pencil'; pencil.title=gameText('admin.workshop.edit'); pencil.textContent='✎';
+        pencil.addEventListener('click',e=>{e.stopPropagation(); adminWorkshopEditingId=adminWorkshopEditingId===id?null:id; renderAdminWorkshopMachines(); if(editorStatus) editorStatus.textContent=adminWorkshopEditingId?gameText('admin.workshop.selected',{machine:gameText(`workshop.${id}.title`)}):'';});
+        wrap.append(img,pencil);
+        if(adminWorkshopEditingId===id){
+          let drag=null;
+          wrap.addEventListener('pointerdown',e=>{ if(e.target.closest('.admin-workshop-pencil')) return; e.preventDefault(); wrap.setPointerCapture(e.pointerId); drag={x:e.clientX,y:e.clientY,startX:item.xPct,startY:item.yPct}; wrap.classList.add('dragging'); });
+          wrap.addEventListener('pointermove',e=>{ if(!drag) return; const rect=canvas.getBoundingClientRect(); item.xPct=Math.max(-20,Math.min(120,drag.startX+(e.clientX-drag.x)/rect.width*100)); item.yPct=Math.max(-20,Math.min(120,drag.startY+(e.clientY-drag.y)/rect.height*100)); wrap.style.left=`${item.xPct}%`;wrap.style.top=`${item.yPct}%`; });
+          const end=()=>{drag=null;wrap.classList.remove('dragging');}; wrap.addEventListener('pointerup',end); wrap.addEventListener('pointercancel',end);
+          wrap.addEventListener('wheel',e=>{e.preventDefault(); const delta=e.deltaY<0?0.6:-0.6; item.widthPct=Math.max(2,Math.min(60,item.widthPct+delta)); wrap.style.width=`${item.widthPct}%`;},{passive:false});
+        }
+        machinesRoot.appendChild(wrap);
+      }
+    }
+    controls.querySelectorAll('[data-workshop-preview]').forEach(input=>input.addEventListener('change',()=>{const id=input.dataset.workshopPreview;adminWorkshopPreview[id]=input.checked;if(!input.checked&&adminWorkshopEditingId===id)adminWorkshopEditingId=null;renderAdminWorkshopMachines();}));
+    renderAdminWorkshopMachines();
+
+    overlay.querySelector('#admin-workshop-save-layout')?.addEventListener('click',async()=>{
+      if(layoutStatus) layoutStatus.textContent='';
+      try { await saveAdminGameConfigDocument('workshop',{ schemaVersion:1, machines:adminWorkshopLayout.machines }); if(layoutStatus) layoutStatus.textContent=gameText('admin.workshop.layoutSaved'); }
+      catch(err){ if(layoutStatus) layoutStatus.textContent=gameText('admin.workshop.saveError',{message:err?.message||'Error'}); }
+    });
+    overlay.querySelector('#admin-workshop-save-settings')?.addEventListener('click',async()=>{
+      if(settingsStatus) settingsStatus.textContent='';
+      try{
+        const merged={...settings,workshopEnabled:overlay.querySelector('#admin-workshop-enabled').checked,
+          fichasPerEnhancement:Math.max(1,Math.floor(Number(overlay.querySelector('#admin-workshop-craft-fichas').value)||1)),
+          maxEnhancedCardsPerDeck:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-max-enhanced').value)||0))};
+        WORKSHOP_MACHINE_IDS.forEach((id,index)=>{const n=index+1;merged[`workshopMachine${n}Available`]=overlay.querySelector(`#admin-workshop-${id}-available`).checked;merged[`workshopMachine${n}UnlockPoints`]=Math.max(0,Math.floor(Number(overlay.querySelector(`#admin-workshop-${id}-points`).value)||0));merged[`workshopMachine${n}UnlockFichas`]=Math.max(0,Math.floor(Number(overlay.querySelector(`#admin-workshop-${id}-fichas`).value)||0));});
+        await saveGameConfig(merged); settings=merged; applyGameConfig(merged); if(settingsStatus)settingsStatus.textContent=gameText('admin.workshop.settingsSaved');
+      }catch(err){if(settingsStatus)settingsStatus.textContent=gameText('admin.workshop.saveError',{message:err?.message||'Error'});}
+    });
+  }
+
   function activateAdminTab(key) {
     overlay.querySelectorAll('[data-admin-tab]').forEach(btn => btn.classList.toggle('active', btn.dataset.adminTab === key));
     overlay.querySelectorAll('[data-admin-pane]').forEach(pane => pane.classList.toggle('hidden', pane.dataset.adminPane !== key));
@@ -9201,6 +9540,7 @@ Receipt: ${receiptId}
       void ensureGameTextsAdminPane().load();
     }
     if (key === 'messages') void ensureAdminMessageUsers();
+    if (key === 'workshop') void ensureAdminWorkshopPane();
     if (key === 'campaigns') ensureAdminCampaignsPane();
     if (key === 'stats' && !statsLoaded) reloadAdminStatistics();
     if (key === 'economyAudit') activateEconomySubtab(economySubtab);
@@ -9527,14 +9867,14 @@ Receipt: ${receiptId}
     const currencyField = overlay.querySelector('#grant-currency').value;
     const recipient = overlay.querySelector('#grant-recipient').value;
     const reason = overlay.querySelector('#grant-reason').value.trim();
-    const currencyLabel = currencyField === 'points' ? 'puntos' : currencyField === 'fichas' ? 'Fichas' : 'sobres';
+    const currencyLabel = currencyField === 'points' ? 'puntos' : currencyField === 'fichas' ? 'Fichas' : currencyField === 'guaranteedMythics' ? gameText('admin.gifts.guaranteedMythic') : 'sobres';
 
     if (!Number.isInteger(amount) || amount === 0) {
       grantErrorBox.textContent = 'La cantidad tiene que ser un número entero distinto de cero.';
       return;
     }
-    if (currencyField === 'standardPacks' && amount < 1) {
-      grantErrorBox.textContent = 'Los sobres se pueden regalar, no quitar. Usá una cantidad positiva.';
+    if ((currencyField === 'standardPacks' || currencyField === 'guaranteedMythics') && amount < 1) {
+      grantErrorBox.textContent = gameText('admin.gifts.chestPositiveOnly');
       return;
     }
     if (!recipient) {
@@ -9611,7 +9951,7 @@ Receipt: ${receiptId}
       pvpMaxPointsPerDay: readNumber('pvpMaxPointsPerDay'),
       packCost: readNumber('packCost'),
       mythicChance: readNumber('mythicChancePercent') / 100,
-      fichasPerEnhancement: readNumber('fichasPerEnhancement'),
+      fichasPerEnhancement: FICHAS_PER_ENHANCEMENT,
       classifiedsCommonPoints: readNumber('classifiedsCommonPoints'),
       classifiedsCommonFichas: readNumber('classifiedsCommonFichas'),
       classifiedsUncommonPoints: readNumber('classifiedsUncommonPoints'),
@@ -9625,7 +9965,7 @@ Receipt: ${receiptId}
       classifiedBasicLandPackQuantity: readNumber('classifiedBasicLandPackQuantity'),
       deckSizeExact: readNumber('deckSizeExact'),
       maxCopiesPerCard: readNumber('maxCopiesPerCard'),
-      maxEnhancedCardsPerDeck: readNumber('maxEnhancedCardsPerDeck'),
+      maxEnhancedCardsPerDeck: MAX_ENHANCED_CARDS_PER_DECK,
       maxSavedDecks: readNumber('maxSavedDecks'),
       prebuiltDeckPoints: readNumber('prebuiltDeckPoints'),
       prebuiltDeckFichas: readNumber('prebuiltDeckFichas'),

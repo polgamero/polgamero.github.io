@@ -145,6 +145,9 @@ export async function craftEnhancementTx({ db, tx, uid, cardId, keyword }) {
   assertCardEnabled(card.id, publication);
   if (!userSnap.exists) throw economyError('PROFILE_MISSING');
   const profile = userSnap.data() || {};
+  if (settings.workshopEnabled === false || settings.workshopMachine1Available === false || profile?.workshop?.unlockedMachines?.machine1 !== true) {
+    throw economyError('CRAFT_WORKSHOP_LOCKED');
+  }
   const collection = Array.isArray(profile.collection) ? profile.collection : [];
   if (!collection.includes(card.id)) throw economyError('CRAFT_CARD_NOT_OWNED');
   const enhancements = profile.enhancements && typeof profile.enhancements === 'object' && !Array.isArray(profile.enhancements)

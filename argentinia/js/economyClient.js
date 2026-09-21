@@ -115,6 +115,14 @@ export function craftEnhancementServer(cardId, keyword, operationId = null) {
   });
 }
 
+export function unlockWorkshopMachineServer(machineId, operationId = null) {
+  return call('economyCraftEnhancement', {
+    operationId: operationId || createEconomyOperationId('workshop-unlock'),
+    action: 'unlockWorkshopMachine',
+    machineId: String(machineId || '')
+  });
+}
+
 export function purchasePrebuiltDeckServer(productId, deckName, operationId = null) {
   return call('economyPurchasePrebuiltDeck', {
     operationId: operationId || createEconomyOperationId('prebuilt'),

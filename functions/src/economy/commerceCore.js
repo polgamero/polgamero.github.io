@@ -93,7 +93,20 @@ export function normalizeStoreSettings(raw = {}) {
     prebuiltFichas: intAtLeast(raw.prebuiltDeckFichas, 0, DEFAULT_PREBUILT_FICHAS),
     maxSavedDecks: intAtLeast(raw.maxSavedDecks, 1, DEFAULT_MAX_SAVED_DECKS),
     classifiedBasicLandPackPrice: intAtLeast(raw.classifiedBasicLandPackPrice, 0, DEFAULT_CLASSIFIED_BASIC_LAND_PACK_PRICE),
-    classifiedBasicLandPackQuantity: Math.min(CLASSIFIED_BASIC_LAND_PACK_QUANTITY_HARD_MAX, intAtLeast(raw.classifiedBasicLandPackQuantity, 1, DEFAULT_CLASSIFIED_BASIC_LAND_PACK_QUANTITY))
+    classifiedBasicLandPackQuantity: Math.min(CLASSIFIED_BASIC_LAND_PACK_QUANTITY_HARD_MAX, intAtLeast(raw.classifiedBasicLandPackQuantity, 1, DEFAULT_CLASSIFIED_BASIC_LAND_PACK_QUANTITY)),
+    workshopEnabled: typeof raw.workshopEnabled === 'boolean' ? raw.workshopEnabled : true,
+    workshopMachine1Available: typeof raw.workshopMachine1Available === 'boolean' ? raw.workshopMachine1Available : true,
+    workshopMachine1UnlockPoints: intAtLeast(raw.workshopMachine1UnlockPoints, 0, 1000),
+    workshopMachine1UnlockFichas: intAtLeast(raw.workshopMachine1UnlockFichas, 0, 0),
+    workshopMachine2Available: typeof raw.workshopMachine2Available === 'boolean' ? raw.workshopMachine2Available : false,
+    workshopMachine2UnlockPoints: intAtLeast(raw.workshopMachine2UnlockPoints, 0, 2000),
+    workshopMachine2UnlockFichas: intAtLeast(raw.workshopMachine2UnlockFichas, 0, 20),
+    workshopMachine3Available: typeof raw.workshopMachine3Available === 'boolean' ? raw.workshopMachine3Available : false,
+    workshopMachine3UnlockPoints: intAtLeast(raw.workshopMachine3UnlockPoints, 0, 3000),
+    workshopMachine3UnlockFichas: intAtLeast(raw.workshopMachine3UnlockFichas, 0, 50),
+    workshopMachine4Available: typeof raw.workshopMachine4Available === 'boolean' ? raw.workshopMachine4Available : false,
+    workshopMachine4UnlockPoints: intAtLeast(raw.workshopMachine4UnlockPoints, 0, 0),
+    workshopMachine4UnlockFichas: intAtLeast(raw.workshopMachine4UnlockFichas, 0, 0)
   });
 }
 function timestampMs(value) {

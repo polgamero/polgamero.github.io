@@ -53,6 +53,7 @@ export function emptyPlayerStats() {
     basicLandPacksGreen: 0,
     storePacksPurchased: 0,
     enhancementsCrafted: 0,
+    workshopMachinesUnlocked: 0,
     prebuiltDecksPurchased: 0,
     classifiedsCardsPurchased: 0,
     emotesPurchased: 0,

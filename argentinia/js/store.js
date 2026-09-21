@@ -167,6 +167,17 @@ export let TRADE_MAX_OFFERS_PER_LISTING = 10;
 export let TRADE_MAX_OUTGOING_OFFERS = 5;
 export let TRADE_MAX_COMPLETED_PER_WEEK = 3;
 
+// HF23.3.12 — Mi Taller Foundation. Unlock costs/availability live in gameConfig/settings
+// so Admin can tune the economy without a deploy. Machines 2–4 remain unavailable to
+// players until their gameplay systems ship; Admin preview can still reveal/edit their art.
+export const WORKSHOP_POLICY = {
+  enabled: true,
+  machine1: { available:true, points:1000, fichas:0 },
+  machine2: { available:false, points:2000, fichas:20 },
+  machine3: { available:false, points:3000, fichas:50 },
+  machine4: { available:false, points:0, fichas:0 }
+};
+
 // ============================================================================
 // PANEL DE ADMIN: puente entre Firestore y estos valores en memoria.
 // ============================================================================
@@ -212,6 +223,19 @@ export function getDefaultGameConfig() {
     tradeMaxOffersPerListing: 10,
     tradeMaxOutgoingOffers: 5,
     tradeMaxCompletedPerWeek: 3,
+    workshopEnabled: true,
+    workshopMachine1Available: true,
+    workshopMachine1UnlockPoints: 1000,
+    workshopMachine1UnlockFichas: 0,
+    workshopMachine2Available: false,
+    workshopMachine2UnlockPoints: 2000,
+    workshopMachine2UnlockFichas: 20,
+    workshopMachine3Available: false,
+    workshopMachine3UnlockPoints: 3000,
+    workshopMachine3UnlockFichas: 50,
+    workshopMachine4Available: false,
+    workshopMachine4UnlockPoints: 0,
+    workshopMachine4UnlockFichas: 0,
     tournamentRewardedStartsPerDay: 1,
     tournamentNpcRandomnessPercent: 18,
     tournamentRound16LossPoints: 15,
@@ -287,4 +311,14 @@ export function applyGameConfig(config) {
   if (typeof config.tradeMaxOffersPerListing === 'number') TRADE_MAX_OFFERS_PER_LISTING = Math.min(50, Math.max(1, Math.floor(config.tradeMaxOffersPerListing)));
   if (typeof config.tradeMaxOutgoingOffers === 'number') TRADE_MAX_OUTGOING_OFFERS = Math.min(20, Math.max(1, Math.floor(config.tradeMaxOutgoingOffers)));
   if (typeof config.tradeMaxCompletedPerWeek === 'number') TRADE_MAX_COMPLETED_PER_WEEK = Math.min(20, Math.max(1, Math.floor(config.tradeMaxCompletedPerWeek)));
+  if (typeof config.workshopEnabled === 'boolean') WORKSHOP_POLICY.enabled = config.workshopEnabled;
+  for (let index = 1; index <= 4; index += 1) {
+    const row = WORKSHOP_POLICY[`machine${index}`];
+    const availableKey = `workshopMachine${index}Available`;
+    const pointsKey = `workshopMachine${index}UnlockPoints`;
+    const fichasKey = `workshopMachine${index}UnlockFichas`;
+    if (typeof config[availableKey] === 'boolean') row.available = config[availableKey];
+    if (typeof config[pointsKey] === 'number') row.points = Math.max(0, Math.floor(config[pointsKey]));
+    if (typeof config[fichasKey] === 'number') row.fichas = Math.max(0, Math.floor(config[fichasKey]));
+  }
 }
