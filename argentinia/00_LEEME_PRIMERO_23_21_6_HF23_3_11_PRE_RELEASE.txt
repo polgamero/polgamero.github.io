@@ -1,0 +1,17 @@
+ARGENTINIA 23.21.6 · HF23.3.11 PRE-RELEASE
+PUNTO 4 — PUBLIC CARD GALLERY
+
+Paquete acumulativo sobre HF23.3.10, cuyo smoke de producción fue confirmado verde por el usuario.
+
+QUÉ AGREGA
+- /cartas/ pública, estática e indexable.
+- 180 cartas spoiler-safe de las 900 del pool.
+- 20 cartas unpublished/disabled excluidas.
+- 180 páginas individuales de carta.
+- Sitemap final de 182 URLs.
+- Link contextual desde ¿Cómo se juega?; cero botón nuevo en menú principal.
+- Sin /manual/ duplicado y sin /como-jugar/ duplicado.
+- Todo se genera desde la data canónica existente durante build.
+
+NO TOCA
+Rules / Functions / Economy / gameplay / ownership / Enciclopedia privada.

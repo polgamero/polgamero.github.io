@@ -179,3 +179,5 @@ tools/test_combat_bot_terminal_lethal_tiebreak_23_21_6_hf23_3_8_1.mjs
 tools/test_public_root_migration_23_21_6_hf23_3_9.mjs
 
 tools/test_crawler_monetization_hardening_23_21_6_hf23_3_10.mjs
+
+tools/test_public_card_gallery_23_21_6_hf23_3_11.mjs

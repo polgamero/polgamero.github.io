@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { generatePublicCardGallery } from './generate_public_card_gallery_23_21_6_hf23_3_11.mjs';
 
 function arg(name, fallback) {
   const i=process.argv.indexOf(name);
@@ -37,4 +38,5 @@ const legacy=`<!doctype html>
 <script>try{const u=new URL('/',location.origin);u.search=location.search;u.hash=location.hash;location.replace(u.href);}catch{location.replace('/');}</script>
 </body></html>`;
 fs.writeFileSync(path.join(legacyDir,'index.html'),legacy,'utf8');
-console.log(`PAGES_ROOT_BUILD_OK source=${source} dest=${dest} legacy=/argentinia/`);
+const publicCards=generatePublicCardGallery({sourceRoot:source,destRoot:dest});
+console.log(`PAGES_ROOT_BUILD_OK source=${source} dest=${dest} legacy=/argentinia/ publicCards=${publicCards.publicCount}`);

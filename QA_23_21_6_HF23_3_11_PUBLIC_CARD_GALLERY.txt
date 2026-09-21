@@ -1,0 +1,18 @@
+QA HF23.3.11 — PUBLIC CARD GALLERY
+
+AUTOMATED
+[ ] test_public_card_gallery_23_21_6_hf23_3_11.mjs PASS
+[ ] canonical sweep 154/154 PASS
+[ ] Game Text contract PASS / 2018 definitions
+[ ] packaging preflight PASS
+
+PRODUCTION SMOKE
+1. https://magiayleyenda.com.ar/cartas/ → HTTP 200, galería visible.
+2. Filtros Buscar / Rareza / Tipo funcionan sin login.
+3. Abrir una carta → URL /cartas/<slug>/ HTTP 200.
+4. Volver a Argentinia desde “Jugar”.
+5. Sin login: abrir ¿Cómo se juega? y verificar el link contextual “Explorar cartas públicas”.
+6. Menú principal: confirmar que NO aparece un botón nuevo de Cartas/Enciclopedia pública.
+7. Enciclopedia autenticada: confirmar que progreso, ownership y Descubriste X de X no cambiaron.
+8. /sitemap.xml → 182 URLs y ninguna /argentinia/.
+9. Confirmar que ninguna de las 20 cartas enabled:false aparece en /cartas/.

@@ -217,6 +217,17 @@ jobs:
           grep -q 'https://magiayleyenda.com.ar/' .pages-root/sitemap.xml
           echo "OK: AdSense/crawler files and semantic metadata are published at root"
 
+      - name: Verify public card gallery artifact
+        run: |
+          test -f .pages-root/cartas/index.html
+          test -f .pages-root/cartas/public-selection.json
+          test -f .pages-root/cartas/public-cards.css
+          test -f .pages-root/cartas/public-cards.js
+          node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('.pages-root/cartas/public-selection.json','utf8'));if(x.totalPool!==900||x.publishedEligible!==880||x.publicCount!==180)process.exit(1);if(JSON.stringify(x.rarityCounts)!==JSON.stringify({Common:90,Uncommon:60,Rare:24,Mythic:6}))process.exit(1);"
+          test "$(find .pages-root/cartas -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = "180"
+          test "$(grep -c '<loc>' .pages-root/sitemap.xml)" = "182"
+          echo "OK: public /cartas/ gallery has 180 spoiler-safe cards and sitemap has 182 URLs"
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 

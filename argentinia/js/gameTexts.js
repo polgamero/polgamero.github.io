@@ -2025,6 +2025,8 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'manual.completo.route9.title': definition("Manual", "9 · Ranking", "Título del paso 9 de la ruta sugerida."),
   'manual.completo.route9.body': definition("Manual", "Seguí tu progreso competitivo a largo plazo.", "Descripción del paso 9 de la ruta sugerida."),
   'manual.completo.footer': definition("Manual", "Manual frontend de referencia. Los costos, premios, límites y balance pueden actualizarse desde la configuración del juego; ante una diferencia, la interfaz y el texto actual de cada carta tienen prioridad.", "Nota final del Manual."),
+  'manual.publicCards.body': definition("Manual", "¿Querés ver ejemplos reales del juego? La galería pública muestra una selección spoiler-safe de cartas sin revelar tu colección ni tu progreso de descubrimiento.", "Texto introductorio del enlace a la galería pública de cartas."),
+  'manual.publicCards.link': definition("Manual", "Explorar cartas públicas", "Enlace desde ¿Cómo se juega? hacia la galería pública de cartas."),
   'landing.meta.title': definition("Landing", "Argentinia — Juego de cartas estratégico online", "Título HTML/SEO de la landing."),
   'landing.meta.description': definition("Landing", "Argentinia es un juego de cartas estratégico online inspirado en paisajes, cultura, mitos y humor argentino. Armá tu mazo, enfrentate a la IA en diversos modos de dificultad y jugá partidas multijugador.", "Descripción SEO de la landing."),
   'landing.meta.ogDescription': definition("Landing", "Construí mazos, descubrí cartas y enfrentate a la IA o a otros jugadores en un universo fantástico inspirado en Argentina.", "Descripción Open Graph de la landing."),

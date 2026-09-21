@@ -137,6 +137,8 @@ function applyManualGameTexts(root) {
     if (node) node.nodeValue=value; else row.appendChild(document.createTextNode(value));
   });
   setManualText(root,'#manual-completo .arg-manual-footer-note','manual.completo.footer');
+  setManualText(root,'#manual-completo .arg-manual-public-cards-copy','manual.publicCards.body');
+  setManualText(root,'#manual-completo .arg-manual-public-cards-link','manual.publicCards.link');
 
   for (let i=1;i<=10;i++) {
     const fig=root.querySelector(`[data-manual-figure="manual${i}"]`); if (!fig) continue;
@@ -275,6 +277,11 @@ function ensureManualStyles() {
     .arg-manual-route div{position:relative;padding:14px 12px 12px;border:1px solid rgba(116,172,223,.17);border-radius:11px;background:rgba(116,172,223,.04);color:#adb8bd;font-size:12px;line-height:1.4}
     .arg-manual-route b{display:block;color:#d8e8f2;margin-bottom:4px;font-size:12px}
     .arg-manual-footer-note{margin-top:32px;padding:18px;text-align:center;border:1px solid rgba(212,175,55,.18);border-radius:13px;background:rgba(3,8,5,.35);color:#8f958d;font-size:11px;line-height:1.55}
+    .arg-manual-public-cards{margin-top:14px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid rgba(116,172,223,.23);border-radius:13px;background:rgba(116,172,223,.055)}
+    .arg-manual-public-cards-copy{color:#9fa9a4;font-size:11px;line-height:1.5;max-width:680px}
+    .arg-manual-public-cards-link{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;padding:9px 12px;border:1px solid rgba(212,175,55,.45);border-radius:9px;background:rgba(212,175,55,.08);color:#f0d56c;font-size:11px;font-weight:900;text-decoration:none}
+    .arg-manual-public-cards-link:hover{background:rgba(212,175,55,.15);border-color:#f0d56c}
+    @media(max-width:700px){.arg-manual-public-cards{align-items:stretch;flex-direction:column}.arg-manual-public-cards-link{width:100%}}
     @media(max-width:900px){
       #${MANUAL_OVERLAY_ID}{padding:8px}.arg-manual-shell{width:100%;height:calc(100dvh - 16px);border-radius:14px}
       .arg-manual-layout{grid-template-columns:1fr;grid-template-rows:auto 1fr}
@@ -576,6 +583,7 @@ function manualHTML() {
               <div><b>9 · Ranking</b>Seguí tu progreso competitivo a largo plazo.</div>
             </div>
             <div class="arg-manual-footer-note">Manual frontend de referencia. Los costos, premios, límites y balance pueden actualizarse desde la configuración del juego; ante una diferencia, la interfaz y el texto actual de cada carta tienen prioridad.</div>
+            <div class="arg-manual-public-cards"><span class="arg-manual-public-cards-copy">¿Querés ver ejemplos reales del juego? La galería pública muestra una selección spoiler-safe de cartas sin revelar tu colección ni tu progreso de descubrimiento.</span><a class="arg-manual-public-cards-link" href="/cartas/">Explorar cartas públicas</a></div>
           </section>
         </main>
       </div>
