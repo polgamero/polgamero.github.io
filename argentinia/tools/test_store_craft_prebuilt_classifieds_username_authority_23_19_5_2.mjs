@@ -33,7 +33,7 @@ assert.ok(TRUSTED_PREBUILT_PRODUCTS.every(p=>p.cardIds.length===60));
 assert.equal(ENHANCEMENT_KEYWORDS.length,10);
 
 const settings=normalizeStoreSettings({packCost:200,fichasPerEnhancement:4,prebuiltDeckPoints:1700,prebuiltDeckFichas:5,maxSavedDecks:13});
-assert.deepEqual(settings,{packCost:200,craftCost:4,prebuiltPoints:1700,prebuiltFichas:5,maxSavedDecks:13,classifiedBasicLandPackPrice:150,classifiedBasicLandPackQuantity:15});
+assert.deepEqual(settings,{packCost:200,craftCost:4,prebuiltPoints:1700,prebuiltFichas:5,maxSavedDecks:13,classifiedBasicLandPackPrice:150,classifiedBasicLandPackQuantity:15,workshopEnabled:true,workshopMachine1Available:true,workshopMachine1UnlockPoints:1000,workshopMachine1UnlockFichas:0,workshopMachine2Available:false,workshopMachine2UnlockPoints:2000,workshopMachine2UnlockFichas:20,workshopMachine3Available:false,workshopMachine3UnlockPoints:3000,workshopMachine3UnlockFichas:50,workshopMachine4Available:false,workshopMachine4UnlockPoints:0,workshopMachine4UnlockFichas:0});
 const effects=buildCommerceCampaignEffects([
   {id:'discount',type:'pack_discount',value:50,startAt:new Date(1),endAt:new Date(Date.now()+60000)},
   {id:'ignored-fichas',type:'all_fichas_multiplier',value:9,startAt:new Date(1),endAt:new Date(Date.now()+60000)},

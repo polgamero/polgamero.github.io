@@ -12,7 +12,7 @@ assert.ok(version.includes('Entrega 23.17.4 Store + Navigation UX Responsive Pol
 assert.ok(version.includes("FIRESTORE_RULES_VERSION = '23.13.89'"), 'El contrato de Tienda debe convivir con las Rules actuales.');
 assert.ok(texts.includes("'store.pointsHow.link': definition('Tienda', '¿cómo conseguir puntos?'"), 'Falta el link configurable de cómo conseguir puntos.');
 assert.ok(texts.includes("'store.pack.showcaseTitle': definition('Tienda', 'Sobres'"), 'La primera tarjeta debe titularse Sobres.');
-assert.ok(texts.includes("'store.craft.showcaseTitle': definition('Tienda', 'Fichas'"), 'La segunda tarjeta debe titularse Fichas.');
+assert.ok(texts.includes("'store.craft.showcaseTitle': definition('Tienda', 'Fichas'"), 'El copy histórico de Fichas debe conservarse para compatibilidad, aunque el crafting viva en Mi Taller.');
 assert.ok(texts.includes("'store.prebuilt.showcaseTitle': definition('Tienda', 'Mazos Prearmados'"), 'Debe conservarse el acceso a Mazos Prearmados.');
 assert.ok(texts.includes("'store.classifieds.showcaseTitle': definition('Tienda', 'Avisos Clasificados'"), 'Debe conservarse Avisos Clasificados.');
 
@@ -32,16 +32,19 @@ const packIx = main.indexOf('store-market-pack', marketIx);
 const craftIx = main.indexOf('store-market-craft', marketIx);
 const prebuiltIx = main.indexOf('store-prebuilt-entry', marketIx);
 const classifiedsIx = main.indexOf('store-classifieds-entry', marketIx);
-assert.ok(packIx > marketIx && craftIx > packIx && prebuiltIx > craftIx && classifiedsIx > prebuiltIx, 'Orden de Tienda debe ser SOBRES → FICHAS → PREARMADOS → CLASIFICADOS.');
+const emotesIx = main.indexOf('store-emotes-entry', marketIx);
+assert.equal(craftIx, -1, 'HF23.3.12 migró el crafting de Fichas al Generador de mejoras de Mi Taller; no debe duplicarse en Tienda.');
+assert.ok(packIx > marketIx && prebuiltIx > packIx && classifiedsIx > prebuiltIx && emotesIx > classifiedsIx, 'Orden vigente de Tienda debe ser SOBRES → PREARMADOS → CLASIFICADOS → EMOTES; FICHAS/MEJORAS viven en Mi Taller.');
 assert.ok(main.includes('chest-item store-market-item store-market-pack'), 'Sobres debe reutilizar .chest-item de Mi Cofre.');
-assert.ok(main.includes('chest-item store-market-item store-market-craft'), 'Fichas debe reutilizar .chest-item de Mi Cofre.');
+assert.ok(!main.includes('chest-item store-market-item store-market-craft'), 'HF23.3.12 no debe duplicar el Generador de mejoras dentro de Tienda.');
 assert.ok(main.includes('chest-item store-market-item store-prebuilt-entry'), 'Prearmados debe reutilizar .chest-item de Mi Cofre.');
 assert.ok(main.includes('chest-item store-market-item store-classifieds-entry'), 'Clasificados debe reutilizar .chest-item de Mi Cofre.');
+assert.ok(main.includes('chest-item store-market-item store-emotes-entry'), 'Emotes debe reutilizar .chest-item de Mi Cofre.');
 
 // 23.21.4 post-release UI polish: the reserved pack error row lives BEFORE the buy
 // button so all showcase action buttons share the same baseline. Emotes uses its
 // dedicated image asset while preserving the emoji fallback until the asset exists.
-const packCardEnd = main.indexOf('store-market-craft', packIx);
+const packCardEnd = main.indexOf('store-prebuilt-entry', packIx);
 const packCard = main.slice(packIx, packCardEnd);
 const packErrorIx = packCard.indexOf('id="store-buy-error"');
 const packBuyIx = packCard.indexOf('id="store-buy-pack"');
@@ -53,4 +56,4 @@ assert.ok(ui.includes('html.argentinia-mobile .store-market-item .store-emote-sh
 assert.ok(ui.includes('.store-market-strip {\n      display:grid;'), '23.17.4 debe usar grid responsive y no carrusel horizontal obligatorio.');
 assert.ok(ui.includes('injectRewardsStyles(); // 23.13.64'), 'Tienda debe conservar el lenguaje visual compartido de Mi Cofre.');
 
-console.log('STORE_REDESIGN_23_13_64_OK legacy=preserved layout=responsive-23.17.4 order=packs>fichas>prebuilt>classifieds chestStyle=shared packError=aboveButton emoteAsset=ui/emotes.png');
+console.log('STORE_REDESIGN_23_13_64_OK legacy=preserved layout=responsive-23.17.4 order=packs>prebuilt>classifieds>emotes craft=MIGRATED_TO_WORKSHOP chestStyle=shared packError=aboveButton emoteAsset=ui/emotes.png');
