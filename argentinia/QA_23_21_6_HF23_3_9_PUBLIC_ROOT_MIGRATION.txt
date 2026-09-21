@@ -1,0 +1,19 @@
+QA HF23.3.9 — PUBLIC ROOT MIGRATION
+
+AUTOMATED
+1. Canonical fast contracts: 152/152 PASS.
+2. Build script must produce public-root index.html, js/main.js and assets/manifest.webmanifest.
+3. Build script must produce /argentinia/index.html legacy redirect with noindex.
+4. GitHub Pages workflow must upload .pages-root, not repository root.
+5. Runtime CSS must not depend on polgamero.github.io/argentinia for fondo.png.
+6. manifest.webmanifest start_url/scope remain relative.
+
+OWNER PRODUCTION SMOKE AFTER DEPLOY
+- https://magiayleyenda.com.ar/ opens Argentinia directly, without the old landing.
+- https://magiayleyenda.com.ar/argentinia/ redirects to `/`.
+- Menu, login, Solo, Multiplayer, Torneo, Tienda, Enciclopedia, audio and card images load.
+- Browser console has no 404 introduced by root migration.
+- Install/PWA manifest still resolves.
+- Existing custom-domain verification remains active.
+
+Do not request AdSense re-review yet solely on Point 2. Roadmap Point 3 will add crawler/monetization hardening first.

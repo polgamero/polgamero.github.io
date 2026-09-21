@@ -1,0 +1,9 @@
+ARGENTINIA 23.21.6 HF23.3.9 PRE-RELEASE
+ROADMAP POINT 2 — PUBLIC ROOT MIGRATION
+
+This package is cumulative over HF23.3.8.1.
+Public GitHub Pages root becomes the Argentinia application itself.
+Source layout remains canonical under 01_GitHubSource/argentinia/.
+Legacy /argentinia/ redirects to `/`.
+No Rules/Functions/economy authority change.
+Crawler/AdSense hardening is intentionally deferred to Roadmap Point 3.

@@ -173,3 +173,9 @@ tools/test_ambient_population_realism_ii_23_21_6_hf23_3_6.mjs
 tools/test_rarity_icons_ambient_stats_23_21_6_hf23_3_7.mjs
 
 tools/test_tournament_multitab_bracket_hf23_3_8.mjs
+
+tools/test_combat_bot_terminal_lethal_tiebreak_23_21_6_hf23_3_8_1.mjs
+
+tools/test_public_root_migration_23_21_6_hf23_3_9.mjs
+
+tools/test_crawler_monetization_hardening_23_21_6_hf23_3_10.mjs

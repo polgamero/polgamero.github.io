@@ -191,14 +191,39 @@ jobs:
           npm run lint:syntax
           npm test
 
+      - name: Build Argentinia as the public site root
+        run: node argentinia/tools/build_pages_root_23_21_6_hf23_3_9.mjs --source argentinia --dest .pages-root --repo-root .
+
+      - name: Verify public-root migration artifact
+        run: |
+          test -f .pages-root/index.html
+          test -f .pages-root/js/main.js
+          test -f .pages-root/assets/manifest.webmanifest
+          test -f .pages-root/argentinia/index.html
+          grep -q 'Argentinia ahora vive' .pages-root/argentinia/index.html
+          echo "OK: Argentinia is the public / root; /argentinia/ is a legacy redirect"
+
+      - name: Verify crawler and monetization root artifact
+        run: |
+          test -f .pages-root/ads.txt
+          test -f .pages-root/robots.txt
+          test -f .pages-root/sitemap.xml
+          test -f .pages-root/CNAME
+          grep -Fxq 'google.com, pub-6181395403710642, DIRECT, f08c47fec0942fa0' .pages-root/ads.txt
+          grep -q 'google-adsense-account.*ca-pub-6181395403710642' .pages-root/index.html
+          grep -q 'rel="canonical" href="https://magiayleyenda.com.ar/"' .pages-root/index.html
+          grep -q '^User-agent: Mediapartners-Google$' .pages-root/robots.txt
+          grep -q '^User-agent: Google-Display-Ads-Bot$' .pages-root/robots.txt
+          grep -q 'https://magiayleyenda.com.ar/' .pages-root/sitemap.xml
+          echo "OK: AdSense/crawler files and semantic metadata are published at root"
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload complete polgamero.github.io site
+      - name: Upload Argentinia public-root site
         uses: actions/upload-pages-artifact@v4
         with:
-          # IMPORTANT: upload the repository root so Argentinia remains at /argentinia/.
-          path: '.'
+          path: '.pages-root'
 
   deploy:
     if: github.event_name == 'workflow_dispatch' || github.ref_name == github.event.repository.default_branch

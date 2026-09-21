@@ -1,0 +1,25 @@
+ARGENTINIA 23.21.6 HF23.3.8.1 PRE-RELEASE
+COMBAT BOT 2.0 — TERMINAL LETHAL DEFENSE TIE-BREAK
+
+BASELINE
+- Cumulative over HF23.3.8 Tournament Recovery + Bracket Redesign.
+- Engine/protocol/pool unchanged: 23.21.6 / mp-23.19.2 / 900 cards.
+- Firestore Rules unchanged: 23.13.89.
+- Functions unchanged; this is client-only gameplay AI logic.
+
+FIX
+- When at least one legal defense survives, survival still dominates exactly as before.
+- When every legal defense is terminal lethal, the defender no longer values keeping creatures for a future turn that cannot exist.
+- Terminal lines are ordered by: (1) lower player damage, (2) higher attacker material removed, (3) more effective blockers committed, then historical utility.
+- Reproduces the observed tournament case: Diablo de la Salamanca 6/5 Intimidante + Arrolla attacks a bot at 1 life with two 2/2 blockers. Old result: 0 blockers / 6 damage. New result: double block / 2 trample damage.
+
+REGRESSION
+- NEW canonical contract: tools/test_combat_bot_terminal_lethal_tiebreak_23_21_6_hf23_3_8_1.mjs
+- Existing Combat Bot 2.0 contract remains green.
+- Canonical fast suite count: 151.
+
+SERVER / ECONOMY
+- No Functions delta.
+- No Firestore Rules delta.
+- No economy/tournament authority delta.
+- Gate03/Gate05/Gate07 do not need to be rerun solely for this client-only tie-break.

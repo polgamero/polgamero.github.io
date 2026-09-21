@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+const __dirname=path.dirname(fileURLToPath(import.meta.url));
+const app=path.resolve(__dirname,'..');
+const repo=path.resolve(app,'..');
+const workflow=fs.readFileSync(path.join(repo,'.github/workflows/pages.yml'),'utf8');
+assert.match(workflow,/build_pages_root_23_21_6_hf23_3_9\.mjs/);
+assert.match(workflow,/path: '\.pages-root'/);
+assert.doesNotMatch(workflow,/Argentinia remains at \/argentinia\//);
+
+const css=fs.readFileSync(path.join(app,'css/style.css'),'utf8');
+assert.doesNotMatch(css,/polgamero\.github\.io\/argentinia\/assets\/images\/ui\/fondo\.png/);
+assert.match(css,/\.\.\/assets\/images\/ui\/fondo\.png/);
+const manifest=JSON.parse(fs.readFileSync(path.join(app,'assets/manifest.webmanifest'),'utf8'));
+assert.equal(manifest.start_url,'./');
+assert.equal(manifest.scope,'./');
+
+const temp=fs.mkdtempSync(path.join(os.tmpdir(),'argentinia-root-'));
+const dest=path.join(temp,'site');
+const result=spawnSync(process.execPath,[path.join(__dirname,'build_pages_root_23_21_6_hf23_3_9.mjs'),'--source',app,'--dest',dest,'--repo-root',repo],{encoding:'utf8'});
+assert.equal(result.status,0,result.stderr||result.stdout);
+assert.ok(fs.existsSync(path.join(dest,'index.html')),'public root must contain game index.html');
+assert.ok(fs.existsSync(path.join(dest,'js','main.js')),'public root must contain runtime JS');
+assert.ok(fs.existsSync(path.join(dest,'argentinia','index.html')),'legacy /argentinia/ redirect must exist');
+const legacy=fs.readFileSync(path.join(dest,'argentinia','index.html'),'utf8');
+assert.match(legacy,/location\.replace\(u\.href\)/);
+assert.match(legacy,/noindex/);
+fs.rmSync(temp,{recursive:true,force:true});
+console.log('PASS test_public_root_migration_23_21_6_hf23_3_9.mjs · public /=Argentinia + legacy /argentinia/ redirect + root-safe assets');

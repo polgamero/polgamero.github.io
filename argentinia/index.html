@@ -4,18 +4,49 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0b130e">
+  <meta name="description" content="Argentinia es un juego de cartas coleccionables argentino para navegador, con más de 900 cartas originales, partidas contra IA, multijugador, torneos, colección, mazos, ranking y mercado de pases.">
+  <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+  <meta name="google-adsense-account" content="ca-pub-6181395403710642">
+  <link rel="canonical" href="https://magiayleyenda.com.ar/">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="es_AR">
+  <meta property="og:site_name" content="Argentinia — Magia y Leyenda">
+  <meta property="og:title" content="ARGENTINIA — Juego de cartas coleccionables argentino">
+  <meta property="og:description" content="Más de 900 cartas originales, IA, multijugador, torneos, colección, mazos, ranking y mercado de pases.">
+  <meta property="og:url" content="https://magiayleyenda.com.ar/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="ARGENTINIA — Juego de cartas coleccionables argentino">
+  <meta name="twitter:description" content="Juego de estrategia con más de 900 cartas originales, IA, multijugador y torneos.">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Argentinia",
+    "url": "https://magiayleyenda.com.ar/",
+    "inLanguage": "es-AR",
+    "gamePlatform": "Web browser",
+    "genre": ["Juego de cartas coleccionables", "Estrategia por turnos"],
+    "description": "Juego de cartas coleccionables argentino para navegador con más de 900 cartas originales, partidas contra IA, multijugador, torneos, colección, mazos, ranking y mercado de pases."
+  }
+  </script>
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Argentinia">
   <link rel="manifest" href="./assets/manifest.webmanifest">
   <link rel="icon" href="data:,">
-  <title>ARGENTINIA - TCG Criollo</title>
+  <title>ARGENTINIA — Juego de cartas coleccionables argentino</title>
   <link rel="stylesheet" href="./css/style.css?v=23.15.8.1">
   <link rel="stylesheet" href="./css/mobile.css?v=23.15.8.1">
   <style id="arg-mobile-boot-critical-style">
     /* 23.11.8: fallback CRÍTICO inline. No depende de style.css/mobile.css ni de módulos JS. */
     #arg-mobile-boot-fallback { display: none; }
+    .arg-public-boot-summary { width:min(680px,88vw); display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; color:#f0e0b0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; padding:24px; }
+    .arg-public-boot-summary h1 { margin:8px 0 0; color:#f0d56a; font-size:clamp(28px,5vw,44px); letter-spacing:.08em; }
+    .arg-public-boot-tagline { margin:0; font-size:clamp(15px,2.6vw,20px); font-weight:800; }
+    .arg-public-boot-copy { margin:0; max-width:650px; color:#c8c0a8; font-size:13px; line-height:1.5; }
+    .arg-noscript-content { position:fixed; inset:0; z-index:100000; overflow:auto; background:#08100b; color:#f0e0b0; padding:40px max(24px,8vw); font:16px/1.6 system-ui,sans-serif; user-select:text; }
+    .arg-noscript-content h1 { color:#f0d56a; margin:0 0 16px; }
     /* 23.11.6: NUNCA activamos este fallback sólo por media query. Desktop queda fuera
        por construcción; únicamente la clase bootstrap estricta de teléfono puede mostrarlo. */
     html.arg-bootdiag-force #arg-mobile-boot-fallback {
@@ -278,7 +309,19 @@
        está listo para mostrarse (ver boot(), al final). -->
   <div id="boot-loading-overlay">
     <div class="boot-spinner"></div>
+    <div class="arg-public-boot-summary" role="status" aria-label="Cargando Argentinia">
+      <h1>ARGENTINIA</h1>
+      <p class="arg-public-boot-tagline">Juego de cartas coleccionables argentino</p>
+      <p class="arg-public-boot-copy">Más de 900 cartas originales · partidas contra IA · multijugador · torneos · colección · mazos · ranking · mercado de pases</p>
+    </div>
   </div>
+  <noscript>
+    <main class="arg-noscript-content">
+      <h1>Argentinia — juego de cartas coleccionables argentino</h1>
+      <p>Argentinia es un juego de estrategia por turnos para navegador con más de 900 cartas originales, colección y construcción de mazos.</p>
+      <p>Incluye partidas contra inteligencia artificial, multijugador, torneos, ranking global y mercado de pases. Para jugar necesitás habilitar JavaScript.</p>
+    </main>
+  </noscript>
 
   <!-- RC5.2 — cada partida nueva se inicializa detrás de negro para que una salida suave
        (sin reload, necesaria para conservar fullscreen) jamás exponga DOM de la partida anterior. -->

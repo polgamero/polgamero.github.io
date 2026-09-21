@@ -28,7 +28,7 @@ html, body {
   height: 100vh;
 
   background-image:
-    url("https://polgamero.github.io/argentinia/assets/images/ui/fondo.png");
+    url("../assets/images/ui/fondo.png");
 
   background-position: center center;
   background-repeat: no-repeat;
@@ -2965,3 +2965,5 @@ button.mana-pool-chip:disabled { opacity: 1; }
 .trade-notification-panel .trade-zoom-btn{display:none}
 .trade-history-actions{display:flex;justify-content:flex-end;margin-top:10px}
 .trade-history-actions .trade-btn{min-width:150px}
+/* HF23.3.10 — semantic crawler-safe boot copy; keeps historical spinner as direct child. */
+#boot-loading-overlay { flex-direction:column; gap:14px; }

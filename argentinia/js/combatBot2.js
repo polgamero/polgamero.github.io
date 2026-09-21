@@ -141,8 +141,27 @@ export function findBestDefenseAssignment({attackers,blockers,attackerLife=20,de
   for (const s of states) {
     if (!assignmentIsLegal(attackers,s.assignment,helpers)) continue;
     const result=evaluateResolvedAttack(attackers,blockers,s.assignment,attackerLife,defenderLife,helpers);
-    // El defensor elige la línea que MINIMIZA la utilidad del atacante.
-    if (!best || result.utility<best.utility) best={assignment:s.assignment,...result};
+    const candidate={assignment:s.assignment,...result};
+    // HF23.3.8.1 — terminal lethal defense tie-break. Si TODAS las líneas legales
+    // igualmente pierden la partida, conservar material ya no tiene valor futuro. En ese
+    // subespacio terminal priorizamos: 1) recibir menos daño, 2) retirar más valor atacante,
+    // 3) comprometer más bloqueadores efectivos. Sólo después desempata la utilidad histórica.
+    // Esto evita decisiones visualmente absurdas como no bloquear un 6/5 Intimidante +
+    // Arrolla con dos 2/2 cuando el defensor está a 1 vida: sigue perdiendo, pero pelea.
+    if (!best) { best=candidate; continue; }
+    const candidateLethal=candidate.damage>=defenderLife;
+    const bestLethal=best.damage>=defenderLife;
+    let take=false;
+    if (candidateLethal!==bestLethal) take=!candidateLethal;
+    else if (candidateLethal && bestLethal) {
+      const candidateBlocks=candidate.assignment.filter(x=>x>=0).length;
+      const bestBlocks=best.assignment.filter(x=>x>=0).length;
+      if (candidate.damage!==best.damage) take=candidate.damage<best.damage;
+      else if (candidate.attackerLoss!==best.attackerLoss) take=candidate.attackerLoss>best.attackerLoss;
+      else if (candidateBlocks!==bestBlocks) take=candidateBlocks>bestBlocks;
+      else take=candidate.utility<best.utility;
+    } else take=candidate.utility<best.utility;
+    if (take) best=candidate;
   }
   if (best) return best;
   const assignment=new Array(blockers.length).fill(-1);

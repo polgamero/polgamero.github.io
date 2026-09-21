@@ -1,0 +1,7 @@
+ARGENTINIA 23.21.6 HF23.3.8.1 PRE-RELEASE
+
+Punto 1 del roadmap autosustentable.
+Baseline: HF23.3.8 PRE.
+Cambio único de runtime: Combat Bot 2.0 terminal-lethal defense tie-break.
+No cambia Functions, Rules, economía, torneo ni pool.
+Ver HOTFIX_23_21_6_HF23_3_8_1_COMBAT_BOT_TERMINAL_LETHAL_PRE_RELEASE.txt y QA asociado.
