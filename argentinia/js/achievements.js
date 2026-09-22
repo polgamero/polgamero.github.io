@@ -19,6 +19,9 @@ export const ACHIEVEMENT_FAMILIES = Object.freeze([
   Object.freeze({id:'gamesPlayed',metric:'gamesPlayed',targets:Object.freeze([10,50,150,400,1000])})
 ]);
 export const achievementId=(familyId,tier)=>`${String(familyId||'')}_${String(tier||'')}`;
+export const ACHIEVEMENT_TROPHY_ASSET_DIR = './assets/images/logros';
+export const achievementTrophyFilename=(familyId,tier)=>`${achievementId(familyId,tier)}.png`;
+export const achievementTrophyPath=(familyId,tier)=>`${ACHIEVEMENT_TROPHY_ASSET_DIR}/${achievementTrophyFilename(familyId,tier)}`;
 const nonneg=v=>Math.max(0,Math.floor(Number(v)||0));
 export function defaultAchievementEntries(){const out={};for(const family of ACHIEVEMENT_FAMILIES)ACHIEVEMENT_TIERS.forEach((tier,index)=>{const reward=TIER_REWARDS[tier],id=achievementId(family.id,tier);out[id]={id,familyId:family.id,metric:family.metric,tier,enabled:true,target:family.targets[index],points:reward.points,fichas:reward.fichas,essence:reward.essence};});return out;}
 export function normalizeAchievementsConfig(raw={}){const defaults=defaultAchievementEntries(),source=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{},rows=source.entries&&typeof source.entries==='object'&&!Array.isArray(source.entries)?source.entries:{};const entries={};for(const[id,fallback]of Object.entries(defaults)){const row=rows[id]&&typeof rows[id]==='object'&&!Array.isArray(rows[id])?rows[id]:{};entries[id]={...fallback,enabled:typeof row.enabled==='boolean'?row.enabled:fallback.enabled,target:Math.max(1,nonneg(row.target||fallback.target)),points:nonneg(row.points??fallback.points),fichas:nonneg(row.fichas??fallback.fichas),essence:nonneg(row.essence??fallback.essence)};}return{schemaVersion:1,enabled:typeof source.enabled==='boolean'?source.enabled:true,entries};}

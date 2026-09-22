@@ -1,0 +1,408 @@
+{
+  "schemaVersion": 1,
+  "directory": "assets/images/logros",
+  "fallback": "ACHIEVEMENT_TIER_ICONS emoji by tier when PNG is missing or fails to load",
+  "count": 50,
+  "trophies": [
+    {
+      "id": "soloWins_copper",
+      "familyId": "soloWins",
+      "familyLabel": "Veterano del Tano",
+      "tier": "copper",
+      "tierLabel": "Cobre",
+      "filename": "soloWins_copper.png"
+    },
+    {
+      "id": "soloWins_bronze",
+      "familyId": "soloWins",
+      "familyLabel": "Veterano del Tano",
+      "tier": "bronze",
+      "tierLabel": "Bronce",
+      "filename": "soloWins_bronze.png"
+    },
+    {
+      "id": "soloWins_silver",
+      "familyId": "soloWins",
+      "familyLabel": "Veterano del Tano",
+      "tier": "silver",
+      "tierLabel": "Plata",
+      "filename": "soloWins_silver.png"
+    },
+    {
+      "id": "soloWins_gold",
+      "familyId": "soloWins",
+      "familyLabel": "Veterano del Tano",
+      "tier": "gold",
+      "tierLabel": "Oro",
+      "filename": "soloWins_gold.png"
+    },
+    {
+      "id": "soloWins_diamond",
+      "familyId": "soloWins",
+      "familyLabel": "Veterano del Tano",
+      "tier": "diamond",
+      "tierLabel": "Diamante",
+      "filename": "soloWins_diamond.png"
+    },
+    {
+      "id": "pvpWins_copper",
+      "familyId": "pvpWins",
+      "familyLabel": "Duelista",
+      "tier": "copper",
+      "tierLabel": "Cobre",
+      "filename": "pvpWins_copper.png"
+    },
+    {
+      "id": "pvpWins_bronze",
+      "familyId": "pvpWins",
+      "familyLabel": "Duelista",
+      "tier": "bronze",
+      "tierLabel": "Bronce",
+      "filename": "pvpWins_bronze.png"
+    },
+    {
+      "id": "pvpWins_silver",
+      "familyId": "pvpWins",
+      "familyLabel": "Duelista",
+      "tier": "silver",
+      "tierLabel": "Plata",
+      "filename": "pvpWins_silver.png"
+    },
+    {
+      "id": "pvpWins_gold",
+      "familyId": "pvpWins",
+      "familyLabel": "Duelista",
+      "tier": "gold",
+      "tierLabel": "Oro",
+      "filename": "pvpWins_gold.png"
+    },
+    {
+      "id": "pvpWins_diamond",
+      "familyId": "pvpWins",
+      "familyLabel": "Duelista",
+      "tier": "diamond",
+      "tierLabel": "Diamante",
+      "filename": "pvpWins_diamond.png"
+    },
+    {
+      "id": "tournamentWins_copper",
+      "familyId": "tournamentWins",
+      "familyLabel": "Campeón de Torneos",
+      "tier": "copper",
+      "tierLabel": "Cobre",
+      "filename": "tournamentWins_copper.png"
+    },
+    {
+      "id": "tournamentWins_bronze",
+      "familyId": "tournamentWins",
+      "familyLabel": "Campeón de Torneos",
+      "tier": "bronze",
+      "tierLabel": "Bronce",
+      "filename": "tournamentWins_bronze.png"
+    },
+    {
+      "id": "tournamentWins_silver",
+      "familyId": "tournamentWins",
+      "familyLabel": "Campeón de Torneos",
+      "tier": "silver",
+      "tierLabel": "Plata",
+      "filename": "tournamentWins_silver.png"
+    },
+    {
+      "id": "tournamentWins_gold",
+      "familyId": "tournamentWins",
+      "familyLabel": "Campeón de Torneos",
+      "tier": "gold",
+      "tierLabel": "Oro",
+      "filename": "tournamentWins_gold.png"
+    },
+    {
+      "id": "tournamentWins_diamond",
+      "familyId": "tournamentWins",
+      "familyLabel": "Campeón de Torneos",
+      "tier": "diamond",
+      "tierLabel": "Diamante",
+      "filename": "tournamentWins_diamond.png"
+    },
+    {
+      "id": "packsOpened_copper",
+      "familyId": "packsOpened",
+      "familyLabel": "Rompesobres",
+      "tier": "copper",
+      "tierLabel": "Cobre",
+      "filename": "packsOpened_copper.png"
+    },
+    {
+      "id": "packsOpened_bronze",
+      "familyId": "packsOpened",
+      "familyLabel": "Rompesobres",
+      "tier": "bronze",
+      "tierLabel": "Bronce",
+      "filename": "packsOpened_bronze.png"
+    },
+    {
+      "id": "packsOpened_silver",
+      "familyId": "packsOpened",
+      "familyLabel": "Rompesobres",
+      "tier": "silver",
+      "tierLabel": "Plata",
+      "filename": "packsOpened_silver.png"
+    },
+    {
+      "id": "packsOpened_gold",
+      "familyId": "packsOpened",
+      "familyLabel": "Rompesobres",
+      "tier": "gold",
+      "tierLabel": "Oro",
+      "filename": "packsOpened_gold.png"
+    },
+    {
+      "id": "packsOpened_diamond",
+      "familyId": "packsOpened",
+      "familyLabel": "Rompesobres",
+      "tier": "diamond",
+      "tierLabel": "Diamante",
+      "filename": "packsOpened_diamond.png"
+    },
+    {
+      "id": "uniqueCards_copper",
+      "familyId": "uniqueCards",
+      "familyLabel": "Coleccionista",
+      "tier": "copper",
+      "tierLabel": "Cobre",
+      "filename": "uniqueCards_copper.png"
+    },
+    {
+      "id": "uniqueCards_bronze",
+      "familyId": "uniqueCards",
+      "familyLabel": "Coleccionista",
+      "tier": "bronze",
+      "tierLabel": "Bronce",
+      "filename": "uniqueCards_bronze.png"
+    },
+    {
+      "id": "uniqueCards_silver",
+      "familyId": "uniqueCards",
+      "familyLabel": "Coleccionista",
+      "tier": "silver",
+      "tierLabel": "Plata",
+      "filename": "uniqueCards_silver.png"
+    },
+    {
+      "id": "uniqueCards_gold",
+      "familyId": "uniqueCards",
+      "familyLabel": "Coleccionista",
+      "tier": "gold",
+      "tierLabel": "Oro",
+      "filename": "uniqueCards_gold.png"
+    },
+    {
+      "id": "uniqueCards_diamond",
+      "familyId": "uniqueCards",
+      "familyLabel": "Coleccionista",
+      "tier": "diamond",
+      "tierLabel": "Diamante",
+      "filename": "uniqueCards_diamond.png"
+    },
+    {
+      "id": "mythicCards_copper",
+      "familyId": "mythicCards",
+      "familyLabel": "Cazador de Míticas",
+      "tier": "copper",
+      "tierLabel": "Cobre",
+      "filename": "mythicCards_copper.png"
+    },
+    {
+      "id": "mythicCards_bronze",
+      "familyId": "mythicCards",
+      "familyLabel": "Cazador de Míticas",
+      "tier": "bronze",
+      "tierLabel": "Bronce",
+      "filename": "mythicCards_bronze.png"
+    },
+    {
+      "id": "mythicCards_silver",
+      "familyId": "mythicCards",
+      "familyLabel": "Cazador de Míticas",
+      "tier": "silver",
+      "tierLabel": "Plata",
+      "filename": "mythicCards_silver.png"
+    },
+    {
+      "id": "mythicCards_gold",
+      "familyId": "mythicCards",
+      "familyLabel": "Cazador de Míticas",
+      "tier": "gold",
+      "tierLabel": "Oro",
+      "filename": "mythicCards_gold.png"
+    },
+    {
+      "id": "mythicCards_diamond",
+      "familyId": "mythicCards",
+      "familyLabel": "Cazador de Míticas",
+      "tier": "diamond",
+      "tierLabel": "Diamante",
+      "filename": "mythicCards_diamond.png"
+    },
+    {
+      "id": "enhancements_copper",
+      "familyId": "enhancements",
+      "familyLabel": "Maestro del Taller",
+      "tier": "copper",
+      "tierLabel": "Cobre",
+      "filename": "enhancements_copper.png"
+    },
+    {
+      "id": "enhancements_bronze",
+      "familyId": "enhancements",
+      "familyLabel": "Maestro del Taller",
+      "tier": "bronze",
+      "tierLabel": "Bronce",
+      "filename": "enhancements_bronze.png"
+    },
+    {
+      "id": "enhancements_silver",
+      "familyId": "enhancements",
+      "familyLabel": "Maestro del Taller",
+      "tier": "silver",
+      "tierLabel": "Plata",
+      "filename": "enhancements_silver.png"
+    },
+    {
+      "id": "enhancements_gold",
+      "familyId": "enhancements",
+      "familyLabel": "Maestro del Taller",
+      "tier": "gold",
+      "tierLabel": "Oro",
+      "filename": "enhancements_gold.png"
+    },
+    {
+      "id": "enhancements_diamond",
+      "familyId": "enhancements",
+      "familyLabel": "Maestro del Taller",
+      "tier": "diamond",
+      "tierLabel": "Diamante",
+      "filename": "enhancements_diamond.png"
+    },
+    {
+      "id": "trades_copper",
+      "familyId": "trades",
+      "familyLabel": "Mercader",
+      "tier": "copper",
+      "tierLabel": "Cobre",
+      "filename": "trades_copper.png"
+    },
+    {
+      "id": "trades_bronze",
+      "familyId": "trades",
+      "familyLabel": "Mercader",
+      "tier": "bronze",
+      "tierLabel": "Bronce",
+      "filename": "trades_bronze.png"
+    },
+    {
+      "id": "trades_silver",
+      "familyId": "trades",
+      "familyLabel": "Mercader",
+      "tier": "silver",
+      "tierLabel": "Plata",
+      "filename": "trades_silver.png"
+    },
+    {
+      "id": "trades_gold",
+      "familyId": "trades",
+      "familyLabel": "Mercader",
+      "tier": "gold",
+      "tierLabel": "Oro",
+      "filename": "trades_gold.png"
+    },
+    {
+      "id": "trades_diamond",
+      "familyId": "trades",
+      "familyLabel": "Mercader",
+      "tier": "diamond",
+      "tierLabel": "Diamante",
+      "filename": "trades_diamond.png"
+    },
+    {
+      "id": "classifieds_copper",
+      "familyId": "classifieds",
+      "familyLabel": "Cazador de Ofertas",
+      "tier": "copper",
+      "tierLabel": "Cobre",
+      "filename": "classifieds_copper.png"
+    },
+    {
+      "id": "classifieds_bronze",
+      "familyId": "classifieds",
+      "familyLabel": "Cazador de Ofertas",
+      "tier": "bronze",
+      "tierLabel": "Bronce",
+      "filename": "classifieds_bronze.png"
+    },
+    {
+      "id": "classifieds_silver",
+      "familyId": "classifieds",
+      "familyLabel": "Cazador de Ofertas",
+      "tier": "silver",
+      "tierLabel": "Plata",
+      "filename": "classifieds_silver.png"
+    },
+    {
+      "id": "classifieds_gold",
+      "familyId": "classifieds",
+      "familyLabel": "Cazador de Ofertas",
+      "tier": "gold",
+      "tierLabel": "Oro",
+      "filename": "classifieds_gold.png"
+    },
+    {
+      "id": "classifieds_diamond",
+      "familyId": "classifieds",
+      "familyLabel": "Cazador de Ofertas",
+      "tier": "diamond",
+      "tierLabel": "Diamante",
+      "filename": "classifieds_diamond.png"
+    },
+    {
+      "id": "gamesPlayed_copper",
+      "familyId": "gamesPlayed",
+      "familyLabel": "Curtido en Batalla",
+      "tier": "copper",
+      "tierLabel": "Cobre",
+      "filename": "gamesPlayed_copper.png"
+    },
+    {
+      "id": "gamesPlayed_bronze",
+      "familyId": "gamesPlayed",
+      "familyLabel": "Curtido en Batalla",
+      "tier": "bronze",
+      "tierLabel": "Bronce",
+      "filename": "gamesPlayed_bronze.png"
+    },
+    {
+      "id": "gamesPlayed_silver",
+      "familyId": "gamesPlayed",
+      "familyLabel": "Curtido en Batalla",
+      "tier": "silver",
+      "tierLabel": "Plata",
+      "filename": "gamesPlayed_silver.png"
+    },
+    {
+      "id": "gamesPlayed_gold",
+      "familyId": "gamesPlayed",
+      "familyLabel": "Curtido en Batalla",
+      "tier": "gold",
+      "tierLabel": "Oro",
+      "filename": "gamesPlayed_gold.png"
+    },
+    {
+      "id": "gamesPlayed_diamond",
+      "familyId": "gamesPlayed",
+      "familyLabel": "Curtido en Batalla",
+      "tier": "diamond",
+      "tierLabel": "Diamante",
+      "filename": "gamesPlayed_diamond.png"
+    }
+  ]
+}

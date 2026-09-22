@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ACHIEVEMENT_FAMILIES, ACHIEVEMENT_TIERS, defaultAchievementEntries, normalizeAchievementsConfig, achievementId } from '../js/achievements.js';
+import { ACHIEVEMENT_FAMILIES, ACHIEVEMENT_TIERS, defaultAchievementEntries, normalizeAchievementsConfig, achievementId, achievementTrophyFilename, achievementTrophyPath } from '../js/achievements.js';
 import { getDefaultGameConfig, WORKSHOP_POLICY } from '../js/store.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from '../js/economyActionRecovery.js';
 
@@ -25,6 +25,22 @@ assert.equal(ACHIEVEMENT_FAMILIES.length,10);
 assert.deepEqual(ACHIEVEMENT_TIERS,['copper','bronze','silver','gold','diamond']);
 const entries=defaultAchievementEntries();
 assert.equal(Object.keys(entries).length,50);
+const trophyFilenames=[];
+for(const family of ACHIEVEMENT_FAMILIES) for(const tier of ACHIEVEMENT_TIERS){
+  trophyFilenames.push(achievementTrophyFilename(family.id,tier));
+  assert.equal(achievementTrophyPath(family.id,tier),`./assets/images/logros/${achievementTrophyFilename(family.id,tier)}`);
+}
+assert.equal(trophyFilenames.length,50);
+assert.equal(new Set(trophyFilenames).size,50);
+assert.ok(fs.existsSync(path.join(app,'assets','images','logros','README_TROFEOS.txt')));
+const trophyManifest=JSON.parse(read(app,'assets','images','logros','trofeos_manifest.json'));
+assert.equal(trophyManifest.count,50);
+assert.deepEqual(trophyManifest.trophies.map(row=>row.filename),trophyFilenames);
+for(const asset of ['esencia.png','menu_taller.png','maquina1.png','maquina2.png','maquina3.png','maquina4.png']){
+  const full=path.join(app,'assets','images','ui',asset);
+  assert.ok(fs.existsSync(full),`missing UI asset ${asset}`);
+  assert.ok(fs.statSync(full).size>1024,`UI asset ${asset} looks empty`);
+}
 assert.equal(entries[achievementId('tournamentWins','copper')].target,1);
 assert.equal(entries[achievementId('tournamentWins','diamond')].target,25);
 assert.equal(entries[achievementId('soloWins','copper')].target,5);
@@ -43,6 +59,17 @@ assert.equal(WORKSHOP_POLICY.essence.pointsPerUnit,500);
 assert.equal(WORKSHOP_POLICY.essence.fichasPerUnit,5);
 
 assert.match(ui,/id="menu-achievements"/);
+assert.match(ui,/injectEncyclopediaStyles\(\); \/\/ botones\/titular estándar: independiente del orden de navegación/);
+assert.match(ui,/class="encyclopedia-title">\$\{gameTextHtml\('achievements\.title'\)\}/);
+assert.match(ui,/achievementTrophyHtml\(family\.id,tier\)/);
+assert.match(ui,/achievementTrophyHtml\(found\.family\.id,found\.tier\)/);
+assert.match(ui,/className='gy-modal-overlay'/);
+assert.match(ui,/injectMulliganStyles\(\); \/\/ modal\/botones estándar: no depende de haber abierto Taller u otra pantalla/);
+assert.match(ui,/mulligan-btn mulligan-btn-keep" id="achievement-notice-open"/);
+assert.match(ui,/mulligan-btn mulligan-btn-mull" id="achievement-notice-close"/);
+assert.doesNotMatch(ui,/className='achievement-notice'/);
+assert.match(ui,/const ESSENCE_ICON_HTML = `<img class="essence-icon" src="\.\/assets\/images\/ui\/esencia\.png"/);
+assert.match(ui,/\$\{ESSENCE_ICON_HTML\}<span>\$\{gameTextHtml\('workshop\.wallet\.essence'/);
 assert.match(ui,/showAchievementsScreen/);
 assert.match(ui,/data-claim-achievement/);
 assert.match(ui,/withEconomyButtonPending\(btn,\(\)=>claimAchievement/);
@@ -97,4 +124,4 @@ assert.match(auditServer,/case 'achievement\.claim'/);
 assert.match(auditServer,/case 'essence\.convert'/);
 assert.match(auditServer,/essenceDelta/);
 
-console.log('ACHIEVEMENTS_ESSENCE_23_21_6_HF23_3_13_OK families=10 milestones=50 tiers=COPPER+BRONZE+SILVER+GOLD+DIAMOND claims=SERVER+IDEMPOTENT essence=500P+5F_DEFAULT admin=CONFIG+GIFTS+STATS+AUDIT recovery=PASS functions=42');
+console.log('ACHIEVEMENTS_ESSENCE_23_21_6_HF23_3_13_OK families=10 milestones=50 trophies=50_ASSET_SLOTS+EMOJI_FALLBACK styles=ORDER_INDEPENDENT_SHARED_UI essence=OFFICIAL_PNG claims=SERVER+IDEMPOTENT admin=CONFIG+GIFTS+STATS+AUDIT recovery=PASS functions=42');

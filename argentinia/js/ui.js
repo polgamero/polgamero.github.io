@@ -84,7 +84,7 @@ import { classifiedsNextRotationAt, getClassifiedsProfileState, getClassifiedsBa
 import { loadPrebuiltDeckCatalog, summarizePrebuiltDeck, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { gameText } from './gameTexts.js';
 import { WORKSHOP_MACHINE_IDS, normalizeWorkshopLayout, normalizeWorkshopProfile, isWorkshopMachineUnlocked, workshopMachineAsset } from './workshop.js';
-import { ACHIEVEMENT_FAMILIES, ACHIEVEMENT_TIERS, ACHIEVEMENT_TIER_ICONS, achievementId, normalizeAchievementsConfig, normalizeAchievementProfile, achievementMetricValue } from './achievements.js';
+import { ACHIEVEMENT_FAMILIES, ACHIEVEMENT_TIERS, ACHIEVEMENT_TIER_ICONS, achievementId, achievementTrophyPath, normalizeAchievementsConfig, normalizeAchievementProfile, achievementMetricValue } from './achievements.js';
 import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
 import { prepareGameManualUI, showGameManual } from './manualUI.js';
@@ -2764,7 +2764,7 @@ function injectMainMenuStyles() {
       color: #d4af37; font-size: 11px; font-weight: 600; margin: 1px 0 2px;
       display: flex; align-items: center; gap: 4px;
     }
-    .coin-icon, .ficha-icon {
+    .coin-icon, .ficha-icon, .essence-icon {
       width: 3em; height: 3em; object-fit: contain; vertical-align: middle; flex-shrink: 0;
     }
     .main-menu-logout-btn {
@@ -3015,6 +3015,7 @@ function formatAnnouncementDate(date) {
   return `${datePart} ${timePart}`;
 }
 const FICHA_ICON_HTML = `<img class="ficha-icon" src="./assets/images/ui/ficha.png" alt="🎫" onerror="this.outerHTML='🎫'">`;
+const ESSENCE_ICON_HTML = `<img class="essence-icon" src="./assets/images/ui/esencia.png" alt="✦" onerror="this.outerHTML='✦'">`;
 
 const PACK_ICON_HTML = `<img class="reward-pack-icon" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">`;
 
@@ -3045,7 +3046,7 @@ function injectRewardsStyles() {
     .chest-item > .reward-action-btn { flex:0 0 auto; margin-top:12px; }
     .chest-item.chest-mythic { border-color:#d9792f; box-shadow:0 0 30px rgba(217,121,47,.14),0 12px 36px rgba(0,0,0,.3); }
     .chest-item-icon { min-height:72px; display:flex; align-items:center; justify-content:center; font-size:54px; }
-    .chest-item .coin-icon, .chest-item .ficha-icon { width:68px; height:68px; }
+    .chest-item .coin-icon, .chest-item .ficha-icon, .chest-item .essence-icon { width:68px; height:68px; }
     .reward-pack-icon { width:120px; height:120px; object-fit:contain; vertical-align:middle; }
     .chest-item-title { font-size:16px; font-weight:800; margin-top:7px; }
     .chest-item-count { font-size:28px; font-weight:900; color:#d4af37; margin:4px 0 9px; }
@@ -3078,7 +3079,7 @@ function injectRewardsStyles() {
     .daily-reward-day.day-7.unlocked .daily-reward-circle, .daily-reward-day.day-7.claimed .daily-reward-circle { box-shadow:0 0 34px rgba(217,121,47,.38); }
     .daily-reward-label { font-size:11px; font-weight:800; color:#c8d0ca; text-transform:uppercase; }
     .daily-reward-icons { display:flex; align-items:center; justify-content:center; gap:2px; min-height:42px; max-width:82px; flex-wrap:wrap; }
-    .daily-reward-icons .coin-icon, .daily-reward-icons .ficha-icon { width:30px; height:30px; }
+    .daily-reward-icons .coin-icon, .daily-reward-icons .ficha-icon, .daily-reward-icons .essence-icon { width:30px; height:30px; }
     .daily-reward-icons .reward-pack-icon { width:38px; height:38px; }
     .daily-reward-amount { font-size:11px; font-weight:900; color:#f0e0b0; }
     .daily-reward-check { position:absolute; right:-3px; top:-5px; width:27px; height:27px; border-radius:50%; background:#346c3d; border:2px solid #8bd397; display:flex; align-items:center; justify-content:center; color:white; font-weight:900; }
@@ -3112,7 +3113,7 @@ function injectRewardsStyles() {
     /* 23.21.6 HF3 — el resumen del modal no hereda el layout compacto de los 7 días.
        Los premios de un mismo día viven en UNA fila: sobre ×1 + moneda 100, sin wrap vertical. */
     .daily-login-reward .daily-reward-icons { max-width:none; min-height:68px; flex-wrap:nowrap; gap:7px; }
-    .daily-login-reward .coin-icon, .daily-login-reward .ficha-icon { width:60px; height:60px; flex:0 0 auto; }
+    .daily-login-reward .coin-icon, .daily-login-reward .ficha-icon, .daily-login-reward .essence-icon { width:60px; height:60px; flex:0 0 auto; }
     .daily-login-reward .reward-pack-icon { width:72px; height:72px; flex:0 0 auto; }
     .daily-login-reward .daily-reward-amount { font-size:14px; margin-right:5px; white-space:nowrap; }
     .daily-login-reward-text { font-size:18px; font-weight:900; color:#f0d56a; white-space:nowrap; }
@@ -6030,7 +6031,7 @@ export function showWorkshopScreen(onBack, options = {}) {
     const fichas = Math.max(0, Math.floor(Number(state.userProfile?.fichas) || 0));
     const essence = Math.max(0, Math.floor(Number(state.userProfile?.essence) || 0));
     const wallet = overlay.querySelector('#workshop-wallet');
-    wallet.innerHTML = `<span class="workshop-wallet-pill">${COIN_ICON_HTML}<span>${gameTextHtml('workshop.wallet.points',{points})}</span></span><span class="workshop-wallet-pill">${FICHA_ICON_HTML}<span>${gameTextHtml('workshop.wallet.fichas',{fichas})}</span></span><span class="workshop-wallet-pill"><span>✦</span><span>${gameTextHtml('workshop.wallet.essence',{essence})}</span></span><button class="workshop-action-btn" id="workshop-essence-open" style="padding:6px 9px;font-size:11px;">${gameTextHtml('workshop.essence.open')}</button>`;
+    wallet.innerHTML = `<span class="workshop-wallet-pill">${COIN_ICON_HTML}<span>${gameTextHtml('workshop.wallet.points',{points})}</span></span><span class="workshop-wallet-pill">${FICHA_ICON_HTML}<span>${gameTextHtml('workshop.wallet.fichas',{fichas})}</span></span><span class="workshop-wallet-pill">${ESSENCE_ICON_HTML}<span>${gameTextHtml('workshop.wallet.essence',{essence})}</span></span><button class="workshop-action-btn" id="workshop-essence-open" style="padding:6px 9px;font-size:11px;">${gameTextHtml('workshop.essence.open')}</button>`;
     wallet.querySelector('#workshop-essence-open')?.addEventListener('click',openEssenceConverter);
   }
 
@@ -7451,18 +7452,23 @@ function achievementRewardText(row={}){
 function achievementFamilyLabel(id){ return gameText(`achievements.family.${id}`); }
 function achievementMetricLabel(id){ return gameText(`achievements.metric.${id}`); }
 function achievementTierLabel(tier){ return gameText(`achievements.tier.${tier}`); }
+function achievementTrophyHtml(familyId,tier){
+  const fallback=ACHIEVEMENT_TIER_ICONS[tier]||'🏆';
+  const src=achievementTrophyPath(familyId,tier);
+  return `<span class="achievement-trophy-media" aria-hidden="true"><img class="achievement-trophy-img" src="${escapeHtml(src)}" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span class="achievement-trophy-fallback" hidden>${fallback}</span></span>`;
+}
 
 function injectAchievementStyles(){
   if(document.getElementById('achievement-styles')) return;
   const style=document.createElement('style'); style.id='achievement-styles'; style.textContent=`
     #achievements-overlay{position:fixed;inset:0;z-index:10035;background:radial-gradient(circle at 50% 0,#1b1c23,#090a0d 58%,#030405);color:#eee;overflow:auto;padding:18px;box-sizing:border-box}
     .achievements-shell{width:min(1180px,100%);margin:0 auto 40px}.achievements-header{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 0 14px;background:linear-gradient(#090a0df5,#090a0dcc,transparent)}
-    .achievements-heading{text-align:center;flex:1}.achievements-title{font:900 clamp(26px,4vw,44px)/1 Georgia,serif;color:#f3da83;letter-spacing:.06em;text-shadow:0 0 20px rgba(212,175,55,.25)}.achievements-subtitle{font-size:13px;color:#aaa;margin-top:5px}.achievements-wallet{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.achievements-wallet span{padding:6px 9px;border:1px solid rgba(212,175,55,.35);border-radius:999px;background:#111b;font-weight:800;font-size:12px}
+    .achievements-heading{min-width:0;flex:1}.achievements-subtitle{font-size:12px;color:#9fb0a2;margin-top:4px}.achievements-wallet{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.achievements-wallet>span{display:flex;align-items:center;gap:4px;padding:6px 9px;border:1px solid rgba(212,175,55,.35);border-radius:999px;background:#111b;font-weight:800;font-size:12px}.achievements-wallet img{width:24px!important;height:24px!important;object-fit:contain;flex:0 0 auto}
     .achievement-family{margin:14px 0 20px;padding:14px;border:1px solid rgba(212,175,55,.28);border-radius:15px;background:linear-gradient(180deg,rgba(35,31,22,.78),rgba(11,12,14,.9));box-shadow:0 10px 28px rgba(0,0,0,.25)}
     .achievement-family-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:12px}.achievement-family-name{font-size:19px;font-weight:900;color:#f0d981}.achievement-family-metric{font-size:12px;color:#aaa}.achievement-family-value{font-size:17px;font-weight:900;color:#fff}
-    .achievement-levels{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:9px}.achievement-level{position:relative;padding:12px 10px;border:1px solid #3d3d3d;border-radius:12px;background:#111;min-height:155px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;overflow:hidden}.achievement-level.reached{border-color:#bd9b35;background:linear-gradient(180deg,#29200d,#111)}.achievement-level.claimed{border-color:#47734e;background:linear-gradient(180deg,#14251a,#101311)}.achievement-trophy{font-size:34px;line-height:1;filter:drop-shadow(0 4px 8px #000)}.achievement-tier{font-weight:900;text-transform:uppercase;letter-spacing:.06em}.achievement-progress{font-weight:800;font-size:12px}.achievement-bar{height:6px;width:100%;border-radius:99px;background:#303030;overflow:hidden}.achievement-bar>i{display:block;height:100%;background:linear-gradient(90deg,#688ac7,#8bdcff);border-radius:99px}.achievement-reward{font-size:11px;color:#d8c992;min-height:28px}.achievement-claim-btn{margin-top:auto;border:1px solid #d4af37;background:linear-gradient(#67501d,#382807);color:#fff2b8;border-radius:8px;padding:7px 10px;font-weight:900;cursor:pointer}.achievement-claim-btn:disabled{opacity:.48;cursor:default}.achievements-loading{padding:50px;text-align:center;font-weight:800;color:#dbc776}
-    .achievement-notice{position:fixed;inset:0;z-index:10100;background:rgba(0,0,0,.76);display:grid;place-items:center;padding:18px}.achievement-notice-card{width:min(470px,94vw);padding:22px;border:1px solid #d4af37;border-radius:16px;background:radial-gradient(circle at 50% 0,#40320d,#111 58%);text-align:center;box-shadow:0 0 42px rgba(212,175,55,.3)}.achievement-notice-trophy{font-size:70px}.achievement-notice-title{font:900 24px Georgia,serif;color:#ffe899;margin:7px}.achievement-notice-body{font-weight:800;margin:9px}.achievement-notice-actions{display:flex;gap:8px;justify-content:center;margin-top:16px}
-    @media(max-width:850px){#achievements-overlay{padding:8px}.achievement-levels{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:7px}.achievement-level{min-width:165px;scroll-snap-align:start}.achievements-header{align-items:flex-start}.achievements-wallet{max-width:150px}.achievements-title{font-size:24px}}
+    .achievement-levels{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:9px}.achievement-level{position:relative;padding:12px 10px;border:1px solid #3d3d3d;border-radius:12px;background:#111;min-height:172px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;overflow:hidden}.achievement-level.reached{border-color:#bd9b35;background:linear-gradient(180deg,#29200d,#111)}.achievement-level.claimed{border-color:#47734e;background:linear-gradient(180deg,#14251a,#101311)}.achievement-trophy{line-height:1;filter:drop-shadow(0 4px 8px #000)}.achievement-trophy-media{display:inline-flex;width:58px;height:58px;align-items:center;justify-content:center}.achievement-trophy-img{display:block;max-width:100%;max-height:100%;object-fit:contain}.achievement-trophy-fallback{font-size:34px;line-height:1}.achievement-tier{font-weight:900;text-transform:uppercase;letter-spacing:.06em}.achievement-progress{font-weight:800;font-size:12px}.achievement-bar{height:6px;width:100%;border-radius:99px;background:#303030;overflow:hidden}.achievement-bar>i{display:block;height:100%;background:linear-gradient(90deg,#688ac7,#8bdcff);border-radius:99px}.achievement-reward{font-size:11px;color:#d8c992;min-height:28px}.achievement-claim-btn{margin-top:auto;border:1px solid #d4af37;background:linear-gradient(#67501d,#382807);color:#fff2b8;border-radius:8px;padding:7px 10px;font-weight:900;cursor:pointer}.achievement-claim-btn:disabled{opacity:.48;cursor:default}.achievements-loading{padding:50px;text-align:center;font-weight:800;color:#dbc776}
+    .achievement-notice-trophy{display:flex;justify-content:center;margin:4px 0 10px}.achievement-notice-trophy .achievement-trophy-media{width:96px;height:96px}.achievement-notice-trophy .achievement-trophy-fallback{font-size:70px}.achievement-notice-body{font-weight:800;margin:4px 0 10px;text-align:center;color:#dbe3dc;line-height:1.45}.achievement-notice-reward{text-align:center;color:#d8c992;font-size:12px}.achievement-notice-actions{display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+    @media(max-width:850px){#achievements-overlay{padding:8px}.achievement-levels{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:7px}.achievement-level{min-width:165px;scroll-snap-align:start}.achievements-header{align-items:flex-start}.achievements-wallet{max-width:168px}.achievements-heading .encyclopedia-title{font-size:20px}}
   `; document.head.appendChild(style);
 }
 
@@ -7476,15 +7482,16 @@ async function loadAchievementRuntime(){
 
 export function showAchievementsScreen(onBack){
   if(!state.currentUser||!state.userProfile) return;
+  injectEncyclopediaStyles(); // botones/titular estándar: independiente del orden de navegación
   injectAchievementStyles(); ensureEconomyPendingStyles();
   document.getElementById('achievements-overlay')?.remove();
   const overlay=document.createElement('div'); overlay.id='achievements-overlay';
-  overlay.innerHTML=`<div class="achievements-shell"><div class="achievements-header"><button class="encyclopedia-back-btn" id="achievements-back">← ${gameTextHtml('achievements.back')}</button><div class="achievements-heading"><div class="achievements-title">${gameTextHtml('achievements.title')}</div><div class="achievements-subtitle">${gameTextHtml('achievements.subtitle')}</div></div><div class="achievements-wallet" id="achievements-wallet"></div></div><div id="achievements-content" class="achievements-loading"><span class="economy-pending-spinner" aria-hidden="true"></span> ${gameTextHtml('achievements.loading')}</div></div>`;
+  overlay.innerHTML=`<div class="achievements-shell"><div class="achievements-header"><button class="encyclopedia-back-btn" id="achievements-back">← ${gameTextHtml('achievements.back')}</button><div class="achievements-heading"><div class="encyclopedia-title">${gameTextHtml('achievements.title')}</div><div class="achievements-subtitle">${gameTextHtml('achievements.subtitle')}</div></div><div class="achievements-wallet" id="achievements-wallet"></div></div><div id="achievements-content" class="achievements-loading"><span class="economy-pending-spinner" aria-hidden="true"></span> ${gameTextHtml('achievements.loading')}</div></div>`;
   document.body.appendChild(overlay);
   const content=overlay.querySelector('#achievements-content');
   const close=()=>{overlay.remove();onBack?.();}; overlay.querySelector('#achievements-back')?.addEventListener('click',close);
   let runtime=null;
-  const renderWallet=()=>{const p=Math.max(0,Number(state.userProfile?.points)||0),f=Math.max(0,Number(state.userProfile?.fichas)||0),e=Math.max(0,Number(state.userProfile?.essence)||0);overlay.querySelector('#achievements-wallet').innerHTML=`<span>${COIN_ICON_HTML} ${p}</span><span>${FICHA_ICON_HTML} ${f}</span><span>✦ ${escapeHtml(gameText('workshop.wallet.essence',{essence:e}))}</span>`;};
+  const renderWallet=()=>{const p=Math.max(0,Number(state.userProfile?.points)||0),f=Math.max(0,Number(state.userProfile?.fichas)||0),e=Math.max(0,Number(state.userProfile?.essence)||0);overlay.querySelector('#achievements-wallet').innerHTML=`<span>${COIN_ICON_HTML} ${p}</span><span>${FICHA_ICON_HTML} ${f}</span><span>${ESSENCE_ICON_HTML} ${escapeHtml(gameText('workshop.wallet.essence',{essence:e}))}</span>`;};
   const render=()=>{
     renderWallet(); if(!runtime) return;
     if(!runtime.config.enabled){content.innerHTML=`<div class="achievements-loading">${gameTextHtml('achievements.disabled')}</div>`;return;}
@@ -7495,7 +7502,7 @@ export function showAchievementsScreen(onBack){
       const levels=ACHIEVEMENT_TIERS.map(tier=>{
         const id=achievementId(family.id,tier),row=runtime.config.entries[id]; if(!row?.enabled) return '';
         const isClaimed=!!claimed[id], reached=current>=row.target, pct=Math.max(0,Math.min(100,(current/Math.max(1,row.target))*100));
-        return `<div class="achievement-level ${isClaimed?'claimed':reached?'reached':''}" data-achievement-id="${escapeHtml(id)}"><div class="achievement-trophy">${ACHIEVEMENT_TIER_ICONS[tier]||'🏆'}</div><div class="achievement-tier">${escapeHtml(achievementTierLabel(tier))}</div><div class="achievement-progress">${gameTextHtml('achievements.progress',{current:Math.min(current,row.target),target:row.target})}</div><div class="achievement-bar"><i style="width:${pct.toFixed(1)}%"></i></div><div class="achievement-reward">${gameTextHtml('achievements.reward',{reward:achievementRewardText(row)})}</div><button class="achievement-claim-btn" data-claim-achievement="${escapeHtml(id)}" ${(!reached||isClaimed)?'disabled':''}>${isClaimed?gameTextHtml('achievements.claimed'):reached?gameTextHtml('achievements.claim'):gameTextHtml('achievements.locked')}</button></div>`;
+        return `<div class="achievement-level ${isClaimed?'claimed':reached?'reached':''}" data-achievement-id="${escapeHtml(id)}"><div class="achievement-trophy">${achievementTrophyHtml(family.id,tier)}</div><div class="achievement-tier">${escapeHtml(achievementTierLabel(tier))}</div><div class="achievement-progress">${gameTextHtml('achievements.progress',{current:Math.min(current,row.target),target:row.target})}</div><div class="achievement-bar"><i style="width:${pct.toFixed(1)}%"></i></div><div class="achievement-reward">${gameTextHtml('achievements.reward',{reward:achievementRewardText(row)})}</div><button class="achievement-claim-btn" data-claim-achievement="${escapeHtml(id)}" ${(!reached||isClaimed)?'disabled':''}>${isClaimed?gameTextHtml('achievements.claimed'):reached?gameTextHtml('achievements.claim'):gameTextHtml('achievements.locked')}</button></div>`;
       }).join('');
       return `<section class="achievement-family"><div class="achievement-family-head"><div><div class="achievement-family-name">${escapeHtml(achievementFamilyLabel(family.id))}</div><div class="achievement-family-metric">${escapeHtml(achievementMetricLabel(family.id))}</div></div><div class="achievement-family-value">${current.toLocaleString('es-AR')}</div></div><div class="achievement-levels">${levels}</div></section>`;
     }).join('');
@@ -7505,8 +7512,8 @@ export function showAchievementsScreen(onBack){
         const outcome=await withEconomyButtonPending(btn,()=>claimAchievement(state.currentUser.uid,id),{pendingLabel:gameText('achievements.claiming'),slowLabel:gameText('workshop.server.slow')});
         if(outcome?.profile) state.userProfile=outcome.profile;
         runtime.stats=await bootstrapPlayerStatistics(state.currentUser.uid)||runtime.stats;
-        window.alert(gameText('achievements.claim.success',{reward:achievementRewardText(row)})); render();
-      }catch(err){console.error('No se pudo reclamar logro:',err);window.alert(err?.message||gameText('achievements.error.generic'));}
+        showSimpleAlertModal(gameTextHtml('achievements.claim.success',{reward:achievementRewardText(row)})); render();
+      }catch(err){console.error('No se pudo reclamar logro:',err);showSimpleAlertModal(escapeHtml(err?.message||gameText('achievements.error.generic')));}
     }));
   };
   renderWallet();
@@ -7525,7 +7532,14 @@ async function maybeShowAchievementUnlockNotice(openAchievements){
     for(const family of ACHIEVEMENT_FAMILIES){const current=achievementMetricValue({profile:state.userProfile,stats,metric:family.metric,cardLookup:id=>cardDb.getById(id)});for(const tier of ACHIEVEMENT_TIERS){const id=achievementId(family.id,tier),row=config.entries[id];if(row?.enabled&&current>=row.target&&!claimed[id]&&!notified[id]){found={id,row,family,tier};break;}}if(found)break;}
     if(!found) return;
     notified[found.id]=Date.now(); try{localStorage.setItem(storageKey,JSON.stringify(notified));}catch{}
-    injectAchievementStyles(); const modal=document.createElement('div');modal.className='achievement-notice';modal.innerHTML=`<div class="achievement-notice-card"><div class="achievement-notice-trophy">${ACHIEVEMENT_TIER_ICONS[found.tier]||'🏆'}</div><div class="achievement-notice-title">${gameTextHtml('achievements.unlocked.title')}</div><div class="achievement-notice-body">${gameTextHtml('achievements.unlocked.body',{achievement:achievementFamilyLabel(found.family.id),tier:achievementTierLabel(found.tier)})}</div><div>${gameTextHtml('achievements.reward',{reward:achievementRewardText(found.row)})}</div><div class="achievement-notice-actions"><button class="workshop-action-btn" id="achievement-notice-open">${gameTextHtml('achievements.unlocked.action')}</button><button class="workshop-action-btn secondary" id="achievement-notice-close">${gameTextHtml('achievements.unlocked.later')}</button></div></div>`;document.body.appendChild(modal);modal.querySelector('#achievement-notice-close')?.addEventListener('click',()=>modal.remove());modal.querySelector('#achievement-notice-open')?.addEventListener('click',()=>{modal.remove();openAchievements?.();});
+    injectAchievementStyles();
+    injectMulliganStyles(); // modal/botones estándar: no depende de haber abierto Taller u otra pantalla
+    const modal=document.createElement('div');
+    modal.className='gy-modal-overlay';
+    modal.innerHTML=`<div class="gy-modal-content" style="max-width:500px;width:min(92vw,500px);"><div class="gy-modal-header"><h3>${gameTextHtml('achievements.unlocked.title')}</h3></div><div style="padding:6px 14px 14px;"><div class="achievement-notice-trophy">${achievementTrophyHtml(found.family.id,found.tier)}</div><div class="achievement-notice-body">${gameTextHtml('achievements.unlocked.body',{achievement:achievementFamilyLabel(found.family.id),tier:achievementTierLabel(found.tier)})}</div><div class="achievement-notice-reward">${gameTextHtml('achievements.reward',{reward:achievementRewardText(found.row)})}</div><div class="achievement-notice-actions"><button class="mulligan-btn mulligan-btn-keep" id="achievement-notice-open">${gameTextHtml('achievements.unlocked.action')}</button><button class="mulligan-btn mulligan-btn-mull" id="achievement-notice-close">${gameTextHtml('achievements.unlocked.later')}</button></div></div></div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('#achievement-notice-close')?.addEventListener('click',()=>modal.remove());
+    modal.querySelector('#achievement-notice-open')?.addEventListener('click',()=>{modal.remove();openAchievements?.();});
   }catch(err){console.warn('No se pudo evaluar aviso de Logros:',err);}finally{achievementNoticeBusy=false;}
 }
 
