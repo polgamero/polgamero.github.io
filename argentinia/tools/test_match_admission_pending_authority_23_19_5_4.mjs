@@ -64,6 +64,7 @@ const main=read('argentinia/js/main.js');
 const ui=read('argentinia/js/ui.js');
 const username=read('argentinia/js/usernameUI.js');
 const pending=read('argentinia/js/economyPending.js');
+const gameTexts=read('argentinia/js/gameTexts.js');
 
 for(const fn of ['economyGetAdmissionStatus','economyAdminSetAdmissionPolicy','economySettleMatchReward','economyApplyAbandonPenalty']) {
   assert.match(fnIndex,new RegExp(`export const ${fn}\\s*=`),`${fn} missing`);
@@ -111,7 +112,9 @@ assert.match(pending,/withEconomyButtonPending/);
 assert.match(pending,/aria-busy/);
 assert.match(pending,/CONECTANDO CON EL SERVIDOR/);
 assert.match(ui,/withEconomyButtonPending/);
-for(const label of ['ABRIENDO...','REVELANDO...','RECLAMANDO...','COMPRANDO...','MEJORANDO...','APLICANDO...']) assert.ok(ui.includes(label),`pending label missing: ${label}`);
+for(const label of ['ABRIENDO...','REVELANDO...','RECLAMANDO...','COMPRANDO...','APLICANDO...']) assert.ok(ui.includes(label),`pending label missing: ${label}`);
+assert.match(ui,/pendingLabel:gameText\('workshop\.enhancement\.pending'\)/);
+assert.match(gameTexts,/'workshop\.enhancement\.pending': definition\('Taller', 'MEJORANDO…'/);
 assert.match(username,/withEconomyButtonPending/);
 assert.ok(username.includes('CREANDO CUENTA...'));
 assert.ok(username.includes('GUARDANDO...'));

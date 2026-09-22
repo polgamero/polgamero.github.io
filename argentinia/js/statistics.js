@@ -57,7 +57,11 @@ export function emptyPlayerStats() {
     prebuiltDecksPurchased: 0,
     classifiedsCardsPurchased: 0,
     emotesPurchased: 0,
-    dailyRewardsClaimed: 0
+    dailyRewardsClaimed: 0,
+    essenceEarned: 0,
+    essenceSpent: 0,
+    essenceCurrent: 0,
+    achievementClaims: 0
   };
 }
 

@@ -28,7 +28,7 @@ assert.equal(manifest.pool,900);
 assert.ok(ENGINE_BASELINE.includes('23.19.4.7 Core Gameplay Feedback Expansion'));
 
 const catalog=getAnimationTuningCatalog();
-assert.equal(catalog.length,35,'Animation Studio expands 28 -> 35 rows');
+assert.equal(catalog.length,36,'Animation Studio keeps the historical 35 rows and adds Workshop enhancement cinematic');
 const byKey=new Map(catalog.map(row=>[row.key,row]));
 const expected={
   wipe_creatures:['massDestruction','wipe.opus','wipe.mp3'],
@@ -94,4 +94,4 @@ assert.ok(fastManifest.includes('tools/test_mass_event_cinematics_high_impact_23
 
 console.log('MASS_EVENT_CINEMATICS_HIGH_IMPACT_23_19_4_8_OK');
 console.log('events=creature-wipe+land-wipe+graveyard-purge+mass-land-return+fog+proliferate+control-change');
-console.log(`animationRows=${catalog.length} schema=7 pool=${manifest.pool} protocol=${ENGINE_PROTOCOL_VERSION} rules=${FIRESTORE_RULES_VERSION}`);
+console.log(`animationRows=${catalog.length} schema=8 pool=${manifest.pool} protocol=${ENGINE_PROTOCOL_VERSION} rules=${FIRESTORE_RULES_VERSION}`);

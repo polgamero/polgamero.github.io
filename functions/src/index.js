@@ -39,7 +39,8 @@ import { recordAuthorityAudit } from './economy/audit.js';
 import { deriveSoloAbandonReceiptId, normalizeAbandonDurationMs } from './economy/matchCore.js';
 import { normalizeAdminGrantRequest, adminGrantTx, advanceBulkGrantJob, readBulkGrantJob, adminSyncPlayerStats, adminRepairSoloRewardTx } from './economy/admin.js';
 import { getTournamentState, startTournamentTx, beginTournamentMatchTx, settleTournamentMatchTx, forfeitTournamentTx, abandonTournamentTx } from './economy/tournament.js';
-import { unlockWorkshopMachineTx } from './economy/workshop.js';
+import { unlockWorkshopMachineTx, convertEssenceTx } from './economy/workshop.js';
+import { claimAchievementTx } from './economy/achievements.js';
 import { getTradeMarketView, createTradeListingTx, cancelTradeListingTx, createTradeOfferTx, cancelTradeOfferTx, rejectTradeOfferTx, acceptTradeOfferTx } from './economy/trade.js';
 import { sendMultiplayerCommunication, sendLobbyCommunication, deleteLobbyCommunication } from './multiplayer/communication.js';
 import { createDirectChallenge, resolveDirectChallenge } from './multiplayer/directChallenges.js';
@@ -112,7 +113,7 @@ export const economyStatus = onCall(FUNCTION_RUNTIME_OPTIONS, async request => {
       costSafety: { minInstances: 0, maxInstances: 1, concurrency: 10 },
       capabilities: {
         packAuthority: 'server', guaranteedMythicAuthority: 'server', operationRecovery: true,
-        storePurchaseAuthority: 'server', craftAuthority: 'server', workshopAuthority: 'server', prebuiltAuthority: 'server',
+        storePurchaseAuthority: 'server', craftAuthority: 'server', workshopAuthority: 'server', achievementsAuthority:'server', essenceAuthority:'server', prebuiltAuthority: 'server',
         classifiedsAuthority: 'server', basicLandPackAuthority: 'server', usernameRenameAuthority: 'server',
         dailyRewardsAuthority: 'server', dailyClockAuthority: 'server', dailyClaimRecovery: true,
         matchSettlementAuthority: 'server', pvpAntiFarmAuthority: 'server',
@@ -315,9 +316,10 @@ export const economyCraftEnhancement = onCall(FUNCTION_RUNTIME_OPTIONS, async re
   const data = requestData(request);
   const action = String(data.action || '').trim();
   try {
-    assertRateLimit(auth.uid, action === 'unlockWorkshopMachine' ? 'workshop-unlock' : 'craft-enhancement', { limit: 20, windowMs: 60000 });
-    rejectForbidden(data, ['uid','fichas','fichaCost','points','cost','collection','enhancements','workshop','profile','unlockedMachines']);
-    rejectUnknown(data, ['operationId','economyProtocolVersion','action','machineId','cardId','keyword']);
+    const actionRateKey = action === 'unlockWorkshopMachine' ? 'workshop-unlock' : action === 'claimAchievement' ? 'achievement-claim' : action === 'convertEssence' ? 'essence-convert' : 'craft-enhancement';
+    assertRateLimit(auth.uid, actionRateKey, { limit: 20, windowMs: 60000 });
+    rejectForbidden(data, ['uid','fichas','fichaCost','points','cost','essence','collection','enhancements','achievements','workshop','profile','unlockedMachines']);
+    rejectUnknown(data, ['operationId','economyProtocolVersion','action','machineId','cardId','keyword','achievementId','quantity']);
     const operationId = String(data.operationId || '');
     if (action === 'unlockWorkshopMachine') {
       if (data.cardId != null || data.keyword != null) throw economyError('INVALID_ECONOMY_REQUEST');
@@ -333,6 +335,28 @@ export const economyCraftEnhancement = onCall(FUNCTION_RUNTIME_OPTIONS, async re
       await finalizeAuthorityAudit({ auth, operationId, type:'workshop.unlock_machine', outcome, metadata:{ machineId } });
       logger.info('Workshop machine unlocked', { uid:auth.uid, machineId, operationId, replayed:outcome.replayed, appCheckPresent:auth.appCheckPresent });
       return { ok:true, ...outcome };
+    }
+    if (action === 'claimAchievement') {
+      if (data.machineId != null || data.cardId != null || data.keyword != null || data.quantity != null) throw economyError('INVALID_ECONOMY_REQUEST');
+      const achievementId=String(data.achievementId||'');
+      const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'achievement.claim',request:{achievementId},execute:async tx=>{
+        const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+        return claimAchievementTx({db,tx,uid:auth.uid,achievementId});
+      }});
+      await finalizeAuthorityAudit({auth,operationId,type:'achievement.claim',outcome,metadata:{achievementId}});
+      logger.info('Achievement claimed',{uid:auth.uid,achievementId,operationId,replayed:outcome.replayed,appCheckPresent:auth.appCheckPresent});
+      return {ok:true,...outcome};
+    }
+    if (action === 'convertEssence') {
+      if (data.machineId != null || data.cardId != null || data.keyword != null || data.achievementId != null) throw economyError('INVALID_ECONOMY_REQUEST');
+      const quantity=Math.floor(Number(data.quantity)||0);
+      const outcome=await runIdempotentOperation(db,{uid:auth.uid,operationId,type:'essence.convert',request:{quantity},execute:async tx=>{
+        const config=await loadEconomyConfig(db,tx); assertEconomyAvailable(config,clientProtocol(data));
+        return convertEssenceTx({db,tx,uid:auth.uid,quantity});
+      }});
+      await finalizeAuthorityAudit({auth,operationId,type:'essence.convert',outcome,metadata:{quantity}});
+      logger.info('Essence converted',{uid:auth.uid,quantity,operationId,replayed:outcome.replayed,appCheckPresent:auth.appCheckPresent});
+      return {ok:true,...outcome};
     }
     if (action) throw economyError('INVALID_ECONOMY_REQUEST');
     if (data.machineId != null) throw economyError('INVALID_ECONOMY_REQUEST');

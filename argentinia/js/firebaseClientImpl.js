@@ -29,7 +29,7 @@ import { loadPrebuiltDeckCatalog, validatePrebuiltDeckProduct, getPrebuiltPurcha
 import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEconomySnapshot, getClassifiedsProfileState, countOwnedClassifiedCard, getScheduledClassifiedsWeek, validateClassifiedsScheduleWeek, normalizeClassifiedsPurchaseCounts, CLASSIFIEDS_SCHEMA_VERSION, CLASSIFIEDS_ALGORITHM_VERSION, CLASSIFIEDS_SCHEDULE_HORIZON_WEEKS, CLASSIFIEDS_SCHEDULE_HISTORY_WEEKS } from './classifieds.js';
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
-import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
+import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, convertEssenceServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
 import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
@@ -186,6 +186,7 @@ function normalizeProfileForClient(data) {
   return {
     ...data,
     starterDeckPending: data.starterDeckPending === true,
+    essence: Math.max(0, Math.floor(Number(data.essence) || 0)),
     inventory: normalizeInventory(data.inventory),
     dailyRewards: normalizeDailyRewardsState(data.dailyRewards),
     cosmetics: {
@@ -234,6 +235,8 @@ const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
   packPurchase: 'store.purchase_pack',
   enhancementCraft: 'store.craft_enhancement',
   workshopUnlock: 'workshop.unlock_machine',
+  achievementClaim: 'achievement.claim',
+  essenceConvert: 'essence.convert',
   prebuiltPurchase: 'store.purchase_prebuilt',
   emotePurchase: 'store.purchase_emote',
   classifiedPurchase: 'store.purchase_classified',
@@ -242,7 +245,7 @@ const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
   dailyClaim: 'daily.claim'
 });
 const ECONOMY_ACTION_PREFIXES = Object.freeze({
-  packPurchase: 'buy-pack', enhancementCraft: 'craft', workshopUnlock: 'workshop-unlock', prebuiltPurchase: 'prebuilt',
+  packPurchase: 'buy-pack', enhancementCraft: 'craft', workshopUnlock: 'workshop-unlock', achievementClaim:'achievement-claim', essenceConvert:'essence-convert', prebuiltPurchase: 'prebuilt',
   classifiedPurchase: 'classified', classifiedBasicLandPackPurchase:'classified-land', emotePurchase:'emote', usernameRename: 'rename', dailyClaim: 'daily-claim'
 });
 
@@ -1102,6 +1105,21 @@ export async function unlockWorkshopMachine(uid, machineId) {
   const profile = await loadOwnProfileAfterServerMutation(uid);
   if (!profile) throw new Error('WORKSHOP_PROFILE_MISSING_AFTER_COMMIT');
   return { profile, result: outcome.result || null, replayed: !!outcome.replayed };
+}
+
+export async function claimAchievement(uid, achievementId) {
+  const request={achievementId:String(achievementId||'')};
+  const outcome=await runEconomyActionAuthority(uid,'achievementClaim',request,operationId=>claimAchievementServer(request.achievementId,operationId));
+  const profile=await loadOwnProfileAfterServerMutation(uid);
+  if(!profile) throw new Error('ACHIEVEMENT_PROFILE_MISSING_AFTER_COMMIT');
+  return {profile,result:outcome.result||null,replayed:!!outcome.replayed};
+}
+export async function convertEssence(uid, quantity=1) {
+  const request={quantity:Math.max(1,Math.floor(Number(quantity)||1))};
+  const outcome=await runEconomyActionAuthority(uid,'essenceConvert',request,operationId=>convertEssenceServer(request.quantity,operationId));
+  const profile=await loadOwnProfileAfterServerMutation(uid);
+  if(!profile) throw new Error('ESSENCE_PROFILE_MISSING_AFTER_COMMIT');
+  return {profile,result:outcome.result||null,replayed:!!outcome.replayed};
 }
 
 // FASE 3, ETAPA 2: crea un mazo nuevo (límite global admin-editable, contando el inicial). Todo
@@ -2506,7 +2524,8 @@ export async function fetchEconomyMovementsForAdmin({ targetUid } = {}) {
     current:{
       points:Math.max(0,Math.floor(Number(profile.points)||0)),
       fichas:Math.max(0,Math.floor(Number(profile.fichas)||0)),
-      packs:Math.max(0,Math.floor(Number(profile.inventory?.standardPacks)||0))
+      packs:Math.max(0,Math.floor(Number(profile.inventory?.standardPacks)||0)),
+      essence:Math.max(0,Math.floor(Number(profile.essence)||0))
     },
     events:eventsSnap.docs.map(d=>({id:d.id,...d.data()}))
   };

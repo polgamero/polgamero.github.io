@@ -175,7 +175,8 @@ export const WORKSHOP_POLICY = {
   machine1: { available:true, points:1000, fichas:0 },
   machine2: { available:false, points:2000, fichas:20 },
   machine3: { available:false, points:3000, fichas:50 },
-  machine4: { available:false, points:0, fichas:0 }
+  machine4: { available:false, points:0, fichas:0 },
+  essence: { enabled:true, pointsPerUnit:500, fichasPerUnit:5, maxPerOperation:10 }
 };
 
 // ============================================================================
@@ -236,6 +237,10 @@ export function getDefaultGameConfig() {
     workshopMachine4Available: false,
     workshopMachine4UnlockPoints: 0,
     workshopMachine4UnlockFichas: 0,
+    essenceConversionEnabled: true,
+    essenceConversionPoints: 500,
+    essenceConversionFichas: 5,
+    essenceConversionMaxPerOperation: 10,
     tournamentRewardedStartsPerDay: 1,
     tournamentNpcRandomnessPercent: 18,
     tournamentRound16LossPoints: 15,
@@ -321,4 +326,8 @@ export function applyGameConfig(config) {
     if (typeof config[pointsKey] === 'number') row.points = Math.max(0, Math.floor(config[pointsKey]));
     if (typeof config[fichasKey] === 'number') row.fichas = Math.max(0, Math.floor(config[fichasKey]));
   }
+  if (typeof config.essenceConversionEnabled === 'boolean') WORKSHOP_POLICY.essence.enabled = config.essenceConversionEnabled;
+  if (typeof config.essenceConversionPoints === 'number') WORKSHOP_POLICY.essence.pointsPerUnit = Math.max(1, Math.floor(config.essenceConversionPoints));
+  if (typeof config.essenceConversionFichas === 'number') WORKSHOP_POLICY.essence.fichasPerUnit = Math.max(0, Math.floor(config.essenceConversionFichas));
+  if (typeof config.essenceConversionMaxPerOperation === 'number') WORKSHOP_POLICY.essence.maxPerOperation = Math.min(100, Math.max(1, Math.floor(config.essenceConversionMaxPerOperation)));
 }

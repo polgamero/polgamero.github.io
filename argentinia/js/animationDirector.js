@@ -43,7 +43,8 @@ export const ANIMATION_TUNING_CATALOG = Object.freeze([
   Object.freeze({ key:'mass_land_return', label:'Retorno masivo de Tierras', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['massLandReturn']) }),
   Object.freeze({ key:'fog_global', label:'Fog / Prevenir todo daño de combate', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['fogGlobal']) }),
   Object.freeze({ key:'proliferate', label:'Amplificar', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['proliferatePulse']) }),
-  Object.freeze({ key:'control_change', label:'Cambio de control', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['controlChange']) })
+  Object.freeze({ key:'control_change', label:'Cambio de control', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['controlChange']) }),
+  Object.freeze({ key:'workshop_enhancement', label:'Taller · Mejora de carta', labelGameTextKey:'admin.animations.workshopEnhancement', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['proliferatePulse']) })
 ]);
 
 const DEFAULT_SETTINGS = Object.freeze({ enabled: true, speed: 'normal' });
@@ -299,6 +300,55 @@ function animationSfxMoment(tuningKey) {
 function playAnimationSfx(id, tuningKey, moment) {
   if (animationSfxMoment(tuningKey) !== moment) return null;
   return playSfx(id,{ volumeMultiplier:getAnimationTuning(tuningKey).relativeVolume });
+}
+
+const WORKSHOP_ENHANCEMENT_STYLE_ID = 'arg-workshop-enhancement-cinematic-style';
+
+function ensureWorkshopEnhancementCinematicStyles() {
+  if (typeof document === 'undefined' || document.getElementById(WORKSHOP_ENHANCEMENT_STYLE_ID)) return;
+  const style=document.createElement('style');
+  style.id=WORKSHOP_ENHANCEMENT_STYLE_ID;
+  style.textContent=`
+    .arg-workshop-enhancement-fx{position:fixed;z-index:10062;pointer-events:none;transform:translate(-50%,-50%);isolation:isolate;--fx-duration:1900ms;}
+    .arg-workshop-enhancement-fx .arg-workshop-fx-core{position:absolute;inset:7%;border-radius:50%;opacity:0;background:radial-gradient(circle,rgba(231,251,255,.96) 0%,rgba(109,220,255,.72) 18%,rgba(58,151,255,.34) 46%,rgba(12,67,160,0) 72%);filter:blur(2px);mix-blend-mode:screen;}
+    .arg-workshop-enhancement-fx .arg-workshop-fx-ring{position:absolute;left:50%;top:50%;width:34%;aspect-ratio:1;border:3px solid rgba(112,224,255,.92);border-radius:50%;transform:translate(-50%,-50%) scale(.28);opacity:0;box-shadow:0 0 18px rgba(80,203,255,.82),inset 0 0 16px rgba(120,229,255,.48);}
+    .arg-workshop-enhancement-fx .arg-workshop-fx-ring.r2{border-color:rgba(88,150,255,.78);animation-delay:calc(var(--fx-duration)*.12);}
+    .arg-workshop-enhancement-fx .arg-workshop-fx-ring.r3{border-color:rgba(194,245,255,.82);animation-delay:calc(var(--fx-duration)*.24);}
+    .arg-workshop-enhancement-fx .arg-workshop-fx-spark{position:absolute;left:50%;top:50%;width:5px;height:26%;border-radius:999px;background:linear-gradient(to top,rgba(94,191,255,0),rgba(182,244,255,.95),rgba(255,255,255,0));transform-origin:50% 100%;opacity:0;filter:drop-shadow(0 0 6px rgba(99,210,255,.95));}
+    .arg-workshop-enhancement-fx.run .arg-workshop-fx-core{animation:argWorkshopCore var(--fx-duration) cubic-bezier(.2,.8,.2,1) both;}
+    .arg-workshop-enhancement-fx.run .arg-workshop-fx-ring{animation-name:argWorkshopRing;animation-duration:var(--fx-duration);animation-timing-function:cubic-bezier(.12,.8,.22,1);animation-fill-mode:both;}
+    .arg-workshop-enhancement-fx.run .arg-workshop-fx-spark{animation:argWorkshopSpark var(--fx-duration) cubic-bezier(.2,.75,.18,1) both;}
+    @keyframes argWorkshopCore{0%{opacity:0;transform:scale(.5)}18%{opacity:.88}46%{opacity:1;transform:scale(1.12)}72%{opacity:.5;transform:scale(1.28)}100%{opacity:0;transform:scale(1.48)}}
+    @keyframes argWorkshopRing{0%,12%{opacity:0;transform:translate(-50%,-50%) scale(.24)}28%{opacity:1}70%{opacity:.48}100%{opacity:0;transform:translate(-50%,-50%) scale(3.15)}}
+    @keyframes argWorkshopSpark{0%,18%{opacity:0;transform:translate(-50%,-100%) rotate(var(--spark-angle)) scaleY(.25)}36%{opacity:.95}72%{opacity:.55}100%{opacity:0;transform:translate(-50%,-100%) rotate(var(--spark-angle)) scaleY(1.7)}}
+  `;
+  document.head.appendChild(style);
+}
+
+export async function queueWorkshopEnhancementAnimation({ machineElement } = {}, options = {}) {
+  if (!machineElement || !animationsEffectivelyEnabled(options)) return { skipped:true, reason:'disabled_or_missing' };
+  const rect=machineElement.getBoundingClientRect?.();
+  if (!rect || rect.width < 2 || rect.height < 2) return { skipped:true, reason:'no_geometry' };
+  ensureWorkshopEnhancementCinematicStyles();
+  const duration=animationTunedDuration(1900,'workshop_enhancement',options?.speedOverride || null);
+  const fx=document.createElement('div');
+  fx.className='arg-workshop-enhancement-fx';
+  fx.style.left=`${rect.left + rect.width/2}px`;
+  fx.style.top=`${rect.top + rect.height/2}px`;
+  fx.style.width=`${Math.max(150,rect.width*1.45)}px`;
+  fx.style.height=`${Math.max(150,rect.height*1.45)}px`;
+  fx.style.setProperty('--fx-duration',`${duration}ms`);
+  fx.innerHTML=`<div class="arg-workshop-fx-core"></div><div class="arg-workshop-fx-ring r1"></div><div class="arg-workshop-fx-ring r2"></div><div class="arg-workshop-fx-ring r3"></div>${Array.from({length:12},(_,i)=>`<i class="arg-workshop-fx-spark" style="--spark-angle:${i*30}deg;animation-delay:${Math.round((i%3)*duration*.035)}ms"></i>`).join('')}`;
+  document.body.appendChild(fx);
+  playAnimationSfx('proliferatePulse','workshop_enhancement','start');
+  // Force style commit before the run class so the first frame is never skipped on mobile.
+  void fx.offsetWidth;
+  fx.classList.add('run');
+  const keyDelay=Math.max(1,Math.round(duration*.42));
+  const keyTimer=setTimeout(()=>playAnimationSfx('proliferatePulse','workshop_enhancement','key'),keyDelay);
+  try { await sleepMs(duration + 80); }
+  finally { clearTimeout(keyTimer); fx.remove(); }
+  return { skipped:false, duration };
 }
 
 export function setPresentationCueEmitter(emitter) {

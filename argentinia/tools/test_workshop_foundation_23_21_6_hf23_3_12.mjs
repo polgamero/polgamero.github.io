@@ -13,6 +13,7 @@ const ui=fs.readFileSync(path.join(app,'js','ui.js'),'utf8');
 const texts=fs.readFileSync(path.join(app,'js','gameTexts.js'),'utf8');
 const client=fs.readFileSync(path.join(app,'js','economyClient.js'),'utf8');
 const impl=fs.readFileSync(path.join(app,'js','firebaseClientImpl.js'),'utf8');
+const animations=fs.readFileSync(path.join(app,'js','animationDirector.js'),'utf8');
 const functionsIndex=fs.readFileSync(path.join(repo,'functions','src','index.js'),'utf8');
 const commerce=fs.readFileSync(path.join(repo,'functions','src','economy','commerce.js'),'utf8');
 const admin=fs.readFileSync(path.join(repo,'functions','src','economy','admin.js'),'utf8');
@@ -57,7 +58,24 @@ const playerWorkshopSection=ui.slice(ui.indexOf('export function showWorkshopScr
 assert.doesNotMatch(playerWorkshopSection,/admin-workshop-pencil|data-workshop-preview/,'pencil/preview controls must never leak into player workshop');
 
 // All new player/admin labels are Game Text-backed.
-for(const key of ['account.workshop','workshop.title','workshop.machine1.title','workshop.machine2.title','workshop.machine3.title','workshop.machine4.title','admin.tab.workshop','admin.gifts.title','admin.gifts.guaranteedMythic']) assert.ok(texts.includes(`'${key}'`),`missing Game Text ${key}`);
+for(const key of ['account.workshop','workshop.title','workshop.machine1.title','workshop.machine2.title','workshop.machine3.title','workshop.machine4.title','workshop.unlock.pending','workshop.enhancement.pending','workshop.enhancement.successTitle','workshop.enhancement.successReminder','admin.tab.workshop','admin.gifts.title','admin.gifts.guaranteedMythic','admin.animations.workshopEnhancement']) assert.ok(texts.includes(`'${key}'`),`missing Game Text ${key}`);
+
+// Workshop UX closure: every server action shows the shared spinner, craft returns to Workshop,
+// Machine 1 runs an Animation-Studio-tuned cinematic and only then shows a real rendered enhanced card.
+assert.match(ui,/pendingLabel:gameText\('workshop\.unlock\.pending'\)/,'unlock must show server spinner');
+assert.match(ui,/pendingLabel:gameText\('workshop\.enhancement\.pending'\)/,'craft must show server spinner');
+assert.match(ui,/onCraftSuccess: celebration => showWorkshopScreen\(onBack, \{ enhancementCelebration:celebration \}\)/);
+assert.match(ui,/await queueWorkshopEnhancementAnimation\(\{ machineElement:machineEl \}\)/);
+assert.match(ui,/showEnhancementSuccessModal\(options\.enhancementCelebration\)/);
+assert.match(ui,/createCardElement\(displayCard,false,true,null,'preview',null\)/,'success modal must use canonical full card renderer');
+assert.match(ui,/workshop\.enhancement\.successReminder/);
+assert.match(ui,/admin\.workshop\.saving/,'Admin Workshop server saves must also use pending feedback');
+assert.match(animations,/key:'workshop_enhancement'/);
+assert.match(animations,/labelGameTextKey:'admin\.animations\.workshopEnhancement'/);
+assert.match(animations,/sfxIds:Object\.freeze\(\['proliferatePulse'\]\)/);
+assert.match(animations,/export async function queueWorkshopEnhancementAnimation/);
+assert.match(animations,/rgba\(109,220,255/,'cinematic must carry the requested cyan/blue halo language');
+assert.match(ui,/def\.labelGameTextKey \? gameText\(def\.labelGameTextKey\) : def\.label/,'new Animation Studio label must be Game Text-backed');
 
 // Server authority: unlock is multiplexed through existing craft callable, preserving 42 Functions.
 assert.equal([...functionsIndex.matchAll(/export const \w+\s*=\s*onCall\(/g)].length,42);
@@ -86,9 +104,9 @@ assert.match(commerce,/profile\?\.workshop\?\.unlockedMachines\?\.machine1 !== t
 assert.match(commerce,/CRAFT_WORKSHOP_LOCKED/);
 
 // Moderation gift extension is real inventory authority, not a UI-only selector.
-assert.match(admin,/GRANT_KINDS=new Set\(\['points','fichas','standardPacks','guaranteedMythics'\]\)/);
+assert.match(admin,/GRANT_KINDS=new Set\(\['points','fichas','essence','standardPacks','guaranteedMythics'\]\)/);
 assert.match(admin,/kind==='guaranteedMythics'/);
 assert.match(ui,/value="guaranteedMythics"/);
-assert.match(ui,/value="essence" disabled/);
+assert.match(ui,/value="essence"/);
 
-console.log('WORKSHOP_FOUNDATION_23_21_6_HF23_3_12_OK machine1=SERVER_UNLOCK_1000P craft=MIGRATED+LOCKED adminLayout=DRAG+WHEEL+SAVE preview=ADMIN_ONLY gifts=MYTHIC functions=42');
+console.log('WORKSHOP_FOUNDATION_23_21_6_HF23_3_12_OK machine1=SERVER_UNLOCK_1000P craft=MIGRATED+LOCKED adminLayout=DRAG+WHEEL+SAVE preview=ADMIN_ONLY gifts=MYTHIC enhancementUX=SPINNER+CINEMATIC+REAL_CARD_MODAL animationStudio=TUNED functions=42');

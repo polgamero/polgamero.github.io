@@ -53,7 +53,7 @@ import { cardDb } from './cardLoader.js';
 import { listCounters, compactCounterText, counterTooltipLines, normalizeCounterType, getCounterDefinition } from './counterEngine.js';
 import { hasSuspend, normalizeSuspendSpec, suspendedTimeCount } from './suspendEngine.js';
 import { isSacrificeCandidate, getActivatedAbilities, getGrantedAbilities, getActivatedAbilityTiming, describeCompositeCost } from './utils.js';
-import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminResolveCommunityCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots } from './firebaseClient.js';
+import { signInWithGoogle, signOutUser, purchasePack, loadUserProfileFromServer, recordChestAuthorityStatsBestEffort, fetchStorefrontAuthority, openPackAuthorityServer, openGuaranteedMythicAuthorityServer, recoverEconomyOperationServer, claimDailyReward, craftEnhancement, unlockWorkshopMachine, claimAchievement, convertEssence, bootstrapPlayerStatistics, deleteUserProfile, renameUsername, createDeck, updateDeck, deleteDeck, saveGameConfig, loadPublicGameConfigDocument, saveAdminGameConfigDocument, loadGameTextOverrides, saveGameTextOverrides, ensureClassifiedsSchedule, fetchCurrentClassifieds, purchaseClassifiedCard, purchaseClassifiedBasicLandPack, purchasePrebuiltDeck, purchaseEmote, adminSetEmoteCatalog, createMatch, joinMatchByCode, listenToMatch, cancelMatch, listenToPlayerPresence, listenToActiveMultiplayerMatches, listenToLobbyCommunication, sendLobbyCommunication, deleteLobbyCommunication, createDirectChallenge, resolveDirectChallenge, fetchAllUserProfiles, adminGrantCurrency, adminGrantCurrencyToAll, adminGrantPacks, adminGrantPacksToAll, adminAdvanceDailyRewardDebugDay, adminResetDailyRewardDebug, registerDailyLogin, getAdmissionStatus, adminSetAdmissionPolicy, fetchAnnouncements, fetchCampaignSnapshot, fetchTelemetrySessionsForAdmin, fetchGameRewardAuditForAdmin, fetchEconomyAuditForAdmin, fetchEconomyMovementsForAdmin, adminRepairSoloGameReward, fetchTelemetrySessionArchive, adminCloseStaleTelemetrySessions, fetchPublicPlayerStats, adminSyncPublicPlayerStats, saveAnimationPolicy, getTournamentState, startTournament, settleTournamentMatch, abandonTournament, getTradeMarket, createTradeListing, cancelTradeListing, createTradeOffer, cancelTradeOffer, rejectTradeOffer, acceptTradeOffer, getCommunityStatus, contactModeration, reportCommunityUser, reportLobbyMessage, getMyModerationCases, acknowledgeModerationCase, acknowledgeTradeNotification, createTradeDispute, adminGetCommunityDashboard, adminSetCommunityBlockedWords, adminBanCommunityUser, adminUnbanCommunityUser, adminResolveCommunityCase, refreshLobbyDirectoryAuthority, adminSetCommunityBots } from './firebaseClient.js';
 import { PACK_COST, FICHAS_PER_ENHANCEMENT, ENHANCEMENT_KEYWORDS, DECK_SIZE_EXACT, MAX_COPIES_PER_CARD, MAX_ENHANCED_CARDS_PER_DECK, ENHANCED_SUFFIX, POINTS, MYTHIC_CHANCE_IN_RARE_SLOT, CLASSIFIEDS_COMMON_POINTS, CLASSIFIEDS_COMMON_FICHAS, CLASSIFIEDS_UNCOMMON_POINTS, CLASSIFIEDS_UNCOMMON_FICHAS, CLASSIFIEDS_RARE_POINTS, CLASSIFIEDS_RARE_FICHAS, CLASSIFIEDS_MYTHIC_POINTS, CLASSIFIEDS_MYTHIC_FICHAS, CLASSIFIEDS_MYTHIC_CHANCE, CLASSIFIEDS_BASIC_LAND_PACK_PRICE, CLASSIFIEDS_BASIC_LAND_PACK_QUANTITY, PVP_LIMITS, PREBUILT_DECK_POINTS, PREBUILT_DECK_FICHAS, MAX_SAVED_DECKS, TRADE_MAX_ACTIVE_LISTINGS, TRADE_MAX_WANTED_CRITERIA, TRADE_MAX_OFFERS_PER_LISTING, TRADE_MAX_OUTGOING_OFFERS, TRADE_MAX_COMPLETED_PER_WEEK, WORKSHOP_POLICY, applyGameConfig, getDefaultGameConfig, isEnhancementEligibleCard, reconcileDeckEnhancementSlots } from './store.js';
 import { TOURNAMENT_POLICY, applyTournamentConfig } from './tournamentConfig.js';
 import { canBlock, hasKeyword, getProtectionMatch } from './keywords.js';
@@ -84,6 +84,7 @@ import { classifiedsNextRotationAt, getClassifiedsProfileState, getClassifiedsBa
 import { loadPrebuiltDeckCatalog, summarizePrebuiltDeck, getPrebuiltPurchaseIds } from './prebuiltDecks.js';
 import { gameText } from './gameTexts.js';
 import { WORKSHOP_MACHINE_IDS, normalizeWorkshopLayout, normalizeWorkshopProfile, isWorkshopMachineUnlocked, workshopMachineAsset } from './workshop.js';
+import { ACHIEVEMENT_FAMILIES, ACHIEVEMENT_TIERS, ACHIEVEMENT_TIER_ICONS, achievementId, normalizeAchievementsConfig, normalizeAchievementProfile, achievementMetricValue } from './achievements.js';
 import { createGameTextsAdminPane } from './gameTextsAdmin.js';
 import { showGlobalRanking } from './rankingUI.js';
 import { prepareGameManualUI, showGameManual } from './manualUI.js';
@@ -100,7 +101,7 @@ import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 import { enterMenuAudio, getAudioSettings, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
 import { setPlayerPresenceActivity, isPresenceOnline, isPresenceAvailable, describePresenceActivity, presenceTimestampMs, getChallengeInvitesEnabled, setChallengeInvitesEnabled } from './multiplayerPresence.js';
-import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer, ensureAnimationVisualIdentity } from './animationDirector.js';
+import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer, ensureAnimationVisualIdentity, queueWorkshopEnhancementAnimation } from './animationDirector.js';
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
 import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandActivatedAbilities, describeLandTransformation } from './landCharacteristics.js';
@@ -5846,11 +5847,23 @@ export function showStoreScreen(onBack, options = {}) {
         const errBox = body.querySelector('#store-craft-error');
         const peers = [...body.querySelectorAll('.store-keyword-btn')].filter(b => b !== btn);
         try {
-          await withEconomyButtonPending(btn, async () => {
-            const updated = await craftEnhancement(state.currentUser.uid, craftSelectedCardId, keyword, currentCraftCost());
-            state.userProfile = updated;
-            if (craftOnly) renderCraftPickCardView(); else renderMainView();
-          }, { pendingLabel:'MEJORANDO...', disablePeers:peers });
+          const updated = await withEconomyButtonPending(btn, async () => {
+            return craftEnhancement(state.currentUser.uid, craftSelectedCardId, keyword, currentCraftCost());
+          }, {
+            pendingLabel:gameText('workshop.enhancement.pending'),
+            slowLabel:gameText('workshop.server.slow'),
+            disablePeers:peers
+          });
+          if (!updated) return;
+          state.userProfile = updated;
+          if (craftOnly && typeof options.onCraftSuccess === 'function') {
+            leaveClassifiedsView();
+            clearStoreLoadingSlowTimer();
+            storeMainViewSerial += 1;
+            overlay.remove();
+            options.onCraftSuccess({ cardId:craftSelectedCardId, keyword });
+          } else if (craftOnly) renderCraftPickCardView();
+          else renderMainView();
         } catch (err) {
           console.error('No se pudo craftear la mejora:', err);
           errBox.textContent = err.message || 'No se pudo craftear la mejora. Probá de nuevo.';
@@ -5873,8 +5886,8 @@ export function showStoreScreen(onBack, options = {}) {
   }
 }
 
-export function showEnhancementCraftScreen(onBack) {
-  return showStoreScreen(onBack, { initialView:'craft', craftOnly:true });
+export function showEnhancementCraftScreen(onBack, options = {}) {
+  return showStoreScreen(onBack, { ...options, initialView:'craft', craftOnly:true });
 }
 
 
@@ -5909,8 +5922,15 @@ function injectWorkshopStyles() {
     .workshop-action-btn.secondary { background:#242821; border-color:#777; color:#eee; }
     .workshop-action-btn:disabled { opacity:.45; cursor:not-allowed; }
     .workshop-status { min-height:18px; color:#ffcf6a; margin-top:6px; font-size:12px; }
-    .workshop-loading { position:absolute; inset:0; z-index:40; display:grid; place-items:center; background:rgba(0,0,0,.7); font-weight:800; }
-    @media(max-width:700px){ .workshop-topbar{left:8px;right:8px;top:8px}.workshop-title{font-size:18px}.workshop-wallet-pill{padding:5px 7px;font-size:11px}.workshop-panel{bottom:8px;padding:10px 11px}.workshop-machine-badge{font-size:9px} }
+    .workshop-loading { position:absolute; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; gap:10px; background:rgba(0,0,0,.7); font-weight:800; }
+    .workshop-enhancement-success-overlay { position:fixed; inset:0; z-index:10070; display:flex; align-items:center; justify-content:center; padding:18px; background:rgba(0,7,18,.78); backdrop-filter:blur(6px); }
+    .workshop-enhancement-success-modal { width:min(760px,96vw); max-height:94vh; overflow:auto; display:flex; flex-direction:column; align-items:center; gap:12px; padding:20px 22px 18px; border:1px solid rgba(123,221,255,.72); border-radius:18px; background:radial-gradient(circle at 50% 0,rgba(54,163,255,.20),transparent 38%),linear-gradient(180deg,rgba(7,22,40,.98),rgba(5,12,21,.98)); box-shadow:0 0 42px rgba(66,188,255,.28),0 24px 70px rgba(0,0,0,.68); text-align:center; }
+    .workshop-enhancement-success-title { margin:0; color:#dff8ff; font:900 clamp(24px,4vw,38px)/1 Georgia,serif; letter-spacing:.06em; text-shadow:0 0 18px rgba(104,214,255,.56); }
+    .workshop-enhancement-success-ability { color:#8ddcff; font-weight:900; font-size:13px; letter-spacing:.05em; }
+    .workshop-enhancement-success-card { display:flex; justify-content:center; width:100%; padding:2px 0; }
+    .workshop-enhancement-success-card .card { --card-w:min(300px,72vw); width:var(--card-w)!important; height:auto!important; aspect-ratio:5/7!important; max-width:none!important; transform:none!important; pointer-events:none!important; filter:drop-shadow(0 0 17px rgba(88,195,255,.42)) drop-shadow(0 18px 30px rgba(0,0,0,.72)); }
+    .workshop-enhancement-success-reminder { max-width:640px; margin:0; color:#c9d7df; font-size:13px; line-height:1.45; }
+    @media(max-width:700px){ .workshop-topbar{left:8px;right:8px;top:8px}.workshop-title{font-size:18px}.workshop-wallet-pill{padding:5px 7px;font-size:11px}.workshop-panel{bottom:8px;padding:10px 11px}.workshop-machine-badge{font-size:9px}.workshop-enhancement-success-modal{padding:14px 12px}.workshop-enhancement-success-card .card{--card-w:min(225px,68vw)} }
   `;
   document.head.appendChild(style);
 }
@@ -5943,6 +5963,7 @@ function machinePolicy(machineId) {
 export function showWorkshopScreen(onBack, options = {}) {
   injectWorkshopStyles();
   injectEncyclopediaStyles();
+  ensureEconomyPendingStyles();
   document.getElementById('workshop-overlay')?.remove();
   const overlay = document.createElement('div');
   overlay.id = 'workshop-overlay';
@@ -5957,7 +5978,7 @@ export function showWorkshopScreen(onBack, options = {}) {
       <div class="workshop-wallet" id="workshop-wallet"></div>
     </div>
     <div class="workshop-panel" id="workshop-panel" hidden></div>
-    <div class="workshop-loading" id="workshop-loading">${gameTextHtml('workshop.loading')}</div>`;
+    <div class="workshop-loading" id="workshop-loading"><span class="economy-pending-spinner" aria-hidden="true"></span><span>${gameTextHtml('workshop.loading')}</span></div>`;
   document.body.appendChild(overlay);
   const stage = overlay.querySelector('#workshop-stage');
   const bg = overlay.querySelector('#workshop-bg');
@@ -5971,11 +5992,57 @@ export function showWorkshopScreen(onBack, options = {}) {
   const close = () => { cleanupStage(); overlay.remove(); onBack?.(); };
   overlay.querySelector('#workshop-back')?.addEventListener('click', close);
 
+  const openMachine1Craft = () => {
+    cleanupStage();
+    overlay.remove();
+    showEnhancementCraftScreen(
+      () => showWorkshopScreen(onBack),
+      { onCraftSuccess: celebration => showWorkshopScreen(onBack, { enhancementCelebration:celebration }) }
+    );
+  };
+
+  function showEnhancementSuccessModal({ cardId, keyword } = {}) {
+    const card=cardDb.getById(cardId);
+    const persistedKeyword=state.userProfile?.enhancements?.[cardId] || keyword;
+    if (!card || !persistedKeyword) return;
+    const displayCard={ ...card, keywords:[...(card.keywords || []), persistedKeyword] };
+    const keywordLabel=ENHANCEMENT_KEYWORDS.find(entry=>entry.key===persistedKeyword)?.label || persistedKeyword;
+    const modal=document.createElement('div');
+    modal.className='workshop-enhancement-success-overlay';
+    modal.innerHTML=`<div class="workshop-enhancement-success-modal" role="dialog" aria-modal="true" aria-labelledby="workshop-enhancement-success-title">
+      <h2 class="workshop-enhancement-success-title" id="workshop-enhancement-success-title">${gameTextHtml('workshop.enhancement.successTitle')}</h2>
+      <div class="workshop-enhancement-success-ability">${gameTextHtml('workshop.enhancement.successAbility',{ability:keywordLabel})}</div>
+      <div class="workshop-enhancement-success-card" id="workshop-enhancement-success-card"></div>
+      <p class="workshop-enhancement-success-reminder">${gameTextHtml('workshop.enhancement.successReminder')}</p>
+      <button class="workshop-action-btn" id="workshop-enhancement-success-close">${gameTextHtml('workshop.enhancement.continue')}</button>
+    </div>`;
+    document.body.appendChild(modal);
+    const cardHost=modal.querySelector('#workshop-enhancement-success-card');
+    const cardEl=createCardElement(displayCard,false,true,null,'preview',null);
+    cardEl.setAttribute('aria-label',`${card.name} · ${keywordLabel}`);
+    cardHost?.appendChild(cardEl);
+    const dismiss=()=>modal.remove();
+    modal.querySelector('#workshop-enhancement-success-close')?.addEventListener('click',dismiss);
+  }
+
   function renderWallet() {
     const points = Math.max(0, Math.floor(Number(state.userProfile?.points) || 0));
     const fichas = Math.max(0, Math.floor(Number(state.userProfile?.fichas) || 0));
+    const essence = Math.max(0, Math.floor(Number(state.userProfile?.essence) || 0));
     const wallet = overlay.querySelector('#workshop-wallet');
-    wallet.innerHTML = `<span class="workshop-wallet-pill">${COIN_ICON_HTML}<span>${gameTextHtml('workshop.wallet.points',{points})}</span></span><span class="workshop-wallet-pill">${FICHA_ICON_HTML}<span>${gameTextHtml('workshop.wallet.fichas',{fichas})}</span></span>`;
+    wallet.innerHTML = `<span class="workshop-wallet-pill">${COIN_ICON_HTML}<span>${gameTextHtml('workshop.wallet.points',{points})}</span></span><span class="workshop-wallet-pill">${FICHA_ICON_HTML}<span>${gameTextHtml('workshop.wallet.fichas',{fichas})}</span></span><span class="workshop-wallet-pill"><span>✦</span><span>${gameTextHtml('workshop.wallet.essence',{essence})}</span></span><button class="workshop-action-btn" id="workshop-essence-open" style="padding:6px 9px;font-size:11px;">${gameTextHtml('workshop.essence.open')}</button>`;
+    wallet.querySelector('#workshop-essence-open')?.addEventListener('click',openEssenceConverter);
+  }
+
+  function openEssenceConverter(){
+    selectedMachineId=null;
+    const policy=WORKSHOP_POLICY?.essence||{enabled:true,pointsPerUnit:500,fichasPerUnit:5,maxPerOperation:10};
+    panel.hidden=false;
+    panel.innerHTML=`<div class="workshop-panel-title">${gameTextHtml('workshop.essence.title')}</div><div class="workshop-panel-desc">${gameTextHtml('workshop.essence.description')}</div><div class="workshop-panel-cost">${gameTextHtml('workshop.essence.rate',{points:policy.pointsPerUnit,fichas:policy.fichasPerUnit})}</div><label style="display:flex;gap:8px;align-items:center;justify-content:center;margin:9px 0;"><span>${gameTextHtml('workshop.essence.quantity')}</span><input id="workshop-essence-quantity" type="number" min="1" max="${policy.maxPerOperation}" value="1" class="admin-field-input" style="width:90px;"></label><div class="workshop-panel-actions"><button class="workshop-action-btn" id="workshop-essence-convert" ${policy.enabled?'':'disabled'}>${gameTextHtml('workshop.essence.convert',{quantity:1})}</button><button class="workshop-action-btn secondary" id="workshop-panel-close">${gameTextHtml('common.close')}</button></div><div class="workshop-status" id="workshop-status"></div>`;
+    const input=panel.querySelector('#workshop-essence-quantity'),btn=panel.querySelector('#workshop-essence-convert'),status=panel.querySelector('#workshop-status');
+    const sync=()=>{const q=Math.min(policy.maxPerOperation,Math.max(1,Math.floor(Number(input?.value)||1)));if(input)input.value=String(q);if(btn)btn.textContent=gameText('workshop.essence.convert',{quantity:q});}; input?.addEventListener('input',sync);sync();
+    panel.querySelector('#workshop-panel-close')?.addEventListener('click',()=>{panel.hidden=true;});
+    btn?.addEventListener('click',async()=>{const quantity=Math.min(policy.maxPerOperation,Math.max(1,Math.floor(Number(input?.value)||1)));if(status)status.textContent='';try{const outcome=await withEconomyButtonPending(btn,()=>convertEssence(state.currentUser.uid,quantity),{pendingLabel:gameText('workshop.essence.pending'),slowLabel:gameText('workshop.server.slow')});if(outcome?.profile)state.userProfile=outcome.profile;renderWallet();if(status)status.textContent=gameText('workshop.essence.success',{quantity});}catch(err){console.error('No se pudo generar Esencia:',err);if(status)status.textContent=err?.message||gameText('workshop.essence.notEnough');}});
   }
 
   function machineTitle(id) { return gameText(`workshop.${id}.title`); }
@@ -5999,24 +6066,26 @@ export function showWorkshopScreen(onBack, options = {}) {
       </div>
       <div class="workshop-status" id="workshop-status">${(!future && !unlocked && !hasFunds) ? gameTextHtml('workshop.unlock.notEnough') : ''}</div>`;
     panel.querySelector('#workshop-panel-close')?.addEventListener('click',()=>{ panel.hidden=true; selectedMachineId=null; });
-    panel.querySelector('#workshop-use-machine')?.addEventListener('click',()=>{
-      cleanupStage(); overlay.remove();
-      showEnhancementCraftScreen(() => showWorkshopScreen(onBack));
-    });
+    panel.querySelector('#workshop-use-machine')?.addEventListener('click',openMachine1Craft);
     panel.querySelector('#workshop-unlock-machine')?.addEventListener('click', async event => {
       if (!state.currentUser?.uid || !state.userProfile) return;
       const confirmText = gameText('workshop.unlock.confirm',{ machine:machineTitle(machineId), points, fichas });
       if (!window.confirm(confirmText)) return;
-      const btn=event.currentTarget, status=panel.querySelector('#workshop-status'); btn.disabled=true;
+      const btn=event.currentTarget, status=panel.querySelector('#workshop-status');
+      const closeBtn=panel.querySelector('#workshop-panel-close');
       try {
-        const outcome = await unlockWorkshopMachine(state.currentUser.uid, machineId);
+        const outcome = await withEconomyButtonPending(btn, () => unlockWorkshopMachine(state.currentUser.uid, machineId), {
+          pendingLabel:gameText('workshop.unlock.pending'),
+          slowLabel:gameText('workshop.server.slow'),
+          disablePeers:[closeBtn]
+        });
+        if (!outcome) return;
         state.userProfile = outcome.profile;
         renderWallet(); renderMachines(); renderPanel(machineId); updateAccountUI(state.currentUser);
         const liveStatus=panel.querySelector('#workshop-status'); if(liveStatus) liveStatus.textContent=gameText('workshop.unlock.success',{machine:machineTitle(machineId)});
       } catch(err) {
         console.error('No se pudo desbloquear la máquina:',err);
         if(status) status.textContent=err?.message || gameText('workshop.unlock.notEnough');
-        btn.disabled=false;
       }
     });
   }
@@ -6054,10 +6123,13 @@ export function showWorkshopScreen(onBack, options = {}) {
       try { layout=normalizeWorkshopLayout(await loadPublicGameConfigDocument('workshop')); }
       catch(err){ console.warn('[Workshop] No se pudo cargar layout, se usan defaults.',err); }
       renderWallet(); renderMachines(); loading.remove();
-      if(options.autoOpenMachine1){
-        if(isWorkshopMachineUnlocked(state.userProfile,'machine1')) {
-          cleanupStage(); overlay.remove(); showEnhancementCraftScreen(() => showWorkshopScreen(onBack));
-        } else renderPanel('machine1');
+      if(options.enhancementCelebration){
+        const machineEl=machineRoot.querySelector('[data-machine-id="machine1"] .workshop-machine-img') || machineRoot.querySelector('[data-machine-id="machine1"]');
+        await queueWorkshopEnhancementAnimation({ machineElement:machineEl });
+        if (overlay.isConnected) showEnhancementSuccessModal(options.enhancementCelebration);
+      } else if(options.autoOpenMachine1){
+        if(isWorkshopMachineUnlocked(state.userProfile,'machine1')) openMachine1Craft();
+        else renderPanel('machine1');
       }
     } catch(err){ console.error('[Workshop] Error al abrir Taller:',err); loading.textContent=err?.message||gameText('workshop.disabled'); }
   })();
@@ -7367,6 +7439,96 @@ export async function showCommunityStatusAtBoot(status = null) {
   }
 }
 
+
+let achievementNoticeBusy=false;
+function achievementRewardText(row={}){
+  const parts=[];
+  if(Number(row.points)>0) parts.push(gameText('achievements.reward.points',{amount:Number(row.points)}));
+  if(Number(row.fichas)>0) parts.push(gameText('achievements.reward.fichas',{amount:Number(row.fichas)}));
+  if(Number(row.essence)>0) parts.push(gameText('achievements.reward.essence',{amount:Number(row.essence)}));
+  return parts.join(' · ') || gameText('achievements.reward.none');
+}
+function achievementFamilyLabel(id){ return gameText(`achievements.family.${id}`); }
+function achievementMetricLabel(id){ return gameText(`achievements.metric.${id}`); }
+function achievementTierLabel(tier){ return gameText(`achievements.tier.${tier}`); }
+
+function injectAchievementStyles(){
+  if(document.getElementById('achievement-styles')) return;
+  const style=document.createElement('style'); style.id='achievement-styles'; style.textContent=`
+    #achievements-overlay{position:fixed;inset:0;z-index:10035;background:radial-gradient(circle at 50% 0,#1b1c23,#090a0d 58%,#030405);color:#eee;overflow:auto;padding:18px;box-sizing:border-box}
+    .achievements-shell{width:min(1180px,100%);margin:0 auto 40px}.achievements-header{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 0 14px;background:linear-gradient(#090a0df5,#090a0dcc,transparent)}
+    .achievements-heading{text-align:center;flex:1}.achievements-title{font:900 clamp(26px,4vw,44px)/1 Georgia,serif;color:#f3da83;letter-spacing:.06em;text-shadow:0 0 20px rgba(212,175,55,.25)}.achievements-subtitle{font-size:13px;color:#aaa;margin-top:5px}.achievements-wallet{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.achievements-wallet span{padding:6px 9px;border:1px solid rgba(212,175,55,.35);border-radius:999px;background:#111b;font-weight:800;font-size:12px}
+    .achievement-family{margin:14px 0 20px;padding:14px;border:1px solid rgba(212,175,55,.28);border-radius:15px;background:linear-gradient(180deg,rgba(35,31,22,.78),rgba(11,12,14,.9));box-shadow:0 10px 28px rgba(0,0,0,.25)}
+    .achievement-family-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:12px}.achievement-family-name{font-size:19px;font-weight:900;color:#f0d981}.achievement-family-metric{font-size:12px;color:#aaa}.achievement-family-value{font-size:17px;font-weight:900;color:#fff}
+    .achievement-levels{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:9px}.achievement-level{position:relative;padding:12px 10px;border:1px solid #3d3d3d;border-radius:12px;background:#111;min-height:155px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;overflow:hidden}.achievement-level.reached{border-color:#bd9b35;background:linear-gradient(180deg,#29200d,#111)}.achievement-level.claimed{border-color:#47734e;background:linear-gradient(180deg,#14251a,#101311)}.achievement-trophy{font-size:34px;line-height:1;filter:drop-shadow(0 4px 8px #000)}.achievement-tier{font-weight:900;text-transform:uppercase;letter-spacing:.06em}.achievement-progress{font-weight:800;font-size:12px}.achievement-bar{height:6px;width:100%;border-radius:99px;background:#303030;overflow:hidden}.achievement-bar>i{display:block;height:100%;background:linear-gradient(90deg,#688ac7,#8bdcff);border-radius:99px}.achievement-reward{font-size:11px;color:#d8c992;min-height:28px}.achievement-claim-btn{margin-top:auto;border:1px solid #d4af37;background:linear-gradient(#67501d,#382807);color:#fff2b8;border-radius:8px;padding:7px 10px;font-weight:900;cursor:pointer}.achievement-claim-btn:disabled{opacity:.48;cursor:default}.achievements-loading{padding:50px;text-align:center;font-weight:800;color:#dbc776}
+    .achievement-notice{position:fixed;inset:0;z-index:10100;background:rgba(0,0,0,.76);display:grid;place-items:center;padding:18px}.achievement-notice-card{width:min(470px,94vw);padding:22px;border:1px solid #d4af37;border-radius:16px;background:radial-gradient(circle at 50% 0,#40320d,#111 58%);text-align:center;box-shadow:0 0 42px rgba(212,175,55,.3)}.achievement-notice-trophy{font-size:70px}.achievement-notice-title{font:900 24px Georgia,serif;color:#ffe899;margin:7px}.achievement-notice-body{font-weight:800;margin:9px}.achievement-notice-actions{display:flex;gap:8px;justify-content:center;margin-top:16px}
+    @media(max-width:850px){#achievements-overlay{padding:8px}.achievement-levels{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:7px}.achievement-level{min-width:165px;scroll-snap-align:start}.achievements-header{align-items:flex-start}.achievements-wallet{max-width:150px}.achievements-title{font-size:24px}}
+  `; document.head.appendChild(style);
+}
+
+async function loadAchievementRuntime(){
+  const [stats,rawConfig]=await Promise.all([
+    bootstrapPlayerStatistics(state.currentUser?.uid),
+    loadPublicGameConfigDocument('achievements').catch(()=>null)
+  ]);
+  return {stats:stats||{},config:normalizeAchievementsConfig(rawConfig||{})};
+}
+
+export function showAchievementsScreen(onBack){
+  if(!state.currentUser||!state.userProfile) return;
+  injectAchievementStyles(); ensureEconomyPendingStyles();
+  document.getElementById('achievements-overlay')?.remove();
+  const overlay=document.createElement('div'); overlay.id='achievements-overlay';
+  overlay.innerHTML=`<div class="achievements-shell"><div class="achievements-header"><button class="encyclopedia-back-btn" id="achievements-back">← ${gameTextHtml('achievements.back')}</button><div class="achievements-heading"><div class="achievements-title">${gameTextHtml('achievements.title')}</div><div class="achievements-subtitle">${gameTextHtml('achievements.subtitle')}</div></div><div class="achievements-wallet" id="achievements-wallet"></div></div><div id="achievements-content" class="achievements-loading"><span class="economy-pending-spinner" aria-hidden="true"></span> ${gameTextHtml('achievements.loading')}</div></div>`;
+  document.body.appendChild(overlay);
+  const content=overlay.querySelector('#achievements-content');
+  const close=()=>{overlay.remove();onBack?.();}; overlay.querySelector('#achievements-back')?.addEventListener('click',close);
+  let runtime=null;
+  const renderWallet=()=>{const p=Math.max(0,Number(state.userProfile?.points)||0),f=Math.max(0,Number(state.userProfile?.fichas)||0),e=Math.max(0,Number(state.userProfile?.essence)||0);overlay.querySelector('#achievements-wallet').innerHTML=`<span>${COIN_ICON_HTML} ${p}</span><span>${FICHA_ICON_HTML} ${f}</span><span>✦ ${escapeHtml(gameText('workshop.wallet.essence',{essence:e}))}</span>`;};
+  const render=()=>{
+    renderWallet(); if(!runtime) return;
+    if(!runtime.config.enabled){content.innerHTML=`<div class="achievements-loading">${gameTextHtml('achievements.disabled')}</div>`;return;}
+    const claimed=normalizeAchievementProfile(state.userProfile?.achievements).claimed;
+    content.className='';
+    content.innerHTML=ACHIEVEMENT_FAMILIES.map(family=>{
+      const current=achievementMetricValue({profile:state.userProfile,stats:runtime.stats,metric:family.metric,cardLookup:id=>cardDb.getById(id)});
+      const levels=ACHIEVEMENT_TIERS.map(tier=>{
+        const id=achievementId(family.id,tier),row=runtime.config.entries[id]; if(!row?.enabled) return '';
+        const isClaimed=!!claimed[id], reached=current>=row.target, pct=Math.max(0,Math.min(100,(current/Math.max(1,row.target))*100));
+        return `<div class="achievement-level ${isClaimed?'claimed':reached?'reached':''}" data-achievement-id="${escapeHtml(id)}"><div class="achievement-trophy">${ACHIEVEMENT_TIER_ICONS[tier]||'🏆'}</div><div class="achievement-tier">${escapeHtml(achievementTierLabel(tier))}</div><div class="achievement-progress">${gameTextHtml('achievements.progress',{current:Math.min(current,row.target),target:row.target})}</div><div class="achievement-bar"><i style="width:${pct.toFixed(1)}%"></i></div><div class="achievement-reward">${gameTextHtml('achievements.reward',{reward:achievementRewardText(row)})}</div><button class="achievement-claim-btn" data-claim-achievement="${escapeHtml(id)}" ${(!reached||isClaimed)?'disabled':''}>${isClaimed?gameTextHtml('achievements.claimed'):reached?gameTextHtml('achievements.claim'):gameTextHtml('achievements.locked')}</button></div>`;
+      }).join('');
+      return `<section class="achievement-family"><div class="achievement-family-head"><div><div class="achievement-family-name">${escapeHtml(achievementFamilyLabel(family.id))}</div><div class="achievement-family-metric">${escapeHtml(achievementMetricLabel(family.id))}</div></div><div class="achievement-family-value">${current.toLocaleString('es-AR')}</div></div><div class="achievement-levels">${levels}</div></section>`;
+    }).join('');
+    content.querySelectorAll('[data-claim-achievement]').forEach(btn=>btn.addEventListener('click',async()=>{
+      const id=btn.dataset.claimAchievement,row=runtime.config.entries[id];
+      try{
+        const outcome=await withEconomyButtonPending(btn,()=>claimAchievement(state.currentUser.uid,id),{pendingLabel:gameText('achievements.claiming'),slowLabel:gameText('workshop.server.slow')});
+        if(outcome?.profile) state.userProfile=outcome.profile;
+        runtime.stats=await bootstrapPlayerStatistics(state.currentUser.uid)||runtime.stats;
+        window.alert(gameText('achievements.claim.success',{reward:achievementRewardText(row)})); render();
+      }catch(err){console.error('No se pudo reclamar logro:',err);window.alert(err?.message||gameText('achievements.error.generic'));}
+    }));
+  };
+  renderWallet();
+  void loadAchievementRuntime().then(value=>{runtime=value;render();}).catch(err=>{console.error('No se pudieron cargar Logros:',err);content.innerHTML=`<div class="achievements-loading">${escapeHtml(err?.message||gameText('achievements.error.generic'))}</div>`;});
+}
+
+async function maybeShowAchievementUnlockNotice(openAchievements){
+  if(achievementNoticeBusy||!state.currentUser||!state.userProfile) return;
+  const uid=state.currentUser.uid;
+  achievementNoticeBusy=true;
+  try{
+    const {stats,config}=await loadAchievementRuntime(); if(!config.enabled) return;
+    const claimed=normalizeAchievementProfile(state.userProfile?.achievements).claimed;
+    const storageKey=`argentinia.achievementNotices.v1.${uid}`; let notified={}; try{notified=JSON.parse(localStorage.getItem(storageKey)||'{}')||{};}catch{}
+    let found=null;
+    for(const family of ACHIEVEMENT_FAMILIES){const current=achievementMetricValue({profile:state.userProfile,stats,metric:family.metric,cardLookup:id=>cardDb.getById(id)});for(const tier of ACHIEVEMENT_TIERS){const id=achievementId(family.id,tier),row=config.entries[id];if(row?.enabled&&current>=row.target&&!claimed[id]&&!notified[id]){found={id,row,family,tier};break;}}if(found)break;}
+    if(!found) return;
+    notified[found.id]=Date.now(); try{localStorage.setItem(storageKey,JSON.stringify(notified));}catch{}
+    injectAchievementStyles(); const modal=document.createElement('div');modal.className='achievement-notice';modal.innerHTML=`<div class="achievement-notice-card"><div class="achievement-notice-trophy">${ACHIEVEMENT_TIER_ICONS[found.tier]||'🏆'}</div><div class="achievement-notice-title">${gameTextHtml('achievements.unlocked.title')}</div><div class="achievement-notice-body">${gameTextHtml('achievements.unlocked.body',{achievement:achievementFamilyLabel(found.family.id),tier:achievementTierLabel(found.tier)})}</div><div>${gameTextHtml('achievements.reward',{reward:achievementRewardText(found.row)})}</div><div class="achievement-notice-actions"><button class="workshop-action-btn" id="achievement-notice-open">${gameTextHtml('achievements.unlocked.action')}</button><button class="workshop-action-btn secondary" id="achievement-notice-close">${gameTextHtml('achievements.unlocked.later')}</button></div></div>`;document.body.appendChild(modal);modal.querySelector('#achievement-notice-close')?.addEventListener('click',()=>modal.remove());modal.querySelector('#achievement-notice-open')?.addEventListener('click',()=>{modal.remove();openAchievements?.();});
+  }catch(err){console.warn('No se pudo evaluar aviso de Logros:',err);}finally{achievementNoticeBusy=false;}
+}
+
 function renderAccountBox(container, user) {
   if (!container) return;
 
@@ -7394,6 +7556,7 @@ function renderAccountBox(container, user) {
       <div class="main-menu-account-actions">
         <button class="main-menu-reward-btn" id="menu-chest">${gameTextHtml('account.chest')}${chestPending ? `<span class="main-menu-reward-badge">${chestPending}</span>` : ''}</button>
         <button class="main-menu-reward-btn" id="menu-workshop">${gameTextHtml('account.workshop')}</button>
+        <button class="main-menu-reward-btn" id="menu-achievements">${gameTextHtml('account.achievements')}</button>
         <button class="main-menu-reward-btn" id="menu-daily-rewards">${gameTextHtml('account.dailyRewards')}${rewardsPending ? `<span class="main-menu-reward-badge">${rewardsPending}</span>` : ''}</button>
         ${moderationBtnHTML}
       </div>`;
@@ -7428,6 +7591,17 @@ function renderAccountBox(container, user) {
         renderAccountBox(container, state.currentUser);
       });
     });
+    const openAchievementsFromMenu = () => {
+      if (!state.userProfile) return;
+      const mainMenuOverlay = document.getElementById('main-menu-overlay');
+      if (mainMenuOverlay) mainMenuOverlay.style.display = 'none';
+      showAchievementsScreen(() => {
+        if (mainMenuOverlay) mainMenuOverlay.style.display = '';
+        renderAccountBox(container, state.currentUser);
+      });
+    };
+    container.querySelector('#menu-achievements')?.addEventListener('click', openAchievementsFromMenu);
+    setTimeout(() => void maybeShowAchievementUnlockNotice(openAchievementsFromMenu), 0);
     container.querySelector('#menu-daily-rewards').addEventListener('click', () => {
       if (!state.userProfile) return;
       const mainMenuOverlay = document.getElementById('main-menu-overlay');
@@ -7981,14 +8155,15 @@ export function showAdminPanel(onBack) {
     const mp3HTML=audioTargets.length
       ? audioTargets.map(target => `<code>${escapeHtml(target.mp3 || '—')}</code>`).join('')
       : '<span class="admin-animation-audio-empty">—</span>';
+    const animationLabel=def.labelGameTextKey ? gameText(def.labelGameTextKey) : def.label;
     return `<tr data-animation-tuning-row="${def.key}">
-      <td class="admin-animation-name">${escapeHtml(def.label)}</td>
+      <td class="admin-animation-name">${escapeHtml(animationLabel)}</td>
       <td class="admin-animation-audio" data-animation-audio-opus="${def.key}">${opusHTML}</td>
       <td class="admin-animation-audio" data-animation-audio-mp3="${def.key}">${mp3HTML}</td>
       <td><input type="number" class="admin-animation-tuning-speed" data-animation-tuning-speed="${def.key}" value="${Number(tuning.relativeSpeed || 1).toFixed(2)}" min="0.25" max="3" step="0.05"></td>
       <td><input type="number" class="admin-animation-tuning-volume" data-animation-tuning-volume="${def.key}" value="${Number(tuning.relativeVolume || 1).toFixed(2)}" min="0.25" max="2" step="0.05"></td>
-      <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="start" ${tuning.sfxMoment === 'start' ? 'checked' : ''} aria-label="SFX al inicio para ${escapeHtml(def.label)}"></td>
-      <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="key" ${tuning.sfxMoment === 'key' ? 'checked' : ''} aria-label="SFX en el momento clave para ${escapeHtml(def.label)}"></td>
+      <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="start" ${tuning.sfxMoment === 'start' ? 'checked' : ''} aria-label="SFX al inicio para ${escapeHtml(animationLabel)}"></td>
+      <td><input type="checkbox" class="admin-animation-sfx-check" data-animation-sfx-moment="${def.key}" data-moment="key" ${tuning.sfxMoment === 'key' ? 'checked' : ''} aria-label="SFX en el momento clave para ${escapeHtml(animationLabel)}"></td>
       <td class="admin-animation-cadence">${cadenceLabel}</td>
     </tr>`;
   }).join('');
@@ -8059,7 +8234,7 @@ export function showAdminPanel(onBack) {
           <option value="fichas">Fichas</option>
           <option value="standardPacks">Sobres para Mi Cofre</option>
           <option value="guaranteedMythics">${gameTextHtml('admin.gifts.guaranteedMythic')}</option>
-          <option value="essence" disabled>${gameTextHtml('admin.gifts.essenceFuture')}</option>
+          <option value="essence">${gameTextHtml('admin.gifts.essenceFuture')}</option>
         </select>
       </div>
       <div class="admin-field-row">
@@ -8143,6 +8318,11 @@ export function showAdminPanel(onBack) {
         <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.enabled')}</span><input type="checkbox" id="admin-workshop-enabled"></div>
         <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.enhancementCost')}</span><input type="number" min="1" step="1" class="admin-field-input" id="admin-workshop-craft-fichas"></div>
         <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.maxEnhanced')}</span><input type="number" min="0" step="1" class="admin-field-input" id="admin-workshop-max-enhanced"></div>
+        <div class="admin-section-title" style="margin-top:14px;font-size:14px;">${gameTextHtml('admin.workshop.essenceTitle')}</div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.essenceEnabled')}</span><input type="checkbox" id="admin-workshop-essence-enabled"></div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.essencePoints')}</span><input type="number" min="1" step="1" class="admin-field-input" id="admin-workshop-essence-points"></div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.essenceFichas')}</span><input type="number" min="0" step="1" class="admin-field-input" id="admin-workshop-essence-fichas"></div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.workshop.essenceMax')}</span><input type="number" min="1" max="100" step="1" class="admin-field-input" id="admin-workshop-essence-max"></div>
         <div class="admin-workshop-machine-settings" id="admin-workshop-machine-settings"></div>
         <button class="admin-save-btn" id="admin-workshop-save-settings">${gameTextHtml('admin.workshop.saveSettings')}</button>
         <div class="admin-success-msg" id="admin-workshop-settings-status"></div>
@@ -8159,9 +8339,23 @@ export function showAdminPanel(onBack) {
     </div>`;
 
 
+  const achievementsAdminHTML = `
+    <div class="admin-pane-narrow" style="max-width:1250px;">
+      <div class="admin-section">
+        <div class="admin-section-title">${gameTextHtml('admin.achievements.title')}</div>
+        <div class="admin-debug-summary" style="margin-bottom:12px;">${gameTextHtml('admin.achievements.help')}</div>
+        <div class="admin-field-row"><span class="admin-field-label">${gameTextHtml('admin.achievements.enabled')}</span><input type="checkbox" id="admin-achievements-enabled"></div>
+        <div class="admin-debug-table-wrap" id="admin-achievements-table"><div class="admin-debug-empty">${gameTextHtml('achievements.loading')}</div></div>
+        <button class="admin-save-btn" id="admin-achievements-save">${gameTextHtml('admin.achievements.save')}</button>
+        <div class="admin-success-msg" id="admin-achievements-status"></div>
+      </div>
+    </div>`;
+
+
   const adminTabs = [
     { key: 'game', label: 'AJUSTES DEL JUEGO' },
     { key: 'workshop', label: gameText('admin.tab.workshop') },
+    { key: 'achievements', label: gameText('admin.tab.achievements') },
     { key: 'animations', label: 'ANIMACIONES' },
     { key: 'emotes', label: 'EMOTES' },
     { key: 'texts', label: 'TEXTOS DEL JUEGO' },
@@ -8196,6 +8390,10 @@ export function showAdminPanel(onBack) {
 
       <div class="admin-tab-pane hidden" data-admin-pane="workshop">
         ${workshopAdminHTML}
+      </div>
+
+      <div class="admin-tab-pane hidden" data-admin-pane="achievements">
+        ${achievementsAdminHTML}
       </div>
 
       <div class="admin-tab-pane hidden" data-admin-pane="animations">
@@ -8947,7 +9145,7 @@ Receipt: ${receiptId}
     'eloGames','eloWins','eloLosses','basicLandPacksPurchased','basicLandsReceived','basicLandPacksWhite',
     'basicLandPacksBlue','basicLandPacksBlack','basicLandPacksRed','basicLandPacksGreen',
     'storePacksPurchased','enhancementsCrafted','prebuiltDecksPurchased','classifiedsCardsPurchased',
-    'emotesPurchased','dailyRewardsClaimed'
+    'emotesPurchased','dailyRewardsClaimed','essenceEarned','essenceSpent','essenceCurrent','achievementClaims'
   ]);
 
   function trackedTotals(publicRows) {
@@ -9018,9 +9216,10 @@ Receipt: ${receiptId}
     const topElo = eloPlayers.reduce((best, row) => !best || (Number(row?.eloRating) || 0) > (Number(best?.eloRating) || 0) ? row : best, null);
     const peakElo = eloPlayers.reduce((best, row) => !best || (Number(row?.eloPeak) || 0) > (Number(best?.eloPeak) || 0) ? row : best, null);
     const tournamentRate = adminRate(tracked.tournamentWins, tracked.tournamentLosses);
+    const essenceInCirculation = (publicRows || []).reduce((sum,row)=>sum + Math.max(0, Number(row?.essenceCurrent) || 0), 0);
     return {
       profileStats, games, tracked, marketNow, tradeParticipants, completedTrades,
-      eloPlayers, logicalEloMatches, averageElo, topElo, peakElo, tournamentRate
+      eloPlayers, logicalEloMatches, averageElo, topElo, peakElo, tournamentRate, essenceInCirculation
     };
   }
 
@@ -9056,7 +9255,9 @@ Receipt: ${receiptId}
         adminMetricCard(gameText('admin.stats.packs.label'), tracked.packsOpened.toLocaleString('es-AR'), gameText('admin.stats.packs.sub', { received:tracked.packsReceived.toLocaleString('es-AR'), chests:profileStats.packsInChests.toLocaleString('es-AR'), mythics:tracked.guaranteedMythicsOpened.toLocaleString('es-AR') })),
         adminMetricCard(gameText('admin.stats.collection.label'), profileStats.cardsOwned.toLocaleString('es-AR'), gameText('admin.stats.collection.sub', { unique:profileStats.communityUniqueCards, total:POOL_BASELINE.total, average:profileStats.averageUniqueCards.toFixed(1) })),
         adminMetricCard(gameText('admin.stats.basicLands.packs'), tracked.basicLandPacksPurchased.toLocaleString('es-AR'), `${tracked.basicLandsReceived.toLocaleString('es-AR')} ${gameText('admin.stats.basicLands.received')}`),
-        adminMetricCard(gameText('admin.stats.dailyClaims'), tracked.dailyRewardsClaimed.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314'))
+        adminMetricCard(gameText('admin.stats.dailyClaims'), tracked.dailyRewardsClaimed.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314')),
+        adminMetricCard(gameText('admin.stats.essence.current'), snap.essenceInCirculation.toLocaleString('es-AR'), gameText('admin.stats.essence.flow',{earned:tracked.essenceEarned.toLocaleString('es-AR'),spent:tracked.essenceSpent.toLocaleString('es-AR')})),
+        adminMetricCard(gameText('admin.stats.achievements.claimed'), tracked.achievementClaims.toLocaleString('es-AR'), gameText('admin.stats.achievements.sub'))
       ]),
       adminMetricGroup(gameText('admin.stats.group.store'), [
         adminMetricCard(gameText('admin.stats.store.packPurchases'), tracked.storePacksPurchased.toLocaleString('es-AR'), gameText('admin.stats.trackingSince2314')),
@@ -9103,14 +9304,14 @@ Receipt: ${receiptId}
       const pvpRecord = `${Number(r.multiplayerWins||0)}–${Number(r.multiplayerLosses||0)} (${adminRate(r.multiplayerWins,r.multiplayerLosses).toFixed(0)}%)`;
       const tournamentRecord = `${Number(r.tournamentWins||0)}–${Number(r.tournamentLosses||0)} · 🏆 ${Number(r.tournamentChampionships||0)}`;
       const elo = Number(r.eloGames||0) > 0 ? `${Number(r.eloRating||1200)} / ${Number(r.eloPeak||1200)}` : '—';
-      return `<tr><td><strong>${escapeHtml(r.username || gameText('ranking.playerFallback'))}</strong></td><td>${Number(r.gamesPlayed||0)}</td><td>${escapeHtml(soloRecord)}</td><td>${escapeHtml(pvpRecord)}</td><td>${Number(r.tournamentsPlayed||0)} · ${escapeHtml(tournamentRecord)}</td><td>${escapeHtml(elo)}</td><td>${Number(r.tradesCompleted||0)}</td><td>${Number(r.basicLandPacksPurchased||0)} / ${Number(r.basicLandsReceived||0)}</td><td>${Number(r.pointsEarned||0)}</td><td>${Number(r.fichasEarned||0)}</td><td>${Number(r.packsOpened||0)}</td><td>${Number(r.uniqueCards||0)} / ${POOL_BASELINE.total}</td><td>${formatDuration(r.totalDurationMs||0)}</td></tr>`;
+      return `<tr><td><strong>${escapeHtml(r.username || gameText('ranking.playerFallback'))}</strong></td><td>${Number(r.gamesPlayed||0)}</td><td>${escapeHtml(soloRecord)}</td><td>${escapeHtml(pvpRecord)}</td><td>${Number(r.tournamentsPlayed||0)} · ${escapeHtml(tournamentRecord)}</td><td>${escapeHtml(elo)}</td><td>${Number(r.tradesCompleted||0)}</td><td>${Number(r.basicLandPacksPurchased||0)} / ${Number(r.basicLandsReceived||0)}</td><td>${Number(r.pointsEarned||0)}</td><td>${Number(r.fichasEarned||0)}</td><td>${Number(r.packsOpened||0)}</td><td>${Number(r.uniqueCards||0)} / ${POOL_BASELINE.total}</td><td>${Number(r.essenceCurrent||0)}</td><td>${Number(r.achievementClaims||0)}</td><td>${formatDuration(r.totalDurationMs||0)}</td></tr>`;
     }).join('');
     const headers = [
       'admin.stats.col.player','admin.stats.col.games','admin.stats.col.soloRecord','admin.stats.col.pvpRecord','admin.stats.col.tournaments',
       'admin.stats.col.elo','admin.stats.col.trades','admin.stats.col.landPacks','admin.stats.col.points','admin.stats.col.fichas',
-      'admin.stats.col.packs','admin.stats.col.discovered','admin.stats.col.time'
+      'admin.stats.col.packs','admin.stats.col.discovered','admin.stats.col.essence','admin.stats.col.achievementClaims','admin.stats.col.time'
     ].map(key => `<th>${escapeHtml(gameText(key))}</th>`).join('');
-    overlay.querySelector('#admin-stats-detail').innerHTML = `<table class="admin-debug-table"><thead><tr>${headers}</tr></thead><tbody>${rows || `<tr><td colspan="13">${escapeHtml(gameText('admin.stats.empty'))}</td></tr>`}</tbody></table>`;
+    overlay.querySelector('#admin-stats-detail').innerHTML = `<table class="admin-debug-table"><thead><tr>${headers}</tr></thead><tbody>${rows || `<tr><td colspan="15">${escapeHtml(gameText('admin.stats.empty'))}</td></tr>`}</tbody></table>`;
   }
 
   function adminCsvCell(value) {
@@ -9148,6 +9349,10 @@ Receipt: ${receiptId}
       ['Fichas ganadas', snap.tracked.fichasEarned],
       ['Fichas gastadas', snap.tracked.fichasSpent],
       ['Sobres abiertos', snap.tracked.packsOpened],
+      [gameText('admin.stats.essence.current'), snap.essenceInCirculation],
+      [gameText('admin.stats.essence.earned'), snap.tracked.essenceEarned],
+      [gameText('admin.stats.essence.spent'), snap.tracked.essenceSpent],
+      [gameText('admin.stats.achievements.claimed'), snap.tracked.achievementClaims],
       ['Cartas en colecciones', snap.profileStats.cardsOwned]
     ];
 
@@ -9155,7 +9360,7 @@ Receipt: ${receiptId}
       'Jugador','Partidas','Solo','Solo W','Solo L','PvP','PvP W','PvP L','Torneos','Torneo partidas','Torneo W','Torneo L',
       'Cuartos','Semis','Finales','Campeonatos','Forfeits','ELO','ELO peak','ELO partidas','Intercambios',
       'Packs tierras','Tierras recibidas','Puntos ganados','Puntos gastados','Fichas ganadas','Fichas gastadas',
-      'Sobres recibidos','Sobres abiertos','Mythics aseguradas','Cartas poseídas','Únicas','Tiempo ms'
+      'Sobres recibidos','Sobres abiertos','Mythics aseguradas',gameText('admin.stats.col.essence'),gameText('admin.stats.essence.earned'),gameText('admin.stats.essence.spent'),gameText('admin.stats.col.achievementClaims'),'Cartas poseídas','Únicas','Tiempo ms'
     ];
     const playerRows = [...statsPublicRowsCache]
       .sort((a,b) => String(a.username || '').localeCompare(String(b.username || ''), 'es-AR'))
@@ -9164,7 +9369,7 @@ Receipt: ${receiptId}
         r.tournamentsPlayed||0,r.tournamentMatches||0,r.tournamentWins||0,r.tournamentLosses||0,r.tournamentQuarterfinals||0,r.tournamentSemifinals||0,r.tournamentFinals||0,
         r.tournamentChampionships||0,r.tournamentForfeits||0,r.eloRating||1200,r.eloPeak||1200,r.eloGames||0,r.tradesCompleted||0,
         r.basicLandPacksPurchased||0,r.basicLandsReceived||0,r.pointsEarned||0,r.pointsSpent||0,r.fichasEarned||0,r.fichasSpent||0,
-        r.packsReceived||0,r.packsOpened||0,r.guaranteedMythicsOpened||0,r.cardsOwned||0,r.uniqueCards||0,r.totalDurationMs||0
+        r.packsReceived||0,r.packsOpened||0,r.guaranteedMythicsOpened||0,r.essenceCurrent||0,r.essenceEarned||0,r.essenceSpent||0,r.achievementClaims||0,r.cardsOwned||0,r.uniqueCards||0,r.totalDurationMs||0
       ]);
     const lines = [
       ...summary.map(row => row.map(adminCsvCell).join(';')),
@@ -9282,20 +9487,21 @@ Receipt: ${receiptId}
     const fromRaw=overlay.querySelector('#admin-movements-from')?.value||'',toRaw=overlay.querySelector('#admin-movements-to')?.value||'';
     const fromMs=fromRaw?new Date(`${fromRaw}T00:00:00`).getTime():0,toMs=toRaw?new Date(`${toRaw}T23:59:59.999`).getTime():Number.MAX_SAFE_INTEGER;
     const all=[...(movementData.events||[])].sort((a,b)=>auditTimestampMs(b.createdAt)-auditTimestampMs(a.createdAt));
-    let points=Number(movementData.current?.points)||0,fichas=Number(movementData.current?.fichas)||0,packs=Number(movementData.current?.packs)||0;
+    let points=Number(movementData.current?.points)||0,fichas=Number(movementData.current?.fichas)||0,packs=Number(movementData.current?.packs)||0,essence=Number(movementData.current?.essence)||0;
     const reconstructed=all.map(row=>{
-      const after={points,fichas,packs};
-      points-=Number(row.pointsDelta)||0; fichas-=Number(row.fichasDelta)||0; packs-=Number(row.packsDelta)||0;
+      const after={points,fichas,packs,essence};
+      points-=Number(row.pointsDelta)||0; fichas-=Number(row.fichasDelta)||0; packs-=Number(row.packsDelta)||0; essence-=Number(row.essenceDelta)||0;
       return {...row,_after:after,_ms:auditTimestampMs(row.createdAt)};
     });
     const rows=reconstructed.filter(row=>row._ms>=fromMs&&row._ms<=toMs);
     cards.innerHTML=[
       [gameText('admin.movements.currentPoints'),Number(movementData.current?.points||0).toLocaleString('es-AR')],
       [gameText('admin.movements.currentFichas'),Number(movementData.current?.fichas||0).toLocaleString('es-AR')],
-      [gameText('admin.movements.currentPacks'),Number(movementData.current?.packs||0).toLocaleString('es-AR')]
+      [gameText('admin.movements.currentPacks'),Number(movementData.current?.packs||0).toLocaleString('es-AR')],
+      [gameText('admin.movements.currentEssence'),Number(movementData.current?.essence||0).toLocaleString('es-AR')]
     ].map(([label,value])=>`<div class="admin-stat-card"><div class="admin-stat-label">${escapeHtml(label)}</div><div class="admin-stat-value">${escapeHtml(value)}</div><div class="admin-stat-sub">${escapeHtml(movementData.username||movementData.uid)}</div></div>`).join('');
-    const body=rows.map(row=>`<tr><td>${escapeHtml(new Date(row._ms).toLocaleString('es-AR'))}</td><td>${escapeHtml(economyAuditLabel({...row,auditKind:'economyEvent'}))}</td><td>${escapeHtml(movementSigned(row.pointsDelta))}</td><td><strong>${Number(row._after.points).toLocaleString('es-AR')}</strong></td><td>${escapeHtml(movementSigned(row.fichasDelta))}</td><td>${Number(row._after.fichas).toLocaleString('es-AR')}</td><td>${escapeHtml(movementSigned(row.packsDelta))}</td><td>${Number(row._after.packs).toLocaleString('es-AR')}</td><td><code>${escapeHtml(row.operationId||row.id||'—')}</code></td></tr>`).join('');
-    table.innerHTML=`<table class="admin-debug-table"><thead><tr><th>${gameTextHtml('admin.movements.col.date')}</th><th>${gameTextHtml('admin.movements.col.operation')}</th><th>${gameTextHtml('admin.movements.col.deltaPoints')}</th><th>${gameTextHtml('admin.movements.col.balancePoints')}</th><th>${gameTextHtml('admin.movements.col.deltaFichas')}</th><th>${gameTextHtml('admin.movements.col.balanceFichas')}</th><th>${gameTextHtml('admin.movements.col.deltaPacks')}</th><th>${gameTextHtml('admin.movements.col.balancePacks')}</th><th>${gameTextHtml('admin.movements.col.evidence')}</th></tr></thead><tbody>${body||`<tr><td colspan="9">${gameTextHtml('admin.movements.empty')}</td></tr>`}</tbody></table>`;
+    const body=rows.map(row=>`<tr><td>${escapeHtml(new Date(row._ms).toLocaleString('es-AR'))}</td><td>${escapeHtml(economyAuditLabel({...row,auditKind:'economyEvent'}))}</td><td>${escapeHtml(movementSigned(row.pointsDelta))}</td><td><strong>${Number(row._after.points).toLocaleString('es-AR')}</strong></td><td>${escapeHtml(movementSigned(row.fichasDelta))}</td><td>${Number(row._after.fichas).toLocaleString('es-AR')}</td><td>${escapeHtml(movementSigned(row.packsDelta))}</td><td>${Number(row._after.packs).toLocaleString('es-AR')}</td><td>${escapeHtml(movementSigned(row.essenceDelta))}</td><td>${Number(row._after.essence).toLocaleString('es-AR')}</td><td><code>${escapeHtml(row.operationId||row.id||'—')}</code></td></tr>`).join('');
+    table.innerHTML=`<table class="admin-debug-table"><thead><tr><th>${gameTextHtml('admin.movements.col.date')}</th><th>${gameTextHtml('admin.movements.col.operation')}</th><th>${gameTextHtml('admin.movements.col.deltaPoints')}</th><th>${gameTextHtml('admin.movements.col.balancePoints')}</th><th>${gameTextHtml('admin.movements.col.deltaFichas')}</th><th>${gameTextHtml('admin.movements.col.balanceFichas')}</th><th>${gameTextHtml('admin.movements.col.deltaPacks')}</th><th>${gameTextHtml('admin.movements.col.balancePacks')}</th><th>${gameTextHtml('admin.movements.col.deltaEssence')}</th><th>${gameTextHtml('admin.movements.col.balanceEssence')}</th><th>${gameTextHtml('admin.movements.col.evidence')}</th></tr></thead><tbody>${body||`<tr><td colspan="11">${gameTextHtml('admin.movements.empty')}</td></tr>`}</tbody></table>`;
     summary.textContent=`${movementData.username||movementData.uid} · ${rows.length} movimientos visibles · ${all.length} eventos cargados`;
   }
 
@@ -9351,12 +9557,14 @@ Receipt: ${receiptId}
     const totalPoints = rows.reduce((n,r)=>n+(Number(r.pointsDelta)||Number(r.appliedAmount && r.kind==='points' ? r.appliedAmount : 0)||0),0);
     const totalFichas = rows.reduce((n,r)=>n+(Number(r.fichasDelta)||Number(r.appliedAmount && r.kind==='fichas' ? r.appliedAmount : 0)||0),0);
     const totalPacks = rows.reduce((n,r)=>n+(Number(r.packsDelta)||Number(r.appliedAmount && r.kind==='standardPacks' ? r.appliedAmount : 0)||0),0);
+    const totalEssence = rows.reduce((n,r)=>n+(Number(r.essenceDelta)||Number(r.appliedAmount && r.kind==='essence' ? r.appliedAmount : 0)||0),0);
     const adminCount = rows.filter(r=>r.auditKind==='adminAction').length;
     const cards = [
       [gameText('admin.audit.kpi.visible'), rows.length, gameText('admin.audit.kpi.loaded',{count:economyAuditRows.length})],
       [gameText('admin.audit.kpi.points'), `${totalPoints>=0?'+':''}${totalPoints.toLocaleString('es-AR')}`, gameText('admin.audit.kpi.filtered')],
       [gameText('admin.audit.kpi.fichas'), `${totalFichas>=0?'+':''}${totalFichas.toLocaleString('es-AR')}`, gameText('admin.audit.kpi.filtered')],
-      [gameText('admin.audit.kpi.packs'), `${totalPacks>=0?'+':''}${totalPacks.toLocaleString('es-AR')}`, gameText('admin.audit.kpi.adminActions',{count:adminCount})]
+      [gameText('admin.audit.kpi.packs'), `${totalPacks>=0?'+':''}${totalPacks.toLocaleString('es-AR')}`, gameText('admin.audit.kpi.filtered')],
+      [gameText('admin.audit.kpi.essence'), `${totalEssence>=0?'+':''}${totalEssence.toLocaleString('es-AR')}`, gameText('admin.audit.kpi.adminActions',{count:adminCount})]
     ];
     overlay.querySelector('#admin-economy-audit-cards').innerHTML = cards.map(([label,value,sub])=>`<div class="admin-stat-card"><div class="admin-stat-label">${escapeHtml(label)}</div><div class="admin-stat-value">${escapeHtml(value)}</div><div class="admin-stat-sub">${escapeHtml(sub)}</div></div>`).join('');
     const body = rows.map(row => {
@@ -9365,9 +9573,10 @@ Receipt: ${receiptId}
       const points=Number(row.pointsDelta)||Number(row.kind==='points'?row.appliedAmount:0)||0;
       const fichas=Number(row.fichasDelta)||Number(row.kind==='fichas'?row.appliedAmount:0)||0;
       const packs=Number(row.packsDelta)||Number(row.kind==='standardPacks'?row.appliedAmount:0)||0;
+      const essence=Number(row.essenceDelta)||Number(row.kind==='essence'?row.appliedAmount:0)||0;
       const delta=(row.type==='trade.complete'||row.source==='trade_market_complete_server')
         ? gameText('admin.audit.delta.trade')
-        : ([points?`P ${points>0?'+':''}${points}`:'',fichas?`F ${fichas>0?'+':''}${fichas}`:'',packs?`S ${packs>0?'+':''}${packs}`:''].filter(Boolean).join(' · ')||'—');
+        : ([points?`P ${points>0?'+':''}${points}`:'',fichas?`F ${fichas>0?'+':''}${fichas}`:'',packs?`S ${packs>0?'+':''}${packs}`:'',essence?`E ${essence>0?'+':''}${essence}`:''].filter(Boolean).join(' · ')||'—');
       const actor=String(row.adminUid||row.actorUid||'server');
       const detail=escapeHtml(JSON.stringify(row, (_k,v)=>typeof v?.toDate==='function'?v.toDate().toISOString():v));
       return `<tr title="${detail}"><td>${escapeHtml(when)}</td><td><strong>${escapeHtml(row.auditKind==='adminAction'?'ADMIN':'ECON')}</strong></td><td>${escapeHtml(economyAuditLabel(row))}</td><td>${target?economyAuditIdentityHtml(target):'—'}</td><td>${escapeHtml(delta)}</td><td><code>${escapeHtml(op)}</code></td><td>${economyAuditIdentityHtml(actor)}</td></tr>`;
@@ -9476,6 +9685,10 @@ Receipt: ${receiptId}
     overlay.querySelector('#admin-workshop-enabled').checked = settings.workshopEnabled !== false;
     overlay.querySelector('#admin-workshop-craft-fichas').value = Number(settings.fichasPerEnhancement ?? FICHAS_PER_ENHANCEMENT);
     overlay.querySelector('#admin-workshop-max-enhanced').value = Number(settings.maxEnhancedCardsPerDeck ?? MAX_ENHANCED_CARDS_PER_DECK);
+    overlay.querySelector('#admin-workshop-essence-enabled').checked = settings.essenceConversionEnabled !== false;
+    overlay.querySelector('#admin-workshop-essence-points').value = Number(settings.essenceConversionPoints ?? WORKSHOP_POLICY.essence.pointsPerUnit);
+    overlay.querySelector('#admin-workshop-essence-fichas').value = Number(settings.essenceConversionFichas ?? WORKSHOP_POLICY.essence.fichasPerUnit);
+    overlay.querySelector('#admin-workshop-essence-max').value = Number(settings.essenceConversionMaxPerOperation ?? WORKSHOP_POLICY.essence.maxPerOperation);
 
     settingsRoot.innerHTML = WORKSHOP_MACHINE_IDS.map((id,index)=>{
       const n=index+1;
@@ -9515,20 +9728,58 @@ Receipt: ${receiptId}
     controls.querySelectorAll('[data-workshop-preview]').forEach(input=>input.addEventListener('change',()=>{const id=input.dataset.workshopPreview;adminWorkshopPreview[id]=input.checked;if(!input.checked&&adminWorkshopEditingId===id)adminWorkshopEditingId=null;renderAdminWorkshopMachines();}));
     renderAdminWorkshopMachines();
 
-    overlay.querySelector('#admin-workshop-save-layout')?.addEventListener('click',async()=>{
+    overlay.querySelector('#admin-workshop-save-layout')?.addEventListener('click',async event=>{
       if(layoutStatus) layoutStatus.textContent='';
-      try { await saveAdminGameConfigDocument('workshop',{ schemaVersion:1, machines:adminWorkshopLayout.machines }); if(layoutStatus) layoutStatus.textContent=gameText('admin.workshop.layoutSaved'); }
-      catch(err){ if(layoutStatus) layoutStatus.textContent=gameText('admin.workshop.saveError',{message:err?.message||'Error'}); }
+      try {
+        await withEconomyButtonPending(event.currentTarget, () => saveAdminGameConfigDocument('workshop',{ schemaVersion:1, machines:adminWorkshopLayout.machines }), {
+          pendingLabel:gameText('admin.workshop.saving'), slowLabel:gameText('workshop.server.slow')
+        });
+        if(layoutStatus) layoutStatus.textContent=gameText('admin.workshop.layoutSaved');
+      } catch(err){ if(layoutStatus) layoutStatus.textContent=gameText('admin.workshop.saveError',{message:err?.message||'Error'}); }
     });
-    overlay.querySelector('#admin-workshop-save-settings')?.addEventListener('click',async()=>{
+    overlay.querySelector('#admin-workshop-save-settings')?.addEventListener('click',async event=>{
       if(settingsStatus) settingsStatus.textContent='';
       try{
         const merged={...settings,workshopEnabled:overlay.querySelector('#admin-workshop-enabled').checked,
           fichasPerEnhancement:Math.max(1,Math.floor(Number(overlay.querySelector('#admin-workshop-craft-fichas').value)||1)),
-          maxEnhancedCardsPerDeck:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-max-enhanced').value)||0))};
+          maxEnhancedCardsPerDeck:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-max-enhanced').value)||0)),
+          essenceConversionEnabled:overlay.querySelector('#admin-workshop-essence-enabled').checked,
+          essenceConversionPoints:Math.max(1,Math.floor(Number(overlay.querySelector('#admin-workshop-essence-points').value)||1)),
+          essenceConversionFichas:Math.max(0,Math.floor(Number(overlay.querySelector('#admin-workshop-essence-fichas').value)||0)),
+          essenceConversionMaxPerOperation:Math.min(100,Math.max(1,Math.floor(Number(overlay.querySelector('#admin-workshop-essence-max').value)||1)))};
         WORKSHOP_MACHINE_IDS.forEach((id,index)=>{const n=index+1;merged[`workshopMachine${n}Available`]=overlay.querySelector(`#admin-workshop-${id}-available`).checked;merged[`workshopMachine${n}UnlockPoints`]=Math.max(0,Math.floor(Number(overlay.querySelector(`#admin-workshop-${id}-points`).value)||0));merged[`workshopMachine${n}UnlockFichas`]=Math.max(0,Math.floor(Number(overlay.querySelector(`#admin-workshop-${id}-fichas`).value)||0));});
-        await saveGameConfig(merged); settings=merged; applyGameConfig(merged); if(settingsStatus)settingsStatus.textContent=gameText('admin.workshop.settingsSaved');
+        await withEconomyButtonPending(event.currentTarget, () => saveGameConfig(merged), {
+          pendingLabel:gameText('admin.workshop.saving'), slowLabel:gameText('workshop.server.slow')
+        });
+        settings=merged; applyGameConfig(merged); if(settingsStatus)settingsStatus.textContent=gameText('admin.workshop.settingsSaved');
       }catch(err){if(settingsStatus)settingsStatus.textContent=gameText('admin.workshop.saveError',{message:err?.message||'Error'});}
+    });
+  }
+
+
+  let adminAchievementsMounted=false;
+  let adminAchievementsConfig=normalizeAchievementsConfig({});
+  async function ensureAdminAchievementsPane(){
+    if(adminAchievementsMounted) return;
+    adminAchievementsMounted=true;
+    const table=overlay.querySelector('#admin-achievements-table'),enabledEl=overlay.querySelector('#admin-achievements-enabled'),saveBtn=overlay.querySelector('#admin-achievements-save'),status=overlay.querySelector('#admin-achievements-status');
+    if(!table||!enabledEl||!saveBtn) return;
+    try{adminAchievementsConfig=normalizeAchievementsConfig(await loadPublicGameConfigDocument('achievements')||{});}catch(err){console.warn('No se pudo cargar config de Logros; se usan defaults:',err);adminAchievementsConfig=normalizeAchievementsConfig({});}
+    enabledEl.checked=adminAchievementsConfig.enabled!==false;
+    const rows=[];
+    for(const family of ACHIEVEMENT_FAMILIES){
+      for(const tier of ACHIEVEMENT_TIERS){
+        const id=achievementId(family.id,tier),row=adminAchievementsConfig.entries[id];
+        rows.push(`<tr data-achievement-row="${escapeHtml(id)}"><td><input type="checkbox" data-achievement-field="enabled" ${row.enabled?'checked':''}></td><td><strong>${escapeHtml(achievementFamilyLabel(family.id))}</strong><div style="font-size:11px;color:#999">${escapeHtml(achievementMetricLabel(family.id))}</div></td><td>${ACHIEVEMENT_TIER_ICONS[tier]||'🏆'} ${escapeHtml(achievementTierLabel(tier))}</td><td><input type="number" min="1" step="1" class="admin-field-input" data-achievement-field="target" value="${row.target}" style="width:90px"></td><td><input type="number" min="0" step="1" class="admin-field-input" data-achievement-field="points" value="${row.points}" style="width:82px"></td><td><input type="number" min="0" step="1" class="admin-field-input" data-achievement-field="fichas" value="${row.fichas}" style="width:72px"></td><td><input type="number" min="0" step="1" class="admin-field-input" data-achievement-field="essence" value="${row.essence}" style="width:72px"></td></tr>`);
+      }
+    }
+    table.innerHTML=`<table class="admin-debug-table"><thead><tr><th>${gameTextHtml('admin.achievements.col.enabled')}</th><th>${gameTextHtml('admin.achievements.col.achievement')}</th><th>${gameTextHtml('admin.achievements.col.trophy')}</th><th>${gameTextHtml('admin.achievements.target')}</th><th>${gameTextHtml('admin.achievements.points')}</th><th>${gameTextHtml('admin.achievements.fichas')}</th><th>${gameTextHtml('admin.achievements.essence')}</th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
+    saveBtn.addEventListener('click',async()=>{
+      if(status)status.textContent='';
+      const entries={...adminAchievementsConfig.entries};
+      table.querySelectorAll('[data-achievement-row]').forEach(tr=>{const id=tr.dataset.achievementRow,base=entries[id];entries[id]={...base,enabled:tr.querySelector('[data-achievement-field="enabled"]').checked,target:Math.max(1,Math.floor(Number(tr.querySelector('[data-achievement-field="target"]').value)||1)),points:Math.max(0,Math.floor(Number(tr.querySelector('[data-achievement-field="points"]').value)||0)),fichas:Math.max(0,Math.floor(Number(tr.querySelector('[data-achievement-field="fichas"]').value)||0)),essence:Math.max(0,Math.floor(Number(tr.querySelector('[data-achievement-field="essence"]').value)||0))};});
+      const payload={schemaVersion:1,enabled:enabledEl.checked,entries};
+      try{await withEconomyButtonPending(saveBtn,()=>saveAdminGameConfigDocument('achievements',payload),{pendingLabel:gameText('admin.achievements.saving'),slowLabel:gameText('workshop.server.slow')});adminAchievementsConfig=normalizeAchievementsConfig(payload);if(status)status.textContent=gameText('admin.achievements.saved');}catch(err){if(status)status.textContent=gameText('admin.achievements.saveError',{message:err?.message||'Error'});}
     });
   }
 
@@ -9541,6 +9792,7 @@ Receipt: ${receiptId}
     }
     if (key === 'messages') void ensureAdminMessageUsers();
     if (key === 'workshop') void ensureAdminWorkshopPane();
+    if (key === 'achievements') void ensureAdminAchievementsPane();
     if (key === 'campaigns') ensureAdminCampaignsPane();
     if (key === 'stats' && !statsLoaded) reloadAdminStatistics();
     if (key === 'economyAudit') activateEconomySubtab(economySubtab);
@@ -9867,7 +10119,7 @@ Receipt: ${receiptId}
     const currencyField = overlay.querySelector('#grant-currency').value;
     const recipient = overlay.querySelector('#grant-recipient').value;
     const reason = overlay.querySelector('#grant-reason').value.trim();
-    const currencyLabel = currencyField === 'points' ? 'puntos' : currencyField === 'fichas' ? 'Fichas' : currencyField === 'guaranteedMythics' ? gameText('admin.gifts.guaranteedMythic') : 'sobres';
+    const currencyLabel = currencyField === 'points' ? 'puntos' : currencyField === 'fichas' ? 'Fichas' : currencyField === 'essence' ? gameText('admin.gifts.essenceFuture') : currencyField === 'guaranteedMythics' ? gameText('admin.gifts.guaranteedMythic') : 'sobres';
 
     if (!Number.isInteger(amount) || amount === 0) {
       grantErrorBox.textContent = 'La cantidad tiene que ser un número entero distinto de cero.';
@@ -9887,24 +10139,21 @@ Receipt: ${receiptId}
     if (!window.confirm(`¿Confirmás dar ${amount} ${currencyLabel} a ${recipientLabel}?`)) return;
 
     const sendBtn = overlay.querySelector('#admin-grant-send');
-    sendBtn.disabled = true;
     try {
       if (recipient === 'ALL') {
-        const result = currencyField === 'standardPacks'
-          ? await adminGrantPacksToAll(amount, reason)
-          : await adminGrantCurrencyToAll(currencyField, amount, reason);
+        const result = await withEconomyButtonPending(sendBtn, () => currencyField === 'standardPacks'
+          ? adminGrantPacksToAll(amount, reason)
+          : adminGrantCurrencyToAll(currencyField, amount, reason), { pendingLabel:gameText('admin.workshop.saving'), slowLabel:gameText('workshop.server.slow') });
         grantSuccessBox.textContent = `✅ Aplicado a ${result.succeeded}/${result.total} cuentas${result.failed > 0 ? ` (${result.failed} fallaron)` : ''}.`;
       } else {
-        const newValue = currencyField === 'standardPacks'
-          ? await adminGrantPacks(recipient, amount, reason)
-          : await adminGrantCurrency(recipient, currencyField, amount, reason);
+        const newValue = await withEconomyButtonPending(sendBtn, () => currencyField === 'standardPacks'
+          ? adminGrantPacks(recipient, amount, reason)
+          : adminGrantCurrency(recipient, currencyField, amount, reason), { pendingLabel:gameText('admin.workshop.saving'), slowLabel:gameText('workshop.server.slow') });
         grantSuccessBox.textContent = `✅ Listo — esa cuenta ahora tiene ${newValue} ${currencyLabel}.`;
       }
     } catch (err) {
       console.error('No se pudo aplicar el regalo:', err);
       grantErrorBox.textContent = err.message || 'No se pudo aplicar. Probá de nuevo.';
-    } finally {
-      sendBtn.disabled = false;
     }
   });
 

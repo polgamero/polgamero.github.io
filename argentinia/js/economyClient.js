@@ -123,6 +123,19 @@ export function unlockWorkshopMachineServer(machineId, operationId = null) {
   });
 }
 
+export function claimAchievementServer(achievementId, operationId = null) {
+  return call('economyCraftEnhancement', {
+    operationId: operationId || createEconomyOperationId('achievement-claim'),
+    action: 'claimAchievement', achievementId:String(achievementId || '')
+  });
+}
+export function convertEssenceServer(quantity = 1, operationId = null) {
+  return call('economyCraftEnhancement', {
+    operationId: operationId || createEconomyOperationId('essence-convert'),
+    action: 'convertEssence', quantity:Math.floor(Number(quantity) || 0)
+  });
+}
+
 export function purchasePrebuiltDeckServer(productId, deckName, operationId = null) {
   return call('economyPurchasePrebuiltDeck', {
     operationId: operationId || createEconomyOperationId('prebuilt'),

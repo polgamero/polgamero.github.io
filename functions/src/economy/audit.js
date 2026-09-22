@@ -12,7 +12,7 @@ const NUMERIC_KEYS = [
   'basicLandPacksPurchased','basicLandsReceived','basicLandPacksWhite','basicLandPacksBlue',
   'basicLandPacksBlack','basicLandPacksRed','basicLandPacksGreen',
   'storePacksPurchased','enhancementsCrafted','prebuiltDecksPurchased','classifiedsCardsPurchased',
-  'emotesPurchased','dailyRewardsClaimed','workshopMachinesUnlocked'
+  'emotesPurchased','dailyRewardsClaimed','workshopMachinesUnlocked','essenceEarned','essenceSpent','achievementClaims'
 ];
 
 function int(value){ const n=Math.floor(Number(value)||0); return Number.isFinite(n)?n:0; }
@@ -39,7 +39,7 @@ export function playerStatsMirrorServer(uid, profile={}, currentStats={}, deltas
     // Ranking visibility is derived server-side from the immutable admin authority identity.
     // We deliberately do NOT publish the email itself in playerStats.
     excludeFromGlobalRanking:String(profile.email||'').trim().toLowerCase() === ADMIN_EMAIL,
-    pointsCurrent:nonneg(profile.points), fichasCurrent:nonneg(profile.fichas),
+    pointsCurrent:nonneg(profile.points), fichasCurrent:nonneg(profile.fichas), essenceCurrent:nonneg(profile.essence),
     packsInChest:inventory.standardPacks, cardsOwned:collection.length,
     uniqueCards:new Set(collection.map(String)).size,
     authority:'server', economySchemaVersion:ECONOMY_SCHEMA_VERSION,
@@ -49,7 +49,7 @@ export function playerStatsMirrorServer(uid, profile={}, currentStats={}, deltas
 function safeId(value){ return String(value||'').replace(/[^A-Za-z0-9_-]/g,'_').slice(0,420); }
 
 export function deriveAuthorityAudit(type,result={}){
-  const out={ source:String(type||'unknown'), pointsDelta:0, fichasDelta:0, packsDelta:0, cardsDelta:0, stats:{} };
+  const out={ source:String(type||'unknown'), pointsDelta:0, fichasDelta:0, essenceDelta:0, packsDelta:0, cardsDelta:0, stats:{} };
   switch(String(type||'')){
     case 'chest.open_pack':
       out.source='pack_open_server'; out.fichasDelta=nonneg(result.fichasGain); out.packsDelta=-1;
@@ -64,6 +64,12 @@ export function deriveAuthorityAudit(type,result={}){
       out.source='enhancement_craft_server'; out.fichasDelta=-nonneg(result.fichasCost); out.stats={fichasSpent:nonneg(result.fichasCost),enhancementsCrafted:1}; break;
     case 'workshop.unlock_machine':
       out.source='workshop_machine_unlock_server'; out.pointsDelta=-nonneg(result.pointsCost); out.fichasDelta=-nonneg(result.fichasCost); out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost),workshopMachinesUnlocked:result.duplicate?0:1}; break;
+    case 'achievement.claim':
+      out.source='achievement_claim_server'; out.pointsDelta=nonneg(result.pointsGain); out.fichasDelta=nonneg(result.fichasGain); out.essenceDelta=nonneg(result.essenceGain);
+      out.stats={pointsEarned:out.pointsDelta,fichasEarned:out.fichasDelta,essenceEarned:out.essenceDelta,achievementClaims:1}; break;
+    case 'essence.convert':
+      out.source='essence_conversion_server'; out.pointsDelta=-nonneg(result.pointsCost); out.fichasDelta=-nonneg(result.fichasCost); out.essenceDelta=nonneg(result.essenceGain);
+      out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost),essenceEarned:out.essenceDelta}; break;
     case 'store.purchase_prebuilt':
       out.source='prebuilt_deck_purchase_server'; out.pointsDelta=-nonneg(result.pointsCost); out.fichasDelta=-nonneg(result.fichasCost); out.cardsDelta=nonneg(result.cardsGranted);
       out.stats={pointsSpent:nonneg(result.pointsCost),fichasSpent:nonneg(result.fichasCost),prebuiltDecksPurchased:1}; break;
@@ -119,7 +125,7 @@ export async function recordAuthorityAudit(db,{uid,operationId,type,result,actor
     tx.create(eventRef,{
       actorUid:String(actorUid||uid),targetUid:String(uid),source:derived.source,
       operationId:String(operationId||''),type:String(type||''),
-      pointsDelta:derived.pointsDelta,fichasDelta:derived.fichasDelta,packsDelta:derived.packsDelta,cardsDelta:derived.cardsDelta,
+      pointsDelta:derived.pointsDelta,fichasDelta:derived.fichasDelta,essenceDelta:derived.essenceDelta,packsDelta:derived.packsDelta,cardsDelta:derived.cardsDelta,
       metadata:metadata&&typeof metadata==='object'?metadata:{},authority:'server',immutable:true,
       engineVersion:ENGINE_VERSION,economySchemaVersion:ECONOMY_SCHEMA_VERSION,createdAt:FieldValue.serverTimestamp()
     });

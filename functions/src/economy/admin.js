@@ -5,7 +5,7 @@ import { ENGINE_VERSION, ECONOMY_SCHEMA_VERSION } from '../shared/constants.js';
 import { normalizeMatchRewardConfig } from './matchCore.js';
 import { playerStatsMirrorServer, normalizePlayerStatsServer } from './audit.js';
 
-const GRANT_KINDS=new Set(['points','fichas','standardPacks','guaranteedMythics']);
+const GRANT_KINDS=new Set(['points','fichas','essence','standardPacks','guaranteedMythics']);
 const BULK_PAGE_SIZE=10;
 const safeId=v=>String(v||'').replace(/[^A-Za-z0-9_-]/g,'_').slice(0,420);
 const nonneg=v=>Math.max(0,Math.floor(Number(v)||0));
@@ -20,6 +20,7 @@ export function normalizeAdminGrantRequest(data={}){
 function grantPatch(profile,kind,amount){
   if(kind==='points'){const before=nonneg(profile.points),after=Math.max(0,before+amount);return {patch:{points:after},before,after,applied:after-before};}
   if(kind==='fichas'){const before=nonneg(profile.fichas),after=Math.max(0,before+amount);return {patch:{fichas:after},before,after,applied:after-before};}
+  if(kind==='essence'){const before=nonneg(profile.essence),after=Math.max(0,before+amount);return {patch:{essence:after},before,after,applied:after-before};}
   const inventory=normalizeInventory(profile.inventory);
   if(kind==='guaranteedMythics'){
     const before=inventory.guaranteedMythics,after=before+amount;
@@ -31,10 +32,11 @@ function grantPatch(profile,kind,amount){
 function grantStatDeltas(kind,applied){
   if(kind==='points') return applied>=0?{pointsEarned:applied}:{pointsLost:Math.abs(applied)};
   if(kind==='fichas') return applied>=0?{fichasEarned:applied}:{fichasSpent:Math.abs(applied)};
+  if(kind==='essence') return applied>=0?{essenceEarned:applied}:{essenceSpent:Math.abs(applied)};
   if(kind==='standardPacks') return {packsReceived:Math.max(0,applied)};
   return {};
 }
-function grantEventDeltas(kind,applied){return {pointsDelta:kind==='points'?applied:0,fichasDelta:kind==='fichas'?applied:0,packsDelta:kind==='standardPacks'?applied:0,cardsDelta:0};}
+function grantEventDeltas(kind,applied){return {pointsDelta:kind==='points'?applied:0,fichasDelta:kind==='fichas'?applied:0,essenceDelta:kind==='essence'?applied:0,packsDelta:kind==='standardPacks'?applied:0,cardsDelta:0};}
 
 export async function adminGrantTx({db,tx,adminUid,operationId,targetUid,kind,amount,reason,bulkJobId=null}){
   const userRef=db.collection('users').doc(targetUid),statsRef=db.collection('playerStats').doc(targetUid);

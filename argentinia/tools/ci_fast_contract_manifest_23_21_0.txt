@@ -183,3 +183,6 @@ tools/test_crawler_monetization_hardening_23_21_6_hf23_3_10.mjs
 tools/test_public_card_gallery_23_21_6_hf23_3_11.mjs
 
 tools/test_workshop_foundation_23_21_6_hf23_3_12.mjs
+
+
+tools/test_achievements_essence_23_21_6_hf23_3_13.mjs
