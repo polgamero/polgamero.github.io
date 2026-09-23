@@ -119,7 +119,8 @@ configurePublicProfileUI({
   getEnhancements:()=>state.userProfile?.enhancements&&typeof state.userProfile.enhancements==='object'?state.userProfile.enhancements:{},
   getEvolutions:()=>state.userProfile?.evolutions&&typeof state.userProfile.evolutions==='object'?state.userProfile.evolutions:{},
   renderCard:card=>createCardElement(card,false,true,null,'encyclopedia',null),
-  onFavoriteChanged:cardId=>{ if(state.userProfile) state.userProfile={...state.userProfile,favoriteCardId:String(cardId||'')}; }
+  onFavoriteChanged:cardId=>{ if(state.userProfile) state.userProfile={...state.userProfile,favoriteCardId:String(cardId||'')}; },
+  openRename:onUpdated=>openCurrentUserRename({onUpdated})
 });
 
 const ICON_MAP = {
@@ -2775,10 +2776,12 @@ function injectMainMenuStyles() {
       color: #f0e0b0; font-size: 13px; font-weight: 700; max-width: 160px;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .main-menu-account-points {
-      color: #d4af37; font-size: 11px; font-weight: 600; margin: 1px 0 2px;
-      display: flex; align-items: center; gap: 4px;
+    .main-menu-account-wallet {
+      color:#d4af37; font-size:11px; font-weight:700; margin:3px 0 4px;
+      display:flex; align-items:center; gap:9px; flex-wrap:nowrap;
     }
+    .main-menu-account-wallet-item { display:inline-flex; align-items:center; gap:3px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+    .main-menu-account-wallet .coin-icon, .main-menu-account-wallet .ficha-icon, .main-menu-account-wallet .essence-icon { width:20px; height:20px; }
     .coin-icon, .ficha-icon, .essence-icon {
       width: 3em; height: 3em; object-fit: contain; vertical-align: middle; flex-shrink: 0;
     }
@@ -2787,9 +2790,6 @@ function injectMainMenuStyles() {
       cursor: pointer; text-decoration: underline; padding: 0; display: block;
     }
     .main-menu-logout-btn:hover { color: #f0e0b0; }
-    .main-menu-rename-btn { border:0; background:none; padding:0; color:#d6bd69; font-size:11px; cursor:pointer; text-align:left; }
-    .main-menu-rename-btn:hover { color:#f2d77c; text-decoration:underline; }
-    .main-menu-rename-btn:disabled { color:#756f62; cursor:not-allowed; text-decoration:none; }
     .main-menu-account-error { color: #e07a6b; font-size: 12px; max-width: 260px; text-align: right; }
 .main-menu-news {
     position: absolute;
@@ -3031,6 +3031,7 @@ function formatAnnouncementDate(date) {
 }
 const FICHA_ICON_HTML = `<img class="ficha-icon" src="./assets/images/ui/ficha.png" alt="🎫" onerror="this.outerHTML='🎫'">`;
 const ESSENCE_ICON_HTML = `<img class="essence-icon" src="./assets/images/ui/esencia.png" alt="✦" onerror="this.outerHTML='✦'">`;
+const MYTHIC_ICON_HTML = `<img class="mythic-icon" src="./assets/images/ui/mythic.png" alt="✦" onerror="this.outerHTML='✦'">`;
 
 const PACK_ICON_HTML = `<img class="reward-pack-icon" src="./assets/images/ui/sobres.png" alt="📦" onerror="this.outerHTML='📦'">`;
 
@@ -3061,7 +3062,7 @@ function injectRewardsStyles() {
     .chest-item > .reward-action-btn { flex:0 0 auto; margin-top:12px; }
     .chest-item.chest-mythic { border-color:#d9792f; box-shadow:0 0 30px rgba(217,121,47,.14),0 12px 36px rgba(0,0,0,.3); }
     .chest-item-icon { min-height:72px; display:flex; align-items:center; justify-content:center; font-size:54px; }
-    .chest-item .coin-icon, .chest-item .ficha-icon, .chest-item .essence-icon { width:68px; height:68px; }
+    .chest-item .coin-icon, .chest-item .ficha-icon, .chest-item .essence-icon, .chest-item .mythic-icon { width:68px; height:68px; object-fit:contain; }
     .reward-pack-icon { width:120px; height:120px; object-fit:contain; vertical-align:middle; }
     .chest-item-title { font-size:16px; font-weight:800; margin-top:7px; }
     .chest-item-count { font-size:28px; font-weight:900; color:#d4af37; margin:4px 0 9px; }
@@ -3340,7 +3341,7 @@ export function showChestScreen(onBack) {
           <button class="reward-action-btn" id="chest-open-pack" ${packs < 1 && !pendingPack ? 'disabled' : ''}>${packAction}</button>
         </div>
         <div class="chest-item chest-mythic">
-          <div class="chest-item-content"><div class="chest-item-icon">✦</div><div class="chest-item-title">${gameTextHtml('chest.mythic.title')}</div><div class="chest-item-count">${mythics}</div>
+          <div class="chest-item-content"><div class="chest-item-icon">${MYTHIC_ICON_HTML}</div><div class="chest-item-title">${gameTextHtml('chest.mythic.title')}</div><div class="chest-item-count">${mythics}</div>
           <div class="chest-item-desc">${pendingMythic ? gameTextHtml('chest.mythic.pendingDescription') : gameTextHtml('chest.mythic.description')}</div></div>
           <button class="reward-action-btn" id="chest-open-mythic" ${mythics < 1 && !pendingMythic ? 'disabled' : ''}>${mythicAction}</button>
         </div>
@@ -6317,20 +6318,20 @@ export function showWorkshopScreen(onBack, options = {}) {
       const btn=event.currentTarget, status=panel.querySelector('#workshop-status');
       const closeBtn=panel.querySelector('#workshop-panel-close');
       try {
-        const outcome = await withEconomyButtonPending(btn, async () => {
-          const result=await unlockWorkshopMachine(state.currentUser.uid, machineId);
-          if(result?.profile) state.userProfile=result.profile;
-          renderWallet();
-          const machineEl=machineRoot.querySelector(`[data-machine-id="${machineId}"] .workshop-machine-hitbox`) || machineRoot.querySelector(`[data-machine-id="${machineId}"]`);
-          await queueWorkshopUnlockAnimation({machineElement:machineEl,machineId});
-          return result;
-        }, {
+        const outcome = await withEconomyButtonPending(btn, () => unlockWorkshopMachine(state.currentUser.uid, machineId), {
           pendingLabel:gameText('workshop.unlock.pending'),
           slowLabel:gameText('workshop.server.slow'),
           disablePeers:[closeBtn]
         });
         if (!outcome) return;
-        renderMachines(); renderPanel(machineId); updateAccountUI(state.currentUser);
+        if(outcome?.profile) state.userProfile=outcome.profile;
+        renderWallet();
+        panel.hidden=true;
+        const machineEl=machineRoot.querySelector(`[data-machine-id="${machineId}"] .workshop-machine-hitbox`) || machineRoot.querySelector(`[data-machine-id="${machineId}"]`);
+        await queueWorkshopUnlockAnimation({machineElement:machineEl,machineId});
+        renderMachines();
+        renderPanel(machineId);
+        updateAccountUI(state.currentUser);
         const liveStatus=panel.querySelector('#workshop-status'); if(liveStatus) liveStatus.textContent=gameText('workshop.unlock.success',{machine:machineTitle(machineId)});
       } catch(err) {
         console.error('No se pudo desbloquear la máquina:',err);
@@ -7874,6 +7875,36 @@ async function maybeShowAchievementUnlockNotice(openAchievements){
   }catch(err){console.warn('No se pudo evaluar aviso de Logros:',err);}finally{achievementNoticeBusy=false;}
 }
 
+function openCurrentUserRename({onUpdated=null}={}) {
+  if (!state.currentUser || !state.userProfile) return null;
+  if (state.currentMatch || state.userProfile.activeMatchId) {
+    showSimpleAlertModal(gameText('account.renameActiveMatch'));
+    return null;
+  }
+  if ((Number(state.userProfile.fichas) || 0) < USERNAME_RENAME_COST) {
+    showSimpleAlertModal(gameText('account.renameNeedFichas', { cost: USERNAME_RENAME_COST }));
+    return null;
+  }
+  return showUsernameRenameModal({
+    currentUsername: getLocalPlayerName(),
+    fichas: Number(state.userProfile.fichas) || 0,
+    onSave: async ({ username, usernameKey }) => {
+      const updated = await renameUsername(
+        state.currentUser.uid,
+        username,
+        usernameKey,
+        USERNAME_RENAME_COST
+      );
+      state.userProfile = updated;
+      state.currentUser.username = updated.username;
+      state.currentUser.usernameKey = updated.usernameKey;
+      updateAccountUI(state.currentUser);
+      onUpdated?.(updated);
+      return updated;
+    }
+  });
+}
+
 function renderAccountBox(container, user) {
   if (!container) return;
 
@@ -7881,8 +7912,12 @@ function renderAccountBox(container, user) {
     // Fase 2: los puntos viven en el perfil de Firestore (state.userProfile), no en el
     // objeto de auth — puede no estar cargado todavía (recién logueado) o no existir aún
     // (nunca jugó una partida), así que se muestra solo cuando hay un número real.
-    const pointsHTML = state.userProfile && typeof state.userProfile.points === 'number'
-      ? `<div class="main-menu-account-points">${COIN_ICON_HTML} ${gameTextHtml('account.points', { points: state.userProfile.points })}</div>`
+    const walletHTML = state.userProfile
+      ? `<div class="main-menu-account-wallet">
+          <span class="main-menu-account-wallet-item">${COIN_ICON_HTML}<strong>${Math.max(0,Number(state.userProfile.points)||0).toLocaleString('es-AR')}</strong></span>
+          <span class="main-menu-account-wallet-item">${FICHA_ICON_HTML}<strong>${Math.max(0,Number(state.userProfile.fichas)||0).toLocaleString('es-AR')}</strong></span>
+          <span class="main-menu-account-wallet-item">${ESSENCE_ICON_HTML}<strong>${Math.max(0,Number(state.userProfile.essence)||0).toLocaleString('es-AR')}</strong></span>
+        </div>`
       : '';
     // PANEL DE ADMIN: el botón solo se arma si el email logueado coincide EXACTO — para
     // cualquier otra cuenta, ni siquiera existe en el DOM (no es solo "oculto con CSS").
@@ -7913,8 +7948,7 @@ function renderAccountBox(container, user) {
         <img class="main-menu-account-photo" src="${user.photoURL || ''}" alt="" onerror="this.style.visibility='hidden'">
         <div>
           <div class="main-menu-account-name">${getLocalPlayerName()}</div>
-          ${pointsHTML}
-          <button class="main-menu-rename-btn" id="menu-rename" ${state.userProfile ? '' : 'disabled'}>${gameTextHtml('account.rename', { cost: USERNAME_RENAME_COST })}</button>
+          ${walletHTML}
           <button class="main-menu-logout-btn" id="menu-logout">${gameTextHtml('account.logout')}</button>
         </div>
       </div>
@@ -7975,38 +8009,7 @@ function renderAccountBox(container, user) {
         });
       });
     }
-    container.querySelector('#menu-rename')?.addEventListener('click', () => {
-      if (!state.currentUser || !state.userProfile) return;
-      if (state.currentMatch || state.userProfile.activeMatchId) {
-        showSimpleAlertModal(gameText('account.renameActiveMatch'));
-        return;
-      }
-      if ((Number(state.userProfile.fichas) || 0) < USERNAME_RENAME_COST) {
-        showSimpleAlertModal(gameText('account.renameNeedFichas', { cost: USERNAME_RENAME_COST }));
-        return;
-      }
-      showUsernameRenameModal({
-        currentUsername: getLocalPlayerName(),
-        fichas: Number(state.userProfile.fichas) || 0,
-        onSave: async ({ username, usernameKey }) => {
-          const updated = await renameUsername(
-            state.currentUser.uid,
-            username,
-            usernameKey,
-            USERNAME_RENAME_COST
-          );
-          state.userProfile = updated;
-          state.currentUser.username = updated.username;
-          state.currentUser.usernameKey = updated.usernameKey;
-          // 23.13.30 — el rename ya fue confirmado por Firestore. Refrescamos la identidad
-          // visible usando el renderer REAL de cuenta/HUD. El helper anterior nunca existió
-          // en este módulo: lanzaba ReferenceError DESPUÉS del commit exitoso,
-          // dejando el modal abierto y pudiendo conservar copy/estado visual viejo.
-          updateAccountUI(state.currentUser);
-          return updated;
-        }
-      });
-    });
+
 
     container.querySelector('#menu-logout').addEventListener('click', () => {
       signOutUser().catch(err => {

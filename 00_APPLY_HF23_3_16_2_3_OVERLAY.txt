@@ -1,0 +1,5 @@
+Aplicar SOLO sobre Argentinia 23.21.6 HF23.3.16.2.2.
+Copiar/pisar conservando rutas.
+Este overlay es frontend/UX + contratos/documentación únicamente.
+No repetir Gate03/Gate05/Gate07 ni deploy de Functions por este hotfix.
+Después: GitHub/Pages + smoke QA_23_21_6_HF23_3_16_2_3_PROFILE_UNLOCK_CHEST_MICROPOLISH.txt.

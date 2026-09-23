@@ -28,8 +28,8 @@ assert(ui.includes("if(id==='machine2') return gameText('workshop.machine2.actio
 
 // 3) Unlock is one surface: pending spinner, server action, one shared tuned cinematic+SFX, PNG only rendered afterwards.
 assert(!ui.includes('await showWorkshopUnlockConfirmModal({machine:machineTitle(machineId),points,fichas})'),'unlock still opens a second modal');
-assert(ui.includes('withEconomyButtonPending(btn, async () =>'),'unlock button must own spinner/pending state');
-assert(ui.indexOf('await queueWorkshopUnlockAnimation({machineElement:machineEl,machineId})') < ui.indexOf('renderMachines(); renderPanel(machineId); updateAccountUI(state.currentUser);'),'machine PNG must render only after unlock cinematic');
+assert(ui.includes('withEconomyButtonPending(btn, () => unlockWorkshopMachine(state.currentUser.uid, machineId)'),'unlock button must own spinner/pending state');
+{ const cinematic=ui.indexOf('await queueWorkshopUnlockAnimation({machineElement:machineEl,machineId});'); const render=ui.indexOf('renderMachines();',cinematic); assert(cinematic>=0 && render>cinematic,'machine PNG must render only after unlock cinematic'); }
 for(const token of [
   "key:'workshop_unlock'",
   "labelGameTextKey:'admin.animations.workshopUnlock'",

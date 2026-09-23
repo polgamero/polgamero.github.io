@@ -34,10 +34,13 @@ if(ui.includes('await showWorkshopUnlockConfirmModal({machine:machineTitle(machi
 if(ui.includes('window.confirm(confirmText)')) fail('workshop unlock must never use native window.confirm');
 for(const token of [
   "panel.querySelector('#workshop-unlock-machine')?.addEventListener('click', async event =>",
-  'withEconomyButtonPending(btn, async () =>',
+  'withEconomyButtonPending(btn, () => unlockWorkshopMachine(state.currentUser.uid, machineId)',
   "pendingLabel:gameText('workshop.unlock.pending')",
   'await queueWorkshopUnlockAnimation({machineElement:machineEl,machineId})',
-  'renderMachines(); renderPanel(machineId); updateAccountUI(state.currentUser);'
+  'panel.hidden=true;',
+  'renderMachines();',
+  'renderPanel(machineId);',
+  'updateAccountUI(state.currentUser);'
 ]) if(!ui.includes(token)) fail(`missing single-surface workshop unlock token ${token}`);
 
 for(const key of [
