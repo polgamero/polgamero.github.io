@@ -46,7 +46,8 @@ export const ANIMATION_TUNING_CATALOG = Object.freeze([
   Object.freeze({ key:'control_change', label:'Cambio de control', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['controlChange']) }),
   Object.freeze({ key:'workshop_enhancement', label:'Taller · Mejora de carta', labelGameTextKey:'admin.animations.workshopEnhancement', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['proliferatePulse']) }),
   Object.freeze({ key:'workshop_evolution', label:'Taller · Evolución de carta', labelGameTextKey:'admin.animations.workshopEvolution', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['permanentTransformed']) }),
-  Object.freeze({ key:'workshop_mixer', label:'Taller · Mezcladora industrial', labelGameTextKey:'admin.animations.workshopMixer', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['libraryShuffle']) })
+  Object.freeze({ key:'workshop_mixer', label:'Taller · Mezcladora industrial', labelGameTextKey:'admin.animations.workshopMixer', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['libraryShuffle']) }),
+  Object.freeze({ key:'workshop_unlock', label:'Taller · Desbloqueo de máquina', labelGameTextKey:'admin.animations.workshopUnlock', defaultRelativeSpeed:1, defaultSfxMoment:'key', sfxCadence:'single', sfxIds:Object.freeze(['permanentEntered']) })
 ]);
 
 const DEFAULT_SETTINGS = Object.freeze({ enabled: true, speed: 'normal' });
@@ -434,6 +435,42 @@ export async function queueWorkshopMixerAnimation({ machineElement } = {}, optio
   document.body.appendChild(fx); playAnimationSfx('libraryShuffle','workshop_mixer','start'); void fx.offsetWidth; fx.classList.add('run');
   const timer=setTimeout(()=>playAnimationSfx('libraryShuffle','workshop_mixer','key'),Math.max(1,Math.round(duration*.57)));
   try{await sleepMs(duration+90);}finally{clearTimeout(timer);fx.remove();}
+  return {skipped:false,duration};
+}
+
+
+const WORKSHOP_UNLOCK_STYLE_ID = 'arg-workshop-unlock-cinematic-style';
+function ensureWorkshopUnlockCinematicStyles() {
+  if (typeof document === 'undefined' || document.getElementById(WORKSHOP_UNLOCK_STYLE_ID)) return;
+  const style=document.createElement('style'); style.id=WORKSHOP_UNLOCK_STYLE_ID;
+  style.textContent=`
+    .arg-workshop-unlock-fx{position:fixed;z-index:10065;pointer-events:none;transform:translate(-50%,-50%);isolation:isolate;--fx-duration:2050ms}
+    .arg-workshop-unlock-fx .unlock-aura{position:absolute;inset:-13%;border-radius:50%;opacity:0;background:radial-gradient(circle,rgba(255,251,199,.98) 0%,rgba(255,204,79,.76) 20%,rgba(87,205,255,.34) 44%,transparent 72%);filter:blur(3px);mix-blend-mode:screen}
+    .arg-workshop-unlock-fx .unlock-ring{position:absolute;left:50%;top:50%;width:34%;aspect-ratio:1;border:3px solid rgba(255,226,120,.94);border-radius:50%;transform:translate(-50%,-50%) scale(.25);opacity:0;box-shadow:0 0 22px rgba(255,211,82,.84),inset 0 0 18px rgba(255,245,194,.48)}
+    .arg-workshop-unlock-fx .unlock-ring.r2{border-color:rgba(100,212,255,.88);animation-delay:calc(var(--fx-duration)*.10)}
+    .arg-workshop-unlock-fx .unlock-beam{position:absolute;left:46%;top:2%;width:8%;height:96%;border-radius:999px;opacity:0;background:linear-gradient(to bottom,transparent,rgba(255,252,212,.96),rgba(255,212,91,.92),transparent);filter:blur(3px);transform:scaleY(.15)}
+    .arg-workshop-unlock-fx .unlock-spark{position:absolute;left:50%;top:50%;width:5px;height:30%;border-radius:999px;background:linear-gradient(to top,transparent,rgba(255,234,144,.98),rgba(255,255,255,0));transform-origin:50% 100%;opacity:0;filter:drop-shadow(0 0 6px rgba(255,217,96,.9))}
+    .arg-workshop-unlock-fx.run .unlock-aura{animation:workshopUnlockAura var(--fx-duration) cubic-bezier(.18,.82,.2,1) both}
+    .arg-workshop-unlock-fx.run .unlock-ring{animation:workshopUnlockRing var(--fx-duration) cubic-bezier(.12,.82,.2,1) both}
+    .arg-workshop-unlock-fx.run .unlock-beam{animation:workshopUnlockBeam var(--fx-duration) cubic-bezier(.2,.78,.2,1) both}
+    .arg-workshop-unlock-fx.run .unlock-spark{animation:workshopUnlockSpark var(--fx-duration) cubic-bezier(.18,.78,.18,1) both}
+    @keyframes workshopUnlockAura{0%{opacity:0;transform:scale(.3)}20%{opacity:.65}58%{opacity:1;transform:scale(1.02)}82%{opacity:.72}100%{opacity:0;transform:scale(1.55)}}
+    @keyframes workshopUnlockRing{0%,10%{opacity:0;transform:translate(-50%,-50%) scale(.22)}34%{opacity:1}72%{opacity:.9;transform:translate(-50%,-50%) scale(1.08)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.65)}}
+    @keyframes workshopUnlockBeam{0%,18%{opacity:0;transform:scaleY(.12)}38%{opacity:.92;transform:scaleY(.84)}68%{opacity:1;transform:scaleY(1)}100%{opacity:0;transform:scaleY(1.08)}}
+    @keyframes workshopUnlockSpark{0%,18%{opacity:0;transform:rotate(var(--unlock-angle)) translateY(0) scaleY(.25)}42%{opacity:1}78%{opacity:.8;transform:rotate(var(--unlock-angle)) translateY(-16%) scaleY(1)}100%{opacity:0;transform:rotate(var(--unlock-angle)) translateY(-34%) scaleY(.3)}}`;
+  document.head.appendChild(style);
+}
+export async function queueWorkshopUnlockAnimation({ machineElement } = {}, options = {}) {
+  if (!machineElement || !animationsEffectivelyEnabled(options)) return { skipped:true, reason:'disabled_or_missing' };
+  const rect=machineElement.getBoundingClientRect?.(); if(!rect||rect.width<2||rect.height<2) return {skipped:true,reason:'no_geometry'};
+  ensureWorkshopUnlockCinematicStyles();
+  const duration=animationTunedDuration(2050,'workshop_unlock',options?.speedOverride||null);
+  const fx=document.createElement('div'); fx.className='arg-workshop-unlock-fx';
+  fx.style.left=`${rect.left+rect.width/2}px`; fx.style.top=`${rect.top+rect.height/2}px`; fx.style.width=`${Math.max(190,rect.width*1.65)}px`; fx.style.height=`${Math.max(190,rect.height*1.65)}px`; fx.style.setProperty('--fx-duration',`${duration}ms`);
+  fx.innerHTML=`<div class="unlock-aura"></div><div class="unlock-beam"></div><div class="unlock-ring r1"></div><div class="unlock-ring r2"></div>${Array.from({length:12},(_,i)=>`<i class="unlock-spark" style="--unlock-angle:${i*30}deg;animation-delay:${Math.round((i%3)*duration*.025)}ms"></i>`).join('')}`;
+  document.body.appendChild(fx); playAnimationSfx('permanentEntered','workshop_unlock','start'); void fx.offsetWidth; fx.classList.add('run');
+  const timer=setTimeout(()=>playAnimationSfx('permanentEntered','workshop_unlock','key'),Math.max(1,Math.round(duration*.56)));
+  try{await sleepMs(duration+80);}finally{clearTimeout(timer);fx.remove();}
   return {skipped:false,duration};
 }
 

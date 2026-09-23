@@ -28,27 +28,22 @@ if(!ui.includes('.achievement-claim-resource :is(.coin-icon,.ficha-icon,.essence
 if(!ui.includes('.achievement-claim-success-modal{width:min(560px,94vw)')) fail('achievement claim desktop modal styling missing');
 if(!ui.includes('.achievement-claim-success-modal{width:min(94vw,460px)')) fail('achievement claim mobile modal styling missing');
 
+// HF23.3.16.2.2 supersedes the intermediate custom confirm: the visible workshop panel is now
+// the only confirmation surface, with a spinner on its own DESBLOQUEAR button.
+if(ui.includes('await showWorkshopUnlockConfirmModal({machine:machineTitle(machineId),points,fichas})')) fail('workshop unlock must not open a second confirmation modal');
+if(ui.includes('window.confirm(confirmText)')) fail('workshop unlock must never use native window.confirm');
 for(const token of [
-  'function showWorkshopUnlockConfirmModal',
-  "modal.className='gy-modal-overlay workshop-unlock-confirm-overlay'",
-  'workshop-unlock-confirm-modal',
-  'workshop-unlock-costs',
-  'data-workshop-unlock-confirm',
-  'data-workshop-unlock-cancel',
-  'await showWorkshopUnlockConfirmModal({machine:machineTitle(machineId),points,fichas})'
-]) if(!ui.includes(token)) fail(`missing workshop unlock modal token ${token}`);
-
-if(!ui.includes('document.body.appendChild(modal);')) fail('workshop unlock confirmation modal must be mounted in DOM before awaiting user action');
-if(ui.includes('window.confirm(confirmText)')) fail('workshop unlock still uses native window.confirm and may drop mobile fullscreen');
-if(!ui.includes('.workshop-unlock-confirm-actions{flex-direction:column}')) fail('mobile unlock action layout missing');
+  "panel.querySelector('#workshop-unlock-machine')?.addEventListener('click', async event =>",
+  'withEconomyButtonPending(btn, async () =>',
+  "pendingLabel:gameText('workshop.unlock.pending')",
+  'await queueWorkshopUnlockAnimation({machineElement:machineEl,machineId})',
+  'renderMachines(); renderPanel(machineId); updateAccountUI(state.currentUser);'
+]) if(!ui.includes(token)) fail(`missing single-surface workshop unlock token ${token}`);
 
 for(const key of [
-  'workshop.unlock.modalTitle',
-  'workshop.unlock.modalBody',
-  'workshop.unlock.confirmAction',
   'achievements.claim.modalTitle',
   'achievements.claim.modalSubtitle',
   'achievements.claim.continue'
 ]) if(!texts.includes(`'${key}'`)) fail(`missing Game Text ${key}`);
 
-console.log('ACHIEVEMENT_CLAIM_WORKSHOP_UNLOCK_MODALS_23_21_6_HF23_3_14_2_2_OK achievements=STANDARD_GY_MODAL+RESOURCE_IMAGES workshopUnlock=CUSTOM_DOM_CONFIRM+FULLSCREEN_SAFE mobile=RESPONSIVE');
+console.log('ACHIEVEMENT_CLAIM_WORKSHOP_UNLOCK_MODALS_23_21_6_HF23_3_14_2_2_OK achievements=STANDARD_GY_MODAL+RESOURCE_IMAGES workshopUnlock=SINGLE_PANEL+SPINNER+FULLSCREEN_SAFE mobile=RESPONSIVE');

@@ -199,3 +199,4 @@ tools/test_industrial_mixer_23_21_6_hf23_3_15.mjs
 tools/test_public_profile_23_21_6_hf23_3_16.mjs
 
 tools/test_public_profile_favorite_chest_essence_23_21_6_hf23_3_16_1.mjs
+tools/test_mobile_workshop_profile_ux_23_21_6_hf23_3_16_2_2.mjs

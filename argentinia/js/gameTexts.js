@@ -265,8 +265,10 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'workshop.machine1.description': definition('Taller', 'Desbloquealo para fabricar mejoras de habilidades para tus criaturas.', 'Descripción de la Máquina 1.'),
   'workshop.machine2.title': definition('Taller', 'Cápsula de evolución', 'Nombre de la Máquina 2.'),
   'workshop.machine2.description': definition('Taller', 'Evolucioná cartas seleccionadas por rutas cerradas de tres estadios usando Esencia y otros recursos.', 'Descripción de la Máquina 2.'),
+  'workshop.machine2.action': definition('Taller', 'EVOLUCIONAR CARTA', 'Acción principal de la Máquina 2 una vez desbloqueada.'),
   'workshop.machine3.title': definition('Taller', 'Mezcladora industrial', 'Nombre de la Máquina 3.'),
   'workshop.machine3.description': definition('Taller', 'Preparada para transformar copias repetidas en nuevas cartas.', 'Descripción de la Máquina 3.'),
+  'workshop.machine3.action': definition('Taller', 'MEZCLAR CARTAS', 'Acción principal de la Máquina 3 una vez desbloqueada.'),
   'workshop.mixer.open': definition('Taller', 'ABRIR MEZCLADORA', 'Abre la interfaz de la Mezcladora industrial.'),
   'workshop.mixer.title': definition('Taller', 'MEZCLADORA INDUSTRIAL', 'Título de la interfaz de la Máquina 3.'),
   'workshop.mixer.description': definition('Taller', 'Consumí 3 copias libres idénticas y recursos para obtener 1 carta aleatoria de la rareza inmediatamente superior.', 'Descripción de la Mezcladora industrial.'),
@@ -373,6 +375,7 @@ export const GAME_TEXT_DEFINITIONS = Object.freeze({
   'admin.animations.workshopEnhancement': definition('Animaciones', 'Taller · Mejora de carta', 'Nombre de la cinematográfica del Generador dentro de Admin > Animaciones.'),
   'admin.animations.workshopEvolution': definition('Animaciones', 'Taller · Evolución de carta', 'Nombre de la cinematográfica de la Cápsula dentro de Admin > Animaciones.'),
   'admin.animations.workshopMixer': definition('Animaciones', 'Taller · Mezcladora industrial', 'Nombre de la cinematográfica de la Mezcladora dentro de Admin > Animaciones.'),
+  'admin.animations.workshopUnlock': definition('Animaciones', 'Taller · Desbloqueo de máquina', 'Nombre de la cinematográfica compartida por el desbloqueo de las cuatro máquinas.'),
 
   'achievements.title': definition('Logros', 'MIS LOGROS', 'Título del panel personal de Logros.'),
   'achievements.subtitle': definition('Logros', 'Completá hitos, ganá trofeos y reclamá recompensas.', 'Subtítulo del panel de Logros.'),

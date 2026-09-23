@@ -28,9 +28,9 @@ assert.equal(manifest.pool,900);
 assert.ok(ENGINE_BASELINE.includes('23.19.4.7 Core Gameplay Feedback Expansion'));
 
 const catalog=getAnimationTuningCatalog();
-assert.equal(catalog.length,38,'Animation Studio keeps the historical 35 rows and adds Workshop enhancement, evolution and mixer cinematics');
+assert.equal(catalog.length,39,'Animation Studio keeps the historical 35 rows and adds Workshop enhancement, evolution, mixer and unlock cinematics');
 const byKey=new Map(catalog.map(row=>[row.key,row]));
-for(const key of ['workshop_enhancement','workshop_evolution','workshop_mixer']) assert.ok(byKey.has(key),`missing ${key}`);
+for(const key of ['workshop_enhancement','workshop_evolution','workshop_mixer','workshop_unlock']) assert.ok(byKey.has(key),`missing ${key}`);
 const expected={
   wipe_creatures:['massDestruction','wipe.opus','wipe.mp3'],
   wipe_lands:['massDestruction','wipe.opus','wipe.mp3'],

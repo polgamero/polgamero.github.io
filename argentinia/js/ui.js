@@ -103,7 +103,7 @@ import { scheduleCombatMapRender } from './combatMap.js';
 import { buildTokenCatalog, tokenArtLayoutId } from './tokenCatalog.js';
 import { enterMenuAudio, getAudioSettings, setMusicEnabled, setMusicVolume, setSfxEnabled, setSfxVolume } from './audioManager.js';
 import { setPlayerPresenceActivity, isPresenceOnline, isPresenceAvailable, describePresenceActivity, presenceTimestampMs, getChallengeInvitesEnabled, setChallengeInvitesEnabled } from './multiplayerPresence.js';
-import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer, ensureAnimationVisualIdentity, queueWorkshopEnhancementAnimation, queueWorkshopEvolutionAnimation, queueWorkshopMixerAnimation } from './animationDirector.js';
+import { getAnimationSettings, getServerAnimationPolicy, getAnimationTuningCatalog, normalizeAnimationTunings, setAnimationsEnabled, cycleAnimationSpeed, animationSpeedLabel, applyServerAnimationPolicy, mountAnimationLab, clearAnimationLayer, ensureAnimationVisualIdentity, queueWorkshopEnhancementAnimation, queueWorkshopEvolutionAnimation, queueWorkshopMixerAnimation, queueWorkshopUnlockAnimation } from './animationDirector.js';
 import { MANA_TYPES, manaPoolTotal } from './manaPool.js';
 import { isLandPermanent, isCreaturePermanent, landMatchesFilter } from './permanentTypes.js';
 import { landMatchesEffectiveFilter, getEffectiveLandTypeLine, getEffectiveLandActivatedAbilities, describeLandTransformation } from './landCharacteristics.js';
@@ -5995,7 +5995,7 @@ function injectWorkshopStyles() {
     .workshop-machine-hitbox { width:100%; height:min(42vh,42vw); border:1px dashed rgba(255,255,255,.10); border-radius:18px; background:rgba(0,0,0,.01); }
     .workshop-machine-slot.locked:hover .workshop-machine-hitbox { border-color:rgba(246,206,84,.55); background:rgba(246,206,84,.06); }
     .workshop-machine-badge { position:absolute; left:50%; bottom:-6px; transform:translate(-50%,100%); white-space:nowrap; padding:5px 9px; border-radius:999px; background:rgba(0,0,0,.78); border:1px solid rgba(212,175,55,.45); font-size:11px; font-weight:800; letter-spacing:.04em; color:#f5dfa0; pointer-events:none; }
-    .workshop-panel { position:absolute; z-index:30; left:50%; bottom:18px; transform:translateX(-50%); width:min(620px,calc(100vw - 28px)); padding:13px 15px; border:1px solid rgba(212,175,55,.6); border-radius:14px; background:rgba(6,8,7,.9); box-shadow:0 12px 38px rgba(0,0,0,.65); text-align:center; }
+    .workshop-panel { position:absolute; z-index:30; left:50%; bottom:18px; transform:translateX(-50%); width:min(620px,calc(100vw - 28px)); padding:13px 15px; box-sizing:border-box; border:1px solid rgba(212,175,55,.6); border-radius:14px; background:rgba(6,8,7,.9); box-shadow:0 12px 38px rgba(0,0,0,.65); text-align:center; }
     .workshop-panel[hidden] { display:none; }
     .workshop-panel-title { font-size:18px; font-weight:850; color:#f4dd91; margin-bottom:4px; }
     .workshop-panel-desc { color:#d3cec0; line-height:1.35; font-size:13px; }
@@ -6033,10 +6033,8 @@ function injectWorkshopStyles() {
     .workshop-mixer-success-rarity{font-size:13px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:#ffe89a;border:1px solid rgba(255,226,121,.42);background:rgba(78,61,10,.22);padding:5px 10px;border-radius:999px}
     .workshop-mixer-success-card{display:flex;justify-content:center;width:100%;padding:2px 0}.workshop-mixer-success-card .card{--card-w:min(300px,72vw);width:var(--card-w)!important;height:auto!important;aspect-ratio:5/7!important;max-width:none!important;transform:none!important;pointer-events:none!important;filter:drop-shadow(0 0 20px rgba(86,226,171,.42)) drop-shadow(0 18px 30px rgba(0,0,0,.74))}
     .workshop-mixer-success-reminder{max-width:640px;margin:0;color:#c8dbd2;font-size:13px;line-height:1.45}
-    .workshop-unlock-confirm-overlay{z-index:20110!important;background:radial-gradient(circle at 50% 35%,rgba(212,175,55,.12),rgba(0,0,0,.9) 58%)!important;backdrop-filter:blur(4px)}
-    .workshop-unlock-confirm-modal{width:min(520px,94vw)!important;max-width:520px!important;border:1px solid rgba(212,175,55,.62)!important;border-radius:15px!important;background:radial-gradient(circle at 50% 0,rgba(107,77,18,.22),transparent 38%),linear-gradient(180deg,#18231c,#0d1410)!important;box-shadow:0 0 34px rgba(212,175,55,.16),0 22px 58px rgba(0,0,0,.74)!important;padding:16px 18px 18px!important}
-    .workshop-unlock-confirm-header{justify-content:center!important;border-bottom-color:rgba(212,175,55,.34)!important}.workshop-unlock-confirm-header h3{margin:0;color:#f7e5a4;text-align:center;letter-spacing:.05em}.workshop-unlock-confirm-body{display:flex;flex-direction:column;gap:13px;align-items:center}.workshop-unlock-confirm-machine{font-size:20px;font-weight:900;color:#fff4c8;text-align:center}.workshop-unlock-confirm-copy{margin:0;color:#cbd8ce;font-size:13px;line-height:1.45;text-align:center}.workshop-unlock-costs{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}.workshop-unlock-cost{display:flex;align-items:center;gap:7px;padding:8px 11px;border-radius:999px;border:1px solid rgba(212,175,55,.3);background:rgba(0,0,0,.25);font-weight:900;color:#fff}.workshop-unlock-cost :is(.coin-icon,.ficha-icon){width:32px!important;height:32px!important;object-fit:contain}.workshop-unlock-confirm-actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;width:100%}.workshop-unlock-confirm-actions .mulligan-btn{min-width:150px}
-    @media(max-width:700px){ .workshop-topbar{left:8px;right:8px;top:8px}.workshop-title{font-size:18px}.workshop-wallet-pill{padding:5px 7px;font-size:11px}.workshop-panel{bottom:8px;padding:10px 11px}.workshop-machine-badge{font-size:9px}.workshop-enhancement-success-modal,.workshop-evolution-success-modal,.workshop-mixer-success-modal{padding:14px 12px}.workshop-enhancement-success-card .card,.workshop-evolution-success-card .card,.workshop-mixer-success-card .card{--card-w:min(225px,68vw)}.workshop-evolution-success-title,.workshop-mixer-success-title{font-size:22px}.workshop-unlock-confirm-modal{width:min(94vw,440px)!important;padding:12px!important}.workshop-unlock-confirm-machine{font-size:17px}.workshop-unlock-confirm-actions{flex-direction:column}.workshop-unlock-confirm-actions .mulligan-btn{width:100%} }
+    @media(max-width:700px){ .workshop-topbar{left:8px;right:8px;top:8px}.workshop-title{font-size:18px}.workshop-wallet-pill{padding:5px 7px;font-size:11px}.workshop-panel{bottom:8px;padding:10px 11px}.workshop-panel.workshop-panel--machine-detail{max-height:calc(100dvh - 84px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;width:min(96vw,620px);padding-bottom:12px}.workshop-panel--machine-detail .workshop-evolution-preview{margin:6px auto;gap:6px}.workshop-panel--machine-detail .workshop-evolution-preview .card{--card-w:min(142px,31vw)}.workshop-panel--machine-detail .workshop-evolution-picker{margin:6px 0}.workshop-panel--machine-detail .workshop-panel-cost{margin:5px 0}.workshop-panel--machine-detail .workshop-panel-actions{margin-top:6px}.workshop-machine-badge{font-size:9px}.workshop-enhancement-success-modal,.workshop-evolution-success-modal,.workshop-mixer-success-modal{padding:14px 12px}.workshop-enhancement-success-card .card,.workshop-evolution-success-card .card,.workshop-mixer-success-card .card{--card-w:min(225px,68vw)}.workshop-evolution-success-title,.workshop-mixer-success-title{font-size:22px} }
+    @media(max-width:850px){.workshop-panel.workshop-panel--machine-detail{bottom:8px;max-height:calc(100dvh - 76px);overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;width:min(96vw,620px);padding:10px 11px 12px}.workshop-panel--machine-detail .workshop-evolution-preview{margin:6px auto;gap:6px}.workshop-panel--machine-detail .workshop-evolution-preview .card{--card-w:min(142px,31vw)}.workshop-panel--machine-detail .workshop-evolution-picker{margin:6px 0}.workshop-panel--machine-detail .workshop-panel-cost{margin:5px 0}.workshop-panel--machine-detail .workshop-panel-actions{margin-top:6px}}
   `;
   document.head.appendChild(style);
 }
@@ -6064,35 +6062,6 @@ function applyWorkshopStageCover(stage, image, host = window) {
 
 function machinePolicy(machineId) {
   return WORKSHOP_POLICY?.[machineId] || { available:false, points:0, fichas:0 };
-}
-
-function showWorkshopUnlockConfirmModal({machine='',points=0,fichas=0}={}){
-  injectMulliganStyles();
-  document.querySelector('.workshop-unlock-confirm-overlay')?.remove();
-  return new Promise(resolve=>{
-    const modal=document.createElement('div');
-    modal.className='gy-modal-overlay workshop-unlock-confirm-overlay';
-    const costs=[
-      Number(points)>0?`<span class="workshop-unlock-cost">${COIN_ICON_HTML}<strong>${Math.max(0,Math.floor(Number(points)||0)).toLocaleString('es-AR')}</strong></span>`:'',
-      Number(fichas)>0?`<span class="workshop-unlock-cost">${FICHA_ICON_HTML}<strong>${Math.max(0,Math.floor(Number(fichas)||0)).toLocaleString('es-AR')}</strong></span>`:''
-    ].join('');
-    modal.innerHTML=`<div class="gy-modal-content workshop-unlock-confirm-modal">
-      <div class="gy-modal-header workshop-unlock-confirm-header"><h3>${gameTextHtml('workshop.unlock.modalTitle')}</h3></div>
-      <div class="workshop-unlock-confirm-body">
-        <div class="workshop-unlock-confirm-machine">${escapeHtml(machine)}</div>
-        <p class="workshop-unlock-confirm-copy">${gameTextHtml('workshop.unlock.modalBody',{machine})}</p>
-        <div class="workshop-unlock-costs">${costs}</div>
-        <div class="workshop-unlock-confirm-actions"><button type="button" class="mulligan-btn mulligan-btn-keep" data-workshop-unlock-confirm>${gameTextHtml('workshop.unlock.confirmAction')}</button><button type="button" class="mulligan-btn mulligan-btn-mull" data-workshop-unlock-cancel>${gameTextHtml('common.cancel')}</button></div>
-      </div>
-    </div>`;
-    let settled=false;
-    const finish=value=>{if(settled)return;settled=true;document.removeEventListener('keydown',onKey);modal.remove();resolve(value);};
-    const onKey=event=>{if(event.key==='Escape')finish(false);};
-    document.addEventListener('keydown',onKey);
-    document.body.appendChild(modal);
-    modal.querySelector('[data-workshop-unlock-confirm]')?.addEventListener('click',()=>finish(true));
-    modal.querySelector('[data-workshop-unlock-cancel]')?.addEventListener('click',()=>finish(false));
-  });
 }
 
 export function showWorkshopScreen(onBack, options = {}) {
@@ -6212,6 +6181,7 @@ export function showWorkshopScreen(onBack, options = {}) {
 
   function openEssenceConverter(){
     selectedMachineId=null;
+    panel.classList.remove('workshop-panel--machine-detail');
     const policy=WORKSHOP_POLICY?.essence||{enabled:true,pointsPerUnit:500,fichasPerUnit:5,maxPerOperation:10};
     panel.hidden=false;
     panel.innerHTML=`<div class="workshop-panel-title">${gameTextHtml('workshop.essence.title')}</div><div class="workshop-panel-desc">${gameTextHtml('workshop.essence.description')}</div><div class="workshop-panel-cost">${gameTextHtml('workshop.essence.rate',{points:policy.pointsPerUnit,fichas:policy.fichasPerUnit})}</div><label style="display:flex;gap:8px;align-items:center;justify-content:center;margin:9px 0;"><span>${gameTextHtml('workshop.essence.quantity')}</span><input id="workshop-essence-quantity" type="number" min="1" max="${policy.maxPerOperation}" value="1" class="admin-field-input" style="width:90px;"></label><div class="workshop-panel-actions"><button class="workshop-action-btn" id="workshop-essence-convert" ${policy.enabled?'':'disabled'}>${gameTextHtml('workshop.essence.convert',{quantity:1})}</button><button class="workshop-action-btn secondary" id="workshop-panel-close">${gameTextHtml('common.close')}</button></div><div class="workshop-status" id="workshop-status"></div>`;
@@ -6224,6 +6194,7 @@ export function showWorkshopScreen(onBack, options = {}) {
 
   function openMachine2Evolution() {
     selectedMachineId='machine2';
+    panel.classList.add('workshop-panel--machine-detail');
     const evolutions=normalizeEvolutionProfile(state.userProfile?.evolutions);
     const ownedCounts={};
     for(const id of (state.userProfile?.collection||[])) ownedCounts[id]=(ownedCounts[id]||0)+1;
@@ -6295,6 +6266,7 @@ export function showWorkshopScreen(onBack, options = {}) {
   }
   function openMachine3Mixer(){
     selectedMachineId='machine3';
+    panel.classList.add('workshop-panel--machine-detail');
     const ownedCounts={}; for(const id of (state.userProfile?.collection||[]))ownedCounts[id]=(ownedCounts[id]||0)+1;
     const candidates=(cardDb.enabledCards||cardDb.allCards||[]).filter(card=>['Common','Uncommon','Rare'].includes(card?.rarity)).map(card=>{
       const owned=ownedCounts[card.id]||0,protectedCopies=clientMixerProtectedCopies(card.id),freeEstimate=Math.max(0,owned-protectedCopies);
@@ -6314,7 +6286,14 @@ export function showWorkshopScreen(onBack, options = {}) {
   function machineTitle(id) { return gameText(`workshop.${id}.title`); }
   function machineDescription(id) { return gameText(`workshop.${id}.description`); }
 
+  function machineActionText(id) {
+    if(id==='machine2') return gameText('workshop.machine2.action');
+    if(id==='machine3') return gameText('workshop.machine3.action');
+    return gameText('store.craft.action');
+  }
+
   function renderPanel(machineId) {
+    panel.classList.remove('workshop-panel--machine-detail');
     selectedMachineId = machineId;
     const policy = machinePolicy(machineId);
     const unlocked = isWorkshopMachineUnlocked(state.userProfile, machineId);
@@ -6327,7 +6306,7 @@ export function showWorkshopScreen(onBack, options = {}) {
       <div class="workshop-panel-desc">${escapeHtml(machineDescription(machineId))}</div>
       ${unlocked ? `<div class="workshop-panel-cost">${gameTextHtml('workshop.unlocked')}</div>` : `<div class="workshop-panel-cost">${COIN_ICON_HTML} ${points} &nbsp; ${FICHA_ICON_HTML} ${fichas}</div>`}
       <div class="workshop-panel-actions">
-        ${future ? `<button class="workshop-action-btn" disabled>${gameTextHtml('workshop.future')}</button>` : unlocked ? `<button class="workshop-action-btn" id="workshop-use-machine">${gameTextHtml('store.craft.action')}</button>` : `<button class="workshop-action-btn" id="workshop-unlock-machine" ${hasFunds?'':'disabled'}>${gameTextHtml('workshop.unlock')}</button>`}
+        ${future ? `<button class="workshop-action-btn" disabled>${gameTextHtml('workshop.future')}</button>` : unlocked ? `<button class="workshop-action-btn" id="workshop-use-machine">${escapeHtml(machineActionText(machineId))}</button>` : `<button class="workshop-action-btn" id="workshop-unlock-machine" ${hasFunds?'':'disabled'}>${gameTextHtml('workshop.unlock')}</button>`}
         <button class="workshop-action-btn secondary" id="workshop-panel-close">${gameTextHtml('common.close')}</button>
       </div>
       <div class="workshop-status" id="workshop-status">${(!future && !unlocked && !hasFunds) ? gameTextHtml('workshop.unlock.notEnough') : ''}</div>`;
@@ -6335,19 +6314,23 @@ export function showWorkshopScreen(onBack, options = {}) {
     panel.querySelector('#workshop-use-machine')?.addEventListener('click',()=>{ if(machineId==='machine2') openMachine2Evolution(); else if(machineId==='machine3') openMachine3Mixer(); else openMachine1Craft(); });
     panel.querySelector('#workshop-unlock-machine')?.addEventListener('click', async event => {
       if (!state.currentUser?.uid || !state.userProfile) return;
-      const accepted = await showWorkshopUnlockConfirmModal({machine:machineTitle(machineId),points,fichas});
-      if (!accepted) return;
       const btn=event.currentTarget, status=panel.querySelector('#workshop-status');
       const closeBtn=panel.querySelector('#workshop-panel-close');
       try {
-        const outcome = await withEconomyButtonPending(btn, () => unlockWorkshopMachine(state.currentUser.uid, machineId), {
+        const outcome = await withEconomyButtonPending(btn, async () => {
+          const result=await unlockWorkshopMachine(state.currentUser.uid, machineId);
+          if(result?.profile) state.userProfile=result.profile;
+          renderWallet();
+          const machineEl=machineRoot.querySelector(`[data-machine-id="${machineId}"] .workshop-machine-hitbox`) || machineRoot.querySelector(`[data-machine-id="${machineId}"]`);
+          await queueWorkshopUnlockAnimation({machineElement:machineEl,machineId});
+          return result;
+        }, {
           pendingLabel:gameText('workshop.unlock.pending'),
           slowLabel:gameText('workshop.server.slow'),
           disablePeers:[closeBtn]
         });
         if (!outcome) return;
-        state.userProfile = outcome.profile;
-        renderWallet(); renderMachines(); renderPanel(machineId); updateAccountUI(state.currentUser);
+        renderMachines(); renderPanel(machineId); updateAccountUI(state.currentUser);
         const liveStatus=panel.querySelector('#workshop-status'); if(liveStatus) liveStatus.textContent=gameText('workshop.unlock.success',{machine:machineTitle(machineId)});
       } catch(err) {
         console.error('No se pudo desbloquear la máquina:',err);
@@ -7815,7 +7798,8 @@ function injectAchievementStyles(){
     .achievement-claim-success-header{justify-content:center!important;border-bottom-color:rgba(212,175,55,.36)!important;margin-bottom:8px!important}.achievement-claim-success-header h3{margin:0;color:#f7e5a4;letter-spacing:.055em;text-align:center;font-size:22px}
     .achievement-claim-success-body{display:flex;flex-direction:column;align-items:center;gap:12px}.achievement-claim-success-trophy{display:flex;justify-content:center;filter:drop-shadow(0 8px 14px rgba(0,0,0,.5))}.achievement-claim-success-trophy .achievement-trophy-media{width:164px;height:164px}.achievement-claim-success-trophy .achievement-trophy-fallback{font-size:96px}
     .achievement-claim-success-name{font-size:15px;font-weight:900;color:#fff3c3;text-align:center}.achievement-claim-success-resources{width:100%;display:flex;justify-content:center;gap:10px;flex-wrap:wrap}.achievement-claim-resource{min-width:118px;display:grid;grid-template-columns:44px 1fr;grid-template-rows:auto auto;column-gap:8px;align-items:center;padding:9px 11px;border:1px solid rgba(212,175,55,.28);border-radius:12px;background:rgba(0,0,0,.24);box-shadow:inset 0 0 18px rgba(255,255,255,.02)}.achievement-claim-resource-icon{grid-row:1/3;display:flex;align-items:center;justify-content:center}.achievement-claim-resource :is(.coin-icon,.ficha-icon,.essence-icon){width:42px!important;height:42px!important;object-fit:contain}.achievement-claim-resource strong{font-size:20px;line-height:1;color:#fff}.achievement-claim-resource span{font-size:10px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;color:#d9c982}.achievement-claim-no-currency{padding:10px;color:#d9c982;font-weight:800}.achievement-claim-success-ok{min-width:180px;margin-top:2px}
-    @media(max-width:850px){#achievements-overlay{padding:8px}.achievement-levels{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:7px}.achievement-level{min-width:174px;min-height:236px;scroll-snap-align:start}.achievement-trophy-media{width:108px;height:108px}.achievement-trophy-fallback{font-size:64px}.achievement-notice-trophy .achievement-trophy-media{width:132px;height:132px}.achievement-notice-trophy .achievement-trophy-fallback{font-size:78px}.achievements-header{align-items:flex-start}.achievements-wallet{max-width:168px}.achievements-heading .encyclopedia-title{font-size:20px}.achievement-claim-success-modal{width:min(94vw,460px)!important;padding:12px!important}.achievement-claim-success-header h3{font-size:18px}.achievement-claim-success-trophy .achievement-trophy-media{width:122px;height:122px}.achievement-claim-success-trophy .achievement-trophy-fallback{font-size:72px}.achievement-claim-success-resources{gap:6px}.achievement-claim-resource{min-width:94px;grid-template-columns:34px 1fr;padding:7px 8px}.achievement-claim-resource :is(.coin-icon,.ficha-icon,.essence-icon){width:32px!important;height:32px!important}.achievement-claim-resource strong{font-size:17px}}
+    @media(max-width:850px){#achievements-overlay{padding:8px}.achievement-levels{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:7px}.achievement-level{min-width:174px;min-height:236px;scroll-snap-align:start}.achievement-trophy-media{width:108px;height:108px}.achievement-trophy-fallback{font-size:64px}.achievement-notice-trophy .achievement-trophy-media{width:132px;height:132px}.achievement-notice-trophy .achievement-trophy-fallback{font-size:78px}.achievements-header{align-items:flex-start}.achievements-wallet{max-width:none;display:grid;grid-template-columns:repeat(3,max-content);align-items:center;justify-content:end;gap:6px}.achievements-wallet>span{height:38px;box-sizing:border-box;justify-content:center;white-space:nowrap}.achievements-heading .encyclopedia-title{font-size:20px}.achievement-claim-success-modal{width:min(94vw,460px)!important;padding:12px!important}.achievement-claim-success-header h3{font-size:18px}.achievement-claim-success-trophy .achievement-trophy-media{width:122px;height:122px}.achievement-claim-success-trophy .achievement-trophy-fallback{font-size:72px}.achievement-claim-success-resources{gap:6px}.achievement-claim-resource{min-width:94px;grid-template-columns:34px 1fr;padding:7px 8px}.achievement-claim-resource :is(.coin-icon,.ficha-icon,.essence-icon){width:32px!important;height:32px!important}.achievement-claim-resource strong{font-size:17px}}
+    @media(max-width:560px){.achievements-header{display:grid;grid-template-columns:auto 1fr;gap:8px}.achievements-heading{grid-column:2}.achievements-wallet{grid-column:1/-1;width:100%;grid-template-columns:repeat(3,1fr);justify-content:stretch}.achievements-wallet>span{min-width:0;padding:5px 7px}.achievements-wallet img{width:22px!important;height:22px!important}}
   `; document.head.appendChild(style);
 }
 
@@ -7838,7 +7822,7 @@ export function showAchievementsScreen(onBack){
   const content=overlay.querySelector('#achievements-content');
   const close=()=>{overlay.remove();onBack?.();}; overlay.querySelector('#achievements-back')?.addEventListener('click',close);
   let runtime=null;
-  const renderWallet=()=>{const p=Math.max(0,Number(state.userProfile?.points)||0),f=Math.max(0,Number(state.userProfile?.fichas)||0),e=Math.max(0,Number(state.userProfile?.essence)||0);overlay.querySelector('#achievements-wallet').innerHTML=`<span>${COIN_ICON_HTML} ${p}</span><span>${FICHA_ICON_HTML} ${f}</span><span>${ESSENCE_ICON_HTML} ${escapeHtml(gameText('workshop.wallet.essence',{essence:e}))}</span>`;};
+  const renderWallet=()=>{const p=Math.max(0,Number(state.userProfile?.points)||0),f=Math.max(0,Number(state.userProfile?.fichas)||0),e=Math.max(0,Number(state.userProfile?.essence)||0);overlay.querySelector('#achievements-wallet').innerHTML=`<span>${COIN_ICON_HTML} ${p}</span><span>${FICHA_ICON_HTML} ${f}</span><span>${ESSENCE_ICON_HTML} ${e}</span>`;};
   const render=()=>{
     renderWallet(); if(!runtime) return;
     if(!runtime.config.enabled){content.innerHTML=`<div class="achievements-loading">${gameTextHtml('achievements.disabled')}</div>`;return;}
