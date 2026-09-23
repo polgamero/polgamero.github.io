@@ -47,12 +47,16 @@ async function call(name, payload = {}) {
   }
 }
 
-export function bootstrapOperationId(uid) {
-  return `acctboot:${String(uid || '').trim()}`;
+// Bootstrap/starter receipts must not be permanent functions of uid: deleting and
+// recreating the in-game profile can keep the same Firebase Auth uid while the old
+// economyOperations ledger intentionally survives. Callers normally pass a journaled
+// operationId; these fallbacks are fresh for defensive direct use.
+export function bootstrapOperationId(_uid) {
+  return createEconomyOperationId('acctboot');
 }
 
-export function starterOperationId(uid) {
-  return `starter:${String(uid || '').trim()}`;
+export function starterOperationId(_uid) {
+  return createEconomyOperationId('starter');
 }
 
 export function createEconomyOperationId(prefix = 'op') {

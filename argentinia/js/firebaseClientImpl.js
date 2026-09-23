@@ -31,7 +31,7 @@ import { buildClassifiedsScheduleWindow, classifiedsWeekKey, getClassifiedsEcono
 import { defaultInventory, defaultDailyRewardsState, normalizeInventory, normalizeDailyRewardsState, CHEST_ITEM_KEYS } from './rewards.js';
 import { ENGINE_VERSION, ENGINE_PROTOCOL_VERSION, FIRESTORE_RULES_VERSION, ECONOMY_PROTOCOL_VERSION, isExactMultiplayerVersionCompatible } from './version.js';
 import { configureEconomyClient, bootstrapAccountServer, completeStarterDeckServer, openPackServer, openGuaranteedMythicServer, recoverEconomyOperation, createEconomyOperationId, getStorefrontServer, purchasePackServer, craftEnhancementServer, unlockWorkshopMachineServer, claimAchievementServer, convertEssenceServer, evolveCardServer, mixCardsServer, purchasePrebuiltDeckServer, purchaseEmoteServer, adminSetEmoteCatalogServer, sendMultiplayerCommunicationServer, sendLobbyCommunicationServer, deleteLobbyCommunicationServer, sendDirectChallengeServer, getClassifiedsServer, purchaseClassifiedCardServer, purchaseClassifiedBasicLandPackServer, renameUsernameServer, registerDailyLoginServer, claimDailyRewardServer, adminDailyDebugServer, getAdmissionStatusServer, adminSetAdmissionPolicyServer, settleMatchRewardServer, applyAbandonPenaltyServer, adminGrantServer, adminBulkGrantServer, adminGetBulkGrantServer, adminRepairGameRewardServer, adminSyncPlayerStatsServer, getTournamentServer, startTournamentServer, beginTournamentMatchServer, settleTournamentMatchServer, forfeitTournamentServer, abandonTournamentServer, getTradeMarketServer, createTradeListingServer, cancelTradeListingServer, createTradeOfferServer, cancelTradeOfferServer, rejectTradeOfferServer, acceptTradeOfferServer, communityActionServer } from './economyClient.js';
-import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction } from './economyActionRecovery.js';
+import { beginEconomyAction, getPendingEconomyAction, clearPendingEconomyAction, clearPendingEconomyActionsForUid } from './economyActionRecovery.js';
 import { validateUsername, USERNAME_RENAME_COST } from './usernames.js';
 import { chooseMultiplayerStartingRole } from './startingPlayer.js';
 import { buildCampaignSnapshot, validateEventPayload, validateAnnouncementPayload, effectivePackCost, effectiveMatchPoints } from './campaigns.js';
@@ -233,6 +233,8 @@ async function loadOwnProfileAfterServerMutation(uid) {
 
 
 const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
+  accountBootstrap: 'account.bootstrap',
+  starterCompletion: 'account.complete_starter',
   packPurchase: 'store.purchase_pack',
   enhancementCraft: 'store.craft_enhancement',
   workshopUnlock: 'workshop.unlock_machine',
@@ -248,6 +250,7 @@ const ECONOMY_ACTION_SERVER_TYPES = Object.freeze({
   dailyClaim: 'daily.claim'
 });
 const ECONOMY_ACTION_PREFIXES = Object.freeze({
+  accountBootstrap: 'acctboot', starterCompletion: 'starter',
   packPurchase: 'buy-pack', enhancementCraft: 'craft', workshopUnlock: 'workshop-unlock', achievementClaim:'achievement-claim', essenceConvert:'essence-convert', cardEvolution:'card-evolution', industrialMix:'industrial-mix', prebuiltPurchase: 'prebuilt',
   classifiedPurchase: 'classified', classifiedBasicLandPackPurchase:'classified-land', emotePurchase:'emote', usernameRename: 'rename', dailyClaim: 'daily-claim'
 });
@@ -448,7 +451,9 @@ export async function reserveInitialUsername(uid, username, usernameKey, _profil
   // 23.19.5.4 — el cliente oficial SIEMPRE crea/migra la cuenta por Functions. Esto hace
   // que Admission Control sea efectivo incluso mientras el rollout global sigue en shadow.
   // El bloqueo absoluto de clientes viejos/custom llega con Write Firewall 23.19.5.6.
-  await bootstrapAccountServer(validated.username);
+  const request = { username: validated.username };
+  await runEconomyActionAuthority(uid, 'accountBootstrap', request,
+    operationId => bootstrapAccountServer(request.username, operationId));
   const serverProfile = await loadOwnProfileAfterServerMutation(uid);
   if (!serverProfile) throw new Error('ECONOMY_BOOTSTRAP_PROFILE_MISSING_AFTER_COMMIT');
   return serverProfile;
@@ -489,7 +494,9 @@ export async function createUserProfile(uid, _profileFields, _starterCardIds, st
   if (!Array.isArray(starterIdentity) || starterIdentity.length < 1 || starterIdentity.length > 2) {
     throw new Error('STARTER_IDENTITY_REQUIRED_FOR_SERVER_AUTHORITY');
   }
-  await completeStarterDeckServer(starterIdentity);
+  const request = { identity: [...starterIdentity] };
+  await runEconomyActionAuthority(uid, 'starterCompletion', request,
+    operationId => completeStarterDeckServer(request.identity, operationId));
   const serverProfile = await loadOwnProfileAfterServerMutation(uid);
   if (!serverProfile) throw new Error('ECONOMY_STARTER_PROFILE_MISSING_AFTER_COMMIT');
   return serverProfile;
@@ -509,7 +516,7 @@ export function touchLastSeen(uid) {
 export async function deleteUserProfile(uid) {
   const userRef = doc(db, 'users', uid);
   const statsRef = doc(db, 'playerStats', uid);
-  return runTransaction(db, async (tx) => {
+  const result = await runTransaction(db, async (tx) => {
     const userSnap = await tx.get(userRef);
     if (!userSnap.exists()) return;
     const usernameKey = String(userSnap.data()?.usernameKey || '');
@@ -523,6 +530,10 @@ export async function deleteUserProfile(uid) {
     tx.delete(statsRef);
     if (usernameRef && usernameSnap?.exists() && usernameSnap.data()?.uid === uid) tx.delete(usernameRef);
   });
+  // Una cuenta recreada puede conservar el mismo Firebase Auth UID. Nunca arrastrar
+  // journals exactly-once de la encarnación anterior hacia el nuevo perfil.
+  clearPendingEconomyActionsForUid(uid);
+  return result;
 }
 
 // ============================================================================

@@ -5,7 +5,10 @@
 export const ECONOMY_ACTION_STORAGE_KEY = 'argentinia.economyActionRecovery.v1';
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const VALID_TYPES = new Set([
-  'packPurchase','enhancementCraft','workshopUnlock','achievementClaim','essenceConvert','prebuiltPurchase','classifiedPurchase','usernameRename','dailyClaim'
+  'accountBootstrap','starterCompletion',
+  'packPurchase','enhancementCraft','workshopUnlock','achievementClaim','essenceConvert',
+  'cardEvolution','industrialMix','prebuiltPurchase','emotePurchase','classifiedPurchase',
+  'classifiedBasicLandPackPurchase','usernameRename','dailyClaim'
 ]);
 
 function safeRead() {
@@ -64,3 +67,10 @@ export function clearPendingEconomyAction(uid, type, request = {}, operationId =
     return false;
   }));
 }
+export function clearPendingEconomyActionsForUid(uid) {
+  const ownerUid=clean(uid);
+  if (!ownerUid) return false;
+  const all=prune(safeRead());
+  return safeWrite(all.filter(item=>item?.uid!==ownerUid));
+}
+
