@@ -1,7 +1,0 @@
-HF23.3.16.1.2 changed/added files SHA-256
-Base: HF23.3.16.1.1
-
-a4a9f7432f3bc7d22b9b3e2660c876e99a563073ed1efc8a6fa9fd43a3d8748d  01_GitHubSource/argentinia/tools/test_commercial_readiness_closure_wave5_23_19_4_14.mjs
-45391f2200f83f132dfc9442194853f848d753f0b838ca6ed4a67276286fea27  01_GitHubSource/argentinia/tools/test_mass_event_cinematics_high_impact_23_19_4_8.mjs
-637fd3165ef191c593aaaecfb45fb0f54061433bfa317daefbb22093b8add844  00_HOTFIX_23_21_6_HF23_3_16_1_2_CI_BUILD_CONTRACT_FIX.txt
-f8fea8d87d2a6529937bd3da1b73929e58b3873239495217be6226a5364fb764  Argentinia_23.21.6_HF23.3.16.1.2_RELEASE_HANDOFF_UPDATED.txt

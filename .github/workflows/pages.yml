@@ -1,4 +1,4 @@
-name: Deploy Argentinia to GitHub Pages
+name: Deploy Argentinia Public Frontend to GitHub Pages
 
 on:
   push:
@@ -15,224 +15,93 @@ concurrency:
 
 jobs:
   build:
-    # Deploy only the default branch; manual runs are also allowed.
     if: github.event_name == 'workflow_dispatch' || github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout public repository
         uses: actions/checkout@v6
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Verify Argentinia repository layout
+      - name: Enforce public-only repository boundary
+        shell: bash
         run: |
+          set -euo pipefail
           test -d argentinia
-          test -f argentinia/tools/generate_image_manifest.py
-          test -f argentinia/js/poolContract.js
+          test -f argentinia/index.html
+          test -f argentinia/build-manifest.json
+          test -d argentinia/js
+          test -d argentinia/css
           test -d argentinia/assets/data
-          test -d argentinia/assets/images/cards
-          test ! -e argentinia/firestore.rules
-          test ! -e argentinia/firebase.json
-          echo "OK: polgamero.github.io/argentinia layout detected; no public Firestore infra files"
-
-      - name: Generate card image manifest and validate active pool contract
-        working-directory: ./argentinia
-        # Cardinality comes from js/poolContract.js. Never hardcode 511/553/583/601 here.
-        run: python tools/generate_image_manifest.py --root .
-
-      - name: Verify generated manifest
-        run: |
           test -f argentinia/assets/images/cards/cards-image-manifest.json
-          test -f argentinia/assets/images/cards/missing-card-images.txt
-          test -f argentinia/assets/images/cards/missing-token-images.txt
-          test -f argentinia/assets/images/cards/unassigned-token-images.txt
-          echo "OK: card + token image manifest generated inside /argentinia"
+          test -f argentinia/cartas/index.html
+          test ! -e functions
+          test ! -e firebase.json
+          test ! -e firestore.rules
+          test ! -d argentinia/tools
 
-      - name: Validate Game Texts contract
-        working-directory: ./argentinia
-        run: python tools/validate_game_text_contract.py --root .
-
-      - name: Validate compact historical regression suite
-        working-directory: ./argentinia
-        run: |
-          test -f tools/regression_legacy_23_17_3_1.zip
-          test -f tools/ci_regression_manifest_23_17_3_1.txt
-          # The archive is retained as a compact historical artifact, but must NEVER be
-          # extracted over the live tools/ tree: doing so can overwrite tests that were
-          # intentionally updated for newer engine/rules/protocol baselines.
-          python - <<'PY'
-          from pathlib import Path
-          import zipfile
-          tools = Path('tools')
-          names = [line.strip() for line in (tools / 'ci_regression_manifest_23_17_3_1.txt').read_text(encoding='utf-8').splitlines()
-                   if line.strip() and not line.lstrip().startswith('#')]
-          issues = []
-          with zipfile.ZipFile(tools / 'regression_legacy_23_17_3_1.zip') as z:
-              archived = set(z.namelist())
-              for name in names:
-                  live = tools / name
-                  if not live.is_file():
-                      issues.append(f'Missing live regression test: {name}')
-                      continue
-                  if name not in archived:
-                      issues.append(f'Missing regression archive entry: {name}')
-                      continue
-                  if z.read(name) != live.read_bytes():
-                      issues.append(f'Regression archive drift: {name}')
-              extras = sorted(archived.difference(names))
-              for name in extras:
-                  issues.append(f'Unexpected regression archive entry: {name}')
-          if issues:
-              for issue in issues:
-                  print(f'::error::{issue}')
-              raise SystemExit(f'Regression archive has {len(issues)} synchronization issue(s). Refresh the archive; do not overwrite live tests in CI.')
-          print(f'OK: regression archive synchronized with {len(names)} live tests')
-          PY
-
-      - name: Validate source-package contract independently from hosted assets
-        run: |
-          test -f SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
-          grep -qx 'CARD_IMAGE_BINARIES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
-          grep -qx 'PUBLIC_FIRESTORE_CONFIG_FILES=0' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
-          grep -Eq '^CANONICAL_FAST_CONTRACTS=[1-9][0-9]*$' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
-          grep -Eq '^FUNCTIONS_COUNT=[1-9][0-9]*$' SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt
-          echo "OK: source snapshot metadata exposes valid 23.21.6 canonical CI counts"
-
-      - name: Guard canonical ownership of static contracts
-        working-directory: ./argentinia
-        run: |
-          # Static contract/test files must live in the canonical manifest, not as one-off workflow steps.
-          if grep -nE 'node tools/(test_[^ ]*\.mjs|[^ ]*contract\.mjs)' ../.github/workflows/pages.yml; then
-            echo "::error::Standalone static contract invocation detected. Add it to ci_fast_contract_manifest_23_21_0.txt instead."
-            exit 1
-          fi
-          echo "OK: no standalone static contracts outside canonical manifest"
-
-      - name: Validate complete canonical fast contract sweep
-        working-directory: ./argentinia
-        run: |
-          test -f tools/ci_fast_contract_manifest_23_21_0.txt
-          set +e
-          total=0
-          passed=0
-          failed=0
-          while IFS= read -r test_file || [ -n "$test_file" ]; do
-            [ -z "$test_file" ] && continue
-            case "$test_file" in \#*) continue ;; esac
-            total=$((total + 1))
-            echo "[contract $total] $test_file"
-            if [ ! -f "$test_file" ]; then
-              failed=$((failed + 1))
-              echo "::error file=$test_file::Canonical contract file is missing"
-              continue
-            fi
-            node "$test_file"
-            code=$?
-            if [ "$code" -eq 0 ]; then
-              passed=$((passed + 1))
-            else
-              failed=$((failed + 1))
-              echo "::error file=$test_file::Contract test failed with exit code $code"
-            fi
-          done < tools/ci_fast_contract_manifest_23_21_0.txt
-
-          # Web uploads can leave historical test_*.mjs files in the repository. Report
-          # them for cleanup, but do not execute files outside the canonical 23.21.x suite.
-          grep -vE '^[[:space:]]*(#|$)' tools/ci_fast_contract_manifest_23_21_0.txt | sort > /tmp/canonical-tests.txt
-          find tools -maxdepth 1 -type f -name 'test_*.mjs' -print | sort > /tmp/present-tests.txt
-          comm -13 /tmp/canonical-tests.txt /tmp/present-tests.txt > /tmp/stale-tests.txt
-          if [ -s /tmp/stale-tests.txt ]; then
-            echo "::warning::Ignoring stale non-canonical tests retained by repository uploads:"
-            sed 's/^/  - /' /tmp/stale-tests.txt
-          fi
-
-          echo "FAST_CONTRACT_SWEEP total=$total passed=$passed failed=$failed canonical=23.21.6"
-          expected=$(sed -n 's/^CANONICAL_FAST_CONTRACTS=//p' ../SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt)
-          if [ -z "$expected" ] || ! printf '%s' "$expected" | grep -Eq '^[1-9][0-9]*$'; then
-            echo "::error::SOURCE_SNAPSHOT_MANIFEST_23_21_6.txt has invalid CANONICAL_FAST_CONTRACTS=$expected"
-            exit 1
-          fi
-          if [ "$total" -ne "$expected" ]; then
-            echo "::error::Canonical fast manifest count drift: snapshot expects $expected tests; manifest has $total"
-            exit 1
-          fi
-          if [ "$failed" -ne 0 ]; then
-            echo "::error::$failed canonical contract test(s) failed. All canonical failures were collected in this single run."
+          forbidden_dirs=$(find . -path './.git' -prune -o -type d \( -name trusted -o -name test -o -name tests -o -name node_modules \) -print)
+          if [ -n "$forbidden_dirs" ]; then
+            echo "::error::Private/internal directories found in public repository:"
+            printf '%s\n' "$forbidden_dirs"
             exit 1
           fi
 
-      # All canonical static contracts already ran once in the sweep above.
-      # Historically we ran 51 of those files a SECOND time as individually named steps,
-      # which added substantial wall-clock time without adding coverage. Keep only the
-      # stateful/dynamic labs and audits that are NOT part of the canonical manifest.
-      - name: Run dynamic reliability labs once
-        working-directory: ./argentinia
-        run: |
-          node tools/run_stability_lab_23_18.mjs --seeds 10
-          node tools/run_headless_full_game_lab_23_18_1.mjs --games 6 --determinismRuns 2 --concurrency 3 --maxTurns 100 --maxSteps 8000
-          node tools/audit_headless_coverage_23_18_2.mjs
-          node tools/run_headless_full_game_lab_23_18_2.mjs --games 6 --determinismRuns 2 --concurrency 3 --maxTurns 100 --maxSteps 8000 --profile coverage-v2
-          node tools/run_multiplayer_reliability_lab_23_19.mjs --seeds 250 --commits 120
-          node tools/run_multiplayer_hardening_lab_23_19_1.mjs --cases 5000
-          node tools/audit_deck_intelligence_matrix_23_19_5.mjs
+          forbidden_files=$(find argentinia -type f \( -name '*.mjs' -o -name '*.py' -o -name '*.md' -o -name '*.txt' -o -name '*.zip' -o -name '*.patch' -o -name '*.log' \) -print)
+          if [ -n "$forbidden_files" ]; then
+            echo "::error::Internal/test/documentation files found under public argentinia/:"
+            printf '%s\n' "$forbidden_files"
+            exit 1
+          fi
 
-      - name: Validate Functions syntax + Economy/Tournament/Trade/Social unit suite 23.21.6
-        working-directory: ./functions
-        run: |
-          npm install --ignore-scripts --no-audit --no-fund --package-lock=false
-          npm run lint:syntax
-          npm test
+          if grep -RIlE 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|"private_key"[[:space:]]*:' argentinia .github 2>/dev/null | grep -q .; then
+            echo "::error::Private-key material marker detected in public repository"
+            exit 1
+          fi
+          echo "PUBLIC_REPOSITORY_BOUNDARY_OK runtime-only"
 
-      - name: Build Argentinia as the public site root
-        run: node argentinia/tools/build_pages_root_23_21_6_hf23_3_9.mjs --source argentinia --dest .pages-root --repo-root .
-
-      - name: Verify public-root migration artifact
+      - name: Verify prebuilt public gallery and crawler assets
+        shell: bash
         run: |
+          set -euo pipefail
+          test -f CNAME
+          test -f ads.txt
+          test -f robots.txt
+          test -f sitemap.xml
+          test -f argentinia/cartas/public-selection.json
+          test -f argentinia/cartas/public-cards.css
+          test -f argentinia/cartas/public-cards.js
+          test "$(find argentinia/cartas -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = "180"
+          test "$(grep -c '<loc>' sitemap.xml)" = "182"
+          echo "PUBLIC_ARTIFACTS_OK gallery=180 sitemap=182"
+
+      - name: Build public Pages artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .pages-root
+          mkdir -p .pages-root
+          cp -a argentinia/. .pages-root/
+          for name in CNAME ads.txt robots.txt sitemap.xml .nojekyll; do
+            if [ -f "$name" ]; then cp "$name" ".pages-root/$name"; fi
+          done
+          mkdir -p .pages-root/argentinia
+          cat > .pages-root/argentinia/index.html <<'HTML'
+          <!doctype html>
+          <html lang="es"><head><meta charset="utf-8"><meta name="robots" content="noindex">
+          <meta http-equiv="refresh" content="0;url=/"><title>Argentinia se mudó</title></head>
+          <body><p>Argentinia ahora vive en <a href="/">la raíz del sitio</a>.</p>
+          <script>try{const u=new URL('/',location.origin);u.search=location.search;u.hash=location.hash;location.replace(u.href);}catch{location.replace('/');}</script>
+          </body></html>
+          HTML
           test -f .pages-root/index.html
           test -f .pages-root/js/main.js
           test -f .pages-root/assets/manifest.webmanifest
-          test -f .pages-root/argentinia/index.html
-          grep -q 'Argentinia ahora vive' .pages-root/argentinia/index.html
-          echo "OK: Argentinia is the public / root; /argentinia/ is a legacy redirect"
-
-      - name: Verify crawler and monetization root artifact
-        run: |
-          test -f .pages-root/ads.txt
-          test -f .pages-root/robots.txt
-          test -f .pages-root/sitemap.xml
-          test -f .pages-root/CNAME
-          grep -Fxq 'google.com, pub-6181395403710642, DIRECT, f08c47fec0942fa0' .pages-root/ads.txt
-          grep -q 'google-adsense-account.*ca-pub-6181395403710642' .pages-root/index.html
-          grep -q 'rel="canonical" href="https://magiayleyenda.com.ar/"' .pages-root/index.html
-          grep -q '^User-agent: Mediapartners-Google$' .pages-root/robots.txt
-          grep -q '^User-agent: Google-Display-Ads-Bot$' .pages-root/robots.txt
-          grep -q 'https://magiayleyenda.com.ar/' .pages-root/sitemap.xml
-          echo "OK: AdSense/crawler files and semantic metadata are published at root"
-
-      - name: Verify public card gallery artifact
-        run: |
           test -f .pages-root/cartas/index.html
-          test -f .pages-root/cartas/public-selection.json
-          test -f .pages-root/cartas/public-cards.css
-          test -f .pages-root/cartas/public-cards.js
-          node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('.pages-root/cartas/public-selection.json','utf8'));if(x.totalPool!==900||x.publishedEligible!==880||x.publicCount!==180)process.exit(1);if(JSON.stringify(x.rarityCounts)!==JSON.stringify({Common:90,Uncommon:60,Rare:24,Mythic:6}))process.exit(1);"
-          test "$(find .pages-root/cartas -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = "180"
-          test "$(grep -c '<loc>' .pages-root/sitemap.xml)" = "182"
-          echo "OK: public /cartas/ gallery has 180 spoiler-safe cards and sitemap has 182 URLs"
+          echo "PUBLIC_PAGES_ARTIFACT_OK"
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload Argentinia public-root site
+      - name: Upload public frontend artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: '.pages-root'
@@ -244,9 +113,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
-
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
