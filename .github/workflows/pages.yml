@@ -188,6 +188,7 @@ jobs:
       - name: Validate Functions syntax + Economy/Tournament/Trade/Social unit suite 23.21.6
         working-directory: ./functions
         run: |
+          npm install --ignore-scripts --no-audit --no-fund --package-lock=false
           npm run lint:syntax
           npm test
 

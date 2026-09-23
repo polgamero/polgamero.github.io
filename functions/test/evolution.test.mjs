@@ -9,6 +9,19 @@ import { protectedCardCount, tradableCardCount } from '../src/economy/tradeCore.
 import { migrateDecksForEnhancementCraft } from '../src/economy/commerceCore.js';
 const here=dirname(fileURLToPath(import.meta.url));
 
+function readFrontendCreatures() {
+  // Two supported layouts:
+  // 1) real GitHub repo: <repo>/functions/test + <repo>/argentinia
+  // 2) release package mirrors: <root>/<gate>/functions/test + <root>/01_GitHubSource/argentinia
+  const candidates=[
+    resolve(here,'../../argentinia/assets/data/criaturas.json'),
+    resolve(here,'../../../01_GitHubSource/argentinia/assets/data/criaturas.json')
+  ];
+  const path=candidates.find(candidate=>fs.existsSync(candidate));
+  assert.ok(path,`missing frontend criaturas.json; tried ${candidates.join(' | ')}`);
+  return JSON.parse(fs.readFileSync(path,'utf8'));
+}
+
 test('HF23.3.14 evolution defaults are bounded and server-authoritative',()=>{
   const d=normalizeEvolutionSettings({});
   assert.equal(d.enabled,true); assert.equal(d.maxPerDeck,1);
@@ -20,7 +33,7 @@ test('HF23.3.14 evolution defaults are bounded and server-authoritative',()=>{
 
 test('HF23.3.14 trusted evolution catalog is a closed 20-card creature pool',()=>{
   assert.equal(TRUSTED_EVOLUTION_BASE_IDS.length,20); assert.equal(new Set(TRUSTED_EVOLUTION_BASE_IDS).size,20);
-  const creatures=JSON.parse(fs.readFileSync(resolve(here,'../../../01_GitHubSource/argentinia/assets/data/criaturas.json'),'utf8'));
+  const creatures=readFrontendCreatures();
   const byId=new Map(creatures.map(card=>[card.id,card]));
   for(const id of TRUSTED_EVOLUTION_BASE_IDS){ const card=byId.get(id); assert.ok(card,`missing ${id}`); assert.match(String(card.type||''),/Criatura/i); assert.notEqual(card.enabled,false); }
 });

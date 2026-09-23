@@ -1,0 +1,9 @@
+ARGENTINIA 23.21.6 HF23.3.16.1.3 — OVERLAY
+Aplicar EXCLUSIVAMENTE sobre HF23.3.16.1.2.
+
+Este overlay corrige sólo GitHub CI/tests:
+1) evolution.test.mjs portable en repo real + release/gates.
+2) pages.yml instala dependencias de Functions antes de npm test.
+
+NO cambia runtime productivo, Rules ni callables.
+Gate03/Gate05/Gate07 + Deploy/Verify se conservan; repetir únicamente GitHub/Pages build.
