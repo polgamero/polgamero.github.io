@@ -116,6 +116,8 @@ const HEADLESS_ENGINE = globalThis.__ARGENTINIA_HEADLESS_ENGINE__ === true;
 configurePublicProfileUI({
   getCurrentUid:()=>String(state.currentUser?.uid||''),
   getOwnedCardIds:()=>Array.isArray(state.userProfile?.collection)?state.userProfile.collection:[],
+  getEnhancements:()=>state.userProfile?.enhancements&&typeof state.userProfile.enhancements==='object'?state.userProfile.enhancements:{},
+  getEvolutions:()=>state.userProfile?.evolutions&&typeof state.userProfile.evolutions==='object'?state.userProfile.evolutions:{},
   renderCard:card=>createCardElement(card,false,true,null,'encyclopedia',null),
   onFavoriteChanged:cardId=>{ if(state.userProfile) state.userProfile={...state.userProfile,favoriteCardId:String(cardId||'')}; }
 });
@@ -6087,6 +6089,7 @@ function showWorkshopUnlockConfirmModal({machine='',points=0,fichas=0}={}){
     const finish=value=>{if(settled)return;settled=true;document.removeEventListener('keydown',onKey);modal.remove();resolve(value);};
     const onKey=event=>{if(event.key==='Escape')finish(false);};
     document.addEventListener('keydown',onKey);
+    document.body.appendChild(modal);
     modal.querySelector('[data-workshop-unlock-confirm]')?.addEventListener('click',()=>finish(true));
     modal.querySelector('[data-workshop-unlock-cancel]')?.addEventListener('click',()=>finish(false));
   });

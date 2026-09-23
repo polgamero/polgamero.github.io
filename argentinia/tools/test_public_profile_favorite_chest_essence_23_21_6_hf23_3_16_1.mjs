@@ -18,12 +18,13 @@ const publicProfile=readRepo('functions/src/community/publicProfile.js');
 const favorite=readRepo('functions/src/shared/profileFavorite.js');
 const trade=readRepo('functions/src/economy/trade.js');
 const workshop=readRepo('functions/src/economy/workshop.js');
+const commerce=readRepo('functions/src/economy/commerce.js');
 
 for(const token of [
-  'favoriteCardIdIfOwned','favoriteCardPatchForCollection','TRUSTED_CARD_IDS',"favoriteCardId:''"
+  'favoriteCardIdIfOwned','favoriteCardPatchForCollection','favoriteCardPatchForState','FAVORITE_ENHANCED_SUFFIX','parseFavoriteCardId','TRUSTED_CARD_IDS',"favoriteCardId:''"
 ]) if(!favorite.includes(token)) fail(`missing shared favorite helper ${token}`);
 for(const token of [
-  'favoriteCardId','favoriteCardName','normalizePublicProfileCosmetics','profileCosmetics','schemaVersion:2',
+  'favoriteCardId','favoriteCardBaseId','favoriteCardVariant','favoriteCardEnhancementKeyword','favoriteCardName','normalizePublicProfileCosmetics','profileCosmetics','schemaVersion:3',
   "db.doc(`users/${uid}`).update({favoriteCardId:''})",'setFavoriteCard','PUBLIC_PROFILE_FAVORITE_NOT_OWNED','cardEnabledByPolicy'
 ]) if(!publicProfile.includes(token)) fail(`missing server profile token ${token}`);
 if(!index.includes("action === 'set_favorite_card'")) fail('existing community callable must route favorite setter');
@@ -31,6 +32,8 @@ if(!index.includes('setFavoriteCard(db,{ uid:auth.uid, cardId:data.cardId })')) 
 if((index.match(/export const\s+\w+\s*=\s*onCall/g)||[]).length!==42) fail('must preserve exactly 42 deployed callables');
 if(!trade.includes('favoriteCardPatchForCollection(ownerProfile,swapped.collectionA)')||!trade.includes('favoriteCardPatchForCollection(offererProfile,swapped.collectionB)')) fail('trade acceptance must auto-clear stale favorites for either side');
 if(!workshop.includes('favoriteCardPatchForCollection(profile,nextCollection)')) fail('mixer collection mutation must preserve/clear favorite invariant');
+if(!commerce.includes('favoriteCardPatchForState(profile,{enhancements:nextEnhancements})')) fail('crafting the last normal copy into enhanced must invalidate a base favorite');
+if(!workshop.includes('favoriteCardPatchForState(profile,{evolutions:nextEvolutions})')) fail('evolving the last normal copy must invalidate a base favorite');
 
 for(const token of [
   "setPublicProfileFavoriteCard = asyncProxy('setPublicProfileFavoriteCard')",
@@ -39,13 +42,16 @@ for(const token of [
 
 for(const token of [
   'configurePublicProfileUI','public-profile-favorite','public-profile-favorite-card','public-profile-favorite-picker',
-  'realOwnedCards','renderRealCard','setPublicProfileFavoriteCard','data-profile-background','data-profile-name-badge','data-profile-frame','data-profile-title'
+  'realOwnedCards','displayCardForFavorite','FAVORITE_ENHANCED_SUFFIX','getEnhancements','renderRealCard','setPublicProfileFavoriteCard','data-profile-background','data-profile-name-badge','data-profile-frame','data-profile-title'
 ]) if(!profileUi.includes(token)) fail(`missing favorite/cosmetics UI ${token}`);
 if(profileUi.includes('alert(')||profileUi.includes('window.confirm(')||profileUi.includes('confirm(')) fail('favorite profile UX must not use native browser alert/confirm dialogs');
 if(!profileUi.includes("cardDb.getById")||!profileUi.includes('host.renderCard')) fail('favorite showcase must render the real card definition');
+if(!profileUi.includes('::enhanced')||!profileUi.includes('favoriteCardEnhancementKeyword')) fail('favorite picker/showcase must support owned enhanced variants');
+if(!publicProfile.includes("favoriteParsed.variant==='enhanced'")||!publicProfile.includes('favoriteCardEnhancementKeyword')) fail('public snapshot must expose only the selected enhanced favorite keyword');
+if(!favorite.includes("parsed.variant === 'enhanced'")) fail('server favorite ownership must validate enhanced physical variant');
 
 for(const key of [
-  'publicProfile.favorite.title','publicProfile.favorite.choose','publicProfile.favorite.pickerHelp','publicProfile.favorite.clear',
+  'publicProfile.favorite.title','publicProfile.favorite.choose','publicProfile.favorite.pickerHelp','publicProfile.favorite.clear','publicProfile.favorite.enhancedOption','publicProfile.favorite.enhancedName','publicProfile.favorite.enhancedBadge',
   'publicProfile.cosmetics.future','chest.essence.title','chest.essence.description','chest.essence.action'
 ]) if(!texts.includes(`'${key}'`)) fail(`missing Game Text ${key}`);
 

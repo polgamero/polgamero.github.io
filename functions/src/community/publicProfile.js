@@ -10,7 +10,7 @@ import {
 } from '../economy/achievements.js';
 import { economyError } from '../shared/errors.js';
 import { TRUSTED_CARD_POOL, TRUSTED_CARD_IDS } from '../trusted/cardCatalog.js';
-import { favoriteCardIdIfOwned } from '../shared/profileFavorite.js';
+import { favoriteCardIdIfOwned, parseFavoriteCardId } from '../shared/profileFavorite.js';
 import { loadCardPublicationPolicy, cardEnabledByPolicy } from '../trusted/cardPublication.js';
 
 
@@ -89,15 +89,21 @@ export function buildPublicPlayerProfile({ uid, profile={}, stats={}, achievemen
     return { familyId:family.id, metric:family.metric, current, highestClaimed, tiers };
   });
   const favoriteCardId=favoriteCardIdIfOwned(profile);
-  const favoriteCard= favoriteCardId ? TRUSTED_CARD_BY_ID.get(favoriteCardId) : null;
+  const favoriteParsed=parseFavoriteCardId(favoriteCardId);
+  const favoriteCard= favoriteCardId ? TRUSTED_CARD_BY_ID.get(favoriteParsed.baseId) : null;
+  const favoriteCardEnhancementKeyword=favoriteCardId && favoriteParsed.variant==='enhanced'
+    ? String(profile?.enhancements?.[favoriteParsed.baseId] || '').trim().slice(0,80) : '';
   return {
-    schemaVersion:2,
+    schemaVersion:3,
     uid:targetUid,
     username:String(profile?.username||profile?.displayName||stats?.username||'Jugador').trim().slice(0,40)||'Jugador',
     photoURL:safePhotoURL(profile?.photoURL),
     joinedAtMs:timestampMs(profile?.createdAt),
     favoriteCardId,
-    favoriteCardName:favoriteCard ? String(favoriteCard.name||favoriteCardId).slice(0,90) : '',
+    favoriteCardBaseId:favoriteCard ? favoriteParsed.baseId : '',
+    favoriteCardVariant:favoriteCard ? favoriteParsed.variant : '',
+    favoriteCardEnhancementKeyword,
+    favoriteCardName:favoriteCard ? String(favoriteCard.name||favoriteParsed.baseId).slice(0,90) : '',
     cosmetics:normalizePublicProfileCosmetics(profile?.profileCosmetics),
     stats:safeStats,
     achievements,
@@ -144,11 +150,12 @@ export async function setFavoriteCard(db,{uid,cardId}={}) {
       tx.update(userRef,{favoriteCardId:''});
       return {favoriteCardId:''};
     }
-    if(!TRUSTED_CARD_IDS.has(requested)) throw economyError('PUBLIC_PROFILE_FAVORITE_INVALID');
+    const parsed=parseFavoriteCardId(requested);
+    if(!parsed.baseId||!TRUSTED_CARD_IDS.has(parsed.baseId)||!['base','enhanced'].includes(parsed.variant)) throw economyError('PUBLIC_PROFILE_FAVORITE_INVALID');
     const publication=await loadCardPublicationPolicy(db,tx);
-    if(!cardEnabledByPolicy(requested,publication)) throw economyError('CARD_DISABLED',{cardId:requested});
-    const collection=Array.isArray(profile.collection)?profile.collection:[];
-    if(!collection.some(raw=>String(raw)===requested)) throw economyError('PUBLIC_PROFILE_FAVORITE_NOT_OWNED',{cardId:requested});
+    if(!cardEnabledByPolicy(parsed.baseId,publication)) throw economyError('CARD_DISABLED',{cardId:parsed.baseId});
+    const validFavorite=favoriteCardIdIfOwned(profile,requested);
+    if(validFavorite!==requested) throw economyError('PUBLIC_PROFILE_FAVORITE_NOT_OWNED',{cardId:requested});
     tx.update(userRef,{favoriteCardId:requested});
     return {favoriteCardId:requested};
   });

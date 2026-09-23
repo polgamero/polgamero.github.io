@@ -10,7 +10,8 @@ import { gameText } from './gameTexts.js';
 const esc=value=>{const d=document.createElement('div');d.textContent=value==null?'':String(value);return d.innerHTML;};
 const n=value=>Math.max(0,Math.floor(Number(value)||0));
 const pct=(wins,games)=>games>0?Math.max(0,Math.min(100,(Number(wins)||0)*100/Number(games))):0;
-let host={getCurrentUid:()=>'',getOwnedCardIds:()=>[],renderCard:null,onFavoriteChanged:null};
+const FAVORITE_ENHANCED_SUFFIX='::enhanced';
+let host={getCurrentUid:()=>'',getOwnedCardIds:()=>[],getEnhancements:()=>({}),getEvolutions:()=>({}),renderCard:null,onFavoriteChanged:null};
 
 export function configurePublicProfileUI(next={}){
   host={...host,...(next&&typeof next==='object'?next:{})};
@@ -59,15 +60,35 @@ function stat(label,value,sub=''){return `<div class="public-profile-stat"><div 
 function formatJoined(ms){if(!ms)return '';try{return new Date(ms).toLocaleDateString('es-AR',{year:'numeric',month:'short'});}catch{return '';}}
 function currentUid(){try{return String(host.getCurrentUid?.()||'');}catch{return '';}}
 function ownedCardIds(){try{return Array.isArray(host.getOwnedCardIds?.())?host.getOwnedCardIds():[];}catch{return [];}}
+function localEnhancements(){try{const value=host.getEnhancements?.();return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch{return {};}}
+function localEvolutions(){try{const value=host.getEvolutions?.();return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch{return {};}}
+function localEvolutionStage(baseId){const row=localEvolutions()[baseId];return Math.max(0,Math.min(2,Math.floor(Number(row?.stage??row)||0)));}
+function parseFavoriteId(rawId){const id=String(rawId||'');return id.endsWith(FAVORITE_ENHANCED_SUFFIX)?{id,baseId:id.slice(0,-FAVORITE_ENHANCED_SUFFIX.length),variant:'enhanced'}:{id,baseId:id,variant:'base'};}
+function enhancedDisplayCard(baseCard,keyword){const clean=String(keyword||'').trim();return clean?{...baseCard,keywords:[...new Set([...(baseCard.keywords||[]),clean])]}:baseCard;}
+function favoriteDisplayName(cardId){const parsed=parseFavoriteId(cardId);const card=cardDb.getById(parsed.baseId);if(!card)return '';return parsed.variant==='enhanced'?gameText('publicProfile.favorite.enhancedName',{card:card.name||parsed.baseId}):String(card.name||parsed.baseId);}
 function realOwnedCards(){
-  const unique=[...new Set(ownedCardIds().map(String))];
-  return unique.map(id=>cardDb.getById(id)).filter(Boolean).filter(card=>typeof cardDb.isEnabled!=='function'||cardDb.isEnabled(card.id)).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'es-AR'));
+  const counts={}; for(const raw of ownedCardIds()){const id=String(raw||'');if(id)counts[id]=(counts[id]||0)+1;}
+  const enhancements=localEnhancements(); const evolutions=localEvolutions(); const rows=[];
+  for(const baseId of Object.keys(counts)){
+    const card=cardDb.getById(baseId); if(!card||(typeof cardDb.isEnabled==='function'&&!cardDb.isEnabled(card.id)))continue;
+    const enhancedKeyword=String(enhancements[baseId]||'').trim();
+    const evoRow=evolutions[baseId]; const evoStage=Math.max(0,Math.min(2,Math.floor(Number(evoRow?.stage??evoRow)||0)));
+    const special=(enhancedKeyword?1:0)+(evoStage>0?1:0);
+    if(counts[baseId]>special) rows.push({favoriteId:baseId,baseId,card,displayCard:card,label:String(card.name||baseId)});
+    if(enhancedKeyword&&counts[baseId]>=special) rows.push({favoriteId:`${baseId}${FAVORITE_ENHANCED_SUFFIX}`,baseId,card,displayCard:enhancedDisplayCard(card,enhancedKeyword),label:gameText('publicProfile.favorite.enhancedOption',{card:card.name||baseId,ability:enhancedKeyword})});
+  }
+  return rows.sort((a,b)=>String(a.label||'').localeCompare(String(b.label||''),'es-AR'));
 }
-function renderRealCard(cardId){
-  const card=cardDb.getById(String(cardId||''));
+function displayCardForFavorite(cardId,profile=null){
+  const parsed=parseFavoriteId(cardId); const card=cardDb.getById(parsed.baseId); if(!card)return null;
+  if(parsed.variant==='enhanced'){const keyword=String(profile?.favoriteCardEnhancementKeyword||localEnhancements()[parsed.baseId]||'').trim();return keyword?enhancedDisplayCard(card,keyword):null;}
+  return card;
+}
+function renderRealCard(cardId,profile=null){
+  const card=displayCardForFavorite(cardId,profile);
   if(!card) return null;
   try { const node=host.renderCard?.(card); if(node instanceof HTMLElement) return node; } catch(error){ console.warn('[PublicProfile] render favorite card fallback:',error); }
-  const fallback=document.createElement('div');fallback.className='public-profile-favorite-empty';fallback.textContent=String(card.name||card.id);return fallback;
+  const fallback=document.createElement('div');fallback.className='public-profile-favorite-empty';fallback.textContent=favoriteDisplayName(cardId)||String(card.name||card.id);return fallback;
 }
 function cosmeticAttr(profile,key){return esc(String(profile?.cosmetics?.[key]||''));}
 
@@ -78,8 +99,8 @@ function openFavoritePicker(profile,onSaved){
   modal.innerHTML=`<div class="public-profile-favorite-panel"><h3>${esc(gameText('publicProfile.favorite.pickerTitle'))}</h3><div class="public-profile-favorite-copy">${esc(gameText('publicProfile.favorite.pickerHelp'))}</div><div class="public-profile-favorite-picker"><div><input class="public-profile-favorite-search" type="search" placeholder="${esc(gameText('publicProfile.favorite.search'))}"><select class="public-profile-favorite-list" size="12"></select></div><div class="public-profile-favorite-preview"></div></div><div class="public-profile-favorite-error" data-fav-error style="min-height:18px;color:#efad9d;font-size:11px;margin-top:10px;"></div><div class="public-profile-favorite-modal-actions"><button class="public-profile-favorite-btn secondary" data-fav-clear type="button">${esc(gameText('publicProfile.favorite.clear'))}</button><button class="public-profile-favorite-btn secondary" data-fav-cancel type="button">${esc(gameText('common.cancel'))}</button><button class="public-profile-favorite-btn" data-fav-save type="button">${esc(gameText('common.save'))}</button></div></div>`;
   document.body.appendChild(modal);
   const select=modal.querySelector('.public-profile-favorite-list');const search=modal.querySelector('.public-profile-favorite-search');const preview=modal.querySelector('.public-profile-favorite-preview');
-  const refreshOptions=()=>{const q=String(search.value||'').trim().toLocaleLowerCase('es-AR');const filtered=cards.filter(card=>!q||String(card.name||'').toLocaleLowerCase('es-AR').includes(q));const previous=select.value||profile.favoriteCardId||'';select.innerHTML=filtered.map(card=>`<option value="${esc(card.id)}">${esc(card.name||card.id)}</option>`).join('');if(filtered.some(c=>c.id===previous))select.value=previous;else if(filtered[0])select.value=filtered[0].id;refreshPreview();};
-  const refreshPreview=()=>{preview.replaceChildren();const cardNode=renderRealCard(select.value);if(cardNode)preview.appendChild(cardNode);else{const empty=document.createElement('div');empty.className='public-profile-favorite-empty';empty.textContent=gameText('publicProfile.favorite.noneOwned');preview.appendChild(empty);}};
+  const refreshOptions=()=>{const q=String(search.value||'').trim().toLocaleLowerCase('es-AR');const filtered=cards.filter(row=>!q||String(row.label||'').toLocaleLowerCase('es-AR').includes(q));const previous=select.value||profile.favoriteCardId||'';select.innerHTML=filtered.map(row=>`<option value="${esc(row.favoriteId)}">${esc(row.label||row.favoriteId)}</option>`).join('');if(filtered.some(row=>row.favoriteId===previous))select.value=previous;else if(filtered[0])select.value=filtered[0].favoriteId;refreshPreview();};
+  const refreshPreview=()=>{preview.replaceChildren();const selected=cards.find(row=>row.favoriteId===select.value);const cardNode=selected?(()=>{try{const node=host.renderCard?.(selected.displayCard);return node instanceof HTMLElement?node:null;}catch{return null;}})():null;if(cardNode)preview.appendChild(cardNode);else{const empty=document.createElement('div');empty.className='public-profile-favorite-empty';empty.textContent=gameText('publicProfile.favorite.noneOwned');preview.appendChild(empty);}};
   select.addEventListener('change',refreshPreview);search.addEventListener('input',refreshOptions);refreshOptions();
   const close=()=>modal.remove();modal.querySelector('[data-fav-cancel]')?.addEventListener('click',close);
   const persist=async cardId=>{const save=modal.querySelector('[data-fav-save]');const clear=modal.querySelector('[data-fav-clear]');const errorEl=modal.querySelector('[data-fav-error]');if(errorEl)errorEl.textContent='';save.disabled=true;clear.disabled=true;try{const out=await setPublicProfileFavoriteCard(cardId);const id=String(out?.favoriteCardId||'');host.onFavoriteChanged?.(id);close();onSaved?.(id);}catch(error){console.error('No se pudo actualizar Carta Favorita:',error);save.disabled=false;clear.disabled=false;if(errorEl)errorEl.textContent=gameText('publicProfile.favorite.error');}};
@@ -104,7 +125,7 @@ export function showPublicPlayerProfile(targetUid,{onClose=null}={}){
       const progressTarget=next?.target||tiers.at(-1)?.target||0;
       return `<div class="public-profile-achievement"><div class="public-profile-achievement-head"><div class="public-profile-achievement-name">${esc(familyLabel(row.familyId))}</div><div class="public-profile-achievement-progress">${n(row.current).toLocaleString('es-AR')}${progressTarget?` / ${n(progressTarget).toLocaleString('es-AR')}`:''}</div></div><div class="public-profile-tier-row">${tiers.map(t=>trophyHtml(row.familyId,t.tier,!!t.claimed)).join('')}</div></div>`;
     }).join('');
-    const favoriteId=String(profile.favoriteCardId||'');const favoriteName=String(profile.favoriteCardName||cardDb.getById(favoriteId)?.name||'');
+    const favoriteId=String(profile.favoriteCardId||'');const favoriteName=String(profile.favoriteCardName||favoriteDisplayName(favoriteId)||'')+(favoriteId&&profile.favoriteCardVariant==='enhanced'?` · ${gameText('publicProfile.favorite.enhancedBadge')}`:'');
     overlay.querySelector('.public-profile-shell').innerHTML=`
       <div class="public-profile-topbar"><button class="public-profile-back" type="button">← ${esc(gameText('common.back'))}</button><div><div class="public-profile-kicker">${esc(gameText('publicProfile.kicker'))}</div><div class="public-profile-title">${esc(gameText('publicProfile.title'))}</div></div></div>
       <section class="public-profile-hero" data-profile-background="${cosmeticAttr(profile,'backgroundId')}" data-profile-frame="${cosmeticAttr(profile,'frameId')}"><div class="public-profile-cosmetic-background-slot" aria-hidden="true"></div>${avatar}<div><div class="public-profile-name-row"><div class="public-profile-name">${esc(profile.username||gameText('ranking.playerFallback'))}</div><span class="public-profile-name-badge-slot" data-profile-name-badge="${cosmeticAttr(profile,'nameBadgeId')}" aria-hidden="true"></span><span class="public-profile-title-slot" data-profile-title="${cosmeticAttr(profile,'titleId')}" aria-hidden="true"></span></div><div class="public-profile-meta"><span class="public-profile-pill">${esc(gameText(eloGames<10?'ranking.elo.provisional':'ranking.elo.established',{rating:elo.toLocaleString('es-AR')}))}</span><span class="public-profile-pill">${esc(gameText('publicProfile.meta.games',{count:n(s.gamesPlayed).toLocaleString('es-AR')}))}</span>${joined?`<span class="public-profile-pill">${esc(gameText('publicProfile.meta.joined',{date:joined}))}</span>`:''}</div></div></section>
@@ -115,8 +136,8 @@ export function showPublicPlayerProfile(targetUid,{onClose=null}={}){
       <section class="public-profile-section"><h3 class="public-profile-section-title">${esc(gameText('publicProfile.section.achievements'))}</h3><div class="public-profile-trophies">${achievements}</div></section>
       <div class="public-profile-privacy">${esc(gameText('publicProfile.privacy'))}</div>`;
     overlay.querySelector('.public-profile-back')?.addEventListener('click',close);
-    const slot=overlay.querySelector('[data-favorite-card-slot]');if(slot){slot.replaceChildren();const cardNode=favoriteId?renderRealCard(favoriteId):null;if(cardNode)slot.appendChild(cardNode);else{const empty=document.createElement('div');empty.className='public-profile-favorite-empty';empty.textContent=gameText('publicProfile.favorite.emptySlot');slot.appendChild(empty);}}
-    if(isOwn){overlay.querySelector('[data-edit-favorite]')?.addEventListener('click',()=>openFavoritePicker(profile,id=>{profile.favoriteCardId=id;profile.favoriteCardName=id?String(cardDb.getById(id)?.name||id):'';renderProfile(profile);}));overlay.querySelector('[data-clear-favorite]')?.addEventListener('click',()=>openFavoritePicker(profile,id=>{profile.favoriteCardId=id;profile.favoriteCardName=id?String(cardDb.getById(id)?.name||id):'';renderProfile(profile);}));}
+    const slot=overlay.querySelector('[data-favorite-card-slot]');if(slot){slot.replaceChildren();const cardNode=favoriteId?renderRealCard(favoriteId,profile):null;if(cardNode)slot.appendChild(cardNode);else{const empty=document.createElement('div');empty.className='public-profile-favorite-empty';empty.textContent=gameText('publicProfile.favorite.emptySlot');slot.appendChild(empty);}}
+    if(isOwn){const applyLocalFavorite=id=>{const parsed=parseFavoriteId(id);profile.favoriteCardId=id;profile.favoriteCardBaseId=id?parsed.baseId:'';profile.favoriteCardVariant=id?parsed.variant:'';profile.favoriteCardEnhancementKeyword=id&&parsed.variant==='enhanced'?String(localEnhancements()[parsed.baseId]||''):'';profile.favoriteCardName=id?String(cardDb.getById(parsed.baseId)?.name||parsed.baseId):'';renderProfile(profile);};overlay.querySelector('[data-edit-favorite]')?.addEventListener('click',()=>openFavoritePicker(profile,applyLocalFavorite));overlay.querySelector('[data-clear-favorite]')?.addEventListener('click',()=>openFavoritePicker(profile,applyLocalFavorite));}
   };
   fetchPublicPlayerProfile(targetUid).then(profile=>{if(!profile)throw new Error(gameText('publicProfile.notFound'));renderProfile(profile);}).catch(error=>{console.error('No se pudo cargar Perfil Público:',error);const shell=overlay.querySelector('.public-profile-shell');shell.innerHTML=`<div class="public-profile-topbar"><button class="public-profile-back" type="button">← ${esc(gameText('common.back'))}</button><div><div class="public-profile-kicker">${esc(gameText('publicProfile.kicker'))}</div><div class="public-profile-title">${esc(gameText('publicProfile.title'))}</div></div></div><div class="public-profile-error">${esc(gameText('publicProfile.error'))}</div>`;shell.querySelector('.public-profile-back')?.addEventListener('click',close);});
   return overlay;

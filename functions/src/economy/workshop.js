@@ -6,7 +6,7 @@ import { TRUSTED_CARD_POOL } from '../trusted/cardCatalog.js';
 import { loadCardPublicationPolicy, cardEnabledByPolicy, enabledTrustedPool } from '../trusted/cardPublication.js';
 import { normalizeReservation, protectedCardCount } from './tradeCore.js';
 import { INDUSTRIAL_MIX_COPIES_CONSUMED, nextIndustrialMixRarity, generateIndustrialMixResult, industrialMixFreeCopies } from './mixerCore.js';
-import { favoriteCardPatchForCollection } from '../shared/profileFavorite.js';
+import { favoriteCardPatchForCollection, favoriteCardPatchForState } from '../shared/profileFavorite.js';
 
 export const WORKSHOP_MACHINE_IDS = Object.freeze(['machine1','machine2','machine3','machine4']);
 
@@ -111,7 +111,7 @@ export async function evolveCardTx({ db, tx, uid, cardId }) {
   const now=Date.now();
   const nextEvolutions={...evolutions,[baseId]:{...(evolutions[baseId]||{}),stage:nextStage,evolvedAtMs:now}};
   const pointsAfter=pointsBefore-cost.points,fichasAfter=fichasBefore-cost.fichas,essenceAfter=essenceBefore-cost.essence;
-  tx.update(userRef,{points:pointsAfter,fichas:fichasAfter,essence:essenceAfter,evolutions:nextEvolutions,decks:deckSync.decks});
+  tx.update(userRef,{points:pointsAfter,fichas:fichasAfter,essence:essenceAfter,evolutions:nextEvolutions,decks:deckSync.decks,...favoriteCardPatchForState(profile,{evolutions:nextEvolutions})});
   return {kind:'cardEvolution',cardId:baseId,fromStage:currentStage,toStage:nextStage,pointsCost:cost.points,fichasCost:cost.fichas,essenceCost:cost.essence,copiesRequired:cost.copiesRequired,pointsAfter,fichasAfter,essenceAfter,deckSync:{updatedDeckIds:deckSync.updatedDeckIds}};
 }
 

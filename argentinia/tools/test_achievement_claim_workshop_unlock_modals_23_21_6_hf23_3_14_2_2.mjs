@@ -38,6 +38,7 @@ for(const token of [
   'await showWorkshopUnlockConfirmModal({machine:machineTitle(machineId),points,fichas})'
 ]) if(!ui.includes(token)) fail(`missing workshop unlock modal token ${token}`);
 
+if(!ui.includes('document.body.appendChild(modal);')) fail('workshop unlock confirmation modal must be mounted in DOM before awaiting user action');
 if(ui.includes('window.confirm(confirmText)')) fail('workshop unlock still uses native window.confirm and may drop mobile fullscreen');
 if(!ui.includes('.workshop-unlock-confirm-actions{flex-direction:column}')) fail('mobile unlock action layout missing');
 

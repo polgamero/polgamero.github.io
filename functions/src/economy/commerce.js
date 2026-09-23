@@ -5,6 +5,7 @@ import { loadCardPublicationPolicy, cardEnabledByPolicy, assertCardEnabled } fro
 import { loadTrustedEmoteCatalog, normalizeOwnedPremiumEmotes } from '../trusted/emoteCatalog.js';
 import { validateUsername } from './usernames.js';
 import { economyError } from '../shared/errors.js';
+import { favoriteCardPatchForState } from '../shared/profileFavorite.js';
 import {
   ENHANCEMENT_KEYWORDS,
   USERNAME_RENAME_COST,
@@ -173,10 +174,12 @@ export async function craftEnhancementTx({ db, tx, uid, cardId, keyword }) {
   const fichasBefore = Math.max(0, Math.floor(Number(profile.fichas) || 0));
   if (fichasBefore < settings.craftCost) throw economyError('CRAFT_INSUFFICIENT_FICHAS', { required: settings.craftCost, available: fichasBefore });
   const fichasAfter = fichasBefore - settings.craftCost;
+  const nextEnhancements = { ...enhancements, [card.id]: cleanKeyword };
   tx.update(db.collection('users').doc(uid), {
     fichas: fichasAfter,
-    enhancements: { ...enhancements, [card.id]: cleanKeyword },
-    decks: deckSync.decks
+    enhancements: nextEnhancements,
+    decks: deckSync.decks,
+    ...favoriteCardPatchForState(profile,{enhancements:nextEnhancements})
   });
   return {
     kind: 'enhancementCraft', cardId: card.id, keyword: cleanKeyword, fichasCost: settings.craftCost, fichasAfter,
