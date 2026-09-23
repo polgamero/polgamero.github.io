@@ -1,0 +1,44 @@
+ARGENTINIA 23.21.6 HF15 PRE-RELEASE
+Tano Strategic Mana Reservation + Desktop Match Initialization Cover
+
+INCIDENTE IA CERRADO
+- En Difícil, Crematorio del Oeste se activaba en upkeep por ser instantáneo antes de que la IA evaluara Main 1.
+- El caso real gastó 4 de 5 fuentes útiles con 7 cartas en mano, luego no casteó nada y descartó por límite de mano.
+- No era un bug de la carta: era una prioridad arquitectónica incorrecta de habilidades de valor.
+
+FIX TRANSVERSAL IA
+1. Medio/Difícil: draw/tutor/look-at/graveyard-return instantáneos no se usan por puro valor durante upkeep/draw/main1/combat.
+2. En turno propio se difieren a Main 2; en turno humano se conservan hasta End step.
+3. Si el efecto proyecta mano >7, se rechaza por presión de mano.
+4. strategicDiscard deja de ser capability decorativa: Medio/Difícil descartan la carta de menor keep-value; Fácil conserva RNG.
+5. Recuperación de cementerio valora engines/static effects y sinergia de subtipo además de CMC/P-T.
+6. Telemetry incorpora candidato automático BOT_STRATEGIC_MANA_WASTE para regresiones de tap-out no urgente.
+
+FIX DESKTOP INIT
+- #match-loading-overlay ya existía, pero desktop no cedía un frame al browser: hidden=false podía quedar sin pintar mientras JS armaba tablero/mazos.
+- initGame ahora espera dos requestAnimationFrame + task boundary inmediatamente después de mostrar el overlay.
+- Resultado: negro + spinner es el primer frame visible antes de la moneda también en desktop.
+
+NO CAMBIA
+- Functions: 41
+- Firestore Rules: 23.13.86
+- Multiplayer protocol: mp-23.19.2
+- Economy protocol/schema: econ-23.19.5.6 / 10
+- Pool físico: 900
+
+STATUS
+PRE-RELEASE. Gates reales, GitHub Actions y smoke productivo pendientes.
+
+LOCAL CERTIFICATION
+- Canonical fast contracts: 134/134 PASS.
+- Dedicated HF15 contract: PASS.
+- Changed-client syntax: PASS.
+- Functions npm test: 17/17 PASS.
+- HF14->HF15 Functions tree diff: NONE.
+- Stability Lab: seeds=10 PASS.
+- Headless 23.18.1 reduced: 3/3 complete, 0 stalls, 0 invariants.
+- Headless 23.18.2 reduced: 3/3 complete, 0 stalls, 0 invariants.
+- Coverage: 900 total, 98% structurally known.
+- Multiplayer reliability reduced: seeds=100 PASS.
+- Multiplayer hardening reduced: cases=2000 PASS.
+- Deck Intelligence matrix: 64 builds PASS.

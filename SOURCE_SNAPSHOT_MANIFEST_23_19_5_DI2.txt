@@ -1,0 +1,65 @@
+SOURCE SNAPSHOT MANIFEST — 23.19.5 DECK INTELLIGENCE 2.0 HOTFIX RC
+
+STATUS=RELEASE_CANDIDATE_PENDING_DI2_EMULATOR_REDEPLOY_SMOKE
+BASELINE=23.19.5 RELEASED / RC2 CI HOTFIX4
+POOL=880
+PROTOCOL=mp-23.19.2
+ECONOMY_PROTOCOL=econ-23.19.5
+ECONOMY_SCHEMA=1
+ECONOMY_FUNCTIONS_REGION=southamerica-east1
+FIRESTORE_RULES=23.13.79 (unchanged; not shipped in public source)
+FILE_COUNT=292
+CARD_IMAGE_BINARIES=0
+PUBLIC_FIRESTORE_CONFIG_FILES=0
+APP_CHECK_PROVIDER=recaptcha-enterprise
+APP_CHECK_ENFORCEMENT=OBSERVE_ONLY
+FUNCTIONS_NODE=22
+FUNCTIONS_MIN_INSTANCES=0
+FUNCTIONS_MAX_INSTANCES=1
+FUNCTIONS_CONCURRENCY=10
+ECONOMY_OPERATION_LEDGER=economyOperations/{uid}_{operationId}
+SECURE_ACCOUNT_BOOTSTRAP=SERVER_READY
+TRUSTED_STARTER_POOL=880
+DECK_INTELLIGENCE_VERSION=23.19.5-di2
+TANO_MEDIUM_DECK_QUALITY=strong/advanced
+TANO_HARD_DECK_QUALITY=elite/full
+STARTER_DECK_QUALITY=starter/guided-basic
+TARGET_AWARE_INTERACTION=YES
+ARCHETYPE_COMPOSITION_CONTRACTS=YES
+TYPAL_FOCUS_COHERENCE=YES
+ADMIN_HEAVY_PANES=LAZY
+GAME_TEXT_RENDER_COMPLEXITY=O(N)
+ANIMATED_LAND_SELF_PAY=LEGAL_WITH_PREPAY_WARNING
+
+DI2 artifacts:
+- argentinia/DECK_INTELLIGENCE_2_HOTFIX_23_19_5.txt
+- argentinia/RELEASE_NOTES_23_19_5_DI2_RC.txt
+- argentinia/tools/test_deck_intelligence_2_23_19_5.mjs
+- argentinia/tools/audit_deck_intelligence_matrix_23_19_5.mjs
+- argentinia/tools/ci_fast_contract_manifest_23_19_5_di2.txt
+- argentinia/js/deckIntelligence.js
+- functions/src/trusted/deckIntelligence.js (byte-identical to frontend copy)
+
+LOCAL QA COMPLETED:
+- canonical fast contracts: 106/106 PASS
+- Functions pure unit: PASS
+- forced archetype/quality matrix: 60/60 PASS
+- Stability: PASS
+- Headless: PASS
+- Coverage: 97.95% structurally known
+- Multiplayer Reliability: PASS
+- Multiplayer Hardening: PASS
+- App JS/MJS syntax: 216 PASS
+- Functions JS/MJS syntax: 14 PASS
+- JSON: 22 PASS
+- YAML: 1 PASS
+- Game Text: 1243 definitions / 1010 runtime literal uses PASS
+- card-image binaries: 0
+- public Firestore config files: 0
+
+REAL GATES REQUIRED BECAUSE TRUSTED DECK INTELLIGENCE CHANGED:
+- Economy Auth+Firestore+Functions Emulator Gate: PENDING
+- DI2 wrapper marker required: ECONOMY_AUTHORITY_FOUNDATION_23_19_5_DI2_EMULATOR_OK
+- Functions redeploy 4/4: PENDING AFTER EMULATOR PASS
+- GitHub Actions: PENDING
+- production DI2 smoke: PENDING

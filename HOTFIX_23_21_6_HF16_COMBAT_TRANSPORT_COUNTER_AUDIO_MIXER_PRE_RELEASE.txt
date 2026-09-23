@@ -1,0 +1,37 @@
+ARGENTINIA 23.21.6 HF16 — PRE-RELEASE
+Combat Selection Cleanup + Transport/Counter AI + Quick Audio Mixer
+
+ALCANCE
+1. Bloqueadores: confirmar/rechazar la declaración consume pendingBlockerIndex antes de avanzar prioridad. Espacio ya no deja halo celeste residual.
+2. Hover desktop con overflow: se elimina el hover legacy recortado dentro del scroller y queda un único preview portal al body, objetivo 2.65x, con clamp por visualViewport y origen visual superior.
+3. Odómetro/Batería: los triggers de mantenimiento que se agregan contadores a sí mismos declaran targetKind=support + targetController=self; el trusted snapshot server queda sincronizado.
+4. IA de contadores: Medio/Difícil puede usar remove_counter cuando el recurso/payoff son legales y el timing de valor es razonable.
+5. IA de Transportes: Tripular se planifica sólo en ventanas de combate útiles; evita tripular ofensivamente un Transporte recién entrado sin Apuro y compara planes con/sin Crew antes de girar criaturas. Telemetry agrega BOT_CREW_WASTE.
+6. Audio rápido: el parlante vive a la derecha de REC en menú y partida. Abre mixer Música/Efectos con sliders independientes; 0% silencia sólo ese canal. Persistencia y Opciones quedan sincronizadas; desktop/mobile comparten contrato.
+
+CONTRATOS PRESERVADOS
+- Engine 23.21.6
+- Multiplayer mp-23.19.2
+- Economy econ-23.19.5.6 / schema 10
+- Firestore Rules 23.13.86
+- Functions 41
+- Physical pool 900
+
+FUNCTIONS
+HF16 cambia el árbol de Functions sólo por sincronización trusted de artefactos art_068/art_070. No agrega callables ni cambia lógica de autoridad/economía.
+
+CERTIFICACIÓN LOCAL
+- 135/135 contratos canónicos PASS.
+- Dedicated HF16 PASS.
+- 17/17 Functions unit tests PASS.
+- Changed-client + Functions syntax PASS.
+- Stability Lab seeds=10 PASS.
+- Headless 23.18.1: games=6, deterministicRuns=2, completed=6, stalls=0, invariants=0, determinismFailures=0.
+- Coverage audit: 900 total, 578 full, 304 partial, 18 unsupported, 98% structurally known.
+- Headless 23.18.2 coverage-v2: games=6, deterministicRuns=2, completed=6, stalls=0, invariants=0, determinismFailures=0.
+- Multiplayer Reliability: seeds=250, commits=120 => 30,000 commits PASS.
+- Multiplayer Hardening: cases=5000 PASS.
+- Deck Intelligence matrix: 16 archetypes x 4 qualities = 64 builds PASS.
+
+PENDIENTE EXTERNO
+Gate03 + Gate05 + Gate07 reales, deploy/verify Functions, GitHub Actions y smoke productivo.

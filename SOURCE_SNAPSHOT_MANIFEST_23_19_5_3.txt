@@ -1,0 +1,89 @@
+SOURCE SNAPSHOT MANIFEST — 23.19.5.3 DAILY REWARDS AUTHORITY RC
+
+STATUS=RELEASE_CANDIDATE_PENDING_REAL_EMULATOR_DEPLOY_GITHUB_SMOKE
+BASELINE=23.19.5.2 RELEASED + Deck Intelligence 23.19.5-di2
+POOL=880
+PROTOCOL=mp-23.19.2
+ECONOMY_PROTOCOL=econ-23.19.5.3
+ECONOMY_SCHEMA=4
+ECONOMY_FUNCTIONS_REGION=southamerica-east1
+FIRESTORE_RULES=23.13.79 (unchanged; not shipped in public source)
+FILE_COUNT=317
+CARD_IMAGE_BINARIES=0
+PUBLIC_FIRESTORE_CONFIG_FILES=0
+APP_CHECK_PROVIDER=recaptcha-enterprise
+APP_CHECK_ENFORCEMENT=OBSERVE_ONLY
+FUNCTIONS_NODE=22
+FUNCTIONS_MIN_INSTANCES=0
+FUNCTIONS_MAX_INSTANCES=1
+FUNCTIONS_CONCURRENCY=10
+FUNCTIONS_TIMEOUT_SECONDS=30
+FUNCTIONS_MEMORY=256MiB
+ECONOMY_OPERATION_LEDGER=economyOperations/{uid}_{operationId}
+ECONOMY_FUNCTION_COUNT=16
+PACK_AUTHORITY=SERVER
+GUARANTEED_MYTHIC_AUTHORITY=SERVER
+STORE_PACK_PURCHASE_AUTHORITY=SERVER
+CRAFT_AUTHORITY=SERVER
+PREBUILT_AUTHORITY=SERVER_TRUSTED_CATALOG
+CLASSIFIEDS_AUTHORITY=SERVER_ART_WEEK
+USERNAME_RENAME_AUTHORITY=SERVER_ATOMIC_REGISTRY
+DAILY_REWARDS_AUTHORITY=SERVER
+DAILY_CLOCK_AUTHORITY=SERVER_ART_UTC_MINUS_3
+DAILY_CLAIM_RECOVERY=OPERATION_ID
+DAILY_ADMIN_DEBUG_AUTHORITY=SERVER
+DAILY_CAMPAIGNS=SERVER_SURFACE_SCOPED
+ACTION_RECOVERY=OPERATION_ID_JOURNAL
+DIRECT_FIRESTORE_FIREWALL=DEFERRED_TO_23.19.5.6
+DECK_INTELLIGENCE_VERSION=23.19.5-di2
+TRUSTED_STARTER_POOL=880
+
+FUNCTIONS:
+- economyStatus
+- economyBootstrapAccount
+- economyCompleteStarterDeck
+- economyOpenPack
+- economyOpenGuaranteedMythic
+- economyGetOperation
+- economyGetStorefront
+- economyPurchasePack
+- economyCraftEnhancement
+- economyPurchasePrebuiltDeck
+- economyGetClassifieds
+- economyPurchaseClassifiedCard
+- economyRenameUsername
+- economyRegisterDailyLogin
+- economyClaimDailyReward
+- economyAdminDailyDebug
+
+23.19.5.3 PUBLIC-SOURCE ARTIFACTS:
+- argentinia/DAILY_REWARDS_AUTHORITY_23_19_5_3.txt
+- argentinia/RELEASE_NOTES_23_19_5_3_RC.txt
+- argentinia/tools/test_daily_rewards_authority_23_19_5_3.mjs
+- argentinia/tools/ci_fast_contract_manifest_23_19_5_3.txt
+- functions/src/economy/dailyCore.js
+- functions/src/economy/daily.js
+
+LOCAL QA COMPLETED:
+- canonical fast contracts: 109/109 PASS
+- regression archive parity: 62/62 PASS
+- Economy Foundation + Packs/Mythic + Commerce + Daily contracts: PASS
+- Deck Intelligence 2 contract: PASS
+- Stability: 10 seeds / 30 builds / 2000 RNG / 40 invariant mutations PASS
+- Headless 23.18.1: 6/6 / 2484 actions / 109 turns PASS
+- Headless Coverage: 97.95% structurally known
+- Headless 23.18.2: 6/6 / 2723 actions / 120 turns PASS
+- Multiplayer Reliability: 250 seeds / 30000 commits / 61822 deliveries PASS
+- Multiplayer Hardening: 5000 cases / 15000 safe / 15000 rejected PASS
+- runtime JS/MJS syntax: 94/94 PASS
+- tools JS/MJS syntax: 127/127 PASS
+- Functions JS/MJS syntax: 21/21 PASS
+- JSON: 23/23 PASS
+- YAML: 1/1 PASS
+- Game Text: 1243 definitions / 1010 runtime literal uses PASS
+
+REAL PROMOTION GATES PENDING:
+- Auth+Firestore+Functions Emulator Gate 23.19.5.3 code 0 + both required Daily markers.
+- Production deploy/verify exactly 16 Economy Functions.
+- GitHubSource push + GitHub Actions green (canonical 109/109).
+- Production smoke of Daily server clock/login/claim/Admin debug plus schema4 capabilities.

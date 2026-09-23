@@ -1,0 +1,48 @@
+ARGENTINIA 23.21.6 HF12 PRE-RELEASE
+Tournament Bot Visibility Recovery + Tournament Stall Telemetry
+
+INCIDENTE CERRADO
+- Torneo local contra NPC.
+- El jugador pasó prioridad en combat_end.
+- ~0.94 s después la pestaña quedó hidden durante ~1.66 s.
+- El bot normalmente completa scheduler+think en ~1.2 s.
+- El callback quedó consumido por el guard de document.hidden y Torneo no rearmaba el scheduler al volver visible.
+- Resultado: priorityPlayer=rival + consecutivePasses=1 + Stack vacía + pending vacío, sin progreso.
+- No fue causado por Lobizón de Medianoche ni por una resolución de carta.
+
+ROOT CAUSE
+HF6 había blindado este caso para Solo normal, pero `isLifecycleManagedSoloGame()` excluía `currentTournamentMatch`.
+Tournament reutiliza el mismo bot local y el mismo scheduler, pero no participa del recovery Solo.
+En paralelo, BOT_PRIORITY_STALL sólo observaba session.meta.mode=solo/solo_reconnect, por lo que el stall de Torneo tampoco generaba candidato automático.
+
+FIX HF12
+1. En `visibilitychange:hidden`, una partida de Torneo contra NPC invalida el scheduler one-shot del bot.
+2. En `visibilitychange:visible`, si la prioridad sigue siendo rival, se rearma exactamente un callback epoch-fenced.
+3. Torneo NO fuerza reload ni crea checkpoints Solo.
+4. BOT_PRIORITY_STALL ahora incluye `mode=tournament`.
+5. Se mantiene la exclusión del watchdog mientras la página está hidden y durante la breve grace de resume.
+
+NO CAMBIA
+- Functions: 41
+- Firestore Rules: 23.13.86
+- Multiplayer protocol: mp-23.19.2
+- Economy protocol/schema: econ-23.19.5.6 / 10
+- Pool físico: 900
+
+CERTIFICACIÓN LOCAL
+- 131/131 contratos canónicos PASS.
+- 17/17 Functions PASS.
+- Syntax main.js + telemetry.js PASS.
+- HF12 dedicated regression PASS.
+- Stability Lab seeds=10 PASS.
+- Headless Full Game 23.18.1 reducido: 3/3 completas, 0 stalls, 0 invariantes.
+- Headless Full Game 23.18.2 reducido: 3/3 completas, 0 stalls, 0 invariantes.
+- Headless coverage: 900 total, 98% structurally known.
+- Multiplayer reliability reducido: seeds=100 PASS.
+- Multiplayer hardening reducido: cases=2000 PASS.
+- Deck Intelligence matrix: 64 builds PASS.
+
+SIGUE PENDIENTE
+- Emulator Gates reales.
+- GitHub Actions.
+- Smoke productivo.

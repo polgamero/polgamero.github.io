@@ -1,0 +1,41 @@
+ARGENTINIA 23.21.6 — HF23.3.7.1 RELEASED
+Rarity Icon Assets + Ambient Public Stats Realism
+
+CAMBIOS
+1) Rareza visual quirúrgica
+- Se elimina el circulito textual de rareza del type-line.
+- El renderer usa exactamente estos assets ya provistos por el owner:
+  assets/images/ui/common.png
+  assets/images/ui/uncommon.png
+  assets/images/ui/rare.png
+  assets/images/ui/mythic.png
+- El icono queda limitado a 1.1em × 1.1em, sin incrementar la altura del contenedor de tipo.
+- No se aplican tintes CSS; se respeta el PNG original.
+
+IMPORTANTE SOBRE LOS 4 PNG
+Los binarios no estaban dentro del HF23.3.6 que recibió este hotfix. Este RELEASE está pensado como OVERLAY
+sobre la copia local del owner donde esos cuatro archivos ya existen. Los gates ahora verifican firma PNG y
+existencia antes de instalar dependencias para impedir un deploy silencioso con assets faltantes.
+
+2) Ambient Population — stats públicos coherentes V3
+- Toda partida simulada suma tiempo jugado determinístico de 8–25 min + segundos.
+- Migración de bots existentes: si tienen partidas pero tiempo 0, se reconstruye un total plausible.
+- gamesPlayed = wins + losses, y también se sincronizan multiplayerWins/Losses y eloWins/Losses.
+- Perfiles legacy de varias partidas con 0 victorias/0 derrotas se reparan con ratios determinísticos 38–62%.
+- Cartas descubiertas dejan de arrancar clavadas en 72: baseline variable por perfil, aprox. 80–110 al inicio,
+  y crece gradualmente con partidas/Daily, preservando inventario existente.
+- Economía ambiental pasa a model V3 y se vuelve a derivar desde W/L corregidos + recompensas Daily reales,
+  por lo que los puntos siguen siendo matemáticamente alcanzables.
+
+CERTIFICACIÓN LOCAL
+- Canonical fast contracts: 149/149 PASS.
+- Packaging preflight: canonical=149 regression=62 functions=42 PASS.
+- Functions parity Source/Gate05/Deploy/Gate07: 60/60 PASS en las tres copias.
+- js/ui.js + bots.js + runtime Gate07: syntax PASS.
+- Rules: 23.13.89 sin cambios.
+- Functions: 42, count sin cambios.
+
+PENDIENTE EXTERNO
+- Gate05 y Gate07: GREEN confirmados por ejecución real del owner sobre HF23.3.7.
+- HF23.3.7.1 sólo ajusta geometría CSS del icono de rareza + su contrato; Functions y Rules quedan byte-identical, por lo que no requiere repetir Gate05/Gate07.
+- El overlay requiere que los 4 PNG del owner ya estén en assets/images/ui.

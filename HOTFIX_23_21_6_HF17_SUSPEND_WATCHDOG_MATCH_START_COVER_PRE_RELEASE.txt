@@ -1,0 +1,36 @@
+ARGENTINIA 23.21.6 HF17 — SUSPEND WATCHDOG FALSE-POSITIVE + MATCH START COVER HARDENING — PRE-RELEASE
+
+BASE
+- Acumulativo sobre HF16 PRE-RELEASE / HF9 RELEASED baseline.
+- Pool 900, protocolo mp-23.19.2, Economy econ-23.19.5.6/schema 10, Rules 23.13.86, Functions 41: SIN CAMBIOS.
+
+1) FALSO BOT_PRIORITY_STALL DURANTE EN ESPERA
+RCA confirmado en telemetry real: al resolverse suspend_cast_from_exile, la habilidad ya había salido de Stack y la prioridad seguía figurando rival mientras el humano veía “Castear gratis”. Durante >6 s pendingSummary estaba vacío y el watchdog generaba BOT_PRIORITY_STALL aunque no había stall de IA.
+
+Fix:
+- nuevo state.pendingSuspendCastChoice durante toda la decisión humana;
+- se arma antes de await showSuspendCastModal() y se limpia en finally;
+- Telemetry PENDING_KEYS lo reconoce;
+- Solo Recovery lo trata como transitorio/no checkpointable;
+- el scheduler del bot lo considera resolución interactiva;
+- UI/canPlay/canSuspend quedan bloqueados durante esa decisión;
+- el watchdog NO se desactiva globalmente: rival priority sin pending humano sigue siendo candidato real.
+
+2) INICIO DE PARTIDA SIN MESA VACÍA
+RCA: el cover existía dentro de initGame, pero los pickers podían retirarse antes de comprometer visualmente el cover; Torneo además podía esperar beginTournamentMatch() antes de initGame; Multiplayer no cedía un frame antes del setup pesado.
+
+Fix:
+- al confirmar mazo/identidad se arma #match-loading-overlay ANTES de retirar el picker;
+- menú Jugar/Torneo monta primero la superficie destino y recién después retira el menú;
+- Solo/Torneo conservan paint fence de HF15 antes de setupBoardLayout;
+- startMultiplayerMatch pasa a async y espera el MISMO paint fence antes de retirar overlays o tocar tablero/mazos;
+- la moneda sigue ocultando “Inicializando partida” recién después de montarse en DOM;
+- si beginTournamentMatch o startMultiplayerMatch falla, el cover se retira fail-open.
+
+QA automática
+- test_suspend_watchdog_match_cover_23_21_6_hf17.mjs
+- test_tano_interactive_suspend_rules_ux_23_17_5_2.mjs
+- test_mobile_lifecycle_trigger_stack_23_21_6_hf6.mjs
+- test_bot_strategy_desktop_match_cover_23_21_6_hf15.mjs
+- test_combat_transport_counter_audio_mixer_23_21_6_hf16.mjs
+- canonical manifest: 136 contratos.

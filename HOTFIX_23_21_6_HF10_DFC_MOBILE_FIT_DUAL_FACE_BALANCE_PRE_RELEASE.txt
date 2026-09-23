@@ -1,0 +1,45 @@
+ARGENTINIA 23.21.6 HF10 — DFC MOBILE VIEWPORT FIT + DUAL-FACE VALUE BALANCE — PRE-RELEASE
+
+Baseline: 23.21.6 HF9 RELEASED.
+No new cards. Physical pool 900. Functions count 41. Firestore Rules 23.13.86 unchanged.
+
+1) DFC alternate-face modal on mobile/iOS/WebKit
+- Root cause: HF9 modal width was constrained by vw only; short landscape viewports could produce a 5:7 card taller than the usable viewport.
+- HF10 sizes by visualViewport width AND height, derives the 5:7 width from available height, refits on viewport/window resize, respects safe-area insets, and hides the redundant CARA A/B label on short viewports.
+- Goal: the complete reverse face remains inside the usable viewport without the lower card escaping off-screen.
+
+2) Noncreature TDFC balance philosophy
+- A transforming permanent should not be a blank tax until the player pays again. Face A must already provide a legitimate line of play; Face B should offer a meaningfully different or stronger plan.
+- Creature TDFC fronts already provide bodies/combat and were not globally buffed again.
+- Galpón Abandonado already had a useful A face ({T}:{C}) and remains unchanged from HF9 (B produces RR).
+
+3) Balance changes
+- Leyenda Susurrada en la Salamanca (4 mana Rare):
+  A: whenever your creature dies, Chusmeá 1; transform now {B}{G}.
+  B: whenever ANY creature dies, drain 1; transform back {B}{G}.
+- Tormenta sobre la Pampa (4 mana Uncommon):
+  A: every noncreature spell you cast Anticipá 1; still auto-transforms at your end step.
+  B: HF9 draw-on-transform + 1 damage per noncreature spell + auto-cycle remain.
+- Televisor de Tubo Encendido (3 mana Rare):
+  A: {1},{T}: Anticipá 1 OR {U}{R},{T}: transform.
+  B: each noncreature spell deals 2 to the rival; one trigger per cast avoids trigger-order spam; {2},{T}: transform back.
+- Mate de Madrugada (2 mana Uncommon):
+  A: {T}: add {C}, or {1},{T}: transform.
+  B: upkeep gain 1 life, or {1},{T}: transform back. B intentionally does not inherit mana production, making A vs B a real choice.
+
+4) Authority/parity
+- Client card data and Functions trusted card snapshots are byte-equivalent for touched groups.
+- Functions count remains 41; server code surface unchanged except trusted card data.
+
+5) Local certification
+- Canonical static contracts: 129/129 PASS.
+- Functions unit tests: 17/17 PASS.
+- HF10 dedicated contract: PASS.
+- Client syntax: PASS.
+- Stability Lab: 3 seeds PASS.
+- Headless Full Game 23.18.1: 3/3 complete, 0 stalls/invariants.
+- Headless Full Game 23.18.2: 3/3 complete, 0 stalls/invariants.
+- External Emulator Gates, GitHub Actions and production smoke: NOT claimed; pending user run.
+
+Packaging note
+- Also repairs the latent HF9 RELEASED GitHub workflow cardinality precheck drift: canonical SOURCE_SNAPSHOT_MANIFEST had 128 while pages.yml still grepped 127. HF10 now consistently expects 129.

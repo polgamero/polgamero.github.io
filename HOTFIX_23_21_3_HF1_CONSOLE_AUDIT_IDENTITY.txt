@@ -1,0 +1,30 @@
+ARGENTINIA v23.21.3 HF1 — Console Hygiene + Economy Audit Identity Resolver
+STATUS: PRE-RELEASE HOTFIX CANDIDATE
+BASELINE: v23.21.3 RELEASED (RC5.2j)
+
+BUG CONFIRMED
+- fetchEconomyAuditForAdmin() gathered targetUid/actorUid/adminUid and queried users by documentId().
+- admin.emote_catalog.set legitimately writes targetUid='gameConfig/emotes'.
+- Firestore rejects that value in a users documentId() IN query because it contains '/'.
+
+FIX
+- Keep the immutable audit row untouched.
+- Resolve usernames only for plain single-segment users document IDs.
+- Resource-path targets such as gameConfig/emotes remain visible through the existing fallback instead of poisoning the whole username batch.
+
+CONSOLE TRIAGE
+- Chrome message-channel rejection: Argentinia has no chrome.runtime/browser.runtime messaging API usage; no game-code suppression added. Verify with extensions disabled/incognito if desired.
+- style.css 503: file/path are present and correct in the canonical package; 503 is a host/origin availability response, not a missing-asset path. No fake client-side fix applied.
+- manual image 404s intentionally left untouched per owner instruction.
+
+UNCHANGED
+- Engine compatibility version: 23.21.3
+- Multiplayer protocol: mp-23.19.2
+- Economy protocol/schema: econ-23.19.5.6 / 10
+- Firestore Rules: 23.13.86
+- Functions: 40
+- Gameplay, pool, cards, economy authority and server code unchanged.
+
+QUALIFICATION
+- Added canonical HF1 regression contract and raised fast-contract count 115 -> 116.
+- Final promotion requires GitHub Actions green + productive smoke.
