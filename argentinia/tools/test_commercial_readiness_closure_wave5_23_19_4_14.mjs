@@ -62,6 +62,9 @@ assert.equal(Object.keys(normalized).length,880,'Wave 5 fingerprint remains scop
 // legal clean-room guard useful: any UNAPPROVED mechanical drift still changes the hash.
 if (ENGINE_VERSION === '23.21.6') {
   normalized.pw_007.spellCastTrigger={effect:{amount:1,type:'scry'},filter:'instant_or_sorcery'};
+  // HF23.3.14.1 — owner-approved global Defender rule: Defender creatures must have power 0.
+  // Normalize Custodio del Club back to its historical pre-rule value for the commercial-readiness fingerprint.
+  normalized.crea_076.power=1;
   normalized.pw_007=Object.fromEntries(Object.keys(normalized.pw_007).sort().map(k=>[k,normalized.pw_007[k]]));
 
   // HF9 — explicit DFC balance pass approved by the owner.
@@ -124,4 +127,4 @@ assert.match(handoff,/INPI identical \+ phonetic clearance/);
 assert.match(handoff,/not a legal opinion/i);
 
 console.log('COMMERCIAL_READINESS_CLOSURE_WAVE5_23_19_4_14_OK');
-console.log('redResidual=0 yellowResidual=0 terminology=44/44 gameplayFingerprint=MATCH_EXCEPT_APPROVED_PW007_AND_HF9_HF10_DFC_DELTAS competitorRefs=0 cardImages=EXTERNALIZED');
+console.log('redResidual=0 yellowResidual=0 terminology=44/44 gameplayFingerprint=MATCH_EXCEPT_APPROVED_PW007_HF9_HF10_DFC_AND_HF23_3_14_1_DEFENDER_DELTAS competitorRefs=0 cardImages=EXTERNALIZED');

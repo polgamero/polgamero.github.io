@@ -1,0 +1,55 @@
+ARGENTINIA — HANDOFF ACTUALIZADO
+Baseline candidata: 23.21.6 HF23.3.16.1.2 PRE-RELEASE (CI build-contract hotfix sobre .16.1.1)
+Fecha: 2026-09-22
+
+ESTADO DE PROMOCIÓN
+- Gate03 Rules 23.13.89: GREEN confirmado por Pablo.
+- Gate05 HF23.3.16.1: GREEN confirmado por Pablo.
+- Gate07 HF23.3.16.1: GREEN confirmado por Pablo.
+- Functions Deploy: OK.
+- Functions Verify: OK.
+- GitHub/Pages build de .16.1.1: FAILED únicamente por 2 contratos históricos stale.
+- HF23.3.16.1.2 corrige únicamente esos 2 contratos de CI; runtime/Functions/Rules sin cambios.
+- Próximo paso: repetir GitHub/Pages build. Si GREEN -> smoke funcional/visual -> RELEASED.
+
+PUNTOS FUNCIONALES IMPLEMENTADOS
+- Punto 5 Mi Taller.
+- Punto 6 Mis Logros + Esencia.
+- Punto 7 Cápsula de Evolución.
+- Punto 8 Mezcladora Industrial.
+- Punto 9 Perfil Público + Carta Favorita + cosmetics-ready + Esencia en Mi Cofre.
+
+HF23.3.16.1.2 — FIX 1: COMMERCIAL READINESS FINGERPRINT
+- Contrato afectado: tools/test_commercial_readiness_closure_wave5_23_19_4_14.mjs.
+- El fingerprint histórico de 880 cartas no contemplaba el cambio owner-approved de HF23.3.14.1:
+  crea_076 Custodio del Club pasó de poder 1 a poder 0 para cumplir la regla global Defender => power 0.
+- El contrato ahora normaliza exclusivamente ese valor a 1 al reconstruir el snapshot histórico.
+- Importante: NO se cambió el hash esperado para aceptar deriva.
+- Resultado: vuelve exactamente al hash histórico 0cdb30716c6359eae93166597dce1c842d00afa8ed0c2e313341e4d3841957b8.
+
+HF23.3.16.1.2 — FIX 2: ANIMATION STUDIO ROW COUNT
+- Contrato afectado: tools/test_mass_event_cinematics_high_impact_23_19_4_8.mjs.
+- Expectativa stale: 36 filas = 35 históricas + workshop_enhancement.
+- Realidad aprobada actual: 38 filas = 35 históricas + workshop_enhancement + workshop_evolution + workshop_mixer.
+- El contrato exige 38 y presencia explícita de las tres keys Workshop.
+
+VALIDACIÓN LOCAL DEL HOTFIX
+- Commercial Readiness Wave 5: PASS.
+- Mass Event Cinematics High Impact: PASS, animationRows=38.
+- Public Profile HF23.3.16: PASS.
+- Public Profile Favorite/Cosmetics/Chest Essence HF23.3.16.1: PASS.
+- Manifest canónico permanece en 163 contratos; no se agrega ni elimina contrato.
+- El log original de GitHub terminó con exactamente 2 canonical failures; ambos son los corregidos aquí.
+
+CARRY-FORWARD
+- Gate03/Gate05/Gate07: NO repetir.
+- Deploy/Verify Functions: NO repetir.
+- Rules continúan 23.13.89.
+- Functions runtime y cliente son byte-identical a HF23.3.16.1.1.
+
+PRÓXIMO ORDEN
+1. Aplicar HF23.3.16.1.2 al repo.
+2. Repetir GitHub/Pages build.
+3. Si GREEN, ejecutar smoke visual/funcional de Puntos 5–9.
+4. Si smoke GREEN, declarar HF23.3.16.1.2 RELEASED.
+5. Luego avanzar con Máquina 4 / Forja de Cosméticos.

@@ -1,0 +1,40 @@
+ARGENTINIA 23.21.6 — HF23.3.16.1.2
+CI BUILD CONTRACT HOTFIX
+Fecha: 2026-09-22
+
+ALCANCE
+- Hotfix exclusivo de contratos estáticos de GitHub CI.
+- NO cambia frontend/runtime.
+- NO cambia Functions runtime.
+- NO cambia Firestore Rules 23.13.89.
+- NO cambia los 42 callables.
+- Gate03/Gate05/Gate07 GREEN, Deploy OK y Verify OK de HF23.3.16.1.1 son carry-forward válidos.
+
+FALLO 1 — Commercial Readiness Wave 5
+- test_commercial_readiness_closure_wave5_23_19_4_14.mjs seguía calculando el fingerprint histórico sin normalizar el cambio aprobado HF23.3.14.1:
+  crea_076 Custodio del Club: Defender implica poder 0 (histórico previo: poder 1).
+- La corrección NO sustituye el hash esperado por uno nuevo.
+- Se normaliza crea_076.power=1 sólo dentro del fingerprint histórico.
+- Con esa única normalización, el hash vuelve exactamente al valor histórico esperado:
+  0cdb30716c6359eae93166597dce1c842d00afa8ed0c2e313341e4d3841957b8
+
+FALLO 2 — Mass Event Cinematics / Animation Studio
+- test_mass_event_cinematics_high_impact_23_19_4_8.mjs esperaba 36 filas:
+  35 históricas + workshop_enhancement.
+- El catálogo actual correcto tiene 38:
+  35 históricas + workshop_enhancement + workshop_evolution + workshop_mixer.
+- El contrato ahora exige 38 y verifica explícitamente la presencia de las tres cinematográficas del Taller.
+
+VALIDACIÓN LOCAL
+- Commercial Readiness Wave 5: PASS.
+- Mass Event Cinematics: PASS (animationRows=38).
+- Perfil Público HF23.3.16: PASS.
+- Carta Favorita / Cosmetics-ready / Cofre Esencia HF23.3.16.1: PASS.
+- El log de GitHub original reportó exactamente 2 fallos canónicos totales; no hubo un tercer fallo oculto.
+
+PROMOCIÓN
+- NO repetir Gate03.
+- NO repetir Gate05.
+- NO repetir Gate07.
+- NO repetir Functions deploy/verify.
+- Aplicar HF23.3.16.1.2 al repo y repetir únicamente GitHub/Pages build.
