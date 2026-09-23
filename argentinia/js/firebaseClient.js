@@ -24,7 +24,7 @@ function diag(stage, detail = null) {
 export function preloadFirebaseClient() {
   if (!clientPromise) {
     diag('firebase_import_requested');
-    const implUrl = new URL(`./firebaseClientImpl.js?v=${encodeURIComponent(ENGINE_VERSION)}`, import.meta.url).href;
+    const implUrl = new URL('./firebaseClientImpl.js', import.meta.url).href;
     clientPromise = import(implUrl)
       .then(mod => {
         if (mod?.FIREBASE_IMPL_VERSION !== ENGINE_VERSION) {

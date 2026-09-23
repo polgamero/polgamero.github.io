@@ -258,6 +258,40 @@ const ECONOMY_ACTION_PREFIXES = Object.freeze({
 // 23.19.5.3 — exactly-once browser bridge. El journal conserva sólo intención/operationId.
 // Si se perdió la respuesta después del commit, el siguiente click/F5 lee economyOperations
 // y sincroniza el perfil sin repetir la compra/craft/rename.
+// HF23.3.16.2.6 — también reconcilia EN EL MISMO intento cuando el callable ya commiteó
+// pero el ACK se perdió. Evita falsos errores visuales como starter guardado + UI roja.
+const ECONOMY_POST_ERROR_RECOVERY_DELAYS_MS = Object.freeze([0, 250, 750, 1500]);
+function economyCallableMayHaveLostAck(error) {
+  const code = String(error?.code || '').toLowerCase();
+  return !code || [
+    'functions/unavailable','functions/deadline-exceeded','functions/internal','functions/unknown',
+    'unavailable','deadline-exceeded','internal','unknown','network-request-failed'
+  ].includes(code);
+}
+function waitEconomyRecovery(ms) {
+  return ms > 0 ? new Promise(resolve => setTimeout(resolve, ms)) : Promise.resolve();
+}
+async function recoverCommittedEconomyAction(operationId, expectedType, { retryTransport = false } = {}) {
+  const delays = retryTransport ? ECONOMY_POST_ERROR_RECOVERY_DELAYS_MS : [0];
+  for (const delay of delays) {
+    await waitEconomyRecovery(delay);
+    try {
+      const recovered = await recoverEconomyOperation(operationId);
+      const operation = recovered?.operation || null;
+      if (!operation || operation.status !== 'committed') continue;
+      if (operation.type !== expectedType) {
+        const mismatch = new Error('ECONOMY_RECOVERY_TYPE_MISMATCH');
+        mismatch.code = 'OPERATION_ID_PAYLOAD_MISMATCH';
+        throw mismatch;
+      }
+      return operation;
+    } catch (error) {
+      if (error?.code === 'OPERATION_ID_PAYLOAD_MISMATCH') throw error;
+      // Recovery es best-effort: un segundo problema de red no reemplaza el error original.
+    }
+  }
+  return null;
+}
 async function runEconomyActionAuthority(uid, type, request, invoke) {
   const expectedType = ECONOMY_ACTION_SERVER_TYPES[type];
   if (!expectedType) throw new Error(`ECONOMY_ACTION_TYPE_INVALID:${type}`);
@@ -266,22 +300,10 @@ async function runEconomyActionAuthority(uid, type, request, invoke) {
   if (!pending) pending = beginEconomyAction(uid, type, operationId, request);
 
   if (pending?.operationId) {
-    try {
-      const recovered = await recoverEconomyOperation(operationId);
-      const operation = recovered?.operation || null;
-      if (operation?.status === 'committed') {
-        if (operation.type !== expectedType) {
-          const error = new Error('ECONOMY_RECOVERY_TYPE_MISMATCH');
-          error.code = 'OPERATION_ID_PAYLOAD_MISMATCH';
-          throw error;
-        }
-        clearPendingEconomyAction(uid, type, request, operationId);
-        return { ok: true, result: operation.result || null, replayed: true, operationId };
-      }
-    } catch (error) {
-      // Un fallo de red al consultar recovery NO autoriza crear otro operationId.
-      // Reintentamos el mismo callable/operationId; Functions resolverá idempotencia.
-      if (error?.code === 'OPERATION_ID_PAYLOAD_MISMATCH') throw error;
+    const operation = await recoverCommittedEconomyAction(operationId, expectedType);
+    if (operation) {
+      clearPendingEconomyAction(uid, type, request, operationId);
+      return { ok: true, result: operation.result || null, replayed: true, operationId };
     }
   }
 
@@ -290,8 +312,17 @@ async function runEconomyActionAuthority(uid, type, request, invoke) {
     clearPendingEconomyAction(uid, type, request, operationId);
     return outcome;
   } catch (error) {
-    // Journal survives. A deterministic validation rejection can safely reuse the same id;
-    // a lost response will replay the committed receipt instead of charging twice.
+    // HF23.3.16.2.6: el servidor puede haber commiteado aunque el navegador haya perdido
+    // la respuesta. Antes de mostrar error, reconciliamos el MISMO operationId. En errores
+    // de transporte damos una ventana corta al commit para aparecer en economyOperations.
+    const operation = await recoverCommittedEconomyAction(operationId, expectedType, {
+      retryTransport: economyCallableMayHaveLostAck(error)
+    });
+    if (operation) {
+      clearPendingEconomyAction(uid, type, request, operationId);
+      return { ok: true, result: operation.result || null, replayed: true, operationId };
+    }
+    // No hay receipt committed: el journal sobrevive y se conserva el error original.
     throw error;
   }
 }

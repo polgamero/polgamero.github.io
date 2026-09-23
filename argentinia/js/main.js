@@ -1900,9 +1900,12 @@ async function checkBuildFreshness() {
     if (!response.ok) return { ok: true, unverifiable: true };
     const manifest = await response.json();
     const manifestProtocolVersion = manifest?.engineProtocolVersion ?? manifest?.protocolVersion ?? null;
-    const ok = manifest?.engineVersion === ENGINE_VERSION && manifestProtocolVersion === ENGINE_PROTOCOL_VERSION;
+    const loadedPublicBuildId = String(globalThis.__ARGENTINIA_PUBLIC_BUILD_ID__ || '');
+    const manifestPublicBuildId = String(manifest?.buildId || '');
+    const publicBuildMatches = !loadedPublicBuildId || !manifestPublicBuildId || loadedPublicBuildId === manifestPublicBuildId;
+    const ok = manifest?.engineVersion === ENGINE_VERSION && manifestProtocolVersion === ENGINE_PROTOCOL_VERSION && publicBuildMatches;
     if (!ok) {
-      console.error('BUILD_MISMATCH', { loaded: ENGINE_VERSION, manifest });
+      console.error('BUILD_MISMATCH', { loaded: ENGINE_VERSION, loadedPublicBuildId, manifest });
       return { ok: false, manifest };
     }
     return { ok: true, manifest };
